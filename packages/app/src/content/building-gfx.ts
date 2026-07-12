@@ -176,6 +176,37 @@ function bmdBasename(bmd: string): string {
 }
 
 /**
+ * Group a decoded gfx-join's rows by typeId, keeping only this tribe's (and, when `keep` is given, only
+ * the rows it passes — the construction reduction drops the upgrade-overlay rows). Insertion order is
+ * preserved, so the per-type reductions below stay deterministic. The shared first step of every
+ * per-type binding reducer in this module.
+ */
+function rowsByType<T extends { tribeId: number; typeId: number }>(
+  rows: readonly T[],
+  tribeId: number,
+  keep?: (row: T) => boolean,
+): Map<number, T[]> {
+  const byType = new Map<number, T[]>();
+  for (const r of rows) {
+    if (r.tribeId !== tribeId || (keep !== undefined && !keep(r))) continue;
+    const list = byType.get(r.typeId);
+    if (list === undefined) byType.set(r.typeId, [r]);
+    else list.push(r);
+  }
+  return byType;
+}
+
+/** Restrict a type's rows to those in the preferred (loaded) palette when any exist, else keep them all —
+ *  the "bind the skin we actually draw" rule the per-type reducers share. */
+function preferredPalettePool<T extends { paletteName: string }>(
+  rows: readonly T[],
+  paletteName: string,
+): readonly T[] {
+  const inPreferred = rows.filter((r) => r.paletteName === paletteName);
+  return inPreferred.length > 0 ? inPreferred : rows;
+}
+
+/**
  * Pick the single canonical `buildingBobs` row for one `typeId` from its candidate rows (already filtered
  * to the tribe + typeId), deterministically and insertion-order-independently:
  *  1. **Palette preference** — restrict to rows in {@link preferredPalette} (the loaded `house01` skin)
@@ -191,8 +222,7 @@ function pickCanonicalBuildingRow(
   rows: readonly BuildingBobRow[],
   preferredPalette: string,
 ): BuildingBobRow | undefined {
-  const inPreferred = rows.filter((r) => r.paletteName === preferredPalette);
-  let candidates = inPreferred.length > 0 ? inPreferred : rows;
+  let candidates = preferredPalettePool(rows, preferredPalette);
   const canonName = CANONICAL_EDIT_NAME[typeId];
   if (canonName !== undefined) {
     const named = candidates.filter((r) => r.editName === canonName);
@@ -233,13 +263,7 @@ export function buildingBobRefsByType(
   defaultFamily: { readonly bmdBasename: string; readonly paletteName: string },
   families: readonly BuildingFamily[],
 ): Record<number, BuildingBobRef> {
-  const byType = new Map<number, BuildingBobRow[]>();
-  for (const r of rows) {
-    if (r.tribeId !== tribeId) continue;
-    const list = byType.get(r.typeId);
-    if (list === undefined) byType.set(r.typeId, [r]);
-    else list.push(r);
-  }
+  const byType = rowsByType(rows, tribeId);
   const out: Record<number, BuildingBobRef> = {};
   for (const [typeId, list] of byType) {
     const row = pickCanonicalBuildingRow(typeId, list, defaultFamily.paletteName);
@@ -298,17 +322,10 @@ export function buildingOverlayRefsByType(
   defaultFamily: { readonly bmdBasename: string; readonly paletteName: string },
   families: readonly BuildingFamily[],
 ): Record<number, BuildingOverlayRef> {
-  const byType = new Map<number, BuildingOverlayRow[]>();
-  for (const r of rows) {
-    if (r.tribeId !== tribeId) continue;
-    const list = byType.get(r.typeId);
-    if (list === undefined) byType.set(r.typeId, [r]);
-    else list.push(r);
-  }
+  const byType = rowsByType(rows, tribeId);
   const out: Record<number, BuildingOverlayRef> = {};
   for (const [typeId, list] of byType) {
-    const inPreferred = list.filter((r) => r.paletteName === defaultFamily.paletteName);
-    const pool = inPreferred.length > 0 ? inPreferred : list;
+    const pool = preferredPalettePool(list, defaultFamily.paletteName);
     const lowestLevel = pool.reduce((lo, r) => Math.min(lo, r.level), Number.POSITIVE_INFINITY);
     const group = pool.filter((r) => r.level === lowestLevel);
     const idleRow = group.find((r) => r.state === OVERLAY_STATE_IDLE);
@@ -365,17 +382,10 @@ export function constructionRefsByType(
   defaultFamily: { readonly bmdBasename: string; readonly paletteName: string },
   families: readonly BuildingFamily[],
 ): Record<number, ConstructionLayerRef[]> {
-  const byType = new Map<number, ConstructionLayerRow[]>();
-  for (const r of rows) {
-    if (r.tribeId !== tribeId || r.upgrade) continue;
-    const list = byType.get(r.typeId);
-    if (list === undefined) byType.set(r.typeId, [r]);
-    else list.push(r);
-  }
+  const byType = rowsByType(rows, tribeId, (r) => !r.upgrade);
   const out: Record<number, ConstructionLayerRef[]> = {};
   for (const [typeId, list] of byType) {
-    const inPreferred = list.filter((r) => r.paletteName === defaultFamily.paletteName);
-    const pool = inPreferred.length > 0 ? inPreferred : list;
+    const pool = preferredPalettePool(list, defaultFamily.paletteName);
     // ONE record-level group per type (see the JSDoc): group by (editName, level), pick canonically.
     const groups = new Map<string, ConstructionLayerRow[]>();
     for (const r of pool) {
