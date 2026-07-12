@@ -24,11 +24,6 @@ import { BERRY_REGROW_TICKS } from '../economy/berries.js';
 import { unstampResourceFootprint } from '../footprint/index.js';
 import { isYardHeap, lowestStockedGood, MAX_GROUND_STACK, stockCapacity } from '../stores.js';
 
-// Re-exported from its definition in ../stores.js (the per-tile ground cap now also gates
-// `stockCapacity`'s ground-heap branch); the drop/stack effects below stay this constant's home
-// for existing importers.
-export { MAX_GROUND_STACK } from '../stores.js';
-
 // The GOODS effects of the atomic executor — harvest/fell/deplete a resource node, drop and reap
 // ground piles, pick up / consume / deposit a carried load. Every mutation conserves goods (nothing
 // is conjured or silently destroyed); see each function's contract.

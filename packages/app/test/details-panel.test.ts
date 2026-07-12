@@ -149,6 +149,9 @@ describe('selection details panel model', () => {
     expect(model.production?.kind).toBe('recipe');
     if (model.production?.kind !== 'recipe') return;
     expect(model.production.pcts).toEqual([25, 50]); // one bar per batch, in cycle (FIFO) order
+    // The section RESERVES at least one row per in-flight batch (and per operator slot — stable
+    // height while batches stagger); with two batches running it can never be fewer than two.
+    expect(model.production.rows).toBeGreaterThanOrEqual(2);
     expect(model.production.label).toContain('plank x1');
     // The production row carries its output's string id — the icon key the panel draws beside the bar.
     expect(model.production.goodId).toBe('plank');

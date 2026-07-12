@@ -50,6 +50,13 @@ export const jobSystem: System = (world, ctx) => {
   // per settler): every worker binding is a Building, so this is the only entity set either pass scans.
   // Turns the assignment from O(settlers · entities · log n) into O(buildings + settlers · buildings).
   const buildings = canonicalById(world.query(Building));
+  // The staffing tally, built ONCE per tick: bound-settler headcount per (building, jobType). Every
+  // openness probe this tick reads it instead of re-scanning all JobAssignments per candidate building
+  // (which made an unassignable settler cost O(buildings × assignments) EVERY tick — the report-in
+  // pass would have paid that forever for a slotless loose carrier). A commutative count, so the query
+  // iteration order is free; each binding made below increments it, so a later settler this tick sees
+  // the earlier one's post exactly like the live scan did (sequential consistency preserved).
+  const staffing = buildStaffingTally(world);
   // Spatial bucket of buildings by their INTERACTION node (the door node for a footprint type, the
   // anchor node otherwise — {@link interactionNode}, passed as the bucket's node resolver): "adopt"
   // binds the workplace a settler is standing AT (the AI walk-to-station drive delivers an operator to
@@ -65,27 +72,64 @@ export const jobSystem: System = (world, ctx) => {
       // Pass 1 — adopt a pre-employed, unbound settler standing on a workplace it staffs.
       const here = workplaceStaffedHereBy(buildingsByNode, world, ctx, e, settler.tribe, settler.jobType);
       if (here !== null) {
-        world.add(e, JobAssignment, { workplace: here });
+        bind(world, staffing, e, here, settler.jobType);
       } else if (isCarrierJob(ctx, settler.jobType)) {
         // Pass 1b — a loose CARRIER reports in: transport is worked only through an assignment (the
         // planner's haul rung requires a binding — a carrier without a post does no work), so an
         // unbound carrier takes the first open transport slot in canonical building order (a
-        // warehouse's carrier slot, a workshop's `logicworker 24` slot). Same openness gate as every
-        // other assignment; no open slot means it stays loose and idle until one appears.
-        const post = openPostFor(buildings, world, ctx, settler.tribe, settler.jobType, settler.experience);
-        if (post !== null) world.add(e, JobAssignment, { workplace: post });
+        // warehouse's carrier slot, a workshop's `logicworker 24` slot). First-in-canonical-order is
+        // a NAMED APPROXIMATION — the original's posting rule isn't decoded; nearest-post would need
+        // the spatial seam and can move goldens, so it stays a candidate refinement. Same openness
+        // gate as every other assignment; no open slot means it stays loose and idle until one appears.
+        const post = openPostFor(
+          buildings,
+          world,
+          ctx,
+          settler.tribe,
+          settler.jobType,
+          settler.experience,
+          staffing,
+        );
+        if (post !== null) bind(world, staffing, e, post, settler.jobType);
       }
       continue; // an employed settler is never re-assigned to another trade
     }
 
     // Pass 2 — assign + bind an idle settler to a concrete open workplace.
-    const open = openJobAt(buildings, world, ctx, settler.tribe, settler.experience);
+    const open = openJobAt(buildings, world, ctx, settler.tribe, settler.experience, staffing);
     if (open !== null) {
       settler.jobType = open.jobType;
-      world.add(e, JobAssignment, { workplace: open.building });
+      bind(world, staffing, e, open.building, open.jobType);
     }
   }
 };
+
+/** Bound-settler headcount per (building, jobType) — see the jobSystem tally comment. */
+type StaffingTally = Map<Entity, Map<number, number>>;
+
+function buildStaffingTally(world: World): StaffingTally {
+  const tally: StaffingTally = new Map();
+  for (const e of world.query(Settler, JobAssignment)) {
+    const jobType = world.get(e, Settler).jobType;
+    if (jobType === null) continue;
+    const workplace = world.get(e, JobAssignment).workplace;
+    incrementStaffing(tally, workplace, jobType);
+  }
+  return tally;
+}
+
+/** Stamp the binding AND reflect it into the tick's staffing tally, so every later openness probe
+ *  this tick counts it (the live-scan behavior the tally replaced). */
+function bind(world: World, staffing: StaffingTally, e: Entity, workplace: Entity, jobType: number): void {
+  world.add(e, JobAssignment, { workplace });
+  incrementStaffing(staffing, workplace, jobType);
+}
+
+function incrementStaffing(tally: StaffingTally, workplace: Entity, jobType: number): void {
+  const jobs = tally.get(workplace) ?? new Map<number, number>();
+  jobs.set(jobType, (jobs.get(jobType) ?? 0) + 1);
+  tally.set(workplace, jobs);
+}
 
 /**
  * The first building (canonical order) with an open slot for the SPECIFIC job `jobType` — the
@@ -100,9 +144,10 @@ function openPostFor(
   tribe: number,
   jobType: number,
   experience: ReadonlyMap<number, number>,
+  staffing: StaffingTally,
 ): Entity | null {
   for (const b of buildings) {
-    if (resolveOpenWorkerJob(world, ctx, b, tribe, experience, [jobType]) !== null) return b;
+    if (resolveOpenWorkerJob(world, ctx, b, tribe, experience, [jobType], staffing) !== null) return b;
   }
   return null;
 }
@@ -118,9 +163,18 @@ function openJobAt(
   ctx: SystemContext,
   tribe: number,
   experience: ReadonlyMap<number, number>,
+  staffing: StaffingTally,
 ): { building: Entity; jobType: number } | null {
   for (const b of buildings) {
-    const jobType = openWorkerJobAt(world, ctx, b, tribe, experience);
+    const jobType = resolveOpenWorkerJob(
+      world,
+      ctx,
+      b,
+      tribe,
+      experience,
+      canonicalJobs(buildingWorkerJobs(world, ctx, b)),
+      staffing,
+    );
     if (jobType !== null) return { building: b, jobType }; // first open, qualified building wins
   }
   return null;
@@ -198,12 +252,13 @@ function resolveOpenWorkerJob(
   tribe: number,
   experience: ReadonlyMap<number, number>,
   orderedJobs: readonly number[],
+  staffing?: StaffingTally,
 ): number | null {
   const b = world.tryGet(building, Building);
   if (b === undefined || b.tribe !== tribe) return null;
   if (!buildingEnabled(world, ctx, tribe, b.buildingType)) return null; // not tech-enabled yet
   for (const jobType of orderedJobs) {
-    if (!jobUnderstaffed(world, ctx, building, jobType)) continue;
+    if (!jobUnderstaffed(world, ctx, building, jobType, staffing)) continue;
     if (!jobEnabled(world, ctx, tribe, jobType)) continue; // tech gate (jobEnablesJob): job unlocked?
     if (!settlerMeetsNeed(ctx, tribe, 'job', jobType, experience)) continue; // XP gate (needforjob)
     return jobType;
@@ -220,17 +275,34 @@ function resolveOpenWorkerJob(
  * Determinism: a count of bound settlers (addition commutes), so iterating `query` insertion order is
  * fine — it's not a *pick*, just a sum (AGENTS.md: only a chosen-entity scan needs canonical order).
  */
-function jobUnderstaffed(world: World, ctx: SystemContext, building: Entity, jobType: number): boolean {
+function jobUnderstaffed(
+  world: World,
+  ctx: SystemContext,
+  building: Entity,
+  jobType: number,
+  staffing?: StaffingTally,
+): boolean {
   const b = world.get(building, Building);
   const type = contentIndex(ctx.content).buildings.get(b.buildingType);
   const slot = type?.workers.find((w) => w.jobType === jobType);
   if (slot === undefined) return false; // not a worker job here
+  // With the jobSystem's per-tick tally the count is O(1); the live scan remains for the one-shot
+  // command path (`assignWorker` resolves openness outside a jobSystem tick, no tally in hand).
+  const held =
+    staffing !== undefined
+      ? (staffing.get(building)?.get(jobType) ?? 0)
+      : liveHeldCount(world, building, jobType);
+  return held < slot.count;
+}
+
+/** The tally-less bound-settler count for one (building, jobType) — the command-path fallback. */
+function liveHeldCount(world: World, building: Entity, jobType: number): number {
   let held = 0;
   for (const e of world.query(Settler, JobAssignment)) {
     if (world.get(e, JobAssignment).workplace !== building) continue;
     if (world.get(e, Settler).jobType === jobType) held++;
   }
-  return held < slot.count;
+  return held;
 }
 
 /**

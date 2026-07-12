@@ -30,10 +30,10 @@ import {
   isTemple,
   isYardHeap,
   lowestStockedGood,
+  MAX_GROUND_STACK,
   recipeOf,
   stockCapacity,
 } from '../stores.js';
-import { MAX_GROUND_STACK } from './effects-goods.js';
 
 /**
  * The shared nearest-pick tie-break: is a candidate at `(dist, cell)` strictly better than the

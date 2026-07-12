@@ -28,9 +28,11 @@ const UNCAPPED_CAPACITY = Number.MAX_SAFE_INTEGER;
 /**
  * The most units of ONE good a loose ground heap can hold on one tile — the engine's GLOBAL per-tile
  * limit for goods resting on the ground (a gatherer's yard heap, a hand-dropped pile, and a delivered
- * load alike). Source basis: observed original behaviour (at most 5 of any single good ever lies on
- * one field) and the `ls_goods.bmd` heap art carrying exactly 5 fill states per good (the pipeline's
- * goods stage) — a pile can't grow past what its graphic can show.
+ * load alike). Source basis: EXTRACTED — every good-pile `[GfxLandscape]` record declares
+ * `LogicMaximumValency 5` (uniform across all 43 "good piles" rows in the generated `ir.json`'s
+ * `landscapeGfx[].maxValency`), matching observed original behaviour and the `ls_goods.bmd` art's 5
+ * fill states per good. Kept as one engine constant while the value is uniform; if a mod ever varies
+ * it per good, this moves onto the extracted per-record `maxValency`.
  */
 export const MAX_GROUND_STACK = 5;
 
@@ -95,6 +97,11 @@ export function stockCapacity(world: World, ctx: SystemContext, store: Entity, g
   }
   const stock = world.tryGet(store, Stockpile);
   if (stock !== undefined && world.has(store, Position)) {
+    // DELIBERATELY broader than {@link isYardHeap} (the sink/pick predicate): the ground clamp
+    // applies to EVERY building-less, hull-less pile on the map — a yard heap, a flag pile, and an
+    // uncollected GroundDrop trunk alike (nothing resting on a tile exceeds the per-tile valency).
+    // Trunks/flags are excluded from being CHOSEN as delivery sinks elsewhere; this is only what a
+    // pile could hold if something did deposit into it.
     const held = lowestStockedGood(stock);
     if (held !== null && held !== goodType) return 0; // a ground heap never mixes goods
     return MAX_GROUND_STACK;
@@ -303,15 +310,19 @@ function operatorJobsOf(world: World, ctx: SystemContext, building: Entity): Rea
  * (passive stores / fixtures without workers keep working at the base rate). The count is a pure
  * tally (order-independent), so no determinism concern.
  *
- * Cross-system: ProductionSystem gates starting/advancing a cycle on `> 0` AND advances the cycle by
- * this count per tick — the mill's two millers grind twice as fast as one (each operator works the
- * craft in parallel; observed original behaviour, the exact stacking rule isn't decoded).
+ * Cross-system: ProductionSystem gates starting a cycle on `> 0` and each tick advances up to this
+ * many SEPARATE batches by one tick each (oldest first — see the FIFO rule on the Production
+ * component): two millers run two independent flours in parallel, doubling throughput, and a single
+ * bar never flows faster than 1× (per-batch model; observed original behaviour, the exact staffing
+ * rule isn't decoded).
  */
 export function presentOperatorCount(world: World, ctx: SystemContext, building: Entity): number {
   const jobs = operatorJobsOf(world, ctx, building);
   if (jobs.size === 0) return 1; // unstaffed-by-design: no worker requirement to satisfy
   const at = interactionNode(world, ctx, building);
   if (at === null) return 0; // a placed-but-position-less workplace can't be stood on
+  const cap = operatorSlotHeadcount(world, ctx, building, jobs);
+  if (cap <= 0) return 0;
   const bx = at.x;
   const by = at.y;
   let present = 0;
@@ -320,9 +331,12 @@ export function presentOperatorCount(world: World, ctx: SystemContext, building:
     if (settler.jobType === null || !jobs.has(settler.jobType)) continue;
     const p = world.get(e, Position);
     const n = nodeOfPosition(p.x, p.y);
-    if (n.hx === bx && n.hy === by) present++;
+    if (n.hx === bx && n.hy === by) {
+      present++;
+      if (present >= cap) return cap; // the clamp is reached — counting further can't change it
+    }
   }
-  return Math.min(present, operatorSlotHeadcount(world, ctx, building, jobs));
+  return present;
 }
 
 /** The declared headcount across a building's operator slots (Σ `count` over `workers` whose job is in

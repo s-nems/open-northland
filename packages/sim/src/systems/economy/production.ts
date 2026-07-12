@@ -60,18 +60,18 @@ export const productionSystem: System = (world, ctx) => {
     // Each present operator works ONE batch this tick, oldest first (FIFO) — a lone miller at a
     // two-batch mill advances only the first; the second waits for its worker.
     const advanced = Math.min(operators, prod.cycles.length);
-    let completed = 0;
-    for (let i = 0; i < advanced; i++) {
-      const cycle = prod.cycles[i] as ProductionCycle;
-      cycle.elapsed += 1;
-      if (cycle.elapsed >= Math.max(1, cycle.duration)) completed++;
-    }
-    if (completed === 0) continue; // all advanced batches still mid-grind
+    for (const cycle of prod.cycles.slice(0, advanced)) cycle.elapsed += 1;
 
     // Completed batches: deposit each one's outputs (room was reserved at start), drop them from the
     // list, and retire the component when the last batch is done (the workplace reads idle again).
-    const recipe = recipeOf(world, ctx, e);
+    // `completed` is DERIVED from the same filter that removes the crossers, so the deposit count and
+    // the removal can never diverge (a cycle somehow persisted at `elapsed >= duration` — a load path,
+    // a debug mutation — deposits exactly once as it leaves, never silently vanishing).
+    const before = prod.cycles.length;
     prod.cycles = prod.cycles.filter((c) => c.elapsed < Math.max(1, c.duration));
+    const completed = before - prod.cycles.length;
+    if (completed === 0) continue; // all advanced batches still mid-grind
+    const recipe = recipeOf(world, ctx, e);
     if (recipe !== undefined) {
       for (let i = 0; i < completed; i++) depositOutputs(world, ctx, e, recipe);
     }
@@ -85,6 +85,11 @@ export const productionSystem: System = (world, ctx) => {
     if (world.get(e, Building).built < ONE) continue; // under construction — a site doesn't produce
     const recipe = recipeOf(world, ctx, e);
     if (recipe === undefined) continue; // not a producing workplace
+    // Dormancy gate BEFORE the operator scan: `canStartCycle` is O(recipe goods) while
+    // `presentOperatorCount` walks every settler — a starved/output-blocked workshop must not pay
+    // the settler scan every tick (RTS budget: cost scales with active work). canStartCycle doesn't
+    // depend on operators, so skipping here elides only a provably-empty start loop.
+    if (!canStartCycle(world, ctx, e, recipe)) continue;
     const operators = presentOperatorCount(world, ctx, e);
     let running = world.tryGet(e, Production)?.cycles.length ?? 0;
     while (running < operators && canStartCycle(world, ctx, e, recipe)) {

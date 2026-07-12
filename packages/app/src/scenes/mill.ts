@@ -123,9 +123,9 @@ export const millScene: SceneDefinition = {
     'Młynarze chodzą do kupek snopków, PODNOSZĄ zboże i wnoszą je do młyna (znikają w środku na czas odłożenia).',
     'Zielona obramówka zaznaczonego młyna leży wyśrodkowana pod korpusem (nie obok) i nie zmienia rozmiaru, gdy wirnik się kręci.',
     'Podgląd budynku w panelu trzyma STAŁE kadrowanie — nie przybliża się i nie oddala w rytm obrotu skrzydeł.',
-    'Panel młyna: sekcja Produkcja z ikoną mąki, polską nazwą („Mąka x1") i DŁUGIM paskiem postępu przez resztę wiersza; Magazyn z DWOMA wierszami zawsze w kolejności Pszenica (x/10), Mąka (x/20) — nigdy zamienionymi.',
+    'Panel młyna: sekcja Produkcja z ikoną mąki, polską nazwą („Mąka x1") i DŁUGIM paskiem postępu na partię (dwa wiersze pasków przy dwóch młynarzach — sekcja nie zmienia wysokości w trakcie pracy); Magazyn z DWOMA wierszami zawsze w kolejności Pszenica (x/10), Mąka (x/20) — nigdy zamienionymi.',
     'Mąka BANKUJE SIĘ w młynie (licznik rośnie po każdym cyklu); młynarz wynosi ją do magazynu obok dopiero, gdy brakuje miejsca na kolejną — i nigdy nie odkłada jej na ziemię (żadna kupka na ziemi nie przekracza 5 sztuk jednego dobra).',
-    'DWÓCH młynarzy w środku miele 2× szybciej niż jeden (pasek Produkcji płynie dwa razy szybciej, gdy obaj są w młynie; zwalnia do 1×, gdy jeden wyjdzie po zboże).',
+    'DWÓCH młynarzy w środku = DWIE niezależne partie naraz: dwa paski Produkcji, każdy płynie normalnym tempem (żaden nigdy 2×), a mąki przybywa dwa razy szybciej; gdy jeden młynarz wyjdzie, jego pasek staje, drugi miele dalej.',
     'Gdy jeden młynarz skończył swoją mąkę, a dla niego nie ma już zboża w młynie, WYCHODZI po następny snopek, podczas gdy drugi dalej miele w środku — nie czeka bezczynnie, aż kolega skończy.',
     'Po przypisaniu TRAGARZA (PPM na młynie wolnym osadnikiem): tragarz w kółko donosi zboże do pełna (10) i wynosi mąkę do magazynu; młynarze mielą w środku, a gdy młyn mimo to stoi bez zboża, sami też idą po snopek (nie czekają bezczynnie na tragarza).',
     'Pracownicy w panelu: Młynarz 0..2/2 i Tragarz 0..1/1 (obsadzone sloty z danych oryginału).',
@@ -180,13 +180,13 @@ export const millScene: SceneDefinition = {
       predicate: (sim) => {
         const mill = millEntity(sim);
         if (mill === null) return false;
-        const def = sim.content.buildings.find((b) => b.typeId === BUILDING_MILL);
-        const slots = def?.stock ?? [];
-        return (
-          slots.length === 2 &&
-          slots.some((s) => s.goodType === GOOD_WHEAT) &&
-          slots.some((s) => s.goodType === GOOD_FLOUR)
-        );
+        // The RUNTIME stockpile, not the content shape (that pin lives in sandbox-workers.test.ts):
+        // after the whole run, nothing but wheat/flour may have been deposited into the mill — the
+        // capacity gate (`stockCapacity` = 0 for an undeclared good) actually held.
+        for (const [goodType, amount] of sim.world.get(mill, Stockpile).amounts) {
+          if (amount > 0 && goodType !== GOOD_WHEAT && goodType !== GOOD_FLOUR) return false;
+        }
+        return true;
       },
     },
   ],

@@ -326,17 +326,17 @@ describe('productionSystem — parallel operators (the twin mill)', () => {
   it('with fewer operators than batches, the youngest batch WAITS (FIFO — one worker, one batch)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const mill = twinMill(sim, [[WOOD, 2]]);
-    const first = spawnSettler(sim, CARPENTER, 0, 0);
+    spawnSettler(sim, CARPENTER, 0, 0);
     const second = spawnSettler(sim, CARPENTER, 0, 0);
     productionSystem(sim.world, ctxOf(sim)); // two batches start
     productionSystem(sim.world, ctxOf(sim)); // both advance once
-    // One operator walks away — only the OLDEST batch keeps grinding, the second holds its elapsed.
+    // One operator walks away — batches are anonymous (no owning worker), so with one operator left
+    // only the OLDEST batch keeps grinding; the youngest holds its elapsed until a worker frees up.
     sim.world.get(second, Position).x = fx.fromInt(3);
-    void first;
     productionSystem(sim.world, ctxOf(sim));
     const cycles = sim.world.get(mill, Production).cycles;
     expect(cycles[0]?.elapsed).toBe(2);
-    expect(cycles[1]?.elapsed).toBe(1); // paused — its worker is away
+    expect(cycles[1]?.elapsed).toBe(1); // paused — short one worker this tick
   });
 
   it('caps the batch count at the declared operator headcount (a third stacked operator adds nothing)', () => {
