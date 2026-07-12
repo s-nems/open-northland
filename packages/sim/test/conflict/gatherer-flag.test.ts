@@ -23,7 +23,6 @@ import {
   Simulation,
   type TerrainMap,
 } from '../../src/index.js';
-import { MAX_GROUND_STACK } from '../../src/systems/agents/effects-goods.js';
 import {
   aiSystem,
   atomicSystem,
@@ -31,6 +30,7 @@ import {
   type SystemContext,
   setWorkFlag,
 } from '../../src/systems/index.js';
+import { MAX_GROUND_STACK } from '../../src/systems/stores.js';
 import { testContent } from '../fixtures/content.js';
 import { clearComponentStores } from '../fixtures/stores.js';
 

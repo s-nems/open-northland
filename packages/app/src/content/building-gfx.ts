@@ -315,6 +315,14 @@ export function buildingOverlayRefsByType(
     const workingRow = group.find((r) => r.state === OVERLAY_STATE_WORKING);
     const anchor = idleRow ?? workingRow;
     if (anchor === undefined) continue;
+    // NAMED LIMITATION: the row's x/y draw offset is not carried into the binding yet — every pinned
+    // viking overlay row is `0 0`, so the overlay anchors like the body bob. A mod row with a real
+    // offset would draw misplaced; surface it instead of failing silently.
+    if (anchor.x !== 0 || anchor.y !== 0) {
+      console.warn(
+        `building overlay type ${typeId}: nonzero offset ${anchor.x},${anchor.y} ignored (not implemented)`,
+      );
+    }
     const layer = familyLayerFor(anchor.bmd, anchor.paletteName, defaultFamily, families);
     if (layer === null) continue; // family not loaded → no overlay (never a wrong-bob borrow)
     const idle = idleRow?.frames[0];

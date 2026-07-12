@@ -156,9 +156,9 @@ export function drawBuilding(
       );
     } else {
       // A workshop's batches: the output's icon + localized name on the first row, then ONE long
-      // progress bar PER in-flight batch (each operator grinds its own independent cycle — a
-      // twin-staffed mill shows two bars), each filling the row from the fixed label column to the
-      // body's edge. An idle workshop draws a single empty bar.
+      // progress bar PER RESERVED ROW (`p.rows` — one row per operator slot, so a twin-staffed mill
+      // always shows two bars and the section never changes height mid-work), each filling the row
+      // from the fixed label column to the body's edge; rows without an in-flight batch draw empty.
       const p = model.production;
       const rowH = Math.round(STOCK_ROW_H * s);
       const icon: Rect = {
@@ -175,7 +175,7 @@ export function drawBuilding(
         'white',
       );
       const barX = body.x + Math.round(PRODUCTION_BAR_LEFT * s);
-      const bars = p.pcts.length > 0 ? p.pcts : [0];
+      const bars = Array.from({ length: p.rows }, (_, i) => p.pcts[i] ?? 0);
       bars.forEach((pct, i) => {
         chrome.bar(
           {

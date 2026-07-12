@@ -196,23 +196,16 @@ export function planProducer(
   workplace: Entity,
   stockpiles: readonly Entity[],
   seatClaims: WorkSeatClaims,
-  carrierSupplied = false,
+  carrierSupplied: boolean,
 ): void {
   const recipe = recipeOf(world, ctx, workplace);
   if (recipe === undefined) return; // guarded by the caller, but keep the types honest
-
-  // The walk-to-station stand shared by a and d: once ON the station, step inside (the replan sweep
-  // clears the marker every tick, so the worker re-emerges the moment b/c has real work for it).
-  const holdInside = (): void =>
-    atOrWalk(world, e, here, interactionCell(world, ctx, terrain, workplace, here), () =>
-      world.add(e, Resting, { at: workplace }),
-    );
 
   // a. A batch for THIS worker to run or start? Claim the seat and be on the station.
   const claimed = seatClaims.get(workplace) ?? 0;
   if (claimed < workSeatCount(world, ctx, workplace, recipe)) {
     seatClaims.set(workplace, claimed + 1);
-    holdInside();
+    holdInsideWorkplace(world, ctx, terrain, e, here, workplace);
     return;
   }
 
@@ -226,29 +219,57 @@ export function planProducer(
     return;
   }
 
-  if (!carrierSupplied) {
-    // c. Nothing to fetch — carry the finished output out to a store (an output-full shop frees room
-    // for the next cycle; an input-starved one delivers what it made).
-    const outGood = workplaceOutputToHaul(stockpiles, world, ctx, terrain, workplace, recipe, here);
-    if (outGood !== null) {
-      atOrWalk(world, e, here, interactionCell(world, ctx, terrain, workplace, here), () =>
-        startPickup(
-          world,
-          ctx,
-          e,
-          settler,
-          workplace,
-          outGood,
-          carrierCarryCapacity(world, ctx, settler.tribe),
-        ),
-      );
-      return;
-    }
+  // c. Nothing to fetch — carry the finished output out to a store (an output-full shop frees room
+  // for the next cycle; an input-starved one delivers what it made). Skipped when the bound carrier
+  // owns the output run.
+  if (
+    !carrierSupplied &&
+    haulWorkplaceOutput(world, ctx, terrain, e, settler, here, workplace, recipe, stockpiles)
+  ) {
+    return;
   }
 
   // d. Nothing to fetch or haul (or the bound carrier owns the output run) — return to / wait inside
   // the station for an input to arrive.
-  holdInside();
+  holdInsideWorkplace(world, ctx, terrain, e, here, workplace);
+}
+
+/** Walk to the workplace's interaction tile and, once ON it, step INSIDE (the {@link Resting} marker
+ *  — the render hides it; the replan sweep clears it every tick, so the worker re-emerges the moment
+ *  real work appears). The stand shared by the producer's a/d branches and the supplier's wait. */
+function holdInsideWorkplace(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  e: Entity,
+  here: NodeId,
+  workplace: Entity,
+): void {
+  atOrWalk(world, e, here, interactionCell(world, ctx, terrain, workplace, here), () =>
+    world.add(e, Resting, { at: workplace }),
+  );
+}
+
+/** Start carrying a finished output of `workplace` out to a store that can take it (one carry-load),
+ *  or return false when no output is deliverable. The haul branch the producer (no carrier bound)
+ *  and the workshop supplier share. */
+function haulWorkplaceOutput(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  e: Entity,
+  settler: Worker,
+  here: NodeId,
+  workplace: Entity,
+  recipe: NonNullable<ReturnType<typeof recipeOf>>,
+  stockpiles: readonly Entity[],
+): boolean {
+  const outGood = workplaceOutputToHaul(stockpiles, world, ctx, terrain, workplace, recipe, here);
+  if (outGood === null) return false;
+  atOrWalk(world, e, here, interactionCell(world, ctx, terrain, workplace, here), () =>
+    startPickup(world, ctx, e, settler, workplace, outGood, carrierCarryCapacity(world, ctx, settler.tribe)),
+  );
+  return true;
 }
 
 /**
@@ -284,7 +305,17 @@ export function planWorkshopSupplier(
   if (recipe === undefined) return; // guarded by the caller, but keep the types honest
 
   // a. Keep the input slots topped up toward their capacity (one carry-load per trip).
-  const src = nearestMissingInputSource(stockpiles, world, ctx, terrain, here, workplace, recipe, true);
+  const RESTOCK_TO_CAPACITY = true; // the carrier's fetch target: the slot's capacity, not one cycle
+  const src = nearestMissingInputSource(
+    stockpiles,
+    world,
+    ctx,
+    terrain,
+    here,
+    workplace,
+    recipe,
+    RESTOCK_TO_CAPACITY,
+  );
   if (src !== null) {
     const batch = Math.min(src.amount, carrierCarryCapacity(world, ctx, settler.tribe));
     atOrWalk(world, e, here, interactionCell(world, ctx, terrain, src.store, here), () =>
@@ -294,26 +325,10 @@ export function planWorkshopSupplier(
   }
 
   // b. Inputs are covered — carry a finished output out to a store that can take it.
-  const outGood = workplaceOutputToHaul(stockpiles, world, ctx, terrain, workplace, recipe, here);
-  if (outGood !== null) {
-    atOrWalk(world, e, here, interactionCell(world, ctx, terrain, workplace, here), () =>
-      startPickup(
-        world,
-        ctx,
-        e,
-        settler,
-        workplace,
-        outGood,
-        carrierCarryCapacity(world, ctx, settler.tribe),
-      ),
-    );
-    return;
-  }
+  if (haulWorkplaceOutput(world, ctx, terrain, e, settler, here, workplace, recipe, stockpiles)) return;
 
   // c. Nothing to ferry — wait inside the workshop until goods appear.
-  atOrWalk(world, e, here, interactionCell(world, ctx, terrain, workplace, here), () =>
-    world.add(e, Resting, { at: workplace }),
-  );
+  holdInsideWorkplace(world, ctx, terrain, e, here, workplace);
 }
 
 /** Set a `MoveGoal` to `target` unless the settler is already on it (then it stays put). */

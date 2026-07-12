@@ -5,11 +5,7 @@ import {
   CurrentAtomic,
   JobAssignment,
   MoveGoal,
-  PathFollow,
-  PathRequest,
   Position,
-  Production,
-  Resource,
   Settler,
   Stockpile,
 } from '../../src/components/index.js';

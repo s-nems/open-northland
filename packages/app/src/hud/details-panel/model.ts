@@ -141,9 +141,16 @@ export type ProductionModel =
       /**
        * One 0..100 progress per IN-FLIGHT batch (the sim `Production.cycles` list — each operator
        * works its own independent batch, so a twin-staffed mill shows two bars). Empty when the
-       * workplace is idle (the render then draws a single empty bar).
+       * workplace is idle.
        */
       readonly pcts: readonly number[];
+      /**
+       * The bar rows the section RESERVES — `max(1, operator headcount, pcts.length)`, so the panel
+       * geometry is stable while batches start/finish staggered (a mill always shows two bar rows,
+       * empty or not), instead of growing/shrinking a row mid-work. The single source both the
+       * layout's height math and the section's bar loop consume — they can never drift apart.
+       */
+      readonly rows: number;
     }
   | {
       readonly kind: 'fields';
@@ -592,8 +599,22 @@ function productionModel(
     kind: 'recipe',
     label: out.length > 0 ? out : 'gotowe do pracy',
     pcts,
+    rows: Math.max(1, operatorHeadcount(ctx, def), pcts.length),
     ...(firstOutId !== undefined ? { goodId: firstOutId } : {}),
   };
+}
+
+/**
+ * The declared OPERATOR headcount of a workplace — its `workers` slot counts minus the carrier
+ * transport slots (mirrors the sim's `operatorJobsOf`: a carrier-ONLY building keeps its slots, the
+ * well's carrier IS its operator). This is the batch ceiling, so the Produkcja section reserves this
+ * many bar rows and keeps a stable height while batches start/finish staggered.
+ */
+function operatorHeadcount(ctx: UnitPanelModelContext, def: BuildingDef | undefined): number {
+  const slots = def?.workers ?? [];
+  const operators = slots.filter((s) => ctx.jobs.find((j) => j.typeId === s.jobType)?.id !== 'carrier');
+  const counted = operators.length > 0 ? operators : slots;
+  return counted.reduce((sum, s) => sum + s.count, 0);
 }
 
 function settlerStatus(components: Comp, tick: number): string {

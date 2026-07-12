@@ -108,7 +108,11 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
   // operator goes fetching/hauling instead of idling inside beside a colleague's batch.
   const seatClaims: WorkSeatClaims = new Map();
 
-  for (const e of world.query(Settler, Position)) {
+  // CANONICAL settler order: the per-tick claim maps (farmClaims, seatClaims) hand out targets/seats
+  // first-come-first-served, so the visit order is a PICK, not a mere sweep — it must be ascending
+  // entity-id, never store insertion history (AGENTS.md). Today Settler stores happen to insert in id
+  // order (settlers are never re-added), but nothing enforces that; the sort pins the winner.
+  for (const e of canonicalById(world.query(Settler, Position))) {
     // Busy: an atomic is running, or the settler is en route to a target. Leave it to play out (its
     // FarmTask claim, if any, stays live so colleagues keep avoiding its target).
     if (world.has(e, CurrentAtomic)) continue;

@@ -111,7 +111,8 @@ export function resolveBuildingOverlayDraw(
   const spin = item.working === true ? overlay.working : undefined;
   if (spin !== undefined && spin.length > 0) {
     const ticksPerFrame = Math.max(1, overlay.ticksPerFrame ?? 1);
-    const bob = spin[Math.floor(tick / ticksPerFrame) % spin.length] as number;
+    const bob = spin[Math.floor(tick / ticksPerFrame) % spin.length];
+    if (bob === undefined) return null; // unreachable (index < length), but proven not asserted
     return overlay.layer === undefined ? { bob } : { bob, layer: overlay.layer };
   }
   if (overlay.idle === undefined) return null;
