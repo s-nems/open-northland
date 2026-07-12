@@ -7,6 +7,7 @@ import {
   type RandomFn,
   webAudioContextFactory,
 } from '../platform.js';
+import { pruneExpired } from '../prune.js';
 import { AmbientMixer } from './ambient-mixer.js';
 import { SampleCache } from './sample-cache.js';
 
@@ -131,7 +132,7 @@ export class WebAudioEngine {
     const now = ctx.currentTime;
     const last = this.lastPlayed.get(shot.key);
     if (last !== undefined && now - last < ONE_SHOT_COOLDOWN_S) return;
-    this.pruneCooldowns(now);
+    pruneExpired(this.lastPlayed, COOLDOWN_PRUNE_SIZE, now, ONE_SHOT_COOLDOWN_S);
     this.lastPlayed.set(shot.key, now);
     if (shot.files.length === 0) return;
     // Randomness belongs here (impure), not in the pure director: pick one wav from the group.
@@ -157,13 +158,5 @@ export class WebAudioEngine {
     const panner = ctx.createStereoPanner();
     panner.pan.value = pan;
     return panner;
-  }
-
-  /** Drop cooldown entries older than the cooldown window once the map grows — keys are never reused. */
-  private pruneCooldowns(now: number): void {
-    if (this.lastPlayed.size < COOLDOWN_PRUNE_SIZE) return;
-    for (const [key, when] of this.lastPlayed) {
-      if (now - when >= ONE_SHOT_COOLDOWN_S) this.lastPlayed.delete(key);
-    }
   }
 }

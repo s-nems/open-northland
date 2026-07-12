@@ -1,5 +1,5 @@
 import type { SimEvent, WorldSnapshot } from '@vinland/sim';
-import { computeSpatial, computeSpatialAtNode } from '../spatial.js';
+import { computeSpatial, computeSpatialAtNode, type Spatial } from '../spatial.js';
 import type { DirectorInput, EventSound, OneShot, SoundBindings } from '../types.js';
 import { entityTile, type TilePoint } from './snapshot.js';
 
@@ -131,7 +131,7 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
   // Pass 2: locate + spatialise the pending spatial events (off-screen or position-less → silent).
   const positions = neededIds.size > 0 ? positionsFor(snapshot, neededIds) : null;
   for (const p of pending) {
-    let spatial: ReturnType<typeof computeSpatial> = null;
+    let spatial: Spatial | null = null;
     if (p.node !== null) {
       spatial = computeSpatialAtNode(p.node.hx, p.node.hy, camera, canvasW, canvasH);
     } else if (p.entity !== undefined) {
