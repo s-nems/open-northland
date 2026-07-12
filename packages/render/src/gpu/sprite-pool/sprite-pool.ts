@@ -299,8 +299,11 @@ export class SpritePool {
         : item;
     // The moving-state walk cycle runs on the motion-scaled gait clock (feet track ground covered —
     // a body-pressed or braking walker's legs slow instead of jogging in place); everything else
-    // (idle loops, action clocks) stays on the free tick.
-    const layers = resolveLayers(this.sheet, drawItem, frame.tick, Math.floor(pe.motion.gaitPhase));
+    // (idle loops, action clocks) stays on the free tick. A GHOST binds at a FROZEN clock instead:
+    // it is a memory, not a live feed — an animating ghost (a mill's turning sails under the fog)
+    // would leak that the fogged building is still manned.
+    const animTick = item.ghost === true ? 0 : frame.tick;
+    const layers = resolveLayers(this.sheet, drawItem, animTick, Math.floor(pe.motion.gaitPhase));
     if (layers === null) {
       this.showPlaceholder(pe, item);
       return;
