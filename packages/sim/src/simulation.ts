@@ -1,6 +1,7 @@
 import type { ContentSet } from '@vinland/data';
 import { FOG_MODE, fogMode, needsEnabled, Position } from './components/index.js';
-import { type Command, CommandQueue } from './core/commands.js';
+import { CommandQueue } from './core/command-queue.js';
+import type { Command } from './core/commands.js';
 import { EventBuffer } from './core/events.js';
 import { fx } from './core/fixed.js';
 import { Rng } from './core/rng.js';

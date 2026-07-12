@@ -1,7 +1,7 @@
 import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Armor, CurrentAtomic, Health, Position, Settler } from '../../src/components/index.js';
-import type { AtomicEffect } from '../../src/core/commands.js';
+import type { AtomicEffect } from '../../src/core/atomic-effect.js';
 import type { Entity } from '../../src/ecs/world.js';
 import {
   type Fixed,

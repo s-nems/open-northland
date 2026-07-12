@@ -1,4 +1,4 @@
-import type { AtomicEffect } from '../core/commands.js';
+import type { AtomicEffect } from '../core/atomic-effect.js';
 import type { Fixed } from '../core/fixed.js';
 import { defineComponent, type Entity } from '../ecs/world.js';
 
