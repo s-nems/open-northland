@@ -6,8 +6,9 @@ review of feat/fog-of-war, 2026-07-12
 Two findings share one fix:
 
 1. `Simulation.fogView().stateAt` closes over the LIVE `FogState` — safe today (single thread,
-   generation-keyed), but it is a live-sim read from render, and the planned sim-in-a-Web-Worker step
-   (tickets/… / docs/plans/sim-perf.md step 3) cannot ship a closure across the thread boundary.
+   generation-keyed), but it is a live-sim read from render, and the planned sim-in-a-Web-Worker
+   step ([sim-web-worker](../app/sim-web-worker.md)) cannot ship a closure across the thread
+   boundary.
 2. The minimap fog raster (`hud/minimap/index.ts` `drawFog`) and the fog wash both walk cells through
    the per-cell closure chain (`stateAt` → `effectiveFogState` → bounds check → `Map.get`). The
    minimap loop is O(map cells) per fog generation — negligible at 256² (~65k calls / 250 ms), a

@@ -281,7 +281,7 @@ export function runBareMap(
  * Build + run the slice sim for a map that carries AUTHORED entity placements (`map.cif`
  * `StaticObjects` → `maps/<id>.json` `entities`): every resolvable `sethouse` becomes a built
  * building and every `sethuman` a settler at its authored cell — replacing the synthetic
- * "first walkable cells" demo placement for such maps (docs/plans/placement-import slice).
+ * "first walkable cells" demo placement for such maps.
  *
  * The content is the global sandbox content plus any extra authored type ids that are not in the sandbox
  * catalog yet, so authored maps do not shrink the build menu or profession rules. Returns `null` when

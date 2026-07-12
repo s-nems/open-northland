@@ -148,7 +148,7 @@ Phase 5.
 
 ## What to build first
 
-Don't build all 16 systems at once. Use `docs/plans/` to define the next vertical slice:
+Don't build all 16 systems at once. Use `docs/tickets/` to define the next vertical slice:
 cell-graph terrain → one settler → A* + movement → the atomic planner (harvest→pickup→carry→pileup)
 → one workplace with capacity → a carrier. Get it deterministic, invariant-clean, and trace-golden,
 then widen.

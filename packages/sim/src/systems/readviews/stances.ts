@@ -52,7 +52,7 @@ export const SCOUT_JOB = 27;
 /** The **soldier** job-id band — `jobtypes.ini` soldiers 31..41 (unarmed / wooden+iron spear / short+long
  *  sword / short+long saber / small+big axe / short+long bow); every one defaults to
  *  {@link MILITARY_MODE.ATTACK}. A half-open-ish inclusive `[lo, hi]` band (the combat roster is a
- *  contiguous id range in the original data — the *Combat roster* fact in docs/plans/combat.md). */
+ *  contiguous id range in the original `jobtypes.ini` data). */
 const SOLDIER_JOB_MIN = 31;
 const SOLDIER_JOB_MAX = 41;
 

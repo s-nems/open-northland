@@ -17,7 +17,7 @@ const GOODS_PILE_BMD_STEM = 'ls_goods';
  * ground piles + a delivery flag). Each good's node draws ITS own decoded object — a tree for wood, a
  * rock for stone, a mine decal for iron/gold/clay, a mushroom — and each pile draws that good's own
  * `ls_goods` heap growing with its contents, replacing the one hardcoded yew bob every resource used to
- * draw (docs/plans/rung-2 "Resource nodes by goodType" + "Loose ground piles + flags rendering").
+ * draw (the "Resource nodes by goodType" + "Loose ground piles + flags rendering" slices).
  *
  * The join is keyed by the good's id-SLUG, not its typeId: the render binds against the REAL decoded
  * `content/ir.json` (the tree/mine/pile atlases), while the sim runs a scene/slice's OWN content whose

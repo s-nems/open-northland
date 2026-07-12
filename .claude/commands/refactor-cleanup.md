@@ -40,7 +40,8 @@ complete the work.
    package the change may touch, and relevant architecture or testing docs only when the selected
    change depends on them.
 2. Inspect `git status` and preserve all pre-existing user changes. Never revert unrelated work.
-3. When a live plan step is named, treat it as authoritative and keep the refactor within that step.
+3. When a ticket (`docs/tickets/…`) is named, treat it as authoritative and keep the refactor
+   within its scope.
 4. Work in the current checkout. Do not create, merge, or remove a worktree; the user invokes the
    project's `/worktree` workflow separately when required.
 
@@ -140,3 +141,8 @@ Lead with the findings addressed and why they were worth fixing. Then report cha
 preserved behavior, verification results (including reviewer-agent triage when run), and remaining
 risks. List any finding that was diagnosed but dropped, with the concrete reason (insufficient
 evidence, behavior change required); do not expand the completed pass after the fact.
+
+A dropped finding that is still real work (needs a behavior change, crosses the scope boundary, or
+deserves its own session) does not evaporate into the report: file it as a self-contained ticket
+under `docs/tickets/` (see `docs/tickets/README.md`, dedupe first) before reporting. Only findings
+dismissed as not actually justified stay report-only.

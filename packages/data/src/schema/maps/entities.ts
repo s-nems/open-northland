@@ -22,8 +22,7 @@ export const TerrainEntities = z.object({
    * maps in the full unpacked 122-map corpus and `0` on the rest — a constant flag with exceptions,
    * not a player id — and reading it collapsed every skirmish base onto player 0 (the shared-fog
    * bug observed in play).
-   * `rot` is decoded verbatim with no consumer yet — the rotation→facing slice is deferred
-   * (docs/plans/entity-import item).
+   * `rot` is decoded verbatim with no consumer yet — the rotation→facing slice is deferred.
    */
   buildings: z
     .array(

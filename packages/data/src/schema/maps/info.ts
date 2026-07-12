@@ -9,8 +9,8 @@ import { Provenance } from '../record.js';
  * dimensions, a stable GUID, its type/campaign slot, and the string-table ids of its name/description.
  *
  * The map's scripting payload — `MissionData` goals/results, `StaticObjects` pre-placed houses/goods,
- * `playerdata`/`AIData` — is deliberately **not** extracted here: it is the campaign/trigger layer
- * (docs/plans/Phase 5), a far larger vocabulary than this metadata slice. See docs/SOURCES.md.
+ * `playerdata`/`AIData` — is deliberately **not** extracted here: it is the campaign/trigger layer,
+ * a far larger vocabulary than this metadata slice. See docs/SOURCES.md.
  */
 export const MapInfo = z.strictObject({
   /** Stable slug id (from the map folder name, lower-cased) — the cross-reference key. */

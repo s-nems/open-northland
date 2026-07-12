@@ -167,7 +167,7 @@ export function collectTargets(world: World, ctx: SystemContext): TargetCandidat
  * Known limitation (like the bridge case): the reachability gate below reads STATIC components only. A
  * same-component node whose anchor and every work cell are enclosed by DYNAMIC resource footprints (a
  * sealed pocket deep in a dense forest) can still win the pick and then fail its path. Route-level
- * dynamic reachability is a separate follow-up (see `docs/plans/gathering-economy.md`).
+ * dynamic reachability is a separate follow-up (`docs/tickets/sim/dynamic-route-reachability.md`).
  */
 export function nearestHarvestableFor(
   candidates: readonly Entity[],
@@ -413,7 +413,7 @@ const GOODS_YARD_MAX_RADIUS = 32;
  * O(candidates) to index + a BOUNDED ring walk (up to {@link GOODS_YARD_MAX_RADIUS}², a constant, returning
  * at the first ring with a free node) — the same O(carriers·stockpiles) economy nearest-X shape as the other
  * scans here (a `NodeBuckets` index that would make both terms local is the shared follow-up in
- * docs/plans/sim-perf.md).
+ * docs/tickets/sim/economy-ring-index.md).
  */
 export function nearestFreeYardNode(
   candidates: readonly Entity[],

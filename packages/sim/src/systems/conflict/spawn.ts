@@ -145,8 +145,8 @@ export function spawnSettler(
   // imported map's / admin-spawned gatherer flag-bound like a sandbox one — before it, a command-spawned
   // gatherer was unbound and roamed the entire map for the nearest resource. Source basis: a DESIGN
   // RULE (user-specified), approximating the original's observed collector-flag work-area model; the
-  // not-yet-wired half — a building-assigned gatherer with no flag delivering to its building — is a
-  // named follow-up in docs/plans/gathering-economy.md.
+  // not-yet-wired half — a building-assigned gatherer with no flag delivering to its building — is
+  // tracked in docs/tickets/sim/building-assigned-gatherers.md.
   syncWorkFlagToJob(world, ctx, e, command.jobType);
   ctx.events.emit({ kind: 'settlerBorn', entity: e });
 }

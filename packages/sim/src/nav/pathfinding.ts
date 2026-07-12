@@ -1,5 +1,5 @@
 /**
- * A* pathfinding over the terrain HALF-CELL ADJACENCY GRAPH (docs/plans/, Phase 2).
+ * A* pathfinding over the terrain HALF-CELL ADJACENCY GRAPH.
  *
  * This is the pure search the PathfindingSystem drives. It walks {@link TerrainGraph.steps} (the
  * canonical 8-direction half-cell edge set: E,W then NE,SE,SW,NW then the vertical N,S), using

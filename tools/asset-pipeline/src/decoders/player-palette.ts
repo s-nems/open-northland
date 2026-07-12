@@ -45,8 +45,8 @@ export const PLAYER_RAMP_LENGTH = 16;
  * (`good_Wood`/`good_clay`/… set patch 14 + patch 15), so remapping it painted a hauled log/clay slab the
  * team colour — the "blue wood" bug. The `player_NN` recipe never touches patch 15; only the separate
  * `woman_NN` recipe (women's dress) does. Reproducing women's dress colour needs a per-body-class ramp
- * (man → patch 10, woman → patch 15) rather than this one shared band set — tracked in source basis
- * "Player (team) colours" / docs/plans/; keeping patch 15 base-coloured is the faithful choice for the
+ * (man → patch 10, woman → patch 15) rather than this one shared band set — a deferred per-body-class
+ * follow-up; keeping patch 15 base-coloured is the faithful choice for the
  * men who do the hauling.
  */
 export const PLAYER_COLOR_BANDS: readonly (readonly [number, number])[] = [

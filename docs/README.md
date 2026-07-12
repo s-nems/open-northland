@@ -13,26 +13,15 @@ and overrides older notes in plans or commits.
 5. [SCENES.md](SCENES.md) — acceptance scenes for human sign-off.
 6. [SOURCES.md](SOURCES.md) — original file formats, source/oracle map, and legal statement.
 
-## Plans
+## Tickets
 
-`docs/plans/` is the live planning surface. The user writes or updates a plan, then invokes
-`/worktree` for one step at a time. The executing agent updates the same plan before asking to merge:
-tick the step, add a short progress note, and record any source-basis or approximation that matters.
+[`tickets/`](tickets/) is the live work tracker: one file = one self-contained task, `features/`
+for player-visible slices and area folders (`sim/`, `render/`, `app/`, `pipeline/`, …) for scoped
+technical work. The user picks the next ticket and invokes `/worktree` on it; the completing commit
+deletes the ticket file. Every workflow files tickets for real-but-deferred discoveries — see
+[`tickets/README.md`](tickets/README.md) for the rules and template.
 
-Current plans:
-
-- [plans/original-ui.md](plans/original-ui.md) — original in-game HUD extraction and rebuild.
-- [plans/gathering-economy.md](plans/gathering-economy.md) — faithful resource gathering, piles,
-  felling, mining, and collision.
-- [plans/combat.md](plans/combat.md) — combat, stances, damage, projectiles, recruitment, towers.
-- [plans/map-visual-fidelity.md](plans/map-visual-fidelity.md) — map-import visual gaps against
-  original screenshots.
-- [plans/sim-perf.md](plans/sim-perf.md) — remaining deterministic perf follow-ups (ring-search
-  migration, content indexes, sim-in-a-worker).
-
-Plan hygiene: the checkbox is a step's only status marker. When a step merges, tick its box and
-delete its prompt block (the progress note carries the state; git history keeps the prompt).
-Delete a plan when all its steps land and no pending decision remains.
+(`docs/plans/` was retired 2026-07-12: open work became tickets, the files live in git history.)
 
 ## Reference
 
@@ -46,10 +35,11 @@ Delete a plan when all its steps land and no pending decision remains.
 
 Claude Code shortcuts live under `.claude/commands/`:
 
-- `/worktree` — primary workflow: isolated branch/worktree, verify, review, update plan, wait for
-  user approval, fast-forward merge.
+- `/worktree` — primary workflow: isolated branch/worktree, verify, review, update the ticket
+  tracker, wait for user approval, fast-forward merge.
 - `/audit` — report-only review battery over a diff.
-- `/plan` — research/author a new plan, or reconcile an existing one against code reality.
+- `/refactor-cleanup` — behavior-preserving refactor pass over a package, path, or feature.
+- `/ticket-scout` — scan a scope for ticket candidates and file them as `docs/tickets/` entries.
 
 Reviewer agents live under `.claude/agents/` and are intentionally small: sim determinism, RTS-scale
 performance, source-basis/fidelity, architecture, and code quality.
@@ -64,6 +54,6 @@ Do not add new running ledgers for old global planning, lessons, fidelity, or te
 current, actionable state:
 
 - durable rules go in `AGENTS.md` or package-local `AGENTS.md`;
-- active work goes in `docs/plans/`;
+- active work goes in `docs/tickets/`;
 - completed details stay in git history and commit messages;
-- future work becomes a concrete plan step or external issue.
+- future work becomes a concrete, self-contained ticket.

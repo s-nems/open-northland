@@ -465,7 +465,7 @@ function extractGoodGathering(sec: RuleSection): GoodGathering | undefined {
  * `buildable` keep their schema defaults — they're a later derivation (not cleanly from these flags,
  * which mark placement layer, not traversal). The raw `name` + the `transition` tuples are captured
  * verbatim (the tuple field-semantics are NOT decoded — see docs/SOURCES.md); `debugcolor`/
- * `playeridallowed` (editor concerns) are still skipped. See docs/plans/Phase 2.
+ * `playeridallowed` (editor concerns) are still skipped.
  */
 export function extractLandscape(sections: readonly RuleSection[], src: SourceRef): LandscapeType[] {
   const landscape: LandscapeType[] = [];
@@ -1724,8 +1724,8 @@ export function fillBuildingRecipes(
  * Reduces one decoded `map.cif`'s logic header sections into a validated {@link MapInfo}. The map's
  * `CStringArray` opens with a `logiccontrol` section (`mapsize <w> <h>`, `mapguid <16 bytes>`) plus
  * `misc_maptype`/`misc_mapname` metadata sections; this pulls those declarative scalars and leaves the
- * map's scripting payload (`MissionData`/`StaticObjects`/`playerdata`) untouched — that is the Phase-5
- * campaign layer, not this metadata slice (see {@link MapInfo} and docs/plans/). `id` is supplied by
+ * map's scripting payload (`MissionData`/`StaticObjects`/`playerdata`) untouched — that is the
+ * campaign/trigger layer, not this metadata slice (see {@link MapInfo}). `id` is supplied by
  * the caller (the map folder name), since the header carries no human-readable map id.
  *
  * Throws when the required `logiccontrol` `mapsize`/`mapguid` are absent or malformed — a `map.cif`
@@ -1908,8 +1908,8 @@ function normalizePaletteName(name: string): string {
 
 /**
  * Extracts the `palettes.ini` (`Data/engine2d/inis/palettes/palettes.ini`) `[GfxPalette256]` records
- * into name→`.pcx` palette aliases. This is the first leg of the `.bmd` palette-pairing graph
- * (docs/plans/Phase 1): a graphics record names a bob set's palette by `editname`
+ * into name→`.pcx` palette aliases. This is the first leg of the `.bmd` palette-pairing graph:
+ * a graphics record names a bob set's palette by `editname`
  * (`gfxpalettebody "tree01"`), `palettes.ini` resolves that name to a `gfxfile` `.pcx`, and the
  * `.pcx` trailer palette is the colour table {@link import('./pcx.js').decodePcx} already returns.
  *
@@ -1942,8 +1942,8 @@ export function extractPaletteIndex(sections: readonly RuleSection[]): PaletteAl
 
 /**
  * One bob set's palette pairing: a `.bmd` body (and its optional shadow `.bmd`) bound to the palette
- * `editname` its `[jobgraphics]` record names — the **second leg** of the `.bmd`→palette graph
- * (docs/plans/Phase 1). The first leg ({@link extractPaletteIndex}) resolves `paletteName` to a
+ * `editname` its `[jobgraphics]` record names — the **second leg** of the `.bmd`→palette graph.
+ * The first leg ({@link extractPaletteIndex}) resolves `paletteName` to a
  * `.pcx` trailer palette; together they answer "which 256 colours colour this `.bmd`". The `.bmd`
  * paths are normalized (forward-slash, lower-case) so a lookup against the unpacked `--out` tree is
  * host-OS/case-independent, matching {@link PaletteAlias.gfxFile}.
@@ -2199,7 +2199,7 @@ export interface BuildingGraphicsBinding extends BmdPaletteBinding {
  * body bob or without any palette is skipped, never thrown — this indexes hundreds of records and one
  * malformed entry must not abort the offline batch. `tribeId`/`jobId` are left undefined: an atlas keys on
  * `(bmd, palette)` only, so the per-tribe `LogicTribeType` cross-ref does not affect the emitted bytes
- * (the render-side per-building-type bob selection is a later, separate leg — see docs/plans/).
+ * (the render-side per-building-type bob selection is a later, separate leg).
  */
 export function extractBuildingGraphics(sections: readonly RuleSection[]): BuildingGraphicsBinding[] {
   const bindings: BuildingGraphicsBinding[] = [];
@@ -2473,7 +2473,7 @@ export interface IndexedBobManager {
 
 /**
  * One human's full graphics binding from a mod `[jobbasegraphics]` record — the **richer variant** of
- * {@link BmdPaletteBinding} (docs/plans/Phase 1). Unlike the flat `[jobgraphics]` schema (one body
+ * {@link BmdPaletteBinding}. Unlike the flat `[jobgraphics]` schema (one body
  * `.bmd` + one palette), a human draws as a **body** bob plus zero-or-more numbered **head** bobs, each
  * a `gfxbobmanagerbody/head <index> "<bmd>" ["<shadow>"]` line whose leading int index shifts the `.bmd`
  * path off `values[0]` (so it cannot reuse {@link extractGraphicsBindings}). Palettes split three ways:
