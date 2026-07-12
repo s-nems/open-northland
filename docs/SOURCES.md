@@ -248,6 +248,20 @@ Two graphics families sit beside the map grid; **both decode with existing decod
 
 ### Terrain tessellation (the original ground mesh — render REBUILT on it)
 
+![The original engine's staggered field lattice](images/field-geometry-staggered-lattice.png)
+
+Externally-shared schematic of the original engine's field geometry (topology only — the drawing is
+near-square; our measured pitch is 68×38 px, see "projection"). It shows exactly the model below:
+cell centres on a **staggered raster** — even rows sit on the integer columns (blue), odd rows shift
+**half a column right** (green) — with the red diagonals being the inter-cell edges (each centre
+links to its **SE/SW-below** and **E** neighbours), i.e. the two-triangle-per-cell tessellation. The
+dot addressing is our `cell (c,r) ↔ node (2c+(r&1), 2r)`: `staggerShift`/`tileToScreen`
+(`packages/sim/src/nav/metric.ts`, `packages/render/src/data/iso.ts`) for the stagger,
+`cellAnchorNode`/`cellNode` for the addressing, `triangleANodes`/`triangleBNodes`
+(`packages/render/src/data/terrain.ts`) for the red edges. The finer nav lattice (§ "map.dat")
+overlays a node between each pair of centres — those are the intermediate half-cell nodes, not drawn
+as cell centres here.
+
 Source basis: **martianboy/cultures2-gl + cultures2-wasm** (MIT) — a working WebGL renderer of
 Cultures 2 maps whose output matches the original; read as a format/geometry oracle (its
 `tessellate.rs` vertex builder, `texture.ts` lane→triangle/UV mapping, `ground/*.glsl` compositing,
