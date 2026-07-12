@@ -1,5 +1,5 @@
 /**
- * The bottom-right selection details panel: pure model (`model.ts`), geometry (`layout.ts`),
+ * The bottom-right selection details panel: pure model (`model/`), geometry (`layout.ts`),
  * original-art drawing (`chrome.ts` + `sections.ts`), and the app wiring (`panel.ts`).
  */
 
@@ -17,7 +17,7 @@ export type {
   UnitPanelModel,
   UnitPanelModelContext,
   WorkerSlotRow,
-} from './model.js';
-export { barTone, buildUnitPanelModel, HUMANWINDOW } from './model.js';
+} from './model/index.js';
+export { barTone, buildUnitPanelModel, HUMANWINDOW } from './model/index.js';
 export type { PortraitBox, UnitPanel, UnitPanelOptions } from './panel.js';
 export { mountUnitPanel } from './panel.js';

@@ -1,6 +1,6 @@
 import { WIN_PAD } from '../chrome.js';
 import type { Rect } from '../geometry.js';
-import type { UnitPanelModel } from './model.js';
+import type { UnitPanelModel } from './model/index.js';
 import { stockTabRects } from './stock-tabs.js';
 
 /**

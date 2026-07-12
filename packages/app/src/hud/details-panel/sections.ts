@@ -21,7 +21,7 @@ import {
   HUMANWINDOW,
   type MultiSettlerPanelModel,
   type SettlerPanelModel,
-} from './model.js';
+} from './model/index.js';
 
 /**
  * The decoded `housewindow` string ids the building sections consume (see `content/gui/strings/<lang>.json`,
