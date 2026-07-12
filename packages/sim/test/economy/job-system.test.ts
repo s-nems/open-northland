@@ -19,6 +19,7 @@ import { testContent } from '../fixtures/content.js';
 const VIKING = 1;
 const CARPENTER = 2; // the sawmill's worker job
 const WOODCUTTER = 1; // the HQ's worker job
+const CARRIER = 36; // the HQ's transport-slot job
 const WOOD_TRACK = 1; // the wood-specific humanjobexperiencetype typeId in the fixture
 const SAWMILL = 2; // building type
 const SMITHY = 4; // building type gated by `jobEnablesHouse 2 4` (needs a carpenter present)
@@ -94,20 +95,55 @@ describe('JobSystem — idle settlers take open workplace jobs', () => {
     expect(sim.world.get(second, Settler).jobType).toBeNull(); // slot already filled
   });
 
-  it('fills every slot of a multi-worker workplace (HQ has 3 woodcutter slots)', () => {
+  it('fills every slot of a multi-worker workplace (HQ: 3 woodcutter slots + 1 carrier slot)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    placeBuilding(sim, 1 /* HQ */, 5, 5); // 3 woodcutter slots
+    placeBuilding(sim, 1 /* HQ */, 5, 5); // 3 woodcutter slots + a transport slot
     const a = settler(sim, null);
     const b = settler(sim, null);
     const c = settler(sim, null);
     const d = settler(sim, null);
+    const e = settler(sim, null);
 
     jobSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.get(a, Settler).jobType).toBe(WOODCUTTER);
     expect(sim.world.get(b, Settler).jobType).toBe(WOODCUTTER);
     expect(sim.world.get(c, Settler).jobType).toBe(WOODCUTTER);
-    expect(sim.world.get(d, Settler).jobType).toBeNull(); // only 3 slots
+    expect(sim.world.get(d, Settler).jobType).toBe(CARRIER); // the woodcutter slots full — the transport slot next
+    expect(sim.world.get(e, Settler).jobType).toBeNull(); // every slot filled
+  });
+
+  it('posts a LOOSE carrier to the first open transport slot (the report-in pass)', () => {
+    // Hauling is worked only through an assignment (the planner's haul rung requires the binding), so
+    // a pre-employed carrier standing nowhere near a post reports in to the HQ's transport slot.
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const hq = placeBuilding(sim, 1 /* HQ */, 5, 5);
+    const loose = settler(sim, CARRIER);
+
+    jobSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(loose, Settler).jobType).toBe(CARRIER); // the trade never changes
+    expect(sim.world.tryGet(loose, JobAssignment)).toEqual({ workplace: hq });
+  });
+
+  it('leaves a loose carrier unposted when no transport slot is open anywhere', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    placeBuilding(sim, SAWMILL, 5, 5); // a carpenter slot — no carrier slot in this world
+    const loose = settler(sim, CARRIER);
+
+    jobSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(loose, JobAssignment)).toBe(false); // stays loose (and therefore idle)
+  });
+
+  it('never report-in binds a non-carrier trade (only adopt-on-station binds the pre-employed)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    placeBuilding(sim, 1 /* HQ */, 5, 5); // open woodcutter slots exist…
+    const roamer = settler(sim, WOODCUTTER); // …but a roaming woodcutter works unbound, off targets
+
+    jobSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(roamer, JobAssignment)).toBe(false);
   });
 
   it('does not assign a job at a tech-gated workplace until its enabling job is present', () => {

@@ -6,7 +6,7 @@ import type { System, SystemContext } from '../context.js';
 import { interactionNode } from '../footprint/index.js';
 import { buildingEnabled, jobEnabled, settlerMeetsNeed } from '../progression.js';
 import { canonicalById, NodeBuckets } from '../spatial.js';
-import { buildingWorkerJobs, recipeOf } from '../stores.js';
+import { buildingWorkerJobs, isCarrierJob, recipeOf } from '../stores.js';
 import { farmWorkGood } from './farming.js';
 
 /**
@@ -24,7 +24,10 @@ import { farmWorkGood } from './farming.js';
  *  1. **Adopt** — an already-employed settler with no binding that is standing on a workplace it
  *     staffs is bound to the building under its feet. This makes the binding authoritative for a
  *     settler that was spawned pre-employed onto its station (it never went through assignment), with
- *     no behavior change — it was already pinned there by the AI.
+ *     no behavior change — it was already pinned there by the AI. **1b. Report in** — a loose
+ *     CARRIER not standing on a post takes the first open transport slot anywhere (see the pass 1b
+ *     comment): the haul drive works only through a binding, so an unposted carrier would otherwise
+ *     never work.
  *  2. **Assign** — an idle settler (`jobType === null`) is matched to the FIRST workplace, in
  *     canonical order, that is **open** for it, and bound to it. A workplace is open when ALL hold:
  *      - it is a same-tribe building whose type declares a `workers` slot (`logicworker <job> <count>`
@@ -61,8 +64,18 @@ export const jobSystem: System = (world, ctx) => {
     if (settler.jobType !== null) {
       // Pass 1 — adopt a pre-employed, unbound settler standing on a workplace it staffs.
       const here = workplaceStaffedHereBy(buildingsByNode, world, ctx, e, settler.tribe, settler.jobType);
-      if (here !== null) world.add(e, JobAssignment, { workplace: here });
-      continue; // an employed settler is never re-assigned
+      if (here !== null) {
+        world.add(e, JobAssignment, { workplace: here });
+      } else if (isCarrierJob(ctx, settler.jobType)) {
+        // Pass 1b — a loose CARRIER reports in: transport is worked only through an assignment (the
+        // planner's haul rung requires a binding — a carrier without a post does no work), so an
+        // unbound carrier takes the first open transport slot in canonical building order (a
+        // warehouse's carrier slot, a workshop's `logicworker 24` slot). Same openness gate as every
+        // other assignment; no open slot means it stays loose and idle until one appears.
+        const post = openPostFor(buildings, world, ctx, settler.tribe, settler.jobType, settler.experience);
+        if (post !== null) world.add(e, JobAssignment, { workplace: post });
+      }
+      continue; // an employed settler is never re-assigned to another trade
     }
 
     // Pass 2 — assign + bind an idle settler to a concrete open workplace.
@@ -73,6 +86,26 @@ export const jobSystem: System = (world, ctx) => {
     }
   }
 };
+
+/**
+ * The first building (canonical order) with an open slot for the SPECIFIC job `jobType` — the
+ * report-in scan for a pre-employed but unbound worker (today: the loose carrier, pass 1b). The same
+ * per-slot openness gate as {@link openWorkerJobAt}, restricted to the one job the settler already
+ * holds, or `null` when no building currently offers that job.
+ */
+function openPostFor(
+  buildings: readonly Entity[],
+  world: World,
+  ctx: SystemContext,
+  tribe: number,
+  jobType: number,
+  experience: ReadonlyMap<number, number>,
+): Entity | null {
+  for (const b of buildings) {
+    if (resolveOpenWorkerJob(world, ctx, b, tribe, experience, [jobType]) !== null) return b;
+  }
+  return null;
+}
 
 /**
  * The first workplace (canonical order) that is open for a `tribe` settler with the given accrued

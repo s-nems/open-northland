@@ -1,6 +1,14 @@
 import { type ContentSet, parseContentSet } from '@vinland/data';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { Building, Carrying, Position, Settler, Stockpile, Vehicle } from '../../src/components/index.js';
+import {
+  Building,
+  Carrying,
+  JobAssignment,
+  Position,
+  Settler,
+  Stockpile,
+  Vehicle,
+} from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, ONE, Simulation, type TerrainMap } from '../../src/index.js';
 import { type SystemContext, stockCapacity } from '../../src/systems/index.js';
@@ -48,7 +56,8 @@ function grassMap(width: number, height: number): TerrainMap {
 
 beforeEach(clearComponentStores);
 
-function carrierAt(sim: Simulation, x: number, y: number): Entity {
+/** A carrier POSTED to `boundTo` (the hull's loader) — the haul rung works only through a binding. */
+function carrierAt(sim: Simulation, x: number, y: number, boundTo?: Entity): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
   sim.world.add(e, Settler, {
@@ -60,6 +69,7 @@ function carrierAt(sim: Simulation, x: number, y: number): Entity {
     enjoyment: fx.fromInt(0),
     experience: new Map(),
   });
+  if (boundTo !== undefined) sim.world.add(e, JobAssignment, { workplace: boundTo });
   return e;
 }
 
@@ -103,9 +113,9 @@ describe('boat cargo-load gate — stockCapacity over a Vehicle hull', () => {
 
   it('a carrier hauls a carryable plank INTO the boat hull (deposited via the real schedule)', () => {
     const sim = new Simulation({ seed: 1, content: boatContent(), map: grassMap(3, 1) });
-    const carrier = carrierAt(sim, 0, 0);
-    const mill = sawmillAt(sim, 1, 0, 2); // 2 planks waiting
     const boat = boatAt(sim, 2, 0); // the only store that can take them
+    const carrier = carrierAt(sim, 0, 0, boat); // posted to the hull — its loader
+    const mill = sawmillAt(sim, 1, 0, 2); // 2 planks waiting
 
     let inHold = 0;
     for (let i = 0; i < 80 && inHold === 0; i++) {
@@ -124,9 +134,9 @@ describe('boat cargo-load gate — stockCapacity over a Vehicle hull', () => {
     // 3 planks but a HOLD=1 hold: the boat takes exactly 1, the carrier keeps hauling but the hold is
     // full for plank so nothing more is deposited (no nowhere-else store -> the rest stays at the mill).
     const sim = new Simulation({ seed: 1, content: boatContent(), map: grassMap(3, 1) });
-    carrierAt(sim, 0, 0);
-    const mill = sawmillAt(sim, 1, 0, 3);
     const boat = boatAt(sim, 2, 0);
+    carrierAt(sim, 0, 0, boat); // posted to the hull — its loader
+    const mill = sawmillAt(sim, 1, 0, 3);
 
     for (let i = 0; i < 200; i++) sim.step();
 

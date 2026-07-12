@@ -43,13 +43,14 @@ import { clearComponentStores } from '../fixtures/stores.js';
  *   - two finite FELLABLE wood nodes (placed directly — no map/resource command yet), each felled over
  *     3 chops and dropping a 4-wood trunk (the wood good's `gathering` felling spec).
  * The whole goods chain runs end to end and conserves goods: the woodcutter FELLS each tree (3 chops
- * yielding nothing → the tree drops a ground trunk holding its whole 4 wood), then carries the trunk off
- * a unit at a time to the SAWMILL (its nearest store with a wood slot, never back to the trunk) → the
- * carpenter runs its own supply→produce→deliver loop, ALSO fetching the HQ's 10 starting wood into the
- * mill (the input-supply drive) and hauling finished planks back out → so all **18** wood (10 stored + 8
- * felled) becomes 18 planks that end up in the HQ, with the carrier helping haul, and 2 stumps are left
- * where the trees stood. Conserved (18 wood in → 18 planks out, verified: 0 wood + 18 planks remain),
- * invariant-clean for the whole 1000-tick tail.
+ * yielding nothing → the tree drops a ground trunk holding its whole 4 wood) and banks the felled wood
+ * at its own work flag → the CARRIER — posted to the HQ's transport slot on tick 1 by the JobSystem's
+ * report-in pass (hauling is worked only through an assignment) — ferries the flag-banked wood into
+ * the HQ and hauls finished planks there too → the carpenter runs its own supply→produce→deliver
+ * loop, fetching the HQ's wood into the mill (the input-supply drive) and hauling planks back out.
+ * 2 stumps are left where the trees stood; goods are conserved throughout, invariant-clean for the
+ * whole 1000-tick tail (10 stored + 8 felled wood; 16 planks complete inside the window — see the
+ * produced note).
  */
 
 const GRASS = 0;
@@ -142,14 +143,14 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
   // its WORK FLAG (auto-planted at its feet when it spawns — a gatherer is never free; it carries no
   // atomics), 7 = carrier, 8 = carpenter (the mill's operator, self-servicing: it pickups the HQ's stored
   // wood into the mill and hauls finished planks back out). If this moves, a settler-economy mechanic
-  // changed — name it in the commit. Last move: PRODUCER FETCH-BEFORE-HAUL + WORK-INSIDE — the producer
-  // rung now fetches a missing input BEFORE hauling finished output out (finished goods bank in the
-  // shop's own store until production can't continue — observed original behaviour: the mill fills with
-  // flour before the miller carries it off), and a producer standing on its station steps INSIDE (the
-  // Resting marker, hidden by the render). The carpenter's pickup/pileup cadence reshuffles (it keeps
-  // fetching wood while planks accumulate), and the tighter loop lands one more plank inside the run
-  // (14, was 13). (Prior moves: SPAWN-TIME FLAG AUTO-PLANT — the woodcutter is flag-bound from spawn and
-  // banks felled wood at its flag; e452b766 — the half-cell navigation migration.)
+  // changed — name it in the commit. Last move: CARRIER-BY-ASSIGNMENT — hauling is now worked only by
+  // an employed carrier (the trade AND a binding; "bezrobotny to bezrobotny", nobody freelances), the
+  // HQ fixture gained its transport slot (the original HQ's `logicworker 24` shape) and the JobSystem's
+  // report-in pass posts the loose carrier there on tick 1. The posted carrier also PORTERS: it ferries
+  // the wood banked at the woodcutter's flag into the HQ (its bound store), so more wood reaches the
+  // carpenter's supply loop and two more planks land inside the run (16, was 14). (Prior moves:
+  // PRODUCER FETCH-BEFORE-HAUL + WORK-INSIDE; SPAWN-TIME FLAG AUTO-PLANT; e452b766 — the half-cell
+  // navigation migration.)
   const GOLDEN_TRACE: readonly string[] = [
     '20:8:22',
     '31:5:24',
@@ -157,73 +158,73 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
     '37:5:24',
     '40:8:23',
     '41:5:22',
+    '57:7:22',
     '73:5:23',
     '80:8:22',
     '100:8:23',
-    '104:7:22',
+    '101:7:23',
     '105:5:22',
-    '124:7:23',
     '137:5:23',
     '140:8:22',
-    '144:7:22',
+    '145:7:22',
     '160:8:23',
-    '164:7:23',
-    '169:5:22',
-    '200:7:22',
+    '184:5:24',
+    '187:5:24',
+    '189:7:23',
+    '190:5:24',
+    '194:5:22',
     '200:8:22',
-    '201:5:23',
-    '220:7:23',
     '220:8:23',
-    '233:5:22',
-    '260:7:22',
+    '238:5:23',
+    '257:7:22',
     '260:8:22',
-    '265:5:23',
-    '280:7:23',
     '280:8:23',
-    '308:5:24',
-    '311:5:24',
-    '314:5:24',
-    '318:5:22',
-    '320:7:22',
+    '282:5:22',
     '320:8:22',
-    '340:7:23',
+    '325:7:23',
+    '326:5:23',
     '340:8:23',
-    '362:5:23',
-    '380:7:22',
     '380:8:22',
-    '400:7:23',
+    '393:7:22',
     '400:8:23',
-    '406:5:22',
-    '440:7:22',
     '440:8:22',
-    '444:5:23',
-    '460:7:23',
     '460:8:23',
-    '500:7:22',
+    '461:7:23',
     '500:8:22',
-    '520:7:23',
     '520:8:23',
-    '560:7:22',
+    '529:7:22',
     '560:8:22',
-    '580:7:23',
     '580:8:23',
-    '620:7:22',
+    '597:7:23',
     '620:8:22',
-    '640:7:23',
     '640:8:23',
-    '680:7:22',
+    '665:7:22',
     '680:8:22',
-    '700:7:23',
     '700:8:23',
-    '740:7:22',
-    '760:7:23',
-    '770:8:22',
+    '733:7:23',
+    '740:8:22',
+    '753:7:22',
+    '760:8:23',
+    '773:7:23',
+    '793:7:22',
+    '800:8:22',
+    '813:7:23',
     '820:8:23',
-    '860:7:22',
-    '880:7:23',
-    '896:8:22',
-    '952:8:23',
-    '992:7:22',
+    '833:7:22',
+    '853:7:23',
+    '860:8:22',
+    '873:7:22',
+    '880:8:23',
+    '893:7:23',
+    '913:7:22',
+    '920:8:22',
+    '933:7:23',
+    '940:8:23',
+    '953:7:22',
+    '973:7:23',
+    '980:8:22',
+    '993:7:22',
+    '1000:8:23',
   ];
 
   it('holds every core invariant on every tick', () => {
@@ -234,21 +235,20 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
   it('matches the golden final state hash', () => {
     const run = runSlice(SEED, TICKS);
     // Intentional-change discipline: if this moves, a mechanic changed — name it in the commit.
-    // fe19b319 → 1db5f740 (2026-07-11): PRODUCER FETCH-BEFORE-HAUL + WORK-INSIDE (see the trace note) —
-    // the carpenter fetches the next input before hauling planks out and rests INSIDE the mill while a
-    // cycle runs, so the settled end state differs (one more plank through, and the operator carries
-    // the Resting marker at rest).
-    expect(run.hash).toBe('1db5f740');
+    // 1db5f740 → c002bbe0 (2026-07-12): CARRIER-BY-ASSIGNMENT (see the trace note) — the carrier now
+    // works as the HQ's posted transport (JobAssignment on tick 1) and ferries the flag-banked wood
+    // in, so the settled goods distribution differs (two more planks through, the flag pile drained).
+    expect(run.hash).toBe('c002bbe0');
   });
 
   it('matches the golden atomic-action trace', () => {
     const run = runSlice(SEED, TICKS);
     expect(run.trace).toEqual(GOLDEN_TRACE);
-    // The carpenter self-supplies the mill from the HQ's stored wood. The woodcutter's 8 felled wood
-    // banks at its own work flag (it is flag-bound from spawn) and never reaches the mill; with the
-    // fetch-before-haul producer order the supply loop runs a touch tighter, so the plank total
-    // settles at 14 inside the 1000-tick window (was 13 with haul-first).
-    expect(run.produced).toBe(14);
+    // The carpenter self-supplies the mill from the HQ's stored wood, and the HQ-posted carrier now
+    // ferries the woodcutter's flag-banked wood into the HQ too (the porter rung of its assignment),
+    // so more of the 8 felled wood feeds the supply loop: the plank total settles at 16 inside the
+    // 1000-tick window (was 14 when the flag pile just sat there).
+    expect(run.produced).toBe(16);
   });
 
   it('is byte-identical across two same-seed runs (determinism)', () => {

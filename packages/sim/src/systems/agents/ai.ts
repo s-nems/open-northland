@@ -65,7 +65,7 @@ export const aiSystem: System = (world, ctx) => {
  * this tick):
  *
  *   needs (eat > sleep > pray) → combat/hold gates → deliver a carried load → bound-farmer field loop →
- *   bound-producer loop → gather (chop/collect) → porter ferrying → carrier fallback → idle de-stack.
+ *   bound-producer loop → gather (chop/collect) → porter ferrying → store-carrier haul → idle de-stack.
  *
  * The ORDER is part of the design (and of the goldens): needs sit ABOVE the combat/hold gates so a
  * starving combatant still feeds (a soft override), and the economy rungs go most-specific-first so
@@ -212,8 +212,10 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // 4. PORTER — a settler bound to a storage fixture ferries loose ground piles into it.
     if (planPorter(world, ctx, terrain, e, worker, here, targets)) continue;
 
-    // 5. CARRIER FALLBACK — haul a finished workplace output to a store; else genuinely idle:
-    // de-stack off a shared tile so an idle crowd spreads out (see ./destack.ts).
+    // 5. STORE-CARRIER HAUL — an employed carrier (bound to a store's transport slot) ferries
+    // finished workplace outputs to the stores; everyone else with nothing above is genuinely idle
+    // ("bezrobotny to bezrobotny" — hauling is a trade, not a default): de-stack off a shared tile
+    // so an idle crowd spreads out (see ./destack.ts).
     if (!planCarrierHaul(world, ctx, terrain, e, worker, here, targets, anyHaulable)) {
       deStackIdle(world, ctx, terrain, e, hereNode.hx, hereNode.hy, spacing);
     }
