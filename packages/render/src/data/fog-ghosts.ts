@@ -38,7 +38,7 @@ import {
  */
 
 /** The DrawItem kinds that ghost — statics whose last-seen state stays meaningful under fog. */
-export type FogGhostKind = Extract<DrawKind, 'building' | 'resource' | 'stump'>;
+type FogGhostKind = Extract<DrawKind, 'building' | 'resource' | 'stump'>;
 
 /** One remembered static: the entity's identity + the per-kind reads its draw needs, frozen at the
  *  last VISIBLE sighting. Tile coords are floats (fixed → tile, render-only). */

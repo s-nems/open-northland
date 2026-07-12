@@ -64,7 +64,7 @@ const BONES_FADE_HOLD = 0.8;
 export const MAX_ACTIVE_EFFECTS = 400;
 
 /** The lifetime (ticks) of a mark of `kind`. */
-export function effectLifetime(kind: CombatEffectKind): number {
+function effectLifetime(kind: CombatEffectKind): number {
   return kind === 'blood' ? BLOOD_LIFETIME_TICKS : BONES_LIFETIME_TICKS;
 }
 
@@ -132,7 +132,7 @@ const BLOOD_POOL_STRETCH_X = 1.6;
 
 /** A blood droplet's animated transform at `age` render-ticks after the hit, in the blood node's local
  *  space (origin = the wound, y grows DOWNWARD to the feet at {@link BLOOD_RISE}). */
-export interface BloodDroplet {
+interface BloodDroplet {
   readonly x: number;
   readonly y: number;
   /** True once the droplet has reached the ground and become part of the pool. */

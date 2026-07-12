@@ -63,7 +63,7 @@ const CELL_OVERLAP = 5;
 const TEXTURE_QUANT = 128;
 
 /** The world-space box of a band's composite, padded for the border diamonds + the terrain lift. */
-export interface OverlayBounds {
+interface OverlayBounds {
   readonly x: number;
   readonly y: number;
   readonly width: number;

@@ -25,7 +25,7 @@ export interface EntityBounds {
 
 /** The mutable backing of an entity's bounds — one per pooled entity, restamped in place each frame so
  *  the per-frame bounds pass allocates nothing (see {@link PooledEntity.bounds}). */
-export interface MutableBounds {
+interface MutableBounds {
   minX: number;
   minY: number;
   maxX: number;

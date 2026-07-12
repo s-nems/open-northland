@@ -7,7 +7,7 @@
  */
 
 /** A bilinear sample of a per-cell lane at a continuous cell coordinate (raw lane units). */
-export type CellSampler = (col: number, row: number) => number;
+type CellSampler = (col: number, row: number) => number;
 
 /**
  * Build the bilinear, edge-clamped sampler over a row-major per-cell lane. Fractional inputs (a

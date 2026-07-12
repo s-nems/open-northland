@@ -91,7 +91,7 @@ function buildQuadBatch(objects: readonly MapObjectSprite[], source: TextureSour
 
 /** One animated decor batch: its mesh buffers + the objects whose quads fill them, in quad order.
  *  A REMOVED object's slot is `null` — its quad stays zeroed and the rewrite loop skips it. */
-export interface AnimatedDecorBatch {
+interface AnimatedDecorBatch {
   readonly objects: (MapObjectSprite | null)[];
   readonly positions: Float32Array;
   readonly uvs: Float32Array;
@@ -103,7 +103,7 @@ export interface AnimatedDecorBatch {
 /** Where ONE decor object's quad lives — the removal handle {@link DecorChunk.quads} hands the layer:
  *  zero the 8 floats at `quadIndex` (+ buffer update) and, for an animated batch, null its slot so the
  *  play-head rewrite never restores it. */
-export interface DecorQuadRef {
+interface DecorQuadRef {
   readonly positions: Float32Array;
   readonly geometry: MeshGeometry;
   readonly quadIndex: number;
