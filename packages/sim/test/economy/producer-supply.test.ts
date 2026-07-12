@@ -22,7 +22,7 @@ import {
   Simulation,
   type TerrainMap,
 } from '../../src/index.js';
-import { boundProducerOutputToHaul } from '../../src/systems/agents/economy/workshop/supply.js';
+import { boundProducerOutputToHaul } from '../../src/systems/agents/economy/haul-targets.js';
 import { aiSystem, MAX_GROUND_STACK, type SystemContext, stockCapacity } from '../../src/systems/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { testContent } from '../fixtures/content.js';
