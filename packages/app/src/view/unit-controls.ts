@@ -1,11 +1,5 @@
 import { type ContentSet, indexById } from '@vinland/data';
-import {
-  buildSpriteScene,
-  type Camera,
-  type ElevationField,
-  type EntityBounds,
-  type SpriteSheet,
-} from '@vinland/render';
+import type { Camera, ElevationField, EntityBounds, SpriteSheet } from '@vinland/render';
 import { type Command, type Entity, nodeOfPosition, type WorldSnapshot } from '@vinland/sim';
 import type { Application } from 'pixi.js';
 import type { PickerEntry } from '../catalog/professions.js';
@@ -13,10 +7,8 @@ import { assignmentPriority } from '../game/sandbox/index.js';
 import {
   buildingTypeOf,
   entityById,
-  gathererByFlag,
   isBuilding,
   isSettler,
-  ownerPlayerOf,
   positionOf,
   workFlagOf,
 } from '../game/snapshot.js';
@@ -34,6 +26,7 @@ import {
   worldToTile,
 } from './picking.js';
 import { mountSettlerActions, type SettlerActions } from './settler-actions.js';
+import { createUnitTargets } from './unit-targets.js';
 
 /**
  * The interactive UNIT-CONTROL layer — the RTS "select and command" input the human drives, wired on
@@ -213,76 +206,16 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   let startX = 0;
   let startY = 0;
 
-  /** Map each entity id → the player that owns it (absent for a neutral/unowned entity), from a snapshot. */
-  const ownersOf = (snap: WorldSnapshot): Map<number, number> => {
-    const ownerOf = new Map<number, number>();
-    for (const e of snap.entities) {
-      const player = ownerPlayerOf(e);
-      if (player !== undefined) ownerOf.set(e.id, player);
-    }
-    return ownerOf;
-  };
-
-  /** Owned, pickable targets (settlers + buildings) with their world-px feet anchors, from the snapshot. */
-  const targets = (kind?: 'settler' | 'building'): Pickable[] => {
-    const snap = opts.snapshot();
-    const ownerOf = ownersOf(snap);
-    const out: Pickable[] = [];
-    for (const it of buildSpriteScene(snap)) {
-      if (it.kind !== 'settler' && it.kind !== 'building') continue;
-      if (kind !== undefined && it.kind !== kind) continue;
-      if (ownerOf.get(it.ref) !== opts.humanPlayer) continue;
-      const pixelHitOf = opts.pixelHitOf;
-      out.push({
-        ref: it.ref,
-        x: it.x,
-        y: it.y,
-        kind: it.kind,
-        box: opts.boundsOf?.(it.ref),
-        // Buildings refine to solid pixels (see UnitControlsOptions.pixelHitOf); settlers keep the box.
-        ...(it.kind === 'building' && pixelHitOf !== undefined
-          ? { pixelHit: (wx: number, wy: number) => pixelHitOf(it.ref, wx, wy) }
-          : {}),
-      });
-    }
-    return out;
-  };
-
-  /** ENEMY settlers — units owned by ANOTHER player (a neutral/unowned unit is not a right-click attack
-   *  target; the sim re-validates hostility and drops an order at a non-hostile target). These are the
-   *  hit-test set for the "right-click an enemy = attack" order. Fog-culled like the drawn scene
-   *  ({@link UnitControlsOptions.fogVisible}): an invisible enemy must not be orderable-onto. */
-  const enemyTargets = (): Pickable[] => {
-    const snap = opts.snapshot();
-    const ownerOf = ownersOf(snap);
-    const out: Pickable[] = [];
-    for (const it of buildSpriteScene(snap, { fogVisible: opts.fogVisible })) {
-      if (it.kind !== 'settler') continue; // only a unit is an attack target
-      const owner = ownerOf.get(it.ref);
-      if (owner === undefined || owner === opts.humanPlayer) continue; // neutral or own — not an enemy
-      out.push({ ref: it.ref, x: it.x, y: it.y, kind: it.kind, box: opts.boundsOf?.(it.ref) });
-    }
-    return out;
-  };
-
-  /** Pickables for the human's gatherers' drop-off FLAGS, each mapped to its OWNING gatherer so a
-   *  left-click on a flag SELECTS that gatherer — the flag→unit inverse of {@link flaggedFlagIds}'s
-   *  unit→flag highlight (a flag stores no owner id, so `gathererByFlag` recovers the edge). Only the
-   *  human's flags; a flag whose owner isn't the human is skipped. The click handler consults this AFTER
-   *  settlers/buildings miss, so a gatherer standing on its own flag still selects AS a unit. */
-  const flagTargets = (): Pickable[] => {
-    const snap = opts.snapshot();
-    const gathererOf = gathererByFlag(snap, opts.humanPlayer); // flag-id → owning gatherer-id (not a player id)
-    if (gathererOf.size === 0) return [];
-    const out: Pickable[] = [];
-    for (const it of buildSpriteScene(snap)) {
-      if (it.isFlag !== true) continue;
-      const gatherer = gathererOf.get(it.ref);
-      if (gatherer === undefined) continue; // an unbound / non-human flag — not a selection proxy
-      out.push({ ref: gatherer, x: it.x, y: it.y, kind: 'settler' });
-    }
-    return out;
-  };
+  // The snapshot-derived pickable target sets a click hit-tests against — owned units/buildings, enemy
+  // units, and the gatherers' work-flag proxies. See view/unit-targets.ts (they read only the snapshot +
+  // the injected render hit-test helpers, so they live apart from the selection/order logic here).
+  const unitTargets = createUnitTargets({
+    snapshot: opts.snapshot,
+    humanPlayer: opts.humanPlayer,
+    boundsOf: opts.boundsOf,
+    pixelHitOf: opts.pixelHitOf,
+    fogVisible: opts.fogVisible,
+  });
 
   /** Client (CSS) coords → WORLD px (through the client→screen scale + the camera inverse). */
   const toWorld = (clientX: number, clientY: number): { x: number; y: number } => {
@@ -354,11 +287,11 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     if (moved) {
       const a = toWorld(startX, startY);
       const b = toWorld(e.clientX, e.clientY);
-      setSelection(pickInRect(targets(), a.x, a.y, b.x, b.y), e.shiftKey);
+      setSelection(pickInRect(unitTargets.owned(), a.x, a.y, b.x, b.y), e.shiftKey);
     } else {
       const w = toWorld(e.clientX, e.clientY);
       // A settler/building under the cursor wins; failing that, a gatherer's FLAG selects its gatherer.
-      const hit = pickTopAt(targets(), w.x, w.y) ?? pickTopAt(flagTargets(), w.x, w.y);
+      const hit = pickTopAt(unitTargets.owned(), w.x, w.y) ?? pickTopAt(unitTargets.flags(), w.x, w.y);
       if (hit !== null) setSelection([hit], e.shiftKey);
       else if (!e.shiftKey) setSelection([], false); // click on empty ground clears
     }
@@ -373,7 +306,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   const issueRightClickOrder = (e: MouseEvent): void => {
     const w = toWorld(e.clientX, e.clientY);
     // One O(entities) scan per click, shared by all branches (each `targets` call rebuilds the scene).
-    const ownSettlers = targets('settler');
+    const ownSettlers = unitTargets.owned('settler');
     const own = pickTopAt(ownSettlers, w.x, w.y);
     if (own !== null) {
       setSelection([own], false); // right-click a unit selects just it …
@@ -381,7 +314,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       return;
     }
     if (selected.size === 0) return;
-    const enemy = pickTopAt(enemyTargets(), w.x, w.y);
+    const enemy = pickTopAt(unitTargets.enemies(), w.x, w.y);
     if (enemy !== null) {
       // Only the selected units that can fight (settlers) get the attack order; buildings are dropped.
       for (const t of ownSettlers) {
@@ -395,7 +328,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     // worker slots and handed to the sim, which binds each settler to the first open, qualified job in
     // that order (a full/wrong-tribe/home building resolves to nothing → a no-op). Only the SELECTED
     // settlers are assigned; a selected building can't be a worker and is dropped.
-    const building = pickTopAt(targets('building'), w.x, w.y);
+    const building = pickTopAt(unitTargets.owned('building'), w.x, w.y);
     if (building !== null) {
       const ent = entityById(opts.snapshot(), building);
       const type = ent !== undefined ? buildingTypeOf(ent) : undefined;
@@ -440,7 +373,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
    *  every selected own settler; the sim skips any whose job cannot harvest (a soldier gets no flag). */
   const issueSetWorkFlag = (e: MouseEvent): void => {
     if (selected.size === 0) return;
-    const movers = targets('settler').filter((t) => selected.has(t.ref));
+    const movers = unitTargets.owned('settler').filter((t) => selected.has(t.ref));
     if (movers.length === 0) return;
     const { width, height } = nodeBounds(opts.mapSize);
     const w = toWorld(e.clientX, e.clientY);
