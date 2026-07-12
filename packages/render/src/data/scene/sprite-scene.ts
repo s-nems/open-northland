@@ -2,7 +2,6 @@ import type { WorldSnapshot } from '@vinland/sim';
 import { type ElevationField, terrainLiftAt } from '../elevation.js';
 import type { FogGhost } from '../fog-ghosts.js';
 import { ONE, tileToScreen } from '../iso.js';
-import { clamp01 } from '../math.js';
 import { isVisible, type Viewport } from '../viewport.js';
 import {
   type DrawItem,
@@ -11,6 +10,7 @@ import {
   paintOrderBias,
   type SpriteState,
 } from './draw-item.js';
+import { projectileArc } from './projectile-arc.js';
 import {
   assignStaticFields,
   classify,
@@ -103,19 +103,6 @@ const TARGET_FACING_ATOMIC_IDS: ReadonlySet<number> = new Set([
   ATTACK_ATOMIC_ID,
   ...Object.values(HARVEST_ATOMIC_IDS),
 ]);
-
-/**
- * Ballistic-arc shape of a drawn projectile: the lob's PEAK height is this fraction of the shot's total
- * origin→target screen distance, capped at {@link PROJECTILE_ARC_PEAK_MAX_PX} so a max-range longbow
- * shot (23 tiles — up to ~1560 px on an east–west chord at 68 px/cell) doesn't leave the screen. The sim
- * flight is a straight homing step (its own named approximation); the arc is render-only — height
- * `4·peak·p·(1−p)` over the fraction flown `p`, zero at both the bow and the impact. Observed original
- * behaviour (arrows visibly lob); tunable by eye (both exported so the tests pin the formula, not a copy
- * of today's tuning).
- */
-export const PROJECTILE_ARC_PEAK_FRACTION = 0.12;
-/** Cap on the lob's peak height (screen px) — see {@link PROJECTILE_ARC_PEAK_FRACTION}. */
-export const PROJECTILE_ARC_PEAK_MAX_PX = 56;
 
 /** One frame's sprite scene: the culled, depth-sorted draw list PLUS the pre-cull liveness set —
  *  produced in a single pass over the snapshot (see {@link collectSpriteScene}). */
@@ -392,35 +379,20 @@ export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOpt
       const level = readBerryBushLevel(components);
       if (level !== undefined) item.level = level;
     } else if (kind === 'projectile') {
-      // Point the drawn arrow along its flight, and LOB it: the sim advances the shot on a straight
-      // homing line, so the drawn arc is pure presentation — the fraction flown `p` along the
-      // origin→target chord sets a parabolic height `4·peak·p·(1−p)` (rides `arcLift`, a draw offset
-      // like terrain lift, never the depth key) and tilts the rotation along the arc's TANGENT (nose up
-      // while climbing, down while falling). A shot whose target vanished this frame keeps rotation
-      // unset and flies flat for the one tick the sim takes to expire it — never a throw.
+      // Point the drawn arrow along its flight and LOB it (the ballistic-arc trig lives in
+      // {@link projectileArc}): a shot whose target vanished this frame keeps rotation unset and flies
+      // flat for the one tick the sim takes to expire it — never a throw.
       const targetRef = readProjectileTarget(components);
       const to = targetRef !== null ? posByRef.get(targetRef) : undefined;
       if (to !== undefined) {
-        const targetScreen = tileToScreen(to.x / ONE, to.y / ONE);
-        const dx = targetScreen.x - screen.x;
-        const dy = targetScreen.y - screen.y;
-        let rotation = Math.atan2(dy, dx);
         const origin = readProjectileOrigin(components);
-        if (origin !== null) {
-          const originScreen = tileToScreen(origin.x / ONE, origin.y / ONE);
-          const chord = Math.hypot(targetScreen.x - originScreen.x, targetScreen.y - originScreen.y);
-          const remaining = Math.hypot(dx, dy);
-          if (chord > 0 && remaining > 0) {
-            // Homing can stretch the path past the launch chord (the target moves), so clamp p to [0,1].
-            const p = clamp01(1 - remaining / chord);
-            const peak = Math.min(chord * PROJECTILE_ARC_PEAK_FRACTION, PROJECTILE_ARC_PEAK_MAX_PX);
-            arcLift = 4 * peak * p * (1 - p);
-            // Tangent: the straight-line unit heading, sheared by the arc's slope dh/ds (screen-up is -y).
-            const slope = (4 * peak * (1 - 2 * p)) / chord;
-            rotation = Math.atan2(dy / remaining - slope, dx / remaining);
-          }
-        }
-        item.rotation = rotation;
+        const arc = projectileArc(
+          screen,
+          tileToScreen(to.x / ONE, to.y / ONE),
+          origin === null ? null : tileToScreen(origin.x / ONE, origin.y / ONE),
+        );
+        arcLift = arc.lift; // rides the lift draw channel, like terrain lift — never the depth key
+        item.rotation = arc.rotation;
       }
     } else {
       // stockpile | grounddrop: both read their held good + fill from the stockpile — the trunk keys its
