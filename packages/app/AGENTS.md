@@ -42,17 +42,21 @@ that matches its role instead of piling another method onto a growing file:
   table + its trade names) and `construction.ts` (the build-cost + hitpoint tables) it assembles from,
   `place.ts` (the place/spawn helpers), `index.ts` (the barrel). Scenes and the vertical slice consume
   this; they do NOT define their own content.
-- **`hud/`** — the bitmap-native in-game HUD: `geometry.ts` (the shared `Rect`/`contains`), `chrome.ts`
-  (parchment window chrome + highlight theme), `bitmap-text.ts` (the `.fnt` glyph runs + the `makeTextRun`
-  factory), `action-ring-layout.ts` (the settler action-menu geometry), the `tool-panel/` package —
+- **`hud/`** — the in-game HUD: `geometry.ts` (the shared `Rect`/`contains`), `chrome.ts`
+  (parchment window chrome + highlight theme), `ui-text.ts` (the shared vector-serif `makeUiTextRun`
+  factory — the HUD default text face), `bitmap-text.ts` (the `.fnt` glyph runs + the `makeTextRun`
+  factory — retained for exact-decoded-face needs, but not the current default),
+  `action-ring-layout.ts` (the settler action-menu geometry), the `tool-panel/` package —
   pure models (`layout.ts`, `building-menu.ts`, `game-speed.ts`, headlessly unit-tested) + window
   controllers (`menu-window.ts`, `stats-window.ts`, `placement.ts` over the shared `context.ts`) +
   `index.ts` (the mount + input routing) — and the `details-panel/` package (the bottom-right selection
   panel in original art: pure `model.ts` + `layout.ts`, `chrome.ts`/`sections.ts` drawing, `panel.ts`
-  mount). Text: the tool-panel HUD draws the decoded `.fnt` bitmap face (`bitmap-text.ts`); the
-  details-panel draws a bundled vector serif (`content/ui-font.ts`) — an intentional, named legibility
-  approximation of that same serif face, not the decoded original. The hud layer never imports `view/` —
-  view glue (e.g. `backingScale`) is injected via options.
+  mount). Text: both the tool-panel and details-panel HUD draw the bundled vector serif
+  (`content/ui-font.ts`) — the tool-panel via `ui-text.ts`'s `makeUiTextRun`, the details-panel from
+  `content/ui-font.ts` directly — an intentional, named legibility approximation that rasters crisp at
+  the HUD's fractional UI scale where a small indexed bitmap glyph reads blocky; the decoded `.fnt`
+  bitmap path (`bitmap-text.ts`) stays available for anything that must be the exact original face. The
+  hud layer never imports `view/` — view glue (e.g. `backingScale`) is injected via options.
 - **`view/`** — browser-view helpers: `game-view.ts` (the SHARED in-game runtime — HUD mounts + the one
   fixed-timestep RAF loop both playable entries run on), `camera.ts` (pure pan/zoom math + the DOM
   controller), `params.ts` (URL-param parsing), `picking.ts`,

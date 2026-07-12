@@ -203,6 +203,3 @@ export const PLAYER_SWATCHES: readonly PlayerSwatch[] = PLAYER_SWATCH_CSS.map((c
   name: PLAYER_COLOR_NAMES[player] ?? `gracz ${player}`,
   css,
 }));
-
-/** How many player slots the palette exposes — derived from the authored swatch colours (no drift). */
-export const PLAYER_COUNT = PLAYER_SWATCHES.length;
