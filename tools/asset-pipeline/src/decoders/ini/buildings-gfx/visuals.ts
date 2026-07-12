@@ -9,8 +9,8 @@ import {
   findProps,
   getStr,
   normalizeAssetPath,
+  normalizeOptionalPath,
   normalizePaletteName,
-  normalizeShadowPath,
   type RuleSection,
   type SourceRef,
 } from '../grammar.js';
@@ -199,7 +199,7 @@ export function extractBuildingGraphics(sections: readonly RuleSection[]): Build
     for (const paletteName of paletteValues) {
       bindings.push({
         bmd: normalizeAssetPath(bmd),
-        shadowBmd: normalizeShadowPath(shadow),
+        shadowBmd: normalizeOptionalPath(shadow),
         paletteName: normalizePaletteName(paletteName),
         tribeId: undefined,
         jobId: undefined,

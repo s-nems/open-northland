@@ -206,11 +206,11 @@ export function normalizeAssetPath(path: string): string {
 }
 
 /**
- * Normalizes an OPTIONAL shadow `.bmd` path: a bob-set line's shadow slot is often absent or blank
- * (`GfxBobLibs "<body>.bmd"` with no second value), which must stay `undefined` rather than normalize
- * to an empty key. Every `(body, shadow, palette)` binding reader shares this guard.
+ * Normalizes an OPTIONAL asset path: an absent or blank slot (a bob-set line's missing shadow
+ * `GfxBobLibs "<body>.bmd"`, an omitted body `.bmd`) must stay `undefined` rather than normalize to
+ * an empty key. Every `(body, shadow, palette)` binding reader shares this guard.
  */
-export function normalizeShadowPath(path: string | undefined): string | undefined {
+export function normalizeOptionalPath(path: string | undefined): string | undefined {
   return path !== undefined && path.trim() !== '' ? normalizeAssetPath(path) : undefined;
 }
 
