@@ -12,7 +12,7 @@ import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
 import type { SystemContext } from '../context.js';
-import { canStartCycle } from '../economy/production.js';
+import { startableCycleCount } from '../economy/production.js';
 import { manhattan } from '../spatial.js';
 import { lowestStockedGood, recipeOf, stockCapacity } from '../stores.js';
 import { boundWorkplaceTarget, interactionCell, nearestStoreFor } from './ai-targets.js';
@@ -30,24 +30,22 @@ import { boundWorkplaceTarget, interactionCell, nearestStoreFor } from './ai-tar
 // (ascending entity-id, Manhattan + cell-id tie-break) so the winner never depends on store history.
 
 /**
- * Whether a workplace would run/continue a production cycle *if its worker stayed on the station this
- * tick* — it is already producing ({@link Production} present), OR it is built and {@link canStartCycle}
- * holds (all inputs present, output room, output goods tech-unlocked). This is the producer's "should I
- * stay put?" gate: while true, the worker latches to the tile so the ProductionSystem's worker-presence
- * gate stays satisfied; while false, the workplace is starved/blocked and the worker is freed to fetch
- * inputs or haul the finished output (see the ai.ts producer branch). Reuses the ProductionSystem's own
- * `canStartCycle`, so the planner and the producer never disagree about whether a cycle can run.
+ * How many WORK SEATS the workplace offers this tick — the number of operators whose staying on the
+ * station would actually run a batch: the cycles already grinding (each needs one present operator to
+ * advance — see the ProductionSystem's FIFO rule) plus the further cycles the current stock could
+ * start ({@link startableCycleCount}: inputs on hand, output room, tech gate). This is the producer's
+ * "should I stay put?" gate, per worker instead of per building: the planner hands out seats in its
+ * deterministic settler order, and a worker who finds them all taken is SURPLUS — its batch is done
+ * or can't start, so it is freed to fetch inputs / haul output instead of idling inside while a
+ * colleague's batch finishes (the "drugi młynarz czeka w środku" bug). An unbuilt/gone workplace
+ * offers no seats. Reuses the ProductionSystem's own start gate, so the planner and the producer
+ * never disagree about whether a cycle can run.
  */
-export function workplaceProductiveIfStaffed(
-  world: World,
-  ctx: SystemContext,
-  workplace: Entity,
-  recipe: Recipe,
-): boolean {
-  if (world.has(workplace, Production)) return true; // a cycle is already running — stay to keep it fed
+export function workSeatCount(world: World, ctx: SystemContext, workplace: Entity, recipe: Recipe): number {
+  const running = world.tryGet(workplace, Production)?.cycles.length ?? 0;
   const b = world.tryGet(workplace, Building);
-  if (b === undefined || b.built < ONE) return false; // gone / still a construction site: never produces
-  return canStartCycle(world, ctx, workplace, recipe);
+  if (b === undefined || b.built < ONE) return running; // a construction site never starts a cycle
+  return running + startableCycleCount(world, ctx, workplace, recipe);
 }
 
 /**
@@ -110,7 +108,7 @@ export function nearestMissingInputSource(
  * candidate good is a recipe output the workplace currently stocks (>0) that some OTHER store can accept
  * ({@link nearestStoreFor} finds a sink) — walked in `recipe.outputs` order (a fixed content array, not a
  * Map, so the pick never depends on store insertion history), first deliverable output wins. The producer
- * only reaches this when it cannot produce right now ({@link workplaceProductiveIfStaffed} is false), so
+ * only reaches this when it holds no work seat right now ({@link workSeatCount} exhausted), so
  * hauling its output never steals a tick it should have spent producing.
  */
 export function workplaceOutputToHaul(

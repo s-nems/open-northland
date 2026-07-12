@@ -264,13 +264,29 @@ describe('producer self-service — hauling the finished output', () => {
     expect(atomic.effect).toMatchObject({ kind: 'pickup', goodType: PLANK, from: mill });
   });
 
-  it('a craftsman leaves fetching AND hauling to its bound carrier (waits inside instead)', () => {
+  it('a STARVED craftsman fetches its input itself even when a carrier is bound', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
-    // The mill is starved (no wood) and holds a haulable plank; the HQ has wood — both transport
-    // branches WOULD fire. But a carrier is bound to this mill, so the transport is its job: the
-    // craftsman stays put inside (Resting), it neither fetches nor hauls.
+    // The mill is starved (no wood) and holds a haulable plank; the HQ has wood. The bound carrier is
+    // elsewhere mid-errand — the craftsman does not wait for it: a starved mill takes wheat from
+    // whoever gets there first, so it heads for the HQ (fetch), never a pickup of its own plank.
     const mill = buildingAt(sim, TWIN_MILL, 0, 0, [[PLANK, 1]]);
     buildingAt(sim, HEADQUARTERS, 3, 0, [[WOOD, 5]]);
+    settlerAt(sim, 5, 0, CARRIER, mill); // the bound carrier (elsewhere, mid-errand)
+    const smith = settlerAt(sim, 0, 0, CARPENTER, mill);
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(smith, CurrentAtomic)).toBe(false);
+    expect(sim.world.get(smith, MoveGoal).cell).toBe(cell(sim, 3, 0));
+  });
+
+  it('a craftsman leaves HAULING to its bound carrier (waits inside instead)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    // Nothing to fetch (no wood anywhere), a haulable plank, a sink for it — without a carrier the
+    // craftsman would carry the plank out (the test above this describe). With one bound, the output
+    // run is the carrier's job: the craftsman waits inside its workshop.
+    const mill = buildingAt(sim, TWIN_MILL, 0, 0, [[PLANK, 1]]);
+    buildingAt(sim, HEADQUARTERS, 3, 0);
     settlerAt(sim, 5, 0, CARRIER, mill); // the bound carrier (elsewhere, mid-errand)
     const smith = settlerAt(sim, 0, 0, CARPENTER, mill);
 
@@ -293,6 +309,57 @@ describe('producer self-service — hauling the finished output', () => {
     expect(stockCapacity(sim.world, ctx, woodHeap, WOOD)).toBe(MAX_GROUND_STACK);
     expect(stockCapacity(sim.world, ctx, woodHeap, PLANK)).toBe(0); // a heap never mixes goods
     expect(stockCapacity(sim.world, ctx, fullHeap, PLANK)).toBe(MAX_GROUND_STACK); // full: have == cap
+  });
+});
+
+describe('producer work seats — one stay-inside seat per batch', () => {
+  it('a SURPLUS operator leaves a one-batch mill to fetch instead of waiting inside', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    // One batch grinding, no wood left for a second — the twin mill offers ONE work seat. The first
+    // operator (planner settler order) keeps the batch running; the second is surplus: instead of
+    // idling inside until its colleague finishes, it walks out for the next wood (the "drugi młynarz
+    // czeka w środku aż pierwszy skończy" bug).
+    const mill = buildingAt(sim, TWIN_MILL, 0, 0);
+    sim.world.add(mill, Production, { cycles: [{ elapsed: 2, duration: 20 }] });
+    buildingAt(sim, HEADQUARTERS, 3, 0, [[WOOD, 5]]);
+    const first = settlerAt(sim, 0, 0, CARPENTER, mill);
+    const second = settlerAt(sim, 0, 0, CARPENTER, mill);
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.tryGet(first, Resting)).toEqual({ at: mill });
+    expect(sim.world.has(first, MoveGoal)).toBe(false);
+    expect(sim.world.get(second, MoveGoal).cell).toBe(cell(sim, 3, 0));
+  });
+
+  it('both operators stay inside while the stock feeds two batches', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    const mill = buildingAt(sim, TWIN_MILL, 0, 0, [[WOOD, 10]]); // seats for both (and then some)
+    const first = settlerAt(sim, 0, 0, CARPENTER, mill);
+    const second = settlerAt(sim, 0, 0, CARPENTER, mill);
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.tryGet(first, Resting)).toEqual({ at: mill });
+    expect(sim.world.tryGet(second, Resting)).toEqual({ at: mill });
+  });
+
+  it('a surplus operator with nothing to fetch hauls the banked output out', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    // One seat (the running batch), no wood ANYWHERE, planks banked in the mill and a sink for them:
+    // the surplus operator's next-best work is the output run.
+    const mill = buildingAt(sim, TWIN_MILL, 0, 0, [[PLANK, 3]]);
+    sim.world.add(mill, Production, { cycles: [{ elapsed: 2, duration: 20 }] });
+    buildingAt(sim, HEADQUARTERS, 3, 0);
+    const first = settlerAt(sim, 0, 0, CARPENTER, mill);
+    const second = settlerAt(sim, 0, 0, CARPENTER, mill);
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.tryGet(first, Resting)).toEqual({ at: mill });
+    const atomic = sim.world.get(second, CurrentAtomic);
+    expect(atomic.atomicId).toBe(PICKUP_ATOMIC);
+    expect(atomic.effect).toMatchObject({ kind: 'pickup', goodType: PLANK, from: mill });
   });
 });
 
