@@ -115,6 +115,23 @@ function advanceSite(
 }
 
 /**
+ * Force a construction site straight to finished — the `debugCompleteConstruction` command's effect,
+ * kept HERE so the "a site becomes a building" transition lives in one module (the debug path and the
+ * organic {@link advanceSite} finish flip the same three bits the same way). Skips both gates: unlike
+ * the organic finish it does NOT require delivered material or completed labor, and it does NOT consume
+ * the material cost (a cheat leaves any delivered goods as harmless surplus rather than risk spending a
+ * cost that isn't there). A `site` without an {@link UnderConstruction} marker is a no-op. Emits the
+ * same `buildingFinished` cue render/audio already listen for.
+ */
+export function forceFinishConstruction(world: World, ctx: SystemContext, site: Entity): void {
+  if (!world.has(site, UnderConstruction)) return; // not a site (built already, or wrong kind) — no-op
+  world.get(site, Building).built = ONE;
+  world.remove(site, UnderConstruction);
+  setHealth(world, site, ONE);
+  ctx.events.emit({ kind: 'buildingFinished', entity: site });
+}
+
+/**
  * Ramp a construction site's {@link Health} pool to `builtFraction` of its max. Floored at 1 hitpoint so
  * a foundation (`built = 0`) is never a 0-HP entity the CleanupSystem would reap and announce as a death
  * — combat targeting of buildings (and their safe teardown) is a later slice, so a building only ever

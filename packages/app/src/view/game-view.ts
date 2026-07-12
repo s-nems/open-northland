@@ -313,6 +313,37 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     canvas,
     enqueue: (command) => sim.enqueue(command),
     clientToTile: (x, y) => toolPanel.clientToTile(x, y),
+    // Pick the top entity of a kind under a client point for the action tools (kill/needs/fill/finish).
+    // A SCREEN-bounded pass — buildSpriteScene is culled to the camera viewport (golden rule 6), pinned to
+    // solid pixels for buildings like the RTS controls — but over ALL owners (an enemy is killable),
+    // rebuilt per click (rare) rather than cached like the per-frame hover set.
+    pickEntity: (clientX, clientY, kind) => {
+      const cam = cameraCtl.camera();
+      const p = clientToScreen(clientX, clientY);
+      const world = screenToWorld(cam, p.x, p.y);
+      const snap = sim.snapshot();
+      const vp = cameraViewport(
+        cam,
+        app.screen.width,
+        app.screen.height,
+        SPRITE_CULL_MARGIN + (deps.elevation?.maxLift ?? 0),
+      );
+      const targets: Pickable[] = [];
+      for (const it of buildSpriteScene(snap, vp, deps.elevation)) {
+        if (it.kind !== kind) continue;
+        targets.push({
+          ref: it.ref,
+          x: it.x,
+          y: it.y,
+          box: renderer.entityBounds(it.ref),
+          // Buildings refine to solid pixels (a click just next to the house misses); settlers keep the box.
+          ...(kind === 'building'
+            ? { pixelHit: (wx: number, wy: number) => renderer.entityPixelHit(it.ref, wx, wy) }
+            : {}),
+        });
+      }
+      return pickTopAt(targets, world.x, world.y);
+    },
     claimPointer: (x, y) => controls.claimsPointer(x, y),
     goodLabel: (typeId) => goodLabelByType.get(typeId),
     // The needs-toggle button's live state (scenes boot it off, maps on) — read through the sim's

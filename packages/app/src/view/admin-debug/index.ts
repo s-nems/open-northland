@@ -1,7 +1,24 @@
-import { type Command, systems } from '@vinland/sim';
+import { type Command, type Entity, systems } from '@vinland/sim';
 import { HUMAN_PLAYER } from '../../game/rules.js';
 import { resourceCommand } from '../../game/sandbox/place.js';
 import { BUTTON_STYLE, el } from '../overlay.js';
+import { DEBUG_ACTIONS, type DebugAction, type DebugTargetKind } from './actions-catalog.js';
+import {
+  ADMIN_PANEL_STYLE,
+  BODY_STYLE,
+  collapsibleSection,
+  FOOTER_STYLE,
+  filterInput,
+  HEADER_STYLE,
+  type LabelledButton,
+  numberField,
+  ROW_STYLE,
+  rowOf,
+  SECTION_TITLE_STYLE,
+  selectField,
+  setButtonActive,
+  TOGGLE_STYLE,
+} from './chrome.js';
 import {
   ARMOR_CLASSES,
   CIVILIAN_PRESETS,
@@ -16,28 +33,29 @@ import {
 
 /**
  * The **admin / debug spawn palette** — a hideable panel (a top toggle button) that lets a human drop
- * test entities by clicking the map: any soldier class with its weapon, any civilian, or any resource
- * node, each owned by a chosen player. It exists so combat, ownership and gathering can be exercised on
- * a live map without hand-authoring a scene — "spawn a few of mine, a few enemies, watch them fight".
+ * test entities by clicking the map (any soldier class with its weapon, any civilian, any resource node
+ * or good, each owned by a chosen player) AND run **entity-action tools** on what's already there (kill a
+ * unit, drive its needs to full/empty, fill a warehouse, finish a construction site). It exists so combat,
+ * ownership, economy and lifecycle can be exercised on a live map without hand-authoring a scene — "spawn
+ * a few of mine, a few enemies, fill their stores, watch them fight".
  *
- * Everything spawns through the ONE sim command seam (`spawnSettler` / `placeResource`), so a debug
- * spawn is as replay-faithful as any player order — the panel never pokes `sim.world` directly (app
- * one-way flow, packages/app/AGENTS.md). It is a pure app-layer DOM overlay, mounted once and never torn
- * down; its two `window` capture listeners persist for the page's life, which is safe because
- * `startGameView` runs exactly once per page load (a scene switch is a full navigation/reload).
+ * Everything goes through the ONE sim command seam (`spawnSettler` / `placeResource` / the `debug*`
+ * commands), so a debug poke is as replay-faithful as any player order — the panel never touches
+ * `sim.world` directly (app one-way flow, packages/app/AGENTS.md). It is a pure app-layer DOM overlay,
+ * mounted once and never torn down; its two `window` capture listeners persist for the page's life, which
+ * is safe because `startGameView` runs exactly once per page load (a scene switch is a full reload).
  *
  * Layout: the panel is a **right-docked rail** (never the screen centre — it must not hide the map it
- * spawns onto) laid out as a fixed-height flex column: a static header carrying the spawn "stamp"
- * settings (owner / HP / armor / needs) stays on top, a scrolling body of **collapsible palette
- * sections** takes the middle (only the section in use need be open — the goods list alone is ~70
- * entries, so it also carries a name filter), and a pinned status footer at the bottom always shows what
- * the next click will place.
+ * acts on), a fixed-height flex column — a static header carrying the spawn "stamp" settings (owner / HP /
+ * armor / needs), a scrolling body of **collapsible palette sections** (only the section in use need be
+ * open — the goods list alone is ~70 entries, so it also carries a name filter), and a pinned status
+ * footer that always shows what the next click will do (see {@link import('./chrome.js')}).
  *
- * Interaction: click a unit/resource button to ARM that choice (the cursor becomes a crosshair); each
- * left-click on the map then spawns it at that tile — arming is STICKY so a battle line is placed with
- * repeated clicks. Switch the player swatch between clicks to seed both sides. Right-click or Esc
- * disarms. The spawn press is consumed (a window-capture listener that runs before the RTS controls),
- * so arming never also selects/orders units.
+ * Interaction: click a palette / action button to ARM it (the cursor becomes a crosshair). A spawn arm
+ * places at each clicked TILE; an action arm applies to the ENTITY clicked (a unit or a building, per the
+ * action). Arming is STICKY so a battle line — or a sweep of kills — is done with repeated clicks. Switch
+ * the player swatch between spawn clicks to seed both sides. Right-click or Esc disarms. The armed press is
+ * consumed (a window-capture listener before the RTS controls), so arming never also selects/orders units.
  */
 
 export interface AdminDebugDeps {
@@ -46,6 +64,10 @@ export interface AdminDebugDeps {
   readonly enqueue: (command: Command) => void;
   /** Map a client point to a map tile (null off the map) — shared with the tool panel's placement. */
   readonly clientToTile: (clientX: number, clientY: number) => { col: number; row: number } | null;
+  /** Pick the top entity of `kind` under a client point (null off any) — the target for an entity-action
+   *  tool (kill / needs / fill / finish). Any owner (so an enemy is killable), unlike the RTS selection.
+   *  Absent → the action tools are inert (no entity to act on). */
+  readonly pickEntity?: (clientX: number, clientY: number, kind: DebugTargetKind) => number | null;
   /** True when a client point is over the HUD (the tool-panel strip / an open window) — a spawn click
    *  there is the HUD's, not a map spawn. */
   readonly claimPointer: (clientX: number, clientY: number) => boolean;
@@ -57,121 +79,23 @@ export interface AdminDebugDeps {
   readonly needsEnabled?: () => boolean;
 }
 
-/** What the next map click will place. */
+/** What the next map click will do. */
 type Armed =
   | { readonly kind: 'unit'; readonly preset: UnitPreset }
   | { readonly kind: 'resource'; readonly good: number }
-  | { readonly kind: 'good'; readonly good: number };
+  | { readonly kind: 'good'; readonly good: number }
+  | { readonly kind: 'action'; readonly action: DebugAction };
 
 /** The default hitpoint pool shown in the HP field — the sim's own settler default, so the palette's
  *  number matches what an untouched spawn would get anyway. */
 const DEFAULT_HITPOINTS = systems.DEFAULT_SETTLER_HITPOINTS;
 
-/** The rail width — narrow enough to leave the map readable beside it. */
-const PANEL_WIDTH_PX = 300;
-
-const TOGGLE_STYLE = [
-  'position:fixed',
-  'top:8px',
-  // Centred over the rail that opens below it (rail: right:8px, width PANEL_WIDTH_PX; chip ~140px wide).
-  `right:${8 + PANEL_WIDTH_PX / 2 - 70}px`,
-  'cursor:pointer',
-  'padding:6px 14px',
-  'background:rgba(20,16,12,0.92)',
-  'color:#e8dcc8',
-  'font:13px ui-monospace,SFMono-Regular,Menlo,monospace',
-  'border:1px solid #8a6f4c',
-  'border-radius:6px',
-  'box-shadow:0 4px 16px rgba(0,0,0,0.45)',
-  'z-index:160',
-].join(';');
-
-// A right-docked, full-height flex column: header + settings stay put while only the body scrolls.
-const ADMIN_PANEL_STYLE = [
-  'position:fixed',
-  'top:44px',
-  'right:8px',
-  'bottom:8px',
-  `width:${PANEL_WIDTH_PX}px`,
-  'display:flex',
-  'flex-direction:column',
-  'box-sizing:border-box',
-  'background:rgba(20,16,12,0.95)',
-  'color:#e8dcc8',
-  'font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace',
-  'border:1px solid #6b5840',
-  'border-radius:8px',
-  'box-shadow:0 6px 24px rgba(0,0,0,0.5)',
-  'z-index:150',
-].join(';');
-
-/** The static (non-scrolling) header + settings block. */
-const HEADER_STYLE = 'padding:10px 12px 8px;border-bottom:1px solid #5a4a36';
-/** The scrolling palette body — the only part that grows/scrolls. */
-const BODY_STYLE = 'flex:1;min-height:0;overflow-y:auto;padding:0 12px';
-/** The pinned status footer. */
-const FOOTER_STYLE = 'padding:8px 12px;border-top:1px solid #5a4a36;min-height:16px';
-
-const SECTION_TITLE_STYLE =
-  'font-weight:700;font-size:10px;letter-spacing:0.07em;text-transform:uppercase;opacity:0.6;margin:0 0 6px';
-const ROW_STYLE = 'display:flex;flex-wrap:wrap;gap:4px';
-
-/** A collapsible-section header (the clickable "▸ Title (n)" bar). */
-const SECTION_HEADER_STYLE = [
-  'display:flex',
-  'align-items:center',
-  'gap:6px',
-  'width:100%',
-  'cursor:pointer',
-  'background:none',
-  'border:none',
-  'border-top:1px solid #5a4a36',
-  'color:#e8dcc8',
-  'padding:9px 2px',
-  'margin:0',
-  'text-align:left',
-  'font:700 10px/1 ui-monospace,SFMono-Regular,Menlo,monospace',
-  'letter-spacing:0.07em',
-  'text-transform:uppercase',
-].join(';');
-
-/** The armed-button highlight (brighter than the resting `BUTTON_STYLE`). */
-function setButtonActive(button: HTMLButtonElement, active: boolean): void {
-  button.style.background = active ? '#6b5840' : '#3a2f22';
-  button.style.fontWeight = active ? '700' : '400';
-  button.style.outline = active ? '1px solid #d8ccb0' : 'none';
-}
-
-/**
- * A collapsible section: a clickable "▸/▾ Title (count)" header over a hideable content box. Returns the
- * wrapper (append to the body) and the `content` element (append the section's rows to it). Only the
- * section a human is actually using need be open, so the rail stays short instead of one long wall.
- */
-function collapsibleSection(
-  title: string,
-  count: number,
-  startOpen: boolean,
-): { readonly wrap: HTMLElement; readonly content: HTMLElement } {
-  const wrap = el('div', '');
-  const header = el('button', SECTION_HEADER_STYLE);
-  const caret = el('span', 'opacity:0.7;width:10px;display:inline-block', startOpen ? '▾' : '▸');
-  header.append(caret, el('span', 'flex:1', title), el('span', 'opacity:0.5;font-weight:400', String(count)));
-  const content = el('div', `padding-bottom:8px;${startOpen ? '' : 'display:none'}`);
-  let open = startOpen;
-  header.addEventListener('click', () => {
-    open = !open;
-    content.style.display = open ? 'block' : 'none';
-    caret.textContent = open ? '▾' : '▸';
-  });
-  wrap.append(header, content);
-  return { wrap, content };
-}
-
-/** One built spawn button with its display label (kept so the goods filter can show/hide it by name). */
-interface SpawnButton {
-  readonly button: HTMLButtonElement;
-  readonly label: string;
-}
+/** The Polish noun for what an action tool clicks — the armed hint tells the human what to target. Keyed by
+ *  {@link DebugTargetKind} so a new target kind is a compile error here until it gets its noun. */
+const TARGET_NOUN: Record<DebugTargetKind, string> = {
+  settler: 'jednostkę',
+  building: 'budynek',
+};
 
 /** Mount the admin/debug spawn palette (toggle button + hidden panel). Mount-and-forget. */
 export function mountAdminDebug(deps: AdminDebugDeps): void {
@@ -188,7 +112,7 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
   let armorClass = 0; // 0 = unarmored
 
   // Buttons that reflect the armed choice + the player swatches, re-styled whenever state changes.
-  const spawnButtons: { readonly button: HTMLButtonElement; readonly armed: Armed }[] = [];
+  const armedButtons: { readonly button: HTMLButtonElement; readonly armed: Armed }[] = [];
   const swatchButtons: { readonly button: HTMLButtonElement; readonly player: number }[] = [];
   const status = el('div', FOOTER_STYLE);
 
@@ -197,11 +121,12 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
     if (a.kind === 'unit' && b.kind === 'unit') return a.preset.id === b.preset.id;
     if (a.kind === 'resource' && b.kind === 'resource') return a.good === b.good;
     if (a.kind === 'good' && b.kind === 'good') return a.good === b.good;
+    if (a.kind === 'action' && b.kind === 'action') return a.action.id === b.action.id;
     return false;
   };
 
   const armedLabel = (): string => {
-    if (armed === null) return 'Nic nie wybrano — kliknij jednostkę / surowiec / towar powyżej.';
+    if (armed === null) return 'Nic nie wybrano — kliknij jednostkę / surowiec / towar / narzędzie powyżej.';
     if (armed.kind === 'resource') {
       const good = armed.good;
       const label = goodLabelOf(good, RESOURCE_ENTRIES.find((r) => r.good === good)?.label ?? 'surowiec');
@@ -212,12 +137,15 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
       const label = goodLabelOf(good, GOODS_ENTRIES.find((g) => g.good === good)?.label ?? 'towar');
       return `Uzbrojono: towar „${label}" (stos na ziemi) — klikaj na mapie (PPM/Esc = anuluj).`;
     }
+    if (armed.kind === 'action') {
+      return `Uzbrojono: ${armed.action.label} — kliknij ${TARGET_NOUN[armed.action.targetKind]} (PPM/Esc = anuluj).`;
+    }
     const who = PLAYER_SWATCHES.find((s) => s.player === player);
     return `Uzbrojono: ${armed.preset.label} (gracz ${player} — ${who?.name ?? '?'}) — klikaj na mapie (PPM/Esc = anuluj).`;
   };
 
   const refresh = (): void => {
-    for (const { button, armed: a } of spawnButtons) setButtonActive(button, sameArmed(a, armed));
+    for (const { button, armed: a } of armedButtons) setButtonActive(button, sameArmed(a, armed));
     for (const { button, player: p } of swatchButtons)
       button.style.outline = p === player ? '2px solid #e8dcc8' : '1px solid #000';
     status.textContent = armedLabel();
@@ -277,7 +205,7 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
     el(
       'div',
       'opacity:0.7;font-size:11px;margin-bottom:8px',
-      'Wybierz jednostkę / złoże / towar, potem klikaj na mapie. Zmieniaj gracza między klikami, by ustawić obie strony.',
+      'Wybierz jednostkę / złoże / towar / narzędzie, potem klikaj na mapie. Zmieniaj gracza między klikami, by ustawić obie strony.',
     ),
   );
 
@@ -314,16 +242,14 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
   header.append(statsRow);
   header.append(needsRow);
 
-  // --- scrolling body: collapsible palette sections ---
+  // --- scrolling body: collapsible palette + action sections ---
   const body = el('div', BODY_STYLE);
 
   // Wojownicy (open by default — the first thing a "spawn a fight" session reaches for).
   const warriors = collapsibleSection('Wojownicy', WARRIOR_PRESETS.length, true);
   warriors.content.append(
     rowOf(
-      spawnEntries(
-        WARRIOR_PRESETS.map((preset) => ({ label: preset.label, armed: { kind: 'unit', preset } })),
-      ),
+      armEntries(WARRIOR_PRESETS.map((preset) => ({ label: preset.label, armed: { kind: 'unit', preset } }))),
     ),
   );
   body.append(warriors.wrap);
@@ -331,7 +257,7 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
   const civilians = collapsibleSection('Cywile', CIVILIAN_PRESETS.length, false);
   civilians.content.append(
     rowOf(
-      spawnEntries(
+      armEntries(
         CIVILIAN_PRESETS.map((preset) => ({ label: preset.label, armed: { kind: 'unit', preset } })),
       ),
     ),
@@ -341,7 +267,7 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
   const resources = collapsibleSection('Złoża (do wydobycia)', RESOURCE_ENTRIES.length, false);
   resources.content.append(
     rowOf(
-      spawnEntries(
+      armEntries(
         RESOURCE_ENTRIES.map((r) => ({
           label: goodLabelOf(r.good, r.label),
           armed: { kind: 'resource', good: r.good },
@@ -354,34 +280,45 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
   // Towary — every good in the catalog dropped as a loose ground pile (`dropGood`). ~70 entries, so a
   // name filter narrows the wall to what the human is after (the goods tool mirrors this list).
   const goods = collapsibleSection('Towary (stos na ziemi)', GOODS_ENTRIES.length, false);
-  const goodButtons = spawnEntries(
+  const goodButtons = armEntries(
     GOODS_ENTRIES.map((g) => ({
       label: goodLabelOf(g.good, g.label),
       armed: { kind: 'good', good: g.good },
     })),
   );
-  goods.content.append(goodsFilter(goodButtons), rowOf(goodButtons));
+  goods.content.append(filterInput(goodButtons, 'Filtruj towary…'), rowOf(goodButtons));
   body.append(goods.wrap);
+
+  // Akcje debug — click-a-target tools (kill / needs / fill / finish). Inert if the host wired no
+  // entity picker (they need a clicked entity, not a tile); the section header still shows the count.
+  const actions = collapsibleSection('Akcje (klik w cel)', DEBUG_ACTIONS.length, false);
+  actions.content.append(
+    rowOf(
+      armEntries(DEBUG_ACTIONS.map((action) => ({ label: action.label, armed: { kind: 'action', action } }))),
+    ),
+  );
+  body.append(actions.wrap);
 
   panel.append(header, body, status);
   document.body.append(toggle, panel);
   refresh();
 
   /** Build one arm/disarm button per entry (registering each for the armed-highlight refresh). */
-  function spawnEntries(
+  function armEntries(
     entries: readonly { readonly label: string; readonly armed: Armed }[],
-  ): readonly SpawnButton[] {
+  ): readonly LabelledButton[] {
     return entries.map(({ label, armed: choice }) => {
       const button = el('button', BUTTON_STYLE, label);
       button.addEventListener('click', () => setArmed(sameArmed(choice, armed) ? null : choice));
-      spawnButtons.push({ button, armed: choice });
+      armedButtons.push({ button, armed: choice });
       return { button, label };
     });
   }
 
-  // ---- spawn on map click --------------------------------------------------
-  const spawnAt = (col: number, row: number): void => {
-    if (armed === null) return;
+  // ---- apply on map click --------------------------------------------------
+  /** A spawn arm places at a TILE; the loose-good/resource/unit variants each map to their command. */
+  const spawnAtTile = (col: number, row: number): void => {
+    if (armed === null || armed.kind === 'action') return;
     if (armed.kind === 'resource') {
       const command = resourceCommand(armed.good, col, row);
       if (command !== null) deps.enqueue(command);
@@ -394,8 +331,16 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
     deps.enqueue(unitSpawnCommand(armed.preset, { player, hitpoints, armorClass, x: col, y: row }));
   };
 
+  /** An action arm applies to the ENTITY under the cursor (a no-op click if none is there / no picker). */
+  const applyActionAt = (clientX: number, clientY: number, action: DebugAction): void => {
+    // A snapshot pick returns the raw entity id; it IS the branded `Entity` (picking is number-typed
+    // end-to-end), reconstituted at this one app→sim seam before the command carries it.
+    const ref = deps.pickEntity?.(clientX, clientY, action.targetKind) ?? null;
+    if (ref !== null) deps.enqueue(action.command(ref as Entity));
+  };
+
   // A WINDOW-CAPTURE mousedown runs BEFORE the canvas's RTS-control listeners (capture phase precedes
-  // the target phase), so when armed it can consume the press and spawn instead of selecting. When not
+  // the target phase), so when armed it can consume the press and act instead of selecting. When not
   // armed it returns without consuming, leaving the normal controls untouched.
   const onPointerDown = (e: MouseEvent): void => {
     if (armed === null) return;
@@ -409,9 +354,13 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
     if (e.target !== canvas) return; // a click on the panel itself, not the map
     if (deps.claimPointer(e.clientX, e.clientY)) return; // over the HUD — let the HUD have it
     // From here the armed left-press is OURS: consume it so it never falls through to selection, even
-    // when it lands off the map (no spawn there, but no stray "click empty ground = clear selection").
-    const tile = deps.clientToTile(e.clientX, e.clientY);
-    if (tile !== null) spawnAt(tile.col, tile.row);
+    // when it hits nothing (no spawn/target there, but no stray "click empty ground = clear selection").
+    if (armed.kind === 'action') {
+      applyActionAt(e.clientX, e.clientY, armed.action);
+    } else {
+      const tile = deps.clientToTile(e.clientX, e.clientY);
+      if (tile !== null) spawnAtTile(tile.col, tile.row);
+    }
     e.preventDefault();
     e.stopPropagation();
   };
@@ -424,73 +373,4 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
     }
   };
   window.addEventListener('keydown', onKeyDown, { capture: true });
-}
-
-/** Wrap already-built spawn buttons in a flex-wrap row. */
-function rowOf(entries: readonly SpawnButton[]): HTMLElement {
-  const row = el('div', ROW_STYLE);
-  for (const { button } of entries) row.append(button);
-  return row;
-}
-
-/** A case-insensitive name filter that shows/hides the goods buttons in place (a `type=search` input). */
-function goodsFilter(entries: readonly SpawnButton[]): HTMLElement {
-  const input = el(
-    'input',
-    'width:100%;box-sizing:border-box;margin-bottom:6px;background:#2a2118;color:#e8dcc8;border:1px solid #6b5840;border-radius:4px;padding:3px 6px;font:12px ui-monospace,monospace',
-  );
-  input.type = 'search';
-  input.placeholder = 'Filtruj towary…';
-  input.addEventListener('input', () => {
-    const q = input.value.trim().toLowerCase();
-    for (const { button, label } of entries)
-      button.style.display = q === '' || label.toLowerCase().includes(q) ? '' : 'none';
-  });
-  return input;
-}
-
-/** A small "label: [number input]" field that reports parsed changes (blank/NaN → 0). */
-function numberField(label: string, value: number, onChange: (v: number) => void): HTMLElement {
-  const wrap = el('label', 'display:flex;gap:5px;align-items:center');
-  wrap.append(el('span', 'opacity:0.8', label));
-  const input = el(
-    'input',
-    'width:64px;background:#2a2118;color:#e8dcc8;border:1px solid #6b5840;border-radius:4px;padding:2px 4px;font:12px ui-monospace,monospace',
-  );
-  input.type = 'number';
-  input.min = '0';
-  input.value = String(value);
-  // Commit on `input` (every keystroke), NOT `change` (blur): a spawn press `preventDefault()`s the
-  // click, which suppresses the field's blur, so a `change`-committed value would never reach a click.
-  input.addEventListener('input', () => {
-    const v = Number.parseInt(input.value, 10);
-    onChange(Number.isFinite(v) && v > 0 ? v : 0);
-  });
-  wrap.append(input);
-  return wrap;
-}
-
-/** A small "label: [select]" field over integer-valued options. */
-function selectField(
-  label: string,
-  options: readonly { value: number; label: string }[],
-  value: number,
-  onChange: (v: number) => void,
-): HTMLElement {
-  const wrap = el('label', 'display:flex;gap:5px;align-items:center');
-  wrap.append(el('span', 'opacity:0.8', label));
-  const select = el(
-    'select',
-    'background:#2a2118;color:#e8dcc8;border:1px solid #6b5840;border-radius:4px;padding:2px 4px;font:12px ui-monospace,monospace',
-  );
-  for (const o of options) {
-    const opt = document.createElement('option');
-    opt.value = String(o.value);
-    opt.textContent = o.label;
-    if (o.value === value) opt.selected = true;
-    select.append(opt);
-  }
-  select.addEventListener('change', () => onChange(Number.parseInt(select.value, 10) || 0));
-  wrap.append(select);
-  return wrap;
 }

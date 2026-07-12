@@ -15,13 +15,14 @@ import {
 import { assertNever } from '../core/brand.js';
 import type { Command } from '../core/commands.js';
 import { contentIndex } from '../core/content-index.js';
-import { fx, ONE } from '../core/fixed.js';
+import { type Fixed, fx, ONE } from '../core/fixed.js';
 import type { Entity, World } from '../ecs/world.js';
 import { positionOfNode } from '../nav/halfcell.js';
 import { dropOrStackGood } from './agents/effects-goods.js';
 import { assignWorker, attackUnit, moveUnit, setJob, setStance, setWorkFlag } from './conflict/orders.js';
 import { spawnAnimalHerd, spawnSettler } from './conflict/spawn.js';
 import type { System, SystemContext } from './context.js';
+import { forceFinishConstruction } from './economy/construction.js';
 import { canPlaceBuilding, createResourceNode } from './footprint/index.js';
 import { buildingEnabled, tribeShipsUnlocked } from './progression.js';
 
@@ -173,9 +174,53 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       else world.get(rules, WorldRules).needsEnabled = command.enabled;
       return;
     }
+    case 'debugKill': {
+      // Only a UNIT (a settler — animals are settlers too) is killable. Gate on Settler so a building
+      // that carries a Health pool WHILE UNDER CONSTRUCTION can't be drained-and-reaped here: that would
+      // destroy the building through CleanupSystem, bypassing demolish's worker-unbind seam and emitting a
+      // settlerDied cue for a non-settler. Then drain the pool to 0 and let CleanupSystem reap it next tick
+      // (the real death path + event), rather than a silent destroy. A non-settler / already-reaped target
+      // is a no-op — the same recoverable-bad-input stance as demolish/attackUnit.
+      if (!world.has(command.target, Settler)) return;
+      const health = world.tryGet(command.target, Health);
+      if (health !== undefined) health.hitpoints = 0;
+      return;
+    }
+    case 'debugSetNeeds': {
+      // Set the needs the panel names to whole-percent levels (0 sated … 100 maxed). A non-settler
+      // target is a no-op. Percent → 0..ONE need Fixed with a single truncation (fx.mulDiv).
+      const settler = world.tryGet(command.target, Settler);
+      if (settler === undefined) return;
+      if (command.hunger !== undefined) settler.hunger = needFixedFromPct(command.hunger);
+      if (command.fatigue !== undefined) settler.fatigue = needFixedFromPct(command.fatigue);
+      if (command.piety !== undefined) settler.piety = needFixedFromPct(command.piety);
+      if (command.enjoyment !== undefined) settler.enjoyment = needFixedFromPct(command.enjoyment);
+      return;
+    }
+    case 'debugFillStockpile': {
+      // Set every good the building TYPE declares a stock slot for to that slot's capacity (its "100%").
+      // A non-building target, one without a Stockpile, or an unknown type is a no-op.
+      const building = world.tryGet(command.target, Building);
+      if (building === undefined || !world.has(command.target, Stockpile)) return;
+      const type = indexById(ctx.content.buildings).get(building.buildingType);
+      if (type === undefined) return;
+      const stock = world.get(command.target, Stockpile).amounts;
+      for (const slot of type.stock) stock.set(slot.goodType, slot.capacity);
+      return;
+    }
+    case 'debugCompleteConstruction':
+      forceFinishConstruction(world, ctx, command.target);
+      return;
     default:
       assertNever(command);
   }
+}
+
+/** A whole-percent need level (`0..100`, clamped) as the `0..ONE` need `Fixed` — a single truncation
+ *  (`ONE · pct / 100`) so 0 → sated and 100 → maxed exactly, the debug-needs command's one conversion. */
+function needFixedFromPct(pct: number): Fixed {
+  const clamped = pct < 0 ? 0 : pct > 100 ? 100 : Math.trunc(pct);
+  return fx.mulDiv(ONE, fx.fromInt(clamped), fx.fromInt(100));
 }
 
 /**

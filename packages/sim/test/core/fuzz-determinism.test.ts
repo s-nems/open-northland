@@ -168,7 +168,7 @@ function pick<T>(rng: Rng, options: readonly T[]): T {
 function nextCommand(rng: Rng): Command {
   const x = rng.int(NODE_W);
   const y = rng.int(NODE_H);
-  const roll = rng.int(15);
+  const roll = rng.int(19);
   switch (roll) {
     case 0:
       return {
@@ -302,6 +302,31 @@ function nextCommand(rng: Rng): Command {
       // The global needs toggle: flips the WorldRules singleton mid-stream (creating it on first use),
       // freezing/unfreezing needs + starvation — the world-scope rule must hash and replay like any state.
       return { kind: 'setNeedsEnabled', enabled: rng.int(2) === 0 };
+    case 14:
+      // Debug kill at a random id: hits live settlers/animals (Health drained → reaped next tick), plus
+      // non-settlers (buildings, incl. under-construction ones that carry Health) / dead / never-created
+      // ids (gated out by the Settler check → skipped). All resolve deterministically.
+      return { kind: 'debugKill', target: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
+    case 15:
+      // Debug needs at a random id: owned/unowned settlers (fields set) + non-settler/dead ids (skipped).
+      // Each need is present only sometimes, at a fuzzed percent → the pct→Fixed conversion is fuzzed for
+      // run-twice + replay equality, the same way the equipment degree-of-use is above.
+      return {
+        kind: 'debugSetNeeds',
+        target: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+        ...(rng.int(2) === 0 ? { hunger: rng.int(101) } : {}),
+        ...(rng.int(2) === 0 ? { fatigue: rng.int(101) } : {}),
+        ...(rng.int(2) === 0 ? { piety: rng.int(101) } : {}),
+        ...(rng.int(2) === 0 ? { enjoyment: rng.int(101) } : {}),
+      };
+    case 16:
+      // Debug fill-stockpile at a random id: hits live buildings (every stock slot maxed) + non-building /
+      // dead ids (skipped). Exercises the type-slot fill + the wrong-kind no-op under the fuzzed stream.
+      return { kind: 'debugFillStockpile', target: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
+    case 17:
+      // Debug complete-construction at a random id: hits construction sites (forced to built + event) +
+      // built/non-building/dead ids (skipped — no UnderConstruction marker). Exercises the force-finish.
+      return { kind: 'debugCompleteConstruction', target: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
     default:
       // A profession change at a random id: valid + unknown jobs, owned/unowned/dead targets.
       return {
