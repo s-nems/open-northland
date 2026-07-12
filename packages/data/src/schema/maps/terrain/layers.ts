@@ -9,7 +9,7 @@ import { z } from 'zod';
  * name onto the extracted {@link GfxPattern} table (`EditName` is the engine's own version-robust
  * join key) for the texture page + UV coords.
  */
-export const TerrainGround = z.object({
+export const TerrainGround = z.strictObject({
   /** The pattern `EditName`s this map uses (compacted from the map's `eapd` dictionary). */
   patterns: z.array(z.string()),
   /** Row-major per-cell index into {@link patterns} for triangle A (length = width*height). */
@@ -28,7 +28,7 @@ export type TerrainGround = z.infer<typeof TerrainGround>;
  * joins onto the extracted {@link GfxPatternTransition} table (`editName`), mirroring how
  * {@link TerrainGround} joins patterns.
  */
-export const TerrainTransitions = z.object({
+export const TerrainTransitions = z.strictObject({
   /** The map's `eatd` transition-name dictionary, VERBATIM (lane `⌊v/6⌋` indexes it positionally). */
   types: z.array(z.string()),
   /** Row-major per-cell `emt1` lane — layer 1 (topmost), triangle A. Raw u8; 255 = none. */
@@ -51,7 +51,7 @@ export type TerrainTransitions = z.infer<typeof TerrainTransitions>;
  * row-major order. A name joins onto the {@link LandscapeGfx} table for the object's bob frames,
  * palette, animation flags and logic footprints.
  */
-export const TerrainObjects = z.object({
+export const TerrainObjects = z.strictObject({
   /** The `[GfxLandscape]` `EditName`s this map places (compacted from the map's `eald` dictionary). */
   types: z.array(z.string()),
   /** Flat `[hx, hy, typeIndex]` triples in row-major half-cell order (length % 3 === 0). */

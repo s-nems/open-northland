@@ -10,7 +10,7 @@ import { z } from 'zod';
  * `addgoods`/`setproducedgood`/`setguide` verbs (stock, production presets, scout guides) are NOT
  * captured yet — a tracked gap (source basis map-entity import).
  */
-export const TerrainEntities = z.object({
+export const TerrainEntities = z.strictObject({
   /**
    * `sethouse` placements: `[GfxHouse]` EditName + level pick the building type. `player` is the
    * verb's FIRST column, 0-based like `sethuman`'s (source basis: on all 13 entity-bearing mod maps

@@ -69,7 +69,7 @@ export const LOGIC_TYPE_NONE = 0;
  * `GfxFrames <state> <bobId…>` lines. For an animated object ({@link LandscapeGfx.loopAnimation})
  * the bob ids are the loop's frames in play order; for a static object they are alternates/stages.
  */
-export const LandscapeGfxFrames = z.object({
+export const LandscapeGfxFrames = z.strictObject({
   /** The `GfxFrames` leading int — the object's growth/remaining-valency state this list draws. */
   state: z.number().int().nonnegative(),
   /** The state's bob ids into the record's {@link LandscapeGfx.bmd} atlas, in file order. */
@@ -90,7 +90,7 @@ export type LandscapeGfxFrames = z.infer<typeof LandscapeGfxFrames>;
  * the `.cif`, and the extractor keeps every record so positions never renumber. The pure sim ignores
  * the Gfx fields; the Logic fields feed a future object-collision/harvest slice.
  */
-export const LandscapeGfx = z.object({
+export const LandscapeGfx = z.strictObject({
   /** The 0-based position in the `[GfxLandscape]` list (the engine's positional id). */
   index: z.number().int().nonnegative(),
   /** `EditName` — the placement join key (e.g. `"palm 03"`, `"fx wave slow"`). */
