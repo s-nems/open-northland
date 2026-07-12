@@ -93,7 +93,7 @@ export async function renderShot(canvas: HTMLCanvasElement): Promise<void> {
           }),
         }
       : undefined;
-  renderer.update(snap, camera, snap.tick, hud);
+  renderer.update({ snapshot: snap, camera, tick: snap.tick, hud });
 
   window.__vinlandShotReady = true;
 }

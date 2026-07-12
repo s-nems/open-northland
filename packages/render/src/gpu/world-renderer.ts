@@ -30,6 +30,31 @@ const NO_SELECTION: ReadonlySet<number> = new Set();
 const NO_BADGES: readonly DoorBadge[] = [];
 
 /**
+ * The per-frame inputs of {@link WorldRenderer.update} — one named shape instead of a positional-parameter
+ * tail (the two `ReadonlySet` fields, `selection` and `flagged`, were trivially swappable at a call site
+ * with no type error). Mirrors the {@link import('./sprite-pool/index.js').SpritePool}'s `PoolFrame`: only
+ * `snapshot` + `camera` are required, everything else falls back to its transient-view default.
+ */
+export interface WorldFrame {
+  readonly snapshot: WorldSnapshot;
+  /** The world layer's own transform (screen = world*scale + offset). */
+  readonly camera: Camera;
+  /** The integer sim tick the snapshot is at — the animation clock for gaits/rotors/decor (default 0). */
+  readonly tick?: number | undefined;
+  /** The HUD text frame to repaint, or absent to leave the HUD unchanged. */
+  readonly hud?: HudFrame | undefined;
+  /** The app's currently-selected entity ids, projected to feet rings (default none). Transient view state. */
+  readonly selection?: ReadonlySet<number> | undefined;
+  /** The fixed-timestep interpolation fraction (the loop's `FixedTimestep.advance` return): each entity
+   *  draws `alpha` of the way from its previous tick anchor to its current one (default 1 = raw tick). */
+  readonly alpha?: number | undefined;
+  /** Per-building door-badge tallies to stack over each door (default none). */
+  readonly doorBadges?: readonly DoorBadge[] | undefined;
+  /** The work-flagged gatherer ids whose feet rings read as flagged (default none). */
+  readonly flagged?: ReadonlySet<number> | undefined;
+}
+
+/**
  * The RETAINED-mode world renderer — the scalable replacement for the old immediate-mode `renderScene`,
  * and the thin ORCHESTRATOR over the retained sub-layers it composes.
  *
@@ -275,16 +300,17 @@ export class WorldRenderer {
    * 20 Hz sim motion reads as continuous frame-rate motion; the default 1 draws raw tick positions
    * (the static `?shot` entry).
    */
-  update(
-    snapshot: WorldSnapshot,
-    camera: Camera,
-    tick = 0,
-    hud?: HudFrame,
-    selection: ReadonlySet<number> = NO_SELECTION,
-    alpha = 1,
-    doorBadges: readonly DoorBadge[] = NO_BADGES,
-    flagged: ReadonlySet<number> = NO_SELECTION,
-  ): void {
+  update(frame: WorldFrame): void {
+    const {
+      snapshot,
+      camera,
+      tick = 0,
+      hud,
+      selection = NO_SELECTION,
+      alpha = 1,
+      doorBadges = NO_BADGES,
+      flagged = NO_SELECTION,
+    } = frame;
     // Camera: the world layer's own transform (screen = world*scale + offset).
     this.worldLayer.scale.set(camera.scale ?? 1);
     this.worldLayer.position.set(camera.offsetX, camera.offsetY);
