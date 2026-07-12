@@ -2,16 +2,7 @@ import { FOG_MODE, FOG_STATE, type FogView, type WorldSnapshot } from '@vinland/
 import { fogCellOfTile } from './fog.js';
 import { ONE } from './iso.js';
 import type { DrawKind } from './scene/draw-item.js';
-import {
-  classify,
-  readBuildingType,
-  readBuiltPct,
-  readPosition,
-  readResourceGfxIndex,
-  readResourceGood,
-  readResourceLevel,
-  readStumpGood,
-} from './scene/snapshot-readers.js';
+import { assignStaticFields, classify, readPosition } from './scene/snapshot-readers.js';
 
 /**
  * FOG GHOSTS — the viewer player's remembered STATICS: a building, resource node or stump, once seen,
@@ -70,22 +61,10 @@ function capture(
   const ghost: {
     -readonly [K in keyof FogGhost]: FogGhost[K];
   } = { ref: id, kind, tileX: pos.x / ONE, tileY: pos.y / ONE };
-  if (kind === 'building') {
-    const typeId = readBuildingType(components);
-    if (typeId !== undefined) ghost.typeId = typeId;
-    const builtPct = readBuiltPct(components);
-    if (builtPct !== undefined) ghost.builtPct = builtPct;
-  } else if (kind === 'resource') {
-    const goodType = readResourceGood(components);
-    if (goodType !== undefined) ghost.goodType = goodType;
-    const level = readResourceLevel(components);
-    if (level !== undefined) ghost.level = level;
-    const gfxIndex = readResourceGfxIndex(components);
-    if (gfxIndex !== undefined) ghost.gfxIndex = gfxIndex;
-  } else {
-    const goodType = readStumpGood(components);
-    if (goodType !== undefined) ghost.goodType = goodType;
-  }
+  // The common static fields (typeId/builtPct/goodType/level/gfxIndex) — shared with the live scene build
+  // so the ghost and its live twin can't drift. A ghost is always idle and carries no `levels`, so no
+  // `working`/`levels` here (see assignStaticFields).
+  assignStaticFields(ghost, kind, components);
   return ghost;
 }
 

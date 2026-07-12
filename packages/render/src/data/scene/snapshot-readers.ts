@@ -29,6 +29,31 @@ export function readPosition(components: Readonly<Record<string, unknown>>): Pos
   return p;
 }
 
+/**
+ * Read one NUMERIC field off a (possibly absent or malformed) snapshot component — `undefined` when the
+ * component is missing or the field is not a number. The shared body behind the many single-field readers
+ * below, each of which is just this call plus its own name + JSDoc (the load-bearing part: what the field
+ * MEANS to the renderer). Total + defensive like every reader here.
+ */
+function readNumField(
+  components: Readonly<Record<string, unknown>>,
+  component: string,
+  field: string,
+): number | undefined {
+  const c = components[component] as Record<string, unknown> | undefined;
+  const v = c?.[field];
+  return typeof v === 'number' ? v : undefined;
+}
+
+/** {@link readNumField} for the readers whose contract is `number | null` (the atomic / projectile ids). */
+function readNumFieldOrNull(
+  components: Readonly<Record<string, unknown>>,
+  component: string,
+  field: string,
+): number | null {
+  return readNumField(components, component, field) ?? null;
+}
+
 /** Classify a snapshot entity by which marker component it carries (terrain tiles are separate). */
 export function classify(components: Readonly<Record<string, unknown>>): DrawKind | null {
   // An in-flight munition (a bare Projectile + Position entity, the ranged-combat shot) — drawn as the
@@ -68,9 +93,7 @@ export function classify(components: Readonly<Record<string, unknown>>): DrawKin
  * animation join key.
  */
 export function readActingAtomic(components: Readonly<Record<string, unknown>>): number | null {
-  const a = components.CurrentAtomic as { atomicId?: unknown } | undefined;
-  if (a === undefined || typeof a.atomicId !== 'number') return null;
-  return a.atomicId;
+  return readNumFieldOrNull(components, 'CurrentAtomic', 'atomicId');
 }
 
 /**
@@ -80,8 +103,7 @@ export function readActingAtomic(components: Readonly<Record<string, unknown>>):
  * bob. `undefined` for a missing/malformed component (the binding then falls back to its default house).
  */
 export function readBuildingType(components: Readonly<Record<string, unknown>>): number | undefined {
-  const b = components.Building as { buildingType?: unknown } | undefined;
-  return b !== undefined && typeof b.buildingType === 'number' ? b.buildingType : undefined;
+  return readNumField(components, 'Building', 'buildingType');
 }
 
 /**
@@ -116,9 +138,7 @@ export function readProducing(components: Readonly<Record<string, unknown>>): bo
  * `null` when not mid-atomic.
  */
 export function readAtomicElapsed(components: Readonly<Record<string, unknown>>): number | null {
-  const a = components.CurrentAtomic as { elapsed?: unknown } | undefined;
-  if (a === undefined || typeof a.elapsed !== 'number') return null;
-  return a.elapsed;
+  return readNumFieldOrNull(components, 'CurrentAtomic', 'elapsed');
 }
 
 /**
@@ -192,9 +212,7 @@ export function readEngaged(components: Readonly<Record<string, unknown>>): bool
  * target. (`CurrentAtomic.targetTile` stays sim-internal and is never populated today, so it is not read.)
  */
 export function readAtomicTargetEntity(components: Readonly<Record<string, unknown>>): number | null {
-  const a = components.CurrentAtomic as { targetEntity?: unknown } | undefined;
-  if (a === undefined || typeof a.targetEntity !== 'number') return null;
-  return a.targetEntity;
+  return readNumFieldOrNull(components, 'CurrentAtomic', 'targetEntity');
 }
 
 /**
@@ -220,9 +238,7 @@ export function readStoreExchangeRef(components: Readonly<Record<string, unknown
  * homing step at the same target each tick, so the drawn heading tracks the true flight.
  */
 export function readProjectileTarget(components: Readonly<Record<string, unknown>>): number | null {
-  const p = components.Projectile as { target?: unknown } | undefined;
-  if (p === undefined || typeof p.target !== 'number') return null;
-  return p.target;
+  return readNumFieldOrNull(components, 'Projectile', 'target');
 }
 
 /**
@@ -302,8 +318,7 @@ export function readCarrying(components: Readonly<Record<string, unknown>>): { g
  * malformed component (the binding then falls back to its default look).
  */
 export function readJobType(components: Readonly<Record<string, unknown>>): number | undefined {
-  const s = components.Settler as { jobType?: unknown } | undefined;
-  return s !== undefined && typeof s.jobType === 'number' ? s.jobType : undefined;
+  return readNumField(components, 'Settler', 'jobType');
 }
 
 /**
@@ -324,8 +339,7 @@ export function readEquipmentWeaponGood(components: Readonly<Record<string, unkn
  * component (the binding then falls back to its default node).
  */
 export function readResourceGood(components: Readonly<Record<string, unknown>>): number | undefined {
-  const r = components.Resource as { goodType?: unknown } | undefined;
-  return r !== undefined && typeof r.goodType === 'number' ? r.goodType : undefined;
+  return readNumField(components, 'Resource', 'goodType');
 }
 
 /**
@@ -338,8 +352,7 @@ export function readResourceGood(components: Readonly<Record<string, unknown>>):
  * node as before.
  */
 export function readResourceGfxIndex(components: Readonly<Record<string, unknown>>): number | undefined {
-  const r = components.Resource as { gfxIndex?: unknown } | undefined;
-  return r !== undefined && typeof r.gfxIndex === 'number' ? r.gfxIndex : undefined;
+  return readNumField(components, 'Resource', 'gfxIndex');
 }
 
 /**
@@ -417,8 +430,50 @@ export function readResourceLevelCount(components: Readonly<Record<string, unkno
  * its default).
  */
 export function readStumpGood(components: Readonly<Record<string, unknown>>): number | undefined {
-  const s = components.Stump as { goodType?: unknown } | undefined;
-  return s !== undefined && typeof s.goodType === 'number' ? s.goodType : undefined;
+  return readNumField(components, 'Stump', 'goodType');
+}
+
+/** The static per-kind draw fields a building / resource / stump carries — the subset shared by the live
+ *  scene build and the fog-ghost capture (both {@link import('../draw-item.js').DrawItem} and
+ *  {@link import('../fog-ghosts.js').FogGhost} carry these). */
+export interface StaticDrawFields {
+  typeId?: number;
+  builtPct?: number;
+  goodType?: number;
+  level?: number;
+  gfxIndex?: number;
+}
+
+/**
+ * Assign the static per-kind draw fields read off a building / resource / stump entity onto `target`,
+ * IN PLACE (no intermediate object — matches the DrawItem "assign not spread" convention, so the per-frame
+ * scene build allocates nothing) and omitting absent facts. The ONE place the "which components a static
+ * reads for its draw" decision lives, so the live scene build and the fog-ghost capture can't drift on it.
+ * Deliberately excludes two fields each caller owns: a building's `working` (live-only — a ghost never
+ * animates) and a resource's `levels` denominator (the live build adds it alongside `level`; ghosts do not
+ * carry it today).
+ */
+export function assignStaticFields(
+  target: StaticDrawFields,
+  kind: 'building' | 'resource' | 'stump',
+  components: Readonly<Record<string, unknown>>,
+): void {
+  if (kind === 'building') {
+    const typeId = readBuildingType(components);
+    if (typeId !== undefined) target.typeId = typeId;
+    const builtPct = readBuiltPct(components);
+    if (builtPct !== undefined) target.builtPct = builtPct;
+  } else if (kind === 'resource') {
+    const goodType = readResourceGood(components);
+    if (goodType !== undefined) target.goodType = goodType;
+    const level = readResourceLevel(components);
+    if (level !== undefined) target.level = level;
+    const gfxIndex = readResourceGfxIndex(components);
+    if (gfxIndex !== undefined) target.gfxIndex = gfxIndex;
+  } else {
+    const goodType = readStumpGood(components);
+    if (goodType !== undefined) target.goodType = goodType;
+  }
 }
 
 /**
@@ -441,8 +496,7 @@ export function readBerryBushLevel(components: Readonly<Record<string, unknown>>
  * variant tag (the binding then draws its default bush).
  */
 export function readBerryBushGfxIndex(components: Readonly<Record<string, unknown>>): number | undefined {
-  const b = components.BerryBush as { gfxIndex?: unknown } | undefined;
-  return b !== undefined && typeof b.gfxIndex === 'number' ? b.gfxIndex : undefined;
+  return readNumField(components, 'BerryBush', 'gfxIndex');
 }
 
 /**
@@ -483,6 +537,5 @@ export function readStockpile(components: Readonly<Record<string, unknown>>): {
  * (wildlife / a neutral fixture), which the renderer draws in the base palette.
  */
 export function readOwnerPlayer(components: Readonly<Record<string, unknown>>): number | undefined {
-  const o = components.Owner as { player?: unknown } | undefined;
-  return o !== undefined && typeof o.player === 'number' ? o.player : undefined;
+  return readNumField(components, 'Owner', 'player');
 }
