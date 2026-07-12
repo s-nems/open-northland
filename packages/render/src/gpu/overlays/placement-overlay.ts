@@ -1,6 +1,6 @@
 import { Container, Graphics, type Renderer, RenderTexture, Sprite } from 'pixi.js';
-import { type ElevationField, terrainLiftAtNode } from '../data/elevation.js';
-import { halfCellToScreen, nodeDiamondPoly, TILE_HALF_H, TILE_HALF_W } from '../data/iso.js';
+import { type ElevationField, terrainLiftAtNode } from '../../data/elevation.js';
+import { halfCellToScreen, nodeDiamondPoly, TILE_HALF_H, TILE_HALF_W } from '../../data/iso.js';
 
 /**
  * The BUILD-PLACEMENT overlay — the original's build-mode read of the ground: a translucent dark wash

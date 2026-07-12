@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { depthKey } from '../src/data/iso.js';
-import { PlacementGhostLayer } from '../src/gpu/placement-ghost.js';
-import { overlayBounds } from '../src/gpu/placement-overlay.js';
+import { PlacementGhostLayer } from '../src/gpu/overlays/placement-ghost.js';
+import { overlayBounds } from '../src/gpu/overlays/placement-overlay.js';
 import { TextureCache } from '../src/gpu/texture-cache.js';
 import { halfCellToScreen, makeElevationField, TILE_HALF_H, TILE_HALF_W } from '../src/index.js';
 

@@ -1,6 +1,6 @@
 import { type Application, type Container, RenderTexture, Sprite } from 'pixi.js';
-import type { Camera } from '../data/iso.js';
-import type { SpritePool } from './sprite-pool/index.js';
+import type { Camera } from '../../data/iso.js';
+import type { SpritePool } from '../sprite-pool/index.js';
 
 /**
  * The details-panel portrait "observation window": a live cutout of the world centred on the selected

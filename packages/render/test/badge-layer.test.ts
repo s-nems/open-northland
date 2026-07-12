@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BadgeLayer, type DoorBadge } from '../src/gpu/badge-layer.js';
+import { BadgeLayer, type DoorBadge } from '../src/gpu/overlays/badge-layer.js';
 import { makeElevationField, ONE, tileToScreen } from '../src/index.js';
 
 /**

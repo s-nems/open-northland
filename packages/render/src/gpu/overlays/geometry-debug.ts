@@ -1,6 +1,6 @@
 import { Container, Graphics, Text } from 'pixi.js';
-import { type ElevationField, terrainLiftAtNode } from '../data/elevation.js';
-import { halfCellToScreen, TILE_HALF_H, TILE_HALF_W } from '../data/iso.js';
+import { type ElevationField, terrainLiftAtNode } from '../../data/elevation.js';
+import { halfCellToScreen, TILE_HALF_H, TILE_HALF_W } from '../../data/iso.js';
 
 /**
  * The BUILDING-GEOMETRY debug overlay (`?debug=geometry`) — draws every placed building's logic

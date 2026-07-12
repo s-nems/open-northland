@@ -113,7 +113,7 @@ export {
   type Viewport,
   visibleTileRange,
 } from './data/viewport.js';
-export type { DoorBadge } from './gpu/badge-layer.js';
+export type { DoorBadge } from './gpu/overlays/index.js';
 export {
   AnimationGallery,
   clipDirs,
@@ -123,8 +123,8 @@ export {
   type GalleryClip,
   type GalleryDirection,
 } from './gpu/gallery/index.js';
-export type { GeometryDebugCell, GeometryDebugItem } from './gpu/geometry-debug.js';
-export { DEFAULT_HUD_STYLE, type HudFrame, type HudStyle } from './gpu/hud-layer.js';
+export type { GeometryDebugCell, GeometryDebugItem } from './gpu/overlays/index.js';
+export { DEFAULT_HUD_STYLE, type HudFrame, type HudStyle } from './gpu/overlays/index.js';
 export type { MapObjectSprite } from './gpu/map-objects/index.js';
 export { type GuiColorKey, PalettedSprite } from './gpu/paletted-sprite.js';
 export {
@@ -139,9 +139,9 @@ export {
   type TerrainTextureSet,
   type TransitionPattern,
 } from './gpu/pixi-app.js';
-export type { PlacementGhost } from './gpu/placement-ghost.js';
-export type { PlacementOverlayCell, PlacementOverlayFrame } from './gpu/placement-overlay.js';
-export type { PortraitInsetFrame } from './gpu/portrait-inset.js';
+export type { PlacementGhost } from './gpu/overlays/index.js';
+export type { PlacementOverlayCell, PlacementOverlayFrame } from './gpu/overlays/index.js';
+export type { PortraitInsetFrame } from './gpu/overlays/index.js';
 export {
   type EntityBounds,
   type MotionTrack,
