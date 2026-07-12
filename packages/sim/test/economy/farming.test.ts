@@ -151,6 +151,29 @@ describe('crop growth', () => {
     expect(sim.world.get(field, Crop).stage).toBe(1); // bare ground until a farmer waters it
     expect(sim.world.get(field, Resource).remaining).toBe(0);
   });
+
+  it('growth is RENDER-visible through a primed snapshot cache — in-place writes are touch-logged', () => {
+    // A Crop carries Resource, so the snapshot's scenery-clone cache holds its clone until the entity
+    // is World.touch'ed. The browser snapshots every frame, so the cache primes on the crop's very
+    // first (freshly-sown, invisible) state — an un-touched water/growth write then renders the field
+    // frozen at that stage forever (the user-observed "wheat never grows" while the sim ripens it fine).
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 4) });
+    const farm = farmAt(sim, 0, 0);
+    const field = fieldAt(sim, farm, 2, 2);
+    const snapCrop = (): { stage: number; watered: boolean } =>
+      sim.snapshot().entities.find((e) => e.id === (field as number))?.components.Crop as {
+        stage: number;
+        watered: boolean;
+      };
+
+    expect(snapCrop().watered).toBe(false); // prime the scenery-clone cache on the sown state
+
+    applyWater(sim.world, field);
+    expect(snapCrop().watered).toBe(true); // the water write was logged → re-cloned
+
+    for (let i = 0; i < TICKS_PER_STAGE; i++) cropGrowthSystem(sim.world, ctxOf(sim));
+    expect(snapCrop().stage).toBe(2); // the growth writes were logged → re-cloned
+  });
 });
 
 describe('sow / water effects', () => {

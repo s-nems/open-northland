@@ -97,5 +97,9 @@ export async function renderSceneMode(
     onFrame: (snap) => overlay.update(snap.tick),
   });
 
+  // Dev/debug seam: the live instances, reachable from the browser console (`__vinland.sim` …) so a
+  // human or an automated probe can inspect the running scene without rebuilding it. Read-only use.
+  (window as unknown as Record<string, unknown>).__vinland = { sim, renderer, sheet, cameraCtl };
+
   console.log(`Vinland scene "${scene.id}" up. Watch the overlay checklist, then say if it looks OK.`);
 }
