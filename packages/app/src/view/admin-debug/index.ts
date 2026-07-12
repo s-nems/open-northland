@@ -26,6 +26,13 @@ import {
  * down; its two `window` capture listeners persist for the page's life, which is safe because
  * `startGameView` runs exactly once per page load (a scene switch is a full navigation/reload).
  *
+ * Layout: the panel is a **right-docked rail** (never the screen centre — it must not hide the map it
+ * spawns onto) laid out as a fixed-height flex column: a static header carrying the spawn "stamp"
+ * settings (owner / HP / armor / needs) stays on top, a scrolling body of **collapsible palette
+ * sections** takes the middle (only the section in use need be open — the goods list alone is ~70
+ * entries, so it also carries a name filter), and a pinned status footer at the bottom always shows what
+ * the next click will place.
+ *
  * Interaction: click a unit/resource button to ARM that choice (the cursor becomes a crosshair); each
  * left-click on the map then spawns it at that tile — arming is STICKY so a battle line is placed with
  * repeated clicks. Switch the player swatch between clicks to seed both sides. Right-click or Esc
@@ -60,11 +67,14 @@ type Armed =
  *  number matches what an untouched spawn would get anyway. */
 const DEFAULT_HITPOINTS = systems.DEFAULT_SETTLER_HITPOINTS;
 
+/** The rail width — narrow enough to leave the map readable beside it. */
+const PANEL_WIDTH_PX = 300;
+
 const TOGGLE_STYLE = [
   'position:fixed',
   'top:8px',
-  'left:50%',
-  'transform:translateX(-50%)',
+  // Centred over the rail that opens below it (rail: right:8px, width PANEL_WIDTH_PX; chip ~140px wide).
+  `right:${8 + PANEL_WIDTH_PX / 2 - 70}px`,
   'cursor:pointer',
   'padding:6px 14px',
   'background:rgba(20,16,12,0.92)',
@@ -76,16 +86,16 @@ const TOGGLE_STYLE = [
   'z-index:160',
 ].join(';');
 
+// A right-docked, full-height flex column: header + settings stay put while only the body scrolls.
 const ADMIN_PANEL_STYLE = [
   'position:fixed',
   'top:44px',
-  'left:50%',
-  'transform:translateX(-50%)',
-  'width:360px',
-  'max-height:calc(100vh - 60px)',
-  'overflow-y:auto',
+  'right:8px',
+  'bottom:8px',
+  `width:${PANEL_WIDTH_PX}px`,
+  'display:flex',
+  'flex-direction:column',
   'box-sizing:border-box',
-  'padding:10px 12px',
   'background:rgba(20,16,12,0.95)',
   'color:#e8dcc8',
   'font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace',
@@ -95,15 +105,72 @@ const ADMIN_PANEL_STYLE = [
   'z-index:150',
 ].join(';');
 
+/** The static (non-scrolling) header + settings block. */
+const HEADER_STYLE = 'padding:10px 12px 8px;border-bottom:1px solid #5a4a36';
+/** The scrolling palette body — the only part that grows/scrolls. */
+const BODY_STYLE = 'flex:1;min-height:0;overflow-y:auto;padding:0 12px';
+/** The pinned status footer. */
+const FOOTER_STYLE = 'padding:8px 12px;border-top:1px solid #5a4a36;min-height:16px';
+
 const SECTION_TITLE_STYLE =
-  'font-weight:700;font-size:10px;letter-spacing:0.07em;text-transform:uppercase;opacity:0.6;margin:12px 0 4px';
+  'font-weight:700;font-size:10px;letter-spacing:0.07em;text-transform:uppercase;opacity:0.6;margin:0 0 6px';
 const ROW_STYLE = 'display:flex;flex-wrap:wrap;gap:4px';
+
+/** A collapsible-section header (the clickable "▸ Title (n)" bar). */
+const SECTION_HEADER_STYLE = [
+  'display:flex',
+  'align-items:center',
+  'gap:6px',
+  'width:100%',
+  'cursor:pointer',
+  'background:none',
+  'border:none',
+  'border-top:1px solid #5a4a36',
+  'color:#e8dcc8',
+  'padding:9px 2px',
+  'margin:0',
+  'text-align:left',
+  'font:700 10px/1 ui-monospace,SFMono-Regular,Menlo,monospace',
+  'letter-spacing:0.07em',
+  'text-transform:uppercase',
+].join(';');
 
 /** The armed-button highlight (brighter than the resting `BUTTON_STYLE`). */
 function setButtonActive(button: HTMLButtonElement, active: boolean): void {
   button.style.background = active ? '#6b5840' : '#3a2f22';
   button.style.fontWeight = active ? '700' : '400';
   button.style.outline = active ? '1px solid #d8ccb0' : 'none';
+}
+
+/**
+ * A collapsible section: a clickable "▸/▾ Title (count)" header over a hideable content box. Returns the
+ * wrapper (append to the body) and the `content` element (append the section's rows to it). Only the
+ * section a human is actually using need be open, so the rail stays short instead of one long wall.
+ */
+function collapsibleSection(
+  title: string,
+  count: number,
+  startOpen: boolean,
+): { readonly wrap: HTMLElement; readonly content: HTMLElement } {
+  const wrap = el('div', '');
+  const header = el('button', SECTION_HEADER_STYLE);
+  const caret = el('span', 'opacity:0.7;width:10px;display:inline-block', startOpen ? '▾' : '▸');
+  header.append(caret, el('span', 'flex:1', title), el('span', 'opacity:0.5;font-weight:400', String(count)));
+  const content = el('div', `padding-bottom:8px;${startOpen ? '' : 'display:none'}`);
+  let open = startOpen;
+  header.addEventListener('click', () => {
+    open = !open;
+    content.style.display = open ? 'block' : 'none';
+    caret.textContent = open ? '▾' : '▸';
+  });
+  wrap.append(header, content);
+  return { wrap, content };
+}
+
+/** One built spawn button with its display label (kept so the goods filter can show/hide it by name). */
+interface SpawnButton {
+  readonly button: HTMLButtonElement;
+  readonly label: string;
 }
 
 /** Mount the admin/debug spawn palette (toggle button + hidden panel). Mount-and-forget. */
@@ -123,7 +190,7 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
   // Buttons that reflect the armed choice + the player swatches, re-styled whenever state changes.
   const spawnButtons: { readonly button: HTMLButtonElement; readonly armed: Armed }[] = [];
   const swatchButtons: { readonly button: HTMLButtonElement; readonly player: number }[] = [];
-  const status = el('div', 'margin-top:10px;padding-top:8px;border-top:1px solid #5a4a36;min-height:16px');
+  const status = el('div', FOOTER_STYLE);
 
   const sameArmed = (a: Armed, b: Armed | null): boolean => {
     if (b === null) return false;
@@ -190,7 +257,7 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
   needsRow.append(el('span', 'opacity:0.8', 'Głód/sen itd.'));
   needsRow.append(needsButton);
 
-  // ---- DOM -----------------------------------------------------------------
+  // ---- DOM: right-docked flex column (header · scrolling body · status footer) ----
   const panel = el('div', ADMIN_PANEL_STYLE);
   panel.style.display = 'none';
 
@@ -198,22 +265,24 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
   let open = false;
   toggle.addEventListener('click', () => {
     open = !open;
-    panel.style.display = open ? 'block' : 'none';
+    panel.style.display = open ? 'flex' : 'none';
     if (!open) setArmed(null); // hiding the panel disarms (a stray crosshair click is confusing)
     if (open) refreshNeedsButton(); // re-read the live rule — the boot value may predate a scene's toggle
   });
 
-  panel.append(el('div', 'font-weight:700;font-size:13px;margin-bottom:2px', 'Panel Admina / Debug'));
-  panel.append(
+  // --- static header: title + spawn "stamp" settings (owner / HP / armor / needs) ---
+  const header = el('div', HEADER_STYLE);
+  header.append(el('div', 'font-weight:700;font-size:13px;margin-bottom:2px', 'Panel Admina / Debug'));
+  header.append(
     el(
       'div',
-      'opacity:0.7;font-size:11px',
+      'opacity:0.7;font-size:11px;margin-bottom:8px',
       'Wybierz jednostkę / złoże / towar, potem klikaj na mapie. Zmieniaj gracza między klikami, by ustawić obie strony.',
     ),
   );
 
   // Player swatches.
-  panel.append(el('div', SECTION_TITLE_STYLE, 'Gracz (właściciel)'));
+  header.append(el('div', SECTION_TITLE_STYLE, 'Gracz (właściciel)'));
   const swatchRow = el('div', ROW_STYLE);
   for (const s of PLAYER_SWATCHES) {
     const b = el(
@@ -228,7 +297,7 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
     swatchButtons.push({ button: b, player: s.player });
     swatchRow.append(b);
   }
-  panel.append(swatchRow);
+  header.append(swatchRow);
 
   // HP + armor (applied to every spawned unit; a resource ignores them).
   const statsRow = el('div', 'display:flex;gap:12px;align-items:center;margin-top:8px;flex-wrap:wrap');
@@ -242,54 +311,72 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
       armorClass = v;
     }),
   );
-  panel.append(statsRow);
+  header.append(statsRow);
+  header.append(needsRow);
 
-  panel.append(needsRow);
+  // --- scrolling body: collapsible palette sections ---
+  const body = el('div', BODY_STYLE);
 
-  // Unit + resource palettes — each an armable button row (a click arms/disarms that choice).
-  panel.append(el('div', SECTION_TITLE_STYLE, 'Wojownicy'));
-  panel.append(
-    spawnRow(WARRIOR_PRESETS.map((preset) => ({ label: preset.label, armed: { kind: 'unit', preset } }))),
-  );
-  panel.append(el('div', SECTION_TITLE_STYLE, 'Cywile'));
-  panel.append(
-    spawnRow(CIVILIAN_PRESETS.map((preset) => ({ label: preset.label, armed: { kind: 'unit', preset } }))),
-  );
-  panel.append(el('div', SECTION_TITLE_STYLE, 'Złoża (do wydobycia)'));
-  panel.append(
-    spawnRow(
-      RESOURCE_ENTRIES.map((r) => ({
-        label: goodLabelOf(r.good, r.label),
-        armed: { kind: 'resource', good: r.good },
-      })),
+  // Wojownicy (open by default — the first thing a "spawn a fight" session reaches for).
+  const warriors = collapsibleSection('Wojownicy', WARRIOR_PRESETS.length, true);
+  warriors.content.append(
+    rowOf(
+      spawnEntries(
+        WARRIOR_PRESETS.map((preset) => ({ label: preset.label, armed: { kind: 'unit', preset } })),
+      ),
     ),
   );
-  // Every good in the catalog, dropped as a loose ground pile (the `dropGood` command) — the admin "spawn
-  // any good" list the in-game goods tool mirrors.
-  panel.append(el('div', SECTION_TITLE_STYLE, 'Towary (stos na ziemi)'));
-  panel.append(
-    spawnRow(
-      GOODS_ENTRIES.map((g) => ({
-        label: goodLabelOf(g.good, g.label),
-        armed: { kind: 'good', good: g.good },
-      })),
+  body.append(warriors.wrap);
+
+  const civilians = collapsibleSection('Cywile', CIVILIAN_PRESETS.length, false);
+  civilians.content.append(
+    rowOf(
+      spawnEntries(
+        CIVILIAN_PRESETS.map((preset) => ({ label: preset.label, armed: { kind: 'unit', preset } })),
+      ),
     ),
   );
+  body.append(civilians.wrap);
 
-  panel.append(status);
+  const resources = collapsibleSection('Złoża (do wydobycia)', RESOURCE_ENTRIES.length, false);
+  resources.content.append(
+    rowOf(
+      spawnEntries(
+        RESOURCE_ENTRIES.map((r) => ({
+          label: goodLabelOf(r.good, r.label),
+          armed: { kind: 'resource', good: r.good },
+        })),
+      ),
+    ),
+  );
+  body.append(resources.wrap);
+
+  // Towary — every good in the catalog dropped as a loose ground pile (`dropGood`). ~70 entries, so a
+  // name filter narrows the wall to what the human is after (the goods tool mirrors this list).
+  const goods = collapsibleSection('Towary (stos na ziemi)', GOODS_ENTRIES.length, false);
+  const goodButtons = spawnEntries(
+    GOODS_ENTRIES.map((g) => ({
+      label: goodLabelOf(g.good, g.label),
+      armed: { kind: 'good', good: g.good },
+    })),
+  );
+  goods.content.append(goodsFilter(goodButtons), rowOf(goodButtons));
+  body.append(goods.wrap);
+
+  panel.append(header, body, status);
   document.body.append(toggle, panel);
   refresh();
 
-  /** A row of arm/disarm buttons — one per spawnable entry, each toggling its `Armed` choice. */
-  function spawnRow(entries: readonly { readonly label: string; readonly armed: Armed }[]): HTMLElement {
-    const row = el('div', ROW_STYLE);
-    for (const { label, armed: choice } of entries) {
-      const b = el('button', BUTTON_STYLE, label);
-      b.addEventListener('click', () => setArmed(sameArmed(choice, armed) ? null : choice));
-      spawnButtons.push({ button: b, armed: choice });
-      row.append(b);
-    }
-    return row;
+  /** Build one arm/disarm button per entry (registering each for the armed-highlight refresh). */
+  function spawnEntries(
+    entries: readonly { readonly label: string; readonly armed: Armed }[],
+  ): readonly SpawnButton[] {
+    return entries.map(({ label, armed: choice }) => {
+      const button = el('button', BUTTON_STYLE, label);
+      button.addEventListener('click', () => setArmed(sameArmed(choice, armed) ? null : choice));
+      spawnButtons.push({ button, armed: choice });
+      return { button, label };
+    });
   }
 
   // ---- spawn on map click --------------------------------------------------
@@ -337,6 +424,29 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
     }
   };
   window.addEventListener('keydown', onKeyDown, { capture: true });
+}
+
+/** Wrap already-built spawn buttons in a flex-wrap row. */
+function rowOf(entries: readonly SpawnButton[]): HTMLElement {
+  const row = el('div', ROW_STYLE);
+  for (const { button } of entries) row.append(button);
+  return row;
+}
+
+/** A case-insensitive name filter that shows/hides the goods buttons in place (a `type=search` input). */
+function goodsFilter(entries: readonly SpawnButton[]): HTMLElement {
+  const input = el(
+    'input',
+    'width:100%;box-sizing:border-box;margin-bottom:6px;background:#2a2118;color:#e8dcc8;border:1px solid #6b5840;border-radius:4px;padding:3px 6px;font:12px ui-monospace,monospace',
+  );
+  input.type = 'search';
+  input.placeholder = 'Filtruj towary…';
+  input.addEventListener('input', () => {
+    const q = input.value.trim().toLowerCase();
+    for (const { button, label } of entries)
+      button.style.display = q === '' || label.toLowerCase().includes(q) ? '' : 'none';
+  });
+  return input;
 }
 
 /** A small "label: [number input]" field that reports parsed changes (blank/NaN → 0). */
