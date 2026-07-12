@@ -10,7 +10,7 @@ import {
   foldCombatEffects,
   frac,
 } from '../../data/effects.js';
-import type { ElevationField } from '../../data/elevation.js';
+import { type ElevationField, terrainLiftAtNode } from '../../data/elevation.js';
 import { halfCellToScreen } from '../../data/iso.js';
 import type { AtlasFrame } from '../../data/sprites/index.js';
 import { isVisible, type Viewport } from '../../data/viewport.js';
@@ -104,7 +104,7 @@ export class CombatEffectsLayer {
       if (alpha <= 0) continue; // fully faded — its node is retired below (not in `seen`)
       const key = effectKey(effect);
       const p = halfCellToScreen(effect.hx, effect.hy);
-      const lift = elevation.maxLift > 0 ? elevation.liftAtNode(effect.hx, effect.hy) : 0;
+      const lift = terrainLiftAtNode(elevation, effect.hx, effect.hy);
       // Blood rides UP onto the body (over the sprite); bones sit at the feet on the ground.
       const y = p.y - lift - (effect.kind === 'blood' ? BLOOD_RISE : 0);
       // Cull by the feet point (the mark's own anchor), so a body-lifted spurt near the top edge still shows.

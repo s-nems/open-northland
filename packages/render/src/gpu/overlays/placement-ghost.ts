@@ -1,5 +1,5 @@
 import { Container, Graphics, Sprite } from 'pixi.js';
-import type { ElevationField } from '../../data/elevation.js';
+import { type ElevationField, terrainLiftAtNode } from '../../data/elevation.js';
 import { depthKey, halfCellToScreen, TILE_HALF_H, TILE_HALF_W } from '../../data/iso.js';
 import type { DrawItem } from '../../data/scene/index.js';
 import type { SpriteSheet } from '../pixi-app.js';
@@ -57,7 +57,7 @@ export class PlacementGhostLayer {
       this.rebuild(ghost.buildingType);
     }
     const p = halfCellToScreen(ghost.col, ghost.row);
-    const lift = elevation.maxLift > 0 ? elevation.liftAtNode(ghost.col, ghost.row) : 0;
+    const lift = terrainLiftAtNode(elevation, ghost.col, ghost.row);
     this.container.position.set(p.x, p.y - lift);
     // Depth by the PRE-LIFT feet anchor, like every pooled sprite — the ghost interleaves correctly.
     this.container.zIndex = depthKey(p.x, p.y);
