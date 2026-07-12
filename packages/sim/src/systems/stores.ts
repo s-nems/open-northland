@@ -251,11 +251,12 @@ export function recipeOf(world: World, ctx: SystemContext, building: Entity): Re
 /**
  * The goods a building's type PRODUCES (`logicproduction` — its `produces` list), or empty when it has
  * no Building/type or produces nothing (a passive store: a warehouse/HQ). This is the data-driven
- * "is this a producing building" signal that separates a FARM (produces its field-farmed good, but
- * carries no `recipe`) from a pure store — the split behind "a carrier at production hauls the output
+ * "is this a producing building" signal — the split behind "a carrier at production hauls the output
  * out, a carrier at a warehouse only brings goods in". A recipe workshop's `produces` mirrors its
- * recipe outputs (the schema synthesises the recipe from `produces`), so this covers both producer
- * kinds; a warehouse's is empty.
+ * recipe outputs, so this covers both producer kinds; a warehouse's is empty. NOTE it does NOT
+ * distinguish a farm by recipe absence: the sandbox catalog's farm carries no recipe, but the asset
+ * pipeline synthesizes a recipe for every producing building (`fillBuildingRecipes`), so "field
+ * producer" must be keyed on the good's `farming` block (`farmWorkGood`), never on `recipeOf`.
  *
  * Cross-system: the AI carrier drive uses it to recognise a bound producing building whose finished
  * output it should haul to a warehouse (see ai-supply.ts `boundProducerOutputToHaul`).

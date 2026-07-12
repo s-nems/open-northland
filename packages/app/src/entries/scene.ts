@@ -10,6 +10,18 @@ import { startGameView } from '../view/game-view.js';
 import { floatParam } from '../view/params.js';
 import { mountSceneOverlay, mountUnknownSceneOverlay } from '../view/scene-overlay.js';
 
+declare global {
+  interface Window {
+    /** The `?scene=` entry's console-debug seam — see the assignment in {@link renderSceneMode}. */
+    __vinland?: {
+      readonly sim: import('@vinland/sim').Simulation;
+      readonly renderer: WorldRenderer;
+      readonly sheet: import('@vinland/render').SpriteSheet | undefined;
+      readonly cameraCtl: import('../view/camera.js').CameraController;
+    };
+  }
+}
+
 /**
  * The `?scene=<id>` entry: render a registered **acceptance scene** live, with the checklist overlay,
  * so a human can watch the mechanic and sign off. The SAME `?atlas`/`?terrain`/`?zoom`/`?speed` flags
@@ -98,8 +110,10 @@ export async function renderSceneMode(
   });
 
   // Dev/debug seam: the live instances, reachable from the browser console (`__vinland.sim` …) so a
-  // human or an automated probe can inspect the running scene without rebuilding it. Read-only use.
-  (window as unknown as Record<string, unknown>).__vinland = { sim, renderer, sheet, cameraCtl };
+  // human or an automated probe can inspect the running scene without rebuilding it. READ-ONLY: a
+  // console mutation bypasses the command pipeline and silently voids determinism (state hashes and
+  // golden comparability no longer mean anything for that session).
+  window.__vinland = { sim, renderer, sheet, cameraCtl };
 
   console.log(`Vinland scene "${scene.id}" up. Watch the overlay checklist, then say if it looks OK.`);
 }

@@ -181,21 +181,26 @@ export function deliveryTargetFor(
   if (flag !== undefined && world.has(flag.flag, DeliveryFlag) && world.has(flag.flag, Position)) {
     return flag.flag;
   }
-  // 3. A CARRIER bound to a PRODUCING building (a farm) carrying that building's own OUTPUT hauls it OUT
-  //    to a warehouse — the delivery twin of `boundProducerOutputToHaul`. Routed to the nearest OTHER
-  //    store (the bound building EXCLUDED, so a no-recipe farm's wheat never lands back in the farm it was
-  //    lifted from), ABOVE the bring-into-my-store case below so the load leaves the producer. Gated to a
-  //    NON-field-worker: a FARMER banks its own reaped crop INTO the farm (case 3b, overflowing only when
-  //    the farm is full), while the farm's carrier clears it to central storage — the two-role split.
+  // 3. A CARRIER bound to a FIELD-PRODUCING building (a farm) carrying that building's own OUTPUT hauls
+  //    it OUT to storage — the delivery twin of `boundProducerOutputToHaul` (the twins test the same
+  //    predicates: same tribe, same field-producer key, same field-worker split). Routed with
+  //    producers-of-the-good excluded, so the load reaches a warehouse and never another farm, ABOVE the
+  //    bring-into-my-store case below so it leaves the producer. Gated to a NON-field-worker: a FARMER
+  //    banks its own reaped crop INTO the farm (case 3b, overflowing only when the farm is full), while
+  //    the farm's carrier clears it to central storage — the two-role split. Keyed on the good's
+  //    `farming` block (the field loop's own data signal), NOT on "no recipe": the sandbox farm carries
+  //    no recipe, but the pipeline-extracted farm has a synthesized one, so a recipe test would silently
+  //    turn this rung off under real extracted content.
   const binding = world.tryGet(settler, JobAssignment);
   const home = binding?.workplace;
   if (
     home !== undefined &&
-    recipeOf(world, ctx, home) === undefined &&
+    world.tryGet(home, Building)?.tribe === tribe &&
+    farmWorkGood(world, ctx, home) !== null &&
     buildingProduces(world, ctx, home).includes(goodType) &&
     !isFieldWorkerOf(world, ctx, home, jobType)
   ) {
-    return nearestStoreFor(candidates, world, ctx, terrain, here, goodType, home);
+    return nearestStoreFor(candidates, world, ctx, terrain, here, goodType, true);
   }
   // 3b. Otherwise a porter's / farmer's load goes to the storage it is bound to (a warehouse, a flag pile,
   //     or the farm's own store when a farmer banks its sheaf and the farm still has room).
@@ -309,15 +314,20 @@ export function nearestGroundPile(
  * stationed at a warehouse/HQ only brings goods IN.
  *
  * A candidate is a good the bound building's type PRODUCES ({@link buildingProduces}) that the building
- * currently stocks (>0) and that some OTHER store can take ({@link nearestStoreFor} with the building
- * itself EXCLUDED — a no-recipe farm is not excluded by the standard producer check, so a guard here
- * keeps the load from shuttling farm→farm). Walked in `produces` order (a fixed content array, so the
- * pick never depends on store insertion history), first haulable output wins.
+ * currently stocks (>0) and that some STORAGE sink can take ({@link nearestStoreFor} with EVERY producer
+ * of the good excluded — per-entity exclusion of only the own farm let two farms shuttle wheat between
+ * each other forever). Walked in `produces` order (a fixed content array, so the pick never depends on
+ * store insertion history), first haulable output wins.
  *
- * Scoped to a bound building that carries **no recipe** — a recipe workshop's finished output is already
+ * Scoped to a bound building whose produced good is **field-farmed** (a `farming` block —
+ * {@link farmWorkGood}), the field loop's own data signal: a recipe workshop's finished output is already
  * hauled by the producer loop / carrier fallback ({@link workplaceOutputToHaul}/`nearestWorkplaceOutput`),
- * so this closes the gap only for the producing-but-recipeless building (the farm) whose bound carrier was
- * otherwise a pure inbound porter. Returns the good to lift, or null.
+ * so this closes the gap only for the field producer (the farm) whose bound carrier was otherwise a pure
+ * inbound porter. (Keying on "no recipe" instead would silently turn this off under real extracted
+ * content — the pipeline synthesizes a recipe for every producing building.) Gated to a NON-field-worker,
+ * mirroring the delivery twin: a FARMER falling through to the porter rung must never lift the farm's
+ * wheat only to bank it straight back (a per-tick pickup/deposit ping-pong). Returns the bound home and
+ * the good to lift, or null when there is nothing to haul.
  */
 export function boundProducerOutputToHaul(
   candidates: readonly Entity[],
@@ -325,20 +335,24 @@ export function boundProducerOutputToHaul(
   ctx: SystemContext,
   terrain: TerrainGraph,
   settler: Entity,
+  jobType: number,
   tribe: number,
   here: NodeId,
-): number | null {
+): { home: Entity; goodType: number } | null {
   const binding = world.tryGet(settler, JobAssignment);
   if (binding === undefined) return null;
   const home = binding.workplace;
   const b = world.tryGet(home, Building);
   if (b === undefined || b.tribe !== tribe) return null; // gone / wrong tribe
-  if (recipeOf(world, ctx, home) !== undefined) return null; // recipe shops haul via the producer/carrier path
+  if (farmWorkGood(world, ctx, home) === null) return null; // not a field producer — no haul-out rung
+  if (isFieldWorkerOf(world, ctx, home, jobType)) return null; // the farmer banks IN; only the carrier clears
   if (!world.has(home, Stockpile) || !world.has(home, Position)) return null;
   const stock = world.get(home, Stockpile).amounts;
   for (const goodType of buildingProduces(world, ctx, home)) {
     if ((stock.get(goodType) ?? 0) <= 0) continue; // none of this output on hand
-    if (nearestStoreFor(candidates, world, ctx, terrain, here, goodType, home) !== null) return goodType;
+    if (nearestStoreFor(candidates, world, ctx, terrain, here, goodType, true) !== null) {
+      return { home, goodType };
+    }
   }
   return null;
 }

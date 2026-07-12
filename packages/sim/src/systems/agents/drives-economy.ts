@@ -585,12 +585,28 @@ export function planPorter(
 ): boolean {
   if (!isPorterBoundToStore(world, ctx, e)) return false;
   // Haul the bound producer's finished output OUT to a warehouse (a farm's wheat) — the load then routes
-  // to the nearest other store, never back into the producer (deliveryTargetFor case 3).
-  const outGood = boundProducerOutputToHaul(targets.stockpiles, world, ctx, terrain, e, settler.tribe, here);
-  if (outGood !== null) {
-    const home = world.get(e, JobAssignment).workplace;
-    atOrWalk(world, e, here, interactionCell(world, ctx, terrain, home, here), () =>
-      startPickup(world, ctx, e, settler, home, outGood, carrierCarryCapacity(world, ctx, settler.tribe)),
+  // to storage, never into another producer of the good (deliveryTargetFor case 3).
+  const haul = boundProducerOutputToHaul(
+    targets.stockpiles,
+    world,
+    ctx,
+    terrain,
+    e,
+    settler.jobType,
+    settler.tribe,
+    here,
+  );
+  if (haul !== null) {
+    atOrWalk(world, e, here, interactionCell(world, ctx, terrain, haul.home, here), () =>
+      startPickup(
+        world,
+        ctx,
+        e,
+        settler,
+        haul.home,
+        haul.goodType,
+        carrierCarryCapacity(world, ctx, settler.tribe),
+      ),
     );
     return true;
   }

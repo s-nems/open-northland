@@ -265,22 +265,30 @@ gatherers spawn free (→ flag), never building-assigned, so it isn't exercised 
 **Carrier at a producing building hauls its output OUT (2026-07-12, `fix/farmer-carrier-logistics`):** the
 global carrier rule the user reported — "tragarz wbity w magazyn/HQ jedynie przynosi towary; tragarz wbity
 w produkcję (np. farmę) jednocześnie przynosi towary I odnosi do magazynu". A carrier stationed at a FARM
-was a pure inbound porter: `nearestWorkplaceOutput` only recognises RECIPE workplaces, so a farm's wheat
-(produced via the `farming` block, no recipe) was never hauled and piled up. Fix (`ai-supply.ts`): a new
-`boundProducerOutputToHaul` lets `planPorter` first lift the bound building's finished PRODUCED output
-(`buildingProduces` — the type's `logicproduction` goods) when another store can take it, and
-`deliveryTargetFor` routes that load to the nearest OTHER store (the producer EXCLUDED via a new
-`nearestStoreFor` `exclude` arg, since a no-recipe farm isn't caught by the recipe-producer guard). The
-haul-out is gated to a NON-field-worker (`isFieldWorkerOf`): the FARMER still banks its own reaped sheaf
-INTO the farm (overflowing only when full), only the carrier clears it out — the two-role split. A
-warehouse/HQ carrier (produces nothing) stays inbound-only. Source basis: the two-mode carrier is observed
-original behaviour (no readable oracle); the produced-goods signal is the extracted `produces` list. Golden
-slice byte-identical (no producing-store carrier in it). Tests: 6 cases in `producer-supply.test.ts`
-(pickup, warehouse routing, no farm→farm shuttle, HQ inbound-only contrast, end-to-end drain, and a drain
-with the real Health+FLEE-stance carrier shape). Verified `npm test`/`check`/`build`. **Follow-up:** a
-raw-`spawnSettler` civilian flees at birth then wanders in an enemy-free scene, so a browser acceptance
-scene for the field carrier is finicky — the settled in-game carrier (assigned via the profession UI) is
-unaffected; the user's live sign-off is assigning a carrier to a farm and watching wheat reach a warehouse.
+was a pure inbound porter: `nearestWorkplaceOutput` only recognises RECIPE workplaces, so the sandbox
+farm's wheat was never hauled and piled up. Fix (`ai-supply.ts`): a new `boundProducerOutputToHaul` lets
+`planPorter` first lift the bound building's finished PRODUCED output (`buildingProduces` — the type's
+`logicproduction` goods) when a storage sink can take it, and `deliveryTargetFor` routes that load with
+EVERY producer of the good excluded (`nearestStoreFor` `excludeProducers` — per-entity exclusion of only
+the own farm let two farms shuttle wheat between each other). Both halves key "field producer" on the
+good's `farming` block (`farmWorkGood`), NOT on recipe absence: only the SANDBOX catalog farm is
+recipeless — the pipeline (`fillBuildingRecipes`) synthesizes a recipe for every producing building in
+`ir.json`, so a `recipeOf === undefined` gate would silently no-op under real extracted content. The
+haul-out is gated to a NON-field-worker (`isFieldWorkerOf`, both pickup and delivery): the FARMER still
+banks its own reaped sheaf INTO the farm (overflowing only when full), only the carrier clears it out —
+the two-role split. A warehouse/HQ carrier (produces nothing) stays inbound-only. Source basis: the
+two-mode carrier is observed original behaviour (no readable oracle); the produced-goods signal is the
+extracted `produces` list. Golden slice byte-identical (no producing-store carrier in it). Tests: 9 cases
+in `producer-supply.test.ts` (pickup, warehouse routing, sibling-farm bypass, farm-only no-haul, the
+field-worker guard, HQ inbound-only contrast, end-to-end drain ×2, no-sink idle). Verified
+`npm test`/`check`/`build`. **Follow-ups:** (a) a raw-`spawnSettler` civilian flees at birth then wanders
+in an enemy-free scene, so a browser acceptance scene for the field carrier is finicky — the settled
+in-game carrier (assigned via the profession UI) is unaffected; the user's live sign-off is assigning a
+carrier to a farm and watching wheat reach a warehouse; (b) under REAL extracted content (recipe-carrying
+farm with a carrier worker slot) the carrier is claimed by `boundWorkplaceTarget`/`planProducer` before it
+ever reaches `planPorter`, and `isPorterBoundToStore` (recipe-keyed) excludes it too — re-key that routing
+on the field-producer signal when a real-content economy path lands; (c) `nearestStoreFor` has no tribe
+filter, so a haul can deliver into an enemy store when nearest — audit before multi-tribe economy scenes.
 
 ## Step 7 — polish: chop cadence, adjacent stance, animation timing
 
