@@ -3,7 +3,6 @@ import { collectSpriteScene } from '../src/data/scene/index.js';
 import {
   buildScene,
   depositVisualLevel,
-  drawableEntityRefs,
   ONE,
   PROJECTILE_ARC_PEAK_FRACTION,
   PROJECTILE_ARC_PEAK_MAX_PX,
@@ -714,15 +713,6 @@ describe('collectSpriteScene — the single-pass draw list + liveness set', () =
     );
     expect(scene.items.map((d) => d.ref)).toEqual([1]);
     expect([...scene.liveRefs]).toEqual([1]);
-  });
-
-  it('matches drawableEntityRefs (the thin exported view over the same pass)', () => {
-    const snapshot = snapshotOf([
-      entity(1, 1, 1, { Settler: { tribe: 0 } }),
-      entity(2, 2, 1, { Resource: { goodType: 1 } }),
-      entity(3, 0, 0, {}), // not drawable
-    ]);
-    expect(drawableEntityRefs(snapshot)).toEqual(collectSpriteScene(snapshot).liveRefs);
   });
 
   // The `?map=` static→dynamic handover rule: a virgin map resource is drawn by the RETAINED static

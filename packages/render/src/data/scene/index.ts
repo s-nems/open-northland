@@ -21,7 +21,6 @@ export { depositVisualLevel } from './snapshot-readers/index.js';
 export {
   buildSpriteScene,
   collectSpriteScene,
-  drawableEntityRefs,
   type SpriteScene,
   type SpriteSceneOptions,
 } from './sprite-scene.js';

@@ -150,17 +150,6 @@ export function buildSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOptio
   return collectSpriteScene(snapshot, opts).items;
 }
 
-/**
- * The set of entity ids that draw as a sprite (a drawable marker + a Position) — the liveness set the
- * retained pool reconciles against to DESTROY sprites of entities that have left the snapshot (died),
- * as distinct from ones merely culled off-screen (still live, kept in the pool). A thin view over
- * {@link collectSpriteScene} so the liveness policy has ONE owner (the pool's per-frame path reads the
- * same set from the combined pass instead of calling this). Pure.
- */
-export function drawableEntityRefs(snapshot: WorldSnapshot): ReadonlySet<number> {
-  return collectSpriteScene(snapshot).liveRefs;
-}
-
 /** Per-snapshot memo of {@link enterableStoresOf} — the set is a pure function of the snapshot, and
  *  {@link collectSpriteScene} runs per FRAME while the snapshot changes per TICK, so rebuilding it
  *  each frame was a second full entity pass against the function's own one-pass rule. */
