@@ -37,7 +37,7 @@ import { type MinimapHandle, mountMinimap } from '../hud/minimap/index.js';
 import { buildToolPanelLayout, DEFAULT_UI_SCALE } from '../hud/tool-panel/layout.js';
 import { mountAdminDebug } from './admin-debug/index.js';
 import type { CameraController } from './camera.js';
-import { cameraCenteredOnWorld, screenScale } from './camera.js';
+import { cameraCenteredOnWorld, clientToCanvas, screenScale } from './camera.js';
 import { computeDoorBadges } from './door-badges.js';
 import {
   applyGameSpeed,
@@ -263,10 +263,8 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
 
   // Client (CSS px) → screen px, the ONE conversion the minimap's hit-test/click shares with the world
   // pickers (`hud/` never imports `view/` — injected as options per the hud contract).
-  const clientToScreen = (clientX: number, clientY: number): { x: number; y: number } => {
-    const { sx, sy, rect } = screenScale(canvas, app.renderer.resolution);
-    return { x: (clientX - rect.left) * sx, y: (clientY - rect.top) * sy };
-  };
+  const clientToScreen = (clientX: number, clientY: number): { x: number; y: number } =>
+    clientToCanvas(screenScale(canvas, app.renderer.resolution), clientX, clientY);
   // The bottom-left minimap in the original braided overview frame: whole-map ground + player-coloured
   // unit dots + the camera's view rectangle; a left-click (or drag) in the map hole re-centres the
   // camera on the pointed world spot at the CURRENT zoom. Mounted after the tool panel (draws over its

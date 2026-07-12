@@ -21,7 +21,7 @@ import {
   workFlagOf,
 } from '../game/snapshot.js';
 import { mountUnitPanel, type PortraitBox, type UnitPanel } from '../hud/details-panel/index.js';
-import { screenScale } from './camera.js';
+import { clientToCanvas, screenScale } from './camera.js';
 import { el } from './overlay.js';
 import {
   assignFormation,
@@ -287,8 +287,8 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
 
   /** Client (CSS) coords → WORLD px (through the client→screen scale + the camera inverse). */
   const toWorld = (clientX: number, clientY: number): { x: number; y: number } => {
-    const { sx, sy, rect } = screenScale(canvas, opts.app.renderer.resolution);
-    return screenToWorld(opts.camera(), (clientX - rect.left) * sx, (clientY - rect.top) * sy);
+    const c = clientToCanvas(screenScale(canvas, opts.app.renderer.resolution), clientX, clientY);
+    return screenToWorld(opts.camera(), c.x, c.y);
   };
 
   const changed = (): void => {
