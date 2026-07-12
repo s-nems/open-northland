@@ -155,16 +155,17 @@ export function drawBuilding(
         'white',
       );
     } else {
-      // A workshop's cycle: the output's icon + localized name on the left, then ONE progress bar
-      // filling the REST of the row (user feedback 2026-07-11: the short right-aligned stub read as
-      // broken). One bar is honest — a workplace runs ONE cycle at a time regardless of its worker
-      // count (the ProductionSystem model), so there is no per-worker progress to show.
+      // A workshop's batches: the output's icon + localized name on the first row, then ONE long
+      // progress bar PER in-flight batch (each operator grinds its own independent cycle — a
+      // twin-staffed mill shows two bars), each filling the row from the fixed label column to the
+      // body's edge. An idle workshop draws a single empty bar.
       const p = model.production;
+      const rowH = Math.round(STOCK_ROW_H * s);
       const icon: Rect = {
         x: body.x,
         y: body.y + Math.round(s),
         w: Math.round(STOCK_ICON_W * s),
-        h: Math.round(STOCK_ROW_H * s) - Math.round(2 * s),
+        h: rowH - Math.round(2 * s),
       };
       if (p.goodId !== undefined) chrome.goodIcon(p.goodId, icon);
       chrome.textAt(
@@ -174,15 +175,18 @@ export function drawBuilding(
         'white',
       );
       const barX = body.x + Math.round(PRODUCTION_BAR_LEFT * s);
-      chrome.bar(
-        {
-          x: barX,
-          y: body.y + Math.round((STOCK_ROW_H - BAR_H) * s) / 2,
-          w: body.x + body.w - barX,
-          h: Math.round(BAR_H * s),
-        },
-        p.pct,
-      );
+      const bars = p.pcts.length > 0 ? p.pcts : [0];
+      bars.forEach((pct, i) => {
+        chrome.bar(
+          {
+            x: barX,
+            y: body.y + i * rowH + Math.round((STOCK_ROW_H - BAR_H) * s) / 2,
+            w: body.x + body.w - barX,
+            h: Math.round(BAR_H * s),
+          },
+          pct,
+        );
+      });
     }
   }
 

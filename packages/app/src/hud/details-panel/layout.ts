@@ -412,7 +412,10 @@ export function layoutDetails(
   const buttonGap = Math.round(BUTTON_GAP * s);
   const generalBodyH = Math.round(PREVIEW_H * s);
   const defenceBodyH = model.showDefense ? Math.round(ROW_H * s) : 0;
-  const productionBodyH = model.production !== null ? Math.round(STOCK_ROW_H * s) : 0;
+  // A recipe workshop reserves one row PER in-flight batch (a twin-staffed mill shows two bars — one
+  // per operator's own cycle); idle (no batches) and a farm's field counters keep the single row.
+  const productionRows = model.production?.kind === 'recipe' ? Math.max(1, model.production.pcts.length) : 1;
+  const productionBodyH = model.production !== null ? productionRows * Math.round(STOCK_ROW_H * s) : 0;
   const stockRowCount = model.stock.length;
   const stockCompact = stockRowCount <= MAX_STOCK_ROWS * 2;
   const stockRows = stockCompact ? Math.ceil(stockRowCount / 2) : MAX_STOCK_ROWS;

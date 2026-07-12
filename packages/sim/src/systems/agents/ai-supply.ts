@@ -57,6 +57,12 @@ export function workplaceProductiveIfStaffed(
  * holds — the good, the amount still needed (so the fetch carries exactly the shortfall, "tylko te
  * wymagane"), and the nearest store holding it (Manhattan + ascending-cell-id tie-break, canonical scan).
  *
+ * `restockToCapacity` raises each input's target from the recipe amount (a craftsman fetching just
+ * enough for the next cycle) to the workplace's declared input-slot CAPACITY — the bound CARRIER's
+ * shape: it keeps the mill's wheat store topped up trip after trip so the millers never starve, and
+ * only stops when the slot is full (observed original behaviour: the carrier stocks the workshop, the
+ * craftsman crafts).
+ *
  * The workplace itself is excluded as a source (a producer never pulls its own stock back out); any other
  * positioned {@link Stockpile} that holds the good is a valid source — a warehouse, a flag pile, or even
  * another workplace's output. This is what makes the golden slice untouched: there, the only store that
@@ -71,11 +77,13 @@ export function nearestMissingInputSource(
   here: NodeId,
   workplace: Entity,
   recipe: Recipe,
+  restockToCapacity = false,
 ): { store: Entity; goodType: number; amount: number } | null {
   const stock = world.get(workplace, Stockpile).amounts;
   for (const input of recipe.inputs) {
     const have = stock.get(input.goodType) ?? 0;
-    if (have >= input.amount) continue; // this input is already covered for a cycle
+    const target = restockToCapacity ? stockCapacity(world, ctx, workplace, input.goodType) : input.amount;
+    if (have >= target) continue; // this input is already covered (for a cycle / to the slot's brim)
     let best: Entity | null = null;
     let bestDist = Number.POSITIVE_INFINITY;
     let bestCell = Number.POSITIVE_INFINITY;
@@ -91,7 +99,7 @@ export function nearestMissingInputSource(
         bestCell = cell;
       }
     }
-    if (best !== null) return { store: best, goodType: input.goodType, amount: input.amount - have };
+    if (best !== null) return { store: best, goodType: input.goodType, amount: target - have };
   }
   return null;
 }

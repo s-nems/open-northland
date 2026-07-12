@@ -17,6 +17,7 @@ import type { TerrainGraph } from '../../nav/terrain.js';
 import type { System, SystemContext } from '../context.js';
 import { MILITARY_MODE } from '../readviews/index.js';
 import { canonicalById, isTravelling, NodeBuckets } from '../spatial.js';
+import { isCarrierJob } from '../stores.js';
 import { boundWorkplaceTarget, collectTargets, hasHaulableOutput } from './ai-targets.js';
 import { deStackIdle, type SpacingState } from './destack.js';
 import {
@@ -26,6 +27,7 @@ import {
   planGatherer,
   planPorter,
   planProducer,
+  planWorkshopSupplier,
 } from './drives-economy.js';
 import { collectFarmClaims, planFarmer, releaseFarmTask } from './drives-farming.js';
 import { planNeeds } from './drives-needs.js';
@@ -169,10 +171,26 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // `logicproduction`) farms its fields instead of standing at the station minting the good.
     if (planFarmer(world, ctx, terrain, e, worker, here, targets, farmClaims)) continue;
 
-    // 2a. PRODUCER — a worker bound to a recipe workshop runs its own supply→produce→deliver loop.
+    // 2a. PRODUCER / WORKSHOP SUPPLIER — a worker bound to a recipe workshop. A CARRIER bound there
+    // ferries (top up inputs, carry outputs out — it never operates the craft); a craftsman runs the
+    // supply→produce→deliver loop, leaving the transport to its carrier when one is bound.
     const workplace = boundWorkplaceTarget(world, ctx, e, worker.jobType, worker.tribe);
     if (workplace !== null) {
-      planProducer(world, ctx, terrain, e, worker, here, workplace, targets.stockpiles);
+      if (isCarrierJob(ctx, worker.jobType)) {
+        planWorkshopSupplier(world, ctx, terrain, e, worker, here, workplace, targets.stockpiles);
+      } else {
+        planProducer(
+          world,
+          ctx,
+          terrain,
+          e,
+          worker,
+          here,
+          workplace,
+          targets.stockpiles,
+          targets.carrierSuppliedWorkplaces.has(workplace),
+        );
+      }
       continue;
     }
 

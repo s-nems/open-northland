@@ -115,7 +115,13 @@ describe('selection details panel model', () => {
             Building: { buildingType: BUILDING_JOINERY, tribe: 1, built: ONE, level: 0 },
             Owner: { player: 0 },
             Stockpile: { amounts: [[GOOD_WOOD, 3]] },
-            Production: { elapsed: 5, duration: 20 },
+            // TWO in-flight batches (one per operator) at different progress — the panel bars each.
+            Production: {
+              cycles: [
+                { elapsed: 5, duration: 20 },
+                { elapsed: 10, duration: 20 },
+              ],
+            },
           },
         },
         {
@@ -142,7 +148,7 @@ describe('selection details panel model', () => {
     if (model.kind !== 'building') return;
     expect(model.production?.kind).toBe('recipe');
     if (model.production?.kind !== 'recipe') return;
-    expect(model.production.pct).toBe(25);
+    expect(model.production.pcts).toEqual([25, 50]); // one bar per batch, in cycle (FIFO) order
     expect(model.production.label).toContain('plank x1');
     // The production row carries its output's string id — the icon key the panel draws beside the bar.
     expect(model.production.goodId).toBe('plank');

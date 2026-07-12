@@ -44,6 +44,8 @@ const CARPENTER = 2;
 const CARRIER = 36;
 const HEADQUARTERS = 1;
 const SAWMILL = 2;
+/** Fixture 7: 2 carpenter operator slots + a carrier slot, wood(cap 10) → plank(cap 20). */
+const TWIN_MILL = 8;
 const VIKING = 1;
 const PICKUP_ATOMIC = 22;
 
@@ -171,7 +173,7 @@ describe('producer self-service — fetching a missing recipe input', () => {
   it('stays on the station while a cycle is already running (does not wander off to fetch)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     const mill = buildingAt(sim, SAWMILL, 3, 0);
-    sim.world.add(mill, Production, { elapsed: 2, duration: 20 }); // a cycle in flight
+    sim.world.add(mill, Production, { cycles: [{ elapsed: 2, duration: 20 }] }); // a cycle in flight
     buildingAt(sim, HEADQUARTERS, 5, 0, [[WOOD, 3]]); // wood is available elsewhere…
     const smith = settlerAt(sim, 3, 0, CARPENTER, mill);
 
@@ -186,7 +188,7 @@ describe('producer self-service — fetching a missing recipe input', () => {
   it('works INSIDE the station while a cycle runs (the render-hiding Resting marker)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     const mill = buildingAt(sim, SAWMILL, 3, 0);
-    sim.world.add(mill, Production, { elapsed: 2, duration: 20 });
+    sim.world.add(mill, Production, { cycles: [{ elapsed: 2, duration: 20 }] });
     const smith = settlerAt(sim, 3, 0, CARPENTER, mill);
 
     aiSystem(sim.world, ctxOf(sim));
@@ -226,6 +228,57 @@ describe('producer self-service — hauling the finished output', () => {
     const atomic = sim.world.get(smith, CurrentAtomic);
     expect(atomic.atomicId).toBe(PICKUP_ATOMIC);
     expect(atomic.effect).toMatchObject({ kind: 'pickup', goodType: PLANK, from: mill });
+  });
+
+  it('a bound CARRIER tops the input slot up toward CAPACITY (not just one cycle) and never crafts', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    // The twin mill (fixture 7: 2 carpenter slots + a carrier slot, wood cap 10) holds ONE wood —
+    // enough for the next cycle, so a CRAFTSMAN would stay and produce. The bound CARRIER instead
+    // keeps ferrying: its restock target is the input slot's capacity, so it heads for the HQ's wood.
+    const mill = buildingAt(sim, TWIN_MILL, 0, 0, [[WOOD, 1]]);
+    const hq = buildingAt(sim, HEADQUARTERS, 3, 0, [[WOOD, 5]]);
+    const porter = settlerAt(sim, 3, 0, CARRIER, mill); // standing on the source already
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    const atomic = sim.world.get(porter, CurrentAtomic);
+    expect(atomic.atomicId).toBe(PICKUP_ATOMIC);
+    // One carry-load per trip (on foot), out of the HQ — topping up the mill's 10-slot, not crafting.
+    expect(atomic.effect).toEqual({ kind: 'pickup', goodType: WOOD, amount: 1, from: hq });
+  });
+
+  it('a bound CARRIER hauls the finished output out once the inputs are covered', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    // Input slot full (10/10), a finished plank waiting — the carrier's next trip is the output run.
+    const mill = buildingAt(sim, TWIN_MILL, 0, 0, [
+      [WOOD, 10],
+      [PLANK, 1],
+    ]);
+    buildingAt(sim, HEADQUARTERS, 3, 0); // the sink that can take the plank
+    const porter = settlerAt(sim, 0, 0, CARRIER, mill);
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    const atomic = sim.world.get(porter, CurrentAtomic);
+    expect(atomic.atomicId).toBe(PICKUP_ATOMIC);
+    expect(atomic.effect).toMatchObject({ kind: 'pickup', goodType: PLANK, from: mill });
+  });
+
+  it('a craftsman leaves fetching AND hauling to its bound carrier (waits inside instead)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    // The mill is starved (no wood) and holds a haulable plank; the HQ has wood — both transport
+    // branches WOULD fire. But a carrier is bound to this mill, so the transport is its job: the
+    // craftsman stays put inside (Resting), it neither fetches nor hauls.
+    const mill = buildingAt(sim, TWIN_MILL, 0, 0, [[PLANK, 1]]);
+    buildingAt(sim, HEADQUARTERS, 3, 0, [[WOOD, 5]]);
+    settlerAt(sim, 5, 0, CARRIER, mill); // the bound carrier (elsewhere, mid-errand)
+    const smith = settlerAt(sim, 0, 0, CARPENTER, mill);
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(smith, MoveGoal)).toBe(false);
+    expect(sim.world.has(smith, CurrentAtomic)).toBe(false);
+    expect(sim.world.tryGet(smith, Resting)).toEqual({ at: mill });
   });
 
   it('never routes a hauled output onto a full or foreign-good ground heap (the per-tile cap)', () => {

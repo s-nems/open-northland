@@ -125,6 +125,8 @@ export const millScene: SceneDefinition = {
     'Podgląd budynku w panelu trzyma STAŁE kadrowanie — nie przybliża się i nie oddala w rytm obrotu skrzydeł.',
     'Panel młyna: sekcja Produkcja z ikoną mąki, polską nazwą („Mąka x1") i DŁUGIM paskiem postępu przez resztę wiersza; Magazyn z DWOMA wierszami zawsze w kolejności Pszenica (x/10), Mąka (x/20) — nigdy zamienionymi.',
     'Mąka BANKUJE SIĘ w młynie (licznik rośnie po każdym cyklu); młynarz wynosi ją do magazynu obok dopiero, gdy brakuje miejsca na kolejną — i nigdy nie odkłada jej na ziemię (żadna kupka na ziemi nie przekracza 5 sztuk jednego dobra).',
+    'DWÓCH młynarzy w środku miele 2× szybciej niż jeden (pasek Produkcji płynie dwa razy szybciej, gdy obaj są w młynie; zwalnia do 1×, gdy jeden wyjdzie po zboże).',
+    'Po przypisaniu TRAGARZA (PPM na młynie wolnym osadnikiem): tragarz w kółko donosi zboże do pełna (10) i wynosi mąkę do magazynu, a młynarze NIE wychodzą — siedzą w środku i mielą bez przerwy.',
     'Pracownicy w panelu: Młynarz 0..2/2 i Tragarz 0..1/1 (obsadzone sloty z danych oryginału).',
   ],
   checks: [

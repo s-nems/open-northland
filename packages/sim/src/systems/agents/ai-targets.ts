@@ -7,6 +7,7 @@ import {
   JobAssignment,
   Position,
   Resource,
+  Settler,
   Stockpile,
   stockpileEntries,
   UnderConstruction,
@@ -24,6 +25,7 @@ import { canonicalResources, resourceHarvestAtomics, resourcesNearNode } from '.
 import { canonicalById, manhattan } from '../spatial.js';
 import {
   buildingWorkerJobs,
+  isCarrierJob,
   isFood,
   isTemple,
   isYardHeap,
@@ -88,6 +90,14 @@ export interface TargetCandidates {
    * `content.goods.find` per pile per settler (the content-index anti-pattern, packages/sim/AGENTS.md).
    */
   readonly harvestAtomicByGood: ReadonlyMap<number, number>;
+  /**
+   * Workplaces with a CARRIER bound to them (a {@link JobAssignment} whose settler runs the transport
+   * trade — {@link isCarrierJob}) — a membership set (no ordering decision rides on it). A craftsman
+   * bound to one of these leaves the fetching/hauling to its carrier and stays on the craft (the
+   * "tragarz przynosi i odnosi, młynarz pracuje" division); built once per tick so the check is O(1)
+   * per idle producer instead of an O(settlers) scan each.
+   */
+  readonly carrierSuppliedWorkplaces: ReadonlySet<Entity>;
 }
 
 /**
@@ -104,6 +114,14 @@ export function collectTargets(world: World, ctx: SystemContext): TargetCandidat
   for (const g of ctx.content.goods) {
     if (g.atomics.harvest !== undefined) harvestAtomicByGood.set(g.typeId, g.atomics.harvest);
   }
+  // Workplaces a bound CARRIER supplies — a membership set (see TargetCandidates doc), one pass over
+  // the bound settlers per tick.
+  const carrierSuppliedWorkplaces = new Set<Entity>();
+  for (const e of world.query(Settler, JobAssignment)) {
+    const jobType = world.get(e, Settler).jobType;
+    if (jobType === null || !isCarrierJob(ctx, jobType)) continue;
+    carrierSuppliedWorkplaces.add(world.get(e, JobAssignment).workplace);
+  }
   return {
     // Memoized against the Resource store generation (spatial.ts): a decoded map holds ~17k standing
     // nodes, and re-sorting them here EVERY tick was a milliseconds-scale cost on its own.
@@ -114,6 +132,7 @@ export function collectTargets(world: World, ctx: SystemContext): TargetCandidat
     groundDrops: canonicalById(world.query(GroundDrop, Stockpile, Position)),
     crops: canonicalById(world.query(Crop, Position)),
     harvestAtomicByGood,
+    carrierSuppliedWorkplaces,
   };
 }
 
