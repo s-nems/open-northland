@@ -5,7 +5,7 @@ import type { SystemContext } from '../../context.js';
 import { farmWorkGood } from '../../economy/farming.js';
 import { manhattan } from '../../spatial.js';
 import { buildingProduces, lowestStockedGood } from '../../stores.js';
-import { interactionCell, nearestStoreFor } from '../targets/index.js';
+import { closer, interactionCell, nearestStoreFor } from '../targets/index.js';
 import { isFieldWorkerOf, isStorageSink } from './store-policy.js';
 
 /**
@@ -51,7 +51,7 @@ export function nearestGroundPile(
     if (!canDeliver(good)) continue; // every store full for this good — leave it, try another good
     const cell = interactionCell(world, ctx, terrain, e, here);
     const dist = manhattan(terrain, here, cell);
-    if (dist < bestDist || (dist === bestDist && cell < bestCell)) {
+    if (closer(dist, cell, bestDist, bestCell)) {
       best = { pile: e, goodType: good };
       bestDist = dist;
       bestCell = cell;

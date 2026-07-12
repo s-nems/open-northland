@@ -7,7 +7,7 @@ import type { FarmingSpec } from '../../economy/farming.js';
 import { dynamicBlockedCells } from '../../footprint/index.js';
 import { manhattan } from '../../spatial.js';
 import { lowestStockedGood } from '../../stores.js';
-import { interactionCell, type TargetCandidates } from '../targets/index.js';
+import { closer, interactionCell, type TargetCandidates } from '../targets/index.js';
 import type { FarmClaims, SowScan } from './claims.js';
 
 /**
@@ -45,7 +45,7 @@ export function nearestFarmSheaf(
     if (claims.nodes.has(cell)) continue; // a colleague is already carrying this one off
     if (manhattan(terrain, anchor, cell) > spec.farming.fieldRadius) continue; // beyond the farm's fields
     const dist = manhattan(terrain, here, cell);
-    if (dist < bestDist || (dist === bestDist && cell < bestCell)) {
+    if (closer(dist, cell, bestDist, bestCell)) {
       best = e;
       bestDist = dist;
       bestCell = cell;

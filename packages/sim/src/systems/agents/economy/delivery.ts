@@ -16,7 +16,7 @@ import { isPorterBoundToStore } from './haul-targets.js';
 import { deliveryTargetFor } from './routing.js';
 
 /** Deposit a carried load, or hold/drop it deterministically when no eligible sink exists. */
-export function planDelivery(plan: PlannerContext, load: { goodType: number; amount: number }): boolean {
+export function planDelivery(plan: PlannerContext, load: { goodType: number; amount: number }): void {
   const { world, ctx, terrain, entity, here, targets } = plan;
   const worker = plan;
   const store = deliveryTargetFor(
@@ -43,7 +43,7 @@ export function planDelivery(plan: PlannerContext, load: { goodType: number; amo
       farmWorkGood(world, ctx, workplace) === null &&
       dropCarryAtOwnTile(world, entity) > 0
     ) {
-      return true;
+      return;
     }
     if (
       workplace !== undefined &&
@@ -55,7 +55,7 @@ export function planDelivery(plan: PlannerContext, load: { goodType: number; amo
         world.add(entity, Resting, { at: workplace }),
       );
     }
-    return true;
+    return;
   }
 
   const cell = world.has(store, DeliveryFlag)
@@ -72,5 +72,4 @@ export function planDelivery(plan: PlannerContext, load: { goodType: number; amo
       store,
     ),
   );
-  return true;
 }
