@@ -1,5 +1,5 @@
 import type { FogView, SimEvent, WorldSnapshot } from '@vinland/sim';
-import { type Application, Container, RenderTexture, Sprite, Texture, type TextureSource } from 'pixi.js';
+import { type Application, Container, Sprite, Texture, type TextureSource } from 'pixi.js';
 import { type ElevationField, makeElevationField } from '../data/elevation.js';
 import { fogTileVisible } from '../data/fog.js';
 import { type FogGhost, FogGhostStore } from '../data/fog-ghosts.js';
@@ -19,6 +19,7 @@ import { MapObjectLayer } from './map-objects/index.js';
 import type { SpriteSheet, TerrainTextureSet } from './pixi-app.js';
 import { type PlacementGhost, PlacementGhostLayer } from './placement-ghost.js';
 import { type PlacementOverlayFrame, PlacementOverlayLayer } from './placement-overlay.js';
+import { type PortraitInsetFrame, PortraitInsetLayer } from './portrait-inset.js';
 import { SelectionLayer } from './selection-layer.js';
 import { type EntityBounds, SpritePool } from './sprite-pool/index.js';
 import { TerrainLayer } from './terrain/index.js';
@@ -27,38 +28,6 @@ import { TextureCache } from './texture-cache.js';
 /** Shared empty selection so the common no-selection `update` allocates nothing. */
 const NO_SELECTION: ReadonlySet<number> = new Set();
 const NO_BADGES: readonly DoorBadge[] = [];
-
-/**
- * The details-panel portrait "observation window": a live cutout of the world centred on the selected
- * entity, drawn into the panel's Ogólne/preview box each frame. `rect` is the box in SCREEN px (the
- * panel's on-screen preview area, bevel-inset); `entityRef` is the entity to centre on. `kind` picks the
- * framing: a `building` FITS its (static) drawn bounds in the box — a big ship zooms out, a small hut in;
- * a `settler` frames a FIXED feet-anchored window, so the cutout tracks only the unit's POSITION and never
- * jitters with the swaying idle "look-around" animation (whose drawn bounds breathe every frame).
- */
-export interface PortraitInsetFrame {
-  readonly rect: { readonly x: number; readonly y: number; readonly w: number; readonly h: number };
-  readonly entityRef: number;
-  readonly kind: 'settler' | 'building';
-}
-
-/** A BUILDING's drawn bounds fill this fraction of the portrait box (the rest is surrounding-world margin). */
-const PORTRAIT_FILL = 0.72;
-/** Zoom-out floor — a huge building still can't shrink past this (keeps the cutout legible). */
-const PORTRAIT_MIN_SCALE = 0.2;
-/** Zoom-in ceiling — a tiny building can't blow up past this (avoids a pixel-mush close-up). */
-const PORTRAIT_MAX_SCALE = 2.5;
-/**
- * World-space height framed for a SETTLER portrait. A viking body is ~32 world units tall; the extra is
- * head/foot margin (and clearance for the raised-arm "look-around" wait frame). A NAMED approximation,
- * eye-calibrated — the settler window is a fixed feet-anchored frame (not a fit to the breathing bounds),
- * so it stays rock-steady while the unit stands and only pans as the unit's feet actually move. Framing
- * MORE world height pulls the camera back (scale = h / this), so the body sits with a little breathing
- * room in the box rather than filling it edge-to-edge — the "too close" the earlier 46 read as.
- */
-const SETTLER_VIEW_HEIGHT = 58;
-/** Where the feet anchor sits down the settler portrait (body rises into the upper part, a little ground below). */
-const SETTLER_FEET_FRACTION = 0.84;
 
 /**
  * The RETAINED-mode world renderer — the scalable replacement for the old immediate-mode `renderScene`,
@@ -145,24 +114,17 @@ export class WorldRenderer {
   /** The current map's terrain-height field — lifts the ground mesh + every projected item, and its
    *  `maxLift` is the cull pad. Flat (zero lift) until {@link setTerrain} loads a map carrying `elevation`. */
   private elevation: ElevationField = makeElevationField(undefined, 0, 0);
-  /**
-   * The details-panel portrait "observation window" — a live cutout of the world centred on the selected
-   * entity. Owned here because it needs a SECOND render of {@link worldLayer} each frame (re-aimed at the
-   * unit), just before the main stage render. The sprite is a stage child raised over the (later-mounted,
-   * frequently-rebuilt) details panel each frame it shows. Null/hidden when nothing is selected.
-   */
-  private portraitFrame: PortraitInsetFrame | null = null;
-  private portraitTexture: RenderTexture | null = null;
-  private readonly portraitSprite = new Sprite();
-  /** The main camera from the last {@link update}, so the portrait inset can restore the screen-space
-   *  team-colour meshes it re-places for its own re-aimed render. */
-  private lastCamera: Camera = { offsetX: 0, offsetY: 0, scale: 1 };
+  /** The details-panel portrait "observation window" — a live cutout of the world re-aimed at the selected
+   *  entity, rendered into the panel's box each frame (its own second {@link worldLayer} render). See
+   *  {@link PortraitInsetLayer}. */
+  private readonly portrait: PortraitInsetLayer;
 
   constructor(app: Application, opts?: { readonly sheet?: SpriteSheet | undefined }) {
     this.app = app;
     this.spriteLayer.sortableChildren = true;
     this.mapObjects = new MapObjectLayer(this.spriteLayer, this.textureCache);
     this.pool = new SpritePool(this.spriteLayer, this.textureCache, opts?.sheet);
+    this.portrait = new PortraitInsetLayer(app, this.worldLayer, this.pool);
     this.fog = new FogLayer();
     this.placementOverlay = new PlacementOverlayLayer(app.renderer);
     // The ghost joins the DEPTH-SORTED sprite layer so it occludes like the real house would.
@@ -198,10 +160,9 @@ export class WorldRenderer {
     app.stage.addChild(this.pauseWash);
     // The HUD is pinned (NOT under the camera), so it's a direct child of the stage.
     app.stage.addChild(this.hud.container);
-    // The portrait observation window sits over everything (it fills the details panel's box hole); it is
-    // re-raised above the frequently-rebuilt panel each frame it shows — see drawPortraitInset.
-    this.portraitSprite.visible = false;
-    app.stage.addChild(this.portraitSprite);
+    // The portrait observation window sits over everything (it fills the details panel's box hole); the
+    // layer mounts its own stage-child sprite and re-raises it above the frequently-rebuilt panel each
+    // frame it shows — see {@link PortraitInsetLayer}.
   }
 
   /** Show/hide the paused-game wash — the app's loop control drives this alongside the sim pause. */
@@ -325,7 +286,6 @@ export class WorldRenderer {
     flagged: ReadonlySet<number> = NO_SELECTION,
   ): void {
     // Camera: the world layer's own transform (screen = world*scale + offset).
-    this.lastCamera = camera;
     this.worldLayer.scale.set(camera.scale ?? 1);
     this.worldLayer.position.set(camera.offsetX, camera.offsetY);
     // Cull to the framed viewport (grown to cover tall sprites). Elevation lifts ground + sprites UP by
@@ -406,7 +366,7 @@ export class WorldRenderer {
     // The portrait inset is a SECOND render of the world (re-aimed at the selected unit) into the panel's
     // box texture — must run after the pool reconcile above (so it uses this frame's positions) and before
     // the main stage render below (so the on-stage inset sprite shows this frame's cutout).
-    this.drawPortraitInset();
+    this.portrait.draw(camera);
     this.app.render();
   }
 
@@ -414,103 +374,11 @@ export class WorldRenderer {
    * Set (or clear) the details-panel portrait "observation window" — a live cutout of the world centred on
    * the selected entity, rendered into the panel's box each frame. The app passes the box rect + entity ref
    * each frame (null when the selection has no portrait — multi-select, a building-less pick, nothing); the
-   * actual second render happens in {@link update}, just before the main stage render.
+   * actual second render happens in {@link update} (via {@link PortraitInsetLayer.draw}), just before the
+   * main stage render.
    */
   setPortraitInset(frame: PortraitInsetFrame | null): void {
-    this.portraitFrame = frame;
-  }
-
-  /**
-   * The inset camera framing (world centre + px-per-world scale) for the portrait's entity, or `null` when
-   * it wasn't drawn this frame (off-screen / culled). A BUILDING fits its static drawn bounds in the box; a
-   * SETTLER frames a FIXED window off its stable feet anchor (never the swaying animation bounds), so a
-   * standing unit's cutout holds still and only pans when its feet actually move.
-   */
-  private portraitFraming(
-    f: PortraitInsetFrame,
-    w: number,
-    h: number,
-  ): { cx: number; cy: number; scale: number } | null {
-    if (f.kind === 'settler') {
-      const anchor = this.pool.anchorOf(f.entityRef);
-      if (anchor === undefined) return null;
-      // Scale a nominal body height to the box height, centre on the feet (raised so the body fills the
-      // upper part). Position-only: no bounds term, so the idle sway can't move or resize the cutout.
-      return {
-        cx: anchor.x,
-        cy: anchor.y - SETTLER_VIEW_HEIGHT * (SETTLER_FEET_FRACTION - 0.5),
-        scale: h / SETTLER_VIEW_HEIGHT,
-      };
-    }
-    const bounds = this.pool.boundsOf(f.entityRef);
-    if (bounds === undefined) return null;
-    // Centre on the bounds and scale to FIT them in the box (a big building zooms out, a small one in).
-    const cx = (bounds.minX + bounds.maxX) / 2;
-    const cy = (bounds.minY + bounds.maxY) / 2;
-    const boundsW = Math.max(1, bounds.maxX - bounds.minX);
-    const boundsH = Math.max(1, bounds.maxY - bounds.minY);
-    const scale = Math.max(
-      PORTRAIT_MIN_SCALE,
-      Math.min(PORTRAIT_MAX_SCALE, Math.min(w / boundsW, h / boundsH) * PORTRAIT_FILL),
-    );
-    return { cx, cy, scale };
-  }
-
-  /**
-   * Render the portrait observation window: re-aim {@link worldLayer} onto the selected entity, render it to
-   * the inset texture, then restore the main camera (the main stage render draws with the restored transform).
-   * The framing ({@link portraitFraming}) is building-fit or settler-fixed; if the entity wasn't drawn this
-   * frame (off-screen/culled) the inset hides and the panel placeholder shows.
-   */
-  private drawPortraitInset(): void {
-    const f = this.portraitFrame;
-    if (f === null || f.rect.w < 1 || f.rect.h < 1) {
-      this.portraitSprite.visible = false;
-      return;
-    }
-    const w = Math.round(f.rect.w);
-    const h = Math.round(f.rect.h);
-    const framing = this.portraitFraming(f, w, h);
-    if (framing === null) {
-      this.portraitSprite.visible = false;
-      return;
-    }
-    if (
-      this.portraitTexture === null ||
-      this.portraitTexture.width !== w ||
-      this.portraitTexture.height !== h
-    ) {
-      this.portraitTexture?.destroy(true);
-      this.portraitTexture = RenderTexture.create({
-        width: w,
-        height: h,
-        resolution: this.app.renderer.resolution,
-      });
-      this.portraitSprite.texture = this.portraitTexture;
-    }
-    const { cx, cy, scale } = framing;
-    const insetCamera: Camera = { offsetX: w / 2 - cx * scale, offsetY: h / 2 - cy * scale, scale };
-    const savedScale = this.worldLayer.scale.x;
-    const savedX = this.worldLayer.position.x;
-    const savedY = this.worldLayer.position.y;
-    // Plain sprites + terrain ride the worldLayer transform; the screen-space team-colour character meshes
-    // must be re-placed for the inset camera (they can't ride it) AND flipped upright for the bottom-up
-    // render texture, then restored (main camera, no flip) after.
-    this.pool.placePalettedFor(insetCamera, w, h, true);
-    this.worldLayer.scale.set(scale);
-    this.worldLayer.position.set(insetCamera.offsetX, insetCamera.offsetY);
-    this.app.renderer.render({ container: this.worldLayer, target: this.portraitTexture, clear: true });
-    this.worldLayer.scale.set(savedScale);
-    this.worldLayer.position.set(savedX, savedY);
-    this.pool.placePalettedFor(this.lastCamera, this.app.screen.width, this.app.screen.height, false);
-
-    this.portraitSprite.position.set(f.rect.x, f.rect.y);
-    this.portraitSprite.width = w;
-    this.portraitSprite.height = h;
-    this.portraitSprite.visible = true;
-    // The details panel mounts AFTER this renderer and re-adds its root to the stage top on every rebuild
-    // (≈4 Hz), so raise the inset above it EVERY shown frame — otherwise the baked panel covers the cutout.
-    this.app.stage.addChild(this.portraitSprite);
+    this.portrait.set(frame);
   }
 
   /**
@@ -588,8 +456,7 @@ export class WorldRenderer {
     this.worldLayer.destroy({ children: true });
     this.pauseWash.destroy(); // the shared Texture.WHITE itself is left alone
     this.hud.destroy();
-    this.portraitSprite.destroy();
-    this.portraitTexture?.destroy(true);
+    this.portrait.destroy();
     this.textureCache.clear();
   }
 }
