@@ -149,6 +149,7 @@ export {
 } from './gpu/pixi-app.js';
 export type { PlacementGhost } from './gpu/placement-ghost.js';
 export type { PlacementOverlayCell, PlacementOverlayFrame } from './gpu/placement-overlay.js';
+export type { PortraitInsetFrame } from './gpu/portrait-inset.js';
 export {
   compactResolvedStockpileLayers,
   type EntityBounds,
@@ -172,7 +173,6 @@ export {
   syntheticAtlasFrames,
 } from './gpu/synthetic-atlas.js';
 export { flatTileColour } from './gpu/terrain/terrain-layer.js';
-export type { PortraitInsetFrame } from './gpu/world-renderer.js';
 export { SPRITE_CULL_MARGIN, WorldRenderer } from './gpu/world-renderer.js';
 
 /*
