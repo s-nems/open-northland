@@ -234,6 +234,12 @@ function nearestConstructionSiteNeeding(
  * {@link nearestStoreFor}'s building-store sink. Nearest by Manhattan + ascending-cell-id (canonical
  * scan); within the chosen pile the good is its lowest-id stocked good ({@link stockpileEntries}, never
  * raw Map order). The porter then delivers the load through {@link deliveryTargetFor} to its warehouse.
+ *
+ * A pile is skipped when **no store can currently take its good** (every warehouse full for it): lifting it
+ * would just make the porter hold a load it can't deposit, so instead it leaves that good on the ground and
+ * collects the next DELIVERABLE pile — "the store is full of wood, so stop hauling wood and fetch something
+ * else" (the same deliverability gate {@link nearestWorkplaceOutput} applies to workplace output). The
+ * check is memoised per good — its deliverability is the same for every pile of that good in one scan.
  */
 export function nearestGroundPile(
   candidates: readonly Entity[],
@@ -245,12 +251,23 @@ export function nearestGroundPile(
   let best: { pile: Entity; goodType: number } | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
   let bestCell = Number.POSITIVE_INFINITY;
+  const deliverable = new Map<number, boolean>();
+  const canDeliver = (good: number, from: NodeId): boolean => {
+    const cached = deliverable.get(good);
+    if (cached !== undefined) return cached;
+    // Only `!== null` is used, which is independent of `from` (a good is deliverable if ANY store has
+    // room), so caching by good alone stays deterministic across piles.
+    const ok = nearestStoreFor(candidates, world, ctx, terrain, from, good) !== null;
+    deliverable.set(good, ok);
+    return ok;
+  };
   for (const e of candidates) {
     if (world.has(e, Building)) continue; // a building store isn't a loose ground pile
     if (!world.has(e, Stockpile) || !world.has(e, Position)) continue;
     const good = lowestStockedGood(world.get(e, Stockpile));
     if (good === null) continue; // an empty pile is nothing to collect
     const cell = interactionCell(world, ctx, terrain, e, here);
+    if (!canDeliver(good, cell)) continue; // every store full for this good — leave it, try another good
     const dist = manhattan(terrain, here, cell);
     if (dist < bestDist || (dist === bestDist && cell < bestCell)) {
       best = { pile: e, goodType: good };

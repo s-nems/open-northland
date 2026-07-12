@@ -3,6 +3,7 @@ import {
   Building,
   Carrying,
   CurrentAtomic,
+  JobAssignment,
   MoveGoal,
   PathFollow,
   PathRequest,
@@ -48,6 +49,7 @@ beforeEach(() => {
   Building.store.clear();
   Stockpile.store.clear();
   Carrying.store.clear();
+  JobAssignment.store.clear();
   CurrentAtomic.store.clear();
   MoveGoal.store.clear();
   PathFollow.store.clear();
@@ -166,6 +168,32 @@ describe('carrier — choosing what to haul', () => {
 
     expect(sim.world.get(pile, Stockpile).amounts.get(PLANK)).toBe(3); // the pile never grew
     expect(sim.world.get(carrier, Carrying).amount).toBe(1); // the carrier still holds its load
+  });
+
+  it('a porter skips a good its store is full of and hauls the deliverable one (limit reached → next good)', () => {
+    // A warehouse FULL of wood (150/150) but with room for planks; a porter bound to it; two loose piles —
+    // wood (nearer, but the store is full of it) and plank (farther, deliverable). "Limit is limit": the
+    // porter must STOP collecting wood entirely and fetch the plank instead — not loop, not stall.
+    const WOOD = 1;
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    const wh = sim.world.create();
+    sim.world.add(wh, Position, { x: fx.fromInt(7), y: fx.fromInt(0) });
+    sim.world.add(wh, Building, { buildingType: 7, tribe: VIKING, built: ONE, level: 0 }); // warehouse, stocks 1..6
+    sim.world.add(wh, Stockpile, { amounts: new Map([[WOOD, 150]]) }); // full for wood (cap 150)
+    const porter = carrierAt(sim, 0, 0);
+    sim.world.add(porter, JobAssignment, { workplace: wh }); // bound → a porter
+    const woodPile = sim.world.create();
+    sim.world.add(woodPile, Position, { x: fx.fromInt(2), y: fx.fromInt(0) });
+    sim.world.add(woodPile, Stockpile, { amounts: new Map([[WOOD, 3]]) });
+    const plankPile = sim.world.create();
+    sim.world.add(plankPile, Position, { x: fx.fromInt(4), y: fx.fromInt(0) });
+    sim.world.add(plankPile, Stockpile, { amounts: new Map([[PLANK, 3]]) });
+
+    for (let i = 0; i < 300; i++) sim.step();
+
+    expect(sim.world.get(wh, Stockpile).amounts.get(PLANK) ?? 0).toBe(3); // all the plank was hauled in
+    expect(sim.world.get(woodPile, Stockpile).amounts.get(WOOD)).toBe(3); // the full good was left untouched
+    expect(sim.world.has(porter, Carrying)).toBe(false); // the porter isn't stuck holding a surplus
   });
 });
 
