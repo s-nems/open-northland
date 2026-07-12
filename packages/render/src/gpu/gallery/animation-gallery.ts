@@ -1,5 +1,6 @@
 import { type Application, Container, Graphics, Sprite, Text, type TextureSource } from 'pixi.js';
 import type { Camera } from '../../data/iso.js';
+import { lookupFrame } from '../../data/sprites/index.js';
 import { PalettedSprite } from '../paletted-sprite.js';
 import type { SpriteLayer } from '../pixi-app.js';
 import { TextureCache } from '../texture-cache.js';
@@ -198,8 +199,8 @@ export class AnimationGallery {
         if (layer === undefined || spr === undefined) continue;
         // Layer 0 is the body; the rest are head overlays, which may borrow another sequence's head bob.
         const bob = i === 0 ? bodyBob : headBobId(cell.clip, bodyBob);
-        const frame = layer.atlas.frames.get(bob);
-        if (frame === undefined || frame.width === 0 || frame.height === 0) {
+        const frame = lookupFrame(layer.atlas, bob);
+        if (frame === null) {
           spr.visible = false;
           continue;
         }

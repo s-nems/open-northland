@@ -5,6 +5,7 @@
  */
 import { WALK_TICKS_PER_CELL } from '@vinland/sim';
 import { TILE_HALF_W } from '../../data/iso.js';
+import { clamp01, lerp } from '../../data/math.js';
 
 /**
  * World-px jump between two consecutive tick anchors past which the motion track SNAPS instead of
@@ -83,7 +84,7 @@ export function trackMotion(m: MotionTrack, tick: number, x: number, y: number, 
     m.y = y;
     m.tick = tick;
   }
-  const a = alpha < 0 ? 0 : alpha > 1 ? 1 : alpha;
-  m.drawX = m.prevX + (m.x - m.prevX) * a;
-  m.drawY = m.prevY + (m.y - m.prevY) * a;
+  const a = clamp01(alpha);
+  m.drawX = lerp(m.prevX, m.x, a);
+  m.drawY = lerp(m.prevY, m.y, a);
 }

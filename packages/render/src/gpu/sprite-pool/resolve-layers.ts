@@ -1,10 +1,12 @@
 import type { TextureSource } from 'pixi.js';
+import { clamp01 } from '../../data/math.js';
 import type { DrawItem } from '../../data/scene/index.js';
 import {
   type AtlasFrame,
   type BuildingDraw,
   bobKey,
   finishedBuildingBobKeys,
+  lookupFrame,
   pickByJob,
   resolveBuildingDraw,
   resolveBuildingOverlayDraw,
@@ -126,7 +128,7 @@ export function resolveLayers(
       // hidden — a fresh site shows just its grey ground plot (the ConstructionPlotLayer), and the scaffold
       // then rises from nothing as the first swings land.
       const finishedKeys = finishedBuildingBobKeys(sheet.bindings.building);
-      const reveal = Math.max(0, Math.min(1, (item.builtPct ?? 0) / 100));
+      const reveal = clamp01((item.builtPct ?? 0) / 100);
       const layers: ResolvedLayer[] = [];
       for (const draw of stack) {
         if (finishedKeys.has(bobKey(draw))) continue; // a finished building sprite — only at 100%
@@ -207,8 +209,8 @@ export function resolveLayers(
   const kindLayer: SpriteLayer | undefined =
     item.kind === 'tile' ? undefined : sheet.kindLayers?.[item.kind as SpriteKind];
   if (kindLayer !== undefined) {
-    const frame = kindLayer.atlas.frames.get(bobId);
-    if (frame === undefined || frame.width === 0 || frame.height === 0) return null;
+    const frame = lookupFrame(kindLayer.atlas, bobId);
+    if (frame === null) return null;
     const scale = sheet.kindScales?.[item.kind as SpriteKind] ?? 1;
     const body = { source: kindLayer.source, frame, scale };
     return buildingOverlay === null ? [body] : [body, buildingOverlay];
@@ -218,8 +220,8 @@ export function resolveLayers(
   const id = bobId;
   const layers: ResolvedLayer[] = [];
   const add = (layer: SpriteLayer): void => {
-    const frame = layer.atlas.frames.get(id);
-    if (frame !== undefined && frame.width > 0 && frame.height > 0) {
+    const frame = lookupFrame(layer.atlas, id);
+    if (frame !== null) {
       layers.push({ source: layer.source, frame, scale: 1 });
     }
   };
@@ -240,15 +242,15 @@ function layeredLayerFor(sheet: SpriteSheet, kind: SpriteKind, draw: BuildingDra
   if (draw.layer !== undefined) {
     const family = sheet.families?.[draw.layer];
     if (family === undefined) return null; // unloaded named family — no wrong-bob borrow
-    const frame = family.atlas.frames.get(draw.bob);
-    if (frame === undefined || frame.width === 0 || frame.height === 0) return null;
+    const frame = lookupFrame(family.atlas, draw.bob);
+    if (frame === null) return null;
     const scale = sheet.familyScales?.[draw.layer] ?? sheet.kindScales?.[kind] ?? 1;
     return { source: family.source, frame, scale };
   }
   const kindLayer = sheet.kindLayers?.[kind];
   if (kindLayer === undefined) return null;
-  const frame = kindLayer.atlas.frames.get(draw.bob);
-  if (frame === undefined || frame.width === 0 || frame.height === 0) return null;
+  const frame = lookupFrame(kindLayer.atlas, draw.bob);
+  if (frame === null) return null;
   return { source: kindLayer.source, frame, scale: sheet.kindScales?.[kind] ?? 1 };
 }
 
@@ -268,8 +270,8 @@ function resolveCharacterLayers(
   const char = pickByJob(characters, item.jobType, item.young === true, item.weaponGood);
   const bob = resolveSettlerBobId(char.binding, item, tick, gaitClock);
   const layers: ResolvedLayer[] = [];
-  const bodyFrame = char.body.atlas.frames.get(bob);
-  if (bodyFrame !== undefined && bodyFrame.width > 0 && bodyFrame.height > 0) {
+  const bodyFrame = lookupFrame(char.body.atlas, bob);
+  if (bodyFrame !== null) {
     // atlasW/H ride along for the paletted mesh path (it samples the indexed sheet by UV); the plain
     // sprite path ignores them. See ResolvedLayer.
     layers.push({
@@ -285,8 +287,8 @@ function resolveCharacterLayers(
     const head = heads[item.ref % heads.length];
     const headBob =
       char.headBinding !== undefined ? resolveSettlerBobId(char.headBinding, item, tick, gaitClock) : bob;
-    const headFrame = head?.atlas.frames.get(headBob);
-    if (head !== undefined && headFrame !== undefined && headFrame.width > 0 && headFrame.height > 0) {
+    const headFrame = head === undefined ? null : lookupFrame(head.atlas, headBob);
+    if (head !== undefined && headFrame !== null) {
       layers.push({
         source: head.source,
         frame: headFrame,

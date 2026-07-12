@@ -1,4 +1,5 @@
 import { Rectangle, Texture, type TextureSource } from 'pixi.js';
+import { clamp } from '../data/math.js';
 import type { AtlasFrame } from '../data/sprites/index.js';
 
 /**
@@ -37,7 +38,7 @@ export class TextureCache {
    * texture memory), and every home crops the same frame identically so a warm cache mints nothing per frame.
    */
   cropped(source: TextureSource, frame: AtlasFrame, hiddenTop: number): Texture {
-    const top = Math.max(0, Math.min(frame.height, Math.round(hiddenTop)));
+    const top = clamp(Math.round(hiddenTop), 0, frame.height);
     let byTop = this.cropCache.get(frame);
     if (byTop === undefined) {
       byTop = new Map();

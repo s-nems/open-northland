@@ -1,4 +1,5 @@
 import { type Container, type Renderer, RenderTexture, Sprite } from 'pixi.js';
+import { clamp } from '../data/math.js';
 
 /**
  * Off-screen supersampling for the screen-space {@link import('./paletted-sprite.js').PalettedSprite} HUD
@@ -39,7 +40,7 @@ import { type Container, type Renderer, RenderTexture, Sprite } from 'pixi.js';
 export function oversampleFor(scale: number, resolution: number, floor: number, cap: number): number {
   const devicePerDesign = scale * resolution;
   const target = Math.max(Math.ceil(devicePerDesign), Math.floor(2 * devicePerDesign));
-  return Math.max(floor, Math.min(cap, target));
+  return clamp(target, floor, cap);
 }
 
 export interface SupersampledTexture {

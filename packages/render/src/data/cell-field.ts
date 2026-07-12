@@ -6,6 +6,8 @@
  * headlessly like the rest of `render`'s data layer.
  */
 
+import { lerp } from './math.js';
+
 /** A bilinear sample of a per-cell lane at a continuous cell coordinate (raw lane units). */
 type CellSampler = (col: number, row: number) => number;
 
@@ -31,8 +33,8 @@ export function makeCellSampler(values: readonly number[], width: number, height
     const e10 = at(c0 + 1, r0);
     const e01 = at(c0, r0 + 1);
     const e11 = at(c0 + 1, r0 + 1);
-    const top = e00 + (e10 - e00) * tx;
-    const bot = e01 + (e11 - e01) * tx;
-    return top + (bot - top) * ty;
+    const top = lerp(e00, e10, tx);
+    const bot = lerp(e01, e11, tx);
+    return lerp(top, bot, ty);
   };
 }
