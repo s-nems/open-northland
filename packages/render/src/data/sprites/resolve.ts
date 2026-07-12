@@ -46,15 +46,10 @@ export function resolveSpriteBobId(item: DrawItem, bindings: SpriteBindings, tic
   if (item.kind === 'settler')
     return resolveSettlerBobId(binding as number | SettlerStateBinding, item, tick);
   if (item.kind === 'building') return resolveBuildingDraw(binding as number | BuildingTypeBinding, item).bob;
-  if (item.kind === 'resource')
-    return resolveResourceDraw(binding as number | ResourceTypeBinding, item)?.bob ?? null;
-  // A stump reuses the per-good resource resolver — it draws its debris frame the same way a node draws
-  // its species, just from the dead-tree atlas its binding names.
-  if (item.kind === 'stump')
-    return resolveResourceDraw(binding as number | ResourceTypeBinding, item)?.bob ?? null;
-  // A berry bush likewise reuses the resource resolver — its per-variant binding picks the ripe/bare frame
-  // by `DrawItem.level` from the bush atlas the binding names.
-  if (item.kind === 'berrybush')
+  // resource, stump and berrybush all reuse the per-good resource resolver — a stump draws its debris
+  // frame, a bush its per-variant ripe/bare frame, the same way a node draws its species, each from the
+  // atlas its own binding names.
+  if (item.kind === 'resource' || item.kind === 'stump' || item.kind === 'berrybush')
     return resolveResourceDraw(binding as number | ResourceTypeBinding, item)?.bob ?? null;
   return resolveStockpileDraw(binding as number | StockpileBinding, item).bob; // stockpile
 }
