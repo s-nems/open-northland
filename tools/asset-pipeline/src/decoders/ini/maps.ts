@@ -1,0 +1,157 @@
+/**
+ * Map metadata and decoded static-object placements from a map `.cif`.
+ */
+import { MapInfo } from '@vinland/data';
+import { findProp, getInt, type RuleSection, type SourceRef } from './grammar.js';
+
+/**
+ * Reduces one decoded `map.cif`'s logic header sections into a validated {@link MapInfo}. The map's
+ * `CStringArray` opens with a `logiccontrol` section (`mapsize <w> <h>`, `mapguid <16 bytes>`) plus
+ * `misc_maptype`/`misc_mapname` metadata sections; this pulls those declarative scalars and leaves the
+ * map's scripting payload (`MissionData`/`StaticObjects`/`playerdata`) untouched — that is the
+ * campaign/trigger layer, not this metadata slice (see {@link MapInfo}). `id` is supplied by
+ * the caller (the map folder name), since the header carries no human-readable map id.
+ *
+ * Throws when the required `logiccontrol` `mapsize`/`mapguid` are absent or malformed — a `map.cif`
+ * without them is not a decodable map, surfaced to the human running the offline pipeline rather than
+ * emitting a degenerate record (matches the throw-on-malformed stance of the other required-field
+ * extractors). The optional `misc_*` scalars are simply omitted when a given map lacks them (skirmish
+ * maps have no `mapcampaignid`, for instance).
+ */
+export function extractMapInfo(sections: readonly RuleSection[], id: string, src: SourceRef): MapInfo {
+  const logic = sections.find((s) => s.name === 'logiccontrol');
+  if (logic === undefined) {
+    throw new Error(`ini: map ${src.file} has no [logiccontrol] section`);
+  }
+  const size = findProp(logic, 'mapsize')?.values;
+  const width = Number.parseInt(size?.[0] ?? '', 10);
+  const height = Number.parseInt(size?.[1] ?? '', 10);
+  if (Number.isNaN(width) || Number.isNaN(height)) {
+    throw new Error(`ini: map ${src.file} has no valid \`mapsize <w> <h>\``);
+  }
+  const guidRaw = findProp(logic, 'mapguid')?.values ?? [];
+  const guid = guidRaw.map((v) => Number.parseInt(v, 10));
+  if (guid.length !== 16 || guid.some((b) => Number.isNaN(b) || b < 0 || b > 255)) {
+    throw new Error(`ini: map ${src.file} has no valid 16-byte \`mapguid\``);
+  }
+
+  const mapType = sections.find((s) => s.name === 'misc_maptype');
+  const mapName = sections.find((s) => s.name === 'misc_mapname');
+  const info: {
+    id: string;
+    width: number;
+    height: number;
+    guid: number[];
+    mapType?: number;
+    campaign?: { campaignId: number; missionId: number };
+    nameStringId?: number;
+    descriptionStringId?: number;
+    source: { file: string; block: string; layer: 'base' | 'mod' };
+  } = {
+    id,
+    width,
+    height,
+    guid,
+    source: { file: src.file, block: 'logiccontrol', layer: src.layer ?? 'base' },
+  };
+  const type = mapType !== undefined ? getInt(mapType, 'maptype') : undefined;
+  if (type !== undefined) info.mapType = type;
+  const campaign = mapType !== undefined ? findProp(mapType, 'mapcampaignid')?.values : undefined;
+  if (campaign !== undefined) {
+    const campaignId = Number.parseInt(campaign[0] ?? '', 10);
+    const missionId = Number.parseInt(campaign[1] ?? '', 10);
+    if (!Number.isNaN(campaignId) && !Number.isNaN(missionId)) info.campaign = { campaignId, missionId };
+  }
+  const nameStringId = mapName !== undefined ? getInt(mapName, 'mapnamestringid') : undefined;
+  if (nameStringId !== undefined) info.nameStringId = nameStringId;
+  const descriptionStringId = mapName !== undefined ? getInt(mapName, 'mapdescriptionstringid') : undefined;
+  if (descriptionStringId !== undefined) info.descriptionStringId = descriptionStringId;
+
+  return MapInfo.parse(info);
+}
+
+/** The decoded `StaticObjects` placements of one map — the on-disk `entities` layer's shape. */
+export interface MapStaticObjects {
+  buildings: {
+    name: string;
+    level: number;
+    player: number;
+    hx: number;
+    hy: number;
+    rot?: number;
+  }[];
+  humans: { tribe: string; role: string; player: number; hx: number; hy: number }[];
+  animals: { species: string; hx: number; hy: number }[];
+}
+
+/**
+ * Extracts a map's `[StaticObjects]` authored placements — the pre-placed houses, humans and animals a
+ * scenario starts with. Verb grammar (all coordinates **half-cells**, the `emla` 2W×2H lattice):
+ *
+ * ```
+ * sethouse  <player(0-based)> "<GfxHouse EditName>" <level> <1: constant, unknown> <hx> <hy> <rot>
+ * sethuman  <player(0-based)> "<tribe>" "<jobtype role>" <hx> <hy> <a> <b>
+ * setanimal <class> "<species>" "<age>" <hx> <hy> <a> <b>
+ * ```
+ *
+ * The `sethouse` player is the FIRST column, 0-based like `sethuman`'s (source basis: across all 13
+ * entity-bearing mod maps its per-value position centroids coincide with the matching `sethuman`
+ * player clusters — value sets equal on the multiplayer/special maps, a sub/superset on four
+ * tutorials — while the fourth column is the constant `1` on every one of the 415 rows, so it
+ * cannot be a player id; the unpacked `staticobjects.inc` corpus corroborates, including rows
+ * where that column is `0`). Names are kept VERBATIM (the
+ * version-robust join key the loader resolves against the IR by name). The stock/production/
+ * guide verbs (`addgoods`/`setproducedgood`/`setguide`) are not captured yet (source basis). A
+ * malformed row is skipped, not thrown — one bad line must not drop a whole map's placements.
+ * Returns `undefined` when the map has no `StaticObjects` section or it places nothing.
+ */
+export function extractStaticObjects(sections: readonly RuleSection[]): MapStaticObjects | undefined {
+  const sec = sections.find((s) => s.name === 'StaticObjects');
+  if (sec === undefined) return undefined;
+  const int = (v: string | undefined): number | undefined => {
+    const n = Number.parseInt(v ?? '', 10);
+    return Number.isNaN(n) || n < 0 ? undefined : n;
+  };
+  const out: MapStaticObjects = { buildings: [], humans: [], animals: [] };
+  for (const p of sec.props) {
+    if (p.key === 'sethouse') {
+      const [playerRaw, name, levelRaw, , hxRaw, hyRaw, rotRaw] = p.values;
+      const level = int(levelRaw);
+      const player = int(playerRaw);
+      const hx = int(hxRaw);
+      const hy = int(hyRaw);
+      const rot = int(rotRaw);
+      if (
+        name === undefined ||
+        level === undefined ||
+        player === undefined ||
+        hx === undefined ||
+        hy === undefined
+      )
+        continue;
+      out.buildings.push({ name, level, player, hx, hy, ...(rot !== undefined ? { rot } : {}) });
+    } else if (p.key === 'sethuman') {
+      const [playerRaw, tribe, role, hxRaw, hyRaw] = p.values;
+      const player = int(playerRaw);
+      const hx = int(hxRaw);
+      const hy = int(hyRaw);
+      if (
+        tribe === undefined ||
+        role === undefined ||
+        player === undefined ||
+        hx === undefined ||
+        hy === undefined
+      )
+        continue;
+      out.humans.push({ tribe, role, player, hx, hy });
+    } else if (p.key === 'setanimal') {
+      const [, species, , hxRaw, hyRaw] = p.values;
+      const hx = int(hxRaw);
+      const hy = int(hyRaw);
+      if (species === undefined || hx === undefined || hy === undefined) continue;
+      out.animals.push({ species, hx, hy });
+    }
+  }
+  if (out.buildings.length + out.humans.length + out.animals.length === 0) return undefined;
+  return out;
+}
