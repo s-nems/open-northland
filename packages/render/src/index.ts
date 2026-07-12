@@ -45,9 +45,6 @@ export {
   buildSpriteScene,
   type DrawItem,
   type DrawKind,
-  depositVisualLevel,
-  PROJECTILE_ARC_PEAK_FRACTION,
-  PROJECTILE_ARC_PEAK_MAX_PX,
   type SceneGround,
   type SceneTerrain,
   type SceneTransitions,
@@ -119,16 +116,12 @@ export {
 export type { DoorBadge } from './gpu/badge-layer.js';
 export {
   AnimationGallery,
-  COMPASS_TO_BLOCK,
   clipDirs,
   GALLERY_DIRS,
   type GalleryCellBox,
   type GalleryCellSpec,
   type GalleryClip,
   type GalleryDirection,
-  galleryBobId,
-  galleryCellLayout,
-  headBobId,
 } from './gpu/gallery/index.js';
 export type { GeometryDebugCell, GeometryDebugItem } from './gpu/geometry-debug.js';
 export { DEFAULT_HUD_STYLE, type HudFrame, type HudStyle } from './gpu/hud-layer.js';
@@ -150,7 +143,6 @@ export type { PlacementGhost } from './gpu/placement-ghost.js';
 export type { PlacementOverlayCell, PlacementOverlayFrame } from './gpu/placement-overlay.js';
 export type { PortraitInsetFrame } from './gpu/portrait-inset.js';
 export {
-  compactResolvedStockpileLayers,
   type EntityBounds,
   type MotionTrack,
   reconcileSprites,

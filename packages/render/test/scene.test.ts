@@ -1,15 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { collectSpriteScene } from '../src/data/scene/index.js';
 import {
-  buildScene,
+  collectSpriteScene,
   depositVisualLevel,
-  ONE,
   PROJECTILE_ARC_PEAK_FRACTION,
   PROJECTILE_ARC_PEAK_MAX_PX,
-  type SceneTerrain,
-  terrainMapToScene,
-  tileToScreen,
-} from '../src/index.js';
+} from '../src/data/scene/index.js';
+import { buildScene, ONE, type SceneTerrain, terrainMapToScene, tileToScreen } from '../src/index.js';
 import { entity, snapshotOf } from './support/fixtures.js';
 
 /**
