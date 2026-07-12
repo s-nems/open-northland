@@ -68,6 +68,7 @@ import {
   carryHeadAnims,
   characterBinding,
   type GoodRef,
+  MUSHROOM_PLUCKS_PER_PICK,
   WARRIOR_SPEC_BY_WEAPON_GOOD,
   YOUNG_CHARACTER_BY_JOB,
 } from './settler-gfx.js';
@@ -162,6 +163,24 @@ async function loadCharacters(
       CULTIVATE_ATOMIC,
     ].map((action) => [action, gfxAtomicFrameLists(ir, VIKING_ANIM_TRIBE, action)] as const),
   );
+  // One mushroom pick bends MUSHROOM_PLUCKS_PER_PICK times: repeat the authored one-shot pluck list
+  // back-to-back so the whole pick is a single continuous motion (HARVEST_TICKS sizes the atomic to
+  // cover the repeats + a ready-stance breather — settler-gfx.ts, observed-pace approximation).
+  const pluck = actionFrameLists.get(MUSHROOM_HARVEST_ATOMIC);
+  if (pluck !== undefined) {
+    actionFrameLists.set(
+      MUSHROOM_HARVEST_ATOMIC,
+      new Map(
+        [...pluck].map(
+          ([seq, dirs]) =>
+            [
+              seq,
+              dirs.map((list) => Array.from({ length: MUSHROOM_PLUCKS_PER_PICK }, () => list).flat()),
+            ] as const,
+        ),
+      ),
+    );
+  }
 
   const bySpec = new Map<string, SettlerCharacter>();
   for (const [specId, spec] of CHARACTER_SPEC_ENTRIES) {

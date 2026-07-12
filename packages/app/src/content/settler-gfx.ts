@@ -124,6 +124,19 @@ const FALLBACK_WAIT: DirectionalAnim = { start: 1931, dirs: 1, stride: 57 };
 // STRIKES, neither chops (source basis).
 
 /**
+ * How many times ONE mushroom pick plays the authored `pick_up` pluck list back-to-back — the
+ * original's 35-tick logic cycle looped the 19-frame list (~two bends per pick); with one-shot list
+ * playback a single bend read visibly too fast (reported), so the sheet builder repeats the list
+ * this many times and {@link HARVEST_TICKS} sizes the atomic to fit. Observed-pace approximation.
+ */
+export const MUSHROOM_PLUCKS_PER_PICK = 2;
+/** The viking `pick_up` `[gfxanimatomic]` list length (action 32, single facing-locked direction). */
+const MUSHROOM_PLUCK_FRAMES = 19;
+/** Ticks the picker stands in the ready stance after the last bend — the same breather feel as the
+ *  miners' inter-swing rest (sim `HARVEST_REST_TICKS`), pinned locally so the two paces tune apart. */
+const MUSHROOM_PLUCK_BREATHER_TICKS = 15;
+
+/**
  * Per-good harvest DURATIONS (ticks) — the ONE global source so gathering pace can't drift per scene.
  * The FAITHFUL `atomicanimations.ini` lengths of the collector's harvest atomics
  * (`viking_collector_harvest_*`, content/ir.json), except iron/gold where the gfx frame-list length
@@ -144,7 +157,11 @@ export const HARVEST_TICKS: Readonly<Record<number, number>> = {
   // length wins here (a named approximation: gfx over logic, +0.3 s per swing).
   [IRON_HARVEST_ATOMIC]: 29, // iron  — viking_collector_harvest_iron (logic 23, gfx list 29)
   [GOLD_HARVEST_ATOMIC]: 29, // gold  — viking_collector_harvest_gold (logic 23, gfx list 29)
-  [MUSHROOM_HARVEST_ATOMIC]: 35, // mushroom — viking_collector_harvest_mushroom
+  // Mushroom: the logic length 35 LOOPED the 19-frame pluck in the original (~two bends per pick);
+  // our one-shot lists play it once, which read visibly too fast. The pick plays the pluck
+  // MUSHROOM_PLUCKS_PER_PICK times (the list is repeated at sheet build, sprite-sheet.ts) and the
+  // atomic covers both bends plus a ready-stance breather (observed pace, gfx over logic).
+  [MUSHROOM_HARVEST_ATOMIC]: MUSHROOM_PLUCK_FRAMES * MUSHROOM_PLUCKS_PER_PICK + MUSHROOM_PLUCK_BREATHER_TICKS,
 };
 /**
  * The other atomic ids the SIM issues today, transcribed from the sim's planners (`ai.ts` eat 10 /
