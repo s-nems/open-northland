@@ -1,7 +1,7 @@
 import type { TextureSource } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
+import { compactResolvedStockpileLayers } from '../src/gpu/sprite-pool/index.js';
 import {
-  compactResolvedStockpileLayers,
   type DrawItem,
   type MotionTrack,
   reconcileSprites,
