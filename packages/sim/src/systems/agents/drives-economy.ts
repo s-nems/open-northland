@@ -11,6 +11,7 @@ import {
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
 import type { SystemContext } from '../context.js';
+import { farmWorkGood } from '../economy/farming.js';
 import { carrierCarryCapacity } from '../progression.js';
 import { atomicDuration } from '../readviews/animations.js';
 import { manhattan } from '../spatial.js';
@@ -37,6 +38,7 @@ import {
   type TargetCandidates,
 } from './ai-targets.js';
 import { claimWorkCell, type SpacingState } from './destack.js';
+import { dropCarryAtOwnTile } from './effects-goods.js';
 
 // The ECONOMY drives — the work rungs of the planner ladder, in the ladder's priority order:
 // deliver a carried load, run a bound producer's supply→produce→deliver loop, gather (chop/collect),
@@ -58,11 +60,12 @@ interface Worker {
  * bound store (a warehouse, or a flag pile), else the nearest capable store (the unchanged default
  * for an unbound hauler — the vertical-slice woodcutter/carrier route exactly as before). A carrying
  * settler always delivers first (it must free its hands before it can staff, harvest, or fetch).
- * Returns true even when there is nowhere to deposit: a settler bound to a built workplace walks home
- * and waits INSIDE it holding the load (the {@link Resting} marker — the render hides it, so no frozen
- * carry pose at the door), re-emerging to deposit the moment any sink frees room (the replan sweep
- * clears the marker every tick); an unbound hauler stands where it is. Either way the settler never
- * falls through to empty-handed work.
+ * Returns true even when there is nowhere to deposit. What the holder does then depends on WHO it is:
+ * a PORTER bound to a passive warehouse SHEDS the undepositable load on the ground (freeing it to haul a
+ * deliverable good instead of holding a surplus forever — see the store-full branch); a settler bound to a
+ * producing workplace (a farm's field loop / a workshop's recipe) instead waits INSIDE it holding the load
+ * (the {@link Resting} marker — the render hides it), re-emerging to deposit the moment its own store frees
+ * room; an unbound hauler stands where it is. Either way the settler never falls through to empty-handed work.
  */
 export function planDelivery(
   world: World,
@@ -87,12 +90,27 @@ export function planDelivery(
     load.goodType,
   );
   if (store === null) {
+    const home = world.tryGet(e, JobAssignment)?.workplace;
+    // A PORTER bound to a PASSIVE warehouse (not a farm/producer — those wait for their OWN store's field
+    // loop / recipe to free room) sheds a surplus it can't deposit anywhere: it sets the load down where it
+    // stands and is free to haul a DELIVERABLE good next tick, instead of holding an undepositable load
+    // forever ("the store is full of wood → stop hauling wood, fetch something else"). The deliverability
+    // gate in `nearestGroundPile` then keeps it from re-lifting that same full good, so the shed surplus
+    // just rests on the ground until the store has room again — no pick-up/put-down loop. A drop onto a full
+    // tile places nothing → the load stays and it falls through to wait inside.
+    if (
+      home !== undefined &&
+      isPorterBoundToStore(world, ctx, e) &&
+      farmWorkGood(world, ctx, home) === null &&
+      dropCarryAtOwnTile(world, e) > 0
+    ) {
+      return true;
+    }
     // Nowhere can take the load — wait INSIDE the bound workplace with it (the farmer rung's own
     // rest-inside seam) instead of standing frozen mid-carry at the door; an unbound hauler has no
     // house to wait in and just stands. Hands stay full either way. Only a COMPLETED building can be
     // waited in (no UnderConstruction) — the render hides a Resting settler, and vanishing "inside" a
     // bare foundation would read as a despawn.
-    const home = world.tryGet(e, JobAssignment)?.workplace;
     if (
       home !== undefined &&
       world.has(home, Building) &&

@@ -21,34 +21,34 @@ import type { SceneDefinition } from './types.js';
 
 /**
  * The WAREHOUSE-HAULING scene: prove a carrier ("Tragarz") ferries loose ground goods into the warehouse it
- * staffs, and STOPS at the store's per-good limit.
+ * staffs, STOPS at the store's per-good limit, and MOVES ON to the next good instead of jamming.
  *
  * One level-1 warehouse (`stock_00` → "Magazyn (poziom 1)", per-good cap 100) sits over a field of loose
  * good piles. Three carriers are spawned UNEMPLOYED next to it; because a passive store isn't adopted by a
  * settler standing at its door (only recipe workshops/farms are), the JobSystem's assign pass employs them
  * into the warehouse's three carrier slots (the lowest-job-id slot, {@link JOB_CARRIER}, fills first). Bound
- * to a store with no recipe, each becomes a PORTER: it collects the nearest loose pile and carries it home to
- * the warehouse, one unit per foot-trip. The deposit is capped per good by the store's stock slot
- * ({@link systems} `pileupIntoStore` → `stockCapacity`), so once a good reaches the limit the carrier keeps
- * its load and waits — no overflow.
+ * to a store with no recipe, each becomes a PORTER: it collects the nearest loose pile whose good the store
+ * can still take and carries it home, one unit per foot-trip.
  *
- * The loose WOOD supply is sized to EXACTLY the warehouse's own wood cap (read from content), so the store
- * fills to "100 / 100" and the field's wood is fully cleared with nothing left stuck on a back (goods are
- * conserved: cap-worth on the ground → cap-worth in the store). A scatter of other goods sits farther out for
- * the carriers to keep ferrying after the wood is in — the loaded field the human watches drain.
+ * WOOD is deliberately OVER-supplied (1.5× the wood cap, read from content) and sits nearest the door, so the
+ * store fills to "100 / 100" and then the cap bites: the carriers STOP hauling wood entirely (the surplus
+ * ~50 units simply rest on the ground) and switch to the other goods farther out — no pick-up/put-down loop,
+ * no carrier stuck holding a unit it can't deposit. This is the fix for "jak jest limit to jest limit": a
+ * porter never lifts a good the store is full of, and sheds any surplus it was already carrying.
  *
- * Headless proves the mechanic: the three carriers are employed BY the warehouse, its wood reaches the cap,
- * no good exceeds its cap, and the ground field has shrunk. Browser is where a human watches the carriers
- * walk the piles in and the Magazyn panel climb to its limit.
+ * Headless proves the mechanic: three carriers employed BY the warehouse; wood pinned at its cap and no good
+ * over cap; surplus wood still on the ground (the cap held); and the OTHER goods delivered too (the carriers
+ * moved on). Browser is where a human watches the wood counter stop at 100 and the carriers walk off to the
+ * rest of the field.
  */
 
 const MAP_W = 40;
 const MAP_H = 34;
 const INITIAL_ZOOM = 0.7;
-/** Long enough for the three carriers to clear the whole wood field into the store (it tops out at the cap
- *  around tick 4500, one foot-carried unit at a time) — headless gate only; the browser view runs
- *  continuously, so a human watches the whole fill-up and the scatter drain regardless. */
-const RUN_TICKS = 5000;
+/** Long enough for the wood to top out at the cap (~tick 4000, one foot-carried unit at a time) AND for the
+ *  carriers to then move on and land a chunk of the other goods — headless gate only; the browser view runs
+ *  continuously, so a human watches the whole fill-up, the wood counter stopping, and the switch regardless. */
+const RUN_TICKS = 6000;
 
 const WAREHOUSE_X = 20;
 const WAREHOUSE_Y = 6;
@@ -57,8 +57,9 @@ const WAREHOUSE_Y = 6;
 const CARRIERS = 3;
 const CARRIER_ROW_Y = 9;
 
-/** The loose-good field: WOOD hugging the store (short trips, cleared first, fills the store to its cap), a
- *  scatter of other goods farther out (kept well under the cap, so every pile lands and none jams a carrier). */
+/** The loose-good field: WOOD hugging the store (short trips, worked first, fills the store to its cap with a
+ *  surplus left over), a scatter of other goods farther out (well under the cap, worked once wood tops out). */
+const WOOD_OVERSUPPLY = 1.5; // 1.5× the cap, so the store fills to 100 and ~50 wood is left resting on the ground
 const WOOD_ROW_Y = 9; // the wood field starts right below the store — a short carry so the fill reads quickly
 const WOOD_ROW_W = 12; // wood tiles per row (a compact block tight around the door)
 const SCATTER_ROW_Y = 20; // the varied goods farther out, worked once the wood is in
@@ -90,9 +91,9 @@ function build(sim: Simulation): void {
     spawnIdleSettler(sim, WAREHOUSE_X - 1 + i, CARRIER_ROW_Y, HUMAN_PLAYER);
   }
 
-  // WOOD sized to EXACTLY the wood cap, so the store fills to its limit and the field's wood clears with
-  // nothing left over. Laid in full-stack tiles in rows near the store (the carriers' first, nearest work).
-  const woodTiles = Math.ceil(warehouseCapacity(sim, GOOD_WOOD) / STACK);
+  // WOOD OVER-supplied (1.5× cap): the store fills to its limit and the surplus stays on the ground — the
+  // carriers stop hauling wood and move on. Laid in full-stack tiles in rows near the store (worked first).
+  const woodTiles = Math.ceil((warehouseCapacity(sim, GOOD_WOOD) * WOOD_OVERSUPPLY) / STACK);
   for (let i = 0; i < woodTiles; i++) {
     const x = WAREHOUSE_X - WOOD_ROW_W / 2 + (i % WOOD_ROW_W);
     const y = WOOD_ROW_Y + Math.floor(i / WOOD_ROW_W);
@@ -147,12 +148,25 @@ function groundHolds(sim: Simulation, goodType: number): boolean {
   return false;
 }
 
+/** Total units of goods OTHER than wood the warehouse holds — proof the carriers moved on from the capped
+ *  wood to the rest of the field. */
+function warehouseOtherGoodsTotal(sim: Simulation): number {
+  const store = warehouse(sim);
+  if (store === null) return 0;
+  let total = 0;
+  for (const [goodType, amount] of sim.world.get(store, Stockpile).amounts) {
+    if (goodType !== GOOD_WOOD) total += amount;
+  }
+  return total;
+}
+
 export const warehouseScene: SceneDefinition = {
   id: 'warehouse',
   title: 'Magazyn — tragarze zbierają towary',
   summary:
-    'Trzej tragarze pracują w magazynie (poziom 1) i znoszą do niego luźne towary z ziemi — jeden po ' +
-    'drugim. Magazyn zapełnia się do swojego limitu (drewno 100/100) i wtedy tragarz przestaje dokładać.',
+    'Trzej tragarze pracują w magazynie (poziom 1) i znoszą luźne towary z ziemi. Drewno jest z nadmiarem ' +
+    '— magazyn zapełnia się do limitu (drewno 100/100), reszta drewna zostaje na ziemi, a tragarze ' +
+    'przestają je nosić i biorą się za pozostałe towary.',
   seed: 3,
   terrain: grassTerrain(MAP_W, MAP_H),
   build,
@@ -161,8 +175,9 @@ export const warehouseScene: SceneDefinition = {
   checklist: [
     'Kliknij magazyn — panel „Magazyn (poziom 1)”, a w sekcji Pracownicy trzej Tragarze (3/3).',
     'Tragarze chodzą po luźne stosy towarów z ziemi i znoszą je do magazynu (po jednej sztuce na kurs).',
-    'Licznik drewna w magazynie rośnie aż do limitu i zatrzymuje się na „100.0 / 100.0” — więcej się nie mieści.',
-    'Po zebraniu drewna tragarze biorą się za pozostałe towary rozrzucone dalej — pole pustoszeje.',
+    'Licznik drewna rośnie do limitu i STAJE na „100.0 / 100.0” — nadmiar drewna zostaje leżeć na ziemi.',
+    'Po osiągnięciu limitu drewna tragarze CAŁKIEM przestają je nosić i biorą się za pozostałe towary ' +
+      '(bez zacinania się — żadnego podnoszenia i upuszczania w kółko).',
   ],
   checks: [
     {
@@ -185,8 +200,12 @@ export const warehouseScene: SceneDefinition = {
       },
     },
     {
-      label: 'the carriers have cleared the wood field — no wood is left loose on the ground',
-      predicate: (sim) => !groundHolds(sim, GOOD_WOOD),
+      label: 'the wood cap is enforced — the surplus wood is left resting on the ground, not forced in',
+      predicate: (sim) => groundHolds(sim, GOOD_WOOD),
+    },
+    {
+      label: 'the carriers moved on from the capped wood to the other goods (they did not jam on wood)',
+      predicate: (sim) => warehouseOtherGoodsTotal(sim) > 0,
     },
   ],
 };
