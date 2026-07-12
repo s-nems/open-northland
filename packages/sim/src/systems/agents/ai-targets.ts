@@ -24,6 +24,7 @@ import { buildingEnabled, settlerMeetsNeed } from '../progression.js';
 import { canonicalResources, resourceHarvestAtomics, resourcesNearNode } from '../resource-index.js';
 import { canonicalById, manhattan } from '../spatial.js';
 import {
+  buildingProduces,
   buildingWorkerJobs,
   isCarrierJob,
   isFood,
@@ -349,16 +350,19 @@ export function nearestStoreFor(
   terrain: TerrainGraph,
   here: NodeId,
   goodType: number,
-  /** A store to skip as a sink — the producing building a carrier is hauling this good OUT of, so a
-   *  no-recipe producer (a FARM, which `recipeOf` can't exclude) never routes its own output back
-   *  into itself. Omit for the ordinary "nearest capable store" pick. */
-  exclude?: Entity,
+  /** Skip EVERY store whose building type PRODUCES `goodType` — the haul-OUT mode. A carrier
+   *  clearing a producer's output must deliver to STORAGE, never to another producer of the same
+   *  good: with two farms and no nearer warehouse, per-entity exclusion of only the carrier's own
+   *  farm made the sibling farm the "nearest store" and the wheat ping-ponged farm↔farm forever.
+   *  Omit (false) for the ordinary "nearest capable store" pick — the farmer's reap gate counts its
+   *  own farm's slot as a sink, and generic hauls may still top up a producer that CONSUMES the good. */
+  excludeProducers = false,
 ): Entity | null {
   let best: Entity | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
   let bestCell = Number.POSITIVE_INFINITY;
   for (const e of candidates) {
-    if (e === exclude) continue; // never haul a producer's output back into itself
+    if (excludeProducers && buildingProduces(world, ctx, e).includes(goodType)) continue;
     if (!world.has(e, Stockpile) || !world.has(e, Position)) continue;
     // A GroundDrop (a felled trunk / dropped good) is a SOURCE to collect, never a delivery SINK —
     // otherwise a collector would deposit the wood straight back into the trunk it just lifted from

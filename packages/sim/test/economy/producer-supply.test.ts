@@ -6,11 +6,8 @@ import {
   Health,
   JobAssignment,
   MoveGoal,
-  PathFollow,
-  PathRequest,
   Position,
   Production,
-  Resource,
   Resting,
   Settler,
   Stance,
@@ -25,9 +22,11 @@ import {
   Simulation,
   type TerrainMap,
 } from '../../src/index.js';
+import { boundProducerOutputToHaul } from '../../src/systems/agents/ai-supply.js';
 import { aiSystem, MAX_GROUND_STACK, type SystemContext, stockCapacity } from '../../src/systems/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { testContent } from '../fixtures/content.js';
+import { clearComponentStores } from '../fixtures/stores.js';
 
 /**
  * The PRODUCER SELF-SERVICE + PORTER drives (packages/sim/src/systems/agents/ai-supply.ts): a worker
@@ -50,33 +49,18 @@ const HEADQUARTERS = 1;
 const SAWMILL = 2;
 /** Fixture 7: 2 carpenter operator slots + a carrier slot, wood(cap 10) → plank(cap 20). */
 const TWIN_MILL = 8;
-/** Fixture 5: the grain farm — produces wheat via the field loop; also a store other producers can use. */
+const FARMER = 18; // the farm's field-worker job (plant atomic 34) — never hauls the farm's output out
+/** Fixture 5: the grain farm — produces wheat via its field `farming` block: a FIELD producer whose
+ *  store other producers may also draw inputs from, but never a storage SINK for its own good. */
 const FARM = 5;
 const GRANARY = 6; // a passive wheat store (the warehouse a farm's wheat is hauled OUT to)
 const VIKING = 1;
 const PICKUP_ATOMIC = 22;
 
-beforeEach(() => {
-  for (const c of [
-    Position,
-    Settler,
-    Resource,
-    Building,
-    Stockpile,
-    Carrying,
-    CurrentAtomic,
-    MoveGoal,
-    PathFollow,
-    PathRequest,
-    Production,
-    JobAssignment,
-    Resting,
-    Health,
-    Stance,
-  ]) {
-    c.store.clear();
-  }
-});
+// Component stores are module-level singletons — clear the WHOLE namespace between sims (AGENTS.md):
+// the end-to-end runs here mint components (Resting, FarmTask, Crop, …) a hand-picked list misses,
+// and their leftovers would leak onto reused entity ids in later tests in this file.
+beforeEach(clearComponentStores);
 
 /** A `width`×`height` CELL strip of grass, upsampled to the half-cell navigation lattice. */
 function grassMap(width: number, height: number): TerrainMap {
@@ -453,6 +437,55 @@ describe('carrier at a PRODUCING building — hauls the finished output OUT to a
 
     // The load heads for the granary (cell 6), NOT back to the farm (cell 2) it was lifted from.
     expect(sim.world.get(carrier, MoveGoal).cell).toBe(cell(sim, 6, 0));
+  });
+
+  it('routes the load past a NEARER sibling farm to real storage — a producer is never the sink', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(10, 1) });
+    const farmA = buildingAt(sim, FARM, 2, 0, [[WHEAT, 20]]);
+    buildingAt(sim, FARM, 4, 0); // a NEARER sibling farm with wheat room — a producer, not storage
+    buildingAt(sim, GRANARY, 8, 0); // the real sink, farther away
+    const carrier = settlerAt(sim, 3, 0, CARRIER, farmA);
+    sim.world.add(carrier, Carrying, { goodType: WHEAT, amount: 1 });
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    // Excluding only the carrier's OWN farm made the sibling the "nearest store" and the wheat
+    // ping-ponged farm↔farm forever — the sink scan must skip every producer of the good.
+    expect(sim.world.get(carrier, MoveGoal).cell).toBe(cell(sim, 8, 0));
+  });
+
+  it('with only sibling farms as candidate sinks there is no haul at all', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    const farmA = buildingAt(sim, FARM, 2, 0, [[WHEAT, 20]]);
+    buildingAt(sim, FARM, 5, 0); // has wheat room, but produces wheat — not a sink
+    const carrier = settlerAt(sim, 2, 0, CARRIER, farmA);
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(carrier, CurrentAtomic)).toBe(false);
+    expect(sim.world.has(carrier, MoveGoal)).toBe(false);
+  });
+
+  it('the field-worker guard: a FARMER never lifts the farm’s wheat out, the CARRIER does', () => {
+    // The pickup half must mirror the delivery twin's isFieldWorkerOf split: a farmer that falls
+    // through to the porter rung (its farm disabled/under construction) would otherwise lift the
+    // wheat and bank it straight back — a per-tick pickup/deposit ping-pong.
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    const farm = buildingAt(sim, FARM, 2, 0, [[WHEAT, 20]]);
+    const granary = buildingAt(sim, GRANARY, 6, 0);
+    const farmer = settlerAt(sim, 2, 0, FARMER, farm);
+    const carrier = settlerAt(sim, 2, 0, CARRIER, farm);
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('map sim always has terrain');
+    const here = cell(sim, 2, 0) as Parameters<typeof boundProducerOutputToHaul>[7];
+    const candidates = [farm, granary];
+
+    expect(
+      boundProducerOutputToHaul(candidates, sim.world, ctxOf(sim), terrain, farmer, FARMER, VIKING, here),
+    ).toBeNull();
+    expect(
+      boundProducerOutputToHaul(candidates, sim.world, ctxOf(sim), terrain, carrier, CARRIER, VIKING, here),
+    ).toMatchObject({ home: farm, goodType: WHEAT });
   });
 
   it('does not haul when no OTHER store can take the output (never shuttles farm→farm)', () => {
