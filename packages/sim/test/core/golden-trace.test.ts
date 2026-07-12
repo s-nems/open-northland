@@ -148,82 +148,83 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
   // HQ fixture gained its transport slot (the original HQ's `logicworker 24` shape) and the JobSystem's
   // report-in pass posts the loose carrier there on tick 1. The posted carrier also PORTERS: it ferries
   // the wood banked at the woodcutter's flag into the HQ (its bound store), so more wood reaches the
-  // carpenter's supply loop and two more planks land inside the run (16, was 14). (Prior moves:
+  // carpenter's supply loop and two more planks land inside the run (16, was 14); the rebase onto
+  // main folded in its INTER-SWING REST (a breather tail every few harvest swings), so the woodcutter's
+  // chop bursts sit wider apart and the whole cadence downstream shifts with them. (Prior moves:
   // PRODUCER FETCH-BEFORE-HAUL + WORK-INSIDE; SPAWN-TIME FLAG AUTO-PLANT; e452b766 — the half-cell
   // navigation migration.)
   const GOLDEN_TRACE: readonly string[] = [
     '20:8:22',
     '31:5:24',
-    '34:5:24',
-    '37:5:24',
     '40:8:23',
-    '41:5:22',
-    '57:7:22',
-    '73:5:23',
+    '49:5:24',
+    '52:5:24',
+    '56:5:22',
+    '72:7:22',
     '80:8:22',
+    '88:5:23',
     '100:8:23',
-    '101:7:23',
-    '105:5:22',
-    '137:5:23',
+    '116:7:23',
+    '120:5:22',
     '140:8:22',
-    '145:7:22',
+    '152:5:23',
+    '160:7:22',
     '160:8:23',
-    '184:5:24',
-    '187:5:24',
-    '189:7:23',
-    '190:5:24',
-    '194:5:22',
+    '199:5:24',
     '200:8:22',
+    '204:7:23',
+    '217:5:24',
+    '220:5:24',
     '220:8:23',
-    '238:5:23',
-    '257:7:22',
+    '224:5:22',
     '260:8:22',
+    '268:5:23',
+    '272:7:22',
     '280:8:23',
-    '282:5:22',
+    '312:5:22',
     '320:8:22',
-    '325:7:23',
-    '326:5:23',
+    '340:7:23',
     '340:8:23',
+    '356:5:23',
     '380:8:22',
-    '393:7:22',
     '400:8:23',
+    '408:7:22',
     '440:8:22',
     '460:8:23',
-    '461:7:23',
+    '476:7:23',
     '500:8:22',
     '520:8:23',
-    '529:7:22',
+    '544:7:22',
     '560:8:22',
     '580:8:23',
-    '597:7:23',
+    '612:7:23',
     '620:8:22',
     '640:8:23',
-    '665:7:22',
+    '680:7:22',
     '680:8:22',
     '700:8:23',
-    '733:7:23',
     '740:8:22',
-    '753:7:22',
+    '748:7:23',
     '760:8:23',
-    '773:7:23',
-    '793:7:22',
+    '768:7:22',
+    '788:7:23',
     '800:8:22',
-    '813:7:23',
+    '808:7:22',
     '820:8:23',
-    '833:7:22',
-    '853:7:23',
+    '828:7:23',
+    '848:7:22',
     '860:8:22',
-    '873:7:22',
+    '868:7:23',
     '880:8:23',
-    '893:7:23',
-    '913:7:22',
+    '888:7:22',
+    '908:7:23',
     '920:8:22',
-    '933:7:23',
+    '928:7:22',
     '940:8:23',
-    '953:7:22',
-    '973:7:23',
+    '948:7:23',
+    '968:7:22',
     '980:8:22',
-    '993:7:22',
+    '988:7:23',
     '1000:8:23',
   ];
 
@@ -235,10 +236,11 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
   it('matches the golden final state hash', () => {
     const run = runSlice(SEED, TICKS);
     // Intentional-change discipline: if this moves, a mechanic changed — name it in the commit.
-    // 1db5f740 → c002bbe0 (2026-07-12): CARRIER-BY-ASSIGNMENT (see the trace note) — the carrier now
+    // fe19b319 → d58a6716 (2026-07-12): CARRIER-BY-ASSIGNMENT (see the trace note) — the carrier now
     // works as the HQ's posted transport (JobAssignment on tick 1) and ferries the flag-banked wood
-    // in, so the settled goods distribution differs (two more planks through, the flag pile drained).
-    expect(run.hash).toBe('c002bbe0');
+    // in, so the settled goods distribution differs (two more planks through, the flag pile drained) —
+    // combined with main's INTER-SWING REST timing folded in by the rebase.
+    expect(run.hash).toBe('d58a6716');
   });
 
   it('matches the golden atomic-action trace', () => {
