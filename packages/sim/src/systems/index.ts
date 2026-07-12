@@ -59,7 +59,7 @@ export * from './vision/index.js';
 // lists — they drifted), plus SYSTEM_ORDER, which this barrel owns. `@vinland/sim`'s `systems`
 // namespace and the tests import through here so the whole surface has a single import site.
 // Only the system ENTRY modules (and the cross-system helper leaves) are star-exported; a module a
-// system entry re-exports its public names from — planner internals like ai-targets/ai-supply, the
+// system entry re-exports its public names from — planner internals like targets/economy supply, the
 // drive/effect/targeting submodules, spawn — stays private to its cluster.
 export type { System, SystemContext };
 

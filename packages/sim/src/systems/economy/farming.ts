@@ -7,7 +7,7 @@ import type { System, SystemContext } from '../context.js';
 
 // FIELD FARMING — the content resolution, growth system and atomic-effect appliers behind the farm's
 // sow→water→grow→reap loop. The planner half (which field a farmer works next) is the planFarmer drive
-// (../agents/drives-farming.ts); this module owns the field's own lifecycle. Source basis: the loop's
+// (`../agents/farming`); this module owns the field's own lifecycle. Source basis: the loop's
 // vocabulary is readable original data (`goodtypes.ini` wheat atomics 34/35/29 + `isProducedOnMapFlag`,
 // `landscapetypes.ini` wheat lanes 27/28/29 with `maximumValency 5`); its timings/areas are the content
 // `farming` block's OBSERVED calibration constants (no readable growth timing or field radius exists).

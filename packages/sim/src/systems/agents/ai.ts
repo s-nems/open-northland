@@ -18,8 +18,8 @@ import type { System, SystemContext } from '../context.js';
 import { MILITARY_MODE } from '../readviews/index.js';
 import { canonicalById, isTravelling, NodeBuckets } from '../spatial.js';
 import { isCarrierJob } from '../stores.js';
-import { boundWorkplaceTarget, collectTargets, hasHaulableOutput } from './ai-targets.js';
 import { deStackIdle, type SpacingState } from './destack.js';
+import { planNeeds } from './drives-needs.js';
 import {
   planBuilder,
   planCarrierHaul,
@@ -29,17 +29,18 @@ import {
   planProducer,
   planWorkshopSupplier,
   type WorkSeatClaims,
-} from './drives-economy.js';
-import { collectFarmClaims, planFarmer, releaseFarmTask } from './drives-farming.js';
-import { planNeeds } from './drives-needs.js';
+} from './economy/index.js';
+import { collectFarmClaims, planFarmer, releaseFarmTask } from './farming/index.js';
 import { navigationPlanner } from './navigation.js';
+import type { PlannerContext } from './planner-context.js';
+import { boundWorkplaceTarget, collectTargets, hasHaulableOutput } from './targets/index.js';
 
 /**
  * AISystem — the settler planner: two layered passes per tick.
  *
  *  1. {@link atomicPlanner} (the *what*): for an idle settler (a job, no atomic running, not
  *     travelling), run the drive ladder — needs (./drives-needs.ts), then the economy drives
- *     (./drives-economy.ts) — and either issue a MoveGoal to walk to the chosen target or start the
+ *     (`./economy`) — and either issue a MoveGoal to walk to the chosen target or start the
  *     CurrentAtomic the AtomicSystem will execute.
  *  2. {@link navigationPlanner} (the *where*, ./navigation.ts): turn a MoveGoal on a path-less,
  *     request-less entity into a PathRequest; PathfindingSystem routes it, MovementSystem walks it,
@@ -101,7 +102,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
   const spacing: SpacingState = { occupancy: new NodeBuckets(world, stationaryOwned), claimed: new Set() };
   // Farm claims: every farmer still WALKING to or SWINGING at a field target (its live FarmTask) plus
   // the farmers planned earlier this tick reserve their nodes — so two farmers never shadow each other
-  // to the same field/sheaf/sow spot, across ticks as well as within one (see drives-farming.ts).
+  // to the same field/sheaf/sow spot, across ticks as well as within one (see `./farming`).
   const farmClaims = collectFarmClaims(world);
   // Work-seat claims: each workshop hands out one "stay & produce" seat per batch that would run if
   // staffed (see workSeatCount); operators planned earlier this tick take them first, so a surplus
@@ -164,11 +165,21 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
 
     // The worker view of the settler — re-stated so `jobType`'s non-null narrowing carries into the
     // economy drives' signatures (the ladder skipped jobless settlers above).
-    const worker = { tribe: settler.tribe, jobType: settler.jobType, experience: settler.experience };
+    const plan: PlannerContext = {
+      world,
+      ctx,
+      terrain,
+      entity: e,
+      tribe: settler.tribe,
+      jobType: settler.jobType,
+      experience: settler.experience,
+      here,
+      targets,
+    };
 
     // 1. CARRYING — deliver first (a settler must free its hands before any empty-handed work).
     if (load !== undefined && load.amount > 0) {
-      planDelivery(world, ctx, terrain, e, worker, here, load, targets);
+      planDelivery(plan, load);
       continue;
     }
 
@@ -178,29 +189,18 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // loop: reap ripe > carry sheaves home > sow > water > wait at the farm. Sits ABOVE the producer
     // rung so a farm that also carries an abstract recipe (real extracted content synthesizes one from
     // `logicproduction`) farms its fields instead of standing at the station minting the good.
-    if (planFarmer(world, ctx, terrain, e, worker, here, targets, farmClaims)) continue;
+    if (planFarmer(plan, farmClaims)) continue;
 
     // 2a. PRODUCER / WORKSHOP SUPPLIER — a worker bound to a recipe workshop. A CARRIER bound there
     // ferries (top up inputs, carry outputs out — it never operates the craft); a craftsman claims a
     // work seat and produces, fetches a missing input itself when starved (even beside a carrier),
     // and leaves the output run to its carrier when one is bound.
-    const workplace = boundWorkplaceTarget(world, ctx, e, worker.jobType, worker.tribe);
+    const workplace = boundWorkplaceTarget(world, ctx, e, plan.jobType, plan.tribe);
     if (workplace !== null) {
-      if (isCarrierJob(ctx, worker.jobType)) {
-        planWorkshopSupplier(world, ctx, terrain, e, worker, here, workplace, targets.stockpiles);
+      if (isCarrierJob(ctx, plan.jobType)) {
+        planWorkshopSupplier(plan, workplace);
       } else {
-        planProducer(
-          world,
-          ctx,
-          terrain,
-          e,
-          worker,
-          here,
-          workplace,
-          targets.stockpiles,
-          seatClaims,
-          targets.carrierSuppliedWorkplaces.has(workplace),
-        );
+        planProducer(plan, workplace, seatClaims, targets.carrierSuppliedWorkplaces.has(workplace));
       }
       continue;
     }
@@ -208,19 +208,19 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // 2b. BUILD — a builder raises the nearest construction site of its tribe (hammer it, or fetch a
     // material it is short on); a non-builder passes through. `spacing` spreads a site's crew over
     // its yard (see ./destack.ts claimWorkCell).
-    if (planBuilder(world, ctx, terrain, e, worker, here, targets, spacing)) continue;
+    if (planBuilder(plan, spacing)) continue;
 
     // 3. HARVEST / COLLECT — a gatherer chops the nearest resource or collects the nearest trunk.
-    if (planGatherer(world, ctx, terrain, e, worker, here, targets)) continue;
+    if (planGatherer(plan)) continue;
 
     // 4. PORTER — a settler bound to a storage fixture ferries loose ground piles into it.
-    if (planPorter(world, ctx, terrain, e, worker, here, targets)) continue;
+    if (planPorter(plan)) continue;
 
     // 5. STORE-CARRIER HAUL — an employed carrier (bound to a store's transport slot) ferries
     // finished workplace outputs to the stores; everyone else with nothing above is genuinely idle
     // ("bezrobotny to bezrobotny" — hauling is a trade, not a default): de-stack off a shared tile
     // so an idle crowd spreads out (see ./destack.ts).
-    if (!planCarrierHaul(world, ctx, terrain, e, worker, here, targets, anyHaulable)) {
+    if (!planCarrierHaul(plan, anyHaulable)) {
       deStackIdle(world, ctx, terrain, e, hereNode.hx, hereNode.hy, spacing);
     }
   }

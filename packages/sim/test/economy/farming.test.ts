@@ -24,7 +24,7 @@ const { Building, Carrying, Crop, GroundDrop, JobAssignment, Position, Resource,
   components;
 
 /**
- * FIELD FARMING (packages/sim/src/systems/economy/farming.ts + agents/drives-farming.ts): the farm's
+ * FIELD FARMING (`systems/economy/farming.ts` + `agents/farming`): the farm's
  * sow→grow→water→reap→carry loop. Fixture: good 6 = wheat (atomics plant 34 / cultivate 35 / harvest 29
  * — the original's own ids; farming: 5 stages × 10 ticks, yield 1, radius 8, field cap 2 + 4/farmer),
  * job 18 = farmer, building 5 = farm (4 farmer slots, wheat-only store cap 25, produces wheat, NO recipe).

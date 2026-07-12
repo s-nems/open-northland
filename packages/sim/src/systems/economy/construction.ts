@@ -39,7 +39,7 @@ import {
  *
  * WHO delivers the materials and WHO hammers is the AI planner: a construction site advertises its
  * outstanding materials as delivery demand ({@link import('../stores.js').stockCapacity}) so any carrier
- * routes them there, and the builder drive ({@link import('../agents/drives-economy.js').planBuilder})
+ * routes them there, and the builder drive ({@link import('../agents/economy/index.js').planBuilder})
  * both hammers the site and — when it runs dry — fetches a missing material itself. A built home that can
  * still upgrade advertises its next tier's cost the same way, so the upgrade materials accumulate with no
  * upgrade-specific transport code.

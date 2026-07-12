@@ -7,20 +7,20 @@ import {
   Production,
   Stockpile,
   WorkFlag,
-} from '../../components/index.js';
-import { ONE } from '../../core/fixed.js';
-import type { Entity, World } from '../../ecs/world.js';
-import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
-import type { SystemContext } from '../context.js';
-import { farmWorkGood } from '../economy/farming.js';
-import { startableCycleCount } from '../economy/production.js';
-import { manhattan } from '../spatial.js';
-import { buildingProduces, lowestStockedGood, recipeOf, stockCapacity } from '../stores.js';
-import { boundWorkplaceTarget, interactionCell, jobAtomics, nearestStoreFor } from './ai-targets.js';
+} from '../../../../components/index.js';
+import { ONE } from '../../../../core/fixed.js';
+import type { Entity, World } from '../../../../ecs/world.js';
+import type { NodeId, TerrainGraph } from '../../../../nav/terrain.js';
+import type { SystemContext } from '../../../context.js';
+import { farmWorkGood } from '../../../economy/farming.js';
+import { startableCycleCount } from '../../../economy/production.js';
+import { manhattan } from '../../../spatial.js';
+import { buildingProduces, lowestStockedGood, recipeOf, stockCapacity } from '../../../stores.js';
+import { boundWorkplaceTarget, interactionCell, jobAtomics, nearestStoreFor } from '../../targets/index.js';
 
 // The AI planner's SUPPLY layer: the scans behind a *producer worker running its own supply→produce→
 // deliver loop* — the "kowal fetches the goods a sword needs, forges it, and carries it back" behavior.
-// It sits beside the target-scan layer (ai-targets.ts); ai.ts wires these into the per-settler decision.
+// It sits beside the target-scan layer (targets/); ai.ts wires these into the per-settler decision.
 //
 // The split from the plain haul model: before this, inputs reached a workplace only because a harvester
 // happened to deposit them there (`nearestStoreFor` picks the workplace when it's the nearest sink), and
@@ -222,7 +222,7 @@ export function deliveryTargetFor(
  * The nearest **construction site** of `tribe` that still has room for `goodType` in its `construction`
  * cost — a {@link Building} + {@link UnderConstruction} whose delivered amount of the good is below the
  * site's advertised {@link stockCapacity} for it (its outstanding demand). Scans the tiny
- * {@link import('./ai-targets.js').TargetCandidates.constructionSites} list (UnderConstruction + Building +
+ * {@link import('../../targets/index.js').TargetCandidates.constructionSites} list (UnderConstruction + Building +
  * Position guaranteed) in canonical order with the standard Manhattan + ascending-cell-id tie-break.
  * Returns the site or null when no site needs the good — the routing preference behind a builder
  * self-supplying its own site and an assigned hauler topping it up.

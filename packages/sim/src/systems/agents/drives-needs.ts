@@ -12,7 +12,7 @@ import {
   SLEEP_ATOMIC_ID,
   startAtomic,
 } from './actions.js';
-import { interactionCell, nearestFood, nearestTemple, type TargetCandidates } from './ai-targets.js';
+import { interactionCell, nearestFood, nearestTemple, type TargetCandidates } from './targets/index.js';
 
 // The NEEDS drives — the highest-priority rungs of the planner ladder (a starving operator leaves
 // its workplace to feed rather than work itself to death). Order inside planNeeds is part of the
