@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Provenance, TypeId } from '../record.js';
+import { ClassId, Provenance, TypeId } from '../record.js';
 
 export const WeaponType = z.strictObject({
   /** The weapon's `type` id. NOTE: unlike the other type tables this is NOT globally unique — a
@@ -15,7 +15,7 @@ export const WeaponType = z.strictObject({
    * the weapon-side twin of {@link ArmorType.mainType}. NOT a cross-ref into another table (it's a
    * class enum, not a foreign key) — a soldier-class→weapon-class binding prerequisite the deferred
    * combat-roster slice joins on, captured ahead of that drive. */
-  mainType: TypeId.optional(),
+  mainType: ClassId.optional(),
   /** `weight` — the encumbrance the weapon adds (0..2 in the base data), the weapon-side twin of
    *  {@link ArmorType.weight}. */
   weight: z.number().int().nonnegative().default(0),
@@ -26,7 +26,7 @@ export const WeaponType = z.strictObject({
    * the values 1/2 are NOT good ids — good 1 is "water", good 2 is "mud"), so it's captured as a plain
    * id with no cross-ref check. **Absent on melee weapons** (a fist/sword fires nothing → `undefined`),
    * making it the data-pinned "is this weapon ranged" marker the deferred ranged-attack drive reads. */
-  munitionType: TypeId.optional(),
+  munitionType: ClassId.optional(),
   /**
    * `speed` — a **ranged** weapon's projectile **travel speed** (short/long bow `8`, house bow `7`,
    * catapult `3` in the base data — a bow's arrow flies faster than a catapult's rock). Carried only by
@@ -43,7 +43,7 @@ export const WeaponType = z.strictObject({
    * good id — good 2 is "mud"), so it's captured as a plain id with no cross-ref check. **Absent on
    * every non-catapult weapon** (→ `undefined`), so it marks the siege/AoE damage class the deferred
    * combat-resolution drive reads, the twin of {@link munitionType}'s "is ranged" marker. */
-  damageType: TypeId.optional(),
+  damageType: ClassId.optional(),
   minRange: z.number().int().nonnegative().default(1),
   maxRange: z.number().int().nonnegative().default(1),
   /** damageValue[targetArmorClass] -> value, as in the original weapontypes. */
@@ -73,11 +73,11 @@ export const ArmorType = z.strictObject({
   id: z.string(),
   name: z.string().optional(),
   /** `mainType` — coarse class (1 = light/cloth+leather, 2 = heavy/chain+plate in the base data). */
-  mainType: TypeId.optional(),
+  mainType: ClassId.optional(),
   /** `goodtype` — the good that IS this armor (worn/carried); resolves into the good table. */
   goodType: TypeId.optional(),
   /** `materialType` — the material tier the armor is made of (cloth/leather/chain/plate = 1..4). */
-  materialType: TypeId.optional(),
+  materialType: ClassId.optional(),
   /** `weight` — encumbrance the armor adds (0 = leather, up to 3 = chain/plate). */
   weight: z.number().int().nonnegative().default(0),
   /** `blockingValue` — how much incoming damage the armor mitigates (the combat read side's join key). */
