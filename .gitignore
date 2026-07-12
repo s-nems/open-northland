@@ -34,7 +34,6 @@ dist/
 /.claude/*
 !/.claude/commands/
 !/.claude/agents/
-!/.claude/skills/
 !/.claude/workflows/
 !/.claude/settings.json
 /.gemini/*
