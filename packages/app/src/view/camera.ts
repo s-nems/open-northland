@@ -177,6 +177,19 @@ export function screenScale(
   };
 }
 
+/** Apply a {@link screenScale} result to a client (CSS) point → canvas (screen) px: subtract the canvas
+ *  origin in CSS px, then scale. The ONE place the client→canvas mapping lives, so the drag/zoom/pick
+ *  handlers that share it can't drift — a wrong anchor is exactly the bug {@link screenScale} guards
+ *  against. (`hud/` handlers can't import `view/`, so they still apply this inline over their injected
+ *  scale.) */
+export function clientToCanvas(
+  scale: { sx: number; sy: number; rect: DOMRect },
+  clientX: number,
+  clientY: number,
+): { x: number; y: number } {
+  return { x: (clientX - scale.rect.left) * scale.sx, y: (clientY - scale.rect.top) * scale.sy };
+}
+
 /** `resolution` is the owning renderer's device-px-per-screen-px (`app.renderer.resolution`) — needed to
  *  map mouse deltas into screen px on the HiDPI window canvas (see {@link screenScale}). */
 export function createCameraController(
@@ -214,9 +227,9 @@ export function createCameraController(
     // for the panel's own handler (which scrolls + preventDefaults) and don't zoom the world behind it.
     if (pointerGuard?.(e.clientX, e.clientY)) return;
     e.preventDefault(); // don't scroll the page
-    const { sx, sy, rect } = screenScale(canvas, resolution);
+    const { x, y } = clientToCanvas(screenScale(canvas, resolution), e.clientX, e.clientY);
     const factor = e.deltaY < 0 ? WHEEL_ZOOM_STEP : 1 / WHEEL_ZOOM_STEP;
-    cam = zoomCameraAt(cam, factor, (e.clientX - rect.left) * sx, (e.clientY - rect.top) * sy);
+    cam = zoomCameraAt(cam, factor, x, y);
   };
   const onKeyDown = (e: KeyboardEvent): void => {
     if (!ARROW_KEYS.has(e.key)) return;

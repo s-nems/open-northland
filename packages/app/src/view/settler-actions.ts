@@ -16,7 +16,7 @@ import {
 } from '../hud/action-ring-layout.js';
 import { type BakedIcon, bakeRoundIcon, placeBakedIcon } from '../hud/icon-texture.js';
 import { uiLabel } from '../i18n/index.js';
-import { screenScale } from './camera.js';
+import { clientToCanvas, screenScale } from './camera.js';
 import { el } from './overlay.js';
 
 /**
@@ -475,10 +475,8 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
   };
 
   // --- Input (own listeners, mirroring the tool panel; registered before unit-controls' so a menu click wins) ---
-  const toCanvas = (clientX: number, clientY: number): { x: number; y: number } => {
-    const { sx, sy, rect } = screenScale(canvas, app.renderer.resolution);
-    return { x: (clientX - rect.left) * sx, y: (clientY - rect.top) * sy };
-  };
+  const toCanvas = (clientX: number, clientY: number): { x: number; y: number } =>
+    clientToCanvas(screenScale(canvas, app.renderer.resolution), clientX, clientY);
 
   const claimsPointer = (clientX: number, clientY: number): boolean => {
     if (mode === 'closed' || !root.visible) return false;
