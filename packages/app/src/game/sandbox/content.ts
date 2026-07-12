@@ -365,7 +365,17 @@ export function sandboxGoods(): readonly GoodRef[] {
   return sandboxContent().goods.map((g) => ({ typeId: g.typeId, id: g.id }));
 }
 
-export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtras = {}): ContentSet {
+/** A sandbox job row: its type id, string id, display name, and the atomics its trade may run. */
+type SandboxJob = { typeId: number; id: string; name?: string; allowedAtomics?: number[] };
+
+/** A sandbox tribe row: its type id, id, and the job-enable / atomic-binding lists the sim reads. */
+type SandboxTribe = { typeId: number; id: string; jobEnables?: unknown[]; atomicBindings?: unknown[] };
+
+/**
+ * The building set: every clean-room catalog building carrying its extracted-or-approximated footprint,
+ * plus any extra buildings the caller declares. See {@link buildingRow} for the per-building shape.
+ */
+function buildSandboxBuildings(extras: SandboxContentExtras): Map<number, SandboxBuildingRow> {
   // Real extracted footprints (live content) replace the clean-room approximations WHOLESALE — see
   // SandboxContentExtras.buildingFootprints. Without them every building approximates by class.
   const footprintOf = (typeId: number, kind: string): { footprint?: BuildingFootprint } => {
@@ -383,8 +393,16 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
       buildings.set(b.typeId, { typeId: b.typeId, id: b.id, kind, ...footprintOf(b.typeId, kind) });
     }
   }
+  return buildings;
+}
 
-  const jobs = new Map<number, { typeId: number; id: string; name?: string; allowedAtomics?: number[] }>();
+/**
+ * The job set: idle, the gatherer trades, the carrier, the real-behaviour farmer/builder/soldier jobs,
+ * the full player-assignable profession roster, every extracted worker-slot job (backfilled under its
+ * real trade name), plus any extra jobs the caller declares.
+ */
+function buildSandboxJobs(extras: SandboxContentExtras): Map<number, SandboxJob> {
+  const jobs = new Map<number, SandboxJob>();
   for (const j of [
     { typeId: JOB_IDLE, id: 'idle', name: 'Bezrobotny' },
     ...GATHERERS.map((g) => ({
@@ -435,11 +453,19 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
         jobs.set(jobType, { typeId: jobType, id: `worker_${jobType}`, name: workerSlotName(w.jobType) });
     }
   for (const j of extras.jobs ?? []) if (!jobs.has(j.typeId)) jobs.set(j.typeId, j);
+  return jobs;
+}
 
-  const tribes = new Map<
-    number,
-    { typeId: number; id: string; jobEnables?: unknown[]; atomicBindings?: unknown[] }
-  >();
+/**
+ * The tribe set: the primary viking tribe with its per-job atomic bindings (gatherer harvests, the
+ * soldier attack swings, the builder/farmer work swings, and the generic per-job store-exchange pair
+ * fanned out over `jobTypes`) plus any extra tribes the caller declares.
+ */
+function buildSandboxTribes(
+  jobTypes: readonly number[],
+  extras: SandboxContentExtras,
+): Map<number, SandboxTribe> {
+  const tribes = new Map<number, SandboxTribe>();
   tribes.set(PRIMARY_TRIBE, {
     typeId: PRIMARY_TRIBE,
     id: 'viking',
@@ -460,7 +486,7 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
       { jobType: JOB_ARCHER_LONG, atomicId: ATTACK_ATOMIC, animation: 'viking_bow_long_attack' },
       // Every trade exchanges goods with a store the same way — the generic pickup/pileup pair, bound
       // per job like the original's per-class `setatomic <job> 22/23` rows (see STORE_PICKUP_ATOMIC).
-      ...[...jobs.keys()].flatMap((jobType) => [
+      ...jobTypes.flatMap((jobType) => [
         { jobType, atomicId: STORE_PICKUP_ATOMIC, animation: STORE_PICKUP_ANIMATION },
         { jobType, atomicId: STORE_PILEUP_ATOMIC, animation: STORE_PILEUP_ANIMATION },
       ]),
@@ -476,7 +502,46 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
       });
     }
   }
+  return tribes;
+}
 
+/**
+ * The gathering-resource landscape gfx rows — one per {@link GATHERERS} entry (its block/work areas,
+ * gfx index, and fill-state valency). See the invented-area note above.
+ */
+function sandboxLandscapeGfx() {
+  return GATHERERS.map((g) => ({
+    index: resourceGfxIndex(g.good),
+    editName: `sandbox ${g.id} resource`,
+    logicType: resourceLandscapeType(g.good),
+    maxValency: landscapeState(g),
+    isWorkable: true,
+    walkBlockAreas: walkBlockAreas(g),
+    buildBlockAreas: buildBlockAreas(g),
+    workAreas: workAreas(g),
+  }));
+}
+
+/** The gathering pipeline rows — one per {@link GATHERERS} entry (good → its harvest landscape/gfx). */
+function sandboxGatheringPipeline() {
+  return GATHERERS.map((g) => ({
+    goodType: g.good,
+    goodId: g.id,
+    harvestAtomic: g.atomic,
+    bioLandscape: g.mode !== 'mine',
+    harvest: { landscapeType: resourceLandscapeType(g.good), gfxIndices: [resourceGfxIndex(g.good)] },
+  }));
+}
+
+/**
+ * The ONE global sandbox {@link ContentSet} — goods/jobs/buildings/weapons/animation bindings — every
+ * scene and the vertical slice consume (they never define their own content; packages/app/AGENTS.md).
+ * Assembles the per-domain builders above into the validated set.
+ */
+export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtras = {}): ContentSet {
+  const buildings = buildSandboxBuildings(extras);
+  const jobs = buildSandboxJobs(extras);
+  const tribes = buildSandboxTribes([...jobs.keys()], extras);
   // The localized display name for a good STRING id, as an optional-`name` spread — present only when the
   // caller supplied a name map AND it has that id, so a headless/golden build (no map) is byte-unchanged.
   const localName = (id: string): { name?: string } => {
@@ -583,23 +648,8 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
     jobs: [...jobs.values()],
     buildings: [...buildings.values()].sort((a, b) => a.typeId - b.typeId),
     landscape: sandboxLandscape(map),
-    landscapeGfx: GATHERERS.map((g) => ({
-      index: resourceGfxIndex(g.good),
-      editName: `sandbox ${g.id} resource`,
-      logicType: resourceLandscapeType(g.good),
-      maxValency: landscapeState(g),
-      isWorkable: true,
-      walkBlockAreas: walkBlockAreas(g),
-      buildBlockAreas: buildBlockAreas(g),
-      workAreas: workAreas(g),
-    })),
-    gatheringPipeline: GATHERERS.map((g) => ({
-      goodType: g.good,
-      goodId: g.id,
-      harvestAtomic: g.atomic,
-      bioLandscape: g.mode !== 'mine',
-      harvest: { landscapeType: resourceLandscapeType(g.good), gfxIndices: [resourceGfxIndex(g.good)] },
-    })),
+    landscapeGfx: sandboxLandscapeGfx(),
+    gatheringPipeline: sandboxGatheringPipeline(),
     weapons: [
       {
         typeId: WEAPON_FISTS,
