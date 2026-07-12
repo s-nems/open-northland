@@ -193,20 +193,33 @@ export function assignStaticFields(
   kind: 'building' | 'resource' | 'stump',
   components: Readonly<Record<string, unknown>>,
 ): void {
-  if (kind === 'building') {
-    const typeId = readBuildingType(components);
-    if (typeId !== undefined) target.typeId = typeId;
-    const builtPct = readBuiltPct(components);
-    if (builtPct !== undefined) target.builtPct = builtPct;
-  } else if (kind === 'resource') {
-    const goodType = readResourceGood(components);
-    if (goodType !== undefined) target.goodType = goodType;
-    const level = readResourceLevel(components);
-    if (level !== undefined) target.level = level;
-    const gfxIndex = readResourceGfxIndex(components);
-    if (gfxIndex !== undefined) target.gfxIndex = gfxIndex;
-  } else {
-    const goodType = readStumpGood(components);
-    if (goodType !== undefined) target.goodType = goodType;
+  switch (kind) {
+    case 'building': {
+      const typeId = readBuildingType(components);
+      if (typeId !== undefined) target.typeId = typeId;
+      const builtPct = readBuiltPct(components);
+      if (builtPct !== undefined) target.builtPct = builtPct;
+      return;
+    }
+    case 'resource': {
+      const goodType = readResourceGood(components);
+      if (goodType !== undefined) target.goodType = goodType;
+      const level = readResourceLevel(components);
+      if (level !== undefined) target.level = level;
+      const gfxIndex = readResourceGfxIndex(components);
+      if (gfxIndex !== undefined) target.gfxIndex = gfxIndex;
+      return;
+    }
+    case 'stump': {
+      const goodType = readStumpGood(components);
+      if (goodType !== undefined) target.goodType = goodType;
+      return;
+    }
+    default: {
+      // Exhaustiveness guard: a new static kind fails to assign to `never` here (a compile error) instead
+      // of silently taking the stump path. The function is void, so nothing is returned.
+      const _exhaustive: never = kind;
+      void _exhaustive;
+    }
   }
 }
