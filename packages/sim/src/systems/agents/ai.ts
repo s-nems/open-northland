@@ -28,6 +28,7 @@ import {
   planPorter,
   planProducer,
   planWorkshopSupplier,
+  type WorkSeatClaims,
 } from './drives-economy.js';
 import { collectFarmClaims, planFarmer, releaseFarmTask } from './drives-farming.js';
 import { planNeeds } from './drives-needs.js';
@@ -102,6 +103,10 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
   // the farmers planned earlier this tick reserve their nodes — so two farmers never shadow each other
   // to the same field/sheaf/sow spot, across ticks as well as within one (see drives-farming.ts).
   const farmClaims = collectFarmClaims(world);
+  // Work-seat claims: each workshop hands out one "stay & produce" seat per batch that would run if
+  // staffed (see workSeatCount); operators planned earlier this tick take them first, so a surplus
+  // operator goes fetching/hauling instead of idling inside beside a colleague's batch.
+  const seatClaims: WorkSeatClaims = new Map();
 
   for (const e of world.query(Settler, Position)) {
     // Busy: an atomic is running, or the settler is en route to a target. Leave it to play out (its
@@ -172,8 +177,9 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     if (planFarmer(world, ctx, terrain, e, worker, here, targets, farmClaims)) continue;
 
     // 2a. PRODUCER / WORKSHOP SUPPLIER — a worker bound to a recipe workshop. A CARRIER bound there
-    // ferries (top up inputs, carry outputs out — it never operates the craft); a craftsman runs the
-    // supply→produce→deliver loop, leaving the transport to its carrier when one is bound.
+    // ferries (top up inputs, carry outputs out — it never operates the craft); a craftsman claims a
+    // work seat and produces, fetches a missing input itself when starved (even beside a carrier),
+    // and leaves the output run to its carrier when one is bound.
     const workplace = boundWorkplaceTarget(world, ctx, e, worker.jobType, worker.tribe);
     if (workplace !== null) {
       if (isCarrierJob(ctx, worker.jobType)) {
@@ -188,6 +194,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
           here,
           workplace,
           targets.stockpiles,
+          seatClaims,
           targets.carrierSuppliedWorkplaces.has(workplace),
         );
       }

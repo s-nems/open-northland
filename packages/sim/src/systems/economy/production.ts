@@ -99,41 +99,55 @@ export const productionSystem: System = (world, ctx) => {
 };
 
 /**
- * Whether a workplace may begin ANOTHER production cycle now: every output good is **tech-unlocked**
- * for its tribe (the `jobEnablesGood` gate), its own stockpile holds every input good in full, AND
- * every output good has free room up to its per-good stock capacity — counting the outputs the
- * ALREADY-RUNNING batches will deposit (each in-flight cycle reserved its room when it started, so a
- * second batch only starts if the slot fits both). The output room check is the capacity enforcement
- * — a cycle that couldn't deposit its outputs is never started, so the stockpile never overflows
- * (and outputs aren't produced and then dropped). The tech gate mirrors the `placeBuilding` house
- * gate: a good gated by `jobEnablesGood` isn't produced until an enabling-job settler is in the tribe
- * (a tannery makes no leather without the tanner). The in-flight reservation assumes every running
- * batch runs THIS recipe — true today (one recipe per building type); a future per-cycle recipe
- * carries its own outputs and this accounting moves onto the cycle.
- *
- * Exported so the AI planner can ask "would this workplace produce a cycle if its worker stayed put?"
- * (the producer self-service decision — {@link workplaceProductiveIfStaffed}) with the exact same gate
- * the ProductionSystem applies, rather than a drifting re-implementation. Does NOT check `built >= ONE`
- * (the start loop checks that separately) or worker-presence (the caller decides whether the worker is
- * there), so the planner combines those itself.
+ * Whether a workplace may begin ANOTHER production cycle now — the start gate the ProductionSystem
+ * applies (see {@link startableCycleCount} for the checks; this is its `> 0` view).
  */
 export function canStartCycle(world: World, ctx: SystemContext, building: Entity, recipe: Recipe): boolean {
+  return startableCycleCount(world, ctx, building, recipe) > 0;
+}
+
+/**
+ * How many MORE production cycles the workplace could start right now, beyond the batches already in
+ * flight. A cycle is startable while: every output good is **tech-unlocked** for its tribe (the
+ * `jobEnablesGood` gate — mirrors the `placeBuilding` house gate: a tannery makes no leather without
+ * the tanner; any locked output means zero), the stockpile covers every input in full once per batch,
+ * AND every output has free room up to its per-good stock capacity AFTER the in-flight batches
+ * deposit theirs (each running cycle reserved its room when it started, so a further batch only
+ * starts if the slot fits them all). The output room check is the capacity enforcement — a cycle that
+ * couldn't deposit its outputs is never started, so the stockpile never overflows. The in-flight
+ * reservation assumes every running batch runs THIS recipe — true today (one recipe per building
+ * type); a future per-cycle recipe carries its own outputs and this accounting moves onto the cycle.
+ *
+ * Exported so the AI planner can size the workplace's WORK SEATS (running + startable batches — the
+ * producer stay-or-fetch decision, {@link workSeatCount}) with the exact same gate the
+ * ProductionSystem applies, rather than a drifting re-implementation. Does NOT check `built >= ONE`
+ * (the start loop checks that separately) or worker-presence (the caller decides whether the worker
+ * is there), so the planner combines those itself. An input-less, output-less recipe reads as
+ * unbounded (`Infinity`) — the degenerate always-startable case the `> 0` gate preserved.
+ */
+export function startableCycleCount(
+  world: World,
+  ctx: SystemContext,
+  building: Entity,
+  recipe: Recipe,
+): number {
   const tribe = world.get(building, Building).tribe;
   for (const output of recipe.outputs) {
-    if (!goodEnabled(world, ctx, tribe, output.goodType)) return false; // good not yet tech-unlocked
+    if (!goodEnabled(world, ctx, tribe, output.goodType)) return 0; // good not yet tech-unlocked
   }
   const stock = world.get(building, Stockpile).amounts;
-  for (const input of recipe.inputs) {
-    if ((stock.get(input.goodType) ?? 0) < input.amount) return false; // input not available
-  }
   const inFlight = world.tryGet(building, Production)?.cycles.length ?? 0;
+  let startable = Number.POSITIVE_INFINITY;
+  for (const input of recipe.inputs) {
+    startable = Math.min(startable, Math.floor((stock.get(input.goodType) ?? 0) / input.amount));
+  }
   for (const output of recipe.outputs) {
     const have = stock.get(output.goodType) ?? 0;
     const capacity = stockCapacity(world, ctx, building, output.goodType);
-    // Room for this batch AND every batch already grinding (each deposits `amount` on completion).
-    if (capacity - have < output.amount * (inFlight + 1)) return false;
+    // Room for each further batch AND every batch already grinding (each deposits `amount`).
+    startable = Math.min(startable, Math.floor((capacity - have) / output.amount) - inFlight);
   }
-  return true;
+  return Math.max(0, startable);
 }
 
 /**

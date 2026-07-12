@@ -23,7 +23,7 @@ import {
   nearestGroundPile,
   nearestMissingInputSource,
   workplaceOutputToHaul,
-  workplaceProductiveIfStaffed,
+  workSeatCount,
 } from './ai-supply.js';
 import {
   interactionCell,
@@ -142,32 +142,41 @@ export function planDelivery(
   return true;
 }
 
+/** Per-tick tally of the work seats already claimed at each workplace — created fresh by the
+ *  planner every tick and handed to each {@link planProducer} call in settler order, so two
+ *  operators of one workshop never both latch onto the same batch (see {@link workSeatCount}). */
+export type WorkSeatClaims = Map<Entity, number>;
+
 /**
  * 2. PRODUCER — the self-service loop for a settler bound to a recipe workshop `workplace`; the
  * behavior behind "kowal fetches the goods a sword needs, forges it, and carries it back". In priority:
  *
- *  a. **Stay & produce** — if staying on the station would run a cycle ({@link workplaceProductiveIfStaffed}:
- *     already producing, or built with all inputs present + output room), walk to the station (if not on
- *     it) and hold there so the ProductionSystem's worker-presence gate stays satisfied. On the station
- *     the worker steps INSIDE (the {@link Resting} marker — the render hides it): a craftsman works in
- *     its workshop, not standing at the door (observed original behaviour).
+ *  a. **Claim a work seat & produce** — the workplace offers one seat per batch that would run if
+ *     staffed ({@link workSeatCount}: cycles already grinding + cycles the stock could start), and
+ *     `seatClaims` hands them out in the planner's deterministic settler order. A worker with a seat
+ *     walks to the station (if not on it) and holds there so the ProductionSystem's worker-presence
+ *     gate stays satisfied; on the station it steps INSIDE (the {@link Resting} marker — the render
+ *     hides it): a craftsman works in its workshop, not standing at the door (observed original
+ *     behaviour). A worker who finds every seat taken is SURPLUS — its own batch is done or can't
+ *     start — and falls through to the transport branches instead of idling inside while a
+ *     colleague's batch finishes.
  *  b. **Fetch an input** — else, fetch a missing recipe input from a store that holds it (the smith
  *     walking to the warehouse for iron); the carrying branch then delivers it to this workshop.
  *     Fetching ranks ABOVE hauling the output out: finished goods accumulate in the shop's own store
  *     while the loop runs, and are carried out only when production can't continue — typically when the
  *     output store fills (observed original behaviour: the miller keeps grinding, flour banks up in the
- *     mill, and only a full mill sends it to the warehouse to make room).
+ *     mill, and only a full mill sends it to the warehouse to make room). A craftsman fetches even when
+ *     a carrier is bound: a starved mill takes wheat from whoever gets there first ("jak nie ma, to
+ *     idzie po nie sam") — the pickup caps to what the source holds, so racing the carrier is harmless.
  *  c. **Haul the output** — else, if the shop holds a finished output a store can take, carry it out
  *     (an output-full shop makes room for the next cycle; an input-starved one banks its product). The
- *     carrying branch routes it to a store, not back to the shop.
+ *     carrying branch routes it to a store, not back to the shop. SKIPPED when `carrierSupplied` (the
+ *     workplace has a bound carrier — {@link
+ *     import('./ai-targets.js').TargetCandidates.carrierSuppliedWorkplaces}): carrying the product out
+ *     is the carrier's whole job ({@link planWorkshopSupplier}), and unlike a starved input it never
+ *     blocks the craft immediately — the craftsman stays near its seat.
  *  d. **Wait** — nothing to fetch or haul: return to / hold the station until an input arrives, waiting
  *     INSIDE it (the same {@link Resting} marker — off-duty workers wait in the house).
- *
- * `carrierSupplied` (the workplace has a bound carrier — {@link
- * import('./ai-targets.js').TargetCandidates.carrierSuppliedWorkplaces}) SKIPS b and c: the transport
- * is the carrier's whole job ({@link planWorkshopSupplier}), so the craftsman stays at the craft and
- * never races its carrier to the same pile — the "tragarz przynosi i odnosi, młynarz pracuje" division
- * (observed original behaviour).
  *
  * Every branch is recipe-driven — no per-job or per-good code — so any single-worker workshop self-
  * services. The workplace is known to carry a recipe (the caller's `boundWorkplaceTarget` guard).
@@ -181,6 +190,7 @@ export function planProducer(
   here: NodeId,
   workplace: Entity,
   stockpiles: readonly Entity[],
+  seatClaims: WorkSeatClaims,
   carrierSupplied = false,
 ): void {
   const recipe = recipeOf(world, ctx, workplace);
@@ -193,23 +203,25 @@ export function planProducer(
       world.add(e, Resting, { at: workplace }),
     );
 
-  // a. Would staying produce a cycle? Be on the station (walk there / hold inside) so production runs.
-  if (workplaceProductiveIfStaffed(world, ctx, workplace, recipe)) {
+  // a. A batch for THIS worker to run or start? Claim the seat and be on the station.
+  const claimed = seatClaims.get(workplace) ?? 0;
+  if (claimed < workSeatCount(world, ctx, workplace, recipe)) {
+    seatClaims.set(workplace, claimed + 1);
     holdInside();
     return;
   }
 
-  if (!carrierSupplied) {
-    // b. Can't produce now — fetch a missing recipe input from a store that holds it (the smith going
-    // to the warehouse). The finished output stays banked in the shop while inputs keep the loop running.
-    const src = nearestMissingInputSource(stockpiles, world, ctx, terrain, here, workplace, recipe);
-    if (src !== null) {
-      atOrWalk(world, e, here, interactionCell(world, ctx, terrain, src.store, here), () =>
-        startPickup(world, ctx, e, settler, src.store, src.goodType, src.amount),
-      );
-      return;
-    }
+  // b. No seat — fetch a missing recipe input from a store that holds it (the smith going to the
+  // warehouse). The finished output stays banked in the shop while inputs keep the loop running.
+  const src = nearestMissingInputSource(stockpiles, world, ctx, terrain, here, workplace, recipe);
+  if (src !== null) {
+    atOrWalk(world, e, here, interactionCell(world, ctx, terrain, src.store, here), () =>
+      startPickup(world, ctx, e, settler, src.store, src.goodType, src.amount),
+    );
+    return;
+  }
 
+  if (!carrierSupplied) {
     // c. Nothing to fetch — carry the finished output out to a store (an output-full shop frees room
     // for the next cycle; an input-starved one delivers what it made).
     const outGood = workplaceOutputToHaul(stockpiles, world, ctx, terrain, workplace, recipe, here);
@@ -229,7 +241,7 @@ export function planProducer(
     }
   }
 
-  // d. Nothing to fetch or haul (or the bound carrier owns the transport) — return to / wait inside
+  // d. Nothing to fetch or haul (or the bound carrier owns the output run) — return to / wait inside
   // the station for an input to arrive.
   holdInside();
 }
