@@ -62,12 +62,15 @@ export const WorkerSlot = z.strictObject({
 });
 export type WorkerSlot = z.infer<typeof WorkerSlot>;
 
+/** Game ticks for one production cycle when the source pins no atomic-animation length (unpinned). */
+export const DEFAULT_RECIPE_TICKS = 20;
+
 /** A recipe: a workplace turns inputs into outputs over time. */
 export const Recipe = z.strictObject({
   inputs: z.array(GoodQuantity).default([]),
   outputs: z.array(GoodQuantity).default([]),
   /** Game ticks to complete one production cycle. */
-  ticks: z.number().int().positive().default(20),
+  ticks: z.number().int().positive().default(DEFAULT_RECIPE_TICKS),
 });
 export type Recipe = z.infer<typeof Recipe>;
 
