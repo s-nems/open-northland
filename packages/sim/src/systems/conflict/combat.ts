@@ -35,7 +35,7 @@ import {
   manhattan,
   NodeBuckets,
 } from '../spatial.js';
-import { playerSeesEntity } from '../vision.js';
+import { playerSeesEntity } from '../vision/index.js';
 import { fleeDrive } from './flee.js';
 import { hostileAnimalNow, isHuntTarget, isValidTarget, SIGHT_RADIUS_NODES } from './targeting.js';
 import { attackerWeapon, startAttack, targetMaterial } from './weapons.js';

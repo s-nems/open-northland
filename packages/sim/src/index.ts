@@ -95,4 +95,4 @@ export * as systems from './systems/index.js';
 // The walk cadence (ticks per visual cell at cruise) — public so the render's walk-cycle clock can
 // stay in exact step with the sim's gait instead of restating the number.
 export { WALK_TICKS_PER_CELL } from './systems/movement/movement.js';
-export { FOG_STATE } from './systems/vision.js';
+export { FOG_STATE } from './systems/vision/index.js';
