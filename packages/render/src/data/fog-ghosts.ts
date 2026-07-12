@@ -2,7 +2,7 @@ import { FOG_MODE, FOG_STATE, type FogView, type WorldSnapshot } from '@vinland/
 import { fogCellOfTile } from './fog.js';
 import { ONE } from './iso.js';
 import type { DrawKind } from './scene/draw-item.js';
-import { assignStaticFields, classify, readPosition } from './scene/snapshot-readers.js';
+import { assignStaticFields, classify, readPosition } from './scene/snapshot-readers/index.js';
 
 /**
  * FOG GHOSTS — the viewer player's remembered STATICS: a building, resource node or stump, once seen,

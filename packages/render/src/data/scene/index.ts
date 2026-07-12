@@ -2,7 +2,7 @@
  * The PURE scene-building layer — the part of rendering an agent CAN self-verify (no Pixi, no canvas,
  * no GPU). Split by concern:
  *  - {@link import('./draw-item.js')} — the {@link DrawItem} vocabulary + terrain-grid shapes;
- *  - {@link import('./snapshot-readers.js')} — the per-component snapshot reads;
+ *  - {@link import('./snapshot-readers/index.js')} — the per-component snapshot reads;
  *  - {@link import('./sprite-scene.js')} — the per-frame culled, depth-sorted sprite list + liveness set;
  *  - {@link import('./terrain-scene.js')} — the map projection + the whole-frame headless oracle.
  */
@@ -15,7 +15,7 @@ export {
   type SceneTransitions,
   type SpriteState,
 } from './draw-item.js';
-export { depositVisualLevel } from './snapshot-readers.js';
+export { depositVisualLevel } from './snapshot-readers/index.js';
 export {
   buildSpriteScene,
   collectSpriteScene,

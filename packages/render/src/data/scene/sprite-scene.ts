@@ -35,14 +35,14 @@ import {
   readSpriteState,
   readStockpile,
   readStoreExchangeRef,
-} from './snapshot-readers.js';
+} from './snapshot-readers/index.js';
 
 /**
  * The PURE sprite-scene builder — the per-frame half of the scene layer, and the part of rendering an
  * agent CAN self-verify. It turns a {@link WorldSnapshot} into a flat, **depth-sorted** list of sprite
  * draw items in isometric screen space (no Pixi, no canvas, no GPU: plain data the GPU layer walks in
  * order), plus the pre-cull liveness set the retained pool reconciles against. The per-component
- * snapshot reads live in {@link import('./snapshot-readers.js')}; this module owns the projection,
+ * snapshot reads live in {@link import('./snapshot-readers/index.js')}; this module owns the projection,
  * the cull, and the depth order.
  *
  * Why floats are fine here: this is `render`, a pure consumer of sim state (docs/ARCHITECTURE.md).
