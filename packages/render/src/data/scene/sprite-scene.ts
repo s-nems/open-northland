@@ -1,5 +1,5 @@
 import type { WorldSnapshot } from '@vinland/sim';
-import type { ElevationField } from '../elevation.js';
+import { type ElevationField, terrainLiftAt } from '../elevation.js';
 import type { FogGhost } from '../fog-ghosts.js';
 import { ONE, tileToScreen } from '../iso.js';
 import { clamp01 } from '../math.js';
@@ -318,7 +318,7 @@ export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOpt
     // Terrain lift at the feet (bilinear over the elevation lane) — the DRAW offset, NOT the depth key.
     // The anchor/`depth` below stay PRE-LIFT so occlusion sorts by map row, not by lifted screen y.
     // A flat map (`maxLift === 0`) skips the sampler entirely — the elevation-free path stays free.
-    const lift = elevation !== undefined && elevation.maxLift > 0 ? elevation.liftAt(tileX, tileY) : 0;
+    const lift = terrainLiftAt(elevation, tileX, tileY);
     // A projectile's ballistic height (set in its branch below) rides the SAME lift channel as terrain:
     // a pure draw offset the depth key never sees, so the lob can't reshuffle occlusion mid-flight.
     let arcLift = 0;
@@ -454,7 +454,7 @@ export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOpt
       liveRefs.add(g.ref);
       const screen = tileToScreen(g.tileX, g.tileY);
       if (viewport !== undefined && !isVisible(viewport, screen.x, screen.y)) continue;
-      const lift = elevation !== undefined && elevation.maxLift > 0 ? elevation.liftAt(g.tileX, g.tileY) : 0;
+      const lift = terrainLiftAt(elevation, g.tileX, g.tileY);
       // Same anchor/depth formula as a live static, so a ghost sorts correctly against live sprites
       // at the fog boundary. Statics are always `idle`; the per-kind fields were frozen at capture.
       const item: MutableDrawItem = {

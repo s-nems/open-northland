@@ -15,6 +15,7 @@ import {
   triangleUVs,
 } from '../../data/terrain.js';
 import { aabbIntersects, type Viewport } from '../../data/viewport.js';
+import { destroyMeshChildren } from '../mesh-teardown.js';
 import type { GroundPattern, TerrainTextureSet } from '../pixi-app.js';
 import { padLaneRows } from '../shading.js';
 import {
@@ -173,21 +174,15 @@ export class TerrainLayer {
   }
 
   /**
-   * Free the current terrain: each chunk is a {@link Container} of {@link Mesh}es, and a `Mesh` does NOT
-   * own its {@link import('pixi.js').MeshGeometry} or its custom shader (so `destroy` never frees the
-   * vertex/uv/index GPU buffers or the shader's uniform state) — release both explicitly, then destroy
-   * the container + its children. The tile textures/`Texture.WHITE` are SHARED sources and are
+   * Free the current terrain: each chunk is a {@link Container} of {@link Mesh}es whose GPU buffers +
+   * custom shader `Mesh.destroy` does not release, so {@link destroyMeshChildren} frees those first, then
+   * the container + its children go. The tile textures/`Texture.WHITE` are SHARED sources and are
    * deliberately left alone (as is the shaded ground's process-wide GL program). Used by {@link set}
    * (a rebuild) and the renderer's dispose.
    */
   destroy(): void {
     for (const chunk of this.chunks) {
-      for (const child of chunk.container.children) {
-        if (child instanceof Mesh) {
-          child.geometry.destroy();
-          child.shader?.destroy();
-        }
-      }
+      destroyMeshChildren(chunk.container);
       chunk.container.destroy({ children: true });
     }
     this.chunks = [];

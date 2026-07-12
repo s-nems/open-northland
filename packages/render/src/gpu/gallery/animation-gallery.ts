@@ -1,5 +1,5 @@
 import { type Application, Container, Graphics, Sprite, Text, type TextureSource } from 'pixi.js';
-import type { Camera } from '../../data/iso.js';
+import { type Camera, cameraScreenX, cameraScreenY } from '../../data/iso.js';
 import { lookupFrame } from '../../data/sprites/index.js';
 import { PalettedSprite } from '../paletted-sprite.js';
 import type { SpriteLayer } from '../pixi-app.js';
@@ -191,8 +191,8 @@ export class AnimationGallery {
     const resH = this.app.screen.height;
     for (const cell of this.cells) {
       const bodyBob = galleryBobId(cell.clip, this.direction, step);
-      const originX = camera.offsetX + scale * cell.container.position.x;
-      const originY = camera.offsetY + scale * cell.container.position.y;
+      const originX = cameraScreenX(camera, cell.container.position.x);
+      const originY = cameraScreenY(camera, cell.container.position.y);
       for (let i = 0; i < cell.layers.length; i++) {
         const layer = cell.layers[i];
         const spr = cell.sprites[i];

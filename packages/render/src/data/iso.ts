@@ -96,6 +96,17 @@ export function halfCellToScreen(hx: number, hy: number): { x: number; y: number
 }
 
 /**
+ * Screen offset (pre-camera) → the integer CELL `(col, row)` whose diamond contains it — the cell-resolution
+ * inverse of {@link tileToScreen}/{@link halfCellToScreen}, floored. A cell spans `2·TILE_HALF_W` across and
+ * one `TILE_HALF_H` row step down (cell `(c,r)` occupies half-cell nodes `2c..2c+1 × 2r..2r+1`), so
+ * `col = ⌊x / (2·TILE_HALF_W)⌋`, `row = ⌊y / TILE_HALF_H⌋`. Ignores the odd-row parity half-shift — this is a
+ * cell-granularity bucket (e.g. a world object's fog-state lookup), not a pixel-exact pick. Pure.
+ */
+export function screenToCell(x: number, y: number): { col: number; row: number } {
+  return { col: Math.floor(x / (2 * TILE_HALF_W)), row: Math.floor(y / TILE_HALF_H) };
+}
+
+/**
  * The flat `[x, y, …]` point list of a NODE DIAMOND centred at `(cx, cy)` with half-extents `(hw, hh)`,
  * wound top → right → bottom → left — the shape a single half-cell node fills on the lattice. The
  * world-space per-cell washes ({@link import('../gpu/construction-plot.js').ConstructionPlotLayer},
@@ -123,6 +134,22 @@ export interface Camera {
    * offset`. Defaults to 1.
    */
   readonly scale?: number;
+}
+
+/**
+ * Apply the camera to one world axis — `screen = world·scale + offset` — for the ONE case that needs it
+ * explicitly: the team-colour {@link import('../gpu/paletted-sprite.js').PalettedSprite} meshes self-place in
+ * SCREEN space (a custom-shader mesh can't ride the camera-transformed layer), so they mirror the transform
+ * plain sprites inherit from the scene graph. Split X/Y (not a `{x,y}` return) so the per-frame paletted path
+ * allocates nothing. Pure.
+ */
+export function cameraScreenX(camera: Camera, worldX: number): number {
+  return camera.offsetX + (camera.scale ?? 1) * worldX;
+}
+
+/** {@link cameraScreenX} for the Y axis. */
+export function cameraScreenY(camera: Camera, worldY: number): number {
+  return camera.offsetY + (camera.scale ?? 1) * worldY;
 }
 
 /**

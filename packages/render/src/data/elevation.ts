@@ -69,6 +69,16 @@ export interface ElevationField {
   liftAtNode(hx: number, hy: number): number;
 }
 
+/**
+ * The terrain lift (world px to SUBTRACT from a projected feet `y`) at a continuous cell coordinate, or 0
+ * when there is nothing to sample. Folds the flat-map fast path (`maxLift === 0` skips the sampler) and the
+ * absent-field case that the live-entity and ghost projection both apply, so the two can't drift on the
+ * guard. Pure.
+ */
+export function terrainLiftAt(elevation: ElevationField | undefined, col: number, row: number): number {
+  return elevation !== undefined && elevation.maxLift > 0 ? elevation.liftAt(col, row) : 0;
+}
+
 /** A flat field — no elevation lane. Shared so a `content/`-less / synthetic map allocates nothing. */
 const FLAT_FIELD: ElevationField = { maxLift: 0, liftAt: () => 0, liftAtNode: () => 0 };
 

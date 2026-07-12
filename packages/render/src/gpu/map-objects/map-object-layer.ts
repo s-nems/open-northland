@@ -1,9 +1,10 @@
 import { FOG_STATE } from '@vinland/sim';
-import { Container, Mesh, Sprite } from 'pixi.js';
+import { Container, Sprite } from 'pixi.js';
 import { scaleColour } from '../../data/brightness.js';
 import { fogGhostTint } from '../../data/fog.js';
-import { depthKey, TILE_HALF_H, TILE_HALF_W } from '../../data/iso.js';
+import { depthKey, screenToCell, TILE_HALF_W } from '../../data/iso.js';
 import { aabbIntersects, isVisible, type Viewport } from '../../data/viewport.js';
+import { destroyMeshChildren } from '../mesh-teardown.js';
 import { TERRAIN_CHUNK_TILES } from '../terrain/index.js';
 import type { TextureCache } from '../texture-cache.js';
 import { buildDecorChunk, type DecorChunk, writeObjectQuad } from './decor-batch.js';
@@ -162,10 +163,7 @@ export class MapObjectLayer {
       const i = block.objects.findIndex((po) => po.obj === obj);
       if (i >= 0) {
         const po = block.objects[i] as PooledObject;
-        if (po.attached && po.sprite !== null) {
-          this.spriteLayer.removeChild(po.sprite);
-          block.attachedCount--;
-        }
+        if (this.detach(po)) block.attachedCount--;
         po.sprite?.destroy();
         block.objects.splice(i, 1);
       }
@@ -180,6 +178,18 @@ export class MapObjectLayer {
       if (quad.animated !== null) quad.animated.objects[quad.quadIndex] = null; // rewrite loop skips it
       return;
     }
+  }
+
+  /**
+   * Detach a tall object's pooled sprite from the shared entity layer, returning whether it WAS attached
+   * (so the caller keeps its block's `attachedCount` correct — some callers zero the counter in bulk,
+   * others decrement per member). Leaves the sprite pooled for re-attach; does not destroy it.
+   */
+  private detach(po: PooledObject): boolean {
+    if (!po.attached || po.sprite === null) return false;
+    this.spriteLayer.removeChild(po.sprite);
+    po.attached = false;
+    return true;
   }
 
   /**
@@ -215,10 +225,9 @@ export class MapObjectLayer {
           // currently watch — same memory-not-live-feed rule as the tall objects, decided per
           // object cell (the loop rewrites every on-screen animated quad each tick anyway, so a
           // frozen quad just keeps re-writing its fixed-clock frame — no per-object state).
+          const cell = screenToCell(obj.x, obj.y);
           const watched =
-            fogStateOfCell === undefined ||
-            fogStateOfCell(Math.floor(obj.x / (2 * TILE_HALF_W)), Math.floor(obj.y / TILE_HALF_H)) ===
-              FOG_STATE.VISIBLE;
+            fogStateOfCell === undefined || fogStateOfCell(cell.col, cell.row) === FOG_STATE.VISIBLE;
           const frame = objectFrameAt(obj, watched ? tick : 0);
           if (frame !== undefined) {
             writeObjectQuad(batch.positions, batch.uvs, q, obj, frame, batch.pageW, batch.pageH);
@@ -238,31 +247,21 @@ export class MapObjectLayer {
       const blockVisible = aabbIntersects(vp, block);
       if (!blockVisible) {
         if (block.attachedCount > 0) {
-          for (const po of block.objects) {
-            if (po.attached && po.sprite !== null) {
-              this.spriteLayer.removeChild(po.sprite);
-              po.attached = false;
-            }
-          }
+          for (const po of block.objects) this.detach(po);
           block.attachedCount = 0;
         }
         continue;
       }
       for (const po of block.objects) {
         const obj = po.obj;
-        // The anchor's visual cell — tall objects sit on half-cell nodes (`halfCellToScreen`), so the
-        // exact inverse is `⌊x / cellWidth⌋, ⌊y / rowStep⌋` (cell (c,r) owns nodes 2c..2c+1 × 2r..2r+1).
+        // Fog is gated per visual cell — tall objects sit on half-cell nodes, so the anchor's cell is
+        // its screen→cell inverse (see screenToCell).
+        const cell = screenToCell(obj.x, obj.y);
         const fogState =
-          fogStateOfCell === undefined
-            ? FOG_STATE.VISIBLE
-            : fogStateOfCell(Math.floor(obj.x / (2 * TILE_HALF_W)), Math.floor(obj.y / TILE_HALF_H));
+          fogStateOfCell === undefined ? FOG_STATE.VISIBLE : fogStateOfCell(cell.col, cell.row);
         const visible = isVisible(vp, obj.x, obj.y) && fogState !== FOG_STATE.UNEXPLORED;
         if (!visible) {
-          if (po.attached && po.sprite !== null) {
-            this.spriteLayer.removeChild(po.sprite);
-            po.attached = false;
-            block.attachedCount--;
-          }
+          if (this.detach(po)) block.attachedCount--;
           continue;
         }
         if (po.sprite === null) {
@@ -311,14 +310,8 @@ export class MapObjectLayer {
   /** Free the decor meshes + tall-object sprites (a map change re-invalidates both). */
   destroy(): void {
     for (const chunk of this.decorChunks) {
-      for (const child of chunk.container.children) {
-        if (child instanceof Mesh) {
-          child.geometry.destroy();
-          // A shaded decor mesh owns a per-mesh Shader (custom shaders aren't freed by Mesh.destroy;
-          // the compiled GL program is shared process-wide and deliberately kept).
-          child.shader?.destroy();
-        }
-      }
+      // A shaded decor mesh's geometry + custom shader aren't freed by Mesh.destroy — release them first.
+      destroyMeshChildren(chunk.container);
       chunk.container.destroy({ children: true });
     }
     this.decorChunks = [];
