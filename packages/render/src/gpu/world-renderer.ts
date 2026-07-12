@@ -1,7 +1,8 @@
-import { FOG_STATE, type FogView, type SimEvent, type WorldSnapshot } from '@vinland/sim';
+import type { FogView, SimEvent, WorldSnapshot } from '@vinland/sim';
 import { type Application, Container, RenderTexture, Sprite, Texture, type TextureSource } from 'pixi.js';
 import { type ElevationField, makeElevationField } from '../data/elevation.js';
 import { fogTileVisible } from '../data/fog.js';
+import { type FogGhost, FogGhostStore } from '../data/fog-ghosts.js';
 import type { Camera } from '../data/iso.js';
 import type { SceneTerrain } from '../data/scene/index.js';
 import type { AtlasFrame } from '../data/sprites/index.js';
@@ -120,6 +121,9 @@ export class WorldRenderer {
    *  fog view it composites from ({@link updateFog}; null = fog off, the wash clears). */
   private readonly fog: FogLayer;
   private fogView: FogView | null = null;
+  /** The viewer's remembered statics (buildings/resources once seen, drawn dimmed on explored
+   *  ground) — refreshed on the fog view's mask generations inside {@link update}. */
+  private readonly fogGhosts = new FogGhostStore();
   /** The build-mode dim wash over non-buildable tiles (world-space, BELOW the sprites). */
   private readonly placementOverlay: PlacementOverlayLayer;
   /** Grey ground plots under placed construction sites (world-space, BELOW the sprites). */
@@ -278,6 +282,17 @@ export class WorldRenderer {
   }
 
   /**
+   * Remember entity `ref` as a fog ghost even if its ground is not currently visible — the other half
+   * of the {@link removeMapObject} handover: a virgin node first worked UNDER the viewer's fog leaves
+   * the static layer (which was its de-facto ghost) for the fog-culled sprite pool, so without this
+   * adoption its remembered look would vanish from explored ground. Queued until the next mask
+   * rebuild; harmless while fog is off (a fresh fog start re-explores from scratch anyway).
+   */
+  adoptFogGhost(ref: number): void {
+    this.fogGhosts.adopt(ref);
+  }
+
+  /**
    * Name the entities the retained static map-object layer draws instead of the sprite pool (a decoded
    * map's virgin resource nodes). The pool's per-frame scene build skips them entirely. LIVE-VIEW
    * contract: the renderer holds the REFERENCE and reads it each frame — the caller mutates the same
@@ -329,10 +344,18 @@ export class WorldRenderer {
     // FogView, so the wash, the trees and the entities can never disagree about a cell.
     const fogView = this.fogView;
     this.fog.update(fogView, vp);
+    // The ghost memory refreshes on the fog view's mask generations (cheap per frame otherwise);
+    // fog OFF clears it — the sim resets exploration history the same way.
+    let ghosts: readonly FogGhost[] | undefined;
+    if (fogView === null) {
+      this.fogGhosts.clear();
+    } else {
+      ghosts = this.fogGhosts.update(snapshot, fogView, this.staticDrawnRefs);
+    }
     this.mapObjects.update(
       vp,
       tick,
-      fogView === null ? undefined : (cellX, cellY) => fogView.stateAt(cellX, cellY) === FOG_STATE.VISIBLE,
+      fogView === null ? undefined : (cellX, cellY) => fogView.stateAt(cellX, cellY),
     );
     // The pool needs the camera + canvas size to place team-colour PalettedSprite meshes (screen-space,
     // they can't ride the worldLayer transform); the plain-sprite path ignores them. The elevation field
@@ -351,6 +374,7 @@ export class WorldRenderer {
       ...(fogView !== null
         ? { fogVisible: (tx: number, ty: number) => fogTileVisible(fogView, tx, ty) }
         : {}),
+      ...(ghosts !== undefined && ghosts.length > 0 ? { ghosts } : {}),
     });
     // Selection rings read the pool's just-computed per-entity bounds + drawn (lerped, lifted) anchors,
     // so a building's marker sizes to its actual sprite footprint and a moving unit's ring glides with

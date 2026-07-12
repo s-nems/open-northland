@@ -1,5 +1,6 @@
 import type { WorldSnapshot } from '@vinland/sim';
 import type { ElevationField } from '../elevation.js';
+import type { FogGhost } from '../fog-ghosts.js';
 import { ONE, tileToScreen } from '../iso.js';
 import { isVisible, type Viewport } from '../viewport.js';
 import {
@@ -149,7 +150,7 @@ export function buildSpriteScene(
   fogVisible?: (tileX: number, tileY: number) => boolean,
   options?: SpriteSceneOptions,
 ): DrawItem[] {
-  return collectSpriteScene(snapshot, viewport, elevation, staticRefs, fogVisible, options).items;
+  return collectSpriteScene(snapshot, viewport, elevation, staticRefs, fogVisible, undefined, options).items;
 }
 
 /**
@@ -208,6 +209,13 @@ function enterableStoresOf(snapshot: WorldSnapshot): ReadonlySet<number> {
  * tile it rejects is treated exactly like a viewport-culled one — kept in the liveness set (still
  * alive, its pooled sprite is retained for when the fog lifts) but emits no draw item, so a unit,
  * building, resource or pile in unexplored/grey ground simply does not draw.
+ *
+ * `ghosts` are the viewer's remembered statics (`data/fog-ghosts.ts`, pre-filtered to EXPLORED
+ * ground by the store): each projects like a live static (same anchor, lift and depth formula, so a
+ * ghost occludes correctly against live sprites at the fog boundary) but is tagged {@link
+ * DrawItem.ghost} for the pool's grey tint. Ghost refs join the liveness set — a ghost of a DEAD
+ * entity must keep its pooled sprite alive for as long as the memory draws. A ref never yields two
+ * items: the store deletes records on VISIBLE ground, the fog cull drops live items elsewhere.
  */
 export function collectSpriteScene(
   snapshot: WorldSnapshot,
@@ -215,6 +223,7 @@ export function collectSpriteScene(
   elevation?: ElevationField,
   staticRefs?: ReadonlySet<number>,
   fogVisible?: (tileX: number, tileY: number) => boolean,
+  ghosts?: readonly FogGhost[],
   options?: SpriteSceneOptions,
 ): SpriteScene {
   const items: MutableDrawItem[] = [];
@@ -432,6 +441,33 @@ export function collectSpriteScene(
     const drawLift = lift + arcLift;
     if (drawLift !== 0) item.lift = drawLift;
     items.push(item);
+  }
+  if (ghosts !== undefined) {
+    for (const g of ghosts) {
+      // A ghost keeps its (possibly dead) entity's pooled sprite alive even while camera-culled.
+      liveRefs.add(g.ref);
+      const screen = tileToScreen(g.tileX, g.tileY);
+      if (viewport !== undefined && !isVisible(viewport, screen.x, screen.y)) continue;
+      const lift = elevation !== undefined && elevation.maxLift > 0 ? elevation.liftAt(g.tileX, g.tileY) : 0;
+      // Same anchor/depth formula as a live static, so a ghost sorts correctly against live sprites
+      // at the fog boundary. Statics are always `idle`; the per-kind fields were frozen at capture.
+      const item: MutableDrawItem = {
+        kind: g.kind,
+        ref: g.ref,
+        x: screen.x,
+        y: screen.y,
+        depth: g.tileY * ROW_STRIDE + g.tileX + SPRITE_PAINT_ORDER[g.kind] * PAINT_ORDER_EPS,
+        state: 'idle',
+        ghost: true,
+      };
+      if (g.typeId !== undefined) item.typeId = g.typeId;
+      if (g.builtPct !== undefined) item.builtPct = g.builtPct;
+      if (g.goodType !== undefined) item.goodType = g.goodType;
+      if (g.level !== undefined) item.level = g.level;
+      if (g.gfxIndex !== undefined) item.gfxIndex = g.gfxIndex;
+      if (lift !== 0) item.lift = lift;
+      items.push(item);
+    }
   }
   // Stable, total order: sprites by (y, x, id). The entity-id tie-break makes two sprites on the exact
   // same tile order deterministically.

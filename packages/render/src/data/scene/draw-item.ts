@@ -223,6 +223,14 @@ export interface DrawItem {
    */
   readonly rotation?: number;
   /**
+   * Whether this item is a FOG GHOST — a remembered static (building/resource/stump) drawn from the
+   * viewer's {@link import('../fog-ghosts.js').FogGhostStore} memory on EXPLORED ground, not from a live
+   * snapshot entity. The pool dims it to the explored-grey grading ({@link import('../fog.js').FOG_GHOST_TINT})
+   * and stamps NO hit bounds (a ghost is scenery intel — clicking it must not select a fogged, possibly
+   * dead, entity). Omitted (falsy) for every live-drawn item.
+   */
+  readonly ghost?: boolean;
+  /**
    * The draw-height lift (world px, ≥ 0) at this item's feet — terrain elevation, plus a projectile's
    * ballistic-arc height while mid-lob — subtracted from the DRAWN `y` so the sprite sits on the lifted
    * ground (a settler on a hill rides up with it; an arrow arcs over the field). ORTHOGONAL to {@link

@@ -1,6 +1,8 @@
 import type { WorldSnapshot } from '@vinland/sim';
 import { type Container, Graphics, Sprite } from 'pixi.js';
 import type { ElevationField } from '../../data/elevation.js';
+import { FOG_GHOST_TINT } from '../../data/fog.js';
+import type { FogGhost } from '../../data/fog-ghosts.js';
 import { type Camera, depthKey } from '../../data/iso.js';
 import {
   collectSpriteScene,
@@ -73,6 +75,9 @@ export interface PoolFrame {
   /** The fog-of-war cull (`data/fog.ts`): entities on tiles this rejects stay pooled but undrawn.
    *  Absent = no fog (every pre-fog view). */
   readonly fogVisible?: (tileX: number, tileY: number) => boolean;
+  /** The viewer's remembered statics (`data/fog-ghosts.ts`) — drawn dimmed on explored ground in
+   *  place of their fog-culled (or dead) entities. Absent = no fog or nothing remembered. */
+  readonly ghosts?: readonly FogGhost[];
 }
 
 export class SpritePool {
@@ -107,6 +112,7 @@ export class SpritePool {
       frame.elevation,
       frame.staticRefs,
       frame.fogVisible,
+      frame.ghosts,
     );
     this.frameId++;
     for (let i = 0; i < scene.items.length; i++) {
@@ -315,9 +321,12 @@ export class SpritePool {
       pe.container.addChild(pe.placeholder);
     }
     pe.placeholder.visible = true;
+    // The ghost dim + no-hit-bounds contract holds on the placeholder path too (see bindLayers).
+    pe.placeholder.tint = item.ghost === true ? FOG_GHOST_TINT : 0xffffff;
     // Rotation applies about the graphic's own origin (the shaft centre), so the flight-height offset
     // above is NOT rotated with it — the arrow stays level above its ground anchor and only aims.
     if (pe.kind === 'projectile') pe.placeholder.rotation = item.rotation ?? 0;
+    if (item.ghost === true) return;
     const { bodyW, bodyH } = placeholderBody(pe.kind);
     const halfW = Math.max(9, bodyW / 2);
     const drawX = pe.motion.drawX;
@@ -416,6 +425,10 @@ export class SpritePool {
             : this.textures.get(layer.source, layer.frame);
         spr.position.set(ox, drawnOy);
         spr.scale.set(layer.scale);
+        // A fog ghost dims to the explored-grey grading; assigned unconditionally so a sprite reused
+        // across the live↔ghost transition always carries the right tint (tint is a cheap batch
+        // attribute — ghosts are never paletted, statics don't take the mesh path).
+        spr.tint = item.ghost === true ? FOG_GHOST_TINT : 0xffffff;
         spr.visible = true;
       }
       if (ox < minX) minX = ox;
@@ -428,7 +441,9 @@ export class SpritePool {
       const s = pe.sprites[i];
       if (s !== undefined) s.visible = false;
     }
-    if (minX <= maxX) {
+    // A fog ghost stamps NO bounds: it must not be pickable — the ref may be a dead entity, and
+    // click-selecting a live one through the fog would leak its current state into the details panel.
+    if (minX <= maxX && item.ghost !== true) {
       this.stampBounds(pe, drawX + minX, drawY + minY, drawX + maxX, drawY + maxY);
     }
   }

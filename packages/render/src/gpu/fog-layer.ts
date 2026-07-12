@@ -1,5 +1,6 @@
 import { FOG_STATE, type FogView } from '@vinland/sim';
 import { BufferImageSource, Container, Rectangle, Sprite, Texture } from 'pixi.js';
+import { FOG_EXPLORED_ALPHA, FOG_UNEXPLORED_ALPHA } from '../data/fog.js';
 import { TILE_HALF_H, TILE_HALF_W } from '../data/iso.js';
 import { type Viewport, visibleTileRange } from '../data/viewport.js';
 
@@ -33,10 +34,6 @@ import { type Viewport, visibleTileRange } from '../data/viewport.js';
 /** Cells beyond the visible band the wash also covers, so its edge never shows during a pan. */
 const FOG_BAND_MARGIN = 3;
 
-/** Per-state mask alpha (black texels): unexplored hides everything, explored dims to "known
- *  terrain, not watched", visible shows through. The minimap mask mirrors this grading. */
-const UNEXPLORED_ALPHA = 255;
-const EXPLORED_ALPHA = 140;
 /** Texture allocation step (texels) — grow-only, so a steady pan never re-allocates GPU memory. */
 const TEXTURE_QUANT = 64;
 
@@ -86,7 +83,11 @@ export class FogLayer {
       for (let i = 0; i < bandW; i++) {
         const state = view.stateAt(band.minCol + i, band.minRow + j);
         buf[(rowBase + i) * 4 + 3] =
-          state === FOG_STATE.VISIBLE ? 0 : state === FOG_STATE.EXPLORED ? EXPLORED_ALPHA : UNEXPLORED_ALPHA;
+          state === FOG_STATE.VISIBLE
+            ? 0
+            : state === FOG_STATE.EXPLORED
+              ? FOG_EXPLORED_ALPHA
+              : FOG_UNEXPLORED_ALPHA;
       }
     }
     texture.source.update();
