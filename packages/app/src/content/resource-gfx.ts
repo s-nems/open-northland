@@ -135,6 +135,15 @@ export function nodeBob(record: LandscapeGfxRow): number | undefined {
   return best?.bob;
 }
 
+/** A landscape gfx record → its {@link GatheringNodeRef} (served atlas stem + representative full-grown
+ *  bob), or `undefined` when it names no drawable atlas/frame. The shared resolution behind the flag,
+ *  stump and berry-bush draws. Pure. */
+function nodeRefFrom(record: LandscapeGfxRow): GatheringNodeRef | undefined {
+  const stem = servedStem(record);
+  const bob = nodeBob(record);
+  return stem !== undefined && bob !== undefined ? { stem, bob } : undefined;
+}
+
 /**
  * The first bob of each of a record's frame states, ordered by ASCENDING state (`state 1` → index 0). The
  * shared basis for both a pile's fewest→most heap frames and a mine deposit's empty→full level frames — a
@@ -281,9 +290,7 @@ export function resolveGatheringRefs(
   }
 
   const flagRecord = gfx.find((g) => g.editName === FLAG_EDIT_NAME);
-  const flagStem = flagRecord !== undefined ? servedStem(flagRecord) : undefined;
-  const flagBob = flagRecord !== undefined ? nodeBob(flagRecord) : undefined;
-  const flag = flagStem !== undefined && flagBob !== undefined ? { stem: flagStem, bob: flagBob } : undefined;
+  const flag = flagRecord !== undefined ? nodeRefFrom(flagRecord) : undefined;
 
   return { nodesByGood, nodesByGfxIndex, trunksByGood, pilesByGood, ...(flag !== undefined ? { flag } : {}) };
 }
@@ -331,10 +338,7 @@ export const STUMP_EDIT_NAME = 'tree debris medium';
  *  flag resolution in {@link resolveGatheringRefs}. Pure. */
 export function resolveStumpRef(ir: ContentIr | null): GatheringNodeRef | undefined {
   const record = (ir?.landscapeGfx ?? []).find((g) => g.editName === STUMP_EDIT_NAME);
-  if (record === undefined) return undefined;
-  const stem = servedStem(record);
-  const bob = nodeBob(record);
-  return stem !== undefined && bob !== undefined ? { stem, bob } : undefined;
+  return record !== undefined ? nodeRefFrom(record) : undefined;
 }
 
 /**
@@ -375,19 +379,12 @@ export function resolveBerryBushRefs(ir: ContentIr | null): BerryBushRef[] {
   const out: BerryBushRef[] = [];
   for (const rec of records) {
     if (rec.logicType !== BUSH_WITH_FRUITS_LOGIC_TYPE || rec.editName === undefined) continue;
-    const ripeStem = servedStem(rec);
-    const ripeBob = nodeBob(rec);
-    if (ripeStem === undefined || ripeBob === undefined) continue;
-    const ripe: GatheringNodeRef = { stem: ripeStem, bob: ripeBob };
+    const ripe = nodeRefFrom(rec);
+    if (ripe === undefined) continue;
     // The bare twin: the same species' "… empty" record (bush naked). Fall back to the ripe frame when
     // absent, so a bush with no decoded empty state still draws (just always fruited).
     const emptyRec = byName.get(rec.editName.replace(/fruits?$/i, 'empty'));
-    let bare = ripe;
-    if (emptyRec !== undefined) {
-      const bareStem = servedStem(emptyRec);
-      const bareBob = nodeBob(emptyRec);
-      if (bareStem !== undefined && bareBob !== undefined) bare = { stem: bareStem, bob: bareBob };
-    }
+    const bare = emptyRec !== undefined ? (nodeRefFrom(emptyRec) ?? ripe) : ripe;
     out.push({ gfxIndex: rec.index, ripe, bare });
   }
   return out;
