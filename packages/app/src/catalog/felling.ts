@@ -11,8 +11,10 @@
  * the live game does not yet fell. Keep the two in mind together when the number is finally calibrated.
  */
 
-/** Chops (harvest-swing atomics) a woodcutter lands to bring a tree down. */
-export const WOOD_CHOPS_TO_FELL = 6;
+/** Chops (harvest-swing atomics) a woodcutter lands to bring a tree down. Recalibrated 6 → 12 by
+ *  observed pacing: at 6 a whole tree (3 wood) came down in the time a miner chipped 2 stone, and
+ *  felling should read a touch SLOWER than mining per gathered unit ("drzewo niech trochę dłużej"). */
+export const WOOD_CHOPS_TO_FELL = 12;
 
 /** The whole wood a felled tree drops as its trunk on the ground, then carried off in carry-capacity loads. */
 export const WOOD_YIELD_PER_NODE = 3;

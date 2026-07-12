@@ -39,24 +39,37 @@ import { isYardHeap, lowestStockedGood, stockCapacity } from '../stores.js';
 export const HARVEST_SWINGS_PER_REST = 2;
 
 /**
- * Whether the swing that JUST resolved against `node` should chain into the inter-swing breather
- * (the executor's `HARVEST_REST_TICKS` idle): true only mid-job — the node still stands AND the
- * swing count sits on a {@link HARVEST_SWINGS_PER_REST} boundary, read off the node's own counters
- * (a {@link Felling} tree's `chopsLeft`, a {@link MineDeposit}'s `strikes`). The swing that fells /
- * chips a unit loose / depletes never rests — the collector moves straight on to carrying, which is
- * its own natural break. A plain node (a mushroom — gone after its single pluck) never rests.
+ * Whether the swing that JUST resolved against `node` left its multi-swing job STILL IN PROGRESS —
+ * the executor then CHAINS the next swing (or the breather) directly instead of releasing the
+ * settler for a tick: the one-tick planner gap between swings drew a flick of the idle pose
+ * mid-work (the reported "mignięcie" between strikes). True only for a standing {@link Felling}
+ * tree with chops left or a {@link MineDeposit} mid-unit (`strikes` advanced but the unit not yet
+ * loose); the swing that fells / chips a unit loose / depletes releases the settler — the planner
+ * routes the pickup/carry, which is the job's natural break. A plain node (a mushroom — gone after
+ * its single pluck) never chains.
  */
-export function restAfterHarvest(world: World, node: Entity): boolean {
+export function continuesHarvest(world: World, node: Entity): boolean {
   if (!world.has(node, Resource)) return false; // felled/depleted/plucked — carrying is the break
   const felling = world.tryGet(node, Felling);
-  if (felling !== undefined) {
-    return felling.chopsLeft > 0 && felling.chopsLeft % HARVEST_SWINGS_PER_REST === 0;
-  }
+  if (felling !== undefined) return felling.chopsLeft > 0;
   const deposit = world.tryGet(node, MineDeposit);
-  if (deposit !== undefined) {
-    const strikes = deposit.strikes ?? 0; // 0 = a unit just came loose — the pickup is the break
-    return strikes > 0 && strikes % HARVEST_SWINGS_PER_REST === 0;
-  }
+  if (deposit !== undefined) return (deposit.strikes ?? 0) > 0; // 0 = a unit just came loose
+  return false;
+}
+
+/**
+ * Whether the swing that JUST resolved against `node` should chain into the inter-swing breather
+ * (the executor's `HARVEST_REST_TICKS` hold): a {@link continuesHarvest} job whose swing count sits
+ * on a {@link HARVEST_SWINGS_PER_REST} boundary, read off the node's own counters (a {@link Felling}
+ * tree's `chopsLeft`, a {@link MineDeposit}'s `strikes`). Off-boundary swings chain straight into
+ * the next swing instead.
+ */
+export function restAfterHarvest(world: World, node: Entity): boolean {
+  if (!continuesHarvest(world, node)) return false;
+  const felling = world.tryGet(node, Felling);
+  if (felling !== undefined) return felling.chopsLeft % HARVEST_SWINGS_PER_REST === 0;
+  const deposit = world.tryGet(node, MineDeposit);
+  if (deposit !== undefined) return (deposit.strikes ?? 0) % HARVEST_SWINGS_PER_REST === 0;
   return false;
 }
 

@@ -80,9 +80,10 @@ export const CurrentAtomic = defineComponent<{
   /**
    * Present (true) only while the atomic is running its INTER-SWING REST TAIL: the harvest effect
    * already applied and its completion event already fired, and the executor extended `duration` so
-   * the gatherer stands its breather holding the swing's final frame (no pose snap, no second
-   * animation). The tail's own completion is silent — no `atomicCompleted` re-emit for the same
-   * swing. Absent on every other atomic (the separate-optional-field pattern keeps old hashes).
+   * the gatherer stands its breather in the swing's ready pose (no pose snap, no second animation —
+   * the effect stays the harvest so the tail can chain straight into the next swing when it ends).
+   * The tail itself completes silently — no `atomicCompleted` re-emit for the same swing. Absent on
+   * every other atomic (the separate-optional-field pattern keeps old hashes).
    */
   restTail?: boolean;
 }>('CurrentAtomic');
