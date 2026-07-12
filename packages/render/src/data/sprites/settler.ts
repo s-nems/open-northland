@@ -46,11 +46,14 @@ function frameOf(ref: SpriteFrameRef, facing: number, clock: number): number {
     const list = lists[wrap(facing, lists.length)];
     if (list === undefined || list.length === 0) return ref.start;
     // An authored frame LIST is a ONE-SHOT motion (a swing, a dig, a scythe sweep) — past its end the
-    // sprite HOLDS the final entry (the authored rest pose) instead of wrapping into a replay. This is
-    // what a harvest atomic's extended rest tail leans on (the gatherer stands its breather on the
-    // swing's last frame), and it keeps a duration longer than the list (iron/gold, the mushroom
-    // pluck) from stuttering back through the windup.
-    const idx = Math.min(list.length - 1, Math.max(0, (ref.phaseStart ?? 0) + step));
+    // sprite returns to the FIRST entry, the ready stance, instead of wrapping into a replay. This is
+    // what a harvest atomic's rest tail leans on: only the woodcut list authors a trailing rest pad —
+    // the stonecrush/shovel lists end MID-motion, so holding the LAST entry froze the digger in half
+    // a swing (the reported "zamraża"); the head entry is the tool-ready stance on every list (for
+    // the woodcut it IS its pad frame). Also keeps a duration longer than its list (the mushroom
+    // pluck) standing ready instead of stuttering back through the motion.
+    const pos = Math.max(0, (ref.phaseStart ?? 0) + step);
+    const idx = pos < list.length ? pos : 0;
     return ref.start + (list[idx] ?? 0);
   }
   const dir = wrap(facing, ref.dirs);

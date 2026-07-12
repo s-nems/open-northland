@@ -15,6 +15,7 @@ import {
 } from './effects-combat.js';
 import {
   consumeFood,
+  continuesHarvest,
   forageBerry,
   harvestFromNode,
   pickupFromStore,
@@ -97,9 +98,18 @@ export const atomicSystem: System = (world, ctx) => {
 
     if (atomic.elapsed < duration) continue; // still running
 
-    // A completed REST TAIL ends silently: its harvest already applied and announced itself when the
-    // swing finished (below, last time around) — the breather just releases the settler.
+    // A finished REST TAIL: its harvest already applied and announced itself when the swing finished
+    // (below, last time around). Chain STRAIGHT into the next swing while the job still stands (a
+    // competitor may have finished the node mid-rest) — re-arming the SAME atomic keeps the settler
+    // continuously acting, so the render never flicks through an idle pose between swings.
     if (atomic.restTail === true) {
+      if (atomic.effect.kind === 'harvest' && continuesHarvest(world, atomic.effect.resource)) {
+        atomic.restTail = false;
+        atomic.elapsed = 0;
+        atomic.progress = fx.fromInt(0);
+        atomic.duration -= HARVEST_REST_TICKS; // back to the swing's own animation length
+        continue;
+      }
       world.remove(e, CurrentAtomic);
       continue;
     }
@@ -112,20 +122,23 @@ export const atomicSystem: System = (world, ctx) => {
     // it needs the atomic id to resolve that animation.
     if (atomic.effect.kind === 'attack') paySwingNeedCost(world, ctx, e, atomic.atomicId);
     ctx.events.emit({ kind: 'atomicCompleted', entity: e, atomicId: atomic.atomicId });
-    // Every HARVEST_SWINGS_PER_REST-th harvest swing of a still-standing job chains into the
-    // inter-swing breather (the observed rhythm — a burst of swings, a rest, another burst; see
-    // restAfterHarvest for the boundary read): the SAME atomic keeps running with its duration
-    // extended, so the render holds the swing's final authored frame — no pose snap. Extending IN
-    // PLACE (not remove+add) keeps this iteration-safe (no store insertion mid-loop) and deterministic.
-    if (
-      HARVEST_REST_TICKS > 0 &&
-      atomic.effect.kind === 'harvest' &&
-      restAfterHarvest(world, atomic.effect.resource)
-    ) {
-      atomic.effect = { kind: 'idle' }; // the tail mutates nothing when it ends
-      atomic.duration += HARVEST_REST_TICKS;
-      atomic.restTail = true;
-      continue;
+    // A multi-swing harvest job never releases the settler between swings (the one-tick planner gap
+    // drew an idle-pose flick mid-work): every HARVEST_SWINGS_PER_REST-th swing extends the SAME
+    // atomic into the breather tail (the render holds the ready pose — the observed burst rhythm),
+    // any other still-in-progress swing re-arms immediately, and only the swing that fells / chips a
+    // unit loose / depletes hands the settler back to the planner (it routes the pickup/carry).
+    // Mutating IN PLACE (never remove+add) keeps this iteration-safe and deterministic.
+    if (atomic.effect.kind === 'harvest') {
+      if (HARVEST_REST_TICKS > 0 && restAfterHarvest(world, atomic.effect.resource)) {
+        atomic.duration += HARVEST_REST_TICKS;
+        atomic.restTail = true;
+        continue;
+      }
+      if (continuesHarvest(world, atomic.effect.resource)) {
+        atomic.elapsed = 0;
+        atomic.progress = fx.fromInt(0);
+        continue; // next swing, back to back
+      }
     }
     world.remove(e, CurrentAtomic);
   }
