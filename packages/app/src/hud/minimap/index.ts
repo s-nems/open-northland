@@ -1,6 +1,8 @@
 import {
   type Camera,
   cameraViewport,
+  FOG_EXPLORED_ALPHA,
+  FOG_UNEXPLORED_ALPHA,
   flatTileColour,
   fogTileVisible,
   ONE,
@@ -49,10 +51,8 @@ const BUILDING_DOT_PX = 3;
 /** The camera view rectangle's stroke. */
 const VIEW_RECT_COLOUR = 0xffffff;
 const VIEW_RECT_ALPHA = 0.9;
-/** Fog mask alphas per cell state (black texels): unexplored hides the ground entirely, explored
- *  dims it to "known terrain", visible shows through. Matches the world wash's grading by eye. */
-const FOG_UNEXPLORED_ALPHA = 255;
-const FOG_EXPLORED_ALPHA = 150;
+// The fog mask alphas are the render layer's FOG_*_ALPHA constants — the minimap shares the world
+// wash's exact grading, so the two surfaces cannot drift (review 2026-07-12: a local copy had).
 /** Dot colour for a player outside the swatch table — unreachable today (the index is taken modulo
  *  the table length); a named value so retuning the view rect never silently retunes stray dots. */
 const UNKNOWN_PLAYER_DOT_COLOUR = 0xffffff;

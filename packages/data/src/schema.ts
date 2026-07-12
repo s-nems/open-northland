@@ -1207,14 +1207,14 @@ export const TerrainEntities = z.object({
   /**
    * `sethouse` placements: `[GfxHouse]` EditName + level pick the building type. `player` is the
    * verb's FIRST column, 0-based like `sethuman`'s (source basis: on all 13 entity-bearing mod maps
-   * its value set equals the `sethuman` player set and its per-value position centroids coincide
-   * with the matching `sethuman` clusters — a skirmish map's bases resolve to their OWN players,
-   * which is the original's observed behaviour). This SUPERSEDES the earlier 1-based fourth-column
-   * reading (owner = column − 1): that column is `1` on 96 of the 98 house-placing maps in the full
-   * unpacked 122-map corpus and `0` on the rest — a constant flag with exceptions, not a player id —
-   * and reading it collapsed every skirmish base onto player 0 (the shared-fog bug observed in
-   * play). The tutorials author some houses under first-column players absent from their `sethuman`
-   * set (scripted/neutral factions — those land unowned via `isValidPlayer`).
+   * its per-value position centroids coincide with the matching `sethuman` clusters — value sets
+   * equal on the multiplayer/special maps, a sub/superset on four tutorials (scripted/neutral
+   * factions; those land unowned via `isValidPlayer`) — so a skirmish map's bases resolve to their
+   * OWN players, the original's observed behaviour). This SUPERSEDES the earlier 1-based
+   * fourth-column reading (owner = column − 1): that column is `1` on 96 of the 98 house-placing
+   * maps in the full unpacked 122-map corpus and `0` on the rest — a constant flag with exceptions,
+   * not a player id — and reading it collapsed every skirmish base onto player 0 (the shared-fog
+   * bug observed in play).
    * `rot` is decoded verbatim with no consumer yet — the rotation→facing slice is deferred
    * (docs/plans/entity-import item).
    */

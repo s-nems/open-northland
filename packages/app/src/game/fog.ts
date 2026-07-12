@@ -28,5 +28,6 @@ export const FOG_MODE_BY_NAME: Readonly<Record<FogModeName, number>> = {
 export function fogModeParam(params: URLSearchParams): number | null {
   const name = params.get('fog');
   if (name === null) return null;
-  return name in FOG_MODE_BY_NAME ? FOG_MODE_BY_NAME[name as FogModeName] : null;
+  // Object.hasOwn, not `in`: `?fog=toString` matches the prototype chain and would index `undefined`.
+  return Object.hasOwn(FOG_MODE_BY_NAME, name) ? FOG_MODE_BY_NAME[name as FogModeName] : null;
 }

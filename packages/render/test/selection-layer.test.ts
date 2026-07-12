@@ -2,6 +2,7 @@ import type { WorldSnapshot } from '@vinland/sim';
 import { describe, expect, it } from 'vitest';
 import { SelectionLayer } from '../src/gpu/selection-layer.js';
 import { makeElevationField, ONE, tileToScreen } from '../src/index.js';
+import { snapshotOf } from './support/fixtures.js';
 
 /**
  * The selection ring is a projection consumer too: it anchors at a unit's feet, so on a hill it must
@@ -9,9 +10,6 @@ import { makeElevationField, ONE, tileToScreen } from '../src/index.js';
  * ground beneath the lifted unit. Pixi `Container`/`Graphics` construct without a GL context (geometry
  * + transform only), so the ring's world-space position is agent-checkable here.
  */
-function snapshotOf(entities: WorldSnapshot['entities']): WorldSnapshot {
-  return { tick: 1, entities, events: [] };
-}
 function settler(id: number, tileX: number, tileY: number): WorldSnapshot['entities'][number] {
   return { id, components: { Position: { x: tileX * ONE, y: tileY * ONE }, Settler: { tribe: 0 } } };
 }

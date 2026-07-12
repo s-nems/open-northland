@@ -14,7 +14,7 @@ import {
 import { fx } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, halfCellMapFromCells, Simulation, type TerrainMap } from '../../src/index.js';
-import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
+import { MILITARY_MODE, SCOUT_JOB } from '../../src/systems/readviews/index.js';
 import {
   BUILDING_VISION_NODES,
   CIVILIAN_VISION_NODES,
@@ -39,7 +39,6 @@ import { clearComponentStores } from '../fixtures/stores.js';
 const GRASS = 0;
 const VIKING = 1;
 const WOODCUTTER = 1; // fixture job 1 — carries test_axe (band [1,2]); a civilian eye
-const SCOUT_JOB = 27;
 const P0 = 0;
 const P1 = 1;
 

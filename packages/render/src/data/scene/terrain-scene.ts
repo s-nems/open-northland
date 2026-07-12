@@ -103,5 +103,5 @@ export function buildScene(
   }
 
   // Stable, total order: tiles (all negative depth) ahead of sprites, sprites by (y, x, id).
-  return [...tiles, ...collectSpriteScene(snapshot, undefined, elevation).items];
+  return [...tiles, ...collectSpriteScene(snapshot, { elevation }).items];
 }

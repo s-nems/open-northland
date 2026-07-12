@@ -1,4 +1,3 @@
-import type { WorldSnapshot } from '@vinland/sim';
 import { describe, expect, it } from 'vitest';
 import { collectSpriteScene } from '../src/data/scene/index.js';
 import {
@@ -12,6 +11,7 @@ import {
   terrainMapToScene,
   tileToScreen,
 } from '../src/index.js';
+import { entity, snapshotOf } from './support/fixtures.js';
 
 /**
  * Unit tests for the pure scene layer — the part of rendering an agent can self-verify (the pixels
@@ -21,26 +21,6 @@ import {
  * A `WorldSnapshot` is plain data (no class instances / live Maps), so we hand-build one here rather
  * than spinning up a Simulation — this stays a render-package unit, not an integration test.
  */
-
-/** Hand-build a snapshot entity with a Position (Fixed tiles — fractional is exact too) + a marker. */
-function entity(
-  id: number,
-  tileX: number,
-  tileY: number,
-  marker: Record<string, unknown>,
-): {
-  id: number;
-  components: Readonly<Record<string, unknown>>;
-} {
-  return {
-    id,
-    components: { Position: { x: tileX * ONE, y: tileY * ONE }, ...marker },
-  };
-}
-
-function snapshotOf(entities: WorldSnapshot['entities']): WorldSnapshot {
-  return { tick: 1, entities, events: [] };
-}
 
 const FLAT_3x2: SceneTerrain = { width: 3, height: 2, typeIds: [1, 1, 2, 2, 1, 1] };
 
@@ -719,7 +699,7 @@ describe('collectSpriteScene — the single-pass draw list + liveness set', () =
         entity(1, 1, 1, { Settler: { tribe: 0 } }), // framed
         entity(2, 40, 40, { Settler: { tribe: 0 } }), // far off-screen — culled, still alive
       ]),
-      viewport,
+      { viewport },
     );
     expect(scene.items.map((d) => d.ref)).toEqual([1]);
     expect([...scene.liveRefs].sort()).toEqual([1, 2]);
@@ -753,10 +733,10 @@ describe('collectSpriteScene — the single-pass draw list + liveness set', () =
       entity(1, 1, 1, { Resource: { goodType: 1 } }), // statically drawn (virgin map node)
       entity(2, 2, 1, { Resource: { goodType: 1 } }), // pool-drawn (admin spawn / handed over)
     ]);
-    const withStatic = collectSpriteScene(snapshot, undefined, undefined, new Set([1]));
+    const withStatic = collectSpriteScene(snapshot, { staticRefs: new Set([1]) });
     expect(withStatic.items.map((d) => d.ref)).toEqual([2]);
     expect([...withStatic.liveRefs]).toEqual([2]);
-    const released = collectSpriteScene(snapshot, undefined, undefined, new Set());
+    const released = collectSpriteScene(snapshot, { staticRefs: new Set() });
     expect(released.items.map((d) => d.ref)).toEqual([1, 2]);
   });
 

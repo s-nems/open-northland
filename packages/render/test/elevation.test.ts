@@ -1,14 +1,13 @@
-import type { WorldSnapshot } from '@vinland/sim';
 import { describe, expect, it } from 'vitest';
 import {
   buildSpriteScene,
   cellNode,
   elevationLiftPerUnit,
   makeElevationField,
-  ONE,
   TILE_HALF_H,
   tileToScreen,
 } from '../src/index.js';
+import { entity, snapshotOf } from './support/fixtures.js';
 
 /**
  * Headless tests for the terrain-elevation seam (`data/elevation.ts`) — the one bilinear sampler every
@@ -99,12 +98,6 @@ describe('makeElevationField.liftAtNode — parity-aware on cell rows', () => {
 });
 
 /** Hand-build a snapshot entity with a Position (Fixed = whole tiles) + a marker component. */
-function entity(id: number, tileX: number, tileY: number, marker: Record<string, unknown>) {
-  return { id, components: { Position: { x: tileX * ONE, y: tileY * ONE }, ...marker } };
-}
-function snapshotOf(entities: WorldSnapshot['entities']): WorldSnapshot {
-  return { tick: 1, entities, events: [] };
-}
 
 describe('elevation lift on sprites — draw up, but sort by PRE-LIFT row', () => {
   // A tall hill on the near cell (col 1, row 8); everything else at sea level. Only that cell is 200, so
@@ -119,7 +112,7 @@ describe('elevation lift on sprites — draw up, but sort by PRE-LIFT row', () =
   const near = entity(2, 1, 8, { Settler: { tribe: 0 } }); // NEAR: larger row, on the hill
 
   it('sets the feet lift on the item drawn on the hill, none on flat ground', () => {
-    const items = buildSpriteScene(snapshotOf([far, near]), undefined, field);
+    const items = buildSpriteScene(snapshotOf([far, near]), { elevation: field });
     const nearItem = items.find((d) => d.ref === 2);
     const farItem = items.find((d) => d.ref === 1);
     expect(nearItem?.lift).toBeCloseTo(200 * LIFT, 6);
@@ -127,7 +120,7 @@ describe('elevation lift on sprites — draw up, but sort by PRE-LIFT row', () =
   });
 
   it('draws the lifted-up NEAR sprite ABOVE the far one yet still sorts it in FRONT (depth = pre-lift row)', () => {
-    const items = buildSpriteScene(snapshotOf([far, near]), undefined, field);
+    const items = buildSpriteScene(snapshotOf([far, near]), { elevation: field });
     const nearItem = items.find((d) => d.ref === 2);
     const farItem = items.find((d) => d.ref === 1);
     if (nearItem === undefined || farItem === undefined) throw new Error('missing item');

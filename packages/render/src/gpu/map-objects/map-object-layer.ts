@@ -277,7 +277,8 @@ export class MapObjectLayer {
         }
         // Explored-but-unwatched ground dims the object to the ghost grading; re-assigned per frame
         // (a pick between two cached colours — Pixi's tint setter no-ops on an unchanged value).
-        const watched = fogState !== FOG_STATE.EXPLORED;
+        // UNEXPLORED never reaches here (detached above), so VISIBLE is the one live state.
+        const watched = fogState === FOG_STATE.VISIBLE;
         po.sprite.tint = watched ? po.baseTint : po.ghostTint;
         // A ghosted object's animation FREEZES (a memory, not a live feed — swaying trees under the
         // fog read as watched ground): unwatched frames bind at a fixed clock, live ones advance;

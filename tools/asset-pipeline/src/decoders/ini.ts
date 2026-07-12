@@ -1739,9 +1739,11 @@ export interface MapStaticObjects {
  * ```
  *
  * The `sethouse` player is the FIRST column, 0-based like `sethuman`'s (source basis: across all 13
- * entity-bearing mod maps its value set equals the map's `sethuman` player set and the per-value
- * position centroids coincide with the matching `sethuman` player clusters, while the fourth column
- * is the constant `1` on every row — it cannot be a player id). Names are kept VERBATIM (the
+ * entity-bearing mod maps its per-value position centroids coincide with the matching `sethuman`
+ * player clusters — value sets equal on the multiplayer/special maps, a sub/superset on four
+ * tutorials — while the fourth column is the constant `1` on every one of the 415 rows, so it
+ * cannot be a player id; the unpacked `staticobjects.inc` corpus corroborates, including rows
+ * where that column is `0`). Names are kept VERBATIM (the
  * version-robust join key the loader resolves against the IR by name). The stock/production/
  * guide verbs (`addgoods`/`setproducedgood`/`setguide`) are not captured yet (source basis). A
  * malformed row is skipped, not thrown — one bad line must not drop a whole map's placements.

@@ -21,6 +21,9 @@ export interface SoundFrameInput {
   readonly dtMs?: number;
   /** The local player slot — gates the death stinger to this player's own units; omit → it never rings. */
   readonly localPlayer?: number;
+  /** The viewer's fog-of-war visibility at a fractional tile — gates the voice-chatter candidates (a
+   *  settler hidden by the fog must not natter from empty black). Omit → no fog, everyone may speak. */
+  readonly visibleTile?: (col: number, row: number) => boolean;
 }
 
 /**
@@ -85,7 +88,7 @@ export class SoundDriver {
     // Append the ambient settler-chatter voices (stochastic + time-based → owned by the emitter, not
     // the pure director). The settler scan is a thunk so a no-dt frame never pays it.
     const voices = this.chatter.update(input.dtMs ?? 0, () =>
-      onScreenSettlers(input.snapshot, input.camera, input.canvasW, input.canvasH),
+      onScreenSettlers(input.snapshot, input.camera, input.canvasW, input.canvasH, input.visibleTile),
     );
     this.engine.apply(
       voices.length === 0 ? frame : { oneShots: [...frame.oneShots, ...voices], ambient: frame.ambient },

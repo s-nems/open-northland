@@ -9,7 +9,12 @@ export {
   elevationLiftPerUnit,
   makeElevationField,
 } from './data/elevation.js';
-export { fogCellOfTile, fogTileVisible } from './data/fog.js';
+export {
+  FOG_EXPLORED_ALPHA,
+  FOG_UNEXPLORED_ALPHA,
+  fogCellOfTile,
+  fogTileVisible,
+} from './data/fog.js';
 export {
   buildHud,
   type HudCorner,
