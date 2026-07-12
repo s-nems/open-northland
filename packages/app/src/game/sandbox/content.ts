@@ -139,13 +139,13 @@ const LONG_BOW_RELEASE_FRAME = 22;
 // atomicanimation (`length 15`, content/ir.json). Binding it (below) makes each construct swing take 15
 // ticks instead of the 4-tick default, so the builder visibly hammers and the foundation rises over a
 // watchable span rather than snapping done. The animation name is the logic-timing join key; the render
-// plays the builder's own `human_man_constructionworker_Work_Hammer` body clip (see content/settler-gfx.ts).
+// plays the builder's own `human_man_constructionworker_Work_Hammer` body clip (see content/settler-gfx/).
 const BUILD_HOUSE_SWING_LENGTH = 15;
 const BUILD_HOUSE_ANIMATION = 'viking_builder_build_house';
 // The farmer's three field-work swings — lengths TRANSCRIBED from the extracted viking atomicanimations
 // (`DataCnmd/atomicanimations12/atomicanimations.ini`: harvest_wheat 24, plant 24, cultivate 29). The
 // names are the original's own `setatomic 18 29/34/35` bindings; the render plays the farmer's authored
-// body clips (`human_man_farmer_work_{reap_grain,sow,water}` — see content/settler-gfx.ts).
+// body clips (`human_man_farmer_work_{reap_grain,sow,water}` — see content/settler-gfx/).
 const FARMER_REAP_ANIMATION = 'viking_farmer_harvest_wheat';
 const FARMER_REAP_LENGTH = 24;
 const FARMER_SOW_ANIMATION = 'viking_farmer_plant';
