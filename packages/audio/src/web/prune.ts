@@ -1,7 +1,7 @@
 /**
  * Eviction for the impure layer's timestamp-keyed cooldown maps. Both audio units keep a
- * `Map<K, number>` of "when did this key last fire" for debounce — {@link ChatterEmitter}'s
- * per-settler speak times, {@link WebAudioEngine}'s per-key one-shot plays. An entity dies or a sound
+ * `Map<K, number>` of "when did this key last fire" for debounce — {@link import('./chatter.js').ChatterEmitter}'s
+ * per-settler speak times, {@link import('./engine/audio-engine.js').WebAudioEngine}'s per-key one-shot plays. An entity dies or a sound
  * stops but its entry lingers, so each prunes once the map outgrows a bound (ids/keys are never
  * reused, so an expired entry is pure dead weight). One helper so that eviction invariant lives in
  * one place.
