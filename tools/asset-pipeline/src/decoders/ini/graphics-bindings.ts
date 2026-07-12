@@ -10,8 +10,8 @@ import {
   getInt,
   getStr,
   normalizeAssetPath,
+  normalizeOptionalPath,
   normalizePaletteName,
-  normalizeShadowPath,
   type RuleProp,
   type RuleSection,
   type SourceRef,
@@ -121,7 +121,7 @@ export function extractGraphicsBindings(sections: readonly RuleSection[]): BmdPa
     const shadow = body?.values[1];
     bindings.push({
       bmd: normalizeAssetPath(bmd),
-      shadowBmd: normalizeShadowPath(shadow),
+      shadowBmd: normalizeOptionalPath(shadow),
       paletteName: normalizePaletteName(paletteName),
       tribeId: getInt(sec, 'logictribe'),
       jobId: getInt(sec, 'logicjob'),
@@ -173,7 +173,7 @@ export function extractLandscapeGraphics(sections: readonly RuleSection[]): Land
     const shadow = libs?.values[1];
     bindings.push({
       bmd: normalizeAssetPath(bmd),
-      shadowBmd: normalizeShadowPath(shadow),
+      shadowBmd: normalizeOptionalPath(shadow),
       paletteName: normalizePaletteName(paletteName),
       tribeId: undefined,
       jobId: undefined,
@@ -217,7 +217,7 @@ export function extractBobSequences(sections: readonly RuleSection[], src: Sourc
     sets.push(
       BobSequenceSet.parse({
         imagelib: normalizeAssetPath(imagelib),
-        shadowlib: normalizeShadowPath(shadowlib),
+        shadowlib: normalizeOptionalPath(shadowlib),
         sequences,
         source: { file: src.file, block: 'bobseq', layer: src.layer ?? 'base' },
       }),
@@ -352,7 +352,7 @@ function parseIndexedBobManager(prop: RuleProp): IndexedBobManager | undefined {
   return {
     index: Number.isNaN(index) ? 0 : index,
     bmd: normalizeAssetPath(bmd),
-    shadowBmd: shadow !== undefined && shadow.trim() !== '' ? normalizeAssetPath(shadow) : undefined,
+    shadowBmd: normalizeOptionalPath(shadow),
   };
 }
 

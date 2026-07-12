@@ -17,7 +17,7 @@ import {
   getInt,
   getIntTuple,
   getStr,
-  normalizeAssetPath,
+  normalizeOptionalPath,
   normalizePaletteName,
   type RuleSection,
   requireTypeId,
@@ -149,8 +149,8 @@ export function extractLandscapeGfx(sections: readonly RuleSection[], src: Sourc
         walkBlockAreas: blockAreas('LogicWalkBlockArea'),
         buildBlockAreas: blockAreas('LogicBuildBlockArea'),
         workAreas: blockAreas('LogicWorkArea'),
-        bmd: bmd !== undefined && bmd.trim() !== '' ? normalizeAssetPath(bmd) : undefined,
-        shadowBmd: shadow !== undefined && shadow.trim() !== '' ? normalizeAssetPath(shadow) : undefined,
+        bmd: normalizeOptionalPath(bmd),
+        shadowBmd: normalizeOptionalPath(shadow),
         paletteName:
           paletteName !== undefined && paletteName.trim() !== ''
             ? normalizePaletteName(paletteName)

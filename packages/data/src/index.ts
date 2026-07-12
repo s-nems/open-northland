@@ -1,10 +1,10 @@
-export * from './schema/index.js';
 export * from './cross-references.js';
-export * from './lookup.js';
 export * from './footprint.js';
+export * from './lookup.js';
+export * from './schema/index.js';
 
-import { ContentSet, TerrainMapFile } from './schema/index.js';
 import { validateCrossReferences } from './cross-references.js';
+import { ContentSet, TerrainMapFile } from './schema/index.js';
 
 /**
  * Parse + validate a content set (typically the contents of content/ assembled into one object).

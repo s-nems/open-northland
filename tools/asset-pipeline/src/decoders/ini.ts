@@ -1,6 +1,8 @@
 /**
- * Barrel for the .ini/.cif extractors. Splitting `ini.ts` into `ini/` by domain
- * concern keeps every `decoders/ini.js` import path stable. See each module for its concern.
+ * Barrel for the .ini/.cif extractors, split into `ini/` by domain concern. Importers keep the
+ * `decoders/ini.js` specifier: this re-exports every extractor the pipeline and tests use (four
+ * internal parser/binding types that were exported but never imported outside `ini/` were dropped;
+ * each stays reachable via its function's inferred return type). See each module for its concern.
  */
 
 export {

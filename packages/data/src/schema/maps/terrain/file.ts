@@ -93,8 +93,7 @@ const INVARIANTS: ReadonlyArray<{
   },
   {
     ok: (m) =>
-      m.ground === undefined ||
-      (m.ground.a.length === cellCount(m) && m.ground.b.length === cellCount(m)),
+      m.ground === undefined || (m.ground.a.length === cellCount(m) && m.ground.b.length === cellCount(m)),
     message: (m) => `terrain map ground lanes must be width*height (${cellCount(m)}) cells`,
     path: ['ground'],
   },
@@ -134,8 +133,7 @@ const INVARIANTS: ReadonlyArray<{
   },
   {
     ok: (m) => m.objects === undefined || placementsInRange(m.objects, m),
-    message: () =>
-      'terrain map objects.placements triple out of range (half-cell coords / types index)',
+    message: () => 'terrain map objects.placements triple out of range (half-cell coords / types index)',
     path: ['objects', 'placements'],
   },
   {
@@ -152,8 +150,7 @@ const INVARIANTS: ReadonlyArray<{
   },
   {
     ok: (m) => m.brightness === undefined || m.brightness.length === cellCount(m),
-    message: (m) =>
-      `terrain map brightness length ${m.brightness?.length} != width*height (${cellCount(m)})`,
+    message: (m) => `terrain map brightness length ${m.brightness?.length} != width*height (${cellCount(m)})`,
     path: ['brightness'],
   },
 ];
