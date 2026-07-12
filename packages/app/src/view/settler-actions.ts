@@ -2,8 +2,7 @@ import { type Camera, tileToScreen } from '@vinland/render';
 import { ONE, type WorldSnapshot } from '@vinland/sim';
 import { type Application, Container, Graphics } from 'pixi.js';
 import type { PickerEntry } from '../catalog/professions.js';
-import { type GuiSprite, loadGuiArt, makeGuiSprite } from '../content/gui-art.js';
-import { guiFrameIndex } from '../content/gui-atlas-map.js';
+import { loadGuiArt } from '../content/gui-art.js';
 import { loadUiFont } from '../content/ui-font.js';
 import { isSettler, positionOf } from '../game/snapshot.js';
 import {
@@ -14,7 +13,7 @@ import {
   hitTestActionRing,
   layoutActionRing,
 } from '../hud/action-ring-layout.js';
-import { type BakedIcon, bakeRoundIcon, placeBakedIcon } from '../hud/icon-texture.js';
+import { createActionRingVisuals } from './action-ring-visuals.js';
 import { clientToCanvas, screenScale } from './camera.js';
 import { el } from './overlay.js';
 import { createProfessionPicker } from './profession-picker.js';
@@ -51,9 +50,6 @@ const RING_Z = 1000;
 /** Hover highlight over the button under the cursor. */
 const HOVER_TINT = 0xffffff;
 const HOVER_ALPHA = 0.28;
-/** Flat-fallback disc colours (only when the decoded GUI art is absent) — a wooden button + rim. */
-const FALLBACK_FILL = 0x6b4f2a;
-const FALLBACK_RIM = 0x2a1d0e;
 
 const TOOLTIP_STYLE = [
   'position:fixed',
@@ -102,14 +98,6 @@ export interface SettlerActions {
   dispose(): void;
 }
 
-/** One built button: its spec + the supersampled baked icon (real art) or the flat fallback disc. */
-interface ButtonVisual {
-  readonly button: ActionButton;
-  /** The crisp, supersampled order-icon (real-art path) — baked ONCE, re-placed each frame. */
-  readonly icon: BakedIcon | null;
-  readonly fallback: Graphics | null;
-}
-
 /**
  * Mount the settler action menu. Async because it loads the (optional) decoded GUI art; everything degrades
  * gracefully so a checkout without `content/` still boots and the menu stays usable (flat discs + tooltips).
@@ -137,37 +125,15 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
   const tooltip = el('div', TOOLTIP_STYLE);
   document.body.append(tooltip);
 
-  // The order-icon sprite + its atlas frame for one button, or null when the art / frame is missing.
-  // 'round' key: hard-clip everything outside the inscribed disc, dropping the square frame + corners so the
-  // button reads as a round wooden disc (the original has no square behind it) while keeping the engraved
-  // glyph intact. The hard clip aliases unless supersampled, so every icon goes through `bakeRoundIcon`
-  // below (bake + downscale). See PalettedSprite.colorKey / GuiColorKey.
-  const iconSprite = (frameName: string): GuiSprite | null =>
-    art === null
-      ? null
-      : makeGuiSprite(art, guiFrameIndex(frameName), { defaultPalette: 'context', colorKey: 'round' });
-
-  // Build every button's visual ONCE (retained graph — placed each frame, never re-created). Keyed by the
-  // button object so `update` places by identity, robust to a face that shows only a subset of buttons.
-  const visuals: ButtonVisual[] = [];
-  const visualByButton = new Map<ActionButton, ButtonVisual>();
-  for (const button of allButtons) {
-    const art = iconSprite(button.icon);
-    let icon: BakedIcon | null = null;
-    let fallback: Graphics | null = null;
-    if (art === null) {
-      fallback = new Graphics();
-      buttonContainer.addChild(fallback);
-    } else {
-      // Supersample the round order-icon into a texture (crisp at the fractional UI scale — see
-      // hud/icon-texture.ts); the display sprite is what the scene graph draws + re-places each frame.
-      icon = bakeRoundIcon({ app, sprite: art.sprite, frame: art.frame, scale });
-      buttonContainer.addChild(icon.display);
-    }
-    const v: ButtonVisual = { button, icon, fallback };
-    visuals.push(v);
-    visualByButton.set(button, v);
-  }
+  // The retained button graphics (round order-icon discs, real art or flat fallback) — built once, placed
+  // each frame by layout. See view/action-ring-visuals.ts.
+  const visuals = createActionRingVisuals({
+    app,
+    art,
+    scale,
+    buttons: allButtons,
+    container: buttonContainer,
+  });
 
   // --- State ----------------------------------------------------------------------------------------
   let mode: MenuMode = 'closed';
@@ -243,32 +209,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     };
   };
 
-  /**
-   * Place one button's visual centred in its layout rect (the original's `SetCenterGraphicsFlag`). The baked
-   * icon is a scene-graph sprite, centred + pixel-snapped by {@link placeBakedIcon}; the flat fallback draws
-   * a disc at the same centre.
-   */
-  const placeVisual = (v: ButtonVisual, rect: { x: number; y: number; w: number; h: number }): void => {
-    if (v.icon !== null) {
-      placeBakedIcon(v.icon, rect);
-    } else if (v.fallback !== null) {
-      const r = Math.min(rect.w, rect.h) / 2;
-      v.fallback
-        .clear()
-        .circle(Math.round(rect.x + rect.w / 2), Math.round(rect.y + rect.h / 2), r)
-        .fill(FALLBACK_FILL)
-        .stroke({ color: FALLBACK_RIM, width: Math.max(1, scale) });
-    }
-  };
-
   const EMPTY_LAYOUT: ActionRingLayout = { buttons: [], bounds: { x: 0, y: 0, w: 0, h: 0 } };
-
-  const hideAll = (): void => {
-    for (const v of visuals) {
-      if (v.icon !== null) v.icon.display.visible = false;
-      if (v.fallback !== null) v.fallback.visible = false;
-    }
-  };
 
   const update = (camera: Camera, snapshot: WorldSnapshot, selection: ReadonlySet<number>): void => {
     const centre = mode === 'closed' ? null : selectionCentre(camera, snapshot, selection);
@@ -277,7 +218,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
       root.visible = false;
       layout = EMPTY_LAYOUT;
       actionTargets = [];
-      hideAll();
+      visuals.hideAll();
       if (mode === 'jobs') closeJobWindow();
       return;
     }
@@ -286,7 +227,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
       // The DOM list window is showing; keep the canvas ring hidden underneath it.
       root.visible = false;
       layout = EMPTY_LAYOUT;
-      hideAll();
+      visuals.hideAll();
       return;
     }
     layout = layoutActionRing(
@@ -297,16 +238,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
       app.screen.width,
       app.screen.height,
     );
-    // Place by button IDENTITY (not index): hide every visual first, then show + place only the buttons this
-    // frame's layout actually produced.
-    hideAll();
-    for (const placed of layout.buttons) {
-      const v = visualByButton.get(placed.button);
-      if (v === undefined) continue;
-      if (v.icon !== null) v.icon.display.visible = true;
-      if (v.fallback !== null) v.fallback.visible = true;
-      placeVisual(v, placed.rect);
-    }
+    visuals.placeLayout(layout);
     root.visible = true;
   };
 
@@ -414,7 +346,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
       window.removeEventListener('keydown', onKeyDown);
       tooltip.remove();
       picker.dispose();
-      for (const v of visuals) v.icon?.dispose(); // free each baked icon's off-screen texture
+      visuals.dispose(); // free each baked icon's off-screen texture
       root.destroy({ children: true });
     },
   };
