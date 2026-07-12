@@ -357,20 +357,24 @@ export function depositVisualLevel(remaining: number, initial: number, levels: n
 }
 
 /**
- * A mined resource node's visual fill level ({@link import('./draw-item.js').DrawItem.level}), or `undefined`
- * for a plain node. Reads the node's {@link import('@vinland/sim').MineDeposit} `initial`/`levels` (its
- * deposit capacity) against `Resource.remaining` and buckets them via {@link depositVisualLevel}.
- * `undefined` when the node carries no `MineDeposit` (a tree/mushroom/full showcase node) — the binding
- * then draws its full-state frame.
+ * A mined node's / crop's visual ladder — its current fill `level` (in `[1, levels]`) and the `levels`
+ * denominator it is out of — or `undefined` for a plain node (no `Crop`, no readable `MineDeposit`). The
+ * ONE narrowing both {@link readResourceLevel} and {@link readResourceLevelCount} read, so the two can
+ * never disagree about whether a node HAS a ladder (they are defined/undefined together by construction,
+ * not by two hand-kept copies of the same guard).
+ *
+ * A SOWN FIELD (a `Crop` resource) reads its growth stage as the level DIRECTLY: stage k ⇒ gfx state k's
+ * frame (the wheat record's 5 growth states are authored smallest-at-1 → ripe-at-5, exactly the stage
+ * numbering), so a field visibly grows as the CropGrowthSystem steps it. Checked before the deposit shape
+ * — a field is never a mined deposit. A `MineDeposit` deposit instead buckets `Resource.remaining` against
+ * its `initial`/`levels` capacity via {@link depositVisualLevel}.
  */
-export function readResourceLevel(components: Readonly<Record<string, unknown>>): number | undefined {
-  // A SOWN FIELD (a `Crop` resource) reads its growth stage as the level DIRECTLY: stage k ⇒ gfx state
-  // k's frame (the wheat record's 5 growth states are authored smallest-at-1 → ripe-at-5, exactly the
-  // stage numbering), so a field visibly grows as the CropGrowthSystem steps it. Checked before the
-  // deposit shape — a field is never a mined deposit.
+function readResourceLadder(
+  components: Readonly<Record<string, unknown>>,
+): { level: number; levels: number } | undefined {
   const crop = components.Crop as { stage?: unknown; stages?: unknown } | undefined;
   if (crop !== undefined && typeof crop.stage === 'number' && typeof crop.stages === 'number') {
-    return Math.min(crop.stages, Math.max(1, crop.stage));
+    return { level: Math.min(crop.stages, Math.max(1, crop.stage)), levels: crop.stages };
   }
   const deposit = components.MineDeposit as { initial?: unknown; levels?: unknown } | undefined;
   const res = components.Resource as { remaining?: unknown } | undefined;
@@ -378,30 +382,31 @@ export function readResourceLevel(components: Readonly<Record<string, unknown>>)
     return undefined;
   }
   if (res === undefined || typeof res.remaining !== 'number') return undefined;
-  return depositVisualLevel(res.remaining, deposit.initial, deposit.levels);
+  return {
+    level: depositVisualLevel(res.remaining, deposit.initial, deposit.levels),
+    levels: deposit.levels,
+  };
+}
+
+/**
+ * A mined resource node's / crop's visual fill level ({@link import('./draw-item.js').DrawItem.level}), or
+ * `undefined` for a plain node — the `level` field of the node's {@link readResourceLadder}. The binding
+ * then draws its full-state frame when absent.
+ */
+export function readResourceLevel(components: Readonly<Record<string, unknown>>): number | undefined {
+  return readResourceLadder(components)?.level;
 }
 
 /**
  * How many levels a mined node's / a crop's visual ladder has — the sim's `MineDeposit.levels` (or a
- * `Crop.stages`), the denominator {@link readResourceLevel}'s value is out of. Carried onto the draw item
- * ({@link import('./draw-item.js').DrawItem.levels}) so the resolver can RESCALE the sim's ladder onto the
- * bound record's own authored state count (stone rocks carry 4 states, ore mines 5 — the sim buckets both
- * into one catalog count). `undefined` exactly when {@link readResourceLevel} is (a plain full node).
+ * `Crop.stages`), the denominator {@link readResourceLevel}'s value is out of (the `levels` field of
+ * {@link readResourceLadder}). Carried onto the draw item ({@link import('./draw-item.js').DrawItem.levels})
+ * so the resolver can RESCALE the sim's ladder onto the bound record's own authored state count (stone
+ * rocks carry 4 states, ore mines 5 — the sim buckets both into one catalog count). `undefined` exactly
+ * when {@link readResourceLevel} is (a plain full node).
  */
 export function readResourceLevelCount(components: Readonly<Record<string, unknown>>): number | undefined {
-  const crop = components.Crop as { stage?: unknown; stages?: unknown } | undefined;
-  if (crop !== undefined && typeof crop.stage === 'number' && typeof crop.stages === 'number') {
-    return crop.stages;
-  }
-  // The SAME narrowing readResourceLevel applies (including `initial`), so the two readers are
-  // defined/undefined together — a deposit malformed for the level never yields a dangling count.
-  const deposit = components.MineDeposit as { initial?: unknown; levels?: unknown } | undefined;
-  const res = components.Resource as { remaining?: unknown } | undefined;
-  if (deposit === undefined || typeof deposit.initial !== 'number' || typeof deposit.levels !== 'number') {
-    return undefined;
-  }
-  if (res === undefined || typeof res.remaining !== 'number') return undefined;
-  return deposit.levels;
+  return readResourceLadder(components)?.levels;
 }
 
 /**

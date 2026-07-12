@@ -5,9 +5,9 @@ import { ONE, tileToScreen } from '../iso.js';
 import { isVisible, type Viewport } from '../viewport.js';
 import {
   type DrawItem,
-  FLAG_PAINT_STEP,
+  type DrawKind,
   type MutableDrawItem,
-  SPRITE_PAINT_ORDER,
+  paintOrderBias,
   type SpriteState,
 } from './draw-item.js';
 import {
@@ -61,9 +61,17 @@ import {
  */
 const ROW_STRIDE = 4096;
 
-/** Depth added per {@link SPRITE_PAINT_ORDER} step in the oracle sort key. `< 1 / maxOrder` so the whole
+/** Depth added per {@link paintOrderBias} step in the oracle sort key. `< 1 / maxOrder` so the whole
  *  bias stays under one tile-column (base depths differ by ≥ 1 across cells) and can't cross a cell. */
 const PAINT_ORDER_EPS = 1 / 16;
+
+/** The oracle depth key for a sprite at integer-tile `(tileX, tileY)` (x-first, like `tileToScreen`):
+ *  the row-major feet-anchor packing (`tileY` dominates, `tileX` orders within a row) plus the sub-cell
+ *  {@link paintOrderBias} tiebreak. The live painter's screen-space twin (`sprite-pool.ts`) shares the
+ *  same {@link paintOrderBias}, so the two orders can't diverge. */
+function spriteDepth(tileX: number, tileY: number, kind: DrawKind, isFlag = false): number {
+  return tileY * ROW_STRIDE + tileX + paintOrderBias(kind, isFlag) * PAINT_ORDER_EPS;
+}
 
 /**
  * The atomic id of a combat attack swing — the original's `setatomic <job> 81 "..._attack"` (id 81 is
@@ -322,10 +330,7 @@ export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOpt
       // bias (a settler in front of the node it stands on, a flag in front of its ground drops — plus a
       // half-step so a flag out-sorts a co-located heap of its own kind), then id. A total order, so the
       // sort is deterministic regardless of snapshot iteration nuances.
-      depth:
-        tileY * ROW_STRIDE +
-        tileX +
-        (SPRITE_PAINT_ORDER[kind] + (isFlag ? FLAG_PAINT_STEP : 0)) * PAINT_ORDER_EPS,
+      depth: spriteDepth(tileX, tileY, kind, isFlag),
       state,
     };
     // Per-kind reads, ASSIGNED (not spread) so an absent fact stays an absent property under
@@ -456,7 +461,7 @@ export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOpt
         ref: g.ref,
         x: screen.x,
         y: screen.y,
-        depth: g.tileY * ROW_STRIDE + g.tileX + SPRITE_PAINT_ORDER[g.kind] * PAINT_ORDER_EPS,
+        depth: spriteDepth(g.tileX, g.tileY, g.kind),
         state: 'idle',
         ghost: true,
       };

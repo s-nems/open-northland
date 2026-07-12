@@ -40,6 +40,9 @@ export type SpriteState = 'idle' | 'moving' | 'acting';
  * separation — so it ONLY breaks ties at a shared anchor and never reorders sprites that are a genuine
  * row apart. `tile` is 0 (tiles carry their own sub-zero depth band). A delivery FLAG gets a further
  * fractional bump over a co-located heap of the same `stockpile` kind — see {@link FLAG_PAINT_STEP}.
+ *
+ * Do NOT read this table + {@link FLAG_PAINT_STEP} by hand at a depth site — use {@link paintOrderBias}
+ * so the one flag/kind tiebreak stays identical across the oracle sort and the live painter.
  */
 export const SPRITE_PAINT_ORDER: Readonly<Record<DrawKind, number>> = {
   tile: 0,
@@ -63,6 +66,18 @@ export const SPRITE_PAINT_ORDER: Readonly<Record<DrawKind, number>> = {
  * stays visible above its own goods".
  */
 export const FLAG_PAINT_STEP = 0.5;
+
+/**
+ * The same-feet-anchor paint bias of a draw item — the kind's {@link SPRITE_PAINT_ORDER} plus the extra
+ * {@link FLAG_PAINT_STEP} for a delivery flag — as a UNITLESS order value. Both the headless oracle
+ * ({@link import('./sprite-scene.js')}) and the live painter
+ * ({@link import('../../gpu/sprite-pool/sprite-pool.js')}) multiply it by their own sub-cell epsilon
+ * (`PAINT_ORDER_EPS` / `SCREEN_PAINT_EPS`), so the flag/kind tiebreak lives in ONE place and can't drift
+ * between the two depth keys (a drift would sort occlusion differently on screen than in the oracle).
+ */
+export function paintOrderBias(kind: DrawKind, isFlag = false): number {
+  return SPRITE_PAINT_ORDER[kind] + (isFlag ? FLAG_PAINT_STEP : 0);
+}
 
 /**
  * One item to draw, already projected to isometric screen space (before the camera transform). The

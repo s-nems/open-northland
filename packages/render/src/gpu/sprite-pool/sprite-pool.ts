@@ -4,12 +4,7 @@ import type { ElevationField } from '../../data/elevation.js';
 import { FOG_GHOST_TINT } from '../../data/fog.js';
 import type { FogGhost } from '../../data/fog-ghosts.js';
 import { type Camera, depthKey } from '../../data/iso.js';
-import {
-  collectSpriteScene,
-  type DrawItem,
-  FLAG_PAINT_STEP,
-  SPRITE_PAINT_ORDER,
-} from '../../data/scene/index.js';
+import { collectSpriteScene, type DrawItem, paintOrderBias } from '../../data/scene/index.js';
 import type { SpriteKind } from '../../data/sprites/index.js';
 import type { Viewport } from '../../data/viewport.js';
 import { PalettedSprite } from '../paletted-sprite.js';
@@ -33,7 +28,7 @@ import { type ResolvedLayer, resolveLayers } from './resolve-layers.js';
  */
 
 /**
- * Screen-px depth added per {@link SPRITE_PAINT_ORDER} step in the live painter key. Comfortably above the
+ * Screen-px depth added per {@link paintOrderBias} step in the live painter key. Comfortably above the
  * `depthKey` x-tiebreak's max contribution (so the kind order wins at a shared feet anchor) yet far below
  * one iso row's screen-y gap (so it never lifts a sprite past one a genuine row behind/ahead of it).
  */
@@ -137,7 +132,7 @@ export class SpritePool {
       // still sorts by map row while the sprite itself rides the hill.
       pe.container.zIndex =
         depthKey(pe.motion.drawX, pe.motion.drawY + (item.lift ?? 0)) +
-        (SPRITE_PAINT_ORDER[item.kind] + (item.isFlag === true ? FLAG_PAINT_STEP : 0)) * SCREEN_PAINT_EPS;
+        paintOrderBias(item.kind, item.isFlag === true) * SCREEN_PAINT_EPS;
       if (!pe.attached) {
         this.spriteLayer.addChild(pe.container);
         pe.attached = true;
