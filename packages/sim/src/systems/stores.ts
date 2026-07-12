@@ -249,6 +249,26 @@ export function recipeOf(world: World, ctx: SystemContext, building: Entity): Re
 }
 
 /**
+ * The goods a building's type PRODUCES (`logicproduction` — its `produces` list), or empty when it has
+ * no Building/type or produces nothing (a passive store: a warehouse/HQ). This is the data-driven
+ * "is this a producing building" signal that separates a FARM (produces its field-farmed good, but
+ * carries no `recipe`) from a pure store — the split behind "a carrier at production hauls the output
+ * out, a carrier at a warehouse only brings goods in". A recipe workshop's `produces` mirrors its
+ * recipe outputs (the schema synthesises the recipe from `produces`), so this covers both producer
+ * kinds; a warehouse's is empty.
+ *
+ * Cross-system: the AI carrier drive uses it to recognise a bound producing building whose finished
+ * output it should haul to a warehouse (see ai-supply.ts `boundProducerOutputToHaul`).
+ */
+export function buildingProduces(world: World, ctx: SystemContext, building: Entity): readonly number[] {
+  const b = world.tryGet(building, Building);
+  if (b === undefined) return EMPTY_PRODUCES;
+  return contentIndex(ctx.content).buildings.get(b.buildingType)?.produces ?? EMPTY_PRODUCES;
+}
+
+const EMPTY_PRODUCES: readonly number[] = [];
+
+/**
  * The set of job types a building type's `workers` slots name (`logicworker <job> <count>`). Empty
  * if the building has no Building/type or declares no workers (an unstaffed-by-design building — a
  * passive store, or any type without worker slots).

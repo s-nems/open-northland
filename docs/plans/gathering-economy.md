@@ -260,8 +260,27 @@ woodcutter is flag-bound from spawn so it banks its wood at its flag, and with p
 heaps the mill self-supplies from the HQ stock. `golden-trace` `clearStores` now wipes the whole component
 namespace (it missed WorkFlag/DeliveryFlag and leaked across runs). **Follow-up:** the "assigned to a
 building → no flag, deliver to the building (the building IS the flag)" case is not yet wired — map
-gatherers spawn free (→ flag), never building-assigned, so it isn't exercised yet; and porters ferrying
-flag heaps to warehouses is deferred (the user's "na razie nie przejmujemy się tragarzami").
+gatherers spawn free (→ flag), never building-assigned, so it isn't exercised yet.
+
+**Carrier at a producing building hauls its output OUT (2026-07-12, `fix/farmer-carrier-logistics`):** the
+global carrier rule the user reported — "tragarz wbity w magazyn/HQ jedynie przynosi towary; tragarz wbity
+w produkcję (np. farmę) jednocześnie przynosi towary I odnosi do magazynu". A carrier stationed at a FARM
+was a pure inbound porter: `nearestWorkplaceOutput` only recognises RECIPE workplaces, so a farm's wheat
+(produced via the `farming` block, no recipe) was never hauled and piled up. Fix (`ai-supply.ts`): a new
+`boundProducerOutputToHaul` lets `planPorter` first lift the bound building's finished PRODUCED output
+(`buildingProduces` — the type's `logicproduction` goods) when another store can take it, and
+`deliveryTargetFor` routes that load to the nearest OTHER store (the producer EXCLUDED via a new
+`nearestStoreFor` `exclude` arg, since a no-recipe farm isn't caught by the recipe-producer guard). The
+haul-out is gated to a NON-field-worker (`isFieldWorkerOf`): the FARMER still banks its own reaped sheaf
+INTO the farm (overflowing only when full), only the carrier clears it out — the two-role split. A
+warehouse/HQ carrier (produces nothing) stays inbound-only. Source basis: the two-mode carrier is observed
+original behaviour (no readable oracle); the produced-goods signal is the extracted `produces` list. Golden
+slice byte-identical (no producing-store carrier in it). Tests: 6 cases in `producer-supply.test.ts`
+(pickup, warehouse routing, no farm→farm shuttle, HQ inbound-only contrast, end-to-end drain, and a drain
+with the real Health+FLEE-stance carrier shape). Verified `npm test`/`check`/`build`. **Follow-up:** a
+raw-`spawnSettler` civilian flees at birth then wanders in an enemy-free scene, so a browser acceptance
+scene for the field carrier is finicky — the settled in-game carrier (assigned via the profession UI) is
+unaffected; the user's live sign-off is assigning a carrier to a farm and watching wheat reach a warehouse.
 
 ## Step 7 — polish: chop cadence, adjacent stance, animation timing
 

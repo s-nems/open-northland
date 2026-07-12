@@ -12,10 +12,11 @@ import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
 import type { SystemContext } from '../context.js';
+import { farmWorkGood } from '../economy/farming.js';
 import { startableCycleCount } from '../economy/production.js';
 import { manhattan } from '../spatial.js';
-import { lowestStockedGood, recipeOf, stockCapacity } from '../stores.js';
-import { boundWorkplaceTarget, interactionCell, nearestStoreFor } from './ai-targets.js';
+import { buildingProduces, lowestStockedGood, recipeOf, stockCapacity } from '../stores.js';
+import { boundWorkplaceTarget, interactionCell, jobAtomics, nearestStoreFor } from './ai-targets.js';
 
 // The AI planner's SUPPLY layer: the scans behind a *producer worker running its own supply→produce→
 // deliver loop* — the "kowal fetches the goods a sword needs, forges it, and carries it back" behavior.
@@ -180,11 +181,26 @@ export function deliveryTargetFor(
   if (flag !== undefined && world.has(flag.flag, DeliveryFlag) && world.has(flag.flag, Position)) {
     return flag.flag;
   }
-  // 3. A porter's collected good goes to the storage it is bound to (a warehouse, or a flag pile).
+  // 3. A CARRIER bound to a PRODUCING building (a farm) carrying that building's own OUTPUT hauls it OUT
+  //    to a warehouse — the delivery twin of `boundProducerOutputToHaul`. Routed to the nearest OTHER
+  //    store (the bound building EXCLUDED, so a no-recipe farm's wheat never lands back in the farm it was
+  //    lifted from), ABOVE the bring-into-my-store case below so the load leaves the producer. Gated to a
+  //    NON-field-worker: a FARMER banks its own reaped crop INTO the farm (case 3b, overflowing only when
+  //    the farm is full), while the farm's carrier clears it to central storage — the two-role split.
   const binding = world.tryGet(settler, JobAssignment);
-  if (binding !== undefined) {
-    const home = binding.workplace;
-    if (isStorageSink(world, ctx, home) && hasRoom(world, ctx, home, goodType)) return home;
+  const home = binding?.workplace;
+  if (
+    home !== undefined &&
+    recipeOf(world, ctx, home) === undefined &&
+    buildingProduces(world, ctx, home).includes(goodType) &&
+    !isFieldWorkerOf(world, ctx, home, jobType)
+  ) {
+    return nearestStoreFor(candidates, world, ctx, terrain, here, goodType, home);
+  }
+  // 3b. Otherwise a porter's / farmer's load goes to the storage it is bound to (a warehouse, a flag pile,
+  //     or the farm's own store when a farmer banks its sheaf and the farm still has room).
+  if (home !== undefined && isStorageSink(world, ctx, home) && hasRoom(world, ctx, home, goodType)) {
+    return home;
   }
   // 4. A construction material flows to a construction site of the tribe that still needs it, so a builder
   //    self-supplying its own foundation (and any hauler topping it up) reaches the site instead of shuttling
@@ -286,6 +302,48 @@ export function nearestGroundPile(
 }
 
 /**
+ * The finished OUTPUT good a carrier should haul OUT of the **producing building it is bound to**, to a
+ * warehouse — or null when there is nothing to haul. This is the production half of the carrier rule
+ * ("tragarz wbity w produkcję jednocześnie przynosi towary I odnosi do magazynu"): a carrier stationed at
+ * a FARM (or any producing building) carries its finished output to central storage, where a carrier
+ * stationed at a warehouse/HQ only brings goods IN.
+ *
+ * A candidate is a good the bound building's type PRODUCES ({@link buildingProduces}) that the building
+ * currently stocks (>0) and that some OTHER store can take ({@link nearestStoreFor} with the building
+ * itself EXCLUDED — a no-recipe farm is not excluded by the standard producer check, so a guard here
+ * keeps the load from shuttling farm→farm). Walked in `produces` order (a fixed content array, so the
+ * pick never depends on store insertion history), first haulable output wins.
+ *
+ * Scoped to a bound building that carries **no recipe** — a recipe workshop's finished output is already
+ * hauled by the producer loop / carrier fallback ({@link workplaceOutputToHaul}/`nearestWorkplaceOutput`),
+ * so this closes the gap only for the producing-but-recipeless building (the farm) whose bound carrier was
+ * otherwise a pure inbound porter. Returns the good to lift, or null.
+ */
+export function boundProducerOutputToHaul(
+  candidates: readonly Entity[],
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  settler: Entity,
+  tribe: number,
+  here: NodeId,
+): number | null {
+  const binding = world.tryGet(settler, JobAssignment);
+  if (binding === undefined) return null;
+  const home = binding.workplace;
+  const b = world.tryGet(home, Building);
+  if (b === undefined || b.tribe !== tribe) return null; // gone / wrong tribe
+  if (recipeOf(world, ctx, home) !== undefined) return null; // recipe shops haul via the producer/carrier path
+  if (!world.has(home, Stockpile) || !world.has(home, Position)) return null;
+  const stock = world.get(home, Stockpile).amounts;
+  for (const goodType of buildingProduces(world, ctx, home)) {
+    if ((stock.get(goodType) ?? 0) <= 0) continue; // none of this output on hand
+    if (nearestStoreFor(candidates, world, ctx, terrain, here, goodType, home) !== null) return goodType;
+  }
+  return null;
+}
+
+/**
  * Whether a settler is a **porter**: bound (via {@link JobAssignment}) to a storage fixture rather than a
  * producing workplace — the gate for the ground-pile collection drive. A porter has no recipe workshop to
  * staff and (by content) no harvest atomic, so it exists to move loose goods into its store.
@@ -294,6 +352,16 @@ export function isPorterBoundToStore(world: World, ctx: SystemContext, settler: 
   const binding = world.tryGet(settler, JobAssignment);
   if (binding === undefined) return false;
   return isStorageSink(world, ctx, binding.workplace);
+}
+
+/** Whether `jobType` is a **field-worker** of `building` — its job can run the building's field crop's
+ *  PLANT atomic (the FARMER). Mirrors `boundFarmTarget`'s field-trade gate. A field-worker banks its own
+ *  reaped crop INTO the farm; a NON-field-worker bound to the farm (the carrier) hauls its output OUT, so
+ *  this is the split the delivery routing keys on to send the farmer's sheaf home but the carrier's load
+ *  to a warehouse. Returns false for a non-farm building (no field crop). */
+function isFieldWorkerOf(world: World, ctx: SystemContext, building: Entity, jobType: number): boolean {
+  const spec = farmWorkGood(world, ctx, building);
+  return spec !== null && jobAtomics(ctx, jobType).has(spec.plantAtomic);
 }
 
 /** A store that is a delivery SINK (not a producer): a positioned {@link Stockpile} with no recipe — a
