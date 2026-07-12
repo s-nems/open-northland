@@ -8,6 +8,7 @@ import {
   BobSequenceSet,
   BuildingBob,
   BuildingConstructionLayer,
+  BuildingOverlay,
   GfxAnimAtomic,
 } from '../graphics/animations.js';
 import { GatheringPipeline, LandscapeGfx, LandscapeType } from '../landscape/objects.js';
@@ -58,6 +59,8 @@ export const ContentSet = z.strictObject({
   gfxAtomics: z.array(GfxAnimAtomic).default([]),
   buildingBobs: z.array(BuildingBob).default([]),
   constructionLayers: z.array(BuildingConstructionLayer).default([]),
+  /** `[GfxHouse]` `GfxOverlay` type-4 animated state overlays (the mill rotor — render-binding data). */
+  buildingOverlays: z.array(BuildingOverlay).default([]),
   tribes: z.array(TribeType).default([]),
   atomicAnimations: z.array(AtomicAnimation).default([]),
   maps: z.array(MapInfo).default([]),
