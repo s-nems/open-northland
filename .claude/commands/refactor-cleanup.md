@@ -5,8 +5,9 @@ argument-hint: <scope: sim|render|app|pipeline|path|feature> [focus, e.g. perfor
 
 # Refactor Cleanup
 
-Perform one evidence-driven cleanup pass inside the scope supplied in `$ARGUMENTS`. Preserve
-behavior unless the user explicitly requests a behavior change.
+Perform an evidence-driven refactor pass inside the scope supplied in `$ARGUMENTS`. The pass is
+expected to deliver a real improvement: address every justified finding in the scope, not a single
+token-cheap tweak. Preserve behavior unless the user explicitly requests a behavior change.
 
 ```text
 /refactor-cleanup sim
@@ -27,9 +28,11 @@ Treat the first argument as a hard ownership boundary:
 Treat remaining arguments as an optional focus, such as `performance`, `packaging`, `navigation`,
 or `type safety`. If no scope is supplied, ask for one before inspecting the whole repository.
 
-A package-sized scope authorizes inspection of that package, not a package-wide rewrite. Select the
-smallest cohesive improvement that produces meaningful value. Do not cross the boundary except for
-callers, tests, or public contracts required to understand and safely complete that improvement.
+A package-sized scope authorizes cleaning up that whole package. Fix every problem inside the
+scope that the diagnosis justifies — do not stop after the first improvement, and do not shrink the
+pass to save effort. What bounds the pass is the scope and the evidence, not diff size. Do not
+cross the boundary except for callers, tests, or public contracts required to understand and safely
+complete the work.
 
 ## 2. Establish the constraints
 
@@ -49,19 +52,24 @@ with file references. Distinguish maintenance risk from personal style preferenc
 Establish a green baseline: run the scope's focused tests before editing. A pre-existing failure is
 reported to the user, not absorbed into the refactor or silently worked around.
 
-Prioritize candidates in this order:
+Collect all justified findings in the scope, ordered by value:
 
 1. Fragile invariants, unclear ownership, or boundary violations.
 2. Hot-path work with an avoidable scaling or allocation cost.
 3. Mixed responsibilities, overgrown modules (files around 300 lines or more), and flat
    directories accumulating unrelated concerns side by side.
 4. Real duplication with at least two callers.
-5. Misleading names, weak types, dead code, and unnecessary indirection.
+5. Sprawling function signatures — parameter lists where several values always travel together
+   (a context, a node, a config) and should collapse into an existing domain type or a parameter
+   object threaded through the call chain.
+6. Misleading names, weak types, dead code, and unnecessary indirection.
 
-State the selected improvement, expected benefit, behavior that must remain stable, and regression
-risk before editing. If the requested performance problem is not supported by measurement,
-complexity analysis, or an obvious hot-path cost, do not invent an optimization; choose another
-evidence-backed improvement or report that no justified change was found.
+The plan for the pass is the full ranked list, not its top entry. Before editing, state the
+findings, expected benefit, behavior that must remain stable, and regression risk. Drop a finding
+only because the evidence does not support it or it requires a behavior change — never because the
+pass already contains "enough" work. If the requested performance problem is not supported by
+measurement, complexity analysis, or an obvious hot-path cost, do not invent an optimization;
+proceed with the remaining evidence-backed findings or report that no justified change was found.
 
 ## 4. Refactor pragmatically
 
@@ -77,7 +85,11 @@ rather than from memory of this file. On top of that contract, this pass specifi
 - Add no dependency unless its concrete benefit exceeds its ownership and maintenance cost.
 - Avoid speculative extensibility. Make the next likely change easier without designing for
   hypothetical callers.
-- Keep the diff narrow. Do not fix unrelated findings or create a new debt ledger.
+- Every hunk must trace back to a stated finding. Outside the scope, fix nothing and create no new
+  debt ledger; inside the scope, an untouched justified finding is a defect of the pass, not
+  restraint.
+- Work through the findings in ranked order and commit-sized units, so a partial pass still leaves
+  the scope strictly better and mechanically verifiable.
 
 ### Packaging decomposition
 
@@ -104,7 +116,8 @@ hash merely to make a refactor pass: a moved golden during a refactor means beha
 ## 5. Prove the change
 
 1. Add or strengthen the lowest-level useful tests before changing risky behavior boundaries.
-2. Implement the smallest coherent patch.
+2. Implement each finding as its own coherent patch; small patches are a sequencing tool, not a
+   licence to stop early.
 3. Re-read the diff for accidental behavior changes, needless abstractions, packaging churn, and
    missed cleanup in code already touched.
 4. For a non-trivial diff, spawn the project's `code-reviewer` agent on it — plus `engine-reviewer`
@@ -123,7 +136,7 @@ Do not commit unless the user or the active workflow explicitly requests a commi
 
 ## 6. Report
 
-Lead with the concrete problem selected and why it was worth fixing. Then report changed files,
+Lead with the findings addressed and why they were worth fixing. Then report changed files,
 preserved behavior, verification results (including reviewer-agent triage when run), and remaining
-risks. Mention other candidates only as a short, ranked list; do not expand the completed pass
-after the fact.
+risks. List any finding that was diagnosed but dropped, with the concrete reason (insufficient
+evidence, behavior change required); do not expand the completed pass after the fact.
