@@ -25,7 +25,7 @@ import {
   stampVision,
   VISION_CADENCE_TICKS,
   visionRadiusForJob,
-} from '../../src/systems/vision.js';
+} from '../../src/systems/vision/index.js';
 import { testContent } from '../fixtures/content.js';
 import { clearComponentStores } from '../fixtures/stores.js';
 

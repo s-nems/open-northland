@@ -16,7 +16,7 @@ import {
   placementProbe,
 } from './systems/footprint/index.js';
 import { SYSTEM_ORDER, type SystemContext } from './systems/index.js';
-import { effectiveFogState, FogState } from './systems/vision.js';
+import { effectiveFogState, FogState } from './systems/vision/index.js';
 
 export interface SimOptions {
   seed: number;

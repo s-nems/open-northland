@@ -4,7 +4,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
 import type { SystemContext } from '../context.js';
 import { COMPASS_DIRECTIONS, clearNavState, entityNode, isTravelling, type NodeBuckets } from '../spatial.js';
-import { playerSeesEntity } from '../vision.js';
+import { playerSeesEntity } from '../vision/index.js';
 import { isValidTarget, SIGHT_RADIUS_NODES } from './targeting.js';
 
 // The FLEE drive — the civilian raid reaction (the FLEE stance's active behaviour): run from the
