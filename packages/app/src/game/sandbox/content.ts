@@ -343,9 +343,10 @@ function landscapeState(g: GathererSpec): number {
 }
 
 // The invented resource areas below are HALF-CELL node offsets (`[state, dx, dy, run]`, the real
-// block-area grammar) — their extents are DOUBLED versus the old cell-unit values, the same
-// world-extent-preserving ×2 every invented extent got in the half-cell migration, so a sandbox
-// tree keeps its one-CELL build ring and its harvesters keep their one-CELL stand distance.
+// block-area grammar). The BUILD ring keeps its doubled (one-cell) extent from the half-cell
+// migration; the WORK cells sit ONE NODE from the anchor on every side, matching the real records
+// (the yew's `workAreas` are the ±1-node neighbours) — so a harvester stands half a cell from its
+// node and works it from whichever side it arrived, instead of circling to a distant east/west post.
 
 function walkBlockAreas(g: GathererSpec): number[][] {
   const state = landscapeState(g);
@@ -362,16 +363,20 @@ function buildBlockAreas(g: GathererSpec): number[][] {
 function workAreas(g: GathererSpec): number[][] {
   const state = landscapeState(g);
   if (g.mode === 'pick') return [[1, 0, 0, 1]];
+  // Clay includes its own ANCHOR (the digger stands ON the walkable deposit — resourceWorkCell's
+  // anchor-first rule); the blocking nodes offer the 8-neighbour ring around theirs.
   if (g.good === GOOD_MUD) {
     return [
-      [state, -2, 0, 1],
-      [state, 0, 0, 1],
-      [state, 2, 0, 1],
+      [state, -1, -1, 3],
+      [state, -1, 0, 3],
+      [state, -1, 1, 3],
     ];
   }
   return [
-    [state, -2, 0, 1],
-    [state, 2, 0, 1],
+    [state, -1, -1, 3],
+    [state, -1, 0, 1],
+    [state, 1, 0, 1],
+    [state, -1, 1, 3],
   ];
 }
 
