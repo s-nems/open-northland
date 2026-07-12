@@ -7,7 +7,7 @@ import type { SystemContext } from '../../../context.js';
 import { startableCycleCount } from '../../../economy/production.js';
 import { manhattan } from '../../../spatial.js';
 import { stockCapacity } from '../../../stores.js';
-import { interactionCell, nearestStoreFor } from '../../targets/index.js';
+import { closer, interactionCell, nearestStoreFor } from '../../targets/index.js';
 
 // The AI planner's SUPPLY layer: the scans behind a *producer worker running its own supply→produce→
 // deliver loop* — the "kowal fetches the goods a sword needs, forges it, and carries it back" behavior.
@@ -83,7 +83,7 @@ export function nearestMissingInputSource(
       if ((world.get(e, Stockpile).amounts.get(input.goodType) ?? 0) <= 0) continue; // holds none
       const cell = interactionCell(world, ctx, terrain, e, here);
       const dist = manhattan(terrain, here, cell);
-      if (dist < bestDist || (dist === bestDist && cell < bestCell)) {
+      if (closer(dist, cell, bestDist, bestCell)) {
         best = e;
         bestDist = dist;
         bestCell = cell;

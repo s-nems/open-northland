@@ -12,7 +12,7 @@ import type { SystemContext } from '../../context.js';
 import { farmWorkGood } from '../../economy/farming.js';
 import { manhattan } from '../../spatial.js';
 import { buildingProduces, recipeOf, stockCapacity } from '../../stores.js';
-import { boundWorkplaceTarget, interactionCell, nearestStoreFor } from '../targets/index.js';
+import { boundWorkplaceTarget, closer, interactionCell, nearestStoreFor } from '../targets/index.js';
 import { hasRoom, isFieldWorkerOf, isStorageSink } from './store-policy.js';
 
 /**
@@ -128,7 +128,7 @@ function nearestConstructionSiteNeeding(
     if (have >= stockCapacity(world, ctx, e, goodType)) continue; // full for this material (or not a cost good)
     const cell = interactionCell(world, ctx, terrain, e, here);
     const dist = manhattan(terrain, here, cell);
-    if (dist < bestDist || (dist === bestDist && cell < bestCell)) {
+    if (closer(dist, cell, bestDist, bestCell)) {
       best = e;
       bestDist = dist;
       bestCell = cell;
