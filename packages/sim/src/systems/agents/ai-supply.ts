@@ -252,12 +252,13 @@ export function nearestGroundPile(
   let bestDist = Number.POSITIVE_INFINITY;
   let bestCell = Number.POSITIVE_INFINITY;
   const deliverable = new Map<number, boolean>();
-  const canDeliver = (good: number, from: NodeId): boolean => {
+  const canDeliver = (good: number): boolean => {
     const cached = deliverable.get(good);
     if (cached !== undefined) return cached;
-    // Only `!== null` is used, which is independent of `from` (a good is deliverable if ANY store has
-    // room), so caching by good alone stays deterministic across piles.
-    const ok = nearestStoreFor(candidates, world, ctx, terrain, from, good) !== null;
+    // `here` feeds only `nearestStoreFor`'s distance sort, never its null-ness — a good is deliverable iff
+    // ANY store has room (position-independent) — so one probe from `here` decides it for every pile of
+    // that good, and caching by good alone stays deterministic.
+    const ok = nearestStoreFor(candidates, world, ctx, terrain, here, good) !== null;
     deliverable.set(good, ok);
     return ok;
   };
@@ -266,8 +267,8 @@ export function nearestGroundPile(
     if (!world.has(e, Stockpile) || !world.has(e, Position)) continue;
     const good = lowestStockedGood(world.get(e, Stockpile));
     if (good === null) continue; // an empty pile is nothing to collect
+    if (!canDeliver(good)) continue; // every store full for this good — leave it, try another good
     const cell = interactionCell(world, ctx, terrain, e, here);
-    if (!canDeliver(good, cell)) continue; // every store full for this good — leave it, try another good
     const dist = manhattan(terrain, here, cell);
     if (dist < bestDist || (dist === bestDist && cell < bestCell)) {
       best = { pile: e, goodType: good };
