@@ -12,7 +12,8 @@ import { atOrWalk, PILEUP_ATOMIC_ID, startAtomic } from '../actions.js';
 import { dropCarryAtOwnTile } from '../effects-goods.js';
 import type { PlannerContext } from '../planner-context.js';
 import { interactionCell, nearestFreeYardNode } from '../targets/index.js';
-import { deliveryTargetFor, isPorterBoundToStore } from './workshop/supply.js';
+import { isPorterBoundToStore } from './haul-targets.js';
+import { deliveryTargetFor } from './routing.js';
 
 /** Deposit a carried load, or hold/drop it deterministically when no eligible sink exists. */
 export function planDelivery(plan: PlannerContext, load: { goodType: number; amount: number }): boolean {

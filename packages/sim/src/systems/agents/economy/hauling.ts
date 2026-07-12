@@ -4,7 +4,7 @@ import { isCarrierJob } from '../../stores.js';
 import { atOrWalk, startPickup } from '../actions.js';
 import type { PlannerContext } from '../planner-context.js';
 import { interactionCell, nearestWorkplaceOutput } from '../targets/index.js';
-import { boundProducerOutputToHaul, isPorterBoundToStore, nearestGroundPile } from './workshop/supply.js';
+import { boundProducerOutputToHaul, isPorterBoundToStore, nearestGroundPile } from './haul-targets.js';
 
 /**
  * 4. PORTER — a settler bound to a storage fixture (no recipe) that moves loose goods. The full carrier

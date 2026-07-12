@@ -17,7 +17,7 @@ import {
   nearestOwnDropFor,
   nearestStoreHolding,
 } from '../targets/index.js';
-import { deliveryTargetFor } from './workshop/supply.js';
+import { deliveryTargetFor } from './routing.js';
 
 // The ECONOMY drives — the work rungs of the planner ladder, in the ladder's priority order:
 // deliver a carried load, run a bound producer's supply→produce→deliver loop, gather (chop/collect),
