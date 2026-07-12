@@ -112,15 +112,17 @@ function woodAt(s: Simulation, x: number, y: number, remaining = 5): Entity {
 }
 
 describe('moveUnit order', () => {
-  it('walks an owned settler to the target cell and holds it there', () => {
+  it('walks an owned settler to the target cell and releases it the tick it arrives (zero dwell)', () => {
     const s = sim();
     const e = ownedWoodcutter(s, 0, 0);
     orderMove(s, e, 5, 0);
-    s.run(70); // 5 tiles at 12 ticks/tile ≈ 64 ticks to arrive, then it stands (hold not yet expired)
+    s.run(70); // 5 tiles at 12 ticks/tile ≈ 64 ticks to arrive; the civilian hold is zero
 
     const p = s.world.get(e, Position);
     expect([p.x, p.y]).toEqual([fx.fromInt(5), fx.fromInt(0)]); // arrived at the ordered spot
-    expect(s.world.has(e, PlayerOrder)).toBe(true); // still holding position
+    // A civilian is handed back to the economy the moment it gets there — the order never parks it
+    // (with nothing to do on this empty map it simply stands, but as a FREE unit).
+    expect(s.world.has(e, PlayerOrder)).toBe(false);
   });
 
   it('keeps advancing when re-ordered MID-STEP — no snap back to the tile centre', () => {
@@ -223,25 +225,22 @@ describe('moveUnit order', () => {
     }
   });
 
-  it('the economy AI leaves an ordered worker standing, then reclaims it after the hold', () => {
+  it('the economy AI leaves an ordered worker alone en route, then reclaims it ON arrival', () => {
     const s = sim();
     const worker = ownedWoodcutter(s, 0, 0);
     woodAt(s, 2, 0); // without an order the woodcutter would walk here to harvest
 
-    // Order it AWAY from the resource. During the hold it must stand at the spot, not go harvest.
+    // Order it AWAY from the resource. While the order stands (the walk) it must obey, not harvest.
     orderMove(s, worker, 9, 0);
-    // 9 tiles ≈ 110 ticks with the gait ramp (13 accelerating + 7·12 cruise + 13 braking) + route
-    // latency; 140 is past arrival but still inside the 50-tick civilian hold that starts there.
-    s.run(140);
-    const held = s.world.get(worker, Position);
-    expect(held.x).toBe(fx.fromInt(9)); // stood at the ordered spot
-    expect(s.world.has(worker, PlayerOrder)).toBe(true); // still under the order
-    expect(s.world.has(worker, Carrying)).toBe(false); // NOT working — it obeyed the order
+    s.run(60); // mid-walk (9 tiles ≈ 110 ticks with the gait ramp)
+    expect(s.world.has(worker, PlayerOrder)).toBe(true); // still obeying the order
+    expect(s.world.has(worker, Carrying)).toBe(false); // NOT working — it walks where it was sent
 
-    // Long after the hold expires the economy reclaims it: it heads back to harvest the wood.
+    // The tick it arrives the zero civilian dwell releases it and the economy re-tasks it at once:
+    // it turns around and heads back to the wood — a detour, never a parking order.
     s.run(300);
-    expect(s.world.has(worker, PlayerOrder)).toBe(false); // hold released
-    expect(s.world.get(worker, Position).x).not.toBe(fx.fromInt(9)); // left the spot autonomously
+    expect(s.world.has(worker, PlayerOrder)).toBe(false); // released on arrival
+    expect(s.world.get(worker, Position).x).not.toBe(fx.fromInt(9)); // went straight back to work
   });
 });
 

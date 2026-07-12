@@ -124,9 +124,10 @@ const FALLBACK_WAIT: DirectionalAnim = { start: 1931, dirs: 1, stride: 57 };
 // STRIKES, neither chops (source basis).
 
 /**
- * Per-good harvest DURATIONS (ticks) — the ONE global source so gathering pace can't drift per scene. ALL
- * are the FAITHFUL `atomicanimations.ini` lengths of the collector's harvest atomics
- * (`viking_collector_harvest_*`, content/ir.json). A cycle is ONE authored work motion with its pauses
+ * Per-good harvest DURATIONS (ticks) — the ONE global source so gathering pace can't drift per scene.
+ * The FAITHFUL `atomicanimations.ini` lengths of the collector's harvest atomics
+ * (`viking_collector_harvest_*`, content/ir.json), except iron/gold where the gfx frame-list length
+ * wins (see the entries). A cycle is ONE authored work motion with its pauses
  * baked in: the collector clips play their `[gfxanimatomic]` per-direction frame LISTS (the
  * `dirListAtomics` binding below), whose entries carry the impact hold and the trailing idle pad — the
  * woodcut list is `windup → strike → 4-frame impact hold → follow-through → 4-frame rest`, one chop per
@@ -138,8 +139,11 @@ export const HARVEST_TICKS: Readonly<Record<number, number>> = {
   [HARVEST_ATOMIC]: 30, // wood     — viking_collector_harvest_tree
   [STONE_HARVEST_ATOMIC]: 29, // stone — viking_collector_harvest_stone
   [CLAY_HARVEST_ATOMIC]: 23, // clay/mud — viking_collector_harvest_mud
-  [IRON_HARVEST_ATOMIC]: 23, // iron  — viking_collector_harvest_iron
-  [GOLD_HARVEST_ATOMIC]: 23, // gold  — viking_collector_harvest_gold
+  // Iron/gold: the logic length is 23 but their gfx frame LIST is the shared 29-entry stonecrushing
+  // strike — 23 cut the swing off mid-follow-through (the reported "ucięta" glitch), so the list
+  // length wins here (a named approximation: gfx over logic, +0.3 s per swing).
+  [IRON_HARVEST_ATOMIC]: 29, // iron  — viking_collector_harvest_iron (logic 23, gfx list 29)
+  [GOLD_HARVEST_ATOMIC]: 29, // gold  — viking_collector_harvest_gold (logic 23, gfx list 29)
   [MUSHROOM_HARVEST_ATOMIC]: 35, // mushroom — viking_collector_harvest_mushroom
 };
 /**

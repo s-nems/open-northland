@@ -138,23 +138,22 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
   const SEED = 7;
 
   // The golden atomic-action trace. Atomic ids: 24 = harvest/CHOP (a swing at a tree), 23 = pileup
-  // (deposit into a store), 22 = pickup (lift out of a store / off a trunk), -1 = the INTER-SWING REST
-  // (`HARVEST_REST_ATOMIC_ID` — the breather a gatherer stands between work swings). Entity 5 =
+  // (deposit into a store), 22 = pickup (lift out of a store / off a trunk). Entity 5 =
   // woodcutter, 6 = its WORK FLAG (auto-planted at its feet when it spawns — a gatherer is never free;
   // it carries no atomics), 7 = carrier, 8 = carpenter (the mill's operator, self-servicing: it pickups
   // the HQ's stored wood into the mill and hauls finished planks back out). If this moves, a
   // settler-economy mechanic changed — name it in the commit. Last move: the INTER-SWING REST — every
-  // HARVEST_SWINGS_PER_REST-th harvest swing of a still-standing job chains into a 15-tick idle
-  // breather (observed burst rhythm: a couple of swings, a rest; see atomic.ts HARVEST_REST_TICKS +
-  // effects-goods.ts restAfterHarvest), so `-1` completions appear between chop bursts. The two short
-  // rests per run shift the mid-run ticks but the settled end state and plank count are unchanged
-  // (hash stays fe19b319, the spawn-time-flag-auto-plant value; e452b766 before that was the
-  // half-cell navigation migration.)
+  // HARVEST_SWINGS_PER_REST-th harvest swing of a still-standing job runs a 15-tick breather TAIL on
+  // the same atomic (observed burst rhythm: a couple of swings, a rest; see atomic.ts
+  // HARVEST_REST_TICKS + effects-goods.ts restAfterHarvest). The tail completes silently (no second
+  // event per swing), so the trace shows only the real actions — the rests appear as the widened gaps
+  // between chop bursts (e.g. 31 → 49). The settled end state and plank count are unchanged (hash
+  // stays fe19b319, the spawn-time-flag-auto-plant value; e452b766 before that was the half-cell
+  // navigation migration.)
   const GOLDEN_TRACE: readonly string[] = [
     '20:8:22',
     '31:5:24',
     '40:8:23',
-    '46:5:-1',
     '49:5:24',
     '52:5:24',
     '56:5:22',
@@ -185,7 +184,6 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
     '304:8:23',
     '323:5:24',
     '328:8:22',
-    '338:5:-1',
     '341:5:24',
     '344:5:24',
     '348:5:22',
