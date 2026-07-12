@@ -39,6 +39,27 @@ function tallSprite(spriteLayer: Container): { tint: number; frameX: number } | 
   return spr === undefined ? undefined : { tint: spr.tint, frameX: spr.texture.frame.x };
 }
 
+/** A two-frame animated DECOR object (a wave / swaying bush) anchored at the origin — cell (0, 0). */
+function wavingBush(): MapObjectSprite {
+  return {
+    x: 0,
+    y: 0,
+    source: Texture.WHITE.source,
+    frames: [FRAME_0, FRAME_1],
+    scale: 1,
+    decor: true,
+    phase: 0,
+  };
+}
+
+/** The animated decor batch's UV buffer — the frame pick is observable as the quad's atlas UVs. */
+function decorUVs(layer: MapObjectLayer): Float32Array {
+  const mesh = layer.decorContainer.children[0]?.children[0] as { geometry?: { uvs: Float32Array } };
+  const uvs = mesh?.geometry?.uvs;
+  if (uvs === undefined) throw new Error('expected one decor batch mesh');
+  return uvs;
+}
+
 describe('MapObjectLayer fog gate (tall objects)', () => {
   it('hides in UNEXPLORED, draws live in VISIBLE, dims in EXPLORED', () => {
     const spriteLayer = new Container();
@@ -75,5 +96,26 @@ describe('MapObjectLayer fog gate (tall objects)', () => {
     // Re-watched: the live clock takes over again (tick 5 → frame 1).
     layer.update(WIDE, 5, () => FOG_STATE.VISIBLE);
     expect(tallSprite(spriteLayer)?.frameX).toBe(FRAME_1.x);
+  });
+
+  it('freezes ANIMATED DECOR (waves, grass) on unwatched ground and resumes it when re-seen', () => {
+    const layer = new MapObjectLayer(new Container(), new TextureCache());
+    layer.set([wavingBush()]);
+
+    // Watched: the quad's UVs swap frames with the tick.
+    layer.update(WIDE, 0, () => FOG_STATE.VISIBLE);
+    const frame0UVs = [...decorUVs(layer)];
+    layer.update(WIDE, 1, () => FOG_STATE.VISIBLE);
+    expect([...decorUVs(layer)]).not.toEqual(frame0UVs);
+
+    // Ghosted (explored-only): frozen at the fixed clock — frame 0 — across animation ticks.
+    layer.update(WIDE, 2, () => FOG_STATE.EXPLORED);
+    expect([...decorUVs(layer)]).toEqual(frame0UVs);
+    layer.update(WIDE, 3, () => FOG_STATE.EXPLORED);
+    expect([...decorUVs(layer)]).toEqual(frame0UVs);
+
+    // Re-watched: the sway resumes on the live clock (tick 5 → frame 1).
+    layer.update(WIDE, 5, () => FOG_STATE.VISIBLE);
+    expect([...decorUVs(layer)]).not.toEqual(frame0UVs);
   });
 });

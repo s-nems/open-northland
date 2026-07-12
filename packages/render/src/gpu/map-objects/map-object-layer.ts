@@ -195,8 +195,9 @@ export class MapObjectLayer {
    * a virgin map object never changes until first worked (the handover
    * removes it here at that moment), so the real object IS its own last-seen ghost, and RECON's
    * known-terrain view shows the map's resources from the start for free. Flat DECOR (waves, grass,
-   * mine stains) is deliberately exempt — it reads as terrain dressing, which the explored-grey layer
-   * shows (named approximation; the black layer's opaque wash covers it anyway).
+   * mine stains) keeps DRAWING on any non-visible ground (it reads as terrain dressing, which the
+   * explored-grey layer shows — the black layer's opaque wash covers it anyway) but its animation
+   * freezes there like the tall objects' (swaying grass under the fog reads as watched ground).
    */
   update(vp: Viewport, tick: number, fogStateOfCell?: (cellX: number, cellY: number) => number): void {
     // Landscape decor: the written tick is tracked PER CHUNK so a chunk scrolled into view mid-tick
@@ -210,7 +211,15 @@ export class MapObjectLayer {
         for (let q = 0; q < batch.objects.length; q++) {
           const obj = batch.objects[q];
           if (obj === null || obj === undefined) continue; // removed (handed to the sprite pool) — stays zeroed
-          const frame = objectFrameAt(obj, tick);
+          // Animated decor (waves, swaying grass/bushes) FREEZES on ground the viewer does not
+          // currently watch — same memory-not-live-feed rule as the tall objects, decided per
+          // object cell (the loop rewrites every on-screen animated quad each tick anyway, so a
+          // frozen quad just keeps re-writing its fixed-clock frame — no per-object state).
+          const watched =
+            fogStateOfCell === undefined ||
+            fogStateOfCell(Math.floor(obj.x / (2 * TILE_HALF_W)), Math.floor(obj.y / TILE_HALF_H)) ===
+              FOG_STATE.VISIBLE;
+          const frame = objectFrameAt(obj, watched ? tick : 0);
           if (frame !== undefined) {
             writeObjectQuad(batch.positions, batch.uvs, q, obj, frame, batch.pageW, batch.pageH);
           }
