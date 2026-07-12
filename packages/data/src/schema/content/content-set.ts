@@ -1,16 +1,14 @@
 import { z } from 'zod';
-import { AnimalType, ArmorType, VehicleType, WeaponType } from '../actors/equipment.js';
+import { AnimalType } from '../actors/animals.js';
+import { ArmorType, WeaponType } from '../actors/equipment.js';
 import { AtomicAnimation, TribeType } from '../actors/tribes.js';
+import { VehicleType } from '../actors/vehicles.js';
 import { SoundBank } from '../audio/sound.js';
 import { GoodType } from '../economy/goods.js';
 import { BuildingType, HumanJobExperienceType, JobType } from '../economy/workplaces.js';
-import {
-  BobSequenceSet,
-  BuildingBob,
-  BuildingConstructionLayer,
-  BuildingOverlay,
-  GfxAnimAtomic,
-} from '../graphics/animations.js';
+import { GfxAnimAtomic } from '../graphics/atomic-anims.js';
+import { BobSequenceSet } from '../graphics/bob-sequences.js';
+import { BuildingBob, BuildingConstructionLayer, BuildingOverlay } from '../graphics/building-bobs.js';
 import { GatheringPipeline, LandscapeGfx, LandscapeType } from '../landscape/objects.js';
 import {
   GfxPattern,
