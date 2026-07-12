@@ -206,6 +206,15 @@ export function normalizeAssetPath(path: string): string {
 }
 
 /**
+ * Normalizes an OPTIONAL shadow `.bmd` path: a bob-set line's shadow slot is often absent or blank
+ * (`GfxBobLibs "<body>.bmd"` with no second value), which must stay `undefined` rather than normalize
+ * to an empty key. Every `(body, shadow, palette)` binding reader shares this guard.
+ */
+export function normalizeShadowPath(path: string | undefined): string | undefined {
+  return path !== undefined && path.trim() !== '' ? normalizeAssetPath(path) : undefined;
+}
+
+/**
  * Normalizes a palette `editname` to its case-insensitive join key (lower-case). The two pairing legs
  * disagree on case in the real data — `palettes.ini` declares `Lion01`/`Chicken01`, `jobgraphics.ini`
  * references `LION01`/`chicken01` — and the original engine matches them case-insensitively, so both
