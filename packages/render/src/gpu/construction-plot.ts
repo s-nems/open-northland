@@ -1,6 +1,6 @@
 import { Container, Graphics } from 'pixi.js';
 import type { ElevationField } from '../data/elevation.js';
-import { halfCellToScreen, TILE_HALF_H, TILE_HALF_W } from '../data/iso.js';
+import { halfCellToScreen, nodeDiamondPoly, TILE_HALF_H, TILE_HALF_W } from '../data/iso.js';
 
 /**
  * The CONSTRUCTION-SITE plot — a translucent grey "plac budowy" washed over the ground cells a placed
@@ -58,7 +58,7 @@ export class ConstructionPlotLayer {
         const cx = p.x;
         const cy = p.y - (lifted ? elevation.liftAtNode(cell.col, cell.row) : 0);
         // One node diamond per cell; all cells share the single fill below, so overlaps union cleanly.
-        g.poly([cx, cy - hh, cx + hw, cy, cx, cy + hh, cx - hw, cy]);
+        g.poly(nodeDiamondPoly(cx, cy, hw, hh));
       }
     }
     g.fill(PLOT_COLOR);

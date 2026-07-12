@@ -1,6 +1,6 @@
 import { Container, Graphics, type Renderer, RenderTexture, Sprite } from 'pixi.js';
 import type { ElevationField } from '../data/elevation.js';
-import { halfCellToScreen, TILE_HALF_H, TILE_HALF_W } from '../data/iso.js';
+import { halfCellToScreen, nodeDiamondPoly, TILE_HALF_H, TILE_HALF_W } from '../data/iso.js';
 
 /**
  * The BUILD-PLACEMENT overlay — the original's build-mode read of the ground: a translucent dark wash
@@ -163,7 +163,7 @@ export class PlacementOverlayLayer {
         const cy = (p.y - (lifted ? elevation.liftAtNode(col, row) : 0) - bounds.y) * COMPOSITE_RESOLUTION;
         const cx = (p.x - bounds.x) * COMPOSITE_RESOLUTION;
         const g = blocked.has(`${col},${row}`) ? blockedG : buildableG;
-        g.poly([cx, cy - hh, cx + hw, cy, cx, cy + hh, cx - hw, cy]);
+        g.poly(nodeDiamondPoly(cx, cy, hw, hh));
       }
     }
     blockedG.fill(0xffffff);

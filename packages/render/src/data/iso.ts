@@ -96,6 +96,18 @@ export function halfCellToScreen(hx: number, hy: number): { x: number; y: number
 }
 
 /**
+ * The flat `[x, y, …]` point list of a NODE DIAMOND centred at `(cx, cy)` with half-extents `(hw, hh)`,
+ * wound top → right → bottom → left — the shape a single half-cell node fills on the lattice. The
+ * world-space per-cell washes ({@link import('../gpu/construction-plot.js').ConstructionPlotLayer},
+ * {@link import('../gpu/placement-overlay.js').PlacementOverlayLayer}) feed it straight to
+ * `Graphics.poly`; each computes its own `(hw, hh)` (raw cell pitch, or padded + resolution-scaled), so
+ * only the diamond winding is shared here. Pure.
+ */
+export function nodeDiamondPoly(cx: number, cy: number, hw: number, hh: number): number[] {
+  return [cx, cy - hh, cx + hw, cy, cx, cy + hh, cx - hw, cy];
+}
+
+/**
  * A camera transform applied to every projected screen position before drawing. Plain data (a pan
  * offset + a uniform zoom), so the pure viewport-cull math ({@link import('./viewport.js')}) can invert
  * it without touching the GPU layer.
