@@ -38,8 +38,10 @@ that matches its role instead of piling another method onto a growing file:
   — `HUMAN_PLAYER`, `ENEMY_PLAYER`, `PRIMARY_TRIBE`, `HUD_TRIBE`), `snapshot.ts` (typed snapshot readers
   shared by the view controls and the HUD panels), and the `sandbox/` package — `ids.ts`
   (semantic type ids + the `GATHERERS` table), `content.ts` (the one `sandboxContent()` `ContentSet` —
-  goods/jobs/buildings/weapons/animation bindings), `place.ts` (the place/spawn helpers), `index.ts`
-  (the barrel). Scenes and the vertical slice consume this; they do NOT define their own content.
+  goods/jobs/buildings/weapons/animation bindings), `worker-slots.ts` (the extracted worker/carrier slot
+  table + its trade names) and `construction.ts` (the build-cost + hitpoint tables) it assembles from,
+  `place.ts` (the place/spawn helpers), `index.ts` (the barrel). Scenes and the vertical slice consume
+  this; they do NOT define their own content.
 - **`hud/`** — the bitmap-native in-game HUD: `geometry.ts` (the shared `Rect`/`contains`), `chrome.ts`
   (parchment window chrome + highlight theme), `bitmap-text.ts` (the `.fnt` glyph runs + the `makeTextRun`
   factory), `action-ring-layout.ts` (the settler action-menu geometry), the `tool-panel/` package —

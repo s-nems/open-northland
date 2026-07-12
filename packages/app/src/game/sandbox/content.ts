@@ -19,7 +19,7 @@ import {
   STORE_PILEUP_ATOMIC,
   WHEAT_HARVEST_ATOMIC,
 } from '../../catalog/atomics.js';
-import { HOME_KIND, VIKING_BUILDINGS, type VikingBuilding } from '../../catalog/buildings.js';
+import { VIKING_BUILDINGS, type VikingBuilding } from '../../catalog/buildings.js';
 import {
   FARM_FIELD_RADIUS,
   FARM_FIELDS_BASE,
@@ -49,13 +49,12 @@ import {
 import type { GoodRef } from '../../content/settler-gfx.js';
 import { HARVEST_TICKS } from '../../content/settler-gfx.js';
 import { professionLabel } from '../../i18n/index.js';
-import type { Messages } from '../../i18n/pl.js';
 import { PRIMARY_TRIBE } from '../rules.js';
+import { buildingConstructionCost, buildingHitpoints } from './construction.js';
 import {
   BUILD_HOUSE_ATOMIC,
   BUILDING_FARM,
   BUILDING_HEADQUARTERS,
-  BUILDING_HOME_00,
   BUILDING_JOINERY,
   BUILDING_MILL,
   BUILDING_WAREHOUSE_00,
@@ -94,13 +93,15 @@ import {
   WEAPON_SPEAR,
   WEAPON_SWORD,
 } from './ids.js';
+import { BUILDING_WORKER_SLOTS, workerSlotName, workerSlotsFor } from './worker-slots.js';
 
 /**
  * The ONE global sandbox {@link ContentSet} — goods/jobs/buildings/weapons/animation bindings — every
  * scene and the vertical slice consume (they never define their own content; packages/app/AGENTS.md).
  * The package splits by concern: semantic ids + the {@link GATHERERS} table in `./ids.ts`,
- * world-population helpers in `./place.ts`, scene-check queries beside the scenes
- * (`scenes/sandbox-queries.ts`); this module only assembles the validated content set.
+ * the extracted worker/carrier slot table in `./worker-slots.ts`, the construction cost + hitpoint
+ * tables in `./construction.ts`, world-population helpers in `./place.ts`, scene-check queries beside
+ * the scenes (`scenes/sandbox-queries.ts`); this module only assembles the validated content set.
  */
 
 /** The one thing the sandbox landscape derivation reads off a terrain grid — its typeId lane.
@@ -230,69 +231,6 @@ const BASE_LANDSCAPE = [
   // Sand/beach/desert stone: open for walking and building, closed to the plough (no `biocanplanton`).
   { typeId: TERRAIN_BARREN, id: 'barren', walkable: true, buildable: true },
 ] as const;
-
-/**
- * GLOBAL construction data — every building is raised the original way: the player places a foundation
- * (the tool panel enqueues `placeBuilding` `underConstruction`), carriers/builders deliver its materials,
- * and a builder hammers it up (the ConstructionSystem). This is not a per-scene demo: the SAME cost + life
- * pool apply in EVERY scene and on every map. A building with no cost would instead pop up instantly and a
- * `GOOD_NONE` cost would stall (good 0 is undeliverable), so each carries a real, deliverable bill.
- *
- * Named approximation (source basis: our design — the engine's build loop has no oracle, AGENTS.md). The
- * real per-type material bill (`[GfxHouse] LogicConstructionGoods`) and `logichitpoints` ARE extracted, but
- * the bill is keyed by the ORIGINAL game's good ids, not yet unified into the sandbox good space (the
- * deferred global-content id unification). So the COST is approximated in sandbox goods — a wood+stone
- * parcel scaled by building class (a warehouse/hall costs more units → more builder strikes than a hut) —
- * and HITPOINTS is a per-class default. Homes keep their level chain, each tier a parcel up (the cost
- * doubles as the next tier's upgrade bill — {@link import('@vinland/sim').homeNextTier}). Tune freely; the
- * global mechanic, not these balance numbers, is the point.
- */
-function buildParcel(wood: number, stone: number): readonly { goodType: number; amount: number }[] {
-  return [
-    { goodType: GOOD_WOOD, amount: wood },
-    { goodType: GOOD_STONE, amount: stone },
-  ];
-}
-/** Per home tier (`home_level_00..04` = typeIds {@link BUILDING_HOME_00}+0..4): a rising wood+stone bill.
- *  Level 0 keeps the base cost the construction scene has always raised the starter home from. */
-const HOME_BUILD_COST_BY_LEVEL: readonly (readonly { goodType: number; amount: number }[])[] = [
-  buildParcel(4, 2),
-  buildParcel(4, 3),
-  buildParcel(5, 3),
-  buildParcel(5, 4),
-  buildParcel(6, 4),
-];
-/** Non-home build cost by building `kind`; unmapped kinds fall back to {@link DEFAULT_BUILD_COST}. */
-const BUILD_COST_BY_KIND: Readonly<Record<string, readonly { goodType: number; amount: number }[]>> = {
-  storage: buildParcel(6, 4), // warehouses + the HQ — the largest common bodies
-  training: buildParcel(5, 4), // barracks / school halls
-  tower: buildParcel(3, 5), // walls / watchtowers — stone-heavy
-  workplace: buildParcel(3, 2), // a workshop
-};
-const DEFAULT_BUILD_COST = buildParcel(3, 2);
-/** Per-class max HP (the Health pool the ConstructionSystem ramps 0→max as the site rises). */
-const BUILD_HITPOINTS_BY_KIND: Readonly<Record<string, number>> = {
-  storage: 100000,
-  home: 30000,
-  training: 60000,
-  tower: 60000,
-  workplace: 40000,
-};
-const DEFAULT_BUILD_HITPOINTS = 40000;
-
-/** The build-material cost for a catalog building: its home-tier parcel for a home, else its class cost. */
-function buildingConstructionCost(b: VikingBuilding): readonly { goodType: number; amount: number }[] {
-  if (b.kind === HOME_KIND) {
-    const level = b.typeId - BUILDING_HOME_00;
-    const clamped = Math.min(Math.max(level, 0), HOME_BUILD_COST_BY_LEVEL.length - 1);
-    return HOME_BUILD_COST_BY_LEVEL[clamped] ?? DEFAULT_BUILD_COST;
-  }
-  return BUILD_COST_BY_KIND[b.kind] ?? DEFAULT_BUILD_COST;
-}
-/** The max-HP pool for a catalog building's `kind`. */
-function buildingHitpoints(kind: string): number {
-  return BUILD_HITPOINTS_BY_KIND[kind] ?? DEFAULT_BUILD_HITPOINTS;
-}
 
 const RESOURCE_LANDSCAPE_BASE = 1000;
 const RESOURCE_GFX_BASE = 2000;
@@ -801,223 +739,6 @@ interface SandboxBuildingRow {
   workers?: readonly { jobType: number; count: number }[];
   footprint?: BuildingFootprint;
 }
-
-/** A building's worker slots with their job ids rebased ({@link rebaseSlotJob}), or undefined for a
- *  building type that employs nobody (homes). */
-function workerSlotsFor(typeId: number): readonly { jobType: number; count: number }[] | undefined {
-  const slots = BUILDING_WORKER_SLOTS[typeId];
-  return slots?.map((w) => ({ jobType: rebaseSlotJob(w.jobType), count: w.count }));
-}
-
-/**
- * Extracted worker-slot trades that map to a picker PROFESSION, keyed by their ORIGINAL `jobtypes.ini` id
- * (the pre-rebase id used in {@link BUILDING_WORKER_SLOTS}) → the shared profession `key`. The building
- * panel names each such worker via {@link professionLabel}, so a slot trade and the picker read the SAME
- * word — they used to be transcribed twice and drifted (joiner was "Cieśla" in the slot table but
- * "Stolarz" in the picker). Trades with no picker counterpart keep a slot-local name below.
- */
-const WORKER_SLOT_PROFESSION_KEYS: Readonly<Record<number, keyof Messages['profession']>> = {
-  9: 'joiner',
-  10: 'armorer',
-  11: 'potter',
-  12: 'mason',
-  13: 'smith',
-  14: 'coin_maker',
-  15: 'hunter',
-  16: 'breeder',
-  17: 'tailor', // jobtypes.ini "sewer"
-  18: 'farmer',
-  19: 'miller',
-  20: 'baker',
-  21: 'brewer',
-  22: 'fisher',
-  29: 'herbalist', // jobtypes.ini "herb & mush guy"
-  30: 'druid',
-};
-/**
- * Slot-local Polish names for the worker-slot trades with NO picker profession: the generic `collector`
- * (8) the roster instead realizes as the concrete resource gatherers, and the two archer weapon classes
- * (40/41) the one-soldier picker folds into "Żołnierz" but a tower slot still lists by weapon.
- */
-const WORKER_SLOT_LOCAL_NAMES: Readonly<Record<number, string>> = {
-  8: 'Zbieracz', // collector
-  40: 'Łucznik', // soldier_bow_short
-  41: 'Łucznik (długi łuk)', // soldier_bow_long
-};
-/** The display name of an extracted worker-slot job, by its ORIGINAL id: the shared profession label
- *  where the trade has one (so it never drifts from the picker), else its slot-local name. The carrier
- *  (24 → {@link JOB_CARRIER}) is named 'Tragarz' where the job is defined, not here. */
-function workerSlotName(originalJobType: number): string {
-  const key = WORKER_SLOT_PROFESSION_KEYS[originalJobType];
-  return key !== undefined ? professionLabel(key) : (WORKER_SLOT_LOCAL_NAMES[originalJobType] ?? 'Pracownik');
-}
-
-/**
- * Per-building WORKER + CARRIER capacity, by typeId — how many settlers of each job a building employs,
- * so `assignWorker` (and the JobSystem) can staff it and the door-badge shows one marker per worker.
- * Source basis: EXTRACTED from `ir.json`'s `workers`, i.e. the `logicworker` keys of each
- * `[logichousetype]` block in `DataCnmd/types/houses.ini`, verbatim — the counts and the worker/carrier
- * split are the original's. The `jobType`s here are the source's own `jobtypes.ini` ids and are REBASED
- * clear of the sandbox's own job band on the way in ({@link rebaseSlotJob}): the original ids overlap the
- * synthetic gatherer band (20..25), the carrier (26), and the soldier band (31..41), so e.g. original job
- * 22 would otherwise be read as the sandbox's MUD GATHERER and original 40/41 as ARCHERS — the bug that
- * let a "carpenter" slot fill with wood gatherers. The CARRIER job is the one exception: the original's
- * carrier (jobtype 24) is rebased to {@link JOB_CARRIER} (the one job the badge + assignment UI single out
- * as a hauler). Everything else becomes a distinct generic craftsman id (its trade identity is dropped —
- * the deferred global-content id unification); the COUNT and the carrier split — what the player assigns —
- * stay exact. Residences (homes) employ nobody; they carry no row. Kept as sandbox data (not the
- * clean-room catalog) because the rebase lives in the sandbox job space.
- */
-const BUILDING_WORKER_SLOTS: Readonly<Record<number, readonly { jobType: number; count: number }[]>> = {
-  1: [
-    { jobType: JOB_CARRIER, count: 3 },
-    { jobType: 8, count: 3 },
-    { jobType: 22, count: 3 },
-    { jobType: 15, count: 3 },
-  ], // headquarters
-  7: [
-    { jobType: JOB_CARRIER, count: 3 },
-    { jobType: 8, count: 3 },
-    { jobType: 22, count: 3 },
-    { jobType: 15, count: 3 },
-  ], // stock_00
-  8: [
-    { jobType: JOB_CARRIER, count: 3 },
-    { jobType: 8, count: 3 },
-    { jobType: 22, count: 3 },
-    { jobType: 15, count: 3 },
-  ], // stock_01
-  9: [
-    { jobType: JOB_CARRIER, count: 3 },
-    { jobType: 8, count: 3 },
-    { jobType: 22, count: 3 },
-    { jobType: 15, count: 3 },
-  ], // stock_02
-  10: [{ jobType: JOB_CARRIER, count: 1 }], // work_well_00
-  11: [{ jobType: JOB_CARRIER, count: 1 }], // work_hive_00
-  12: [
-    { jobType: 18, count: 4 },
-    { jobType: JOB_CARRIER, count: 1 },
-  ], // work_farm_00
-  13: [
-    { jobType: 19, count: 2 },
-    { jobType: JOB_CARRIER, count: 1 },
-  ], // work_mill_00
-  14: [
-    { jobType: 20, count: 1 },
-    { jobType: JOB_CARRIER, count: 1 },
-  ], // work_bakery_00
-  15: [
-    { jobType: 20, count: 2 },
-    { jobType: JOB_CARRIER, count: 1 },
-  ], // work_bakery_01
-  16: [
-    { jobType: 21, count: 2 },
-    { jobType: JOB_CARRIER, count: 1 },
-  ], // work_brewery
-  17: [
-    { jobType: 16, count: 2 },
-    { jobType: JOB_CARRIER, count: 1 },
-  ], // work_animal_farm
-  18: [
-    { jobType: 17, count: 1 },
-    { jobType: JOB_CARRIER, count: 1 },
-  ], // work_sewery_00
-  19: [
-    { jobType: 17, count: 2 },
-    { jobType: JOB_CARRIER, count: 1 },
-  ], // work_sewery_01
-  20: [
-    { jobType: 11, count: 1 },
-    { jobType: JOB_CARRIER, count: 1 },
-    { jobType: 8, count: 1 },
-  ], // work_pottery_00
-  21: [
-    { jobType: 11, count: 2 },
-    { jobType: JOB_CARRIER, count: 1 },
-    { jobType: 8, count: 2 },
-  ], // work_pottery_01
-  23: [
-    { jobType: 9, count: 1 },
-    { jobType: JOB_CARRIER, count: 1 },
-    { jobType: 8, count: 1 },
-  ], // work_joinery_00
-  24: [
-    { jobType: 9, count: 2 },
-    { jobType: JOB_CARRIER, count: 1 },
-    { jobType: 8, count: 1 },
-  ], // work_joinery_01
-  25: [
-    { jobType: 9, count: 3 },
-    { jobType: JOB_CARRIER, count: 1 },
-    { jobType: 8, count: 1 },
-  ], // work_joinery_02
-  26: [
-    { jobType: 9, count: 3 },
-    { jobType: JOB_CARRIER, count: 1 },
-    { jobType: 8, count: 1 },
-  ], // work_joinery_03
-  27: [
-    { jobType: 10, count: 1 },
-    { jobType: JOB_CARRIER, count: 1 },
-    { jobType: 8, count: 1 },
-  ], // work_armory_00
-  28: [
-    { jobType: 10, count: 2 },
-    { jobType: JOB_CARRIER, count: 1 },
-    { jobType: 8, count: 2 },
-  ], // work_armory_01
-  29: [
-    { jobType: 12, count: 1 },
-    { jobType: JOB_CARRIER, count: 1 },
-    { jobType: 8, count: 1 },
-  ], // work_mason_hut_00
-  30: [
-    { jobType: 12, count: 2 },
-    { jobType: JOB_CARRIER, count: 1 },
-    { jobType: 8, count: 1 },
-  ], // work_mason_hut_01
-  31: [
-    { jobType: 13, count: 1 },
-    { jobType: JOB_CARRIER, count: 1 },
-    { jobType: 8, count: 2 },
-  ], // work_smithy_00
-  32: [
-    { jobType: 13, count: 2 },
-    { jobType: JOB_CARRIER, count: 1 },
-    { jobType: 8, count: 2 },
-  ], // work_smithy_01
-  33: [
-    { jobType: 14, count: 2 },
-    { jobType: JOB_CARRIER, count: 1 },
-    { jobType: 8, count: 2 },
-  ], // work_coin_mint
-  34: [
-    { jobType: 29, count: 3 },
-    { jobType: JOB_CARRIER, count: 1 },
-  ], // work_herb_hut
-  35: [
-    { jobType: 30, count: 1 },
-    { jobType: JOB_CARRIER, count: 1 },
-    { jobType: 8, count: 1 },
-  ], // work_druid_00
-  36: [
-    { jobType: 30, count: 2 },
-    { jobType: JOB_CARRIER, count: 1 },
-    { jobType: 8, count: 2 },
-  ], // work_druid_01
-  39: [{ jobType: JOB_CARRIER, count: 4 }], // barracks
-  40: [
-    { jobType: 40, count: 3 },
-    { jobType: 41, count: 3 },
-    { jobType: JOB_CARRIER, count: 3 },
-  ], // tower_00
-  41: [
-    { jobType: 40, count: 4 },
-    { jobType: 41, count: 4 },
-    { jobType: JOB_CARRIER, count: 4 },
-  ], // tower_01
-};
 
 /**
  * Per-building sandbox behaviour overrides, keyed by typeId — a DATA table, so {@link buildingRow}
