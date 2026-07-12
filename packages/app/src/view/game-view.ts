@@ -572,16 +572,15 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     // before the renderer's update draws them, decaying against the sim tick so a pause/screenshot
     // reproduces. Fog-filtered: a fight in unexplored/grey ground leaves no visible marks.
     renderer.ingestCombatEffects(presentEvents, snap.tick);
-    renderer.update(
-      snap,
-      cameraCtl.camera(),
-      snap.tick,
-      undefined,
-      controls.selectedIds(),
-      renderAlpha,
+    renderer.update({
+      snapshot: snap,
+      camera: cameraCtl.camera(),
+      tick: snap.tick,
+      selection: controls.selectedIds(),
+      alpha: renderAlpha,
       doorBadges,
-      controls.flaggedFlagIds(),
-    );
+      flagged: controls.flaggedFlagIds(),
+    });
     controls.tick(snap); // reuse the frame's snapshot — don't rebuild a second one
     pileTooltip.update(snap); // name-on-hover for the good pile under the cursor (after controls: claim state is current)
     deps.onFrame?.(snap);

@@ -172,7 +172,7 @@ export {
   syntheticAtlasFrames,
 } from './gpu/synthetic-atlas.js';
 export { flatTileColour } from './gpu/terrain/terrain-layer.js';
-export { SPRITE_CULL_MARGIN, WorldRenderer } from './gpu/world-renderer.js';
+export { SPRITE_CULL_MARGIN, type WorldFrame, WorldRenderer } from './gpu/world-renderer.js';
 
 /*
  * The renderer is a PURE CONSUMER of sim state (see docs/ARCHITECTURE.md). It reads a snapshot
