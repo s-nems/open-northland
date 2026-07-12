@@ -45,7 +45,8 @@ import {
   menuGoodsFromContent,
   mountGameToolPanel,
 } from './game-tool-panel.js';
-import { buildingSetFingerprint, computeGeometryDebugItems } from './geometry-debug-items.js';
+import { createGeometryDebugOverlay } from './geometry-debug-items.js';
+import { createGroundPileTooltip } from './ground-pile-tooltip.js';
 import { mountSoundToggle } from './overlay.js';
 import { floatParam } from './params.js';
 import { mountPerfOverlay } from './perf-overlay.js';
@@ -388,70 +389,24 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     fogMode: () => sim.fogMode(),
   });
 
-  // Name-on-hover: a cursor tooltip naming the loose good pile (with its count) under the pointer, so a
-  // dropped heap the eye can't always tell apart — one bottle from another, one ring from another — reads its
-  // good + how many units. Keyed by the sim goodType the pile's DrawItem carries.
-  const tooltip = createTooltip();
-  const toWorld = (clientX: number, clientY: number): { x: number; y: number } => {
-    const p = clientToScreen(clientX, clientY);
-    return screenToWorld(cameraCtl.camera(), p.x, p.y);
-  };
-  // Pile hit-targets, rebuilt only when the sim tick OR the camera moves. buildSpriteScene is culled to the
-  // camera viewport (same margin the renderer draws with), so this is a SCREEN-bounded pass, not a whole-map
-  // one — the tooltip only names piles under the cursor, which are on-screen (golden rule 6). The set is
-  // camera-dependent now (culled), so the cache keys on the camera too; a still cursor over a still frame
-  // re-picks the cached set. Empty flags (no dominant good) carry nothing to name and are skipped.
-  let hoverKey = '';
-  let hoverTargets: Pickable[] = [];
-  const hoverInfo = new Map<number, { goodType: number; amount: number }>();
-  const pileTargets = (snap: WorldSnapshot): Pickable[] => {
-    const cam = cameraCtl.camera();
-    const key = `${snap.tick}:${cam.offsetX}:${cam.offsetY}:${cam.scale ?? 1}`;
-    if (key === hoverKey) return hoverTargets;
-    hoverKey = key;
-    hoverTargets = [];
-    hoverInfo.clear();
-    const vp = cameraViewport(
-      cam,
-      app.screen.width,
-      app.screen.height,
-      SPRITE_CULL_MARGIN + (deps.elevation?.maxLift ?? 0),
-    );
-    // fogVisible: a fogged pile must not hit-test (its tooltip would read hidden stock through the fog).
-    for (const it of buildSpriteScene(snap, {
-      viewport: vp,
-      elevation: deps.elevation,
-      fogVisible: fogVisibleTile,
-    })) {
-      if (it.kind !== 'stockpile' && it.kind !== 'grounddrop') continue;
-      if (it.goodType === undefined) continue; // an empty delivery flag — nothing to name
-      hoverTargets.push({ ref: it.ref, x: it.x, y: it.y, box: renderer.entityBounds(it.ref) });
-      hoverInfo.set(it.ref, { goodType: it.goodType, amount: it.fill ?? 0 });
-    }
-    return hoverTargets;
-  };
-  const updateHoverTooltip = (snap: WorldSnapshot): void => {
-    // Suppress while placing a building and whenever the HUD owns the pointer (a tool-panel window, the
-    // details panel) — the tooltip names WORLD piles, not HUD chrome.
-    if (
-      pointer === null ||
+  // Name-on-hover: a cursor tooltip naming the loose good pile (with its count) under the pointer. A
+  // screen-bounded, snapshot-memoized subsystem in its own module; it owns its own tooltip element
+  // (distinct from the details panel's Magazyn stock-row tooltip above) and yields the pointer to build
+  // placement and the HUD.
+  const pileTooltip = createGroundPileTooltip({
+    app,
+    renderer,
+    camera: () => cameraCtl.camera(),
+    clientToScreen,
+    ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
+    fogVisible: fogVisibleTile,
+    goodLabel: (typeId) => goodLabelByType.get(typeId),
+    pointer: () => pointer,
+    suppressed: (clientX, clientY) =>
       toolPanel.controller.placementType() !== null ||
-      toolPanel.claimPointer(pointer.clientX, pointer.clientY) ||
-      controls.claimsPointer(pointer.clientX, pointer.clientY)
-    ) {
-      tooltip.hide();
-      return;
-    }
-    const w = toWorld(pointer.clientX, pointer.clientY);
-    const ref = pickTopAt(pileTargets(snap), w.x, w.y);
-    const info = ref === null ? undefined : hoverInfo.get(ref);
-    if (info === undefined) {
-      tooltip.hide();
-      return;
-    }
-    const label = goodLabelByType.get(info.goodType) ?? `#${info.goodType}`;
-    tooltip.show(pointer.clientX, pointer.clientY, info.amount > 1 ? `${label} ×${info.amount}` : label);
-  };
+      toolPanel.claimPointer(clientX, clientY) ||
+      controls.claimsPointer(clientX, clientY),
+  });
 
   // The memoized build-mode band probe (see makeOverlayFrameSource) — one instance per view.
   const overlayFrame = makeOverlayFrameSource(sim, deps.mapSize);
@@ -461,20 +416,15 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
 
   // `?debug=geometry` — the building-geometry verification overlay: every placed building's extracted
   // logic geometry (walk-block cells, build-exclusion zone, door node, worker-icon anchor) drawn over
-  // the world so a human can check the data against the drawn art. The projection is the pure
-  // `computeGeometryDebugItems` (sharing the door-badge table above, so both read one index); it
-  // rebuilds only when the BUILDING set changes — `buildingSetFingerprint` also catches an in-place
-  // home level-up, which the placement-blocker version misses, and ignores the resource churn that
-  // version over-fires on. Never per frame.
-  const geometryDebugOn = params.get('debug') === 'geometry';
-  let geometryFingerprint: number | null = null;
-  const updateGeometryDebug = (snap: WorldSnapshot): void => {
-    if (!geometryDebugOn) return;
-    const fingerprint = buildingSetFingerprint(snap, buildingDoors);
-    if (fingerprint === geometryFingerprint) return;
-    geometryFingerprint = fingerprint;
-    renderer.setGeometryDebug(computeGeometryDebugItems(snap, buildingDoors));
-  };
+  // the world so a human can check the data against the drawn art. The stateful driver (its own module,
+  // sharing the door-badge table above so both read one index) rebuilds only when the BUILDING set
+  // changes — catching an in-place home level-up the placement-blocker version misses, and ignoring the
+  // resource churn that version over-fires on. Never per frame.
+  const geometryDebug = createGeometryDebugOverlay({
+    enabled: params.get('debug') === 'geometry',
+    buildingsByType: buildingDoors,
+    setItems: (items) => renderer.setGeometryDebug(items),
+  });
 
   // Per-frame O(entities) projections memoized by SNAPSHOT IDENTITY: `sim.snapshot()` returns the same
   // object while the tick (and world) are unchanged, so a frame that didn't step reuses last frame's HUD
@@ -612,7 +562,7 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
             }))
             .filter((p) => p.cells.length > 0),
     );
-    updateGeometryDebug(snap);
+    geometryDebug.update(snap);
     // One retained update: reconcile the pooled sprites, draw the selection rings + door badges + the
     // selected gatherers' work-flag highlight, render once. `app.screen` tracks window resizes. No HUD frame
     // is passed — the always-on stocks panel is gone; the debug tick lives in the top overlay and the
@@ -633,7 +583,7 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
       controls.flaggedFlagIds(),
     );
     controls.tick(snap); // reuse the frame's snapshot — don't rebuild a second one
-    updateHoverTooltip(snap); // name-on-hover for the good pile under the cursor (after controls: claim state is current)
+    pileTooltip.update(snap); // name-on-hover for the good pile under the cursor (after controls: claim state is current)
     deps.onFrame?.(snap);
     if (soundDriver !== null) {
       soundDriver.update({
