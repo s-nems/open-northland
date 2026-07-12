@@ -21,7 +21,7 @@ import {
   pickupFromStore,
   pileupIntoStore,
   restAfterHarvest,
-} from './effects-goods.js';
+} from './effects-goods/index.js';
 
 // Re-exported so the projectile system (and the systems barrel) keep their single import site for
 // the shared combat-hit contract after the effects split.
@@ -32,8 +32,8 @@ export { applyPendingStaggers, type PendingStagger, resolveCombatHit } from './e
  * OBSERVED, a named approximation: the original's collector swings a couple of times in a row, rests
  * ~0.5–1 s, and swings again, but the readable data carries no rest field — `atomicanimations.ini`
  * lengths cover only the swing itself (its trailing idle pad is ~4 frames, far shorter). Applied by
- * the executor after every {@link import('./effects-goods.js').HARVEST_SWINGS_PER_REST}-th completed
- * harvest swing of a job still in progress ({@link import('./effects-goods.js').restAfterHarvest}),
+ * the executor after every {@link import('./effects-goods/index.js').HARVEST_SWINGS_PER_REST}-th completed
+ * harvest swing of a job still in progress ({@link import('./effects-goods/index.js').restAfterHarvest}),
  * never after the final swing (felled/depleted/plucked — the settler moves straight on to carrying).
  * The rest is the SAME atomic extended (`restTail`), not a second one: the render keeps the swing's
  * binding and stands the list's ready stance, so the pose never snaps to a different animation

@@ -27,7 +27,7 @@ import {
   MEAT_GOOD,
 } from '../readviews/index.js';
 import { entityNode, manhattan } from '../spatial.js';
-import { addCarry } from './effects-goods.js';
+import { addCarry } from './effects-goods/index.js';
 
 // The COMBAT-HIT effects of the atomic executor — the mid-animation blow (melee and projectile),
 // the deferred-stagger contract, the swing's need cost, cadaver harvesting and provoked anger.

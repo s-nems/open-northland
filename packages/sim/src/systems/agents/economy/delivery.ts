@@ -9,7 +9,7 @@ import {
 import { farmWorkGood } from '../../economy/farming.js';
 import { atomicDuration } from '../../readviews/animations.js';
 import { atOrWalk, PILEUP_ATOMIC_ID, startAtomic } from '../actions.js';
-import { dropCarryAtOwnTile } from '../effects-goods.js';
+import { dropCarryAtOwnTile } from '../effects-goods/index.js';
 import type { PlannerContext } from '../planner-context.js';
 import { interactionCell, nearestFreeYardNode } from '../targets/index.js';
 import { isPorterBoundToStore } from './haul-targets.js';
