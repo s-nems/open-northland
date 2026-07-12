@@ -262,37 +262,93 @@ export function buildingWorkerJobs(world: World, ctx: SystemContext, building: E
 const EMPTY_JOBS: ReadonlySet<number> = new Set<number>();
 
 /**
- * Whether a workplace is staffed *right now*: some {@link Settler} whose `jobType` matches one of the
- * building type's `workers` slots is standing on the workplace's tile. This is the production
- * worker-presence model — a workplace only produces while its worker is present, like the original
- * (a sawmill with no operator makes no planks).
- *
- * A building type that declares **no** worker slots is unstaffed-by-design and counts as always
- * present (passive stores / fixtures without workers keep working) — the gate constrains only a
- * workplace that actually names a worker. Presence is integer-tile coincidence with the building's
- * **interaction tile** (its door cell when the type's footprint names one, else its anchor tile —
- * {@link interactionNode}; the walls themselves are walk-blocked, so an operator works AT the door,
- * exactly where the AI walk-to-station drive delivers it), so it needs no terrain graph and works on
- * a mapless fixture too. The match is canonical-order-independent (a boolean any-match, not a chosen
- * entity), so no determinism concern.
- *
- * Cross-system: ProductionSystem gates both starting and advancing a cycle on this.
+ * Whether a job is the TRANSPORT trade — the original's carrier (`logicworker 24`, the "tragarz" who
+ * ferries goods but never operates a workshop's craft). Identified by the content job's `id` slug
+ * (`'carrier'`), the same id-based inference {@link isFood} uses (approximated — the readable rule
+ * files carry no explicit transport flag; both the sandbox content and the extraction pipeline emit
+ * the carrier job under this stable slug). Cross-system: the producer drive routes a carrier bound to
+ * a workshop into the supply loop instead of the craft loop, and the production operator count
+ * excludes carriers (a carrier at the door neither runs nor speeds the mill).
  */
-export function workerPresentAt(world: World, ctx: SystemContext, building: Entity): boolean {
+export function isCarrierJob(ctx: SystemContext, jobType: number): boolean {
+  return contentIndex(ctx.content).jobs.get(jobType)?.id === CARRIER_JOB_ID;
+}
+
+/** The content `id` slug of the transport (carrier) job — see {@link isCarrierJob}. */
+const CARRIER_JOB_ID = 'carrier';
+
+/**
+ * The OPERATOR jobs of a workplace: its worker-slot jobs minus the carrier transport slots — the
+ * trades that actually run the craft (the mill's millers, not its carrier). A building whose slots
+ * are carrier-ONLY keeps them (the well's one carrier IS its operator — dropping it would let the
+ * well run unstaffed); named approximation, the readable data doesn't say which slot operates.
+ */
+function operatorJobsOf(world: World, ctx: SystemContext, building: Entity): ReadonlySet<number> {
   const jobs = buildingWorkerJobs(world, ctx, building);
-  if (jobs.size === 0) return true; // unstaffed-by-design: no worker requirement to satisfy
+  if (jobs.size === 0) return jobs;
+  const operators = new Set<number>();
+  for (const job of jobs) if (!isCarrierJob(ctx, job)) operators.add(job);
+  return operators.size > 0 ? operators : jobs;
+}
+
+/**
+ * How many OPERATORS a workplace has on station *right now*: settlers whose `jobType` is one of the
+ * building's operator jobs ({@link operatorJobsOf}) standing on its **interaction tile** (its door
+ * cell when the type's footprint names one, else its anchor tile — {@link interactionNode}; the walls
+ * themselves are walk-blocked, so operators work AT the door, exactly where the AI walk-to-station
+ * drive delivers them). Capped at the building type's declared operator-slot headcount, so crowding
+ * extra settlers onto the door can never overclock past the staffing plan.
+ *
+ * A building type that declares **no** worker slots is unstaffed-by-design and counts as ONE operator
+ * (passive stores / fixtures without workers keep working at the base rate). The count is a pure
+ * tally (order-independent), so no determinism concern.
+ *
+ * Cross-system: ProductionSystem gates starting/advancing a cycle on `> 0` AND advances the cycle by
+ * this count per tick — the mill's two millers grind twice as fast as one (each operator works the
+ * craft in parallel; observed original behaviour, the exact stacking rule isn't decoded).
+ */
+export function presentOperatorCount(world: World, ctx: SystemContext, building: Entity): number {
+  const jobs = operatorJobsOf(world, ctx, building);
+  if (jobs.size === 0) return 1; // unstaffed-by-design: no worker requirement to satisfy
   const at = interactionNode(world, ctx, building);
-  if (at === null) return false; // a placed-but-position-less workplace can't be stood on
+  if (at === null) return 0; // a placed-but-position-less workplace can't be stood on
   const bx = at.x;
   const by = at.y;
+  let present = 0;
   for (const e of world.query(Settler, Position)) {
     const settler = world.get(e, Settler);
     if (settler.jobType === null || !jobs.has(settler.jobType)) continue;
     const p = world.get(e, Position);
     const n = nodeOfPosition(p.x, p.y);
-    if (n.hx === bx && n.hy === by) return true;
+    if (n.hx === bx && n.hy === by) present++;
   }
-  return false;
+  return Math.min(present, operatorSlotHeadcount(world, ctx, building, jobs));
+}
+
+/** The declared headcount across a building's operator slots (Σ `count` over `workers` whose job is in
+ *  `jobs`) — the ceiling {@link presentOperatorCount} clamps to. */
+function operatorSlotHeadcount(
+  world: World,
+  ctx: SystemContext,
+  building: Entity,
+  jobs: ReadonlySet<number>,
+): number {
+  const b = world.tryGet(building, Building);
+  if (b === undefined) return 0;
+  const type = contentIndex(ctx.content).buildings.get(b.buildingType);
+  let headcount = 0;
+  for (const slot of type?.workers ?? []) if (jobs.has(slot.jobType)) headcount += slot.count;
+  return headcount;
+}
+
+/**
+ * Whether a workplace is staffed *right now* — at least one operator on station. This is the
+ * production worker-presence model: a workplace only produces while its worker is present, like the
+ * original (a sawmill with no operator makes no planks). The boolean face of
+ * {@link presentOperatorCount}; see it for the operator/carrier split and the door-tile rule.
+ */
+export function workerPresentAt(world: World, ctx: SystemContext, building: Entity): boolean {
+  return presentOperatorCount(world, ctx, building) > 0;
 }
 
 /**

@@ -163,6 +163,12 @@ export function planDelivery(
  *  d. **Wait** — nothing to fetch or haul: return to / hold the station until an input arrives, waiting
  *     INSIDE it (the same {@link Resting} marker — off-duty workers wait in the house).
  *
+ * `carrierSupplied` (the workplace has a bound carrier — {@link
+ * import('./ai-targets.js').TargetCandidates.carrierSuppliedWorkplaces}) SKIPS b and c: the transport
+ * is the carrier's whole job ({@link planWorkshopSupplier}), so the craftsman stays at the craft and
+ * never races its carrier to the same pile — the "tragarz przynosi i odnosi, młynarz pracuje" division
+ * (observed original behaviour).
+ *
  * Every branch is recipe-driven — no per-job or per-good code — so any single-worker workshop self-
  * services. The workplace is known to carry a recipe (the caller's `boundWorkplaceTarget` guard).
  */
@@ -175,6 +181,7 @@ export function planProducer(
   here: NodeId,
   workplace: Entity,
   stockpiles: readonly Entity[],
+  carrierSupplied = false,
 ): void {
   const recipe = recipeOf(world, ctx, workplace);
   if (recipe === undefined) return; // guarded by the caller, but keep the types honest
@@ -192,18 +199,84 @@ export function planProducer(
     return;
   }
 
-  // b. Can't produce now — fetch a missing recipe input from a store that holds it (the smith going to
-  // the warehouse). The finished output stays banked in the shop while inputs keep the loop running.
-  const src = nearestMissingInputSource(stockpiles, world, ctx, terrain, here, workplace, recipe);
+  if (!carrierSupplied) {
+    // b. Can't produce now — fetch a missing recipe input from a store that holds it (the smith going
+    // to the warehouse). The finished output stays banked in the shop while inputs keep the loop running.
+    const src = nearestMissingInputSource(stockpiles, world, ctx, terrain, here, workplace, recipe);
+    if (src !== null) {
+      atOrWalk(world, e, here, interactionCell(world, ctx, terrain, src.store, here), () =>
+        startPickup(world, ctx, e, settler, src.store, src.goodType, src.amount),
+      );
+      return;
+    }
+
+    // c. Nothing to fetch — carry the finished output out to a store (an output-full shop frees room
+    // for the next cycle; an input-starved one delivers what it made).
+    const outGood = workplaceOutputToHaul(stockpiles, world, ctx, terrain, workplace, recipe, here);
+    if (outGood !== null) {
+      atOrWalk(world, e, here, interactionCell(world, ctx, terrain, workplace, here), () =>
+        startPickup(
+          world,
+          ctx,
+          e,
+          settler,
+          workplace,
+          outGood,
+          carrierCarryCapacity(world, ctx, settler.tribe),
+        ),
+      );
+      return;
+    }
+  }
+
+  // d. Nothing to fetch or haul (or the bound carrier owns the transport) — return to / wait inside
+  // the station for an input to arrive.
+  holdInside();
+}
+
+/**
+ * 2a-bis. WORKSHOP SUPPLIER — a **carrier** bound to a recipe workshop ("tragarz w młynie"): it never
+ * operates the craft (it neither runs nor speeds production — see `presentOperatorCount`), it FERRIES.
+ * In priority:
+ *
+ *  a. **Top up the inputs** — fetch a recipe input the workplace's input slot isn't full of, from any
+ *     store/pile that holds it ({@link nearestMissingInputSource} with `restockToCapacity`: the target
+ *     is the slot's CAPACITY, not one cycle's worth — the carrier keeps the mill's wheat store filled
+ *     trip after trip so the millers inside never starve). Feeding the craft outranks clearing it:
+ *     an input-starved workshop makes nothing at all.
+ *  b. **Carry the output out** — else, haul a finished output to a store that can take it (the flour
+ *     to the warehouse) — continuously, not only when the shop is full: hauling IS this settler's
+ *     craft, and the shop's output slot stays clear for the operators.
+ *  c. **Wait inside** — nothing to ferry either way: wait in the workshop (the {@link Resting}
+ *     marker) until goods appear, like every off-duty worker.
+ *
+ * Observed original behaviour (the carrier ferries, the craftsman crafts); the exact original trip
+ * scheduling isn't decoded, so the fetch-before-haul priority is a named approximation.
+ */
+export function planWorkshopSupplier(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  e: Entity,
+  settler: Worker,
+  here: NodeId,
+  workplace: Entity,
+  stockpiles: readonly Entity[],
+): void {
+  const recipe = recipeOf(world, ctx, workplace);
+  if (recipe === undefined) return; // guarded by the caller, but keep the types honest
+
+  // a. Keep the input slots topped up toward their capacity (one carry-load per trip).
+  const src = nearestMissingInputSource(stockpiles, world, ctx, terrain, here, workplace, recipe, true);
   if (src !== null) {
+    const batch = Math.min(src.amount, carrierCarryCapacity(world, ctx, settler.tribe));
     atOrWalk(world, e, here, interactionCell(world, ctx, terrain, src.store, here), () =>
-      startPickup(world, ctx, e, settler, src.store, src.goodType, src.amount),
+      startPickup(world, ctx, e, settler, src.store, src.goodType, batch),
     );
     return;
   }
 
-  // c. Nothing to fetch — carry the finished output out to a store (an output-full shop frees room for
-  // the next cycle; an input-starved one delivers what it made).
+  // b. Inputs are covered — carry a finished output out to a store that can take it.
   const outGood = workplaceOutputToHaul(stockpiles, world, ctx, terrain, workplace, recipe, here);
   if (outGood !== null) {
     atOrWalk(world, e, here, interactionCell(world, ctx, terrain, workplace, here), () =>
@@ -220,8 +293,10 @@ export function planProducer(
     return;
   }
 
-  // d. Nothing to fetch or haul — return to / wait inside the station for an input to arrive.
-  holdInside();
+  // c. Nothing to ferry — wait inside the workshop until goods appear.
+  atOrWalk(world, e, here, interactionCell(world, ctx, terrain, workplace, here), () =>
+    world.add(e, Resting, { at: workplace }),
+  );
 }
 
 /** Set a `MoveGoal` to `target` unless the settler is already on it (then it stays put). */

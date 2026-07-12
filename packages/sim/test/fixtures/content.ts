@@ -158,6 +158,24 @@ export function testContent(): ContentSet {
           { goodType: 6, capacity: 150, initial: 0 },
         ],
       },
+      {
+        // A MULTI-OPERATOR workshop (the real mill's `logicworker 19 2` + `logicworker 24 1` shape):
+        // TWO carpenter operator slots plus a carrier transport slot, same wood→plank recipe as the
+        // sawmill. What the parallel-production (one independent batch per operator) and the
+        // carrier-supplier-drive tests staff. Nothing in the golden slice places it.
+        typeId: 8,
+        id: 'twin_mill',
+        kind: 'workplace',
+        workers: [
+          { jobType: 2, count: 2 },
+          { jobType: 36, count: 1 },
+        ],
+        stock: [
+          { goodType: 1, capacity: 10, initial: 0 },
+          { goodType: 2, capacity: 20, initial: 0 },
+        ],
+        recipe: { inputs: [{ goodType: 1, amount: 1 }], outputs: [{ goodType: 2, amount: 1 }], ticks: 20 },
+      },
     ],
     landscape: [
       // Grass is the one PLANTABLE ground (the original's `biocanplanton` triangle flag — `land` alone

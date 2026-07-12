@@ -138,7 +138,12 @@ export type ProductionModel =
       /** The FIRST output's STRING id — the row's icon key (like {@link StockRow.goodId}). */
       readonly goodId?: string;
       readonly label: string;
-      readonly pct: number;
+      /**
+       * One 0..100 progress per IN-FLIGHT batch (the sim `Production.cycles` list — each operator
+       * works its own independent batch, so a twin-staffed mill shows two bars). Empty when the
+       * workplace is idle (the render then draws a single empty bar).
+       */
+      readonly pcts: readonly number[];
     }
   | {
       readonly kind: 'fields';
@@ -572,15 +577,21 @@ function productionModel(
       ...(fieldGood.id !== undefined ? { goodId: fieldGood.id } : {}),
     };
   }
-  const production = ent.components.Production as { elapsed?: unknown; duration?: unknown } | undefined;
+  const production = ent.components.Production as { cycles?: unknown } | undefined;
   const outputs = recipe?.outputs ?? def?.produces?.map((goodType) => ({ goodType, amount: 1 })) ?? [];
   if (production === undefined && recipe === undefined && outputs.length === 0) return null;
   const out = outputs.map((o) => `${goodLabel(ctx, o.goodType)} x${o.amount}`).join(', ');
   const firstOutId = outputs[0] === undefined ? undefined : goodDef(ctx, outputs[0].goodType)?.id;
+  // One progress per in-flight batch (each operator grinds its own — the panel bars one per cycle).
+  const rawCycles = Array.isArray(production?.cycles) ? production.cycles : [];
+  const pcts = rawCycles.map((c) => {
+    const cycle = c as { elapsed?: unknown; duration?: unknown } | null;
+    return pctRatio(num(cycle?.elapsed), num(cycle?.duration));
+  });
   return {
     kind: 'recipe',
     label: out.length > 0 ? out : 'gotowe do pracy',
-    pct: pctRatio(num(production?.elapsed), num(production?.duration)),
+    pcts,
     ...(firstOutId !== undefined ? { goodId: firstOutId } : {}),
   };
 }
