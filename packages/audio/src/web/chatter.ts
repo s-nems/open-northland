@@ -3,6 +3,7 @@ import { VIKING_VOICE_POOLS, type VoiceClass, vikingVoiceClass } from '../data/b
 import type { OnScreenSettler } from '../data/director/settlers.js';
 import type { OneShot } from '../data/types.js';
 import { pickRandom, type RandomFn } from './platform.js';
+import { pruneExpired } from './prune.js';
 
 /**
  * The STOCHASTIC settler voice-chatter emitter: at ~{@link VOICE_RATE_PER_SEC} clips/second across
@@ -80,7 +81,7 @@ export class ChatterEmitter {
       this.budget = 0; // an empty screen banks nothing — voices never burst when settlers scroll back in
       return [];
     }
-    this.pruneCooldowns();
+    pruneExpired(this.lastSpokeAt, VOICE_MAP_PRUNE_SIZE, this.clockMs, VOICE_COOLDOWN_MS);
     const shots: OneShot[] = [];
     while (this.budget >= 1) {
       this.budget -= 1;
@@ -102,13 +103,5 @@ export class ChatterEmitter {
       });
     }
     return shots;
-  }
-
-  /** Drop speak-time entries past their cooldown once the map grows (dead entities never clean up). */
-  private pruneCooldowns(): void {
-    if (this.lastSpokeAt.size < VOICE_MAP_PRUNE_SIZE) return;
-    for (const [id, when] of this.lastSpokeAt) {
-      if (this.clockMs - when >= VOICE_COOLDOWN_MS) this.lastSpokeAt.delete(id);
-    }
   }
 }
