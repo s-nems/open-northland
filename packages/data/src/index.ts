@@ -1,6 +1,6 @@
-export * from './schema.js';
+export * from './schema/index.js';
 
-import { ContentSet, type FootprintCell, LOGIC_TYPE_NONE, TerrainMapFile } from './schema.js';
+import { ContentSet, type FootprintCell, LOGIC_TYPE_NONE, TerrainMapFile } from './schema/index.js';
 
 /**
  * Parse + validate a content set (typically the contents of content/ assembled into one object).
