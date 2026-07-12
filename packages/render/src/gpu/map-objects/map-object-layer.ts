@@ -37,6 +37,9 @@ interface PooledObject {
   baseTint: number;
   /** {@link import('../../data/fog.js').fogGhostTint} of {@link baseTint} — the explored-ground dim. */
   ghostTint: number;
+  /** Whether the last bound frame was picked on the LIVE clock (visible ground) or the frozen one
+   *  (a ghosted, explored-only object) — a state flip rebinds once even mid-animation-tick. */
+  lastWatched: boolean;
 }
 
 /**
@@ -134,6 +137,7 @@ export class MapObjectLayer {
           attached: false,
           baseTint: 0xffffff,
           ghostTint: 0xffffff,
+          lastWatched: true,
         })),
         attachedCount: 0,
       };
@@ -187,7 +191,8 @@ export class MapObjectLayer {
    * `fogStateOfCell` is the fog-of-war gate over CELL coords (the viewer's effective `FOG_STATE`): a
    * TALL object (a tree/stone — a strategic resource) on UNEXPLORED ground is treated exactly like a
    * viewport-culled one (detached, kept pooled for when the fog lifts); on EXPLORED ground it draws
-   * DIMMED to the ghost grading — a virgin map object never changes until first worked (the handover
+   * DIMMED to the ghost grading with its animation FROZEN (a ghost is a memory, not a live feed) —
+   * a virgin map object never changes until first worked (the handover
    * removes it here at that moment), so the real object IS its own last-seen ghost, and RECON's
    * known-terrain view shows the map's resources from the start for free. Flat DECOR (waves, grass,
    * mine stains) is deliberately exempt — it reads as terrain dressing, which the explored-grey layer
@@ -263,9 +268,17 @@ export class MapObjectLayer {
         }
         // Explored-but-unwatched ground dims the object to the ghost grading; re-assigned per frame
         // (a pick between two cached colours — Pixi's tint setter no-ops on an unchanged value).
-        po.sprite.tint = fogState === FOG_STATE.EXPLORED ? po.ghostTint : po.baseTint;
-        if (!po.attached || (animAdvanced && obj.frames.length > 1)) {
-          const frame = objectFrameAt(obj, tick);
+        const watched = fogState !== FOG_STATE.EXPLORED;
+        po.sprite.tint = watched ? po.baseTint : po.ghostTint;
+        // A ghosted object's animation FREEZES (a memory, not a live feed — swaying trees under the
+        // fog read as watched ground): unwatched frames bind at a fixed clock, live ones advance;
+        // a watched↔ghosted flip rebinds once so the pose switches with the tint.
+        if (
+          !po.attached ||
+          watched !== po.lastWatched ||
+          (watched && animAdvanced && obj.frames.length > 1)
+        ) {
+          const frame = objectFrameAt(obj, watched ? tick : 0);
           if (frame === undefined) continue;
           po.sprite.texture = this.textures.get(obj.source, frame);
           // Draw at the lifted feet; the zIndex above kept the pre-lift `obj.y` so depth is by map row.
@@ -274,6 +287,7 @@ export class MapObjectLayer {
             obj.y - (obj.lift ?? 0) + frame.offsetY * obj.scale,
           );
         }
+        po.lastWatched = watched;
         if (!po.attached) {
           this.spriteLayer.addChild(po.sprite);
           po.attached = true;
