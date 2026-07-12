@@ -138,7 +138,7 @@ export const JOB_ARCHER_LONG = 41; // soldier_bow_long
  * Base offset the extracted building worker-slot job ids are lifted by so they clear the sandbox's own
  * job band (idle 0, gatherers 20..25, carrier 26, soldiers 31..41, the picker professions — all < 1000).
  * A rebased slot job is `BASE + originalId`; the carrier keeps its own {@link JOB_CARRIER} id. See
- * `content.ts` {@link import('./content.js')} BUILDING_WORKER_SLOTS for why the rebase is needed (the
+ * {@link import('./worker-slots.js')} `BUILDING_WORKER_SLOTS` for why the rebase is needed (the
  * original `logicworker` ids overlap the bands above).
  */
 export const WORKER_SLOT_JOB_BASE = 1000;
