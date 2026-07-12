@@ -9,12 +9,12 @@ import {
   effectKey,
   foldCombatEffects,
   frac,
-} from '../data/effects.js';
-import type { ElevationField } from '../data/elevation.js';
-import { halfCellToScreen } from '../data/iso.js';
-import type { AtlasFrame } from '../data/sprites/index.js';
-import { isVisible, type Viewport } from '../data/viewport.js';
-import type { TextureCache } from './texture-cache.js';
+} from '../../data/effects.js';
+import type { ElevationField } from '../../data/elevation.js';
+import { halfCellToScreen } from '../../data/iso.js';
+import type { AtlasFrame } from '../../data/sprites/index.js';
+import { isVisible, type Viewport } from '../../data/viewport.js';
+import type { TextureCache } from '../texture-cache.js';
 
 /**
  * The decoded bone-pile art the layer draws for a death (the original's `cadaver human bones` landscape

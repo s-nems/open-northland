@@ -7,20 +7,28 @@ import type { Camera } from '../data/iso.js';
 import type { SceneTerrain } from '../data/scene/index.js';
 import type { AtlasFrame } from '../data/sprites/index.js';
 import { cameraViewport } from '../data/viewport.js';
-import { BadgeLayer, type DoorBadge } from './badge-layer.js';
-import { type ConstructionPlotFrame, ConstructionPlotLayer } from './construction-plot.js';
-import { CombatEffectsLayer } from './effects-layer.js';
-import { FogLayer } from './fog-layer.js';
-import { type GeometryDebugItem, GeometryDebugLayer } from './geometry-debug.js';
-import type { HudFrame } from './hud-layer.js';
-import { HudLayer } from './hud-layer.js';
 import type { MapObjectSprite } from './map-objects/index.js';
 import { MapObjectLayer } from './map-objects/index.js';
+import {
+  BadgeLayer,
+  CombatEffectsLayer,
+  ConstructionPlotLayer,
+  type ConstructionPlotFrame,
+  type DoorBadge,
+  FogLayer,
+  GeometryDebugLayer,
+  type GeometryDebugItem,
+  HudLayer,
+  type HudFrame,
+  PlacementGhostLayer,
+  type PlacementGhost,
+  PlacementOverlayLayer,
+  type PlacementOverlayFrame,
+  PortraitInsetLayer,
+  type PortraitInsetFrame,
+  SelectionLayer,
+} from './overlays/index.js';
 import type { SpriteSheet, TerrainTextureSet } from './pixi-app.js';
-import { type PlacementGhost, PlacementGhostLayer } from './placement-ghost.js';
-import { type PlacementOverlayFrame, PlacementOverlayLayer } from './placement-overlay.js';
-import { type PortraitInsetFrame, PortraitInsetLayer } from './portrait-inset.js';
-import { SelectionLayer } from './selection-layer.js';
 import { type EntityBounds, SpritePool } from './sprite-pool/index.js';
 import { TerrainLayer } from './terrain/index.js';
 import { TextureCache } from './texture-cache.js';

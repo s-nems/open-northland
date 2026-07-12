@@ -1,6 +1,6 @@
 import type { WorldSnapshot } from '@vinland/sim';
 import { describe, expect, it } from 'vitest';
-import { SelectionLayer } from '../src/gpu/selection-layer.js';
+import { SelectionLayer } from '../src/gpu/overlays/selection-layer.js';
 import { makeElevationField, ONE, tileToScreen } from '../src/index.js';
 import { snapshotOf } from './support/fixtures.js';
 
