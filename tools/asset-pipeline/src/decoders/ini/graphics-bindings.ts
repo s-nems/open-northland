@@ -11,6 +11,7 @@ import {
   getStr,
   normalizeAssetPath,
   normalizePaletteName,
+  normalizeShadowPath,
   type RuleProp,
   type RuleSection,
   type SourceRef,
@@ -120,7 +121,7 @@ export function extractGraphicsBindings(sections: readonly RuleSection[]): BmdPa
     const shadow = body?.values[1];
     bindings.push({
       bmd: normalizeAssetPath(bmd),
-      shadowBmd: shadow !== undefined && shadow.trim() !== '' ? normalizeAssetPath(shadow) : undefined,
+      shadowBmd: normalizeShadowPath(shadow),
       paletteName: normalizePaletteName(paletteName),
       tribeId: getInt(sec, 'logictribe'),
       jobId: getInt(sec, 'logicjob'),
@@ -172,7 +173,7 @@ export function extractLandscapeGraphics(sections: readonly RuleSection[]): Land
     const shadow = libs?.values[1];
     bindings.push({
       bmd: normalizeAssetPath(bmd),
-      shadowBmd: shadow !== undefined && shadow.trim() !== '' ? normalizeAssetPath(shadow) : undefined,
+      shadowBmd: normalizeShadowPath(shadow),
       paletteName: normalizePaletteName(paletteName),
       tribeId: undefined,
       jobId: undefined,
@@ -216,8 +217,7 @@ export function extractBobSequences(sections: readonly RuleSection[], src: Sourc
     sets.push(
       BobSequenceSet.parse({
         imagelib: normalizeAssetPath(imagelib),
-        shadowlib:
-          shadowlib !== undefined && shadowlib.trim() !== '' ? normalizeAssetPath(shadowlib) : undefined,
+        shadowlib: normalizeShadowPath(shadowlib),
         sequences,
         source: { file: src.file, block: 'bobseq', layer: src.layer ?? 'base' },
       }),
