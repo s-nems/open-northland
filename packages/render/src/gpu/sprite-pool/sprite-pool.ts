@@ -3,7 +3,7 @@ import { type Container, Graphics, Sprite } from 'pixi.js';
 import type { ElevationField } from '../../data/elevation.js';
 import { FOG_GHOST_TINT } from '../../data/fog.js';
 import type { FogGhost } from '../../data/fog-ghosts.js';
-import { type Camera, depthKey } from '../../data/iso.js';
+import { type Camera, cameraScreenX, cameraScreenY, depthKey } from '../../data/iso.js';
 import { lerp } from '../../data/math.js';
 import { collectSpriteScene, type DrawItem, paintOrderBias } from '../../data/scene/index.js';
 import type { SpriteKind } from '../../data/sprites/index.js';
@@ -240,8 +240,8 @@ export class SpritePool {
     const camScale = camera.scale ?? 1;
     for (const pe of this.pool.values()) {
       if (!pe.paletted || pe.lastSeen !== this.frameId) continue;
-      const originX = camera.offsetX + camScale * pe.motion.drawX;
-      const originY = camera.offsetY + camScale * pe.motion.drawY;
+      const originX = cameraScreenX(camera, pe.motion.drawX);
+      const originY = cameraScreenY(camera, pe.motion.drawY);
       for (const s of pe.sprites) {
         const spr = s as PalettedSprite;
         if (!spr.visible) continue;
@@ -346,8 +346,8 @@ export class SpritePool {
     // space — mirror the camera the plain sprites inherit: screen feet-anchor = camera applied to this
     // entity's DRAWN (lerped) anchor. Cheap to compute once; unused on the plain-sprite path.
     const camScale = frame.camera.scale ?? 1;
-    const originX = frame.camera.offsetX + camScale * drawX;
-    const originY = frame.camera.offsetY + camScale * drawY;
+    const originX = cameraScreenX(frame.camera, drawX);
+    const originY = cameraScreenY(frame.camera, drawY);
     const playerRow = item.player ?? 0; // an unowned settler reads LUT row 0 (the base palette)
     // Accumulate the union of the drawn layers' rects (feet-local) → the entity's exact sprite bounds. The
     // bounds live in WORLD-screen space (item.x + feet-local offsets), the same for a mesh or a plain sprite,
