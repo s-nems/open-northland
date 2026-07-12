@@ -112,19 +112,6 @@ export const PROJECTILE_ARC_PEAK_FRACTION = 0.12;
 /** Cap on the lob's peak height (screen px) — see {@link PROJECTILE_ARC_PEAK_FRACTION}. */
 export const PROJECTILE_ARC_PEAK_MAX_PX = 56;
 
-/** Optional tweaks to the sprite-scene projection. The map/live path passes nothing and behaves exactly
- *  as before; today the only knob is the details panel's "show a building's indoor occupants" override. */
-export interface SpriteSceneOptions {
-  /**
-   * Keep settlers that are INSIDE a building — mid-exchange in a completed store, or waiting in their
-   * workplace between chores (the sim `Resting` marker) — instead of suppressing them, forced to the
-   * `idle` standing pose. The map hides these (the original's off-duty workers wait in the house, not
-   * lined up at the door); the details panel's worker field sets this so a bound worker who has stepped
-   * inside STANDS in the panel rather than vanishing from it.
-   */
-  readonly keepIndoorSettlers?: boolean;
-}
-
 /** One frame's sprite scene: the culled, depth-sorted draw list PLUS the pre-cull liveness set —
  *  produced in a single pass over the snapshot (see {@link collectSpriteScene}). */
 export interface SpriteScene {
@@ -148,6 +135,14 @@ export interface SpriteSceneOptions {
   readonly fogVisible?: ((tileX: number, tileY: number) => boolean) | undefined;
   /** The viewer's remembered statics (`data/fog-ghosts.ts`), drawn dimmed on explored ground. */
   readonly ghosts?: readonly FogGhost[] | undefined;
+  /**
+   * Keep settlers that are INSIDE a building — mid-exchange in a completed store, or waiting in their
+   * workplace between chores (the sim `Resting` marker) — instead of suppressing them, forced to the
+   * `idle` standing pose. The map hides these (the original's off-duty workers wait in the house, not
+   * lined up at the door); the details panel's worker field sets this so a bound worker who has stepped
+   * inside STANDS in the panel rather than vanishing from it.
+   */
+  readonly keepIndoorSettlers?: boolean;
 }
 
 /**
