@@ -132,6 +132,7 @@ export function applyWater(world: World, crop: Entity): void {
   const c = world.tryGet(crop, Crop);
   if (c === undefined || c.watered || c.stage >= c.stages) return;
   c.watered = true;
+  world.touch(crop); // in-place write on a snapshot-cached scenery entity — log it (World.touch doc)
 }
 
 /**
@@ -152,6 +153,11 @@ export const cropGrowthSystem: System = (world) => {
     if (crop.stage >= crop.stages) continue; // ripe — waiting for the scythe
     if (!crop.watered) continue; // thirsty — stands until a farmer comes with the can
     crop.growth += 1;
+    // In-place write on a snapshot-cached scenery entity (a Crop carries Resource) — log it so the
+    // snapshot's scenery-clone cache re-clones the field; a missed touch renders the crop frozen at
+    // its first-seen stage forever (the invisible freshly-sown level). One touch covers every write
+    // this tick, including the ripe Resource.remaining below. O(watered fields) — active work.
+    world.touch(e);
     if (crop.growth < crop.ticksPerStage) continue;
     crop.growth -= crop.ticksPerStage;
     crop.stage += 1;
