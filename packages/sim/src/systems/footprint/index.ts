@@ -12,16 +12,16 @@
 export {
   buildingBlockedCells,
   type ConstructionPlot,
-  canPlaceBuilding,
   constructionSitePlots,
   dynamicBlockedCells,
   dynamicBlockOverlay,
-  interactionNode,
+} from './blocked.js';
+export { interactionNode, positionedInteractionCell, resourceWorkCell } from './interaction.js';
+export {
+  canPlaceBuilding,
   type PlacementProbe,
   placementBlockerVersion,
   placementProbe,
-  positionedInteractionCell,
-  resourceWorkCell,
 } from './placement.js';
 // manhattan/nodeKey are published through systems/spatial.ts (their single public export
 // site — two star-export paths to one name would silently drop it from the systems barrel on a
