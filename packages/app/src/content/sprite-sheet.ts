@@ -73,7 +73,7 @@ import {
   MUSHROOM_PLUCKS_PER_PICK,
   WARRIOR_SPEC_BY_WEAPON_GOOD,
   YOUNG_CHARACTER_BY_JOB,
-} from './settler-gfx.js';
+} from './settler-gfx/index.js';
 
 /**
  * Assemble the real decoded {@link SpriteSheet} from the loaded atlases + binding reducers — the
@@ -82,7 +82,7 @@ import {
  * palette / transparency / feet-anchor / animation fidelity against the original. Loads from the
  * GITIGNORED `content/` over the dev/shot vite server — no copyrighted bytes enter the repo; the
  * committed default degrades to {@link syntheticSpriteSheet} when `content/` is absent, so tests + the
- * reproducible shot are unaffected. The pure bindings live in {@link import('./settler-gfx.js')} /
+ * reproducible shot are unaffected. The pure bindings live in {@link import('./settler-gfx/index.js')} /
  * {@link import('./building-gfx.js')}; the byte loading in {@link import('./ir.js')}.
  */
 
@@ -100,9 +100,9 @@ const HUMAN_HEAD_ATLAS = 'cr_hum_head_00.test_human_00';
 const VIKING_ANIM_TRIBE = 1;
 
 /**
- * Load the per-job {@link SettlerCharacterSet}: every {@link import('./settler-gfx.js').CHARACTER_SPECS}
+ * Load the per-job {@link SettlerCharacterSet}: every {@link import('./settler-gfx/index.js').CHARACTER_SPECS}
  * look whose body atlas AND sequences resolve, joined to jobs via
- * {@link import('./settler-gfx.js').ADULT_CHARACTER_BY_JOB} / `YOUNG_CHARACTER_BY_JOB`. Bodies are loaded
+ * {@link import('./settler-gfx/index.js').ADULT_CHARACTER_BY_JOB} / `YOUNG_CHARACTER_BY_JOB`. Bodies are loaded
  * once per roster entry (the six soldier looks share one armoured body atlas); a head that 404s is skipped
  * (the look draws with fewer faces), a BODY that 404s or an unresolvable binding drops that look (its jobs
  * fall back to the default). Returns `undefined` — no characters, the sheet degrades to the single-body

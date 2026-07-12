@@ -4,7 +4,7 @@ import { fetchJsonOrNull, loadTextureIfPresent } from './net.js';
 
 /**
  * GUI (in-game HUD) content bindings — the loadable seam for the pipeline's `gui` stage outputs, the GUI
- * twin of {@link import('./building-gfx.js')} / {@link import('./settler-gfx.js')}. No HUD is rendered
+ * twin of {@link import('./building-gfx.js')} / {@link import('./settler-gfx/index.js')}. No HUD is rendered
  * yet; this module just makes the decoded GUI art/palettes/strings/cursors reachable so the HUD slice
  * can consume them. Nothing here pulls in copyrighted bytes — a checkout without `content/` degrades
  * gracefully (a missing manifest/strings return `null`; a missing atlas throws `MissingAtlasError`

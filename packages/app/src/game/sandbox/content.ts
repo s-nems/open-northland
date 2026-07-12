@@ -46,8 +46,8 @@ import {
   TERRAIN_MARGIN,
   TERRAIN_OPEN,
 } from '../../catalog/terrain.js';
-import type { GoodRef } from '../../content/settler-gfx.js';
-import { HARVEST_TICKS } from '../../content/settler-gfx.js';
+import type { GoodRef } from '../../content/settler-gfx/index.js';
+import { HARVEST_TICKS } from '../../content/settler-gfx/index.js';
 import { professionLabel } from '../../i18n/index.js';
 import { PRIMARY_TRIBE } from '../rules.js';
 import { buildingConstructionCost, buildingHitpoints } from './construction.js';
