@@ -323,7 +323,8 @@ function storeStock(capacity: number): readonly StockSlot[] {
  */
 const WAREHOUSE_SLOT_CAPACITY = [100, 250, 500] as const;
 
-/** The HQ's per-good store capacity — user-requested sandbox balance (matches the top warehouse tier). */
+/** The HQ's per-good store capacity — user-requested sandbox balance, the same 500 as the top warehouse
+ *  tier and NOT extracted data (the real `logicstock` HQ cap is 150). */
 const HQ_SLOT_CAPACITY = 500;
 
 function resourceLandscapeType(good: number): number {

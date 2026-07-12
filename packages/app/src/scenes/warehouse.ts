@@ -110,7 +110,7 @@ function build(sim: Simulation): void {
   });
 }
 
-const { Building, JobAssignment, Position, Settler, Stockpile } = components;
+const { Building, Carrying, JobAssignment, Position, Settler, Stockpile } = components;
 
 /** The one warehouse entity, or null before its placement command ran. */
 function warehouse(sim: Simulation): Entity | null {
@@ -146,6 +146,16 @@ function groundHolds(sim: Simulation, goodType: number): boolean {
     if ((sim.world.get(e, Stockpile).amounts.get(goodType) ?? 0) > 0) return true;
   }
   return false;
+}
+
+/** How many carriers are still holding wood — should be 0 after the cap: a porter never lifts a good the
+ *  store is full of, and sheds any surplus it was already carrying (so none stays stuck holding wood). */
+function carriersHoldingWood(sim: Simulation): number {
+  let holding = 0;
+  for (const e of sim.world.query(Settler, Carrying)) {
+    if (sim.world.get(e, Carrying).goodType === GOOD_WOOD) holding++;
+  }
+  return holding;
 }
 
 /** Total units of goods OTHER than wood the warehouse holds — proof the carriers moved on from the capped
@@ -206,6 +216,10 @@ export const warehouseScene: SceneDefinition = {
     {
       label: 'the carriers moved on from the capped wood to the other goods (they did not jam on wood)',
       predicate: (sim) => warehouseOtherGoodsTotal(sim) > 0,
+    },
+    {
+      label: 'no carrier is left stuck holding wood — the surplus was shed, not carried forever',
+      predicate: (sim) => carriersHoldingWood(sim) === 0,
     },
   ],
 };
