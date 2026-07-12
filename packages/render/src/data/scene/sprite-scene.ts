@@ -133,6 +133,22 @@ export interface SpriteScene {
   readonly liveRefs: ReadonlySet<number>;
 }
 
+/** The optional inputs of a scene build — one named shape instead of a positional-parameter tail
+ *  (call sites were reading `(snap, undefined, undefined, undefined, undefined, ghosts)`). Every
+ *  field accepts an explicit `undefined` so callers can pass through their own optionals directly. */
+export interface SpriteSceneOptions {
+  /** The (margin-inflated) world-space camera box — cull to it; absent = emit every sprite. */
+  readonly viewport?: Viewport | undefined;
+  /** The map's terrain-height field; absent/flat = no lift. */
+  readonly elevation?: ElevationField | undefined;
+  /** Entities the retained static map-object layer draws instead (skipped entirely). */
+  readonly staticRefs?: ReadonlySet<number> | undefined;
+  /** The fog-of-war cull (`data/fog.ts` over the viewer's `FogView`); absent = no fog. */
+  readonly fogVisible?: ((tileX: number, tileY: number) => boolean) | undefined;
+  /** The viewer's remembered statics (`data/fog-ghosts.ts`), drawn dimmed on explored ground. */
+  readonly ghosts?: readonly FogGhost[] | undefined;
+}
+
 /**
  * The depth-sorted SPRITE draw list alone (no terrain) — the per-frame half the retained
  * {@link import('../../gpu/world-renderer.js').WorldRenderer} consumes. Terrain is static and built ONCE
@@ -142,15 +158,8 @@ export interface SpriteScene {
  * emitted, never their relative order, so the retained pool + depth-sort stay correct. Absent a
  * viewport, every sprite is emitted (the whole-map / fully-zoomed-out case). Pure.
  */
-export function buildSpriteScene(
-  snapshot: WorldSnapshot,
-  viewport?: Viewport,
-  elevation?: ElevationField,
-  staticRefs?: ReadonlySet<number>,
-  fogVisible?: (tileX: number, tileY: number) => boolean,
-  options?: SpriteSceneOptions,
-): DrawItem[] {
-  return collectSpriteScene(snapshot, viewport, elevation, staticRefs, fogVisible, undefined, options).items;
+export function buildSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOptions = {}): DrawItem[] {
+  return collectSpriteScene(snapshot, opts).items;
 }
 
 /**
@@ -217,15 +226,8 @@ function enterableStoresOf(snapshot: WorldSnapshot): ReadonlySet<number> {
  * entity must keep its pooled sprite alive for as long as the memory draws. A ref never yields two
  * items: the store deletes records on VISIBLE ground, the fog cull drops live items elsewhere.
  */
-export function collectSpriteScene(
-  snapshot: WorldSnapshot,
-  viewport?: Viewport,
-  elevation?: ElevationField,
-  staticRefs?: ReadonlySet<number>,
-  fogVisible?: (tileX: number, tileY: number) => boolean,
-  ghosts?: readonly FogGhost[],
-  options?: SpriteSceneOptions,
-): SpriteScene {
+export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOptions = {}): SpriteScene {
+  const { viewport, elevation, staticRefs, fogVisible, ghosts, keepIndoorSettlers } = opts;
   const items: MutableDrawItem[] = [];
   const liveRefs = new Set<number>();
   // A mid-swing attacker/harvester faces — and an in-flight projectile points at — its target's LIVE
@@ -267,7 +269,7 @@ export function collectSpriteScene(
     if (kind === 'settler') {
       const store = readStoreExchangeRef(components);
       indoorSettler = 'Resting' in components || (store !== null && enterableStores.has(store));
-      if (indoorSettler && options?.keepIndoorSettlers !== true) {
+      if (indoorSettler && keepIndoorSettlers !== true) {
         liveRefs.add(entity.id);
         continue;
       }

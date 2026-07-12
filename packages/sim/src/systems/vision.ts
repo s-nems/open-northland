@@ -185,6 +185,31 @@ export class FogState {
     this.visibleBounds.delete(player);
   }
 
+  /**
+   * Verify the may-hold-VISIBLE boxes against the masks — a {@link import('../ecs/world.js').World}
+   * cache-verifier body (`registerCacheVerifier`, the sim contract for incrementally-maintained
+   * caches): a VISIBLE byte OUTSIDE its player's box would silently never downgrade, so the fuzz
+   * harness's `cachesCoherent` invariant re-derives the invariant here on checked ticks. O(players ×
+   * cells), verify-only — never on the tick path.
+   */
+  verifyVisibleBounds(): string[] {
+    const violations: string[] = [];
+    for (const player of this.playersWithMasks()) {
+      const mask = this.masks.get(player);
+      if (mask === undefined) continue;
+      const b = this.visibleBounds.get(player);
+      for (let r = 0; r < this.cellsHigh; r++) {
+        for (let c = 0; c < this.cellsWide; c++) {
+          if (mask[r * this.cellsWide + c] !== FOG_STATE.VISIBLE) continue;
+          if (b === undefined || c < b.minC || c > b.maxC || r < b.minR || r > b.maxR) {
+            violations.push(`fog: player ${player} VISIBLE cell (${c}, ${r}) outside its bounds box`);
+          }
+        }
+      }
+    }
+    return violations;
+  }
+
   /** The RAW {@link FOG_STATE} of a cell for `player` (out-of-grid / maskless = UNEXPLORED). RECON's
    *  "terrain known from the start" is a VIEW mapping (see {@link effectiveFogState}), not raw state. */
   stateAt(player: number, cellX: number, cellY: number): number {

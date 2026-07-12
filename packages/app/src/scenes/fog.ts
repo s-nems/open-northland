@@ -40,8 +40,8 @@ import type { SceneDefinition } from './types.js';
 const MAP_W = 44;
 const MAP_H = 32;
 
-/** The scout trade — `jobtypes.ini` 27 "scout" (the sim's SCOUT_JOB; vision 26 nodes, stance IGNORE). */
-const JOB_SCOUT = 27;
+/** The scout trade — `jobtypes.ini` 27 "scout" (vision 26 nodes, stance IGNORE). */
+const JOB_SCOUT = systems.SCOUT_JOB;
 
 /** The base pocket: HQ at (6,6) — building vision 20 nodes ≈ 10 cells around it. */
 const HQ = { x: 6, y: 6 } as const;

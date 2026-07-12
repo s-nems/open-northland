@@ -1,7 +1,7 @@
 export * as components from './components/index.js';
 // Fog-of-war: the mode ids + the per-cell mask states, exported top-level so render/app consumers
 // (the fog wash, the sprite cull, the minimap) read the contract without the `systems` namespace.
-export { FOG_MODE, isFogMode } from './components/rules.js';
+export { FOG_MODE } from './components/rules.js';
 export type { Brand } from './core/brand.js';
 export { assertNever } from './core/brand.js';
 export {

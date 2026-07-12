@@ -106,6 +106,14 @@ export interface UnitControlsOptions {
    * routed to world selection / orders (the explicit HUD-before-world hit-test). Optional: no HUD → no claim.
    */
   readonly claimPointer?: (clientX: number, clientY: number) => boolean;
+  /**
+   * The viewer's fog-of-war visibility at a fractional tile (a STABLE closure reading the frame's fog
+   * view). Gates the ENEMY hit-test set: the sim leaves an explicit attack order fog-ungated on the
+   * premise that the UI can only order onto a drawn unit — this predicate is what makes that premise
+   * true (without it, right-clicking into the fog could probe for invisible enemies). Own units and
+   * flags need no gate (a player always sees his own). Optional: absent = no fog, everything picks.
+   */
+  readonly fogVisible?: (tileX: number, tileY: number) => boolean;
   /** A cursor tooltip the details panel uses to name a hovered Magazyn stock row (passed straight through
    *  to {@link mountUnitPanel}). Absent → no stock-row tooltip. */
   readonly tooltip?: {
@@ -243,12 +251,13 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
 
   /** ENEMY settlers — units owned by ANOTHER player (a neutral/unowned unit is not a right-click attack
    *  target; the sim re-validates hostility and drops an order at a non-hostile target). These are the
-   *  hit-test set for the "right-click an enemy = attack" order. */
+   *  hit-test set for the "right-click an enemy = attack" order. Fog-culled like the drawn scene
+   *  ({@link UnitControlsOptions.fogVisible}): an invisible enemy must not be orderable-onto. */
   const enemyTargets = (): Pickable[] => {
     const snap = opts.snapshot();
     const ownerOf = ownersOf(snap);
     const out: Pickable[] = [];
-    for (const it of buildSpriteScene(snap)) {
+    for (const it of buildSpriteScene(snap, { fogVisible: opts.fogVisible })) {
       if (it.kind !== 'settler') continue; // only a unit is an attack target
       const owner = ownerOf.get(it.ref);
       if (owner === undefined || owner === opts.humanPlayer) continue; // neutral or own — not an enemy

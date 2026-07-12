@@ -1,6 +1,7 @@
 import type { WorldSnapshot } from '@vinland/sim';
 import { describe, expect, it } from 'vitest';
 import { buildHud, type HudModel, IDLE_JOB, layoutHud, placeHud } from '../src/index.js';
+import { snapshotOf } from './support/fixtures.js';
 
 /**
  * Unit tests for the pure HUD-model layer — the part of the HUD an agent can self-verify (the pixels
@@ -11,10 +12,6 @@ import { buildHud, type HudModel, IDLE_JOB, layoutHud, placeHud } from '../src/i
  * array), so we hand-build one here rather than spinning up a Simulation — this stays a render-package
  * unit, mirroring scene.test.ts.
  */
-
-function snapshotOf(entities: WorldSnapshot['entities'], tick = 1): WorldSnapshot {
-  return { tick, entities, events: [] };
-}
 
 /** A snapshot settler entity: tribe + jobType (null = idle adult). */
 function settler(id: number, tribe: number, jobType: number | null): WorldSnapshot['entities'][number] {

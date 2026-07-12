@@ -30,12 +30,16 @@ export function onScreenSettlers(
   camera: Camera,
   canvasW: number,
   canvasH: number,
+  visibleTile?: (col: number, row: number) => boolean,
 ): OnScreenSettler[] {
   const out: OnScreenSettler[] = [];
   for (const e of snapshot.entities) {
     if (!('Settler' in e.components)) continue;
     const tile = entityTile(e.components);
     if (tile === null) continue;
+    // The fog-of-war gate (absent = no fog): a settler the viewer cannot SEE must not speak — the
+    // voice twin of the sprite cull, so ears and eyes agree about who is present.
+    if (visibleTile !== undefined && !visibleTile(tile.col, tile.row)) continue;
     const spatial = computeSpatial(tile.col, tile.row, camera, canvasW, canvasH);
     if (spatial === null) continue;
     // Read the sex/age classifiers straight off the plain snapshot (Settler.jobType + Age-presence) — the

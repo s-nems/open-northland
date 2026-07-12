@@ -87,7 +87,11 @@ export class Simulation {
     this.content = opts.content;
     if (opts.map !== undefined) {
       this.terrain = buildTerrainGraph(opts.content, opts.map);
-      this.fog = new FogState(this.terrain);
+      const fog = new FogState(this.terrain);
+      this.fog = fog;
+      // The may-hold-VISIBLE boxes are an incrementally-maintained cache (sim contract: register a
+      // verifier so the fuzz harness's `cachesCoherent` invariant tripwires a silent divergence).
+      this.world.registerCacheVerifier('fogVisibleBounds', () => fog.verifyVisibleBounds());
     }
   }
 
@@ -289,8 +293,9 @@ export class Simulation {
     if (this.fog !== undefined) {
       for (const player of this.fog.playersWithMasks()) {
         mix(player);
-        const mask = this.fog.maskFor(player);
-        for (let i = 0; i < mask.length; i++) mix(mask[i] as number);
+        const mask = this.fog.tryMaskFor(player); // read-only: never allocate a mask while hashing
+        if (mask === undefined) continue; // unreachable — playersWithMasks lists only allocated masks
+        for (let i = 0; i < mask.length; i++) mix(mask[i] ?? 0);
       }
     }
     return h.toString(16).padStart(8, '0');

@@ -1,27 +1,15 @@
-import { FOG_MODE, FOG_STATE, type FogView, type WorldSnapshot } from '@vinland/sim';
+import { FOG_MODE, FOG_STATE, type FogView } from '@vinland/sim';
 import { describe, expect, it } from 'vitest';
 import { FogGhostStore } from '../src/data/fog-ghosts.js';
 import { collectSpriteScene } from '../src/data/scene/index.js';
 import { ONE, tileToScreen } from '../src/index.js';
+import { entity, snapshotOf } from './support/fixtures.js';
 
 /**
  * Unit tests for the fog-ghost memory (`data/fog-ghosts.ts`) and its scene emission — the remembered
  * statics a viewer keeps seeing (dimmed) on explored ground. Pure data layer: hand-built snapshots +
  * a hand-built FogView, no Pixi, like the rest of the scene tests.
  */
-
-function entity(
-  id: number,
-  tileX: number,
-  tileY: number,
-  marker: Record<string, unknown>,
-): { id: number; components: Readonly<Record<string, unknown>> } {
-  return { id, components: { Position: { x: tileX * ONE, y: tileY * ONE }, ...marker } };
-}
-
-function snapshotOf(entities: WorldSnapshot['entities']): WorldSnapshot {
-  return { tick: 1, entities, events: [] };
-}
 
 /** A hand-driven FogView over a sparse cell→state map (missing = UNEXPLORED, like the sim). */
 function viewOf(
@@ -147,7 +135,7 @@ describe('collectSpriteScene — ghost emission', () => {
   const GHOST = { ref: 9, kind: 'building', tileX: 5, tileY: 4, typeId: 7 } as const;
 
   it('emits a tagged ghost item for a ref absent from the snapshot, and keeps the ref live', () => {
-    const scene = collectSpriteScene(snapshotOf([]), undefined, undefined, undefined, undefined, [GHOST]);
+    const scene = collectSpriteScene(snapshotOf([]), { ghosts: [GHOST] });
     expect(scene.items).toHaveLength(1);
     expect(scene.items[0]).toMatchObject({ ref: 9, kind: 'building', ghost: true, typeId: 7 });
     // The pooled sprite of a dead-but-remembered entity must not be destroyed.
@@ -162,21 +150,16 @@ describe('collectSpriteScene — ghost emission', () => {
       minY: anchor.y,
       maxY: anchor.y + 100,
     };
-    const scene = collectSpriteScene(snapshotOf([]), elsewhere, undefined, undefined, undefined, [GHOST]);
+    const scene = collectSpriteScene(snapshotOf([]), { viewport: elsewhere, ghosts: [GHOST] });
     expect(scene.items).toEqual([]);
     expect([...scene.liveRefs]).toEqual([9]);
   });
 
   it('depth-sorts a ghost among live sprites by the same feet-anchor key', () => {
     // A live settler one row SOUTH of the ghost must paint in front of (after) it.
-    const scene = collectSpriteScene(
-      snapshotOf([entity(1, 5, 5, { Settler: { tribe: 0 } })]),
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      [GHOST],
-    );
+    const scene = collectSpriteScene(snapshotOf([entity(1, 5, 5, { Settler: { tribe: 0 } })]), {
+      ghosts: [GHOST],
+    });
     expect(scene.items.map((d) => d.ref)).toEqual([9, 1]);
   });
 });

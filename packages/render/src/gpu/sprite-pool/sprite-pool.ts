@@ -106,14 +106,13 @@ export class SpritePool {
   reconcile(frame: PoolFrame): void {
     // ONE pass over the snapshot yields both the culled draw list and the pre-cull liveness set the
     // destroy step needs — classifying every entity a second time per frame would double the scan.
-    const scene = collectSpriteScene(
-      frame.snapshot,
-      frame.viewport,
-      frame.elevation,
-      frame.staticRefs,
-      frame.fogVisible,
-      frame.ghosts,
-    );
+    const scene = collectSpriteScene(frame.snapshot, {
+      viewport: frame.viewport,
+      elevation: frame.elevation,
+      staticRefs: frame.staticRefs,
+      fogVisible: frame.fogVisible,
+      ghosts: frame.ghosts,
+    });
     this.frameId++;
     for (let i = 0; i < scene.items.length; i++) {
       const item = scene.items[i];
