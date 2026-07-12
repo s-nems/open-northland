@@ -40,9 +40,9 @@ original's names, logos, or screenshots. The canonical legal wording is in `docs
    progress note. Do not create a new running ledger.
 6. **RTS scale is a budget.** Per-tick sim cost scales with active work, never entities squared.
    Per-frame render cost scales with the screen, never the whole map.
-7. **Keep context lean.** `docs/plans/` are the live planning surface. Durable rules graduate to this
-   file or package-local `AGENTS.md`. Completed history, exploratory notes, and long verification
-   trails belong in git history or short plan progress notes, not always-read docs.
+7. **Keep context lean.** `tickets/` is the live work tracker (one self-contained task per file).
+   Durable rules graduate to this file or package-local `AGENTS.md`. Completed history, exploratory
+   notes, and long verification trails belong in git history, not always-read docs.
 
 ## Code Organization & Quality
 
@@ -85,19 +85,22 @@ npm run dev
 Biome handles formatting/linting, Vitest handles tests, and CI runs check + typecheck + test. The sim
 hygiene test rejects nondeterministic globals in `packages/sim`.
 
-## Plan-Driven Workflow
+## Ticket-Driven Workflow
 
-- Plans live in `docs/plans/`. The user chooses the next step and invokes the worktree workflow
-  manually for that step.
+- Work items are tickets under `tickets/<area>/` — one file, one self-contained task (see
+  `tickets/README.md`). The user chooses the next one and invokes the worktree workflow manually.
 - `/worktree` is the primary agentic workflow: create an isolated git worktree, execute only the
-  requested plan step, verify, review, update the plan progress note, wait for explicit user approval,
-  then fast-forward merge.
-- A merged step's prompt block is deleted from its plan in the same branch; the ticked checkbox and a
-  compact progress note are the surviving state (the checkbox is the only status marker).
-- Do not revive old global planning, fidelity, lessons, or tech-debt ledgers. If future work is worth
-  tracking, add or update a concrete plan step under `docs/plans/` or use an external issue.
-- If a plan's research note is wrong, update the plan with the corrected fact and source basis rather
-  than propagating the stale claim.
+  requested task, verify, review, update the tracker, wait for explicit user approval, then
+  fast-forward merge.
+- A completed ticket is **deleted in the completing commit** (git history is the archive); a
+  partially-done one is rewritten to exactly the remaining work. Real work discovered but deferred —
+  including review findings consciously left out of a merge — is **filed as a new ticket on the same
+  branch**, never just named in a report.
+- `docs/plans/` is legacy (2026-07-12): read existing plans when a task names them (ticked checkbox +
+  compact progress note remain their state markers), but add no new work there.
+- Do not revive old global planning, fidelity, lessons, or tech-debt ledgers.
+- If a ticket's or plan's research note is wrong, update it with the corrected fact and source basis
+  rather than propagating the stale claim.
 
 ## Verification
 
@@ -155,5 +158,6 @@ Start with `docs/README.md`. The core design docs are:
 - `docs/SCENES.md`
 - `docs/SOURCES.md`
 
-`docs/plans/` contains live user-authored implementation plans. Keep them concise enough for the next
-agent to continue the work without reading old transcripts.
+`tickets/` holds the open work items; `docs/plans/` is the legacy planning surface (drained as its
+steps land — add nothing new there). Keep both concise enough for the next agent to continue the
+work without reading old transcripts.
