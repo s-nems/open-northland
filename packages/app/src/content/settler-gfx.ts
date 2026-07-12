@@ -129,7 +129,7 @@ const FALLBACK_WAIT: DirectionalAnim = { start: 1931, dirs: 1, stride: 57 };
  * playback a single bend read visibly too fast (reported), so the sheet builder repeats the list
  * this many times and {@link HARVEST_TICKS} sizes the atomic to fit. Observed-pace approximation.
  */
-export const MUSHROOM_PLUCKS_PER_PICK = 2;
+export const MUSHROOM_PLUCKS_PER_PICK = 3;
 /** The viking `pick_up` `[gfxanimatomic]` list length (action 32, single facing-locked direction). */
 const MUSHROOM_PLUCK_FRAMES = 19;
 /** Ticks the picker stands in the ready stance after the last bend — the same breather feel as the
@@ -160,7 +160,7 @@ export const HARVEST_TICKS: Readonly<Record<number, number>> = {
   // Mushroom: the logic length 35 LOOPED the 19-frame pluck in the original (~two bends per pick);
   // our one-shot lists play it once, which read visibly too fast. The pick plays the pluck
   // MUSHROOM_PLUCKS_PER_PICK times (the list is repeated at sheet build, sprite-sheet.ts) and the
-  // atomic covers both bends plus a ready-stance breather (observed pace, gfx over logic).
+  // atomic covers every bend plus a ready-stance breather (observed pace, gfx over logic).
   [MUSHROOM_HARVEST_ATOMIC]: MUSHROOM_PLUCK_FRAMES * MUSHROOM_PLUCKS_PER_PICK + MUSHROOM_PLUCK_BREATHER_TICKS,
 };
 /**
