@@ -1,5 +1,5 @@
 import { Container, Graphics, type Renderer, RenderTexture, Sprite } from 'pixi.js';
-import type { ElevationField } from '../data/elevation.js';
+import { type ElevationField, terrainLiftAtNode } from '../data/elevation.js';
 import { halfCellToScreen, nodeDiamondPoly, TILE_HALF_H, TILE_HALF_W } from '../data/iso.js';
 
 /**
@@ -148,7 +148,6 @@ export class PlacementOverlayLayer {
     // without hairline seams — overlap saturates, it never double-blends).
     const blocked = new Set<string>();
     for (const c of frame.blocked) blocked.add(`${c.col},${c.row}`);
-    const lifted = elevation.maxLift > 0;
     const blockedG = this.blockedG.clear();
     const buildableG = this.buildableG.clear();
     // Per-NODE diamonds: the node lattice is a (HALF_W, HALF_H/2)-pitch rectangle, and a diamond of
@@ -160,7 +159,7 @@ export class PlacementOverlayLayer {
     for (let row = frame.minRow; row <= frame.maxRow; row++) {
       for (let col = frame.minCol; col <= frame.maxCol; col++) {
         const p = halfCellToScreen(col, row);
-        const cy = (p.y - (lifted ? elevation.liftAtNode(col, row) : 0) - bounds.y) * COMPOSITE_RESOLUTION;
+        const cy = (p.y - terrainLiftAtNode(elevation, col, row) - bounds.y) * COMPOSITE_RESOLUTION;
         const cx = (p.x - bounds.x) * COMPOSITE_RESOLUTION;
         const g = blocked.has(`${col},${row}`) ? blockedG : buildableG;
         g.poly(nodeDiamondPoly(cx, cy, hw, hh));

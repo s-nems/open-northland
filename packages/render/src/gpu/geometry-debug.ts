@@ -1,5 +1,5 @@
 import { Container, Graphics, Text } from 'pixi.js';
-import type { ElevationField } from '../data/elevation.js';
+import { type ElevationField, terrainLiftAtNode } from '../data/elevation.js';
 import { halfCellToScreen, TILE_HALF_H, TILE_HALF_W } from '../data/iso.js';
 
 /**
@@ -115,8 +115,7 @@ export class GeometryDebugLayer {
 /** A node's world-px point: the half-cell projection, lifted by the terrain height under it. */
 function nodePoint(hx: number, hy: number, elevation: ElevationField | undefined): { x: number; y: number } {
   const p = halfCellToScreen(hx, hy);
-  const lift = elevation !== undefined && elevation.maxLift > 0 ? elevation.liftAtNode(hx, hy) : 0;
-  return { x: p.x, y: p.y - lift };
+  return { x: p.x, y: p.y - terrainLiftAtNode(elevation, hx, hy) };
 }
 
 /**

@@ -1,5 +1,5 @@
 import { Container, Graphics } from 'pixi.js';
-import type { ElevationField } from '../data/elevation.js';
+import { type ElevationField, terrainLiftAt } from '../data/elevation.js';
 import { ONE, tileToScreen } from '../data/iso.js';
 import { isVisible, type Viewport } from '../data/viewport.js';
 
@@ -93,7 +93,7 @@ export class BadgeLayer {
         }
         continue;
       }
-      const lift = elevation !== undefined && elevation.maxLift > 0 ? elevation.liftAt(tileX, tileY) : 0;
+      const lift = terrainLiftAt(elevation, tileX, tileY);
 
       if (
         stack === undefined ||

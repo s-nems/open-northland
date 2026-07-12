@@ -1,5 +1,5 @@
 import { Container, Graphics } from 'pixi.js';
-import type { ElevationField } from '../data/elevation.js';
+import { type ElevationField, terrainLiftAtNode } from '../data/elevation.js';
 import { halfCellToScreen, nodeDiamondPoly, TILE_HALF_H, TILE_HALF_W } from '../data/iso.js';
 
 /**
@@ -49,14 +49,13 @@ export class ConstructionPlotLayer {
 
     const g = this.g.clear();
     if (plots.length === 0) return;
-    const lifted = elevation.maxLift > 0;
     const hw = TILE_HALF_W;
     const hh = TILE_HALF_H / 2;
     for (const plot of plots) {
       for (const cell of plot.cells) {
         const p = halfCellToScreen(cell.col, cell.row);
         const cx = p.x;
-        const cy = p.y - (lifted ? elevation.liftAtNode(cell.col, cell.row) : 0);
+        const cy = p.y - terrainLiftAtNode(elevation, cell.col, cell.row);
         // One node diamond per cell; all cells share the single fill below, so overlaps union cleanly.
         g.poly(nodeDiamondPoly(cx, cy, hw, hh));
       }

@@ -79,6 +79,16 @@ export function terrainLiftAt(elevation: ElevationField | undefined, col: number
   return elevation !== undefined && elevation.maxLift > 0 ? elevation.liftAt(col, row) : 0;
 }
 
+/**
+ * {@link terrainLiftAt} for a HALF-CELL NODE address `(hx, hy)` — the twin the world-space overlay
+ * layers (placement overlay/ghost, construction plots, geometry debug) need, since they place their
+ * decals on the node lattice rather than continuous tile coords. Same flat-map + absent-field guard,
+ * so every node consumer folds `maxLift > 0` here instead of re-inlining it. Pure.
+ */
+export function terrainLiftAtNode(elevation: ElevationField | undefined, hx: number, hy: number): number {
+  return elevation !== undefined && elevation.maxLift > 0 ? elevation.liftAtNode(hx, hy) : 0;
+}
+
 /** A flat field — no elevation lane. Shared so a `content/`-less / synthetic map allocates nothing. */
 const FLAT_FIELD: ElevationField = { maxLift: 0, liftAt: () => 0, liftAtNode: () => 0 };
 
