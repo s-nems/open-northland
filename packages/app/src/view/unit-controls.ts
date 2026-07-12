@@ -305,7 +305,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
    *  (move-order-onto-an-enemy = attack, the RTS idiom). */
   const issueRightClickOrder = (e: MouseEvent): void => {
     const w = toWorld(e.clientX, e.clientY);
-    // One O(entities) scan per click, shared by all branches (each `targets` call rebuilds the scene).
+    // One O(entities) scan per click, shared by all branches (each `unitTargets.owned()` rebuilds the scene).
     const ownSettlers = unitTargets.owned('settler');
     const own = pickTopAt(ownSettlers, w.x, w.y);
     if (own !== null) {
