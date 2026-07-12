@@ -72,3 +72,31 @@ export function buildingSetFingerprint(
   }
   return h;
 }
+
+export interface GeometryDebugOverlay {
+  /** Per-frame: rebuild + push the overlay items, but only when the building set actually changed. */
+  update(snapshot: WorldSnapshot): void;
+}
+
+/**
+ * The stateful DRIVER for the `?debug=geometry` overlay — the per-frame memo game-view runs. It holds the
+ * last {@link buildingSetFingerprint} and pushes a fresh {@link computeGeometryDebugItems} projection to
+ * `setItems` only when the building set changes (an add/remove/move/in-place upgrade), never per frame and
+ * never on unrelated blocker churn. A no-op when `enabled` is false (the flag is absent).
+ */
+export function createGeometryDebugOverlay(opts: {
+  readonly enabled: boolean;
+  readonly buildingsByType: ReadonlyMap<number, GeometryBuildingInfo>;
+  readonly setItems: (items: GeometryDebugItem[]) => void;
+}): GeometryDebugOverlay {
+  let fingerprint: number | null = null;
+  return {
+    update(snapshot: WorldSnapshot): void {
+      if (!opts.enabled) return;
+      const fp = buildingSetFingerprint(snapshot, opts.buildingsByType);
+      if (fp === fingerprint) return;
+      fingerprint = fp;
+      opts.setItems(computeGeometryDebugItems(snapshot, opts.buildingsByType));
+    },
+  };
+}
