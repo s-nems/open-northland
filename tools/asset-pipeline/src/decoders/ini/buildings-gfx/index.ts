@@ -8,7 +8,6 @@ export {
   extractConstructionCosts,
   extractHouseHitpoints,
 } from './structure.js';
-export type { BuildingGraphicsBinding } from './visuals.js';
 export {
   extractBuildingBobs,
   extractBuildingGraphics,
