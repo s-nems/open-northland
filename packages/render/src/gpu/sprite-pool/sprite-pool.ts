@@ -20,9 +20,11 @@ import { type ResolvedLayer, resolveLayers } from './resolve-layers.js';
 
 /**
  * The retained per-entity sprite pool — a display object per drawable entity, keyed by its (monotonic,
- * never-reused) entity id and REUSED across frames: only the container position, the sprites'
- * textures/offsets, and their visibility change, so the steady state allocates nothing. Each frame the
- * pool is reconciled to the culled, depth-sorted draw list; an entity that scrolled off-screen is kept
+ * never-reused) entity id and REUSED across frames: no display object is minted in the steady state (only
+ * the container position, the sprites' textures/offsets, and their visibility change). Per-frame heap
+ * allocation is O(VISIBLE), not zero — {@link import('./resolve-layers.js').resolveLayers} builds a small
+ * layer array per drawn entity — but it stays bounded by the SCREEN, never the map (the render contract).
+ * Each frame the pool is reconciled to the culled, depth-sorted draw list; an entity that scrolled off-screen is kept
  * pooled (it may scroll back), one that LEFT the snapshot (died) is destroyed. This is where the
  * frame-selection data decisions ({@link import('./resolve-layers.js').resolveLayers}, unit-tested
  * upstream) become actual bound textures — the GPU half a human judges.
