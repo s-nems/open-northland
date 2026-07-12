@@ -1,6 +1,6 @@
 import type { WorldSnapshot } from '@vinland/sim';
 import { Container, Graphics } from 'pixi.js';
-import type { ElevationField } from '../data/elevation.js';
+import { type ElevationField, terrainLiftAt } from '../data/elevation.js';
 import { ONE, TILE_HALF_H, TILE_HALF_W, tileToScreen } from '../data/iso.js';
 import type { EntityBounds } from './sprite-pool/index.js';
 
@@ -130,7 +130,7 @@ export class SelectionLayer {
           const tileX = pos.x / ONE;
           const tileY = pos.y / ONE;
           const p = tileToScreen(tileX, tileY);
-          const lift = elevation !== undefined && elevation.maxLift > 0 ? elevation.liftAt(tileX, tileY) : 0;
+          const lift = terrainLiftAt(elevation, tileX, tileY);
           s = { x: p.x, y: p.y - lift };
         }
         let ring = pool.get(ent.id);
