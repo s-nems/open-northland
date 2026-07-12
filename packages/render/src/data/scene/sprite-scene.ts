@@ -59,7 +59,7 @@ import {
  * any sane map (sim positions stay well under ~2^25 tiles; real maps are a few hundred). Terrain tiles
  * sit in a band shifted strictly below every sprite (see {@link import('./terrain-scene.js')}).
  */
-export const ROW_STRIDE = 4096;
+const ROW_STRIDE = 4096;
 
 /** Depth added per {@link SPRITE_PAINT_ORDER} step in the oracle sort key. `< 1 / maxOrder` so the whole
  *  bias stays under one tile-column (base depths differ by ≥ 1 across cells) and can't cross a cell. */

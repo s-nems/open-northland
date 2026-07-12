@@ -119,7 +119,7 @@ export interface Camera {
  * 1024-wide map ≈ 32k px → contributes ~0.03), large enough to order same-row overlaps stably
  * regardless of attach order.
  */
-export const DEPTH_X_TIEBREAK = 1 / (1 << 20);
+const DEPTH_X_TIEBREAK = 1 / (1 << 20);
 
 /**
  * The screen-depth sort key for a feet anchor at projected `(x, y)` px: primarily the screen `y`

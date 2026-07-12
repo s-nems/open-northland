@@ -22,7 +22,7 @@ import type { TextureCache } from './texture-cache.js';
  * and hands over. When set, a death draws a REAL bone sprite (a seed-picked variant); absent (a checkout
  * with no `content/`), it falls back to the procedural pile. `textures` memoizes the per-frame sub-texture.
  */
-export interface BonesGfx {
+interface BonesGfx {
   readonly source: TextureSource;
   readonly frames: readonly AtlasFrame[];
   readonly textures: TextureCache;
