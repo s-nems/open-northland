@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { Provenance, TypeId } from '../record.js';
-import { AtomicId } from './goods.js';
+import { AtomicId, Provenance, TypeId } from '../record.js';
+import { GoodQuantity } from './goods.js';
 
 export const JobType = z.strictObject({
   typeId: TypeId,
@@ -64,8 +64,8 @@ export type WorkerSlot = z.infer<typeof WorkerSlot>;
 
 /** A recipe: a workplace turns inputs into outputs over time. */
 export const Recipe = z.strictObject({
-  inputs: z.array(z.strictObject({ goodType: TypeId, amount: z.number().int().positive() })).default([]),
-  outputs: z.array(z.strictObject({ goodType: TypeId, amount: z.number().int().positive() })).default([]),
+  inputs: z.array(GoodQuantity).default([]),
+  outputs: z.array(GoodQuantity).default([]),
   /** Game ticks to complete one production cycle. */
   ticks: z.number().int().positive().default(20),
 });
@@ -151,9 +151,7 @@ export const BuildingType = z.strictObject({
    * upgrade cost, so a leveled `home` building resolves the cost of *its* tier here (not cumulative).
    * The input data the future ConstructionSystem (place → deliver materials → build) consumes.
    */
-  construction: z
-    .array(z.strictObject({ goodType: TypeId, amount: z.number().int().positive() }))
-    .default([]),
+  construction: z.array(GoodQuantity).default([]),
   /**
    * Max **hitpoints** — the building's full life pool, from the graphics table's `[GfxHouse]`
    * `logichitpoints` line (`DataCnmd/budynki12/houses/houses.ini`), overlaid by `typeId` exactly like

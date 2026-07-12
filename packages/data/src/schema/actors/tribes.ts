@@ -1,6 +1,5 @@
 import { z } from 'zod';
-import { AtomicId } from '../economy/goods.js';
-import { Provenance, TypeId } from '../record.js';
+import { AtomicId, Provenance, TypeId } from '../record.js';
 
 export const AtomicBinding = z.strictObject({
   jobType: TypeId,

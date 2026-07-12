@@ -1,14 +1,5 @@
 import { z } from 'zod';
-import { Provenance, TypeId } from '../record.js';
-
-/**
- * Atomic ids are a numeric vocabulary cross-referenced by goods (`atomicFor*`), jobs
- * (`allowatomic`/`baseatomics`) and tribes (`setatomic`). The readable data ships NO master
- * atomictypes table — an atomic id's meaning is implicit in how those sources reference it
- * (e.g. the id under `atomicForHarvesting` is the harvest atomic for that good). The sim's
- * atomic planner consumes these bindings. See docs/ECS.md "Settler AI".
- */
-export const AtomicId = z.number().int().nonnegative();
+import { AtomicId, Provenance, TypeId } from '../record.js';
 
 /**
  * Atomic ids that act on a good, keyed by role (from `goodtypes` `atomicFor*`). A good is the
@@ -24,16 +15,24 @@ export const GoodAtomics = z.strictObject({
 export type GoodAtomics = z.infer<typeof GoodAtomics>;
 
 /**
- * One input good consumed to produce this good, with its per-cycle quantity. From a `[goodtype]`'s
- * `productionInputGoods` line, where a repeated good id encodes the amount (`… 1 1 14 14 …` = 2×good1
- * + 2×good14), so the flat multiset is collapsed to `{ goodType, amount }` pairs in first-seen order.
- * This is the *input side* of the goods graph, keyed by the **output** good (the good being made).
+ * A good paired with a positive per-cycle quantity (`{ goodType, amount }`) — the shared shape of
+ * production inputs, recipe inputs/outputs, and construction costs. In every source these come from a
+ * flat id list where a repeated id encodes the amount (`… 1 1 14 14 …` = 2×good1 + 2×good14),
+ * collapsed to `{ goodType, amount }` pairs in first-seen order.
  */
-export const ProductionInput = z.strictObject({
+export const GoodQuantity = z.strictObject({
   goodType: TypeId,
   amount: z.number().int().positive(),
 });
-export type ProductionInput = z.infer<typeof ProductionInput>;
+export type GoodQuantity = z.infer<typeof GoodQuantity>;
+
+/**
+ * One input good consumed to produce this good — the *input side* of the goods graph, keyed by the
+ * **output** good (the good being made). A semantic alias of {@link GoodQuantity} (same shape), kept
+ * as its own name for the good's `productionInputs` field and its sim consumers.
+ */
+export const ProductionInput = GoodQuantity;
+export type ProductionInput = GoodQuantity;
 
 /**
  * The game's own classification of a good, from the boolean flags on each `[goodtype]` record. These
