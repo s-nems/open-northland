@@ -367,7 +367,7 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
         SPRITE_CULL_MARGIN + (deps.elevation?.maxLift ?? 0),
       );
       const targets: Pickable[] = [];
-      for (const it of buildSpriteScene(snap, vp, deps.elevation)) {
+      for (const it of buildSpriteScene(snap, { viewport: vp, elevation: deps.elevation })) {
         if (it.kind !== kind) continue;
         targets.push({
           ref: it.ref,

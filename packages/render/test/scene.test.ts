@@ -812,7 +812,7 @@ describe('collectSpriteScene — the single-pass draw list + liveness set', () =
         },
       }),
     ];
-    const drawn = collectSpriteScene(snapshotOf(entities), undefined, undefined, undefined, {
+    const drawn = collectSpriteScene(snapshotOf(entities), {
       keepIndoorSettlers: true,
     }).items.filter((d) => d.kind === 'settler');
     expect(drawn.map((d) => d.ref).sort((a, b) => a - b)).toEqual([1, 2]);

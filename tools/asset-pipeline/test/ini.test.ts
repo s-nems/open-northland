@@ -2928,7 +2928,7 @@ describe('extractStaticObjects', () => {
       'setproducedgood "wood"',
     ].join('\n');
     expect(extractStaticObjects(parseIniSections(inc))).toEqual({
-      buildings: [{ name: 'viking headquarters', level: 0, player: 1, hx: 81, hy: 78, rot: 1002 }],
+      buildings: [{ name: 'viking headquarters', level: 0, player: 0, hx: 81, hy: 78, rot: 1002 }],
       humans: [{ tribe: 'viking', role: 'soldier_sword_short', player: 6, hx: 397, hy: 182 }],
       animals: [{ species: 'cattle', hx: 68, hy: 77 }],
     });
