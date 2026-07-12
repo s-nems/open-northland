@@ -2,7 +2,7 @@
  * The scene layer's shared vocabulary — the draw-item shape the pure scene builders emit and the GPU
  * layer consumes, plus the terrain-grid shapes a decoded map projects onto. Types + one paint-order
  * table only; the builders live in {@link import('./sprite-scene.js')} / {@link import('./terrain-scene.js')},
- * the per-component snapshot reads in {@link import('./snapshot-readers.js')}.
+ * the per-component snapshot reads in {@link import('./snapshot-readers/index.js')}.
  */
 
 /** Kinds of thing the scene draws, in their natural layer grouping. */
@@ -166,7 +166,7 @@ export interface DrawItem {
    * For a settler: its facing direction index (0..7) — the screen-space heading a directional
    * animation binding indexes by. The `CR_Hum_Body` bob layout is NOT a uniform rotation; its 8 blocks
    * face (read off the decoded frames, `source basis` "Settler facing"): `0 SW, 1 W, 2 NW, 3 NE,
-   * 4 E, 5 SE, 6 S, 7 N`. Derived from the live {@link import('./snapshot-readers.js').readFacing}
+   * 4 E, 5 SE, 6 S, 7 N`. Derived from the live {@link import('./snapshot-readers/index.js').readFacing}
    * heading; omitted when the settler isn't moving (the binding then falls back to
    * {@link import('../sprites/index.js').DEFAULT_FACING}).
    */
