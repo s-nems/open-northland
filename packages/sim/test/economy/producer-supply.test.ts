@@ -16,7 +16,6 @@ import {
   Stance,
   Stockpile,
 } from '../../src/components/index.js';
-import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import {
   cellAnchorNode,
@@ -27,6 +26,7 @@ import {
   type TerrainMap,
 } from '../../src/index.js';
 import { aiSystem, MAX_GROUND_STACK, type SystemContext, stockCapacity } from '../../src/systems/index.js';
+import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**
