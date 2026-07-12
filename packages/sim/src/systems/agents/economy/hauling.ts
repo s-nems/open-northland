@@ -1,6 +1,6 @@
 import { JobAssignment } from '../../../components/index.js';
 import { carrierCarryCapacity } from '../../progression.js';
-import { isCarrierJob } from '../../stores.js';
+import { isCarrierJob } from '../../stores/index.js';
 import { atOrWalk, startPickup } from '../actions.js';
 import type { PlannerContext } from '../planner-context.js';
 import { interactionCell, nearestWorkplaceOutput } from '../targets/index.js';

@@ -4,7 +4,7 @@ import type { NodeId, TerrainGraph } from '../../../nav/terrain.js';
 import type { SystemContext } from '../../context.js';
 import { farmWorkGood } from '../../economy/farming.js';
 import { manhattan } from '../../spatial.js';
-import { buildingProduces, lowestStockedGood } from '../../stores.js';
+import { buildingProduces, lowestStockedGood } from '../../stores/index.js';
 import { closer, interactionCell, nearestStoreFor } from '../targets/index.js';
 import { isFieldWorkerOf, isStorageSink } from './store-policy.js';
 

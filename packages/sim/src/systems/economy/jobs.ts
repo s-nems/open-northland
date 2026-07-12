@@ -6,7 +6,7 @@ import type { System, SystemContext } from '../context.js';
 import { interactionNode } from '../footprint/index.js';
 import { buildingEnabled, jobEnabled, settlerMeetsNeed } from '../progression.js';
 import { canonicalById, NodeBuckets } from '../spatial.js';
-import { buildingWorkerJobs, isCarrierJob, recipeOf } from '../stores.js';
+import { buildingWorkerJobs, isCarrierJob, recipeOf } from '../stores/index.js';
 import { farmWorkGood } from './farming.js';
 
 /**

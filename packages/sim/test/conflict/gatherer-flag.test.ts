@@ -30,7 +30,7 @@ import {
   type SystemContext,
   setWorkFlag,
 } from '../../src/systems/index.js';
-import { MAX_GROUND_STACK } from '../../src/systems/stores.js';
+import { MAX_GROUND_STACK } from '../../src/systems/stores/index.js';
 import { testContent } from '../fixtures/content.js';
 import { clearComponentStores } from '../fixtures/stores.js';
 

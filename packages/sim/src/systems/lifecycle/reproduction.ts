@@ -5,7 +5,7 @@ import type { World } from '../../ecs/world.js';
 import { DEFAULT_SETTLER_HITPOINTS } from '../conflict/spawn.js';
 import type { System, SystemContext } from '../context.js';
 import { canonicalById } from '../spatial.js';
-import { housingCapacity, tribePopulation } from '../stores.js';
+import { housingCapacity, tribePopulation } from '../stores/index.js';
 import { NEWBORN_AGE_CLASS } from './ageclass.js';
 
 /**

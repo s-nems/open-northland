@@ -5,7 +5,7 @@ import { bushesNearNode } from '../../../berry-index.js';
 import type { SystemContext } from '../../../context.js';
 import { BERRY_FORAGE_RADIUS } from '../../../economy/berries.js';
 import { manhattan } from '../../../spatial.js';
-import { isFood } from '../../../stores.js';
+import { isFood } from '../../../stores/index.js';
 import type { TargetCandidates } from '../candidates.js';
 import { closer } from '../nearest.js';
 import { interactionCell } from '../workplaces.js';

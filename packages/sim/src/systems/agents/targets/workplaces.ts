@@ -5,7 +5,7 @@ import type { NodeId, TerrainGraph } from '../../../nav/terrain.js';
 import type { SystemContext } from '../../context.js';
 import { interactionNode, positionedInteractionCell, resourceWorkCell } from '../../footprint/index.js';
 import { buildingEnabled } from '../../progression.js';
-import { buildingWorkerJobs, recipeOf } from '../../stores.js';
+import { buildingWorkerJobs, recipeOf } from '../../stores/index.js';
 
 const EMPTY_ATOMICS: ReadonlySet<number> = new Set<number>();
 

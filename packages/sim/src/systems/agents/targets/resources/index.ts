@@ -6,7 +6,7 @@ import type { SystemContext } from '../../../context.js';
 import { settlerMeetsNeed } from '../../../progression.js';
 import { resourceHarvestAtomics, resourcesNearNode } from '../../../resource-index.js';
 import { manhattan } from '../../../spatial.js';
-import { lowestStockedGood } from '../../../stores.js';
+import { lowestStockedGood } from '../../../stores/index.js';
 import { closer } from '../nearest.js';
 import { interactionCell, jobAtomics } from '../workplaces.js';
 

@@ -22,7 +22,7 @@ import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
 import { BERRY_REGROW_TICKS } from '../economy/berries.js';
 import { unstampResourceFootprint } from '../footprint/index.js';
-import { isYardHeap, lowestStockedGood, MAX_GROUND_STACK, stockCapacity } from '../stores.js';
+import { isYardHeap, lowestStockedGood, MAX_GROUND_STACK, stockCapacity } from '../stores/index.js';
 
 // The GOODS effects of the atomic executor — harvest/fell/deplete a resource node, drop and reap
 // ground piles, pick up / consume / deposit a carried load. Every mutation conserves goods (nothing

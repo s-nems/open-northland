@@ -4,7 +4,7 @@ import type { NodeId } from '../../../nav/terrain.js';
 import { carrierCarryCapacity } from '../../progression.js';
 import { atomicDuration } from '../../readviews/animations.js';
 import { manhattan } from '../../spatial.js';
-import { deliveredConstructionFraction, nextNeededConstructionGood } from '../../stores.js';
+import { deliveredConstructionFraction, nextNeededConstructionGood } from '../../stores/index.js';
 import { atOrWalk, BUILD_HOUSE_ATOMIC_ID, startAtomic, startPickup } from '../actions.js';
 import { claimWorkCell, type SpacingState } from '../destack.js';
 import type { PlannerContext } from '../planner-context.js';

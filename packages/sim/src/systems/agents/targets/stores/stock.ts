@@ -17,7 +17,7 @@ import {
   MAX_GROUND_STACK,
   recipeOf,
   stockCapacity,
-} from '../../../stores.js';
+} from '../../../stores/index.js';
 import { closer } from '../nearest.js';
 import { interactionCell } from '../workplaces.js';
 

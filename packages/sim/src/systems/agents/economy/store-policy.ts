@@ -2,7 +2,7 @@ import { Position, Stockpile } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { farmWorkGood } from '../../economy/farming.js';
-import { recipeOf, stockCapacity } from '../../stores.js';
+import { recipeOf, stockCapacity } from '../../stores/index.js';
 import { jobAtomics } from '../targets/index.js';
 
 /** Whether a job is the field worker, rather than the carrier, of a farm building. */

@@ -52,7 +52,7 @@ export * from './movement/routing.js';
 export * from './progression.js';
 export * from './readviews/index.js';
 export * from './spatial.js';
-export * from './stores.js';
+export * from './stores/index.js';
 export * from './stubs.js';
 export * from './vision/index.js';
 // The systems barrel: every per-system module re-exported wholesale (no hand-maintained name

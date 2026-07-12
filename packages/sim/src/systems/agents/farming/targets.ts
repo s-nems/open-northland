@@ -6,7 +6,7 @@ import type { SystemContext } from '../../context.js';
 import type { FarmingSpec } from '../../economy/farming.js';
 import { dynamicBlockedCells } from '../../footprint/index.js';
 import { manhattan } from '../../spatial.js';
-import { lowestStockedGood } from '../../stores.js';
+import { lowestStockedGood } from '../../stores/index.js';
 import { closer, interactionCell, type TargetCandidates } from '../targets/index.js';
 import type { FarmClaims, SowScan } from './claims.js';
 

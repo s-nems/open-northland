@@ -4,7 +4,7 @@ import * as components from '../../src/components/index.js';
 import { Building, GroundDrop, Position, Stockpile } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, Simulation } from '../../src/index.js';
-import { MAX_GROUND_STACK } from '../../src/systems/stores.js';
+import { MAX_GROUND_STACK } from '../../src/systems/stores/index.js';
 
 /**
  * `dropGood` — the "place this good on the ground" order. It drops a loose good pile as a bare
