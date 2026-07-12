@@ -12,6 +12,7 @@ import {
   type SpriteState,
 } from './draw-item.js';
 import {
+  assignStaticFields,
   classify,
   facingTowardTile,
   readActingAtomic,
@@ -19,7 +20,6 @@ import {
   readAtomicTargetEntity,
   readBerryBushGfxIndex,
   readBerryBushLevel,
-  readBuildingType,
   readBuiltPct,
   readCarrying,
   readEngaged,
@@ -31,14 +31,10 @@ import {
   readProducing,
   readProjectileOrigin,
   readProjectileTarget,
-  readResourceGfxIndex,
-  readResourceGood,
-  readResourceLevel,
   readResourceLevelCount,
   readSpriteState,
   readStockpile,
   readStoreExchangeRef,
-  readStumpGood,
 } from './snapshot-readers.js';
 
 /**
@@ -367,34 +363,26 @@ export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOpt
       // jobType ids (1..4) from colliding synthetic adult ids (AGENTS.md [dc3ef54]).
       if ('Age' in components) item.young = true;
     } else if (kind === 'building') {
-      // A building carries its type id so a per-type binding draws its own house bob (the `[GfxHouse]`
-      // `LogicType` → `GfxBobId` join), and — while under construction — its progress percent so the
-      // construction-stage binding can pick the visible layers (grey foundation → stages → body).
-      const typeId = readBuildingType(components);
-      if (typeId !== undefined) item.typeId = typeId;
-      const builtPct = readBuiltPct(components);
-      if (builtPct !== undefined) item.builtPct = builtPct;
+      // A building carries its type id (the `[GfxHouse]` `LogicType` → `GfxBobId` join a per-type binding
+      // draws its house bob by) and — while under construction — its progress percent (the stage binding
+      // picks the visible layers: grey foundation → stages → body). Both via the shared static reader.
+      assignStaticFields(item, 'building', components);
       // Mid production cycle — the switch a type's animated state overlay flips on (the mill's rotor).
+      // Live-only: a fog ghost never animates, so this rides here, not in assignStaticFields.
       if (readProducing(components)) item.working = true;
     } else if (kind === 'resource') {
-      // A resource node carries its `Resource.goodType` so a per-good binding draws its own
-      // species/deposit; a MINED node also carries its shrink-by-level fill state so its deposit graphic
-      // steps down as it empties (a plain tree/mushroom/full deposit reads no level → full-state frame).
-      const goodType = readResourceGood(components);
-      if (goodType !== undefined) item.goodType = goodType;
-      const level = readResourceLevel(components);
-      if (level !== undefined) {
-        item.level = level;
+      // A resource node carries its `goodType` (per-good species/deposit), its shrink-by-`level` fill, and
+      // its source-variant `gfxIndex` ("pine 02", not the representative "yew 01") — all via the shared
+      // static reader so a live node and its fog ghost read the same fields.
+      assignStaticFields(item, 'resource', components);
+      // The ladder DENOMINATOR rides ALONGSIDE `level` so the resolver can rescale the sim's ladder onto
+      // the bound record's own state count. Live-only: ghosts omit it (see assignStaticFields).
+      if (item.level !== undefined) {
         const levels = readResourceLevelCount(components);
         if (levels !== undefined) item.levels = levels;
       }
-      // Its exact source variant record ("pine 02", not the representative "yew 01") — a per-variant
-      // binding entry wins over the per-good one, so a decoded map keeps its original species variety.
-      const gfxIndex = readResourceGfxIndex(components);
-      if (gfxIndex !== undefined) item.gfxIndex = gfxIndex;
     } else if (kind === 'stump') {
-      const goodType = readStumpGood(components);
-      if (goodType !== undefined) item.goodType = goodType;
+      assignStaticFields(item, 'stump', components);
     } else if (kind === 'berrybush') {
       // A berry bush carries its render-variant `gfxIndex` (the fruited-bush record — its species) and a
       // ripe/bare LEVEL (2 = fruited, 1 = bare), so its per-variant two-frame binding draws the state the
