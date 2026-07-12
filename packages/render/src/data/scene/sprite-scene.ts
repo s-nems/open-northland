@@ -175,6 +175,48 @@ function enterableStoresOf(snapshot: WorldSnapshot): ReadonlySet<number> {
   return stores;
 }
 
+/** The shared empty index for a snapshot with no target-facing actor — memoized like a real index so a
+ *  quiet scene allocates nothing and every frame reuses this one map. */
+const EMPTY_POS_INDEX: ReadonlyMap<number, { x: number; y: number }> = new Map();
+
+/** Per-snapshot memo of {@link targetPositionsOf} — same per-frame-vs-per-tick argument as
+ *  {@link enterableStoresBySnapshot}. */
+const targetPosBySnapshot = new WeakMap<WorldSnapshot, ReadonlyMap<number, { x: number; y: number }>>();
+
+/**
+ * The `entity id → live Position` index used to FACE a mid-swing attacker/harvester at its target and to
+ * aim an in-flight projectile — random access by id that `WorldSnapshot` carries no structure for. Built
+ * ONLY for a snapshot that actually has such an actor (a cheap early-exit scan decides; a scene with
+ * nobody working, fighting or shooting memoizes the shared empty index and does no per-entity work), and
+ * memoized per snapshot: {@link collectSpriteScene} runs per FRAME while the snapshot changes per TICK, so
+ * both the scan and the fill happen once per tick, not once per frame. Stores the snapshot's OWN Position
+ * object (readPosition returns it, not a copy), so the fill is N `Map.set`s with NO per-entity
+ * allocation/divide; the `/ONE` to tile space is deferred to the rare facing lookups. Pure.
+ */
+function targetPositionsOf(snapshot: WorldSnapshot): ReadonlyMap<number, { x: number; y: number }> {
+  const cached = targetPosBySnapshot.get(snapshot);
+  if (cached !== undefined) return cached;
+  let needed = false;
+  for (const entity of snapshot.entities) {
+    const acting = readActingAtomic(entity.components);
+    if ((acting !== null && TARGET_FACING_ATOMIC_IDS.has(acting)) || 'Projectile' in entity.components) {
+      needed = true;
+      break;
+    }
+  }
+  let index: ReadonlyMap<number, { x: number; y: number }> = EMPTY_POS_INDEX;
+  if (needed) {
+    const byRef = new Map<number, { x: number; y: number }>();
+    for (const entity of snapshot.entities) {
+      const p = readPosition(entity.components);
+      if (p !== null) byRef.set(entity.id, p);
+    }
+    index = byRef;
+  }
+  targetPosBySnapshot.set(snapshot, index);
+  return index;
+}
+
 /**
  * Build the depth-sorted sprite draw list AND the pre-cull liveness set in one pass over the
  * snapshot's entities — the shared core of {@link import('./terrain-scene.js').buildScene},
@@ -207,27 +249,10 @@ export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOpt
   const { viewport, elevation, staticRefs, fogVisible, ghosts, keepIndoorSettlers } = opts;
   const items: MutableDrawItem[] = [];
   const liveRefs = new Set<number>();
-  // A mid-swing attacker/harvester faces — and an in-flight projectile points at — its target's LIVE
-  // position, which needs random access by id (a target may be off-screen / culled, and `WorldSnapshot`
-  // carries no id index). Build that index ONLY on a frame that has such an actor — a cheap early-exit
-  // scan decides — so a scene with nobody working or fighting never pays for it. It stores the
-  // snapshot's own Position object (readPosition returns it, not a copy), so the fill is N Map.sets with
-  // NO per-entity allocation/divide; the `/ONE` to tile space is deferred to the rare facing lookups below.
-  let needsPosIndex = false;
-  for (const entity of snapshot.entities) {
-    const acting = readActingAtomic(entity.components);
-    if ((acting !== null && TARGET_FACING_ATOMIC_IDS.has(acting)) || 'Projectile' in entity.components) {
-      needsPosIndex = true;
-      break;
-    }
-  }
-  const posByRef = new Map<number, { x: number; y: number }>();
-  if (needsPosIndex) {
-    for (const entity of snapshot.entities) {
-      const p = readPosition(entity.components);
-      if (p !== null) posByRef.set(entity.id, p);
-    }
-  }
+  // The target-position index (for facing mid-swing actors + aiming projectiles) — built once per
+  // snapshot and reused across the frames that render it (see targetPositionsOf), empty when no actor
+  // needs it.
+  const posByRef = targetPositionsOf(snapshot);
   const enterableStores = enterableStoresOf(snapshot);
   for (const entity of snapshot.entities) {
     // Drawn by the retained static layer instead (a virgin map resource) — skip before even classifying.
