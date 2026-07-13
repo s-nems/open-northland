@@ -12,10 +12,6 @@ OpenNorthland is free to fix it.
 
 ![A Viking settlement running in OpenNorthland](docs/images/settlement.webp)
 
-<sub>OpenNorthland's own renderer drawing a Viking settlement — sprites, terrain and UI decoded
-locally by the asset pipeline from the author's copy of the game with the
-[culturesnation](https://culturesnation.pl/) mod. The repository ships no game art.</sub>
-
 > **You need to own the original game.** OpenNorthland ships **no game assets**. To actually play you
 > need **Cultures – 8th Wonder of the World**, the latest and most complete game in the series and the
 > one the asset pipeline targets. Point the pipeline at your own legally-owned copy, still sold on
