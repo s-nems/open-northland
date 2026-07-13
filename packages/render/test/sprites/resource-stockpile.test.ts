@@ -1,11 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
-  type DrawItem,
-  resolveResourceDraw,
   resolveSpriteBobId,
   resolveStockpileDraw,
   resolveStockpileLayerDraws,
-} from '../../src/index.js';
+} from '../../src/data/sprites/index.js';
+import { type DrawItem, resolveResourceDraw } from '../../src/index.js';
 import { drawItem } from '../support/fixtures.js';
 
 /**

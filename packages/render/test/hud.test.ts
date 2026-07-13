@@ -1,6 +1,7 @@
 import type { WorldSnapshot } from '@vinland/sim';
 import { describe, expect, it } from 'vitest';
-import { buildHud, type HudModel, IDLE_JOB, layoutHud, placeHud } from '../src/index.js';
+import { IDLE_JOB } from '../src/data/hud.js';
+import { buildHud, type HudModel, layoutHud, placeHud } from '../src/index.js';
 import { snapshotOf } from './support/fixtures.js';
 
 /**

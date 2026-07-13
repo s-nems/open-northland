@@ -1,15 +1,12 @@
 import type { TextureSource } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
-import { compactResolvedStockpileLayers } from '../src/gpu/sprite-pool/index.js';
 import {
-  type DrawItem,
+  compactResolvedStockpileLayers,
   type MotionTrack,
   reconcileSprites,
-  resolveLayers,
-  type SpriteAtlas,
-  type SpriteSheet,
   trackMotion,
-} from '../src/index.js';
+} from '../src/gpu/sprite-pool/index.js';
+import { type DrawItem, resolveLayers, type SpriteAtlas, type SpriteSheet } from '../src/index.js';
 
 /**
  * Unit test for the retained renderer's one PURE decision — pool bookkeeping — extracted so it is

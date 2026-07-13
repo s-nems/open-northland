@@ -2,15 +2,17 @@ import { describe, expect, it } from 'vitest';
 import type { SpriteState } from '../../src/data/scene/index.js';
 import {
   DEFAULT_FACING,
-  type DirectionalAnim,
-  type DrawItem,
-  type FrameListAnim,
   indexAtlasFrames,
   resolveSpriteBobId,
   resolveSpriteFrame,
-  type SettlerStateBinding,
-  type SpriteAtlas,
-  type SpriteBindings,
+} from '../../src/data/sprites/index.js';
+import type {
+  DirectionalAnim,
+  DrawItem,
+  FrameListAnim,
+  SettlerStateBinding,
+  SpriteAtlas,
+  SpriteBindings,
 } from '../../src/index.js';
 import { drawItem } from '../support/fixtures.js';
 

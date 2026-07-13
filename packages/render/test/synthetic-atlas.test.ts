@@ -1,13 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { SpriteState } from '../src/data/scene/index.js';
-import {
-  type DrawItem,
-  resolveSpriteFrame,
-  SYNTHETIC_ATLAS_HEIGHT,
-  SYNTHETIC_ATLAS_WIDTH,
-  SYNTHETIC_BINDINGS,
-  syntheticAtlasFrames,
-} from '../src/index.js';
+import { resolveSpriteFrame } from '../src/data/sprites/index.js';
+import { SYNTHETIC_ATLAS_HEIGHT, SYNTHETIC_ATLAS_WIDTH } from '../src/gpu/synthetic-atlas.js';
+import { type DrawItem, SYNTHETIC_BINDINGS, syntheticAtlasFrames } from '../src/index.js';
 
 /**
  * Unit tests for the PURE half of the free synthetic atlas — its frame geometry + bindings. This is
