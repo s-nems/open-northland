@@ -1,7 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import { type AtlasAlphaMode, type BobAtlas, packBobAtlas } from '../decoders/atlas.js';
-import { decodeBmd } from '../decoders/bmd.js';
+import { decodeBmd } from '../decoders/bmd/index.js';
 import { decodeCifStringArray } from '../decoders/cif.js';
 import {
   type BmdPaletteBinding,

@@ -14,7 +14,7 @@ import {
   encodeBmd,
   PACKED_OFFSET_MASK,
   PACKED_X_SHIFT,
-} from '../src/decoders/bmd.js';
+} from '../src/decoders/bmd/index.js';
 
 /**
  * `.bmd` (CBobManager, id 0x3F4) container decoder tests. No copyrighted fixtures: we synthesize bob

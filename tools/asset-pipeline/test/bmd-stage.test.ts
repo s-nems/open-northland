@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { type Bmd, BOB_TYPE_DOUBLE8BIT, encodeBmd, PACKED_X_SHIFT } from '../src/decoders/bmd.js';
+import { type Bmd, BOB_TYPE_DOUBLE8BIT, encodeBmd, PACKED_X_SHIFT } from '../src/decoders/bmd/index.js';
 import type { BmdPaletteBinding, PaletteAlias } from '../src/decoders/ini.js';
 import { decodePng, encodePng } from '../src/decoders/png.js';
 import { bmdToAtlas, convertBmdTree } from '../src/stages/bmd.js';

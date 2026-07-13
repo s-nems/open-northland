@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { packIndexedBobAtlas } from '../decoders/atlas.js';
-import { decodeBmd } from '../decoders/bmd.js';
+import { decodeBmd } from '../decoders/bmd/index.js';
 import type { BmdPaletteBinding } from '../decoders/ini.js';
 import { decodePcx } from '../decoders/pcx.js';
 import {
