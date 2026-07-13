@@ -84,7 +84,7 @@ export {
 } from './replay/rebase-content.js';
 export { type ReplayOptions, replay } from './replay/replay.js';
 export { scrubWindow } from './replay/scrub-window.js';
-export { type FogView, type SimOptions, Simulation, spawnAt } from './simulation.js';
+export { type FogView, type SimOptions, Simulation } from './simulation.js';
 export type { ConstructionPlot, PlacementProbe, ResourceNodeSpec } from './systems/footprint/index.js';
 // The walk cadence (ticks per visual cell at cruise) — public so the render's walk-cycle clock can
 // stay in exact step with the sim's gait instead of restating the number.

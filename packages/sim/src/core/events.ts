@@ -18,8 +18,16 @@ import type { Fixed } from './fixed.js';
  * event list for tick N is a pure function of the sim — reproducible, replayable, hashable.
  */
 export type SimEvent =
-  | { readonly kind: 'buildingPlaced'; readonly entity: Entity; readonly at: { x: number; y: number } }
-  | { readonly kind: 'boatPlaced'; readonly entity: Entity; readonly at: { x: number; y: number } }
+  | {
+      readonly kind: 'buildingPlaced';
+      readonly entity: Entity;
+      readonly at: { readonly x: number; readonly y: number };
+    }
+  | {
+      readonly kind: 'boatPlaced';
+      readonly entity: Entity;
+      readonly at: { readonly x: number; readonly y: number };
+    }
   | { readonly kind: 'buildingFinished'; readonly entity: Entity }
   | { readonly kind: 'buildingUpgraded'; readonly entity: Entity; readonly level: number }
   | { readonly kind: 'settlerBorn'; readonly entity: Entity }
@@ -94,7 +102,7 @@ export type SimEvent =
       readonly stump: Entity;
       readonly goodType: number;
       readonly amount: number;
-      readonly at: { x: number; y: number };
+      readonly at: { readonly x: number; readonly y: number };
     }
   | {
       /**
@@ -109,7 +117,7 @@ export type SimEvent =
       readonly shooter: Entity;
       readonly target: Entity;
       readonly munitionType: number;
-      readonly at: { x: number; y: number };
+      readonly at: { readonly x: number; readonly y: number };
     }
   | {
       /**
@@ -124,7 +132,7 @@ export type SimEvent =
       readonly shooter: Entity;
       readonly target: Entity;
       readonly munitionType: number;
-      readonly at: { x: number; y: number };
+      readonly at: { readonly x: number; readonly y: number };
     }
   | {
       /**
@@ -139,7 +147,7 @@ export type SimEvent =
       readonly kind: 'resourceDepleted';
       readonly node: Entity;
       readonly goodType: number;
-      readonly at: { x: number; y: number };
+      readonly at: { readonly x: number; readonly y: number };
     }
   | {
       /**
@@ -153,7 +161,7 @@ export type SimEvent =
       readonly kind: 'resourceMined';
       readonly node: Entity;
       readonly goodType: number;
-      readonly at: { x: number; y: number };
+      readonly at: { readonly x: number; readonly y: number };
     }
   | {
       /**
@@ -166,19 +174,19 @@ export type SimEvent =
        */
       readonly kind: 'berryForaged';
       readonly bush: Entity;
-      readonly at: { x: number; y: number };
+      readonly at: { readonly x: number; readonly y: number };
     };
 
 export type SimEventKind = SimEvent['kind'];
 
 /** Mint a positioned event's `at` from a fixed-point Position: the HALF-CELL NODE the position
  *  truncates to — the one coordinate space every `at` carries (see the header note). */
-export function eventAt(x: Fixed, y: Fixed): { x: number; y: number } {
+export function eventAt(x: Fixed, y: Fixed): { readonly x: number; readonly y: number } {
   const n = nodeOfPosition(x, y);
   return { x: n.hx, y: n.hy };
 }
 
-/** A simple deterministic per-tick event buffer. Cleared each tick, read-only via `drain`. */
+/** A simple deterministic per-tick event buffer. Cleared each tick, read-only via `current`. */
 export class EventBuffer {
   private events: SimEvent[] = [];
 

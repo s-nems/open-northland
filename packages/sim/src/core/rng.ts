@@ -26,11 +26,6 @@ export class Rng {
     return Math.floor(this.next() * maxExclusive);
   }
 
-  /** Integer in [min, max] inclusive. */
-  range(min: number, max: number): number {
-    return min + this.int(max - min + 1);
-  }
-
   /** Snapshot the internal state (for save/load and golden tests). */
   getState(): number {
     return this.state;

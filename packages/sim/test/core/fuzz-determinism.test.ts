@@ -152,8 +152,6 @@ function grassMap(width: number, height: number): TerrainMap {
   return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });
 }
 
-/** Clear every component store (module-level singletons) so runs can't leak into each other. */
-
 function pick<T>(rng: Rng, options: readonly T[]): T {
   const v = options[rng.int(options.length)];
   if (v === undefined) throw new Error('pick from empty options');
