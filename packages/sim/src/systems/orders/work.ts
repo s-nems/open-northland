@@ -6,10 +6,7 @@ import {
   Engagement,
   Fleeing,
   JobAssignment,
-  MoveGoal,
   Owner,
-  PathFollow,
-  PathRequest,
   PlayerOrder,
   Position,
   Settler,
@@ -21,6 +18,7 @@ import { positionOfNode } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
 import { bindFreshFlag, jobCanHarvest, liveWorkFlag, syncWorkFlagToJob } from '../economy/flags.js';
 import { openWorkerJobFromList } from '../economy/jobs/index.js';
+import { clearNavState } from '../spatial.js';
 import { stampDefaultStance } from './combat.js';
 
 /**
@@ -64,9 +62,7 @@ function reidleAsJob(world: World, ctx: SystemContext, e: Entity, jobType: numbe
   world.get(e, Settler).jobType = jobType;
   world.remove(e, CurrentAtomic); // cancel whatever it was doing under the old job
   world.remove(e, PlayerOrder); // an employment change returns the unit to the economy
-  world.remove(e, MoveGoal);
-  world.remove(e, PathRequest);
-  world.remove(e, PathFollow);
+  clearNavState(world, e);
   world.remove(e, Engagement); // drop any auto-combat state — the new trade re-decides its stance
   world.remove(e, AttackOrder);
   world.remove(e, Fleeing);

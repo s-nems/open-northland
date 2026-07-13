@@ -4,10 +4,7 @@ import {
   Engagement,
   Fleeing,
   Health,
-  MoveGoal,
   Owner,
-  PathFollow,
-  PathRequest,
   PlayerOrder,
   Position,
   Settler,
@@ -19,6 +16,7 @@ import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { defaultStanceForJob, isMilitaryMode, MILITARY_MODE } from '../readviews/index.js';
+import { clearNavState } from '../spatial.js';
 
 /**
  * Stamp the job-based **default military stance** on an owned settler (the
@@ -101,9 +99,7 @@ export function attackUnit(
   // The order is authoritative — cancel the unit's current action + any in-flight route/hold so it obeys
   // now (a non-interruptible-atomic exception is a deferred refinement, as with moveUnit).
   world.remove(e, CurrentAtomic);
-  world.remove(e, MoveGoal);
-  world.remove(e, PathRequest);
-  world.remove(e, PathFollow);
+  clearNavState(world, e);
   world.remove(e, PlayerOrder);
   world.remove(e, Fleeing); // an explicit attack order overrides the flee mode — stop running, fight
   world.add(e, AttackOrder, { target });

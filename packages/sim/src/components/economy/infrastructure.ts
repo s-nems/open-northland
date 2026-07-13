@@ -22,6 +22,29 @@ export function stockpileEntries(s: { amounts: Map<number, number> }): Array<[nu
   return [...s.amounts.entries()].sort((a, b) => a[0] - b[0]);
 }
 
+/** One line of a goods cost — the `{ goodType, amount }` shape recipe inputs, construction materials,
+ *  and upgrade costs all share. */
+export type GoodsLine = { readonly goodType: number; readonly amount: number };
+
+/** Whether `amounts` holds every line of `cost` in full. Reads the plain Map (a missing good counts as
+ *  0); accepts an absent stockpile (`undefined`) as holding nothing. The presence gate the production
+ *  and construction systems check before consuming a cost. */
+export function holdsAll(amounts: Map<number, number> | undefined, cost: readonly GoodsLine[]): boolean {
+  for (const line of cost) {
+    if ((amounts?.get(line.goodType) ?? 0) < line.amount) return false;
+  }
+  return true;
+}
+
+/** Subtract every line of `cost` from `amounts` IN PLACE. The caller must have verified {@link holdsAll}
+ *  first, so no count goes negative; a good that hits zero is left as a 0 entry — the canonical Map
+ *  tolerates it, and the stockpile is never iterated for a decision, so a stale 0 is harmless. */
+export function consumeGoods(amounts: Map<number, number>, cost: readonly GoodsLine[]): void {
+  for (const line of cost) {
+    amounts.set(line.goodType, (amounts.get(line.goodType) ?? 0) - line.amount);
+  }
+}
+
 /**
  * Marks a {@link Building} that is a **construction site** — a placed foundation a builder still has to
  * raise, faithful to the original's "place the grey outline, then settlers build it up" flow (you don't

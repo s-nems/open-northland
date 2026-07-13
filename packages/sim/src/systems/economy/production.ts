@@ -1,5 +1,11 @@
 import type { Recipe } from '@open-northland/data';
-import { Building, Production, type ProductionCycle, Stockpile } from '../../components/index.js';
+import {
+  Building,
+  consumeGoods,
+  Production,
+  type ProductionCycle,
+  Stockpile,
+} from '../../components/index.js';
 import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
@@ -162,11 +168,7 @@ export function startableCycleCount(
  * tolerates it); the stockpile is never iterated for a decision, so a stale 0 is harmless.
  */
 function consumeInputs(world: World, building: Entity, recipe: Recipe): void {
-  const stock = world.get(building, Stockpile).amounts;
-  for (const input of recipe.inputs) {
-    const have = stock.get(input.goodType) ?? 0;
-    stock.set(input.goodType, have - input.amount);
-  }
+  consumeGoods(world.get(building, Stockpile).amounts, recipe.inputs);
 }
 
 /**

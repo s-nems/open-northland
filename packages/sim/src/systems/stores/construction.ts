@@ -1,4 +1,4 @@
-import { Building, Stockpile } from '../../components/index.js';
+import { Building, holdsAll, Stockpile } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { type Fixed, fx, ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -55,11 +55,7 @@ export function deliveredConstructionFraction(world: World, ctx: SystemContext, 
  *  A free (empty-cost) type is trivially satisfied. The completion gate the ConstructionSystem ANDs with
  *  a fully-hammered `labor`. */
 export function constructionMaterialsPresent(world: World, ctx: SystemContext, site: Entity): boolean {
-  const stock = world.tryGet(site, Stockpile)?.amounts;
-  for (const line of constructionCostOf(world, ctx, site)) {
-    if ((stock?.get(line.goodType) ?? 0) < line.amount) return false;
-  }
-  return true;
+  return holdsAll(world.tryGet(site, Stockpile)?.amounts, constructionCostOf(world, ctx, site));
 }
 
 /** The lowest-goodType `construction` material a site still lacks, with the shortfall (`need − held`) —
