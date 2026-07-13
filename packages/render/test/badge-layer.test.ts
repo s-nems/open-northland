@@ -80,6 +80,22 @@ describe('BadgeLayer', () => {
     expect(layer.container.children[0]?.visible).toBe(true);
   });
 
+  it('retires an on-screen stack even with an off-screen never-built staffed building present', () => {
+    // Regression: `drawn` must stay a subset of the pooled stacks. An off-screen building that never built
+    // a stack must NOT be marked drawn, or retireUndrawn's `pool.size <= drawn.size` fast-path would skip a
+    // genuinely-orphaned on-screen stack — leaving a ghost badge that never gets destroyed.
+    const layer = new BadgeLayer();
+    const onScreen = tileToScreen(3, 5);
+    const vp = { minX: onScreen.x - 50, minY: onScreen.y - 50, maxX: onScreen.x + 50, maxY: onScreen.y + 50 };
+    // Building 1 on-screen (builds a stack); building 2 staffed but off-screen and never builds one.
+    layer.draw([badge(1, 3, 5, 1, 0), badge(2, 900, 900, 1, 0)], undefined, vp);
+    expect(layer.container.children).toHaveLength(1); // only building 1 has a stack
+
+    // Building 1 leaves the list (demolished / unstaffed); building 2 is still off-screen and stackless.
+    layer.draw([badge(2, 900, 900, 1, 0)], undefined, vp);
+    expect(layer.container.children).toHaveLength(0); // building 1's stack retired, no ghost
+  });
+
   it('lifts the stack by the terrain height at the door', () => {
     const W = 4;
     const H = 8;
