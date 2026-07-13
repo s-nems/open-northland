@@ -8,7 +8,7 @@
 `sandboxContent(...)` (`slice/vertical-slice.ts`). Panels need no change — they read `sim.content`
 generically (details panel `def.stock`, tool panel `menuEntriesFromContent`, sprite resolution off
 `sim.content.goods`), and stockpiles seed from `type.stock[].initial` at placement
-(`packages/sim/src/systems/command.ts`), so real per-building stock flows in for free.
+(`packages/sim/src/systems/command/placement.ts`), so real per-building stock flows in for free.
 
 ## Scope
 

@@ -1,16 +1,5 @@
 import { beforeEach } from 'vitest';
-import {
-  Anger,
-  Armor,
-  CurrentAtomic,
-  Health,
-  MoveGoal,
-  PathFollow,
-  PathRequest,
-  Position,
-  Settler,
-  Weapon,
-} from '../../../src/components/index.js';
+import { Health, Position, Settler } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import {
   type Fixed,
@@ -21,6 +10,7 @@ import {
   type TerrainMap,
 } from '../../../src/index.js';
 import type { SystemContext } from '../../../src/systems/index.js';
+import { clearComponentStores } from '../../fixtures/stores.js';
 
 /**
  * Unit + integration tests for the CombatSystem — the TARGETING half of the combat loop: an idle
@@ -43,18 +33,7 @@ export const WOODCUTTER = 1; // job 1 — the test_axe binds to this (tribe 1, j
 export const HUNTER = 15; // job 15 (JOB_TYPE_HUMAN_HUNTER) — the test_spear binds to this (tribe 1, job 15)
 export const ATTACK_ATOMIC = 81;
 
-beforeEach(() => {
-  Position.store.clear();
-  Settler.store.clear();
-  Health.store.clear();
-  CurrentAtomic.store.clear();
-  MoveGoal.store.clear();
-  PathFollow.store.clear();
-  PathRequest.store.clear();
-  Anger.store.clear();
-  Armor.store.clear();
-  Weapon.store.clear();
-});
+beforeEach(clearComponentStores);
 
 export function grassMap(width: number, height: number): TerrainMap {
   return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(0) });

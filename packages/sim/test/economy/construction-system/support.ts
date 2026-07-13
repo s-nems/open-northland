@@ -1,6 +1,5 @@
 import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import { beforeEach } from 'vitest';
-import * as components from '../../../src/components/index.js';
 import {
   Building,
   Carrying,
@@ -12,6 +11,7 @@ import {
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, ONE, type SimEvent, type Simulation, type TerrainMap } from '../../../src/index.js';
 import type { SystemContext } from '../../../src/systems/index.js';
+import { clearComponentStores } from '../../fixtures/stores.js';
 
 /**
  * Unit + integration tests for the ConstructionSystem — a construction site (`UnderConstruction`) rises to
@@ -152,13 +152,7 @@ export function upgradedEvents(sim: Simulation): readonly SimEvent[] {
 // (e.g. a stale Health/CurrentAtomic on a reused id) silently diverts the carrier-delivery scan.
 beforeEach(clearComponentStores);
 
-export function clearComponentStores(): void {
-  for (const c of Object.values(components)) {
-    if (typeof c === 'object' && c !== null && 'store' in c && c.store instanceof Map) {
-      c.store.clear();
-    }
-  }
-}
+export { clearComponentStores };
 
 export function ctxOf(sim: Simulation): SystemContext {
   return { content: sim.content, rng: sim.rng, tick: sim.tick, events: sim.events };

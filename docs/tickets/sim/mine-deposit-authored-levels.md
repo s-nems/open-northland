@@ -9,7 +9,7 @@ mapping per-placement `objects.levels` → starting `remaining`.
 
 ## Scope
 
-- Split `MineDeposit.initial` from `remaining` (`packages/sim/src/components/economy.ts`) so the
+- Split `MineDeposit.initial` from `remaining` (`packages/sim/src/components/economy/resources.ts`) so the
   visual level derives from `remaining/initial` while `initial` stays the authored full size.
 - In map spawn (`spawnMapResources` / `packages/app/src/content/map-resources.ts`), map the
   authored `levels` to the starting `remaining`.

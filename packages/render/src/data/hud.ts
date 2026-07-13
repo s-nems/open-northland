@@ -12,7 +12,7 @@ import type { WorldSnapshot } from '@vinland/sim';
  *
  * Why off the SNAPSHOT, not the sim read views: `render` is a pure consumer of sim state and must
  * never read the live component stores (docs/ARCHITECTURE.md; the determinism contract). The sim's
- * own read views (`systems.tribeStocks`/`tribePopulation`/`tribePopulationByJob`) take a live
+ * own internal read views (`tribeStocks`/`tribePopulation`/`tribePopulationByJob`) take a live
  * `World`; the HUD instead re-derives the *same* aggregates from the frozen, plain-cloned snapshot
  * the renderer already holds — the snapshot is taken at a tick boundary, so the HUD can't observe a
  * half-applied mutation. The values match the sim views by construction (a count / a sum is

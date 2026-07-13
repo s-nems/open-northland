@@ -105,8 +105,8 @@ export const MoveGoal = defineComponent<{ cell: NodeId }>('MoveGoal');
  * PathfindingSystem drains these (budgeted per tick), runs A* on `ctx.terrain`, and on success
  * replaces the entity's {@link PathFollow} with the result then removes the request; on failure
  * (no route / unwalkable endpoint / no terrain) it sets `failed` so the planner can react and
- * stops retrying the same dead query every tick. `start`/`goal` are raw row-major cell ids
- * (`y*width + x`) — plain numbers here so this component stays serializable like every other.
+ * stops retrying the same dead query every tick. `start`/`goal` are branded row-major node ids
+ * (`y*width + x`); the brand is compile-time only, so the component remains plain-number serializable.
  */
 export const PathRequest = defineComponent<{ start: NodeId; goal: NodeId; failed: boolean }>('PathRequest');
 

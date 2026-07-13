@@ -24,7 +24,7 @@ function floorInt(v: Fixed): number {
  * ascending cell id — deterministic; a bracket node clamped onto the map at a border can duplicate
  * another, which is harmless — identical distance and id). Mid-leg a walker sits between two
  * walkable waypoints, so the bracket always contains a walkable node — but the NEAREST bracket node
- * alone can be unwalkable: a diagonal leg is legal with one impassable flank (see `terrain.ts`
+ * alone can be unwalkable: a diagonal leg is legal with one impassable flank (see `terrain/graph.ts`
  * steps), and a walker past the seam truncates onto that flank. `findPath` rejects an unwalkable
  * start outright, which would fail the request and strand the walker mid-seam; skipping to the
  * nearest WALKABLE bracket node keeps every mid-walk re-route servable. Falls back to the
@@ -106,7 +106,7 @@ export function navigationPlanner(world: World, terrain: TerrainGraph): void {
       // The route ends somewhere else — the goal changed mid-walk. Fall through and re-route from
       // where the walker stands: the splice replaces the stale path this tick, momentum carried.
     } else {
-      const g = terrain.coordsOf(goalNode as NodeId); // validated just above
+      const g = terrain.coordsOf(goalNode); // validated just above
       const centre = positionOfNode(g.x, g.y);
       if (p.x === centre.x && p.y === centre.y) {
         world.remove(e, MoveGoal); // standing exactly on the goal node: satisfied

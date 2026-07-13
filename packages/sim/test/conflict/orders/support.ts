@@ -1,25 +1,9 @@
 import { beforeEach } from 'vitest';
-import {
-  Building,
-  Carrying,
-  CurrentAtomic,
-  DeliveryFlag,
-  Health,
-  JobAssignment,
-  MoveGoal,
-  Owner,
-  PathFollow,
-  PathRequest,
-  PlayerOrder,
-  Position,
-  Resource,
-  Settler,
-  Stockpile,
-  WorkFlag,
-} from '../../../src/components/index.js';
+import { Owner, Position, Resource, Settler } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { cellAnchorNode, fx, halfCellMapFromCells, Simulation, type TerrainMap } from '../../../src/index.js';
 import { testContent } from '../../fixtures/content.js';
+import { clearComponentStores } from '../../fixtures/stores.js';
 
 /**
  * Tests for the PLAYER-order commands (`moveUnit` / `setJob`) and the PlayerOrder timed-override system
@@ -38,24 +22,7 @@ export const HEADQUARTERS = 1;
 export const HARVEST_ATOMIC = 24;
 export const HUMAN_PLAYER = 0;
 
-beforeEach(() => {
-  Position.store.clear();
-  Settler.store.clear();
-  Resource.store.clear();
-  Building.store.clear();
-  Stockpile.store.clear();
-  Carrying.store.clear();
-  CurrentAtomic.store.clear();
-  MoveGoal.store.clear();
-  PathFollow.store.clear();
-  PathRequest.store.clear();
-  JobAssignment.store.clear();
-  Health.store.clear();
-  Owner.store.clear();
-  PlayerOrder.store.clear();
-  WorkFlag.store.clear();
-  DeliveryFlag.store.clear();
-});
+beforeEach(clearComponentStores);
 
 /** An all-grass CELL-resolution strip, upsampled to the 2W×2H half-cell navigation lattice. */
 export function grassMap(width: number, height: number): TerrainMap {

@@ -8,7 +8,7 @@ import type { SystemContext } from '../context.js';
 /**
  * The **gatherer work-flag lifecycle** — the create / relocate / destroy of a gatherer's drop-off flag,
  * plus the "is this a gatherer trade" gate that governs it. Split out of the player-command handlers
- * (`conflict/orders.ts`, which still owns `setWorkFlag`/`setJob`) so the flag ENTITY lifecycle has a
+ * (`orders/work.ts`, which owns `setWorkFlag`/`setJob`) so the flag ENTITY lifecycle has a
  * feature home the non-command callers can reach without importing the player-orders module: `setWorkFlag`
  * (the Ctrl+Right-Click command) plants / moves a flag, a profession change ({@link syncWorkFlagToJob},
  * run inside `reidleAsJob`) plants or drops one, and the death reap (`cleanupSystem`) drops a dead
