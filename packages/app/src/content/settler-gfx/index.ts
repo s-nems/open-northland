@@ -11,18 +11,13 @@
  * pipeline leg) by sequence name and turned into a {@link DirectionalAnim} via {@link directionalAnimFromSeq}
  * (`stride = length / DIRS`). What stays in code is the render-taste tuning the data does not carry: which
  * sequence drives which state, the `phaseStart` windup offset, and the single-frame idle hold. This feature
- * splits into three modules: the named-clip + timing data ({@link import('./sequences.js')}), the per-job
- * character roster ({@link import('./character-specs.js')}), and the pure binding reducers
- * ({@link import('./bindings.js')}).
+ * splits by concern: the named-clip + timing data ({@link import('./sequences.js')}), the per-job character
+ * roster ({@link import('./character-specs.js')}), the pure seq→anim primitives
+ * ({@link import('./seq-anim.js')}), the legacy whole-sheet demo binding ({@link import('./bindings-demo.js')}),
+ * and the per-character/warrior binding reducers ({@link import('./bindings-character.js')}).
  */
-export {
-  buildHumanBindings,
-  carryAnimsByGood,
-  carryHeadAnims,
-  characterBinding,
-  directionalAnimFromSeq,
-  type GoodRef,
-} from './bindings.js';
+export { carryAnimsByGood, carryHeadAnims, characterBinding } from './bindings-character.js';
+export { buildHumanBindings } from './bindings-demo.js';
 export {
   ADULT_CHARACTER_BY_JOB,
   CHARACTER_SPEC_ENTRIES,
@@ -32,4 +27,5 @@ export {
   WARRIOR_SPEC_BY_WEAPON_GOOD,
   YOUNG_CHARACTER_BY_JOB,
 } from './character-specs.js';
+export { directionalAnimFromSeq, type GoodRef } from './seq-anim.js';
 export { HARVEST_TICKS, MUSHROOM_PLUCK_FRAMES, MUSHROOM_PLUCKS_PER_PICK } from './sequences.js';
