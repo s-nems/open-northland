@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { encodeBmd } from '../src/decoders/bmd/index.js';
-import { encodeCursor } from '../src/decoders/cursor.js';
+import { encodeCursor } from '../src/decoders/cur.js';
 import { decodePng } from '../src/decoders/png.js';
 import {
   BODY_SHADOW_MIN_LUMA,
