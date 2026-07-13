@@ -8,7 +8,7 @@ import { lerp } from '../../data/math.js';
 import { collectSpriteScene, type DrawItem, paintOrderBias } from '../../data/scene/index.js';
 import type { SpriteKind } from '../../data/sprites/index.js';
 import type { Viewport } from '../../data/viewport.js';
-import { PalettedSprite } from '../paletted-sprite.js';
+import { PalettedSprite } from '../paletted-sprite/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
 import { trackMotion } from './motion.js';

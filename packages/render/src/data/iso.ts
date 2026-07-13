@@ -138,7 +138,7 @@ export interface Camera {
 
 /**
  * Apply the camera to one world axis — `screen = world·scale + offset` — for the ONE case that needs it
- * explicitly: the team-colour {@link import('../gpu/paletted-sprite.js').PalettedSprite} meshes self-place in
+ * explicitly: the team-colour {@link import('../gpu/paletted-sprite/index.js').PalettedSprite} meshes self-place in
  * SCREEN space (a custom-shader mesh can't ride the camera-transformed layer), so they mirror the transform
  * plain sprites inherit from the scene graph. Split X/Y (not a `{x,y}` return) so the per-frame paletted path
  * allocates nothing. Pure.
