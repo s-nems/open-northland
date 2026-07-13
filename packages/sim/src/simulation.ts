@@ -1,11 +1,10 @@
 import type { ContentSet } from '@open-northland/data';
-import { FOG_MODE, fogMode, needsEnabled, Position } from './components/index.js';
+import { FOG_MODE, fogMode, needsEnabled } from './components/index.js';
 import { CommandQueue } from './core/command-queue.js';
 import type { Command } from './core/commands/index.js';
 import { EventBuffer } from './core/events.js';
-import { fx } from './core/fixed.js';
 import { Rng } from './core/rng.js';
-import { type Entity, World } from './ecs/world.js';
+import { World } from './ecs/world.js';
 import { checkInvariants as _checkInvariants, type Invariant as _Invariant } from './harness/invariants.js';
 import { takeSnapshot, type WorldSnapshot } from './inspect/snapshot.js';
 import { buildTerrainGraph, type TerrainGraph, type TerrainMap } from './nav/terrain/index.js';
@@ -302,11 +301,4 @@ export class Simulation {
     }
     return h.toString(16).padStart(8, '0');
   }
-}
-
-/** Minimal positioned-entity fixture helper (the determinism golden builds worlds with it). */
-export function spawnAt(world: World, x: number, y: number): Entity {
-  const e = world.create();
-  world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  return e;
 }

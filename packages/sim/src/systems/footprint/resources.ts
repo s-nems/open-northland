@@ -1,16 +1,10 @@
-import {
-  type ContentSet,
-  fullStateBlockAreaCells,
-  type LandscapeBlockArea,
-  type LandscapeGfx,
-} from '@open-northland/data';
+import { type ContentSet, fullStateBlockAreaCells, type LandscapeGfx } from '@open-northland/data';
 import {
   Felling,
   MineDeposit,
   Position,
   Resource,
   ResourceFootprint,
-  type ResourceFootprintCell,
   type ResourceFootprintData,
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
@@ -23,22 +17,17 @@ import { translatedCells } from './geometry.js';
 // the incrementally-maintained per-world blocked-cell cache (with its coherence verifier). Opt-in
 // via ResourceFootprint: a bare Resource keeps the legacy same-tile fixture behavior.
 
-/** Collapse a `[GfxLandscape]` area table to the fresh/full object's cells — the shared
- *  `fullStateBlockAreaCells` reading (also the app's map-collision join), typed to the component cell. */
-function footprintCellsForFullState(areas: readonly LandscapeBlockArea[]): ResourceFootprintCell[] {
-  return fullStateBlockAreaCells(areas);
-}
-
 /**
  * Convert one decoded `[GfxLandscape]` record into the sim's resource-footprint component payload.
  * The source stores repeated rows per valency/growth state; collision for Step 5 is static until the
- * node is removed, so the full/fresh state is the correct conservative consumer.
+ * node is removed, so `fullStateBlockAreaCells` (the fresh/full object's cells — also the app's
+ * map-collision join) is the correct conservative consumer.
  */
 export function resourceFootprintFromLandscapeGfx(record: LandscapeGfx): ResourceFootprintData {
   return {
-    walk: footprintCellsForFullState(record.walkBlockAreas),
-    build: footprintCellsForFullState(record.buildBlockAreas),
-    work: footprintCellsForFullState(record.workAreas),
+    walk: fullStateBlockAreaCells(record.walkBlockAreas),
+    build: fullStateBlockAreaCells(record.buildBlockAreas),
+    work: fullStateBlockAreaCells(record.workAreas),
     sourceGfxIndex: record.index,
   };
 }
