@@ -14,7 +14,7 @@ import { clearComponentStores } from '../../src/harness/stores.js';
 import { type Fixed, fx, ONE, Simulation } from '../../src/index.js';
 import { aiSystem, atomicSystem, EAT_ANIMATION_REPEATS } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
-import { cellOf, ctxOf, grassMap, needsSettlerAt } from './needs/support.js';
+import { cellOf, ctxOf, grassMap, justAbove, NEED_THRESHOLD, needsSettlerAt } from './needs/support.js';
 
 /**
  * Unit + integration tests for the EAT DRIVE — the planner choosing an `eat` atomic (id 10, the
@@ -34,7 +34,7 @@ const VIKING = 1;
 const HEADQUARTERS = 1;
 const EAT_ATOMIC = 10;
 // Just over the ¾·ONE eat threshold — a settler this hungry seeks food before any work.
-const HUNGRY: Fixed = fx.add(fx.div(fx.fromInt(3), fx.fromInt(4)), fx.fromInt(1));
+const HUNGRY: Fixed = justAbove(NEED_THRESHOLD);
 // Comfortably below the threshold — a fed settler ignores the eat drive and works as normal.
 const FED: Fixed = fx.div(ONE, fx.fromInt(2));
 
@@ -174,7 +174,7 @@ describe('eat drive — closing the rise→eat→reset loop through the real sch
   it('a settler beside a larder gets hungry, walks over, eats, and its hunger resets', () => {
     const sim = new Simulation({ seed: 3, content: testContent(), map: grassMap(3, 1) });
     // Start the settler already near the threshold so it crosses within a short headless run.
-    const settler = settlerAt(sim, 0, 0, fx.div(fx.fromInt(3), fx.fromInt(4)));
+    const settler = settlerAt(sim, 0, 0, NEED_THRESHOLD);
     const FOOD_START = 10;
     const larder = storeAt(sim, 1, 0, FOOD_START); // one tile over
 
@@ -199,7 +199,7 @@ describe('eat drive — closing the rise→eat→reset loop through the real sch
     const run = (): string => {
       clearComponentStores();
       const sim = new Simulation({ seed: 5, content: testContent(), map: grassMap(3, 1) });
-      settlerAt(sim, 0, 0, fx.div(fx.fromInt(3), fx.fromInt(4)));
+      settlerAt(sim, 0, 0, NEED_THRESHOLD);
       storeAt(sim, 1, 0, 10);
       for (let i = 0; i < 200; i++) sim.step();
       return sim.hashState();

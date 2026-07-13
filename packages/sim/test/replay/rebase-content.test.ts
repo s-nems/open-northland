@@ -9,6 +9,7 @@ import {
   type TerrainMap,
 } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
+import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 /**
  * Tests for `rebaseContent()` — the headless, self-verifiable half of the "Content hot-reload" DX win
@@ -28,11 +29,6 @@ const SAWMILL = 2;
 const WOODCUTTER = 1;
 const CARPENTER = 2;
 const VIKING = 1;
-const GRASS = 0;
-
-function grassMap(width: number, height: number): TerrainMap {
-  return { resolution: 'half-cell', width, height, typeIds: new Array(width * height).fill(GRASS) };
-}
 
 /**
  * A RAW content blob (a plain object), the shape the app would read off disk and hand to

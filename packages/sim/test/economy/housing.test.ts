@@ -4,6 +4,7 @@ import { Building, Settler } from '../../src/components/index.js';
 import { clearComponentStores } from '../../src/harness/stores.js';
 import { fx, ONE, Simulation } from '../../src/index.js';
 import { housingCapacity, tribePopulation } from '../../src/systems/index.js';
+import { ctxOf } from '../fixtures/context.js';
 
 /**
  * The housing read model — `housingCapacity` (the sum of a tribe's built `home` buildings' `homeSize`,
@@ -54,10 +55,6 @@ function spawnSettler(sim: Simulation, tribe: number): void {
     enjoyment: fx.fromInt(0),
     experience: new Map<number, number>(),
   });
-}
-
-function ctxOf(sim: Simulation) {
-  return { content: sim.content, rng: sim.rng, tick: sim.tick, events: sim.events };
 }
 
 describe('housingCapacity', () => {

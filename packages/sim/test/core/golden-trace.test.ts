@@ -1,15 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Felling, Position, Resource } from '../../src/components/index.js';
-import {
-  CORE_INVARIANTS,
-  checkInvariants,
-  fx,
-  halfCellMapFromCells,
-  Simulation,
-  type TerrainMap,
-} from '../../src/index.js';
+import { CORE_INVARIANTS, checkInvariants, fx, Simulation } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 import { clearComponentStores } from '../fixtures/stores.js';
+import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
  * GOLDEN STATE-HASH + GOLDEN ATOMIC-ACTION TRACE — the Phase-2 determinism tripwire (plan).
@@ -53,7 +47,6 @@ import { clearComponentStores } from '../fixtures/stores.js';
  * produced note).
  */
 
-const GRASS = 0;
 const WOOD = 1;
 const WOODCUTTER = 1;
 const CARPENTER = 2; // the sawmill's `workers` jobType — its operator
@@ -67,10 +60,6 @@ const HARVEST_ATOMIC = 24;
 // scoped to this test regardless of execution order (see atomic-planner.test.ts).
 
 beforeEach(clearComponentStores);
-
-function grassMap(width: number, height: number): TerrainMap {
-  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });
-}
 
 interface GoldenRun {
   readonly hash: string;

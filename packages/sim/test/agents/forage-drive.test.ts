@@ -20,7 +20,7 @@ import {
   berryGrowthSystem,
 } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
-import { cellOf, ctxOf, grassMap, needsSettlerAt } from './needs/support.js';
+import { cellOf, ctxOf, grassMap, justAbove, NEED_THRESHOLD, needsSettlerAt } from './needs/support.js';
 
 /**
  * Unit + integration tests for the FORAGE DRIVE — a hungry settler eating a wild {@link BerryBush} as the
@@ -37,7 +37,7 @@ const VIKING = 1;
 const HEADQUARTERS = 1;
 const EAT_ATOMIC = 10;
 // Just over the ¾·ONE eat threshold — a settler this hungry seeks food before any work.
-const HUNGRY: Fixed = fx.add(fx.div(fx.fromInt(3), fx.fromInt(4)), fx.fromInt(1));
+const HUNGRY: Fixed = justAbove(NEED_THRESHOLD);
 
 beforeEach(clearComponentStores);
 
@@ -188,7 +188,7 @@ describe('forage atomic + regrow (AtomicSystem, BerryGrowthSystem)', () => {
 describe('forage drive — closing the rise→forage→reset loop through the real schedule', () => {
   it('a settler beside a bush gets hungry, forages, its hunger resets, and the bush regrows', () => {
     const sim = new Simulation({ seed: 3, content: testContent(), map: grassMap(3, 1) });
-    const settler = settlerAt(sim, 0, 0, fx.div(fx.fromInt(3), fx.fromInt(4)));
+    const settler = settlerAt(sim, 0, 0, NEED_THRESHOLD);
     const bush = bushAt(sim, 1, 0); // one tile over
 
     let ateAtLeastOnce = false;
@@ -209,7 +209,7 @@ describe('forage drive — closing the rise→forage→reset loop through the re
     const run = (): string => {
       clearComponentStores();
       const sim = new Simulation({ seed: 5, content: testContent(), map: grassMap(5, 1) });
-      settlerAt(sim, 0, 0, fx.div(fx.fromInt(3), fx.fromInt(4)));
+      settlerAt(sim, 0, 0, NEED_THRESHOLD);
       bushAt(sim, 2, 0);
       for (let i = 0; i < 300; i++) sim.step();
       return sim.hashState();

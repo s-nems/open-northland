@@ -5,7 +5,15 @@ import { clearComponentStores } from '../../src/harness/stores.js';
 import { type Fixed, fx, ONE, Simulation } from '../../src/index.js';
 import { aiSystem, atomicSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
-import { cellOf, ctxOf, grassMap, needsSettlerAt, treeAt } from './needs/support.js';
+import {
+  cellOf,
+  ctxOf,
+  grassMap,
+  justAbove,
+  NEED_THRESHOLD,
+  needsSettlerAt,
+  treeAt,
+} from './needs/support.js';
 
 /**
  * Unit + integration tests for the PRAY DRIVE — the planner choosing a `pray` atomic (id 12, the
@@ -23,7 +31,7 @@ const VIKING = 1;
 const TEMPLE_TYPE = 3;
 const PRAY_ATOMIC = 12;
 // Just over the ¾·ONE pray threshold — a settler this devout-overdue prays before any work.
-const DEVOUT: Fixed = fx.add(fx.div(fx.fromInt(3), fx.fromInt(4)), fx.fromInt(1));
+const DEVOUT: Fixed = justAbove(NEED_THRESHOLD);
 // Comfortably below the threshold — a piety-satisfied settler ignores the pray drive and works.
 const PIOUS: Fixed = fx.div(ONE, fx.fromInt(2));
 
@@ -144,7 +152,7 @@ describe('pray drive — closing the rise→pray→reset loop through the real s
   it('a settler grows devout, walks to the temple, prays, and its piety resets', () => {
     const sim = new Simulation({ seed: 3, content: testContent(), map: grassMap(4, 1) });
     // Start near the threshold so it crosses within a short headless run; temple a couple cells away.
-    const settler = settlerAt(sim, 0, 0, fx.div(fx.fromInt(3), fx.fromInt(4)));
+    const settler = settlerAt(sim, 0, 0, NEED_THRESHOLD);
     templeAt(sim, 3, 0);
 
     let prayedAtLeastOnce = false;
@@ -166,7 +174,7 @@ describe('pray drive — closing the rise→pray→reset loop through the real s
     const run = (): string => {
       clearComponentStores();
       const sim = new Simulation({ seed: 5, content: testContent(), map: grassMap(4, 1) });
-      settlerAt(sim, 0, 0, fx.div(fx.fromInt(3), fx.fromInt(4)));
+      settlerAt(sim, 0, 0, NEED_THRESHOLD);
       templeAt(sim, 3, 0);
       for (let i = 0; i < 400; i++) sim.step();
       return sim.hashState();

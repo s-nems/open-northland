@@ -12,16 +12,11 @@ import {
   UnderConstruction,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import {
-  fx,
-  halfCellMapFromCells,
-  nodeOfPosition,
-  positionOfNode,
-  Simulation,
-  type TerrainMap,
-} from '../../src/index.js';
+import { fx, halfCellMapFromCells, nodeOfPosition, positionOfNode, Simulation } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
+import { settlerAt as spawnSettler } from '../fixtures/settler.js';
 import { clearComponentStores } from '../fixtures/stores.js';
+import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
  * Tests for the IDLE-SPACING (de-stack) drive: owned settlers don't HARD-collide (a walker passes freely
@@ -39,28 +34,13 @@ const HUMAN_PLAYER = 0;
 
 beforeEach(clearComponentStores);
 
-function grassMap(width: number, height: number): TerrainMap {
-  // Cell-dims signature; the sim's graph is the upsampled 2W×2H half-cell lattice.
-  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });
-}
-
 function sim(): Simulation {
   return new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 6) });
 }
 
 /** A settler of the given trade at half-cell NODE (x,y) — the one factory both drives' tests share. */
 function settlerAt(s: Simulation, x: number, y: number, jobType: number, owner: number | null): Entity {
-  const e = s.world.create();
-  s.world.add(e, Position, positionOfNode(x, y));
-  s.world.add(e, Settler, {
-    tribe: VIKING,
-    jobType,
-    hunger: fx.fromInt(0),
-    fatigue: fx.fromInt(0),
-    piety: fx.fromInt(0),
-    enjoyment: fx.fromInt(0),
-    experience: new Map(),
-  });
+  const e = spawnSettler(s, { jobType, position: positionOfNode(x, y) });
   if (owner !== null) s.world.add(e, Owner, { player: owner });
   return e;
 }

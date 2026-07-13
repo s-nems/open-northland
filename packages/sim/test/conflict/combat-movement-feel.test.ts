@@ -11,13 +11,14 @@ import {
   Stance,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { cellAnchorNode, fx, halfCellMapFromCells, Simulation, type TerrainMap } from '../../src/index.js';
+import { cellAnchorNode, fx, Simulation } from '../../src/index.js';
 import { nodeOfPosition, positionOfNode } from '../../src/nav/halfcell.js';
-import type { SystemContext } from '../../src/systems/index.js';
 import { moveUnit } from '../../src/systems/orders/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { testContent } from '../fixtures/content.js';
+import { ctxOf } from '../fixtures/context.js';
 import { clearComponentStores } from '../fixtures/stores.js';
+import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
  * The combat MOVEMENT-FEEL contracts (the reported large-battle artifacts, each pinned here):
@@ -40,27 +41,12 @@ import { clearComponentStores } from '../fixtures/stores.js';
  * move-order dwell"; the fixture's `test_axe` (viking tribe 1, job 1) has band [1, 2].
  */
 
-const GRASS = 0;
 const VIKING = 1;
 const WOODCUTTER = 1;
 const P0 = 0;
 const P1 = 1;
 
 beforeEach(clearComponentStores);
-
-function grassMap(width: number, height: number): TerrainMap {
-  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });
-}
-
-function ctxOf(sim: Simulation): SystemContext {
-  return {
-    content: sim.content,
-    rng: sim.rng,
-    tick: sim.tick,
-    events: sim.events,
-    ...(sim.terrain !== undefined ? { terrain: sim.terrain } : {}),
-  };
-}
 
 /** An owned combatant (Settler + Health + Owner + an explicit stance) at cell (x, y). */
 function fighterAt(

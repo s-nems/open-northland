@@ -1,3 +1,5 @@
+export { ctxOf } from '../../fixtures/context.js';
+
 import { beforeEach } from 'vitest';
 import { Armor, CurrentAtomic, Health, Position, Settler } from '../../../src/components/index.js';
 import type { AtomicEffect } from '../../../src/core/atomic-effect.js';
@@ -10,7 +12,6 @@ import {
   type Simulation,
   type TerrainMap,
 } from '../../../src/index.js';
-import type { SystemContext } from '../../../src/systems/index.js';
 import { clearComponentStores } from '../../fixtures/stores.js';
 
 import { ATTACK_ATOMIC } from './content.js';
@@ -19,16 +20,6 @@ export * from './content.js';
 
 export function grass(width: number, height: number): TerrainMap {
   return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(0) });
-}
-
-export function ctxOf(sim: Simulation): SystemContext {
-  return {
-    content: sim.content,
-    rng: sim.rng,
-    tick: sim.tick,
-    events: sim.events,
-    ...(sim.terrain !== undefined ? { terrain: sim.terrain } : {}),
-  };
 }
 
 /** A combatant of `tribe`/`jobType` at visual cell (x,y), optionally armored. */

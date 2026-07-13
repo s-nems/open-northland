@@ -2,9 +2,11 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { MoveGoal, PathFollow, PathRequest, Position } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { clearComponentStores } from '../../src/harness/stores.js';
-import { cellAnchorNode, fx, halfCellMapFromCells, Simulation, type TerrainMap } from '../../src/index.js';
-import { aiSystem, type SystemContext } from '../../src/systems/index.js';
+import { cellAnchorNode, fx, Simulation } from '../../src/index.js';
+import { aiSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
+import { ctxOf } from '../fixtures/context.js';
+import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
  * Unit + integration tests for the AISystem's navigation-planner slice — the seam that turns a
@@ -23,9 +25,6 @@ beforeEach(() => {
 });
 
 /** An all-grass CELL-resolution strip, upsampled to the 2W×2H half-cell navigation lattice. */
-function grassMap(width: number, height: number): TerrainMap {
-  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });
-}
 
 /** The cell id of visual tile (x, y)'s ANCHOR NODE — sim grid coords are half-cell nodes. */
 function anchorCell(sim: Simulation, x: number, y: number): number {
@@ -230,12 +229,3 @@ describe('aiSystem — determinism', () => {
 });
 
 /** A SystemContext for invoking aiSystem directly with the sim's live terrain. */
-function ctxOf(sim: Simulation): SystemContext {
-  return {
-    content: sim.content,
-    rng: sim.rng,
-    tick: 0,
-    events: sim.events,
-    ...(sim.terrain !== undefined ? { terrain: sim.terrain } : {}),
-  };
-}

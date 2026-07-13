@@ -1,7 +1,8 @@
+export { ctxOf } from '../../fixtures/context.js';
+
 import { Building, Position, Settler, Stockpile } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, ONE, type Simulation } from '../../../src/index.js';
-import type { SystemContext } from '../../../src/systems/index.js';
 
 export const WOOD = 1;
 export const PLANK = 2;
@@ -10,17 +11,6 @@ export const HEADQUARTERS = 1;
 export const CARPENTER = 2;
 export const CYCLE_TICKS = 20;
 export const WOODCUTTER = 1;
-
-export function ctxOf(sim: Simulation): SystemContext {
-  return {
-    content: sim.content,
-    rng: sim.rng,
-    tick: sim.tick,
-    events: sim.events,
-    commands: sim.commands,
-    ...(sim.terrain !== undefined ? { terrain: sim.terrain } : {}),
-  };
-}
 
 /** Spawn a tribe-1 settler of `jobType` at the given tile. */
 export function spawnSettler(sim: Simulation, jobType: number, x: number, y: number): Entity {

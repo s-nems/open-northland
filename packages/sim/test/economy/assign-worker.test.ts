@@ -4,9 +4,9 @@ import type { Command } from '../../src/core/commands/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { clearComponentStores } from '../../src/harness/stores.js';
 import { fx, Simulation } from '../../src/index.js';
-import type { SystemContext } from '../../src/systems/index.js';
 import { assignWorker } from '../../src/systems/orders/index.js';
 import { testContent } from '../fixtures/content.js';
+import { ctxOf } from '../fixtures/context.js';
 
 /**
  * The `assignWorker` command — the player-directed twin of the JobSystem's automatic assignment: bind
@@ -26,16 +26,6 @@ const SAWMILL = 2; // building type
 beforeEach(() => {
   clearComponentStores();
 });
-
-function ctxOf(sim: Simulation): SystemContext {
-  return {
-    content: sim.content,
-    rng: sim.rng,
-    tick: sim.tick,
-    events: sim.events,
-    ...(sim.terrain !== undefined ? { terrain: sim.terrain } : {}),
-  };
-}
 
 function placeBuilding(sim: Simulation, buildingType: number, x: number, y: number): Entity {
   const e = sim.world.create();

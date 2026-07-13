@@ -1,10 +1,15 @@
+export { ctxOf } from '../../fixtures/context.js';
+
+import { grassCellMap as grassMap } from '../../fixtures/terrain.js';
+
+export { grassMap };
+
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { beforeEach } from 'vitest';
 import { Building } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { halfCellMapFromCells, Simulation, type TerrainMap } from '../../../src/index.js';
+import { Simulation, type TerrainMap } from '../../../src/index.js';
 import type { TerrainGraph } from '../../../src/nav/terrain/index.js';
-import type { SystemContext } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { clearComponentStores } from '../../fixtures/stores.js';
 
@@ -69,11 +74,6 @@ export function placementContent(): ContentSet {
   });
 }
 
-/** A flat all-grass map (cell-dims signature; the sim's graph is the upsampled 2W×2H lattice). */
-export function grassMap(width: number, height: number): TerrainMap {
-  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });
-}
-
 /** A W×H cell-resolution grass grid whose cells a test can overwrite before upsampling — each cell
  *  stamps its 2×2 half-cell block, so one water/margin CELL blocks four NODES. */
 export function grassCells(
@@ -98,17 +98,6 @@ export function placedBuilding(sim: Simulation, index = 0): Entity {
   const e = [...sim.world.query(Building)].sort((a, b) => a - b)[index];
   if (e === undefined) throw new Error(`no building at index ${index}`);
   return e;
-}
-
-export function ctxOf(sim: Simulation): SystemContext {
-  return {
-    content: sim.content,
-    rng: sim.rng,
-    tick: sim.tick,
-    events: sim.events,
-    commands: sim.commands,
-    terrain: sim.terrain,
-  };
 }
 
 export function buildingsPlaced(sim: Simulation): number {

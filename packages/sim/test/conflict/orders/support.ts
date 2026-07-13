@@ -1,7 +1,11 @@
+import { grassCellMap as grassMap } from '../../fixtures/terrain.js';
+
+export { grassMap };
+
 import { beforeEach } from 'vitest';
 import { Owner, Position, Resource, Settler } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { cellAnchorNode, fx, halfCellMapFromCells, Simulation, type TerrainMap } from '../../../src/index.js';
+import { cellAnchorNode, fx, Simulation } from '../../../src/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { clearComponentStores } from '../../fixtures/stores.js';
 
@@ -25,9 +29,6 @@ export const HUMAN_PLAYER = 0;
 beforeEach(clearComponentStores);
 
 /** An all-grass CELL-resolution strip, upsampled to the 2W×2H half-cell navigation lattice. */
-export function grassMap(width: number, height: number): TerrainMap {
-  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });
-}
 
 export function sim(): Simulation {
   return new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 4) });

@@ -1,25 +1,18 @@
+export { ctxOf } from '../../fixtures/context.js';
+
+import { grassCellMap as grassMap } from '../../fixtures/terrain.js';
+
+export { grassMap };
+
 import { Building, Position, Resource, Settler, Stockpile } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import {
-  cellAnchorNode,
-  fx,
-  halfCellMapFromCells,
-  ONE,
-  type Simulation,
-  type TerrainMap,
-} from '../../../src/index.js';
-import type { SystemContext } from '../../../src/systems/index.js';
+import { cellAnchorNode, fx, ONE, type Simulation } from '../../../src/index.js';
 
-const GRASS = 0;
 export const WOOD = 1;
 const WOODCUTTER = 1;
 export const VIKING = 1;
 const HEADQUARTERS = 1;
 export const HARVEST_ATOMIC = 24;
-
-export function grassMap(width: number, height: number): TerrainMap {
-  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });
-}
 
 export function anchorCell(sim: Simulation, x: number, y: number): number {
   const node = cellAnchorNode(x, y);
@@ -59,15 +52,4 @@ export function storeAt(sim: Simulation, x: number, y: number): Entity {
   });
   sim.world.add(entity, Stockpile, { amounts: new Map() });
   return entity;
-}
-
-export function ctxOf(sim: Simulation): SystemContext {
-  return {
-    content: sim.content,
-    rng: sim.rng,
-    tick: sim.tick,
-    events: sim.events,
-    commands: sim.commands,
-    ...(sim.terrain !== undefined ? { terrain: sim.terrain } : {}),
-  };
 }

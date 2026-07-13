@@ -13,7 +13,7 @@ import {
 } from '../../src/components/index.js';
 import { fx } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { cellAnchorNode, halfCellMapFromCells, Simulation, type TerrainMap } from '../../src/index.js';
+import { cellAnchorNode, Simulation } from '../../src/index.js';
 import { MILITARY_MODE, SCOUT_JOB } from '../../src/systems/readviews/index.js';
 import {
   BUILDING_VISION_NODES,
@@ -28,6 +28,7 @@ import {
 } from '../../src/systems/vision/index.js';
 import { testContent } from '../fixtures/content.js';
 import { clearComponentStores } from '../fixtures/stores.js';
+import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
  * The fog-of-war layer (systems/vision.ts): per-player masks over the cell grid, the three modes'
@@ -36,17 +37,12 @@ import { clearComponentStores } from '../fixtures/stores.js';
  * these tests pin self-consistency, not original fidelity.
  */
 
-const GRASS = 0;
 const VIKING = 1;
 const WOODCUTTER = 1; // fixture job 1 — carries test_axe (band [1,2]); a civilian eye
 const P0 = 0;
 const P1 = 1;
 
 beforeEach(clearComponentStores);
-
-function grassMap(width: number, height: number): TerrainMap {
-  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });
-}
 
 function simOn(mode: number, w = 24, h = 8): Simulation {
   const sim = new Simulation({ seed: 7, content: testContent(), map: grassMap(w, h) });

@@ -19,6 +19,24 @@ function weapon(content: ContentSet, id: string): WeaponType {
   return found;
 }
 
+type ContentInput = Parameters<typeof parseContentSet>[0];
+
+/**
+ * The shared scaffold every classification test needs — the standard manifest/goods/buildings plus a
+ * single `idle` job — leaving each test to supply only its `weapons` rows (and, for the soldier-class
+ * views, its own `jobs`). Omitting `weapons` reproduces the bare scaffold, so the "defaults weapons to
+ * []" tests still exercise parseContentSet's omitted-key default rather than an explicit `[]`.
+ */
+function weaponFixture(weapons?: ContentInput['weapons'], jobs?: ContentInput['jobs']): ContentSet {
+  return parseContentSet({
+    manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+    goods: [{ typeId: 0, id: 'none' }],
+    jobs: jobs ?? [{ typeId: 0, id: 'idle' }],
+    buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
+    ...(weapons !== undefined ? { weapons } : {}),
+  });
+}
+
 /**
  * The weapon-classification read views — `isRangedWeapon`/`rangedWeapons` (the bow/catapult rows that
  * fire ammunition) and `isSiegeWeapon`/`siegeWeapons` (the catapult rows that deal area damage) classify
@@ -35,23 +53,17 @@ function weapon(content: ContentSet, id: string): WeaponType {
  * views keep `content.weapons` order rather than re-sorting.
  */
 function weaponContent(): ContentSet {
-  return parseContentSet({
-    manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
-    goods: [{ typeId: 0, id: 'none' }],
-    jobs: [{ typeId: 0, id: 'idle' }],
-    buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
-    weapons: [
-      // A melee fist: no munitionType (not ranged), no damageType (not siege).
-      { typeId: 1, id: 'fist', tribeType: 1, mainType: 1 },
-      // A catapult declared BEFORE the bow — both ranged; the catapult is the only siege row.
-      { typeId: 7, id: 'catapult', tribeType: 1, mainType: 7, munitionType: 2, damageType: 2 },
-      // A short bow: munitionType 1 (fires arrows) but NO damageType — ranged, not siege.
-      { typeId: 6, id: 'bow_short', tribeType: 1, mainType: 6, munitionType: 1 },
-      // A melee spear and sword: neither ranged nor siege.
-      { typeId: 4, id: 'wooden_spear', tribeType: 1, mainType: 2 },
-      { typeId: 5, id: 'sword_short', tribeType: 1, mainType: 3 },
-    ],
-  });
+  return weaponFixture([
+    // A melee fist: no munitionType (not ranged), no damageType (not siege).
+    { typeId: 1, id: 'fist', tribeType: 1, mainType: 1 },
+    // A catapult declared BEFORE the bow — both ranged; the catapult is the only siege row.
+    { typeId: 7, id: 'catapult', tribeType: 1, mainType: 7, munitionType: 2, damageType: 2 },
+    // A short bow: munitionType 1 (fires arrows) but NO damageType — ranged, not siege.
+    { typeId: 6, id: 'bow_short', tribeType: 1, mainType: 6, munitionType: 1 },
+    // A melee spear and sword: neither ranged nor siege.
+    { typeId: 4, id: 'wooden_spear', tribeType: 1, mainType: 2 },
+    { typeId: 5, id: 'sword_short', tribeType: 1, mainType: 3 },
+  ]);
 }
 
 describe('isRangedWeapon', () => {
@@ -89,23 +101,12 @@ describe('rangedWeapons', () => {
   });
 
   it('is empty when no weapon fires ammunition (a melee-only set)', () => {
-    const content = parseContentSet({
-      manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
-      goods: [{ typeId: 0, id: 'none' }],
-      jobs: [{ typeId: 0, id: 'idle' }],
-      buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
-      weapons: [{ typeId: 1, id: 'fist', tribeType: 1, mainType: 1 }],
-    });
+    const content = weaponFixture([{ typeId: 1, id: 'fist', tribeType: 1, mainType: 1 }]);
     expect(rangedWeapons(content)).toEqual([]);
   });
 
   it('is empty for content with no weapons at all (parseContentSet defaults weapons to [])', () => {
-    const content = parseContentSet({
-      manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
-      goods: [{ typeId: 0, id: 'none' }],
-      jobs: [{ typeId: 0, id: 'idle' }],
-      buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
-    });
+    const content = weaponFixture();
     expect(rangedWeapons(content)).toEqual([]);
   });
 
@@ -122,14 +123,10 @@ describe('siegeWeapons', () => {
   });
 
   it('is empty when no weapon carries a damageType (a ranged-but-no-siege set)', () => {
-    const content = parseContentSet({
-      manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
-      goods: [{ typeId: 0, id: 'none' }],
-      jobs: [{ typeId: 0, id: 'idle' }],
-      buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
-      // a bow is ranged but not siege — the view excludes it
-      weapons: [{ typeId: 6, id: 'bow_short', tribeType: 1, mainType: 6, munitionType: 1 }],
-    });
+    // a bow is ranged but not siege — the view excludes it
+    const content = weaponFixture([
+      { typeId: 6, id: 'bow_short', tribeType: 1, mainType: 6, munitionType: 1 },
+    ]);
     expect(siegeWeapons(content)).toEqual([]);
   });
 });
@@ -145,13 +142,7 @@ describe('weaponClassOf', () => {
   });
 
   it('is undefined for a malformed weapon carrying no mainType', () => {
-    const content = parseContentSet({
-      manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
-      goods: [{ typeId: 0, id: 'none' }],
-      jobs: [{ typeId: 0, id: 'idle' }],
-      buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
-      weapons: [{ typeId: 1, id: 'no_class', tribeType: 1 }],
-    });
+    const content = weaponFixture([{ typeId: 1, id: 'no_class', tribeType: 1 }]);
     expect(weaponClassOf(weapon(content, 'no_class'))).toBeUndefined();
   });
 });
@@ -159,17 +150,11 @@ describe('weaponClassOf', () => {
 describe('weaponWeightOf', () => {
   it('returns the encumbrance weight (its weight field) for each weapon', () => {
     // explicit weights spanning the real {0,1,2} range; a dagger weighs 0, a sword 1, a maul 2
-    const content = parseContentSet({
-      manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
-      goods: [{ typeId: 0, id: 'none' }],
-      jobs: [{ typeId: 0, id: 'idle' }],
-      buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
-      weapons: [
-        { typeId: 1, id: 'dagger', tribeType: 1, mainType: 3, weight: 0 },
-        { typeId: 2, id: 'sword', tribeType: 1, mainType: 3, weight: 1 },
-        { typeId: 3, id: 'maul', tribeType: 1, mainType: 4, weight: 2 },
-      ],
-    });
+    const content = weaponFixture([
+      { typeId: 1, id: 'dagger', tribeType: 1, mainType: 3, weight: 0 },
+      { typeId: 2, id: 'sword', tribeType: 1, mainType: 3, weight: 1 },
+      { typeId: 3, id: 'maul', tribeType: 1, mainType: 4, weight: 2 },
+    ]);
     expect(weaponWeightOf(weapon(content, 'dagger'))).toBe(0);
     expect(weaponWeightOf(weapon(content, 'sword'))).toBe(1);
     expect(weaponWeightOf(weapon(content, 'maul'))).toBe(2);
@@ -194,18 +179,12 @@ describe('weaponsByClass', () => {
   });
 
   it('groups multiple weapons sharing a class into one bucket, preserving source order', () => {
-    const content = parseContentSet({
-      manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
-      goods: [{ typeId: 0, id: 'none' }],
-      jobs: [{ typeId: 0, id: 'idle' }],
-      buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
-      // two class-3 swords (declared sword_a before sword_b) plus a class-1 fist between them
-      weapons: [
-        { typeId: 5, id: 'sword_a', tribeType: 1, mainType: 3 },
-        { typeId: 1, id: 'fist', tribeType: 1, mainType: 1 },
-        { typeId: 6, id: 'sword_b', tribeType: 1, mainType: 3 },
-      ],
-    });
+    // two class-3 swords (declared sword_a before sword_b) plus a class-1 fist between them
+    const content = weaponFixture([
+      { typeId: 5, id: 'sword_a', tribeType: 1, mainType: 3 },
+      { typeId: 1, id: 'fist', tribeType: 1, mainType: 1 },
+      { typeId: 6, id: 'sword_b', tribeType: 1, mainType: 3 },
+    ]);
     const byClass = weaponsByClass(content);
     // both swords land in bucket 3, sword_a before sword_b (content.weapons order, not declaration of the bucket)
     expect(byClass.get(3)?.map((w) => w.id)).toEqual(['sword_a', 'sword_b']);
@@ -213,28 +192,17 @@ describe('weaponsByClass', () => {
   });
 
   it('omits a weapon with no mainType (no undefined bucket)', () => {
-    const content = parseContentSet({
-      manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
-      goods: [{ typeId: 0, id: 'none' }],
-      jobs: [{ typeId: 0, id: 'idle' }],
-      buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
-      weapons: [
-        { typeId: 5, id: 'sword', tribeType: 1, mainType: 3 },
-        { typeId: 1, id: 'no_class', tribeType: 1 }, // no mainType — dropped, not bucketed under undefined
-      ],
-    });
+    const content = weaponFixture([
+      { typeId: 5, id: 'sword', tribeType: 1, mainType: 3 },
+      { typeId: 1, id: 'no_class', tribeType: 1 }, // no mainType — dropped, not bucketed under undefined
+    ]);
     const byClass = weaponsByClass(content);
     expect([...byClass.keys()]).toEqual([3]);
     expect(byClass.get(3)?.map((w) => w.id)).toEqual(['sword']);
   });
 
   it('is empty for content with no weapons (parseContentSet defaults weapons to [])', () => {
-    const content = parseContentSet({
-      manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
-      goods: [{ typeId: 0, id: 'none' }],
-      jobs: [{ typeId: 0, id: 'idle' }],
-      buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
-    });
+    const content = weaponFixture();
     expect(weaponsByClass(content).size).toBe(0);
   });
 
@@ -254,16 +222,8 @@ describe('weaponsByClass', () => {
  * Rows are declared OUT of source order within a job to prove the buckets keep `content.weapons` order.
  */
 function jobWeaponContent(): ContentSet {
-  return parseContentSet({
-    manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
-    goods: [{ typeId: 0, id: 'none' }],
-    jobs: [
-      { typeId: 0, id: 'idle' },
-      { typeId: 6, id: 'swordsman' },
-      { typeId: 31, id: 'fighter' },
-    ],
-    buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
-    weapons: [
+  return weaponFixture(
+    [
       // swordsman (job 6) wields a sword; a fist (job 31) declared between its two weapons
       { typeId: 5, id: 'sword_short', tribeType: 1, mainType: 3, jobType: 6 },
       { typeId: 1, id: 'fist', tribeType: 1, mainType: 1, jobType: 31 },
@@ -272,7 +232,12 @@ function jobWeaponContent(): ContentSet {
       // a row with NO jobType — dropped from the grouping (no undefined bucket)
       { typeId: 9, id: 'no_job', tribeType: 1, mainType: 1 },
     ],
-  });
+    [
+      { typeId: 0, id: 'idle' },
+      { typeId: 6, id: 'swordsman' },
+      { typeId: 31, id: 'fighter' },
+    ],
+  );
 }
 
 describe('weaponsByJob', () => {
@@ -293,12 +258,7 @@ describe('weaponsByJob', () => {
   });
 
   it('is empty for content with no weapons (parseContentSet defaults weapons to [])', () => {
-    const content = parseContentSet({
-      manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
-      goods: [{ typeId: 0, id: 'none' }],
-      jobs: [{ typeId: 0, id: 'idle' }],
-      buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
-    });
+    const content = weaponFixture();
     expect(weaponsByJob(content).size).toBe(0);
   });
 

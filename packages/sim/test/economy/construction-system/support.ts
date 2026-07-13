@@ -1,3 +1,9 @@
+export { ctxOf } from '../../fixtures/context.js';
+
+import { grassNodeMap as grassMap } from '../../fixtures/terrain.js';
+
+export { grassMap };
+
 import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
 import { beforeEach } from 'vitest';
 import {
@@ -9,8 +15,7 @@ import {
   UnderConstruction,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { fx, ONE, type SimEvent, type Simulation, type TerrainMap } from '../../../src/index.js';
-import type { SystemContext } from '../../../src/systems/index.js';
+import { fx, ONE, type SimEvent, type Simulation } from '../../../src/index.js';
 import { clearComponentStores } from '../../fixtures/stores.js';
 
 /**
@@ -154,10 +159,6 @@ beforeEach(clearComponentStores);
 
 export { clearComponentStores };
 
-export function ctxOf(sim: Simulation): SystemContext {
-  return { content: sim.content, rng: sim.rng, tick: sim.tick, events: sim.events };
-}
-
 /** Place an under-construction building (`built = 0`, labor 0) holding the given starting materials. */
 export function placeSite(sim: Simulation, buildingType: number, stock: Record<number, number> = {}): Entity {
   const e = sim.world.create();
@@ -178,10 +179,6 @@ export function fullyHammer(sim: Simulation, site: Entity): void {
 
 export function finishedEvents(sim: Simulation): readonly SimEvent[] {
   return sim.events.current().filter((ev) => ev.kind === 'buildingFinished');
-}
-
-export function grassMap(width: number, height: number): TerrainMap {
-  return { resolution: 'half-cell', width, height, typeIds: new Array(width * height).fill(GRASS) };
 }
 
 /** An under-construction site placed at a given tile (empty hold — accumulates deliveries). */

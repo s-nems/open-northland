@@ -2,14 +2,9 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { CurrentAtomic, Health, Position } from '../../src/components/index.js';
 import { eventAt } from '../../src/core/events.js';
 import { clearComponentStores } from '../../src/harness/stores.js';
-import type { TerrainMap } from '../../src/index.js';
-import { fx, halfCellMapFromCells, Simulation } from '../../src/index.js';
+import { fx, Simulation } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
-
-/** A flat grass map wide enough for the reach tests (cells → the sim's 2W×2H half-cell lattice). */
-function grassMap(width: number): TerrainMap {
-  return halfCellMapFromCells({ width, height: 1, typeIds: new Array(width).fill(0) });
-}
+import { grassCellMap } from '../fixtures/terrain.js';
 
 /**
  * The combat-feedback SIGNAL: a MELEE blow that CONNECTS emits a `combatHit` (the render/audio blood +
@@ -109,7 +104,7 @@ describe('combatSwing — the swing swoosh at the strike frame', () => {
   });
 
   it('still swooshes on a whiff — the blade cut air even though no combatHit lands', () => {
-    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(24) });
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassCellMap(24, 1) });
     const attacker = sim.world.create();
     sim.world.add(attacker, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
     const target = sim.world.create();
@@ -138,7 +133,7 @@ describe('melee whiff — the target stepped out of reach', () => {
   /** Place an attacker and a target adjacent, start a 1-tick melee swing carrying reach `maxRange`, then
    *  optionally shove the target away BEFORE the blow lands — the "enemy backed out of the long swing" case. */
   function swingWithMove(maxRange: number, targetTileAtHit: number) {
-    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(24) });
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassCellMap(24, 1) });
     const attacker = sim.world.create();
     sim.world.add(attacker, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
     const target = sim.world.create();

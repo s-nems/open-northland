@@ -1,15 +1,13 @@
+export { ctxOf } from '../../fixtures/context.js';
+
+import { grassCellMap as grassMap } from '../../fixtures/terrain.js';
+
+export { grassMap };
+
 import { beforeEach } from 'vitest';
 import { Building, JobAssignment, Position, Settler, Stockpile } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import {
-  cellAnchorNode,
-  fx,
-  halfCellMapFromCells,
-  ONE,
-  type Simulation,
-  type TerrainMap,
-} from '../../../src/index.js';
-import type { SystemContext } from '../../../src/systems/index.js';
+import { cellAnchorNode, fx, ONE, type Simulation } from '../../../src/index.js';
 import { clearComponentStores } from '../../fixtures/stores.js';
 
 /**
@@ -47,19 +45,6 @@ export const PICKUP_ATOMIC = 22;
 beforeEach(clearComponentStores);
 
 /** A `width`×`height` CELL strip of grass, upsampled to the half-cell navigation lattice. */
-export function grassMap(width: number, height: number): TerrainMap {
-  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });
-}
-
-export function ctxOf(sim: Simulation): SystemContext {
-  return {
-    content: sim.content,
-    rng: sim.rng,
-    tick: sim.tick,
-    events: sim.events,
-    ...(sim.terrain !== undefined ? { terrain: sim.terrain } : {}),
-  };
-}
 
 export function settlerAt(sim: Simulation, x: number, y: number, jobType: number, boundTo?: Entity): Entity {
   const e = sim.world.create();

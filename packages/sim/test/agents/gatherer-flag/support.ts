@@ -1,3 +1,11 @@
+import { grassNodeMap as grassMap } from '../../fixtures/terrain.js';
+
+export { grassMap };
+
+import { ctxOf } from '../../fixtures/context.js';
+
+export { ctxOf };
+
 import { beforeEach } from 'vitest';
 import {
   CurrentAtomic,
@@ -19,7 +27,7 @@ import {
   type Simulation,
   type TerrainMap,
 } from '../../../src/index.js';
-import { atomicSystem, isYardHeap, type SystemContext } from '../../../src/systems/index.js';
+import { atomicSystem, isYardHeap } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { clearComponentStores } from '../../fixtures/stores.js';
 
@@ -52,20 +60,6 @@ export const CHOPS_TO_FELL = WOOD_GATHERING?.chopsToFell ?? 0;
 export const TREE_WOOD_YIELD = WOOD_GATHERING?.yieldPerNode ?? 0;
 
 beforeEach(clearComponentStores);
-
-export function ctxOf(sim: Simulation): SystemContext {
-  return {
-    content: sim.content,
-    rng: sim.rng,
-    tick: sim.tick,
-    events: sim.events,
-    ...(sim.terrain !== undefined ? { terrain: sim.terrain } : {}),
-  };
-}
-
-export function grassMap(width: number, height: number): TerrainMap {
-  return { resolution: 'half-cell', width, height, typeIds: new Array(width * height).fill(GRASS) };
-}
 
 /** A grass half-cell map split by a vertical WATER wall on node columns `riverCols` (all rows) — a
  *  river with no crossing, so the nodes left and right of it are separate static components (the

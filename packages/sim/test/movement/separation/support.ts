@@ -1,13 +1,11 @@
+import { grassCellMap as grassMap } from '../../fixtures/terrain.js';
+
+export { grassMap };
+
 import { MoveGoal, Owner, PathFollow, Position, Settler } from '../../../src/components/index.js';
 import { fx, ZERO } from '../../../src/core/fixed.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import {
-  halfCellMapFromCells,
-  nodeOfPosition,
-  positionOfNode,
-  Simulation,
-  type TerrainMap,
-} from '../../../src/index.js';
+import { nodeOfPosition, positionOfNode, Simulation } from '../../../src/index.js';
 import { testContent } from '../../fixtures/content.js';
 
 export const GRASS = 0;
@@ -18,10 +16,6 @@ export const SOLDIER = 31;
 export const ANY_BUILDING_TYPE = 999;
 export const P0 = 0;
 export const P1 = 1;
-
-export function grassMap(width: number, height: number): TerrainMap {
-  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });
-}
 
 export function sim(): Simulation {
   return new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 6) });

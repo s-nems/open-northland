@@ -2,15 +2,10 @@ import { parseContentSet } from '@open-northland/data';
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as components from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import {
-  CORE_INVARIANTS,
-  checkInvariants,
-  halfCellMapFromCells,
-  Simulation,
-  type TerrainMap,
-} from '../../src/index.js';
+import { CORE_INVARIANTS, checkInvariants, Simulation } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 import { clearComponentStores } from '../fixtures/stores.js';
+import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
  * The `placeResource` command (and its shared {@link createResourceNode} assembly) at the COMPONENT
@@ -99,12 +94,6 @@ function footprintedContent() {
       },
     ],
   });
-}
-
-// A grass map of `width`×`height` CELLS — the sim navigates its 2×-resolution half-cell node lattice,
-// so command/spec coords below are NODE coords (like every sim command).
-function grassMap(width: number, height: number): TerrainMap {
-  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(0) });
 }
 
 function newSim(): Simulation {

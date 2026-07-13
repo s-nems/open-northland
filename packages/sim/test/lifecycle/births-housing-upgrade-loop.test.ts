@@ -3,20 +3,10 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { Building, Carrying, Position, Settler, Stockpile } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { clearComponentStores } from '../../src/harness/stores.js';
-import {
-  fx,
-  ONE,
-  populationWithinHousing,
-  type SimEvent,
-  Simulation,
-  type TerrainMap,
-} from '../../src/index.js';
-import {
-  housingCapacity,
-  NEWBORN_AGE_CLASS,
-  type SystemContext,
-  tribePopulation,
-} from '../../src/systems/index.js';
+import { fx, ONE, populationWithinHousing, type SimEvent, Simulation } from '../../src/index.js';
+import { housingCapacity, NEWBORN_AGE_CLASS, tribePopulation } from '../../src/systems/index.js';
+import { ctxOf } from '../fixtures/context.js';
+import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 /**
  * GAME-LEVEL (e2e) — the full births → housing → upgrade → more-births loop, the Phase-3 exit ("a
@@ -77,24 +67,10 @@ function loopContent(): ContentSet {
   });
 }
 
-function grassMap(width: number, height: number): TerrainMap {
-  return { resolution: 'half-cell', width, height, typeIds: new Array(width * height).fill(GRASS) };
-}
-
 // Clear EVERY component store — the module-level singleton stores are shared across Simulation
 // instances (AGENTS.md [ac6a287]/[f4593c4]); a missed store leaks a prior test's entity, which
 // (a stale Health/CurrentAtomic on a reused id) silently diverts a planner/carrier decision.
 beforeEach(clearComponentStores);
-
-function ctxOf(sim: Simulation): SystemContext {
-  return {
-    content: sim.content,
-    rng: sim.rng,
-    tick: sim.tick,
-    events: sim.events,
-    ...(sim.terrain !== undefined ? { terrain: sim.terrain } : {}),
-  };
-}
 
 /** A fully-BUILT level-0 home at a map tile (the births anchor + the upgrade-materials delivery sink). */
 function builtHomeAt(sim: Simulation, x: number, y: number): Entity {

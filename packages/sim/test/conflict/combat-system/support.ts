@@ -1,16 +1,13 @@
 import { beforeEach } from 'vitest';
-import { Health, Position, Settler } from '../../../src/components/index.js';
+import { Health } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import {
-  type Fixed,
-  fx,
-  halfCellMapFromCells,
-  positionOfNode,
-  type Simulation,
-  type TerrainMap,
-} from '../../../src/index.js';
-import type { SystemContext } from '../../../src/systems/index.js';
+import { type Fixed, fx, positionOfNode, type Simulation } from '../../../src/index.js';
+import { ctxOf } from '../../fixtures/context.js';
+import { settlerAt } from '../../fixtures/settler.js';
 import { clearComponentStores } from '../../fixtures/stores.js';
+import { grassCellMap as grassMap } from '../../fixtures/terrain.js';
+
+export { ctxOf, grassMap };
 
 /**
  * Unit + integration tests for the CombatSystem — the TARGETING half of the combat loop: an idle
@@ -34,10 +31,6 @@ export const HUNTER = 15; // job 15 (JOB_TYPE_HUMAN_HUNTER) — the test_spear b
 export const ATTACK_ATOMIC = 81;
 
 beforeEach(clearComponentStores);
-
-export function grassMap(width: number, height: number): TerrainMap {
-  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(0) });
-}
 
 /** A combatant: a settler with a Health pool at visual cell (x,y). `tribe`/`jobType` decide its weapon. */
 export function fighterAt(
@@ -71,27 +64,7 @@ export function fighterAtPosition(
   jobType: number | null,
   hitpoints: number,
 ): Entity {
-  const e = sim.world.create();
-  sim.world.add(e, Position, { x: position.x, y: position.y });
-  sim.world.add(e, Settler, {
-    tribe,
-    jobType,
-    hunger: fx.fromInt(0),
-    fatigue: fx.fromInt(0),
-    piety: fx.fromInt(0),
-    enjoyment: fx.fromInt(0),
-    experience: new Map(),
-  });
+  const e = settlerAt(sim, { jobType, tribe, position });
   sim.world.add(e, Health, { hitpoints, max: hitpoints });
   return e;
-}
-
-export function ctxOf(sim: Simulation): SystemContext {
-  return {
-    content: sim.content,
-    rng: sim.rng,
-    tick: sim.tick,
-    events: sim.events,
-    ...(sim.terrain !== undefined ? { terrain: sim.terrain } : {}),
-  };
 }

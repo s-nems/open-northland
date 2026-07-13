@@ -1,17 +1,16 @@
+export { ctxOf } from '../../fixtures/context.js';
+
+import { grassCellMap as grassMap } from '../../fixtures/terrain.js';
+
+export { grassMap };
+
 import { expect } from 'vitest';
 import { GroundDrop, Position, Resource, Settler, Stockpile } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { fx, halfCellMapFromCells, positionOfNode, Simulation, type TerrainMap } from '../../../src/index.js';
+import { fx, positionOfNode, Simulation, type TerrainMap } from '../../../src/index.js';
 import type { NodeId, TerrainGraph } from '../../../src/nav/terrain/index.js';
-import { type SystemContext, stampResourceFootprint } from '../../../src/systems/index.js';
-import { content, GRASS, VIKING, WOODCUTTER } from './content.js';
-
-export function grassMap(width: number, height: number): TerrainMap {
-  // Cell-dims signature; the sim's graph is the upsampled 2W×2H half-cell lattice. All scenario
-  // coordinates below are NODE coords on that lattice (the LandscapeGfx area offsets always were —
-  // the source's LogicWalkBlockArea/LogicBuildBlockArea address the original's 2W×2H grid).
-  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });
-}
+import { stampResourceFootprint } from '../../../src/systems/index.js';
+import { content, VIKING, WOODCUTTER } from './content.js';
 
 export function mappedSim(map: TerrainMap = grassMap(10, 5)): Simulation {
   return new Simulation({ seed: 1, content: content(), map });
@@ -20,17 +19,6 @@ export function mappedSim(map: TerrainMap = grassMap(10, 5)): Simulation {
 export function terrainOf(sim: Simulation): TerrainGraph {
   if (sim.terrain === undefined) throw new Error('mapped sim expected');
   return sim.terrain;
-}
-
-export function ctxOf(sim: Simulation): SystemContext {
-  return {
-    content: sim.content,
-    rng: sim.rng,
-    tick: sim.tick,
-    events: sim.events,
-    commands: sim.commands,
-    ...(sim.terrain !== undefined ? { terrain: sim.terrain } : {}),
-  };
 }
 
 /** A stamped resource node anchored at half-cell NODE (x,y). */

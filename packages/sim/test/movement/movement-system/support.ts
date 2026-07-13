@@ -1,7 +1,11 @@
+import { grassNodeMap as grassMap } from '../../fixtures/terrain.js';
+
+export { grassMap };
+
 import { beforeEach } from 'vitest';
 import { PathFollow, Position } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { fx, type Simulation, type TerrainMap } from '../../../src/index.js';
+import { fx, type Simulation } from '../../../src/index.js';
 import { ACCEL_TICKS, MOVE_SPEED_PER_TICK } from '../../../src/systems/index.js';
 import { clearComponentStores } from '../../fixtures/stores.js';
 
@@ -27,10 +31,6 @@ export const FX_ZERO = fx.fromInt(0);
 
 /** The gait ramp's per-tick acceleration at the default walk (divCeil(G/3) — see ACCEL_TICKS). */
 export const ACCEL_STEP = fx.divCeil(MOVE_SPEED_PER_TICK, fx.fromInt(ACCEL_TICKS));
-
-export function grassMap(width: number, height: number): TerrainMap {
-  return { resolution: 'half-cell', width, height, typeIds: new Array(width * height).fill(GRASS) };
-}
 
 /** Build a mapped sim and place an entity at (x,y) with a straight-line PathFollow to the waypoints.
  *  Waypoints go through `fx.fromFloat` (exact for the test values used) so a seam waypoint's
