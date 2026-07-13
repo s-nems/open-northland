@@ -1,6 +1,6 @@
 import type { SpriteLayer, TextureSource } from '@vinland/render';
 import { loadLayer } from './ir.js';
-import { fetchJsonOrNull, loadTextureIfPresent } from './net.js';
+import { fetchImageData, fetchJsonOrNull, loadTextureIfPresent } from './net.js';
 
 /**
  * GUI (in-game HUD) content bindings — the loadable seam for the pipeline's `gui` stage outputs, the GUI
@@ -114,28 +114,20 @@ export type GuiBarRamp = readonly number[];
  * the LUT is absent (no `content/`) or unreadable — the bars then fall back to their flat banded colours.
  */
 export async function loadGuiBarRamp(): Promise<GuiBarRamp | undefined> {
-  try {
-    const response = await fetch(`/bobs/${GUI_PALETTE_LUT_STEM}.png`);
-    if (!response.ok) return undefined;
-    const bitmap = await createImageBitmap(await response.blob());
-    // A stale LUT baked before this palette was appended is SHORTER than the row index; canvas
-    // getImageData would silently return transparent black (an all-black ramp) — degrade instead.
-    if (guiPaletteRow('bar_hitpoints') >= bitmap.height) return undefined;
-    const canvas = document.createElement('canvas');
-    canvas.width = bitmap.width;
-    canvas.height = bitmap.height;
-    const ctx = canvas.getContext('2d');
-    if (ctx === null) return undefined;
-    ctx.drawImage(bitmap, 0, 0);
-    const row = ctx.getImageData(0, guiPaletteRow('bar_hitpoints'), bitmap.width, 1).data;
-    const colors: number[] = [];
-    for (let x = 0; x < bitmap.width; x++) {
-      colors.push(((row[x * 4] ?? 0) << 16) | ((row[x * 4 + 1] ?? 0) << 8) | (row[x * 4 + 2] ?? 0));
-    }
-    return colors;
-  } catch {
-    return undefined;
+  const image = await fetchImageData(`/bobs/${GUI_PALETTE_LUT_STEM}.png`);
+  if (image === null) return undefined;
+  const rowIndex = guiPaletteRow('bar_hitpoints');
+  // A stale LUT baked before this palette was appended is SHORTER than the row index; reading past it
+  // would sample transparent black (an all-black ramp) — degrade instead.
+  if (rowIndex >= image.height) return undefined;
+  const { data, width } = image;
+  const base = rowIndex * width * 4;
+  const colors: number[] = [];
+  for (let x = 0; x < width; x++) {
+    const o = base + x * 4;
+    colors.push(((data[o] ?? 0) << 16) | ((data[o + 1] ?? 0) << 8) | (data[o + 2] ?? 0));
   }
+  return colors;
 }
 
 /** Original GUI bitmap fills copied/converted from `Data/gui/bitmaps/*.pcx` by the pipeline. */

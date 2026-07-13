@@ -35,11 +35,16 @@ export function barTone(pct: number): BarTone {
   return 'ok';
 }
 
+/** Round to an integer percent clamped into the drawable 0..100 bar range. */
+export function clampPct(n: number): number {
+  return Math.max(0, Math.min(100, Math.round(n)));
+}
+
 export function pct(fixed: number | undefined): number {
-  return fixed === undefined ? 0 : Math.max(0, Math.min(100, Math.round((fixed / ONE) * 100)));
+  return fixed === undefined ? 0 : clampPct((fixed / ONE) * 100);
 }
 
 export function pctRatio(elapsed: number | undefined, duration: number | undefined): number {
   if (elapsed === undefined || duration === undefined || duration <= 0) return 0;
-  return Math.max(0, Math.min(100, Math.round((elapsed / duration) * 100)));
+  return clampPct((elapsed / duration) * 100);
 }

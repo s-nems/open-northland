@@ -11,7 +11,7 @@ import type { SceneDefinition } from './types.js';
  * the same JS context — without this wipe the old worker/trees would leak into the new run and break
  * determinism. Mirrors the app's vertical-slice test (`clearStores`).
  */
-export function resetComponentStores(): void {
+function resetComponentStores(): void {
   // The `components` namespace re-exports helpers (e.g. `stockpileEntries`) alongside the actual
   // components, so clear only the exports that carry a `.store` Map.
   for (const v of Object.values(components)) {

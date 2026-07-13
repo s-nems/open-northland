@@ -1,6 +1,6 @@
 import { components, systems, TICKS_PER_SECOND, type WorldSnapshot } from '@vinland/sim';
 import { entityById, num } from '../../../game/snapshot.js';
-import { type PanelBar, pct } from './bars.js';
+import { type PanelBar, pct, pctRatio } from './bars.js';
 import {
   buildingDef,
   buildingTitle,
@@ -178,8 +178,7 @@ export function satisfactionBars(comps: Comp): PanelBar[] {
   if (health !== undefined) {
     const hp = num(health.hitpoints) ?? 0;
     const max = num(health.max) ?? 0;
-    const level = max > 0 ? Math.max(0, Math.min(100, Math.round((hp / max) * 100))) : 0;
-    bars.push({ label: 'Zdrowie', pct: level, hover: `${hp}/${max}` });
+    bars.push({ label: 'Zdrowie', pct: pctRatio(hp, max), hover: `${hp}/${max}` });
   }
   bars.push(needBar('Głód', num(s.hunger)));
   bars.push(needBar('Sen', num(s.fatigue)));

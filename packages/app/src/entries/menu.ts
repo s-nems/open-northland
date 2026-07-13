@@ -1,3 +1,4 @@
+import { fetchJsonOrNull } from '../content/net.js';
 import { SCENES } from '../scenes/index.js';
 import { el, pageInnerStyle, pageRootStyle, pageSection } from '../view/overlay.js';
 
@@ -127,13 +128,7 @@ export function parseMapsIndex(data: unknown): readonly MapIndexEntry[] {
 
 /** The decoded-map list the dev server exposes at `/maps-index` (gitignored `content/maps/*`). */
 async function loadMapList(): Promise<readonly MapIndexEntry[]> {
-  try {
-    const res = await fetch('/maps-index');
-    if (!res.ok) return [];
-    return parseMapsIndex(await res.json());
-  } catch {
-    return [];
-  }
+  return parseMapsIndex(await fetchJsonOrNull<unknown>('/maps-index'));
 }
 
 export async function renderMenu(_canvas: HTMLCanvasElement, _params: URLSearchParams): Promise<void> {
