@@ -2,7 +2,7 @@
 
 **OpenNorthland** is an open-source, cross-platform reimplementation of the Viking-era **Cultures**
 settler/colony strategy series — *Cultures 2*, *Northland* (*Die Sage der Wikinger*), and
-*8th Wonder of the World*. It is a fresh engine — a deterministic simulation, an isometric renderer,
+  *8th Wonder of the World*. It is a fresh engine — a deterministic simulation, an isometric renderer,
 and an offline pipeline that converts your own copy of the original game's data into a modern,
 readable format — not a binary-faithful clone. Where the original is buggy or unbalanced,
 OpenNorthland is free to fix it.
@@ -23,11 +23,12 @@ OpenNorthland is free to fix it.
 - **Is:** a fresh, deterministic colony simulation in TypeScript; an isometric PixiJS renderer; and
   an offline pipeline that decodes the original's `.cif` / `.bmd` / `.pcx` / `.lib` / `.ini` files
   into a versioned, diffable intermediate format (JSON + texture atlases).
-- **Is not:** a binary-faithful re-implementation. The companion
-  [`OpenVikings_reversing`](https://github.com/Ravo92/OpenVikings_reversing) project *is*
+- **Is not:** a binary-faithful re-implementation. A separate, third-party project —
+  [`OpenVikings_reversing`](https://github.com/Ravo92/OpenVikings_reversing) by Ravo92 — *is*
   binary-faithful; we consult it as **file-format documentation**, never as a code dependency and
   never by porting its architecture. It is **optional** — you do not need it to build, test, or play
-  OpenNorthland; it's only a reference for contributors working on the asset pipeline.
+  OpenNorthland; it's only a reference for contributors working on the asset pipeline (see
+  [Acknowledgements](#acknowledgements)).
 
 ## Status
 
@@ -118,6 +119,16 @@ Contributions are welcome. Keep new code in the style of the file around it, kee
 deterministic and pure, and run `npm run check && npm test` before opening a PR. Agents working in
 this repo should read [`AGENTS.md`](AGENTS.md) first — it is the contract for conventions, the
 determinism rules, and the legal guardrails.
+
+## Acknowledgements
+
+- [`OpenVikings_reversing`](https://github.com/Ravo92/OpenVikings_reversing) by **Ravo92** — an
+  independent, binary-faithful reverse-engineering of the original engine. OpenNorthland is a
+  separate project that consults it as file-format documentation and as an oracle for validating
+  decoded assets; none of its source is ported. Thank you for the format work.
+- The bring-your-own-data model follows [OpenMW](https://openmw.org/),
+  [OpenRA](https://www.openra.net/) and
+  [devilutionX](https://github.com/diasurgical/devilutionX).
 
 ## Legal
 
