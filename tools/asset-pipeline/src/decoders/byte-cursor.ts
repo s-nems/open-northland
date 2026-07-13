@@ -73,6 +73,50 @@ export class ByteCursor {
 }
 
 /**
+ * Little-endian sequential writer that grows its backing buffer as needed — the write-side twin of
+ * {@link ByteCursor}, shared by the container encoders that append fields in order without knowing the
+ * total size upfront (`.bmd`/`.lib`). The fixed-layout serializers (`.png` big-endian, `.cur`/palette/
+ * `map.dat` with reserved gaps and u16/random-access writes) pre-size an exact buffer and write at
+ * computed offsets instead — a sequential writer would obscure their fixed on-disk layout.
+ */
+export class ByteWriter {
+  private buf = new Uint8Array(256);
+  private pos = 0;
+
+  private ensure(n: number): void {
+    if (this.pos + n <= this.buf.length) return;
+    let cap = this.buf.length * 2;
+    while (cap < this.pos + n) cap *= 2;
+    const grown = new Uint8Array(cap);
+    grown.set(this.buf);
+    this.buf = grown;
+  }
+
+  u32(v: number): void {
+    this.ensure(4);
+    new DataView(this.buf.buffer).setUint32(this.pos, v >>> 0, true);
+    this.pos += 4;
+  }
+
+  i32(v: number): void {
+    this.ensure(4);
+    new DataView(this.buf.buffer).setInt32(this.pos, v | 0, true);
+    this.pos += 4;
+  }
+
+  bytes(b: Uint8Array): void {
+    this.ensure(b.length);
+    this.buf.set(b, this.pos);
+    this.pos += b.length;
+  }
+
+  /** A compact copy of exactly the written bytes (not a view over the oversized backing buffer). */
+  result(): Uint8Array {
+    return this.buf.slice(0, this.pos);
+  }
+}
+
+/**
  * Latin1 maps all 256 byte values 1:1, so it losslessly round-trips the containers' ASCII names and
  * the `.cif` structural keywords. (Display strings carrying Polish glyphs are actually CP1250 —
  * re-decode those at the IR layer where it matters; see `cif.ts`.)
