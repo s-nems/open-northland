@@ -3,12 +3,13 @@
 **Area:** sim · **Origin:** sim-perf plan reconciliation, 2026-07-12 · **Blocked by:**
 [economy-sink-memo](economy-sink-memo.md)
 
-The economy nearest-X picks are still linear candidate-list scans, `O(idle·candidates)` per tick:
-`ai-targets.ts` (`nearestStoreFor`, `nearestStoreHolding`, `nearestFoodStore`, `nearestTemple`,
-`nearestConstructionSite`, `nearestWorkplaceOutput`, `nearestFreeYardNode`) and `ai-supply.ts`
-(`nearestMissingInputSource`, `nearestGroundPile`, `nearestConstructionSiteNeeding`,
-`boundProducerOutputToHaul`). `NodeBuckets.nearest` (`systems/spatial.ts`) already does the
-canonical band search combat uses.
+The economy nearest-X picks are still linear candidate-list scans, `O(idle·candidates)` per tick,
+now spread across `agents/targets/stores/*` (`nearestStoreFor`, `nearestStoreHolding`,
+`nearestFreeYardNode` in `stock.ts`; `nearestWorkplaceOutput` in `outputs.ts`; `nearestTemple`,
+`nearestConstructionSite` in `buildings.ts`), `agents/targets/food/index.ts` (`nearestFoodStore`),
+and `agents/economy/*` (`nearestMissingInputSource`, `workplaceOutputToHaul` in `workshop/supply.ts`;
+`nearestGroundPile`, `boundProducerOutputToHaul` in `haul-targets.ts`). `NodeBuckets.nearest`
+(`systems/spatial.ts`) already does the canonical band search combat uses.
 
 **Golden-safety analysis (pinned 2026-07-08, re-verified against code 2026-07-12):** a *plain*
 migration moves goldens. These scans measure distance to each candidate's **interaction cell**

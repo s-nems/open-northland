@@ -43,7 +43,7 @@ Counts observed in `Cultures 8th Wonder` (base `Data` + `DataX` + mod `DataCnmd`
     **SOLVED** (see "CIF container format" below) and implemented in
     `tools/asset-pipeline/src/decoders/cif.ts`.
 
-### CIF container format (solved Phase-1 spike)
+### CIF container format (solved)
 
 A `.cif` is a serialized **`CStorable`** object graph. Every object on disk is
 `[u32 id][u32 version][body]`; the factory (`XBStorable.cs`) maps ids to classes
@@ -99,7 +99,7 @@ the `[GfxHouse]` graphics sections the pipeline already walks (`extractBuildingB
 these placements (replacing the app's synthetic first-walkable-cells fallback) is a tracked slice —
 see `docs/tickets/`.
 
-### `map.dat` chunk container (located Phase-2 spike — tile grid found, decode pending)
+### `map.dat` chunk container (grid + render lanes decoded; sim water/walkability pending)
 
 The per-cell landscape grid + entity map sits beside `map.cif` as **`map.dat`** (e.g.
 `CnModMaps/tutorial_001/{map.cif 19 KB, map.dat 576 KB}`). It is a flat sequence of **`hoix`

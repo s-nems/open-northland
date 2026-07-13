@@ -67,20 +67,20 @@ lands, move its one-liner to Adopted and prune anything the codebase makes obsol
 
 ## Deferred (trigger-gated)
 
-- **Save/replay disk format: versioned, stamped, refuse-don't-guess.** When Phase 5 builds the disk
-  format: stream the command log, append a versioned metadata trailer on close (players, duration,
+- **Save/replay disk format: versioned, stamped, refuse-don't-guess.** When the disk format is
+  built: stream the command log, append a versioned metadata trailer on close (players, duration,
   outcome — writable only at game end); stamp engine version + a content fingerprint (hash of the
   validated IR) + map hash + the final `hashState()` as an integrity check (a load that replays to a
   different hash is a DETECTED error, not silent corruption); partition stored replays by
   engine/content version and refuse mismatches gracefully. Format changes get an append-only version
   enum with one named mechanical migration per change. (OpenRA's replay trailer + version-keyed
   replay dirs + saves-are-replays; OpenTTD's `SaveLoadVersion` + afterload chain and
-  content-identity-by-hash + declared min-compatible version.) *Trigger: Phase 5 save/load.*
+  content-identity-by-hash + declared min-compatible version.) *Trigger: the save/load slice.*
 - **Snapshot round-trip resume test.** Once a world can be RESUMED from a snapshot (fast-load):
   every N ticks serialize → resume into a fresh sim → both must hash-equal after K more ticks.
   Catches state that exists in memory but isn't (correctly) serialized — the bug class hashes can't
   see until someone loads. Also the prerequisite for using snapshots as replay-bisection
-  checkpoints. (0 A.D. runs exactly this as `-serializationtest`.) *Trigger: the Phase-5
+  checkpoints. (0 A.D. runs exactly this as `-serializationtest`.) *Trigger: the
   snapshot-load slice — design the test WITH the loader, not after.*
 - **Multiplayer order pipeline decisions** (write down now, build later): the HOST stamps each
   command's execution tick (latency is a host policy, not a client constant — enables dynamic
@@ -89,7 +89,7 @@ lands, move its one-liner to Adopted and prune anything the codebase makes obsol
   replays reproduce them; UI may keep a render-side "predicted" mirror for responsiveness. Dev
   cheats must also be commands, or using a debug tool during MP debugging causes the desync being
   hunted. (OpenRA's net-frame architecture, immediate-vs-synced orders, synced pause with
-  `PredictedPaused`, sync-checked debug commands.) *Trigger: the Phase-5 lockstep stretch.*
+  `PredictedPaused`, sync-checked debug commands.) *Trigger: the lockstep stretch.*
 - **Tiered hashing.** If per-tick `hashState()` ever shows up in a profile at scale: cheap digest
   every tick (the RNG state alone catches most divergence — every sim-affecting draw advances it),
   full canonical hash every N ticks. (OpenTTD broadcasts the RNG state as its per-frame sync token;
@@ -141,7 +141,7 @@ lands, move its one-liner to Adopted and prune anything the codebase makes obsol
   ours: `AGENTS.md` has a source-basis rule because Vinland chases the original.
 - **Compatibility boundaries are chosen per artifact.** devilutionX kept save-file compatibility
   with the original game but dropped wire-protocol compatibility. Vinland's equivalents (content IR,
-  saves, replays, goldens) should each get an explicit keep/break policy when Phase 5 defines them —
+  saves, replays, goldens) should each get an explicit keep/break policy when save/load defines them —
   recorded in the save-format entry above.
 
 ## Sources

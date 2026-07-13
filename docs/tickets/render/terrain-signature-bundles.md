@@ -16,10 +16,11 @@ signature" cleanup. Deferred from the render pass as its own coherent change.
   `makeBrightnessField(..., width, height)`. Introduce a `GridDims` type and thread
   it through the call chain. (The `(pageW, pageH)` pair in `triangleUVs`/`rectTriangleUVs`
   is a smaller instance of the same shape — fold it in or leave it, reviewer's call.)
-- **`TerrainBuildContext`** — `gpu/terrain/terrain-layer.ts` `buildTextured`,
-  `buildGround`, `buildFlat`, and `pushTriangle(batch, nodes, uvs, lift, shaded, terrain)`
-  all thread `(terrain, lift, shaded[, laneTexWidth])` and re-derive `lift`/`shaded`
-  from the same inputs. Collapse into a per-build `TerrainBuildContext`.
+- **`TerrainBuildContext`** — `gpu/terrain/build-ground.ts` `buildTextured`,
+  `buildGround`, `pushTriangle(batch, nodes, uvs, lift, shaded, terrain)` and
+  `gpu/terrain/build-flat.ts` `buildFlat` all thread `(terrain, lift, shaded[, laneTexWidth])`
+  and re-derive `lift`/`shaded` from the same inputs. Collapse into a per-build
+  `TerrainBuildContext`.
 
 Behavior-preserving parameter-object refactor; no logic change.
 

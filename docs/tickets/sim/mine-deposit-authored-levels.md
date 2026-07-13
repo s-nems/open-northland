@@ -7,15 +7,15 @@ Imported-map deposits ignore their authored growth `levels`: a deposit authored 
 the near-full frame at the first chip. Map spawn uses the gatherer catalog defaults instead of
 mapping per-placement `objects.levels` → starting `remaining`.
 
+The component split is already done: `MineDeposit` carries both `initial` and `remaining`
+(`packages/sim/src/components/economy/resources.ts`), and the render level already derives from
+`remaining/initial`. **Only the map-spawn half remains** — nothing reads `objects.levels`.
+
 ## Scope
 
-- Split `MineDeposit.initial` from `remaining` (`packages/sim/src/components/economy/resources.ts`) so the
-  visual level derives from `remaining/initial` while `initial` stays the authored full size.
-- In map spawn (`spawnMapResources` / `packages/app/src/content/map-resources.ts`), map the
-  authored `levels` to the starting `remaining`.
-- Component shape changes move goldens (`hashState` folds field names) — **a deliberate move;
-  name it in the commit**, or add the field without renaming existing ones to keep the move
-  minimal.
+- In map spawn (`spawnMapResources` / `packages/app/src/content/map-resources.ts`), map the authored
+  `objects.levels` (schema `packages/data/src/schema/maps/terrain/layers.ts`) to the starting
+  `remaining`, leaving `initial` at the authored full size.
 
 ## Verify
 

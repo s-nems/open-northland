@@ -41,7 +41,7 @@ placement → AI → atomic actions → economy → population — as an ordinar
 
 ```ts
 scenario(content)
-  .placeBuilding('headquarters', 10, 10)   // (Phase 2, once CommandSystem exists)
+  .placeBuilding('headquarters', 10, 10)   // a serializable CommandSystem command
   .spawnSettler('woodcutter')
   .run(2000, { checkInvariantsEachTick: true })
   .expect('settlement produced planks', (sim) => totalGood(sim, PLANK) > 0)

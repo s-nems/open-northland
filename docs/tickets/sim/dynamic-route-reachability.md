@@ -2,8 +2,9 @@
 
 **Area:** sim · **Origin:** gathering-economy plan reconciliation, 2026-07-12
 
-The economy's reachability gate covers STATIC components only: `ai-targets.ts` notes "dynamic
-reachability is a separate follow-up". A target behind dynamically blocked cells (resource
+The economy's reachability gate covers STATIC components only:
+`packages/sim/src/systems/agents/targets/resources/index.ts` notes "dynamic reachability is a
+separate follow-up" (and cites this ticket by path). A target behind dynamically blocked cells (resource
 footprints, buildings placed after the static pass) can be picked as "reachable", walk there, and
 fail — wasted work and potential retry loops at scale.
 

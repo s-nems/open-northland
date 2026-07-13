@@ -7,15 +7,15 @@ remainder). All are behavior-preserving: the 397 round-trip tests + a byte-ident
 regeneration guard them. Do them as separate commit-sized units; a shared util lives in a new
 `src/decoders/bytes/` (or similar) feature folder, not a flat `utils/`.
 
-## 1. Shared little-endian `ByteReader` / `ByteWriter`
-Three near-identical sequential LE readers exist: `decoders/bmd.ts:127` (`ByteReader`),
-`decoders/cif.ts:93` (`ByteReader`), `decoders/lib.ts:70` (`LibReader`) — private `bytes`+`view`+`pos`,
-overrun-throwing `u32()`, `take`/`ascii`. Plus a `ByteWriter` at `decoders/bmd.ts:269`. Everyone else
-re-rolls inline `new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)` + explicit-LE getters:
-`mapdat.ts:111,171,304,464,707`, `palette.ts:52`, `fnt.ts:85`, `cursor.ts:71`, `pcx.ts:62`,
-`png.ts:115`. Extract one shared reader/writer and adopt it. The CMemory-body read
-(`bmd.ts:166 readCMemory` ≈ `cif.ts:134 readCMemoryRaw`) and the `[u32 id][u32 version]` storable
-header (`palette.ts:52`, `bmd.ts:185`, `fnt.ts:87`) collapse onto it too.
+## 1. Adopt the shared `ByteCursor` at the inline-`DataView` sites
+The reader consolidation **landed** (`decoders/byte-cursor.ts`: `ByteCursor` + `readCMemory` +
+`LATIN1`): the three near-identical class readers were unified onto it, so `ByteReader`/`LibReader`
+no longer exist and `bmd.ts`/`cif.ts`/`lib.ts` use `ByteCursor`. **Remaining:** the sites that still
+re-roll inline `new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)` + explicit-LE getters
+were not migrated — `decoders/{mapdat/layers.ts, palette.ts, fnt.ts, cursor.ts, pcx.ts, png.ts}` (and
+the leftover raw reads in `bmd.ts`/`cif.ts`). Adopt `ByteCursor` there, and fold the `[u32 id][u32
+version]` storable header (`palette.ts`, `bmd.ts`, `fnt.ts`) onto it. The lone remaining `ByteWriter`
+(`bmd.ts`) has no duplicate and can stay.
 
 ## 2. Palette / RGBA utilities
 - Indexed→RGBA expansion (`p=idx*3; rgba[o..o+3]=pal[p..]`) is implemented 3×: `pcx.ts:130`

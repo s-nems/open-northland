@@ -49,7 +49,7 @@ command log (replay) plus a snapshot (fast load). After each tick the sim expose
 **snapshot read-view** (double-buffered or immutable) that `render` consumes and **interpolates**
 between the last two ticks for smooth motion. `render` never mutates sim state and the sim never
 imports render, and the renderer must never read live mid-mutation state — hence the explicit
-snapshot contract, defined in Phase 2 alongside `CommandSystem`. This strict boundary keeps the sim
+snapshot contract that lives alongside `CommandSystem`. This strict boundary keeps the sim
 deterministic and testable and lets us run it faster-than-realtime in tests (see docs/TESTING.md).
 
 ### Fixed timestep
@@ -95,6 +95,6 @@ Because the sim is deterministic and command-driven, a save is `{ seed, contentV
 commandLog }` for replay **plus a state snapshot for fast load** (replaying hours of ticks is
 unviable). Multiplayer is lockstep: exchange commands, everyone runs the same deterministic sim.
 We don't build the disk format yet, but the load-bearing invariants — commands-only mutation, a
-serializable command schema, and the snapshot read-view — are established in **Phase 2**, not
+serializable command schema, and the snapshot read-view — are **already established**, not
 deferred. Every sim decision must preserve the property that makes save/MP cheap. Don't add
 nondeterminism "just for now."
