@@ -120,9 +120,9 @@ export interface LandscapeGfxRow {
   /** `GfxLoopAnimation` — the state's frame list loops continuously (waves, fire, smoke). */
   readonly loopAnimation?: boolean;
   /** Repeated `LogicWalkBlockArea` lines — a non-empty footprint marks a depth-sorted (non-decor) object. */
-  readonly walkBlockAreas?: readonly LandscapeBlockArea[];
+  readonly walkBlockAreas?: readonly Readonly<LandscapeBlockArea>[];
   /** Repeated `LogicBuildBlockArea` lines — the object's build-exclusion ring (the collision mask reads it). */
-  readonly buildBlockAreas?: readonly LandscapeBlockArea[];
+  readonly buildBlockAreas?: readonly Readonly<LandscapeBlockArea>[];
 }
 
 /** One resolved gathering-pipeline stage (a landscape type + the `landscapeGfx` records that place it). */
