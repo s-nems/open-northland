@@ -1,8 +1,8 @@
 /**
- * The scene layer's shared vocabulary — the draw-item shape the pure scene builders emit and the GPU
- * layer consumes, plus the terrain-grid shapes a decoded map projects onto. Types + one paint-order
- * table only; the builders live in {@link import('./sprite-scene.js')} / {@link import('./terrain-scene.js')},
- * the per-component snapshot reads in {@link import('./snapshot-readers/index.js')}.
+ * The scene layer's shared vocabulary — the {@link DrawItem} shape the pure scene builders emit and the
+ * GPU layer consumes. Types + one paint-order table only; the builders live in
+ * {@link import('./sprite-scene.js')} / {@link import('./terrain-scene.js')} (the latter also owns the
+ * terrain-grid shapes), the per-component snapshot reads in {@link import('./snapshot-readers/index.js')}.
  */
 
 /** Kinds of thing the scene draws, in their natural layer grouping. */
