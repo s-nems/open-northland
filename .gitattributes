@@ -1,0 +1,7 @@
+# Force LF everywhere so checkouts are byte-identical across OSes. Windows runners default to
+# core.autocrlf=true, which would rewrite files to CRLF on checkout and break the Biome format
+# gate (and any byte-sensitive golden test) before a single test runs.
+* text=auto eol=lf
+
+# Binary assets — never end-of-line converted.
+*.png binary
