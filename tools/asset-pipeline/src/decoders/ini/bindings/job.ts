@@ -4,7 +4,6 @@
  */
 
 import {
-  findProp,
   findProps,
   getInt,
   getStr,
@@ -14,66 +13,26 @@ import {
   type RuleProp,
   type RuleSection,
 } from '../grammar.js';
-
-/**
- * One bob set's palette pairing: a `.bmd` body (and its optional shadow `.bmd`) bound to the palette
- * `editname` its `[jobgraphics]` record names — the **second leg** of the `.bmd`→palette graph.
- * The first leg ({@link import('./palette.js').extractPaletteIndex}) resolves `paletteName` to a
- * `.pcx` trailer palette; together they answer "which 256 colours colour this `.bmd`". The `.bmd`
- * paths are normalized (forward-slash, lower-case) so a lookup against the unpacked `--out` tree is
- * host-OS/case-independent, matching {@link import('./palette.js').PaletteAlias.gfxFile}.
- */
-export interface BmdPaletteBinding {
-  /** The body bob set, as a normalized `data/.../foo.bmd` relative path (forward slashes, lower-case). */
-  readonly bmd: string;
-  /** The matching shadow bob set, same normalization, or `undefined` when the record has no shadow `.bmd`. */
-  readonly shadowBmd: string | undefined;
-  /**
-   * The palette `editname` the record references, **lower-cased** ({@link normalizePaletteName}) so it
-   * joins case-insensitively onto the palette alias `name` (the two legs disagree on case in the real
-   * data).
-   */
-  readonly paletteName: string;
-  /** The `logictribe` id the record applies to, when present (a cross-reference, not required). */
-  readonly tribeId: number | undefined;
-  /** The `logicjob` id the record applies to, when present (a cross-reference, not required). */
-  readonly jobId: number | undefined;
-}
+import { type BmdPaletteBinding, readBmdPaletteBindings } from './bmd-palette.js';
 
 /**
  * Extracts the readable `[jobgraphics]` records (`Data/engine2d/inis/animals/jobgraphics.ini` — the
  * one graphics binding file that ships as plain `.ini`, the rest being `.cif`) into `.bmd`→palette
  * bindings. Each record carries a `gfxbobmanagerbody "<body>.bmd" "<shadow>.bmd"` (the shadow value is
- * optional) and a `gfxpalettebody "<editname>"`; the `editname` resolves to a `.pcx` trailer palette
- * via {@link import('./palette.js').extractPaletteIndex}, completing the pairing the `.bmd` container
- * itself doesn't carry.
+ * optional) and a `gfxpalettebody "<editname>"`; the shared {@link readBmdPaletteBindings} reads that
+ * pairing (the `editname` resolves to a `.pcx` trailer palette via
+ * {@link import('./palette.js').extractPaletteIndex}, completing what the `.bmd` container itself lacks).
  *
  * A record missing the body `.bmd` (nothing to colour) or the palette name (unbindable) is skipped
  * rather than throwing — this is an index over many records and one malformed entry must not abort the
- * offline batch. Paths are normalized via {@link normalizeAssetPath}. The richer mod
- * `[jobbasegraphics]` variant (indexed body/head bobs + `gfxpalettebasebody`/`gfxpalettebasehead`/
- * `gfxpaletterandom`) is a separate extractor ({@link extractJobBaseGraphics}); this one covers only
- * the flat `[jobgraphics]` schema.
+ * offline batch. The richer mod `[jobbasegraphics]` variant (indexed body/head bobs +
+ * `gfxpalettebasebody`/`gfxpalettebasehead`/`gfxpaletterandom`) is a separate extractor
+ * ({@link extractJobBaseGraphics}); this one covers only the flat single-palette `[jobgraphics]` schema.
  */
 export function extractGraphicsBindings(sections: readonly RuleSection[]): BmdPaletteBinding[] {
-  const bindings: BmdPaletteBinding[] = [];
-  for (const sec of sections) {
-    if (sec.name !== 'jobgraphics') continue;
-    const body = findProp(sec, 'gfxbobmanagerbody');
-    const bmd = body?.values[0];
-    if (bmd === undefined || bmd.trim() === '') continue;
-    const paletteName = getStr(sec, 'gfxpalettebody');
-    if (paletteName === undefined || paletteName.trim() === '') continue;
-    const shadow = body?.values[1];
-    bindings.push({
-      bmd: normalizeAssetPath(bmd),
-      shadowBmd: normalizeOptionalPath(shadow),
-      paletteName: normalizePaletteName(paletteName),
-      tribeId: getInt(sec, 'logictribe'),
-      jobId: getInt(sec, 'logicjob'),
-    });
-  }
-  return bindings;
+  return sections.flatMap((sec) =>
+    sec.name === 'jobgraphics' ? readBmdPaletteBindings(sec, 'gfxbobmanagerbody', 'gfxpalettebody') : [],
+  );
 }
 
 /** One indexed bob-manager slot: a slot index + its body `.bmd` and (for body bobs) an optional shadow `.bmd`. */
