@@ -1,4 +1,3 @@
-import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as components from '../../src/components/index.js';
 import {
@@ -10,19 +9,8 @@ import {
   PlayerOrder,
   Position,
   Resource,
-  Settler,
-  Stockpile,
 } from '../../src/components/index.js';
-import type { Entity } from '../../src/ecs/world.js';
-import {
-  findPath,
-  fx,
-  halfCellMapFromCells,
-  positionOfNode,
-  Simulation,
-  type TerrainMap,
-} from '../../src/index.js';
-import type { NodeId, TerrainGraph } from '../../src/nav/terrain/index.js';
+import { findPath, positionOfNode } from '../../src/index.js';
 import {
   aiSystem,
   canPlaceBuilding,
@@ -30,277 +18,40 @@ import {
   resourceBlockedCells,
   resourceFootprintForGood,
   resourceWorkCell,
-  type SystemContext,
   stampResourceFootprint,
   unstampResourceFootprint,
 } from '../../src/systems/index.js';
 import { clearComponentStores } from '../fixtures/stores.js';
-
-const GRASS = 0;
-const WATER = 1;
-const VIKING = 1;
-const WOOD = 1;
-const STONE = 4;
-const MUSHROOM = 5;
-const CLAY = 6;
-const WOODCUTTER = 1;
-const CLAY_DIGGER = 2;
-const WOOD_ATOMIC = 24;
-const STONE_ATOMIC = 25;
-const MUSHROOM_ATOMIC = 32;
-const CLAY_ATOMIC = 26;
-const TREE_LOGIC = 100;
-const STONE_LOGIC = 101;
-const MUSHROOM_LOGIC = 102;
-const CLAY_LOGIC = 103;
-const TREE_GFX = 10;
-const STONE_GFX = 11;
-const MUSHROOM_GFX = 12;
-const CLAY_GFX = 13;
-const STONE_VARIANT_GFX = 14;
-const TEST_HUT = 99;
-
-const HUT_FOOTPRINT = {
-  blocked: [{ dx: 0, dy: 0 }],
-  familyBody: [{ dx: 0, dy: 0 }],
-  reserved: [{ dx: 0, dy: 0 }],
-  door: { dx: 0, dy: 1 },
-};
-
-function content(): ContentSet {
-  return parseContentSet({
-    manifest: {
-      version: IR_VERSION,
-      generatedFrom: { game: 'synthetic-resource-footprint-test' },
-      locale: 'eng',
-    },
-    goods: [
-      { typeId: 0, id: 'none' },
-      {
-        typeId: WOOD,
-        id: 'wood',
-        weight: 1,
-        atomics: { harvest: WOOD_ATOMIC },
-        gathering: { bioLandscape: true },
-      },
-      {
-        typeId: STONE,
-        id: 'stone',
-        weight: 1,
-        atomics: { harvest: STONE_ATOMIC },
-        gathering: { bioLandscape: false },
-      },
-      {
-        typeId: MUSHROOM,
-        id: 'mushroom',
-        weight: 1,
-        atomics: { harvest: MUSHROOM_ATOMIC },
-        gathering: { bioLandscape: true },
-      },
-      {
-        typeId: CLAY,
-        id: 'mud',
-        weight: 1,
-        atomics: { harvest: CLAY_ATOMIC },
-        gathering: { bioLandscape: false },
-      },
-    ],
-    jobs: [
-      { typeId: 0, id: 'idle' },
-      { typeId: WOODCUTTER, id: 'woodcutter', allowedAtomics: [WOOD_ATOMIC] },
-      { typeId: CLAY_DIGGER, id: 'clay_digger', allowedAtomics: [CLAY_ATOMIC] },
-    ],
-    buildings: [{ typeId: TEST_HUT, id: 'test_hut', kind: 'house', footprint: HUT_FOOTPRINT }],
-    landscape: [
-      { typeId: GRASS, id: 'grass', walkable: true, buildable: true },
-      { typeId: WATER, id: 'water', walkable: false, buildable: false },
-      { typeId: TREE_LOGIC, id: 'tree_logic', walkable: true, buildable: true },
-      { typeId: STONE_LOGIC, id: 'stone_logic', walkable: true, buildable: true },
-      { typeId: MUSHROOM_LOGIC, id: 'mushroom_logic', walkable: true, buildable: true },
-      { typeId: CLAY_LOGIC, id: 'clay_logic', walkable: true, buildable: true },
-    ],
-    landscapeGfx: [
-      {
-        index: TREE_GFX,
-        editName: 'test tree',
-        logicType: TREE_LOGIC,
-        maxValency: 3,
-        isWorkable: true,
-        walkBlockAreas: [
-          [1, 9, 9, 1],
-          [3, 0, 0, 1],
-        ],
-        buildBlockAreas: [
-          [1, 9, 9, 1],
-          [3, -1, 0, 1],
-          [3, 0, 0, 1],
-          [3, 1, 0, 1],
-        ],
-        workAreas: [
-          [3, -1, 0, 1],
-          [3, 1, 0, 1],
-        ],
-      },
-      {
-        index: STONE_GFX,
-        editName: 'test stone',
-        logicType: STONE_LOGIC,
-        maxValency: 4,
-        isWorkable: true,
-        walkBlockAreas: [[4, -1, 0, 3]],
-        buildBlockAreas: [
-          [4, -1, 0, 1],
-          [4, 0, 0, 1],
-          [4, 1, 0, 1],
-        ],
-        workAreas: [
-          [4, -1, 0, 1],
-          [4, 1, 0, 1],
-        ],
-      },
-      {
-        index: STONE_VARIANT_GFX,
-        editName: 'test stone variant',
-        logicType: STONE_LOGIC,
-        maxValency: 4,
-        isWorkable: true,
-        walkBlockAreas: [[4, 2, 0, 1]],
-        buildBlockAreas: [[4, 2, 0, 1]],
-        workAreas: [[4, 2, 0, 1]],
-      },
-      {
-        index: MUSHROOM_GFX,
-        editName: 'test mushroom',
-        logicType: MUSHROOM_LOGIC,
-        maxValency: 1,
-        isWorkable: true,
-        walkBlockAreas: [],
-        buildBlockAreas: [],
-        workAreas: [[1, 0, 0, 1]],
-      },
-      {
-        index: CLAY_GFX,
-        editName: 'test clay',
-        logicType: CLAY_LOGIC,
-        maxValency: 2,
-        isWorkable: true,
-        walkBlockAreas: [],
-        buildBlockAreas: [],
-        workAreas: [
-          [2, -1, 0, 1],
-          [2, 0, 0, 1],
-          [2, 1, 0, 1],
-        ],
-      },
-    ],
-    gatheringPipeline: [
-      { goodType: WOOD, goodId: 'wood', harvest: { landscapeType: TREE_LOGIC, gfxIndices: [TREE_GFX] } },
-      {
-        goodType: STONE,
-        goodId: 'stone',
-        harvest: { landscapeType: STONE_LOGIC, gfxIndices: [STONE_GFX, STONE_VARIANT_GFX] },
-      },
-      {
-        goodType: MUSHROOM,
-        goodId: 'mushroom',
-        harvest: { landscapeType: MUSHROOM_LOGIC, gfxIndices: [MUSHROOM_GFX] },
-      },
-      { goodType: CLAY, goodId: 'mud', harvest: { landscapeType: CLAY_LOGIC, gfxIndices: [CLAY_GFX] } },
-    ],
-    tribes: [
-      {
-        typeId: VIKING,
-        id: 'viking',
-        atomicBindings: [
-          { jobType: WOODCUTTER, atomicId: WOOD_ATOMIC, animation: 'viking_chop' },
-          { jobType: CLAY_DIGGER, atomicId: CLAY_ATOMIC, animation: 'viking_dig' },
-        ],
-      },
-    ],
-    atomicAnimations: [
-      { id: 'viking_chop', name: 'viking_chop', length: 3 },
-      { id: 'viking_dig', name: 'viking_dig', length: 3 },
-    ],
-  });
-}
+import {
+  CLAY,
+  CLAY_ATOMIC,
+  CLAY_DIGGER,
+  content,
+  MUSHROOM,
+  MUSHROOM_ATOMIC,
+  STONE,
+  STONE_ATOMIC,
+  STONE_GFX,
+  STONE_VARIANT_GFX,
+  TEST_HUT,
+  TREE_GFX,
+  VIKING,
+  WOOD,
+  WOOD_ATOMIC,
+} from './resource-footprint/content.js';
+import {
+  coords,
+  ctxOf,
+  grassMap,
+  mappedSim,
+  placeGroundDrop,
+  placeResource,
+  placeSettler,
+  placeWoodcutter,
+  terrainOf,
+} from './resource-footprint/support.js';
 
 beforeEach(clearComponentStores);
-
-function grassMap(width: number, height: number): TerrainMap {
-  // Cell-dims signature; the sim's graph is the upsampled 2W×2H half-cell lattice. All scenario
-  // coordinates below are NODE coords on that lattice (the LandscapeGfx area offsets always were —
-  // the source's LogicWalkBlockArea/LogicBuildBlockArea address the original's 2W×2H grid).
-  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });
-}
-
-function mappedSim(map: TerrainMap = grassMap(10, 5)): Simulation {
-  return new Simulation({ seed: 1, content: content(), map });
-}
-
-function terrainOf(sim: Simulation): TerrainGraph {
-  if (sim.terrain === undefined) throw new Error('mapped sim expected');
-  return sim.terrain;
-}
-
-function ctxOf(sim: Simulation): SystemContext {
-  return {
-    content: sim.content,
-    rng: sim.rng,
-    tick: sim.tick,
-    events: sim.events,
-    commands: sim.commands,
-    ...(sim.terrain !== undefined ? { terrain: sim.terrain } : {}),
-  };
-}
-
-/** A stamped resource node anchored at half-cell NODE (x,y). */
-function placeResource(
-  sim: Simulation,
-  goodType: number,
-  harvestAtomic: number,
-  x: number,
-  y: number,
-): Entity {
-  const e = sim.world.create();
-  sim.world.add(e, Position, positionOfNode(x, y));
-  sim.world.add(e, Resource, { goodType, remaining: 3, harvestAtomic });
-  expect(stampResourceFootprint(sim.world, sim.content, e, goodType)).toBe(true);
-  return e;
-}
-
-/** A settler standing exactly on half-cell NODE (x,y). */
-function placeSettler(sim: Simulation, jobType: number, x: number, y: number): Entity {
-  const e = sim.world.create();
-  sim.world.add(e, Position, positionOfNode(x, y));
-  sim.world.add(e, Settler, {
-    tribe: VIKING,
-    jobType,
-    hunger: fx.fromInt(0),
-    fatigue: fx.fromInt(0),
-    piety: fx.fromInt(0),
-    enjoyment: fx.fromInt(0),
-    experience: new Map<number, number>(),
-  });
-  return e;
-}
-
-function placeWoodcutter(sim: Simulation, x: number, y: number): Entity {
-  return placeSettler(sim, WOODCUTTER, x, y);
-}
-
-/** A loose ground drop lying on half-cell NODE (x,y). */
-function placeGroundDrop(sim: Simulation, goodType: number, amount: number, x: number, y: number): Entity {
-  const e = sim.world.create();
-  sim.world.add(e, Position, positionOfNode(x, y));
-  sim.world.add(e, Stockpile, { amounts: new Map([[goodType, amount]]) });
-  sim.world.add(e, GroundDrop, { goodType });
-  return e;
-}
-
-function coords(terrain: TerrainGraph, path: readonly NodeId[] | null): Array<{ x: number; y: number }> {
-  if (path === null) return [];
-  return path.map((cell) => terrain.coordsOf(cell));
-}
 
 describe('resource footprints', () => {
   it('derives walk/build/work cells from the harvest-stage LandscapeGfx full state', () => {
