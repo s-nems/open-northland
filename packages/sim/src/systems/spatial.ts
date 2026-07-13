@@ -216,3 +216,13 @@ export function clearNavState(world: World, e: Entity): void {
   world.remove(e, PathRequest);
   world.remove(e, PathFollow);
 }
+
+/** Re-aim `e`'s live route at `dest` — the throttled-re-aim twin of {@link clearNavState} (chase and
+ *  flee): keep any PathFollow so the routing splice carries the gait through the turn (clearing it
+ *  resets the gait to zero every re-aim — a visible lurch), drop only a stale in-flight request, and
+ *  leave an unchanged goal alone so a same-dest request keeps its routing-queue slot. */
+export function redirectRoute(world: World, e: Entity, dest: NodeId): void {
+  if (world.tryGet(e, MoveGoal)?.cell === dest) return;
+  world.remove(e, PathRequest);
+  world.add(e, MoveGoal, { cell: dest });
+}

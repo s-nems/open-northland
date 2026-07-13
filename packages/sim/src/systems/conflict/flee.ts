@@ -1,9 +1,16 @@
-import { Fleeing, MoveGoal, Owner, PathRequest, Settler } from '../../components/index.js';
+import { Fleeing, Owner, PathRequest, Settler } from '../../components/index.js';
 import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { COMPASS_DIRECTIONS, clearNavState, entityNode, isTravelling, type NodeBuckets } from '../spatial.js';
+import {
+  COMPASS_DIRECTIONS,
+  clearNavState,
+  entityNode,
+  isTravelling,
+  type NodeBuckets,
+  redirectRoute,
+} from '../spatial.js';
 import { playerSeesEntity } from '../vision/index.js';
 import { isValidTarget, SIGHT_RADIUS_NODES } from './targeting.js';
 
@@ -27,7 +34,7 @@ const FLEE_COOLDOWN_TICKS = 40;
 const FLEE_STEP_NODES = 12;
 
 /**
- * FLEE stance — how many ticks a fleeing unit holds its current run route before re-aiming away from the
+ * FLEE stance — how many ticks a fleeing unit holds its current route before re-aiming away from the
  * (moving) threat. The flee twin of {@link REPATH_CADENCE}: a per-tick re-path of every fleer would be the
  * RTS-scale regression golden rule 7 forbids; between re-aims the unit walks its last route. OUR design
  * (source basis "Combat flee").
@@ -119,16 +126,12 @@ export function fleeDrive(
   }
 
   const dest = fleeDestination(terrain, here, entityNode(world, terrain, threat.entity));
-  // Re-aim the LIVE route instead of dropping it — the chase/moveUnit redirect pattern: keep any
-  // PathFollow (the walker keeps full stride this tick), drop only a stale in-flight request, and
-  // swap the goal; the routing splice carries the gait + heading through the turn. Clearing the nav
-  // state here instead reset the gait to zero every re-aim, so a fleer lurched — accelerate, stall —
-  // and fell behind even an equal-pace pursuer (the pace is constant by design; the lurch broke that).
   if (dest === here) {
     clearNavState(world, e); // boxed in (no walkable away-cell) — stand and hope
-  } else if (world.tryGet(e, MoveGoal)?.cell !== dest) {
-    world.remove(e, PathRequest);
-    world.add(e, MoveGoal, { cell: dest });
+  } else {
+    // Keep the live route — dropping it reset the gait every re-aim, and a lurching fleer fell
+    // behind even an equal-pace pursuer (the pace is constant by design).
+    redirectRoute(world, e, dest);
   }
   f.repathAt = ctx.tick + FLEE_REPATH_CADENCE;
 }

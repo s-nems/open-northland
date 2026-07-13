@@ -19,7 +19,8 @@ import { Provenance, TypeId } from '../record.js';
  *   - the group/territory params (`maximumgroupsize`, `maximumcadaversize`, `maximumleaderdistance`,
  *     `searchforleader`, `maximumdistancetostaypoint`, `maximumdistancetobirthpoint`) — herd/leader
  *     structure for the later spawn/herding slice.
- *   - `movespeed` / `runspeed` — locomotion (the run speed of a fleeing/charging animal).
+ *   - `movespeed` / `runspeed` — locomotion (`runspeed` is extracted for fidelity only; the sim
+ *     models no run gait).
  *   - the flags `catchable` (can be tamed/captured), `warrantable`, `cannotbeattacked`, `ignorehouses`.
  * The graphics/sound/spawn extras are skipped — this is the behaviour type-table slice, not a renderer.
  */
