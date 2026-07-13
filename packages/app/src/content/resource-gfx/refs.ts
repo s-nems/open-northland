@@ -1,5 +1,5 @@
 import type { LayeredBobRef } from '@vinland/render';
-import { TREE_ATLAS } from '../building-gfx.js';
+import { TREE_ATLAS } from '../building-gfx/index.js';
 import { GENERIC_GOOD_ICON, type GoodIconMap } from '../goods-gfx.js';
 import type { ContentIr, GatheringPipelineRow, GatheringStageRow, LandscapeGfxRow } from '../ir.js';
 import type { GoodRef } from '../settler-gfx/index.js';

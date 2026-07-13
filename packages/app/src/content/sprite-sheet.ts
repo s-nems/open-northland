@@ -37,7 +37,7 @@ import {
   HOUSE_ATLAS,
   TREE_ATLAS,
   VIKING_TRIBE,
-} from './building-gfx.js';
+} from './building-gfx/index.js';
 import { loadGoodsIconManifest } from './goods-gfx.js';
 import {
   BODY_IMAGELIB,
@@ -83,7 +83,7 @@ import {
  * GITIGNORED `content/` over the dev/shot vite server — no copyrighted bytes enter the repo; the
  * committed default degrades to {@link syntheticSpriteSheet} when `content/` is absent, so tests + the
  * reproducible shot are unaffected. The pure bindings live in {@link import('./settler-gfx/index.js')} /
- * {@link import('./building-gfx.js')}; the byte loading in {@link import('./ir.js')}.
+ * {@link import('./building-gfx/index.js')}; the byte loading in {@link import('./ir.js')}.
  */
 
 /** The decoded human body + head atlases (`test_human_00` palette) served at `/bobs/<name>.*`. */

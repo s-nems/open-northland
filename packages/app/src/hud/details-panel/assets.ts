@@ -6,7 +6,7 @@ import {
   DEFAULT_BUILDING_FAMILY,
   HOUSE_ATLAS,
   VIKING_TRIBE,
-} from '../../content/building-gfx.js';
+} from '../../content/building-gfx/index.js';
 import { type GoodsArt, loadGoodsArt } from '../../content/goods-gfx.js';
 import { type GuiArt, loadGuiArt } from '../../content/gui-art.js';
 import {

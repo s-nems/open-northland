@@ -13,7 +13,7 @@ import type {
   StockpileBinding,
 } from '@vinland/render';
 import { ATTACK_ATOMIC, HARVEST_ATOMIC } from '../../catalog/atomics.js';
-import { HOUSE_BOB, TREE_BOB, VIKING_HOUSE01_BOBS } from '../building-gfx.js';
+import { HOUSE_BOB, TREE_BOB, VIKING_HOUSE01_BOBS } from '../building-gfx/index.js';
 import type { BobSeqRow } from '../ir.js';
 import type { CharacterSpec } from './character-specs.js';
 import {
@@ -60,7 +60,7 @@ export function directionalAnimFromSeq(
  * The settler's walk/chop ranges are derived from `seqByName` (the extracted `bobSequences` for
  * `cr_hum_body_00.bmd`), so there are no hard-coded frame ids left here; an absent manifest falls back to
  * the known-good `FALLBACK_*` ranges. The building's per-type bobs **overlay** the extracted
- * `houseBobsByType` (the `buildingBobs` join, see {@link import('../building-gfx.js').buildingBobRefsByType})
+ * `houseBobsByType` (the `buildingBobs` join, see {@link import('../building-gfx/index.js').buildingBobRefsByType})
  * onto the transcribed {@link VIKING_HOUSE01_BOBS} **per type**: real data wins where present, the constant
  * covers any of its five known types the data is missing (so a partial/absent IR degrades gracefully
  * type-by-type instead of dropping a whole family to the generic box). A `houseBobsByType` value may be
