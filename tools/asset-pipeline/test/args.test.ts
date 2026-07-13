@@ -1,6 +1,6 @@
 import { mkdir, mkdtemp, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { assertOutStaysInCheckout, parseArgs, resolveArgs } from '../src/args.js';
 
@@ -22,26 +22,29 @@ describe('parseArgs', () => {
 describe('resolveArgs', () => {
   // The bug this guards: npm runs the workspace `start` script with cwd=tools/asset-pipeline/, so a
   // relative `--game ../Cultures 8th Wonder` must resolve against INIT_CWD (repo root), not cwd.
+  // Expected values are resolved from the PARENT dir (not composed as resolve(baseDir, arg) like the
+  // implementation), so they independently prove the `..` collapsed against baseDir. `resolve()` in
+  // the expectations keeps the test platform-agnostic (Windows adds a drive letter + backslashes).
   it('resolves relative game/out against baseDir; mod stays a bare subdir', () => {
     expect(
       resolveArgs(
         { game: '../Cultures 8th Wonder', mod: 'DataCnmd', out: 'content' },
-        '/home/u/opennorthland',
+        resolve('/home/u/opennorthland'),
       ),
     ).toEqual({
-      game: '/home/u/Cultures 8th Wonder',
+      game: resolve('/home/u/Cultures 8th Wonder'),
       mod: 'DataCnmd',
-      out: '/home/u/opennorthland/content',
+      out: resolve('/home/u/opennorthland/content'),
     });
   });
 
   it('passes absolute game/out through unchanged', () => {
-    expect(
-      resolveArgs({ game: '/abs/game', mod: undefined, out: '/abs/out' }, '/home/u/opennorthland'),
-    ).toEqual({
-      game: '/abs/game',
+    const game = resolve('/abs/game');
+    const out = resolve('/abs/out');
+    expect(resolveArgs({ game, mod: undefined, out }, resolve('/home/u/opennorthland'))).toEqual({
+      game,
       mod: undefined,
-      out: '/abs/out',
+      out,
     });
   });
 });
