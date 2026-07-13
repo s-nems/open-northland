@@ -5,4 +5,5 @@ config. Text typed after `/audit` is its `$ARGUMENTS`.
 
 Cursor has no subagents: where the workflow spawns named reviewer agents, apply each applicable
 lens yourself, one at a time — the lens definitions are plain-markdown checklists under
-`.claude/agents/`. Lens selection, ranking, and the report format are unchanged.
+`.claude/agents/` (the general correctness pass has no checklist file — apply it directly).
+Lens selection, ranking, and the report format are unchanged.

@@ -56,10 +56,10 @@ The canonical workflow prose lives under `.claude/commands/` (shared by the shim
 - `/ticket-scout` — scan a scope for ticket candidates and file them as `docs/tickets/` entries.
 
 Reviewer lens definitions live under `.claude/agents/` as plain-markdown checklists usable by any
-tool: sim determinism, RTS-scale performance, source-basis/fidelity, architecture, and code quality.
+tool: `engine-reviewer` (sim determinism, RTS-scale performance), `gameplay-reviewer` (source-basis
+fidelity, player experience), `code-reviewer` (architecture, code quality).
 
-Only Claude Code runs the write-time determinism hook (other tools' post-edit hooks cannot feed
-output back to the agent); for every tool the authoritative gate is
+Only Claude Code runs the write-time determinism hook; for every tool the authoritative gate is
 `packages/sim/test/core/hygiene.test.ts` via `npm test` and CI.
 
 ## Lean Docs Rule
