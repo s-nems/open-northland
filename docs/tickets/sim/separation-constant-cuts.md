@@ -8,10 +8,11 @@ towns sit far lower — 60 converging fighters = 0.44 ms/tick). Costs are alloca
 math. Two winner-identical cuts:
 
 1. **Numeric `NodeBuckets` keys.** `NodeBuckets` keys every node with the string
-   `nodeKey(x,y)` = `` `${x},${y}` `` (`nav/geometry.ts` ~L13, used in `systems/spatial.ts`) —
+   `nodeKey(x,y)` = `` `${x},${y}` `` (`systems/footprint/geometry.ts` ~L13, re-exported via
+   `systems/spatial.ts`) —
    9–18 string builds per mover per tick across all consumers (combat, flee, jobs, ai spacing,
    separation post/mover indexes).
-   **Correctness gate, not just a speed swap:** `geometry.ts`'s doc *deliberately* uses a string
+   **Correctness gate, not just a speed swap:** `footprint/geometry.ts`'s doc *deliberately* uses a string
    key so a negative/off-map coordinate can never alias onto a real node the way a naive
    `y*width+x` packing would — and `NodeBuckets.nearest`/`.at` do probe off-map neighbours
    (`fromX±d`). Also `nodeKey` is consumed directly by `placement.ts` obstacle/exclusion sets.

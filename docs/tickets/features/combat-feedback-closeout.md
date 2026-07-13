@@ -14,10 +14,10 @@ Three tracked gaps left over from the combat feedback step, small enough for one
    victim grunts (logicdefines 97/98) are extracted but unwired — `packages/audio/src/data/
    bindings.ts` has no miss or `getHit` binding. Wire a miss event → NoHit swoosh and a
    victim-sex → GetHit grunt on `combatHit`/`projectileHit`.
-3. **Skeleton settle animation.** `skeleton_falling` (12 frames, cadaver chain
-   `skeleton_falling 87 → cadaver_skeleton 81`) is unused — bones appear instantly
-   (`packages/render/src/data/effects.ts` "both assets are unbound here"). Play the settle once
-   before holding the bones frame.
+3. **Skeleton settle animation.** The final bone pile now draws the REAL decoded `cadaver human
+   bones` sprite (`packages/render/src/gpu/overlays/effects-layer.ts` `bones`), but the
+   `skeleton_falling` settle (12 frames, cadaver chain `skeleton_falling 87 → cadaver_skeleton 81`)
+   is still unplayed — bones appear instantly. Play the settle once before holding the bones frame.
 
 ## Verify
 

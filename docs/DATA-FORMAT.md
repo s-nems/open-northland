@@ -64,7 +64,7 @@ logictype 1            # the building's type id (NOT a `type` line, unlike other
 logicmaintype 1        # 1 storage / 2 home / 3 workplace / 4 training / 5 tower / 6 vehicle / 7 wonder
 logicworker 24 3       # jobType 24, count 3
 logicstock 16 150 0    # goodType 16, capacity 150, initial 0
-logicproduction 11     # (workplaces) output good id 11 — input side / amounts come later (Phase 3)
+logicproduction 11     # (workplaces) output good id 11 — input side / amounts live in the goods-graph
 ```
 
 IR `content/types/buildings.json` entry (schema in `packages/data/src/schema.ts`, extracted by
@@ -86,7 +86,7 @@ IR `content/types/buildings.json` entry (schema in `packages/data/src/schema.ts`
 
 `kind` is mapped from `logicmaintype` (the engine's classification); the specific building —
 headquarters vs a stock, which workplace — is carried by `id` (the `debugname` slug). The full
-production recipe (input goods + per-cycle amounts/timing) is a Phase-3 goods-graph artifact derived
+production recipe (input goods + per-cycle amounts/timing) is a goods-graph artifact derived
 from `goodtypes.productionInputGoods`; `produces` captures only the output good ids the house table
 names today. `construction` is the build-material cost (`{goodType, amount}[]`) overlaid from the
 **graphics** table (`DataCnmd/budynki12/houses/houses.ini` `[GfxHouse]` `LogicConstructionGoods`,

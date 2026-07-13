@@ -49,7 +49,7 @@ So behavior is a **planner sequencing atomics**, not bespoke per-job code:
   production by sequencing harvest/pickup/produce/pileup; else satisfy a social/enjoy need).
 - **AtomicSystem** = execute `CurrentAtomic` to completion, apply its effect, notify the planner.
 
-**Worked example — the woodcutter slice (implemented in Phase 2).** An idle woodcutter, empty-handed:
+**Worked example — the woodcutter slice.** An idle woodcutter, empty-handed:
 `aiSystem`'s `atomicPlanner` sees no `CurrentAtomic`, picks the `harvest` atomic the job permits, and
 sets a `MoveGoal` to the nearest harvestable wood node. The navigation planner routes it
 (`PathRequest` → A\* → `PathFollow`); `movementSystem` walks it there. On arrival the planner starts a
@@ -87,7 +87,7 @@ its own graph — never hardcode tribe count or identities.
    sim — use `fx.isqrt`. Floats are fine for pure rendering only.
 4. **Commands in, snapshot out.** State mutates ONLY via serializable commands (CommandSystem). A
    tick consumes `(prevState, commands, rng)` and nothing else. This makes save = command log and
-   keeps lockstep MP cheap — preserve it from Phase 2, don't add nondeterminism "for now".
+   keeps lockstep MP cheap — preserve it, don't add nondeterminism "for now".
 
 `Simulation.hashState()` canonically hashes **all** components on all entities; the golden tests in
 `packages/sim/test` are the tripwire. Also keep **golden atomic-action traces** (the sequence of
@@ -151,13 +151,12 @@ across runs.
 
 The command-log-plus-snapshot save model and lockstep-MP plan live in
 docs/ARCHITECTURE.md ("Save / load & multiplayer"). The ECS-specific consequence: **every component
-is plain data**, so a snapshot is a straightforward serialization — design the snapshot read-view
-**in Phase 2** (so `render` reads a stable view, never mid-mutation), finalize the disk format in
-Phase 5.
+is plain data**, so a snapshot is a straightforward serialization — the snapshot read-view keeps
+`render` reading a stable view, never mid-mutation; the on-disk save format is a later slice.
 
 ## What to build first
 
-Don't build all 16 systems at once. Use `docs/tickets/` to define the next vertical slice:
+Don't build the whole schedule at once. Use `docs/tickets/` to define the next vertical slice:
 cell-graph terrain → one settler → A* + movement → the atomic planner (harvest→pickup→carry→pileup)
 → one workplace with capacity → a carrier. Get it deterministic, invariant-clean, and trace-golden,
 then widen.

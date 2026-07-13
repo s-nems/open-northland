@@ -2,8 +2,8 @@
 
 **Area:** app (+ sim seam) · **Origin:** sim-perf plan reconciliation, 2026-07-12
 
-The fixed-timestep loop runs in-thread today: `packages/app/src/view/game-view.ts` (~L501) creates
-`FixedTimestep` and calls `sim.step()` inside `timestep.advance(...)` on the RAF frame. No
+The fixed-timestep loop runs in-thread today: `packages/app/src/view/frame-loop.ts` creates
+`FixedTimestep` (L72) and calls `sim.step()` inside `timestep.advance(...)` (L98) on the RAF frame. No
 `Worker`/`postMessage` exists in `packages/{app,render,sim}`. The sim is already worker-ready: the
 snapshot is a plain transferable structure, pinned by
 `packages/sim/test/inspect/snapshot-transferable.test.ts` (survives `structuredClone`).

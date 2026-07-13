@@ -4,7 +4,7 @@
 2026-07-12
 
 Felled trees swap instantly to stump + trunk. The original has a mid-fall state:
-`packages/app/src/content/resource-gfx.ts` binds the debris and notes "the `tree_dead falling`
+`packages/app/src/content/resource-gfx/stump.ts` binds the debris and notes "the `tree_dead falling`
 (logicType 5, the mid-fall frame …) is the falling-animation polish"; `objects.ts` already groups
 `'tree falling'` with unshaded types. Pure render polish reacting to the existing `resourceFelled`
 event (`packages/sim/src/core/events.ts`) — no sim change.

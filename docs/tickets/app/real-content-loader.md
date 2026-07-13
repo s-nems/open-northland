@@ -3,6 +3,7 @@
 **Area:** app · **Origin:** global-content plan reconciliation, 2026-07-12
 
 First link of the real-content chain (→ [real-content-rekey](real-content-rekey.md) →
+[real-content-balance-overlay](real-content-balance-overlay.md) →
 [real-content-switch](real-content-switch.md) → [real-content-goldens](real-content-goldens.md)).
 
 The schema skew is resolved: `parseContentSet(content/ir.json)` passes (verified 2026-07-12 — 65

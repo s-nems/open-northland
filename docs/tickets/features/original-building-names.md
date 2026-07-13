@@ -2,17 +2,20 @@
 
 **Area:** pipeline + app · **Origin:** original-ui plan reconciliation, 2026-07-12
 
-The details panel shows English catalog building names — the original Polish house names are not
-yet extracted, and long labels overflow the name column. The "Pojemność" capacity line is absent
+The details panel already shows Polish building names, but from a **hand-authored stopgap** table
+(`packages/app/src/catalog/building-i18n.ts` `localizedBuildingName`, e.g. barracks → "Koszary";
+consumed by `hud/details-panel/model/context.ts`), not from the original extracted strings. Two
+gaps remain: long labels overflow the name column, and the "Pojemność" capacity line is absent
 because that string is not in the decoded tables (verify whether another table carries it before
 declaring it unavailable).
 
 ## Scope
 
-- Extract the building display names from the readable data (the `.cif`/string-table lane that
-  already yields the `housewindow`/`humanwindow` strings) and key them to building typeIds.
-- Feed them through the existing `loadGuiStrings`/`uiStringLookup` path; fix the name-column
-  overflow (truncate/fit, matching the original's behavior if observable).
+- Replace the hand-authored `building-i18n.ts` stopgap with names extracted from the readable data
+  (the `.cif`/string-table lane that already yields the `housewindow`/`humanwindow` strings), keyed
+  to building typeIds and fed through the existing `loadGuiStrings`/`uiStringLookup` path.
+- Fix the name-column overflow (truncate/fit, matching the original's behavior if observable) and
+  add the missing "Pojemność" capacity line if a source string is found.
 
 ## Verify
 
