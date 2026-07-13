@@ -229,7 +229,7 @@ export async function buildIr(args: Args): Promise<ContentSet> {
   // file; a partial install that lacks it yields an empty bank (the app degrades to silence). Purely
   // render/audio-binding data — the pure sim never reads it.
   const soundFile = join('Data', 'engine2d', 'inis', 'soundfx', 'soundfx.cif');
-  const sounds = await loadCifTable(args.game, soundFile, (sections) => extractSounds(sections), {
+  const sounds = await loadCifTable(args.game, soundFile, extractSounds, {
     staticGroups: [],
     ambient: [],
     jingles: [],

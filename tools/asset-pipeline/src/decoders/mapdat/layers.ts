@@ -43,7 +43,7 @@ const X8EL_BYTES_PER_CELL = 1;
  * `empa`/`empb` ground-pattern lanes carry one element per map CELL (unpacked length exactly
  * `width × height × 2`); `emla` carries one per HALF-CELL (`2W × 2H` elements).
  */
-export const X6EL_BYTES_PER_CELL = 2;
+const X6EL_BYTES_PER_CELL = 2;
 
 /** A decoded packed grid layer: its codec id and the unpacked row-major byte grid. */
 export interface MapLayer {
@@ -203,8 +203,16 @@ function encodeLayerPayload(
   return out;
 }
 
-/** Validates the packed-layer marker + codec id, returning the declared unpacked byte length. */
-function readLayerHeader(chunk: MapDatChunk, expectedCodec: string, notCodecMessage: string): number {
+/**
+ * Validates the packed-layer marker + codec id, returning the declared unpacked byte length. The
+ * codec-mismatch message differs per codec (`is not supported` vs `is not an X6el layer`), so the
+ * caller supplies it as a builder over the found codec.
+ */
+function readLayerHeader(
+  chunk: MapDatChunk,
+  expectedCodec: string,
+  mismatchMessage: (foundCodec: string) => string,
+): number {
   const p = chunk.payload;
   if (!isPackedLayer(chunk)) {
     throw new Error(
@@ -213,7 +221,7 @@ function readLayerHeader(chunk: MapDatChunk, expectedCodec: string, notCodecMess
   }
   const codec = ascii(p, 0x08, 4);
   if (codec !== expectedCodec) {
-    throw new Error(notCodecMessage.replace('{codec}', codec).replace('{tag}', chunk.tag));
+    throw new Error(mismatchMessage(codec));
   }
   const view = new DataView(p.buffer, p.byteOffset, p.byteLength);
   return view.getUint32(0x0d, true);
@@ -232,7 +240,7 @@ export function unpackMapLayer(chunk: MapDatChunk): MapLayer {
   const unpackedLength = readLayerHeader(
     chunk,
     MAP_LAYER_CODEC_X8,
-    `mapdat: chunk "{tag}" codec "{codec}" is not supported (only ${MAP_LAYER_CODEC_X8})`,
+    (codec) => `mapdat: chunk "${chunk.tag}" codec "${codec}" is not supported (only ${MAP_LAYER_CODEC_X8})`,
   );
   const cells = new Uint8Array(unpackedLength);
   unpackRle(chunk.payload, cells, X8EL_BYTES_PER_CELL, chunk.tag);
@@ -263,7 +271,7 @@ export function unpackX6elLayer(chunk: MapDatChunk): MapLayerU16 {
   const unpackedLength = readLayerHeader(
     chunk,
     MAP_LAYER_CODEC_X6,
-    `mapdat: chunk "{tag}" codec "{codec}" is not an ${MAP_LAYER_CODEC_X6} layer`,
+    (codec) => `mapdat: chunk "${chunk.tag}" codec "${codec}" is not an ${MAP_LAYER_CODEC_X6} layer`,
   );
   if (unpackedLength % X6EL_BYTES_PER_CELL !== 0) {
     throw new Error(

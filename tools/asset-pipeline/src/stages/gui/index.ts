@@ -21,8 +21,8 @@ import { convertWindowBitmaps } from './window-bitmaps.js';
  *    `<stem>.atlas.json`), so the app's `loadLayer` reads them unchanged.
  *  - **Palettes.** The engine colours each HUD element with a `Data/gui/palettes/*.pcx` (2×2 carriers
  *    whose real payload is the 256-colour trailer). We stack them into one `256 × N` LUT PNG — the exact
- *    mechanism as the player-colour LUT ({@link buildPlayerLutImage}) — with the row order fixed by
- *    {@link GUI_PALETTES} (mirrored app-side, so no sidecar descriptor is needed). The renderer reads an
+ *    mechanism as the player-colour LUT (`buildPaletteLut`) — with the row order fixed by
+ *    `GUI_PALETTES` (in `palette-lut.ts`, mirrored app-side, so no sidecar descriptor is needed). The renderer reads an
  *    indexed atlas pixel through the LUT row for its element's palette. Which palette pairs with which
  *    element is documented in `docs/SOURCES.md` (from the OpenVikings `CGuiBaseDataManager`/`CGuiManager`
  *    oracle: `iconsleft` = the whole tool panel, `context` = the order icons, `frame`/`bg_*`/`bar_*`/
