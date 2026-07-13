@@ -106,54 +106,16 @@ export function resolveLayers(
   }
 
   let bobId: number | null;
-  // A finished building's animated state overlay (the mill's rotor) — resolved once here, appended to
-  // whichever body path resolves below (a named-family body returns early; a default-layer body falls
-  // through to the kind-layer block). Null for every non-building kind and every overlay-less type.
+  // A finished building's animated state overlay (the mill's rotor) rides along its body path — resolved
+  // inside the building branch and appended to whichever body layer this frame draws. Null otherwise.
   let buildingOverlay: ResolvedLayer | null = null;
   if (item.kind === 'building') {
-    // An under-construction building draws its ACTIVE construction-stage stack (grey foundation →
-    // stages → body, several sprites in stacking order) when the binding carries the layers; each
-    // stage resolves through the same family/default-layer decision a finished body uses. A stage
-    // whose frame is missing/empty is skipped; if none resolves, fall through to the body draw
-    // (a partial atlas degrades to the finished look rather than drawing nothing).
-    const stack = resolveConstructionDraws(sheet.bindings.building, item);
-    if (stack !== null && typeof sheet.bindings.building !== 'number') {
-      // Under construction only the SCAFFOLDING rises: each scaffold stage is cropped to the bottom
-      // `builtPct` of its height, so the timber frame grows upward as the build progresses. Any stage that
-      // is a FINISHED building sprite (this or another tier's completed home bob — the stages reuse them) is
-      // excluded from the rise; the real house appears only when the site completes (`builtPct` gone → the
-      // normal body draw below), so it snaps in at 100% rather than a half-built cottage creeping up.
-      // `builtPct` is present whenever the stack is (resolveConstructionDraws requires it); the pool eases
-      // the displayed reveal so it glides between the sim's per-swing steps. At 0% the scaffold is fully
-      // hidden — a fresh site shows just its grey ground plot (the ConstructionPlotLayer), and the scaffold
-      // then rises from nothing as the first swings land.
-      const finishedKeys = finishedBuildingBobKeys(sheet.bindings.building);
-      const reveal = clamp01((item.builtPct ?? 0) / 100);
-      const layers: ResolvedLayer[] = [];
-      for (const draw of stack) {
-        if (finishedKeys.has(bobKey(draw))) continue; // a finished building sprite — only at 100%
-        const resolved = layeredLayerFor(sheet, 'building', draw);
-        if (resolved !== null) layers.push({ ...resolved, reveal });
-      }
-      if (layers.length > 0) return layers;
-    }
-    const draw = resolveBuildingDraw(sheet.bindings.building, item);
-    const overlayDraw = resolveBuildingOverlayDraw(sheet.bindings.building, item, tick);
-    if (overlayDraw !== null) {
-      const resolved = layeredLayerFor(sheet, 'building', overlayDraw);
-      // boundsExempt: the spin frames breathe in size/offset — they must not move the entity's box
-      // (selection ring, portrait framing). See ResolvedLayer.boundsExempt.
-      buildingOverlay = resolved === null ? null : { ...resolved, boundsExempt: true };
-    }
-    // A LOADED named family resolves through the shared helper (missing/empty frame → placeholder);
-    // an UNLOADED one falls through to the default building layer below (a deliberate difference
-    // from the construction path, which drops the stage instead).
-    if (draw.layer !== undefined && sheet.families?.[draw.layer] !== undefined) {
-      const resolved = layeredLayerFor(sheet, 'building', draw);
-      if (resolved === null) return null; // a broken body never draws a floating overlay
-      return buildingOverlay === null ? [resolved] : [resolved, buildingOverlay];
-    }
-    bobId = draw.bob;
+    // The building path either returns its own layer stack (construction rise / named-family body) or
+    // falls through with a default-layer bobId + the resolved overlay — see resolveBuildingLayers.
+    const branch = resolveBuildingLayers(sheet, item, tick);
+    if (branch.done) return branch.layers;
+    bobId = branch.bobId;
+    buildingOverlay = branch.overlay;
   } else if (item.kind === 'resource') {
     // A resource node resolves its per-good draw the SAME way a building does: a layer-qualified ref
     // (a rock/mine `.bmd` family) draws from that family atlas; a bare ref (the default yew) falls
@@ -169,38 +131,9 @@ export function resolveLayers(
     }
     bobId = draw.bob;
   } else if (item.kind === 'stockpile') {
-    // A ground pile / flag has NO shared `kindLayers` layer of its own, so it draws ONLY from a loaded
-    // named family (the `ls_goods` pile / `ls_temp` flag atlases). A bare or unloaded-family ref draws
-    // the placeholder heap — never falls through to the body atlas (which would blit a settler frame).
-    const binding = sheet.bindings.stockpile;
-    if (binding === undefined) return null;
-    const draws = resolveStockpileLayerDraws(binding, item);
-    return compactResolvedStockpileLayers(
-      draws.map((draw) =>
-        draw.layer === undefined
-          ? null // no family -> placeholder heap/flag, never a wrong atlas borrow
-          : layeredLayerFor(sheet, 'stockpile', draw),
-      ),
-    );
+    return resolveStockpileLayers(sheet, item);
   } else if (item.kind === 'grounddrop' || item.kind === 'stump' || item.kind === 'berrybush') {
-    // A stump (`ls_trees_dead` debris), a freshly-felled trunk on the ground (`landscapeToPickup` LOG) and
-    // a wild berry bush (the `ls_trees` bush frames) have no shared `kindLayers` layer either — each draws
-    // its frame ONLY from a loaded named family, reusing the per-good resource resolver. A bare or
-    // unloaded-family ref draws the placeholder — never a wrong-bob borrow from the body atlas. Same rule,
-    // different binding key (the DrawKind names the entity, the binding key names the graphic:
-    // grounddrop → `trunk`, berrybush → `berrybush`).
-    const binding =
-      item.kind === 'stump'
-        ? sheet.bindings.stump
-        : item.kind === 'berrybush'
-          ? sheet.bindings.berrybush
-          : sheet.bindings.trunk;
-    if (binding === undefined) return null;
-    const draw = resolveResourceDraw(binding, item);
-    if (draw === null) return []; // a data-pinned invisible level — draw nothing, not the placeholder
-    if (draw.layer === undefined) return null; // no family → placeholder
-    const resolved = layeredLayerFor(sheet, item.kind, draw);
-    return resolved === null ? null : [resolved];
+    return resolveDecorLayers(sheet, item, item.kind);
   } else {
     bobId = resolveSpriteBobId(item, sheet.bindings, tick);
   }
@@ -228,6 +161,108 @@ export function resolveLayers(
   add({ source: sheet.source, atlas: sheet.atlas });
   for (const overlay of sheet.overlays ?? []) add(overlay);
   return layers.length > 0 ? layers : null;
+}
+
+/** The building branch's outcome: either a finished stack it resolved on its own (`done`), or a
+ *  fall-through carrying the default-layer `bobId` + resolved overlay for the shared body block. */
+type BuildingBranch =
+  | { readonly done: true; readonly layers: ResolvedLayer[] | null }
+  | { readonly done: false; readonly bobId: number; readonly overlay: ResolvedLayer | null };
+
+/**
+ * Resolve a building's atlas layers. An under-construction building returns its ACTIVE construction-stage
+ * stack (grey foundation → stages → body, in stacking order); a finished building either returns its
+ * named-family body [+ animated overlay] directly, or falls through (`done: false`) with the default
+ * building-layer `bobId` so the shared body block draws it. Each stage/body resolves through the same
+ * family/default-layer decision ({@link layeredLayerFor}).
+ */
+function resolveBuildingLayers(sheet: SpriteSheet, item: DrawItem, tick: number): BuildingBranch {
+  // An under-construction building draws its construction-stage stack when the binding carries the
+  // layers; a stage whose frame is missing/empty is skipped; if none resolves, fall through to the body.
+  const stack = resolveConstructionDraws(sheet.bindings.building, item);
+  if (stack !== null && typeof sheet.bindings.building !== 'number') {
+    // Under construction only the SCAFFOLDING rises: each scaffold stage is cropped to the bottom
+    // `builtPct` of its height, so the timber frame grows upward as the build progresses. Any stage that
+    // is a FINISHED building sprite (this or another tier's completed home bob — the stages reuse them) is
+    // excluded from the rise; the real house appears only when the site completes (`builtPct` gone → the
+    // normal body draw), so it snaps in at 100% rather than a half-built cottage creeping up. `builtPct`
+    // is present whenever the stack is (resolveConstructionDraws requires it); the pool eases the displayed
+    // reveal so it glides between the sim's per-swing steps. At 0% the scaffold is fully hidden — a fresh
+    // site shows just its grey ground plot (the ConstructionPlotLayer), rising from nothing as swings land.
+    const finishedKeys = finishedBuildingBobKeys(sheet.bindings.building);
+    const reveal = clamp01((item.builtPct ?? 0) / 100);
+    const layers: ResolvedLayer[] = [];
+    for (const draw of stack) {
+      if (finishedKeys.has(bobKey(draw))) continue; // a finished building sprite — only at 100%
+      const resolved = layeredLayerFor(sheet, 'building', draw);
+      if (resolved !== null) layers.push({ ...resolved, reveal });
+    }
+    if (layers.length > 0) return { done: true, layers };
+  }
+  const draw = resolveBuildingDraw(sheet.bindings.building, item);
+  const overlayDraw = resolveBuildingOverlayDraw(sheet.bindings.building, item, tick);
+  let overlay: ResolvedLayer | null = null;
+  if (overlayDraw !== null) {
+    const resolved = layeredLayerFor(sheet, 'building', overlayDraw);
+    // boundsExempt: the spin frames breathe in size/offset — they must not move the entity's box
+    // (selection ring, portrait framing). See ResolvedLayer.boundsExempt.
+    overlay = resolved === null ? null : { ...resolved, boundsExempt: true };
+  }
+  // A LOADED named family resolves through the shared helper (missing/empty frame → placeholder); an
+  // UNLOADED one falls through to the default building layer (a deliberate difference from the
+  // construction path, which drops the stage instead).
+  if (draw.layer !== undefined && sheet.families?.[draw.layer] !== undefined) {
+    const resolved = layeredLayerFor(sheet, 'building', draw);
+    if (resolved === null) return { done: true, layers: null }; // a broken body never draws a floating overlay
+    return { done: true, layers: overlay === null ? [resolved] : [resolved, overlay] };
+  }
+  return { done: false, bobId: draw.bob, overlay };
+}
+
+/**
+ * Resolve a ground pile / delivery flag's layers. It has NO shared `kindLayers` layer of its own, so it
+ * draws ONLY from a loaded named family (the `ls_goods` pile / `ls_temp` flag atlases). A bare or
+ * unloaded-family ref draws the placeholder heap — never falls through to the body atlas (which would
+ * blit a settler frame).
+ */
+function resolveStockpileLayers(sheet: SpriteSheet, item: DrawItem): ResolvedLayer[] | null {
+  const binding = sheet.bindings.stockpile;
+  if (binding === undefined) return null;
+  const draws = resolveStockpileLayerDraws(binding, item);
+  return compactResolvedStockpileLayers(
+    draws.map((draw) =>
+      draw.layer === undefined
+        ? null // no family -> placeholder heap/flag, never a wrong atlas borrow
+        : layeredLayerFor(sheet, 'stockpile', draw),
+    ),
+  );
+}
+
+/**
+ * Resolve a decor entity's layers — a stump (`ls_trees_dead` debris), a freshly-felled trunk on the
+ * ground (`landscapeToPickup` LOG) or a wild berry bush (the `ls_trees` bush frames). Like the stockpile
+ * they have no shared `kindLayers` layer, so each draws its frame ONLY from a loaded named family, reusing
+ * the per-good resource resolver. A bare or unloaded-family ref draws the placeholder — never a wrong-bob
+ * borrow from the body atlas. Same rule, different binding key (the DrawKind names the entity, the binding
+ * key names the graphic: grounddrop → `trunk`, berrybush → `berrybush`).
+ */
+function resolveDecorLayers(
+  sheet: SpriteSheet,
+  item: DrawItem,
+  kind: 'grounddrop' | 'stump' | 'berrybush',
+): ResolvedLayer[] | null {
+  const binding =
+    kind === 'stump'
+      ? sheet.bindings.stump
+      : kind === 'berrybush'
+        ? sheet.bindings.berrybush
+        : sheet.bindings.trunk;
+  if (binding === undefined) return null;
+  const draw = resolveResourceDraw(binding, item);
+  if (draw === null) return []; // a data-pinned invisible level — draw nothing, not the placeholder
+  if (draw.layer === undefined) return null; // no family → placeholder
+  const resolved = layeredLayerFor(sheet, kind, draw);
+  return resolved === null ? null : [resolved];
 }
 
 /**

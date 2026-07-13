@@ -218,6 +218,115 @@ function targetPositionsOf(snapshot: WorldSnapshot): ReadonlyMap<number, { x: nu
 }
 
 /**
+ * Tag a settler draw item with the render-side reads a per-character binding needs: the running atomic
+ * (+ its elapsed clock), the combat-engaged gait flag, the drawn facing (target-facing wins over the
+ * walk heading), the hauled good, the job/weapon look, the owner player LUT row, and the born-young age
+ * flag. Assigned (not spread) so an absent fact stays an absent property under exactOptionalPropertyTypes.
+ */
+function assignSettlerFields(
+  item: MutableDrawItem,
+  components: Readonly<Record<string, unknown>>,
+  actingAtomic: number | null,
+  targetFacing: number | undefined,
+): void {
+  if (actingAtomic !== null) {
+    item.atomicId = actingAtomic;
+    // The action clock rides ALONGSIDE the atomic — omitted when idle (see DrawItem.elapsed), so a
+    // kept-indoor settler that still holds a stale CurrentAtomic doesn't carry an orphan elapsed.
+    const elapsed = readAtomicElapsed(components);
+    if (elapsed !== null) item.elapsed = elapsed;
+  }
+  // A combat-engaged unit reads the readied `..._agressive` gait (the sim `Engagement` marker).
+  if (readEngaged(components)) item.engaged = true;
+  // Facing: a mid-attack/mid-harvest swing has no walking heading, so it faces its target's LIVE tile
+  // (resolved by the caller); otherwise the movement heading. Target facing WINS when it resolves, so a
+  // stale path can't leave an attacker or a woodcutter swinging at empty air.
+  const facing = targetFacing ?? readFacing(components);
+  if (facing !== undefined) item.facing = facing;
+  const carrying = readCarrying(components);
+  if (carrying !== null) {
+    item.carrying = true;
+    if (carrying.goodType !== undefined) item.carryGood = carrying.goodType;
+  }
+  const jobType = readJobType(components);
+  if (jobType !== undefined) item.jobType = jobType;
+  // The equipped weapon good drives the drawn warrior look (bow slot → bow body) over the jobType.
+  const weaponGood = readEquipmentWeaponGood(components);
+  if (weaponGood !== undefined) item.weaponGood = weaponGood;
+  const player = readOwnerPlayer(components);
+  if (player !== undefined) item.player = player;
+  // Only a born-young settler carries `Age` — the component-presence disambiguation of the age-class
+  // jobType ids (1..4) from colliding synthetic adult ids (AGENTS.md [dc3ef54]).
+  if ('Age' in components) item.young = true;
+}
+
+/**
+ * Point a projectile draw item along its flight and LOB it (the ballistic-arc trig lives in
+ * {@link projectileArc}), returning the ballistic HEIGHT to fold into the draw-lift channel (never the
+ * depth key, so the lob can't reshuffle occlusion mid-flight). A shot whose target vanished this frame
+ * keeps `rotation` unset and flies flat (lift 0) for the one tick the sim takes to expire it.
+ */
+function assignProjectileArc(
+  item: MutableDrawItem,
+  components: Readonly<Record<string, unknown>>,
+  screen: ReturnType<typeof tileToScreen>,
+  posByRef: ReadonlyMap<number, { x: number; y: number }>,
+): number {
+  const targetRef = readProjectileTarget(components);
+  const to = targetRef !== null ? posByRef.get(targetRef) : undefined;
+  if (to === undefined) return 0;
+  const origin = readProjectileOrigin(components);
+  const arc = projectileArc(
+    screen,
+    tileToScreen(to.x / ONE, to.y / ONE),
+    origin === null ? null : tileToScreen(origin.x / ONE, origin.y / ONE),
+  );
+  item.rotation = arc.rotation;
+  return arc.lift;
+}
+
+/**
+ * Append the viewer's remembered statics (`data/fog-ghosts.ts`, pre-filtered to EXPLORED ground) to the
+ * draw list: each projects with the SAME anchor/lift/depth formula as a live static (so a ghost occludes
+ * correctly against live sprites at the fog boundary) but is tagged {@link DrawItem.ghost} for the pool's
+ * grey tint. Every ghost ref joins `liveRefs` — a ghost of a DEAD entity keeps its pooled sprite alive as
+ * long as the memory draws; a camera-culled ghost still counts as live but emits no item.
+ */
+function pushGhostItems(
+  items: MutableDrawItem[],
+  liveRefs: Set<number>,
+  ghosts: readonly FogGhost[],
+  viewport: Viewport | undefined,
+  elevation: ElevationField | undefined,
+): void {
+  for (const g of ghosts) {
+    // A ghost keeps its (possibly dead) entity's pooled sprite alive even while camera-culled.
+    liveRefs.add(g.ref);
+    const screen = tileToScreen(g.tileX, g.tileY);
+    if (viewport !== undefined && !isVisible(viewport, screen.x, screen.y)) continue;
+    const lift = terrainLiftAt(elevation, g.tileX, g.tileY);
+    // Same anchor/depth formula as a live static, so a ghost sorts correctly against live sprites at the
+    // fog boundary. Statics are always `idle`; the per-kind fields were frozen at capture.
+    const item: MutableDrawItem = {
+      kind: g.kind,
+      ref: g.ref,
+      x: screen.x,
+      y: screen.y,
+      depth: spriteDepth(g.tileX, g.tileY, g.kind),
+      state: 'idle',
+      ghost: true,
+    };
+    if (g.typeId !== undefined) item.typeId = g.typeId;
+    if (g.builtPct !== undefined) item.builtPct = g.builtPct;
+    if (g.goodType !== undefined) item.goodType = g.goodType;
+    if (g.level !== undefined) item.level = g.level;
+    if (g.gfxIndex !== undefined) item.gfxIndex = g.gfxIndex;
+    if (lift !== 0) item.lift = lift;
+    items.push(item);
+  }
+}
+
+/**
  * Build the depth-sorted sprite draw list AND the pre-cull liveness set in one pass over the
  * snapshot's entities — the shared core of {@link import('./terrain-scene.js').buildScene},
  * {@link buildSpriteScene} and the retained pool's per-frame reconcile (which needs both and would
@@ -334,35 +443,7 @@ export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOpt
     // Per-kind reads, ASSIGNED (not spread) so an absent fact stays an absent property under
     // exactOptionalPropertyTypes without a throwaway spread object per field.
     if (kind === 'settler') {
-      if (actingAtomic !== null) {
-        item.atomicId = actingAtomic;
-        // The action clock rides ALONGSIDE the atomic — omitted when idle (see DrawItem.elapsed), so a
-        // kept-indoor settler that still holds a stale CurrentAtomic doesn't carry an orphan elapsed.
-        const elapsed = readAtomicElapsed(components);
-        if (elapsed !== null) item.elapsed = elapsed;
-      }
-      // A combat-engaged unit reads the readied `..._agressive` gait (the sim `Engagement` marker).
-      if (readEngaged(components)) item.engaged = true;
-      // Facing: a mid-attack/mid-harvest swing has no walking heading, so it faces its target's LIVE
-      // tile (resolved above); otherwise the movement heading. Target facing WINS when it resolves,
-      // so a stale path can't leave an attacker or a woodcutter swinging at empty air.
-      const facing = targetFacing ?? readFacing(components);
-      if (facing !== undefined) item.facing = facing;
-      const carrying = readCarrying(components);
-      if (carrying !== null) {
-        item.carrying = true;
-        if (carrying.goodType !== undefined) item.carryGood = carrying.goodType;
-      }
-      const jobType = readJobType(components);
-      if (jobType !== undefined) item.jobType = jobType;
-      // The equipped weapon good drives the drawn warrior look (bow slot → bow body) over the jobType.
-      const weaponGood = readEquipmentWeaponGood(components);
-      if (weaponGood !== undefined) item.weaponGood = weaponGood;
-      const player = readOwnerPlayer(components);
-      if (player !== undefined) item.player = player;
-      // Only a born-young settler carries `Age` — the component-presence disambiguation of the age-class
-      // jobType ids (1..4) from colliding synthetic adult ids (AGENTS.md [dc3ef54]).
-      if ('Age' in components) item.young = true;
+      assignSettlerFields(item, components, actingAtomic, targetFacing);
     } else if (kind === 'building') {
       // A building carries its type id (the `[GfxHouse]` `LogicType` → `GfxBobId` join a per-type binding
       // draws its house bob by) and — while under construction — its progress percent (the stage binding
@@ -393,21 +474,8 @@ export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOpt
       const level = readBerryBushLevel(components);
       if (level !== undefined) item.level = level;
     } else if (kind === 'projectile') {
-      // Point the drawn arrow along its flight and LOB it (the ballistic-arc trig lives in
-      // {@link projectileArc}): a shot whose target vanished this frame keeps rotation unset and flies
-      // flat for the one tick the sim takes to expire it — never a throw.
-      const targetRef = readProjectileTarget(components);
-      const to = targetRef !== null ? posByRef.get(targetRef) : undefined;
-      if (to !== undefined) {
-        const origin = readProjectileOrigin(components);
-        const arc = projectileArc(
-          screen,
-          tileToScreen(to.x / ONE, to.y / ONE),
-          origin === null ? null : tileToScreen(origin.x / ONE, origin.y / ONE),
-        );
-        arcLift = arc.lift; // rides the lift draw channel, like terrain lift — never the depth key
-        item.rotation = arc.rotation;
-      }
+      // Rides the lift draw channel, like terrain lift — never the depth key (see assignProjectileArc).
+      arcLift = assignProjectileArc(item, components, screen, posByRef);
     } else {
       // stockpile | grounddrop: both read their held good + fill from the stockpile — the trunk keys its
       // per-good pickup graphic off `goodType`, the flag/heap its per-fill frame off `goodType`+`fill`.
@@ -422,33 +490,7 @@ export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOpt
     if (drawLift !== 0) item.lift = drawLift;
     items.push(item);
   }
-  if (ghosts !== undefined) {
-    for (const g of ghosts) {
-      // A ghost keeps its (possibly dead) entity's pooled sprite alive even while camera-culled.
-      liveRefs.add(g.ref);
-      const screen = tileToScreen(g.tileX, g.tileY);
-      if (viewport !== undefined && !isVisible(viewport, screen.x, screen.y)) continue;
-      const lift = terrainLiftAt(elevation, g.tileX, g.tileY);
-      // Same anchor/depth formula as a live static, so a ghost sorts correctly against live sprites
-      // at the fog boundary. Statics are always `idle`; the per-kind fields were frozen at capture.
-      const item: MutableDrawItem = {
-        kind: g.kind,
-        ref: g.ref,
-        x: screen.x,
-        y: screen.y,
-        depth: spriteDepth(g.tileX, g.tileY, g.kind),
-        state: 'idle',
-        ghost: true,
-      };
-      if (g.typeId !== undefined) item.typeId = g.typeId;
-      if (g.builtPct !== undefined) item.builtPct = g.builtPct;
-      if (g.goodType !== undefined) item.goodType = g.goodType;
-      if (g.level !== undefined) item.level = g.level;
-      if (g.gfxIndex !== undefined) item.gfxIndex = g.gfxIndex;
-      if (lift !== 0) item.lift = lift;
-      items.push(item);
-    }
-  }
+  if (ghosts !== undefined) pushGhostItems(items, liveRefs, ghosts, viewport, elevation);
   // Stable, total order: sprites by (y, x, id). The entity-id tie-break makes two sprites on the exact
   // same tile order deterministically.
   items.sort((a, b) => a.depth - b.depth || a.ref - b.ref);
