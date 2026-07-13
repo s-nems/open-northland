@@ -18,7 +18,9 @@ This repo (`opennorthland/`) normally sits beside two read-only reference folder
 
 Legal guardrails: OpenNorthland is an independent clean-room GPL-3.0-or-later rebuild. Do not copy original
 assets into the repo, do not port OpenVikings source, and do not brand this project with the
-original's names, logos, or screenshots. The canonical legal wording is in `docs/SOURCES.md`.
+original's names, logos, or screenshots of the original game. Screenshots of OpenNorthland's *own*
+renderer drawing locally-decoded assets are fine (the README hero image is one — the same practice
+as OpenMW/devilutionX). The canonical legal wording is in `docs/SOURCES.md`.
 
 ## Golden Rules
 

@@ -5,3 +5,4 @@
 
 # Binary assets — never end-of-line converted.
 *.png binary
+*.webp binary

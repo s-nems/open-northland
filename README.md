@@ -1,11 +1,20 @@
 # OpenNorthland
 
+[![CI](https://github.com/s-nems/open-northland/actions/workflows/ci.yml/badge.svg)](https://github.com/s-nems/open-northland/actions/workflows/ci.yml)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
+
 **OpenNorthland** is an open-source, cross-platform reimplementation of the Viking-era **Cultures**
 settler/colony strategy series: *Cultures 2*, *Northland* (*Die Sage der Wikinger*), and
 *8th Wonder of the World*. It is a fresh engine that pairs a deterministic simulation, an isometric
 renderer, and an offline pipeline converting your own copy of the original game's data into a modern,
 readable format. It is not a binary-faithful clone: where the original is buggy or unbalanced,
 OpenNorthland is free to fix it.
+
+![A Viking settlement running in OpenNorthland](docs/images/settlement.webp)
+
+<sub>OpenNorthland's own renderer drawing a Viking settlement — sprites, terrain and UI decoded
+locally by the asset pipeline from the author's copy of the game with the
+[culturesnation](https://culturesnation.pl/) mod. The repository ships no game art.</sub>
 
 > **You need to own the original game.** OpenNorthland ships **no game assets**. To actually play you
 > need **Cultures – 8th Wonder of the World**, the latest and most complete game in the series and the

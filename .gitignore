@@ -41,7 +41,8 @@ dist/
 /.cursor/*
 !/.cursor/commands/
 
-# Browser-automation artifacts (acceptance-scene verification, screenshots, console dumps)
+# Browser-automation artifacts (acceptance-scene verification, screenshots, console dumps).
+# Root-anchored on purpose: committed documentation images live under docs/images/ and stay tracked.
 .playwright-mcp/
 /*.png
 
