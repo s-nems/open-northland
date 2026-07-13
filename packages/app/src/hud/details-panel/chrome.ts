@@ -1,16 +1,16 @@
-import { type GuiColorKey, PalettedSprite } from '@vinland/render';
-import { type Application, type Container, type Graphics, Sprite, Text, type Texture } from 'pixi.js';
+import type { GuiColorKey } from '@vinland/render';
+import { type Application, type Container, type Graphics, Sprite, type Texture } from 'pixi.js';
 import type { FontColorName } from '../../content/font-gfx.js';
 import { GENERIC_GOOD_ICON, makeGoodSprite } from '../../content/goods-gfx.js';
 import { makeGuiSprite } from '../../content/gui-art.js';
-import { GUI_FRAME } from '../../content/gui-atlas-map.js';
-import { type GuiPaletteName, guiPaletteRow } from '../../content/gui-gfx.js';
-import { UI_TEXT_FILL } from '../../content/ui-font.js';
+import type { GuiPaletteName } from '../../content/gui-gfx.js';
 import { HOVER_ALPHA, HOVER_TINT, tileBitmap, WINDOW_BORDER } from '../chrome.js';
 import type { Rect } from '../geometry.js';
 import type { DetailsPanelAssets } from './assets.js';
+import { createFrameBorderKit } from './frame-border.js';
 import { drawGauge, PRODUCTION_BAR_FILL, rampColor } from './gauge.js';
 import type { ButtonHit } from './layout/index.js';
+import { createTextKit, type FontVariant } from './text.js';
 
 /**
  * The details panel's original-art drawing kit. A `Chrome` is created per rebuild over the panel's fresh
@@ -31,36 +31,6 @@ import type { ButtonHit } from './layout/index.js';
  * baseline metrics.
  */
 
-/** Which of the two panel text sizes a call draws at. */
-export type FontVariant = 'body' | 'title';
-
-/**
- * The vector text sizes in NATIVE (pre-scale) px: `title` for headlines/buttons/the building name, `body`
- * for rows. Multiplied by the chrome scale (the bake oversample) at draw time. Calibrated against the
- * original's font-10 body / font-12 title cap heights, then nudged for the serif's smaller x-height.
- */
-const FONT_PX: Readonly<Record<FontVariant, number>> = { body: 11, title: 13 };
-/**
- * A `Text` top-anchors at its line-box top, which sits this fraction of the font size ABOVE the visible cap
- * tops (measured for Tinos: `fontBoundingBoxAscent − actualBoundingBoxAscent ≈ 0.22 em`). Top-anchored
- * placements ({@link textAt}/{@link textRight}) subtract it so a caller's `y` means the visible glyph top —
- * the same contract the old bitmap path gave via its baseline metrics, so row text keeps its `ROW_TEXT_PAD`.
- */
-const CAP_TOP_RATIO = 0.22;
-/**
- * A tiny vertical nudge (native px) added when centring a line in a rect: Pixi measures a `Text` by its
- * full ascent+descent line box, so the visible caps sit a hair high — this drops them to the optical centre.
- */
-const CENTER_BIAS = 0.5;
-
-/** The window-border rope strips' decoded native thickness (128×3 / 3×128 atlas rects). */
-const FRAME_EDGE = 3;
-/**
- * The knot corners' decoded native size — must track atlas frames 0–3 (7×7 bottom pair / 10×10 top
- * pair); if the step-3 pass reassigns those frames, update these with them.
- */
-const CORNER_TOP = 10;
-const CORNER_BOTTOM = 7;
 /** The selected-name underline colour, sampled off the original's 1024×768 screenshots (avg #d8fb55). */
 const SELECTED_LIME = 0xd8fb55;
 /** Inner content-box bevel lines — eyeballed against the original's preview framing, not sampled. */
@@ -149,75 +119,15 @@ export function createChrome(
   // the preview Sprite) can't share. See panel.ts / PalettedSprite.flipY.
   const flipY = resolution !== undefined;
 
-  /**
-   * A placed line of vector text. The `Text` renders at `FONT_PX * scale` (so the bake's oversample keeps
-   * it sharp) and is anchored per call — Pixi centres/right-aligns by its own measured bounds, so no
-   * bitmap-baseline math is needed. It is Pixi-native content (like the Graphics/preview), so it bakes
-   * upright with no `flipY`.
-   */
-  const makeText = (text: string, color: FontColorName, variant: FontVariant): Text => {
-    const t = new Text({
-      text,
-      style: {
-        fontFamily: assets.uiFont.family,
-        fontSize: FONT_PX[variant] * scale,
-        fill: UI_TEXT_FILL[color],
-      },
-    });
-    layers.text.addChild(t);
-    return t;
-  };
-
-  const textAt = (
-    text: string,
-    x: number,
-    y: number,
-    color: FontColorName,
-    variant: FontVariant = 'body',
-  ): void => {
-    const t = makeText(text, color, variant);
-    t.anchor.set(0, 0);
-    t.position.set(Math.round(x), Math.round(y - CAP_TOP_RATIO * FONT_PX[variant] * scale));
-  };
-
-  const textCentered = (
-    text: string,
-    r: Rect,
-    color: FontColorName,
-    variant: FontVariant = 'body',
-    maxWidth?: number,
-  ): void => {
-    const t = makeText(text, color, variant);
-    t.anchor.set(0.5, 0.5);
-    // Shrink a line that would overflow (a long patronymic name in the headline). Scaling the whole node
-    // around its centre anchor keeps it centred; short lines are left at their native size.
-    if (maxWidth !== undefined && t.width > maxWidth) t.scale.set(maxWidth / t.width);
-    t.position.set(Math.round(r.x + r.w / 2), Math.round(r.y + r.h / 2 + CENTER_BIAS * scale));
-  };
-
-  const textLeftMiddle = (
-    text: string,
-    x: number,
-    centerY: number,
-    color: FontColorName,
-    variant: FontVariant = 'body',
-  ): void => {
-    const t = makeText(text, color, variant);
-    t.anchor.set(0, 0.5);
-    t.position.set(Math.round(x), Math.round(centerY + CENTER_BIAS * scale));
-  };
-
-  const textRight = (
-    text: string,
-    rightX: number,
-    y: number,
-    color: FontColorName,
-    variant: FontVariant = 'body',
-  ): void => {
-    const t = makeText(text, color, variant);
-    t.anchor.set(1, 0);
-    t.position.set(Math.round(rightX), Math.round(y - CAP_TOP_RATIO * FONT_PX[variant] * scale));
-  };
+  // The vector-text placement primitives (`text.ts`) over the panel's text layer, and the rope-and-knot
+  // window border (`frame-border.ts`) over its front sprite layer — the two self-contained sub-concerns
+  // of this kit. Headlines/buttons place text through the former; the window fill draws the latter.
+  const { textAt, textCentered, textLeftMiddle, textRight } = createTextKit(
+    layers.text,
+    assets.uiFont.family,
+    scale,
+  );
+  const { frameBorder } = createFrameBorderKit({ art, front: layers.front, scale, flipY, screen });
 
   const tile = (texture: Texture | undefined, r: Rect, target: Container = layers.back): boolean =>
     tileBitmap(target, texture, r, scale);
@@ -260,84 +170,6 @@ export function createChrome(
     const x = Math.round(r.x + r.w / 2 - (made.frame.offsetX + made.frame.width / 2) * drawScale);
     const y = Math.round(r.y + r.h / 2 - (made.frame.offsetY + made.frame.height / 2) * drawScale);
     made.sprite.place(x, y, drawScale, w, h);
-  };
-
-  /**
-   * A border piece placed at an exact screen rect through the `frame` palette. Corners draw at native
-   * size; edge strips pass a CLIPPED sub-frame so the rope pattern tiles instead of stretching.
-   */
-  const framePiece = (gfx: number, r: Rect, clipNative?: { w: number; h: number }): void => {
-    if (art === null) return;
-    const frame = art.layer.atlas.frames.get(gfx);
-    if (frame === undefined) return;
-    const sprite = new PalettedSprite(art.lut, art.colours);
-    const sub =
-      clipNative === undefined
-        ? { ...frame, offsetX: 0, offsetY: 0 }
-        : { x: frame.x, y: frame.y, width: clipNative.w, height: clipNative.h, offsetX: 0, offsetY: 0 };
-    sprite.setFrame(art.layer.source, sub, art.layer.atlas.width, art.layer.atlas.height);
-    sprite.player = guiPaletteRow('frame');
-    sprite.colorKey = 'magenta';
-    sprite.flipY = flipY;
-    layers.front.addChild(sprite);
-    const { w, h } = screen();
-    sprite.stretchToRect(
-      Math.round(r.x),
-      Math.round(r.y),
-      Math.max(1, Math.round(r.w)),
-      Math.max(1, Math.round(r.h)),
-      w,
-      h,
-    );
-  };
-
-  /** Tile an edge strip along its length (thickness stretches to `r`, the rope pattern repeats). */
-  const frameStrip = (gfx: number, r: Rect, vertical: boolean): void => {
-    if (art === null) return;
-    const frame = art.layer.atlas.frames.get(gfx);
-    if (frame === undefined) return;
-    const stepNative = vertical ? frame.height : frame.width;
-    const len = vertical ? r.h : r.w;
-    let covered = 0;
-    while (covered < len) {
-      const remainNative = Math.min(stepNative, Math.max(1, Math.ceil((len - covered) / scale)));
-      const pieceLen = Math.min(remainNative * scale, len - covered);
-      framePiece(
-        gfx,
-        vertical
-          ? { x: r.x, y: r.y + covered, w: r.w, h: pieceLen }
-          : { x: r.x + covered, y: r.y, w: pieceLen, h: r.h },
-        vertical ? { w: frame.width, h: remainNative } : { w: remainNative, h: frame.height },
-      );
-      covered += pieceLen;
-    }
-  };
-
-  /**
-   * The rope-and-knot window border. Frame ids: rope strips 5–8, knot corners 0–3 (10×10 top pair,
-   * 7×7 bottom pair) — corner placement and strip orientation are montage-calibrated guesses pending
-   * the plan's step-3 human pass over the sheet.
-   */
-  const frameBorder = (r: Rect): void => {
-    const e = Math.max(1, Math.round(FRAME_EDGE * scale));
-    const ct = Math.round(CORNER_TOP * scale);
-    const cb = Math.round(CORNER_BOTTOM * scale);
-    frameStrip(GUI_FRAME.window_border_top, { x: r.x + ct, y: r.y, w: r.w - ct * 2, h: e }, false);
-    frameStrip(
-      GUI_FRAME.window_border_bottom,
-      { x: r.x + cb, y: r.y + r.h - e, w: r.w - cb * 2, h: e },
-      false,
-    );
-    frameStrip(GUI_FRAME.window_border_left, { x: r.x, y: r.y + ct, w: e, h: r.h - ct - cb }, true);
-    frameStrip(
-      GUI_FRAME.window_border_right,
-      { x: r.x + r.w - e, y: r.y + ct, w: e, h: r.h - ct - cb },
-      true,
-    );
-    framePiece(GUI_FRAME.knot_corner_tl, { x: r.x, y: r.y, w: ct, h: ct });
-    framePiece(GUI_FRAME.knot_corner_tr, { x: r.x + r.w - ct, y: r.y, w: ct, h: ct });
-    framePiece(GUI_FRAME.knot_corner_bl, { x: r.x, y: r.y + r.h - cb, w: cb, h: cb });
-    framePiece(GUI_FRAME.knot_corner_br, { x: r.x + r.w - cb, y: r.y + r.h - cb, w: cb, h: cb });
   };
 
   // Named to avoid shadowing the global `window` inside this closure. The body tiles the grey-blue
