@@ -1,7 +1,7 @@
 import { parseContentSet } from '@vinland/data';
 import { describe, expect, it } from 'vitest';
-import * as components from '../../src/components/index.js';
-import type { Component, Entity } from '../../src/ecs/world.js';
+import type { Entity } from '../../src/ecs/world.js';
+import { clearComponentStores } from '../../src/harness/stores.js';
 import {
   CORE_INVARIANTS,
   type Command,
@@ -153,13 +153,6 @@ function grassMap(width: number, height: number): TerrainMap {
 }
 
 /** Clear every component store (module-level singletons) so runs can't leak into each other. */
-function clearComponentStores(): void {
-  for (const c of Object.values(components)) {
-    if (typeof c === 'object' && c !== null && 'store' in c) {
-      (c as Component<unknown>).store.clear();
-    }
-  }
-}
 
 function pick<T>(rng: Rng, options: readonly T[]): T {
   const v = options[rng.int(options.length)];

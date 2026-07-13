@@ -1,6 +1,7 @@
 import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Settler } from '../../src/components/index.js';
+import { clearComponentStores } from '../../src/harness/stores.js';
 import { fx, Simulation } from '../../src/index.js';
 import { IDLE_JOB, tribePopulationByJob } from '../../src/systems/index.js';
 
@@ -37,7 +38,7 @@ function jobsContent(): ContentSet {
 }
 
 beforeEach(() => {
-  Settler.store.clear();
+  clearComponentStores();
 });
 
 function spawnSettler(sim: Simulation, tribe: number, jobType: number | null): void {

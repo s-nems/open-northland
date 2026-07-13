@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PathFollow, Position, Velocity } from '../../../src/components/index.js';
+import { clearComponentStores } from '../../../src/harness/stores.js';
 import { fx, ONE, Simulation } from '../../../src/index.js';
 import { MOVE_SPEED_PER_TICK, movementSystem, WALK_TICKS_PER_CELL } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
@@ -239,8 +240,7 @@ describe('movementSystem — determinism', () => {
     // ids and clobber each other's path. Run each in isolation (clearing the shared stores between),
     // and compare the final hashes — same seed + same path must yield byte-identical state.
     const runOne = (): string => {
-      PathFollow.store.clear();
-      Position.store.clear();
+      clearComponentStores();
       const s = new Simulation({ seed: 5, content: testContent(), map: grassMap(5, 1) });
       followerAt(s, 0, 0, [
         { x: 0, y: 0 },

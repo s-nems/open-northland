@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { CurrentAtomic, Health, Settler } from '../../../../src/components/index.js';
+import { Settler } from '../../../../src/components/index.js';
+import { clearComponentStores } from '../../../../src/harness/stores.js';
 import { Simulation } from '../../../../src/index.js';
 import { atomicSystem, FIGHT_EXPERIENCE_TYPE, WEAPON_MAIN_TYPE } from '../../../../src/systems/index.js';
 import {
@@ -30,9 +31,7 @@ describe('atomicSystem — a damaging swing accrues fight XP into the weapon-cla
 
   it('maps each weapon class to its fight bucket (sword → SWORD, fist → FIST)', () => {
     const check = (mainType: number, bucket: number): void => {
-      Settler.store.clear();
-      Health.store.clear();
-      CurrentAtomic.store.clear();
+      clearComponentStores();
       const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
       const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_UNARMED);
       const target = fighterAt(sim, 1, 0, OTHER, null, { hitpoints: 10_000 });

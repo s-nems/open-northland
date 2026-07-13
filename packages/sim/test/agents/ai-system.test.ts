@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { MoveGoal, PathFollow, PathRequest, Position } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
+import { clearComponentStores } from '../../src/harness/stores.js';
 import { cellAnchorNode, fx, halfCellMapFromCells, Simulation, type TerrainMap } from '../../src/index.js';
 import { aiSystem, type SystemContext } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
@@ -18,10 +19,7 @@ const GRASS = 0;
 // Component stores are module-level singletons (see pathfinding-system.test.ts), so clear the stores
 // this suite touches before each case to keep membership assertions scoped to the current test.
 beforeEach(() => {
-  PathFollow.store.clear();
-  PathRequest.store.clear();
-  Position.store.clear();
-  MoveGoal.store.clear();
+  clearComponentStores();
 });
 
 /** An all-grass CELL-resolution strip, upsampled to the 2W×2H half-cell navigation lattice. */
@@ -221,10 +219,7 @@ describe('aiSystem — end-to-end: goal to arrival through the real schedule', (
 describe('aiSystem — determinism', () => {
   it('two same-seed sims with the same goal reach the same state hash', () => {
     const runOne = (): string => {
-      PathFollow.store.clear();
-      PathRequest.store.clear();
-      Position.store.clear();
-      MoveGoal.store.clear();
+      clearComponentStores();
       const s = new Simulation({ seed: 7, content: testContent(), map: grassMap(5, 1) });
       travellerAt(s, 0, 0, anchorCell(s, 4, 0));
       for (let i = 0; i < 25; i++) s.step();

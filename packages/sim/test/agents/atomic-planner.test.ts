@@ -5,15 +5,13 @@ import {
   CurrentAtomic,
   JobAssignment,
   MoveGoal,
-  PathFollow,
-  PathRequest,
   Position,
-  Production,
   Resource,
   Settler,
   Stockpile,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
+import { clearComponentStores } from '../../src/harness/stores.js';
 import {
   cellAnchorNode,
   fx,
@@ -48,18 +46,7 @@ const HARVEST_ATOMIC = 24;
 // Component stores are module-level singletons (see pathfinding-system.test.ts) — clear the ones this
 // suite touches before each case so membership assertions are scoped to the current test.
 beforeEach(() => {
-  Position.store.clear();
-  Settler.store.clear();
-  Resource.store.clear();
-  Building.store.clear();
-  Stockpile.store.clear();
-  Carrying.store.clear();
-  CurrentAtomic.store.clear();
-  MoveGoal.store.clear();
-  PathFollow.store.clear();
-  PathRequest.store.clear();
-  Production.store.clear();
-  JobAssignment.store.clear();
+  clearComponentStores();
 });
 
 /** An all-grass CELL-resolution strip, upsampled to the 2W×2H half-cell navigation lattice. */
@@ -367,18 +354,7 @@ describe('atomicPlanner — end-to-end harvest -> carry -> pileup through the re
 describe('atomicPlanner — determinism', () => {
   it('two same-seed runs of the full chain reach the same state hash', () => {
     const run = (): string => {
-      Position.store.clear();
-      Settler.store.clear();
-      Resource.store.clear();
-      Building.store.clear();
-      Stockpile.store.clear();
-      Carrying.store.clear();
-      CurrentAtomic.store.clear();
-      MoveGoal.store.clear();
-      PathFollow.store.clear();
-      PathRequest.store.clear();
-      Production.store.clear();
-      JobAssignment.store.clear();
+      clearComponentStores();
       const sim = new Simulation({ seed: 11, content: testContent(), map: grassMap(4, 1) });
       woodcutterAt(sim, 0, 0);
       woodAt(sim, 1, 0, 5);

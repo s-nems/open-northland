@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import * as components from '../../src/components/index.js';
-import type { Component } from '../../src/ecs/world.js';
+import { clearComponentStores } from '../../src/harness/stores.js';
 import {
   type Command,
   diffSnapshots,
@@ -32,13 +31,6 @@ const VIKING = 1;
 const GRASS = 0;
 
 /** Clear every component store (shared singletons) so each sim phase starts clean. */
-function clearComponentStores(): void {
-  for (const c of Object.values(components)) {
-    if (typeof c === 'object' && c !== null && 'store' in c) {
-      (c as Component<unknown>).store.clear();
-    }
-  }
-}
 
 function grassMap(width: number, height: number): TerrainMap {
   return { resolution: 'half-cell', width, height, typeIds: new Array(width * height).fill(GRASS) };

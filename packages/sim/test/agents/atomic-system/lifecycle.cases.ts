@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CurrentAtomic } from '../../../src/components/index.js';
+import { clearComponentStores } from '../../../src/harness/stores.js';
 import { ONE, Simulation } from '../../../src/index.js';
 import { atomicSystem } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
@@ -26,7 +27,7 @@ describe('atomicSystem — progress + completion', () => {
     // Regression: ONE/3 truncates, so accumulating a fixed-point step would sum to < ONE after 3
     // ticks and hang. Integer `elapsed` makes completion exact. Try several odd durations.
     for (const duration of [3, 6, 7]) {
-      CurrentAtomic.store.clear();
+      clearComponentStores();
       const sim = new Simulation({ seed: 1, content: testContent() });
       const e = sim.world.create();
       startAtomic(sim, e, { kind: 'idle' }, duration);

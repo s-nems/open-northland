@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import * as components from '../../src/components/index.js';
-import type { Component } from '../../src/ecs/world.js';
+import { clearComponentStores } from '../../src/harness/stores.js';
 import {
   type Command,
   type LoggedCommand,
@@ -30,14 +29,6 @@ const WOODCUTTER = 1;
 const CARPENTER = 2;
 const VIKING = 1;
 const GRASS = 0;
-
-function clearComponentStores(): void {
-  for (const c of Object.values(components)) {
-    if (typeof c === 'object' && c !== null && 'store' in c) {
-      (c as Component<unknown>).store.clear();
-    }
-  }
-}
 
 function grassMap(width: number, height: number): TerrainMap {
   return { resolution: 'half-cell', width, height, typeIds: new Array(width * height).fill(GRASS) };

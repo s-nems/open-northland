@@ -1,6 +1,7 @@
 import { parseTerrainMap } from '@vinland/data';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { MoveGoal, PathFollow, PathRequest, Position } from '../../src/components/index.js';
+import { MoveGoal, Position } from '../../src/components/index.js';
+import { clearComponentStores } from '../../src/harness/stores.js';
 import { fx, Simulation, scenario } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 
@@ -20,10 +21,7 @@ const WATER = 1; // fixture landscape typeId 1 — not walkable
 // Component stores are module-level singletons, so clear the ones these cases touch before each test
 // to keep membership assertions and hash equality scoped to the current case (see ai-system.test.ts).
 beforeEach(() => {
-  Position.store.clear();
-  MoveGoal.store.clear();
-  PathFollow.store.clear();
-  PathRequest.store.clear();
+  clearComponentStores();
 });
 
 /**
@@ -141,10 +139,7 @@ describe('a loaded map drives the sim in place of the synthetic grass grid', () 
 
   it('a settler navigates the loaded map (detours around the water wall) deterministically', () => {
     function run(): { ticks: number; arrived: boolean; hash: string } {
-      Position.store.clear();
-      MoveGoal.store.clear();
-      PathFollow.store.clear();
-      PathRequest.store.clear();
+      clearComponentStores();
       const map = parseTerrainMap(JSON.parse(mapFileJson()));
       const sim = new Simulation({ seed: 7, content: testContent(), map });
       // A lone mover at (0,0) given only a MoveGoal to (4,0): the navigation planner must issue a

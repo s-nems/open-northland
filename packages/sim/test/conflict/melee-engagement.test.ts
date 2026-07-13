@@ -1,7 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  Anger,
-  Armor,
   AttackOrder,
   CurrentAtomic,
   Engagement,
@@ -15,9 +13,9 @@ import {
   Resource,
   Settler,
   Stance,
-  Weapon,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
+import { clearComponentStores } from '../../src/harness/stores.js';
 import { cellAnchorNode, fx, halfCellMapFromCells, Simulation, type TerrainMap } from '../../src/index.js';
 import { aiSystem, combatSystem, SIGHT_RADIUS_NODES, type SystemContext } from '../../src/systems/index.js';
 import { attackUnit, moveUnit } from '../../src/systems/orders/index.js';
@@ -44,25 +42,7 @@ const P0 = 0;
 const P1 = 1;
 
 beforeEach(() => {
-  for (const c of [
-    Position,
-    Settler,
-    Health,
-    Owner,
-    Engagement,
-    AttackOrder,
-    CurrentAtomic,
-    MoveGoal,
-    PathFollow,
-    PathRequest,
-    PlayerOrder,
-    Anger,
-    Armor,
-    Weapon,
-    Resource,
-  ]) {
-    c.store.clear();
-  }
+  clearComponentStores();
 });
 
 function grassMap(width: number, height: number): TerrainMap {
@@ -153,13 +133,7 @@ describe('combat hostility — the owner (player) axis', () => {
     combatSystem(same.world, ctxOf(same));
     expect(same.world.has(bearSame, CurrentAtomic)).toBe(false); // same player — the bear holds its swing
 
-    Position.store.clear();
-    Settler.store.clear();
-    Health.store.clear();
-    Owner.store.clear();
-    Engagement.store.clear();
-    CurrentAtomic.store.clear();
-
+    clearComponentStores();
     const diff = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const bearDiff = fighterAt(diff, 0, 0, BEAR, WOODCUTTER, { owner: P0 });
     const vikingDiff = fighterAt(diff, 1, 0, VIKING, WOODCUTTER, { owner: P1 });
