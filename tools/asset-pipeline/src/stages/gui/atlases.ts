@@ -1,7 +1,6 @@
 import { join } from 'node:path';
-import { type BobAtlas, packBobAtlas, packIndexedBobAtlas } from '../../decoders/atlas.js';
-import { decodeBmd } from '../../decoders/bmd.js';
-import { BOBS_DIR, readGameFile, writeBobAtlas } from '../game-file.js';
+import { type Bmd, decodeBmd } from '../../decoders/bmd.js';
+import { BOBS_DIR, emitIndexedAndPreviewAtlas, readGameFile } from '../game-file.js';
 
 /** The GUI bob sheets to atlas, each with the palette its RGBA preview is coloured through. */
 interface GuiAtlasSource {
@@ -59,26 +58,26 @@ export async function convertGuiAtlases(
       );
       continue;
     }
-    let indexed: BobAtlas;
-    let colored: BobAtlas;
+    let bmd: Bmd;
     try {
-      const bmd = decodeBmd(bytes);
-      indexed = packIndexedBobAtlas(bmd);
-      colored = packBobAtlas(bmd, preview);
+      bmd = decodeBmd(bytes);
     } catch (err) {
       console.warn(`[pipeline] gui: skipped ${src.stem}: ${(err as Error).message}`);
       continue;
     }
-    const indexedStem = `${src.stem}.indexed`;
-    const previewStem = `${src.stem}.${src.previewPalette}`;
-    await writeBobAtlas(outDir, indexedStem, indexed);
-    await writeBobAtlas(outDir, previewStem, colored);
+    const { indexedStem, previewStem, frames } = await emitIndexedAndPreviewAtlas(
+      outDir,
+      src.stem,
+      bmd,
+      src.previewPalette,
+      preview,
+    );
     done.push({
       stem: src.stem,
       indexedStem,
       previewStem,
       previewPalette: src.previewPalette,
-      frames: indexed.manifest.frames.length,
+      frames,
     });
   }
   return done;

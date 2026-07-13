@@ -1,13 +1,12 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { type BobAtlas, packBobAtlas, packIndexedBobAtlas } from '../decoders/atlas.js';
-import { decodeFnt, type FontMetrics, fontMetrics } from '../decoders/fnt.js';
+import { decodeFnt, type Font, type FontMetrics, fontMetrics } from '../decoders/fnt.js';
 import {
   buildPaletteLut,
+  emitIndexedAndPreviewAtlas,
   identityPalette,
   type PaletteLutResult,
   readGameFile,
-  writeBobAtlas,
 } from './game-file.js';
 
 /**
@@ -168,23 +167,23 @@ export async function convertFonts(
       console.warn(`[pipeline] fonts: skipped ${src.key}: ${(err as Error).message}`);
       continue;
     }
-    let indexed: BobAtlas;
-    let colored: BobAtlas;
+    let font: Font;
     let metrics: FontMetrics;
     try {
-      const font = decodeFnt(bytes);
-      indexed = packIndexedBobAtlas(font.bmd);
-      colored = packBobAtlas(font.bmd, palette);
+      font = decodeFnt(bytes);
       metrics = fontMetrics(font);
     } catch (err) {
       console.warn(`[pipeline] fonts: skipped ${src.key}: ${(err as Error).message}`);
       continue;
     }
 
-    const indexedStem = `${src.key}.indexed`;
-    const previewStem = `${src.key}.${DEFAULT_FONT_COLOR}`;
-    await writeBobAtlas(outDir, indexedStem, indexed);
-    await writeBobAtlas(outDir, previewStem, colored);
+    const { indexedStem, previewStem } = await emitIndexedAndPreviewAtlas(
+      outDir,
+      src.key,
+      font.bmd,
+      DEFAULT_FONT_COLOR,
+      palette,
+    );
 
     await mkdir(join(outDir, FONTS_CONTENT_DIR), { recursive: true });
     const metricsPath = join(FONTS_CONTENT_DIR, `${src.key}.metrics.json`);

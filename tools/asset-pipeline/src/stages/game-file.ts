@@ -1,6 +1,7 @@
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
-import type { BobAtlas } from '../decoders/atlas.js';
+import { type BobAtlas, packBobAtlas, packIndexedBobAtlas } from '../decoders/atlas.js';
+import type { Bmd } from '../decoders/bmd.js';
 import { decodePcx } from '../decoders/pcx.js';
 import { buildPlayerLutImage } from '../decoders/player-palette.js';
 import { encodePng } from '../decoders/png.js';
@@ -114,4 +115,36 @@ export async function writeBobAtlas(outDir: string, stem: string, atlas: BobAtla
     join(outDir, BOBS_DIR, `${stem}.atlas.json`),
     `${JSON.stringify(atlas.manifest, null, 2)}\n`,
   );
+}
+
+/** The two `loadLayer` stems {@link emitIndexedAndPreviewAtlas} wrote, plus the atlas frame count. */
+export interface IndexedAtlasStems {
+  /** `<keyStem>.indexed` — the recolourable indexed atlas (palette index in red, mask in alpha). */
+  readonly indexedStem: string;
+  /** `<keyStem>.<previewSuffix>` — the default-coloured RGBA preview atlas. */
+  readonly previewStem: string;
+  readonly frames: number;
+}
+
+/**
+ * Packs a decoded bob container into (a) an indexed atlas the app recolours at draw time and (b) an RGBA
+ * preview coloured through `previewPalette`, writes both under {@link BOBS_DIR} as `<keyStem>.indexed` and
+ * `<keyStem>.<previewSuffix>`, and returns the two stems + frame count. The shared emit path for the
+ * goods/GUI/font indexed-atlas stages, which differ only in their key stem, preview suffix, and palette —
+ * centralizing the `<stem>.indexed` / `<stem>.<colour>` naming the app-side loaders mirror.
+ */
+export async function emitIndexedAndPreviewAtlas(
+  outDir: string,
+  keyStem: string,
+  bmd: Bmd,
+  previewSuffix: string,
+  previewPalette: Uint8Array,
+): Promise<IndexedAtlasStems> {
+  const indexed = packIndexedBobAtlas(bmd);
+  const preview = packBobAtlas(bmd, previewPalette);
+  const indexedStem = `${keyStem}.indexed`;
+  const previewStem = `${keyStem}.${previewSuffix}`;
+  await writeBobAtlas(outDir, indexedStem, indexed);
+  await writeBobAtlas(outDir, previewStem, preview);
+  return { indexedStem, previewStem, frames: indexed.manifest.frames.length };
 }

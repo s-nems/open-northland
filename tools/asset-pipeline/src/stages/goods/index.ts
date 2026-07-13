@@ -1,10 +1,9 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { packBobAtlas, packIndexedBobAtlas } from '../../decoders/atlas.js';
 import { decodeBmd } from '../../decoders/bmd.js';
 import { buildPlayerLutImage } from '../../decoders/player-palette.js';
 import { encodePng } from '../../decoders/png.js';
-import { BOBS_DIR, identityPalette, readGameFile, writeBobAtlas } from '../game-file.js';
+import { BOBS_DIR, emitIndexedAndPreviewAtlas, identityPalette, readGameFile } from '../game-file.js';
 import { buildGoodIcons, GOODS_ATLAS_STEM, type GoodIcon, loadGoods } from './icons.js';
 import { loadGoodNames } from './names.js';
 import { loadGoodsPalette, loadPaletteAliases } from './palettes.js';
@@ -133,11 +132,14 @@ export async function convertGoodsStage(gameDir: string, outDir: string): Promis
   let frames = 0;
   try {
     const bmd = decodeBmd(await readGameFile(gameDir, GOODS_BMD));
-    const indexed = packIndexedBobAtlas(bmd);
-    const preview = packBobAtlas(bmd, paletteByName.get(PREVIEW_PALETTE) ?? identityPalette());
-    await writeBobAtlas(outDir, GOODS_INDEXED_STEM, indexed);
-    await writeBobAtlas(outDir, `${GOODS_ATLAS_STEM}.${PREVIEW_PALETTE}`, preview);
-    frames = indexed.manifest.frames.length;
+    const emitted = await emitIndexedAndPreviewAtlas(
+      outDir,
+      GOODS_ATLAS_STEM,
+      bmd,
+      PREVIEW_PALETTE,
+      paletteByName.get(PREVIEW_PALETTE) ?? identityPalette(),
+    );
+    frames = emitted.frames;
   } catch (err) {
     console.warn(`[pipeline] goods: atlas skipped (${GOODS_BMD} unreadable): ${(err as Error).message}`);
   }
