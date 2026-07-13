@@ -1,4 +1,4 @@
-import { type Bmd, BOB_TYPE_8BIT, encodeBmd, PACKED_X_SHIFT } from '../../src/decoders/bmd.js';
+import { type Bmd, BOB_TYPE_8BIT, encodeBmd, PACKED_X_SHIFT } from '../../src/decoders/bmd/index.js';
 
 /** One 8-bit bob (id firstBobId=10), a 2×1 raw run of indices [4,8], serialized as a real `.bmd`. */
 export const sampleBmdBytes = (): Uint8Array => {

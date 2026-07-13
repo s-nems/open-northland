@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { decodeBmd } from '../../decoders/bmd.js';
+import { decodeBmd } from '../../decoders/bmd/index.js';
 import { buildPlayerLutImage } from '../../decoders/player-palette.js';
 import { encodePng } from '../../decoders/png.js';
 import { BOBS_DIR, emitIndexedAndPreviewAtlas, identityPalette, readGameFile } from '../game-file.js';

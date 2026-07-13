@@ -23,8 +23,8 @@
  * Pure functions only (no I/O). The CLI wires file reads + `encodePng` + JSON writes around them.
  */
 
-import type { Bmd, BobFrame } from './bmd.js';
-import { BOB_ALPHA_OPAQUE, decodeBobFrame } from './bmd.js';
+import type { Bmd, BobFrame } from './bmd/index.js';
+import { BOB_ALPHA_OPAQUE, decodeBobFrame } from './bmd/index.js';
 import { PALETTE_RGB_BYTES, type RgbaImage } from './image.js';
 
 /** Transparent gutter (in pixels) left between packed frames so sampling can't bleed across them. */

@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { encodeBmd } from '../src/decoders/bmd.js';
+import { encodeBmd } from '../src/decoders/bmd/index.js';
 import { encodeCursor } from '../src/decoders/cursor.js';
 import { decodePng } from '../src/decoders/png.js';
 import {

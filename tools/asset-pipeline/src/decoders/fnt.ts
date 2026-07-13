@@ -35,7 +35,7 @@
  * copyrighted fixtures (same rationale as the `.bmd`/`.pcx`/`.lib` encoder pairs).
  */
 
-import { type Bmd, BOB_TYPE_EMPTY, type BobRecord, decodeBmd, encodeBmd } from './bmd.js';
+import { type Bmd, BOB_TYPE_EMPTY, type BobRecord, decodeBmd, encodeBmd } from './bmd/index.js';
 import { StorableId } from './cif.js';
 
 const FONT_ID = StorableId.CFont; // 0x3F5

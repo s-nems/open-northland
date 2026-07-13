@@ -5,7 +5,7 @@ import {
   BOB_TYPE_EMPTY,
   type BobRecord,
   PACKED_X_SHIFT,
-} from '../src/decoders/bmd.js';
+} from '../src/decoders/bmd/index.js';
 import { StorableId } from '../src/decoders/cif.js';
 import {
   bobAdvance,

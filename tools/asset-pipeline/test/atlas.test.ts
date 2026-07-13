@@ -14,7 +14,7 @@ import {
   BOB_TYPE_EMPTY,
   type BobFrame,
   PACKED_X_SHIFT,
-} from '../src/decoders/bmd.js';
+} from '../src/decoders/bmd/index.js';
 
 /**
  * Bob-atlas packer tests. No copyrighted fixtures: we synthesize tiny in-memory `.bmd` bob sets (the

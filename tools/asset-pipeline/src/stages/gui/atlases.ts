@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { type Bmd, decodeBmd } from '../../decoders/bmd.js';
+import { type Bmd, decodeBmd } from '../../decoders/bmd/index.js';
 import { BOBS_DIR, emitIndexedAndPreviewAtlas, readGameFile } from '../game-file.js';
 
 /** The GUI bob sheets to atlas, each with the palette its RGBA preview is coloured through. */
