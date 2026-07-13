@@ -60,19 +60,15 @@ describe('parseDirection', () => {
 });
 
 describe('buildGalleryClips', () => {
-  const frame = (present: boolean): AtlasFrame =>
-    present
-      ? { x: 0, y: 0, width: 10, height: 10, offsetX: 0, offsetY: 0 }
-      : { x: 0, y: 0, width: 0, height: 0, offsetX: 0, offsetY: 0 };
   // A head atlas with a non-empty head at the base walk (1988) and one carry variant (4580), but EMPTY at
   // the fish carry (2468) — the mix that exercises the borrow.
   const headAtlas: SpriteAtlas = {
     width: 1,
     height: 1,
     frames: new Map<number, AtlasFrame>([
-      [1988, frame(true)],
-      [4580, frame(true)],
-      [2468, frame(false)],
+      [1988, frameAt(true)],
+      [4580, frameAt(true)],
+      [2468, frameAt(false)],
     ]),
   };
   const rows: BobSeqRow[] = [

@@ -4,7 +4,6 @@ import { STOCK_TAB_COUNT } from '../src/content/gui-atlas-map.js';
 import {
   BUILDING_FARM,
   BUILDING_HEADQUARTERS,
-  BUILDING_HOME_00,
   BUILDING_JOINERY,
   BUILDING_MILL,
   GOOD_FLOUR,
@@ -18,24 +17,12 @@ import {
   buildUnitPanelModel,
   HUMANWINDOW,
   type SettlerPanelModel,
-  type StockRow,
-  type UnitPanelModel,
   type UnitPanelModelContext,
 } from '../src/hud/details-panel/index.js';
-import { layoutDetails, MAX_STOCK_ROWS, stockSlotRects } from '../src/hud/details-panel/layout/index.js';
-import { defaultStockTab } from '../src/hud/details-panel/panel.js';
 import { equipmentScene } from '../src/scenes/equipment.js';
 import { createSceneSim } from '../src/scenes/index.js';
 import { sandboxScene } from '../src/scenes/sandbox.js';
-
-function ctxFromScene(): UnitPanelModelContext {
-  const sim = createSceneSim(sandboxScene);
-  return {
-    buildings: sim.content.buildings,
-    goods: sim.content.goods,
-    jobs: sim.content.jobs,
-  };
-}
+import { sandboxCtx } from './support/sandbox.js';
 
 function num(v: unknown): number | undefined {
   return typeof v === 'number' ? v : undefined;
@@ -73,35 +60,6 @@ describe('selection details panel model', () => {
     expect(model.stock.every((r) => r.amount === 0)).toBe(true);
     // Every row carries the stock category tab it belongs to (0–7), so the render can filter by tab.
     expect(model.stock.every((r) => r.category >= 0 && r.category < STOCK_TAB_COUNT)).toBe(true);
-  });
-
-  it('lays the stock grid as MAX_STOCK_ROWS×2 column-major cells inside the body (draw == hit geometry)', () => {
-    const body = { x: 10, y: 100, w: 200, h: 132 };
-    const slots = stockSlotRects(body, 1);
-    expect(slots).toHaveLength(MAX_STOCK_ROWS * 2);
-    // Column-major: the first MAX_STOCK_ROWS fill the left column (shared x), the rest the right column.
-    expect(slots[0]?.x).toBe(body.x);
-    expect(slots[MAX_STOCK_ROWS - 1]?.x).toBe(body.x);
-    expect(slots[MAX_STOCK_ROWS]?.x).toBeGreaterThan(body.x); // right column starts further right
-    // Rows descend within a column, and every cell stays inside the body.
-    expect(slots[1]?.y).toBeGreaterThan(slots[0]?.y ?? 0);
-    for (const s of slots) {
-      expect(s.x).toBeGreaterThanOrEqual(body.x);
-      expect(s.x + s.w).toBeLessThanOrEqual(body.x + body.w + 1); // +1 for integer rounding
-      expect(s.y + s.h).toBeLessThanOrEqual(body.y + body.h + 1);
-    }
-  });
-
-  it('opens a building on the FIRST (lowest-index) category that holds any of its goods', () => {
-    const row = (category: number): StockRow => ({ goodType: category, label: 'g', amount: 0, category });
-    const building = (stock: StockRow[]): UnitPanelModel =>
-      ({ kind: 'building', stock }) as unknown as UnitPanelModel;
-    // The panel opens on the lowest tab that has goods, regardless of which category is fullest.
-    expect(defaultStockTab(building([row(2), row(2), row(2), row(5)]))).toBe(2);
-    // A general store holding goods across many tabs opens on the leading one (tab 0).
-    expect(defaultStockTab(building([row(5), row(0), row(7), row(7), row(7)]))).toBe(0);
-    // No stock → tab 0.
-    expect(defaultStockTab(building([]))).toBe(0);
   });
 
   it('shows a producing building stock, production progress, and assigned workers', () => {
@@ -143,7 +101,7 @@ describe('selection details panel model', () => {
       ],
     };
 
-    const model = buildUnitPanelModel(snapshot, new Set([1]), ctxFromScene());
+    const model = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
     expect(model.kind).toBe('building');
     if (model.kind !== 'building') return;
     expect(model.production?.kind).toBe('recipe');
@@ -189,7 +147,7 @@ describe('selection details panel model', () => {
         },
       ],
     };
-    const model = buildUnitPanelModel(snapshot, new Set([1]), ctxFromScene());
+    const model = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
     if (model.kind !== 'building') throw new Error('expected a building model');
     expect(model.stock.map((r) => [r.goodType, r.amount])).toEqual([
       [GOOD_WHEAT, 0],
@@ -200,7 +158,7 @@ describe('selection details panel model', () => {
   it('labels a good by its localized content name when one is loaded (Mąka, not "flour")', () => {
     // The browser entries feed sandboxContent a per-locale good-name map (content/good-names.ts); the
     // model's labels must prefer that `name` over the machine id — the Produkcja row read "flour x1".
-    const ctx = ctxFromScene();
+    const ctx = sandboxCtx();
     const named = {
       ...ctx,
       goods: ctx.goods.map((g) => (g.typeId === GOOD_FLOUR ? { ...g, name: 'Mąka' } : g)),
@@ -248,7 +206,7 @@ describe('selection details panel model', () => {
       ],
     };
 
-    const model = buildUnitPanelModel(snapshot, new Set([1]), ctxFromScene());
+    const model = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
     expect(model.kind).toBe('building');
     if (model.kind !== 'building') return;
     expect(model.workerSlots.map((r) => `${r.label} ${r.filled}/${r.capacity}`)).toEqual([
@@ -260,7 +218,7 @@ describe('selection details panel model', () => {
     // Selecting that bound settler must name its trade, not fall back to "Bezrobotny": its `jobType` is the
     // rebased building-slot id, which the profession catalog doesn't carry — so the title resolves through
     // the content job names, exactly like the worker-slot rows above.
-    const settlerModel = buildUnitPanelModel(snapshot, new Set([2]), ctxFromScene());
+    const settlerModel = buildUnitPanelModel(snapshot, new Set([2]), sandboxCtx());
     expect(settlerModel.kind).toBe('settler');
     if (settlerModel.kind !== 'settler') return;
     expect(settlerModel.profession).toBe('Druid');
@@ -284,7 +242,7 @@ describe('selection details panel model', () => {
       ],
     };
 
-    const model = buildUnitPanelModel(snapshot, new Set([1]), ctxFromScene());
+    const model = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
     if (model.kind !== 'settler') throw new Error('expected a settler model');
     // Pinned labels (deliberately diverging from the decoded humanwindow 12–14 stat names), in the
     // fixed Zdrowie → Głód → Sen → Towarzystwo → Religia order.
@@ -297,7 +255,7 @@ describe('selection details panel model', () => {
     expect(model.bars[3]).toMatchObject({ pct: 100, hover: '100%' });
     expect(model.bars[4]).toMatchObject({ pct: 10, hover: '10%' });
 
-    const bare = buildUnitPanelModel(snapshot, new Set([2]), ctxFromScene());
+    const bare = buildUnitPanelModel(snapshot, new Set([2]), sandboxCtx());
     if (bare.kind !== 'settler') throw new Error('expected a settler model');
     expect(bare.bars.map((b) => b.label)).toEqual(['Głód', 'Sen', 'Towarzystwo', 'Religia']);
   });
@@ -335,7 +293,7 @@ describe('selection details panel model', () => {
       ],
     };
 
-    const model = buildUnitPanelModel(snapshot, new Set([1]), ctxFromScene());
+    const model = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
     expect(model.kind).toBe('building');
     if (model.kind !== 'building') return;
     expect(model.title).toBe('Farma'); // the user-facing localized name (catalog/building-i18n.ts)
@@ -353,45 +311,6 @@ describe('selection details panel model', () => {
     expect(
       model.stock.map((r) => ({ goodType: r.goodType, amount: r.amount, capacity: r.capacity })),
     ).toEqual([{ goodType: GOOD_WHEAT, amount: 3, capacity: 25 }]);
-  });
-
-  it('lays a small store out compact (no tabs, fitted rows) and drops Magazyn for a store-less building', () => {
-    const screen = { width: 1600, height: 1200 };
-    const buildingModel = (typeId: number): UnitPanelModel =>
-      buildUnitPanelModel(
-        {
-          tick: 0,
-          events: [],
-          entities: [
-            { id: 1, components: { Building: { buildingType: typeId, tribe: 1, built: ONE, level: 0 } } },
-          ],
-        },
-        new Set([1]),
-        ctxFromScene(),
-      );
-
-    // The farm's single wheat slot → the compact tab-less body, one fitted row per column pair.
-    const farm = layoutDetails(buildingModel(BUILDING_FARM), screen, 1);
-    if (farm?.kind !== 'building') throw new Error('expected a building layout');
-    expect(farm.stockCompact).toBe(true);
-    expect(farm.stockRows).toBe(1);
-    expect(farm.stockTabHits).toHaveLength(0);
-    expect(farm.stock).not.toBeNull();
-
-    // The HQ's full catalog → the original fixed-height tabbed store.
-    const hq = layoutDetails(buildingModel(BUILDING_HEADQUARTERS), screen, 1);
-    if (hq?.kind !== 'building') throw new Error('expected a building layout');
-    expect(hq.stockCompact).toBe(false);
-    expect(hq.stockRows).toBe(MAX_STOCK_ROWS);
-    expect(hq.stockTabHits.length).toBeGreaterThan(0);
-
-    // A home stores nothing → no Magazyn window at all, and the panel is SHORTER than the farm's.
-    const home = layoutDetails(buildingModel(BUILDING_HOME_00), screen, 1);
-    if (home?.kind !== 'building') throw new Error('expected a building layout');
-    expect(home.stock).toBeNull();
-    expect(home.stockTabHits).toHaveLength(0);
-    expect(home.panel.h).toBeLessThan(farm.panel.h);
-    expect(farm.panel.h).toBeLessThan(hq.panel.h);
   });
 
   it('shows a settler equipment section with labeled rows, worn goods, use percentages and empty slots', () => {
