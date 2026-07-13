@@ -1,14 +1,15 @@
 # Point seeker-independent economy nearest-X scans at an interaction-cell ring index
 
-**Area:** sim · **Origin:** sim-perf plan reconciliation, 2026-07-12 · **Blocked by:**
-[economy-sink-memo](economy-sink-memo.md) · **Priority:** P2
+**Area:** sim · **Origin:** sim-perf plan reconciliation, 2026-07-12 · **Priority:** P2
+
+The former sink-memo blocker landed during the sim cleanup; this ticket is now independently ready.
 
 The economy nearest-X picks are still linear candidate-list scans, `O(idle·candidates)` per tick,
 now spread across `agents/targets/stores/*` (`nearestStoreFor`, `nearestStoreHolding`,
 `nearestFreeYardNode` in `stock.ts`; `nearestWorkplaceOutput` in `outputs.ts`; `nearestTemple`,
 `nearestConstructionSite` in `buildings.ts`), `agents/targets/food.ts` (`nearestFoodStore`),
-and `agents/economy/*` (`nearestMissingInputSource`, `workplaceOutputToHaul` in `workshop/supply.ts`;
-`nearestGroundPile`, `boundProducerOutputToHaul` in `haul-targets.ts`). `NodeBuckets.nearest`
+and `agents/economy/*` (`nearestMissingInputSource` in `workshop/supply.ts`; `nearestGroundPile` in
+`haul-targets.ts`). `NodeBuckets.nearest`
 (`systems/spatial.ts`) already does the canonical band search combat uses.
 
 **Golden-safety analysis (pinned 2026-07-08, re-verified against code 2026-07-12):** a *plain*
