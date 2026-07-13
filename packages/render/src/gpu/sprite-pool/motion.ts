@@ -28,9 +28,10 @@ function fullGaitPxPerTick(): number {
 }
 
 /**
- * Cap on the gait-cycle rate in cycles-per-tick — covers the legit fast case (the flee RUN is 2× the
- * walk gait, whose feet should double-time) with headroom, while a mistracked jump below the snap
- * threshold can't spin the legs cartoonishly.
+ * Cap on the gait-cycle rate in cycles-per-tick — covers the legit fast case (a data-paced animal
+ * whose `movespeed` beats the universal 12-ticks-per-cell walk, e.g. movespeed 8 reads 1.5×) with
+ * headroom, while a mistracked jump below the snap threshold can't spin the legs cartoonishly.
+ * No run/sprint gait exists, so nothing legit approaches the cap.
  */
 const MAX_GAIT_RATE = 2.5;
 

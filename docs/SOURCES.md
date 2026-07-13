@@ -376,7 +376,7 @@ history, deleted 2026-07-12):
   drains per soldier swing: `event 2 1 −20` + `event 2 2 −20` (woman/civilist −100); `_attacked`
   stagger carries ZERO events (purely visual).
 - **NOT in readable data (the calibration boundary — observe the running original):** human base
-  HP / stamina pool / sight radius / run speed; the XP→level curve and per-level bonuses; the
+  HP / stamina pool / sight radius; the XP→level curve and per-level bonuses; the
   exact role of `blockingValue` and hit-vs-miss; heal/potion/amulet magnitudes; building
   hit-points; defence-mode cadence; projectile and blood sprites.
 - **No death animation exists:** a grep over all decoded `[bobseq]` names finds no `_die`/`_death`

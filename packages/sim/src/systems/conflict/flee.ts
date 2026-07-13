@@ -119,8 +119,17 @@ export function fleeDrive(
   }
 
   const dest = fleeDestination(terrain, here, entityNode(world, terrain, threat.entity));
-  clearNavState(world, e);
-  if (dest !== here) world.add(e, MoveGoal, { cell: dest }); // dest === here ⇒ boxed in, stand and hope
+  // Re-aim the LIVE route instead of dropping it — the chase/moveUnit redirect pattern: keep any
+  // PathFollow (the walker keeps full stride this tick), drop only a stale in-flight request, and
+  // swap the goal; the routing splice carries the gait + heading through the turn. Clearing the nav
+  // state here instead reset the gait to zero every re-aim, so a fleer lurched — accelerate, stall —
+  // and fell behind even an equal-pace pursuer (the pace is constant by design; the lurch broke that).
+  if (dest === here) {
+    clearNavState(world, e); // boxed in (no walkable away-cell) — stand and hope
+  } else if (world.tryGet(e, MoveGoal)?.cell !== dest) {
+    world.remove(e, PathRequest);
+    world.add(e, MoveGoal, { cell: dest });
+  }
   f.repathAt = ctx.tick + FLEE_REPATH_CADENCE;
 }
 

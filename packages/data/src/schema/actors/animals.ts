@@ -53,7 +53,8 @@ export const AnimalType = z.strictObject({
   maximumDistanceToBirthPoint: z.number().int().nonnegative().default(0),
   /** `movespeed` — walking speed (0 = the source default). */
   moveSpeed: z.number().int().nonnegative().default(0),
-  /** `runspeed` — running speed (a fleeing/charging animal); 0 when the source omits it. */
+  /** `runspeed` — the original's animal run gait; 0 when the source omits it. Extracted for
+   *  fidelity but deliberately unconsumed by the sim — no run/sprint gait is modeled. */
   runSpeed: z.number().int().nonnegative().default(0),
   /** `catchable` — can be tamed/captured by a hunter (cows/sheep) vs wild-only. */
   catchable: z.boolean().default(false),

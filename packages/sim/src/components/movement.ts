@@ -42,9 +42,10 @@ export const HerdMember = defineComponent<{ leader: Entity }>('HerdMember');
  * so a cow grazes at its own data-pinned speed instead of the settler default. A creature whose record
  * omits `movespeed` carries no `MoveSpeed` (the engine default applies = the universal pace).
  *
- * This is the entity's ONE pace — there is deliberately no run/sprint gait (the `animaltypes.ini`
- * `runspeed` param stays unconsumed in the IR): every unit moves at its constant pace whatever it is
- * doing, matching the original's constant ticks-per-step movement.
+ * This is the entity's ONE pace — there is deliberately no run/sprint gait, OUR design: every unit
+ * moves at its constant pace whatever it is doing. No human run speed is readable anywhere; the
+ * `animaltypes.ini` `runspeed` param (an animal run gait the original does carry) stays extracted
+ * in the IR but unconsumed.
  *
  * The pace is a positive {@link Fixed} (minted only via `fx.*`, so it hashes deterministically), read
  * identically to {@link MOVE_SPEED_PER_TICK} by the same drift-free arrival-snap, so a per-entity pace
