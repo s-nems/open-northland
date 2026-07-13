@@ -1,4 +1,4 @@
-import { FOG_STATE } from '@vinland/sim';
+import { FOG_STATE } from '@open-northland/sim';
 import { type Container, Sprite } from 'pixi.js';
 import { scaleColour } from '../../data/brightness.js';
 import { fogGhostTint } from '../../data/fog.js';

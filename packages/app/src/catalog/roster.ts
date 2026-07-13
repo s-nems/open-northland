@@ -1,4 +1,4 @@
-import { clipDirs, GALLERY_DIRS } from '@vinland/render';
+import { clipDirs, GALLERY_DIRS } from '@open-northland/render';
 import type { BobSeqRow } from '../content/ir.js';
 
 /**

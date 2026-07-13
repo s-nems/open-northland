@@ -1,4 +1,4 @@
-import { ONE } from '@vinland/sim';
+import { ONE } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { BUILDING_FARM, BUILDING_HEADQUARTERS, BUILDING_HOME_00 } from '../src/game/sandbox/ids.js';
 import { buildUnitPanelModel, type StockRow, type UnitPanelModel } from '../src/hud/details-panel/index.js';

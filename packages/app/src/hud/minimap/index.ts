@@ -8,8 +8,8 @@ import {
   ONE,
   type SceneTerrain,
   tileToScreen,
-} from '@vinland/render';
-import { FOG_STATE, type FogView, type WorldSnapshot } from '@vinland/sim';
+} from '@open-northland/render';
+import { FOG_STATE, type FogView, type WorldSnapshot } from '@open-northland/sim';
 import { type Application, BufferImageSource, Container, Graphics, Sprite, Texture } from 'pixi.js';
 import { PLAYER_SWATCH_COLORS } from '../../catalog/roster.js';
 import { MINIMAP_CELL_UNRESOLVED } from '../../content/minimap-ground.js';

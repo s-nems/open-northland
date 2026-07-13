@@ -1,4 +1,4 @@
-import { type Command, FOG_MODE } from '@vinland/sim';
+import { type Command, FOG_MODE } from '@open-northland/sim';
 import { BUTTON_STYLE, el } from '../overlay.js';
 import { ROW_STYLE, setButtonActive } from './chrome.js';
 

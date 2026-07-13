@@ -1,4 +1,4 @@
-import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
+import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
 import { WEAPON_MAIN_TYPE } from '../../../src/systems/index.js';
 
 /**

@@ -1,4 +1,4 @@
-import type { SpriteLayer, TextureSource } from '@vinland/render';
+import type { SpriteLayer, TextureSource } from '@open-northland/render';
 import { Rectangle, Texture } from 'pixi.js';
 import {
   BUILDING_FAMILIES,

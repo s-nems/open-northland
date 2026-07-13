@@ -1,4 +1,4 @@
-import { components, type Simulation } from '@vinland/sim';
+import { components, type Simulation } from '@open-northland/sim';
 import { grassTerrain, VIKING_BUILDINGS } from '../catalog/buildings.js';
 import { HUMAN_PLAYER } from '../game/rules.js';
 import { placeSandboxBuilding } from '../game/sandbox/index.js';

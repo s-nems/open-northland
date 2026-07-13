@@ -3,7 +3,7 @@
  * hitpoints, and ground footprints. All three read the graphics twin of the logic table and collapse
  * their genuinely multi-valued source to one flat value per typeId ({@link existingGfxHouseWins}).
  */
-import type { BuildingFootprint, FootprintCell } from '@vinland/data';
+import type { BuildingFootprint, FootprintCell } from '@open-northland/data';
 import { findProps, getInt, type RuleSection, tallyIds } from '../grammar.js';
 import { existingGfxHouseWins, logicTypeByLevel, splitGfxHouseRecords } from './shared.js';
 

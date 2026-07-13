@@ -35,7 +35,7 @@ export function resolveArgs(args: Args, baseDir: string): Args {
  * Refuses an `out` that a symlink would carry outside the invoking checkout (`baseDir`). The pipeline
  * writes files through the path without clearing it, so a worktree whose gitignored `content/` is a
  * symlink to the primary checkout would silently overwrite the primary's content in place — parallel
- * worktrees must own an APFS clone instead (`cp -Rc ../vinland/content content`; see
+ * worktrees must own an APFS clone instead (`cp -Rc ../opennorthland/content content`; see
  * `.claude/commands/worktree.md` step 1). Only symlink escape is refused: an out that does not exist
  * yet is fine (it will be created where stated), and an *explicit* out elsewhere (`--out /abs/dir`)
  * is the caller's own responsibility — checked lexically, so ancestor symlinks above the checkout
@@ -54,6 +54,6 @@ export function assertOutStaysInCheckout(out: string, baseDir: string): void {
   const realBase = realpathSync(lexBase);
   if (realOut === realBase || realOut.startsWith(realBase + sep)) return;
   throw new Error(
-    `--out ${out} is a symlink resolving to ${realOut}, outside the invoking checkout (${baseDir}). Refusing to write through it — this would clobber another checkout's content. Replace the symlink with a copy-on-write clone (rm content && cp -Rc ../vinland/content content), or pass the real path explicitly if writing there is intentional.`,
+    `--out ${out} is a symlink resolving to ${realOut}, outside the invoking checkout (${baseDir}). Refusing to write through it — this would clobber another checkout's content. Replace the symlink with a copy-on-write clone (rm content && cp -Rc ../opennorthland/content content), or pass the real path explicitly if writing there is intentional.`,
   );
 }

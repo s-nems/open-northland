@@ -1,4 +1,4 @@
-import type { WorldSnapshot } from '@vinland/sim';
+import type { WorldSnapshot } from '@open-northland/sim';
 
 /**
  * The PURE HUD-model layer — the part of the on-screen HUD an agent CAN self-verify, exactly

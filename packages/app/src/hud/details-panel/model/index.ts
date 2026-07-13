@@ -1,4 +1,4 @@
-import type { WorldSnapshot } from '@vinland/sim';
+import type { WorldSnapshot } from '@open-northland/sim';
 import { vikingBuildingByTypeId } from '../../../catalog/buildings.js';
 import { characterName } from '../../../game/character-names.js';
 import { PRIMARY_TRIBE } from '../../../game/rules.js';

@@ -12,7 +12,7 @@ import type { TextureSource } from 'pixi.js';
  * to a half-cell and asks the logic layer which house occupies it (OpenVikings
  * `CWorldDisplayElement.l_UpdateCursorPosition` → `DED_WorldPixelToMapMIGCoordinates` → cell→house
  * lookup — footprint-based, so a tall tower's roof was NOT clickable there). Per the user's direction,
- * Vinland instead hit-tests the drawn sprite itself: anywhere on the graphic selects, anywhere off it
+ * OpenNorthland instead hit-tests the drawn sprite itself: anywhere on the graphic selects, anywhere off it
  * does not.
  */
 

@@ -1,4 +1,4 @@
-import type { Recipe } from '@vinland/data';
+import type { Recipe } from '@open-northland/data';
 import { Building, Position, Settler } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';

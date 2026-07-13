@@ -1,4 +1,4 @@
-import { type ArmorType, type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
+import { type ArmorType, type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
 
 /** Resolve an armor record by its `id` (throws if absent — a test-fixture programmer error). */
 export function armor(content: ContentSet, id: string): ArmorType {

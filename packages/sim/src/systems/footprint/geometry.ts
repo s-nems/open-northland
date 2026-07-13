@@ -1,4 +1,4 @@
-import type { BuildingFootprint, ContentSet, FootprintCell } from '@vinland/data';
+import type { BuildingFootprint, ContentSet, FootprintCell } from '@open-northland/data';
 import { contentIndex } from '../../core/content-index.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 

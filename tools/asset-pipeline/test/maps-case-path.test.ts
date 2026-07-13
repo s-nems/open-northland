@@ -19,7 +19,7 @@ describe('findPathCaseInsensitive', () => {
   });
 
   async function tmpTree(): Promise<string> {
-    root = await mkdtemp(join(tmpdir(), 'vinland-case-path-'));
+    root = await mkdtemp(join(tmpdir(), 'opennorthland-case-path-'));
     return root;
   }
 

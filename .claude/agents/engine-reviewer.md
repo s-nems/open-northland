@@ -1,6 +1,6 @@
 ---
 name: engine-reviewer
-description: Reviews a Vinland diff for sim determinism/purity and RTS-scale performance budgets. Spawn for changes touching packages/sim, fixed-point math, command flow, content schemas, per-tick sim systems, or per-frame render/app paths. Pass it the commit range or diff to review.
+description: Reviews a OpenNorthland diff for sim determinism/purity and RTS-scale performance budgets. Spawn for changes touching packages/sim, fixed-point math, command flow, content schemas, per-tick sim systems, or per-frame render/app paths. Pass it the commit range or diff to review.
 tools: Read, Grep, Glob, Bash
 ---
 

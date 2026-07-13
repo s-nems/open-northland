@@ -1,4 +1,4 @@
-import { type Camera, halfCellToScreen, tileToScreen } from '@vinland/render/data';
+import { type Camera, halfCellToScreen, tileToScreen } from '@open-northland/render/data';
 import { clamp } from './math.js';
 
 /**

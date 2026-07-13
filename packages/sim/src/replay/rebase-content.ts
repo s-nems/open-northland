@@ -1,4 +1,4 @@
-import { type ContentSet, parseContentSet } from '@vinland/data';
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import type { LoggedCommand } from '../core/command-queue.js';
 import type { TerrainMap } from '../nav/terrain/index.js';
 import type { Simulation } from '../simulation.js';

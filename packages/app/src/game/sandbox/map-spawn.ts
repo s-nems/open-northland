@@ -1,5 +1,5 @@
-import type { TerrainObjects } from '@vinland/data';
-import { type Entity, type Simulation, systems } from '@vinland/sim';
+import type { TerrainObjects } from '@open-northland/data';
+import { type Entity, type Simulation, systems } from '@open-northland/sim';
 import type { ContentIr } from '../../content/ir.js';
 import {
   mapBerryBushSpawns,

@@ -39,7 +39,7 @@ async function writeCreaturePcx(outDir: string, file: string, seed: number): Pro
 
 /** Builds an out tree with the base + all `playerNN.pcx` sources the pcx-kind player colours need. */
 async function outTreeWithSources(): Promise<string> {
-  const outDir = await mkdtemp(join(tmpdir(), 'vinland-player-lut-'));
+  const outDir = await mkdtemp(join(tmpdir(), 'opennorthland-player-lut-'));
   await writeCreaturePcx(outDir, 'test_human_00.pcx', 0); // base
   for (const color of PLAYER_COLORS) {
     if (color.source.kind === 'pcx') await writeCreaturePcx(outDir, color.source.file, color.id + 1);
@@ -61,7 +61,7 @@ describe('convertPlayerColorLut', () => {
   });
 
   it('throws when the base creature palette is absent from the out tree', async () => {
-    const outDir = await mkdtemp(join(tmpdir(), 'vinland-player-lut-empty-'));
+    const outDir = await mkdtemp(join(tmpdir(), 'opennorthland-player-lut-empty-'));
     await expect(convertPlayerColorLut(outDir)).rejects.toThrow(/test_human_00\.pcx not found/);
   });
 });

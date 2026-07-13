@@ -1,6 +1,6 @@
 # packages/audio — the sound sink
 
-`@vinland/audio` plays the decoded original sounds for what the player sees: positional action SFX,
+`@open-northland/audio` plays the decoded original sounds for what the player sees: positional action SFX,
 terrain ambient beds, non-spatial life-event jingles, and sex/age-matched settler voice chatter. It
 consumes the SAME read-only `snapshot()` + one-shot `SimEvent`s that `render` reads and **never feeds
 anything back into the sim** — audio is a pure sink on the far side of the determinism boundary, so

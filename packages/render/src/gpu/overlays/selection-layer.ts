@@ -1,4 +1,4 @@
-import type { WorldSnapshot } from '@vinland/sim';
+import type { WorldSnapshot } from '@open-northland/sim';
 import { Container, Graphics } from 'pixi.js';
 import { type ElevationField, terrainLiftAt } from '../../data/elevation.js';
 import { ONE, TILE_HALF_H, TILE_HALF_W, tileToScreen } from '../../data/iso.js';

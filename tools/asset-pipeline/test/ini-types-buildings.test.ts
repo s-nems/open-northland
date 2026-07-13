@@ -1,4 +1,4 @@
-import { AtomicAnimation, TribeType } from '@vinland/data';
+import { AtomicAnimation, TribeType } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   extractBuildings,

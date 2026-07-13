@@ -1,4 +1,4 @@
-import { TRANSITION_NONE, TRANSITION_PAIRS } from '@vinland/data';
+import { TRANSITION_NONE, TRANSITION_PAIRS } from '@open-northland/data';
 import type { MapStaticObjects } from '../../decoders/ini.js';
 import {
   decodeMapDat,

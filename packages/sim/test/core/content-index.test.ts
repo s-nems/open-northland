@@ -1,4 +1,4 @@
-import type { ContentSet } from '@vinland/data';
+import type { ContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { contentIndex } from '../../src/core/content-index.js';
 import { testContent } from '../fixtures/content.js';

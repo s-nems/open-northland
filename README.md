@@ -1,20 +1,22 @@
-# Vinland
+# OpenNorthland
 
-**Vinland** is an open-source, cross-platform reimplementation of the settler/colony game
-**Cultures – 8th Wonder of the World** (successor lineage: *Cultures 2 / Northland / Die Sage der
-Wikinger*). It is a fresh engine — a deterministic simulation, an isometric renderer, and an offline
-pipeline that converts your own copy of the original game's data into a modern, readable format —
-not a binary-faithful clone. Where the original is buggy or unbalanced, Vinland is free to fix it.
+**OpenNorthland** is an open-source, cross-platform reimplementation of the Viking-era **Cultures**
+settler/colony strategy series — *Cultures 2*, *Northland* (*Die Sage der Wikinger*), and
+*8th Wonder of the World*. It is a fresh engine — a deterministic simulation, an isometric renderer,
+and an offline pipeline that converts your own copy of the original game's data into a modern,
+readable format — not a binary-faithful clone. Where the original is buggy or unbalanced,
+OpenNorthland is free to fix it.
 
-> **You need to own the original game.** Vinland ships **no game assets**. To play, you point the
-> asset pipeline at your own legally-owned copy of *Cultures – 8th Wonder of the World* — still sold
+> **You need to own the original game.** OpenNorthland ships **no game assets**. To actually play you
+> need **Cultures – 8th Wonder of the World** — the latest and most complete game in the series, and
+> the one the asset pipeline targets. Point the pipeline at your own legally-owned copy — still sold
 > on [Steam](https://store.steampowered.com/app/351870/Cultures__8th_Wonder_of_the_World/) and
 > [GOG](https://www.gog.com/en/game/cultures_34). This is the same model used by
 > [OpenMW](https://openmw.org/), [OpenRA](https://www.openra.net/) and
 > [devilutionX](https://github.com/diasurgical/devilutionX). See [Legal](#legal).
 
-> **Working title.** "Vinland" is the Norse name for the lands settled westward — a nod to
-> *Wyprawa na Północ*. The name is provisional and can change.
+> **Name.** *OpenNorthland* is an **open** reimplementation of the series, named for *Northland* —
+> one of its three games. Project home: [opennorthland.org](https://opennorthland.org).
 
 ## What it is (and isn't)
 
@@ -25,7 +27,7 @@ not a binary-faithful clone. Where the original is buggy or unbalanced, Vinland 
   [`OpenVikings_reversing`](https://github.com/Ravo92/OpenVikings_reversing) project *is*
   binary-faithful; we consult it as **file-format documentation**, never as a code dependency and
   never by porting its architecture. It is **optional** — you do not need it to build, test, or play
-  Vinland; it's only a reference for contributors working on the asset pipeline.
+  OpenNorthland; it's only a reference for contributors working on the asset pipeline.
 
 ## Status
 
@@ -79,7 +81,7 @@ cross-platform from day one.
 ## Repository layout
 
 ```
-vinland/
+opennorthland/
 ├── packages/
 │   ├── sim/      # deterministic simulation core (ECS). No rendering, no DOM. The heart.
 │   ├── data/     # intermediate-format schemas (zod) + loaders. Shared content model.
@@ -122,8 +124,8 @@ determinism rules, and the legal guardrails.
 > The authoritative statement of the project's legal posture is
 > [`docs/SOURCES.md`](docs/SOURCES.md) (**Legal line**); this section restates it for readers.
 
-**License.** Vinland is free software, released under the **GNU General Public License v3.0 (or
-later)** (`GPL-3.0-or-later`). See [`LICENSE`](LICENSE). Vinland is distributed in the hope that it will be useful, but
+**License.** OpenNorthland is free software, released under the **GNU General Public License v3.0 (or
+later)** (`GPL-3.0-or-later`). See [`LICENSE`](LICENSE). OpenNorthland is distributed in the hope that it will be useful, but
 **without any warranty**; see the license for details.
 
 **No game content.** This repository contains **no original game assets** and no copyrighted content
@@ -133,9 +135,9 @@ and is never committed.
 
 **Trademarks.** *Cultures – 8th Wonder of the World*, *Cultures*, and related names and logos are
 trademarks or registered trademarks of their respective owners (Funatics Software GmbH and/or its
-licensors). They are used here only descriptively, to state what Vinland is compatible with.
+licensors). They are used here only descriptively, to state what OpenNorthland is compatible with.
 
-**Disclaimer.** Vinland is an independent, fan-made project. It is **not affiliated with, authorized
+**Disclaimer.** OpenNorthland is an independent, fan-made project. It is **not affiliated with, authorized
 by, endorsed by, or in any way associated with** Funatics Software GmbH or any other rights holder
 of the *Cultures* series. All trademarks and copyrights remain the property of their respective
 owners.

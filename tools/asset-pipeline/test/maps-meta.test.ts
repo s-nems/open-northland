@@ -12,7 +12,7 @@ import { resolveMapMeta } from '../src/stages/maps/meta.js';
  * public; the private id/table resolvers are exercised through it.
  */
 async function mapFolder(): Promise<string> {
-  return mkdtemp(join(tmpdir(), 'vinland-map-meta-'));
+  return mkdtemp(join(tmpdir(), 'opennorthland-map-meta-'));
 }
 
 /** Writes `<dir>/text/<lang>/strings.ini` with the given `[text]` body. */

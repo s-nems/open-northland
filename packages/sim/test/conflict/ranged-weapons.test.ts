@@ -1,4 +1,4 @@
-import { type ContentSet, IR_VERSION, parseContentSet, type WeaponType } from '@vinland/data';
+import { type ContentSet, IR_VERSION, parseContentSet, type WeaponType } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   isRangedWeapon,

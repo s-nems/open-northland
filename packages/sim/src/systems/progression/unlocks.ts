@@ -1,4 +1,4 @@
-import type { JobRequirement, JobRequirementTarget, VehicleType } from '@vinland/data';
+import type { JobRequirement, JobRequirementTarget, VehicleType } from '@open-northland/data';
 import { Settler } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { World } from '../../ecs/world.js';

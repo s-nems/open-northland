@@ -1,4 +1,4 @@
-# Vinland Docs
+# OpenNorthland Docs
 
 Start with the contract: [`../AGENTS.md`](../AGENTS.md). It contains the always-on rules for agents
 and overrides older notes in plans or commits.

@@ -1,4 +1,4 @@
-import { components, Simulation } from '@vinland/sim';
+import { components, Simulation } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import type { ContentIr } from '../src/content/ir.js';
 import { harvestGoodByObjectName, mapResourceSpawns } from '../src/content/map-resources.js';

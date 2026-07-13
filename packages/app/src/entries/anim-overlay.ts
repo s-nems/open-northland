@@ -1,4 +1,4 @@
-import type { GalleryDirection } from '@vinland/render';
+import type { GalleryDirection } from '@open-northland/render';
 import { VIKING_CHARACTERS, type VikingCharacter } from '../catalog/roster.js';
 import { BUTTON_STYLE, el, navButton, PANEL_STYLE, signOffFooter } from '../view/overlay.js';
 import type { GalleryView } from './anim-cells.js';
@@ -8,7 +8,7 @@ import type { GalleryView } from './anim-cells.js';
  * checklist a human reads while judging the animations. Plain DOM (app-layer), split out of `anim.ts`
  * so the entry keeps the atlas loading + Pixi loop and this keeps the chrome. The character/view buttons
  * NAVIGATE (they reload different atlases); only the direction selector is live (drives
- * {@link import('@vinland/render').AnimationGallery.setDirection} through `onDirection`).
+ * {@link import('@open-northland/render').AnimationGallery.setDirection} through `onDirection`).
  */
 
 /**

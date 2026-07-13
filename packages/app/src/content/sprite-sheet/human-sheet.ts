@@ -1,4 +1,4 @@
-import type { SpriteLayer, SpriteSheet } from '@vinland/render';
+import type { SpriteLayer, SpriteSheet } from '@open-northland/render';
 import { DEFAULT_CHARACTER_PALETTE, INDEXED_CHARACTER_PALETTE } from '../../catalog/roster.js';
 import {
   BUILDING_FAMILIES,

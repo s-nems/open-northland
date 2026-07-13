@@ -26,7 +26,7 @@ describe('unpackLibTree', () => {
   let out: string;
 
   beforeEach(async () => {
-    const root = await mkdtemp(join(tmpdir(), 'vinland-lib-'));
+    const root = await mkdtemp(join(tmpdir(), 'opennorthland-lib-'));
     game = join(root, 'game');
     out = join(root, 'out');
     await mkdir(game, { recursive: true });

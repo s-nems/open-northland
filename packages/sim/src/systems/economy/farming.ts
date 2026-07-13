@@ -1,4 +1,4 @@
-import type { GoodFarming } from '@vinland/data';
+import type { GoodFarming } from '@open-northland/data';
 import { Building, Crop, Position, Resource, Stockpile } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';

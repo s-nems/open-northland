@@ -1,5 +1,5 @@
-import type { BuildingFootprint, TerrainMapFile } from '@vinland/data';
-import { type SceneTerrain, terrainMapToScene } from '@vinland/render';
+import type { BuildingFootprint, TerrainMapFile } from '@open-northland/data';
+import { type SceneTerrain, terrainMapToScene } from '@open-northland/render';
 import {
   type CellTerrainMap,
   components,
@@ -7,7 +7,7 @@ import {
   positionOfNode,
   Simulation,
   type TerrainMap,
-} from '@vinland/sim';
+} from '@open-northland/sim';
 import { HARVEST_ATOMIC } from '../catalog/atomics.js';
 import { PRIMARY_TRIBE } from '../game/rules.js';
 import {

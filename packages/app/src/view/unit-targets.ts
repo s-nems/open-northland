@@ -1,5 +1,5 @@
-import { buildSpriteScene, type EntityBounds } from '@vinland/render';
-import type { WorldSnapshot } from '@vinland/sim';
+import { buildSpriteScene, type EntityBounds } from '@open-northland/render';
+import type { WorldSnapshot } from '@open-northland/sim';
 import { gathererByFlag, ownerPlayerOf } from '../game/snapshot.js';
 import type { Pickable } from './picking.js';
 

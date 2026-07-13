@@ -1,5 +1,5 @@
-import { type Camera, tileToScreen } from '@vinland/render/data';
-import { ONE, type WorldSnapshot } from '@vinland/sim';
+import { type Camera, tileToScreen } from '@open-northland/render/data';
+import { ONE, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import type { SoundIndex } from '../src/index.js';
 import { defaultBindings, MAX_CHATTER_DT_MS, SoundDriver } from '../src/index.js';

@@ -1,4 +1,4 @@
-import { ONE as SIM_ONE } from '@vinland/sim';
+import { ONE as SIM_ONE } from '@open-northland/sim';
 
 /**
  * Isometric projection + the camera transform — the foundational, dependency-light math the rest of

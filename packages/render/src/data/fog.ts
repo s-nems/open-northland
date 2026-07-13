@@ -1,4 +1,4 @@
-import { FOG_STATE, type FogView } from '@vinland/sim';
+import { FOG_STATE, type FogView } from '@open-northland/sim';
 import { scaleColour } from './brightness.js';
 
 /**

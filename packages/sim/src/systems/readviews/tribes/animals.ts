@@ -1,4 +1,4 @@
-import type { AnimalType, ContentSet } from '@vinland/data';
+import type { AnimalType, ContentSet } from '@open-northland/data';
 import { contentIndex } from '../../../core/content-index.js';
 
 /**

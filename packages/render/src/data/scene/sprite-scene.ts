@@ -1,4 +1,4 @@
-import type { WorldSnapshot } from '@vinland/sim';
+import type { WorldSnapshot } from '@open-northland/sim';
 import { type ElevationField, terrainLiftAt } from '../elevation.js';
 import type { FogGhost } from '../fog-ghosts.js';
 import { ONE, tileToScreen } from '../iso.js';

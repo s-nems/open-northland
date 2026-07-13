@@ -1,5 +1,5 @@
-import type { Camera } from '@vinland/render/data';
-import type { SimEvent, WorldSnapshot } from '@vinland/sim';
+import type { Camera } from '@open-northland/render/data';
+import type { SimEvent, WorldSnapshot } from '@open-northland/sim';
 import type { SoundIndex } from '../data/bank.js';
 import { directAudio } from '../data/director/index.js';
 import { onScreenSettlers } from '../data/director/settlers.js';

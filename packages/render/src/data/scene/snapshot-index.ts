@@ -1,4 +1,4 @@
-import type { WorldSnapshot } from '@vinland/sim';
+import type { WorldSnapshot } from '@open-northland/sim';
 import { readActingAtomic, readBuiltPct, readPosition } from './snapshot-readers/index.js';
 
 /**

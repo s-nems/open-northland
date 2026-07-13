@@ -1,5 +1,5 @@
-import type { TerrainMapFile } from '@vinland/data';
-import { components, type TerrainMap } from '@vinland/sim';
+import type { TerrainMapFile } from '@open-northland/data';
+import { components, type TerrainMap } from '@open-northland/sim';
 
 /**
  * The PURE middle of the authored-entity placement import: resolve a decoded map's `entities` layer

@@ -1,7 +1,7 @@
 /**
  * Building logic types and the cross-table recipe fill (produce-atomic animation lengths → production ticks).
  */
-import { type AtomicAnimation, BuildingType, type GoodType, type TribeType } from '@vinland/data';
+import { type AtomicAnimation, BuildingType, type GoodType, type TribeType } from '@open-northland/data';
 import {
   findProps,
   getInt,

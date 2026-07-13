@@ -1,5 +1,5 @@
-import type { Camera, ElevationField } from '@vinland/render';
-import type { Command } from '@vinland/sim';
+import type { Camera, ElevationField } from '@open-northland/render';
+import type { Command } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import { localizedBuildingName } from '../catalog/building-i18n.js';
 import { vikingBuildingByTypeId } from '../catalog/buildings.js';

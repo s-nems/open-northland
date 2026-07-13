@@ -1,6 +1,6 @@
-# AGENTS.md — agent guide for Vinland
+# AGENTS.md — agent guide for OpenNorthland
 
-You are working on **Vinland**, a TypeScript rebuild of *Cultures - 8th Wonder of the World*.
+You are working on **OpenNorthland**, a TypeScript rebuild of *Cultures - 8th Wonder of the World*.
 This file is the canonical agent contract. Read it before editing.
 
 Tool-specific files such as `CLAUDE.md` and `GEMINI.md` are compatibility shims that import this
@@ -9,14 +9,14 @@ config or growing process ledgers.
 
 ## Where Things Are
 
-This repo (`vinland/`) normally sits beside two read-only reference folders:
+This repo (`opennorthland/`) normally sits beside two read-only reference folders:
 
 - `OpenVikings_reversing/` — C#/.NET reverse engineering of original file formats. Use it as an
   oracle for layouts and decoders, not as architecture to port.
 - `Cultures 8th Wonder/` — the original game plus the `culturesnation` mod (`DataCnmd/`). It is the
   asset-pipeline input. Never commit its assets, decoded content, or binaries.
 
-Legal guardrails: Vinland is an independent clean-room GPL-3.0-or-later rebuild. Do not copy original
+Legal guardrails: OpenNorthland is an independent clean-room GPL-3.0-or-later rebuild. Do not copy original
 assets into the repo, do not port OpenVikings source, and do not brand this project with the
 original's names, logos, or screenshots. The canonical legal wording is in `docs/SOURCES.md`.
 

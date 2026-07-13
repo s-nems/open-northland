@@ -1,4 +1,4 @@
-import { FOG_STATE, type FogView } from '@vinland/sim';
+import { FOG_STATE, type FogView } from '@open-northland/sim';
 import { BufferImageSource, Container, Rectangle, Sprite, Texture } from 'pixi.js';
 import { FOG_EXPLORED_ALPHA, FOG_UNEXPLORED_ALPHA } from '../../data/fog.js';
 import { TILE_HALF_H, TILE_HALF_W } from '../../data/iso.js';

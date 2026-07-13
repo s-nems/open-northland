@@ -1,4 +1,4 @@
-import { ONE } from '@vinland/sim';
+import { ONE } from '@open-northland/sim';
 
 /**
  * The details panel's bar/percentage primitives — the gauge model + colour banding + the two clamped

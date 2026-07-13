@@ -12,7 +12,7 @@ Counts observed in `Cultures 8th Wonder` (base `Data` + `DataX` + mod `DataCnmd`
 
 | Ext | ~Count | What it is | Decode reference in OpenVikings (`Source/`) |
 |---|---|---|---|
-| `.wav` | 752 | sound effects (16-bit mono 22050 Hz PCM) | browser plays PCM natively (no transcode); `soundfx.cif` maps them to events/terrain, consumed by `@vinland/audio` |
+| `.wav` | 752 | sound effects (16-bit mono 22050 Hz PCM) | browser plays PCM natively (no transcode); `soundfx.cif` maps them to events/terrain, consumed by `@open-northland/audio` |
 | `.pcx` | 426 | palette-indexed pictures | `NXBasics/CPicture.cs`, `NXBasics/XBPictureTool.cs` |
 | `.bmd` | 247 | "bob" framed sprite animations | `NXBasics/CBobManager.cs` (3.8k lines), `NXBasics/CBitmap.cs` |
 | `.hlt` | 242 | lighting / remap tables | `NXBasics/CRemapTable.cs`, `CHighColorCreator.cs`, `CTrueColorCreator.cs` |
@@ -589,7 +589,7 @@ This is the canonical statement of the project's legal posture; `README.md` **Le
   (facts about binary layouts) — its source/architecture is not copied. Reading file formats to
   achieve interoperability is the established basis for engine reimplementations (OpenMW, OpenRA,
   devilutionX).
-- **No trademark use / no affiliation.** *Vinland* is an independent project, not affiliated with,
+- **No trademark use / no affiliation.** *OpenNorthland* is an independent project, not affiliated with,
   authorized, or endorsed by the rights holders of the *Cultures* series. Don't ship the original's
   names or logos as project branding. *Cultures – 8th Wonder of the World* and related marks belong
   to their respective owners (Funatics Software GmbH and/or its licensors).

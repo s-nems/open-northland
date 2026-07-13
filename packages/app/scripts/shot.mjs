@@ -1,6 +1,6 @@
 // The committed screenshot harness — `npm run shot` (see docs/TESTING.md "Visual validation via
 // Playwright"). It boots the app's deterministic, headless render entry (`?shot`), waits on the
-// `window.__vinlandShotReady` flag the entry sets after drawing ONE frame, and writes a PNG an agent
+// `window.__opennorthlandShotReady` flag the entry sets after drawing ONE frame, and writes a PNG an agent
 // (or a human) eyeballs for GROSS correctness — never auto-passed, never byte-compared (the GPU
 // rasteriser isn't byte-stable across machines; the sim is, the pixels aren't).
 //
@@ -81,7 +81,7 @@ async function main() {
     // never does (a render crash before the flag), surface the collected page errors — otherwise the
     // bare timeout masks the real cause.
     try {
-      await page.waitForFunction(() => window.__vinlandShotReady === true, { timeout: 30_000 });
+      await page.waitForFunction(() => window.__opennorthlandShotReady === true, { timeout: 30_000 });
     } catch (e) {
       if (errors.length > 0) {
         console.error('shot: page errored before the ready flag was set:');

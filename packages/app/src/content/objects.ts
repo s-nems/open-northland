@@ -5,7 +5,7 @@ import {
   halfCellToScreen,
   type MapObjectSprite,
   type SpriteLayer,
-} from '@vinland/render';
+} from '@open-northland/render';
 import { type ContentIr, type LandscapeGfxRow, loadLayer, MissingAtlasError } from './ir.js';
 
 /**
@@ -17,7 +17,7 @@ import { type ContentIr, type LandscapeGfxRow, loadLayer, MissingAtlasError } fr
  * so a checkout without them simply renders no objects (the caller degrades gracefully).
  */
 
-/** The `objects` layer of a decoded `content/maps/<id>.json` (see `TerrainObjects` in @vinland/data). */
+/** The `objects` layer of a decoded `content/maps/<id>.json` (see `TerrainObjects` in @open-northland/data). */
 export interface MapObjectsData {
   readonly types: readonly string[];
   readonly placements: readonly number[];

@@ -7,7 +7,7 @@ import {
   type GoodGathering,
   GoodType,
   type LandscapeType,
-} from '@vinland/data';
+} from '@open-northland/data';
 import {
   getInt,
   getIntValues,

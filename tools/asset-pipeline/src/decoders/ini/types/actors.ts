@@ -1,7 +1,7 @@
 /**
  * Atomic animations and the combat/mobile actor types: weapons, armor, vehicles, and animals.
  */
-import { AnimalType, ArmorType, AtomicAnimation, VehicleType, WeaponType } from '@vinland/data';
+import { AnimalType, ArmorType, AtomicAnimation, VehicleType, WeaponType } from '@open-northland/data';
 import {
   findProps,
   getInt,

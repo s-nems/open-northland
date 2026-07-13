@@ -1,4 +1,4 @@
-import type { ContentSet } from '@vinland/data';
+import type { ContentSet } from '@open-northland/data';
 import { FOG_MODE, fogMode, needsEnabled, Position } from './components/index.js';
 import { CommandQueue } from './core/command-queue.js';
 import type { Command } from './core/commands/index.js';

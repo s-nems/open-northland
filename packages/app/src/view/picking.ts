@@ -4,7 +4,7 @@ import {
   type EntityBounds,
   TILE_HALF_H,
   TILE_HALF_W,
-} from '@vinland/render';
+} from '@open-northland/render';
 
 /**
  * Pure PICKING math — the screen→world→node inverse of the render projection, plus the point/box

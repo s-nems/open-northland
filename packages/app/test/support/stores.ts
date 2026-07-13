@@ -1,4 +1,4 @@
-import { type Component, components } from '@vinland/sim';
+import { type Component, components } from '@open-northland/sim';
 
 /**
  * Reset the sim's module-level component stores — the known footgun any test that builds more than one

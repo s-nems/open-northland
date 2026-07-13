@@ -1,4 +1,4 @@
-import { FOG_MODE, FOG_STATE, type FogView } from '@vinland/sim';
+import { FOG_MODE, FOG_STATE, type FogView } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { FogGhostStore } from '../src/data/fog-ghosts.js';
 import { collectSpriteScene } from '../src/data/scene/index.js';

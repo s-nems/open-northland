@@ -6,13 +6,13 @@ import {
   type GalleryDirection,
   type SpriteAtlas,
   type SpriteLayer,
-} from '@vinland/render';
+} from '@open-northland/render';
 import { headLabel, pickWalkRow, type VikingCharacter } from '../catalog/roster.js';
 import type { BobSeqRow } from '../content/ir.js';
 
 /**
  * The BROWSER-FREE data half of the `?anim` gallery ({@link import('./anim.js')}): turn decoded `[bobseq]`
- * rows into the {@link GalleryCellSpec}s the retained {@link import('@vinland/render').AnimationGallery}
+ * rows into the {@link GalleryCellSpec}s the retained {@link import('@open-northland/render').AnimationGallery}
  * draws, and parse the gallery's URL knobs. Every function here is pure over its inputs (the loaded layers
  * as data), so the montage assembly + URL parsing are unit-tested without a GPU
  * (`packages/app/test/anim-gallery.test.ts`). The Pixi loop, atlas loading and DOM panel live in

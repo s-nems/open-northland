@@ -56,4 +56,4 @@ done
 
 cd "$ROOT"
 echo "starting fresh dev server on :$PRIMARY_PORT (strict)..."
-exec npm run dev --workspace @vinland/app -- --port "$PRIMARY_PORT" --strictPort
+exec npm run dev --workspace @open-northland/app -- --port "$PRIMARY_PORT" --strictPort

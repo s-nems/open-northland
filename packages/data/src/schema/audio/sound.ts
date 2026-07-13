@@ -7,7 +7,7 @@ import { z } from 'zod';
  * `(volume, probability, ...)` triple that drives the sparse one-shot birds/wingflaps. We keep the
  * raw list rather than naming each slot so the extractor stays faithful to a format we have only
  * partially reversed — captured for a future audio layer to interpret (per-SFX volume / spawn
- * probability), like {@link SoundStaticGroup.logicSoundType}; today's `@vinland/audio` reads only
+ * probability), like {@link SoundStaticGroup.logicSoundType}; today's `@open-northland/audio` reads only
  * `file` (gains come from named constants). `file` is normalized to a forward-slash, lower-cased path
  * relative to the sounds root (`data/engine2d/bin/sounds`), so it joins onto the served `/sounds/<file>` route.
  */

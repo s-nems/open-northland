@@ -1,7 +1,7 @@
 /**
  * Map metadata and decoded static-object placements from a map `.cif`.
  */
-import { MapInfo } from '@vinland/data';
+import { MapInfo } from '@open-northland/data';
 import { findProp, getInt, makeSource, type RuleSection, type SourceRef } from './grammar.js';
 
 /**

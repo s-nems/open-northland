@@ -125,7 +125,7 @@ Playwright MCP**:
   scenario X at seed S, advance N ticks, draw one frame, then signal ready"* — not the wall-clock
   `requestAnimationFrame` loop. That entry now exists: `packages/app/src/entries/shot.ts` (`?shot[&seed&ticks]`)
   builds the vertical slice (`vertical-slice.ts`), steps a fixed N ticks, draws ONE frame via the Pixi
-  renderer (`packages/render/src/gpu/pixi-app.ts`), and sets `window.__vinlandShotReady`. `npm run
+  renderer (`packages/render/src/gpu/pixi-app.ts`), and sets `window.__opennorthlandShotReady`. `npm run
   shot` (`packages/app/scripts/shot.mjs`) boots the app's Vite dev server, drives Chromium via the
   committed Playwright script, waits on that flag, and writes a PNG (`--seed/--ticks/--out`). The
   renderer draws placeholder geometry (iso tile diamonds + feet-anchored body boxes) — atlas sprites
@@ -134,7 +134,7 @@ Playwright MCP**:
   machines (float interpolation, devicePixelRatio, canvas AA, GPU/fonts) even though the sim is.
   Start with *eyeball-the-PNG*; add `toHaveScreenshot()` baselines only once the render stabilizes,
   treat any diff as **needs human** (never auto-pass), and keep them sparse — they're binary churn
-  and capture the *Vinland* synthetic render, never original assets.
+  and capture the *OpenNorthland* synthetic render, never original assets.
 
 **Manual poke via the Playwright MCP (ad-hoc, not the backbone).** A `playwright` MCP server is
 available at *local* scope (`claude mcp get playwright`; private to this project, not committed) for

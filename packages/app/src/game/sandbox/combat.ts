@@ -1,4 +1,4 @@
-import type { EquipCategory } from '@vinland/data';
+import type { EquipCategory } from '@open-northland/data';
 import { PRIMARY_TRIBE } from '../rules.js';
 import {
   EQUIP_GOODS,

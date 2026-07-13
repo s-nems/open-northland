@@ -1,4 +1,4 @@
-import type { SpriteLayer, TextureSource } from '@vinland/render';
+import type { SpriteLayer, TextureSource } from '@open-northland/render';
 import { loadLayer } from './ir.js';
 import { fetchImageData, fetchJsonOrNull, loadTextureIfPresent } from './net.js';
 

@@ -7,7 +7,7 @@
 // frames legible for the one who can. Writes a PNG; commits nothing (reads copyrighted bytes, emits a
 // local file only).
 //
-// Prereq: build the decoders first — `npm run build --workspace @vinland/asset-pipeline` (raw-TS can't
+// Prereq: build the decoders first — `npm run build --workspace @open-northland/asset-pipeline` (raw-TS can't
 // resolve the `.js` import specifiers; same reason `npm run pipeline` compiles before running).
 //
 // Usage (from the repo root):

@@ -1,4 +1,4 @@
-import type { WorldSnapshot } from '@vinland/sim';
+import type { WorldSnapshot } from '@open-northland/sim';
 import { type Container, Graphics, Sprite } from 'pixi.js';
 import type { ElevationField } from '../../data/elevation.js';
 import { FOG_GHOST_TINT } from '../../data/fog.js';

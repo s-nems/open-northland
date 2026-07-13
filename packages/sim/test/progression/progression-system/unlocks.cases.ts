@@ -1,4 +1,4 @@
-import type { JobRequirement } from '@vinland/data';
+import type { JobRequirement } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { Simulation } from '../../../src/index.js';
 import { experienceRequirementMet, settlerMeetsNeed } from '../../../src/systems/index.js';

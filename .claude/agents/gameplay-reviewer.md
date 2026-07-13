@@ -1,6 +1,6 @@
 ---
 name: gameplay-reviewer
-description: Reviews a Vinland diff for gameplay rightness - source-basis fidelity (mechanics/data pinned to original data, source semantics, OpenVikings evidence, or observed behavior) and player experience (RTS/econ-sim UI/UX conventions, feedback, economic readability). Spawn when the diff implements/tunes a mechanic, extracts/consumes game data, makes source-basis claims, or touches player-facing UI/HUD/input/camera. Pass it the commit range or diff to review.
+description: Reviews a OpenNorthland diff for gameplay rightness - source-basis fidelity (mechanics/data pinned to original data, source semantics, OpenVikings evidence, or observed behavior) and player experience (RTS/econ-sim UI/UX conventions, feedback, economic readability). Spawn when the diff implements/tunes a mechanic, extracts/consumes game data, makes source-basis claims, or touches player-facing UI/HUD/input/camera. Pass it the commit range or diff to review.
 tools: Read, Grep, Glob, Bash
 ---
 

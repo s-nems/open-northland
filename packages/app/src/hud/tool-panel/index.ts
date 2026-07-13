@@ -1,5 +1,5 @@
-import type { HudLayout, PalettedSprite } from '@vinland/render';
-import type { Command } from '@vinland/sim';
+import type { HudLayout, PalettedSprite } from '@open-northland/render';
+import type { Command } from '@open-northland/sim';
 import { type Application, Container, Graphics, Texture } from 'pixi.js';
 import { loadGuiArt, makeGuiSprite } from '../../content/gui-art.js';
 import { type GuiBitmapName, loadGuiBitmap, loadGuiStrings, uiStringLookup } from '../../content/gui-gfx.js';

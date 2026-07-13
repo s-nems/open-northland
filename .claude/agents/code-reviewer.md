@@ -1,6 +1,6 @@
 ---
 name: code-reviewer
-description: Reviews a Vinland diff for architectural fit (package boundaries, data flow, ownership) and code quality (readability, smells, test quality, TypeScript rigor). Spawn for any non-trivial code change; weight the architecture lens for cross-package changes, new systems, or new dependencies.
+description: Reviews a OpenNorthland diff for architectural fit (package boundaries, data flow, ownership) and code quality (readability, smells, test quality, TypeScript rigor). Spawn for any non-trivial code change; weight the architecture lens for cross-package changes, new systems, or new dependencies.
 tools: Read, Grep, Glob, Bash
 ---
 

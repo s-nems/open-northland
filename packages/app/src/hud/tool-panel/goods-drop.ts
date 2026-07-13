@@ -1,4 +1,4 @@
-import type { Command } from '@vinland/sim';
+import type { Command } from '@open-northland/sim';
 import { type Container, Graphics } from 'pixi.js';
 import type { TextRun } from '../bitmap-text.js';
 import { drawWindowPanel, WIN_PAD, WIN_TITLE_H } from '../chrome.js';

@@ -1,4 +1,4 @@
-import { indexById } from '@vinland/data';
+import { indexById } from '@open-northland/data';
 import {
   buildHud,
   buildSpriteScene,
@@ -11,8 +11,8 @@ import {
   SPRITE_CULL_MARGIN,
   type SpriteSheet,
   type WorldRenderer,
-} from '@vinland/render';
-import type { SimEvent, Simulation, WorldSnapshot } from '@vinland/sim';
+} from '@open-northland/render';
+import type { SimEvent, Simulation, WorldSnapshot } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import { BUILD_HOUSE_ATOMIC, HARVEST_ATOMIC } from '../catalog/atomics.js';
 import { pickerEntries } from '../catalog/professions.js';

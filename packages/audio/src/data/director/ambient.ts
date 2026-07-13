@@ -1,4 +1,4 @@
-import { aabbIntersects, cameraViewport, tileToScreen, visibleTileRange } from '@vinland/render/data';
+import { aabbIntersects, cameraViewport, tileToScreen, visibleTileRange } from '@open-northland/render/data';
 import { clamp } from '../math.js';
 import type { AmbientLoop, DirectorInput } from '../types.js';
 

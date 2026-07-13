@@ -1,17 +1,17 @@
 {
-  "name": "@vinland/asset-pipeline",
+  "name": "@open-northland/asset-pipeline",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "bin": {
-    "vinland-pipeline": "./dist/cli.js"
+    "open-northland-pipeline": "./dist/cli.js"
   },
   "scripts": {
     "build": "tsc --build",
     "start": "tsc --build && node ./dist/cli.js"
   },
   "dependencies": {
-    "@vinland/data": "*"
+    "@open-northland/data": "*"
   },
   "devDependencies": {
     "@types/node": "^26.1.1"

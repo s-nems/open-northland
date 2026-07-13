@@ -32,7 +32,7 @@ describe('convertPcxTree', () => {
   let out: string;
 
   beforeEach(async () => {
-    const root = await mkdtemp(join(tmpdir(), 'vinland-pipeline-'));
+    const root = await mkdtemp(join(tmpdir(), 'opennorthland-pipeline-'));
     game = join(root, 'game');
     out = join(root, 'out');
     await mkdir(game, { recursive: true });

@@ -15,7 +15,7 @@ export const MISC_EQUIP_SLOTS = 4;
  *
  * `goodType` is the equip good's `typeId` (the original's equippable ids 30–55 — shoes/tools/armour/
  * weapons/mead/potions/amulets), resolved against the content `goods` table for its icon, name and
- * {@link import('@vinland/data').EquipClass}.
+ * {@link import('@open-northland/data').EquipClass}.
  *
  * `degreeOfUse` is a {@link Fixed} fraction in `[0, ONE]` — how used-up a WEARING item is (`0` = fresh,
  * `ONE` = spent), the original's "degree of use" the equip window shows as a percentage. It is always

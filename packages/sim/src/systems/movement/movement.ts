@@ -45,7 +45,7 @@ export const RUN_SPEED_MULTIPLIER = 2;
  * MOVEMENT INERTIA — the three constants below shape it. A NAMED APPROXIMATION that deliberately
  * departs from the original: the original engine moves a unit at a constant ticks-per-step pace
  * with no acceleration anywhere (no accel/inertia state exists in OpenVikings or any readable data
- * — source basis "Movement step speed"). Vinland adds a light ease-in/out for movement FEEL: a
+ * — source basis "Movement step speed"). OpenNorthland adds a light ease-in/out for movement FEEL: a
  * unit ramps up from rest, sheds speed through corners (momentum projected onto the new heading),
  * and brakes over the final approach instead of stopping dead. The gait lives in sim state
  * ({@link PathFollow}.`speed`), so it is deterministic and replay-exact; the render keeps

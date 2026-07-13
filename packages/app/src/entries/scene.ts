@@ -1,4 +1,9 @@
-import { buildSpriteScene, createWindowPixiApp, terrainMapToScene, WorldRenderer } from '@vinland/render';
+import {
+  buildSpriteScene,
+  createWindowPixiApp,
+  terrainMapToScene,
+  WorldRenderer,
+} from '@open-northland/render';
 import { goodLocaleParam, loadGoodNameMap } from '../content/good-names.js';
 import { buildingFootprints, loadIr } from '../content/ir.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet/index.js';
@@ -13,10 +18,10 @@ import { mountSceneOverlay, mountUnknownSceneOverlay } from '../view/scene-overl
 declare global {
   interface Window {
     /** The `?scene=` entry's console-debug seam — see the assignment in {@link renderSceneMode}. */
-    __vinland?: {
-      readonly sim: import('@vinland/sim').Simulation;
+    __opennorthland?: {
+      readonly sim: import('@open-northland/sim').Simulation;
       readonly renderer: WorldRenderer;
-      readonly sheet: import('@vinland/render').SpriteSheet | undefined;
+      readonly sheet: import('@open-northland/render').SpriteSheet | undefined;
       readonly cameraCtl: import('../view/camera.js').CameraController;
     };
   }
@@ -109,11 +114,11 @@ export async function renderSceneMode(
     onFrame: (snap) => overlay.update(snap.tick),
   });
 
-  // Dev/debug seam: the live instances, reachable from the browser console (`__vinland.sim` …) so a
+  // Dev/debug seam: the live instances, reachable from the browser console (`__opennorthland.sim` …) so a
   // human or an automated probe can inspect the running scene without rebuilding it. READ-ONLY: a
   // console mutation bypasses the command pipeline and silently voids determinism (state hashes and
   // golden comparability no longer mean anything for that session).
-  window.__vinland = { sim, renderer, sheet, cameraCtl };
+  window.__opennorthland = { sim, renderer, sheet, cameraCtl };
 
-  console.log(`Vinland scene "${scene.id}" up. Watch the overlay checklist, then say if it looks OK.`);
+  console.log(`OpenNorthland scene "${scene.id}" up. Watch the overlay checklist, then say if it looks OK.`);
 }

@@ -1,4 +1,4 @@
-import { loadAtlasSource, type TextureSource } from '@vinland/render';
+import { loadAtlasSource, type TextureSource } from '@open-northland/render';
 
 /**
  * The two fetch idioms every `content/` loader in this folder shares, kept in ONE place so the

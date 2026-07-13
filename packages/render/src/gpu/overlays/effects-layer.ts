@@ -1,4 +1,4 @@
-import type { SimEvent } from '@vinland/sim';
+import type { SimEvent } from '@open-northland/sim';
 import { Container, Graphics, Sprite, type TextureSource } from 'pixi.js';
 import {
   BLOOD_RISE,

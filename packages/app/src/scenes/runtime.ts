@@ -1,4 +1,4 @@
-import { type Component, components, halfCellMapFromCells, Simulation } from '@vinland/sim';
+import { type Component, components, halfCellMapFromCells, Simulation } from '@open-northland/sim';
 import { FOG_MODE_BY_NAME } from '../game/fog.js';
 import { type SandboxContentExtras, sandboxContent } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';

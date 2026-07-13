@@ -1,4 +1,4 @@
-import type { PalettedSprite } from '@vinland/render';
+import type { PalettedSprite } from '@open-northland/render';
 import { type GuiArt, makeGuiSprite } from '../../content/gui-art.js';
 import type { PlacedButton } from './layout.js';
 import type { StripSpriteSpec } from './strip-texture.js';

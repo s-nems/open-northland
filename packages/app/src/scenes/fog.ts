@@ -1,5 +1,5 @@
-import type { Entity, Simulation } from '@vinland/sim';
-import { cellAnchorNode, components, FOG_MODE, FOG_STATE, systems } from '@vinland/sim';
+import type { Entity, Simulation } from '@open-northland/sim';
+import { cellAnchorNode, components, FOG_MODE, FOG_STATE, systems } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
 import { ENEMY_PLAYER, HUMAN_PLAYER, PRIMARY_TRIBE } from '../game/rules.js';
 import {

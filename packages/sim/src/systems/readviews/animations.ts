@@ -1,4 +1,4 @@
-import type { AtomicAnimation, ContentSet } from '@vinland/data';
+import type { AtomicAnimation, ContentSet } from '@open-northland/data';
 import { contentIndex } from '../../core/content-index.js';
 
 // Pure, terminal **read views** for atomic animations — the canonical name→record resolver over

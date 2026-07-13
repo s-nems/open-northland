@@ -1,4 +1,4 @@
-import type { SimEvent } from '@vinland/sim';
+import type { SimEvent } from '@open-northland/sim';
 
 /**
  * The pure half of the combat-feedback layer — the transient ground marks a battle leaves behind: a

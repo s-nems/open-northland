@@ -1,4 +1,4 @@
-import type { ContentSet } from '@vinland/data';
+import type { ContentSet } from '@open-northland/data';
 import { Building, Settler, Stockpile, stockpileEntries } from '../components/index.js';
 import { ONE } from '../core/fixed.js';
 import type { World } from '../ecs/world.js';

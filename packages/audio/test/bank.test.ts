@@ -1,4 +1,4 @@
-import type { GfxPattern, SoundBank, TerrainPattern } from '@vinland/data';
+import type { GfxPattern, SoundBank, TerrainPattern } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { buildSoundIndex } from '../src/index.js';
 

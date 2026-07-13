@@ -3,7 +3,7 @@ import {
   oversampleFor,
   type PalettedSprite,
   type SupersampledTexture,
-} from '@vinland/render';
+} from '@open-northland/render';
 import { type Application, Container } from 'pixi.js';
 import type { DesignRect } from './layout.js';
 

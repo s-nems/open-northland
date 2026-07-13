@@ -1,6 +1,6 @@
-import type { BuildingFootprint } from '@vinland/data';
-import type { GeometryDebugItem } from '@vinland/render';
-import { nodeOfPosition, type WorldSnapshot } from '@vinland/sim';
+import type { BuildingFootprint } from '@open-northland/data';
+import type { GeometryDebugItem } from '@open-northland/render';
+import { nodeOfPosition, type WorldSnapshot } from '@open-northland/sim';
 import { buildingTypeOf, isBuilding, positionOf } from '../game/snapshot.js';
 import { workerIconNode } from './building-points.js';
 

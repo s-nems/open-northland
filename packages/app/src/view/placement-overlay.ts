@@ -1,5 +1,10 @@
-import { type Camera, cameraViewport, type PlacementOverlayFrame, visibleTileRange } from '@vinland/render';
-import { FOG_STATE, type Simulation } from '@vinland/sim';
+import {
+  type Camera,
+  cameraViewport,
+  type PlacementOverlayFrame,
+  visibleTileRange,
+} from '@open-northland/render';
+import { FOG_STATE, type Simulation } from '@open-northland/sim';
 import { HUMAN_PLAYER } from '../game/rules.js';
 import { nodeBandOfCells } from './picking.js';
 

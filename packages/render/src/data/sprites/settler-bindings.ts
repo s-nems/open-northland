@@ -54,7 +54,7 @@ export interface DirectionalAnim {
 /**
  * A directional animation laid out as **explicit per-facing frame-index lists** — the original's
  * `[gfxanimatomic]` `gfxanimframelistdir` binding (extracted as
- * {@link import('@vinland/data').GfxAnimAtomic}), for an ACTION whose frames are NOT a uniform
+ * {@link import('@open-northland/data').GfxAnimAtomic}), for an ACTION whose frames are NOT a uniform
  * `start + facing*stride` strip. Each {@link frameLists} entry is one facing's ordered list of LOCAL
  * frame indices into a bobseq pool starting at {@link start} (drawn bob id = `start + frameLists[dir][i]`).
  * The lists differ per facing and author holds/repeats inline (a spear windup repeats its first frame),

@@ -1,4 +1,4 @@
-import { fx, type WorldSnapshot } from '@vinland/sim';
+import { fx, type WorldSnapshot } from '@open-northland/sim';
 
 /**
  * Shared builders for the synthetic {@link WorldSnapshot}s the pure snapshot→view projections are tested

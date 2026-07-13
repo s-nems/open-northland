@@ -1,4 +1,4 @@
-import type { WorldSnapshot } from '@vinland/sim';
+import type { WorldSnapshot } from '@open-northland/sim';
 import { ONE } from '../../src/data/iso.js';
 import type { DrawItem } from '../../src/index.js';
 

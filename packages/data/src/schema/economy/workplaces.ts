@@ -160,7 +160,7 @@ export const BuildingType = z.strictObject({
    * `logichitpoints` line (`DataCnmd/budynki12/houses/houses.ini`), overlaid by `typeId` exactly like
    * {@link construction}. A home's level chain resolves each tier's own value (typeIds 2..6 =
    * 30000/40000/60000/70000/80000); walls are 100000, small workplaces ~25000–40000. During
-   * construction the sim ramps a {@link import('@vinland/sim')} `Health` pool up to this max as the
+   * construction the sim ramps a {@link import('@open-northland/sim')} `Health` pool up to this max as the
    * building rises (a foundation is near-0, a finished building is full). Absent when the graphics
    * table has no record for the type (and on synthetic test content) — a type with no HP simply
    * carries no life pool. source basis: the readable `logichitpoints` param.

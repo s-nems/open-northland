@@ -1,5 +1,5 @@
 ---
-description: Perform a controlled, behavior-preserving refactor of a requested Vinland package, path, or feature — cleanup, restructuring, performance, duplication removal, readability, packaging.
+description: Perform a controlled, behavior-preserving refactor of a requested OpenNorthland package, path, or feature — cleanup, restructuring, performance, duplication removal, readability, packaging.
 argument-hint: <scope: sim|render|app|pipeline|path|feature> [focus, e.g. performance, packaging, type safety]
 ---
 

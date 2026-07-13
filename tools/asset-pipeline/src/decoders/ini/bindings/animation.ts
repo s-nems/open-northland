@@ -3,7 +3,7 @@
  * atomic-action frame lists, both from `mapmoveableanimations/animations.ini`.
  */
 
-import { BobSequenceSet, GfxAnimAtomic } from '@vinland/data';
+import { BobSequenceSet, GfxAnimAtomic } from '@open-northland/data';
 import {
   findProps,
   getInt,

@@ -1,5 +1,5 @@
-import { defaultBindings } from '@vinland/audio';
-import type { SoundBank } from '@vinland/data';
+import { defaultBindings } from '@open-northland/audio';
+import type { SoundBank } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { buildSoundGalleryModel } from '../src/entries/sound.js';
 

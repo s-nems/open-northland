@@ -1,4 +1,9 @@
-import { type AtlasFrame, PalettedSprite, type SpriteLayer, type TextureSource } from '@vinland/render';
+import {
+  type AtlasFrame,
+  PalettedSprite,
+  type SpriteLayer,
+  type TextureSource,
+} from '@open-northland/render';
 import { GUI_FRAMES } from './gui-atlas-map.js';
 import { type GuiPaletteName, guiPaletteRow, loadGuiPaletteLut, loadGuiWindowIndexed } from './gui-gfx.js';
 

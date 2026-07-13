@@ -1,4 +1,4 @@
-import { components, fx, Simulation, type TerrainMap } from '@vinland/sim';
+import { components, fx, Simulation, type TerrainMap } from '@open-northland/sim';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { testContent } from '../../sim/test/fixtures/content.js';
 import { buildScene, type SceneTerrain } from '../src/index.js';

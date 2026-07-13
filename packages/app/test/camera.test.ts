@@ -1,4 +1,4 @@
-import { type Camera, tileToScreen } from '@vinland/render';
+import { type Camera, tileToScreen } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
 import {
   cameraCenteredOnTile,

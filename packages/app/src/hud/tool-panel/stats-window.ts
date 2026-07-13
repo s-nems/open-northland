@@ -1,4 +1,4 @@
-import type { HudLayout } from '@vinland/render';
+import type { HudLayout } from '@open-northland/render';
 import { type Container, Graphics } from 'pixi.js';
 import type { TextRun } from '../bitmap-text.js';
 import { drawWindowPanel, WIN_LINE_H, WIN_PAD, WIN_TITLE_H } from '../chrome.js';

@@ -1,4 +1,4 @@
-import { PalettedSprite } from '@vinland/render';
+import { PalettedSprite } from '@open-northland/render';
 import type { Container } from 'pixi.js';
 import { GUI_FRAME } from '../../content/gui-atlas-map.js';
 import { guiPaletteRow } from '../../content/gui-gfx.js';

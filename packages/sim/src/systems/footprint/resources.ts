@@ -3,7 +3,7 @@ import {
   fullStateBlockAreaCells,
   type LandscapeBlockArea,
   type LandscapeGfx,
-} from '@vinland/data';
+} from '@open-northland/data';
 import {
   Felling,
   MineDeposit,

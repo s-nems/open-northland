@@ -1,4 +1,4 @@
-import type { ContentSet, JobType } from '@vinland/data';
+import type { ContentSet, JobType } from '@open-northland/data';
 
 // Pure, terminal **read views** for jobs — the data-defined sea-job classification the Sea/Northland
 // slice (`fisher_sea`/`trader_sea`, water travel, embark/disembark) builds on, the job-side analogue of

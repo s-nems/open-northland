@@ -3,7 +3,7 @@
  * motion. Pure mutation of plain data + testable without a GPU — the interpolation decision split out
  * from the Pixi mutation, like {@link import('./reconcile.js').reconcileSprites}.
  */
-import { WALK_TICKS_PER_CELL } from '@vinland/sim';
+import { WALK_TICKS_PER_CELL } from '@open-northland/sim';
 import { TILE_HALF_W } from '../../data/iso.js';
 import { clamp01, lerp } from '../../data/math.js';
 

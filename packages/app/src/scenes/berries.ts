@@ -1,5 +1,5 @@
-import type { CellTerrainMap, Simulation } from '@vinland/sim';
-import { cellAnchorNode, components, fx, systems } from '@vinland/sim';
+import type { CellTerrainMap, Simulation } from '@open-northland/sim';
+import { cellAnchorNode, components, fx, systems } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../game/rules.js';
 import { JOB_GATHERER_WOOD, placeSandboxBerryBush } from '../game/sandbox/index.js';

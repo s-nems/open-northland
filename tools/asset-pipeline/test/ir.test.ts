@@ -9,7 +9,7 @@ describe('buildIr / resolveIniSources', () => {
   let game: string;
 
   beforeEach(async () => {
-    const root = await mkdtemp(join(tmpdir(), 'vinland-ir-'));
+    const root = await mkdtemp(join(tmpdir(), 'opennorthland-ir-'));
     game = join(root, 'game');
     await mkdir(join(game, 'Data', 'logic'), { recursive: true });
     await mkdir(join(game, 'DataCnmd', 'tribetypes12'), { recursive: true });

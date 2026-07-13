@@ -1,4 +1,4 @@
-import type { BuildingFootprint, ContentSet } from '@vinland/data';
+import type { BuildingFootprint, ContentSet } from '@open-northland/data';
 import { Building, Position, Resource, ResourceFootprint } from '../../components/index.js';
 import type { World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';

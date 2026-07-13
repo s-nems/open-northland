@@ -1,4 +1,9 @@
-import { type AtlasFrame, PalettedSprite, type SpriteLayer, type TextureSource } from '@vinland/render';
+import {
+  type AtlasFrame,
+  PalettedSprite,
+  type SpriteLayer,
+  type TextureSource,
+} from '@open-northland/render';
 import { loadLayer } from './ir.js';
 import { fetchJsonOrNull, loadTextureIfPresent } from './net.js';
 

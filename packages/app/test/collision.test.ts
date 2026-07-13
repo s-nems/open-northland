@@ -1,4 +1,4 @@
-import { parseTerrainMap } from '@vinland/data';
+import { parseTerrainMap } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   TERRAIN_BARREN,

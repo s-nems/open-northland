@@ -1,4 +1,4 @@
-import type { WorldSnapshot } from '@vinland/sim';
+import type { WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { IDLE_JOB } from '../src/data/hud.js';
 import { buildHud, type HudModel, layoutHud, placeHud } from '../src/index.js';

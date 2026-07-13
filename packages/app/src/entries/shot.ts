@@ -5,8 +5,8 @@ import {
   layoutHud,
   placeHud,
   WorldRenderer,
-} from '@vinland/render';
-import { halfCellMapFromCells } from '@vinland/sim';
+} from '@open-northland/render';
+import { halfCellMapFromCells } from '@open-northland/sim';
 import { loadHumanSpriteSheet, syntheticSpriteSheet } from '../content/sprite-sheet/index.js';
 import { loadRealTerrain } from '../content/terrain.js';
 import { HUD_TRIBE } from '../game/rules.js';
@@ -19,7 +19,7 @@ import { floatParam, intParam } from '../view/params.js';
  * The deterministic, headless render entry the screenshot harness waits on (docs/TESTING.md
  * "Visual validation via Playwright"): *render scenario X at seed S, advance N ticks, draw ONE
  * frame, then signal ready* — explicitly NOT the wall-clock `requestAnimationFrame` loop. The
- * harness boots the page with `?shot`, polls `window.__vinlandShotReady`, and screenshots the canvas.
+ * harness boots the page with `?shot`, polls `window.__opennorthlandShotReady`, and screenshots the canvas.
  *
  * Because the sim is seed-deterministic and `buildScene` is pure, the same `?shot&seed=…&ticks=…`
  * always produces the same draw list — so the *only* source of frame variance is the GPU rasteriser,
@@ -29,7 +29,7 @@ import { floatParam, intParam } from '../view/params.js';
 /** Set on `window` once the single frame has been drawn, so Playwright can wait deterministically. */
 declare global {
   interface Window {
-    __vinlandShotReady?: boolean;
+    __opennorthlandShotReady?: boolean;
   }
 }
 
@@ -95,7 +95,7 @@ export async function renderShot(canvas: HTMLCanvasElement): Promise<void> {
       : undefined;
   renderer.update({ snapshot: snap, camera, tick: snap.tick, hud });
 
-  window.__vinlandShotReady = true;
+  window.__opennorthlandShotReady = true;
 }
 
 /** True when the URL opts into the synthetic atlas (`?atlas`, `?atlas=synthetic`, `?atlas=1`). */

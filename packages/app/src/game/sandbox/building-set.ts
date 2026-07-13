@@ -1,4 +1,4 @@
-import type { BuildingFootprint } from '@vinland/data';
+import type { BuildingFootprint } from '@open-northland/data';
 import { VIKING_BUILDINGS, type VikingBuilding } from '../../catalog/buildings.js';
 import { approximateFootprint } from '../../catalog/footprints.js';
 import { STORABLE_EXTENDED_GOODS } from '../../catalog/goods.js';

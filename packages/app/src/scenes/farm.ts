@@ -1,5 +1,5 @@
-import type { CellTerrainMap, Entity, Simulation } from '@vinland/sim';
-import { cellAnchorNode, components, nodeOfPosition } from '@vinland/sim';
+import type { CellTerrainMap, Entity, Simulation } from '@open-northland/sim';
+import { cellAnchorNode, components, nodeOfPosition } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
 import { TERRAIN_BARREN } from '../catalog/terrain.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../game/rules.js';

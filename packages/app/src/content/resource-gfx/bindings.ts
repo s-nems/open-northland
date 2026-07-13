@@ -1,4 +1,4 @@
-import type { LayeredBobRef, ResourceTypeBinding, StockpileBinding } from '@vinland/render';
+import type { LayeredBobRef, ResourceTypeBinding, StockpileBinding } from '@open-northland/render';
 import { TREE_BOB } from '../building-gfx/index.js';
 import { bobRef, DEFAULT_RESOURCE_STEM, type GatheringRefs, STOCKPILE_PLACEHOLDER_BOB } from './refs.js';
 
@@ -52,7 +52,7 @@ export function buildResourceBinding(
 
 /**
  * Reduce the resolved trunk refs (the `landscapeToPickup` stage) to the renderer's per-good
- * {@link ResourceTypeBinding} — the graphic a loose {@link import('@vinland/sim').GroundDrop} draws while
+ * {@link ResourceTypeBinding} — the graphic a loose {@link import('@open-northland/sim').GroundDrop} draws while
  * its felled wood / chipped ore lies on the ground waiting to be carried off. Binds the record's whole
  * fewest→most state ladder: the resolver indexes it by the drop's unit count (`DrawItem.fill`), so one
  * dug ore draws the single-piece frame and a stacked drop grows — the original's state ≡ remaining-units

@@ -1,4 +1,4 @@
-import type { DirectionalAnim } from '@vinland/render';
+import type { DirectionalAnim } from '@open-northland/render';
 import type { BobSeqRow } from '../ir.js';
 import { DIRS } from './sequences.js';
 

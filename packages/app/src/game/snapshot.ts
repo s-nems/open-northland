@@ -1,4 +1,4 @@
-import type { Fixed, WorldSnapshot } from '@vinland/sim';
+import type { Fixed, WorldSnapshot } from '@open-northland/sim';
 
 /**
  * Typed read helpers over the frozen {@link WorldSnapshot} — the shared owner/position/kind reads the

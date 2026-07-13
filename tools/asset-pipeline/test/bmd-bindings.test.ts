@@ -9,7 +9,7 @@ describe('resolveGraphicsBindings', () => {
   let game: string;
 
   beforeEach(async () => {
-    game = await mkdtemp(join(tmpdir(), 'vinland-gfx-'));
+    game = await mkdtemp(join(tmpdir(), 'opennorthland-gfx-'));
   });
 
   afterEach(async () => {

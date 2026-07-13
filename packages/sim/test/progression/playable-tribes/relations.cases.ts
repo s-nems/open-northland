@@ -1,4 +1,4 @@
-import { IR_VERSION, parseContentSet } from '@vinland/data';
+import { IR_VERSION, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { HUNTER_JOB, mayAttack, mayHunt } from '../../../src/systems/index.js';
 import { tribeContent } from './support.js';

@@ -1,4 +1,4 @@
-import type { Command } from '@vinland/sim';
+import type { Command } from '@open-northland/sim';
 import { EXTENDED_GOODS } from '../../catalog/goods.js';
 import { PLAYER_COLOR_NAMES } from '../../catalog/roster.js';
 import { PRIMARY_TRIBE } from '../../game/rules.js';

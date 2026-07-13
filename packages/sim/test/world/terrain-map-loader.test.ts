@@ -1,4 +1,4 @@
-import { parseTerrainMap } from '@vinland/data';
+import { parseTerrainMap } from '@open-northland/data';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { MoveGoal, Position } from '../../src/components/index.js';
 import { clearComponentStores } from '../../src/harness/stores.js';

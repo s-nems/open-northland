@@ -1,4 +1,4 @@
-import type { ResourceTypeBinding } from '@vinland/render';
+import type { ResourceTypeBinding } from '@open-northland/render';
 import type { ContentIr } from '../ir.js';
 import { type GatheringNodeRef, nodeRefFrom } from './refs.js';
 

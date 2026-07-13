@@ -13,7 +13,7 @@ the source file + commit you referenced, for traceability.
 | `png.ts` ✅ | PNG **output** container (RGBA → PNG) | — (not an original format; ports the PNG spec: zlib + IHDR/IDAT/IEND) |
 | `bmd.ts` | `.bmd` bob/anim | `NXBasics/CBobManager.cs`, `CBitmap.cs` — **hardest, do last** |
 | `atlas.ts` | bob atlas **output** (frames → sheet + manifest) | — (not an original format; shelf-packs `decodeBobFrame` output into one RGBA atlas + a per-bob JSON manifest) |
-| `ini.ts` ✅ | `.ini` **and** decoded-`.cif` rules | plain text parse; emit IR validated by `@vinland/data` (parser + `goodtypes`/`landscapetypes`/`jobtypes`/`tribetypes` extractors + the atomic vocabulary — `atomicFor*`/`allowatomic`/`setatomic` — done; more type extractors incremental) |
+| `ini.ts` ✅ | `.ini` **and** decoded-`.cif` rules | plain text parse; emit IR validated by `@open-northland/data` (parser + `goodtypes`/`landscapetypes`/`jobtypes`/`tribetypes` extractors + the atomic vocabulary — `atomicFor*`/`allowatomic`/`setatomic` — done; more type extractors incremental) |
 | `mapdat.ts` ⏳ | `map.dat` `hoix`-chunk container + `pck`/`X8el` packed layers | `NC2Logic/CIoHelper.cs` (`SIoHelperChunk` / `IO_File_Chunk_*`) for the container; the X8el RLE codec reverse-engineered (the `.bmd` packed-line family, roles swapped). Container + `lsiz` dims + X8el layer unpack done; X6el layers + landscape-type-grid semantics pending |
 
 Guidance:

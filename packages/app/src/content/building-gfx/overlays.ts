@@ -1,4 +1,4 @@
-import type { BuildingOverlayRef } from '@vinland/render';
+import type { BuildingOverlayRef } from '@open-northland/render';
 import type { BuildingOverlayRow } from '../ir.js';
 import { type BuildingFamily, familyLayerFor, preferredPalettePool, rowsByType } from './families.js';
 

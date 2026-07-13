@@ -1,5 +1,5 @@
 {
-  "name": "@vinland/sim",
+  "name": "@open-northland/sim",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -13,6 +13,6 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@vinland/data": "*"
+    "@open-northland/data": "*"
   }
 }

@@ -1,4 +1,4 @@
-import { type ContentSet, IR_VERSION, type JobType, parseContentSet } from '@vinland/data';
+import { type ContentSet, IR_VERSION, type JobType, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { isSeaJob, seaJobs } from '../../src/systems/index.js';
 
