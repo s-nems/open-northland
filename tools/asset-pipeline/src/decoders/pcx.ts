@@ -27,7 +27,7 @@
  * them. `encodePcx` is the faithful inverse, used to round-trip test without committing real assets.
  */
 
-import { PALETTE_RGB_BYTES, type RgbaImage } from './image.js';
+import { PALETTE_RGB_BYTES, paletteToRgba, type RgbaImage } from './image.js';
 
 const HEADER_BYTES = 0x80;
 const PALETTE_TRAILER_BYTES = 1 + PALETTE_RGB_BYTES; // 0x0C marker + 256 RGB triples
@@ -120,17 +120,8 @@ export function expandToRgba(image: PcxImage): RgbaImage {
       `pcx: cannot expand to RGBA — palette must be ${PALETTE_RGB_BYTES} bytes, got ${palette.length}`,
     );
   }
-  const view = new DataView(palette.buffer, palette.byteOffset, palette.byteLength);
-  const rgba = new Uint8Array(width * height * 4);
-  for (let i = 0; i < pixels.length; i++) {
-    const p = (pixels[i] ?? 0) * 3;
-    const o = i * 4;
-    rgba[o] = view.getUint8(p);
-    rgba[o + 1] = view.getUint8(p + 1);
-    rgba[o + 2] = view.getUint8(p + 2);
-    rgba[o + 3] = 0xff;
-  }
-  return { width, height, rgba };
+  // A `.pcx` picture is fully opaque — every pixel written, alpha 0xff.
+  return { width, height, rgba: paletteToRgba(pixels, palette, () => 0xff) };
 }
 
 /** What {@link encodePcx} serializes: the dimensions, indexed pixels, and an optional palette. */
