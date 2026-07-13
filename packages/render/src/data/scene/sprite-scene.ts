@@ -3,34 +3,19 @@ import { type ElevationField, terrainLiftAt } from '../elevation.js';
 import type { FogGhost } from '../fog-ghosts.js';
 import { ONE, tileToScreen } from '../iso.js';
 import { isVisible, type Viewport } from '../viewport.js';
-import {
-  type DrawItem,
-  type DrawKind,
-  type MutableDrawItem,
-  paintOrderBias,
-  type SpriteState,
-} from './draw-item.js';
-import { projectileArc } from './projectile-arc.js';
+import { assignProjectileArc, assignSettlerFields, pushGhostItems, spriteDepth } from './collect-fields.js';
+import type { DrawItem, MutableDrawItem, SpriteState } from './draw-item.js';
+import { enterableStoresOf, TARGET_FACING_ATOMIC_IDS, targetPositionsOf } from './snapshot-index.js';
 import {
   assignStaticFields,
   classify,
   facingTowardTile,
   readActingAtomic,
-  readAtomicElapsed,
   readAtomicTargetEntity,
   readBerryBushGfxIndex,
   readBerryBushLevel,
-  readBuiltPct,
-  readCarrying,
-  readEngaged,
-  readEquipmentWeaponGood,
-  readFacing,
-  readJobType,
-  readOwnerPlayer,
   readPosition,
   readProducing,
-  readProjectileOrigin,
-  readProjectileTarget,
   readResourceLevelCount,
   readSpriteState,
   readStockpile,
@@ -41,68 +26,15 @@ import {
  * The PURE sprite-scene builder — the per-frame half of the scene layer, and the part of rendering an
  * agent CAN self-verify. It turns a {@link WorldSnapshot} into a flat, **depth-sorted** list of sprite
  * draw items in isometric screen space (no Pixi, no canvas, no GPU: plain data the GPU layer walks in
- * order), plus the pre-cull liveness set the retained pool reconciles against. The per-component
- * snapshot reads live in {@link import('./snapshot-readers/index.js')}; this module owns the projection,
- * the cull, and the depth order.
+ * order), plus the pre-cull liveness set the retained pool reconciles against. The per-component snapshot
+ * reads live in {@link import('./snapshot-readers/index.js')}, the per-snapshot pre-scan memos in
+ * {@link import('./snapshot-index.js')}, and the per-kind item tagging in
+ * {@link import('./collect-fields.js')}; this module owns the projection, the cull, and the depth order.
  *
  * Why floats are fine here: this is `render`, a pure consumer of sim state (docs/ARCHITECTURE.md).
  * The sim stays fixed-point; render reads the snapshot's `Fixed` position (a scaled integer) and
  * divides by ONE to a float tile coordinate. Nothing here feeds back into the sim.
  */
-
-/**
- * Sprite depth packing. A sprite's sort key is `tileY * ROW_STRIDE + tileX`, so the integer-tile
- * `y` dominates and `x` orders within a row — valid only while `tileX < ROW_STRIDE`, which holds for
- * any sane map (sim positions stay well under ~2^25 tiles; real maps are a few hundred). Terrain tiles
- * sit in a band shifted strictly below every sprite (see {@link import('./terrain-scene.js')}).
- */
-const ROW_STRIDE = 4096;
-
-/** Depth added per {@link paintOrderBias} step in the oracle sort key. `< 1 / maxOrder` so the whole
- *  bias stays under one tile-column (base depths differ by ≥ 1 across cells) and can't cross a cell. */
-const PAINT_ORDER_EPS = 1 / 16;
-
-/** The oracle depth key for a sprite at integer-tile `(tileX, tileY)` (x-first, like `tileToScreen`):
- *  the row-major feet-anchor packing (`tileY` dominates, `tileX` orders within a row) plus the sub-cell
- *  {@link paintOrderBias} tiebreak. The live painter's screen-space twin (`sprite-pool.ts`) shares the
- *  same {@link paintOrderBias}, so the two orders can't diverge. */
-function spriteDepth(tileX: number, tileY: number, kind: DrawKind, isFlag = false): number {
-  return tileY * ROW_STRIDE + tileX + paintOrderBias(kind, isFlag) * PAINT_ORDER_EPS;
-}
-
-/**
- * The atomic id of a combat attack swing — the original's `setatomic <job> 81 "..._attack"` (id 81 is
- * the attack slot across every fighting job; the sim's `ATTACK_ATOMIC_ID`, `systems/conflict/weapons.ts`).
- * A settler mid-attack has stopped moving, so it has no {@link readFacing} heading; it FACES its target
- * instead (the attacker→target screen step). The same numeric contract as the sim, transcribed here (like
- * {@link TARGET_FACING_ATOMIC_IDS}) rather than imported — render reads the snapshot's plain ids, never sim code.
- */
-const ATTACK_ATOMIC_ID = 81;
-
-/** The per-good harvest atomic ids (`goodtypes.ini` `atomicForHarvesting`), transcribed by hand like
- *  {@link ATTACK_ATOMIC_ID} — the shared numeric contract, named so no bare id carries the meaning. */
-const HARVEST_ATOMIC_IDS = {
-  wood: 24,
-  stone: 25,
-  clay: 26,
-  iron: 27,
-  gold: 28,
-  wheat: 29,
-  mushroom: 32,
-} as const;
-
-/**
- * Every atomic whose runner FACES its {@link readAtomicTargetEntity} target while the swing plays: the
- * combat attack plus the per-good harvest actions ({@link HARVEST_ATOMIC_IDS}). A harvester, like an
- * attacker, has stopped walking (no {@link readFacing} heading), so without a target-derived facing it
- * kept its last walk heading (or the default SE) and swung its axe/pick into empty air BESIDE the node
- * it works — a woodcutter standing east of a tree chopped further east. Facing the node it targets is
- * what the original does (`atomicanimations.ini` even carries `startdirection` pins for a subset).
- */
-const TARGET_FACING_ATOMIC_IDS: ReadonlySet<number> = new Set([
-  ATTACK_ATOMIC_ID,
-  ...Object.values(HARVEST_ATOMIC_IDS),
-]);
 
 /** One frame's sprite scene: the culled, depth-sorted draw list PLUS the pre-cull liveness set —
  *  produced in a single pass over the snapshot (see {@link collectSpriteScene}). */
@@ -148,182 +80,6 @@ export interface SpriteSceneOptions {
  */
 export function buildSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOptions = {}): DrawItem[] {
   return collectSpriteScene(snapshot, opts).items;
-}
-
-/** Per-snapshot memo of {@link enterableStoresOf} — the set is a pure function of the snapshot, and
- *  {@link collectSpriteScene} runs per FRAME while the snapshot changes per TICK, so rebuilding it
- *  each frame was a second full entity pass against the function's own one-pass rule. */
-const enterableStoresBySnapshot = new WeakMap<WorldSnapshot, ReadonlySet<number>>();
-
-/**
- * COMPLETED buildings (built, not a construction site) — the "enterable store" set. A settler whose
- * running atomic exchanges goods with one of these (a pileup deposit / a pickup lift) is NOT drawn:
- * the original's carrier walks INTO the house and vanishes for the exchange (observed), so hiding it
- * for the atomic's duration reads as entering, instead of a deposit pantomimed at the door. A ground
- * pile / flag / construction site is not enterable — those exchanges keep their animation.
- */
-function enterableStoresOf(snapshot: WorldSnapshot): ReadonlySet<number> {
-  const cached = enterableStoresBySnapshot.get(snapshot);
-  if (cached !== undefined) return cached;
-  const stores = new Set<number>();
-  for (const entity of snapshot.entities) {
-    if ('Building' in entity.components && readBuiltPct(entity.components) === undefined) {
-      stores.add(entity.id);
-    }
-  }
-  enterableStoresBySnapshot.set(snapshot, stores);
-  return stores;
-}
-
-/** The shared empty index for a snapshot with no target-facing actor — memoized like a real index so a
- *  quiet scene allocates nothing and every frame reuses this one map. */
-const EMPTY_POS_INDEX: ReadonlyMap<number, { x: number; y: number }> = new Map();
-
-/** Per-snapshot memo of {@link targetPositionsOf} — same per-frame-vs-per-tick argument as
- *  {@link enterableStoresBySnapshot}. */
-const targetPosBySnapshot = new WeakMap<WorldSnapshot, ReadonlyMap<number, { x: number; y: number }>>();
-
-/**
- * The `entity id → live Position` index used to FACE a mid-swing attacker/harvester at its target and to
- * aim an in-flight projectile — random access by id that `WorldSnapshot` carries no structure for. Built
- * ONLY for a snapshot that actually has such an actor (a cheap early-exit scan decides; a scene with
- * nobody working, fighting or shooting memoizes the shared empty index and does no per-entity work), and
- * memoized per snapshot: {@link collectSpriteScene} runs per FRAME while the snapshot changes per TICK, so
- * both the scan and the fill happen once per tick, not once per frame. Stores the snapshot's OWN Position
- * object (readPosition returns it, not a copy), so the fill is N `Map.set`s with NO per-entity
- * allocation/divide; the `/ONE` to tile space is deferred to the rare facing lookups. Pure.
- */
-function targetPositionsOf(snapshot: WorldSnapshot): ReadonlyMap<number, { x: number; y: number }> {
-  const cached = targetPosBySnapshot.get(snapshot);
-  if (cached !== undefined) return cached;
-  let needed = false;
-  for (const entity of snapshot.entities) {
-    const acting = readActingAtomic(entity.components);
-    if ((acting !== null && TARGET_FACING_ATOMIC_IDS.has(acting)) || 'Projectile' in entity.components) {
-      needed = true;
-      break;
-    }
-  }
-  let index: ReadonlyMap<number, { x: number; y: number }> = EMPTY_POS_INDEX;
-  if (needed) {
-    const byRef = new Map<number, { x: number; y: number }>();
-    for (const entity of snapshot.entities) {
-      const p = readPosition(entity.components);
-      if (p !== null) byRef.set(entity.id, p);
-    }
-    index = byRef;
-  }
-  targetPosBySnapshot.set(snapshot, index);
-  return index;
-}
-
-/**
- * Tag a settler draw item with the render-side reads a per-character binding needs: the running atomic
- * (+ its elapsed clock), the combat-engaged gait flag, the drawn facing (target-facing wins over the
- * walk heading), the hauled good, the job/weapon look, the owner player LUT row, and the born-young age
- * flag. Assigned (not spread) so an absent fact stays an absent property under exactOptionalPropertyTypes.
- */
-function assignSettlerFields(
-  item: MutableDrawItem,
-  components: Readonly<Record<string, unknown>>,
-  actingAtomic: number | null,
-  targetFacing: number | undefined,
-): void {
-  if (actingAtomic !== null) {
-    item.atomicId = actingAtomic;
-    // The action clock rides ALONGSIDE the atomic — omitted when idle (see DrawItem.elapsed), so a
-    // kept-indoor settler that still holds a stale CurrentAtomic doesn't carry an orphan elapsed.
-    const elapsed = readAtomicElapsed(components);
-    if (elapsed !== null) item.elapsed = elapsed;
-  }
-  // A combat-engaged unit reads the readied `..._agressive` gait (the sim `Engagement` marker).
-  if (readEngaged(components)) item.engaged = true;
-  // Facing: a mid-attack/mid-harvest swing has no walking heading, so it faces its target's LIVE tile
-  // (resolved by the caller); otherwise the movement heading. Target facing WINS when it resolves, so a
-  // stale path can't leave an attacker or a woodcutter swinging at empty air.
-  const facing = targetFacing ?? readFacing(components);
-  if (facing !== undefined) item.facing = facing;
-  const carrying = readCarrying(components);
-  if (carrying !== null) {
-    item.carrying = true;
-    if (carrying.goodType !== undefined) item.carryGood = carrying.goodType;
-  }
-  const jobType = readJobType(components);
-  if (jobType !== undefined) item.jobType = jobType;
-  // The equipped weapon good drives the drawn warrior look (bow slot → bow body) over the jobType.
-  const weaponGood = readEquipmentWeaponGood(components);
-  if (weaponGood !== undefined) item.weaponGood = weaponGood;
-  const player = readOwnerPlayer(components);
-  if (player !== undefined) item.player = player;
-  // Only a born-young settler carries `Age` — the component-presence disambiguation of the age-class
-  // jobType ids (1..4) from colliding synthetic adult ids (AGENTS.md [dc3ef54]).
-  if ('Age' in components) item.young = true;
-}
-
-/**
- * Point a projectile draw item along its flight and LOB it (the ballistic-arc trig lives in
- * {@link projectileArc}), returning the ballistic HEIGHT to fold into the draw-lift channel (never the
- * depth key, so the lob can't reshuffle occlusion mid-flight). A shot whose target vanished this frame
- * keeps `rotation` unset and flies flat (lift 0) for the one tick the sim takes to expire it.
- */
-function assignProjectileArc(
-  item: MutableDrawItem,
-  components: Readonly<Record<string, unknown>>,
-  screen: ReturnType<typeof tileToScreen>,
-  posByRef: ReadonlyMap<number, { x: number; y: number }>,
-): number {
-  const targetRef = readProjectileTarget(components);
-  const to = targetRef !== null ? posByRef.get(targetRef) : undefined;
-  if (to === undefined) return 0;
-  const origin = readProjectileOrigin(components);
-  const arc = projectileArc(
-    screen,
-    tileToScreen(to.x / ONE, to.y / ONE),
-    origin === null ? null : tileToScreen(origin.x / ONE, origin.y / ONE),
-  );
-  item.rotation = arc.rotation;
-  return arc.lift;
-}
-
-/**
- * Append the viewer's remembered statics (`data/fog-ghosts.ts`, pre-filtered to EXPLORED ground) to the
- * draw list: each projects with the SAME anchor/lift/depth formula as a live static (so a ghost occludes
- * correctly against live sprites at the fog boundary) but is tagged {@link DrawItem.ghost} for the pool's
- * grey tint. Every ghost ref joins `liveRefs` — a ghost of a DEAD entity keeps its pooled sprite alive as
- * long as the memory draws; a camera-culled ghost still counts as live but emits no item.
- */
-function pushGhostItems(
-  items: MutableDrawItem[],
-  liveRefs: Set<number>,
-  ghosts: readonly FogGhost[],
-  viewport: Viewport | undefined,
-  elevation: ElevationField | undefined,
-): void {
-  for (const g of ghosts) {
-    // A ghost keeps its (possibly dead) entity's pooled sprite alive even while camera-culled.
-    liveRefs.add(g.ref);
-    const screen = tileToScreen(g.tileX, g.tileY);
-    if (viewport !== undefined && !isVisible(viewport, screen.x, screen.y)) continue;
-    const lift = terrainLiftAt(elevation, g.tileX, g.tileY);
-    // Same anchor/depth formula as a live static, so a ghost sorts correctly against live sprites at the
-    // fog boundary. Statics are always `idle`; the per-kind fields were frozen at capture.
-    const item: MutableDrawItem = {
-      kind: g.kind,
-      ref: g.ref,
-      x: screen.x,
-      y: screen.y,
-      depth: spriteDepth(g.tileX, g.tileY, g.kind),
-      state: 'idle',
-      ghost: true,
-    };
-    if (g.typeId !== undefined) item.typeId = g.typeId;
-    if (g.builtPct !== undefined) item.builtPct = g.builtPct;
-    if (g.goodType !== undefined) item.goodType = g.goodType;
-    if (g.level !== undefined) item.level = g.level;
-    if (g.gfxIndex !== undefined) item.gfxIndex = g.gfxIndex;
-    if (lift !== 0) item.lift = lift;
-    items.push(item);
-  }
 }
 
 /**
