@@ -27,7 +27,7 @@
  * them. `encodePcx` is the faithful inverse, used to round-trip test without committing real assets.
  */
 
-import { PALETTE_RGB_BYTES, paletteToRgba, type RgbaImage } from './image.js';
+import { assertPaletteBytes, PALETTE_RGB_BYTES, paletteToRgba, type RgbaImage } from './image.js';
 
 const HEADER_BYTES = 0x80;
 const PALETTE_TRAILER_BYTES = 1 + PALETTE_RGB_BYTES; // 0x0C marker + 256 RGB triples
@@ -115,11 +115,7 @@ export function expandToRgba(image: PcxImage): RgbaImage {
   if (palette === undefined) {
     throw new Error('pcx: cannot expand to RGBA — image has no palette');
   }
-  if (palette.length !== PALETTE_RGB_BYTES) {
-    throw new Error(
-      `pcx: cannot expand to RGBA — palette must be ${PALETTE_RGB_BYTES} bytes, got ${palette.length}`,
-    );
-  }
+  assertPaletteBytes(palette, 'pcx');
   // A `.pcx` picture is fully opaque — every pixel written, alpha 0xff.
   return { width, height, rgba: paletteToRgba(pixels, palette, () => 0xff) };
 }
@@ -150,11 +146,7 @@ export function encodePcx(input: PcxImageInput): Uint8Array {
       `pcx: pixels length ${pixels.length} does not match ${width}x${height} = ${width * height}`,
     );
   }
-  if (palette !== undefined && palette.length !== PALETTE_RGB_BYTES) {
-    throw new Error(
-      `pcx: palette must be ${PALETTE_RGB_BYTES} bytes (256 RGB triples), got ${palette.length}`,
-    );
-  }
+  if (palette !== undefined) assertPaletteBytes(palette, 'pcx');
 
   const alignedRowBytes = (width + 1) & ~1;
   const out: number[] = [];

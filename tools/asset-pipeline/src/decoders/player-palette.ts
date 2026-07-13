@@ -21,12 +21,7 @@
  * lives in the pipeline stage.
  */
 
-import type { RgbaImage } from './image.js';
-
-/** Entries in a palette (8-bit index space → 256 colours). */
-const PALETTE_SIZE = 256;
-/** Bytes in a 256-entry RGB palette (`[R,G,B] × 256`) — the pipeline's shared palette currency. */
-const PALETTE_BYTES = PALETTE_SIZE * 3;
+import { assertPaletteBytes, PALETTE_ENTRIES, PALETTE_RGB_BYTES, type RgbaImage } from './image.js';
 
 /** First index of the source `Player NN` ramp inside a `playerNN.pcx` (colour-range 1 = indices 16–31). */
 export const PLAYER_RAMP_START = 16;
@@ -94,12 +89,9 @@ export const PLAYER_COLORS: readonly PlayerColorDef[] = [
   { id: 15, name: 'pink', source: { kind: 'synthetic', hue: 336 } },
 ];
 
+/** Length-checks a palette with the shared guard, stamping this module's namespace on the error. */
 function assertPalette(p: Uint8Array, what: string): void {
-  if (p.length !== PALETTE_BYTES) {
-    throw new Error(
-      `player-palette: ${what} must be ${PALETTE_BYTES} bytes (256 RGB triples), got ${p.length}`,
-    );
-  }
+  assertPaletteBytes(p, 'player-palette', what);
 }
 
 /**
@@ -109,8 +101,8 @@ function assertPalette(p: Uint8Array, what: string): void {
  * alias one buffer and collapse to the last one. `new Uint8Array` + `.set` always copies.
  */
 function copyPalette(p: Uint8Array): Uint8Array {
-  const out = new Uint8Array(PALETTE_BYTES);
-  out.set(p.subarray(0, PALETTE_BYTES));
+  const out = new Uint8Array(PALETTE_RGB_BYTES);
+  out.set(p.subarray(0, PALETTE_RGB_BYTES));
   return out;
 }
 
@@ -205,7 +197,7 @@ export function synthesizePlayerSource(reference: Uint8Array, hueDeg: number): U
  */
 export function buildPlayerLutImage(palettes: readonly Uint8Array[]): RgbaImage {
   if (palettes.length === 0) throw new Error('player-palette: need at least one palette for the LUT');
-  const width = PALETTE_SIZE;
+  const width = PALETTE_ENTRIES;
   const height = palettes.length;
   const rgba = new Uint8Array(width * height * 4);
   for (let y = 0; y < height; y++) {

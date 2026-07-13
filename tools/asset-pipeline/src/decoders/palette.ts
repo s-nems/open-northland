@@ -19,7 +19,7 @@
  */
 
 import { StorableId } from './cif.js';
-import { PALETTE_RGB_BYTES } from './image.js';
+import { assertPaletteBytes, PALETTE_RGB_BYTES } from './image.js';
 
 const STORABLE_HEADER_BYTES = 8; // [u32 id][u32 version]
 const ENTRY_COUNT = 256;
@@ -90,9 +90,7 @@ export interface PaletteInput {
  */
 export function encodePalette(input: PaletteInput): Uint8Array {
   const { rgb, version = 0 } = input;
-  if (rgb.length !== PALETTE_RGB_BYTES) {
-    throw new Error(`palette: rgb must be ${PALETTE_RGB_BYTES} bytes (256 RGB triples), got ${rgb.length}`);
-  }
+  assertPaletteBytes(rgb, 'palette', 'rgb');
 
   const out = new Uint8Array(STORABLE_HEADER_BYTES + PALETTE_BODY_BYTES);
   const view = new DataView(out.buffer);
