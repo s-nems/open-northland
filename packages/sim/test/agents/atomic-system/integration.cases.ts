@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { Building, Carrying, CurrentAtomic, Resource, Stockpile } from '../../../src/components/index.js';
+import { Building, Carrying, Resource, Stockpile } from '../../../src/components/index.js';
 import { ONE, Simulation } from '../../../src/index.js';
 import { atomicSystem } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
+import { clearComponentStores } from '../../fixtures/stores.js';
 import { ctxOf, PLANK, SAWMILL, startAtomic, WOOD } from './support.js';
 
 describe('atomicSystem — end-to-end: harvest -> carry -> pileup', () => {
@@ -34,10 +35,7 @@ describe('atomicSystem — end-to-end: harvest -> carry -> pileup', () => {
 describe('atomicSystem — determinism', () => {
   it('two same-seed runs reach the same state hash', () => {
     const run = (): string => {
-      CurrentAtomic.store.clear();
-      Carrying.store.clear();
-      Stockpile.store.clear();
-      Building.store.clear();
+      clearComponentStores();
       const sim = new Simulation({ seed: 5, content: testContent() });
       const settler = sim.world.create();
       const store = sim.world.create();

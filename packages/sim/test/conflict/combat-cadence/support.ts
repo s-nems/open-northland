@@ -11,6 +11,7 @@ import {
   type TerrainMap,
 } from '../../../src/index.js';
 import type { SystemContext } from '../../../src/systems/index.js';
+import { clearComponentStores } from '../../fixtures/stores.js';
 
 import { ATTACK_ATOMIC } from './content.js';
 
@@ -97,10 +98,4 @@ export function startSwing(
   });
 }
 
-beforeEach(() => {
-  Position.store.clear();
-  Settler.store.clear();
-  Health.store.clear();
-  Armor.store.clear();
-  CurrentAtomic.store.clear();
-});
+beforeEach(clearComponentStores);
