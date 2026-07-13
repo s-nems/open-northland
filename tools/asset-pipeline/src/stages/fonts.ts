@@ -2,10 +2,13 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { type BobAtlas, packBobAtlas, packIndexedBobAtlas } from '../decoders/atlas.js';
 import { decodeFnt, type FontMetrics, fontMetrics } from '../decoders/fnt.js';
-import { decodePcx } from '../decoders/pcx.js';
-import { buildPlayerLutImage } from '../decoders/player-palette.js';
-import { encodePng } from '../decoders/png.js';
-import { BOBS_DIR, identityPalette, readGameFile, writeBobAtlas } from './game-file.js';
+import {
+  buildPaletteLut,
+  identityPalette,
+  type PaletteLutResult,
+  readGameFile,
+  writeBobAtlas,
+} from './game-file.js';
 
 /**
  * Font extraction stage — the original UI bitmap fonts (`Data/gui/fonts/*.fnt`), converted from an OWNED
@@ -105,44 +108,14 @@ const FONT_SOURCES: readonly FontSource[] = FONT_VARIANTS.flatMap((v) =>
   })),
 );
 
-/** The emitted font-colour LUT plus the resolved palettes (for the preview colouring + the manifest). */
-export interface FontColorLutResult {
-  /** `loadLayer`/`loadAtlasSource` stem of the `256 × 4` LUT PNG under `/bobs/`. */
-  readonly stem: string;
-  /** LUT row order (row index = array index) — the app mirrors this to pick a colour row. */
-  readonly names: string[];
-  /** name → 768-byte palette, for colouring the preview atlases. Absent palettes are identity-filled. */
-  readonly byName: Map<string, Uint8Array>;
-}
-
 /**
  * Reads every {@link FONT_COLORS} carrier, stacks their 256-colour trailers into one `256 × 4` LUT PNG (via
- * {@link buildPlayerLutImage}, the same mechanism as the player-colour / GUI palette LUTs), and writes it
+ * {@link buildPaletteLut}, the same mechanism as the player-colour / GUI palette LUTs), and writes it
  * under `BOBS_DIR`. A missing/palette-less carrier is warned and replaced with a neutral grayscale row
  * so the row order (the app's contract) stays fixed regardless of a partial install.
  */
-export async function convertFontColorLut(gameDir: string, outDir: string): Promise<FontColorLutResult> {
-  const ordered: Uint8Array[] = [];
-  const byName = new Map<string, Uint8Array>();
-  for (const src of FONT_COLORS) {
-    let palette: Uint8Array | undefined;
-    try {
-      palette = decodePcx(await readGameFile(gameDir, src.file)).palette;
-    } catch (err) {
-      console.warn(
-        `[pipeline] fonts: colour ${src.name} unreadable (${(err as Error).message}); using neutral row`,
-      );
-    }
-    if (palette === undefined) palette = identityPalette();
-    ordered.push(palette);
-    byName.set(src.name, palette);
-  }
-  await mkdir(join(outDir, BOBS_DIR), { recursive: true });
-  await writeFile(
-    join(outDir, BOBS_DIR, `${FONT_COLOR_LUT_STEM}.png`),
-    encodePng(buildPlayerLutImage(ordered)),
-  );
-  return { stem: FONT_COLOR_LUT_STEM, names: FONT_COLORS.map((c) => c.name), byName };
+export function convertFontColorLut(gameDir: string, outDir: string): Promise<PaletteLutResult> {
+  return buildPaletteLut(gameDir, outDir, FONT_COLORS, FONT_COLOR_LUT_STEM, 'fonts', 'colour');
 }
 
 /** One converted font: its atlas stems, metrics path, and the font-wide layout numbers (for the manifest). */
