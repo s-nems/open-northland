@@ -4,17 +4,8 @@
  * preamble ({@link readGfxHouseGraphicsRecord}) and the multi-house record split.
  */
 import { BuildingBob, BuildingConstructionLayer, BuildingOverlay } from '@vinland/data';
-import type { BmdPaletteBinding } from '../bindings/index.js';
-import {
-  findProp,
-  findProps,
-  getStr,
-  normalizeAssetPath,
-  normalizeOptionalPath,
-  normalizePaletteName,
-  type RuleSection,
-  type SourceRef,
-} from '../grammar.js';
+import { type NamedBmdPaletteBinding, readBmdPaletteBindings } from '../bindings/index.js';
+import { findProps, getStr, normalizePaletteName, type RuleSection, type SourceRef } from '../grammar.js';
 import { readGfxHouseGraphicsRecord, splitGfxHouseRecords } from './shared.js';
 
 /**
@@ -150,61 +141,36 @@ export function extractBuildingOverlays(sections: readonly RuleSection[], src: S
 }
 
 /**
- * One building graphics binding: a {@link BmdPaletteBinding} (`.bmd` body + shadow + palette editname)
- * plus the record's `EditName`. The same shape as {@link import('../bindings/index.js').LandscapeGraphicsBinding}
- * — a building is just the `[GfxHouse]` analog of the `[GfxLandscape]` static-decor binding — so it flows
- * through the exact same {@link import('../../../stages/bmd/index.js').convertBmdTree} `(bmd, palette)` atlas path
- * with no second copy of the conversion logic. The name is provenance + a building handle (`"viking stock"`
- * vs `"viking home"`) so a render binding can pick a house by it without re-reading the `.ini`.
- */
-export interface BuildingGraphicsBinding extends BmdPaletteBinding {
-  /** The record's `EditName` (e.g. `"viking stock"`), or undefined when the record omits it. */
-  readonly editName: string | undefined;
-}
-
-/**
  * Extracts the `[GfxHouse]` records from the mod's readable `DataCnmd/budynki12/houses/houses.ini` (the
  * graphics twin of the logic `houses.ini`; golden rule #4) — the **building** graphics binding: every
  * settlement house (homes, wells, stocks/warehouses, workshops, walls, …) bound to its bob set + palette,
  * the exact `[GfxHouse]` analog of {@link import('../bindings/index.js').extractLandscapeGraphics}'s
- * `[GfxLandscape]` static decor. This is the leg that makes the `ls_houses_*.bmd` sets
+ * `[GfxLandscape]` static decor. It shares the same {@link readBmdPaletteBindings} kernel + the
+ * {@link NamedBmdPaletteBinding} shape, adding the record's `EditName` (a building handle, `"viking stock"`
+ * vs `"viking home"`). This is the leg that makes the `ls_houses_*.bmd` sets
  * (viking/frank/egypt/saracen/byzantine/beduine) become atlases — without it a house `.bmd` is unpacked but
- * never coloured, so a building drew a placeholder box (the gap that left the warehouse with no sprite). Each
- * record names a body + shadow bob set (`GfxBobLibs "<body>.bmd" "<shadow>.bmd"`) and one-or-more palette
- * editnames.
+ * never coloured, so a building drew a placeholder box (the gap that left the warehouse with no sprite).
  *
  * Unlike a landscape record (one `GfxPalette`), a house record commonly carries **several** palette
  * values on one `GfxPalette` line — `GfxPalette "house01" "house02"` recolours the same `ls_houses_viking`
- * body into the home (`house01`) and the stock/warehouse (`house02`) skins. Each value is emitted as its
- * own `(bmd, palette)` binding so *every* recolour becomes an atlas (the warehouse needs `house02`); the
- * caller dedups identical `(bmd, palette)` pairs (the ~25 viking-home records repeat one bob+palette pair).
+ * body into the home (`house01`) and the stock/warehouse (`house02`) skins — so this passes `multiPalette`
+ * to fan each value into its own `(bmd, palette)` binding (the warehouse needs `house02`); the caller
+ * dedups identical pairs (the ~25 viking-home records repeat one bob+palette pair).
  *
  * The keys are CamelCase like `[GfxLandscape]` (`GfxBobLibs`/`GfxPalette`/`EditName`). A record without a
  * body bob or without any palette is skipped, never thrown — this indexes hundreds of records and one
- * malformed entry must not abort the offline batch. `tribeId`/`jobId` are left undefined: an atlas keys on
- * `(bmd, palette)` only, so the per-tribe `LogicTribeType` cross-ref does not affect the emitted bytes
- * (the render-side per-building-type bob selection is a later, separate leg).
+ * malformed entry must not abort the offline batch. `tribeId`/`jobId` are left undefined (no `logictribe`/
+ * `logicjob` keys on a `[GfxHouse]` record): an atlas keys on `(bmd, palette)` only, so the per-tribe
+ * `LogicTribeType` cross-ref does not affect the emitted bytes (the render-side per-building-type bob
+ * selection is a later, separate leg).
  */
-export function extractBuildingGraphics(sections: readonly RuleSection[]): BuildingGraphicsBinding[] {
-  const bindings: BuildingGraphicsBinding[] = [];
+export function extractBuildingGraphics(sections: readonly RuleSection[]): NamedBmdPaletteBinding[] {
+  const bindings: NamedBmdPaletteBinding[] = [];
   for (const sec of sections) {
     if (sec.name !== 'GfxHouse') continue;
-    const libs = findProp(sec, 'GfxBobLibs');
-    const bmd = libs?.values[0];
-    if (bmd === undefined || bmd.trim() === '') continue;
-    const paletteValues = (findProp(sec, 'GfxPalette')?.values ?? []).filter((v) => v.trim() !== '');
-    if (paletteValues.length === 0) continue;
-    const shadow = libs?.values[1];
     const editName = getStr(sec, 'EditName');
-    for (const paletteName of paletteValues) {
-      bindings.push({
-        bmd: normalizeAssetPath(bmd),
-        shadowBmd: normalizeOptionalPath(shadow),
-        paletteName: normalizePaletteName(paletteName),
-        tribeId: undefined,
-        jobId: undefined,
-        editName,
-      });
+    for (const binding of readBmdPaletteBindings(sec, 'GfxBobLibs', 'GfxPalette', true)) {
+      bindings.push({ ...binding, editName });
     }
   }
   return bindings;
