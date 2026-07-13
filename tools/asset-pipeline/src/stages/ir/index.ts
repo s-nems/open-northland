@@ -1,12 +1,10 @@
-import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { type BuildingFootprint, type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
-import type { Args } from '../args.js';
-import { decodeCifStringArray } from '../decoders/cif.js';
+import type { Args } from '../../args.js';
 import {
   buildGatheringPipeline,
   buildTerrainPatterns,
-  cifLinesToSections,
   decodeIni,
   extractAnimals,
   extractArmor,
@@ -34,103 +32,14 @@ import {
   extractWeapons,
   fillBuildingRecipes,
   parseIniSections,
-  type RuleSection,
   type SourceRef,
-} from '../decoders/ini.js';
-import { decodeMapTree } from './maps/index.js';
+} from '../../decoders/ini.js';
+import { decodeMapTree } from '../maps/index.js';
+import { applyBuildingGraphicsOverlays } from './building-overlays.js';
+import { loadCifTable } from './cif-tables.js';
+import { resolveIniSources } from './sources.js';
 
-/**
- * Decodes a `.cif`-only table (no readable `.ini` twin — `pattern.cif`, `trianglepatterntypes.cif`)
- * into the shared {@link RuleSection} model, or `null` if the file is absent. Mirrors the
- * graceful-skip stance of {@link resolveIniSources}: a partial install still produces an IR from
- * whatever is present rather than aborting the batch.
- */
-async function loadCifSections(path: string): Promise<RuleSection[] | null> {
-  try {
-    await access(path);
-  } catch {
-    return null;
-  }
-  const { lines } = decodeCifStringArray(new Uint8Array(await readFile(path)));
-  return cifLinesToSections(lines);
-}
-
-/**
- * Loads a base-game `.cif`-only table at `gameDir/relFile` and runs `extract` over its sections,
- * returning `fallback` when the file is absent/undecodable (a partial install degrades per-table, not
- * fatally). Collapses the five identical load→guard→extract triples buildIr does for the pattern,
- * triangle, transition, landscape, and sound tables.
- */
-async function loadCifTable<T>(
-  gameDir: string,
-  relFile: string,
-  extract: (sections: RuleSection[], src: SourceRef) => T,
-  fallback: T,
-): Promise<T> {
-  const sections = await loadCifSections(join(gameDir, relFile));
-  return sections ? extract(sections, { file: relFile, layer: 'base' }) : fallback;
-}
-
-/**
- * One readable `.ini` rule source to parse, with where it came from (`base` = `Data/logic`,
- * `mod` = `DataCnmd`). The extractor selects which `[section]`s it cares about, so a file with no
- * matching sections contributes nothing rather than erroring.
- */
-export interface IniSource {
-  /** Absolute path of the `.ini` file to read. */
-  readonly path: string;
-  /** Path stamped onto each record's `source.file` — relative so the IR is location-agnostic. */
-  readonly file: string;
-  readonly layer: 'base' | 'mod';
-}
-
-/**
- * Resolves the readable `.ini` sources for the type tables we can extract today, **preferring the
- * mod's readable `.ini` over the base game** (AGENTS.md golden rule #4): tribes + atomic animations +
- * weapons + buildings live only under `DataCnmd/types/` (the base game's twins are encrypted `.cif`),
- * while goods/jobs/landscape/vehicles/armor/animals are base `Data/logic/*.ini`. A source whose file is missing on disk is
- * dropped with a warning — a partial install (or no mod) still produces an IR from whatever is present,
- * rather than aborting the whole batch.
- */
-export async function resolveIniSources(gameDir: string, mod: string | undefined): Promise<IniSource[]> {
-  const base: { rel: string; layer: 'base' | 'mod' }[] = [
-    { rel: join('Data', 'logic', 'goodtypes.ini'), layer: 'base' },
-    { rel: join('Data', 'logic', 'jobtypes.ini'), layer: 'base' },
-    { rel: join('Data', 'logic', 'humanjobexperiencetypes.ini'), layer: 'base' },
-    { rel: join('Data', 'logic', 'landscapetypes.ini'), layer: 'base' },
-    { rel: join('Data', 'logic', 'vehicletypes.ini'), layer: 'base' },
-    { rel: join('Data', 'logic', 'armortypes.ini'), layer: 'base' },
-    { rel: join('Data', 'logic', 'animaltypes.ini'), layer: 'base' },
-  ];
-  if (mod !== undefined) {
-    base.push(
-      { rel: join(mod, 'tribetypes12', 'tribetypes.ini'), layer: 'mod' },
-      { rel: join(mod, 'atomicanimations12', 'atomicanimations.ini'), layer: 'mod' },
-      { rel: join(mod, 'types', 'weapons.ini'), layer: 'mod' },
-      { rel: join(mod, 'types', 'houses.ini'), layer: 'mod' },
-      // The renderer's animation table: `[bobseq]` named frame ranges (`seq "<name>" <start> <length>`)
-      // → IR `bobSequences`, so the render reads its walk/chop cycles from data instead of hard-coded
-      // constants (see `extractBobSequences`). Mod-only readable; the base twin is encrypted `.cif`.
-      { rel: join(mod, 'animation', 'mapmoveableanimations', 'animations.ini'), layer: 'mod' },
-      // The graphics-table twin: its `[GfxHouse]` records carry the `LogicConstructionGoods` build
-      // costs (and the home level chain), which the logic table above does not — overlaid onto the
-      // buildings by `typeId` in `buildIr` (see `extractConstructionCosts`).
-      { rel: join(mod, 'budynki12', 'houses', 'houses.ini'), layer: 'mod' },
-    );
-  }
-  const sources: IniSource[] = [];
-  for (const { rel, layer } of base) {
-    const path = join(gameDir, rel);
-    try {
-      await access(path);
-    } catch {
-      console.warn(`[pipeline] ini source not found, skipping: ${rel}`);
-      continue;
-    }
-    sources.push({ path, file: rel, layer });
-  }
-  return sources;
-}
+export { type IniSource, resolveIniSources } from './sources.js';
 
 /**
  * Reads + parses every resolved `.ini` source and runs the typed extractors, then assembles and
@@ -234,19 +143,11 @@ export async function buildIr(args: Args): Promise<ContentSet> {
     ambient: [],
     jingles: [],
   });
-  // Overlay each building's build-material cost + ground footprint from the graphics table (joined
-  // by `typeId`); a building the graphics table omits keeps the schema-default empty cost and no
-  // footprint (it places with no collision — the pre-footprint behavior).
-  const buildingsWithCosts = buildings.map((b) => {
-    const cost = constructionCosts.get(b.typeId);
-    const hp = hitpoints.get(b.typeId);
-    const footprint = footprints.get(b.typeId);
-    return {
-      ...b,
-      ...(cost ? { construction: cost } : {}),
-      ...(hp !== undefined ? { hitpoints: hp } : {}),
-      ...(footprint ? { footprint } : {}),
-    };
+  // Overlay the graphics-table cost/hitpoints/footprint onto the logic buildings (joined by `typeId`).
+  const buildingsWithCosts = applyBuildingGraphicsOverlays(buildings, {
+    constructionCosts,
+    hitpoints,
+    footprints,
   });
   // Output-side recipe join: a workplace's `produces` output good -> that good's `productionInputs`
   // materializes each producing building's `recipe` (cross-table, so after the tables are built).
