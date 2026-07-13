@@ -117,10 +117,9 @@ export const societyContent = {
     // pack of 3 that follows a leader (searchForLeader), ranging up to 2 tiles from its birth point,
     // and roaming up to 3 tiles from its leader (maximumLeaderDistance — the herdingSystem cohesion radius).
     // `moveSpeed 8` (the real cow/boar value) gives it a data-pinned walking pace: it walks ONE/8
-    // tile/tick (the MoveSpeed stamp), exercising the per-entity movement pace. `runSpeed 4` is its
-    // (faster) run gait — a smaller number than its `moveSpeed`, matching the real data where every
-    // animal that sets both has `runspeed < movespeed` — stamped as the MoveSpeed's `runPerTick`, which
-    // movement reads whenever an entity flees; no animal drive selects that mode yet.
+    // tile/tick (the MoveSpeed stamp), exercising the per-entity movement pace. `runSpeed 4` mirrors
+    // the real record shape (`runspeed < movespeed`) but is deliberately unconsumed by the sim —
+    // no run/sprint gait exists; it proves the spawn ignores the param.
     {
       id: 'bear',
       tribeType: 10,
@@ -138,9 +137,7 @@ export const societyContent = {
     // exactly one and adds no HerdMember.
     { id: 'bee', tribeType: 11, aggressive: true, cannotBeAttacked: true, hitpointsAdult: 200 },
     // The boar is PASSIVE but PROVOKABLE: `getAngry` (NOT `aggressive`) with an `angryGameTime` of 10
-    // — struck once, it stays hostile for 10 ticks then reverts. The provoked-anger fixture. It sets a
-    // `moveSpeed` but NO `runSpeed` — the "walk pace known, run gait omitted" case, so its MoveSpeed
-    // carries `runPerTick: null`.
+    // — struck once, it stays hostile for 10 ticks then reverts. The provoked-anger fixture.
     {
       id: 'boar',
       tribeType: 12,

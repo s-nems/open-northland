@@ -93,7 +93,7 @@ describe('movementSystem — per-entity pace (MoveSpeed)', () => {
       { x: 1, y: 0 },
     ]);
     // A slower walker: ONE/16 = 4096 ulp/tick gait (vs the default divCeil(ONE/12) = 5462).
-    sim.world.add(e, MoveSpeed, { perTick: fx.div(ONE, fx.fromInt(16)), runPerTick: null });
+    sim.world.add(e, MoveSpeed, { perTick: fx.div(ONE, fx.fromInt(16)) });
     sim.step(); // consume wp0 (already on it), index -> 1; ramp is one accel-step (divCeil(4096/3) = 1366) warm
     sim.step(); // first move toward wp1 at 2·1366 = 2732 — the entity's OWN ramp, not the default's
     expect(sim.world.get(e, Position).x).toBe(fx.fromFloat(2732 / ONE));
@@ -107,12 +107,12 @@ describe('movementSystem — per-entity pace (MoveSpeed)', () => {
     // bounded test.
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     const twoUlpWalker = followerAt(sim, 0, 0, [{ x: 0.002, y: 0 }]); // 131-ulp leg
-    sim.world.add(twoUlpWalker, MoveSpeed, { perTick: fx.div(ONE, fx.fromInt(30000)), runPerTick: null });
+    sim.world.add(twoUlpWalker, MoveSpeed, { perTick: fx.div(ONE, fx.fromInt(30000)) });
     expect(ticksToArrive(sim, twoUlpWalker, 500)).toBeGreaterThan(0);
     expect(sim.world.get(twoUlpWalker, Position).x).toBe(fx.fromFloat(0.002)); // the arrival snap, bit-exact
 
     const zeroGaitWalker = followerAt(sim, 0, 0, [{ x: 0.002, y: 0 }]);
-    sim.world.add(zeroGaitWalker, MoveSpeed, { perTick: fx.div(ONE, fx.fromInt(70000)), runPerTick: null });
+    sim.world.add(zeroGaitWalker, MoveSpeed, { perTick: fx.div(ONE, fx.fromInt(70000)) });
     expect(sim.world.get(zeroGaitWalker, MoveSpeed).perTick).toBe(0); // the truncated-to-zero mint
     expect(ticksToArrive(sim, zeroGaitWalker, 500)).toBeGreaterThan(0); // floored to 1 ulp/tick
 
@@ -121,7 +121,7 @@ describe('movementSystem — per-entity pace (MoveSpeed)', () => {
     // walker stalled forever (the arrival snap needs dist <= speed, which a stationary walker never
     // reaches). The guard advances one grid ulp per tick, so the crawl still terminates.
     const diagonalWalker = followerAt(sim, 0, 0, [{ x: 0.002, y: 0.002 }]);
-    sim.world.add(diagonalWalker, MoveSpeed, { perTick: fx.div(ONE, fx.fromInt(70000)), runPerTick: null });
+    sim.world.add(diagonalWalker, MoveSpeed, { perTick: fx.div(ONE, fx.fromInt(70000)) });
     expect(ticksToArrive(sim, diagonalWalker, 1000)).toBeGreaterThan(0);
     const arrived = sim.world.get(diagonalWalker, Position);
     expect(arrived.x).toBe(fx.fromFloat(0.002)); // the arrival snap, bit-exact
@@ -134,7 +134,7 @@ describe('movementSystem — per-entity pace (MoveSpeed)', () => {
       { x: 0, y: 0 },
       { x: 1, y: 0 },
     ]);
-    sim.world.add(e, MoveSpeed, { perTick: fx.div(ONE, fx.fromInt(16)), runPerTick: null });
+    sim.world.add(e, MoveSpeed, { perTick: fx.div(ONE, fx.fromInt(16)) });
     // Model trace (G 4096, A 1366, floor 2048): consume; ramp 2732+4096; cruise 4096×13
     // (to rem 5460 < 2·G); brake 2730, 2048; snap (682 left) = 19 ticks.
     expect(ticksToArrive(sim, e)).toBe(19);

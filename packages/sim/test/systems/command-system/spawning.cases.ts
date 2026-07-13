@@ -132,7 +132,6 @@ describe('CommandSystem — spawning', () => {
     sim.step();
     expect(sim.world.get(nthEntity(sim, 0), MoveSpeed)).toEqual({
       perTick: fx.div(fx.fromInt(1), fx.fromInt(8)),
-      runPerTick: null,
     });
   });
 

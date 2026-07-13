@@ -20,7 +20,6 @@ import { clearComponentStores } from '../fixtures/stores.js';
 
 const BEAR = 10; // aggressive herd animal: group 3, searchForLeader, range 2, hitpointsAdult 15000; moveSpeed 8 + runSpeed 4
 const BEE = 11; // solitary decorative animal: no group size, searchForLeader false, hitpointsAdult 200
-const BOAR = 12; // passive-provokable: moveSpeed 8 but NO runSpeed (the walk-known/run-omitted case)
 const VIKING = 1; // a civilization — no animaltypes record (bad input for spawnAnimalHerd)
 
 beforeEach(clearComponentStores);
@@ -97,7 +96,7 @@ describe('spawnAnimalHerd command', () => {
     expect(sim.world.get(leader as Entity, HerdMember).leader).toBe(leader);
   });
 
-  it('stamps each creature a MoveSpeed from movespeed/runspeed (the bear walks ONE/8, runs ONE/4)', () => {
+  it('stamps each creature a MoveSpeed from movespeed (the bear walks ONE/8; its runspeed is unconsumed)', () => {
     const sim = fresh();
     spawnHerdAt(sim, BEAR, 5, 5);
     sim.step();
@@ -106,24 +105,9 @@ describe('spawnAnimalHerd command', () => {
     expect(herd).toHaveLength(3);
     for (const e of herd) {
       const speed = sim.world.get(e, MoveSpeed);
-      // movespeed 8 -> walks ONE/8 tile/tick (a larger movespeed is a slower step).
-      expect(speed.perTick).toBe(fx.div(ONE, fx.fromInt(8)));
-      // runspeed 4 -> the (faster) run gait ONE/4, recorded for the deferred flee/charge drive.
-      expect(speed.runPerTick).toBe(fx.div(ONE, fx.fromInt(4)));
-    }
-  });
-
-  it('stamps runPerTick null for an animal with a movespeed but no runspeed (the boar)', () => {
-    const sim = fresh();
-    spawnHerdAt(sim, BOAR, 4, 4);
-    sim.step();
-
-    const herd = creatures(sim);
-    expect(herd.length).toBeGreaterThan(0);
-    for (const e of herd) {
-      const speed = sim.world.get(e, MoveSpeed);
-      expect(speed.perTick).toBe(fx.div(ONE, fx.fromInt(8))); // walk pace known
-      expect(speed.runPerTick).toBeNull(); // no runspeed -> run gait omitted
+      // movespeed 8 -> walks ONE/8 tile/tick (a larger movespeed is a slower step). The record's
+      // runspeed 4 is deliberately NOT stamped — no run/sprint gait exists.
+      expect(speed).toEqual({ perTick: fx.div(ONE, fx.fromInt(8)) });
     }
   });
 

@@ -126,7 +126,7 @@ export const Engagement = defineComponent<{ repathAt: number }>('Engagement');
  *  - **DEFEND** (`2`) — engage only enemies inside a small radius of `anchorCell` (the tile the stance was
  *    set on), never chase past a leash, and return to the anchor when clear.
  *  - **IGNORE** (`3`) — never auto-engage (the scout's mode); an explicit {@link AttackOrder} still works.
- *  - **FLEE** (`4`) — run away from the nearest threat at the run gait (the {@link Fleeing} drive).
+ *  - **FLEE** (`4`) — path away from the nearest threat (the {@link Fleeing} drive).
  *  - **NONE** (`0`) — no assigned mode; treated as passive (like IGNORE) — the defaults never set it.
  *
  * `anchorCell` is the DEFEND anchor (a raw row-major cell id, like {@link import('./movement.js').MoveGoal}'s
@@ -147,14 +147,13 @@ export const Stance = defineComponent<{ mode: number; anchorCell: NodeId | null 
  * A fleeing unit's **run-away drive state** — "this {@link Stance} `FLEE` combatant is actively running
  * from a threat right now" (distinct from the persistent FLEE *mode*: a FLEE unit with no threat in sight
  * works normally and carries no `Fleeing`). The CombatSystem's flee drive stamps it when a threat enters
- * sight and removes it after the threat has been out of sight for the cool-down. Two consumers read it:
+ * sight and removes it after the threat has been out of sight for the cool-down. It moves at its normal
+ * pace — there is no run/sprint gait; the drive only steers. Its consumers:
  *
- *  - the **MovementSystem** walks a `Fleeing` path-follower at the **run gait** (the faster pace — reads
- *    {@link import('./movement.js').MoveSpeed}'s `runPerTick`, else the walk pace × a run multiplier), so a
- *    fleeing civilian outpaces its pursuer; a unit with no `Fleeing` walks normally (golden untouched);
  *  - the CombatSystem uses `repathAt` to **throttle the re-aim** — the flee destination (away from the
  *    nearest threat) is recomputed only every few ticks, not per tick (the same chase-throttle discipline
- *    as {@link Engagement}, golden rule 7).
+ *    as {@link Engagement}, golden rule 7);
+ *  - the AISystem skips need-scheduling for a `Fleeing` unit (running from danger preempts eat/sleep).
  *
  * `calmUntil` is the cool-down clock: **null** while a threat is in sight (still in danger); set to
  * `tick + cool-down` when the last threat leaves sight; when the tick reaches it (a full cool-down with no

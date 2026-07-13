@@ -1,6 +1,6 @@
-import { Fleeing, MoveSpeed, PathFollow, Position, Velocity } from '../../components/index.js';
+import { MoveSpeed, PathFollow, Position, Velocity } from '../../components/index.js';
 import { type Fixed, fx, ONE, ULP, ZERO } from '../../core/fixed.js';
-import type { Entity, World } from '../../ecs/world.js';
+import type { Entity } from '../../ecs/world.js';
 import { worldDistance } from '../../nav/metric.js';
 import type { System } from '../context.js';
 import { legHeading, stepTowardPoint, turnOntoNextLeg } from './stepping.js';
@@ -32,14 +32,6 @@ export const WALK_TICKS_PER_CELL = 12;
  * slightly short instead (absorbed by the arrival snap, so no drift accumulates across legs).
  */
 export const MOVE_SPEED_PER_TICK: Fixed = fx.divCeil(ONE, fx.fromInt(WALK_TICKS_PER_CELL));
-
-/**
- * How many times faster a **fleeing** unit runs than it walks — its run gait is the walk pace × this
- * multiplier when it carries no readable run speed of its own (a human: `animaltypes.ini` gives animals a
- * `runspeed` but humans have none). Set so a fleeing civilian clearly OUTPACES a walking pursuer (a
- * calibration constant — the original's run-vs-walk ratio is unreadable; source basis "Combat flee").
- */
-export const RUN_SPEED_MULTIPLIER = 2;
 
 /*
  * MOVEMENT INERTIA — the three constants below shape it. A NAMED APPROXIMATION that deliberately
@@ -76,29 +68,13 @@ export const BRAKE_HORIZON_TICKS = 2;
 export const ARRIVAL_SPEED_DIV = 2;
 
 /**
- * A fleeing unit's per-tick **run** gait: its own {@link MoveSpeed} `runPerTick` when it has one (a data-
- * pinned run pace — an animal's `runspeed`), else its walk pace ({@link MoveSpeed} `perTick`, or the
- * universal {@link MOVE_SPEED_PER_TICK}) × the {@link RUN_SPEED_MULTIPLIER} (a human's approximated run
- * speed). This is the code path that FIRST reads `runPerTick`, but only a fleeing entity carrying a
- * `MoveSpeed` reaches the first branch — and today only owned humans flee (via the FLEE stance) while
- * `MoveSpeed`/`runPerTick` is animal-only, so every real fleer takes the walk×multiplier fallback; the
- * animal run gait stays unexercised until an animal flee/charge drive lands (source basis "Animal
- * locomotion pace"). Pure fixed-point — a deterministic read.
- */
-function runGait(world: World, e: Entity): Fixed {
-  const ms = world.tryGet(e, MoveSpeed);
-  if (ms?.runPerTick != null) return ms.runPerTick; // a data-pinned run gait (an animal's runspeed)
-  const walk = ms?.perTick ?? MOVE_SPEED_PER_TICK;
-  return fx.mul(walk, fx.fromInt(RUN_SPEED_MULTIPLIER)); // no readable human run speed → walk × multiplier
-}
-
-/**
  * MovementSystem — advances entity positions one tick.
  *
  * Two movement modes, in this precedence:
  *  1. {@link PathFollow}: ramp the follower's gait `speed` toward its cruise pace ({@link MoveSpeed}'s
- *     `perTick` if it carries one, else the universal {@link MOVE_SPEED_PER_TICK}; the run gait when
- *     fleeing) — accelerating from rest by {@link ACCEL_TICKS}, braking over the last leg's final
+ *     `perTick` if it carries one, else the universal {@link MOVE_SPEED_PER_TICK}; the gait is the
+ *     SAME whatever the entity is doing — the original has no sprint, a fleeing unit walks at its
+ *     one pace) — accelerating from rest by {@link ACCEL_TICKS}, braking over the last leg's final
  *     approach ({@link BRAKE_HORIZON_TICKS}/{@link ARRIVAL_SPEED_DIV}) — then step STRAIGHT toward
  *     the current waypoint (a cell centre, or the seam point a vertical leg crosses the intermediate
  *     row at — `routing.ts`) by that speed, along the LINE to the waypoint with the step length
@@ -134,19 +110,17 @@ export const movementSystem: System = (world) => {
       continue;
     }
 
-    // A FLEEING unit runs (the faster run gait — {@link runGait}); otherwise it walks at its own pace when
-    // it carries a MoveSpeed (a data-paced animal), else the universal settler default.
+    // The entity's ONE pace: its own MoveSpeed when it carries one (a data-paced animal), else the
+    // universal settler default. Deliberately unconditional — no run/sprint mode exists (the
+    // original moves every unit at its constant pace; a fleeing unit escapes by pathing away, not
+    // by speeding up).
     //
     // Degenerate-pace guard: `ONE/movespeed` truncation can mint a perTick as small as 0 ulps — a
     // 0-ulp gait makes no progress EVER, so the walker would stall and the path never complete
     // (the planner would see it as busy forever). Floor the gait at one ULP (the derived accel
     // step and brake floor stay ≥ 1 by their ceil mints below): an absurdly slow data-pinned pace
     // stays absurdly slow, but the sim stays total (every path still terminates).
-    const rawGait = world.has(e, Fleeing)
-      ? runGait(world, e)
-      : world.has(e, MoveSpeed)
-        ? world.get(e, MoveSpeed).perTick
-        : MOVE_SPEED_PER_TICK;
+    const rawGait = world.has(e, MoveSpeed) ? world.get(e, MoveSpeed).perTick : MOVE_SPEED_PER_TICK;
     const gait = rawGait > ULP ? rawGait : ULP;
     const p = world.get(e, Position);
 
@@ -163,7 +137,7 @@ export const movementSystem: System = (world) => {
     }
 
     // Ramp the gait: accelerate toward the target by gait/ACCEL_TICKS per tick; when ABOVE the
-    // target (the shrinking brake cap, or a gait drop like flee ending) clamp down at once — the
+    // target (the shrinking brake cap) clamp down at once — the
     // ease-out's smoothness comes from the target curve itself, and the clamp also absorbs the
     // ulp of inflation a truncated corner projection can carry.
     if (pf.speed < targetSpeed) {
