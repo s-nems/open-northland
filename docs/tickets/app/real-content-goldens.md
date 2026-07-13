@@ -1,7 +1,7 @@
 # Move the app tests to real good ids after the real-content switch
 
 **Area:** app tests · **Origin:** global-content plan reconciliation, 2026-07-12 · **Blocked by:**
-[real-content-switch](real-content-switch.md)
+[real-content-switch](real-content-switch.md) · **Priority:** P2
 
 Five app tests still assert fabricated sandbox ids: `details-panel.test.ts` and
 `gathering-render.test.ts` import `GOOD_WOOD` etc. from `game/sandbox/ids.ts`;

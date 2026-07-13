@@ -1,6 +1,6 @@
 # Implement barracks recruitment: the equip drive
 
-**Area:** sim + app · **Origin:** combat plan reconciliation, 2026-07-12
+**Area:** sim + app · **Origin:** combat plan reconciliation, 2026-07-12 · **Priority:** P2
 
 Entirely un-started; the seam is explicitly reserved in code: `components/equipment.ts` ("wiring
 the two together … is the deferred 'equip drive'"), `components/combat.ts`, `readviews/classes/`.

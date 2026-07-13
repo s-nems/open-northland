@@ -1,6 +1,6 @@
 # Bind the cr_ani animal atlases so animal entities have bodies
 
-**Area:** render + app content · **Origin:** map-visual-fidelity plan reconciliation, 2026-07-12
+**Area:** render + app content · **Origin:** map-visual-fidelity plan reconciliation, 2026-07-12 · **Priority:** P2
 
 The sim has a full herd system (`spawnAnimalHerd`, `seedAnimalHerds`, `HerdMember`, herding +
 combat aggression — animals ARE the settler entity/AI model), but a spawned animal has no art: no
@@ -12,8 +12,8 @@ animals.
 
 ## Scope
 
-- Bind the `cr_ani_body_00.<species>` atlases into the sprite sheet, mirroring the
-  `settler-gfx.ts` body resolution (simpler — no head overlay).
+- Bind the `cr_ani_body_00.<species>` atlases into the sprite sheet, mirroring the settler body
+  resolution in `packages/app/src/content/settler-gfx/` (simpler — no head overlay).
 - Draw idle/stand frames per facing; locomotion frames if the lanes are present.
 
 ## Verify

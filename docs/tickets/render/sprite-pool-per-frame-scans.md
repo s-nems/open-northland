@@ -1,6 +1,6 @@
 # Bound the sprite-pool per-frame scans (O(pooled) → O(visible))
 
-**Area:** render · **Origin:** /refactor-cleanup on packages/render, 2026-07-12
+**Area:** render · **Origin:** /refactor-cleanup on packages/render, 2026-07-12 · **Priority:** P2
 
 The render contract is "per-frame cost tracks the SCREEN, not the map". Two pool
 scans are O(pooled), not O(visible), and `pool` grows to every entity ever on-screen

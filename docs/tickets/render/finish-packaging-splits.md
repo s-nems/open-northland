@@ -1,6 +1,6 @@
 # Finish the render packaging splits (effects, terrain, hud)
 
-**Area:** render · **Origin:** /refactor-cleanup on packages/render, 2026-07-12
+**Area:** render · **Origin:** /refactor-cleanup on packages/render, 2026-07-12 · **Priority:** P3
 
 The render cleanup pass split the two clearly-overgrown LOGIC modules
 (`data/scene/snapshot-readers.ts` 487→subfolder, `data/scene/sprite-scene.ts`

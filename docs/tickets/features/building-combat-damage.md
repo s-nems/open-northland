@@ -1,6 +1,6 @@
 # Let buildings take combat damage and be destroyed
 
-**Area:** sim · **Origin:** combat plan reconciliation, 2026-07-12
+**Area:** sim · **Origin:** combat plan reconciliation, 2026-07-12 · **Priority:** P2
 
 Only the `damageVsBuilding` read view exists (`packages/sim/src/systems/readviews/combat.ts`, the
 HOUSE material column) — no conflict system calls it. `Building` already carries a `Health` pool that

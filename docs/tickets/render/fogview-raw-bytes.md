@@ -1,7 +1,7 @@
 # Give FogView a copied raw-bytes lane (worker-ready seam + O(map) raster relief)
 
 **Area:** packages/sim (seam) + packages/render + packages/app/minimap · **Origin:** engine + code
-review of feat/fog-of-war, 2026-07-12
+review of feat/fog-of-war, 2026-07-12 · **Priority:** P2
 
 Two findings share one fix:
 
@@ -19,7 +19,7 @@ Two findings share one fix:
 - Extend `FogView` with a per-generation COPIED `readonly Uint8Array` of the viewer's effective cell
   states (or raw states + a "RECON remaps UNEXPLORED→EXPLORED" flag), produced once per mask rebuild —
   plain transferable data, no closure.
-- Point the grid consumers (minimap `drawFog`, `gpu/fog-layer.ts` band raster) at row-wise typed-array
+- Point the grid consumers (minimap `drawFog`, `gpu/overlays/fog-layer.ts` band raster) at row-wise typed-array
   reads; keep `stateAt` for point queries (sprite cull, picking).
 - While in the minimap file: move the state→alpha rasterization into the pure `model.ts` half
   (headless-testable — the one fog surface without a unit test today; code review finding).

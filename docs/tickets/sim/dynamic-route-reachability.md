@@ -1,9 +1,9 @@
 # Extend reachability gating to dynamic blockers (route-level reachability)
 
-**Area:** sim · **Origin:** gathering-economy plan reconciliation, 2026-07-12
+**Area:** sim · **Origin:** gathering-economy plan reconciliation, 2026-07-12 · **Priority:** P2
 
 The economy's reachability gate covers STATIC components only:
-`packages/sim/src/systems/agents/targets/resources/index.ts` notes "dynamic reachability is a
+`packages/sim/src/systems/agents/targets/resources.ts` notes "dynamic reachability is a
 separate follow-up" (and cites this ticket by path). A target behind dynamically blocked cells (resource
 footprints, buildings placed after the static pass) can be picked as "reachable", walk there, and
 fail — wasted work and potential retry loops at scale.

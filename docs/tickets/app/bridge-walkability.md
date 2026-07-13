@@ -1,6 +1,6 @@
 # Make authored bridges walkable so river banks join into one nav component
 
-**Area:** app (+ sim nav input) · **Origin:** gathering-economy plan reconciliation, 2026-07-12
+**Area:** app (+ sim nav input) · **Origin:** gathering-economy plan reconciliation, 2026-07-12 · **Priority:** P2
 
 On imported maps, authored bridge objects do not open a crossing: the app's object→collision pass
 only ADDS blocking (`packages/app/src/...collision.ts` — "objects only ADD blocking"), so the two

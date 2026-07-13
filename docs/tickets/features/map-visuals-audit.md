@@ -4,7 +4,7 @@
 **Blocked by:** [authored-building-variants](authored-building-variants.md),
 [wall-runs](wall-runs.md), [map-authored-animals](map-authored-animals.md),
 [wave-phase-audit](../render/wave-phase-audit.md), [water-fx-and-shore](water-fx-and-shore.md),
-[rocky-ground-recompare](rocky-ground-recompare.md)
+[rocky-ground-recompare](rocky-ground-recompare.md) · **Priority:** P2
 
 The sign-off gate for "a decoded map is visually indistinguishable from the original". Baseline at
 time of filing: the resolve-rate warning in `packages/app/src/content/objects.ts` reported

@@ -1,5 +1,7 @@
 # Cover the goods-stage emit and `writeIr` orchestrators
 
+**Area:** pipeline tests · **Origin:** data+pipeline refactor review (deferred finding), 2026-07-13 · **Priority:** P3
+
 Two pipeline orchestrators have no direct test coverage. Their pure inner joins are tested, but the
 emit/assembly wrappers around them are only exercised by a full `npm run pipeline` run against the
 owned game copy (not by CI, which has no game assets):

@@ -1,7 +1,9 @@
 # Re-key the sandbox economy onto real engine good/job ids (decide the base architecture first)
 
 **Area:** app (`game/sandbox/`) · **Origin:** global-content plan reconciliation, 2026-07-12 ·
-**Blocked by:** [real-content-loader](real-content-loader.md)
+**Priority:** P1 · **Blocked by:** [real-content-loader](real-content-loader.md)
+**Needs user:** open architectural decision (hybrid-base vs real-base ids) — get the user's call
+before executing.
 
 **Decide before coding (user decision):** the codebase converged on a deliberate hybrid — real
 extracted footprints/names overlaid ONTO the sandbox base via `SandboxContentExtras`

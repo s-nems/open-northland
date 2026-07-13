@@ -1,6 +1,6 @@
 # Investigate fx-wave records and shore-band fidelity (defer-with-evidence allowed)
 
-**Area:** app + pipeline · **Origin:** map-visual-fidelity plan reconciliation, 2026-07-12
+**Area:** app + pipeline · **Origin:** map-visual-fidelity plan reconciliation, 2026-07-12 · **Priority:** P3
 
 Two open water questions, both investigate-first (implement OR defer with evidence):
 

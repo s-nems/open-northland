@@ -1,6 +1,6 @@
 # Wire building-assigned gatherers: no flag, the building is the delivery target
 
-**Area:** sim + app · **Origin:** gathering-economy plan reconciliation, 2026-07-12
+**Area:** sim + app · **Origin:** gathering-economy plan reconciliation, 2026-07-12 · **Priority:** P2
 
 The original's gatherer assigned to a building delivers into that building — no work flag. Our
 code only exercises the free-gatherer path: map gatherers spawn free (→ flag), and the
@@ -10,8 +10,10 @@ wired anywhere.
 ## Scope
 
 - Let a gatherer bound to a workplace skip flag placement and deliver its haul to the bound
-  building (the bound-carrier haul-out seam from `feat: Haul a producing building's output out via
-  its bound carrier` is the adjacent pattern).
+  building. The adjacent pattern is the bound-carrier haul-out seam: `boundProducerOutputToHaul`
+  in `packages/sim/src/systems/agents/economy/haul-targets.ts` (consumed by
+  `systems/agents/economy/hauling.ts`), with the binding itself the `JobAssignment` component
+  (`workplace: Entity`, `packages/sim/src/components/settler.ts`).
 - Exercise it: a scene or headless test where a building-assigned collector fells/delivers into
   its building.
 

@@ -1,7 +1,7 @@
 # Derive imported-map water/walkability from the lmpa/lmpb triangle-pattern lanes
 
 **Area:** pipeline + data (+ sim nav) · **Origin:** docs cleanup / SOURCES "Remaining" sweep,
-2026-07-13
+2026-07-13 · **Priority:** P2
 
 Imported maps get their sim grid — and therefore their walkability — from the **`lmlt`
 landscape-OBJECT lane** only: `mapDatToTerrain` (`tools/asset-pipeline/src/stages/maps/terrain.ts`)

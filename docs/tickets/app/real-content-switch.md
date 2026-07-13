@@ -1,7 +1,7 @@
 # Feed the merged real content to the scene sim and vertical slice
 
 **Area:** app · **Origin:** global-content plan reconciliation, 2026-07-12 · **Blocked by:**
-[real-content-balance-overlay](real-content-balance-overlay.md)
+[real-content-tuning-rebind](real-content-tuning-rebind.md) · **Priority:** P1
 
 `createSceneSim` still builds on `sandboxContent(scene.terrain, extras)`
 (`packages/app/src/scenes/runtime.ts`) and `runSlice`/`runAuthoredSlice` still call

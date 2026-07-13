@@ -1,7 +1,7 @@
 # Audit nearestStoreFor for missing owner/tribe filter before multi-tribe economies
 
 **Area:** sim · **Origin:** gathering-economy plan reconciliation (fix/farmer-carrier-logistics
-follow-up), 2026-07-12
+follow-up), 2026-07-12 · **Priority:** P3
 
 `nearestStoreFor` (`packages/sim/src/systems/agents/targets/stores/stock.ts`) has no tribe/owner
 filter, so a haul can deliver into an **enemy** store when it happens to be nearest. Harmless in

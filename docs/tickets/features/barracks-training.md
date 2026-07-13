@@ -1,7 +1,7 @@
 # Implement barracks training and exercise (coin spend, XP buckets, unlock gates)
 
 **Area:** sim + app · **Origin:** combat plan reconciliation, 2026-07-12 · **Blocked by:**
-[barracks-recruitment](barracks-recruitment.md)
+[barracks-recruitment](barracks-recruitment.md) · **Priority:** P2
 
 Progression today accrues only generic good/harvest XP (`packages/sim/src/systems/progression/experience.ts`);
 the barracks train/exercise atomics, the coin spend, and the `needfor*`/`allow*`/`trainforjob`

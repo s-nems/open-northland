@@ -1,6 +1,6 @@
 # Add a scripted battle golden and strengthen the battle scene's behavior checks
 
-**Area:** sim + app · **Origin:** combat plan reconciliation, 2026-07-12
+**Area:** sim + app · **Origin:** combat plan reconciliation, 2026-07-12 · **Priority:** P3
 
 The only integration golden is the economy slice (`packages/sim/test/core/golden-trace.test.ts` —
 no combat). `combat-system.test.ts` has a same-seed determinism hash but no scripted-battle golden

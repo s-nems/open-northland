@@ -1,6 +1,6 @@
 # Decompose the details-panel drawing modules
 
-**Area:** packages/app · **Origin:** /refactor-cleanup app (Tier C, deferred), 2026-07-12
+**Area:** packages/app · **Origin:** /refactor-cleanup app (Tier C, deferred), 2026-07-12 · **Priority:** P3
 
 The bottom-right selection details panel (`packages/app/src/hud/details-panel/`) was split into a
 pure `model/` + drawing/mount modules in an earlier pass. Two of its three over-budget drawing
