@@ -3,20 +3,70 @@ import { type ContentSet, LOGIC_TYPE_NONE } from './schema/index.js';
 /**
  * Ensure every numeric type id referenced by buildings/recipes resolves to a defined type.
  * Catches dangling references at load time rather than as a runtime crash mid-game.
+ *
+ * The work is split into one `check*` per entity family, each taking the prebuilt id-sets so every
+ * rule reads independently. The families run in a FIXED order and append to one shared list — the
+ * order the emitted error report is asserted in (`test/cross-references.test.ts`), so keep it stable.
  */
 export function validateCrossReferences(set: ContentSet): void {
-  const goodIds = new Set(set.goods.map((g) => g.typeId));
-  const jobIds = new Set(set.jobs.map((j) => j.typeId));
-  const errors: string[] = [];
+  const ids = buildIdSets(set);
+  const errors: string[] = [
+    ...checkGoodProduction(set, ids),
+    ...checkBuildings(set, ids),
+    ...checkTribes(set, ids),
+    ...checkWeaponsAndArmor(set, ids),
+    ...checkAnimals(set, ids),
+    ...checkLandscapeGfx(set, ids),
+    ...checkGoodLandscape(set, ids),
+    ...checkGatheringPipeline(set, ids),
+    ...checkTerrainPatterns(set, ids),
+    ...checkJobExperience(set, ids),
+  ];
 
-  // A good's production inputs (`productionInputGoods`) name other goods consumed to make it.
+  if (errors.length > 0) {
+    throw new Error(`Content cross-reference validation failed:\n  - ${errors.join('\n  - ')}`);
+  }
+}
+
+/** The id-sets every `check*` resolves references against, built once from the set. */
+interface IdSets {
+  readonly goodIds: ReadonlySet<number>;
+  readonly jobIds: ReadonlySet<number>;
+  readonly buildingIds: ReadonlySet<number>;
+  readonly vehicleIds: ReadonlySet<number>;
+  readonly tribeIds: ReadonlySet<number>;
+  readonly landscapeIds: ReadonlySet<number>;
+  /** The actual `.index` values of the gfx table (not its length) — holds even if it is ever
+   *  filtered/reordered while keeping original indices. */
+  readonly landscapeGfxIndices: ReadonlySet<number>;
+}
+
+function buildIdSets(set: ContentSet): IdSets {
+  return {
+    goodIds: new Set(set.goods.map((g) => g.typeId)),
+    jobIds: new Set(set.jobs.map((j) => j.typeId)),
+    buildingIds: new Set(set.buildings.map((b) => b.typeId)),
+    vehicleIds: new Set(set.vehicles.map((v) => v.typeId)),
+    tribeIds: new Set(set.tribes.map((t) => t.typeId)),
+    landscapeIds: new Set(set.landscape.map((l) => l.typeId)),
+    landscapeGfxIndices: new Set(set.landscapeGfx.map((g) => g.index)),
+  };
+}
+
+// A good's production inputs (`productionInputGoods`) name other goods consumed to make it.
+function checkGoodProduction(set: ContentSet, { goodIds }: IdSets): string[] {
+  const errors: string[] = [];
   for (const g of set.goods) {
     for (const inp of g.productionInputs) {
       if (!goodIds.has(inp.goodType))
         errors.push(`good "${g.id}" consumes unknown input goodType ${inp.goodType}`);
     }
   }
+  return errors;
+}
 
+function checkBuildings(set: ContentSet, { goodIds, jobIds }: IdSets): string[] {
+  const errors: string[] = [];
   for (const b of set.buildings) {
     for (const w of b.workers) {
       if (!jobIds.has(w.jobType)) errors.push(`building "${b.id}" references unknown jobType ${w.jobType}`);
@@ -39,13 +89,14 @@ export function validateCrossReferences(set: ContentSet): void {
       }
     }
   }
+  return errors;
+}
 
-  const buildingIds = new Set(set.buildings.map((b) => b.typeId));
-  const vehicleIds = new Set(set.vehicles.map((v) => v.typeId));
-
-  // Each tribe's `setatomic` binding names the job it applies to; that job must exist. (Atomic ids
-  // themselves have no master table to resolve against — see AtomicId — so only jobType is checked.)
+function checkTribes(set: ContentSet, { goodIds, jobIds, buildingIds, vehicleIds }: IdSets): string[] {
+  const errors: string[] = [];
   for (const t of set.tribes) {
+    // Each tribe's `setatomic` binding names the job it applies to; that job must exist. (Atomic ids
+    // themselves have no master table to resolve against — see AtomicId — so only jobType is checked.)
     for (const b of t.atomicBindings) {
       if (!jobIds.has(b.jobType))
         errors.push(`tribe "${t.id}" binds atomic ${b.atomicId} to unknown jobType ${b.jobType}`);
@@ -79,7 +130,11 @@ export function validateCrossReferences(set: ContentSet): void {
         errors.push(`tribe "${t.id}" ${r.requirement}forgood requires unknown goodType ${r.targetId}`);
     }
   }
+  return errors;
+}
 
+function checkWeaponsAndArmor(set: ContentSet, { goodIds, jobIds }: IdSets): string[] {
+  const errors: string[] = [];
   // A weapon's wielding job, when set, must resolve too (same dangling-reference class). Its
   // `goodType` (the good that IS the weapon, the armor-`goodType` twin) likewise resolves into the
   // good table — the extractor already drops the `goodtype 0` natural-weapon sentinel to undefined.
@@ -89,37 +144,46 @@ export function validateCrossReferences(set: ContentSet): void {
     if (w.goodType !== undefined && !goodIds.has(w.goodType))
       errors.push(`weapon "${w.id}" references unknown goodType ${w.goodType}`);
   }
-
   // An armor's `goodType` (the good that IS the armor), when set, must resolve into the good table.
   for (const a of set.armor) {
     if (a.goodType !== undefined && !goodIds.has(a.goodType))
       errors.push(`armor "${a.id}" references unknown goodType ${a.goodType}`);
   }
+  return errors;
+}
 
-  // An animal record keys on `tribeType` (not `type`) — its identity is its owning tribe — so that id
-  // must resolve into the tribe table (the same dangling-reference class). The extractor already drops
-  // records with no `tribetype` at all, so every animal here carries one to check.
-  const tribeIds = new Set(set.tribes.map((t) => t.typeId));
+// An animal record keys on `tribeType` (not `type`) — its identity is its owning tribe — so that id
+// must resolve into the tribe table (the same dangling-reference class). The extractor already drops
+// records with no `tribetype` at all, so every animal here carries one to check.
+function checkAnimals(set: ContentSet, { tribeIds }: IdSets): string[] {
+  const errors: string[] = [];
   for (const a of set.animals) {
     if (!tribeIds.has(a.tribeType))
       errors.push(`animal "${a.id}" references unknown tribeType ${a.tribeType}`);
   }
+  return errors;
+}
 
-  // A landscape object's `LogicType`, when set, must resolve into the landscape type table — the
-  // placed object counts as that type on the map's logic lanes (every real record carries 1..87;
-  // LOGIC_TYPE_NONE is the schema's "pure decor" default for a record that omits the key).
-  const landscapeIds = new Set(set.landscape.map((l) => l.typeId));
+// A landscape object's `LogicType`, when set, must resolve into the landscape type table — the
+// placed object counts as that type on the map's logic lanes (every real record carries 1..87;
+// LOGIC_TYPE_NONE is the schema's "pure decor" default for a record that omits the key).
+function checkLandscapeGfx(set: ContentSet, { landscapeIds }: IdSets): string[] {
+  const errors: string[] = [];
   for (const g of set.landscapeGfx) {
     if (g.logicType !== LOGIC_TYPE_NONE && !landscapeIds.has(g.logicType))
       errors.push(
         `landscapeGfx "${g.editName ?? `#${g.index}`}" references unknown landscape typeId ${g.logicType}`,
       );
   }
+  return errors;
+}
 
-  // A good's landscape references — its `landscapetype` on-the-ground lane and the three
-  // gathering-stage ids — must resolve into the landscape type table (the same dangling-reference
-  // class as landscapeGfx). Every real good carries a defined `landscapetype`; only the ~11
-  // map-gathered goods carry a `gathering` chain.
+// A good's landscape references — its `landscapetype` on-the-ground lane and the three
+// gathering-stage ids — must resolve into the landscape type table (the same dangling-reference
+// class as landscapeGfx). Every real good carries a defined `landscapetype`; only the ~11
+// map-gathered goods carry a `gathering` chain.
+function checkGoodLandscape(set: ContentSet, { landscapeIds }: IdSets): string[] {
+  const errors: string[] = [];
   for (const g of set.goods) {
     if (g.landscapeType !== undefined && !landscapeIds.has(g.landscapeType))
       errors.push(`good "${g.id}" references unknown landscape typeId ${g.landscapeType}`);
@@ -134,12 +198,18 @@ export function validateCrossReferences(set: ContentSet): void {
       }
     }
   }
+  return errors;
+}
 
-  // Each resolved gathering-pipeline record: its good resolves, every stage's landscape id resolves,
-  // and every gfx index names a real landscapeGfx record. Checked against the SET of actual `.index`
-  // values (not the array length) so the backstop holds even if the gfx table is ever filtered/reordered
-  // while keeping original indices — a cheap integrity guard against a malformed hand-authored set.
-  const landscapeGfxIndices = new Set(set.landscapeGfx.map((g) => g.index));
+// Each resolved gathering-pipeline record: its good resolves, every stage's landscape id resolves,
+// and every gfx index names a real landscapeGfx record. Checked against the SET of actual `.index`
+// values (not the array length) so the backstop holds even if the gfx table is ever filtered/reordered
+// while keeping original indices — a cheap integrity guard against a malformed hand-authored set.
+function checkGatheringPipeline(
+  set: ContentSet,
+  { goodIds, landscapeIds, landscapeGfxIndices }: IdSets,
+): string[] {
+  const errors: string[] = [];
   for (const p of set.gatheringPipeline) {
     if (!goodIds.has(p.goodType))
       errors.push(`gatheringPipeline good "${p.goodId}" references unknown goodType ${p.goodType}`);
@@ -161,26 +231,30 @@ export function validateCrossReferences(set: ContentSet): void {
       }
     }
   }
+  return errors;
+}
 
-  // A terrainPatterns row's representative pick must exist in the full pattern table when that
-  // table is carried (it became in-set checkable once `gfxPatterns` joined the ContentSet).
-  if (set.gfxPatterns.length > 0) {
-    const patternIds = new Set(set.gfxPatterns.map((p) => p.id));
-    for (const t of set.terrainPatterns) {
-      if (!patternIds.has(t.patternId))
-        errors.push(`terrainPattern for typeId ${t.typeId} references unknown patternId ${t.patternId}`);
-    }
+// A terrainPatterns row's representative pick must exist in the full pattern table when that
+// table is carried (it became in-set checkable once `gfxPatterns` joined the ContentSet).
+function checkTerrainPatterns(set: ContentSet, _ids: IdSets): string[] {
+  if (set.gfxPatterns.length === 0) return [];
+  const errors: string[] = [];
+  const patternIds = new Set(set.gfxPatterns.map((p) => p.id));
+  for (const t of set.terrainPatterns) {
+    if (!patternIds.has(t.patternId))
+      errors.push(`terrainPattern for typeId ${t.typeId} references unknown patternId ${t.patternId}`);
   }
+  return errors;
+}
 
-  // Each experience track names its owning job (always) and, when good-specific, the good it trains on.
+// Each experience track names its owning job (always) and, when good-specific, the good it trains on.
+function checkJobExperience(set: ContentSet, { goodIds, jobIds }: IdSets): string[] {
+  const errors: string[] = [];
   for (const x of set.jobExperience) {
     if (!jobIds.has(x.jobType))
       errors.push(`jobExperience "${x.id}" references unknown jobType ${x.jobType}`);
     if (x.goodType !== undefined && !goodIds.has(x.goodType))
       errors.push(`jobExperience "${x.id}" references unknown goodType ${x.goodType}`);
   }
-
-  if (errors.length > 0) {
-    throw new Error(`Content cross-reference validation failed:\n  - ${errors.join('\n  - ')}`);
-  }
+  return errors;
 }
