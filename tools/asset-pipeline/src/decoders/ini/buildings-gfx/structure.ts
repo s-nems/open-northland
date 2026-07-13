@@ -4,7 +4,7 @@
  * their genuinely multi-valued source to one flat value per typeId ({@link existingGfxHouseWins}).
  */
 import type { BuildingFootprint, FootprintCell } from '@vinland/data';
-import { findProps, getInt, type RuleSection } from '../grammar.js';
+import { findProps, getInt, type RuleSection, tallyIds } from '../grammar.js';
 import { existingGfxHouseWins, logicTypeByLevel, splitGfxHouseRecords } from './shared.js';
 
 /**
@@ -55,17 +55,11 @@ export function extractConstructionCosts(
       const typeId = typeByLevel.get(sizeIdx);
       if (typeId === undefined) continue;
       if (existingGfxHouseWins(winner.get(typeId), tribeType, sizeIdx)) continue;
-      const counts = new Map<number, number>();
-      for (const raw of p.values.slice(1)) {
-        const id = Number.parseInt(raw, 10);
-        if (Number.isNaN(id)) continue;
-        counts.set(id, (counts.get(id) ?? 0) + 1);
-      }
-      winner.set(typeId, {
-        tribeType,
-        sizeIdx,
-        cost: [...counts].map(([goodType, amount]) => ({ goodType, amount })),
-      });
+      const ids = p.values
+        .slice(1)
+        .map((v) => Number.parseInt(v, 10))
+        .filter((n) => !Number.isNaN(n));
+      winner.set(typeId, { tribeType, sizeIdx, cost: tallyIds(ids) });
     }
   }
   return new Map([...winner].map(([typeId, { cost }]) => [typeId, cost]));

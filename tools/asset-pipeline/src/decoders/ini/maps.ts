@@ -2,7 +2,7 @@
  * Map metadata and decoded static-object placements from a map `.cif`.
  */
 import { MapInfo } from '@vinland/data';
-import { findProp, getInt, type RuleSection, type SourceRef } from './grammar.js';
+import { findProp, getInt, makeSource, type RuleSection, type SourceRef } from './grammar.js';
 
 /**
  * Reduces one decoded `map.cif`'s logic header sections into a validated {@link MapInfo}. The map's
@@ -52,7 +52,7 @@ export function extractMapInfo(sections: readonly RuleSection[], id: string, src
     width,
     height,
     guid,
-    source: { file: src.file, block: 'logiccontrol', layer: src.layer ?? 'base' },
+    source: makeSource(src, 'logiccontrol'),
   };
   const type = mapType !== undefined ? getInt(mapType, 'maptype') : undefined;
   if (type !== undefined) info.mapType = type;

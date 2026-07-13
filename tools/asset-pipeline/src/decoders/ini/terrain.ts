@@ -10,10 +10,11 @@ import {
 } from '@vinland/data';
 import {
   findProp,
-  findProps,
   getInt,
+  getIntRows,
   getIntTuple,
   getStr,
+  makeSource,
   normalizeAssetPath,
   type RuleSection,
   type SourceRef,
@@ -50,7 +51,7 @@ export function extractPatterns(sections: readonly RuleSection[], src: SourceRef
         texture: texture !== undefined ? normalizeAssetPath(texture) : undefined,
         coordsA: getIntTuple(sec, 'GfxCoordsA', 6),
         coordsB: getIntTuple(sec, 'GfxCoordsB', 6),
-        source: { file: src.file, block: 'GfxPattern', layer: src.layer ?? 'base' },
+        source: makeSource(src, 'GfxPattern'),
       }),
     );
   }
@@ -72,10 +73,7 @@ export function extractPatternTransitions(
 ): GfxPatternTransition[] {
   const records: GfxPatternTransition[] = [];
   let index = 0;
-  const coordLines = (sec: RuleSection, key: string): number[][] =>
-    findProps(sec, key)
-      .map((p) => p.values.map((v) => Number.parseInt(v, 10)))
-      .filter((vals) => vals.length === 6 && vals.every((n) => !Number.isNaN(n)));
+  const sixInts = (n: number): boolean => n === 6;
   for (const sec of sections) {
     if (sec.name !== 'transition') continue;
     const texture = getStr(sec, 'GfxTexture');
@@ -87,9 +85,9 @@ export function extractPatternTransitions(
         pointType: getStr(sec, 'pointtype'),
         texture: texture !== undefined ? normalizeAssetPath(texture) : undefined,
         textureAlpha: textureAlpha !== undefined ? normalizeAssetPath(textureAlpha) : undefined,
-        coordsA: coordLines(sec, 'GfxCoordsA'),
-        coordsB: coordLines(sec, 'GfxCoordsB'),
-        source: { file: src.file, block: 'transition', layer: src.layer ?? 'base' },
+        coordsA: getIntRows(sec, 'GfxCoordsA', sixInts),
+        coordsB: getIntRows(sec, 'GfxCoordsB', sixInts),
+        source: makeSource(src, 'transition'),
       }),
     );
   }
@@ -181,7 +179,7 @@ export function buildTerrainPatterns(
         coordsA: rep.coordsA,
         coordsB: rep.coordsB,
         debugColor: debugByType.get(rep.logicType),
-        source: { file: src.file, block: 'terrainpattern', layer: src.layer ?? 'base' },
+        source: makeSource(src, 'terrainpattern'),
       }),
     );
   }

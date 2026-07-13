@@ -16,6 +16,7 @@ import {
   getInt,
   getIntList,
   getStr,
+  makeSource,
   type RuleSection,
   requireTypeId,
   type SourceRef,
@@ -42,7 +43,7 @@ export function extractJobs(sections: readonly RuleSection[], src: SourceRef): J
         allowedAtomics: getIntList(sec, 'allowatomic'),
         baseAtomics: getIntList(sec, 'baseatomics'),
         forbiddenAtomics: getIntList(sec, 'forbidatomic'),
-        source: { file: src.file, block: 'jobtype', layer: src.layer ?? 'base' },
+        source: makeSource(src, 'jobtype'),
       }),
     );
   }
@@ -82,7 +83,7 @@ export function extractJobExperience(
         goodType: getInt(sec, 'good'),
         experienceFactor: getInt(sec, 'experiencefactor') ?? 0,
         baseRepeatCounter: getInt(sec, 'baserepeatcounter'),
-        source: { file: src.file, block: 'humanjobexperiencetype', layer: src.layer ?? 'base' },
+        source: makeSource(src, 'humanjobexperiencetype'),
       }),
     );
   }
@@ -185,7 +186,7 @@ export function extractTribes(sections: readonly RuleSection[], src: SourceRef):
         atomicBindings,
         jobEnables: extractJobEnables(sec),
         jobRequirements: extractJobRequirements(sec),
-        source: { file: src.file, block: 'tribetype', layer: src.layer ?? 'base' },
+        source: makeSource(src, 'tribetype'),
       }),
     );
   }

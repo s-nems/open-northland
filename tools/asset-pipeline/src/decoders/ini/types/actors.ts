@@ -7,6 +7,7 @@ import {
   getInt,
   getIntList,
   getStr,
+  makeSource,
   type RuleSection,
   requireTypeId,
   type SourceRef,
@@ -55,7 +56,7 @@ export function extractAtomicAnimations(sections: readonly RuleSection[], src: S
         interruptible: getInt(sec, 'interruptable') === 1,
         startDirection: getInt(sec, 'startdirection'),
         events,
-        source: { file: src.file, block: 'atomicanimation', layer: src.layer ?? 'base' },
+        source: makeSource(src, 'atomicanimation'),
       }),
     );
   }
@@ -135,7 +136,7 @@ export function extractWeapons(sections: readonly RuleSection[], src: SourceRef)
         damage,
         jobType: getInt(sec, 'jobtype'),
         goodType: goodTypeRaw === 0 ? undefined : goodTypeRaw,
-        source: { file: src.file, block: 'weapontype', layer: src.layer ?? 'base' },
+        source: makeSource(src, 'weapontype'),
       }),
     );
   }
@@ -169,7 +170,7 @@ export function extractArmor(sections: readonly RuleSection[], src: SourceRef): 
         materialType: getInt(sec, 'materialType'),
         weight: getInt(sec, 'weight'),
         blockingValue: getInt(sec, 'blockingValue'),
-        source: { file: src.file, block: 'armortype', layer: src.layer ?? 'base' },
+        source: makeSource(src, 'armortype'),
       }),
     );
   }
@@ -204,7 +205,7 @@ export function extractVehicles(sections: readonly RuleSection[], src: SourceRef
         passengerSlots: getInt(sec, 'passengerslots'),
         logicSize: getInt(sec, 'logicsize'),
         cargoGoods: getIntList(sec, 'logicgood'),
-        source: { file: src.file, block: 'vehicletype', layer: src.layer ?? 'base' },
+        source: makeSource(src, 'vehicletype'),
       }),
     );
   }
@@ -253,7 +254,7 @@ export function extractAnimals(sections: readonly RuleSection[], src: SourceRef)
         warrantable: getInt(sec, 'warrantable') === 1,
         cannotBeAttacked: getInt(sec, 'cannotbeattacked') === 1,
         ignoreHouses: getInt(sec, 'ignorehouses') === 1,
-        source: { file: src.file, block: 'animaltype', layer: src.layer ?? 'base' },
+        source: makeSource(src, 'animaltype'),
       }),
     );
   }

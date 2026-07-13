@@ -8,6 +8,7 @@ import {
   findProps,
   getInt,
   getStr,
+  makeSource,
   normalizeAssetPath,
   normalizeOptionalPath,
   type RuleSection,
@@ -50,7 +51,7 @@ export function extractBobSequences(sections: readonly RuleSection[], src: Sourc
         imagelib: normalizeAssetPath(imagelib),
         shadowlib: normalizeOptionalPath(shadowlib),
         sequences,
-        source: { file: src.file, block: 'bobseq', layer: src.layer ?? 'base' },
+        source: makeSource(src, 'bobseq'),
       }),
     );
   }
@@ -125,7 +126,7 @@ export function extractGfxAnimAtomics(sections: readonly RuleSection[], src: Sou
         bodySeq,
         ...(headSeq !== undefined && headSeq.trim() !== '' ? { headSeq } : {}),
         dirFrames,
-        source: { file: src.file, block: 'gfxanimatomic', layer: src.layer ?? 'base' },
+        source: makeSource(src, 'gfxanimatomic'),
       }),
     );
   }

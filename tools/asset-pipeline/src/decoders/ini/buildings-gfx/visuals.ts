@@ -5,7 +5,14 @@
  */
 import { BuildingBob, BuildingConstructionLayer, BuildingOverlay } from '@vinland/data';
 import { type NamedBmdPaletteBinding, readBmdPaletteBindings } from '../bindings/index.js';
-import { findProps, getStr, normalizePaletteName, type RuleSection, type SourceRef } from '../grammar.js';
+import {
+  findProps,
+  getStr,
+  makeSource,
+  normalizePaletteName,
+  type RuleSection,
+  type SourceRef,
+} from '../grammar.js';
 import { readGfxHouseGraphicsRecord, splitGfxHouseRecords } from './shared.js';
 
 /**
@@ -65,7 +72,7 @@ export function extractConstructionLayers(
               fromPct: Math.max(0, Math.min(100, fromPct)),
               toPct: Math.max(0, Math.min(100, toPct)),
               editName,
-              source: { file: src.file, block: 'GfxHouse', layer: src.layer ?? 'base' },
+              source: makeSource(src, 'GfxHouse'),
             }),
           );
         }
@@ -130,7 +137,7 @@ export function extractBuildingOverlays(sections: readonly RuleSection[], src: S
               bmd: normalizedBmd,
               paletteName: normalizePaletteName(paletteName),
               editName,
-              source: { file: src.file, block: 'GfxHouse', layer: src.layer ?? 'base' },
+              source: makeSource(src, 'GfxHouse'),
             }),
           );
         }
@@ -246,7 +253,7 @@ export function extractBuildingBobs(sections: readonly RuleSection[], src: Sourc
               paletteName: pal,
               bobId,
               editName,
-              source: { file: src.file, block: 'GfxHouse', layer: src.layer ?? 'base' },
+              source: makeSource(src, 'GfxHouse'),
             }),
           );
         }

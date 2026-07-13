@@ -2,7 +2,16 @@
  * Building logic types and the cross-table recipe fill (produce-atomic animation lengths → production ticks).
  */
 import { type AtomicAnimation, BuildingType, type GoodType, type TribeType } from '@vinland/data';
-import { findProps, getInt, getIntList, getStr, type RuleSection, type SourceRef, slug } from '../grammar.js';
+import {
+  findProps,
+  getInt,
+  getIntList,
+  getStr,
+  makeSource,
+  type RuleSection,
+  type SourceRef,
+  slug,
+} from '../grammar.js';
 
 /**
  * Coarse building class from the original `logichousetype` `logicmaintype`. The mapping is taken from
@@ -84,7 +93,7 @@ export function extractBuildings(sections: readonly RuleSection[], src: SourceRe
         workers,
         stock,
         produces: getIntList(sec, 'logicproduction'),
-        source: { file: src.file, block: 'logichousetype', layer: src.layer ?? 'base' },
+        source: makeSource(src, 'logichousetype'),
       }),
     );
   }
