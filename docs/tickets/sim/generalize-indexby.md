@@ -38,7 +38,7 @@ left out of the `data` + `pipeline` refactor-cleanup pass (2026-07-13) because t
   (`indexBy(items, (i) => i.typeId)`) or keep it as the common typed shorthand — either is fine as long
   as there is one implementation of the loop.
 - Replace `byKeyLast` in `content-index.ts` with the new `indexBy`, deleting the local copy.
-- Do **not** touch the first-wins `byKeyFirst`/`.find`-replacement tables in `content-index.ts` (lines
+- Do **not** touch the first-wins `byKey`/`.find`-replacement tables in `content-index.ts` (lines
   ~230–241) — those have deliberately different (first-wins) semantics and are not this dedup.
 
 ## Verify
