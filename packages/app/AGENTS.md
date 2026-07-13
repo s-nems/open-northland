@@ -26,8 +26,11 @@ that matches its role instead of piling another method onto a growing file:
   starting camera); the two playable entries then hand off to the shared `view/game-view.ts` runtime.
 - **`content/`** — the decoded-content bindings (the gitignored-`content/` I/O boundary; mostly →
   render, plus one → sim): `net.ts` (the shared fetch/degrade helpers), `ir.ts` (the ONE memoized
-  `ir.json` fetch + the `ContentIr` view + atlas loading), `building-gfx.ts` + `settler-gfx.ts` (the
-  pure per-type/per-character bob-binding reducers, unit-tested), `sprite-sheet.ts` (assembles the
+  `ir.json` fetch + the `ContentIr` view + atlas loading), the `building-gfx/` package (per-render-aspect
+  bob-binding reducers: `families.ts` base bobs + families, `overlays.ts` working overlays,
+  `construction.ts` stages) + the `resource-gfx/` package (`refs.ts` gathering resolution, `bindings.ts`
+  node/pile bindings, `stump.ts`, `berry-bush.ts`) + `settler-gfx/` (the pure per-type/per-character
+  bob-binding reducers, unit-tested), `sprite-sheet.ts` (assembles the
   `SpriteSheet` + `resolveSpriteSheet`), `terrain.ts`, `objects.ts`, `collision.ts` (the decoded-map →
   SIM join: ground classes + object block areas → the semantic collision grid), `gui-gfx.ts`/
   `gui-art.ts`/`gui-atlas-map.ts` + `font-gfx.ts` (the GUI/font art bindings), `audio.ts`.
@@ -37,9 +40,11 @@ that matches its role instead of piling another method onto a growing file:
 - **`game/`** — the GLOBAL game content + rules shared by every mode: `rules.ts` (player/tribe constants
   — `HUMAN_PLAYER`, `ENEMY_PLAYER`, `PRIMARY_TRIBE`, `HUD_TRIBE`), `snapshot.ts` (typed snapshot readers
   shared by the view controls and the HUD panels), and the `sandbox/` package — `ids.ts`
-  (semantic type ids + the `GATHERERS` table), `content.ts` (the one `sandboxContent()` `ContentSet` —
-  goods/jobs/buildings/weapons/animation bindings), `worker-slots.ts` (the extracted worker/carrier slot
-  table + its trade names) and `construction.ts` (the build-cost + hitpoint tables) it assembles from,
+  (semantic type ids + the `GATHERERS` table), `content.ts` (the one `sandboxContent()` `ContentSet`
+  assembler) and the per-concern tables it assembles from — `combat.ts` (weapons + swing timings),
+  `work-animations.ts` (non-combat work-animation timings), `landscape.ts` (terrain/resource landscape
+  derivation), `building-set.ts` (building store/recipe set), `worker-slots.ts` (the extracted
+  worker/carrier slot table + its trade names) and `construction.ts` (the build-cost + hitpoint tables),
   `place.ts` (the place/spawn helpers), `index.ts` (the barrel). Scenes and the vertical slice consume
   this; they do NOT define their own content.
 - **`hud/`** — the in-game HUD: `geometry.ts` (the shared `Rect`/`contains`), `chrome.ts`
@@ -50,15 +55,18 @@ that matches its role instead of piling another method onto a growing file:
   pure models (`layout.ts`, `building-menu.ts`, `game-speed.ts`, headlessly unit-tested) + window
   controllers (`menu-window.ts`, `stats-window.ts`, `placement.ts` over the shared `context.ts`) +
   `index.ts` (the mount + input routing) — and the `details-panel/` package (the bottom-right selection
-  panel in original art: pure `model/` (bars/context/settler/building split) + `layout.ts`, `chrome.ts`/`sections.ts` drawing, `panel.ts`
+  panel in original art: pure `model/` (bars/context/settler/building split) + `layout/` (per-kind
+  geometry: `shared.ts` primitives, `building.ts`, `settler.ts`), `chrome.ts`/`gauge.ts` + `sections/`
+  (per-kind drawing: `building.ts`, `settler.ts`, `compact.ts`), `panel.ts`
   mount). Text: both the tool-panel and details-panel HUD draw the bundled vector serif
   (`content/ui-font.ts`) — the tool-panel via `ui-text.ts`'s `makeUiTextRun`, the details-panel from
   `content/ui-font.ts` directly — an intentional, named legibility approximation that rasters crisp at
   the HUD's fractional UI scale where a small indexed bitmap glyph reads blocky; the decoded `.fnt`
   bitmap path (`bitmap-text.ts`) stays available for anything that must be the exact original face. The
   hud layer never imports `view/` — view glue (e.g. `backingScale`) is injected via options.
-- **`view/`** — browser-view helpers: `game-view.ts` (the SHARED in-game runtime — HUD mounts + the one
-  fixed-timestep RAF loop both playable entries run on), `camera.ts` (pure pan/zoom math + the DOM
+- **`view/`** — browser-view helpers: `game-view.ts` (the SHARED in-game runtime — the one-time HUD mount)
+  + `frame-loop.ts` (the per-frame fixed-timestep RAF loop both playable entries run on, over an explicit
+  `FrameLoopDeps` context), `camera.ts` (pure pan/zoom math + the DOM
   controller), `params.ts` (URL-param parsing), `picking.ts`,
   `overlay.ts` (shared panel + full-page chrome — `el`/`navButton`/`pageSection`/styles),
   `game-tool-panel.ts`, `unit-controls.ts` + `settler-actions.ts` (RTS unit control; the selection
