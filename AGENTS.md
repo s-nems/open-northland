@@ -9,7 +9,7 @@ config or growing process ledgers.
 
 ## Where Things Are
 
-This repo (`opennorthland/`) normally sits beside two read-only reference folders:
+This repo (`open-northland/`) normally sits beside two read-only reference folders:
 
 - `OpenVikings_reversing/` — C#/.NET reverse engineering of original file formats. Use it as an
   oracle for layouts and decoders, not as architecture to port.

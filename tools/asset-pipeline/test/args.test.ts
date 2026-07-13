@@ -34,7 +34,7 @@ describe('resolveArgs', () => {
     ).toEqual({
       game: resolve('/home/u/Cultures 8th Wonder'),
       mod: 'DataCnmd',
-      out: resolve('/home/u/opennorthland/content'),
+      out: resolve('/home/u/open-northland/content'),
     });
   });
 

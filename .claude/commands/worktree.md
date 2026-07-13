@@ -29,7 +29,7 @@ Hard rules:
 - Provision gitignored local state if missing:
   - `npm install`
   - clone real generated content from the primary checkout when needed:
-    `cp -Rc ../opennorthland/content content`. Do not symlink `content/`; the pipeline writes in place.
+    `cp -Rc ../open-northland/content content`. Do not symlink `content/`; the pipeline writes in place.
   - copy `.claude/settings.local.json` from the primary checkout if the local Claude session needs it.
 
 ## 2. Understand the Step
