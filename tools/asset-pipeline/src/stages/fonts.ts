@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { decodeFnt, type Font, type FontMetrics, fontMetrics } from '../decoders/fnt.js';
+import { decodeFnt, type FontMetrics, fontMetrics } from '../decoders/fnt.js';
 import {
   buildPaletteLut,
   emitIndexedAndPreviewAtlas,
@@ -167,23 +167,25 @@ export async function convertFonts(
       console.warn(`[pipeline] fonts: skipped ${src.key}: ${(err as Error).message}`);
       continue;
     }
-    let font: Font;
+    // decode + metrics + atlas emit share one warn-and-skip guard so a malformed-but-decodable font
+    // drops only itself, never aborting the batch (matching the goods/GUI stages).
     let metrics: FontMetrics;
+    let indexedStem: string;
+    let previewStem: string;
     try {
-      font = decodeFnt(bytes);
+      const font = decodeFnt(bytes);
       metrics = fontMetrics(font);
+      ({ indexedStem, previewStem } = await emitIndexedAndPreviewAtlas(
+        outDir,
+        src.key,
+        font.bmd,
+        DEFAULT_FONT_COLOR,
+        palette,
+      ));
     } catch (err) {
       console.warn(`[pipeline] fonts: skipped ${src.key}: ${(err as Error).message}`);
       continue;
     }
-
-    const { indexedStem, previewStem } = await emitIndexedAndPreviewAtlas(
-      outDir,
-      src.key,
-      font.bmd,
-      DEFAULT_FONT_COLOR,
-      palette,
-    );
 
     await mkdir(join(outDir, FONTS_CONTENT_DIR), { recursive: true });
     const metricsPath = join(FONTS_CONTENT_DIR, `${src.key}.metrics.json`);
