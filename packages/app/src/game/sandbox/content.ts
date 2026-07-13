@@ -1,10 +1,4 @@
-import {
-  type BuildingFootprint,
-  type ContentSet,
-  type EquipCategory,
-  IR_VERSION,
-  parseContentSet,
-} from '@vinland/data';
+import { type BuildingFootprint, type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import {
   ATTACK_ATOMIC,
   CLAY_HARVEST_ATOMIC,
@@ -19,7 +13,6 @@ import {
   STORE_PILEUP_ATOMIC,
   WHEAT_HARVEST_ATOMIC,
 } from '../../catalog/atomics.js';
-import { VIKING_BUILDINGS, type VikingBuilding } from '../../catalog/buildings.js';
 import {
   FARM_FIELD_RADIUS,
   FARM_FIELDS_BASE,
@@ -29,8 +22,7 @@ import {
   WHEAT_YIELD_PER_FIELD,
 } from '../../catalog/farming.js';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../../catalog/felling.js';
-import { approximateFootprint } from '../../catalog/footprints.js';
-import { EXTENDED_GOODS, STORABLE_EXTENDED_GOODS } from '../../catalog/goods.js';
+import { EXTENDED_GOODS } from '../../catalog/goods.js';
 import {
   CLAY_DEPOSIT_UNITS,
   GOLD_DEPOSIT_UNITS,
@@ -39,32 +31,32 @@ import {
   STONE_DEPOSIT_UNITS,
 } from '../../catalog/mining.js';
 import { PROFESSIONS } from '../../catalog/professions.js';
-import {
-  TERRAIN_BARREN,
-  TERRAIN_BLOCKED,
-  TERRAIN_IMPASSABLE,
-  TERRAIN_MARGIN,
-  TERRAIN_OPEN,
-} from '../../catalog/terrain.js';
 import type { GoodRef } from '../../content/settler-gfx/index.js';
 import { HARVEST_TICKS } from '../../content/settler-gfx/index.js';
 import { professionLabel } from '../../i18n/index.js';
 import { PRIMARY_TRIBE } from '../rules.js';
-import { buildingConstructionCost, buildingHitpoints } from './construction.js';
+import { buildSandboxBuildings } from './building-set.js';
+import {
+  ATTACK_EVENT_TYPE,
+  BROADSWORD_HIT_FRAME,
+  BROADSWORD_SWING_LENGTH,
+  EQUIP_CLASS_BY_TYPE,
+  FIST_HIT_FRAME,
+  FIST_SWING_LENGTH,
+  LONG_BOW_DRAW_LENGTH,
+  LONG_BOW_RELEASE_FRAME,
+  SHORT_BOW_DRAW_LENGTH,
+  SHORT_BOW_RELEASE_FRAME,
+  SPEAR_HIT_FRAME,
+  SPEAR_SWING_LENGTH,
+  SWORD_HIT_FRAME,
+  SWORD_SWING_LENGTH,
+  sandboxWeapons,
+} from './combat.js';
 import {
   BUILD_HOUSE_ATOMIC,
-  BUILDING_FARM,
-  BUILDING_HEADQUARTERS,
-  BUILDING_JOINERY,
-  BUILDING_MILL,
-  BUILDING_WAREHOUSE_00,
-  BUILDING_WAREHOUSE_01,
-  BUILDING_WAREHOUSE_02,
-  EQUIP_GOODS,
   GATHERERS,
-  type GathererSpec,
   GOOD_COIN,
-  GOOD_FLOUR,
   GOOD_GOLD,
   GOOD_IRON,
   GOOD_MUD,
@@ -79,119 +71,45 @@ import {
   JOB_BUILDER,
   JOB_CARRIER,
   JOB_FARMER_SLOT,
-  JOB_GATHERER_WOOD,
   JOB_IDLE,
   JOB_SOLDIER_BROADSWORD,
   JOB_SOLDIER_SPEAR,
   JOB_SOLDIER_SWORD,
   JOB_SOLDIER_UNARMED,
   rebaseSlotJob,
-  WEAPON_BROADSWORD,
-  WEAPON_FISTS,
-  WEAPON_LONG_BOW,
-  WEAPON_SHORT_BOW,
-  WEAPON_SPEAR,
-  WEAPON_SWORD,
 } from './ids.js';
-import { BUILDING_WORKER_SLOTS, workerSlotName, workerSlotsFor } from './worker-slots.js';
+import {
+  sandboxGatheringPipeline,
+  sandboxLandscape,
+  sandboxLandscapeGfx,
+  type TerrainTypeIds,
+} from './landscape.js';
+import {
+  BUILD_HOUSE_ANIMATION,
+  BUILD_HOUSE_SWING_LENGTH,
+  FARMER_REAP_ANIMATION,
+  FARMER_REAP_LENGTH,
+  FARMER_SOW_ANIMATION,
+  FARMER_SOW_LENGTH,
+  FARMER_WATER_ANIMATION,
+  FARMER_WATER_LENGTH,
+  STORE_EXCHANGE_LENGTH,
+  STORE_PICKUP_ANIMATION,
+  STORE_PILEUP_ANIMATION,
+} from './work-animations.js';
+import { BUILDING_WORKER_SLOTS, workerSlotName } from './worker-slots.js';
 
 /**
  * The ONE global sandbox {@link ContentSet} — goods/jobs/buildings/weapons/animation bindings — every
  * scene and the vertical slice consume (they never define their own content; packages/app/AGENTS.md).
- * The package splits by concern: semantic ids + the {@link GATHERERS} table in `./ids.ts`,
- * the extracted worker/carrier slot table in `./worker-slots.ts`, the construction cost + hitpoint
- * tables in `./construction.ts`, world-population helpers in `./place.ts`, scene-check queries beside
- * the scenes (`scenes/sandbox-queries.ts`); this module only assembles the validated content set.
+ * The package splits by concern: semantic ids + the {@link GATHERERS} table in `./ids.ts`, the combat
+ * weapons + swing timings in `./combat.ts`, the non-combat work-animation timings in
+ * `./work-animations.ts`, the terrain/resource landscape derivation in `./landscape.ts`, the building
+ * store/recipe set in `./building-set.ts`, the extracted worker/carrier slot table in
+ * `./worker-slots.ts`, the construction cost + hitpoint tables in `./construction.ts`, world-population
+ * helpers in `./place.ts`, scene-check queries beside the scenes (`scenes/sandbox-queries.ts`); this
+ * module only assembles the validated content set.
  */
-
-/** The one thing the sandbox landscape derivation reads off a terrain grid — its typeId lane.
- *  Structural, so both the authored CELL grids and the sim's half-cell maps satisfy it. */
-export interface TerrainTypeIds {
-  readonly typeIds: ReadonlyArray<number>;
-}
-
-/** Munition type 1 = arrow — what the bows fire. */
-const ARROW_MUNITION = 1;
-/** The ranged weapon main-type (projectile weapons). */
-const RANGED_MAIN_TYPE = 6;
-/** The real short/long-bow projectile speed. */
-const BOW_SPEED = 8;
-/** ATTACK event type (25): the frame a melee blow lands / a bow draw looses its arrow. */
-const ATTACK_EVENT_TYPE = 25;
-// Swing lengths + hit/release frames, TRANSCRIBED from the extracted viking `atomicanimations.ini`
-// records (`viking_soldier_attack_*` — length + the `event <frame> 25`). The sim swing duration must
-// equal the decoded gfx frame-list length (`[gfxanimatomic]` per-direction counts: sword 12, spear 27,
-// broadsword 29, bows 12/28) or the DRAWN swing truncates mid-animation — the sandbox previously ran a
-// made-up 4-tick sword swing against the 12-frame decoded swing, playing only its wind-up.
-const FIST_SWING_LENGTH = 12; // viking_soldier_attack_unarmed
-const FIST_HIT_FRAME = 6;
-const SWORD_SWING_LENGTH = 12; // viking_soldier_attack_sword_short
-const SWORD_HIT_FRAME = 9;
-const SPEAR_SWING_LENGTH = 27; // viking_soldier_attack_spear_iron
-const SPEAR_HIT_FRAME = 17;
-const BROADSWORD_SWING_LENGTH = 29; // viking_soldier_attack_sword_long
-const BROADSWORD_HIT_FRAME = 16;
-const SHORT_BOW_DRAW_LENGTH = 12; // viking_soldier_attack_bow_short
-const SHORT_BOW_RELEASE_FRAME = 10;
-const LONG_BOW_DRAW_LENGTH = 28; // viking_soldier_attack_bow_long
-const LONG_BOW_RELEASE_FRAME = 22;
-// The builder's hammer swing length — TRANSCRIBED from the extracted viking `viking_builder_build_house`
-// atomicanimation (`length 15`, content/ir.json). Binding it (below) makes each construct swing take 15
-// ticks instead of the 4-tick default, so the builder visibly hammers and the foundation rises over a
-// watchable span rather than snapping done. The animation name is the logic-timing join key; the render
-// plays the builder's own `human_man_constructionworker_Work_Hammer` body clip (see content/settler-gfx/).
-const BUILD_HOUSE_SWING_LENGTH = 15;
-const BUILD_HOUSE_ANIMATION = 'viking_builder_build_house';
-// The farmer's three field-work swings — lengths TRANSCRIBED from the extracted viking atomicanimations
-// (`DataCnmd/atomicanimations12/atomicanimations.ini`: harvest_wheat 24, plant 24, cultivate 29). The
-// names are the original's own `setatomic 18 29/34/35` bindings; the render plays the farmer's authored
-// body clips (`human_man_farmer_work_{reap_grain,sow,water}` — see content/settler-gfx/).
-const FARMER_REAP_ANIMATION = 'viking_farmer_harvest_wheat';
-const FARMER_REAP_LENGTH = 24;
-const FARMER_SOW_ANIMATION = 'viking_farmer_plant';
-const FARMER_SOW_LENGTH = 24;
-const FARMER_WATER_ANIMATION = 'viking_farmer_cultivate';
-const FARMER_WATER_LENGTH = 29;
-// The farm's wheat-only store capacity — EXTRACTED: `logicstock 4 25 0` on the "work farm 00" block
-// (`DataCnmd/types/houses.ini`), one slot, 25 wheat.
-const FARM_WHEAT_CAPACITY = 25;
-// The mill's two-slot store — EXTRACTED: `logicstock 4 10 1` (wheat, 10) + `logicstock 11 20 0`
-// (flour, 20) on the "work mill 00" block (`DataCnmd/types/houses.ini`). The trailing logicstock int
-// is the consumed-HERE flag (every workshop input and the homes' food carry 1, every pure storage
-// slot 0), NOT an initial fill — so both slots start empty.
-const MILL_WHEAT_CAPACITY = 10;
-const MILL_FLOUR_CAPACITY = 20;
-// One grind cycle's length — EXTRACTED: the `viking_miller_produce_flour` atomicanimation is
-// `length 200` (`DataCnmd/atomicanimations12/atomicanimations.ini`; flour's `atomicForProduction 46`
-// via `goodtypes.ini`), the same tick count the pipeline's `resolveRecipeTicks` pins into ir.json.
-// The 1 wheat → 1 flour amounts are a NAMED APPROXIMATION: `productionInputGoods 4` names the input
-// but no readable amount field exists.
-const MILL_GRIND_TICKS = 200;
-// The generic store-exchange animations (bound to the catalog's STORE_PICKUP/PILEUP_ATOMIC pair) and
-// their duration, TRANSCRIBED from the extracted viking clips: the original binds a per-body-class
-// `viking_<class>_pickup`/`_pileup` per job (`tribetypes.ini setatomic <job> 22/23`); the CIVILIST
-// pair is `length 20` (`DataCnmd/atomicanimations12/atomicanimations.ini` — other body classes differ,
-// e.g. viking_woman_pickup is 30, but every sandbox trade inherits the civilist pair via
-// `baseatomics 6`). One shared 20-tick pair serves every sandbox trade; this is also how long a
-// settler stays INSIDE a building store on an exchange (the render hides it for the duration).
-const STORE_PICKUP_ANIMATION = 'viking_pickup';
-const STORE_PILEUP_ANIMATION = 'viking_pileup';
-const STORE_EXCHANGE_LENGTH = 20;
-// Damage on the sandbox's own synthetic scale (the real per-material tables live in the extracted
-// content; scene hitpoints are chosen so a duel takes several full swings — see the combat scene).
-const BOW_DAMAGE = 34;
-const SWORD_DAMAGE = 40;
-const SPEAR_DAMAGE = 45;
-const BROADSWORD_DAMAGE = 55;
-// The fist is the weakest strike — a quarter of the short sword's, matching weapons.ini's fist
-// damagevalue 0 (400) vs the short sword's (1600). Keeps the unarmed warrior a real but feeble brawler.
-const FIST_DAMAGE = 10;
-
-/** The equip classification (slot + wear) per good typeId, so `sandboxContent()` can merge it onto the
- *  global catalog good of the same typeId (an equippable good is declared ONCE, in `EXTENDED_GOODS`). */
-const EQUIP_CLASS_BY_TYPE: ReadonlyMap<number, { category: EquipCategory; wears: boolean }> = new Map(
-  EQUIP_GOODS.map((g) => [g.typeId, { category: g.category, wears: g.wears }]),
-);
 
 export interface SandboxContentExtras {
   readonly buildings?: readonly { typeId: number; id: string; kind?: string }[];
@@ -204,7 +122,8 @@ export interface SandboxContentExtras {
    * gets its real collision body / build-exclusion zone, and a type absent from it is genuinely
    * footprint-less (that is what the real data says — no approximation is mixed back in). Omitted
    * (tests, scenes, a bare checkout with no `content/`), every catalog building carries its
-   * {@link approximateFootprint} instead, so placement collision + the build overlay work globally.
+   * {@link import('../../catalog/footprints.js').approximateFootprint} instead, so placement collision
+   * + the build overlay work globally.
    */
   readonly buildingFootprints?: ReadonlyMap<number, BuildingFootprint>;
   /**
@@ -218,149 +137,6 @@ export interface SandboxContentExtras {
   readonly goodNames?: ReadonlyMap<string, string>;
 }
 
-// The semantic terrain-class rows (see catalog/terrain.ts — the shared vocabulary scene grids are
-// authored in and `content/collision.ts` resolves real maps into). Row ids keep the authored-scene
-// reading: sandbox typeId 1 IS water; a resolved real map lands other impassable ground there too.
-const BASE_LANDSCAPE = [
-  // Grass is the ONE plantable class — the original's `biocanplanton` ground flag (trianglepattern-
-  // types.cif) belongs to `land` alone, so grain fields land here and nowhere else.
-  { typeId: TERRAIN_OPEN, id: 'grass', walkable: true, buildable: true, plantable: true },
-  { typeId: TERRAIN_IMPASSABLE, id: 'water', walkable: false, buildable: false },
-  { typeId: TERRAIN_BLOCKED, id: 'landscape_body', walkable: false, buildable: false },
-  { typeId: TERRAIN_MARGIN, id: 'landscape_margin', walkable: true, buildable: false },
-  // Sand/beach/desert stone: open for walking and building, closed to the plough (no `biocanplanton`).
-  { typeId: TERRAIN_BARREN, id: 'barren', walkable: true, buildable: true },
-] as const;
-
-const RESOURCE_LANDSCAPE_BASE = 1000;
-const RESOURCE_GFX_BASE = 2000;
-
-/** A store slot: how much of one good a general-goods building may hold, and its starting amount. */
-interface StockSlot {
-  readonly goodType: number;
-  readonly capacity: number;
-  readonly initial: number;
-}
-
-/**
- * The general-goods store SET — the core economy goods (the gathered set + plank + coin) followed by every
- * storable extended ware from {@link STORABLE_EXTENDED_GOODS}, so the HQ and warehouses advertise a slot for
- * the WHOLE catalog and the Magazyn panel lists each good (with its icon) across its category tab. The SET
- * (which goods a store holds) is a sandbox balance pin, not extracted data.
- */
-const STORE_GOODS: readonly number[] = [
-  GOOD_WOOD,
-  GOOD_PLANK,
-  GOOD_COIN,
-  GOOD_STONE,
-  GOOD_MUD,
-  GOOD_IRON,
-  GOOD_GOLD,
-  GOOD_MUSHROOM,
-  ...STORABLE_EXTENDED_GOODS.map((g) => g.typeId),
-];
-
-/**
- * Build a general-goods store's slot list at ONE per-good capacity — a store's limit lives in this single
- * number, not repeated per good. Every good in {@link STORE_GOODS} gets the same cap.
- */
-function storeStock(capacity: number): readonly StockSlot[] {
-  return STORE_GOODS.map((goodType) => ({ goodType, capacity, initial: 0 }));
-}
-
-/**
- * Per-good warehouse capacity by tier (`stock_00`/`stock_01`/`stock_02`) — a tier-N warehouse holds this
- * many of EACH stored good. User-requested sandbox balance, NOT extracted data (the real `logicstock`
- * caps are 45/70/120); these are the project's chosen sandbox limits.
- */
-const WAREHOUSE_SLOT_CAPACITY = [100, 250, 500] as const;
-
-/** The HQ's per-good store capacity — user-requested sandbox balance, the same 500 as the top warehouse
- *  tier and NOT extracted data (the real `logicstock` HQ cap is 150). */
-const HQ_SLOT_CAPACITY = 500;
-
-function resourceLandscapeType(good: number): number {
-  return RESOURCE_LANDSCAPE_BASE + good;
-}
-
-function resourceGfxIndex(good: number): number {
-  return RESOURCE_GFX_BASE + good;
-}
-
-/** Fill-state count for a bio (non-deposit) resource — trees/mushrooms cycle through this many gfx states. */
-const BIO_LANDSCAPE_STATES = 3;
-
-function landscapeState(g: GathererSpec): number {
-  return Math.max(1, g.depositLevels ?? BIO_LANDSCAPE_STATES);
-}
-
-// The invented resource areas below are HALF-CELL node offsets (`[state, dx, dy, run]`, the real
-// block-area grammar). The BUILD ring keeps its doubled (one-cell) extent from the half-cell
-// migration; the WORK cells sit ONE NODE from the anchor on every side, matching the real records
-// (the yew's `workAreas` are the ±1-node neighbours) — so a harvester stands half a cell from its
-// node and works it from whichever side it arrived, instead of circling to a distant east/west post.
-
-function walkBlockAreas(g: GathererSpec): number[][] {
-  const state = landscapeState(g);
-  if (g.good === GOOD_MUD || g.mode === 'pick') return [];
-  return [[state, 0, 0, 1]];
-}
-
-function buildBlockAreas(g: GathererSpec): number[][] {
-  const state = landscapeState(g);
-  if (g.good === GOOD_MUD || g.mode === 'pick') return [];
-  return [[state, -2, 0, 5]]; // dx −2..+2 — the one-cell no-build ring, as a single 5-node run
-}
-
-function workAreas(g: GathererSpec): number[][] {
-  const state = landscapeState(g);
-  if (g.mode === 'pick') return [[1, 0, 0, 1]];
-  // Clay includes its own ANCHOR (the digger stands ON the walkable deposit — resourceWorkCell's
-  // anchor-first rule); the blocking nodes offer the 8-neighbour ring around theirs.
-  if (g.good === GOOD_MUD) {
-    return [
-      [state, -1, -1, 3],
-      [state, -1, 0, 3],
-      [state, -1, 1, 3],
-    ];
-  }
-  return [
-    [state, -1, -1, 3],
-    [state, -1, 0, 1],
-    [state, 1, 0, 1],
-    [state, -1, 1, 3],
-  ];
-}
-
-function sandboxLandscape(
-  map?: TerrainTypeIds,
-): Array<{ typeId: number; id: string; walkable: boolean; buildable: boolean }> {
-  const base = [
-    ...BASE_LANDSCAPE,
-    ...GATHERERS.map((g) => ({
-      typeId: resourceLandscapeType(g.good),
-      id: `${g.id}_harvest_node`,
-      walkable: true,
-      buildable: true,
-    })),
-  ];
-  if (map === undefined) return base;
-  const covered = new Set(base.map((t) => t.typeId));
-  const extra = [...new Set(map.typeIds)].filter((id) => !covered.has(id)).sort((a, b) => a - b);
-  return [
-    ...base,
-    ...extra.map((id) => ({ typeId: id, id: `terrain_${id}`, walkable: true, buildable: true })),
-  ];
-}
-
-export function sandboxWalkableTypeIds(map?: TerrainTypeIds): ReadonlySet<number> {
-  return new Set(
-    sandboxLandscape(map)
-      .filter((t) => t.walkable)
-      .map((t) => t.typeId),
-  );
-}
-
 export function sandboxGoods(): readonly GoodRef[] {
   return sandboxContent().goods.map((g) => ({ typeId: g.typeId, id: g.id }));
 }
@@ -370,31 +146,6 @@ type SandboxJob = { typeId: number; id: string; name?: string; allowedAtomics?: 
 
 /** A sandbox tribe row: its type id, id, and the job-enable / atomic-binding lists the sim reads. */
 type SandboxTribe = { typeId: number; id: string; jobEnables?: unknown[]; atomicBindings?: unknown[] };
-
-/**
- * The building set: every clean-room catalog building carrying its extracted-or-approximated footprint,
- * plus any extra buildings the caller declares. See {@link buildingRow} for the per-building shape.
- */
-function buildSandboxBuildings(extras: SandboxContentExtras): Map<number, SandboxBuildingRow> {
-  // Real extracted footprints (live content) replace the clean-room approximations WHOLESALE — see
-  // SandboxContentExtras.buildingFootprints. Without them every building approximates by class.
-  const footprintOf = (typeId: number, kind: string): { footprint?: BuildingFootprint } => {
-    const real = extras.buildingFootprints;
-    const fp = real !== undefined ? real.get(typeId) : approximateFootprint(kind);
-    return fp !== undefined ? { footprint: fp } : {};
-  };
-  const buildings = new Map<number, SandboxBuildingRow>();
-  for (const b of VIKING_BUILDINGS) {
-    buildings.set(b.typeId, { ...buildingRow(b), ...footprintOf(b.typeId, b.kind) });
-  }
-  for (const b of extras.buildings ?? []) {
-    if (!buildings.has(b.typeId)) {
-      const kind = b.kind ?? 'workplace';
-      buildings.set(b.typeId, { typeId: b.typeId, id: b.id, kind, ...footprintOf(b.typeId, kind) });
-    }
-  }
-  return buildings;
-}
 
 /**
  * The job set: idle, the gatherer trades, the carrier, the real-behaviour farmer/builder/soldier jobs,
@@ -503,34 +254,6 @@ function buildSandboxTribes(
     }
   }
   return tribes;
-}
-
-/**
- * The gathering-resource landscape gfx rows — one per {@link GATHERERS} entry (its block/work areas,
- * gfx index, and fill-state valency). See the invented-area note above.
- */
-function sandboxLandscapeGfx() {
-  return GATHERERS.map((g) => ({
-    index: resourceGfxIndex(g.good),
-    editName: `sandbox ${g.id} resource`,
-    logicType: resourceLandscapeType(g.good),
-    maxValency: landscapeState(g),
-    isWorkable: true,
-    walkBlockAreas: walkBlockAreas(g),
-    buildBlockAreas: buildBlockAreas(g),
-    workAreas: workAreas(g),
-  }));
-}
-
-/** The gathering pipeline rows — one per {@link GATHERERS} entry (good → its harvest landscape/gfx). */
-function sandboxGatheringPipeline() {
-  return GATHERERS.map((g) => ({
-    goodType: g.good,
-    goodId: g.id,
-    harvestAtomic: g.atomic,
-    bioLandscape: g.mode !== 'mine',
-    harvest: { landscapeType: resourceLandscapeType(g.good), gfxIndices: [resourceGfxIndex(g.good)] },
-  }));
 }
 
 /**
@@ -650,68 +373,7 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
     landscape: sandboxLandscape(map),
     landscapeGfx: sandboxLandscapeGfx(),
     gatheringPipeline: sandboxGatheringPipeline(),
-    weapons: [
-      {
-        typeId: WEAPON_FISTS,
-        id: 'viking_fist',
-        tribeType: PRIMARY_TRIBE,
-        jobType: JOB_SOLDIER_UNARMED,
-        minRange: 1,
-        maxRange: 1,
-        damage: { '0': FIST_DAMAGE },
-      },
-      {
-        typeId: WEAPON_SPEAR,
-        id: 'viking_spear',
-        tribeType: PRIMARY_TRIBE,
-        jobType: JOB_SOLDIER_SPEAR,
-        minRange: 1,
-        maxRange: 2, // a spear pokes one cell further than a sword (the original's long-melee band)
-        damage: { '0': SPEAR_DAMAGE },
-      },
-      {
-        typeId: WEAPON_SWORD,
-        id: 'viking_sword',
-        tribeType: PRIMARY_TRIBE,
-        jobType: JOB_SOLDIER_SWORD,
-        minRange: 1,
-        maxRange: 1,
-        damage: { '0': SWORD_DAMAGE },
-      },
-      {
-        typeId: WEAPON_BROADSWORD,
-        id: 'viking_broadsword',
-        tribeType: PRIMARY_TRIBE,
-        jobType: JOB_SOLDIER_BROADSWORD,
-        minRange: 1,
-        maxRange: 2, // the original's long sword reaches 1–2
-        damage: { '0': BROADSWORD_DAMAGE },
-      },
-      {
-        typeId: WEAPON_SHORT_BOW,
-        id: 'viking_short_bow',
-        tribeType: PRIMARY_TRIBE,
-        jobType: JOB_ARCHER,
-        mainType: RANGED_MAIN_TYPE,
-        munitionType: ARROW_MUNITION,
-        speed: BOW_SPEED,
-        minRange: 3,
-        maxRange: 15,
-        damage: { '0': BOW_DAMAGE },
-      },
-      {
-        typeId: WEAPON_LONG_BOW,
-        id: 'viking_long_bow',
-        tribeType: PRIMARY_TRIBE,
-        jobType: JOB_ARCHER_LONG,
-        mainType: RANGED_MAIN_TYPE,
-        munitionType: ARROW_MUNITION,
-        speed: BOW_SPEED,
-        minRange: 4,
-        maxRange: 23,
-        damage: { '0': BOW_DAMAGE },
-      },
-    ],
+    weapons: sandboxWeapons(),
     tribes: [...tribes.values()],
     atomicAnimations: [
       ...GATHERERS.map((g) => ({
@@ -769,89 +431,4 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
       { id: FARMER_WATER_ANIMATION, name: FARMER_WATER_ANIMATION, length: FARMER_WATER_LENGTH },
     ],
   });
-}
-
-interface SandboxBuildingRow {
-  typeId: number;
-  id: string;
-  kind: string;
-  stock?: readonly StockSlot[];
-  construction?: readonly { goodType: number; amount: number }[];
-  hitpoints?: number;
-  recipe?: {
-    inputs: readonly { goodType: number; amount: number }[];
-    outputs: readonly { goodType: number; amount: number }[];
-    ticks: number;
-  };
-  /** The goods this workplace makes (`logicproduction`) — for a FARM this is the field-farmed good and
-   *  there is deliberately NO `recipe` (the field loop, not the abstract in-house cycle, produces it). */
-  produces?: readonly number[];
-  workers?: readonly { jobType: number; count: number }[];
-  footprint?: BuildingFootprint;
-}
-
-/**
- * Per-building sandbox behaviour overrides, keyed by typeId — a DATA table, so {@link buildingRow}
- * stays a pure spread and a new special building means a new row here, not another branch. (The
- * clean-room catalog stays pinned to ir.json; these stock/recipe pins are sandbox balance, not
- * extracted data.) A `workers` here REPLACES the extracted {@link BUILDING_WORKER_SLOTS} default (the
- * joinery pins its own gatherer-fed plank producer for the production demo).
- */
-const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> = {
-  [BUILDING_HEADQUARTERS]: { stock: storeStock(HQ_SLOT_CAPACITY) },
-  // The grain farm — EXTRACTED shape (`DataCnmd/types/houses.ini` "work farm 00"): a wheat-ONLY store
-  // (`logicstock 4 25 0`) and `logicproduction 4` (produces wheat). Deliberately NO recipe: the field
-  // loop (its farmers sowing/watering/reaping around the building) is what makes the wheat — the
-  // worker slots (4 farmers + 1 carrier) come from BUILDING_WORKER_SLOTS below.
-  [BUILDING_FARM]: {
-    stock: [{ goodType: GOOD_WHEAT, capacity: FARM_WHEAT_CAPACITY, initial: 0 }],
-    produces: [GOOD_WHEAT],
-  },
-  // The mill — EXTRACTED shape (`DataCnmd/types/houses.ini` "work mill 00"): a wheat-in (10) /
-  // flour-out (20) two-slot store and `logicproduction 11` (produces flour), ground by the standard
-  // recipe cycle (wheat→flour 1:1 over the extracted 200-tick grind — see MILL_GRIND_TICKS). The
-  // worker slots (2 millers + 1 carrier) come from BUILDING_WORKER_SLOTS below; the generic producer
-  // drive gives the millers the whole fetch-wheat → grind → haul-flour-out loop with no mill code.
-  [BUILDING_MILL]: {
-    stock: [
-      { goodType: GOOD_WHEAT, capacity: MILL_WHEAT_CAPACITY, initial: 0 },
-      { goodType: GOOD_FLOUR, capacity: MILL_FLOUR_CAPACITY, initial: 0 },
-    ],
-    produces: [GOOD_FLOUR],
-    recipe: {
-      inputs: [{ goodType: GOOD_WHEAT, amount: 1 }],
-      outputs: [{ goodType: GOOD_FLOUR, amount: 1 }],
-      ticks: MILL_GRIND_TICKS,
-    },
-  },
-  // The three warehouses accept the same general-goods set as the HQ (sandbox balance pin, not extracted
-  // data) so the Magazyn section shows their storable goods instead of reading empty. Each tier's per-good
-  // limit comes from the single {@link WAREHOUSE_SLOT_CAPACITY} table (100/250/500), not per-good literals.
-  [BUILDING_WAREHOUSE_00]: { stock: storeStock(WAREHOUSE_SLOT_CAPACITY[0]) },
-  [BUILDING_WAREHOUSE_01]: { stock: storeStock(WAREHOUSE_SLOT_CAPACITY[1]) },
-  [BUILDING_WAREHOUSE_02]: { stock: storeStock(WAREHOUSE_SLOT_CAPACITY[2]) },
-  [BUILDING_JOINERY]: {
-    workers: [{ jobType: JOB_GATHERER_WOOD, count: 1 }],
-    // A workplace general store (the plank-producer demo), capped like the HQ so the panel shows a sane
-    // limit rather than a huge number.
-    stock: storeStock(HQ_SLOT_CAPACITY),
-    recipe: {
-      inputs: [{ goodType: GOOD_WOOD, amount: 1 }],
-      outputs: [{ goodType: GOOD_PLANK, amount: 1 }],
-      ticks: 20,
-    },
-  },
-};
-
-function buildingRow(b: VikingBuilding): SandboxBuildingRow {
-  const slots = workerSlotsFor(b.typeId);
-  return {
-    typeId: b.typeId,
-    id: b.id,
-    kind: b.kind,
-    construction: buildingConstructionCost(b), // a deliverable bill so it raises as a construction site
-    hitpoints: buildingHitpoints(b.kind), // the Health pool the ramp fills as it rises
-    ...(slots !== undefined ? { workers: slots } : {}),
-    ...BUILDING_OVERRIDES[b.typeId], // an override's `workers` (the joinery's demo) wins over the default
-  };
 }
