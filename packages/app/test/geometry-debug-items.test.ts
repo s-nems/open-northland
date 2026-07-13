@@ -1,32 +1,17 @@
-import { fx, nodeOfPosition, type WorldSnapshot } from '@vinland/sim';
+import { fx, nodeOfPosition } from '@vinland/sim';
 import { describe, expect, it } from 'vitest';
 import {
   buildingSetFingerprint,
   computeGeometryDebugItems,
   type GeometryBuildingInfo,
 } from '../src/view/geometry-debug-items.js';
+import { building, snapshotOf } from './support/snapshot.js';
 
 /**
  * The `?debug=geometry` projection — pure snapshot → overlay items, and the building-set fingerprint
  * that gates its rebuild. The icon anchor must match the door-badge path (both go through
  * `workerIconNode`), including the doorless fallback the old inline copy dropped.
  */
-
-interface Ent {
-  readonly id: number;
-  readonly components: Record<string, unknown>;
-}
-
-function snapshotOf(entities: Ent[]): WorldSnapshot {
-  return { tick: 0, entities, events: [] } as unknown as WorldSnapshot;
-}
-
-function building(id: number, typeId: number, x: number, y: number): Ent {
-  return {
-    id,
-    components: { Building: { buildingType: typeId }, Position: { x: fx.fromInt(x), y: fx.fromInt(y) } },
-  };
-}
 
 const TYPES = new Map<number, GeometryBuildingInfo>([
   [

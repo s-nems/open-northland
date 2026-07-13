@@ -1,26 +1,12 @@
 import { buildScene, terrainMapToScene } from '@vinland/render';
-import type { Component, TerrainMap, WorldSnapshot } from '@vinland/sim';
+import type { TerrainMap } from '@vinland/sim';
 import { components, halfCellMapFromCells } from '@vinland/sim';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type AuthoredJoinRows, resolveAuthoredPlacements } from '../src/slice/authored-placements.js';
 import { loadTerrainMap } from '../src/slice/map-loader.js';
 import { runAuthoredSlice, runBareMap, runSlice, sliceTerrain } from '../src/slice/vertical-slice.js';
-
-/**
- * Component stores are module-level singletons shared by every `Simulation` instance, so a sim built
- * in one test sees entities a sim from a prior test left behind — and `world.query` iterates store
- * insertion order, so that leakage makes a fresh sim's planner non-deterministic (it processes stale
- * entities). Clear every component's store before each test that builds a sim, exactly as the sim's
- * own golden-trace suite does — scoping each run to its own test regardless of file/test order.
- */
-function clearStores(): void {
-  // The `components` namespace also re-exports helpers (e.g. `stockpileEntries`), so clear only the
-  // exports that are actual components (have a `.store` Map), not every value.
-  for (const v of Object.values(components)) {
-    const store = (v as Partial<Component<unknown>>).store;
-    if (store instanceof Map) store.clear();
-  }
-}
+import { EMPTY_SNAPSHOT } from './support/snapshot.js';
+import { clearStores } from './support/stores.js';
 
 /**
  * Unit tests for the app's map-loading seam — the testable core of "the shot/dev entry draws an
@@ -38,8 +24,6 @@ function jsonResponse(body: unknown, ok = true, status = 200): Response {
     json: async () => body,
   } as unknown as Response;
 }
-
-const EMPTY_SNAPSHOT: WorldSnapshot = { tick: 0, entities: [], events: [] };
 
 describe('loadTerrainMap', () => {
   afterEach(() => {
