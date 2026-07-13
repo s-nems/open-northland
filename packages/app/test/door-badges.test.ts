@@ -1,7 +1,8 @@
-import { fx, nodeOfPosition, positionOfNode, type WorldSnapshot } from '@vinland/sim';
+import { fx, nodeOfPosition, positionOfNode } from '@vinland/sim';
 import { describe, expect, it } from 'vitest';
 import { workerIconOffset } from '../src/catalog/building-tweaks.js';
 import { type BuildingDoorInfo, computeDoorBadges } from '../src/view/door-badges.js';
+import { building, settler, snapshotOf } from './support/snapshot.js';
 
 /**
  * computeDoorBadges — the pure snapshot→door-badge projection the render layer draws. It reads the sim's
@@ -17,34 +18,6 @@ const GATHERER = 20; // a gatherer job id (the sandbox gatherer band)
 /** The test's role classifier — the same three-way split the sandbox `workerRoleOf` makes. */
 const roleOf = (jobType: number): 'gatherer' | 'carrier' | 'craftsman' =>
   jobType === CARRIER ? 'carrier' : jobType === GATHERER ? 'gatherer' : 'craftsman';
-
-interface Ent {
-  readonly id: number;
-  readonly components: Record<string, unknown>;
-}
-
-function snapshotOf(entities: Ent[]): WorldSnapshot {
-  return { tick: 0, entities, events: [] } as unknown as WorldSnapshot;
-}
-
-/** A building entity at tile (x,y) of type `typeId`. */
-function building(id: number, typeId: number, x: number, y: number): Ent {
-  return {
-    id,
-    components: { Building: { buildingType: typeId }, Position: { x: fx.fromInt(x), y: fx.fromInt(y) } },
-  };
-}
-
-/** A settler bound (or not) to a workplace, of a given job. */
-function settler(id: number, jobType: number, workplace: number | null): Ent {
-  return {
-    id,
-    components: {
-      Settler: { jobType },
-      ...(workplace !== null ? { JobAssignment: { workplace } } : {}),
-    },
-  };
-}
 
 describe('computeDoorBadges', () => {
   it('tallies bound workers per building, split by role (craftsman/carrier/gatherer), at the door node', () => {
