@@ -47,8 +47,8 @@ export const X6EL_BYTES_PER_CELL = 2;
 
 /** A decoded packed grid layer: its codec id and the unpacked row-major byte grid. */
 export interface MapLayer {
-  /** The codec id from the inner header (e.g. `"X8el"`). */
-  readonly codec: string;
+  /** The codec id from the inner header (always `"X8el"` — the byte-per-element planes). */
+  readonly codec: typeof MAP_LAYER_CODEC_X8;
   /** The decoded bytes (`unpackedLength` long, row-major over the grid). */
   readonly cells: Uint8Array;
 }
@@ -56,7 +56,7 @@ export interface MapLayer {
 /** A decoded `X6el` layer: the little-endian u16 elements, row-major. */
 export interface MapLayerU16 {
   /** The codec id from the inner header (always `"X6el"`). */
-  readonly codec: string;
+  readonly codec: typeof MAP_LAYER_CODEC_X6;
   /**
    * One u16 per grid element, row-major. For `empa`/`empb` an index into the map's `eapd` pattern
    * dictionary; for `emla` an index into `eald` (0xffff = no object).

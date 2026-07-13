@@ -25,7 +25,7 @@
 
 import type { Bmd, BobFrame } from './bmd.js';
 import { BOB_ALPHA_OPAQUE, decodeBobFrame } from './bmd.js';
-import type { RgbaImage } from './image.js';
+import { PALETTE_RGB_BYTES, type RgbaImage } from './image.js';
 
 /** Transparent gutter (in pixels) left between packed frames so sampling can't bleed across them. */
 export const ATLAS_GUTTER = 1;
@@ -73,8 +73,10 @@ export interface BobAtlas {
  * a programmer error, since decoded palettes always are.
  */
 export function expandBobFrame(frame: BobFrame, palette: Uint8Array): RgbaImage {
-  if (palette.length !== 768) {
-    throw new Error(`atlas: palette must be 768 bytes (256 RGB triples), got ${palette.length}`);
+  if (palette.length !== PALETTE_RGB_BYTES) {
+    throw new Error(
+      `atlas: palette must be ${PALETTE_RGB_BYTES} bytes (256 RGB triples), got ${palette.length}`,
+    );
   }
   const { width, height, pixels, mask } = frame;
   const rgba = new Uint8Array(width * height * 4);

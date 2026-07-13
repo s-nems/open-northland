@@ -5,6 +5,20 @@
  * each stays reachable via its function's inferred return type). See each module for its concern.
  */
 
+export type {
+  BmdPaletteBinding,
+  JobBaseGraphicsBinding,
+  PaletteAlias,
+} from './ini/bindings/index.js';
+export {
+  extractBobSequences,
+  extractGfxAnimAtomics,
+  extractGraphicsBindings,
+  extractJobBaseGraphics,
+  extractJobChangeGraphics,
+  extractLandscapeGraphics,
+  extractPaletteIndex,
+} from './ini/bindings/index.js';
 export {
   extractBuildingBobs,
   extractBuildingFootprints,
@@ -23,20 +37,6 @@ export {
   decodeIni,
   parseIniSections,
 } from './ini/grammar.js';
-export type {
-  BmdPaletteBinding,
-  JobBaseGraphicsBinding,
-  PaletteAlias,
-} from './ini/graphics-bindings.js';
-export {
-  extractBobSequences,
-  extractGfxAnimAtomics,
-  extractGraphicsBindings,
-  extractJobBaseGraphics,
-  extractJobChangeGraphics,
-  extractLandscapeGraphics,
-  extractPaletteIndex,
-} from './ini/graphics-bindings.js';
 export type { MapStaticObjects } from './ini/maps.js';
 export {
   extractMapInfo,
