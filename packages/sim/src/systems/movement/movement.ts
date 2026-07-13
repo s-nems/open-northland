@@ -73,7 +73,8 @@ export const ARRIVAL_SPEED_DIV = 2;
  * Two movement modes, in this precedence:
  *  1. {@link PathFollow}: ramp the follower's gait `speed` toward its cruise pace ({@link MoveSpeed}'s
  *     `perTick` if it carries one, else the universal {@link MOVE_SPEED_PER_TICK}; the gait is the
- *     SAME whatever the entity is doing — the original has no sprint, a fleeing unit walks at its
+ *     SAME whatever the entity is doing — no run gait is modeled, OUR design: no human run speed is
+ *     readable and the animal `runspeed` is deliberately unconsumed, so a fleeing unit walks at its
  *     one pace) — accelerating from rest by {@link ACCEL_TICKS}, braking over the last leg's final
  *     approach ({@link BRAKE_HORIZON_TICKS}/{@link ARRIVAL_SPEED_DIV}) — then step STRAIGHT toward
  *     the current waypoint (a cell centre, or the seam point a vertical leg crosses the intermediate
@@ -111,9 +112,9 @@ export const movementSystem: System = (world) => {
     }
 
     // The entity's ONE pace: its own MoveSpeed when it carries one (a data-paced animal), else the
-    // universal settler default. Deliberately unconditional — no run/sprint mode exists (the
-    // original moves every unit at its constant pace; a fleeing unit escapes by pathing away, not
-    // by speeding up).
+    // universal settler default. Deliberately unconditional — no run/sprint mode exists, OUR
+    // design: a fleeing unit escapes by pathing away, not by speeding up (no human run speed is
+    // readable; the original's animal `runspeed` stays extracted-but-unconsumed).
     //
     // Degenerate-pace guard: `ONE/movespeed` truncation can mint a perTick as small as 0 ulps — a
     // 0-ulp gait makes no progress EVER, so the walker would stall and the path never complete

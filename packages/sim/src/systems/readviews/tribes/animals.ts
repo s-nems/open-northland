@@ -226,10 +226,10 @@ export function herdParams(content: ContentSet, tribeType: number): HerdParams |
  * unknown tribe). The locomotion analogue of {@link herdParams}: where that view carries the
  * herd/territory radii, this carries the animal's pace:
  *
- *  - `walkSpeed` (`movespeed`) — the pace the animal always moves at (0 = the source omitted it,
- *    i.e. the engine default applies; 9 of the 35 extracted animals set it explicitly, e.g. the
- *    boar's 8). The IR's `runspeed` is deliberately NOT surfaced — no run/sprint gait exists
- *    anywhere; every unit moves at its one constant pace.
+ *  - `walkSpeed` (`movespeed`) — the pace the animal always moves at in OUR sim (0 = the source
+ *    omitted it, i.e. the engine default applies; 9 of the 35 extracted animals set it explicitly,
+ *    e.g. the boar's 8). The IR's `runspeed` (the original's animal run gait) is deliberately NOT
+ *    surfaced — no run/sprint gait is modeled; every unit moves at its one constant pace.
  *
  * source-basis n/a: a pure derived **read view** over the already-extracted `animaltypes` IR — it adds
  * no mechanic and invents no data. Pure over `content`, no RNG/wall-clock.
