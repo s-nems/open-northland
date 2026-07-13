@@ -13,8 +13,8 @@ import { sandboxScene } from './sandbox.js';
 import type { SceneDefinition } from './types.js';
 import { warehouseScene } from './warehouse.js';
 
-export { createSceneSim, resetComponentStores } from './runtime.js';
-export type { SceneCheck, SceneDefinition } from './types.js';
+export { createSceneSim } from './runtime.js';
+export type { SceneDefinition } from './types.js';
 
 /**
  * The acceptance-scene registry. Add a scene here and it is automatically (a) covered by the headless

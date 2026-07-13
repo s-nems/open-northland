@@ -1,4 +1,5 @@
 import { patternSrcRect, type SceneGround, type SceneTerrain, type TerrainTextureSet } from '@vinland/render';
+import { fetchImageData } from './net.js';
 
 /**
  * The minimap's ground-colour binding for a DECODED map: one `0xRRGGBB` per cell, averaged from the
@@ -72,26 +73,13 @@ export function cellColoursFromGround(
   return out;
 }
 
-/** Fetch a served ground page PNG and read its pixels back (browser-only — canvas 2D readback). */
+/** Fetch a served ground page PNG and read its pixels back (browser-only — canvas 2D readback).
+ *  A missing page returns null so those patterns degrade to the typeId palette. */
 async function fetchPagePixels(
   pageKey: string,
 ): Promise<{ rgba: Uint8ClampedArray; w: number; h: number } | null> {
-  try {
-    const res = await fetch(`/textures/${pageKey}.png`);
-    if (!res.ok) return null;
-    const bmp = await createImageBitmap(await res.blob());
-    const canvas = document.createElement('canvas');
-    canvas.width = bmp.width;
-    canvas.height = bmp.height;
-    const ctx = canvas.getContext('2d');
-    if (ctx === null) return null;
-    ctx.drawImage(bmp, 0, 0);
-    const data = ctx.getImageData(0, 0, bmp.width, bmp.height);
-    bmp.close();
-    return { rgba: data.data, w: data.width, h: data.height };
-  } catch {
-    return null; // a missing page degrades those patterns to the typeId palette
-  }
+  const image = await fetchImageData(`/textures/${pageKey}.png`);
+  return image === null ? null : { rgba: image.data, w: image.width, h: image.height };
 }
 
 /**

@@ -1,4 +1,5 @@
 import { GUI_FRAMES } from '../content/gui-atlas-map.js';
+import { fetchJsonOrNull } from '../content/net.js';
 import { el, mountMessage, pageInnerStyle, pageRootStyle } from '../view/overlay.js';
 
 /**
@@ -80,16 +81,6 @@ function installStyle(): void {
   document.head.append(s);
 }
 
-async function fetchJson<T>(url: string): Promise<T | null> {
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    return (await res.json()) as T;
-  } catch {
-    return null;
-  }
-}
-
 /** A short, human group label for a base sprite set — enough to find "GUI" / "Dobra" / "Domy" at a glance. */
 function groupLabel(base: string): string {
   if (base === GUI_BASE) return 'GUI (przyciski, glify, panel)';
@@ -103,7 +94,7 @@ function groupLabel(base: string): string {
 
 export function renderIconGallery(_canvas: HTMLCanvasElement, params: URLSearchParams): void {
   void (async () => {
-    const index = await fetchJson<BobsIndexEntry[]>('/bobs-index');
+    const index = await fetchJsonOrNull<BobsIndexEntry[]>('/bobs-index');
     if (index === null || index.length === 0) {
       mountMessage(
         'Galeria ikon',
@@ -185,7 +176,7 @@ export function renderIconGallery(_canvas: HTMLCanvasElement, params: URLSearchP
     const showAtlas = async (stem: string): Promise<void> => {
       grid.textContent = '';
       selected = null;
-      const atlas = await fetchJson<AtlasJson>(`/bobs/${stem}.atlas.json`);
+      const atlas = await fetchJsonOrNull<AtlasJson>(`/bobs/${stem}.atlas.json`);
       if (atlas === null) {
         meta.textContent = `nie udało się wczytać /bobs/${stem}.atlas.json`;
         return;
