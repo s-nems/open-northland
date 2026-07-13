@@ -12,4 +12,6 @@ export * from './economy/index.js';
 export * from './graphics/index.js';
 export * from './landscape/index.js';
 export * from './maps/index.js';
-export * from './record.js';
+// `ClassId` stays internal to the schema (only `equipment.ts` uses it) — it is not a resolvable
+// cross-reference, so the public surface exposes only the id primitives callers actually index by.
+export { AtomicId, Provenance, TypeId } from './record.js';
