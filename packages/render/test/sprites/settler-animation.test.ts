@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { SpriteState } from '../../src/data/scene/index.js';
 import {
   DEFAULT_FACING,
   type DirectionalAnim,
@@ -10,7 +11,6 @@ import {
   type SettlerStateBinding,
   type SpriteAtlas,
   type SpriteBindings,
-  type SpriteState,
 } from '../../src/index.js';
 
 /**

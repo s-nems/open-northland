@@ -1,21 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import {
   cellNode,
-  halfCellToScreen,
   nodeCell,
   nodeLaneUV,
   nodeLift,
   patternSrcRect,
   rectTriangleUVs,
-  TILE_HALF_H,
-  TILE_HALF_W,
   TRANSITION_NONE,
-  tileToScreen,
   transitionRef,
   triangleANodes,
   triangleBNodes,
   triangleUVs,
-} from '../src/index.js';
+} from '../src/data/terrain.js';
+import { halfCellToScreen, TILE_HALF_H, TILE_HALF_W, tileToScreen } from '../src/index.js';
 
 /**
  * The PURE, self-verifiable half of textured terrain: the node-lattice tessellation + UV folds the

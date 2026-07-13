@@ -1,20 +1,7 @@
 export type { TextureSource } from 'pixi.js';
-export {
-  BRIGHTNESS_NEUTRAL,
-  type BrightnessField,
-  makeBrightnessField,
-} from './data/brightness.js';
-export {
-  type ElevationField,
-  elevationLiftPerUnit,
-  makeElevationField,
-} from './data/elevation.js';
-export {
-  FOG_EXPLORED_ALPHA,
-  FOG_UNEXPLORED_ALPHA,
-  fogCellOfTile,
-  fogTileVisible,
-} from './data/fog.js';
+export { type BrightnessField, makeBrightnessField } from './data/brightness.js';
+export { type ElevationField, makeElevationField } from './data/elevation.js';
+export { FOG_EXPLORED_ALPHA, FOG_UNEXPLORED_ALPHA, fogTileVisible } from './data/fog.js';
 export {
   buildHud,
   type HudCorner,
@@ -47,9 +34,6 @@ export {
   type DrawKind,
   type SceneGround,
   type SceneTerrain,
-  type SceneTransitions,
-  type SpriteSceneOptions,
-  type SpriteState,
   terrainMapToScene,
 } from './data/scene/index.js';
 export {
@@ -88,22 +72,7 @@ export {
   type SpriteKind,
   type StockpileBinding,
 } from './data/sprites/index.js';
-export {
-  type CellTexture,
-  cellNode,
-  type NodeXY,
-  nodeCell,
-  nodeLaneUV,
-  nodeLift,
-  patternSrcRect,
-  rectTriangleUVs,
-  type SrcRect,
-  TRANSITION_NONE,
-  transitionRef,
-  triangleANodes,
-  triangleBNodes,
-  triangleUVs,
-} from './data/terrain.js';
+export { type CellTexture, patternSrcRect } from './data/terrain.js';
 export {
   aabbIntersects,
   type Box,

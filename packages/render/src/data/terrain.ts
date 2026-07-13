@@ -147,7 +147,7 @@ export function nodeLaneUV(
 export const TRANSITION_NONE = 255;
 
 /** The pair variants each `[transition]` record carries (six `GfxCoordsA`/`GfxCoordsB` lines). */
-export const TRANSITION_PAIRS = 6;
+const TRANSITION_PAIRS = 6;
 
 /**
  * Decode one transition-lane value: `v < 255` selects transition `⌊v/6⌋` (an index into the map's

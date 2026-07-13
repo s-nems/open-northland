@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
+import type { SpriteState } from '../../src/data/scene/index.js';
 import {
   type ByJobTable,
   type DirectionalAnim,
   type DrawItem,
   pickByJob,
   resolveSpriteBobId,
+  type SettlerStateBinding,
   type SpriteBindings,
-  type SpriteState,
 } from '../../src/index.js';
 
 /**
