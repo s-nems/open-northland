@@ -35,7 +35,7 @@ import {
  * layer-qualified (a `{ layer, bob }` {@link BuildingBobRef} into a named
  * {@link import('@vinland/render').SpriteSheet.families} atlas — the HQ's viking4 family); the constant's
  * values are bare ids drawn from the default `building` layer. `building`/`resource` resolve in their own
- * per-kind layers (see {@link import('../sprite-sheet.js').loadHumanSpriteSheet}'s `kindLayers`), so their
+ * per-kind layers (see {@link import('../sprite-sheet/index.js').loadHumanSpriteSheet}'s `kindLayers`), so their
  * ids index the house/tree bobs, not the body's.
  */
 export function buildHumanBindings(

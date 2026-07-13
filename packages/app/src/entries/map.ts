@@ -14,7 +14,7 @@ import { buildCollisionTerrain } from '../content/collision.js';
 import { buildingFootprints, loadIr } from '../content/ir.js';
 import { loadMinimapCellColours } from '../content/minimap-ground.js';
 import { loadMapObjects } from '../content/objects.js';
-import { resolveSpriteSheet } from '../content/sprite-sheet.js';
+import { resolveSpriteSheet } from '../content/sprite-sheet/index.js';
 import { loadRealTerrain } from '../content/terrain.js';
 import { fogModeParam } from '../game/fog.js';
 import { mapStartFocus } from '../game/map-start.js';

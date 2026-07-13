@@ -5,7 +5,7 @@
  * (`CR_Hum_Body_*`) and a **head** (`CR_Hum_Head_*`), the head drawn on top at the same bob id — exactly
  * as the original's `jobgraphics` (`gfxbobmanagerbody` + `gfxbobmanagerhead`) compose a human. Every
  * reducer here is pure + unit-tested without a browser; the byte loading + sheet assembly live in
- * {@link import('../sprite-sheet.js')}.
+ * {@link import('../sprite-sheet/index.js')}.
  *
  * The frame RANGES (start + length) are read from the IR's `bobSequences` (the `extractBobSequences`
  * pipeline leg) by sequence name and turned into a {@link DirectionalAnim} via {@link directionalAnimFromSeq}

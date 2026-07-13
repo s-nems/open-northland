@@ -289,7 +289,7 @@ export function resolveGatheringRefs(
 /**
  * The set of NON-default served atlas stems the gathering draws reference — every node stem that isn't the
  * default resource family, every pile stem, and the flag stem. This is exactly the atlases
- * {@link import('../sprite-sheet.js')} must load into `families` for the layer-qualified refs to draw;
+ * {@link import('../sprite-sheet/index.js')} must load into `families` for the layer-qualified refs to draw;
  * the default-family node stem (the yew) is excluded since it is already the `kindLayers.resource` layer.
  */
 export function gatheringAtlasStems(refs: GatheringRefs): Set<string> {

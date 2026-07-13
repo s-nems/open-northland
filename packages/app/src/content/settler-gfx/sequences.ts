@@ -132,7 +132,7 @@ export const HARVEST_TICKS: Readonly<Record<number, number>> = {
   [GOLD_HARVEST_ATOMIC]: 29, // gold  — viking_collector_harvest_gold (logic 23, gfx list 29)
   // Mushroom: the logic length 35 LOOPED the 19-frame pluck in the original (~two bends per pick);
   // our one-shot lists play it once, which read visibly too fast. The pick plays the pluck
-  // MUSHROOM_PLUCKS_PER_PICK times (the list is repeated at sheet build, sprite-sheet.ts) and the
+  // MUSHROOM_PLUCKS_PER_PICK times (the list is repeated at sheet build, sprite-sheet/characters.ts) and the
   // atomic covers every bend plus a ready-stance breather (observed pace, gfx over logic).
   [MUSHROOM_HARVEST_ATOMIC]: MUSHROOM_PLUCK_FRAMES * MUSHROOM_PLUCKS_PER_PICK + MUSHROOM_PLUCK_BREATHER_TICKS,
 };
