@@ -1,14 +1,14 @@
-import { HarvestedBy, Position, Resource, Stockpile } from '../../../../components/index.js';
-import { contentIndex } from '../../../../core/content-index.js';
-import type { Entity, World } from '../../../../ecs/world.js';
-import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
-import type { SystemContext } from '../../../context.js';
-import { settlerMeetsNeed } from '../../../progression/index.js';
-import { resourceHarvestAtomics, resourcesNearNode } from '../../../resource-index.js';
-import { manhattan } from '../../../spatial.js';
-import { lowestStockedGood } from '../../../stores/index.js';
-import { closer } from '../nearest.js';
-import { interactionCell, jobAtomics } from '../workplaces.js';
+import { HarvestedBy, Position, Resource, Stockpile } from '../../../components/index.js';
+import { contentIndex } from '../../../core/content-index.js';
+import type { Entity, World } from '../../../ecs/world.js';
+import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
+import type { SystemContext } from '../../context.js';
+import { settlerMeetsNeed } from '../../progression/index.js';
+import { resourceHarvestAtomics, resourcesNearNode } from '../../resource-index.js';
+import { manhattan } from '../../spatial.js';
+import { lowestStockedGood } from '../../stores/index.js';
+import { closer } from './nearest.js';
+import { interactionCell, jobAtomics } from './workplaces.js';
 
 /**
  * The nearest harvestable {@link Resource} the given settler is allowed to harvest, by fixed-point
