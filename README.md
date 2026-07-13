@@ -16,7 +16,7 @@ OpenNorthland is free to fix it.
 > [devilutionX](https://github.com/diasurgical/devilutionX).
 
 > **Name.** *OpenNorthland* is an **open** reimplementation of the series, named for *Northland*,
-> one of its three games. Project home: [opennorthland.org](https://opennorthland.org).
+> one of its three games.
 
 ## What it is (and isn't)
 
@@ -111,10 +111,10 @@ and lockstep-friendly. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and
 
 ## Contributing
 
-Contributions are welcome. Keep new code in the style of the file around it, keep the `sim` package
-deterministic and pure, and run `npm run check && npm test` before opening a PR. Agents working in
-this repo should read [`AGENTS.md`](AGENTS.md) first — it is the contract for conventions, the
-determinism rules, and the legal guardrails.
+Contributions are welcome — see [`CONTRIBUTING.md`](CONTRIBUTING.md). Keep new code in the style of
+the file around it, keep the `sim` package deterministic and pure, and run `npm run check && npm test`
+before opening a PR. Agents working in this repo should read [`AGENTS.md`](AGENTS.md) first — it is
+the contract for conventions, the determinism rules, and the legal guardrails.
 
 ## Acknowledgements
 
