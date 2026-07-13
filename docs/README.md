@@ -33,7 +33,21 @@ deletes the ticket file. Every workflow files tickets for real-but-deferred disc
 
 ## Workflow Files
 
-Claude Code shortcuts live under `.claude/commands/`:
+The agent contract is tool-agnostic: root `AGENTS.md` plus the package-local `AGENTS.md` files are
+the single source of truth. Per-tool wiring:
+
+- **Claude Code** — `CLAUDE.md` shims import `AGENTS.md`. Slash commands under `.claude/commands/`,
+  reviewer lenses under `.claude/agents/`, and a committed PostToolUse hook
+  (`.claude/settings.json` → `scripts/hooks/sim-determinism-guard.mjs`) that re-scans edited
+  `packages/sim/src` files for forbidden nondeterminism at write time.
+- **Codex CLI** — reads root and nested `AGENTS.md` natively; no extra config in the repo.
+- **Gemini CLI** — `.gemini/settings.json` sets `contextFileName` to `AGENTS.md`; the root
+  `GEMINI.md` shim covers launches from outside the repo, where that setting is not loaded.
+- **Cursor** — reads root and nested `AGENTS.md` natively. `.cursor/commands/` holds thin shims
+  that reuse the canonical workflows in `.claude/commands/`, applying reviewer lenses inline
+  instead of as subagents.
+
+The canonical workflow prose lives under `.claude/commands/` (shared by the shims, not Claude-only):
 
 - `/worktree` — primary workflow: isolated branch/worktree, verify, review, update the ticket
   tracker, wait for user approval, fast-forward merge.
@@ -41,12 +55,12 @@ Claude Code shortcuts live under `.claude/commands/`:
 - `/refactor-cleanup` — behavior-preserving refactor pass over a package, path, or feature.
 - `/ticket-scout` — scan a scope for ticket candidates and file them as `docs/tickets/` entries.
 
-Reviewer agents live under `.claude/agents/` and are intentionally small: sim determinism, RTS-scale
-performance, source-basis/fidelity, architecture, and code quality.
+Reviewer lens definitions live under `.claude/agents/` as plain-markdown checklists usable by any
+tool: sim determinism, RTS-scale performance, source-basis/fidelity, architecture, and code quality.
 
-A committed PostToolUse hook (`.claude/settings.json` → `scripts/hooks/sim-determinism-guard.mjs`)
-re-scans every edited `packages/sim/src` file for forbidden nondeterminism patterns at write time;
-the authoritative gate stays the sim hygiene test.
+Only Claude Code runs the write-time determinism hook (other tools' post-edit hooks cannot feed
+output back to the agent); for every tool the authoritative gate is
+`packages/sim/test/core/hygiene.test.ts` via `npm test` and CI.
 
 ## Lean Docs Rule
 
