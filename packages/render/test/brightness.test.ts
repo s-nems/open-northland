@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { scaleColour } from '../src/data/brightness.js';
+import { BRIGHTNESS_NEUTRAL, scaleColour } from '../src/data/brightness.js';
 import { padLaneRows } from '../src/gpu/shading.js';
-import { BRIGHTNESS_NEUTRAL, makeBrightnessField } from '../src/index.js';
+import { makeBrightnessField } from '../src/index.js';
 
 /**
  * Headless tests for the terrain-brightness seam (`data/brightness.ts`) — the decoded `embr` lane as

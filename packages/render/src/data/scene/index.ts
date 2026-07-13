@@ -13,15 +13,9 @@ export {
   paintOrderBias,
   type SceneGround,
   type SceneTerrain,
-  type SceneTransitions,
   type SpriteState,
 } from './draw-item.js';
 export { PROJECTILE_ARC_PEAK_FRACTION, PROJECTILE_ARC_PEAK_MAX_PX } from './projectile-arc.js';
 export { depositVisualLevel } from './snapshot-readers/index.js';
-export {
-  buildSpriteScene,
-  collectSpriteScene,
-  type SpriteScene,
-  type SpriteSceneOptions,
-} from './sprite-scene.js';
+export { buildSpriteScene, collectSpriteScene, type SpriteScene } from './sprite-scene.js';
 export { buildScene, terrainMapToScene } from './terrain-scene.js';

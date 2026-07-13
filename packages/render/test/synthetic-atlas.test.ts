@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import type { SpriteState } from '../src/data/scene/index.js';
 import {
   type DrawItem,
   resolveSpriteFrame,
-  type SpriteState,
   SYNTHETIC_ATLAS_HEIGHT,
   SYNTHETIC_ATLAS_WIDTH,
   SYNTHETIC_BINDINGS,
