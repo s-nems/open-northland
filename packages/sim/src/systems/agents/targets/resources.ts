@@ -25,9 +25,11 @@ import { interactionCell, jobAtomics } from './workplaces.js';
  *    threshold it hasn't yet reached; an unthresholded good (no `needforgood`) is harvestable by any
  *    settler, so this gate is inert where no requirement exists.
  *
- * Returns the resource entity, or null if none qualifies. Scanned in canonical entity-id order so the
- * result never depends on store insertion history. Determinism: both gates are pure reads over content
- * + the settler's components (no RNG/wall-clock).
+ * Returns the winning resource with its interaction `cell` and `dist` (from the flag when bound, else
+ * from the settler) — so the caller reuses them instead of recomputing the work cell — or null if none
+ * qualifies. Scanned in canonical entity-id order so the result never depends on store insertion
+ * history. Determinism: both gates are pure reads over content + the settler's components (no
+ * RNG/wall-clock).
  *
  * `area` bounds the scan to a **gatherer's flag work-area** ({@link WorkFlag}): only nodes whose work cell
  * is within `radius` (integer node-distance) of `center` qualify, and the winner is the one NEAREST THE
@@ -50,7 +52,7 @@ export function nearestHarvestableFor(
   here: NodeId,
   settler: { jobType: number; tribe: number; experience: ReadonlyMap<number, number> },
   area?: { center: NodeId; radius: number },
-): Entity | null {
+): { entity: Entity; cell: NodeId; dist: number } | null {
   const allowed = jobAtomics(ctx, settler.jobType);
   // Dormancy gate: if the job's allowed atomics intersect NO harvest atomic present on any standing
   // resource, every candidate fails the `allowed.has` check below — the whole scan is provably null.
@@ -89,7 +91,7 @@ export function nearestHarvestableFor(
           area.radius + contentIndex(ctx.content).maxResourceWorkOffset,
         )
       : candidates;
-  let best: Entity | null = null;
+  let best: { entity: Entity; cell: NodeId; dist: number } | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
   let bestCell = Number.POSITIVE_INFINITY;
   for (const e of scanned) {
@@ -113,7 +115,7 @@ export function nearestHarvestableFor(
     const dist = manhattan(terrain, origin, cell); // distance from the flag (bound) or the settler (roaming)
     if (dist > radius) continue; // outside the flag's work radius — a bound gatherer leaves it be
     if (closer(dist, cell, bestDist, bestCell)) {
-      best = e;
+      best = { entity: e, cell, dist };
       bestDist = dist;
       bestCell = cell;
     }

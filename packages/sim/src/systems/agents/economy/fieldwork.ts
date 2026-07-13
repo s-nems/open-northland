@@ -1,9 +1,8 @@
 import { Position, Resource, UnderConstruction, WorkFlag } from '../../../components/index.js';
-import type { Entity, World } from '../../../ecs/world.js';
+import type { Entity } from '../../../ecs/world.js';
 import type { NodeId } from '../../../nav/terrain/index.js';
 import { carrierCarryCapacity } from '../../progression/index.js';
 import { atomicDuration } from '../../readviews/animations.js';
-import { manhattan } from '../../spatial.js';
 import { deliveredConstructionFraction, nextNeededConstructionGood } from '../../stores/index.js';
 import { atOrWalk, BUILD_HOUSE_ATOMIC_ID, startAtomic, startPickup } from '../actions.js';
 import { claimWorkCell, type SpacingState } from '../destack.js';
@@ -25,11 +24,6 @@ import { deliveryTargetFor } from './routing.js';
 // return `true` when they acted (the settler is spoken for this tick) and `false` to let the next
 // rung try; planDelivery and planProducer ALWAYS own their settler once entered (a loaded / bound
 // settler never falls through to a lower rung), so their result carries no information.
-
-/** Set a `MoveGoal` to `target` unless the settler is already on it (then it stays put). */
-function walkToOrHold(world: World, e: Entity, here: NodeId, target: NodeId): void {
-  atOrWalk(world, e, here, target, () => {});
-}
 
 /**
  * 2b. BUILD — a **builder** raises the nearest construction site of its tribe, faithful to the original's
@@ -93,8 +87,9 @@ export function planBuilder(plan: PlannerContext, spacing: SpacingState): boolea
     return true;
   }
 
-  // c. Can't hammer, nothing to fetch — hold at the site and wait for a delivery.
-  walkToOrHold(world, e, here, siteStand());
+  // c. Can't hammer, nothing to fetch — hold at the site and wait for a delivery (empty callback: a
+  // MoveGoal to the stand cell, or stay put if already there).
+  atOrWalk(world, e, here, siteStand(), () => {});
   return true;
 }
 
@@ -134,10 +129,7 @@ export function planGatherer(plan: PlannerContext): boolean {
     here,
     settler.jobType,
   );
-  const nodeDist =
-    node !== null
-      ? manhattan(terrain, here, interactionCell(world, ctx, terrain, node, here))
-      : Number.POSITIVE_INFINITY;
+  const nodeDist = node !== null ? node.dist : Number.POSITIVE_INFINITY;
   // Prefer the trunk on a tie (it is the wood already at hand — grab it before a fresh tree).
   if (trunk !== null && trunk.dist <= nodeDist) {
     atOrWalk(world, e, here, interactionCell(world, ctx, terrain, trunk.pile, here), () =>
@@ -154,15 +146,15 @@ export function planGatherer(plan: PlannerContext): boolean {
     return true;
   }
   if (node !== null) {
-    const res = world.get(node, Resource);
-    atOrWalk(world, e, here, interactionCell(world, ctx, terrain, node, here), () =>
+    const res = world.get(node.entity, Resource);
+    atOrWalk(world, e, here, node.cell, () =>
       startAtomic(
         world,
         e,
         res.harvestAtomic,
-        { kind: 'harvest', resource: node, goodType: res.goodType },
+        { kind: 'harvest', resource: node.entity, goodType: res.goodType },
         atomicDuration(ctx.content, settler, res.harvestAtomic),
-        node,
+        node.entity,
       ),
     );
     return true;
@@ -214,15 +206,15 @@ function planFlagGatherer(plan: PlannerContext, flag: { flag: Entity; radius: nu
     radius: flag.radius,
   });
   if (node !== null) {
-    const res = world.get(node, Resource);
-    atOrWalk(world, e, here, interactionCell(world, ctx, terrain, node, here), () =>
+    const res = world.get(node.entity, Resource);
+    atOrWalk(world, e, here, node.cell, () =>
       startAtomic(
         world,
         e,
         res.harvestAtomic,
-        { kind: 'harvest', resource: node, goodType: res.goodType },
+        { kind: 'harvest', resource: node.entity, goodType: res.goodType },
         atomicDuration(ctx.content, settler, res.harvestAtomic),
-        node,
+        node.entity,
       ),
     );
     return true;

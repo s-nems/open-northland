@@ -2,12 +2,11 @@ import { Building, JobAssignment, Position, Stockpile } from '../../../component
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
-import { farmWorkGood } from '../../economy/farming.js';
 import { manhattan } from '../../spatial.js';
 import { buildingProduces, lowestStockedGood } from '../../stores/index.js';
 import { closer, interactionCell } from '../targets/index.js';
 import type { SinkAvailability } from '../targets/stores/sinks.js';
-import { isFieldWorkerOf, isStorageSink } from './store-policy.js';
+import { isFarmCarrierHaulOutRole, isStorageSink } from './store-policy.js';
 
 /**
  * The nearest **ground pile** a porter should collect from and the good to lift, or null if none is
@@ -85,10 +84,9 @@ export function boundProducerOutputToHaul(
   const binding = world.tryGet(settler, JobAssignment);
   if (binding === undefined) return null;
   const home = binding.workplace;
-  const b = world.tryGet(home, Building);
-  if (b === undefined || b.tribe !== tribe) return null; // gone / wrong tribe
-  if (farmWorkGood(world, ctx, home) === null) return null; // not a field producer — no haul-out rung
-  if (isFieldWorkerOf(world, ctx, home, jobType)) return null; // the farmer banks IN; only the carrier clears
+  // Only a farm's CARRIER (same tribe, a field producer, not the field worker) hauls output out — the
+  // role gate shared with `deliveryTargetFor` case 3, so pickup and delivery routing can't disagree.
+  if (!isFarmCarrierHaulOutRole(world, ctx, home, jobType, tribe)) return null;
   if (!world.has(home, Stockpile) || !world.has(home, Position)) return null;
   const stock = world.get(home, Stockpile).amounts;
   for (const goodType of buildingProduces(world, ctx, home)) {

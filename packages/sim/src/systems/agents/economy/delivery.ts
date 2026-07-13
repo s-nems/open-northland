@@ -19,18 +19,7 @@ import { deliveryTargetFor } from './routing.js';
 export function planDelivery(plan: PlannerContext, load: { goodType: number; amount: number }): void {
   const { world, ctx, terrain, entity, here, targets } = plan;
   const worker = plan;
-  const store = deliveryTargetFor(
-    targets.stockpiles,
-    targets.constructionSites,
-    world,
-    ctx,
-    terrain,
-    here,
-    entity,
-    worker.jobType,
-    worker.tribe,
-    load.goodType,
-  );
+  const store = deliveryTargetFor(plan, load.goodType);
 
   if (store === null) {
     const workplace = world.tryGet(entity, JobAssignment)?.workplace;

@@ -1,4 +1,4 @@
-import { Position, Stockpile } from '../../../components/index.js';
+import { Building, Position, Stockpile } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { farmWorkGood } from '../../economy/farming.js';
@@ -14,6 +14,28 @@ export function isFieldWorkerOf(
 ): boolean {
   const spec = farmWorkGood(world, ctx, building);
   return spec !== null && jobAtomics(ctx, jobType).has(spec.plantAtomic);
+}
+
+/**
+ * Whether `home` is a farm whose OUTPUT this settler hauls OUT to storage: the building is a field
+ * producer of `tribe` (it carries a `farming` good — {@link farmWorkGood}) and the settler is its
+ * CARRIER, not its field worker. The shared role gate of the farm haul-out twins — the pickup side
+ * (`boundProducerOutputToHaul`) and the delivery-routing side (`deliveryTargetFor` case 3), which must
+ * agree or a carrier lifts a farm's output and then can't route it. A farmer banks its reaped crop INTO
+ * the farm; only the carrier clears it to central storage.
+ */
+export function isFarmCarrierHaulOutRole(
+  world: World,
+  ctx: SystemContext,
+  home: Entity,
+  jobType: number,
+  tribe: number,
+): boolean {
+  return (
+    world.tryGet(home, Building)?.tribe === tribe &&
+    farmWorkGood(world, ctx, home) !== null &&
+    !isFieldWorkerOf(world, ctx, home, jobType)
+  );
 }
 
 /** A positioned stockpile that accepts general deliveries rather than running a recipe. */
