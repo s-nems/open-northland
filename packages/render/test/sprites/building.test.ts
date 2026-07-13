@@ -10,6 +10,7 @@ import {
   resolveSpriteBobId,
   type SpriteBindings,
 } from '../../src/index.js';
+import { drawItem } from '../support/fixtures.js';
 
 /**
  * Unit tests for the building frame-selection resolvers — the per-type house bob, layer-qualified
@@ -20,7 +21,7 @@ import {
 describe('resolveSpriteBobId — per-type building binding', () => {
   /** A building draw item, optionally carrying its `buildingType` (the `Building.buildingType` typeId). */
   function building(typeId?: number): DrawItem {
-    return { kind: 'building', ref: 1, x: 0, y: 0, depth: 0, ...(typeId !== undefined ? { typeId } : {}) };
+    return drawItem('building', typeId !== undefined ? { typeId } : {});
   }
   // home=41, well=131, farm=60 (a subset of VIKING_HOUSE01_BOBS); an unmapped type falls back to 11.
   const bindings: SpriteBindings = {
@@ -53,7 +54,7 @@ describe('resolveSpriteBobId — per-type building binding', () => {
 describe('resolveBuildingDraw — layer-qualified (multi-.bmd) building binding', () => {
   /** A building draw item, optionally carrying its `buildingType` (the `Building.buildingType` typeId). */
   function building(typeId?: number): DrawItem {
-    return { kind: 'building', ref: 1, x: 0, y: 0, depth: 0, ...(typeId !== undefined ? { typeId } : {}) };
+    return drawItem('building', typeId !== undefined ? { typeId } : {});
   }
   // typeId 10 = a plain bob (default layer); typeId 1 = the viking HQ in its own family (viking4 bob 34).
   const binding: BuildingTypeBinding = {
@@ -97,15 +98,7 @@ describe('resolveBuildingDraw — layer-qualified (multi-.bmd) building binding'
 describe('resolveConstructionDraws — construction-stage stack for an under-construction building', () => {
   /** A building draw item at a given construction progress percent (omit = finished). */
   function site(typeId: number, builtPct?: number): DrawItem {
-    return {
-      kind: 'building',
-      ref: 1,
-      x: 0,
-      y: 0,
-      depth: 0,
-      typeId,
-      ...(builtPct !== undefined ? { builtPct } : {}),
-    };
+    return drawItem('building', { typeId, ...(builtPct !== undefined ? { builtPct } : {}) });
   }
   // The viking-home shape: foundation 0-50, scaffold 10-70, body 20-100 (stacking = list order); the
   // body stage is layer-qualified to show a family stage resolves like a family body.
@@ -151,16 +144,11 @@ describe('resolveConstructionDraws — construction-stage stack for an under-con
 describe('resolveBuildingOverlayDraw — the animated state overlay (the mill rotor)', () => {
   /** A mill draw item: finished by default; `working` = mid production cycle. */
   function mill(opts: { working?: boolean; builtPct?: number; typeId?: number } = {}): DrawItem {
-    return {
-      kind: 'building',
-      ref: 1,
-      x: 0,
-      y: 0,
-      depth: 0,
+    return drawItem('building', {
       typeId: opts.typeId ?? 13,
       ...(opts.working !== undefined ? { working: opts.working } : {}),
       ...(opts.builtPct !== undefined ? { builtPct: opts.builtPct } : {}),
-    };
+    });
   }
   // The viking mill shape: bladeless body 70, still blade 76, a 3-frame spin cycle at 2 ticks/frame,
   // all in the `miller` family layer.
@@ -219,7 +207,7 @@ describe('finishedBuildingBobKeys — the finished-sprite set excluded from the 
     expect(finished.has(bobKey({ bob: 2 }))).toBe(false);
     expect(finished.has(bobKey({ bob: 3 }))).toBe(false);
     // Filtering the stage stack by this set drops the finished body (bob 1), keeps the scaffold (2, 3).
-    const midBuild: DrawItem = { kind: 'building', ref: 1, x: 0, y: 0, depth: 0, typeId: 2, builtPct: 40 };
+    const midBuild = drawItem('building', { typeId: 2, builtPct: 40 });
     const scaffold = (resolveConstructionDraws(binding, midBuild) ?? []).filter(
       (d) => !finished.has(bobKey(d)),
     );

@@ -12,6 +12,7 @@ import {
   type SpriteAtlas,
   type SpriteBindings,
 } from '../../src/index.js';
+import { drawItem } from '../support/fixtures.js';
 
 /**
  * Unit tests for the settler animation PLAYBACK — the per-state frame pick, the directional
@@ -22,15 +23,10 @@ import {
 describe('resolveSpriteFrame — per-state settler binding', () => {
   /** A settler draw item in a given state (+ optional atomic id). */
   function settler(state?: SpriteState, atomicId?: number): DrawItem {
-    return {
-      kind: 'settler',
-      ref: 1,
-      x: 0,
-      y: 0,
-      depth: 0,
+    return drawItem('settler', {
       ...(state !== undefined ? { state } : {}),
       ...(atomicId !== undefined ? { atomicId } : {}),
-    };
+    });
   }
 
   /** An atlas with a distinct frame per state bob: idle=10, moving=11, acting=12, chop=13. */
@@ -99,17 +95,12 @@ describe('resolveSpriteFrame — per-state settler binding', () => {
 describe('resolveSpriteBobId — directional animated binding', () => {
   /** A settler draw item with an explicit facing + the resolver's other inputs. */
   function settler(state: SpriteState, facing?: number, atomicId?: number, elapsed?: number): DrawItem {
-    return {
-      kind: 'settler',
-      ref: 1,
-      x: 0,
-      y: 0,
-      depth: 0,
+    return drawItem('settler', {
       state,
       ...(facing !== undefined ? { facing } : {}),
       ...(atomicId !== undefined ? { atomicId } : {}),
       ...(elapsed !== undefined ? { elapsed } : {}),
-    };
+    });
   }
   const WALK: DirectionalAnim = { start: 1988, dirs: 8, stride: 12 };
   const CHOP: DirectionalAnim = { start: 5106, dirs: 8, stride: 15 };
@@ -190,17 +181,12 @@ describe('resolveSpriteBobId — directional animated binding', () => {
 
 describe('resolveSpriteBobId — FrameListAnim (explicit per-direction attack layout)', () => {
   function settler(state: SpriteState, facing?: number, atomicId?: number, elapsed?: number): DrawItem {
-    return {
-      kind: 'settler',
-      ref: 1,
-      x: 0,
-      y: 0,
-      depth: 0,
+    return drawItem('settler', {
       state,
       ...(facing !== undefined ? { facing } : {}),
       ...(atomicId !== undefined ? { atomicId } : {}),
       ...(elapsed !== undefined ? { elapsed } : {}),
-    };
+    });
   }
   const ATTACK = 81;
   const STAND: DirectionalAnim = { start: 100, dirs: 8, stride: 4, frames: 1 };

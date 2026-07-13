@@ -9,6 +9,7 @@ import {
   type SettlerStateBinding,
   type SpriteBindings,
 } from '../../src/index.js';
+import { drawItem } from '../support/fixtures.js';
 
 /**
  * Unit tests for the settler GAIT OVERRIDES and per-job pick — the engaged (aggressive) and carrying
@@ -17,16 +18,11 @@ import {
 
 describe('resolveSpriteBobId — engaged (aggressive) gait override', () => {
   function settler(state: SpriteState, engaged: boolean, facing = 0): DrawItem {
-    return {
-      kind: 'settler',
-      ref: 1,
-      x: 0,
-      y: 0,
-      depth: 0,
+    return drawItem('settler', {
       state,
       facing,
       ...(engaged ? { engaged: true } : {}),
-    };
+    });
   }
   const WALK: DirectionalAnim = { start: 1000, dirs: 8, stride: 12 };
   const STAND: DirectionalAnim = { start: 1000, dirs: 8, stride: 12, frames: 1 };
@@ -65,18 +61,13 @@ describe('resolveSpriteBobId — carrying (loaded-gait) override', () => {
     state: SpriteState,
     opts: { facing?: number; atomicId?: number; elapsed?: number; carrying?: boolean } = {},
   ): DrawItem {
-    return {
-      kind: 'settler',
-      ref: 1,
-      x: 0,
-      y: 0,
-      depth: 0,
+    return drawItem('settler', {
       state,
       ...(opts.facing !== undefined ? { facing: opts.facing } : {}),
       ...(opts.atomicId !== undefined ? { atomicId: opts.atomicId } : {}),
       ...(opts.elapsed !== undefined ? { elapsed: opts.elapsed } : {}),
       ...(opts.carrying ? { carrying: true } : {}),
-    };
+    });
   }
   const WALK: DirectionalAnim = { start: 1988, dirs: 8, stride: 12 };
   const STAND: DirectionalAnim = { start: 1988, dirs: 8, stride: 12, frames: 1 };
@@ -152,17 +143,12 @@ describe('resolveSpriteBobId — carrying (loaded-gait) override', () => {
 describe('resolveSpriteBobId — per-good carry look (carrying.byGood)', () => {
   /** A hauling settler item carrying a specific good (or none — the generic loaded look). */
   function hauler(state: SpriteState, facing: number, carryGood?: number): DrawItem {
-    return {
-      kind: 'settler',
-      ref: 1,
-      x: 0,
-      y: 0,
-      depth: 0,
+    return drawItem('settler', {
       state,
       facing,
       carrying: true,
       ...(carryGood !== undefined ? { carryGood } : {}),
-    };
+    });
   }
   const WALK: DirectionalAnim = { start: 1988, dirs: 8, stride: 12 };
   const WALK_WOOD: DirectionalAnim = { start: 4580, dirs: 8, stride: 12 };
