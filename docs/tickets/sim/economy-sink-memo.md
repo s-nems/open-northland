@@ -1,6 +1,6 @@
 # Add a per-tick deliverable-sink memo to kill the O(stockpiles²) carrier path
 
-**Area:** sim · **Origin:** sim-perf plan reconciliation, 2026-07-12
+**Area:** sim · **Origin:** sim-perf plan reconciliation, 2026-07-12 · **Priority:** P2
 
 `nearestWorkplaceOutput` (`packages/sim/src/systems/agents/targets/stores/outputs.ts`) and
 `workplaceOutputToHaul` (`packages/sim/src/systems/agents/economy/workshop/supply.ts`) call the

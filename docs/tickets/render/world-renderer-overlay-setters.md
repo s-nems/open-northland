@@ -1,6 +1,6 @@
 # Collapse WorldRenderer's near-identical overlay setters
 
-**Area:** render · **Origin:** /refactor-cleanup on packages/render, 2026-07-12
+**Area:** render · **Origin:** /refactor-cleanup on packages/render, 2026-07-12 · **Priority:** P3
 
 `gpu/world-renderer.ts` is a 460-line orchestrator/facade. Beyond the `update`
 signature (already fixed → `WorldFrame`), it carries four near-identical world-space

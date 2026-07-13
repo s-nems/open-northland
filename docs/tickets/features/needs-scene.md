@@ -1,7 +1,7 @@
 # Add a ?scene=needs acceptance scene for the drain→starve→death chain
 
 **Area:** app · **Origin:** original-ui plan reconciliation, 2026-07-12 · **Blocked by:**
-[hunger-notifications](hunger-notifications.md) (the checklist references the warning it adds)
+[hunger-notifications](hunger-notifications.md) (the checklist references the warning it adds) · **Priority:** P3
 
 The sim chain is fully implemented and unit-tested (`packages/sim/test/lifecycle/
 needs-system.test.ts` starves a settler to a `settlerDied` with `cause:'starvation'`), and the

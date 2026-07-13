@@ -1,6 +1,6 @@
 # Model DrawItem as a kind-discriminated union
 
-**Area:** render · **Origin:** /refactor-cleanup on packages/render, 2026-07-13
+**Area:** render · **Origin:** /refactor-cleanup on packages/render, 2026-07-13 · **Priority:** P3
 
 `data/scene/draw-item.ts` `DrawItem` is one flat struct of ~20 independent optional
 fields, but `kind` actually determines which are valid:

@@ -1,6 +1,6 @@
 # Join palisades/walls into continuous runs (investigate-first)
 
-**Area:** app (possibly pipeline) · **Origin:** map-visual-fidelity plan reconciliation, 2026-07-12
+**Area:** app (possibly pipeline) · **Origin:** map-visual-fidelity plan reconciliation, 2026-07-12 · **Priority:** P3
 
 `loadMapObjects` (`packages/app/src/content/objects.ts`) draws one sprite per placement with no
 neighbour awareness; the bridge map places only `wall_03` (a 15×71 single post), so palisade runs

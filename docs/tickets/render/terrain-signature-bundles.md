@@ -1,6 +1,6 @@
 # Bundle the terrain/field build signatures (GridDims + TerrainBuildContext)
 
-**Area:** render · **Origin:** /refactor-cleanup on packages/render, 2026-07-12
+**Area:** render · **Origin:** /refactor-cleanup on packages/render, 2026-07-12 · **Priority:** P3
 
 Two families of parameters always travel together through the terrain + per-cell
 field builders and should collapse into a domain object, per the "sprawling

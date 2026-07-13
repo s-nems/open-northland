@@ -1,14 +1,15 @@
 # Bound the app-side viewport-less buildSpriteScene scans
 
-**Area:** app · **Origin:** /refactor-cleanup on packages/render, 2026-07-13
+**Area:** app · **Origin:** /refactor-cleanup on packages/render, 2026-07-13 · **Priority:** P3
 
 Several app-side callers run `buildSpriteScene(snapshot)` with NO viewport — a full
 O(entities) project + depth-sort — for hit-test / tooltip / worker lookups that only
 need a handful of ids:
 
-- `view/unit-targets.ts:51` and `:89` call `buildSpriteScene(snap)` (no viewport) to
-  resolve a click/target against the whole snapshot's projected items — one full
-  project+sort per lookup.
+- `view/unit-targets.ts:51` (`owned()`), `:75` (`enemies()`, which passes
+  `{ fogVisible }` but still no viewport), and `:89` (`flags()`) each call
+  `buildSpriteScene(snap)` to resolve a click/target against the whole snapshot's
+  projected items — one full project+sort per lookup.
 - `hud/details-panel/worker-sprites.ts:115-116` call `buildSpriteScene(workerScene)`
   TWICE (once plain, once `{ keepIndoorSettlers: true }`) to resolve ~8 worker ids.
   The scene is already narrowed to the workers (see the comment at `:103`), so the

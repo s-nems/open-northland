@@ -1,7 +1,7 @@
 # Play the tree-falling frames as a render transient on resourceFelled
 
 **Area:** render (+ app content binding) · **Origin:** gathering-economy plan reconciliation,
-2026-07-12
+2026-07-12 · **Priority:** P3
 
 Felled trees swap instantly to stump + trunk. The original has a mid-fall state:
 `packages/app/src/content/resource-gfx/stump.ts` binds the debris and notes "the `tree_dead falling`

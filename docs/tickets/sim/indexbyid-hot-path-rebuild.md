@@ -1,13 +1,20 @@
 # Stop rebuilding `indexById` maps inside per-command / per-spawn sim handlers
 
+**Area:** sim · **Origin:** data+pipeline refactor review (deferred finding), 2026-07-13 · **Priority:** P3
+
 `@vinland/data`'s `indexById(items)` (`packages/data/src/lookup.ts`) builds a fresh
 `Map<number, T>` on every call — its doc even says "build maps once, index many times." Four sim
 call sites instead call it **inside** a per-command / per-spawn handler, so they rebuild the whole
-map from the content table every invocation:
+map from the content table every invocation (re-verify with a grep for `indexById(` under
+`packages/sim/src` — line numbers drift):
 
-- `packages/sim/src/systems/command.ts:220` and `:271`
-- `packages/sim/src/systems/conflict/spawn.ts:62`
-- `packages/sim/src/systems/conflict/orders.ts:171`
+- `packages/sim/src/systems/command/index.ts:211` — the `debugFillStockpile` command handler,
+  `indexById(ctx.content.buildings)`
+- `packages/sim/src/systems/command/placement.ts:51` — `placeBuilding`,
+  `indexById(ctx.content.buildings)`
+- `packages/sim/src/systems/conflict/spawn.ts:62` — `createSettler`, `indexById(content.jobs)`
+- `packages/sim/src/systems/orders/work.ts:45` — the `setJob` command handler,
+  `indexById(ctx.content.jobs)`
 
 The content tables are small, so this is not `entities²` — but it is avoidable per-call allocation
 on the command/spawn path (RTS-scale budget, root `AGENTS.md` rule 6), the same class of hot-path
@@ -25,7 +32,7 @@ with the sim's existing content-index memoization, not the data package.
 - Route these four call sites through a **memoized** index rather than a per-call rebuild. The
   established pattern is `core/content-index.ts` (WeakMap-memoized O(1) maps over a `ContentSet`,
   each reproducing the duplicate-key semantics of the scan it replaced) — add the
-  building/job/vehicle `typeId` indexes there (or reuse an existing one) and have the handlers read
+  building/job `typeId` indexes there (or reuse an existing one) and have the handlers read
   the memoized map.
 - Keep the returned lookup's semantics identical (last-wins on duplicate `typeId`, same
   `ReadonlyMap<number, T>` shape) so no decision changes — this is a pure allocation/perf fix.

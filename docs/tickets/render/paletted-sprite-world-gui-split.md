@@ -1,6 +1,6 @@
 # Split PalettedSprite's world vs. GUI concerns
 
-**Area:** render, app · **Origin:** /refactor-cleanup on packages/render, 2026-07-12
+**Area:** render, app · **Origin:** /refactor-cleanup on packages/render, 2026-07-12 · **Priority:** P3
 
 `gpu/paletted-sprite/paletted-sprite.ts` (the `PalettedSprite` class, ~273 lines;
 its GL program now lives in the sibling `gpu/paletted-sprite/shader.ts`) still

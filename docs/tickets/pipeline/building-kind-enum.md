@@ -1,5 +1,7 @@
 # Type `BuildingType.kind` as a closed enum
 
+**Area:** data (+ pipeline, app consumers) · **Origin:** data schema refactor review, 2026-07-12 · **Priority:** P3
+
 `packages/data` `schema/economy/workplaces.ts` — `BuildingType.kind` is `z.string()` with a JSDoc
 that enumerates a **closed** set (`storage | home | workplace | training | tower | vehicle |
 wonder`). Typing it as a free string is the "enum expressed as a string" smell flagged during the

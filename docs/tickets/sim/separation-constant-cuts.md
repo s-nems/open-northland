@@ -1,6 +1,6 @@
 # Cut separationSystem constants: numeric NodeBuckets keys + reused scratch structures
 
-**Area:** sim · **Origin:** sim-perf plan reconciliation, 2026-07-12
+**Area:** sim · **Origin:** sim-perf plan reconciliation, 2026-07-12 · **Priority:** P3
 
 Profiled 2026-07-11 (throwaway `SYSTEM_ORDER` timer over `dist/`): 2000 owned civilian walkers in
 dense two-way cross-traffic = **16.3 ms/tick in `separationSystem`** (worst-case stress; realistic

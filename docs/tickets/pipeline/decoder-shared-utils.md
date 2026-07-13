@@ -1,57 +1,74 @@
 # Consolidate duplicated decoder/stage machinery in asset-pipeline
 
-`tools/asset-pipeline/src` — the decoders and stages re-roll the same low-level machinery in many
-places. Each item below is real duplication with 2+ call sites (found during the data+pipeline
-refactor; the ini god-module and buildings-gfx dedup already landed — this is the cross-decoder
-remainder). All are behavior-preserving: the 397 round-trip tests + a byte-identical `content/`
-regeneration guard them. Do them as separate commit-sized units; a shared util lives in a new
-`src/decoders/bytes/` (or similar) feature folder, not a flat `utils/`.
+**Area:** pipeline · **Origin:** data+pipeline refactor review, 2026-07-12 (re-anchored 2026-07-13
+after the mapdat/gui module splits) · **Priority:** P3
 
-## 1. Adopt the shared `ByteCursor` at the inline-`DataView` sites
-The reader consolidation **landed** (`decoders/byte-cursor.ts`: `ByteCursor` + `readCMemory` +
-`LATIN1`): the three near-identical class readers were unified onto it, so `ByteReader`/`LibReader`
-no longer exist and `bmd.ts`/`cif.ts`/`lib.ts` use `ByteCursor`. **Remaining:** the sites that still
-re-roll inline `new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)` + explicit-LE getters
-were not migrated — `decoders/{mapdat/layers.ts, palette.ts, fnt.ts, cursor.ts, pcx.ts, png.ts}` (and
-the leftover raw reads in `bmd.ts`/`cif.ts`). Adopt `ByteCursor` there, and fold the `[u32 id][u32
-version]` storable header (`palette.ts`, `bmd.ts`, `fnt.ts`) onto it. The lone remaining `ByteWriter`
-(`bmd.ts`) has no duplicate and can stay.
+`tools/asset-pipeline/src` — the decoders and stages re-roll the same low-level machinery in several
+places. Each item below is real duplication with 2+ call sites (re-verified 2026-07-13; the ini
+god-module dedup, the class-reader unification, the ASCII-encode fold, and the gui/font LUT-helper
+extraction already landed — this is the remainder). All are behavior-preserving: the round-trip test
+suite + a byte-identical `content/` regeneration guard them. Do them as separate commit-sized units;
+byte-reading utils extend `decoders/byte-cursor.ts`, colour utils live beside the palette decoders —
+no flat `utils/`. Anchors below are file + symbol (line numbers rot).
 
-## 2. Palette / RGBA utilities
-- Indexed→RGBA expansion (`p=idx*3; rgba[o..o+3]=pal[p..]`) is implemented 3×: `pcx.ts:130`
-  (`expandToRgba`), `atlas.ts:81` (`expandBobFrame`), `player-palette.ts:215` (`buildPlayerLutImage`).
-- The 768-byte / "256 RGB triples" palette-size assertion has 5 copies, each its own message:
-  `atlas.ts:76`, `pcx.ts:123`, `palette.ts:92`, `player-palette.ts:97`, `cursor.ts:250`.
-- The palette shadow-lift colour math (`stages/gui.ts:269 liftPaletteShadows` + luma/HSV arithmetic)
-  is a colour-domain concern buried in a wiring stage — move it beside the palette utils.
+## Scope
 
-## 3. One case-insensitive path resolver
-Three implementations answer "resolve a mixed-case path": `stages/bmd.ts:51 indexOutTree` (normalized
-`rel→realPath` map; `player-colors.ts:51` then recomputes the same key by hand), `stages/game-file.ts:25
-readGameFile` (leaf-only case-fold), `stages/maps/case-path.ts:12 findPathCaseInsensitive` (per-segment).
-Unify to one resolver.
+### 1. Adopt the shared `ByteCursor` at the inline-`DataView` read sites
 
-## 4. Shared LUT-PNG emit template
-`encodePng(buildPlayerLutImage(ordered))` + `mkdir(BOBS_DIR)` + `writeFile(<stem>.png)` is copied at
-`stages/gui.ts:217`, `stages/goods.ts:390`, `stages/fonts.ts:140`, `stages/player-colors.ts:84`. And
-`stages/gui.ts:201 convertGuiPaletteLut` ≈ `stages/fonts.ts:124 convertFontColorLut` structurally
-(read carriers → identity-fill missing → stack → write LUT). Extract one helper.
+`decoders/byte-cursor.ts` (`ByteCursor` + `asciiBytes` + `LATIN1`) and `readCMemory`
+(`decoders/cif.ts`) already replaced the old class readers. **Remaining:** decode paths that still
+re-roll `new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)` + explicit-LE getters —
+`decoders/mapdat/{container,layers,dictionary}.ts`, `decoders/palette.ts` (`decodePalette`),
+`decoders/fnt.ts` (`decodeFnt`), `decoders/cursor.ts` (`decodeCursor`), `decoders/pcx.ts`
+(`decodePcx`), `decoders/png.ts` (`decodePng`), plus the leftover raw reads in `decoders/bmd.ts`
+(`decodeBmd`'s bob/line table views) and `decoders/cif.ts` (the string-table offsets view). Adopt
+`ByteCursor` there, and fold the `[u32 id][u32 version]` storable-header read (`decodePalette`,
+`decodeBmd`, `decodeFnt`) onto it. Encoder-side `DataView`s over freshly allocated output buffers
+and the lone `ByteWriter` (`decoders/bmd.ts`) have no duplicate and stay.
 
-## 5. Generic RLE run/literal codec
-The high-bit run-vs-literal codec is written per element width: `mapdat.ts:310 unpackMapLayer`
-(bytes) and `mapdat.ts:479 unpackX6elLayer` (u16) differ only in element width; likewise their packers
-`mapdat.ts:360`/`532`. `bmd.ts:460 decodeBobFrame` and the 0xC0 variant in `pcx.ts:83` are related but
-diverge more — fold the two mapdat twins first, evaluate the others.
+### 2. Palette / RGBA utilities
 
-Also fold the two byte-identical ASCII-encode helpers `mapdat.ts:404 LATIN1ish` (misleading name — it
-is an ASCII *encoder*, not a latin1 decoder) and `lib.ts:169 asciiBytes`.
+- Indexed→RGBA expansion (`p = idx*3; rgba[o..o+3] = pal[p..]`) is implemented 3×:
+  `decoders/pcx.ts` `expandToRgba`, `decoders/atlas.ts` `expandBobFrame`,
+  `decoders/player-palette.ts` `buildPlayerLutImage`.
+- The 768-byte palette guard: the constant is shared (`PALETTE_RGB_BYTES`, `decoders/image.ts`) but
+  the assertion is copied with its own message 5×: `atlas.ts` `expandBobFrame`, `pcx.ts`
+  `expandToRgba` + `encodePcx`, `palette.ts` `encodePalette`, `player-palette.ts` `assertPalette`,
+  `cursor.ts` `encodeDib8`.
+- The palette shadow-lift colour math (`liftPaletteShadows`, now in
+  `stages/gui/window-bitmaps.ts`) is a colour-domain concern buried in a wiring stage — move it
+  beside the palette utils.
+
+### 3. One case-insensitive path resolver
+
+Three implementations answer "resolve a mixed-case path": `stages/bmd.ts` `indexOutTree`
+(normalized `rel→realPath` map; `stages/player-colors.ts` `readCreaturePalette` then recomputes the
+same normalized key by hand), `stages/game-file.ts` `readGameFile` (leaf-only case-fold),
+`stages/maps/case-path.ts` `findPathCaseInsensitive` (per-segment). Unify to one resolver.
+
+### 4. Shared LUT-PNG emit
+
+The gui/font halves already share `stages/game-file.ts` `buildPaletteLut`
+(`convertGuiPaletteLut`/`convertFontColorLut` are thin wrappers). **Remaining:** the raw
+`mkdir(BOBS_DIR)` + `writeFile(encodePng(buildPlayerLutImage(…)))` emit is still copied at
+`stages/goods.ts` (`convertGoodsStage`, the goods-palettes LUT), `stages/player-colors.ts`
+(`convertPlayerColorLut`), and inside `buildPaletteLut` itself — extract one write-LUT-PNG helper.
+
+### 5. Generic RLE run/literal codec
+
+The high-bit run-vs-literal codec is written per element width in `decoders/mapdat/layers.ts`:
+`unpackMapLayer`/`packMapLayer` (bytes) vs `unpackX6elLayer`/`packX6elLayer` (u16) differ only in
+element width. Fold those twins first; `decoders/bmd.ts` `decodeBobFrame` and the 0xC0 run codec in
+`decoders/pcx.ts` are related but diverge more — evaluate after.
 
 ## Verify
-`npm test` (397 round-trip tests), `npm run check`, `npm run build`. Then regenerate and diff:
+
+`npm test` (round-trip suite), `npm run check`, `npm run build`. Then regenerate and diff:
 `npm run pipeline -- --game "../Cultures 8th Wonder" --mod DataCnmd --out content` must leave
 `content/ir.json` (and the emitted atlases/LUTs) byte-identical to the pre-change baseline — a moved
 byte means a decode changed.
 
 ## Source basis
+
 Pure internal dedup; no mechanic/extraction semantics change. Decoder correctness is pinned by the
 existing OpenVikings-oracle round-trip fixtures.

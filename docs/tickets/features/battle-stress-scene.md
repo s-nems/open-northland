@@ -1,6 +1,6 @@
 # Add the battle-stress scene and prove combat scale
 
-**Area:** app (+ sim/render perf evidence) · **Origin:** combat plan reconciliation, 2026-07-12
+**Area:** app (+ sim/render perf evidence) · **Origin:** combat plan reconciliation, 2026-07-12 · **Priority:** P3
 
 `?scene=battle` exists (100 v 100 on a 34×42 map, `packages/app/src/scenes/battle.ts`) but the
 scale proof does not: no `battle-stress` scene, no measured ms/tick at hundreds-per-side. The

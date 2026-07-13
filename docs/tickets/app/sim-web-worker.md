@@ -1,6 +1,6 @@
 # Run the deterministic sim step in a Web Worker
 
-**Area:** app (+ sim seam) · **Origin:** sim-perf plan reconciliation, 2026-07-12
+**Area:** app (+ sim seam) · **Origin:** sim-perf plan reconciliation, 2026-07-12 · **Priority:** P2
 
 The fixed-timestep loop runs in-thread today: `packages/app/src/view/frame-loop.ts` creates
 `FixedTimestep` (L72) and calls `sim.step()` inside `timestep.advance(...)` (L98) on the RAF frame. No

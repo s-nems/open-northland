@@ -1,6 +1,7 @@
 # Memoize the HUD build per snapshot generation
 
-**Area:** render · **Origin:** /refactor-cleanup on packages/render, 2026-07-12
+**Area:** render · **Origin:** /refactor-cleanup on packages/render, 2026-07-12 ·
+**Blocked by:** [finish-packaging-splits](finish-packaging-splits.md) · **Priority:** P3
 
 `data/hud.ts` `buildHud` fully rebuilds the HUD model every call — it builds two
 `Map`s, spreads them to arrays, and sorts — and `layoutHud`/`placeHud` allocate row

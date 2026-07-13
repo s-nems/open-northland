@@ -1,6 +1,6 @@
 # Derive spatial-event location from the event's own `at`, not a hand-maintained kind list
 
-**Area:** audio · **Origin:** /refactor-cleanup audio branch (refactor/audio-cleanup), 2026-07-12
+**Area:** audio · **Origin:** /refactor-cleanup audio branch (refactor/audio-cleanup), 2026-07-12 · **Priority:** P3
 
 `packages/audio/src/data/director/events.ts` decides whether a sim event is located by an explicit
 half-cell `at` node or by its emitter entity via `isAtLocatedEvent`, which **enumerates the eight

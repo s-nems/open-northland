@@ -1,6 +1,6 @@
 # Fog ghost of a mined deposit loses its ladder denominator (`levels`)
 
-**Area:** render · **Origin:** /refactor-cleanup on packages/render, 2026-07-12
+**Area:** render · **Origin:** /refactor-cleanup on packages/render, 2026-07-12 · **Priority:** P3
 
 A live resource draw item carries both `level` (current fill) AND `levels` (the
 denominator), so the resolver can rescale the sim's ladder onto the bound record's

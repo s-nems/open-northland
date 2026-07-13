@@ -1,6 +1,7 @@
 # Confirm the montage-guessed GUI atlas frames with the user (human-oracle pass)
 
-**Area:** app (content metadata) · **Origin:** original-ui plan reconciliation, 2026-07-12
+**Area:** app (content metadata) · **Origin:** original-ui plan reconciliation, 2026-07-12 · **Priority:** P3
+**Needs user:** live naming Q&A with the user — not autonomously runnable.
 
 `packages/app/src/content/gui-atlas-map.ts` is total over the 193-frame `ls_gui_window` sheet
 (totality enforced by `packages/app/test/gui-atlas-map.test.ts`) but only 20 frames are

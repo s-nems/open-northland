@@ -1,7 +1,7 @@
 # Implement tower garrisons and defence mode
 
 **Area:** sim + app · **Origin:** combat plan reconciliation, 2026-07-12 · **Blocked by:**
-[building-combat-damage](building-combat-damage.md)
+[building-combat-damage](building-combat-damage.md) · **Priority:** P2
 
 No garrison fire, no defence-mode command exists (`core/commands.ts` has neither).
 

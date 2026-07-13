@@ -1,7 +1,7 @@
 # Extract LogicConstructionWorkArea and stand builders on the data's work cells
 
 **Area:** pipeline + sim (+ data schema) · **Origin:** gathering-economy plan reconciliation,
-2026-07-12
+2026-07-12 · **Priority:** P2
 
 Builder work slots use a uniform door-anchored yard placeholder: `claimWorkCell` takes the walkable
 region within `WORK_YARD_RADIUS_NODES = 4` of the site's `interactionCell` (flagged PLACEHOLDER in

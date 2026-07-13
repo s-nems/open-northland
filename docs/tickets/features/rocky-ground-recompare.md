@@ -1,6 +1,6 @@
 # Re-compare the rocky-hill layout vs the original after the mesh rebuild (survey)
 
-**Area:** render/docs · **Origin:** map-visual-fidelity plan reconciliation, 2026-07-12
+**Area:** render/docs · **Origin:** map-visual-fidelity plan reconciliation, 2026-07-12 · **Priority:** P3
 
 The owner reported the rocky-hill layout differing from the original. Since then the terrain mesh
 was rebuilt on the original tessellation with `emt` transition overlays, and the elevation divisor

@@ -1,7 +1,7 @@
 # Implement catapult/siege combat (parked — data pinned, deliberately deferred)
 
 **Area:** sim + render + app · **Origin:** combat plan reconciliation, 2026-07-12 · **Blocked by:**
-[building-combat-damage](building-combat-damage.md), [tower-defence-mode](tower-defence-mode.md)
+[building-combat-damage](building-combat-damage.md), [tower-defence-mode](tower-defence-mode.md) · **Priority:** P3
 
 Deliberately out of scope until field combat, building damage, and towers are complete. This
 ticket parks the extracted data so it survives the retired combat plan (full research in git

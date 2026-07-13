@@ -1,6 +1,6 @@
 # Draw pooled world-space HP bars over damaged combatants
 
-**Area:** render + app · **Origin:** combat plan reconciliation, 2026-07-12
+**Area:** render + app · **Origin:** combat plan reconciliation, 2026-07-12 · **Priority:** P2
 
 The render snapshot carries no health today and `world-renderer.ts` has no HP-bar sub-layer; the
 only health readout is the selected-unit gauge in the details panel (`hud/details-panel/model.ts`,

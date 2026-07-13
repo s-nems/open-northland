@@ -1,6 +1,6 @@
 # Drive needs drain rates from the extracted atomic animation events
 
-**Area:** sim + pipeline · **Origin:** original-ui plan reconciliation, 2026-07-12
+**Area:** sim + pipeline · **Origin:** original-ui plan reconciliation, 2026-07-12 · **Priority:** P2
 
 Needs drain is a named constant stand-in today (`ONE/4096`/tick hunger,
 `packages/sim/src/systems/lifecycle/needs.ts`) — NOT the original's per-animation event scale. The

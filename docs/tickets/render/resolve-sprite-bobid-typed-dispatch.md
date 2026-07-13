@@ -1,6 +1,7 @@
 # Remove the `as` casts in resolveSpriteBobId's per-kind dispatch
 
-**Area:** render · **Origin:** /refactor-cleanup on packages/render, 2026-07-13
+**Area:** render · **Origin:** /refactor-cleanup on packages/render, 2026-07-13 ·
+**Blocked by:** [draw-item-discriminated-union](draw-item-discriminated-union.md) · **Priority:** P3
 
 `data/sprites/resolve.ts` `resolveSpriteBobId` dispatches on `item.kind` and reaches
 into `bindings[kind]`, but TS can't narrow `bindings[item.kind]` to the specific

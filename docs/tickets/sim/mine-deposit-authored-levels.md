@@ -1,6 +1,6 @@
 # Map authored deposit growth levels to starting yield (split MineDeposit.initial from remaining)
 
-**Area:** sim + app · **Origin:** gathering-economy plan reconciliation, 2026-07-12
+**Area:** sim + app · **Origin:** gathering-economy plan reconciliation, 2026-07-12 · **Priority:** P2
 
 Imported-map deposits ignore their authored growth `levels`: a deposit authored below full growth
 (`lmlv`) draws its authored level statically but **spawns at FULL yield**, so its decal can JUMP to
@@ -13,7 +13,8 @@ The component split is already done: `MineDeposit` carries both `initial` and `r
 
 ## Scope
 
-- In map spawn (`spawnMapResources` / `packages/app/src/content/map-resources.ts`), map the authored
+- In map spawn — `spawnMapResources` (`packages/app/src/game/sandbox/place.ts`, ~line 220), which
+  wraps `mapResourceSpawns` (`packages/app/src/content/map-resources.ts`) — map the authored
   `objects.levels` (schema `packages/data/src/schema/maps/terrain/layers.ts`) to the starting
   `remaining`, leaving `initial` at the authored full size.
 
