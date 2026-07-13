@@ -40,11 +40,11 @@ lands, move its one-liner to Adopted and prune anything the codebase makes obsol
 - **Strict content schemas — unknown key = error.** A key the schema doesn't know is a typo or an
   unmodeled extractor field; both must fail loudly, not be silently stripped. (OpenRA's
   `--check-yaml` lint fails CI on unknown trait fields and dangling references, warnings-as-errors.)
-  → `z.strictObject` throughout `packages/data/src/schema.ts` + `validateCrossReferences`; proven
+  → `z.strictObject` throughout `packages/data/src/schema/` + `validateCrossReferences`; proven
   against a full real-pipeline run.
-- **Integer-only sim math, mechanically enforced.** Transcendental float ops and locale-dependent
-  APIs may differ across engines/platforms — banned by source scan, not convention. (OpenRA avoids
-  floats entirely: fixed-point coordinates, table-based trig at a power-of-two angle scale.)
+- **Integer-only sim math, mechanically enforced** — banned by source scan, not convention (the
+  contract: `packages/sim/AGENTS.md`). (OpenRA avoids floats entirely: fixed-point coordinates,
+  table-based trig at a power-of-two angle scale.)
   → `fixed.ts` (`fx.*`, `isqrt`) + the widened `test/core/hygiene.test.ts` scan.
 - **Cross-platform CI for the determinism promise.** Byte-identical state across platforms is a
   testable claim only if CI runs the goldens on more than one OS. → the ubuntu+macos matrix in

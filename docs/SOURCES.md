@@ -39,11 +39,10 @@ Counts observed in `Cultures 8th Wonder` (base `Data` + `DataX` + mod `DataCnmd`
     of construction cost, overlaid by `extractConstructionCosts` (the logic table has no cost key).
   - But **`housetypes`, `weapontypes`, `trianglepatterntypes`, and `atomicanimations` are
     `.cif`-only with no `.ini` twin**, and **every map is `map.cif`**. You cannot ship without them.
-  - ~~The genuine unknown is therefore **not decryption but the decrypted payload/record layout**.~~
-    **SOLVED** (see "CIF container format" below) and implemented in
-    `tools/asset-pipeline/src/decoders/cif.ts`.
+  - The decrypted payload/record layout is documented in "CIF container format" below and
+    implemented in `tools/asset-pipeline/src/decoders/cif.ts`.
 
-### CIF container format (solved)
+### CIF container format
 
 A `.cif` is a serialized **`CStorable`** object graph. Every object on disk is
 `[u32 id][u32 version][body]`; the factory (`XBStorable.cs`) maps ids to classes
@@ -73,8 +72,8 @@ its counts are smaller — see the ground-graphics section): `housetypes.cif`
 (798), `weapontypes.cif` (2995), `trianglepatterntypes.cif` (82 lines = **10** `TrianglePatternType`
 records: 10 headers + 72 properties), and `CnModMaps/tutorial_001/map.cif` (476, incl. `mapsize`,
 `mapguid`, `MissionData`). A map's **declarative logic-header metadata** (`mapsize`/`mapguid` from
-`logiccontrol` + `misc_maptype`/`misc_mapname`) is now extracted to a `MapInfo` IR record by
-`decoders/ini.ts` `extractMapInfo` and wired into the pipeline (`cli.ts` `decodeMapTree` → 13 maps).
+`logiccontrol` + `misc_maptype`/`misc_mapname`) is extracted to a `MapInfo` IR record by
+`decoders/ini/maps.ts` `extractMapInfo` and wired into the pipeline (`cli.ts` `decodeMapTree`).
 The map's **binary tile grid is NOT in `map.cif`** — that file is *only* the logic-header
 `CStringArray` (0 trailing bytes, confirmed on two real maps). The grid lives in the sibling
 **`map.dat`** (see below). The `map.cif` string-array ALSO carries the campaign layer as readable
@@ -99,7 +98,7 @@ the `[GfxHouse]` graphics sections the pipeline already walks (`extractBuildingB
 these placements (replacing the app's synthetic first-walkable-cells fallback) is a tracked slice —
 see `docs/tickets/`.
 
-### `map.dat` chunk container (grid + render lanes decoded; sim water/walkability pending)
+### `map.dat` chunk container
 
 The per-cell landscape grid + entity map sits beside `map.cif` as **`map.dat`** (e.g.
 `CnModMaps/tutorial_001/{map.cif 19 KB, map.dat 576 KB}`). It is a flat sequence of **`hoix`
@@ -143,13 +142,11 @@ group** (`emmm` → `embr`,`empa/empb`,`emt1..4`,`emla`,… → `xend`) then `te
     `landscapetypes.ini` typeId of the object standing there (`[GfxLandscape].LogicType` — clay-mine
     decals hold 12 = `mud_mine`, palms 4 = `tree`, wave fx 1 = `void`), raw **0 = no object**.
     `lmltToTerrainMap` reduces each cell's 2×2 half-cell block to the dominant value (0 → `void`).
-  - **Half-cell VERBATIM anchoring** (what the sim's collision join relies on): stamping each `emla`
-    placement's `LogicWalkBlockArea` offsets verbatim at its half-cell anchor aligns with the map's
-    own `lmlt` lane best — measured on `oasis_o_plenty` + `WICHRY_ZIMY`: ~55 % of stamped nodes hit
-    an lmlt-marked node at matching total magnitude (≈46k stamped vs ≈53k marked), the old ÷2 cell
-    collapse over-stamps ~2× at 33–42 % precision, and every ±1 anchor shift scores strictly worse
-    than zero shift. Best-available ALIGNMENT evidence, not a byte-exact proof (the residual sits in
-    unconsumed per-half-cell flags like `lmlv`).
+  - **Half-cell VERBATIM anchoring** (what the sim's collision join relies on): stamp each `emla`
+    placement's `LogicWalkBlockArea` offsets verbatim at its half-cell anchor — do NOT collapse to
+    ÷2 cells (that over-stamps ~2×), and do not shift the anchor. Source basis: alignment against
+    the maps' own `lmlt` lanes, not a byte-exact proof (the residual sits in unconsumed
+    per-half-cell flags like `lmlv`).
   - **`empa`/`empb`** (u16, per CELL) — the **1:1 ground pattern per triangle** (A/B): an index into
     the map's own `eapd` pattern-name dictionary → a `pattern.cif` `[GfxPattern]`. **The editor bakes
     its pattern algorithm's OUTPUT into the save** — no algorithm needs reversing for 1:1 ground.
@@ -165,30 +162,29 @@ group** (`emmm` → `embr`,`empa/empb`,`emt1..4`,`emla`,… → `xend`) then `te
     (unconsumed). **`emt1..emt4`** (u8, per cell, 255 = none) — the per-TRIANGLE **transition
     overlays** (see "terrain tessellation" below): `emt1`/`emt2` = layer 1 (topmost) for triangles
     A/B, `emt3`/`emt4` = layer 2; a value `v < 255` selects transition `⌊v/6⌋` from the map's
-    `eatd` dictionary and pair variant `v % 6` of the record's six UV pairs. The earlier
-    "superseded roads/foundations overlays" reading was wrong — these lanes ARE the organic
-    biome-seam look.
+    `eatd` dictionary and pair variant `v % 6` of the record's six UV pairs — these lanes are the
+    organic biome-seam look.
 - The record-list chunks are **name dictionaries + object tables**: `eapd` = the `[GfxPattern]`
   EditName list (927, positional — how a map references patterns version-robustly BY NAME), `eald` =
   the `[GfxLandscape]` EditName list (866), `eatd` = the `transitions.cif` `[transition]` name list
-  (38 — the `emt*` lanes' `⌊v/6⌋` join target);
-  `laco`/`lasw`/`lafm` are binary record lists (coords + ids — unconsumed). Grammar: `[u32 count]`
+  (38 — the `emt*` lanes' `⌊v/6⌋` join target). Grammar: `[u32 count]`
   then `[u8 len][bytes][0x00]` per entry (`decodeStringListChunk`).
+  `laco`/`lasw`/`lafm` are undecoded binary record lists (coords + ids) — role unknown, likely
+  editor-only.
 
-**Status:** container + both packed codecs + the dictionaries are decoded, and the pipeline emits the
-full render model per map (`stages/maps.ts` `mapDatToTerrain`): the sim grid (`typeIds`, from `lmlt`)
-+ `ground` (per-triangle pattern names, from `empa`/`empb`+`eapd`) + `objects` (sparse half-cell
-placements, from `emla`+`eald`) → `content/maps/<id>.json`, all consumed by the renderer end-to-end
-(`?map=<id>`); the per-cell `elevation` lane (raw height, from `lmhe` — 1 byte/cell, 0..250 observed) rides
-along too (`elevationFromMapDat`) and is consumed by the render elevation lift
-(`packages/render/src/data/elevation.ts`), and the per-cell `brightness` lane (baked shading, from
-`embr` — 1 byte/cell, 127 = neutral, border rows 0) is consumed by the ground's per-fragment shading
-+ the landscape-object anchor multiplier, response curve luminance × embr/127 measured against the
-reference corpus (`packages/render/src/data/brightness.ts`); and the `transitions` layer
-(`emt1..emt4` + `eatd`, verbatim — `transitionsFromMapDat`) is consumed by the ground's
-per-triangle transition compositing (see "terrain tessellation" below). **Remaining:**
-`lmpa`/`lmpb` → sim water/walkability, `laco`/`lasw`/`lafm`. (No decoded
-bytes are committed — `map.dat` is copyrighted input, like every other game file.)
+The pipeline emits the render model per map (`stages/maps.ts` `mapDatToTerrain`) →
+`content/maps/<id>.json`, consumed by the renderer end-to-end (`?map=<id>`): the sim grid
+(`typeIds`, from `lmlt`) + `ground` (per-triangle pattern names, from `empa`/`empb`+`eapd`) +
+`objects` (sparse half-cell placements, from `emla`+`eald`). The `elevation` lane (`lmhe` — 1 byte/cell,
+0..250 observed; `elevationFromMapDat`) feeds the render elevation lift
+(`packages/render/src/data/elevation.ts`); the `brightness` lane (`embr` — 1 byte/cell, 127 = neutral,
+border rows 0) feeds the ground's per-fragment shading + the landscape-object anchor multiplier
+(response curve luminance × embr/127, measured against the reference corpus —
+`packages/render/src/data/brightness.ts`); the `transitions` layer (`emt1..emt4` + `eatd`, verbatim —
+`transitionsFromMapDat`) feeds the ground's per-triangle transition compositing (see "terrain
+tessellation" below). Consuming `lmpa`/`lmpb` for sim water/walkability is ticketed:
+`docs/tickets/pipeline/map-triangle-walkability.md`. (No decoded bytes are committed — `map.dat` is
+copyrighted input, like every other game file.)
 - **Atomic actions are the behavior vocabulary** (see docs/ECS.md) and are partly free in readable
   data: `tribetypes.ini` `setatomic` (atomic→animation per tribe), `jobtypes.ini` `allowatomic`,
   `goodtypes.ini` `atomicFor*`. The atomic *timings/effects* live in `atomicanimations.cif` — **but
@@ -207,7 +203,7 @@ bytes are committed — `map.dat` is copyrighted input, like every other game fi
   loads archives, renders intro — but the **game simulation is not implemented** (its logic tick
   dispatcher just increments a counter). So it helps us with *formats*, not with *mechanics*.
 
-### Terrain ground graphics + landscape objects (data model mapped — render WIRED 1:1)
+### Terrain ground graphics + landscape objects
 
 Two graphics families sit beside the map grid; **both decode with existing decoders** (`.bmd`/`.pcx`/`.cif`).
 
@@ -246,7 +242,7 @@ Two graphics families sit beside the map grid; **both decode with existing decod
   texture+mask pair into one RGBA `<stem>.masked.png` (`composeMaskedTransitionPages`) that the
   renderer alpha-blends over the base ground triangles.
 
-### Terrain tessellation (the original ground mesh — render REBUILT on it)
+### Terrain tessellation (the original ground mesh)
 
 ![The original engine's staggered field lattice](images/field-geometry-staggered-lattice.png)
 
@@ -265,9 +261,7 @@ as cell centres here.
 Source basis: **martianboy/cultures2-gl + cultures2-wasm** (MIT) — a working WebGL renderer of
 Cultures 2 maps whose output matches the original; read as a format/geometry oracle (its
 `tessellate.rs` vertex builder, `texture.ts` lane→triangle/UV mapping, `ground/*.glsl` compositing,
-and `map.ts` section table pin everything below). This retro-explains the failed
-`fix/terrain-transitions` branch: the old diamond-per-cell mesh was the wrong geometry, so every
-orientation/stencil heuristic fitted to it was an epicycle.
+and `map.ts` section table pin everything below).
 
 - **Mesh vertices are CELL-CENTRE NODES** (cell `(c,r)` ↔ node `(2c+(r&1), 2r)` on the half-cell
   lattice). Per cell, TWO triangles span BETWEEN neighbouring centres: **A = △ [own, SE-below,
@@ -293,8 +287,8 @@ orientation/stencil heuristic fitted to it was an epicycle.
 Implemented in `packages/render/src/data/terrain.ts` (pure lattice/UV math, unit-tested) +
 `gpu/terrain/terrain-layer.ts` (chunked meshes; overlays as translucent per-page meshes composited
 by child order).
-- **The 1:1 pattern choice is NOT algorithm-blocked — it is stored in the map.** The earlier "oracle-blocked
-  pattern algorithm" reading was wrong: the `empa`/`empb` lanes hold the final per-triangle `GfxPattern` pick
+- **The 1:1 pattern choice is stored in the map — no algorithm needs reversing.** The `empa`/`empb`
+  lanes hold the final per-triangle `GfxPattern` pick
   (via the `eapd` name dictionary), i.e. the editor runs its placement algorithm at AUTHOR time and bakes the
   result into `map.dat`. The renderer replays it verbatim (`TerrainLayer.buildGround`), so decoded maps
   draw coastlines/transition blocks exactly; only a SYNTHETIC grid still uses the approximated per-typeId
@@ -391,25 +385,11 @@ history, deleted 2026-07-12):
   (`skeleton_falling → skeleton`); `extractLandscapeGfx` already emits the cadaver records among
   its 866.
 
-### Reference-screenshot corpus + template matching (map-visual verification kit)
+### Reference-screenshot corpus
 
-The pixel-oracle kit for comparing our render against the original (used by the map-visual
-tickets; the owner is the pixel oracle — never self-sign a visual):
-
-- **Corpus:** `~/Projects/vikings/reference-shots/mosty-na-rzece-toprow/mosty-{1..7}.png` — the
-  full 250-column top strip of `specjalna_mosty_na_rzece`, left→right with small overlaps,
-  capture scale exactly **1.25× native art px** (pinned by 5 building templates). Read-only,
-  outside the repo.
-- **Pinned mosty-5 viewport mapping** (north base, 19-building sub-pixel lattice fit):
-  `img_x = −11996.0 + 42.4958·hx`, `img_y = 240.2 + 23.766·hy − 1.547·elev(hx/2, hy/2)`; native
-  px = image px ÷ 1.25. Caveat: the `−1.547·elev` coefficient and the residual offset ≈ (−59,−15)
-  px were fitted against the OLD ≈1.24 lift (superseded by `TILE_HALF_H/32`) — re-fit the
-  elevation term before trusting sub-pixel claims; the x/y lattice terms should hold.
-- **Our matching frame:** `?map=specjalna_mosty_na_rzece&center=160,15&zoom=1.25` at a 3172×1784
-  viewport ≈ mosty-5.
-- **Template-matching recipe:** masked `TM_SQDIFF_NORMED` (invert to a score), alpha mask eroded
-  2 px, sprites cropped from `content/Data/engine2d/bin/bobs/<stem>.<palette>.{atlas.json,png}`,
-  OpenCV via a scratchpad venv.
+Reference screenshots of the original for pixel comparison live outside the repo
+(`~/Projects/vikings/reference-shots/`, read-only); the template-matching kit that uses them is
+documented in `docs/tickets/render/wave-phase-audit.md`.
 
 ### Building graphics families (render multi-`.bmd` scope)
 

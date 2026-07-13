@@ -27,9 +27,12 @@ deletes the ticket file. Every workflow files tickets for real-but-deferred disc
 
 - [PRIOR-ART.md](PRIOR-ART.md) — practices from other engine reimplementations. Optional, useful when
   choosing an architecture or validation approach.
+- [GLOSSARY.md](GLOSSARY.md) — the project's domain vocabulary (formats, lattice terms, sim/test
+  jargon), one entry each with a pointer to the detailed home.
 - Package-local `AGENTS.md` files hold area-specific rules:
   `../packages/sim/AGENTS.md`, `../packages/render/AGENTS.md`,
-  `../packages/app/AGENTS.md`, `../tools/asset-pipeline/AGENTS.md`.
+  `../packages/app/AGENTS.md`, `../packages/audio/AGENTS.md`,
+  `../tools/asset-pipeline/AGENTS.md`.
 
 ## Workflow Files
 

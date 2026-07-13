@@ -61,12 +61,9 @@ npm run dev                 # launch the app (Vite) in a browser
 ```
 
 Useful URL flags on the dev app: `?scene=sandbox` runs the current acceptance scene with its checklist
-overlay, and **`?anim`** opens the character **animation gallery**. Bare `?anim` (no params) lands on the
-**full-roster montage** — every viking look walking on one screen. Add `?char=<id>` to drill into one body's
-animations (civilian / **warrior** with its broadsword / sword / bow / spear / bare-handed set / woman /
-children / baby), and `?char=<id>&view=heads` for that body's **heads/looks montage** (the same walk once per
-head, so you see every face/hat). A direction selector validates the locomotion set in all 8 facings;
-single-direction animations (eat/sleep/wait, attacks) play their full loop. Needs decoded `content/`.
+overlay, and **`?anim`** opens the character **animation gallery** — every roster body, head, player
+colour and facing (needs decoded `content/`). The full URL-flag reference lives in
+[`packages/app/AGENTS.md`](packages/app/AGENTS.md).
 
 `--game` is the path to your game-install folder; the example assumes you placed it **next to this
 repo** (`../Cultures 8th Wonder`), but any absolute or relative path works. `--mod DataCnmd` selects
@@ -87,11 +84,12 @@ vinland/
 │   ├── sim/      # deterministic simulation core (ECS). No rendering, no DOM. The heart.
 │   ├── data/     # intermediate-format schemas (zod) + loaders. Shared content model.
 │   ├── render/   # PixiJS isometric renderer. Reads sim snapshots, draws.
+│   ├── audio/    # Web Audio layer: positional SFX, terrain ambient, jingles, voice chatter.
 │   └── app/      # game shell: wires sim+render+input, menus, main loop (Vite).
 ├── tools/
 │   └── asset-pipeline/  # offline CLI: original .cif/.bmd/.pcx/.lib/.ini -> content/ (PNG+JSON)
 ├── content/     # GENERATED intermediate assets (gitignored — derived from YOUR game copy)
-└── docs/        # architecture, ECS, data format, plans, sources
+└── docs/        # architecture, ECS, data format, tickets, sources
 ```
 
 Why the split: the **sim** package has zero rendering dependencies, so it runs headless under

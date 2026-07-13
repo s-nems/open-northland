@@ -33,6 +33,17 @@ content/
 `content/` is **gitignored** — it is derived from your owned game copy. The schemas in
 `packages/data` are committed; the generated JSON/PNG is not.
 
+**Three content sources — which one to edit.** A cold agent meets three places "content" lives.
+(1) Generated **`content/`** (repo root) — the pipeline's output: IR JSON, atlases, maps, GUI/fonts;
+gitignored and fetched at runtime via the app's `vite.config.ts` routes. Never hand-edit it — change
+the pipeline (`tools/asset-pipeline/`) or the schemas (`packages/data/src/schema/`) and regenerate.
+(2) Committed clean-room **`packages/app/src/catalog/`** — hand-authored balance/bindings (building
+and goods rosters, farming/felling/mining constants, footprints, professions, labels); edit it for
+balance or naming, and note its tests pin rows back to `ir.json` whenever `content/` is present.
+(3) **`packages/app/src/game/sandbox/`** — the ONE global sandbox `ContentSet` (built from the
+catalog) that scenes, `?map=`, and the vertical slice consume; edit it for the test/sandbox game
+rules — scenes never define their own content (docs/SCENES.md).
+
 ## Design principles
 
 1. **Readable & diffable.** IR is plain JSON with stable key order and meaningful names, so an
@@ -67,8 +78,11 @@ logicstock 16 150 0    # goodType 16, capacity 150, initial 0
 logicproduction 11     # (workplaces) output good id 11 — input side / amounts live in the goods-graph
 ```
 
-IR `content/types/buildings.json` entry (schema in `packages/data/src/schema.ts`, extracted by
-`extractBuildings` in `tools/asset-pipeline/src/decoders/ini.ts`):
+IR `content/types/buildings.json` entry (schema: `BuildingType` in
+`packages/data/src/schema/economy/workplaces.ts` — the schemas live under `packages/data/src/schema/`,
+split by domain: `actors/`, `audio/`, `content/`, `economy/`, `graphics/`, `landscape/`, `maps/`;
+extracted by
+`extractBuildings` in `tools/asset-pipeline/src/decoders/ini/types/buildings.ts`):
 
 ```json
 {

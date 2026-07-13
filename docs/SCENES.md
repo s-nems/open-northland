@@ -72,11 +72,11 @@ watch a counter rise as goods are gathered.
 
 ## Determinism footgun (why `createSceneSim` resets stores)
 
-Sim component stores are **module-level singletons** shared by every `Simulation` (see
-`packages/sim/src/ecs/world.ts`). A single page load starts clean, but the **headless test harness builds
-many scene sims in one process** — so `createSceneSim` wipes the stores first (`scenes/runtime.ts`), exactly
-as the app's vertical-slice test does, or an earlier build's entities leak onto a later one's reused ids.
-Always build scene sims through `createSceneSim`; never `new Simulation` directly for a scene.
+Sim component stores are **module-level singletons** shared by every `Simulation` — the full trap
+is documented in `packages/sim/AGENTS.md` ("Component stores are module-level singletons"). The
+headless test harness builds many scene sims in one process, so `createSceneSim` wipes the stores
+first (`scenes/runtime.ts`). Always build scene sims through `createSceneSim`; never
+`new Simulation` directly for a scene.
 
 ## See also
 

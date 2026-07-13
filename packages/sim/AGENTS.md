@@ -60,42 +60,38 @@ and belongs in every new multi-sim harness.
 
 ## Scaling to thousands of units
 
-The game targets **very large maps with thousands of units and up to 8 players**, so per-tick cost must
-scale with **work**, not with `entities²`. The recurring anti-pattern (an LLM writes it naturally): a
-system loops every unit and, for each, scans `world.canonicalEntities()` to find a target — and that used
-to `[...alive].sort()` the whole world **per call**, so `aiSystem` + `jobSystem` were `O(units² · log n)`
-and pinned ~2.8k idle settlers at **~480 ms/tick** (1 fps) while the renderer sat at ~1 ms. It's a PATTERN,
-not one bug — combat/reproduction will show it too as counts grow. Profile per-system before optimizing
-(patch `SYSTEM_ORDER` with timers from a throwaway node script over `dist/` — never add `performance.now`
-to `src`, the hygiene scan fails the build).
+Very large maps, thousands of units, up to 8 players: per-tick cost must scale with **active work**,
+never `entities²`. Don't write per-unit whole-world scans — consume the existing levers: memoized
+`World.canonicalEntities()` (shared + read-only; never mutate it), per-tick candidate lists +
+`NodeBuckets`/`NodeBuckets.nearest` ring search (`systems/spatial.ts` — new nearest-X code uses this,
+not another scan), `core/content-index.ts` for content lookups, and dormancy gates that elide only
+provably-empty work. Any optimization must keep canonical winners (ascending-id / `(distance, id)`
+picks) so goldens stay byte-identical. Profile per-system with a throwaway node script over `dist/` —
+never add `performance.now` to `src` (the hygiene scan fails the build).
 
-**Landed (480 → 1.9 ms/tick at 2848 units, ~250×; goldens byte-identical). Every step preserved the
-ascending-id scan order or elided only provably-empty work, so the winner never changed:**
-- `World.canonicalEntities()` **memoized per alive-set generation** — invalidated only by `create`/
-  `destroy`, so scanning it N times a tick costs one sort, not N. Result is **shared + read-only**; never
-  mutate it (sort/reverse a copy).
-- **Per-tick candidate lists** — `canonicalById(world.query(C))` (`systems/spatial.ts`); scan the matching
-  entities, not the whole world. Used in `aiSystem` (resources/stockpiles/buildings) + `jobSystem`.
-- **Dormancy gate** — `hasHaulableOutput` decides ONCE per tick whether any carrier work exists; if not,
-  idle settlers skip the per-settler `nearestWorkplaceOutput` scan. The lever that makes an idle crowd ~0:
-  a unit with no reachable work does not re-scan every tick. Safe because a false means every scan returns
-  null anyway (it's the same predicate the scan applies, minus the deliverability check, so it only ever
-  elides a provably-null scan).
-- **`NodeBuckets`** (`systems/spatial.ts`) — a per-tick spatial bucket of entities by integer node; O(1)
-  "what's on this node?". `jobSystem`'s adopt-check (am I standing on a workplace I staff?) is now a
-  same-node lookup, not a building scan per settler. Feed it a `canonicalById` list — the ring
-  search's min-id pick is only canonical over ascending-id buckets.
-- **`NodeBuckets.nearest`** — the grid ring search: expands Manhattan bands from the unit, **finishes
-  the whole minimum-distance band and picks canonically by (distance, id)** (never stops at the first
-  hit, so the winner is unchanged), and short-circuits past `maxDist`. First consumer: `combatSystem`'s
-  nearest-enemy query — 23× faster than a full scan at 400 combatants, ~O(seekers·sight²) not
-  quadratic; combat also has its own dormancy gate (no hostile pair ⇒ zero work). New nearest-X code
-  should consume this, not write another scan.
-- **Content-index** (`core/content-index.ts`) — WeakMap-memoized O(1) Maps over a `ContentSet`,
-  each table reproducing the duplicate-key semantics of the exact scan it replaced (mostly first-wins
-  = what `.find` returned; the `setatomic` binding tables are last-wins, the source's override rule).
-  Replaced every hot linear content scan, including the per-combatant weapon lookups.
+## Layout
 
-**Remaining follow-ups** (economy nearest-X onto a ring index, `separationSystem` constant cuts,
-sim in a Web Worker) are tickets under `docs/tickets/` — this file keeps the rules and the landed
-levers, not the roadmap.
+`src/`, for a cold agent — each concern has ONE home:
+
+- **`simulation.ts`** + **`index.ts`** — the `Simulation` façade (step loop, `hashState()`,
+  `snapshot()`) and the public barrel.
+- **`core/`** — deterministic primitives: `fixed.ts` (the `fx` fixed-point kit), `rng.ts` (seeded RNG),
+  `commands.ts` + `command-queue.ts`, `events.ts` (typed `SimEvent`s), `loop.ts`,
+  `content-index.ts` (memoized O(1) content lookups), `atomic-effect.ts`, `brand.ts`.
+- **`ecs/world.ts`** — the `World`: entities, queries, `canonicalEntities()`, `verifyCaches()`.
+- **`components/`** — the component stores (module-level singletons — see above): `settler.ts`,
+  `movement.ts`, `combat.ts`, `equipment.ts`, `ownership.ts`, `rules.ts`, `economy/`.
+- **`systems/`** — the per-tick systems, grouped by concern: `agents/` (AI, the atomic planner,
+  effects), `economy/` (jobs, production, construction, farming, berries, flags), `conflict/`,
+  `lifecycle/`, `movement/`, `orders/`, `command/` (command application + placement), `vision/`,
+  `footprint/`, `progression/`, `readviews/` (pure content-derived rule tables), `stores/`; plus
+  `spatial.ts` (`NodeBuckets` + candidate lists), `schedule.ts` (`SYSTEM_ORDER`), `context.ts`, and
+  the resource/berry indexes.
+- **`nav/`** — pathfinding and the half-cell lattice: `halfcell.ts` (the ONE cell↔node conversion
+  seam), `terrain/` graphs, `nearest.ts`, `metric.ts`, `block-overlay.ts`.
+- **`replay/`** — command-stream replay + divergence debugging (`localize-divergence.ts`,
+  `scrub-window.ts`, `rebase-content.ts`).
+- **`inspect/`** — state introspection: `snapshot.ts` (plain `WorldSnapshot`), `snapshot-diff.ts`,
+  `hashtrace.ts` (per-tick hash ring buffer), `entity-dump.ts`.
+- **`harness/`** — test/scenario helpers: `invariants.ts`, `scenario.ts`, `populate.ts`, `stores.ts`
+  (the clear-every-component-store multi-sim reset).
