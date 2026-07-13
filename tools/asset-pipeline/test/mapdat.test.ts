@@ -26,7 +26,7 @@ import {
   unpackX6elLayer,
   VOID_TYPE_ID,
   XEND_ID,
-} from '../src/decoders/mapdat.js';
+} from '../src/decoders/mapdat/index.js';
 
 /**
  * `map.dat` container decoder tests. No copyrighted fixtures are committed: we synthesize a
