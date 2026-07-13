@@ -45,11 +45,12 @@ export { nodeKey };
  * `nodeOf` resolver overrides that per entity (the JobSystem buckets buildings by their door-aware
  * {@link interactionNode}) — an entity the resolver maps to `null` (and a Position-less one) is dropped.
  * Determinism: a first-match pick over a bucket lands on the same entity a canonical full scan would,
- * because the node is fixed and the bucket keeps ascending-id order. Rebuilt each tick (derived state,
- * never hashed) — the cheap seam toward a full ring-search grid without touching sim state.
+ * because the node is fixed and the bucket keeps ascending-id order. The nested numeric maps keep
+ * negative/off-map probes collision-free without allocating string keys. Rebuilt each tick (derived
+ * state, never hashed) — the cheap seam toward a full ring-search grid without touching sim state.
  */
 export class NodeBuckets {
-  private readonly byNode = new Map<string, Entity[]>();
+  private readonly byX = new Map<number, Map<number, Entity[]>>();
 
   constructor(
     world: World,
@@ -70,11 +71,15 @@ export class NodeBuckets {
         node = nodeOf(e);
       }
       if (node === null) continue;
-      const key = nodeKey(node.x, node.y);
-      let bucket = this.byNode.get(key);
+      let column = this.byX.get(node.x);
+      if (column === undefined) {
+        column = new Map<number, Entity[]>();
+        this.byX.set(node.x, column);
+      }
+      let bucket = column.get(node.y);
       if (bucket === undefined) {
         bucket = [];
-        this.byNode.set(key, bucket);
+        column.set(node.y, bucket);
       }
       bucket.push(e);
     }
@@ -82,7 +87,7 @@ export class NodeBuckets {
 
   /** The entities on node (x,y), in ascending-id order — empty (shared) when the node is unoccupied. */
   at(x: number, y: number): readonly Entity[] {
-    return this.byNode.get(nodeKey(x, y)) ?? NO_ENTITIES;
+    return this.byX.get(x)?.get(y) ?? NO_ENTITIES;
   }
 
   /**

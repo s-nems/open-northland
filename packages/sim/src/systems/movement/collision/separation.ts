@@ -1,6 +1,6 @@
 import { Obstructed, Owner, PathFollow, Position, Settler } from '../../../components/index.js';
 import { type Fixed, fx, ZERO } from '../../../core/fixed.js';
-import type { Entity } from '../../../ecs/world.js';
+import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition, positionXOfWorld } from '../../../nav/halfcell.js';
 import { ROW_STEP, worldDistance, worldX } from '../../../nav/metric.js';
 import type { NodeId } from '../../../nav/terrain/index.js';
@@ -91,6 +91,48 @@ interface WorldPoint {
   y: Fixed;
 }
 
+interface MoverSnapshot {
+  x: Fixed;
+  y: Fixed;
+  hx: Fixed;
+  hy: Fixed;
+}
+
+interface SeparationScratch {
+  readonly movers: Entity[];
+  readonly posts: Entity[];
+  readonly firmMovers: Set<Entity>;
+  readonly before: Array<MoverSnapshot | undefined>;
+  readonly nearMovers: Entity[];
+  readonly nearPosts: Entity[];
+  readonly ghostMemo: Map<Entity, boolean>;
+}
+
+const scratchByWorld = new WeakMap<World, SeparationScratch>();
+
+function scratchFor(world: World): SeparationScratch {
+  let scratch = scratchByWorld.get(world);
+  if (scratch === undefined) {
+    scratch = {
+      movers: [],
+      posts: [],
+      firmMovers: new Set(),
+      before: [],
+      nearMovers: [],
+      nearPosts: [],
+      ghostMemo: new Map(),
+    };
+    scratchByWorld.set(world, scratch);
+  }
+  scratch.movers.length = 0;
+  scratch.posts.length = 0;
+  scratch.firmMovers.clear();
+  scratch.nearMovers.length = 0;
+  scratch.nearPosts.length = 0;
+  scratch.ghostMemo.clear();
+  return scratch;
+}
+
 function toWorld(x: Fixed, y: Fixed): WorldPoint {
   return { x: worldX(x, y), y: fx.mul(y, ROW_STEP) };
 }
@@ -129,8 +171,8 @@ export const separationSystem: System = (world, ctx) => {
 
   // SOFT movers currently walking — the only entities this system ever displaces. The FIRM subset
   // (owned fighters) additionally resolves against posts and keeps the obstruction grind window.
-  const movers: Entity[] = [];
-  const firmMovers = new Set<Entity>();
+  const scratch = scratchFor(world);
+  const { movers, firmMovers } = scratch;
   for (const e of world.query(PathFollow, Position)) {
     if (!hasSoftCollision(world, e)) continue;
     movers.push(e);
@@ -147,7 +189,7 @@ export const separationSystem: System = (world, ctx) => {
   // Standing colliders — the immovable posts FIRM movers resolve against. Derived only when a firm
   // mover exists: soft-only traffic (a civilian economy tick) never reads the index (posts are
   // gathered under `isFirm` below), so it skips the full-settler scan + sort entirely.
-  const posts: Entity[] = [];
+  const { posts } = scratch;
   if (firmMovers.size > 0) {
     for (const e of world.query(Settler, Position)) {
       if (hasBodyCollision(world, e) && isStanding(world, e)) posts.push(e);
@@ -161,16 +203,23 @@ export const separationSystem: System = (world, ctx) => {
   // snapshot, not a live component read: the grind bookkeeping below can drop an earlier-processed
   // mover's PathFollow mid-loop (a re-route/stand-down in a converging crowd), so a live read on a
   // later mover's neighbour would throw — and would also make the pair split order-dependent.
-  const before = new Map<Entity, { x: Fixed; y: Fixed; hx: Fixed; hy: Fixed }>();
+  const { before } = scratch;
   for (const e of movers) {
     const p = world.get(e, Position);
     const f = world.get(e, PathFollow); // present by the movers query above
-    before.set(e, { x: p.x, y: p.y, hx: f.hx, hy: f.hy });
+    const snapshot = before[e];
+    if (snapshot === undefined) before[e] = { x: p.x, y: p.y, hx: f.hx, hy: f.hy };
+    else {
+      snapshot.x = p.x;
+      snapshot.y = p.y;
+      snapshot.hx = f.hx;
+      snapshot.hy = f.hy;
+    }
   }
 
   // Lazy shared per-tick state: zones/overlay are built only if some pair actually interacts.
   let zones: Map<number, Set<NodeId>> | undefined;
-  const ghostMemo = new Map<Entity, boolean>();
+  const { ghostMemo } = scratch;
   const isGhostMover = (e: Entity): boolean => {
     let ghost = ghostMemo.get(e);
     if (ghost === undefined) {
@@ -211,7 +260,7 @@ export const separationSystem: System = (world, ctx) => {
   };
 
   for (const e of movers) {
-    const start = before.get(e);
+    const start = before[e];
     if (start === undefined) continue; // movers ⊆ before by construction; guard for the checked access
     const node = nodeOfPosition(start.x, start.y);
     const isFirm = firmMovers.has(e);
@@ -219,8 +268,9 @@ export const separationSystem: System = (world, ctx) => {
     // Gather this mover's neighbourhood. Radius < both bucket pitches, so bodies within reach live
     // in the 3×3 bucket block around the mover's own node (truncation adds at most one node).
     // Posts matter only to a FIRM mover — a civilian passes through every standing body.
-    const nearMovers: Entity[] = [];
-    const nearPosts: Entity[] = [];
+    const { nearMovers, nearPosts } = scratch;
+    nearMovers.length = 0;
+    nearPosts.length = 0;
     for (let dx = -1; dx <= 1; dx++) {
       for (let dy = -1; dy <= 1; dy++) {
         for (const n of moverIndex.at(node.hx + dx, node.hy + dy)) {
@@ -249,7 +299,7 @@ export const separationSystem: System = (world, ctx) => {
     let pushX = ZERO;
     let pushY = ZERO;
     for (const n of nearMovers) {
-      const other = before.get(n);
+      const other = before[n];
       if (other === undefined) continue;
       const dist = worldDistance(start.x, start.y, other.x, other.y);
       if (dist >= UNIT_SEPARATION_RADIUS) continue;
