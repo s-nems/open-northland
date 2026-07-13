@@ -9,7 +9,9 @@ import type { FootprintCell, LandscapeBlockArea } from './schema/index.js';
  * between them. Duplicate cells (overlapping run rows) are emitted once; non-positive runs contribute
  * nothing. The schema's four-element tuple makes missing fields unrepresentable.
  */
-export function fullStateBlockAreaCells(areas: readonly LandscapeBlockArea[] | undefined): FootprintCell[] {
+export function fullStateBlockAreaCells(
+  areas: readonly Readonly<LandscapeBlockArea>[] | undefined,
+): FootprintCell[] {
   if (areas === undefined || areas.length === 0) return [];
   let fullState = 0;
   for (const [state] of areas) if (state > fullState) fullState = state;

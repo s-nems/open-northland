@@ -6,7 +6,7 @@ import { EXTRACTED_GATHERER_TRADES, GATHERERS, JOB_CARRIER, rebaseSlotJob } from
  * goods between stores), and a craftsman (a trade like smith/joiner that works inside a workshop).
  * These are the sandbox's role buckets, keyed off the sandbox job-id bands ({@link GATHERERS} own
  * 20..25, {@link JOB_CARRIER} is 26, and every rebased building-slot trade lands high — see
- * `content.ts` `rebaseSlotJob`), NOT a sim concept: the sim treats a carrier as the job-agnostic haul
+ * `ids/economy/jobs.ts` `rebaseSlotJob`), NOT a sim concept: the sim treats a carrier as the job-agnostic haul
  * fallback and never names one. Faithful intent: in *Cultures* a gatherer is rarely hand-assigned to a
  * building (it belongs on the map delivering to flags), so the right-click gesture never offers one.
  */

@@ -62,8 +62,8 @@ export interface CollisionIrView {
   readonly landscapeGfx?:
     | readonly {
         readonly editName?: string | undefined;
-        readonly walkBlockAreas?: readonly LandscapeBlockArea[] | undefined;
-        readonly buildBlockAreas?: readonly LandscapeBlockArea[] | undefined;
+        readonly walkBlockAreas?: readonly Readonly<LandscapeBlockArea>[] | undefined;
+        readonly buildBlockAreas?: readonly Readonly<LandscapeBlockArea>[] | undefined;
       }[]
     | undefined;
 }
