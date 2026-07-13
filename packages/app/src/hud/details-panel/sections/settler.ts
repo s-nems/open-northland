@@ -2,7 +2,7 @@ import { GUI_FRAME } from '../../../content/gui-atlas-map.js';
 import type { UiString } from '../../../content/gui-gfx.js';
 import type { Rect } from '../../geometry.js';
 import type { Chrome } from '../chrome.js';
-import { EQUIP_ROW_H, ROW_H, type SettlerLayout } from '../layout.js';
+import { EQUIP_ROW_H, ROW_H, type SettlerLayout } from '../layout/index.js';
 import { HUMANWINDOW, type SettlerPanelModel } from '../model/index.js';
 import { ROW_TEXT_PAD } from './shared.js';
 

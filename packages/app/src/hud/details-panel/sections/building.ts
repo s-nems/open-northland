@@ -10,7 +10,7 @@ import {
   STOCK_PLATE_H,
   STOCK_ROW_H,
   stockSlotRects,
-} from '../layout.js';
+} from '../layout/index.js';
 import type { BuildingPanelModel } from '../model/index.js';
 import { ROW_TEXT_PAD } from './shared.js';
 
