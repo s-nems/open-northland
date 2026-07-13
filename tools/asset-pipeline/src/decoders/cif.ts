@@ -18,6 +18,8 @@
  * Pure functions only (no I/O): `(bytes) => decoded`. The CLI wires file reads around them.
  */
 
+import { ByteCursor, LATIN1 } from './byte-cursor.js';
+
 /** Storable class ids from the original factory (XBStorable.cs `LoadObjectOrNull`). */
 export const StorableId = {
   CMemory: 0x3e9,
@@ -89,56 +91,19 @@ export function encryptMode1(buf: Uint8Array): void {
   if (len & 1) buf[i] = (((buf[i] as number) ^ b) + 1) & 0xff;
 }
 
-/** Little-endian sequential reader over a byte buffer. Throws on overrun (corrupt container = bug). */
-class ByteReader {
-  private readonly bytes: Uint8Array;
-  private readonly view: DataView;
-  private pos = 0;
-
-  constructor(bytes: Uint8Array) {
-    this.bytes = bytes;
-    this.view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  }
-
-  get offset(): number {
-    return this.pos;
-  }
-
-  u32(): number {
-    if (this.pos + 4 > this.bytes.length) {
-      throw new Error(`cif: read of 4 bytes overruns buffer at offset ${this.pos}`);
-    }
-    const v = this.view.getUint32(this.pos, true);
-    this.pos += 4;
-    return v;
-  }
-
-  u8(): number {
-    if (this.pos >= this.bytes.length) throw new Error('cif: unexpected end of buffer');
-    const v = this.bytes[this.pos] as number;
-    this.pos += 1;
-    return v;
-  }
-
-  take(n: number): Uint8Array {
-    if (this.pos + n > this.bytes.length) {
-      throw new Error(`cif: read of ${n} bytes overruns buffer at offset ${this.pos}`);
-    }
-    const slice = this.bytes.subarray(this.pos, this.pos + n);
-    this.pos += n;
-    return slice;
-  }
-}
-
-/** Reads a raw `CMemory` body (still encrypted). Asserts the storable id. */
-function readCMemoryRaw(r: ByteReader): Uint8Array {
+/**
+ * Reads one `CMemory` storable body (`[u32 id=0x3E9][u32 version][u32 size][size bytes]`) and returns
+ * a COPY of the bytes, so a caller may decrypt/mutate without touching the source buffer. Asserts the
+ * storable id, tagging the error with the cursor's format prefix. Shared by every storable container
+ * decoder (`.cif` offsets/pool, `.bmd` bob/packed/line blocks — CMemory is the universal blob wrapper).
+ */
+export function readCMemory(r: ByteCursor): Uint8Array {
   const id = r.u32();
   r.u32(); // version (unused)
   if (id !== StorableId.CMemory) {
-    throw new Error(`cif: expected CMemory (0x3E9), got storable id 0x${id.toString(16)}`);
+    throw new Error(`${r.prefix}: expected CMemory (0x3E9), got storable id 0x${id.toString(16)}`);
   }
   const size = r.u32();
-  // Copy out so callers may decrypt without mutating the source buffer.
   return Uint8Array.from(r.take(size));
 }
 
@@ -151,7 +116,6 @@ function readLines(pool: Uint8Array, offsets: Uint8Array, slotCount: number, use
   const INVALID = 0xffffffff;
   const limit = Math.min(pool.length, usedBytes);
   const offView = new DataView(offsets.buffer, offsets.byteOffset, offsets.byteLength);
-  const decoder = new TextDecoder('latin1'); // structural keywords are ASCII; see CP1250 note below
   const lines: CifLine[] = [];
   for (let id = 0; id < slotCount; id++) {
     const byteIndex = id * 4;
@@ -166,7 +130,7 @@ function readLines(pool: Uint8Array, offsets: Uint8Array, slotCount: number, use
     const hasLevel = first < 0x20;
     lines.push({
       level: hasLevel ? first : 0,
-      text: decoder.decode(hasLevel ? raw.subarray(1) : raw),
+      text: LATIN1.decode(hasLevel ? raw.subarray(1) : raw),
     });
   }
   return lines;
@@ -182,7 +146,7 @@ function readLines(pool: Uint8Array, offsets: Uint8Array, slotCount: number, use
  * carrying Polish glyphs are actually CP1250 — re-decode those at the IR layer where it matters.
  */
 export function decodeCifStringArray(bytes: Uint8Array): CifStringArray {
-  const r = new ByteReader(bytes);
+  const r = new ByteCursor(bytes, 'cif');
   const id = r.u32();
   r.u32(); // version
   if (id !== StorableId.CStringArray) {
@@ -195,13 +159,13 @@ export function decodeCifStringArray(bytes: Uint8Array): CifStringArray {
   const slotCount = r.u32();
   const stringPoolUsedBytes = r.u32();
 
-  const offsets = readCMemoryRaw(r);
+  const offsets = readCMemory(r);
   decryptMode1(offsets);
 
   const hasStringPool = r.u8() !== 0;
   let lines: CifLine[] = [];
   if (hasStringPool) {
-    const pool = readCMemoryRaw(r);
+    const pool = readCMemory(r);
     decryptMode1(pool);
     lines = readLines(pool, offsets, slotCount, stringPoolUsedBytes);
   }

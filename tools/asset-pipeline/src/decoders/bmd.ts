@@ -39,10 +39,10 @@
  * (same rationale as the `.lib`/`.cif`/`.pcx`/`.palette` encoder pairs).
  */
 
-import { StorableId } from './cif.js';
+import { ByteCursor } from './byte-cursor.js';
+import { readCMemory, StorableId } from './cif.js';
 
 const BMD_ID = StorableId.CBobManager; // 0x3F4
-const MEMORY_ID = StorableId.CMemory; // 0x3E9
 const BOB_RECORD_BYTES = 24; // i32 type + 4×i32 rect + u32 misc
 
 /** Line-control packing (CBobManager `IsBobHit`): a u32 = [xMin: 10 bits][packed offset: 22 bits]. */
@@ -123,64 +123,13 @@ export interface Bmd {
   readonly lineControl: Uint32Array;
 }
 
-/** Little-endian sequential reader. Throws on overrun (a corrupt container is a boundary failure). */
-class ByteReader {
-  private readonly bytes: Uint8Array;
-  private readonly view: DataView;
-  private pos = 0;
-
-  constructor(bytes: Uint8Array) {
-    this.bytes = bytes;
-    this.view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  }
-
-  u32(): number {
-    if (this.pos + 4 > this.bytes.length) {
-      throw new Error(`bmd: read of 4 bytes overruns buffer at offset ${this.pos}`);
-    }
-    const v = this.view.getUint32(this.pos, true);
-    this.pos += 4;
-    return v;
-  }
-
-  i32(): number {
-    if (this.pos + 4 > this.bytes.length) {
-      throw new Error(`bmd: read of 4 bytes overruns buffer at offset ${this.pos}`);
-    }
-    const v = this.view.getInt32(this.pos, true);
-    this.pos += 4;
-    return v;
-  }
-
-  take(n: number): Uint8Array {
-    if (this.pos + n > this.bytes.length) {
-      throw new Error(`bmd: read of ${n} bytes overruns buffer at offset ${this.pos}`);
-    }
-    const slice = this.bytes.subarray(this.pos, this.pos + n);
-    this.pos += n;
-    return slice;
-  }
-}
-
-/** Reads one CMemory storable body (`[u32 id=0x3E9][u32 ver][u32 size][size bytes]`), returning a copy. */
-function readCMemory(r: ByteReader): Uint8Array {
-  const id = r.u32();
-  r.u32(); // version (unused)
-  if (id !== MEMORY_ID) {
-    throw new Error(`bmd: expected CMemory (0x3E9), got storable id 0x${id.toString(16)}`);
-  }
-  const size = r.u32();
-  // Copy out so the result owns its bytes independent of the source buffer.
-  return Uint8Array.from(r.take(size));
-}
-
 /**
  * Decodes a `.bmd` (CBobManager) container into its header, typed bob records, and the two raw blocks.
  * Throws a `bmd:`-prefixed error on a wrong root id or a structurally short/inconsistent buffer (a
  * batch pipeline should wrap the call per-file so one bad bob set can't abort the run).
  */
 export function decodeBmd(bytes: Uint8Array): Bmd {
-  const r = new ByteReader(bytes);
+  const r = new ByteCursor(bytes, 'bmd');
 
   const id = r.u32();
   const version = r.u32();
@@ -304,7 +253,7 @@ class ByteWriter {
 
 /** Writes one CMemory storable: `[u32 id=0x3E9][u32 ver=0][u32 size][size bytes]`. */
 function writeCMemory(w: ByteWriter, body: Uint8Array): void {
-  w.u32(MEMORY_ID);
+  w.u32(StorableId.CMemory);
   w.u32(0); // CMemory's default storable version
   w.u32(body.length);
   w.bytes(body);
