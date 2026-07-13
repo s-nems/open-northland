@@ -149,6 +149,7 @@ Load these only when working in that area:
 
 - `packages/sim/AGENTS.md` — deterministic sim rules, fixed-point details, golden discipline, scaling.
 - `packages/render/AGENTS.md` — screen-bounded Pixi rendering and visual verification.
+- `packages/audio/AGENTS.md` — pure-decision/Web-Audio split, sink-only sim boundary, human-ear verification.
 - `packages/app/AGENTS.md` — URL entries, real-content loading, acceptance scenes.
 - `tools/asset-pipeline/AGENTS.md` — extraction, decoder provenance, source/oracle discipline.
 

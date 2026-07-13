@@ -75,24 +75,18 @@ its own graph — never hardcode tribe count or identities.
 
 ## Determinism rules (non-negotiable)
 
-1. **No ambient nondeterminism.** No `Math.random`, `Date.now`, `Date`, `performance.now`. Use
-   `world.rng` (seeded). No reliance on `Map`/`Set` iteration order for game decisions — iterate a
-   **canonical** order (e.g. `stockpileEntries()` sorts by goodType). See the determinism
-   anti-patterns in `packages/sim/AGENTS.md`.
-2. **Deterministic iteration.** Queries iterate the smallest store in **insertion order** (no
-   per-call sort — that was a perf trap). Order is reproducible across identical runs, which is what
-   determinism needs. For canonical snapshots/hashes, sort ids explicitly (`world.canonicalEntities()`).
-3. **Fixed-point math for anything that affects state.** `fx` helpers (`core/fixed.ts`): scaled integers
-   in a JS double (exact to 2^53), with dev-mode overflow assertions. Never `Math.sqrt/sin/cos` in
-   sim — use `fx.isqrt`. Floats are fine for pure rendering only.
-4. **Commands in, snapshot out.** State mutates ONLY via serializable commands (CommandSystem). A
-   tick consumes `(prevState, commands, rng)` and nothing else. This makes save = command log and
-   keeps lockstep MP cheap — preserve it, don't add nondeterminism "for now".
+The full determinism contract — banned globals, canonical-order iteration, fixed-point discipline,
+golden discipline — lives in `packages/sim/AGENTS.md`. The ECS-specific consequences:
 
-`Simulation.hashState()` canonically hashes **all** components on all entities; the golden tests in
-`packages/sim/test` are the tripwire. Also keep **golden atomic-action traces** (the sequence of
-atomics a settler performs) — they catch behavior regressions a state hash can't explain. Intended
-change → update the golden in the same commit. See docs/TESTING.md.
+- **Deterministic iteration.** Queries iterate the smallest store in **insertion order** (no
+  per-call sort — that was a perf trap). Order is reproducible across identical runs, which is what
+  determinism needs. For canonical snapshots/hashes, sort ids explicitly (`world.canonicalEntities()`).
+- **Commands in, snapshot out.** State mutates ONLY via serializable commands (CommandSystem); a
+  tick consumes `(prevState, commands, rng)` and nothing else — the one-way flow in
+  docs/ARCHITECTURE.md.
+- **Golden tripwires:** `hashState()` + golden atomic-action traces (the atomic sequence a settler
+  performs — they catch behavior regressions a state hash can't explain). Update discipline: see
+  `packages/sim/AGENTS.md` and docs/TESTING.md.
 
 ## System execution order (per tick)
 
@@ -163,9 +157,9 @@ then widen.
 
 ## Why not floats / why not a big ECS library
 
-- **Floats:** transcendental ops can differ across engines/CPUs; fatal for lockstep/replay. Scaled
-  integers in a double are exact to 2^53 and identical everywhere (basic ops + round are
-  IEEE-deterministic). See `core/fixed.ts`.
+- **Floats:** transcendental ops can differ across engines/CPUs — fatal for lockstep/replay.
+  Scaled integers in a double are exact to 2^53 and identical everywhere; the fixed-point contract
+  is in `packages/sim/AGENTS.md` ("Fixed-point").
 - **Big ECS libs:** `bitecs` is fast but terse and hard to follow, and we'd fight it for
   deterministic iteration order. At thousands (not millions) of entities a small explicit ECS wins
   on legibility with no real perf cost.

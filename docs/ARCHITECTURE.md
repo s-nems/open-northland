@@ -16,29 +16,29 @@
 ## Layered design
 
 ```
-            ┌─────────────────────────────────────────────┐
-            │  app  (Vite)                                 │
-            │  main loop · input · menus · save/load glue  │
-            └───────────────┬─────────────────┬───────────┘
-                            │ commands         │ snapshots
-                            ▼                  ▼
-   ┌────────────────────────────┐   ┌────────────────────────────┐
-   │  sim   (headless, pure)    │   │  render  (PixiJS)          │
-   │  ECS · systems · RNG       │   │  isometric · sprites · cam │
-   │  fixed-point · tick loop   │   │  reads snapshots only      │
-   └─────────────┬──────────────┘   └─────────────┬──────────────┘
-                 │ loads                            │ loads
-                 ▼                                  ▼
-            ┌─────────────────────────────────────────────┐
-            │  data   (zod schemas + IR loaders)           │
-            │  the shared content model                    │
-            └───────────────┬─────────────────────────────┘
-                            │ produced by
-                            ▼
-            ┌─────────────────────────────────────────────┐
-            │  tools/asset-pipeline  (offline CLI)         │
-            │  original .bmd/.pcx/.lib/.ini/.cif → content │
-            └─────────────────────────────────────────────┘
+        ┌──────────────────────────────────────────────────────────────────────┐
+        │  app  (Vite)                                                         │
+        │  main loop · input · menus · save/load glue                          │
+        └──────┬───────────────────────────┬───────────────────────────┬───────┘
+               │ commands                  │ snapshots                 │ snapshots + events
+               ▼                           ▼                           ▼
+   ┌────────────────────────┐  ┌────────────────────────┐  ┌────────────────────────┐
+   │  sim (headless, pure)  │  │  render  (PixiJS)      │  │  audio  (Web Audio)    │
+   │  ECS · systems · RNG   │  │  isometric · sprites   │  │  positional SFX · beds │
+   │  fixed-point · ticks   │  │  reads snapshots only  │  │  jingles · chatter     │
+   └───────────┬────────────┘  └───────────┬────────────┘  └───────────┬────────────┘
+               │ loads                     │ loads                     │ loads
+               ▼                           ▼                           ▼
+        ┌──────────────────────────────────────────────────────────────────────┐
+        │  data   (zod schemas + IR loaders)                                   │
+        │  the shared content model                                            │
+        └──────────────────────────────────┬───────────────────────────────────┘
+                                           │ produced by
+                                           ▼
+        ┌──────────────────────────────────────────────────────────────────────┐
+        │  tools/asset-pipeline  (offline CLI)                                 │
+        │  original .bmd/.pcx/.lib/.ini/.cif → content                         │
+        └──────────────────────────────────────────────────────────────────────┘
 ```
 
 ### The one-way data flow at runtime
@@ -82,6 +82,11 @@ state + commands + RNG — never on wall-clock or frame rate.
   `render` (which sprite for which entity). See `docs/DATA-FORMAT.md`.
 - **`render`** — turns a sim snapshot into an isometric scene: terrain tiles, sorted sprite draw,
   animation playback, camera, picking. Pure consumer.
+- **`audio`** — plays the decoded original sounds from the same read-only snapshot + one-shot sim
+  events `render` consumes (never reaching into sim state): positional on-screen action SFX,
+  ambient terrain beds, life-event jingles, and settler voice chatter. Split like `render`: a pure
+  decision layer (`src/data/`, event mapping under `src/data/director/`) and an impure Web Audio
+  sink (`src/web/`, engine under `src/web/engine/`).
 - **`app`** — the shell. Owns the main loop, translates input into sim commands, draws menus/HUD,
   wires save/load. The only package that depends on everything.
 - **`tools/asset-pipeline`** — offline, run by a human/agent against an owned game copy. Decodes

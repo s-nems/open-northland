@@ -84,12 +84,10 @@ tick, and inspect — don't re-read the whole run. A determinism failure (two sa
 means a nondeterministic global or a `Map`/`Set` iteration leaked into a game decision: the hygiene
 test catches the global class, the hash-divergence test catches the rest.
 
-**Updating a golden** (state-hash or atomic-trace) is a deliberate four-step act, never a reflex:
-1. Run `npm test` and read **which** golden moved.
-2. Confirm the diff is **exactly** the mechanic you intended to change. A pure refactor must move
-   *no* golden — if one moves, a real change crept in: stop and reassess.
-3. Update the inline expected value in the same commit.
-4. **Name the mechanic** in the commit message so the behavioral change stays auditable.
+**Updating a golden** (state-hash or atomic-trace) is a deliberate act, never a reflex: confirm the
+diff is exactly the mechanic you intended (a pure refactor must move *no* golden), update the
+expected value in the same commit, and name the mechanic in the commit message. Full golden
+discipline: `packages/sim/AGENTS.md` ("Proving your change").
 
 ## What an agent CANNOT self-validate (be honest)
 
