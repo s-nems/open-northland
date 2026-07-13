@@ -3,7 +3,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { standingFighterNodes } from '../movement/collision/index.js';
-import { clearNavState, entityNode, isTravelling, manhattan } from '../spatial.js';
+import { clearNavState, entityNode, isTravelling, manhattan, redirectRoute } from '../spatial.js';
 
 // The walk-into-melee half of combat: advance an owned combatant on an out-of-reach enemy, deal each
 // chaser a DISTINCT contact cell (the melee-slot rule that forms ranks, not a pile), respect the DEFEND
@@ -117,17 +117,7 @@ export function chase(
     disengage(world, e);
     return;
   }
-  // Re-aim the LIVE route instead of dropping it — the moveUnit redirect pattern: keep any PathFollow
-  // (the walker keeps full stride this tick), drop only a stale in-flight request, and swap the goal;
-  // the navigation planner re-routes from where the walker stands and the routing splice carries the
-  // gait + heading through the turn (movement inertia). Clearing the nav state here instead reset the
-  // gait to zero every {@link REPATH_CADENCE} ticks, so a chaser lurched cell-by-cell — accelerate,
-  // brake, stall — rather than running its target down (the reported chase stutter). An unchanged
-  // goal is left entirely alone so a same-dest request keeps its place in the routing queue.
-  if (world.tryGet(e, MoveGoal)?.cell !== dest) {
-    world.remove(e, PathRequest);
-    world.add(e, MoveGoal, { cell: dest });
-  }
+  redirectRoute(world, e, dest); // keep the live route — dropping it reset the gait (chase stutter)
   slots.claimed.add(dest); // this slot is dealt — the tick's later chasers aim at the next free cell
   engagement.repathAt = ctx.tick + REPATH_CADENCE;
 }

@@ -138,9 +138,9 @@ export const movementSystem: System = (world) => {
     }
 
     // Ramp the gait: accelerate toward the target by gait/ACCEL_TICKS per tick; when ABOVE the
-    // target (the shrinking brake cap) clamp down at once — the
-    // ease-out's smoothness comes from the target curve itself, and the clamp also absorbs the
-    // ulp of inflation a truncated corner projection can carry.
+    // target (the shrinking brake cap) clamp down at once — the ease-out's smoothness comes from
+    // the target curve itself, and the clamp also absorbs the ulp of inflation a truncated corner
+    // projection can carry.
     if (pf.speed < targetSpeed) {
       // Ceil: the step stays ≥ 1 ulp for any gait AND a from-rest ramp is exactly ACCEL_TICKS long.
       const accelerated = fx.add(pf.speed, fx.divCeil(gait, fx.fromInt(ACCEL_TICKS)));
