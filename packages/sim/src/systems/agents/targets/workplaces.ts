@@ -1,10 +1,10 @@
 import { Building, JobAssignment, Position, Resource } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import type { NodeId, TerrainGraph } from '../../../nav/terrain.js';
+import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { interactionNode, positionedInteractionCell, resourceWorkCell } from '../../footprint/index.js';
-import { buildingEnabled } from '../../progression.js';
+import { buildingEnabled } from '../../progression/index.js';
 import { buildingWorkerJobs, recipeOf } from '../../stores/index.js';
 
 const EMPTY_ATOMICS: ReadonlySet<number> = new Set<number>();

@@ -1,7 +1,7 @@
 import { Position, Resource, UnderConstruction, WorkFlag } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import type { NodeId } from '../../../nav/terrain.js';
-import { carrierCarryCapacity } from '../../progression.js';
+import type { NodeId } from '../../../nav/terrain/index.js';
+import { carrierCarryCapacity } from '../../progression/index.js';
 import { atomicDuration } from '../../readviews/animations.js';
 import { manhattan } from '../../spatial.js';
 import { deliveredConstructionFraction, nextNeededConstructionGood } from '../../stores/index.js';

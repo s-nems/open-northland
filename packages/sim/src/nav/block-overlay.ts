@@ -1,4 +1,4 @@
-import type { BlockOverlay, NodeId } from './terrain.js';
+import type { BlockOverlay, NodeId } from './terrain/index.js';
 
 /**
  * A layered walk-block view over several node sets — a {@link BlockOverlay} that answers membership

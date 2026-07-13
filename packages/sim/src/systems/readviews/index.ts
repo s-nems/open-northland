@@ -44,7 +44,7 @@ export {
   weaponsByJob,
   weaponsForJob,
   weaponWeightOf,
-} from './classes.js';
+} from './classes/index.js';
 export {
   ARMOR_MATERIAL,
   armorMaterialForClass,
@@ -98,7 +98,7 @@ export {
   mayAttack,
   mayHunt,
   playableTribes,
-} from './tribes.js';
+} from './tribes/index.js';
 export {
   isShipVehicle,
   largestShipCapacity,

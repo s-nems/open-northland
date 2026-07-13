@@ -1,5 +1,5 @@
 import { JobAssignment } from '../../../components/index.js';
-import { carrierCarryCapacity } from '../../progression.js';
+import { carrierCarryCapacity } from '../../progression/index.js';
 import { isCarrierJob } from '../../stores/index.js';
 import { atOrWalk, startPickup } from '../actions.js';
 import type { PlannerContext } from '../planner-context.js';

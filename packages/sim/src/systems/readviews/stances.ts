@@ -3,7 +3,7 @@
 // Kept beside the other data-defined taxonomies (`classes.ts`/`tribes.ts`): a stance is a per-unit
 // behavior mode, and *which* mode a fresh unit starts in is a data-shaped classification of its job.
 
-import { HUNTER_JOB } from './tribes.js';
+import { HUNTER_JOB } from './tribes/index.js';
 
 /**
  * The original's **military behavior modes** — `logicdefines.inc` ~l.1107

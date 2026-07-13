@@ -3,12 +3,12 @@ import type { CommandQueue } from '../core/command-queue.js';
 import type { EventBuffer } from '../core/events.js';
 import type { Rng } from '../core/rng.js';
 import type { World } from '../ecs/world.js';
-import type { TerrainGraph } from '../nav/terrain.js';
+import type { TerrainGraph } from '../nav/terrain/index.js';
 import type { FogState } from './vision/index.js';
 
 /**
  * A System is a pure function over the world for one tick. Systems run in a fixed registered
- * order (see SYSTEM_ORDER in index.ts and docs/ECS.md). They may read/write components and use
+ * order (see SYSTEM_ORDER in schedule.ts and docs/ECS.md). They may read/write components and use
  * ctx.rng, but must not touch wall-clock, Math.random, the DOM, or I/O.
  */
 export interface SystemContext {

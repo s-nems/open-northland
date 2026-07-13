@@ -1,4 +1,4 @@
-import { BerryBush, Resource, Stump } from '../components/economy.js';
+import { BerryBush, Resource, Stump } from '../components/economy/index.js';
 import type { SimEvent } from '../core/events.js';
 import type { Entity, World } from '../ecs/world.js';
 

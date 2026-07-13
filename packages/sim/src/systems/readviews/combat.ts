@@ -1,6 +1,6 @@
 import type { ContentSet, WeaponType } from '@vinland/data';
 import { contentIndex } from '../../core/content-index.js';
-import { armorMaterialOf } from './classes.js';
+import { armorMaterialOf } from './classes/index.js';
 
 // Pure, terminal **read views** for combat — the static weapon-vs-armor damage *lookup* table the
 // CombatSystem reads, plus the shared damage-column resolution both it and the per-hit CombatSystem

@@ -12,7 +12,7 @@ import { eventAt } from '../../core/events.js';
 import { type Fixed, fx, ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
-import { grantFightExperience } from '../progression.js';
+import { grantFightExperience } from '../progression/index.js';
 import { atomicAnimationName, atomicDuration } from '../readviews/animations.js';
 import {
   ATOMIC_EVENT_CHANNEL,

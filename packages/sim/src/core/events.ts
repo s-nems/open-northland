@@ -80,10 +80,10 @@ export type SimEvent =
     }
   | {
       /**
-       * A {@link import('../components/economy.js').Felling} node was chopped down this tick — the
+       * A {@link import('../components/economy/index.js').Felling} node was chopped down this tick — the
        * standing node `node` was destroyed and replaced at `at` by a bare `Stockpile` `trunk` (a
-       * {@link import('../components/economy.js').GroundDrop} holding the whole `amount` of `goodType`)
-       * plus a {@link import('../components/economy.js').Stump} decor. Render/audio use it for the
+       * {@link import('../components/economy/index.js').GroundDrop} holding the whole `amount` of `goodType`)
+       * plus a {@link import('../components/economy/index.js').Stump} decor. Render/audio use it for the
        * felling cue (a "timber!" sound, a falling-tree effect); render otherwise reconciles the new
        * trunk/stump straight from the snapshot, so this is a one-shot notification, not the source of
        * truth. Deterministic like every event: a pure function of the tick's felled nodes.
@@ -128,8 +128,8 @@ export type SimEvent =
     }
   | {
       /**
-       * A {@link import('../components/economy.js').Resource} node was EXHAUSTED and removed this tick —
-       * a mined {@link import('../components/economy.js').MineDeposit} deposit whose last unit was chipped
+       * A {@link import('../components/economy/index.js').Resource} node was EXHAUSTED and removed this tick —
+       * a mined {@link import('../components/economy/index.js').MineDeposit} deposit whose last unit was chipped
        * off, or a trivial direct-pickup node (a mushroom) after its single harvest. Distinct from
        * `resourceFelled` (a tree coming DOWN, which leaves a trunk + stump): a depleted node just
        * vanishes, its yield already dropped/carried. Render reaps the sprite straight from the snapshot
@@ -143,7 +143,7 @@ export type SimEvent =
     }
   | {
       /**
-       * One unit was chipped off a still-standing {@link import('../components/economy.js').MineDeposit}
+       * One unit was chipped off a still-standing {@link import('../components/economy/index.js').MineDeposit}
        * node this tick — the node SURVIVES (its `remaining` is the value after the chip; the removal of
        * the last unit emits `resourceDepleted` instead). The cue a consumer needs the moment a virgin
        * node is first WORKED: the `?map=` view hands the node from its retained static decor layer to
@@ -157,7 +157,7 @@ export type SimEvent =
     }
   | {
       /**
-       * A {@link import('../components/economy.js').BerryBush} was just FORAGED — its last ripe fruit
+       * A {@link import('../components/economy/index.js').BerryBush} was just FORAGED — its last ripe fruit
        * eaten this tick, so it flips ripe→bare and starts regrowing. The cue a consumer needs the moment
        * a virgin bush is first worked: the `?map=` view hands the bush from its retained static decor
        * layer (drawn always-fruited) to the live sprite pool here, so from now on the drawn bush tracks

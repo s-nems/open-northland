@@ -1,7 +1,7 @@
 import { Building, Owner, PathFollow, PathRequest, Position, Settler } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
-import type { NodeId, TerrainGraph } from '../../../nav/terrain.js';
+import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { isFighterJob } from '../../readviews/index.js';
 
 /**

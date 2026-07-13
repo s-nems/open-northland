@@ -29,7 +29,7 @@
  * matches the current query, so stale contents are never read; reuse is invisible to the result.
  */
 import { type Fixed, fx } from '../core/fixed.js';
-import { type BlockOverlay, type NodeId, nodeLatticeDistance, type TerrainGraph } from './terrain.js';
+import { type BlockOverlay, type NodeId, nodeLatticeDistance, type TerrainGraph } from './terrain/index.js';
 
 /** A* per-node bookkeeping. `g` = best known cost from start; `f` = g + heuristic; `h` = heuristic. */
 interface NodeRecord {

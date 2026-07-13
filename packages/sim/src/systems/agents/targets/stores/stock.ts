@@ -7,7 +7,7 @@ import {
 } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import { nodeOfPosition } from '../../../../nav/halfcell.js';
-import type { NodeId, TerrainGraph } from '../../../../nav/terrain.js';
+import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
 import { manhattan } from '../../../spatial.js';
 import {

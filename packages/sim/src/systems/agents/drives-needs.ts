@@ -1,6 +1,6 @@
 import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
-import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { atomicDuration } from '../readviews/animations.js';
 import { isFood } from '../stores/index.js';

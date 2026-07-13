@@ -1,6 +1,6 @@
 import type { BuildingFootprint, ContentSet, FootprintCell } from '@vinland/data';
 import { contentIndex } from '../../core/content-index.js';
-import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 
 // The footprint GEOMETRY primitives — node keys, node distance, footprint-cell translation and the
 // nearest-cell picks. The leaf of the footprint/ package (and of systems/ as a whole).

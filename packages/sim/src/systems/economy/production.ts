@@ -3,7 +3,7 @@ import { Building, Production, type ProductionCycle, Stockpile } from '../../com
 import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
-import { goodEnabled } from '../progression.js';
+import { goodEnabled } from '../progression/index.js';
 import { presentOperatorCount, recipeOf, stockCapacity } from '../stores/index.js';
 
 /**

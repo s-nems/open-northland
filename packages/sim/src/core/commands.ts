@@ -205,7 +205,6 @@ export type Command =
       readonly y: number;
       readonly amount: number;
     }
-  | { readonly kind: 'setProduction'; readonly building: Entity; readonly goodType: number }
   | { readonly kind: 'demolish'; readonly building: Entity }
   | {
       /**
@@ -357,12 +356,12 @@ export type Command =
       readonly piety?: number;
       readonly enjoyment?: number;
     }
-  /** Fill `target` building's {@link import('../components/economy.js').Stockpile} to capacity: every good
+  /** Fill `target` building's {@link import('../components/economy/index.js').Stockpile} to capacity: every good
    *  its building type declares a stock slot for is set to that slot's `capacity`. A non-building target,
    *  or one without a `Stockpile`, is a no-op. */
   | { readonly kind: 'debugFillStockpile'; readonly target: Entity }
   /** Finish `target`'s construction now: force a site carrying an
-   *  {@link import('../components/economy.js').UnderConstruction} marker straight to built (full `Health`,
+   *  {@link import('../components/economy/index.js').UnderConstruction} marker straight to built (full `Health`,
    *  marker removed, `buildingFinished` emitted) regardless of delivered material or builder labor. A
    *  target that is not a construction site is a no-op. */
   | { readonly kind: 'debugCompleteConstruction'; readonly target: Entity }

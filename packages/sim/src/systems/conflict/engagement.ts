@@ -1,6 +1,6 @@
 import { AttackOrder, Owner, Stance } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { defaultStanceForJob, HUNTER_JOB, MILITARY_MODE } from '../readviews/index.js';
 import { entityNode, manhattan, type NodeBuckets } from '../spatial.js';
@@ -110,7 +110,7 @@ export interface EngageSpec {
  *  falling back to the unit's own cell if it somehow carries none (a DEFEND stamped before it had a tile). */
 function defendAnchor(world: World, terrain: TerrainGraph, e: Entity): NodeId {
   const anchor = world.tryGet(e, Stance)?.anchorCell;
-  return (anchor ?? entityNode(world, terrain, e)) as NodeId;
+  return anchor ?? entityNode(world, terrain, e);
 }
 
 /**

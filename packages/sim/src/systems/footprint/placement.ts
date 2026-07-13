@@ -2,7 +2,7 @@ import type { BuildingFootprint, ContentSet } from '@vinland/data';
 import { Building, Position, Resource, ResourceFootprint } from '../../components/index.js';
 import type { World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
-import type { TerrainGraph } from '../../nav/terrain.js';
+import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { ANCHOR_ONLY, buildingFootprintOf, nodeKey } from './geometry.js';
 

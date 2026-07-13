@@ -4,7 +4,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { System, SystemContext } from '../context.js';
 import { interactionNode } from '../footprint/index.js';
-import { buildingEnabled, jobEnabled, settlerMeetsNeed } from '../progression.js';
+import { buildingEnabled, jobEnabled, settlerMeetsNeed } from '../progression/index.js';
 import { canonicalById, NodeBuckets } from '../spatial.js';
 import { buildingWorkerJobs, isCarrierJob, recipeOf } from '../stores/index.js';
 import { farmWorkGood } from './farming.js';

@@ -1,7 +1,7 @@
 import { MoveGoal, PathFollow, PathRequest, Position } from '../components/index.js';
 import type { Entity, World } from '../ecs/world.js';
 import { nodeOfPosition } from '../nav/halfcell.js';
-import type { NodeId, TerrainGraph } from '../nav/terrain.js';
+import type { NodeId, TerrainGraph } from '../nav/terrain/index.js';
 import { manhattan, nodeKey } from './footprint/geometry.js';
 
 // The cross-system SPATIAL primitives — canonical scan order, the per-tick node bucket + ring

@@ -8,7 +8,8 @@ import { Rng } from './core/rng.js';
 import { type Entity, World } from './ecs/world.js';
 import { checkInvariants as _checkInvariants, type Invariant as _Invariant } from './harness/invariants.js';
 import { takeSnapshot, type WorldSnapshot } from './inspect/snapshot.js';
-import { buildTerrainGraph, type TerrainGraph, type TerrainMap } from './nav/terrain.js';
+import { buildTerrainGraph, type TerrainGraph, type TerrainMap } from './nav/terrain/index.js';
+import type { SystemContext } from './systems/context.js';
 import {
   type ConstructionPlot,
   constructionSitePlots,
@@ -16,7 +17,7 @@ import {
   placementBlockerVersion,
   placementProbe,
 } from './systems/footprint/index.js';
-import { SYSTEM_ORDER, type SystemContext } from './systems/index.js';
+import { SYSTEM_ORDER } from './systems/schedule.js';
 import { effectiveFogState, FogState } from './systems/vision/index.js';
 
 export interface SimOptions {
