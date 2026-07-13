@@ -3,6 +3,8 @@
  * mainly holds and how many units. Pure + total; the canonical max-pick keeps a mixed heap reproducible.
  */
 
+import { readStockpileAmounts } from './component-access.js';
+
 /**
  * What a bare {@link import('@open-northland/sim').Stockpile} draw item represents: the good its ground pile
  * mainly holds + how many units (its per-fill heap frame), or `{}` when it holds nothing. A stockpile-kind
@@ -18,15 +20,10 @@ export function readStockpile(components: Readonly<Record<string, unknown>>): {
   goodType?: number;
   fill?: number;
 } {
-  const s = components.Stockpile as { amounts?: unknown } | undefined;
-  if (s === undefined || !Array.isArray(s.amounts)) return {};
   let bestGood: number | undefined;
   let bestAmount = 0;
-  for (const pair of s.amounts) {
-    if (!Array.isArray(pair)) continue;
-    const good = pair[0];
-    const amount = pair[1];
-    if (typeof good !== 'number' || typeof amount !== 'number' || amount <= 0) continue;
+  for (const [good, amount] of readStockpileAmounts(components)) {
+    if (amount <= 0) continue;
     if (amount > bestAmount) {
       bestAmount = amount;
       bestGood = good;

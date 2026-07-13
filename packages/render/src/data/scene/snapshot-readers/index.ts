@@ -17,7 +17,7 @@
  */
 
 export { classify } from './classify.js';
-export { readPosition } from './component-access.js';
+export { readPosition, readStockpileAmounts } from './component-access.js';
 export { facingTowardTile, readFacing } from './facing.js';
 export { readProjectileOrigin, readProjectileTarget } from './projectile-readers.js';
 export {
