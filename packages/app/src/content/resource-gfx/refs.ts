@@ -12,18 +12,30 @@ import type { GoodRef } from '../settler-gfx/index.js';
  * `./berry-bush.ts`. The pure reducers here are unit-tested without a browser.
  */
 
-/** The `ls_goods` served-atlas stem prefix — a good's recoloured pile atlas is `ls_goods.<palette>`. */
+/** The `ls_goods.bmd` served-atlas stem prefix — a good's recoloured pile atlas is `ls_goods.<palette>`
+ *  (the pipeline's per-palette variant), so the goods-manifest `{frame, palette}` maps straight to a
+ *  {@link GatheringPileRef} whose stem is `${GOODS_PILE_BMD_STEM}.${palette}`. */
 const GOODS_PILE_BMD_STEM = 'ls_goods';
 
 /**
  * The default resource atlas family — the shared `ls_trees.tree_yew01` layer drawn as the renderer's
- * {@link import('@vinland/render').SpriteSheet.kindLayers}'s `resource`. A good whose node record lives in
- * THIS family binds a bare bob id (no `families` entry); every other good binds a layer-qualified ref into
- * its own loaded `families` atlas.
+ * {@link import('@vinland/render').SpriteSheet.kindLayers}'s `resource` (already loaded for the legacy
+ * single-tree path). A good whose node record lives in THIS family binds a bare bob id (drawn from that
+ * layer, no `families` entry — the way the yew tree drew before); every other good binds a
+ * layer-qualified ref into its own loaded `families` atlas. {@link TREE_BOB} backs a good with no node.
  */
 export const DEFAULT_RESOURCE_STEM = TREE_ATLAS;
 
-/** The delivery-flag `[GfxLandscape]` record's `EditName` — the plain player-coloured "work extern" sign. */
+/**
+ * The delivery-flag `[GfxLandscape]` record's `EditName` — the plain player-coloured **"work extern"**
+ * flag in `ls_temp.bmd` (`"player01 work extern 01"`, bob 76): the simple flag-on-a-pole the original
+ * plants on the ground to mark an external work / collection point, which is exactly what a gatherer's
+ * loose ground pile IS. Deliberately NOT the `"… sign"` record (a building-occupancy emblem that marks a
+ * STAFFED building, not a ground collection point) nor the `residence`/`construction`/`soldier` markers.
+ * A bare (empty) stockpile draws this as its flag. v1 is the player-01 colour; a per-PLAYER palette swap
+ * (players 02–16 have their own `human_playerNN` records) is a deferred follow-up — see source basis
+ * "Gathering-economy graphics".
+ */
 export const FLAG_EDIT_NAME = 'player01 work extern 01';
 
 /**
