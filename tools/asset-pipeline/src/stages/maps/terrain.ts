@@ -11,7 +11,7 @@ import {
   type MapDatTerrainMap,
   unpackMapLayer,
   unpackX6elLayer,
-} from '../../decoders/mapdat.js';
+} from '../../decoders/mapdat/index.js';
 
 /** The emitted `maps/<id>.json` shape: the sim grid + the optional 1:1 render layers. */
 export interface MapDatTerrainFile extends MapDatTerrainMap {

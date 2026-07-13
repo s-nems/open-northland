@@ -45,7 +45,7 @@ async function run(args: Args): Promise<void> {
   // > 5. Parse .ini rules -> typed IR           -> decoders/ini.ts (this stage; mod .ini preferred)
   // > 6. Decode map logic headers -> map IR     -> decoders/cif.ts + ini.ts (this stage; metadata only)
   // > 7. Write content/ir.json + validate with parseContentSet()  (this stage)
-  // > 8. Decode map.dat terrain grids -> maps/  -> decoders/mapdat.ts (this stage; the nav-graph grid)
+  // > 8. Decode map.dat terrain grids -> maps/  -> decoders/mapdat/ (this stage; the nav-graph grid)
   // > 9. Extract GUI/HUD art+strings+cursors    -> decoders/cursor.ts + stages/gui.ts (this stage)
   //
   // The unpack extracts loose copies of the embedded .pcx/.bmd/.cif into <out> (gitignored).
