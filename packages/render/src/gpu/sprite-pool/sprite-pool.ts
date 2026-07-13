@@ -11,8 +11,8 @@ import type { Viewport } from '../../data/viewport.js';
 import { PalettedSprite } from '../paletted-sprite.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
-import { alphaMaskOf, maskSolidAt } from './alpha-mask.js';
 import { trackMotion } from './motion.js';
+import { anchorOf, boundsOf, pixelHit } from './pick.js';
 import { drawPlaceholder, PROJECTILE_FLIGHT_HEIGHT, placeholderBody } from './placeholder.js';
 import { createPooled, type EntityBounds, type PooledEntity } from './pooled-entity.js';
 import { reconcileSprites } from './reconcile.js';
@@ -167,64 +167,22 @@ export class SpritePool {
     return { drawn: this.drawn, pooled: this.pool.size };
   }
 
-  /**
-   * The WORLD-space bounding box of an entity's sprite as DRAWN last frame, or `undefined` if it wasn't
-   * drawn (off-screen / not in the snapshot). The picker uses it for an exact "click the graphic" hit
-   * test and the selection ring to size a building marker to its actual footprint — see {@link EntityBounds}.
-   */
+  /** The entity's world-space sprite box as drawn this frame — the picker's hit box + the selection
+   *  ring's footprint sizer. See {@link import('./pick.js').boundsOf}. */
   boundsOf(ref: number): EntityBounds | undefined {
-    const pe = this.pool.get(ref);
-    // Only the CURRENT frame's stamp is valid: a pooled-but-culled entity keeps a stale stamp, so it
-    // correctly reads as "no bounds" (off-screen → the picker falls back to its kind box).
-    return pe !== undefined && pe.boundsFrame === this.frameId ? pe.bounds : undefined;
+    return boundsOf(this.pool.get(ref), this.frameId);
   }
 
-  /**
-   * PIXEL-accurate refinement of the AABB hit: whether the WORLD-px point `(wx, wy)` lands on a SOLID
-   * texel of the entity's sprite as drawn last frame. Returns `undefined` when the exact answer isn't
-   * available — entity not drawn this frame, a paletted (settler) mesh, a placeholder marker, or an
-   * atlas whose pixels can't be read — so the caller keeps the box verdict; `false` means the point is
-   * inside the box but on transparent pixels only (the "clicked next to the house" case the mask
-   * exists to reject). See {@link alphaMaskOf} for the source basis (a deliberate deviation from the
-   * original's footprint-cell picking).
-   */
+  /** Pixel-accurate refinement of the AABB hit against the drawn sprite's alpha mask.
+   *  See {@link import('./pick.js').pixelHit}. */
   pixelHit(ref: number, wx: number, wy: number): boolean | undefined {
-    const pe = this.pool.get(ref);
-    if (pe === undefined || pe.boundsFrame !== this.frameId) return undefined;
-    if (pe.paletted) return undefined; // settler meshes keep the (deliberately generous) box hit
-    let sampledEveryLayer = false;
-    for (const spr of pe.sprites) {
-      if (!(spr instanceof Sprite) || !spr.visible) continue;
-      const mask = alphaMaskOf(spr.texture.source);
-      if (mask === null) return undefined; // pixels unreadable → the box hit stands
-      sampledEveryLayer = true;
-      // World → this layer's frame-local texels: the container sits at the drawn anchor, the sprite at
-      // its authored offset, scaled about the anchor (mirrors bindLayers' placement math, which only
-      // ever sets a positive uniform scale). A non-positive scale would mean mirroring/degeneracy this
-      // inverse can't map — fail soft to the box verdict rather than sample the wrong texels.
-      const scale = spr.scale.x;
-      if (!(scale > 0)) return undefined;
-      const lx = Math.floor((wx - pe.motion.drawX - spr.position.x) / scale);
-      const ly = Math.floor((wy - pe.motion.drawY - spr.position.y) / scale);
-      const frame = spr.texture.frame;
-      if (lx < 0 || ly < 0 || lx >= frame.width || ly >= frame.height) continue;
-      if (maskSolidAt(mask, frame.x + lx, frame.y + ly)) return true;
-    }
-    // Every visible layer had a mask and none was solid under the point → a genuine miss. No visible
-    // atlas layer at all (placeholder marker showing) → no exact answer, keep the box.
-    return sampledEveryLayer ? false : undefined;
+    return pixelHit(this.pool.get(ref), this.frameId, wx, wy);
   }
 
-  /**
-   * The anchor an entity was DRAWN at this frame — the inter-tick LERPED feet position, not the raw
-   * snapshot tile — or `undefined` when it wasn't drawn (culled / gone). The selection layer reads it
-   * so a moving unit's ring glides with the interpolated bob instead of stepping at the tick rate.
-   */
+  /** The inter-tick lerped feet anchor an entity was drawn at this frame — the selection ring glides on
+   *  it. See {@link import('./pick.js').anchorOf}. */
   anchorOf(ref: number): { x: number; y: number } | undefined {
-    const pe = this.pool.get(ref);
-    return pe !== undefined && pe.lastSeen === this.frameId
-      ? { x: pe.motion.drawX, y: pe.motion.drawY }
-      : undefined;
+    return anchorOf(this.pool.get(ref), this.frameId);
   }
 
   /**
