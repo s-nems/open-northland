@@ -18,3 +18,29 @@ export interface RgbaImage {
   /** Row-major RGBA bytes, length `width * height * 4`. */
   readonly rgba: Uint8Array;
 }
+
+/**
+ * Expands palette indices into straight RGBA bytes: each index → its `[R,G,B]` from a 768-byte RGB
+ * palette, with alpha from `alphaOf(i)`. An alpha of `0` leaves that pixel fully transparent (RGB stays
+ * `0` too), so a caller with per-pixel coverage skips unwritten pixels by returning `0` for them. The
+ * shared index→RGBA fill behind the `.pcx` picture (opaque, `alphaOf` returns `0xff`) and the `.bmd` bob
+ * frame (per-pixel coverage) expansions. Callers validate the palette length before calling.
+ */
+export function paletteToRgba(
+  pixels: Uint8Array,
+  palette: Uint8Array,
+  alphaOf: (index: number) => number,
+): Uint8Array {
+  const rgba = new Uint8Array(pixels.length * 4);
+  for (let i = 0; i < pixels.length; i++) {
+    const a = alphaOf(i);
+    if (a === 0) continue;
+    const p = (pixels[i] ?? 0) * 3;
+    const o = i * 4;
+    rgba[o] = palette[p] ?? 0;
+    rgba[o + 1] = palette[p + 1] ?? 0;
+    rgba[o + 2] = palette[p + 2] ?? 0;
+    rgba[o + 3] = a;
+  }
+  return rgba;
+}
