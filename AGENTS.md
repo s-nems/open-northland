@@ -52,6 +52,12 @@ Write to these directly; the review agents enforce them.
 
 - **Readability first.** Code must be understandable quickly without the PR context. Names carry
   domain meaning; comments explain units, invariants, and source basis — never restate the code.
+- **Comments are budgeted prose.** The *content* rule above sets what a comment may say; this one
+  sets how much. One tight sentence per fact; a doc comment should not dwarf the code it explains.
+  No rhetorical emphasis (bold mid-sentence, superlatives, "the trap"/"the gem" narration), no
+  history of how the code got here (git has it), no restating the same invariant in a second
+  paragraph. When editing a file, trimming an overgrown comment to its load-bearing facts is
+  boy-scout work.
 - **Group by feature, not flat.** When a module passes ~300 lines or mixes concerns, split it by
   concern into a feature subfolder with an `index.ts` barrel that keeps import paths stable. Prefer
   deepening the tree over widening a flat directory; group by feature (`hud/tool-panel/`), not by
