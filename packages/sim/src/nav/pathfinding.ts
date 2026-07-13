@@ -29,6 +29,7 @@
  * matches the current query, so stale contents are never read; reuse is invisible to the result.
  */
 import { type Fixed, fx } from '../core/fixed.js';
+import { siftDown, siftUp } from './pathfinding/heap.js';
 import { type BlockOverlay, type NodeId, nodeLatticeDistance, type TerrainGraph } from './terrain/index.js';
 
 /** A* per-node bookkeeping. `g` = best known cost from start; `f` = g + heuristic; `h` = heuristic. */
@@ -59,48 +60,6 @@ function betterRecord(a: NodeRecord, b: NodeRecord): boolean {
   if (a.h !== b.h) return a.h < b.h;
   if (a.dev !== b.dev) return a.dev < b.dev;
   return a.node < b.node;
-}
-
-/** Move `heap[i]` toward the root until its parent is no worse. Maintains `heapIdx`. */
-function siftUp(heap: NodeRecord[], start: number): void {
-  const rec = heap[start];
-  if (rec === undefined) return; // callers index within bounds; guard for the checked access
-  let i = start;
-  while (i > 0) {
-    const parentIdx = (i - 1) >> 1;
-    const parent = heap[parentIdx];
-    if (parent === undefined || !betterRecord(rec, parent)) break;
-    heap[i] = parent;
-    parent.heapIdx = i;
-    i = parentIdx;
-  }
-  heap[i] = rec;
-  rec.heapIdx = i;
-}
-
-/** Move `heap[i]` toward the leaves until no child beats it. Maintains `heapIdx`. */
-function siftDown(heap: NodeRecord[], start: number): void {
-  const rec = heap[start];
-  if (rec === undefined) return; // callers index within bounds; guard for the checked access
-  const n = heap.length;
-  let i = start;
-  for (;;) {
-    let childIdx = 2 * i + 1;
-    if (childIdx >= n) break;
-    let child = heap[childIdx];
-    if (child === undefined) break;
-    const right = childIdx + 1 < n ? heap[childIdx + 1] : undefined;
-    if (right !== undefined && betterRecord(right, child)) {
-      child = right;
-      childIdx += 1;
-    }
-    if (!betterRecord(child, rec)) break;
-    heap[i] = child;
-    child.heapIdx = i;
-    i = childIdx;
-  }
-  heap[i] = rec;
-  rec.heapIdx = i;
 }
 
 /**
@@ -285,7 +244,7 @@ function runSearch(
     const last = heap.pop();
     if (last !== undefined && heap.length > 0) {
       heap[0] = last;
-      siftDown(heap, 0);
+      siftDown(heap, 0, betterRecord);
     }
 
     // Lattice steps carry their own cost and already exclude blocked/unwalkable nodes, so the
@@ -308,7 +267,7 @@ function runSearch(
         records[next] = rec;
         stamps[next] = query;
         heap.push(rec);
-        siftUp(heap, rec.heapIdx);
+        siftUp(heap, rec.heapIdx, betterRecord);
       } else if (existing.open && tentativeG < existing.g) {
         // A cheaper route to an already-discovered, still-open node — relax it: its key only
         // DECREASES, so restoring the heap invariant is a sift toward the root. (Closed nodes are
@@ -316,7 +275,7 @@ function runSearch(
         existing.g = tentativeG;
         existing.f = fx.add(tentativeG, existing.h);
         existing.cameFrom = current.node;
-        siftUp(heap, existing.heapIdx);
+        siftUp(heap, existing.heapIdx, betterRecord);
       }
     }
   }
