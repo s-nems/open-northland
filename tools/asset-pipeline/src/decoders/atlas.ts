@@ -25,7 +25,7 @@
 
 import type { Bmd, BobFrame } from './bmd/index.js';
 import { BOB_ALPHA_OPAQUE, decodeBobFrame } from './bmd/index.js';
-import { PALETTE_RGB_BYTES, paletteToRgba, type RgbaImage } from './image.js';
+import { assertPaletteBytes, paletteToRgba, type RgbaImage } from './image.js';
 
 /** Transparent gutter (in pixels) left between packed frames so sampling can't bleed across them. */
 export const ATLAS_GUTTER = 1;
@@ -73,11 +73,7 @@ export interface BobAtlas {
  * a programmer error, since decoded palettes always are.
  */
 export function expandBobFrame(frame: BobFrame, palette: Uint8Array): RgbaImage {
-  if (palette.length !== PALETTE_RGB_BYTES) {
-    throw new Error(
-      `atlas: palette must be ${PALETTE_RGB_BYTES} bytes (256 RGB triples), got ${palette.length}`,
-    );
-  }
+  assertPaletteBytes(palette, 'atlas');
   // Alpha is the frame's per-pixel coverage; an unwritten (coverage 0) pixel stays fully transparent.
   const { width, height, pixels, mask } = frame;
   return { width, height, rgba: paletteToRgba(pixels, palette, (i) => mask[i] ?? 0) };

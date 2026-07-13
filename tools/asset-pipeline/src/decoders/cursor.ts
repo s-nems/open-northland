@@ -28,7 +28,7 @@
  * to round-trip test without committing copyrighted fixtures — same rationale as the other encoder pairs.
  */
 
-import { PALETTE_RGB_BYTES, type RgbaImage } from './image.js';
+import { assertPaletteBytes, type RgbaImage } from './image.js';
 
 /** ICONDIR / ICONDIRENTRY sizes and the cursor resource type. */
 const ICONDIR_BYTES = 6;
@@ -253,8 +253,7 @@ function encodeDib8(img: CursorImageInput): Uint8Array {
   if (pixels.length !== width * height) {
     throw new Error(`cursor: pixels length ${pixels.length} does not match ${width}x${height}`);
   }
-  if (palette.length !== PALETTE_RGB_BYTES)
-    throw new Error(`cursor: palette must be ${PALETTE_RGB_BYTES} bytes, got ${palette.length}`);
+  assertPaletteBytes(palette, 'cursor');
 
   const xorRowBytes = align4(width);
   const andRowBytes = align4(Math.ceil(width / 8));

@@ -4,12 +4,30 @@
  * It lives here, not in any one decoder, so a decoder never has to import another decoder just for the shape.
  */
 
+/** Colours in a full 8-bit-indexed palette (`256` entries → the width of every RGB/RGBA colour table). */
+export const PALETTE_ENTRIES = 256;
+
 /**
  * Byte length of a 256-entry RGB palette (`256 × 3`) — the format-neutral colour-table currency the
  * `.pcx` trailer, the standalone `CPalette`, the `.bmd` atlas colouring, and the cursor DIB all
  * exchange. One name so the `768` magic literal never recurs per decoder.
  */
-export const PALETTE_RGB_BYTES = 256 * 3;
+export const PALETTE_RGB_BYTES = PALETTE_ENTRIES * 3;
+
+/**
+ * Guards that `palette` is exactly one full RGB palette ({@link PALETTE_RGB_BYTES}), throwing a
+ * `${prefix}:`-namespaced error otherwise — the single copy of the length check every indexed decoder
+ * (`atlas`/`cursor`/`pcx`/`palette`/`player-palette`) ran inline. A wrong length is a programmer error
+ * (decoded palettes are always 768 bytes), not recoverable input. `what` names the offending buffer for
+ * callers that validate more than one (e.g. `player-palette`'s base vs source).
+ */
+export function assertPaletteBytes(palette: Uint8Array, prefix: string, what = 'palette'): void {
+  if (palette.length !== PALETTE_RGB_BYTES) {
+    throw new Error(
+      `${prefix}: ${what} must be ${PALETTE_RGB_BYTES} bytes (256 RGB triples), got ${palette.length}`,
+    );
+  }
+}
 
 /** A pixel buffer in straight (non-premultiplied) RGBA, 8 bits/channel, row-major top→bottom. */
 export interface RgbaImage {
