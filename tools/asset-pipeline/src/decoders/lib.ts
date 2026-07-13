@@ -21,6 +21,8 @@
  * Pure functions only (no I/O): `(bytes) => decoded`. The CLI wires file reads around them.
  */
 
+import { asciiBytes, ByteCursor } from './byte-cursor.js';
+
 /** One directory group: a path-prefix label plus its opaque value (group id). */
 export interface LibGroup {
   readonly name: string;
@@ -47,9 +49,6 @@ export interface LibArchive {
   readonly files: readonly LibFile[];
 }
 
-/** Latin1 maps all 256 byte values 1:1; archive names are ASCII so this is exact. */
-const LATIN1 = new TextDecoder('latin1');
-
 /**
  * Filename → lookup checksum (CSimpleFileLibrary `CalculateFilenameChecksum`): the sum of the
  * lowercased ASCII byte values, taken mod 256, folding only A-Z. Real archive names are ASCII
@@ -66,37 +65,6 @@ export function filenameChecksum(name: string): number {
   return sum;
 }
 
-/** Little-endian sequential reader over a byte buffer. Throws on overrun (corrupt archive = bug). */
-class LibReader {
-  private readonly bytes: Uint8Array;
-  private readonly view: DataView;
-  private pos = 0;
-
-  constructor(bytes: Uint8Array) {
-    this.bytes = bytes;
-    this.view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  }
-
-  u32(): number {
-    if (this.pos + 4 > this.bytes.length) {
-      throw new Error(`lib: read of 4 bytes overruns buffer at offset ${this.pos}`);
-    }
-    const v = this.view.getUint32(this.pos, true);
-    this.pos += 4;
-    return v;
-  }
-
-  /** Reads `n` raw bytes as a latin1 string (names are ASCII; latin1 is a faithful 1:1 mapping). */
-  ascii(n: number): string {
-    if (this.pos + n > this.bytes.length) {
-      throw new Error(`lib: read of ${n} bytes overruns buffer at offset ${this.pos}`);
-    }
-    const slice = this.bytes.subarray(this.pos, this.pos + n);
-    this.pos += n;
-    return LATIN1.decode(slice);
-  }
-}
-
 /**
  * Decodes a `.lib` archive directory and returns per-file payload views. Throws on a structurally
  * invalid container (truncated directory, or a payload range outside the buffer) — a batch pipeline
@@ -107,7 +75,7 @@ class LibReader {
  * for pointing back into the directory, so a malformed archive can yield in-bounds-but-wrong views.
  */
 export function decodeLib(bytes: Uint8Array): LibArchive {
-  const r = new LibReader(bytes);
+  const r = new ByteCursor(bytes, 'lib');
   const version = r.u32();
   const groupCount = r.u32();
   const fileCount = r.u32();
@@ -163,13 +131,6 @@ export interface LibArchiveInput {
   readonly version?: number;
   readonly groups?: readonly LibGroup[];
   readonly files: readonly LibFileInput[];
-}
-
-/** Encodes a name as latin1 bytes (1:1 byte mapping; ASCII filenames stay exact). */
-function asciiBytes(s: string): Uint8Array {
-  const out = new Uint8Array(s.length);
-  for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i) & 0xff;
-  return out;
 }
 
 /**
