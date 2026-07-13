@@ -47,26 +47,3 @@ export function readNumFieldOrNull(
 ): number | null {
   return readNumField(components, component, field) ?? null;
 }
-
-/**
- * Decode a snapshot `Stockpile.amounts` to its plain `[goodType, amount]` pairs — the shared, defensive
- * read behind both the scene's per-pile good pick ({@link import('./stockpile-readers.js').readStockpile})
- * and the HUD's tribe-wide stock sum ({@link import('../../hud.js').buildHud}). The snapshot clones the
- * `Stockpile.amounts` Map to an ascending-by-goodType `[goodType, amount]` array (see `inspect/snapshot.ts`),
- * so this returns that shape directly. Total: a missing/malformed stockpile reads as empty, and any
- * non-`[number, number]` entry is dropped; callers apply their own amount filtering (the pick skips `<= 0`,
- * the sum drops goods netting to zero).
- */
-export function readStockpileAmounts(
-  components: Readonly<Record<string, unknown>>,
-): readonly [number, number][] {
-  const s = components.Stockpile as { amounts?: unknown } | undefined;
-  if (s === undefined || !Array.isArray(s.amounts)) return [];
-  const out: [number, number][] = [];
-  for (const pair of s.amounts) {
-    if (Array.isArray(pair) && typeof pair[0] === 'number' && typeof pair[1] === 'number') {
-      out.push([pair[0], pair[1]]);
-    }
-  }
-  return out;
-}

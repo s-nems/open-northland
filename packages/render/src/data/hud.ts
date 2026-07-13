@@ -1,5 +1,5 @@
 import type { WorldSnapshot } from '@open-northland/sim';
-import { readStockpileAmounts } from './scene/snapshot-readers/index.js';
+import { readStockpileAmounts } from './stockpile.js';
 
 /**
  * The PURE HUD-model layer — the part of the on-screen HUD an agent CAN self-verify, exactly

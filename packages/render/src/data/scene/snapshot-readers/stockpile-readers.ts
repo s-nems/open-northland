@@ -3,7 +3,7 @@
  * mainly holds and how many units. Pure + total; the canonical max-pick keeps a mixed heap reproducible.
  */
 
-import { readStockpileAmounts } from './component-access.js';
+import { isStockpileAmount } from '../../stockpile.js';
 
 /**
  * What a bare {@link import('@open-northland/sim').Stockpile} draw item represents: the good its ground pile
@@ -20,13 +20,17 @@ export function readStockpile(components: Readonly<Record<string, unknown>>): {
   goodType?: number;
   fill?: number;
 } {
+  // Per-frame per-visible-pile hot path: scan the pairs IN PLACE (no array materialization) and keep the
+  // max, sharing only the {@link isStockpileAmount} guard with the HUD's array-building sum.
+  const s = components.Stockpile as { amounts?: unknown } | undefined;
+  if (s === undefined || !Array.isArray(s.amounts)) return {};
   let bestGood: number | undefined;
   let bestAmount = 0;
-  for (const [good, amount] of readStockpileAmounts(components)) {
-    if (amount <= 0) continue;
-    if (amount > bestAmount) {
-      bestAmount = amount;
-      bestGood = good;
+  for (const pair of s.amounts) {
+    if (!isStockpileAmount(pair) || pair[1] <= 0) continue;
+    if (pair[1] > bestAmount) {
+      bestAmount = pair[1];
+      bestGood = pair[0];
     }
   }
   return bestGood === undefined ? {} : { goodType: bestGood, fill: bestAmount };
