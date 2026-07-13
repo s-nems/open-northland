@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { Armor, CurrentAtomic, Health, Position, Settler } from '../../../src/components/index.js';
+import { Health, Settler } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { Simulation } from '../../../src/index.js';
 import { FIGHT_EXPERIENCE_TYPE } from '../../../src/systems/index.js';
+import { clearComponentStores } from '../../fixtures/stores.js';
 import {
   combatCadenceContent,
   fighterAt,
@@ -49,11 +50,7 @@ describe('two squads exchange blows at the data cadence (extended headless scena
 
   it('is deterministic — two same-seed runs of the skirmish reach the same state hash', () => {
     const run = (): string => {
-      Position.store.clear();
-      Settler.store.clear();
-      Health.store.clear();
-      Armor.store.clear();
-      CurrentAtomic.store.clear();
+      clearComponentStores();
       const sim = new Simulation({ seed: 7, content: combatCadenceContent(), map: grass(4, 1) });
       seedSquads(sim);
       for (let i = 0; i < 80; i++) sim.step();

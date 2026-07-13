@@ -1,21 +1,5 @@
 import { beforeEach } from 'vitest';
-import {
-  Age,
-  AttackOrder,
-  CurrentAtomic,
-  Engagement,
-  Fleeing,
-  Health,
-  MoveGoal,
-  Owner,
-  PathFollow,
-  PathRequest,
-  PlayerOrder,
-  Position,
-  Resource,
-  Settler,
-  Stance,
-} from '../../../src/components/index.js';
+import { Health, Owner, Position, Settler, Stance } from '../../../src/components/index.js';
 import { type Fixed, fx } from '../../../src/core/fixed.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import {
@@ -26,6 +10,7 @@ import {
   type TerrainMap,
 } from '../../../src/index.js';
 import type { SystemContext } from '../../../src/systems/index.js';
+import { clearComponentStores } from '../../fixtures/stores.js';
 
 /**
  * The four **military stances** (`MILITARY_MODE`) as a per-unit auto-engagement mode, plus the civilian
@@ -44,27 +29,7 @@ export const WOODCUTTER = 1; // has the axe weapon; a civilian job (default FLEE
 export const P0 = 0;
 export const P1 = 1;
 
-beforeEach(() => {
-  for (const c of [
-    Position,
-    Settler,
-    Health,
-    Owner,
-    Stance,
-    Fleeing,
-    Engagement,
-    AttackOrder,
-    CurrentAtomic,
-    MoveGoal,
-    PathFollow,
-    PathRequest,
-    PlayerOrder,
-    Resource,
-    Age,
-  ]) {
-    c.store.clear();
-  }
-});
+beforeEach(clearComponentStores);
 
 export const WOOD = 1; // the fixture's wood good (harvest atomic 24), what a woodcutter (job 1) gathers
 export const HARVEST_ATOMIC = 24;
