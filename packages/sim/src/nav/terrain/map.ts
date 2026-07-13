@@ -40,7 +40,8 @@
  */
 import type { ContentSet, LandscapeType } from '@vinland/data';
 
-import { type NodeTypeProps, resolveTypeProps, TerrainGraph } from './graph.js';
+import { TerrainGraph } from './graph.js';
+import { type NodeTypeProps, resolveTypeProps } from './node-types.js';
 
 /**
  * A terrain map at HALF-CELL resolution: dimensions + a row-major landscape-typeId grid — the
