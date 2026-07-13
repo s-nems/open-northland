@@ -1,9 +1,9 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { encodeLib } from '../src/decoders/lib.js';
 import { libMemberRelPath, unpackLibTree } from '../src/stages/lib.js';
+import { makeTempDir } from './support/game-tree.js';
 
 describe('libMemberRelPath', () => {
   it('rewrites backslash member paths to a native relative path', () => {
@@ -26,7 +26,7 @@ describe('unpackLibTree', () => {
   let out: string;
 
   beforeEach(async () => {
-    const root = await mkdtemp(join(tmpdir(), 'opennorthland-lib-'));
+    const root = (await makeTempDir('lib')).path;
     game = join(root, 'game');
     out = join(root, 'out');
     await mkdir(game, { recursive: true });

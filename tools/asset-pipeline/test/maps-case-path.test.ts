@@ -1,8 +1,8 @@
-import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { findPathCaseInsensitive } from '../src/stages/maps/case-path.js';
+import { makeTempDir } from './support/game-tree.js';
 
 /**
  * Portability guard for the case-insensitive map-folder resolution (map folders ship `Text/`/`TEXT/`/
@@ -19,7 +19,7 @@ describe('findPathCaseInsensitive', () => {
   });
 
   async function tmpTree(): Promise<string> {
-    root = await mkdtemp(join(tmpdir(), 'opennorthland-case-path-'));
+    root = (await makeTempDir('case-path')).path;
     return root;
   }
 

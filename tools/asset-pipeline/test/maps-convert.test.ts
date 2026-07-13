@@ -1,5 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { encodePcx } from '../src/decoders/pcx.js';
@@ -8,6 +7,7 @@ import { convertMapDatTree, mapIdFromPath } from '../src/stages/maps/index.js';
 import { buildStringCif } from './fixtures/cif.js';
 import { buildMapDat } from './fixtures/mapdat.js';
 import { rampPalette } from './fixtures/palette.js';
+import { makeTempDir } from './support/game-tree.js';
 
 describe('convertMapDatTree', () => {
   let root: string;
@@ -15,7 +15,7 @@ describe('convertMapDatTree', () => {
   let out: string;
 
   beforeEach(async () => {
-    root = await mkdtemp(join(tmpdir(), 'opennorthland-mapdat-'));
+    root = (await makeTempDir('mapdat')).path;
     game = join(root, 'game');
     out = join(root, 'out');
     await mkdir(join(game, 'CnModMaps', 'tutorial_002'), { recursive: true });

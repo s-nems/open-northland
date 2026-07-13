@@ -1,9 +1,9 @@
-import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseIniSections } from '../src/decoders/ini.js';
 import { resolveMapMeta } from '../src/stages/maps/meta.js';
+import { makeTempDir } from './support/game-tree.js';
 
 /**
  * Covers the map meta sidecar resolution: the header-id fallback chain (misc.inc/map.ini/map.cif →
@@ -12,7 +12,7 @@ import { resolveMapMeta } from '../src/stages/maps/meta.js';
  * public; the private id/table resolvers are exercised through it.
  */
 async function mapFolder(): Promise<string> {
-  return mkdtemp(join(tmpdir(), 'opennorthland-map-meta-'));
+  return (await makeTempDir('map-meta')).path;
 }
 
 /** Writes `<dir>/text/<lang>/strings.ini` with the given `[text]` body. */

@@ -1,5 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { decodePcx, encodePcx, expandToRgba } from '../src/decoders/pcx.js';
@@ -8,6 +7,7 @@ import { TEXTURES_DIR } from '../src/stages/game-file.js';
 import { composeMaskedTransitionPages, convertPcxTree, pcxToPng } from '../src/stages/pcx.js';
 import { rampPalette } from './fixtures/palette.js';
 import { samplePcx } from './fixtures/pcx.js';
+import { makeTempDir } from './support/game-tree.js';
 
 describe('pcxToPng', () => {
   it('decodes, palette-expands, and re-encodes to a PNG that round-trips to the same RGBA', () => {
@@ -32,7 +32,7 @@ describe('convertPcxTree', () => {
   let out: string;
 
   beforeEach(async () => {
-    const root = await mkdtemp(join(tmpdir(), 'opennorthland-pipeline-'));
+    const root = (await makeTempDir('pipeline')).path;
     game = join(root, 'game');
     out = join(root, 'out');
     await mkdir(game, { recursive: true });

@@ -1,8 +1,8 @@
-import { mkdir, mkdtemp, rm, symlink } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { mkdir, rm, symlink } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { assertOutStaysInCheckout, parseArgs, resolveArgs } from '../src/args.js';
+import { makeTempDir } from './support/game-tree.js';
 
 describe('parseArgs', () => {
   it('reads --game/--mod/--out and defaults out to content', () => {
@@ -54,7 +54,7 @@ describe('assertOutStaysInCheckout', () => {
   // checkout's; a pipeline run there wrote through the symlink and clobbered the primary's content.
   let base: string;
   beforeEach(async () => {
-    base = await mkdtemp(join(tmpdir(), 'opennorthland-out-guard-'));
+    base = (await makeTempDir('out-guard')).path;
   });
   afterEach(async () => {
     await rm(base, { recursive: true, force: true });

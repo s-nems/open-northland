@@ -1,5 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { encodeBmd } from '../src/decoders/bmd/index.js';
@@ -14,10 +13,12 @@ import {
   convertGuiStrings,
   liftPaletteShadows,
 } from '../src/stages/gui/index.js';
+import { STRING_TABLES } from '../src/stages/gui/strings.js';
 import { sampleGlyphBmd } from './fixtures/bmd.js';
 import { buildStringCif } from './fixtures/cif.js';
 import { rampPalette } from './fixtures/palette.js';
 import { paletteCarrier } from './fixtures/pcx.js';
+import { BOBS_DIR, type GameOutTemp, makeGameOutTemp } from './support/game-tree.js';
 
 /**
  * GUI stage tests. No copyrighted fixtures: we synthesize the HUD sources (a `.bmd` bob sheet, palette
@@ -45,36 +46,14 @@ const PALETTE_FILES = [
   join('Data', 'engine2d', 'bin', 'palettes', 'gui', 'gui_bubbles.pcx'),
 ];
 
-const STRING_TABLES = [
-  'main',
-  'misc',
-  'miscwindow',
-  'misclogic',
-  'messages',
-  'humanwindow',
-  'humanlistwindow',
-  'housewindow',
-  'vehiclewindow',
-];
-
-const BOBS_DIR = join('Data', 'engine2d', 'bin', 'bobs');
-
 describe('gui stage', () => {
-  let root: string;
   let game: string;
   let out: string;
-
-  const writeGame = async (rel: string, bytes: Uint8Array): Promise<void> => {
-    const path = join(game, rel);
-    await mkdir(join(path, '..'), { recursive: true });
-    await writeFile(path, bytes);
-  };
+  let writeGame: GameOutTemp['write'];
+  let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
-    root = await mkdtemp(join(tmpdir(), 'opennorthland-gui-'));
-    game = join(root, 'game');
-    out = join(root, 'out');
-    await mkdir(game, { recursive: true });
+    ({ game, out, write: writeGame, cleanup } = await makeGameOutTemp('gui'));
     // Palettes.
     for (const f of PALETTE_FILES) await writeGame(f, paletteCarrier());
     // Bob sheets.
@@ -118,7 +97,7 @@ describe('gui stage', () => {
   });
 
   afterEach(async () => {
-    await rm(root, { recursive: true, force: true });
+    await cleanup();
   });
 
   it('builds a 256×N palette LUT with a stable row order and resolves the preview palettes', async () => {
