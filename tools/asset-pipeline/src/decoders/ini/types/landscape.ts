@@ -13,12 +13,13 @@ import { decodeCifStringArray } from '../../cif.js';
 import {
   cifLinesToSections,
   findProp,
-  findProps,
   getInt,
+  getIntRows,
   getIntTuple,
+  getPaletteName,
   getStr,
+  makeSource,
   normalizeOptionalPath,
-  normalizePaletteName,
   type RuleSection,
   requireTypeId,
   type SourceRef,
@@ -45,9 +46,7 @@ export function extractLandscape(sections: readonly RuleSection[], src: SourceRe
     const name = getStr(sec, 'name');
     // Raw `transition` tuples in file order, variable arity (mostly 5 ints, a few `mine` types 2),
     // captured VERBATIM — the encoding is not reversed, so no semantics are read into the positions.
-    const transitions = findProps(sec, 'transition')
-      .map((p) => p.values.map((v) => Number.parseInt(v, 10)))
-      .filter((vals) => vals.length > 0 && vals.every((n) => !Number.isNaN(n)));
+    const transitions = getIntRows(sec, 'transition', (n) => n > 0);
     landscape.push(
       LandscapeType.parse({
         typeId,
@@ -58,7 +57,7 @@ export function extractLandscape(sections: readonly RuleSection[], src: SourceRe
         allowedOnWater: getInt(sec, 'allowedonwater') === 1,
         allowedOnEverything: getInt(sec, 'allowedoneverything') === 1,
         transitions,
-        source: { file: src.file, block: 'landscapetype', layer: src.layer ?? 'base' },
+        source: makeSource(src, 'landscapetype'),
       }),
     );
   }
@@ -97,7 +96,7 @@ export function extractTrianglePatternTypes(
         island: getInt(sec, 'island') === 1,
         moveResistance: getInt(sec, 'moveresistance') ?? 0,
         debugColor: getIntTuple(sec, 'debugcolor', 3),
-        source: { file: src.file, block: 'trianglepatterntype', layer: src.layer ?? 'base' },
+        source: makeSource(src, 'trianglepatterntype'),
       }),
     );
   }
@@ -129,15 +128,11 @@ export function extractLandscapeGfx(sections: readonly RuleSection[], src: Sourc
     const libs = findProp(sec, 'GfxBobLibs');
     const bmd = libs?.values[0];
     const shadow = libs?.values[1];
-    const paletteName = getStr(sec, 'GfxPalette');
-    const blockAreas = (key: string): number[][] =>
-      findProps(sec, key)
-        .map((p) => p.values.map((v) => Number.parseInt(v, 10)))
-        .filter((vals) => vals.length === 4 && vals.every((n) => !Number.isNaN(n)));
-    const frames = findProps(sec, 'GfxFrames')
-      .map((p) => p.values.map((v) => Number.parseInt(v, 10)))
-      .filter((vals) => vals.length >= 2 && vals.every((n) => !Number.isNaN(n)))
-      .map((vals) => ({ state: vals[0] as number, bobIds: vals.slice(1) }));
+    const blockAreas = (key: string): number[][] => getIntRows(sec, key, (n) => n === 4);
+    const frames = getIntRows(sec, 'GfxFrames', (n) => n >= 2).map((vals) => ({
+      state: vals[0] as number,
+      bobIds: vals.slice(1),
+    }));
     records.push(
       LandscapeGfx.parse({
         index: index++,
@@ -151,15 +146,12 @@ export function extractLandscapeGfx(sections: readonly RuleSection[], src: Sourc
         workAreas: blockAreas('LogicWorkArea'),
         bmd: normalizeOptionalPath(bmd),
         shadowBmd: normalizeOptionalPath(shadow),
-        paletteName:
-          paletteName !== undefined && paletteName.trim() !== ''
-            ? normalizePaletteName(paletteName)
-            : undefined,
+        paletteName: getPaletteName(sec, 'GfxPalette'),
         frames,
         isStatic: getInt(sec, 'GfxStatic') !== 0,
         loopAnimation: getInt(sec, 'GfxLoopAnimation') === 1,
         dynamicBackground: getInt(sec, 'GfxDynamicBackground') === 1,
-        source: { file: src.file, block: 'GfxLandscape', layer: src.layer ?? 'base' },
+        source: makeSource(src, 'GfxLandscape'),
       }),
     );
   }

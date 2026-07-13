@@ -12,10 +12,12 @@ import {
   getInt,
   getIntValues,
   getStr,
+  makeSource,
   type RuleSection,
   requireTypeId,
   type SourceRef,
   slug,
+  tallyIds,
 } from '../grammar.js';
 
 /**
@@ -40,7 +42,7 @@ export function extractGoods(sections: readonly RuleSection[], src: SourceRef): 
         classification: extractGoodClassification(sec),
         landscapeType: getInt(sec, 'landscapetype'),
         ...(gathering ? { gathering } : {}),
-        source: { file: src.file, block: 'goodtype', layer: src.layer ?? 'base' },
+        source: makeSource(src, 'goodtype'),
       }),
     );
   }
@@ -55,11 +57,7 @@ export function extractGoods(sections: readonly RuleSection[], src: SourceRef): 
  * the source, not derived.
  */
 function extractProductionInputs(sec: RuleSection): { goodType: number; amount: number }[] {
-  const counts = new Map<number, number>();
-  for (const id of getIntValues(sec, 'productionInputGoods')) {
-    counts.set(id, (counts.get(id) ?? 0) + 1);
-  }
-  return [...counts].map(([goodType, amount]) => ({ goodType, amount }));
+  return tallyIds(getIntValues(sec, 'productionInputGoods'));
 }
 
 /**

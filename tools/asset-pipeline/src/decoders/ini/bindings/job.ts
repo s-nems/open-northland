@@ -6,10 +6,9 @@
 import {
   findProps,
   getInt,
-  getStr,
+  getPaletteName,
   normalizeAssetPath,
   normalizeOptionalPath,
-  normalizePaletteName,
   type RuleProp,
   type RuleSection,
 } from '../grammar.js';
@@ -88,12 +87,6 @@ function parseIndexedBobManager(prop: RuleProp): IndexedBobManager | undefined {
     bmd: normalizeAssetPath(bmd),
     shadowBmd: normalizeOptionalPath(shadow),
   };
-}
-
-/** First value of the first matching property as a lower-cased palette `editname`, or `undefined` if absent/empty. */
-function getPaletteName(sec: RuleSection, key: string): string | undefined {
-  const name = getStr(sec, key);
-  return name !== undefined && name.trim() !== '' ? normalizePaletteName(name) : undefined;
 }
 
 /**

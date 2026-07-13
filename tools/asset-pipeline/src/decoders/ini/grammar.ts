@@ -165,6 +165,19 @@ export function getIntTuple(sec: RuleSection, key: string, length: number): numb
   return vals.length === length ? vals : undefined;
 }
 
+/**
+ * Every property with this key as a row of base-10 ints, keeping only rows whose length satisfies
+ * `arity` and that contain no NaN — for repeated multi-int lines of a fixed or bounded shape
+ * (`GfxCoordsA` 6-int UV rows, `LogicWalkBlockArea` 4-int cells, `GfxFrames` ≥2-int state+bobs,
+ * `transition` any-length tuples). File order is preserved; a wrong-arity or malformed row is dropped
+ * rather than partially read.
+ */
+export function getIntRows(sec: RuleSection, key: string, arity: (length: number) => boolean): number[][] {
+  return findProps(sec, key)
+    .map((p) => p.values.map((v) => Number.parseInt(v, 10)))
+    .filter((vals) => arity(vals.length) && vals.every((n) => !Number.isNaN(n)));
+}
+
 /** First value of the first matching property as a string. */
 export function getStr(sec: RuleSection, key: string): string | undefined {
   return findProp(sec, key)?.values[0];
@@ -200,6 +213,29 @@ export function requireTypeId(sec: RuleSection, block: string, src: SourceRef): 
   return typeId;
 }
 
+/**
+ * Builds a record's `source` provenance — the {@link SourceRef} plus the `[block]` it was read from,
+ * defaulting the layer to `base`. Every typed extractor stamps this onto each IR record for auditability
+ * (the one shared spelling, so the `?? 'base'` default can't drift between them).
+ */
+export function makeSource(
+  src: SourceRef,
+  block: string,
+): { file: string; block: string; layer: 'base' | 'mod' } {
+  return { file: src.file, block, layer: src.layer ?? 'base' };
+}
+
+/**
+ * Tally an id multiset — a flat list where a repeated id encodes its quantity (a recipe's
+ * `productionInputGoods`, a build cost's `LogicConstructionGoods`: `… 1 1 14 …` = 2× good 1 + 1× good 14)
+ * — into `{ goodType, amount }` pairs, preserving first-seen order for a deterministic IR.
+ */
+export function tallyIds(ids: readonly number[]): { goodType: number; amount: number }[] {
+  const counts = new Map<number, number>();
+  for (const id of ids) counts.set(id, (counts.get(id) ?? 0) + 1);
+  return [...counts].map(([goodType, amount]) => ({ goodType, amount }));
+}
+
 /** Normalizes a Cultures asset path (`data\Engine2D\...\X.pcx`) to a lookup key: forward slashes, lower-case. */
 export function normalizeAssetPath(path: string): string {
   return path.replace(/\\/g, '/').toLowerCase();
@@ -222,4 +258,15 @@ export function normalizeOptionalPath(path: string | undefined): string | undefi
  */
 export function normalizePaletteName(name: string): string {
   return name.toLowerCase();
+}
+
+/**
+ * First value of the first matching property as a lower-cased palette `editname`, or `undefined` if
+ * absent/blank — {@link getStr} plus the {@link normalizePaletteName} join-key normalization. The palette
+ * analog of {@link normalizeOptionalPath}, shared by the graphics-binding readers and the landscape/gfx
+ * type extractors that reference a recolour palette by name.
+ */
+export function getPaletteName(sec: RuleSection, key: string): string | undefined {
+  const name = getStr(sec, key);
+  return name !== undefined && name.trim() !== '' ? normalizePaletteName(name) : undefined;
 }
