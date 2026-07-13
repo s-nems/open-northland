@@ -131,7 +131,7 @@ export {
   SYNTHETIC_BINDINGS,
   syntheticAtlasFrames,
 } from './gpu/synthetic-atlas.js';
-export { flatTileColour } from './gpu/terrain/terrain-layer.js';
+export { flatTileColour } from './gpu/terrain/index.js';
 export type {
   GroundPattern,
   TerrainTextureSet,
