@@ -1,5 +1,5 @@
 {
-  "name": "@vinland/app",
+  "name": "@open-northland/app",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -10,10 +10,10 @@
     "shot": "node scripts/shot.mjs"
   },
   "dependencies": {
-    "@vinland/audio": "*",
-    "@vinland/data": "*",
-    "@vinland/render": "*",
-    "@vinland/sim": "*"
+    "@open-northland/audio": "*",
+    "@open-northland/data": "*",
+    "@open-northland/render": "*",
+    "@open-northland/sim": "*"
   },
   "devDependencies": {
     "vite": "^8.1.4"

@@ -1,5 +1,5 @@
-import { buildSpriteScene, resolveResourceDraw, resolveStockpileDraw } from '@vinland/render';
-import { systems } from '@vinland/sim';
+import { buildSpriteScene, resolveResourceDraw, resolveStockpileDraw } from '@open-northland/render';
+import { systems } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { WOOD_YIELD_PER_NODE } from '../src/catalog/felling.js';
 import {

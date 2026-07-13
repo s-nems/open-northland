@@ -1,5 +1,5 @@
-import type { Simulation } from '@vinland/sim';
-import { components } from '@vinland/sim';
+import type { Simulation } from '@open-northland/sim';
+import { components } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
 import { HUMAN_PLAYER } from '../game/rules.js';
 import {

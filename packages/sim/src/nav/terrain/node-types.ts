@@ -1,4 +1,4 @@
-import type { LandscapeType } from '@vinland/data';
+import type { LandscapeType } from '@open-northland/data';
 import { type Fixed, ONE } from '../../core/fixed.js';
 
 /** Resolved, sim-ready properties of one landscape type (derived once from the IR at build time). */

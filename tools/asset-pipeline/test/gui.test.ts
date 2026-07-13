@@ -71,7 +71,7 @@ describe('gui stage', () => {
   };
 
   beforeEach(async () => {
-    root = await mkdtemp(join(tmpdir(), 'vinland-gui-'));
+    root = await mkdtemp(join(tmpdir(), 'opennorthland-gui-'));
     game = join(root, 'game');
     out = join(root, 'out');
     await mkdir(game, { recursive: true });

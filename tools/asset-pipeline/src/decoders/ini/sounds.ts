@@ -1,7 +1,7 @@
 /**
  * Sound-bank extraction: static groups, ambients, and jingles with their SFX path/param lists.
  */
-import { SoundAmbient, SoundBank, SoundJingle, SoundStaticGroup } from '@vinland/data';
+import { SoundAmbient, SoundBank, SoundJingle, SoundStaticGroup } from '@open-northland/data';
 import type { RuleProp, RuleSection } from './grammar.js';
 
 /** The Cultures sounds root every `SFX` path resolves under, forward-slashed + lower-cased. */

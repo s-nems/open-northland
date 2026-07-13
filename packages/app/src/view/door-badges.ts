@@ -1,5 +1,5 @@
-import type { DoorBadge } from '@vinland/render';
-import { nodeOfPosition, positionOfNode, type WorldSnapshot } from '@vinland/sim';
+import type { DoorBadge } from '@open-northland/render';
+import { nodeOfPosition, positionOfNode, type WorldSnapshot } from '@open-northland/sim';
 import type { WorkerRole } from '../game/sandbox/index.js';
 import { isBuilding, isSettler, num, positionOf } from '../game/snapshot.js';
 import { type DoorFootprint, workerIconNode } from './building-points.js';

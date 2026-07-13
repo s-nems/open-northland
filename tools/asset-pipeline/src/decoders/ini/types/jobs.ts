@@ -10,7 +10,7 @@ import {
   type JobRequirementTarget,
   JobType,
   TribeType,
-} from '@vinland/data';
+} from '@open-northland/data';
 import {
   findProps,
   getInt,

@@ -1,4 +1,4 @@
-import type { PalettedSprite } from '@vinland/render';
+import type { PalettedSprite } from '@open-northland/render';
 import type { Application, Container } from 'pixi.js';
 import type { GuiArt } from '../../content/gui-art.js';
 import type { TextRun } from '../bitmap-text.js';

@@ -1,4 +1,4 @@
-import type { ConstructionLayerRef } from '@vinland/render';
+import type { ConstructionLayerRef } from '@open-northland/render';
 import type { ConstructionLayerRow } from '../ir.js';
 import {
   type BuildingFamily,

@@ -5,14 +5,14 @@ import type {
   SoundBank,
   TerrainPattern,
   TrianglePatternType,
-} from '@vinland/data';
+} from '@open-northland/data';
 import {
   type AtlasManifest,
   atlasFromManifest,
   loadAtlasSource,
   type SpriteLayer,
   type TextureSource,
-} from '@vinland/render';
+} from '@open-northland/render';
 import { DOOR_SHIFTS } from '../catalog/building-tweaks.js';
 import { fetchJsonOrNull, loadTextureIfPresent } from './net.js';
 
@@ -152,7 +152,7 @@ export interface LandscapeTypeRow {
  * The app's view of the served `content/ir.json` — every lane any domain (sprites, terrain, map
  * objects, authored-entity joins, audio) reads, ALL optional: an `ir.json` generated before a lane
  * existed still loads, and each consumer degrades per-lane. The pipeline writes the file through the
- * `@vinland/data` zod schema, so casting the fetched JSON to this view at the I/O boundary is the
+ * `@open-northland/data` zod schema, so casting the fetched JSON to this view at the I/O boundary is the
  * boundary's stance (no re-validation of a multi-MB document per boot); the pattern/sound lanes use
  * the schema types directly, the bob/landscape lanes keep the narrower row views above.
  */
@@ -186,7 +186,7 @@ export interface ContentIr {
   }[];
   readonly jobs?: readonly { typeId?: number; id?: string; name?: string }[];
   readonly tribes?: readonly { typeId?: number; id?: string }[];
-  /** The decoded sound bank (`@vinland/audio` builds its index from it). */
+  /** The decoded sound bank (`@open-northland/audio` builds its index from it). */
   readonly sounds?: SoundBank;
 }
 
@@ -304,7 +304,7 @@ export function gfxAtomicFrameLists(
 
 /**
  * Load every `[bobseq]` of one body bob set (default {@link BODY_IMAGELIB}) from the served
- * `content/ir.json`, in file order — the raw animation list the {@link import('@vinland/render').AnimationGallery}
+ * `content/ir.json`, in file order — the raw animation list the {@link import('@open-northland/render').AnimationGallery}
  * plays. Returns `[]` when the IR is absent (a checkout without `content/`), so the gallery can show a
  * "run the pipeline" message instead of crashing. The atlas *image* is loaded separately
  * ({@link import('./sprite-sheet/index.js').loadHumanSpriteSheet}); this is only the frame RANGES the gallery indexes.

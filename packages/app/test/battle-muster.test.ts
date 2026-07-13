@@ -1,4 +1,4 @@
-import { components } from '@vinland/sim';
+import { components } from '@open-northland/sim';
 import { expect, it } from 'vitest';
 import { createSceneSim, SCENES } from '../src/scenes/index.js';
 

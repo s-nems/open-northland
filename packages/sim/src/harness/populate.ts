@@ -1,4 +1,4 @@
-import type { ContentSet } from '@vinland/data';
+import type { ContentSet } from '@open-northland/data';
 import type { Command } from '../core/commands/index.js';
 import { buildTerrainGraph, type NodeId, TerrainGraph, type TerrainMap } from '../nav/terrain/index.js';
 import { animalRecord } from '../systems/readviews/index.js';

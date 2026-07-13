@@ -1,10 +1,10 @@
-import type { LayeredBobRef, ResourceTypeBinding } from '@vinland/render';
+import type { LayeredBobRef, ResourceTypeBinding } from '@open-northland/render';
 import type { ContentIr, LandscapeGfxRow } from '../ir.js';
 import { BUSH_WITH_FRUITS_LOGIC_TYPE } from '../map-resources.js';
 import { type GatheringNodeRef, nodeRefFrom } from './refs.js';
 
-/** A resolved berry-bush draw: the fruited-record INDEX (the {@link import('@vinland/sim').BerryBush.gfxIndex}
- *  → {@link import('@vinland/render').DrawItem.gfxIndex} join key) and its two render states — `ripe`
+/** A resolved berry-bush draw: the fruited-record INDEX (the {@link import('@open-northland/sim').BerryBush.gfxIndex}
+ *  → {@link import('@open-northland/render').DrawItem.gfxIndex} join key) and its two render states — `ripe`
  *  (holds fruit) and `bare` (foraged, regrowing), each a served atlas stem + bob. */
 export interface BerryBushRef {
   readonly gfxIndex: number;

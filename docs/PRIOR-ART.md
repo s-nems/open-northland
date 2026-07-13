@@ -2,11 +2,11 @@
 
 A survey of engineering practice across open-source rebuilds of old game engines — OpenRA (C&C),
 OpenTTD (Transport Tycoon), OpenMW (Morrowind), devilutionX (Diablo), 0 A.D., Widelands, openage
-(AoE2), Chrono Divide (RA2 in TypeScript), fheroes2/VCMI — read against Vinland's goals
+(AoE2), Chrono Divide (RA2 in TypeScript), fheroes2/VCMI — read against OpenNorthland's goals
 (deterministic lockstep-ready sim, data-driven content, faithful-first). **This doc is the one place
 external projects are cited**; code comments state the underlying rationale on its own terms.
 
-Three sections: what Vinland already does (with the seam it lives in), what is deferred behind a
+Three sections: what OpenNorthland already does (with the seam it lives in), what is deferred behind a
 named trigger, and where we consciously differ. Review this occasionally; when a deferred entry
 lands, move its one-liner to Adopted and prune anything the codebase makes obsolete.
 
@@ -133,14 +133,14 @@ lands, move its one-liner to Adopted and prune anything the codebase makes obsol
 ## Consciously different
 
 - **Determinism is CI-enforced here, field-diagnosed there.** OpenRA ships no automated determinism
-  tests; desyncs are found by players and diagnosed from sync reports. Vinland inverts this
+  tests; desyncs are found by players and diagnosed from sync reports. OpenNorthland inverts this
   (goldens + fuzz + hygiene in CI) — keep it inverted; add the field-diagnosis half (sync report
   rings, peer trace diffing) only when MP exists.
 - **Fidelity is the goal, not a constraint to shed.** OpenRA is openly a modernization ("not
   restricted by the technical limitations of the original"). That is the anti-model that validates
-  ours: `AGENTS.md` has a source-basis rule because Vinland chases the original.
+  ours: `AGENTS.md` has a source-basis rule because OpenNorthland chases the original.
 - **Compatibility boundaries are chosen per artifact.** devilutionX kept save-file compatibility
-  with the original game but dropped wire-protocol compatibility. Vinland's equivalents (content IR,
+  with the original game but dropped wire-protocol compatibility. OpenNorthland's equivalents (content IR,
   saves, replays, goldens) should each get an explicit keep/break policy when save/load defines them —
   recorded in the save-format entry above.
 

@@ -1,5 +1,5 @@
-import { type Camera, tileToScreen } from '@vinland/render';
-import { ONE, type WorldSnapshot } from '@vinland/sim';
+import { type Camera, tileToScreen } from '@open-northland/render';
+import { ONE, type WorldSnapshot } from '@open-northland/sim';
 import { type Application, Container, Graphics } from 'pixi.js';
 import type { PickerEntry } from '../catalog/professions.js';
 import { loadGuiArt } from '../content/gui-art.js';

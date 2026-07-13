@@ -1,4 +1,4 @@
-import type { TerrainMapFile } from '@vinland/data';
+import type { TerrainMapFile } from '@open-northland/data';
 import {
   clearComponentStores,
   components,
@@ -6,7 +6,7 @@ import {
   Simulation,
   systems,
   type TerrainMap,
-} from '@vinland/sim';
+} from '@open-northland/sim';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../src/catalog/felling.js';
 import { buildCollisionTerrain } from '../src/content/collision.js';

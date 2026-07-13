@@ -1,4 +1,4 @@
-import type { GfxPattern, SoundBank, TerrainPattern } from '@vinland/data';
+import type { GfxPattern, SoundBank, TerrainPattern } from '@open-northland/data';
 
 /**
  * The resolved, lookup-shaped view of a decoded {@link SoundBank} that the director reads each frame —

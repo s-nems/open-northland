@@ -1,4 +1,4 @@
-import type { LayeredBobRef } from '@vinland/render';
+import type { LayeredBobRef } from '@open-northland/render';
 import { TREE_ATLAS } from '../building-gfx/index.js';
 import { GENERIC_GOOD_ICON, type GoodIconMap } from '../goods-gfx.js';
 import type { ContentIr, GatheringPipelineRow, GatheringStageRow, LandscapeGfxRow } from '../ir.js';
@@ -19,7 +19,7 @@ const GOODS_PILE_BMD_STEM = 'ls_goods';
 
 /**
  * The default resource atlas family — the shared `ls_trees.tree_yew01` layer drawn as the renderer's
- * {@link import('@vinland/render').SpriteSheet.kindLayers}'s `resource` (already loaded for the legacy
+ * {@link import('@open-northland/render').SpriteSheet.kindLayers}'s `resource` (already loaded for the legacy
  * single-tree path). A good whose node record lives in THIS family binds a bare bob id (drawn from that
  * layer, no `families` entry — the way the yew tree drew before); every other good binds a
  * layer-qualified ref into its own loaded `families` atlas. {@link TREE_BOB} backs a good with no node.
@@ -80,7 +80,7 @@ export interface GatheringRefs {
   /**
    * Freshly-dropped, NOT-yet-collected pile ref per scene `goodType` — the good's `landscapeToPickup`
    * record (wood's "trunk" stage: a felled LOG lying on the ground, distinct from the tidy delivered
-   * heap). A loose {@link import('@vinland/sim').GroundDrop} draws this; the original uses a different
+   * heap). A loose {@link import('@open-northland/sim').GroundDrop} draws this; the original uses a different
    * graphic for the on-the-ground harvest than for the stored pile (`tree → trunk(pickup) → wood(store)`).
    * Carries the record's FULL fewest→most state ladder (the clay/iron/gold ore and wheat pickup
    * records author 5 states, state ≡ units; STONE's authors a single state, so a stone drop keeps

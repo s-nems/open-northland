@@ -1,5 +1,5 @@
-import { fullStateBlockAreaCells, type TerrainMapFile } from '@vinland/data';
-import { halfCellMapFromCells, type TerrainMap } from '@vinland/sim';
+import { fullStateBlockAreaCells, type TerrainMapFile } from '@open-northland/data';
+import { halfCellMapFromCells, type TerrainMap } from '@open-northland/sim';
 import {
   TERRAIN_BARREN,
   TERRAIN_BLOCKED,

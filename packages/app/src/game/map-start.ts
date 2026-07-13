@@ -1,4 +1,4 @@
-import { fx, type WorldSnapshot } from '@vinland/sim';
+import { fx, type WorldSnapshot } from '@open-northland/sim';
 import { HUMAN_PLAYER } from './rules.js';
 import { isBuilding, isSettler, ownerPlayerOf, positionOf, type SnapshotEntity } from './snapshot.js';
 

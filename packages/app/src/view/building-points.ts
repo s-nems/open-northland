@@ -1,5 +1,5 @@
-import type { FootprintCell } from '@vinland/data';
-import type { HalfCellNode } from '@vinland/sim';
+import type { FootprintCell } from '@open-northland/data';
+import type { HalfCellNode } from '@open-northland/sim';
 import { workerIconOffset } from '../catalog/building-tweaks.js';
 
 /**

@@ -1,5 +1,5 @@
 /**
- * `@vinland/audio` — the browser audio layer for Vinland. It consumes the same read-only sim
+ * `@open-northland/audio` — the browser audio layer for OpenNorthland. It consumes the same read-only sim
  * snapshot + one-shot events `render` does (never reaching into sim state) and plays the decoded
  * original sounds positionally: on-screen action SFX + ambient terrain beds attenuated/panned by the
  * camera, plus non-spatial life-event jingles and sex/age-matched settler voice chatter. Split like

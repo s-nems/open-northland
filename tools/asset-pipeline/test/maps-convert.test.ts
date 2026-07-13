@@ -15,7 +15,7 @@ describe('convertMapDatTree', () => {
   let out: string;
 
   beforeEach(async () => {
-    root = await mkdtemp(join(tmpdir(), 'vinland-mapdat-'));
+    root = await mkdtemp(join(tmpdir(), 'opennorthland-mapdat-'));
     game = join(root, 'game');
     out = join(root, 'out');
     await mkdir(join(game, 'CnModMaps', 'tutorial_002'), { recursive: true });

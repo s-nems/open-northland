@@ -1,4 +1,4 @@
-import type { FootprintCell } from '@vinland/data';
+import type { FootprintCell } from '@open-northland/data';
 
 /**
  * Committed per-building GEOMETRY CORRECTIONS over the extracted footprints — half-cell node offsets,

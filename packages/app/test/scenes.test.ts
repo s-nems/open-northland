@@ -1,4 +1,4 @@
-import { CORE_INVARIANTS, checkInvariants } from '@vinland/sim';
+import { CORE_INVARIANTS, checkInvariants } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { createSceneSim, SCENES } from '../src/scenes/index.js';
 

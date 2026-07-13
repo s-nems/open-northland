@@ -32,7 +32,7 @@ export interface SrcRect {
 /**
  * The render-local ground binding for one landscape typeId: which texture page + sub-rect to sample,
  * plus a flat-tint fallback colour (the logic-type `debugColor`) for when the page can't be loaded.
- * The app derives this from a `TerrainPattern` IR row; the renderer stays decoupled from `@vinland/data`.
+ * The app derives this from a `TerrainPattern` IR row; the renderer stays decoupled from `@open-northland/data`.
  */
 export interface CellTexture {
   /** The texture page key (e.g. `text_003`) — the key into the loaded page sources. */
@@ -138,9 +138,9 @@ export function nodeLaneUV(
 
 // ─── transition overlays (the map's `emt1..emt4` lanes) ───────────────────────────────────────────
 
-// These two constants are the render-local twin of `@vinland/data`'s `TRANSITION_NONE` /
+// These two constants are the render-local twin of `@open-northland/data`'s `TRANSITION_NONE` /
 // `TRANSITION_PAIRS` (which the map schema + pipeline validate with) — duplicated deliberately
-// because this module stays import-decoupled from `@vinland/data`; a change to the encoding must
+// because this module stays import-decoupled from `@open-northland/data`; a change to the encoding must
 // touch both sites.
 
 /** A transition lane's "no overlay here" sentinel (u8 max). */

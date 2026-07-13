@@ -1,4 +1,4 @@
-import { parseContentSet } from '@vinland/data';
+import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   extractAtomicAnimations,

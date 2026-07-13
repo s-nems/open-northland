@@ -1,4 +1,4 @@
-import { type BuildingFootprint, type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
+import { type BuildingFootprint, type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
 import {
   ATTACK_ATOMIC,
   CLAY_HARVEST_ATOMIC,
@@ -273,7 +273,7 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
   };
 
   return parseContentSet({
-    manifest: { version: IR_VERSION, generatedFrom: { game: 'vinland-global-sandbox' }, locale: 'eng' },
+    manifest: { version: IR_VERSION, generatedFrom: { game: 'opennorthland-global-sandbox' }, locale: 'eng' },
     goods: [
       { typeId: GOOD_NONE, id: 'none' },
       {

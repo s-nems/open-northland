@@ -1,4 +1,4 @@
-import { ONE } from '@vinland/sim';
+import { ONE } from '@open-northland/sim';
 
 /** A fractional tile coordinate pair (col, row) in map space. */
 export interface TilePoint {

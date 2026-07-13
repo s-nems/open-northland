@@ -1,4 +1,4 @@
-import type { ContentSet, WeaponType } from '@vinland/data';
+import type { ContentSet, WeaponType } from '@open-northland/data';
 import { contentIndex } from '../../core/content-index.js';
 import { armorMaterialOf } from './classes/index.js';
 
@@ -98,7 +98,7 @@ export function damageVsBuilding(weapon: Pick<WeaponType, 'damage'>): number {
 }
 
 /**
- * The armor **material tier** a worn `armorClass` (an {@link import('@vinland/data').ArmorType} `typeId`)
+ * The armor **material tier** a worn `armorClass` (an {@link import('@open-northland/data').ArmorType} `typeId`)
  * resolves to — the column {@link weaponDamageVsMaterial} indexes. Resolves the class's `[armortype]`
  * record and reads its `materialType` (== `typeId` for the four base armors). A class with **no record**
  * (a bare 0, an out-of-table 6/7 stamped directly on a structure target, or a bad id) returns the

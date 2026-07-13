@@ -27,7 +27,7 @@ named approximation (simple per-map or shuffled playlist) is acceptable.
    documented one-shot script under `tools/`), emitting `content/music/*.ogg` + a small manifest.
    If the route turns out to be genuinely hard (DirectMusic runtime behavior), the legitimate
    deliverable is the investigation's findings + a sharpened follow-up ticket.
-2. A music channel in `@vinland/audio`: non-spatial looping/crossfading track playback beside the
+2. A music channel in `@open-northland/audio`: non-spatial looping/crossfading track playback beside the
    existing SFX/ambient/jingle/voice split, honoring the existing default-muted / sound-toggle
    gesture seam, with track selection per the evidence found (or the named approximation).
 3. Keep the pure decision layer headless-testable like the rest of the package (track-selection

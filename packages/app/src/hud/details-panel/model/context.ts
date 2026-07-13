@@ -1,4 +1,4 @@
-import type { ContentSet } from '@vinland/data';
+import type { ContentSet } from '@open-northland/data';
 import { localizedBuildingName } from '../../../catalog/building-i18n.js';
 import { vikingBuildingByTypeId } from '../../../catalog/buildings.js';
 import { professionDefForJob } from '../../../catalog/professions.js';

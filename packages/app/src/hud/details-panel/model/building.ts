@@ -1,4 +1,4 @@
-import type { WorldSnapshot } from '@vinland/sim';
+import type { WorldSnapshot } from '@open-northland/sim';
 import { type entityById, isSettler, num } from '../../../game/snapshot.js';
 import { goodCategoryTab } from '../stock-tabs.js';
 import { pctRatio } from './bars.js';

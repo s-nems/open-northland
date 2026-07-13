@@ -123,7 +123,7 @@ const JOB_ROW_STYLE = [
 const JOB_ROW_HOVER = `linear-gradient(${ROW_HILITE},${WOOD_LIGHT})`;
 const JOB_ROW_BG = `linear-gradient(${WOOD_LIGHT},${WOOD})`;
 /** One-shot stylesheet id for the picker's scrollbar skin (rules that inline cssText can't express). */
-const JOB_STYLE_ID = 'vinland-job-picker-style';
+const JOB_STYLE_ID = 'opennorthland-job-picker-style';
 
 /**
  * Inject the profession list's scrollbar skin ONCE (a wood track + rope-tan thumb, matching the window),
@@ -135,11 +135,11 @@ function installJobPickerScrollbarStyle(): void {
   const style = document.createElement('style');
   style.id = JOB_STYLE_ID;
   style.textContent = `
-.vinland-job-list{scrollbar-width:thin;scrollbar-color:${ROPE_DARK} ${WOOD_DARK};}
-.vinland-job-list::-webkit-scrollbar{width:10px;}
-.vinland-job-list::-webkit-scrollbar-track{background:${WOOD_DARK};}
-.vinland-job-list::-webkit-scrollbar-thumb{background:${ROPE_DARK};border-radius:5px;border:2px solid ${WOOD_DARK};}
-.vinland-job-list::-webkit-scrollbar-thumb:hover{background:${ROPE};}`;
+.opennorthland-job-list{scrollbar-width:thin;scrollbar-color:${ROPE_DARK} ${WOOD_DARK};}
+.opennorthland-job-list::-webkit-scrollbar{width:10px;}
+.opennorthland-job-list::-webkit-scrollbar-track{background:${WOOD_DARK};}
+.opennorthland-job-list::-webkit-scrollbar-thumb{background:${ROPE_DARK};border-radius:5px;border:2px solid ${WOOD_DARK};}
+.opennorthland-job-list::-webkit-scrollbar-thumb:hover{background:${ROPE};}`;
   document.head.append(style);
 }
 
@@ -183,7 +183,7 @@ export function createProfessionPicker(opts: ProfessionPickerOptions): Professio
   jobWindow.append(jobHeader);
 
   const jobList = el('div', JOB_LIST_STYLE);
-  jobList.className = 'vinland-job-list';
+  jobList.className = 'opennorthland-job-list';
   // Render the grouped menu top to bottom: a dim separator per category, then its clickable profession rows.
   for (const entry of opts.professions) {
     if (entry.kind === 'header') {

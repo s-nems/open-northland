@@ -1,9 +1,9 @@
 ---
-description: Execute a user-specified Vinland task in an isolated git worktree, verify it, close its ticket, wait for approval, then review and fast-forward merge.
+description: Execute a user-specified OpenNorthland task in an isolated git worktree, verify it, close its ticket, wait for approval, then review and fast-forward merge.
 argument-hint: <task or docs/tickets/<folder>/<name>.md>
 ---
 
-You are running the **primary Vinland workflow**. Work items live as tickets under `docs/tickets/`
+You are running the **primary OpenNorthland workflow**. Work items live as tickets under `docs/tickets/`
 (one file = one task) and the user manually invokes `/worktree` for one task at a time. Execute the
 requested scope faithfully in an isolated git worktree, report for manual verification, and merge
 only after the user explicitly says to merge.
@@ -13,7 +13,7 @@ The task from the invocation: **$ARGUMENTS**. If it is empty, ask for the task b
 Hard rules:
 - Read `AGENTS.md` before editing. Load package-local `AGENTS.md` only for packages you touch.
 - The user's task/ticket is authoritative. Do not substitute your own next step or pull adjacent work.
-- Never touch the primary checkout (`~/Projects/vikings/vinland`) until the final merge step.
+- Never touch the primary checkout (`~/Projects/vikings/opennorthland`) until the final merge step.
 - Never merge without explicit user approval.
 - Before merge, close the executed ticket so progress survives across worktree sessions — and file
   NEW tickets for real work you discovered but deferred.
@@ -22,14 +22,14 @@ Hard rules:
 
 - Derive a short kebab-case slug. Branch name: `feat/<slug>` or the honest conventional type
   (`fix/<slug>`, `refactor/<slug>`, `docs/<slug>`). Worktree path:
-  `~/Projects/vikings/vinland-<slug>`.
+  `~/Projects/vikings/opennorthland-<slug>`.
 - Create it from `main`, regardless of the primary checkout's current branch:
-  `git -C ~/Projects/vikings/vinland worktree add ../vinland-<slug> -b <branch> main`.
+  `git -C ~/Projects/vikings/opennorthland worktree add ../opennorthland-<slug> -b <branch> main`.
 - Switch this session into that path with the available worktree/session tool.
 - Provision gitignored local state if missing:
   - `npm install`
   - clone real generated content from the primary checkout when needed:
-    `cp -Rc ../vinland/content content`. Do not symlink `content/`; the pipeline writes in place.
+    `cp -Rc ../opennorthland/content content`. Do not symlink `content/`; the pipeline writes in place.
   - copy `.claude/settings.local.json` from the primary checkout if the local Claude session needs it.
 
 ## 2. Understand the Step
@@ -125,7 +125,7 @@ Then merge:
   update if the outcome changed. The branch must still include the final tracker update (step 6)
   before merge.
 - Fast-forward `main`:
-  - If the primary checkout is clean on `main`: `git -C ~/Projects/vikings/vinland merge --ff-only <branch>`.
+  - If the primary checkout is clean on `main`: `git -C ~/Projects/vikings/opennorthland merge --ff-only <branch>`.
   - If the primary checkout is on another branch: from the worktree, `git fetch . <branch>:main`.
   - If the primary checkout is dirty on `main`: stop and report. Do not stash or reset it.
 - If the pipeline output changed, regenerate primary `content/` from the primary checkout after merge.
@@ -135,7 +135,7 @@ Then merge:
 - Stop processes started by this workflow.
 - Verify `git merge-base --is-ancestor <branch> main`.
 - Exit the worktree session, then remove the worktree and branch:
-  `git worktree remove --force ~/Projects/vikings/vinland-<slug>`
+  `git worktree remove --force ~/Projects/vikings/opennorthland-<slug>`
   `git branch -d <branch>`
 - Final report: merged commits, removed worktree/branch/processes, and any primary `content/`
   regeneration summary.

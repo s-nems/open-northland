@@ -1,6 +1,6 @@
 import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { type BuildingFootprint, type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
+import { type BuildingFootprint, type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
 import type { Args } from '../args.js';
 import { decodeCifStringArray } from '../decoders/cif.js';
 import {

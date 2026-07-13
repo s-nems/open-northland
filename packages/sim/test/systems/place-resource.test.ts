@@ -1,4 +1,4 @@
-import { parseContentSet } from '@vinland/data';
+import { parseContentSet } from '@open-northland/data';
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as components from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';

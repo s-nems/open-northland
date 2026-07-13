@@ -72,7 +72,7 @@ export function signOffFooter(text: string): HTMLElement {
   return el('div', 'opacity:0.65;font-size:12px;border-top:1px solid #5a4a36;padding-top:6px', text);
 }
 
-/** The minimal audio-driver shape {@link mountSoundToggle} needs (structural — no `@vinland/audio` import). */
+/** The minimal audio-driver shape {@link mountSoundToggle} needs (structural — no `@open-northland/audio` import). */
 interface SoundToggleDriver {
   resume(): Promise<void>;
   readonly started: boolean;

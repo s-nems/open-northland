@@ -12,7 +12,7 @@ import { renderSoundGallery } from './entries/sound.js';
  * but the wiring lives in the entries; here we only route. See packages/app/AGENTS.md "URL-flag entries".
  *
  *  - `?shot`            → deterministic, headless screenshot entry (`entries/shot.ts`) — the harness waits
- *                         on `window.__vinlandShotReady`; no menu, no RAF loop.
+ *                         on `window.__opennorthlandShotReady`; no menu, no RAF loop.
  *  - `?scene=<id>`      → a registered acceptance scene with its checklist overlay (`entries/scene.ts`).
  *  - `?anim`            → the character animation gallery (`entries/anim.ts`).
  *  - `?icons[&atlas=]`  → the ICON gallery (`entries/icons.ts`) — browse every decoded bob-atlas frame by

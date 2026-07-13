@@ -1,4 +1,4 @@
-import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
+import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
 
 /**
  * The playable-tribes read view — `playableTribes`/`isPlayableTribe` distinguish the controllable

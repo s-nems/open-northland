@@ -5,8 +5,8 @@ import {
   type ResolvedLayer,
   resolveLayers,
   type SpriteSheet,
-} from '@vinland/render';
-import type { WorldSnapshot } from '@vinland/sim';
+} from '@open-northland/render';
+import type { WorldSnapshot } from '@open-northland/sim';
 import {
   type Application,
   Container,

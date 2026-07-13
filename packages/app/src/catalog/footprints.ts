@@ -1,4 +1,4 @@
-import type { BuildingFootprint, FootprintCell } from '@vinland/data';
+import type { BuildingFootprint, FootprintCell } from '@open-northland/data';
 
 /**
  * CLEAN-ROOM approximate building footprints for the global sandbox content — rectangles sized by

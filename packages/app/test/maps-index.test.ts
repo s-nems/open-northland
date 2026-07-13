@@ -13,7 +13,7 @@ describe('buildMapsIndexEntries', () => {
   let mapsRoot: string;
 
   beforeEach(async () => {
-    mapsRoot = await mkdtemp(join(tmpdir(), 'vinland-maps-index-'));
+    mapsRoot = await mkdtemp(join(tmpdir(), 'opennorthland-maps-index-'));
   });
 
   afterEach(async () => {

@@ -14,7 +14,7 @@ is a future seam, see the last row.) We take this straight from
 [OpenRA](https://github.com/openra/openra) — study it when a rendering question comes up, it's the
 reference RTS renderer. Its shape, and our twin of it:
 
-| OpenRA | Vinland | What it buys |
+| OpenRA | OpenNorthland | What it buys |
 | --- | --- | --- |
 | `Viewport` visible-cell region | `viewport.ts` `cameraViewport` (+ `visibleTileRange`, a provided utility) | the world-space box on screen, inverted from the camera |
 | `TerrainSpriteLayer` drawn per visible region | `WorldRenderer` terrain **chunks** + per-chunk AABB `.visible` cull | a 1024² map draws the same few blocks a 64² one does |

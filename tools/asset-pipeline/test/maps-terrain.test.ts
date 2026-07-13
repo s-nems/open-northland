@@ -1,4 +1,4 @@
-import { parseTerrainMap } from '@vinland/data';
+import { parseTerrainMap } from '@open-northland/data';
 import { describe, expect, it, vi } from 'vitest';
 import { encodeMapDat, encodeMapSize, packMapLayer, packX6elLayer } from '../src/decoders/mapdat/index.js';
 import { mapDatToTerrain } from '../src/stages/maps/index.js';

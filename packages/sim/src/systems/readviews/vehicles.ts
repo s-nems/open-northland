@@ -1,4 +1,4 @@
-import type { ContentSet, VehicleType } from '@vinland/data';
+import type { ContentSet, VehicleType } from '@open-northland/data';
 
 // Pure, terminal **read views** for vehicles — the data-defined ship/boat classification the upcoming
 // Sea/Northland slice (water travel, boats as mobile stores, embark/disembark) builds on. No mechanic

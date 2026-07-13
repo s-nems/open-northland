@@ -1,4 +1,4 @@
-import type { ContentSet, TribeType } from '@vinland/data';
+import type { ContentSet, TribeType } from '@open-northland/data';
 import { contentIndex } from '../../../core/content-index.js';
 
 // Pure, terminal **read views** for tribe classification + animal behaviour — the data-defined

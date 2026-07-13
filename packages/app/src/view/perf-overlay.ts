@@ -7,7 +7,7 @@
  *  - **sim state:** the `tick` (the one field worth keeping from the removed always-on stocks HUD), the
  *    game-speed multiplier (or `paused`), how many sim `steps` the fixed-timestep loop advanced THIS
  *    frame (a spiking count means the sim is falling behind wall-clock), and the entity / drawn / pooled
- *    counts the retained {@link import('@vinland/render').WorldRenderer} exposes (culling is biting when
+ *    counts the retained {@link import('@open-northland/render').WorldRenderer} exposes (culling is biting when
  *    `drawn` ≪ `entities` zoomed in; `drawn ≈ entities` zoomed out).
  *  - **perf:** a smoothed FPS, the CPU cost split into `sim` / `snap` / `draw` (the exact breakdown
  *    `packages/render/AGENTS.md` says to measure before blaming the GPU — a slow scene is usually the

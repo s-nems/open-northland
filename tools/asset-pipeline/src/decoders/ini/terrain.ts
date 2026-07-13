@@ -7,7 +7,7 @@ import {
   type LandscapeType,
   TerrainPattern,
   type TrianglePatternType,
-} from '@vinland/data';
+} from '@open-northland/data';
 import {
   findProp,
   getInt,

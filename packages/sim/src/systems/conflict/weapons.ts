@@ -1,4 +1,4 @@
-import type { WeaponType } from '@vinland/data';
+import type { WeaponType } from '@open-northland/data';
 import { Armor, CurrentAtomic } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { fx } from '../../core/fixed.js';

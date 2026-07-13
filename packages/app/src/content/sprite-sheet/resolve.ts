@@ -3,7 +3,7 @@ import {
   type SpriteSheet,
   SYNTHETIC_BINDINGS,
   syntheticAtlasFrames,
-} from '@vinland/render';
+} from '@open-northland/render';
 import { MissingAtlasError } from '../ir.js';
 import type { GoodRef } from '../settler-gfx/index.js';
 import { loadHumanSpriteSheet } from './human-sheet.js';

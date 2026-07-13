@@ -1,4 +1,4 @@
-import type { Recipe } from '@vinland/data';
+import type { Recipe } from '@open-northland/data';
 import { Building, Production, type ProductionCycle, Stockpile } from '../../components/index.js';
 import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';

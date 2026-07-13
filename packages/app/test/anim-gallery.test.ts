@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { AtlasFrame, SpriteAtlas, SpriteLayer } from '@vinland/render';
+import type { AtlasFrame, SpriteAtlas, SpriteLayer } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
 import { findCharacter } from '../src/catalog/roster.js';
 import { BODY_IMAGELIB, type BobSeqRow } from '../src/content/ir.js';

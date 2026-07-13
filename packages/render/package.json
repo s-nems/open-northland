@@ -1,5 +1,5 @@
 {
-  "name": "@vinland/render",
+  "name": "@open-northland/render",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -16,8 +16,8 @@
     "build": "tsc --build"
   },
   "dependencies": {
-    "@vinland/data": "*",
-    "@vinland/sim": "*",
+    "@open-northland/data": "*",
+    "@open-northland/sim": "*",
     "pixi.js": "^8.19.0"
   }
 }

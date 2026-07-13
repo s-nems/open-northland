@@ -1,4 +1,4 @@
-import type { SimEvent, WorldSnapshot } from '@vinland/sim';
+import type { SimEvent, WorldSnapshot } from '@open-northland/sim';
 import { computeSpatial, computeSpatialAtNode, type Spatial } from '../spatial.js';
 import type { DirectorInput, EventSound, OneShot, SoundBindings } from '../types.js';
 import { entityTile, type TilePoint } from './snapshot.js';

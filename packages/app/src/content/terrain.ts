@@ -5,7 +5,7 @@ import {
   patternSrcRect,
   type TerrainTextureSet,
   type TransitionPattern,
-} from '@vinland/render';
+} from '@open-northland/render';
 import { type ContentIr, loadIr } from './ir.js';
 
 /**

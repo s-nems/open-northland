@@ -4,7 +4,7 @@
  */
 
 /**
- * What a bare {@link import('@vinland/sim').Stockpile} draw item represents: the good its ground pile
+ * What a bare {@link import('@open-northland/sim').Stockpile} draw item represents: the good its ground pile
  * mainly holds + how many units (its per-fill heap frame), or `{}` when it holds nothing. A stockpile-kind
  * item with no good draws the flag graphic — that is a genuine **delivery flag** (`isFlag`, a marker with no
  * Stockpile at all, so it always reads `{}`). The snapshot clones a `Stockpile.amounts` Map to an ascending-by-goodType

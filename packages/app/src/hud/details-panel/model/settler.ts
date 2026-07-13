@@ -1,4 +1,4 @@
-import { components, systems, TICKS_PER_SECOND, type WorldSnapshot } from '@vinland/sim';
+import { components, systems, TICKS_PER_SECOND, type WorldSnapshot } from '@open-northland/sim';
 import { entityById, num } from '../../../game/snapshot.js';
 import { type PanelBar, pct, pctRatio } from './bars.js';
 import {

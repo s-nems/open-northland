@@ -1,4 +1,4 @@
-import type { BuildingType } from '@vinland/data';
+import type { BuildingType } from '@open-northland/data';
 import {
   Building,
   DeliveryFlag,

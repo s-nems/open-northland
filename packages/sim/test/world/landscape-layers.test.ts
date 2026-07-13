@@ -1,4 +1,4 @@
-import { type ContentSet, IR_VERSION, type LandscapeType, parseContentSet } from '@vinland/data';
+import { type ContentSet, IR_VERSION, type LandscapeType, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   isLandLayerType,

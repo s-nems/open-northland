@@ -1,4 +1,4 @@
-import { TILE_HALF_H, TILE_HALF_W, tileToScreen } from '@vinland/render';
+import { TILE_HALF_H, TILE_HALF_W, tileToScreen } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
 import { PLAYER_COLOR_COUNT, PLAYER_SWATCH_COLORS } from '../src/catalog/roster.js';
 import {

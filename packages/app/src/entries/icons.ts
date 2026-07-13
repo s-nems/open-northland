@@ -35,7 +35,7 @@ const GUI_BASE = 'ls_gui_window';
 /** Cap the frames rendered at once — a character sheet has thousands; a "show all" toggle lifts it. */
 const FRAME_CAP = 800;
 
-const STYLE_ID = 'vinland-icon-gallery-style';
+const STYLE_ID = 'opennorthland-icon-gallery-style';
 const GALLERY_CSS = `
 .vig-wrap{display:flex;flex-direction:column;gap:14px}
 .vig-controls{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;font-size:13px}

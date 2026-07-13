@@ -40,7 +40,7 @@ describe('decodeMapTree', () => {
   let game: string;
 
   beforeEach(async () => {
-    root = await mkdtemp(join(tmpdir(), 'vinland-maps-'));
+    root = await mkdtemp(join(tmpdir(), 'opennorthland-maps-'));
     game = join(root, 'game');
     await mkdir(join(game, 'CnModMaps', 'tutorial_002'), { recursive: true });
     await mkdir(join(game, 'CnModMaps', 'forteca'), { recursive: true });

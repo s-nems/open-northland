@@ -1,6 +1,6 @@
-import { type ContentSet, indexById } from '@vinland/data';
-import type { Camera, ElevationField, EntityBounds, SpriteSheet } from '@vinland/render';
-import { type Command, type Entity, nodeOfPosition, type WorldSnapshot } from '@vinland/sim';
+import { type ContentSet, indexById } from '@open-northland/data';
+import type { Camera, ElevationField, EntityBounds, SpriteSheet } from '@open-northland/render';
+import { type Command, type Entity, nodeOfPosition, type WorldSnapshot } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import type { PickerEntry } from '../catalog/professions.js';
 import { assignmentPriority } from '../game/sandbox/index.js';

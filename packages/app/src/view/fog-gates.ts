@@ -1,5 +1,5 @@
-import { fogTileVisible } from '@vinland/render';
-import { FOG_STATE, type FogView, systems } from '@vinland/sim';
+import { fogTileVisible } from '@open-northland/render';
+import { FOG_STATE, type FogView, systems } from '@open-northland/sim';
 
 /**
  * The frame's fog-of-war gate for the HUMAN player — ONE mutable slot refreshed at the top of every

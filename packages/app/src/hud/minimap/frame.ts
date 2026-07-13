@@ -1,4 +1,4 @@
-import { bakeToSprite, oversampleFor } from '@vinland/render';
+import { bakeToSprite, oversampleFor } from '@open-northland/render';
 import type { Renderer } from 'pixi.js';
 import { BufferImageSource, Container, Sprite, Texture } from 'pixi.js';
 import { loadGuiArt, makeGuiSprite } from '../../content/gui-art.js';

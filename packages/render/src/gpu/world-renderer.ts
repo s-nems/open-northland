@@ -1,4 +1,4 @@
-import type { FogView, SimEvent, WorldSnapshot } from '@vinland/sim';
+import type { FogView, SimEvent, WorldSnapshot } from '@open-northland/sim';
 import { type Application, Container, Sprite, Texture, type TextureSource } from 'pixi.js';
 import { type ElevationField, makeElevationField } from '../data/elevation.js';
 import { fogTileVisible } from '../data/fog.js';

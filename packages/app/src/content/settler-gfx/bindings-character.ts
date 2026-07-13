@@ -5,7 +5,7 @@ import type {
   SettlerStateBinding,
   SpriteAtlas,
   SpriteFrameRef,
-} from '@vinland/render';
+} from '@open-northland/render';
 import { ATTACK_ATOMIC } from '../../catalog/atomics.js';
 import type { BobSeqRow } from '../ir.js';
 import type { CharacterSpec } from './character-specs.js';

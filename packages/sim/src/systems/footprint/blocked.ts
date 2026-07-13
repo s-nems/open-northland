@@ -1,4 +1,4 @@
-import type { ContentSet } from '@vinland/data';
+import type { ContentSet } from '@open-northland/data';
 import { Building, Position, UnderConstruction } from '../../components/index.js';
 import type { World } from '../../ecs/world.js';
 import { LayeredBlocks } from '../../nav/block-overlay.js';

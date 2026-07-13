@@ -1,4 +1,4 @@
-import type { Entity } from '@vinland/sim';
+import type { Entity } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { DEBUG_ACTIONS } from '../src/view/admin-debug/actions-catalog.js';
 

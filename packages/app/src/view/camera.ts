@@ -1,4 +1,4 @@
-import { type Camera, type DrawItem, tileToScreen } from '@vinland/render';
+import { type Camera, type DrawItem, tileToScreen } from '@open-northland/render';
 
 /**
  * Camera helpers shared by the map (`entries/map.ts`) and shot (`entries/shot.ts`) entries. The geometry half is

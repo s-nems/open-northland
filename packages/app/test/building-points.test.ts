@@ -1,4 +1,4 @@
-import type { BuildingFootprint } from '@vinland/data';
+import type { BuildingFootprint } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_WORKER_ICON_OFFSET, DOOR_SHIFTS, workerIconOffset } from '../src/catalog/building-tweaks.js';
 import { buildingFootprints } from '../src/content/ir.js';

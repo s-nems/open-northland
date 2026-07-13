@@ -1,5 +1,5 @@
-import type { layoutHud } from '@vinland/render';
-import { FixedTimestep, FOG_STATE, type SimEvent, systems, type WorldSnapshot } from '@vinland/sim';
+import type { layoutHud } from '@open-northland/render';
+import { FixedTimestep, FOG_STATE, type SimEvent, systems, type WorldSnapshot } from '@open-northland/sim';
 import type { createSoundDriver } from '../content/audio.js';
 import { HUMAN_PLAYER } from '../game/rules.js';
 import type { MinimapHandle } from '../hud/minimap/index.js';

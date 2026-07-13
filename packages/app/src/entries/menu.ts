@@ -136,7 +136,7 @@ export async function renderMenu(_canvas: HTMLCanvasElement, _params: URLSearchP
   const inner = el('div', INNER_STYLE);
 
   inner.append(
-    el('div', 'font-weight:700;font-size:28px;letter-spacing:0.02em', 'Vinland'),
+    el('div', 'font-weight:700;font-size:28px;letter-spacing:0.02em', 'OpenNorthland'),
     el(
       'div',
       'opacity:0.75;margin-top:4px;font-size:14px',

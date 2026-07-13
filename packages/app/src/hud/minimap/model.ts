@@ -1,4 +1,4 @@
-import { TILE_HALF_H, TILE_HALF_W, type Viewport } from '@vinland/render';
+import { TILE_HALF_H, TILE_HALF_W, type Viewport } from '@open-northland/render';
 import { contains, type Rect } from '../geometry.js';
 
 /**

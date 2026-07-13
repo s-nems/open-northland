@@ -1,4 +1,4 @@
-import { fx } from '@vinland/sim';
+import { fx } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { mapStartFocus } from '../src/game/map-start.js';
 import { type Ent, snapshotOf } from './support/snapshot.js';

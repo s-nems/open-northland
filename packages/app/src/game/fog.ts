@@ -1,4 +1,4 @@
-import { FOG_MODE } from '@vinland/sim';
+import { FOG_MODE } from '@open-northland/sim';
 
 /**
  * Fog-of-war mode names — the app-facing vocabulary for the sim's `FOG_MODE` ids, shared by the

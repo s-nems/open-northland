@@ -1,7 +1,7 @@
-import type { GfxPattern, SoundBank, TerrainPattern } from '@vinland/data';
-import type { Camera } from '@vinland/render/data';
-import { ONE, tileToScreen } from '@vinland/render/data';
-import type { SimEvent, WorldSnapshot } from '@vinland/sim';
+import type { GfxPattern, SoundBank, TerrainPattern } from '@open-northland/data';
+import type { Camera } from '@open-northland/render/data';
+import { ONE, tileToScreen } from '@open-northland/render/data';
+import type { SimEvent, WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import {
   type AudioTerrain,

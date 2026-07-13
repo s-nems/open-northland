@@ -1,4 +1,4 @@
-import type { WorldSnapshot } from '@vinland/sim';
+import type { WorldSnapshot } from '@open-northland/sim';
 import type { ElevationField } from '../elevation.js';
 import { tileToScreen } from '../iso.js';
 import type { DrawItem } from './draw-item.js';
@@ -82,7 +82,7 @@ const TILE_DEPTH_BASE = -1_000_000;
  * `content/maps/<id>.json` into — a CELL-resolution grid, the sim-side `CellTerrainMap` shape, NOT
  * the half-cell `TerrainMap` the nav graph consumes) onto the {@link SceneTerrain} the scene layer
  * draws. This is the typed seam from a **real decoded map** to the renderer: the app/shot entry
- * loads a map file, validates it through `@vinland/data`, and feeds the result here — so the same
+ * loads a map file, validates it through `@open-northland/data`, and feeds the result here — so the same
  * render line that draws the synthetic grass strip draws an actual decoded grid.
  *
  * Pure + total: it only re-views the (read-only) grid as the render shape, asserting nothing the

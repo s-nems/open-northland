@@ -1,4 +1,4 @@
-import type { BuildingBobRef } from '@vinland/render';
+import type { BuildingBobRef } from '@open-northland/render';
 import type { BuildingBobRow } from '../ir.js';
 
 /**
@@ -13,7 +13,7 @@ import type { BuildingBobRow } from '../ir.js';
  * The decoded tree atlas bound to the `resource` kind — `ls_trees.bmd` recoloured with the `tree_yew01`
  * palette, the `[GfxLandscape] "yew 01"` record's binding from `landscapes.cif` (the
  * `extractLandscapeGraphics` leg). It lives in its OWN frame-id space (493 bobs, distinct from the human
- * body bobs), so it binds as a per-kind {@link import('@vinland/render').SpriteSheet.kindLayers} layer,
+ * body bobs), so it binds as a per-kind {@link import('@open-northland/render').SpriteSheet.kindLayers} layer,
  * not the shared body atlas. {@link TREE_BOB} is that record's first displayed full-grown frame
  * (`GfxFrames 3 60 …` → bob 60, a 101×111 tree anchored at its base). Species/frame are a deliberate
  * first pick — a human eyeballs the pixels and we swap the constant to taste (source basis "Tree
@@ -35,7 +35,7 @@ const HOUSE_PALETTE = 'house01';
  * The decoded building atlas bound to the `building` kind — `ls_houses_viking.bmd` recoloured with the
  * `house01` palette (the `[GfxHouse]` viking records' binding from the mod's
  * `budynki12/houses/houses.ini`). Like the tree it lives in its OWN frame-id space (135 bobs, distinct
- * from the human body bobs), so it binds as a per-kind {@link import('@vinland/render').SpriteSheet.kindLayers}
+ * from the human body bobs), so it binds as a per-kind {@link import('@open-northland/render').SpriteSheet.kindLayers}
  * layer, not the shared body atlas. {@link HOUSE_BOB} 11 is the "viking home" record's first finished
  * growth stage — a stone-and-thatch cottage (213×198 anchored at its base). It draws at NATIVE size
  * ({@link BUILDING_SCALE} = 1), like the settler, tree and every landscape object: the tile PITCH is now
@@ -45,7 +45,7 @@ const HOUSE_PALETTE = 'house01';
  * lets a house cover roughly its `LogicWalkBlockArea` footprint the way the original did.) The bob is
  * still a taste constant — swap it to a bigger growth stage (source basis "Building bob"). This
  * {@link HOUSE_BOB} is now only the
- * {@link import('@vinland/render').BuildingTypeBinding.default} fallback for a type with no `buildingBobs`
+ * {@link import('@open-northland/render').BuildingTypeBinding.default} fallback for a type with no `buildingBobs`
  * row at all; every real viking type binds its own bob through {@link BUILDING_FAMILIES}.
  */
 export const HOUSE_ATLAS = `ls_houses_viking.${HOUSE_PALETTE}`;
@@ -84,15 +84,15 @@ export const VIKING_TRIBE = 1;
 
 /**
  * The DEFAULT building atlas family — the single `ls_houses_viking.house01` layer drawn as
- * {@link import('@vinland/render').SpriteSheet.kindLayers}'s `building` (a plain {@link BuildingBobRef},
+ * {@link import('@open-northland/render').SpriteSheet.kindLayers}'s `building` (a plain {@link BuildingBobRef},
  * no family). Its `(bmd, palette)` identity tells {@link buildingBobRefsByType} which canonical rows draw
  * from that shared layer (a bare bob id) versus a named
- * {@link import('@vinland/render').SpriteSheet.families} layer (a `{ layer, bob }`).
+ * {@link import('@open-northland/render').SpriteSheet.families} layer (a `{ layer, bob }`).
  */
 export const DEFAULT_BUILDING_FAMILY = { bmdBasename: HOUSE_BMD, paletteName: HOUSE_PALETTE } as const;
 
 /**
- * The served atlas stems (`<bmd-stem>.<palette>`) = {@link import('@vinland/render').SpriteSheet.families}
+ * The served atlas stems (`<bmd-stem>.<palette>`) = {@link import('@open-northland/render').SpriteSheet.families}
  * keys for the named viking building families loaded beside the default `ls_houses_viking.house01`. Two are
  * sibling `.bmd`s on the default `house01` skin (`viking2`/`viking3`); two are a *different palette* on a
  * shared `.bmd` — `housemiller01` recolours `ls_houses_viking.bmd` (the mill) and `housedruid01` recolours
@@ -111,20 +111,20 @@ const VIKING4_DRUID01 = 'ls_houses_viking4.housedruid01';
 const VIKING_HOUSE02 = 'ls_houses_viking.house02';
 const VIKING2_HOUSE02 = 'ls_houses_viking2.house02';
 
-/** A loaded named building-family atlas: its `(bmd, palette)` identity + the {@link import('@vinland/render').SpriteSheet.families} key it draws from. */
+/** A loaded named building-family atlas: its `(bmd, palette)` identity + the {@link import('@open-northland/render').SpriteSheet.families} key it draws from. */
 export interface BuildingFamily {
   /** The `.bmd` basename the family's rows carry, e.g. `ls_houses_viking4.bmd`. */
   readonly bmdBasename: string;
   /** The `GfxPalette` recolour skin loaded for this family, e.g. `house01`. */
   readonly paletteName: string;
-  /** The {@link import('@vinland/render').SpriteSheet.families} key (= the served atlas stem), e.g. `ls_houses_viking4.house01`. */
+  /** The {@link import('@open-northland/render').SpriteSheet.families} key (= the served atlas stem), e.g. `ls_houses_viking4.house01`. */
   readonly layer: string;
 }
 
 /**
  * The named building-family atlases loaded BESIDE the default one — each a separate decoded
  * `ls_houses_*.bmd` × palette PNG with its OWN frame-id space, registered in
- * {@link import('@vinland/render').SpriteSheet.families} under `layer` (= the served atlas stem). A
+ * {@link import('@open-northland/render').SpriteSheet.families} under `layer` (= the served atlas stem). A
  * canonical row in one of these binds a layer-qualified `{ layer, bob }` ref; the
  * {@link buildingBobRefsByType} reducer DROPS a row whose family is NOT in this list (it falls back to
  * {@link VIKING_HOUSE01_BOBS}/the default house), so a family must be both listed here AND loaded in
@@ -257,13 +257,13 @@ export function familyLayerFor(
  * binding for ONE tribe across MANY loaded atlas families. For each `(tribeId, typeId)` it picks the
  * canonical row ({@link pickCanonicalBuildingRow}) and emits a {@link BuildingBobRef}:
  *  - a **bare bob id** when the canonical row's `(bmd, palette)` is the {@link defaultFamily} (the shared
- *    `ls_houses_viking.house01` layer drawn as {@link import('@vinland/render').SpriteSheet.kindLayers}'s
+ *    `ls_houses_viking.house01` layer drawn as {@link import('@open-northland/render').SpriteSheet.kindLayers}'s
  *    `building`), or
  *  - a **layer-qualified `{ layer, bob }`** when it's one of the loaded named {@link families} (e.g. the
  *    HQ in `ls_houses_viking4.house01`) — the multi-`.bmd` case, drawn from that family's own atlas.
  *
  * A canonical row whose family is NEITHER the default NOR a loaded named family is **dropped** — the
- * caller's {@link VIKING_HOUSE01_BOBS} overlay / {@link import('@vinland/render').BuildingTypeBinding.default}
+ * caller's {@link VIKING_HOUSE01_BOBS} overlay / {@link import('@open-northland/render').BuildingTypeBinding.default}
  * backs it, so an unloaded family degrades to the representative house instead of borrowing a WRONG bob from
  * the default layer (the renderer falls a layer-qualified ref through to the default layer when its family is
  * absent, so we must not emit one for a family we didn't load). `bmd` is matched on its trailing basename so

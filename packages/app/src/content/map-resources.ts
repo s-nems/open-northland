@@ -1,4 +1,4 @@
-import type { TerrainObjects } from '@vinland/data';
+import type { TerrainObjects } from '@open-northland/data';
 import type { ContentIr } from './ir.js';
 
 /**
@@ -95,7 +95,7 @@ export function mapResourceSpawns(
 /**
  * The `[GfxLandscape].logicType` of a fruited bush (`bush with fruits`, `landscapetypes.ini` type 11) —
  * the source-pinned marker that a placed bush object currently HOLDS FRUIT, so it becomes a forageable
- * {@link import('@vinland/sim').BerryBush}. Bare/flowering/barren bush states (types 8/9/10) stay decor.
+ * {@link import('@open-northland/sim').BerryBush}. Bare/flowering/barren bush states (types 8/9/10) stay decor.
  * Exported as the single home for this constant — the render-side bush binding ({@link
  * import('./resource-gfx/index.js').resolveBerryBushRefs}) keys off the same value.
  */

@@ -1,4 +1,4 @@
-import type { EquipCategory } from '@vinland/data';
+import type { EquipCategory } from '@open-northland/data';
 import {
   CLAY_HARVEST_ATOMIC,
   GOLD_HARVEST_ATOMIC,

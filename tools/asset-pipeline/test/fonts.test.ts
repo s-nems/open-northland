@@ -44,7 +44,7 @@ describe('fonts stage', () => {
   };
 
   beforeEach(async () => {
-    root = await mkdtemp(join(tmpdir(), 'vinland-fonts-'));
+    root = await mkdtemp(join(tmpdir(), 'opennorthland-fonts-'));
     game = join(root, 'game');
     out = join(root, 'out');
     await mkdir(game, { recursive: true });

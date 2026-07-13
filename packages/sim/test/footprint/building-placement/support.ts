@@ -1,4 +1,4 @@
-import { type ContentSet, parseContentSet } from '@vinland/data';
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { beforeEach } from 'vitest';
 import { Building } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';

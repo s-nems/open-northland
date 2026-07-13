@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import type { MapInfo } from '@vinland/data';
+import type { MapInfo } from '@open-northland/data';
 import { decodeCifStringArray } from '../../decoders/cif.js';
 import { cifLinesToSections, extractMapInfo, type SourceRef } from '../../decoders/ini.js';
 import { collectFilesNamed } from '../../walk.js';

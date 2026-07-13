@@ -1,6 +1,6 @@
-import { buildScene, terrainMapToScene } from '@vinland/render';
-import type { TerrainMap } from '@vinland/sim';
-import { components, halfCellMapFromCells } from '@vinland/sim';
+import { buildScene, terrainMapToScene } from '@open-northland/render';
+import type { TerrainMap } from '@open-northland/sim';
+import { components, halfCellMapFromCells } from '@open-northland/sim';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type AuthoredJoinRows, resolveAuthoredPlacements } from '../src/slice/authored-placements.js';
 import { loadTerrainMap } from '../src/slice/map-loader.js';
@@ -11,7 +11,7 @@ import { clearStores } from './support/stores.js';
 /**
  * Unit tests for the app's map-loading seam — the testable core of "the shot/dev entry draws an
  * actual `content/maps/<id>.json`". The browser `fetch` + GPU pixels can't run headless, but the
- * load-bearing logic (validate the fetched JSON through `@vinland/data`'s `parseTerrainMap`, then
+ * load-bearing logic (validate the fetched JSON through `@open-northland/data`'s `parseTerrainMap`, then
  * project it through `terrainMapToScene`, with graceful fallback on a bad id / 404 / malformed file)
  * is pure once `fetch` is injected — so it's pinned here, not left to the un-self-verifiable shot PNG.
  */

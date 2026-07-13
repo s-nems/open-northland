@@ -1,4 +1,4 @@
-import { ONE, type WorldSnapshot } from '@vinland/sim';
+import { ONE, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { STOCK_TAB_COUNT } from '../src/content/gui-atlas-map.js';
 import {

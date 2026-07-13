@@ -38,7 +38,7 @@
  * so traversal is byte-identical across runs — the precondition for A* with canonical tie-breaking
  * and lockstep replay. All costs are `Fixed`; no floats touch state.
  */
-import type { ContentSet, LandscapeType } from '@vinland/data';
+import type { ContentSet, LandscapeType } from '@open-northland/data';
 
 import { TerrainGraph } from './graph.js';
 import { type NodeTypeProps, resolveTypeProps } from './node-types.js';

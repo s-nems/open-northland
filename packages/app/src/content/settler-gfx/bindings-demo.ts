@@ -6,7 +6,7 @@ import type {
   ResourceTypeBinding,
   SpriteBindings,
   StockpileBinding,
-} from '@vinland/render';
+} from '@open-northland/render';
 import { HARVEST_ATOMIC } from '../../catalog/atomics.js';
 import { HOUSE_BOB, TREE_BOB, VIKING_HOUSE01_BOBS } from '../building-gfx/index.js';
 import type { BobSeqRow } from '../ir.js';
@@ -33,7 +33,7 @@ import {
  * covers any of its five known types the data is missing (so a partial/absent IR degrades gracefully
  * type-by-type instead of dropping a whole family to the generic box). A `houseBobsByType` value may be
  * layer-qualified (a `{ layer, bob }` {@link BuildingBobRef} into a named
- * {@link import('@vinland/render').SpriteSheet.families} atlas — the HQ's viking4 family); the constant's
+ * {@link import('@open-northland/render').SpriteSheet.families} atlas — the HQ's viking4 family); the constant's
  * values are bare ids drawn from the default `building` layer. `building`/`resource` resolve in their own
  * per-kind layers (see {@link import('../sprite-sheet/index.js').loadHumanSpriteSheet}'s `kindLayers`), so their
  * ids index the house/tree bobs, not the body's.

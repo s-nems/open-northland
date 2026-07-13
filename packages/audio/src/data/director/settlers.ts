@@ -1,5 +1,5 @@
-import type { Camera } from '@vinland/render/data';
-import type { WorldSnapshot } from '@vinland/sim';
+import type { Camera } from '@open-northland/render/data';
+import type { WorldSnapshot } from '@open-northland/sim';
 import { computeSpatial } from '../spatial.js';
 import { entityTile } from './snapshot.js';
 

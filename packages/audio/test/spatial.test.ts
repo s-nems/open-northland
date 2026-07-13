@@ -1,4 +1,4 @@
-import { type Camera, tileToScreen } from '@vinland/render/data';
+import { type Camera, tileToScreen } from '@open-northland/render/data';
 import { describe, expect, it } from 'vitest';
 import { CULL_MARGIN_PX, computeSpatial, EDGE_GAIN, MAX_PAN, ZOOM_GAIN_FLOOR } from '../src/index.js';
 

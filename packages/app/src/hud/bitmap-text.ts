@@ -1,4 +1,4 @@
-import { PalettedSprite, type SpriteLayer, type TextureSource } from '@vinland/render';
+import { PalettedSprite, type SpriteLayer, type TextureSource } from '@open-northland/render';
 import { Container, Text } from 'pixi.js';
 import {
   FONT_FILL,

@@ -1,4 +1,4 @@
-import { FOG_MODE, FOG_STATE, type FogView, type WorldSnapshot } from '@vinland/sim';
+import { FOG_MODE, FOG_STATE, type FogView, type WorldSnapshot } from '@open-northland/sim';
 import { fogCellOfTile } from './fog.js';
 import { ONE } from './iso.js';
 import type { DrawKind } from './scene/draw-item.js';

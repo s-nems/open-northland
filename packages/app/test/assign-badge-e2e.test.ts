@@ -1,5 +1,5 @@
-import { indexById } from '@vinland/data';
-import type { Entity } from '@vinland/sim';
+import { indexById } from '@open-northland/data';
+import type { Entity } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { HUMAN_PLAYER } from '../src/game/rules.js';
 import { assignmentPriority, workerRoleOf } from '../src/game/sandbox/index.js';

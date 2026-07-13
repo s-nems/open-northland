@@ -1,4 +1,4 @@
-import type { Simulation } from '@vinland/sim';
+import type { Simulation } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
 import { STORABLE_EXTENDED_GOODS } from '../catalog/goods.js';
 import { HUMAN_PLAYER } from '../game/rules.js';

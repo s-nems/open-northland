@@ -1,4 +1,4 @@
-import type { ContentSet, WeaponType } from '@vinland/data';
+import type { ContentSet, WeaponType } from '@open-northland/data';
 
 // Pure, terminal **read views** for the weapon/armor **class taxonomy** — the data-defined
 // predicates, field accessors, and groupings that classify the two combat tables *by the data

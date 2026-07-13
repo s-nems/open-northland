@@ -35,7 +35,7 @@ export * from './stores/index.js';
 export * from './vision/index.js';
 // The package-internal systems barrel: per-system modules are re-exported wholesale so tests and
 // implementation helpers share one import site. The canonical schedule is deliberately separate in
-// schedule.ts, and the external `@vinland/sim` systems namespace is curated in public.ts.
+// schedule.ts, and the external `@open-northland/sim` systems namespace is curated in public.ts.
 // Only the system ENTRY modules (and the cross-system helper leaves) are star-exported; a module a
 // system entry re-exports its public names from — planner internals like targets/economy supply, the
 // drive/effect/targeting submodules, spawn — stays private to its cluster.

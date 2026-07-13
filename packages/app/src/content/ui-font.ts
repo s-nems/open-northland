@@ -20,7 +20,7 @@
 export { FONT_FILL as UI_TEXT_FILL } from './font-gfx.js';
 
 /** The registered family name (both subsets share it); paired with a serif fallback stack in {@link UiFont}. */
-const UI_FONT_FAMILY = 'VinlandUi';
+const UI_FONT_FAMILY = 'OpenNorthlandUi';
 /**
  * System serifs to fall back to before generic `serif`, chosen to stay close to the Tinos/Times look if the
  * bundled woff2 ever fails to load (offline first paint, a stripped build). Kept a plain CSS stack so a

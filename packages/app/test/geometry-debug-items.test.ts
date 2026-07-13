@@ -1,4 +1,4 @@
-import { fx, nodeOfPosition } from '@vinland/sim';
+import { fx, nodeOfPosition } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import {
   buildingSetFingerprint,

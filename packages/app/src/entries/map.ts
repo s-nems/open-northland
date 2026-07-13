@@ -8,8 +8,8 @@ import {
   makeElevationField,
   setTilePitch,
   WorldRenderer,
-} from '@vinland/render';
-import { halfCellMapFromCells, type SimEvent } from '@vinland/sim';
+} from '@open-northland/render';
+import { halfCellMapFromCells, type SimEvent } from '@open-northland/sim';
 import { buildCollisionTerrain } from '../content/collision.js';
 import { buildingFootprints, loadIr } from '../content/ir.js';
 import { loadMinimapCellColours } from '../content/minimap-ground.js';
@@ -293,6 +293,6 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   });
 
   console.log(
-    'Vinland map view up: LPM zaznacz / przeciągnij ramką, PPM wyślij, Spacja panel; middle-drag / arrows pan, wheel zoom.',
+    'OpenNorthland map view up: LPM zaznacz / przeciągnij ramką, PPM wyślij, Spacja panel; middle-drag / arrows pan, wheel zoom.',
   );
 }

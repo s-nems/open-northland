@@ -1,4 +1,4 @@
-import type { Command, Entity } from '@vinland/sim';
+import type { Command, Entity } from '@open-northland/sim';
 
 /**
  * The DATA the admin/debug panel's **entity-action** tools offer — "arm a tool, click a target entity,

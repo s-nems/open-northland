@@ -1,4 +1,4 @@
-import { type Command, type Entity, systems } from '@vinland/sim';
+import { type Command, type Entity, systems } from '@open-northland/sim';
 import { HUMAN_PLAYER } from '../../game/rules.js';
 import { resourceCommand } from '../../game/sandbox/place.js';
 import { BUTTON_STYLE, el } from '../overlay.js';

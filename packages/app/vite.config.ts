@@ -26,7 +26,7 @@ const bobsRoot = resolve(here, '../../content/Data/engine2d/bin/bobs');
 // `?terrain` real-ground render samples them (see real-terrain.ts). Same stance as `/bobs`: gitignored,
 // outside the vite root, bridged in at `/textures/<name>.png` with traversal rejected + `.png` only.
 const texturesRoot = resolve(here, '../../content/Data/engine2d/bin/textures');
-// Decoded original sound effects (`.wav`) the `@vinland/audio` layer plays. Same stance as `/bobs` /
+// Decoded original sound effects (`.wav`) the `@open-northland/audio` layer plays. Same stance as `/bobs` /
 // `/textures`: gitignored (copied from an owned game copy by the pipeline), outside the vite root, so a
 // middleware bridges them in at `/sounds/<path>` for the audio engine's `fetch` + `decodeAudioData`.
 // Path traversal is rejected and only `.wav` is served, so `/sounds/` can only reach a real sound.
@@ -58,7 +58,7 @@ const goodsRoot = resolve(here, '../../content/goods');
 // the pipeline" hint instead of map cards.
 function serveMapsIndex(): Plugin {
   return {
-    name: 'vinland-serve-maps-index',
+    name: 'opennorthland-serve-maps-index',
     configureServer(server) {
       server.middlewares.use('/maps-index', (_req, res, next) => {
         if (!existsSync(mapsRoot)) {
@@ -77,7 +77,7 @@ function serveMapsIndex(): Plugin {
 // gallery shows a "run the pipeline" hint instead of an empty grid (mirrors `/maps-index`).
 function serveBobsIndex(): Plugin {
   return {
-    name: 'vinland-serve-bobs-index',
+    name: 'opennorthland-serve-bobs-index',
     configureServer(server) {
       server.middlewares.use('/bobs-index', (_req, res, next) => {
         if (!existsSync(bobsRoot)) {
@@ -93,7 +93,7 @@ function serveBobsIndex(): Plugin {
 
 function serveContentMaps(): Plugin {
   return {
-    name: 'vinland-serve-content-maps',
+    name: 'opennorthland-serve-content-maps',
     configureServer(server) {
       server.middlewares.use('/maps', (req, res, next) => {
         const rel = (req.url ?? '').split('?')[0]?.replace(/^\/+/, '') ?? '';
@@ -113,7 +113,7 @@ function serveContentMaps(): Plugin {
 
 function serveContentBobs(): Plugin {
   return {
-    name: 'vinland-serve-content-bobs',
+    name: 'opennorthland-serve-content-bobs',
     configureServer(server) {
       server.middlewares.use('/bobs', (req, res, next) => {
         const rel = (req.url ?? '').split('?')[0]?.replace(/^\/+/, '') ?? '';
@@ -133,7 +133,7 @@ function serveContentBobs(): Plugin {
 
 function serveContentTextures(): Plugin {
   return {
-    name: 'vinland-serve-content-textures',
+    name: 'opennorthland-serve-content-textures',
     configureServer(server) {
       server.middlewares.use('/textures', (req, res, next) => {
         const rel = (req.url ?? '').split('?')[0]?.replace(/^\/+/, '') ?? '';
@@ -151,7 +151,7 @@ function serveContentTextures(): Plugin {
 
 function serveContentSounds(): Plugin {
   return {
-    name: 'vinland-serve-content-sounds',
+    name: 'opennorthland-serve-content-sounds',
     configureServer(server) {
       server.middlewares.use('/sounds', (req, res, next) => {
         const rel = (req.url ?? '').split('?')[0]?.replace(/^\/+/, '') ?? '';
@@ -169,7 +169,7 @@ function serveContentSounds(): Plugin {
 
 function serveContentIr(): Plugin {
   return {
-    name: 'vinland-serve-content-ir',
+    name: 'opennorthland-serve-content-ir',
     configureServer(server) {
       server.middlewares.use('/ir.json', (_req, res, next) => {
         if (!existsSync(irFile)) {
@@ -185,7 +185,7 @@ function serveContentIr(): Plugin {
 
 function serveContentGui(): Plugin {
   return {
-    name: 'vinland-serve-content-gui',
+    name: 'opennorthland-serve-content-gui',
     configureServer(server) {
       server.middlewares.use('/gui', (req, res, next) => {
         const rel = (req.url ?? '').split('?')[0]?.replace(/^\/+/, '') ?? '';
@@ -206,7 +206,7 @@ function serveContentGui(): Plugin {
 
 function serveContentGuiBitmaps(): Plugin {
   return {
-    name: 'vinland-serve-content-gui-bitmaps',
+    name: 'opennorthland-serve-content-gui-bitmaps',
     configureServer(server) {
       server.middlewares.use('/gui-bitmaps', (req, res, next) => {
         const rel = (req.url ?? '').split('?')[0]?.replace(/^\/+/, '') ?? '';
@@ -224,7 +224,7 @@ function serveContentGuiBitmaps(): Plugin {
 
 function serveContentGoods(): Plugin {
   return {
-    name: 'vinland-serve-content-goods',
+    name: 'opennorthland-serve-content-goods',
     configureServer(server) {
       server.middlewares.use('/goods', (req, res, next) => {
         const rel = (req.url ?? '').split('?')[0]?.replace(/^\/+/, '') ?? '';

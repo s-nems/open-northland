@@ -1,5 +1,5 @@
-import type { HudLayout } from '@vinland/render';
-import type { Command } from '@vinland/sim';
+import type { HudLayout } from '@open-northland/render';
+import type { Command } from '@open-northland/sim';
 import { Container } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import type { TextRun } from '../src/hud/bitmap-text.js';

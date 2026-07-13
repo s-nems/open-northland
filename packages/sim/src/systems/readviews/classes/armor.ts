@@ -1,4 +1,4 @@
-import type { ArmorType, ContentSet } from '@vinland/data';
+import type { ArmorType, ContentSet } from '@open-northland/data';
 
 /**
  * An {@link ArmorType}'s **coarse armor class** — its extracted `mainType` (`1` = light/cloth+leather,

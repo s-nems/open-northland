@@ -1,4 +1,4 @@
-import type { ContentSet, LandscapeType } from '@vinland/data';
+import type { ContentSet, LandscapeType } from '@open-northland/data';
 
 // Pure, terminal **read views** for landscape placement layers — the data-defined "which layer may a
 // type sit on" classification read straight off `landscapetypes.ini`'s `allowedon{land,water,everything}`

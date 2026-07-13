@@ -13,7 +13,7 @@ import {
   type TribeType,
   type VehicleType,
   type WeaponType,
-} from '@vinland/data';
+} from '@open-northland/data';
 
 /**
  * O(1) lookup maps over a {@link ContentSet}'s arrays, keyed the way per-tick code queries them.
@@ -240,7 +240,7 @@ function byKey<K, T>(items: readonly T[], key: (item: T) => K): ReadonlyMap<K, T
   return map;
 }
 
-/** Map `items` by `key`, last-wins — the duplicate semantics of `@vinland/data`'s `indexById`.
+/** Map `items` by `key`, last-wins — the duplicate semantics of `@open-northland/data`'s `indexById`.
  *  Kept separate from the hot read-view tables above, whose replaced `.find` scans are first-wins. */
 function byKeyLast<K, T>(items: readonly T[], key: (item: T) => K): ReadonlyMap<K, T> {
   const map = new Map<K, T>();

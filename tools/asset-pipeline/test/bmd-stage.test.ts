@@ -68,7 +68,7 @@ describe('convertBmdTree', () => {
   let out: string;
 
   beforeEach(async () => {
-    out = await mkdtemp(join(tmpdir(), 'vinland-bmd-'));
+    out = await mkdtemp(join(tmpdir(), 'opennorthland-bmd-'));
   });
 
   afterEach(async () => {
@@ -188,7 +188,7 @@ describe('convertBmdTree opaque-alpha bake', () => {
   let out: string;
 
   beforeEach(async () => {
-    out = await mkdtemp(join(tmpdir(), 'vinland-bmd-'));
+    out = await mkdtemp(join(tmpdir(), 'opennorthland-bmd-'));
   });
 
   afterEach(async () => {

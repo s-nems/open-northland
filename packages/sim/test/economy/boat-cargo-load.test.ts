@@ -1,4 +1,4 @@
-import { type ContentSet, parseContentSet } from '@vinland/data';
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   Building,

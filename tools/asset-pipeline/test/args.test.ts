@@ -24,16 +24,21 @@ describe('resolveArgs', () => {
   // relative `--game ../Cultures 8th Wonder` must resolve against INIT_CWD (repo root), not cwd.
   it('resolves relative game/out against baseDir; mod stays a bare subdir', () => {
     expect(
-      resolveArgs({ game: '../Cultures 8th Wonder', mod: 'DataCnmd', out: 'content' }, '/home/u/vinland'),
+      resolveArgs(
+        { game: '../Cultures 8th Wonder', mod: 'DataCnmd', out: 'content' },
+        '/home/u/opennorthland',
+      ),
     ).toEqual({
       game: '/home/u/Cultures 8th Wonder',
       mod: 'DataCnmd',
-      out: '/home/u/vinland/content',
+      out: '/home/u/opennorthland/content',
     });
   });
 
   it('passes absolute game/out through unchanged', () => {
-    expect(resolveArgs({ game: '/abs/game', mod: undefined, out: '/abs/out' }, '/home/u/vinland')).toEqual({
+    expect(
+      resolveArgs({ game: '/abs/game', mod: undefined, out: '/abs/out' }, '/home/u/opennorthland'),
+    ).toEqual({
       game: '/abs/game',
       mod: undefined,
       out: '/abs/out',
@@ -46,7 +51,7 @@ describe('assertOutStaysInCheckout', () => {
   // checkout's; a pipeline run there wrote through the symlink and clobbered the primary's content.
   let base: string;
   beforeEach(async () => {
-    base = await mkdtemp(join(tmpdir(), 'vinland-out-guard-'));
+    base = await mkdtemp(join(tmpdir(), 'opennorthland-out-guard-'));
   });
   afterEach(async () => {
     await rm(base, { recursive: true, force: true });

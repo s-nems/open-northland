@@ -3,8 +3,8 @@ import {
   type PortraitInsetFrame,
   type SpriteSheet,
   type SupersampledTexture,
-} from '@vinland/render';
-import type { WorldSnapshot } from '@vinland/sim';
+} from '@open-northland/render';
+import type { WorldSnapshot } from '@open-northland/sim';
 import { type Application, Container, Graphics } from 'pixi.js';
 import { DEFAULT_UI_LANG, uiStringLookup } from '../../content/gui-gfx.js';
 import { contains, type Rect } from '../geometry.js';

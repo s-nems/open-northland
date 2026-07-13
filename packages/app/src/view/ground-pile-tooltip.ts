@@ -5,8 +5,8 @@ import {
   type ElevationField,
   SPRITE_CULL_MARGIN,
   type WorldRenderer,
-} from '@vinland/render';
-import type { WorldSnapshot } from '@vinland/sim';
+} from '@open-northland/render';
+import type { WorldSnapshot } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import { type Pickable, pickTopAt, screenToWorld } from './picking.js';
 import { createTooltip } from './tooltip.js';

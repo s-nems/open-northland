@@ -1,4 +1,4 @@
-import type { GuiColorKey } from '@vinland/render';
+import type { GuiColorKey } from '@open-northland/render';
 import { type Application, type Container, type Graphics, Sprite, type Texture } from 'pixi.js';
 import type { FontColorName } from '../../content/font-gfx.js';
 import { GENERIC_GOOD_ICON, makeGoodSprite } from '../../content/goods-gfx.js';

@@ -3,7 +3,7 @@ import type {
   SettlerCharacterSet,
   SettlerStateBinding,
   SpriteLayer,
-} from '@vinland/render';
+} from '@open-northland/render';
 import {
   ATTACK_ATOMIC,
   CLAY_HARVEST_ATOMIC,

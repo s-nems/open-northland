@@ -4,8 +4,8 @@ import {
   type SoundBindings,
   VIKING_VOICE_POOLS,
   type VoiceClass,
-} from '@vinland/audio';
-import type { SoundBank } from '@vinland/data';
+} from '@open-northland/audio';
+import type { SoundBank } from '@open-northland/data';
 import { HARVEST_ATOMIC } from '../catalog/atomics.js';
 import { hasSoundContent } from '../content/audio.js';
 import { loadIr } from '../content/ir.js';
@@ -292,5 +292,7 @@ export async function renderSoundGallery(
 
   root.append(inner);
   document.body.append(root);
-  console.log('Vinland sound gallery up. Click ▶ on a clip to audition it, then say which ones are off.');
+  console.log(
+    'OpenNorthland sound gallery up. Click ▶ on a clip to audition it, then say which ones are off.',
+  );
 }

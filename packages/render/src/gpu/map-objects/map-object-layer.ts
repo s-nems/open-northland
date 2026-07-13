@@ -1,4 +1,4 @@
-import { FOG_STATE } from '@vinland/sim';
+import { FOG_STATE } from '@open-northland/sim';
 import { Container } from 'pixi.js';
 import { screenToCell, TILE_HALF_W } from '../../data/iso.js';
 import { aabbIntersects, type Viewport } from '../../data/viewport.js';

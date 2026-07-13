@@ -1,4 +1,9 @@
-import { patternSrcRect, type SceneGround, type SceneTerrain, type TerrainTextureSet } from '@vinland/render';
+import {
+  patternSrcRect,
+  type SceneGround,
+  type SceneTerrain,
+  type TerrainTextureSet,
+} from '@open-northland/render';
 import { fetchImageData } from './net.js';
 
 /**

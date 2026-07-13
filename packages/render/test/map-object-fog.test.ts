@@ -1,4 +1,4 @@
-import { FOG_STATE } from '@vinland/sim';
+import { FOG_STATE } from '@open-northland/sim';
 import { Container, Texture } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import { FOG_GHOST_TINT } from '../src/data/fog.js';

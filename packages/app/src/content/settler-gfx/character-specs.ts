@@ -78,7 +78,7 @@ export interface CharacterSpec {
   /**
    * The combat-engaged gait bobseq names (`..._walk_agressive` / `..._wait_agressive`) — the readied
    * walk/stand a soldier plays while advancing on or squaring up to an enemy. Bound to
-   * {@link import('@vinland/render').SettlerStateBinding.engaged}; absent for looks with no aggressive
+   * {@link import('@open-northland/render').SettlerStateBinding.engaged}; absent for looks with no aggressive
    * variant (the unarmed body, civilians). The walk is a clean ×8 cycle, the wait a facing-locked strip
    * (like the relaxed wait).
    */

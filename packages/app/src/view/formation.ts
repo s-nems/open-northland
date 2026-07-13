@@ -1,4 +1,4 @@
-import { halfCellToScreen } from '@vinland/render';
+import { halfCellToScreen } from '@open-northland/render';
 import type { Tile } from './picking.js';
 
 /**

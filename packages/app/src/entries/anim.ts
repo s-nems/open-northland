@@ -4,7 +4,7 @@ import {
   type GalleryCellSpec,
   type SpriteLayer,
   type TextureSource,
-} from '@vinland/render';
+} from '@open-northland/render';
 import {
   characterStems,
   DEFAULT_CHARACTER_PALETTE,
@@ -108,7 +108,7 @@ async function renderRosterMontage(canvas: HTMLCanvasElement, params: URLSearchP
   }
   await startGallery(canvas, params, cells, { char: null, view: 'anim' });
   console.log(
-    `Vinland viking roster montage: ${cells.length} looks, each walking. Click a character to see its animations.`,
+    `OpenNorthland viking roster montage: ${cells.length} looks, each walking. Click a character to see its animations.`,
   );
 }
 
@@ -180,7 +180,7 @@ async function renderCharacterGallery(canvas: HTMLCanvasElement, params: URLSear
   const palette = lut !== undefined ? { source: lut, colours: lut.pixelHeight } : undefined;
   await startGallery(canvas, params, cells, { char, view }, palette);
   console.log(
-    `Vinland animation gallery: ${char.label} (${char.imagelib}), view=${view}` +
+    `OpenNorthland animation gallery: ${char.label} (${char.imagelib}), view=${view}` +
       `${color !== null ? `, color=${PLAYER_COLOR_NAMES[color]}` : ''}, ${cells.length} cells.`,
   );
 }

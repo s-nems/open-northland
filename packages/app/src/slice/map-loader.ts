@@ -1,4 +1,4 @@
-import { parseTerrainMap, type TerrainMapFile } from '@vinland/data';
+import { parseTerrainMap, type TerrainMapFile } from '@open-northland/data';
 
 /**
  * The decoded-map fetch boundary: load a `content/maps/<id>.json` grid over the dev/shot vite
@@ -18,7 +18,7 @@ function safeMapId(id: string): string | null {
 
 /**
  * Load a decoded map grid (`content/maps/<id>.json`, served at `/maps/<id>.json`) into the structural
- * `TerrainMapFile` the renderer + sim consume: fetch the JSON and hand it to `@vinland/data`'s
+ * `TerrainMapFile` the renderer + sim consume: fetch the JSON and hand it to `@open-northland/data`'s
  * `parseTerrainMap`, which zod-validates the shape + the `typeIds.length === width*height` invariant
  * before it ever reaches `terrainMapToScene`/`buildTerrainGraph`. Returns null (and logs) on a bad id,
  * a 404 (no such map / `content/` absent), or a malformed file, so the entry degrades gracefully to

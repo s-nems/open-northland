@@ -1,5 +1,5 @@
 {
-  "name": "@vinland/audio",
+  "name": "@open-northland/audio",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -12,8 +12,8 @@
     "build": "tsc --build"
   },
   "dependencies": {
-    "@vinland/data": "*",
-    "@vinland/render": "*",
-    "@vinland/sim": "*"
+    "@open-northland/data": "*",
+    "@open-northland/render": "*",
+    "@open-northland/sim": "*"
   }
 }

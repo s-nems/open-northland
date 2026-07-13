@@ -119,7 +119,7 @@ gitignored bytes:
   the **indexed** atlas through the `256×16` player-colour LUT via `render`'s `PalettedSprite` (only the clothing
   band recolours). A per-tone **skin/hair variant** axis (distinct from team colour) is still a
   deferred pipeline follow-up; file it as a `docs/tickets/` ticket before implementing.
-- `?sound=off` — skip building the audio pipeline (`@vinland/audio`) entirely. In live + scene modes the
+- `?sound=off` — skip building the audio pipeline (`@open-northland/audio`) entirely. In live + scene modes the
   decoded sounds are **default-MUTED**: the driver is built but starts disabled, and the game is silent
   until the user clicks the bottom-centre **sound toggle** button — that click both unmutes and satisfies
   the browser autoplay gesture (clicking again re-mutes). The audio layer is positional action SFX +

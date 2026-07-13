@@ -19,7 +19,7 @@ import type { SystemContext } from '../context.js';
  * around it as separate heaps), referenced by its gatherer's {@link WorkFlag}. The work radius is the
  * named approximation {@link DEFAULT_WORK_FLAG_RADIUS} (the original's collector work-area size is not
  * decoded). Auto-planting a flag the moment a settler becomes a gatherer ({@link plantWorkFlagAtFeet}) is
- * a Vinland UX convention layered on that approximated flag model — not observed original behavior — so a
+ * a OpenNorthland UX convention layered on that approximated flag model — not observed original behavior — so a
  * profession change hands the gatherer a movable flag at its feet instead of leaving it flagless.
  */
 
@@ -56,7 +56,7 @@ export function bindFreshFlag(world: World, e: Entity, pos: { x: Fixed; y: Fixed
  * `reidleAsJob` so every employment order (`setJob`, `assignWorker`) applies it identically. A job that
  * CAN harvest is a gatherer: it keeps a live flag, or gets a fresh one planted at its feet
  * ({@link plantWorkFlagAtFeet}) — so switching a settler INTO a gatherer trade immediately gives it a
- * movable drop-off flag, the profession-change twin of the player's first Ctrl+Right-Click (a Vinland UX
+ * movable drop-off flag, the profession-change twin of the player's first Ctrl+Right-Click (a OpenNorthland UX
  * convention, not decoded original behavior). A job that CANNOT harvest (a builder, a soldier, idle) DROPS
  * the flag ({@link removeWorkFlag}): the marker is destroyed and the {@link WorkFlag} removed, so a former
  * gatherer never strands an owner-less flag on the map.

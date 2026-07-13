@@ -8,7 +8,7 @@ import {
   type SettlerEquipment,
   type Simulation,
   systems,
-} from '@vinland/sim';
+} from '@open-northland/sim';
 import { resolveVikingBuilding } from '../../catalog/buildings.js';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../../catalog/felling.js';
 import { MINE_STRIKES_PER_UNIT } from '../../catalog/mining.js';

@@ -13,7 +13,7 @@ describe('buildBobsIndexEntries', () => {
   let bobsRoot: string;
 
   beforeEach(async () => {
-    bobsRoot = await mkdtemp(join(tmpdir(), 'vinland-bobs-index-'));
+    bobsRoot = await mkdtemp(join(tmpdir(), 'opennorthland-bobs-index-'));
   });
 
   afterEach(async () => {

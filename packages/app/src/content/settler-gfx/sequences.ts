@@ -1,4 +1,4 @@
-import type { DirectionalAnim } from '@vinland/render';
+import type { DirectionalAnim } from '@open-northland/render';
 import {
   CLAY_HARVEST_ATOMIC,
   GOLD_HARVEST_ATOMIC,

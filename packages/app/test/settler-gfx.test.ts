@@ -1,4 +1,4 @@
-import { indexAtlasFrames, type SpriteAtlas } from '@vinland/render';
+import { indexAtlasFrames, type SpriteAtlas } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
 import { VIKING_CHARACTERS } from '../src/catalog/roster.js';
 import {

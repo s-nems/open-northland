@@ -1,4 +1,4 @@
-import type { HumanJobExperienceType } from '@vinland/data';
+import type { HumanJobExperienceType } from '@open-northland/data';
 import { Settler } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';

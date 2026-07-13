@@ -8,7 +8,7 @@ import {
   LandscapeGfx,
   LandscapeType,
   TrianglePatternType,
-} from '@vinland/data';
+} from '@open-northland/data';
 import { decodeCifStringArray } from '../../cif.js';
 import {
   cifLinesToSections,

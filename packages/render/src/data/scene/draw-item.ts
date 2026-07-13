@@ -118,14 +118,14 @@ export interface DrawItem {
   readonly fill?: number;
   /**
    * For a **stockpile**: whether it is a designated **delivery flag** (a
-   * {@link import('@vinland/sim').DeliveryFlag} collection point) rather than a loose ground pile. A flag is
+   * {@link import('@open-northland/sim').DeliveryFlag} collection point) rather than a loose ground pile. A flag is
    * a marker that holds no goods (no `goodType`/`fill`) — it draws the flag graphic and is painted a hair
    * ABOVE any co-located goods heap ({@link FLAG_PAINT_STEP}), so a pile piling up on the flag's tile never
    * buries it. Omitted (falsy) for a loose pile and every non-stockpile.
    */
   readonly isFlag?: boolean;
   /**
-   * For a **mined resource node** (a {@link import('@vinland/sim').MineDeposit} deposit): its visual fill
+   * For a **mined resource node** (a {@link import('@open-northland/sim').MineDeposit} deposit): its visual fill
    * LEVEL — a small integer in `[1, levels]`, `levels` when the deposit is full stepping down to `1` as it
    * nears empty. A per-good {@link import('../sprites/index.js').ResourceTypeBinding} indexes the mine record's
    * fill-state frames by it, so the drawn deposit visibly SHRINKS in step with what has been mined (the

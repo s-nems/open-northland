@@ -1,4 +1,4 @@
-import type { SimEvent } from '@vinland/sim';
+import type { SimEvent } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import {
   BLOOD_LIFETIME_TICKS,

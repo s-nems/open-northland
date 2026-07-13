@@ -3,7 +3,7 @@
  * `(bmd, palette)` graphics binding, and the building-type → house-bob join. All share the body+palette
  * preamble ({@link readGfxHouseGraphicsRecord}) and the multi-house record split.
  */
-import { BuildingBob, BuildingConstructionLayer, BuildingOverlay } from '@vinland/data';
+import { BuildingBob, BuildingConstructionLayer, BuildingOverlay } from '@open-northland/data';
 import { type NamedBmdPaletteBinding, readBmdPaletteBindings } from '../bindings/index.js';
 import {
   findProps,

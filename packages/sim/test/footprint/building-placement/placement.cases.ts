@@ -1,4 +1,4 @@
-import { type ContentSet, parseContentSet } from '@vinland/data';
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { PathFollow, PathRequest, Position, Resource } from '../../../src/components/index.js';
 import { halfCellMapFromCells, nodeOfPosition, positionOfNode, Simulation } from '../../../src/index.js';

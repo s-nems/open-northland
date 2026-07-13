@@ -1,4 +1,4 @@
-import { parseContentSet } from '@vinland/data';
+import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { armorByClass, armorClassOf } from '../../../src/systems/index.js';
 import { armor, armorContent, SCAFFOLD } from './support.js';

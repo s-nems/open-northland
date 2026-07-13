@@ -1,4 +1,4 @@
-import { type Camera, halfCellToScreen, makeElevationField, tileToScreen } from '@vinland/render';
+import { type Camera, halfCellToScreen, makeElevationField, tileToScreen } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
 import { clampTile, pickInRect, pickTopAt, screenToWorld, worldToTile } from '../src/view/picking.js';
 

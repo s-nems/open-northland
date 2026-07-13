@@ -1,4 +1,4 @@
-import type { CellTerrainMap, Simulation } from '@vinland/sim';
+import type { CellTerrainMap, Simulation } from '@open-northland/sim';
 import type { FogModeName } from '../game/fog.js';
 
 /** A single machine-checkable assertion about a scene's run — the mechanic the headless test enforces. */

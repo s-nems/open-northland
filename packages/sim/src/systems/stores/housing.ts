@@ -1,4 +1,4 @@
-import type { BuildingType } from '@vinland/data';
+import type { BuildingType } from '@open-northland/data';
 import { Building, Settler } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { ONE } from '../../core/fixed.js';
