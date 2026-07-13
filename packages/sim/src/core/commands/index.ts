@@ -1,10 +1,9 @@
-import type { DebugCommand } from './debug.js';
+import type { DebugCommand, RulesCommand } from './administration.js';
 import type { PlacementCommand } from './placement.js';
-import type { RulesCommand } from './rules.js';
 import type { SpawnCommand } from './spawn.js';
 import type { UnitOrderCommand } from './unit-orders.js';
 
-export type { SettlerEquipment, SettlerEquipmentSlot } from './equipment.js';
+export type { SettlerEquipment, SettlerEquipmentSlot } from './spawn.js';
 
 /**
  * Player commands are the ONLY way sim state mutates (CommandSystem applies them). They must be
