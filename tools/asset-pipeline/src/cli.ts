@@ -27,7 +27,7 @@ import { type Args, assertOutStaysInCheckout, parseArgs, resolveArgs } from './a
 import { convertBmdTree, resolveGraphicsBindings } from './stages/bmd.js';
 import { convertFontStage } from './stages/fonts.js';
 import { convertGoodsStage } from './stages/goods.js';
-import { convertGuiStage } from './stages/gui.js';
+import { convertGuiStage } from './stages/gui/index.js';
 import { writeIr } from './stages/ir.js';
 import { unpackLibTree } from './stages/lib.js';
 import { convertMapDatTree } from './stages/maps/index.js';
@@ -46,7 +46,7 @@ async function run(args: Args): Promise<void> {
   // > 6. Decode map logic headers -> map IR     -> decoders/cif.ts + ini.ts (this stage; metadata only)
   // > 7. Write content/ir.json + validate with parseContentSet()  (this stage)
   // > 8. Decode map.dat terrain grids -> maps/  -> decoders/mapdat/ (this stage; the nav-graph grid)
-  // > 9. Extract GUI/HUD art+strings+cursors    -> decoders/cursor.ts + stages/gui.ts (this stage)
+  // > 9. Extract GUI/HUD art+strings+cursors    -> decoders/cursor.ts + stages/gui/ (this stage)
   //
   // The unpack extracts loose copies of the embedded .pcx/.bmd/.cif into <out> (gitignored).
   const extracted = await unpackLibTree(args.game, args.out);
@@ -102,7 +102,7 @@ async function run(args: Args): Promise<void> {
   // (render colours per element at draw time) + an RGBA preview atlas + a 256×N palette LUT, the nine
   // ingamegui string tables per language -> id->text JSON, and the mouse cursors -> PNG + verbatim .cur.
   // All from loose files (the HUD ships unpacked); outputs land under content/ for the app's /bobs + /gui
-  // routes. See stages/gui.ts + docs/SOURCES.md "GUI".
+  // routes. See stages/gui/ + docs/SOURCES.md "GUI".
   const gui = await convertGuiStage(args.game, args.out);
   console.log(
     `[pipeline] gui: ${gui.atlases} atlas(es) (${gui.frames} frames), ${gui.palettes}-palette LUT, ` +

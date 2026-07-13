@@ -13,7 +13,7 @@ import {
 /**
  * Font extraction stage — the original UI bitmap fonts (`Data/gui/fonts/*.fnt`), converted from an OWNED
  * game copy into `content/` so the renderer can draw text. It is the font twin of the GUI stage
- * ({@link import('./gui.js')}), reusing its pieces:
+ * ({@link import('./gui/index.js')}), reusing its pieces:
  *
  *  - **Glyph atlas.** Each `.fnt` is a CFont (id 0x3F5) wrapping the same CBobManager `.bmd` bob container
  *    the settlers/HUD use (one bob per glyph; char `c` → bob `c - 0x20`), so its bobs pack into the same
