@@ -1,8 +1,8 @@
 /**
  * Shared little-endian primitives for the binary container decoders (`.cif`/`.bmd`/`.lib`/`.map`).
  *
- * Every Cultures container is little-endian with the same handful of reads (`u32`, occasional `i32`/
- * `u8`, raw byte runs, ASCII names), so they all grew a near-identical private reader class. This is
+ * Every Cultures container is little-endian with the same handful of reads (`u32`, occasional `u8`,
+ * raw byte runs, ASCII names), so they all grew a near-identical private reader class. This is
  * the one copy. It is deliberately domain-free — no storable ids, no format knowledge — so the
  * format-specific helpers (e.g. `readCMemory` in `cif.ts`) build on it without a circular import.
  */
@@ -40,13 +40,6 @@ export class ByteCursor {
   u32(): number {
     this.ensure(4);
     const v = this.view.getUint32(this.pos, true);
-    this.pos += 4;
-    return v;
-  }
-
-  i32(): number {
-    this.ensure(4);
-    const v = this.view.getInt32(this.pos, true);
     this.pos += 4;
     return v;
   }
@@ -95,12 +88,6 @@ export class ByteWriter {
   u32(v: number): void {
     this.ensure(4);
     new DataView(this.buf.buffer).setUint32(this.pos, v >>> 0, true);
-    this.pos += 4;
-  }
-
-  i32(v: number): void {
-    this.ensure(4);
-    new DataView(this.buf.buffer).setInt32(this.pos, v | 0, true);
     this.pos += 4;
   }
 
