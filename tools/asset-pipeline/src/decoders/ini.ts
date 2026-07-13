@@ -36,6 +36,7 @@ export type {
 export {
   cifLinesToSections,
   decodeIni,
+  normalizeAssetPath,
   parseIniSections,
 } from './ini/grammar.js';
 export type { MapStaticObjects } from './ini/maps.js';

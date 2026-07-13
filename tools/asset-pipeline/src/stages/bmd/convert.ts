@@ -2,7 +2,12 @@ import { readFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import { type AtlasAlphaMode, type BobAtlas, packBobAtlas } from '../../decoders/atlas.js';
 import { decodeBmd } from '../../decoders/bmd/index.js';
-import { type BmdPaletteBinding, type PaletteAlias, paletteAliasMap } from '../../decoders/ini.js';
+import {
+  type BmdPaletteBinding,
+  normalizeAssetPath,
+  type PaletteAlias,
+  paletteAliasMap,
+} from '../../decoders/ini.js';
 import { decodePcx } from '../../decoders/pcx.js';
 import { walkFiles } from '../../walk.js';
 import { writeAtlasBeside } from '../game-file.js';
@@ -31,13 +36,14 @@ export function bmdToAtlas(
  * `.pcx` references, but the unpacked `.lib` members keep the archive's original (mixed) case, so a
  * direct `join(out, ref)` would miss on a case-sensitive filesystem. This map bridges the two: look a
  * normalized reference up to get the real path under `outDir`. Built once per run and shared by every
- * binding. Mirrors the `normalizeAssetPath` the extractors use (forward slashes, lower-case).
+ * binding. Keys via the same `normalizeAssetPath` the extractors use (forward slashes, lower-case), so
+ * the two sides can never drift.
  */
 export async function indexOutTree(outDir: string): Promise<Map<string, string>> {
   const index = new Map<string, string>();
   for await (const file of walkFiles(outDir)) {
     const rel = relative(outDir, file);
-    index.set(rel.replace(/\\/g, '/').toLowerCase(), rel);
+    index.set(normalizeAssetPath(rel), rel);
   }
   return index;
 }
