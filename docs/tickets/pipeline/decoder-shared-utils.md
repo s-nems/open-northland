@@ -32,7 +32,7 @@ and the lone `ByteWriter` (`decoders/bmd.ts`) have no duplicate and stay.
   `decoders/pcx.ts` `expandToRgba`, `decoders/atlas.ts` `expandBobFrame`,
   `decoders/player-palette.ts` `buildPlayerLutImage`.
 - The 768-byte palette guard: the constant is shared (`PALETTE_RGB_BYTES`, `decoders/image.ts`) but
-  the assertion is copied with its own message 5×: `atlas.ts` `expandBobFrame`, `pcx.ts`
+  the assertion is copied with its own message 6×: `atlas.ts` `expandBobFrame`, `pcx.ts`
   `expandToRgba` + `encodePcx`, `palette.ts` `encodePalette`, `player-palette.ts` `assertPalette`,
   `cursor.ts` `encodeDib8`.
 - The palette shadow-lift colour math (`liftPaletteShadows`, now in
@@ -54,7 +54,13 @@ The gui/font halves already share `stages/game-file.ts` `buildPaletteLut`
 `stages/goods.ts` (`convertGoodsStage`, the goods-palettes LUT), `stages/player-colors.ts`
 (`convertPlayerColorLut`), and inside `buildPaletteLut` itself — extract one write-LUT-PNG helper.
 
-### 5. Generic RLE run/literal codec
+### 5. Named decoder types over `ReturnType`
+
+Two stages type locals as `ReturnType<typeof decodeX>` where the decoder already exports the named
+type: `stages/gui/cursors.ts` (`ReturnType<typeof decodeCursor>` → exported `DecodedCursor`) and
+`stages/lib.ts` (`ReturnType<typeof decodeLib>['files']`). Use the exported names.
+
+### 6. Generic RLE run/literal codec
 
 The high-bit run-vs-literal codec is written per element width in `decoders/mapdat/layers.ts`:
 `unpackMapLayer`/`packMapLayer` (bytes) vs `unpackX6elLayer`/`packX6elLayer` (u16) differ only in

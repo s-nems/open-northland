@@ -169,8 +169,7 @@ group** (`emmm` → `embr`,`empa/empb`,`emt1..4`,`emla`,… → `xend`) then `te
   the `[GfxLandscape]` EditName list (866), `eatd` = the `transitions.cif` `[transition]` name list
   (38 — the `emt*` lanes' `⌊v/6⌋` join target). Grammar: `[u32 count]`
   then `[u8 len][bytes][0x00]` per entry (`decodeStringListChunk`).
-  `laco`/`lasw`/`lafm` are undecoded binary record lists (coords + ids) — role unknown, likely
-  editor-only.
+  `laco`/`lasw`/`lafm` are undecoded binary record lists (coords + ids) — role unknown.
 
 The pipeline emits the render model per map (`stages/maps.ts` `mapDatToTerrain`) →
 `content/maps/<id>.json`, consumed by the renderer end-to-end (`?map=<id>`): the sim grid
@@ -385,11 +384,25 @@ history, deleted 2026-07-12):
   (`skeleton_falling → skeleton`); `extractLandscapeGfx` already emits the cadaver records among
   its 866.
 
-### Reference-screenshot corpus
+### Reference-screenshot corpus + template matching (map-visual verification kit)
 
-Reference screenshots of the original for pixel comparison live outside the repo
-(`~/Projects/vikings/reference-shots/`, read-only); the template-matching kit that uses them is
-documented in `docs/tickets/render/wave-phase-audit.md`.
+The pixel-oracle kit for comparing our render against the original (used by the map-visual
+tickets; the owner is the pixel oracle — never self-sign a visual):
+
+- **Corpus:** `~/Projects/vikings/reference-shots/mosty-na-rzece-toprow/mosty-{1..7}.png` — the
+  full 250-column top strip of `specjalna_mosty_na_rzece`, left→right with small overlaps,
+  capture scale exactly **1.25× native art px** (pinned by 5 building templates). Read-only,
+  outside the repo.
+- **Pinned mosty-5 viewport mapping** (north base, 19-building sub-pixel lattice fit):
+  `img_x = −11996.0 + 42.4958·hx`, `img_y = 240.2 + 23.766·hy − 1.547·elev(hx/2, hy/2)`; native
+  px = image px ÷ 1.25. Caveat: the `−1.547·elev` coefficient and the residual offset ≈ (−59,−15)
+  px were fitted against the OLD ≈1.24 lift (superseded by `TILE_HALF_H/32`) — re-fit the
+  elevation term before trusting sub-pixel claims; the x/y lattice terms should hold.
+- **Our matching frame:** `?map=specjalna_mosty_na_rzece&center=160,15&zoom=1.25` at a 3172×1784
+  viewport ≈ mosty-5.
+- **Template-matching recipe:** masked `TM_SQDIFF_NORMED` (invert to a score), alpha mask eroded
+  2 px, sprites cropped from `content/Data/engine2d/bin/bobs/<stem>.<palette>.{atlas.json,png}`,
+  OpenCV via a scratchpad venv.
 
 ### Building graphics families (render multi-`.bmd` scope)
 
