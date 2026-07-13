@@ -1,6 +1,7 @@
 import { Container, Graphics, type Renderer, RenderTexture, Sprite } from 'pixi.js';
 import { type ElevationField, terrainLiftAtNode } from '../../data/elevation.js';
 import { halfCellToScreen, nodeDiamondPoly, TILE_HALF_H, TILE_HALF_W } from '../../data/iso.js';
+import { hashCells } from './cell-signature.js';
 
 /**
  * The BUILD-PLACEMENT overlay — the original's build-mode read of the ground: a translucent dark wash
@@ -221,9 +222,6 @@ export class PlacementOverlayLayer {
  *  stale cosmetic wash for one frame, self-correcting on the next change) — this only gates a redraw,
  *  never correctness. */
 function signatureOf(frame: PlacementOverlayFrame): string {
-  let h = frame.blocked.length | 0;
-  for (const c of frame.blocked) {
-    h = (Math.imul(h, 31) + Math.imul(c.col, 73856093) + Math.imul(c.row, 19349663)) | 0;
-  }
+  const h = hashCells(frame.blocked, frame.blocked.length);
   return `${frame.minCol},${frame.maxCol},${frame.minRow},${frame.maxRow}:${frame.blocked.length}:${h}`;
 }
