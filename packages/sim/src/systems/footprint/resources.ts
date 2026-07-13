@@ -16,7 +16,7 @@ import {
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
-import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import { translatedCells } from './geometry.js';
 
 // RESOURCE footprints — the `[GfxLandscape]` walk/build/work areas a stamped resource occupies, and

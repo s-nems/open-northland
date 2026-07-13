@@ -19,8 +19,8 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, fx, halfCellMapFromCells, Simulation, type TerrainMap } from '../../src/index.js';
-import { attackUnit, moveUnit } from '../../src/systems/conflict/orders.js';
 import { aiSystem, combatSystem, SIGHT_RADIUS_NODES, type SystemContext } from '../../src/systems/index.js';
+import { attackUnit, moveUnit } from '../../src/systems/orders/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { testContent } from '../fixtures/content.js';
 

@@ -10,10 +10,10 @@ import {
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
-import type { NodeId } from '../../../nav/terrain.js';
+import type { NodeId } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { type FarmingSpec, farmWorkGood } from '../../economy/farming.js';
-import { buildingEnabled, carrierCarryCapacity } from '../../progression.js';
+import { buildingEnabled, carrierCarryCapacity } from '../../progression/index.js';
 import { atomicDuration } from '../../readviews/animations.js';
 import { manhattan } from '../../spatial.js';
 import { buildingWorkerJobs } from '../../stores/index.js';

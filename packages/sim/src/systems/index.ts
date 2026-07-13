@@ -1,34 +1,12 @@
-import { aiSystem } from './agents/ai.js';
-import { atomicSystem } from './agents/atomic.js';
-import { commandSystem } from './command.js';
-import { combatSystem } from './conflict/combat.js';
-import { playerOrderSystem } from './conflict/orders.js';
-import { projectileSystem } from './conflict/projectile.js';
 import type { System, SystemContext } from './context.js';
-import { berryGrowthSystem } from './economy/berries.js';
-import { constructionSystem } from './economy/construction.js';
-import { cropGrowthSystem } from './economy/farming.js';
-import { jobSystem } from './economy/jobs.js';
-import { productionSystem } from './economy/production.js';
-import { growthSystem } from './lifecycle/ageclass.js';
-import { cleanupSystem } from './lifecycle/cleanup.js';
-import { needsSystem } from './lifecycle/needs.js';
-import { reproductionSystem } from './lifecycle/reproduction.js';
-import { separationSystem } from './movement/collision/index.js';
-import { herdingSystem } from './movement/herding.js';
-import { movementSystem } from './movement/movement.js';
-import { pathfindingSystem } from './movement/routing.js';
-import { progressionSystem, terrainSystem, timeSystem, transportSystem } from './stubs.js';
-import { visionSystem } from './vision/index.js';
 
 // The meal-length knob (the eat/forage atomic duration): exposed so tests + tuning can reference the
 // repeat count without reaching into the internal action vocabulary wholesale.
 export { EAT_ANIMATION_REPEATS, eatDuration } from './agents/actions.js';
 export * from './agents/ai.js';
 export * from './agents/atomic.js';
-export * from './command.js';
+export * from './command/index.js';
 export * from './conflict/combat.js';
-export * from './conflict/orders.js';
 export * from './conflict/projectile.js';
 // `spawn` otherwise stays private (its `spawnSettler`/`spawnAnimalHerd` are the command handler's), but
 // `createSettler` is the scene-facing entity constructor — the settler twin of `createResourceNode` — so
@@ -49,50 +27,16 @@ export * from './movement/collision/index.js';
 export * from './movement/herding.js';
 export * from './movement/movement.js';
 export * from './movement/routing.js';
-export * from './progression.js';
+export * from './orders/index.js';
+export * from './progression/index.js';
 export * from './readviews/index.js';
 export * from './spatial.js';
 export * from './stores/index.js';
-export * from './stubs.js';
 export * from './vision/index.js';
-// The systems barrel: every per-system module re-exported wholesale (no hand-maintained name
-// lists — they drifted), plus SYSTEM_ORDER, which this barrel owns. `@vinland/sim`'s `systems`
-// namespace and the tests import through here so the whole surface has a single import site.
+// The package-internal systems barrel: per-system modules are re-exported wholesale so tests and
+// implementation helpers share one import site. The canonical schedule is deliberately separate in
+// schedule.ts, and the external `@vinland/sim` systems namespace is curated in public.ts.
 // Only the system ENTRY modules (and the cross-system helper leaves) are star-exported; a module a
 // system entry re-exports its public names from — planner internals like targets/economy supply, the
 // drive/effect/targeting submodules, spawn — stays private to its cluster.
 export type { System, SystemContext };
-
-/**
- * The canonical per-tick execution order. Order is part of the design — change deliberately.
- * Note the AI->Atomic split: AISystem chooses an atomic, AtomicSystem executes it to completion.
- * Most "behavior" lives in these two + the data-driven atomic vocabulary, not in bespoke systems.
- */
-export const SYSTEM_ORDER: readonly System[] = [
-  commandSystem,
-  timeSystem,
-  terrainSystem,
-  needsSystem,
-  progressionSystem,
-  jobSystem,
-  herdingSystem,
-  playerOrderSystem,
-  aiSystem,
-  pathfindingSystem,
-  movementSystem,
-  separationSystem,
-  atomicSystem,
-  productionSystem,
-  cropGrowthSystem,
-  berryGrowthSystem,
-  transportSystem,
-  constructionSystem,
-  // Vision rebuilds AFTER movement settled this tick's positions and BEFORE combat gates on them, so
-  // a fresh `setFogMode` (applied by commandSystem above) is honoured the same tick.
-  visionSystem,
-  combatSystem,
-  projectileSystem,
-  reproductionSystem,
-  growthSystem,
-  cleanupSystem,
-];

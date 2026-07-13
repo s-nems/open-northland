@@ -1,7 +1,7 @@
 import { Fleeing, MoveGoal, Owner, PathRequest, Settler } from '../../components/index.js';
 import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
-import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { COMPASS_DIRECTIONS, clearNavState, entityNode, isTravelling, type NodeBuckets } from '../spatial.js';
 import { playerSeesEntity } from '../vision/index.js';

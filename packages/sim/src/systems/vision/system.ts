@@ -3,7 +3,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { System } from '../context.js';
 import { isFighterJob, SCOUT_JOB } from '../readviews/index.js';
-import { HUNTER_JOB } from '../readviews/tribes.js';
+import { HUNTER_JOB } from '../readviews/tribes/index.js';
 import { cellOfNode } from './gates.js';
 import { FOG_STATE } from './state.js';
 

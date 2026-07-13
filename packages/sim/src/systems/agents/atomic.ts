@@ -6,7 +6,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
 import { advanceConstructionLabor } from '../economy/construction.js';
 import { applySow, applyWater } from '../economy/farming.js';
-import { grantWorkExperience } from '../progression.js';
+import { grantWorkExperience } from '../progression/index.js';
 import {
   applyPendingStaggers,
   type PendingStagger,

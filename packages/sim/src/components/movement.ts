@@ -1,5 +1,6 @@
 import type { Fixed } from '../core/fixed.js';
 import { defineComponent, type Entity } from '../ecs/world.js';
+import type { NodeId } from '../nav/terrain/index.js';
 
 /** World position in fixed-point tile units. */
 export const Position = defineComponent<{ x: Fixed; y: Fixed }>('Position');
@@ -97,7 +98,7 @@ export const PathFollow = defineComponent<{
  * so a goal's owner must not assume the exact cell it set survives the walk. A non-collider's goal
  * is never re-aimed — the economy's node-coincidence checks rely on it arriving verbatim.
  */
-export const MoveGoal = defineComponent<{ cell: number }>('MoveGoal');
+export const MoveGoal = defineComponent<{ cell: NodeId }>('MoveGoal');
 
 /**
  * A pending navigation request: route this entity from cell `start` to cell `goal`. The
@@ -107,7 +108,7 @@ export const MoveGoal = defineComponent<{ cell: number }>('MoveGoal');
  * stops retrying the same dead query every tick. `start`/`goal` are raw row-major cell ids
  * (`y*width + x`) — plain numbers here so this component stays serializable like every other.
  */
-export const PathRequest = defineComponent<{ start: number; goal: number; failed: boolean }>('PathRequest');
+export const PathRequest = defineComponent<{ start: NodeId; goal: NodeId; failed: boolean }>('PathRequest');
 
 /**
  * A walker's grind-window state among unit bodies — the SeparationSystem stamps it on a

@@ -1,5 +1,5 @@
 import { FOG_MODE } from '../../components/index.js';
-import type { TerrainGraph } from '../../nav/terrain.js';
+import type { TerrainGraph } from '../../nav/terrain/index.js';
 
 /** The tri-state visibility values one mask byte holds. Order matters: a HIGHER state shows more, so
  *  "at least explored" is `>= EXPLORED` — the render + minimap key off these exact bytes. */

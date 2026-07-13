@@ -128,13 +128,13 @@ export const Age = defineComponent<{ ticks: number }>('Age');
 
 /**
  * A **player move order** in flight on a settler — the soft, TIMED override the RTS "go there" command
- * stamps ({@link import('../systems/conflict/orders.js').moveUnit}). It is what makes a manual move
+ * stamps ({@link import('../systems/orders/index.js').moveUnit}). It is what makes a manual move
  * faithful to *Cultures*: the unit walks to the ordered spot, STANDS there a while, then the economy AI
  * reclaims it — the order never seizes the unit permanently.
  *
  * `holdTicks` is how long to stand after arriving (short for a worker, long for a soldier — set from
  * the unit's combatant-ness at order time). `expiresAt` is the tick the hold ends, **null until the
- * unit arrives** and the hold begins — the {@link import('../systems/conflict/orders.js').playerOrderSystem}
+ * unit arrives** and the hold begins — the {@link import('../systems/orders/index.js').playerOrderSystem}
  * sets it on arrival and removes the component on expiry (or when a need drive takes the unit over).
  * While present, the AISystem's ECONOMY branch skips the unit (it stays put) but its NEEDS drives still
  * fire, so hunger/fatigue can pull it away mid-hold.

@@ -1,6 +1,6 @@
 import { AttackOrder, Engagement, MoveGoal, PathRequest } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { standingFighterNodes } from '../movement/collision/index.js';
 import { clearNavState, entityNode, isTravelling, manhattan } from '../spatial.js';

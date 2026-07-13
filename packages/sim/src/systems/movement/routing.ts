@@ -5,7 +5,7 @@ import { LayeredBlocks } from '../../nav/block-overlay.js';
 import { positionOfNode, positionXOfWorld } from '../../nav/halfcell.js';
 import { nearestUnblockedNode } from '../../nav/nearest.js';
 import { findPath, type SearchStats } from '../../nav/pathfinding.js';
-import type { BlockOverlay, NodeId, TerrainGraph } from '../../nav/terrain.js';
+import type { BlockOverlay, NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
 import { dynamicBlockedCells } from '../footprint/index.js';
 import { canonicalById, isValidNodeId } from '../spatial.js';
@@ -125,7 +125,7 @@ export function drainPathRequests(
       // instead of failing: this is the rule that fans a charge out AROUND a crowded target (each
       // arrival stands, occupies its node, and the next walker is dealt the next free one).
       // Collider-only, like the overlay itself: a ghost's goal must stay EXACT.
-      const goal = req.goal as NodeId;
+      const goal = req.goal;
       if (blocked.has(goal) && !(dynamic?.has(goal) ?? false)) {
         const standIn = nearestUnblockedNode(terrain, goal, blocked, claimedStandIns);
         if (standIn !== null) {

@@ -3,7 +3,7 @@ import { type Fixed, fx, ZERO } from '../../../core/fixed.js';
 import type { Entity } from '../../../ecs/world.js';
 import { nodeOfPosition, positionXOfWorld } from '../../../nav/halfcell.js';
 import { ROW_STEP, worldDistance, worldX } from '../../../nav/metric.js';
-import type { NodeId } from '../../../nav/terrain.js';
+import type { NodeId } from '../../../nav/terrain/index.js';
 import type { System } from '../../context.js';
 import { dynamicBlockedCells } from '../../footprint/index.js';
 import { canonicalById, clearNavState, NodeBuckets } from '../../spatial.js';

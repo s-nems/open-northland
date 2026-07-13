@@ -96,26 +96,35 @@ change → update the golden in the same commit. See docs/TESTING.md.
 
 ## System execution order (per tick)
 
-Defined in `systems/index.ts` as `SYSTEM_ORDER`. Note the AI→Atomic split:
+Defined in `systems/schedule.ts` as `SYSTEM_ORDER`. Note the AI→Atomic split:
 
 ```
 1.  CommandSystem       apply queued serializable player commands
-2.  TimeSystem          advance clock / day / season
-3.  TerrainSystem       resource regrowth, fertility (on the cell graph)
-4.  NeedsSystem         hunger/health + the food/goods chain
-5.  ProgressionSystem   experience + tech graph gates jobs/goods/houses/vehicles
-6.  AISystem            planner: choose the next atomic for each idle settler
-7.  JobSystem           match idle settlers to open jobs/workplaces
-8.  PathfindingSystem   A* on the cell-adjacency graph, canonical tie-breaking (budgeted)
-9.  MovementSystem      advance positions along paths (fixed-point)
-10. AtomicSystem        advance CurrentAtomic; on completion apply effect + notify planner
-11. ProductionSystem    recipes consume inputs → outputs, enforce stock capacity
-12. TransportSystem     carriers physically haul goods between stores (no global bank)
-13. ConstructionSystem  deliver materials, advance build, level houses
-14. CombatSystem        N-tribe combat from weapontypes/armortypes
-15. ReproductionSystem  families/children, gated by house-level capacity
-16. CleanupSystem       destroy dead entities (ids NOT recycled), emit events for render/audio
+2.  NeedsSystem         advance hunger/fatigue/piety/enjoyment and starvation
+3.  JobSystem           match idle settlers to open jobs/workplaces
+4.  HerdingSystem       bring separated herd followers back to their leader
+5.  PlayerOrderSystem   resolve move-order holds before autonomous planning
+6.  AISystem            choose the next atomic for each idle settler
+7.  PathfindingSystem   A* on the half-cell graph, canonical and budgeted
+8.  MovementSystem      advance positions along paths (fixed-point)
+9.  SeparationSystem    resolve unit-body overlap and obstructed routes
+10. AtomicSystem        advance CurrentAtomic and apply its effects
+11. ProductionSystem    consume recipe inputs and deposit completed outputs
+12. CropGrowthSystem    advance watered fields
+13. BerryGrowthSystem   ripen depleted berry bushes
+14. ConstructionSystem  deliver materials, advance builds, and level homes
+15. VisionSystem        rebuild fog masks after movement
+16. CombatSystem        acquire targets and issue attacks
+17. ProjectileSystem    advance ranged shots and resolve impacts
+18. ReproductionSystem  create children within housing capacity
+19. GrowthSystem        advance children through age classes
+20. CleanupSystem       destroy dead entities (ids are never recycled)
 ```
+
+Experience accrual and tech-graph gates are event/read helpers, not a polling system. Carriers haul
+through the AI/atomic pipeline rather than a separate transport pass. Time/season and terrain
+regrowth systems do not exist until their mechanics are implemented; the schedule contains no no-op
+placeholders.
 
 ## Terrain: navigation graph vs. render tessellation (keep these separate)
 

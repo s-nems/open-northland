@@ -10,7 +10,7 @@
  */
 
 export * from './combat.js';
-export * from './economy.js';
+export * from './economy/index.js';
 export * from './equipment.js';
 export * from './movement.js';
 export * from './ownership.js';

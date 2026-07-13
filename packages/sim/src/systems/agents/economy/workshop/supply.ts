@@ -2,7 +2,7 @@ import type { Recipe } from '@vinland/data';
 import { Building, Position, Production, Stockpile } from '../../../../components/index.js';
 import { ONE } from '../../../../core/fixed.js';
 import type { Entity, World } from '../../../../ecs/world.js';
-import type { NodeId, TerrainGraph } from '../../../../nav/terrain.js';
+import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
 import { startableCycleCount } from '../../../economy/production.js';
 import { manhattan } from '../../../spatial.js';

@@ -171,7 +171,7 @@ function pick<T>(rng: Rng, options: readonly T[]): T {
 function nextCommand(rng: Rng): Command {
   const x = rng.int(NODE_W);
   const y = rng.int(NODE_H);
-  const roll = rng.int(20);
+  const roll = rng.int(19);
   switch (roll) {
     case 0:
       return {
@@ -225,20 +225,14 @@ function nextCommand(rng: Rng): Command {
         ...(rng.int(2) === 0 ? { owner: pick(rng, OWNERS) } : {}),
       };
     case 4:
-      return {
-        kind: 'setProduction',
-        building: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
-        goodType: rng.int(4),
-      };
-    case 5:
       // Random target ids hit live buildings, live NON-buildings (settlers, herds — must be
       // skipped), dead entities, and ids never created. All four must resolve deterministically.
       return { kind: 'demolish', building: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
-    case 6:
+    case 5:
       // A move order at a random id: hits owned settlers (obeyed), unowned settlers / buildings /
       // dead ids (skipped). Exercises the moveUnit skip paths + the PlayerOrder timed override.
       return { kind: 'moveUnit', entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity, x, y };
-    case 7:
+    case 6:
       // An attack order at two random ids: hits owned combatants (obeyed → AttackOrder + chase),
       // non-combatant / unowned / dead issuers (skipped) and live/dead/non-combatant targets. Exercises
       // the attackUnit skip paths + the combat engagement drive under a fuzzed stream.
@@ -247,7 +241,7 @@ function nextCommand(rng: Rng): Command {
         entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
         target: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
       };
-    case 8:
+    case 7:
       // A stance change at a random id: valid + out-of-range modes, owned/unowned/dead targets.
       // Exercises the setStance skip paths + the stance-gated engagement/flee drives under a fuzzed stream.
       return {
@@ -255,7 +249,7 @@ function nextCommand(rng: Rng): Command {
         entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
         mode: pick(rng, STANCE_MODES),
       };
-    case 9: {
+    case 8: {
       // A resource node dropped at a random tile: good 1 (wood — FOOTPRINTED, so the create path runs:
       // footprint stamp + the incremental blocked-cell cache, including overlap counts when nodes stack)
       // and good 4 / unknown (no footprint → the skip path, still logged). One lifecycle marker per node
@@ -272,7 +266,7 @@ function nextCommand(rng: Rng): Command {
         ...(life === 1 ? { deposit: { levels: rng.int(4) + 1 } } : {}),
       };
     }
-    case 10:
+    case 9:
       // A worker assignment at two random ids: owned settlers bound to live buildings (obeyed when the
       // building has an open slot), plus non-settler/unowned/dead issuers and non-building/full/dead
       // targets. Exercises the assignWorker skip paths + the JobAssignment binding under a fuzzed stream.
@@ -284,7 +278,7 @@ function nextCommand(rng: Rng): Command {
         // building-doesn't-offer skip, and the empty-list no-op path.
         jobPriority: Array.from({ length: rng.int(3) }, () => pick(rng, JOB_TYPES)),
       };
-    case 11:
+    case 10:
       // A loose good pile dropped at a random tile: good 1 (wood — in the catalog, so the CREATE path runs:
       // a bare Stockpile+Position loose pile, NO GroundDrop, that rests in place) and an unknown good / a
       // zero amount (the skip path, still logged). Exercises `dropGood` under the fuzzed stream.
@@ -295,22 +289,22 @@ function nextCommand(rng: Rng): Command {
         y,
         amount: rng.int(4), // 0..3 — 0 hits the non-positive-amount skip
       };
-    case 12:
+    case 11:
       // A work-flag order at a random id + tile: hits owned gatherers (a flag is created, then relocated on
       // a repeat), non-gatherer / unowned / dead ids (skipped). Exercises setWorkFlag's create/move/skip
       // paths — including a WorkFlag/DeliveryFlag entity conjured mid-stream, whose delivery then spreads a
       // yard heap the drop/reap machinery must handle.
       return { kind: 'setWorkFlag', entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity, x, y };
-    case 13:
+    case 12:
       // The global needs toggle: flips the WorldRules singleton mid-stream (creating it on first use),
       // freezing/unfreezing needs + starvation — the world-scope rule must hash and replay like any state.
       return { kind: 'setNeedsEnabled', enabled: rng.int(2) === 0 };
-    case 14:
+    case 13:
       // Debug kill at a random id: hits live settlers/animals (Health drained → reaped next tick), plus
       // non-settlers (buildings, incl. under-construction ones that carry Health) / dead / never-created
       // ids (gated out by the Settler check → skipped). All resolve deterministically.
       return { kind: 'debugKill', target: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
-    case 15:
+    case 14:
       // Debug needs at a random id: owned/unowned settlers (fields set) + non-settler/dead ids (skipped).
       // Each need is present only sometimes, at a fuzzed percent → the pct→Fixed conversion is fuzzed for
       // run-twice + replay equality, the same way the equipment degree-of-use is above.
@@ -322,15 +316,15 @@ function nextCommand(rng: Rng): Command {
         ...(rng.int(2) === 0 ? { piety: rng.int(101) } : {}),
         ...(rng.int(2) === 0 ? { enjoyment: rng.int(101) } : {}),
       };
-    case 16:
+    case 15:
       // Debug fill-stockpile at a random id: hits live buildings (every stock slot maxed) + non-building /
       // dead ids (skipped). Exercises the type-slot fill + the wrong-kind no-op under the fuzzed stream.
       return { kind: 'debugFillStockpile', target: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
-    case 17:
+    case 16:
       // Debug complete-construction at a random id: hits construction sites (forced to built + event) +
       // built/non-building/dead ids (skipped — no UnderConstruction marker). Exercises the force-finish.
       return { kind: 'debugCompleteConstruction', target: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
-    case 18:
+    case 17:
       // The fog-of-war mode: flips the FogRules singleton mid-stream across all four modes (plus an
       // invalid one — the skip path). Exercises the VisionSystem's rebuild/downgrade (RECON/FULL),
       // sticky REVEAL, the OFF reset, the combat/flee fog gates, and the mask bytes in hashState.

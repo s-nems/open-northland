@@ -12,7 +12,7 @@ import {
   Weapon,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import type { TerrainGraph } from '../../nav/terrain.js';
+import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
 import {
   HUNTER_JOB,

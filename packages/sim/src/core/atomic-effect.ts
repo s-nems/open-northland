@@ -79,7 +79,7 @@ export type AtomicEffect =
       readonly maxRange?: number;
       readonly projectile?: { readonly munitionType: number; readonly speed: number };
     }
-  /** A builder's **construction swing** at a {@link import('../components/economy.js').UnderConstruction}
+  /** A builder's **construction swing** at a {@link import('../components/economy/index.js').UnderConstruction}
    *  site: on completion it advances the site's builder-work `labor` by one hammer STRIKE's quantum
    *  (`+ONE / (totalConstructionUnits · strikesPerUnit)` — a small step, so a site rises over many
    *  strikes scaled to its size), clamped at ONE. No goods
@@ -89,7 +89,7 @@ export type AtomicEffect =
    *  or demolished) is a no-op — the swing struck a building that no longer needs raising. */
   | { readonly kind: 'construct'; readonly site: Entity }
   /** A farmer's **sowing swing** at a free field node `(x, y)` (half-cell coords, like every command):
-   *  on completion it plants a {@link import('../components/economy.js').Crop} field of `goodType` there
+   *  on completion it plants a {@link import('../components/economy/index.js').Crop} field of `goodType` there
    *  for `farm` — unless the node was taken since the planner chose it (another farmer's field, a fresh
    *  resource/heap), in which case the swing struck ploughed ground and plants nothing (the same
    *  raced-target no-op stance as `harvest`). The field's growth parameters are resolved from the good's
@@ -101,7 +101,7 @@ export type AtomicEffect =
       readonly x: number;
       readonly y: number;
     }
-  /** A hungry settler **forages a wild {@link import('../components/economy.js').BerryBush}**: on
+  /** A hungry settler **forages a wild {@link import('../components/economy/index.js').BerryBush}**: on
    *  completion it eats the ripe bush's fruit — the bush flips ripe→bare and starts regrowing
    *  (BerryGrowthSystem) — and the eater's hunger zeroes, exactly like `eat`. Unlike `eat` no stored/
    *  carried good is consumed and no job/tool is needed (a bush is wild food anyone can graze); the fruit
@@ -110,7 +110,7 @@ export type AtomicEffect =
    *  raced-source stance as `eat`'s empty store. Runs on the eat animation (id 10). */
   | { readonly kind: 'forage'; readonly bush: Entity }
   /** A farmer's **watering** (the original's cultivate atomic) of a growing field: on completion the
-   *  {@link import('../components/economy.js').Crop} is marked `watered`, which OPENS its growth — an
+   *  {@link import('../components/economy/index.js').Crop} is marked `watered`, which OPENS its growth — an
    *  unwatered field stands at its sown stage (a named approximation — the engine's watering semantics
    *  are not decoded). A field already reaped/ripe, or gone, is a no-op (the water hit stubble). */
   | { readonly kind: 'water'; readonly crop: Entity }

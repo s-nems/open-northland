@@ -13,7 +13,7 @@ import {
 } from '../../components/index.js';
 import type { World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
-import type { TerrainGraph } from '../../nav/terrain.js';
+import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
 import { MILITARY_MODE } from '../readviews/index.js';
 import { canonicalById, isTravelling, NodeBuckets } from '../spatial.js';

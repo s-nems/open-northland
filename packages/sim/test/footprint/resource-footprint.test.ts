@@ -22,7 +22,7 @@ import {
   Simulation,
   type TerrainMap,
 } from '../../src/index.js';
-import type { NodeId, TerrainGraph } from '../../src/nav/terrain.js';
+import type { NodeId, TerrainGraph } from '../../src/nav/terrain/index.js';
 import {
   aiSystem,
   canPlaceBuilding,

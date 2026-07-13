@@ -25,7 +25,6 @@ import {
   Simulation,
   type TerrainMap,
 } from '../../src/index.js';
-import { attackUnit, setJob, setStance } from '../../src/systems/conflict/orders.js';
 import { spawnSettler } from '../../src/systems/conflict/spawn.js';
 import {
   combatSystem,
@@ -39,6 +38,7 @@ import {
   movementSystem,
   RUN_SPEED_MULTIPLIER,
 } from '../../src/systems/movement/movement.js';
+import { attackUnit, setJob, setStance } from '../../src/systems/orders/index.js';
 import { defaultStanceForJob, MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { testContent } from '../fixtures/content.js';
 

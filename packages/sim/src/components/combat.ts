@@ -1,5 +1,6 @@
 import type { Fixed } from '../core/fixed.js';
 import { defineComponent, type Entity } from '../ecs/world.js';
+import type { NodeId } from '../nav/terrain/index.js';
 
 /**
  * An entity's **hitpoints** — the life pool the hit-resolution loop and starvation drain. A settler/
@@ -140,7 +141,7 @@ export const Engagement = defineComponent<{ repathAt: number }>('Engagement');
  * `anchorCell` a plain cell id (or null), so it hashes deterministically like every other component.
  * Determinism: set from the command / the pure default lookup, read by pure gates — no RNG/wall-clock.
  */
-export const Stance = defineComponent<{ mode: number; anchorCell: number | null }>('Stance');
+export const Stance = defineComponent<{ mode: number; anchorCell: NodeId | null }>('Stance');
 
 /**
  * A fleeing unit's **run-away drive state** — "this {@link Stance} `FLEE` combatant is actively running

@@ -3,7 +3,7 @@ import { Building, Position, UnderConstruction } from '../../components/index.js
 import type { World } from '../../ecs/world.js';
 import { LayeredBlocks } from '../../nav/block-overlay.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
-import type { BlockOverlay, NodeId, TerrainGraph } from '../../nav/terrain.js';
+import type { BlockOverlay, NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { ANCHOR_ONLY, buildingFootprintOf, translatedCells } from './geometry.js';
 import { resourceBlockedCells } from './resources.js';

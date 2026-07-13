@@ -38,28 +38,11 @@
  * so traversal is byte-identical across runs — the precondition for A* with canonical tie-breaking
  * and lockstep replay. All costs are `Fixed`; no floats touch state.
  */
-import type { ContentSet, LandscapeType } from '@vinland/data';
-import type { Brand } from '../core/brand.js';
-import { type Fixed, fx, ONE, ZERO } from '../core/fixed.js';
-import { DIAGONAL_STEP, HALF_COLUMN, HALF_ROW } from './metric.js';
+import type { LandscapeType } from '@vinland/data';
+import { type Fixed, fx, ONE } from '../../core/fixed.js';
+import { DIAGONAL_STEP, HALF_COLUMN, HALF_ROW } from '../metric.js';
 
-/** A navigation-graph node address: the row-major index `hy * width + hx`. Branded so a raw number
- *  can't stand in. One node is a HALF-CELL of a visual tile — the sim's logic lattice is `2W×2H`,
- *  so a node is finer than (and distinct from) a full visual cell `(c, r)` = node `(2c + (r&1), 2r)`. */
-export type NodeId = Brand<number, 'NodeId'>;
-
-/**
- * A walk-block overlay as the navigation layer consumes it: node MEMBERSHIP plus a non-empty
- * signal. Any `ReadonlySet<NodeId>` satisfies it; routing also passes layered/wrapped views (a
- * per-player composition of several block sets, the probe's start-exemption) that answer `has`
- * without materializing a union — so `size`'s only contract is "0 means empty" (a layered view may
- * over-count shared nodes). Purely a read interface: answers must be pure functions of the query
- * for the searches consuming it to stay deterministic.
- */
-export interface BlockOverlay {
-  has(node: NodeId): boolean;
-  readonly size: number;
-}
+import type { BlockOverlay, NodeId } from './types.js';
 
 /** Canonical orthogonal neighbour offsets in N, E, S, W order — the fixed traversal order for
  *  determinism. On the half-cell lattice these are a 19 px half-row and a 34 px half-column. */
@@ -97,7 +80,7 @@ const VERTICAL_STEP_OFFSETS: ReadonlyArray<readonly [dx: number, dy: number]> = 
 ] as const;
 
 /** Resolved, sim-ready properties of one landscape type (derived once from the IR at build time). */
-interface NodeTypeProps {
+export interface NodeTypeProps {
   readonly walkable: boolean;
   /** Whether a building's reserved zone may cover a node of this type. Distinct from `walkable`: a
    *  real map's margin band around a tree/rock is walkable ground you may not BUILD on, while water
@@ -122,7 +105,7 @@ const UNKNOWN_TYPE: NodeTypeProps = {
   maxValency: 0,
 };
 
-function resolveTypeProps(t: LandscapeType): NodeTypeProps {
+export function resolveTypeProps(t: LandscapeType): NodeTypeProps {
   return {
     walkable: t.walkable,
     buildable: t.buildable,
@@ -369,121 +352,4 @@ export class TerrainGraph {
     }
     return components;
   }
-}
-
-/**
- * A terrain map at HALF-CELL resolution: dimensions + a row-major landscape-typeId grid — the
- * graph input. `resolution` is a compile-time discriminant so a cell-resolution grid (a scene's
- * authored `W×H` strip, a decoded map's baked per-cell lane) can never reach the graph unscaled —
- * route those through {@link halfCellMapFromCells}.
- */
-export interface TerrainMap {
-  readonly resolution: 'half-cell';
-  /** Half-cell grid width — 2× the map's cell columns. */
-  readonly width: number;
-  /** Half-cell grid height — 2× the map's cell rows. */
-  readonly height: number;
-  /** Row-major landscape typeId per half-cell; length must equal width*height. */
-  readonly typeIds: ReadonlyArray<number>;
-}
-
-/** A terrain grid authored at VISUAL-CELL resolution (`W×H`) — scenes and the decoded map's baked
- *  per-cell lane. Upsample via {@link halfCellMapFromCells} before building a graph. */
-export interface CellTerrainMap {
-  /** Never present — the inverse discriminant. A half-cell {@link TerrainMap} is otherwise a
-   *  structural SUPERSET of this shape, so without it `halfCellMapFromCells(someHalfCellMap)`
-   *  would compile and silently double-upsample to 4W×4H. */
-  readonly resolution?: never;
-  readonly width: number;
-  readonly height: number;
-  /** Row-major landscape typeId per cell; length must equal width*height. */
-  readonly typeIds: ReadonlyArray<number>;
-}
-
-/**
- * Upsample a cell-resolution grid to the half-cell lattice: cell `(x, y)` stamps its typeId onto
- * the 2×2 half-cell block `(2x..2x+1, 2y..2y+1)` — the SAME block convention the original's
- * half-cell lanes use (source basis: mapdat lane layout — cell (x,y) owns exactly that block).
- */
-export function halfCellMapFromCells(map: CellTerrainMap): TerrainMap {
-  // The runtime twin of the `resolution?: never` discriminant, for callers that reach here past
-  // the type system — double-upsampling a half-cell grid would silently misplace every node.
-  if ((map as { resolution?: unknown }).resolution !== undefined) {
-    throw new Error('halfCellMapFromCells expects a CELL-resolution grid, got a half-cell TerrainMap');
-  }
-  if (map.typeIds.length !== map.width * map.height) {
-    throw new Error(
-      `cell grid has ${map.typeIds.length} cells, expected ${map.width * map.height} (${map.width}x${map.height})`,
-    );
-  }
-  const width = map.width * 2;
-  const height = map.height * 2;
-  const typeIds = new Array<number>(width * height);
-  for (let cy = 0; cy < map.height; cy++) {
-    for (let cx = 0; cx < map.width; cx++) {
-      const t = map.typeIds[cy * map.width + cx];
-      if (t === undefined) throw new Error(`cell grid missing typeId at (${cx}, ${cy})`); // length-checked above
-      const base = cy * 2 * width + cx * 2;
-      typeIds[base] = t;
-      typeIds[base + 1] = t;
-      typeIds[base + width] = t;
-      typeIds[base + width + 1] = t;
-    }
-  }
-  return { resolution: 'half-cell', width, height, typeIds };
-}
-
-/**
- * Build the half-cell adjacency graph from the content's {@link LandscapeType} table and a
- * half-cell terrain map. The per-type props are resolved once here so per-node lookups during a
- * tick are pure array reads.
- */
-export function buildTerrainGraph(content: ContentSet, map: TerrainMap): TerrainGraph {
-  const props = new Map<number, NodeTypeProps>();
-  for (const t of content.landscape) props.set(t.typeId, resolveTypeProps(t));
-
-  const typeIds = Int32Array.from(map.typeIds);
-  // Surface a content gap loudly rather than silently treating cells as blocking — a typeId in the
-  // map with no matching LandscapeType is almost always a bad map/IR pairing the caller wants to know.
-  for (const id of typeIds) {
-    if (!props.has(id)) throw new Error(`terrain map references landscape typeId ${id} absent from content`);
-  }
-  return new TerrainGraph(map.width, map.height, typeIds, props);
-}
-
-/**
- * The fixed-point HALF-CELL LATTICE step distance between two nodes — the admissible, consistent A*
- * heuristic for the 8-direction graph ({@link TerrainGraph.steps}: E/W cost {@link HALF_COLUMN},
- * diagonal cost {@link DIAGONAL_STEP}, vertical cost {@link HALF_ROW}). It is the EXACT minimum
- * cost across open terrain. With `ax = |Δhx|` (half-columns) and `ay = |Δhy|` (half-rows): a
- * diagonal covers `(1, 2)` and is cheaper than its straight substitute `E + 2·N`
- * (DIAGONAL_STEP < HALF_COLUMN + 2·HALF_ROW), so use as many diagonals as either axis allows —
- * `d = min(ax, ⌊ay/2⌋)` — and cover the remainder with straight steps:
- *
- *  - `2·ax ≤ ay` (vertical dominates): `ax·DIAGONAL_STEP + (ay − 2ax)·HALF_ROW`;
- *  - otherwise (sideways dominates): `⌊ay/2⌋·DIAGONAL_STEP + (ax − ⌊ay/2⌋)·HALF_COLUMN +
- *    (ay mod 2)·HALF_ROW`.
- *
- * No wasteful composition beats it: a zigzag diagonal pair covering one column costs
- * 2·DIAGONAL_STEP > 2·HALF_COLUMN, an opposing pair covering four rows costs 2·DIAGONAL_STEP >
- * 4·HALF_ROW, and a diagonal-plus-backtrack substitute for one E step costs DIAGONAL_STEP +
- * 2·HALF_ROW > HALF_COLUMN. Every term composes the very integers the edge costs are built from,
- * so on unit-cost terrain the heuristic EQUALS the true open-terrain graph distance — admissible
- * and consistent by construction; obstacles only raise the true cost, so A* stays optimal.
- */
-export function nodeLatticeDistance(g: TerrainGraph, a: NodeId, b: NodeId): Fixed {
-  const ca = g.coordsOf(a);
-  const cb = g.coordsOf(b);
-  const ax = Math.abs(cb.x - ca.x);
-  const ay = Math.abs(cb.y - ca.y);
-  if (2 * ax <= ay) {
-    // Vertical dominates: every half-column crosses diagonally, the leftover rows are half-row steps.
-    return fx.add(fx.mul(fx.fromInt(ax), DIAGONAL_STEP), fx.mul(fx.fromInt(ay - 2 * ax), HALF_ROW));
-  }
-  // Sideways dominates: ⌊ay/2⌋ diagonals absorb the rows (one half-row may remain when ay is odd),
-  // the leftover offset is half-column steps.
-  const d = ay >> 1;
-  const straight = fx.mul(fx.fromInt(ax - d), HALF_COLUMN);
-  const oddRow = (ay & 1) === 1 ? HALF_ROW : ZERO;
-  return fx.add(fx.add(fx.mul(fx.fromInt(d), DIAGONAL_STEP), straight), oddRow);
 }

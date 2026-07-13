@@ -19,9 +19,9 @@ import type { Entity, World } from '../../ecs/world.js';
 import { positionOfNode } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
 import { syncWorkFlagToJob } from '../economy/flags.js';
+import { stampDefaultStance } from '../orders/index.js';
 import { animalHitpoints, herdParams, locomotionOf } from '../readviews/index.js';
 import { COMPASS_DIRECTIONS } from '../spatial.js';
-import { stampDefaultStance } from './orders.js';
 
 // The entity-SPAWNING command handlers, split out of command.ts (which keeps the dispatcher + the
 // structure-placement handlers). Both create fresh Settler-model entities — a civilization settler and
