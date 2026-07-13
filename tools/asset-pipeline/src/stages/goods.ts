@@ -11,6 +11,7 @@ import {
   extractPaletteIndex,
   extractStringnById,
   latin1ToCp1250,
+  paletteAliasMap,
   parseIniSections,
 } from '../decoders/ini.js';
 import { decodePcx } from '../decoders/pcx.js';
@@ -151,16 +152,13 @@ type PaletteAliasMap = ReadonlyMap<string, string>;
 /** Read {@link PALETTES_INI} into a name→`.pcx` alias map (the same graph the bmd stage uses). Empty (and
  *  warned) when the file is unreadable, so palette resolution degrades to the {@link PALETTE_DIRS} search. */
 async function loadPaletteAliases(gameDir: string): Promise<PaletteAliasMap> {
-  const map = new Map<string, string>();
   try {
     const sections = parseIniSections(decodeIni(await readGameFile(gameDir, PALETTES_INI)));
-    for (const alias of extractPaletteIndex(sections)) {
-      if (!map.has(alias.name)) map.set(alias.name, alias.gfxFile);
-    }
+    return paletteAliasMap(extractPaletteIndex(sections));
   } catch (err) {
     console.warn(`[pipeline] goods: palettes.ini unreadable (${(err as Error).message}); resolving by path`);
+    return new Map();
   }
-  return map;
 }
 
 /**

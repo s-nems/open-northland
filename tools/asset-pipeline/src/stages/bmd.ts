@@ -15,6 +15,7 @@ import {
   extractPaletteIndex,
   type JobBaseGraphicsBinding,
   type PaletteAlias,
+  paletteAliasMap,
   parseIniSections,
   type RuleSection,
 } from '../decoders/ini.js';
@@ -160,11 +161,7 @@ export async function convertBmdTree(
   opaqueAlphaBmds: ReadonlySet<string>,
 ): Promise<BmdConversion[]> {
   const done: BmdConversion[] = [];
-  const paletteByName = new Map<string, string>();
-  for (const alias of palettes) {
-    // First alias wins on a duplicate name; the real palettes.ini has none, but stay deterministic.
-    if (!paletteByName.has(alias.name)) paletteByName.set(alias.name, alias.gfxFile);
-  }
+  const paletteByName = paletteAliasMap(palettes);
   const tree = await indexOutTree(outDir);
   for (const binding of bindings) {
     const pcxRel = paletteByName.get(binding.paletteName);

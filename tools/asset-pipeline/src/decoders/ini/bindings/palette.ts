@@ -58,3 +58,18 @@ export function extractPaletteIndex(sections: readonly RuleSection[]): PaletteAl
   }
   return aliases;
 }
+
+/**
+ * Collapses {@link extractPaletteIndex} output into a `name → .pcx` lookup, **first alias wins** on a
+ * duplicate name (the real `palettes.ini` has none, but the rule keeps it deterministic). The one
+ * shared reading of the alias graph the bmd + goods stages both resolve palettes through — they then
+ * read the `.pcx` from different roots (the unpacked out-tree vs the game dir), so only this map
+ * construction is common.
+ */
+export function paletteAliasMap(aliases: readonly PaletteAlias[]): Map<string, string> {
+  const byName = new Map<string, string>();
+  for (const alias of aliases) {
+    if (!byName.has(alias.name)) byName.set(alias.name, alias.gfxFile);
+  }
+  return byName;
+}

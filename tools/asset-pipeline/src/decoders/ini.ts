@@ -18,6 +18,7 @@ export {
   extractJobChangeGraphics,
   extractLandscapeGraphics,
   extractPaletteIndex,
+  paletteAliasMap,
 } from './ini/bindings/index.js';
 export {
   extractBuildingBobs,
