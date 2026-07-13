@@ -1,9 +1,13 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { decodeBmd } from '../../decoders/bmd/index.js';
-import { buildPlayerLutImage } from '../../decoders/player-palette.js';
-import { encodePng } from '../../decoders/png.js';
-import { BOBS_DIR, emitIndexedAndPreviewAtlas, identityPalette, readGameFile } from '../game-file.js';
+import {
+  BOBS_DIR,
+  emitIndexedAndPreviewAtlas,
+  identityPalette,
+  readGameFile,
+  writeLutPng,
+} from '../game-file.js';
 import { buildGoodIcons, GOODS_ATLAS_STEM, type GoodIcon, loadGoods } from './icons.js';
 import { loadGoodNames } from './names.js';
 import { loadGoodsPalette, loadPaletteAliases } from './palettes.js';
@@ -25,7 +29,7 @@ export { resolveGoodNames } from './names.js';
  *    in red, mask in alpha) the app colours per good at draw time through the goods palette LUT, plus (b) an
  *    **RGBA preview** atlas (one default palette) so a human can eyeball it. Both ride the `/bobs/` route.
  *  - **Palettes.** The distinct `goods_*` recolor palettes the good-pile records reference are stacked into
- *    one `256 × N` LUT PNG ({@link buildPlayerLutImage}, as the player/GUI LUTs). Row order is emitted in the
+ *    one `256 × N` LUT PNG ({@link writeLutPng}, as the player/GUI LUTs). Row order is emitted in the
  *    manifest (`palettes`), so the app resolves palette-name → row from data rather than a hardcoded mirror.
  *  - **Binding.** `goodtypes.ini` (good `landscapeType`) joined onto the `[GfxLandscape]` "good pile" records
  *    (`editGroups` ∋ `"good piles all"`, matched by `logicType`) yields, per good, the state-1 store-icon bob
@@ -144,11 +148,7 @@ export async function convertGoodsStage(gameDir: string, outDir: string): Promis
     console.warn(`[pipeline] goods: atlas skipped (${GOODS_BMD} unreadable): ${(err as Error).message}`);
   }
 
-  await mkdir(join(outDir, BOBS_DIR), { recursive: true });
-  await writeFile(
-    join(outDir, BOBS_DIR, `${GOODS_PALETTE_LUT_STEM}.png`),
-    encodePng(buildPlayerLutImage(ordered)),
-  );
+  await writeLutPng(outDir, GOODS_PALETTE_LUT_STEM, ordered);
 
   const manifest: GoodsManifest = {
     indexedStem: GOODS_INDEXED_STEM,
