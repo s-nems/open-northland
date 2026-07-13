@@ -102,9 +102,22 @@ export async function buildPaletteLut(
     ordered.push(palette);
     byName.set(src.name, palette);
   }
-  await mkdir(join(outDir, BOBS_DIR), { recursive: true });
-  await writeFile(join(outDir, BOBS_DIR, `${stem}.png`), encodePng(buildPlayerLutImage(ordered)));
+  await writeLutPng(outDir, stem, ordered);
   return { stem, names: sources.map((s) => s.name), byName };
+}
+
+/**
+ * Stacks `orderedPalettes` (one 768-byte RGB row per LUT slot, in row order) into a `256 × N` player-LUT
+ * PNG at `<BOBS_DIR>/<stem>.png`. The single emit step every palette-LUT stage ends with — the row
+ * *resolution* differs per stage (fixed carrier files vs the goods alias graph), the write does not.
+ */
+export async function writeLutPng(
+  outDir: string,
+  stem: string,
+  orderedPalettes: readonly Uint8Array[],
+): Promise<void> {
+  await mkdir(join(outDir, BOBS_DIR), { recursive: true });
+  await writeFile(join(outDir, BOBS_DIR, `${stem}.png`), encodePng(buildPlayerLutImage(orderedPalettes)));
 }
 
 /** Writes a packed bob atlas's `<stem>.png` + `<stem>.atlas.json` under {@link BOBS_DIR} (the `/bobs/` convention). */
