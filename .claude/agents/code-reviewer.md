@@ -33,7 +33,9 @@ add systems, skim the matching sections of `docs/ARCHITECTURE.md`, `docs/ECS.md`
 
 6. **Readability first** — code a reader can't understand quickly without the diff context, names
    that hide domain meaning, comments that restate code, comments missing where
-   units/source-basis/invariants are non-obvious, or idiom inconsistent with the surrounding
+   units/source-basis/invariants are non-obvious, comments over the prose budget (CAPS/bold
+   emphasis, change history, quotes from the producing conversation, a doc comment dwarfing its
+   code — the "budgeted prose" rule in `AGENTS.md`), or idiom inconsistent with the surrounding
    codebase. Readability outranks every other stylistic concern in this list.
 7. **Behavior hidden in the wrong shape** — magic constants, boolean flag tangles, overgrown
    functions, duplicated branching, or a special case that should be data-driven. (You flag the
