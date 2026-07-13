@@ -2,6 +2,28 @@ import { z } from 'zod';
 import { Provenance } from '../record.js';
 
 /**
+ * The fields every `[GfxHouse]` render binding shares: the `(tribeId, typeId, level)` key, the body
+ * `.bmd` + recolour palette that name its atlas, the `EditName` handle, and provenance. {@link BuildingBob},
+ * {@link BuildingConstructionLayer} and {@link BuildingOverlay} each `.extend()` it with their own payload
+ * (a bob id, a construction range, an animation frame list) — all keyed and atlas-resolved the same way.
+ */
+const BuildingBobBase = z.strictObject({
+  /** The `LogicTribeType` the record applies to (viking 1, frank 2, …) — the same logic `typeId` recurs per tribe. */
+  tribeId: z.number().int().nonnegative(),
+  /** The building `typeId` at this size level (the `LogicType` value — the sim's `Building.buildingType`). */
+  typeId: z.number().int().nonnegative(),
+  /** The growth/size level index (`LogicType`/`GfxBobId`'s leading int) — a home's tier 0..4. */
+  level: z.number().int().nonnegative(),
+  /** The body bob set, normalized (lower-case, forward slashes), e.g. `data/engine2d/bin/bobs/ls_houses_viking.bmd`. */
+  bmd: z.string(),
+  /** One recolour skin (`GfxPalette` value), lower-cased — the atlas this bob is drawn in (`house01`/`house02`/…). */
+  paletteName: z.string(),
+  /** The record's `EditName` (`"viking home"`), kept as a render/debug handle when present. */
+  editName: z.string().optional(),
+  source: Provenance.optional(),
+});
+
+/**
  * One `[GfxHouse]` building-type → house-bob binding: which atlas bob a building of a given
  * `(tribeId, typeId)` draws, the data-pinned twin of the renderer's hand-transcribed per-type table.
  * Each `[GfxHouse]` record pairs a `LogicType <level> <typeId>` table with a `GfxBobId <level> <bobId>`
@@ -13,22 +35,9 @@ import { Provenance } from '../record.js';
  * building's `Building.buildingType` ({@link typeId}), so each type shows its own house bob from data
  * instead of a transcribed constant.
  */
-export const BuildingBob = z.strictObject({
-  /** The `LogicTribeType` the record applies to (viking 1, frank 2, …) — the same logic `typeId` recurs per tribe. */
-  tribeId: z.number().int().nonnegative(),
-  /** The building `typeId` (the sim's `Building.buildingType`, the `[GfxHouse]` `LogicType` value at this level). */
-  typeId: z.number().int().nonnegative(),
-  /** The growth/size level index (`LogicType`/`GfxBobId`'s leading int) — a home's tier 0..4. */
-  level: z.number().int().nonnegative(),
-  /** The body bob set, normalized (lower-case, forward slashes), e.g. `data/engine2d/bin/bobs/ls_houses_viking.bmd`. */
-  bmd: z.string(),
-  /** One recolour skin (`GfxPalette` value), lower-cased — the atlas this bob is drawn in (`house01`/`house02`/…). */
-  paletteName: z.string(),
+export const BuildingBob = BuildingBobBase.extend({
   /** The atlas bob id this `(typeId, level)` draws (the `GfxBobId` for the level). */
   bobId: z.number().int().nonnegative(),
-  /** The record's `EditName` (`"viking home"`), kept as a render/debug handle when present. */
-  editName: z.string().optional(),
-  source: Provenance.optional(),
 });
 export type BuildingBob = z.infer<typeof BuildingBob>;
 
@@ -49,21 +58,11 @@ export type BuildingBob = z.infer<typeof BuildingBob>;
  * Render-binding data like {@link BuildingBob} (same `(tribeId, typeId)` keying, same `(bmd,
  * palette)` atlas resolution); the pure sim ignores it.
  */
-export const BuildingConstructionLayer = z.strictObject({
-  /** The `LogicTribeType` the record applies to — the same logic `typeId` recurs per tribe. */
-  tribeId: z.number().int().nonnegative(),
-  /** The building `typeId` at this size level (the `LogicType` value — the sim's `Building.buildingType`). */
-  typeId: z.number().int().nonnegative(),
-  /** The growth/size level index (the source's leading int) — a home's tier 0..4. */
-  level: z.number().int().nonnegative(),
+export const BuildingConstructionLayer = BuildingBobBase.extend({
   /** True for the source's `1` rows — the upgrade-overlay layers a from-scratch render skips. */
   upgrade: z.boolean(),
   /** Position of this layer in the record's file order — the stacking order at draw time. */
   stackIdx: z.number().int().nonnegative(),
-  /** The body bob set, normalized — the same `.bmd` the type's {@link BuildingBob} rows index. */
-  bmd: z.string(),
-  /** One recolour skin (`GfxPalette` value), lower-cased. */
-  paletteName: z.string(),
   /** The atlas bob to draw while this layer is active. */
   bobId: z.number().int().nonnegative(),
   /** The layer's shadow bob, when the source names one (`-1` = none → absent). */
@@ -72,9 +71,6 @@ export const BuildingConstructionLayer = z.strictObject({
   fromPct: z.number().int().min(0).max(100),
   /** Build progress percent up to which the layer stays visible (inclusive). */
   toPct: z.number().int().min(0).max(100),
-  /** The record's `EditName`, kept as a render/debug handle when present. */
-  editName: z.string().optional(),
-  source: Provenance.optional(),
 });
 export type BuildingConstructionLayer = z.infer<typeof BuildingConstructionLayer>;
 
@@ -92,13 +88,7 @@ export type BuildingConstructionLayer = z.infer<typeof BuildingConstructionLayer
  * {@link BuildingBob} (same `(tribeId, typeId)` keying, same `(bmd, palette)` atlas resolution); the
  * pure sim ignores it.
  */
-export const BuildingOverlay = z.strictObject({
-  /** The `LogicTribeType` the record applies to — the same logic `typeId` recurs per tribe. */
-  tribeId: z.number().int().nonnegative(),
-  /** The building `typeId` at this size level (the `LogicType` value — the sim's `Building.buildingType`). */
-  typeId: z.number().int().nonnegative(),
-  /** The growth/size level index (the source's leading int). */
-  level: z.number().int().nonnegative(),
+export const BuildingOverlay = BuildingBobBase.extend({
   /** The overlay state (the 3rd int): `0` = idle (one still frame), `1` = working (the spin cycle). */
   state: z.number().int().nonnegative(),
   /** Pixel offsets of the overlay (the 4th/5th ints; observed `0 0` on every type-4 row). */
@@ -108,12 +98,5 @@ export const BuildingOverlay = z.strictObject({
   step: z.number().int(),
   /** The state's frame list, in file order — one bob for state 0, the spin cycle for state 1. */
   frames: z.array(z.number().int().nonnegative()).min(1),
-  /** The body bob set, normalized — the same `.bmd` the type's {@link BuildingBob} rows index. */
-  bmd: z.string(),
-  /** One recolour skin (`GfxPalette` value), lower-cased. */
-  paletteName: z.string(),
-  /** The record's `EditName`, kept as a render/debug handle when present. */
-  editName: z.string().optional(),
-  source: Provenance.optional(),
 });
 export type BuildingOverlay = z.infer<typeof BuildingOverlay>;
