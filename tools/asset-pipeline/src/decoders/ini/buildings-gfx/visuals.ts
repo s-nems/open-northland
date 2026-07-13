@@ -4,6 +4,7 @@
  * preamble ({@link readGfxHouseGraphicsRecord}) and the multi-house record split.
  */
 import { BuildingBob, BuildingConstructionLayer, BuildingOverlay } from '@vinland/data';
+import type { BmdPaletteBinding } from '../bindings/index.js';
 import {
   findProp,
   findProps,
@@ -14,7 +15,6 @@ import {
   type RuleSection,
   type SourceRef,
 } from '../grammar.js';
-import type { BmdPaletteBinding } from '../graphics-bindings.js';
 import { readGfxHouseGraphicsRecord, splitGfxHouseRecords } from './shared.js';
 
 /**
@@ -151,7 +151,7 @@ export function extractBuildingOverlays(sections: readonly RuleSection[], src: S
 
 /**
  * One building graphics binding: a {@link BmdPaletteBinding} (`.bmd` body + shadow + palette editname)
- * plus the record's `EditName`. The same shape as {@link import('../graphics-bindings.js').LandscapeGraphicsBinding}
+ * plus the record's `EditName`. The same shape as {@link import('../bindings/index.js').LandscapeGraphicsBinding}
  * — a building is just the `[GfxHouse]` analog of the `[GfxLandscape]` static-decor binding — so it flows
  * through the exact same {@link import('../../../stages/bmd.js').convertBmdTree} `(bmd, palette)` atlas path
  * with no second copy of the conversion logic. The name is provenance + a building handle (`"viking stock"`
@@ -166,7 +166,7 @@ export interface BuildingGraphicsBinding extends BmdPaletteBinding {
  * Extracts the `[GfxHouse]` records from the mod's readable `DataCnmd/budynki12/houses/houses.ini` (the
  * graphics twin of the logic `houses.ini`; golden rule #4) — the **building** graphics binding: every
  * settlement house (homes, wells, stocks/warehouses, workshops, walls, …) bound to its bob set + palette,
- * the exact `[GfxHouse]` analog of {@link import('../graphics-bindings.js').extractLandscapeGraphics}'s
+ * the exact `[GfxHouse]` analog of {@link import('../bindings/index.js').extractLandscapeGraphics}'s
  * `[GfxLandscape]` static decor. This is the leg that makes the `ls_houses_*.bmd` sets
  * (viking/frank/egypt/saracen/byzantine/beduine) become atlases — without it a house `.bmd` is unpacked but
  * never coloured, so a building drew a placeholder box (the gap that left the warehouse with no sprite). Each
