@@ -1,7 +1,9 @@
 # OpenNorthland Docs
 
-Start with the contract: [`../AGENTS.md`](../AGENTS.md). It contains the always-on rules for agents
-and overrides older notes in plans or commits.
+New here? Start with [ARCHITECTURE.md](ARCHITECTURE.md) — what OpenNorthland is and how the
+packages fit together — then follow the Core Design list in order. Before contributing code (with
+or without a coding agent), read [`../AGENTS.md`](../AGENTS.md): the project's always-on rules —
+determinism, data-not-code, verification. It overrides older notes in plans or commits.
 
 ## Core Design
 
