@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { decodeCursor } from '../../decoders/cursor.js';
+import { decodeCursor } from '../../decoders/cur.js';
 import { encodePng } from '../../decoders/png.js';
 import { readGameFile } from '../game-file.js';
 import { GUI_CONTENT_DIR } from './paths.js';

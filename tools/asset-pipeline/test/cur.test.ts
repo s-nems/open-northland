@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { type CursorImageInput, decodeCursor, encodeCursor } from '../src/decoders/cursor.js';
+import { type CursorImageInput, decodeCursor, encodeCursor } from '../src/decoders/cur.js';
 
 /**
  * `.cur` decoder tests. No copyrighted fixtures: we synthesize `.cur` byte streams with the faithful

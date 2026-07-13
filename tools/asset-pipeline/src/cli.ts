@@ -46,7 +46,7 @@ async function run(args: Args): Promise<void> {
   // > 6. Decode map logic headers -> map IR     -> decoders/cif.ts + ini.ts (this stage; metadata only)
   // > 7. Write content/ir.json + validate with parseContentSet()  (this stage)
   // > 8. Decode map.dat terrain grids -> maps/  -> decoders/mapdat/ (this stage; the nav-graph grid)
-  // > 9. Extract GUI/HUD art+strings+cursors    -> decoders/cursor.ts + stages/gui/ (this stage)
+  // > 9. Extract GUI/HUD art+strings+cursors    -> decoders/cur.ts + stages/gui/ (this stage)
   //
   // The unpack extracts loose copies of the embedded .pcx/.bmd/.cif into <out> (gitignored).
   const extracted = await unpackLibTree(args.game, args.out);
