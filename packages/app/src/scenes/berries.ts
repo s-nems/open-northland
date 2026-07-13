@@ -83,23 +83,11 @@ function build(sim: Simulation): void {
 
 export const berriesScene: SceneDefinition = {
   id: 'berries',
-  title: 'Malinki — dzika żywność',
-  summary:
-    'Głodni osadnicy (bez spiżarni w pobliżu) idą do NAJBLIŻSZEGO krzaka z czerwonymi owockami i zjadają ' +
-    'je — głód znika, krzak robi się goły, a po pewnym czasie owocki ODRASTAJĄ. Osobny krzak postawiony ' +
-    'od razu goły odrasta sam, pokazując cykl wzrostu.',
   seed: 7,
   terrain: berriesTerrain(),
   build,
   runTicks: RUN_TICKS,
   initialZoom: INITIAL_ZOOM,
-  checklist: [
-    'Krzaki mają CZERWONE OWOCKI (malinki) — rysują się jak oryginalny „bush fruits".',
-    'Każdy głodny osadnik idzie do NAJBLIŻSZEGO krzaka z owockami i go zjada (animacja jedzenia) — nie stoi bezczynnie.',
-    'Po zjedzeniu krzak natychmiast robi się GOŁY (bez owocków), a osadnika głód znika.',
-    'Po pewnym czasie owocki ODRASTAJĄ — goły krzak znów jest czerwony (także ten postawiony od razu goły).',
-    'Nikt nie zjada z żadnego magazynu (go nie ma) — malinki są jedynym źródłem jedzenia w tej scenie.',
-  ],
   checks: [
     {
       label: 'berry bushes spawned (the map placed forageable wild food)',

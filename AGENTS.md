@@ -127,7 +127,8 @@ hygiene test rejects nondeterministic globals in `packages/sim`.
 5. Visual or audio correctness needs a human. Agents can check no crashes, data decisions, screenshots,
    and obvious breakage; they cannot self-sign pixels or sound.
 6. Player-visible mechanics should have an acceptance scene under `packages/app/src/scenes/`, with a
-   headless assertion and a browser checklist.
+   headless assertion, localized menu description, and a human browser pass. Acceptance notes belong in
+   the ticket or test, not in an in-scene checklist panel.
 
 ## Durable Gotchas
 

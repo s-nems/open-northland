@@ -1,5 +1,6 @@
 import type { WorldSnapshot } from '@open-northland/sim';
 import { type entityById, isSettler, num } from '../../../game/snapshot.js';
+import { messages } from '../../../i18n/index.js';
 import { goodCategoryTab } from '../stock-tabs.js';
 import { pctRatio } from './bars.js';
 import {
@@ -254,7 +255,7 @@ export function productionModel(
   });
   return {
     kind: 'recipe',
-    label: out.length > 0 ? out : 'gotowe do pracy',
+    label: out.length > 0 ? out : messages().hud.readyToWork,
     pcts,
     rows: Math.max(1, operatorHeadcount(ctx, def), pcts.length),
     ...(firstOutId !== undefined ? { goodId: firstOutId } : {}),

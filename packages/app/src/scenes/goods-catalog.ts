@@ -88,20 +88,11 @@ const REPRESENTATIVE_EXTENDED_IDS = ['leather', 'bread', 'mead', 'armor_plate', 
 
 export const goodsCatalogScene: SceneDefinition = {
   id: 'goods-catalog',
-  title: 'Global goods catalog',
-  summary:
-    'Every good is globally available — stored in a warehouse with its icon, and dropped on the ground.',
   seed: 1,
   terrain: grassTerrain(MAP_W, MAP_H),
   build,
   runTicks: RUN_TICKS,
   initialZoom: INITIAL_ZOOM,
-  checklist: [
-    'Kliknij magazyn (u góry) — panel „Magazyn" pokazuje surowce z ikonkami.',
-    'Zakładki kategorii (Żywność / Napoje / Surowce / Budulec / Narzędzia / Wyroby / Wojsko / Inne) przełączają widoczne surowce; każda ma swoje towary.',
-    'Na ziemi leży siatka stosów RÓŻNYCH surowców (drewno, kamień, żelazo, skóra, chleb, miecze, zbroje…), każdy z własną grafiką stosu, o różnej wysokości (stos rośnie z ilością).',
-    'Stosy leżą nieruchomo (brak tragarzy na mapie) — to statyczna wystawa całego katalogu.',
-  ],
   checks: [
     {
       label: 'the full goods catalog is globally available (core economy + the extended catalog)',

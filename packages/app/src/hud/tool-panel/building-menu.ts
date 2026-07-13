@@ -1,3 +1,4 @@
+import { messages } from '../../i18n/index.js';
 import { contains, type Rect } from '../geometry.js';
 
 /**
@@ -29,18 +30,16 @@ export type BuildingCategory = 'all' | 'work' | 'storage' | 'home' | 'military';
 
 export interface BuildingCategoryTab {
   readonly id: BuildingCategory;
-  /** Polish label (the pinned fallback, mirroring `miscwindow` string ids 2–6). */
-  readonly label: string;
   /** The ingamegui `miscwindow` string id (so the view can prefer the loaded string). */
   readonly stringId: number;
 }
 
 export const BUILDING_CATEGORIES: readonly BuildingCategoryTab[] = [
-  { id: 'all', label: 'Wszystko', stringId: 2 },
-  { id: 'work', label: 'Praca', stringId: 3 },
-  { id: 'storage', label: 'Magazyn', stringId: 4 },
-  { id: 'home', label: 'Dom', stringId: 5 },
-  { id: 'military', label: 'Wojsko', stringId: 6 },
+  { id: 'all', stringId: 2 },
+  { id: 'work', stringId: 3 },
+  { id: 'storage', stringId: 4 },
+  { id: 'home', stringId: 5 },
+  { id: 'military', stringId: 6 },
 ];
 
 /** kind → category. `tower` + `training` both fold into Wojsko (walls/watchtowers + barracks/school). */
@@ -188,7 +187,7 @@ export function layoutBuildingMenu(
 
   const tabs: MenuTab[] = BUILDING_CATEGORIES.map((c, i) => ({
     category: c.id,
-    label: c.label,
+    label: messages().hud.categories[c.id],
     stringId: c.stringId,
     selected: c.id === selected,
     rect: { x: originX + pad + i * px(MENU_TAB_W), y: originY + headlineH, w: px(MENU_TAB_W), h: tabH },

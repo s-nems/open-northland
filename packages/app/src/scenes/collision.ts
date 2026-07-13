@@ -152,24 +152,11 @@ function surroundFormedRing(sim: Simulation): boolean {
 
 export const collisionScene: SceneDefinition = {
   id: 'collision',
-  title: 'Kolizja jednostek — mur, okrazenie, wyjatek ekonomii',
-  summary:
-    'Trzy winiety kolizji cial (swiadome odejscie od oryginalu): niebieski oddzial miecznikow obchodzi ' +
-    'stojaca czerwona linie wloczni zamiast przez nia przenikac; osmiu dwurecznych zbiega sie na jeden ' +
-    'punkt i formuje pierscien zamiast stosu; dwaj tragarze (cywile) przechodza przez linie na wprost — ' +
-    'kolizja dotyczy tylko wojska. Bez walki (brak HP) — scena izoluje sam ruch.',
   seed: 11,
   terrain: grassTerrain(MAP_W, MAP_H),
   build,
   runTicks: 700,
   initialZoom: 0.8,
-  checklist: [
-    'Niebiescy miecznicy NIE przenikaja przez czerwona linie: skrecaja i obchodza ja wokol konca',
-    'Czerwona linia stoi jak mur — zaden wlocznik nie zostaje przepchniety ani nie drga',
-    'Osmiu dwurecznych zbiega sie na jeden punkt: pierwszy staje na nim, reszta formuje CIASNY PIERSCIEN dookola (zero jednostek "w sobie")',
-    'Dwaj tragarze ida przez linie NA WPROST i przechodza przez ciala (ekonomia bez kolizji, jak w oryginale)',
-    'Ruch jest plynny: bez teleportow, bez wibrowania przy zetknieciu, bez jednostek uwiezionych w miejscu na zawsze',
-  ],
   checks: [
     {
       label: 'the blue sword squad routed around the wall and reached its goals',

@@ -4,7 +4,7 @@
 
 There is no win/lose state or objective tracking anywhere: a grep for `victory|defeat|objective`
 across `packages/sim/src` and `packages/app/src` (2026-07-13) hits only scene assertion labels
-(`scenes/sandbox.ts`, `scenes/combat.ts`), an unrelated comment in `game/map-start.ts`, and a pun in
+(`scenes/sandbox.ts`, `scenes/battle.ts`), an unrelated comment in `game/map-start.ts`, and a pun in
 `hud/tool-panel/stats-window.ts` — zero gameplay logic. A battle can wipe out every settler and the
 game just keeps ticking. Source basis: the minimal skirmish conditions below are a **named
 approximation** (AGENTS.md rule 5 — the original has no automatic sim oracle); the original's
@@ -32,7 +32,7 @@ Two halves, only one blocked:
 3. App-side: consume the event and show a simple end-of-game surface (a plain DOM overlay in the
    style of the existing HUD windows is enough — "Victory"/"Defeat" + return to menu or dismiss).
 4. An acceptance scene under `packages/app/src/scenes/` where one side is wiped out and the
-   end-of-game state triggers, with a headless assertion + browser checklist entry.
+   end-of-game state triggers, with a headless assertion, localized menu description, and browser pass.
 
 ## Verify
 

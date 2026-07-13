@@ -120,9 +120,19 @@ function model(over: Partial<HudModel> = {}): HudModel {
   return { tick: 0, tribe: 0, population: 0, jobs: [], stocks: [], ...over };
 }
 
+const LABELS = {
+  tribeTick: (tribe: number, tick: number) => `Tribe ${tribe} · tick ${tick}`,
+  population: (population: number) => `Population: ${population}`,
+  jobs: 'Jobs',
+  stocks: 'Stocks',
+  idle: 'idle',
+  job: (jobType: number) => `job ${jobType}`,
+  good: (goodType: number) => `good ${goodType}`,
+};
+
 describe('layoutHud', () => {
   it('emits the header + section headings for an empty model, stacked by line height', () => {
-    const layout = layoutHud(model({ tick: 7, tribe: 2, population: 0 }));
+    const layout = layoutHud(model({ tick: 7, tribe: 2, population: 0 }), LABELS);
     expect(layout.rows).toEqual([
       { x: HUD_PAD, y: HUD_PAD, text: 'Tribe 2 · tick 7' },
       { x: HUD_PAD, y: HUD_PAD + HUD_LINE_H, text: 'Population: 0' },
@@ -141,6 +151,7 @@ describe('layoutHud', () => {
         ],
         stocks: [{ goodType: 2, amount: 14 }],
       }),
+      LABELS,
     );
     // The tally rows carry the indent; headings stay at the left margin.
     const tallyRows = layout.rows.filter((r) => r.x === HUD_PAD + HUD_INDENT);
@@ -152,16 +163,16 @@ describe('layoutHud', () => {
   });
 
   it('sizes the panel height to the row count (padding + lines + bottom padding)', () => {
-    const empty = layoutHud(model()); // 4 rows: header, population, Jobs, Stocks
+    const empty = layoutHud(model(), LABELS); // 4 rows: header, population, Jobs, Stocks
     expect(empty.height).toBe(HUD_PAD + 4 * HUD_LINE_H + HUD_PAD);
-    const busy = layoutHud(model({ jobs: [{ jobType: 1, count: 1 }] })); // +1 row
+    const busy = layoutHud(model({ jobs: [{ jobType: 1, count: 1 }] }), LABELS); // +1 row
     expect(busy.height).toBe(empty.height + HUD_LINE_H);
     expect(busy.width).toBe(empty.width); // width is a fixed column, height grows with content
   });
 
   it('is byte-identical for the same model (deterministic — never reshuffles between equal frames)', () => {
     const m = model({ tick: 3, jobs: [{ jobType: 1, count: 2 }], stocks: [{ goodType: 9, amount: 5 }] });
-    expect(layoutHud(m)).toEqual(layoutHud(m));
+    expect(layoutHud(m, LABELS)).toEqual(layoutHud(m, LABELS));
   });
 });
 
@@ -174,7 +185,7 @@ const HUD_MARGIN = 8; // mirrors the placement margin in hud.ts (kept local so a
 
 describe('placeHud', () => {
   // A small layout with three rows, sized like layoutHud's box (pad + rows·lineH + pad).
-  const layout = layoutHud(model({ tick: 1, tribe: 1, population: 2 }));
+  const layout = layoutHud(model({ tick: 1, tribe: 1, population: 2 }), LABELS);
 
   it('top-left: anchors the panel at the margin and offsets every row by the panel origin', () => {
     const placed = placeHud(layout, 'top-left', { width: 960, height: 540 });

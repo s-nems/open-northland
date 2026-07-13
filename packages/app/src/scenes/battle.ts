@@ -104,26 +104,11 @@ function nobodyStacks(sim: Simulation): boolean {
 
 export const battleScene: SceneDefinition = {
   id: 'battle',
-  title: 'Bitwa masowa — 100 na 100, cztery bronie',
-  summary:
-    'Dwie lustrzane armie po 100 (miecze z przodu, potem wlocznie, dwureczne, lucznicy) scieraja sie ' +
-    'na szerokim froncie. Scena oceny FEELINGU tlumu: sloty zwarcia rozdaja atakujacym ROZNE pola ' +
-    'kontaktu wzdluz calej linii, pelny front kaze drugiemu szeregowi STANAC i czekac na luke, a ' +
-    'kolizja cial trzyma szyk zamiast wibrujacej kupy postaci.',
   seed: 23,
   terrain: grassTerrain(MAP_W, MAP_H),
   build,
   runTicks: 1500,
   initialZoom: 0.55,
-  checklist: [
-    'Marsz: armie schodza sie szerokim frontem, jednostki rozpychaja sie lekko zamiast wchodzic w siebie',
-    'Zwarcie: walka toczy sie WZDLUZ CALEJ LINII frontu, nie w jednym punkcie',
-    'Drugi szereg STOI za walczacymi i czeka; gdy ktos z frontu pada, czekajacy wchodzi w luke (rotacja)',
-    'Wlocznie siegaja zza plecow pierwszego szeregu (zasieg 2), lucznicy strzelaja zza linii lobem',
-    'Zero wibrujacych par i "jezdzenia" cialami po sobie; zadnego stosu wielu jednostek w jednym punkcie',
-    'Po rozstrzygnieciu: zwyciezcy stoja rozstawieni na osobnych polach, nie w jednej kolumnie duchow',
-    'Minimapa (lewy dolny rog): pleciona ramka bez przeswitow, kropki w kolorach obu armii, klik przenosi kamere',
-  ],
   checks: [
     {
       label: 'the battle really ran at scale (enough casualties on the field)',

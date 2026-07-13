@@ -1,5 +1,6 @@
 import { clipDirs, GALLERY_DIRS } from '@open-northland/render';
 import type { BobSeqRow } from '../content/ir.js';
+import { formatMessage, type Messages, messages } from '../i18n/index.js';
 
 /**
  * The viking character ROSTER the `?anim` gallery can play — the data behind the character selector and
@@ -18,8 +19,6 @@ import type { BobSeqRow } from '../content/ir.js';
 export interface VikingCharacter {
   /** URL id (`?char=`) + selector key, e.g. `warrior`. */
   readonly id: string;
-  /** Human label for the selector button, e.g. `Wojownik`. */
-  readonly label: string;
   /** The body bob-set stem WITHOUT palette, e.g. `cr_hum_body_05`. */
   readonly bodyBmd: string;
   /** The `bobSequences` key (the `.bmd` imagelib) whose `[bobseq]` this body plays, e.g. `cr_hum_body_05.bmd`. */
@@ -127,7 +126,6 @@ const WARRIOR_LOOKS = ['cr_hum_head_05', 'cr_hum_head_06', 'cr_hum_head_07', 'cr
 /** The default character the gallery opens on — the civilian man, the body the original `?anim` showed. */
 export const DEFAULT_CHARACTER: VikingCharacter = {
   id: 'civilian',
-  label: 'Cywil',
   bodyBmd: 'cr_hum_body_00',
   imagelib: 'cr_hum_body_00.bmd',
   headBmds: CIVILIAN_LOOKS,
@@ -144,35 +142,30 @@ export const VIKING_CHARACTERS: readonly VikingCharacter[] = [
   DEFAULT_CHARACTER,
   {
     id: 'warrior',
-    label: 'Wojownik',
     bodyBmd: 'cr_hum_body_05',
     imagelib: 'cr_hum_body_05.bmd',
     headBmds: WARRIOR_LOOKS,
   },
   {
     id: 'woman',
-    label: 'Kobieta',
     bodyBmd: 'cr_hum_body_10',
     imagelib: 'cr_hum_body_10.bmd',
     headBmds: ['cr_hum_head_10'],
   },
   {
     id: 'boy',
-    label: 'Chłopiec',
     bodyBmd: 'cr_hum_body_20',
     imagelib: 'cr_hum_body_20.bmd',
     headBmds: ['cr_hum_head_20'],
   },
   {
     id: 'girl',
-    label: 'Dziewczynka',
     bodyBmd: 'cr_hum_body_21',
     imagelib: 'cr_hum_body_21.bmd',
     headBmds: ['cr_hum_head_21'],
   },
   {
     id: 'baby',
-    label: 'Niemowlę',
     bodyBmd: 'cr_hum_body_22',
     imagelib: 'cr_hum_body_22.bmd',
     // Body-only: `cr_hum_head_22` decodes to an empty atlas (the swaddled baby's head is part of the body
@@ -226,5 +219,11 @@ export function pickWalkRow(rows: readonly BobSeqRow[]): BobSeqRow | undefined {
 /** A short human label for a head look bob stem, e.g. `cr_hum_head_08` → `Głowa 08` (the montage cell caption). */
 export function headLabel(headBmd: string): string {
   const m = /cr_hum_head_(\d+)/i.exec(headBmd);
-  return m ? `Głowa ${m[1]}` : headBmd;
+  return m ? formatMessage(messages().animation.head, { number: m[1] ?? '' }) : headBmd;
+}
+
+/** The localized selector label for a roster entry. */
+export function characterLabel(character: VikingCharacter): string {
+  const key = character.id as keyof Messages['animation']['roster'];
+  return messages().animation.roster[key] ?? character.id;
 }

@@ -2,8 +2,7 @@ import type { ContentSet } from '@open-northland/data';
 import { localizedBuildingName } from '../../../catalog/building-i18n.js';
 import { vikingBuildingByTypeId } from '../../../catalog/buildings.js';
 import { professionDefForJob } from '../../../catalog/professions.js';
-import { DEFAULT_UI_LANG } from '../../../content/gui-gfx.js';
-import { professionLabel } from '../../../i18n/index.js';
+import { currentLocale, messages, professionLabel } from '../../../i18n/index.js';
 
 /**
  * The shared context both panel-model halves resolve names through: the content sets the panel was built
@@ -44,12 +43,12 @@ export function buildingDef(ctx: UnitPanelModelContext, typeId: number | undefin
 }
 
 export function buildingTitle(ctx: UnitPanelModelContext, typeId: number | undefined): string {
-  if (typeId === undefined) return 'Budynek';
+  if (typeId === undefined) return messages().hud.build;
   const catalog = vikingBuildingByTypeId(typeId);
   // The panel title reads the SAME localized name the build menu shows (catalog/building-i18n.ts —
   // "Farma", "Chata"), falling back to the English catalog label for a building not yet localized.
-  if (catalog !== undefined) return localizedBuildingName(catalog.id, catalog.label, DEFAULT_UI_LANG);
-  return buildingDef(ctx, typeId)?.id ?? `typ ${typeId}`;
+  if (catalog !== undefined) return localizedBuildingName(catalog.id, catalog.label, currentLocale());
+  return buildingDef(ctx, typeId)?.id ?? `#${typeId}`;
 }
 
 export function goodDef(ctx: UnitPanelModelContext, goodType: number): GoodDef | undefined {
@@ -60,7 +59,7 @@ export function goodDef(ctx: UnitPanelModelContext, goodType: number): GoodDef |
  *  loaded by the browser entries — "Mąka"), falling back to the machine id on a bare checkout. */
 export function goodLabel(ctx: UnitPanelModelContext, goodType: number): string {
   const def = goodDef(ctx, goodType);
-  return def?.name ?? def?.id ?? `dobro ${goodType}`;
+  return def?.name ?? def?.id ?? `#${goodType}`;
 }
 
 /**

@@ -106,31 +106,11 @@ function farmEntity(sim: Simulation): Entity | null {
 
 export const farmScene: SceneDefinition = {
   id: 'farm',
-  title: 'Farma — uprawa zboża',
-  summary:
-    'Farma i magazyn stoją na piasku — farmerzy wychodzą na okoliczną trawę siać (zboże rośnie tylko ' +
-    'na trawie). Pole rusza z miejsca DOPIERO po podlaniu konewką; dojrzałe łany ścinają kosą i znoszą ' +
-    'snopki do magazynu farmy (wchodząc do środka na czas odłożenia), a gdy farma się zapełni — do ' +
-    'magazynu obok. Dzielą się pracą — każdy inne pole.',
   seed: 11,
   terrain: farmTerrain(),
   build,
   runTicks: RUN_TICKS,
   initialZoom: INITIAL_ZOOM,
-  checklist: [
-    'Farma i MAGAZYN STOJĄ NA PIASKU — farmerzy wychodzą z piaskowej łachy na okoliczną TRAWĘ siać; na samym piasku nie powstaje żadne pole.',
-    'Pola są minimalnie rozrzucone (nie sklejone heks przy heksie) i wieńcem otaczają piaskową łachę.',
-    'Farmerzy DZIELĄ SIĘ pracą: każdy idzie do INNEGO pola/snopka, nie chodzą jeden przy drugim do tego samego celu.',
-    'Świeżo posiane pole jest niewidoczne/gołe (oryginał nie rysuje stanu 1) — ŻADNEGO zielonego kwadratu; kiełki widać od 2. stadium.',
-    'KAŻDE stadium wzrostu wymaga podlania: farmer krąży po polach z konewką (praca farmera napędza produkcję), a niepodlane pole stoi w miejscu.',
-    'Liczba pól skaluje się z załogą PODLINIOWO (baza 2 + 4 na farmera) — w tej scenie 2 farmerów utrzymuje do 10 pól (samotny farmer pracowałby na 6).',
-    'Farmer bez zajęcia NIE sterczy pod drzwiami — wchodzi do farmy (znika Z MAPY) i wychodzi, gdy tylko któreś pole zrobi się spragnione.',
-    'Panel farmy — pole „Pracownicy": robotnik, który wszedł do środka, NIE znika z panelu, tylko stoi w nim w nieruchomej pozie stojącej (na mapie nadal go nie ma); pracujący na zewnątrz są animowani.',
-    'Dojrzałe pole farmer ŚCINA KOSĄ (animacja koszenia); po ścięciu na ziemi zostaje snopek, a pole znika (można siać ponownie).',
-    'Farmer PODNOSI snopek, NIESIE go do farmy i ZNIKA w środku na ~1 s (wchodzi odłożyć zboże), po czym wychodzi; licznik magazynu rośnie.',
-    'Panel farmy (kliknij budynek): tytuł „Farma", sekcja Produkcja z ikoną zboża i licznikami Posiane/Rosnące/Dojrzałe, mały Magazyn BEZ zakładek z jednym wierszem zboża w formacie „ilość / pojemność" (x.0 / 25.0).',
-    'Gdy magazyn farmy dobije do 25/25, farmer niesie kolejne snopki do MAGAZYNU obok (jego licznik rośnie) — nikt nie zastyga ze snopkiem pod drzwiami; gdyby i tam brakło miejsca, farmer czeka ze snopkiem W ŚRODKU farmy.',
-  ],
   checks: [
     {
       label: 'both farmers are employed BY THE FARM (adopted + bound on tick 1)',

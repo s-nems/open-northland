@@ -21,5 +21,5 @@ approximation, calibration-pending (see [combat-calibration](combat-calibration.
 ## Verify
 
 - `npm test` — headless assertion of bar geometry / damaged-only threshold.
-- `?scene=combat` + `?scene=battle`: bar tracks damage — **user's eyes for the look**.
+- `?scene=battle`: bar tracks damage — **user's eyes for the look**.
 - Render `AGENTS.md` pooling/culling gate.

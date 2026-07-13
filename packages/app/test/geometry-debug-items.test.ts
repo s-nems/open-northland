@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildingSetFingerprint,
   computeGeometryDebugItems,
+  createGeometryDebugOverlay,
   type GeometryBuildingInfo,
 } from '../src/view/geometry-debug-items.js';
 import { building, snapshotOf } from './support/snapshot.js';
@@ -76,5 +77,25 @@ describe('buildingSetFingerprint', () => {
       { id: 9, components: { Resource: { goodType: 2, remaining: 4 } } },
     ]);
     expect(buildingSetFingerprint(withResource, TYPES)).toBe(buildingSetFingerprint(buildingOnly, TYPES));
+  });
+});
+
+describe('createGeometryDebugOverlay', () => {
+  it('can be enabled live and clears the renderer when disabled', () => {
+    const pushed: unknown[][] = [];
+    const overlay = createGeometryDebugOverlay({
+      enabled: false,
+      buildingsByType: TYPES,
+      setItems: (items) => pushed.push(items),
+    });
+    const snapshot = snapshotOf([building(1, 7, 4, 4)]);
+
+    overlay.update(snapshot);
+    expect(pushed).toEqual([]);
+    overlay.setEnabled(true);
+    overlay.update(snapshot);
+    expect(pushed.at(-1)).toHaveLength(1);
+    overlay.setEnabled(false);
+    expect(pushed.at(-1)).toEqual([]);
   });
 });

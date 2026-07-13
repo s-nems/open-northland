@@ -4,6 +4,7 @@ import { HUD_TRIBE } from '../game/rules.js';
 import type { WorkerRole } from '../game/sandbox/index.js';
 import { type BuildingDoorInfo, computeDoorBadges } from './door-badges.js';
 import type { FogGates } from './fog-gates.js';
+import { hudLabels } from './hud-labels.js';
 
 /** Memoize a snapshot projection while the simulation returns the same immutable snapshot instance. */
 function memoBySnapshot<T>(build: (snapshot: WorldSnapshot) => T): (snapshot: WorldSnapshot) => T {
@@ -24,7 +25,7 @@ export function createSnapshotProjections(
   readonly doorBadgesFor: (snapshot: WorldSnapshot) => ReturnType<typeof computeDoorBadges>;
 } {
   return {
-    hudFor: memoBySnapshot((snapshot) => layoutHud(buildHud(snapshot, HUD_TRIBE))),
+    hudFor: memoBySnapshot((snapshot) => layoutHud(buildHud(snapshot, HUD_TRIBE), hudLabels())),
     doorBadgesFor: memoBySnapshot((snapshot) => {
       const badges = computeDoorBadges(snapshot, buildingsByType, roleOf);
       const fog = fogGates.current();

@@ -1,5 +1,6 @@
 import { components, systems, TICKS_PER_SECOND, type WorldSnapshot } from '@open-northland/sim';
 import { entityById, num } from '../../../game/snapshot.js';
+import { formatMessage, messages } from '../../../i18n/index.js';
 import { type PanelBar, pct, pctRatio } from './bars.js';
 import {
   buildingDef,
@@ -44,15 +45,13 @@ export const HUMANWINDOW = {
 } as const;
 
 /** The four military stances (`MILITARY_MODE`), with Polish labels for the live "Postawa" line. */
-const STANCES: ReadonlyArray<{ mode: number; label: string }> = [
-  { mode: systems.MILITARY_MODE.ATTACK, label: 'Atak' },
-  { mode: systems.MILITARY_MODE.DEFEND, label: 'Obrona' },
-  { mode: systems.MILITARY_MODE.IGNORE, label: 'Ignoruj' },
-  { mode: systems.MILITARY_MODE.FLEE, label: 'Ucieczka' },
-];
-
 export function stanceLabel(mode: number | undefined): string {
-  return STANCES.find((s) => s.mode === mode)?.label ?? '-';
+  const hud = messages().hud;
+  if (mode === systems.MILITARY_MODE.ATTACK) return hud.attack;
+  if (mode === systems.MILITARY_MODE.DEFEND) return hud.defend;
+  if (mode === systems.MILITARY_MODE.IGNORE) return hud.ignore;
+  if (mode === systems.MILITARY_MODE.FLEE) return hud.flee;
+  return '-';
 }
 
 /** One equipment slot's contents. Empty (`goodId` undefined, `usePct` null) for an unworn slot. */
@@ -139,20 +138,21 @@ function slotModel(ctx: UnitPanelModelContext, slot: RawEquipSlot): EquipSlotMod
  * slots (`tribetypes` `allowequip`) — surfaced here off the combat components the sim already stamps.
  */
 export function equipmentRows(ctx: UnitPanelModelContext, comps: Comp): EquipRow[] {
+  const slots = messages().hud.equipmentSlots;
   const eq = comps.Equipment as RawEquipment | undefined;
   const rows: EquipRow[] = [
-    { titleId: HUMANWINDOW.boots, fallback: 'Buty', slots: [slotModel(ctx, eq?.boots)] },
-    { titleId: HUMANWINDOW.tools, fallback: 'Narzędzia', slots: [slotModel(ctx, eq?.tool)] },
+    { titleId: HUMANWINDOW.boots, fallback: slots.boots, slots: [slotModel(ctx, eq?.boots)] },
+    { titleId: HUMANWINDOW.tools, fallback: slots.tools, slots: [slotModel(ctx, eq?.tool)] },
   ];
   const soldier = 'Weapon' in comps || eq?.weapon != null || eq?.armor != null;
   if (soldier) {
-    rows.push({ titleId: HUMANWINDOW.weapon, fallback: 'Broń', slots: [slotModel(ctx, eq?.weapon)] });
-    rows.push({ titleId: HUMANWINDOW.armor, fallback: 'Zbroja', slots: [slotModel(ctx, eq?.armor)] });
+    rows.push({ titleId: HUMANWINDOW.weapon, fallback: slots.weapon, slots: [slotModel(ctx, eq?.weapon)] });
+    rows.push({ titleId: HUMANWINDOW.armor, fallback: slots.armor, slots: [slotModel(ctx, eq?.armor)] });
   }
   const misc = Array.isArray(eq?.misc) ? (eq.misc as RawEquipSlot[]) : [];
   const miscSlots: EquipSlotModel[] = [];
   for (let i = 0; i < components.MISC_EQUIP_SLOTS; i++) miscSlots.push(slotModel(ctx, misc[i] ?? null));
-  rows.push({ titleId: HUMANWINDOW.misc, fallback: 'Ekwipunek', slots: miscSlots });
+  rows.push({ titleId: HUMANWINDOW.misc, fallback: slots.misc, slots: miscSlots });
   return rows;
 }
 
@@ -172,18 +172,19 @@ function needBar(label: string, deficit: number | undefined): PanelBar {
  * names don't map 1:1 to the sim's four needs and read poorly (user decision 2026-07-11).
  */
 export function satisfactionBars(comps: Comp): PanelBar[] {
+  const hud = messages().hud;
   const s = (comps.Settler ?? {}) as Comp;
   const bars: PanelBar[] = [];
   const health = comps.Health as { hitpoints?: unknown; max?: unknown } | undefined;
   if (health !== undefined) {
     const hp = num(health.hitpoints) ?? 0;
     const max = num(health.max) ?? 0;
-    bars.push({ label: 'Zdrowie', pct: pctRatio(hp, max), hover: `${hp}/${max}` });
+    bars.push({ label: hud.health, pct: pctRatio(hp, max), hover: `${hp}/${max}` });
   }
-  bars.push(needBar('Głód', num(s.hunger)));
-  bars.push(needBar('Sen', num(s.fatigue)));
-  bars.push(needBar('Towarzystwo', num(s.enjoyment)));
-  bars.push(needBar('Religia', num(s.piety)));
+  bars.push(needBar(hud.hunger, num(s.hunger)));
+  bars.push(needBar(hud.sleep, num(s.fatigue)));
+  bars.push(needBar(hud.company, num(s.enjoyment)));
+  bars.push(needBar(hud.religion, num(s.piety)));
   return bars;
 }
 
@@ -207,7 +208,7 @@ export function settlerWork(
       : `${goodLabel(ctx, num(carry.goodType) ?? -1)} ×${num(carry.amount) ?? 0}`;
   const assignment = comps.JobAssignment as { workplace?: unknown } | undefined;
   const workplaceId = num(assignment?.workplace);
-  if (workplaceId === undefined) return { place: 'brak miejsca pracy', product: carried ?? '-' };
+  if (workplaceId === undefined) return { place: messages().hud.noWorkplace, product: carried ?? '-' };
   const ent = entityById(snapshot, workplaceId);
   const rawType = num((ent?.components.Building as { buildingType?: unknown } | undefined)?.buildingType);
   const def = buildingDef(ctx, rawType);
@@ -234,20 +235,25 @@ export function highestExperience(comps: Comp): { label: string; points: number 
     if (spec === undefined || points === undefined) continue;
     if (best === null || points > best.points) best = { spec, points };
   }
-  return best === null ? null : { label: `spec. ${best.spec}`, points: best.points };
+  return best === null
+    ? null
+    : { label: formatMessage(messages().hud.specialization, { id: best.spec }), points: best.points };
 }
 
 export function settlerStatus(components: Comp, tick: number): string {
+  const statuses = messages().hud.statuses;
   const order = components.PlayerOrder as { expiresAt?: unknown } | undefined;
   const moving = 'PathFollow' in components || 'MoveGoal' in components;
   if (order !== undefined) {
-    if (moving) return 'idzie na rozkaz';
+    if (moving) return statuses.ordered;
     const expires = num(order.expiresAt);
     return expires === undefined
-      ? 'na pozycji'
-      : `stoi (${Math.max(0, Math.ceil((expires - tick) / TICKS_PER_SECOND))}s)`;
+      ? statuses.atPosition
+      : formatMessage(statuses.standing, {
+          seconds: Math.max(0, Math.ceil((expires - tick) / TICKS_PER_SECOND)),
+        });
   }
-  if ('CurrentAtomic' in components) return 'pracuje';
-  if (moving) return 'idzie';
-  return 'bezczynny';
+  if ('CurrentAtomic' in components) return statuses.working;
+  if (moving) return statuses.walking;
+  return statuses.idle;
 }

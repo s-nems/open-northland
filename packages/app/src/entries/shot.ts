@@ -13,6 +13,7 @@ import { HUD_TRIBE } from '../game/rules.js';
 import { loadTerrainMap } from '../slice/map-loader.js';
 import { runSlice, sliceTerrain } from '../slice/vertical-slice.js';
 import { cameraFor } from '../view/camera.js';
+import { hudLabels } from '../view/hud-labels.js';
 import { floatParam, intParam } from '../view/params.js';
 
 /**
@@ -87,7 +88,7 @@ export async function renderShot(canvas: HTMLCanvasElement): Promise<void> {
   const hud =
     params.get('hud') !== '0'
       ? {
-          placement: placeHud(layoutHud(buildHud(snap, HUD_TRIBE)), 'top-left', {
+          placement: placeHud(layoutHud(buildHud(snap, HUD_TRIBE), hudLabels()), 'top-left', {
             width: CANVAS_W,
             height: CANVAS_H,
           }),

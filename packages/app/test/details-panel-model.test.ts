@@ -19,9 +19,9 @@ import {
   type SettlerPanelModel,
   type UnitPanelModelContext,
 } from '../src/hud/details-panel/index.js';
-import { equipmentScene } from '../src/scenes/equipment.js';
 import { createSceneSim } from '../src/scenes/index.js';
 import { sandboxScene } from '../src/scenes/sandbox.js';
+import { equipmentFixture } from './support/equipment.js';
 import { sandboxCtx } from './support/sandbox.js';
 
 function num(v: unknown): number | undefined {
@@ -314,7 +314,7 @@ describe('selection details panel model', () => {
   });
 
   it('shows a settler equipment section with labeled rows, worn goods, use percentages and empty slots', () => {
-    const sim = createSceneSim(equipmentScene);
+    const sim = createSceneSim(equipmentFixture);
     sim.step();
     const snapshot = sim.snapshot();
     const ctx: UnitPanelModelContext = {
@@ -369,7 +369,7 @@ describe('selection details panel model', () => {
   });
 
   it('shows empty equipment rows for a settler with no Equipment component', () => {
-    const sim = createSceneSim(equipmentScene);
+    const sim = createSceneSim(equipmentFixture);
     sim.step();
     const snapshot = sim.snapshot();
     const ctx: UnitPanelModelContext = {

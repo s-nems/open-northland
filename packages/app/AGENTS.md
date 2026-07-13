@@ -94,14 +94,14 @@ gitignored bytes:
   links here per decoded map. Mounts the LEFT tool panel (below); falls back to the synthetic grass strip
   when the map is absent (gitignored), so a bare checkout still boots.
 - `?shot[&seed&ticks&hud]` — headless deterministic screenshot entry (`entries/shot.ts`).
-- `?scene=<id>` — run a registered **acceptance scene** with its checklist overlay (`entries/scene.ts`).
+- `?scene=<id>` — run a registered **acceptance scene** (`entries/scene.ts`). Its localized title and
+  short description are shown on the main menu; the scene itself contains only the standard game HUD.
 - **LEFT tool panel** — the original toolbar strip + tool buttons + game-speed button + building/stats windows
   is part of the standard game HUD, mounted over BOTH `?map=` and every `?scene=` via the shared
   `view/game-tool-panel.ts` (NOT a per-scene flag — it is global). Its game-speed button drives the tick
   rate live (clicks cycle ×1 → ×2 → ×3 → ×1; the `P` key toggles pause, remembering the running speed and
   washing the world sepia while paused); `?speed=` still seeds the initial rate (and reaches sub-1× the
   button can't).
-  The scene overlay is the sign-off checklist only (no playback buttons).
   `?uiscale=` sets its UI scale (default 1.4×, fractional allowed; the strip is 433 design px tall, so 1×
   already fills ~half a modern window). The nearest-sampled INDEXED art can't be linear-filtered, so a
   fractional scale would double texel columns unevenly ("pixeloza"); to stay crisp the strip+buttons are
@@ -163,7 +163,7 @@ An agent **cannot self-judge pixels** (root `AGENTS.md` "How to verify your work
 *acceptance scene* is the seam: ONE deterministic setup with two consumers —
 
 - **headless** (`test/scenes.test.ts`) proves the *mechanic* (the agent self-validates with `npm test`),
-- **browser** (`?scene=<id>`) renders the SAME run with a checklist overlay so a *human* judges the pixels.
+- **browser** (`?scene=<id>`) renders the SAME run so a *human* judges the pixels.
 
 One NAMED divergence: the browser entry feeds the real extracted building footprints (sim-affecting —
 collision, placement, doors) while the headless twin keeps the clean-room approximations (copyrighted
@@ -173,11 +173,12 @@ collision, placement, doors) while the headless twin keeps the clean-room approx
 To add one (full guide in [`docs/SCENES.md`](../../docs/SCENES.md)):
 
 1. Write `src/scenes/<id>.ts` exporting a `SceneDefinition` — a `terrain` grid, a `build(sim)` that places
-   the world, a human `checklist`, and machine `checks` (the mechanic the headless test asserts). Do not
-   add scene-local content/rules; shared sandbox content lives in `src/game/sandbox/`.
+   the world, and machine `checks` (the mechanic the headless test asserts). Add its localized title and
+   short summary to both catalogs. Do not add scene-local content/rules; shared sandbox content lives in
+   `src/game/sandbox/`.
 2. Register it in `src/scenes/index.ts` (`SCENES`). That auto-adds its headless test AND its `?scene=` link.
-3. `npm test` (mechanic green) → then surface `npm run dev` → `http://localhost:5173/?scene=<id>` and the
-   checklist, and ask the user whether it looks right. Don't claim the visual is correct yourself.
+3. `npm test` (mechanic green) → then surface `npm run dev` → `http://localhost:5173/?scene=<id>` with
+   concise verification notes, and ask the user whether it looks right. Don't claim visual correctness.
 
 Scene sims share `sim`'s **module-level component stores** (a known footgun), so `createSceneSim` resets
 them on every build — don't bypass it (the headless harness builds many scene sims in one process).

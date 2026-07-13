@@ -105,8 +105,8 @@ describe('admin spawn command mapping', () => {
     const goods = new Set(GOODS_ENTRIES.map((g) => g.good));
     expect(goods.has(GOOD_WOOD)).toBe(true);
     // A spread across the extended catalog families (their sandbox typeIds are 100 + the ir typeId).
-    expect(GOODS_ENTRIES.some((g) => g.label === 'Bread')).toBe(true);
-    expect(GOODS_ENTRIES.some((g) => g.label === 'Plate Armor')).toBe(true);
+    expect(GOODS_ENTRIES.some((g) => g.id === 'bread')).toBe(true);
+    expect(GOODS_ENTRIES.some((g) => g.id === 'armor_plate')).toBe(true);
     expect(GOODS_ENTRIES.length).toBeGreaterThanOrEqual(60);
   });
 

@@ -117,7 +117,7 @@ describe('resolveGoodNames', () => {
   it('omits a good the locale table lacks, and drops a locale that resolves to nothing', () => {
     const names = resolveGoodNames(goods, {
       pl: { 5: 'Drewno' }, // only wood
-      de: { 999: 'Nichts' }, // no good has type 999 → the whole `de` locale is dropped
+      unused: { 999: 'Unused' }, // no good has type 999 → the whole locale is dropped
     });
     expect(names).toEqual({ pl: { wood: 'Drewno' } });
   });

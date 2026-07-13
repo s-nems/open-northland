@@ -1,12 +1,7 @@
 import { battleScene } from './battle.js';
 import { berriesScene } from './berries.js';
-import { buildingGeometryScene } from './building-geometry.js';
 import { collisionScene } from './collision.js';
-import { combatScene } from './combat.js';
-import { constructionScene } from './construction.js';
-import { equipmentScene } from './equipment.js';
 import { farmScene } from './farm.js';
-import { fogScene } from './fog.js';
 import { goodsCatalogScene } from './goods-catalog.js';
 import { millScene } from './mill.js';
 import { sandboxScene } from './sandbox.js';
@@ -23,17 +18,12 @@ export type { SceneDefinition } from './types.js';
  */
 export const SCENES: readonly SceneDefinition[] = [
   sandboxScene,
-  combatScene,
   collisionScene,
   battleScene,
   goodsCatalogScene,
-  equipmentScene,
-  constructionScene,
   farmScene,
   berriesScene,
-  fogScene,
   millScene,
-  buildingGeometryScene,
   warehouseScene,
 ];
 

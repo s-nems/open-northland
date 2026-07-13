@@ -13,6 +13,7 @@ import {
   hitTestActionRing,
   layoutActionRing,
 } from '../hud/action-ring-layout.js';
+import { type Messages, messages } from '../i18n/index.js';
 import { createActionRingVisuals } from './action-ring-visuals.js';
 import { clientToCanvas, screenScale } from './camera.js';
 import { el } from './overlay.js';
@@ -287,7 +288,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
         .roundRect(placed.rect.x, placed.rect.y, placed.rect.w, placed.rect.h, Math.max(2, 3 * scale))
         .fill({ color: HOVER_TINT, alpha: HOVER_ALPHA });
     }
-    tooltip.textContent = hit.label;
+    tooltip.textContent = messages().actionRing[hit.id as keyof Messages['actionRing']] ?? hit.id;
     tooltip.style.left = `${e.clientX + 12}px`;
     tooltip.style.top = `${e.clientY - 22}px`;
     tooltip.style.display = 'block';

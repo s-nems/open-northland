@@ -1,5 +1,4 @@
-import { professionLabel } from '../../i18n/index.js';
-import type { Messages } from '../../i18n/pl.js';
+import { type Messages, professionLabel } from '../../i18n/index.js';
 import { JOB_CARRIER, rebaseSlotJob } from './ids/index.js';
 
 /**
@@ -41,17 +40,18 @@ const WORKER_SLOT_PROFESSION_KEYS: Readonly<Record<number, keyof Messages['profe
  * (8) the roster instead realizes as the concrete resource gatherers, and the two archer weapon classes
  * (40/41) the one-soldier picker folds into "Żołnierz" but a tower slot still lists by weapon.
  */
-const WORKER_SLOT_LOCAL_NAMES: Readonly<Record<number, string>> = {
-  8: 'Zbieracz', // collector
-  40: 'Łucznik', // soldier_bow_short
-  41: 'Łucznik (długi łuk)', // soldier_bow_long
+const WORKER_SLOT_LOCAL_KEYS: Readonly<Record<number, keyof Messages['profession']>> = {
+  8: 'collector',
+  40: 'archer_short',
+  41: 'archer_long',
 };
 /** The display name of an extracted worker-slot job, by its ORIGINAL id: the shared profession label
  *  where the trade has one (so it never drifts from the picker), else its slot-local name. The carrier
  *  (24 → {@link JOB_CARRIER}) is named 'Tragarz' where the job is defined, not here. */
 export function workerSlotName(originalJobType: number): string {
   const key = WORKER_SLOT_PROFESSION_KEYS[originalJobType];
-  return key !== undefined ? professionLabel(key) : (WORKER_SLOT_LOCAL_NAMES[originalJobType] ?? 'Pracownik');
+  const localKey = WORKER_SLOT_LOCAL_KEYS[originalJobType];
+  return professionLabel(key ?? localKey ?? 'worker');
 }
 
 /**

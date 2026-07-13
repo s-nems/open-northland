@@ -1,27 +1,27 @@
+import { type Locale, type Messages, messages } from '../i18n/index.js';
 import { fetchJsonOrNull } from './net.js';
 
 /**
  * Localized good DISPLAY names — the loadable seam for the pipeline's per-locale good-name tables
  * (`content/goods/manifest.json` `names`: locale → good STRING id → name, extracted from the game's own
  * `text/<lang>/strings/gameobjects/goods.{ini,cif}`). The whole catalog reads in the player's language, and
- * adding/switching a language is a data + `?locale=` change, not a code edit. A bare checkout (no `content/`)
- * yields an empty map and callers fall back to their built-in English labels / the machine id.
+ * adding/switching a language follows the app-wide `?lang=` value. Authored names keep the UI complete
+ * in a bare checkout, while extracted content overrides them when the local pipeline output is available.
  *
  * Keyed by good STRING id (not typeId), stable across the sandbox and the extracted IR — the same key the
  * icon manifest uses — so one lookup serves every scene and both good-id namespaces.
  */
 
 /** The locales the pipeline emits (see `GOOD_NAME_LOCALES` in the goods stage). Preference order for fallback. */
-export const GOOD_LOCALES = ['pl', 'en', 'de'] as const;
+export const GOOD_LOCALES = ['pl', 'en'] as const;
 export type GoodLocale = (typeof GOOD_LOCALES)[number];
 
-/** The default UI language — Polish (the `culturesnation` mod's audience). Overridable via `?locale=`. */
+/** The good-table locale matching the app's default `pol` locale. */
 export const DEFAULT_GOOD_LOCALE: GoodLocale = 'pl';
 
-/** Parse a `?locale=` value to a known {@link GoodLocale}, defaulting to {@link DEFAULT_GOOD_LOCALE}. */
+/** Map the app-wide `?lang=pol|eng` value to the goods tables' `pl|en` codes. */
 export function goodLocaleParam(params: URLSearchParams): GoodLocale {
-  const raw = params.get('locale');
-  return (GOOD_LOCALES as readonly string[]).includes(raw ?? '') ? (raw as GoodLocale) : DEFAULT_GOOD_LOCALE;
+  return params.get('lang') === 'eng' || params.get('lang') === 'en' ? 'en' : 'pl';
 }
 
 /**
@@ -29,10 +29,10 @@ export function goodLocaleParam(params: URLSearchParams): GoodLocale {
  * `plank` the joinery slice produces. Kept here (not in the pipeline manifest) because they have no faithful
  * source — a NAMED APPROXIMATION so the synthetic good reads in-language too. `plank` = sawn `wood`.
  */
-const SYNTHETIC_GOOD_NAMES: Record<string, Record<GoodLocale, string>> = {
-  // The joinery slice's output, drawn as a felled LOG (see resource-gfx) — named "log" to match its graphic.
-  plank: { pl: 'Kłoda', en: 'Log', de: 'Baumstamm' },
-};
+function localeMessages(locale: GoodLocale): Messages['goods'] {
+  const appLocale: Locale = locale === 'pl' ? 'pol' : 'eng';
+  return messages(appLocale).goods;
+}
 
 const GOODS_MANIFEST_URL = '/goods/manifest.json';
 
@@ -42,7 +42,7 @@ interface NamesManifest {
 
 let namesOnce: Promise<Readonly<Record<string, Readonly<Record<string, string>>>>> | null = null;
 
-/** Fetch the per-locale good-name tables once (memoized), or `{}` when the goods stage hasn't run. */
+/** Fetch the per-locale extracted good-name tables once, or `{}` when the goods stage has not run. */
 async function loadNameTables(): Promise<Readonly<Record<string, Readonly<Record<string, string>>>>> {
   namesOnce ??= fetchJsonOrNull<NamesManifest>(GOODS_MANIFEST_URL).then((m) => m?.names ?? {});
   return namesOnce;
@@ -51,7 +51,7 @@ async function loadNameTables(): Promise<Readonly<Record<string, Readonly<Record
 /**
  * Build the `good STRING id → display name` map for a locale (pure), applying the fallback chain
  * `<locale> → pl → en` per id plus the synthetic overlay, so a good missing from the chosen language still
- * shows a name rather than its raw id. Empty when `tables` is empty (bare checkout). Split from the fetch so
+ * shows a name rather than its raw id. Authored names also cover a bare checkout. Split from the fetch so
  * the fallback rule is unit-tested without the network.
  */
 export function resolveGoodNameMap(
@@ -60,16 +60,13 @@ export function resolveGoodNameMap(
 ): ReadonlyMap<string, string> {
   const ids = new Set<string>();
   for (const table of Object.values(tables)) for (const id of Object.keys(table)) ids.add(id);
-  for (const id of Object.keys(SYNTHETIC_GOOD_NAMES)) ids.add(id);
+  const authored = localeMessages(locale);
+  for (const id of Object.keys(authored)) ids.add(id);
 
   const out = new Map<string, string>();
   for (const id of ids) {
     const name =
-      tables[locale]?.[id] ??
-      tables.pl?.[id] ??
-      tables.en?.[id] ??
-      SYNTHETIC_GOOD_NAMES[id]?.[locale] ??
-      SYNTHETIC_GOOD_NAMES[id]?.pl;
+      tables[locale]?.[id] ?? authored[id as keyof typeof authored] ?? tables.pl?.[id] ?? tables.en?.[id];
     if (name !== undefined) out.set(id, name);
   }
   return out;

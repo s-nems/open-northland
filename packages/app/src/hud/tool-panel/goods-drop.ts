@@ -1,5 +1,6 @@
 import type { Command } from '@open-northland/sim';
 import { type Container, Graphics } from 'pixi.js';
+import { formatMessage, messages } from '../../i18n/index.js';
 import type { TextRun } from '../bitmap-text.js';
 import { drawWindowPanel, WIN_PAD, WIN_TITLE_H } from '../chrome.js';
 import type { PanelContext } from './context.js';
@@ -78,7 +79,7 @@ export function createGoodsDropController(deps: GoodsDropDeps): GoodsDropControl
         h: (WIN_TITLE_H + WIN_PAD) * scale,
       };
       drawWindowPanel(graphics, rect, scale);
-      bannerRun = ctx.makeText(`${label} - klik: połóż, Esc: koniec`, 'white');
+      bannerRun = ctx.makeText(formatMessage(messages().hud.dropHint, { label }), 'white');
       deps.container.addChild(bannerRun.container);
       const { width: rw, height: rh } = ctx.screen();
       bannerRun.place(rect.x + WIN_PAD * scale, rect.y + BANNER_TEXT_INSET_Y * scale, scale, rw, rh);

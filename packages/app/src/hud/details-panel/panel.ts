@@ -6,7 +6,7 @@ import {
 } from '@open-northland/render';
 import type { WorldSnapshot } from '@open-northland/sim';
 import { type Application, Container, Graphics } from 'pixi.js';
-import { DEFAULT_UI_LANG, uiStringLookup } from '../../content/gui-gfx.js';
+import { uiStringLookup } from '../../content/gui-gfx.js';
 import { contains, type Rect } from '../geometry.js';
 import { loadDetailsPanelAssets } from './assets.js';
 import { createChrome, type PanelLayers } from './chrome.js';
@@ -20,7 +20,7 @@ import {
 } from './layout/index.js';
 import { buildUnitPanelModel, type UnitPanelModel, type UnitPanelModelContext } from './model/index.js';
 import { drawBuilding, drawCompact, drawSettler } from './sections/index.js';
-import { STOCK_TAB_LABELS } from './stock-tabs.js';
+import { stockTabLabels } from './stock-tabs.js';
 import { WorkerSpriteOverlay } from './worker-sprites.js';
 
 /**
@@ -55,6 +55,7 @@ export interface UnitPanelOptions extends UnitPanelModelContext {
   readonly canvas: HTMLCanvasElement;
   /** Integer UI scale (from `?uiscale=`), shared with the left tool panel and action ring. */
   readonly uiscale?: number;
+  readonly lang: string;
   /** Client→canvas coordinate mapping, injected like the tool panel's (the hud layer stays view-free). */
   readonly backingScale: (canvas: HTMLCanvasElement) => { sx: number; sy: number; rect: DOMRect };
   readonly onDemolish: (entityId: number) => void;
@@ -112,7 +113,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
   // policy differs from the shared `oversampleFor` — which always targets ≥2× for AA — so it decides here.)
   const PANEL_MAX_SUPERSAMPLE = 4;
   const ss = Number.isInteger(scale) && scale <= PANEL_MAX_SUPERSAMPLE ? scale : PANEL_MAX_SUPERSAMPLE;
-  const assets = await loadDetailsPanelAssets(DEFAULT_UI_LANG);
+  const assets = await loadDetailsPanelAssets(opts.lang);
   const uiString = uiStringLookup(assets.strings);
 
   let root = new Container();
@@ -316,7 +317,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     }
     const rowName = hitStockGood(x, y);
     const tab = rowName === null ? hitStockTab(x, y) : null;
-    const tabLabel = tab !== null ? (STOCK_TAB_LABELS[tab] ?? null) : null;
+    const tabLabel = tab !== null ? (stockTabLabels()[tab] ?? null) : null;
     const text = rowName ?? tabLabel ?? hitBarValue(x, y);
     if (text === null) opts.tooltip.hide();
     else opts.tooltip.show(clientX, clientY, text);

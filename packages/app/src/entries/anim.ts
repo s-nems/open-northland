@@ -6,16 +6,17 @@ import {
   type TextureSource,
 } from '@open-northland/render';
 import {
+  characterLabel,
   characterStems,
   DEFAULT_CHARACTER_PALETTE,
   findCharacter,
   INDEXED_CHARACTER_PALETTE,
   PLAYER_COLOR_COUNT,
-  PLAYER_COLOR_NAMES,
   VIKING_CHARACTERS,
   type VikingCharacter,
 } from '../catalog/roster.js';
 import { loadBodyClips, loadGalleryLayers, loadPlayerLut, MissingAtlasError } from '../content/ir.js';
+import { formatMessage, messages } from '../i18n/index.js';
 import { createCameraController, MIN_ZOOM } from '../view/camera.js';
 import { mountMessage } from '../view/overlay.js';
 import { floatParam, intParam } from '../view/params.js';
@@ -75,6 +76,7 @@ export async function renderAnimationGallery(
  * NOTHING loads.
  */
 async function renderRosterMontage(canvas: HTMLCanvasElement, params: URLSearchParams): Promise<void> {
+  const copy = messages().animation;
   const rawFilter = params.get('filter') ?? '';
   const loaded: RosterLoad[] = [];
   let loadedAny = false;
@@ -90,26 +92,18 @@ async function renderRosterMontage(canvas: HTMLCanvasElement, params: URLSearchP
     }
   }
   if (!loadedAny) {
-    mountMessage(
-      'Brak grafik (content/)',
-      'Uruchom `npm run pipeline` na posiadanej kopii gry, aby wypełnić content/ — galeria potrzebuje zdekodowanego atlasu bobów.',
-    );
+    mountMessage(messages().common.missingContentTitle, copy.missingRoster);
     return;
   }
   const cells = buildRosterCells(loaded, rawFilter);
   if (cells.length === 0) {
     mountMessage(
-      'Brak looków',
-      rawFilter === ''
-        ? 'content/ir.json nie zawiera odtwarzalnych sekwencji dla rosteru — uruchom `npm run pipeline`.'
-        : `Żaden wygląd nie pasuje do filtra „${rawFilter}".`,
+      copy.noLooks,
+      rawFilter === '' ? copy.noRosterFrames : formatMessage(copy.filterNoMatch, { filter: rawFilter }),
     );
     return;
   }
   await startGallery(canvas, params, cells, { char: null, view: 'anim' });
-  console.log(
-    `OpenNorthland viking roster montage: ${cells.length} looks, each walking. Click a character to see its animations.`,
-  );
 }
 
 /**
@@ -118,6 +112,8 @@ async function renderRosterMontage(canvas: HTMLCanvasElement, params: URLSearchP
  */
 async function renderCharacterGallery(canvas: HTMLCanvasElement, params: URLSearchParams): Promise<void> {
   const char = findCharacter(params.get('char'));
+  const character = characterLabel(char);
+  const copy = messages().animation;
   const view = parseView(params.get('view'));
   const color = parseColor(params.get('color'), PLAYER_COLOR_COUNT);
   // Paletted mode = the colours montage, or an explicit `?color=` on the anim/heads views. It loads the
@@ -135,8 +131,8 @@ async function renderCharacterGallery(canvas: HTMLCanvasElement, params: URLSear
   } catch (err) {
     if (!(err instanceof MissingAtlasError)) throw err;
     mountMessage(
-      'Brak grafik (content/)',
-      `Uruchom \`npm run pipeline\` na posiadanej kopii gry, aby wypełnić content/ — galeria potrzebuje zdekodowanego atlasu „${char.label}" (${bodyStem}).`,
+      messages().common.missingContentTitle,
+      formatMessage(copy.missingAtlas, { character, stem: bodyStem }),
     );
     return;
   }
@@ -145,10 +141,7 @@ async function renderCharacterGallery(canvas: HTMLCanvasElement, params: URLSear
   if (paletted) {
     lut = await loadPlayerLut();
     if (lut === undefined) {
-      mountMessage(
-        'Brak palety graczy (content/)',
-        'Uruchom `npm run pipeline` na posiadanej kopii gry — kolory graczy wymagają wygenerowanego `player-lut.png`.',
-      );
+      mountMessage(copy.missingPalette, copy.missingPaletteDetail);
       return;
     }
   }
@@ -158,18 +151,18 @@ async function renderCharacterGallery(canvas: HTMLCanvasElement, params: URLSear
   const player = color ?? 0;
   const cells =
     view === 'colors'
-      ? buildColorCells(rows, body, heads[0], PLAYER_COLOR_NAMES, filter)
+      ? buildColorCells(rows, body, heads[0], messages().animation.playerColors, filter)
       : view === 'heads'
         ? buildHeadsCells(char, rows, body, heads, filter).map((c) => ({ ...c, player }))
         : buildAnimCells(rows, body, heads[0], filter).map((c) => ({ ...c, player }));
 
   if (cells.length === 0) {
-    const what = view === 'heads' ? 'głów' : view === 'colors' ? 'kolorów' : 'sekwencji';
+    const title = view === 'heads' ? copy.noHeads : view === 'colors' ? copy.noColors : copy.noSequences;
     mountMessage(
-      `Brak ${what}`,
+      title,
       filter === ''
-        ? `content/ir.json nie zawiera odtwarzalnych klatek dla „${char.label}" (${char.imagelib}).`
-        : `Nic nie pasuje do filtra „${filter}".`,
+        ? formatMessage(copy.missingFrames, { character, imagelib: char.imagelib })
+        : formatMessage(copy.filterNoMatch, { filter }),
     );
     return;
   }
@@ -179,10 +172,6 @@ async function renderCharacterGallery(canvas: HTMLCanvasElement, params: URLSear
   // PLAYER_COLOR_COUNT, a UI range).
   const palette = lut !== undefined ? { source: lut, colours: lut.pixelHeight } : undefined;
   await startGallery(canvas, params, cells, { char, view }, palette);
-  console.log(
-    `OpenNorthland animation gallery: ${char.label} (${char.imagelib}), view=${view}` +
-      `${color !== null ? `, color=${PLAYER_COLOR_NAMES[color]}` : ''}, ${cells.length} cells.`,
-  );
 }
 
 /** Create the Pixi app + retained gallery, frame it with an initial camera, mount the panel, and run the loop. */

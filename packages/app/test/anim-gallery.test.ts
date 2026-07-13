@@ -104,9 +104,9 @@ describe('buildGalleryClips', () => {
 });
 
 describe('parseView', () => {
-  it('maps heads/looks/glowy → looks, colors/colours/kolory → colour montage, else animation view', () => {
-    for (const raw of ['heads', 'looks', 'glowy']) expect(parseView(raw)).toBe('heads');
-    for (const raw of ['colors', 'colours', 'kolory']) expect(parseView(raw)).toBe('colors');
+  it('maps English heads/looks and colors/colours aliases, else animation view', () => {
+    for (const raw of ['heads', 'looks']) expect(parseView(raw)).toBe('heads');
+    for (const raw of ['colors', 'colours']) expect(parseView(raw)).toBe('colors');
     for (const raw of [null, 'anim', 'x', '']) expect(parseView(raw)).toBe('anim');
   });
 });

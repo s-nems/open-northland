@@ -57,6 +57,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     app: opts.app,
     canvas,
     uiscale: opts.uiscale ?? 1,
+    lang: opts.lang,
     // Adapt main's `screenScale(canvas, resolution)` to the panel's `backingScale(canvas)` option by
     // binding the renderer resolution (camera dropped the old zero-arg `backingScale`).
     backingScale: (c: HTMLCanvasElement) => screenScale(c, opts.app.renderer.resolution),

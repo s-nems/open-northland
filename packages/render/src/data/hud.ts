@@ -171,6 +171,17 @@ export interface HudLayout {
   readonly rows: readonly HudTextRow[];
 }
 
+/** User-facing text formatters supplied by the app locale layer. */
+export interface HudLabels {
+  readonly tribeTick: (tribe: number, tick: number) => string;
+  readonly population: (population: number) => string;
+  readonly jobs: string;
+  readonly stocks: string;
+  readonly idle: string;
+  readonly job: (jobType: number) => string;
+  readonly good: (goodType: number) => string;
+}
+
 /** Layout constants for {@link layoutHud} — a single fixed column of stacked text rows. */
 const HUD_PAD = 8; // px inset from the panel edge to the first row / the left margin
 const HUD_LINE_H = 16; // px vertical advance between successive rows
@@ -193,7 +204,7 @@ const HUD_INDENT = 12; // px extra left-indent for a tally row under its heading
  * fixed column and the height counts rows), so the same model lays out byte-identically every call.
  * The human only judges the resulting typography; *which line lands where* is pinned here and tested.
  */
-export function layoutHud(model: HudModel): HudLayout {
+export function layoutHud(model: HudModel, labels: HudLabels): HudLayout {
   const rows: HudTextRow[] = [];
   let y = HUD_PAD;
   const push = (text: string, indent = false): void => {
@@ -201,18 +212,18 @@ export function layoutHud(model: HudModel): HudLayout {
     y += HUD_LINE_H;
   };
 
-  push(`Tribe ${model.tribe} · tick ${model.tick}`); // "·" middot separator
-  push(`Population: ${model.population}`);
+  push(labels.tribeTick(model.tribe, model.tick));
+  push(labels.population(model.population));
 
-  push('Jobs');
+  push(labels.jobs);
   for (const { jobType, count } of model.jobs) {
-    const label = jobType === IDLE_JOB ? 'idle' : `job ${jobType}`;
+    const label = jobType === IDLE_JOB ? labels.idle : labels.job(jobType);
     push(`${label}: ${count}`, true);
   }
 
-  push('Stocks');
+  push(labels.stocks);
   for (const { goodType, amount } of model.stocks) {
-    push(`good ${goodType}: ${amount}`, true);
+    push(`${labels.good(goodType)}: ${amount}`, true);
   }
 
   // After the loop `y == HUD_PAD + rows.length·HUD_LINE_H` (top pad + every row already counted);

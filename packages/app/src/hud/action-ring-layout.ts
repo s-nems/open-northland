@@ -31,8 +31,8 @@ export type ActionButton =
   | {
       /** The "change profession" button — opens the profession list WINDOW (a DOM panel). The one live default button. */
       readonly kind: 'open-jobs';
+      readonly id: 'changeProfession';
       readonly icon: ActionIconFrame;
-      readonly label: string;
     }
   | {
       /** A default-menu button whose action is not yet implemented — drawn + tooltipped, but inert on click. */
@@ -40,7 +40,6 @@ export type ActionButton =
       /** Stable id (keys the retained visual, and is what a test asserts). */
       readonly id: string;
       readonly icon: ActionIconFrame;
-      readonly label: string;
     };
 
 /** One command family placed on a single arm (group-type 0..4) of the menu. */
@@ -241,16 +240,15 @@ export const ACTION_ICON_FALLBACK = 'order_icon_fallback';
  */
 const CHANGE_JOB: ActionButton = {
   kind: 'open-jobs',
+  id: 'changeProfession',
   icon: 'order_change_profession',
-  label: 'Zmiana zawodu',
 };
 
 /** Build an inert default-menu button. */
-const placeholder = (id: string, icon: ActionIconFrame, label: string): ActionButton => ({
+const placeholder = (id: string, icon: ActionIconFrame): ActionButton => ({
   kind: 'placeholder',
   id,
   icon,
-  label,
 });
 
 /**
@@ -274,41 +272,41 @@ export const HUMAN_DEFAULT_MENU: readonly ActionGroup[] = [
     group: TOP_ARM,
     buttons: [
       CHANGE_JOB,
-      placeholder('build', 'order_construct', 'Budowa'),
-      placeholder('alert', 'order_alert', 'Alarm'),
-      placeholder('query', 'order_query', 'Informacja'),
+      placeholder('build', 'order_construct'),
+      placeholder('alert', 'order_alert'),
+      placeholder('query', 'order_query'),
     ],
   },
   // Left column, top→bottom (0x76 attack, 0x77 house, 0x78 animal, 0x79 vehicle).
   {
     group: LEFT_ARM,
     buttons: [
-      placeholder('attack', 'order_spearman', 'Atak'),
-      placeholder('assign_house', 'order_house', 'Przypisz do domu'),
-      placeholder('animal', 'order_animal', 'Zwierzę'),
-      placeholder('vehicle', 'order_transport', 'Pojazd'),
+      placeholder('attack', 'order_spearman'),
+      placeholder('assign_house', 'order_house'),
+      placeholder('animal', 'order_animal'),
+      placeholder('vehicle', 'order_transport'),
     ],
   },
   // Bottom row, left→right (0x68 marry, 0x7e pray, 0x7d talk, 0x6c sleep, 0x7b eat, 0x6b fallback/last).
   {
     group: BOTTOM_ARM,
     buttons: [
-      placeholder('marry', 'order_marry', 'Szukaj partnera'),
-      placeholder('pray', 'order_pray', 'Modlitwa'),
-      placeholder('talk', 'order_figure_hand', 'Rozmowa'),
-      placeholder('sleep', 'unknown_108', 'Sen'),
-      placeholder('eat', 'order_assign_work', 'Jedzenie'),
-      placeholder('bottom_last', ACTION_ICON_FALLBACK, '—'),
+      placeholder('marry', 'order_marry'),
+      placeholder('pray', 'order_pray'),
+      placeholder('talk', 'order_figure_hand'),
+      placeholder('sleep', 'unknown_108'),
+      placeholder('eat', 'order_assign_work'),
+      placeholder('bottom_last', ACTION_ICON_FALLBACK),
     ],
   },
   // Right column, top→bottom (0x81, 0x60, 0x7f, 0x65) — the four "house assignment" buttons.
   {
     group: RIGHT_ARM,
     buttons: [
-      placeholder('house_a', 'order_house_repair', 'Przypisanie domu'),
-      placeholder('house_b', 'order_build', 'Przypisanie domu'),
-      placeholder('house_c', 'order_crest', 'Przypisanie domu'),
-      placeholder('house_d', 'order_house_enter', 'Przypisanie domu'),
+      placeholder('house_a', 'order_house_repair'),
+      placeholder('house_b', 'order_build'),
+      placeholder('house_c', 'order_crest'),
+      placeholder('house_d', 'order_house_enter'),
     ],
   },
 ];

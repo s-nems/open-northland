@@ -1,5 +1,6 @@
 import { GUI_FRAMES } from '../content/gui-atlas-map.js';
 import { fetchJsonOrNull } from '../content/net.js';
+import { formatMessage, messages } from '../i18n/index.js';
 import { el, mountMessage, pageInnerStyle, pageRootStyle } from '../view/overlay.js';
 
 /**
@@ -83,23 +84,21 @@ function installStyle(): void {
 
 /** A short, human group label for a base sprite set — enough to find "GUI" / "Dobra" / "Domy" at a glance. */
 function groupLabel(base: string): string {
-  if (base === GUI_BASE) return 'GUI (przyciski, glify, panel)';
-  if (base === 'ls_gui_bubbles') return 'Dymki osadnika';
-  if (base === 'ls_goods') return 'Dobra / narzędzia / broń';
-  if (base.startsWith('ls_houses')) return 'Domy';
-  if (base.startsWith('ls_ruin')) return 'Ruiny';
-  if (base.startsWith('cr_')) return 'Postacie / zwierzęta / pojazdy';
-  return 'Obiekty / teren / efekty';
+  const groups = messages().icons.groups;
+  if (base === GUI_BASE) return groups.gui;
+  if (base === 'ls_gui_bubbles') return groups.bubbles;
+  if (base === 'ls_goods') return groups.goods;
+  if (base.startsWith('ls_houses')) return groups.houses;
+  if (base.startsWith('ls_ruin')) return groups.ruins;
+  if (base.startsWith('cr_')) return groups.characters;
+  return groups.objects;
 }
 
 export function renderIconGallery(_canvas: HTMLCanvasElement, params: URLSearchParams): void {
   void (async () => {
     const index = await fetchJsonOrNull<BobsIndexEntry[]>('/bobs-index');
     if (index === null || index.length === 0) {
-      mountMessage(
-        'Galeria ikon',
-        'Brak zdekodowanych atlasów w content/. Uruchom `npm run pipeline` na posiadanej kopii gry (są gitignore), aby przeglądać ikony.',
-      );
+      mountMessage(messages().icons.title, messages().icons.missingDetail);
       return;
     }
     installStyle();
@@ -108,12 +107,12 @@ export function renderIconGallery(_canvas: HTMLCanvasElement, params: URLSearchP
     const inner = el('div', pageInnerStyle(1180));
     root.append(inner);
 
-    inner.append(el('h1', 'font-size:22px;margin:0 0 4px', 'Galeria ikon'));
+    inner.append(el('h1', 'font-size:22px;margin:0 0 4px', messages().icons.title));
     inner.append(
       el(
         'p',
         'margin:0 0 14px;color:#b8a684;font-size:13.5px;line-height:1.5;max-width:70ch',
-        'Każda klatka każdego zdekodowanego atlasu, etykietowana numerem klatki (frame index). Wybierz zestaw, filtruj i przybliżaj; kliknij kafelek, by go zaznaczyć i skopiować „stem #index".',
+        messages().icons.intro,
       ),
     );
 
@@ -138,7 +137,7 @@ export function renderIconGallery(_canvas: HTMLCanvasElement, params: URLSearchP
     }
     const filter = el('input', '') as HTMLInputElement;
     filter.type = 'search';
-    filter.placeholder = 'filtr: indeks lub nazwa';
+    filter.placeholder = messages().icons.filter;
     const zoom = el('input', '') as HTMLInputElement;
     zoom.type = 'range';
     zoom.min = '2';
@@ -147,7 +146,7 @@ export function renderIconGallery(_canvas: HTMLCanvasElement, params: URLSearchP
     zoom.value = '3';
     const meta = el('span', '');
     meta.className = 'vig-meta';
-    const zoomLabel = el('label', '', 'zoom ');
+    const zoomLabel = el('label', '', `${messages().icons.zoom} `);
     zoomLabel.append(zoom);
     controls.append(select, filter, zoomLabel, meta);
     inner.append(controls);
@@ -178,7 +177,7 @@ export function renderIconGallery(_canvas: HTMLCanvasElement, params: URLSearchP
       selected = null;
       const atlas = await fetchJsonOrNull<AtlasJson>(`/bobs/${stem}.atlas.json`);
       if (atlas === null) {
-        meta.textContent = `nie udało się wczytać /bobs/${stem}.atlas.json`;
+        meta.textContent = formatMessage(messages().icons.loadFailed, { stem });
         return;
       }
       grid.style.setProperty('--sheet', `url('/bobs/${stem}.png')`);
@@ -187,8 +186,13 @@ export function renderIconGallery(_canvas: HTMLCanvasElement, params: URLSearchP
       const withName = stem.startsWith(`${GUI_BASE}.`);
       const drawable = atlas.frames.filter((f) => f.rect.width > 0 && f.rect.height > 0);
       const shown = drawable.slice(0, FRAME_CAP);
-      const capNote = drawable.length > FRAME_CAP ? ` (pokazano ${FRAME_CAP})` : '';
-      meta.textContent = `${stem} — ${drawable.length} klatek${capNote}`;
+      const capNote =
+        drawable.length > FRAME_CAP ? formatMessage(messages().icons.frameCapNote, { count: FRAME_CAP }) : '';
+      meta.textContent = formatMessage(messages().icons.frameCount, {
+        stem,
+        count: drawable.length,
+        note: capNote,
+      });
       const frag = document.createDocumentFragment();
       for (const f of shown) {
         const name = withName ? (GUI_FRAMES[f.bobId]?.name ?? '') : '';
@@ -214,7 +218,10 @@ export function renderIconGallery(_canvas: HTMLCanvasElement, params: URLSearchP
           selected = tile;
           const tag = `${stem} #${f.bobId}`;
           navigator.clipboard?.writeText(tag).catch(() => {});
-          meta.textContent = `${tag}${name ? `  (${name})` : ''} — skopiowano`;
+          meta.textContent = formatMessage(messages().icons.copied, {
+            tag,
+            name: name ? `  (${name})` : '',
+          });
         });
         frag.append(tile);
       }

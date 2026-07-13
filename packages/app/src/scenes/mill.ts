@@ -105,33 +105,11 @@ const WHEAT_DROPPED = WHEAT_PILES.reduce((sum, p) => sum + p.amount, 0);
 
 export const millScene: SceneDefinition = {
   id: 'mill',
-  title: 'Młyn — przemiał zboża na mąkę',
-  summary:
-    'Młynarze znoszą snopki zboża z kupek obok młyna do jego magazynu wejściowego (10 zboża), mielą ' +
-    'każdy w mące przez pełny cykl przemiału, a gotową mąkę (magazyn wyjściowy: 20) wynoszą do ' +
-    'magazynu obok. Skrzydła młyna to OSOBNY sprite: stoją nieruchomo, gdy młyn nie miele, a kręcą ' +
-    'się podczas przemiału.',
   seed: 13,
   terrain: grassTerrain(MAP_W, MAP_H),
   build,
   runTicks: RUN_TICKS,
   initialZoom: INITIAL_ZOOM,
-  checklist: [
-    'Korpus młyna NIE ma skrzydeł — skrzydła (wirnik) to osobny sprite narysowany NA budynku, zakotwiczony we właściwym miejscu wieży.',
-    'Gdy młyn NIE miele (brak zboża w środku / start sceny), skrzydła stoją NIERUCHOMO.',
-    'Podczas przemiału skrzydła KRĘCĄ SIĘ płynną animacją, a młynarz jest W ŚRODKU młyna (niewidoczny — pracuje w budynku, nie stoi obok).',
-    'Młynarze chodzą do kupek snopków, PODNOSZĄ zboże i wnoszą je do młyna (znikają w środku na czas odłożenia).',
-    'Zielona obramówka zaznaczonego młyna leży wyśrodkowana pod korpusem (nie obok) i nie zmienia rozmiaru, gdy wirnik się kręci.',
-    'Podgląd budynku w panelu trzyma STAŁE kadrowanie — nie przybliża się i nie oddala w rytm obrotu skrzydeł.',
-    'Panel młyna: sekcja Produkcja z ikoną mąki, polską nazwą („Mąka x1") i DŁUGIM paskiem postępu na partię (dwa wiersze pasków przy dwóch młynarzach — sekcja nie zmienia wysokości w trakcie pracy); Magazyn z DWOMA wierszami zawsze w kolejności Pszenica (x/10), Mąka (x/20) — nigdy zamienionymi.',
-    'Mąka BANKUJE SIĘ w młynie (licznik rośnie po każdym cyklu); młynarz wynosi ją do magazynu obok dopiero, gdy brakuje miejsca na kolejną — i nigdy nie odkłada jej na ziemię (żadna kupka na ziemi nie przekracza 5 sztuk jednego dobra).',
-    'DWÓCH młynarzy w środku = DWIE niezależne partie naraz: dwa paski Produkcji, każdy płynie normalnym tempem (żaden nigdy 2×), a mąki przybywa dwa razy szybciej; gdy jeden młynarz wyjdzie, jego pasek staje, drugi miele dalej.',
-    'Gdy jeden młynarz skończył swoją mąkę, a dla niego nie ma już zboża w młynie, WYCHODZI po następny snopek, podczas gdy drugi dalej miele w środku — nie czeka bezczynnie, aż kolega skończy.',
-    'Po przypisaniu TRAGARZA (PPM na młynie wolnym osadnikiem): tragarz w kółko donosi zboże do pełna (10) i wynosi mąkę do magazynu; młynarze mielą w środku, a gdy młyn mimo to stoi bez zboża, sami też idą po snopek (nie czekają bezczynnie na tragarza).',
-    'Pracownicy w panelu: Młynarz 0..2/2 i Tragarz 0..1/1 (obsadzone sloty z danych oryginału).',
-    'BEZROBOTNY (Cywil z palety Admina) stoi bezczynnie — nie zbiera snopków, nie nosi mąki, nie pracuje w ogóle, dopóki nie dostanie zawodu.',
-    'TRAGARZ z palety Admina sam melduje się do pierwszego wolnego slotu transportu (tu: młyn) i pracuje wyłącznie dla SWOJEGO budynku; gdy zboża nie ma na ziemi, młynarze noszą je z magazynu/farmy obok.',
-  ],
   checks: [
     {
       label: 'both millers are employed BY THE MILL (adopted + bound on tick 1)',

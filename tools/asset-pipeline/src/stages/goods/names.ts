@@ -19,14 +19,12 @@ import type { GoodLike } from './icons.js';
 /**
  * The languages whose localized good-name table we extract, most-preferred first. Each good-name string
  * file lives at `text/<dir>/strings/gameobjects/goods.{ini,cif}`; the mod ships Polish as a plaintext `.ini`
- * (CP1250, decoded directly) and English/German as encrypted `.cif` (latin1 through the oracle seam, then
- * re-decoded to CP1250 for display). Russian ships too but in CP1251, a distinct codepage this seam doesn't
- * yet handle, so it is intentionally omitted rather than shipped as mojibake.
+ * (CP1250, decoded directly) and English as encrypted `.cif` (latin1 through the oracle seam, then
+ * re-decoded to CP1250 for display). The app intentionally exposes only Polish and English.
  */
 const GOOD_NAME_LOCALES = [
   { code: 'pl', dir: 'pol', encrypted: false },
   { code: 'en', dir: 'eng', encrypted: true },
-  { code: 'de', dir: 'ger', encrypted: true },
 ] as const;
 
 /** Path of a locale's good-name string table (plaintext `.ini` when not encrypted, else the `.cif`). */

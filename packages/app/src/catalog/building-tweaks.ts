@@ -6,7 +6,7 @@ import type { FootprintCell } from '@open-northland/data';
  *
  * Source basis: the extracted `LogicDoorPoint` is faithful to the mod's data, but for a handful of
  * buildings it does not coincide with the DOOR GRAPHIC as our renderer draws it. These shifts are the
- * user's visual sign-off over the `?scene=building-geometry&debug=geometry` gallery (review of
+ * user's visual sign-off with the admin geometry grid enabled in the sandbox (review of
  * 2026-07-10): every building was checked and only the ones below needed a nudge. They are a named
  * approximation (our render vs the authored data), not extraction fixes — applied at the ONE seam
  * where extracted footprints enter live content (`content/ir.ts` `buildingFootprints`), so the sim's

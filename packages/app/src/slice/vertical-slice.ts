@@ -187,6 +187,7 @@ export function runSlice(
   map?: TerrainMap,
   owner?: number,
   footprints?: ReadonlyMap<number, BuildingFootprint>,
+  goodNames?: ReadonlyMap<string, string>,
 ): Simulation {
   // Resolve placement first: a usable map yields its first six walkable cells; no map (or a map with
   // too few walkable cells) falls back to the synthetic strip — content + terrain + cells all revert
@@ -199,6 +200,7 @@ export function runSlice(
   // clean-room approximations with the buildings' real collision bodies (see SandboxContentExtras).
   const content = sandboxContent(usable ? map : undefined, {
     ...(footprints ? { buildingFootprints: footprints } : {}),
+    ...(goodNames ? { goodNames } : {}),
   });
   const terrain = usable ? map : grassMap();
   const cells = mapCells ?? STRIP_CELLS;
@@ -270,9 +272,11 @@ export function runBareMap(
   seed: number,
   map: TerrainMap,
   footprints?: ReadonlyMap<number, BuildingFootprint>,
+  goodNames?: ReadonlyMap<string, string>,
 ): Simulation {
   const content = sandboxContent(map, {
     ...(footprints ? { buildingFootprints: footprints } : {}),
+    ...(goodNames ? { goodNames } : {}),
   });
   return new Simulation({ seed, content, map });
 }
@@ -295,6 +299,7 @@ export function runAuthoredSlice(
   entities: NonNullable<TerrainMapFile['entities']>,
   rows: AuthoredJoinRows,
   footprints?: ReadonlyMap<number, BuildingFootprint>,
+  goodNames?: ReadonlyMap<string, string>,
 ): Simulation | null {
   const { placements, skipped } = resolveAuthoredPlacements(entities, rows, map);
   if (placements.length === 0) return null;
@@ -329,6 +334,7 @@ export function runAuthoredSlice(
     tribes: usedTribes.map((typeId) => ({ typeId, id: `tribe_${typeId}` })),
     // Live real-content footprints (from ir.json), so authored + interactively-placed buildings collide.
     ...(footprints ? { buildingFootprints: footprints } : {}),
+    ...(goodNames ? { goodNames } : {}),
   });
 
   const sim = new Simulation({ seed, content, map });

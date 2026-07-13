@@ -7,7 +7,7 @@ import {
   type SpriteAtlas,
   type SpriteLayer,
 } from '@open-northland/render';
-import { headLabel, pickWalkRow, type VikingCharacter } from '../catalog/roster.js';
+import { characterLabel, headLabel, pickWalkRow, type VikingCharacter } from '../catalog/roster.js';
 import type { BobSeqRow } from '../content/ir.js';
 
 /**
@@ -29,12 +29,12 @@ const WALK_SEQ = 'human_man_generic_walk';
 export type GalleryView = 'anim' | 'heads' | 'colors';
 
 /**
- * Parse `?view=` — `heads`/`looks`/`glowy` → the looks montage, `colors`/`kolory` → the player-colour
+ * Parse `?view=` — `heads`/`looks` → the looks montage, `colors`/`colours` → the player-colour
  * montage, anything else (incl. absent) → the animation view.
  */
 export function parseView(raw: string | null): GalleryView {
-  if (raw === 'heads' || raw === 'looks' || raw === 'glowy') return 'heads';
-  if (raw === 'colors' || raw === 'colours' || raw === 'kolory') return 'colors';
+  if (raw === 'heads' || raw === 'looks') return 'heads';
+  if (raw === 'colors' || raw === 'colours') return 'colors';
   return 'anim';
 }
 
@@ -147,9 +147,10 @@ export function buildHeadsCells(
   const walkClip = clipFromRow(walkRow);
   const needle = filter.toLowerCase();
   if (char.headBmds.length === 0) {
+    const label = characterLabel(char);
     // Body-only creature (the baby): a single bare cell so the view isn't empty.
-    return needle === '' || char.label.toLowerCase().includes(needle)
-      ? [{ clip: walkClip, body, overlays: [], label: char.label }]
+    return needle === '' || label.toLowerCase().includes(needle)
+      ? [{ clip: walkClip, body, overlays: [], label }]
       : [];
   }
   const cells: GalleryCellSpec[] = [];
@@ -214,9 +215,10 @@ export function buildRosterCells(loaded: readonly RosterLoad[], filter = ''): Ga
     if (walkRow === undefined) continue;
     const walkClip = clipFromRow(walkRow);
     if (char.headBmds.length === 0) {
+      const label = characterLabel(char);
       // Body-only creature (the baby): one bare cell, no head overlay.
-      if (needle === '' || char.label.toLowerCase().includes(needle)) {
-        cells.push({ clip: walkClip, body, overlays: [], label: char.label });
+      if (needle === '' || label.toLowerCase().includes(needle)) {
+        cells.push({ clip: walkClip, body, overlays: [], label });
       }
       continue;
     }
@@ -234,7 +236,8 @@ export function buildRosterCells(loaded: readonly RosterLoad[], filter = ''): Ga
 
 /** A compact roster caption: the character label, plus the head index when the body has several looks. */
 export function rosterLabel(char: VikingCharacter, headBmd: string): string {
-  if (char.headBmds.length < 2) return char.label;
+  const label = characterLabel(char);
+  if (char.headBmds.length < 2) return label;
   const m = /_(\d+)$/.exec(headBmd);
-  return m !== null ? `${char.label} ${m[1]}` : char.label;
+  return m !== null ? `${label} ${m[1]}` : label;
 }

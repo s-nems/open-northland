@@ -154,24 +154,11 @@ function everyNonEnemySettlerIsBlue(sim: Simulation): boolean {
 
 export const sandboxScene: SceneDefinition = {
   id: 'sandbox',
-  title: 'Duza scena testowa',
-  summary:
-    'Jedna duza mapa testowa: wszystkie budynki wikingow, lanes zbierania surowcow, niebieskie jednostki ' +
-    'gracza do zaznaczania/rozkazow oraz czerwony wrogi oddzial. Zasady, animacje, dzwieki, menu budowy, ' +
-    'predkosc gry i sterowanie sa globalne, nie scenowe.',
   seed: 41,
   terrain: grassTerrain(MAP_W, MAP_H),
   build,
   runTicks: RUN_TICKS,
   initialZoom: INITIAL_ZOOM,
-  checklist: [
-    'Lewy panel, predkosc gry, dzwiek i kontrola jednostek dzialaja tutaj tak samo jak w widoku mapy',
-    'Menu budowy pokazuje globalna liste budynkow, a nie liste wymyslona przez scene',
-    'Niebieskie jednostki daja sie zaznaczac i rozkazywac; czerwone jednostki sa wrogie i nie daja sie kontrolowac',
-    'Wszystkie budynki stoja na jednej mapie i kazdy rysuje wlasny sprite',
-    'Zbieracze pracuja roznymi animacjami i skladaja surowce na flagach',
-    'Czerwony oddzial walczy z niebieskim, bo wrogosc wynika z gracza/koloru, nie z lokalnej sceny',
-  ],
   checks: [
     {
       label: 'the global viking building catalog is present on the map',
