@@ -29,7 +29,7 @@ describe('resolveArgs', () => {
     expect(
       resolveArgs(
         { game: '../Cultures 8th Wonder', mod: 'DataCnmd', out: 'content' },
-        resolve('/home/u/opennorthland'),
+        resolve('/home/u/open-northland'),
       ),
     ).toEqual({
       game: resolve('/home/u/Cultures 8th Wonder'),
@@ -41,7 +41,7 @@ describe('resolveArgs', () => {
   it('passes absolute game/out through unchanged', () => {
     const game = resolve('/abs/game');
     const out = resolve('/abs/out');
-    expect(resolveArgs({ game, mod: undefined, out }, resolve('/home/u/opennorthland'))).toEqual({
+    expect(resolveArgs({ game, mod: undefined, out }, resolve('/home/u/open-northland'))).toEqual({
       game,
       mod: undefined,
       out,
