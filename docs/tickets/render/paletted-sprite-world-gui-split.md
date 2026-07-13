@@ -2,8 +2,9 @@
 
 **Area:** render, app · **Origin:** /refactor-cleanup on packages/render, 2026-07-12
 
-`gpu/paletted-sprite.ts` (418 lines) serves two unrelated domains in one class and
-one shader program:
+`gpu/paletted-sprite/paletted-sprite.ts` (the `PalettedSprite` class, ~273 lines;
+its GL program now lives in the sibling `gpu/paletted-sprite/shader.ts`) still
+serves two unrelated domains in one class and one shader program:
 
 - **World settler rendering** — `place`, `setFrame`, `player`, `artScale` — the team-
   colour LUT mesh, used by `gpu/sprite-pool/sprite-pool.ts`.
