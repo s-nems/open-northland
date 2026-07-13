@@ -1,27 +1,18 @@
-import { GUI_FRAME, guiFrameIndex } from '../../content/gui-atlas-map.js';
-import type { UiString } from '../../content/gui-gfx.js';
-import type { Rect } from '../geometry.js';
-import type { Chrome } from './chrome.js';
+import { GUI_FRAME, guiFrameIndex } from '../../../content/gui-atlas-map.js';
+import type { UiString } from '../../../content/gui-gfx.js';
+import type { Rect } from '../../geometry.js';
+import type { Chrome } from '../chrome.js';
 import {
   BAR_H,
   type BuildingLayout,
   type ButtonAction,
-  type CompactLayout,
-  EQUIP_ROW_H,
   PREVIEW_INSET,
-  ROW_H,
-  type SettlerLayout,
   STOCK_PLATE_H,
   STOCK_ROW_H,
   stockSlotRects,
-} from './layout.js';
-import {
-  type BuildingPanelModel,
-  type GenericSelectionPanelModel,
-  HUMANWINDOW,
-  type MultiSettlerPanelModel,
-  type SettlerPanelModel,
-} from './model/index.js';
+} from '../layout.js';
+import type { BuildingPanelModel } from '../model/index.js';
+import { ROW_TEXT_PAD } from './shared.js';
 
 /**
  * The decoded `housewindow` string ids the building sections consume (see `content/gui/strings/<lang>.json`,
@@ -38,8 +29,6 @@ const HOUSEWINDOW = {
   workersButton: 118, // 'Pracownicy'
   help: 120, // 'Pomoc'
 } as const;
-/** `humanlistwindow` 2: 'Liczba poddanych na liście: %d'. */
-const HUMANLIST_COUNT = 2;
 
 const BUTTON_STRING: Readonly<Record<ButtonAction, { id: number; fallback: string }>> = {
   demolish: { id: HOUSEWINDOW.demolish, fallback: 'Zniszcz' },
@@ -48,8 +37,6 @@ const BUTTON_STRING: Readonly<Record<ButtonAction, { id: number; fallback: strin
   help: { id: HOUSEWINDOW.help, fallback: 'Pomoc' },
 };
 
-/** Top padding that vertically centers a font-10 line in a {@link ROW_H} row. */
-const ROW_TEXT_PAD = 2;
 /** Stock cell: icon slot width before the amount plate (≈15 px icon + a small gap in the original). */
 const STOCK_ICON_W = 18;
 /** Left inset of the amount text inside its plate (eyeballed off the 1024×768 screenshots). */
@@ -59,19 +46,6 @@ const STOCK_AMOUNT_INSET = 6;
 const PRODUCTION_BAR_LEFT = 128;
 /** The active stock tab's lime underline height in design px (kept ≥2 screen px so it reads at uiscale 1). */
 const STOCK_TAB_UNDERLINE_H = 2;
-/** Key column width of a key/value row. */
-const KV_KEY_W = 82;
-/** The Ogólne stat rows' label column (fits the widest label, "Towarzystwo") — the gauge fills the
- *  REST of the row, so the bars run edge-to-edge with the column instead of floating as short stubs
- *  (user feedback 2026-07-11: wider bars). */
-const STAT_LABEL_W = 78;
-/** An Ogólne stat gauge's height — a touch taller than the building's 10-px progress bar so the
- *  gradient has room to read, still inside the 13-px bar row. */
-const STAT_BAR_H = 11;
-/** How far an equip good's icon EXTENDS beyond its socket ring on every side (design px). The original's
- *  chunky equip icons spill a touch over the ring — a bigger icon reads far better than a tiny one
- *  rattling inside the circle. */
-const SLOT_ICON_OVERFLOW = 3;
 
 /**
  * Stock amounts render with one decimal, LEFT-aligned inside the plate ("15.0") — both observed off
@@ -306,192 +280,4 @@ function drawStockTabs(chrome: Chrome, rects: readonly Rect[], activeTab: number
       h: underlineH,
     });
   }
-}
-
-/**
- * The settler view: the original's stacked human-window sections — Ogólne, Praca, Doświadczenie,
- * Ekwipunek — each a parchment window with a decoded `humanwindow` headline (see {@link HUMANWINDOW}).
- */
-export function drawSettler(
-  chrome: Chrome,
-  layout: SettlerLayout,
-  model: SettlerPanelModel,
-  ui: UiString,
-  s: number,
-): void {
-  drawGeneralSection(chrome, layout, model, s);
-  drawWorkSection(chrome, layout, model, ui, s);
-  drawExperienceSection(chrome, layout, model, ui, s);
-  drawEquipmentSection(chrome, layout, model, ui, s);
-}
-
-/**
- * Ogólne: the portrait box (a person glyph placeholder + a live status caption — an honest stand-in for
- * the original's animated "co robi" preview, the live settler bob being a deferred follow-up) and the
- * name / meta / stat-bar column beside it.
- */
-function drawGeneralSection(
-  chrome: Chrome,
-  layout: SettlerLayout,
-  model: SettlerPanelModel,
-  s: number,
-): void {
-  chrome.window(layout.general.frame);
-  // The section title is the character's personal name (see `model.name`), personalising the panel in
-  // place of the original's generic "Ogólne" heading.
-  chrome.headline(layout.general.title, model.name);
-
-  chrome.innerBox(layout.preview);
-  chrome.guiCentered(GUI_FRAME.house_plate, layout.preview, 'magenta', 'bg_normal');
-  chrome.guiCentered(GUI_FRAME.tool_button_population, layout.preview, 'full');
-  const captionH = Math.round(ROW_H * s);
-  const caption: Rect = {
-    x: layout.preview.x,
-    y: layout.preview.y + layout.preview.h - captionH,
-    w: layout.preview.w,
-    h: captionH,
-  };
-  chrome.scrim(caption, 0.55);
-  chrome.textCentered(model.statusCaption, caption, 'white');
-
-  chrome.textAt(model.profession, layout.name.x, layout.name.y + ROW_TEXT_PAD * s, 'white', 'title');
-  chrome.textAt(model.meta, layout.meta.x, layout.meta.y + ROW_TEXT_PAD * s, 'dimmed');
-
-  // Stat bars: the model's pinned label (Zdrowie/Głód/…) in a fixed column, then a level-coloured
-  // gauge (the decoded ramp sweeps red→orange→green with the level) filling the REST of the row; the
-  // hover value lives in the panel's cursor tooltip.
-  const labelW = Math.round(STAT_LABEL_W * s);
-  const barH = Math.round(STAT_BAR_H * s);
-  model.bars.forEach((barModel, i) => {
-    const r = layout.bars[i];
-    if (r === undefined) return;
-    chrome.textAt(barModel.label, r.x, r.y + ROW_TEXT_PAD * s, 'white');
-    chrome.bar(
-      { x: r.x + labelW, y: r.y + Math.round((r.h - barH) / 2), w: r.w - labelW, h: barH },
-      barModel.pct,
-      'gauge',
-    );
-  });
-}
-
-/** Praca: the workplace and the good it makes (or what the settler carries). Key labels are pinned
- *  Polish — the original shows an icon inline, not a key column, so there is no decoded key string. */
-function drawWorkSection(
-  chrome: Chrome,
-  layout: SettlerLayout,
-  model: SettlerPanelModel,
-  ui: UiString,
-  s: number,
-): void {
-  chrome.window(layout.work.frame);
-  chrome.headline(layout.work.title, ui('humanwindow', HUMANWINDOW.work, 'Praca'));
-  const keyW = Math.round(KV_KEY_W * s);
-  const [place, product] = layout.workRows;
-  if (place !== undefined) {
-    chrome.textAt('Miejsce', place.x, place.y + ROW_TEXT_PAD * s, 'white');
-    chrome.textAt(model.work.place, place.x + keyW, place.y + ROW_TEXT_PAD * s, 'white');
-  }
-  if (product !== undefined) {
-    chrome.textAt('Produkt', product.x, product.y + ROW_TEXT_PAD * s, 'white');
-    chrome.textAt(model.work.product, product.x + keyW, product.y + ROW_TEXT_PAD * s, 'white');
-  }
-}
-
-/** Doświadczenie: the settler's highest recorded specialization (or "żadne" — the sim awards none yet). */
-function drawExperienceSection(
-  chrome: Chrome,
-  layout: SettlerLayout,
-  model: SettlerPanelModel,
-  ui: UiString,
-  s: number,
-): void {
-  chrome.window(layout.experience.frame);
-  chrome.headline(layout.experience.title, ui('humanwindow', HUMANWINDOW.experience, 'Doświadczenie'));
-  const r = layout.expRow;
-  chrome.textAt(
-    ui('humanwindow', HUMANWINDOW.highestExp, 'Najwyższe Doświadczenie'),
-    r.x,
-    r.y + ROW_TEXT_PAD * s,
-    'white',
-  );
-  const value =
-    model.experience === null
-      ? ui('humanwindow', HUMANWINDOW.none, 'żadne')
-      : `${model.experience.label} (${model.experience.points})`;
-  chrome.textRight(value, r.x + r.w, r.y + ROW_TEXT_PAD * s, 'white');
-}
-
-/**
- * Ekwipunek: one labeled row per slot group (Buty / Narzędzia / Broń / Zbroja / Ekwipunek). Each row's
- * label sits left of its round sockets; an occupied socket shows the good's icon (when it has an
- * `ls_goods` pile — potions/amulets have none, so they read by the warm-tinted socket) and, for a
- * WEARING good, its "degree of use" percent in the column right of the socket.
- */
-function drawEquipmentSection(
-  chrome: Chrome,
-  layout: SettlerLayout,
-  model: SettlerPanelModel,
-  ui: UiString,
-  s: number,
-): void {
-  chrome.window(layout.equipment.frame);
-  chrome.headline(layout.equipment.title, ui('humanwindow', HUMANWINDOW.equip, 'Ekwipunek'));
-  const iconOverflow = Math.round(SLOT_ICON_OVERFLOW * s);
-  // Vertically centre a body line against the taller equipment row (and the sockets in it).
-  const labelPadY = Math.round(((EQUIP_ROW_H - ROW_H) / 2 + ROW_TEXT_PAD) * s);
-  layout.equipRows.forEach((rowRect, i) => {
-    const row = model.equipmentRows[i];
-    if (row === undefined) return;
-    chrome.textAt(
-      ui('humanwindow', row.titleId, row.fallback),
-      rowRect.label.x,
-      rowRect.label.y + labelPadY,
-      'white',
-    );
-    rowRect.slots.forEach((slotRect, j) => {
-      const slot = row.slots[j];
-      chrome.slotSocket(slotRect, slot?.goodId !== undefined);
-      if (slot?.goodId !== undefined) {
-        chrome.goodIcon(slot.goodId, {
-          x: slotRect.x - iconOverflow,
-          y: slotRect.y - iconOverflow,
-          w: slotRect.w + iconOverflow * 2,
-          h: slotRect.h + iconOverflow * 2,
-        });
-      }
-      if (slot?.usePct != null) {
-        chrome.textAt(
-          `${slot.usePct}%`,
-          // Past the icon's right overflow, so a bigger icon can't crowd the "70%" badge.
-          slotRect.x + slotRect.w + iconOverflow + Math.round(2 * s),
-          slotRect.y + Math.round((slotRect.h - ROW_H * s) / 2) + ROW_TEXT_PAD * s,
-          'white',
-        );
-      }
-    });
-  });
-}
-
-export function drawCompact(
-  chrome: Chrome,
-  layout: CompactLayout,
-  model: MultiSettlerPanelModel | GenericSelectionPanelModel,
-  ui: UiString,
-  s: number,
-): void {
-  chrome.window(layout.section.frame);
-  const title =
-    model.kind === 'multi-settler'
-      ? ui('humanlistwindow', HUMANLIST_COUNT, 'Liczba poddanych na liście: %d').replace(
-          '%d',
-          String(model.count),
-        )
-      : `${model.count} zaznaczonych`;
-  chrome.headline(layout.section.title, title);
-  chrome.textAt(
-    'PPM — rozkaz ruchu, Spacja — akcje',
-    layout.section.body.x,
-    layout.section.body.y + ROW_TEXT_PAD * s,
-    'dimmed',
-  );
 }

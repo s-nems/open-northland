@@ -19,7 +19,7 @@ import {
   stockSlotRects,
 } from './layout.js';
 import { buildUnitPanelModel, type UnitPanelModel, type UnitPanelModelContext } from './model/index.js';
-import { drawBuilding, drawCompact, drawSettler } from './sections.js';
+import { drawBuilding, drawCompact, drawSettler } from './sections/index.js';
 import { STOCK_TAB_LABELS } from './stock-tabs.js';
 import { WorkerSpriteOverlay } from './worker-sprites.js';
 
