@@ -46,8 +46,13 @@ export const WeaponType = z.strictObject({
   damageType: ClassId.optional(),
   minRange: z.number().int().nonnegative().default(1),
   maxRange: z.number().int().nonnegative().default(1),
-  /** damageValue[targetArmorClass] -> value, as in the original weapontypes. */
-  damage: z.record(z.string(), z.number()).default({}),
+  /**
+   * `damageValue[targetArmorClass] -> value`, as in the original weapontypes. Keyed by the numeric
+   * armor {@link ClassId} the hit lands on (the string form the read view resolves with
+   * `damage[String(armorClass)]`; JSON object keys are strings on disk). Values are whole
+   * hit-points — every base weapon's `damageValue` is an integer — so they are constrained to `int`.
+   */
+  damage: z.record(z.string(), z.number().int()).default({}),
   jobType: TypeId.optional(),
   /**
    * `goodtype` — the good that IS this weapon (the craftable item a settler wields), the weapon-side
