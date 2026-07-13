@@ -17,3 +17,16 @@ export function retireUndrawn<K, V>(
     pool.delete(key);
   }
 }
+
+/**
+ * The other half of the retained-pool cull, paired with {@link retireUndrawn}: a live node that scrolled
+ * OFF-screen. Hide its pooled node (if one is built yet) but mark `key` as drawn so it survives the retire
+ * sweep — it's live, just not on screen, and will scroll back. The caller then `continue`s past the
+ * reposition/rebuild, so an off-screen node costs one visibility write, not a rebuild. Marking a key with
+ * no pooled node is harmless (retire only walks the pool). Keeps the off-screen dance identical across the
+ * viewport-culled overlays (combat marks, door badges).
+ */
+export function retainOffscreen<K>(node: { visible: boolean } | undefined, key: K, drawn: Set<K>): void {
+  if (node !== undefined) node.visible = false;
+  drawn.add(key);
+}

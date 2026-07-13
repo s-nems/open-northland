@@ -15,7 +15,7 @@ import { halfCellToScreen } from '../../data/iso.js';
 import type { AtlasFrame } from '../../data/sprites/index.js';
 import { isVisible, type Viewport } from '../../data/viewport.js';
 import type { TextureCache } from '../texture-cache.js';
-import { retireUndrawn } from './retained-pool.js';
+import { retainOffscreen, retireUndrawn } from './retained-pool.js';
 
 /**
  * The decoded bone-pile art the layer draws for a death (the original's `cadaver human bones` landscape
@@ -111,8 +111,7 @@ export class CombatEffectsLayer {
       // Cull by the feet point (the mark's own anchor), so a body-lifted spurt near the top edge still shows.
       let node = this.nodes.get(key);
       if (!isVisible(viewport, p.x, p.y - lift)) {
-        if (node !== undefined) node.visible = false;
-        this.seen.add(key); // retain it — it's live, just not on screen
+        retainOffscreen(node, key, this.seen); // live, just not on screen — retain, don't retire
         continue;
       }
       if (node === undefined) {

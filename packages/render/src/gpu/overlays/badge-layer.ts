@@ -2,7 +2,7 @@ import { Container, Graphics } from 'pixi.js';
 import { type ElevationField, terrainLiftAt } from '../../data/elevation.js';
 import { ONE, tileToScreen } from '../../data/iso.js';
 import { isVisible, type Viewport } from '../../data/viewport.js';
-import { retireUndrawn } from './retained-pool.js';
+import { retainOffscreen, retireUndrawn } from './retained-pool.js';
 
 /**
  * The DOOR-BADGE layer — a small stacked marker beside each staffed building's door showing how many
@@ -86,12 +86,10 @@ export class BadgeLayer {
 
       let stack = this.stacks.get(badge.id);
       // Off-screen: retain the pooled stack (hidden) so it isn't retired, but skip the reposition/rebuild;
-      // a not-yet-built off-screen building simply waits to be built until it scrolls into view.
+      // a not-yet-built off-screen building simply waits to be built until it scrolls into view (marking an
+      // id with no pooled stack is harmless — retire only walks the stacks map).
       if (viewport !== undefined && !isVisible(viewport, p.x, p.y)) {
-        if (stack !== undefined) {
-          stack.node.visible = false;
-          this.drawn.add(badge.id);
-        }
+        retainOffscreen(stack?.node, badge.id, this.drawn);
         continue;
       }
       const lift = terrainLiftAt(elevation, tileX, tileY);
