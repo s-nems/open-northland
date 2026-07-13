@@ -1,7 +1,7 @@
 import { buildSpriteScene, createWindowPixiApp, terrainMapToScene, WorldRenderer } from '@vinland/render';
 import { goodLocaleParam, loadGoodNameMap } from '../content/good-names.js';
 import { buildingFootprints, loadIr } from '../content/ir.js';
-import { resolveSpriteSheet } from '../content/sprite-sheet.js';
+import { resolveSpriteSheet } from '../content/sprite-sheet/index.js';
 import { loadRealTerrain } from '../content/terrain.js';
 import { fogModeParam } from '../game/fog.js';
 import { createSceneSim, getScene, SCENES } from '../scenes/index.js';

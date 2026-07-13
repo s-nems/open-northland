@@ -307,7 +307,7 @@ export function gfxAtomicFrameLists(
  * `content/ir.json`, in file order — the raw animation list the {@link import('@vinland/render').AnimationGallery}
  * plays. Returns `[]` when the IR is absent (a checkout without `content/`), so the gallery can show a
  * "run the pipeline" message instead of crashing. The atlas *image* is loaded separately
- * ({@link import('./sprite-sheet.js').loadHumanSpriteSheet}); this is only the frame RANGES the gallery indexes.
+ * ({@link import('./sprite-sheet/index.js').loadHumanSpriteSheet}); this is only the frame RANGES the gallery indexes.
  */
 export async function loadBodyClips(imagelib: string = BODY_IMAGELIB): Promise<BobSeqRow[]> {
   const ir = await loadIr();
@@ -318,7 +318,7 @@ export async function loadBodyClips(imagelib: string = BODY_IMAGELIB): Promise<B
 /**
  * Load a gallery character's layers: one body atlas + N head atlases, given the already-resolved served
  * stems (`<bmd-stem>.<palette>`, e.g. `cr_hum_body_05.test_human_00`) — the only human loader the animation
- * gallery (`?anim`) needs. Unlike {@link import('./sprite-sheet.js').loadHumanSpriteSheet} it does NOT pull in
+ * gallery (`?anim`) needs. Unlike {@link import('./sprite-sheet/index.js').loadHumanSpriteSheet} it does NOT pull in
  * the tree / house / building-family atlases (a gallery never draws them), so a partial `content/` still opens
  * the gallery.
  *

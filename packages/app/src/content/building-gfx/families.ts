@@ -128,7 +128,7 @@ export interface BuildingFamily {
  * canonical row in one of these binds a layer-qualified `{ layer, bob }` ref; the
  * {@link buildingBobRefsByType} reducer DROPS a row whose family is NOT in this list (it falls back to
  * {@link VIKING_HOUSE01_BOBS}/the default house), so a family must be both listed here AND loaded in
- * {@link import('../sprite-sheet.js').loadHumanSpriteSheet} for its types to draw their real bob.
+ * {@link import('../sprite-sheet/index.js').loadHumanSpriteSheet} for its types to draw their real bob.
  *
  * This loads **all seven viking families** so EVERY viking building draws its own bob: the default
  * `ls_houses_viking.house01` (the homes / well / hive / farm / bakery, bound as the `building` kind),

@@ -7,7 +7,7 @@ import {
   WorldRenderer,
 } from '@vinland/render';
 import { halfCellMapFromCells } from '@vinland/sim';
-import { loadHumanSpriteSheet, syntheticSpriteSheet } from '../content/sprite-sheet.js';
+import { loadHumanSpriteSheet, syntheticSpriteSheet } from '../content/sprite-sheet/index.js';
 import { loadRealTerrain } from '../content/terrain.js';
 import { HUD_TRIBE } from '../game/rules.js';
 import { loadTerrainMap } from '../slice/map-loader.js';
