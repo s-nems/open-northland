@@ -11,18 +11,12 @@ import {
   Stockpile,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import {
-  CORE_INVARIANTS,
-  cellAnchorNode,
-  checkInvariants,
-  fx,
-  halfCellMapFromCells,
-  Simulation,
-  type TerrainMap,
-} from '../../src/index.js';
-import { atomicSystem, type SystemContext } from '../../src/systems/index.js';
+import { CORE_INVARIANTS, cellAnchorNode, checkInvariants, fx, Simulation } from '../../src/index.js';
+import { atomicSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
+import { ctxOf } from '../fixtures/context.js';
 import { clearComponentStores } from '../fixtures/stores.js';
+import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
  * MINERAL DEPOSITS — SHRINK BY LEVEL, DROP ORE TO GROUND (historical plan phase 3, gathering Step 4). A mined
@@ -40,7 +34,6 @@ import { clearComponentStores } from '../fixtures/stores.js';
  * `depositLevels`, OBSERVED — source basis), read here so the tests carry no magic literals.
  */
 
-const GRASS = 0;
 const STONE = 4; // fixture good: a MINED deposit (gathering.depositSize > 0)
 const MUSHROOM = 5; // fixture good: the trivial direct pickup (no depositSize)
 const MINER = 5; // fixture job allowed the stone harvest atomic (25)
@@ -55,20 +48,7 @@ const DEPOSIT_LEVELS = STONE_GATHERING?.depositLevels ?? 0;
 
 beforeEach(clearComponentStores);
 
-function ctxOf(sim: Simulation): SystemContext {
-  return {
-    content: sim.content,
-    rng: sim.rng,
-    tick: sim.tick,
-    events: sim.events,
-    ...(sim.terrain !== undefined ? { terrain: sim.terrain } : {}),
-  };
-}
-
 /** A `width`×`height` CELL strip of grass, upsampled to the half-cell navigation lattice. */
-function grassMap(width: number, height: number): TerrainMap {
-  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });
-}
 
 /** A miner settler at integer tile (x,y): needs at 0, empty experience. */
 function makeMiner(sim: Simulation, x: number, y: number): Entity {

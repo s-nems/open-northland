@@ -10,10 +10,12 @@ import {
   Vehicle,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { fx, ONE, Simulation, type TerrainMap } from '../../src/index.js';
-import { type SystemContext, stockCapacity } from '../../src/systems/index.js';
+import { fx, ONE, Simulation } from '../../src/index.js';
+import { stockCapacity } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
+import { ctxOf } from '../fixtures/context.js';
 import { clearComponentStores } from '../fixtures/stores.js';
+import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 /**
  * The cargo-LOAD gate for **boats as mobile stores** — the *load half* of the empty hull `placeBoat`
@@ -32,7 +34,6 @@ import { clearComponentStores } from '../fixtures/stores.js';
  * is observable both ways.
  */
 
-const GRASS = 0;
 const WOOD = 1;
 const PLANK = 2;
 const CARRIER = 36; // fixture job with no allowedAtomics — it can only haul
@@ -48,10 +49,6 @@ function boatContent(): ContentSet {
     ...base,
     vehicles: [{ typeId: BOAT, id: 'ship', stockSlots: HOLD, passengerSlots: 9, cargoGoods: [PLANK] }],
   });
-}
-
-function grassMap(width: number, height: number): TerrainMap {
-  return { resolution: 'half-cell', width, height, typeIds: new Array(width * height).fill(GRASS) };
 }
 
 beforeEach(clearComponentStores);
@@ -88,16 +85,6 @@ function boatAt(sim: Simulation, x: number, y: number): Entity {
   sim.world.add(e, Vehicle, { vehicleType: BOAT, tribe: VIKING });
   sim.world.add(e, Stockpile, { amounts: new Map() });
   return e;
-}
-
-function ctxOf(sim: Simulation): SystemContext {
-  return {
-    content: sim.content,
-    rng: sim.rng,
-    tick: sim.tick,
-    events: sim.events,
-    ...(sim.terrain !== undefined ? { terrain: sim.terrain } : {}),
-  };
 }
 
 describe('boat cargo-load gate — stockCapacity over a Vehicle hull', () => {

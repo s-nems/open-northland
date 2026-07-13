@@ -1,13 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { clearComponentStores } from '../../src/harness/stores.js';
-import {
-  type Command,
-  diffSnapshots,
-  Simulation,
-  type TerrainMap,
-  type WorldSnapshot,
-} from '../../src/index.js';
+import { type Command, diffSnapshots, Simulation, type WorldSnapshot } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
+import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 /**
  * Tests for `diffSnapshots()` — the "diff state between two ticks" half of the time-travel / replay
@@ -19,13 +14,8 @@ import { testContent } from '../fixtures/content.js';
 const HEADQUARTERS = 1;
 const WOODCUTTER = 1;
 const VIKING = 1;
-const GRASS = 0;
 
 /** Clear every component store (shared singletons) so each sim phase starts clean. */
-
-function grassMap(width: number, height: number): TerrainMap {
-  return { resolution: 'half-cell', width, height, typeIds: new Array(width * height).fill(GRASS) };
-}
 
 /** Build a minimal snapshot value with the given entities (already ascending by id). */
 function snap(tick: number, entities: { id: number; components: Record<string, unknown> }[]): WorldSnapshot {

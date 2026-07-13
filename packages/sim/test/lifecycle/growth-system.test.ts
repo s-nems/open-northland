@@ -4,7 +4,6 @@ import { Age, Building, Position, Settler } from '../../src/components/index.js'
 import type { Entity } from '../../src/ecs/world.js';
 import { clearComponentStores } from '../../src/harness/stores.js';
 import { fx, ONE, Simulation } from '../../src/index.js';
-import type { SystemContext } from '../../src/systems/index.js';
 import {
   BABY_FEMALE,
   BABY_MALE,
@@ -16,6 +15,7 @@ import {
   NEWBORN_AGE_CLASS,
   reproductionSystem,
 } from '../../src/systems/index.js';
+import { ctxOf } from '../fixtures/context.js';
 
 /**
  * GrowthSystem — a settler born young ({@link Age}-bearing) matures baby → child → adult-eligible over
@@ -37,16 +37,6 @@ function growthContent(): ContentSet {
 beforeEach(() => {
   clearComponentStores();
 });
-
-function ctxOf(sim: Simulation): SystemContext {
-  return {
-    content: sim.content,
-    rng: sim.rng,
-    tick: sim.tick,
-    events: sim.events,
-    ...(sim.terrain !== undefined ? { terrain: sim.terrain } : {}),
-  };
-}
 
 /** Add a settler in a given non-working age class WITH an Age component at `ticks`. */
 function bornSettler(sim: Simulation, jobType: number, ticks: number): Entity {

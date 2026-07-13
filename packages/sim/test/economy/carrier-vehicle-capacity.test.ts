@@ -4,7 +4,8 @@ import { Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { clearComponentStores } from '../../src/harness/stores.js';
 import { fx, Simulation } from '../../src/index.js';
-import { carrierCarryCapacity, type SystemContext } from '../../src/systems/index.js';
+import { carrierCarryCapacity } from '../../src/systems/index.js';
+import { ctxOf } from '../fixtures/context.js';
 
 /**
  * carrierCarryCapacity — a carrier hauls a batch sized by the largest `stockSlots` (vehicle carry
@@ -58,10 +59,6 @@ function vehicleContent(): ContentSet {
 beforeEach(() => {
   clearComponentStores();
 });
-
-function ctxOf(sim: Simulation): SystemContext {
-  return { content: sim.content, rng: sim.rng, tick: sim.tick, events: sim.events };
-}
 
 function settlerOf(sim: Simulation, jobType: number, tribe: number): Entity {
   const e = sim.world.create();

@@ -15,8 +15,9 @@ import { eventAt } from '../../src/core/events.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { clearComponentStores } from '../../src/harness/stores.js';
 import { fx, ONE, Simulation } from '../../src/index.js';
-import { cleanupSystem, type SystemContext } from '../../src/systems/index.js';
+import { cleanupSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
+import { ctxOf } from '../fixtures/context.js';
 
 /**
  * Unit + integration tests for the CleanupSystem — the death/cleanup half of the combat loop. It
@@ -28,16 +29,6 @@ import { testContent } from '../fixtures/content.js';
 beforeEach(() => {
   clearComponentStores();
 });
-
-function ctxOf(sim: Simulation): SystemContext {
-  return {
-    content: sim.content,
-    rng: sim.rng,
-    tick: sim.tick,
-    events: sim.events,
-    ...(sim.terrain !== undefined ? { terrain: sim.terrain } : {}),
-  };
-}
 
 describe('cleanupSystem — reaping 0-HP combatants', () => {
   it('destroys an entity whose hitpoints reached 0 and emits settlerDied', () => {

@@ -5,7 +5,7 @@ import { clearComponentStores } from '../../src/harness/stores.js';
 import { cellAnchorNode, type Fixed, fx, ONE, Simulation } from '../../src/index.js';
 import { aiSystem, atomicSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
-import { ctxOf, grassMap, needsSettlerAt, treeAt } from './needs/support.js';
+import { ctxOf, grassMap, justAbove, NEED_THRESHOLD, needsSettlerAt, treeAt } from './needs/support.js';
 
 /**
  * Unit + integration tests for the SLEEP DRIVE — the planner choosing a `sleep` atomic (id 8, the
@@ -19,7 +19,7 @@ import { ctxOf, grassMap, needsSettlerAt, treeAt } from './needs/support.js';
 
 const SLEEP_ATOMIC = 8;
 // Just over the ¾·ONE sleep threshold — a settler this tired rests before any work.
-const TIRED: Fixed = fx.add(fx.div(fx.fromInt(3), fx.fromInt(4)), fx.fromInt(1));
+const TIRED: Fixed = justAbove(NEED_THRESHOLD);
 // Comfortably below the threshold — a rested settler ignores the sleep drive and works as normal.
 const RESTED: Fixed = fx.div(ONE, fx.fromInt(2));
 
@@ -97,7 +97,7 @@ describe('sleep drive — closing the rise→sleep→reset loop through the real
   it('a settler gets tired, sleeps, and its fatigue resets', () => {
     const sim = new Simulation({ seed: 3, content: testContent(), map: grassMap(3, 1) });
     // Start the settler already near the threshold so it crosses within a short headless run.
-    const settler = settlerAt(sim, 0, 0, fx.div(fx.fromInt(3), fx.fromInt(4)));
+    const settler = settlerAt(sim, 0, 0, NEED_THRESHOLD);
 
     let sleptAtLeastOnce = false;
     let peakFatigue = sim.world.get(settler, Settler).fatigue;
@@ -118,7 +118,7 @@ describe('sleep drive — closing the rise→sleep→reset loop through the real
     const run = (): string => {
       clearComponentStores();
       const sim = new Simulation({ seed: 5, content: testContent(), map: grassMap(3, 1) });
-      settlerAt(sim, 0, 0, fx.div(fx.fromInt(3), fx.fromInt(4)));
+      settlerAt(sim, 0, 0, NEED_THRESHOLD);
       for (let i = 0; i < 200; i++) sim.step();
       return sim.hashState();
     };

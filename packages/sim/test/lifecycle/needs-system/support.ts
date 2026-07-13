@@ -1,21 +1,11 @@
+export { ctxOf } from '../../fixtures/context.js';
+
 import { Position, Settler } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { type Fixed, fx, type Simulation } from '../../../src/index.js';
-import type { SystemContext } from '../../../src/systems/index.js';
 
 const VIKING = 1;
 const WOODCUTTER = 1;
-
-export function ctxOf(sim: Simulation): SystemContext {
-  return {
-    content: sim.content,
-    rng: sim.rng,
-    tick: sim.tick,
-    events: sim.events,
-    commands: sim.commands,
-    ...(sim.terrain !== undefined ? { terrain: sim.terrain } : {}),
-  };
-}
 
 /** Spawn a settler with the given starting hunger. */
 export function settlerWithHunger(sim: Simulation, hunger: Fixed): Entity {

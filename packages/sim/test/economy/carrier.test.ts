@@ -10,17 +10,12 @@ import {
   Stockpile,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import {
-  cellAnchorNode,
-  fx,
-  halfCellMapFromCells,
-  ONE,
-  Simulation,
-  type TerrainMap,
-} from '../../src/index.js';
-import { aiSystem, type SystemContext } from '../../src/systems/index.js';
+import { cellAnchorNode, fx, ONE, Simulation } from '../../src/index.js';
+import { aiSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
+import { ctxOf } from '../fixtures/context.js';
 import { clearComponentStores } from '../fixtures/stores.js';
+import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
  * Tests for the STORE CARRIER: an **employed** carrier (bound to a store's transport slot — the
@@ -35,7 +30,6 @@ import { clearComponentStores } from '../fixtures/stores.js';
  * (the end-to-end runs below rely on it; the planner-level tests bind explicitly).
  */
 
-const GRASS = 0;
 const PLANK = 2;
 const CARRIER = 36; // fixture job with NO allowedAtomics — it can't harvest, only haul
 const SAWMILL = 2; // workplace: recipe wood->plank
@@ -50,9 +44,6 @@ const VIKING = 1;
 beforeEach(clearComponentStores);
 
 /** A `width`×`height` CELL strip of grass, upsampled to the half-cell navigation lattice. */
-function grassMap(width: number, height: number): TerrainMap {
-  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });
-}
 
 function carrierAt(sim: Simulation, x: number, y: number, boundTo?: Entity): Entity {
   const e = sim.world.create();
@@ -108,16 +99,6 @@ function settlerWithJob(sim: Simulation, x: number, y: number, jobType: number):
     experience: new Map(),
   });
   return e;
-}
-
-function ctxOf(sim: Simulation): SystemContext {
-  return {
-    content: sim.content,
-    rng: sim.rng,
-    tick: sim.tick,
-    events: sim.events,
-    ...(sim.terrain !== undefined ? { terrain: sim.terrain } : {}),
-  };
 }
 
 describe('carrier — choosing what to haul', () => {

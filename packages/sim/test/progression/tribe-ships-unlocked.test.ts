@@ -4,7 +4,8 @@ import { Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { clearComponentStores } from '../../src/harness/stores.js';
 import { fx, Simulation } from '../../src/index.js';
-import { type SystemContext, tribeShipsUnlocked } from '../../src/systems/index.js';
+import { tribeShipsUnlocked } from '../../src/systems/index.js';
+import { ctxOf } from '../fixtures/context.js';
 
 /**
  * tribeShipsUnlocked — the ship vehicle types a tribe has currently UNLOCKED: the `vehicle_ship` rows
@@ -61,10 +62,6 @@ function shipContent(): ContentSet {
 beforeEach(() => {
   clearComponentStores();
 });
-
-function ctxOf(sim: Simulation): SystemContext {
-  return { content: sim.content, rng: sim.rng, tick: sim.tick, events: sim.events };
-}
 
 function settlerOf(sim: Simulation, jobType: number, tribe: number): Entity {
   const e = sim.world.create();

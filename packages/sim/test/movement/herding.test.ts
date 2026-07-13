@@ -2,16 +2,11 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { CurrentAtomic, HerdMember, MoveGoal, Position, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { clearComponentStores } from '../../src/harness/stores.js';
-import {
-  fx,
-  halfCellMapFromCells,
-  nodeOfPosition,
-  positionOfNode,
-  Simulation,
-  type TerrainMap,
-} from '../../src/index.js';
-import { herdingSystem, type SystemContext } from '../../src/systems/index.js';
+import { fx, nodeOfPosition, positionOfNode, Simulation } from '../../src/index.js';
+import { herdingSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
+import { ctxOf } from '../fixtures/context.js';
+import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
  * Tests for the HerdingSystem — the follow-the-leader movement drive. A herding animal carries a
@@ -29,21 +24,6 @@ const LEADER_DISTANCE = 3; // the fixture bear's maximumLeaderDistance, in half-
 beforeEach(() => {
   clearComponentStores();
 });
-
-function grassMap(width: number, height: number): TerrainMap {
-  // Cell-dims signature; the sim's graph is the upsampled 2W×2H half-cell lattice.
-  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(0) });
-}
-
-function ctxOf(sim: Simulation): SystemContext {
-  return {
-    content: sim.content,
-    rng: sim.rng,
-    tick: sim.tick,
-    events: sim.events,
-    ...(sim.terrain !== undefined ? { terrain: sim.terrain } : {}),
-  };
-}
 
 /** A herd animal at half-cell NODE (x,y) following `leader` (or itself, the leader marker). */
 function herderAt(sim: Simulation, x: number, y: number, leader: Entity | 'self'): Entity {

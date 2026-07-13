@@ -1,8 +1,9 @@
+export { ctxOf } from '../../fixtures/context.js';
+
 import { beforeEach } from 'vitest';
 import { CurrentAtomic } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { type AtomicEffect, fx, type Simulation } from '../../../src/index.js';
-import type { SystemContext } from '../../../src/systems/index.js';
 import { clearComponentStores } from '../../fixtures/stores.js';
 
 /**
@@ -36,14 +37,4 @@ export function startAtomic(
     targetEntity: null,
     targetTile: null,
   });
-}
-
-export function ctxOf(sim: Simulation): SystemContext {
-  return {
-    content: sim.content,
-    rng: sim.rng,
-    tick: sim.tick,
-    events: sim.events,
-    ...(sim.terrain !== undefined ? { terrain: sim.terrain } : {}),
-  };
 }

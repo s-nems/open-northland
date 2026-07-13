@@ -2,9 +2,10 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { CurrentAtomic, MoveGoal, Position, Resource, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { clearComponentStores } from '../../src/harness/stores.js';
-import { fx, Simulation, type TerrainMap } from '../../src/index.js';
+import { fx, Simulation } from '../../src/index.js';
 import { aiSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
+import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 /**
  * Unit tests for the AISystem harvest planner's `needforgood` XP-THRESHOLD gate — the *who-may-do-it*
@@ -19,7 +20,6 @@ import { testContent } from '../fixtures/content.js';
  * gate is self-consistent — a fresh woodcutter is held out until pre-seeded XP clears it.
  */
 
-const GRASS = 0;
 const WOOD = 1;
 const WOOD_TRACK = 1; // the wood-specific humanjobexperiencetype typeId in the fixture
 const WOODCUTTER = 1;
@@ -29,10 +29,6 @@ const HARVEST_ATOMIC = 24;
 beforeEach(() => {
   clearComponentStores();
 });
-
-function grassMap(width: number, height: number): TerrainMap {
-  return { resolution: 'half-cell', width, height, typeIds: new Array(width * height).fill(GRASS) };
-}
 
 /**
  * A content set whose viking tribe gates harvesting WOOD behind `needforgood 1 20 [1]` — a wood-track

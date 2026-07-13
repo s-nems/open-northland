@@ -6,14 +6,13 @@ import {
   CORE_INVARIANTS,
   type Command,
   checkInvariants,
-  halfCellMapFromCells,
   type LoggedCommand,
   Rng,
   replay,
   Simulation,
-  type TerrainMap,
 } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
+import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
  * COMMAND-STREAM FUZZ — the "desync hunter" the golden tests can't be. The goldens pin ONE curated
@@ -38,7 +37,6 @@ import { testContent } from '../fixtures/content.js';
  * replay see byte-identical streams by construction, and a failure reproduces from the fuzz seed.
  */
 
-const GRASS = 0;
 const VIKING = 1;
 /** A type id absent from every fixture table — the unknown-id skip path. */
 const INVALID_TYPE = 99;
@@ -147,10 +145,6 @@ const NODE_W = MAP_W * 2;
 const NODE_H = MAP_H * 2;
 const FUZZ_SEEDS = [11, 29, 47] as const;
 const TICKS = 300;
-
-function grassMap(width: number, height: number): TerrainMap {
-  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });
-}
 
 function pick<T>(rng: Rng, options: readonly T[]): T {
   const v = options[rng.int(options.length)];

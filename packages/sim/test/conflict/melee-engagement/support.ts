@@ -1,10 +1,12 @@
+import { grassCellMap as grassMap } from '../../fixtures/terrain.js';
+
+export { grassMap };
+
 import { Health, Owner, Position, Settler, Stance } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { fx, halfCellMapFromCells, type Simulation, type TerrainMap } from '../../../src/index.js';
-import type { SystemContext } from '../../../src/systems/index.js';
+import { fx, type Simulation } from '../../../src/index.js';
 import { MILITARY_MODE } from '../../../src/systems/readviews/index.js';
 
-const GRASS = 0;
 export const WOOD = 1;
 export const HARVEST_ATOMIC = 24;
 export const VIKING = 1;
@@ -14,20 +16,7 @@ export const WOODCUTTER = 1;
 export const P0 = 0;
 export const P1 = 1;
 
-export function grassMap(width: number, height: number): TerrainMap {
-  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });
-}
-
-export function ctxOf(sim: Simulation): SystemContext {
-  return {
-    content: sim.content,
-    rng: sim.rng,
-    tick: sim.tick,
-    events: sim.events,
-    commands: sim.commands,
-    ...(sim.terrain !== undefined ? { terrain: sim.terrain } : {}),
-  };
-}
+export { ctxOf } from '../../fixtures/context.js';
 
 /** A combatant; an owner also receives the ATTACK stance these direct fixtures need. */
 export function fighterAt(

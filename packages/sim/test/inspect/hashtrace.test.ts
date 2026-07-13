@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { clearComponentStores } from '../../src/harness/stores.js';
 import { type Command, HashTrace, Simulation, type TerrainMap } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
+import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 /**
  * Tests for `HashTrace` — the per-tick hash (+ bounded snapshot) ring buffer that feeds the
@@ -15,13 +16,8 @@ import { testContent } from '../fixtures/content.js';
 const HEADQUARTERS = 1;
 const WOODCUTTER = 1;
 const VIKING = 1;
-const GRASS = 0;
 
 /** Clear every component store (shared singletons) so each sim phase starts clean. */
-
-function grassMap(width: number, height: number): TerrainMap {
-  return { resolution: 'half-cell', width, height, typeIds: new Array(width * height).fill(GRASS) };
-}
 
 beforeEach(clearComponentStores);
 

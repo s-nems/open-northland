@@ -8,9 +8,9 @@ import {
   isNonWorkingAge,
   NEWBORN_AGE_CLASS,
   reproductionSystem,
-  type SystemContext,
   tribePopulation,
 } from '../../src/systems/index.js';
+import { ctxOf } from '../fixtures/context.js';
 import { clearComponentStores } from '../fixtures/stores.js';
 
 /**
@@ -41,16 +41,6 @@ function reproContent(): ContentSet {
 beforeEach(() => {
   clearComponentStores();
 });
-
-function ctxOf(sim: Simulation): SystemContext {
-  return {
-    content: sim.content,
-    rng: sim.rng,
-    tick: sim.tick,
-    events: sim.events,
-    ...(sim.terrain !== undefined ? { terrain: sim.terrain } : {}),
-  };
-}
 
 /** Place a built home (or any building type) for `tribe` at (x, y). */
 function placeBuilding(sim: Simulation, buildingType: number, tribe: number, x = 4, y = 4): Entity {

@@ -8,15 +8,17 @@ import {
   MoveGoal,
   Position,
   Resource,
-  Settler,
   Stockpile,
   Stump,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { CORE_INVARIANTS, checkInvariants, fx, Simulation, type TerrainMap } from '../../src/index.js';
-import { aiSystem, atomicSystem, type SystemContext } from '../../src/systems/index.js';
+import { CORE_INVARIANTS, checkInvariants, fx, Simulation } from '../../src/index.js';
+import { aiSystem, atomicSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
+import { ctxOf } from '../fixtures/context.js';
+import { settlerAt } from '../fixtures/settler.js';
 import { clearComponentStores } from '../fixtures/stores.js';
+import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 /**
  * FAITHFUL MULTI-HIT HARVEST + DROP-ON-GROUND (historical plan phase 3). A wood node is FELLED, not gathered
@@ -30,7 +32,6 @@ import { clearComponentStores } from '../fixtures/stores.js';
  * OBSERVED calibration values — source basis), read here so the tests carry no magic literals.
  */
 
-const GRASS = 0;
 const WOOD = 1;
 const WOODCUTTER = 1; // fixture job allowed the wood harvest atomic (24)
 const VIKING = 1;
@@ -43,34 +44,9 @@ const TREE_WOOD_YIELD = WOOD_GATHERING?.yieldPerNode ?? 0;
 
 beforeEach(clearComponentStores);
 
-function ctxOf(sim: Simulation): SystemContext {
-  return {
-    content: sim.content,
-    rng: sim.rng,
-    tick: sim.tick,
-    events: sim.events,
-    ...(sim.terrain !== undefined ? { terrain: sim.terrain } : {}),
-  };
-}
-
-function grassMap(width: number, height: number): TerrainMap {
-  return { resolution: 'half-cell', width, height, typeIds: new Array(width * height).fill(GRASS) };
-}
-
 /** A proper woodcutter settler at integer tile (x,y): needs at 0, empty experience. */
 function makeWoodcutter(sim: Simulation, x: number, y: number): Entity {
-  const e = sim.world.create();
-  sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Settler, {
-    tribe: VIKING,
-    jobType: WOODCUTTER,
-    hunger: fx.fromInt(0),
-    fatigue: fx.fromInt(0),
-    piety: fx.fromInt(0),
-    enjoyment: fx.fromInt(0),
-    experience: new Map<number, number>(),
-  });
-  return e;
+  return settlerAt(sim, { jobType: WOODCUTTER, position: { x: fx.fromInt(x), y: fx.fromInt(y) } });
 }
 
 /** A standing FELLABLE wood node at (x,y): the felling spec (chops + whole yield) comes from content. */

@@ -3,8 +3,9 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { CurrentAtomic, Health, Position, Projectile, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { clearComponentStores } from '../../src/harness/stores.js';
-import { fx, halfCellMapFromCells, Simulation, type TerrainMap } from '../../src/index.js';
+import { fx, Simulation } from '../../src/index.js';
 import { PROJECTILE_TILES_PER_SPEED_UNIT } from '../../src/systems/index.js';
+import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
  * Ranged-combat (projectile) tests — the flight half of combat: a bow shot LAUNCHES a projectile entity
@@ -88,10 +89,6 @@ function content(): ContentSet {
       },
     ],
   });
-}
-
-function grassMap(width: number, height: number): TerrainMap {
-  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(0) });
 }
 
 /** A combatant: a settler with a Health pool at (x,y). `tribe`/`jobType` decide its weapon. */

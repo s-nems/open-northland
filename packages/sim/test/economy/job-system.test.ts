@@ -3,8 +3,9 @@ import { Building, JobAssignment, Position, Settler } from '../../src/components
 import type { Entity } from '../../src/ecs/world.js';
 import { clearComponentStores } from '../../src/harness/stores.js';
 import { fx, Simulation } from '../../src/index.js';
-import { jobSystem, type SystemContext } from '../../src/systems/index.js';
+import { jobSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
+import { ctxOf } from '../fixtures/context.js';
 
 /**
  * JobSystem (assignment half — the smallest slice): an IDLE settler (`jobType === null`) takes the
@@ -28,16 +29,6 @@ const SMITHY = 4; // building type gated by `jobEnablesHouse 2 4` (needs a carpe
 beforeEach(() => {
   clearComponentStores();
 });
-
-function ctxOf(sim: Simulation): SystemContext {
-  return {
-    content: sim.content,
-    rng: sim.rng,
-    tick: sim.tick,
-    events: sim.events,
-    ...(sim.terrain !== undefined ? { terrain: sim.terrain } : {}),
-  };
-}
 
 /** Place a building of `buildingType` for the viking tribe at (x, y). */
 function placeBuilding(sim: Simulation, buildingType: number, x: number, y: number): Entity {

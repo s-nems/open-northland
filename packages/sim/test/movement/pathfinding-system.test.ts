@@ -11,6 +11,7 @@ import {
 } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { clearComponentStores } from '../fixtures/stores.js';
+import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 /**
  * Unit + integration tests for the PathfindingSystem glue — the seam that drains {@link PathRequest}
@@ -30,9 +31,6 @@ const Q = (n: number): number => (n * ONE) / 4;
 beforeEach(clearComponentStores);
 
 /** A flat all-grass NODE grid of the given dimensions. */
-function grassMap(width: number, height: number): TerrainMap {
-  return { resolution: 'half-cell', width, height, typeIds: new Array(width * height).fill(GRASS) };
-}
 
 /** Build a mapped sim, returning it plus a helper to enqueue a request on a fresh entity. */
 function mappedSim(map: TerrainMap): { sim: Simulation; request: (start: number, goal: number) => Entity } {
