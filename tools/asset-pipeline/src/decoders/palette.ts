@@ -18,12 +18,13 @@
  * `encodePalette` is the faithful inverse, used to round-trip test without committing real assets.
  */
 
+import { StorableId } from './cif.js';
+import { PALETTE_RGB_BYTES } from './image.js';
+
 const STORABLE_HEADER_BYTES = 8; // [u32 id][u32 version]
-const PALETTE_ID = 0x3f6;
 const ENTRY_COUNT = 256;
 const BYTES_PER_ENTRY = 4; // on disk: [B, G, R, _]
 const PALETTE_BODY_BYTES = ENTRY_COUNT * BYTES_PER_ENTRY; // 0x400
-const PALETTE_RGB_BYTES = ENTRY_COUNT * 3; // 768, the RGB-triples currency shared with pcx.ts
 
 /** A decoded standalone palette: its storable version plus 256 colors as RGB triples. */
 export interface Palette {
@@ -51,7 +52,7 @@ export function decodePalette(bytes: Uint8Array): Palette {
 
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const id = view.getUint32(0, true);
-  if (id !== PALETTE_ID) {
+  if (id !== StorableId.CPalette) {
     throw new Error(`palette: storable id is not CPalette (0x3F6); got 0x${id.toString(16)}`);
   }
   const version = view.getUint32(4, true);
@@ -95,7 +96,7 @@ export function encodePalette(input: PaletteInput): Uint8Array {
 
   const out = new Uint8Array(STORABLE_HEADER_BYTES + PALETTE_BODY_BYTES);
   const view = new DataView(out.buffer);
-  view.setUint32(0, PALETTE_ID, true);
+  view.setUint32(0, StorableId.CPalette, true);
   view.setUint32(4, version, true);
 
   let dst = STORABLE_HEADER_BYTES;

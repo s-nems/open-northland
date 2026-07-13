@@ -28,15 +28,21 @@
  * to round-trip test without committing copyrighted fixtures — same rationale as the other encoder pairs.
  */
 
-import type { RgbaImage } from './image.js';
+import { PALETTE_RGB_BYTES, type RgbaImage } from './image.js';
 
 /** ICONDIR / ICONDIRENTRY sizes and the cursor resource type. */
 const ICONDIR_BYTES = 6;
 const ICONDIRENTRY_BYTES = 16;
 const RES_TYPE_CURSOR = 2;
 const RES_TYPE_ICON = 1;
-/** A `BITMAPINFOHEADER` is 40 bytes; `biBitCount` sits at offset 14, `biClrUsed` at 32. */
+/** A `BITMAPINFOHEADER` is 40 bytes. */
 const DIB_HEADER_BYTES = 40;
+/** Byte offsets of the `BITMAPINFOHEADER` fields this decoder reads (from the header start). */
+const DIB_BIWIDTH_OFFSET = 4;
+const DIB_BIHEIGHT_OFFSET = 8;
+const DIB_BITCOUNT_OFFSET = 14;
+const DIB_COMPRESSION_OFFSET = 16;
+const DIB_CLRUSED_OFFSET = 32;
 
 /** Rounds a byte count up to the next 4-byte boundary (DIB rows are 32-bit aligned). */
 const align4 = (n: number): number => (n + 3) & ~3;
@@ -96,9 +102,9 @@ export function decodeCursor(bytes: Uint8Array): DecodedCursor {
   for (let i = 0; i < count; i++) {
     const off = entries[i]?.imageOffset ?? 0;
     if (off + DIB_HEADER_BYTES > bytes.length) continue;
-    const bitCount = view.getUint16(off + 14, true);
-    const width = view.getInt32(off + 4, true);
-    const height = Math.trunc(view.getInt32(off + 8, true) / 2); // biHeight = XOR + AND, so halve it
+    const bitCount = view.getUint16(off + DIB_BITCOUNT_OFFSET, true);
+    const width = view.getInt32(off + DIB_BIWIDTH_OFFSET, true);
+    const height = Math.trunc(view.getInt32(off + DIB_BIHEIGHT_OFFSET, true) / 2); // biHeight = XOR + AND, so halve it
     const area = width * height;
     if (bitCount > bestBits || (bitCount === bestBits && area > bestArea)) {
       best = i;
@@ -128,10 +134,10 @@ export function decodeCursor(bytes: Uint8Array): DecodedCursor {
  * bit depth or a truncated pixel stream.
  */
 function decodeDib(bytes: Uint8Array, view: DataView, off: number): RgbaImage {
-  const width = view.getInt32(off + 4, true);
-  const height = Math.trunc(view.getInt32(off + 8, true) / 2);
-  const bitCount = view.getUint16(off + 14, true);
-  const compression = view.getUint32(off + 16, true);
+  const width = view.getInt32(off + DIB_BIWIDTH_OFFSET, true);
+  const height = Math.trunc(view.getInt32(off + DIB_BIHEIGHT_OFFSET, true) / 2);
+  const bitCount = view.getUint16(off + DIB_BITCOUNT_OFFSET, true);
+  const compression = view.getUint32(off + DIB_COMPRESSION_OFFSET, true);
   if (width <= 0 || height <= 0) throw new Error(`cursor: invalid DIB dimensions ${width}x${height}`);
   if (compression !== 0) throw new Error(`cursor: unsupported DIB compression ${compression} (only BI_RGB)`);
   if (bitCount !== 8 && bitCount !== 24 && bitCount !== 32) {
@@ -140,7 +146,7 @@ function decodeDib(bytes: Uint8Array, view: DataView, off: number): RgbaImage {
 
   // Palette (BGRA quads) for paletted DIBs; true-colour DIBs carry the colour inline.
   const paletted = bitCount <= 8;
-  const clrUsed = view.getUint32(off + 32, true);
+  const clrUsed = view.getUint32(off + DIB_CLRUSED_OFFSET, true);
   const numColors = paletted ? clrUsed || 1 << bitCount : 0;
   const paletteStart = off + DIB_HEADER_BYTES;
   const xorStart = paletteStart + numColors * 4;
@@ -247,7 +253,8 @@ function encodeDib8(img: CursorImageInput): Uint8Array {
   if (pixels.length !== width * height) {
     throw new Error(`cursor: pixels length ${pixels.length} does not match ${width}x${height}`);
   }
-  if (palette.length !== 768) throw new Error(`cursor: palette must be 768 bytes, got ${palette.length}`);
+  if (palette.length !== PALETTE_RGB_BYTES)
+    throw new Error(`cursor: palette must be ${PALETTE_RGB_BYTES} bytes, got ${palette.length}`);
 
   const xorRowBytes = align4(width);
   const andRowBytes = align4(Math.ceil(width / 8));

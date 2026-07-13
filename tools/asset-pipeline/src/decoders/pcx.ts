@@ -27,11 +27,10 @@
  * them. `encodePcx` is the faithful inverse, used to round-trip test without committing real assets.
  */
 
-import type { RgbaImage } from './image.js';
+import { PALETTE_RGB_BYTES, type RgbaImage } from './image.js';
 
 const HEADER_BYTES = 0x80;
-const PALETTE_TRAILER_BYTES = 769; // 0x0C marker + 256 RGB triples
-const PALETTE_RGB_BYTES = 768;
+const PALETTE_TRAILER_BYTES = 1 + PALETTE_RGB_BYTES; // 0x0C marker + 256 RGB triples
 const PALETTE_MARKER = 0x0c;
 
 /** A decoded `.pcx`: indexed pixels plus the embedded palette (if the file carried one). */
@@ -43,10 +42,6 @@ export interface PcxImage {
   /** 256 RGB triples (768 bytes), or `undefined` if the file had no 256-color trailer. */
   readonly palette: Uint8Array | undefined;
 }
-
-// `RgbaImage` (the pipeline's format-neutral RGBA shape) is imported above; re-exported here so the
-// existing `expandToRgba` call sites keep importing it from the decoder that produces it.
-export type { RgbaImage };
 
 /**
  * Decodes a `.pcx` into indexed pixels and its embedded palette. Throws a `pcx:`-prefixed error on a
