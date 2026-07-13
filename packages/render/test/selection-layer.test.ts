@@ -24,7 +24,7 @@ describe('SelectionLayer elevation lift', () => {
   it('lifts a selected unit’s ring by the terrain height at its feet', () => {
     const layer = new SelectionLayer();
     const ent = settler(1, 1, 8);
-    layer.draw(snapshotOf([ent]), new Set([1]), undefined, field);
+    layer.draw({ snapshot: snapshotOf([ent]), elevation: field }, new Set([1]));
     const ring = layer.container.children[0];
     const feet = tileToScreen(1, 8);
     expect(ring?.position.x).toBe(feet.x);
@@ -35,7 +35,7 @@ describe('SelectionLayer elevation lift', () => {
 
   it('places the ring at the un-lifted feet on a flat map (no field / flat field)', () => {
     const layer = new SelectionLayer();
-    layer.draw(snapshotOf([settler(1, 1, 8)]), new Set([1]));
+    layer.draw({ snapshot: snapshotOf([settler(1, 1, 8)]) }, new Set([1]));
     const feet = tileToScreen(1, 8);
     expect(layer.container.children[0]?.position.y).toBe(feet.y);
   });
