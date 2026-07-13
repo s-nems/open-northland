@@ -38,7 +38,7 @@ Concretely, that means:
 - **Batch, don't fragment.** No per-sprite filters/masks/blend modes (they break Pixi's batcher). A simple
   whole-sprite team wash could ride `Sprite.tint` (a batch attribute), but the **player (team) colour** is a
   *band-limited palette remap* (only the clothing patches recolour, not faces/tools) — a flat tint can't do
-  that. So character team colour uses `gpu/paletted-sprite.ts` (`PalettedSprite`): an **indexed** atlas read
+  that. So character team colour uses `gpu/paletted-sprite/` (`PalettedSprite`): an **indexed** atlas read
   through a `256×N` player-colour LUT in a custom-shader `Mesh`. That mesh bypasses the batcher (one draw
   call each) — the accepted cost for a faithful ramp remap; keep it to characters, and the sim (not the GPU)
   is the battle-scale wall regardless.
