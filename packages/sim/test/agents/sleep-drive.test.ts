@@ -1,18 +1,14 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  Building,
   Carrying,
   CurrentAtomic,
   MoveGoal,
-  PathFollow,
-  PathRequest,
   Position,
-  Production,
   Resource,
   Settler,
-  Stockpile,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
+import { clearComponentStores } from '../../src/harness/stores.js';
 import {
   cellAnchorNode,
   type Fixed,
@@ -46,21 +42,7 @@ const TIRED: Fixed = fx.add(fx.div(fx.fromInt(3), fx.fromInt(4)), fx.fromInt(1))
 const RESTED: Fixed = fx.div(ONE, fx.fromInt(2));
 
 beforeEach(() => {
-  for (const c of [
-    Position,
-    Settler,
-    Resource,
-    Building,
-    Stockpile,
-    Carrying,
-    CurrentAtomic,
-    MoveGoal,
-    PathFollow,
-    PathRequest,
-    Production,
-  ]) {
-    c.store.clear();
-  }
+  clearComponentStores();
 });
 
 /** A `width`×`height` CELL strip of grass, upsampled to the half-cell navigation lattice. */
@@ -187,19 +169,7 @@ describe('sleep drive — closing the rise→sleep→reset loop through the real
 
   it('is byte-identical across two same-seed runs (determinism)', () => {
     const run = (): string => {
-      for (const c of [
-        Position,
-        Settler,
-        Building,
-        Stockpile,
-        Carrying,
-        CurrentAtomic,
-        MoveGoal,
-        PathFollow,
-        PathRequest,
-      ]) {
-        c.store.clear();
-      }
+      clearComponentStores();
       const sim = new Simulation({ seed: 5, content: testContent(), map: grassMap(3, 1) });
       settlerAt(sim, 0, 0, fx.div(fx.fromInt(3), fx.fromInt(4)));
       for (let i = 0; i < 200; i++) sim.step();

@@ -2,6 +2,7 @@ import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Age, Building, Position, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
+import { clearComponentStores } from '../../src/harness/stores.js';
 import { fx, ONE, Simulation } from '../../src/index.js';
 import type { SystemContext } from '../../src/systems/index.js';
 import {
@@ -34,7 +35,7 @@ function growthContent(): ContentSet {
 }
 
 beforeEach(() => {
-  for (const c of [Position, Settler, Building, Age]) c.store.clear();
+  clearComponentStores();
 });
 
 function ctxOf(sim: Simulation): SystemContext {
@@ -133,7 +134,7 @@ describe('GrowthSystem — non-working settlers mature into workers', () => {
 
   it('is deterministic: two runs from the same seed hash-equal across the full maturation', () => {
     const hashAfter = (): string => {
-      for (const c of [Position, Settler, Building, Age]) c.store.clear();
+      clearComponentStores();
       const sim = new Simulation({ seed: 7, content: growthContent() });
       bornSettler(sim, BABY_FEMALE, 0);
       bornSettler(sim, BABY_MALE, 0);

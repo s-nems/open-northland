@@ -1,6 +1,7 @@
 import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Building, Settler } from '../../src/components/index.js';
+import { clearComponentStores } from '../../src/harness/stores.js';
 import { fx, ONE, Simulation } from '../../src/index.js';
 import { housingCapacity, tribePopulation } from '../../src/systems/index.js';
 
@@ -34,8 +35,7 @@ function housingContent(): ContentSet {
 }
 
 beforeEach(() => {
-  Building.store.clear();
-  Settler.store.clear();
+  clearComponentStores();
 });
 
 function placeBuilding(sim: Simulation, buildingType: number, tribe: number, built = ONE): void {

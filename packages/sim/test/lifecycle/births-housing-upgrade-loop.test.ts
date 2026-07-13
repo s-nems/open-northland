@@ -1,8 +1,8 @@
 import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import { beforeEach, describe, expect, it } from 'vitest';
-import * as components from '../../src/components/index.js';
 import { Building, Carrying, Position, Settler, Stockpile } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
+import { clearComponentStores } from '../../src/harness/stores.js';
 import {
   fx,
   ONE,
@@ -85,14 +85,6 @@ function grassMap(width: number, height: number): TerrainMap {
 // instances (AGENTS.md [ac6a287]/[f4593c4]); a missed store leaks a prior test's entity, which
 // (a stale Health/CurrentAtomic on a reused id) silently diverts a planner/carrier decision.
 beforeEach(clearComponentStores);
-
-function clearComponentStores(): void {
-  for (const c of Object.values(components)) {
-    if (typeof c === 'object' && c !== null && 'store' in c && c.store instanceof Map) {
-      c.store.clear();
-    }
-  }
-}
 
 function ctxOf(sim: Simulation): SystemContext {
   return {

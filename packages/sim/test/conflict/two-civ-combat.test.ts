@@ -2,6 +2,7 @@ import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { CurrentAtomic, Health, Position, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
+import { clearComponentStores } from '../../src/harness/stores.js';
 import {
   type Fixed,
   fx,
@@ -151,10 +152,7 @@ function fighterAtPosition(
 }
 
 beforeEach(() => {
-  Position.store.clear();
-  Settler.store.clear();
-  Health.store.clear();
-  CurrentAtomic.store.clear();
+  clearComponentStores();
 });
 
 describe('two-civ combat scenario (two playable tribes, asymmetric bindings, end-to-end)', () => {
@@ -227,10 +225,7 @@ describe('two-civ combat scenario (two playable tribes, asymmetric bindings, end
 
   it('is deterministic: two same-seed runs of the skirmish reach the same state hash', () => {
     const run = (): string => {
-      Position.store.clear();
-      Settler.store.clear();
-      Health.store.clear();
-      CurrentAtomic.store.clear();
+      clearComponentStores();
       const content = twoCivContent();
       const sim = new Simulation({ seed: 7, content, map: grass(5, 1) });
       fighterAt(sim, 0, 0, VIKING, 500);

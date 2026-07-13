@@ -1,18 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import {
-  Building,
-  Carrying,
-  CurrentAtomic,
-  MoveGoal,
-  PathFollow,
-  PathRequest,
-  Position,
-  Production,
-  Resource,
-  Settler,
-  Stockpile,
-} from '../../src/components/index.js';
+import { CurrentAtomic, MoveGoal, Position, Resource, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
+import { clearComponentStores } from '../../src/harness/stores.js';
 import { fx, Simulation, type TerrainMap } from '../../src/index.js';
 import { aiSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
@@ -38,21 +27,7 @@ const VIKING = 1;
 const HARVEST_ATOMIC = 24;
 
 beforeEach(() => {
-  for (const c of [
-    Position,
-    Settler,
-    Resource,
-    Building,
-    Stockpile,
-    Carrying,
-    CurrentAtomic,
-    MoveGoal,
-    PathFollow,
-    PathRequest,
-    Production,
-  ]) {
-    c.store.clear();
-  }
+  clearComponentStores();
 });
 
 function grassMap(width: number, height: number): TerrainMap {

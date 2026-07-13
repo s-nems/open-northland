@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { Building, JobAssignment, Owner, Position, Settler } from '../../src/components/index.js';
 import type { Command } from '../../src/core/commands.js';
 import type { Entity } from '../../src/ecs/world.js';
+import { clearComponentStores } from '../../src/harness/stores.js';
 import { fx, Simulation } from '../../src/index.js';
 import type { SystemContext } from '../../src/systems/index.js';
 import { assignWorker } from '../../src/systems/orders/index.js';
@@ -23,7 +24,7 @@ const CARPENTER = 2; // the sawmill's worker job
 const SAWMILL = 2; // building type
 
 beforeEach(() => {
-  for (const c of [Position, Settler, Building, JobAssignment, Owner]) c.store.clear();
+  clearComponentStores();
 });
 
 function ctxOf(sim: Simulation): SystemContext {

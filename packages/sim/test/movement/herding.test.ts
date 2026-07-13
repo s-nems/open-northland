@@ -1,16 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import {
-  CurrentAtomic,
-  Health,
-  HerdMember,
-  MoveGoal,
-  PathFollow,
-  PathRequest,
-  Position,
-  Settler,
-  Velocity,
-} from '../../src/components/index.js';
+import { CurrentAtomic, HerdMember, MoveGoal, Position, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
+import { clearComponentStores } from '../../src/harness/stores.js';
 import {
   fx,
   halfCellMapFromCells,
@@ -36,15 +27,7 @@ const BEAR = 10; // herd animal: searchForLeader, maximumLeaderDistance 3
 const LEADER_DISTANCE = 3; // the fixture bear's maximumLeaderDistance, in half-cell nodes
 
 beforeEach(() => {
-  Position.store.clear();
-  Settler.store.clear();
-  Health.store.clear();
-  HerdMember.store.clear();
-  CurrentAtomic.store.clear();
-  MoveGoal.store.clear();
-  PathFollow.store.clear();
-  PathRequest.store.clear();
-  Velocity.store.clear();
+  clearComponentStores();
 });
 
 function grassMap(width: number, height: number): TerrainMap {
@@ -164,12 +147,7 @@ describe('herdingSystem — follow-the-leader cohesion', () => {
 
   it('two same-seed runs herd identically (deterministic — no RNG)', () => {
     const run = (): string => {
-      Position.store.clear();
-      Settler.store.clear();
-      HerdMember.store.clear();
-      MoveGoal.store.clear();
-      PathRequest.store.clear();
-      PathFollow.store.clear();
+      clearComponentStores();
       const sim = new Simulation({ seed: 7, content: testContent(), map: grassMap(20, 1) });
       const leader = herderAt(sim, 0, 0, 'self');
       herderAt(sim, 10, 0, leader);

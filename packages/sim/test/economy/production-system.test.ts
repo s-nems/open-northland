@@ -1,13 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import {
-  Building,
-  JobAssignment,
-  Position,
-  Production,
-  Settler,
-  Stockpile,
-} from '../../src/components/index.js';
+import { Building, Position, Production, Settler, Stockpile } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
+import { clearComponentStores } from '../../src/harness/stores.js';
 import { fx, ONE, Simulation } from '../../src/index.js';
 import { productionSystem, type SystemContext } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
@@ -29,12 +23,7 @@ const CARPENTER = 2; // the sawmill's `workers` jobType — its operator
 const CYCLE_TICKS = 20; // the sawmill recipe's `ticks`
 
 beforeEach(() => {
-  Production.store.clear();
-  Stockpile.store.clear();
-  Building.store.clear();
-  Settler.store.clear();
-  Position.store.clear();
-  JobAssignment.store.clear();
+  clearComponentStores();
 });
 
 function ctxOf(sim: Simulation): SystemContext {
@@ -380,12 +369,7 @@ describe('productionSystem — parallel operators (the twin mill)', () => {
 describe('productionSystem — determinism', () => {
   it('two same-seed runs reach the same state hash through the full schedule', () => {
     const run = (): string => {
-      Production.store.clear();
-      Stockpile.store.clear();
-      Building.store.clear();
-      Settler.store.clear();
-      Position.store.clear();
-      JobAssignment.store.clear();
+      clearComponentStores();
       const sim = new Simulation({ seed: 7, content: testContent() });
       sawmill(sim, [
         [WOOD, 4],

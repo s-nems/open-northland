@@ -2,6 +2,7 @@ import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
+import { clearComponentStores } from '../../src/harness/stores.js';
 import { fx, Simulation } from '../../src/index.js';
 import { type SystemContext, tribeShipsUnlocked } from '../../src/systems/index.js';
 
@@ -58,7 +59,7 @@ function shipContent(): ContentSet {
 }
 
 beforeEach(() => {
-  Settler.store.clear();
+  clearComponentStores();
 });
 
 function ctxOf(sim: Simulation): SystemContext {

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { CurrentAtomic, Health, Position } from '../../src/components/index.js';
 import { eventAt } from '../../src/core/events.js';
+import { clearComponentStores } from '../../src/harness/stores.js';
 import type { TerrainMap } from '../../src/index.js';
 import { fx, halfCellMapFromCells, Simulation } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
@@ -18,9 +19,7 @@ function grassMap(width: number): TerrainMap {
  */
 
 beforeEach(() => {
-  Health.store.clear();
-  Position.store.clear();
-  CurrentAtomic.store.clear();
+  clearComponentStores();
 });
 
 /** A 1-tick melee attack atomic (id 81) — AtomicSystem lands the blow the first tick. */

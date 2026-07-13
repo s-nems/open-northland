@@ -1,8 +1,8 @@
 import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import { beforeEach, describe, expect, it } from 'vitest';
-import * as components from '../../src/components/index.js';
 import { Building, GroundDrop, Position, Stockpile } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
+import { clearComponentStores } from '../../src/harness/stores.js';
 import { cellAnchorNode, Simulation } from '../../src/index.js';
 import { MAX_GROUND_STACK } from '../../src/systems/stores/index.js';
 
@@ -36,13 +36,6 @@ function dropContent(): ContentSet {
 
 /** Clear the WHOLE component namespace (module-level singletons) so runs can't leak into each other —
  *  a hand-picked subset would miss a component a future system adds (sim AGENTS.md). */
-function clearComponentStores(): void {
-  for (const c of Object.values(components)) {
-    if (typeof c === 'object' && c !== null && 'store' in c) {
-      (c as { store: Map<unknown, unknown> }).store.clear();
-    }
-  }
-}
 
 beforeEach(clearComponentStores);
 
