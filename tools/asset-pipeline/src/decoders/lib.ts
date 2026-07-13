@@ -21,7 +21,7 @@
  * Pure functions only (no I/O): `(bytes) => decoded`. The CLI wires file reads around them.
  */
 
-import { asciiBytes, ByteCursor } from './byte-cursor.js';
+import { asciiBytes, ByteCursor, ByteWriter } from './byte-cursor.js';
 
 /** One directory group: a path-prefix label plus its opaque value (group id). */
 export interface LibGroup {
@@ -151,41 +151,27 @@ export function encodeLib(input: LibArchiveInput): Uint8Array {
   for (const n of groupNames) dirSize += 4 + n.length + 4;
   for (const n of fileNames) dirSize += 4 + n.length + 4 + 4;
 
-  let payloadSize = 0;
-  for (const f of files) payloadSize += f.data.length;
-
-  const out = new Uint8Array(dirSize + payloadSize);
-  const view = new DataView(out.buffer);
-  let p = 0;
-  const w32 = (v: number): void => {
-    view.setUint32(p, v >>> 0, true);
-    p += 4;
-  };
-  const wBytes = (b: Uint8Array): void => {
-    out.set(b, p);
-    p += b.length;
-  };
-
-  w32(version);
-  w32(groups.length);
-  w32(files.length);
+  const w = new ByteWriter();
+  w.u32(version);
+  w.u32(groups.length);
+  w.u32(files.length);
   for (let i = 0; i < groups.length; i++) {
     const n = groupNames[i] as Uint8Array;
-    w32(n.length);
-    wBytes(n);
-    w32((groups[i] as LibGroup).value);
+    w.u32(n.length);
+    w.bytes(n);
+    w.u32((groups[i] as LibGroup).value);
   }
   let payloadPos = dirSize;
   for (let i = 0; i < files.length; i++) {
     const n = fileNames[i] as Uint8Array;
     const data = (files[i] as LibFileInput).data;
-    w32(n.length);
-    wBytes(n);
-    w32(payloadPos);
-    w32(data.length);
+    w.u32(n.length);
+    w.bytes(n);
+    w.u32(payloadPos);
+    w.u32(data.length);
     payloadPos += data.length;
   }
-  for (const f of files) wBytes(f.data);
+  for (const f of files) w.bytes(f.data);
 
-  return out;
+  return w.result();
 }

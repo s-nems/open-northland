@@ -39,7 +39,7 @@
  * (same rationale as the `.lib`/`.cif`/`.pcx`/`.palette` encoder pairs).
  */
 
-import { ByteCursor } from './byte-cursor.js';
+import { ByteCursor, ByteWriter } from './byte-cursor.js';
 import { readCMemory, StorableId } from './cif.js';
 
 const BMD_ID = StorableId.CBobManager; // 0x3F4
@@ -214,43 +214,6 @@ export function decodeBmd(bytes: Uint8Array): Bmd {
   };
 }
 
-/** Little-endian sequential writer that grows its backing buffer as needed. */
-class ByteWriter {
-  private buf = new Uint8Array(256);
-  private pos = 0;
-
-  private ensure(n: number): void {
-    if (this.pos + n <= this.buf.length) return;
-    let cap = this.buf.length * 2;
-    while (cap < this.pos + n) cap *= 2;
-    const grown = new Uint8Array(cap);
-    grown.set(this.buf);
-    this.buf = grown;
-  }
-
-  u32(v: number): void {
-    this.ensure(4);
-    new DataView(this.buf.buffer).setUint32(this.pos, v >>> 0, true);
-    this.pos += 4;
-  }
-
-  i32(v: number): void {
-    this.ensure(4);
-    new DataView(this.buf.buffer).setInt32(this.pos, v | 0, true);
-    this.pos += 4;
-  }
-
-  bytes(b: Uint8Array): void {
-    this.ensure(b.length);
-    this.buf.set(b, this.pos);
-    this.pos += b.length;
-  }
-
-  result(): Uint8Array {
-    return this.buf.subarray(0, this.pos);
-  }
-}
-
 /** Writes one CMemory storable: `[u32 id=0x3E9][u32 ver=0][u32 size][size bytes]`. */
 function writeCMemory(w: ByteWriter, body: Uint8Array): void {
   w.u32(StorableId.CMemory);
@@ -279,7 +242,7 @@ export function encodeBmd(bmd: Bmd): Uint8Array {
   w.u32(bmd.generatedPackedLines);
 
   if (bmd.bobCount === 0) {
-    return Uint8Array.from(w.result());
+    return w.result();
   }
 
   if (bmd.bobs.length !== bmd.bobCount) {
@@ -312,7 +275,7 @@ export function encodeBmd(bmd: Bmd): Uint8Array {
   }
   writeCMemory(w, lineMem);
 
-  return Uint8Array.from(w.result());
+  return w.result();
 }
 
 /** Sentinel line-control word meaning "this scanline is fully transparent" (CBobManager `0xFFFFFFFF`). */
