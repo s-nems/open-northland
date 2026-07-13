@@ -12,7 +12,7 @@ import {
 } from '../decoders/player-palette.js';
 import { encodePng } from '../decoders/png.js';
 import { indexOutTree } from './bmd/index.js';
-import { BOBS_DIR } from './game-file.js';
+import { BOBS_DIR, writeAtlasBeside } from './game-file.js';
 
 /**
  * Player-colour pipeline stage — the render-time-recolour twin of {@link import('./bmd.js').convertBmdTree}.
@@ -111,11 +111,8 @@ export async function convertIndexedCharacterAtlases(
     }
     try {
       const atlas = packIndexedBobAtlas(decodeBmd(await readFile(join(outDir, onDisk))));
-      const pngRel = onDisk.replace(/\.bmd$/i, '.indexed.png');
-      const manifestRel = onDisk.replace(/\.bmd$/i, '.indexed.atlas.json');
-      await writeFile(join(outDir, pngRel), encodePng(atlas.image));
-      await writeFile(join(outDir, manifestRel), `${JSON.stringify(atlas.manifest, null, 2)}\n`);
-      done.push(pngRel);
+      const { png } = await writeAtlasBeside(outDir, onDisk, 'indexed', atlas);
+      done.push(png);
     } catch (err) {
       console.warn(`[pipeline] skipped indexed ${bmdRef}: ${(err as Error).message}`);
     }
