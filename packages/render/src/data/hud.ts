@@ -1,4 +1,5 @@
 import type { WorldSnapshot } from '@open-northland/sim';
+import { readStockpileAmounts } from './scene/snapshot-readers/index.js';
 
 /**
  * The PURE HUD-model layer — the part of the on-screen HUD an agent CAN self-verify, exactly
@@ -87,23 +88,6 @@ function buildingOf(components: Readonly<Record<string, unknown>>): BuildingValu
 }
 
 /**
- * Read a snapshot `Stockpile`'s `amounts`. The snapshot clones a `Map` to a **sorted `[k, v]`
- * array** (see snapshot.ts `clonePlain`), so this returns that array shape directly — no live Map.
- * Total: a missing/malformed stockpile reads as empty.
- */
-function stockpileAmounts(components: Readonly<Record<string, unknown>>): readonly [number, number][] {
-  const sp = components.Stockpile as { amounts?: unknown } | undefined;
-  if (sp === undefined || !Array.isArray(sp.amounts)) return [];
-  const out: [number, number][] = [];
-  for (const entry of sp.amounts) {
-    if (Array.isArray(entry) && typeof entry[0] === 'number' && typeof entry[1] === 'number') {
-      out.push([entry[0], entry[1]]);
-    }
-  }
-  return out;
-}
-
-/**
  * Build a tribe's {@link HudModel} from a frame {@link WorldSnapshot} — the pure data half of the HUD.
  *
  * Mirrors the three world-state sim read views (`tribePopulation`, `tribePopulationByJob`,
@@ -138,7 +122,7 @@ export function buildHud(snapshot: WorldSnapshot, tribe: number): HudModel {
 
     const building = buildingOf(entity.components);
     if (building !== null && building.tribe === tribe) {
-      for (const [goodType, amount] of stockpileAmounts(entity.components)) {
+      for (const [goodType, amount] of readStockpileAmounts(entity.components)) {
         stockTotals.set(goodType, (stockTotals.get(goodType) ?? 0) + amount);
       }
     }
