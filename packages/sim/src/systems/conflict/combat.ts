@@ -56,7 +56,7 @@ export { SIGHT_RADIUS_NODES } from './targeting.js';
  *     swings (in the weapon reach band) or chases (beyond it, throttled to {@link REPATH_CADENCE});
  *     **DEFEND** engages only within {@link DEFEND_RADIUS_NODES} of an anchor and never chases past
  *     {@link DEFEND_LEASH_NODES}, returning to post when clear; **IGNORE** never auto-engages (a hunter
- *     still hunts prey); **FLEE** runs from the nearest threat at the run gait ({@link fleeDrive}). An
+ *     still hunts prey); **FLEE** paths away from the nearest threat ({@link fleeDrive}). An
  *     explicit {@link AttackOrder} overrides the mode (fight THAT one). Unowned combatants carry no Stance
  *     and keep the legacy swing-in-place behaviour.
  *

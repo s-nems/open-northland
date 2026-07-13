@@ -29,19 +29,17 @@ import { COMPASS_DIRECTIONS } from '../../spatial.js';
  * faithful), the same recoverable-boundary-failure stance as an unknown building/job id.
  *
  * source-basis: the **group size**, **HP pool**, **birth-point range**, **leader presence**, and the
- * **walking/running-pace magnitudes** (`movespeed`/`runspeed`) are the verbatim extracted
- * `animaltypes.ini` params (faithful). A creature with an explicit `movespeed` gets a
+ * **walking-pace magnitude** (`movespeed`) are the verbatim extracted `animaltypes.ini` params
+ * (faithful). A creature with an explicit `movespeed` gets a
  * {@link MoveSpeed}{`perTick = ONE/movespeed`} (a larger `movespeed` walks a *slower* step), so it grazes
  * at its own data-pinned pace; one whose record omits `movespeed` carries no `MoveSpeed` and walks at the
- * universal settler default. Its `runspeed` is stamped as the same view's `runPerTick` (`ONE/runspeed`,
- * the *faster* gait — a `runspeed` is always a smaller number than its `movespeed`). The movement
- * system reads it whenever an entity flees; the animal drive that would select that mode remains
- * outside this slice (source basis "Animal locomotion pace").
+ * universal settler default. The `runspeed` param is deliberately NOT consumed — no run/sprint gait
+ * exists anywhere; every unit moves at its one constant pace.
  * **Approximated (no oracle):** the *scatter pattern* (where within the range each creature lands), that
  * animals spawn at `jobType: null` (so they carry no weapon yet — the animal→weapon `(tribeType, typeId)`
  * binding is a deferred refinement), that the spawn is a one-shot placement with no respawn/territory
  * upkeep, and the **direction of the `movespeed` scale** (that a larger number is slower — the
- * step-period reading, the only reading consistent with `runspeed < movespeed`) — the original's herd-AI
+ * step-period reading, the only reading consistent with the source's `runspeed < movespeed`) — the original's herd-AI
  * is the undocumented "soul" (recorded in source basis). No births→growth here: an animal is spawned
  * adult (carries no {@link Age}); the per-tribe spawn cadence / map populator is a later slice.
  *
@@ -58,20 +56,12 @@ export function spawnAnimalHerd(
   if (herd === null) return; // not an animal tribe (a civilization / unknown) — bad input, skip
   const hitpoints = animalHitpoints(ctx.content, command.tribe) ?? 0; // an animal record always has both
 
-  // The animal's data-pinned locomotion paces: a `movespeed`/`runspeed` of N moves ONE/N tile/tick (a
-  // larger speed value = a slower step — see source basis "Animal locomotion pace"). A record that
-  // omits `movespeed` (walkSpeed 0) stamps NO MoveSpeed, so it walks at the universal settler default;
-  // one that omits `runspeed` carries a null run pace (only its walk gait is known). The run pace is
-  // available to the MovementSystem's fleeing gait; normal movement uses the walk pace, and no
-  // animal drive selects the fleeing mode yet (source basis "Animal locomotion pace").
-  // A record with a `runspeed` but NO `movespeed` would drop its run pace (no MoveSpeed is stamped at
-  // all), but no real animal does that (0/35 — verified) and the run gait is meaningless without a base
-  // walk pace to deviate from, so the walk-gait gate below is the right anchor.
+  // The animal's data-pinned pace: a `movespeed` of N moves ONE/N tile/tick (a larger speed value =
+  // a slower step — see source basis "Animal locomotion pace"). A record that omits `movespeed`
+  // (walkSpeed 0) stamps NO MoveSpeed, so it walks at the universal settler default.
   const locomotion = locomotionOf(ctx.content, command.tribe);
   const walkSpeed = locomotion?.walkSpeed ?? 0;
-  const runSpeed = locomotion?.runSpeed ?? 0;
   const movePace = walkSpeed > 0 ? fx.div(ONE, fx.fromInt(walkSpeed)) : null;
-  const runPace = runSpeed > 0 ? fx.div(ONE, fx.fromInt(runSpeed)) : null;
 
   const count = Math.max(1, herd.maxGroupSize); // a 0/solitary group still yields one creature
   const range = Math.max(0, herd.birthPointRange);
@@ -90,9 +80,7 @@ export function spawnAnimalHerd(
       experience: new Map<number, number>(),
     });
     world.add(e, Health, { hitpoints, max: hitpoints });
-    // Stamp the data-pinned paces when the creature has an explicit walk gait: `perTick` walks it, and
-    // `runPerTick` records its run gait for the deferred flee/charge drive (null if `runspeed` omitted).
-    if (movePace !== null) world.add(e, MoveSpeed, { perTick: movePace, runPerTick: runPace });
+    if (movePace !== null) world.add(e, MoveSpeed, { perTick: movePace });
     members.push(e);
     ctx.events.emit({ kind: 'settlerBorn', entity: e });
   }

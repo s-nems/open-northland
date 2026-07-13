@@ -128,7 +128,7 @@ export function moveUnit(
   // route: an explicit player command overrides the autonomous drives (economy AND auto-combat).
   world.remove(e, Engagement);
   world.remove(e, AttackOrder);
-  world.remove(e, Fleeing); // a move order supersedes the flee drive too (and its run gait)
+  world.remove(e, Fleeing); // a move order supersedes the flee drive too
   world.add(e, MoveGoal, { cell: goal });
   // A move order RELOCATES a DEFEND unit's post: the guard defends the spot it was sent to, not the
   // tile the stance was set on. Without the re-anchor, the arrived-hold combat pass (which lets an

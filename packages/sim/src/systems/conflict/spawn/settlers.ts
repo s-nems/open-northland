@@ -100,13 +100,9 @@ export function createSettler(world: World, content: ContentSet, spec: SettlerSp
   // animal `movespeed`): `perTick = ONE/moveSpeed` (ticks-per-tile, larger = slower), read identically to
   // the universal default by the drift-free arrival-snap so two runs stay byte-identical. Only a positive
   // value is stamped; absent / non-positive (the default — the golden / vertical-slice path) leaves the
-  // settler `MoveSpeed`-less, walking at MOVE_SPEED_PER_TICK, the hash untouched. `runPerTick` is null — a
-  // settler has no decoded run gait, and the MovementSystem reads only `perTick`.
+  // settler `MoveSpeed`-less, walking at MOVE_SPEED_PER_TICK, the hash untouched.
   if (spec.moveSpeed !== undefined && spec.moveSpeed > 0) {
-    world.add(e, MoveSpeed, {
-      perTick: fx.div(ONE, fx.fromInt(spec.moveSpeed)),
-      runPerTick: null,
-    });
+    world.add(e, MoveSpeed, { perTick: fx.div(ONE, fx.fromInt(spec.moveSpeed)) });
   }
   // A settler spawned for a specific PLAYER carries an `Owner` (the same separate-optional stamp): it
   // is the human player's to select and order. Omitted / out-of-range owner leaves it neutral (the

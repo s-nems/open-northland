@@ -3,12 +3,7 @@ import { Fleeing, MoveGoal, PathFollow, Position, Settler } from '../../../src/c
 import { fx, ONE } from '../../../src/core/fixed.js';
 import { cellAnchorNode, Simulation } from '../../../src/index.js';
 import { combatSystem } from '../../../src/systems/index.js';
-import {
-  ACCEL_TICKS,
-  MOVE_SPEED_PER_TICK,
-  movementSystem,
-  RUN_SPEED_MULTIPLIER,
-} from '../../../src/systems/movement/movement.js';
+import { ACCEL_TICKS, MOVE_SPEED_PER_TICK, movementSystem } from '../../../src/systems/movement/movement.js';
 import { MILITARY_MODE } from '../../../src/systems/readviews/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { combatant, ctxOf, grassMap, P0, P1, tileOf } from './support.js';
@@ -26,7 +21,7 @@ describe('FLEE — civilians run from danger', () => {
     expect(goalX).toBeLessThan(cellAnchorNode(20, 0).hx); // running LEFT, away from the threat at node x=50
   });
 
-  it('the fleeing gait outruns a walking pursuer — distance to the threat grows', () => {
+  it('a fleeing unit gains distance from a stationary threat', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(40, 1) });
     const civ = combatant(sim, 20, 0, P0, MILITARY_MODE.FLEE);
     const threat = combatant(sim, 25, 0, P1, MILITARY_MODE.IGNORE); // stays put (IGNORE)
@@ -72,8 +67,8 @@ describe('FLEE — civilians run from danger', () => {
   });
 });
 
-describe('FLEE run gait — the MovementSystem runs a Fleeing unit', () => {
-  it('a Fleeing path-follower cruises at RUN_SPEED_MULTIPLIER× the walk pace', () => {
+describe('FLEE pace — a Fleeing unit moves at its normal pace (no sprint exists)', () => {
+  it('a Fleeing path-follower cruises at the same walk pace as a calm one', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(10, 1) });
     const walker = sim.world.create();
     sim.world.add(walker, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
@@ -95,18 +90,16 @@ describe('FLEE run gait — the MovementSystem runs a Fleeing unit', () => {
     });
     sim.world.add(runner, Fleeing, { repathAt: 0, calmUntil: null });
 
-    // Both start from rest and ramp up over ACCEL_TICKS (each toward its OWN gait — the runner's
-    // ramp is proportionally steeper, so it pulls ahead from the very first tick). Warm past the
-    // ramp, then compare one cruise tick: on an E/W leg the step is bit-exact the gait.
+    // Both start from rest and ramp up over ACCEL_TICKS toward the ONE universal gait — Fleeing
+    // grants no speed boost. Warm past the ramp, then compare one cruise tick: on an E/W leg the
+    // step is bit-exact the gait, identical for both.
     for (let i = 0; i <= ACCEL_TICKS; i++) movementSystem(sim.world, ctxOf(sim));
     const walkerBefore = sim.world.get(walker, Position).x;
     const runnerBefore = sim.world.get(runner, Position).x;
-    expect(runnerBefore).toBeGreaterThan(walkerBefore); // the runner led throughout the ramp too
+    expect(runnerBefore).toBe(walkerBefore); // step-for-step identical through the ramp
     movementSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.get(walker, Position).x).toBe(fx.add(walkerBefore, MOVE_SPEED_PER_TICK));
-    expect(sim.world.get(runner, Position).x).toBe(
-      fx.add(runnerBefore, fx.mul(MOVE_SPEED_PER_TICK, fx.fromInt(RUN_SPEED_MULTIPLIER))),
-    );
+    expect(sim.world.get(runner, Position).x).toBe(fx.add(runnerBefore, MOVE_SPEED_PER_TICK));
   });
 });

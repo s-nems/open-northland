@@ -7,8 +7,9 @@ import { COMPASS_DIRECTIONS, clearNavState, entityNode, isTravelling, type NodeB
 import { playerSeesEntity } from '../vision/index.js';
 import { isValidTarget, SIGHT_RADIUS_NODES } from './targeting.js';
 
-// The FLEE drive — the civilian raid reaction (the FLEE stance's active behaviour): run from the
-// nearest threat at the run gait, wind a cool-down down once clear, and yield to a collapsing need.
+// The FLEE drive — the civilian raid reaction (the FLEE stance's active behaviour): path away from
+// the nearest threat (at the unit's normal pace — no run gait exists), wind a cool-down down once
+// clear, and yield to a collapsing need.
 
 /**
  * FLEE stance — how many ticks a fleeing unit must go with **no threat in sight** before it stops running
@@ -28,8 +29,8 @@ const FLEE_STEP_NODES = 12;
 /**
  * FLEE stance — how many ticks a fleeing unit holds its current run route before re-aiming away from the
  * (moving) threat. The flee twin of {@link REPATH_CADENCE}: a per-tick re-path of every fleer would be the
- * RTS-scale regression golden rule 7 forbids; between re-aims the unit runs its last route (the run gait
- * keeps it ahead of a walking pursuer). OUR design (source basis "Combat flee").
+ * RTS-scale regression golden rule 7 forbids; between re-aims the unit walks its last route. OUR design
+ * (source basis "Combat flee").
  */
 const FLEE_REPATH_CADENCE = 6;
 
@@ -53,16 +54,16 @@ const FLEE_DIRECTIONS = COMPASS_DIRECTIONS;
  * ring-search index (no new scan, golden rule 7): the nearest hostile within {@link SIGHT_RADIUS_NODES} is
  * the threat. Then, in order:
  *  - **no threat in sight** → wind the cool-down down: start it on the first clear tick, and after
- *    {@link FLEE_COOLDOWN_TICKS} clear with none, shed {@link Fleeing} + the run route so the economy
+ *    {@link FLEE_COOLDOWN_TICKS} clear with none, shed {@link Fleeing} + the flee route so the economy
  *    re-tasks the unit; while cooling down it holds its last route. A unit that was never fleeing does
  *    nothing (the economy owns it).
  *  - **a collapsing need** ({@link needCollapsing}) → a near-death hunger/fatigue overrides the flee: on the
- *    transition out of fleeing (Fleeing still set) shed the marker + run route so the AISystem's eat/sleep
+ *    transition out of fleeing (Fleeing still set) shed the marker + flee route so the AISystem's eat/sleep
  *    drive owns the unit; once yielded, leave that need-walk untouched (don't cancel it each tick).
  *  - **flee** → stamp/refresh {@link Fleeing} (calmUntil null = in danger), and — throttled to
  *    {@link FLEE_REPATH_CADENCE}, or immediately on a failed route — re-aim to a walkable cell
- *    {@link FLEE_STEP_NODES} away in the best direction AWAY from the threat ({@link fleeDestination}). The
- *    MovementSystem walks a Fleeing unit at the faster run gait, so it outpaces a walking pursuer.
+ *    {@link FLEE_STEP_NODES} away in the best direction AWAY from the threat ({@link fleeDestination}).
+ *    The unit walks that route at its normal pace — escape comes from steering away, not speed.
  */
 export function fleeDrive(
   world: World,
@@ -74,7 +75,7 @@ export function fleeDrive(
 ): void {
   // A COLLAPSING need (near-death hunger/fatigue) overrides the flee whether or not a threat is in sight —
   // the settler stops to eat/sleep even in danger, and doesn't sit idle through the cool-down after a
-  // threat leaves. Yield only on the transition (Fleeing still set): shed the marker + the run route so the
+  // threat leaves. Yield only on the transition (Fleeing still set): shed the marker + the flee route so the
   // AISystem re-tasks the unit; once yielded (no marker) leave the need-walk alone so we don't cancel the
   // eat/sleep goal the AI sets each tick. (Checked FIRST so it wins over both the threat and the cool-down.)
   if (needCollapsing(world, e)) {

@@ -42,23 +42,15 @@ export const HerdMember = defineComponent<{ leader: Entity }>('HerdMember');
  * so a cow grazes at its own data-pinned speed instead of the settler default. A creature whose record
  * omits `movespeed` carries no `MoveSpeed` (the engine default applies = the universal pace).
  *
- * `runPerTick` is the animal's **running** gait (the `runspeed` param) — the *faster* pace a fleeing or
- * charging creature moves at (a smaller `runspeed` than `movespeed` = `ONE/runspeed` > `ONE/walk`, the
- * faster step under the same step-period reading). The MovementSystem's `runGait` (the FLEE-stance run
- * speed) reads it as the preferred run pace, so it is no longer inert at the code level — but only a
- * fleeing entity that carries a `MoveSpeed` reaches that branch, and today only owned humans flee (via the
- * FLEE stance) while `MoveSpeed` is animal-only, so no runtime path actually reads `runPerTick` yet: an
- * animal flee/charge DRIVE (an animal switching to its run gait) is still undocumented "soul" behaviour
- * with no oracle, deferred (source basis "Animal locomotion pace"). Landing the param on the entity now
- * — the same "data-on-the-entity before its consumer" discipline as `Armor`/`cargoGoods` — means that drive
- * becomes a pure read switch, not a re-extraction. `null` when the record omits `runspeed` (only the walk
- * pace is known).
+ * This is the entity's ONE pace — there is deliberately no run/sprint gait (the `animaltypes.ini`
+ * `runspeed` param stays unconsumed in the IR): every unit moves at its constant pace whatever it is
+ * doing, matching the original's constant ticks-per-step movement.
  *
- * Both paces are positive {@link Fixed}s (minted only via `fx.*`, so they hash deterministically). The
- * walk pace is read identically to {@link MOVE_SPEED_PER_TICK} by the same drift-free arrival-snap, so a
- * per-entity pace introduces no rounding divergence — two runs stay byte-identical.
+ * The pace is a positive {@link Fixed} (minted only via `fx.*`, so it hashes deterministically), read
+ * identically to {@link MOVE_SPEED_PER_TICK} by the same drift-free arrival-snap, so a per-entity pace
+ * introduces no rounding divergence — two runs stay byte-identical.
  */
-export const MoveSpeed = defineComponent<{ perTick: Fixed; runPerTick: Fixed | null }>('MoveSpeed');
+export const MoveSpeed = defineComponent<{ perTick: Fixed }>('MoveSpeed');
 
 /**
  * A path the entity is following: fixed-point waypoints + current index, plus the follower's live
