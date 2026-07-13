@@ -26,7 +26,7 @@ import { pathToFileURL } from 'node:url';
 import { type Args, assertOutStaysInCheckout, parseArgs, resolveArgs } from './args.js';
 import { convertBmdTree, resolveGraphicsBindings } from './stages/bmd.js';
 import { convertFontStage } from './stages/fonts.js';
-import { convertGoodsStage } from './stages/goods.js';
+import { convertGoodsStage } from './stages/goods/index.js';
 import { convertGuiStage } from './stages/gui/index.js';
 import { writeIr } from './stages/ir.js';
 import { unpackLibTree } from './stages/lib.js';
@@ -123,7 +123,7 @@ async function run(args: Args): Promise<void> {
 
   // Goods icons: the shared good-pile bob sheet (ls_goods 155 bobs) -> an indexed atlas + preview + a goods
   // recolor-palette LUT, plus the good->(state-1 pile frame, palette) bindings (goodtypes.ini joined onto the
-  // [GfxLandscape] good-pile records). Feeds the HUD's per-good resource icons. See stages/goods.ts.
+  // [GfxLandscape] good-pile records). Feeds the HUD's per-good resource icons. See stages/goods/.
   const goods = await convertGoodsStage(args.game, args.out);
   console.log(
     `[pipeline] goods: ${goods.frames}-frame atlas, ${goods.palettes}-palette LUT, ` +
