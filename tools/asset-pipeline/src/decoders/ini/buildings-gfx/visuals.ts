@@ -153,7 +153,7 @@ export function extractBuildingOverlays(sections: readonly RuleSection[], src: S
  * One building graphics binding: a {@link BmdPaletteBinding} (`.bmd` body + shadow + palette editname)
  * plus the record's `EditName`. The same shape as {@link import('../bindings/index.js').LandscapeGraphicsBinding}
  * — a building is just the `[GfxHouse]` analog of the `[GfxLandscape]` static-decor binding — so it flows
- * through the exact same {@link import('../../../stages/bmd.js').convertBmdTree} `(bmd, palette)` atlas path
+ * through the exact same {@link import('../../../stages/bmd/index.js').convertBmdTree} `(bmd, palette)` atlas path
  * with no second copy of the conversion logic. The name is provenance + a building handle (`"viking stock"`
  * vs `"viking home"`) so a render binding can pick a house by it without re-reading the `.ini`.
  */
