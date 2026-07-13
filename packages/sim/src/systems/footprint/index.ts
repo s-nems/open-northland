@@ -26,10 +26,10 @@ export {
 // manhattan/nodeKey are published through systems/spatial.ts (their single public export
 // site — two star-export paths to one name would silently drop it from the systems barrel on a
 // future collision); package siblings import them from ./geometry.js directly.
+export { resourceBlockedCells } from './resource-blocked-cache.js';
 export {
   createResourceNode,
   type ResourceNodeSpec,
-  resourceBlockedCells,
   resourceFootprintForGood,
   resourceFootprintFromLandscapeGfx,
   stampResourceFootprint,

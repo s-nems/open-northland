@@ -9,13 +9,16 @@ import {
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
-import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
-import { translatedCells } from './geometry.js';
+import { positionOfNode } from '../../nav/halfcell.js';
+import {
+  refreshResourceBlockedCacheEntry,
+  removeResourceBlockedCacheEntry,
+  syncResourceBlockedCacheGeneration,
+} from './resource-blocked-cache.js';
 
-// RESOURCE footprints — the `[GfxLandscape]` walk/build/work areas a stamped resource occupies, and
-// the incrementally-maintained per-world blocked-cell cache (with its coherence verifier). Opt-in
-// via ResourceFootprint: a bare Resource keeps the legacy same-tile fixture behavior.
+// RESOURCE footprints — the `[GfxLandscape]` walk/build/work areas a stamped resource occupies. Opt-in
+// via ResourceFootprint: a bare Resource keeps the legacy same-tile fixture behavior. The blocked-cell
+// overlay these feed lives in ./resource-blocked-cache.ts (maintained by the stamp/unstamp paths below).
 
 /**
  * Convert one decoded `[GfxLandscape]` record into the sim's resource-footprint component payload.
@@ -153,130 +156,4 @@ export function createResourceNode(world: World, content: ContentSet, spec: Reso
     });
   }
   return e;
-}
-
-interface ResourceBlockedCache {
-  generation: number;
-  readonly terrain: TerrainGraph;
-  readonly cells: Set<NodeId>;
-  readonly counts: Map<NodeId, number>;
-  readonly entries: Map<Entity, readonly NodeId[]>;
-}
-
-const resourceBlockedCache = new WeakMap<World, ResourceBlockedCache>();
-
-function resourceBlockedCellsFor(world: World, terrain: TerrainGraph, resource: Entity): NodeId[] | null {
-  const footprint = world.tryGet(resource, ResourceFootprint);
-  const p = world.tryGet(resource, Position);
-  if (footprint === undefined || p === undefined) return null;
-  const n = nodeOfPosition(p.x, p.y);
-  return translatedCells(terrain, footprint.walk, n.hx, n.hy);
-}
-
-function addResourceBlockedCacheEntry(
-  cache: ResourceBlockedCache,
-  resource: Entity,
-  cells: readonly NodeId[],
-): void {
-  removeResourceBlockedCacheEntryFrom(cache, resource);
-  cache.entries.set(resource, cells);
-  for (const cell of cells) {
-    const count = (cache.counts.get(cell) ?? 0) + 1;
-    cache.counts.set(cell, count);
-    cache.cells.add(cell);
-  }
-}
-
-function removeResourceBlockedCacheEntryFrom(cache: ResourceBlockedCache, resource: Entity): void {
-  const cells = cache.entries.get(resource);
-  if (cells === undefined) return;
-  cache.entries.delete(resource);
-  for (const cell of cells) {
-    const count = (cache.counts.get(cell) ?? 0) - 1;
-    if (count > 0) {
-      cache.counts.set(cell, count);
-    } else {
-      cache.counts.delete(cell);
-      cache.cells.delete(cell);
-    }
-  }
-}
-
-function refreshResourceBlockedCacheEntry(world: World, resource: Entity): void {
-  const cache = resourceBlockedCache.get(world);
-  if (cache === undefined) return;
-  const cells = resourceBlockedCellsFor(world, cache.terrain, resource);
-  if (cells === null) {
-    removeResourceBlockedCacheEntryFrom(cache, resource);
-  } else {
-    addResourceBlockedCacheEntry(cache, resource, cells);
-  }
-  syncResourceBlockedCacheGeneration(world);
-}
-
-function removeResourceBlockedCacheEntry(world: World, resource: Entity): void {
-  const cache = resourceBlockedCache.get(world);
-  if (cache === undefined) return;
-  removeResourceBlockedCacheEntryFrom(cache, resource);
-}
-
-function syncResourceBlockedCacheGeneration(world: World): void {
-  const cache = resourceBlockedCache.get(world);
-  if (cache !== undefined) cache.generation = world.componentGeneration(ResourceFootprint);
-}
-
-function deriveResourceBlockedCache(world: World, terrain: TerrainGraph): ResourceBlockedCache {
-  const cache: ResourceBlockedCache = {
-    generation: world.componentGeneration(ResourceFootprint),
-    terrain,
-    cells: new Set<NodeId>(),
-    counts: new Map<NodeId, number>(),
-    entries: new Map<Entity, readonly NodeId[]>(),
-  };
-  for (const e of world.query(ResourceFootprint, Position)) {
-    const cells = resourceBlockedCellsFor(world, terrain, e);
-    if (cells !== null) addResourceBlockedCacheEntry(cache, e, cells);
-  }
-  return cache;
-}
-
-function deriveResourceBlockedCells(world: World, terrain: TerrainGraph): Set<NodeId> {
-  return deriveResourceBlockedCache(world, terrain).cells;
-}
-
-function sameCells(a: ReadonlySet<NodeId>, b: ReadonlySet<NodeId>): boolean {
-  if (a.size !== b.size) return false;
-  for (const cell of a) if (!b.has(cell)) return false;
-  return true;
-}
-
-function verifyResourceBlockedCache(world: World, terrain: TerrainGraph): string[] {
-  const cached = resourceBlockedCache.get(world);
-  if (cached === undefined) return [];
-  if (cached.terrain !== terrain) return [];
-  if (cached.generation !== world.componentGeneration(ResourceFootprint)) return [];
-  const fresh = deriveResourceBlockedCells(world, terrain);
-  if (sameCells(cached.cells, fresh)) return [];
-  return [
-    `resourceBlockedCells cache holds ${cached.cells.size} cells but re-derived ${fresh.size} — stale resource footprint overlay`,
-  ];
-}
-
-/**
- * The cells standing resource nodes make unwalkable. Built once per world/terrain and maintained by
- * `stampResourceFootprint` / `unstampResourceFootprint` for the resource spawn/removal paths, so clearing
- * a forest mutates just the affected node's cells instead of scanning every resource on the next route.
- * A direct ResourceFootprint store mutation still falls back to a full rebuild for correctness.
- */
-export function resourceBlockedCells(world: World, terrain: TerrainGraph): ReadonlySet<NodeId> {
-  const generation = world.componentGeneration(ResourceFootprint);
-  const cached = resourceBlockedCache.get(world);
-  if (cached !== undefined && cached.terrain === terrain && cached.generation === generation) {
-    return cached.cells;
-  }
-
-  const cache = deriveResourceBlockedCache(world, terrain);
-  resourceBlockedCache.set(world, cache);
-  world.registerCacheVerifier('resourceBlockedCells', () => verifyResourceBlockedCache(world, terrain));
-  return cache.cells;
 }
