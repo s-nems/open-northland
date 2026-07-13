@@ -118,18 +118,16 @@ export const separationSystem: System = (world, ctx) => {
   // snapshot, not a live component read: the grind bookkeeping below can drop an earlier-processed
   // mover's PathFollow mid-loop (a re-route/stand-down in a converging crowd), so a live read on a
   // later mover's neighbour would throw — and would also make the pair split order-dependent.
-  const { before } = scratch;
+  const { before, snapshotPool } = scratch;
   for (const e of movers) {
     const p = world.get(e, Position);
     const f = world.get(e, PathFollow); // present by the movers query above
-    const snapshot = before[e];
-    if (snapshot === undefined) before[e] = { x: p.x, y: p.y, hx: f.hx, hy: f.hy };
-    else {
-      snapshot.x = p.x;
-      snapshot.y = p.y;
-      snapshot.hx = f.hx;
-      snapshot.hy = f.hy;
-    }
+    const snapshot = snapshotPool.pop() ?? { x: p.x, y: p.y, hx: f.hx, hy: f.hy };
+    snapshot.x = p.x;
+    snapshot.y = p.y;
+    snapshot.hx = f.hx;
+    snapshot.hy = f.hy;
+    before.set(e, snapshot);
   }
 
   // Lazy shared per-tick state: zones/overlay are built only if some pair actually interacts.
@@ -159,7 +157,7 @@ export const separationSystem: System = (world, ctx) => {
   };
 
   for (const e of movers) {
-    const start = before[e];
+    const start = before.get(e);
     if (start === undefined) continue; // movers ⊆ before by construction; guard for the checked access
     const node = nodeOfPosition(start.x, start.y);
     const isFirm = firmMovers.has(e);
@@ -198,7 +196,7 @@ export const separationSystem: System = (world, ctx) => {
     let pushX = ZERO;
     let pushY = ZERO;
     for (const n of nearMovers) {
-      const other = before[n];
+      const other = before.get(n);
       if (other === undefined) continue;
       const dist = worldDistance(start.x, start.y, other.x, other.y);
       if (dist >= UNIT_SEPARATION_RADIUS) continue;
