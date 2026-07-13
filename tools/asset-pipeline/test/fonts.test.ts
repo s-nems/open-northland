@@ -2,11 +2,11 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { type Bmd, BOB_TYPE_8BIT, PACKED_X_SHIFT } from '../src/decoders/bmd.js';
 import { encodeFnt, type Font } from '../src/decoders/fnt.js';
-import { encodePcx } from '../src/decoders/pcx.js';
 import { decodePng } from '../src/decoders/png.js';
 import { convertFontColorLut, convertFontStage, convertFonts } from '../src/stages/fonts.js';
+import { sampleGlyphBmd } from './fixtures/bmd.js';
+import { paletteCarrier } from './fixtures/pcx.js';
 
 /**
  * Font stage tests. No copyrighted fixtures: we synthesize the `.fnt` files (a CFont wrapping a tiny `.bmd`)
@@ -16,40 +16,9 @@ import { convertFontColorLut, convertFontStage, convertFonts } from '../src/stag
  * fnt/atlas tests; here we assert the stage WIRING (right files at right paths, manifest shape, key scheme).
  */
 
-/** A 256-entry ramp palette (index i → (i, 255-i, (i*7)&0xff)) — every channel varies with the index. */
-const ramp = (): Uint8Array => {
-  const p = new Uint8Array(768);
-  for (let i = 0; i < 256; i++) {
-    p[i * 3] = i;
-    p[i * 3 + 1] = 255 - i;
-    p[i * 3 + 2] = (i * 7) & 0xff;
-  }
-  return p;
-};
-
-/** A 2×2 palette carrier (the shape the real `Data/gui/palettes/font_*.pcx` are: tiny image, 256-colour trailer). */
-const paletteCarrier = (): Uint8Array =>
-  encodePcx({ width: 2, height: 2, pixels: Uint8Array.from([0, 1, 2, 3]), palette: ramp() });
-
-/** A tiny valid `.bmd` glyph container (2 8-bit bobs with pixels). */
-const sampleBmd = (): Bmd => ({
-  version: 0,
-  firstBobId: 0,
-  bobCount: 2,
-  generatedNonEmptyLines: 0,
-  generatedEmptyLines: 0,
-  generatedPackedLines: 0,
-  bobs: [
-    { type: BOB_TYPE_8BIT, area: { x: 0, y: 0, width: 2, height: 1 }, misc: 0 },
-    { type: BOB_TYPE_8BIT, area: { x: 0, y: 0, width: 1, height: 1 }, misc: 1 },
-  ],
-  packedLineData: Uint8Array.from([0x02, 4, 8, 0x00, 0x01, 5, 0x00]),
-  lineControl: Uint32Array.from([(0 << PACKED_X_SHIFT) | 0, (0 << PACKED_X_SHIFT) | 4]),
-});
-
 /** A `.fnt` byte blob: a CFont with `value0C` (nominal size) around the sample glyph container. */
 const sampleFont = (nominalSize: number): Uint8Array => {
-  const font: Font = { version: 0, value08: 1, value0C: nominalSize, bmd: sampleBmd() };
+  const font: Font = { version: 0, value08: 1, value0C: nominalSize, bmd: sampleGlyphBmd() };
   return encodeFnt(font);
 };
 

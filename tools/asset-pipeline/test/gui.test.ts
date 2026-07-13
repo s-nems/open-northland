@@ -2,10 +2,8 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { type Bmd, BOB_TYPE_8BIT, encodeBmd, PACKED_X_SHIFT } from '../src/decoders/bmd.js';
-import { encryptMode1, StorableId } from '../src/decoders/cif.js';
+import { encodeBmd } from '../src/decoders/bmd.js';
 import { encodeCursor } from '../src/decoders/cursor.js';
-import { encodePcx } from '../src/decoders/pcx.js';
 import { decodePng } from '../src/decoders/png.js';
 import {
   BODY_SHADOW_MIN_LUMA,
@@ -16,6 +14,10 @@ import {
   convertGuiStrings,
   liftPaletteShadows,
 } from '../src/stages/gui/index.js';
+import { sampleGlyphBmd } from './fixtures/bmd.js';
+import { buildStringCif } from './fixtures/cif.js';
+import { rampPalette } from './fixtures/palette.js';
+import { paletteCarrier } from './fixtures/pcx.js';
 
 /**
  * GUI stage tests. No copyrighted fixtures: we synthesize the HUD sources (a `.bmd` bob sheet, palette
@@ -24,81 +26,6 @@ import {
  * the top-level manifest. The per-decoder pixel correctness is covered in atlas/cursor/cif tests; here we
  * assert the stage WIRING (right files at right paths, manifest shape, CP1250 strings, hotspots).
  */
-
-/** A 256-entry ramp palette (index i → (i, 255-i, (i*7)&0xff)) — every channel varies with the index. */
-const ramp = (): Uint8Array => {
-  const p = new Uint8Array(768);
-  for (let i = 0; i < 256; i++) {
-    p[i * 3] = i;
-    p[i * 3 + 1] = 255 - i;
-    p[i * 3 + 2] = (i * 7) & 0xff;
-  }
-  return p;
-};
-
-/** A 2×2 palette carrier (the shape the real `Data/gui/palettes/*.pcx` are: tiny image, 256-colour trailer). */
-const paletteCarrier = (): Uint8Array =>
-  encodePcx({ width: 2, height: 2, pixels: Uint8Array.from([0, 1, 2, 3]), palette: ramp() });
-
-/** A 2-bob `.bmd` (both 8-bit, with pixels), serialized like a real CBobManager sheet. */
-const sampleBmd = (): Uint8Array => {
-  const bmd: Bmd = {
-    version: 0,
-    firstBobId: 0,
-    bobCount: 2,
-    generatedNonEmptyLines: 0,
-    generatedEmptyLines: 0,
-    generatedPackedLines: 0,
-    bobs: [
-      { type: BOB_TYPE_8BIT, area: { x: 0, y: 0, width: 2, height: 1 }, misc: 0 },
-      { type: BOB_TYPE_8BIT, area: { x: 0, y: 0, width: 1, height: 1 }, misc: 1 },
-    ],
-    packedLineData: Uint8Array.from([0x02, 4, 8, 0x00, 0x01, 5, 0x00]),
-    lineControl: Uint32Array.from([(0 << PACKED_X_SHIFT) | 0, (0 << PACKED_X_SHIFT) | 4]),
-  };
-  return encodeBmd(bmd);
-};
-
-/** Serializes a CStringArray `.cif` from level-tagged lines (the `[control]`/`[text]` grammar), encrypted like the original. */
-const buildStringCif = (lines: readonly { level: number; text: string }[]): Uint8Array => {
-  const chunks: number[] = [];
-  const offsetValues: number[] = [];
-  for (const { level, text } of lines) {
-    offsetValues.push(chunks.length);
-    if (level > 0) chunks.push(level);
-    for (const ch of text) chunks.push(ch.charCodeAt(0) & 0xff);
-    chunks.push(0);
-  }
-  const pool = Uint8Array.from(chunks);
-  const offsets = new Uint8Array(offsetValues.length * 4);
-  const ov = new DataView(offsets.buffer);
-  offsetValues.forEach((v, i) => {
-    ov.setUint32(i * 4, v, true);
-  });
-  encryptMode1(offsets);
-  encryptMode1(pool);
-
-  const out: number[] = [];
-  const pushU32 = (v: number): void =>
-    void out.push(v & 0xff, (v >>> 8) & 0xff, (v >>> 16) & 0xff, (v >>> 24) & 0xff);
-  const pushCMemory = (data: Uint8Array): void => {
-    pushU32(StorableId.CMemory);
-    pushU32(0);
-    pushU32(data.length);
-    for (const b of data) out.push(b);
-  };
-  pushU32(StorableId.CStringArray);
-  pushU32(0);
-  pushU32(1); // forceSequentialIds
-  pushU32(lines.length); // stringCount
-  pushU32(lines.length); // usedIdCount
-  pushU32(lines.length); // slotCount
-  pushU32(pool.length); // stringPoolUsedBytes
-  pushCMemory(offsets);
-  out.push(1);
-  pushCMemory(pool);
-  return Uint8Array.from(out);
-};
 
 /** The palette carriers the LUT stacks (13 element palettes + the bubble palette), at their on-disk paths. */
 const PALETTE_FILES = [
@@ -151,8 +78,8 @@ describe('gui stage', () => {
     // Palettes.
     for (const f of PALETTE_FILES) await writeGame(f, paletteCarrier());
     // Bob sheets.
-    await writeGame(join(BOBS_DIR, 'ls_gui_window.bmd'), sampleBmd());
-    await writeGame(join(BOBS_DIR, 'ls_gui_bubbles.bmd'), sampleBmd());
+    await writeGame(join(BOBS_DIR, 'ls_gui_window.bmd'), encodeBmd(sampleGlyphBmd()));
+    await writeGame(join(BOBS_DIR, 'ls_gui_bubbles.bmd'), encodeBmd(sampleGlyphBmd()));
     // Strings, both languages, in the real `[control]`/`[text]` grammar (`stringn` sets the id, `string`
     // auto-increments). `pol`'s first entry stores raw CP1250 BYTES (0xEA='ę', 0xB3='ł' in CP1250) as a
     // latin1 string, so the fixture round-trips a real Polish string through the stage's CP1250 re-decode.
@@ -183,7 +110,7 @@ describe('gui stage', () => {
           hotspotX: hx,
           hotspotY: hy,
           pixels: Uint8Array.from([1, 2, 3, 4]),
-          palette: ramp(),
+          palette: rampPalette(),
         },
       ]);
       await writeGame(join('DataX', 'Mouse', `${name}.cur`), cur);
