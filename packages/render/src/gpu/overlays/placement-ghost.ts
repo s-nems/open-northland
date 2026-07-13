@@ -2,8 +2,8 @@ import { Container, Graphics, Sprite } from 'pixi.js';
 import { type ElevationField, terrainLiftAtNode } from '../../data/elevation.js';
 import { depthKey, halfCellToScreen, TILE_HALF_H, TILE_HALF_W } from '../../data/iso.js';
 import type { DrawItem } from '../../data/scene/index.js';
-import type { SpriteSheet } from '../pixi-app.js';
 import { resolveLayers } from '../sprite-pool/index.js';
+import type { SpriteSheet } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
 
 /**

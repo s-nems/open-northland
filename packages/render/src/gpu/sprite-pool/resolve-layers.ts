@@ -17,7 +17,7 @@ import {
   resolveStockpileLayerDraws,
   type SpriteKind,
 } from '../../data/sprites/index.js';
-import type { SettlerCharacterSet, SpriteLayer, SpriteSheet } from '../pixi-app.js';
+import type { SettlerCharacterSet, SpriteLayer, SpriteSheet } from '../sprite-sheet.js';
 
 /**
  * The layer-resolution step of the pool's per-frame update: which atlas layers (source + frame +

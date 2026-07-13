@@ -1,5 +1,5 @@
 import type { DrawItem, SpriteState } from '../scene/index.js';
-import type { ByJobTable, SettlerStateBinding, SpriteFrameRef } from './bindings.js';
+import type { ByJobTable, SettlerStateBinding, SpriteFrameRef } from './settler-bindings.js';
 
 /**
  * The settler frame-selection state machine: which bob id a settler draws for its state + facing +
@@ -75,7 +75,7 @@ function frameOf(ref: SpriteFrameRef, facing: number, clock: number): number {
  * wins, as a settler only carries after harvesting empty-handed. The chosen {@link SpriteFrameRef} is
  * then resolved through {@link frameOf} (directional + animated when it's a
  * {@link import('./bindings.js').DirectionalAnim}). Pure. Exported so the per-character render path
- * ({@link import('../../gpu/pixi-app.js').SettlerCharacter}) resolves its own binding through the exact
+ * ({@link import('../../gpu/sprite-sheet.js').SettlerCharacter}) resolves its own binding through the exact
  * same state machine the single-binding path uses.
  */
 export function resolveSettlerBobId(

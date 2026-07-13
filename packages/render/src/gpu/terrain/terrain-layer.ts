@@ -16,8 +16,8 @@ import {
 } from '../../data/terrain.js';
 import { aabbIntersects, type Viewport } from '../../data/viewport.js';
 import { destroyMeshChildren } from '../mesh-teardown.js';
-import type { GroundPattern, TerrainTextureSet } from '../pixi-app.js';
 import { padLaneRows } from '../shading.js';
+import type { GroundPattern, TerrainTextureSet } from '../terrain-textures.js';
 import {
   ChunkBatcher,
   emptyBatch,

@@ -1,14 +1,10 @@
 import type { DrawItem } from '../scene/index.js';
 import { type AtlasFrame, lookupFrame, type SpriteAtlas } from './atlas.js';
-import type {
-  BuildingTypeBinding,
-  ResourceTypeBinding,
-  SettlerStateBinding,
-  SpriteBindings,
-  StockpileBinding,
-} from './bindings.js';
+import type { SpriteBindings } from './bindings.js';
 import { resolveBuildingDraw, resolveResourceDraw, resolveStockpileDraw } from './layered.js';
+import type { BuildingTypeBinding, ResourceTypeBinding, StockpileBinding } from './layered-bindings.js';
 import { resolveSettlerBobId } from './settler.js';
+import type { SettlerStateBinding } from './settler-bindings.js';
 
 /**
  * The top-level frame-selection dispatch: one entry point that routes a drawable

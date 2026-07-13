@@ -2,7 +2,7 @@ import { type Application, Container, Graphics, Sprite, Text, type TextureSource
 import { type Camera, cameraScreenX, cameraScreenY } from '../../data/iso.js';
 import { lookupFrame } from '../../data/sprites/index.js';
 import { PalettedSprite } from '../paletted-sprite.js';
-import type { SpriteLayer } from '../pixi-app.js';
+import type { SpriteLayer } from '../sprite-sheet.js';
 import { TextureCache } from '../texture-cache.js';
 import {
   CELL_H,
