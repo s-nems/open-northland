@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { type Bmd, decodeBmd } from '../../decoders/bmd/index.js';
+import { decodeBmd } from '../../decoders/bmd/index.js';
 import { BOBS_DIR, emitIndexedAndPreviewAtlas, readGameFile } from '../game-file.js';
 
 /** The GUI bob sheets to atlas, each with the palette its RGBA preview is coloured through. */
@@ -58,20 +58,23 @@ export async function convertGuiAtlases(
       );
       continue;
     }
-    let bmd: Bmd;
+    // decode + atlas emit share one warn-and-skip guard so a malformed-but-decodable sheet drops only
+    // itself, never aborting the batch (matching the goods/font stages).
+    let indexedStem: string;
+    let previewStem: string;
+    let frames: number;
     try {
-      bmd = decodeBmd(bytes);
+      ({ indexedStem, previewStem, frames } = await emitIndexedAndPreviewAtlas(
+        outDir,
+        src.stem,
+        decodeBmd(bytes),
+        src.previewPalette,
+        preview,
+      ));
     } catch (err) {
       console.warn(`[pipeline] gui: skipped ${src.stem}: ${(err as Error).message}`);
       continue;
     }
-    const { indexedStem, previewStem, frames } = await emitIndexedAndPreviewAtlas(
-      outDir,
-      src.stem,
-      bmd,
-      src.previewPalette,
-      preview,
-    );
     done.push({
       stem: src.stem,
       indexedStem,
