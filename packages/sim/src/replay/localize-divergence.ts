@@ -1,5 +1,4 @@
-import * as components from '../components/index.js';
-import type { Component } from '../ecs/world.js';
+import { clearComponentStores } from '../harness/stores.js';
 import type { HashTrace } from '../inspect/hashtrace.js';
 import type { WorldSnapshot } from '../inspect/snapshot.js';
 import { diffSnapshots, type SnapshotDiff } from '../inspect/snapshot-diff.js';
@@ -60,15 +59,6 @@ export interface DivergenceReport {
   readonly diff: SnapshotDiff;
 }
 
-/** Clear every component store (shared singletons) so a fresh replay can't inherit the prior run's entities. */
-function clearStores(): void {
-  for (const c of Object.values(components)) {
-    if (typeof c === 'object' && c !== null && 'store' in c) {
-      (c as Component<unknown>).store.clear();
-    }
-  }
-}
-
 /**
  * Localize where two runs diverged and diff their state there. Returns `null` when the two traces'
  * overlapping hashes all agree (no divergence detected within the retained windows) — the inspector's
@@ -100,7 +90,7 @@ export function localizeDivergence(
   // The snapshot is a plain value (no live store views), so it survives the store reuse below.
   const simA = replay({ ...runA, untilTick: tick });
   const snapshotA: WorldSnapshot = simA.snapshot();
-  clearStores();
+  clearComponentStores();
 
   // Replay run B to the SAME tick (this supersedes A in the shared stores) and capture its snapshot.
   const simB = replay({ ...runB, untilTick: tick });

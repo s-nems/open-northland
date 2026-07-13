@@ -21,6 +21,7 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
 import { MILITARY_MODE } from '../readviews/index.js';
+import { clearNavState } from '../spatial.js';
 
 /**
  * The PLAYER-order handlers (`moveUnit` / `setJob`) + the {@link playerOrderSystem} that plays a move
@@ -83,9 +84,7 @@ function reachableMoveGoal(world: World, ctx: SystemContext, terrain: TerrainGra
 /** Drop a player order and the nav state it drove, returning the unit to full autonomy. */
 function clearPlayerOrder(world: World, e: Entity): void {
   world.remove(e, PlayerOrder);
-  world.remove(e, MoveGoal);
-  world.remove(e, PathRequest);
-  world.remove(e, PathFollow);
+  clearNavState(world, e);
 }
 
 /**

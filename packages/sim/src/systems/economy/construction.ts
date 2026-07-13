@@ -1,4 +1,12 @@
-import { Building, Health, Stockpile, UnderConstruction } from '../../components/index.js';
+import {
+  Building,
+  consumeGoods,
+  type GoodsLine,
+  Health,
+  holdsAll,
+  Stockpile,
+  UnderConstruction,
+} from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { type Fixed, fx, ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -147,32 +155,14 @@ function setHealth(world: World, e: Entity, builtFraction: Fixed): void {
 }
 
 /** Whether a stockpile holds every line of a material `cost` in full. */
-function materialsPresent(
-  world: World,
-  building: Entity,
-  cost: ReadonlyArray<{ goodType: number; amount: number }>,
-): boolean {
-  const stock = world.get(building, Stockpile).amounts;
-  for (const line of cost) {
-    if ((stock.get(line.goodType) ?? 0) < line.amount) return false;
-  }
-  return true;
+function materialsPresent(world: World, building: Entity, cost: readonly GoodsLine[]): boolean {
+  return holdsAll(world.get(building, Stockpile).amounts, cost);
 }
 
 /** Remove the `cost` materials from a building's stockpile (spent into the structure / upgrade). The
- *  caller has verified every material is present in full, so a count can't go negative. A good that hits
- *  zero is left as a 0 entry (the canonical Map tolerates it; the stockpile is never iterated for a
- *  decision). */
-function consumeMaterials(
-  world: World,
-  building: Entity,
-  cost: ReadonlyArray<{ goodType: number; amount: number }>,
-): void {
-  const stock = world.get(building, Stockpile).amounts;
-  for (const line of cost) {
-    const have = stock.get(line.goodType) ?? 0;
-    stock.set(line.goodType, have - line.amount);
-  }
+ *  caller has verified every material is present in full via {@link materialsPresent}. */
+function consumeMaterials(world: World, building: Entity, cost: readonly GoodsLine[]): void {
+  consumeGoods(world.get(building, Stockpile).amounts, cost);
 }
 
 /**

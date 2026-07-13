@@ -1,4 +1,16 @@
-import { defineComponent, type Entity, type World } from '../ecs/world.js';
+import { type Component, defineComponent, type Entity, type World } from '../ecs/world.js';
+
+/** The LOWEST-id carrier of a world-scope singleton `component`, or null when none exists. The
+ *  canonical pick (ascending id wins) shared by the {@link WorldRules} and {@link FogRules}
+ *  singletons: their command handlers only ever create one, but the tie-break keeps hashed state
+ *  deterministic should more than one ever appear. */
+function singletonCarrier(world: World, component: Component<unknown>): Entity | null {
+  let best: Entity | null = null;
+  for (const e of world.query(component)) {
+    if (best === null || e < best) best = e;
+  }
+  return best;
+}
 
 /**
  * The world-rules SINGLETON — global gameplay toggles that are part of simulated, HASHED state (they
@@ -18,11 +30,7 @@ export const WorldRules = defineComponent<{
 /** The rules singleton's entity, or null when no rule was ever set. Canonical: the LOWEST-id carrier
  *  wins should more than one ever exist (the command handler only ever creates one). */
 export function worldRulesEntity(world: World): Entity | null {
-  let best: Entity | null = null;
-  for (const e of world.query(WorldRules)) {
-    if (best === null || e < best) best = e;
-  }
-  return best;
+  return singletonCarrier(world, WorldRules);
 }
 
 /** Whether the needs mechanic is on — the {@link WorldRules} value, defaulting to TRUE when the
@@ -75,11 +83,7 @@ export const FogRules = defineComponent<{ mode: number }>('FogRules');
 /** The fog-rules singleton's entity, or null when the mode was never set. Canonical: lowest id wins
  *  (the command handler only ever creates one — the {@link worldRulesEntity} convention). */
 export function fogRulesEntity(world: World): Entity | null {
-  let best: Entity | null = null;
-  for (const e of world.query(FogRules)) {
-    if (best === null || e < best) best = e;
-  }
-  return best;
+  return singletonCarrier(world, FogRules);
 }
 
 /** The active fog mode — the {@link FogRules} value, defaulting to {@link FOG_MODE.OFF} when the
