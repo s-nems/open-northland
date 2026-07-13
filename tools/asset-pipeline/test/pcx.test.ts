@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { decodePcx, encodePcx, expandToRgba } from '../src/decoders/pcx.js';
+import { rampPalette } from './fixtures/palette.js';
 
 /**
  * `.pcx` decoder tests. No copyrighted fixtures are committed: we synthesize pictures in memory with
@@ -8,17 +9,6 @@ import { decodePcx, encodePcx, expandToRgba } from '../src/decoders/pcx.js';
  */
 
 const bytesOf = (...vals: number[]): Uint8Array => Uint8Array.from(vals);
-
-/** A 768-byte palette where entry i is (i, 255-i, (i*7) & 0xff). */
-const rampPalette = (): Uint8Array => {
-  const p = new Uint8Array(768);
-  for (let i = 0; i < 256; i++) {
-    p[i * 3] = i;
-    p[i * 3 + 1] = 255 - i;
-    p[i * 3 + 2] = (i * 7) & 0xff;
-  }
-  return p;
-};
 
 describe('decodePcx', () => {
   it('round-trips dimensions, indexed pixels, and palette', () => {
