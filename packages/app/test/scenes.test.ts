@@ -34,10 +34,6 @@ describe('acceptance scenes', () => {
         b.run(scene.runTicks);
         expect(b.hashState()).toBe(first);
       });
-
-      it('has a non-empty acceptance checklist for the human reviewer', () => {
-        expect(scene.checklist.length).toBeGreaterThan(0);
-      });
     });
   }
 });

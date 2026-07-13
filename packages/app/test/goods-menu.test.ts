@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  GOODS_CATEGORIES,
+  goodsCategories,
   goodsInCategory,
   hitTestGoodsMenu,
   layoutGoodsMenu,
@@ -28,8 +28,8 @@ const entries: readonly MenuGoodEntry[] = [
 
 describe('goods-menu', () => {
   it('has the eight Magazyn category tabs, indexed 0..7', () => {
-    expect(GOODS_CATEGORIES).toHaveLength(8);
-    expect(GOODS_CATEGORIES.map((c) => c.index)).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
+    expect(goodsCategories()).toHaveLength(8);
+    expect(goodsCategories().map((c) => c.index)).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
   });
 
   it('filters goods to a category by their stock-tab id', () => {

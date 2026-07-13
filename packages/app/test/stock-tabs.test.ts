@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { STOCK_TAB_COUNT } from '../src/content/gui-atlas-map.js';
-import { goodCategoryTab, STOCK_TAB_LABELS, stockTabRects } from '../src/hud/details-panel/stock-tabs.js';
+import { goodCategoryTab, stockTabLabels, stockTabRects } from '../src/hud/details-panel/stock-tabs.js';
 
 describe('stock category tabs', () => {
   it('maps known goods to their category tab and unknown goods to the misc tab', () => {
@@ -22,8 +22,8 @@ describe('stock category tabs', () => {
   });
 
   it('names every tab (a label per plate) so the hover tooltip covers the whole strip', () => {
-    expect(STOCK_TAB_LABELS).toHaveLength(STOCK_TAB_COUNT);
-    expect(STOCK_TAB_LABELS.every((l) => l.length > 0)).toBe(true);
+    expect(stockTabLabels()).toHaveLength(STOCK_TAB_COUNT);
+    expect(stockTabLabels().every((l) => l.length > 0)).toBe(true);
   });
 
   it('lays the tab plates left-to-right across the strip without overlap', () => {

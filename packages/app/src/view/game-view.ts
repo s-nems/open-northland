@@ -3,11 +3,11 @@ import type { ElevationField, SceneTerrain, SpriteSheet, WorldRenderer } from '@
 import type { SimEvent, Simulation, WorldSnapshot } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import { pickerEntries } from '../catalog/professions.js';
-import { DEFAULT_UI_LANG } from '../content/gui-gfx.js';
 import { HUD_TRIBE, HUMAN_PLAYER } from '../game/rules.js';
 import { workerRoleOf } from '../game/sandbox/index.js';
 import { type MinimapHandle, mountMinimap } from '../hud/minimap/index.js';
 import { buildToolPanelLayout, DEFAULT_UI_SCALE } from '../hud/tool-panel/layout.js';
+import { currentLocale } from '../i18n/index.js';
 import { createAdminEntityPicker } from './admin-debug/entity-picker.js';
 import { mountAdminDebug } from './admin-debug/index.js';
 import type { CameraController } from './camera.js';
@@ -70,7 +70,7 @@ export interface GameViewDeps {
   readonly mapSize: { readonly width: number; readonly height: number };
   /** The map's terrain-height field so clicks on lifted hills resolve to the tile drawn there. */
   readonly elevation?: ElevationField;
-  /** Extra per-frame hook after the standard updates (e.g. the scene checklist overlay's tick). */
+  /** Extra per-frame hook after the standard updates. */
   readonly onFrame?: (snapshot: WorldSnapshot) => void;
   /**
    * Per-frame hook fed EVERY sim event the frame's step(s) produced, invoked BEFORE the renderer draws
@@ -97,7 +97,7 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
 
   // `?lang=` — the UI-string + building-name language (defaults to Polish). Shared by the building menu's
   // localized names and the tool panel's decoded UI strings so the two can't drift.
-  const lang = params.get('lang') ?? DEFAULT_UI_LANG;
+  const lang = currentLocale();
   // Playback control. `?speed=` seeds the initial wall-clock multiplier (default ×1; e.g. `&speed=0.5`
   // for a calm, sub-1× pace the panel's discrete speed button can't reach). The tool panel's game-speed
   // button then drives it live (×1 → ×2 → ×3 → ×1; `P` toggles pause) without clobbering this seed at mount.
@@ -209,6 +209,7 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     mapSize: deps.mapSize,
     ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
     humanPlayer: HUMAN_PLAYER,
+    lang,
     professions: pickerEntries(),
     content: sim.content,
     ...(deps.sheet !== undefined ? { sheet: deps.sheet } : {}),
@@ -228,6 +229,14 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
   // `sim.content.goods` names from the `?locale` language). Shared by the ground-pile tooltip below and the
   // admin spawn palette, so both read in the player's language; falls back to the good's id.
   const goodLabelByType = new Map<number, string>(sim.content.goods.map((g) => [g.typeId, g.name ?? g.id]));
+
+  // One shared building index drives door badges and the optional geometry overlay.
+  const buildingDoors = indexById(sim.content.buildings);
+  const geometryDebug = createGeometryDebugOverlay({
+    enabled: params.get('debug') === 'geometry',
+    buildingsByType: buildingDoors,
+    setItems: (items) => renderer.setGeometryDebug(items),
+  });
 
   // The admin/debug spawn palette (a hidden panel behind a top toggle button): click-to-spawn any unit
   // or resource for any player through the sim command seam, for hands-on combat/economy testing. Its
@@ -256,6 +265,18 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     // sanctioned read accessor (the placementProbe pattern), never the live component stores.
     needsEnabled: () => sim.needsEnabled(),
     fogMode: () => sim.fogMode(),
+    geometryEnabled: geometryDebug.enabled,
+    setGeometryEnabled: (enabled) => {
+      geometryDebug.setEnabled(enabled);
+      if (enabled) params.set('debug', 'geometry');
+      else params.delete('debug');
+      const search = params.toString();
+      window.history.replaceState(
+        null,
+        '',
+        `${window.location.pathname}${search === '' ? '' : `?${search}`}`,
+      );
+    },
   });
 
   // Name-on-hover: a cursor tooltip naming the loose good pile (with its count) under the pointer. A
@@ -279,22 +300,6 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
 
   // The memoized build-mode band probe (see makeOverlayFrameSource) — one instance per view.
   const overlayFrame = makeOverlayFrameSource(sim, deps.mapSize);
-  // Building types keyed by typeId, for the per-frame door-badge projection (its door offset). Built
-  // once — the content is fixed for a view's lifetime.
-  const buildingDoors = indexById(sim.content.buildings);
-
-  // `?debug=geometry` — the building-geometry verification overlay: every placed building's extracted
-  // logic geometry (walk-block cells, build-exclusion zone, door node, worker-icon anchor) drawn over
-  // the world so a human can check the data against the drawn art. The stateful driver (its own module,
-  // sharing the door-badge table above so both read one index) rebuilds only when the BUILDING set
-  // changes — catching an in-place home level-up the placement-blocker version misses, and ignoring the
-  // resource churn that version over-fires on. Never per frame.
-  const geometryDebug = createGeometryDebugOverlay({
-    enabled: params.get('debug') === 'geometry',
-    buildingsByType: buildingDoors,
-    setItems: (items) => renderer.setGeometryDebug(items),
-  });
-
   // Per-frame O(entities) projections memoized by snapshot identity: a frame that did not step reuses
   // its HUD read-view and fog-filtered door badges instead of re-scanning every entity.
   const { hudFor, doorBadgesFor } = createSnapshotProjections(buildingDoors, workerRoleOf, fogGates);

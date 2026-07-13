@@ -9,6 +9,7 @@ import type { SoundBank } from '@open-northland/data';
 import { HARVEST_ATOMIC } from '../catalog/atomics.js';
 import { hasSoundContent } from '../content/audio.js';
 import { loadIr } from '../content/ir.js';
+import { formatMessage, messages } from '../i18n/index.js';
 import { el, pageInnerStyle, pageRootStyle, pageSection } from '../view/overlay.js';
 
 /**
@@ -58,29 +59,27 @@ export interface SoundGalleryModel {
 }
 
 /** An action's binding key: the `chop` atomic, or one of the `byEvent` sim-event kinds. */
-type ActionKind = 'chop' | keyof SoundBindings['byEvent'];
+type ActionKind =
+  | 'chop'
+  | 'buildingPlaced'
+  | 'boatPlaced'
+  | 'goodProduced'
+  | 'buildingFinished'
+  | 'settlerBorn'
+  | 'settlerDied';
 
 /** The action rows to show, in a readable order — `chop` is the atomic binding, the rest are `byEvent`. */
 const ACTION_EVENTS: readonly {
   readonly kind: ActionKind;
-  readonly label: string;
-  readonly trigger: string;
 }[] = [
-  { kind: 'chop', label: 'Rąbanie drzewa', trigger: 'każde uderzenie siekierą drwala w drzewo' },
-  { kind: 'buildingPlaced', label: 'Postawienie budynku', trigger: 'gdy gracz stawia nowy budynek' },
-  { kind: 'boatPlaced', label: 'Zwodowanie łodzi', trigger: 'gdy powstaje łódź' },
-  { kind: 'goodProduced', label: 'Produkcja towaru', trigger: 'gdy warsztat wytwarza towar' },
-  { kind: 'buildingFinished', label: 'Ukończenie budowy', trigger: 'gdy budynek zostaje dokończony' },
-  { kind: 'settlerBorn', label: 'Narodziny', trigger: 'gdy rodzi się osadnik' },
-  { kind: 'settlerDied', label: 'Śmierć', trigger: 'gdy osadnik ginie' },
+  { kind: 'chop' },
+  { kind: 'buildingPlaced' },
+  { kind: 'boatPlaced' },
+  { kind: 'goodProduced' },
+  { kind: 'buildingFinished' },
+  { kind: 'settlerBorn' },
+  { kind: 'settlerDied' },
 ];
-
-/** PL labels for the three settler voice classes the chatter matches on. */
-const VOICE_LABEL: Readonly<Record<VoiceClass, string>> = {
-  male: 'Mężczyźni',
-  female: 'Kobiety',
-  child: 'Dzieci',
-};
 
 /** The clips of a `SoundFXStatic` group by name (case-insensitive), or `[]` when the bank lacks it. */
 function groupClips(sounds: SoundBank, name: string): readonly string[] {
@@ -121,12 +120,18 @@ export function buildSoundGalleryModel(
     const bound = ev.kind === 'chop' ? bindings.byAtomic.get(chopAtomicId) : bindings.byEvent[ev.kind];
     const resolved = resolveSound(bound, sounds);
     if (resolved === null) continue; // unbound in this build — omit the row rather than show an empty one
-    actions.push({ label: ev.label, trigger: ev.trigger, ...resolved });
+    const copy = messages().soundGallery.actionsCatalog[ev.kind];
+    actions.push({ label: copy.label, trigger: copy.trigger, ...resolved });
   }
 
   const voices: VoiceClassView[] = (['male', 'female', 'child'] as const).map((cls) => ({
     cls,
-    label: VOICE_LABEL[cls],
+    label:
+      cls === 'male'
+        ? messages().soundGallery.voicesCatalog.male
+        : cls === 'female'
+          ? messages().soundGallery.voicesCatalog.female
+          : messages().soundGallery.children,
     groups: VIKING_VOICE_POOLS[cls].map((name) => ({ group: name, clips: groupClips(sounds, name) })),
   }));
 
@@ -197,12 +202,16 @@ function clipButton(file: string): HTMLButtonElement {
 function clipButtons(clips: readonly string[]): HTMLElement {
   const wrap = el('div', 'margin-top:4px');
   if (clips.length === 0) {
-    wrap.append(el('span', 'opacity:0.55;font-size:12px', '(brak nagrań w banku)'));
+    wrap.append(el('span', 'opacity:0.55;font-size:12px', messages().common.noRecordings));
     return wrap;
   }
   for (const file of clips.slice(0, MAX_CLIP_BUTTONS)) wrap.append(clipButton(file));
   if (clips.length > MAX_CLIP_BUTTONS) {
-    const rand = el('button', CLIP_BTN_STYLE, `▶ losowy (+${clips.length - MAX_CLIP_BUTTONS} więcej)`);
+    const rand = el(
+      'button',
+      CLIP_BTN_STYLE,
+      formatMessage(messages().common.randomMore, { count: clips.length - MAX_CLIP_BUTTONS }),
+    );
     // Math.random is fine here — this is the browser gallery, not the deterministic sim.
     rand.addEventListener('click', () => play(clips[Math.floor(Math.random() * clips.length)] as string));
     wrap.append(rand);
@@ -213,7 +222,9 @@ function clipButtons(clips: readonly string[]): HTMLElement {
 /** A group row: its name + clip count on top, the play buttons below. */
 function groupRow(cl: ClipList): HTMLElement {
   const row = el('div', ROW_STYLE);
-  row.append(el('div', 'font-weight:700', `${cl.group}  ·  ${cl.clips.length} nagrań`));
+  row.append(
+    el('div', 'font-weight:700', `${cl.group}  ·  ${cl.clips.length} ${messages().common.recordings}`),
+  );
   row.append(clipButtons(cl.clips));
   return row;
 }
@@ -223,7 +234,8 @@ function actionRow(a: ActionRow): HTMLElement {
   const row = el('div', ROW_STYLE);
   const head = el('div', 'display:flex;align-items:baseline;gap:8px;flex-wrap:wrap');
   head.append(el('span', 'font-weight:700', a.label));
-  const badge = a.kind === 'jingle' ? 'jingiel (bez pozycji)' : 'dźwięk pozycyjny';
+  const badge =
+    a.kind === 'jingle' ? messages().soundGallery.nonPositional : messages().soundGallery.positional;
   head.append(el('span', 'opacity:0.6;font-size:12px', `→ ${a.sound}  ·  ${badge}`));
   row.append(head);
   row.append(el('div', 'opacity:0.7;font-size:12px;margin-top:2px', a.trigger));
@@ -256,10 +268,7 @@ export async function renderSoundGallery(
   const sounds = ir?.sounds;
   // Empty (or absent) bank ⇒ nothing to audition — the same emptiness the live driver treats as "run silent".
   if (!hasSoundContent(sounds)) {
-    mountFullPageMessage(
-      'Brak zdekodowanych dźwięków',
-      'Uruchom `npm run pipeline` na posiadanej kopii gry, aby wygenerować bank dźwięków (content/ jest gitignore). Bez niego aplikacja gra po cichu.',
-    );
+    mountFullPageMessage(messages().soundGallery.missingTitle, messages().soundGallery.missingDetail);
     return;
   }
 
@@ -272,27 +281,20 @@ export async function renderSoundGallery(
   const root = el('div', ROOT_STYLE);
   const inner = el('div', INNER_STYLE);
   inner.append(
-    el('div', 'font-weight:700;font-size:24px', 'Podgląd dźwięków'),
-    el(
-      'div',
-      'opacity:0.78;margin-top:4px;font-size:13px;line-height:1.5',
-      'Kliknij ▶ przy dowolnym nagraniu, aby je odsłuchać i sprawdzić, czy pasuje. Sekcja „Akcje” pokazuje, który dźwięk odzywa się przy którym zdarzeniu w grze; „Głosy” — pule gwaru tłumu w rozbiciu na płeć/wiek (osadnik brzmi tak, jak wygląda).',
-    ),
+    el('div', 'font-weight:700;font-size:24px', messages().soundGallery.title),
+    el('div', 'opacity:0.78;margin-top:4px;font-size:13px;line-height:1.5', messages().soundGallery.intro),
   );
 
-  inner.append(pageSection('Akcje → dźwięk (podpięte pod to, co się dzieje)', model.actions.map(actionRow)));
+  inner.append(pageSection(messages().soundGallery.actions, model.actions.map(actionRow)));
   const voiceRows: HTMLElement[] = [];
   for (const v of model.voices) {
     voiceRows.push(el('div', 'font-weight:700;opacity:0.85;margin:10px 0 2px', v.label));
     for (const g of v.groups) voiceRows.push(groupRow(g));
   }
-  inner.append(pageSection('Głosy osadników (gwar tłumu, wg płci/wieku)', voiceRows));
-  inner.append(pageSection('Jingle (zdarzenia życia)', model.jingles.map(groupRow)));
-  inner.append(pageSection('Ambient (tło terenu)', model.ambient.map(groupRow)));
+  inner.append(pageSection(messages().soundGallery.voices, voiceRows));
+  inner.append(pageSection(messages().soundGallery.jingles, model.jingles.map(groupRow)));
+  inner.append(pageSection(messages().soundGallery.ambient, model.ambient.map(groupRow)));
 
   root.append(inner);
   document.body.append(root);
-  console.log(
-    'OpenNorthland sound gallery up. Click ▶ on a clip to audition it, then say which ones are off.',
-  );
 }

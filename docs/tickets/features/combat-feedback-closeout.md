@@ -18,5 +18,5 @@ projectile-sprite hunt was split out to `docs/tickets/features/projectile-sprite
 
 ## Verify
 
-- `npm test`; `?scene=combat` (attack lands with a thunk; corpse falls).
+- `npm test`; `?scene=battle` (attack lands with a thunk; corpse falls).
 - `?sounds` gallery by ear — **audio needs the user's sign-off**.

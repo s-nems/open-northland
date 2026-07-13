@@ -12,9 +12,7 @@ export interface SceneCheck {
  *
  *  - **Headless (vitest)** — `createSceneSim(scene).run(runTicks)`, then assert every {@link checks}.
  *    The AGENT proves the *mechanic* with no screen (see `packages/app/test/scenes.test.ts`).
- *  - **Browser (`npm run dev` → `?scene=<id>`)** — the SAME sim, rendered each frame with the
- *    {@link checklist} overlaid, so a HUMAN judges the *pixels/animation* — the one thing an agent
- *    cannot self-judge (AGENTS.md "How to verify your work"; see `docs/SCENES.md`).
+ *  - **Browser (`npm run dev` → `?scene=<id>`)** — the same sim rendered for human inspection.
  *
  * Because the sim is deterministic, the two consumers observe the SAME run (same seed + global rules +
  * scene setup): what the headless test proves is exactly what the human watches. Adding a scene to the
@@ -23,8 +21,6 @@ export interface SceneCheck {
 export interface SceneDefinition {
   /** URL-safe id: the `?scene=<id>` value and the test's `describe()` name. */
   readonly id: string;
-  readonly title: string;
-  readonly summary: string;
   /** Seed for the deterministic RNG. */
   readonly seed: number;
   /** Terrain grid authored in CELLS — the renderer projects it as-is; `createSceneSim` upsamples it
@@ -33,7 +29,7 @@ export interface SceneDefinition {
   /** Populate the fresh sim (enqueue commands, create resource nodes). Runs once before any tick. */
   readonly build: (sim: Simulation) => void;
   /** Opt back INTO the needs mechanic (hunger/fatigue/piety/enjoyment rise + starvation). Scenes
-   *  default to needs OFF (a checklist unit must not starve mid-inspection — see `createSceneSim`);
+   *  default to needs OFF (an inspection unit must not starve mid-run — see `createSceneSim`);
    *  a scene that exercises needs/starvation sets this true. */
   readonly needs?: boolean;
   /** The scene's fog-of-war mode (`setFogMode` enqueued at build; see `game/fog.ts`). Omit for no
@@ -46,8 +42,6 @@ export interface SceneDefinition {
    * many entities (e.g. every building at once) sets this < 1 so it frames by default; `?zoom=` overrides.
    */
   readonly initialZoom?: number;
-  /** Human-readable "what to look for" — the on-screen acceptance checklist. */
-  readonly checklist: readonly string[];
   /** Machine assertions the headless test enforces (the mechanic must hold). */
   readonly checks: readonly SceneCheck[];
 }

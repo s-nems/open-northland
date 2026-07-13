@@ -20,4 +20,4 @@ Investigate-first — the outcome may be "no asset exists":
 ## Verify
 
 - `npm test`; a real pipeline run against the owned game copy if extraction changed.
-- `?scene=combat` — arrow visible in flight — **user's eyes** if the sprite changed.
+- `?scene=battle` — arrow visible in flight — **user's eyes** if the sprite changed.

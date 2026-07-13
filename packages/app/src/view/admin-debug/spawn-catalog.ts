@@ -1,6 +1,5 @@
 import type { Command } from '@open-northland/sim';
 import { EXTENDED_GOODS } from '../../catalog/goods.js';
-import { PLAYER_COLOR_NAMES } from '../../catalog/roster.js';
 import { PRIMARY_TRIBE } from '../../game/rules.js';
 import {
   GATHERERS,
@@ -39,7 +38,6 @@ import {
 /** One spawnable unit: its `spawnSettler` job + (for a warrior) the weapon it wields. */
 export interface UnitPreset {
   readonly id: string;
-  readonly label: string;
   readonly jobType: number;
   /** A combatant's wielded weapon (a warrior); omitted for a civilian (no weapon). The matching
    *  equipment-slot weapon good (which drives the drawn look + the Broń row) is derived from `jobType`
@@ -89,69 +87,63 @@ export function unitSpawnCommand(preset: UnitPreset, opts: UnitSpawnOptions): Co
  *  weapon (the same job↔weapon pairing the combat scene uses). A warrior is ONE profession — the weapon
  *  in hand decides its look — so the bare-handed warrior (fists) leads, then each armed variant. */
 export const WARRIOR_PRESETS: readonly UnitPreset[] = [
-  { id: 'unarmed', label: 'Wojownik (bez broni)', jobType: JOB_SOLDIER_UNARMED, weaponTypeId: WEAPON_FISTS },
-  { id: 'spear', label: 'Włócznik', jobType: JOB_SOLDIER_SPEAR, weaponTypeId: WEAPON_SPEAR },
-  { id: 'sword', label: 'Miecznik', jobType: JOB_SOLDIER_SWORD, weaponTypeId: WEAPON_SWORD },
+  { id: 'unarmed', jobType: JOB_SOLDIER_UNARMED, weaponTypeId: WEAPON_FISTS },
+  { id: 'spear', jobType: JOB_SOLDIER_SPEAR, weaponTypeId: WEAPON_SPEAR },
+  { id: 'sword', jobType: JOB_SOLDIER_SWORD, weaponTypeId: WEAPON_SWORD },
   {
     id: 'broadsword',
-    label: 'Miecznik 2H',
     jobType: JOB_SOLDIER_BROADSWORD,
     weaponTypeId: WEAPON_BROADSWORD,
   },
-  { id: 'bow', label: 'Łucznik', jobType: JOB_ARCHER, weaponTypeId: WEAPON_SHORT_BOW },
-  { id: 'longbow', label: 'Łucznik (długi łuk)', jobType: JOB_ARCHER_LONG, weaponTypeId: WEAPON_LONG_BOW },
+  { id: 'bow', jobType: JOB_ARCHER, weaponTypeId: WEAPON_SHORT_BOW },
+  { id: 'longbow', jobType: JOB_ARCHER_LONG, weaponTypeId: WEAPON_LONG_BOW },
 ];
 
 /** The civilian units: an idle townsperson, a carrier, and one worker per gatherer profession. */
 export const CIVILIAN_PRESETS: readonly UnitPreset[] = [
-  { id: 'civilian', label: 'Cywil', jobType: JOB_IDLE },
-  { id: 'carrier', label: 'Tragarz', jobType: JOB_CARRIER },
-  ...GATHERERS.map((g) => ({ id: `gatherer_${g.id}`, label: g.label, jobType: g.job })),
+  { id: 'civilian', jobType: JOB_IDLE },
+  { id: 'carrier', jobType: JOB_CARRIER },
+  ...GATHERERS.map((g) => ({ id: `gatherer_${g.id}`, jobType: g.job })),
 ];
 
 /** One spawnable resource node: its good + a short material label (the gatherer label without the
  *  "Zbieracz (…)" wrapper). */
 export interface ResourceEntry {
   readonly good: number;
-  readonly label: string;
-}
-
-/** Strip the gatherer wrapper ("Zbieracz (Drewno)" → "Drewno") to the bare material name. */
-function materialLabel(gathererLabel: string): string {
-  return gathererLabel.replace(/^Zbieracz \((.+)\)$/, '$1');
+  readonly id: string;
 }
 
 /** The resource nodes the palette can drop — every gatherable good (wood tree, ore/clay/stone deposits,
  *  mushrooms). Each becomes a `placeResource` command via {@link resourceCommand}. */
 export const RESOURCE_ENTRIES: readonly ResourceEntry[] = GATHERERS.map((g) => ({
   good: g.good,
-  label: materialLabel(g.label),
+  id: g.id,
 }));
 
 /** One droppable good: its `dropGood` goodType + a short label. */
 export interface GoodEntry {
   readonly good: number;
-  readonly label: string;
+  readonly id: string;
 }
 
 /** The core economy goods' Polish labels (the gathered set + plank + coin), paired with their sandbox
  *  typeIds — the extended catalog carries its own English `name`. */
 const CORE_GOOD_ENTRIES: readonly GoodEntry[] = [
-  { good: GOOD_WOOD, label: 'Drewno' },
-  { good: GOOD_PLANK, label: 'Deska' },
-  { good: GOOD_COIN, label: 'Moneta' },
-  { good: GOOD_STONE, label: 'Kamień' },
-  { good: GOOD_MUD, label: 'Glina' },
-  { good: GOOD_IRON, label: 'Żelazo' },
-  { good: GOOD_GOLD, label: 'Złoto' },
-  { good: GOOD_MUSHROOM, label: 'Grzyby' },
+  { good: GOOD_WOOD, id: 'wood' },
+  { good: GOOD_PLANK, id: 'plank' },
+  { good: GOOD_COIN, id: 'coin' },
+  { good: GOOD_STONE, id: 'stone' },
+  { good: GOOD_MUD, id: 'mud' },
+  { good: GOOD_IRON, id: 'iron' },
+  { good: GOOD_GOLD, id: 'gold' },
+  { good: GOOD_MUSHROOM, id: 'mushroom' },
 ];
 
 /** Every good the catalog defines — the core economy goods followed by the whole extended catalog — each
  *  droppable on the ground as a loose pile via {@link goodDropCommand} (the admin "spawn any good" list). */
 export const GOODS_ENTRIES: readonly GoodEntry[] = [
   ...CORE_GOOD_ENTRIES,
-  ...EXTENDED_GOODS.map((g) => ({ good: g.typeId, label: g.name })),
+  ...EXTENDED_GOODS.map((g) => ({ good: g.typeId, id: g.id })),
 ];
 
 /** Units dropped per admin click — ONE, like the in-game goods tool: each click adds a single unit and the
@@ -165,13 +157,7 @@ export function goodDropCommand(good: number, x: number, y: number): Command {
 
 /** The armour tiers the palette applies to a spawned unit — 0 (unarmoured) plus the `[armortype]`
  *  classes 1..4 that `spawnSettler` mitigates an incoming hit by. */
-export const ARMOR_CLASSES: readonly { readonly value: number; readonly label: string }[] = [
-  { value: 0, label: 'Brak' },
-  { value: 1, label: 'Klasa 1' },
-  { value: 2, label: 'Klasa 2' },
-  { value: 3, label: 'Klasa 3' },
-  { value: 4, label: 'Klasa 4' },
-];
+export const ARMOR_CLASSES = [0, 1, 2, 3, 4] as const;
 
 /**
  * Approximate CSS colours for the player swatches, slot order = player id — a rough stand-in for the
@@ -192,7 +178,6 @@ const PLAYER_SWATCH_CSS = [
 
 export interface PlayerSwatch {
   readonly player: number;
-  readonly name: string;
   readonly css: string;
 }
 
@@ -200,6 +185,5 @@ export interface PlayerSwatch {
  *  authored (the sim itself supports up to `MAX_PLAYERS`). Each carries id, LUT colour name, and CSS fill. */
 export const PLAYER_SWATCHES: readonly PlayerSwatch[] = PLAYER_SWATCH_CSS.map((css, player) => ({
   player,
-  name: PLAYER_COLOR_NAMES[player] ?? `gracz ${player}`,
   css,
 }));

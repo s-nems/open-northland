@@ -1,5 +1,6 @@
 import type { HudLayout } from '@open-northland/render';
 import { type Container, Graphics } from 'pixi.js';
+import { messages } from '../../i18n/index.js';
 import type { TextRun } from '../bitmap-text.js';
 import { drawWindowPanel, WIN_LINE_H, WIN_PAD, WIN_TITLE_H } from '../chrome.js';
 import { contains, type Rect } from '../geometry.js';
@@ -82,7 +83,7 @@ export function createStatsWindow(deps: StatsWindowDeps): StatsWindow {
     const h = (WIN_TITLE_H + rows.length * WIN_LINE_H + WIN_PAD) * scale;
     rect = { x: ox, y: oy, w, h };
     drawWindowPanel(graphics, rect, scale);
-    const title = ctx.makeText(ctx.uiString('miscwindow', 180, 'Statystyki'), 'white');
+    const title = ctx.makeText(ctx.uiString('miscwindow', 180, messages().hud.statistics), 'white');
     deps.container.addChild(title.container);
     runs.push(title);
     for (const text of rows) {

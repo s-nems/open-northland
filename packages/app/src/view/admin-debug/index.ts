@@ -1,6 +1,7 @@
 import { type Command, type Entity, systems } from '@open-northland/sim';
 import { HUMAN_PLAYER } from '../../game/rules.js';
 import { resourceCommand } from '../../game/sandbox/place.js';
+import { formatMessage, type Messages, messages, professionLabel } from '../../i18n/index.js';
 import { BUTTON_STYLE, el } from '../overlay.js';
 import { DEBUG_ACTIONS, type DebugAction, type DebugTargetKind } from './actions-catalog.js';
 import {
@@ -19,7 +20,7 @@ import {
   setButtonActive,
   TOGGLE_STYLE,
 } from './chrome.js';
-import { createFogSwitcher, createNeedsToggle } from './live-toggles.js';
+import { createFogSwitcher, createGeometryToggle, createNeedsToggle } from './live-toggles.js';
 import {
   ARMOR_CLASSES,
   CIVILIAN_PRESETS,
@@ -81,6 +82,8 @@ export interface AdminDebugDeps {
   /** The sim's live fog-of-war mode (`FOG_MODE.*`) — highlights the active mode button; switching goes
    *  through `enqueue` (`setFogMode`) like any command. Absent hides the fog section. */
   readonly fogMode?: () => number;
+  readonly geometryEnabled: () => boolean;
+  readonly setGeometryEnabled: (enabled: boolean) => void;
 }
 
 /** What the next map click will do. */
@@ -94,20 +97,32 @@ type Armed =
  *  number matches what an untouched spawn would get anyway. */
 const DEFAULT_HITPOINTS = systems.DEFAULT_SETTLER_HITPOINTS;
 
-/** The Polish noun for what an action tool clicks — the armed hint tells the human what to target. Keyed by
- *  {@link DebugTargetKind} so a new target kind is a compile error here until it gets its noun. */
-const TARGET_NOUN: Record<DebugTargetKind, string> = {
-  settler: 'jednostkę',
-  building: 'budynek',
-};
-
 /** Mount the admin/debug spawn palette (toggle button + hidden panel). Mount-and-forget. */
 export function mountAdminDebug(deps: AdminDebugDeps): void {
   const { canvas } = deps;
+  const copy = messages().admin;
+  const goodNames = messages().goods;
+  const targetNoun: Record<DebugTargetKind, string> = {
+    settler: copy.targetSettler,
+    building: copy.targetBuilding,
+  };
 
   // Resolve a good's palette label through the shared localized name source, keeping the catalog's built-in
   // label as the fallback (a bare checkout with no name tables, or a good the source doesn't name).
   const goodLabelOf = (good: number, fallback: string): string => deps.goodLabel?.(good) ?? fallback;
+  const localizedGood = (entry: { readonly good: number; readonly id: string }): string =>
+    goodLabelOf(entry.good, goodNames[entry.id as keyof Messages['goods']] ?? entry.id);
+  const unitLabel = (preset: UnitPreset): string => {
+    const direct = copy.units[preset.id as keyof Messages['admin']['units']];
+    if (direct !== undefined) return direct;
+    if (preset.id.startsWith('gatherer_')) {
+      const key = preset.id as keyof Messages['profession'];
+      return professionLabel(key);
+    }
+    return preset.id;
+  };
+  const actionLabel = (action: DebugAction): string => copy.actionsCatalog[action.id];
+  const playerName = (player: number): string => messages().animation.playerColors[player] ?? String(player);
 
   // ---- spawn state ---------------------------------------------------------
   let armed: Armed | null = null;
@@ -130,22 +145,31 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
   };
 
   const armedLabel = (): string => {
-    if (armed === null) return 'Nic nie wybrano — kliknij jednostkę / surowiec / towar / narzędzie powyżej.';
+    if (armed === null) return copy.nothingArmed;
     if (armed.kind === 'resource') {
       const good = armed.good;
-      const label = goodLabelOf(good, RESOURCE_ENTRIES.find((r) => r.good === good)?.label ?? 'surowiec');
-      return `Uzbrojono: złoże „${label}" — klikaj na mapie (PPM/Esc = anuluj).`;
+      const entry = RESOURCE_ENTRIES.find((candidate) => candidate.good === good);
+      const label = entry === undefined ? copy.resourceFallback : localizedGood(entry);
+      return formatMessage(copy.armedResource, { label });
     }
     if (armed.kind === 'good') {
       const good = armed.good;
-      const label = goodLabelOf(good, GOODS_ENTRIES.find((g) => g.good === good)?.label ?? 'towar');
-      return `Uzbrojono: towar „${label}" (stos na ziemi) — klikaj na mapie (PPM/Esc = anuluj).`;
+      const entry = GOODS_ENTRIES.find((candidate) => candidate.good === good);
+      const label = entry === undefined ? copy.goodFallback : localizedGood(entry);
+      return formatMessage(copy.armedGood, { label });
     }
     if (armed.kind === 'action') {
-      return `Uzbrojono: ${armed.action.label} — kliknij ${TARGET_NOUN[armed.action.targetKind]} (PPM/Esc = anuluj).`;
+      return formatMessage(copy.armedAction, {
+        label: actionLabel(armed.action),
+        target: targetNoun[armed.action.targetKind],
+      });
     }
     const who = PLAYER_SWATCHES.find((s) => s.player === player);
-    return `Uzbrojono: ${armed.preset.label} (gracz ${player} — ${who?.name ?? '?'}) — klikaj na mapie (PPM/Esc = anuluj).`;
+    return formatMessage(copy.armedUnit, {
+      label: unitLabel(armed.preset),
+      player,
+      name: who === undefined ? '?' : playerName(who.player),
+    });
   };
 
   const refresh = (): void => {
@@ -166,12 +190,16 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
   // live-toggles.ts). They have no coupling to the arming state, so they live apart from it.
   const needs = createNeedsToggle({ enqueue: deps.enqueue, needsEnabled: deps.needsEnabled });
   const fog = createFogSwitcher({ enqueue: deps.enqueue, fogMode: deps.fogMode });
+  const geometry = createGeometryToggle({
+    enabled: deps.geometryEnabled,
+    setEnabled: deps.setGeometryEnabled,
+  });
 
   // ---- DOM: right-docked flex column (header · scrolling body · status footer) ----
   const panel = el('div', ADMIN_PANEL_STYLE);
   panel.style.display = 'none';
 
-  const toggle = el('button', TOGGLE_STYLE, '🛠 Admin / Debug');
+  const toggle = el('button', TOGGLE_STYLE, copy.toggle);
   let open = false;
   toggle.addEventListener('click', () => {
     open = !open;
@@ -180,29 +208,24 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
     if (open) {
       needs.refresh(); // re-read the live rules — the boot value may predate a scene's toggle
       fog.refresh();
+      geometry.refresh();
     }
   });
 
   // --- static header: title + spawn "stamp" settings (owner / HP / armor / needs) ---
   const header = el('div', HEADER_STYLE);
-  header.append(el('div', 'font-weight:700;font-size:13px;margin-bottom:2px', 'Panel Admina / Debug'));
-  header.append(
-    el(
-      'div',
-      'opacity:0.7;font-size:11px;margin-bottom:8px',
-      'Wybierz jednostkę / złoże / towar / narzędzie, potem klikaj na mapie. Zmieniaj gracza między klikami, by ustawić obie strony.',
-    ),
-  );
+  header.append(el('div', 'font-weight:700;font-size:13px;margin-bottom:2px', copy.title));
+  header.append(el('div', 'opacity:0.7;font-size:11px;margin-bottom:8px', copy.intro));
 
   // Player swatches.
-  header.append(el('div', SECTION_TITLE_STYLE, 'Gracz (właściciel)'));
+  header.append(el('div', SECTION_TITLE_STYLE, copy.playerOwner));
   const swatchRow = el('div', ROW_STYLE);
   for (const s of PLAYER_SWATCHES) {
     const b = el(
       'button',
       `width:26px;height:22px;border-radius:4px;cursor:pointer;background:${s.css};border:1px solid #000`,
     );
-    b.title = `Gracz ${s.player} (${s.name})`;
+    b.title = formatMessage(copy.playerTitle, { player: s.player, name: playerName(s.player) });
     b.addEventListener('click', () => {
       player = s.player;
       refresh();
@@ -220,45 +243,54 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
     }),
   );
   statsRow.append(
-    selectField('Pancerz', ARMOR_CLASSES, 0, (v) => {
-      armorClass = v;
-    }),
+    selectField(
+      copy.armor,
+      ARMOR_CLASSES.map((value, index) => ({ value, label: copy.armorClasses[index] ?? String(value) })),
+      0,
+      (v) => {
+        armorClass = v;
+      },
+    ),
   );
   header.append(statsRow);
   header.append(needs.row);
   if (deps.fogMode !== undefined) {
-    header.append(el('div', SECTION_TITLE_STYLE, 'Mgła wojny'));
+    header.append(el('div', SECTION_TITLE_STYLE, copy.fog));
     header.append(fog.row);
   }
+  header.append(el('div', SECTION_TITLE_STYLE, copy.geometry));
+  header.append(geometry.row);
 
   // --- scrolling body: collapsible palette + action sections ---
   const body = el('div', BODY_STYLE);
 
   // Wojownicy (open by default — the first thing a "spawn a fight" session reaches for).
-  const warriors = collapsibleSection('Wojownicy', WARRIOR_PRESETS.length, true);
+  const warriors = collapsibleSection(copy.warriors, WARRIOR_PRESETS.length, true);
   warriors.content.append(
     rowOf(
-      armEntries(WARRIOR_PRESETS.map((preset) => ({ label: preset.label, armed: { kind: 'unit', preset } }))),
+      armEntries(
+        WARRIOR_PRESETS.map((preset) => ({ label: unitLabel(preset), armed: { kind: 'unit', preset } })),
+      ),
     ),
   );
   body.append(warriors.wrap);
 
-  const civilians = collapsibleSection('Cywile', CIVILIAN_PRESETS.length, false);
+  const civilians = collapsibleSection(copy.civilians, CIVILIAN_PRESETS.length, false);
   civilians.content.append(
     rowOf(
       armEntries(
-        CIVILIAN_PRESETS.map((preset) => ({ label: preset.label, armed: { kind: 'unit', preset } })),
+        CIVILIAN_PRESETS.map((preset) => ({ label: unitLabel(preset), armed: { kind: 'unit', preset } })),
       ),
     ),
   );
   body.append(civilians.wrap);
 
-  const resources = collapsibleSection('Złoża (do wydobycia)', RESOURCE_ENTRIES.length, false);
+  const resources = collapsibleSection(copy.resources, RESOURCE_ENTRIES.length, false);
   resources.content.append(
     rowOf(
       armEntries(
         RESOURCE_ENTRIES.map((r) => ({
-          label: goodLabelOf(r.good, r.label),
+          label: localizedGood(r),
           armed: { kind: 'resource', good: r.good },
         })),
       ),
@@ -268,22 +300,24 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
 
   // Towary — every good in the catalog dropped as a loose ground pile (`dropGood`). ~70 entries, so a
   // name filter narrows the wall to what the human is after (the goods tool mirrors this list).
-  const goods = collapsibleSection('Towary (stos na ziemi)', GOODS_ENTRIES.length, false);
+  const goods = collapsibleSection(copy.goods, GOODS_ENTRIES.length, false);
   const goodButtons = armEntries(
     GOODS_ENTRIES.map((g) => ({
-      label: goodLabelOf(g.good, g.label),
+      label: localizedGood(g),
       armed: { kind: 'good', good: g.good },
     })),
   );
-  goods.content.append(filterInput(goodButtons, 'Filtruj towary…'), rowOf(goodButtons));
+  goods.content.append(filterInput(goodButtons, copy.filterGoods), rowOf(goodButtons));
   body.append(goods.wrap);
 
   // Akcje debug — click-a-target tools (kill / needs / fill / finish). Inert if the host wired no
   // entity picker (they need a clicked entity, not a tile); the section header still shows the count.
-  const actions = collapsibleSection('Akcje (klik w cel)', DEBUG_ACTIONS.length, false);
+  const actions = collapsibleSection(copy.actions, DEBUG_ACTIONS.length, false);
   actions.content.append(
     rowOf(
-      armEntries(DEBUG_ACTIONS.map((action) => ({ label: action.label, armed: { kind: 'action', action } }))),
+      armEntries(
+        DEBUG_ACTIONS.map((action) => ({ label: actionLabel(action), armed: { kind: 'action', action } })),
+      ),
     ),
   );
   body.append(actions.wrap);

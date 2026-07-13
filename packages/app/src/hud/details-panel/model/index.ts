@@ -3,6 +3,7 @@ import { vikingBuildingByTypeId } from '../../../catalog/buildings.js';
 import { characterName } from '../../../game/character-names.js';
 import { PRIMARY_TRIBE } from '../../../game/rules.js';
 import { entityById, isBuilding, isSettler, num, ownerPlayerOf } from '../../../game/snapshot.js';
+import { formatMessage, messages } from '../../../i18n/index.js';
 import { pct } from './bars.js';
 import { type BuildingPanelModel, productionModel, stockRows, workerSlotsFor } from './building.js';
 import {
@@ -114,7 +115,7 @@ export function buildUnitPanelModel(
       showDefense: catalog?.id === HEADQUARTERS_ID || category === 'tower',
       // Pinned approximation until a defence-mode component exists; the original state/toggle strings
       // live at `housewindow` 140–143 ("Rozpocznij/Zatrzymaj Tryb Obrony", "Obrona rozpoczęta/zakończona.").
-      defenseLabel: 'Obrona zatrzymana',
+      defenseLabel: messages().hud.defenseStopped,
       production: productionModel(ctx, snapshot, def, ent),
     };
   }
@@ -128,8 +129,15 @@ export function buildUnitPanelModel(
     const stance = ent.components.Stance as { mode?: unknown } | undefined;
     // Meta line: owner + tribe, with the military stance appended only for a unit that has one (a soldier).
     const stanceMode = num(stance?.mode);
-    const stanceSuffix = stanceMode !== undefined ? ` · ${stanceLabel(stanceMode)}` : '';
-    const meta = `Gracz #${ownerPlayerOf(ent) ?? '-'} · Plemię ${num(s.tribe) ?? '-'}${stanceSuffix}`;
+    const stanceSuffix =
+      stanceMode !== undefined
+        ? formatMessage(messages().hud.stance, { stance: stanceLabel(stanceMode) })
+        : '';
+    const meta = formatMessage(messages().hud.playerTribe, {
+      player: ownerPlayerOf(ent) ?? '-',
+      tribe: num(s.tribe) ?? '-',
+      stance: stanceSuffix,
+    });
     // Only a born-young (baby/child) settler carries `Age`; that flag, with the job, fixes the drawn body's
     // sex so the name matches the character (mirrors the render body-join in `content/settler-gfx.ts`).
     const young = comps.Age !== undefined;

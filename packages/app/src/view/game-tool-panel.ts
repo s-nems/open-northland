@@ -3,11 +3,11 @@ import type { Command } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import { localizedBuildingName } from '../catalog/building-i18n.js';
 import { vikingBuildingByTypeId } from '../catalog/buildings.js';
-import { DEFAULT_UI_LANG } from '../content/gui-gfx.js';
 import type { MenuBuildingEntry } from '../hud/tool-panel/building-menu.js';
 import type { GameSpeedChangeCause, GameSpeedStateSpec } from '../hud/tool-panel/game-speed.js';
 import type { MenuGoodEntry } from '../hud/tool-panel/goods-menu.js';
 import { mountToolPanel, type ToolPanelController } from '../hud/tool-panel/index.js';
+import { currentLocale } from '../i18n/index.js';
 import { clientToCanvas, screenScale } from './camera.js';
 import { nodeBounds, screenToWorld, worldToTile } from './picking.js';
 
@@ -96,7 +96,7 @@ export function applyGameSpeed(
  */
 export function menuEntriesFromContent(
   content: { buildings: readonly { typeId: number; id: string; kind: string }[] },
-  lang: string = DEFAULT_UI_LANG,
+  lang: string = currentLocale(),
 ): MenuBuildingEntry[] {
   return content.buildings.map((b) => {
     const catalog = vikingBuildingByTypeId(b.typeId);
@@ -139,7 +139,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
     uiscale,
     buildings: deps.buildings,
     goods: deps.goods,
-    lang: deps.lang ?? DEFAULT_UI_LANG,
+    lang: deps.lang ?? currentLocale(),
     tribe: deps.tribe,
     owner: deps.owner,
     enqueue: deps.enqueue,

@@ -1,5 +1,6 @@
 import { GUI_FRAME, guiFrameIndex } from '../../../content/gui-atlas-map.js';
 import type { UiString } from '../../../content/gui-gfx.js';
+import { formatMessage, messages } from '../../../i18n/index.js';
 import type { Rect } from '../../geometry.js';
 import type { Chrome } from '../chrome.js';
 import {
@@ -30,12 +31,20 @@ const HOUSEWINDOW = {
   help: 120, // 'Pomoc'
 } as const;
 
-const BUTTON_STRING: Readonly<Record<ButtonAction, { id: number; fallback: string }>> = {
-  demolish: { id: HOUSEWINDOW.demolish, fallback: 'Zniszcz' },
-  center: { id: HOUSEWINDOW.center, fallback: 'Wycentruj' },
-  workers: { id: HOUSEWINDOW.workersButton, fallback: 'Pracownicy' },
-  help: { id: HOUSEWINDOW.help, fallback: 'Pomoc' },
+const BUTTON_STRING: Readonly<Record<ButtonAction, number>> = {
+  demolish: HOUSEWINDOW.demolish,
+  center: HOUSEWINDOW.center,
+  workers: HOUSEWINDOW.workersButton,
+  help: HOUSEWINDOW.help,
 };
+
+function buttonFallback(action: ButtonAction): string {
+  const hud = messages().hud;
+  if (action === 'demolish') return hud.demolish;
+  if (action === 'center') return hud.center;
+  if (action === 'workers') return hud.workers;
+  return hud.help;
+}
 
 /** Stock cell: icon slot width before the amount plate (≈15 px icon + a small gap in the original). */
 const STOCK_ICON_W = 18;
@@ -67,7 +76,7 @@ export function drawBuilding(
   s: number,
 ): void {
   chrome.window(layout.general.frame);
-  chrome.headline(layout.general.title, ui('housewindow', HOUSEWINDOW.general, 'Ogólny'));
+  chrome.headline(layout.general.title, ui('housewindow', HOUSEWINDOW.general, messages().hud.general));
 
   // Preview: a thin-bevel inner box with the building's real world bob fitted inside.
   chrome.innerBox(layout.preview);
@@ -88,13 +97,16 @@ export function drawBuilding(
   chrome.selectedUnderline(layout.underline);
 
   for (const hit of layout.buttons) {
-    const str = BUTTON_STRING[hit.action];
-    chrome.button(hit, ui('housewindow', str.id, str.fallback), hover === hit.action);
+    chrome.button(
+      hit,
+      ui('housewindow', BUTTON_STRING[hit.action], buttonFallback(hit.action)),
+      hover === hit.action,
+    );
   }
 
   if (layout.defence !== null) {
     chrome.window(layout.defence.frame);
-    chrome.headline(layout.defence.title, ui('housewindow', HOUSEWINDOW.defence, 'Obrona'));
+    chrome.headline(layout.defence.title, ui('housewindow', HOUSEWINDOW.defence, messages().hud.defence));
     // Light body text like the original's defence status line (screenshot-observed).
     chrome.textAt(
       model.defenseLabel,
@@ -108,7 +120,7 @@ export function drawBuilding(
     chrome.window(layout.production.frame);
     // No extracted title for the production strip (the original folds it into per-building tabs) —
     // 'Produkcja' is a named approximation.
-    chrome.headline(layout.production.title, 'Produkcja');
+    chrome.headline(layout.production.title, messages().hud.production);
     const body = layout.production.body;
     if (model.production.kind === 'fields') {
       // A FARM's production is its live FIELDS: the farmed good's icon + the sown/growing/ripe
@@ -121,7 +133,11 @@ export function drawBuilding(
         h: Math.round(STOCK_ROW_H * s) - Math.round(2 * s),
       };
       if (p.goodId !== undefined) chrome.goodIcon(p.goodId, icon);
-      const counters = `Posiane ${p.sown} · Rosnące ${p.growing} · Dojrzałe ${p.ripe}`;
+      const counters = formatMessage(messages().hud.fieldCounters, {
+        sown: p.sown,
+        growing: p.growing,
+        ripe: p.ripe,
+      });
       chrome.textAt(
         counters,
         icon.x + icon.w + Math.round(STOCK_AMOUNT_INSET * s),
@@ -166,7 +182,7 @@ export function drawBuilding(
 
   if (layout.stock !== null) {
     chrome.window(layout.stock.frame);
-    chrome.headline(layout.stock.title, ui('housewindow', HOUSEWINDOW.stock, 'Magazyn'));
+    chrome.headline(layout.stock.title, ui('housewindow', HOUSEWINDOW.stock, messages().hud.stock));
     // A COMPACT store (every good fits at once) has no category tabs and lists ALL its rows; only the
     // full fixed-height store filters by the active tab (the dynamic-magazyn rule — see layout.ts).
     if (!layout.stockCompact) drawStockTabs(chrome, layout.stockTabHits, activeTab, s);
@@ -224,7 +240,7 @@ export function drawBuilding(
   }
 
   chrome.window(layout.workers.frame);
-  chrome.headline(layout.workers.title, ui('housewindow', HOUSEWINDOW.workers, 'Pracownicy'));
+  chrome.headline(layout.workers.title, ui('housewindow', HOUSEWINDOW.workers, messages().hud.workers));
   const body = layout.workers.body;
   // The per-trade limits are ONE compact strip right under the header ("Kowal 1/3 · Tragarz 1/1 ·
   // Zbieracz 0/1"), leaving the field BELOW free for the animated worker sprites (drawn on-map style,

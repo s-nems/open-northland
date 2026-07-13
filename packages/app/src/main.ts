@@ -5,6 +5,7 @@ import { renderMenu } from './entries/menu.js';
 import { renderSceneMode } from './entries/scene.js';
 import { renderShot } from './entries/shot.js';
 import { renderSoundGallery } from './entries/sound.js';
+import { localeParam, setActiveLocale } from './i18n/index.js';
 
 /**
  * App shell entry point — the URL DISPATCHER. It reads `window.location.search`, picks exactly one entry
@@ -13,7 +14,7 @@ import { renderSoundGallery } from './entries/sound.js';
  *
  *  - `?shot`            → deterministic, headless screenshot entry (`entries/shot.ts`) — the harness waits
  *                         on `window.__opennorthlandShotReady`; no menu, no RAF loop.
- *  - `?scene=<id>`      → a registered acceptance scene with its checklist overlay (`entries/scene.ts`).
+ *  - `?scene=<id>`      → a registered acceptance scene (`entries/scene.ts`).
  *  - `?anim`            → the character animation gallery (`entries/anim.ts`).
  *  - `?icons[&atlas=]`  → the ICON gallery (`entries/icons.ts`) — browse every decoded bob-atlas frame by
  *                         index, to find a sprite for a feature. Dev-only (needs decoded `content/`).
@@ -28,6 +29,7 @@ async function main(): Promise<void> {
   if (!(canvas instanceof HTMLCanvasElement)) throw new Error('missing #game canvas');
 
   const params = new URLSearchParams(window.location.search);
+  setActiveLocale(localeParam(params));
   if (params.has('shot')) return renderShot(canvas);
   const sceneId = params.get('scene');
   if (sceneId !== null) return renderSceneMode(canvas, sceneId, params);

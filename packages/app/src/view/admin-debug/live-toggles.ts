@@ -1,4 +1,5 @@
 import { type Command, FOG_MODE } from '@open-northland/sim';
+import { messages } from '../../i18n/index.js';
 import { BUTTON_STYLE, el } from '../overlay.js';
 import { ROW_STYLE, setButtonActive } from './chrome.js';
 
@@ -15,12 +16,12 @@ export interface LiveToggle {
 }
 
 /** The admin fog switcher's mode buttons — every `FOG_MODE` with a human label. */
-const FOG_MODE_BUTTONS: readonly { readonly mode: number; readonly label: string }[] = [
-  { mode: FOG_MODE.OFF, label: 'Wyłączona' },
-  { mode: FOG_MODE.REVEAL, label: 'Reveal (odkryte zostaje)' },
-  { mode: FOG_MODE.RECON, label: 'Recon (teren znany)' },
-  { mode: FOG_MODE.FULL, label: 'Full (klasyczna)' },
-];
+const FOG_MODES = [
+  { mode: FOG_MODE.OFF, key: 'off' },
+  { mode: FOG_MODE.REVEAL, key: 'reveal' },
+  { mode: FOG_MODE.RECON, key: 'recon' },
+  { mode: FOG_MODE.FULL, key: 'full' },
+] as const;
 
 /**
  * The global needs toggle ("wyłącz potrzeby" — user decision 2026-07-11): flips the sim's setNeedsEnabled
@@ -32,11 +33,10 @@ export function createNeedsToggle(deps: {
   readonly needsEnabled: (() => boolean) | undefined;
 }): LiveToggle {
   const needsButton = el('button', BUTTON_STYLE);
+  const copy = messages().admin;
   let needsOn = deps.needsEnabled?.() ?? true;
   const paint = (): void => {
-    needsButton.textContent = needsOn
-      ? 'Potrzeby: WŁĄCZONE (klik = wyłącz)'
-      : 'Potrzeby: WYŁĄCZONE (klik = włącz)';
+    needsButton.textContent = needsOn ? copy.needsOn : copy.needsOff;
     setButtonActive(needsButton, needsOn);
   };
   needsButton.addEventListener('click', () => {
@@ -46,7 +46,7 @@ export function createNeedsToggle(deps: {
   });
   paint();
   const row = el('div', 'display:flex;gap:8px;align-items:center;margin-top:8px');
-  row.append(el('span', 'opacity:0.8', 'Głód/sen itd.'));
+  row.append(el('span', 'opacity:0.8', copy.needsCaption));
   row.append(needsButton);
   return {
     row,
@@ -72,8 +72,9 @@ export function createFogSwitcher(deps: {
     for (const { button, mode } of fogButtons) setButtonActive(button, mode === activeFogMode);
   };
   const row = el('div', ROW_STYLE);
-  for (const { mode, label } of FOG_MODE_BUTTONS) {
-    const b = el('button', BUTTON_STYLE, label);
+  const labels = messages().admin.fogModes;
+  for (const { mode, key } of FOG_MODES) {
+    const b = el('button', BUTTON_STYLE, labels[key]);
     b.addEventListener('click', () => {
       activeFogMode = mode;
       deps.enqueue({ kind: 'setFogMode', mode });
@@ -87,6 +88,33 @@ export function createFogSwitcher(deps: {
     row,
     refresh: () => {
       activeFogMode = deps.fogMode?.() ?? activeFogMode;
+      paint();
+    },
+  };
+}
+
+/** A live switch for the building-footprint debug overlay. */
+export function createGeometryToggle(deps: {
+  readonly enabled: () => boolean;
+  readonly setEnabled: (enabled: boolean) => void;
+}): LiveToggle {
+  const button = el('button', BUTTON_STYLE);
+  const copy = messages().admin;
+  let enabled = deps.enabled();
+  const paint = (): void => {
+    button.textContent = enabled ? copy.geometryOn : copy.geometryOff;
+    setButtonActive(button, enabled);
+  };
+  button.addEventListener('click', () => {
+    enabled = !enabled;
+    deps.setEnabled(enabled);
+    paint();
+  });
+  paint();
+  return {
+    row: button,
+    refresh: () => {
+      enabled = deps.enabled();
       paint();
     },
   };

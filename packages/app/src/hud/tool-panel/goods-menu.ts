@@ -1,4 +1,4 @@
-import { goodCategoryTab, STOCK_TAB_LABELS } from '../details-panel/stock-tabs.js';
+import { goodCategoryTab, stockTabLabels } from '../details-panel/stock-tabs.js';
 import { contains, type Rect } from '../geometry.js';
 
 /**
@@ -31,10 +31,9 @@ export interface GoodsCategoryTab {
 
 // Derived from the ONE category-label source ({@link STOCK_TAB_LABELS}) so the drop palette's tabs can't
 // drift from the Magazyn's — index === the {@link goodCategoryTab} value === array position.
-export const GOODS_CATEGORIES: readonly GoodsCategoryTab[] = STOCK_TAB_LABELS.map((label, index) => ({
-  index,
-  label,
-}));
+export function goodsCategories(): readonly GoodsCategoryTab[] {
+  return stockTabLabels().map((label, index) => ({ index, label }));
+}
 
 /** The goods shown under `category` (its stock-tab index), preserving input order. */
 export function goodsInCategory(
@@ -110,7 +109,7 @@ export function layoutGoodsMenu(
   const listTop = originY + titleH + tabsBlockH;
   const height = titleH + tabsBlockH + shown.length * rowH + pad;
 
-  const tabs: GoodsMenuTab[] = GOODS_CATEGORIES.map((c, i) => {
+  const tabs: GoodsMenuTab[] = goodsCategories().map((c, i) => {
     const col = i % TABS_PER_ROW;
     const row = Math.floor(i / TABS_PER_ROW);
     return {

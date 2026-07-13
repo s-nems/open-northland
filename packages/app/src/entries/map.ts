@@ -11,6 +11,7 @@ import {
 } from '@open-northland/render';
 import { halfCellMapFromCells, type SimEvent } from '@open-northland/sim';
 import { buildCollisionTerrain } from '../content/collision.js';
+import { goodLocaleParam, loadGoodNameMap } from '../content/good-names.js';
 import { buildingFootprints, loadIr } from '../content/ir.js';
 import { loadMinimapCellColours } from '../content/minimap-ground.js';
 import { loadMapObjects } from '../content/objects.js';
@@ -151,6 +152,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // Extracted building footprints from the served IR give buildings real collision, so `placeBuilding`
   // is blocked where a house doesn't fit and the build overlay greys those tiles (empty without content/).
   const footprints = buildingFootprints(ir);
+  const goodNames = await loadGoodNameMap(goodLocaleParam(params));
   // The SIM navigates + validates placement against the COLLISION grid — the map's raw landscape lane
   // resolved into the semantic walk/build classes from the real ground + object data (water, trees,
   // stones, ore deposits block; see content/collision.ts). The RENDER layers keep reading `loaded`
@@ -176,13 +178,13 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // non-undefined for the runAuthoredSlice arg; the two are the same predicate.
   const authoredSim =
     loaded?.entities !== undefined && ir !== null && simMap !== null
-      ? runAuthoredSlice(SLICE_SEED, 1, simMap, loaded.entities, ir, footprints)
+      ? runAuthoredSlice(SLICE_SEED, 1, simMap, loaded.entities, ir, footprints, goodNames)
       : null;
   const sim =
     authoredSim ??
     (simMap !== null
-      ? runBareMap(SLICE_SEED, simMap, footprints)
-      : runSlice(SLICE_SEED, 1, undefined, HUMAN_PLAYER, footprints));
+      ? runBareMap(SLICE_SEED, simMap, footprints, goodNames)
+      : runSlice(SLICE_SEED, 1, undefined, HUMAN_PLAYER, footprints, goodNames));
 
   // `?fog=reveal|recon|full` opts the map view into fog of war (default: none — the pre-fog view).
   const fogOverride = fogModeParam(params);
@@ -203,13 +205,10 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   let staticResources: Map<number, MapObjectSprite> | undefined;
   let staticRefs: Set<number> | undefined;
   if (loaded?.objects !== undefined && ir !== null) {
-    const { spawned, placementByEntity } = spawnMapResources(sim, loaded.objects, ir);
+    const { placementByEntity } = spawnMapResources(sim, loaded.objects, ir);
     // The map's own fruited bushes as forageable BerryBush entities (wild food) — same static→live
     // handover as resources: the static layer draws each always-fruited until it is first FORAGED.
     const bushes = spawnMapBerryBushes(sim, loaded.objects, ir);
-    console.log(
-      `Map resources: spawned ${spawned} harvestable nodes + ${bushes.spawned} berry bushes from ${loaded.objects.types.length} object types.`,
-    );
     if (staticObjects !== undefined) {
       staticResources = new Map();
       for (const [entity, placement] of [...placementByEntity, ...bushes.placementByEntity]) {
@@ -291,8 +290,4 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     // First-touch handover: a worked resource leaves the static layer and the pool draws it on.
     ...(releaseWorkedResources !== undefined ? { onEvents: releaseWorkedResources } : {}),
   });
-
-  console.log(
-    'OpenNorthland map view up: LPM zaznacz / przeciągnij ramką, PPM wyślij, Spacja panel; middle-drag / arrows pan, wheel zoom.',
-  );
 }

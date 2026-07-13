@@ -1,42 +1,50 @@
-import { DEFAULT_UI_LANG } from '../content/gui-gfx.js';
-import { type Messages, pl } from './pl.js';
+import { en, type Messages } from './en.js';
+import { pl } from './pl.js';
 
-/**
- * The app's tiny message-catalog seam — enough i18n to keep player-facing strings out of the widgets and
- * ready for a second language, without pulling in a framework. The game ships **Polish only** for now
- * (`pol`, the same default the decoded-string HUD uses via {@link DEFAULT_UI_LANG}); adding a language is
- * adding one sibling table to {@link LOCALES} with the same {@link Messages} shape.
- *
- * This covers the app's OWN clean-room strings (profession names, group headers, small UI labels). The
- * original game's decoded string tables are a separate concern (`content/gui-gfx.ts` `loadGuiStrings`).
- */
+export type Locale = 'pol' | 'eng';
 
-/** The shipped locales. Extend this (and add a table) to ship another language. */
-export type Locale = 'pol';
+export const DEFAULT_LOCALE: Locale = 'pol';
 
-const LOCALES: Readonly<Record<Locale, Messages>> = { pol: pl };
+const LOCALES: Readonly<Record<Locale, Messages>> = { pol: pl, eng: en };
+let activeLocale: Locale = DEFAULT_LOCALE;
 
-/** The default locale — the same one the decoded-string HUD falls back to, so all HUD text agrees. */
-export const DEFAULT_LOCALE: Locale = DEFAULT_UI_LANG as Locale;
-
-function table(locale: Locale): Messages {
-  return LOCALES[locale] ?? pl;
+export function localeParam(params: URLSearchParams): Locale {
+  const value = params.get('lang');
+  if (value === 'eng' || value === 'en') return 'eng';
+  if (value === 'pol' || value === 'pl') return 'pol';
+  return DEFAULT_LOCALE;
 }
 
-/**
- * A profession's localized display name, by its `catalog/professions.ts` `key`. Falls back to the raw key
- * (never blank) if a table somehow lacks it — a visible "missing translation" beats an empty row.
- */
-export function professionLabel(key: keyof Messages['profession'], locale: Locale = DEFAULT_LOCALE): string {
-  return table(locale).profession[key] ?? key;
+export function setActiveLocale(locale: Locale): void {
+  activeLocale = locale;
+  if (typeof document !== 'undefined') document.documentElement.lang = locale === 'pol' ? 'pl' : 'en';
 }
 
-/** A profession-group header (the picker's section separators). */
-export function categoryLabel(key: keyof Messages['category'], locale: Locale = DEFAULT_LOCALE): string {
-  return table(locale).category[key] ?? key;
+export function currentLocale(): Locale {
+  return activeLocale;
 }
 
-/** A short UI-chrome label (window titles, buttons). */
-export function uiLabel(key: keyof Messages['ui'], locale: Locale = DEFAULT_LOCALE): string {
-  return table(locale).ui[key] ?? key;
+export function messages(locale: Locale = activeLocale): Messages {
+  return LOCALES[locale];
 }
+
+export function formatMessage(template: string, values: Readonly<Record<string, string | number>>): string {
+  return template.replace(/\{([A-Za-z][A-Za-z0-9]*)\}/g, (match, key: string) =>
+    Object.hasOwn(values, key) ? String(values[key]) : match,
+  );
+}
+
+export function professionLabel(key: keyof Messages['profession'], locale: Locale = activeLocale): string {
+  return messages(locale).profession[key];
+}
+
+export function categoryLabel(key: keyof Messages['category'], locale: Locale = activeLocale): string {
+  return messages(locale).category[key];
+}
+
+export function uiLabel(key: keyof Messages['hud'], locale: Locale = activeLocale): string {
+  const value = messages(locale).hud[key];
+  return typeof value === 'string' ? value : key;
+}
+
+export type { Messages } from './en.js';

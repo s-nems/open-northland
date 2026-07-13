@@ -13,7 +13,6 @@ describe('resolveGoodNameMap (locale fallback)', () => {
   const tables = {
     pl: { wood: 'Drewno', fish: 'Ryba', gold: 'Złoto' },
     en: { wood: 'Wood', fish: 'Fish', gold: 'Gold' },
-    de: { wood: 'Holz', gold: 'Gold' }, // no `fish` — falls back
   };
 
   it('picks the requested locale, keyed by good STRING id', () => {
@@ -22,20 +21,16 @@ describe('resolveGoodNameMap (locale fallback)', () => {
     expect(pl.get('gold')).toBe('Złoto');
   });
 
-  it('falls back <locale> → pl → en for a good missing from the language', () => {
-    // German lacks `fish`; the chain lands on Polish first (its next preference), not English.
-    expect(resolveGoodNameMap(tables, 'de').get('fish')).toBe('Ryba');
-  });
-
   it('names the synthetic plank (no game string table) in-language', () => {
     expect(resolveGoodNameMap(tables, 'pl').get('plank')).toBe('Kłoda');
-    expect(resolveGoodNameMap(tables, 'de').get('plank')).toBe('Baumstamm');
+    expect(resolveGoodNameMap(tables, 'en').get('plank')).toBe('Log');
   });
 
-  it('is empty for no shipped tables (bare checkout) apart from the synthetic overlay', () => {
+  it('uses the authored translation catalog when shipped tables are absent', () => {
     const map = resolveGoodNameMap({}, 'pl');
-    expect(map.get('wood')).toBeUndefined();
+    expect(map.get('wood')).toBe('Drewno');
     expect(map.get('plank')).toBe('Kłoda');
+    expect(resolveGoodNameMap({}, 'en').get('wood')).toBe('Wood');
   });
 });
 

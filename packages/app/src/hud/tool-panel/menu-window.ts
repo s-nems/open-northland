@@ -1,4 +1,5 @@
 import { Container, Graphics } from 'pixi.js';
+import { messages } from '../../i18n/index.js';
 import type { TextRun } from '../bitmap-text.js';
 import {
   drawBevel,
@@ -31,7 +32,6 @@ import type { PanelContext } from './context.js';
  * (literally "Build Window"), so we show a clean Polish title instead — the build/construction menu. A
  * future full i18n pass moves this into the string tables; for now it mirrors the in-code building names.
  */
-const MENU_TITLE = 'Budowa';
 /** Text sizes (design px) — a larger title/tab heading over the body-size building rows. */
 const TITLE_PX = 13;
 const TAB_PX = 11;
@@ -199,7 +199,7 @@ export function createMenuWindow(deps: MenuWindowDeps): MenuWindow {
     }
     drawCloseX(graphics, menuLayout.closeRect, scale);
 
-    const title = ctx.makeText(MENU_TITLE, 'white', TITLE_PX);
+    const title = ctx.makeText(messages().hud.build, 'white', TITLE_PX);
     deps.container.addChild(title.container);
     runs.push(title);
 

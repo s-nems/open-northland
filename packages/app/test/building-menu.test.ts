@@ -31,14 +31,12 @@ describe('building-menu', () => {
       'home',
       'military',
     ]);
-    expect(BUILDING_CATEGORIES.map((category) => category.label)).toEqual([
-      'Wszystko',
-      'Praca',
-      'Magazyn',
-      'Dom',
-      'Wojsko',
-    ]);
     expect(BUILDING_CATEGORIES.map((category) => category.stringId)).toEqual([2, 3, 4, 5, 6]);
+    expect(
+      layoutBuildingMenu(ENTRIES, { originX: 0, originY: 0, scale: 1, selected: 'all' }).tabs.map(
+        (tab) => tab.label,
+      ),
+    ).toEqual(['Wszystko', 'Praca', 'Magazyn', 'Dom', 'Wojsko']);
   });
 
   it('folds kinds into categories', () => {

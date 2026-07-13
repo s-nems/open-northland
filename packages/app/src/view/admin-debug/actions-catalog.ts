@@ -12,10 +12,9 @@ import type { Command, Entity } from '@open-northland/sim';
  *  the armed hint). A settler action targets a unit; a building action targets a house/site/store. */
 export type DebugTargetKind = 'settler' | 'building';
 
-/** One armable debug action: its id/label, the entity kind it targets, and the command it issues there. */
+/** One armable debug action: its stable translation id, target kind and command. */
 export interface DebugAction {
-  readonly id: string;
-  readonly label: string;
+  readonly id: 'kill' | 'satisfy' | 'starve' | 'fill' | 'finish';
   readonly targetKind: DebugTargetKind;
   /** The sim command this action enqueues at the picked entity `target`. */
   readonly command: (target: Entity) => Command;
@@ -42,31 +41,26 @@ function setAllNeeds(target: Entity, rawPct: number): Command {
 export const DEBUG_ACTIONS: readonly DebugAction[] = [
   {
     id: 'kill',
-    label: 'Zabij jednostkę',
     targetKind: 'settler',
     command: (target) => ({ kind: 'debugKill', target }),
   },
   {
     id: 'satisfy',
-    label: 'Nasyć potrzeby (100%)',
     targetKind: 'settler',
     command: (target) => setAllNeeds(target, NEED_RAW_SATED),
   },
   {
     id: 'starve',
-    label: 'Zagłodź potrzeby (0%)',
     targetKind: 'settler',
     command: (target) => setAllNeeds(target, NEED_RAW_MAXED),
   },
   {
     id: 'fill',
-    label: 'Napełnij magazyn',
     targetKind: 'building',
     command: (target) => ({ kind: 'debugFillStockpile', target }),
   },
   {
     id: 'finish',
-    label: 'Dokończ budowę',
     targetKind: 'building',
     command: (target) => ({ kind: 'debugCompleteConstruction', target }),
   },

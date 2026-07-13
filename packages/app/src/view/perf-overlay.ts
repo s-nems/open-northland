@@ -1,3 +1,5 @@
+import { messages } from '../i18n/index.js';
+
 /**
  * The on-canvas debug readout — the human-facing instrument for the render-scale + sim work. Pinned to
  * the top-LEFT of the screen (beside the tool-panel strip's top; the build menu drops BELOW it, from the
@@ -98,7 +100,7 @@ export function mountPerfOverlay(leftPx = 12): PerfOverlayHandle {
   const panel = document.createElement('div');
   panel.style.cssText = PANEL_STYLE;
   panel.style.left = `${leftPx}px`;
-  panel.textContent = 'fps —';
+  panel.textContent = `${messages().performance.fps} —`;
   document.body.append(panel);
 
   // Exponential moving averages (ms), seeded lazily on the first real sample.
@@ -123,10 +125,11 @@ export function mountPerfOverlay(leftPx = 12): PerfOverlayHandle {
         worstCount = 0;
       }
 
-      const rate = info.paused ? 'paused' : formatSpeed(info.speed);
-      const simState = `tick ${info.tick}  ${rate}  steps ${info.steps}   ent ${info.entities}  drawn ${info.drawn}  pooled ${info.pooled}`;
+      const copy = messages().performance;
+      const rate = info.paused ? copy.paused : formatSpeed(info.speed);
+      const simState = `${copy.tick} ${info.tick}  ${rate}  ${copy.steps} ${info.steps}   ${copy.entities} ${info.entities}  ${copy.drawn} ${info.drawn}  ${copy.pooled} ${info.pooled}`;
 
-      let perf = `fps ${fps}`;
+      let perf = `${copy.fps} ${fps}`;
       if (info.cpuMs !== undefined) {
         avgCpu = ema(avgCpu, info.cpuMs);
         // The frame budget splits into CPU (what the loop timed) and GPU/compositor (the rest).
@@ -136,12 +139,12 @@ export function mountPerfOverlay(leftPx = 12): PerfOverlayHandle {
           avgSim = ema(avgSim, info.simMs);
           avgSnap = ema(avgSnap, info.snapMs);
           avgDraw = ema(avgDraw, info.drawMs);
-          split = ` (sim ${avgSim.toFixed(1)} snap ${avgSnap.toFixed(1)} draw ${avgDraw.toFixed(1)})`;
+          split = ` (${copy.sim} ${avgSim.toFixed(1)} ${copy.snapshot} ${avgSnap.toFixed(1)} ${copy.draw} ${avgDraw.toFixed(1)})`;
         }
-        perf += `  cpu ${avgCpu.toFixed(1)}${split}  gpu ${gpu.toFixed(1)}  worst ${worstMs.toFixed(0)}ms`;
+        perf += `  ${copy.cpu} ${avgCpu.toFixed(1)}${split}  ${copy.gpu} ${gpu.toFixed(1)}  ${copy.worst} ${worstMs.toFixed(0)}ms`;
       }
       const heap = heapMb();
-      if (heap !== null) perf += `  heap ${heap}MB`;
+      if (heap !== null) perf += `  ${copy.heap} ${heap}MB`;
 
       panel.textContent = `${simState}\n${perf}`;
     },

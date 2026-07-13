@@ -1,4 +1,5 @@
 import { type Container, Graphics } from 'pixi.js';
+import { messages } from '../../i18n/index.js';
 import type { TextRun } from '../bitmap-text.js';
 import { drawCloseX, drawWindowPanel, HOVER_ALPHA, HOVER_TINT, WIN_PAD } from '../chrome.js';
 import { contains } from '../geometry.js';
@@ -68,7 +69,7 @@ export function createGoodsWindow(deps: GoodsWindowDeps): GoodsWindow {
     drawWindowPanel(graphics, menuLayout.window, scale);
     drawCloseX(graphics, menuLayout.closeRect, scale);
 
-    const title = ctx.makeText('Surowce', 'white');
+    const title = ctx.makeText(messages().hud.resources, 'white');
     deps.container.addChild(title.container);
     runs.push(title);
 

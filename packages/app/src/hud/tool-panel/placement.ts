@@ -1,5 +1,6 @@
 import type { Command } from '@open-northland/sim';
 import { type Container, Graphics } from 'pixi.js';
+import { formatMessage, messages } from '../../i18n/index.js';
 import type { TextRun } from '../bitmap-text.js';
 import { drawWindowPanel, WIN_PAD, WIN_TITLE_H } from '../chrome.js';
 import type { PanelContext } from './context.js';
@@ -86,7 +87,7 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
         h: (WIN_TITLE_H + WIN_PAD) * scale,
       };
       drawWindowPanel(graphics, rect, scale);
-      bannerRun = ctx.makeText(`${label} - klik: postaw, Esc: anuluj`, 'white');
+      bannerRun = ctx.makeText(formatMessage(messages().hud.placementHint, { label }), 'white');
       deps.container.addChild(bannerRun.container);
       const { width: rw, height: rh } = ctx.screen();
       bannerRun.place(rect.x + WIN_PAD * scale, rect.y + BANNER_TEXT_INSET_Y * scale, scale, rw, rh);

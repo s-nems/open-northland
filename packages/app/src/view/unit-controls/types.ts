@@ -14,6 +14,7 @@ export interface UnitControlsOptions {
   readonly mapSize: { readonly width: number; readonly height: number };
   readonly elevation?: ElevationField;
   readonly humanPlayer: number;
+  readonly lang: string;
   readonly professions: readonly PickerEntry[];
   readonly content: ContentSet;
   readonly sheet?: SpriteSheet;

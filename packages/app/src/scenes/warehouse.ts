@@ -172,23 +172,11 @@ function warehouseOtherGoodsTotal(sim: Simulation): number {
 
 export const warehouseScene: SceneDefinition = {
   id: 'warehouse',
-  title: 'Magazyn — tragarze zbierają towary',
-  summary:
-    'Trzej tragarze pracują w magazynie (poziom 1) i znoszą luźne towary z ziemi. Drewno jest z nadmiarem ' +
-    '— magazyn zapełnia się do limitu (drewno 100/100), reszta drewna zostaje na ziemi, a tragarze ' +
-    'przestają je nosić i biorą się za pozostałe towary.',
   seed: 3,
   terrain: grassTerrain(MAP_W, MAP_H),
   build,
   runTicks: RUN_TICKS,
   initialZoom: INITIAL_ZOOM,
-  checklist: [
-    'Kliknij magazyn — panel „Magazyn (poziom 1)”, a w sekcji Pracownicy trzej Tragarze (3/3).',
-    'Tragarze chodzą po luźne stosy towarów z ziemi i znoszą je do magazynu (po jednej sztuce na kurs).',
-    'Licznik drewna rośnie do limitu i STAJE na „100.0 / 100.0” — nadmiar drewna zostaje leżeć na ziemi.',
-    'Po osiągnięciu limitu drewna tragarze CAŁKIEM przestają je nosić i biorą się za pozostałe towary ' +
-      '(bez zacinania się — żadnego podnoszenia i upuszczania w kółko).',
-  ],
   checks: [
     {
       label: 'all three carriers are employed BY the warehouse (bound as Tragarz)',

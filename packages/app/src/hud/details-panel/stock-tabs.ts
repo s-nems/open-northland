@@ -1,4 +1,5 @@
 import { STOCK_TAB_COUNT } from '../../content/gui-atlas-map.js';
+import { messages } from '../../i18n/index.js';
 import type { Rect } from '../geometry.js';
 
 /**
@@ -26,16 +27,9 @@ const DEFAULT_TAB = 7;
  * unread original art (montage guesses, see the file header), so the cryptic icon alone doesn't say what a
  * tab holds; the tooltip names it. Polish (the default UI language); a future locale pass can localize these.
  */
-export const STOCK_TAB_LABELS: readonly string[] = [
-  'Żywność', // 0 — food
-  'Napoje', // 1 — drink / consumable liquids
-  'Surowce', // 2 — raw materials
-  'Budulec', // 3 — building materials
-  'Narzędzia', // 4 — tools
-  'Wyroby', // 5 — crafted household goods
-  'Wojsko', // 6 — weapons + armor
-  'Inne', // 7 — currency, potions, amulets, animals, vehicles, special
-];
+export function stockTabLabels(): readonly string[] {
+  return messages().hud.stockTabs;
+}
 
 /** Good STRING id → tab index (0–7). Provisional grouping — see the file header. */
 const CATEGORY_BY_GOOD: Readonly<Record<string, number>> = {

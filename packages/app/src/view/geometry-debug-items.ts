@@ -76,6 +76,8 @@ export function buildingSetFingerprint(
 export interface GeometryDebugOverlay {
   /** Per-frame: rebuild + push the overlay items, but only when the building set actually changed. */
   update(snapshot: WorldSnapshot): void;
+  enabled(): boolean;
+  setEnabled(enabled: boolean): void;
 }
 
 /**
@@ -90,13 +92,21 @@ export function createGeometryDebugOverlay(opts: {
   readonly setItems: (items: GeometryDebugItem[]) => void;
 }): GeometryDebugOverlay {
   let fingerprint: number | null = null;
+  let enabled = opts.enabled;
   return {
     update(snapshot: WorldSnapshot): void {
-      if (!opts.enabled) return;
+      if (!enabled) return;
       const fp = buildingSetFingerprint(snapshot, opts.buildingsByType);
       if (fp === fingerprint) return;
       fingerprint = fp;
       opts.setItems(computeGeometryDebugItems(snapshot, opts.buildingsByType));
+    },
+    enabled: () => enabled,
+    setEnabled(next): void {
+      if (next === enabled) return;
+      enabled = next;
+      fingerprint = null;
+      if (!enabled) opts.setItems([]);
     },
   };
 }

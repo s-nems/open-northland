@@ -5,6 +5,7 @@ export { FOG_EXPLORED_ALPHA, FOG_UNEXPLORED_ALPHA, fogTileVisible } from './data
 export {
   buildHud,
   type HudCorner,
+  type HudLabels,
   type HudLayout,
   type HudModel,
   type HudPlacement,

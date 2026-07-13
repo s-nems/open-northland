@@ -13,7 +13,7 @@ import { createSceneSim, getScene, SCENES } from '../scenes/index.js';
 import { cameraFor, createCameraController } from '../view/camera.js';
 import { startGameView } from '../view/game-view.js';
 import { floatParam } from '../view/params.js';
-import { mountSceneOverlay, mountUnknownSceneOverlay } from '../view/scene-overlay.js';
+import { mountUnknownSceneOverlay } from '../view/scene-overlay.js';
 
 declare global {
   interface Window {
@@ -28,8 +28,8 @@ declare global {
 }
 
 /**
- * The `?scene=<id>` entry: render a registered **acceptance scene** live, with the checklist overlay,
- * so a human can watch the mechanic and sign off. The SAME `?atlas`/`?terrain`/`?zoom`/`?speed` flags
+ * The `?scene=<id>` entry renders a registered acceptance scene with the standard game HUD so a human
+ * can watch the mechanic. The same `?atlas`/`?terrain`/`?zoom`/`?speed` flags
  * the live slice honours work here (e.g. `?scene=sandbox&zoom=2` to magnify one building). Real
  * decoded graphics are the DEFAULT now (`resolveSpriteSheet`) — no `?atlas=real` needed; `?atlas=none`
  * opts out to placeholder geometry. The sim is the exact one the headless acceptance test runs —
@@ -53,8 +53,8 @@ export async function renderSceneMode(
   // Window-tracking, device-resolution backing store: resizing changes the visible field, never the scale.
   const app = await createWindowPixiApp(canvas);
   const terrainGrid = terrainMapToScene(scene.terrain);
-  // Localized good names (default Polish; `?locale=en|de` switches) so the HUD reads in-language from the
-  // one content source — the shared sim content. Empty on a bare checkout (goods keep their English labels).
+  // Localized good names follow the app-wide `?lang=` value so the HUD reads from one language setting.
+  // one content source — the shared sim content. Authored names keep a bare checkout localized.
   const goodNames = await loadGoodNameMap(goodLocaleParam(params));
   // Real extracted building footprints (like the `?map=` entry): browser scenes collide/door/place
   // exactly like the live map view instead of the clean-room class squares. Empty on a bare checkout
@@ -71,17 +71,13 @@ export async function renderSceneMode(
   if (fogOverride !== null) sim.enqueue({ kind: 'setFogMode', mode: fogOverride });
   // Goods are global sandbox content now, not scene-local data.
   const sheet = await resolveSpriteSheet(params, sim.content.goods);
-  const terrain = params.has('terrain') ? await loadRealTerrain() : undefined;
+  const terrain = params.get('terrain') !== 'off' ? await loadRealTerrain() : undefined;
   const zoom = floatParam(params, 'zoom', scene.initialZoom ?? 1);
 
   // Retained renderer: mesh the terrain ONCE, then reuse a pooled sprite graph each frame (no per-frame
   // object churn), so a big scene renders + deep-zoom-outs without exhausting the GPU.
   const renderer = new WorldRenderer(app, { sheet });
   renderer.setTerrain(terrainGrid, terrain);
-
-  // The acceptance overlay is purely the sign-off checklist + a debug tick (no playback controls — the
-  // tool panel's speed button is the sole speed/pause GUI).
-  const overlay = mountSceneOverlay(scene);
 
   // Interactive camera over the scene: `?zoom` is the starting frame, then the human pans (middle-mouse
   // drag / arrow keys) and zooms (scroll wheel). Frame on the FIRST TICK's snapshot, not the initial
@@ -98,7 +94,7 @@ export async function renderSceneMode(
 
   // The shared in-game runtime (view/game-view.ts): the standard HUD mounts — tool panel, unit
   // controls, perf overlay, positional sound — and the ONE fixed-timestep RAF loop, identical to the
-  // `?map=` entry's; the checklist overlay's tick rides the per-frame hook.
+  // `?map=` entry's.
   await startGameView({
     app,
     canvas,
@@ -111,7 +107,6 @@ export async function renderSceneMode(
     // Minimap ground colours from the real terrain set's per-type debug colours (absent → flat tints).
     ...(terrain !== undefined ? { terrainColour: (t: number) => terrain.cellFor(t)?.fallbackColour } : {}),
     mapSize: { width: scene.terrain.width, height: scene.terrain.height },
-    onFrame: (snap) => overlay.update(snap.tick),
   });
 
   // Dev/debug seam: the live instances, reachable from the browser console (`__opennorthland.sim` …) so a
@@ -119,6 +114,4 @@ export async function renderSceneMode(
   // console mutation bypasses the command pipeline and silently voids determinism (state hashes and
   // golden comparability no longer mean anything for that session).
   window.__opennorthland = { sim, renderer, sheet, cameraCtl };
-
-  console.log(`OpenNorthland scene "${scene.id}" up. Watch the overlay checklist, then say if it looks OK.`);
 }

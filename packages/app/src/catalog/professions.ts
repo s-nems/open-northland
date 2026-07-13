@@ -8,8 +8,7 @@ import {
   JOB_GATHERER_WOOD,
   JOB_SOLDIER,
 } from '../game/sandbox/ids/index.js';
-import { categoryLabel, type Locale, professionLabel } from '../i18n/index.js';
-import type { Messages } from '../i18n/pl.js';
+import { categoryLabel, type Locale, type Messages, professionLabel } from '../i18n/index.js';
 
 /**
  * The committed clean-room PROFESSION roster — the complete set of jobs a player can assign a settler to,

@@ -30,7 +30,6 @@ export interface GathererSpec {
   readonly good: number;
   readonly id: string;
   readonly job: number;
-  readonly label: string;
   readonly atomic: number;
   readonly animation: string;
   readonly mode: GatherMode;
@@ -45,7 +44,6 @@ export const GATHERERS: readonly GathererSpec[] = [
     good: GOOD_WOOD,
     id: 'wood',
     job: JOB_GATHERER_WOOD,
-    label: 'Zbieracz (Drewno)',
     atomic: HARVEST_ATOMIC,
     animation: 'viking_collector_harvest_tree',
     mode: 'fell',
@@ -55,7 +53,6 @@ export const GATHERERS: readonly GathererSpec[] = [
     good: GOOD_STONE,
     id: 'stone',
     job: JOB_GATHERER_STONE,
-    label: 'Zbieracz (Kamien)',
     atomic: STONE_HARVEST_ATOMIC,
     animation: 'viking_collector_harvest_stone',
     mode: 'mine',
@@ -67,7 +64,6 @@ export const GATHERERS: readonly GathererSpec[] = [
     good: GOOD_MUD,
     id: 'mud',
     job: JOB_GATHERER_MUD,
-    label: 'Zbieracz (Glina)',
     atomic: CLAY_HARVEST_ATOMIC,
     animation: 'viking_collector_harvest_mud',
     mode: 'mine',
@@ -79,7 +75,6 @@ export const GATHERERS: readonly GathererSpec[] = [
     good: GOOD_IRON,
     id: 'iron',
     job: JOB_GATHERER_IRON,
-    label: 'Zbieracz (Zelazo)',
     atomic: IRON_HARVEST_ATOMIC,
     animation: 'viking_collector_harvest_iron',
     mode: 'mine',
@@ -91,7 +86,6 @@ export const GATHERERS: readonly GathererSpec[] = [
     good: GOOD_GOLD,
     id: 'gold',
     job: JOB_GATHERER_GOLD,
-    label: 'Zbieracz (Zloto)',
     atomic: GOLD_HARVEST_ATOMIC,
     animation: 'viking_collector_harvest_gold',
     mode: 'mine',
@@ -103,7 +97,6 @@ export const GATHERERS: readonly GathererSpec[] = [
     good: GOOD_MUSHROOM,
     id: 'mushroom',
     job: JOB_GATHERER_MUSHROOM,
-    label: 'Zbieracz (Grzyby)',
     atomic: MUSHROOM_HARVEST_ATOMIC,
     animation: 'viking_collector_harvest_mushroom',
     mode: 'pick',

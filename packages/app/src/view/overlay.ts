@@ -1,5 +1,7 @@
+import { messages } from '../i18n/index.js';
+
 /**
- * Shared DOM chrome for the app's on-canvas panels — the scene acceptance overlay
+ * Shared DOM chrome for the app's on-canvas panels — the scene routing error
  * ({@link import('./scene-overlay.js')}), the animation gallery panel
  * ({@link import('../entries/anim-overlay.js')}) and the main menu ({@link import('../entries/menu.js')}).
  * Plain DOM + floats, app-layer only (never in `sim`). Kept in ONE place so the panels can't drift in
@@ -64,14 +66,6 @@ export function navButton(label: string, active: boolean, href: string): HTMLBut
   return b;
 }
 
-/**
- * The shared "you've reviewed it? tell the chat" footer both acceptance panels (scene + animation
- * gallery) end with — only the sentence differs (`text`). Keeps the border/opacity styling in one place.
- */
-export function signOffFooter(text: string): HTMLElement {
-  return el('div', 'opacity:0.65;font-size:12px;border-top:1px solid #5a4a36;padding-top:6px', text);
-}
-
 /** The minimal audio-driver shape {@link mountSoundToggle} needs (structural — no `@open-northland/audio` import). */
 interface SoundToggleDriver {
   resume(): Promise<void>;
@@ -97,9 +91,6 @@ const SOUND_TOGGLE_STYLE = [
   'z-index:200',
 ].join(';');
 
-const SOUND_ON_LABEL = '🔊 Dźwięk włączony';
-const SOUND_OFF_LABEL = '🔇 Kliknij, aby włączyć dźwięk';
-
 /**
  * Mount the bottom-centre sound toggle button. Audio starts **muted** (the driver is created with
  * `setEnabled(false)`); the game is silent until the user clicks this button. The click doubles as the
@@ -108,7 +99,7 @@ const SOUND_OFF_LABEL = '🔇 Kliknij, aby włączyć dźwięk';
  * The button reflects the current state in its label. Returns nothing; the button persists.
  */
 export function mountSoundToggle(driver: SoundToggleDriver): void {
-  const button = el('button', SOUND_TOGGLE_STYLE, SOUND_OFF_LABEL);
+  const button = el('button', SOUND_TOGGLE_STYLE, messages().common.soundOff);
   document.body.append(button);
   let enabled = false;
   button.addEventListener('click', () => {
@@ -119,7 +110,7 @@ export function mountSoundToggle(driver: SoundToggleDriver): void {
       .then(() => {
         driver.setEnabled(next);
         enabled = next;
-        button.textContent = next ? SOUND_ON_LABEL : SOUND_OFF_LABEL;
+        button.textContent = next ? messages().common.soundOn : messages().common.soundOff;
       })
       .catch(() => undefined); // constructing/resuming the context can throw (e.g. a context-count cap) — stay silent, not crash
   });

@@ -1,5 +1,6 @@
 import { GUI_FRAME } from '../../../content/gui-atlas-map.js';
 import type { UiString } from '../../../content/gui-gfx.js';
+import { messages } from '../../../i18n/index.js';
 import type { Rect } from '../../geometry.js';
 import type { Chrome } from '../chrome.js';
 import { EQUIP_ROW_H, ROW_H, type SettlerLayout } from '../layout/index.js';
@@ -96,15 +97,16 @@ function drawWorkSection(
   s: number,
 ): void {
   chrome.window(layout.work.frame);
-  chrome.headline(layout.work.title, ui('humanwindow', HUMANWINDOW.work, 'Praca'));
+  const hud = messages().hud;
+  chrome.headline(layout.work.title, ui('humanwindow', HUMANWINDOW.work, hud.work));
   const keyW = Math.round(KV_KEY_W * s);
   const [place, product] = layout.workRows;
   if (place !== undefined) {
-    chrome.textAt('Miejsce', place.x, place.y + ROW_TEXT_PAD * s, 'white');
+    chrome.textAt(hud.place, place.x, place.y + ROW_TEXT_PAD * s, 'white');
     chrome.textAt(model.work.place, place.x + keyW, place.y + ROW_TEXT_PAD * s, 'white');
   }
   if (product !== undefined) {
-    chrome.textAt('Produkt', product.x, product.y + ROW_TEXT_PAD * s, 'white');
+    chrome.textAt(hud.product, product.x, product.y + ROW_TEXT_PAD * s, 'white');
     chrome.textAt(model.work.product, product.x + keyW, product.y + ROW_TEXT_PAD * s, 'white');
   }
 }
@@ -118,17 +120,18 @@ function drawExperienceSection(
   s: number,
 ): void {
   chrome.window(layout.experience.frame);
-  chrome.headline(layout.experience.title, ui('humanwindow', HUMANWINDOW.experience, 'Doświadczenie'));
+  const hud = messages().hud;
+  chrome.headline(layout.experience.title, ui('humanwindow', HUMANWINDOW.experience, hud.experience));
   const r = layout.expRow;
   chrome.textAt(
-    ui('humanwindow', HUMANWINDOW.highestExp, 'Najwyższe Doświadczenie'),
+    ui('humanwindow', HUMANWINDOW.highestExp, hud.highestExperience),
     r.x,
     r.y + ROW_TEXT_PAD * s,
     'white',
   );
   const value =
     model.experience === null
-      ? ui('humanwindow', HUMANWINDOW.none, 'żadne')
+      ? ui('humanwindow', HUMANWINDOW.none, hud.nothing)
       : `${model.experience.label} (${model.experience.points})`;
   chrome.textRight(value, r.x + r.w, r.y + ROW_TEXT_PAD * s, 'white');
 }
@@ -147,7 +150,7 @@ function drawEquipmentSection(
   s: number,
 ): void {
   chrome.window(layout.equipment.frame);
-  chrome.headline(layout.equipment.title, ui('humanwindow', HUMANWINDOW.equip, 'Ekwipunek'));
+  chrome.headline(layout.equipment.title, ui('humanwindow', HUMANWINDOW.equip, messages().hud.equipment));
   const iconOverflow = Math.round(SLOT_ICON_OVERFLOW * s);
   // Vertically centre a body line against the taller equipment row (and the sockets in it).
   const labelPadY = Math.round(((EQUIP_ROW_H - ROW_H) / 2 + ROW_TEXT_PAD) * s);
