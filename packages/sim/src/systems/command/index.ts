@@ -11,13 +11,13 @@ import {
   worldRulesEntity,
 } from '../../components/index.js';
 import { assertNever } from '../../core/brand.js';
-import type { Command } from '../../core/commands.js';
+import type { Command } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { type Fixed, fx, ONE } from '../../core/fixed.js';
 import type { World } from '../../ecs/world.js';
 import { positionOfNode } from '../../nav/halfcell.js';
 import { dropOrStackGood } from '../agents/effects-goods/index.js';
-import { spawnAnimalHerd, spawnSettler } from '../conflict/spawn.js';
+import { spawnAnimalHerd, spawnSettler } from '../conflict/spawn/index.js';
 import type { System, SystemContext } from '../context.js';
 import { forceFinishConstruction } from '../economy/construction.js';
 import { createResourceNode } from '../footprint/index.js';

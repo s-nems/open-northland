@@ -3,7 +3,7 @@ import { Position, Settler, Stance } from '../../../src/components/index.js';
 import { fx } from '../../../src/core/fixed.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { Simulation } from '../../../src/index.js';
-import { spawnSettler } from '../../../src/systems/conflict/spawn.js';
+import { spawnSettler } from '../../../src/systems/conflict/spawn/index.js';
 import { setJob, setStance } from '../../../src/systems/orders/index.js';
 import { defaultStanceForJob, MILITARY_MODE } from '../../../src/systems/readviews/index.js';
 import { testContent } from '../../fixtures/content.js';

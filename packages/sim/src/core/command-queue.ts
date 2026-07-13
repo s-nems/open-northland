@@ -1,4 +1,4 @@
-import type { Command } from './commands.js';
+import type { Command } from './commands/index.js';
 
 /**
  * A command stamped with the tick it is applied on. This is the unit of the **command log** — the

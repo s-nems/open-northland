@@ -7,7 +7,7 @@ import {
   Stockpile,
   WorkFlag,
 } from '../../../../src/components/index.js';
-import type { Command } from '../../../../src/core/commands.js';
+import type { Command } from '../../../../src/core/commands/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import { fx, Simulation } from '../../../../src/index.js';
 import { setWorkFlag } from '../../../../src/systems/index.js';
