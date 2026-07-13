@@ -1,7 +1,7 @@
-import type { LoggedCommand } from '../core/command-queue.js';
 import type { WorldSnapshot } from '../inspect/snapshot.js';
 import { Simulation } from '../simulation.js';
 import type { RunReplay } from './localize-divergence.js';
+import { stepReplaying } from './replay.js';
 
 /**
  * `scrubWindow` — the **single-run "free scrubbing"** composition of the time-travel / replay
@@ -69,19 +69,12 @@ export function scrubWindow(run: RunReplay, fromTick: number, toTick: number): W
   const { content, seed, map, log } = run;
   const sim = new Simulation({ seed, content, ...(map !== undefined ? { map } : {}) });
 
-  // One forward pass from tick 1 to toTick, enqueuing each logged command on exactly its recorded
-  // tick (identically to replay()), capturing a plain snapshot whenever the tick is in the window.
+  // One forward pass from tick 1 to toTick (the shared replay stepper), capturing a plain snapshot
+  // whenever the running tick lands inside the window. A WorldSnapshot is a plain value, so each
+  // captured tick survives the sim continuing to mutate the stores.
   const snapshots: WorldSnapshot[] = [];
-  let cursor = 0;
-  for (let nextTick = 1; nextTick <= toTick; nextTick++) {
-    // `<= nextTick` (not `===`), mirroring replay(): on a real monotonic log this enqueues each
-    // command on its exact tick; it also never silently drops one from a malformed/non-monotonic log.
-    while (cursor < log.length && (log[cursor] as LoggedCommand).tick <= nextTick) {
-      sim.enqueue((log[cursor] as LoggedCommand).command);
-      cursor++;
-    }
-    sim.step();
-    if (nextTick >= start) snapshots.push(sim.snapshot());
-  }
+  stepReplaying(sim, log, toTick, (tick) => {
+    if (tick >= start) snapshots.push(sim.snapshot());
+  });
   return snapshots;
 }

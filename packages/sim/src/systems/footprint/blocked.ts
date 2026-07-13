@@ -6,7 +6,7 @@ import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { BlockOverlay, NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { ANCHOR_ONLY, buildingFootprintOf, translatedCells } from './geometry.js';
-import { resourceBlockedCells } from './resources.js';
+import { resourceBlockedCells } from './resource-blocked-cache.js';
 
 // WALK-BLOCK overlays the routing/render consume: the cells standing buildings (and, folded in,
 // resources) make unwalkable, plus the ground plots of under-construction sites. DERIVED state,

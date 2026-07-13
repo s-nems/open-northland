@@ -12,7 +12,7 @@ import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { buildingFootprintOf, nearestCell, nearestFreeNeighbour, translatedCells } from './geometry.js';
-import { resourceBlockedCells } from './resources.js';
+import { resourceBlockedCells } from './resource-blocked-cache.js';
 
 // INTERACTION — where a unit stands to use a building or resource: a building's door node, and the
 // walkable work cell adjacent to (or on) a resource/ground drop.

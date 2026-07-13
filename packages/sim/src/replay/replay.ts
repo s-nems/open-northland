@@ -66,21 +66,34 @@ export function replay(opts: ReplayOptions): Simulation {
   }
 
   const sim = new Simulation({ seed, content, ...(map !== undefined ? { map } : {}) });
-  // Walk the log in apply-tick order; enqueue each tick's commands together, in log order (the log is
-  // append-only in apply order, so FIFO enqueue reproduces the original apply order), then step.
+  stepReplaying(sim, log, untilTick);
+  return sim;
+}
+
+/**
+ * The shared replay forward pass: step `sim` from tick 1 through `untilTick`, enqueuing each logged
+ * command just before the `step()` of its recorded tick. A command recorded at tick T must be pending
+ * when `step()` increments the tick to T, so CommandSystem (which runs first each step) applies it on
+ * exactly the tick it originally applied — preserving entity-id assignment order and thus byte-identical
+ * state. `onTick`, when given, runs AFTER each `step()` with the tick just completed ({@link scrubWindow}
+ * captures a snapshot there). `<= nextTick` (not `===`) never silently drops a command from a
+ * non-monotonic/hand-built log; on a real monotonic log every command's tick equals some `nextTick`
+ * exactly, so the reconstruction is identical. Commands past `untilTick` are left un-replayed (the
+ * scrub-backward case).
+ */
+export function stepReplaying(
+  sim: Simulation,
+  log: readonly LoggedCommand[],
+  untilTick: number,
+  onTick?: (tick: number) => void,
+): void {
   let cursor = 0;
   for (let nextTick = 1; nextTick <= untilTick; nextTick++) {
-    // A command recorded at tick T was drained+applied on the SAME `step()` it was enqueued before,
-    // i.e. it must be pending when `step()` increments the tick to T. Enqueue every command for the
-    // tick we are about to run, then step. Commands past `untilTick` are left un-replayed (scrub).
-    // `<= nextTick` (not `===`) so a command is never silently dropped if a log is ever non-monotonic
-    // — on a real (monotonic) log every command's tick equals some `nextTick` exactly, so this is the
-    // same byte-identical reconstruction, just robust to a malformed/hand-built log.
     while (cursor < log.length && (log[cursor] as LoggedCommand).tick <= nextTick) {
       sim.enqueue((log[cursor] as LoggedCommand).command);
       cursor++;
     }
     sim.step();
+    onTick?.(nextTick);
   }
-  return sim;
 }
