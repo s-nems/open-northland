@@ -112,7 +112,7 @@ let vertexProgram: GlProgram | undefined;
  * multiplier sampled from `brightnessTex` (the map's `embr` bytes as an R8 texture, linear-filtered +
  * edge-clamped — the GPU twin of `makeCellSampler`) at the geometry's `aBrightnessUV`. One per
  * mesh/page; the compiled program is shared. WebGL-only, like
- * {@link import('./paletted-sprite.js').PalettedSprite} — the renderer preference is `webgl`
+ * {@link import('./paletted-sprite/index.js').PalettedSprite} — the renderer preference is `webgl`
  * (`pixi-app.ts`).
  */
 export function makeShadedTerrainShader(source: TextureSource, brightnessTex: TextureSource): Shader {

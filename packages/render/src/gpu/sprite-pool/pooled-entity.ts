@@ -1,6 +1,6 @@
 import { Container, type Graphics, type Sprite } from 'pixi.js';
 import type { SpriteKind } from '../../data/sprites/index.js';
-import type { PalettedSprite } from '../paletted-sprite.js';
+import type { PalettedSprite } from '../paletted-sprite/index.js';
 import type { MotionTrack } from './motion.js';
 
 /**

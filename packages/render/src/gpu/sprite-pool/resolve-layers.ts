@@ -28,7 +28,7 @@ import type { SettlerCharacterSet, SpriteLayer, SpriteSheet } from '../sprite-sh
 
 /** One resolved atlas layer to draw for an entity: which source page, which frame rect, at what scale.
  *  `atlasW`/`atlasH` (the source sheet's pixel size) ride along ONLY for the paletted settler path — the
- *  {@link import('../paletted-sprite.js').PalettedSprite} mesh samples the indexed atlas by UV, so it needs
+ *  {@link import('../paletted-sprite/index.js').PalettedSprite} mesh samples the indexed atlas by UV, so it needs
  *  the sheet dimensions; the plain {@link import('pixi.js').Sprite} path binds a cached sub-texture and
  *  ignores them. */
 export interface ResolvedLayer {

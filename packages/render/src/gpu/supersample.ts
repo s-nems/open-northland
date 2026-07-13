@@ -2,7 +2,7 @@ import { type Container, type Renderer, RenderTexture, Sprite } from 'pixi.js';
 import { clamp } from '../data/math.js';
 
 /**
- * Off-screen supersampling for the screen-space {@link import('./paletted-sprite.js').PalettedSprite} HUD
+ * Off-screen supersampling for the screen-space {@link import('./paletted-sprite/index.js').PalettedSprite} HUD
  * meshes. The GUI art is a nearest-sampled INDEXED atlas (palette indices can't be linearly filtered), so
  * drawing it straight at a fractional UI scale doubles texel columns unevenly ("pixeloza"). The fix is to
  * rasterize the sprites at an INTEGER oversample into a texture (nearest is exact at an integer zoom) and

@@ -92,7 +92,7 @@ export type {
   PlacementOverlayFrame,
   PortraitInsetFrame,
 } from './gpu/overlays/index.js';
-export { type GuiColorKey, PalettedSprite } from './gpu/paletted-sprite.js';
+export { type GuiColorKey, PalettedSprite } from './gpu/paletted-sprite/index.js';
 export { createPixiApp, createWindowPixiApp, loadAtlasSource } from './gpu/pixi-app.js';
 export { type EntityBounds, resolveLayers } from './gpu/sprite-pool/index.js';
 export type { ResolvedLayer } from './gpu/sprite-pool/resolve-layers.js';
