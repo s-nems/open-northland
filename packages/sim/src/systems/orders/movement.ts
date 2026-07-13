@@ -14,7 +14,7 @@ import {
   Stance,
   Weapon,
 } from '../../components/index.js';
-import type { Command } from '../../core/commands.js';
+import type { Command } from '../../core/commands/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nearestUnblockedNode } from '../../nav/nearest.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';

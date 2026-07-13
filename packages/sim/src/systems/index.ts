@@ -11,12 +11,12 @@ export * from './conflict/projectile.js';
 // `spawn` otherwise stays private (its `spawnSettler`/`spawnAnimalHerd` are the command handler's), but
 // `createSettler` is the scene-facing entity constructor — the settler twin of `createResourceNode` — so
 // pre-tick-0 scene setup can place a settler directly and stamp its bindings (a gatherer's WorkFlag).
-export { createSettler, DEFAULT_SETTLER_HITPOINTS, type SettlerSpec } from './conflict/spawn.js';
+export { createSettler, DEFAULT_SETTLER_HITPOINTS, type SettlerSpec } from './conflict/spawn/index.js';
 export * from './economy/berries.js';
 export * from './economy/construction.js';
 export * from './economy/farming.js';
 export * from './economy/flags.js';
-export * from './economy/jobs.js';
+export * from './economy/jobs/index.js';
 export * from './economy/production.js';
 export * from './footprint/index.js';
 export * from './lifecycle/ageclass.js';

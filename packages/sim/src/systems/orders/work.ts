@@ -14,13 +14,13 @@ import {
   Position,
   Settler,
 } from '../../components/index.js';
-import type { Command } from '../../core/commands.js';
+import type { Command } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { positionOfNode } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
 import { bindFreshFlag, jobCanHarvest, liveWorkFlag, syncWorkFlagToJob } from '../economy/flags.js';
-import { openWorkerJobFromList } from '../economy/jobs.js';
+import { openWorkerJobFromList } from '../economy/jobs/index.js';
 import { stampDefaultStance } from './combat.js';
 
 /**

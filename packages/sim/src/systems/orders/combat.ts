@@ -13,7 +13,7 @@ import {
   Settler,
   Stance,
 } from '../../components/index.js';
-import type { Command } from '../../core/commands.js';
+import type { Command } from '../../core/commands/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId } from '../../nav/terrain/index.js';

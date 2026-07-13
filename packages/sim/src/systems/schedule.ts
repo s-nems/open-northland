@@ -7,7 +7,7 @@ import type { System } from './context.js';
 import { berryGrowthSystem } from './economy/berries.js';
 import { constructionSystem } from './economy/construction.js';
 import { cropGrowthSystem } from './economy/farming.js';
-import { jobSystem } from './economy/jobs.js';
+import { jobSystem } from './economy/jobs/index.js';
 import { productionSystem } from './economy/production.js';
 import { growthSystem } from './lifecycle/ageclass.js';
 import { cleanupSystem } from './lifecycle/cleanup.js';

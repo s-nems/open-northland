@@ -31,7 +31,7 @@ export type SpawnCommand =
        * {@link Health} pool (civilians have health too — user decision 2026-07-11): a positive
        * `hitpoints` sets its size (the settler analogue of `spawnAnimalHerd`'s `hitpoints_adult`
        * stamp); omit it (the default) for the shared
-       * {@link import('../../systems/conflict/spawn.js').DEFAULT_SETTLER_HITPOINTS} pool. The pool
+       * {@link import('../../systems/conflict/spawn/index.js').DEFAULT_SETTLER_HITPOINTS} pool. The pool
        * **magnitude is approximated** either way: a human's hitpoints are below the readable `.ini`
        * (only `animaltypes.ini` carries them; source basis "Combat hit resolution").
        *

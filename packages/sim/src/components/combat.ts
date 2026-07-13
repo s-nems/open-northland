@@ -15,7 +15,7 @@ import type { NodeId } from '../nav/terrain/index.js';
  * armor-material column of the `weapontypes` damage table), so the whole pool stays integer arithmetic —
  * no truncation, exact `hitpoints <= 0` death test. Since 2026-07-11 EVERY settler carries one
  * (civilians too — user decision; a spawn without an explicit pool gets
- * {@link import('../systems/conflict/spawn.js').DEFAULT_SETTLER_HITPOINTS}), so `Health` is only
+ * {@link import('../systems/conflict/spawn/index.js').DEFAULT_SETTLER_HITPOINTS}), so `Health` is only
  * optional on non-settler entities (buildings carry their own pool via content `hitpoints`).
  * Determinism: drained by fixed integer subtractions, no RNG/wall-clock.
  */
