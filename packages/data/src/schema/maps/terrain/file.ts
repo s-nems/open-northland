@@ -67,10 +67,14 @@ const cellCount = (m: TerrainMapValue): number => m.width * m.height;
 function placementsInRange(objects: NonNullable<TerrainMapValue['objects']>, m: TerrainMapValue): boolean {
   const p = objects.placements;
   for (let i = 0; i + (PLACEMENT_STRIDE - 1) < p.length; i += PLACEMENT_STRIDE) {
-    const hx = p[i] as number;
-    const hy = p[i + 1] as number;
+    const hx = p[i];
+    const hy = p[i + 1];
+    const typeIndex = p[i + 2];
+    // The loop bound guarantees all three are present; the guard is only to satisfy the checked
+    // index type (a stride/bound edit that broke the invariant would surface here, not as a NaN compare).
+    if (hx === undefined || hy === undefined || typeIndex === undefined) continue;
     if (hx >= m.width * HALF_CELLS_PER_CELL || hy >= m.height * HALF_CELLS_PER_CELL) return false;
-    if ((p[i + 2] as number) >= objects.types.length) return false;
+    if (typeIndex >= objects.types.length) return false;
   }
   return true;
 }
