@@ -57,23 +57,7 @@ export function nearestStoreFor(
   let bestDist = Number.POSITIVE_INFINITY;
   let bestCell = Number.POSITIVE_INFINITY;
   for (const e of candidates) {
-    if (excludeProducers && buildingProduces(world, ctx, e).includes(goodType)) continue;
-    if (!world.has(e, Stockpile) || !world.has(e, Position)) continue;
-    // A GroundDrop (a felled trunk / dropped good) is a SOURCE to collect, never a delivery SINK —
-    // otherwise a collector would deposit the wood straight back into the trunk it just lifted from
-    // (a livelock).
-    if (world.has(e, GroundDrop)) continue;
-    // A bare loose goods pile (a hand-dropped heap or a gatherer's yard heap) is likewise NEVER a sink.
-    // It has no store TYPE, so {@link stockCapacity} treats it as uncapped: a carrier that can't reach a
-    // real store (every warehouse full for the good) would "deliver" its load into the nearest loose pile,
-    // which a porter immediately re-collects — the good shuttles pile→back→pile forever (the full-store
-    // livelock). A real sink is a TYPED store: a Building (warehouse/HQ/workshop) or a Vehicle hull.
-    if (isYardHeap(world, e)) continue;
-    const recipe = recipeOf(world, ctx, e);
-    if (recipe?.outputs.some((o) => o.goodType === goodType)) continue; // never deliver to its producer
-    const stock = world.get(e, Stockpile);
-    const have = stock.amounts.get(goodType) ?? 0;
-    if (have >= stockCapacity(world, ctx, e, goodType)) continue; // full for this good — skip
+    if (!canStoreGood(world, ctx, e, goodType, excludeProducers)) continue;
     const cell = interactionCell(world, ctx, terrain, e, here);
     const dist = manhattan(terrain, here, cell);
     if (closer(dist, cell, bestDist, bestCell)) {
@@ -83,6 +67,27 @@ export function nearestStoreFor(
     }
   }
   return best;
+}
+
+/** Position-independent acceptance half of {@link nearestStoreFor}. Shared with the tick-local sink
+ * memo so null probes do not repeat the full stockpile scan. Keep every gate here in the same order as
+ * the former inline scan: this is a pure extraction, not a policy change. */
+export function canStoreGood(
+  world: World,
+  ctx: SystemContext,
+  entity: Entity,
+  goodType: number,
+  excludeProducers = false,
+): boolean {
+  if (excludeProducers && buildingProduces(world, ctx, entity).includes(goodType)) return false;
+  if (!world.has(entity, Stockpile) || !world.has(entity, Position)) return false;
+  if (world.has(entity, GroundDrop)) return false;
+  if (isYardHeap(world, entity)) return false;
+  const recipe = recipeOf(world, ctx, entity);
+  if (recipe?.outputs.some((output) => output.goodType === goodType)) return false;
+  const stock = world.get(entity, Stockpile);
+  const have = stock.amounts.get(goodType) ?? 0;
+  return have < stockCapacity(world, ctx, entity, goodType);
 }
 
 /**

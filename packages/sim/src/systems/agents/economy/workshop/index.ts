@@ -92,7 +92,7 @@ function haulWorkplaceOutput(
 ): boolean {
   const { world, ctx, terrain, entity, here, targets } = plan;
   const worker = plan;
-  const output = workplaceOutputToHaul(targets.stockpiles, world, ctx, terrain, workplace, recipe, here);
+  const output = workplaceOutputToHaul(targets.sinks, world, workplace, recipe);
   if (output === null) return false;
   atOrWalk(world, entity, here, interactionCell(world, ctx, terrain, workplace, here), () =>
     startPickup(

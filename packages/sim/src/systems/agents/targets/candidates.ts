@@ -14,6 +14,7 @@ import type { SystemContext } from '../../context.js';
 import { canonicalResources } from '../../resource-index.js';
 import { canonicalById } from '../../spatial.js';
 import { isCarrierJob } from '../../stores/index.js';
+import { SinkAvailability } from './stores/sinks.js';
 
 /** Canonically ordered target categories shared by every settler planned during one tick. */
 export interface TargetCandidates {
@@ -33,6 +34,8 @@ export interface TargetCandidates {
   readonly harvestAtomicByGood: ReadonlyMap<number, number>;
   /** Workplaces with a carrier bound to their transport slot. */
   readonly carrierSuppliedWorkplaces: ReadonlySet<Entity>;
+  /** Position-independent store-capacity probes, memoized by good for this planner tick. */
+  readonly sinks: SinkAvailability;
 }
 
 /** Snapshot the planner's canonical target categories once for the tick. */
@@ -49,14 +52,16 @@ export function collectTargets(world: World, ctx: SystemContext): TargetCandidat
     carrierSuppliedWorkplaces.add(world.get(entity, JobAssignment).workplace);
   }
 
+  const stockpiles = canonicalById(world.query(Stockpile, Position));
   return {
     resources: canonicalResources(world),
-    stockpiles: canonicalById(world.query(Stockpile, Position)),
+    stockpiles,
     buildings: canonicalById(world.query(Building, Position)),
     constructionSites: canonicalById(world.query(UnderConstruction, Building, Position)),
     groundDrops: canonicalById(world.query(GroundDrop, Stockpile, Position)),
     crops: canonicalById(world.query(Crop, Position)),
     harvestAtomicByGood,
     carrierSuppliedWorkplaces,
+    sinks: new SinkAvailability(stockpiles, world, ctx),
   };
 }

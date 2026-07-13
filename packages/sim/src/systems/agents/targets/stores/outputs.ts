@@ -6,7 +6,7 @@ import { manhattan } from '../../../spatial.js';
 import { recipeOf } from '../../../stores/index.js';
 import { closer } from '../nearest.js';
 import { interactionCell } from '../workplaces.js';
-import { nearestStoreFor } from './stock.js';
+import type { SinkAvailability } from './sinks.js';
 
 /**
  * Whether ANY workplace holds a haulable output this tick — a producing {@link Building} ({@link recipeOf}
@@ -44,6 +44,7 @@ export function hasHaulableOutput(world: World, ctx: SystemContext, stockpiles: 
  */
 export function nearestWorkplaceOutput(
   candidates: readonly Entity[],
+  sinks: SinkAvailability,
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
@@ -64,7 +65,7 @@ export function nearestWorkplaceOutput(
       if (amount <= 0) continue;
       if (!recipe.outputs.some((o) => o.goodType === goodType)) continue; // only haul outputs
       // Deliverability check reuses the SAME stockpile candidates (a store is a Stockpile+Position too).
-      if (nearestStoreFor(candidates, world, ctx, terrain, cell, goodType) === null) continue;
+      if (!sinks.has(goodType)) continue;
       if (closer(dist, cell, bestDist, bestCell)) {
         best = { workplace: e, goodType };
         bestDist = dist;

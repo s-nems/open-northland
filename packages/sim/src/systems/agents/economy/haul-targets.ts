@@ -5,7 +5,8 @@ import type { SystemContext } from '../../context.js';
 import { farmWorkGood } from '../../economy/farming.js';
 import { manhattan } from '../../spatial.js';
 import { buildingProduces, lowestStockedGood } from '../../stores/index.js';
-import { closer, interactionCell, nearestStoreFor } from '../targets/index.js';
+import { closer, interactionCell } from '../targets/index.js';
+import type { SinkAvailability } from '../targets/stores/sinks.js';
 import { isFieldWorkerOf, isStorageSink } from './store-policy.js';
 
 /**
@@ -24,6 +25,7 @@ import { isFieldWorkerOf, isStorageSink } from './store-policy.js';
  */
 export function nearestGroundPile(
   candidates: readonly Entity[],
+  sinks: SinkAvailability,
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
@@ -32,23 +34,12 @@ export function nearestGroundPile(
   let best: { pile: Entity; goodType: number } | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
   let bestCell = Number.POSITIVE_INFINITY;
-  const deliverable = new Map<number, boolean>();
-  const canDeliver = (good: number): boolean => {
-    const cached = deliverable.get(good);
-    if (cached !== undefined) return cached;
-    // `here` feeds only `nearestStoreFor`'s distance sort, never its null-ness — a good is deliverable iff
-    // ANY store has room (position-independent) — so one probe from `here` decides it for every pile of
-    // that good, and caching by good alone stays deterministic.
-    const ok = nearestStoreFor(candidates, world, ctx, terrain, here, good) !== null;
-    deliverable.set(good, ok);
-    return ok;
-  };
   for (const e of candidates) {
     if (world.has(e, Building)) continue; // a building store isn't a loose ground pile
     if (!world.has(e, Stockpile) || !world.has(e, Position)) continue;
     const good = lowestStockedGood(world.get(e, Stockpile));
     if (good === null) continue; // an empty pile is nothing to collect
-    if (!canDeliver(good)) continue; // every store full for this good — leave it, try another good
+    if (!sinks.has(good)) continue; // every store full for this good — leave it, try another good
     const cell = interactionCell(world, ctx, terrain, e, here);
     const dist = manhattan(terrain, here, cell);
     if (closer(dist, cell, bestDist, bestCell)) {
@@ -84,14 +75,12 @@ export function nearestGroundPile(
  * the good to lift, or null when there is nothing to haul.
  */
 export function boundProducerOutputToHaul(
-  candidates: readonly Entity[],
+  sinks: SinkAvailability,
   world: World,
   ctx: SystemContext,
-  terrain: TerrainGraph,
   settler: Entity,
   jobType: number,
   tribe: number,
-  here: NodeId,
 ): { home: Entity; goodType: number } | null {
   const binding = world.tryGet(settler, JobAssignment);
   if (binding === undefined) return null;
@@ -104,7 +93,7 @@ export function boundProducerOutputToHaul(
   const stock = world.get(home, Stockpile).amounts;
   for (const goodType of buildingProduces(world, ctx, home)) {
     if ((stock.get(goodType) ?? 0) <= 0) continue; // none of this output on hand
-    if (nearestStoreFor(candidates, world, ctx, terrain, here, goodType, true) !== null) {
+    if (sinks.has(goodType, true)) {
       return { home, goodType };
     }
   }

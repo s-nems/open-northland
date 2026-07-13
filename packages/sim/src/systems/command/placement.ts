@@ -1,4 +1,3 @@
-import { indexById } from '@vinland/data';
 import {
   Building,
   Health,
@@ -11,6 +10,7 @@ import {
   Vehicle,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands.js';
+import { contentIndex } from '../../core/content-index.js';
 import { fx, ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { positionOfNode } from '../../nav/halfcell.js';
@@ -48,7 +48,7 @@ export function placeBuilding(
   ctx: SystemContext,
   command: Extract<Command, { kind: 'placeBuilding' }>,
 ): void {
-  const type = indexById(ctx.content.buildings).get(command.buildingType);
+  const type = contentIndex(ctx.content).commandBuildings.get(command.buildingType);
   if (type === undefined) return; // unknown building type — skip (recoverable bad input)
 
   // `force` (map-authored imports + pinned demo fixtures) skips BOTH gates below: the original loads
