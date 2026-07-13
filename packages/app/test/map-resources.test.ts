@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { ContentIr } from '../src/content/ir.js';
 import { harvestGoodByObjectName, mapResourceSpawns } from '../src/content/map-resources.js';
 import { sandboxContent } from '../src/game/sandbox/content.js';
-import { spawnMapResources } from '../src/game/sandbox/place.js';
+import { spawnMapResources } from '../src/game/sandbox/map-spawn.js';
 
 /**
  * The decoded-map → sim RESOURCE join (plan `gathering-economy.md` step 6): a map's placed trees/ore/stone
