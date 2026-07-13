@@ -1,11 +1,11 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import { type AtlasAlphaMode, type BobAtlas, packBobAtlas } from '../../decoders/atlas.js';
 import { decodeBmd } from '../../decoders/bmd/index.js';
 import { type BmdPaletteBinding, type PaletteAlias, paletteAliasMap } from '../../decoders/ini.js';
 import { decodePcx } from '../../decoders/pcx.js';
-import { encodePng } from '../../decoders/png.js';
 import { walkFiles } from '../../walk.js';
+import { writeAtlasBeside } from '../game-file.js';
 
 /**
  * Pure composition: `.bmd` bytes + a 768-byte RGB palette -> a packed bob atlas (the RGBA sheet to
@@ -138,12 +138,13 @@ export async function convertBmdTree(
     // Name on (bmd, palette), not the .bmd alone: many bindings share one body bob recoloured per
     // creature, so `<bmd>.png` would collapse them last-palette-wins. The palette editname is the only
     // per-creature differentiator, so it rides in the filename — `<bmd-stem>.<palette>.png`.
-    const suffix = paletteSlug(binding.paletteName);
-    const pngRel = bmdOnDisk.replace(/\.bmd$/i, `.${suffix}.png`);
-    const manifestRel = bmdOnDisk.replace(/\.bmd$/i, `.${suffix}.atlas.json`);
-    await writeFile(join(outDir, pngRel), encodePng(atlas.image));
-    await writeFile(join(outDir, manifestRel), `${JSON.stringify(atlas.manifest, null, 2)}\n`);
-    done.push({ bmd: binding.bmd, paletteName: binding.paletteName, png: pngRel, manifest: manifestRel });
+    const { png, manifest } = await writeAtlasBeside(
+      outDir,
+      bmdOnDisk,
+      paletteSlug(binding.paletteName),
+      atlas,
+    );
+    done.push({ bmd: binding.bmd, paletteName: binding.paletteName, png, manifest });
   }
   return done;
 }

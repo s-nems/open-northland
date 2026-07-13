@@ -148,3 +148,29 @@ export async function emitIndexedAndPreviewAtlas(
   await writeBobAtlas(outDir, previewStem, preview);
   return { indexedStem, previewStem, frames: indexed.manifest.frames.length };
 }
+
+/** The relative PNG + manifest paths {@link writeAtlasBeside} wrote (native separators, under `outDir`). */
+export interface AtlasBesideResult {
+  readonly png: string;
+  readonly manifest: string;
+}
+
+/**
+ * Writes a packed atlas as siblings of its source `.bmd` under `outDir` — `<bmd-stem>.<suffix>.png` +
+ * `<bmd-stem>.<suffix>.atlas.json` — and returns the two relative paths. `bmdOnDisk` must end in `.bmd`
+ * (the caller resolved the real cased path). The `<suffix>` distinguishes recolours of one shared body
+ * bob (a palette slug, or `indexed` for the recolourable atlas) so variants don't clobber each other.
+ * The bob-tree twin of {@link writeBobAtlas} (which writes to the fixed {@link BOBS_DIR} instead).
+ */
+export async function writeAtlasBeside(
+  outDir: string,
+  bmdOnDisk: string,
+  suffix: string,
+  atlas: BobAtlas,
+): Promise<AtlasBesideResult> {
+  const png = bmdOnDisk.replace(/\.bmd$/i, `.${suffix}.png`);
+  const manifest = bmdOnDisk.replace(/\.bmd$/i, `.${suffix}.atlas.json`);
+  await writeFile(join(outDir, png), encodePng(atlas.image));
+  await writeFile(join(outDir, manifest), `${JSON.stringify(atlas.manifest, null, 2)}\n`);
+  return { png, manifest };
+}
