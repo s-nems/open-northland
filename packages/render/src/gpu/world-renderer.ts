@@ -28,9 +28,10 @@ import {
   PortraitInsetLayer,
   SelectionLayer,
 } from './overlays/index.js';
-import type { SpriteSheet, TerrainTextureSet } from './pixi-app.js';
 import { type EntityBounds, SpritePool } from './sprite-pool/index.js';
+import type { SpriteSheet } from './sprite-sheet.js';
 import { TerrainLayer } from './terrain/index.js';
+import type { TerrainTextureSet } from './terrain-textures.js';
 import { TextureCache } from './texture-cache.js';
 
 /** Shared empty selection so the common no-selection `update` allocates nothing. */

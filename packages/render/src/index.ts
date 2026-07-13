@@ -103,18 +103,7 @@ export type {
 } from './gpu/overlays/index.js';
 export { DEFAULT_HUD_STYLE, type HudFrame, type HudStyle } from './gpu/overlays/index.js';
 export { type GuiColorKey, PalettedSprite } from './gpu/paletted-sprite.js';
-export {
-  createPixiApp,
-  createWindowPixiApp,
-  type GroundPattern,
-  loadAtlasSource,
-  type SettlerCharacter,
-  type SettlerCharacterSet,
-  type SpriteLayer,
-  type SpriteSheet,
-  type TerrainTextureSet,
-  type TransitionPattern,
-} from './gpu/pixi-app.js';
+export { createPixiApp, createWindowPixiApp, loadAtlasSource } from './gpu/pixi-app.js';
 export {
   type EntityBounds,
   type MotionTrack,
@@ -123,6 +112,12 @@ export {
   trackMotion,
 } from './gpu/sprite-pool/index.js';
 export type { ResolvedLayer } from './gpu/sprite-pool/resolve-layers.js';
+export type {
+  SettlerCharacter,
+  SettlerCharacterSet,
+  SpriteLayer,
+  SpriteSheet,
+} from './gpu/sprite-sheet.js';
 export {
   bakeToFlippedSprite,
   bakeToSprite,
@@ -137,6 +132,11 @@ export {
   syntheticAtlasFrames,
 } from './gpu/synthetic-atlas.js';
 export { flatTileColour } from './gpu/terrain/terrain-layer.js';
+export type {
+  GroundPattern,
+  TerrainTextureSet,
+  TransitionPattern,
+} from './gpu/terrain-textures.js';
 export { SPRITE_CULL_MARGIN, type WorldFrame, WorldRenderer } from './gpu/world-renderer.js';
 
 /*

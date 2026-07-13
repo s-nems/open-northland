@@ -3,7 +3,8 @@
  * agent can self-verify); binding that rect to a GPU texture + sampling it is the GPU layer's half
  * (pixels, which only a human can judge). No Pixi, no canvas. Split by concern:
  *  - {@link import('./atlas.js')} — atlas frame geometry + the manifest adaptation;
- *  - {@link import('./bindings.js')} — the per-kind binding-table types;
+ *  - {@link import('./bindings.js')} — the root {@link SpriteBindings} vocabulary;
+ *  - {@link import('./settler-bindings.js')} / {@link import('./layered-bindings.js')} — the per-kind binding-table types;
  *  - {@link import('./settler.js')} — the settler state/facing/clock frame selection;
  *  - {@link import('./layered.js')} — the building/resource/stockpile layer decisions;
  *  - {@link import('./resolve.js')} — the top-level per-kind dispatch.
@@ -17,24 +18,7 @@ export {
   lookupFrame,
   type SpriteAtlas,
 } from './atlas.js';
-export type {
-  BuildingBobRef,
-  BuildingDraw,
-  BuildingOverlayRef,
-  BuildingTypeBinding,
-  ByJobTable,
-  CarryingBinding,
-  ConstructionLayerRef,
-  DirectionalAnim,
-  FrameListAnim,
-  LayeredBobRef,
-  ResourceTypeBinding,
-  SettlerStateBinding,
-  SpriteBindings,
-  SpriteFrameRef,
-  SpriteKind,
-  StockpileBinding,
-} from './bindings.js';
+export type { SpriteBindings, SpriteKind } from './bindings.js';
 export {
   bobKey,
   finishedBuildingBobKeys,
@@ -46,5 +30,23 @@ export {
   resolveStockpileLayerDraws,
   unwrapBobRef,
 } from './layered.js';
+export type {
+  BuildingBobRef,
+  BuildingDraw,
+  BuildingOverlayRef,
+  BuildingTypeBinding,
+  ConstructionLayerRef,
+  LayeredBobRef,
+  ResourceTypeBinding,
+  StockpileBinding,
+} from './layered-bindings.js';
 export { resolveSpriteBobId, resolveSpriteFrame } from './resolve.js';
 export { DEFAULT_FACING, pickByJob, resolveSettlerBobId } from './settler.js';
+export type {
+  ByJobTable,
+  CarryingBinding,
+  DirectionalAnim,
+  FrameListAnim,
+  SettlerStateBinding,
+  SpriteFrameRef,
+} from './settler-bindings.js';

@@ -1,13 +1,74 @@
 import type { WorldSnapshot } from '@vinland/sim';
 import type { ElevationField } from '../elevation.js';
 import { tileToScreen } from '../iso.js';
-import type { DrawItem, SceneGround, SceneTerrain, SceneTransitions } from './draw-item.js';
+import type { DrawItem } from './draw-item.js';
 import { collectSpriteScene } from './sprite-scene.js';
 
 /**
- * The terrain half of the pure scene layer: the decoded-map → {@link SceneTerrain} projection, plus the
- * whole-frame headless oracle {@link buildScene} (terrain tiles + sprites in one depth-sorted list).
+ * The terrain half of the pure scene layer: the decoded-map grid shapes ({@link SceneTerrain} + its
+ * per-triangle {@link SceneGround} / {@link SceneTransitions} lanes), the decoded-map → {@link SceneTerrain}
+ * projection, plus the whole-frame headless oracle {@link buildScene} (terrain tiles + sprites in one
+ * depth-sorted list).
  */
+
+/**
+ * A decoded map's 1:1 per-triangle ground lanes (the `ground` layer of `content/maps/<id>.json`):
+ * pattern `EditName`s + each cell's two triangle picks as indices into them. Render-only data — the
+ * renderer joins a name through {@link import('../../gpu/terrain-textures.js').TerrainTextureSet.groundFor}.
+ */
+export interface SceneGround {
+  readonly patterns: readonly string[];
+  /** Row-major per-cell index into {@link patterns} for triangle A (△ from the cell's centre node
+   *  down to the SW/SE-below centres — `../terrain.js` `triangleANodes`). */
+  readonly a: readonly number[];
+  /** Row-major per-cell index into {@link patterns} for triangle B (▽ across to the E centre —
+   *  `../terrain.js` `triangleBNodes`). */
+  readonly b: readonly number[];
+}
+
+/**
+ * A decoded map's per-triangle transition overlays (the `transitions` layer of
+ * `content/maps/<id>.json`): the map's `eatd` name dictionary VERBATIM plus the four `emt1..emt4`
+ * per-cell u8 lanes — `a1`/`b1` are layer 1 (topmost) for triangles A/B, `a2`/`b2` layer 2. A lane
+ * value `v < 255` selects transition `⌊v/6⌋` from {@link types} and pair variant `v % 6`
+ * (`../terrain.js` `transitionRef`); the renderer joins a name through
+ * {@link import('../../gpu/terrain-textures.js').TerrainTextureSet.transitionFor}.
+ */
+export interface SceneTransitions {
+  readonly types: readonly string[];
+  readonly a1: readonly number[];
+  readonly b1: readonly number[];
+  readonly a2: readonly number[];
+  readonly b2: readonly number[];
+}
+
+/** The terrain grid the snapshot is positioned over (dimensions + row-major landscape typeIds). */
+export interface SceneTerrain {
+  readonly width: number;
+  readonly height: number;
+  /** Row-major landscape typeId per cell, length `width*height`. */
+  readonly typeIds: readonly number[];
+  /** The 1:1 per-triangle ground patterns, when the map carries them (a decoded original map). */
+  readonly ground?: SceneGround;
+  /** The per-triangle transition overlays (`emt1..emt4` + `eatd`), when the map carries them. */
+  readonly transitions?: SceneTransitions;
+  /**
+   * The decoded map's per-cell `lmhe` terrain height (row-major, length `width*height`, 0..~250), when
+   * present. The renderer builds an {@link import('../elevation.js').ElevationField} from it to lift the
+   * ground mesh + every projected item; absent → flat (no lift). Render-only data — the sim never reads it.
+   */
+  readonly elevation?: readonly number[];
+  /**
+   * The decoded map's per-cell `embr` baked shading (row-major, length `width*height`, u8 with 127 =
+   * neutral), when present. The GROUND mesh consumes it per FRAGMENT (luminance × value/127 sampled
+   * from an R8 lane texture — slope light/shadow plus the fade-to-black map border); absent →
+   * unshaded. Landscape objects shade separately at their anchor cell via an app-built
+   * {@link import('../brightness.js').BrightnessField} (trees exempt — the measured split; see
+   * `data/brightness.ts`); buildings/settlers are unmeasured and unshaded. Render-only data — the
+   * sim never reads it.
+   */
+  readonly brightness?: readonly number[];
+}
 
 /**
  * Terrain tiles sort among themselves back-to-front (ascending row), shifted into a band strictly below

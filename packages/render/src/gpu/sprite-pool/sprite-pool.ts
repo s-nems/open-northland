@@ -9,7 +9,7 @@ import { collectSpriteScene, type DrawItem, paintOrderBias } from '../../data/sc
 import type { SpriteKind } from '../../data/sprites/index.js';
 import type { Viewport } from '../../data/viewport.js';
 import { PalettedSprite } from '../paletted-sprite.js';
-import type { SpriteSheet } from '../pixi-app.js';
+import type { SpriteSheet } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
 import { alphaMaskOf, maskSolidAt } from './alpha-mask.js';
 import { trackMotion } from './motion.js';

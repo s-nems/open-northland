@@ -6,7 +6,7 @@ import type {
   LayeredBobRef,
   ResourceTypeBinding,
   StockpileBinding,
-} from './bindings.js';
+} from './layered-bindings.js';
 
 /**
  * The layered-kind resolvers: which bob id — and from which named atlas-layer family — a building /
