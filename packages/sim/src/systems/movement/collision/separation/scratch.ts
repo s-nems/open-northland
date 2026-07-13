@@ -12,7 +12,8 @@ export interface SeparationScratch {
   readonly movers: Entity[];
   readonly posts: Entity[];
   readonly firmMovers: Set<Entity>;
-  readonly before: Array<MoverSnapshot | undefined>;
+  readonly before: Map<Entity, MoverSnapshot>;
+  readonly snapshotPool: MoverSnapshot[];
   readonly nearMovers: Entity[];
   readonly nearPosts: Entity[];
   readonly ghostMemo: Map<Entity, boolean>;
@@ -28,13 +29,18 @@ export function separationScratch(world: World): SeparationScratch {
       movers: [],
       posts: [],
       firmMovers: new Set(),
-      before: [],
+      before: new Map(),
+      snapshotPool: [],
       nearMovers: [],
       nearPosts: [],
       ghostMemo: new Map(),
     };
     scratchByWorld.set(world, scratch);
   }
+  // Return only the previous tick's ACTIVE snapshots to a dense pool. Entity ids are monotonic, so
+  // retaining an id-indexed array here would grow with every historical mover in a long game.
+  for (const snapshot of scratch.before.values()) scratch.snapshotPool.push(snapshot);
+  scratch.before.clear();
   scratch.movers.length = 0;
   scratch.posts.length = 0;
   scratch.firmMovers.clear();
