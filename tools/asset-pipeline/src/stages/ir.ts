@@ -56,6 +56,22 @@ async function loadCifSections(path: string): Promise<RuleSection[] | null> {
 }
 
 /**
+ * Loads a base-game `.cif`-only table at `gameDir/relFile` and runs `extract` over its sections,
+ * returning `fallback` when the file is absent/undecodable (a partial install degrades per-table, not
+ * fatally). Collapses the five identical load→guard→extract triples buildIr does for the pattern,
+ * triangle, transition, landscape, and sound tables.
+ */
+async function loadCifTable<T>(
+  gameDir: string,
+  relFile: string,
+  extract: (sections: RuleSection[], src: SourceRef) => T,
+  fallback: T,
+): Promise<T> {
+  const sections = await loadCifSections(join(gameDir, relFile));
+  return sections ? extract(sections, { file: relFile, layer: 'base' }) : fallback;
+}
+
+/**
  * One readable `.ini` rule source to parse, with where it came from (`base` = `Data/logic`,
  * `mod` = `DataCnmd`). The extractor selects which `[section]`s it cares about, so a file with no
  * matching sections contributes nothing rather than erroring.
@@ -188,15 +204,9 @@ export async function buildIr(args: Args): Promise<ContentSet> {
   // consumes. Both files ship in the base game; a partial install that lacks them simply yields no
   // `terrainPatterns` (the renderer keeps its flat-colour fallback).
   const patternFile = join('Data', 'engine2d', 'inis', 'patterns', 'pattern.cif');
-  const patternSections = await loadCifSections(join(args.game, patternFile));
+  const gfxPatterns = await loadCifTable(args.game, patternFile, extractPatterns, []);
   const triangleFile = join('Data', 'logic', 'trianglepatterntypes.cif');
-  const triangleSections = await loadCifSections(join(args.game, triangleFile));
-  const gfxPatterns = patternSections
-    ? extractPatterns(patternSections, { file: patternFile, layer: 'base' })
-    : [];
-  const triangleTypes = triangleSections
-    ? extractTrianglePatternTypes(triangleSections, { file: triangleFile, layer: 'base' })
-    : [];
+  const triangleTypes = await loadCifTable(args.game, triangleFile, extractTrianglePatternTypes, []);
   const terrainPatterns = buildTerrainPatterns(landscape, gfxPatterns, triangleTypes, {
     file: patternFile,
     layer: 'base',
@@ -204,18 +214,12 @@ export async function buildIr(args: Args): Promise<ContentSet> {
   // The `[transition]` ground-overlay table (`.cif`-only) — a decoded map's `transitions.types`
   // names join onto it (`editName`) for the overlay texture + the six per-pair UV triangles.
   const transitionFile = join('Data', 'engine2d', 'inis', 'patterntransitions', 'transitions.cif');
-  const transitionSections = await loadCifSections(join(args.game, transitionFile));
-  const gfxPatternTransitions = transitionSections
-    ? extractPatternTransitions(transitionSections, { file: transitionFile, layer: 'base' })
-    : [];
+  const gfxPatternTransitions = await loadCifTable(args.game, transitionFile, extractPatternTransitions, []);
   // The full `[GfxLandscape]` object table (`.cif`-only) — the table a decoded map's `objects`
   // placements join onto by `EditName` (trees/stones/bushes/mine decals/waves; visual frames +
   // logic footprints). Distinct from the `(bmd, palette)` atlas work list the bmd stage derives.
   const landscapeFile = join('Data', 'engine2d', 'inis', 'landscapes', 'landscapes.cif');
-  const landscapeSections = await loadCifSections(join(args.game, landscapeFile));
-  const landscapeGfx = landscapeSections
-    ? extractLandscapeGfx(landscapeSections, { file: landscapeFile, layer: 'base' })
-    : [];
+  const landscapeGfx = await loadCifTable(args.game, landscapeFile, extractLandscapeGfx, []);
   // The resolved gathering-pipeline join: per map-gathered good, its three landscape stages +
   // the `[GfxLandscape]` records (by `logicType`) that place each — materialized once so a later
   // gathering system doesn't re-scan the goods × landscapeGfx tables. See `buildGatheringPipeline`.
@@ -225,10 +229,11 @@ export async function buildIr(args: Args): Promise<ContentSet> {
   // file; a partial install that lacks it yields an empty bank (the app degrades to silence). Purely
   // render/audio-binding data — the pure sim never reads it.
   const soundFile = join('Data', 'engine2d', 'inis', 'soundfx', 'soundfx.cif');
-  const soundSections = await loadCifSections(join(args.game, soundFile));
-  const sounds = soundSections
-    ? extractSounds(soundSections)
-    : { staticGroups: [], ambient: [], jingles: [] };
+  const sounds = await loadCifTable(args.game, soundFile, (sections) => extractSounds(sections), {
+    staticGroups: [],
+    ambient: [],
+    jingles: [],
+  });
   // Overlay each building's build-material cost + ground footprint from the graphics table (joined
   // by `typeId`); a building the graphics table omits keeps the schema-default empty cost and no
   // footprint (it places with no collision — the pre-footprint behavior).
