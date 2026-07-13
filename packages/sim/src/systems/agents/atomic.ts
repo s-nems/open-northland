@@ -12,7 +12,7 @@ import {
   type PendingStagger,
   paySwingNeedCost,
   resolveAttackHit,
-} from './effects-combat.js';
+} from './effects-combat/index.js';
 import {
   consumeFood,
   continuesHarvest,
@@ -25,7 +25,7 @@ import {
 
 // Re-exported so the projectile system (and the systems barrel) keep their single import site for
 // the shared combat-hit contract after the effects split.
-export { applyPendingStaggers, type PendingStagger, resolveCombatHit } from './effects-combat.js';
+export { applyPendingStaggers, type PendingStagger, resolveCombatHit } from './effects-combat/index.js';
 
 /**
  * The idle BREATHER a gatherer stands between work-swing BURSTS, in ticks (0.75 s at 20 ticks/s).

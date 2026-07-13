@@ -1,14 +1,14 @@
-import { BerryBush, Position, Stockpile, stockpileEntries } from '../../../../components/index.js';
-import type { Entity, World } from '../../../../ecs/world.js';
-import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
-import { bushesNearNode } from '../../../berry-index.js';
-import type { SystemContext } from '../../../context.js';
-import { BERRY_FORAGE_RADIUS } from '../../../economy/berries.js';
-import { manhattan } from '../../../spatial.js';
-import { isFood } from '../../../stores/index.js';
-import type { TargetCandidates } from '../candidates.js';
-import { closer } from '../nearest.js';
-import { interactionCell } from '../workplaces.js';
+import { BerryBush, Position, Stockpile, stockpileEntries } from '../../../components/index.js';
+import type { Entity, World } from '../../../ecs/world.js';
+import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
+import { bushesNearNode } from '../../berry-index.js';
+import type { SystemContext } from '../../context.js';
+import { BERRY_FORAGE_RADIUS } from '../../economy/berries.js';
+import { manhattan } from '../../spatial.js';
+import { isFood } from '../../stores/index.js';
+import type { TargetCandidates } from './candidates.js';
+import { closer } from './nearest.js';
+import { interactionCell } from './workplaces.js';
 
 /**
  * The nearest store (a {@link Stockpile} on a positioned entity) that holds at least one unit of an
