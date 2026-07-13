@@ -1,5 +1,5 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { dirname, join, relative, sep } from 'node:path';
+import { dirname, join, relative } from 'node:path';
 import { decodeCifStringArray } from '../../decoders/cif.js';
 import {
   cifLinesToSections,
@@ -8,7 +8,7 @@ import {
   parseIniSections,
   type RuleSection,
 } from '../../decoders/ini.js';
-import { walkFiles } from '../../walk.js';
+import { collectFilesNamed } from '../../walk.js';
 import { findPathCaseInsensitive } from './case-path.js';
 import { mapIdFromPath } from './info.js';
 import { resolveMapMeta } from './meta.js';
@@ -59,14 +59,7 @@ export interface MapDatConversion {
  * too matches the existing `map.cif` behavior.)
  */
 export async function convertMapDatTree(gameDir: string, outDir: string): Promise<MapDatConversion[]> {
-  const found: string[] = [];
-  for await (const file of walkFiles(gameDir)) {
-    const lower = file.toLowerCase();
-    if (lower.endsWith(`${sep}map.dat`) || lower.endsWith('/map.dat')) {
-      found.push(relative(gameDir, file));
-    }
-  }
-  found.sort();
+  const found = await collectFilesNamed(gameDir, 'map.dat');
   const done: MapDatConversion[] = [];
   for (const rel of found) {
     const id = mapIdFromPath(rel);

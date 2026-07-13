@@ -1,9 +1,9 @@
 import { readFile } from 'node:fs/promises';
-import { dirname, join, relative, sep } from 'node:path';
+import { dirname, join } from 'node:path';
 import type { MapInfo } from '@vinland/data';
 import { decodeCifStringArray } from '../../decoders/cif.js';
 import { cifLinesToSections, extractMapInfo, type SourceRef } from '../../decoders/ini.js';
-import { walkFiles } from '../../walk.js';
+import { collectFilesNamed } from '../../walk.js';
 
 /**
  * Pure composition: one `map.cif`'s bytes + a slug id -> its validated {@link MapInfo} logic header.
@@ -43,13 +43,7 @@ export function mapIdFromPath(mapCifRelPath: string): string {
  * `MissionData`/`StaticObjects` scripting are out of scope here (see {@link extractMapInfo}).
  */
 export async function decodeMapTree(gameDir: string): Promise<MapInfo[]> {
-  const found: string[] = [];
-  for await (const file of walkFiles(gameDir)) {
-    if (file.toLowerCase().endsWith(`${sep}map.cif`) || file.toLowerCase().endsWith('/map.cif')) {
-      found.push(relative(gameDir, file));
-    }
-  }
-  found.sort();
+  const found = await collectFilesNamed(gameDir, 'map.cif');
   const maps: MapInfo[] = [];
   for (const rel of found) {
     try {
