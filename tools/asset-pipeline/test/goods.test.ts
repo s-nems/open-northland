@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveGoodIcons, resolveGoodNames } from '../src/stages/goods.js';
+import { resolveGoodIcons, resolveGoodNames } from '../src/stages/goods/index.js';
 
 /**
  * The good→icon join rule ({@link resolveGoodIcons}): a good's store icon is the state-1 (smallest) bob of
