@@ -8,6 +8,43 @@ import { findProps, getInt, type RuleSection, tallyIds } from '../grammar.js';
 import { existingGfxHouseWins, logicTypeByLevel, splitGfxHouseRecords } from './shared.js';
 
 /**
+ * Shared skeleton for the per-typeId `[GfxHouse]` overlays that collapse to a single flat value: walk
+ * every `[GfxHouse]` section, pair each `key` line to its level's `typeId` via the record's
+ * `LogicType <sizeIdx> <typeId>` table ({@link logicTypeByLevel}), and keep the deterministic winner per
+ * typeId ({@link existingGfxHouseWins}: lowest tribeType, then lowest sizeIdx). `readValue` turns a
+ * matched line's raw `values` into the stored payload, or returns `undefined` to reject the line (a
+ * malformed or out-of-range value the winner must not adopt — an invalid line never mutates the map).
+ * The construction-cost and hitpoint overlays are the two callers; the richer footprint overlay
+ * ({@link extractBuildingFootprints}) keeps its own walk because it splits multi-record sections and
+ * joins several key families per record.
+ */
+function collectGfxHouseWinner<T>(
+  sections: readonly RuleSection[],
+  key: string,
+  readValue: (values: readonly string[]) => T | undefined,
+): Map<number, T> {
+  // typeId -> the winning record, ranked by (tribeType asc, sizeIdx asc) so the choice is independent
+  // of file/parse order (see the collision notes on the public extractors).
+  const winner = new Map<number, { tribeType: number; sizeIdx: number; value: T }>();
+  for (const sec of sections) {
+    if (sec.name !== 'GfxHouse') continue;
+    const tribeType = getInt(sec, 'LogicTribeType') ?? Number.POSITIVE_INFINITY;
+    const typeByLevel = logicTypeByLevel(sec);
+    for (const p of findProps(sec, key)) {
+      const sizeIdx = Number.parseInt(p.values[0] ?? '', 10);
+      if (Number.isNaN(sizeIdx)) continue;
+      const typeId = typeByLevel.get(sizeIdx);
+      if (typeId === undefined) continue;
+      if (existingGfxHouseWins(winner.get(typeId), tribeType, sizeIdx)) continue;
+      const value = readValue(p.values);
+      if (value === undefined) continue;
+      winner.set(typeId, { tribeType, sizeIdx, value });
+    }
+  }
+  return new Map([...winner].map(([typeId, { value }]) => [typeId, value]));
+}
+
+/**
  * Extracts each building's **build-material cost** from the graphics table's `[GfxHouse]` records (the
  * readable `DataCnmd/budynki12/houses/houses.ini`), keyed by the building `typeId` for an overlay onto
  * the `[logichousetype]`-extracted {@link BuildingType}s ({@link import('../types/buildings.js').extractBuildings}
@@ -37,32 +74,15 @@ import { existingGfxHouseWins, logicTypeByLevel, splitGfxHouseRecords } from './
 export function extractConstructionCosts(
   sections: readonly RuleSection[],
 ): Map<number, { goodType: number; amount: number }[]> {
-  // typeId -> the winning record, ranked by (tribeType asc, sizeIdx asc) so the lowest-tribe / lowest-
-  // size cost deterministically wins regardless of file/parse order (see JSDoc collisions).
-  const winner = new Map<
-    number,
-    { tribeType: number; sizeIdx: number; cost: { goodType: number; amount: number }[] }
-  >();
-  for (const sec of sections) {
-    if (sec.name !== 'GfxHouse') continue;
-    const tribeType = getInt(sec, 'LogicTribeType') ?? Number.POSITIVE_INFINITY;
-    // sizeIdx -> typeId. A typeId may appear at several sizeIdx; each (sizeIdx -> typeId) is kept so
-    // the construction-goods loop below can pair each cost line to its level's typeId.
-    const typeByLevel = logicTypeByLevel(sec);
-    for (const p of findProps(sec, 'LogicConstructionGoods')) {
-      const sizeIdx = Number.parseInt(p.values[0] ?? '', 10);
-      if (Number.isNaN(sizeIdx)) continue;
-      const typeId = typeByLevel.get(sizeIdx);
-      if (typeId === undefined) continue;
-      if (existingGfxHouseWins(winner.get(typeId), tribeType, sizeIdx)) continue;
-      const ids = p.values
-        .slice(1)
-        .map((v) => Number.parseInt(v, 10))
-        .filter((n) => !Number.isNaN(n));
-      winner.set(typeId, { tribeType, sizeIdx, cost: tallyIds(ids) });
-    }
-  }
-  return new Map([...winner].map(([typeId, { cost }]) => [typeId, cost]));
+  // The goods list is a flat id array after the leading sizeIdx; a repeat encodes quantity, so
+  // `tallyIds` folds it to (goodType, amount). Always a value (an empty list is a valid zero cost).
+  return collectGfxHouseWinner(sections, 'LogicConstructionGoods', (values) => {
+    const ids = values
+      .slice(1)
+      .map((v) => Number.parseInt(v, 10))
+      .filter((n) => !Number.isNaN(n));
+    return tallyIds(ids);
+  });
 }
 
 /**
@@ -81,24 +101,11 @@ export function extractConstructionCosts(
  * overlay records.
  */
 export function extractHouseHitpoints(sections: readonly RuleSection[]): Map<number, number> {
-  // typeId -> the winning record, ranked by (tribeType asc, sizeIdx asc) so the choice is independent
-  // of file/parse order (mirrors extractConstructionCosts' collision resolution).
-  const winner = new Map<number, { tribeType: number; sizeIdx: number; hitpoints: number }>();
-  for (const sec of sections) {
-    if (sec.name !== 'GfxHouse') continue;
-    const tribeType = getInt(sec, 'LogicTribeType') ?? Number.POSITIVE_INFINITY;
-    const typeByLevel = logicTypeByLevel(sec);
-    for (const p of findProps(sec, 'logichitpoints')) {
-      const sizeIdx = Number.parseInt(p.values[0] ?? '', 10);
-      const hitpoints = Number.parseInt(p.values[1] ?? '', 10);
-      if (Number.isNaN(sizeIdx) || Number.isNaN(hitpoints) || hitpoints <= 0) continue;
-      const typeId = typeByLevel.get(sizeIdx);
-      if (typeId === undefined) continue;
-      if (existingGfxHouseWins(winner.get(typeId), tribeType, sizeIdx)) continue;
-      winner.set(typeId, { tribeType, sizeIdx, hitpoints });
-    }
-  }
-  return new Map([...winner].map(([typeId, { hitpoints }]) => [typeId, hitpoints]));
+  // `logichitpoints <sizeIdx> <value>` — reject a non-positive/malformed HP so it never wins a typeId.
+  return collectGfxHouseWinner(sections, 'logichitpoints', (values) => {
+    const hitpoints = Number.parseInt(values[1] ?? '', 10);
+    return Number.isNaN(hitpoints) || hitpoints <= 0 ? undefined : hitpoints;
+  });
 }
 
 /**
