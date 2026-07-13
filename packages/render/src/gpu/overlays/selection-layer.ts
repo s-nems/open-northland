@@ -56,13 +56,20 @@ interface RingSpec {
   readonly cx: number;
 }
 
-/** The frame's projection inputs shared by both ring pools — grouped so the twin `reconcile` calls don't
- *  thread the same four positional args (the snapshot + the pool's drawn-anchor / bounds / elevation seams). */
-interface SelectionFrame {
+/**
+ * The frame's projection inputs the selection rings draw from — grouped into one shape so a caller passes a
+ * single frame object instead of a positional tail (the snapshot + the pool's bounds / anchor / elevation
+ * seams always travel together). `boundsOf` / `anchorOf` / `elevation` are optional: without them a ring
+ * falls back to the raw snapshot projection at a fixed size (the no-sheet / not-yet-drawn path).
+ */
+export interface SelectionFrame {
   readonly snapshot: WorldSnapshot;
-  readonly boundsOf: ((ref: number) => EntityBounds | undefined) | undefined;
-  readonly elevation: ElevationField | undefined;
-  readonly anchorOf: ((ref: number) => { x: number; y: number } | undefined) | undefined;
+  /** The pool's per-entity sprite bounds — sizes a building ring to its real footprint. Absent → fixed ring. */
+  readonly boundsOf?: (ref: number) => EntityBounds | undefined;
+  /** The terrain height field — lifts a ring onto sloped ground. Absent → no lift (flat). */
+  readonly elevation?: ElevationField;
+  /** The pool's drawn (lerped, lifted) feet anchor — glides the ring with the interpolated bob. Absent → raw projection. */
+  readonly anchorOf?: (ref: number) => { x: number; y: number } | undefined;
 }
 
 export class SelectionLayer {
@@ -76,21 +83,13 @@ export class SelectionLayer {
   private readonly drawnFlags = new Set<number>();
 
   /**
-   * Reconcile both marker pools from the frozen snapshot's positions: a green ring under every `selected`
-   * entity, and an amber ring under every `flagged` id (the work flags of the selected gatherers). Each
-   * pool get-or-creates a ring per id (sized from {@link EntityBounds} via `boundsOf` for buildings) and
-   * moves it to the entity's feet, then retires rings for ids no longer present. An emptied set retires its
-   * pool and does no scan.
+   * Reconcile both marker pools from the frozen snapshot's positions ({@link SelectionFrame}): a green ring
+   * under every `selected` entity, and an amber ring under every `flagged` id (the work flags of the
+   * selected gatherers). Each pool get-or-creates a ring per id (sized from {@link EntityBounds} via
+   * `frame.boundsOf` for buildings) and moves it to the entity's feet, then retires rings for ids no longer
+   * present. An emptied set retires its pool and does no scan.
    */
-  draw(
-    snapshot: WorldSnapshot,
-    selected: ReadonlySet<number>,
-    boundsOf?: (ref: number) => EntityBounds | undefined,
-    elevation?: ElevationField,
-    anchorOf?: (ref: number) => { x: number; y: number } | undefined,
-    flagged: ReadonlySet<number> = NO_IDS,
-  ): void {
-    const frame: SelectionFrame = { snapshot, boundsOf, elevation, anchorOf };
+  draw(frame: SelectionFrame, selected: ReadonlySet<number>, flagged: ReadonlySet<number> = NO_IDS): void {
     this.reconcile(this.rings, this.drawn, selected, RING_COLOR, RING_WIDTH, frame);
     this.reconcile(this.flagRings, this.drawnFlags, flagged, FLAG_RING_COLOR, FLAG_RING_WIDTH, frame);
   }

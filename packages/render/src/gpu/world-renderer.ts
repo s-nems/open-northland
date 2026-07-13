@@ -376,11 +376,13 @@ export class WorldRenderer {
     // the interpolated bob (reconcile ran first, so both are this frame's); the elevation field covers
     // the culled-entity fallback.
     this.selectionLayer.draw(
-      snapshot,
+      {
+        snapshot,
+        boundsOf: (ref) => this.pool.boundsOf(ref),
+        elevation: this.elevation,
+        anchorOf: (ref) => this.pool.anchorOf(ref),
+      },
       selection,
-      (ref) => this.pool.boundsOf(ref),
-      this.elevation,
-      (ref) => this.pool.anchorOf(ref),
       flagged,
     );
     // Combat ground marks: reposition + fade the blood/bones fed by `ingestCombatEffects`, culled to the
