@@ -9,7 +9,7 @@ import { UI_TEXT_FILL } from '../../content/ui-font.js';
 import { HOVER_ALPHA, HOVER_TINT, tileBitmap, WINDOW_BORDER } from '../chrome.js';
 import type { Rect } from '../geometry.js';
 import type { DetailsPanelAssets } from './assets.js';
-import type { ButtonHit } from './layout.js';
+import type { ButtonHit } from './layout/index.js';
 import { type BarTone, barTone } from './model/index.js';
 
 /**

@@ -22,7 +22,7 @@ import {
   type UnitPanelModel,
   type UnitPanelModelContext,
 } from '../src/hud/details-panel/index.js';
-import { layoutDetails, MAX_STOCK_ROWS, stockSlotRects } from '../src/hud/details-panel/layout.js';
+import { layoutDetails, MAX_STOCK_ROWS, stockSlotRects } from '../src/hud/details-panel/layout/index.js';
 import { defaultStockTab } from '../src/hud/details-panel/panel.js';
 import { equipmentScene } from '../src/scenes/equipment.js';
 import { createSceneSim } from '../src/scenes/index.js';

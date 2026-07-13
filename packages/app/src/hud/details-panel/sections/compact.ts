@@ -1,6 +1,6 @@
 import type { UiString } from '../../../content/gui-gfx.js';
 import type { Chrome } from '../chrome.js';
-import type { CompactLayout } from '../layout.js';
+import type { CompactLayout } from '../layout/index.js';
 import type { GenericSelectionPanelModel, MultiSettlerPanelModel } from '../model/index.js';
 import { ROW_TEXT_PAD } from './shared.js';
 

@@ -1,0 +1,166 @@
+import { WIN_PAD } from '../../chrome.js';
+import type { Rect } from '../../geometry.js';
+import type { UnitPanelModel } from '../model/index.js';
+import { PANEL_W, panelRect, ROW_H, SECTION_GAP, type SectionRect, sectionAt } from './shared.js';
+
+/** The settler selection model — the `layoutSettler` input narrowed off the panel model union. */
+type SettlerModel = Extract<UnitPanelModel, { kind: 'settler' }>;
+
+/**
+ * The settler panel's portrait box (Ogólne, left) — a square, smaller than the building's 183 px preview
+ * so the name + stat bars sit beside it in the right column (measured against the original's human window).
+ */
+const SETTLER_PREVIEW = 96;
+/** The profession (name) line at the top of the Ogólne right column. */
+const SETTLER_NAME_H = 15;
+/** The owner/tribe/stance meta line under the name. */
+const SETTLER_META_H = 14;
+/** One stat-bar row in the Ogólne right column (label + bar). */
+const BAR_ROW_H = 13;
+/** Text rows the fixed Praca / Doświadczenie bodies reserve. */
+const WORK_ROWS = 2;
+const EXP_ROWS = 1;
+/** One labeled equipment row (Buty/Narzędzia/…): a label column + a row of slot sockets. */
+export const EQUIP_ROW_H = 24;
+/** A round equipment-slot socket's square bounding box (design px). */
+export const EQUIP_SOCKET = 18;
+/** The use-% column drawn right of each socket (a wearing item's "degree of use"). */
+export const EQUIP_USE_W = 28;
+/** Gap after a socket's use-% column before the next socket (the misc Ekwipunek row). */
+const EQUIP_SOCKET_GAP = 6;
+/** The row-label column width before the sockets (fits the widest slot label, "Narzędzia"). */
+export const EQUIP_LABEL_W = 74;
+
+/** One labeled equipment row's geometry: its label column + the slot sockets to its right. */
+export interface EquipRowRect {
+  readonly label: Rect;
+  readonly slots: readonly Rect[];
+}
+
+/**
+ * The settler view: the original's stacked human-window sections — Ogólne (portrait + name + meta + stat
+ * bars), Praca (workplace + product), Doświadczenie (highest specialization), Ekwipunek (labeled slot
+ * rows) — laid out like the building's section stack.
+ */
+export interface SettlerLayout {
+  readonly kind: 'settler';
+  readonly panel: Rect;
+  readonly general: SectionRect;
+  readonly preview: Rect;
+  /** The profession (name) line, right of the portrait. */
+  readonly name: Rect;
+  /** The owner/tribe/stance meta line under the name. */
+  readonly meta: Rect;
+  /** One rect per `model.bars` entry (same order). */
+  readonly bars: readonly Rect[];
+  readonly work: SectionRect;
+  /** The Praca body's two text rows (workplace, product). */
+  readonly workRows: readonly Rect[];
+  readonly experience: SectionRect;
+  /** The Doświadczenie body's single text row. */
+  readonly expRow: Rect;
+  readonly equipment: SectionRect;
+  /** One entry per `model.equipmentRows` (same order): its label rect + slot-socket rects. */
+  readonly equipRows: readonly EquipRowRect[];
+}
+
+export function layoutSettler(
+  model: SettlerModel,
+  screen: { readonly width: number; readonly height: number },
+  s: number,
+): SettlerLayout {
+  const w = Math.round(PANEL_W * s);
+  const gap = Math.round(SECTION_GAP * s);
+
+  // Stacked sections, bottom-anchored like the building panel. Each body reserves a fixed height (the
+  // original's human window doesn't fit-to-content); the equipment body scales with its row count.
+  const pad = Math.round(WIN_PAD * s);
+  const rowH = Math.round(ROW_H * s);
+  const barRowH = Math.round(BAR_ROW_H * s);
+  const equipRowH = Math.round(EQUIP_ROW_H * s);
+  const generalBodyH = Math.round(SETTLER_PREVIEW * s);
+  const workBodyH = WORK_ROWS * rowH;
+  const expBodyH = EXP_ROWS * rowH;
+  const equipBodyH = model.equipmentRows.length * equipRowH;
+
+  const heights = [generalBodyH, workBodyH, expBodyH, equipBodyH].map(
+    (bodyH) => sectionAt(0, 0, w, bodyH, s).frame.h,
+  );
+  const gaps = gap * (heights.length - 1);
+  const panel = panelRect(heights.reduce((a, b) => a + b, 0) + gaps, screen, s);
+
+  let y = panel.y;
+  const next = (bodyH: number): SectionRect => {
+    const sec = sectionAt(panel.x, y, w, bodyH, s);
+    y += sec.frame.h + gap;
+    return sec;
+  };
+
+  // Ogólne: the portrait box (left) + the name / meta / stat-bar column (right).
+  const general = next(generalBodyH);
+  const preview: Rect = {
+    x: general.body.x,
+    y: general.body.y,
+    w: Math.round(SETTLER_PREVIEW * s),
+    h: general.body.h,
+  };
+  const colX = preview.x + preview.w + pad;
+  const colW = general.body.x + general.body.w - colX;
+  const name: Rect = { x: colX, y: general.body.y, w: colW, h: Math.round(SETTLER_NAME_H * s) };
+  const meta: Rect = { x: colX, y: name.y + name.h, w: colW, h: Math.round(SETTLER_META_H * s) };
+  const barsTop = meta.y + meta.h;
+  const bars: Rect[] = model.bars.map((_, i) => ({
+    x: colX,
+    y: barsTop + i * barRowH,
+    w: colW,
+    h: barRowH,
+  }));
+
+  const work = next(workBodyH);
+  const workRows: Rect[] = Array.from({ length: WORK_ROWS }, (_unused, i) => ({
+    x: work.body.x,
+    y: work.body.y + i * rowH,
+    w: work.body.w,
+    h: rowH,
+  }));
+
+  const experience = next(expBodyH);
+  const expRow: Rect = { x: experience.body.x, y: experience.body.y, w: experience.body.w, h: rowH };
+
+  // Ekwipunek: one labeled row per equipment slot group — a label column, then the slot sockets.
+  const equipment = next(equipBodyH);
+  const socket = Math.round(EQUIP_SOCKET * s);
+  const labelW = Math.round(EQUIP_LABEL_W * s);
+  // Each socket owns a pitch of itself + its use-% column + a trailing gap, so the misc row's sockets
+  // and their percentages don't collide.
+  const pitch = socket + Math.round(EQUIP_USE_W * s) + Math.round(EQUIP_SOCKET_GAP * s);
+  const socketPadY = Math.round((equipRowH - socket) / 2);
+  const equipRows: EquipRowRect[] = model.equipmentRows.map((row, i) => {
+    const rowY = equipment.body.y + i * equipRowH;
+    const label: Rect = { x: equipment.body.x, y: rowY, w: labelW, h: equipRowH };
+    const slotsX = equipment.body.x + labelW;
+    const slots: Rect[] = row.slots.map((_unused, j) => ({
+      x: slotsX + j * pitch,
+      y: rowY + socketPadY,
+      w: socket,
+      h: socket,
+    }));
+    return { label, slots };
+  });
+
+  return {
+    kind: 'settler',
+    panel,
+    general,
+    preview,
+    name,
+    meta,
+    bars,
+    work,
+    workRows,
+    experience,
+    expRow,
+    equipment,
+    equipRows,
+  };
+}

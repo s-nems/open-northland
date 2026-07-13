@@ -17,7 +17,7 @@ import {
   mapLayout,
   ROW_H,
   stockSlotRects,
-} from './layout.js';
+} from './layout/index.js';
 import { buildUnitPanelModel, type UnitPanelModel, type UnitPanelModelContext } from './model/index.js';
 import { drawBuilding, drawCompact, drawSettler } from './sections/index.js';
 import { STOCK_TAB_LABELS } from './stock-tabs.js';
