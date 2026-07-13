@@ -83,7 +83,7 @@ cross-platform from day one.
 ## Repository layout
 
 ```
-opennorthland/
+open-northland/
 ├── packages/
 │   ├── sim/      # deterministic simulation core (ECS). No rendering, no DOM. The heart.
 │   ├── data/     # intermediate-format schemas (zod) + loaders. Shared content model.
