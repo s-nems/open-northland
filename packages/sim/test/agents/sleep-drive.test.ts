@@ -1,25 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import {
-  Carrying,
-  CurrentAtomic,
-  MoveGoal,
-  Position,
-  Resource,
-  Settler,
-} from '../../src/components/index.js';
+import { Carrying, CurrentAtomic, MoveGoal, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { clearComponentStores } from '../../src/harness/stores.js';
-import {
-  cellAnchorNode,
-  type Fixed,
-  fx,
-  halfCellMapFromCells,
-  ONE,
-  Simulation,
-  type TerrainMap,
-} from '../../src/index.js';
-import { aiSystem, atomicSystem, type SystemContext } from '../../src/systems/index.js';
+import { cellAnchorNode, type Fixed, fx, ONE, Simulation } from '../../src/index.js';
+import { aiSystem, atomicSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
+import { ctxOf, grassMap, needsSettlerAt, treeAt } from './needs/support.js';
 
 /**
  * Unit + integration tests for the SLEEP DRIVE — the planner choosing a `sleep` atomic (id 8, the
@@ -31,55 +17,16 @@ import { testContent } from '../fixtures/content.js';
  * rest (the original sleeps at home; housing doesn't exist yet) are approximated (source basis).
  */
 
-const GRASS = 0;
-const WOOD = 1;
-const WOODCUTTER = 1;
-const VIKING = 1;
 const SLEEP_ATOMIC = 8;
 // Just over the ¾·ONE sleep threshold — a settler this tired rests before any work.
 const TIRED: Fixed = fx.add(fx.div(fx.fromInt(3), fx.fromInt(4)), fx.fromInt(1));
 // Comfortably below the threshold — a rested settler ignores the sleep drive and works as normal.
 const RESTED: Fixed = fx.div(ONE, fx.fromInt(2));
 
-beforeEach(() => {
-  clearComponentStores();
-});
-
-/** A `width`×`height` CELL strip of grass, upsampled to the half-cell navigation lattice. */
-function grassMap(width: number, height: number): TerrainMap {
-  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });
-}
+beforeEach(clearComponentStores);
 
 function settlerAt(sim: Simulation, x: number, y: number, fatigue: Fixed, hunger = fx.fromInt(0)): Entity {
-  const e = sim.world.create();
-  sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Settler, {
-    tribe: VIKING,
-    jobType: WOODCUTTER,
-    hunger,
-    fatigue,
-    piety: fx.fromInt(0),
-    enjoyment: fx.fromInt(0),
-    experience: new Map(),
-  });
-  return e;
-}
-
-function treeAt(sim: Simulation, x: number, y: number): Entity {
-  const e = sim.world.create();
-  sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Resource, { goodType: WOOD, remaining: 5, harvestAtomic: 24 });
-  return e;
-}
-
-function ctxOf(sim: Simulation): SystemContext {
-  return {
-    content: sim.content,
-    rng: sim.rng,
-    tick: sim.tick,
-    events: sim.events,
-    ...(sim.terrain !== undefined ? { terrain: sim.terrain } : {}),
-  };
+  return needsSettlerAt(sim, x, y, { hunger, fatigue });
 }
 
 describe('sleepDrive — the planner choosing to sleep', () => {

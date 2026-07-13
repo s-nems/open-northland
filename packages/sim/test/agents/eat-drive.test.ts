@@ -11,22 +11,10 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { clearComponentStores } from '../../src/harness/stores.js';
-import {
-  cellAnchorNode,
-  type Fixed,
-  fx,
-  halfCellMapFromCells,
-  ONE,
-  Simulation,
-  type TerrainMap,
-} from '../../src/index.js';
-import {
-  aiSystem,
-  atomicSystem,
-  EAT_ANIMATION_REPEATS,
-  type SystemContext,
-} from '../../src/systems/index.js';
+import { type Fixed, fx, ONE, Simulation } from '../../src/index.js';
+import { aiSystem, atomicSystem, EAT_ANIMATION_REPEATS } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
+import { cellOf, ctxOf, grassMap, needsSettlerAt } from './needs/support.js';
 
 /**
  * Unit + integration tests for the EAT DRIVE — the planner choosing an `eat` atomic (id 10, the
@@ -40,10 +28,8 @@ import { testContent } from '../fixtures/content.js';
  * (slug-inferred) are approximated (source basis).
  */
 
-const GRASS = 0;
 const WOOD = 1;
 const FOOD = 3;
-const WOODCUTTER = 1;
 const VIKING = 1;
 const HEADQUARTERS = 1;
 const EAT_ATOMIC = 10;
@@ -52,34 +38,10 @@ const HUNGRY: Fixed = fx.add(fx.div(fx.fromInt(3), fx.fromInt(4)), fx.fromInt(1)
 // Comfortably below the threshold — a fed settler ignores the eat drive and works as normal.
 const FED: Fixed = fx.div(ONE, fx.fromInt(2));
 
-beforeEach(() => {
-  clearComponentStores();
-});
-
-/** A `width`×`height` CELL strip of grass, upsampled to the half-cell navigation lattice. */
-function grassMap(width: number, height: number): TerrainMap {
-  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });
-}
-
-/** The node id of visual tile (x, y) — walk goals address the doubled half-cell lattice. */
-function cellOf(sim: Simulation, x: number, y: number): number | undefined {
-  const n = cellAnchorNode(x, y);
-  return sim.terrain?.nodeAt(n.hx, n.hy);
-}
+beforeEach(clearComponentStores);
 
 function settlerAt(sim: Simulation, x: number, y: number, hunger: Fixed): Entity {
-  const e = sim.world.create();
-  sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Settler, {
-    tribe: VIKING,
-    jobType: WOODCUTTER,
-    hunger,
-    fatigue: fx.fromInt(0),
-    piety: fx.fromInt(0),
-    enjoyment: fx.fromInt(0),
-    experience: new Map(),
-  });
-  return e;
+  return needsSettlerAt(sim, x, y, { hunger });
 }
 
 /** A headquarters store at (x,y), optionally pre-stocked with `food` units of food. */
@@ -91,16 +53,6 @@ function storeAt(sim: Simulation, x: number, y: number, food = 0): Entity {
   if (food > 0) amounts.set(FOOD, food);
   sim.world.add(e, Stockpile, { amounts });
   return e;
-}
-
-function ctxOf(sim: Simulation): SystemContext {
-  return {
-    content: sim.content,
-    rng: sim.rng,
-    tick: sim.tick,
-    events: sim.events,
-    ...(sim.terrain !== undefined ? { terrain: sim.terrain } : {}),
-  };
 }
 
 describe('eatDrive — the planner choosing to eat', () => {

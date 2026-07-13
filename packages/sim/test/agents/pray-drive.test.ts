@@ -1,25 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import {
-  Building,
-  CurrentAtomic,
-  MoveGoal,
-  Position,
-  Resource,
-  Settler,
-} from '../../src/components/index.js';
+import { Building, CurrentAtomic, MoveGoal, Position, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { clearComponentStores } from '../../src/harness/stores.js';
-import {
-  cellAnchorNode,
-  type Fixed,
-  fx,
-  halfCellMapFromCells,
-  ONE,
-  Simulation,
-  type TerrainMap,
-} from '../../src/index.js';
-import { aiSystem, atomicSystem, type SystemContext } from '../../src/systems/index.js';
+import { type Fixed, fx, ONE, Simulation } from '../../src/index.js';
+import { aiSystem, atomicSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
+import { cellOf, ctxOf, grassMap, needsSettlerAt, treeAt } from './needs/support.js';
 
 /**
  * Unit + integration tests for the PRAY DRIVE — the planner choosing a `pray` atomic (id 12, the
@@ -33,9 +19,6 @@ import { testContent } from '../fixtures/content.js';
  * threshold + the temple→pray-need inference are approximated (source basis).
  */
 
-const GRASS = 0;
-const WOOD = 1;
-const WOODCUTTER = 1;
 const VIKING = 1;
 const TEMPLE_TYPE = 3;
 const PRAY_ATOMIC = 12;
@@ -44,20 +27,7 @@ const DEVOUT: Fixed = fx.add(fx.div(fx.fromInt(3), fx.fromInt(4)), fx.fromInt(1)
 // Comfortably below the threshold — a piety-satisfied settler ignores the pray drive and works.
 const PIOUS: Fixed = fx.div(ONE, fx.fromInt(2));
 
-beforeEach(() => {
-  clearComponentStores();
-});
-
-/** A `width`×`height` CELL strip of grass, upsampled to the half-cell navigation lattice. */
-function grassMap(width: number, height: number): TerrainMap {
-  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });
-}
-
-/** The node id of visual tile (x, y) — walk goals address the doubled half-cell lattice. */
-function cellOf(sim: Simulation, x: number, y: number): number | undefined {
-  const n = cellAnchorNode(x, y);
-  return sim.terrain?.nodeAt(n.hx, n.hy);
-}
+beforeEach(clearComponentStores);
 
 function settlerAt(
   sim: Simulation,
@@ -67,18 +37,7 @@ function settlerAt(
   fatigue = fx.fromInt(0),
   hunger = fx.fromInt(0),
 ): Entity {
-  const e = sim.world.create();
-  sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Settler, {
-    tribe: VIKING,
-    jobType: WOODCUTTER,
-    hunger,
-    fatigue,
-    piety,
-    enjoyment: fx.fromInt(0),
-    experience: new Map(),
-  });
-  return e;
+  return needsSettlerAt(sim, x, y, { hunger, fatigue, piety });
 }
 
 function templeAt(sim: Simulation, x: number, y: number): Entity {
@@ -86,23 +45,6 @@ function templeAt(sim: Simulation, x: number, y: number): Entity {
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
   sim.world.add(e, Building, { buildingType: TEMPLE_TYPE, tribe: VIKING, built: ONE, level: 0 });
   return e;
-}
-
-function treeAt(sim: Simulation, x: number, y: number): Entity {
-  const e = sim.world.create();
-  sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Resource, { goodType: WOOD, remaining: 5, harvestAtomic: 24 });
-  return e;
-}
-
-function ctxOf(sim: Simulation): SystemContext {
-  return {
-    content: sim.content,
-    rng: sim.rng,
-    tick: sim.tick,
-    events: sim.events,
-    ...(sim.terrain !== undefined ? { terrain: sim.terrain } : {}),
-  };
 }
 
 describe('prayDrive — the planner choosing to pray (target-bound: walk to a temple)', () => {
