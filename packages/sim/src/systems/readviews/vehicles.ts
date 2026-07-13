@@ -116,7 +116,7 @@ export function vehicleMayCarry(vehicle: VehicleType, goodType: number): boolean
  * **defaults to `0`** (`z.number().int().nonnegative().default(0)`), so this returns a plain `number`,
  * never `undefined`. A vehicle with the smallest footprint reads `0` (a cart), the same value the source
  * carries, so there is no "no record" sentinel: `0` *is* the cart footprint — the weight-field
- * (`weaponWeightOf`/`armorWeightOf` in ./classes.ts) shape, not the class-enum-grouping shape.
+ * (`weaponWeightOf`/`armorWeightOf` in ./classes/) shape, not the class-enum-grouping shape.
  *
  * source-basis n/a: a pure field accessor over the already-extracted `logicSize` param (see
  * {@link VehicleType.logicSize}) — it adds no mechanic and invents no data (the `{0,1,2}` magnitudes are

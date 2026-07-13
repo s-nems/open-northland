@@ -233,5 +233,5 @@ function resolvePath(
   stats: SearchStats,
 ): NodeId[] | null {
   if (!isValidNodeId(terrain, start) || !isValidNodeId(terrain, goal)) return null;
-  return findPath(terrain, start as NodeId, goal as NodeId, blocked, stats);
+  return findPath(terrain, start, goal, blocked, stats);
 }

@@ -14,7 +14,7 @@ import { isYardHeap, lowestStockedGood, MAX_GROUND_STACK } from '../../stores/in
  * defining it once keeps the two drop sites ({@link fellNode}, {@link dropMinedOre}) from drifting apart.
  * Returns the new entity so a caller can announce it. Pure over entity state; no RNG/wall-clock.
  *
- * Also the assembly the `dropGood` command routes through (via `command.ts`), so a harvest-dropped pile and
+ * Also the assembly the `dropGood` command routes through (via `command/`), so a harvest-dropped pile and
  * a player-dropped pile are byte-identical entities.
  */
 export function dropGroundPile(world: World, x: Fixed, y: Fixed, goodType: number, amount: number): Entity {

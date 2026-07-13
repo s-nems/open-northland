@@ -10,8 +10,8 @@
 // Split by concern into sibling modules:
 //  - ./hud.ts      — the HUD/goods-graph projections over world state + content.
 //  - ./combat.ts   — the static weapon-vs-armor damage lookup table.
-//  - ./classes.ts  — the data-defined weapon/armor class taxonomy (predicates + accessors + groupings).
-//  - ./tribes.ts   — the data-defined civ-vs-animal split + `animaltypes.ini` behaviour + `mayAttack`.
+//  - ./classes/    — the data-defined weapon/armor class taxonomy (predicates + accessors + groupings).
+//  - ./tribes/     — the data-defined civ-vs-animal split + `animaltypes.ini` behaviour + `mayAttack`.
 //  - ./vehicles.ts — the data-defined ship/boat classification (the Sea/Northland slice's seed).
 //  - ./jobs.ts     — the data-defined sea-job (`fisher_sea`/`trader_sea`) classification.
 //  - ./stances.ts  — the military-mode ids + the job→default-stance table.

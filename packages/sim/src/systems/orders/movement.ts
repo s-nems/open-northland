@@ -24,7 +24,7 @@ import { MILITARY_MODE } from '../readviews/index.js';
 
 /**
  * The PLAYER-order handlers (`moveUnit` / `setJob`) + the {@link playerOrderSystem} that plays a move
- * order out as a **soft, timed override** — split out of command.ts (the dispatcher + structure
+ * order out as a **soft, timed override** — split out of command/ (the dispatcher + structure
  * placement) and spawn.ts (entity creation), so the "direct control the human exerts over its own
  * units" concern has its own home.
  *

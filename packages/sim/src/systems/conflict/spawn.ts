@@ -23,7 +23,7 @@ import { stampDefaultStance } from '../orders/index.js';
 import { animalHitpoints, herdParams, locomotionOf } from '../readviews/index.js';
 import { COMPASS_DIRECTIONS } from '../spatial.js';
 
-// The entity-SPAWNING command handlers, split out of command.ts (which keeps the dispatcher + the
+// The entity-SPAWNING command handlers, split out of command/ (which keeps the dispatcher + the
 // structure-placement handlers). Both create fresh Settler-model entities — a civilization settler and
 // a herd of an animal tribe (animals reuse the settler entity/AI model). Determinism: no RNG, no
 // wall-clock; the herd scatter is a fixed function of the member index (see herdMemberOffset).

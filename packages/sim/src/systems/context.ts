@@ -25,7 +25,7 @@ export interface SystemContext {
    */
   readonly commands: CommandQueue;
   /**
-   * The terrain cell-adjacency graph — the navigation/placement model (see terrain.ts). Optional
+   * The terrain cell-adjacency graph — the navigation/placement model (see nav/terrain/). Optional
    * because trivial fixtures (the determinism golden) run with no map; the pathfinding/terrain
    * systems that need it must check and no-op when it is absent rather than assume it exists.
    */

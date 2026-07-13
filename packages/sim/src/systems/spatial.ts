@@ -159,7 +159,7 @@ export class NodeBuckets {
  * Cross-system: used by the AI navigation planner (drop an off-map goal) and the pathfinding system
  * (guard the A* endpoints).
  */
-export function isValidNodeId(terrain: TerrainGraph, node: number): boolean {
+export function isValidNodeId(terrain: TerrainGraph, node: number): node is NodeId {
   return Number.isInteger(node) && node >= 0 && node < terrain.nodeCount;
 }
 

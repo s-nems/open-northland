@@ -1,8 +1,9 @@
 import { beforeEach } from 'vitest';
-import { MoveSpeed, PathFollow, PathRequest, Position, Velocity } from '../../../src/components/index.js';
+import { PathFollow, Position } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, type Simulation, type TerrainMap } from '../../../src/index.js';
 import { ACCEL_TICKS, MOVE_SPEED_PER_TICK } from '../../../src/systems/index.js';
+import { clearComponentStores } from '../../fixtures/stores.js';
 
 /**
  * Unit + integration tests for the MovementSystem's path-following mode — the seam that consumes a
@@ -20,15 +21,7 @@ import { ACCEL_TICKS, MOVE_SPEED_PER_TICK } from '../../../src/systems/index.js'
 
 export const GRASS = 0;
 
-// Component stores are module-level singletons (see pathfinding-system.test.ts), so clear the stores
-// this suite touches before each case to keep membership assertions scoped to the current test.
-beforeEach(() => {
-  PathFollow.store.clear();
-  PathRequest.store.clear();
-  Position.store.clear();
-  Velocity.store.clear();
-  MoveSpeed.store.clear();
-});
+beforeEach(clearComponentStores);
 
 export const FX_ZERO = fx.fromInt(0);
 

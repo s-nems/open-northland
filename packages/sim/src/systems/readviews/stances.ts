@@ -1,6 +1,6 @@
 // Pure, terminal **read views** for military stances — the `MILITARY_MODE` enum the CombatSystem's
 // stance-gated engagement reads, plus the **job → default stance** lookup stamped at spawn / job-change.
-// Kept beside the other data-defined taxonomies (`classes.ts`/`tribes.ts`): a stance is a per-unit
+// Kept beside the other data-defined taxonomies (`classes/` and `tribes/`): a stance is a per-unit
 // behavior mode, and *which* mode a fresh unit starts in is a data-shaped classification of its job.
 
 import { HUNTER_JOB } from './tribes/index.js';
@@ -97,7 +97,8 @@ export function isFighterJob(jobType: number | null): boolean {
  * source-basis: the mode ids are data-pinned; the **assignment of a mode to a job** is the user's observation
  * of the original (observed-approximation) — the readable data carries no per-job military-mode field —
  * so the whole table is a calibration-pending default (source basis "Combat stance defaults"). Pure of
- * world/RNG/wall-clock: a total function of the integer job id (`HUNTER_JOB` pinned in `tribes.ts`, imported
+ * world/RNG/wall-clock: a total function of the integer job id (`HUNTER_JOB` pinned in
+ * `tribes/relations.ts`, imported
  * to keep the single hunter-id source).
  */
 export function defaultStanceForJob(jobType: number | null): number {

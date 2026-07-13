@@ -1,12 +1,12 @@
 import { type ContentSet, parseContentSet } from '@vinland/data';
 import { beforeEach } from 'vitest';
-import * as components from '../../../src/components/index.js';
 import { Building } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { halfCellMapFromCells, Simulation, type TerrainMap } from '../../../src/index.js';
 import type { TerrainGraph } from '../../../src/nav/terrain/index.js';
 import type { SystemContext } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
+import { clearComponentStores } from '../../fixtures/stores.js';
 
 /**
  * The building GROUND-FOOTPRINT mechanics — the original's free placement model:
@@ -115,13 +115,6 @@ export function buildingsPlaced(sim: Simulation): number {
   return [...sim.world.query(Building)].length;
 }
 
-// Component stores are module-level singletons shared across Simulation instances — clear ALL of
-// them (not a hand-picked subset) so no earlier test's entity leaks in (AGENTS.md [ac6a287]).
-export function clearComponentStores(): void {
-  for (const c of Object.values(components)) {
-    if (typeof c === 'object' && c !== null && 'store' in c && c.store instanceof Map) {
-      c.store.clear();
-    }
-  }
-}
 beforeEach(clearComponentStores);
+
+export { clearComponentStores };

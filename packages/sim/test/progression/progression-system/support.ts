@@ -1,8 +1,9 @@
 import { beforeEach } from 'vitest';
-import { Carrying, CurrentAtomic, Resource, Settler } from '../../../src/components/index.js';
+import { Settler } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, type Simulation } from '../../../src/index.js';
 import type { SystemContext } from '../../../src/systems/index.js';
+import { clearComponentStores } from '../../fixtures/stores.js';
 
 /**
  * ProgressionSystem (XP-accrual half) — completing a work atomic trains a settler's `(job, good)`
@@ -16,12 +17,7 @@ export const WOOD = 1;
 export const WOOD_TRACK = 1; // fixture jobExperience typeId for "woodcutter wood"
 export const GENERAL_TRACK = 2; // fixture jobExperience typeId for "woodcutter general"
 
-beforeEach(() => {
-  CurrentAtomic.store.clear();
-  Carrying.store.clear();
-  Settler.store.clear();
-  Resource.store.clear();
-});
+beforeEach(clearComponentStores);
 
 export function ctxOf(sim: Simulation): SystemContext {
   return {

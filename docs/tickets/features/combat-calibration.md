@@ -4,7 +4,7 @@
 the other combat tickets (run once field combat + barracks + towers are in)
 
 Every approximated combat constant is greppable in code (`calibration`/`APPROXIMAT` across
-`components/combat.ts`, `core/commands.ts`, `systems/conflict/*`, `systems/progression.ts`). This
+`components/combat.ts`, `core/commands.ts`, `systems/conflict/*`, `systems/progression/`). This
 session swaps them for observed values — it is a **human-oracle session**: the user runs the
 original (`../Cultures 8th Wonder`) side by side and answers probes; it cannot run autonomously.
 

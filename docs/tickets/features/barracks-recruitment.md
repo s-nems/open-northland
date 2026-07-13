@@ -3,7 +3,7 @@
 **Area:** sim + app · **Origin:** combat plan reconciliation, 2026-07-12
 
 Entirely un-started; the seam is explicitly reserved in code: `components/equipment.ts` ("wiring
-the two together … is the deferred 'equip drive'"), `components/combat.ts`, `readviews/classes.ts`.
+the two together … is the deferred 'equip drive'"), `components/combat.ts`, `readviews/classes/`.
 Barracks data is present: logictype 39 in `app/src/catalog/buildings.ts`, worker slots in
 `game/sandbox/content.ts`.
 

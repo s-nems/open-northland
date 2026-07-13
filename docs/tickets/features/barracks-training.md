@@ -3,9 +3,9 @@
 **Area:** sim + app · **Origin:** combat plan reconciliation, 2026-07-12 · **Blocked by:**
 [barracks-recruitment](barracks-recruitment.md)
 
-Progression today accrues only generic good/harvest XP (`packages/sim/src/systems/progression.ts`);
+Progression today accrues only generic good/harvest XP (`packages/sim/src/systems/progression/experience.ts`);
 the barracks train/exercise atomics, the coin spend, and the `needfor*`/`allow*`/`trainforjob`
-gates are unwired (marked "a later slice" in `progression.ts`).
+gates are unwired (marked "a later slice" in `progression/unlocks.ts`).
 
 **Source basis (extracted):** training atomics `viking_soldier_train` length 28 → `event 2 30 −1`
 (spend a coin) + `event 22 29 +25` (TRAINING XP, bucket 77); `_exercise` → `+1`; atomic actions

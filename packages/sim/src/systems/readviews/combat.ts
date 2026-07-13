@@ -43,7 +43,8 @@ export const ARMOR_MATERIAL = {
 /**
  * The coarse **weapon class** a `WeaponType.mainType` carries (`logicdefines.inc` `WEAPON_MAIN_TYPE_*`,
  * l.892). Distinct from {@link ARMOR_MATERIAL} — this is the ATTACKER's weapon family, the axis the
- * fight-experience buckets key on (`progression.ts` maps it to the `JOB_EXPERIENCE_TYPE_FIGHT_*` id).
+ * fight-experience buckets key on (`progression/experience.ts` maps it to the
+ * `JOB_EXPERIENCE_TYPE_FIGHT_*` id).
  *
  * source-basis: pinned to `logicdefines.inc` `WEAPON_MAIN_TYPE_*` — the original's own class ids.
  */

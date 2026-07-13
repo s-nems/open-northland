@@ -75,7 +75,7 @@ import { placeBoat, placeBuilding, unbindWorkersOf } from './placement.js';
  *    mode"): `moveUnit` sets a `MoveGoal` + a `PlayerOrder` soft timed override, `setJob` swaps the
  *    `jobType` and re-idles the unit, `attackUnit` stamps an `AttackOrder` combat focus (chase + strike a
  *    target regardless of sight), `setStance` writes the unit's `Stance` military mode (auto-engage /
- *    defend / ignore / flee). All live in ./orders.ts ({@link moveUnit}/{@link setJob}/{@link attackUnit}/
+ *    defend / ignore / flee). All live in ../orders/ ({@link moveUnit}/{@link setJob}/{@link attackUnit}/
  *    {@link setStance}) and skip a dead/non-settler/neutral (and, for attack, non-combatant) target (still logged).
  *  - `assignWorker` — bind an EXISTING owned settler to a SPECIFIC building as a worker (the
  *    player-directed twin of the JobSystem's auto-assignment): set its `jobType` to the building's open
