@@ -11,5 +11,5 @@ export { type AlphaMask, buildAlphaMask, maskSolidAt, SOLID_ALPHA_MIN } from './
 export { type MotionTrack, trackMotion } from './motion.js';
 export type { EntityBounds } from './pooled-entity.js';
 export { reconcileSprites } from './reconcile.js';
-export { compactResolvedStockpileLayers, resolveLayers } from './resolve-layers.js';
+export { compactResolvedStockpileLayers, type ResolvedLayer, resolveLayers } from './resolve-layers.js';
 export { type PoolFrame, SpritePool } from './sprite-pool.js';

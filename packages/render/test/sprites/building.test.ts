@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  type BuildingTypeBinding,
   bobKey,
   finishedBuildingBobKeys,
   resolveBuildingDraw,
@@ -7,7 +8,7 @@ import {
   resolveConstructionDraws,
   resolveSpriteBobId,
 } from '../../src/data/sprites/index.js';
-import type { BuildingTypeBinding, DrawItem, SpriteBindings } from '../../src/index.js';
+import type { DrawItem, SpriteBindings } from '../../src/index.js';
 import { drawItem } from '../support/fixtures.js';
 
 /**

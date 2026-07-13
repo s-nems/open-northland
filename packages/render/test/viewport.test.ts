@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
+// `isVisible` is render-internal (not on the public barrel); the unit test reaches its module directly.
+import { isVisible } from '../src/data/viewport.js';
 import type { Camera } from '../src/index.js';
 import {
   aabbIntersects,
   cameraViewport,
-  isVisible,
   TILE_HALF_H,
   TILE_HALF_W,
   tileToScreen,
