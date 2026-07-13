@@ -18,9 +18,11 @@ triggers, and per-player setup are invisible to the game. Source basis (verified
 `MissionData` finds nothing (it is file-format decoders with no game-logic layer), so the format
 oracle likely does not cover trigger semantics — re-check for related logic (e.g. `NC2Logic`,
 goal/level handling) before concluding. The primary evidence is the decoded plaintext itself:
-enumerate `MissionData`/`playerdata` sections across all decodable maps (13 packed `map.cif` maps +
-the 108 unpacked CnMod folders, which may carry the same sections as sibling `.inc` plaintext —
-check), catalog the opcode vocabulary and per-opcode argument shapes, and cross-check against
+enumerate `MissionData`/`playerdata` sections across all decodable maps — the 13 packed `map.cif`
+maps, plus the unpacked `CnModMaps/` folders (123 top-level; 107 carry a plaintext `mission.inc`
+that opens with `[MissionData]`, alongside sibling `ai.inc`/`player.inc`/`staticobjects.inc` —
+verified 2026-07-13, and readable plaintext beats decrypting `map.cif`, so start there) —
+catalog the opcode vocabulary and per-opcode argument shapes, and cross-check against
 observed original campaign behavior where a mission's goals are known (e.g. the tutorial).
 
 ## Scope

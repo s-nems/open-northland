@@ -3,7 +3,7 @@
 **Area:** app (hud) · **Origin:** gap-analysis audit 2026-07-13 · **Priority:** P2
 
 The decoded GUI atlas pins **9** left-panel buttons but the HUD implements only a few of their
-windows. Source basis: `docs/SOURCES.md` (~lines 485-490, provenance `openvikings`, from
+windows. Source basis: the `openvikings`-provenance GUI-button table in `docs/SOURCES.md` (from
 `CGuiManager.cs` `Desktop_Open`/`MiscButtons_*`/`MiscWindows_*`, each pinned by tooltip stringId) —
 `0x2a` buildings, `0x2b` population, `0x2c` diplomacy, `0x2d` extras, `0x2e` mission, `0x2f`
 options, `0x30` help, `0x32` statistics, `0x38` tech-tree. Implemented under

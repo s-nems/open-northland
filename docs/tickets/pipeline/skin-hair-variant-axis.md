@@ -10,17 +10,23 @@ recolouring — the indexed character atlas drawn through the `256×16` player-c
 follow-up; file it as a `docs/tickets/` ticket before implementing." This is that ticket. Today
 every settler of a tribe shares one skin/hair appearance; only the clothing band varies by player.
 
-**Investigate first — how the original encodes skin/hair tones is unknown here.** Candidate
-evidence to check, in order:
+**Investigate first — the mechanism is pinned, the variant axis is not.** The primary source is
+readable: skin/hair are palette remaps driven by `randompalette.ini`
+(`Data/engine2d/inis/humans/randompalette.ini`, ~299 `[RandomPalette]` recipes) — already asserted
+at `packages/app/src/catalog/roster.ts:14` and partially consumed by
+`tools/asset-pipeline/src/decoders/player-palette.ts` (which parses only the `player_00…09`
+recipes). What is NOT yet known is how the non-player recipes select per-settler skin/hair
+variants. Evidence to check, in order:
 
-1. `OpenVikings_reversing` remap machinery — `NXBasics/CRemapTable.cs` and the `.hlt`
-   lighting/remap tables (242 files, docs/SOURCES.md) are the plausible mechanism; check whether
-   remap rows beyond the 16 player colours exist for skin/hair bands, and how the original picks a
-   variant per settler (`CBobManager`/creature setup paths).
-2. The decoded character palettes/LUT the pipeline already emits — does the indexed atlas reserve
+1. `randompalette.ini` itself — enumerate the non-player `[RandomPalette]` recipes: which palette
+   bands they patch (skin? hair?), and what selects a recipe per settler.
+2. `OpenVikings_reversing` remap machinery — `NXBasics/CRemapTable.cs` and the `.hlt`
+   lighting/remap tables (242 files, docs/SOURCES.md) for how the engine applies those recipes and
+   picks a variant per settler (`CBobManager`/creature setup paths).
+3. The decoded character palettes/LUT the pipeline already emits — does the indexed atlas reserve
    distinct skin and hair palette bands (the way it reserves the clothing band), or are tones baked
    into the pixels?
-3. Observed original behavior: do settlers in the original visibly vary in skin/hair within one
+4. Observed original behavior: do settlers in the original visibly vary in skin/hair within one
    tribe at all? If not, this axis may be a non-feature — deleting this ticket with that finding is
    a valid outcome (say why in the commit).
 
