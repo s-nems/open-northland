@@ -7,7 +7,6 @@ export {
   type HudCorner,
   type HudLayout,
   type HudModel,
-  type HudPlacement,
   type HudScreen,
   type HudTextRow,
   type JobCount,
@@ -30,7 +29,6 @@ export {
   buildScene,
   buildSpriteScene,
   type DrawItem,
-  type DrawKind,
   type SceneGround,
   type SceneTerrain,
   terrainMapToScene,
@@ -41,17 +39,13 @@ export {
   type AtlasManifestFrame,
   atlasFromManifest,
   type BuildingBobRef,
-  type BuildingDraw,
   type BuildingOverlayRef,
-  type BuildingTypeBinding,
-  type ByJobTable,
   type CarryingBinding,
   type ConstructionLayerRef,
   type DirectionalAnim,
   type FrameListAnim,
   indexAtlasFrames,
   type LayeredBobRef,
-  pickByJob,
   type ResourceTypeBinding,
   resolveResourceDraw,
   resolveStockpileDraw,
@@ -59,7 +53,6 @@ export {
   type SpriteAtlas,
   type SpriteBindings,
   type SpriteFrameRef,
-  type SpriteKind,
   type StockpileBinding,
 } from './data/sprites/index.js';
 export { type CellTexture, patternSrcRect } from './data/terrain.js';
@@ -67,7 +60,6 @@ export {
   aabbIntersects,
   type Box,
   cameraViewport,
-  isVisible,
   type TileRange,
   type Viewport,
   visibleTileRange,
@@ -85,17 +77,14 @@ export type {
   DoorBadge,
   GeometryDebugCell,
   GeometryDebugItem,
-  HudFrame,
   HudStyle,
-  PlacementGhost,
   PlacementOverlayCell,
   PlacementOverlayFrame,
   PortraitInsetFrame,
 } from './gpu/overlays/index.js';
 export { type GuiColorKey, PalettedSprite } from './gpu/paletted-sprite/index.js';
 export { createPixiApp, createWindowPixiApp, loadAtlasSource } from './gpu/pixi-app.js';
-export { type EntityBounds, resolveLayers } from './gpu/sprite-pool/index.js';
-export type { ResolvedLayer } from './gpu/sprite-pool/resolve-layers.js';
+export { type EntityBounds, type ResolvedLayer, resolveLayers } from './gpu/sprite-pool/index.js';
 export type {
   SettlerCharacter,
   SettlerCharacterSet,

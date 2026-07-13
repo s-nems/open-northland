@@ -44,9 +44,8 @@ const HOUSE_PALETTE = 'house01';
  * large — it made buildings *too small*, the complaint that drove the pitch recalibration; removing it
  * lets a house cover roughly its `LogicWalkBlockArea` footprint the way the original did.) The bob is
  * still a taste constant — swap it to a bigger growth stage (source basis "Building bob"). This
- * {@link HOUSE_BOB} is now only the
- * {@link import('@open-northland/render').BuildingTypeBinding.default} fallback for a type with no `buildingBobs`
- * row at all; every real viking type binds its own bob through {@link BUILDING_FAMILIES}.
+ * {@link HOUSE_BOB} is now only the render-side `BuildingTypeBinding.default` fallback for a type with no
+ * `buildingBobs` row at all; every real viking type binds its own bob through {@link BUILDING_FAMILIES}.
  */
 export const HOUSE_ATLAS = `ls_houses_viking.${HOUSE_PALETTE}`;
 export const HOUSE_BOB = 11;
@@ -263,7 +262,7 @@ export function familyLayerFor(
  *    HQ in `ls_houses_viking4.house01`) — the multi-`.bmd` case, drawn from that family's own atlas.
  *
  * A canonical row whose family is NEITHER the default NOR a loaded named family is **dropped** — the
- * caller's {@link VIKING_HOUSE01_BOBS} overlay / {@link import('@open-northland/render').BuildingTypeBinding.default}
+ * caller's {@link VIKING_HOUSE01_BOBS} overlay / the render-side `BuildingTypeBinding.default`
  * backs it, so an unloaded family degrades to the representative house instead of borrowing a WRONG bob from
  * the default layer (the renderer falls a layer-qualified ref through to the default layer when its family is
  * absent, so we must not emit one for a family we didn't load). `bmd` is matched on its trailing basename so

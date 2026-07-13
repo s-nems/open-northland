@@ -9,4 +9,14 @@
 
 export * from './elevation.js';
 export * from './iso.js';
-export * from './viewport.js';
+// Explicit (not `export *`) so the internal-only `isVisible` predicate stays off the public surface —
+// it mirrors the main barrel's viewport block. The rest are the Pixi-free cull math `@open-northland/audio`
+// spatialises sound with.
+export {
+  aabbIntersects,
+  type Box,
+  cameraViewport,
+  type TileRange,
+  type Viewport,
+  visibleTileRange,
+} from './viewport.js';
