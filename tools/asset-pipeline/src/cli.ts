@@ -28,7 +28,7 @@ import { convertBmdTree, resolveGraphicsBindings } from './stages/bmd/index.js';
 import { convertFontStage } from './stages/fonts.js';
 import { convertGoodsStage } from './stages/goods/index.js';
 import { convertGuiStage } from './stages/gui/index.js';
-import { writeIr } from './stages/ir.js';
+import { writeIr } from './stages/ir/index.js';
 import { unpackLibTree } from './stages/lib.js';
 import { convertMapDatTree } from './stages/maps/index.js';
 import { composeMaskedTransitionPages, convertPcxTree } from './stages/pcx.js';

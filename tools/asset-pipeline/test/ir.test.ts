@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { buildIr, resolveIniSources } from '../src/stages/ir.js';
+import { buildIr, resolveIniSources } from '../src/stages/ir/index.js';
 import { buildStringCif, sampleMapLines } from './fixtures/cif.js';
 
 describe('buildIr / resolveIniSources', () => {
