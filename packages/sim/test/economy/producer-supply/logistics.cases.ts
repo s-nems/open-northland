@@ -9,6 +9,7 @@ import {
 } from '../../../src/components/index.js';
 import { Simulation } from '../../../src/index.js';
 import { boundProducerOutputToHaul } from '../../../src/systems/agents/economy/haul-targets.js';
+import { SinkAvailability } from '../../../src/systems/agents/targets/stores/sinks.js';
 import { aiSystem } from '../../../src/systems/index.js';
 import { MILITARY_MODE } from '../../../src/systems/readviews/index.js';
 import { testContent } from '../../fixtures/content.js';
@@ -138,15 +139,15 @@ describe('carrier at a PRODUCING building — hauls the finished output OUT to a
     const carrier = settlerAt(sim, 2, 0, CARRIER, farm);
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('map sim always has terrain');
-    const here = cell(sim, 2, 0) as Parameters<typeof boundProducerOutputToHaul>[7];
     const candidates = [farm, granary];
+    const ctx = ctxOf(sim);
+    const sinks = new SinkAvailability(candidates, sim.world, ctx);
 
-    expect(
-      boundProducerOutputToHaul(candidates, sim.world, ctxOf(sim), terrain, farmer, FARMER, VIKING, here),
-    ).toBeNull();
-    expect(
-      boundProducerOutputToHaul(candidates, sim.world, ctxOf(sim), terrain, carrier, CARRIER, VIKING, here),
-    ).toMatchObject({ home: farm, goodType: WHEAT });
+    expect(boundProducerOutputToHaul(sinks, sim.world, ctx, farmer, FARMER, VIKING)).toBeNull();
+    expect(boundProducerOutputToHaul(sinks, sim.world, ctx, carrier, CARRIER, VIKING)).toMatchObject({
+      home: farm,
+      goodType: WHEAT,
+    });
   });
 
   it('does not haul when no OTHER store can take the output (never shuttles farm→farm)', () => {

@@ -19,7 +19,7 @@ import { manhattan } from '../../spatial.js';
 import { buildingWorkerJobs } from '../../stores/index.js';
 import { atOrWalk, startAtomic, startPickup } from '../actions.js';
 import type { PlannerContext } from '../planner-context.js';
-import { interactionCell, jobAtomics, nearestStoreFor } from '../targets/index.js';
+import { interactionCell, jobAtomics } from '../targets/index.js';
 
 // The FARMER drive — the field-cultivation rung of the planner ladder: a worker bound to a FARM (a
 // workplace producing a field-farmed good, `farmWorkGood`) walks its farm's surroundings sowing,
@@ -182,8 +182,7 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
   // The store-full gate for the CROP-MOVING steps (reap/carry): some store can still take the good —
   // the farm's own slot, or any warehouse (then the delivery rung overflows the load there). Checked
   // lazily, only when a ripe field or sheaf actually exists this tick.
-  const cropSinkExists = (): boolean =>
-    nearestStoreFor(targets.stockpiles, world, ctx, terrain, here, spec.goodType) !== null;
+  const cropSinkExists = (): boolean => targets.sinks.has(spec.goodType);
 
   // a. Reap the nearest ripe field (the scythe swing; the yield drops as a sheaf where it stood).
   if (ripe !== null && cropSinkExists()) {

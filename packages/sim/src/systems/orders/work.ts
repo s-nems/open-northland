@@ -1,4 +1,3 @@
-import { indexById } from '@vinland/data';
 import {
   Age,
   AttackOrder,
@@ -16,6 +15,7 @@ import {
   Settler,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands.js';
+import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { positionOfNode } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
@@ -42,7 +42,7 @@ export function setJob(
   const e = command.entity;
   if (!world.isAlive(e) || !world.has(e, Settler) || !world.has(e, Owner)) return;
   if (world.has(e, Age)) return; // a growing child's job class is GrowthSystem's, not the player's
-  if (indexById(ctx.content.jobs).get(command.jobType) === undefined) return; // unknown job — skip
+  if (!contentIndex(ctx.content).commandJobs.has(command.jobType)) return; // unknown job — skip
 
   world.remove(e, JobAssignment); // re-employed at a building of the NEW job by the JobSystem
   reidleAsJob(world, ctx, e, command.jobType);

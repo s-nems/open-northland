@@ -7,7 +7,8 @@ import type { SystemContext } from '../../../context.js';
 import { startableCycleCount } from '../../../economy/production.js';
 import { manhattan } from '../../../spatial.js';
 import { stockCapacity } from '../../../stores/index.js';
-import { closer, interactionCell, nearestStoreFor } from '../../targets/index.js';
+import { closer, interactionCell } from '../../targets/index.js';
+import type { SinkAvailability } from '../../targets/stores/sinks.js';
 
 // The AI planner's SUPPLY layer: the scans behind a *producer worker running its own supply→produce→
 // deliver loop* — the "kowal fetches the goods a sword needs, forges it, and carries it back" behavior.
@@ -104,19 +105,16 @@ export function nearestMissingInputSource(
  * hauling its output never steals a tick it should have spent producing.
  */
 export function workplaceOutputToHaul(
-  candidates: readonly Entity[],
+  sinks: SinkAvailability,
   world: World,
-  ctx: SystemContext,
-  terrain: TerrainGraph,
   workplace: Entity,
   recipe: Recipe,
-  here: NodeId,
 ): number | null {
   const stock = world.get(workplace, Stockpile).amounts;
   for (const output of recipe.outputs) {
     if ((stock.get(output.goodType) ?? 0) <= 0) continue; // nothing of this output on hand
     // Deliverable somewhere that isn't this workplace? (nearestStoreFor already excludes the producer.)
-    if (nearestStoreFor(candidates, world, ctx, terrain, here, output.goodType) !== null) {
+    if (sinks.has(output.goodType)) {
       return output.goodType;
     }
   }

@@ -45,6 +45,11 @@ export interface ContentIndex {
   readonly tribes: ReadonlyMap<number, TribeType>;
   /** Vehicle types by `typeId`. */
   readonly vehicles: ReadonlyMap<number, VehicleType>;
+  /** Command-boundary building lookup with `indexById`'s last-wins duplicate semantics. Runtime
+   *  validation used to rebuild this map for every command. */
+  readonly commandBuildings: ReadonlyMap<number, BuildingType>;
+  /** Command-boundary job lookup with `indexById`'s last-wins duplicate semantics. */
+  readonly commandJobs: ReadonlyMap<number, JobType>;
   /** Armor types by `typeId` (the armor-class id — see readviews/combat.ts). */
   readonly armor: ReadonlyMap<number, ArmorType>;
   /** Experience tracks by `typeId`. */
@@ -116,6 +121,8 @@ function buildIndex(content: ContentSet): ContentIndex {
     jobs: byKey(content.jobs, (j) => j.typeId),
     tribes: byKey(content.tribes, (t) => t.typeId),
     vehicles: byKey(content.vehicles, (v) => v.typeId),
+    commandBuildings: byKeyLast(content.buildings, (b) => b.typeId),
+    commandJobs: byKeyLast(content.jobs, (j) => j.typeId),
     armor: byKey(content.armor, (a) => a.typeId),
     jobExperience: byKey(content.jobExperience, (t) => t.typeId),
     animalsByTribe: byKey(content.animals, (a) => a.tribeType),
@@ -230,6 +237,14 @@ function byKey<K, T>(items: readonly T[], key: (item: T) => K): ReadonlyMap<K, T
     const k = key(item);
     if (!map.has(k)) map.set(k, item);
   }
+  return map;
+}
+
+/** Map `items` by `key`, last-wins — the duplicate semantics of `@vinland/data`'s `indexById`.
+ *  Kept separate from the hot read-view tables above, whose replaced `.find` scans are first-wins. */
+function byKeyLast<K, T>(items: readonly T[], key: (item: T) => K): ReadonlyMap<K, T> {
+  const map = new Map<K, T>();
+  for (const item of items) map.set(key(item), item);
   return map;
 }
 

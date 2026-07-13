@@ -1,4 +1,3 @@
-import { indexById } from '@vinland/data';
 import {
   Building,
   FogRules,
@@ -208,7 +207,7 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       // A non-building target, one without a Stockpile, or an unknown type is a no-op.
       const building = world.tryGet(command.target, Building);
       if (building === undefined || !world.has(command.target, Stockpile)) return;
-      const type = indexById(ctx.content.buildings).get(building.buildingType);
+      const type = contentIndex(ctx.content).commandBuildings.get(building.buildingType);
       if (type === undefined) return;
       const stock = world.get(command.target, Stockpile).amounts;
       for (const slot of type.stock) stock.set(slot.goodType, slot.capacity);

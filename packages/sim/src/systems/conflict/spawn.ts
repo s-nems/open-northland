@@ -1,4 +1,4 @@
-import { type ContentSet, indexById } from '@vinland/data';
+import type { ContentSet } from '@vinland/data';
 import {
   Armor,
   Equipment,
@@ -14,6 +14,7 @@ import {
   Weapon,
 } from '../../components/index.js';
 import type { Command, SettlerEquipment, SettlerEquipmentSlot } from '../../core/commands.js';
+import { contentIndex } from '../../core/content-index.js';
 import { fx, ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { positionOfNode } from '../../nav/halfcell.js';
@@ -59,7 +60,7 @@ export const DEFAULT_SETTLER_HITPOINTS = 300;
  */
 export function createSettler(world: World, content: ContentSet, spec: SettlerSpec): Entity | null {
   // jobType 0 ("idle"/unemployed) is allowed; only an id absent from the job table is bad input.
-  if (indexById(content.jobs).get(spec.jobType) === undefined) return null;
+  if (!contentIndex(content).commandJobs.has(spec.jobType)) return null;
 
   const e = world.create();
   world.add(e, Position, positionOfNode(spec.x, spec.y));

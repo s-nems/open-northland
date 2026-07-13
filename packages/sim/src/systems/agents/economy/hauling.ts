@@ -27,16 +27,7 @@ export function planPorter(plan: PlannerContext): boolean {
   if (!isPorterBoundToStore(world, ctx, e)) return false;
   // Haul the bound producer's finished output OUT to a warehouse (a farm's wheat) — the load then routes
   // to storage, never into another producer of the good (deliveryTargetFor case 3).
-  const haul = boundProducerOutputToHaul(
-    targets.stockpiles,
-    world,
-    ctx,
-    terrain,
-    e,
-    settler.jobType,
-    settler.tribe,
-    here,
-  );
+  const haul = boundProducerOutputToHaul(targets.sinks, world, ctx, e, settler.jobType, settler.tribe);
   if (haul !== null) {
     atOrWalk(world, e, here, interactionCell(world, ctx, terrain, haul.home, here), () =>
       startPickup(
@@ -52,7 +43,7 @@ export function planPorter(plan: PlannerContext): boolean {
     return true;
   }
   // Otherwise bring a loose ground pile IN to the bound store (the warehouse/HQ porter, unchanged).
-  const pile = nearestGroundPile(targets.stockpiles, world, ctx, terrain, here);
+  const pile = nearestGroundPile(targets.stockpiles, targets.sinks, world, ctx, terrain, here);
   if (pile === null) return false;
   atOrWalk(world, e, here, interactionCell(world, ctx, terrain, pile.pile, here), () =>
     startPickup(
@@ -87,7 +78,9 @@ export function planCarrierHaul(plan: PlannerContext, anyHaulable: boolean): boo
   const settler = plan;
   if (!isCarrierJob(ctx, settler.jobType)) return false; // hauling is the carrier trade's job alone
   if (!world.has(e, JobAssignment)) return false; // an unassigned carrier has no store to work for
-  const haul = anyHaulable ? nearestWorkplaceOutput(targets.stockpiles, world, ctx, terrain, here) : null;
+  const haul = anyHaulable
+    ? nearestWorkplaceOutput(targets.stockpiles, targets.sinks, world, ctx, terrain, here)
+    : null;
   if (haul === null) return false;
   atOrWalk(world, e, here, interactionCell(world, ctx, terrain, haul.workplace, here), () =>
     // Lift a batch sized by the tribe's best unlocked vehicle (`stockSlots`), or one unit on foot
