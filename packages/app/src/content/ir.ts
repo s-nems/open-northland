@@ -20,7 +20,7 @@ import { fetchJsonOrNull, loadTextureIfPresent } from './net.js';
  * The decoded-content I/O layer for the served `content/ir.json` + `/bobs/` atlases: fetch the
  * gitignored `content/` (served by the dev/shot vite middleware) and hand back the raw atlas
  * geometry + IR row lists the pure binding reducers ({@link import('./settler-gfx/index.js')} /
- * {@link import('./building-gfx.js')}) turn into render inputs. No copyrighted bytes enter the repo;
+ * {@link import('./building-gfx/index.js')}) turn into render inputs. No copyrighted bytes enter the repo;
  * a checkout without `content/` degrades gracefully (a missing atlas throws {@link MissingAtlasError};
  * a missing IR returns `null`).
  */

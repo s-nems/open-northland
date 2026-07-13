@@ -8,7 +8,7 @@ import {
   constructionRefsByType,
   DEFAULT_BUILDING_FAMILY,
   OVERLAY_TICKS_PER_FRAME,
-} from '../src/content/building-gfx.js';
+} from '../src/content/building-gfx/index.js';
 import { stateIndexForLevel, unshadedLogicTypeIds } from '../src/content/objects.js';
 import {
   ADULT_CHARACTER_BY_JOB,

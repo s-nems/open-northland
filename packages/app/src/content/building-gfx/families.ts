@@ -1,18 +1,12 @@
-import type { BuildingBobRef, BuildingOverlayRef, ConstructionLayerRef } from '@vinland/render';
-import type { BuildingBobRow, BuildingOverlayRow, ConstructionLayerRow } from './ir.js';
+import type { BuildingBobRef } from '@vinland/render';
+import type { BuildingBobRow } from '../ir.js';
 
 /**
- * The building/resource render binding: reduce the decoded `[GfxHouse]` IR joins (`buildingBobs` +
- * `constructionLayers`) to the renderer's per-building-type bob refs, and hold the tree/house atlas
- * constants the sheet loader binds. Each viking building type draws its OWN house bob (the `[GfxHouse]`
- * `LogicType` → `GfxBobId` join from the extracted IR), overlaid onto the transcribed
- * {@link VIKING_HOUSE01_BOBS} (data wins per type; the constant backs its five known types when
- * `content/` is absent). A building type whose canonical bob lives in a *different* `.bmd`/palette than
- * the default `ls_houses_viking.house01` layer (the HQ in `ls_houses_viking4.bmd`, the mill in the
- * `housemiller01` skin, …) binds a layer-qualified {@link BuildingBobRef} into its own loaded
- * {@link import('@vinland/render').SpriteSheet.families} atlas — all seven viking families load, so
- * EVERY viking building draws its own bob. The pure reducers here are unit-tested without a browser;
- * the byte loading lives in {@link import('./ir.js')} + {@link import('./sprite-sheet.js')}.
+ * The building atlas FAMILIES + the shared per-type reduction helpers — the tree/house atlas constants
+ * the sheet loader binds, the seven loaded viking families, and the canonical-row picking every building
+ * binding reducer shares. The base per-type bob binding ({@link buildingBobRefsByType}) lives here; the
+ * working-state overlay + construction-stage reducers in `./overlays.ts` / `./construction.ts` reuse
+ * these helpers. The pure reducers are unit-tested without a browser.
  */
 
 /**
@@ -134,7 +128,7 @@ export interface BuildingFamily {
  * canonical row in one of these binds a layer-qualified `{ layer, bob }` ref; the
  * {@link buildingBobRefsByType} reducer DROPS a row whose family is NOT in this list (it falls back to
  * {@link VIKING_HOUSE01_BOBS}/the default house), so a family must be both listed here AND loaded in
- * {@link import('./sprite-sheet.js').loadHumanSpriteSheet} for its types to draw their real bob.
+ * {@link import('../sprite-sheet.js').loadHumanSpriteSheet} for its types to draw their real bob.
  *
  * This loads **all seven viking families** so EVERY viking building draws its own bob: the default
  * `ls_houses_viking.house01` (the homes / well / hive / farm / bakery, bound as the `building` kind),
@@ -165,7 +159,7 @@ export const BUILDING_FAMILIES: readonly BuildingFamily[] = [
  * `"viking headquarters house"`) — docs/SOURCES.md "Building graphics families". A typeId with no entry
  * here falls through to the deterministic palette → max-level → lowest-bob tiebreak.
  */
-const CANONICAL_EDIT_NAME: Readonly<Record<number, string>> = {
+export const CANONICAL_EDIT_NAME: Readonly<Record<number, string>> = {
   1: 'viking headquarters',
 };
 
@@ -181,7 +175,7 @@ function bmdBasename(bmd: string): string {
  * preserved, so the per-type reductions below stay deterministic. The shared first step of every
  * per-type binding reducer in this module.
  */
-function rowsByType<T extends { tribeId: number; typeId: number }>(
+export function rowsByType<T extends { tribeId: number; typeId: number }>(
   rows: readonly T[],
   tribeId: number,
   keep?: (row: T) => boolean,
@@ -198,7 +192,7 @@ function rowsByType<T extends { tribeId: number; typeId: number }>(
 
 /** Restrict a type's rows to those in the preferred (loaded) palette when any exist, else keep them all —
  *  the "bind the skin we actually draw" rule the per-type reducers share. */
-function preferredPalettePool<T extends { paletteName: string }>(
+export function preferredPalettePool<T extends { paletteName: string }>(
   rows: readonly T[],
   paletteName: string,
 ): readonly T[] {
@@ -238,6 +232,27 @@ function pickCanonicalBuildingRow(
 }
 
 /**
+ * Resolve a row's `(bmd, palette)` to the atlas family it draws from — the shared no-wrong-bob-borrow
+ * rule of {@link buildingBobRefsByType} and {@link import('./construction.js').constructionRefsByType}:
+ * `{}` = the default building layer (a bare-id ref), `{ layer }` = a LOADED named family (a
+ * layer-qualified ref), `null` = an unloaded family — the caller must DROP the row, because the renderer
+ * would fall an unknown family through to the default layer and draw a wrong bob from a disjoint frame-id
+ * space. `bmd` is matched on its trailing basename so a sibling like `ls_houses_viking2.bmd` can't be a
+ * false positive.
+ */
+export function familyLayerFor(
+  bmd: string,
+  paletteName: string,
+  defaultFamily: { readonly bmdBasename: string; readonly paletteName: string },
+  families: readonly BuildingFamily[],
+): { layer?: string } | null {
+  const base = bmdBasename(bmd);
+  if (base === defaultFamily.bmdBasename && paletteName === defaultFamily.paletteName) return {};
+  const family = families.find((f) => f.bmdBasename === base && f.paletteName === paletteName);
+  return family === undefined ? null : { layer: family.layer };
+}
+
+/**
  * Reduce the decoded `buildingBobs` join (the `extractBuildingBobs` leg) to the render's per-type bob
  * binding for ONE tribe across MANY loaded atlas families. For each `(tribeId, typeId)` it picks the
  * canonical row ({@link pickCanonicalBuildingRow}) and emits a {@link BuildingBobRef}:
@@ -271,165 +286,6 @@ export function buildingBobRefsByType(
     const layer = familyLayerFor(row.bmd, row.paletteName, defaultFamily, families);
     if (layer === null) continue; // family not loaded → drop (the constant/default backs this typeId)
     out[typeId] = layer.layer === undefined ? row.bobId : { layer: layer.layer, bob: row.bobId };
-  }
-  return out;
-}
-
-/**
- * Resolve a row's `(bmd, palette)` to the atlas family it draws from — the shared no-wrong-bob-borrow
- * rule of {@link buildingBobRefsByType} and {@link constructionRefsByType}: `{}` = the default building
- * layer (a bare-id ref), `{ layer }` = a LOADED named family (a layer-qualified ref), `null` = an
- * unloaded family — the caller must DROP the row, because the renderer would fall an unknown family
- * through to the default layer and draw a wrong bob from a disjoint frame-id space. `bmd` is matched on
- * its trailing basename so a sibling like `ls_houses_viking2.bmd` can't be a false positive.
- */
-function familyLayerFor(
-  bmd: string,
-  paletteName: string,
-  defaultFamily: { readonly bmdBasename: string; readonly paletteName: string },
-  families: readonly BuildingFamily[],
-): { layer?: string } | null {
-  const base = bmdBasename(bmd);
-  if (base === defaultFamily.bmdBasename && paletteName === defaultFamily.paletteName) return {};
-  const family = families.find((f) => f.bmdBasename === base && f.paletteName === paletteName);
-  return family === undefined ? null : { layer: family.layer };
-}
-
-/** The source's overlay-state discriminators (`GfxOverlay <sizeIdx> 4 <state> …`). */
-const OVERLAY_STATE_IDLE = 0;
-const OVERLAY_STATE_WORKING = 1;
-
-/**
- * Sim ticks per spin frame for a WORKING building overlay (the mill's rotor). The source's `step`
- * field is `1` on every type-4 row and its unit is undecoded, so the pace is a NAMED APPROXIMATION
- * tuned by eye against the original (13 spin frames × 2 ticks ≈ a 1.3 s revolution at ×1 speed) —
- * a human validates it in the mill scene; swap the constant to taste (source basis "observed").
- */
-export const OVERLAY_TICKS_PER_FRAME = 2;
-
-/**
- * Reduce the decoded `buildingOverlays` IR (the `extractBuildingOverlays` leg — the `[GfxHouse]`
- * type-4 `GfxOverlay` rows) to the render's per-type animated-state-overlay binding for ONE tribe:
- * the mill's bladeless body gets its rotor — the state-0 row's single frame as the still `idle`
- * blade, the state-1 row's frame list as the `working` spin cycle. Shares
- * {@link buildingBobRefsByType}'s family rules (palette preference, the no-wrong-bob-borrow drop of
- * an unloaded family) and {@link constructionRefsByType}'s one-source-record stance (lowest `level`
- * group, deterministic). A type with neither state row is simply absent (no overlay drawn).
- */
-export function buildingOverlayRefsByType(
-  rows: readonly BuildingOverlayRow[],
-  tribeId: number,
-  defaultFamily: { readonly bmdBasename: string; readonly paletteName: string },
-  families: readonly BuildingFamily[],
-): Record<number, BuildingOverlayRef> {
-  const byType = rowsByType(rows, tribeId);
-  const out: Record<number, BuildingOverlayRef> = {};
-  for (const [typeId, list] of byType) {
-    const pool = preferredPalettePool(list, defaultFamily.paletteName);
-    const lowestLevel = pool.reduce((lo, r) => Math.min(lo, r.level), Number.POSITIVE_INFINITY);
-    const group = pool.filter((r) => r.level === lowestLevel);
-    const idleRow = group.find((r) => r.state === OVERLAY_STATE_IDLE);
-    const workingRow = group.find((r) => r.state === OVERLAY_STATE_WORKING);
-    const anchor = idleRow ?? workingRow;
-    if (anchor === undefined) continue;
-    // NAMED LIMITATION: the row's x/y draw offset is not carried into the binding yet — every pinned
-    // viking overlay row is `0 0`, so the overlay anchors like the body bob. A mod row with a real
-    // offset would draw misplaced; surface it instead of failing silently.
-    if (anchor.x !== 0 || anchor.y !== 0) {
-      console.warn(
-        `building overlay type ${typeId}: nonzero offset ${anchor.x},${anchor.y} ignored (not implemented)`,
-      );
-    }
-    const layer = familyLayerFor(anchor.bmd, anchor.paletteName, defaultFamily, families);
-    if (layer === null) continue; // family not loaded → no overlay (never a wrong-bob borrow)
-    const idle = idleRow?.frames[0];
-    const working = workingRow !== undefined && workingRow.frames.length > 0 ? workingRow.frames : undefined;
-    if (idle === undefined && working === undefined) continue;
-    out[typeId] = {
-      ...(layer.layer !== undefined ? { layer: layer.layer } : {}),
-      ...(idle !== undefined ? { idle } : {}),
-      ...(working !== undefined ? { working } : {}),
-      ticksPerFrame: OVERLAY_TICKS_PER_FRAME,
-    };
-  }
-  return out;
-}
-
-/**
- * Reduce the decoded `constructionLayers` IR (the `extractConstructionLayers` leg) to the render's
- * per-type construction-stage binding for ONE tribe — the staged-graphics twin of
- * {@link buildingBobRefsByType}, sharing its family rules: a row's `(bmd, palette)` must be the
- * {@link defaultFamily} (a bare-id stage on the default building layer) or a loaded named family (a
- * layer-qualified stage); a row in an UNLOADED family is dropped (its frame-id space differs — never
- * borrow), and a typeId whose stages end up ALL dropped is omitted entirely (it keeps its normal body
- * draw at every progress rather than showing a partial stack). Only from-scratch rows are consumed
- * (`upgrade === false`; the 1-rows are the original's upgrade-overlay pass — source basis).
- *
- * A typeId's stages must all come from **one source record at one size level** — several records can
- * carry the same typeId (the HQ's `"viking headquarters"` vs its `"viking headquarters house"` variant;
- * the pottery maps one typeId at two sizeIdx; the two wall orientations share typeId 22), and merging
- * their per-record `stackIdx` streams would interleave two different stage stacks. So the reduction
- * first restricts to the preferred palette (when present), then picks ONE `(editName, level)` group:
- * the {@link CANONICAL_EDIT_NAME} match when it names this typeId (the same disambiguation the body
- * binding applies), else the lowest `level` (the base build stage — the extractors' lowest-sizeIdx
- * convention), ties to the lexicographically smallest `editName` (deterministic, order-independent).
- * The chosen group's stages keep their source stacking order (`stackIdx`). Pure + exported so the
- * reduction is unit-tested without a browser.
- */
-export function constructionRefsByType(
-  rows: readonly ConstructionLayerRow[],
-  tribeId: number,
-  defaultFamily: { readonly bmdBasename: string; readonly paletteName: string },
-  families: readonly BuildingFamily[],
-): Record<number, ConstructionLayerRef[]> {
-  const byType = rowsByType(rows, tribeId, (r) => !r.upgrade);
-  const out: Record<number, ConstructionLayerRef[]> = {};
-  for (const [typeId, list] of byType) {
-    const pool = preferredPalettePool(list, defaultFamily.paletteName);
-    // ONE record-level group per type (see the JSDoc): group by (editName, level), pick canonically.
-    const groups = new Map<string, ConstructionLayerRow[]>();
-    for (const r of pool) {
-      const key = `${r.editName ?? ''}|${r.level}`;
-      const group = groups.get(key);
-      if (group === undefined) groups.set(key, [r]);
-      else group.push(r);
-    }
-    const canonName = CANONICAL_EDIT_NAME[typeId];
-    let chosen: ConstructionLayerRow[] | undefined;
-    for (const group of groups.values()) {
-      const first = group[0];
-      if (first === undefined) continue;
-      const current = chosen?.[0];
-      if (
-        chosen === undefined ||
-        current === undefined ||
-        // The canonical editName wins outright; otherwise lowest level, then smallest editName.
-        (canonName !== undefined && first.editName === canonName && current.editName !== canonName) ||
-        (!(canonName !== undefined && current.editName === canonName) &&
-          (first.level < current.level ||
-            (first.level === current.level && (first.editName ?? '') < (current.editName ?? ''))))
-      ) {
-        chosen = group;
-      }
-    }
-    if (chosen === undefined) continue;
-
-    const candidates = chosen.slice().sort((a, b) => a.stackIdx - b.stackIdx);
-    const refs: ConstructionLayerRef[] = [];
-    let dropped = false;
-    for (const r of candidates) {
-      const layer = familyLayerFor(r.bmd, r.paletteName, defaultFamily, families);
-      if (layer === null) {
-        dropped = true; // a stage in an unloaded family — the whole type keeps its body draw
-        break;
-      }
-      refs.push(
-        layer.layer === undefined
-          ? { bob: r.bobId, fromPct: r.fromPct, toPct: r.toPct }
-          : { layer: layer.layer, bob: r.bobId, fromPct: r.fromPct, toPct: r.toPct },
-      );
-    }
-    if (!dropped && refs.length > 0) out[typeId] = refs;
   }
   return out;
 }

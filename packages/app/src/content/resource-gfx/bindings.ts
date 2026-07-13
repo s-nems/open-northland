@@ -1,5 +1,5 @@
 import type { LayeredBobRef, ResourceTypeBinding, StockpileBinding } from '@vinland/render';
-import { TREE_BOB } from '../building-gfx.js';
+import { TREE_BOB } from '../building-gfx/index.js';
 import { bobRef, DEFAULT_RESOURCE_STEM, type GatheringRefs, STOCKPILE_PLACEHOLDER_BOB } from './refs.js';
 
 /**

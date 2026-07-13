@@ -97,7 +97,7 @@ export function mapResourceSpawns(
  * the source-pinned marker that a placed bush object currently HOLDS FRUIT, so it becomes a forageable
  * {@link import('@vinland/sim').BerryBush}. Bare/flowering/barren bush states (types 8/9/10) stay decor.
  * Exported as the single home for this constant — the render-side bush binding ({@link
- * import('./resource-gfx.js').resolveBerryBushRefs}) keys off the same value.
+ * import('./resource-gfx/index.js').resolveBerryBushRefs}) keys off the same value.
  */
 export const BUSH_WITH_FRUITS_LOGIC_TYPE = 11;
 
