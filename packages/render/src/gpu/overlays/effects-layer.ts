@@ -15,6 +15,7 @@ import { halfCellToScreen } from '../../data/iso.js';
 import type { AtlasFrame } from '../../data/sprites/index.js';
 import { isVisible, type Viewport } from '../../data/viewport.js';
 import type { TextureCache } from '../texture-cache.js';
+import { retireUndrawn } from './retained-pool.js';
 
 /**
  * The decoded bone-pile art the layer draws for a death (the original's `cadaver human bones` landscape
@@ -128,13 +129,7 @@ export class CombatEffectsLayer {
       this.seen.add(key);
     }
     // Retire nodes whose mark is gone (expired / capped out this frame).
-    if (this.nodes.size > this.seen.size) {
-      for (const [key, node] of this.nodes) {
-        if (this.seen.has(key)) continue;
-        node.destroy();
-        this.nodes.delete(key);
-      }
-    }
+    retireUndrawn(this.nodes, this.seen, (node) => node.destroy());
   }
 
   destroy(): void {

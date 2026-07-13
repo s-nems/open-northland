@@ -2,6 +2,7 @@ import { Container, Graphics } from 'pixi.js';
 import { type ElevationField, terrainLiftAt } from '../../data/elevation.js';
 import { ONE, tileToScreen } from '../../data/iso.js';
 import { isVisible, type Viewport } from '../../data/viewport.js';
+import { retireUndrawn } from './retained-pool.js';
 
 /**
  * The DOOR-BADGE layer — a small stacked marker beside each staffed building's door showing how many
@@ -112,13 +113,7 @@ export class BadgeLayer {
       this.drawn.add(badge.id);
     }
     // Retire stacks not drawn this frame (building demolished, unstaffed, or left the snapshot).
-    if (this.stacks.size > this.drawn.size) {
-      for (const [id, stack] of this.stacks) {
-        if (this.drawn.has(id)) continue;
-        stack.node.destroy({ children: true });
-        this.stacks.delete(id);
-      }
-    }
+    retireUndrawn(this.stacks, this.drawn, (stack) => stack.node.destroy({ children: true }));
   }
 
   destroy(): void {

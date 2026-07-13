@@ -1,6 +1,7 @@
 import { Container, Graphics } from 'pixi.js';
 import { type ElevationField, terrainLiftAtNode } from '../../data/elevation.js';
 import { halfCellToScreen, nodeDiamondPoly, TILE_HALF_H, TILE_HALF_W } from '../../data/iso.js';
+import { hashCells } from './cell-signature.js';
 
 /**
  * The CONSTRUCTION-SITE plot — a translucent grey "plac budowy" washed over the ground cells a placed
@@ -75,10 +76,8 @@ function signatureOf(plots: readonly ConstructionPlotFrame[]): string {
   let h = 0;
   let n = 0;
   for (const plot of plots) {
-    for (const cell of plot.cells) {
-      h = (Math.imul(h, 31) + Math.imul(cell.col, 73856093) + Math.imul(cell.row, 19349663)) | 0;
-      n++;
-    }
+    h = hashCells(plot.cells, h);
+    n += plot.cells.length;
   }
   return `${n}:${h}`;
 }

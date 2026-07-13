@@ -3,6 +3,7 @@ import { Container, Graphics } from 'pixi.js';
 import { type ElevationField, terrainLiftAt } from '../../data/elevation.js';
 import { ONE, TILE_HALF_H, TILE_HALF_W, tileToScreen } from '../../data/iso.js';
 import type { EntityBounds } from '../sprite-pool/index.js';
+import { retireUndrawn } from './retained-pool.js';
 
 /**
  * The SELECTION layer — a feet-anchored ring under each currently-selected entity, drawn in WORLD
@@ -55,6 +56,15 @@ interface RingSpec {
   readonly cx: number;
 }
 
+/** The frame's projection inputs shared by both ring pools — grouped so the twin `reconcile` calls don't
+ *  thread the same four positional args (the snapshot + the pool's drawn-anchor / bounds / elevation seams). */
+interface SelectionFrame {
+  readonly snapshot: WorldSnapshot;
+  readonly boundsOf: ((ref: number) => EntityBounds | undefined) | undefined;
+  readonly elevation: ElevationField | undefined;
+  readonly anchorOf: ((ref: number) => { x: number; y: number } | undefined) | undefined;
+}
+
 export class SelectionLayer {
   readonly container = new Container();
   /** One persistent ring Graphics per SELECTED entity id (green); geometry drawn once, repositioned after. */
@@ -80,57 +90,35 @@ export class SelectionLayer {
     anchorOf?: (ref: number) => { x: number; y: number } | undefined,
     flagged: ReadonlySet<number> = NO_IDS,
   ): void {
-    this.reconcile(
-      this.rings,
-      this.drawn,
-      snapshot,
-      selected,
-      RING_COLOR,
-      RING_WIDTH,
-      boundsOf,
-      elevation,
-      anchorOf,
-    );
-    this.reconcile(
-      this.flagRings,
-      this.drawnFlags,
-      snapshot,
-      flagged,
-      FLAG_RING_COLOR,
-      FLAG_RING_WIDTH,
-      boundsOf,
-      elevation,
-      anchorOf,
-    );
+    const frame: SelectionFrame = { snapshot, boundsOf, elevation, anchorOf };
+    this.reconcile(this.rings, this.drawn, selected, RING_COLOR, RING_WIDTH, frame);
+    this.reconcile(this.flagRings, this.drawnFlags, flagged, FLAG_RING_COLOR, FLAG_RING_WIDTH, frame);
   }
 
   /** Reconcile ONE ring pool to `ids` in `color`: place/move a ring under each present entity, retire the rest. */
   private reconcile(
     pool: Map<number, Graphics>,
     drawn: Set<number>,
-    snapshot: WorldSnapshot,
     ids: ReadonlySet<number>,
     color: number,
     width: number,
-    boundsOf?: (ref: number) => EntityBounds | undefined,
-    elevation?: ElevationField,
-    anchorOf?: (ref: number) => { x: number; y: number } | undefined,
+    frame: SelectionFrame,
   ): void {
     drawn.clear();
     if (ids.size > 0) {
-      for (const ent of snapshot.entities) {
+      for (const ent of frame.snapshot.entities) {
         if (!ids.has(ent.id)) continue;
         const pos = ent.components.Position as { x: number; y: number } | undefined;
         if (pos === undefined) continue;
         // The pool's DRAWN anchor (inter-tick lerped AND terrain-lifted) when the entity was drawn this
         // frame, so the ring glides with the interpolated bob and rides the hill under it. When it wasn't
         // drawn (culled off-screen), fall back to the raw snapshot projection plus the same lift.
-        let s = anchorOf?.(ent.id);
+        let s = frame.anchorOf?.(ent.id);
         if (s === undefined) {
           const tileX = pos.x / ONE;
           const tileY = pos.y / ONE;
           const p = tileToScreen(tileX, tileY);
-          const lift = terrainLiftAt(elevation, tileX, tileY);
+          const lift = terrainLiftAt(frame.elevation, tileX, tileY);
           s = { x: p.x, y: p.y - lift };
         }
         let ring = pool.get(ent.id);
@@ -138,7 +126,7 @@ export class SelectionLayer {
           // Kind + size are fixed while present, so the ring geometry is authored once here.
           const isBuilding = ent.components.Building !== undefined;
           ring = makeRing(
-            ringSpec(isBuilding, isBuilding ? boundsOf?.(ent.id) : undefined, s.x),
+            ringSpec(isBuilding, isBuilding ? frame.boundsOf?.(ent.id) : undefined, s.x),
             color,
             width,
           );
@@ -150,13 +138,7 @@ export class SelectionLayer {
       }
     }
     // Retire rings not drawn this frame (deselected, or the entity died / left the snapshot).
-    if (pool.size > drawn.size) {
-      for (const [id, ring] of pool) {
-        if (drawn.has(id)) continue;
-        ring.destroy();
-        pool.delete(id);
-      }
-    }
+    retireUndrawn(pool, drawn, (ring) => ring.destroy());
   }
 
   destroy(): void {
