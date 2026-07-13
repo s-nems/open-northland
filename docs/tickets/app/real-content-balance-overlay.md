@@ -8,7 +8,7 @@ graphics-complete but gameplay-thin — all 11 goods carrying a `gathering` bloc
 `chopsToFell/yieldPerNode/depositSize/depositLevels` = 0, so real content fells and mines nothing.
 The clean-room pins that must be overlaid live in `catalog/felling.ts` (`WOOD_CHOPS_TO_FELL`,
 `WOOD_YIELD_PER_NODE`) and `catalog/mining.ts` (`*_DEPOSIT_UNITS`, `MINE_LEVELS`), consumed in
-`game/sandbox/content.ts`.
+`game/sandbox/content/`.
 
 ## Scope
 

@@ -13,7 +13,7 @@ import { resolveVikingBuilding } from '../../catalog/buildings.js';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../../catalog/felling.js';
 import { MINE_STRIKES_PER_UNIT } from '../../catalog/mining.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../rules.js';
-import { GATHERERS, type GathererSpec, JOB_IDLE, weaponEquipmentFor } from './ids.js';
+import { GATHERERS, type GathererSpec, JOB_IDLE, weaponEquipmentFor } from './ids/index.js';
 
 const { DeliveryFlag, Position, WorkFlag } = components;
 

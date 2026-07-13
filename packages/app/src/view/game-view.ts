@@ -1,35 +1,20 @@
 import { indexById } from '@open-northland/data';
-import {
-  buildHud,
-  buildSpriteScene,
-  cameraViewport,
-  type ElevationField,
-  fogTileVisible,
-  layoutHud,
-  ONE,
-  type SceneTerrain,
-  SPRITE_CULL_MARGIN,
-  type SpriteSheet,
-  type WorldRenderer,
-} from '@open-northland/render';
+import type { ElevationField, SceneTerrain, SpriteSheet, WorldRenderer } from '@open-northland/render';
 import type { SimEvent, Simulation, WorldSnapshot } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
-import { BUILD_HOUSE_ATOMIC, HARVEST_ATOMIC } from '../catalog/atomics.js';
 import { pickerEntries } from '../catalog/professions.js';
-import { createSoundDriver } from '../content/audio.js';
 import { DEFAULT_UI_LANG } from '../content/gui-gfx.js';
-import { loadIr } from '../content/ir.js';
-import { loadCombatBones } from '../content/objects.js';
 import { HUD_TRIBE, HUMAN_PLAYER } from '../game/rules.js';
 import { workerRoleOf } from '../game/sandbox/index.js';
 import { type MinimapHandle, mountMinimap } from '../hud/minimap/index.js';
 import { buildToolPanelLayout, DEFAULT_UI_SCALE } from '../hud/tool-panel/layout.js';
+import { createAdminEntityPicker } from './admin-debug/entity-picker.js';
 import { mountAdminDebug } from './admin-debug/index.js';
 import type { CameraController } from './camera.js';
 import { cameraCenteredOnWorld, clientToCanvas, screenScale } from './camera.js';
-import { computeDoorBadges } from './door-badges.js';
 import { createFogGates } from './fog-gates.js';
 import { startFrameLoop } from './frame-loop.js';
+import { mountGamePresentation } from './game-presentation.js';
 import {
   applyGameSpeed,
   menuEntriesFromContent,
@@ -38,13 +23,13 @@ import {
 } from './game-tool-panel.js';
 import { createGeometryDebugOverlay } from './geometry-debug-items.js';
 import { createGroundPileTooltip } from './ground-pile-tooltip.js';
-import { mountSoundToggle } from './overlay.js';
 import { floatParam } from './params.js';
 import { mountPerfOverlay } from './perf-overlay.js';
-import { type Pickable, pickTopAt, screenToWorld } from './picking.js';
 import { makeOverlayFrameSource } from './placement-overlay.js';
+import { trackCanvasPointer } from './pointer-tracker.js';
+import { createSnapshotProjections } from './snapshot-projections.js';
 import { createTooltip } from './tooltip.js';
-import { createUnitControls } from './unit-controls.js';
+import { createUnitControls } from './unit-controls/index.js';
 
 /**
  * The SHARED in-game runtime both playable entries (`?map=` and `?scene=`) run on top of: the standard
@@ -124,19 +109,7 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
   // skips it entirely) but starts disabled, so the game is silent until the user clicks the bottom
   // sound toggle — that click both unmutes and satisfies the browser autoplay gesture. A checkout
   // without `content/` (no sound bank) degrades to silence (no driver, no button).
-  const wantSound = params.get('sound') !== 'off';
-  const soundDriver = wantSound
-    ? createSoundDriver(await loadIr(), { chopAtomicId: HARVEST_ATOMIC, buildAtomicId: BUILD_HOUSE_ATOMIC })
-    : null;
-  if (soundDriver !== null) {
-    soundDriver.setEnabled(false);
-    mountSoundToggle(soundDriver);
-  }
-
-  // The decoded bone-pile art so a death leaves the REAL `cadaver human bones` sprite (the original's
-  // cadaver landscape object) instead of the procedural pile; degrades to procedural without `content/`.
-  const ir = await loadIr();
-  renderer.setCombatBonesGfx(ir !== null ? await loadCombatBones(ir) : null);
+  const soundDriver = await mountGamePresentation(params, renderer);
 
   // On-canvas debug readout (top-left, just clear of the tool-panel strip): tick / speed / steps /
   // entity counts + the FPS and the sim/snap/draw CPU split, so a human can judge whether the view holds
@@ -222,15 +195,7 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
   // The cursor position for the build-mode ghost (client coords; null when the pointer left the
   // canvas). Tracked persistently — the ghost must follow the mouse between clicks, and reading it in
   // the frame loop keeps ALL per-frame work in the one RAF (no per-mousemove sim probing).
-  let pointer: { clientX: number; clientY: number } | null = null;
-  const onPointerMove = (e: MouseEvent): void => {
-    pointer = { clientX: e.clientX, clientY: e.clientY };
-  };
-  const onPointerLeave = (): void => {
-    pointer = null;
-  };
-  canvas.addEventListener('mousemove', onPointerMove);
-  canvas.addEventListener('mouseleave', onPointerLeave);
+  const pointerAt = trackCanvasPointer(canvas);
 
   // RTS unit control: left-click / drag-box to select the human's units, right-click to send them,
   // Space for the action menu. Reads the camera + snapshot through closures, issues commands into the
@@ -277,33 +242,14 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     // A SCREEN-bounded pass — buildSpriteScene is culled to the camera viewport (golden rule 6), pinned to
     // solid pixels for buildings like the RTS controls — but over ALL owners (an enemy is killable),
     // rebuilt per click (rare) rather than cached like the per-frame hover set.
-    pickEntity: (clientX, clientY, kind) => {
-      const cam = cameraCtl.camera();
-      const p = clientToScreen(clientX, clientY);
-      const world = screenToWorld(cam, p.x, p.y);
-      const snap = sim.snapshot();
-      const vp = cameraViewport(
-        cam,
-        app.screen.width,
-        app.screen.height,
-        SPRITE_CULL_MARGIN + (deps.elevation?.maxLift ?? 0),
-      );
-      const targets: Pickable[] = [];
-      for (const it of buildSpriteScene(snap, { viewport: vp, elevation: deps.elevation })) {
-        if (it.kind !== kind) continue;
-        targets.push({
-          ref: it.ref,
-          x: it.x,
-          y: it.y,
-          box: renderer.entityBounds(it.ref),
-          // Buildings refine to solid pixels (a click just next to the house misses); settlers keep the box.
-          ...(kind === 'building'
-            ? { pixelHit: (wx: number, wy: number) => renderer.entityPixelHit(it.ref, wx, wy) }
-            : {}),
-        });
-      }
-      return pickTopAt(targets, world.x, world.y);
-    },
+    pickEntity: createAdminEntityPicker({
+      app,
+      sim,
+      renderer,
+      camera: cameraCtl,
+      toScreen: clientToScreen,
+      ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
+    }),
     claimPointer: (x, y) => controls.claimsPointer(x, y),
     goodLabel: (typeId) => goodLabelByType.get(typeId),
     // The needs-toggle button's live state (scenes boot it off, maps on) — read through the sim's
@@ -324,7 +270,7 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
     fogVisible: fogGates.visibleTile,
     goodLabel: (typeId) => goodLabelByType.get(typeId),
-    pointer: () => pointer,
+    pointer: pointerAt,
     suppressed: (clientX, clientY) =>
       toolPanel.controller.placementType() !== null ||
       toolPanel.claimPointer(clientX, clientY) ||
@@ -349,25 +295,9 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     setItems: (items) => renderer.setGeometryDebug(items),
   });
 
-  // Per-frame O(entities) projections memoized by SNAPSHOT IDENTITY: `sim.snapshot()` returns the same
-  // object while the tick (and world) are unchanged, so a frame that didn't step reuses last frame's HUD
-  // read-view and door badges instead of re-scanning every entity each RAF (golden rule 6 at the app
-  // layer — a decoded map holds tens of thousands of resource nodes).
-  const memoBySnapshot = <T>(build: (snap: WorldSnapshot) => T): ((snap: WorldSnapshot) => T) => {
-    let memo: { snap: WorldSnapshot; value: T } | null = null;
-    return (snap) => {
-      if (memo === null || memo.snap !== snap) memo = { snap, value: build(snap) };
-      return memo.value;
-    };
-  };
-  const hudFor = memoBySnapshot((snap) => layoutHud(buildHud(snap, HUD_TRIBE)));
-  const doorBadgesFor = memoBySnapshot((snap) => {
-    const badges = computeDoorBadges(snap, buildingDoors, workerRoleOf);
-    // Fog gate: a staffed building under the fog must not advertise its workers — the badge layer
-    // draws ABOVE the wash. Same validity as the snapshot memo: fog only changes when the tick does.
-    const fog = fogGates.current();
-    return fog === null ? badges : badges.filter((b) => fogTileVisible(fog, b.x / ONE, b.y / ONE));
-  });
+  // Per-frame O(entities) projections memoized by snapshot identity: a frame that did not step reuses
+  // its HUD read-view and fog-filtered door badges instead of re-scanning every entity.
+  const { hudFor, doorBadgesFor } = createSnapshotProjections(buildingDoors, workerRoleOf, fogGates);
 
   // Hand the assembled world + HUD subsystems to the steady-state RAF loop (view/frame-loop.ts). The
   // mount above owns construction; the loop owns the pinned per-frame order.
@@ -386,6 +316,6 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     canPlaceAt,
     soundDriver,
     perf,
-    pointer: () => pointer,
+    pointer: pointerAt,
   });
 }

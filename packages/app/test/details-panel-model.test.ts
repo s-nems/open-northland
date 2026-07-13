@@ -11,7 +11,7 @@ import {
   GOOD_WHEAT,
   GOOD_WOOD,
   JOB_GATHERER_WOOD,
-} from '../src/game/sandbox/ids.js';
+} from '../src/game/sandbox/ids/index.js';
 import {
   barTone,
   buildUnitPanelModel,

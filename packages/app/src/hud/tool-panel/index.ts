@@ -259,7 +259,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         stats.toggle();
         break;
       default:
-        // mission / diplomacy / population / tech_tree / options — not wired in v1 (see plan).
+        // mission / diplomacy / population / tech_tree / options — not wired in v1.
         break;
     }
   };

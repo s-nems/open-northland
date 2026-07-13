@@ -27,7 +27,7 @@ import {
   WEAPON_SPEAR,
   WEAPON_SWORD,
   weaponEquipmentFor,
-} from '../../game/sandbox/ids.js';
+} from '../../game/sandbox/ids/index.js';
 
 /**
  * The DATA the admin/debug spawn palette offers — unit presets, resource entries and the player

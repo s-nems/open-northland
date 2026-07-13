@@ -1,4 +1,4 @@
-import { fullStateBlockAreaCells, type TerrainMapFile } from '@open-northland/data';
+import { fullStateBlockAreaCells, type LandscapeBlockArea, type TerrainMapFile } from '@open-northland/data';
 import { halfCellMapFromCells, type TerrainMap } from '@open-northland/sim';
 import {
   TERRAIN_BARREN,
@@ -62,8 +62,8 @@ export interface CollisionIrView {
   readonly landscapeGfx?:
     | readonly {
         readonly editName?: string | undefined;
-        readonly walkBlockAreas?: readonly (readonly number[])[] | undefined;
-        readonly buildBlockAreas?: readonly (readonly number[])[] | undefined;
+        readonly walkBlockAreas?: readonly LandscapeBlockArea[] | undefined;
+        readonly buildBlockAreas?: readonly LandscapeBlockArea[] | undefined;
       }[]
     | undefined;
 }

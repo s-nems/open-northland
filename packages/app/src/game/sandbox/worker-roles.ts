@@ -1,4 +1,4 @@
-import { EXTRACTED_GATHERER_TRADES, GATHERERS, JOB_CARRIER, rebaseSlotJob } from './ids.js';
+import { EXTRACTED_GATHERER_TRADES, GATHERERS, JOB_CARRIER, rebaseSlotJob } from './ids/index.js';
 
 /**
  * The three worker ROLES the badge colours and the right-click assignment priority distinguish — a

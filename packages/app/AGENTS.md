@@ -39,9 +39,10 @@ that matches its role instead of piling another method onto a growing file:
   atomic ids), `felling.ts`/`mining.ts` (gathering pins).
 - **`game/`** — the GLOBAL game content + rules shared by every mode: `rules.ts` (player/tribe constants
   — `HUMAN_PLAYER`, `ENEMY_PLAYER`, `PRIMARY_TRIBE`, `HUD_TRIBE`), `snapshot.ts` (typed snapshot readers
-  shared by the view controls and the HUD panels), and the `sandbox/` package — `ids.ts`
-  (semantic type ids + the `GATHERERS` table), `content.ts` (the one `sandboxContent()` `ContentSet`
-  assembler) and the per-concern tables it assembles from — `combat.ts` (weapons + swing timings),
+  shared by the view controls and the HUD panels), and the `sandbox/` package — `ids/`
+  (semantic type ids, grouped economy ids, weapons, buildings, and the `GATHERERS` table), `content/`
+  (the one `sandboxContent()` `ContentSet` assembler plus its catalog fragments) and the per-concern
+  tables it assembles from — `combat.ts` (weapons + swing timings),
   `work-animations.ts` (non-combat work-animation timings), `landscape.ts` (terrain/resource landscape
   derivation), `building-set.ts` (building store/recipe set), `worker-slots.ts` (the extracted
   worker/carrier slot table + its trade names) and `construction.ts` (the build-cost + hitpoint tables),
@@ -69,8 +70,10 @@ that matches its role instead of piling another method onto a growing file:
   `FrameLoopDeps` context), `camera.ts` (pure pan/zoom math + the DOM
   controller), `params.ts` (URL-param parsing), `picking.ts`,
   `overlay.ts` (shared panel + full-page chrome — `el`/`navButton`/`pageSection`/styles),
-  `game-tool-panel.ts`, `unit-controls.ts` + `settler-actions.ts` (RTS unit control; the selection
-  details panel itself lives in `hud/details-panel/`), `scene-overlay.ts`, `perf-overlay.ts`.
+  `game-tool-panel.ts`, `unit-controls/` (input controller + orders/marquee), `settler-actions.ts`,
+  `game-presentation.ts` (one-time game/HUD presentation mount), `snapshot-projections.ts`
+  (identity-memoized HUD projections; the selection details panel itself lives in
+  `hud/details-panel/`), `scene-overlay.ts`, `perf-overlay.ts`.
 - **`slice/`** — the demo scenario the live + shot entries share: `vertical-slice.ts` (`runSlice` /
   `runAuthoredSlice` over the global `game/` content), `map-loader.ts` (the decoded-map fetch),
   `authored-placements.ts` (the pure authored-entity join).

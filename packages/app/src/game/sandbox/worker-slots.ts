@@ -1,6 +1,6 @@
 import { professionLabel } from '../../i18n/index.js';
 import type { Messages } from '../../i18n/pl.js';
-import { JOB_CARRIER, rebaseSlotJob } from './ids.js';
+import { JOB_CARRIER, rebaseSlotJob } from './ids/index.js';
 
 /**
  * A building's worker slots with their job ids rebased ({@link rebaseSlotJob}), or undefined for a

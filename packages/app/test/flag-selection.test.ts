@@ -8,7 +8,7 @@ import { sandboxScene } from '../src/scenes/sandbox.js';
  * A gatherer's drop-off FLAG is a pure marker with no back-reference to its gatherer, so a click on a
  * flag resolves to the gatherer to select via {@link gathererByFlag} — the inverse of the WorkFlag edge.
  * This proves that inverse over the real sandbox scene, where every human gatherer is bound to its own
- * flag (the wiring the click handler in `view/unit-controls.ts` relies on).
+ * flag (the wiring the click handler in `view/unit-controls/` relies on).
  */
 describe('flag → gatherer resolution (selecting a gatherer by clicking its flag)', () => {
   it('maps every human gatherer flag back to its owning gatherer, 1:1', () => {

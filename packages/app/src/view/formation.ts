@@ -5,7 +5,7 @@ import type { Tile } from './picking.js';
  * Pure FORMATION assignment — turning one group move order (a clicked target node + the units' on-screen
  * feet anchors) into per-unit destination nodes that spread into the target's vicinity without the paths
  * crossing. No DOM, no Pixi, no sim: plain geometry over the half-cell node lattice, unit-tested headless
- * (see `packages/app/test/formation.test.ts`). The controller (`view/unit-controls.ts`) reads the mouse
+ * (see `packages/app/test/formation.test.ts`). The controller (`view/unit-controls/`) reads the mouse
  * and turns each {@link FormationOrder} into a `moveUnit` command; the picking inverse that produces the
  * clicked {@link Tile} lives beside this in `view/picking.ts`.
  */

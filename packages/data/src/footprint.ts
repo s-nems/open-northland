@@ -1,4 +1,4 @@
-import type { FootprintCell } from './schema/index.js';
+import type { FootprintCell, LandscapeBlockArea } from './schema/index.js';
 
 /**
  * Collapse a `[GfxLandscape]`-style block-area table (`[state, x, y, run]` rows — the shape
@@ -6,21 +6,17 @@ import type { FootprintCell } from './schema/index.js';
  * index is the fresh/full-grown object, and collision is conservatively static at that size (a
  * sapling reserves its grown tree's space). The ONE shared reading of the state axis — the sim's
  * resource footprints and the app's map-collision join both class by it, so the rule cannot drift
- * between them. Duplicate cells (overlapping run rows) are emitted once; malformed rows (missing
- * fields, non-positive run) contribute nothing.
- *
- * NOTE: the element stays the loose `readonly number[]` rather than the `LandscapeBlockArea` 4-tuple
- * because the app passes a deep-readonly IR whose tuple is widened to `readonly number[]`; tightening
- * this param would force an `as`-cast at that call site. See docs/tickets for the follow-up.
+ * between them. Duplicate cells (overlapping run rows) are emitted once; non-positive runs contribute
+ * nothing. The schema's four-element tuple makes missing fields unrepresentable.
  */
-export function fullStateBlockAreaCells(areas: readonly (readonly number[])[] | undefined): FootprintCell[] {
+export function fullStateBlockAreaCells(areas: readonly LandscapeBlockArea[] | undefined): FootprintCell[] {
   if (areas === undefined || areas.length === 0) return [];
   let fullState = 0;
-  for (const [state] of areas) if (state !== undefined && state > fullState) fullState = state;
+  for (const [state] of areas) if (state > fullState) fullState = state;
   const seen = new Set<string>();
   const out: FootprintCell[] = [];
   for (const [state, x, y, run] of areas) {
-    if (state !== fullState || x === undefined || y === undefined || run === undefined || run <= 0) {
+    if (state !== fullState || run <= 0) {
       continue;
     }
     for (let i = 0; i < run; i++) {

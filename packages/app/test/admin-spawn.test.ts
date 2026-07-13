@@ -21,7 +21,7 @@ import {
   WEAPON_FISTS,
   WEAPON_SWORD,
   weaponEquipmentFor,
-} from '../src/game/sandbox/ids.js';
+} from '../src/game/sandbox/ids/index.js';
 import { resourceCommand } from '../src/game/sandbox/place.js';
 import {
   ADMIN_DROP_AMOUNT,

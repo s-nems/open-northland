@@ -7,7 +7,7 @@ import {
   JOB_CARRIER,
   JOB_MILLER_SLOT,
   WORKER_SLOT_JOB_BASE,
-} from '../src/game/sandbox/ids.js';
+} from '../src/game/sandbox/ids/index.js';
 import { assignmentPriority, sandboxContent, workerRoleOf } from '../src/game/sandbox/index.js';
 import { professionLabel } from '../src/i18n/index.js';
 

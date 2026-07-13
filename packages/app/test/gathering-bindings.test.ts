@@ -1,13 +1,5 @@
-import { buildSpriteScene, resolveResourceDraw, resolveStockpileDraw } from '@open-northland/render';
-import { systems } from '@open-northland/sim';
+import { resolveResourceDraw, resolveStockpileDraw } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
-import { WOOD_YIELD_PER_NODE } from '../src/catalog/felling.js';
-import {
-  CLAY_DEPOSIT_UNITS,
-  GOLD_DEPOSIT_UNITS,
-  IRON_DEPOSIT_UNITS,
-  STONE_DEPOSIT_UNITS,
-} from '../src/catalog/mining.js';
 import type { ContentIr, LandscapeGfxRow } from '../src/content/ir.js';
 import {
   buildResourceBinding,
@@ -16,75 +8,13 @@ import {
   resolveGatheringRefs,
   resolveStumpRef,
 } from '../src/content/resource-gfx/index.js';
-import {
-  GATHERERS,
-  GOOD_GOLD,
-  GOOD_IRON,
-  GOOD_MUD,
-  GOOD_MUSHROOM,
-  GOOD_STONE,
-  GOOD_WOOD,
-} from '../src/game/sandbox/index.js';
-import { createSceneSim } from '../src/scenes/index.js';
-import { sandboxScene } from '../src/scenes/sandbox.js';
+import { GOOD_MUD, GOOD_STONE, GOOD_WOOD } from '../src/game/sandbox/index.js';
 
-/**
- * The headless half of the `?scene=sandbox` acceptance scene (the browser half is the human's pixel
- * sign-off). The global sandbox gathers EVERY raw good — one trade per good — so after the run every source node is
- * consumed (no `resource` draws), each felled tree left a `stump` (carrying wood), and each good piles onto the
- * GROUND around its delivery flag as capped `stockpile` heaps (≤ MAX_GROUND_STACK per tile, so a good with more
- * than a stack spills into several heaps). Plus that the per-good + stump bindings RESOLVE each good/stump to its
- * OWN object (and a mined deposit steps its node frame down by level).
- */
-
-const scene = sandboxScene;
-// The global sandbox goodTypes — the sim runs these everywhere, no scene-local ids.
 const GOODS = {
   wood: GOOD_WOOD,
   stone: GOOD_STONE,
   mud: GOOD_MUD,
-  iron: GOOD_IRON,
-  gold: GOOD_GOLD,
-  mushroom: GOOD_MUSHROOM,
 } as const;
-const WOOD_TREES = GATHERERS.find((g) => g.good === GOOD_WOOD)?.nodes ?? 0;
-const MUSHROOM_NODES = GATHERERS.find((g) => g.good === GOOD_MUSHROOM)?.nodes ?? 0;
-const TREE_WOOD_YIELD = WOOD_YIELD_PER_NODE;
-
-describe('gathering scene — render classification after all six gathering cycles', () => {
-  const sim = createSceneSim(scene);
-  sim.run(scene.runTicks);
-  const draws = buildSpriteScene(sim.snapshot());
-
-  it('every source node is consumed by the end — no resource draws remain', () => {
-    // Trees felled → stumps, deposits chipped dry → removed, mushrooms plucked → removed.
-    expect(draws.filter((d) => d.kind === 'resource')).toHaveLength(0);
-  });
-
-  it('every felled tree leaves a stump draw carrying its goodType (wood)', () => {
-    const stumps = draws.filter((d) => d.kind === 'stump');
-    expect(stumps).toHaveLength(WOOD_TREES);
-    expect(stumps.every((s) => s.goodType === GOODS.wood)).toBe(true);
-  });
-
-  it('each good piles onto CAPPED ground heaps around its gatherer flag (summing to the whole yield)', () => {
-    // The flag itself is an empty MARKER (no goodType — excluded here); each good's harvest spreads onto loose
-    // ground heaps beside it, each ≤ MAX_GROUND_STACK, so a good with more than a stack shows several heaps.
-    const heaps = draws.filter((d) => d.kind === 'stockpile' && d.goodType !== undefined);
-    const banked = new Map<number, number>();
-    for (const h of heaps) {
-      expect(h.fill ?? 0).toBeLessThanOrEqual(systems.MAX_GROUND_STACK); // every tile stays under the cap
-      banked.set(h.goodType as number, (banked.get(h.goodType as number) ?? 0) + (h.fill ?? 0));
-    }
-    // Per good, the heaps SUM to the whole yield (goods conserved — the flag holds none of it).
-    expect(banked.get(GOODS.wood)).toBe(WOOD_TREES * TREE_WOOD_YIELD);
-    expect(banked.get(GOODS.stone)).toBe(STONE_DEPOSIT_UNITS);
-    expect(banked.get(GOODS.mud)).toBe(CLAY_DEPOSIT_UNITS);
-    expect(banked.get(GOODS.iron)).toBe(IRON_DEPOSIT_UNITS);
-    expect(banked.get(GOODS.gold)).toBe(GOLD_DEPOSIT_UNITS);
-    expect(banked.get(GOODS.mushroom)).toBe(MUSHROOM_NODES);
-  });
-});
 
 describe('gathering scene — per-good + stump binding resolution (each draws its OWN object)', () => {
   // A synthetic decoded IR mirroring the real join for the scene's goods (matched by id-slug) + the

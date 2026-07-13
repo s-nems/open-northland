@@ -5,7 +5,7 @@
 Entirely un-started; the seam is explicitly reserved in code: `components/equipment.ts` ("wiring
 the two together … is the deferred 'equip drive'"), `components/combat.ts`, `readviews/classes/`.
 Barracks data is present: logictype 39 in `app/src/catalog/buildings.ts`, worker slots in
-`game/sandbox/content.ts`.
+`game/sandbox/content/`.
 
 **Source basis (extracted):** barracks logictype 39, maintype 4 LEARN, `logicSchoolSize 25`, stocks
 weapons 37–42 / armors 33–36 / coins 8 (houses.ini); weapon→class binding via weapons.ini

@@ -2,7 +2,7 @@ import { components, Simulation } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import type { ContentIr } from '../src/content/ir.js';
 import { harvestGoodByObjectName, mapResourceSpawns } from '../src/content/map-resources.js';
-import { sandboxContent } from '../src/game/sandbox/content.js';
+import { sandboxContent } from '../src/game/sandbox/content/index.js';
 import { spawnMapResources } from '../src/game/sandbox/map-spawn.js';
 
 /**

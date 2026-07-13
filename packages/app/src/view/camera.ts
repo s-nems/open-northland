@@ -163,7 +163,7 @@ export interface CameraController {
  * cursor, a wheel zoom anchors off the cursor, and a click picks the wrong tile. The `rect` is returned
  * so a handler can subtract the canvas origin in CSS px *before* scaling. Guards a zero-size
  * (unlaid-out) canvas. Shared by the camera controller and the selection controller
- * (`view/unit-controls.ts`).
+ * (`view/unit-controls/`).
  */
 export function screenScale(
   canvas: HTMLCanvasElement,
