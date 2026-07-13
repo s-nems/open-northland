@@ -14,7 +14,7 @@ session swaps them for observed values — the user runs the original (`../Cultu
 side by side and answers probes.
 
 **The unreadable set (why observation is the only source):** human base HP / stamina pool / sight
-radius / run speed; the XP→level curve and per-level bonuses; the exact role of `blockingValue`
+radius; the XP→level curve and per-level bonuses; the exact role of `blockingValue`
 and hit-vs-miss; heal/potion/amulet magnitudes; building hit-points; projectile and blood sprites;
 defence-mode cadence; the HP-bar visibility rule.
 
