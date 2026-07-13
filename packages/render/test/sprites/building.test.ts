@@ -1,15 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
-  type BuildingTypeBinding,
   bobKey,
-  type DrawItem,
   finishedBuildingBobKeys,
   resolveBuildingDraw,
   resolveBuildingOverlayDraw,
   resolveConstructionDraws,
   resolveSpriteBobId,
-  type SpriteBindings,
-} from '../../src/index.js';
+} from '../../src/data/sprites/index.js';
+import type { BuildingTypeBinding, DrawItem, SpriteBindings } from '../../src/index.js';
 import { drawItem } from '../support/fixtures.js';
 
 /**

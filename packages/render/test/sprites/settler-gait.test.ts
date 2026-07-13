@@ -1,13 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { SpriteState } from '../../src/data/scene/index.js';
-import {
-  type ByJobTable,
-  type DirectionalAnim,
-  type DrawItem,
-  pickByJob,
-  resolveSpriteBobId,
-  type SettlerStateBinding,
-  type SpriteBindings,
+import { pickByJob, resolveSpriteBobId } from '../../src/data/sprites/index.js';
+import type {
+  ByJobTable,
+  DirectionalAnim,
+  DrawItem,
+  SettlerStateBinding,
+  SpriteBindings,
 } from '../../src/index.js';
 import { drawItem } from '../support/fixtures.js';
 

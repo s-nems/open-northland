@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { indexAtlasFrames, resolveSpriteFrame } from '../../src/data/sprites/index.js';
 import {
   type AtlasManifest,
   atlasFromManifest,
-  indexAtlasFrames,
-  resolveSpriteFrame,
   type SpriteAtlas,
   type SpriteBindings,
 } from '../../src/index.js';

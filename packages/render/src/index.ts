@@ -10,7 +10,6 @@ export {
   type HudPlacement,
   type HudScreen,
   type HudTextRow,
-  IDLE_JOB,
   type JobCount,
   layoutHud,
   placeHud,
@@ -46,25 +45,16 @@ export {
   type BuildingOverlayRef,
   type BuildingTypeBinding,
   type ByJobTable,
-  bobKey,
   type CarryingBinding,
   type ConstructionLayerRef,
-  DEFAULT_FACING,
   type DirectionalAnim,
   type FrameListAnim,
-  finishedBuildingBobKeys,
   indexAtlasFrames,
   type LayeredBobRef,
   pickByJob,
   type ResourceTypeBinding,
-  resolveBuildingDraw,
-  resolveBuildingOverlayDraw,
-  resolveConstructionDraws,
   resolveResourceDraw,
-  resolveSpriteBobId,
-  resolveSpriteFrame,
   resolveStockpileDraw,
-  resolveStockpileLayerDraws,
   type SettlerStateBinding,
   type SpriteAtlas,
   type SpriteBindings,
@@ -86,7 +76,6 @@ export {
   AnimationGallery,
   clipDirs,
   GALLERY_DIRS,
-  type GalleryCellBox,
   type GalleryCellSpec,
   type GalleryClip,
   type GalleryDirection,
@@ -96,21 +85,16 @@ export type {
   DoorBadge,
   GeometryDebugCell,
   GeometryDebugItem,
+  HudFrame,
+  HudStyle,
   PlacementGhost,
   PlacementOverlayCell,
   PlacementOverlayFrame,
   PortraitInsetFrame,
 } from './gpu/overlays/index.js';
-export { DEFAULT_HUD_STYLE, type HudFrame, type HudStyle } from './gpu/overlays/index.js';
 export { type GuiColorKey, PalettedSprite } from './gpu/paletted-sprite.js';
 export { createPixiApp, createWindowPixiApp, loadAtlasSource } from './gpu/pixi-app.js';
-export {
-  type EntityBounds,
-  type MotionTrack,
-  reconcileSprites,
-  resolveLayers,
-  trackMotion,
-} from './gpu/sprite-pool/index.js';
+export { type EntityBounds, resolveLayers } from './gpu/sprite-pool/index.js';
 export type { ResolvedLayer } from './gpu/sprite-pool/resolve-layers.js';
 export type {
   SettlerCharacter,
@@ -126,8 +110,6 @@ export {
 } from './gpu/supersample.js';
 export {
   createSyntheticAtlasSource,
-  SYNTHETIC_ATLAS_HEIGHT,
-  SYNTHETIC_ATLAS_WIDTH,
   SYNTHETIC_BINDINGS,
   syntheticAtlasFrames,
 } from './gpu/synthetic-atlas.js';
