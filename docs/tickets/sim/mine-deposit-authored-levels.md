@@ -13,7 +13,7 @@ The component split is already done: `MineDeposit` carries both `initial` and `r
 
 ## Scope
 
-- In map spawn — `spawnMapResources` (`packages/app/src/game/sandbox/place.ts`, ~line 220), which
+- In map spawn — `spawnMapResources` (`packages/app/src/game/sandbox/map-spawn.ts`), which
   wraps `mapResourceSpawns` (`packages/app/src/content/map-resources.ts`) — map the authored
   `objects.levels` (schema `packages/data/src/schema/maps/terrain/layers.ts`) to the starting
   `remaining`, leaving `initial` at the authored full size.
