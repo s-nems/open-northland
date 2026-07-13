@@ -115,7 +115,7 @@ export type GfxPatternTransition = z.infer<typeof GfxPatternTransition>;
 
 /**
  * The **approximated** per-landscape-typeId ground binding — the typeId→pattern map the terrain renderer
- * consumes (historical plan phase 2, step 2). Every map cell carries a {@link LandscapeType.typeId} (1-based, the
+ * consumes. Every map cell carries a {@link LandscapeType.typeId} (1-based, the
  * `lmlt` per-cell value), but those types are mostly OBJECTS (void/tree/rock/iron/wheat…), not ground
  * classes. This table approximates each typeId's GROUND by a coarse **family** — its `id` slug naming
  * water → `water`, `rock`/`stone` → `mountain`, everything else (incl. tree/bush/wood, whose ground is

@@ -182,14 +182,14 @@ export const GoodType = z.strictObject({
    * Input goods (+ per-cycle amounts) consumed to produce THIS good — the input side of the goods
    * graph, from `goodtypes` `productionInputGoods`. Empty for a raw/harvested good (no recipe). This
    * is the source the building `recipe` inputs are filled from (the workplace's `produces` output good
-   * names the output; this good's `productionInputs` names what that cycle consumes). See historical plan phase 3.
+   * names the output; this good's `productionInputs` names what that cycle consumes).
    */
   productionInputs: z.array(ProductionInput).default([]),
   /**
    * The good's node layer in the goods graph, from the `[goodtype]` boolean flags — distinguishes a
    * raw (map-gathered) good from a produced (in-house) one, and marks which goods are recipe inputs.
    * The {@link productionInputs} edges plus these layers are the explicit goods-graph IR. See
-   * {@link GoodClassification} and historical plan phase 3.
+   * {@link GoodClassification}.
    */
   classification: GoodClassification.prefault({}),
   /**
