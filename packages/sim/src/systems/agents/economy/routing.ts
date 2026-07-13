@@ -9,11 +9,11 @@ import {
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
-import { farmWorkGood } from '../../economy/farming.js';
 import { manhattan } from '../../spatial.js';
 import { buildingProduces, recipeOf, stockCapacity } from '../../stores/index.js';
+import type { PlannerContext } from '../planner-context.js';
 import { boundWorkplaceTarget, closer, interactionCell, nearestStoreFor } from '../targets/index.js';
-import { hasRoom, isFieldWorkerOf, isStorageSink } from './store-policy.js';
+import { hasRoom, isFarmCarrierHaulOutRole, isStorageSink } from './store-policy.js';
 
 /**
  * The store a settler carrying `goodType` should deliver it to — the routing that lets a fetched input
@@ -36,18 +36,10 @@ import { hasRoom, isFieldWorkerOf, isStorageSink } from './store-policy.js';
  *  5. Else → the nearest store that can stock the good ({@link nearestStoreFor}) — the unchanged default
  *     for an unbound hauler (so the vertical-slice woodcutter/carrier route exactly as before).
  */
-export function deliveryTargetFor(
-  candidates: readonly Entity[],
-  sites: readonly Entity[],
-  world: World,
-  ctx: SystemContext,
-  terrain: TerrainGraph,
-  here: NodeId,
-  settler: Entity,
-  jobType: number,
-  tribe: number,
-  goodType: number,
-): Entity | null {
+export function deliveryTargetFor(plan: PlannerContext, goodType: number): Entity | null {
+  const { world, ctx, terrain, here, entity: settler, jobType, tribe, targets } = plan;
+  const candidates = targets.stockpiles;
+  const sites = targets.constructionSites;
   // 1. A fetched input goes to the bound workshop that consumes it.
   const workplace = boundWorkplaceTarget(world, ctx, settler, jobType, tribe);
   if (workplace !== null) {
@@ -78,10 +70,8 @@ export function deliveryTargetFor(
   const home = binding?.workplace;
   if (
     home !== undefined &&
-    world.tryGet(home, Building)?.tribe === tribe &&
-    farmWorkGood(world, ctx, home) !== null &&
-    buildingProduces(world, ctx, home).includes(goodType) &&
-    !isFieldWorkerOf(world, ctx, home, jobType)
+    isFarmCarrierHaulOutRole(world, ctx, home, jobType, tribe) &&
+    buildingProduces(world, ctx, home).includes(goodType)
   ) {
     return nearestStoreFor(candidates, world, ctx, terrain, here, goodType, true);
   }

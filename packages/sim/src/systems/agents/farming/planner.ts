@@ -19,7 +19,7 @@ import { manhattan } from '../../spatial.js';
 import { buildingWorkerJobs } from '../../stores/index.js';
 import { atOrWalk, startAtomic, startPickup } from '../actions.js';
 import type { PlannerContext } from '../planner-context.js';
-import { interactionCell, jobAtomics } from '../targets/index.js';
+import { closer, interactionCell, jobAtomics } from '../targets/index.js';
 
 // The FARMER drive — the field-cultivation rung of the planner ladder: a worker bound to a FARM (a
 // workplace producing a field-farmed good, `farmWorkGood`) walks its farm's surroundings sowing,
@@ -165,13 +165,13 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
     if (claims.nodes.has(cell)) continue; // a colleague is already on this field
     const dist = manhattan(terrain, here, cell);
     if (crop.stage >= crop.stages) {
-      if (dist < ripeDist || (dist === ripeDist && cell < ripeCell)) {
+      if (closer(dist, cell, ripeDist, ripeCell)) {
         ripe = c;
         ripeDist = dist;
         ripeCell = cell;
       }
     } else if (!crop.watered) {
-      if (dist < thirstyDist || (dist === thirstyDist && cell < thirstyCell)) {
+      if (closer(dist, cell, thirstyDist, thirstyCell)) {
         thirsty = c;
         thirstyDist = dist;
         thirstyCell = cell;
