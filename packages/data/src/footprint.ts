@@ -8,6 +8,10 @@ import type { FootprintCell } from './schema/index.js';
  * resource footprints and the app's map-collision join both class by it, so the rule cannot drift
  * between them. Duplicate cells (overlapping run rows) are emitted once; malformed rows (missing
  * fields, non-positive run) contribute nothing.
+ *
+ * NOTE: the element stays the loose `readonly number[]` rather than the `LandscapeBlockArea` 4-tuple
+ * because the app passes a deep-readonly IR whose tuple is widened to `readonly number[]`; tightening
+ * this param would force an `as`-cast at that call site. See docs/tickets for the follow-up.
  */
 export function fullStateBlockAreaCells(areas: readonly (readonly number[])[] | undefined): FootprintCell[] {
   if (areas === undefined || areas.length === 0) return [];
