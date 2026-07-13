@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { packIndexedBobAtlas } from '../decoders/atlas.js';
 import { decodeBmd } from '../decoders/bmd/index.js';
-import type { BmdPaletteBinding } from '../decoders/ini.js';
+import { type BmdPaletteBinding, normalizeAssetPath } from '../decoders/ini.js';
 import { decodePcx } from '../decoders/pcx.js';
 import {
   buildPlayerLutImage,
@@ -48,7 +48,7 @@ async function readCreaturePalette(
   tree: ReadonlyMap<string, string>,
   file: string,
 ): Promise<Uint8Array> {
-  const key = join(CREATURES_DIR, file).replace(/\\/g, '/').toLowerCase();
+  const key = normalizeAssetPath(join(CREATURES_DIR, file));
   const onDisk = tree.get(key);
   if (onDisk === undefined) throw new Error(`player-colors: ${file} not found under out`);
   const pal = decodePcx(await readFile(join(outDir, onDisk))).palette;
