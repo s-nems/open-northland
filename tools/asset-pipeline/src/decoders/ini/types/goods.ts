@@ -6,7 +6,7 @@ import {
   type GoodClassification,
   type GoodGathering,
   GoodType,
-  LandscapeType,
+  type LandscapeType,
 } from '@vinland/data';
 import {
   getInt,

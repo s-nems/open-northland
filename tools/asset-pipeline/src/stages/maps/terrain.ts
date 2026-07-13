@@ -271,47 +271,24 @@ export function mapDatToTerrain(bytes: Uint8Array): MapDatTerrainFile {
   const terrain = lmltToTerrainMap(unpackMapLayer(lmlt), size);
   // The render layers are OPTIONAL enrichments: a corrupt lane degrades to a grid-only artifact
   // (warn + omit) rather than skipping the whole map — the sim nav grid emitted fine before these
-  // lanes existed and must keep doing so.
-  let ground: MapDatTerrainFile['ground'];
-  try {
-    ground = groundFromMapDat(map, size);
-  } catch (err) {
-    console.warn(
-      `[pipeline] map ground lanes unreadable, emitting grid without them: ${(err as Error).message}`,
-    );
-  }
-  let transitions: MapDatTerrainFile['transitions'];
-  try {
-    transitions = transitionsFromMapDat(map, size);
-  } catch (err) {
-    console.warn(
-      `[pipeline] map transition lanes unreadable, emitting grid without them: ${(err as Error).message}`,
-    );
-  }
-  let objects: MapDatTerrainFile['objects'];
-  try {
-    objects = objectsFromMapDat(map, size);
-  } catch (err) {
-    console.warn(
-      `[pipeline] map object lanes unreadable, emitting grid without them: ${(err as Error).message}`,
-    );
-  }
-  let elevation: MapDatTerrainFile['elevation'];
-  try {
-    elevation = elevationFromMapDat(map, size);
-  } catch (err) {
-    console.warn(
-      `[pipeline] map elevation lane unreadable, emitting grid without it: ${(err as Error).message}`,
-    );
-  }
-  let brightness: MapDatTerrainFile['brightness'];
-  try {
-    brightness = brightnessFromMapDat(map, size);
-  } catch (err) {
-    console.warn(
-      `[pipeline] map brightness lane unreadable, emitting grid without it: ${(err as Error).message}`,
-    );
-  }
+  // lanes existed and must keep doing so. `noun`/`plural` name the failed lane(s) in the shared warning.
+  const tryLayer = <T>(noun: string, plural: boolean, build: () => T): T | undefined => {
+    try {
+      return build();
+    } catch (err) {
+      const lanes = plural ? 'lanes' : 'lane';
+      const pronoun = plural ? 'them' : 'it';
+      console.warn(
+        `[pipeline] map ${noun} ${lanes} unreadable, emitting grid without ${pronoun}: ${(err as Error).message}`,
+      );
+      return undefined;
+    }
+  };
+  const ground = tryLayer('ground', true, () => groundFromMapDat(map, size));
+  const transitions = tryLayer('transition', true, () => transitionsFromMapDat(map, size));
+  const objects = tryLayer('object', true, () => objectsFromMapDat(map, size));
+  const elevation = tryLayer('elevation', false, () => elevationFromMapDat(map, size));
+  const brightness = tryLayer('brightness', false, () => brightnessFromMapDat(map, size));
   return {
     ...terrain,
     ...(ground !== undefined ? { ground } : {}),
