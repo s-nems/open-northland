@@ -15,7 +15,7 @@ import {
   convertGuiStage,
   convertGuiStrings,
   liftPaletteShadows,
-} from '../src/stages/gui.js';
+} from '../src/stages/gui/index.js';
 
 /**
  * GUI stage tests. No copyrighted fixtures: we synthesize the HUD sources (a `.bmd` bob sheet, palette
