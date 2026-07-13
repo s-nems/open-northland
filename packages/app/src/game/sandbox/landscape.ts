@@ -5,12 +5,12 @@ import {
   TERRAIN_MARGIN,
   TERRAIN_OPEN,
 } from '../../catalog/terrain.js';
-import { GATHERERS, type GathererSpec, GOOD_MUD } from './ids.js';
+import { GATHERERS, type GathererSpec, GOOD_MUD } from './ids/index.js';
 
 /**
  * The sandbox terrain + gathering-resource landscape derivation — the semantic terrain classes, the
  * per-gatherer harvest-node landscape/gfx rows, and their block/work areas. The global
- * {@link import('./content.js').sandboxContent} set assembles `landscape`/`landscapeGfx`/
+ * {@link import('./content/index.js').sandboxContent} set assembles `landscape`/`landscapeGfx`/
  * `gatheringPipeline` from the builders here; `sandboxWalkableTypeIds` is the placement gate's read
  * of the same derivation.
  */

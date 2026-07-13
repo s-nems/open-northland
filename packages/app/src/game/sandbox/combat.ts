@@ -14,11 +14,11 @@ import {
   WEAPON_SHORT_BOW,
   WEAPON_SPEAR,
   WEAPON_SWORD,
-} from './ids.js';
+} from './ids/index.js';
 
 /**
  * The sandbox combat content — the weapon swing timings, damages, and the {@link sandboxWeapons} table
- * the global {@link import('./content.js').sandboxContent} set assembles from. Swing lengths + hit frames
+ * the global {@link import('./content/index.js').sandboxContent} set assembles from. Swing lengths + hit frames
  * are TRANSCRIBED from the extracted viking `atomicanimations.ini` records; damages are on the sandbox's
  * own synthetic scale (see the per-constant notes).
  */

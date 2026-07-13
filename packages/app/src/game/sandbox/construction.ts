@@ -1,5 +1,5 @@
 import { HOME_KIND, type VikingBuilding } from '../../catalog/buildings.js';
-import { BUILDING_HOME_00, GOOD_STONE, GOOD_WOOD } from './ids.js';
+import { BUILDING_HOME_00, GOOD_STONE, GOOD_WOOD } from './ids/index.js';
 
 /**
  * GLOBAL construction data — every building is raised the original way: the player places a foundation

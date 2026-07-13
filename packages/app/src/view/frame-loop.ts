@@ -11,7 +11,7 @@ import type { GeometryDebugOverlay } from './geometry-debug-items.js';
 import type { GroundPileTooltip } from './ground-pile-tooltip.js';
 import type { PerfOverlayHandle } from './perf-overlay.js';
 import type { makeOverlayFrameSource } from './placement-overlay.js';
-import type { UnitControls } from './unit-controls.js';
+import type { UnitControls } from './unit-controls/index.js';
 
 /**
  * Everything the per-frame loop reads — assembled once by {@link import('./game-view.js').startGameView}

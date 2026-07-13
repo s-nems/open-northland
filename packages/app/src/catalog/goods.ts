@@ -1,7 +1,7 @@
 /**
  * The committed catalog of the EXTENDED goods — every tradeable ware in the original economy BEYOND the
  * six gathered goods + coin the sandbox already wires end-to-end (wood/stone/mud/iron/gold/mushroom have
- * harvest atomics and a gathering pipeline; those live in `game/sandbox/ids.ts` + `content.ts`, since they
+ * harvest atomics and a gathering pipeline; those live in `game/sandbox/ids/` + `content/`, since they
  * carry behaviour). This table adds the rest of the `goodtypes.ini` catalog — food, drink, building
  * materials, tools, crafted wares, weapons, armor, potions, amulets, and the animal/vehicle/special tokens
  * — so EVERY good the original defines exists in the one global content set: it has an id, a name, and (for
@@ -13,7 +13,7 @@
  * palette the pipeline bound), so no typeId needs to match for art to appear.
  *
  * The `typeId` is SANDBOX-SCOPED, not the ir.json typeId: it is `EXTENDED_GOOD_TYPE_OFFSET + irTypeId`,
- * offset so the block clears the core economy ids 0–8 (`GOOD_NONE`..`GOOD_MUSHROOM` in `sandbox/ids.ts`)
+ * offset so the block clears the core economy ids 0–8 (`GOOD_NONE`..`GOOD_MUSHROOM` in `sandbox/ids/`)
  * without renumbering them (which would move the gathered-economy goldens). Subtracting the offset recovers
  * the ir typeId. Goods are their own typeId namespace (the `goodType` key in stockpiles/recipes/drops), so
  * this block collides with no building/job/weapon id.

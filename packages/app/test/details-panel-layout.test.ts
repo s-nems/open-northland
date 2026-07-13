@@ -1,6 +1,6 @@
 import { ONE } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { BUILDING_FARM, BUILDING_HEADQUARTERS, BUILDING_HOME_00 } from '../src/game/sandbox/ids.js';
+import { BUILDING_FARM, BUILDING_HEADQUARTERS, BUILDING_HOME_00 } from '../src/game/sandbox/ids/index.js';
 import { buildUnitPanelModel, type StockRow, type UnitPanelModel } from '../src/hud/details-panel/index.js';
 import { layoutDetails, MAX_STOCK_ROWS, stockSlotRects } from '../src/hud/details-panel/layout/index.js';
 import { defaultStockTab } from '../src/hud/details-panel/panel.js';

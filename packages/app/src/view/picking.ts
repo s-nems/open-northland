@@ -10,7 +10,7 @@ import {
  * Pure PICKING math — the screen→world→node inverse of the render projection, plus the point/box
  * hit-tests the selection controller runs over the on-screen units. No DOM, no Pixi, no sim: plain
  * geometry, so it is unit-tested headless (see `packages/app/test/picking.test.ts`) exactly like the
- * render-side `viewport.ts` cull math. The controller (`view/unit-controls.ts`) is the impure half that
+ * render-side `viewport.ts` cull math. The controller (`view/unit-controls/`) is the impure half that
  * reads the mouse and calls these.
  *
  * Three coordinate spaces (mirroring `render`): screen/canvas px → WORLD px (pre-camera, what

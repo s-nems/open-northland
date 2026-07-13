@@ -2,6 +2,7 @@ import type {
   BuildingFootprint,
   GfxPattern,
   GfxPatternTransition,
+  LandscapeBlockArea,
   SoundBank,
   TerrainPattern,
   TrianglePatternType,
@@ -119,9 +120,9 @@ export interface LandscapeGfxRow {
   /** `GfxLoopAnimation` — the state's frame list loops continuously (waves, fire, smoke). */
   readonly loopAnimation?: boolean;
   /** Repeated `LogicWalkBlockArea` lines — a non-empty footprint marks a depth-sorted (non-decor) object. */
-  readonly walkBlockAreas?: readonly (readonly number[])[];
+  readonly walkBlockAreas?: readonly LandscapeBlockArea[];
   /** Repeated `LogicBuildBlockArea` lines — the object's build-exclusion ring (the collision mask reads it). */
-  readonly buildBlockAreas?: readonly (readonly number[])[];
+  readonly buildBlockAreas?: readonly LandscapeBlockArea[];
 }
 
 /** One resolved gathering-pipeline stage (a landscape type + the `landscapeGfx` records that place it). */

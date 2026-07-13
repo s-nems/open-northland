@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { isSoldierJob, PROFESSIONS, pickerEntries, professionDefForJob } from '../src/catalog/professions.js';
-import { JOB_IDLE, JOB_SOLDIER, JOB_SOLDIER_SWORD } from '../src/game/sandbox/ids.js';
+import { JOB_IDLE, JOB_SOLDIER, JOB_SOLDIER_SWORD } from '../src/game/sandbox/ids/index.js';
 import { sandboxContent } from '../src/game/sandbox/index.js';
 import { professionLabel } from '../src/i18n/index.js';
 

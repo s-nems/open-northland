@@ -76,7 +76,7 @@ function stockedGoodAt(world: World, entity: Entity): number | null {
  * The cell a collector should stand on to work a resource. A walkable deposit whose work area
  * includes its own anchor node is worked standing ON the deposit — the OBSERVED original clay
  * digger squarely on its pit. Today that anchor-listing comes from the sandbox's invented work
- * areas (`game/sandbox/content.ts`), NOT the real clay records: those list the anchor only in
+ * areas (`game/sandbox/content/`), NOT the real clay records: those list the anchor only in
  * their partial states, and the sim collapses `workAreas` to the FULL state
  * (`fullStateBlockAreaCells`), whose rows exclude `(0,0)` — so if real records ever feed this,
  * the digger silently reverts to an adjacent stance unless that collapse is revisited. A blocking

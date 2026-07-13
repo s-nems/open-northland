@@ -7,12 +7,12 @@ before executing.
 
 **Decide before coding (user decision):** the codebase converged on a deliberate hybrid — real
 extracted footprints/names overlaid ONTO the sandbox base via `SandboxContentExtras`
-(`game/sandbox/content.ts`), fabricated ids kept, the id unification labeled "deferred". The
+(`game/sandbox/content/`), fabricated ids kept, the id unification labeled "deferred". The
 retired plan's thesis was the opposite: real ir.json as the base with a balance overlay ("a re-key
 + balance overlay, not a swap"). Whether to flip the base or keep the hybrid forever is a live
 architectural fork recorded only here — confirm with the user, then execute.
 
-**Source basis (pinned id migration recipe):** sandbox fabricated ids (`game/sandbox/ids.ts`:
+**Source basis (pinned id migration recipe):** sandbox fabricated ids (`game/sandbox/ids/`:
 `WOOD=1, PLANK=2, COIN=3, STONE=4, MUD=5, IRON=6, GOLD=7, MUSHROOM=8`) vs real engine numbering
 (verified in `content/ir.json`: `water=1, mud=2, stone=3, wheat=4, wood=5, iron=6, gold=7, coin=8,
 … mushroom=14`). Map: `WOOD→5, STONE→3, MUD→2, IRON→6, GOLD→7, MUSHROOM→14, COIN→8`; jobs

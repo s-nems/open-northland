@@ -7,7 +7,7 @@ import {
   JOB_GATHERER_STONE,
   JOB_GATHERER_WOOD,
   JOB_SOLDIER,
-} from '../game/sandbox/ids.js';
+} from '../game/sandbox/ids/index.js';
 import { categoryLabel, type Locale, professionLabel } from '../i18n/index.js';
 import type { Messages } from '../i18n/pl.js';
 
@@ -29,7 +29,7 @@ import type { Messages } from '../i18n/pl.js';
  *    can actually harvest with those today), and the sea trades need a harbour/ship the sandbox lacks.
  *
  * jobType numbering: the six gatherers, the carrier, and the soldier use the sandbox's live job ids
- * (`game/sandbox/ids.ts`); the added production trades use their REAL `jobtypes.ini` ids where the
+ * (`game/sandbox/ids/`); the added production trades use their REAL `jobtypes.ini` ids where the
  * sandbox's synthetic gatherer band (20..25) does not shadow them, and a placeholder id
  * ({@link SHADOWED_TRADE_BASE}) for the four trades whose real ids that band occupies. Every id is a
  * placeholder until the global-content re-key (`docs/tickets/app/real-content-rekey.md`) runs the sim

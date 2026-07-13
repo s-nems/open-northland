@@ -5,7 +5,7 @@
 
 Six app test files still assert fabricated sandbox ids: `details-panel-model.test.ts` and
 `details-panel-layout.test.ts` (the 2026-07-13 split of `details-panel.test.ts`) plus
-`gathering-render.test.ts` import from `game/sandbox/ids.ts`;
+`gathering-bindings.test.ts` and `gathering-scene-render.test.ts` import from `game/sandbox/ids/`;
 `vertical-slice.test.ts`, `resource-gfx.test.ts`, `scenes.test.ts` build on sandbox content.
 
 Sim-package goldens are built from `packages/sim/test/fixtures/content.ts` (`testContent()`), never

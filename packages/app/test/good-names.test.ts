@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { resolveGoodNameMap } from '../src/content/good-names.js';
-import { GOOD_GOLD, GOOD_WOOD } from '../src/game/sandbox/ids.js';
+import { GOOD_GOLD, GOOD_WOOD } from '../src/game/sandbox/ids/index.js';
 import { sandboxContent } from '../src/game/sandbox/index.js';
 
 /**

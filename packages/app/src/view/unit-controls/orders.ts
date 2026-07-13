@@ -1,0 +1,124 @@
+import { type ContentSet, indexById } from '@open-northland/data';
+import type { ElevationField } from '@open-northland/render';
+import { type Command, type Entity, nodeOfPosition, type WorldSnapshot } from '@open-northland/sim';
+import { assignmentPriority } from '../../game/sandbox/index.js';
+import { buildingTypeOf, entityById, isBuilding, isSettler, positionOf } from '../../game/snapshot.js';
+import { assignFormation, type FormationUnit } from '../formation.js';
+import { clampTile, nodeBounds, type Pickable, pickTopAt, worldToTile } from '../picking.js';
+import type { UnitTargets } from '../unit-targets.js';
+
+export interface UnitOrderDeps {
+  readonly selected: ReadonlySet<number>;
+  readonly targets: UnitTargets;
+  readonly snapshot: () => WorldSnapshot;
+  readonly content: ContentSet;
+  readonly mapSize: { readonly width: number; readonly height: number };
+  readonly elevation?: ElevationField;
+  readonly toWorld: (clientX: number, clientY: number) => { x: number; y: number };
+  readonly enqueue: (command: Command) => void;
+  readonly selectOwnSettler: (id: number) => void;
+  readonly openActions: () => void;
+}
+
+export interface UnitOrderController {
+  issueRightClick(event: MouseEvent): void;
+  issueSetWorkFlag(event: MouseEvent): void;
+}
+
+/** Route right-click RTS intent into the one-way sim command seam. */
+export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderController {
+  const buildingsByType = indexById(deps.content.buildings);
+
+  const occupiedTiles = (exclude: ReadonlySet<number>): ((col: number, row: number) => boolean) => {
+    const occupied = new Set<string>();
+    for (const entity of deps.snapshot().entities) {
+      if (exclude.has(entity.id)) continue;
+      if (!isSettler(entity) && !isBuilding(entity)) continue;
+      const position = positionOf(entity);
+      if (position === undefined) continue;
+      const node = nodeOfPosition(position.x, position.y);
+      occupied.add(`${node.hx},${node.hy}`);
+    }
+    return (col, row) => occupied.has(`${col},${row}`);
+  };
+
+  const issueMoveOrder = (event: MouseEvent, ownSettlers: readonly Pickable[]): void => {
+    if (deps.selected.size === 0) return;
+    const movers: FormationUnit[] = ownSettlers.filter((target) => deps.selected.has(target.ref));
+    if (movers.length === 0) return;
+    const { width, height } = nodeBounds(deps.mapSize);
+    const world = deps.toWorld(event.clientX, event.clientY);
+    const target = clampTile(worldToTile(world.x, world.y, deps.elevation), width, height);
+    const blocked = occupiedTiles(deps.selected);
+    for (const order of assignFormation(movers, target, width, height, blocked)) {
+      deps.enqueue({
+        kind: 'moveUnit',
+        entity: order.ref as Entity,
+        x: order.tile.col,
+        y: order.tile.row,
+      });
+    }
+  };
+
+  const issueRightClick = (event: MouseEvent): void => {
+    const world = deps.toWorld(event.clientX, event.clientY);
+    const ownSettlers = deps.targets.owned('settler');
+    const own = pickTopAt(ownSettlers, world.x, world.y);
+    if (own !== null) {
+      deps.selectOwnSettler(own);
+      deps.openActions();
+      return;
+    }
+    if (deps.selected.size === 0) return;
+    const enemy = pickTopAt(deps.targets.enemies(), world.x, world.y);
+    if (enemy !== null) {
+      for (const target of ownSettlers) {
+        if (deps.selected.has(target.ref)) {
+          deps.enqueue({ kind: 'attackUnit', entity: target.ref as Entity, target: enemy as Entity });
+        }
+      }
+      return;
+    }
+    const building = pickTopAt(deps.targets.owned('building'), world.x, world.y);
+    if (building !== null) {
+      const entity = entityById(deps.snapshot(), building);
+      const type = entity !== undefined ? buildingTypeOf(entity) : undefined;
+      const jobPriority = assignmentPriority(
+        type !== undefined ? buildingsByType.get(type)?.workers : undefined,
+      );
+      if (jobPriority.length > 0) {
+        for (const target of ownSettlers) {
+          if (deps.selected.has(target.ref)) {
+            deps.enqueue({
+              kind: 'assignWorker',
+              entity: target.ref as Entity,
+              building: building as Entity,
+              jobPriority,
+            });
+          }
+        }
+      }
+      return;
+    }
+    issueMoveOrder(event, ownSettlers);
+  };
+
+  const issueSetWorkFlag = (event: MouseEvent): void => {
+    if (deps.selected.size === 0) return;
+    const movers = deps.targets.owned('settler').filter((target) => deps.selected.has(target.ref));
+    if (movers.length === 0) return;
+    const { width, height } = nodeBounds(deps.mapSize);
+    const world = deps.toWorld(event.clientX, event.clientY);
+    const target = clampTile(worldToTile(world.x, world.y, deps.elevation), width, height);
+    for (const mover of movers) {
+      deps.enqueue({
+        kind: 'setWorkFlag',
+        entity: mover.ref as Entity,
+        x: target.col,
+        y: target.row,
+      });
+    }
+  };
+
+  return { issueRightClick, issueSetWorkFlag };
+}

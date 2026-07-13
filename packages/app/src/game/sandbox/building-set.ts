@@ -3,7 +3,7 @@ import { VIKING_BUILDINGS, type VikingBuilding } from '../../catalog/buildings.j
 import { approximateFootprint } from '../../catalog/footprints.js';
 import { STORABLE_EXTENDED_GOODS } from '../../catalog/goods.js';
 import { buildingConstructionCost, buildingHitpoints } from './construction.js';
-import type { SandboxContentExtras } from './content.js';
+import type { SandboxContentExtras } from './content/types.js';
 import {
   BUILDING_FARM,
   BUILDING_HEADQUARTERS,
@@ -23,12 +23,12 @@ import {
   GOOD_WHEAT,
   GOOD_WOOD,
   JOB_GATHERER_WOOD,
-} from './ids.js';
+} from './ids/index.js';
 import { workerSlotsFor } from './worker-slots.js';
 
 /**
  * The sandbox BUILDING SET — the per-building store slots, capacities, recipes, and worker overrides
- * the global {@link import('./content.js').sandboxContent} set assembles its `buildings` field from
+ * the global {@link import('./content/index.js').sandboxContent} set assembles its `buildings` field from
  * ({@link buildSandboxBuildings}). The clean-room catalog stays pinned to ir.json; the stock/recipe
  * pins here are sandbox balance, not extracted data (see the per-table notes).
  */

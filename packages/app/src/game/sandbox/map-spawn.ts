@@ -6,7 +6,7 @@ import {
   mapResourceSpawns,
   simResourceObjectNames,
 } from '../../content/map-resources.js';
-import { GATHERERS, type GathererSpec } from './ids.js';
+import { GATHERERS, type GathererSpec } from './ids/index.js';
 import { resourceSpecFor } from './place.js';
 
 /**
