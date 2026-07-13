@@ -61,7 +61,7 @@ import {
   resolveBerryBushRefs,
   resolveGatheringRefs,
   resolveStumpRef,
-} from './resource-gfx.js';
+} from './resource-gfx/index.js';
 import {
   ADULT_CHARACTER_BY_JOB,
   buildHumanBindings,

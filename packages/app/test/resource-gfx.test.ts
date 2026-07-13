@@ -11,7 +11,7 @@ import {
   pileFillBobs,
   resolveGatheringRefs,
   servedStem,
-} from '../src/content/resource-gfx.js';
+} from '../src/content/resource-gfx/index.js';
 import type { GoodRef } from '../src/content/settler-gfx/index.js';
 
 /**

@@ -1,51 +1,29 @@
-import type { LayeredBobRef, ResourceTypeBinding, StockpileBinding } from '@vinland/render';
-import { TREE_ATLAS, TREE_BOB } from './building-gfx.js';
-import { GENERIC_GOOD_ICON, type GoodIconMap } from './goods-gfx.js';
-import type { ContentIr, GatheringPipelineRow, GatheringStageRow, LandscapeGfxRow } from './ir.js';
-import { BUSH_WITH_FRUITS_LOGIC_TYPE } from './map-resources.js';
-import type { GoodRef } from './settler-gfx/index.js';
+import type { LayeredBobRef } from '@vinland/render';
+import { TREE_ATLAS } from '../building-gfx.js';
+import { GENERIC_GOOD_ICON, type GoodIconMap } from '../goods-gfx.js';
+import type { ContentIr, GatheringPipelineRow, GatheringStageRow, LandscapeGfxRow } from '../ir.js';
+import type { GoodRef } from '../settler-gfx/index.js';
 
-/** The `ls_goods.bmd` served-atlas stem prefix — a good's recoloured pile atlas is `ls_goods.<palette>`
- *  (the pipeline's per-palette variant), so the goods-manifest `{frame, palette}` maps straight to a
- *  {@link GatheringPileRef} whose stem is `${GOODS_PILE_BMD_STEM}.${palette}`. */
+/**
+ * The gathering-economy draw RESOLUTION: reduce the Step-1 `gatheringPipeline` join (good → its
+ * `landscapeTo{Harvest,Pickup,Store}` stage → the `[GfxLandscape]` records that place it) to the per-good
+ * {@link GatheringRefs} the renderer bindings consume — independent of which atlases actually loaded. The
+ * bindings themselves live in `./bindings.ts`; the stump + berry-bush resource kinds in `./stump.ts` /
+ * `./berry-bush.ts`. The pure reducers here are unit-tested without a browser.
+ */
+
+/** The `ls_goods` served-atlas stem prefix — a good's recoloured pile atlas is `ls_goods.<palette>`. */
 const GOODS_PILE_BMD_STEM = 'ls_goods';
 
 /**
- * The gathering-economy render binding: reduce the Step-1 `gatheringPipeline` join (good → its
- * `landscapeTo{Harvest,Store}` stage → the `[GfxLandscape]` records that place it) to the renderer's
- * per-good {@link ResourceTypeBinding} (standing resource nodes) + {@link StockpileBinding} (dropped
- * ground piles + a delivery flag). Each good's node draws ITS own decoded object — a tree for wood, a
- * rock for stone, a mine decal for iron/gold/clay, a mushroom — and each pile draws that good's own
- * `ls_goods` heap growing with its contents, replacing the one hardcoded yew bob every resource used to
- * draw (the "Resource nodes by goodType" + "Loose ground piles + flags rendering" slices).
- *
- * The join is keyed by the good's id-SLUG, not its typeId: the render binds against the REAL decoded
- * `content/ir.json` (the tree/mine/pile atlases), while the sim runs a scene/slice's OWN content whose
- * goodType NUMBERS differ — so, like the per-good carry looks ({@link import('./settler-gfx/index.js').carryAnimsByGood}),
- * each scene good is matched to its real pipeline record by `goodId === good.id` and bound under the
- * scene's typeId. The pure reducers here are unit-tested without a browser; the atlas byte loading +
- * family registration live in {@link import('./sprite-sheet.js')}.
- */
-
-/**
  * The default resource atlas family — the shared `ls_trees.tree_yew01` layer drawn as the renderer's
- * {@link import('@vinland/render').SpriteSheet.kindLayers}'s `resource` (already loaded for the legacy
- * single-tree path). A good whose node record lives in THIS family binds a bare bob id (drawn from that
- * layer, no `families` entry — the way the yew tree drew before); every other good binds a
- * layer-qualified ref into its own loaded `families` atlas. {@link TREE_BOB} backs a good with no node.
+ * {@link import('@vinland/render').SpriteSheet.kindLayers}'s `resource`. A good whose node record lives in
+ * THIS family binds a bare bob id (no `families` entry); every other good binds a layer-qualified ref into
+ * its own loaded `families` atlas.
  */
 export const DEFAULT_RESOURCE_STEM = TREE_ATLAS;
 
-/**
- * The delivery-flag `[GfxLandscape]` record's `EditName` — the plain player-coloured **"work extern"**
- * flag in `ls_temp.bmd` (`"player01 work extern 01"`, bob 76): the simple flag-on-a-pole the original
- * plants on the ground to mark an external work / collection point, which is exactly what a gatherer's
- * loose ground pile IS. Deliberately NOT the `"… sign"` record (a building-occupancy emblem that marks a
- * STAFFED building, not a ground collection point) nor the `residence`/`construction`/`soldier` markers.
- * A bare (empty) stockpile draws this as its flag. v1 is the player-01 colour; a per-PLAYER palette swap
- * (players 02–16 have their own `human_playerNN` records) is a deferred follow-up — see source basis
- * "Gathering-economy graphics".
- */
+/** The delivery-flag `[GfxLandscape]` record's `EditName` — the plain player-coloured "work extern" sign. */
 export const FLAG_EDIT_NAME = 'player01 work extern 01';
 
 /**
@@ -53,7 +31,7 @@ export const FLAG_EDIT_NAME = 'player01 work extern 01';
  * pile's good has no bound heap). A stockpile has no `kindLayers` layer of its own, so a bare ref draws
  * the placeholder heap rather than a wrong atlas frame — the value is irrelevant, only its bare-ness is.
  */
-const STOCKPILE_PLACEHOLDER_BOB = 0;
+export const STOCKPILE_PLACEHOLDER_BOB = 0;
 
 /** A resolved standing-node draw: which served atlas stem + bob id (before the loaded/default decision). */
 export interface GatheringNodeRef {
@@ -138,7 +116,7 @@ export function nodeBob(record: LandscapeGfxRow): number | undefined {
 /** A landscape gfx record → its {@link GatheringNodeRef} (served atlas stem + representative full-grown
  *  bob), or `undefined` when it names no drawable atlas/frame. The shared resolution behind the flag,
  *  stump and berry-bush draws. Pure. */
-function nodeRefFrom(record: LandscapeGfxRow): GatheringNodeRef | undefined {
+export function nodeRefFrom(record: LandscapeGfxRow): GatheringNodeRef | undefined {
   const stem = servedStem(record);
   const bob = nodeBob(record);
   return stem !== undefined && bob !== undefined ? { stem, bob } : undefined;
@@ -205,7 +183,8 @@ function representativeRecord(
  * standing stage like the mushroom's direct pickup) and the pile (its `landscapeToStore` record), matched
  * to each scene good by `goodId === good.id` and keyed under the scene's `typeId`. The flag is resolved
  * once from the {@link FLAG_EDIT_NAME} record. Independent of which atlases actually load — the
- * loaded/default decision is {@link buildResourceBinding}/{@link buildStockpileBinding}'s. Pure.
+ * loaded/default decision is {@link import('./bindings.js').buildResourceBinding}/
+ * {@link import('./bindings.js').buildStockpileBinding}'s. Pure.
  */
 export function resolveGatheringRefs(
   goods: readonly GoodRef[],
@@ -298,7 +277,7 @@ export function resolveGatheringRefs(
 /**
  * The set of NON-default served atlas stems the gathering draws reference — every node stem that isn't the
  * default resource family, every pile stem, and the flag stem. This is exactly the atlases
- * {@link import('./sprite-sheet.js')} must load into `families` for the layer-qualified refs to draw;
+ * {@link import('../sprite-sheet.js')} must load into `families` for the layer-qualified refs to draw;
  * the default-family node stem (the yew) is excluded since it is already the `kindLayers.resource` layer.
  */
 export function gatheringAtlasStems(refs: GatheringRefs): Set<string> {
@@ -319,190 +298,6 @@ export function gatheringAtlasStems(refs: GatheringRefs): Set<string> {
 
 /** A node/pile bob → {@link LayeredBobRef}: bare when it draws from the default resource layer (the yew
  *  tree), layer-qualified into its own loaded family otherwise. */
-function bobRef(stem: string, bob: number): LayeredBobRef {
+export function bobRef(stem: string, bob: number): LayeredBobRef {
   return stem === DEFAULT_RESOURCE_STEM ? bob : { layer: stem, bob };
-}
-
-/**
- * The debris `[GfxLandscape]` record left where a tree is FELLED — `"tree debris medium"` in
- * `ls_trees_dead.bmd` (logicType 1 = pure decor), the stump/remnant a chopped tree leaves behind (the
- * multi-hit harvest's `Stump` decor entity draws it). Deliberately the debris, not the standing
- * `tree_dead` (logicType 4, an undisturbed dead tree) nor the `tree_dead falling` (logicType 5, the
- * mid-fall frame — that transition is the Step-7 falling-animation polish, source basis).
- */
-export const STUMP_EDIT_NAME = 'tree debris medium';
-
-/** Resolve the stump/debris draw (served atlas stem + bob) from the IR's landscape gfx, matched by
- *  {@link STUMP_EDIT_NAME}, or `undefined` when the record/atlas is absent (a checkout without the
- *  dead-tree atlas, or an older `content/` — the stump then falls back to the placeholder). Mirrors the
- *  flag resolution in {@link resolveGatheringRefs}. Pure. */
-export function resolveStumpRef(ir: ContentIr | null): GatheringNodeRef | undefined {
-  const record = (ir?.landscapeGfx ?? []).find((g) => g.editName === STUMP_EDIT_NAME);
-  return record !== undefined ? nodeRefFrom(record) : undefined;
-}
-
-/**
- * Reduce the resolved stump ref to the renderer's per-good {@link ResourceTypeBinding} (the same shape a
- * resource node uses — a stump draws like a static node, from the dead-tree family): a single `default`
- * debris frame, since the only fellable resource in this step is the tree (Step 4 adds per-good drops).
- * Returns `undefined` when the debris atlas did not load, so the binding is omitted and the stump falls
- * back to the placeholder rather than borrowing a wrong frame. Pure + unit-tested.
- */
-export function buildStumpBinding(
-  stump: GatheringNodeRef | undefined,
-  loaded: ReadonlySet<string>,
-): ResourceTypeBinding | undefined {
-  if (stump === undefined || !loaded.has(stump.stem)) return undefined;
-  return { byGood: {}, default: { layer: stump.stem, bob: stump.bob } };
-}
-
-/** A resolved berry-bush draw: the fruited-record INDEX (the {@link import('@vinland/sim').BerryBush.gfxIndex}
- *  → {@link import('@vinland/render').DrawItem.gfxIndex} join key) and its two render states — `ripe`
- *  (holds fruit) and `bare` (foraged, regrowing), each a served atlas stem + bob. */
-export interface BerryBushRef {
-  readonly gfxIndex: number;
-  readonly ripe: GatheringNodeRef;
-  readonly bare: GatheringNodeRef;
-}
-
-/**
- * Resolve every forageable berry bush's ripe+bare draw from the IR landscape gfx: each fruited-bush record
- * (`logicType === bush with fruits`) paired with its bare twin — the same species' "… empty" record
- * (`bush naked`), matched by editName ("bush 01 fruits" → "bush 01 empty", "bush snow 02 fruits" → "bush
- * snow 02 empty"). A bush with no matching empty record reuses its fruited frame for the bare state
- * (degraded, still drawn). Keyed by the fruited record index. Pure; degrades to empty on an older ir.json.
- */
-export function resolveBerryBushRefs(ir: ContentIr | null): BerryBushRef[] {
-  const records = ir?.landscapeGfx ?? [];
-  const byName = new Map<string, LandscapeGfxRow>();
-  for (const g of records) if (g.editName !== undefined) byName.set(g.editName, g);
-  const out: BerryBushRef[] = [];
-  for (const rec of records) {
-    if (rec.logicType !== BUSH_WITH_FRUITS_LOGIC_TYPE || rec.editName === undefined) continue;
-    const ripe = nodeRefFrom(rec);
-    if (ripe === undefined) continue;
-    // The bare twin: the same species' "… empty" record (bush naked). Fall back to the ripe frame when
-    // absent, so a bush with no decoded empty state still draws (just always fruited).
-    const emptyRec = byName.get(rec.editName.replace(/fruits?$/i, 'empty'));
-    const bare = emptyRec !== undefined ? (nodeRefFrom(emptyRec) ?? ripe) : ripe;
-    out.push({ gfxIndex: rec.index, ripe, bare });
-  }
-  return out;
-}
-
-/** Atlas stems a set of {@link BerryBushRef}s draw from (both ripe + bare states) — folded into the loaded
- *  gathering families so the live pool can draw a bush in either state after its static→live handover. */
-export function berryBushAtlasStems(refs: readonly BerryBushRef[]): Set<string> {
-  const out = new Set<string>();
-  for (const r of refs) {
-    out.add(r.ripe.stem);
-    out.add(r.bare.stem);
-  }
-  return out;
-}
-
-/**
- * Reduce resolved berry-bush refs to a {@link ResourceTypeBinding}: each bush keyed under its fruited
- * `gfxIndex` with a TWO-frame level list — level 1 (bare) → the empty frame, level 2 (ripe) → the fruited
- * frame (the same empty→full order {@link buildResourceBinding} uses, so `DrawItem.level` picks straight).
- * A bare frame whose atlas family did not load reuses the ripe frame (the bush still draws, just always
- * fruited); a bush whose RIPE family did not load is dropped (it falls back to the placeholder). `default`
- * is the first bush's ripe frame — what a bush with no matching `gfxIndex` draws. Undefined when nothing
- * loaded. Pure + unit-tested.
- */
-export function buildBerryBushBinding(
-  refs: readonly BerryBushRef[],
-  loaded: ReadonlySet<string>,
-): ResourceTypeBinding | undefined {
-  const byGfxIndex: Record<number, readonly LayeredBobRef[]> = {};
-  let fallback: LayeredBobRef | undefined;
-  for (const r of refs) {
-    if (!loaded.has(r.ripe.stem)) continue; // no fruited atlas — drop it (placeholder)
-    const ripeRef: LayeredBobRef = { layer: r.ripe.stem, bob: r.ripe.bob };
-    const bareRef: LayeredBobRef = loaded.has(r.bare.stem)
-      ? { layer: r.bare.stem, bob: r.bare.bob }
-      : ripeRef; // no empty atlas — reuse the fruited frame for the bare state
-    byGfxIndex[r.gfxIndex] = [bareRef, ripeRef]; // level 1 = bare, level 2 = ripe
-    fallback ??= ripeRef;
-  }
-  if (fallback === undefined) return undefined;
-  return { byGood: {}, byGfxIndex, default: fallback };
-}
-
-/**
- * Reduce the resolved node refs to the renderer's per-good {@link ResourceTypeBinding}: each good whose
- * node stem is the default family OR a LOADED named family binds its own node bob; a good whose family
- * failed to load is dropped (it falls back to the {@link TREE_BOB} default rather than borrowing a wrong
- * bob from the tree atlas — the same no-wrong-borrow rule the building families use). Pure + unit-tested.
- *
- * `familyFrames` (stem → the frame ids its LOADED atlas actually holds) marks data-pinned INVISIBLE
- * levels: when a record's level names a bob its own atlas doesn't have while its OTHER levels do, that
- * level binds `null` — the renderer then draws NOTHING for it. This is the original's freshly-sown wheat
- * (`wheat mine 01` state 1 → bob 4000, an out-of-atlas sentinel; states 2–5 are real frames). A good
- * whose levels are ALL missing keeps its refs instead — that is a genuinely broken binding and should
- * surface as the placeholder, not vanish.
- */
-export function buildResourceBinding(
-  refs: GatheringRefs,
-  loaded: ReadonlySet<string>,
-  familyFrames?: ReadonlyMap<string, ReadonlySet<number>>,
-): ResourceTypeBinding {
-  const byGood: Record<number, readonly (LayeredBobRef | null)[]> = {};
-  for (const [good, node] of Object.entries(refs.nodesByGood)) {
-    if (node.stem !== DEFAULT_RESOURCE_STEM && !loaded.has(node.stem)) continue; // unloaded family → drop
-    // Per-level frames (empty→full) — the renderer indexes them by a mined deposit's shrink-by-level fill;
-    // a non-mined node has a single-frame list, drawn at any level.
-    const atlasFrames = familyFrames?.get(node.stem);
-    const anyPresent = atlasFrames !== undefined && node.bobs.some((bob) => atlasFrames.has(bob));
-    byGood[Number(good)] = node.bobs.map((bob) =>
-      anyPresent && !(atlasFrames?.has(bob) ?? true) ? null : bobRef(node.stem, bob),
-    );
-  }
-  // The per-VARIANT table (a decoded-map node's own species/decal) — same load-then-drop-unloaded rule,
-  // so a variant whose family atlas failed to load falls back to the per-good representative, never a
-  // wrong frame.
-  const byGfxIndex: Record<number, readonly LayeredBobRef[]> = {};
-  for (const [idx, node] of Object.entries(refs.nodesByGfxIndex)) {
-    if (node.stem !== DEFAULT_RESOURCE_STEM && !loaded.has(node.stem)) continue;
-    byGfxIndex[Number(idx)] = node.bobs.map((bob) => bobRef(node.stem, bob));
-  }
-  return { byGood, byGfxIndex, default: TREE_BOB };
-}
-
-/**
- * Reduce the resolved trunk refs (the `landscapeToPickup` stage) to the renderer's per-good
- * {@link ResourceTypeBinding} — the graphic a loose {@link import('@vinland/sim').GroundDrop} draws while
- * its felled wood / chipped ore lies on the ground waiting to be carried off. Binds the record's whole
- * fewest→most state ladder: the resolver indexes it by the drop's unit count (`DrawItem.fill`), so one
- * dug ore draws the single-piece frame and a stacked drop grows — the original's state ≡ remaining-units
- * read. Same load-then-drop-unloaded rule as {@link buildResourceBinding}; the `TREE_BOB` default is a
- * visible fallback for a good with no bound trunk. Pure + unit-tested.
- */
-export function buildTrunkBinding(refs: GatheringRefs, loaded: ReadonlySet<string>): ResourceTypeBinding {
-  const byGood: Record<number, readonly LayeredBobRef[]> = {};
-  for (const [good, trunk] of Object.entries(refs.trunksByGood)) {
-    if (trunk.stem !== DEFAULT_RESOURCE_STEM && !loaded.has(trunk.stem)) continue; // unloaded family → drop
-    byGood[Number(good)] = trunk.bobs.map((bob) => bobRef(trunk.stem, bob));
-  }
-  return { byGood, default: TREE_BOB };
-}
-
-/**
- * Reduce the resolved pile + flag refs to the renderer's {@link StockpileBinding}: each good whose pile
- * atlas LOADED binds its per-fill heap frames; the flag binds the loaded `ls_temp` sign. A good whose pile
- * atlas failed to load is dropped, and an unloaded flag / a held pile with no frames falls back to the
- * placeholder heap (a bare ref, which the renderer draws as the sandy marker — never a wrong atlas frame).
- * Pure + unit-tested.
- */
-export function buildStockpileBinding(refs: GatheringRefs, loaded: ReadonlySet<string>): StockpileBinding {
-  const byGood: Record<number, readonly LayeredBobRef[]> = {};
-  for (const [good, pile] of Object.entries(refs.pilesByGood)) {
-    if (!loaded.has(pile.stem)) continue; // unloaded pile family → drop (falls to the placeholder heap)
-    byGood[Number(good)] = pile.fillBobs.map((bob) => ({ layer: pile.stem, bob }));
-  }
-  const flag: LayeredBobRef =
-    refs.flag !== undefined && loaded.has(refs.flag.stem)
-      ? { layer: refs.flag.stem, bob: refs.flag.bob }
-      : STOCKPILE_PLACEHOLDER_BOB;
-  return { byGood, flag, default: STOCKPILE_PLACEHOLDER_BOB };
 }
