@@ -182,17 +182,17 @@ function checkLandscapeGfx(set: ContentSet, { landscapeIds }: IdSets): string[] 
 // gathering-stage ids — must resolve into the landscape type table (the same dangling-reference
 // class as landscapeGfx). Every real good carries a defined `landscapetype`; only the ~11
 // map-gathered goods carry a `gathering` chain.
+/** The three ordered stages of a good's gathering chain — the keys both gathering checks walk. */
+const GATHERING_STAGES = ['harvest', 'pickup', 'store'] as const;
+
 function checkGoodLandscape(set: ContentSet, { landscapeIds }: IdSets): string[] {
   const errors: string[] = [];
   for (const g of set.goods) {
     if (g.landscapeType !== undefined && !landscapeIds.has(g.landscapeType))
       errors.push(`good "${g.id}" references unknown landscape typeId ${g.landscapeType}`);
     if (g.gathering) {
-      for (const [stage, id] of [
-        ['harvest', g.gathering.harvest],
-        ['pickup', g.gathering.pickup],
-        ['store', g.gathering.store],
-      ] as const) {
+      for (const stage of GATHERING_STAGES) {
+        const id = g.gathering[stage];
         if (id !== undefined && !landscapeIds.has(id))
           errors.push(`good "${g.id}" gathering ${stage} references unknown landscape typeId ${id}`);
       }
@@ -213,11 +213,8 @@ function checkGatheringPipeline(
   for (const p of set.gatheringPipeline) {
     if (!goodIds.has(p.goodType))
       errors.push(`gatheringPipeline good "${p.goodId}" references unknown goodType ${p.goodType}`);
-    for (const [stage, s] of [
-      ['harvest', p.harvest],
-      ['pickup', p.pickup],
-      ['store', p.store],
-    ] as const) {
+    for (const stage of GATHERING_STAGES) {
+      const s = p[stage];
       if (s === undefined) continue;
       if (!landscapeIds.has(s.landscapeType))
         errors.push(
