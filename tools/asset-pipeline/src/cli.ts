@@ -24,7 +24,7 @@ import { realpathSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { type Args, assertOutStaysInCheckout, parseArgs, resolveArgs } from './args.js';
-import { convertBmdTree, resolveGraphicsBindings } from './stages/bmd.js';
+import { convertBmdTree, resolveGraphicsBindings } from './stages/bmd/index.js';
 import { convertFontStage } from './stages/fonts.js';
 import { convertGoodsStage } from './stages/goods/index.js';
 import { convertGuiStage } from './stages/gui/index.js';

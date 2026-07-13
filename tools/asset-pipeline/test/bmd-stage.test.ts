@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type Bmd, BOB_TYPE_DOUBLE8BIT, encodeBmd, PACKED_X_SHIFT } from '../src/decoders/bmd/index.js';
 import type { BmdPaletteBinding, PaletteAlias } from '../src/decoders/ini.js';
 import { decodePng, encodePng } from '../src/decoders/png.js';
-import { bmdToAtlas, convertBmdTree } from '../src/stages/bmd.js';
+import { bmdToAtlas, convertBmdTree } from '../src/stages/bmd/index.js';
 import { sampleBmdBytes } from './fixtures/bmd.js';
 import { rampPalette } from './fixtures/palette.js';
 import { samplePcx } from './fixtures/pcx.js';

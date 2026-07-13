@@ -11,7 +11,7 @@ import {
   synthesizePlayerSource,
 } from '../decoders/player-palette.js';
 import { encodePng } from '../decoders/png.js';
-import { indexOutTree } from './bmd.js';
+import { indexOutTree } from './bmd/index.js';
 import { BOBS_DIR } from './game-file.js';
 
 /**
