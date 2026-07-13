@@ -1,5 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { encodeFnt, type Font } from '../src/decoders/fnt.js';
@@ -7,6 +6,7 @@ import { decodePng } from '../src/decoders/png.js';
 import { convertFontColorLut, convertFontStage, convertFonts } from '../src/stages/fonts.js';
 import { sampleGlyphBmd } from './fixtures/bmd.js';
 import { paletteCarrier } from './fixtures/pcx.js';
+import { BOBS_DIR, type GameOutTemp, makeGameOutTemp } from './support/game-tree.js';
 
 /**
  * Font stage tests. No copyrighted fixtures: we synthesize the `.fnt` files (a CFont wrapping a tiny `.bmd`)
@@ -24,7 +24,6 @@ const sampleFont = (nominalSize: number): Uint8Array => {
 
 const FONTS_DIR = join('Data', 'gui', 'fonts');
 const PALETTES_DIR = join('Data', 'gui', 'palettes');
-const BOBS_DIR = join('Data', 'engine2d', 'bin', 'bobs');
 const FONTS_JSON_DIR = join('gui', 'fonts');
 
 const FONT_STEMS = ['font08', 'font10', 'font12', 'fontdebug'];
@@ -33,21 +32,13 @@ const FONT_COLOR_FILES = ['font_white', 'font_dark', 'font_dimmed', 'font_red'];
 const NOMINAL: Record<string, number> = { font08: 8, font10: 10, font12: 12, fontdebug: 8 };
 
 describe('fonts stage', () => {
-  let root: string;
   let game: string;
   let out: string;
-
-  const writeGame = async (rel: string, bytes: Uint8Array): Promise<void> => {
-    const path = join(game, rel);
-    await mkdir(join(path, '..'), { recursive: true });
-    await writeFile(path, bytes);
-  };
+  let writeGame: GameOutTemp['write'];
+  let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
-    root = await mkdtemp(join(tmpdir(), 'opennorthland-fonts-'));
-    game = join(root, 'game');
-    out = join(root, 'out');
-    await mkdir(game, { recursive: true });
+    ({ game, out, write: writeGame, cleanup } = await makeGameOutTemp('fonts'));
     // Colour carriers.
     for (const c of FONT_COLOR_FILES) await writeGame(join(PALETTES_DIR, `${c}.pcx`), paletteCarrier());
     // The three sets (root / latin / rus), each with the four sizes.
@@ -59,7 +50,7 @@ describe('fonts stage', () => {
   });
 
   afterEach(async () => {
-    await rm(root, { recursive: true, force: true });
+    await cleanup();
   });
 
   it('builds a 256×4 colour LUT with a stable row order and resolves the preview palettes', async () => {

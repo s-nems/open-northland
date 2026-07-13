@@ -1,5 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type Bmd, BOB_TYPE_DOUBLE8BIT, encodeBmd, PACKED_X_SHIFT } from '../src/decoders/bmd/index.js';
@@ -9,6 +8,7 @@ import { bmdToAtlas, convertBmdTree } from '../src/stages/bmd/index.js';
 import { sampleBmdBytes } from './fixtures/bmd.js';
 import { rampPalette } from './fixtures/palette.js';
 import { samplePcx } from './fixtures/pcx.js';
+import { makeTempDir } from './support/game-tree.js';
 
 describe('bmdToAtlas', () => {
   it('decodes a .bmd, packs an atlas, and yields a PNG-encodable image + manifest', () => {
@@ -68,7 +68,7 @@ describe('convertBmdTree', () => {
   let out: string;
 
   beforeEach(async () => {
-    out = await mkdtemp(join(tmpdir(), 'opennorthland-bmd-'));
+    out = (await makeTempDir('bmd')).path;
   });
 
   afterEach(async () => {
@@ -188,7 +188,7 @@ describe('convertBmdTree opaque-alpha bake', () => {
   let out: string;
 
   beforeEach(async () => {
-    out = await mkdtemp(join(tmpdir(), 'opennorthland-bmd-'));
+    out = (await makeTempDir('bmd')).path;
   });
 
   afterEach(async () => {

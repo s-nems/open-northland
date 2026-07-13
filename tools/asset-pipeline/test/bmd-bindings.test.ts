@@ -1,15 +1,15 @@
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { jobBaseGraphicsToBindings, resolveGraphicsBindings } from '../src/stages/bmd/index.js';
 import { buildStringCif } from './fixtures/cif.js';
+import { makeTempDir } from './support/game-tree.js';
 
 describe('resolveGraphicsBindings', () => {
   let game: string;
 
   beforeEach(async () => {
-    game = await mkdtemp(join(tmpdir(), 'opennorthland-gfx-'));
+    game = (await makeTempDir('gfx')).path;
   });
 
   afterEach(async () => {

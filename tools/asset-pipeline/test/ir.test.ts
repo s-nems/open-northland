@@ -1,15 +1,15 @@
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildIr, resolveIniSources } from '../src/stages/ir/index.js';
 import { buildStringCif, sampleMapLines } from './fixtures/cif.js';
+import { makeTempDir } from './support/game-tree.js';
 
 describe('buildIr / resolveIniSources', () => {
   let game: string;
 
   beforeEach(async () => {
-    const root = await mkdtemp(join(tmpdir(), 'opennorthland-ir-'));
+    const root = (await makeTempDir('ir')).path;
     game = join(root, 'game');
     await mkdir(join(game, 'Data', 'logic'), { recursive: true });
     await mkdir(join(game, 'DataCnmd', 'tribetypes12'), { recursive: true });

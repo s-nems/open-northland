@@ -1,11 +1,11 @@
-import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { encodePcx } from '../src/decoders/pcx.js';
 import { PLAYER_COLORS } from '../src/decoders/player-palette.js';
 import { decodePng } from '../src/decoders/png.js';
 import { convertPlayerColorLut } from '../src/stages/player-colors.js';
+import { BOBS_DIR, makeTempDir } from './support/game-tree.js';
 
 /**
  * Covers the player-colour LUT stage's contract shape: it composes one row per {@link PLAYER_COLORS}
@@ -14,7 +14,6 @@ import { convertPlayerColorLut } from '../src/stages/player-colors.js';
  * mirrors, so the row count (= palette height) is the load-bearing invariant asserted here.
  */
 const CREATURES_DIR = join('Data', 'engine2d', 'bin', 'palettes', 'creatures');
-const BOBS_DIR = join('Data', 'engine2d', 'bin', 'bobs');
 
 /** A distinct 768-byte RGB palette so each source composes a different row (seed varies the ramp). */
 function palette(seed: number): Uint8Array {
@@ -39,7 +38,7 @@ async function writeCreaturePcx(outDir: string, file: string, seed: number): Pro
 
 /** Builds an out tree with the base + all `playerNN.pcx` sources the pcx-kind player colours need. */
 async function outTreeWithSources(): Promise<string> {
-  const outDir = await mkdtemp(join(tmpdir(), 'opennorthland-player-lut-'));
+  const { path: outDir } = await makeTempDir('player-lut');
   await writeCreaturePcx(outDir, 'test_human_00.pcx', 0); // base
   for (const color of PLAYER_COLORS) {
     if (color.source.kind === 'pcx') await writeCreaturePcx(outDir, color.source.file, color.id + 1);
@@ -61,7 +60,7 @@ describe('convertPlayerColorLut', () => {
   });
 
   it('throws when the base creature palette is absent from the out tree', async () => {
-    const outDir = await mkdtemp(join(tmpdir(), 'opennorthland-player-lut-empty-'));
+    const { path: outDir } = await makeTempDir('player-lut-empty');
     await expect(convertPlayerColorLut(outDir)).rejects.toThrow(/test_human_00\.pcx not found/);
   });
 });

@@ -1,5 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { encodePcx } from '../src/decoders/pcx.js';
@@ -7,6 +6,7 @@ import { decodePng } from '../src/decoders/png.js';
 import { decodeMapTree, mapCifToInfo, mapIdFromPath, minimapToPng } from '../src/stages/maps/index.js';
 import { buildStringCif, sampleMapLines } from './fixtures/cif.js';
 import { rampPalette } from './fixtures/palette.js';
+import { makeTempDir } from './support/game-tree.js';
 
 describe('mapIdFromPath', () => {
   it('slugs the containing folder name (lower-case, non-alphanumerics -> _)', () => {
@@ -40,7 +40,7 @@ describe('decodeMapTree', () => {
   let game: string;
 
   beforeEach(async () => {
-    root = await mkdtemp(join(tmpdir(), 'opennorthland-maps-'));
+    root = (await makeTempDir('maps')).path;
     game = join(root, 'game');
     await mkdir(join(game, 'CnModMaps', 'tutorial_002'), { recursive: true });
     await mkdir(join(game, 'CnModMaps', 'forteca'), { recursive: true });
