@@ -7,15 +7,16 @@ on:
 
 jobs:
   build-test:
-    # Two OSes on purpose: the sim promises byte-identical state across platforms (replays, future
-    # lockstep MP), so the golden state-hash + determinism tests must run on more than one platform
-    # to back that promise. Windows is deliberately absent until someone can verify it locally.
+    # Three OSes on purpose: the sim promises byte-identical state across platforms (replays, future
+    # lockstep MP), so the golden state-hash + determinism tests must run on every platform we claim
+    # to support. Checkouts stay byte-identical via .gitattributes (eol=lf), so the Biome format gate
+    # and golden hashes see the same bytes on Windows.
     strategy:
-      # fail-fast would cancel the sibling OS on first failure — destroying exactly the signal the
+      # fail-fast would cancel the sibling OSes on first failure — destroying exactly the signal the
       # matrix exists for (is a golden mismatch platform-specific or universal?).
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
