@@ -229,16 +229,11 @@ export class TerrainGraph {
   steps(node: NodeId, blocked?: BlockOverlay): Array<{ node: NodeId; cost: Fixed }> {
     const { x, y } = this.coordsOf(node);
     const out: Array<{ node: NodeId; cost: Fixed }> = [];
-    const passable = (nx: number, ny: number): boolean => {
-      if (!this.inBounds(nx, ny)) return false;
-      const c = (ny * this.width + nx) as NodeId;
-      return this.isWalkable(c) && !(blocked?.has(c) ?? false);
-    };
     // Half-column steps first, canonical E then W.
     for (const [dx, dy] of COLUMN_STEP_OFFSETS) {
       const nx = x + dx;
       const ny = y + dy;
-      if (!passable(nx, ny)) continue;
+      if (!this.passable(nx, ny, blocked)) continue;
       const c = (ny * this.width + nx) as NodeId;
       out.push({ node: c, cost: fx.mul(this.walkCost(c), HALF_COLUMN) });
     }
@@ -246,10 +241,10 @@ export class TerrainGraph {
     for (const [dx, dy] of DIAGONAL_STEP_OFFSETS) {
       const nx = x + dx;
       const ny = y + dy;
-      if (!passable(nx, ny)) continue;
+      if (!this.passable(nx, ny, blocked)) continue;
       // The seam between two blocked flanks is a wall joint, not a walkable gap.
       const fy = y + dy / 2;
-      if (!passable(x, fy) && !passable(nx, fy)) continue;
+      if (!this.passable(x, fy, blocked) && !this.passable(nx, fy, blocked)) continue;
       const c = (ny * this.width + nx) as NodeId;
       out.push({ node: c, cost: fx.mul(this.walkCost(c), DIAGONAL_STEP) });
     }
@@ -257,11 +252,20 @@ export class TerrainGraph {
     for (const [dx, dy] of VERTICAL_STEP_OFFSETS) {
       const nx = x + dx;
       const ny = y + dy;
-      if (!passable(nx, ny)) continue;
+      if (!this.passable(nx, ny, blocked)) continue;
       const c = (ny * this.width + nx) as NodeId;
       out.push({ node: c, cost: fx.mul(this.walkCost(c), HALF_ROW) });
     }
     return out;
+  }
+
+  /** Whether `(nx, ny)` is in bounds, walkable, and not currently masked by the dynamic `blocked`
+   *  overlay — the per-step passability test {@link steps} applies to each candidate edge (a method,
+   *  not a per-call closure, so the A* edge generator allocates nothing extra per settled node). */
+  private passable(nx: number, ny: number, blocked?: BlockOverlay): boolean {
+    if (!this.inBounds(nx, ny)) return false;
+    const c = (ny * this.width + nx) as NodeId;
+    return this.isWalkable(c) && !(blocked?.has(c) ?? false);
   }
 
   /**
