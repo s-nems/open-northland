@@ -1,15 +1,15 @@
 import { clamp01 } from '../math.js';
 
 /**
- * The drawn projectile's BALLISTIC ARC — a pure, render-only presentation layer over the sim's straight
+ * The drawn projectile's ballistic arc — a pure, render-only presentation layer over the sim's straight
  * homing flight. The sim advances a shot on a straight origin→target line (its own named approximation);
- * this lobs the DRAWN arrow above that line and tilts it along the arc's tangent, so a longbow shot visibly
+ * this lobs the drawn arrow above that line and tilts it along the arc's tangent, so a longbow shot visibly
  * arcs. No Pixi, no sim read-back — screen-space trig, unit-tested like the rest of the scene layer.
  * Source basis: observed original behaviour (arrows visibly lob); the shape is tuned by eye.
  */
 
 /**
- * Ballistic-arc shape: the lob's PEAK height is this fraction of the shot's total origin→target screen
+ * Ballistic-arc shape: the lob's peak height is this fraction of the shot's total origin→target screen
  * distance, capped at {@link PROJECTILE_ARC_PEAK_MAX_PX} so a max-range longbow shot (23 tiles — up to
  * ~1560 px on an east–west chord at 68 px/cell) doesn't leave the screen. Height is `4·peak·p·(1−p)` over
  * the fraction flown `p`, zero at both the bow and the impact. Exported so the tests pin the formula, not a
@@ -33,7 +33,7 @@ export interface ProjectileArc {
  * flown `p` along the origin→target chord sets a parabolic height `4·peak·p·(1−p)` and shears the straight
  * heading by the arc's slope `dh/ds` (screen-up is −y) so the nose rides up while climbing, down while
  * falling. Homing can stretch the path past the launch chord (the target moves), so `p` is clamped to
- * `[0, 1]`. Pure.
+ * `[0, 1]`.
  */
 export function projectileArc(
   current: { x: number; y: number },

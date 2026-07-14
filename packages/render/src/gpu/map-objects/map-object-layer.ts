@@ -13,21 +13,21 @@ import { TallObjectLayer } from './tall-blocks.js';
  * The retained landscape-object layers — a decoded map's placed trees, stones, bushes, mine decals and
  * animated waves, split by whether they occlude a settler:
  *  - **decor** (flat ground decor: waves, grass, flowers, mine stains) batches into per-block meshes
- *    UNDER the entity sprites ({@link import('./decor-batch.js')}), one draw call per texture page per
+ *    under the entity sprites ({@link import('./decor-batch.js')}), one draw call per texture page per
  *    block, AABB-culled like terrain; an animated decor object's quad is rewritten in place only when
  *    the play-head advances (and only in visible blocks). This layer owns that half directly.
  *  - **tall** (trees, stones — anything that occludes a settler) become pooled sprites in the shared
- *    ENTITY layer, owned by {@link TallObjectLayer}; a member's sprite is minted on FIRST visibility.
+ *    entity layer, owned by {@link TallObjectLayer}; a member's sprite is minted on first visibility.
  *
- * Built ONCE per map (like the terrain layer): {@link set} buckets the placements by chunk block, builds
+ * Built once per map (like the terrain layer): {@link set} buckets the placements by chunk block, builds
  * the decor meshes here, and hands the tall buckets to {@link TallObjectLayer}. The tall sprites live in
  * the renderer's shared `spriteLayer`; the decor meshes live in this layer's own container, which the
  * renderer keeps above the terrain and below the sprites.
  */
 
 /**
- * Decor chunks partition world space into square blocks of this many px — the SAME scale as the
- * terrain chunks ({@link TERRAIN_CHUNK_TILES}), so the two layers cull in lockstep. Read LIVE (not an
+ * Decor chunks partition world space into square blocks of this many px — the same scale as the
+ * terrain chunks ({@link TERRAIN_CHUNK_TILES}), so the two layers cull in lockstep. Read live (not an
  * import-time const) so a runtime {@link import('../../data/iso.js').setTilePitch} override (`?pitch=`)
  * keeps the decor cull aligned with the terrain instead of the boot-time pitch.
  */
@@ -41,7 +41,7 @@ export class MapObjectLayer {
   private readonly tall: TallObjectLayer;
 
   /**
-   * @param spriteLayer the renderer's shared, depth-sorted entity layer — tall objects attach HERE so
+   * @param spriteLayer the renderer's shared, depth-sorted entity layer — tall objects attach here so
    *   they interleave with settlers/buildings in one painter order.
    * @param textures the renderer's shared frame→texture cache.
    */
@@ -49,12 +49,7 @@ export class MapObjectLayer {
     this.tall = new TallObjectLayer(spriteLayer, textures);
   }
 
-  /**
-   * (Re)build the retained landscape-object layers from a decoded map's placements — call ONCE per
-   * map. Decor objects batch into per-block meshes under the entity sprites (one draw call per texture
-   * page per block, AABB-culled); tall objects become pooled sprites in the ENTITY layer, depth-sorted
-   * against settlers/buildings by their world-`y` feet anchor and viewport-culled each frame.
-   */
+  /** (Re)build the retained landscape-object layers from a decoded map's placements — call once per map. */
   set(objects: readonly MapObjectSprite[]): void {
     this.destroy();
     const byBlock = new Map<string, MapObjectSprite[]>();
@@ -80,9 +75,9 @@ export class MapObjectLayer {
   }
 
   /**
-   * Take ONE placed object out of the built layers — the `?map=` handover seam: the moment a virgin
+   * Take one placed object out of the built layers — the `?map=` handover seam: the moment a virgin
    * resource node is first worked, its static drawing is removed here and the live sprite pool draws
-   * the entity from then on. A TALL object is removed by {@link TallObjectLayer}; a DECOR object's quad
+   * the entity from then on. A tall object is removed by {@link TallObjectLayer}; a decor object's quad
    * is zeroed in place (degenerate = invisible; the batch never rebuilds) and, in an animated batch, its
    * slot nulled so the play-head rewrite cannot restore it. O(block members) worst case, and only on the
    * rare first-touch event — never per frame. Unknown objects are a no-op (a placement whose atlas never
@@ -103,17 +98,17 @@ export class MapObjectLayer {
 
   /**
    * Advance the landscape objects for one frame: cull the decor blocks like terrain and rewrite only
-   * the VISIBLE animated batches at the sim tick rate (an off-screen wave costs nothing, a static block
+   * the visible animated batches at the sim tick rate (an off-screen wave costs nothing, a static block
    * is never touched after build); then advance the tall objects ({@link TallObjectLayer.update}).
    *
-   * `fogStateOfCell` is the fog-of-war gate over CELL coords (the viewer's effective `FOG_STATE`). Flat
-   * DECOR (waves, grass, mine stains) keeps DRAWING on any non-visible ground (it reads as terrain
+   * `fogStateOfCell` is the fog-of-war gate over cell coords (the viewer's effective `FOG_STATE`). Flat
+   * decor (waves, grass, mine stains) keeps drawing on any non-visible ground (it reads as terrain
    * dressing, which the explored-grey layer shows — the black layer's opaque wash covers it anyway) but
-   * its animation FREEZES there (swaying grass under the fog reads as watched ground), the same
+   * its animation freezes there (swaying grass under the fog reads as watched ground), the same
    * memory-not-live-feed rule the tall objects follow.
    */
   update(vp: Viewport, tick: number, fogStateOfCell?: (cellX: number, cellY: number) => number): void {
-    // Landscape decor: the written tick is tracked PER CHUNK so a chunk scrolled into view mid-tick
+    // Landscape decor: the written tick is tracked per chunk so a chunk scrolled into view mid-tick
     // (or while paused) still catches up to the current frame.
     for (const chunk of this.decorChunks) {
       const visible = aabbIntersects(vp, chunk);
@@ -124,10 +119,9 @@ export class MapObjectLayer {
         for (let q = 0; q < batch.objects.length; q++) {
           const obj = batch.objects[q];
           if (obj === null || obj === undefined) continue; // removed (handed to the sprite pool) — stays zeroed
-          // Animated decor (waves, swaying grass/bushes) FREEZES on ground the viewer does not
-          // currently watch — same memory-not-live-feed rule as the tall objects, decided per
-          // object cell (the loop rewrites every on-screen animated quad each tick anyway, so a
-          // frozen quad just keeps re-writing its fixed-clock frame — no per-object state).
+          // Animated decor (waves, swaying grass/bushes) freezes on ground the viewer does not
+          // currently watch, decided per object cell (the loop rewrites every on-screen animated
+          // quad each tick anyway, so a frozen quad just re-writes its fixed-clock frame — no state).
           const cell = screenToCell(obj.x, obj.y);
           const watched =
             fogStateOfCell === undefined || fogStateOfCell(cell.col, cell.row) === FOG_STATE.VISIBLE;

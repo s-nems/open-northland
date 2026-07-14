@@ -11,14 +11,14 @@ import { scaleColour } from './brightness.js';
 
 /** Per-state fog-wash mask alpha (black texels over the ground): unexplored hides everything,
  *  explored dims to "known terrain, not watched", visible shows through. Owned here (not in the GPU
- *  wash) so the ghost tint below derives from the SAME grading — a ghost sprite drawn above the wash
- *  reads exactly as dark as the explored ground it stands on. The alphas are TUNED BY EYE (the grey
+ *  wash) so the ghost tint below derives from the same grading — a ghost sprite drawn above the wash
+ *  reads exactly as dark as the explored ground it stands on. The alphas are tuned by eye (the grey
  *  layer is our modern addition — source basis "observed original behaviour"; a human signs off). */
 export const FOG_UNEXPLORED_ALPHA = 255;
 export const FOG_EXPLORED_ALPHA = 140;
 
 /** The luminance factor a black wash of {@link FOG_EXPLORED_ALPHA} leaves: `1 − α/255`. Ghost sprites
- *  sit ABOVE the wash (the depth-sorted entity layer), so they multiply this in via tint instead. */
+ *  sit above the wash (the depth-sorted entity layer), so they multiply this in via tint instead. */
 const FOG_GHOST_LUMA = 1 - FOG_EXPLORED_ALPHA / 255;
 
 /** {@link fogGhostTint} of plain white — the tint for a ghost sprite with no base shading. */
@@ -31,10 +31,10 @@ export function fogGhostTint(base: number): number {
 }
 
 /**
- * The visual CELL containing a fractional tile position — the render twin of the sim's
+ * The visual cell containing a fractional tile position — the render twin of the sim's
  * `cellOfNode(nodeOfPosition(p))` (halfcell.ts: `hx = ⌊(x + stagger(y))·2⌋`, cell = `hx>>1` =
  * `⌊x + stagger(y)⌋`; `cy = ⌊y⌋`). The stagger is the same triangle wave `tileToScreen` interpolates
- * (0 at even rows, ½ cell at odd, linear between), so a walking entity resolves to the SAME cell the
+ * (0 at even rows, ½ cell at odd, linear between), so a walking entity resolves to the same cell the
  * sim's vision mask stamped — the two sides can't disagree about which cell hides a unit.
  */
 export function fogCellOfTile(tileX: number, tileY: number): { cx: number; cy: number } {
@@ -44,7 +44,7 @@ export function fogCellOfTile(tileX: number, tileY: number): { cx: number; cy: n
 }
 
 /**
- * Whether a fractional tile position is fully VISIBLE to the fog view's player — the per-entity cull
+ * Whether a fractional tile position is fully visible to the fog view's player — the per-entity cull
  * predicate the sprite pool applies (an entity in an unexplored/explored-only cell is not drawn;
  * user decision 2026-07-11: the grey layer shows terrain only, no entities/resources).
  */

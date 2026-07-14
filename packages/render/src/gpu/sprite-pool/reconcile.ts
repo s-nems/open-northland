@@ -4,8 +4,8 @@
  */
 
 /**
- * Which pooled entities must be DESTROYED this frame: those whose entity has left the snapshot (died),
- * NOT ones merely culled off-screen (still in `liveRefs`, kept in the pool for when they scroll back).
+ * Which pooled entities must be destroyed this frame: those whose entity has left the snapshot (died),
+ * not ones merely culled off-screen (still in `liveRefs`, kept in the pool for when they scroll back).
  */
 export function reconcileSprites(
   liveRefs: ReadonlySet<number>,

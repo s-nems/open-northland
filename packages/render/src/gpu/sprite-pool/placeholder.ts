@@ -3,7 +3,7 @@ import type { SpriteKind } from '../../data/sprites/index.js';
 
 /**
  * The placeholder markers a pooled entity draws when no atlas frame binds it (or no sheet is loaded) —
- * flat, depth-sortable geometry coloured by kind, built ONCE per entity.
+ * flat, depth-sortable geometry coloured by kind, built once per entity.
  */
 
 /** Placeholder body colour per drawable sprite kind (drawn when no atlas frame binds the entity). */
@@ -29,11 +29,10 @@ const ARROW_STROKE = 2;
 export const PROJECTILE_FLIGHT_HEIGHT = 14;
 
 /**
- * The in-flight munition marker: a fletched arrow authored pointing SCREEN-EAST (+x) so the pool
+ * The in-flight munition marker: a fletched arrow authored pointing screen-east (+x) so the pool
  * rotates it to the {@link import('../../data/scene/draw-item.js').DrawItem.rotation} flight heading.
- * The one drawn-shape approximation in this table with a tracked reason: NO decoded arrow bob exists
- * in the extracted `[bobseq]` lanes (only character bodies) — plan step 6 hunts the effects bmds once
- * and this minimal sprite is its named fallback until then.
+ * A drawn-shape approximation: no decoded arrow bob exists in the extracted `[bobseq]` lanes (only
+ * character bodies), so this minimal sprite is the named fallback until the effects bmds are decoded.
  */
 function drawArrow(g: Graphics): Graphics {
   const colour = KIND_COLOURS.projectile;
@@ -64,7 +63,7 @@ export function placeholderBody(kind: SpriteKind): { bodyW: number; bodyH: numbe
 /**
  * Draw a feet-anchored sprite placeholder into `g`, relative to its container origin `(0,0)`: a small
  * footprint diamond on the ground + a body box rising from it, coloured by kind — so an unbound entity
- * (or the no-atlas default) still shows depth-sortable geometry. Built ONCE per entity (kind is stable);
+ * (or the no-atlas default) still shows depth-sortable geometry. Built once per entity (kind is stable);
  * only its visibility toggles per frame.
  */
 export function drawPlaceholder(g: Graphics, kind: SpriteKind): Graphics {

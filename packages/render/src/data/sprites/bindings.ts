@@ -3,7 +3,7 @@ import type { BuildingTypeBinding, ResourceTypeBinding, StockpileBinding } from 
 import type { SettlerStateBinding } from './settler-bindings.js';
 
 /**
- * The ROOT sprite-binding vocabulary — the per-kind {@link SpriteBindings} record content fills from the
+ * The root sprite-binding vocabulary — the per-kind {@link SpriteBindings} record content fills from the
  * extracted IR, composing the settler binding types ({@link import('./settler-bindings.js')}) and the
  * layered building/resource/stockpile types ({@link import('./layered-bindings.js')}). The pure resolvers
  * ({@link import('./settler.js')}, {@link import('./layered.js')}, {@link import('./resolve.js')}) consume
@@ -39,7 +39,7 @@ export type SpriteBindings = Readonly<{
    *  (stump draws the placeholder). */
   stump?: number | ResourceTypeBinding;
   /** A loose dropped-wood binding — the {@link ResourceTypeBinding} twin for a `GroundDrop` entity, the
-   *  freshly-felled trunk lying on the ground (the `landscapeToPickup` stage) BEFORE a collector carries
+   *  freshly-felled trunk lying on the ground (the `landscapeToPickup` stage) before a collector carries
    *  it off. Drawn per-good like the node; absent keeps old sheets valid (the drop draws the placeholder). */
   trunk?: number | ResourceTypeBinding;
   /** A wild berry bush binding — the {@link ResourceTypeBinding} twin for a `BerryBush` entity, drawn per

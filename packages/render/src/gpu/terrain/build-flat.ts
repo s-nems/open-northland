@@ -7,19 +7,19 @@ import { emptyBatch, meshGeometry, type TerrainBatch } from './chunk-batcher.js'
 import { buildChunks, flatTileColour, liftFn, positions, type TerrainChunk } from './geometry.js';
 
 /**
- * Quantization steps for the flat placeholder's CPU-side shading: its meshes batch by EXACT colour,
+ * Quantization steps for the flat placeholder's CPU-side shading: its meshes batch by exact colour,
  * so the multiplier snaps to this many levels per unit to keep the per-block mesh count bounded (a
  * placeholder path — coarse banding is acceptable, hundreds of one-cell meshes are not).
  */
 const FLAT_SHADE_STEPS = 8;
 
 /**
- * The flat-tint placeholder ground: each block's cell triangles batched into ONE {@link Mesh}
- * **per distinct tile colour** (a white texel tinted by the colour), built once. A grass-only
- * block is a single draw call regardless of tile count. NOT one `Graphics` of N stroked cells:
+ * The flat-tint placeholder ground: each block's cell triangles batched into one {@link Mesh}
+ * per distinct tile colour (a white texel tinted by the colour), built once. A grass-only
+ * block is a single draw call regardless of tile count. Not one `Graphics` of N stroked cells:
  * that tessellates the stroke of every cell and does not batch, so at 65 536 cells it costs
  * ~1 s/frame on any renderer (the crash-adjacent path this replaces). A shaded map scales each
- * cell's tint CPU-side, QUANTIZED to {@link FLAT_SHADE_STEPS} steps — the batches are keyed by
+ * cell's tint CPU-side, quantized to {@link FLAT_SHADE_STEPS} steps — the batches are keyed by
  * exact colour, so an unquantized smooth gradient would explode the per-block mesh count. The
  * flat tint is a placeholder, not the 1:1 look, so the coarse cell-centre shading is fine.
  */

@@ -23,31 +23,29 @@ import {
 } from './snapshot-readers/index.js';
 
 /**
- * The PURE sprite-scene builder — the per-frame half of the scene layer, and the part of rendering an
- * agent CAN self-verify. It turns a {@link WorldSnapshot} into a flat, **depth-sorted** list of sprite
- * draw items in isometric screen space (no Pixi, no canvas, no GPU: plain data the GPU layer walks in
- * order), plus the pre-cull liveness set the retained pool reconciles against. The per-component snapshot
+ * The pure sprite-scene builder: turns a {@link WorldSnapshot} into a flat, depth-sorted list of sprite
+ * draw items in isometric screen space (plain data, no Pixi), plus the pre-cull liveness set the retained
+ * pool reconciles against. This module owns the projection, the cull, and the depth order; the component
  * reads live in {@link import('./snapshot-readers/index.js')}, the per-snapshot pre-scan memos in
  * {@link import('./snapshot-index.js')}, and the per-kind item tagging in
- * {@link import('./collect-fields.js')}; this module owns the projection, the cull, and the depth order.
+ * {@link import('./collect-fields.js')}.
  *
- * Why floats are fine here: this is `render`, a pure consumer of sim state (docs/ARCHITECTURE.md).
- * The sim stays fixed-point; render reads the snapshot's `Fixed` position (a scaled integer) and
- * divides by ONE to a float tile coordinate. Nothing here feeds back into the sim.
+ * Floats are fine here: `render` is a pure consumer of sim state (docs/ARCHITECTURE.md). The snapshot's
+ * `Fixed` position (a scaled integer) is divided by ONE to a float tile coordinate; nothing feeds back
+ * into the sim.
  */
 
-/** One frame's sprite scene: the culled, depth-sorted draw list PLUS the pre-cull liveness set —
+/** One frame's sprite scene: the culled, depth-sorted draw list plus the pre-cull liveness set,
  *  produced in a single pass over the snapshot (see {@link collectSpriteScene}). */
 export interface SpriteScene {
   readonly items: DrawItem[];
-  /** Ids of ALL drawable entities (before the cull) — the set the retained pool reconciles against
-   *  (an id missing here has DIED; one present but not in {@link items} is merely off-screen). */
+  /** Ids of every drawable entity before the cull — the set the retained pool reconciles against
+   *  (an id missing here has died; one present but not in {@link items} is merely off-screen). */
   readonly liveRefs: ReadonlySet<number>;
 }
 
-/** The optional inputs of a scene build — one named shape instead of a positional-parameter tail
- *  (call sites were reading `(snap, undefined, undefined, undefined, undefined, ghosts)`). Every
- *  field accepts an explicit `undefined` so callers can pass through their own optionals directly. */
+/** The optional inputs of a scene build. Every field accepts an explicit `undefined` so callers can
+ *  pass through their own optionals directly. */
 export interface SpriteSceneOptions {
   /** The (margin-inflated) world-space camera box — cull to it; absent = emit every sprite. */
   readonly viewport?: Viewport | undefined;
@@ -60,78 +58,68 @@ export interface SpriteSceneOptions {
   /** The viewer's remembered statics (`data/fog-ghosts.ts`), drawn dimmed on explored ground. */
   readonly ghosts?: readonly FogGhost[] | undefined;
   /**
-   * Keep settlers that are INSIDE a building — mid-exchange in a completed store, or waiting in their
-   * workplace between chores (the sim `Resting` marker) — instead of suppressing them, forced to the
-   * `idle` standing pose. The map hides these (the original's off-duty workers wait in the house, not
-   * lined up at the door); the details panel's worker field sets this so a bound worker who has stepped
-   * inside STANDS in the panel rather than vanishing from it.
+   * Keep settlers that are inside a building — mid-exchange in a completed store, or waiting in their
+   * workplace between chores (the sim `Resting` marker) — forced to the `idle` standing pose. The map
+   * hides these (observed original: off-duty workers wait in the house, not lined up at the door); the
+   * details panel's worker field sets this so a bound worker who stepped inside still shows there.
    */
   readonly keepIndoorSettlers?: boolean;
 }
 
 /**
- * The depth-sorted SPRITE draw list alone (no terrain) — the per-frame half the retained
- * {@link import('../../gpu/world-renderer.js').WorldRenderer} consumes. Terrain is static and built ONCE
- * (`setTerrain`), so it no longer flows through the per-frame path; this emits only the
- * moving/animated entities. Pass a `viewport` to CULL to what the camera frames (an item is kept iff
- * its screen anchor is inside the — already margin-inflated — box); culling changes *which* items are
- * emitted, never their relative order, so the retained pool + depth-sort stay correct. Absent a
- * viewport, every sprite is emitted (the whole-map / fully-zoomed-out case). Pure.
+ * The depth-sorted sprite draw list alone (no terrain) — the per-frame half the retained
+ * {@link import('../../gpu/world-renderer.js').WorldRenderer} consumes. Terrain is static and built once
+ * (`setTerrain`), so only moving/animated entities flow through here. Pass a `viewport` to cull to what
+ * the camera frames (an item is kept iff its screen anchor is inside the already margin-inflated box);
+ * culling changes which items are emitted, never their relative order, so the retained pool and
+ * depth-sort stay correct. Absent a viewport, every sprite is emitted.
  */
 export function buildSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOptions = {}): DrawItem[] {
   return collectSpriteScene(snapshot, opts).items;
 }
 
 /**
- * Build the depth-sorted sprite draw list AND the pre-cull liveness set in one pass over the
- * snapshot's entities — the shared core of {@link import('./terrain-scene.js').buildScene},
- * {@link buildSpriteScene} and the retained pool's per-frame reconcile (which needs both and would
- * otherwise classify every entity twice per frame). Each drawable entity is projected to its feet
- * anchor and tagged with the render-side reads (state/facing/carrying/atomic/buildingType) a per-kind
- * binding needs; when a `viewport` is given, one whose drawn anchor falls outside the framed box is
- * dropped — the per-kind reads run only for the items that survive the cull. Sorted by feet anchor
- * `(y, x)` then entity id — a total, stable order, so culling only removes items without reshuffling
- * the survivors. Pure.
+ * Build the depth-sorted sprite draw list and the pre-cull liveness set in one pass over the snapshot's
+ * entities — the shared core of {@link import('./terrain-scene.js').buildScene}, {@link buildSpriteScene}
+ * and the retained pool's per-frame reconcile, which needs both and would otherwise classify every entity
+ * twice per frame. Each drawable entity is projected to its feet anchor and tagged with the render-side
+ * reads (state/facing/carrying/atomic/buildingType) a per-kind binding needs; the per-kind reads run only
+ * for items that survive the cull. Sorted by feet anchor `(y, x)` then entity id — a total, stable order,
+ * so culling only removes items without reshuffling the survivors.
  *
- * `staticRefs` names entities the RETAINED static map-object layer draws instead (a decoded map's
- * virgin resource nodes — see the `?map=` entry's handover): they are skipped entirely — no draw item,
- * not in the liveness set — so the pool never runs per-frame work for scenery that has its own
- * built-once quad (golden rule: per-frame cost tracks the screen's ACTIVE entities, not the forest).
+ * `staticRefs` names entities the retained static map-object layer draws instead (a decoded map's virgin
+ * resource nodes): skipped entirely — no draw item, not in the liveness set — so the pool runs no
+ * per-frame work for scenery that has its own built-once quad.
  *
- * `fogVisible` is the fog-of-war cull (`data/fog.ts` over the viewer's `FogView`): an entity whose
- * tile it rejects is treated exactly like a viewport-culled one — kept in the liveness set (still
- * alive, its pooled sprite is retained for when the fog lifts) but emits no draw item, so a unit,
- * building, resource or pile in unexplored/grey ground simply does not draw.
+ * `fogVisible` is the fog-of-war cull (`data/fog.ts` over the viewer's `FogView`): an entity whose tile
+ * it rejects is treated like a viewport-culled one — kept in the liveness set so its pooled sprite
+ * survives until the fog lifts, but emitting no draw item.
  *
- * `ghosts` are the viewer's remembered statics (`data/fog-ghosts.ts`, pre-filtered to EXPLORED
- * ground by the store): each projects like a live static (same anchor, lift and depth formula, so a
- * ghost occludes correctly against live sprites at the fog boundary) but is tagged {@link
- * DrawItem.ghost} for the pool's grey tint. Ghost refs join the liveness set — a ghost of a DEAD
- * entity must keep its pooled sprite alive for as long as the memory draws. A ref never yields two
- * items: the store deletes records on VISIBLE ground, the fog cull drops live items elsewhere.
+ * `ghosts` are the viewer's remembered statics (`data/fog-ghosts.ts`, pre-filtered to explored ground by
+ * the store): each projects like a live static (same anchor, lift and depth formula, so a ghost occludes
+ * correctly against live sprites at the fog boundary) but is tagged {@link DrawItem.ghost} for the pool's
+ * grey tint. Ghost refs join the liveness set, keeping a dead entity's pooled sprite alive for as long as
+ * the memory draws. A ref never yields two items: the store deletes records on visible ground, and the fog
+ * cull drops live items elsewhere.
  */
 export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOptions = {}): SpriteScene {
   const { viewport, elevation, staticRefs, fogVisible, ghosts, keepIndoorSettlers } = opts;
   const items: MutableDrawItem[] = [];
   const liveRefs = new Set<number>();
-  // The target-position index (for facing mid-swing actors + aiming projectiles) — built once per
-  // snapshot and reused across the frames that render it (see targetPositionsOf), empty when no actor
-  // needs it.
+  // Target positions for facing mid-swing actors and aiming projectiles: built once per snapshot and
+  // reused across the frames that render it (see targetPositionsOf), empty when no actor needs it.
   const posByRef = targetPositionsOf(snapshot);
   const enterableStores = enterableStoresOf(snapshot);
   for (const entity of snapshot.entities) {
-    // Drawn by the retained static layer instead (a virgin map resource) — skip before even classifying.
+    // Drawn by the retained static layer instead (a virgin map resource); skip before classifying.
     if (staticRefs?.has(entity.id)) continue;
     const components = entity.components;
     const kind = classify(components);
     if (kind === null) continue;
     const pos = readPosition(components);
     if (pos === null) continue;
-    // A settler mid-exchange INSIDE a completed building store — or WAITING INSIDE its workplace
-    // between chores (the sim `Resting` marker): live (pooled) but not drawn. The original's off-duty
-    // workers wait in the house, not lined up at the door. The details panel overrides this
-    // (`keepIndoorSettlers`) to show a building's occupants in its worker field; such an indoor settler
-    // is forced to the `idle` STANDING pose below (no in-transit gait, no lingering action swing).
+    // A settler inside a building (mid-exchange in a completed store, or the `Resting` marker in its
+    // workplace) stays live/pooled but is not drawn, unless `keepIndoorSettlers` overrides it.
     let indoorSettler = false;
     if (kind === 'settler') {
       const store = readStoreExchangeRef(components);
@@ -141,25 +129,23 @@ export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOpt
         continue;
       }
     }
-    // A delivery flag is a `stockpile`-kind marker that must paint just ABOVE a co-located goods heap of
-    // the same kind (both resolve to the same feet anchor). Known here so it folds into the depth key.
+    // A delivery flag is a `stockpile`-kind marker that must paint just above a co-located goods heap of
+    // the same kind (both resolve to the same feet anchor). Read here so it folds into the depth key.
     const isFlag = 'DeliveryFlag' in components;
     liveRefs.add(entity.id);
     // Fixed (scaled int) -> float tile coordinate. Render-only; never re-enters the sim.
     const tileX = pos.x / ONE;
     const tileY = pos.y / ONE;
     const screen = tileToScreen(tileX, tileY);
-    // Only settlers animate per-state in this slice; a building/resource is always idle.
-    // An indoor settler (kept only for the panel) stands idle — force it, so a lingering path/atomic
-    // from the tick it stepped inside can't leave it walking or mid-swing in the building's portrait.
+    // Only settlers animate per-state in this slice; a building/resource is always idle. An indoor
+    // settler is forced idle so a lingering path/atomic from the tick it stepped inside can't leave it
+    // walking or mid-swing in the panel's portrait.
     const state: SpriteState = kind === 'settler' && !indoorSettler ? readSpriteState(components) : 'idle';
     const actingAtomic = kind === 'settler' && !indoorSettler ? readActingAtomic(components) : null;
-    // A mid-swing attacker/harvester FACES its target but plays the swing IN PLACE — the drawn anchor
+    // A mid-swing attacker/harvester faces its target but plays the swing in place: the drawn anchor
     // never moves toward the enemy/node. The swing frames carry their own authored advance in the
-    // per-frame foot offsets (the figure leans and strikes within the sprite), so any extra positional
-    // nudge DOUBLES that motion and reads as the body sliding over the ground at every swing (the
-    // reported przód-tył glide — first seen on the attack nudge, then again on the removed chop nudge,
-    // which also popped on/off across the between-swings replan gap). The axe/blade reach is the art's job.
+    // per-frame foot offsets, so any extra positional nudge doubles that motion and reads as the body
+    // sliding over the ground at every swing. The axe/blade reach is the art's job.
     let targetFacing: number | undefined;
     if (kind === 'settler' && actingAtomic !== null && TARGET_FACING_ATOMIC_IDS.has(actingAtomic)) {
       const targetRef = readAtomicTargetEntity(components);
@@ -170,18 +156,18 @@ export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOpt
     }
     const drawX = screen.x;
     const drawY = screen.y;
-    // Cull to the framed viewport (when culling). Uses the DRAWN anchor; the box is pre-inflated by the
-    // renderer to cover a tall sprite's extent, so a building straddling the edge still draws.
+    // Cull to the framed viewport. Uses the drawn anchor; the box is pre-inflated by the renderer to
+    // cover a tall sprite's extent, so a building straddling the edge still draws.
     if (viewport !== undefined && !isVisible(viewport, drawX, drawY)) continue;
-    // Fog-of-war cull: an entity on ground the viewer does not currently SEE stays pooled (live) but
-    // draws nothing — the same contract as the viewport cull. AFTER the viewport cull on purpose: the
-    // fog probe costs a mask lookup per call, so it runs for the few on-screen entities, not the map.
+    // Fog-of-war cull: an entity on ground the viewer does not currently see stays pooled but draws
+    // nothing, the same contract as the viewport cull. After the viewport cull on purpose: the fog probe
+    // costs a mask lookup per call, so it runs for the few on-screen entities, not the map.
     if (fogVisible !== undefined && !fogVisible(tileX, tileY)) continue;
-    // Terrain lift at the feet (bilinear over the elevation lane) — the DRAW offset, NOT the depth key.
-    // The anchor/`depth` below stay PRE-LIFT so occlusion sorts by map row, not by lifted screen y.
-    // A flat map (`maxLift === 0`) skips the sampler entirely — the elevation-free path stays free.
+    // Terrain lift at the feet (bilinear over the elevation lane) is the draw offset, not the depth key:
+    // the anchor and `depth` below stay pre-lift so occlusion sorts by map row, not by lifted screen y.
+    // A flat map (`maxLift === 0`) skips the sampler entirely.
     const lift = terrainLiftAt(elevation, tileX, tileY);
-    // A projectile's ballistic height (set in its branch below) rides the SAME lift channel as terrain:
+    // A projectile's ballistic height (set in its branch below) rides the same lift channel as terrain:
     // a pure draw offset the depth key never sees, so the lob can't reshuffle occlusion mid-flight.
     let arcLift = 0;
     const item: MutableDrawItem = {
@@ -192,28 +178,28 @@ export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOpt
       // Feet-anchor depth: lower (greater y), then further-right (greater x), then a per-kind sub-cell
       // bias (a settler in front of the node it stands on, a flag in front of its ground drops — plus a
       // half-step so a flag out-sorts a co-located heap of its own kind), then id. A total order, so the
-      // sort is deterministic regardless of snapshot iteration nuances.
+      // sort is deterministic regardless of snapshot iteration order.
       depth: spriteDepth(tileX, tileY, kind, isFlag),
       state,
     };
-    // Per-kind reads, ASSIGNED (not spread) so an absent fact stays an absent property under
+    // Per-kind reads, assigned (not spread) so an absent fact stays an absent property under
     // exactOptionalPropertyTypes without a throwaway spread object per field.
     if (kind === 'settler') {
       assignSettlerFields(item, components, actingAtomic, targetFacing);
     } else if (kind === 'building') {
       // A building carries its type id (the `[GfxHouse]` `LogicType` → `GfxBobId` join a per-type binding
-      // draws its house bob by) and — while under construction — its progress percent (the stage binding
-      // picks the visible layers: grey foundation → stages → body). Both via the shared static reader.
+      // draws its house bob by) and, while under construction, its progress percent (the stage binding
+      // picks the visible layers: grey foundation → stages → body).
       assignStaticFields(item, 'building', components);
-      // Mid production cycle — the switch a type's animated state overlay flips on (the mill's rotor).
-      // Live-only: a fog ghost never animates, so this rides here, not in assignStaticFields.
+      // Mid production cycle: the switch a type's animated state overlay flips on (the mill's rotor).
+      // Live-only, since a fog ghost never animates.
       if (readProducing(components)) item.working = true;
     } else if (kind === 'resource') {
       // A resource node carries its `goodType` (per-good species/deposit), its shrink-by-`level` fill, and
-      // its source-variant `gfxIndex` ("pine 02", not the representative "yew 01") — all via the shared
-      // static reader so a live node and its fog ghost read the same fields.
+      // its source-variant `gfxIndex` ("pine 02", not the representative "yew 01") — via the shared static
+      // reader so a live node and its fog ghost read the same fields.
       assignStaticFields(item, 'resource', components);
-      // The ladder DENOMINATOR rides ALONGSIDE `level` so the resolver can rescale the sim's ladder onto
+      // The ladder denominator rides alongside `level` so the resolver can rescale the sim's ladder onto
       // the bound record's own state count. Live-only: ghosts omit it (see assignStaticFields).
       if (item.level !== undefined) {
         const levels = readResourceLevelCount(components);
@@ -222,9 +208,9 @@ export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOpt
     } else if (kind === 'stump') {
       assignStaticFields(item, 'stump', components);
     } else if (kind === 'berrybush') {
-      // A berry bush carries its render-variant `gfxIndex` (the fruited-bush record — its species) and a
-      // ripe/bare LEVEL (2 = fruited, 1 = bare), so its per-variant two-frame binding draws the state the
-      // sim last set (foraged → bare, regrown → ripe).
+      // A berry bush carries its render-variant `gfxIndex` (the fruited-bush record, i.e. its species) and
+      // a ripe/bare level (2 = fruited, 1 = bare), so its per-variant two-frame binding draws the state
+      // the sim last set (foraged → bare, regrown → ripe).
       const gfxIndex = readBerryBushGfxIndex(components);
       if (gfxIndex !== undefined) item.gfxIndex = gfxIndex;
       const level = readBerryBushLevel(components);
@@ -233,7 +219,7 @@ export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOpt
       // Rides the lift draw channel, like terrain lift — never the depth key (see assignProjectileArc).
       arcLift = assignProjectileArc(item, components, screen, posByRef);
     } else {
-      // stockpile | grounddrop: both read their held good + fill from the stockpile — the trunk keys its
+      // stockpile | grounddrop: both read their held good and fill from the stockpile — the trunk keys its
       // per-good pickup graphic off `goodType`, the flag/heap its per-fill frame off `goodType`+`fill`.
       const { goodType, fill } = readStockpile(components);
       if (goodType !== undefined) item.goodType = goodType;

@@ -1,5 +1,5 @@
 /**
- * The PURE scene-building layer — the part of rendering an agent CAN self-verify (no Pixi, no canvas,
+ * The pure scene-building layer — the part of rendering an agent can self-verify (no Pixi, no canvas,
  * no GPU). Split by concern:
  *  - {@link import('./draw-item.js')} — the {@link DrawItem} sprite vocabulary;
  *  - {@link import('./snapshot-readers/index.js')} — the per-component snapshot reads;

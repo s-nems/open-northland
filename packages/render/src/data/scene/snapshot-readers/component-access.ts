@@ -1,9 +1,9 @@
 /**
  * The low-level, defensive component-access primitives every snapshot reader builds on: a settler's
  * position, and the "read one numeric field off a possibly-absent component" helpers. Split out of the
- * readers so the per-concern reader files (unit / static / stockpile / projectile) share ONE decode core.
+ * readers so the per-concern reader files (unit / static / stockpile / projectile) share one decode core.
  *
- * Shared contract: pure, TOTAL functions of a snapshot entity's plain-cloned `components` record. A
+ * Shared contract: pure, total functions of a snapshot entity's plain-cloned `components` record. A
  * missing or malformed component reads as its "absent" value (`null`/`undefined`), never a throw — the
  * scene must survive any snapshot shape. Nothing here re-enters the sim.
  */
@@ -24,10 +24,10 @@ export function readPosition(components: Readonly<Record<string, unknown>>): Pos
 }
 
 /**
- * Read one NUMERIC field off a (possibly absent or malformed) snapshot component — `undefined` when the
+ * Read one numeric field off a (possibly absent or malformed) snapshot component — `undefined` when the
  * component is missing or the field is not a number. The shared body behind the many single-field readers,
- * each of which is just this call plus its own name + JSDoc (the load-bearing part: what the field MEANS to
- * the renderer). Total + defensive like every reader here.
+ * each of which is just this call plus its own name + JSDoc (the load-bearing part: what the field means to
+ * the renderer).
  */
 export function readNumField(
   components: Readonly<Record<string, unknown>>,

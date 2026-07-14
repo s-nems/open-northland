@@ -9,10 +9,10 @@ import type { MotionTrack } from './motion.js';
  */
 
 /**
- * The WORLD-space axis-aligned bounding box of an entity's drawn sprite this frame (pre-camera, the same
+ * The world-space axis-aligned bounding box of an entity's drawn sprite this frame (pre-camera, the same
  * space as a {@link import('../../data/scene/index.js').DrawItem}'s `x`/`y`). The union of its visible
  * atlas layers (or its placeholder box), translated to the feet anchor. This is what makes "click
- * anywhere on the graphic" and a footprint-sized selection marker EXACT per building/settler — the
+ * anywhere on the graphic" and a footprint-sized selection marker exact per building/settler — the
  * picker + selection ring read it instead of guessing a fixed box, so a big headquarters and a small hut
  * each get a hit box the size of their own sprite.
  */
@@ -41,16 +41,16 @@ interface MutableBounds {
 export interface PooledEntity {
   readonly container: Container;
   readonly kind: SpriteKind;
-  /** This entity's atlas layers. A PALETTED settler (team colours on) draws {@link PalettedSprite} meshes;
+  /** This entity's atlas layers. A paletted settler (team colours on) draws {@link PalettedSprite} meshes;
    *  every other entity draws plain {@link Sprite}s. Homogeneous per entity — set by {@link PooledEntity.paletted}. */
   readonly sprites: (Sprite | PalettedSprite)[];
   /** Whether this entity draws team-coloured {@link PalettedSprite} meshes (a settler, with a LUT + indexed
-   *  characters loaded). Fixed at creation — the sprite CLASS can't change, so the pool decides once. */
+   *  characters loaded). Fixed at creation — the sprite class can't change, so the pool decides once. */
   readonly paletted: boolean;
   placeholder?: Graphics;
   attached: boolean;
   lastSeen: number;
-  /** This entity's world-space sprite AABB, restamped IN PLACE each frame it's drawn (no per-frame alloc). */
+  /** This entity's world-space sprite AABB, restamped in place each frame it's drawn (no per-frame alloc). */
   readonly bounds: MutableBounds;
   /** The `frameId` the bounds were last stamped on; `boundsOf` only returns them when it's the current one. */
   boundsFrame: number;
@@ -58,12 +58,12 @@ export interface PooledEntity {
    *  unit shows, so its walk doesn't flip to the default facing for a frame each tile (see
    *  {@link import('./sprite-pool.js').SpritePool}). */
   lastFacing?: number;
-  /** The DISPLAYED bottom-up reveal fraction (0..1) of an under-construction building, eased toward the
+  /** The displayed bottom-up reveal fraction (0..1) of an under-construction building, eased toward the
    *  layer's target each frame so the rise glides between the sim's per-swing `built` steps. `undefined`
    *  until the entity first draws a reveal layer, and reset to `undefined` once it finishes (no reveal
    *  layer). Always present (not optional) so the pooled entity keeps a stable, monomorphic shape. */
   reveal: number | undefined;
-  /** The entity's inter-tick motion track — the last two TICK anchors plus the lerped DRAWN anchor
+  /** The entity's inter-tick motion track — the last two tick anchors plus the lerped drawn anchor
    *  ({@link import('./motion.js').trackMotion}); 20 Hz sim steps draw as continuous frame-rate motion.
    *  `tick` −1 = fresh. */
   readonly motion: MotionTrack;

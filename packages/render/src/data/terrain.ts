@@ -1,27 +1,25 @@
 /**
- * The PURE geometry half of textured terrain — the self-verifiable twin of the GPU mesh build in
- * `gpu/terrain/terrain-layer.ts`, with **no Pixi import**, so the vertex/UV math is unit-tested
- * headlessly while only the rasterised pixels stay human-gated.
+ * The pure geometry half of textured terrain — the twin of the GPU mesh build in
+ * `gpu/terrain/terrain-layer.ts`, with no Pixi import, so the vertex/UV math is unit-tested
+ * headlessly.
  *
- * THE TESSELLATION (source basis: the original engine's ground mesh, pinned via a working
- * reimplementation — docs/SOURCES.md "terrain tessellation"): mesh vertices are the CELL-CENTRE
- * NODES of the half-cell lattice — cell `(col, row)`'s centre is node `(2·col + (row&1), 2·row)`,
- * the same lattice the sim's nav grid addresses. Each map cell contributes TWO triangles spanning
- * BETWEEN neighbouring cell centres:
+ * Tessellation (source basis: docs/SOURCES.md "terrain tessellation"): mesh vertices are the
+ * cell-centre nodes of the half-cell lattice — cell `(col, row)`'s centre is node
+ * `(2·col + (row&1), 2·row)`, the lattice the sim's nav grid addresses. Each map cell contributes
+ * two triangles spanning between neighbouring cell centres:
  *
  *   A = △ [its own node (apex), the SE-below cell's node, the SW-below cell's node]
  *   B = ▽ [its own node (left), the E cell's node, the SE-below cell's node]
  *
- * so every triangle edge connects two cell centres and the ground lanes' per-triangle pattern
- * picks (`empa`/`empb` → A/B) blend organically across cells — NOT the diamond-per-cell mesh this
- * replaces, whose per-cell seams drew straight lattice edges through every biome transition.
+ * so every triangle edge connects two cell centres and the ground lanes' per-triangle pattern picks
+ * (`empa`/`empb` → A/B) blend across cells rather than seaming on lattice edges.
  *
  * UV convention (verified across all 927 pattern records + 38 transition records): `coordsA` lists
  * the tile square's (TL, BR, BL) and maps onto A's [apex, SE, SW]; `coordsB` lists (TL, TR, BR)
  * and maps onto B's [left, E, SE] — both in point order, divided by the page size verbatim.
  */
 
-/** A source sub-rectangle in texture PIXELS — the pattern's tile region within its `text_NNN` page. */
+/** A source sub-rectangle in texture pixels — the pattern's tile region within its `text_NNN` page. */
 export interface SrcRect {
   readonly x: number;
   readonly y: number;
@@ -48,8 +46,8 @@ export type NodeXY = readonly [number, number];
 
 /**
  * Cell `(col, row)`'s centre node: `(2·col + (row&1), 2·row)` — the staggered raster's lattice
- * address. The tuple-returning render twin of the sim's `nav/halfcell.ts` `cellAnchorNode` (the one
- * conversion seam); the two must stay the same formula or mesh vertices drift off nav anchors.
+ * address. Must stay the same formula as the sim's `nav/halfcell.ts` `cellAnchorNode`, or mesh
+ * vertices drift off nav anchors.
  */
 export function cellNode(col: number, row: number): NodeXY {
   return [2 * col + (row & 1), 2 * row];
@@ -84,11 +82,10 @@ export function triangleBNodes(col: number, row: number): readonly [NodeXY, Node
 }
 
 /**
- * The cell whose CENTRE a triangle-vertex node is: the inverse of {@link cellNode}. Every node the
- * two triangle builders emit sits on a cell centre (even `hy`, and `hx` sharing the row's parity),
- * so the division is exact — the node's own per-cell lane values (elevation, brightness) live at
- * this cell. May land OUTSIDE the grid for a border cell's triangles (e.g. the last row's SE node);
- * callers clamp per their lane's rule.
+ * The cell whose centre a triangle-vertex node is: the inverse of {@link cellNode}. Every node the
+ * two triangle builders emit sits on a cell centre (even `hy`, `hx` sharing the row's parity), so
+ * the division is exact. May land outside the grid for a border cell's triangles (e.g. the last
+ * row's SE node); callers clamp per their lane's rule.
  */
 export function nodeCell(hx: number, hy: number): readonly [number, number] {
   const row = hy / 2;
@@ -96,13 +93,12 @@ export function nodeCell(hx: number, hy: number): readonly [number, number] {
 }
 
 /**
- * A node's elevation lift (world px, ≥ 0, to SUBTRACT from the projected `y`): the node's OWN
- * cell's lift, with nodes on the map-border ring (or beyond it) clamped to 0. The per-NODE clamp is
- * a named watertight ADAPTATION of the engine's per-emitting-cell border zeroing — equivalent on
- * the real data because border-ring elevation is 0 across the decoded corpus (source basis,
- * docs/SOURCES.md "terrain tessellation") — and it pins the mesh edge to the flat map frame.
- * `liftAt` is the one bilinear seam (`elevation.ts`); at the integer cell coordinate it returns
- * exactly the cell's own lift.
+ * A node's elevation lift (world px, ≥ 0, to subtract from the projected `y`): the node's own
+ * cell's lift, with nodes on the map-border ring (or beyond it) clamped to 0. The per-node clamp is
+ * an approximation of the engine's per-emitting-cell border zeroing, equivalent on the real data
+ * because border-ring elevation is 0 across the decoded corpus (docs/SOURCES.md "terrain
+ * tessellation"). `liftAt` (`elevation.ts`) is bilinear, but returns exactly the cell's own lift at
+ * an integer cell coordinate.
  */
 export function nodeLift(
   liftAt: (col: number, row: number) => number,
@@ -117,11 +113,11 @@ export function nodeLift(
 }
 
 /**
- * A node vertex's brightness-lane texture UV: the node's own cell centre mapped to the lane
- * texel's CENTRE (`(coord + 0.5) / size`), clamped into the grid, so the per-fragment bilinear
- * blends each triangle's shading between its three cell-centre samples — the engine model (one
- * lighting value per node, interpolated across the triangle). `paddedWidth` is the lane texture's
- * alignment-padded width (`shading.ts` `padLaneRows`); the clamp uses the UNPADDED grid.
+ * A node vertex's brightness-lane texture UV: the node's own cell centre mapped to the lane texel's
+ * centre (`(coord + 0.5) / size`), clamped into the grid, so the per-fragment bilinear blends each
+ * triangle's shading between its three cell-centre samples — the engine model (one lighting value
+ * per node, interpolated across the triangle). `paddedWidth` is the lane texture's alignment-padded
+ * width (`shading.ts` `padLaneRows`); the clamp uses the unpadded grid.
  */
 export function nodeLaneUV(
   hx: number,
@@ -138,10 +134,9 @@ export function nodeLaneUV(
 
 // ─── transition overlays (the map's `emt1..emt4` lanes) ───────────────────────────────────────────
 
-// These two constants are the render-local twin of `@open-northland/data`'s `TRANSITION_NONE` /
-// `TRANSITION_PAIRS` (which the map schema + pipeline validate with) — duplicated deliberately
-// because this module stays import-decoupled from `@open-northland/data`; a change to the encoding must
-// touch both sites.
+// These two constants duplicate `@open-northland/data`'s `TRANSITION_NONE` / `TRANSITION_PAIRS`
+// (which the map schema + pipeline validate with) to keep this module import-decoupled from
+// `@open-northland/data`; a change to the encoding must touch both sites.
 
 /** A transition lane's "no overlay here" sentinel (u8 max). */
 export const TRANSITION_NONE = 255;
@@ -180,8 +175,8 @@ export function triangleUVs(coords: readonly number[], pageW: number, pageH: num
 /**
  * The per-typeId path's UV fold: a page sub-rect's corners onto one cell triangle, following the
  * pattern-record convention — triangle `a` gets the rect's (TL, BR, BL), `b` its (TL, TR, BR) —
- * as a flat normalised buffer in vertex order. The approximated representative-tile path shares
- * the 1:1 path's tessellation this way; only WHICH sub-rect differs.
+ * as a flat normalised buffer in vertex order. This lets the approximated representative-tile path
+ * share the 1:1 path's tessellation, differing only in which sub-rect it samples.
  */
 export function rectTriangleUVs(rect: SrcRect, triangle: 'a' | 'b', pageW: number, pageH: number): number[] {
   const x0 = rect.x / pageW;

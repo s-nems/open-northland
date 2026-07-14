@@ -4,19 +4,19 @@ import { halfCellToScreen, nodeDiamondPoly, TILE_HALF_H, TILE_HALF_W } from '../
 import { hashCells } from './cell-signature.js';
 
 /**
- * The CONSTRUCTION-SITE plot — a translucent grey "plac budowy" washed over the ground cells a placed
+ * The construction-site plot — a translucent grey "plac budowy" washed over the ground cells a placed
  * foundation occupies, so a fresh site reads as a marked-out building plot the instant it is placed (before
- * the scaffold has risen at all). Shaped to the building's FOOTPRINT (the `blocked` body cells the sim
+ * the scaffold has risen at all). Shaped to the building's footprint (the `blocked` body cells the sim
  * hands over as half-cell `(col,row)` nodes), never a generic circle — a big house marks a big plot.
  *
- * Drawn in WORLD space (a child of the camera's world layer, BELOW the sprites like the placement wash), so
+ * Drawn in world space (a child of the camera's world layer, below the sprites like the placement wash), so
  * the plot pans/zooms with the ground and the rising scaffold + builders draw over it. Each cell is one
  * node diamond (the `(TILE_HALF_W, TILE_HALF_H/2)` half-cell lattice pitch); all cells of all sites are
- * filled in ONE {@link Graphics} pass so overlapping diamonds UNION (nonzero winding — no double-blended
- * seam) and the whole layer draws at a single translucent alpha. RETAINED: the union is rebuilt only when
+ * filled in one {@link Graphics} pass so overlapping diamonds union (nonzero winding — no double-blended
+ * seam) and the whole layer draws at a single translucent alpha. Retained: the union is rebuilt only when
  * the plot set changes (a site placed or finished), not per frame — a still build re-draws nothing.
  *
- * The colour/alpha are TUNED BY EYE (source basis "observed original behavior"; a human signs off the feel).
+ * The colour/alpha are tuned by eye (source basis "observed original behavior"; a human signs off the feel).
  */
 
 /** One site's ground plot: the half-cell `(col,row)` body cells it occupies (from `Simulation.constructionPlots`). */

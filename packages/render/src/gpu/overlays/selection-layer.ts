@@ -6,22 +6,22 @@ import type { EntityBounds } from '../sprite-pool/index.js';
 import { retireUndrawn } from './retained-pool.js';
 
 /**
- * The SELECTION layer — a feet-anchored ring under each currently-selected entity, drawn in WORLD
- * space (a child of the camera's `worldLayer`, BELOW the sprite layer) so a ring pans/zooms with the
- * unit and reads as a marker on the ground. Selection is a CLIENT-side view concern, not sim state
+ * The selection layer — a feet-anchored ring under each currently-selected entity, drawn in world
+ * space (a child of the camera's `worldLayer`, below the sprite layer) so a ring pans/zooms with the
+ * unit and reads as a marker on the ground. Selection is a client-side view concern, not sim state
  * (the app owns the selected-id set); this layer just projects those ids to rings, exactly as the
  * sprite pool projects the snapshot to bobs — a pure consumer of the frozen snapshot + camera.
  *
- * RETAINED, like the sprite pool: a ring's ellipse geometry is built ONCE per entity and only its
+ * Retained, like the sprite pool: a ring's ellipse geometry is built once per entity and only its
  * container position is moved each frame — steady-state work is a handful of transform writes, no
- * geometry churn (the old immediate-mode rebuild-every-frame cost measurable frame time + input lag). A
- * ring pool keyed by entity id (ids are monotonic, a stable key); a deselected/departed id's ring is
- * destroyed. The per-frame snapshot scan is gated on a non-empty selection.
+ * geometry churn. A ring pool keyed by entity id (ids are monotonic, a stable key); a
+ * deselected/departed id's ring is destroyed. The per-frame snapshot scan is gated on a non-empty
+ * selection.
  *
- * A ring is sized to its target: a SETTLER gets a small feet ellipse; a BUILDING gets a ground ellipse
- * sized to its ACTUAL sprite footprint (the pool's per-entity {@link EntityBounds}, passed in) so a big
+ * A ring is sized to its target: a settler gets a small feet ellipse; a building gets a ground ellipse
+ * sized to its actual sprite footprint (the pool's per-entity {@link EntityBounds}, passed in) so a big
  * headquarters gets a big marker and a small hut a small one — a fixed size can't fit both. The ring sits
- * BELOW the sprites, so a unit in front occludes it; a building's ring is wide enough that its front arc
+ * below the sprites, so a unit in front occludes it; a building's ring is wide enough that its front arc
  * still reads clearly under the house.
  */
 
@@ -42,7 +42,7 @@ function isoRatio(): number {
 /** The selection ring colour (a bright green, the RTS "this is yours and selected" cue) + line weight. */
 const RING_COLOR = 0x66ff66;
 const RING_WIDTH = 2;
-/** The work-FLAG highlight colour (a bright amber) — the flag of a currently-selected gatherer, distinct
+/** The work-flag highlight colour (a bright amber) — the flag of a currently-selected gatherer, distinct
  *  from the green unit-selection ring, drawn a touch heavier so it reads under the flag's own sprite. */
 const FLAG_RING_COLOR = 0xffc020;
 const FLAG_RING_WIDTH = 3;
@@ -74,9 +74,9 @@ export interface SelectionFrame {
 
 export class SelectionLayer {
   readonly container = new Container();
-  /** One persistent ring Graphics per SELECTED entity id (green); geometry drawn once, repositioned after. */
+  /** One persistent ring Graphics per selected entity id (green); geometry drawn once, repositioned after. */
   private readonly rings = new Map<number, Graphics>();
-  /** One persistent ring per selected gatherer's FLAG entity id (amber) — the same pooling, a second cue. */
+  /** One persistent ring per selected gatherer's flag entity id (amber) — the same pooling, a second cue. */
   private readonly flagRings = new Map<number, Graphics>();
   /** Reused per-frame scratch of ids drawn this frame (one per pool; avoids a per-frame allocation). */
   private readonly drawn = new Set<number>();
@@ -94,7 +94,7 @@ export class SelectionLayer {
     this.reconcile(this.flagRings, this.drawnFlags, flagged, FLAG_RING_COLOR, FLAG_RING_WIDTH, frame);
   }
 
-  /** Reconcile ONE ring pool to `ids` in `color`: place/move a ring under each present entity, retire the rest. */
+  /** Reconcile one ring pool to `ids` in `color`: place/move a ring under each present entity, retire the rest. */
   private reconcile(
     pool: Map<number, Graphics>,
     drawn: Set<number>,
@@ -109,7 +109,7 @@ export class SelectionLayer {
         if (!ids.has(ent.id)) continue;
         const pos = ent.components.Position as { x: number; y: number } | undefined;
         if (pos === undefined) continue;
-        // The pool's DRAWN anchor (inter-tick lerped AND terrain-lifted) when the entity was drawn this
+        // The pool's drawn anchor (inter-tick lerped and terrain-lifted) when the entity was drawn this
         // frame, so the ring glides with the interpolated bob and rides the hill under it. When it wasn't
         // drawn (culled off-screen), fall back to the raw snapshot projection plus the same lift.
         let s = frame.anchorOf?.(ent.id);

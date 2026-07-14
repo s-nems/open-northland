@@ -57,15 +57,15 @@ export function assignSettlerFields(
 ): void {
   if (actingAtomic !== null) {
     item.atomicId = actingAtomic;
-    // The action clock rides ALONGSIDE the atomic — omitted when idle (see DrawItem.elapsed), so a
+    // The action clock rides alongside the atomic — omitted when idle (see DrawItem.elapsed), so a
     // kept-indoor settler that still holds a stale CurrentAtomic doesn't carry an orphan elapsed.
     const elapsed = readAtomicElapsed(components);
     if (elapsed !== null) item.elapsed = elapsed;
   }
   // A combat-engaged unit reads the readied `..._agressive` gait (the sim `Engagement` marker).
   if (readEngaged(components)) item.engaged = true;
-  // Facing: a mid-attack/mid-harvest swing has no walking heading, so it faces its target's LIVE tile
-  // (resolved by the caller); otherwise the movement heading. Target facing WINS when it resolves, so a
+  // Facing: a mid-attack/mid-harvest swing has no walking heading, so it faces its target's live tile
+  // (resolved by the caller); otherwise the movement heading. Target facing wins when it resolves, so a
   // stale path can't leave an attacker or a woodcutter swinging at empty air.
   const facing = targetFacing ?? readFacing(components);
   if (facing !== undefined) item.facing = facing;
@@ -87,8 +87,8 @@ export function assignSettlerFields(
 }
 
 /**
- * Point a projectile draw item along its flight and LOB it (the ballistic-arc trig lives in
- * {@link projectileArc}), returning the ballistic HEIGHT to fold into the draw-lift channel (never the
+ * Point a projectile draw item along its flight and lob it (the ballistic-arc trig lives in
+ * {@link projectileArc}), returning the ballistic height to fold into the draw-lift channel (never the
  * depth key, so the lob can't reshuffle occlusion mid-flight). A shot whose target vanished this frame
  * keeps `rotation` unset and flies flat (lift 0) for the one tick the sim takes to expire it.
  */
@@ -112,10 +112,10 @@ export function assignProjectileArc(
 }
 
 /**
- * Append the viewer's remembered statics (`data/fog-ghosts.ts`, pre-filtered to EXPLORED ground) to the
- * draw list: each projects with the SAME anchor/lift/depth formula as a live static (so a ghost occludes
+ * Append the viewer's remembered statics (`data/fog-ghosts.ts`, pre-filtered to explored ground) to the
+ * draw list: each projects with the same anchor/lift/depth formula as a live static (so a ghost occludes
  * correctly against live sprites at the fog boundary) but is tagged {@link DrawItem.ghost} for the pool's
- * grey tint. Every ghost ref joins `liveRefs` — a ghost of a DEAD entity keeps its pooled sprite alive as
+ * grey tint. Every ghost ref joins `liveRefs` — a ghost of a dead entity keeps its pooled sprite alive as
  * long as the memory draws; a camera-culled ghost still counts as live but emits no item.
  */
 export function pushGhostItems(
@@ -126,13 +126,11 @@ export function pushGhostItems(
   elevation: ElevationField | undefined,
 ): void {
   for (const g of ghosts) {
-    // A ghost keeps its (possibly dead) entity's pooled sprite alive even while camera-culled.
     liveRefs.add(g.ref);
     const screen = tileToScreen(g.tileX, g.tileY);
     if (viewport !== undefined && !isVisible(viewport, screen.x, screen.y)) continue;
     const lift = terrainLiftAt(elevation, g.tileX, g.tileY);
-    // Same anchor/depth formula as a live static, so a ghost sorts correctly against live sprites at the
-    // fog boundary. Statics are always `idle`; the per-kind fields were frozen at capture.
+    // Statics are always `idle`; the per-kind fields were frozen at capture.
     const item: MutableDrawItem = {
       kind: g.kind,
       ref: g.ref,

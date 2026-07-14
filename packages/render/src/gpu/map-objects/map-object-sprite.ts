@@ -5,9 +5,9 @@ import type { AtlasFrame } from '../../data/sprites/index.js';
  * One placed landscape object, fully resolved by the app (atlas source + frame list + position):
  * a tree, stone, bush, mine decal or animated wave from a decoded map's `objects` layer. `frames`
  * with more than one entry is a looping animation played from {@link phase} (the app sets phase 0
- * everywhere — the wave bobs tile seamlessly only when neighbours show the SAME frame). `decor`
+ * everywhere — the wave bobs tile seamlessly only when neighbours show the same frame). `decor`
  * objects are flat ground decor (waves, grass, flowers, mine stains): they batch into per-chunk
- * meshes UNDER the entity sprites; non-decor (tall) objects (trees, stones) depth-sort against
+ * meshes under the entity sprites; non-decor (tall) objects (trees, stones) depth-sort against
  * entities by their world-`y` feet anchor.
  */
 export interface MapObjectSprite {
@@ -22,9 +22,9 @@ export interface MapObjectSprite {
   /** Starting frame offset into {@link frames} (kept for future per-object phase data). */
   readonly phase: number;
   /**
-   * Terrain-elevation lift (world px, ≥ 0) at this object's half-cell — SUBTRACTED from the drawn `y` so
+   * Terrain-elevation lift (world px, ≥ 0) at this object's half-cell — subtracted from the drawn `y` so
    * a tree/stone rides up the hill it stands on. The feet anchor {@link y} and its depth key stay
-   * PRE-LIFT, so a lifted-up object still occludes by map row (a tree on a hill draws behind a settler on
+   * pre-lift, so a lifted-up object still occludes by map row (a tree on a hill draws behind a settler on
    * a nearer row). Omitted (0) on a flat map / when the app has no elevation lane. Set by the app loader.
    */
   readonly lift?: number;
@@ -32,9 +32,9 @@ export interface MapObjectSprite {
    * The baked `embr` luminance multiplier at this object's anchor cell (1 = neutral; the measured
    * curve in `data/brightness.ts`). The original shades landscape-object pixels with the ground's
    * baked plane — pinned on the corpus for mine decals, stones and grass (masked opaque-pixel ratio
-   * tracks embr from ×0.58 to ×1.58) — EXCEPT trees, which draw full-bright even on embr=0 border
+   * tracks embr from ×0.58 to ×1.58) — except trees, which draw full-bright even on embr=0 border
    * cells; the app loader omits the field for those (and on unshaded maps). Decor batches apply it
-   * per vertex (full range); tall pooled sprites apply it as a tint, which CLAMPS at ×1 — a named
+   * per vertex (full range); tall pooled sprites apply it as a tint, which clamps at ×1 — a named
    * approximation, Pixi's batch tint cannot brighten.
    */
   readonly brightness?: number;

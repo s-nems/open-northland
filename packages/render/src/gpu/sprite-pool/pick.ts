@@ -6,23 +6,23 @@ import type { EntityBounds, PooledEntity } from './pooled-entity.js';
  * The read-only "what did the pool draw last frame" queries — the picker/selection/portrait side of
  * {@link import('./sprite-pool.js').SpritePool}, kept apart from the per-frame binding path. Each takes
  * the entity's {@link PooledEntity} (or `undefined` when it isn't pooled) plus the pool's current
- * `frameId`, and gates on the CURRENT frame's stamp so a pooled-but-culled entity reads as "not drawn"
+ * `frameId`, and gates on the current frame's stamp so a pooled-but-culled entity reads as "not drawn"
  * (its stale stamp is ignored). Pure reads of the drawn graphic; no mutation, no Pixi scene changes.
  */
 
 /**
- * The WORLD-space bounding box of an entity's sprite as DRAWN last frame, or `undefined` if it wasn't
+ * The world-space bounding box of an entity's sprite as drawn last frame, or `undefined` if it wasn't
  * drawn (off-screen / not in the snapshot). The picker uses it for an exact "click the graphic" hit test
  * and the selection ring to size a building marker to its actual footprint — see {@link EntityBounds}.
  */
 export function boundsOf(pe: PooledEntity | undefined, frameId: number): EntityBounds | undefined {
-  // Only the CURRENT frame's stamp is valid: a pooled-but-culled entity keeps a stale stamp, so it
+  // Only the current frame's stamp is valid: a pooled-but-culled entity keeps a stale stamp, so it
   // correctly reads as "no bounds" (off-screen → the picker falls back to its kind box).
   return pe !== undefined && pe.boundsFrame === frameId ? pe.bounds : undefined;
 }
 
 /**
- * PIXEL-accurate refinement of the AABB hit: whether the WORLD-px point `(wx, wy)` lands on a SOLID
+ * Pixel-accurate refinement of the AABB hit: whether the world-px point `(wx, wy)` lands on a solid
  * texel of the entity's sprite as drawn last frame. Returns `undefined` when the exact answer isn't
  * available — entity not drawn this frame, a paletted (settler) mesh, a placeholder marker, or an
  * atlas whose pixels can't be read — so the caller keeps the box verdict; `false` means the point is
@@ -65,7 +65,7 @@ export function pixelHit(
 }
 
 /**
- * The anchor an entity was DRAWN at this frame — the inter-tick LERPED feet position, not the raw
+ * The anchor an entity was drawn at this frame — the inter-tick lerped feet position, not the raw
  * snapshot tile — or `undefined` when it wasn't drawn (culled / gone). The selection layer reads it so a
  * moving unit's ring glides with the interpolated bob instead of stepping at the tick rate.
  */
