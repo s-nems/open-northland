@@ -7,7 +7,7 @@ import type { FootprintCell, LandscapeBlockArea } from './schema/index.js';
  * sapling reserves its grown tree's space). The one shared reading of the state axis — the sim's
  * resource footprints and the app's map-collision join both class by it, so the rule cannot drift
  * between them. Duplicate cells (overlapping run rows) are emitted once; non-positive runs contribute
- * nothing. The schema's four-element tuple makes missing fields unrepresentable.
+ * nothing.
  */
 export function fullStateBlockAreaCells(
   areas: readonly Readonly<LandscapeBlockArea>[] | undefined,

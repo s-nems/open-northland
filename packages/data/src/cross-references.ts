@@ -4,9 +4,8 @@ import { type ContentSet, LOGIC_TYPE_NONE } from './schema/index.js';
  * Ensure every numeric type id referenced by buildings/recipes resolves to a defined type.
  * Catches dangling references at load time rather than as a runtime crash mid-game.
  *
- * The work is split into one `check*` per entity family, each taking the prebuilt id-sets so every
- * rule reads independently. The families run in a fixed order and append to one shared list — the
- * order the emitted error report is asserted in (`test/cross-references.test.ts`), so keep it stable.
+ * The `check*` families run in a fixed order and append to one shared list — the order the emitted
+ * error report is asserted in (`test/cross-references.test.ts`), so keep it stable.
  */
 export function validateCrossReferences(set: ContentSet): void {
   const ids = buildIdSets(set);
