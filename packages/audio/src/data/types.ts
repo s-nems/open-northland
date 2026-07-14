@@ -4,19 +4,17 @@ import type { SoundIndex } from './bank.js';
 
 /**
  * The audio package's pure vocabulary — the data the {@link import('./director/index.js').directAudio}
- * decision function consumes and produces, with no Web Audio / DOM in sight. The impure
- * {@link import('../web/sound-driver.js').SoundDriver} turns these plain requests into actual
- * `AudioContext` playback. Keeping the decision layer pure is what lets the "what should be
- * audible right now" logic be unit-tested headless, the same self-verifiable split `render` keeps
- * between its `data/` viewport math and its Pixi `gpu/` layer.
+ * decision consumes and produces, with no Web Audio / DOM. The impure
+ * {@link import('../web/sound-driver.js').SoundDriver} turns these plain requests into `AudioContext`
+ * playback; keeping the decision layer pure lets it be unit-tested headless.
  */
 
 /**
- * One resolved request to play a sound **once**. `files` are the group's interchangeable wavs — the
- * pure layer never picks (that would need randomness, which belongs in the impure engine); it hands
- * the whole group over and the engine chooses one per play. `gain`/`pan` are already spatialised
- * (see {@link import('./spatial.js').computeSpatial}); `key` identifies the emitter so the engine can
- * debounce a burst of identical events (a settler completing the same chop atomic every few ticks).
+ * One resolved request to play a sound once. `files` are the group's interchangeable wavs — the pure
+ * layer never picks (that needs randomness, which lives in the impure engine); it hands over the whole
+ * group and the engine chooses one per play. `gain`/`pan` are already spatialised (see
+ * {@link import('./spatial.js').computeSpatial}); `key` identifies the emitter so the engine can debounce
+ * a burst of identical events.
  */
 export interface OneShot {
   /** The group's interchangeable wav paths (relative to the sounds root); the engine picks one. */
@@ -30,10 +28,9 @@ export interface OneShot {
 }
 
 /**
- * One ambient bed that should be looping **now** at `gain`. The director returns the full set of
- * active beds each frame; the engine reconciles its running loops to match (starting new ones,
- * cross-fading gains, stopping departed ones) so a bed fades in as its terrain scrolls on screen and
- * out as it leaves — the "only what's on screen makes sound" contract for the ambient layer.
+ * One ambient bed that should be looping now at `gain`. The director returns the full active set each
+ * frame; the engine reconciles its running loops to match (start new, cross-fade gains, stop departed),
+ * so a bed fades in as its terrain scrolls on screen and out as it leaves.
  */
 export interface AmbientLoop {
   /** The bed's name — its stable loop identity across frames (e.g. `"Meadow Green"`). */
@@ -52,11 +49,9 @@ export interface AudioFrame {
 
 /**
  * How a single sim event maps to a sound. A `spatial` binding names a {@link SoundBank} static group
- * that plays **positioned** at the event's world location (viewport-culled + attenuated + panned). A
- * `jingle` binding names a `MusicType` that plays as a **non-spatial** life-event stinger (full gain,
- * centred) — UI feedback, not world sound. This is the game-specific "engine event semantics" layer:
- * the original triggers these off animation/`LogicSoundType`/`MusicType` ids we have only partially
- * reversed, so the app supplies the concrete map (see {@link defaultBindings}) faithfully by name.
+ * that plays positioned at the event's world location (viewport-culled + attenuated + panned). A
+ * `jingle` binding names a `MusicType` that plays non-spatially as a life-event stinger (full gain,
+ * centred) — UI feedback, not world sound.
  */
 export type EventSound =
   | { readonly kind: 'spatial'; readonly group: string }
@@ -64,11 +59,11 @@ export type EventSound =
       readonly kind: 'jingle';
       readonly musicType: number;
       /**
-       * When set, the jingle plays ONLY for a death/life-event of the LOCAL player's own unit — the
-       * original's "your settler died" stinger is a notification TO the player, not a world sound, so an
-       * enemy's or a wild animal's death must not ring it. The director gates it on the event's `player`
-       * field ({@link SimEvent} `settlerDied.player`) equalling {@link DirectorInput.localPlayer}: a
-       * non-local or unowned (`null`) death is silent. Absent/false → the jingle always plays (a birth).
+       * When set, the jingle plays only for a death/life-event of the local player's own unit — a
+       * notification to the player, not a world sound, so an enemy's or a wild animal's death must not
+       * ring it. The director gates it on the event's `player` ({@link SimEvent} `settlerDied.player`)
+       * equalling {@link DirectorInput.localPlayer}; a non-local or unowned (`null`) death is silent.
+       * Absent/false → the jingle always plays (a birth).
        */
       readonly localPlayerOnly?: boolean;
     };
@@ -82,18 +77,18 @@ export interface SoundBindings {
   readonly byEvent: Partial<Record<SimEventKind, EventSound>>;
   readonly byAtomic: ReadonlyMap<number, EventSound>;
   /**
-   * The MID-swing sound of an atomic that plays its SFX on an authored PLAY_SOUND_FX frame, keyed by
+   * The mid-swing sound of an atomic that plays its SFX on an authored PLAY_SOUND_FX frame, keyed by
    * `atomicId` — resolved for an `atomicSound` event (the sim's cue at that frame) rather than
    * `atomicCompleted`, so the sound lands on the visual strike, not the swing's end. The builder's
    * hammer lives here; an atomic with no such cue keeps its completion-fired `byAtomic` sound.
    */
   readonly byAtomicSound: ReadonlyMap<number, EventSound>;
   /**
-   * A melee `combatHit`'s WEAPON-specific impact sound, keyed by the striker's `weaponMainType`
+   * A melee `combatHit`'s weapon-specific impact sound, keyed by the striker's `weaponMainType`
    * (1 fist / 2 spear / 3 sword / 4 saber / 5 axe — `WEAPON_MAIN_TYPE_*`). A sword rings differently
-   * from a spear thrust, so the impact SFX follows the weapon class the event carries; a weapon whose
-   * class has no entry (or a hit that carries none) falls back to `byEvent.combatHit`. Optional — omit
-   * for no weapon-specific impacts (the fallback still plays a generic melee thunk).
+   * from a spear thrust, so the impact SFX follows the weapon class the event carries; a class with no
+   * entry (or a hit that carries none) falls back to `byEvent.combatHit`. Optional — omit for no
+   * weapon-specific impacts (the fallback still plays a generic melee thunk).
    */
   readonly byCombatWeapon?: ReadonlyMap<number, EventSound>;
 }

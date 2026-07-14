@@ -88,7 +88,7 @@ function direct(events: readonly SimEvent[], terrain?: AudioTerrain) {
 
 describe('directAudio one-shots', () => {
   it('fires a positioned action SFX for an on-screen building placement', () => {
-    // `at` is a HALF-CELL NODE: cell (5,5) anchors at node (11,10) — the same screen point as tile (5,5).
+    // `at` is a half-cell node: cell (5,5) anchors at node (11,10) — the same screen point as tile (5,5).
     const frame = direct([{ kind: 'buildingPlaced', entity: 7, at: { x: 11, y: 10 } }]);
     expect(frame.oneShots).toHaveLength(1);
     const shot = frame.oneShots[0];
@@ -120,7 +120,7 @@ describe('directAudio one-shots', () => {
     expect(struck.oneShots).toHaveLength(1);
     expect(struck.oneShots[0]?.files).toEqual(['static/hammer01.wav']);
     expect(struck.oneShots[0]?.key).toBe('atomicSound:3');
-    // The swing's completion event carries NO hammer (it moved to the strike cue) — no double knock.
+    // The swing's completion event carries no hammer (it moved to the strike cue) — no double knock.
     const done = direct([{ kind: 'atomicCompleted', entity: 3, atomicId: BUILD_ATOMIC }]);
     expect(done.oneShots).toHaveLength(0);
   });

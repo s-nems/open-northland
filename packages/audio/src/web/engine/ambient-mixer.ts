@@ -66,7 +66,7 @@ export class AmbientMixer {
 
   private startLoop(loop: AmbientLoop): void {
     void this.samples.get(loop.file).then((buffer) => {
-      // Re-check the gates: a mute (setEnabled(false)) OR a reconcile that dropped this bed (terrain
+      // Re-check the gates: a mute (setEnabled(false)) or a reconcile that dropped this bed (terrain
       // scrolled off before its first load landed) can arrive while the wav is in flight — an untracked
       // loop that started anyway would play unwanted until the next reconcile catches it.
       if (buffer === null || !this.canPlay() || this.loops.has(loop.name)) return;
@@ -79,7 +79,7 @@ export class AmbientMixer {
       gain.gain.value = 0;
       source.connect(gain).connect(this.out);
       source.start();
-      // Ramp to the CURRENT target gain, not the possibly stale one this load was requested with.
+      // Ramp to the current target gain, not the possibly stale one this load was requested with.
       this.fadeTo(gain, current.gain);
       this.loops.set(loop.name, { source, gain });
     });

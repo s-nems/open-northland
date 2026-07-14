@@ -21,9 +21,9 @@ export interface OnScreenSettler {
 
 /**
  * The settlers currently on screen (a `Settler` component + an in-view `Position`), each with its
- * spatialisation — the PURE candidate list the voice-chatter layer picks from. Kept here (not in the
- * web layer) so the "who could speak" half stays headless-testable; the STOCHASTIC "who speaks now"
- * half lives in the impure {@link import('../../web/chatter.js').ChatterEmitter} (it needs randomness + time).
+ * spatialisation — the pure candidate list the voice-chatter layer picks from. Kept here (not in the web
+ * layer) so the "who could speak" half stays headless-testable; the stochastic "who speaks now" half
+ * lives in the impure {@link import('../../web/chatter.js').ChatterEmitter} (it needs randomness + time).
  */
 export function onScreenSettlers(
   snapshot: WorldSnapshot,
@@ -37,8 +37,8 @@ export function onScreenSettlers(
     if (!('Settler' in e.components)) continue;
     const tile = entityTile(e.components);
     if (tile === null) continue;
-    // The fog-of-war gate (absent = no fog): a settler the viewer cannot SEE must not speak — the
-    // voice twin of the sprite cull, so ears and eyes agree about who is present.
+    // The fog-of-war gate (absent = no fog): a settler the viewer cannot see must not speak — the voice
+    // twin of the sprite cull, so ears and eyes agree about who is present.
     if (visibleTile !== undefined && !visibleTile(tile.col, tile.row)) continue;
     const spatial = computeSpatial(tile.col, tile.row, camera, canvasW, canvasH);
     if (spatial === null) continue;

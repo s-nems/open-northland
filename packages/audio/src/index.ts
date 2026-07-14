@@ -3,12 +3,12 @@
  * snapshot + one-shot events `render` does (never reaching into sim state) and plays the decoded
  * original sounds positionally: on-screen action SFX + ambient terrain beds attenuated/panned by the
  * camera, plus non-spatial life-event jingles and sex/age-matched settler voice chatter. Split like
- * `render`: a PURE `data/` decision layer (unit-testable headless) and an impure `web/` Web Audio
+ * `render`: a pure `data/` decision layer (unit-testable headless) and an impure `web/` Web Audio
  * sink whose platform seams (context, fetch, random) are injectable for tests.
  */
 
 // Pure decision layer (headless-testable; no Web Audio / DOM). The event→sound MusicType/group
-// constants (JINGLE_*, GROUP_*) are intentionally NOT re-exported: they are implementation detail of
+// constants (JINGLE_*, GROUP_*) are intentionally not re-exported: they are implementation detail of
 // `defaultBindings`, which is the surface a consumer overrides.
 export { buildSoundIndex, type SoundIndex } from './data/bank.js';
 export {
