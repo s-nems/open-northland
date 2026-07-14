@@ -15,6 +15,7 @@ import {
   PACKED_OFFSET_MASK,
   PACKED_X_SHIFT,
 } from '../src/decoders/bmd/index.js';
+import { packLineControl } from './fixtures/bmd.js';
 
 /**
  * `.bmd` (CBobManager, id 0x3F4) container decoder tests. No copyrighted fixtures: we synthesize bob
@@ -43,7 +44,7 @@ const sampleBmd = (count: number): Bmd => ({
     bob({ type: i + 1, area: { x: i, y: i * 2, width: 4 + i, height: 3 }, misc: 0xdead0000 + i }),
   ),
   packedLineData: Uint8Array.from([0, 1, 2, 3, 4, 5]),
-  lineControl: Uint32Array.from([0, 0xffffffff, (5 << PACKED_X_SHIFT) | 2]),
+  lineControl: Uint32Array.from([0, 0xffffffff, packLineControl(5, 2)]),
 });
 
 describe('decodeBmd / encodeBmd', () => {
@@ -233,7 +234,7 @@ describe('decodeBmd / encodeBmd', () => {
 
 describe('line-control packing constants', () => {
   it('split a control word into xMin and packed offset', () => {
-    const ctrl = (12 << PACKED_X_SHIFT) | 345;
+    const ctrl = packLineControl(12, 345);
     expect(ctrl >>> PACKED_X_SHIFT).toBe(12);
     expect(ctrl & PACKED_OFFSET_MASK).toBe(345);
   });
@@ -267,11 +268,7 @@ const frameBmd = (
   packedLineData: Uint8Array.from(packed),
   lineControl: Uint32Array.from(
     lines.map((l) =>
-      l === PACKED_EMPTY
-        ? 0xffffffff
-        : typeof l === 'number'
-          ? l
-          : ((l.xMin << PACKED_X_SHIFT) | l.offset) >>> 0,
+      l === PACKED_EMPTY ? 0xffffffff : typeof l === 'number' ? l : packLineControl(l.xMin, l.offset),
     ),
   ),
 });

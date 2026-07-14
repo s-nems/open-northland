@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  type Bmd,
-  BOB_TYPE_8BIT,
-  BOB_TYPE_EMPTY,
-  type BobRecord,
-  PACKED_X_SHIFT,
-} from '../src/decoders/bmd/index.js';
+import { type Bmd, BOB_TYPE_8BIT, BOB_TYPE_EMPTY, type BobRecord } from '../src/decoders/bmd/index.js';
 import { StorableId } from '../src/decoders/cif.js';
 import {
   bobAdvance,
@@ -18,6 +12,7 @@ import {
   type Font,
   fontMetrics,
 } from '../src/decoders/fnt.js';
+import { packLineControl } from './fixtures/bmd.js';
 
 /**
  * `.fnt` (CFont) decoder tests. No copyrighted fixtures: we synthesize a CFont — the 16-byte font prefix
@@ -39,7 +34,7 @@ const sampleBmd = (): Bmd => ({
     { type: BOB_TYPE_8BIT, area: { x: 0, y: 0, width: 1, height: 1 }, misc: 1 },
   ],
   packedLineData: Uint8Array.from([0x02, 4, 8, 0x00, 0x01, 5, 0x00]),
-  lineControl: Uint32Array.from([(0 << PACKED_X_SHIFT) | 0, (0 << PACKED_X_SHIFT) | 4]),
+  lineControl: Uint32Array.from([packLineControl(0, 0), packLineControl(0, 4)]),
 });
 
 /** A metrics-only glyph container: `count` bob records, all empty except the ones in `set` (a bobId→area map). */

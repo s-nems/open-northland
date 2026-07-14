@@ -11,6 +11,7 @@ import {
   tagToId,
   XEND_ID,
 } from '../src/decoders/mapdat/index.js';
+import { le32 } from './support/bytes.js';
 
 /**
  * `map.dat` container decoder tests. No copyrighted fixtures are committed: we synthesize a
@@ -19,9 +20,6 @@ import {
  * `logi`/`lgmm` landscape group → `lsiz`/`lm**` layers → `xend`, then an `emmm` entity group →
  * `xend`, then `tend`).
  */
-
-/** Little-endian u32 as 4 bytes (for hand-building a malformed/raw header). */
-const le32 = (v: number): number[] => [v & 0xff, (v >>> 8) & 0xff, (v >>> 16) & 0xff, (v >>> 24) & 0xff];
 
 describe('tagToId / tag round-trip', () => {
   it('reverses the disk byte order (disk "zisl" => tag "lsiz")', () => {

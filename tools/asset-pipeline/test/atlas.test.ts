@@ -13,8 +13,8 @@ import {
   BOB_TYPE_DOUBLE8BIT,
   BOB_TYPE_EMPTY,
   type BobFrame,
-  PACKED_X_SHIFT,
 } from '../src/decoders/bmd/index.js';
+import { packLineControl } from './fixtures/bmd.js';
 
 /**
  * Bob-atlas packer tests. No copyrighted fixtures: we synthesize tiny in-memory `.bmd` bob sets (the
@@ -78,7 +78,7 @@ const makeBmd = (specs: BobSpec[], firstBobId = 10): Bmd => {
     const misc = miscs[i] ?? 0;
     s.lines.forEach((l, y) => {
       if (l === 'empty') return; // stays 0xFFFFFFFF
-      const ctrl = typeof l === 'number' ? base + l : ((l.xMin << PACKED_X_SHIFT) | (base + l.offset)) >>> 0;
+      const ctrl = typeof l === 'number' ? base + l : packLineControl(l.xMin, base + l.offset);
       lineControl[misc + y] = ctrl;
     });
   });

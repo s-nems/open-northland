@@ -1,14 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { decodePcx, encodePcx, expandToRgba } from '../src/decoders/pcx.js';
 import { rampPalette } from './fixtures/palette.js';
+import { bytesOf } from './support/bytes.js';
 
 /**
  * `.pcx` decoder tests. No copyrighted fixtures are committed: we synthesize pictures in memory with
  * the faithful `encodePcx`, then assert `decodePcx` recovers dimensions, indexed pixels, and palette.
  * A few cases hand-build bytes to exercise the raw RLE grammar and the trailing-palette marker.
  */
-
-const bytesOf = (...vals: number[]): Uint8Array => Uint8Array.from(vals);
 
 describe('decodePcx', () => {
   it('round-trips dimensions, indexed pixels, and palette', () => {
