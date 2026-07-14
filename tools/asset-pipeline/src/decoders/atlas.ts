@@ -1,7 +1,7 @@
 /**
  * Bob atlas packer — turns a decoded `.bmd` (CBobManager) bob set into one RGBA atlas image plus a
  * JSON-serializable manifest of per-bob frame rects + metadata. This is the second half of the
- * `.bmd` → "atlas PNG + anim JSON" pipeline stage: {@link import('./bmd.js').decodeBobFrame} yields a
+ * `.bmd` → "atlas PNG + anim JSON" pipeline stage: {@link import('./bmd/index.js').decodeBobFrame} yields a
  * bob's indexed pixels + opacity mask; this module colours them with a palette and shelf-packs every
  * frame into a single sheet so a renderer loads one texture and looks each sprite up by rect.
  *

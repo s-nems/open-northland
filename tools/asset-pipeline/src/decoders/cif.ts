@@ -9,8 +9,8 @@
  *   - CStringArray.cs     body: 5*u32 header, encrypted offsets CMemory, flag, encrypted pool CMemory
  * Referenced at OpenVikings_reversing @ working tree 2026-06.
  *
- * The genuine Phase-1 unknown was the decrypted record layout. Verified empirically against
- * `Data/logic/housetypes.cif`: the decrypted string pool is depth-prefixed text lines, e.g.
+ * The decrypted record layout, verified empirically against `Data/logic/housetypes.cif`: the
+ * decrypted string pool is depth-prefixed text lines, e.g.
  *   0x01 "logichousetype"            (level 1 = section)
  *   0x02 'debugname "headquarters"'  (level 2 = property)
  * i.e. the same vocabulary as the readable `.ini` sources, just stored as an encrypted CStringArray.
