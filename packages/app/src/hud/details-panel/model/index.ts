@@ -158,7 +158,7 @@ export function buildUnitPanelModel(
       // its rebased slot job's content name) so a bound druid reads "Druid", not "Bezrobotny".
       profession: jobDisplayName(ctx, num(s.jobType)),
       meta,
-      statusCaption: settlerStatus(comps, snapshot.tick),
+      statusCaption: settlerStatus(comps),
       bars: satisfactionBars(comps),
       work: settlerWork(ctx, snapshot, comps),
       experience: highestExperience(comps),
