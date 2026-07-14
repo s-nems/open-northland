@@ -1,4 +1,5 @@
 import type { SimEvent, WorldSnapshot } from '@open-northland/sim';
+import { groupFiles } from '../bank.js';
 import { computeSpatial, computeSpatialAtNode, type Spatial } from '../spatial.js';
 import type { DirectorInput, EventSound, OneShot, SoundBindings } from '../types.js';
 import { entityTile, type TilePoint } from './snapshot.js';
@@ -6,8 +7,7 @@ import { entityTile, type TilePoint } from './snapshot.js';
 /**
  * Sim events → one-shots: resolve each frame event through the {@link SoundBindings}, locate the spatial
  * ones (an explicit `at` half-cell node or the emitter entity's snapshot position), viewport-cull and
- * spatialise them, and pass jingles through non-spatially. The "which events sound, from where, how
- * loud" half of the director.
+ * spatialise them, and pass jingles through non-spatially.
  */
 
 /** Base gain of a non-spatial life-event jingle (kept below 1 so a jingle doesn't clip over SFX). */
@@ -114,8 +114,8 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
       }
       continue;
     }
-    const files = index.groupsByName.get(sound.group.toLowerCase());
-    if (files === undefined || files.length === 0) continue;
+    const files = groupFiles(index, sound.group);
+    if (files === undefined) continue;
     if (isAtLocatedEvent(ev)) {
       pending.push({ ev, files, node: { hx: ev.at.x, hy: ev.at.y }, entity: undefined });
     } else {

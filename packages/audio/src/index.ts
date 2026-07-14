@@ -1,10 +1,8 @@
 /**
- * `@open-northland/audio` — the browser audio layer for OpenNorthland. It consumes the same read-only sim
- * snapshot + one-shot events `render` does (never reaching into sim state) and plays the decoded
- * original sounds positionally: on-screen action SFX + ambient terrain beds attenuated/panned by the
- * camera, plus non-spatial life-event jingles and sex/age-matched settler voice chatter. Split like
- * `render`: a pure `data/` decision layer (unit-testable headless) and an impure `web/` Web Audio
- * sink whose platform seams (context, fetch, random) are injectable for tests.
+ * `@open-northland/audio` — the browser audio layer. It reads the same read-only sim snapshot +
+ * one-shot events `render` does (never reaching into sim state) and plays the decoded sounds. Split
+ * like `render`: a pure `data/` decision layer (headless-testable) and an impure `web/` Web Audio sink
+ * whose platform seams (context, fetch, random) are injectable for tests.
  */
 
 // Pure decision layer (headless-testable; no Web Audio / DOM). The event→sound MusicType/group

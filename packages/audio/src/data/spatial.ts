@@ -2,11 +2,10 @@ import { type Camera, halfCellToScreen, tileToScreen } from '@open-northland/ren
 import { clamp } from './math.js';
 
 /**
- * The pure spatial-audio math: project a world position to the screen through the same projections the
- * renderer draws with ({@link tileToScreen} for fractional tile positions, {@link halfCellToScreen} for
- * half-cell node addresses, + `screen = world*scale + offset`), then decide whether the emitter is on
- * screen and, if so, how loud and how far left/right it sounds. An emitter outside the framed viewport
- * returns `null` (silent); one near a screen edge attenuates and pans toward that edge.
+ * The pure spatial-audio math: project a world position to the screen through the renderer's own
+ * projections ({@link tileToScreen} for fractional tile positions, {@link halfCellToScreen} for
+ * half-cell node addresses, then `screen = world*scale + offset`), cull to the viewport (off screen →
+ * `null`), and attenuate + pan toward the nearer edge.
  */
 
 /** Emitter falls silent this many screen px beyond the canvas edge (slack so a straddling sprite still sounds). */

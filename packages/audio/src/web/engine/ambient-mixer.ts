@@ -2,10 +2,9 @@ import type { AmbientLoop } from '../../data/types.js';
 import type { SampleCache } from './sample-cache.js';
 
 /**
- * The looping-ambient half of playback: reconcile the set of running terrain beds against each
- * frame's target — start new beds (fading in from silence), ramp existing ones toward their target
- * gain, and fade-and-stop departed ones — so a bed fades in as its terrain scrolls on screen and out
- * as it leaves. All ramps ride the audio clock (`ctx.currentTime`), never `Date.now`.
+ * The looping-ambient half of playback: reconcile the running terrain beds against each frame's
+ * target — start new beds (fading in from silence), ramp existing ones toward their target gain, and
+ * fade-and-stop departed ones. All ramps ride the audio clock (`ctx.currentTime`), never `Date.now`.
  */
 
 /** Ambient beds fade in / out / between gains over this many seconds. */

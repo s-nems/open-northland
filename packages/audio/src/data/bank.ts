@@ -1,10 +1,9 @@
 import type { GfxPattern, SoundBank, TerrainPattern } from '@open-northland/data';
 
 /**
- * The resolved, lookup-shaped view of a decoded {@link SoundBank} that the director reads each frame —
- * built once from the IR at load ({@link buildSoundIndex}) so the per-frame decision does only cheap
- * `Map` gets. It also folds in the terrain→ambient join (`typeId → bed names`) the raw bank can't
- * express.
+ * The lookup-shaped view of a decoded {@link SoundBank} the director reads each frame, built once at
+ * load ({@link buildSoundIndex}) so the per-frame decision does only `Map` gets. Folds in the
+ * terrain→ambient join (`typeId → bed names`) the raw bank can't express.
  */
 export interface SoundIndex {
   /** Lower-cased static-group name → its interchangeable wav files (the engine picks one per play). */
@@ -17,6 +16,15 @@ export interface SoundIndex {
   readonly ambientByTerrainType: ReadonlyMap<number, readonly string[]>;
 }
 
+/**
+ * The wav files of a static group by its (case-insensitive) name, or `undefined` when the group is
+ * absent or empty. The one home for the lower-cased-key `groupsByName` lookup its callers share.
+ */
+export function groupFiles(index: SoundIndex, group: string): readonly string[] | undefined {
+  const files = index.groupsByName.get(group.toLowerCase());
+  return files && files.length > 0 ? files : undefined;
+}
+
 function pushInto(map: Map<string, string[]>, key: string, value: string): void {
   const existing = map.get(key);
   if (existing) existing.push(value);
@@ -24,13 +32,13 @@ function pushInto(map: Map<string, string[]>, key: string, value: string): void 
 }
 
 /**
- * Assemble the {@link SoundIndex} from the IR's sound bank and terrain-pattern tables. The
- * `gfxPatterns`/`terrainPatterns` inputs are only needed for the terrain→ambient join; passing empty
- * arrays yields a working index with no terrain ambient (still fine for the event-driven layers).
+ * Assemble the {@link SoundIndex} from the sound bank and terrain-pattern tables. `gfxPatterns`/
+ * `terrainPatterns` feed only the terrain→ambient join; empty arrays yield a working index with no
+ * terrain ambient.
  *
- * The terrain→ambient join is coarse by construction: `terrainPatterns` already approximates each
- * `typeId` to one representative pattern, so a `typeId` inherits only that pattern's groups (the
- * original keys ambient off pattern groups, pinned to the data we have).
+ * The join is coarse (named approximation): `terrainPatterns` already approximates each `typeId` to
+ * one representative pattern, so a `typeId` inherits only that pattern's groups (the original keys
+ * ambient off pattern groups; pinned to the data we have).
  */
 export function buildSoundIndex(
   sounds: SoundBank,

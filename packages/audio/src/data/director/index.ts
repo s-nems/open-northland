@@ -9,7 +9,6 @@ import { eventOneShots } from './events.js';
  * randomness — the engine picks a wav from each group and owns the `AudioContext`.
  */
 
-/** Decide the full audio for one frame: the one-shots to fire and the ambient loops that should be live. */
 export function directAudio(input: DirectorInput): AudioFrame {
   return { oneShots: eventOneShots(input), ambient: ambientBeds(input) };
 }
