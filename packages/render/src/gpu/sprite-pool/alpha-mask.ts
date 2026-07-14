@@ -1,4 +1,5 @@
 import type { TextureSource } from 'pixi.js';
+import { type DrawableResource, isDrawableResource } from '../drawable-resource.js';
 
 /**
  * Per-atlas ALPHA MASKS for pixel-accurate sprite hit-testing — "click the graphic, not the box".
@@ -59,18 +60,6 @@ export function maskSolidAt(mask: AlphaMask, x: number, y: number): boolean {
  *  on every click. */
 const maskCache = new WeakMap<TextureSource, AlphaMask | null>();
 
-/** The drawable image kinds a loaded Pixi texture's `source.resource` can be. */
-type DrawableResource = Exclude<CanvasImageSource, SVGImageElement | VideoFrame>;
-
-function isDrawable(resource: unknown): resource is DrawableResource {
-  return (
-    (typeof ImageBitmap !== 'undefined' && resource instanceof ImageBitmap) ||
-    (typeof HTMLImageElement !== 'undefined' && resource instanceof HTMLImageElement) ||
-    (typeof HTMLCanvasElement !== 'undefined' && resource instanceof HTMLCanvasElement) ||
-    (typeof OffscreenCanvas !== 'undefined' && resource instanceof OffscreenCanvas)
-  );
-}
-
 /** Read the RGBA pixels of a drawable via a throwaway 2d canvas, or `null` when unavailable
  *  (headless test env without canvas, or a context the platform refuses). */
 function readPixels(resource: DrawableResource, width: number, height: number): ImageData | null {
@@ -105,7 +94,7 @@ export function alphaMaskOf(source: TextureSource): AlphaMask | null {
   const cached = maskCache.get(source);
   if (cached !== undefined) return cached;
   const resource: unknown = source.resource;
-  const mask = isDrawable(resource)
+  const mask = isDrawableResource(resource)
     ? (() => {
         const pixels = readPixels(resource, source.pixelWidth, source.pixelHeight);
         return pixels === null ? null : buildAlphaMask(pixels.data, pixels.width, pixels.height);

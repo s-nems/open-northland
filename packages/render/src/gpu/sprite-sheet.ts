@@ -1,5 +1,6 @@
 import type { TextureSource } from 'pixi.js';
 import type {
+  BuildTimeSheet,
   ByJobTable,
   SettlerStateBinding,
   SpriteAtlas,
@@ -28,6 +29,13 @@ import type {
 export interface SpriteLayer {
   readonly source: TextureSource;
   readonly atlas: SpriteAtlas;
+  /**
+   * CPU copy of the atlas's build-progress time sheet (the house atlases' sibling `.build.png`) —
+   * present only when the manifest announced one. Feeds the per-pixel construction reveal
+   * ({@link import('./texture-cache.js').TextureCache.revealed}); absent, an under-construction
+   * building falls back to the bottom-up crop approximation.
+   */
+  readonly times?: BuildTimeSheet;
 }
 
 /**

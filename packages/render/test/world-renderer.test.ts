@@ -142,3 +142,48 @@ describe('resolveLayers — the animated building overlay is bounds-exempt', () 
     ]);
   });
 });
+
+describe('resolveLayers — construction reveal: per-pixel with time data, crop fallback without', () => {
+  const source = {} as TextureSource;
+  const frame = (
+    n: number,
+  ): [number, { x: number; y: number; width: number; height: number; offsetX: number; offsetY: number }] => [
+    n,
+    { x: n, y: 0, width: 10, height: 10, offsetX: 0, offsetY: 0 },
+  ];
+  const atlas: SpriteAtlas = { width: 100, height: 10, frames: new Map([frame(70), frame(85)]) };
+  const times = { width: 100, height: 10, values: new Uint8Array(100 * 10) };
+  // The stack reuses the FINISHED body bob (70) as its top stage — the house-family shape.
+  const building = {
+    byType: { 13: { layer: 'houses', bob: 70 } },
+    default: 70,
+    constructionByType: {
+      13: [
+        { layer: 'houses', bob: 85, fromPct: 0, toPct: 60 },
+        { layer: 'houses', bob: 70, fromPct: 20, toPct: 100 },
+      ],
+    },
+  };
+  const site: DrawItem = { kind: 'building', ref: 1, x: 0, y: 0, depth: 0, typeId: 13, builtPct: 30 };
+  const sheetWith = (withTimes: boolean): SpriteSheet => ({
+    source,
+    atlas: { width: 0, height: 0, frames: new Map() },
+    bindings: { settler: 1, resource: 1, building },
+    families: { houses: withTimes ? { source, atlas, times } : { source, atlas } },
+  });
+
+  it('with a time sheet, every active stage reveals per-pixel in its own window — the finished bob too', () => {
+    const layers = resolveLayers(sheetWith(true), site, 0) ?? [];
+    expect(layers.map((l) => [l.frame.x, l.reveal, l.revealWindow, l.times === times])).toEqual([
+      [85, 0.3, [0, 60], true],
+      [70, 0.3, [20, 100], true],
+    ]);
+  });
+
+  it('without one, scaffold stages crop-reveal and the finished bob waits for completion (legacy)', () => {
+    const layers = resolveLayers(sheetWith(false), site, 0) ?? [];
+    expect(layers.map((l) => [l.frame.x, l.reveal, l.revealWindow ?? null, l.times ?? null])).toEqual([
+      [85, 0.3, null, null],
+    ]);
+  });
+});

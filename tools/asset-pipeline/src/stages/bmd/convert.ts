@@ -20,7 +20,7 @@ import { writeAtlasBeside } from '../game-file.js';
  * container or a wrong-sized palette — the batch tree-walk (a later step) catches it per-file. The
  * **palette source** for a given `.bmd` (which `palettes.ini` entry / `.pcx` trailer pairs with it) is
  * the open question that gates the full tree-walk, so this seam takes the palette as a parameter today.
- * `alpha` picks the bake mode — see {@link AtlasAlphaMode}; the house atlases need `'opaque'`.
+ * `alpha` picks the bake mode — see {@link AtlasAlphaMode}; the house atlases need `'build-time'`.
  */
 export function bmdToAtlas(
   bmdBytes: Uint8Array,
@@ -89,21 +89,18 @@ function paletteSlug(name: string): string {
  * filename — `(bmd, palette)` now names a distinct atlas. The shadow `.bmd` is left for a later step
  * (shadows use a separate, single-colour palette path).
  *
- * `opaqueAlphaBmds` (the `.bmd` paths claimed by a `[GfxHouse]` record — see
- * {@link resolveGraphicsBindings}) bake with the plain opaque blit instead of the Double8Bit
- * per-pixel alpha: a house bob's alpha bytes are measured non-coverage, so drawing them as alpha
- * ghosts the buildings. Keyed on the `.bmd` path alone — NOT `(bmd, palette)` — because the alpha
- * bytes live in the bob geometry the recolours share: every palette variant of a claimed `.bmd`
- * (including the `[GfxLandscape]` twins — residence houses / wonders placed as map decor) must bake
- * the same way, or identical pixels would go ghost-vs-solid by recolour name. REQUIRED (no default):
- * an accidentally-empty set silently ghosts every building, so the one production caller passes the
- * set explicitly.
+ * `buildTimeBmds` (the `.bmd` paths claimed by a `[GfxHouse]` record — see
+ * {@link resolveGraphicsBindings}, which documents why their second bytes are build-time thresholds,
+ * not alpha) bake `'build-time'` instead of per-pixel alpha. Keyed on the `.bmd` path alone, not
+ * `(bmd, palette)`: the second bytes live in the bob geometry the recolours share, so every palette
+ * variant of a claimed `.bmd` must bake the same way. Required (no default) because an
+ * accidentally-empty set silently ghosts every building.
  */
 export async function convertBmdTree(
   bindings: readonly BmdPaletteBinding[],
   palettes: readonly PaletteAlias[],
   outDir: string,
-  opaqueAlphaBmds: ReadonlySet<string>,
+  buildTimeBmds: ReadonlySet<string>,
 ): Promise<BmdConversion[]> {
   const done: BmdConversion[] = [];
   const paletteByName = paletteAliasMap(palettes);
@@ -128,7 +125,7 @@ export async function convertBmdTree(
         console.warn(`[pipeline] skipped ${binding.bmd}: palette ${pcxRel} has no trailer`);
         continue;
       }
-      const alpha: AtlasAlphaMode = opaqueAlphaBmds.has(binding.bmd) ? 'opaque' : 'per-pixel';
+      const alpha: AtlasAlphaMode = buildTimeBmds.has(binding.bmd) ? 'build-time' : 'per-pixel';
       atlas = bmdToAtlas(await readFile(join(outDir, bmdOnDisk)), palette, alpha);
     } catch (err) {
       console.warn(`[pipeline] skipped ${binding.bmd}: ${(err as Error).message}`);
