@@ -57,12 +57,21 @@ export function setTilePitch(halfW: number, halfH: number): void {
  * the same diagonal a unit walks along the original's mesh edges.
  */
 export function tileToScreen(col: number, row: number): { x: number; y: number } {
-  const cycle = ((row % 2) + 2) % 2; // row's place in the 2-row stagger cycle, robust to negatives
-  const stagger = 1 - Math.abs(1 - cycle); // 0 at even rows, 1 at odd, linear between
   return {
-    x: (2 * col + stagger) * TILE_HALF_W,
+    x: (2 * col + rowStagger(row)) * TILE_HALF_W,
     y: row * TILE_HALF_H,
   };
+}
+
+/**
+ * The parity stagger of a (fractional) row, as a triangle wave: 0 at even rows, 1 at odd, linear
+ * between (robust to negative rows). One cell of sideways shift per row down, interpolated so a walking
+ * entity slides along the original's mesh-edge diagonal. The fog cell mapper (`fog.ts`) shares it (halved
+ * for its half-cell step) so a unit resolves to the same cell the sim's vision mask stamped.
+ */
+export function rowStagger(row: number): number {
+  const cycle = ((row % 2) + 2) % 2;
+  return 1 - Math.abs(1 - cycle);
 }
 
 /**
