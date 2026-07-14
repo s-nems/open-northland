@@ -142,7 +142,7 @@ function checkWeaponsAndArmor(set: ContentSet, { goodIds, jobIds }: IdSets): str
     if (w.goodType !== undefined && !goodIds.has(w.goodType))
       errors.push(`weapon "${w.id}" references unknown goodType ${w.goodType}`);
   }
-  // An armor's `goodType` (the good that IS the armor), when set, must resolve into the good table.
+  // An armor's `goodType` (the good that is the armor), when set, must resolve into the good table.
   for (const a of set.armor) {
     if (a.goodType !== undefined && !goodIds.has(a.goodType))
       errors.push(`armor "${a.id}" references unknown goodType ${a.goodType}`);

@@ -70,7 +70,7 @@ export async function convertMapDatTree(gameDir: string, outDir: string): Promis
       console.warn(`[pipeline] skipped map.dat ${rel}: ${(err as Error).message}`);
       continue;
     }
-    // The authored entity placements live in the SIBLING map.cif's `StaticObjects` section (the
+    // The authored entity placements live in the sibling map.cif's `StaticObjects` section (the
     // map.dat carries only terrain + landscape lanes). Absent/undecodable cif → the terrain still
     // emits, just without the optional layer — the same per-layer degradation `ground`/`objects` get.
     // The decoded sections also feed the meta sidecar's `[misc_mapname]` fallback (resolveMapMeta),
@@ -85,8 +85,8 @@ export async function convertMapDatTree(gameDir: string, outDir: string): Promis
     } catch {
       // no sibling map.cif (or undecodable) — entity layer skipped
     }
-    // UNPACKED maps (the CnMod majority — 108 of 121 folders) ship no map.cif: their StaticObjects
-    // live in a sibling PLAINTEXT `staticobjects.inc`, with the identical `[StaticObjects]` grammar
+    // Unpacked maps (the CnMod majority — 108 of 121 folders) ship no map.cif: their StaticObjects
+    // live in a sibling plaintext `staticobjects.inc`, with the identical `[StaticObjects]` grammar
     // (sethouse/sethuman/setanimal — verified against the real files). Read it when the cif path yielded
     // no entities, so those maps (e.g. magiczny_las, blekiny_nurt) import their authored starting HQs +
     // settlers instead of appearing empty. Readable mod source is preferred over the encrypted cif

@@ -9,7 +9,7 @@ import { convertWindowBitmaps } from './window-bitmaps.js';
 
 /**
  * GUI extraction stage — the original in-game HUD art, colorization palettes, UI strings, and mouse
- * cursors, converted from an OWNED game copy into `content/` for the app to consume. It is the GUI twin
+ * cursors, converted from an owned game copy into `content/` for the app to consume. It is the GUI twin
  * of the character/building bob stages, reusing their pieces:
  *
  *  - **Atlas art.** `ls_gui_window.bmd` (193 bobs: tool-panel chrome, order buttons, window frames,

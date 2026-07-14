@@ -2,7 +2,7 @@ import { decodePcx, expandToRgba } from '../../decoders/pcx.js';
 import { encodePng } from '../../decoders/png.js';
 
 /**
- * The shipped minimaps' filler is palette INDEX 0, not one RGB. Source basis: observed across all 70
+ * The shipped minimaps' filler is palette index 0, not one RGB. Source basis: observed across all 70
  * `minimap.pcx` in the owned copy — every corner pixel is index 0, while its RGB varies (magenta
  * 255,0,255 on 65, blue 0,0,255 on the 3 `oasis_o_plenty` copies, brown 180,120,87 on the 2 non-350×160
  * ones), so an RGB colorkey would leave some fillers opaque.

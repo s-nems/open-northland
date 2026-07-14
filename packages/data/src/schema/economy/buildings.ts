@@ -63,7 +63,7 @@ export const BuildingType = z.strictObject({
    * flat good-id list where a repeat encodes quantity (`3 3 26` = 2× stone + pillar), collapsed to
    * `{goodType, amount}` pairs exactly like a recipe's inputs. Empty for the always-present
    * headquarters/wonder buildings (no construction cost) and for any type the graphics table omits.
-   * For a home's level chain (`home level 00..04`) each level is a distinct `typeId` carrying its OWN
+   * For a home's level chain (`home level 00..04`) each level is a distinct `typeId` carrying its own
    * upgrade cost, so a leveled `home` building resolves the cost of its tier here (not cumulative).
    * The input data the future ConstructionSystem (place → deliver materials → build) consumes.
    */

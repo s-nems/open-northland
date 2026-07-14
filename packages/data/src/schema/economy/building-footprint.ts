@@ -16,12 +16,12 @@ export type FootprintCell = z.infer<typeof FootprintCell>;
  * source line `<x> <y> <run>` expanding to `run` half-cells starting at `(x, y)` and extending
  * along +x (the `2W×2H` lattice every map lane addresses).
  *
- *  - `blocked` — `LogicWalkBlockArea <sizeIdx> <x> <y> <run>` for THIS type's size level: the cells
+ *  - `blocked` — `LogicWalkBlockArea <sizeIdx> <x> <y> <run>` for this type's size level: the cells
  *    the standing building makes unwalkable (its physical body — settlers cannot path through them).
- *  - `familyBody` — the union of `blocked` across ALL the record's size levels: the largest body the
+ *  - `familyBody` — the union of `blocked` across all the record's size levels: the largest body the
  *    building can grow to through its upgrade chain (a level-0 hut's future max-level walls).
  *  - `reserved` — `familyBody` ∪ the record's `LogicBuildBlockArea` cells (which the source defines
- *    ONCE per record, with no level index — the level-independent build-exclusion zone). This is the
+ *    once per record, with no level index — the level-independent build-exclusion zone). This is the
  *    area the building keeps clear of other construction: a level-0 hut reserves exactly what its
  *    top level needs, plus the margin ring the source draws around the walls (the "minimum distance
  *    from other houses / blocking terrain" the original enforces).

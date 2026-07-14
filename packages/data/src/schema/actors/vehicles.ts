@@ -24,7 +24,7 @@ export const VehicleType = z.strictObject({
   /**
    * `logicgood` allow-list — the `goodtype` ids this vehicle's hold may carry, in file order. A
    * repeated single-value key (one `logicgood N` per line). The carts and both ships enumerate the
-   * full haulable-goods set; the catapult lists none (it carries no cargo). This is the "WHAT a
+   * full haulable-goods set; the catapult lists none (it carries no cargo). This is the "what a
    * boat-as-mobile-store can hold" cargo filter the Sea/Northland slice consumes — distinct from
    * {@link stockSlots} (how much it holds). Empty when the section lists no `logicgood`.
    */
