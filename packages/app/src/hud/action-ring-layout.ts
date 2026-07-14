@@ -1,35 +1,35 @@
 import { contains, type Rect } from './geometry.js';
 
 /**
- * The settler ACTION MENU — the contextual command buttons that fan out around a selected settler, with
+ * The settler action menu — the contextual command buttons that fan out around a selected settler, with
  * geometry transcribed from the original engine and the button→icon assignment approximated.
  *
  * Original behaviour (OpenVikings `Source/NC2InGameGuiManager/CGuiManager.cs`): selecting 1–2 humans brings
  * up `BuildHumanActionButtons`, which lays the human's available commands out as small round gfx buttons in
- * up to **five groups (group-type 0..4)**, each group a short row/column on one side of a 0xE8 (232) px box
- * centred on the cursor. This module reproduces that arm **footprint** (the 100 px arm offset, the 0x20
- * button + step, the ∓5 corner nudge, the centring around the unit) — that part IS recoverable from the
- * decompile. What the decompile does NOT recover: which command maps to which gfx id (the engine's
+ * up to five groups (group-type 0..4), each group a short row/column on one side of a 0xE8 (232) px box
+ * centred on the cursor. This module reproduces that arm footprint (the 100 px arm offset, the 0x20 button
+ * + step, the ∓5 corner nudge, the centring around the unit) — the part recoverable from the decompile.
+ * What the decompile does not recover: which command maps to which gfx id (the engine's
  * `sHumanCommandTypeToIconId` table is an unfilled placeholder — only the 0x6B fallback is code-pinned). The
- * **user supplied that binding for the civilian menu** — they read the whole thing off the running original
- * (clockwise from the top-left) and gave the frame numbers, so {@link HUMAN_DEFAULT_MENU}'s command→icon
- * assignment is now user-confirmed (see source basis); the warrior/scout variants remain to be read off.
+ * user supplied that binding for the civilian menu, read off the running original (clockwise from the
+ * top-left), so {@link HUMAN_DEFAULT_MENU}'s command→icon assignment is user-confirmed (see source basis);
+ * the warrior/scout variants remain to be read off.
  *
- * We render the whole default HUMAN menu as buttons — every arm of the original, in original art — but on
- * this slice only ONE is wired: `open-jobs` (the "change profession" button) opens a scrollable profession
- * list WINDOW (a DOM panel, built in `view/settler-actions.ts`); every other button is an inert
- * {@link placeholder} (tooltip only) left for a future "implement the action" pass (warrior/scout menus
- * differ — a per-unit-type menu is the hook). This is pure geometry (no Pixi, no DOM), so the layout +
- * hit-test + icon assignment are unit-tested headlessly (the twin of `hud/tool-panel/layout.ts`).
+ * The whole default human menu renders as buttons — every arm of the original, in original art — but on
+ * this slice only `open-jobs` (the "change profession" button) is wired: it opens a scrollable profession
+ * list window (a DOM panel, built in `view/settler-actions.ts`); every other button is an inert
+ * {@link placeholder} (tooltip only), left for a future pass (warrior/scout menus differ — a per-unit-type
+ * menu is the hook). Pure geometry (no Pixi, no DOM), so the layout + hit-test + icon assignment are
+ * unit-tested headlessly (the twin of `hud/tool-panel/layout.ts`).
  */
 
-/** The GUI-atlas frame NAME (see `content/gui-atlas-map.ts`) a button draws; the view resolves it to an index. */
+/** The GUI-atlas frame name (see `content/gui-atlas-map.ts`) a button draws; the view resolves it to an index. */
 export type ActionIconFrame = string;
 
 /** One contextual action a menu button issues — a discriminated union so the view maps it to behaviour. */
 export type ActionButton =
   | {
-      /** The "change profession" button — opens the profession list WINDOW (a DOM panel). The one live default button. */
+      /** The "change profession" button — opens the profession list window (a DOM panel). The one live default button. */
       readonly kind: 'open-jobs';
       readonly id: 'changeProfession';
       readonly icon: ActionIconFrame;
@@ -63,13 +63,13 @@ export interface ActionRingLayout {
   readonly buttons: readonly PlacedActionButton[];
   /**
    * The axis-aligned bounding box of all buttons (e.g. for placing UI relative to the menu). The input router
-   * hit-tests INDIVIDUAL buttons ({@link hitTestActionRing}), not this box, so a click in the gaps between the
+   * hit-tests individual buttons ({@link hitTestActionRing}), not this box, so a click in the gaps between the
    * arms still reaches the world / the unit underneath.
    */
   readonly bounds: PlacedRect;
 }
 
-// --- Geometry (original DESIGN pixels, pre-uiscale) — transcribed from `BuildHumanActionButtons` ----------
+// --- Geometry (original design pixels, pre-uiscale) — transcribed from `BuildHumanActionButtons` ----------
 
 /** Button square edge (`SRectangle(x-0x10, y-0x10, 0x20, 0x20)`). */
 export const ACTION_BUTTON_PX = 0x20;
@@ -83,16 +83,16 @@ export const ACTION_INNER_ARM_PX = 0x44;
 export const ACTION_EDGE_NUDGE_PX = 5;
 
 /**
- * The action menu draws SMALLER than the shared HUD uiscale: at the 1.4× default the full-size ring
+ * The action menu draws smaller than the shared HUD uiscale: at the 1.4× default the full-size ring
  * crowded the selected settler, so the whole footprint (buttons + arms + steps) runs at 75% of the HUD
  * scale — a user-requested ~25% shrink, a deliberate deviation from the original's 1:1 size (source
- * basis); the pinned arm PROPORTIONS are untouched (everything scales by the one factor).
+ * basis); the pinned arm proportions are untouched (everything scales by the one factor).
  */
 export const ACTION_RING_UI_FACTOR = 0.75;
 
 /**
  * The ring's effective scale for the shared `?uiscale=`: clamped ≥1 like every HUD consumer, then shrunk
- * by {@link ACTION_RING_UI_FACTOR}. The ONE place ring clamping lives — both the icon bake and
+ * by {@link ACTION_RING_UI_FACTOR}. The one place ring clamping lives — both the icon bake and
  * {@link layoutActionRing} must consume this same value or the drawn icon and its hit-rect drift apart.
  */
 export function actionRingScale(uiscale: number): number {
@@ -108,7 +108,7 @@ export const LEFT_ARM = 3;
 /**
  * Per group-type (0..4): where its arm sits and how its buttons corner-nudge. `base` is the arm's fixed
  * offset from the menu centre (design px); `axis` is the axis the buttons march along; `nudge` is the
- * first/last corner bias. Buttons march in READING ORDER along the axis (left→right / top→bottom) — the
+ * first/last corner bias. Buttons march in reading order along the axis (left→right / top→bottom) — the
  * original's per-arm order reversal is moot here (its command→slot table is unrecoverable, so we place the
  * best-guess icon into the slot the user read off the original), while the symmetric footprint is kept.
  */
@@ -197,8 +197,8 @@ function clampOnScreen(placed: PlacedActionButton[], screenW: number, screenH: n
 
 /**
  * Lay the default menu's groups out around a screen-space centre. Each group fills its arm with the
- * original's centring + step footprint (scaled by `scale` — the ring's EFFECTIVE scale, see
- * {@link actionRingScale}; sub-1 values are legal, the shrunk ring at uiscale 1 is 0.75), then the WHOLE
+ * original's centring + step footprint (scaled by `scale` — the ring's effective scale, see
+ * {@link actionRingScale}; sub-1 values are legal, the shrunk ring at uiscale 1 is 0.75), then the whole
  * menu is nudged to stay inside `[0,screenW]×[0,screenH]` (the original clamps its 232px box with
  * `rect.PlaceInside`; we clamp the actual button bounds, which also covers a long arm overflowing the
  * nominal box). Pure — the view draws from this and the input layer hit-tests it.
@@ -224,11 +224,11 @@ export function hitTestActionRing(layout: ActionRingLayout, x: number, y: number
   return null;
 }
 
-// --- The default HUMAN menu (APPROXIMATED — icons glyph-matched to the frame map + the user's read of the
+// --- The default human menu (approximated — icons glyph-matched to the frame map + the user's read of the
 //     running original; every button but `open-jobs` is inert. See the file header + source basis) ------
 
 /**
- * The default order-button gfx — the ONLY code-pinned icon: the original's `GetHumanCommandIconId` returns
+ * The default order-button gfx — the only code-pinned icon: the original's `GetHumanCommandIconId` returns
  * `0x6B` for any command its (unfilled) table doesn't map (`CGuiManager.cs:2214`). The user placed frame 0x6b
  * itself in the last bottom slot, so it draws here too — the same round wooden button the original falls back to.
  */
@@ -252,19 +252,17 @@ const placeholder = (id: string, icon: ActionIconFrame): ActionButton => ({
 });
 
 /**
- * The default menu of a **civilian** human, arm by arm. Each button's `icon` is the exact `ls_gui_window`
- * frame the ORIGINAL binds to that command — the user read the whole civilian menu off the running game
- * (clockwise from the top-left button) and gave the frame numbers, so this is no longer a best-guess: it is
- * the command→icon binding OpenVikings' unfilled `sHumanCommandTypeToIconId` table could not recover. NOTE
- * the frame NAMES are glyph descriptions (from the montage), so a command's icon name needn't match its label
- * (the binding is arbitrary — e.g. the "eat" command draws `order_assign_work`); the id + label carry the
- * command, the icon carries the frame.
+ * The default menu of a civilian human, arm by arm. Each button's `icon` is the exact `ls_gui_window` frame
+ * the original binds to that command — the user read the whole civilian menu off the running game
+ * (clockwise from the top-left button), so this is the command→icon binding OpenVikings' unfilled
+ * `sHumanCommandTypeToIconId` table could not recover. The frame names are glyph descriptions (from the
+ * montage), so a command's icon name needn't match its label (the binding is arbitrary — e.g. the "eat"
+ * command draws `order_assign_work`); the id + label carry the command, the icon carries the frame.
  *
- * **This menu is meant to become DYNAMIC** (the user's note): a warrior and a scout show slightly different
- * arms, and per-state buttons appear/vanish (e.g. the marriage button hides once the settler is married). The
- * hook is to keep the menu as plain DATA — a future `menuFor(unitType, state)` returns the arm list, filtering
- * by the stable button `id` (hide `marry` when married) and swapping the per-unit-type variant. Only
- * `open-jobs` fires today; every other button is an inert placeholder (drawn + tooltipped).
+ * Meant to become dynamic: a warrior and a scout show slightly different arms, and per-state buttons
+ * appear/vanish (e.g. marriage hides once the settler is married). The hook is to keep the menu as plain
+ * data — a future `menuFor(unitType, state)` returns the arm list, filtering by the stable button `id` and
+ * swapping the per-unit-type variant. Only `open-jobs` fires today; every other button is an inert placeholder.
  */
 export const HUMAN_DEFAULT_MENU: readonly ActionGroup[] = [
   // Top row, left→right (0x70 change-profession, 0x86 hammer, 0x6e "!", 0x63 "?").
