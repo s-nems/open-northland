@@ -12,6 +12,7 @@ import {
   resolveGatheringRefs,
 } from '../src/content/resource-gfx/index.js';
 import type { GoodRef } from '../src/content/settler-gfx/index.js';
+import { B } from './support/landscape.js';
 
 /**
  * The gathering-economy render binding — the self-verifiable half of "draw each resource/pile/flag from
@@ -20,7 +21,6 @@ import type { GoodRef } from '../src/content/settler-gfx/index.js';
  * deterministically without a browser; the pixels are the `?scene=sandbox` acceptance scene's job.
  */
 
-const B = 'data/engine2d/bin/bobs';
 // The default resource family stem is `ls_trees.tree_yew01` — a wood node record in it binds a BARE bob.
 const WOOD_NODE: LandscapeGfxRow = {
   index: 100,
