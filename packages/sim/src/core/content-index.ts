@@ -22,12 +22,11 @@ import {
  * packages/sim/AGENTS.md). Pure derived data over immutable content — never hashed, never mutated —
  * so it is determinism-neutral by construction.
  *
- * Every table reproduces the duplicate-key semantics of the exact scan it replaced — mostly
- * **first-wins** (`byKey`: a duplicate key keeps the FIRST array entry, what a `.find` returned);
- * the two deliberate exceptions are documented on their fields (`atomicBindingsByTribe` is last-wins
- * per binding, `landscapeGfxByIndex` is last-wins like the `new Map(pairs)` it replaced). So a
- * lookup through the index is provably the same record the linear code picked, even on (unexpected)
- * duplicate ids.
+ * Every table reproduces the duplicate-key semantics of the exact scan it replaced — mostly first-wins
+ * (`byKey`: a duplicate key keeps the first array entry, what a `.find` returned); the two deliberate
+ * exceptions are documented on their fields (`atomicBindingsByTribe` is last-wins per binding,
+ * `landscapeGfxByIndex` is last-wins like the `new Map(pairs)` it replaced). So a lookup through the index is
+ * provably the same record the linear code picked, even on (unexpected) duplicate ids.
  *
  * The weapon tables key the same way `attackerWeapon` (systems/conflict/weapons.ts) scanned the
  * non-unique `content.weapons` rows: first-in-source-order per `(tribeType, typeId)` /
@@ -54,7 +53,7 @@ export interface ContentIndex {
   readonly armor: ReadonlyMap<number, ArmorType>;
   /** Experience tracks by `typeId`. */
   readonly jobExperience: ReadonlyMap<number, HumanJobExperienceType>;
-  /** Animal records by their `tribeType` (an animal's identity IS its tribe). */
+  /** Animal records by their `tribeType` (an animal's identity is its tribe). */
   readonly animalsByTribe: ReadonlyMap<number, AnimalType>;
   /** Atomic animations by `name` (the `setatomic` join key). */
   readonly atomicAnimationsByName: ReadonlyMap<string, AtomicAnimation>;
@@ -67,20 +66,20 @@ export interface ContentIndex {
   /** Weapons by `(tribeType, jobType)` — how a jobbed combatant binds its class weapon; first-wins
    *  per pair (source order). */
   readonly weaponsByTribeAndJob: ReadonlyMap<number, ReadonlyMap<number, WeaponType>>;
-  /** The FIRST weapon row of each tribe (source order) — a jobless animal's weapon (its combat
-   *  identity is its tribe alone). */
+  /** The first weapon row of each tribe (source order) — a jobless animal's weapon (its combat identity is
+   *  its tribe alone). */
   readonly firstWeaponByTribe: ReadonlyMap<number, WeaponType>;
   /**
-   * Per tribe: the `setatomic` bindings resolved `jobType → atomicId → animation name`, built
-   * **last-wins over the file-order bindings** — exactly the override semantics the linear walk it
-   * replaces implemented (a later `setatomic` line for the same (job, atomic) shadows an earlier
-   * one), so a lookup here returns the identical name.
+   * Per tribe: the `setatomic` bindings resolved `jobType → atomicId → animation name`, built last-wins over
+   * the file-order bindings — the override semantics the linear walk it replaces implemented (a later
+   * `setatomic` line for the same (job, atomic) shadows an earlier one), so a lookup here returns the
+   * identical name.
    */
   readonly atomicBindingsByTribe: ReadonlyMap<number, ReadonlyMap<number, ReadonlyMap<number, string>>>;
   /** Per-good gathering pipelines by `goodType`. */
   readonly gatheringPipelinesByGood: ReadonlyMap<number, GatheringPipeline>;
-  /** Landscape gfx records by their `index` (the gathering pipeline's join key). LAST-wins on a
-   *  duplicate index — the semantics of the `new Map(records.map(...))` it replaced. */
+  /** Landscape gfx records by their `index` (the gathering pipeline's join key). Last-wins on a duplicate
+   *  index — the semantics of the `new Map(records.map(...))` it replaced. */
   readonly landscapeGfxByIndex: ReadonlyMap<number, LandscapeGfx>;
   /**
    * Per job type: the set of atomic ids the job may run — `allowedAtomics` ∪ `baseAtomics` minus
@@ -89,14 +88,13 @@ export interface ContentIndex {
    */
   readonly atomicsByJob: ReadonlyMap<number, ReadonlySet<number>>;
   /**
-   * The largest Manhattan node-offset any resource's WORK cell can sit from its anchor, over every
-   * `landscapeGfx` work-area cell — floored at 3, covering BOTH `resourceWorkCell` fallbacks with
-   * headroom: `nearestFreeNeighbour` walks the orthogonal neighbour set (Manhattan 1,
-   * `nav/terrain/graph.ts` NEIGHBOUR_OFFSETS), and the lattice's widest single step (a diagonal, `(±1,±2)`)
-   * is Manhattan 3 — so even a future fallback widened to the full step set stays under the floor.
-   * The SLACK a radius-bounded candidate query must widen its anchor box by so it provably contains
-   * every node whose work cell could pass the radius test (see `resourcesNearNode`); over-covering
-   * only grows the queried box, never a winner.
+   * The largest Manhattan node-offset any resource's work cell can sit from its anchor, over every
+   * `landscapeGfx` work-area cell — floored at 3, covering both `resourceWorkCell` fallbacks with headroom:
+   * `nearestFreeNeighbour` walks the orthogonal neighbour set (Manhattan 1, `nav/terrain/graph.ts`
+   * NEIGHBOUR_OFFSETS), and the lattice's widest single step (a diagonal, `(±1,±2)`) is Manhattan 3 — so even
+   * a future fallback widened to the full step set stays under the floor. The slack a radius-bounded candidate
+   * query must widen its anchor box by so it provably contains every node whose work cell could pass the
+   * radius test (see `resourcesNearNode`); over-covering only grows the queried box, never a winner.
    */
   readonly maxResourceWorkOffset: number;
 }
@@ -218,9 +216,9 @@ function atomicBindingTables(
   return byTribe;
 }
 
-/** The per-building-type worker-job sets — first-wins per typeId UNCONDITIONALLY (a first record
- *  with zero workers claims the key with an empty set, exactly as the `.find` it replaced resolved
- *  the first record and read its empty `workers`), so a later duplicate can never shadow it. */
+/** The per-building-type worker-job sets — first-wins per typeId unconditionally (a first record with zero
+ *  workers claims the key with an empty set, exactly as the `.find` it replaced resolved the first record and
+ *  read its empty `workers`), so a later duplicate can never shadow it. */
 function workerJobSets(content: ContentSet): ReadonlyMap<number, ReadonlySet<number>> {
   const map = new Map<number, ReadonlySet<number>>();
   for (const b of content.buildings) {
@@ -249,8 +247,8 @@ function byKeyLast<K, T>(items: readonly T[], key: (item: T) => K): ReadonlyMap<
 }
 
 /**
- * The largest |dx|+|dy| any `landscapeGfx` WORK-area cell sits from its record's anchor (the
- * full-state reading `resourceWorkCell` places collectors by), floored at 3 — see
+ * The largest |dx|+|dy| any `landscapeGfx` work-area cell sits from its record's anchor (the full-state
+ * reading `resourceWorkCell` places collectors by), floored at 3 — see
  * {@link ContentIndex.maxResourceWorkOffset} for the fallback-coverage argument.
  */
 function maxWorkCellOffset(content: ContentSet): number {

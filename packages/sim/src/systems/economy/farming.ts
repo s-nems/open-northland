@@ -5,22 +5,20 @@ import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import type { System, SystemContext } from '../context.js';
 
-// FIELD FARMING — the content resolution, growth system and atomic-effect appliers behind the farm's
+// Field farming — the content resolution, growth system and atomic-effect appliers behind the farm's
 // sow→water→grow→reap loop. The planner half (which field a farmer works next) is the planFarmer drive
-// (`../agents/farming`); this module owns the field's own lifecycle. Source basis: the loop's
-// vocabulary is readable original data (`goodtypes.ini` wheat atomics 34/35/29 + `isProducedOnMapFlag`,
-// `landscapetypes.ini` wheat lanes 27/28/29 with `maximumValency 5`); its timings/areas are the content
-// `farming` block's OBSERVED calibration constants (no readable growth timing or field radius exists).
+// (`../agents/farming`); this module owns the field's own lifecycle. Source basis: the loop's vocabulary is
+// readable original data (`goodtypes.ini` wheat atomics 34/35/29 + `isProducedOnMapFlag`, `landscapetypes.ini`
+// wheat lanes 27/28/29 with `maximumValency 5`); its timings/areas are the content `farming` block's observed
+// calibration constants (no readable growth timing or field radius exists).
 
-// WATERING IS THE GROWTH FUEL: a field grows only while `watered`, and EVERY STAGE STEP consumes its
-// watering — the field turns thirsty again and stands until a farmer comes back with the can. So a
-// field needs one sowing plus one watering PER STAGE to ripen, and the farm's throughput is literally
-// its farmers' labor (a lone farmer cycles fewer fields per hour than a full crew — the
-// user-requested "praca spięta z wydajnością produkcji", no idle-while-it-grows dead time). A named,
-// user-directed approximation: the cultivate atomic exists in the readable data (id 35, the
-// watering-can animation) but its engine-side effect is not decoded. An untended field simply stands
-// at its stage — it never ripens by itself, and it deadlocks nothing (the farm keeps working its
-// other fields; any farmer can pick it back up later).
+// Watering is the growth fuel: a field grows only while `watered`, and every stage step consumes its watering —
+// the field turns thirsty again and stands until a farmer comes back with the can. So a field needs one sowing
+// plus one watering per stage to ripen, and the farm's throughput is literally its farmers' labor (a lone
+// farmer cycles fewer fields than a full crew, no idle-while-it-grows dead time — user-directed). A named
+// approximation: the cultivate atomic exists in the readable data (id 35, the watering-can animation) but its
+// engine-side effect is not decoded. An untended field stands at its stage — it never ripens by itself and
+// deadlocks nothing (the farm works its other fields; any farmer can pick it back up later).
 
 /** A field-farmed good's resolved loop parameters: its content `farming` block + the three atomic ids
  *  the loop's actions run (`atomicForPlanting`/`atomicForCultivating`/`atomicForHarvesting`). */
@@ -52,11 +50,10 @@ export function farmingSpecFor(ctx: SystemContext, goodType: number): FarmingSpe
 }
 
 /**
- * The field-farmed good a workplace cultivates, or null when it farms none — the first of the building
- * type's `produces` goods that resolves a {@link FarmingSpec} (`produces` is a fixed content array, so
- * the pick is deterministic). This is the data-driven "is this building a FARM" test the planner and the
- * JobSystem's adopt pass key on — a workplace that produces a farmable good runs the field loop, never a
- * hardcoded building-type id.
+ * The field-farmed good a workplace cultivates, or null when it farms none — the first of the building type's
+ * `produces` goods that resolves a {@link FarmingSpec} (`produces` is a fixed content array, so the pick is
+ * deterministic). The data-driven "is this building a farm" test the planner and the JobSystem's adopt pass key
+ * on — a workplace that produces a farmable good runs the field loop, never a hardcoded building-type id.
  */
 export function farmWorkGood(world: World, ctx: SystemContext, workplace: Entity): FarmingSpec | null {
   const b = world.tryGet(workplace, Building);
@@ -124,9 +121,9 @@ export function applySow(
 }
 
 /**
- * Apply a completed `water` (cultivate) swing: mark the field `watered` — fueling ONE stage of growth
- * (each stage step consumes it; see the module note). A field already ripe, already watered, or gone
- * (reaped mid-swing) is a no-op — the water hit stubble.
+ * Apply a completed `water` (cultivate) swing: mark the field `watered` — fueling one stage of growth (each
+ * stage step consumes it; see the module note). A field already ripe, already watered, or gone (reaped
+ * mid-swing) is a no-op.
  */
 export function applyWater(world: World, crop: Entity): void {
   const c = world.tryGet(crop, Crop);
@@ -136,16 +133,15 @@ export function applyWater(world: World, crop: Entity): void {
 }
 
 /**
- * CropGrowthSystem — advance every WATERED field's integer growth counter and step its stage; each
- * stage step CONSUMES the watering (the field turns thirsty and stands until a farmer re-waters it —
- * growth is farmer-fueled, see the module note above). At the final stage the field is RIPE: its
- * {@link Resource.remaining} becomes the sown `yieldUnits`, which is what makes it harvestable (the
- * reap swing drops exactly that as the ground sheaf). Cost is O(fields) per tick — active work, never
- * entities² (golden rule 7); a world with no fields does nothing.
+ * CropGrowthSystem — advance every watered field's integer growth counter and step its stage; each stage step
+ * consumes the watering (the field turns thirsty and stands until a farmer re-waters it — see the module note).
+ * At the final stage the field is ripe: its {@link Resource.remaining} becomes the sown `yieldUnits`, which is
+ * what makes it harvestable (the reap swing drops exactly that as the ground sheaf). Cost is O(fields) per tick,
+ * never entities² (golden rule 7); a world with no fields does nothing.
  *
- * Determinism: per-field independent integer mutation (no cross-entity pick), so store-order iteration
- * is fine; the stage step is the exact integer compare `growth >= ticksPerStage` (never an accumulated
- * fixed-point fraction).
+ * Determinism: per-field independent integer mutation (no cross-entity pick), so store-order iteration is fine;
+ * the stage step is the exact integer compare `growth >= ticksPerStage` (never an accumulated fixed-point
+ * fraction).
  */
 export const cropGrowthSystem: System = (world) => {
   for (const e of world.query(Crop)) {
@@ -153,10 +149,9 @@ export const cropGrowthSystem: System = (world) => {
     if (crop.stage >= crop.stages) continue; // ripe — waiting for the scythe
     if (!crop.watered) continue; // thirsty — stands until a farmer comes with the can
     crop.growth += 1;
-    // In-place write on a snapshot-cached scenery entity (a Crop carries Resource) — log it so the
-    // snapshot's scenery-clone cache re-clones the field; a missed touch renders the crop frozen at
-    // its first-seen stage forever (the invisible freshly-sown level). One touch covers every write
-    // this tick, including the ripe Resource.remaining below. O(watered fields) — active work.
+    // In-place write on a snapshot-cached scenery entity (a Crop carries Resource) — log it so the snapshot's
+    // scenery-clone cache re-clones the field; a missed touch freezes the crop at its first-seen stage forever.
+    // One touch covers every write this tick, including the ripe Resource.remaining below.
     world.touch(e);
     if (crop.growth < crop.ticksPerStage) continue;
     crop.growth -= crop.ticksPerStage;

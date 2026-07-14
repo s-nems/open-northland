@@ -1,42 +1,38 @@
 /**
- * The terrain HALF-CELL ADJACENCY GRAPH — the sim's navigation model (docs/ECS.md, Phase 2).
+ * The terrain half-cell adjacency graph — the sim's navigation model (docs/ECS.md, Phase 2).
  *
- * This is NOT the triangle render tessellation: navigation, pathfinding, and placement all operate
- * on a graph of HALF-CELLS — the original's `2W×2H` logic lattice. That resolution is pinned by the
- * data, not invented: the decoded map's object lanes (`lmlt`/`emla`/`lmlv`), `map.cif` StaticObjects
- * placements, and the `LogicWalkBlockArea`/`LogicBuildBlockArea` footprint offsets all address a
- * `2W×2H` grid (source basis: mapdat lane layout, OpenVikings format oracle; the verbatim half-cell
- * anchoring is additionally the best-aligned reading of the real maps' own `lmlt` blocking lane —
- * the measurement lives in docs/SOURCES.md). Each node carries a landscape `typeId` (from the IR's
- * {@link LandscapeType} table) which resolves to walkability, a fixed-point walk cost, and a
- * per-node valency (capacity).
+ * This is not the triangle render tessellation: navigation, pathfinding, and placement all operate on a graph
+ * of half-cells — the original's `2W×2H` logic lattice. That resolution is pinned by the data, not invented:
+ * the decoded map's object lanes (`lmlt`/`emla`/`lmlv`), `map.cif` StaticObjects placements, and the
+ * `LogicWalkBlockArea`/`LogicBuildBlockArea` footprint offsets all address a `2W×2H` grid (source basis:
+ * mapdat lane layout, OpenVikings format oracle; the verbatim half-cell anchoring is additionally the
+ * best-aligned reading of the real maps' own `lmlt` blocking lane — the measurement lives in docs/SOURCES.md).
+ * Each node carries a landscape `typeId` (from the IR's {@link LandscapeType} table) which resolves to
+ * walkability, a fixed-point walk cost, and a per-node valency (capacity).
  *
- * GEOMETRY: in half-cell coordinates the staggered raster becomes a PLAIN RECTANGULAR lattice —
- * node `(hx, hy)` sits at world `(hx·½ column, hy·½ row)` = (34 px, 19 px) pitch under the measured
- * 68×38 px projection, with the visual stagger arising from which nodes the cell centres occupy
- * (cell `(c, r)` = node `(2c + (r&1), 2r)`). So the old parity-dependent offset tables vanish: every
- * node has the SAME neighbour offsets.
+ * Geometry: in half-cell coordinates the staggered raster becomes a plain rectangular lattice — node
+ * `(hx, hy)` sits at world `(hx·½ column, hy·½ row)` = (34 px, 19 px) pitch under the measured 68×38 px
+ * projection, with the visual stagger arising from which nodes the cell centres occupy (cell `(c, r)` =
+ * node `(2c + (r&1), 2r)`). So the old parity-dependent offset tables vanish: every node has the same
+ * neighbour offsets.
  *
- * MOVEMENT keeps the original's 8 directions (`THexagonDirection`: E/SE/SW/W/NW/NE plus NORTH = 6,
- * SOUTH = 7 — readable in the original's shipped `Data/GameSourceIncludes/logicdefines.inc`, the
- * "Logic directions" block), now one half-cell fine ({@link TerrainGraph.steps}):
+ * Movement keeps the original's 8 directions (`THexagonDirection`: E/SE/SW/W/NW/NE plus NORTH = 6, SOUTH = 7 —
+ * readable in the original's shipped `Data/GameSourceIncludes/logicdefines.inc`, the "Logic directions" block),
+ * now one half-cell fine ({@link TerrainGraph.steps}):
  *  - E/W = `(±1, 0)`, a 34 px half-column step, cost {@link HALF_COLUMN};
- *  - NE/SE/SW/NW = `(±1, ±2)`, the SAME 51 px lattice edge the full-cell graph priced (half a column
+ *  - NE/SE/SW/NW = `(±1, ±2)`, the same 51 px lattice edge the full-cell graph priced (half a column
  *    sideways, one full row up/down), cost {@link DIAGONAL_STEP};
- *  - N/S = `(0, ±1)`, a 19 px half-row step, cost {@link HALF_ROW} — the straight vertical the old
- *    graph needed a two-row flanked seam for.
- * That the original WALKS this lattice (rather than only blocking on it) is a NAMED APPROXIMATION —
- * no movement code survives readable — but the direction set, the edge geometry, and the half-cell
- * collision resolution are all data-pinned, and the observed unit packing density matches it.
- * A diagonal edge passes between the two nodes flanking its midpoint; it stays passable while at
- * least ONE flank is (both blocked = a wall joint, not a gap — the same seam rule the old vertical
- * step carried). E/W and N/S steps connect directly adjacent nodes: walkability is a property of the
- * DESTINATION node, the original's vertex-graph movement model.
+ *  - N/S = `(0, ±1)`, a 19 px half-row step, cost {@link HALF_ROW}.
+ * That the original walks this lattice (rather than only blocking on it) is a named approximation — no movement
+ * code survives readable — but the direction set, the edge geometry, and the half-cell collision resolution are
+ * all data-pinned, and the observed unit packing density matches it. A diagonal edge passes between the two
+ * nodes flanking its midpoint; it stays passable while at least one flank is (both blocked = a wall joint, not
+ * a gap). E/W and N/S steps connect directly adjacent nodes: walkability is a property of the destination node.
  *
- * DETERMINISM: the graph is a plain-data world resource (not entities). Nodes are addressed by a
- * monotonic row-major id (`hy * width + hx`), and neighbours are emitted in a fixed canonical order
- * so traversal is byte-identical across runs — the precondition for A* with canonical tie-breaking
- * and lockstep replay. All costs are `Fixed`; no floats touch state.
+ * Determinism: the graph is a plain-data world resource (not entities). Nodes are addressed by a monotonic
+ * row-major id (`hy * width + hx`), and neighbours are emitted in a fixed canonical order so traversal is
+ * byte-identical across runs — the precondition for A* with canonical tie-breaking and lockstep replay. All
+ * costs are `Fixed`; no floats touch state.
  */
 import type { ContentSet, LandscapeType } from '@open-northland/data';
 

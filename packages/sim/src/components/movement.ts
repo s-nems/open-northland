@@ -9,17 +9,15 @@ export const Position = defineComponent<{ x: Fixed; y: Fixed }>('Position');
 export const Velocity = defineComponent<{ x: Fixed; y: Fixed }>('Velocity');
 
 /**
- * A herd membership: the {@link Entity} that leads the pack this animal belongs to. The animal-spawn
- * mechanic (the `spawnAnimalHerd` command) adds it to every member of a herd whose `animaltypes.ini` record
- * sets `searchforleader` — a leader is designated (the herd's lowest-id member, which points `leader` at
- * itself) and each follower points `leader` at it. A solitary animal (`searchforleader` false) carries no
- * `HerdMember`: it has no leader to follow.
+ * A herd membership: the {@link Entity} that leads the pack this animal belongs to. The `spawnAnimalHerd`
+ * command adds it to every member of a herd whose `animaltypes.ini` record sets `searchforleader` — the
+ * herd's lowest-id member is the leader (its `leader` points at itself) and each follower points `leader` at
+ * it. A solitary animal (`searchforleader` false) carries none.
  *
- * The data foundation the follow-the-leader movement drive consumes (`herdingSystem`: a strayed follower
- * walks back within `maximumLeaderDistance` of its leader). Like {@link JobAssignment}/{@link Age} it is a
- * separate optional component: only a herding animal carries one. `leader` is an {@link Entity} id. A leader
- * carrying a self-referential `HerdMember` is intentional — it marks "this is a herd leader" without a second
- * flag component, and a follower can read its leader's membership uniformly.
+ * The data the follow-the-leader drive consumes (`herdingSystem`: a strayed follower walks back within
+ * `maximumLeaderDistance` of its leader). A separate optional component (the {@link JobAssignment}/{@link Age}
+ * pattern): only a herding animal carries one. A leader's self-referential `HerdMember` marks "this is a herd
+ * leader" without a second flag, and a follower reads its leader's membership uniformly.
  */
 export const HerdMember = defineComponent<{ leader: Entity }>('HerdMember');
 
@@ -28,17 +26,14 @@ export const HerdMember = defineComponent<{ leader: Entity }>('HerdMember');
  * waypoint each tick, in fixed-point tile units. The MovementSystem reads `perTick` for a path-follower that
  * carries one; an entity without it walks at the universal settler pace ({@link MOVE_SPEED_PER_TICK}).
  *
- * The animal-spawn mechanic stamps it on each herd creature from the `animaltypes.ini` `movespeed` param: a
- * creature with an explicit `movespeed` of `N` walks `ONE / N` tile/tick (a larger `movespeed` is a slower
- * step — see the `spawnAnimalHerd` handler and source basis "Animal locomotion pace"), so a cow grazes at
- * its own data-pinned speed. A creature whose record omits `movespeed` carries no `MoveSpeed` (engine default
- * = the universal pace).
+ * The `spawnAnimalHerd` mechanic stamps it from the `animaltypes.ini` `movespeed` param: a creature with
+ * `movespeed` of `N` walks `ONE / N` tile/tick (a larger `movespeed` is a slower step — see source basis
+ * "Animal locomotion pace"). A creature whose record omits `movespeed` carries none (engine default = the
+ * universal pace).
  *
- * This is the entity's one pace — there is deliberately no run/sprint gait (our design): every unit moves at
- * its constant pace whatever it is doing. No human run speed is readable anywhere; the `animaltypes.ini`
- * `runspeed` param stays extracted in the IR but unconsumed. The pace is a positive {@link Fixed}, read
- * identically to {@link MOVE_SPEED_PER_TICK} by the same drift-free arrival-snap, so it introduces no rounding
- * divergence.
+ * The entity's one pace — there is deliberately no run/sprint gait (our design); the `animaltypes.ini`
+ * `runspeed` param stays extracted but unconsumed. Read by the same drift-free arrival-snap as
+ * {@link MOVE_SPEED_PER_TICK}, so it introduces no rounding divergence.
  */
 export const MoveSpeed = defineComponent<{ perTick: Fixed }>('MoveSpeed');
 
@@ -50,11 +45,10 @@ export const MoveSpeed = defineComponent<{ perTick: Fixed }>('MoveSpeed');
  * for movement feel.
  *
  * `speed` is the current per-tick world-metric pace: 0 at rest, ramped toward the entity's gait
- * ({@link MoveSpeed} / the universal default), braked into the final waypoint. `hx`/`hy` are the current
- * leg's unit world-metric heading, used to project momentum through corners — at waypoint turns and at a
- * reroute's splice (`routing.ts` carries both `speed` and heading over, so a redirected walker keeps momentum
- * straight ahead but sheds it through a forced turn like any corner); (0,0) is the sentinel "no established
- * heading" (a path that has never moved). All three are Fixed sim state.
+ * ({@link MoveSpeed} / the universal default), braked into the final waypoint. `hx`/`hy` are the current leg's
+ * unit world-metric heading, used to project momentum through corners — at waypoint turns and at a reroute's
+ * splice (`routing.ts` carries both over, so a redirected walker keeps momentum straight ahead but sheds it
+ * through a forced turn); (0,0) is the "no established heading" sentinel. All three are Fixed sim state.
  */
 export const PathFollow = defineComponent<{
   waypoints: Array<{ x: Fixed; y: Fixed }>;
@@ -67,10 +61,10 @@ export const PathFollow = defineComponent<{
 /**
  * A navigation goal: the destination cell an entity wants to reach (a raw row-major cell id, like
  * {@link PathRequest}). The intent layer above pathing — the AISystem turns a goal on a path-less,
- * request-less entity into a {@link PathRequest} from the entity's current cell; PathfindingSystem turns that
- * into a {@link PathFollow}; MovementSystem walks it. The goal is removed once the entity arrives, so an
- * entity carrying a `MoveGoal` is still travelling. Kept separate from PathRequest/PathFollow (the transient
- * mechanism) so the planner can re-issue a request if a route is lost without forgetting the destination.
+ * request-less entity into a {@link PathRequest}; PathfindingSystem turns that into a {@link PathFollow};
+ * MovementSystem walks it. Removed once the entity arrives, so an entity carrying a `MoveGoal` is still
+ * travelling. Kept separate from PathRequest/PathFollow (the transient mechanism) so the planner can re-issue
+ * a request if a route is lost without forgetting the destination.
  *
  * One sanctioned outside write: for a collider whose goal node is occupied by a standing unit, routing
  * re-aims `cell` at the nearest free stand-in (the surround rule — see `drainPathRequests`), so a goal's

@@ -1,34 +1,31 @@
 import type { WorldSnapshot } from './snapshot.js';
 
 /**
- * `HashTrace` — the per-tick hash (+ bounded snapshot) ring buffer that feeds the "time-travel /
- * replay inspector" DX win (plan "Cross-cutting DX"). It is the **"find tick N"** half of the
- * inspector; `replay()` is the **"jump to tick N"** half:
+ * `HashTrace` — the per-tick hash (+ bounded snapshot) ring buffer for the replay inspector. It is the
+ * "find tick N" half; `replay()` is the "jump to tick N" half:
  *
- *  - `replay({content,seed,map?,log,untilTick})` reconstructs the exact state AT a tick by re-applying
- *    the command log — the expensive, on-demand primitive a scrub overlay calls once you know WHERE.
- *  - `HashTrace` records `{tick, hash}` cheaply DURING a live run, so "the hash diverged at tick N"
- *    is detectable by comparing two runs' traces — **without re-replaying either**. The overlay then
- *    hands that N to `replay()` to inspect. ("Hash diverged at tick 432 → jump there → inspect.")
+ *  - `replay({content,seed,map?,log,untilTick})` reconstructs the exact state at a tick by re-applying the
+ *    command log — the expensive, on-demand primitive a scrub overlay calls once you know which tick.
+ *  - `HashTrace` records `{tick, hash}` cheaply during a live run, so "the hash diverged at tick N" is
+ *    detectable by comparing two runs' traces without re-replaying either. The overlay hands that N to
+ *    `replay()` to inspect.
  *
- * ## Why it is a bounded RING (not an ever-growing log)
+ * ## Why it is a bounded ring (not an ever-growing log)
  *
- * A settlement runs for hours = millions of ticks; keeping every `{tick, hash}` (let alone every
- * snapshot) is unbounded memory. So the trace is a fixed-capacity ring: once full, recording a new
- * tick drops the OLDEST. The hash window is cheap (a tick number + an 8-char string per entry) so it
- * can be large; the optional snapshot window is heavy (a full cloned world per entry) so it has its
- * own, smaller cap — recent snapshots let the overlay dump an entity at a recent tick without a
- * `replay()`, while older ticks fall back to `replay()` from the (unbounded) command log. The command
- * log remains the authoritative save/replay record; this is a volatile debugging sidecar.
+ * A settlement runs for hours = millions of ticks; keeping every `{tick, hash}` (let alone every snapshot) is
+ * unbounded memory. So the trace is a fixed-capacity ring: once full, recording a new tick drops the oldest.
+ * The hash window is cheap (a tick number + an 8-char string per entry) so it can be large; the optional
+ * snapshot window is heavy (a full cloned world per entry) so it has its own, smaller cap — recent snapshots
+ * let the overlay dump an entity at a recent tick without a `replay()`, while older ticks fall back to
+ * `replay()` from the (unbounded) command log, which remains the authoritative save/replay record.
  *
  * ## Purity
  *
- * Pure data: no DOM, no I/O, no clock. It is a PASSIVE recorder the caller drives — call
- * {@link HashTrace.record} after each `step()` with the already-computed `hashState()` (and optional
- * `snapshot()`). It deliberately does NOT hook `Simulation.step()`: per-tick hashing stays opt-in and
- * out of the deterministic hot loop, so enabling the inspector can never change sim state or the
- * golden hashes. It holds only plain values (numbers, strings, plain snapshots), so it is itself
- * transferable to a render/worker thread alongside the snapshot it mirrors.
+ * Pure data: no DOM, no I/O, no clock. A passive recorder the caller drives — call {@link HashTrace.record}
+ * after each `step()` with the already-computed `hashState()` (and optional `snapshot()`). It deliberately
+ * does not hook `Simulation.step()`: per-tick hashing stays opt-in and out of the deterministic hot loop, so
+ * enabling the inspector can never change sim state or the golden hashes. It holds only plain values, so it is
+ * itself transferable to a render/worker thread alongside the snapshot it mirrors.
  */
 export interface HashTraceEntry {
   /** The tick this hash/snapshot was recorded after (`Simulation.tick` at record time). */
@@ -52,7 +49,7 @@ export interface HashTraceOptions {
    */
   readonly hashCapacity?: number;
   /**
-   * Max recent entries that ALSO retain their full `WorldSnapshot` (the heavy payload). Must be
+   * Max recent entries that also retain their full `WorldSnapshot` (the heavy payload). Must be
    * `>= 0` and `<= hashCapacity` (a snapshot can't outlive its hash entry). `0` means "hashes only".
    * Defaults to 0 — opt into snapshots explicitly, since they are large.
    */
@@ -102,9 +99,9 @@ export class HashTrace {
    * oldest entry if it would exceed `hashCapacity`, and ages the snapshot out of any entry that has
    * fallen outside the (more recent) snapshot window so the heavy payload stays bounded.
    *
-   * Ticks must be recorded in **strictly ascending** order (the natural per-`step()` cadence) — a
-   * non-monotonic record is a caller bug (out-of-order ticks would make `at`/`divergedFrom` lookups
-   * meaningless), so it throws rather than silently corrupting the ring.
+   * Ticks must be recorded in strictly ascending order (the natural per-`step()` cadence) — a non-monotonic
+   * record is a caller bug (out-of-order ticks would make `at`/`divergedFrom` lookups meaningless), so it
+   * throws rather than silently corrupting the ring.
    */
   record(tick: number, hash: string, snapshot?: WorldSnapshot): void {
     const last = this.entries[this.entries.length - 1];
@@ -172,11 +169,11 @@ export class HashTrace {
   }
 
   /**
-   * Find the FIRST tick where this trace's hash disagrees with `other`'s — "the hash diverged at tick
-   * N", computed without re-replaying either run. Compares only ticks present in BOTH retained
-   * windows (the overlap), in ascending order; returns the earliest mismatch, or `undefined` if every
-   * shared tick agrees. This is the inspector's bug-localizer: feed it a reference run's trace (a
-   * golden, or a peer's lockstep trace) and it points at the first tick to `replay()` and inspect.
+   * Find the first tick where this trace's hash disagrees with `other`'s — "the hash diverged at tick N",
+   * computed without re-replaying either run. Compares only ticks present in both retained windows, in
+   * ascending order; returns the earliest mismatch, or `undefined` if every shared tick agrees. The
+   * inspector's bug-localizer: feed it a reference run's trace (a golden, or a peer's lockstep trace) and it
+   * points at the first tick to `replay()` and inspect.
    */
   divergedFrom(other: HashTrace): Divergence | undefined {
     for (const e of this.entries) {

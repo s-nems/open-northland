@@ -8,22 +8,19 @@ import { cellOfNode } from './gates.js';
 import { FOG_STATE } from './state.js';
 
 /**
- * Ticks between visibility-mask rebuilds. The fog "scan pulse": positions move every tick but the
- * masks refresh on this cadence, so per-tick cost amortizes to (owned entities × vision area) / 5
- * writes. At 20 ticks/s that is a 250 ms refresh — imperceptible against fog's soft edges. OUR
- * design (the original has no observable fog refresh rate); a deliberate cadence like combat's
- * REPATH_CADENCE, not a magic number.
+ * Ticks between visibility-mask rebuilds. The fog "scan pulse": positions move every tick but the masks refresh
+ * on this cadence, so per-tick cost amortizes to (owned entities × vision area) / 5 writes. At 20 ticks/s that
+ * is a 250 ms refresh — imperceptible against fog's soft edges. Our design (the original has no observable fog
+ * refresh rate), a deliberate cadence like combat's REPATH_CADENCE.
  */
 export const VISION_CADENCE_TICKS = 5;
 
 /**
- * Vision radii in half-cell NODES (the same integer node-distance convention as
- * `DEFAULT_WORK_FLAG_RADIUS` / `SIGHT_RADIUS_NODES`), measured along the E/W world axis (one node =
- * half a column = 34 px of the measured 68×38 pitch); the stamped area is the world-metric ellipse of
- * that radius, so vision reads circular on screen. ALL APPROXIMATED (user-tuned 2026-07-11, civilian
- * and hunter raised the same day — 8/11 read too tight in play): the original carries no readable
- * per-job sight field — the ordering (buildings large, scout largest, soldier large, hunter a bit
- * over civilian, civilian smallest) is the user's spec.
+ * Vision radii in half-cell nodes (the same integer node-distance convention as `DEFAULT_WORK_FLAG_RADIUS` /
+ * `SIGHT_RADIUS_NODES`), measured along the E/W world axis (one node = half a column = 34 px of the measured
+ * 68×38 pitch); the stamped area is the world-metric ellipse of that radius, so vision reads circular on screen.
+ * All approximated (user-tuned): the original carries no readable per-job sight field — the ordering (buildings
+ * large, scout largest, soldier large, hunter a bit over civilian, civilian smallest) is the user's spec.
  */
 export const BUILDING_VISION_NODES = 20;
 export const CIVILIAN_VISION_NODES = 12;
@@ -43,28 +40,27 @@ export function visionRadiusForJob(jobType: number | null): number {
   return CIVILIAN_VISION_NODES;
 }
 
-/** The world-metric weights of the vision ellipse: one CELL column is 68 px wide, one cell ROW 38 px
- *  deep, one NODE (the radius unit) 34 px — the measured projection pitch (`nav/metric.ts`, source
- *  basis "projection"). Integer, so the ellipse test is exact integer arithmetic. */
+/** The world-metric weights of the vision ellipse: one cell column is 68 px wide, one cell row 38 px deep, one
+ *  node (the radius unit) 34 px — the measured projection pitch (`nav/metric.ts`, source basis "projection").
+ *  Integer, so the ellipse test is exact integer arithmetic. */
 const CELL_STEP_PX = 68;
 const ROW_STEP_PX = 38;
 const NODE_STEP_PX = 34;
 
 /**
- * VisionSystem — rebuild the per-player fog masks on the {@link VISION_CADENCE_TICKS} cadence (and
- * immediately on a mode change, so a `setFogMode` command takes effect the same tick — it runs in the
- * commandSystem, well before this system). Runs BEFORE the combatSystem in `SYSTEM_ORDER` so combat
- * always gates on this tick's (or at worst a cadence-stale) visibility.
+ * VisionSystem — rebuild the per-player fog masks on the {@link VISION_CADENCE_TICKS} cadence (and immediately
+ * on a mode change, so a `setFogMode` command takes effect the same tick). Runs before the combatSystem in
+ * `SYSTEM_ORDER` so combat always gates on this tick's (or at worst a cadence-stale) visibility.
  *
  * A rebuild is two passes over each player's mask:
- *  1. **Downgrade** — RECON drops every VISIBLE byte to EXPLORED (ground nobody watches regresses
- *     to terrain-only); REVEAL skips this (sticky exploration, the original's observed behaviour).
- *  2. **Stamp** — every OWNED positioned eye (settler by job / building / boat) writes VISIBLE over
- *     the world-metric ellipse of its vision radius. Stamping is idempotent + commutative, so the
- *     `query(Owner, Position)` store order needs no canonical sort (AGENTS.md: only picks do).
+ *  1. **Downgrade** — RECON drops every VISIBLE byte to EXPLORED (ground nobody watches regresses to
+ *     terrain-only); REVEAL skips this (sticky exploration, the original's observed behaviour).
+ *  2. **Stamp** — every owned positioned eye (settler by job / building / boat) writes VISIBLE over the
+ *     world-metric ellipse of its vision radius. Stamping is idempotent + commutative, so the
+ *     `query(Owner, Position)` store order needs no canonical sort.
  *
- * Cost: zero when fog is OFF or no owned entity exists; otherwise O(players · cells) for the downgrade
- * + O(owned · radius²) for the stamps, every {@link VISION_CADENCE_TICKS} ticks.
+ * Cost: zero when fog is OFF or no owned entity exists; otherwise O(players · cells) for the downgrade +
+ * O(owned · radius²) for the stamps, every {@link VISION_CADENCE_TICKS} ticks.
  */
 export const visionSystem: System = (world, ctx) => {
   const fog = ctx.fog;

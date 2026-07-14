@@ -21,22 +21,19 @@ import { hasRoom, isFarmCarrierHaulOutRole, isStorageSink } from './store-policy
  * The store a settler carrying `goodType` should deliver it to — the routing that lets a fetched input
  * reach the workshop while a harvested/collected good reaches the warehouse it belongs to:
  *
- *  1. If the settler is bound to a **recipe workplace** and `goodType` is one of that workplace's recipe
- *     INPUTS with room to spare → deliver to the workplace. This is the producer bringing a fetched input
- *     home (the smith carrying iron to the forge), so a picked-up input never gets re-deposited into the
- *     warehouse it came from.
- *  2. Else, if the settler is a **flag-bound gatherer** (carries a {@link WorkFlag}) → deliver to ITS flag.
- *     This is the "each gatherer carries the good to its own flag" rule: a flag-bound collector banks its
- *     harvest at its own flag, never merely the nearest store (a warehouse that happens to sit closer). The
- *     flag is only a MARKER — the pileup spreads the load onto loose ground heaps around it, not into it.
+ *  1. If the settler is bound to a **recipe workplace** and `goodType` is one of that workplace's recipe inputs
+ *     with room to spare → deliver to the workplace. The producer bringing a fetched input home (the smith
+ *     carrying iron to the forge), so a picked-up input never gets re-deposited into the warehouse it came from.
+ *  2. Else, if the settler is a **flag-bound gatherer** (carries a {@link WorkFlag}) → deliver to its flag: a
+ *     flag-bound collector banks its harvest at its own flag, never merely the nearest store. The flag is only
+ *     a marker — the pileup spreads the load onto loose ground heaps around it, not into it.
  *  3. Else, if the settler is bound (via {@link JobAssignment}) to a **storage** fixture — a positioned
- *     {@link Stockpile} with no recipe (a warehouse, or a bare flag/ground pile) that can still take the
- *     good → deliver there. This is the porter delivering to *its* store, so it never dumps a load straight
- *     back onto the pile it just cleared.
+ *     {@link Stockpile} with no recipe (a warehouse, or a bare flag/ground pile) that can still take the good →
+ *     deliver there, so a porter never dumps a load straight back onto the pile it just cleared.
  *  4. Else, if a **construction site** of the tribe still needs the good, deliver it there — a builder
  *     self-supplying its own foundation (or a hauler topping it up) reaches the site, not a warehouse.
- *  5. Else → the nearest store that can stock the good ({@link nearestStoreFor}) — the unchanged default
- *     for an unbound hauler (so the vertical-slice woodcutter/carrier route exactly as before).
+ *  5. Else → the nearest store that can stock the good ({@link nearestStoreFor}) — the default for an unbound
+ *     hauler.
  */
 export function deliveryTargetFor(plan: PlannerContext, goodType: number): Entity | null {
   const { world, ctx, terrain, here, entity: settler, jobType, tribe, owner, targets } = plan;
@@ -50,24 +47,22 @@ export function deliveryTargetFor(plan: PlannerContext, goodType: number): Entit
       return workplace;
     }
   }
-  // 2. A flag-bound gatherer banks its harvest at its OWN flag. The flag is a MARKER, not a store (it
-  //    carries no Stockpile) — the pileup spreads the load onto loose ground heaps AROUND the flag, each
-  //    pinned to its tile, so nothing already dropped teleports when the flag is relocated. Route to the
-  //    flag whenever it still exists; the ground always has room, so there is no capacity gate here.
+  // 2. A flag-bound gatherer banks its harvest at its own flag. The flag is a marker, not a store (it carries
+  //    no Stockpile) — the pileup spreads the load onto loose ground heaps around the flag, each pinned to its
+  //    tile, so nothing already dropped teleports when the flag is relocated. Route to the flag whenever it
+  //    still exists; the ground always has room, so there is no capacity gate here.
   const flag = world.tryGet(settler, WorkFlag);
   if (flag !== undefined && world.has(flag.flag, DeliveryFlag) && world.has(flag.flag, Position)) {
     return flag.flag;
   }
-  // 3. A CARRIER bound to a FIELD-PRODUCING building (a farm) carrying that building's own OUTPUT hauls
-  //    it OUT to storage — the delivery twin of `boundProducerOutputToHaul` (the twins test the same
-  //    predicates: same tribe, same field-producer key, same field-worker split). Routed with
-  //    producers-of-the-good excluded, so the load reaches a warehouse and never another farm, ABOVE the
-  //    bring-into-my-store case below so it leaves the producer. Gated to a NON-field-worker: a FARMER
-  //    banks its own reaped crop INTO the farm (case 3b, overflowing only when the farm is full), while
-  //    the farm's carrier clears it to central storage — the two-role split. Keyed on the good's
-  //    `farming` block (the field loop's own data signal), NOT on "no recipe": the sandbox farm carries
-  //    no recipe, but the pipeline-extracted farm has a synthesized one, so a recipe test would silently
-  //    turn this rung off under real extracted content.
+  // 3. A carrier bound to a field-producing building (a farm) carrying that building's own output hauls it out
+  //    to storage — the delivery twin of `boundProducerOutputToHaul`. Routed with producers-of-the-good
+  //    excluded, so the load reaches a warehouse and never another farm, above the bring-into-my-store case
+  //    below so it leaves the producer. Gated to a non-field-worker: a farmer banks its own reaped crop into the
+  //    farm (case 3b, overflowing only when the farm is full), while the farm's carrier clears it to central
+  //    storage. Keyed on the good's `farming` block (the field loop's own data signal), not on "no recipe": the
+  //    sandbox farm carries no recipe, but the pipeline-extracted farm has a synthesized one, so a recipe test
+  //    would silently turn this rung off under real extracted content.
   const binding = world.tryGet(settler, JobAssignment);
   const home = binding?.workplace;
   if (
@@ -99,9 +94,9 @@ export function deliveryTargetFor(plan: PlannerContext, goodType: number): Entit
  * site's advertised {@link stockCapacity} for it (its outstanding demand). Scans the tiny
  * {@link import('../../targets/index.js').TargetCandidates.constructionSites} list (UnderConstruction + Building +
  * Position guaranteed) in canonical order with the standard Manhattan + ascending-cell-id tie-break.
- * Returns the site or null when no site needs the good — the routing preference behind a builder
- * self-supplying its own site and an assigned hauler topping it up. `owner` is the hauler's owning
- * player ({@link ownerOf}) — material flows only to the hauler's OWN player's sites.
+ * Returns the site or null when no site needs the good — the routing preference behind a builder self-supplying
+ * its own site and an assigned hauler topping it up. `owner` is the hauler's owning player ({@link ownerOf}) —
+ * material flows only to the hauler's own player's sites.
  */
 function nearestConstructionSiteNeeding(
   sites: readonly Entity[],
@@ -119,7 +114,7 @@ function nearestConstructionSiteNeeding(
   for (const e of sites) {
     if (world.get(e, Building).tribe !== tribe) continue;
     if (!ownersCompatible(owner, ownerOf(world, e))) continue; // another player's site (same tribe isn't same side)
-    // Count both what the site HOLDS and what other settlers' live supply errands already have inbound
+    // Count both what the site holds and what other settlers' live supply errands already have inbound
     // (SupplyRun): a site whose last unit is on someone's back stops attracting more of the good, so a
     // duplicate fetch diverts to a warehouse instead of over-delivering.
     const have = (world.get(e, Stockpile).amounts.get(goodType) ?? 0) + inboundSupply(world, e, goodType);

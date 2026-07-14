@@ -6,28 +6,23 @@ import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
 
 /**
- * The **gatherer work-flag lifecycle** — the create / relocate / destroy of a gatherer's drop-off flag,
- * plus the "is this a gatherer trade" gate that governs it. Split out of the player-command handlers
- * (`orders/work.ts`, which owns `setWorkFlag`/`setJob`) so the flag ENTITY lifecycle has a
- * feature home the non-command callers can reach without importing the player-orders module: `setWorkFlag`
- * (the Ctrl+Right-Click command) plants / moves a flag, a profession change ({@link syncWorkFlagToJob},
- * run inside `reidleAsJob`) plants or drops one, and the death reap (`cleanupSystem`) drops a dead
- * gatherer's flag — all through the SAME {@link bindFreshFlag}/{@link removeWorkFlag} pair here, so "a
+ * The gatherer work-flag lifecycle — create / relocate / destroy of a gatherer's drop-off flag, plus the "is
+ * this a gatherer trade" gate that governs it. `setWorkFlag` (Ctrl+Right-Click) plants / moves a flag, a
+ * profession change ({@link syncWorkFlagToJob}) plants or drops one, and the death reap (`cleanupSystem`) drops
+ * a dead gatherer's flag — all through the {@link bindFreshFlag}/{@link removeWorkFlag} pair here, so "a
  * `DeliveryFlag` exists exactly while a live gatherer references it" holds in one place.
  *
- * A flag is a pure `Position + DeliveryFlag` MARKER (it stores no goods — the harvest piles on the ground
- * around it as separate heaps), referenced by its gatherer's {@link WorkFlag}. The work radius is the
- * named approximation {@link DEFAULT_WORK_FLAG_RADIUS} (the original's collector work-area size is not
- * decoded). Auto-planting a flag the moment a settler becomes a gatherer ({@link plantWorkFlagAtFeet}) is
- * a OpenNorthland UX convention layered on that approximated flag model — not observed original behavior — so a
- * profession change hands the gatherer a movable flag at its feet instead of leaving it flagless.
+ * A flag is a pure `Position + DeliveryFlag` marker (it stores no goods — the harvest piles on the ground
+ * around it as separate heaps), referenced by its gatherer's {@link WorkFlag}. The work radius is the named
+ * approximation {@link DEFAULT_WORK_FLAG_RADIUS} (the original's collector work-area size is not decoded).
+ * Auto-planting a flag the moment a settler becomes a gatherer ({@link plantWorkFlagAtFeet}) is an OpenNorthland
+ * UX convention layered on that model (not observed original behavior).
  */
 
 /**
- * The gatherer's LIVE work flag (its {@link WorkFlag} whose flag entity still exists), or undefined — it
- * carries no WorkFlag, or the referenced flag was destroyed (a stale binding). The ONE liveness test,
- * shared by the relocate branch of `setWorkFlag` and the keep-check of {@link syncWorkFlagToJob}, so the
- * definition of "has a live flag" lives in a single place.
+ * The gatherer's live work flag (its {@link WorkFlag} whose flag entity still exists), or undefined — it
+ * carries no WorkFlag, or the referenced flag was destroyed (a stale binding). The one liveness test, shared by
+ * the relocate branch of `setWorkFlag` and the keep-check of {@link syncWorkFlagToJob}.
  */
 export function liveWorkFlag(world: World, e: Entity): { flag: Entity; radius: number } | undefined {
   const wf = world.tryGet(e, WorkFlag);
@@ -35,11 +30,10 @@ export function liveWorkFlag(world: World, e: Entity): { flag: Entity; radius: n
 }
 
 /**
- * Mint a fresh {@link DeliveryFlag} marker at `pos` and bind gatherer `e` to it — the ONE place a work
- * flag is created, shared by `setWorkFlag` (the player planting it with Ctrl+Right-Click) and the
- * profession-change auto-plant ({@link plantWorkFlagAtFeet}). The flag is a pure `Position + DeliveryFlag`
- * marker (it stores NO goods — the harvest piles on the ground around it). Re-points a stale
- * {@link WorkFlag} (keeping the gatherer's radius) or adds a new one at the {@link DEFAULT_WORK_FLAG_RADIUS}.
+ * Mint a fresh {@link DeliveryFlag} marker at `pos` and bind gatherer `e` to it — the one place a work flag is
+ * created, shared by `setWorkFlag` (the player's Ctrl+Right-Click) and the profession-change auto-plant
+ * ({@link plantWorkFlagAtFeet}). Re-points a stale {@link WorkFlag} (keeping the gatherer's radius) or adds a
+ * new one at the {@link DEFAULT_WORK_FLAG_RADIUS}.
  */
 export function bindFreshFlag(world: World, e: Entity, pos: { x: Fixed; y: Fixed }): void {
   const flag = world.create();
@@ -53,13 +47,10 @@ export function bindFreshFlag(world: World, e: Entity, pos: { x: Fixed; y: Fixed
 
 /**
  * Sync a settler's work flag to its (new) `jobType` — the flag half of a profession change, run inside
- * `reidleAsJob` so every employment order (`setJob`, `assignWorker`) applies it identically. A job that
- * CAN harvest is a gatherer: it keeps a live flag, or gets a fresh one planted at its feet
- * ({@link plantWorkFlagAtFeet}) — so switching a settler INTO a gatherer trade immediately gives it a
- * movable drop-off flag, the profession-change twin of the player's first Ctrl+Right-Click (a OpenNorthland UX
- * convention, not decoded original behavior). A job that CANNOT harvest (a builder, a soldier, idle) DROPS
- * the flag ({@link removeWorkFlag}): the marker is destroyed and the {@link WorkFlag} removed, so a former
- * gatherer never strands an owner-less flag on the map.
+ * `reidleAsJob` so every employment order (`setJob`, `assignWorker`) applies it identically. A job that can
+ * harvest is a gatherer: it keeps a live flag, or gets a fresh one planted at its feet
+ * ({@link plantWorkFlagAtFeet}). A job that cannot (a builder, a soldier, idle) drops the flag
+ * ({@link removeWorkFlag}), so a former gatherer never strands an owner-less flag on the map.
  */
 export function syncWorkFlagToJob(world: World, ctx: SystemContext, e: Entity, jobType: number): void {
   if (jobCanHarvest(ctx, jobType)) {
@@ -71,10 +62,10 @@ export function syncWorkFlagToJob(world: World, ctx: SystemContext, e: Entity, j
 }
 
 /**
- * Plant a fresh work flag at the OWNED gatherer's CURRENT tile and bind it — the auto-plant a settler gets
- * the instant its profession becomes a gatherer. The flag snaps to the settler's half-cell node (so it
- * lands on a tile the player can then relocate with Ctrl+Right-Click), exactly as `setWorkFlag` snaps a
- * clicked point. No-op when mapless (no cells to plant on) or the settler carries no Position.
+ * Plant a fresh work flag at the owned gatherer's current tile and bind it — the auto-plant a settler gets the
+ * instant its profession becomes a gatherer. The flag snaps to the settler's half-cell node (so it lands on a
+ * tile the player can then relocate), exactly as `setWorkFlag` snaps a clicked point. No-op when mapless or the
+ * settler carries no Position.
  */
 function plantWorkFlagAtFeet(world: World, ctx: SystemContext, e: Entity): void {
   const terrain = ctx.terrain;
@@ -86,12 +77,10 @@ function plantWorkFlagAtFeet(world: World, ctx: SystemContext, e: Entity): void 
 }
 
 /**
- * Drop a settler's work flag: destroy the flag marker entity (if still alive) and remove the
- * {@link WorkFlag} binding. The single un-bind point, shared by the profession-change path (a settler
- * leaving the gatherer trade — {@link syncWorkFlagToJob}) and the death reap (`cleanupSystem`), so the
- * "a flag exists only for a live gatherer" invariant holds through both. The goods already piled on the
- * ground are SEPARATE `Stockpile+Position` heaps pinned to their own tiles — they stay put. No-op if the
- * settler carries no WorkFlag.
+ * Drop a settler's work flag: destroy the flag marker entity (if still alive) and remove the {@link WorkFlag}
+ * binding. The single un-bind point, shared by the profession-change path ({@link syncWorkFlagToJob}) and the
+ * death reap (`cleanupSystem`). The goods already piled on the ground are separate `Stockpile+Position` heaps
+ * pinned to their own tiles — they stay put. No-op if the settler carries no WorkFlag.
  */
 export function removeWorkFlag(world: World, e: Entity): void {
   const wf = world.tryGet(e, WorkFlag);
@@ -101,13 +90,12 @@ export function removeWorkFlag(world: World, e: Entity): void {
 }
 
 /**
- * Whether a job may harvest any FLAG-GATHERED good — i.e. its allowed atomics include some good's
- * harvest atomic. The gate for `setWorkFlag` and {@link syncWorkFlagToJob}: only a gatherer carries a
- * work flag. Mirrors the harvest-atomic knowledge the AI target scan uses (`atomicsByJob` ∩ the goods'
- * harvest atomics), read once per command (rare path). A FIELD-FARMED good (a `farming` block — wheat)
- * is deliberately excluded: its harvester is a FARMER, bound to its farm and banking the crop in the
- * farm's own store (`logicstock 4 25 0`; `agents/farming`), never a flag gatherer — a flag would
- * hijack every sheaf delivery to the flag (`deliveryTargetFor`'s flag rung outranks the bound store).
+ * Whether a job may harvest any flag-gathered good — i.e. its allowed atomics include some good's harvest
+ * atomic. The gate for `setWorkFlag` and {@link syncWorkFlagToJob}: only a gatherer carries a work flag.
+ * Mirrors the harvest-atomic knowledge the AI target scan uses (`atomicsByJob` ∩ the goods' harvest atomics).
+ * A field-farmed good (a `farming` block — wheat) is deliberately excluded: its harvester is a farmer, bound to
+ * its farm and banking the crop in the farm's own store (`logicstock 4 25 0`), never a flag gatherer — a flag
+ * would hijack every sheaf delivery (`deliveryTargetFor`'s flag rung outranks the bound store).
  */
 export function jobCanHarvest(ctx: SystemContext, jobType: number): boolean {
   const allowed = contentIndex(ctx.content).atomicsByJob.get(jobType);
