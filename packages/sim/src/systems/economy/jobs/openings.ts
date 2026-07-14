@@ -1,4 +1,4 @@
-import { Building, JobAssignment, Settler } from '../../../components/index.js';
+import { Building, JobAssignment, ownerOf, ownersCompatible, Settler } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
@@ -36,12 +36,15 @@ export function openPostFor(
   world: World,
   ctx: SystemContext,
   tribe: number,
+  owner: number | undefined,
   jobType: number,
   experience: ReadonlyMap<number, number>,
   staffing: StaffingTally,
 ): Entity | null {
   for (const b of buildings) {
-    if (resolveOpenWorkerJob(world, ctx, b, tribe, experience, [jobType], staffing) !== null) return b;
+    if (resolveOpenWorkerJob(world, ctx, b, tribe, owner, experience, [jobType], staffing) !== null) {
+      return b;
+    }
   }
   return null;
 }
@@ -56,6 +59,7 @@ export function openJobAt(
   world: World,
   ctx: SystemContext,
   tribe: number,
+  owner: number | undefined,
   experience: ReadonlyMap<number, number>,
   staffing: StaffingTally,
 ): { building: Entity; jobType: number } | null {
@@ -65,6 +69,7 @@ export function openJobAt(
       ctx,
       b,
       tribe,
+      owner,
       experience,
       canonicalJobs(buildingWorkerJobs(world, ctx, b)),
       staffing,
@@ -77,7 +82,7 @@ export function openJobAt(
 /**
  * The open worker job a `tribe` settler with the given accrued `experience` could take at ONE specific
  * `building`, or `null` if that building offers it none right now. A building offers a job when it is a
- * same-tribe, tech-enabled workplace with a `workers` slot that is **understaffed at this building**,
+ * same-tribe, SAME-OWNER, tech-enabled workplace with a `workers` slot that is **understaffed at this building**,
  * whose job is tech-enabled, and whose `needforjob` XP threshold the settler clears (the four openness
  * conditions of {@link jobSystem}, per-building). The lowest job id among open slots wins
  * ({@link canonicalJobs}). This is the automatic {@link openJobAt} scan's per-building probe; the
@@ -91,6 +96,7 @@ export function openWorkerJobAt(
   ctx: SystemContext,
   building: Entity,
   tribe: number,
+  owner: number | undefined,
   experience: ReadonlyMap<number, number>,
 ): number | null {
   // The automatic economy scan takes the building's slots in canonical (lowest job id) order.
@@ -99,6 +105,7 @@ export function openWorkerJobAt(
     ctx,
     building,
     tribe,
+    owner,
     experience,
     canonicalJobs(buildingWorkerJobs(world, ctx, building)),
   );
@@ -118,6 +125,7 @@ export function openWorkerJobFromList(
   ctx: SystemContext,
   building: Entity,
   tribe: number,
+  owner: number | undefined,
   experience: ReadonlyMap<number, number>,
   jobPriority: readonly number[],
 ): number | null {
@@ -127,6 +135,7 @@ export function openWorkerJobFromList(
     ctx,
     building,
     tribe,
+    owner,
     experience,
     jobPriority.filter((jobType) => offered.has(jobType)),
   );
@@ -144,12 +153,14 @@ function resolveOpenWorkerJob(
   ctx: SystemContext,
   building: Entity,
   tribe: number,
+  owner: number | undefined,
   experience: ReadonlyMap<number, number>,
   orderedJobs: readonly number[],
   staffing?: StaffingTally,
 ): number | null {
   const b = world.tryGet(building, Building);
   if (b === undefined || b.tribe !== tribe) return null;
+  if (!ownersCompatible(owner, ownerOf(world, building))) return null; // another player's workplace (sameSide doc)
   if (!buildingEnabled(world, ctx, tribe, b.buildingType)) return null; // not tech-enabled yet
   for (const jobType of orderedJobs) {
     if (!jobUnderstaffed(world, ctx, building, jobType, staffing)) continue;

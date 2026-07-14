@@ -31,6 +31,35 @@ export function isValidPlayer(player: number): boolean {
 export const Owner = defineComponent<{ player: number }>('Owner');
 
 /**
+ * The owning player of `e`, or `undefined` for a neutral/unowned entity.
+ */
+export function ownerOf(world: World, e: Entity): number | undefined {
+  return world.tryGet(e, Owner)?.player;
+}
+
+/**
+ * Whether two entities are on the SAME SIDE for the economy — a settler builds/staffs/supplies a
+ * building only when this holds. Two players can both field the same `tribe`, so `tribe` alone cannot
+ * keep their economies apart (an enemy builder raised the player's site; reported). The rule blocks
+ * ONLY a cross-PLAYER pairing — two DIFFERENT explicit owners; a neutral (unowned) entity is compatible
+ * with anyone, so every owned-settler/neutral-building fixture and the all-neutral goldens keep working
+ * unchanged. In a real multi-player game every entity is owner-stamped, so the "both owned, differ" gate
+ * is the exact friend/foe line.
+ */
+export function sameSide(world: World, a: Entity, b: Entity): boolean {
+  return ownersCompatible(ownerOf(world, a), ownerOf(world, b));
+}
+
+/**
+ * The {@link sameSide} rule on two owner ids directly — for the planner scans that carry the settler's
+ * owner as a number ({@link import('../systems/agents/planner-context.js').PlannerContext.owner}) and read
+ * the candidate's off the world. Compatible unless BOTH are explicit and differ (see {@link sameSide}).
+ */
+export function ownersCompatible(a: number | undefined, b: number | undefined): boolean {
+  return a === undefined || b === undefined || a === b;
+}
+
+/**
  * Stamp an {@link Owner} on `e` when `owner` is a valid player slot; a no-op otherwise (an omitted
  * or out-of-range `owner` leaves the entity neutral). The single stamp point shared by every spawn
  * handler (spawnSettler / placeBuilding / placeBoat), so the validity rule lives in one place. An

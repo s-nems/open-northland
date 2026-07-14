@@ -1,4 +1,4 @@
-import { Building, JobAssignment, Position, Settler } from '../../../components/index.js';
+import { Building, JobAssignment, ownerOf, Position, Settler, sameSide } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
 import type { System, SystemContext } from '../../context.js';
@@ -91,6 +91,7 @@ export const jobSystem: System = (world, ctx) => {
           world,
           ctx,
           settler.tribe,
+          ownerOf(world, e),
           settler.jobType,
           settler.experience,
           staffing,
@@ -101,7 +102,15 @@ export const jobSystem: System = (world, ctx) => {
     }
 
     // Pass 2 — assign + bind an idle settler to a concrete open workplace.
-    const open = openJobAt(buildings, world, ctx, settler.tribe, settler.experience, staffing);
+    const open = openJobAt(
+      buildings,
+      world,
+      ctx,
+      settler.tribe,
+      ownerOf(world, e),
+      settler.experience,
+      staffing,
+    );
     if (open !== null) {
       settler.jobType = open.jobType;
       bind(world, staffing, e, open.building, open.jobType);
@@ -147,6 +156,7 @@ function workplaceStaffedHereBy(
   for (const b of buildingsByNode.at(spNode.hx, spNode.hy)) {
     const building = world.get(b, Building); // present: the bucket is built from the Building query
     if (building.tribe !== tribe) continue;
+    if (!sameSide(world, settler, b)) continue; // another player's workplace (same tribe isn't same side)
     // Only a workplace that WORKS its staff pins them: a recipe workshop, or a farm (field loop).
     if (recipeOf(world, ctx, b) === undefined && farmWorkGood(world, ctx, b) === null) continue;
     if (!buildingWorkerJobs(world, ctx, b).has(jobType)) continue; // not a job this workplace employs

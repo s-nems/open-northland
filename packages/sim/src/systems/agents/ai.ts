@@ -5,6 +5,7 @@ import {
   Engagement,
   Fleeing,
   Owner,
+  ownerOf,
   PlayerOrder,
   Position,
   Resting,
@@ -177,6 +178,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
       tribe: settler.tribe,
       jobType: settler.jobType,
       experience: settler.experience,
+      owner: ownerOf(world, e),
       here,
       targets,
     };
