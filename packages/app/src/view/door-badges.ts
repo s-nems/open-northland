@@ -1,7 +1,7 @@
 import type { DoorBadge } from '@open-northland/render';
 import { nodeOfPosition, positionOfNode, type WorldSnapshot } from '@open-northland/sim';
 import type { WorkerRole } from '../game/sandbox/index.js';
-import { isBuilding, isSettler, num, positionOf } from '../game/snapshot.js';
+import { buildingTypeOf, isBuilding, isSettler, num, positionOf } from '../game/snapshot.js';
 import { type DoorFootprint, workerIconNode } from './building-points.js';
 
 /**
@@ -59,8 +59,7 @@ export function computeDoorBadges(
     const pos = positionOf(e);
     if (pos === undefined) continue;
     const anchor = nodeOfPosition(pos.x, pos.y);
-    const building = e.components.Building as { buildingType?: unknown } | undefined;
-    const typeId = num(building?.buildingType);
+    const typeId = buildingTypeOf(e);
     const info = typeId !== undefined ? buildingsByType.get(typeId) : undefined;
     const node = workerIconNode(info?.footprint, anchor, info?.id);
     const dpos = positionOfNode(node.hx, node.hy);

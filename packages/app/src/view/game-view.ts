@@ -11,7 +11,7 @@ import { currentLocale } from '../i18n/index.js';
 import { createAdminEntityPicker } from './admin-debug/entity-picker.js';
 import { mountAdminDebug } from './admin-debug/index.js';
 import type { CameraController } from './camera.js';
-import { cameraCenteredOnWorld, clientToCanvas, screenScale } from './camera.js';
+import { cameraCenteredOnWorld, clientToScreen as clientToScreenPx } from './camera.js';
 import { createFogGates } from './fog-gates.js';
 import { startFrameLoop } from './frame-loop.js';
 import { mountGamePresentation } from './game-presentation.js';
@@ -157,10 +157,10 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     deferToOverlay: (clientX, clientY) => minimap?.claimsPointer(clientX, clientY) ?? false,
   });
 
-  // Client (CSS px) → screen px, the one conversion the minimap's hit-test/click shares with the world
-  // pickers (`hud/` never imports `view/` — injected as options per the hud contract).
+  // The canvas-bound client→screen conversion injected into the minimap and world pickers (`hud/` never
+  // imports `view/` — passed as options per the hud contract).
   const clientToScreen = (clientX: number, clientY: number): { x: number; y: number } =>
-    clientToCanvas(screenScale(canvas, app.renderer.resolution), clientX, clientY);
+    clientToScreenPx(canvas, app.renderer.resolution, clientX, clientY);
   // The bottom-left minimap in the original braided overview frame: whole-map ground + player-coloured
   // unit dots + the camera's view rectangle; a left-click (or drag) in the map hole re-centres the
   // camera on the pointed world spot at the current zoom. Mounted after the tool panel (draws over its
