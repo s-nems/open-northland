@@ -34,28 +34,28 @@ import {
 } from './spawn-catalog.js';
 
 /**
- * The **admin / debug spawn palette** — a hideable panel (a top toggle button) that lets a human drop
+ * The admin / debug spawn palette — a hideable panel (a top toggle button) that lets a human drop
  * test entities by clicking the map (any soldier class with its weapon, any civilian, any resource node
- * or good, each owned by a chosen player) AND run **entity-action tools** on what's already there (kill a
+ * or good, each owned by a chosen player) and run entity-action tools on what's already there (kill a
  * unit, drive its needs to full/empty, fill a warehouse, finish a construction site). It exists so combat,
  * ownership, economy and lifecycle can be exercised on a live map without hand-authoring a scene — "spawn
  * a few of mine, a few enemies, fill their stores, watch them fight".
  *
- * Everything goes through the ONE sim command seam (`spawnSettler` / `placeResource` / the `debug*`
+ * Everything goes through the one sim command seam (`spawnSettler` / `placeResource` / the `debug*`
  * commands), so a debug poke is as replay-faithful as any player order — the panel never touches
  * `sim.world` directly (app one-way flow, packages/app/AGENTS.md). It is a pure app-layer DOM overlay,
  * mounted once and never torn down; its two `window` capture listeners persist for the page's life, which
  * is safe because `startGameView` runs exactly once per page load (a scene switch is a full reload).
  *
- * Layout: the panel is a **right-docked rail** (never the screen centre — it must not hide the map it
+ * Layout: the panel is a right-docked rail (never the screen centre — it must not hide the map it
  * acts on), a fixed-height flex column — a static header carrying the spawn "stamp" settings (owner / HP /
- * armor / needs), a scrolling body of **collapsible palette sections** (only the section in use need be
+ * armor / needs), a scrolling body of collapsible palette sections (only the section in use need be
  * open — the goods list alone is ~70 entries, so it also carries a name filter), and a pinned status
  * footer that always shows what the next click will do (see {@link import('./chrome.js')}).
  *
- * Interaction: click a palette / action button to ARM it (the cursor becomes a crosshair). A spawn arm
- * places at each clicked TILE; an action arm applies to the ENTITY clicked (a unit or a building, per the
- * action). Arming is STICKY so a battle line — or a sweep of kills — is done with repeated clicks. Switch
+ * Interaction: click a palette / action button to arm it (the cursor becomes a crosshair). A spawn arm
+ * places at each clicked tile; an action arm applies to the entity clicked (a unit or a building, per the
+ * action). Arming is sticky so a battle line — or a sweep of kills — is done with repeated clicks. Switch
  * the player swatch between spawn clicks to seed both sides. Right-click or Esc disarms. The armed press is
  * consumed (a window-capture listener before the RTS controls), so arming never also selects/orders units.
  */
@@ -74,7 +74,7 @@ export interface AdminDebugDeps {
    *  there is the HUD's, not a map spawn. */
   readonly claimPointer: (clientX: number, clientY: number) => boolean;
   /** The localized display name for a good typeId (from the shared sim content), or `undefined` to keep the
-   *  catalog's built-in label. Localizes the goods/resource palette from the ONE name source the HUD uses. */
+   *  catalog's built-in label. Localizes the goods/resource palette from the one name source the HUD uses. */
   readonly goodLabel?: (typeId: number) => string | undefined;
   /** The sim's live needs-rule state — drawn on the "Potrzeby" toggle button so it reflects the entry's
    *  default (scenes boot needs OFF, maps ON). The toggle itself goes through `enqueue` like any command. */
@@ -339,7 +339,7 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
   }
 
   // ---- apply on map click --------------------------------------------------
-  /** A spawn arm places at a TILE; the loose-good/resource/unit variants each map to their command. */
+  /** A spawn arm places at a tile; the loose-good/resource/unit variants each map to their command. */
   const spawnAtTile = (col: number, row: number): void => {
     if (armed === null || armed.kind === 'action') return;
     if (armed.kind === 'resource') {
@@ -354,15 +354,15 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
     deps.enqueue(unitSpawnCommand(armed.preset, { player, hitpoints, armorClass, x: col, y: row }));
   };
 
-  /** An action arm applies to the ENTITY under the cursor (a no-op click if none is there / no picker). */
+  /** An action arm applies to the entity under the cursor (a no-op click if none is there / no picker). */
   const applyActionAt = (clientX: number, clientY: number, action: DebugAction): void => {
-    // A snapshot pick returns the raw entity id; it IS the branded `Entity` (picking is number-typed
+    // A snapshot pick returns the raw entity id; it is the branded `Entity` (picking is number-typed
     // end-to-end), reconstituted at this one app→sim seam before the command carries it.
     const ref = deps.pickEntity?.(clientX, clientY, action.targetKind) ?? null;
     if (ref !== null) deps.enqueue(action.command(ref as Entity));
   };
 
-  // A WINDOW-CAPTURE mousedown runs BEFORE the canvas's RTS-control listeners (capture phase precedes
+  // A window-capture mousedown runs before the canvas's RTS-control listeners (capture phase precedes
   // the target phase), so when armed it can consume the press and act instead of selecting. When not
   // armed it returns without consuming, leaving the normal controls untouched.
   const onPointerDown = (e: MouseEvent): void => {
@@ -370,13 +370,13 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
     if (e.button === 2) {
       setArmed(null); // right-click cancels arming …
       e.preventDefault();
-      e.stopPropagation(); // … and does NOT fall through to a move/attack order
+      e.stopPropagation(); // … and does not fall through to a move/attack order
       return;
     }
     if (e.button !== 0) return; // middle button stays the camera pan
     if (e.target !== canvas) return; // a click on the panel itself, not the map
     if (deps.claimPointer(e.clientX, e.clientY)) return; // over the HUD — let the HUD have it
-    // From here the armed left-press is OURS: consume it so it never falls through to selection, even
+    // From here the armed left-press is ours: consume it so it never falls through to selection, even
     // when it hits nothing (no spawn/target there, but no stray "click empty ground = clear selection").
     if (armed.kind === 'action') {
       applyActionAt(e.clientX, e.clientY, armed.action);

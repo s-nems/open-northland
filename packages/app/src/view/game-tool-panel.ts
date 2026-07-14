@@ -12,7 +12,7 @@ import { clientToCanvas, screenScale } from './camera.js';
 import { nodeBounds, screenToWorld, worldToTile } from './picking.js';
 
 /**
- * The in-game LEFT tool panel is part of the standard game HUD, not a per-scene feature — so BOTH the map
+ * The in-game left tool panel is part of the standard game HUD, not a per-scene feature — so both the map
  * viewer (`entries/map.ts`) and every acceptance scene (`entries/scene.ts`) mount it through this one
  * helper. It wraps {@link mountToolPanel} with the wiring both entries share: the
  * client-point → tile mapping (camera + client→screen scale, null off the map so a stray click never
@@ -27,9 +27,9 @@ export interface GameToolPanelDeps {
   readonly uiscale: number;
   /** The live camera (read each click to map a screen point to a world tile). */
   readonly camera: () => Camera;
-  /** Submit a command into the CURRENT sim (a closure, so it follows a scene restart). */
+  /** Submit a command into the current sim (a closure, so it follows a scene restart). */
   readonly enqueue: (command: Command) => void;
-  /** The CURRENT sim's placement rule for a type at a tile (a closure over `Simulation.placementProbe`,
+  /** The current sim's placement rule for a type at a tile (a closure over `Simulation.placementProbe`,
    *  so it follows a scene restart) — gates the placement click. */
   readonly canPlaceAt: (typeId: number, col: number, row: number) => boolean;
   /** The map bounds — a placement click outside them is rejected (no clamp-to-border). */
@@ -57,9 +57,9 @@ export interface GameToolPanelDeps {
 export interface GameToolPanelHandle {
   readonly controller: ToolPanelController;
   /** True when a client point is over the HUD (strip / open window / active placement) — the input router
-   *  asks this BEFORE world picking so a HUD click never falls through to unit selection/orders. */
+   *  asks this before world picking so a HUD click never falls through to unit selection/orders. */
   claimPointer(clientX: number, clientY: number): boolean;
-  /** True when a client point is over an OPEN pop-up window (menu / stats) — wired into the camera so
+  /** True when a client point is over an open pop-up window (menu / stats) — wired into the camera so
    *  scrolling that window's list never also zooms the world behind it. */
   claimsWheel(clientX: number, clientY: number): boolean;
   /** The panel's client-point → map-tile mapping (camera + backing scale + elevation), shared with the
@@ -127,7 +127,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
     const c = clientToCanvas(screenScale(deps.canvas, deps.app.renderer.resolution), clientX, clientY);
     const w = screenToWorld(deps.camera(), c.x, c.y);
     const t = worldToTile(w.x, w.y, deps.elevation);
-    // worldToTile yields half-cell NODES — bound against the node grid.
+    // worldToTile yields half-cell nodes — bound against the node grid.
     const bounds = nodeBounds(deps.mapSize);
     if (t.col < 0 || t.col >= bounds.width || t.row < 0 || t.row >= bounds.height) return null;
     return { col: t.col, row: t.row };

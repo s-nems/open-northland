@@ -26,8 +26,8 @@ import { WorkerSpriteOverlay } from './worker-sprites.js';
 /**
  * The bottom-right selection details panel (the original's per-selection window stack: general/defence/
  * production/stock/workers for a building, the info card for a settler), drawn as Pixi HUD from the
- * extracted original art. `model.ts` decides WHAT is shown, `layout.ts` WHERE, `sections.ts`+`chrome.ts`
- * HOW — this module wires them to the app: loading, selection/tick updates, pointer claims, and clicks.
+ * extracted original art. `model.ts` decides what is shown, `layout.ts` where, `sections.ts`+`chrome.ts`
+ * how — this module wires them to the app: loading, selection/tick updates, pointer claims, and clicks.
  */
 
 /** Above the world and the left tool panel, below nothing (the panel is the outermost HUD layer). */
@@ -35,7 +35,7 @@ const PANEL_Z = 1002;
 
 /**
  * The portrait box the live world "observation window" fills — the panel's preview rect, in on-screen px,
- * shrunk by the bevel so the cutout sits INSIDE the inner-box frame rather than over it. Both the settler
+ * shrunk by the bevel so the cutout sits inside the inner-box frame rather than over it. Both the settler
  * (Ogólne) and building (Ogólny) layouts expose a `preview`; the view renders the world into this rect and
  * centres it on {@link PortraitBox.entityRef}. Null when the current selection has no portrait.
  */
@@ -65,7 +65,7 @@ export interface UnitPanelOptions extends UnitPanelModelContext {
   /** Select this entity — invoked when the player clicks a worker sprite in the Pracownicy field, so it
    *  selects that settler (dropping the building), exactly like clicking the worker on the map. */
   readonly onSelectEntity?: (entityId: number) => void;
-  /** A cursor tooltip to NAME the hovered Magazyn stock row — injected (structural shape) like
+  /** A cursor tooltip to name the hovered Magazyn stock row — injected (structural shape) like
    *  `backingScale`, so the hud layer never imports the view-layer element. Absent → no stock-row tooltip. */
   readonly tooltip?: {
     show(clientX: number, clientY: number, text: string): void;
@@ -91,7 +91,7 @@ export interface UnitPanel {
   dispose(): void;
 }
 
-/** The stock category tab a freshly-selected building opens on: the FIRST (lowest-index) category that
+/** The stock category tab a freshly-selected building opens on: the first (lowest-index) category that
  *  holds any of its goods, so the panel lands on the leading tab (Żywność for a general store) rather than
  *  on whichever category happens to be fullest. */
 export function defaultStockTab(model: UnitPanelModel): number {
@@ -105,10 +105,10 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
   // (indexed atlas, nearest-sampled) can't be linearly filtered, so a fractional scale would double texel
   // columns unevenly ("pixeloza") — instead it bakes at an integer oversample and linear-downscales to this.
   const scale = Math.max(1, opts.uiscale ?? 1);
-  // The panel carries the FINEST text in the HUD (a native-11px body font at a fractional scale). Unlike
+  // The panel carries the finest text in the HUD (a native-11px body font at a fractional scale). Unlike
   // the tool-panel strip (icons — a device-aware `oversampleFor` is enough), a 2× bake linear-downscaled to
   // a fractional scale still hazes small glyph edges, so text legibility wins: at a fractional scale bake at
-  // the MAX oversample (crispest downscale). An INTEGER scale needs no supersample at all — nearest is
+  // the max oversample (crispest downscale). An integer scale needs no supersample at all — nearest is
   // already exact, so keep it 1:1 rather than needlessly softening a pixel-perfect render. (This panel's
   // policy differs from the shared `oversampleFor` — which always targets ≥2× for AA — so it decides here.)
   const PANEL_MAX_SUPERSAMPLE = 4;
@@ -122,7 +122,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
   app.stage.addChild(root);
   /** The current rebuild's baked panel texture; disposed and replaced on the next rebuild. */
   let baked: SupersampledTexture | null = null;
-  // The animated worker sprites drawn LIVE over the baked panel's Pracownicy field (one z above it), so
+  // The animated worker sprites drawn live over the baked panel's Pracownicy field (one z above it), so
   // they advance every frame while the panel itself re-bakes at most 4 Hz.
   const workerOverlay = new WorkerSpriteOverlay(app, opts.sheet, PANEL_Z + 1);
 
@@ -140,10 +140,10 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
   let layout: DetailsLayout | null = null;
   let hoverAction: ButtonHit['action'] | null = null;
   /** The last known cursor position over the canvas (client coords), or null after it left — lets a
-   *  rebuild refresh a STILL cursor's tooltip with live values (a held hover must not show a stale
+   *  rebuild refresh a still cursor's tooltip with live values (a held hover must not show a stale
    *  "80%" while the bar drains; user feedback 2026-07-11). */
   let lastPointer: { clientX: number; clientY: number } | null = null;
-  /** The selected stock category tab (0–7); reset to the fullest category (`defaultStockTab`) on each new selection. */
+  /** The selected stock category tab (0–7); reset to the leading category (`defaultStockTab`) on each new selection. */
   let activeStockTab = 0;
 
   /** Fresh draw-order layers over an off-screen container (baked to a texture): fills, graphics, frames, glyphs. */
@@ -175,7 +175,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
 
     // Draw layout: the hit layout scaled by the oversample/display ratio and re-origined to (0,0), so it
     // fills a tight off-screen texture drawn at `ss`. Deriving it from the hit layout (rather than a second
-    // `layoutDetails` at `ss`) keeps the drawn geometry EQUAL to the hit-tested geometry — two independent
+    // `layoutDetails` at `ss`) keeps the drawn geometry equal to the hit-tested geometry — two independent
     // roundings at different scales would drift ~1 px and accumulate down the button column.
     const k = ss / scale;
     const origin = layout.panel;
@@ -198,13 +198,13 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
       drawCompact(chrome, draw, model, uiString, ss);
     }
 
-    // Mixed source (Pixi-native fills/preview + flipY PalettedSprites), so it bakes UPRIGHT — display
-    // unflipped, anchored at the panel's screen TOP-left.
+    // Mixed source (Pixi-native fills/preview + flipY PalettedSprites), so it bakes upright — display
+    // unflipped, anchored at the panel's screen top-left.
     const texture = bakeToSprite(app.renderer, offscreen, texW, texH, scale / ss);
     texture.display.position.set(layout.panel.x, layout.panel.y);
     root.addChild(texture.display);
     baked = texture;
-    // A rebuild changes what a HELD cursor hovers (a draining bar's value, a re-sorted stock row) — the
+    // A rebuild changes what a held cursor hovers (a draining bar's value, a re-sorted stock row) — the
     // cursor itself won't move to fire a mousemove, so refresh the tooltip here. Rebuilds are already
     // rate-limited (VALUE_REBUILD_MIN_MS), so this adds no per-frame work.
     if (lastPointer !== null) updateTooltip(lastPointer.clientX, lastPointer.clientY);
@@ -216,13 +216,13 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     // small, so stringify-compare beats hand-written dirty flags.
     const key = `${JSON.stringify(model)}|${app.screen.width}x${app.screen.height}`;
     if (!force && key === lastModelKey) return;
-    // WHAT is selected changed → rebuild now; only live VALUES drifted → rebuild at most 4 Hz.
+    // What is selected changed → rebuild now; only live values drifted → rebuild at most 4 Hz.
     const structureKey =
       model.kind === 'building' || model.kind === 'settler' ? `${model.kind}:${model.entityId}` : model.kind;
     const structural = force || structureKey !== lastStructureKey;
     if (!structural && performance.now() - lastRebuildAt < VALUE_REBUILD_MIN_MS) return;
-    // A new selection opens the stock view on its fullest category, so the panel never lands on an empty
-    // tab (with a store's goods spread across tabs, tab 0 may hold none of THIS building's stock).
+    // A new selection opens the stock view on its leading category, so the panel never lands on an empty
+    // tab (with a store's goods spread across tabs, tab 0 may hold none of this building's stock).
     if (structural) activeStockTab = defaultStockTab(model);
     lastModelKey = key;
     lastStructureKey = structureKey;
@@ -277,9 +277,9 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     return true;
   };
 
-  /** The good NAME under a canvas point in the stock grid, or null — the tooltip's text for a hovered row.
-   *  Probes the SAME slot rects the rows draw into ({@link stockSlotRects}), then maps the slot index to the
-   *  drawn goods (a compact store lists ALL rows; a tabbed one the active tab's — the same split the draw
+  /** The good name under a canvas point in the stock grid, or null — the tooltip's text for a hovered row.
+   *  Probes the same slot rects the rows draw into ({@link stockSlotRects}), then maps the slot index to the
+   *  drawn goods (a compact store lists all rows; a tabbed one the active tab's — the same split the draw
    *  applies), so a hovered slot names exactly the drawn good. */
   const hitStockGood = (x: number, y: number): string | null => {
     if (layout?.kind !== 'building' || layout.stock === null || lastModel.kind !== 'building') return null;
@@ -293,7 +293,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     return rows[slot]?.label ?? null;
   };
 
-  /** The hovered Ogólne stat bar's VALUE ("300/1000" health points, "75%" need satisfaction), or null.
+  /** The hovered Ogólne stat bar's value ("300/1000" health points, "75%" need satisfaction), or null.
    *  Probes the whole label+gauge row (layout.bars, same order as model.bars) — more forgiving than the
    *  gauge alone, and the label row is unambiguous. */
   const hitBarValue = (x: number, y: number): string | null => {
@@ -303,10 +303,10 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
   };
 
   /** Recompute + show/hide the value/name tooltip for the cursor at a client point: a Magazyn stock
-   *  row's good name or a category TAB's name for a building (the tab glyphs are cryptic unread art,
+   *  row's good name or a category tab's name for a building (the tab glyphs are cryptic unread art,
    *  so the tooltip is what names a category), a stat bar's live value for a settler. The probes are
    *  layout-kind-exclusive, so at most one can hit. Called on mousemove and after each panel rebuild
-   *  (so a HELD cursor's value tracks the live model at the rebuild cadence, not per frame); a cursor
+   *  (so a held cursor's value tracks the live model at the rebuild cadence, not per frame); a cursor
    *  outside the panel bails before any row probing. */
   const updateTooltip = (clientX: number, clientY: number): void => {
     if (opts.tooltip === undefined) return;

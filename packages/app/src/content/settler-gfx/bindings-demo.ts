@@ -26,10 +26,10 @@ import {
 /**
  * The demo binding into the human atlases — the render twin of the global sandbox content.
  * The settler's walk/chop ranges are derived from `seqByName` (the extracted `bobSequences` for
- * `cr_hum_body_00.bmd`), so there are no hard-coded frame ids left here; an absent manifest falls back to
- * the known-good `FALLBACK_*` ranges. The building's per-type bobs **overlay** the extracted
+ * `cr_hum_body_00.bmd`), so no frame ids are hard-coded here; an absent manifest falls back to
+ * the known-good `FALLBACK_*` ranges. The building's per-type bobs overlay the extracted
  * `houseBobsByType` (the `buildingBobs` join, see {@link import('../building-gfx/index.js').buildingBobRefsByType})
- * onto the transcribed {@link VIKING_HOUSE01_BOBS} **per type**: real data wins where present, the constant
+ * onto the transcribed {@link VIKING_HOUSE01_BOBS} per type: real data wins where present, the constant
  * covers any of its five known types the data is missing (so a partial/absent IR degrades gracefully
  * type-by-type instead of dropping a whole family to the generic box). A `houseBobsByType` value may be
  * layer-qualified (a `{ layer, bob }` {@link BuildingBobRef} into a named
@@ -50,8 +50,8 @@ export function buildHumanBindings(
   overlayByType?: Readonly<Record<number, BuildingOverlayRef>>,
 ): SpriteBindings {
   const walk = directionalAnimFromSeq(seqByName, WALK_SEQ, {}, FALLBACK_WALK);
-  // Idle is the WAIT animation played as ONE direction (its length isn't a clean ×8, so it isn't a
-  // directional cycle — the original plays it locked to a facing; source basis). The FULL loop, so a
+  // Idle is the wait animation played as one direction (its length isn't a clean ×8, so it isn't a
+  // directional cycle — the original plays it locked to a facing; source basis). The full loop, so a
   // standing settler breathes — not a frozen frame, and not a truncated facing-sliced 1/8 excerpt.
   const wait: DirectionalAnim = singleDirAnim(seqByName.get(WAIT_SEQ)) ?? FALLBACK_WAIT;
   const chop = directionalAnimFromSeq(seqByName, CHOP_SEQ, { phaseStart: CHOP_PHASE_START }, FALLBACK_CHOP);
@@ -63,10 +63,10 @@ export function buildHumanBindings(
     { ...FALLBACK_WALK_WOOD, frames: 1 },
   );
   return {
-    // CHOP is bound ONLY to the harvest atomic. There is intentionally no generic `acting` swing: an
+    // Chop is bound only to the harvest atomic. There is intentionally no generic `acting` swing: an
     // unmapped action (a carrier/woodcutter depositing or picking up — atomics 22/23) falls back to a
-    // STANDING pose, NOT a borrowed woodcut swing. Borrowing it made a 4-tick deposit replay the 15-frame
-    // axe swing at ~4× speed (a fast, truncated chop) — the very glitch this binding removes.
+    // standing pose, not a borrowed woodcut swing — which would replay the 15-frame axe swing at ~4×
+    // speed on a 4-tick deposit (a fast, truncated chop).
     //
     // `carrying` is the loaded-gait override: once the woodcutter picks up its wood it walks the loaded
     // gait instead of the empty walk, and stands a loaded pose while it deposits. The chop still wins
@@ -75,14 +75,14 @@ export function buildHumanBindings(
       idle: wait,
       moving: walk,
       byAtomic: { [HARVEST_ATOMIC]: chop },
-      // Loaded-idle stays a still standing pose: the data has no loaded WAIT loop (hands full), and a
+      // Loaded-idle stays a still standing pose: the data has no loaded wait loop (hands full), and a
       // carrier only stands loaded for the brief deposit transient, so a hold reads fine here.
       carrying: { idle: standWood, moving: walkWood },
     },
     // Each viking building type draws its own house bob (the `[GfxHouse]` `LogicType` → `GfxBobId` join),
     // data-driven from the extracted `buildingBobs` IR overlaid onto the transcribed VIKING_HOUSE01_BOBS:
     // real data wins per type, the constant backs its five known types when the IR is partial/absent
-    // ({...undefined} / {...{}} spread to nothing → just the constant). A type in NEITHER falls back to
+    // ({...undefined} / {...{}} spread to nothing → just the constant). A type in neither falls back to
     // the representative HOUSE_BOB via BuildingTypeBinding.default.
     building: {
       byType: { ...VIKING_HOUSE01_BOBS, ...houseBobsByType },

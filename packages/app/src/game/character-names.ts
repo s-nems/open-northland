@@ -4,14 +4,14 @@ import { VIKING } from '../catalog/buildings.js';
  * Per-settler personal names, shown in the details panel in place of the generic "Ogólne" section title.
  *
  * A name is a first name plus a surname — "Bjørn Ulfsson", "Astrid Sveinsdóttir". Today every settler
- * carries their OWN patronymic surname (son/daughter of a father's name), so the space is the CROSS
- * PRODUCT of the first-name and father-name pools, not a flat list, and both parts vary per settler.
+ * carries their own patronymic surname (son/daughter of a father's name), so the space is the cross
+ * product of the first-name and father-name pools, not a flat list, and both parts vary per settler.
  *
  * Family-ready (no sim family system exists yet): the surname is resolved through a single seam so a
  * future marriage/lineage system can pass a husband's or father's entity id and the wife + children then
  * inherit that person's surname verbatim (see the `surnameFromEntityId` argument of {@link characterName}).
  *
- * These names are COSMETIC and DERIVED, not sim state: a settler's name is a pure function of its tribe,
+ * These names are cosmetic and derived, not sim state: a settler's name is a pure function of its tribe,
  * sex and stable entity id, so the same settler always shows the same name and nothing here touches the
  * deterministic sim or its golden hashes. The original game assigns no per-settler names, so the pools are
  * a clean-room approximation (see `NAME_POOLS`) — named as such, not pinned to extracted data.
@@ -24,7 +24,7 @@ import { VIKING } from '../catalog/buildings.js';
 export type Sex = 'male' | 'female';
 
 interface NamePool {
-  /** Male given names. Also the source of PATRONYMIC roots (a father's name is a male given name). */
+  /** Male given names. Also the source of patronymic roots (a father's name is a male given name). */
   readonly male: readonly string[];
   /** Female given names. */
   readonly female: readonly string[];
@@ -305,12 +305,12 @@ const FALLBACK_POOL = VIKING_NAMES;
  * still get well-spread names rather than a shared surname.
  *
  * Family seam — `surnameFromEntityId`: with no sim marriage/lineage system yet, every settler carries their
- * OWN patronymic (a woman's ends `-sdóttir`, a man's `-sson`). When such a system exists, pass the husband's
- * (for a wife) or father's (for a child) entity id here: the settler then inherits THAT person's surname
+ * own patronymic (a woman's ends `-sdóttir`, a man's `-sson`). When such a system exists, pass the husband's
+ * (for a wife) or father's (for a child) entity id here: the settler then inherits that person's surname
  * verbatim — the male `-sson` patronymic of the same father-name — so a whole household shares one surname.
  *
- * Precondition: `surnameFromEntityId` must be a MALE entity (a husband/father). The inherited surname
- * equals that entity's OWN displayed surname only because both resolve on the male grid, which holds only
+ * Precondition: `surnameFromEntityId` must be a male entity (a husband/father). The inherited surname
+ * equals that entity's own displayed surname only because both resolve on the male grid, which holds only
  * for a male owner — patronymic inheritance always flows from the father, so that is the correct contract.
  */
 export function characterName(
@@ -328,7 +328,7 @@ export function characterName(
 
   // The surname: inherited from a husband/father when the family seam supplies one, else the settler's own.
   // An inherited surname is always the male `-sson` form of that person's father-name — the whole household
-  // shares it; an own surname takes the settler's sex. The father-name is picked on the MALE grid so a man
+  // shares it; an own surname takes the settler's sex. The father-name is picked on the male grid so a man
   // and every relative resolving to his id land on the same root.
   const inherited = surnameFromEntityId !== undefined;
   const surnameOwnerId = surnameFromEntityId ?? entityId;

@@ -12,7 +12,7 @@ import { fetchJsonOrNull, loadTextureIfPresent } from './net.js';
  *
  * Where each output lives (matching the pipeline stage + `vite.config.ts` routes):
  *  - **Glyph atlases + colour LUT** ride the existing `/bobs/` route (they are bob atlases): the recolourable
- *    **indexed** atlas at stem `<key>.indexed`, the RGBA **preview** at `<key>.white`, and the `256 × 4`
+ *    indexed atlas at stem `<key>.indexed`, the RGBA preview at `<key>.white`, and the `256 × 4`
  *    colour LUT at `/bobs/font-palettes-lut.png` (loaded like the player/GUI LUTs). The renderer reads an
  *    indexed glyph pixel through the LUT row for the colour it draws text in — same mechanism as the
  *    player-colour LUT + `PalettedSprite`.
@@ -20,7 +20,7 @@ import { fetchJsonOrNull, loadTextureIfPresent } from './net.js';
  */
 
 /**
- * The font colour LUT row order (row index = colour). MIRRORS `FONT_COLORS` in
+ * The font colour LUT row order (row index = colour). Mirrors `FONT_COLORS` in
  * `tools/asset-pipeline/src/stages/fonts.ts` — keep the two in lock-step (append, never reorder), since the
  * pipeline bakes this order into the LUT rows and the renderer selects a row by index. The manifest also
  * carries the names, so a consumer can cross-check `fontColorRow` against `manifest.colorLut.names`.
@@ -35,7 +35,7 @@ export function fontColorRow(name: FontColorName): number {
 }
 
 /**
- * CSS fill strings approximating the four font-colour LUT rows, for text drawn WITHOUT the indexed LUT —
+ * CSS fill strings approximating the four font-colour LUT rows, for text drawn without the indexed LUT —
  * the vector UI font ({@link import('./ui-font.js')}) and the bitmap font's Pixi-`Text` fallback both use
  * these since a CSS `fill` can't sample the indexed palette. A warm cream for normal text, near-black for
  * dark, a muted tan for dimmed, a rust for alerts — sampled to sit on the wood/parchment chrome the same
@@ -91,7 +91,7 @@ export interface FontMetrics {
 const FONTS_ROOT = '/gui/fonts';
 
 /**
- * The recolourable INDEXED glyph atlas of a font, loaded by its `<key>.indexed` stem through the shared
+ * The recolourable indexed glyph atlas of a font, loaded by its `<key>.indexed` stem through the shared
  * {@link loadLayer} — so font atlases go through the exact same manifest→geometry + PNG→texture path as the
  * settler/GUI atlases; the renderer reads each glyph pixel's index through the font colour LUT at draw time.
  * Throws `MissingAtlasError` when the decoded files are absent (the pipeline hasn't run). The RGBA preview

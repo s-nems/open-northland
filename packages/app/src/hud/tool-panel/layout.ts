@@ -1,19 +1,19 @@
 import { contains, type Rect } from '../geometry.js';
 
 /**
- * The LEFT in-game tool panel — geometry, PINNED to the original.
+ * The left in-game tool panel — geometry, pinned to the original.
  *
  * Every rect below is transcribed verbatim from the OpenVikings reverse-engineering of the original
  * engine — `Source/NC2InGameGuiManager/CGuiManager.cs` `Desktop_Open()`, where the toolbar strip and each
  * button is created with an `SRectangle(left, top, width, height)` in the original's 640×480–1024×768
- * DESIGN space. We keep the hex→decimal literals in a named table (the constant *is* the geometry, so this
- * satisfies the no-magic-numbers rule) and anchor the strip top-left, scaling the whole thing by an INTEGER
- * `uiscale` (default 1× — see {@link DEFAULT_UI_SCALE} — with a `?uiscale=` override) so it reads on an
- * arbitrary-size canvas. The panel's INTERNAL layout stays pinned — only the uniform scale is ours
- * (logged in source basis "Left tool panel"). The scale MAY be fractional (the 1.4× default) — it is
- * clamped to ≥1 but NOT floored. The GUI art is a nearest-sampled indexed bitmap (palette indices can't
+ * design space. We keep the hex→decimal literals in a named table (the constant *is* the geometry, so this
+ * satisfies the no-magic-numbers rule) and anchor the strip top-left, scaling the whole thing by
+ * `uiscale` (default 1.4× — see {@link DEFAULT_UI_SCALE} — with a `?uiscale=` override) so it reads on an
+ * arbitrary-size canvas. The panel's internal layout stays pinned — only the uniform scale is ours
+ * (logged in source basis "Left tool panel"). The scale may be fractional (the 1.4× default) — it is
+ * clamped to ≥1 but not floored. The GUI art is a nearest-sampled indexed bitmap (palette indices can't
  * be linearly filtered), so drawing it straight at a fractional scale doubles some texel columns and not
- * others ("pixeloza"). To keep a fractional scale crisp, the strip+buttons are rasterized at an INTEGER
+ * others ("pixeloza"). To keep a fractional scale crisp, the strip+buttons are rasterized at an integer
  * oversample into an off-screen texture and linear-downscaled to the display size (`strip-texture.ts`);
  * {@link designBounds} sizes that texture. This scale knob is the single input a future in-game UI-size
  * slider would drive.
@@ -37,7 +37,7 @@ export type ToolButtonId =
   | 'help'
   | 'speed';
 
-/** A rect in the original DESIGN space (pre-scale), `left/top/width/height` exactly as the engine stores it. */
+/** A rect in the original design space (pre-scale), `left/top/width/height` exactly as the engine stores it. */
 export interface DesignRect {
   readonly x: number;
   readonly y: number;
@@ -97,7 +97,7 @@ export interface ToolPanelLayout {
   /** Width of the strip in screen px — the amount the rest of the HUD is shifted right to clear the panel. */
   readonly width: number;
   readonly height: number;
-  /** The strip+buttons' bounding box in DESIGN space (pre-scale). It sizes the off-screen supersample
+  /** The strip+buttons' bounding box in design space (pre-scale). It sizes the off-screen supersample
    *  texture the crisp-scaling render pass rasterizes the panel into (see `strip-texture.ts`). */
   readonly designBounds: DesignRect;
 }
@@ -161,7 +161,7 @@ export function hitTestToolPanel(layout: ToolPanelLayout, x: number, y: number):
 
 /**
  * Whether a screen point lies over the panel strip at all — the claim predicate the input router asks
- * BEFORE world picking, so a click over the HUD never falls through to unit selection/orders.
+ * before world picking, so a click over the HUD never falls through to unit selection/orders.
  */
 export function pointOverToolPanel(layout: ToolPanelLayout, x: number, y: number): boolean {
   return contains(layout.strip, x, y);

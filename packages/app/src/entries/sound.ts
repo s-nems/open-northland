@@ -13,14 +13,14 @@ import { formatMessage, messages } from '../i18n/index.js';
 import { el, pageInnerStyle, pageRootStyle, pageSection } from '../view/overlay.js';
 
 /**
- * The `?sounds` VERIFICATION GALLERY — the audio twin of the `?anim` character gallery. An agent can't
- * self-judge whether a sound is the RIGHT sound (root AGENTS.md "How to verify your work"), so this is the
+ * The `?sounds` verification gallery — the audio twin of the `?anim` character gallery. An agent can't
+ * self-judge whether a sound is the right sound (root AGENTS.md "How to verify your work"), so this is the
  * human-oracle seam for audio: it lists every wired mapping — which sim happening triggers which decoded
  * clip, the settler voice pools split by sex/age, the life-event jingles and the terrain ambient beds —
  * each with a ▶ that plays the wav straight off the `/sounds` dev route. A click is a user gesture, so the
  * browser lets it sound without the live loop's suspended-until-gesture dance.
  *
- * Two halves like the anim gallery: a PURE {@link buildSoundGalleryModel} (unit-tested — it is where the
+ * Two halves like the anim gallery: a pure {@link buildSoundGalleryModel} (unit-tested — it is where the
  * event→sound bindings become an auditable list) and the DOM render below.
  */
 
@@ -34,7 +34,7 @@ export interface ClipList {
 export interface ActionRow {
   /** PL name of the happening (e.g. "Rąbanie drzewa"). */
   readonly label: string;
-  /** PL description of WHEN it fires (e.g. "każde uderzenie siekierą drwala"). */
+  /** PL description of when it fires (e.g. "każde uderzenie siekierą drwala"). */
   readonly trigger: string;
   /** The bound sound's handle (the `SoundFXStatic` group name, or the jingle name). */
   readonly sound: string;

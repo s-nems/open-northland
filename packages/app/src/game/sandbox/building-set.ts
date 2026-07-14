@@ -27,7 +27,7 @@ import {
 import { workerSlotsFor } from './worker-slots.js';
 
 /**
- * The sandbox BUILDING SET — the per-building store slots, capacities, recipes, and worker overrides
+ * The sandbox building set — the per-building store slots, capacities, recipes, and worker overrides
  * the global {@link import('./content/index.js').sandboxContent} set assembles its `buildings` field from
  * ({@link buildSandboxBuildings}). The clean-room catalog stays pinned to ir.json; the stock/recipe
  * pins here are sandbox balance, not extracted data (see the per-table notes).
@@ -38,8 +38,8 @@ import { workerSlotsFor } from './worker-slots.js';
 const FARM_WHEAT_CAPACITY = 25;
 // The mill's two-slot store — EXTRACTED: `logicstock 4 10 1` (wheat, 10) + `logicstock 11 20 0`
 // (flour, 20) on the "work mill 00" block (`DataCnmd/types/houses.ini`). The trailing logicstock int
-// is the consumed-HERE flag (every workshop input and the homes' food carry 1, every pure storage
-// slot 0), NOT an initial fill — so both slots start empty.
+// is the consumed-here flag (every workshop input and the homes' food carry 1, every pure storage
+// slot 0), not an initial fill — so both slots start empty.
 const MILL_WHEAT_CAPACITY = 10;
 const MILL_FLOUR_CAPACITY = 20;
 // One grind cycle's length — EXTRACTED: the `viking_miller_produce_flour` atomicanimation is
@@ -57,9 +57,9 @@ export interface StockSlot {
 }
 
 /**
- * The general-goods store SET — the core economy goods (the gathered set + plank + coin) followed by every
+ * The general-goods store set — the core economy goods (the gathered set + plank + coin) followed by every
  * storable extended ware from {@link STORABLE_EXTENDED_GOODS}, so the HQ and warehouses advertise a slot for
- * the WHOLE catalog and the Magazyn panel lists each good (with its icon) across its category tab. The SET
+ * the whole catalog and the Magazyn panel lists each good (with its icon) across its category tab. The set
  * (which goods a store holds) is a sandbox balance pin, not extracted data.
  */
 const STORE_GOODS: readonly number[] = [
@@ -75,7 +75,7 @@ const STORE_GOODS: readonly number[] = [
 ];
 
 /**
- * Build a general-goods store's slot list at ONE per-good capacity — a store's limit lives in this single
+ * Build a general-goods store's slot list at one per-good capacity — a store's limit lives in this single
  * number, not repeated per good. Every good in {@link STORE_GOODS} gets the same cap.
  */
 function storeStock(capacity: number): readonly StockSlot[] {
@@ -84,13 +84,13 @@ function storeStock(capacity: number): readonly StockSlot[] {
 
 /**
  * Per-good warehouse capacity by tier (`stock_00`/`stock_01`/`stock_02`) — a tier-N warehouse holds this
- * many of EACH stored good. User-requested sandbox balance, NOT extracted data (the real `logicstock`
+ * many of each stored good. User-requested sandbox balance, not extracted data (the real `logicstock`
  * caps are 45/70/120); these are the project's chosen sandbox limits.
  */
 const WAREHOUSE_SLOT_CAPACITY = [100, 250, 500] as const;
 
 /** The HQ's per-good store capacity — user-requested sandbox balance, the same 500 as the top warehouse
- *  tier and NOT extracted data (the real `logicstock` HQ cap is 150). */
+ *  tier and not extracted data (the real `logicstock` HQ cap is 150). */
 const HQ_SLOT_CAPACITY = 500;
 
 export interface SandboxBuildingRow {
@@ -105,24 +105,24 @@ export interface SandboxBuildingRow {
     outputs: readonly { goodType: number; amount: number }[];
     ticks: number;
   };
-  /** The goods this workplace makes (`logicproduction`) — for a FARM this is the field-farmed good and
-   *  there is deliberately NO `recipe` (the field loop, not the abstract in-house cycle, produces it). */
+  /** The goods this workplace makes (`logicproduction`) — for a farm this is the field-farmed good and
+   *  there is deliberately no `recipe` (the field loop, not the abstract in-house cycle, produces it). */
   produces?: readonly number[];
   workers?: readonly { jobType: number; count: number }[];
   footprint?: BuildingFootprint;
 }
 
 /**
- * Per-building sandbox behaviour overrides, keyed by typeId — a DATA table, so {@link buildingRow}
+ * Per-building sandbox behaviour overrides, keyed by typeId — a data table, so {@link buildingRow}
  * stays a pure spread and a new special building means a new row here, not another branch. (The
  * clean-room catalog stays pinned to ir.json; these stock/recipe pins are sandbox balance, not
- * extracted data.) A `workers` here REPLACES the extracted {@link import('./worker-slots.js').BUILDING_WORKER_SLOTS}
+ * extracted data.) A `workers` here replaces the extracted {@link import('./worker-slots.js').BUILDING_WORKER_SLOTS}
  * default (the joinery pins its own gatherer-fed plank producer for the production demo).
  */
 const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> = {
   [BUILDING_HEADQUARTERS]: { stock: storeStock(HQ_SLOT_CAPACITY) },
-  // The grain farm — EXTRACTED shape (`DataCnmd/types/houses.ini` "work farm 00"): a wheat-ONLY store
-  // (`logicstock 4 25 0`) and `logicproduction 4` (produces wheat). Deliberately NO recipe: the field
+  // The grain farm — EXTRACTED shape (`DataCnmd/types/houses.ini` "work farm 00"): a wheat-only store
+  // (`logicstock 4 25 0`) and `logicproduction 4` (produces wheat). Deliberately no recipe: the field
   // loop (its farmers sowing/watering/reaping around the building) is what makes the wheat — the
   // worker slots (4 farmers + 1 carrier) come from BUILDING_WORKER_SLOTS below.
   [BUILDING_FARM]: {
@@ -183,7 +183,7 @@ function buildingRow(b: VikingBuilding): SandboxBuildingRow {
  * plus any extra buildings the caller declares. See {@link buildingRow} for the per-building shape.
  */
 export function buildSandboxBuildings(extras: SandboxContentExtras): Map<number, SandboxBuildingRow> {
-  // Real extracted footprints (live content) replace the clean-room approximations WHOLESALE — see
+  // Real extracted footprints (live content) replace the clean-room approximations wholesale — see
   // SandboxContentExtras.buildingFootprints. Without them every building approximates by class.
   const footprintOf = (typeId: number, kind: string): { footprint?: BuildingFootprint } => {
     const real = extras.buildingFootprints;

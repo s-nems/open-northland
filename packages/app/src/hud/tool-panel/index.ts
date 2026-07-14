@@ -27,13 +27,13 @@ import { buildOutlinedButtonSpecs } from './strip-outline.js';
 import { createSupersampledStrip, type StripSpriteSpec, type SupersampledStrip } from './strip-texture.js';
 
 /**
- * The LEFT in-game tool panel — the retained screen-space HUD that draws the original toolbar strip, the
+ * The left in-game tool panel — the retained screen-space HUD that draws the original toolbar strip, the
  * tool buttons, the working game-speed button, and the pop-up building / statistics windows, and claims the
  * clicks that land on it (so they never fall through to world picking).
  *
  * Rendering: strip/buttons/speed draw as `PalettedSprite`s over the indexed `ls_gui_window` atlas,
  * coloured through the GUI palette LUT (the same mechanism as player colours) — bitmap-native, no DOM. When
- * the decoded GUI art is absent (a checkout that hasn't run the GUI pipeline stage) the panel DEGRADES to
+ * the decoded GUI art is absent (a checkout that hasn't run the GUI pipeline stage) the panel degrades to
  * flat `Graphics` blocks at the exact same pinned geometry, staying visible and fully interactive; the
  * pop-up windows tile the original wood/rust bitmap fills over a `Graphics` frame (degrading to flat
  * parchment when `content/` is absent). Text is the bundled vector serif (`hud/ui-text.ts`) — the crisp
@@ -72,8 +72,8 @@ export interface ToolPanelOptions {
   readonly onSpeedChange: (spec: GameSpeedStateSpec, cause: GameSpeedChangeCause) => void;
   /** Client (CSS px) → Pixi screen px mapper — shared with the unit controls. */
   readonly screenScale: (canvas: HTMLCanvasElement) => { sx: number; sy: number; rect: DOMRect };
-  /** True when a HIGHER HUD overlay (the minimap's framed window) covers this client point. The panel
-   *  yields the LEFT click there so hit priority follows draw order — on a short screen the minimap
+  /** True when a higher HUD overlay (the minimap's framed window) covers this client point. The panel
+   *  yields the left click there so hit priority follows draw order — on a short screen the minimap
    *  draws over the strip's lower buttons and over an active placement, and a click on the visible
    *  overlay must never toggle the hidden button / drop a foundation sight-unseen. Right-click
    *  (cancel placement) is deliberately not deferred. Injected per the hud contract. */
@@ -81,9 +81,9 @@ export interface ToolPanelOptions {
 }
 
 export interface ToolPanelController {
-  /** True when a client point should be CLAIMED by the HUD (over the strip, an open window, or in placement). */
+  /** True when a client point should be claimed by the HUD (over the strip, an open window, or in placement). */
   claimsPointer(clientX: number, clientY: number): boolean;
-  /** True when a client point is over an OPEN pop-up window (menu / stats) — the surface that owns the
+  /** True when a client point is over an open pop-up window (menu / stats) — the surface that owns the
    *  wheel, so the camera must not also zoom there. Narrower than {@link claimsPointer}: it excludes the
    *  strip and active placement, so the wheel still zooms the world in those. */
   claimsWheel(clientX: number, clientY: number): boolean;
@@ -92,7 +92,7 @@ export interface ToolPanelController {
   placementType(): number | null;
   /**
    * Per-frame hook: re-place the screen-space sprites and refresh the open statistics window. Takes the
-   * frame's ALREADY-BUILT HUD layout (the caller builds it once for the always-on HUD) so the panel does
+   * frame's already-built HUD layout (the caller builds it once for the always-on HUD) so the panel does
    * not run a second O(entities) `buildHud` scan.
    */
   update(hud: HudLayout): void;
@@ -154,7 +154,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   // The real art path rasterizes the strip+buttons into an off-screen texture at an integer oversample and
   // draws it linear-downscaled to the fractional `uiscale` (crisp — no pixeloza; see `strip-texture.ts`).
   let supersampled: SupersampledStrip | null = null;
-  /** The speed button's outline stamps + real glyph — a speed change re-frames ALL of them (one shape). */
+  /** The speed button's outline stamps + real glyph — a speed change re-frames all of them (one shape). */
   const speedSprites: PalettedSprite[] = [];
 
   if (art !== null) {
@@ -255,7 +255,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         goodsWindow.toggle();
         break;
       case 'statistics':
-      case 'help': // PLACEHOLDER alias: Help has no window yet, so it toggles Statistics for now.
+      case 'help': // placeholder alias: Help has no window yet, so it toggles Statistics for now.
         stats.toggle();
         break;
       default:
@@ -289,8 +289,8 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     if (e.button === 2) {
       if (placement.isActive() || goodsDrop.isActive()) {
         e.preventDefault();
-        // Stop the SAME event reaching unit-controls' mousedown (it re-checks claimPointer AFTER this
-        // handler runs — cancel clears the claim, so without this the right-click would ALSO issue a
+        // Stop the same event reaching unit-controls' mousedown (it re-checks claimPointer after this
+        // handler runs — cancel clears the claim, so without this the right-click would also issue a
         // world move order). We register first (mounted before unit-controls), so this wins.
         e.stopImmediatePropagation();
         placement.cancel();
@@ -303,7 +303,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     // consume the press — the overlay's own handler acts on it instead (see the option's doc).
     if (opts.deferToOverlay?.(e.clientX, e.clientY) === true) return;
 
-    // Track whether the panel CONSUMES this press; if so, stop it from also reaching world picking.
+    // Track whether the panel consumes this press; if so, stop it from also reaching world picking.
     // Priority: strip button > open menu > open stats (close-on-inside) > active placement drop.
     let consumed = false;
     const btn = hitTestToolPanel(layout, x, y);
@@ -335,7 +335,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     }
   };
 
-  // Wheel scrolls the open building menu's list. Suppress the browser's default wheel action over ANY open
+  // Wheel scrolls the open building menu's list. Suppress the browser's default wheel action over any open
   // pop-up (the menu scrolls; the stats window has no scroll yet but must not page the document behind the
   // canvas either) — the camera's pointer-guard already skips zoom over these same windows.
   const onWheel = (e: WheelEvent): void => {
@@ -380,7 +380,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     claimsWheel,
     placementType: () => placement.activeType(),
     update(hud): void {
-      // The strip is a static baked texture now (a scene-graph sprite that batches + follows resizes for
+      // The strip is a static baked texture (a scene-graph sprite that batches + follows resizes for
       // free) — no per-frame re-placement. The build menu's vector runs stay put too, so refresh() only
       // reflows on a resize; the goods window (its own factory), stats window + placement banner re-place.
       menu.refresh();

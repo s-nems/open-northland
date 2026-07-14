@@ -59,7 +59,7 @@ const CONSTRUCTION_BAR_LEFT = 40;
 const STOCK_TAB_UNDERLINE_H = 2;
 
 /**
- * Stock amounts render with one decimal, LEFT-aligned inside the plate ("15.0") — both observed off
+ * Stock amounts render with one decimal, left-aligned inside the plate ("15.0") — both observed off
  * the original's 1024×768 screenshots. A row with a declared slot also shows its ceiling
  * ("7.0 / 25.0" — user-requested; the capacity is the building's extracted `logicstock` slot), so a
  * filling store reads at a glance; a dynamic drop (no declared slot) keeps the bare amount.
@@ -174,7 +174,7 @@ export function drawBuilding(
     chrome.headline(layout.production.title, messages().hud.production);
     const body = layout.production.body;
     if (model.production.kind === 'fields') {
-      // A FARM's production is its live FIELDS: the farmed good's icon + the sown/growing/ripe
+      // A farm's production is its live fields: the farmed good's icon + the sown/growing/ripe
       // counters (there is no recipe/cycle to bar) — the panel's window onto the field loop.
       const p = model.production;
       const icon: Rect = {
@@ -196,8 +196,8 @@ export function drawBuilding(
         'white',
       );
     } else {
-      // A workshop's batches: the output's icon + localized name on the first row, then ONE long
-      // progress bar PER RESERVED ROW (`p.rows` — one row per operator slot, so a twin-staffed mill
+      // A workshop's batches: the output's icon + localized name on the first row, then one long
+      // progress bar per reserved row (`p.rows` — one row per operator slot, so a twin-staffed mill
       // always shows two bars and the section never changes height mid-work), each filling the row
       // from the fixed label column to the body's edge; rows without an in-flight batch draw empty.
       const p = model.production;
@@ -234,14 +234,14 @@ export function drawBuilding(
   if (layout.stock !== null) {
     chrome.window(layout.stock.frame);
     chrome.headline(layout.stock.title, ui('housewindow', HOUSEWINDOW.stock, messages().hud.stock));
-    // A COMPACT store (every good fits at once) has no category tabs and lists ALL its rows; only the
+    // A compact store (every good fits at once) has no category tabs and lists all its rows; only the
     // full fixed-height store filters by the active tab (the dynamic-magazyn rule — see layout.ts).
     if (!layout.stockCompact) drawStockTabs(chrome, layout.stockTabHits, activeTab, s);
     const body = layout.stock.body;
     // The fixed cell grid both the drawing and the hover hit-test share (column-major, two columns).
     const slots = stockSlotRects(body, s, layout.stockRows);
     const cellH = Math.round(STOCK_ROW_H * s);
-    // A COMPACT store keeps the model's declared slot order, stable while amounts change (the mill's
+    // A compact store keeps the model's declared slot order, stable while amounts change (the mill's
     // Pszenica/Mąka must not swap mid-work); only the big tabbed store bubbles held goods to the top —
     // there the fixed row cap hides overflow, so actual stock earns its place above the fold. The sort
     // is stable, so ties keep the declared order.
@@ -268,11 +268,11 @@ export function drawBuilding(
         h: Math.round(STOCK_PLATE_H * s),
       };
       chrome.stockField(plate);
-      // The good's recoloured pile icon sits on the wood, LEFT of the amount plate (drawn after the plate
+      // The good's recoloured pile icon sits on the wood, left of the amount plate (drawn after the plate
       // so a slightly oversized pile overlaps its edge rather than being clipped) — the original's row look.
       if (row.goodId !== undefined) chrome.goodIcon(row.goodId, icon);
       // The amount sits left-inset next to the icon, vertically centred on the plate's centre line (not
-      // top-anchored, which rode high) — leaving the number left-aligned as in the original row.
+      // top-anchored) — leaving the number left-aligned as in the original row.
       chrome.textLeftMiddle(
         stockAmount(row.amount, row.capacity),
         plate.x + Math.round(STOCK_AMOUNT_INSET * s),
@@ -293,10 +293,10 @@ export function drawBuilding(
   chrome.window(layout.workers.frame);
   chrome.headline(layout.workers.title, ui('housewindow', HOUSEWINDOW.workers, messages().hud.workers));
   const body = layout.workers.body;
-  // The per-trade limits are ONE compact strip right under the header ("Kowal 1/3 · Tragarz 1/1 ·
-  // Zbieracz 0/1"), leaving the field BELOW free for the animated worker sprites (drawn on-map style,
+  // The per-trade limits are one compact strip right under the header ("Kowal 1/3 · Tragarz 1/1 ·
+  // Zbieracz 0/1"), leaving the field below free for the animated worker sprites (drawn on-map style,
   // without terrain, by the panel's own sprite pass — see panel.ts). The limits use `s`-scaled row pad.
-  // A construction site hides the strip — the slots describe the FINISHED building's trades; the field
+  // A construction site hides the strip — the slots describe the finished building's trades; the field
   // instead shows the live building crew (the overlay's site selector).
   const limits =
     model.construction === null
@@ -309,16 +309,16 @@ export function drawBuilding(
  * The stock window's eight category tabs, justified across the body width (whether the original spreads
  * or packs them flush is unread — a guess alongside the per-tab categories; montage provenance, pending
  * the plan's step-3 human pass). Each tab bob carries its own plate plus a category glyph; drawn through the
- * `bg_invert` palette, which renders the glyph as BRIGHT cream line-art on a recessed plate — legible where
- * the earlier `context` pairing rendered it dark-on-dark (invisible). The palette pick is a named legibility
- * choice, not verified to be the original's tab palette — pending the step-3 human pass.
+ * `bg_invert` palette, which renders the glyph as bright cream line-art on a recessed plate. The palette
+ * pick is a named legibility choice, not verified to be the original's tab palette — pending the step-3
+ * human pass.
  *
- * The tabs are now interactive: clicking one filters the stock list to its category (see `stock-tabs.ts`
+ * The tabs are interactive: clicking one filters the stock list to its category (see `stock-tabs.ts`
  * and `panel.ts`). The active tab carries a lime underline (the same selected-strip look as the name row)
  * so the current category reads at a glance.
  */
 /**
- * The original tab-plate glyph (frame 170–177) drawn on each category tab, index = tab — REORDERED from the
+ * The original tab-plate glyph (frame 170–177) drawn on each category tab, index = tab — reordered from the
  * sheet's raw order so each category gets the fitting glyph (identified by eye: cutlery→food, house→building,
  * hammer→tools, boots→crafted, weapon→military…). The glyph semantics aren't decoded, so this pairing is a
  * named approximation; the hover tooltip carries the authoritative category name either way.

@@ -1,5 +1,5 @@
 /**
- * The game-speed button state machine — the factor→gfx family PINNED to the original's speed button.
+ * The game-speed button state machine — the factor→gfx family pinned to the original's speed button.
  *
  * OpenVikings `CGuiManager.cs` `MiscButtons_SpeedButton_Update()` chooses the button's gfx from the current
  * speed factor (`DAT_1003a6488 / 12`): factor 0 → gfx 0x36 (paused), 1 → gfx 0x31 (the base sprite), 2 →
@@ -7,8 +7,8 @@
  * visible state to an app-side tick multiplier — game speed is an app concern (the sim tick stays
  * fixed-step at `TICKS_PER_SECOND`), so what's pinned is the factor→gfx family and the factor values.
  *
- * The CONTROL model is ours (source basis; a user-requested deviation): clicking the button cycles only the
- * RUNNING speeds (×1 → ×2 → ×3 → ×1, never into pause), while pause is a separate TOGGLE (the `P` key, or a
+ * The control model is ours (source basis; a user-requested deviation): clicking the button cycles only the
+ * running speeds (×1 → ×2 → ×3 → ×1, never into pause), while pause is a separate toggle (the `P` key, or a
  * click while paused resumes) that remembers the running speed and restores it on unpause. The decompile
  * does not recover the original's click routing, so no pinned cycle order is being overridden.
  *
@@ -51,7 +51,7 @@ export function gameSpeedSpec(state: GameSpeedState): GameSpeedStateSpec {
 }
 
 /**
- * The speed control the button + the `P` key drive: the running speed persists ACROSS a pause, so
+ * The speed control the button + the `P` key drive: the running speed persists across a pause, so
  * unpausing restores exactly the pace the player left (pause is a toggle, not a cycle stop).
  */
 export interface GameSpeedControl {
@@ -62,7 +62,7 @@ export interface GameSpeedControl {
 /** The control the game starts with (normal ×1 running — the original's default in-game speed). */
 export const DEFAULT_GAME_SPEED_CONTROL: GameSpeedControl = { running: 'normal', paused: false };
 
-/** The running click cycle (`normal → fast → faster → normal`) — pause is NOT a cycle stop. */
+/** The running click cycle (`normal → fast → faster → normal`) — pause is not a cycle stop. */
 const RUNNING_CYCLE: readonly RunningGameSpeed[] = ['normal', 'fast', 'faster'];
 
 /**
@@ -84,7 +84,7 @@ export function toggleGameSpeedPause(control: GameSpeedControl): GameSpeedContro
 }
 
 /**
- * WHY a speed change happened — the loop applies them differently. A `'cycle'` (button click) is an
+ * Why a speed change happened — the loop applies them differently. A `'cycle'` (button click) is an
  * explicit speed pick, so it overwrites the loop's wall-clock multiplier (including a fractional
  * `?speed=` seed — the button can only express the discrete speeds). A `'pause-toggle'` (the `P` key)
  * must only flip the pause flag: writing the multiplier there would silently replace a seeded
@@ -93,7 +93,7 @@ export function toggleGameSpeedPause(control: GameSpeedControl): GameSpeedContro
 export type GameSpeedChangeCause = 'cycle' | 'pause-toggle';
 
 /**
- * The cause a speed-button CLICK reports, from the pre-click control: a click while paused is an
+ * The cause a speed-button click reports, from the pre-click control: a click while paused is an
  * un-pause ({@link cycleGameSpeed} resumes, it does not advance), so it must carry `'pause-toggle'` —
  * reporting `'cycle'` there would overwrite a fractional `?speed=` seed on resume (see the type above),
  * making the two resume gestures (click vs `P`) behave differently.

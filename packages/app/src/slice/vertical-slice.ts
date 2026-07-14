@@ -29,7 +29,7 @@ import {
 /**
  * The Phase-2 vertical-slice scenario, built deterministically so a screenshot frame is reproducible.
  *
- * This mirrors the world the render scene **integration test** exercises (a 6×1 grass strip: HQ +
+ * This mirrors the world the render scene integration test exercises (a 6×1 grass strip: HQ +
  * joinery placed via commands, a wood gatherer + a carrier, two wood nodes), so the headless shot entry
  * draws the exact frame the unit tests already assert the draw list of.
  *
@@ -46,9 +46,8 @@ const { Position, Resource } = components;
 const WIDTH = 6;
 const HEIGHT = 1;
 
-/** The fixed placement NODES on the synthetic 6×1 strip — the old cells' anchor nodes (row 0: node
- *  (2x, 0)), so every Position lands exactly where it always did: [HQ, joinery, wood gatherer,
- *  carrier, tree, tree]. */
+/** The fixed placement nodes on the synthetic 6×1 strip — each cell's anchor node (row 0: node
+ *  (2x, 0)): [HQ, joinery, wood gatherer, carrier, tree, tree]. */
 const STRIP_CELLS: ReadonlyArray<{ x: number; y: number }> = [
   { x: 10, y: 0 },
   { x: 8, y: 0 },
@@ -58,7 +57,7 @@ const STRIP_CELLS: ReadonlyArray<{ x: number; y: number }> = [
   { x: 6, y: 0 },
 ];
 
-/** The synthetic strip in its authored CELL shape (the render fallback projects this directly). */
+/** The synthetic strip in its authored cell shape (the render fallback projects this directly). */
 function grassCells(): CellTerrainMap {
   return { width: WIDTH, height: HEIGHT, typeIds: new Array(WIDTH * HEIGHT).fill(GRASS) };
 }
@@ -68,7 +67,7 @@ function grassMap(): TerrainMap {
 }
 
 /**
- * The terrain grid the scene layer projects, derived from the SAME {@link TerrainMap} the sim
+ * The terrain grid the scene layer projects, derived from the same {@link TerrainMap} the sim
  * navigates via the render package's `terrainMapToScene` seam — so the demo exercises the exact
  * map→scene path a loaded `content/maps/<id>.json` takes, not a hand-duplicated grid.
  *
@@ -84,7 +83,7 @@ export function sliceTerrain(map?: CellTerrainMap | TerrainMapFile): SceneTerrai
 const PLACEMENT_CELL_COUNT = 6;
 
 /**
- * The first `count` walkable half-cell NODES of `map`, in canonical row-major id order, as integer
+ * The first `count` walkable half-cell nodes of `map`, in canonical row-major id order, as integer
  * `(x, y)` node coords — or `null` if the map has fewer than `count` walkable nodes. "Walkable" is resolved
  * from the global sandbox landscape table (the same `walkable` flag `buildTerrainGraph` reads), so
  * the slice's entities land only on cells the sim can stand on — placing a building on water would
@@ -110,9 +109,9 @@ function walkableCells(
 }
 
 /**
- * Enqueue resolved placements in order — the ONE spot the `placeBuilding`/`spawnSettler` command
+ * Enqueue resolved placements in order — the one spot the `placeBuilding`/`spawnSettler` command
  * shapes are written, shared by the demo strip and the authored import (list order = enqueue order,
- * so determinism follows the placement list). Buildings are FORCED: both callers place fixture state
+ * so determinism follows the placement list). Buildings are forced: both callers place fixture state
  * (a decoded map's authored houses, the pinned demo world) which loads as-is, exactly as the original
  * loads a scenario map — the tech/collision gates govern the player's interactive placements.
  */
@@ -147,7 +146,7 @@ function enqueuePlacements(sim: Simulation, placements: readonly AuthoredPlaceme
 }
 
 /**
- * The first anchor (row-major scan) where `typeId`'s footprint FITS against the sim's live placement
+ * The first anchor (row-major scan) where `typeId`'s footprint fits against the sim's live placement
  * rule (`Simulation.placementProbe` — the exact gate an interactive click goes through), or `null`
  * when nothing on the map fits (a dense map degrades to the walkable-cell fallback). Deterministic:
  * a fixed scan order over the current world state.
@@ -173,12 +172,12 @@ function firstPlaceableCell(
  * no wall-clock: this is the "render scenario X at seed S, step N ticks" entry the harness needs.
  *
  * Without a `map` the slice runs on the synthetic 6×1 grass strip (the reproducible default the shot
- * PNG depends on). With a loaded grid (the `?map=` entry passes the COLLISION-resolved terrain — see
- * `content/collision.ts`), the SAME six entities (HQ, joinery, wood gatherer, carrier, two wood
+ * PNG depends on). With a loaded grid (the `?map=` entry passes the collision-resolved terrain — see
+ * `content/collision.ts`), the same six entities (HQ, joinery, wood gatherer, carrier, two wood
  * nodes) land on the real grid instead of the hardcoded strip: the two buildings on the first anchors
- * their footprints actually FIT ({@link firstPlaceableCell}, stepping one tick between them so the
+ * their footprints actually fit ({@link firstPlaceableCell}, stepping one tick between them so the
  * second sees the first), settlers + trees on the first walkable cells. A loaded map with too few
- * walkable cells **falls back to the strip** — the slice always runs (matching the file's
+ * walkable cells falls back to the strip — the slice always runs (matching the file's
  * graceful-degradation contract), never throwing.
  */
 export function runSlice(
@@ -217,7 +216,7 @@ export function runSlice(
   // in the interactive live entry. Omitted (the shot/default path) leaves them neutral — hash untouched.
   const own = owner !== undefined ? { owner } : {};
 
-  // Building cells: on a real map, prefer anchors where the footprint actually FITS (clear ground, off
+  // Building cells: on a real map, prefer anchors where the footprint actually fits (clear ground, off
   // the water/forest — the probe applies the same rule the player's clicks go through), stepping one
   // tick between the two so the second probe sees the first house. The walkable-cell fallback (a dense
   // map where nothing fits, or the synthetic strip whose 6×1 grid can't host any footprint) force-places
@@ -245,7 +244,7 @@ export function runSlice(
       { kind: 'human', jobType: JOB_CARRIER, tribe: PRIMARY_TRIBE, ...cellAt(3), ...own },
     ]);
   }
-  // The strip's two demo wood nodes: bare 4-unit resources with NO felling counter/footprint (the
+  // The strip's two demo wood nodes: bare 4-unit resources with no felling counter/footprint (the
   // committed shot PNG + the render integration test pin this minimal shape — `placeResourceNode` would
   // add both).
   for (const cell of [cellAt(4), cellAt(5)]) {
@@ -258,10 +257,10 @@ export function runSlice(
 }
 
 /**
- * Build a sim on a real decoded map with NO placed entities — the map VIEWER's default for an
+ * Build a sim on a real decoded map with no placed entities — the map viewer's default for an
  * imported map that carries no authored `StaticObjects`. The map's own trees/ore/stone still spawn as
  * harvestable nodes (the `?map=` entry's `spawnMapResources` runs after this); this exists purely so a
- * plain imported map does NOT get the synthetic HQ/joinery/gatherer/carrier demo cluster dropped onto
+ * plain imported map does not get the synthetic HQ/joinery/gatherer/carrier demo cluster dropped onto
  * its first walkable cells. That demo world belongs only to the synthetic-strip fallback (no map) and
  * the deterministic shot PNG — both still go through {@link runSlice}.
  *
@@ -282,7 +281,7 @@ export function runBareMap(
 }
 
 /**
- * Build + run the slice sim for a map that carries AUTHORED entity placements (`map.cif`
+ * Build + run the slice sim for a map that carries authored entity placements (`map.cif`
  * `StaticObjects` → `maps/<id>.json` `entities`): every resolvable `sethouse` becomes a built
  * building and every `sethuman` a settler at its authored cell — replacing the synthetic
  * "first walkable cells" demo placement for such maps.

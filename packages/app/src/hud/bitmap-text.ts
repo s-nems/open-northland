@@ -13,7 +13,7 @@ import {
 
 /**
  * A glyph-run drawer for the decoded `.fnt` bitmap fonts — the first runtime consumer of the pipeline's
- * font outputs. A `.fnt` glyph atlas is INDEXED (like the settler/GUI atlases), so each glyph is drawn by a
+ * font outputs. A `.fnt` glyph atlas is indexed (like the settler/GUI atlases), so each glyph is drawn by a
  * {@link PalettedSprite} reading the `256 × 4` font colour LUT: same mechanism as player/GUI colours, one
  * row per colour (white/dark/dimmed/red). Layout follows the original's top-anchored model (OpenVikings
  * `CFont.cs`): blit each non-empty glyph at `pen + (offsetX, offsetY)`, advance the pen by the glyph's
@@ -67,9 +67,9 @@ export function loadBitmapFont(key: string = DEFAULT_FONT_KEY): Promise<BitmapFo
 /**
  * Unicode codepoint → CP1250 byte, for codepoints above 0xFF. The decoded UI strings are Unicode
  * (the pipeline decodes the original CP1250 bytes), but the `.fnt` glyph table is indexed by the
- * ORIGINAL byte — so `ę`/`ż`/`Ś`... must be mapped back or their glyphs are silently skipped.
+ * original byte — so `ę`/`ż`/`Ś`... must be mapped back or their glyphs are silently skipped.
  * Codepoints ≤ 0xFF pass through unchanged, which is exact for every character CP1250 shares with
- * Latin-1 (`ó`, umlauts, ß) — a Latin-1 character CP1250 does NOT carry (e.g. `ñ`) would select a
+ * Latin-1 (`ó`, umlauts, ß) — a Latin-1 character CP1250 does not carry (e.g. `ñ`) would select a
  * wrong glyph, but the decoded CP1250-origin tables can't contain one. Source basis: the CP1250
  * code page (pinned by `test/bitmap-text.test.ts` against `TextDecoder('windows-1250')`); covers
  * the Polish set plus the CP1250 punctuation the string tables use.
@@ -129,7 +129,7 @@ interface RunGlyph {
 export interface TextRun {
   /** Parent this under the panel's window/menu container for draw order (position is via {@link place}). */
   readonly container: Container;
-  /** The run's advance width in NATIVE font px (multiply by the place scale for screen px) — for centering. */
+  /** The run's advance width in native font px (multiply by the place scale for screen px) — for centering. */
   readonly width: number;
   /** Anchor the run's top-left at screen `(x, y)`, drawn at `scale` px per native pixel. */
   place(x: number, y: number, scale: number, resWidth: number, resHeight: number): void;
@@ -181,7 +181,7 @@ export function createBitmapTextRun(
 }
 
 /**
- * The HUD's ONE text factory: a bitmap-font run when the decoded `.fnt` is present, else a Pixi `Text`
+ * The HUD's one text factory: a bitmap-font run when the decoded `.fnt` is present, else a Pixi `Text`
  * at the same {@link TextRun} surface (so callers place/destroy runs identically in both modes).
  */
 export function makeTextRun(

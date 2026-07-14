@@ -14,18 +14,18 @@ import { createTextKit, type FontVariant } from './text.js';
 
 /**
  * The details panel's original-art drawing kit. A `Chrome` is created per rebuild over the panel's fresh
- * layer containers and draws window fills (the original 300×300 `bg*.pcx` bitmaps, drawn TILED — our
+ * layer containers and draws window fills (the original 300×300 `bg*.pcx` bitmaps, drawn tiled — our
  * choice, not decompiled behavior: OpenVikings only loads these bitmaps, their draw sites aren't ported,
- * and tiling avoids squashing the texture), the rope-and-knot window borders (edge strips TILED along
+ * and tiling avoids squashing the texture), the rope-and-knot window borders (edge strips tiled along
  * their length — stretching smears the rope pattern — with the knot corners at native size), headline
  * strips, buttons, bars, text, and the building preview.
  * Every piece degrades to the flat parchment Graphics look when `content/` is absent (`assets.art ===
  * null`, bitmaps `undefined`). The bitmap `Texture`s come pre-minted from `assets.ts`, so a rebuild mints
  * no bitmap-texture wrappers (they'd leak resize listeners on the shared source); the per-line Pixi `Text`
- * objects ARE minted per rebuild, but the bake disposes them (and their text textures) with the offscreen
+ * objects are minted per rebuild, but the bake disposes them (and their text textures) with the offscreen
  * root each rebuild (see `panel.ts` / `supersample.ts`).
  *
- * Text draws in the bundled vector serif (`content/ui-font.ts`, always present), NOT the original bitmap
+ * Text draws in the bundled vector serif (`content/ui-font.ts`, always present), not the original bitmap
  * `.fnt`: a larger `title` size for headlines/buttons/the building name, a `body` size for everything else.
  * Lines are placed by Pixi `Text` anchors (top-left / centred / right) rather than the bitmap face's
  * baseline metrics.
@@ -88,12 +88,12 @@ export interface Chrome {
    *  otherwise — the frame a stock-tab's representative good icon is drawn onto (no label). */
   tabButton(r: Rect, active: boolean): void;
   /** A progress/need bar. `'progress'` (the default) is the neutral production look: the original
-   *  `bar_disabled` frame filled with `bar_standart` art. `'gauge'` is a STAT GAUGE: a recessed dark
+   *  `bar_disabled` frame filled with `bar_standart` art. `'gauge'` is a stat gauge: a recessed dark
    *  track (no grey art remainder) whose fill takes the decoded `bar_hitpoints` ramp's colour at the
    *  current level (red when empty → green when full), falling back to flat {@link BAR_TONE_FILL}
    *  bands without `content/`. */
   bar(r: Rect, pct: number, style?: 'progress' | 'gauge'): void;
-  /** A stock amount's recessed numeric field: a subtle dark inset on the wood (NOT the grey bar frame). */
+  /** A stock amount's recessed numeric field: a subtle dark inset on the wood (not the grey bar frame). */
   stockField(r: Rect): void;
   /** The selected building's own world bob, fitted into `r`; false when no preview art is bound. */
   buildingPreview(typeId: number, r: Rect): boolean;
@@ -115,7 +115,7 @@ export function createChrome(
   const { g } = layers;
   const screen = () => resolution ?? { w: app.screen.width, h: app.screen.height };
   // In texture mode (a resolution override), every PalettedSprite must render upright into the bottom-up
-  // render texture so the panel can bake WITHOUT a whole-texture Y-flip its Pixi-native content (Graphics,
+  // render texture so the panel can bake without a whole-texture Y-flip its Pixi-native content (Graphics,
   // the preview Sprite) can't share. See panel.ts / PalettedSprite.flipY.
   const flipY = resolution !== undefined;
 
@@ -173,7 +173,7 @@ export function createChrome(
   };
 
   // Named to avoid shadowing the global `window` inside this closure. The body tiles the grey-blue
-  // `card` fill (the original's selected-item card), NOT the warm brown `bg` — that stays the button
+  // `card` fill (the original's selected-item card), not the warm brown `bg` — that stays the button
   // plates' disabled fallback; only the headline strips above the cards keep the warm brown.
   const windowBox = (r: Rect): void => {
     if (!tile(bitmaps.card, r)) {
@@ -277,7 +277,7 @@ export function createChrome(
 
   /**
    * A stock amount's numeric field: a subtle recessed slot on the wood, drawn as flat Graphics rather than
-   * the grey `bar_disabled` frame (which read as an ugly opaque plate). A dark translucent fill lets the
+   * the grey `bar_disabled` frame (which read as an opaque plate). A dark translucent fill lets the
    * wood show through, with a thin dark top/left + light bottom/right bevel for the inset look — the
    * original's amounts sit in a shallow recessed field, not on a solid grey bar.
    */

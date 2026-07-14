@@ -9,7 +9,7 @@ import {
 } from '../catalog/terrain.js';
 
 /**
- * The decoded-map → sim COLLISION join: resolve a real map's grid into the four SEMANTIC terrain
+ * The decoded-map → sim collision join: resolve a real map's grid into the four semantic terrain
  * classes the sim's walk/build flags are keyed to (`catalog/terrain.ts`), from the same extracted
  * data the original engine blocks by:
  *
@@ -19,24 +19,22 @@ import {
  *    mountain faces and snow are walkable but reject building (they land on `TERRAIN_MARGIN`),
  *    every fully-flagged land class is open. The one gap in the data is the `border` pattern
  *    (logicType 0, no table row): classed impassable — a named approximation (the map frame band is
- *    visually outside the playfield in the original). A cell takes its WORST triangle's class
+ *    visually outside the playfield in the original). A cell takes its worst triangle's class
  *    (conservative: a half-water cell rejects a building wall). When an older `ir.json` carries no
  *    `trianglePatternTypes` lane, the split degrades to a pinned approximation of the same table.
  *  - **objects**: each placed landscape object (tree/rock/deposit/palisade…) joins `landscapeGfx` by
- *    `EditName` and stamps its `LogicWalkBlockArea` cells as its BODY (neither walk nor build) and
- *    its `LogicBuildBlockArea`-only cells as its MARGIN — the per-object blocking the original's
- *    placement + routing read. The FULL state's areas apply regardless of the placement's level
+ *    `EditName` and stamps its `LogicWalkBlockArea` cells as its body (neither walk nor build) and
+ *    its `LogicBuildBlockArea`-only cells as its margin — the per-object blocking the original's
+ *    placement + routing read. The full state's areas apply regardless of the placement's level
  *    (`fullStateBlockAreaCells` — the same conservative stance as the sim's resource footprints).
- *    **Except the harvestables** (`skipObjectNames` — trees/ore/stone that `spawnMapResources` turns
- *    into real `Resource` entities): those must NOT be baked into the STATIC grid, because their
- *    blocking has to VANISH when the node is felled/depleted — it lives exclusively in the sim's
- *    dynamic resource-footprint overlay (stamped at spawn, unstamped at removal). Baking them
- *    statically left a felled tree's cell walled off forever, so the collector could never path to
- *    the trunk it had just dropped there ("kłoda leży, zbieracz stoi") — the double-blocking bug.
+ *    Except the harvestables (`skipObjectNames` — trees/ore/stone that `spawnMapResources` turns
+ *    into real `Resource` entities): those must not be baked into the static grid, because their
+ *    blocking has to vanish when the node is felled/depleted — it lives exclusively in the sim's
+ *    dynamic resource-footprint overlay (stamped at spawn, unstamped at removal).
  *    A skipped placement's collision is then the sim-content footprint (own-node), a named
  *    approximation of the IR area until real per-variant footprints enter the sim's content set.
  *
- * The raw per-cell `typeIds` lane is NOT consulted: it is the object lane collapsed per cell (its
+ * The raw per-cell `typeIds` lane is not consulted: it is the object lane collapsed per cell (its
  * dominant value, 1 = "void", is plain ground), so the object join above is its authoritative,
  * area-accurate source.
  *
@@ -113,11 +111,11 @@ function worseGroundClass(a: number, b: number): number {
 }
 
 /**
- * Resolve a decoded map's collision grid at HALF-CELL resolution (the sim's `2W×2H` navigation
+ * Resolve a decoded map's collision grid at half-cell resolution (the sim's `2W×2H` navigation
  * lattice): every node classed as `TERRAIN_OPEN` / `TERRAIN_IMPASSABLE` / `TERRAIN_BLOCKED` /
  * `TERRAIN_MARGIN`. Ground classes are per-cell in the source (`empa`/`empb` triangles) and stamp
  * their 2×2 node block; object block areas are stamped at their native half-cell anchors and
- * offsets (the `emla`/`lmlt` lanes' own resolution). Feed THIS to the sim (nav + placement); the
+ * offsets (the `emla`/`lmlt` lanes' own resolution). Feed this to the sim (nav + placement); the
  * raw map keeps driving the render layers (ground mesh, decor, ambience).
  */
 export function buildCollisionTerrain(
@@ -127,7 +125,7 @@ export function buildCollisionTerrain(
 ): TerrainMap {
   const { width, height } = map;
 
-  // --- ground: class each CELL by its two triangles' extracted walk/build flags, then upsample ----
+  // --- ground: class each cell by its two triangles' extracted walk/build flags, then upsample ----
   // (A per-triangle split below cell resolution has no pinned mapping, so ground classes are
   // per-cell; `halfCellMapFromCells` owns the cell → 2×2-node-block convention.)
   const cellClasses = new Array<number>(width * height).fill(TERRAIN_OPEN);
@@ -159,7 +157,7 @@ export function buildCollisionTerrain(
     const gfxByName = new Map<string, { walk: [number, number][]; margin: [number, number][] }>();
     for (const g of ir.landscapeGfx) {
       if (g.editName === undefined) continue;
-      // A harvestable that spawns as a sim Resource blocks through the DYNAMIC footprint overlay
+      // A harvestable that spawns as a sim Resource blocks through the dynamic footprint overlay
       // only (unstamped when felled/depleted) — never baked into this static grid (module doc).
       if (skipObjectNames?.has(g.editName)) continue;
       const walk = fullStateBlockAreaCells(g.walkBlockAreas).map((c): [number, number] => [c.dx, c.dy]);
@@ -176,7 +174,7 @@ export function buildCollisionTerrain(
       const i = cy * nodeW + cx;
       const current = typeIds[i];
       // Severity order: body > impassable ground > margin > barren > open. A margin never downgrades
-      // a cell — but it does OVERRIDE barren (an object's build ring blocks building on sand too).
+      // a cell — but it does override barren (an object's build ring blocks building on sand too).
       if (cls === TERRAIN_BLOCKED) typeIds[i] = TERRAIN_BLOCKED;
       else if (current === TERRAIN_OPEN || current === TERRAIN_BARREN) typeIds[i] = cls;
     };
@@ -189,9 +187,9 @@ export function buildCollisionTerrain(
       const name = types[typeIndex];
       const gfx = name !== undefined ? gfxByName.get(name) : undefined;
       if (gfx === undefined) continue;
-      // Anchor the object's block-area offsets on its half-cell VERBATIM: the `emla` placement,
+      // Anchor the object's block-area offsets on its half-cell verbatim: the `emla` placement,
       // the `lmlt` blocking lane, and the `LogicWalkBlockArea` offsets all live on the same 2W×2H
-      // grid (source basis: mapdat lane layout), so no flooring — the old cell-floor skew is gone.
+      // grid (source basis: mapdat lane layout), so no flooring is needed.
       for (const [dx, dy] of gfx.walk) stamp(hx + dx, hy + dy, TERRAIN_BLOCKED);
       for (const [dx, dy] of gfx.margin) stamp(hx + dx, hy + dy, TERRAIN_MARGIN);
     }

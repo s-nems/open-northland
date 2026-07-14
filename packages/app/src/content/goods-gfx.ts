@@ -9,12 +9,12 @@ import { fetchJsonOrNull, loadTextureIfPresent } from './net.js';
 
 /**
  * Goods-icon content bindings — the loadable seam for the pipeline's `goods` stage. A good's HUD icon is
- * its on-map PILE graphic: the engine shares one monochrome sheet (`ls_goods.bmd`) recoloured per good
- * through a `goods_*` palette, so a good maps to (an atlas frame, a palette row), NOT a unique bitmap. This
+ * its on-map pile graphic: the engine shares one monochrome sheet (`ls_goods.bmd`) recoloured per good
+ * through a `goods_*` palette, so a good maps to (an atlas frame, a palette row), not a unique bitmap. This
  * is the goods twin of {@link import('./gui-art.js')}: the indexed atlas is read through the goods palette
  * LUT by a {@link PalettedSprite}, the same mechanism as the player/GUI colours.
  *
- * The binding (good STRING id → {frame, palette}) is keyed by the good's string id, which is stable across
+ * The binding (good string id → {frame, palette}) is keyed by the good's string id, which is stable across
  * the sandbox and the extracted IR (they number goods differently), so one manifest serves every scene.
  * A checkout without `content/` yields `null` and consumers draw their text row without an icon.
  */
@@ -83,14 +83,14 @@ export function loadGoodsArt(): Promise<GoodsArt | null> {
   return goodsArtOnce;
 }
 
-/** The good STRING id → icon binding map, as the manifest ships it (no textures — just the frame/palette
+/** The good string id → icon binding map, as the manifest ships it (no textures — just the frame/palette
  *  data the in-world pile binding needs). */
 export type GoodIconMap = ReadonlyMap<string, GoodIcon>;
 
 /**
  * The neutral generic icon for a good with no `ls_goods` art (the synthetic plank, and the
  * potions/amulets/fruit that share the original's type-1 "no distinct pile") — the state-1 heap bob (0)
- * recoloured through the neutral `goods01` palette. A NAMED APPROXIMATION shared by the HUD Magazyn icon and
+ * recoloured through the neutral `goods01` palette. A named approximation shared by the HUD Magazyn icon and
  * the in-world dropped-pile graphic, so an iconless good reads the same "generic sack" in both places rather
  * than showing nothing / the bare placeholder flag. `goods01` is always a valid LUT/atlas row.
  */
@@ -121,7 +121,7 @@ export interface GoodSprite {
 /**
  * Build a {@link PalettedSprite} for one good icon — the good's `ls_goods` frame recoloured through its
  * palette row — or `null` when the frame isn't in the atlas. `colorKey` is `'off'`: the bob mask (atlas
- * alpha) already cuts the transparent background, and the pile art's own dark pixels must be KEPT (a
+ * alpha) already cuts the transparent background, and the pile art's own dark pixels must be kept (a
  * near-black key would eat them).
  */
 export function makeGoodSprite(art: GoodsArt, icon: GoodIcon): GoodSprite | null {

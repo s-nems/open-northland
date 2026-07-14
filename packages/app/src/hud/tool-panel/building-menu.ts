@@ -6,12 +6,12 @@ import { contains, type Rect } from '../geometry.js';
  *
  * The original build window ("Zbuduj Okno") groups buildings under five category tabs whose labels come
  * from the ingamegui `miscwindow` string table (ids 2–6): "Wszystko / Praca / Magazyn / Dom / Wojsko".
- * The category a building falls under IS its `logichousetype` `logicmaintype` (1=stock, 2=home, 3=work,
+ * The category a building falls under is its `logichousetype` `logicmaintype` (1=stock, 2=home, 3=work,
  * 4=training, 5=tower), which the pipeline extracts losslessly as the building `kind` — so the derivation
- * below is DATA-PINNED, not a guess. Only the fold of maintypes 4 (training) + 5 (tower) into the one
+ * below is data-pinned, not a guess. Only the fold of maintypes 4 (training) + 5 (tower) into the one
  * "Wojsko" tab is our reconstruction (the original's tab→maintype binding isn't decoded); see source basis.
  *
- * The layout is a titled parchment window: a headline band, the five category tabs, then a SCROLLABLE,
+ * The layout is a titled parchment window: a headline band, the five category tabs, then a scrollable,
  * row-quantized list of the selected category's buildings (a fixed viewport of `maxListRows`, a scrollbar
  * when the category overflows it). It is parameterised by a screen origin + scale (design px, scaled like
  * the tool panel), so the view draws from it and the input layer hit-tests it — both without touching Pixi.

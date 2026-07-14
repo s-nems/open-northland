@@ -34,18 +34,18 @@ import {
 import { mountGalleryOverlay } from './anim-overlay.js';
 
 /**
- * The `?anim` entry — the character **animation gallery**, the animation twin of the sandbox/catalog
+ * The `?anim` entry — the character animation gallery, the animation twin of the sandbox/catalog
  * catalog. It plays the extracted `[bobseq]` of a viking body straight from the atlas so a human can
  * validate that each animation decodes, cycles, and (for the locomotion clips) reads correctly in all 8
  * directions. A pure viewer: no sim, DOM + wall-clock are fine here (`app` boundary). This file holds the
  * atlas loading + Pixi loop; the browser-free cell/URL builders live in `anim-cells.ts` and the DOM panel
  * in `anim-overlay.ts`.
  *
- * Two axes over the FULL viking roster ({@link VIKING_CHARACTERS}):
- *  - `?char=<id>` picks the character — civilian / **warrior** (its own broadsword / sword / bow / spear /
+ * Two axes over the full viking roster ({@link VIKING_CHARACTERS}):
+ *  - `?char=<id>` picks the character — civilian / warrior (its own broadsword / sword / bow / spear /
  *    bare-handed combat set) / woman / child / baby. Changing it reloads that body + head atlases.
  *  - `?view=anim|heads` picks the layout — `anim` (default) plays every sequence of the body with its
- *    default head; `heads` plays the plain walk once per head LOOK, the montage of all faces/hats.
+ *    default head; `heads` plays the plain walk once per head look, the montage of all faces/hats.
  *
  * Also: `?dir=full|0..7` (the global facing every clip plays; live, no reload), `?cols=N`, `?filter=<substr>`
  * (narrows sequences by name / looks by head), `?zoom`, `?speed`. Real decoded graphics are required — a
@@ -60,7 +60,7 @@ export async function renderAnimationGallery(
   canvas: HTMLCanvasElement,
   params: URLSearchParams,
 ): Promise<void> {
-  // No `?char=` → the DEFAULT landing: the WHOLE roster on one screen, every look walking, nothing to
+  // No `?char=` → the default landing: the whole roster on one screen, every look walking, nothing to
   // click. A `?char=` drills into that one body — its full animation set (`?view=anim`) or its heads montage.
   if (params.get('char') === null) {
     await renderRosterMontage(canvas, params);
@@ -70,10 +70,10 @@ export async function renderAnimationGallery(
 }
 
 /**
- * The full-roster montage — the "pełny set wikingów" on ONE image: one animated cell per viking LOOK (every
+ * The full-roster montage — the "pełny set wikingów" on one image: one animated cell per viking look (every
  * roster body × each of its heads), all playing the plain walk. Each body is loaded in turn; a body absent
  * from a partial `content/` is skipped (not fatal) so the rest still show. Degrades to a message only when
- * NOTHING loads.
+ * nothing loads.
  */
 async function renderRosterMontage(canvas: HTMLCanvasElement, params: URLSearchParams): Promise<void> {
   const copy = messages().animation;
@@ -117,7 +117,7 @@ async function renderCharacterGallery(canvas: HTMLCanvasElement, params: URLSear
   const view = parseView(params.get('view'));
   const color = parseColor(params.get('color'), PLAYER_COLOR_COUNT);
   // Paletted mode = the colours montage, or an explicit `?color=` on the anim/heads views. It loads the
-  // INDEXED atlases + the player-colour LUT so the character is recoloured per player at draw time.
+  // indexed atlases + the player-colour LUT so the character is recoloured per player at draw time.
   const paletted = view === 'colors' || color !== null;
   const { bodyStem, headStems } = characterStems(
     char,
@@ -167,7 +167,7 @@ async function renderCharacterGallery(canvas: HTMLCanvasElement, params: URLSear
     return;
   }
 
-  // The LUT row count for the shader comes from the TEXTURE's own height, not a constant, so the fragment's
+  // The LUT row count for the shader comes from the texture's own height, not a constant, so the fragment's
   // row lookup can't desync from the actual PNG if the two ever diverge (parseColor still bounds `?color=` by
   // PLAYER_COLOR_COUNT, a UI range).
   const palette = lut !== undefined ? { source: lut, colours: lut.pixelHeight } : undefined;
@@ -193,7 +193,7 @@ async function startGallery(
     ...(palette !== undefined ? { palette } : {}),
   });
 
-  // Initial camera: fit the grid WIDTH into the canvas (capped at 1×), top-left at a margin; the human
+  // Initial camera: fit the grid width into the canvas (capped at 1×), top-left at a margin; the human
   // pans (middle-mouse / arrows) and zooms (wheel) from there. `?zoom=` overrides the fit.
   const content = gallery.contentSize();
   const fitZoom = Math.max(MIN_ZOOM, Math.min(1, (app.screen.width - 2 * GRID_MARGIN) / content.width));

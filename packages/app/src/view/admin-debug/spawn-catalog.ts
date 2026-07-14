@@ -29,7 +29,7 @@ import {
 } from '../../game/sandbox/ids/index.js';
 
 /**
- * The DATA the admin/debug spawn palette offers — unit presets, resource entries and the player
+ * The data the admin/debug spawn palette offers — unit presets, resource entries and the player
  * (team-colour) swatches — kept apart from the panel wiring ({@link import('./index.js')}) so the catalog
  * of "what can I spawn" is one obvious table. Everything is driven off the shared sandbox ids/{@link
  * GATHERERS} table (never bare numbers), so a new soldier class or gatherer shows up here for free.
@@ -66,7 +66,7 @@ export interface UnitSpawnOptions {
  */
 export function unitSpawnCommand(preset: UnitPreset, opts: UnitSpawnOptions): Command {
   // The class weapon also goes in the equipment slot (derived from the job, shared with the scene/map
-  // spawns), which DRIVES the drawn look + fills the Broń row. The bare-handed warrior gets none → empty
+  // spawns), which drives the drawn look + fills the Broń row. The bare-handed warrior gets none → empty
   // slot → unarmed body.
   const equipment = weaponEquipmentFor(preset.jobType);
   return {
@@ -84,7 +84,7 @@ export function unitSpawnCommand(preset: UnitPreset, opts: UnitSpawnOptions): Co
 }
 
 /** The soldier classes, each paired with its own weapon so the drawn body + attack animation match the
- *  weapon (the same job↔weapon pairing the combat scene uses). A warrior is ONE profession — the weapon
+ *  weapon (the same job↔weapon pairing the combat scene uses). A warrior is one profession — the weapon
  *  in hand decides its look — so the bare-handed warrior (fists) leads, then each armed variant. */
 export const WARRIOR_PRESETS: readonly UnitPreset[] = [
   { id: 'unarmed', jobType: JOB_SOLDIER_UNARMED, weaponTypeId: WEAPON_FISTS },
@@ -146,7 +146,7 @@ export const GOODS_ENTRIES: readonly GoodEntry[] = [
   ...EXTENDED_GOODS.map((g) => ({ good: g.typeId, id: g.id })),
 ];
 
-/** Units dropped per admin click — ONE, like the in-game goods tool: each click adds a single unit and the
+/** Units dropped per admin click — one, like the in-game goods tool: each click adds a single unit and the
  *  sim stacks repeat clicks on the same tile up to its ground-stack cap, so the pile grows one at a time. */
 export const ADMIN_DROP_AMOUNT = 1;
 
@@ -182,7 +182,7 @@ export interface PlayerSwatch {
 }
 
 /** The player selector swatches: the first N player slots for which an approximate swatch colour is
- *  authored (the sim itself supports up to `MAX_PLAYERS`). Each carries id, LUT colour name, and CSS fill. */
+ *  authored (the sim itself supports up to `MAX_PLAYERS`). Each carries the player id and its CSS fill. */
 export const PLAYER_SWATCHES: readonly PlayerSwatch[] = PLAYER_SWATCH_CSS.map((css, player) => ({
   player,
   css,
