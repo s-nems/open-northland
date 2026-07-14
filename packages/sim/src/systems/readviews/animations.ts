@@ -9,8 +9,9 @@ import { contentIndex } from '../../core/content-index.js';
 
 /**
  * The `atomicanimations.ini` `event <at> <type> <value>` channel ids — the numbered need bar a timed event
- * restores or drains. Verified across the real IR (`..._eat_slot_food` carries `event 30 2 +4000`, `..._sleep`
- * `event <at> 1 +100`, `..._enjoy`/`..._make_love` `event <at> 3 +800`, `..._pray` `event <at> 4 +800`);
+ * restores or drains. Verified across the real IR (`..._eat_slot_food` carries `event 30 2 +4000`,
+ * `..._civilist_sleep` `event <at> 1 +4000`, `..._enjoy`/`..._make_love` `event <at> 3 +800`, `..._pray`
+ * `event <at> 4 +800`);
  * {@link atomicEventChannelDelta} looks them up. The wider `type` vocabulary (sounds/cues/yields at ids 8..36)
  * stays an undocumented render/effect channel space.
  *
