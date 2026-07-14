@@ -1,4 +1,5 @@
 import type { ArmorType, ContentSet } from '@open-northland/data';
+import { groupByKey } from './group.js';
 
 /**
  * An {@link ArmorType}'s coarse armor class — its extracted `mainType` (`1` = light/cloth+leather, `2` =
@@ -29,15 +30,7 @@ export function armorClassOf(armor: ArmorType): number | undefined {
  * on it. A display consumer wanting id order must sort the keys itself.
  */
 export function armorByClass(content: ContentSet): Map<number, ArmorType[]> {
-  const byClass = new Map<number, ArmorType[]>();
-  for (const armor of content.armor) {
-    const cls = armorClassOf(armor);
-    if (cls === undefined) continue; // no class — drop it (real data has none)
-    const bucket = byClass.get(cls);
-    if (bucket === undefined) byClass.set(cls, [armor]);
-    else bucket.push(armor);
-  }
-  return byClass;
+  return groupByKey(content.armor, armorClassOf);
 }
 
 /**
@@ -79,13 +72,5 @@ export function armorWeightOf(armor: ArmorType): number {
  * a consumer wanting id order must sort the keys itself.
  */
 export function armorByMaterial(content: ContentSet): Map<number, ArmorType[]> {
-  const byMaterial = new Map<number, ArmorType[]>();
-  for (const armor of content.armor) {
-    const tier = armorMaterialOf(armor);
-    if (tier === undefined) continue; // no material tier — drop it (real data has none)
-    const bucket = byMaterial.get(tier);
-    if (bucket === undefined) byMaterial.set(tier, [armor]);
-    else bucket.push(armor);
-  }
-  return byMaterial;
+  return groupByKey(content.armor, armorMaterialOf);
 }

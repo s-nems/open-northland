@@ -1,4 +1,5 @@
 import type { ContentSet, WeaponType } from '@open-northland/data';
+import { groupByKey } from './group.js';
 
 // Pure, terminal read views for the weapon/armor class taxonomy — the data-defined predicates, field
 // accessors, and groupings that classify the two combat tables by the extracted
@@ -76,15 +77,7 @@ export function weaponWeightOf(weapon: WeaponType): number {
  * a display consumer wanting id order sorts the keys itself.
  */
 export function weaponsByClass(content: ContentSet): Map<number, WeaponType[]> {
-  const byClass = new Map<number, WeaponType[]>();
-  for (const weapon of content.weapons) {
-    const cls = weaponClassOf(weapon);
-    if (cls === undefined) continue; // no class — drop it (real data has none)
-    const bucket = byClass.get(cls);
-    if (bucket === undefined) byClass.set(cls, [weapon]);
-    else bucket.push(weapon);
-  }
-  return byClass;
+  return groupByKey(content.weapons, weaponClassOf);
 }
 
 /**
@@ -98,15 +91,7 @@ export function weaponsByClass(content: ContentSet): Map<number, WeaponType[]> {
  * omitted. Iteration order is first-appearance, not ascending by job id (like {@link weaponsByClass}).
  */
 export function weaponsByJob(content: ContentSet): Map<number, WeaponType[]> {
-  const byJob = new Map<number, WeaponType[]>();
-  for (const weapon of content.weapons) {
-    const job = weapon.jobType;
-    if (job === undefined) continue; // no wielding job — drop it (real data has none)
-    const bucket = byJob.get(job);
-    if (bucket === undefined) byJob.set(job, [weapon]);
-    else bucket.push(weapon);
-  }
-  return byJob;
+  return groupByKey(content.weapons, (weapon) => weapon.jobType);
 }
 
 /**
