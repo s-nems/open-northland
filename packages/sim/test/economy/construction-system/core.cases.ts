@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Building, Health, Stockpile, UnderConstruction } from '../../../src/components/index.js';
 import { fx, ONE, Simulation } from '../../../src/index.js';
+import { advanceConstructionLabor } from '../../../src/systems/economy/construction.js';
 import { constructionSystem } from '../../../src/systems/index.js';
 
 import {
@@ -78,6 +79,22 @@ describe('constructionSystem', () => {
     constructionSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(e, Building).built).toBe(ONE);
     expect(sim.world.get(e, Health).hitpoints).toBe(HOUSE_MAX_HP);
+  });
+
+  it('clamps each swing at the delivered fraction, so built never jumps at a delivery', () => {
+    const sim = new Simulation({ seed: 1, content: constructionContent() });
+    const e = placeSite(sim, HOUSE, { [STONE]: 1 }); // 1 of 3 units on hand
+    const ctx = ctxOf(sim);
+    // Hammer far more swings than the material on hand backs: labor must stop EXACTLY at the delivered
+    // fraction — the truncated per-swing quantum must not park it a hair above (that overshoot is what
+    // made `built` visibly jump the instant the next material landed instead of at a swing).
+    const delivered = fx.div(ONE, fx.fromInt(3));
+    for (let i = 0; i < 24; i++) advanceConstructionLabor(sim.world, ctx, e);
+    expect(sim.world.get(e, UnderConstruction).labor).toBe(delivered);
+    // More material lands: the cap rises but labor doesn't — built holds until the next swing.
+    sim.world.get(e, Stockpile).amounts.set(STONE, 2);
+    constructionSystem(sim.world, ctx);
+    expect(sim.world.get(e, Building).built).toBe(delivered);
   });
 
   it('finishes a free (empty-cost) building immediately — no labor needed', () => {

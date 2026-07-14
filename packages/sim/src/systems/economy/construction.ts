@@ -180,7 +180,8 @@ const STRIKES_PER_UNIT = 4;
  * applied by the AtomicSystem when a builder completes a build swing. A swing is one hammer STRIKE:
  * `ONE / (totalConstructionUnits · STRIKES_PER_UNIT)` of the build, so a site rises a little per strike and
  * the strike COUNT scales with the building's size via its cost (see {@link STRIKES_PER_UNIT}); clamped so
- * `labor` never exceeds ONE. A free (empty-cost) type has nothing to install — a single swing completes it.
+ * `labor` never exceeds the delivered-material fraction (nor ONE) — a swing can only install material that
+ * is actually on hand. A free (empty-cost) type has nothing to install — a single swing completes it.
  * A no-op on a building that is no longer a construction site (finished this tick, or demolished): the swing
  * struck a building that no longer needs raising. Determinism: a fixed per-swing quantum, no RNG.
  */
@@ -192,6 +193,12 @@ export function advanceConstructionLabor(world: World, ctx: SystemContext, site:
   // stalling on a quantum that truncated to zero: `trunc(ONE / totalStrikes)` floors to 0 once
   // `totalStrikes > ONE`. Inert for real content (a 6-unit home's quantum is ~2730), so goldens hold.
   const quantum = totalStrikes > 0 ? (Math.max(1, fx.div(ONE, fx.fromInt(totalStrikes))) as Fixed) : ONE;
+  // Cap the swing at the delivered-material fraction: quantum truncation would otherwise park `labor` a
+  // hair ABOVE `delivered`, and `built = min(labor, delivered)` then jumps the moment the next material
+  // lands instead of when a swing lands (the reported "grows on delivery"). With the cap, `built` always
+  // equals `labor` while rising, so the % moves only as hammer swings complete.
+  const delivered = deliveredConstructionFraction(world, ctx, site);
+  const cap = delivered < ONE ? delivered : ONE;
   const advanced = fx.add(uc.labor, quantum);
-  uc.labor = (advanced > ONE ? ONE : advanced) as Fixed;
+  uc.labor = (advanced > cap ? cap : advanced) as Fixed;
 }
