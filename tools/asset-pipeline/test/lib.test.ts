@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { decodeLib, encodeLib, filenameChecksum, findLibFile } from '../src/decoders/lib.js';
+import { bytesOf, le32 } from './support/bytes.js';
 
 /**
  * `.lib` archive decoder tests. No copyrighted fixtures are committed: we synthesize an archive
@@ -7,11 +8,6 @@ import { decodeLib, encodeLib, filenameChecksum, findLibFile } from '../src/deco
  * payloads. The shape mirrors the real `data0001.lib` inspected during Phase 1 (version 1, groups
  * like `data\`, files keyed by backslash paths).
  */
-
-const bytesOf = (...vals: number[]): Uint8Array => Uint8Array.from(vals);
-
-/** Little-endian u32 as 4 bytes (for hand-building a malformed directory). */
-const le32 = (v: number): number[] => [v & 0xff, (v >>> 8) & 0xff, (v >>> 16) & 0xff, (v >>> 24) & 0xff];
 
 describe('filenameChecksum', () => {
   it('is the mod-256 sum of lowercased ASCII byte values', () => {

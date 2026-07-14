@@ -1,11 +1,11 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { type Bmd, BOB_TYPE_DOUBLE8BIT, encodeBmd, PACKED_X_SHIFT } from '../src/decoders/bmd/index.js';
+import { type Bmd, BOB_TYPE_DOUBLE8BIT, encodeBmd } from '../src/decoders/bmd/index.js';
 import type { BmdPaletteBinding, PaletteAlias } from '../src/decoders/ini.js';
 import { decodePng, encodePng } from '../src/decoders/png.js';
 import { bmdToAtlas, convertBmdTree } from '../src/stages/bmd/index.js';
-import { sampleBmdBytes } from './fixtures/bmd.js';
+import { packLineControl, sampleBmdBytes } from './fixtures/bmd.js';
 import { rampPalette } from './fixtures/palette.js';
 import { samplePcx } from './fixtures/pcx.js';
 import { makeTempDir } from './support/game-tree.js';
@@ -49,7 +49,7 @@ describe('bmdToAtlas', () => {
       generatedPackedLines: 0,
       bobs: [{ type: BOB_TYPE_DOUBLE8BIT, area: { x: 0, y: 0, width: 2, height: 1 }, misc: 0 }],
       packedLineData: Uint8Array.from([0x02, 4, 0x60, 8, 0xff, 0x00]),
-      lineControl: Uint32Array.from([(0 << PACKED_X_SHIFT) | 0]),
+      lineControl: Uint32Array.from([packLineControl(0, 0)]),
     };
     const bytes = encodeBmd(bmd);
     const graded = bmdToAtlas(bytes, rampPalette());
@@ -215,7 +215,7 @@ describe('convertBmdTree build-time bake', () => {
       generatedPackedLines: 0,
       bobs: [{ type: BOB_TYPE_DOUBLE8BIT, area: { x: 0, y: 0, width: 1, height: 1 }, misc: 0 }],
       packedLineData: Uint8Array.from([0x01, 4, 0x40, 0x00]),
-      lineControl: Uint32Array.from([(0 << PACKED_X_SHIFT) | 0]),
+      lineControl: Uint32Array.from([packLineControl(0, 0)]),
     };
     await mkdir(join(out, 'Data', 'Pal'), { recursive: true });
     await mkdir(join(out, 'Data', 'Bobs'), { recursive: true });
