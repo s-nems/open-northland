@@ -5,7 +5,13 @@ import { PRIMARY_TRIBE } from '../../../game/rules.js';
 import { entityById, isBuilding, isSettler, num, ownerPlayerOf } from '../../../game/snapshot.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import { pct } from './bars.js';
-import { type BuildingPanelModel, productionModel, stockRows, workerSlotsFor } from './building.js';
+import {
+  type BuildingPanelModel,
+  constructionModel,
+  productionModel,
+  stockRows,
+  workerSlotsFor,
+} from './building.js';
 import {
   buildingDef,
   buildingTitle,
@@ -35,6 +41,8 @@ import {
 export { type BarTone, barTone, type PanelBar } from './bars.js';
 export type {
   BuildingPanelModel,
+  ConstructionModel,
+  ConstructionRow,
   ProductionModel,
   StockRow,
   WorkerSlotRow,
@@ -117,6 +125,7 @@ export function buildUnitPanelModel(
       // live at `housewindow` 140–143 ("Rozpocznij/Zatrzymaj Tryb Obrony", "Obrona rozpoczęta/zakończona.").
       defenseLabel: messages().hud.defenseStopped,
       production: productionModel(ctx, snapshot, def, ent),
+      construction: constructionModel(ctx, def, ent),
     };
   }
 

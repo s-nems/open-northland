@@ -74,4 +74,33 @@ describe('details panel layout', () => {
     expect(home.panel.h).toBeLessThan(farm.panel.h);
     expect(farm.panel.h).toBeLessThan(hq.panel.h);
   });
+
+  it('swaps to the Construction window while a site rises — no production/stock/workers sections', () => {
+    const screen = { width: 1600, height: 1200 };
+    const model = buildUnitPanelModel(
+      {
+        tick: 0,
+        events: [],
+        entities: [
+          {
+            id: 1,
+            components: {
+              Building: { buildingType: BUILDING_FARM, tribe: 1, built: 0, level: 0 },
+              UnderConstruction: { labor: 0 },
+              Stockpile: { amounts: [] },
+            },
+          },
+        ],
+      },
+      new Set([1]),
+      sandboxCtx(),
+    );
+    const site = layoutDetails(model, screen, 1);
+    if (site?.kind !== 'building') throw new Error('expected a building layout');
+    expect(site.construction).not.toBeNull();
+    expect(site.production).toBeNull();
+    expect(site.stock).toBeNull();
+    expect(site.stockTabHits).toHaveLength(0);
+    expect(site.workers).toBeNull();
+  });
 });

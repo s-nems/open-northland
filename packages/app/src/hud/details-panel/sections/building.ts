@@ -53,6 +53,8 @@ const STOCK_AMOUNT_INSET = 6;
 /** Where the production row's long progress bar starts (design px) — a fixed label column that fits the
  *  output icon + a localized name like "Pszenica x1"; the bar fills the rest of the row's width. */
 const PRODUCTION_BAR_LEFT = 128;
+/** Where the construction gauge starts (design px) — a narrow label column that fits the "100%" text. */
+const CONSTRUCTION_BAR_LEFT = 40;
 /** The active stock tab's lime underline height in design px (kept ≥2 screen px so it reads at uiscale 1). */
 const STOCK_TAB_UNDERLINE_H = 2;
 
@@ -102,6 +104,52 @@ export function drawBuilding(
       ui('housewindow', BUTTON_STRING[hit.action], buttonFallback(hit.action)),
       hover === hit.action,
     );
+  }
+
+  if (layout.construction !== null && model.construction !== null) {
+    // The Construction window of a site: the health gauge that ramps with the build (the sim raises
+    // hitpoints in step with `built`) beside the numeric %, then one stock-style row per material line
+    // reading "delivered / needed". No extracted title exists for a site window — 'Construction' is a
+    // named approximation (English pending the i18n pass), like 'Produkcja'.
+    chrome.window(layout.construction.frame);
+    chrome.headline(layout.construction.title, 'Construction');
+    const body = layout.construction.body;
+    const rowH = Math.round(STOCK_ROW_H * s);
+    chrome.textAt(`${model.builtPct}%`, body.x, body.y + ROW_TEXT_PAD * s, 'white');
+    const barX = body.x + Math.round(CONSTRUCTION_BAR_LEFT * s);
+    chrome.bar(
+      {
+        x: barX,
+        y: body.y + Math.round((STOCK_ROW_H - BAR_H) * s) / 2,
+        w: body.x + body.w - barX,
+        h: Math.round(BAR_H * s),
+      },
+      model.construction.hpPct ?? model.builtPct,
+      'gauge',
+    );
+    model.construction.rows.forEach((row, i) => {
+      const rowY = body.y + (i + 1) * rowH;
+      const icon: Rect = {
+        x: body.x,
+        y: rowY + Math.round(s),
+        w: Math.round(STOCK_ICON_W * s),
+        h: rowH - Math.round(2 * s),
+      };
+      const plate: Rect = {
+        x: body.x + icon.w,
+        y: rowY + Math.round((STOCK_ROW_H - STOCK_PLATE_H) * s) / 2,
+        w: Math.round(body.w / 2),
+        h: Math.round(STOCK_PLATE_H * s),
+      };
+      chrome.stockField(plate);
+      if (row.goodId !== undefined) chrome.goodIcon(row.goodId, icon);
+      chrome.textLeftMiddle(
+        stockAmount(row.delivered, row.needed),
+        plate.x + Math.round(STOCK_AMOUNT_INSET * s),
+        plate.y + plate.h / 2,
+        'white',
+      );
+    });
   }
 
   if (layout.defence !== null) {
@@ -239,14 +287,18 @@ export function drawBuilding(
     }
   }
 
-  chrome.window(layout.workers.frame);
-  chrome.headline(layout.workers.title, ui('housewindow', HOUSEWINDOW.workers, messages().hud.workers));
-  const body = layout.workers.body;
-  // The per-trade limits are ONE compact strip right under the header ("Kowal 1/3 · Tragarz 1/1 ·
-  // Zbieracz 0/1"), leaving the field BELOW free for the animated worker sprites (drawn on-map style,
-  // without terrain, by the panel's own sprite pass — see panel.ts). The limits use `s`-scaled row pad.
-  const limits = model.workerSlots.map((r) => `${r.label} ${r.filled}/${r.capacity}`).join('  ·  ');
-  if (limits.length > 0) chrome.textAt(limits, body.x, body.y + ROW_TEXT_PAD * s, 'dimmed');
+  // A rising site's panel drops the workers window (the crew shows in the Construction window instead),
+  // so `layout.workers` is null then — guard it. Otherwise the finished building's workers strip.
+  if (layout.workers !== null) {
+    chrome.window(layout.workers.frame);
+    chrome.headline(layout.workers.title, ui('housewindow', HOUSEWINDOW.workers, messages().hud.workers));
+    const body = layout.workers.body;
+    // The per-trade limits are ONE compact strip right under the header ("Kowal 1/3 · Tragarz 1/1 ·
+    // Zbieracz 0/1"), leaving the field BELOW free for the animated worker sprites (drawn on-map style,
+    // without terrain, by the panel's own sprite pass — see panel.ts). The limits use `s`-scaled row pad.
+    const limits = model.workerSlots.map((r) => `${r.label} ${r.filled}/${r.capacity}`).join('  ·  ');
+    if (limits.length > 0) chrome.textAt(limits, body.x, body.y + ROW_TEXT_PAD * s, 'dimmed');
+  }
 }
 
 /**
