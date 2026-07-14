@@ -1,6 +1,5 @@
 import { Container, Graphics } from 'pixi.js';
 import { messages } from '../../i18n/index.js';
-import type { TextRun } from '../bitmap-text.js';
 import {
   drawBevel,
   drawCloseX,
@@ -15,6 +14,7 @@ import {
   WOOD_FILL,
 } from '../chrome.js';
 import { contains, type Rect } from '../geometry.js';
+import type { TextRun } from '../text-run.js';
 import {
   type BuildingCategory,
   type BuildingMenuLayout,

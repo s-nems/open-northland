@@ -9,6 +9,7 @@ import {
   goodDef,
   goodLabel,
   jobDisplayName,
+  recipeOutputs,
   type UnitPanelModelContext,
 } from './context.js';
 
@@ -281,7 +282,7 @@ export function productionModel(
     };
   }
   const production = ent.components.Production as { cycles?: unknown } | undefined;
-  const outputs = recipe?.outputs ?? def?.produces?.map((goodType) => ({ goodType, amount: 1 })) ?? [];
+  const outputs = recipeOutputs(def);
   if (production === undefined && recipe === undefined && outputs.length === 0) return null;
   const out = outputs.map((o) => `${goodLabel(ctx, o.goodType)} x${o.amount}`).join(', ');
   const firstOutId = outputs[0] === undefined ? undefined : goodDef(ctx, outputs[0].goodType)?.id;

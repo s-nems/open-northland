@@ -1,15 +1,8 @@
 import type { Command } from '@open-northland/sim';
-import { type Container, Graphics } from 'pixi.js';
+import type { Container } from 'pixi.js';
 import { formatMessage, messages } from '../../i18n/index.js';
-import type { TextRun } from '../bitmap-text.js';
-import { drawWindowPanel, WIN_PAD, WIN_TITLE_H } from '../chrome.js';
 import type { PanelContext } from './context.js';
-
-/** Placement banner width (design px) — fits "<label> - klik: postaw, Esc: anuluj" in font10. */
-const BANNER_WIDTH = 260;
-/** Banner top offset + text inset (design px). */
-const BANNER_OFFSET_Y = 2;
-const BANNER_TEXT_INSET_Y = 3;
+import { createHeldItemBanner } from './held-item-banner.js';
 
 export interface PlacementDeps {
   readonly ctx: PanelContext;
@@ -54,21 +47,14 @@ export interface PlacementController {
 /** Build the placement controller: the mode flag, the "klik: postaw, Esc: anuluj" banner, and the drop. */
 export function createPlacementController(deps: PlacementDeps): PlacementController {
   const { ctx } = deps;
-  const { scale } = ctx;
 
   let placementType: number | null = null;
-  const graphics = new Graphics();
-  deps.container.addChild(graphics);
-  let bannerRun: TextRun | null = null;
-
-  const bannerX = (): number => ctx.layout.width + WIN_PAD * scale;
+  const banner = createHeldItemBanner(ctx, deps.container);
 
   /** Leave build mode: clear the flag + banner (shared by cancel and a landed placement). */
   const exitPlacement = (): void => {
     placementType = null;
-    graphics.clear();
-    bannerRun?.destroy();
-    bannerRun = null;
+    banner.clear();
   };
 
   return {
@@ -76,20 +62,8 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
     activeType: () => placementType,
     enter: (typeId): void => {
       placementType = typeId;
-      graphics.clear();
-      bannerRun?.destroy();
       const label = deps.labelByType.get(typeId) ?? `#${typeId}`;
-      const rect = {
-        x: bannerX(),
-        y: BANNER_OFFSET_Y * scale,
-        w: BANNER_WIDTH * scale,
-        h: (WIN_TITLE_H + WIN_PAD) * scale,
-      };
-      drawWindowPanel(graphics, rect, scale);
-      bannerRun = ctx.makeText(formatMessage(messages().hud.placementHint, { label }), 'white');
-      deps.container.addChild(bannerRun.container);
-      const { width: rw, height: rh } = ctx.screen();
-      bannerRun.place(rect.x + WIN_PAD * scale, rect.y + BANNER_TEXT_INSET_Y * scale, scale, rw, rh);
+      banner.show(formatMessage(messages().hud.placementHint, { label }));
     },
     cancel: exitPlacement,
     handleClick: (clientX, clientY): boolean => {
@@ -113,17 +87,6 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
       }
       return true;
     },
-    // Inset the banner text by WIN_PAD to match the position set on enter.
-    placeBanner: (): void => {
-      if (bannerRun === null) return;
-      const { width: rw, height: rh } = ctx.screen();
-      bannerRun.place(
-        bannerX() + WIN_PAD * scale,
-        (BANNER_OFFSET_Y + BANNER_TEXT_INSET_Y) * scale,
-        scale,
-        rw,
-        rh,
-      );
-    },
+    placeBanner: () => banner.place(),
   };
 }

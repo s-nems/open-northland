@@ -1,8 +1,8 @@
 import { type Container, Graphics } from 'pixi.js';
 import { messages } from '../../i18n/index.js';
-import type { TextRun } from '../bitmap-text.js';
 import { drawCloseX, drawWindowPanel, HOVER_ALPHA, HOVER_TINT, WIN_PAD } from '../chrome.js';
 import { contains } from '../geometry.js';
+import type { TextRun } from '../text-run.js';
 import type { PanelContext } from './context.js';
 import { type GoodsMenuLayout, hitTestGoodsMenu, layoutGoodsMenu, type MenuGoodEntry } from './goods-menu.js';
 

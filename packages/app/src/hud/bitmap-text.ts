@@ -10,6 +10,7 @@ import {
   loadFontIndexed,
   loadFontMetrics,
 } from '../content/font-gfx.js';
+import type { TextRun } from './text-run.js';
 
 /**
  * A glyph-run drawer for the decoded `.fnt` bitmap fonts — the first runtime consumer of the pipeline's
@@ -123,17 +124,6 @@ function glyphFor(font: BitmapFont, codepoint: number): GlyphMetric | undefined 
 interface RunGlyph {
   readonly sprite: PalettedSprite;
   readonly penX: number;
-}
-
-/** A retained, re-placeable line of HUD text — bitmap glyphs when the `.fnt` is loaded, else a Pixi `Text`. */
-export interface TextRun {
-  /** Parent this under the panel's window/menu container for draw order (position is via {@link place}). */
-  readonly container: Container;
-  /** The run's advance width in native font px (multiply by the place scale for screen px) — for centering. */
-  readonly width: number;
-  /** Anchor the run's top-left at screen `(x, y)`, drawn at `scale` px per native pixel. */
-  place(x: number, y: number, scale: number, resWidth: number, resHeight: number): void;
-  destroy(): void;
 }
 
 /**

@@ -1,9 +1,9 @@
 import type { HudLayout } from '@open-northland/render';
 import { type Container, Graphics } from 'pixi.js';
 import { messages } from '../../i18n/index.js';
-import type { TextRun } from '../bitmap-text.js';
 import { drawWindowPanel, WIN_LINE_H, WIN_PAD, WIN_TITLE_H } from '../chrome.js';
 import { contains, type Rect } from '../geometry.js';
+import type { TextRun } from '../text-run.js';
 import type { PanelContext } from './context.js';
 
 /** Stats window width (design px) — sized to the read-view's longest tally rows. */

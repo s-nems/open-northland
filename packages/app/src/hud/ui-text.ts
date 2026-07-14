@@ -1,7 +1,7 @@
 import { Container, Text } from 'pixi.js';
 import type { FontColorName } from '../content/font-gfx.js';
-import { UI_TEXT_FILL } from '../content/ui-font.js';
-import type { TextRun } from './bitmap-text.js';
+import { CAP_TOP_RATIO, UI_TEXT_FILL } from '../content/ui-font.js';
+import type { TextRun } from './text-run.js';
 
 /**
  * The HUD's default text face: the bundled vector serif (`content/ui-font.ts`, "Tinos") drawn as Pixi
@@ -15,13 +15,6 @@ import type { TextRun } from './bitmap-text.js';
 
 /** Default text size in design px (scaled by uiscale). Matches the details panel's body size. */
 export const UI_TEXT_PX = 11;
-/**
- * A `Text` top-anchors at its line box top, which sits this fraction of the font size above the visible cap
- * tops (measured for Tinos: `fontBoundingBoxAscent − actualBoundingBoxAscent ≈ 0.22 em`). {@link TextRun.place}
- * subtracts it so a caller's `y` means the visible glyph top — matching the bitmap path's baseline contract.
- */
-const CAP_TOP_RATIO = 0.22;
-
 /**
  * Build a retained {@link TextRun} in the vector UI font at `basePx * scale`. Placement positions the run's
  * visible cap-top at `(x, y)` (the `resWidth`/`resHeight` args are ignored — a stage-space `Text` needs no

@@ -31,7 +31,7 @@ export interface Comp {
  * (`catalog/professions.ts` + `i18n/`), so a settler's label always matches the picker's. Any soldier-band
  * job reads "Żołnierz"; idle/unknown falls back to the localized "Bezrobotny".
  */
-export function jobLabel(jobType: number | undefined): string {
+function jobLabel(jobType: number | undefined): string {
   const def = professionDefForJob(jobType);
   if (def !== undefined) return professionLabel(def.key);
   return professionLabel('idle');
@@ -40,6 +40,12 @@ export function jobLabel(jobType: number | undefined): string {
 export function buildingDef(ctx: UnitPanelModelContext, typeId: number | undefined): BuildingDef | undefined {
   if (typeId === undefined) return undefined;
   return ctx.buildings.find((b) => b.typeId === typeId);
+}
+
+/** A building def's production outputs: its recipe outputs, else a unit-amount entry per `produces` good,
+ *  else empty — the one source the settler Praca product and the building Produkcja list must agree on. */
+export function recipeOutputs(def: BuildingDef | undefined): { goodType: number; amount: number }[] {
+  return def?.recipe?.outputs ?? def?.produces?.map((goodType) => ({ goodType, amount: 1 })) ?? [];
 }
 
 export function buildingTitle(ctx: UnitPanelModelContext, typeId: number | undefined): string {

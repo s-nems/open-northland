@@ -7,12 +7,12 @@ import {
   type ActionGroup,
   actionRingScale,
   BOTTOM_ARM,
-  HUMAN_DEFAULT_MENU,
   hitTestActionRing,
   layoutActionRing,
   type PlacedActionButton,
   TOP_ARM,
 } from '../src/hud/action-ring-layout.js';
+import { HUMAN_DEFAULT_MENU } from '../src/hud/action-ring-menu.js';
 
 /**
  * Headless tests for the settler ACTION MENU's pure logic — the radial arm footprint transcribed from the
