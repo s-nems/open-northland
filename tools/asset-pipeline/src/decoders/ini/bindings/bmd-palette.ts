@@ -42,10 +42,9 @@ export interface BmdPaletteBinding {
 
 /**
  * A {@link BmdPaletteBinding} plus the record's `EditName` — the shape the `[GfxLandscape]` (map decor)
- * and `[GfxHouse]` (building) graphics bindings share (they are the static-object / house analogs of the
- * `[jobgraphics]` creature binding). The name is provenance + a species/building handle: a render binding
- * picks "yew 01" vs "fir 01", or "viking stock" vs "viking home", by it without re-reading the source, and
- * many records share one body bob recoloured per palette, so the name is the only IR-layer differentiator.
+ * and `[GfxHouse]` (building) bindings share. The name is a species/building handle ("yew 01" vs "fir
+ * 01", "viking stock" vs "viking home"): the only IR-layer differentiator when many records share one
+ * body bob recoloured per palette.
  */
 export interface NamedBmdPaletteBinding extends BmdPaletteBinding {
   /** The record's `EditName` (e.g. `"yew 01"` / `"viking stock"`), or undefined when the record omits it. */
@@ -57,10 +56,10 @@ export interface NamedBmdPaletteBinding extends BmdPaletteBinding {
  * `bobKey`, and the palette editname(s) from `paletteKey`. With `multiPalette` it fans one binding per
  * palette value on the line (a `[GfxHouse]` body carries several skins on one `GfxPalette`); otherwise the
  * first value only. Paths normalize (forward-slash, lower-case); the palette name lower-cases to join
- * case-insensitively onto the alias `name`. A record with no body `.bmd` (nothing to colour) or no palette
- * (unbindable) yields no bindings — never throws, so one malformed entry can't abort the offline batch.
- * Cross-refs read from the lowercase `logictribe`/`logicjob` keys the job schema uses; the CamelCase
- * `[GfxLandscape]`/`[GfxHouse]` sections have no such keys, so both come back undefined there.
+ * case-insensitively onto the alias `name`. A record with no body `.bmd` or no palette yields no
+ * bindings (never throws). Cross-refs read from the lowercase `logictribe`/`logicjob` keys the job
+ * schema uses; the CamelCase `[GfxLandscape]`/`[GfxHouse]` sections have no such keys, so both come back
+ * undefined there.
  */
 export function readBmdPaletteBindings(
   sec: RuleSection,

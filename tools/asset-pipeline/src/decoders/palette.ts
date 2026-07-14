@@ -1,6 +1,6 @@
 /**
  * Standalone `CPalette` decoder — the 256-color palette stored as its own storable (id 0x3F6) in
- * `.cif`/`.lib` object graphs (used by bobs and maps). This is NOT the `.pcx` trailing palette —
+ * `.cif`/`.lib` object graphs (used by bobs and maps). This is not the `.pcx` trailing palette —
  * that one is RGB triples handled in `pcx.ts`; this one is the engine's native `[B,G,R,_]` table.
  *
  * Ported format (not architecture) from OpenVikings `Source/NXBasics/`:

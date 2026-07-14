@@ -27,7 +27,7 @@
  *   - XBStorable.cs storable factory (id 0x3F5 -> `new CFont`; id 0x3F4 -> `new CBobManager`).
  * Referenced at OpenVikings_reversing @ working tree 2026-06.
  *
- * `_spacing` (CFont+0x10) is NOT stored in the file — it is applied externally via `SetSpacing`, defaulting
+ * `_spacing` (CFont+0x10) is not stored in the file — it is applied externally via `SetSpacing`, defaulting
  * to 0 — so the decoded advances use spacing 0 (a caller may pass a spacing to {@link fontMetrics}).
  *
  * Pure functions only (no I/O): `(bytes) => decoded`. The CLI/stage wires file reads + atlas/PNG/JSON

@@ -26,22 +26,14 @@ export interface PaletteAlias {
 }
 
 /**
- * Extracts the `palettes.ini` (`Data/engine2d/inis/palettes/palettes.ini`) `[GfxPalette256]` records
- * into name→`.pcx` palette aliases. This is the first leg of the `.bmd` palette-pairing graph:
- * a graphics record names a bob set's palette by `editname`
- * (`gfxpalettebody "tree01"`), `palettes.ini` resolves that name to a `gfxfile` `.pcx`, and the
- * `.pcx` trailer palette is the colour table {@link import('../pcx.js').decodePcx} already returns.
- *
- * Each record carries exactly one `gfxfile` but the grammar allows several `editname` aliases —
- * every alias is emitted as its own entry pointing at the shared file, so a consumer builds one flat
- * `name -> .pcx` map (the real file has 143 `[GfxPalette256]` records; it also holds 108
- * `[GfxPalette16]` 16-colour sub-palettes built via `gfxcolorrange` with no `.pcx`, which the
- * section-name guard skips). A record missing its `gfxfile` (nothing to resolve to) or with no
- * `editname` (unreferenceable) is skipped rather than throwing: this is an index over many records
- * and one malformed entry must not abort the offline batch. Paths are normalized via
- * {@link normalizeAssetPath} for host-OS/case-independent lookup against the unpacked `--out` tree.
- * The other binding leg (which `.bmd` uses which `editname`) lives mostly in graphics `.cif` records
- * (only `animals/jobgraphics.ini` is readable) and is wired in a later step.
+ * Extracts the `palettes.ini` `[GfxPalette256]` records into name→`.pcx` aliases — the first leg of the
+ * `.bmd`→palette graph (see the file header). Each record carries one `gfxfile` but the grammar allows
+ * several `editname` aliases; every alias is emitted pointing at the shared file, so a consumer builds
+ * one flat `name → .pcx` map (143 records in the real file; the 108 `[GfxPalette16]` sub-palettes built
+ * via `gfxcolorrange` with no `.pcx` are skipped by the section-name guard). A record missing its
+ * `gfxfile` or `editname` is skipped. Paths are normalized ({@link normalizeAssetPath}) for
+ * host-OS/case-independent lookup. The other leg (which `.bmd` uses which `editname`) lives mostly in
+ * graphics `.cif` records and is wired in a later step.
  */
 export function extractPaletteIndex(sections: readonly RuleSection[]): PaletteAlias[] {
   const aliases: PaletteAlias[] = [];

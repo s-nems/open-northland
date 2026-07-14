@@ -4,7 +4,7 @@ import type { FootprintCell, LandscapeBlockArea } from './schema/index.js';
  * Collapse a `[GfxLandscape]`-style block-area table (`[state, x, y, run]` rows — the shape
  * `LogicWalkBlockArea`/`LogicBuildBlockArea` decode to) to the full state's cells: the largest state
  * index is the fresh/full-grown object, and collision is conservatively static at that size (a
- * sapling reserves its grown tree's space). The ONE shared reading of the state axis — the sim's
+ * sapling reserves its grown tree's space). The one shared reading of the state axis — the sim's
  * resource footprints and the app's map-collision join both class by it, so the rule cannot drift
  * between them. Duplicate cells (overlapping run rows) are emitted once; non-positive runs contribute
  * nothing. The schema's four-element tuple makes missing fields unrepresentable.

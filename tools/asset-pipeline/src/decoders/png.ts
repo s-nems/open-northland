@@ -1,17 +1,16 @@
 /**
  * PNG container encoder/decoder — wraps straight 8-bit RGBA pixels in a PNG file (and reads them back).
  *
- * Unlike the other decoders this ports no original game format: PNG is the pipeline's OUTPUT container.
+ * Unlike the other decoders this ports no original game format: PNG is the pipeline's output container.
  * `decodePcx` (and later `decodeBmd`) produce indexed pixels → `expandToRgba` → `encodePng` → a `.png`
  * written under content/. The byte layout follows the PNG spec (W3C / ISO 15948):
  *   signature 89 50 4E 47 0D 0A 1A 0A, then length-prefixed CRC-32'd chunks IHDR, IDAT(s), IEND
  *   (all multi-byte fields big-endian).
  * We emit the simplest conformant stream: 8-bit colour-type-6 (truecolour + alpha), no interlace, every
  * scanline prefixed with filter type 0 (None), the whole filtered image zlib-deflated as one IDAT.
- * `decodePng` is the inverse, used to round-trip `encodePng` without committing real assets — it parses
- * the same minimal shape, verifies each chunk CRC, and reconstructs filter-0 rows. Foreign PNGs that use
- * the other four row filters (1..4) are rejected with a clear `png:` error rather than silently corrupted;
- * the oracle pixel-diff step can extend it to read those when it actually needs to.
+ * `decodePng` is the inverse, used to round-trip `encodePng` without committing real assets. Foreign PNGs
+ * that use the other four row filters (1..4) are rejected with a clear `png:` error rather than silently
+ * corrupted; the oracle pixel-diff step can extend it to read those when needed.
  *
  * Pure functions (no I/O): bytes in, bytes out. zlib is via node:zlib — this is an offline build tool,
  * not the deterministic sim, so Node APIs are fair game here.

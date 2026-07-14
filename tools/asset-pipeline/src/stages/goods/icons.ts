@@ -11,7 +11,7 @@ import { readGameFile } from '../game-file.js';
 
 /**
  * The good→icon join: read the good table (`goodtypes.ini`) + the `[GfxLandscape]` good-pile records
- * (`landscapes.cif`) and resolve, per good STRING id, its state-1 (smallest) pile frame + recolour
+ * (`landscapes.cif`) and resolve, per good string id, its state-1 (smallest) pile frame + recolour
  * palette + growth-state fill frames. The join rule ({@link resolveGoodIcons}) is pure and unit-tested;
  * the readers wrap it with file I/O.
  */
@@ -27,11 +27,11 @@ export const GOODS_ATLAS_STEM = 'ls_goods';
 /** The `editGroups` membership marking a `[GfxLandscape]` record as a good's on-map pile graphic. */
 const GOOD_PILE_GROUP = 'good piles all';
 /**
- * The broader `editGroups` membership marking ANY good's `ls_goods` graphic — the fallback icon source for a
+ * The broader `editGroups` membership marking any good's `ls_goods` graphic — the fallback icon source for a
  * good with no `good piles all` pile record. The potions (bottles, frames 125–129/145–149), amulets (rings,
  * 150–154) and fruit have only a `goods all` record — their own real `ls_goods` graphic + palette — never a
  * dedicated pile, so keying on it recovers a faithful bottle/ring/fruit icon instead of the neutral wood
- * fallback. A good WITH a pile record keeps it (piles preferred), so the 42 already-bound goods don't move.
+ * fallback. A good with a pile record keeps it (piles preferred), so the 42 already-bound goods don't move.
  */
 const GOOD_ITEM_GROUP = 'goods all';
 /** The pile growth state whose frame the storehouse row uses as the compact good icon (smallest unit). */
@@ -44,7 +44,7 @@ export interface GoodIcon {
   /** The recolor palette name (a goods-LUT `palettes` row). */
   readonly palette: string;
   /**
-   * The pile's growth-state bobs ordered FEWEST→MOST units (state 1 → N; an `ls_goods` pile carries up to
+   * The pile's growth-state bobs ordered fewest→most units (state 1 → N; an `ls_goods` pile carries up to
    * 5 states). The on-map dropped heap indexes these by its fill amount so the pile visibly grows with its
    * contents; `frame` is `fillFrames[0]` (state 1), the smallest single-unit heap the storehouse row uses.
    */
@@ -66,7 +66,7 @@ interface PileGfxLike {
 }
 
 /**
- * Join goods onto the `[GfxLandscape]` good-pile records to produce, per good STRING id, its state-1
+ * Join goods onto the `[GfxLandscape]` good-pile records to produce, per good string id, its state-1
  * (smallest, single-unit) pile frame + recolor palette. Pure (no I/O), so the join rule is unit-tested.
  * A good with no on-map pile record — or a pile record with no palette / no frames — is omitted (no icon).
  */
@@ -75,9 +75,9 @@ export function resolveGoodIcons(
   landscapeGfx: readonly PileGfxLike[],
 ): Record<string, GoodIcon> {
   // `ls_goods` records indexed by `logicType` (the good's `landscapeType`), split by group: the dedicated
-  // PILE record (`good piles all`) is preferred, the broader ITEM record (`goods all`) is the fallback for a
+  // pile record (`good piles all`) is preferred, the broader item record (`goods all`) is the fallback for a
   // good with no pile (potions/amulets/fruit). First-wins is deterministic — `extractLandscapeGfx` preserves
-  // file order, and a landscape type has one canonical record per group. A pile record is usually ALSO in
+  // file order, and a landscape type has one canonical record per group. A pile record is usually also in
   // `goods all`, so both maps may hold it; preferring the pile map keeps the already-bound goods unchanged.
   const pileByLogic = new Map<number, PileGfxLike>();
   const itemByLogic = new Map<number, PileGfxLike>();

@@ -14,7 +14,7 @@
  *   fileCount  × { u32 nameLen; nameLen ASCII bytes; u32 position; u32 size }
  *   ... file payloads: each is `size` bytes at absolute `position` from the start of the archive.
  *
- * Names are backslash paths (e.g. `data\logic\goodtypes.cif`). The on-disk record does NOT store
+ * Names are backslash paths (e.g. `data\logic\goodtypes.cif`). The on-disk record does not store
  * a checksum — the original recomputes it from the (lowercased) name and uses it as the lookup key
  * (`GetEntryId`: filter by checksum, then case-insensitive name compare).
  *

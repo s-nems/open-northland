@@ -9,7 +9,7 @@ import {
 import { findPathCaseInsensitive } from './case-path.js';
 
 /**
- * The emitted `maps/<id>.meta.json` sidecar: the map's menu-facing display strings, resolved to ONE
+ * The emitted `maps/<id>.meta.json` sidecar: the map's menu-facing display strings, resolved to one
  * language (see {@link MAP_TEXT_LANGS}). Written only when the map folder carries a string table.
  */
 export interface MapMetaFile {
@@ -20,13 +20,13 @@ export interface MapMetaFile {
 }
 
 /**
- * Language preference for the emitted {@link MapMetaFile} (the menu shows ONE language): the
+ * Language preference for the emitted {@link MapMetaFile} (the menu shows one language): the
  * culturesnation mod is Polish-authored, so `pol` first, `eng` as the fallback.
  */
 const MAP_TEXT_LANGS = ['pol', 'eng'] as const;
 
 /**
- * String-table ids of the map name/description when NO header names them (no readable `misc.inc`/
+ * String-table ids of the map name/description when no header names them (no readable `misc.inc`/
  * `map.ini` and no `map.cif`). Source basis: observed — 87 of the 113 readable `[misc_mapname]`
  * headers in the owned copy say `0`/`1`; the rest override (24× `99`/`98`, 1× `40`/`41`, plus the
  * tutorial/military `map.cif`s at `99`/`98`), which is why the header is consulted first.
@@ -51,7 +51,7 @@ function sectionInt(sections: readonly RuleSection[], key: string): number | und
 
 /**
  * Resolves which string-table ids carry the map's name/description. The `[misc_mapname]` header ships
- * in three forms; per golden rule #4 the READABLE ones win: the split `misc.inc` (111 of the owned
+ * in three forms; per golden rule #4 the readable ones win: the split `misc.inc` (111 of the owned
  * copy's map folders), the monolithic `map.ini` (2 folders, e.g. `oasis_o_plenty`), then the encrypted
  * `map.cif`'s sections (the tutorial/military maps are `.cif`-only — pass the already-decoded sections
  * in; this module never re-decodes the cif). A map with no header at all keeps the observed

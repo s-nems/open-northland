@@ -70,7 +70,7 @@ export function decodePcx(bytes: Uint8Array): PcxImage {
 
   const alignedRowBytes = (width + 1) & ~1;
   const pixels = new Uint8Array(width * height);
-  // Reused across rows and intentionally NOT cleared: well-formed data refills it fully each row;
+  // Reused across rows and intentionally not cleared: well-formed data refills it fully each row;
   // truncated data leaks the previous row's tail, exactly as the original's shared rowBuffer does.
   const row = new Uint8Array(alignedRowBytes);
   let src = HEADER_BYTES;

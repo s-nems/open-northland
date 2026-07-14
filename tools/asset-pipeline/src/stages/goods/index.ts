@@ -17,15 +17,15 @@ export { resolveGoodIcons } from './icons.js';
 export { resolveGoodNames } from './names.js';
 
 /**
- * GOODS-ICON extraction stage — the per-good resource icons the HUD draws (storehouse rows, the carry
+ * Goods-icon extraction stage — the per-good resource icons the HUD draws (storehouse rows, the carry
  * indicator, anywhere a good is named with its glyph). Unlike the tool-panel/order-icon art (that lives in
- * `ls_gui_window.bmd`, handled by the GUI stage), a good's icon is its ON-MAP PILE graphic: the engine
+ * `ls_gui_window.bmd`, handled by the GUI stage), a good's icon is its on-map pile graphic: the engine
  * shares one monochrome bob sheet — `Data/engine2d/bin/bobs/ls_goods.bmd` (155 bobs, 5 growth states per
  * good) — and recolours it per good through a `goods_*`/landscape `.pcx` palette. So a good maps to a
  * (frame index, recolor palette), not to a unique pre-rendered bitmap. It reuses the same machinery as the
  * GUI stage:
  *
- *  - **Atlas art.** `ls_goods.bmd` becomes (a) an **indexed** atlas (`packIndexedBobAtlas` — palette index
+ *  - **Atlas art.** `ls_goods.bmd` becomes (a) an indexed atlas (`packIndexedBobAtlas` — palette index
  *    in red, mask in alpha) the app colours per good at draw time through the goods palette LUT, plus (b) an
  *    RGBA preview atlas (one default palette) so a human can eyeball it. Both ride the `/bobs/` route.
  *  - **Palettes.** The distinct `goods_*` recolor palettes the good-pile records reference are stacked into
@@ -33,20 +33,16 @@ export { resolveGoodNames } from './names.js';
  *    manifest (`palettes`), so the app resolves palette-name → row from data rather than a hardcoded mirror.
  *  - **Binding.** `goodtypes.ini` (good `landscapeType`) joined onto the `[GfxLandscape]` "good pile" records
  *    (`editGroups` ∋ `"good piles all"`, matched by `logicType`) yields, per good, the state-1 store-icon bob
- *    (`frame`) + ALL growth-state bobs fewest→most (`fillFrames`, the on-map heap grows through them) + its
- *    palette — emitted as `icons: { goodStringId → {frame, palette, fillFrames} }`, keyed by the good's STRING
+ *    (`frame`) + all growth-state bobs fewest→most (`fillFrames`, the on-map heap grows through them) + its
+ *    palette — emitted as `icons: { goodStringId → {frame, palette, fillFrames} }`, keyed by the good's string
  *    id (stable across the sandbox and the extracted IR, which number goods differently).
  *
  * Source basis: the atlas + palettes are decoded original data; the state-1-pile-frame = store-icon choice
  * is observed from the original 1024×768 storehouse (its row icons are each good's smallest pile — a single
- * stone, a small wheat sheaf), not a code-pinned lookup (OpenVikings has no good→icon table). A good binds to
- * its dedicated `good piles all` pile record when it has one (tools/weapons/crockery/armour/food all do),
- * else falls back to its broader `goods all` item record — `fruit`, the six potions (bottles), and the six
- * amulets (rings) have only that, so the fallback binds them instead of leaving them iconless: the
- * potions/amulets recover their own dedicated bottle/ring graphic (recoloured per type), while `fruit`'s
- * `goods all` record reuses BREAD's frames in the source (no distinct fruit art exists). Only the goods sharing
- * `landscapeType 1` with no record at all (prey, sheep, cattle, hand/ox carts, ships, catapult, chest) stay
- * unbound and render iconless.
+ * stone, a small wheat sheaf), not a code-pinned lookup (OpenVikings has no good→icon table). Binding prefers
+ * a good's dedicated `good piles all` record, falling back to its broader `goods all` item record (see
+ * {@link ./icons}). The goods sharing `landscapeType 1` with no record at all (prey, sheep, cattle, hand/ox
+ * carts, ships, catapult, chest) stay unbound and render iconless.
  *
  * Boundary failures are warned-and-skipped, never fatal (matching the other stages). No copyrighted bytes
  * enter the repo — everything lands under the gitignored `content/`.
