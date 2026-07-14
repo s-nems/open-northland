@@ -1,12 +1,15 @@
 import { flatTileColour, terrainMapToScene } from '@open-northland/render';
 import { loadIr } from '../../content/ir.js';
-import { loadMinimapCellColours, MINIMAP_CELL_UNRESOLVED } from '../../content/minimap-ground.js';
+import { cellColourResolver, loadMinimapCellColours } from '../../content/minimap-ground.js';
 import { buildGroundPatternIndex, buildTerrainDebugColourIndex } from '../../content/terrain.js';
 import { rasterizeTerrain, terrainWorldBounds } from '../../hud/minimap/model.js';
 import { loadTerrainMap } from '../../slice/map-loader.js';
 
 const PREVIEW_MAX_WIDTH = 720;
 const PREVIEW_MAX_HEIGHT = 420;
+/** mapId → generated preview URL, memoised so each map rasterises at most once. The blob URLs are
+ *  never revoked — fine because the menu reloads on Start (a full navigation), so this cache and its
+ *  object URLs live for the menu-page lifetime and die with the page rather than accumulating. */
 const previews = new Map<string, Promise<string | null>>();
 
 export function mapPreviewDimensions(
@@ -44,10 +47,8 @@ async function buildMapPreview(mapId: string): Promise<string | null> {
     patternIndex === null ? undefined : { groundFor: (name) => patternIndex.get(name) },
   );
   const typeColours = ir === null ? null : buildTerrainDebugColourIndex(ir);
-  const colourOfCell = (cell: number, typeId: number): number => {
-    const colour = cellColours?.[cell] ?? MINIMAP_CELL_UNRESOLVED;
-    return colour < MINIMAP_CELL_UNRESOLVED ? colour : (typeColours?.get(typeId) ?? flatTileColour(typeId));
-  };
+  const colourOfType = (typeId: number): number => typeColours?.get(typeId) ?? flatTileColour(typeId);
+  const colourOfCell = cellColourResolver(cellColours, colourOfType);
   const { width, height } = mapPreviewDimensions(terrain.width, terrain.height);
   return imageUrl(rasterizeTerrain(terrain, colourOfCell, width, height), width, height);
 }

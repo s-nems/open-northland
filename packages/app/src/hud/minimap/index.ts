@@ -12,7 +12,7 @@ import {
 import { FOG_STATE, type FogView, type WorldSnapshot } from '@open-northland/sim';
 import { type Application, BufferImageSource, Container, Graphics, Sprite, Texture } from 'pixi.js';
 import { PLAYER_SWATCH_COLORS } from '../../catalog/roster.js';
-import { MINIMAP_CELL_UNRESOLVED } from '../../content/minimap-ground.js';
+import { cellColourResolver } from '../../content/minimap-ground.js';
 import { isBuilding, isSettler, ownerPlayerOf, positionOf } from '../../game/snapshot.js';
 import { loadMinimapFrame } from './frame.js';
 import {
@@ -159,14 +159,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   // The static ground image: one whole-map RGBA raster (built once — terrain is static), aspect-fitted
   // into the hole. Colour precedence per cell: baked ground-lane colour → typeId debug colour → flat tint.
   const colourOfType = (typeId: number): number => opts.colourOf?.(typeId) ?? flatTileColour(typeId);
-  const cells = opts.cellColours;
-  const colourOfCell =
-    cells !== undefined
-      ? (cell: number, typeId: number): number => {
-          const v = cells[cell] ?? MINIMAP_CELL_UNRESOLVED;
-          return v < MINIMAP_CELL_UNRESOLVED ? v : colourOfType(typeId);
-        }
-      : (_cell: number, typeId: number): number => colourOfType(typeId);
+  const colourOfCell = cellColourResolver(opts.cellColours, colourOfType);
   const pxW = Math.max(1, Math.round(layout.map.w * RASTER_OVERSAMPLE * app.renderer.resolution));
   const pxH = Math.max(1, Math.round(layout.map.h * RASTER_OVERSAMPLE * app.renderer.resolution));
   const rgba = rasterizeTerrain(terrain, colourOfCell, pxW, pxH);

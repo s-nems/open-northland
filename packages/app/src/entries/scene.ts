@@ -50,7 +50,7 @@ export async function renderSceneMode(
   const app = await createWindowPixiApp(canvas);
   const terrainGrid = terrainMapToScene(scene.terrain);
   // Localized good names follow the app-wide `?lang=` value so the HUD reads from one language setting.
-  // one content source — the shared sim content. Authored names keep a bare checkout localized.
+  // Authored names keep a bare checkout localized.
   const goodNames = await loadGoodNameMap(goodLocaleParam(params));
   // Real extracted building footprints (like the `?map=` entry): browser scenes collide/door/place
   // exactly like the live map view instead of the clean-room class squares. Empty on a bare checkout

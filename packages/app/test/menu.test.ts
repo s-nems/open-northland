@@ -58,10 +58,14 @@ describe('targetSearch', () => {
     expect(MENU_FOG_MODES).toEqual(['off', 'reveal', 'recon']);
   });
 
-  it('starts worlds in classic fog when no mode was selected', () => {
-    expect(targetSearch('?scene=sandbox', new URLSearchParams('lang=pol'))).toBe(
-      '?lang=pol&scene=sandbox&fog=reveal',
+  it('defaults maps to classic fog when no mode was selected', () => {
+    expect(targetSearch('?map=blekiny_nurt', new URLSearchParams('lang=pol'))).toBe(
+      '?lang=pol&map=blekiny_nurt&fog=reveal',
     );
+  });
+
+  it('leaves a scene on its own authored fog when no mode was selected', () => {
+    expect(targetSearch('?scene=sandbox', new URLSearchParams('lang=pol'))).toBe('?lang=pol&scene=sandbox');
   });
 
   it('does not add a fog mode to tools', () => {

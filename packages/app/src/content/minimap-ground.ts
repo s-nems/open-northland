@@ -78,6 +78,25 @@ export function cellColoursFromGround(
   return out;
 }
 
+/**
+ * The minimap cell-colour precedence, shared by the in-game minimap and the menu map preview so both
+ * rasterise a map identically: a baked ground-lane colour (below {@link MINIMAP_CELL_UNRESOLVED}) wins,
+ * else the per-typeId `colourOfType` fills in. Returns the `colourOfCell` callback `rasterizeTerrain`
+ * consumes; a null/absent colour table degrades every cell to `colourOfType`.
+ */
+export function cellColourResolver(
+  cellColours: ArrayLike<number> | null | undefined,
+  colourOfType: (typeId: number) => number,
+): (cell: number, typeId: number) => number {
+  if (cellColours === null || cellColours === undefined) {
+    return (_cell, typeId) => colourOfType(typeId);
+  }
+  return (cell, typeId) => {
+    const colour = cellColours[cell] ?? MINIMAP_CELL_UNRESOLVED;
+    return colour < MINIMAP_CELL_UNRESOLVED ? colour : colourOfType(typeId);
+  };
+}
+
 /** Fetch a served ground page PNG and read its pixels back (browser-only — canvas 2D readback).
  *  A missing page returns null so those patterns degrade to the typeId palette. */
 async function fetchPagePixels(
