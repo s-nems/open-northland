@@ -85,8 +85,8 @@ export interface PaletteLutResult {
 /**
  * Reads each `sources` carrier's 256-colour `.pcx` trailer, stacks them (in source order) into one
  * `256 × N` LUT PNG under {@link BOBS_DIR}, and returns the stem + row order + name→palette map. A
- * missing/palette-less carrier is warned (`[pipeline] ${label}: ${noun} <name> unreadable …`) and
- * replaced with an {@link identityPalette} row so the row order (the app-side contract) stays fixed
+ * missing/palette-less carrier is warned (`[pipeline] ${log.label}: ${log.noun} <name> unreadable …`)
+ * and replaced with an {@link identityPalette} row so the row order (the app-side contract) stays fixed
  * regardless of a partial install. Shared by the GUI-palette and font-colour LUT stages, which differ
  * only in their carrier list, stem, and log wording.
  */
@@ -95,8 +95,7 @@ export async function buildPaletteLut(
   outDir: string,
   sources: readonly PaletteLutSource[],
   stem: string,
-  label: string,
-  noun: string,
+  log: { readonly label: string; readonly noun: string },
 ): Promise<PaletteLutResult> {
   const ordered: Uint8Array[] = [];
   const byName = new Map<string, Uint8Array>();
@@ -106,7 +105,7 @@ export async function buildPaletteLut(
       palette = decodePcx(await readGameFile(gameDir, src.file)).palette;
     } catch (err) {
       console.warn(
-        `[pipeline] ${label}: ${noun} ${src.name} unreadable (${(err as Error).message}); using neutral row`,
+        `[pipeline] ${log.label}: ${log.noun} ${src.name} unreadable (${(err as Error).message}); using neutral row`,
       );
     }
     if (palette === undefined) palette = identityPalette();
