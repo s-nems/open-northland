@@ -14,8 +14,6 @@ import { armorMaterialOf } from './classes/index.js';
  * damage a weapon does to trees/walls and to buildings, surfaced by {@link damageVsWood}/{@link damageVsBuilding}.
  * For the four base armor records `materialType == typeId` (woolen 1 / leather 2 / chain 3 / plate 4), so the
  * column and the armor class coincide there.
- *
- * source-basis: `logicdefines.inc` `ARMOR_MATERIAL_TYPE_*` (golden rule #4).
  */
 export const ARMOR_MATERIAL = {
   /** No armor — a bare target (`damage["0"]`). */
@@ -40,8 +38,6 @@ export const ARMOR_MATERIAL = {
  * The coarse weapon class a `WeaponType.mainType` carries (`logicdefines.inc` `WEAPON_MAIN_TYPE_*`, l.892).
  * The attacker's weapon family, the axis the fight-experience buckets key on (`progression/experience.ts`
  * maps it to the `JOB_EXPERIENCE_TYPE_FIGHT_*` id).
- *
- * source-basis: `logicdefines.inc` `WEAPON_MAIN_TYPE_*` — the original's own class ids.
  */
 export const WEAPON_MAIN_TYPE = {
   /** No weapon. */
@@ -75,18 +71,18 @@ export function weaponDamageVsMaterial(weapon: Pick<WeaponType, 'damage'>, mater
 }
 
 /**
- * The damage a weapon does to a **tree/wall** target — its {@link ARMOR_MATERIAL.WOOD} column. A read
- * view (not an armor tier): the gathering/siege drives that chop trees or breach palisades read this,
- * separate from the living-target rows {@link combatDamage} tabulates.
+ * The damage a weapon does to a tree/wall target — its {@link ARMOR_MATERIAL.WOOD} column, not an armor tier.
+ * Read by the gathering/siege drives that chop trees or breach palisades, separate from the living-target
+ * rows {@link combatDamage} tabulates.
  */
 export function damageVsWood(weapon: Pick<WeaponType, 'damage'>): number {
   return weaponDamageVsMaterial(weapon, ARMOR_MATERIAL.WOOD);
 }
 
 /**
- * The damage a weapon does to a **building** target — its {@link ARMOR_MATERIAL.HOUSE} column. A read
- * view (not an armor tier): the deferred tower/siege step that lets a weapon damage a structure reads
- * this, separate from the living-target rows {@link combatDamage} tabulates.
+ * The damage a weapon does to a building target — its {@link ARMOR_MATERIAL.HOUSE} column, not an armor tier.
+ * Read by the deferred tower/siege step that lets a weapon damage a structure, separate from the
+ * living-target rows {@link combatDamage} tabulates.
  */
 export function damageVsBuilding(weapon: Pick<WeaponType, 'damage'>): number {
   return weaponDamageVsMaterial(weapon, ARMOR_MATERIAL.HOUSE);
@@ -161,8 +157,7 @@ export interface CombatProfile {
  * `rows` are sorted ascending by `material`.
  *
  * source-basis: the extracted `weapontypes` `damagevalue` params, keyed by the victim's armor `materialType`
- * (`logicdefines.inc ARMOR_MATERIAL_TYPE`) — the original's own column-selection model (source basis "Combat
- * damage read side"). It adds no behavior — this is only the lookup table for a separate combat mechanic.
+ * (`logicdefines.inc ARMOR_MATERIAL_TYPE`) — the original's own column-selection model.
  */
 export function combatDamage(content: ContentSet): CombatProfile[] {
   // The armor materials a living target can wear: the unarmored material 0 + every armor record's
