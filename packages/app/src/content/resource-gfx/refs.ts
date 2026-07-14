@@ -50,7 +50,7 @@ export interface GatheringNodeRef {
   readonly bob: number;
 }
 
-/** A resolved standing-node draw with its per-LEVEL bobs (a mined deposit's empty→full fill states; a
+/** A resolved standing-node draw with its per-level bobs (a mined deposit's empty→full fill states; a
  *  non-mined node has one). The renderer indexes them by the node's shrink-by-level fill. */
 export interface GatheringNodeLevelsRef {
   readonly stem: string;
@@ -69,7 +69,7 @@ export interface GatheringRefs {
    *  empty→full — a mined deposit shrinks through them, a non-mined node has just its full state). */
   readonly nodesByGood: Readonly<Record<number, GatheringNodeLevelsRef>>;
   /**
-   * Standing-node ref per harvest-stage `[GfxLandscape]` record INDEX — one entry per species variant
+   * Standing-node ref per harvest-stage `[GfxLandscape]` record index — one entry per species variant
    * ("yew 01" … "cedar 02", every stone/mine decal) across every resolved good, same per-level frame
    * shape as {@link nodesByGood}. A decoded-map node carries its own variant index
    * (`Resource.gfxIndex` → `DrawItem.gfxIndex`), and this table is what lets it draw the

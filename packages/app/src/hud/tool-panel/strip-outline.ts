@@ -4,12 +4,12 @@ import type { PlacedButton } from './layout.js';
 import type { StripSpriteSpec } from './strip-texture.js';
 
 /**
- * The tool-strip BUTTON composition — keyed glyphs plus a contrast outline (the policy half; the bake
+ * The tool-strip button composition — keyed glyphs plus a contrast outline (the policy half; the bake
  * itself is `strip-texture.ts`).
  *
  * The GUI palettes reserve index 0 (magenta) + a near-black band as each element's backdrop, written opaque
- * by a bob — the original blits the buttons WHOLE, dark socket backdrop included. Over our full-screen world
- * that opaque socket read as a heavy black slab (user-rejected), so this is a DELIBERATE deviation: the
+ * by a bob — the original blits the buttons whole, dark socket backdrop included. Over our full-screen world
+ * that opaque socket read as a heavy black slab (user-rejected), so this is a deliberate deviation: the
  * backdrop is keyed transparent (the carved strip shows through) and each glyph instead gets a 1-design-px
  * rim in the socket's own colour — eight offset silhouette stamps behind the real sprite
  * ({@link PalettedSprite.silhouette}) — keeping the original's glyph/backdrop contrast (thin glyphs like the
@@ -34,10 +34,10 @@ const BUTTON_OUTLINE_OFFSETS: readonly (readonly [number, number])[] = [
 ];
 
 export interface OutlinedButtonSprites {
-  /** Bake-ready specs: ALL outline stamps first, then every real glyph, so a button's rim can never
+  /** Bake-ready specs: all outline stamps first, then every real glyph, so a button's rim can never
    *  stamp over a touching neighbour's art (adjacent button rects share an edge). */
   readonly specs: readonly StripSpriteSpec[];
-  /** The speed button's outline stamps + real glyph — a speed change re-frames ALL of them (one shape). */
+  /** The speed button's outline stamps + real glyph — a speed change re-frames all of them (one shape). */
   readonly speedSprites: readonly PalettedSprite[];
 }
 

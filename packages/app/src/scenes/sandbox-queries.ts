@@ -6,7 +6,7 @@ import { type GathererSpec, JOB_SOLDIER_SWORD } from '../game/sandbox/index.js';
 const { Building, GroundDrop, Health, Owner, Position, Settler, Stockpile } = components;
 
 /**
- * Read-only world queries the sandbox scene's machine checks assert on. These read a SCENE-OWNED sim
+ * Read-only world queries the sandbox scene's machine checks assert on. These read a scene-owned sim
  * after its headless run (never live render glue), so the direct `sim.world` reads are the sanctioned
  * check-side counterpart of the command-side placement helpers (`game/sandbox/place.ts`). They live
  * beside the scenes so `game/` carries content + rules, not test predicates.
@@ -71,7 +71,7 @@ export function blueLivingSettlers(sim: Simulation): number {
   return n;
 }
 
-/** Living settlers owned by any OTHER player (the scene's hostiles). */
+/** Living settlers owned by any other player (the scene's hostiles). */
 export function enemyLivingSettlers(sim: Simulation): number {
   let n = 0;
   for (const e of sim.world.query(Settler, Owner, Health)) {

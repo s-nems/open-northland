@@ -3,7 +3,7 @@ import type { ContentIr, LandscapeGfxRow } from '../ir.js';
 import { BUSH_WITH_FRUITS_LOGIC_TYPE } from '../map-resources.js';
 import { type GatheringNodeRef, nodeRefFrom } from './refs.js';
 
-/** A resolved berry-bush draw: the fruited-record INDEX (the {@link import('@open-northland/sim').BerryBush.gfxIndex}
+/** A resolved berry-bush draw: the fruited-record index (the {@link import('@open-northland/sim').BerryBush.gfxIndex}
  *  → {@link import('@open-northland/render').DrawItem.gfxIndex} join key) and its two render states — `ripe`
  *  (holds fruit) and `bare` (foraged, regrowing), each a served atlas stem + bob. */
 export interface BerryBushRef {
@@ -50,9 +50,9 @@ export function berryBushAtlasStems(refs: readonly BerryBushRef[]): Set<string> 
 
 /**
  * Reduce resolved berry-bush refs to a {@link ResourceTypeBinding}: each bush keyed under its fruited
- * `gfxIndex` with a TWO-frame level list — level 1 (bare) → empty frame, level 2 (ripe) → fruited frame
+ * `gfxIndex` with a two-frame level list — level 1 (bare) → empty frame, level 2 (ripe) → fruited frame
  * (the empty→full order {@link import('./bindings.js').buildResourceBinding} uses, so `DrawItem.level`
- * picks straight). A bare frame whose atlas family didn't load reuses the ripe frame; a bush whose RIPE
+ * picks straight). A bare frame whose atlas family didn't load reuses the ripe frame; a bush whose ripe
  * family didn't load is dropped to the placeholder. `default` is the first bush's ripe frame — what a bush
  * with no matching `gfxIndex` draws. Undefined when nothing loaded. Pure + unit-tested.
  */

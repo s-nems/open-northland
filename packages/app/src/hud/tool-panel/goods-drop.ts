@@ -10,7 +10,7 @@ const BANNER_WIDTH = 260;
 const BANNER_OFFSET_Y = 2;
 const BANNER_TEXT_INSET_Y = 3;
 
-/** Units dropped per click — ONE, so each click adds a single unit to the pile on that tile (the sim stacks
+/** Units dropped per click — one, so each click adds a single unit to the pile on that tile (the sim stacks
  *  repeat clicks up to its ground-stack cap). Click the same tile again to grow the heap. */
 const DROP_AMOUNT = 1;
 
@@ -27,8 +27,8 @@ export interface GoodsDropDeps {
 }
 
 /**
- * Good-drop mode: pick a good in the palette, then EACH left-click on the map drops a loose pile of it there
- * (via the `dropGood` command) — the mode STAYS active so many piles drop in a row (Esc / right-click ends).
+ * Good-drop mode: pick a good in the palette, then each left-click on the map drops a loose pile of it there
+ * (via the `dropGood` command) — the mode stays active so many piles drop in a row (Esc / right-click ends).
  * This differs from building placement (one click = one building, then the mode exits); the two controllers
  * stay separate because their click semantics differ, though both draw a "what's held" banner.
  */
@@ -38,7 +38,7 @@ export interface GoodsDropController {
   activeGood(): number | null;
   enter(goodType: number): void;
   cancel(): void;
-  /** Route a left-click while dropping: an in-bounds tile drops a pile and KEEPS the mode; off-map is inert
+  /** Route a left-click while dropping: an in-bounds tile drops a pile and keeps the mode; off-map is inert
    *  but still consumed (drop mode claims the canvas until cancelled). Returns true when consumed. */
   handleClick(clientX: number, clientY: number): boolean;
   /** Per-frame: re-place the banner text against the live canvas size. */
@@ -88,7 +88,7 @@ export function createGoodsDropController(deps: GoodsDropDeps): GoodsDropControl
     handleClick: (clientX, clientY): boolean => {
       if (goodType === null) return false;
       const tile = deps.screenToTile(clientX, clientY);
-      // Every click is claimed; an in-bounds tile drops a pile and the mode STAYS (drop many). Off-map is
+      // Every click is claimed; an in-bounds tile drops a pile and the mode stays (drop many). Off-map is
       // inert (Esc / right-click still ends the mode).
       if (tile !== null) {
         deps.enqueue({ kind: 'dropGood', good: goodType, x: tile.col, y: tile.row, amount: DROP_AMOUNT });

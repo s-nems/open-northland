@@ -96,7 +96,7 @@ export const FALLBACK_WAIT: DirectionalAnim = { start: 1931, dirs: 1, stride: 57
 // clay → shovel-dig, mushroom → pluck), not the shared woodcut swing (source basis).
 
 /**
- * How many times ONE mushroom pick plays the authored `pick_up` pluck list back-to-back — the
+ * How many times one mushroom pick plays the authored `pick_up` pluck list back-to-back — the
  * original's 35-tick logic cycle looped the 19-frame list (~two bends per pick); with one-shot list
  * playback a single bend read visibly too fast (reported), so the sheet builder repeats the list
  * this many times and {@link HARVEST_TICKS} sizes the atomic to fit. Observed-pace approximation.

@@ -38,22 +38,22 @@ import {
 } from '../settler-gfx/index.js';
 
 /**
- * The viking `[gfxanimatomic]` `logictribe` — `logicdefines.inc` `TRIBE_TYPE_HUMAN_VIKING = 1`. NOT the
- * tribetypes `logicType` (also 1 for viking, but 4 there is Saracen), and NOT a value to guess: the same
- * body bobseq name recurs across the human tribes with DIFFERENT per-direction frame lists, so the attack
- * swings must be drawn from THIS tribe's records (`gfxAtomicFrameLists`), else a soldier swings a
+ * The viking `[gfxanimatomic]` `logictribe` — `logicdefines.inc` `TRIBE_TYPE_HUMAN_VIKING = 1`. Not the
+ * tribetypes `logicType` (also 1 for viking, but 4 there is Saracen), and not a value to guess: the same
+ * body bobseq name recurs across the human tribes with different per-direction frame lists, so the attack
+ * swings must be drawn from this tribe's records (`gfxAtomicFrameLists`), else a soldier swings a
  * different tribe's motion. See the scoped-id gotcha in the root AGENTS.md.
  */
 const VIKING_ANIM_TRIBE = 1;
 
 /**
  * Load the per-job {@link SettlerCharacterSet}: every {@link import('../settler-gfx/index.js').CHARACTER_SPECS}
- * look whose body atlas AND sequences resolve, joined to jobs via
+ * look whose body atlas and sequences resolve, joined to jobs via
  * {@link import('../settler-gfx/index.js').ADULT_CHARACTER_BY_JOB} / `YOUNG_CHARACTER_BY_JOB`. Bodies are loaded
  * once per roster entry (the six soldier looks share one armoured body atlas); a head that 404s is skipped
- * (the look draws with fewer faces), a BODY that 404s or an unresolvable binding drops that look (its jobs
+ * (the look draws with fewer faces), a body that 404s or an unresolvable binding drops that look (its jobs
  * fall back to the default). Returns `undefined` — no characters, the sheet degrades to the single-body
- * legacy path — when the IR carries no sequences or the CIVILIAN look (the required default) can't be built.
+ * legacy path — when the IR carries no sequences or the civilian look (the required default) can't be built.
  */
 export async function loadCharacters(
   ir: ContentIr | null,
@@ -80,10 +80,10 @@ export async function loadCharacters(
         });
         layersByRoster.set(rosterId, { body, headsByStem });
       } catch (err) {
-        // An OPTIONAL look must never kill the boot: a missing body (MissingAtlasError) is the expected
+        // An optional look must never kill the boot: a missing body (MissingAtlasError) is the expected
         // undecoded-content case; any other failure (a corrupt manifest, a truncated PNG) is a real bug
         // — surface it loudly, but still degrade this look to the default instead of failing the whole
-        // sheet. Strict propagation stays on the BASE sheet's own loads (loadHumanSpriteSheet).
+        // sheet. Strict propagation stays on the base sheet's own loads (loadHumanSpriteSheet).
         if (!(err instanceof MissingAtlasError)) {
           console.warn(`character look '${rosterId}' failed to load — falling back to the default look`, err);
         }
@@ -124,7 +124,7 @@ export async function loadCharacters(
         [...pluck].map(([seq, dirs]) => {
           for (const list of dirs) {
             if (list.length !== MUSHROOM_PLUCK_FRAMES) {
-              // The atomic duration is sized off the PIN, not this list — a drifted extraction would
+              // The atomic duration is sized off the pin, not this list — a drifted extraction would
               // cut the repeated motion short or pad it; surface it instead of silently mistiming.
               console.warn(
                 `mushroom pluck list '${seq}' is ${list.length} frames; HARVEST_TICKS is sized for ${MUSHROOM_PLUCK_FRAMES}`,
@@ -156,7 +156,7 @@ export async function loadCharacters(
     const heads = (spec.headBmds ?? roster.headBmds)
       .map((bmd) => layers.headsByStem.get(characterStem(bmd, palette)))
       .filter((l): l is SpriteLayer => l !== undefined);
-    // Head-borrow: goods whose carry cycle ships empty head bobs resolve the HEAD through the base walk
+    // Head-borrow: goods whose carry cycle ships empty head bobs resolve the head through the base walk
     // instead (carryHeadAnims) — else a stone/grain hauler draws headless. All of a body's heads share
     // one bob layout, so checking the first head atlas stands for the set.
     const byGood = binding.carrying?.byGood;

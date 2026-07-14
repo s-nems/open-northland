@@ -37,7 +37,7 @@ export const GOOD_POTION_STAMINA_SMALL = 146;
 export const GOOD_AMULET_STRENGTH = 152;
 
 /** One equippable good's equip axis: its slot category ({@link EquipCategory}, the shared data-package
- *  vocabulary) + whether it wears out. The good ITSELF (name, icon) lives once in the global catalog
+ *  vocabulary) + whether it wears out. The good itself (name, icon) lives once in the global catalog
  *  (`catalog/goods.ts`); this is only the classification, keyed to it by `typeId`. */
 export interface EquipGoodSpec {
   readonly typeId: number;

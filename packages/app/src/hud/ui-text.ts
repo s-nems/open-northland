@@ -13,10 +13,10 @@ import type { TextRun } from './bitmap-text.js';
  * new HUD text should default here.
  */
 
-/** Default text size in DESIGN px (scaled by uiscale). Matches the details panel's body size. */
+/** Default text size in design px (scaled by uiscale). Matches the details panel's body size. */
 export const UI_TEXT_PX = 11;
 /**
- * A `Text` top-anchors at its line box top, which sits this fraction of the font size ABOVE the visible cap
+ * A `Text` top-anchors at its line box top, which sits this fraction of the font size above the visible cap
  * tops (measured for Tinos: `fontBoundingBoxAscent − actualBoundingBoxAscent ≈ 0.22 em`). {@link TextRun.place}
  * subtracts it so a caller's `y` means the visible glyph top — matching the bitmap path's baseline contract.
  */
@@ -26,7 +26,7 @@ const CAP_TOP_RATIO = 0.22;
  * Build a retained {@link TextRun} in the vector UI font at `basePx * scale`. Placement positions the run's
  * visible cap-top at `(x, y)` (the `resWidth`/`resHeight` args are ignored — a stage-space `Text` needs no
  * projection resolution, unlike the bitmap font's screen-space meshes). `width` is the run's advance in
- * NATIVE (pre-scale) px, so centring math matches the bitmap runs.
+ * native (pre-scale) px, so centring math matches the bitmap runs.
  */
 export function makeUiTextRun(
   family: string,

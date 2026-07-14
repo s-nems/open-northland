@@ -19,10 +19,10 @@ import { countGroundPiles } from './sandbox-queries.js';
 import type { SceneDefinition } from './types.js';
 
 /**
- * The GLOBAL goods-catalog scene: proves the whole original goods catalog is available in every scene —
- * storable in a warehouse (with its HUD icon, across the eight category tabs) AND droppable on the ground.
+ * The global goods-catalog scene: proves the whole original goods catalog is available in every scene —
+ * storable in a warehouse (with its HUD icon, across the eight category tabs) and droppable on the ground.
  *
- * It places one warehouse (click it to read the full Magazyn) and drops one loose pile of EVERY storable
+ * It places one warehouse (click it to read the full Magazyn) and drops one loose pile of every storable
  * good on a grid, via the `dropGood` command. There are no settlers, so the piles simply rest where they
  * land — a static field of the full catalog for the human to eyeball. The headless half asserts the
  * catalog is wired (Phase 1), every good rests as its own pile (Phase 3), and the warehouse advertises a

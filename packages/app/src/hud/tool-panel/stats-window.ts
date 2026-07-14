@@ -32,7 +32,7 @@ export interface StatsWindow {
   claims(x: number, y: number): boolean;
   /** A click strictly inside the open window closes it (v1 has no window chrome controls). */
   handleClick(x: number, y: number): boolean;
-  /** Per-frame while open: rebuild ONLY when a tally row actually changed (see the change key). */
+  /** Per-frame while open: rebuild only when a tally row actually changed (see the change key). */
   refresh(hud: HudLayout): void;
 }
 
@@ -47,7 +47,7 @@ export function createStatsWindow(deps: StatsWindowDeps): StatsWindow {
 
   let open = false;
   let key = '';
-  /** The window's ACTUAL drawn rect — the single source of truth for its hit region + close-on-inside. */
+  /** The window's actual drawn rect — the single source of truth for its hit region + close-on-inside. */
   let rect: Rect | null = null;
   const runs: TextRun[] = [];
   const graphics = new Graphics();
@@ -115,9 +115,9 @@ export function createStatsWindow(deps: StatsWindowDeps): StatsWindow {
     },
     refresh: (hud): void => {
       if (!open) return;
-      // Change-detection key EXCLUDES the volatile tick line (`layoutHud` row 0 is `Tribe N · tick T`): the
+      // Change-detection key excludes the volatile tick line (`layoutHud` row 0 is `Tribe N · tick T`): the
       // tick advances every frame, so keying on it would defeat the guard and rebuild the ~hundreds of glyph
-      // meshes each frame. Keyed by ROW INDEX (0 IS the tick row), not a substring match, so a future tally
+      // meshes each frame. Keyed by row index (0 is the tick row), not a substring match, so a future tally
       // row containing "tick" can't silently drop out of change detection. One string-building pass, no
       // intermediate arrays (this runs every frame).
       let next = '';

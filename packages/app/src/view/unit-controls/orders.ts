@@ -82,7 +82,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     const building = pickTopAt(deps.targets.owned('building'), world.x, world.y);
     if (building !== null) {
       const entity = entityById(deps.snapshot(), building);
-      // A CONSTRUCTION SITE takes the builder-assignment path (the original's "put a builder on a
+      // A construction site takes the builder-assignment path (the original's "put a builder on a
       // foundation"): every selected settler gets the order, and the sim binds only the builder trade
       // (a non-builder is a logged no-op — a site offers no worker jobs to fall back to).
       if (entity?.components.UnderConstruction !== undefined) {

@@ -24,7 +24,7 @@ const FOG_MODES = [
 
 /**
  * The global needs toggle ("wyłącz potrzeby" — user decision 2026-07-11): flips the sim's setNeedsEnabled
- * rule so test units don't starve mid-session. Scenes boot with needs OFF, maps ON; the label tracks the
+ * rule so test units don't starve mid-session. Scenes boot with needs off, maps on; the label tracks the
  * value just requested (the command applies next tick, well before another click can land).
  */
 export function createNeedsToggle(deps: {

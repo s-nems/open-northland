@@ -7,7 +7,7 @@ import type { DetailsPanelAssets } from './assets.js';
 
 /**
  * The details panel's rope-and-knot window border — the {@link import('./chrome.js')} drawing kit's
- * self-contained border sub-concern. Edge strips are TILED along their length (stretching smears the rope
+ * self-contained border sub-concern. Edge strips are tiled along their length (stretching smears the rope
  * pattern) and the knot corners drawn at native size, all through the `frame` palette. No-op when
  * `content/` is absent (`art === null`); the caller then strokes a flat window outline instead.
  */
@@ -39,7 +39,7 @@ export function createFrameBorderKit(deps: FrameBorderDeps): { frameBorder: (r: 
 
   /**
    * A border piece placed at an exact screen rect through the `frame` palette. Corners draw at native
-   * size; edge strips pass a CLIPPED sub-frame so the rope pattern tiles instead of stretching.
+   * size; edge strips pass a clipped sub-frame so the rope pattern tiles instead of stretching.
    */
   const framePiece = (gfx: number, r: Rect, clipNative?: { w: number; h: number }): void => {
     if (art === null) return;

@@ -4,8 +4,8 @@ import { formatMessage, messages } from '../i18n/index.js';
 import { el, mountMessage, pageInnerStyle, pageRootStyle } from '../view/overlay.js';
 
 /**
- * The `?icons` ICON GALLERY entry — a browsable board of every decoded bob-atlas frame, so a human can
- * find the exact sprite (and its FRAME INDEX) to wire into a feature. It is the in-app, always-current
+ * The `?icons` icon gallery entry — a browsable board of every decoded bob-atlas frame, so a human can
+ * find the exact sprite (and its frame index) to wire into a feature. It is the in-app, always-current
  * successor to the throwaway HTML board: the dev server's `/bobs-index` lists every palette-applied RGBA
  * atlas the pipeline emitted (GUI, goods, and every landscape/house/object set), and this page shows one
  * atlas at a time as a grid of frames cropped straight from its sheet PNG, each labelled by frame index.

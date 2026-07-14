@@ -1,7 +1,7 @@
 import { loadAtlasSource, type TextureSource } from '@open-northland/render';
 
 /**
- * The two fetch idioms every `content/` loader in this folder shares, kept in ONE place so the
+ * The two fetch idioms every `content/` loader in this folder shares, kept in one place so the
  * degrade-gracefully policy can't drift per file:
  *
  *  - {@link fetchJsonOrNull} — optional JSON (a manifest, metrics, the IR): absent/unreadable → `null`,
@@ -30,7 +30,7 @@ export async function loadTextureIfPresent(url: string): Promise<TextureSource |
 
 /**
  * Fetch a served PNG and read it back CPU-side as pixels via a 2D canvas (browser-only). `null` when the
- * image is absent/unreadable or a 2D context can't be had, so callers degrade. The ONE home for the
+ * image is absent/unreadable or a 2D context can't be had, so callers degrade. The one home for the
  * fetch → `createImageBitmap` → canvas → `getImageData` readback, shared by the GUI bar-ramp LUT
  * (one row) and the minimap ground-page sampler (full buffer); each caller slices what it needs.
  */

@@ -3,7 +3,7 @@ import type { ContentIr } from '../ir.js';
 import { type GatheringNodeRef, nodeRefFrom } from './refs.js';
 
 /**
- * The debris `[GfxLandscape]` record left where a tree is FELLED — `"tree debris medium"` in
+ * The debris `[GfxLandscape]` record left where a tree is felled — `"tree debris medium"` in
  * `ls_trees_dead.bmd` (logicType 1 = pure decor), the stump/remnant a chopped tree leaves behind (the
  * multi-hit harvest's `Stump` decor entity draws it). Deliberately the debris, not the standing
  * `tree_dead` (logicType 4, an undisturbed dead tree) nor the `tree_dead falling` (logicType 5, the

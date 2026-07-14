@@ -7,7 +7,7 @@
  * reducer here is pure + unit-tested without a browser; the byte loading + sheet assembly live in
  * {@link import('../sprite-sheet/index.js')}.
  *
- * The frame RANGES (start + length) are read from the IR's `bobSequences` (the `extractBobSequences`
+ * The frame ranges (start + length) are read from the IR's `bobSequences` (the `extractBobSequences`
  * pipeline leg) by sequence name and turned into a {@link DirectionalAnim} via {@link directionalAnimFromSeq}
  * (`stride = length / DIRS`). What stays in code is the render-taste tuning the data does not carry: which
  * sequence drives which state, the `phaseStart` windup offset, and the single-frame idle hold. This feature

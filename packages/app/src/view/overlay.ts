@@ -48,7 +48,7 @@ export function el<K extends keyof HTMLElementTagNameMap>(
 }
 
 /**
- * A button that NAVIGATES the page (reloads with a new `?…` search string) — used by the gallery's
+ * A button that navigates the page (reloads with a new `?…` search string) — used by the gallery's
  * character/view selectors and the menu, where changing the selection means loading different atlases /
  * a different entry. `active` highlights the current choice.
  */

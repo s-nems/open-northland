@@ -35,7 +35,7 @@ const WORKER_SLOT_PROFESSION_KEYS: Readonly<Record<number, keyof Messages['profe
   30: 'druid',
 };
 /**
- * Slot-local Polish names for the worker-slot trades with NO picker profession: the generic `collector`
+ * Slot-local Polish names for the worker-slot trades with no picker profession: the generic `collector`
  * (8) the roster instead realizes as the concrete resource gatherers, and the two archer weapon classes
  * (40/41) the one-soldier picker folds into "Żołnierz" but a tower slot still lists by weapon.
  */
@@ -44,7 +44,7 @@ const WORKER_SLOT_LOCAL_KEYS: Readonly<Record<number, keyof Messages['profession
   40: 'archer_short',
   41: 'archer_long',
 };
-/** The display name of an extracted worker-slot job, by its ORIGINAL id: the shared profession label
+/** The display name of an extracted worker-slot job, by its original id: the shared profession label
  *  where the trade has one (so it never drifts from the picker), else its slot-local name. The carrier
  *  (24 → {@link JOB_CARRIER}) is named 'Tragarz' where the job is defined, not here. */
 export function workerSlotName(originalJobType: number): string {

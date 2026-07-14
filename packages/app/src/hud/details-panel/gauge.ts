@@ -9,9 +9,9 @@ import { type BarTone, barTone } from './model/index.js';
  */
 
 /**
- * Fallback flat gauge fills for a checkout WITHOUT `content/` (no decoded ramp): green = content,
+ * Fallback flat gauge fills for a checkout without `content/` (no decoded ramp): green = content,
  * orange = draining, red = nearly empty, banded by {@link barTone}. With `content/` present the fill
- * colour comes from the ORIGINAL's decoded `bar_hitpoints` level ramp instead (see `GuiBarRamp`),
+ * colour comes from the original's decoded `bar_hitpoints` level ramp instead (see `GuiBarRamp`),
  * which sweeps red→orange→yellow-green continuously.
  */
 const BAR_TONE_FILL: Readonly<Record<BarTone, number>> = {

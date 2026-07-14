@@ -11,7 +11,7 @@ const FALLBACK_RIM = 0x2a1d0e;
 /** One built button: its spec + the supersampled baked icon (real art) or the flat fallback disc. */
 interface ButtonVisual {
   readonly button: ActionButton;
-  /** The crisp, supersampled order-icon (real-art path) — baked ONCE, re-placed each frame. */
+  /** The crisp, supersampled order-icon (real-art path) — baked once, re-placed each frame. */
   readonly icon: BakedIcon | null;
   readonly fallback: Graphics | null;
 }
@@ -21,7 +21,7 @@ export interface ActionRingVisualsDeps {
   readonly app: Application;
   /** The decoded GUI art, or null → the flat-Graphics disc fallback. */
   readonly art: GuiArt | null;
-  /** The ring's effective scale (uiscale × ring factor) — feeds the icon bake AND the fallback rim width. */
+  /** The ring's effective scale (uiscale × ring factor) — feeds the icon bake and the fallback rim width. */
   readonly scale: number;
   /** Every button the default menu can show (built once, placed by identity per frame). */
   readonly buttons: readonly ActionButton[];
@@ -31,7 +31,7 @@ export interface ActionRingVisualsDeps {
 
 /** The retained button graphics of the settler action ring — built once, shown/placed per frame by layout. */
 export interface ActionRingVisuals {
-  /** Show + place ONLY the buttons this layout produced (hiding the rest); placed by button identity. */
+  /** Show + place only the buttons this layout produced (hiding the rest); placed by button identity. */
   placeLayout(layout: ActionRingLayout): void;
   /** Hide every button visual (a closed / anchorless menu). */
   hideAll(): void;
@@ -57,7 +57,7 @@ export function createActionRingVisuals(deps: ActionRingVisualsDeps): ActionRing
       ? null
       : makeGuiSprite(art, guiFrameIndex(frameName), { defaultPalette: 'context', colorKey: 'round' });
 
-  // Build every button's visual ONCE (retained graph — placed each frame, never re-created). Keyed by the
+  // Build every button's visual once (retained graph — placed each frame, never re-created). Keyed by the
   // button object so placement is by identity, robust to a face that shows only a subset of buttons.
   const visuals: ButtonVisual[] = [];
   const visualByButton = new Map<ActionButton, ButtonVisual>();
@@ -106,7 +106,7 @@ export function createActionRingVisuals(deps: ActionRingVisualsDeps): ActionRing
 
   return {
     placeLayout(layout: ActionRingLayout): void {
-      // Place by button IDENTITY (not index): hide every visual first, then show + place only the buttons
+      // Place by button identity (not index): hide every visual first, then show + place only the buttons
       // this frame's layout actually produced.
       hideAll();
       for (const placed of layout.buttons) {

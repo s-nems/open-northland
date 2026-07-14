@@ -7,7 +7,7 @@ const OVERLAY_STATE_IDLE = 0;
 const OVERLAY_STATE_WORKING = 1;
 
 /**
- * Sim ticks per spin frame for a WORKING building overlay (the mill's rotor). The source's `step`
+ * Sim ticks per spin frame for a working building overlay (the mill's rotor). The source's `step`
  * field is `1` on every type-4 row and its unit is undecoded, so the pace is a NAMED APPROXIMATION
  * tuned by eye against the original (13 spin frames × 2 ticks ≈ a 1.3 s revolution at ×1 speed) —
  * a human validates it in the mill scene; swap the constant to taste (source basis "observed").
@@ -16,7 +16,7 @@ export const OVERLAY_TICKS_PER_FRAME = 2;
 
 /**
  * Reduce the decoded `buildingOverlays` IR (the `extractBuildingOverlays` leg — the `[GfxHouse]`
- * type-4 `GfxOverlay` rows) to the render's per-type animated-state-overlay binding for ONE tribe:
+ * type-4 `GfxOverlay` rows) to the render's per-type animated-state-overlay binding for one tribe:
  * the mill's bladeless body gets its rotor — the state-0 row's single frame as the still `idle`
  * blade, the state-1 row's frame list as the `working` spin cycle. Shares
  * {@link import('./families.js').buildingBobRefsByType}'s family rules (palette preference, the

@@ -64,7 +64,7 @@ export interface GameViewDeps {
   /** Per-cell minimap ground colours from a decoded map's baked ground lanes
    *  (`content/minimap-ground.ts`) — preferred over the typeId palette, which can't depict them. */
   readonly minimapCellColours?: Uint32Array;
-  /** Map bounds in CELLS for placement/order clicks (a click outside is rejected, never clamped);
+  /** Map bounds in cells for placement/order clicks (a click outside is rejected, never clamped);
    *  grid-logic consumers derive the 2× node bounds from it. */
   readonly mapSize: { readonly width: number; readonly height: number };
   /** The map's terrain-height field so clicks on lifted hills resolve to the tile drawn there. */
@@ -90,7 +90,7 @@ const PERF_STRIP_GAP = 8;
 export async function startGameView(deps: GameViewDeps): Promise<void> {
   const { app, canvas, params, renderer, sim, cameraCtl } = deps;
 
-  // `?uiscale=` — parsed ONCE, shared by the tool panel and the action ring. Fractional allowed (the
+  // `?uiscale=` — parsed once, shared by the tool panel and the action ring. Fractional allowed (the
   // default is 1.4×); the consumers clamp it to ≥1.
   const uiscale = floatParam(params, 'uiscale', DEFAULT_UI_SCALE);
 
@@ -104,7 +104,7 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
 
   // Original decoded sounds, played positionally: action SFX + terrain ambient (viewport-culled,
   // attenuated, panned) + non-spatial life-event jingles + settler voice chatter — a pure consumer of
-  // the same snapshot + events render reads. Default-MUTED: the driver is built (unless `?sound=off`
+  // the same snapshot + events render reads. Default-muted: the driver is built (unless `?sound=off`
   // skips it entirely) but starts disabled, so the game is silent until the user clicks the bottom
   // sound toggle — that click both unmutes and satisfies the browser autoplay gesture. A checkout
   // without `content/` (no sound bank) degrades to silence (no driver, no button).
@@ -114,12 +114,12 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
   // entity counts + the FPS and the sim/snap/draw CPU split, so a human can judge whether the view holds
   // a frame rate, whether culling is biting, and whether a slow frame is the sim or the draw. Real-GPU
   // only: headless Chromium is software-GL. The left inset is the strip's right edge + a small gap; the
-  // build menu drops BELOW it (from the buildings button), so the two never overlap.
+  // build menu drops below it (from the buildings button), so the two never overlap.
   const perf = mountPerfOverlay(buildToolPanelLayout(uiscale).width + PERF_STRIP_GAP);
 
-  // The frame's fog-of-war gate for the HUMAN player — ONE mutable view refreshed at the top of every
+  // The frame's fog-of-war gate for the human player — one mutable view refreshed at the top of every
   // frame (`fogGates.setFrame` below), so long-lived consumers created here (unit picking, the pile
-  // tooltip, the placement gate, voice chatter) close over STABLE predicates instead of being re-wired
+  // tooltip, the placement gate, voice chatter) close over stable predicates instead of being re-wired
   // per frame. See view/fog-gates.ts.
   const fogGates = createFogGates();
 
@@ -135,7 +135,7 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     fogGates.seesNode(col, row) && (sim.placementProbe(typeId)?.canPlace(col, row) ?? true);
 
   // The minimap handle, assigned right after the tool panel mounts (the panel must mount first — stage
-  // order IS draw order, and the minimap window draws over the strip's lower buttons on a short
+  // order is draw order, and the minimap window draws over the strip's lower buttons on a short
   // screen). The panel's overlay-defer reads it lazily: clicks only happen long after both mounts.
   let minimap: MinimapHandle | undefined;
 
@@ -157,13 +157,13 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     deferToOverlay: (clientX, clientY) => minimap?.claimsPointer(clientX, clientY) ?? false,
   });
 
-  // Client (CSS px) → screen px, the ONE conversion the minimap's hit-test/click shares with the world
+  // Client (CSS px) → screen px, the one conversion the minimap's hit-test/click shares with the world
   // pickers (`hud/` never imports `view/` — injected as options per the hud contract).
   const clientToScreen = (clientX: number, clientY: number): { x: number; y: number } =>
     clientToCanvas(screenScale(canvas, app.renderer.resolution), clientX, clientY);
   // The bottom-left minimap in the original braided overview frame: whole-map ground + player-coloured
   // unit dots + the camera's view rectangle; a left-click (or drag) in the map hole re-centres the
-  // camera on the pointed world spot at the CURRENT zoom. Mounted after the tool panel (draws over its
+  // camera on the pointed world spot at the current zoom. Mounted after the tool panel (draws over its
   // strip on a short screen — and the panel's overlay-defer above yields those covered clicks) and
   // before the unit controls (its claim joins their pointer chain: a minimap click must never select
   // units or issue world orders).
@@ -193,7 +193,7 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
 
   // The cursor position for the build-mode ghost (client coords; null when the pointer left the
   // canvas). Tracked persistently — the ghost must follow the mouse between clicks, and reading it in
-  // the frame loop keeps ALL per-frame work in the one RAF (no per-mousemove sim probing).
+  // the frame loop keeps all per-frame work in the one RAF (no per-mousemove sim probing).
   const pointerAt = trackCanvasPointer(canvas);
 
   // RTS unit control: left-click / drag-box to select the human's units, right-click to send them,

@@ -52,7 +52,7 @@ const WAREHOUSE_Y = 6;
 const CARRIERS = 3;
 const CARRIER_ROW_Y = 9;
 
-/** The loose-good field: WOOD hugging the store (short trips, worked first, fills the store to its cap with a
+/** The loose-good field: wood hugging the store (short trips, worked first, fills the store to its cap with a
  *  surplus left over), a scatter of other goods farther out (well under the cap, worked once wood tops out). */
 const WOOD_OVERSUPPLY = 1.5; // 1.5× the cap, so the store fills to 100 and ~50 wood is left resting on the ground
 const WOOD_ROW_Y = 9; // the wood field starts right below the store — a short carry so the fill reads quickly
@@ -115,7 +115,7 @@ function warehouse(sim: Simulation): Entity | null {
   return null;
 }
 
-/** How many carriers ({@link JOB_CARRIER}) are employed BY the warehouse (bound via JobAssignment). */
+/** How many carriers ({@link JOB_CARRIER}) are employed by the warehouse (bound via JobAssignment). */
 function carriersEmployedByWarehouse(sim: Simulation): number {
   const store = warehouse(sim);
   if (store === null) return 0;
@@ -134,7 +134,7 @@ function warehouseHolding(sim: Simulation, goodType: number): number {
   return sim.world.get(store, Stockpile).amounts.get(goodType) ?? 0;
 }
 
-/** Whether any LOOSE ground pile (a positioned Stockpile that is not a building store) still holds `goodType`. */
+/** Whether any loose ground pile (a positioned Stockpile that is not a building store) still holds `goodType`. */
 function groundHolds(sim: Simulation, goodType: number): boolean {
   for (const e of sim.world.query(Stockpile, Position)) {
     if (sim.world.has(e, Building)) continue;
@@ -153,7 +153,7 @@ function carriersHoldingWood(sim: Simulation): number {
   return holding;
 }
 
-/** Total units of goods OTHER than wood the warehouse holds — proof the carriers moved on from the capped
+/** Total units of goods other than wood the warehouse holds — proof the carriers moved on from the capped
  *  wood to the rest of the field. */
 function warehouseOtherGoodsTotal(sim: Simulation): number {
   const store = warehouse(sim);

@@ -1,6 +1,6 @@
 /**
  * URL query-param parsers shared by the app entries (`?zoom` / `?speed` / `?cols` / `?seed` / `?ticks`).
- * The ONE home for `window.location.search` number parsing, so an entry never re-declares its own copy
+ * The one home for `window.location.search` number parsing, so an entry never re-declares its own copy
  * (they used to drift — `?cols` demanded `> 0`, `?seed`/`?ticks` allowed `>= 0`; that split is now the
  * `min` argument of {@link intParam}).
  */

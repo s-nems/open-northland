@@ -35,7 +35,7 @@ export function createSceneSim(scene: SceneDefinition, extras?: SandboxContentEx
     map: halfCellMapFromCells(scene.terrain),
   });
   scene.build(sim);
-  // Scenes run with needs OFF by default (user decision 2026-07-11) so an inspection unit can't starve
+  // Scenes run with needs off by default (user decision 2026-07-11) so an inspection unit can't starve
   // mid-inspection and fail the sign-off. Enqueued after build so it applies on tick 1 before that tick's
   // needsSystem; a needs-exercising scene opts back in via `SceneDefinition.needs` (FIFO, later write
   // wins). Live maps keep the sim default (enabled); the admin "Potrzeby" button flips it at runtime.

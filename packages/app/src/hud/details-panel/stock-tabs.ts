@@ -29,7 +29,7 @@ export function stockTabLabels(): readonly string[] {
   return messages().hud.stockTabs;
 }
 
-/** Good STRING id → tab index (0–7). Provisional grouping — see the file header. */
+/** Good string id → tab index (0–7). Provisional grouping — see the file header. */
 const CATEGORY_BY_GOOD: Readonly<Record<string, number>> = {
   // 0 — Żywność (food)
   food_simple: 0,
@@ -89,7 +89,7 @@ export function goodCategoryTab(goodId: string | undefined): number {
 }
 
 /**
- * The eight tab-plate rects laid out across the strip — the ONE geometry both {@link drawStockTabs} and the
+ * The eight tab-plate rects laid out across the strip — the one geometry both {@link drawStockTabs} and the
  * pointer hit-test consume, so the drawn tab and the clicked tab are the same rect by construction.
  */
 export function stockTabRects(strip: Rect, s: number): Rect[] {

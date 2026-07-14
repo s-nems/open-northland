@@ -49,7 +49,7 @@ export interface GoodsArt {
   readonly colours: number;
   /** The recolor-palette LUT row for a palette name (from the manifest order); row 0 for an unknown name. */
   paletteRow(name: string): number;
-  /** The icon binding for a good STRING id, or `undefined` when the good has no on-map pile graphic. */
+  /** The icon binding for a good string id, or `undefined` when the good has no on-map pile graphic. */
   icon(goodId: string): GoodIcon | undefined;
 }
 

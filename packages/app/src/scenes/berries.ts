@@ -23,7 +23,7 @@ const MAP_W = 30;
 const MAP_H = 12;
 /** The row the bushes + their foragers sit on (mid-map, so the settler-centroid framing centres on them). */
 const ROW_Y = 6;
-/** Tile gap between the paired bush+forager stations, so each settler's NEAREST ripe bush is its own. */
+/** Tile gap between the paired bush+forager stations, so each settler's nearest ripe bush is its own. */
 const STATION_GAP = 6;
 const STATIONS = 4;
 const FIRST_STATION_X = 5;
@@ -72,7 +72,7 @@ function build(sim: Simulation): void {
     placeSandboxBerryBush(sim, bx, ROW_Y, BUSH_FRUITS_GFX);
     spawnHungryForager(sim, bx, ROW_Y - 1);
   }
-  // A lone bush that starts BARE and regrows on its own (no forager), proving the growth loop.
+  // A lone bush that starts bare and regrows on its own (no forager), proving the growth loop.
   const bare = placeSandboxBerryBush(sim, LONE_BARE_BUSH.x, LONE_BARE_BUSH.y, BUSH_FRUITS_GFX);
   const b = sim.world.get(bare, BerryBush);
   b.ripe = false;

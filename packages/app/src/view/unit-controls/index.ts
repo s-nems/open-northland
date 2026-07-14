@@ -12,7 +12,7 @@ import type { UnitControls, UnitControlsOptions } from './types.js';
 export type { UnitControls, UnitControlsOptions } from './types.js';
 
 /**
- * The interactive UNIT-CONTROL layer — the RTS "select and command" input the human drives, wired on
+ * The interactive unit-control layer — the RTS "select and command" input the human drives, wired on
  * top of the pure picking math ({@link import('../picking.js')}) and the info panel
  * ({@link import('../../hud/details-panel/index.js')}). It is app-layer I/O (DOM + floats), reading the mouse/keyboard
  * and issuing sim **commands** through the one-way seam; it never touches sim state directly.

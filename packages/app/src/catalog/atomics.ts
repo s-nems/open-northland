@@ -18,10 +18,10 @@ export const GOLD_HARVEST_ATOMIC = 28;
 export const WHEAT_HARVEST_ATOMIC = 29;
 export const MUSHROOM_HARVEST_ATOMIC = 32;
 
-/** The farmer's SOWING action (`goodtypes.ini` wheat `atomicForPlanting 34`; `setatomic 18 34
+/** The farmer's sowing action (`goodtypes.ini` wheat `atomicForPlanting 34`; `setatomic 18 34
  *  "viking_farmer_plant"`). */
 export const PLANT_ATOMIC = 34;
-/** The farmer's WATERING action (`goodtypes.ini` wheat `atomicForCultivating 35`; `setatomic 18 35
+/** The farmer's watering action (`goodtypes.ini` wheat `atomicForCultivating 35`; `setatomic 18 35
  *  "viking_farmer_cultivate"` — the watering-can clip). */
 export const CULTIVATE_ATOMIC = 35;
 

@@ -179,7 +179,7 @@ export function preferredPalettePool<T extends { paletteName: string }>(
  *  1. **Palette preference** — restrict to rows in {@link preferredPalette} (the loaded `house01` skin)
  *     when any exist, so a type present in several recolour skins binds the skin we actually draw.
  *  2. **`editName` disambiguation** — when {@link CANONICAL_EDIT_NAME} names this typeId (the HQ →
- *     `"viking headquarters"`), restrict to rows whose `editName` matches, picking THE building over a
+ *     `"viking headquarters"`), restrict to rows whose `editName` matches, picking the building over a
  *     variant (`"viking headquarters house"`); a no-op for the typeIds without an entry.
  *  3. **Tiebreak** — highest `level` (the growth chain is distinct typeIds, so level is usually constant;
  *     this resolves lumped dupes + any future multi-level typeId), then lowest `bobId`.

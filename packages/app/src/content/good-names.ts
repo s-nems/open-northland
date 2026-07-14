@@ -2,13 +2,13 @@ import { type Locale, type Messages, messages } from '../i18n/index.js';
 import { fetchJsonOrNull } from './net.js';
 
 /**
- * Localized good DISPLAY names — the loadable seam for the pipeline's per-locale good-name tables
- * (`content/goods/manifest.json` `names`: locale → good STRING id → name, extracted from the game's own
+ * Localized good display names — the loadable seam for the pipeline's per-locale good-name tables
+ * (`content/goods/manifest.json` `names`: locale → good string id → name, extracted from the game's own
  * `text/<lang>/strings/gameobjects/goods.{ini,cif}`, following the app-wide `?lang=` value). Authored names
  * keep the UI complete in a bare checkout; extracted content overrides them when the local pipeline output
  * is available.
  *
- * Keyed by good STRING id (not typeId), stable across the sandbox and the extracted IR — the same key the
+ * Keyed by good string id (not typeId), stable across the sandbox and the extracted IR — the same key the
  * icon manifest uses — so one lookup serves every scene and both good-id namespaces.
  */
 
@@ -25,7 +25,7 @@ export function goodLocaleParam(params: URLSearchParams): GoodLocale {
 }
 
 /**
- * Names for goods that exist ONLY in the sandbox (no game `[goodtype]`, so no string-table entry): the demo
+ * Names for goods that exist only in the sandbox (no game `[goodtype]`, so no string-table entry): the demo
  * `plank` the joinery slice produces. Kept here (not in the pipeline manifest) because they have no faithful
  * source — a NAMED APPROXIMATION so the synthetic good reads in-language too. `plank` = sawn `wood`.
  */

@@ -31,7 +31,7 @@ export interface SpeedButtonDeps {
   readonly art: GuiArt | null;
   /** The baked strip texture (real-art path) — re-rasterized when the speed glyph changes. */
   readonly supersampled: SupersampledStrip | null;
-  /** The speed button's outline stamps + real glyph — a speed change re-frames ALL of them (one shape). */
+  /** The speed button's outline stamps + real glyph — a speed change re-frames all of them (one shape). */
   readonly speedSprites: readonly PalettedSprite[];
   /** The speed button's placed rect, for the fallback glyph position (undefined → no fallback glyph). */
   readonly speedBtnRect: PlacedRect | undefined;
@@ -45,7 +45,7 @@ export interface SpeedButton {
   cycle(): void;
   /** The `P` key: toggle pause, remembering the running speed for the resume. */
   togglePause(): void;
-  /** Mount-time init — set the button GRAPHIC only; never push to the loop (the entry seeds its own speed). */
+  /** Mount-time init — set the button graphic only; never push to the loop (the entry seeds its own speed). */
   init(): void;
 }
 
@@ -86,14 +86,14 @@ export function createSpeedButton(deps: SpeedButtonDeps): SpeedButton {
         app.screen.height,
       );
     }
-    // Push to the loop only on an actual change (a click / the P key), NOT at mount — the entry seeds its
+    // Push to the loop only on an actual change (a click / the P key), not at mount — the entry seeds its
     // own initial loop speed (default / `?speed=`), and the panel must not clobber it with ×1 before frame 0.
     if (cause !== null) deps.onSpeedChange(spec, cause);
   };
 
   return {
     cycle: () => {
-      // Cause from the PRE-click state: a click while paused is an un-pause, not a speed pick (a
+      // Cause from the pre-click state: a click while paused is an un-pause, not a speed pick (a
       // 'cycle' cause there would clobber a fractional `?speed=` seed — see gameSpeedClickCause).
       const cause = gameSpeedClickCause(speedControl);
       speedControl = cycleGameSpeed(speedControl);

@@ -108,7 +108,7 @@ export const CHARACTER_SPECS = {
     // pickup and deposit (the body authors no separate put-down; the same stoop reads as either — and a
     // bound atomic wins over the carry override, so the depositor stoops as its load leaves).
     atomics: {
-      // Each raw-good harvest plays that good's OWN authored work clip — the collector's per-good motion.
+      // Each raw-good harvest plays that good's own authored work clip — the collector's per-good motion.
       [HARVEST_ATOMIC]: { seq: CHOP_SEQ, phaseStart: CHOP_PHASE_START }, // wood — the woodcut axe swing
       [STONE_HARVEST_ATOMIC]: { seq: STONECRUSH_SEQ }, // stone — the shared mining strike
       [CLAY_HARVEST_ATOMIC]: { seq: SHOVEL_SEQ }, // clay/mud — the clayworker's shovel dig (soft ground)

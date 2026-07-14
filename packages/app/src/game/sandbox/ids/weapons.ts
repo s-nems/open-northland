@@ -13,7 +13,7 @@ import {
   JOB_SOLDIER_SWORD,
 } from './economy/jobs.js';
 
-// Weapon typeIds ride the REAL viking `weapons.ini` ids.
+// Weapon typeIds ride the real viking `weapons.ini` ids.
 export const WEAPON_FISTS = 1;
 export const WEAPON_SPEAR = 5;
 export const WEAPON_SWORD = 7;
@@ -21,7 +21,7 @@ export const WEAPON_BROADSWORD = 8;
 export const WEAPON_SHORT_BOW = 16;
 export const WEAPON_LONG_BOW = 17;
 
-/** Soldier `jobType` → the weapon GOOD carried in its `Equipment.weapon` slot. */
+/** Soldier `jobType` → the weapon good carried in its `Equipment.weapon` slot. */
 export const WEAPON_GOOD_BY_JOB: Readonly<Record<number, number>> = {
   [JOB_SOLDIER_SPEAR]: GOOD_SPEAR_IRON,
   [JOB_SOLDIER_SWORD]: GOOD_SWORD_SHORT,

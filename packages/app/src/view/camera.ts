@@ -168,7 +168,7 @@ export function screenScale(
 }
 
 /** Apply a {@link screenScale} result to a client (CSS) point → canvas (screen) px: subtract the canvas
- *  origin in CSS px, then scale. The ONE place the client→canvas mapping lives, so the drag/zoom/pick
+ *  origin in CSS px, then scale. The one place the client→canvas mapping lives, so the drag/zoom/pick
  *  handlers that share it can't drift — a wrong anchor is exactly the bug {@link screenScale} guards
  *  against. (`hud/` handlers can't import `view/`, so they still apply this inline over their injected
  *  scale.) */
