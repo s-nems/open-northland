@@ -1,5 +1,5 @@
 import { Container, Graphics, type Renderer, RenderTexture, Sprite } from 'pixi.js';
-import { type ElevationField, terrainLiftAtNode } from '../../data/elevation.js';
+import { type ElevationField, projectNode } from '../../data/elevation.js';
 import { halfCellToScreen, nodeDiamondPoly, TILE_HALF_H, TILE_HALF_W } from '../../data/iso.js';
 import { hashCells } from './cell-signature.js';
 
@@ -153,9 +153,10 @@ export class PlacementOverlayLayer {
     const hh = (TILE_HALF_H / 2 + CELL_OVERLAP) * COMPOSITE_RESOLUTION;
     for (let row = frame.minRow; row <= frame.maxRow; row++) {
       for (let col = frame.minCol; col <= frame.maxCol; col++) {
-        const p = halfCellToScreen(col, row);
-        const cy = (p.y - terrainLiftAtNode(elevation, col, row) - bounds.y) * COMPOSITE_RESOLUTION;
+        // Project into composite-texture space: the lifted node point, less the band origin, at half res.
+        const p = projectNode(elevation, col, row);
         const cx = (p.x - bounds.x) * COMPOSITE_RESOLUTION;
+        const cy = (p.y - bounds.y) * COMPOSITE_RESOLUTION;
         const g = blocked.has(`${col},${row}`) ? blockedG : buildableG;
         g.poly(nodeDiamondPoly(cx, cy, hw, hh));
       }

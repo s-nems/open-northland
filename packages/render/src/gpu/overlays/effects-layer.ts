@@ -10,8 +10,7 @@ import {
   foldCombatEffects,
   frac,
 } from '../../data/effects.js';
-import { type ElevationField, terrainLiftAtNode } from '../../data/elevation.js';
-import { halfCellToScreen } from '../../data/iso.js';
+import { type ElevationField, projectNode } from '../../data/elevation.js';
 import type { AtlasFrame } from '../../data/sprites/index.js';
 import { isVisible, type Viewport } from '../../data/viewport.js';
 import type { TextureCache } from '../texture-cache.js';
@@ -104,13 +103,13 @@ export class CombatEffectsLayer {
       const alpha = effectAlpha(effect, tick);
       if (alpha <= 0) continue; // fully faded — its node is retired below (not in `seen`)
       const key = effectKey(effect);
-      const p = halfCellToScreen(effect.hx, effect.hy);
-      const lift = terrainLiftAtNode(elevation, effect.hx, effect.hy);
-      // Blood rides up onto the body (over the sprite); bones sit at the feet on the ground.
-      const y = p.y - lift - (effect.kind === 'blood' ? BLOOD_RISE : 0);
-      // Cull by the feet point (the mark's own anchor), so a body-lifted spurt near the top edge still shows.
+      // Lifted feet point (the mark's own anchor). Blood rides up onto the body (over the sprite); bones
+      // sit at the feet on the ground.
+      const p = projectNode(elevation, effect.hx, effect.hy);
+      const y = p.y - (effect.kind === 'blood' ? BLOOD_RISE : 0);
+      // Cull by the feet point, so a body-lifted spurt near the top edge still shows.
       let node = this.nodes.get(key);
-      if (!isVisible(viewport, p.x, p.y - lift)) {
+      if (!isVisible(viewport, p.x, p.y)) {
         retainOffscreen(node, key, this.seen); // live, just not on screen — retain, don't retire
         continue;
       }
