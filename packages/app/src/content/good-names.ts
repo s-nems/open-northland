@@ -50,9 +50,9 @@ async function loadNameTables(): Promise<Readonly<Record<string, Readonly<Record
 
 /**
  * Build the `good STRING id → display name` map for a locale (pure), applying the fallback chain
- * `<locale> → pl → en` per id plus the synthetic overlay, so a good missing from the chosen language still
- * shows a name rather than its raw id. Authored names also cover a bare checkout. Split from the fetch so
- * the fallback rule is unit-tested without the network.
+ * `<locale> extracted → authored → pl extracted → en extracted` per id, so a good missing from the
+ * chosen language still shows a name rather than its raw id. Authored names also cover a bare checkout.
+ * Split from the fetch so the fallback rule is unit-tested without the network.
  */
 export function resolveGoodNameMap(
   tables: Readonly<Record<string, Readonly<Record<string, string>>>>,

@@ -31,7 +31,7 @@ export const enSurfaces = {
       },
       recon: {
         label: 'Recon',
-        detail: 'All terrain is known from the start; entities require current vision.',
+        detail: 'All terrain is known from the start; units require current vision.',
       },
     },
     geometry: 'Building geometry grid',
