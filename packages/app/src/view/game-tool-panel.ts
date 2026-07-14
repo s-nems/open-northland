@@ -52,6 +52,8 @@ export interface GameToolPanelDeps {
   /** A higher HUD overlay's claim (the minimap window) — the panel yields left clicks it covers, so hit
    *  priority follows draw order (see {@link ToolPanelOptions.deferToOverlay}). */
   readonly deferToOverlay?: (clientX: number, clientY: number) => boolean;
+  /** Open the in-game system menu — the `options` button's action, wired by the game view. */
+  readonly onSystemMenu?: () => void;
 }
 
 export interface GameToolPanelHandle {
@@ -148,6 +150,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
     onSpeedChange: deps.onSpeed,
     screenScale: (c) => screenScale(c, deps.app.renderer.resolution),
     ...(deps.deferToOverlay !== undefined ? { deferToOverlay: deps.deferToOverlay } : {}),
+    ...(deps.onSystemMenu !== undefined ? { onSystemMenu: deps.onSystemMenu } : {}),
   });
 
   return {
