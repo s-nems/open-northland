@@ -48,6 +48,14 @@ function assertSafe(n: number, op: string): void {
   }
 }
 
+/** Guard the intermediate `a*b` product of `mul`/`mulDiv` (already computed as `p`) against
+ *  exceeding the exact-integer range; dev-only, statically eliminated in production. */
+function assertProductSafe(p: number, a: number, b: number, op: string): void {
+  if (DEV && Math.abs(p) > MAX_SAFE) {
+    throw new Error(`fixed-point overflow in ${op}: |${a} * ${b}| exceeds 2^53; reduce magnitudes`);
+  }
+}
+
 export const fx = {
   fromInt(n: number): Fixed {
     const v = n * ONE;
@@ -79,9 +87,7 @@ export const fx = {
   /** Multiply two Fixeds. Intermediate `a*b` must stay < 2^53 (see safe range above). */
   mul(a: Fixed, b: Fixed): Fixed {
     const p = a * b;
-    if (DEV && Math.abs(p) > MAX_SAFE) {
-      throw new Error(`fixed-point overflow in mul: |${a} * ${b}| exceeds 2^53; reduce magnitudes`);
-    }
+    assertProductSafe(p, a, b, 'mul');
     // Deterministic rounding toward zero of the scaled product.
     return Math.trunc(p / ONE) as Fixed;
   },
@@ -118,9 +124,7 @@ export const fx = {
   mulDiv(a: Fixed, b: Fixed, c: Fixed): Fixed {
     if (c === 0) throw new Error('fixed-point division by zero');
     const p = a * b;
-    if (DEV && Math.abs(p) > MAX_SAFE) {
-      throw new Error(`fixed-point overflow in mulDiv: |${a} * ${b}| exceeds 2^53; reduce magnitudes`);
-    }
+    assertProductSafe(p, a, b, 'mulDiv');
     return Math.trunc(p / c) as Fixed;
   },
   abs(a: Fixed): Fixed {
