@@ -13,34 +13,27 @@ export const Settler = defineComponent<{
   /** 0..ONE hunger; rises over time, NeedsSystem drives eating. */
   hunger: Fixed;
   /**
-   * 0..ONE fatigue/tiredness; rises over time like {@link hunger}, the second need the NeedsSystem
-   * tracks. The original satisfies it with the `sleep` atomic (id 8, bound for every job/tribe in
-   * `tribetypes` `setatomic <job> 8 "..._sleep"`); the rise/reset loop mirrors hunger's. The rest
-   * *drive* (a settler heading off to sleep when fatigue crosses a threshold) is a later slice — this
-   * field + its rise is the fatigue-rise half (the same split hunger went through).
+   * 0..ONE fatigue; rises over time like {@link hunger}. The original satisfies it with the `sleep` atomic
+   * (id 8, bound for every job/tribe in `tribetypes` `setatomic <job> 8 "..._sleep"`). The rest drive (a
+   * settler heading off to sleep when fatigue crosses a threshold) is a later slice; this field is the rise half.
    */
   fatigue: Fixed;
   /**
-   * 0..ONE piety — the first **target-bound** non-food need (a settler must walk to a SITE to satisfy
-   * it, unlike eat at a store or sleep in place). Rises over time like {@link hunger}/{@link fatigue};
-   * the original satisfies it with the `pray` atomic (id 12, bound for the civilist job in
-   * `tribetypes` `setatomic 6 12 "..._pray"`) run **at a temple** — the need→satisfier→building-target
-   * lookup is the genuinely-new piece the *drive* introduces (a later slice). This field + its rise is
-   * the piety-rise half (the same rise-then-drive split hunger and fatigue went through). The other
+   * 0..ONE piety — the first target-bound non-food need (a settler must walk to a site to satisfy it, unlike
+   * eat at a store or sleep in place). Rises over time like {@link hunger}. The original satisfies it with
+   * the `pray` atomic (id 12, `setatomic 6 12 "..._pray"`) run at a temple — the need→satisfier→building
+   * lookup is the new piece the drive introduces (a later slice); this field is the rise half. The other
    * target-bound needs (`enjoy` id 17 / `make_love` id 78) follow the same shape.
    */
   piety: Fixed;
   /**
-   * 0..ONE enjoyment — the recreation/leisure need. Rises over time like {@link hunger}/{@link fatigue}/
-   * {@link piety}; the original satisfies it with TWO atomics that both restore **channel 3** (the
-   * leisure bar): `enjoy` (id 17, `setatomic 6 17 "..._civilist_enjoy"`, `event <at> 3 +100`) and
-   * `make_love` (id 78, bound for the civilist + woman jobs in `setatomic {5,6} 78 "..._make_love"`,
-   * `event <at> 3 +800` — a bigger leisure boost). `make_love` is NOT a separate need: it resets this
-   * same `enjoyment` field. (channel 1 = rest, 2 = hunger, 3 = leisure.) This field + its rise is the
-   * enjoyment-rise half (the same rise-then-drive split hunger, fatigue and piety went through). Unlike
-   * piety (satisfied at a *temple*), neither `enjoy` nor `make_love` has a **readable building
-   * satisfier** to walk to — the only no-recipe/no-worker/no-stock houses in `houses.ini` are the temple
-   * and a decorative wall, neither a leisure site — so the DRIVE (where it is satisfied) is deferred
+   * 0..ONE enjoyment — the recreation/leisure need. Rises over time like {@link hunger}. The original
+   * satisfies it with two atomics that both restore channel 3 (leisure): `enjoy` (id 17,
+   * `setatomic 6 17 "..._civilist_enjoy"`, `event <at> 3 +100`) and `make_love` (id 78, bound for the
+   * civilist + woman jobs, `event <at> 3 +800` — a bigger boost); `make_love` is not a separate need, it
+   * resets this same field. (channels: 1 = rest, 2 = hunger, 3 = leisure.) Unlike piety (satisfied at a
+   * temple), neither has a readable building satisfier — the only no-recipe/no-worker/no-stock houses in
+   * `houses.ini` are the temple and a decorative wall, neither a leisure site — so the drive is deferred
    * pending a content building→need binding; only the rise + the two resets are pinned (source basis).
    */
   enjoyment: Fixed;
@@ -78,12 +71,11 @@ export const CurrentAtomic = defineComponent<{
   targetEntity: number | null;
   targetTile: { x: number; y: number } | null;
   /**
-   * Present (true) only while the atomic is running its INTER-SWING REST TAIL: the harvest effect
-   * already applied and its completion event already fired, and the executor extended `duration` so
-   * the gatherer stands its breather in the swing's ready pose (no pose snap, no second animation —
-   * the effect stays the harvest so the tail can chain straight into the next swing when it ends).
-   * The tail itself completes silently — no `atomicCompleted` re-emit for the same swing. Absent on
-   * every other atomic (the separate-optional-field pattern keeps old hashes).
+   * Present (true) only while the atomic is running its inter-swing rest tail: the harvest effect already
+   * applied and its completion event already fired, and the executor extended `duration` so the gatherer
+   * stands its breather in the swing's ready pose (the effect stays the harvest so the tail chains straight
+   * into the next swing). The tail completes silently — no `atomicCompleted` re-emit. Absent on every other
+   * atomic.
    */
   restTail?: boolean;
 }>('CurrentAtomic');
@@ -92,56 +84,48 @@ export const CurrentAtomic = defineComponent<{
 export const Carrying = defineComponent<{ goodType: number; amount: number }>('Carrying');
 
 /**
- * A worker→workplace binding: the specific {@link Building} a settler is employed at. The JobSystem
- * assigns it when it gives an idle settler a job (it picks a concrete understaffed building, not just
- * a job *type*), and the AI planner uses it as the single source of truth for "which mill is mine":
- * the walk-to-workplace drive heads for *this* building and the staffs-here pin latches the settler
- * only on it. Without it, two same-type workplaces shared one tribe-wide head-count stand-in (so they
- * couldn't staff independently) and the pin keyed on merely *standing on any* workplace of the job
- * (so a worker that briefly stepped off could be re-lured to a different mill).
+ * A worker→workplace binding: the specific {@link Building} a settler is employed at. The JobSystem assigns
+ * it when it gives an idle settler a job (it picks a concrete understaffed building, not just a job type),
+ * and the AI planner uses it as the source of truth for "which mill is mine": the walk-to-workplace drive
+ * heads for this building and the staffs-here pin latches the settler only on it. Without it, two same-type
+ * workplaces shared one tribe-wide head-count stand-in (so they couldn't staff independently) and the pin
+ * keyed on merely standing on any workplace of the job (so a worker that stepped off could be re-lured to a
+ * different mill).
  *
- * The binding is a separate optional component (not a `Settler` field) so an idle/unemployed settler
- * simply has none — it appears the instant the JobSystem employs the settler and is the assignment's
- * record. `workplace` is an {@link Entity} id (a monotonic integer), so it hashes deterministically
- * like every other component. A settler already standing on a workplace it staffs but lacking a
- * binding (e.g. one spawned pre-employed onto its station) is *adopted* by the JobSystem — bound to
- * the building under its feet — so the binding stays the authority without a behavior change.
+ * A separate optional component (not a `Settler` field) so an unemployed settler simply has none; it appears
+ * the instant the JobSystem employs the settler. `workplace` is an {@link Entity} id. A settler already
+ * standing on a workplace it staffs but lacking a binding (e.g. spawned pre-employed) is adopted by the
+ * JobSystem — bound to the building under its feet — so the binding stays the authority without a behavior change.
  */
 export const JobAssignment = defineComponent<{ workplace: Entity }>('JobAssignment');
 
 /**
- * A settler's **age** while it is still a non-working life stage (baby/child) — the integer count of
- * ticks lived. Like {@link JobAssignment}, it is a **separate optional component**, not a `Settler`
- * field: only a settler born young (the ReproductionSystem) carries it, and the GrowthSystem
- * ({@link growthSystem}) increments it each tick and **promotes** the settler's age-class `jobType`
- * (baby → child → adult-eligible) as it crosses each stage boundary. The component is **removed** the
- * moment the settler reaches adult-eligibility (`jobType` cleared to `null`) — a grown settler is just
- * an idle adult the JobSystem can employ, with no age bookkeeping. So an adult never carries an `Age`:
- * the goldens/slice and every settler spawned by `spawnSettler` (born already adult) have none, leaving
- * the hash untouched, exactly the [JobAssignment] separate-optional-component pattern.
+ * A settler's age while it is still a non-working life stage (baby/child) — the integer count of ticks
+ * lived. Like {@link JobAssignment}, a separate optional component: only a settler born young (the
+ * ReproductionSystem) carries it, and the GrowthSystem ({@link growthSystem}) increments it each tick and
+ * promotes the settler's age-class `jobType` (baby → child → adult-eligible) as it crosses each stage
+ * boundary. The component is removed the moment the settler reaches adult-eligibility (`jobType` cleared to
+ * `null`) — a grown settler is just an idle adult the JobSystem can employ. So an adult never carries an
+ * `Age`; every settler spawned by `spawnSettler` (born adult) has none.
  *
- * `ticks` is a monotonic integer (no fixed-point — age is a whole-tick count, not a 0..ONE bar), so it
- * hashes deterministically like every other component. Determinism: the GrowthSystem advances it with
- * a fixed per-tick increment and a fixed stage cadence, no RNG/wall-clock.
+ * `ticks` is a monotonic integer (age is a whole-tick count, not a 0..ONE bar).
  */
 export const Age = defineComponent<{ ticks: number }>('Age');
 
 /**
- * A **player move order** in flight on a settler — the soft, TIMED override the RTS "go there" command
- * stamps ({@link import('../systems/orders/index.js').moveUnit}). It is what makes a manual move
- * faithful to *Cultures*: the unit walks to the ordered spot, STANDS there a while, then the economy AI
- * reclaims it — the order never seizes the unit permanently.
+ * A player move order in flight on a settler — the soft, timed override the RTS "go there" command stamps
+ * ({@link import('../systems/orders/index.js').moveUnit}). Faithful to Cultures: the unit walks to the
+ * ordered spot, stands there a while, then the economy AI reclaims it — the order never seizes the unit
+ * permanently.
  *
- * `holdTicks` is how long to stand after arriving (short for a worker, long for a soldier — set from
- * the unit's combatant-ness at order time). `expiresAt` is the tick the hold ends, **null until the
- * unit arrives** and the hold begins — the {@link import('../systems/orders/index.js').playerOrderSystem}
- * sets it on arrival and removes the component on expiry (or when a need drive takes the unit over).
- * While present, the AISystem's ECONOMY branch skips the unit (it stays put) but its NEEDS drives still
- * fire, so hunger/fatigue can pull it away mid-hold.
+ * `holdTicks` is how long to stand after arriving (short for a worker, long for a soldier — set from the
+ * unit's combatant-ness at order time). `expiresAt` is the tick the hold ends, null until the unit arrives
+ * and the hold begins — the {@link import('../systems/orders/index.js').playerOrderSystem} sets it on
+ * arrival and removes the component on expiry (or when a need drive takes over). While present, the
+ * AISystem's economy branch skips the unit but its needs drives still fire, so hunger/fatigue can pull it
+ * away mid-hold.
  *
- * A **separate optional component** (the JobAssignment/Age pattern): only a unit under an active order
- * carries one; every existing spawn / the golden path has none, so it leaves the golden hash untouched.
- * `holdTicks`/`expiresAt` are plain integers (or null), so it hashes deterministically. Determinism:
- * set from the command + tick counter, no RNG / wall-clock.
+ * A separate optional component (the JobAssignment/Age pattern): only a unit under an active order carries
+ * one. `holdTicks`/`expiresAt` are plain integers (or null).
  */
 export const PlayerOrder = defineComponent<{ holdTicks: number; expiresAt: number | null }>('PlayerOrder');
