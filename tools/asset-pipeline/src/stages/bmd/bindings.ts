@@ -23,6 +23,27 @@ function bindingKey(binding: Pick<BmdPaletteBinding, 'bmd' | 'paletteName'>): st
 }
 
 /**
+ * Appends `records` to `target`, dropping `(bmd, palette)` duplicates within `records` — a repeated
+ * bob+palette pair would only make `convertBmdTree` re-emit identical atlas bytes. Each call dedups
+ * only its own records (the landscape and house tables both repeat a bob across variants), not the
+ * bindings already accumulated. `onEach` runs for every record before the dedup, duplicates included.
+ */
+function pushDeduped(
+  target: BmdPaletteBinding[],
+  records: Iterable<BmdPaletteBinding>,
+  onEach?: (binding: BmdPaletteBinding) => void,
+): void {
+  const seen = new Set<string>();
+  for (const binding of records) {
+    onEach?.(binding);
+    const key = bindingKey(binding);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    target.push(binding);
+  }
+}
+
+/**
  * Flattens the mod's richer `[jobbasegraphics]` records ({@link JobBaseGraphicsBinding}) into the flat
  * {@link BmdPaletteBinding} shape {@link import('./convert.js').convertBmdTree} already consumes — so the
  * human body/head bob sets reuse the exact same resolve→decode→atlas path as the readable `[jobgraphics]`
@@ -130,16 +151,8 @@ export async function resolveGraphicsBindings(
     // The base-only [GfxLandscape] table (.cif, no .ini twin): the map's pre-placed landscape-object
     // bobs (trees `ls_trees.bmd`, bushes, signs, wonders, harbours, …) bound to their palette editname —
     // the leg that makes `ls_trees.bmd` (the woodcutter's tree) an atlas. The ~99 tree species share a
-    // dozen palettes, and decor records repeat one bob across variants, so dedup on (bmd, palette)
-    // before pushing: a duplicate would only make `convertBmdTree` re-emit identical bytes. Scoped to the
-    // landscape additions so the human/animal/vehicle bindings array stays byte-identical to before.
-    const seen = new Set<string>();
-    for (const b of extractLandscapeGraphics(landscapesCif)) {
-      const key = bindingKey(b);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      bindings.push(b);
-    }
+    // dozen palettes and decor records repeat one bob across variants, so the records dedup on (bmd, palette).
+    pushDeduped(bindings, extractLandscapeGraphics(landscapesCif));
   }
   // The `.bmd`s claimed by a [GfxHouse] record bake `'build-time'` (`convertBmdTree`'s `buildTimeBmds`):
   // a house bob's Double8Bit second bytes are measured construction-progress thresholds, not coverage
@@ -169,21 +182,12 @@ export async function resolveGraphicsBindings(
     if (vehicleGraphics) bindings.push(...extractGraphicsBindings(vehicleGraphics));
     // The mod's readable [GfxHouse] graphics table (`budynki12/houses/houses.ini`): every settlement
     // house bound to its `ls_houses_*.bmd` body + palette — the leg that turns the house bobs into
-    // atlases (the warehouse's `ls_houses_viking.house02` among them). Like the landscape leg, dedup on
-    // (bmd, palette) before pushing: a house record commonly repeats one bob+palette across tribes/levels
-    // (the ~25 viking-home records all bind `ls_houses_viking` + `house01`/`house02`), and a duplicate
-    // would only make convertBmdTree re-emit identical bytes. Scoped to the building additions so the
-    // human/animal/vehicle/landscape bindings array stays byte-identical to before.
+    // atlases (the warehouse's `ls_houses_viking.house02` among them). Like the landscape leg, a house
+    // record commonly repeats one bob+palette across tribes/levels (the ~25 viking-home records all bind
+    // `ls_houses_viking` + `house01`/`house02`), so the records dedup on (bmd, palette).
     const buildingGraphics = await readIni(join(mod, 'budynki12', 'houses', 'houses.ini'));
     if (buildingGraphics) {
-      const seen = new Set<string>();
-      for (const b of extractBuildingGraphics(buildingGraphics)) {
-        buildTimeBmds.add(b.bmd);
-        const key = bindingKey(b);
-        if (seen.has(key)) continue;
-        seen.add(key);
-        bindings.push(b);
-      }
+      pushDeduped(bindings, extractBuildingGraphics(buildingGraphics), (b) => buildTimeBmds.add(b.bmd));
     }
   }
   return {
