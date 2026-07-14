@@ -14,7 +14,7 @@ import { findProps, getStr, normalizeAssetPath, normalizePaletteName, type RuleS
  */
 export interface PaletteAlias {
   /**
-   * The `editname` a graphics record references, **lower-cased** ({@link normalizePaletteName}): the
+   * The `editname` a graphics record references, lower-cased ({@link normalizePaletteName}): the
    * original engine looks `editname`s up case-insensitively, and the real data mixes case across the
    * two legs (e.g. `palettes.ini` declares `Lion01`/`Chicken01` while `jobgraphics.ini` references
    * `LION01`/`chicken01`). Lower-casing the join key on both sides makes the pairing resolve. One
@@ -32,7 +32,7 @@ export interface PaletteAlias {
  * (`gfxpalettebody "tree01"`), `palettes.ini` resolves that name to a `gfxfile` `.pcx`, and the
  * `.pcx` trailer palette is the colour table {@link import('../pcx.js').decodePcx} already returns.
  *
- * Each record carries exactly one `gfxfile` but the grammar allows **several** `editname` aliases —
+ * Each record carries exactly one `gfxfile` but the grammar allows several `editname` aliases —
  * every alias is emitted as its own entry pointing at the shared file, so a consumer builds one flat
  * `name -> .pcx` map (the real file has 143 `[GfxPalette256]` records; it also holds 108
  * `[GfxPalette16]` 16-colour sub-palettes built via `gfxcolorrange` with no `.pcx`, which the
@@ -60,7 +60,7 @@ export function extractPaletteIndex(sections: readonly RuleSection[]): PaletteAl
 }
 
 /**
- * Collapses {@link extractPaletteIndex} output into a `name → .pcx` lookup, **first alias wins** on a
+ * Collapses {@link extractPaletteIndex} output into a `name → .pcx` lookup, first alias wins on a
  * duplicate name (the real `palettes.ini` has none, but the rule keeps it deterministic). The one
  * shared reading of the alias graph the bmd + goods stages both resolve palettes through — they then
  * read the `.pcx` from different roots (the unpacked out-tree vs the game dir), so only this map

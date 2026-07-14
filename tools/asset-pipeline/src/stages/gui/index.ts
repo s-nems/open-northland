@@ -14,9 +14,9 @@ import { convertWindowBitmaps } from './window-bitmaps.js';
  *
  *  - **Atlas art.** `ls_gui_window.bmd` (193 bobs: tool-panel chrome, order buttons, window frames,
  *    progress/hit bars, minimap chrome) and `ls_gui_bubbles.bmd` (23 speech/thought bubbles) are the same
- *    CBobManager `.bmd` the settlers use, so each becomes (a) an **indexed** atlas (`packIndexedBobAtlas` —
+ *    CBobManager `.bmd` the settlers use, so each becomes (a) an indexed atlas (`packIndexedBobAtlas` —
  *    palette index in red, mask in alpha) the renderer colours per element at draw time through a palette
- *    LUT, plus (b) an **RGBA preview** atlas (`packBobAtlas`) coloured with one sensible default palette so
+ *    LUT, plus (b) an RGBA preview atlas (`packBobAtlas`) coloured with one sensible default palette so
  *    a human can eyeball "chrome, not noise". Both ride the existing `/bobs/` route (`<stem>.png` +
  *    `<stem>.atlas.json`), so the app's `loadLayer` reads them unchanged.
  *  - **Palettes.** The engine colours each HUD element with a `Data/gui/palettes/*.pcx` (2×2 carriers

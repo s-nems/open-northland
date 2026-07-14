@@ -30,19 +30,18 @@ export const PLAYER_RAMP_LENGTH = 16;
 
 /**
  * The body-palette index runs that receive a player's colour ramp. These are the patches the original's
- * per-player recipe (`randompalette.ini` `player_00…09`) actually binds the `Player NN` ramp onto: **patch
- * 10** (indices 160–175, the men's vest) and **patch 5** (80–95), which the recipe mirrors from patch 10
+ * per-player recipe (`randompalette.ini` `player_00…09`) actually binds the `Player NN` ramp onto: patch
+ * 10 (indices 160–175, the men's vest) and patch 5 (80–95), which the recipe mirrors from patch 10
  * (`Patch 5 10 10`). Each `[lo, hi]` run is exactly {@link PLAYER_RAMP_LENGTH} wide and is overwritten with
  * the full ramp, so a body only shows the colour on the patches it actually uses; everything else
  * (skin/hair/metal/tools) is the shared base and identical across players.
  *
- * **Patch 15 (240–255) is deliberately NOT here.** That band is where the CARRIED-GOOD colours live
- * (`good_Wood`/`good_clay`/… set patch 14 + patch 15), so remapping it painted a hauled log/clay slab the
- * team colour — the "blue wood" bug. The `player_NN` recipe never touches patch 15; only the separate
- * `woman_NN` recipe (women's dress) does. Reproducing women's dress colour needs a per-body-class ramp
- * (man → patch 10, woman → patch 15) rather than this one shared band set — a deferred per-body-class
- * follow-up; keeping patch 15 base-coloured is the faithful choice for the
- * men who do the hauling.
+ * Patch 15 (240–255) is deliberately not here. That band is where the carried-good colours live
+ * (`good_Wood`/`good_clay`/… set patch 14 + patch 15), so remapping it would paint a hauled log/clay slab
+ * the team colour. The `player_NN` recipe never touches patch 15; only the separate `woman_NN` recipe
+ * (women's dress) does. Reproducing women's dress colour needs a per-body-class ramp (man → patch 10,
+ * woman → patch 15) rather than this one shared band set — a deferred per-body-class follow-up; keeping
+ * patch 15 base-coloured is the faithful choice for the men who do the hauling.
  */
 export const PLAYER_COLOR_BANDS: readonly (readonly [number, number])[] = [
   [80, 95],
@@ -65,7 +64,7 @@ export interface PlayerColorDef {
 /**
  * The 16 player colours, slot order = player id. Ids 0–9 are the original's `TPlayerColorId` order
  * (`logicdefines.inc`): blue is the human player's default, then red/yellow/cyan/green/purple/grey/orange/
- * neon/black. Ids 10–15 have NO original equivalent — six hue-rotated ramps chosen to sit in the gaps
+ * neon/black. Ids 10–15 have no original equivalent — six hue-rotated ramps chosen to sit in the gaps
  * between the shipped hues (a divergence, see source basis). The `pcx` files are read from the game's
  * `Data/engine2d/bin/palettes/creatures/`.
  */

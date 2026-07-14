@@ -3,7 +3,7 @@
  * lane into the per-cell landscape-typeId grid the sim's nav graph consumes.
  *
  * The landscape grid lanes (`lmlt`, `lmlv`, `emla`, …) carry 4 values per map cell — but NOT as
- * per-cell corner quads: each lane is a plain **row-major `2·width × 2·height` half-cell grid**
+ * per-cell corner quads: each lane is a plain row-major `2·width × 2·height` half-cell grid
  * (pinned empirically: rendering `lmlt`/`emla` as a `2W × 2H` image draws the map's island shapes
  * cleanly, while a per-cell 2×2 interleave draws two side-by-side half-resolution copies — the tell
  * that consecutive values run along a `2W` row, not around one cell). A map cell (x, y) owns the four
@@ -17,8 +17,8 @@ import type { MapLayer } from './layers.js';
 export const HALF_CELLS_PER_CELL = 4;
 
 /**
- * The `lmlt` value marking a half-cell with **no landscape object** (the lane's dominant value —
- * open ground/sea). Raw non-zero values are the IR `LandscapeType.typeId` **directly** (1-based, as
+ * The `lmlt` value marking a half-cell with no landscape object (the lane's dominant value —
+ * open ground/sea). Raw non-zero values are the IR `LandscapeType.typeId` directly (1-based, as
  * in the readable `landscapetypes.ini`): pinned by the `[GfxLandscape]` records' explicit `LogicType`
  * — e.g. every `"clay mine …"` object carries `LogicType 12` (`mud_mine`, typeId 12) and the probed
  * maps' clay half-cells hold raw `12` with matching counts (`palm` → `LogicType 4` = `tree`,
@@ -35,8 +35,8 @@ export const LMLT_EMPTY = 0;
 export const VOID_TYPE_ID = 1;
 
 /**
- * Reduces a cell's four half-cell values to a single representative: the **dominant** (most
- * frequent) value, ties broken by the **lowest** (canonical + deterministic — never depends on
+ * Reduces a cell's four half-cell values to a single representative: the dominant (most
+ * frequent) value, ties broken by the lowest (canonical + deterministic — never depends on
  * half-cell order). On a uniform cell (all four equal, the common case) it returns that value; on a
  * mixed cell it returns whichever value covers most of the cell.
  *

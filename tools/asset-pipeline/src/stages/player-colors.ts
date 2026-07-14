@@ -17,8 +17,8 @@ import { BOBS_DIR, writeAtlasBeside } from './game-file.js';
 /**
  * Player-colour pipeline stage — the render-time-recolour twin of {@link import('./bmd.js').convertBmdTree}.
  * Where that stage BAKES one palette into each atlas, this stage keeps the human character bobs recolourable
- * per player: it emits (a) an **indexed** atlas per character `.bmd` (palette index in red, mask in alpha —
- * no colour applied) and (b) a single **player-colour LUT** PNG (256×16, one composed palette row per player)
+ * per player: it emits (a) an indexed atlas per character `.bmd` (palette index in red, mask in alpha —
+ * no colour applied) and (b) a single player-colour LUT PNG (256×16, one composed palette row per player)
  * plus a small descriptor JSON. The renderer reads each atlas index through the player's LUT row, so one
  * indexed atlas serves all 16 player colours (see `packages/render` palette-LUT shader + `source basis`).
  *

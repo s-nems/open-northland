@@ -6,8 +6,7 @@ import { Provenance } from '../record.js';
  * directional bob cycle laid out as `dirs` facings back-to-back inside one bob set. The render builds
  * its `DirectionalAnim` from this: `start` is the run's first bob id, `length` the total frame count
  * across all directions (so the per-direction stride is `length / dirs`, `dirs` = 8 for these sprites).
- * This is the data the renderer previously hard-coded as frame-range constants (`WALK` start 1988, …);
- * extracting it removes the guesswork — the frame ids come from the source, not a magic number.
+ * The frame ids come from the source `[bobseq]` ranges, not renderer magic numbers.
  */
 export const BobSequence = z.strictObject({
   /** The exact sequence name (`seq "<name>"`) — the resolvable key, e.g. `human_man_generic_walk`. */

@@ -10,7 +10,7 @@ import type { MapDatChunk } from './container.js';
  * Decodes a name-dictionary chunk (`eapd`/`eald`/`eatd`) into its string list. The payload is a
  * `[u32 count]` header then `count` entries of `[u8 length][length bytes][0x00]` (Latin-1, the same
  * length-prefixed grammar as the `.cif` string pool). These dictionaries are how a map references
- * shared tables version-robustly **by name**: `eapd` mirrors the `pattern.cif` `[GfxPattern]` list
+ * shared tables version-robustly by name: `eapd` mirrors the `pattern.cif` `[GfxPattern]` list
  * (927 names, positional), `eald` the `landscapes.cif` `[GfxLandscape]` list (866 names) — the
  * `empa`/`empb`/`emla` lanes index these lists, and the names join back onto the extracted IR.
  *

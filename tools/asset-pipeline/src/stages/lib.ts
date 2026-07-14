@@ -5,7 +5,7 @@ import { walkFiles } from '../walk.js';
 
 /**
  * Maps a `.lib` member name (a backslash path like `data\engine2d\bin\bobs\ls_bridge.bmd`) to a
- * safe path **relative** to the extraction root, or `undefined` if it would escape it. Archive names
+ * safe path relative to the extraction root, or `undefined` if it would escape it. Archive names
  * use Windows backslashes regardless of host OS, so they are rewritten to the native separator before
  * normalizing. A normalized path that is absolute or still starts with `..` (i.e. climbs out of the
  * root) is rejected — defence against a malformed/hostile archive even though the real `data0001.lib`

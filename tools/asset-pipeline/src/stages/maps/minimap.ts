@@ -12,7 +12,7 @@ const MINIMAP_FILLER_INDEX = 0;
 /**
  * Decodes a map folder's `minimap/minimap.pcx` into the emitted thumbnail PNG. The map is rendered
  * into a sub-rectangle of the canvas (usually 350×160) and the rest is filled with
- * {@link MINIMAP_FILLER_INDEX}; the same index also occurs as sparse speckles INSIDE the map picture,
+ * {@link MINIMAP_FILLER_INDEX}; the same index also occurs as sparse speckles inside the map picture,
  * so only the border-connected index-0 region is keyed to transparent (a 4-neighbour flood fill from
  * the edges — a named approximation: the engine's own compositing is not oracle-documented, and this
  * reproduces "frame gone, picture intact" on the whole corpus). The result is cropped to the bounding

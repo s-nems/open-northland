@@ -52,7 +52,7 @@ async function run(args: Args): Promise<void> {
   const extracted = await unpackLibTree(args.game, args.out);
   console.log(`[pipeline] lib unpack: extracted ${extracted.length} member(s) into ${args.out}`);
 
-  // Convert .pcx -> .png from BOTH trees: the original --game tree (loose pictures shipped as files)
+  // Convert .pcx -> .png from both trees: the original --game tree (loose pictures shipped as files)
   // mirrored into <out>, and the unpacked <out> tree itself (the .pcx the unpack stage just extracted
   // from data0001.lib, converted in place to a .png sibling). The two roots are disjoint sources, so a
   // picture is converted exactly once per location it exists; <game>==<out> is not a supported invocation.

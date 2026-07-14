@@ -30,18 +30,18 @@ export function logicTypeByLevel(sec: RuleSection): Map<number, number> {
 }
 
 /**
- * Splits one `[GfxHouse]` section into its constituent house records. The mod packs SEVERAL houses
- * under a SINGLE `[GfxHouse]` bracket — five blocks lump 4..24 houses (the saracen + egypt families) —
- * each sub-house delimited only by a fresh `EditName` line, NOT a new bracket. `parseIniSections` opens
+ * Splits one `[GfxHouse]` section into its constituent house records. The mod packs several houses
+ * under a single `[GfxHouse]` bracket — five blocks lump 4..24 houses (the saracen + egypt families) —
+ * each sub-house delimited only by a fresh `EditName` line, not a new bracket. `parseIniSections` opens
  * a section only on a `[...]` header, so it lumps the block into one {@link RuleSection}; without this
  * split the first sub-house's `GfxBobLibs`/`GfxPalette` would be stapled to last-wins `LogicType`/
  * `GfxBobId` across the whole block (dropping/mis-joining 63 of the 234 building types). Walking the
- * props in file order and starting a new record at each `EditName` recovers each house with its OWN
+ * props in file order and starting a new record at each `EditName` recovers each house with its own
  * `GfxBobLibs`/`GfxPalette`/`LogicTribeType`/`LogicType`/`GfxBobId` block. Props before the first
  * `EditName` (none in the real file) are ignored; a single-house section yields one record.
  *
- * NOTE: {@link import('./structure.js').extractConstructionCosts} and
- * {@link import('./visuals.js').extractBuildingGraphics} read the same sections with the SAME
+ * {@link import('./structure.js').extractConstructionCosts} and
+ * {@link import('./visuals.js').extractBuildingGraphics} read the same sections with the same
  * pre-existing lumping bug (so saracen/egypt costs + atlases are likewise incomplete) — a flagged
  * follow-up (source basis); this helper exists to be reused when that lands.
  */
@@ -63,8 +63,8 @@ export function splitGfxHouseRecords(sec: RuleSection): RuleSection[] {
  * Whether an already-recorded `[GfxHouse]` winner outranks a new `(tribeType, sizeIdx)` candidate, so
  * the candidate is skipped. The cost / hitpoints / footprint overlays are each keyed by `typeId` but
  * genuinely multi-valued in the source (per tribe, per size level); all three collapse
- * DETERMINISTICALLY to the **lowest `LogicTribeType`** (the reference-tribe convention), and within a
- * tribe the **lowest `sizeIdx`** (the base build stage), independent of file/parse order.
+ * deterministically to the lowest `LogicTribeType` (the reference-tribe convention), and within a
+ * tribe the lowest `sizeIdx` (the base build stage), independent of file/parse order.
  */
 export function existingGfxHouseWins(
   existing: { tribeType: number; sizeIdx: number } | undefined,

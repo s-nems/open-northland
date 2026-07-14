@@ -1,7 +1,7 @@
 /**
  * `.pcx` picture decoder — palette-indexed RLE images, plus the embedded 256-color palette.
  *
- * Ported FORMAT (not architecture) from research notes `Source/an original routine/`:
+ * Ported format (not architecture) from research notes `Source/an original routine/`:
  *   - CPicture.cs  `UnpackPCX` (header fields, per-row RLE, trailing palette)
  *   - CPalette.cs  256 RGB entries (the on-disk PCX trailer is RGB triples, not CPalette's BGRx)
  * Referenced at research notes @ working tree 2026-06.

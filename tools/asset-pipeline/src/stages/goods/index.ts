@@ -27,7 +27,7 @@ export { resolveGoodNames } from './names.js';
  *
  *  - **Atlas art.** `ls_goods.bmd` becomes (a) an **indexed** atlas (`packIndexedBobAtlas` — palette index
  *    in red, mask in alpha) the app colours per good at draw time through the goods palette LUT, plus (b) an
- *    **RGBA preview** atlas (one default palette) so a human can eyeball it. Both ride the `/bobs/` route.
+ *    RGBA preview atlas (one default palette) so a human can eyeball it. Both ride the `/bobs/` route.
  *  - **Palettes.** The distinct `goods_*` recolor palettes the good-pile records reference are stacked into
  *    one `256 × N` LUT PNG ({@link writeLutPng}, as the player/GUI LUTs). Row order is emitted in the
  *    manifest (`palettes`), so the app resolves palette-name → row from data rather than a hardcoded mirror.

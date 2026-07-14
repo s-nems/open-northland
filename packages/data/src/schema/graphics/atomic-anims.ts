@@ -4,7 +4,7 @@ import { Provenance } from '../record.js';
 /**
  * One `[gfxanimatomic]` record from `mapmoveableanimations/animations.ini` — the atomic-action → body
  * animation binding, joining `(logictribe, logicjob, logicatomicaction)` to the `gfxbobseqbody`
- * `[bobseq]` it plays and, crucially, the **explicit per-direction frame-index lists** that lay that
+ * `[bobseq]` it plays and the explicit per-direction frame-index lists that lay that
  * animation out across the 8 facings. Render-binding data (like {@link BobSequenceSet}); the pure sim
  * ignores it.
  *
@@ -19,8 +19,8 @@ import { Provenance } from '../record.js';
  */
 export const GfxAnimAtomic = z.strictObject({
   /** `logictribe` the record binds — the `logicdefines.inc` `TRIBE_TYPE_*` id (viking 1, frank 2, …), NOT
-   *  the tribetypes `logicType`. The same `(job, action)` recurs per tribe with DIFFERENT frame lists, so
-   *  a consumer MUST filter by the right tribe (viking = 1) or it draws a plausible-but-wrong swing. */
+   *  the tribetypes `logicType`. The same `(job, action)` recurs per tribe with different frame lists, so
+   *  a consumer must filter by the right tribe (viking = 1) or it draws a plausible-but-wrong swing. */
   tribe: z.number().int().nonnegative(),
   /** `logicjob` — the soldier/settler jobType whose atomic this animates (soldiers 31..41, civilist 6, woman 5). */
   job: z.number().int().nonnegative(),

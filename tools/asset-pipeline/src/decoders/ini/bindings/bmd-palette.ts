@@ -17,7 +17,7 @@ import {
 
 /**
  * One bob set's palette pairing: a `.bmd` body (and its optional shadow `.bmd`) bound to the palette
- * `editname` its graphics record names — the **second leg** of the `.bmd`→palette graph. The first leg
+ * `editname` its graphics record names — the second leg of the `.bmd`→palette graph. The first leg
  * ({@link import('./palette.js').extractPaletteIndex}) resolves `paletteName` to a `.pcx` trailer palette;
  * together they answer "which 256 colours colour this `.bmd`". The `.bmd` paths are normalized
  * (forward-slash, lower-case) so a lookup against the unpacked `--out` tree is host-OS/case-independent,
@@ -29,7 +29,7 @@ export interface BmdPaletteBinding {
   /** The matching shadow bob set, same normalization, or `undefined` when the record has no shadow `.bmd`. */
   readonly shadowBmd: string | undefined;
   /**
-   * The palette `editname` the record references, **lower-cased** ({@link normalizePaletteName}) so it
+   * The palette `editname` the record references, lower-cased ({@link normalizePaletteName}) so it
    * joins case-insensitively onto the palette alias `name` (the two legs disagree on case in the real
    * data).
    */

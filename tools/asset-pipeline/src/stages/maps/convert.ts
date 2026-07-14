@@ -38,10 +38,10 @@ export interface MapDatConversion {
  * ({@link mapIdFromPath}), so the artifact joins onto the same-folder `map.cif`'s `MapInfo` `id`.
  * Maps are visited in a stable (path-sorted) order so a re-run is reproducible.
  *
- * Beside each grid, two OPTIONAL menu-facing sidecars are emitted when the map folder carries them:
+ * Beside each grid, two optional menu-facing sidecars are emitted when the map folder carries them:
  * `maps/<id>.meta.json` (the display name/description — {@link resolveMapMeta}) and `maps/<id>.png`
  * (the shipped minimap decoded to a cropped transparent-filler PNG — {@link minimapToPng}). Both are
- * DELETED before the conditional emit, so a re-run over a source that lost its text/minimap cannot
+ * deleted before the conditional emit, so a re-run over a source that lost its text/minimap cannot
  * leave a stale sidecar joined onto a fresh grid. The dev server's `/maps-index` route joins them onto
  * the map list for the main menu's cards.
  *
@@ -50,9 +50,9 @@ export interface MapDatConversion {
  * abort on one bad file, matching the other tree-walk stages. An output-write failure (and a missing
  * `gameDir`) propagates: that's an environmental error, not a per-file boundary failure.
  *
- * KNOWN: ids collapse on the folder name, so two maps in same-named folders under different roots
+ * Ids collapse on the folder name, so two maps in same-named folders under different roots
  * (e.g. `Data/maps/oasis_o_plenty` vs `CnModMaps/oasis_o_plenty`) write the same `<id>.json`
- * last-write-wins (on the real game, 130 `map.dat` → 125 files). This is *deliberately* the same
+ * last-write-wins (on the real game, 130 `map.dat` → 125 files). This is deliberately the same
  * `mapIdFromPath` collapse `decodeMapTree` applies to `map.cif`, so the terrain artifact and its
  * `MapInfo` agree on the id and stay joinable — a path-scoped unique id would have to change both legs
  * together. (A localization sub-folder like `WICHRY_ZIMY/text/map.dat` likewise slugs to `text`; that

@@ -23,12 +23,12 @@ import {
 /**
  * Extracts `[GfxPattern]` sections from `Data/engine2d/inis/patterns/pattern.cif` (`.cif`-only, with
  * CamelCase keys + a CamelCase section header like {@link extractLandscapeGraphics}) into validated
- * {@link GfxPattern} IR — the **texture→cell binding** for the triangle-mesh terrain (927 records). Each
+ * {@link GfxPattern} IR — the texture→cell binding for the triangle-mesh terrain (927 records). Each
  * pattern names a `text_NNN.pcx` ground texture, the two triangles' 6-int UV tuples (`GfxCoordsA`/
  * `GfxCoordsB`) and a `LogicType` ({@link TrianglePatternType.type} cross-ref; `0` = the misc/border
  * tiles that classify to no logic type).
  *
- * Unlike the throw/skip extractors, this **keeps every record and never drops or reorders one**: the
+ * Unlike the throw/skip extractors, this keeps every record and never drops or reorders one: the
  * record has no explicit id, so {@link GfxPattern.id} is its 0-based position and a map references a
  * pattern by that index — skipping a malformed record would renumber the rest. The visual fields are
  * therefore read defensively (a wrong-arity coord set → `undefined` via {@link getIntTuple}) rather than
@@ -62,7 +62,7 @@ export function extractPatterns(sections: readonly RuleSection[], src: SourceRef
  * Extracts the `[transition]` ground-overlay records from `transitions.cif` into validated
  * {@link GfxPatternTransition} IR (38 records in the real data). Each record carries its RGB
  * texture + separate alpha-mask picture and SIX repeated `GfxCoordsA`/`GfxCoordsB` triangle-UV
- * lines — kept in FILE ORDER because a map lane's `value % 6` selects the pair positionally.
+ * lines — kept in file order because a map lane's `value % 6` selects the pair positionally.
  * The sibling `[pointtype]` sections (editor grouping metadata) are not extracted. Like
  * {@link extractPatterns}, every matched record keeps its positional {@link GfxPatternTransition.index}
  * and reads visual fields defensively (a wrong-arity coord line is dropped, not fatal).
@@ -105,8 +105,8 @@ type TerrainFamily = (typeof TERRAIN_FAMILIES)[number]['family'];
 
 /**
  * Classifies a {@link LandscapeType} (by its `id` slug) into a coarse ground family. The map's per-cell
- * `lmlt` value is a landscape typeId, but those types are mostly OBJECTS (void/tree/rock/iron/wheat/…),
- * not ground classes — so the GROUND under a cell is approximated from the type's NAME: a `water` name →
+ * `lmlt` value is a landscape typeId, but those types are mostly objects (void/tree/rock/iron/wheat/…),
+ * not ground classes — so the ground under a cell is approximated from the type's name: a `water` name →
  * water, a `rock`/`stone` name → mountain, everything else (incl. tree/bush/wood, whose ground is land)
  * → land. This is the deviation the 1:1-oracle-blocked terrain render ships (source basis).
  */
@@ -120,8 +120,8 @@ function classifyTerrainFamily(landscapeId: string): TerrainFamily {
 /**
  * Picks the representative {@link GfxPattern} for a family: the pattern of the family's `logicType` whose
  * `editName` starts with the family seed (`water`/`meadow`/`mountain`) — the clean full-tile base — else,
- * if none match the seed, any pattern of that `logicType`. Among candidates, the **shortest editName,
- * lowest id** wins (the unsuffixed base tile like `"water 01"` over a `"block water 00 00 00"` transition
+ * if none match the seed, any pattern of that `logicType`. Among candidates, the shortest editName,
+ * lowest id wins (the unsuffixed base tile like `"water 01"` over a `"block water 00 00 00"` transition
  * variant), a deterministic pick. Returns `undefined` if the family's `logicType` has no usable pattern
  * (no texture / coords) — then that family's typeIds bind nothing.
  */
@@ -143,15 +143,15 @@ function pickRepresentativePattern(
 }
 
 /**
- * Builds the **approximated** typeId→ground-pattern table the terrain renderer consumes
- * ({@link TerrainPattern} IR, historical plan phase 2 step 2): for each {@link LandscapeType}, classify its
- * ground family ({@link classifyTerrainFamily}) and bind it to that family's one representative
+ * Builds the approximated typeId→ground-pattern table the terrain renderer consumes
+ * ({@link TerrainPattern} IR): for each {@link LandscapeType}, classify its ground family
+ * ({@link classifyTerrainFamily}) and bind it to that family's one representative
  * {@link GfxPattern} ({@link pickRepresentativePattern}) — its `text_NNN` texture + the two triangles'
  * UVs — plus the family logic type's `debugColor` (the flat-tint fallback). A cross-table builder (like
- * {@link fillBuildingRecipes}), so it runs after the three source tables are extracted. **This is a
- * recorded deviation, not a 1:1 match** (source basis): the original computes the per-cell pattern
- * from corner types + variant lanes, an oracle-blocked algorithm; here every typeId of a family gets the
- * SAME representative ground. A landscape typeId whose family has no usable pattern is skipped (binds no
+ * {@link fillBuildingRecipes}), so it runs after the three source tables are extracted. A recorded
+ * deviation, not a 1:1 match (source basis): the original computes the per-cell pattern from corner
+ * types + variant lanes, an oracle-blocked algorithm; here every typeId of a family gets the same
+ * representative ground. A landscape typeId whose family has no usable pattern is skipped (binds no
  * ground → the renderer keeps its flat-colour fallback for those cells).
  */
 export function buildTerrainPatterns(
