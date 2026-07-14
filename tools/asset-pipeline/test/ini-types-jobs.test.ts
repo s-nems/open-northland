@@ -8,20 +8,20 @@ describe('extractJobs', () => {
     const src = { file: 'Data/logic/jobtypes.ini', block: 'jobtype', layer: 'base' };
     expect(jobs).toEqual([
       {
-        typeId: 3,
-        id: 'child_female',
-        name: 'child_female',
-        allowedAtomics: [8, 15],
-        baseAtomics: [1],
-        forbiddenAtomics: [99],
+        typeId: 7,
+        id: 'nestward',
+        name: 'nestward',
+        allowedAtomics: [12, 19],
+        baseAtomics: [3],
+        forbiddenAtomics: [88],
         source: src,
       },
       // `&` and spaces slug to single underscores, matching extractLandscape's slug rules.
       {
-        typeId: 30,
-        id: 'herb_mush_guy',
-        name: 'herb & mush guy',
-        allowedAtomics: [8],
+        typeId: 40,
+        id: 'reed_moss_picker',
+        name: 'reed & moss picker',
+        allowedAtomics: [12],
         baseAtomics: [],
         forbiddenAtomics: [],
         source: src,
@@ -50,32 +50,32 @@ describe('extractJobExperience', () => {
     expect(tracks).toEqual([
       // A "general" track carries no `good` -> goodType omitted, baseRepeatCounter omitted.
       {
-        typeId: 2,
-        id: 'collector_general',
-        name: 'collector general',
-        jobType: 8,
-        experienceFactor: 100,
+        typeId: 5,
+        id: 'gatherer_basic',
+        name: 'gatherer basic',
+        jobType: 33,
+        experienceFactor: 110,
         source: src,
       },
       // A good-specific track carries `good`.
       {
-        typeId: 3,
-        id: 'collector_wood',
-        name: 'collector wood',
-        jobType: 8,
-        goodType: 5,
-        experienceFactor: 250,
+        typeId: 6,
+        id: 'gatherer_reed',
+        name: 'gatherer reed',
+        jobType: 33,
+        goodType: 22,
+        experienceFactor: 260,
         source: src,
       },
       // `baserepeatcounter` is captured when present.
       {
-        typeId: 46,
-        id: 'farmer_wheat',
-        name: 'farmer wheat',
-        jobType: 18,
-        goodType: 4,
-        experienceFactor: 100,
-        baseRepeatCounter: 2,
+        typeId: 47,
+        id: 'tiller_grain',
+        name: 'tiller grain',
+        jobType: 34,
+        goodType: 24,
+        experienceFactor: 115,
+        baseRepeatCounter: 3,
         source: src,
       },
     ]);
@@ -105,14 +105,14 @@ describe('extractTribes', () => {
       layer: 'mod',
     });
     expect(tribes).toHaveLength(1);
-    expect(tribes[0]).toMatchObject({ typeId: 1, id: 'viking', name: 'viking' });
+    expect(tribes[0]).toMatchObject({ typeId: 4, id: 'fenling', name: 'fenling' });
     // The `//`-comment on the third line is stripped by the parser, so the animation token is clean.
     // A repeated (jobType, atomicId) pair is kept in file order — consumers resolve last-wins.
     expect(tribes[0]?.atomicBindings).toEqual([
-      { jobType: 1, atomicId: 8, animation: 'viking_baby_female_sleep' },
-      { jobType: 5, atomicId: 22, animation: 'viking_woman_pickup' },
-      { jobType: 52, atomicId: 84, animation: 'viking_ship_small_idle_short_a' },
-      { jobType: 5, atomicId: 22, animation: 'viking_woman_pickup_alt' },
+      { jobType: 50, atomicId: 61, animation: 'fen_broodling_rest' },
+      { jobType: 51, atomicId: 65, animation: 'fen_forager_lift' },
+      { jobType: 55, atomicId: 90, animation: 'fen_barge_drift' },
+      { jobType: 51, atomicId: 65, animation: 'fen_forager_lift_b' },
     ]);
   });
 
@@ -123,13 +123,13 @@ describe('extractTribes', () => {
     });
     // The real data interleaves the four kinds within a block, so edges keep verbatim file order
     // (good, house, good, job, vehicle here) — NOT regrouped by kind. The malformed
-    // `jobEnablesGood notanint 5` (non-int jobType) is dropped, like a malformed setatomic line.
+    // `jobEnablesGood notanint 22` (non-int jobType) is dropped, like a malformed setatomic line.
     expect(tribes[0]?.jobEnables).toEqual([
-      { jobType: 5, kind: 'good', targetId: 5 },
-      { jobType: 5, kind: 'house', targetId: 2 },
-      { jobType: 1, kind: 'good', targetId: 4 },
-      { jobType: 5, kind: 'job', targetId: 1 },
-      { jobType: 5, kind: 'vehicle', targetId: 3 },
+      { jobType: 51, kind: 'good', targetId: 22 },
+      { jobType: 51, kind: 'house', targetId: 31 },
+      { jobType: 50, kind: 'good', targetId: 24 },
+      { jobType: 51, kind: 'job', targetId: 50 },
+      { jobType: 51, kind: 'vehicle', targetId: 37 },
     ]);
   });
 
@@ -139,14 +139,14 @@ describe('extractTribes', () => {
       layer: 'mod',
     });
     // The `need`/`train` prefix + `job`/`good` suffix decompose into the two dimensions; the optional
-    // second expType (`needforjob 1 10 6 7`) is captured, a single one (`needforgood 5 15 9`) too,
-    // and the synthetic "school" expType (77/57) on `train*` rides through unvalidated. The malformed
-    // `needforjob notanint 10 3` (non-int targetId) is dropped, like a malformed jobEnables line.
+    // second expType (`needforjob 50 8 6 7`) is captured, a single one (`needforgood 22 12 9`) too,
+    // and the synthetic "school" expType (71/54) on `train*` rides through unvalidated. The malformed
+    // `needforjob notanint 8 3` (non-int targetId) is dropped, like a malformed jobEnables line.
     expect(tribes[0]?.jobRequirements).toEqual([
-      { requirement: 'need', target: 'job', targetId: 1, amount: 10, experienceTypes: [6, 7] },
-      { requirement: 'need', target: 'good', targetId: 5, amount: 15, experienceTypes: [9] },
-      { requirement: 'train', target: 'job', targetId: 1, amount: 10, experienceTypes: [77] },
-      { requirement: 'train', target: 'good', targetId: 4, amount: 5, experienceTypes: [57] },
+      { requirement: 'need', target: 'job', targetId: 50, amount: 8, experienceTypes: [6, 7] },
+      { requirement: 'need', target: 'good', targetId: 22, amount: 12, experienceTypes: [9] },
+      { requirement: 'train', target: 'job', targetId: 50, amount: 8, experienceTypes: [71] },
+      { requirement: 'train', target: 'good', targetId: 24, amount: 6, experienceTypes: [54] },
     ]);
   });
 });

@@ -17,38 +17,38 @@ describe('extractBuildings', () => {
     const src = { file: 'DataCnmd/types/houses.ini', block: 'logichousetype', layer: 'mod' };
     expect(buildings).toEqual([
       {
-        typeId: 1,
-        id: 'headquarters',
+        typeId: 30,
+        id: 'wardenhall',
         kind: 'storage', // logicmaintype 1
         homeSize: 0,
-        workers: [{ jobType: 5, count: 3 }],
+        workers: [{ jobType: 51, count: 3 }],
         stock: [
-          { goodType: 1, capacity: 150, initial: 0 },
-          { goodType: 5, capacity: 150, initial: 0 },
+          { goodType: 20, capacity: 90, initial: 0 },
+          { goodType: 22, capacity: 90, initial: 0 },
         ],
         produces: [],
         construction: [], // build cost is overlaid from the graphics table, not the logic table
         source: src,
       },
       {
-        typeId: 2,
-        id: 'home_level_00',
+        typeId: 31,
+        id: 'burrow_nest_00',
         kind: 'home', // logicmaintype 2
         homeSize: 1, // logichomesize
         workers: [],
-        stock: [{ goodType: 1, capacity: 5, initial: 1 }],
+        stock: [{ goodType: 20, capacity: 4, initial: 1 }],
         produces: [],
         construction: [],
         source: src,
       },
       {
-        typeId: 13,
-        id: 'work_mill_00',
+        typeId: 44,
+        id: 'grind_lodge_00',
         kind: 'workplace', // logicmaintype 3
         homeSize: 0,
-        workers: [{ jobType: 5, count: 1 }],
+        workers: [{ jobType: 51, count: 1 }],
         stock: [],
-        produces: [5, 1], // logicproduction output good ids, in file order
+        produces: [22, 20], // logicproduction output good ids, in file order
         construction: [],
         source: src,
       },
@@ -77,10 +77,10 @@ describe('extractBuildings', () => {
 // `LogicType` but no construction goods.
 
 describe('fillBuildingRecipes', () => {
-  // The goods table carries the input side: coin (8) <- productionInputGoods 5 4; potion (9) <-
-  // productionInputGoods 1 1 4 4 5 (= 2×good1 + 2×good4 + 1×good5). wood (5)/water (1) are raw (no
-  // inputs). So a workplace producing coin should get inputs {wood,wheat}, one producing a raw good
-  // should get an empty-input recipe (it makes a good with no recipe of its own).
+  // The goods table carries the input side: guildmark (27) <- productionInputGoods 22 24; dusktonic (31)
+  // <- productionInputGoods 20 20 24 24 22 (= 2×good20 + 2×good24 + 1×good22). thornreed (22)/glimmerdew
+  // (20) are raw (no inputs). So a workplace producing guildmark should get inputs {thornreed,palegrain},
+  // one producing a raw good should get an empty-input recipe (it makes a good with no recipe of its own).
   const GOODS = extractGoods(parseIniSections(GOODTYPES_INI), { file: 'goodtypes.ini' });
   const src = { file: 'houses.ini', block: 'logichousetype', layer: 'mod' as const };
   const building = (
@@ -98,8 +98,8 @@ describe('fillBuildingRecipes', () => {
     produces,
     source: src,
   });
-  // A minimal reference tribe binding the produce atomics of coin (8 -> atomic 51) and potion
-  // (9 -> atomic 73) for worker job 5, plus the animations those bindings name with their lengths.
+  // A minimal reference tribe binding the produce atomics of guildmark (27 -> atomic 70) and dusktonic
+  // (31 -> atomic 75) for worker job 5, plus the animations those bindings name with their lengths.
   const tribe = (typeId: number, bindings: [number, number, string][]) =>
     TribeType.parse({
       typeId,
@@ -115,45 +115,46 @@ describe('fillBuildingRecipes', () => {
     AtomicAnimation.parse({ id: name, name, length, source: src });
 
   it('joins a workplace output good -> that good`s productionInputs into recipe.inputs', () => {
-    const [mint] = fillBuildingRecipes([building(13, 'mint', [8])], GOODS);
+    const [mint] = fillBuildingRecipes([building(13, 'mint', [27])], GOODS);
     expect(mint?.recipe).toEqual({
-      // coin consumes wood (5) + wheat (4), one each — emitted in ascending input-goodType order.
+      // guildmark consumes thornreed (22) + palegrain (24), one each — emitted in ascending goodType order.
       inputs: [
-        { goodType: 4, amount: 1 },
-        { goodType: 5, amount: 1 },
+        { goodType: 22, amount: 1 },
+        { goodType: 24, amount: 1 },
       ],
-      outputs: [{ goodType: 8, amount: 1 }],
+      outputs: [{ goodType: 27, amount: 1 }],
       ticks: 20,
     });
   });
 
-  it('preserves the repeated-id quantity through the join (potion: 2×1, 2×4, 1×5)', () => {
-    const [lab] = fillBuildingRecipes([building(14, 'lab', [9])], GOODS);
+  it('preserves the repeated-id quantity through the join (dusktonic: 2×20, 2×24, 1×22)', () => {
+    const [lab] = fillBuildingRecipes([building(14, 'lab', [31])], GOODS);
     expect(lab?.recipe?.inputs).toEqual([
-      { goodType: 1, amount: 2 },
-      { goodType: 4, amount: 2 },
-      { goodType: 5, amount: 1 },
+      { goodType: 20, amount: 2 },
+      { goodType: 22, amount: 1 },
+      { goodType: 24, amount: 2 },
     ]);
-    expect(lab?.recipe?.outputs).toEqual([{ goodType: 9, amount: 1 }]);
+    expect(lab?.recipe?.outputs).toEqual([{ goodType: 31, amount: 1 }]);
   });
 
   it('merges (sums per input goodType) the inputs of several produced goods', () => {
-    const [multi] = fillBuildingRecipes([building(15, 'multi', [8, 9])], GOODS);
-    // coin needs 5,4; potion needs 1,4,5 -> wood(5)=1+1, wheat(4)=1+2, water(1)=2; two outputs.
+    const [multi] = fillBuildingRecipes([building(15, 'multi', [27, 31])], GOODS);
+    // guildmark needs 22,24; dusktonic needs 20,24,22 -> thornreed(22)=1+1, palegrain(24)=1+2,
+    // glimmerdew(20)=2; two outputs.
     expect(multi?.recipe?.inputs).toEqual([
-      { goodType: 1, amount: 2 },
-      { goodType: 4, amount: 3 },
-      { goodType: 5, amount: 2 },
+      { goodType: 20, amount: 2 },
+      { goodType: 22, amount: 2 },
+      { goodType: 24, amount: 3 },
     ]);
     expect(multi?.recipe?.outputs).toEqual([
-      { goodType: 8, amount: 1 },
-      { goodType: 9, amount: 1 },
+      { goodType: 27, amount: 1 },
+      { goodType: 31, amount: 1 },
     ]);
   });
 
   it('gives a producer of a raw good an empty-input recipe (still a producer)', () => {
-    const [cutter] = fillBuildingRecipes([building(16, 'cutter', [5])], GOODS);
-    expect(cutter?.recipe).toEqual({ inputs: [], outputs: [{ goodType: 5, amount: 1 }], ticks: 20 });
+    const [cutter] = fillBuildingRecipes([building(16, 'cutter', [22])], GOODS);
+    expect(cutter?.recipe).toEqual({ inputs: [], outputs: [{ goodType: 22, amount: 1 }], ticks: 20 });
   });
 
   it('leaves a non-producing building (empty produces) with no recipe', () => {
@@ -162,18 +163,18 @@ describe('fillBuildingRecipes', () => {
   });
 
   it('does not mutate the input building records', () => {
-    const input = building(13, 'mint', [8]);
+    const input = building(13, 'mint', [27]);
     fillBuildingRecipes([input], GOODS);
     expect(input).not.toHaveProperty('recipe');
   });
 
   // Recipe `ticks` resolution: worker jobType + produced good's atomicForProduction -> the reference
-  // tribe's setatomic animation -> that animation's length. coin (8) -> atomic 51; potion (9) -> 73.
+  // tribe's setatomic animation -> that animation's length. guildmark (27) -> atomic 70; dusktonic (31) -> 75.
   it('resolves recipe.ticks from the produce-atomic animation length via the reference tribe', () => {
-    const tribes = [tribe(1, [[5, 51, 'coin_produce']])];
-    const anims = [anim('coin_produce', 80)];
+    const tribes = [tribe(1, [[5, 70, 'guildmark_forge']])];
+    const anims = [anim('guildmark_forge', 80)];
     const [mint] = fillBuildingRecipes(
-      [building(13, 'mint', [8], [{ jobType: 5, count: 1 }])],
+      [building(13, 'mint', [27], [{ jobType: 5, count: 1 }])],
       GOODS,
       tribes,
       anims,
@@ -182,11 +183,11 @@ describe('fillBuildingRecipes', () => {
   });
 
   it('picks the lowest-typeId tribe as the reference (deterministic, source-order-independent)', () => {
-    // Two tribes bind the same (job 5, atomic 51) to different-length animations; tribe 1 wins.
-    const tribes = [tribe(3, [[5, 51, 'coin_slow']]), tribe(1, [[5, 51, 'coin_fast']])];
-    const anims = [anim('coin_slow', 200), anim('coin_fast', 60)];
+    // Two tribes bind the same (job 5, atomic 70) to different-length animations; tribe 1 wins.
+    const tribes = [tribe(3, [[5, 70, 'guildmark_slow']]), tribe(1, [[5, 70, 'guildmark_fast']])];
+    const anims = [anim('guildmark_slow', 200), anim('guildmark_fast', 60)];
     const [mint] = fillBuildingRecipes(
-      [building(13, 'mint', [8], [{ jobType: 5, count: 1 }])],
+      [building(13, 'mint', [27], [{ jobType: 5, count: 1 }])],
       GOODS,
       tribes,
       anims,
@@ -195,11 +196,11 @@ describe('fillBuildingRecipes', () => {
   });
 
   it('falls back to a later output good when the primary output`s produce-atomic does not resolve', () => {
-    // produces [8, 9]: coin (atomic 51) is unbound; potion (atomic 73) resolves to length 120.
-    const tribes = [tribe(1, [[5, 73, 'potion_produce']])];
-    const anims = [anim('potion_produce', 120)];
+    // produces [27, 31]: guildmark (atomic 70) is unbound; dusktonic (atomic 75) resolves to length 120.
+    const tribes = [tribe(1, [[5, 75, 'dusktonic_brew']])];
+    const anims = [anim('dusktonic_brew', 120)];
     const [lab] = fillBuildingRecipes(
-      [building(15, 'multi', [8, 9], [{ jobType: 5, count: 1 }])],
+      [building(15, 'multi', [27, 31], [{ jobType: 5, count: 1 }])],
       GOODS,
       tribes,
       anims,
@@ -208,9 +209,9 @@ describe('fillBuildingRecipes', () => {
   });
 
   it('falls back to the default ticks when no produced good`s produce-atomic resolves a length', () => {
-    // Worker present, but no tribe binds (job 5, atomic 51), so the chain breaks -> default 20.
+    // Worker present, but no tribe binds (job 5, atomic 70), so the chain breaks -> default 20.
     const [mint] = fillBuildingRecipes(
-      [building(13, 'mint', [8], [{ jobType: 5, count: 1 }])],
+      [building(13, 'mint', [27], [{ jobType: 5, count: 1 }])],
       GOODS,
       [tribe(1, [[5, 99, 'unrelated']])],
       [anim('unrelated', 10)],
@@ -220,25 +221,25 @@ describe('fillBuildingRecipes', () => {
 
   it('falls back to the default ticks when the building has no worker (no jobType to key the binding)', () => {
     const [mint] = fillBuildingRecipes(
-      [building(13, 'mint', [8])], // workers: [] -> no jobType
+      [building(13, 'mint', [27])], // workers: [] -> no jobType
       GOODS,
-      [tribe(1, [[5, 51, 'coin_produce']])],
-      [anim('coin_produce', 80)],
+      [tribe(1, [[5, 70, 'guildmark_forge']])],
+      [anim('guildmark_forge', 80)],
     );
     expect(mint?.recipe?.ticks).toBe(20);
   });
 
   it('falls back to the default ticks when tribes/animations are absent (back-compat)', () => {
-    const [mint] = fillBuildingRecipes([building(13, 'mint', [8], [{ jobType: 5, count: 1 }])], GOODS);
+    const [mint] = fillBuildingRecipes([building(13, 'mint', [27], [{ jobType: 5, count: 1 }])], GOODS);
     expect(mint?.recipe?.ticks).toBe(20);
   });
 
   it('skips an animation of length 0 (not a real cycle) and falls back', () => {
     const [mint] = fillBuildingRecipes(
-      [building(13, 'mint', [8], [{ jobType: 5, count: 1 }])],
+      [building(13, 'mint', [27], [{ jobType: 5, count: 1 }])],
       GOODS,
-      [tribe(1, [[5, 51, 'coin_zero']])],
-      [anim('coin_zero', 0)],
+      [tribe(1, [[5, 70, 'guildmark_zero']])],
+      [anim('guildmark_zero', 0)],
     );
     expect(mint?.recipe?.ticks).toBe(20);
   });
