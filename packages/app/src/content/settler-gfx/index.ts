@@ -28,4 +28,9 @@ export {
   YOUNG_CHARACTER_BY_JOB,
 } from './character-specs.js';
 export { directionalAnimFromSeq, type GoodRef } from './seq-anim.js';
-export { HARVEST_TICKS, MUSHROOM_PLUCK_FRAMES, MUSHROOM_PLUCKS_PER_PICK } from './sequences.js';
+export {
+  HAMMER_TICKS_PER_FRAME,
+  HARVEST_TICKS,
+  MUSHROOM_PLUCK_FRAMES,
+  MUSHROOM_PLUCKS_PER_PICK,
+} from './sequences.js';

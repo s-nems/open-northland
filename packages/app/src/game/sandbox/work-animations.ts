@@ -5,13 +5,14 @@
  * extracted viking `atomicanimations.ini` records (see the per-constant notes). Combat swing timings
  * live beside the weapons in `./combat.ts`; the building store/recipe caps in `./building-set.ts`.
  */
+import { HAMMER_TICKS_PER_FRAME } from '../../content/settler-gfx/index.js';
 
-// The builder's hammer swing length — TRANSCRIBED from the extracted viking `viking_builder_build_house`
-// atomicanimation (`length 15`, content/ir.json). Binding it makes each construct swing take 15 ticks
-// instead of the 4-tick default, so the builder visibly hammers and the foundation rises over a
-// watchable span rather than snapping done. The animation name is the logic-timing join key; the render
-// plays the builder's own `human_man_constructionworker_Work_Hammer` body clip (see content/settler-gfx/).
-export const BUILD_HOUSE_SWING_LENGTH = 15;
+// The builder's hammer swing length — the TRANSCRIBED viking `viking_builder_build_house`
+// atomicanimation (`length 15`, content/ir.json: one 13-entry authored swing + a 2-tick ready pad)
+// scaled by the render clip's half cadence (HAMMER_TICKS_PER_FRAME — the 1 frame/tick pace read
+// frantically fast; user-tuned approximation). The whole authored swing still plays exactly once per
+// construct atomic, and building slows in step: labor advances per COMPLETED swing.
+export const BUILD_HOUSE_SWING_LENGTH = 15 * HAMMER_TICKS_PER_FRAME;
 export const BUILD_HOUSE_ANIMATION = 'viking_builder_build_house';
 // The farmer's three field-work swings — lengths TRANSCRIBED from the extracted viking atomicanimations
 // (`DataCnmd/atomicanimations12/atomicanimations.ini`: harvest_wheat 24, plant 24, cultivate 29). The

@@ -6,6 +6,7 @@ import type {
 } from '@open-northland/render';
 import {
   ATTACK_ATOMIC,
+  BUILD_HOUSE_ATOMIC,
   CLAY_HARVEST_ATOMIC,
   CULTIVATE_ATOMIC,
   GOLD_HARVEST_ATOMIC,
@@ -94,10 +95,10 @@ export async function loadCharacters(
   // name — the layout each warrior/civilian spec's `attack` seq becomes a FrameListAnim from. Built once
   // (not per spec); a spec whose seq is absent just has no attack animation.
   const attackFrameLists = gfxAtomicFrameLists(ir, VIKING_ANIM_TRIBE, ATTACK_ATOMIC);
-  // The gathering + field-work frame lists (the collector job-8 chop/dig/pluck and the farmer job-18
-  // sow/water/reap `[gfxanimatomic]` records), keyed by atomic id — what each spec's `dirListAtomics`
-  // becomes FrameListAnims from (the attack mechanism generalized). Built once; an IR without them just
-  // leaves those actions on their fallback clips.
+  // The gathering + field-work + builder frame lists (the collector job-8 chop/dig/pluck, the farmer
+  // job-18 sow/water/reap, and the builder job-7 hammer `[gfxanimatomic]` records), keyed by atomic id —
+  // what each spec's `dirListAtomics` becomes FrameListAnims from (the attack mechanism generalized).
+  // Built once; an IR without them just leaves those actions on their fallback clips.
   const actionFrameLists = new Map(
     [
       HARVEST_ATOMIC,
@@ -109,6 +110,7 @@ export async function loadCharacters(
       WHEAT_HARVEST_ATOMIC,
       PLANT_ATOMIC,
       CULTIVATE_ATOMIC,
+      BUILD_HOUSE_ATOMIC,
     ].map((action) => [action, gfxAtomicFrameLists(ir, VIKING_ANIM_TRIBE, action)] as const),
   );
   // One mushroom pick bends MUSHROOM_PLUCKS_PER_PICK times: repeat the authored one-shot pluck list

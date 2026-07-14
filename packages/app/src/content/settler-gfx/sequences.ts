@@ -36,10 +36,16 @@ export const SHOVEL_SEQ = 'human_man_clayworker_work_shovel'; // clay/mud — th
 export const STONECRUSH_SEQ = 'human_man_stonecrusher_work_stonecrushing'; // stone + iron + gold (the mining strike)
 // The builder's HAMMER swing on the generic man body (`cr_hum_body_00`) — the `constructionworker` trade's
 // authored work clip (the render twin of the logic `viking_builder_build_house` atomic). Bound to
-// BUILD_HOUSE_ATOMIC so a settler raising a foundation visibly swings a hammer, exactly as the woodcutter
-// swings the axe for the chop (source basis "Gathering/construction work animations"). Not a clean ×8 strip,
-// so {@link characterBinding} plays it facing-locked (the builder faces the wall it hammers).
+// BUILD_HOUSE_ATOMIC through the `[gfxanimatomic]` action-39 per-direction frame LISTS (13 entries/dir
+// with the impact holds baked in — the 42-frame strip is 6 direction blocks, NOT a clean ×8), the same
+// `dirListAtomics` path as the collector/farmer clips; the facing-locked whole strip stays only as the
+// no-frame-lists fallback (source basis "Gathering work animations").
 export const HAMMER_SEQ = 'human_man_constructionworker_Work_Hammer';
+/** Sim ticks per hammer frame. The authored 13-entry swing at the default 1 frame/tick read frantically
+ *  fast (reported); half cadence paces the strike. User-tuned approximation — the construct atomic's
+ *  duration scales with it ({@link import('../../game/sandbox/work-animations.js').BUILD_HOUSE_SWING_LENGTH})
+ *  so the whole swing still plays exactly once per atomic, and building slows in step. */
+export const HAMMER_TICKS_PER_FRAME = 2;
 // The FARMER's three authored field clips on the generic man body — the render side of the original's
 // `setatomic 18 29/34/35` farm loop. None is a clean ×8 strip cut (reap 66 / sow 120 / water 96 frames,
 // but the per-direction cuts are the `[gfxanimatomic]` job-18 frame LISTS: 24/23/29 frames per dir), so

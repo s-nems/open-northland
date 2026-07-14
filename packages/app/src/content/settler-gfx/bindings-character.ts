@@ -140,6 +140,7 @@ export function characterBinding(
     byAtomic[Number(atomicId)] = {
       ...anim,
       ...(action.phaseStart !== undefined ? { phaseStart: action.phaseStart } : {}),
+      ...(action.ticksPerFrame !== undefined ? { ticksPerFrame: action.ticksPerFrame } : {}),
     };
   }
 
@@ -161,11 +162,17 @@ export function characterBinding(
   // `[bobseq]` row and its per-atomic `[gfxanimatomic]` lists resolve, overriding any plain `atomics`
   // fallback for the same id — missing data leaves that fallback (or nothing) in place, never a bogus
   // uniform slice. Same reorder into facing space as the attack swing.
-  for (const [atomicId, seqName] of Object.entries(spec.dirListAtomics ?? {})) {
+  for (const [atomicId, entry] of Object.entries(spec.dirListAtomics ?? {})) {
+    const { seq: seqName, ticksPerFrame } =
+      typeof entry === 'string' ? { seq: entry, ticksPerFrame: undefined } : entry;
     const row = seqByName.get(seqName);
     const dirLists = actionFrameLists?.get(Number(atomicId))?.get(seqName);
     if (row !== undefined && row.length > 0 && dirLists !== undefined && dirLists.length > 0) {
-      byAtomic[Number(atomicId)] = { start: row.start, frameLists: frameListsByFacing(dirLists) };
+      byAtomic[Number(atomicId)] = {
+        start: row.start,
+        frameLists: frameListsByFacing(dirLists),
+        ...(ticksPerFrame !== undefined ? { ticksPerFrame } : {}),
+      };
     }
   }
 
