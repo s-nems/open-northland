@@ -13,7 +13,7 @@ export const TypeId = z.number().int().nonnegative();
 
 /**
  * Atomic ids are a numeric vocabulary cross-referenced by goods (`atomicFor*`), jobs
- * (`allowatomic`/`baseatomics`) and tribes (`setatomic`). The readable data ships NO master
+ * (`allowatomic`/`baseatomics`) and tribes (`setatomic`). The readable data ships no master
  * atomictypes table — an atomic id's meaning is implicit in how those sources reference it
  * (e.g. the id under `atomicForHarvesting` is the harvest atomic for that good). The sim's
  * atomic planner consumes these bindings. See docs/ECS.md "Settler AI". Same numeric domain as

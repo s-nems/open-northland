@@ -12,7 +12,7 @@ import { cifLinesToSections, decodeIni, type RuleSection } from './grammar.js';
  * `text/<lang>/strings.ini`/`.cif` (same `stringn` lines, usually without a `[control]` section).
  * The multiplier (1 in every shipped table) scales the id, matching the engine's per-table id
  * namespacing. Values are returned as they appear in `sections` — the byte→text codepage is the
- * CALLER's seam ({@link decodeIni} already yields CP1250 for readable `.ini`; `.cif` text is decoded
+ * caller's seam ({@link decodeIni} already yields CP1250 for readable `.ini`; `.cif` text is decoded
  * latin1 to match the OpenVikings oracle and needs {@link latin1ToCp1250} for display).
  */
 export function extractStringTable(sections: readonly RuleSection[]): Record<number, string> {
@@ -29,7 +29,7 @@ export function extractStringTable(sections: readonly RuleSection[]): Record<num
     if (prop.key === 'stringn') {
       id = Number.parseInt(prop.values[0] ?? '', 10);
       display = prop.values[1];
-      if (!Number.isNaN(id)) next = id + 1; // only advance the running id on a VALID explicit id, so one
+      if (!Number.isNaN(id)) next = id + 1; // only advance the running id on a valid explicit id, so one
       // malformed `stringn` drops only its own line, not every following bare `string` (per-item resilience)
     } else if (prop.key === 'string') {
       id = next;
@@ -49,7 +49,7 @@ export function extractStringTable(sections: readonly RuleSection[]): Record<num
  * ignoring the bare `string` (auto-incrementing) lines. Unlike {@link extractStringTable} it applies no
  * `stringidmultiplier` and no running id, so an entry's id is exactly its `stringn` number.
  *
- * This is the reader for the localized good-NAME tables (`text/<lang>/strings/gameobjects/goods.{ini,cif}`):
+ * This is the reader for the localized good-name tables (`text/<lang>/strings/gameobjects/goods.{ini,cif}`):
  * there each `stringn <goodType> "<singular>"` is the display name and the following bare `string` is the
  * plural. That table declares `stringidmultiplier 2` AND leaves gaps in the `stringn` sequence (mead's
  * `stringn 43` sits amid the 24..42 block), so {@link extractStringTable}'s running-id + multiplier scaling

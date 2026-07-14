@@ -16,7 +16,7 @@ import { BOBS_DIR, writeAtlasBeside } from './game-file.js';
 
 /**
  * Player-colour pipeline stage — the render-time-recolour twin of {@link import('./bmd.js').convertBmdTree}.
- * Where that stage BAKES one palette into each atlas, this stage keeps the human character bobs recolourable
+ * Where that stage bakes one palette into each atlas, this stage keeps the human character bobs recolourable
  * per player: it emits (a) an indexed atlas per character `.bmd` (palette index in red, mask in alpha —
  * no colour applied) and (b) a single player-colour LUT PNG (256×16, one composed palette row per player)
  * plus a small descriptor JSON. The renderer reads each atlas index through the player's LUT row, so one
@@ -67,7 +67,7 @@ export interface PlayerColorLutResult {
  * a `256×16` LUT PNG, and write it under `<out>`'s bobs dir. Reads the base + `playerNN.pcx` sources from the
  * same `<out>` tree (the pipeline unpacked them there). Throws on a missing base/reference palette — those are
  * required for any player colour to exist. The colours' names/ids live in code (`PLAYER_COLORS`, mirrored
- * app-side for the gallery labels) and the LUT row order IS that slot order, so no sidecar descriptor is needed.
+ * app-side for the gallery labels) and the LUT row order is that slot order, so no sidecar descriptor is needed.
  */
 export async function convertPlayerColorLut(outDir: string): Promise<PlayerColorLutResult> {
   const tree = await indexOutTree(outDir);

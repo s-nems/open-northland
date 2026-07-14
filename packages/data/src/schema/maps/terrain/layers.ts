@@ -21,7 +21,7 @@ export type TerrainGround = z.infer<typeof TerrainGround>;
 
 /**
  * The transition-overlay layer of a decoded map: the original's `emt1..emt4` per-cell u8 lanes,
- * each a per-TRIANGLE overlay pick — `emt1`/`emt2` are layer 1 (drawn last, on top) for triangles
+ * each a per-triangle overlay pick — `emt1`/`emt2` are layer 1 (drawn last, on top) for triangles
  * A/B, `emt3`/`emt4` layer 2 (under layer 1) for A/B. A lane value `v < 255` selects transition
  * `⌊v/6⌋` from the map's `eatd` dictionary ({@link types}, kept verbatim so the positional join
  * survives) and pair variant `v % 6` of its six `GfxCoords` pairs; `255` = no overlay. A name
@@ -57,8 +57,8 @@ export const TerrainObjects = z.strictObject({
   /** Flat `[hx, hy, typeIndex]` triples in row-major half-cell order (length % 3 === 0). */
   placements: z.array(z.number().int().nonnegative()),
   /**
-   * Per-placement object LEVEL from the `lmlv` lane (parallel to {@link placements}, one entry per
-   * triple): 1-based and counting UP FROM THE LOWEST state, while the type's {@link LandscapeGfx}
+   * Per-placement object level from the `lmlv` lane (parallel to {@link placements}, one entry per
+   * triple): 1-based and counting up from the lowest state, while the type's {@link LandscapeGfx}
    * `frames` lists are authored highest-first — so level N (= the list count) is the full-grown
    * tree / full deposit / intact wall (the first list) and level 1 the sapling / dregs / rubble
    * (the last); consumers map `index = N − level`. Walls carry the sentinel `100` (= intact); that

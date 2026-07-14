@@ -76,7 +76,7 @@ export interface MapDatTerrainMap {
  * a plain value (not a sim type) so the build tool never imports from `sim`; the sim validates the
  * typeIds against its IR table.
  *
- * APPROXIMATED: the half-cell→cell reduction has no behavioral oracle (OpenVikings decodes the
+ * Approximated: the half-cell→cell reduction has no behavioral oracle (OpenVikings decodes the
  * container but does not simulate navigation). Dominant-value is a faithful-shaped, deterministic
  * choice for a bulk-terrain nav grid; refine if the oracle later pins a different rule. Walkability
  * itself is resolved downstream from the IR `LandscapeType` flags, not here.

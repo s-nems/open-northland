@@ -197,7 +197,7 @@ function expandBobFrameTime(frame: BobFrame): RgbaImage {
   return { width, height, rgba };
 }
 
-/** Every written (`mask≠0`) pixel forced fully opaque — the binary-alpha flattener of the INDEXED path. */
+/** Every written (`mask≠0`) pixel forced fully opaque — the binary-alpha flattener of the indexed path. */
 function flattenFrameAlpha(frame: BobFrame): BobFrame {
   const mask = new Uint8Array(frame.mask.length);
   for (let i = 0; i < mask.length; i++) mask[i] = frame.mask[i] !== 0 ? BOB_ALPHA_OPAQUE : 0;

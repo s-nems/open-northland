@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
- * Asset pipeline CLI — offline conversion of an OWNED original game copy into the IR (content/).
+ * Asset pipeline CLI — offline conversion of an owned original game copy into the IR (content/).
  *
  *   npm run pipeline -- --game "../Cultures 8th Wonder" --mod DataCnmd --out content
  *
- * This is run by a human/agent, not shipped. It writes NO copyrighted bytes into the repo source;
+ * This is run by a human/agent, not shipped. It writes no copyrighted bytes into the repo source;
  * its output goes to the gitignored content/ folder. See docs/DATA-FORMAT.md and docs/SOURCES.md.
  *
  * Phase 1 lands the stages one decoder at a time. Implemented now: `.lib` archives unpacked to loose

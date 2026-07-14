@@ -61,7 +61,7 @@ export function extractPatterns(sections: readonly RuleSection[], src: SourceRef
 /**
  * Extracts the `[transition]` ground-overlay records from `transitions.cif` into validated
  * {@link GfxPatternTransition} IR (38 records in the real data). Each record carries its RGB
- * texture + separate alpha-mask picture and SIX repeated `GfxCoordsA`/`GfxCoordsB` triangle-UV
+ * texture + separate alpha-mask picture and six repeated `GfxCoordsA`/`GfxCoordsB` triangle-UV
  * lines — kept in file order because a map lane's `value % 6` selects the pair positionally.
  * The sibling `[pointtype]` sections (editor grouping metadata) are not extracted. Like
  * {@link extractPatterns}, every matched record keeps its positional {@link GfxPatternTransition.index}

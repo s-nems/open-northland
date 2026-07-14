@@ -5,7 +5,7 @@ import { encodePng } from '../../decoders/png.js';
 import { readGameFile } from '../game-file.js';
 
 /**
- * Window-fill bitmaps that the engine draws through an ELEMENT palette instead of their embedded one.
+ * Window-fill bitmaps that the engine draws through an element palette instead of their embedded one.
  * `Data/gui/bitmaps/bg.pcx` expands to grey marble through its embedded palette, but every in-game window
  * body in the original renders it warm brown — the `bg_normal` element palette applied to the same indices
  * matches those screenshots (verified visually at 1024×768; the palette's name states the pairing, but

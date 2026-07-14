@@ -23,7 +23,7 @@ export const GfxAnimAtomic = z.strictObject({
   tribe: z.number().int().nonnegative(),
   /** `logicjob` — the soldier/settler jobType whose atomic this animates (soldiers 31..41, civilist 6, woman 5). */
   job: z.number().int().nonnegative(),
-  /** `logicatomicaction` — the atomic slot (81 ATTACK, …), the same numeric id the sim's `setatomic` join keys. */
+  /** `logicatomicaction` — the atomic slot (81 = attack, …), the same numeric id the sim's `setatomic` join keys. */
   action: z.number().int().nonnegative(),
   /** The `gfxbobseqbody` `[bobseq]` name whose frame pool the {@link dirFrames} index into. */
   bodySeq: z.string(),

@@ -58,7 +58,7 @@ export type LandscapeBlockArea = z.infer<typeof LandscapeBlockArea>;
 /**
  * The `logicType` value meaning "no logic classification" — the schema default for a record that
  * omits the key (a pure-decor {@link LandscapeGfx}, a misc/border {@link GfxPattern}). Cross-ref
- * checks skip it; every REAL record carries an explicit 1-based id.
+ * checks skip it; every real record carries an explicit 1-based id.
  */
 export const LOGIC_TYPE_NONE = 0;
 

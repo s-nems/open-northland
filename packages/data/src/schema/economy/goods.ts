@@ -120,18 +120,18 @@ export const GoodFarming = z.strictObject({
    * record's 5 growth frames).
    */
   stages: z.number().int().positive(),
-  /** OBSERVED — ticks an unwatered field takes to advance one growth stage (no readable growth timing). */
+  /** Observed — ticks an unwatered field takes to advance one growth stage (no readable growth timing). */
   ticksPerStage: z.number().int().positive(),
-  /** OBSERVED — units a ripe field drops (as a ground sheaf) when reaped. The only related readable
+  /** Observed — units a ripe field drops (as a ground sheaf) when reaped. The only related readable
    *  number is `humanjobexperiencetypes.ini` "farmer wheat" `baserepeatcounter 2` (semantics unpinned). */
   yieldPerField: z.number().int().positive(),
-  /** OBSERVED — how far from the farm's anchor its workers sow, in half-cell NODES (no radius in data). */
+  /** Observed — how far from the farm's anchor its workers sow, in half-cell nodes (no radius in data). */
   fieldRadius: z.number().int().positive(),
-  /** OBSERVED — the crew-independent part of a farm's field cap. Live cap is
+  /** Observed — the crew-independent part of a farm's field cap. Live cap is
    *  `fieldsBase + fieldsPerFarmer × bound field-farmers`, so the plot grows sublinearly with the crew
    *  (calibration: one farmer works 6 fields, a pair 10). Defaults to 0 (pure per-farmer scaling). */
   fieldsBase: z.number().int().nonnegative().default(0),
-  /** OBSERVED — the per-farmer slope of the field cap (see {@link fieldsBase}; no field-count in data). */
+  /** Observed — the per-farmer slope of the field cap (see {@link fieldsBase}; no field-count in data). */
   fieldsPerFarmer: z.number().int().positive(),
 });
 export type GoodFarming = z.infer<typeof GoodFarming>;

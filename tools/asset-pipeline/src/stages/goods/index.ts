@@ -73,10 +73,10 @@ export interface GoodsManifest {
   readonly paletteLutStem: string;
   /** Palette LUT row order (row index = array index) — the app maps a {@link GoodIcon.palette} to its row. */
   readonly palettes: string[];
-  /** good STRING id → its icon binding. */
+  /** good string id → its icon binding. */
   readonly icons: Record<string, GoodIcon>;
   /**
-   * Localized DISPLAY names: locale code → (good STRING id → name), extracted from the game's own
+   * Localized display names: locale code → (good string id → name), extracted from the game's own
    * `text/<lang>/strings/gameobjects/goods.{ini,cif}` string tables. The app resolves a good's shown name
    * through this with a locale fallback chain, so the whole catalog reads in the player's language and
    * adding a language is a data edit, not code. A locale whose string file is missing is simply absent

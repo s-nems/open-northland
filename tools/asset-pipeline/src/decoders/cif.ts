@@ -93,7 +93,7 @@ export function encryptMode1(buf: Uint8Array): void {
 
 /**
  * Reads one `CMemory` storable body (`[u32 id=0x3E9][u32 version][u32 size][size bytes]`) and returns
- * a COPY of the bytes, so a caller may decrypt/mutate without touching the source buffer. Asserts the
+ * a copy of the bytes, so a caller may decrypt/mutate without touching the source buffer. Asserts the
  * storable id, tagging the error with the cursor's format prefix. Shared by every storable container
  * decoder (`.cif` offsets/pool, `.bmd` bob/packed/line blocks — CMemory is the universal blob wrapper).
  */

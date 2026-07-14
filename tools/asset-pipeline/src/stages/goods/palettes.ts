@@ -9,7 +9,7 @@ import { readGameFile } from '../game-file.js';
  * search of the goods/landscape palette dirs. The same resolution the bmd stage uses.
  */
 
-/** The palette ALIAS table: `[GfxPalette256]` records mapping a palette editname (`gold01`) to its real
+/** The palette alias table: `[GfxPalette256]` records mapping a palette editname (`gold01`) to its real
  *  `.pcx` — a name rarely names a `<name>.pcx` file directly (`gold01` → `landscapes/gold.pcx`). */
 const PALETTES_INI = join('Data', 'engine2d', 'inis', 'palettes', 'palettes.ini');
 /** Fallback dirs a `goods_*` recolor palette `.pcx` may live in when the alias table has no entry. */

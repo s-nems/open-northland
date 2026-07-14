@@ -108,7 +108,7 @@ export const ArmorType = z.strictObject({
   name: z.string().optional(),
   /** `mainType` — coarse class (1 = light/cloth+leather, 2 = heavy/chain+plate in the base data). */
   mainType: ClassId.optional(),
-  /** `goodtype` — the good that IS this armor (worn/carried); resolves into the good table. */
+  /** `goodtype` — the good that is this armor (worn/carried); resolves into the good table. */
   goodType: TypeId.optional(),
   /** `materialType` — the material tier the armor is made of (cloth/leather/chain/plate = 1..4). */
   materialType: ClassId.optional(),

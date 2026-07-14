@@ -13,7 +13,7 @@ import type { GoodLike } from './icons.js';
 /**
  * The localized good-name join: read each locale's `text/<lang>/strings/gameobjects/goods.{ini,cif}`
  * string table and join it (good `type` → display name) onto the goods by `typeId`, producing
- * `locale → (good STRING id → name)`. The join ({@link resolveGoodNames}) is pure and unit-tested.
+ * `locale → (good string id → name)`. The join ({@link resolveGoodNames}) is pure and unit-tested.
  */
 
 /**
@@ -34,7 +34,7 @@ function goodNamesPath(dir: string, encrypted: boolean): string {
 
 /**
  * Join the localized good-name string tables (good `type` → display name, per locale) onto the goods by
- * `typeId`, producing `locale → (good STRING id → name)`. Pure (no I/O) so the join is unit-tested. A good
+ * `typeId`, producing `locale → (good string id → name)`. Pure (no I/O) so the join is unit-tested. A good
  * absent from a locale's table (or a locale with no table) simply gets no entry there; the app's fallback
  * chain covers it. The `type`-keyed singular is the faithful display name (see {@link extractStringnById}).
  */

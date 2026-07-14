@@ -94,8 +94,8 @@ function assertPalette(p: Uint8Array, what: string): void {
 }
 
 /**
- * A DETACHED 768-byte copy of a palette. Deliberately not `p.slice()`: a decoded `.pcx` palette is a Node
- * `Buffer` (`Buffer.prototype.slice` returns a VIEW that shares memory, unlike `Uint8Array.prototype.slice`),
+ * A detached 768-byte copy of a palette. Deliberately not `p.slice()`: a decoded `.pcx` palette is a Node
+ * `Buffer` (`Buffer.prototype.slice` returns a view that shares memory, unlike `Uint8Array.prototype.slice`),
  * so slicing it and writing to the "copy" would corrupt the shared base — every composed player palette would
  * alias one buffer and collapse to the last one. `new Uint8Array` + `.set` always copies.
  */
@@ -168,7 +168,7 @@ function hsvToRgb(h: number, s: number, v: number): [number, number, number] {
 
 /**
  * Build a synthetic player source by hue-rotating `reference`'s band to `hueDeg`, keeping each entry's
- * saturation + value. This reuses a real ramp's dark→bright SHAPE (so a synthesised colour shades like a
+ * saturation + value. This reuses a real ramp's dark→bright shape (so a synthesised colour shades like a
  * shipped one) while giving it a new hue — the basis for the six extra player colours. Returns a full
  * 768-byte palette; only its band matters to {@link composePlayerPalette}. Grey/near-grey band entries
  * (saturation ~0, e.g. the ramp's dark anchor) stay neutral, since hue is meaningless there.

@@ -32,11 +32,11 @@ export interface PcxConversion {
 /**
  * Composes each transition overlay's RGB texture + alpha-mask `.pcx` pair into one RGBA
  * `<stem>.masked.png` under {@link TEXTURES_DIR} (the `/textures/` serving contract). The mask's
- * RAW palette-index bytes become the alpha channel directly (the engine's convention — the mask
- * picture's index IS the coverage value; format oracle in docs/SOURCES.md), which the plain
+ * raw palette-index bytes become the alpha channel directly (the engine's convention — the mask
+ * picture's index is the coverage value; format oracle in docs/SOURCES.md), which the plain
  * palette-expanding conversion cannot represent.
  *
- * Sources resolve by BASENAME under the real-cased {@link TEXTURES_DIR} — the IR's normalized
+ * Sources resolve by basename under the real-cased {@link TEXTURES_DIR} — the IR's normalized
  * paths are lowercased, so joining them verbatim would miss on a case-sensitive filesystem; every
  * real `[transition]` record lives in that one directory, and a record pointing elsewhere degrades
  * to the warn-and-skip below. `gameDir` is tried first (loose files), then `outDir` (pictures the

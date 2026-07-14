@@ -7,7 +7,7 @@
  *
  *   [u32 id=0x3F5][u32 version]                  CFont storable header
  *   [u32 value08]                                font-level word (unknown; carried verbatim)
- *   [u32 value0C]                                font-level word — empirically the NOMINAL PIXEL SIZE
+ *   [u32 value0C]                                font-level word — empirically the nominal pixel size
  *                                                (8/10/12 for font08/10/12; 8 for fontdebug)
  *   [u32 id=0x3F4][u32 version][ CBobManager … ] the nested bob container ({@link decodeBmd} parses this)
  *
@@ -73,7 +73,7 @@ export interface Font {
 
 /**
  * Decodes a `.fnt` (CFont) into its font-level words + the nested bob container. Reads the 16-byte CFont
- * prefix, then hands the remainder to {@link decodeBmd} (the nested storable IS a `.bmd` CBobManager).
+ * prefix, then hands the remainder to {@link decodeBmd} (the nested storable is a `.bmd` CBobManager).
  * Throws an `fnt:`-prefixed error on a too-short buffer, a wrong root id, or a font with no bob manager (a
  * null nested storable, which CFont writes as an id/version of 0) — a batch stage should wrap the call
  * per-file so one bad font can't abort the run.
