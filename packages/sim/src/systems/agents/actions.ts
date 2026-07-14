@@ -4,7 +4,10 @@ import { fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
+import { carrierCarryCapacity } from '../progression/index.js';
 import { atomicDuration } from '../readviews/animations.js';
+import type { PlannerContext } from './planner-context.js';
+import { interactionCell } from './targets/index.js';
 
 // The planner's action vocabulary: the atomic ids the drives issue, the shared "start an atomic" entry point,
 // and the walk-or-act step every target-bound drive ends in. Each id below is only a content cross-reference /
@@ -124,5 +127,18 @@ export function startPickup(
     { kind: 'pickup', goodType, amount, from },
     atomicDuration(ctx.content, settler, PICKUP_ATOMIC_ID),
     from,
+  );
+}
+
+/**
+ * Walk to a store/pile's interaction cell and lift a full carrier batch of `goodType` from it — the shared
+ * tail of every haul rung (trunk collection, porter ferrying, the carrier fallback). The batch is the tribe's
+ * carry capacity (one unit on foot, a vehicle's `stockSlots` when unlocked), capped by `pickupFromStore` to
+ * what the source actually holds.
+ */
+export function walkPickupBatch(plan: PlannerContext, from: Entity, goodType: number): void {
+  const { world, ctx, terrain, entity: e, here } = plan;
+  atOrWalk(world, e, here, interactionCell(world, ctx, terrain, from, here), () =>
+    startPickup(world, ctx, e, plan, from, goodType, carrierCarryCapacity(world, ctx, plan.tribe)),
   );
 }
