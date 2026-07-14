@@ -117,7 +117,7 @@ export function planNeeds(
   }
 
   if (settler.piety >= PIETY_PRAY_THRESHOLD) {
-    const temple = nearestTemple(targets.buildings, world, ctx, terrain, here);
+    const temple = nearestTemple(targets.buildingCells, world, ctx, here);
     if (temple !== null) {
       atOrWalk(world, e, here, interactionCell(world, ctx, terrain, temple, here), () =>
         startAtomic(

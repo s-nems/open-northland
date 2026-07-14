@@ -72,15 +72,7 @@ export function planBuilder(plan: PlannerContext, spacing: SpacingState): boolea
     assigned?.pinned === true && world.has(assigned.site, UnderConstruction) ? assigned.site : null;
   const site =
     pinned ??
-    nearestConstructionSite(
-      targets.constructionSites,
-      world,
-      ctx,
-      terrain,
-      here,
-      settler.tribe,
-      settler.owner,
-    );
+    nearestConstructionSite(targets.constructionSiteCells, world, here, settler.tribe, settler.owner);
   if (site === null) {
     world.remove(e, SiteAssignment); // nothing under construction — the crew disbands
     return false; // fall through to hauling

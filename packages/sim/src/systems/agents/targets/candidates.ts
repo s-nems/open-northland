@@ -10,10 +10,12 @@ import {
   UnderConstruction,
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
+import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { canonicalResources } from '../../resource-index.js';
 import { canonicalById } from '../../spatial.js';
 import { isCarrierJob } from '../../stores/index.js';
+import { InteractionCellIndex } from './cell-index.js';
 import { SinkAvailability } from './stores/sinks.js';
 
 /** Canonically ordered target categories shared by every settler planned during one tick. */
@@ -22,10 +24,16 @@ export interface TargetCandidates {
   readonly resources: readonly Entity[];
   /** Stores / food stores / workplace outputs: entities with {@link Stockpile} + {@link Position}. */
   readonly stockpiles: readonly Entity[];
+  /** {@link stockpiles} as a ring index keyed by interaction cell, for the nearest-store picks. */
+  readonly stockpileCells: InteractionCellIndex;
   /** Building-keyed targets (temples): entities with {@link Building} + {@link Position}. */
   readonly buildings: readonly Entity[];
+  /** {@link buildings} as a ring index keyed by interaction cell, for the nearest-temple pick. */
+  readonly buildingCells: InteractionCellIndex;
   /** Construction sites, kept separate so an idle world scans an empty list. */
   readonly constructionSites: readonly Entity[];
+  /** {@link constructionSites} as a ring index keyed by interaction cell, for the nearest-site picks. */
+  readonly constructionSiteCells: InteractionCellIndex;
   /** Felled trunks and dropped-good piles, kept separate from persistent stores. */
   readonly groundDrops: readonly Entity[];
   /** Sown fields used by the farming planner. */
@@ -39,7 +47,7 @@ export interface TargetCandidates {
 }
 
 /** Snapshot the planner's canonical target categories once for the tick. */
-export function collectTargets(world: World, ctx: SystemContext): TargetCandidates {
+export function collectTargets(world: World, ctx: SystemContext, terrain: TerrainGraph): TargetCandidates {
   const harvestAtomicByGood = new Map<number, number>();
   for (const good of ctx.content.goods) {
     if (good.atomics.harvest !== undefined) harvestAtomicByGood.set(good.typeId, good.atomics.harvest);
@@ -53,11 +61,16 @@ export function collectTargets(world: World, ctx: SystemContext): TargetCandidat
   }
 
   const stockpiles = canonicalById(world.query(Stockpile, Position));
+  const buildings = canonicalById(world.query(Building, Position));
+  const constructionSites = canonicalById(world.query(UnderConstruction, Building, Position));
   return {
     resources: canonicalResources(world),
     stockpiles,
-    buildings: canonicalById(world.query(Building, Position)),
-    constructionSites: canonicalById(world.query(UnderConstruction, Building, Position)),
+    stockpileCells: new InteractionCellIndex(world, ctx, terrain, stockpiles),
+    buildings,
+    buildingCells: new InteractionCellIndex(world, ctx, terrain, buildings),
+    constructionSites,
+    constructionSiteCells: new InteractionCellIndex(world, ctx, terrain, constructionSites),
     groundDrops: canonicalById(world.query(GroundDrop, Stockpile, Position)),
     crops: canonicalById(world.query(Crop, Position)),
     harvestAtomicByGood,
