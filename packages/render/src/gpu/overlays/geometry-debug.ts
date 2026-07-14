@@ -1,6 +1,6 @@
 import { Container, Graphics, Text } from 'pixi.js';
-import { type ElevationField, terrainLiftAtNode } from '../../data/elevation.js';
-import { halfCellToScreen, TILE_HALF_H, TILE_HALF_W } from '../../data/iso.js';
+import { type ElevationField, projectNode } from '../../data/elevation.js';
+import { TILE_HALF_H, TILE_HALF_W } from '../../data/iso.js';
 
 /**
  * The building-geometry debug overlay (`?debug=geometry`) — draws every placed building's logic
@@ -74,7 +74,7 @@ export class GeometryDebugLayer {
     this.container.addChild(g);
     for (const item of items) {
       const at = (cell: GeometryDebugCell): { x: number; y: number } =>
-        nodePoint(item.anchor.hx + cell.dx, item.anchor.hy + cell.dy, elevation);
+        projectNode(elevation, item.anchor.hx + cell.dx, item.anchor.hy + cell.dy);
       for (const cell of item.reserved) {
         diamond(g, at(cell)).stroke({ width: 1, color: RESERVED_COLOR, alpha: 0.8 });
       }
@@ -92,7 +92,7 @@ export class GeometryDebugLayer {
         const p = at(item.iconAnchor);
         g.circle(p.x, p.y, 4).fill({ color: ICON_ANCHOR_COLOR, alpha: 0.9 });
       }
-      const a = nodePoint(item.anchor.hx, item.anchor.hy, elevation);
+      const a = projectNode(elevation, item.anchor.hx, item.anchor.hy);
       g.moveTo(a.x - 5, a.y)
         .lineTo(a.x + 5, a.y)
         .moveTo(a.x, a.y - 5)
@@ -110,12 +110,6 @@ export class GeometryDebugLayer {
   destroy(): void {
     this.container.destroy({ children: true });
   }
-}
-
-/** A node's world-px point: the half-cell projection, lifted by the terrain height under it. */
-function nodePoint(hx: number, hy: number, elevation: ElevationField | undefined): { x: number; y: number } {
-  const p = halfCellToScreen(hx, hy);
-  return { x: p.x, y: p.y - terrainLiftAtNode(elevation, hx, hy) };
 }
 
 /**

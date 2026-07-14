@@ -1,6 +1,6 @@
 import { Container, Graphics } from 'pixi.js';
-import { type ElevationField, terrainLiftAtNode } from '../../data/elevation.js';
-import { halfCellToScreen, nodeDiamondPoly, TILE_HALF_H, TILE_HALF_W } from '../../data/iso.js';
+import { type ElevationField, projectNode } from '../../data/elevation.js';
+import { nodeDiamondPoly, TILE_HALF_H, TILE_HALF_W } from '../../data/iso.js';
 import { hashCells } from './cell-signature.js';
 
 /**
@@ -54,11 +54,9 @@ export class ConstructionPlotLayer {
     const hh = TILE_HALF_H / 2;
     for (const plot of plots) {
       for (const cell of plot.cells) {
-        const p = halfCellToScreen(cell.col, cell.row);
-        const cx = p.x;
-        const cy = p.y - terrainLiftAtNode(elevation, cell.col, cell.row);
         // One node diamond per cell; all cells share the single fill below, so overlaps union cleanly.
-        g.poly(nodeDiamondPoly(cx, cy, hw, hh));
+        const p = projectNode(elevation, cell.col, cell.row);
+        g.poly(nodeDiamondPoly(p.x, p.y, hw, hh));
       }
     }
     g.fill(PLOT_COLOR);

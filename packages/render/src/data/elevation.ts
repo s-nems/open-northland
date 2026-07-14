@@ -1,5 +1,5 @@
 import { makeCellSampler } from './cell-field.js';
-import { TILE_HALF_H } from './iso.js';
+import { halfCellToScreen, TILE_HALF_H } from './iso.js';
 
 /**
  * The terrain-elevation seam: a pure, immutable height field with a single bilinear sampler every
@@ -83,6 +83,21 @@ export function terrainLiftAt(elevation: ElevationField | undefined, col: number
  */
 export function terrainLiftAtNode(elevation: ElevationField | undefined, hx: number, hy: number): number {
   return elevation !== undefined && elevation.maxLift > 0 ? elevation.liftAtNode(hx, hy) : 0;
+}
+
+/**
+ * A half-cell node's lifted screen point: {@link halfCellToScreen} with the terrain height under the node
+ * subtracted from `y` (screen up is −y). The shared project-then-lift primitive the world-space node
+ * overlays (geometry debug, construction plots, placement wash, combat marks) place their decals with, so
+ * they can't drift on it.
+ */
+export function projectNode(
+  elevation: ElevationField | undefined,
+  hx: number,
+  hy: number,
+): { x: number; y: number } {
+  const p = halfCellToScreen(hx, hy);
+  return { x: p.x, y: p.y - terrainLiftAtNode(elevation, hx, hy) };
 }
 
 /** A flat field — no elevation lane. Shared so a `content/`-less / synthetic map allocates nothing. */
