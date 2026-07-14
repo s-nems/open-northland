@@ -48,6 +48,15 @@ const CONSTRUCTION_REVEAL_EASE = 0.06;
 const layerHasReveal = (layer: ResolvedLayer): boolean => layer.reveal !== undefined;
 
 /**
+ * How often (in reconciled frames) the pool is swept for entities that left the snapshot (died) so their
+ * display objects can be freed. A death detaches immediately — invisible that same frame — and destroying
+ * it only reclaims memory, so this one whole-pool diff against the live set runs a few times a second
+ * rather than every frame, keeping the per-frame reconcile bounded by the screen. ~30 ≈ twice a second at
+ * 60 fps.
+ */
+const POOL_REAP_INTERVAL_FRAMES = 30;
+
+/**
  * Everything one {@link SpritePool.reconcile} pass needs beyond the pool's own state — built once per
  * frame by the {@link import('../world-renderer.js').WorldRenderer} (one small object per frame, not per
  * entity).
@@ -81,6 +90,11 @@ export interface PoolFrame {
 
 export class SpritePool {
   private readonly pool = new Map<number, PooledEntity>();
+  /** The pooled entities currently attached to {@link spriteLayer} (drawn this frame). The detach and
+   *  paletted-placement passes iterate this instead of the whole pool so their per-frame cost tracks the
+   *  screen (O(visible)), never every entity ever seen — the pool only shrinks on death. Kept in sync with
+   *  each entity's `attached` flag: added on attach, removed on detach. */
+  private readonly attached = new Set<PooledEntity>();
   private frameId = 0;
   private drawn = 0;
 
@@ -99,8 +113,13 @@ export class SpritePool {
   /**
    * Reconcile the pool to one frame: get-or-create a display object per drawn (culled, depth-sorted)
    * entity, update it in place, order it by its feet-anchor {@link depthKey}, detach entities not drawn
-   * this frame (culled or gone), and destroy the ones that left the snapshot (died). No allocation in
-   * the steady state — only a first-seen entity or a growing layer set mints a new object.
+   * this frame (culled or gone), and reap the ones that left the snapshot (died). No allocation in the
+   * steady state — only a first-seen entity or a growing layer set mints a new object.
+   *
+   * Per-frame work tracks the SCREEN, not the pool: the get-or-create and detach passes iterate this
+   * frame's draw list and the {@link attached} set (both O(visible)), never the whole pool — which only
+   * shrinks on death, so it grows to every entity ever seen. Only the death reap must diff the whole pool
+   * against the live set, so it runs on an interval ({@link POOL_REAP_INTERVAL_FRAMES}), off the hot path.
    */
   reconcile(frame: PoolFrame): void {
     // One pass over the snapshot yields both the culled draw list and the pre-cull liveness set the
@@ -139,25 +158,35 @@ export class SpritePool {
       if (!pe.attached) {
         this.spriteLayer.addChild(pe.container);
         pe.attached = true;
+        this.attached.add(pe);
       }
       pe.lastSeen = this.frameId;
     }
     this.drawn = scene.items.length;
 
-    // Detach pooled entities not drawn this frame (culled or gone) so the layer's sort stays O(visible).
-    for (const pe of this.pool.values()) {
-      if (pe.lastSeen !== this.frameId && pe.attached) {
-        this.spriteLayer.removeChild(pe.container);
-        pe.attached = false;
-      }
+    // Detach entities not drawn this frame (culled or gone). Iterating the attached set — the entities on
+    // the layer, an O(visible) set — instead of the whole pool keeps this scan bounded by the screen, not
+    // by every entity ever seen (the pool only shrinks on death). Deleting the current entry mid-iteration
+    // is well-defined for a Set. After this pass `attached` is exactly this frame's drawn entities.
+    for (const pe of this.attached) {
+      if (pe.lastSeen === this.frameId) continue; // still drawn this frame — keep attached
+      this.spriteLayer.removeChild(pe.container);
+      pe.attached = false;
+      this.attached.delete(pe);
     }
 
-    // Destroy sprites of entities that left the snapshot (died) — not the ones merely culled off-screen.
-    for (const ref of reconcileSprites(scene.liveRefs, this.pool.keys()).toDestroy) {
-      const pe = this.pool.get(ref);
-      if (pe !== undefined) {
-        pe.container.destroy({ children: true });
-        this.pool.delete(ref);
+    // Reap entities that left the snapshot (died), freeing their display objects — a merely culled one
+    // stays pooled to scroll back. A death already detached above (invisible), so destroying it only
+    // reclaims memory; this whole-pool diff against the live set therefore runs on an interval, the one
+    // remaining pool-sized scan kept off the per-frame path. `reconcileSprites` is the pure, tested
+    // decision (a pooled ref absent from the pre-cull live set has died).
+    if (this.frameId % POOL_REAP_INTERVAL_FRAMES === 0) {
+      for (const ref of reconcileSprites(scene.liveRefs, this.pool.keys()).toDestroy) {
+        const pe = this.pool.get(ref);
+        if (pe !== undefined) {
+          pe.container.destroy({ children: true });
+          this.pool.delete(ref);
+        }
       }
     }
   }
@@ -191,14 +220,13 @@ export class SpritePool {
    * `worldLayer` transform, but the team-colour meshes self-place in screen space, so they must be re-placed
    * for the inset camera before that render and restored to the main camera after. Mirrors {@link bindLayers}'
    * placement exactly (same drawn anchor + art scale). `flipY` renders the mesh upright into a bottom-up
-   * render texture (true for the inset, false to restore the on-screen render). Scans the pool (O(pooled))
-   * but only places the drawn paletted meshes, so the placement work stays O(on-screen paletted); only runs
-   * while a portrait is open.
+   * render texture (true for the inset, false to restore the on-screen render). Iterates the attached
+   * (drawn) set, O(visible), placing only its paletted meshes; only runs while a portrait is open.
    */
   placePalettedFor(camera: Camera, resWidth: number, resHeight: number, flipY: boolean): void {
     const camScale = camera.scale ?? 1;
-    for (const pe of this.pool.values()) {
-      if (!pe.paletted || pe.lastSeen !== this.frameId) continue;
+    for (const pe of this.attached) {
+      if (!pe.paletted) continue;
       const originX = cameraScreenX(camera, pe.motion.drawX);
       const originY = cameraScreenY(camera, pe.motion.drawY);
       for (const s of pe.sprites) {
@@ -218,6 +246,7 @@ export class SpritePool {
   destroy(): void {
     for (const pe of this.pool.values()) pe.container.destroy({ children: true });
     this.pool.clear();
+    this.attached.clear();
   }
 
   /**
