@@ -1,6 +1,7 @@
 import { fetchJsonOrNull } from '../content/net.js';
 import { messages } from '../i18n/index.js';
 import { SCENES } from '../scenes/index.js';
+import { generatedMapPreview } from './menu/map-preview.js';
 import { bindLocaleFlags, bindMenuSettings, targetSearch } from './menu/settings.js';
 
 const DEFAULT_PREVIEW = new URL('../../../../docs/images/settlement.webp', import.meta.url).href;
@@ -153,6 +154,7 @@ export async function renderMenu(canvas: HTMLCanvasElement, params: URLSearchPar
     map: htmlIn(root, '[data-menu-list="maps"]'),
     tool: htmlIn(root, '[data-menu-list="tools"]'),
   };
+  const previewFrame = htmlIn(root, '.game-menu__preview-frame');
   const preview = imageIn(root, '[data-menu-preview]');
   const kind = htmlIn(root, '[data-menu-kind]');
   const title = htmlIn(root, '[data-menu-title]');
@@ -161,6 +163,44 @@ export async function renderMenu(canvas: HTMLCanvasElement, params: URLSearchPar
   const start = buttonIn(root, '[data-menu-start]');
   let activeButton: HTMLButtonElement | null = null;
   let selected: MenuEntry | null = null;
+  let previewGeneration = 0;
+
+  const generatePreview = (entry: MenuEntry, generation: number): void => {
+    preview.hidden = true;
+    preview.removeAttribute('src');
+    previewFrame.classList.add('is-loading');
+    preview.dataset.source = 'generated-loading';
+    void generatedMapPreview(entry.id).then((source) => {
+      if (generation !== previewGeneration || selected !== entry) return;
+      previewFrame.classList.remove('is-loading');
+      if (source === null) return;
+      preview.dataset.source = 'generated';
+      preview.src = source;
+      preview.hidden = false;
+    });
+  };
+
+  const showPreview = (entry: MenuEntry): void => {
+    const generation = ++previewGeneration;
+    previewFrame.classList.remove('is-loading');
+    preview.alt = entry.title;
+    if (entry.kind === 'map') {
+      preview.hidden = false;
+      preview.classList.add('is-map');
+      if (entry.preview === undefined) {
+        generatePreview(entry, generation);
+      } else {
+        preview.dataset.source = 'static';
+        preview.src = entry.preview;
+      }
+      return;
+    }
+    // Scenes and tools have no map to preview — leave the frame's black rectangle.
+    preview.classList.remove('is-map');
+    preview.hidden = true;
+    preview.removeAttribute('src');
+    preview.dataset.source = 'none';
+  };
 
   const select = (entry: MenuEntry, button: HTMLButtonElement): void => {
     activeButton?.classList.remove('is-selected');
@@ -174,14 +214,16 @@ export async function renderMenu(canvas: HTMLCanvasElement, params: URLSearchPar
     summary.textContent = entry.summary;
     settings.hidden = entry.kind === 'tool';
     start.textContent = entry.kind === 'tool' ? copy.open : copy.start;
-    preview.classList.toggle('is-map', entry.kind === 'map' && entry.preview !== undefined);
-    preview.src = entry.preview ?? DEFAULT_PREVIEW;
-    preview.alt = entry.title;
+    showPreview(entry);
   };
 
   preview.addEventListener('error', () => {
-    preview.classList.remove('is-map');
-    preview.src = DEFAULT_PREVIEW;
+    if (selected?.kind === 'map' && preview.dataset.source === 'static') {
+      generatePreview(selected, previewGeneration);
+      return;
+    }
+    previewFrame.classList.remove('is-loading');
+    preview.hidden = true;
   });
   start.addEventListener('click', () => {
     if (selected !== null) window.location.search = targetSearch(selected.search);

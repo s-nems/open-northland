@@ -135,9 +135,10 @@ a reproducible default so the committed build + the `npm run shot` PNG never dep
   audition every action→sound binding, the voice pools split by sex/age, the jingles and the ambient beds.
   The human-oracle seam for audio (an agent can't self-judge a sound). NOTE the key is `sounds` (plural) —
   distinct from the `sound` (singular) MUTE modifier above, so `?scene&sound=off` and `?sounds` don't collide.
-- `?lang=pol|eng` · `?uiscale=N` · `?speed=N` · `?fog=off|reveal|recon|full` · `?debug=geometry` are the
+- `?lang=pol|eng` · `?uiscale=N` · `?speed=N` · `?fog=off|reveal|recon` · `?debug=geometry` are the
   player-facing settings carried by the main menu into scenes and maps. The language lives in the menu's
-  corner; the other settings live beside the selected world. `?center=x,y` remains a direct map inspection
+  corner; the other settings live beside the selected world. Fog is map-revealed, classic sticky exploration,
+  or known-terrain recon; the menu defaults new worlds to classic. `?center=x,y` remains a direct map inspection
   aid for centring a bridge, coastline, or another decoded feature.
   Normal map and scene play always attempts to load decoded sprites, terrain textures, and landscape
   objects at the calibrated projection; a checkout without them degrades to clean-room markers and flat

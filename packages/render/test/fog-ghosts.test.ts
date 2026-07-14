@@ -15,7 +15,7 @@ import { entity, snapshotOf } from './support/fixtures.js';
 function viewOf(
   states: ReadonlyMap<string, number>,
   generation: number,
-  mode: number = FOG_MODE.FULL,
+  mode: number = FOG_MODE.REVEAL,
 ): FogView {
   return {
     mode,

@@ -36,10 +36,41 @@ function pageKeyOf(texture: string): string {
   return base.replace(/\.[^.]+$/, '');
 }
 
+/** Index the decoded ground patterns without loading their texture pages. */
+export function buildGroundPatternIndex(tables: ContentIr): ReadonlyMap<string, GroundPattern> {
+  const patterns = new Map<string, GroundPattern>();
+  for (const row of tables.gfxPatterns ?? []) {
+    if (
+      row.editName === undefined ||
+      row.texture === undefined ||
+      row.coordsA === undefined ||
+      row.coordsB === undefined
+    ) {
+      continue;
+    }
+    patterns.set(row.editName, {
+      pageKey: pageKeyOf(row.texture),
+      coordsA: row.coordsA,
+      coordsB: row.coordsB,
+    });
+  }
+  return patterns;
+}
+
 /** Pack an `[r, g, b]` debug colour into a `0xRRGGBB` int for the flat-tint fallback; `undefined` passes through. */
 function rgbToHex(rgb: readonly [number, number, number] | undefined): number | undefined {
   if (rgb === undefined) return undefined;
   return ((rgb[0] & 0xff) << 16) | ((rgb[1] & 0xff) << 8) | (rgb[2] & 0xff);
+}
+
+/** Index the extracted per-terrain debug colours used by flat minimap fallbacks. */
+export function buildTerrainDebugColourIndex(tables: ContentIr): ReadonlyMap<number, number> {
+  const colours = new Map<number, number>();
+  for (const row of tables.terrainPatterns ?? []) {
+    const colour = rgbToHex(row.debugColor);
+    if (colour !== undefined) colours.set(row.typeId, colour);
+  }
+  return colours;
 }
 
 /**
@@ -58,11 +89,12 @@ export async function loadRealTerrain(ir?: ContentIr): Promise<TerrainTextureSet
   }
   const rows = tables.terrainPatterns ?? [];
   const cellByType = new Map<number, CellTexture>();
+  const debugColours = buildTerrainDebugColourIndex(tables);
   const pageKeys = new Set<string>();
   for (const row of rows) {
     const pageKey = pageKeyOf(row.texture);
     pageKeys.add(pageKey);
-    const fallbackColour = rgbToHex(row.debugColor);
+    const fallbackColour = debugColours.get(row.typeId);
     // Spread the optional colour only when present — `exactOptionalPropertyTypes` rejects an explicit
     // `undefined` on an optional field.
     cellByType.set(row.typeId, {
@@ -72,20 +104,8 @@ export async function loadRealTerrain(ir?: ContentIr): Promise<TerrainTextureSet
     });
   }
   // The 1:1 join: every well-formed GfxPattern by its EditName (unique across the real 927 records).
-  const patternByName = new Map<string, GroundPattern>();
-  for (const row of tables.gfxPatterns ?? []) {
-    if (
-      row.editName === undefined ||
-      row.texture === undefined ||
-      row.coordsA === undefined ||
-      row.coordsB === undefined
-    ) {
-      continue;
-    }
-    const pageKey = pageKeyOf(row.texture);
-    pageKeys.add(pageKey);
-    patternByName.set(row.editName, { pageKey, coordsA: row.coordsA, coordsB: row.coordsB });
-  }
+  const patternByName = buildGroundPatternIndex(tables);
+  for (const pattern of patternByName.values()) pageKeys.add(pattern.pageKey);
   // The transition-overlay join: every well-formed `[transition]` record by name. The page is the
   // pipeline's composed RGBA `<texture stem>.masked.png` (RGB page + alpha mask in one picture) —
   // the plain `<stem>.png` twin lacks the mask, so it is never referenced here.

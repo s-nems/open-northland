@@ -57,7 +57,7 @@ const NODE_STEP_PX = 34;
  * always gates on this tick's (or at worst a cadence-stale) visibility.
  *
  * A rebuild is two passes over each player's mask:
- *  1. **Downgrade** — RECON/FULL drop every VISIBLE byte to EXPLORED (ground nobody watches regresses
+ *  1. **Downgrade** — RECON drops every VISIBLE byte to EXPLORED (ground nobody watches regresses
  *     to terrain-only); REVEAL skips this (sticky exploration, the original's observed behaviour).
  *  2. **Stamp** — every OWNED positioned eye (settler by job / building / boat) writes VISIBLE over
  *     the world-metric ellipse of its vision radius. Stamping is idempotent + commutative, so the
@@ -83,7 +83,7 @@ export const visionSystem: System = (world, ctx) => {
   const due = fog.lastRebuildTick === -1 || ctx.tick - fog.lastRebuildTick >= VISION_CADENCE_TICKS;
   if (!modeChanged && !due) return;
 
-  // Downgrade pass (RECON/FULL): ground no eye covers falls back to explored-grey. Masks are walked in
+  // Downgrade pass (RECON): ground no eye covers falls back to explored-grey. Masks are walked in
   // ascending-player order — byte-for-byte deterministic (and the order hashState mixes them in).
   // Each player's scan covers only its may-hold-VISIBLE box, not the whole map.
   if (mode !== FOG_MODE.REVEAL) {

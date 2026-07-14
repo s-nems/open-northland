@@ -171,7 +171,7 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       // Set the FogRules SINGLETON (the WorldRules pattern: created lazily, mutated thereafter) — the
       // fog mode is simulated state (combat gates on visibility), so it hashes/replays like any
       // component. The VisionSystem sees the new mode THIS tick (it runs after commandSystem) and
-      // rebuilds the masks off-cadence. A mode outside the four FOG_MODE ids is recoverable bad input:
+      // rebuilds the masks off-cadence. A mode outside the three FOG_MODE ids is recoverable bad input:
       // skipped, still logged for faithful replay.
       if (!isFogMode(command.mode)) return;
       const fogRules = fogRulesEntity(world);

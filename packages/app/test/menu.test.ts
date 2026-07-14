@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MENU_SPEEDS, targetSearch } from '../src/entries/menu/settings.js';
+import { MENU_FOG_MODES, MENU_SPEEDS, targetSearch } from '../src/entries/menu/settings.js';
 import { parseMapsIndex } from '../src/entries/menu.js';
 
 /**
@@ -52,5 +52,19 @@ describe('targetSearch', () => {
 
   it('offers slower and faster rates around the three in-game speeds', () => {
     expect(MENU_SPEEDS).toEqual(['0.25', '0.5', '1', '2', '3', '4', '6', '8']);
+  });
+
+  it('offers only the three player-facing fog modes', () => {
+    expect(MENU_FOG_MODES).toEqual(['off', 'reveal', 'recon']);
+  });
+
+  it('starts worlds in classic fog when no mode was selected', () => {
+    expect(targetSearch('?scene=sandbox', new URLSearchParams('lang=pol'))).toBe(
+      '?lang=pol&scene=sandbox&fog=reveal',
+    );
+  });
+
+  it('does not add a fog mode to tools', () => {
+    expect(targetSearch('?icons', new URLSearchParams('lang=pol'))).toBe('?lang=pol&icons=');
   });
 });

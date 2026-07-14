@@ -129,10 +129,9 @@ export const plGame = {
     geometryOn: 'Siatka: WŁĄCZONA (kliknij, aby ukryć)',
     geometryOff: 'Siatka: WYŁĄCZONA (kliknij, aby pokazać)',
     fogModes: {
-      off: 'Wyłączona',
-      reveal: 'Odkrywanie (odkryte zostaje)',
-      recon: 'Rozpoznanie (teren znany)',
-      full: 'Pełna (klasyczna)',
+      off: 'Odkryta mapa',
+      reveal: 'Klasyczna',
+      recon: 'Rozpoznanie',
     },
     units: {
       unarmed: 'Wojownik (bez broni)',

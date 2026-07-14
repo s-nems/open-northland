@@ -150,7 +150,7 @@ export class FogGhostStore {
     // Drawable subset: a ghost draws ONLY on EXPLORED ground. On VISIBLE ground the live entity
     // draws instead (a freshly-SEEDED record can sit there — emitting it too would double-draw the
     // ref); on UNEXPLORED ground the memory stays but must not draw into the black (reachable across
-    // a mode switch — RECON's seeded knowledge read through FULL's raw mask).
+    // a mode switch — RECON's seeded knowledge read through REVEAL's raw mask).
     const drawable: FogGhost[] = [];
     for (const ghost of this.records.values()) {
       const { cx, cy } = fogCellOfTile(ghost.tileX, ghost.tileY);

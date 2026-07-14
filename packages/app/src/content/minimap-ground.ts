@@ -95,7 +95,7 @@ async function fetchPagePixels(
  */
 export async function loadMinimapCellColours(
   terrain: SceneTerrain,
-  textures: TerrainTextureSet | undefined,
+  textures: Pick<TerrainTextureSet, 'groundFor'> | undefined,
 ): Promise<Uint32Array | null> {
   const ground = terrain.ground;
   const groundFor = textures?.groundFor;

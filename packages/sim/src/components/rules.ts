@@ -48,25 +48,20 @@ export function needsEnabled(world: World): boolean {
  *    behaves exactly as before this feature — every golden/scene/slice keeps its hash).
  *  - **REVEAL** — the original's behaviour (observed): the map starts unexplored (black) and anything a
  *    unit/building ever sees becomes — and STAYS — fully visible.
- *  - **RECON** — the modern multiplayer courtesy mode (user decision 2026-07-11): terrain is known from
+ *  - **RECON** — the terrain-known mode (user decision 2026-07-11): terrain is known from
  *    the start (the whole map renders as explored/grey), current vision is fully visible, and an area
  *    out of every eye's reach falls back to grey (terrain only, no entities).
- *  - **FULL** — classic RTS fog (StarCraft-style): starts black, current vision is visible, and seen
- *    ground regresses to explored/grey when no eye covers it.
  */
 export const FOG_MODE = {
   OFF: 0,
   REVEAL: 1,
   RECON: 2,
-  FULL: 3,
 } as const;
 
-/** Whether `mode` is one of the four {@link FOG_MODE} ids — the `setFogMode` validity gate (a bad
+/** Whether `mode` is one of the three {@link FOG_MODE} ids — the `setFogMode` validity gate (a bad
  *  mode is a recoverable bad input, skipped-but-logged like a bad `setStance` mode). */
 export function isFogMode(mode: number): boolean {
-  return (
-    mode === FOG_MODE.OFF || mode === FOG_MODE.REVEAL || mode === FOG_MODE.RECON || mode === FOG_MODE.FULL
-  );
+  return mode === FOG_MODE.OFF || mode === FOG_MODE.REVEAL || mode === FOG_MODE.RECON;
 }
 
 /**

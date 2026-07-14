@@ -145,7 +145,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
       ? runBareMap(SLICE_SEED, simMap, footprints, goodNames)
       : runSlice(SLICE_SEED, 1, undefined, HUMAN_PLAYER, footprints, goodNames));
 
-  // `?fog=reveal|recon|full` opts the map view into fog of war (default: none — the pre-fog view).
+  // `?fog=off|reveal|recon` selects the map's fog rule (direct URLs without the flag remain revealed).
   const fogOverride = fogModeParam(params);
   if (fogOverride !== null) sim.enqueue({ kind: 'setFogMode', mode: fogOverride });
 
