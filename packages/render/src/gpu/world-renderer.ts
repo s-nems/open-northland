@@ -461,7 +461,8 @@ export class WorldRenderer {
     this.geometryDebug.set(items, this.elevation);
   }
 
-  /** Tear down the whole retained graph + caches. */
+  /** Tear down the whole retained graph + caches. Every sub-layer is destroyed explicitly (uniform
+   *  ownership) so its retained pool/Map is cleared, not just its container tree-walked away below. */
   dispose(): void {
     this.terrain.destroy(); // frees mesh geometry the layer.destroy below would otherwise orphan
     this.mapObjects.destroy();
@@ -470,6 +471,9 @@ export class WorldRenderer {
     this.placementOverlay.destroy();
     this.constructionPlots.destroy();
     this.placementGhost.destroy();
+    this.selectionLayer.destroy();
+    this.effects.destroy();
+    this.badgeLayer.destroy();
     this.geometryDebug.destroy();
     this.worldLayer.destroy({ children: true });
     this.pauseWash.destroy(); // the shared Texture.WHITE itself is left alone
