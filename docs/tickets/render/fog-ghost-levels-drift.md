@@ -30,6 +30,15 @@ denominator). If so: add `levels` to `FogGhost`, capture it in `assignStaticFiel
 re-projection in `sprite-scene.ts`. Watch the allocation note on `assignStaticFields`
 — it writes in place on the per-frame build path; keep that.
 
+Perf win that rides along (found 2026-07-14): today the live resource path computes
+the ladder **twice** per visible node per frame — `assignStaticFields` calls
+`readResourceLevel` → `readResourceLadder`, then `sprite-scene.ts` calls
+`readResourceLevelCount` → `readResourceLadder` again for the same node. If
+`assignStaticFields` captures both `level` AND `levels` from a single
+`readResourceLadder` call (the whole reason it returns `{level, levels}` together),
+the second read disappears. Fold this in while touching this code rather than filing
+it separately.
+
 ## Verify
 
 `npm run build`, `npm test` (fog-ghosts + scene suites — add a ghost-of-mined-deposit
