@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { Building, Health, Stockpile, UnderConstruction } from '../../../src/components/index.js';
+import { Building, Health, Stockpile, SupplyRun, UnderConstruction } from '../../../src/components/index.js';
 import { fx, ONE, Simulation } from '../../../src/index.js';
 import { advanceConstructionLabor } from '../../../src/systems/economy/construction.js';
-import { constructionSystem } from '../../../src/systems/index.js';
+import { constructionSystem, nextNeededConstructionGood } from '../../../src/systems/index.js';
 
 import {
   constructionContent,
@@ -95,6 +95,26 @@ describe('constructionSystem', () => {
     sim.world.get(e, Stockpile).amounts.set(STONE, 2);
     constructionSystem(sim.world, ctx);
     expect(sim.world.get(e, Building).built).toBe(delivered);
+  });
+
+  it('discounts live supply runs from the next needed good, spreading fetches over materials', () => {
+    const sim = new Simulation({ seed: 1, content: constructionContent() });
+    const e = placeSite(sim, HOUSE); // needs 2 stone + 1 wood, nothing delivered
+    const ctx = ctxOf(sim);
+    // Empty ledger: stone (2 needed) and wood (1) are both at 0 coverage — the tie keeps the
+    // ascending-goodType pick (stone).
+    expect(nextNeededConstructionGood(sim.world, ctx, e)).toEqual({ goodType: STONE, amount: 2 });
+    // Another settler is already fetching one stone → stone is half covered, wood untouched — the
+    // next fetch takes the LEAST-covered line (wood), not a second stone.
+    const runner = sim.world.create();
+    sim.world.add(runner, SupplyRun, { site: e, goodType: STONE, amount: 1 });
+    expect(nextNeededConstructionGood(sim.world, ctx, e)).toEqual({ goodType: WOOD, amount: 1 });
+    // Every line held or inbound → nothing left to fetch.
+    const second = sim.world.create();
+    sim.world.add(second, SupplyRun, { site: e, goodType: STONE, amount: 1 });
+    const third = sim.world.create();
+    sim.world.add(third, SupplyRun, { site: e, goodType: WOOD, amount: 1 });
+    expect(nextNeededConstructionGood(sim.world, ctx, e)).toBeNull();
   });
 
   it('finishes a free (empty-cost) building immediately — no labor needed', () => {

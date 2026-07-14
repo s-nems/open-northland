@@ -8,6 +8,7 @@ export {
   constructionMaterialsPresent,
   constructionTotalUnits,
   deliveredConstructionFraction,
+  inboundSupply,
   nextNeededConstructionGood,
 } from './construction.js';
 export { isFood } from './food.js';

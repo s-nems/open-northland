@@ -4,6 +4,7 @@ import {
   JobAssignment,
   Position,
   Resting,
+  SupplyRun,
   UnderConstruction,
 } from '../../../components/index.js';
 import { farmWorkGood } from '../../economy/farming.js';
@@ -47,6 +48,11 @@ export function planDelivery(plan: PlannerContext, load: { goodType: number; amo
     return;
   }
 
+  // A load headed for a construction site is a live supply errand: stamp it so later-planned settlers
+  // count it as inbound (SupplyRun — no duplicate fetch of a unit already on someone's back).
+  if (world.has(store, UnderConstruction)) {
+    world.add(entity, SupplyRun, { site: store, goodType: load.goodType, amount: load.amount });
+  }
   const cell = world.has(store, DeliveryFlag)
     ? // A flag is a marker, not a stock sink: the pile belongs on a free yard node around it.
       nearestFreeYardNode(targets.stockpiles, world, terrain, store, load.goodType)

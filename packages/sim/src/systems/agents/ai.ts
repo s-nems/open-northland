@@ -10,6 +10,7 @@ import {
   Resting,
   Settler,
   Stance,
+  SupplyRun,
 } from '../../components/index.js';
 import type { World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
@@ -124,6 +125,9 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // Likewise its rest-inside marker: the drive re-stamps it within this same tick if there is still
     // nothing to do (so the render never sees a gap), and it stays off the moment real work appears.
     world.remove(e, Resting);
+    // And its supply errand (SupplyRun): the fetch/delivery rungs re-stamp it below while the errand
+    // lasts; a settler re-planning has, by definition, finished or abandoned the previous leg.
+    world.remove(e, SupplyRun);
 
     const settler = world.get(e, Settler);
     if (settler.jobType === null) continue; // an unemployed settler has no job atomics to run
