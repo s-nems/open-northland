@@ -61,6 +61,9 @@ export interface BuildingLayout {
   /** The selected strip directly under the name line. */
   readonly underline: Rect;
   readonly buttons: readonly ButtonHit[];
+  /** The Construction section — replaces defence/production/stock/workers while the building is a
+   *  site (those windows mean nothing before completion). Null once built. */
+  readonly construction: SectionRect | null;
   readonly defence: SectionRect | null;
   readonly production: SectionRect | null;
   /** The Magazyn section — null for a building that stores NOTHING (no stock slots: a home), which
@@ -83,7 +86,8 @@ export interface BuildingLayout {
    * EMPTY for a compact/absent stock body (no tabs to click).
    */
   readonly stockTabHits: readonly Rect[];
-  readonly workers: SectionRect;
+  /** Null while under construction (the Construction window stands in). */
+  readonly workers: SectionRect | null;
 }
 
 /**
@@ -137,13 +141,22 @@ export function layoutBuilding(
   const buttonH = Math.round(BUTTON_H * s);
   const buttonGap = Math.round(BUTTON_GAP * s);
   const generalBodyH = Math.round(PREVIEW_H * s);
-  const defenceBodyH = model.showDefense ? Math.round(ROW_H * s) : 0;
+  // A construction site shows ONLY general + Construction: production/stock/workers/defence describe
+  // the finished building and mean nothing before completion (and delivered materials would read as
+  // store stock). The Construction body is one gauge row + one row per material line.
+  const underConstruction = model.construction !== null;
+  const constructionBodyH = underConstruction
+    ? (1 + (model.construction?.rows.length ?? 0)) * Math.round(STOCK_ROW_H * s)
+    : 0;
+  const showDefence = model.showDefense && !underConstruction;
+  const showProduction = model.production !== null && !underConstruction;
+  const defenceBodyH = showDefence ? Math.round(ROW_H * s) : 0;
   // A recipe workshop reserves one bar row PER OPERATOR SLOT (`ProductionModel.rows` — the model is
   // the single source, the section's bar loop draws the same count), so the panel height is stable
   // while batches start/finish staggered; a farm's field counters keep the single row.
   const productionRows = model.production?.kind === 'recipe' ? model.production.rows : 1;
-  const productionBodyH = model.production !== null ? productionRows * Math.round(STOCK_ROW_H * s) : 0;
-  const stockRowCount = model.stock.length;
+  const productionBodyH = showProduction ? productionRows * Math.round(STOCK_ROW_H * s) : 0;
+  const stockRowCount = underConstruction ? 0 : model.stock.length;
   const stockCompact = stockRowCount <= MAX_STOCK_ROWS * 2;
   const stockRows = stockCompact ? Math.ceil(stockRowCount / 2) : MAX_STOCK_ROWS;
   const stockBodyH =
@@ -153,10 +166,11 @@ export function layoutBuilding(
 
   const heights = [
     sectionAt(0, 0, w, generalBodyH, s).frame.h,
-    model.showDefense ? sectionAt(0, 0, w, defenceBodyH, s).frame.h : 0,
-    model.production !== null ? sectionAt(0, 0, w, productionBodyH, s).frame.h : 0,
+    underConstruction ? sectionAt(0, 0, w, constructionBodyH, s).frame.h : 0,
+    showDefence ? sectionAt(0, 0, w, defenceBodyH, s).frame.h : 0,
+    showProduction ? sectionAt(0, 0, w, productionBodyH, s).frame.h : 0,
     stockRowCount > 0 ? sectionAt(0, 0, w, stockBodyH, s).frame.h : 0,
-    sectionAt(0, 0, w, workersBodyH, s).frame.h,
+    underConstruction ? 0 : sectionAt(0, 0, w, workersBodyH, s).frame.h,
   ];
   const gaps = gap * (heights.filter((h) => h > 0).length - 1);
   const panel = panelRect(heights.reduce((a, b) => a + b, 0) + gaps, screen, s);
@@ -195,8 +209,9 @@ export function layoutBuilding(
     },
   }));
 
-  const defence = model.showDefense ? next(defenceBodyH) : null;
-  const production = model.production !== null ? next(productionBodyH) : null;
+  const construction = underConstruction ? next(constructionBodyH) : null;
+  const defence = showDefence ? next(defenceBodyH) : null;
+  const production = showProduction ? next(productionBodyH) : null;
   const stock = stockRowCount > 0 ? next(stockBodyH) : null;
   // Only the full tabbed store carries clickable tabs; a compact/absent body has none.
   let stockTabHits: readonly Rect[] = [];
@@ -209,7 +224,7 @@ export function layoutBuilding(
     };
     stockTabHits = stockTabRects(stockTabStrip, s);
   }
-  const workers = next(workersBodyH);
+  const workers = underConstruction ? null : next(workersBodyH);
 
   return {
     kind: 'building',
@@ -219,6 +234,7 @@ export function layoutBuilding(
     name,
     underline,
     buttons,
+    construction,
     defence,
     production,
     stock,

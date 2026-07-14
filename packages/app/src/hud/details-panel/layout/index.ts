@@ -37,11 +37,12 @@ export function mapLayout<T extends DetailsLayout>(layout: T, fn: (r: Rect) => R
       name: fn(layout.name),
       underline: fn(layout.underline),
       buttons: layout.buttons.map((b) => ({ ...b, rect: fn(b.rect) })),
+      construction: layout.construction ? sec(layout.construction) : null,
       defence: layout.defence ? sec(layout.defence) : null,
       production: layout.production ? sec(layout.production) : null,
       stock: layout.stock ? sec(layout.stock) : null,
       stockTabHits: layout.stockTabHits.map(fn),
-      workers: sec(layout.workers),
+      workers: layout.workers ? sec(layout.workers) : null,
     };
   }
   if (layout.kind === 'settler') {

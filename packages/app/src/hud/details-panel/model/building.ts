@@ -18,6 +18,25 @@ import {
  * Pixi/DOM in sight. The orchestrator in `index.ts` assembles a {@link BuildingPanelModel} from these.
  */
 
+/** One material line of a construction site's cost — the Construction row "delivered / needed". */
+export interface ConstructionRow {
+  readonly goodType: number;
+  /** The good's STRING id (stable across content sets) — the key the HUD resolves its icon by. */
+  readonly goodId?: string;
+  readonly label: string;
+  /** Units already in the site's hold, capped at the line's need (surplus never reads over-full). */
+  readonly delivered: number;
+  readonly needed: number;
+}
+
+/** The Construction section's content — present only while the building carries `UnderConstruction`. */
+export interface ConstructionModel {
+  /** The health ramp 0..100 (the sim raises `Health` in step with `built`), or null when the type
+   *  declares no hitpoints pool — the gauge then falls back to `builtPct`. */
+  readonly hpPct: number | null;
+  readonly rows: readonly ConstructionRow[];
+}
+
 export interface StockRow {
   readonly goodType: number;
   /** The good's STRING id (stable across content sets) — the key the HUD resolves its icon by. */
@@ -101,6 +120,9 @@ export interface BuildingPanelModel {
   /** Approximation until a real building-defense mode component exists. */
   readonly defenseLabel: string;
   readonly production: ProductionModel | null;
+  /** Non-null while the building is a construction site — the panel then swaps its production/stock/
+   *  workers windows for the one Construction window (those sections mean nothing before completion). */
+  readonly construction: ConstructionModel | null;
 }
 
 /** The current holdings of a building's {@link Stockpile}, as a goodType→amount map. */
@@ -167,6 +189,38 @@ export function stockRows(
       ...(capacity !== undefined ? { capacity } : {}),
     };
   });
+}
+
+/**
+ * The Construction-window model of a site: one row per `construction` cost line with how much of it the
+ * site's hold already has (the same Stockpile the finished building will store into — the sim keeps ONE
+ * hold, so the panel is what separates "materials for the build" from "the store"), plus the health ramp.
+ * Null for a finished building (no `UnderConstruction` marker).
+ */
+export function constructionModel(
+  ctx: UnitPanelModelContext,
+  def: BuildingDef | undefined,
+  ent: NonNullable<ReturnType<typeof entityById>>,
+): ConstructionModel | null {
+  if (ent.components.UnderConstruction === undefined) return null;
+  const live = liveAmounts(ent.components.Stockpile);
+  const health = ent.components.Health as { hitpoints?: unknown; max?: unknown } | undefined;
+  const hitpoints = num(health?.hitpoints);
+  const max = num(health?.max);
+  const rows = (def?.construction ?? []).map((line) => {
+    const goodId = goodDef(ctx, line.goodType)?.id;
+    return {
+      goodType: line.goodType,
+      label: goodLabel(ctx, line.goodType),
+      delivered: Math.min(live.get(line.goodType) ?? 0, line.amount),
+      needed: line.amount,
+      ...(goodId !== undefined ? { goodId } : {}),
+    };
+  });
+  return {
+    hpPct: hitpoints !== undefined && max !== undefined && max > 0 ? pctRatio(hitpoints, max) : null,
+    rows,
+  };
 }
 
 /** How many settlers are currently BOUND to `buildingId`, per job — the per-slot "filled" count. */

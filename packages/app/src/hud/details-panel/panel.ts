@@ -361,7 +361,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
   /** Redraw the animated worker sprites into the (live) Pracownicy field, or clear them when the current
    *  selection isn't a building. The field is the workers body minus the top row the limits strip occupies. */
   const refreshWorkers = (snapshot: WorldSnapshot): void => {
-    if (lastModel.kind !== 'building' || layout?.kind !== 'building') {
+    if (lastModel.kind !== 'building' || layout?.kind !== 'building' || layout.workers === null) {
       workerOverlay.update(snapshot, null, null);
       return;
     }

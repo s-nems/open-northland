@@ -8,6 +8,7 @@ import {
   BUILDING_MILL,
   GOOD_FLOUR,
   GOOD_SHOES,
+  GOOD_STONE,
   GOOD_WHEAT,
   GOOD_WOOD,
   JOB_GATHERER_WOOD,
@@ -127,6 +128,51 @@ describe('selection details panel model', () => {
     expect(model.workerSlots).toEqual([
       expect.objectContaining({ label: 'Zbieracz drewna', filled: 1, capacity: 1 }),
     ]);
+  });
+
+  it('models a construction site: delivered/needed material rows + the health ramp', () => {
+    const snapshot: WorldSnapshot = {
+      tick: 1,
+      events: [],
+      entities: [
+        {
+          id: 1,
+          components: {
+            Building: { buildingType: BUILDING_FARM, tribe: 1, built: ONE / 4, level: 0 },
+            UnderConstruction: { labor: ONE / 4 },
+            Health: { hitpoints: 25, max: 100 },
+            Owner: { player: 0 },
+            Stockpile: { amounts: [[GOOD_WOOD, 2]] }, // 2 of the farm's 3 wood delivered, no stone yet
+          },
+        },
+      ],
+    };
+    const model = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
+    expect(model.kind).toBe('building');
+    if (model.kind !== 'building') return;
+    expect(model.builtPct).toBe(25);
+    expect(model.construction?.hpPct).toBe(25); // the sim ramps Health with built — the gauge's source
+    // One row per construction cost line (the farm's wood+stone parcel), delivered read off the hold.
+    expect(model.construction?.rows).toEqual([
+      expect.objectContaining({ goodType: GOOD_WOOD, delivered: 2, needed: 3 }),
+      expect.objectContaining({ goodType: GOOD_STONE, delivered: 0, needed: 2 }),
+    ]);
+    // A finished building carries no construction model (the marker is gone).
+    const finished = buildUnitPanelModel(
+      {
+        tick: 1,
+        events: [],
+        entities: [
+          {
+            id: 1,
+            components: { Building: { buildingType: BUILDING_FARM, tribe: 1, built: ONE, level: 0 } },
+          },
+        ],
+      },
+      new Set([1]),
+      sandboxCtx(),
+    );
+    expect(finished.kind === 'building' && finished.construction).toBeNull();
   });
 
   it('keeps Magazyn rows in declared slot order while amounts change (Pszenica before Mąka, always)', () => {
