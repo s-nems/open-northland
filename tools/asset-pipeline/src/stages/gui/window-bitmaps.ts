@@ -27,9 +27,9 @@ const WINDOW_BITMAP_RECOLORS: ReadonlyArray<{ bitmap: string; palette: string; s
 ];
 
 /**
- * Shadow floor for the window-body bake (luma points, 0–255). This lift is a cosmetic compensation WE
- * apply on top of the `bg`→`bg_normal` swap above — the original engine does not lift; it is inferred
- * from screenshots, not decoded behavior. Sampled off the same native 1024×768 screenshot the panel
+ * Shadow floor for the window-body bake (luma points, 0–255). A cosmetic lift applied on top of the
+ * `bg`→`bg_normal` swap above — the original engine does not lift; it is inferred from screenshots,
+ * not decoded behaviour. Sampled off the same native 1024×768 screenshot the panel
  * geometry is calibrated against: the original body's luma percentiles are ≈ [18, 23, 31, 38, 45, 55, 63]
  * (p1…p99) — its texture never drops near black — while a straight `bg_normal` swap leaves the marble
  * veins at 0–9 (p1–p5), the "cracked black" look. Palette entries below the floor are pulled up toward it,
