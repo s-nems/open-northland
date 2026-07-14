@@ -8,21 +8,8 @@ import { Provenance, TypeId } from '../record.js';
  * animal's identity is its owning tribe (the `Settler.tribe` cross-reference into {@link TribeType}).
  * `tribeType` is therefore the cross-ref key (validated against the tribe table). A handful of source
  * records carry no `tribetype` (a leftover/disabled stub); they are dropped at extract time since they
- * cannot resolve to a tribe.
- *
- * Captured per record:
- *   - `aggressive` / `getangry` — whether the animal attacks unprovoked / can be provoked into anger
- *     (the inputs to the civ-vs-animal aggression model the later combat slice consumes).
- *   - `angryGameTime` — how long (game ticks) an angered animal stays hostile.
- *   - `hitpoints_adult` / `hitpoints_baby` — the HP pool by life-stage (200..20000; the param the sim's
- *     `Health`-component stamp already reads — humans have no readable equivalent below the `.ini`).
- *   - the group/territory params (`maximumgroupsize`, `maximumcadaversize`, `maximumleaderdistance`,
- *     `searchforleader`, `maximumdistancetostaypoint`, `maximumdistancetobirthpoint`) — herd/leader
- *     structure for the later spawn/herding slice.
- *   - `movespeed` / `runspeed` — locomotion (`runspeed` is extracted for fidelity only; the sim
- *     models no run gait).
- *   - the flags `catchable` (can be tamed/captured), `warrantable`, `cannotbeattacked`, `ignorehouses`.
- * The graphics/sound/spawn extras are skipped — this is the behaviour type-table slice, not a renderer.
+ * cannot resolve to a tribe. The graphics/sound/spawn extras are skipped — this is the behaviour
+ * type-table slice, not a renderer.
  */
 export const AnimalType = z.strictObject({
   /** Slug of `name`/comment when present, else `animal_<tribeType>`. Not a cross-ref key — `tribeType` is. */

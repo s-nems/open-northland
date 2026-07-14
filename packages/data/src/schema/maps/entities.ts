@@ -13,14 +13,10 @@ import { z } from 'zod';
 export const TerrainEntities = z.strictObject({
   /**
    * `sethouse` placements: `[GfxHouse]` EditName + level pick the building type. `player` is the
-   * verb's first column, 0-based like `sethuman`'s (source basis: on all 13 entity-bearing mod maps
-   * its per-value position centroids coincide with the matching `sethuman` clusters — value sets
-   * equal on the multiplayer/special maps, a sub/superset on four tutorials (scripted/neutral
-   * factions; those land unowned via `isValidPlayer`) — so a skirmish map's bases resolve to their
-   * own players, the original's observed behaviour). The fourth column is not the owner: it is `1` on
-   * 96 of the 98 house-placing maps in the unpacked 122-map corpus and `0` on the rest — a constant
-   * flag with exceptions, not a player id.
-   * `rot` is decoded verbatim with no consumer yet — the rotation→facing slice is deferred.
+   * verb's first column, 0-based like `sethuman`'s (source basis: its per-value position centroids
+   * coincide with the matching `sethuman` clusters across the 13 entity-bearing mod maps). The fourth
+   * column is not the owner — it is `1` on 96 of 98 house-placing maps and `0` on the rest, a constant
+   * flag, not a player id. `rot` is decoded verbatim with no consumer yet (rotation→facing deferred).
    */
   buildings: z
     .array(
