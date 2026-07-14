@@ -47,7 +47,7 @@ export async function readGameFile(gameDir: string, relPath: string): Promise<Ui
 
 /**
  * Writes `value` as pretty-printed JSON (2-space indent, trailing newline) to `<outDir>/<relPath>`,
- * creating the parent directory. The shared JSON-artifact writer the stage manifest/metrics emits end with.
+ * creating the parent directory. The single JSON-artifact writer the stage manifest/metrics emitters end with.
  */
 export async function writeJsonFile(outDir: string, relPath: string, value: unknown): Promise<void> {
   const path = join(outDir, relPath);
