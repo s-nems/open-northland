@@ -5,7 +5,6 @@ import {
   Fleeing,
   MoveGoal,
   Owner,
-  PathFollow,
   PathRequest,
   PlayerOrder,
   Position,
@@ -19,7 +18,7 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
 import { MILITARY_MODE } from '../readviews/index.js';
-import { clearNavState } from '../spatial.js';
+import { clearNavState, isTravelling } from '../spatial.js';
 
 /**
  * The player-order handlers (`moveUnit` / `setJob`) + the {@link playerOrderSystem} that plays a move order
@@ -130,7 +129,7 @@ export const playerOrderSystem: System = (world, ctx) => {
       world.remove(e, PlayerOrder); // a need took over — went off to do its own thing
       continue;
     }
-    if (world.has(e, MoveGoal) || world.has(e, PathRequest) || world.has(e, PathFollow)) {
+    if (isTravelling(world, e)) {
       continue; // still walking the order out
     }
     world.remove(e, PlayerOrder); // arrived — economy resumes (aiSystem re-tasks this tick)

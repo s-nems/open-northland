@@ -6,7 +6,6 @@ import {
   Engagement,
   Fleeing,
   JobAssignment,
-  Owner,
   ownerOf,
   PlayerOrder,
   Position,
@@ -26,6 +25,7 @@ import { bindFreshFlag, jobCanHarvest, liveWorkFlag, syncWorkFlagToJob } from '.
 import { openWorkerJobFromList } from '../economy/jobs/index.js';
 import { clearNavState } from '../spatial.js';
 import { stampDefaultStance } from './combat.js';
+import { isOrderableSettler } from './guards.js';
 
 /**
  * Change one owned settler's profession: set its `Settler.jobType` and reset it to a fresh idle worker of the
@@ -43,7 +43,7 @@ export function setJob(
   command: Extract<Command, { kind: 'setJob' }>,
 ): void {
   const e = command.entity;
-  if (!world.isAlive(e) || !world.has(e, Settler) || !world.has(e, Owner)) return;
+  if (!isOrderableSettler(world, e)) return;
   if (world.has(e, Age)) return; // a growing child's job class is GrowthSystem's, not the player's
   if (!contentIndex(ctx.content).commandJobs.has(command.jobType)) return; // unknown job — skip
 
@@ -93,7 +93,7 @@ export function assignWorker(
   command: Extract<Command, { kind: 'assignWorker' }>,
 ): void {
   const e = command.entity;
-  if (!world.isAlive(e) || !world.has(e, Settler) || !world.has(e, Owner)) return;
+  if (!isOrderableSettler(world, e)) return;
   if (world.has(e, Age)) return; // a growing child's job class is GrowthSystem's, not the player's
   const b = command.building;
   if (!world.isAlive(b) || !world.has(b, Building)) return;
@@ -138,7 +138,7 @@ export function assignBuilder(
   command: Extract<Command, { kind: 'assignBuilder' }>,
 ): void {
   const e = command.entity;
-  if (!world.isAlive(e) || !world.has(e, Settler) || !world.has(e, Owner)) return;
+  if (!isOrderableSettler(world, e)) return;
   if (world.has(e, Age)) return; // a growing child's job class is GrowthSystem's, not the player's
   const site = command.site;
   if (!world.isAlive(site) || !world.has(site, Building) || !world.has(site, UnderConstruction)) return;
@@ -175,7 +175,7 @@ export function setWorkFlag(
   const terrain = ctx.terrain;
   if (terrain === undefined) return; // mapless: no cells to plant a flag on
   const e = command.entity;
-  if (!world.isAlive(e) || !world.has(e, Settler) || !world.has(e, Owner)) return;
+  if (!isOrderableSettler(world, e)) return;
   const jobType = world.get(e, Settler).jobType;
   if (jobType === null || !jobCanHarvest(ctx, jobType)) return; // only a gatherer carries a work flag
 

@@ -17,6 +17,7 @@ import type { NodeId } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { defaultStanceForJob, isMilitaryMode, MILITARY_MODE } from '../readviews/index.js';
 import { clearNavState } from '../spatial.js';
+import { isOrderableSettler } from './guards.js';
 
 /**
  * Stamp the job-based **default military stance** on an owned settler (the
@@ -50,7 +51,7 @@ export function setStance(
   command: Extract<Command, { kind: 'setStance' }>,
 ): void {
   const e = command.entity;
-  if (!world.isAlive(e) || !world.has(e, Settler) || !world.has(e, Owner)) return;
+  if (!isOrderableSettler(world, e)) return;
   if (!isMilitaryMode(command.mode)) return; // an out-of-range mode is bad input — skip
 
   // A DEFEND stance anchors on the tile the unit stands on now (the centre it guards / returns to). Every
