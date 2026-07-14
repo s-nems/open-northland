@@ -135,7 +135,7 @@ export class WebAudioEngine {
     pruneExpired(this.lastPlayed, COOLDOWN_PRUNE_SIZE, now, ONE_SHOT_COOLDOWN_S);
     this.lastPlayed.set(shot.key, now);
     if (shot.files.length === 0) return;
-    // Randomness belongs here (impure), not in the pure director: pick one wav from the group.
+    // Randomness lives here (impure), not in the pure director.
     const file = pickRandom(shot.files, this.random);
     void samples.get(file).then((buffer) => {
       if (buffer === null || !this.canPlay() || this.master === null) return;

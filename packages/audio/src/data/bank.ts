@@ -4,9 +4,7 @@ import type { GfxPattern, SoundBank, TerrainPattern } from '@open-northland/data
  * The resolved, lookup-shaped view of a decoded {@link SoundBank} that the director reads each frame —
  * built once from the IR at load ({@link buildSoundIndex}) so the per-frame decision does only cheap
  * `Map` gets. It also folds in the terrain→ambient join (`typeId → bed names`) the raw bank can't
- * express: the bank keys ambient beds by pattern-group name, while a map cell carries a landscape
- * `typeId`, so we bridge them through the IR's `terrainPatterns` (typeId → representative `GfxPattern`)
- * and that pattern's `editGroups`.
+ * express.
  */
 export interface SoundIndex {
   /** Lower-cased static-group name → its interchangeable wav files (the engine picks one per play). */
@@ -31,9 +29,8 @@ function pushInto(map: Map<string, string[]>, key: string, value: string): void 
  * arrays yields a working index with no terrain ambient (still fine for the event-driven layers).
  *
  * The terrain→ambient join is coarse by construction: `terrainPatterns` already approximates each
- * `typeId` to one representative pattern, so a `typeId` inherits only that pattern's groups. It is the
- * faithful mechanism (the original keys ambient off pattern groups) pinned to the data we have, and
- * covers the common land/water/desert beds.
+ * `typeId` to one representative pattern, so a `typeId` inherits only that pattern's groups (the
+ * original keys ambient off pattern groups, pinned to the data we have).
  */
 export function buildSoundIndex(
   sounds: SoundBank,

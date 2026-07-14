@@ -6,8 +6,8 @@ import { entityTile, type TilePoint } from './snapshot.js';
 /**
  * Sim events → one-shots: resolve each frame event through the {@link SoundBindings}, locate the spatial
  * ones (an explicit `at` half-cell node or the emitter entity's snapshot position), viewport-cull and
- * spatialise them, and pass jingles through non-spatially. Pure — the "which events sound, from where,
- * how loud" half of the director.
+ * spatialise them, and pass jingles through non-spatially. The "which events sound, from where, how
+ * loud" half of the director.
  */
 
 /** Base gain of a non-spatial life-event jingle (kept below 1 so a jingle doesn't clip over SFX). */
@@ -100,15 +100,13 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
   const { events, snapshot, camera, canvasW, canvasH, index, bindings, localPlayer } = input;
   const shots: OneShot[] = [];
   if (events.length === 0) return shots; // the common frame — no events, no snapshot work at all
-  // Pass 1: resolve bindings, emit jingles, and collect which entity ids the spatial events actually
-  // need — so the snapshot scan below touches only those (O(events) ids, not an O(entities) table).
+  // Pass 1: resolve bindings, emit jingles, and collect the entity ids the spatial events need.
   const pending: PendingSpatial[] = [];
   const neededIds = new Set<number>();
   for (const ev of events) {
     const sound = resolveBinding(ev, bindings);
     if (sound === undefined) continue;
     if (sound.kind === 'jingle') {
-      // A local-player-only jingle (the death stinger) is silent for a non-local / unowned event.
       if (sound.localPlayerOnly && !firesForLocalPlayer(ev, localPlayer)) continue;
       const files = index.jinglesByMusicType.get(sound.musicType);
       if (files && files.length > 0) {

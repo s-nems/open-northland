@@ -4,8 +4,8 @@ import type { AmbientLoop, DirectorInput } from '../types.js';
 
 /**
  * On-screen terrain → ambient beds: sample the visible tile band (strided so a zoomed-out whole-map
- * view stays bounded), weight each bed by its screen coverage, and keep the loudest few. Pure — the
- * "which terrain beds should loop, how loud" half of the director.
+ * view stays bounded), weight each bed by its screen coverage, and keep the loudest few. The "which
+ * terrain beds should loop, how loud" half of the director.
  */
 
 /** How many ambient beds may play at once — the loudest few by on-screen coverage. */
@@ -40,7 +40,6 @@ export function ambientBeds(input: DirectorInput): AmbientLoop[] {
   const cols = band.maxCol - band.minCol + 1;
   const rows = band.maxRow - band.minRow + 1;
   if (cols <= 0 || rows <= 0) return [];
-  // A stride keeps a zoomed-all-the-way-out view (band == whole map) bounded to ~AMBIENT_MAX_SAMPLES.
   const stride = Math.max(1, Math.ceil(Math.sqrt((cols * rows) / AMBIENT_MAX_SAMPLES)));
   const counts = new Map<string, number>();
   let sampled = 0;

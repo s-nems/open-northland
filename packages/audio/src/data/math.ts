@@ -1,4 +1,4 @@
-/** Tiny shared numeric helpers for the audio decision layer (kept in one place, not re-defined per module). */
+/** Tiny shared numeric helpers for the audio decision layer. */
 
 /** Clamp `v` into the inclusive `[lo, hi]` range. */
 export function clamp(v: number, lo: number, hi: number): number {

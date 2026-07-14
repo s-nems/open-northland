@@ -8,9 +8,8 @@ export interface TilePoint {
 
 /**
  * The tile an entity stands on, read from its plain-snapshot `Position` component (Fixed →
- * fractional tile), or null when the entity carries no well-formed Position. The one shared reader
- * for every audio layer that locates a snapshot entity (event one-shots, settler chatter), so the
- * "how do I read a Position off the untyped snapshot" duck-typing lives in one place.
+ * fractional tile), or null when the entity carries no well-formed Position. The one shared Position
+ * reader for the audio layers (event one-shots, settler chatter).
  */
 export function entityTile(components: Readonly<Record<string, unknown>>): TilePoint | null {
   const p = components.Position as { x?: unknown; y?: unknown } | undefined;
