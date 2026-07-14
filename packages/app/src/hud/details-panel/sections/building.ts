@@ -287,6 +287,8 @@ function drawStockSection(
   const slots = stockSlotRects(body, s, layout.stockRows);
   const cellH = Math.round(STOCK_ROW_H * s);
   const inTab = layout.stockCompact ? model.stock : model.stock.filter((row) => row.category === activeTab);
+  // The compact store keeps the declared slot order (the mill's Pszenica/Mąka must not swap mid-work); the
+  // tabbed store bubbles held goods above the fold with a stable sort, so equal-amount ties keep their order.
   const rows = layout.stockCompact
     ? inTab
     : [...inTab].sort((a, b) => (b.amount > 0 ? 1 : 0) - (a.amount > 0 ? 1 : 0));
@@ -344,17 +346,6 @@ function drawWorkersSection(
 }
 
 /**
- * The stock window's eight category tabs, justified across the body width (whether the original spreads
- * or packs them flush is unread — a guess alongside the per-tab categories, pending a human pass). Each
- * tab bob carries its own plate plus a category glyph; drawn through the `bg_invert` palette, which renders
- * the glyph as bright cream line-art on a recessed plate. The palette pick is a named legibility choice,
- * not verified to be the original's tab palette.
- *
- * The tabs are interactive: clicking one filters the stock list to its category (see `stock-tabs.ts`
- * and `panel.ts`). The active tab carries a lime underline (the same selected-strip look as the name row)
- * so the current category reads at a glance.
- */
-/**
  * The original tab-plate glyph (frame 170–177) drawn on each category tab, index = tab — reordered from the
  * sheet's raw order so each category gets the fitting glyph (identified by eye: cutlery→food, house→building,
  * hammer→tools, boots→crafted, weapon→military…). The glyph semantics aren't decoded, so this pairing is a
@@ -371,6 +362,14 @@ const STOCK_TAB_GLYPH: readonly number[] = [
   GUI_FRAME.stock_tab_0 + 7, // 7 Inne — (spare)
 ];
 
+/**
+ * The stock window's eight category tabs, justified across the body width (whether the original spreads
+ * or packs them flush is unread — a guess alongside the per-tab categories, pending a human pass). Each
+ * tab bob carries its own plate plus a category glyph, drawn through the `bg_invert` palette as bright cream
+ * line-art on a recessed plate (a named legibility choice, not verified to be the original's tab palette).
+ * Clicking a tab filters the stock list to its category (see `stock-tabs.ts` and `panel.ts`); the active
+ * tab carries a lime underline (the name row's selected-strip look) so the current category reads at a glance.
+ */
 function drawStockTabs(chrome: Chrome, rects: readonly Rect[], activeTab: number, s: number): void {
   rects.forEach((r, i) => {
     // The original cream line-art glyph, reordered onto the fitting category tab, over a wooden plate (active

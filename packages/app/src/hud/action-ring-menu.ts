@@ -23,7 +23,7 @@ import {
  * `0x6B` for any command its (unfilled) table doesn't map (`CGuiManager.cs:2214`). The user placed frame 0x6b
  * itself in the last bottom slot, so it draws here too — the same round wooden button the original falls back to.
  */
-export const ACTION_ICON_FALLBACK = 'order_icon_fallback';
+const ACTION_ICON_FALLBACK = 'order_icon_fallback';
 
 /**
  * The "change profession" button — the one live default-menu button (opens the profession list window). Its
