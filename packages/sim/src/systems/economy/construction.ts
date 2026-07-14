@@ -194,9 +194,9 @@ export function advanceConstructionLabor(world: World, ctx: SystemContext, site:
   // `totalStrikes > ONE`. Inert for real content (a 6-unit home's quantum is ~2730), so goldens hold.
   const quantum = totalStrikes > 0 ? (Math.max(1, fx.div(ONE, fx.fromInt(totalStrikes))) as Fixed) : ONE;
   // Cap the swing at the delivered-material fraction: quantum truncation would otherwise park `labor` a
-  // hair ABOVE `delivered`, and `built = min(labor, delivered)` then jumps the moment the next material
-  // lands instead of when a swing lands (the reported "grows on delivery"). With the cap, `built` always
-  // equals `labor` while rising, so the % moves only as hammer swings complete.
+  // hair above `delivered`, and `built = min(labor, delivered)` would then jump when the next material
+  // lands rather than when a swing lands. With the cap, `built` always equals `labor` while rising, so the
+  // percentage moves only as hammer swings complete.
   const delivered = deliveredConstructionFraction(world, ctx, site);
   const cap = delivered < ONE ? delivered : ONE;
   const advanced = fx.add(uc.labor, quantum);

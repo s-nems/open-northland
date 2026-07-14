@@ -23,13 +23,14 @@ const EXCLUSION = 1;
 type BlockerChannel = typeof OBSTACLE | typeof EXCLUSION;
 
 /**
- * Enumerate every (cell, channel) the world's standing resources and buildings contribute — the SINGLE
+ * Enumerate every (cell, channel) the world's standing resources and buildings contribute — the single
  * definition of "what blocks placement where". Both the command gate's string sets
  * ({@link collectPlacementBlockers}) and the overlay's dense masks ({@link memoizedPlacementGrid}) are
- * stamped from THIS one pass, so the two representations can never disagree about which cells block.
- * A footprint-less resource/building contributes its 1-cell anchor (the pre-footprint same-tile rule).
- * Determinism: a pure enumeration over `world.query`; both consumers only take set UNIONS / mask writes
- * (membership, no pick), so store-iteration order cannot change any later answer.
+ * stamped from this one pass, so the two representations can never disagree about which cells block. A
+ * footprint-less resource/building contributes its 1-cell anchor (the pre-footprint same-tile rule).
+ *
+ * Both consumers only take set unions / mask writes (membership, no pick), so store-iteration order cannot
+ * change any later answer.
  */
 function eachBlockerCell(
   world: World,
@@ -102,11 +103,10 @@ function collectPlacementBlockers(
  *     house's walls at least its own margin away — but two margins may overlap, so houses still pack
  *     closely (the original's "very free" placement).
  *
- * source-basis (approximated, source basis "Building placement"): the footprint cells and the
- * body/zone split are the extracted `LogicWalkBlockArea`/`LogicBuildBlockArea` data (faithful); the
- * exact overlap RULE (body-vs-zone symmetric, zones may overlap) is our reading of those two areas —
- * the engine's check has no oracle. Determinism: pure boolean over the blocker sets; any overlap
- * rejects, so evaluation order cannot change the answer.
+ * source-basis: the footprint cells and the body/zone split are the extracted
+ * `LogicWalkBlockArea`/`LogicBuildBlockArea` data (faithful); the exact overlap rule (body-vs-zone
+ * symmetric, zones may overlap) is approximated — our reading of those two areas, since the engine's check
+ * has no oracle.
  */
 function canPlaceAnchor(
   blockers: PlacementBlockers,
