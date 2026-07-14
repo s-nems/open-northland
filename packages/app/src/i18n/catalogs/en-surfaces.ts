@@ -1,6 +1,6 @@
 export const enSurfaces = {
   menu: {
-    scenesTitle: 'Scenes',
+    scenesTitle: 'Test scenes',
     mapsTitle: 'Maps',
     toolsTitle: 'Tools',
     animationTitle: 'Character animation',
@@ -19,8 +19,22 @@ export const enSurfaces = {
     uiScale: 'Interface scale',
     speed: 'Simulation speed',
     fog: 'Fog of war',
+    fogHelpLabel: 'Fog of war mode',
+    fogModes: {
+      off: {
+        label: 'Map revealed',
+        detail: 'The whole map and every entity remain visible at all times.',
+      },
+      reveal: {
+        label: 'Classic',
+        detail: 'The map starts black. Everything explored remains revealed.',
+      },
+      recon: {
+        label: 'Recon',
+        detail: 'All terrain is known from the start; entities require current vision.',
+      },
+    },
     geometry: 'Building geometry grid',
-    worldDefault: 'World default',
     enabled: 'Enabled',
     disabled: 'Disabled',
     entryKinds: {

@@ -18,15 +18,15 @@ export type RulesCommand =
       /**
        * Set the fog-of-war mode globally — one of the
        * {@link import('../../components/rules.js').FOG_MODE} ids (`OFF` / `REVEAL` sticky exploration /
-       * `RECON` known-terrain grey / `FULL` classic fog). Sets the
+       * `RECON` known terrain with current entity vision). Sets the
        * {@link import('../../components/index.js').FogRules} SINGLETON (created on first use), so the
        * mode hashes and replays like any other state; the VisionSystem rebuilds the per-player masks
        * the same tick. Switching to `OFF` drops the masks (exploration history resets). A `mode`
-       * outside the four ids is recoverable bad input — skipped, still logged for faithful replay
+       * outside the three ids is recoverable bad input — skipped, still logged for faithful replay
        * (the `setStance` stance).
        */
       readonly kind: 'setFogMode';
-      /** The target {@link import('../../components/rules.js').FOG_MODE} id (0..3). */
+      /** The target {@link import('../../components/rules.js').FOG_MODE} id (0..2). */
       readonly mode: number;
     };
 

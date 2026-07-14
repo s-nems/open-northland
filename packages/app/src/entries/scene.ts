@@ -60,7 +60,7 @@ export async function renderSceneMode(
     goodNames,
     ...(footprints.size > 0 ? { buildingFootprints: footprints } : {}),
   });
-  // `?fog=off|reveal|recon|full` overrides the scene's own fog mode (enqueued AFTER the scene's
+  // `?fog=off|reveal|recon` overrides the scene's own fog mode (enqueued AFTER the scene's
   // setFogMode — FIFO, later write wins). A named divergence from the headless twin, like `?speed=`:
   // the human explicitly asked to watch the mechanic under a different fog rule.
   const fogOverride = fogModeParam(params);

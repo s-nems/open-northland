@@ -6,7 +6,7 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="stylesheet" href="/src/entries/menu/menu.css" />
     <link rel="stylesheet" href="/src/entries/menu/details.css" />
-    <title>OpenNorthland</title>
+    <title>Open Northland</title>
     <style>
       html, body { margin: 0; height: 100%; background: #1a1410; overflow: hidden; }
       /* Interactive entries render at device resolution (createWindowPixiApp + autoDensity), so the
@@ -21,7 +21,7 @@
     <template id="main-menu-template">
       <main class="game-menu">
         <header class="game-menu__masthead">
-          <div class="game-menu__brand">OpenNorthland</div>
+          <div class="game-menu__brand">Open Northland</div>
           <nav class="game-menu__languages" data-menu-languages></nav>
         </header>
 
@@ -34,13 +34,13 @@
               </section>
 
               <section class="game-menu__group">
-                <div class="game-menu__group-title" data-menu-text="mapsTitle"></div>
-                <div class="game-menu__entries" data-menu-list="maps"></div>
+                <div class="game-menu__group-title" data-menu-text="toolsTitle"></div>
+                <div class="game-menu__entries" data-menu-list="tools"></div>
               </section>
 
               <section class="game-menu__group">
-                <div class="game-menu__group-title" data-menu-text="toolsTitle"></div>
-                <div class="game-menu__entries" data-menu-list="tools"></div>
+                <div class="game-menu__group-title" data-menu-text="mapsTitle"></div>
+                <div class="game-menu__entries" data-menu-list="maps"></div>
               </section>
             </div>
           </aside>
@@ -67,7 +67,10 @@
                 <select data-menu-setting="speed" aria-labelledby="menu-setting-speed"></select>
               </div>
               <div class="game-menu__setting">
-                <span id="menu-setting-fog" data-menu-text="fog"></span>
+                <div class="game-menu__setting-label">
+                  <span id="menu-setting-fog" data-menu-text="fog"></span>
+                  <button class="game-menu__info" type="button" data-menu-fog-info>?</button>
+                </div>
                 <select data-menu-setting="fog" aria-labelledby="menu-setting-fog"></select>
               </div>
               <div class="game-menu__setting">

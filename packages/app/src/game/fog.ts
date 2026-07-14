@@ -4,20 +4,17 @@ import { FOG_MODE } from '@open-northland/sim';
  * Fog-of-war mode names — the app-facing vocabulary for the sim's `FOG_MODE` ids, shared by the
  * `?fog=` URL flag and a scene's `SceneDefinition.fog` field so the two spell modes identically:
  *
- *  - `off`    — no fog (the sim default; every scene/map that never opts in).
+ *  - `off`    — no fog; the whole map and every entity stay visible.
  *  - `reveal` — the original's behaviour: black start, explored ground stays fully visible forever.
- *  - `recon`  — terrain known from the start (grey), current vision visible, regresses to grey — the
- *               modern multiplayer courtesy mode (user decision 2026-07-11).
- *  - `full`   — classic RTS fog: black start, seen ground regresses to grey out of sight.
+ *  - `recon`  — terrain known from the start (grey), with entities visible only in current vision.
  */
-export type FogModeName = 'off' | 'reveal' | 'recon' | 'full';
+export type FogModeName = 'off' | 'reveal' | 'recon';
 
 /** Mode name → the sim's `FOG_MODE` id. */
 export const FOG_MODE_BY_NAME: Readonly<Record<FogModeName, number>> = {
   off: FOG_MODE.OFF,
   reveal: FOG_MODE.REVEAL,
   recon: FOG_MODE.RECON,
-  full: FOG_MODE.FULL,
 };
 
 /**

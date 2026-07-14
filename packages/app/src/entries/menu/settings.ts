@@ -2,12 +2,14 @@ import { currentLocale, type Locale, messages } from '../../i18n/index.js';
 
 const CARRIED_PARAMS = ['lang', 'uiscale', 'speed', 'fog', 'debug'] as const;
 export const MENU_SPEEDS = ['0.25', '0.5', '1', '2', '3', '4', '6', '8'] as const;
+export const MENU_FOG_MODES = ['off', 'reveal', 'recon'] as const;
 
 type CarriedParam = (typeof CARRIED_PARAMS)[number];
 
 interface SettingOption {
   readonly value: string;
   readonly label: string;
+  readonly detail?: string;
 }
 
 interface MenuSetting {
@@ -34,14 +36,8 @@ function settingModel(): readonly MenuSetting[] {
     },
     {
       param: 'fog',
-      fallback: '',
-      options: [
-        { value: '', label: copy.worldDefault },
-        { value: 'off', label: copy.disabled },
-        { value: 'reveal', label: messages().admin.fogModes.reveal },
-        { value: 'recon', label: messages().admin.fogModes.recon },
-        { value: 'full', label: messages().admin.fogModes.full },
-      ],
+      fallback: 'reveal',
+      options: MENU_FOG_MODES.map((value) => ({ value, ...copy.fogModes[value] })),
     },
     {
       param: 'debug',
@@ -77,8 +73,25 @@ export function bindMenuSettings(root: ParentNode, params: URLSearchParams): voi
       node.textContent = option.label;
       select.append(node);
     }
-    select.value = params.get(setting.param) ?? setting.fallback;
-    select.addEventListener('change', () => replaceParam(setting.param, select.value));
+    const requested = params.get(setting.param);
+    select.value = setting.options.some(({ value }) => value === requested)
+      ? (requested ?? setting.fallback)
+      : setting.fallback;
+    const updateHelp = (): void => {
+      if (setting.param !== 'fog') return;
+      const detail = setting.options.find(({ value }) => value === select.value)?.detail ?? '';
+      select.title = detail;
+      const info = root.querySelector('[data-menu-fog-info]');
+      if (info instanceof HTMLButtonElement) {
+        info.title = detail;
+        info.setAttribute('aria-label', `${messages().menu.fogHelpLabel}: ${detail}`);
+      }
+    };
+    updateHelp();
+    select.addEventListener('change', () => {
+      replaceParam(setting.param, select.value);
+      updateHelp();
+    });
   }
 }
 
@@ -113,5 +126,8 @@ export function targetSearch(entry: string, current = new URLSearchParams(window
   }
   const entryParams = new URLSearchParams(entry.startsWith('?') ? entry.slice(1) : entry);
   for (const [key, value] of entryParams) target.set(key, value);
+  const entersWorld = entryParams.has('scene') || entryParams.has('map');
+  const selectedFog = target.get('fog');
+  if (entersWorld && !MENU_FOG_MODES.some((mode) => mode === selectedFog)) target.set('fog', 'reveal');
   return `?${target.toString()}`;
 }

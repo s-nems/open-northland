@@ -1,6 +1,6 @@
 export const plSurfaces = {
   menu: {
-    scenesTitle: 'Sceny',
+    scenesTitle: 'Sceny testowe',
     mapsTitle: 'Mapy',
     toolsTitle: 'Narzędzia',
     animationTitle: 'Animacje postaci',
@@ -19,8 +19,22 @@ export const plSurfaces = {
     uiScale: 'Skala interfejsu',
     speed: 'Prędkość symulacji',
     fog: 'Mgła wojny',
+    fogHelpLabel: 'Tryb mgły wojny',
+    fogModes: {
+      off: {
+        label: 'Odkryta mapa',
+        detail: 'Cała mapa i wszystkie jednostki są zawsze widoczne.',
+      },
+      reveal: {
+        label: 'Klasyczna',
+        detail: 'Mapa zaczyna się czarna. Wszystko odkryte pozostaje odkryte.',
+      },
+      recon: {
+        label: 'Rozpoznanie',
+        detail: 'Cały teren jest znany od początku; jednostki wymagają aktualnego pola widzenia.',
+      },
+    },
     geometry: 'Siatka geometrii budynków',
-    worldDefault: 'Domyślne dla świata',
     enabled: 'Włączone',
     disabled: 'Wyłączone',
     entryKinds: {

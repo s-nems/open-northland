@@ -27,5 +27,5 @@ Two findings share one fix:
 ## Verify
 
 `npm test` + new minimap-raster unit test; `npm run check`, `npm run build`; browser: fog wash and
-minimap identical before/after on `?map=specjalna_mosty_na_rzece&fog=full|recon` (pixel-compare a
+minimap identical before/after on `?map=specjalna_mosty_na_rzece&fog=reveal|recon` (pixel-compare a
 still frame), perf overlay shows no regression.

@@ -137,10 +137,9 @@ export const enGame = {
     geometryOn: 'Grid: ON (click to hide)',
     geometryOff: 'Grid: OFF (click to show)',
     fogModes: {
-      off: 'Off',
-      reveal: 'Reveal (explored stays clear)',
-      recon: 'Recon (terrain known)',
-      full: 'Full (classic)',
+      off: 'Map revealed',
+      reveal: 'Classic',
+      recon: 'Recon',
     },
     units: {
       unarmed: 'Warrior (unarmed)',

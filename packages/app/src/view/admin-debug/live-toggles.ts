@@ -20,7 +20,6 @@ const FOG_MODES = [
   { mode: FOG_MODE.OFF, key: 'off' },
   { mode: FOG_MODE.REVEAL, key: 'reveal' },
   { mode: FOG_MODE.RECON, key: 'recon' },
-  { mode: FOG_MODE.FULL, key: 'full' },
 ] as const;
 
 /**

@@ -32,7 +32,7 @@ import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
  * The fog-of-war layer (systems/vision.ts): per-player masks over the cell grid, the three modes'
- * update rules (REVEAL sticky / RECON known-terrain / FULL regressing), the OFF default + reset, and
+ * update rules (OFF revealed / REVEAL sticky / RECON known-terrain), the OFF default + reset, and
  * the combat/flee fog gates. All OUR design (no readable fog source; radii user-tuned 2026-07-11) —
  * these tests pin self-consistency, not original fidelity.
  */
@@ -149,31 +149,23 @@ describe('fog modes — update rules over the per-player mask', () => {
     expect(rawState(sim, P0, 2, 2)).toBe(FOG_STATE.VISIBLE); // old ground STAYS visible (sticky)
   });
 
-  it('FULL: ground no eye covers regresses to explored-grey', () => {
-    const sim = simOn(FOG_MODE.FULL);
-    const e = unit(sim, 2, 2, P0);
-    sim.run(1);
-    expect(rawState(sim, P0, 2, 2)).toBe(FOG_STATE.VISIBLE);
-    teleport(sim, e, 20, 2);
-    sim.run(VISION_CADENCE_TICKS + 1);
-    expect(rawState(sim, P0, 20, 2)).toBe(FOG_STATE.VISIBLE);
-    expect(rawState(sim, P0, 2, 2)).toBe(FOG_STATE.EXPLORED); // seen once, now unwatched — grey
-    expect(rawState(sim, P0, 12, 6)).toBe(FOG_STATE.UNEXPLORED); // mid-map, off both spots — never seen
-  });
-
   it('RECON: the raw mask stays tri-state but the view reads unexplored ground as explored', () => {
     const sim = simOn(FOG_MODE.RECON);
-    unit(sim, 2, 2, P0);
+    const e = unit(sim, 2, 2, P0);
     sim.run(1);
     expect(rawState(sim, P0, 20, 2)).toBe(FOG_STATE.UNEXPLORED); // raw: never seen
     const view = sim.fogView(P0);
     expect(view).not.toBeNull();
     expect(view?.stateAt(20, 2)).toBe(FOG_STATE.EXPLORED); // view: terrain known from the start
     expect(view?.stateAt(2, 2)).toBe(FOG_STATE.VISIBLE);
+    teleport(sim, e, 20, 2);
+    sim.run(VISION_CADENCE_TICKS + 1);
+    expect(rawState(sim, P0, 20, 2)).toBe(FOG_STATE.VISIBLE);
+    expect(rawState(sim, P0, 2, 2)).toBe(FOG_STATE.EXPLORED); // known terrain, no current eye
   });
 
   it('masks are per PLAYER: one player exploring reveals nothing to the other', () => {
-    const sim = simOn(FOG_MODE.FULL);
+    const sim = simOn(FOG_MODE.REVEAL);
     unit(sim, 2, 2, P0);
     unit(sim, 20, 2, P1);
     sim.run(1);
@@ -203,7 +195,7 @@ describe('fog gates — combat auto-acquire and flee react only to SEEN enemies'
   // Geometry shared by the gate tests: attacker at cell (2,2) (node (4,4)), enemy 7 cells east at
   // (9,2) (node (18,4)) — Manhattan node distance 14, INSIDE the 16-node combat sight radius but
   // 476 px east, OUTSIDE the civilian 408 px (12-node) vision ellipse. Without fog the drive fires;
-  // under FULL fog the enemy is unseen and it must not.
+  // under classic fog the enemy is unseen and it must not.
   const ATTACKER = { x: 2, y: 2 } as const;
   const ENEMY = { x: 9, y: 2 } as const;
 
@@ -218,7 +210,7 @@ describe('fog gates — combat auto-acquire and flee react only to SEEN enemies'
 
   it('ATTACK auto-acquire ignores an enemy in the fog — and engages it with fog off', () => {
     for (const [mode, engages] of [
-      [FOG_MODE.FULL, false],
+      [FOG_MODE.REVEAL, false],
       [FOG_MODE.OFF, true],
     ] as const) {
       clearComponentStores();
@@ -231,7 +223,7 @@ describe('fog gates — combat auto-acquire and flee react only to SEEN enemies'
   });
 
   it('an explicit attack order still chases a fog-hidden target (orders are ungated)', () => {
-    const sim = simOn(FOG_MODE.FULL);
+    const sim = simOn(FOG_MODE.REVEAL);
     const attacker = unit(sim, ATTACKER.x, ATTACKER.y, P0, { mode: MILITARY_MODE.ATTACK });
     const enemy = unit(sim, ENEMY.x, ENEMY.y, P1);
     sim.enqueue({ kind: 'attackUnit', entity: attacker, target: enemy });
@@ -242,7 +234,7 @@ describe('fog gates — combat auto-acquire and flee react only to SEEN enemies'
 
   it('FLEE reacts only to a SEEN threat — and flees it with fog off', () => {
     for (const [mode, flees] of [
-      [FOG_MODE.FULL, false],
+      [FOG_MODE.REVEAL, false],
       [FOG_MODE.OFF, true],
     ] as const) {
       clearComponentStores();

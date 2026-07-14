@@ -11,8 +11,8 @@
  *    is a coarse area effect, the render consumes per-cell lanes, and a cell mask is 4× smaller than a
  *    node mask on a 1024² map. Node queries quarter their coords ({@link cellOfNode}).
  *  - **Tri-state byte per cell** ({@link FOG_STATE}): UNEXPLORED (black), EXPLORED (terrain-only grey),
- *    VISIBLE (everything shows). REVEAL never downgrades (the original's sticky exploration); RECON/FULL
- *    drop VISIBLE back to EXPLORED each rebuild; RECON additionally *renders* UNEXPLORED as EXPLORED
+ *    VISIBLE (everything shows). REVEAL never downgrades (the original's sticky exploration); RECON
+ *    drops VISIBLE back to EXPLORED each rebuild and additionally *renders* UNEXPLORED as EXPLORED
  *    (the raw mask stays tri-state so switching modes mid-game keeps the explored history).
  *  - **Cadence rebuild** ({@link VISION_CADENCE_TICKS}): the masks are recomputed every few ticks (and
  *    on a mode change), not per tick — a fog a few ticks stale is imperceptible, and the rebuild cost

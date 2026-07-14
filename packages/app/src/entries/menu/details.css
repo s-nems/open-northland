@@ -21,12 +21,40 @@
   box-shadow: 0 5px 12px rgba(53, 29, 10, 0.48);
 }
 
+.game-menu__preview-frame.is-loading::before {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 1;
+  width: 30px;
+  height: 30px;
+  margin: -18px 0 0 -18px;
+  border: 3px solid rgba(232, 201, 120, 0.22);
+  border-top-color: #e8c978;
+  border-radius: 50%;
+  content: "";
+  animation: menu-preview-spin 0.8s linear infinite;
+}
+
+@keyframes menu-preview-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
 .game-menu__preview {
   width: 100%;
   height: 100%;
   display: block;
   object-fit: cover;
   filter: saturate(0.82) contrast(1.06) sepia(0.08);
+}
+
+/* Scenes/tools (and a map mid-generation) carry no src — honour `hidden` so the frame's black
+   rectangle shows instead of the browser's broken-image glyph (the `display: block` above would
+   otherwise beat the UA `[hidden]` rule). */
+.game-menu__preview[hidden] {
+  display: none;
 }
 
 .game-menu__preview.is-map {
@@ -108,6 +136,33 @@
   display: block;
   min-height: 30px;
   line-height: 1.2;
+}
+
+.game-menu__setting-label {
+  min-height: 30px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 5px;
+}
+
+.game-menu__setting-label span {
+  min-height: 0;
+}
+
+.game-menu__info {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  color: #f0d9a1;
+  border: 1px solid #70461f;
+  border-radius: 50%;
+  cursor: help;
+  font:
+    700 12px / 16px Georgia,
+    serif;
+  background: #4a3017;
 }
 
 .game-menu__settings select {
