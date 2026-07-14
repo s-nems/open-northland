@@ -14,13 +14,12 @@ import { SampleCache } from './sample-cache.js';
 /**
  * The impure Web Audio playback sink — the only part of the package that owns an `AudioContext`. It
  * takes the pure {@link AudioFrame} the director decided and makes it audible: fires debounced
- * one-shots through a per-play gain+pan graph, and hands the ambient set to the
- * {@link AmbientMixer} to reconcile. Loading/decoding is the {@link SampleCache}'s. All timing rides
- * the audio clock (`ctx.currentTime`), never `Date.now`, so ramps stay sample-accurate.
+ * one-shots through a per-play gain+pan graph, and hands the ambient set to the {@link AmbientMixer}
+ * to reconcile ({@link SampleCache} loads/decodes). All timing rides the audio clock
+ * (`ctx.currentTime`), never `Date.now`, so ramps stay sample-accurate.
  *
- * Browser autoplay policy: the context starts suspended and makes no sound until {@link resume} is
- * called from inside a user gesture — the app wires that to the first click/key. Before then, and on
- * any decode/fetch failure, playback is a graceful no-op (silence), never a throw.
+ * The context starts suspended ({@link resume} starts it); before then, and on any decode/fetch
+ * failure, playback is a graceful no-op (silence), never a throw.
  */
 
 /** Options for {@link WebAudioEngine}. Platform seams default to the real browser behaviour. */

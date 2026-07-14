@@ -73,7 +73,7 @@ function snapshotAt(events: readonly SimEvent[] = []): WorldSnapshot {
   };
 }
 
-function direct(events: readonly SimEvent[], terrain?: AudioTerrain) {
+function direct(events: readonly SimEvent[], opts: { terrain?: AudioTerrain; localPlayer?: number } = {}) {
   return directAudio({
     events,
     snapshot: snapshotAt(events),
@@ -82,7 +82,8 @@ function direct(events: readonly SimEvent[], terrain?: AudioTerrain) {
     canvasH: CANVAS_H,
     index,
     bindings,
-    ...(terrain ? { terrain } : {}),
+    ...(opts.terrain !== undefined ? { terrain: opts.terrain } : {}),
+    ...(opts.localPlayer !== undefined ? { localPlayer: opts.localPlayer } : {}),
   });
 }
 
@@ -140,49 +141,32 @@ describe('directAudio one-shots', () => {
   });
 });
 
-function directWithLocalPlayer(events: readonly SimEvent[], localPlayer?: number) {
-  return directAudio({
-    events,
-    snapshot: snapshotAt(events),
-    camera,
-    canvasW: CANVAS_W,
-    canvasH: CANVAS_H,
-    index,
-    bindings,
-    ...(localPlayer !== undefined ? { localPlayer } : {}),
-  });
-}
-
 describe('directAudio combat SFX', () => {
   // Half-cell node (11,10) projects to the centred tile (5,5), so the emitter is on-screen and centred.
   const at = { x: 11, y: 10 };
 
   it('fires the weapon-specific melee impact for a combatHit', () => {
-    const sword = directWithLocalPlayer([
-      { kind: 'combatHit', attacker: 3, target: 4, weaponMainType: 3, at },
-    ]);
+    const sword = direct([{ kind: 'combatHit', attacker: 3, target: 4, weaponMainType: 3, at }]);
     expect(sword.oneShots[0]?.files).toEqual(['static/swordhit01.wav']);
     expect(sword.oneShots[0]?.key).toBe('combatHit:11,10');
-    const spear = directWithLocalPlayer([
-      { kind: 'combatHit', attacker: 3, target: 4, weaponMainType: 2, at },
-    ]);
+    const spear = direct([{ kind: 'combatHit', attacker: 3, target: 4, weaponMainType: 2, at }]);
     expect(spear.oneShots[0]?.files).toEqual(['static/spearhit01.wav']);
   });
 
   it('falls back to the generic melee thunk when the weapon class has no entry / is absent', () => {
     // An axe (5) has no dedicated group → the byEvent.combatHit sword-hit fallback; likewise no weaponMainType.
-    const axe = directWithLocalPlayer([{ kind: 'combatHit', attacker: 3, target: 4, weaponMainType: 5, at }]);
+    const axe = direct([{ kind: 'combatHit', attacker: 3, target: 4, weaponMainType: 5, at }]);
     expect(axe.oneShots[0]?.files).toEqual(['static/swordhit01.wav']);
-    const bare = directWithLocalPlayer([{ kind: 'combatHit', attacker: 3, target: 4, at }]);
+    const bare = direct([{ kind: 'combatHit', attacker: 3, target: 4, at }]);
     expect(bare.oneShots[0]?.files).toEqual(['static/swordhit01.wav']);
   });
 
   it('fires the bow twang on launch and the arrow thunk on hit', () => {
-    const loose = directWithLocalPlayer([
+    const loose = direct([
       { kind: 'projectileLaunched', projectile: 9, shooter: 3, target: 4, munitionType: 1, at },
     ]);
     expect(loose.oneShots[0]?.files).toEqual(['static/bow01.wav']);
-    const hit = directWithLocalPlayer([
+    const hit = direct([
       { kind: 'projectileHit', projectile: 9, shooter: 3, target: 4, munitionType: 1, at },
     ]);
     expect(hit.oneShots[0]?.files).toEqual(['static/arrowhit01.wav']);
@@ -194,31 +178,26 @@ describe('directAudio death stinger owner filter', () => {
   const ENEMY = 1;
 
   it('rings the death jingle only for the local player’s own unit', () => {
-    const mine = directWithLocalPlayer(
-      [{ kind: 'settlerDied', entity: 3, cause: 'damage', player: LOCAL }],
-      LOCAL,
-    );
+    const mine = direct([{ kind: 'settlerDied', entity: 3, cause: 'damage', player: LOCAL }], {
+      localPlayer: LOCAL,
+    });
     expect(mine.oneShots).toHaveLength(1);
     expect(mine.oneShots[0]?.files).toEqual(['jingles/jingles_death.wav']);
   });
 
   it('stays silent for an enemy or wild-animal (null-owned) death', () => {
-    const enemy = directWithLocalPlayer(
-      [{ kind: 'settlerDied', entity: 4, cause: 'damage', player: ENEMY }],
-      LOCAL,
-    );
+    const enemy = direct([{ kind: 'settlerDied', entity: 4, cause: 'damage', player: ENEMY }], {
+      localPlayer: LOCAL,
+    });
     expect(enemy.oneShots).toHaveLength(0);
-    const beast = directWithLocalPlayer(
-      [{ kind: 'settlerDied', entity: 5, cause: 'damage', player: null }],
-      LOCAL,
-    );
+    const beast = direct([{ kind: 'settlerDied', entity: 5, cause: 'damage', player: null }], {
+      localPlayer: LOCAL,
+    });
     expect(beast.oneShots).toHaveLength(0);
   });
 
   it('stays silent when no local player is configured', () => {
-    const noLocal = directWithLocalPlayer([
-      { kind: 'settlerDied', entity: 3, cause: 'damage', player: LOCAL },
-    ]);
+    const noLocal = direct([{ kind: 'settlerDied', entity: 3, cause: 'damage', player: LOCAL }]);
     expect(noLocal.oneShots).toHaveLength(0);
   });
 });
@@ -227,7 +206,7 @@ describe('directAudio ambient', () => {
   const meadow: AudioTerrain = { width: 10, height: 10, typeIds: new Array(100).fill(1) };
 
   it('activates the terrain ambient bed under the viewport with a positive gain', () => {
-    const frame = direct([], meadow);
+    const frame = direct([], { terrain: meadow });
     expect(frame.ambient).toHaveLength(1);
     expect(frame.ambient[0]?.name).toBe('Meadow Green');
     expect(frame.ambient[0]?.file).toBe('ambient/meadow1.wav');
@@ -240,7 +219,7 @@ describe('directAudio ambient', () => {
 
   it('produces no ambient when the visible terrain has no bound bed', () => {
     const bare: AudioTerrain = { width: 10, height: 10, typeIds: new Array(100).fill(42) };
-    expect(direct([], bare).ambient).toHaveLength(0);
+    expect(direct([], { terrain: bare }).ambient).toHaveLength(0);
   });
 
   it('produces no ambient when the camera frames only empty space off the map', () => {

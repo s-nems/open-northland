@@ -3,8 +3,7 @@ import type { FetchBytes } from '../platform.js';
 /**
  * The fetch+decode cache for wav samples: each file is loaded and decoded at most once, concurrent
  * requests share the in-flight promise, and a failure is memoised as null so a missing wav never
- * spams the network. Owned by the engine (decoding needs its `AudioContext`), separated so the
- * "loading" concern is one small testable unit.
+ * spams the network. Owned by the engine (decoding needs its `AudioContext`).
  */
 export class SampleCache {
   /** file → decoded buffer (or an in-flight promise; a null result means load failed — don't retry). */
@@ -29,7 +28,7 @@ export class SampleCache {
         this.entries.set(file, buffer);
         return buffer;
       } catch {
-        this.entries.set(file, null); // remember the failure; a missing wav must not spam the network
+        this.entries.set(file, null); // remember the failure — don't re-fetch
         return null;
       }
     })();

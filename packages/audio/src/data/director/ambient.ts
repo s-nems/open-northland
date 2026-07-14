@@ -4,8 +4,7 @@ import type { AmbientLoop, DirectorInput } from '../types.js';
 
 /**
  * On-screen terrain → ambient beds: sample the visible tile band (strided so a zoomed-out whole-map
- * view stays bounded), weight each bed by its screen coverage, and keep the loudest few. The "which
- * terrain beds should loop, how loud" half of the director.
+ * view stays bounded), weight each bed by its screen coverage, and keep the loudest few.
  */
 
 /** How many ambient beds may play at once — the loudest few by on-screen coverage. */

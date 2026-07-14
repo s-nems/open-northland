@@ -1,4 +1,4 @@
-import type { SoundIndex } from '../data/bank.js';
+import { groupFiles, type SoundIndex } from '../data/bank.js';
 import { VIKING_VOICE_POOLS, type VoiceClass, vikingVoiceClass } from '../data/bindings.js';
 import type { OnScreenSettler } from '../data/director/settlers.js';
 import type { OneShot } from '../data/types.js';
@@ -84,8 +84,8 @@ export class ChatterEmitter {
       const pool = this.voicePools[this.voiceClassOf(settler.jobType, settler.young)];
       if (pool.length === 0) continue;
       const group = pickRandom(pool, this.random);
-      const files = this.index.groupsByName.get(group.toLowerCase());
-      if (files === undefined || files.length === 0) continue;
+      const files = groupFiles(this.index, group);
+      if (files === undefined) continue;
       this.lastSpokeAt.set(settler.entity, this.clockMs);
       shots.push({
         files,
