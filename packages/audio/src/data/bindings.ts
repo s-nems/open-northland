@@ -99,11 +99,12 @@ export const VIKING_VOICE_POOLS: Readonly<Record<VoiceClass, readonly string[]>>
 };
 
 /**
- * Build the default {@link SoundBindings}. `chopAtomicId`/`buildAtomicId`, when given, bind
- * `atomicCompleted` for those content-specific atomics to the woodcutter axe / construction hammer groups
- * (the app knows its content's atomic ids; the audio package cannot). The build binding makes EACH builder
- * swing knock the hammer — the per-swing twin of the one-shot `buildingPlaced` hammer below. Omit an id and
- * that atomic simply produces no sound.
+ * Build the default {@link SoundBindings}. `chopAtomicId`/`buildAtomicId`, when given, bind those
+ * content-specific atomics to the woodcutter axe / construction hammer groups (the app knows its content's
+ * atomic ids; the audio package cannot). The chop sounds on `atomicCompleted` (`byAtomic`); the build
+ * hammer sounds on the MID-swing `atomicSound` cue (`byAtomicSound`) so EACH builder swing's knock lands
+ * on the visual strike, not the swing's end (the per-swing twin of the one-shot `buildingPlaced` hammer
+ * below). Omit an id and that atomic simply produces no sound.
  */
 export function defaultBindings(opts?: {
   readonly chopAtomicId?: number;
@@ -113,8 +114,9 @@ export function defaultBindings(opts?: {
   if (opts?.chopAtomicId !== undefined) {
     byAtomic.set(opts.chopAtomicId, { kind: 'spatial', group: GROUP_WOODCUTTER_AXE });
   }
+  const byAtomicSound = new Map<number, EventSound>();
   if (opts?.buildAtomicId !== undefined) {
-    byAtomic.set(opts.buildAtomicId, { kind: 'spatial', group: GROUP_HAMMER_WOOD });
+    byAtomicSound.set(opts.buildAtomicId, { kind: 'spatial', group: GROUP_HAMMER_WOOD });
   }
   return {
     byEvent: {
@@ -134,6 +136,7 @@ export function defaultBindings(opts?: {
       projectileHit: { kind: 'spatial', group: GROUP_ARROW_HIT },
     },
     byAtomic,
+    byAtomicSound,
     byCombatWeapon: new Map<number, EventSound>([
       [WEAPON_MAIN_TYPE_FIST, { kind: 'spatial', group: GROUP_FIST_HIT }],
       [WEAPON_MAIN_TYPE_SPEAR, { kind: 'spatial', group: GROUP_SPEAR_HIT }],

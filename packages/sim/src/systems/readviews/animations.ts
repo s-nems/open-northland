@@ -41,6 +41,20 @@ export const ATOMIC_EVENT_CHANNEL = {
 export const ATOMIC_EVENT_TYPE_ATTACK = 25;
 
 /**
+ * The `atomicanimations.ini` `event <at> <type>` **type** id marking the frame a swing PLAYS ITS SOUND
+ * FX — `ATOMIC_ANIMATION_EVENT_TYPE_PLAY_SOUND_FX` (`logicdefines.inc` l.754). Like
+ * {@link ATOMIC_EVENT_TYPE_ATTACK} it is a mid-animation *timing cue*: the frame the original triggers
+ * the action's sound (the builder's `viking_builder_build_house` carries `event 4 34 1` — the hammer
+ * knock lands on the visual strike at frame 4, not when the whole swing completes). The AtomicSystem
+ * fires an `atomicSound` event at this frame; audio drives the per-swing SFX off it ({@link atomicEventFrame}
+ * reads it). An animation with no such event plays no mid-swing sound (a consumer may still sound its
+ * completion).
+ *
+ * source-basis: pinned to `logicdefines.inc` `ATOMIC_ANIMATION_EVENT_TYPE_PLAY_SOUND_FX` (golden rule #4).
+ */
+export const ATOMIC_EVENT_TYPE_PLAY_SOUND_FX = 34;
+
+/**
  * Resolve an {@link AtomicAnimation} by its exact `name` — the join key a tribe's `setatomic <job> <atomic>
  * "anim"` binding references ({@link AtomicAnimation.name}, not the lowercased `id`). The single canonical
  * name-keyed lookup `atomicDuration` (below) and the combat swing-cadence read (conflict/weapons.ts) both

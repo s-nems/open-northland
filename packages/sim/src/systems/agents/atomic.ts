@@ -8,6 +8,11 @@ import { advanceConstructionLabor } from '../economy/construction.js';
 import { applySow, applyWater } from '../economy/farming.js';
 import { grantWorkExperience } from '../progression/index.js';
 import {
+  ATOMIC_EVENT_TYPE_PLAY_SOUND_FX,
+  atomicAnimationName,
+  atomicEventFrame,
+} from '../readviews/animations.js';
+import {
   applyPendingStaggers,
   type PendingStagger,
   paySwingNeedCost,
@@ -96,6 +101,18 @@ export const atomicSystem: System = (world, ctx) => {
       if (atomic.elapsed === hitFrame) resolveAttackHit(world, ctx, e, atomic.effect, pendingStaggers);
     }
 
+    // A construction swing plays its authored hammer knock MID-animation at the PLAY_SOUND_FX frame,
+    // so the sound lands on the visual strike instead of trailing to swing completion. This emits a
+    // sound-only event (no state mutation — resolved from content, so it moves no golden); audio drives
+    // the per-swing hammer off it. Only `construct` carries the cue today; other atomics still sound at
+    // completion (`atomicCompleted`).
+    if (atomic.effect.kind === 'construct') {
+      const soundFrame = atomicSoundFrame(world, ctx, e, atomic.atomicId);
+      if (soundFrame !== undefined && atomic.elapsed === Math.min(Math.max(1, soundFrame), duration)) {
+        ctx.events.emit({ kind: 'atomicSound', entity: e, atomicId: atomic.atomicId });
+      }
+    }
+
     if (atomic.elapsed < duration) continue; // still running
 
     // A finished REST TAIL: its harvest already applied and announced itself when the swing finished
@@ -147,6 +164,23 @@ export const atomicSystem: System = (world, ctx) => {
   // `applyPendingStaggers` for why the add is deferred).
   applyPendingStaggers(world, pendingStaggers);
 };
+
+/**
+ * The tick within a settler's atomic animation at which it plays its PLAY_SOUND_FX cue (the frame the
+ * original triggers the action's sound — the hammer knock on the builder's visual strike), or undefined
+ * when the animation carries no such event. Resolved from content: the settler's tribe binds the atomic
+ * to an animation whose `event <at> 34` gives the frame ({@link ATOMIC_EVENT_TYPE_PLAY_SOUND_FX}). A pure
+ * read — stores no state, so it moves no golden; the {@link contentIndex} maps it resolves through are
+ * memoized, so the per-tick lookup over the (few) active construction swings is O(1) each.
+ */
+function atomicSoundFrame(world: World, ctx: SystemContext, e: Entity, atomicId: number): number | undefined {
+  const settler = world.tryGet(e, Settler);
+  if (settler === undefined) return undefined;
+  const anim = atomicAnimationName(ctx.content, settler, atomicId);
+  return anim === undefined
+    ? undefined
+    : atomicEventFrame(ctx.content, anim, ATOMIC_EVENT_TYPE_PLAY_SOUND_FX);
+}
 
 /**
  * Apply a completed atomic's effect. Exhaustive over {@link AtomicEffect}: adding a variant is a

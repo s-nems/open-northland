@@ -17,6 +17,7 @@ import {
 import { GATHERERS } from '../../ids/index.js';
 import {
   BUILD_HOUSE_ANIMATION,
+  BUILD_HOUSE_STRIKE_FRAME,
   BUILD_HOUSE_SWING_LENGTH,
   FARMER_REAP_ANIMATION,
   FARMER_REAP_LENGTH,
@@ -24,6 +25,7 @@ import {
   FARMER_SOW_LENGTH,
   FARMER_WATER_ANIMATION,
   FARMER_WATER_LENGTH,
+  PLAY_SOUND_FX_EVENT_TYPE,
   STORE_EXCHANGE_LENGTH,
   STORE_PICKUP_ANIMATION,
   STORE_PILEUP_ANIMATION,
@@ -75,7 +77,14 @@ export function buildSandboxAtomicAnimations(): readonly object[] {
       length: LONG_BOW_DRAW_LENGTH,
       events: [{ at: LONG_BOW_RELEASE_FRAME, type: ATTACK_EVENT_TYPE }],
     },
-    { id: BUILD_HOUSE_ANIMATION, name: BUILD_HOUSE_ANIMATION, length: BUILD_HOUSE_SWING_LENGTH },
+    {
+      id: BUILD_HOUSE_ANIMATION,
+      name: BUILD_HOUSE_ANIMATION,
+      length: BUILD_HOUSE_SWING_LENGTH,
+      // The hammer knock sounds MID-swing at the authored PLAY_SOUND_FX frame (`event 4 34 1`), so audio
+      // drives the per-swing hammer off the sim's `atomicSound` cue there instead of at swing completion.
+      events: [{ at: BUILD_HOUSE_STRIKE_FRAME, type: PLAY_SOUND_FX_EVENT_TYPE, value: 1 }],
+    },
     { id: FARMER_REAP_ANIMATION, name: FARMER_REAP_ANIMATION, length: FARMER_REAP_LENGTH },
     { id: FARMER_SOW_ANIMATION, name: FARMER_SOW_ANIMATION, length: FARMER_SOW_LENGTH },
     { id: FARMER_WATER_ANIMATION, name: FARMER_WATER_ANIMATION, length: FARMER_WATER_LENGTH },
