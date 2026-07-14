@@ -3,7 +3,7 @@ import { ambientBeds } from './ambient.js';
 import { eventOneShots } from './events.js';
 
 /**
- * The PURE audio decision: turn one frame's sim events + world snapshot + camera into the sounds that
+ * The pure audio decision: turn one frame's sim events + world snapshot + camera into the sounds that
  * should be audible — positioned one-shots for events ({@link import('./events.js').eventOneShots}),
  * looping beds for on-screen terrain ({@link import('./ambient.js').ambientBeds}). No Web Audio, no
  * randomness (the engine picks a wav from each group and owns the `AudioContext`), so the whole "what

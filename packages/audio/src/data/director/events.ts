@@ -4,10 +4,10 @@ import type { DirectorInput, EventSound, OneShot, SoundBindings } from '../types
 import { entityTile, type TilePoint } from './snapshot.js';
 
 /**
- * Sim events → one-shots: resolve each frame event through the {@link SoundBindings}, locate the
- * spatial ones (an explicit `at` HALF-CELL NODE or the emitter entity's snapshot position),
- * viewport-cull and spatialise them, and pass jingles through non-spatially. Pure — the "which
- * events sound, from where, how loud" half of the director.
+ * Sim events → one-shots: resolve each frame event through the {@link SoundBindings}, locate the spatial
+ * ones (an explicit `at` half-cell node or the emitter entity's snapshot position), viewport-cull and
+ * spatialise them, and pass jingles through non-spatially. Pure — the "which events sound, from where,
+ * how loud" half of the director.
  */
 
 /** Base gain of a non-spatial life-event jingle (kept below 1 so a jingle doesn't clip over SFX). */
@@ -58,11 +58,9 @@ function resolveBinding(ev: SimEvent, bindings: SoundBindings): EventSound | und
 }
 
 /**
- * Whether a {@link EventSound.localPlayerOnly} jingle should ring for `ev` — true only when the event
- * carries an owner `player` that equals `localPlayer` (the death stinger fires for the player's OWN
- * unit, never an enemy's or a wild animal's `null`-owned death). A jingle without this flag never
- * reaches here; an event carrying no `player` field, or no configured `localPlayer`, is treated as
- * not-ours (silent) — the safe default for a notification sound.
+ * Whether a {@link EventSound.localPlayerOnly} jingle should ring for `ev` — true only when the event's
+ * owner `player` equals `localPlayer`. An event carrying no `player`, or no configured `localPlayer`, is
+ * treated as not-ours (silent) — the safe default for a notification sound.
  */
 function firesForLocalPlayer(ev: SimEvent, localPlayer: number | undefined): boolean {
   if (localPlayer === undefined) return false;

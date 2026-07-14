@@ -13,7 +13,7 @@ import {
  * The stochastic voice-chatter emitter, made deterministic through the injected random source: the
  * crowd-wide clip rate, the per-settler cooldown, the sex/age→pool match, the refocus dt clamp and
  * the scan-only-at-the-voice-rate gating are all asserted headless — no AudioContext, no Math.random.
- * Assertions are timing INVARIANTS (first-emission window, inter-shot gaps), not exact counts at
+ * Assertions are timing invariants (first-emission window, inter-shot gaps), not exact counts at
  * budget boundaries — an exact count sits on a floating-point knife edge and breaks on a rate retune.
  */
 
@@ -77,7 +77,7 @@ describe('ChatterEmitter', () => {
 
   it('holds a settler silent for its cooldown even while the crowd budget keeps accruing', () => {
     const emitter = new ChatterEmitter(index, { random: () => 0 });
-    // 10s of a ONE-settler crowd: the budget allows ~16 picks, the cooldown allows a voice only
+    // 10s of a one-settler crowd: the budget allows ~16 picks, the cooldown allows a voice only
     // every VOICE_COOLDOWN_MS — so several voices fire and every consecutive gap honours the cooldown.
     const shots = pump(emitter, [settler(7)], Math.ceil(10_000 / STEP));
     expect(shots.length).toBeGreaterThanOrEqual(2);

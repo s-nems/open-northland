@@ -6,18 +6,17 @@ import { pickRandom, type RandomFn } from './platform.js';
 import { pruneExpired } from './prune.js';
 
 /**
- * The STOCHASTIC settler voice-chatter emitter: at ~{@link VOICE_RATE_PER_SEC} clips/second across
- * the visible crowd, pick a random on-screen settler (respecting its {@link VOICE_COOLDOWN_MS}) and
- * draw a clip group from the pool matching THAT settler's sex/age — so the murmur reflects who is on
- * screen (a crowd of men stays male) instead of pulling every pool uniformly. This is the impure
- * "who speaks now" half; the pure "who could speak" candidate list is
- * {@link import('../data/director/settlers.js').onScreenSettlers}. Randomness is injected, so the whole
- * policy is unit-testable with a scripted {@link RandomFn}.
+ * The stochastic settler voice-chatter emitter: at ~{@link VOICE_RATE_PER_SEC} clips/second across the
+ * visible crowd, pick a random on-screen settler (respecting its {@link VOICE_COOLDOWN_MS}) and draw a
+ * clip group from the pool matching that settler's sex/age, so the murmur reflects who is on screen (a
+ * crowd of men stays male). This is the impure "who speaks now" half; the pure "who could speak"
+ * candidate list is {@link import('../data/director/settlers.js').onScreenSettlers}. Randomness is
+ * injected, so the whole policy is unit-testable with a scripted {@link RandomFn}.
  */
 
 /** Base gain of a settler voice (below SFX so chatter sits under the action, not over it). */
 export const VOICE_GAIN = 0.7;
-/** Target number of voice clips per second across the WHOLE on-screen crowd (scaled by, not per, settler). */
+/** Target number of voice clips per second across the whole on-screen crowd (scaled by, not per, settler). */
 export const VOICE_RATE_PER_SEC = 1.6;
 /** A given settler won't speak again for this long (ms) — so voices feel like people, not a loop. */
 export const VOICE_COOLDOWN_MS = 4000;
@@ -63,11 +62,10 @@ export class ChatterEmitter {
 
   /**
    * Advance the emitter by `dtMs` and return the voice one-shots to fire this frame. `settlers` is a
-   * thunk invoked ONLY when the budget crosses a whole clip (~{@link VOICE_RATE_PER_SEC} Hz), so the
+   * thunk invoked only when the budget crosses a whole clip (~{@link VOICE_RATE_PER_SEC} Hz), so the
    * O(entities) on-screen scan runs at the voice rate, never per frame. An empty screen zeroes the
-   * budget — a named approximation of the old "empty crowd accrues nothing": at most the one already
-   * crossed clip may fire promptly when settlers scroll back in, never a burst. Purely additive: the
-   * caller appends the result to its frame.
+   * budget (a named approximation) — at most the one already-crossed clip fires when settlers scroll
+   * back in, never a burst. Purely additive: the caller appends the result to its frame.
    */
   update(dtMs: number, settlers: () => readonly OnScreenSettler[]): OneShot[] {
     // Clamp so a refocus-after-background frame (huge `elapsed`) can't burst a cluster of voices at once.

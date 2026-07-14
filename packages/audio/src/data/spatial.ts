@@ -2,14 +2,12 @@ import { type Camera, halfCellToScreen, tileToScreen } from '@open-northland/ren
 import { clamp } from './math.js';
 
 /**
- * The PURE spatial-audio math: project a world position to the screen through the SAME projections
- * the renderer draws with ({@link tileToScreen} for fractional tile positions, {@link halfCellToScreen}
- * for half-cell node addresses, + `screen = world*scale + offset`), then decide whether the emitter is
- * on screen and, if so, how loud and how far left/right it should sound. This is the "only what's on
- * screen makes sound" contract for positioned one-shots — an emitter outside the framed viewport
- * returns `null` (silent), one near a screen edge attenuates and pans toward that edge. No Web Audio
- * here: a `(position, camera, canvas)` in, a `{ gain, pan }` (or `null`) out, so it is unit-testable
- * without an `AudioContext`. Floats are fine — this is a render-side concern.
+ * The pure spatial-audio math: project a world position to the screen through the same projections the
+ * renderer draws with ({@link tileToScreen} for fractional tile positions, {@link halfCellToScreen} for
+ * half-cell node addresses, + `screen = world*scale + offset`), then decide whether the emitter is on
+ * screen and, if so, how loud and how far left/right it sounds. An emitter outside the framed viewport
+ * returns `null` (silent); one near a screen edge attenuates and pans toward that edge. Floats are fine —
+ * a render-side concern.
  */
 
 /** Emitter falls silent this many screen px beyond the canvas edge (slack so a straddling sprite still sounds). */
@@ -22,9 +20,9 @@ export const EDGE_GAIN = 0.35;
 export const MAX_PAN = 0.85;
 
 /**
- * Loudness floor as the camera zooms OUT. A zoomed-out camera is "further away", so its sounds fade
- * toward this floor (never to silence — a wide battle view still murmurs); zooming IN past 1:1 never
- * boosts past full gain (no clipping). At scale 1 (1:1) there is no zoom attenuation.
+ * Loudness floor as the camera zooms out. A zoomed-out camera is "further away", so its sounds fade
+ * toward this floor (never to silence — a wide battle view still murmurs); zooming in past 1:1 never
+ * boosts past full gain. At scale 1 (1:1) there is no zoom attenuation.
  */
 export const ZOOM_GAIN_FLOOR = 0.45;
 
@@ -38,11 +36,9 @@ export interface Spatial {
 
 /**
  * Project world tile `(col, row)` through `camera` onto a `canvasW × canvasH` screen and return its
- * spatialisation, or `null` when it lies outside the viewport (grown by {@link CULL_MARGIN_PX}) — the
- * caller then plays nothing, so off-screen emitters are silent. Gain falls radially from 1 at the
- * centre to {@link EDGE_GAIN} at the edge, and is further scaled down as the camera zooms OUT (a
- * further-away camera is quieter, floored at {@link ZOOM_GAIN_FLOOR}); pan tracks the horizontal screen
- * fraction. Mirrors the renderer's projection exactly so a sound comes from where its sprite is drawn.
+ * spatialisation, or `null` when it lies outside the viewport (grown by {@link CULL_MARGIN_PX}). Gain
+ * falls radially from 1 at the centre to {@link EDGE_GAIN} at the edge, scaled down as the camera zooms
+ * out (floored at {@link ZOOM_GAIN_FLOOR}); pan tracks the horizontal screen fraction.
  */
 export function computeSpatial(
   col: number,
@@ -55,9 +51,9 @@ export function computeSpatial(
 }
 
 /**
- * {@link computeSpatial} for a HALF-CELL NODE address `(hx, hy)` — the space every `SimEvent.at`
- * carries (the same grid as command payloads). Projects through the renderer's own
- * {@link halfCellToScreen}, so the node→screen stagger math has exactly one owner.
+ * {@link computeSpatial} for a half-cell node address `(hx, hy)` — the space every `SimEvent.at` carries
+ * (the same grid as command payloads). Projects through the renderer's own {@link halfCellToScreen}, so
+ * the node→screen stagger math has one owner.
  */
 export function computeSpatialAtNode(
   hx: number,
@@ -94,8 +90,8 @@ function spatialiseScreenPoint(
   const ny = halfH === 0 ? 0 : (sy - halfH) / halfH;
   const dist = clamp(Math.hypot(nx, ny), 0, 1);
   const screenGain = EDGE_GAIN + (1 - EDGE_GAIN) * (1 - dist);
-  // Zoom attenuation: a zoomed-OUT camera (scale < 1) is further away, so quieter — floored so a wide
-  // view never goes silent; zooming IN (scale >= 1) is clamped to 1, never boosting past full gain.
+  // Zoom attenuation: a zoomed-out camera (scale < 1) is further away, so quieter — floored so a wide
+  // view never goes silent; zooming in (scale >= 1) is clamped to 1, never boosting past full gain.
   const zoomGain = clamp(scale, ZOOM_GAIN_FLOOR, 1);
   const pan = clamp(nx, -1, 1) * MAX_PAN;
   return { gain: screenGain * zoomGain, pan };

@@ -12,7 +12,7 @@ export class FakeParam {
   setValueAtTime(value: number): void {
     this.value = value;
   }
-  // SIMPLIFICATION: ramps complete instantly — `value` jumps straight to the target, so it is never
+  // Simplification: ramps complete instantly — `value` jumps straight to the target, so it is never
   // time-accurate mid-ramp. Assert on `ramps` (the scheduled targets), not on `value` over time.
   linearRampToValueAtTime(value: number, time: number): void {
     this.ramps.push({ value, time });

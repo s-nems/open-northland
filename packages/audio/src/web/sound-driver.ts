@@ -33,11 +33,11 @@ export interface SoundFrameInput {
 export interface SoundDriverOptions extends AudioEngineOptions, ChatterOptions {}
 
 /**
- * The app-facing audio façade: per frame, turn the world state into playback. Every concern lives in
- * its own unit and this class only composes them — the PURE decisions (which events sound, which
- * beds loop, who is on screen) in {@link directAudio} + {@link onScreenSettlers}, the STOCHASTIC
- * voice chatter in the {@link ChatterEmitter}, and the actual Web Audio playback in the
- * {@link WebAudioEngine}. This is the one object the app shell constructs and pumps.
+ * The app-facing audio façade: per frame, turn the world state into playback. Every concern lives in its
+ * own unit and this class only composes them — the pure decisions (which events sound, which beds loop,
+ * who is on screen) in {@link directAudio} + {@link onScreenSettlers}, the stochastic voice chatter in
+ * the {@link ChatterEmitter}, and the Web Audio playback in the {@link WebAudioEngine}. This is the one
+ * object the app shell constructs and pumps.
  */
 export class SoundDriver {
   private readonly engine: WebAudioEngine;

@@ -54,7 +54,7 @@ describe('computeSpatial', () => {
   });
 
   it('attenuates as the camera zooms out and never boosts past full when zoomed in', () => {
-    // Keep the SAME tile dead-centre at every zoom (offset compensates for scale), so only the zoom
+    // Keep the same tile dead-centre at every zoom (offset compensates for scale), so only the zoom
     // factor varies — gain then equals the zoom attenuation alone (centre screen-gain is 1).
     const col = 3;
     const row = 4;
@@ -68,8 +68,8 @@ describe('computeSpatial', () => {
       computeSpatial(col, row, centredAt(scale), CANVAS_W, CANVAS_H)?.gain ?? Number.NaN;
 
     expect(gainAt(1)).toBeCloseTo(1, 5); // 1:1 → full
-    expect(gainAt(2)).toBeCloseTo(1, 5); // zoomed IN → capped at full, no boost
-    expect(gainAt(0.5)).toBeCloseTo(0.5, 5); // zoomed OUT → attenuated to the zoom factor
+    expect(gainAt(2)).toBeCloseTo(1, 5); // zoomed in → capped at full, no boost
+    expect(gainAt(0.5)).toBeCloseTo(0.5, 5); // zoomed out → attenuated to the zoom factor
     expect(gainAt(0.05)).toBeCloseTo(ZOOM_GAIN_FLOOR, 5); // far out → floored, never silent
     // Monotonic: the more you zoom out, the quieter.
     expect(gainAt(0.5)).toBeLessThan(gainAt(1));
