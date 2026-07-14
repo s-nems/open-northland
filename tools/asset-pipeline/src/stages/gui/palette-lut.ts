@@ -46,5 +46,8 @@ const GUI_PALETTES: readonly GuiPaletteSource[] = [
  * row so the row order (the app's contract) stays fixed regardless of a partial install.
  */
 export function convertGuiPaletteLut(gameDir: string, outDir: string): Promise<PaletteLutResult> {
-  return buildPaletteLut(gameDir, outDir, GUI_PALETTES, GUI_PALETTE_LUT_STEM, 'gui', 'palette');
+  return buildPaletteLut(gameDir, outDir, GUI_PALETTES, GUI_PALETTE_LUT_STEM, {
+    label: 'gui',
+    noun: 'palette',
+  });
 }

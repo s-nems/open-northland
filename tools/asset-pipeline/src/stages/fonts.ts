@@ -114,7 +114,10 @@ const FONT_SOURCES: readonly FontSource[] = FONT_VARIANTS.flatMap((v) =>
  * so the row order (the app's contract) stays fixed regardless of a partial install.
  */
 export function convertFontColorLut(gameDir: string, outDir: string): Promise<PaletteLutResult> {
-  return buildPaletteLut(gameDir, outDir, FONT_COLORS, FONT_COLOR_LUT_STEM, 'fonts', 'colour');
+  return buildPaletteLut(gameDir, outDir, FONT_COLORS, FONT_COLOR_LUT_STEM, {
+    label: 'fonts',
+    noun: 'colour',
+  });
 }
 
 /** One converted font: its atlas stems, metrics path, and the font-wide layout numbers (for the manifest). */
