@@ -4,7 +4,7 @@
  * separate from `decodePcx`: the container yields indexed pixels + an opacity mask; palette/atlas
  * concerns stay out (the bob's palette lives outside the `.bmd`).
  *
- * Ported FORMAT from CBobManager `PrintBob_*Core` + the `PrintPackedLine_*` walkers.
+ * Ported format from CBobManager `PrintBob_*Core` + the `PrintPackedLine_*` walkers.
  */
 
 import {
@@ -56,7 +56,7 @@ export interface BobFrame {
 /**
  * How {@link decodeBobFrame} reads a {@link BOB_TYPE_DOUBLE8BIT} pair's second byte — per-pixel `'alpha'`
  * (the soft decals) or `'time'` (a `[GfxHouse]` bob's construction-progress threshold). The meaning is a
- * property of the CONSUMER, not the file (see {@link BOB_TYPE_DOUBLE8BIT}); a TimeMask bob is always time.
+ * property of the consumer, not the file (see {@link BOB_TYPE_DOUBLE8BIT}); a TimeMask bob is always time.
  */
 export type SecondByteMode = 'alpha' | 'time';
 
@@ -67,13 +67,13 @@ export type SecondByteMode = 'alpha' | 'time';
  *
  * Format (ported from CBobManager `PrintBob_*Core` + the `PrintPackedLine_*` walkers): the bob's `area`
  * gives the frame size; its scanlines are `lineControl[bob.misc + line]` (`misc` is the bob's first-line
- * index into the contiguously-stacked line-control array — NOT `area.y`, which is the draw offset). For
+ * index into the contiguously-stacked line-control array — not `area.y`, which is the draw offset). For
  * each of `height` scanlines that word is either {@link LINE_CONTROL_EMPTY} (fully transparent row) or
  * `[xMin (10b)][offset (22b)]`. From `packedLineData[offset]` we walk control bytes until a `0`
- * terminator: a byte with the high bit clear is a **raw run** of `count = b & 0x7F` pixels whose data
- * follows inline; high bit set is a **skip run** (transparent) of `count` pixels. Either way the cursor
- * advances `count` columns. Columns are in the bob's LOCAL frame space (starting at `xMin`); `area.x` is
- * the draw offset and is NOT applied here.
+ * terminator: a byte with the high bit clear is a raw run of `count = b & 0x7F` pixels whose data
+ * follows inline; high bit set is a skip run (transparent) of `count` pixels. Either way the cursor
+ * advances `count` columns. Columns are in the bob's local frame space (starting at `xMin`); `area.x` is
+ * the draw offset and is not applied here.
  *
  * Per-type pixel width within a raw run: 8-bit stores one index byte each; TimeMask and Double8Bit store
  * two bytes each (`[value, timeByte]` / `[index, alpha-or-time]` — see {@link BOB_TYPE_TIMEMASK} /
@@ -112,10 +112,9 @@ export function decodeBobFrame(bmd: Bmd, bobIndex: number, secondByte: SecondByt
     time === undefined ? { width, height, pixels, mask } : { width, height, pixels, mask, time };
 
   for (let line = 0; line < height; line++) {
-    // The bob's scanlines occupy a CONTIGUOUS block of the global line-control array starting at
-    // `bob.misc` — its first-line index, NOT `area.y` (area.x/area.y are the DRAW offset, often
-    // negative, applied only when blitting; see the `misc`/`area` field docs). Using `area.y` here was
-    // the bug that decoded only the bottom few rows of each bob (a tiny fragment).
+    // The bob's scanlines occupy a contiguous block of the global line-control array starting at
+    // `bob.misc` — its first-line index, not `area.y` (area.x/area.y are the draw offset, often
+    // negative, applied only when blitting; see the `misc`/`area` field docs).
     const ctrlIndex = bob.misc + line;
     if (ctrlIndex < 0 || ctrlIndex >= bmd.lineControl.length) continue;
     const ctrl = bmd.lineControl[ctrlIndex] as number;
@@ -125,9 +124,8 @@ export function decodeBobFrame(bmd: Bmd, bobIndex: number, secondByte: SecondByt
     let pos = ctrl & PACKED_OFFSET_MASK;
     if (pos >= packed.length) continue;
 
-    // Column cursor in the bob's LOCAL frame space (0..width). `xMin` is the first non-transparent
-    // local column; runs advance from there. area.x is the draw offset, NOT subtracted here (doing so
-    // shifted content right and clipped hundreds of pixels off the right edge).
+    // Column cursor in the bob's local frame space (0..width). `xMin` is the first non-transparent
+    // local column; runs advance from there. area.x is the draw offset, not subtracted here.
     let absX = xMin;
     const rowBase = line * width;
 
@@ -146,8 +144,8 @@ export function decodeBobFrame(bmd: Bmd, bobIndex: number, secondByte: SecondByt
           const second = isPair ? (packed[pos + 1] as number) : BOB_ALPHA_OPAQUE;
           pos += bytesPerPixel;
           const col = absX + i;
-          // An ALPHA pair's 0 skips the write entirely — the engine's `a <= 0 → continue` — so the
-          // pixel stays genuinely unwritten (`index 0, mask 0`). A TIME pair's 0 is a real pixel
+          // An alpha pair's 0 skips the write entirely — the engine's `a <= 0 → continue` — so the
+          // pixel stays genuinely unwritten (`index 0, mask 0`). A time pair's 0 is a real pixel
           // (visible from the very start of construction), written opaque with its threshold in `time`.
           if (col >= 0 && col < width && !(isAlpha && second === 0)) {
             if (isMask) {

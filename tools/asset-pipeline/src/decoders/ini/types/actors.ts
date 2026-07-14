@@ -68,34 +68,16 @@ export function extractAtomicAnimations(sections: readonly RuleSection[], src: S
  * `DataCnmd/types/weapons.ini` (the base game's `Data/logic/weapontypes.cif` is the encrypted twin),
  * so this prefers that `.ini` per AGENTS.md golden rule #4.
  *
- * Each `damagevalue <armorClass> <value>` line becomes one entry in the role-keyed `damage` record
- * (the armor class is the string key, matching the schema's `record<string,number>` shape and the
- * original `damageValue[targetArmorClass]` indexing). `minimumrange`/`maximumrange` map to
- * `minRange`/`maxRange`; `jobtype` is the wielding job (cross-checked against the job table by
- * `validateCrossReferences`). `goodtype` is the good that IS the weapon (the weapon-side twin of an
- * armor's `goodtype`), cross-checked against the good table — captured as `undefined` when the source
- * value is **0** (the natural-weapon sentinel: a fist/claw is backed by no craftable good, just as
- * armor class 0 / a weapon's `damage["0"]` mean "unarmored"; good ids start at 1, so a literal 0 would
- * dangle). `tribetype` is captured because a weapon's `type` id is **not**
- * globally unique — the original keys a weapon by `(tribetype, type)`, so the same id recurs once
- * per tribe (e.g. `type 2` = "fist" for every tribe); see {@link WeaponType}. `mainType` (the coarse
- * weapon class) and `weight` (encumbrance) are captured as the weapon-side twins of an armor's
- * `mainType`/`weight` — note `mainType` is the file's exact camelCase key (a lowercased `maintype`
- * would silently vanish; see AGENTS.md). `munitiontype` (all-lowercase in the source, unlike
- * `mainType`) is the ammunition class a *ranged* weapon fires (1 = bow ammo, 2 = catapult projectile;
- * only bows/catapults carry it — melee weapons omit it → `undefined`), captured as a plain id (it is
- * a class enum, not a cross-ref — `munitiontype` exists in no other table and 1/2 are not good ids).
- * `damagetype` (all-lowercase like `munitiontype`) is the damage **class** a weapon deals — a
- * siege/area marker carried only by the catapults (value `2`); absent on every other weapon, so it's
- * `undefined` there and, like `munitiontype`, captured as a plain id (a class enum in no other table,
- * `2` is not a good id). `speed` (all-lowercase like `munitiontype`) is the ranged projectile's travel
- * speed — carried only by the bow/catapult rows (absent → `undefined` on melee weapons, its
- * `munitiontype` twin), captured as a plain magnitude (the unit is unreadable — the ranged drive maps
- * it via a calibration constant, see the schema). The remaining combat extras (`soundtype_*`,
- * `createsmoke`) are not in the {@link WeaponType} schema yet and are intentionally skipped here — they
- * belong with the Phase-4 CombatSystem, not this type-table slice.
- * Throws on a section missing the required numeric `type` (matches {@link extractGoods}'s
- * throw-on-malformed stance).
+ * Each `damagevalue <armorClass> <value>` line becomes one entry in the string-keyed `damage` record
+ * (matching the original `damageValue[targetArmorClass]` indexing). `minimumrange`/`maximumrange` map to
+ * `minRange`/`maxRange`; `jobtype` is the wielding job (cross-checked by `validateCrossReferences`).
+ * `tribetype` is captured because a weapon's `type` id is not globally unique — the original keys a
+ * weapon by `(tribetype, type)`, so the same id recurs once per tribe (see {@link WeaponType}). The
+ * class-enum fields (`mainType`, `munitiontype`, `damagetype`, `speed`) and the `goodtype`-0 sentinel
+ * are documented at their field reads below and on {@link WeaponType}. Note `mainType` is the file's
+ * exact camelCase key — a lowercased `maintype` would silently vanish (AGENTS.md). The combat extras
+ * (`soundtype_*`, `createsmoke`) are not in the schema yet and are skipped (Phase-4 CombatSystem). Throws
+ * on a section missing the required numeric `type` (matches {@link extractGoods}).
  */
 export function extractWeapons(sections: readonly RuleSection[], src: SourceRef): WeaponType[] {
   const weapons: WeaponType[] = [];
@@ -146,13 +128,12 @@ export function extractWeapons(sections: readonly RuleSection[], src: SourceRef)
 /**
  * Extracts `[armortype]` sections (base `Data/logic/armortypes.ini` — plain `.ini` despite the
  * `<CULTURES_CIF_BEGIN>` header line, which the parser ignores like `goodtypes`/`vehicletypes`; the
- * mod ships no readable twin) into validated {@link ArmorType} IR. An armor's `type` is the **armor
- * class** a {@link WeaponType.damage} record keys against (`damagevalue <armorClass> <value>`), so
- * this table makes those keys resolvable — the prerequisite the later CombatSystem read side joins on
- * (a weapon's damage vs. a target's armor `blockingValue`). Captured per record: `mainType`,
- * `goodType` (the good that IS the armor — cross-checked against the good table), `materialType`,
- * `weight`, `blockingValue`. Throws on a section missing the required numeric `type` (matches
- * {@link extractWeapons}'s throw-on-malformed stance).
+ * mod ships no readable twin) into validated {@link ArmorType} IR. An armor's `type` is the armor class
+ * a {@link WeaponType.damage} record keys against (`damagevalue <armorClass> <value>`), so this table
+ * makes those keys resolvable — the prerequisite the later CombatSystem read side joins on (a weapon's
+ * damage vs. a target's armor `blockingValue`). Captured per record: `mainType`, `goodType` (the good
+ * that is the armor — cross-checked against the good table), `materialType`, `weight`, `blockingValue`.
+ * Throws on a section missing the required numeric `type` (matches {@link extractWeapons}).
  */
 export function extractArmor(sections: readonly RuleSection[], src: SourceRef): ArmorType[] {
   const armor: ArmorType[] = [];
@@ -217,13 +198,12 @@ export function extractVehicles(sections: readonly RuleSection[], src: SourceRef
  * `<CULTURES_CIF_BEGIN>` header line, like `armortypes`/`vehicletypes`; the mod ships no readable twin)
  * into validated {@link AnimalType} IR — the per-tribe behaviour of the non-controllable creature
  * tribes the civ-vs-animal combat slice consumes. Unlike every other type table, an animal record keys
- * on **`tribetype`** (the cross-ref into the tribe table), NOT `type`: the source has no `type` id and
- * an animal's identity is its owning tribe. A record **missing `tribetype`** is **dropped** (a couple of
- * leftover/disabled stubs in the real file carry none) — it cannot resolve to a tribe, so keeping it
- * would dangle. This is the one extractor that drops-on-missing-key rather than throwing
- * ({@link extractWeapons}'s stance): here the key is genuinely absent in real data (a disabled record),
- * not malformed. The 0/1 flags become booleans (`getInt(...) === 1`, as {@link extractLandscape} does);
- * the magnitude fields stay ints. The graphics/sound/spawn extras are skipped — behaviour slice only.
+ * on `tribetype` (the cross-ref into the tribe table), not `type`: the source has no `type` id and an
+ * animal's identity is its owning tribe. A record missing `tribetype` is dropped (a couple of
+ * leftover/disabled stubs in the real file carry none) — it cannot resolve to a tribe. This is the one
+ * extractor that drops-on-missing-key rather than throwing ({@link extractWeapons}'s stance): here the
+ * key is genuinely absent in real data (a disabled record), not malformed. The 0/1 flags become booleans
+ * (`getInt(...) === 1`); the magnitude fields stay ints. The graphics/sound/spawn extras are skipped.
  */
 export function extractAnimals(sections: readonly RuleSection[], src: SourceRef): AnimalType[] {
   const animals: AnimalType[] = [];

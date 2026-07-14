@@ -10,16 +10,16 @@ export type AtomicBinding = z.infer<typeof AtomicBinding>;
 
 /**
  * One tech-graph edge from `tribetypes` `jobEnables<Kind> <jobType> <targetId>` — having a settler
- * of `jobType` in the tribe *unlocks* a target the tribe can then produce/build/train/use. The four
+ * of `jobType` in the tribe unlocks a target the tribe can then produce/build/train/use. The four
  * source keys (`jobEnablesGood`/`jobEnablesHouse`/`jobEnablesJob`/`jobEnablesVehicle`) differ only in
  * what kind of id the target is, so they unify into one record discriminated by `kind`; the target
  * id is keyed within that kind's type table (a `good`→{@link GoodType}, `house`→{@link BuildingType},
  * `job`→{@link JobType}, `vehicle`→{@link VehicleType} via its `type`/`logicvehicletype` namespace,
  * which is distinct from the building namespace).
  *
- * This is the *gate* half of the progression graph — the original keys availability of goods/houses/
+ * This is the gate half of the progression graph — the original keys availability of goods/houses/
  * jobs/vehicles on a job being present, which is in turn gated by training/experience (`trainforjob`/
- * `needfor*`, a later slice). Edges are kept in **exact source file order** (the data interleaves the
+ * `needfor*`, a later slice). Edges are kept in exact source file order (the data interleaves the
  * four kinds within a job's block, not grouped by kind); a tribe may repeat a `(jobType, kind,
  * targetId)` triple, kept verbatim like {@link AtomicBinding} (the raw source stays faithful).
  */
@@ -38,8 +38,8 @@ export type JobEnables = z.infer<typeof JobEnables>;
 
 /**
  * One experience requirement from `tribetypes` `{need,train}for{job,good} <targetId> <amount>
- * <expType> [expType2]` — the *experience-threshold* half of progression, sitting under the
- * {@link JobEnables} *who-unlocks-it* gate. Two orthogonal dimensions:
+ * <expType> [expType2]` — the experience-threshold half of progression, sitting under the
+ * {@link JobEnables} who-unlocks-it gate. Two orthogonal dimensions:
  *
  * - `requirement`: `need` (`needfor*` — the XP the settler must already have accrued to unlock the
  *   target) vs `train` (`trainfor*` — the schooling time/XP to acquire it at a training house, paid
@@ -47,11 +47,11 @@ export type JobEnables = z.infer<typeof JobEnables>;
  * - `target`: `job` (`*forjob` — the unlocked job id) vs `good` (`*forgood` — the unlocked good id).
  *
  * `experienceTypes` mostly name `humanjobexperiencetypes` `typeId`s, but they span an id space
- * **wider than that 70-entry table** — `need` lines reach 72/73/75 and `train` lines pay in
- * synthetic "school" markers (observed 57/77) — none of which are in the experience table. So they
- * are captured but deliberately **not** cross-validated (validating them would false-positive —
- * unlike the `vehicle` {@link JobEnables} kind, which DOES resolve now the `vehicletypes` table is
- * extracted). A line carries one or two expTypes (the optional second is rare); kept in source order.
+ * wider than that 70-entry table — `need` lines reach 72/73/75 and `train` lines pay in synthetic
+ * "school" markers (observed 57/77) — none of which are in the experience table. So they are captured
+ * but deliberately not cross-validated (validating them would false-positive — unlike the `vehicle`
+ * {@link JobEnables} kind, which does resolve now the `vehicletypes` table is extracted). A line
+ * carries one or two expTypes (the optional second is rare); kept in source order.
  */
 export const JobRequirementKind = z.enum(['need', 'train']);
 export type JobRequirementKind = z.infer<typeof JobRequirementKind>;
@@ -106,13 +106,13 @@ export type AtomicEvent = z.infer<typeof AtomicEvent>;
  * Timing + effect data for one named animation from `atomicanimations.ini` (the `culturesnation` mod
  * ships a readable `.ini`; the base game has it as `.cif`). `name` is the join key — a tribe's
  * `setatomic <job> <atomic> "anim"` binding ({@link AtomicBinding}) names the animation here, so this
- * is where an atomic's *duration* (`length`, in animation ticks), facing (`startdirection`) and timed
+ * is where an atomic's duration (`length`, in animation ticks), facing (`startdirection`) and timed
  * `events` (yields/effects) live. Cross-referencing tribe bindings against these names is deferred:
  * the mod's readable set is a subset of the base-game animations, so absent names aren't dangling.
  */
 export const AtomicAnimation = z.strictObject({
   /** Filesystem-safe slug of `name`, for legibility/parity with the other IR types. Display-only —
-   *  it lowercases, so it is NOT the join key; resolve `setatomic` bindings against `name`, not `id`. */
+   *  it lowercases, so it is not the join key; resolve `setatomic` bindings against `name`, not `id`. */
   id: z.string(),
   /** The animation's exact name — the resolvable key referenced by `tribetypes` `setatomic`. */
   name: z.string(),

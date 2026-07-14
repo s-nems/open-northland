@@ -10,14 +10,14 @@ import {
 } from './game-file.js';
 
 /**
- * Font extraction stage — the original UI bitmap fonts (`Data/gui/fonts/*.fnt`), converted from an OWNED
+ * Font extraction stage — the original UI bitmap fonts (`Data/gui/fonts/*.fnt`), converted from an owned
  * game copy into `content/` so the renderer can draw text. It is the font twin of the GUI stage
  * ({@link import('./gui/index.js')}), reusing its pieces:
  *
  *  - **Glyph atlas.** Each `.fnt` is a CFont (id 0x3F5) wrapping the same CBobManager `.bmd` bob container
  *    the settlers/HUD use (one bob per glyph; char `c` → bob `c - 0x20`), so its bobs pack into the same
- *    atlas: an **indexed** atlas ({@link packIndexedBobAtlas} — palette index in red, mask in alpha) the
- *    renderer colours per text-colour at draw time through a colour LUT, plus an **RGBA preview**
+ *    atlas: an indexed atlas ({@link packIndexedBobAtlas} — palette index in red, mask in alpha) the
+ *    renderer colours per text-colour at draw time through a colour LUT, plus an RGBA preview
  *    ({@link packBobAtlas}) coloured with the default (`white`) font palette for human inspection. Both ride
  *    the existing `/bobs/` route (`<stem>.png` + `<stem>.atlas.json`), loaded unchanged by `loadLayer`.
  *  - **Colours.** The engine colours glyphs with a `Data/gui/palettes/font_{white,dark,dimmed,red}.pcx`

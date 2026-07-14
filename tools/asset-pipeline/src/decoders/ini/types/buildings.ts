@@ -104,10 +104,10 @@ export function extractBuildings(sections: readonly RuleSection[], src: SourceRe
 const DEFAULT_RECIPE_TICKS = 20;
 
 /**
- * Builds a last-wins `(jobType, atomicId) -> animation-name` lookup over ONE tribe's `setatomic`
+ * Builds a last-wins `(jobType, atomicId) -> animation-name` lookup over one tribe's `setatomic`
  * bindings. `setatomic` is kept in file order with repeats; the original resolves a `(job, atomic)`
- * pair as **last-wins** (a later config line overrides an earlier one), so a plain `Map.set` in
- * binding order yields the engine's effective table.
+ * pair as last-wins (a later config line overrides an earlier one), so a plain `Map.set` in binding
+ * order yields the engine's effective table.
  */
 function tribeBindingLookup(tribe: TribeType): Map<string, string> {
   const m = new Map<string, string>();
@@ -119,19 +119,18 @@ function tribeBindingLookup(tribe: TribeType): Map<string, string> {
  * Resolves the faithful per-cycle tick count for one producing building, or `undefined` when the
  * chain can't be followed (so the caller falls back to {@link DEFAULT_RECIPE_TICKS}).
  *
- * The chain is: the building's worker `jobType` + the **primary** produced good's
- * `atomicForProduction` (`GoodAtomics.produce`) form the `(jobType, atomicId)` key into the
- * reference tribe's `setatomic` table -> an animation name -> that {@link AtomicAnimation}'s `length`.
- * "Primary" = the first `produces` good (file order) whose produce-atomic resolves all the way to a
- * positive animation length; later goods are tried only as a fallback so a building always pins to a
- * real length when any of its outputs can.
+ * The chain is: the building's worker `jobType` + the primary produced good's `atomicForProduction`
+ * (`GoodAtomics.produce`) form the `(jobType, atomicId)` key into the reference tribe's `setatomic`
+ * table -> an animation name -> that {@link AtomicAnimation}'s `length`. "Primary" = the first
+ * `produces` good (file order) whose produce-atomic resolves all the way to a positive animation length;
+ * later goods are tried only as a fallback so a building always pins to a real length when any of its
+ * outputs can.
  *
- * APPROXIMATED on two axes, both recorded in source basis: (a) production length **varies per
- * tribe** in the source (e.g. viking coiner=200 vs frank coiner=60), so pinning to one reference
- * tribe loses the per-tribe spread — a per-tribe recipe table is the fully-faithful model, deferred;
- * (b) a multi-output workplace has one `length` per output atomic, collapsed here to the primary
- * output's (the merged-recipe model carries a single `ticks`). Both are strictly more faithful than
- * the old flat constant — the tick is now an actual extracted animation length, not a magic 20.
+ * Approximated on two axes (source basis): (a) production length varies per tribe in the source (e.g.
+ * viking coiner=200 vs frank coiner=60), so pinning to one reference tribe loses the per-tribe spread (a
+ * per-tribe recipe table is the fully-faithful model, deferred); (b) a multi-output workplace has one
+ * `length` per output atomic, collapsed here to the primary output's (the merged-recipe model carries a
+ * single `ticks`).
  */
 function resolveRecipeTicks(
   building: BuildingType,
@@ -153,15 +152,15 @@ function resolveRecipeTicks(
 }
 
 /**
- * Fills each producing building's `recipe` by the **output-side join**: a workplace's `produces`
- * names the *output* good(s) it makes, and a `[goodtype]`'s `productionInputGoods` (extracted onto
- * {@link GoodType.productionInputs}) names what producing THAT good consumes — so joining a
- * building's outputs through the goods table materializes the inputs the original house table never
- * carried directly. Cross-table, so it runs after `extractGoods`/`extractBuildings`/`extractTribes`/
+ * Fills each producing building's `recipe` by the output-side join: a workplace's `produces` names the
+ * output good(s) it makes, and a `[goodtype]`'s `productionInputGoods` (extracted onto
+ * {@link GoodType.productionInputs}) names what producing that good consumes — so joining a building's
+ * outputs through the goods table materializes the inputs the original house table never carried
+ * directly. Cross-table, so it runs after `extractGoods`/`extractBuildings`/`extractTribes`/
  * `extractAtomicAnimations`, before `parseContentSet`.
  *
- * Returns NEW building records (the input array is left untouched). For each building with a
- * non-empty `produces`:
+ * Returns new building records (the input array is left untouched). For each building with a non-empty
+ * `produces`:
  *   - `recipe.outputs` = each produced good at amount 1 (one unit per cycle — the original house
  *     table carries no per-good output quantity, only which good; uniform 1 is the faithful default,
  *     matching the `logicproduction <good>` semantics). A repeated `logicproduction` id is summed
@@ -169,12 +168,12 @@ function resolveRecipeTicks(
  *   - `recipe.inputs` = the merged `productionInputs` of every produced good, summed per input
  *     goodType (a workplace making several goods consumes the union of their inputs per cycle).
  *     Both sides are emitted in ascending goodType order — deterministic, source-order-independent.
- *   - `recipe.ticks` = the produce-atomic animation length resolved through the **reference tribe**
+ *   - `recipe.ticks` = the produce-atomic animation length resolved through the reference tribe
  *     (the lowest-`typeId` tribe — deterministic) by {@link resolveRecipeTicks}, falling back to
  *     {@link DEFAULT_RECIPE_TICKS} only when no produced good's produce-atomic resolves a length.
- *     APPROXIMATED (recorded in source basis): the source length varies per tribe and per output;
- *     the reference-tribe primary-output length is the faithful-leaning single value the merged
- *     recipe can carry until a per-tribe recipe table lands.
+ *     Approximated (source basis): the source length varies per tribe and per output; the
+ *     reference-tribe primary-output length is the faithful-leaning single value the merged recipe can
+ *     carry until a per-tribe recipe table lands.
  *
  * A building that already carries a `recipe` (e.g. a future explicit override) is left as-is. A
  * building with empty `produces` gets no recipe (it is not a producer) and is returned unchanged.

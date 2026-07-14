@@ -45,31 +45,28 @@ function collectGfxHouseWinner<T>(
 }
 
 /**
- * Extracts each building's **build-material cost** from the graphics table's `[GfxHouse]` records (the
+ * Extracts each building's build-material cost from the graphics table's `[GfxHouse]` records (the
  * readable `DataCnmd/budynki12/houses/houses.ini`), keyed by the building `typeId` for an overlay onto
  * the `[logichousetype]`-extracted {@link BuildingType}s ({@link import('../types/buildings.js').extractBuildings}
- * reads the *logic* table; the construction cost lives only in the *graphics* twin — a separate file the
- * pipeline did not read until now). A `[GfxHouse]` record is a render record carrying a few `Logic*` keys,
- * three of which matter here:
- *   - `LogicTribeType <id>` — the owning tribe. The cost is genuinely keyed by **(tribe, typeId)**: the
- *     same logic `typeId` (homes 2..6 are shared across civilizations) carries a DIFFERENT cost per
- *     tribe — viking/frank/byzantine model a home as an *upgrade chain* (level 4 = `27 27`, ornaments
- *     only), while egypt/saracen model the same typeId as a *standalone full build* (the cumulative
- *     list). To keep a single flat {@link BuildingType.construction} field we collapse to the
- *     **lowest-tribeType** record (the deterministic "reference tribe" convention `fillBuildingRecipes`
- *     already uses); the per-tribe divergence is recorded in source basis.
+ * reads the logic table; the construction cost lives only in the graphics twin). A `[GfxHouse]` record is
+ * a render record carrying a few `Logic*` keys, three of which matter here:
+ *   - `LogicTribeType <id>` — the owning tribe. The cost is genuinely keyed by (tribe, typeId): the same
+ *     logic `typeId` (homes 2..6 are shared across civilizations) carries a different cost per tribe —
+ *     viking/frank/byzantine model a home as an upgrade chain (level 4 = `27 27`, ornaments only), while
+ *     egypt/saracen model the same typeId as a standalone full build (the cumulative list). To keep a
+ *     single flat {@link BuildingType.construction} field we collapse to the lowest-tribeType record (the
+ *     "reference tribe" convention `fillBuildingRecipes` already uses); the divergence is source basis.
  *   - `LogicType <sizeIdx> <typeId>` — the building `typeId` at that size level (a home spans several:
  *     `home level 00..04` are five distinct typeIds, one per `sizeIdx`), joined to the cost by `sizeIdx`.
- *   - `LogicConstructionGoods <sizeIdx> <good> <good> …` — the goods to build that level, a flat id
- *     list where a **repeat encodes quantity** (`3 3 26` = 2× stone + pillar), exactly like
- *     `goodtypes.productionInputGoods`.
+ *   - `LogicConstructionGoods <sizeIdx> <good> <good> …` — the goods to build that level, a flat id list
+ *     where a repeat encodes quantity (`3 3 26` = 2× stone + pillar), like `goodtypes.productionInputGoods`.
  * A level with a `LogicType` but no matching `LogicConstructionGoods` (the headquarters/wonder records)
  * is omitted — that building has no construction cost. Returns an empty map if the file carries no
  * `[GfxHouse]` records (e.g. the logic-only sources every other extractor reads).
  *
- * Two collisions are resolved DETERMINISTICALLY ({@link existingGfxHouseWins}): cross-tribe, the lowest
+ * Two collisions resolve deterministically ({@link existingGfxHouseWins}): cross-tribe, the lowest
  * `LogicTribeType` wins; within a record a `typeId` mapped at several `sizeIdx` keeps the lowest
- * `sizeIdx` cost (the base build stage). Both collapses are recorded as approximations in source basis.
+ * `sizeIdx` cost (the base build stage). Both collapses are approximations, source basis.
  */
 export function extractConstructionCosts(
   sections: readonly RuleSection[],
@@ -86,19 +83,18 @@ export function extractConstructionCosts(
 }
 
 /**
- * Extracts each building type's **max hitpoints** from the graphics table's `[GfxHouse]` records
+ * Extracts each building type's max hitpoints from the graphics table's `[GfxHouse]` records
  * (`DataCnmd/budynki12/houses/houses.ini`), keyed by `typeId` for the same overlay as
  * {@link extractConstructionCosts}. Each record carries a `logichitpoints <sizeIdx> <value>` line per
  * size level, joined to a `typeId` through the record's `LogicType <sizeIdx> <typeId>` table
  * ({@link logicTypeByLevel}) — so a home's level chain (typeIds 2..6) resolves each tier's own HP
  * (30000 / 40000 / 60000 / 70000 / 80000), a wall 100000, a small workplace ~25000. Collisions resolve
- * DETERMINISTICALLY exactly like the construction cost ({@link existingGfxHouseWins}). A level with a
- * `LogicType` but no `logichitpoints` is absent — that type carries no HP. Returns an empty map for a
- * source with no `[GfxHouse]` records.
+ * like the construction cost ({@link existingGfxHouseWins}). A level with a `LogicType` but no
+ * `logichitpoints` is absent — that type carries no HP. Returns an empty map for a source with no
+ * `[GfxHouse]` records.
  *
- * source-basis: the readable `logichitpoints` param (`houses.ini` `[GfxHouse]`) — faithful per-tier
- * HP; the single-value collapse across (tribe, sizeIdx) is the same named approximation the cost
- * overlay records.
+ * Source basis: the readable `logichitpoints` param (`houses.ini` `[GfxHouse]`) — faithful per-tier HP;
+ * the single-value collapse across (tribe, sizeIdx) is the same approximation the cost overlay records.
  */
 export function extractHouseHitpoints(sections: readonly RuleSection[]): Map<number, number> {
   // `logichitpoints <sizeIdx> <value>` — reject a non-positive/malformed HP so it never wins a typeId.
@@ -129,15 +125,15 @@ function canonicalCells(cells: Iterable<FootprintCell>): FootprintCell[] {
 }
 
 /**
- * Extracts each building type's **ground footprint** from the graphics table's `[GfxHouse]` records —
- * the collision/placement model the logic table never carried (the same graphics-table overlay as
+ * Extracts each building type's ground footprint from the graphics table's `[GfxHouse]` records — the
+ * collision/placement model the logic table never carried (the same graphics-table overlay as
  * {@link extractConstructionCosts}, keyed by the `LogicType <sizeIdx> <typeId>` join):
  *
  *   - `LogicWalkBlockArea <sizeIdx> <x> <y> <run>` — the cells the standing building at that size
  *     level makes unwalkable (its body) → `blocked` for that level's `typeId`.
- *   - `LogicBuildBlockArea <x> <y> <run>` — defined ONCE per record with **no level index**: the
- *     level-independent build-exclusion zone. Every level's typeId gets the same zone — which is
- *     exactly the original's "a level-0 hut reserves the space of its top level" behavior.
+ *   - `LogicBuildBlockArea <x> <y> <run>` — defined once per record with no level index: the
+ *     level-independent build-exclusion zone. Every level's typeId gets the same zone — the original's
+ *     "a level-0 hut reserves the space of its top level" behavior.
  *   - `LogicDoorPoint <sizeIdx> <x> <y>` — that level's entry cell → `door`.
  *
  * Emitted per typeId: `blocked` (this level), `familyBody` (the union of every level's `blocked` —
@@ -185,7 +181,7 @@ export function extractBuildingFootprints(sections: readonly RuleSection[]): Map
 
       const familyBody = canonicalCells([...blockedByLevel.values()].flat());
       const reserved = canonicalCells([...familyBody, ...buildZone]);
-      // A record with no collision CELLS at all (the vehicle/cart records; a record whose only area
+      // A record with no collision cells at all (the vehicle/cart records; a record whose only area
       // lines are malformed) contributes nothing — an all-empty footprint would look footprinted yet
       // validate every placement. Gate on the expanded cells, not on the raw line/level count.
       if (reserved.length === 0) continue;
