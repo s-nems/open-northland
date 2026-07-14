@@ -1,5 +1,6 @@
 import { FOG_STATE, type FogView } from '@open-northland/sim';
 import { scaleColour } from './brightness.js';
+import { rowStagger } from './iso.js';
 
 /**
  * Render-side fog-of-war helpers — the thin data layer between the sim's {@link FogView} (per-cell
@@ -38,8 +39,8 @@ export function fogGhostTint(base: number): number {
  * sim's vision mask stamped — the two sides can't disagree about which cell hides a unit.
  */
 export function fogCellOfTile(tileX: number, tileY: number): { cx: number; cy: number } {
-  const cycle = ((tileY % 2) + 2) % 2; // row's place in the 2-row stagger cycle, robust to negatives
-  const stagger = (1 - Math.abs(1 - cycle)) / 2; // 0 at even rows, ½ at odd, linear between
+  // Half the tile stagger — the half-cell step of the sim's `nodeOfPosition` (see the doc above).
+  const stagger = rowStagger(tileY) / 2;
   return { cx: Math.floor(tileX + stagger), cy: Math.floor(tileY) };
 }
 
