@@ -11,34 +11,34 @@ describe('extractGoods', () => {
     const noClass = { producedOnMap: false, producedInHouse: false, inputGood: false };
     expect(goods).toEqual([
       {
-        typeId: 1,
-        id: 'water',
-        name: 'water',
+        typeId: 20,
+        id: 'glimmerdew',
+        name: 'glimmerdew',
         weight: 0,
         atomics: {},
         productionInputs: [],
         // `isInputGoodFlag 1` only — a raw input good neither produced on-map nor in-house here.
         classification: { producedOnMap: false, producedInHouse: false, inputGood: true },
-        // `landscapetype 3` present, but no `landscapeTo*` chain -> no `gathering` (water is not gathered).
-        landscapeType: 3,
+        // `landscapetype 12` present, but no `landscapeTo*` chain -> no `gathering` (not gathered).
+        landscapeType: 12,
         source: src,
       },
       {
-        typeId: 5,
-        id: 'wood',
-        name: 'wood',
+        typeId: 22,
+        id: 'thornreed',
+        name: 'thornreed',
         weight: 0,
-        atomics: { harvest: 24 },
+        atomics: { harvest: 60 },
         productionInputs: [],
         // a raw good gathered from the map that is also a recipe input.
         classification: { producedOnMap: true, producedInHouse: false, inputGood: true },
-        landscapeType: 7,
-        // the three-stage pipeline: tree(4) -> trunk(6) -> wood(7); `isBioLandscapeFlag 1` -> bio. The
-        // felling/mining params (chops/yield/deposit) are OBSERVED, absent from the source → extractor emits 0.
+        landscapeType: 16,
+        // the three-stage pipeline: bramble(13) -> snag(15) -> reedpile(16); `isBioLandscapeFlag 1` -> bio.
+        // The felling/mining params (chops/yield/deposit) are OBSERVED, absent from the source → extractor emits 0.
         gathering: {
-          harvest: 4,
-          pickup: 6,
-          store: 7,
+          harvest: 13,
+          pickup: 15,
+          store: 16,
           bioLandscape: true,
           chopsToFell: 0,
           yieldPerNode: 0,
@@ -48,42 +48,42 @@ describe('extractGoods', () => {
         source: src,
       },
       {
-        typeId: 4,
-        id: 'wheat',
-        name: 'wheat',
+        typeId: 24,
+        id: 'palegrain',
+        name: 'palegrain',
         weight: 0,
-        atomics: { harvest: 29, cultivate: 35, plant: 34 },
+        atomics: { harvest: 62, cultivate: 63, plant: 64 },
         productionInputs: [],
         classification: { producedOnMap: true, producedInHouse: false, inputGood: true },
         source: src,
       },
       {
-        typeId: 8,
-        id: 'coin',
-        name: 'coin',
+        typeId: 27,
+        id: 'guildmark',
+        name: 'guildmark',
         weight: 0,
-        atomics: { produce: 51 },
-        // `productionInputGoods 5 4` — one each of wood + wheat (distinct ids, amount 1).
+        atomics: { produce: 70 },
+        // `productionInputGoods 22 24` — one each of thornreed + palegrain (distinct ids, amount 1).
         productionInputs: [
-          { goodType: 5, amount: 1 },
-          { goodType: 4, amount: 1 },
+          { goodType: 22, amount: 1 },
+          { goodType: 24, amount: 1 },
         ],
         // a produced (in-house) good — the output layer of the goods graph.
         classification: { producedOnMap: false, producedInHouse: true, inputGood: false },
         source: src,
       },
       {
-        typeId: 9,
-        id: 'potion',
-        name: 'potion',
+        typeId: 31,
+        id: 'dusktonic',
+        name: 'dusktonic',
         weight: 0,
-        atomics: { produce: 73 },
-        // `productionInputGoods 1 1 4 4 5` — a repeated id is the quantity (2× good1, 2× good4, 1× good5),
-        // collapsed to a multiset in first-seen order.
+        atomics: { produce: 75 },
+        // `productionInputGoods 20 20 24 24 22` — a repeated id is the quantity (2× good20, 2× good24,
+        // 1× good22), collapsed to a multiset in first-seen order.
         productionInputs: [
-          { goodType: 1, amount: 2 },
-          { goodType: 4, amount: 2 },
-          { goodType: 5, amount: 1 },
+          { goodType: 20, amount: 2 },
+          { goodType: 24, amount: 2 },
+          { goodType: 22, amount: 1 },
         ],
         // no classification flags in the fixture — all default false.
         classification: noClass,

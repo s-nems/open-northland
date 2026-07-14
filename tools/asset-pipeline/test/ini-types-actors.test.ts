@@ -83,37 +83,37 @@ describe('extractWeapons', () => {
     const src = { file: 'DataCnmd/types/weapons.ini', block: 'weapontype', layer: 'mod' };
     expect(weapons).toEqual([
       {
-        typeId: 2,
-        id: 'woman_fist',
-        name: 'woman fist',
+        typeId: 4,
+        id: 'bare_claw',
+        name: 'bare claw',
         tribeType: 1,
         mainType: 1, // coarse weapon class
-        weight: 0, // schema default; the fist adds no encumbrance
+        weight: 0, // schema default; the claw adds no encumbrance
         minRange: 1,
         maxRange: 1,
-        damage: { '0': 400, '1': 80 },
-        jobType: 5,
+        damage: { '0': 360, '1': 70 },
+        jobType: 51,
         // `goodtype 0` is the natural-weapon sentinel -> no `goodType` field (undefined dropped by toEqual).
-        // A melee fist fires nothing -> no `munitionType` field either (undefined dropped by toEqual).
+        // A melee claw fires nothing -> no `munitionType` field either (undefined dropped by toEqual).
         source: src,
       },
-      // Same `type 2` but a different tribe — `(tribeType, typeId)` is the composite key. No range
+      // Same `type 4` but a different tribe — `(tribeType, typeId)` is the composite key. No range
       // pair -> schema range defaults of 1; combat extras (atomicactiontype, sound) ignored.
       {
-        typeId: 2,
-        id: 'short_bow',
-        name: 'short bow',
+        typeId: 4,
+        id: 'reed_sling',
+        name: 'reed sling',
         tribeType: 2,
         mainType: 6, // a different weapon class — captured per record
         weight: 1, // non-zero encumbrance captured
-        munitionType: 1, // a ranged weapon's ammo class (bow ammo) — captured, NOT good id 1
-        speed: 8, // a ranged weapon's projectile travel speed — captured (undefined-dropped on melee)
-        damageType: 2, // the damage class (siege marker, all-lowercase key) — captured, NOT good id 2
+        munitionType: 3, // a ranged weapon's ammo class — captured, NOT good id 3
+        speed: 6, // a ranged weapon's projectile travel speed — captured (undefined-dropped on melee)
+        damageType: 4, // the damage class (siege marker, all-lowercase key) — captured, NOT good id 4
         minRange: 1,
         maxRange: 1,
-        damage: { '0': 2400 },
-        jobType: 32,
-        goodType: 5, // a real good — the good that IS this weapon
+        damage: { '0': 2100 },
+        jobType: 53,
+        goodType: 22, // a real good — the good that IS this weapon
         source: src,
       },
     ]);
@@ -135,32 +135,32 @@ describe('extractVehicles', () => {
     const src = { file: 'Data/logic/vehicletypes.ini', block: 'vehicletype', layer: 'base' };
     expect(vehicles).toEqual([
       {
-        typeId: 1,
-        id: 'handcart',
-        name: 'handcart',
-        stockSlots: 15,
+        typeId: 35,
+        id: 'mud_sledge',
+        name: 'mud sledge',
+        stockSlots: 12,
         passengerSlots: 0,
         logicSize: 0,
         // Two repeated `logicgood N` lines -> the cargo allow-list, in file order.
-        cargoGoods: [16, 17],
+        cargoGoods: [25, 21],
         source: src,
       },
       {
-        typeId: 3,
-        id: 'ship_small',
-        name: 'ship small',
-        stockSlots: 50,
-        passengerSlots: 19,
+        typeId: 37,
+        id: 'reed_barge',
+        name: 'reed barge',
+        stockSlots: 46,
+        passengerSlots: 17,
         logicSize: 2,
-        // This fixture's small-ship section lists no `logicgood` -> empty allow-list (schema default).
+        // This fixture's barge section lists no `logicgood` -> empty allow-list (schema default).
         cargoGoods: [],
         source: src,
       },
       // No slot/size/logicgood lines -> schema defaults (0 / empty) for all.
       {
-        typeId: 5,
-        id: 'catapult',
-        name: 'catapult',
+        typeId: 39,
+        id: 'siege_ram',
+        name: 'siege ram',
         stockSlots: 0,
         passengerSlots: 0,
         logicSize: 0,
@@ -309,33 +309,33 @@ describe('extractAtomicAnimations', () => {
     };
     expect(anims).toEqual([
       {
-        id: 'viking_woman_pickup',
-        name: 'viking_woman_pickup',
-        length: 20,
+        id: 'fen_forager_lift',
+        name: 'fen_forager_lift',
+        length: 18,
         interruptible: true,
-        startDirection: 6,
+        startDirection: 4,
         events: [
-          // `event 16 11 0` -> value 0 kept (distinct from a missing value).
-          { at: 16, type: 11, value: 0, extended: false },
+          // `event 14 9 0` -> value 0 kept (distinct from a missing value).
+          { at: 14, type: 9, value: 0, extended: false },
           // `eventx` becomes an extended event; signed value preserved.
-          { at: 18, type: 22, value: -100, extended: true },
-          // `event 19 13` has no value field -> `value` omitted entirely.
-          { at: 19, type: 13, extended: false },
+          { at: 16, type: 20, value: -80, extended: true },
+          // `event 17 12` has no value field -> `value` omitted entirely.
+          { at: 17, type: 12, extended: false },
         ],
         source: src,
       },
       {
-        id: 'viking_child_female_eat_slot_food',
-        name: 'viking_child_female_eat_slot_food',
-        length: 50,
+        id: 'fen_broodling_feed',
+        name: 'fen_broodling_feed',
+        length: 44,
         interruptible: false,
-        events: [{ at: 30, type: 2, value: 4000, extended: false }],
+        events: [{ at: 28, type: 3, value: 3600, extended: false }],
         source: src,
       },
       // No length/interruptable lines -> schema defaults (length 0, not interruptible, no events).
       {
-        id: 'viking_man_idle',
-        name: 'viking_man_idle',
+        id: 'fen_elder_idle',
+        name: 'fen_elder_idle',
         length: 0,
         interruptible: false,
         events: [],

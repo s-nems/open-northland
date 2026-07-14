@@ -17,9 +17,17 @@ describe('extractLandscape', () => {
       file: 'Data/logic/landscapetypes.ini',
       layer: 'base',
     });
-    expect(land.map((l) => l.id)).toEqual(['void', 'water', 'tree', 'tree_falling', 'trunk', 'wood', 'wall']);
-    const treeFalling = land.find((l) => l.id === 'tree_falling');
-    expect(treeFalling).toMatchObject({ typeId: 5, id: 'tree_falling', walkable: true, buildable: true });
+    expect(land.map((l) => l.id)).toEqual([
+      'hollow',
+      'brine',
+      'bramble',
+      'bramble_fall',
+      'snag',
+      'reedpile',
+      'wardline',
+    ]);
+    const brambleFall = land.find((l) => l.id === 'bramble_fall');
+    expect(brambleFall).toMatchObject({ typeId: 14, id: 'bramble_fall', walkable: true, buildable: true });
   });
 
   it('captures the raw `name` and the `transition` tuples verbatim (semantics undecoded)', () => {
@@ -27,15 +35,15 @@ describe('extractLandscape', () => {
       extractLandscape(parseIniSections(LANDSCAPE_INI), { file: 'landscapetypes.ini' }).map((l) => [l.id, l]),
     );
     // The raw display name is kept alongside the slug id.
-    expect(byId.get('tree')).toMatchObject({ typeId: 4, name: 'tree' });
+    expect(byId.get('bramble')).toMatchObject({ typeId: 13, name: 'bramble' });
     // Both `transition` lines survive in file order as raw int tuples — no field is interpreted.
-    expect(byId.get('tree')?.transitions).toEqual([
-      [7, 4, 2, 1, 0],
-      [11, 5, 2, 0, 0],
+    expect(byId.get('bramble')?.transitions).toEqual([
+      [16, 13, 3, 1, 0],
+      [21, 14, 3, 0, 0],
     ]);
     // A type with a single transition keeps it; a type with none defaults to [].
-    expect(byId.get('trunk')?.transitions).toEqual([[3, 6, 2, -1, 5]]);
-    expect(byId.get('void')?.transitions).toEqual([]);
+    expect(byId.get('snag')?.transitions).toEqual([[12, 15, 3, -1, 14]]);
+    expect(byId.get('hollow')?.transitions).toEqual([]);
   });
 
   it('keeps a variable-arity transition tuple (the 2-int `mine` form) as-is', () => {
@@ -50,22 +58,22 @@ describe('extractLandscape', () => {
     const byId = new Map(
       extractLandscape(parseIniSections(LANDSCAPE_INI), { file: 'landscapetypes.ini' }).map((l) => [l.id, l]),
     );
-    // "void" carries the high valency and allowedoneverything; not on land/water.
-    expect(byId.get('void')).toMatchObject({
-      maxValency: 100,
+    // "hollow" carries the high valency and allowedoneverything; not on land/water.
+    expect(byId.get('hollow')).toMatchObject({
+      maxValency: 90,
       allowedOnLand: false,
       allowedOnWater: false,
       allowedOnEverything: true,
     });
-    // "water" sits on the land layer with allowedonwater explicitly 0 -> false.
-    expect(byId.get('water')).toMatchObject({
-      maxValency: 5,
+    // "brine" sits on the land layer with allowedonwater explicitly 0 -> false.
+    expect(byId.get('brine')).toMatchObject({
+      maxValency: 4,
       allowedOnLand: true,
       allowedOnWater: false,
       allowedOnEverything: false,
     });
-    // A wall/gate sits on BOTH land and water (allowedonwater 1).
-    expect(byId.get('wall')).toMatchObject({ maxValency: 1, allowedOnLand: true, allowedOnWater: true });
+    // A wardline/gate sits on BOTH land and water (allowedonwater 1).
+    expect(byId.get('wardline')).toMatchObject({ maxValency: 2, allowedOnLand: true, allowedOnWater: true });
   });
 
   it('defaults maxValency to 0 and the flags to false when the source omits them', () => {
