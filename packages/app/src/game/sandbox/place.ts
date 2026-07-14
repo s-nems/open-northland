@@ -64,6 +64,51 @@ export function placeSandboxBuilding(
   });
 }
 
+/** The content building def for `typeId` (the sim's own content set), or undefined. */
+export function buildingDef(
+  sim: Simulation,
+  typeId: number,
+): Simulation['content']['buildings'][number] | undefined {
+  return sim.content.buildings.find((b) => b.typeId === typeId);
+}
+
+/**
+ * A building's door node — its cell anchor plus the content footprint's door offset (the sim's
+ * `interactionNode`). Resolved from loaded content so the approximate (headless) and real extracted
+ * (browser) footprints both land the door, and so a worker spawned here is bound to the building by the
+ * JobSystem's adopt pass (a pre-employed settler standing at a workplace it staffs).
+ */
+export function buildingDoorNode(
+  sim: Simulation,
+  typeId: number,
+  x: number,
+  y: number,
+): { hx: number; hy: number } {
+  const anchor = cellAnchorNode(x, y);
+  const door = buildingDef(sim, typeId)?.footprint?.door;
+  return { hx: anchor.hx + (door?.dx ?? 0), hy: anchor.hy + (door?.dy ?? 0) };
+}
+
+/**
+ * Spawn `count` pre-employed workers at a building's door node ({@link buildingDoorNode}) via the raw
+ * `spawnSettler` command — node-exact, unlike {@link spawnSandboxSettler}, which rounds through the cell
+ * anchor and would drop the door offset. The adopt pass then binds them to the building on tick 1.
+ */
+export function spawnWorkersAtDoor(
+  sim: Simulation,
+  buildingType: number,
+  x: number,
+  y: number,
+  jobType: number,
+  count: number,
+  owner: number = HUMAN_PLAYER,
+): void {
+  const door = buildingDoorNode(sim, buildingType, x, y);
+  for (let i = 0; i < count; i++) {
+    sim.enqueue({ kind: 'spawnSettler', jobType, x: door.hx, y: door.hy, tribe: PRIMARY_TRIBE, owner });
+  }
+}
+
 /** Spawn a settler with the given job via the `spawnSettler` command. */
 export function spawnSandboxSettler(
   sim: Simulation,

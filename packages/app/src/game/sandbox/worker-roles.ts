@@ -16,7 +16,7 @@ export type WorkerRole = 'gatherer' | 'carrier' | 'craftsman';
  *  trades ({@link EXTRACTED_GATHERER_TRADES}: collector/hunter/fisher, in their rebased slot ids). A
  *  settler of one of these harvests a raw good on the map, so it's excluded from right-click building
  *  assignment and draws the gatherer badge colour. */
-export const GATHERER_JOB_TYPES: ReadonlySet<number> = new Set([
+const GATHERER_JOB_TYPES: ReadonlySet<number> = new Set([
   ...GATHERERS.map((g) => g.job),
   ...[...EXTRACTED_GATHERER_TRADES].map(rebaseSlotJob),
 ]);

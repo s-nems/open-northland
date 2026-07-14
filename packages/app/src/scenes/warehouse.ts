@@ -4,6 +4,7 @@ import { grassTerrain } from '../catalog/buildings.js';
 import { HUMAN_PLAYER } from '../game/rules.js';
 import {
   BUILDING_WAREHOUSE_00,
+  buildingDef,
   dropSandboxGood,
   GOOD_COIN,
   GOOD_GOLD,
@@ -17,6 +18,7 @@ import {
   placeSandboxBuilding,
   spawnIdleSettler,
 } from '../game/sandbox/index.js';
+import { buildingOfType } from './sandbox-queries.js';
 import type { SceneDefinition } from './types.js';
 
 /**
@@ -74,7 +76,7 @@ const STACK = systems.MAX_GROUND_STACK; // the most one tile's pile holds — ev
 /** The warehouse type's per-good stock capacity for `goodType`, read from content so the scene stays tied to
  *  the real cap (no hardcoded limit). */
 function warehouseCapacity(sim: Simulation, goodType: number): number {
-  const def = sim.content.buildings.find((b) => b.typeId === BUILDING_WAREHOUSE_00);
+  const def = buildingDef(sim, BUILDING_WAREHOUSE_00);
   return def?.stock?.find((s) => s.goodType === goodType)?.capacity ?? 0;
 }
 
@@ -109,10 +111,7 @@ const { Building, Carrying, JobAssignment, Position, Settler, Stockpile } = comp
 
 /** The one warehouse entity, or null before its placement command ran. */
 function warehouse(sim: Simulation): Entity | null {
-  for (const e of sim.world.query(Building)) {
-    if (sim.world.get(e, Building).buildingType === BUILDING_WAREHOUSE_00) return e;
-  }
-  return null;
+  return buildingOfType(sim, BUILDING_WAREHOUSE_00);
 }
 
 /** How many carriers ({@link JOB_CARRIER}) are employed by the warehouse (bound via JobAssignment). */

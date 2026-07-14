@@ -1,12 +1,11 @@
 import { buildScene, terrainMapToScene } from '@open-northland/render';
 import type { TerrainMap } from '@open-northland/sim';
-import { components, halfCellMapFromCells } from '@open-northland/sim';
+import { clearComponentStores, components, halfCellMapFromCells } from '@open-northland/sim';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type AuthoredJoinRows, resolveAuthoredPlacements } from '../src/slice/authored-placements.js';
 import { loadTerrainMap } from '../src/slice/map-loader.js';
 import { runAuthoredSlice, runBareMap, runSlice, sliceTerrain } from '../src/slice/vertical-slice.js';
 import { EMPTY_SNAPSHOT } from './support/snapshot.js';
-import { clearStores } from './support/stores.js';
 
 /**
  * Unit tests for the app's map-loading seam — the testable core of "the shot/dev entry draws an
@@ -90,7 +89,7 @@ describe('sliceTerrain', () => {
 });
 
 describe('runSlice on a loaded map', () => {
-  beforeEach(clearStores);
+  beforeEach(clearComponentStores);
 
   // A small HALF-CELL grid (runSlice takes the sim's node-resolution map) with typeIds the synthetic
   // strip never declares (5, 16, 22, …) — folding them into the demo content is exactly what lets the
@@ -137,7 +136,7 @@ describe('runSlice on a loaded map', () => {
 
   it('is deterministic over the loaded map (same seed+map ⇒ same hash)', () => {
     const a = runSlice(7, 60, gridMap()).hashState();
-    clearStores(); // the two runs share the global stores; isolate the second like the golden suite
+    clearComponentStores(); // the two runs share the global stores; isolate the second like the golden suite
     const b = runSlice(7, 60, gridMap()).hashState();
     expect(a).toBe(b);
   });
@@ -152,9 +151,9 @@ describe('runSlice on a loaded map', () => {
       typeIds: new Array(9).fill(1),
     };
     expect(() => runSlice(7, 1, allWater)).not.toThrow();
-    clearStores();
+    clearComponentStores();
     const fallback = runSlice(7, 1, allWater).hashState();
-    clearStores();
+    clearComponentStores();
     const strip = runSlice(7, 1).hashState();
     // Falling back means the sim is byte-identical to the no-map slice (same content, terrain, cells).
     expect(fallback).toBe(strip);
@@ -162,7 +161,7 @@ describe('runSlice on a loaded map', () => {
 });
 
 describe('runBareMap (imported map with no authored entities)', () => {
-  beforeEach(clearStores);
+  beforeEach(clearComponentStores);
 
   function gridMap(): TerrainMap {
     return {
@@ -187,14 +186,14 @@ describe('runBareMap (imported map with no authored entities)', () => {
 
   it('is deterministic over the loaded map (same seed+map ⇒ same hash)', () => {
     const a = runBareMap(7, gridMap()).hashState();
-    clearStores();
+    clearComponentStores();
     const b = runBareMap(7, gridMap()).hashState();
     expect(a).toBe(b);
   });
 });
 
 describe('authored placements (map.cif StaticObjects → sim commands)', () => {
-  beforeEach(clearStores);
+  beforeEach(clearComponentStores);
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -278,7 +277,7 @@ describe('authored placements (map.cif StaticObjects → sim commands)', () => {
   it('is deterministic (same seed + same authored entities ⇒ same hash)', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     const a = runAuthoredSlice(7, 40, authoredMap(), entities, rows)?.hashState();
-    clearStores();
+    clearComponentStores();
     const b = runAuthoredSlice(7, 40, authoredMap(), entities, rows)?.hashState();
     expect(a).toBeDefined();
     expect(a).toBe(b);

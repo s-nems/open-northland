@@ -1,7 +1,7 @@
 import type { Entity, Simulation } from '@open-northland/sim';
-import { cellAnchorNode, components, systems } from '@open-northland/sim';
+import { components, systems } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
-import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../game/rules.js';
+import { HUMAN_PLAYER } from '../game/rules.js';
 import {
   BUILDING_MILL,
   BUILDING_WAREHOUSE_00,
@@ -10,7 +10,9 @@ import {
   GOOD_WHEAT,
   JOB_MILLER_SLOT,
   placeSandboxBuilding,
+  spawnWorkersAtDoor,
 } from '../game/sandbox/index.js';
+import { buildingOfType } from './sandbox-queries.js';
 import type { SceneDefinition } from './types.js';
 
 /**
@@ -52,41 +54,17 @@ const INITIAL_ZOOM = 0.9;
 
 const { Building, JobAssignment, Settler, Stockpile } = components;
 
-/**
- * The mill's door node — its anchor plus the content footprint's door offset. The millers spawn here
- * so the JobSystem's adopt pass binds them to the mill on tick 1 (a pre-employed settler standing at
- * a workplace it staffs is bound to it); resolved from the loaded content so the headless
- * (approximate footprint) and browser (real extracted footprint) doors both work.
- */
-function millDoorNode(sim: Simulation): { hx: number; hy: number } {
-  const anchor = cellAnchorNode(MILL_X, MILL_Y);
-  const door = sim.content.buildings.find((b) => b.typeId === BUILDING_MILL)?.footprint?.door;
-  return { hx: anchor.hx + (door?.dx ?? 0), hy: anchor.hy + (door?.dy ?? 0) };
-}
-
 function build(sim: Simulation): void {
   placeSandboxBuilding(sim, BUILDING_MILL, MILL_X, MILL_Y);
   placeSandboxBuilding(sim, BUILDING_WAREHOUSE_00, WAREHOUSE_X, WAREHOUSE_Y);
   for (const pile of WHEAT_PILES) dropSandboxGood(sim, GOOD_WHEAT, pile.x, pile.y, pile.amount);
-  const door = millDoorNode(sim);
-  for (let i = 0; i < MILLERS; i++) {
-    sim.enqueue({
-      kind: 'spawnSettler',
-      jobType: JOB_MILLER_SLOT,
-      x: door.hx,
-      y: door.hy,
-      tribe: PRIMARY_TRIBE,
-      owner: HUMAN_PLAYER,
-    });
-  }
+  // The millers spawn at the mill door so the adopt pass binds them on tick 1 (see spawnWorkersAtDoor).
+  spawnWorkersAtDoor(sim, BUILDING_MILL, MILL_X, MILL_Y, JOB_MILLER_SLOT, MILLERS, HUMAN_PLAYER);
 }
 
 /** The scene's one mill entity, or null before the placement command ran. */
 function millEntity(sim: Simulation): Entity | null {
-  for (const e of sim.world.query(Building)) {
-    if (sim.world.get(e, Building).buildingType === BUILDING_MILL) return e;
-  }
-  return null;
+  return buildingOfType(sim, BUILDING_MILL);
 }
 
 /** Total units of one good across every stockpile in the world (building stores + ground piles). */

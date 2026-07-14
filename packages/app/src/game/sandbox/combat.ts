@@ -24,9 +24,9 @@ import {
  */
 
 /** Munition type 1 = arrow — what the bows fire. */
-export const ARROW_MUNITION = 1;
+const ARROW_MUNITION = 1;
 /** The ranged weapon main-type (projectile weapons). */
-export const RANGED_MAIN_TYPE = 6;
+const RANGED_MAIN_TYPE = 6;
 /** The real short/long-bow projectile speed. */
 export const BOW_SPEED = 8;
 /** ATTACK event type (25): the frame a melee blow lands / a bow draw looses its arrow. */
@@ -50,12 +50,12 @@ export const LONG_BOW_RELEASE_FRAME = 22;
 // Damage on the sandbox's own synthetic scale (the real per-material tables live in the extracted
 // content; scene hitpoints are chosen so a duel takes several full swings — see the combat scene).
 export const BOW_DAMAGE = 34;
-export const SWORD_DAMAGE = 40;
-export const SPEAR_DAMAGE = 45;
-export const BROADSWORD_DAMAGE = 55;
+const SWORD_DAMAGE = 40;
+const SPEAR_DAMAGE = 45;
+const BROADSWORD_DAMAGE = 55;
 // The fist is the weakest strike — a quarter of the short sword's, matching weapons.ini's fist
 // damagevalue 0 (400) vs the short sword's (1600).
-export const FIST_DAMAGE = 10;
+const FIST_DAMAGE = 10;
 
 /** The equip classification (slot + wear) per good typeId, so `sandboxContent()` can merge it onto the
  *  global catalog good of the same typeId (an equippable good is declared once, in `EXTENDED_GOODS`). */

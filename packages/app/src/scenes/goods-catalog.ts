@@ -4,6 +4,7 @@ import { STORABLE_EXTENDED_GOODS } from '../catalog/goods.js';
 import { HUMAN_PLAYER } from '../game/rules.js';
 import {
   BUILDING_WAREHOUSE_02,
+  buildingDef,
   dropSandboxGood,
   GOOD_COIN,
   GOOD_GOLD,
@@ -34,6 +35,10 @@ const MAP_H = 40;
 const INITIAL_ZOOM = 0.6;
 /** No hauling happens (no settlers), so a short run is enough — the piles are static from tick 1. */
 const RUN_TICKS = 60;
+
+/** Lower bound on the goods catalog size that proves the full original catalog (core + extended) is wired,
+ *  not just the sandbox core — the extended families push the count well past this. */
+const MIN_CATALOG_GOODS = 60;
 
 /** The warehouse to inspect — a level-2 store, which accepts the general-goods set (all storable goods). */
 const WAREHOUSE_TILE = { x: 6, y: 5 };
@@ -79,7 +84,7 @@ function build(sim: Simulation): void {
 
 /** The good typeIds the warehouse type advertises a stock slot for (its `stock` slots). */
 function warehouseStockGoods(sim: Simulation): Set<number> {
-  const def = sim.content.buildings.find((b) => b.typeId === BUILDING_WAREHOUSE_02);
+  const def = buildingDef(sim, BUILDING_WAREHOUSE_02);
   return new Set((def?.stock ?? []).map((s) => s.goodType));
 }
 
@@ -98,7 +103,10 @@ export const goodsCatalogScene: SceneDefinition = {
       label: 'the full goods catalog is globally available (core economy + the extended catalog)',
       predicate: (sim) => {
         const ids = new Set(sim.content.goods.map((g) => g.id));
-        return sim.content.goods.length >= 60 && REPRESENTATIVE_EXTENDED_IDS.every((id) => ids.has(id));
+        return (
+          sim.content.goods.length >= MIN_CATALOG_GOODS &&
+          REPRESENTATIVE_EXTENDED_IDS.every((id) => ids.has(id))
+        );
       },
     },
     {

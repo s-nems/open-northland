@@ -1,20 +1,7 @@
-import { type Component, components, halfCellMapFromCells, Simulation } from '@open-northland/sim';
+import { clearComponentStores, halfCellMapFromCells, Simulation } from '@open-northland/sim';
 import { FOG_MODE_BY_NAME } from '../game/fog.js';
 import { type SandboxContentExtras, sandboxContent } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
-
-/**
- * Clear every sim component's backing store. Component stores are module-level singletons shared by every
- * {@link Simulation} (`packages/sim/src/ecs/world.ts`), so a sim rebuilt in the same JS context (the
- * overlay's restart) would see the prior run's entities and break determinism unless they are wiped first.
- */
-function resetComponentStores(): void {
-  // The `components` namespace also re-exports helpers, so clear only the exports carrying a `.store` Map.
-  for (const v of Object.values(components)) {
-    const store = (v as Partial<Component<unknown>>).store;
-    if (store instanceof Map) store.clear();
-  }
-}
 
 /**
  * Build a fresh, deterministic {@link Simulation} for a scene at tick 0: reset the singleton stores,
@@ -27,7 +14,7 @@ function resetComponentStores(): void {
  * placement-sensitive scene must keep its placements legal under both geometries.
  */
 export function createSceneSim(scene: SceneDefinition, extras?: SandboxContentExtras): Simulation {
-  resetComponentStores();
+  clearComponentStores();
   const sim = new Simulation({
     seed: scene.seed,
     content: sandboxContent(scene.terrain, extras),
