@@ -17,6 +17,7 @@
  */
 
 import { deflateSync, inflateSync } from 'node:zlib';
+import { viewOf } from './byte-cursor.js';
 import type { RgbaImage } from './image.js';
 
 const SIGNATURE = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
@@ -111,7 +112,7 @@ export function decodePng(bytes: Uint8Array): RgbaImage {
     throw new Error('png: not a PNG (bad signature)');
   }
 
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const view = viewOf(bytes);
   let width = 0;
   let height = 0;
   let sawHeader = false;

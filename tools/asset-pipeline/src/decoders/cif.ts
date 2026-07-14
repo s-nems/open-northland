@@ -18,7 +18,7 @@
  * Pure functions only (no I/O): `(bytes) => decoded`. The CLI wires file reads around them.
  */
 
-import { ByteCursor, LATIN1 } from './byte-cursor.js';
+import { ByteCursor, LATIN1, viewOf } from './byte-cursor.js';
 
 /** Storable class ids from the original factory (XBStorable.cs `LoadObjectOrNull`). */
 export const StorableId = {
@@ -115,7 +115,7 @@ export function readCMemory(r: ByteCursor): Uint8Array {
 function readLines(pool: Uint8Array, offsets: Uint8Array, slotCount: number, usedBytes: number): CifLine[] {
   const INVALID = 0xffffffff;
   const limit = Math.min(pool.length, usedBytes);
-  const offView = new DataView(offsets.buffer, offsets.byteOffset, offsets.byteLength);
+  const offView = viewOf(offsets);
   const lines: CifLine[] = [];
   for (let id = 0; id < slotCount; id++) {
     const byteIndex = id * 4;

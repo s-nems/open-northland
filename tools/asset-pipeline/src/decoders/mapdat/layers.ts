@@ -23,7 +23,7 @@
  * {@link unpackRle}/{@link packRle}. Decoding stops at exactly the declared unpacked byte length.
  */
 
-import { asciiBytes, LATIN1 } from '../byte-cursor.js';
+import { asciiBytes, LATIN1, viewOf } from '../byte-cursor.js';
 import type { MapDatChunk } from './container.js';
 
 export const MAP_LAYER_HEADER_SIZE = 0x15;
@@ -222,7 +222,7 @@ function readLayerHeader(
   if (codec !== expectedCodec) {
     throw new Error(mismatchMessage(codec));
   }
-  const view = new DataView(p.buffer, p.byteOffset, p.byteLength);
+  const view = viewOf(p);
   return view.getUint32(0x0d, true);
 }
 
