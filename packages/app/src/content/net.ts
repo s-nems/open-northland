@@ -10,10 +10,14 @@ import { loadAtlasSource, type TextureSource } from '@open-northland/render';
  *    missing PNG degrades to `undefined` instead of a texture-load error.
  */
 
-/** Fetch + parse a JSON document, or `null` when it is absent or unreadable. */
-export async function fetchJsonOrNull<T>(url: string): Promise<T | null> {
+/**
+ * Fetch + parse a JSON document, or `null` when it is absent or unreadable. `fetchImpl` defaults to the
+ * global `fetch`; it is injectable so a Node/headless caller can drive the same degrade policy over its
+ * own transport without a server (the seam `loadTerrainMap` established for testable content loaders).
+ */
+export async function fetchJsonOrNull<T>(url: string, fetchImpl: typeof fetch = fetch): Promise<T | null> {
   try {
-    const res = await fetch(url);
+    const res = await fetchImpl(url);
     if (!res.ok) return null;
     return (await res.json()) as T;
   } catch {

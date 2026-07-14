@@ -1,9 +1,12 @@
 # Re-key the sandbox economy onto real engine good/job ids (decide the base architecture first)
 
 **Area:** app (`game/sandbox/`) · **Origin:** global-content plan reconciliation, 2026-07-12 ·
-**Priority:** P1 · **Blocked by:** [real-content-loader](real-content-loader.md)
-**Needs user:** open architectural decision (hybrid-base vs real-base ids) — get the user's call
-before executing.
+**Priority:** P1 · **Needs user:** open architectural decision (hybrid-base vs real-base ids) — get
+the user's call before executing.
+
+The loader prerequisite is done: `loadRealContent(): Promise<ContentSet | null>`
+(`packages/app/src/content/real-content.ts`) validates `content/ir.json` into a sim `ContentSet`
+(`null` when `content/` is absent, so the wiring must keep the sandbox fallback), not yet wired to any entry.
 
 **Decide before coding (user decision):** the codebase converged on a deliberate hybrid — real
 extracted footprints/names overlaid ONTO the sandbox base via `SandboxContentExtras`
