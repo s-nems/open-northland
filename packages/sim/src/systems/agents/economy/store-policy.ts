@@ -6,12 +6,7 @@ import { recipeOf, stockCapacity } from '../../stores/index.js';
 import { jobAtomics } from '../targets/index.js';
 
 /** Whether a job is the field worker, rather than the carrier, of a farm building. */
-export function isFieldWorkerOf(
-  world: World,
-  ctx: SystemContext,
-  building: Entity,
-  jobType: number,
-): boolean {
+function isFieldWorkerOf(world: World, ctx: SystemContext, building: Entity, jobType: number): boolean {
   const spec = farmWorkGood(world, ctx, building);
   return spec !== null && jobAtomics(ctx, jobType).has(spec.plantAtomic);
 }

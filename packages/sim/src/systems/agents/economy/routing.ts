@@ -70,7 +70,7 @@ export function deliveryTargetFor(plan: PlannerContext, goodType: number): Entit
     isFarmCarrierHaulOutRole(world, ctx, home, jobType, tribe) &&
     buildingProduces(world, ctx, home).includes(goodType)
   ) {
-    return nearestStoreFor(candidates, world, ctx, terrain, here, goodType, true);
+    return nearestStoreFor(candidates, world, ctx, terrain, here, goodType, /* excludeProducers */ true);
   }
   // 3b. Otherwise a porter's / farmer's load goes to the storage it is bound to (a warehouse, a flag pile,
   //     or the farm's own store when a farmer banks its sheaf and the farm still has room).
