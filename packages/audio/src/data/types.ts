@@ -82,6 +82,13 @@ export interface SoundBindings {
   readonly byEvent: Partial<Record<SimEventKind, EventSound>>;
   readonly byAtomic: ReadonlyMap<number, EventSound>;
   /**
+   * The MID-swing sound of an atomic that plays its SFX on an authored PLAY_SOUND_FX frame, keyed by
+   * `atomicId` — resolved for an `atomicSound` event (the sim's cue at that frame) rather than
+   * `atomicCompleted`, so the sound lands on the visual strike, not the swing's end. The builder's
+   * hammer lives here; an atomic with no such cue keeps its completion-fired `byAtomic` sound.
+   */
+  readonly byAtomicSound: ReadonlyMap<number, EventSound>;
+  /**
    * A melee `combatHit`'s WEAPON-specific impact sound, keyed by the striker's `weaponMainType`
    * (1 fist / 2 spear / 3 sword / 4 saber / 5 axe — `WEAPON_MAIN_TYPE_*`). A sword rings differently
    * from a spear thrust, so the impact SFX follows the weapon class the event carries; a weapon whose

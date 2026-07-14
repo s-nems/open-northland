@@ -50,6 +50,20 @@ export type SimEvent =
   | { readonly kind: 'atomicCompleted'; readonly entity: Entity; readonly atomicId: number }
   | {
       /**
+       * An atomic reached its authored PLAY_SOUND_FX frame this tick — the mid-animation cue the
+       * original triggers the action's sound at (`ATOMIC_ANIMATION_EVENT_TYPE_PLAY_SOUND_FX`, e.g. the
+       * builder's hammer knock at frame 4 of its 15-frame swing). Distinct from `atomicCompleted` (the
+       * swing END): audio plays the per-swing SFX HERE so it lands on the visual strike instead of
+       * trailing to completion. Fires only for an atomic whose animation carries the cue; the emitter's
+       * snapshot position locates the sound. Deterministic like every event — a pure function of the
+       * tick's atomics reaching their cue frame.
+       */
+      readonly kind: 'atomicSound';
+      readonly entity: Entity;
+      readonly atomicId: number;
+    }
+  | {
+      /**
        * A MELEE blow CONNECTED this tick — an in-place `attack` swing reached a live target and drained
        * its {@link import('../components/combat.js').Health} at the ATTACK-event frame. `at` is the
        * VICTIM's HALF-CELL NODE (where the wound is), so render draws its blood there and audio plays the

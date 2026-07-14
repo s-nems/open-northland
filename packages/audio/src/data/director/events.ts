@@ -49,6 +49,7 @@ function eventKey(ev: SimEvent): string {
  *  `combatHit` on its weapon class with the generic-melee `byEvent` fallback). */
 function resolveBinding(ev: SimEvent, bindings: SoundBindings): EventSound | undefined {
   if (ev.kind === 'atomicCompleted') return bindings.byAtomic.get(ev.atomicId);
+  if (ev.kind === 'atomicSound') return bindings.byAtomicSound.get(ev.atomicId);
   if (ev.kind === 'combatHit' && ev.weaponMainType !== undefined) {
     const byWeapon = bindings.byCombatWeapon?.get(ev.weaponMainType);
     if (byWeapon !== undefined) return byWeapon;

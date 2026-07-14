@@ -38,14 +38,19 @@ describe('VIKING_VOICE_POOLS', () => {
 describe('defaultBindings', () => {
   it('binds the chop / build atomics to spatial groups only when their ids are given', () => {
     expect(defaultBindings().byAtomic.size).toBe(0);
+    expect(defaultBindings().byAtomicSound.size).toBe(0);
+    // The chop sounds at swing completion (byAtomic → atomicCompleted).
     const chop = defaultBindings({ chopAtomicId: 24 }).byAtomic.get(24);
     expect(chop).toEqual({ kind: 'spatial', group: 'Woodcutter Axe' });
-    // The builder's swing knocks the hammer per stroke (the per-swing twin of the buildingPlaced hammer).
-    const build = defaultBindings({ buildAtomicId: 39 }).byAtomic.get(39);
-    expect(build).toEqual({ kind: 'spatial', group: 'Hammer Wood' });
-    // Both ids together bind both atomics, independently.
-    const both = defaultBindings({ chopAtomicId: 24, buildAtomicId: 39 }).byAtomic;
-    expect(both.size).toBe(2);
+    // The builder's hammer knocks MID-swing at its PLAY_SOUND_FX cue (byAtomicSound → atomicSound), the
+    // per-swing twin of the buildingPlaced hammer — NOT on byAtomic, so it never doubles at completion.
+    const build = defaultBindings({ buildAtomicId: 39 });
+    expect(build.byAtomicSound.get(39)).toEqual({ kind: 'spatial', group: 'Hammer Wood' });
+    expect(build.byAtomic.has(39)).toBe(false);
+    // Both ids together bind their atomics independently, each on its own map.
+    const both = defaultBindings({ chopAtomicId: 24, buildAtomicId: 39 });
+    expect(both.byAtomic.size).toBe(1);
+    expect(both.byAtomicSound.size).toBe(1);
   });
 
   it('binds life events to jingles and placement/production to spatial groups', () => {

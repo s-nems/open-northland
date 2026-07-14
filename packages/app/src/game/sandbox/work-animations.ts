@@ -14,6 +14,16 @@ import { HAMMER_TICKS_PER_FRAME } from '../../content/settler-gfx/index.js';
 // construct atomic, and building slows in step: labor advances per COMPLETED swing.
 export const BUILD_HOUSE_SWING_LENGTH = 15 * HAMMER_TICKS_PER_FRAME;
 export const BUILD_HOUSE_ANIMATION = 'viking_builder_build_house';
+// The `atomicanimations.ini` `event <at> <type>` type marking the frame an animation PLAYS its SOUND FX
+// (`ATOMIC_ANIMATION_EVENT_TYPE_PLAY_SOUND_FX`, logicdefines.inc l.754) — the mid-swing cue the sim reads
+// to sound an action on its visual beat rather than at swing completion. Mirrors the ATTACK_EVENT_TYPE
+// pin beside the combat swings.
+export const PLAY_SOUND_FX_EVENT_TYPE = 34;
+// The frame of the builder's hammer knock — the transcribed `viking_builder_build_house` carries
+// `event 4 34 1` (PLAY_SOUND_FX at authored frame 4), scaled by the render clip's half cadence
+// (HAMMER_TICKS_PER_FRAME) so the sim's `atomicSound` cue lands on the strike the render draws at that
+// frame. Below the swing length, so the knock sounds partway through the swing, not at its end.
+export const BUILD_HOUSE_STRIKE_FRAME = 4 * HAMMER_TICKS_PER_FRAME;
 // The farmer's three field-work swings — lengths TRANSCRIBED from the extracted viking atomicanimations
 // (`DataCnmd/atomicanimations12/atomicanimations.ini`: harvest_wheat 24, plant 24, cultivate 29). The
 // names are the original's own `setatomic 18 29/34/35` bindings; the render plays the farmer's authored

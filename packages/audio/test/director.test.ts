@@ -45,8 +45,9 @@ const gfxPatterns = [{ id: 5, editGroups: ['meadow green'] }] as unknown as GfxP
 const terrainPatterns = [{ typeId: 1, patternId: 5 }] as unknown as TerrainPattern[];
 
 const CHOP_ATOMIC = 9;
+const BUILD_ATOMIC = 39;
 const index = buildSoundIndex(bank, gfxPatterns, terrainPatterns);
-const bindings = defaultBindings({ chopAtomicId: CHOP_ATOMIC });
+const bindings = defaultBindings({ chopAtomicId: CHOP_ATOMIC, buildAtomicId: BUILD_ATOMIC });
 
 const CANVAS_W = 800;
 const CANVAS_H = 600;
@@ -111,6 +112,17 @@ describe('directAudio one-shots', () => {
     expect(frame.oneShots).toHaveLength(1);
     expect(frame.oneShots[0]?.files).toEqual(['static/axe01.wav']);
     expect(frame.oneShots[0]?.key).toBe('atomicCompleted:3');
+  });
+
+  it('knocks the hammer on the MID-swing atomicSound cue, not at completion', () => {
+    // The builder's hammer sounds on `atomicSound` (its PLAY_SOUND_FX frame), located at the builder.
+    const struck = direct([{ kind: 'atomicSound', entity: 3, atomicId: BUILD_ATOMIC }]);
+    expect(struck.oneShots).toHaveLength(1);
+    expect(struck.oneShots[0]?.files).toEqual(['static/hammer01.wav']);
+    expect(struck.oneShots[0]?.key).toBe('atomicSound:3');
+    // The swing's completion event carries NO hammer (it moved to the strike cue) — no double knock.
+    const done = direct([{ kind: 'atomicCompleted', entity: 3, atomicId: BUILD_ATOMIC }]);
+    expect(done.oneShots).toHaveLength(0);
   });
 
   it('stays silent for an off-screen emitter', () => {
