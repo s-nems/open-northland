@@ -4,7 +4,7 @@
 import type { CifLine } from '../cif.js';
 
 /**
- * Decodes raw `.ini` bytes to text as **CP1250** (Windows-1250, Central-European) — NOT UTF-8.
+ * Decodes raw `.ini` bytes to text as CP1250 (Windows-1250, Central-European), not UTF-8.
  * The Cultures rule files were authored on Windows-1250 codepages, so display strings carry Polish
  * glyphs (`ą ć ę ł ń ó ś ź ż` and capitals) in the 0x80..0xFF range; reading them as UTF-8 mangles
  * those bytes. Structural keywords (`[section]`, keys, the `<CULTURES_CIF_BEGIN>` header) are ASCII
@@ -141,7 +141,7 @@ export function getIntList(sec: RuleSection, key: string): number[] {
 }
 
 /**
- * ALL values of the first matching property parsed as base-10 ints (NaN entries dropped), in file
+ * All values of the first matching property parsed as base-10 ints (NaN entries dropped), in file
  * order. For a single multi-value line like `productionInputGoods 1 1 14 14` (vs {@link getIntList},
  * which reads `values[0]` of each repeated single-value line).
  */
@@ -155,7 +155,7 @@ export function getIntValues(sec: RuleSection, key: string): number[] {
 }
 
 /**
- * ALL values of the first matching property parsed as ints, returned only if there are **exactly**
+ * All values of the first matching property parsed as ints, returned only if there are exactly
  * `length` of them (else `undefined`) — for fixed-arity tuples like a 6-int UV set (`GfxCoordsA`) or a
  * 3-int `debugcolor`. A wrong-arity line yields `undefined` rather than a partial tuple, so a degenerate
  * record degrades gracefully instead of producing a malformed shape.
@@ -242,7 +242,7 @@ export function normalizeAssetPath(path: string): string {
 }
 
 /**
- * Normalizes an OPTIONAL asset path: an absent or blank slot (a bob-set line's missing shadow
+ * Normalizes an optional asset path: an absent or blank slot (a bob-set line's missing shadow
  * `GfxBobLibs "<body>.bmd"`, an omitted body `.bmd`) must stay `undefined` rather than normalize to
  * an empty key. Every `(body, shadow, palette)` binding reader shares this guard.
  */
