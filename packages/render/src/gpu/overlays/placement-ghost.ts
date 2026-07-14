@@ -7,15 +7,15 @@ import type { SpriteSheet } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
 
 /**
- * The BUILD-PLACEMENT cursor ghost — the held building's own sprite, translucent, snapped to the
- * hovered HALF-CELL node (the anchor grid buildings actually place on), exactly the original's
- * build-mode cursor. The app decides WHERE (the hovered node) and WHETHER (it hides the ghost over
+ * The build-placement cursor ghost — the held building's own sprite, translucent, snapped to the
+ * hovered half-cell node (the anchor grid buildings actually place on), exactly the original's
+ * build-mode cursor. The app decides where (the hovered node) and whether (it hides the ghost over
  * ground the placement probe rejects — in the original the house icon vanishes over blocked ground);
  * this layer only projects that decision.
  *
- * Lives INSIDE the depth-sorted sprite layer with a feet-anchor depth key, so the ghost occludes and
+ * Lives inside the depth-sorted sprite layer with a feet-anchor depth key, so the ghost occludes and
  * is occluded like the real house would be — sliding it behind a standing tree reads correctly.
- * Retained: the sprite stack is rebuilt only when the building TYPE changes; a hover move just
+ * Retained: the sprite stack is rebuilt only when the building type changes; a hover move just
  * repositions the container. The frame resolution is the exact path a placed building's sprite takes
  * ({@link resolveLayers}), so the ghost always previews what the placement will draw; without a sheet
  * (or an unbound type) it degrades to a translucent placeholder diamond at the same anchor.
@@ -59,7 +59,7 @@ export class PlacementGhostLayer {
     const p = halfCellToScreen(ghost.col, ghost.row);
     const lift = terrainLiftAtNode(elevation, ghost.col, ghost.row);
     this.container.position.set(p.x, p.y - lift);
-    // Depth by the PRE-LIFT feet anchor, like every pooled sprite — the ghost interleaves correctly.
+    // Depth by the pre-lift feet anchor, like every pooled sprite — the ghost interleaves correctly.
     this.container.zIndex = depthKey(p.x, p.y);
     this.container.visible = true;
   }

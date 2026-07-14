@@ -116,7 +116,7 @@ export type {
 export { SPRITE_CULL_MARGIN, type WorldFrame, WorldRenderer } from './gpu/world-renderer.js';
 
 /*
- * The renderer is a PURE CONSUMER of sim state (see docs/ARCHITECTURE.md). It reads a snapshot
+ * The renderer is a pure consumer of sim state (see docs/ARCHITECTURE.md). It reads a snapshot
  * and draws; it never mutates the sim and the sim never imports this package. The live entry is
  * the retained {@link WorldRenderer}: it interpolates between the previous and current tick using
  * the `alpha` from the fixed-timestep driver so motion is smooth regardless of the 20Hz sim rate.

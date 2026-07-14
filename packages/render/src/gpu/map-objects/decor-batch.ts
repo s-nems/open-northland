@@ -4,8 +4,8 @@ import { makeShadedDecorShader } from '../shading.js';
 import { type MapObjectSprite, objectFrameAt } from './map-object-sprite.js';
 
 /**
- * The DECOR half of the map-object feature: flat ground decor (waves, grass, flowers, mine stains)
- * batched into per-block quad meshes UNDER the entity sprites — one draw call per texture page per
+ * The decor half of the map-object feature: flat ground decor (waves, grass, flowers, mine stains)
+ * batched into per-block quad meshes under the entity sprites — one draw call per texture page per
  * block, built once; an animated batch's vertex/uv buffers are rewritten in place when the play-head
  * advances (and only while the block is visible). Translucency (waves, fern edges) rides in the atlas
  * texture's own alpha channel — there is no per-object opacity.
@@ -55,7 +55,7 @@ export function writeObjectQuad(
 }
 
 /** One built quad-batch mesh + the buffers behind it (the caller keeps the buffers only for an
- *  ANIMATED batch, whose quads are rewritten in place when the play-head advances). */
+ *  animated batch, whose quads are rewritten in place when the play-head advances). */
 interface QuadBatch {
   readonly mesh: Mesh<MeshGeometry, Shader>;
   readonly positions: Float32Array;
@@ -63,7 +63,7 @@ interface QuadBatch {
   readonly geometry: MeshGeometry;
 }
 
-/** Batch `objects` (all sharing `source`) into ONE mesh of quads, each written for its
+/** Batch `objects` (all sharing `source`) into one mesh of quads, each written for its
  *  tick-0 frame — the shared build step for a decor group's static and animated halves. A batch with
  *  any per-object brightness draws through the shaded ground shader, each quad's four vertices
  *  carrying its anchor cell's multiplier (constant per quad, so an animated rewrite never touches it). */
@@ -90,7 +90,7 @@ function buildQuadBatch(objects: readonly MapObjectSprite[], source: TextureSour
 }
 
 /** One animated decor batch: its mesh buffers + the objects whose quads fill them, in quad order.
- *  A REMOVED object's slot is `null` — its quad stays zeroed and the rewrite loop skips it. */
+ *  A removed object's slot is `null` — its quad stays zeroed and the rewrite loop skips it. */
 interface AnimatedDecorBatch {
   readonly objects: (MapObjectSprite | null)[];
   readonly positions: Float32Array;
@@ -100,7 +100,7 @@ interface AnimatedDecorBatch {
   readonly pageH: number;
 }
 
-/** Where ONE decor object's quad lives — the removal handle {@link DecorChunk.quads} hands the layer:
+/** Where one decor object's quad lives — the removal handle {@link DecorChunk.quads} hands the layer:
  *  zero the 8 floats at `quadIndex` (+ buffer update) and, for an animated batch, null its slot so the
  *  play-head rewrite never restores it. */
 interface DecorQuadRef {
@@ -124,7 +124,7 @@ export interface DecorChunk {
   readonly maxY: number;
   /** Animated batches to rewrite on an anim-tick advance (empty for an all-static chunk). */
   readonly animated: AnimatedDecorBatch[];
-  /** Per-object removal handles (see {@link DecorQuadRef}) — how the layer takes ONE quad out of a
+  /** Per-object removal handles (see {@link DecorQuadRef}) — how the layer takes one quad out of a
    *  built batch when a virgin map resource is first worked (the `?map=` handover). */
   readonly quads: Map<MapObjectSprite, DecorQuadRef>;
   /** The tick the animated buffers were last written for — per chunk, so a chunk scrolling into

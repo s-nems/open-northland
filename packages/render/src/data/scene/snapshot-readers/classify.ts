@@ -1,8 +1,8 @@
 import type { DrawKind } from '../draw-item.js';
 
 /**
- * The marker-classification step: which drawable KIND a snapshot entity is, decided by which marker
- * component it carries (in a fixed priority order). Terrain tiles are classified separately. Pure + total.
+ * The marker-classification step: which drawable kind a snapshot entity is, decided by which marker
+ * component it carries (in a fixed priority order). Terrain tiles are classified separately.
  */
 
 /** Classify a snapshot entity by which marker component it carries (terrain tiles are separate). */
@@ -21,8 +21,8 @@ export function classify(components: Readonly<Record<string, unknown>>): DrawKin
   // node but from the dead-tree/debris atlas. Checked before Settler/Stockpile (a stump is neither).
   if ('Stump' in components) return 'stump';
   if ('Settler' in components) return 'settler';
-  // A designated delivery flag — a PURE MARKER (Position + DeliveryFlag, no Stockpile: it holds no goods,
-  // the harvest piles as separate loose heaps around it). Drawn as the flag graphic and painted ON TOP of
+  // A designated delivery flag — a pure marker (Position + DeliveryFlag, no Stockpile: it holds no goods,
+  // the harvest piles as separate loose heaps around it). Drawn as the flag graphic and painted on top of
   // any co-located heap. Checked before the Stockpile paths since a flag carries no Stockpile of its own.
   if ('DeliveryFlag' in components) return 'stockpile';
   // A freshly-felled trunk still on the ground (a Stockpile carrying the GroundDrop marker) draws its
@@ -30,8 +30,8 @@ export function classify(components: Readonly<Record<string, unknown>>): DrawKin
   // for uncollected harvest than for the stored heap. Checked before the plain Stockpile so a marked drop
   // never falls through to the flag/heap path.
   if ('GroundDrop' in components && 'Stockpile' in components) return 'grounddrop';
-  // A bare Stockpile with NO Building is a loose ground pile (the gathering economy's dropped goods heaps,
-  // the yard a flag-bound gatherer stacks around its flag). Checked AFTER Building so a warehouse/HQ store —
+  // A bare Stockpile with no Building is a loose ground pile (the gathering economy's dropped goods heaps,
+  // the yard a flag-bound gatherer stacks around its flag). Checked after Building so a warehouse/HQ store —
   // which carries both Building and Stockpile — stays a `building`, matching the sim's own ground-pile rule
   // (`nearestGroundPile`: Stockpile ∧ Position ∧ ¬Building).
   if ('Stockpile' in components) return 'stockpile';

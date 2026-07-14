@@ -1,5 +1,5 @@
 /**
- * The PURE half of the animation gallery: clip metadata, the grid layout and the frame-selection math —
+ * The pure half of the animation gallery: clip metadata, the grid layout and the frame-selection math —
  * unit-testable without a GPU (see test/animation-gallery.test.ts). The retained Pixi view lives in
  * {@link import('./animation-gallery.js')}.
  */
@@ -10,17 +10,16 @@ export interface GalleryClip {
   readonly start: number;
   readonly length: number;
   /**
-   * Facings this clip is laid out for: **8** (a full compass — `length` is a clean ×8, e.g. walk 96) or
-   * **1** (single-direction — `length` isn't ×8, e.g. eat 17, wait 57, a jump 21; the original plays these
-   * locked to one facing). Derived by {@link clipDirs}. A single-direction clip ignores the facing selector
-   * and always plays its whole strip, so a non-directional animation isn't chopped into fake directions.
+   * Facings this clip is laid out for, derived by {@link clipDirs}: 8 (a full compass — `length` is a clean
+   * ×8, e.g. walk 96) or 1 (single-direction — `length` isn't ×8, e.g. eat 17, wait 57, jump 21; the
+   * original plays these locked to one facing). A single-direction clip ignores the facing selector and
+   * always plays its whole strip.
    */
   readonly dirs: number;
   /**
-   * The bob id base to composite the HEAD from (defaults to {@link start} = head id == body id). Some
-   * carry-walk variants have EMPTY head bobs (the head is authored once, on the base walk, and reused); for
-   * those this points at the base `human_man_generic_walk` start so the head is borrowed at the SAME
-   * (direction, frame) offset — the head faces the walk heading while the body carries the load.
+   * The bob id base to composite the head from (defaults to {@link start}, i.e. head id == body id). Some
+   * carry-walk variants have empty head bobs, so this points at the base `human_man_generic_walk` start to
+   * borrow its head (see {@link headBobId}).
    */
   readonly headStart?: number;
 }
@@ -32,17 +31,16 @@ export type GalleryDirection = number | 'full';
 export const GALLERY_DIRS = 8;
 
 /**
- * Block index (0..7) to draw for each COMPASS step, in order `N, NE, E, SE, S, SW, W, NW` — inverted from
- * the `CR_Hum_Body` facing table (`0 SW, 1 W, 2 NW, 3 NE, 4 E, 5 SE, 6 S, 7 N`; source basis). "Full"
- * mode walks this order so the character turns in a clean circle (N→NE→E→…) instead of the jumbled
- * storage order (SW→W→NW→NE→…) — the "ładne kółko" that makes 8 facings easy to verify.
+ * Block index (0..7) to draw for each compass step, in order `N, NE, E, SE, S, SW, W, NW` — inverted from
+ * the `CR_Hum_Body` facing table (`0 SW, 1 W, 2 NW, 3 NE, 4 E, 5 SE, 6 S, 7 N`; source basis). "Full" mode
+ * walks this order so the character turns in a circle (N→NE→E→…) instead of the storage order
+ * (SW→W→NW→NE→…).
  */
 export const COMPASS_TO_BLOCK: readonly number[] = [7, 3, 4, 5, 6, 0, 1, 2];
 
 /**
- * Slow the cadence so a human can actually watch each frame (advance one anim frame every N view frames).
- * At ~60fps this is ~60/N animation fps: `8` ≈ 7.5fps — calm enough to read each pose. The `?speed=` flag
- * scales on top (e.g. `?speed=0.5` halves it again, `?speed=2` doubles), so this is just the default pace.
+ * Default cadence: advance one animation frame every N view frames, so ~60/N animation fps at ~60fps (`8`
+ * ≈ 7.5fps, slow enough to read each pose). The `?speed=` flag scales on top.
  */
 export const TICKS_PER_FRAME = 8;
 
@@ -54,7 +52,7 @@ export const FOOT_INSET_Y = 26;
 /** Label baseline from the cell top. */
 export const LABEL_Y = 6;
 
-/** One cell's grid placement — pure, so the layout is unit-testable without a GPU. */
+/** One cell's grid placement. */
 export interface GalleryCellBox {
   readonly index: number;
   readonly col: number;
@@ -64,10 +62,7 @@ export interface GalleryCellBox {
   readonly y: number;
 }
 
-/**
- * Lay `count` cells out row-major into `columns` columns of {@link CELL_W}×{@link CELL_H} — the wrapped
- * grid the gallery draws (the catalog's row-major placement, generalised). Pure + total.
- */
+/** Lay `count` cells out row-major into `columns` columns of {@link CELL_W}×{@link CELL_H}. */
 export function galleryCellLayout(count: number, columns: number): GalleryCellBox[] {
   const cols = Math.max(1, Math.floor(columns));
   const out: GalleryCellBox[] = [];
@@ -81,23 +76,21 @@ export function galleryCellLayout(count: number, columns: number): GalleryCellBo
 
 /**
  * The direction count a sequence `length` is laid out for: a clean ×8 length is 8-directional, anything
- * else is single-direction (the original plays a non-×8 animation locked to one facing). The readable data
- * carries no explicit per-sequence count (no oracle — source basis), so this length heuristic is the
- * best available and matches observation (walk 96 → 8; eat 17 / wait 57 / jump 21 → 1). Pure.
+ * else is single-direction (the original plays a non-×8 animation locked to one facing). Approximation:
+ * the readable data carries no explicit per-sequence count, so this length heuristic stands in, and it
+ * matches observation (walk 96 → 8; eat 17 / wait 57 / jump 21 → 1).
  */
 export function clipDirs(length: number): number {
   return length > 0 && length % GALLERY_DIRS === 0 ? GALLERY_DIRS : 1;
 }
 
 /**
- * The BODY bob a clip draws at a facing + animation `step` (an integer frame counter; the caller applies
+ * The body bob a clip draws at a facing + animation `step` (an integer frame counter; the caller applies
  * the {@link TICKS_PER_FRAME} cadence). Cases:
- *  - **single-direction clip** (`dirs <= 1`) → the whole strip in order, IGNORING the requested facing (a
- *    non-directional animation isn't split into fake directions — fixes clicking a facing on e.g. a jump);
- *  - **8-dir + numeric facing** (a `CR_Hum_Body` block index) → that direction's `stride`-frame sub-cycle;
- *  - **8-dir + `'full'`** → rotate through all directions in COMPASS order ({@link COMPASS_TO_BLOCK}), each
- *    playing its full sub-cycle — a clean turning circle rather than the jumbled storage order.
- * Pure.
+ *  - single-direction clip (`dirs <= 1`) → the whole strip in order, ignoring the requested facing;
+ *  - 8-dir + numeric facing (a `CR_Hum_Body` block index) → that direction's `stride`-frame sub-cycle;
+ *  - 8-dir + `'full'` → rotate through all directions in compass order ({@link COMPASS_TO_BLOCK}), each
+ *    playing its full sub-cycle.
  */
 export function galleryBobId(clip: GalleryClip, direction: GalleryDirection, step: number): number {
   if (clip.dirs <= 1) return clip.start + (step % Math.max(1, clip.length));
@@ -113,10 +106,9 @@ export function galleryBobId(clip: GalleryClip, direction: GalleryDirection, ste
 }
 
 /**
- * The HEAD bob to composite for a given body bob: the same offset into the clip's head base. `headStart`
- * defaults to the body `start` (head id == body id, the usual case); a borrowed head (a carry variant with
- * empty own head → the base walk head) keeps the SAME (direction, frame) offset, so the head faces the walk
- * heading while the body carries the load. Pure.
+ * The head bob to composite for a given body bob: the same offset into the clip's head base ({@link
+ * GalleryClip.headStart}, defaulting to the body `start`). A borrowed head keeps that same (direction,
+ * frame) offset, so it faces the walk heading while the body carries the load.
  */
 export function headBobId(clip: GalleryClip, bodyBob: number): number {
   return (clip.headStart ?? clip.start) + (bodyBob - clip.start);

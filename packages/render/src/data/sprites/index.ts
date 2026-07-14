@@ -1,5 +1,5 @@
 /**
- * The PURE half of the atlas-sprite swap — which atlas frame a draw item references (a data lookup an
+ * The pure half of the atlas-sprite swap — which atlas frame a draw item references (a data lookup an
  * agent can self-verify); binding that rect to a GPU texture + sampling it is the GPU layer's half
  * (pixels, which only a human can judge). No Pixi, no canvas. Split by concern:
  *  - {@link import('./atlas.js')} — atlas frame geometry + the manifest adaptation;

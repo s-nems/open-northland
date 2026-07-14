@@ -3,19 +3,19 @@ import { type ElevationField, terrainLiftAtNode } from '../../data/elevation.js'
 import { halfCellToScreen, TILE_HALF_H, TILE_HALF_W } from '../../data/iso.js';
 
 /**
- * The BUILDING-GEOMETRY debug overlay (`?debug=geometry`) — draws every placed building's logic
+ * The building-geometry debug overlay (`?debug=geometry`) — draws every placed building's logic
  * geometry over the world so a human can verify the extracted data against the drawn graphic:
  *
- *  - RESERVED cells (build-exclusion zone, `footprint.reserved`) — amber outline diamonds;
- *  - BLOCKED cells (walk collision, `footprint.blocked`) — red filled diamonds;
- *  - the DOOR node (`footprint.door`) — green filled diamond (the settler entry cell);
- *  - the WORKER-ICON anchor (door + the building's worker-icon offset: default one node right,
+ *  - reserved cells (build-exclusion zone, `footprint.reserved`) — amber outline diamonds;
+ *  - blocked cells (walk collision, `footprint.blocked`) — red filled diamonds;
+ *  - the door node (`footprint.door`) — green filled diamond (the settler entry cell);
+ *  - the worker-icon anchor (door + the building's worker-icon offset: default one node right,
  *    per-building overrides in the app's `catalog/building-tweaks.ts`) — blue dot;
- *  - the ANCHOR node — white cross (the building's own placement node);
- *  - an optional LABEL under the anchor.
+ *  - the anchor node — white cross (the building's own placement node);
+ *  - an optional label under the anchor.
  *
- * A DEBUG tool, not a game surface: it rebuilds its whole (small) scene graph on every `set` and is
- * only fed when the flag is on and the building set changed — never per frame. It sits ABOVE the
+ * A debug tool, not a game surface: it rebuilds its whole (small) scene graph on every `set` and is
+ * only fed when the flag is on and the building set changed — never per frame. It sits above the
  * sprite layer so the cells read over the building art (which is exactly what is being verified);
  * fills stay translucent so the art stays visible under them.
  */
@@ -29,7 +29,7 @@ export interface GeometryDebugCell {
 
 /** One building's geometry, in anchor-relative half-cell offsets (the IR footprint's own space). */
 export interface GeometryDebugItem {
-  /** The building's anchor NODE on the half-cell lattice. */
+  /** The building's anchor node on the half-cell lattice. */
   readonly anchor: { readonly hx: number; readonly hy: number };
   /** Walk-collision cells (`footprint.blocked`). */
   readonly blocked: readonly GeometryDebugCell[];

@@ -1,49 +1,35 @@
 import { ONE as SIM_ONE } from '@open-northland/sim';
 
 /**
- * Isometric projection + the camera transform — the foundational, dependency-light math the rest of
- * `render` builds on. It lives in its OWN module (not the {@link import('../index.js')} barrel) so the
- * pure scene/terrain/viewport modules and the GPU renderer can import it WITHOUT importing the barrel
- * that re-exports them — the barrel↔module import cycle that used to force a TDZ workaround (a const
- * read before its initializer ran). No Pixi, no canvas, no sim state read back: plain projection.
+ * Isometric projection + the camera transform — the dependency-light math the rest of `render` builds
+ * on. It lives in its own module rather than the {@link import('../index.js')} barrel so the pure
+ * scene/terrain/viewport modules and the GPU renderer can import it without the barrel↔module cycle,
+ * which forces a TDZ workaround. No Pixi, no canvas, no sim state read back: plain projection.
  */
 
 /** Fixed-point scale (one whole tile), re-exported so the scene layer reads snapshot positions. */
 export const ONE: number = SIM_ONE;
 
 /**
- * The original engine's cell pitch in native pixels, MEASURED from the running game (source basis
- * "projection" — calibration-by-observation, 2026-07, superseding an earlier fit that aliased to exactly
- * HALF these values). From a uniform 7-shot corpus tiling the full 250-column top strip of one map:
- * the shots' capture scale was pinned at exactly 1.25× by five independent building-sprite templates
- * (peak scores 0.96–0.98), then 19 detected buildings were joined to their map half-cell placements and
- * the lattice solved least-squares with a free column step, row step, row-parity term and elevation term
- * — x rms 0.31 px, y rms 1.21 px, parity 0.00: **cell width 68.0 px, row step 38.0 px** (±0.1), and a
- * vertical lift of ≈1.24 px per elevation unit (unrendered for now, source basis). Cross-check
- * without templates: 7 shots × ~3170 px with the observed small seam overlaps ≈ 250 cells × 68 × 1.25.
- * At this pitch the pattern-page texture triangles (~64 px) rasterize ~1:1 onto the cell diamond, which
- * is why terrain detail reads exactly like the original's.
+ * The original engine's cell pitch in native pixels: cell width 68.0 px, row step 38.0 px (±0.1),
+ * measured from the running game (source basis "projection", 2026-07, which records the full method).
+ * At this pitch the pattern-page texture triangles (~64 px) rasterize ~1:1 onto the cell diamond.
+ * The elevation lift derives from this row step and is owned by {@link import('./elevation.js')}.
  */
 export const CALIBRATED_HALF_W = 34;
 export const CALIBRATED_HALF_H = 38;
 
 /**
- * Projection constants — the measured original cell pitch (source basis "projection"):
- * `TILE_HALF_W` is HALF the cell width (a column step right = `2·TILE_HALF_W` px), `TILE_HALF_H` is one
- * ROW step down (also half the cell diamond's height — rows interlock at half-diamond spacing). This is
- * the master scale the whole world hangs off: every ground triangle, every feet-anchored bob (drawn at
- * its NATIVE pixel size — see the render AGENTS.md) and the camera derive from it, so getting it right
- * is what makes a bob read at the correct size against the terrain.
+ * Projection constants (source basis "projection"): `TILE_HALF_W` is half the cell width, so a column
+ * step right is `2·TILE_HALF_W` px; `TILE_HALF_H` is one row step down, and also half the cell diamond's
+ * height (rows interlock at half-diamond spacing). This is the master scale the whole world hangs off:
+ * every ground triangle, every feet-anchored bob (drawn at its native pixel size — see the render
+ * AGENTS.md) and the camera derive from it.
  *
- * Defaults: the measured original pitch {@link CALIBRATED_HALF_W}×{@link CALIBRATED_HALF_H}. Still
- * LIVE-TUNABLE for verification: the live entry sets it from `?pitch=<fullCellWidth>` (+ optional
- * `?pitchy=<cellDiamondHeight>`) via {@link setTilePitch}, keeping the measured ratio when only
- * `?pitch` is given.
- *
- * Calibration history (why the earlier values were wrong): `32×16` was eyeballed from the art;
- * footprint-vs-sprite ratios (bridge collision area vs visible deck) once suggested `20×10` and
- * overshot. Both are superseded by the measured values above; the full method + numbers live in
- * source basis "projection".
+ * Defaults to the measured original pitch {@link CALIBRATED_HALF_W}×{@link CALIBRATED_HALF_H}, and stays
+ * live-tunable for verification: the live entry sets it from `?pitch=<fullCellWidth>` (+ optional
+ * `?pitchy=<cellDiamondHeight>`) via {@link setTilePitch}, keeping the measured ratio when only `?pitch`
+ * is given.
  */
 export let TILE_HALF_W = CALIBRATED_HALF_W;
 export let TILE_HALF_H = CALIBRATED_HALF_H;
@@ -51,8 +37,8 @@ export let TILE_HALF_H = CALIBRATED_HALF_H;
 /**
  * Override the tile pitch (the {@link TILE_HALF_W}/{@link TILE_HALF_H} half-extents) at runtime — the live
  * calibration knob behind `?pitch=`. Reassigns the module bindings, which every consumer reads live (ES
- * module live bindings), so the terrain mesh, object lattice, viewport cull and camera all pick it up as
- * long as it is called BEFORE the scene/renderer is built. Render-only; the sim never reads these.
+ * module live bindings), so it must be called before the scene/renderer is built. Render-only; the sim
+ * never reads these.
  */
 export function setTilePitch(halfW: number, halfH: number): void {
   TILE_HALF_W = halfW;
@@ -60,16 +46,15 @@ export function setTilePitch(halfW: number, halfH: number): void {
 }
 
 /**
- * Tile (col,row) → screen offset (before camera): the original's RASTER-WITH-STAGGER projection,
- * MEASURED from the running game (source basis "projection" — the map-data water grid fitted the
- * screenshots under this model 3–7× better than a rotated diamond). A column step is a pure horizontal
- * `2·TILE_HALF_W`; a row step is a pure vertical `TILE_HALF_H` with ODD rows shifted half a cell right —
- * so the whole map reads as a rectangle (not a rotated diamond) and map N/S/E/W match the screen's.
+ * Tile (col,row) → screen offset (before camera): the original's raster-with-stagger projection (source
+ * basis "projection" — this model fits the running game's lattice, a rotated diamond does not). A column
+ * step is a pure horizontal `2·TILE_HALF_W`; a row step is a pure vertical `TILE_HALF_H` with odd rows
+ * shifted half a cell right — so the whole map reads as a rectangle and map N/S/E/W match the screen's.
  * Cell diamonds are `2·TILE_HALF_W` wide and `2·TILE_HALF_H` tall, interlocking across rows.
  *
  * Continuous in both arguments (entities walk fractional positions): the parity stagger is interpolated
  * as a triangle wave over the row, so moving one row down slides `±TILE_HALF_W` sideways along the way —
- * the same diagonal a unit walks along the original's mesh edges. Pure.
+ * the same diagonal a unit walks along the original's mesh edges.
  */
 export function tileToScreen(col: number, row: number): { x: number; y: number } {
   const cycle = ((row % 2) + 2) % 2; // row's place in the 2-row stagger cycle, robust to negatives
@@ -81,12 +66,12 @@ export function tileToScreen(col: number, row: number): { x: number; y: number }
 }
 
 /**
- * Half-cell (hx,hy) → screen offset (before camera). The original's `emla` object lattice is a PLAIN
+ * Half-cell (hx,hy) → screen offset (before camera). The original's `emla` object lattice is a plain
  * rectangular grid at half-cell resolution — `(hx·TILE_HALF_W, hy·TILE_HALF_H/2)` — with the cell
  * stagger arising from which half-cells the cells occupy (cell `(c,r)` sits at half-cell
  * `(2c + (r&1), 2r)`; {@link tileToScreen} of an integer cell lands exactly here). Map objects
- * (trees/stones/waves) are authored at half-cells and must NOT get the fractional-row stagger
- * interpolation a walking entity gets, hence the dedicated mapping. Pure.
+ * (trees/stones/waves) are authored at half-cells and must not get the fractional-row stagger
+ * interpolation a walking entity gets, hence the dedicated mapping.
  */
 export function halfCellToScreen(hx: number, hy: number): { x: number; y: number } {
   return {
@@ -96,23 +81,23 @@ export function halfCellToScreen(hx: number, hy: number): { x: number; y: number
 }
 
 /**
- * Screen offset (pre-camera) → the integer CELL `(col, row)` whose diamond contains it — the cell-resolution
+ * Screen offset (pre-camera) → the integer cell `(col, row)` whose diamond contains it — the cell-resolution
  * inverse of {@link tileToScreen}/{@link halfCellToScreen}, floored. A cell spans `2·TILE_HALF_W` across and
  * one `TILE_HALF_H` row step down (cell `(c,r)` occupies half-cell nodes `2c..2c+1 × 2r..2r+1`), so
  * `col = ⌊x / (2·TILE_HALF_W)⌋`, `row = ⌊y / TILE_HALF_H⌋`. Ignores the odd-row parity half-shift — this is a
- * cell-granularity bucket (e.g. a world object's fog-state lookup), not a pixel-exact pick. Pure.
+ * cell-granularity bucket (e.g. a world object's fog-state lookup), not a pixel-exact pick.
  */
 export function screenToCell(x: number, y: number): { col: number; row: number } {
   return { col: Math.floor(x / (2 * TILE_HALF_W)), row: Math.floor(y / TILE_HALF_H) };
 }
 
 /**
- * The flat `[x, y, …]` point list of a NODE DIAMOND centred at `(cx, cy)` with half-extents `(hw, hh)`,
+ * The flat `[x, y, …]` point list of a node diamond centred at `(cx, cy)` with half-extents `(hw, hh)`,
  * wound top → right → bottom → left — the shape a single half-cell node fills on the lattice. The
  * world-space per-cell washes ({@link import('../gpu/overlays/construction-plot.js').ConstructionPlotLayer},
  * {@link import('../gpu/overlays/placement-overlay.js').PlacementOverlayLayer}) feed it straight to
  * `Graphics.poly`; each computes its own `(hw, hh)` (raw cell pitch, or padded + resolution-scaled), so
- * only the diamond winding is shared here. Pure.
+ * only the diamond winding is shared here.
  */
 export function nodeDiamondPoly(cx: number, cy: number, hw: number, hh: number): number[] {
   return [cx, cy - hh, cx + hw, cy, cx, cy + hh, cx - hw, cy];
@@ -137,11 +122,11 @@ export interface Camera {
 }
 
 /**
- * Apply the camera to one world axis — `screen = world·scale + offset` — for the ONE case that needs it
- * explicitly: the team-colour {@link import('../gpu/paletted-sprite/index.js').PalettedSprite} meshes self-place in
- * SCREEN space (a custom-shader mesh can't ride the camera-transformed layer), so they mirror the transform
- * plain sprites inherit from the scene graph. Split X/Y (not a `{x,y}` return) so the per-frame paletted path
- * allocates nothing. Pure.
+ * Apply the camera to one world axis — `screen = world·scale + offset` — for the case that needs it
+ * explicitly: the team-colour {@link import('../gpu/paletted-sprite/index.js').PalettedSprite} meshes
+ * self-place in screen space (a custom-shader mesh can't ride the camera-transformed layer), so they
+ * mirror the transform plain sprites inherit from the scene graph. Split X/Y (not a `{x,y}` return) so
+ * the per-frame paletted path allocates nothing.
  */
 export function cameraScreenX(camera: Camera, worldX: number): number {
   return camera.offsetX + (camera.scale ?? 1) * worldX;
@@ -166,7 +151,7 @@ const DEPTH_X_TIEBREAK = 1 / (1 << 20);
  * two sprites on the same row order deterministically instead of flickering with attach/detach churn
  * (Pixi's `sortableChildren` sort is stable only in children-array order, which panning reshuffles).
  * The pooled entities and the tall map objects share this key so a settler and the tree it walks
- * behind sort into one painter order. Pure.
+ * behind sort into one painter order.
  */
 export function depthKey(x: number, y: number): number {
   return y + x * DEPTH_X_TIEBREAK;

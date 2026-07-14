@@ -2,17 +2,17 @@ import type { TextureSource } from 'pixi.js';
 import { type DrawableResource, isDrawableResource } from '../drawable-resource.js';
 
 /**
- * Per-atlas ALPHA MASKS for pixel-accurate sprite hit-testing — "click the graphic, not the box".
+ * Per-atlas alpha masks for pixel-accurate sprite hit-testing — "click the graphic, not the box".
  *
  * The picker's first pass is the sprite's AABB ({@link import('./pooled-entity.js').EntityBounds}); a
  * large building's box swallows a lot of transparent corner, so a click *next to* the house still
  * selected it. This module supplies the refinement: a 1-bit solid/transparent mask per atlas sheet,
  * built lazily from the decoded atlas pixels and sampled at the clicked texel.
  *
- * Source basis: this is a DELIBERATE deviation from the original engine, which resolves a world click
+ * Source basis: this is a deliberate deviation from the original engine, which resolves a world click
  * to a half-cell and asks the logic layer which house occupies it (OpenVikings
  * `CWorldDisplayElement.l_UpdateCursorPosition` → `DED_WorldPixelToMapMIGCoordinates` → cell→house
- * lookup — footprint-based, so a tall tower's roof was NOT clickable there). Per the user's direction,
+ * lookup — footprint-based, so a tall tower's roof was not clickable there). Per the user's direction,
  * OpenNorthland instead hit-tests the drawn sprite itself: anywhere on the graphic selects, anywhere off it
  * does not.
  */
@@ -32,7 +32,7 @@ export interface AlphaMask {
   readonly bits: Uint8Array;
 }
 
-/** Pack RGBA pixel data into an {@link AlphaMask}: bit set ⇔ `alpha >= SOLID_ALPHA_MIN`. Pure. */
+/** Pack RGBA pixel data into an {@link AlphaMask}: bit set ⇔ `alpha >= SOLID_ALPHA_MIN`. */
 export function buildAlphaMask(
   rgba: Uint8Array | Uint8ClampedArray,
   width: number,

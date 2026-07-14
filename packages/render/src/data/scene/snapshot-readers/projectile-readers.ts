@@ -1,8 +1,8 @@
 import { type PositionValue, readNumFieldOrNull } from './component-access.js';
 
 /**
- * The in-flight PROJECTILE component reads — the target a shot homes on and the point it was loosed from.
- * Together they fix the flight chord the scene builder draws the ballistic arc along. Pure + total.
+ * The in-flight projectile component reads — the target a shot homes on and the point it was loosed from.
+ * Together they fix the flight chord the scene builder draws the ballistic arc along.
  */
 
 /**
@@ -16,7 +16,7 @@ export function readProjectileTarget(components: Readonly<Record<string, unknown
 }
 
 /**
- * The point a projectile was LOOSED from (the sim `Projectile.originX/originY`, fixed-point), or `null`
+ * The point a projectile was loosed from (the sim `Projectile.originX/originY`, fixed-point), or `null`
  * for a missing/malformed component. With the live target position it fixes the flight chord, and the
  * fraction flown along it is the scene builder's ballistic-arc parameter (lob height + tangent). A shot
  * with no readable origin simply draws flat along the straight line — never a throw.

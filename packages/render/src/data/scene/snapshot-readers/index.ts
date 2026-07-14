@@ -1,5 +1,5 @@
 /**
- * The PURE snapshot-component readers — every function here turns one plain-cloned snapshot component into
+ * The pure snapshot-component readers — every function here turns one plain-cloned snapshot component into
  * the render-side fact a {@link import('../draw-item.js').DrawItem} carries (state, facing, carried good,
  * build progress, …). Split out of `scene.ts` so the *reads* live apart from the *scene assembly*
  * (projection + depth sort) that consumes them, and grouped by concern so each stays changeable on its own:
@@ -11,7 +11,7 @@
  *  - {@link import('./stockpile-readers.js')} — the ground-pile good + fill read;
  *  - {@link import('./projectile-readers.js')} — the in-flight shot's target + origin.
  *
- * Shared contract: every reader is a pure, TOTAL function of a snapshot entity's `components` record — a
+ * Shared contract: every reader is a pure, total function of a snapshot entity's `components` record — a
  * missing or malformed component reads as its "absent" value (`null`/`undefined`), never a throw. Nothing
  * here re-enters the sim. The barrel keeps `./snapshot-readers/index.js` as the stable import path.
  */

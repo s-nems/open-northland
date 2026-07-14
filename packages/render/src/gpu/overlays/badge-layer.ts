@@ -5,28 +5,27 @@ import { isVisible, type Viewport } from '../../data/viewport.js';
 import { retainOffscreen, retireUndrawn } from './retained-pool.js';
 
 /**
- * The DOOR-BADGE layer — a small stacked marker beside each staffed building's door showing how many
- * settlers work there (one badge per worker), drawn in WORLD space (a child of the camera's
- * `worldLayer`, ABOVE the sprite layer so it floats over the house) so it pans/zooms with the building.
- * Like the selection rings this is a CLIENT-side projection of the frozen snapshot, not sim state — the
+ * The door-badge layer — a small stacked marker beside each staffed building's door showing how many
+ * settlers work there (one badge per worker), drawn in world space (a child of the camera's
+ * `worldLayer`, above the sprite layer so it floats over the house) so it pans/zooms with the building.
+ * Like the selection rings this is a client-side projection of the frozen snapshot, not sim state — the
  * app tallies each building's bound workers (the {@link DoorBadge} list) and this layer projects them.
  *
- * RETAINED, like the selection layer: one badge-stack {@link Container} per building id (a stable key),
+ * Retained, like the selection layer: one badge-stack {@link Container} per building id (a stable key),
  * rebuilt only when its worker/carrier counts change, otherwise just repositioned each frame; a stack
- * whose building left the badge list is destroyed. The stack anchors on the building's WORKER-ICON node
+ * whose building left the badge list is destroyed. The stack anchors on the building's worker-icon node
  * — the app's `computeDoorBadges` resolves it beside the door, with the per-building overrides — and is
  * projected via {@link tileToScreen} + the terrain lift (the same math the selection ring uses), growing
- * UPWARD from it — one square per person.
+ * upward from it — one square per person.
  *
- * The badge art is a PLACEHOLDER (coloured squares, one colour per worker ROLE — {@link CRAFTSMAN_COLOR}
- * vs {@link CARRIER_COLOR} vs {@link GATHERER_COLOR} so a tradesman, a hauler, and a gatherer each read
- * differently), a deliberate stand-in until the original round order-plate glyphs are wired; the layout,
- * stacking, and the three-way role split are the real behaviour. The app classifies each bound worker
- * into one of the three counts (see the sandbox `workerRoleOf`); this layer only draws them.
+ * The badge art is a placeholder — coloured squares, one colour per worker role ({@link CRAFTSMAN_COLOR}/
+ * {@link CARRIER_COLOR}/{@link GATHERER_COLOR}, so tradesman/hauler/gatherer read differently) until the
+ * original round order-plate glyphs are wired; the layout, stacking, and three-way role split are the real
+ * behaviour. The app classifies each bound worker into one of the three counts (sandbox `workerRoleOf`).
  */
 
 /** One building's badge data: its worker-icon anchor position (snapshot `Position` fixed-point units,
- *  projected here) and the counts of settlers bound to it, split by worker ROLE so each draws its own
+ *  projected here) and the counts of settlers bound to it, split by worker role so each draws its own
  *  colour. */
 export interface DoorBadge {
   /** The building entity id — the retained-pool key (ids are monotonic, a stable key). */
@@ -45,9 +44,8 @@ export interface DoorBadge {
 /** Placeholder square edge + vertical gap between stacked badges (world px). */
 const SIZE = 9;
 const GAP = 3;
-/** px the stack's base sits BELOW its anchor node, so the squares stack UP the wall from ground
- *  level. The HORIZONTAL placement is the anchor's own: the app resolves the worker-icon node beside
- *  the door (with per-building overrides), so this layer adds no x offset. */
+/** px the stack's base sits below its anchor node, so the squares stack up the wall from ground level.
+ *  Horizontal placement is the anchor's own (no x offset added here). */
 const STACK_BASE_DROP = 6;
 /** Placeholder colours: one per worker role, with a dark outline so each reads on any ground. */
 const CRAFTSMAN_COLOR = 0x5ab6ff; // blue — a workshop tradesman
@@ -85,9 +83,8 @@ export class BadgeLayer {
       const p = tileToScreen(tileX, tileY);
 
       let stack = this.stacks.get(badge.id);
-      // Off-screen: retain the pooled stack (hidden) so it isn't retired, but skip the reposition/rebuild;
-      // a not-yet-built off-screen building simply waits to be built until it scrolls into view (marking an
-      // id with no pooled stack is harmless — retire only walks the stacks map).
+      // Off-screen: retain the pooled stack (hidden) so it isn't retired, but skip the reposition/rebuild.
+      // Marking an id whose stack doesn't exist yet is harmless — retire only walks the stacks map.
       if (viewport !== undefined && !isVisible(viewport, p.x, p.y)) {
         retainOffscreen(stack?.node, badge.id, this.drawn);
         continue;
@@ -121,7 +118,7 @@ export class BadgeLayer {
 }
 
 /** A door badge stack: one square per bound worker, grouped by role bottom-to-top — `carriers` (amber),
- *  then `craftsmen` (blue), then `gatherers` (green) — growing UP from the door anchor (row 0 is the
+ *  then `craftsmen` (blue), then `gatherers` (green) — growing up from the door anchor (row 0 is the
  *  lowest square, just above the door). */
 function makeStack(craftsmen: number, carriers: number, gatherers: number): Container {
   const c = new Container();

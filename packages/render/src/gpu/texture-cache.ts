@@ -38,7 +38,7 @@ interface RevealBake {
  */
 export class TextureCache {
   private readonly cache = new Map<AtlasFrame, Texture>();
-  /** Bottom-cropped views of a frame, keyed by how many TOP pixels are hidden — the reveal path
+  /** Bottom-cropped views of a frame, keyed by how many top pixels are hidden — the reveal path
    *  ({@link cropped}). Nested so the primary frame→texture cache above stays a clean 1:1. */
   private readonly cropCache = new Map<AtlasFrame, Map<number, Texture>>();
   /** Per-pixel reveal bakes per frame, keyed by quantised threshold ({@link revealed}). */
@@ -55,12 +55,12 @@ export class TextureCache {
   }
 
   /**
-   * A view of `frame` with its top `hiddenTop` pixels cropped OFF — only the bottom `height − hiddenTop`
+   * A view of `frame` with its top `hiddenTop` pixels cropped off — only the bottom `height − hiddenTop`
    * rows, used for the bottom-up construction reveal (a building rising out of the ground). `hiddenTop` is
    * an integer pixel count in the frame's own (source) space, clamped to the frame; the caller shifts the
-   * sprite DOWN by `hiddenTop · scale` so the visible bottom stays anchored. Cached per (frame, hiddenTop):
+   * sprite down by `hiddenTop · scale` so the visible bottom stays anchored. Cached per (frame, hiddenTop):
    * the eased reveal walks whole-pixel `hiddenTop` values, so over a build this sub-cache can grow to at most
-   * the frame's height in entries — BOUNDED (lightweight sub-rect views sharing one GPU source, no new
+   * the frame's height in entries — bounded (lightweight sub-rect views sharing one GPU source, no new
    * texture memory), and every home crops the same frame identically so a warm cache mints nothing per frame.
    */
   cropped(source: TextureSource, frame: AtlasFrame, hiddenTop: number): Texture {

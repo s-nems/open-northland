@@ -25,8 +25,8 @@ import {
 } from './geometry.js';
 
 /**
- * The TEXTURED terrain emitters: one batched {@link import('pixi.js').Mesh} per texture page per draw
- * layer (the GPU twin of the pure `data/terrain.ts` geometry), built ONCE per map. A decoded map carrying
+ * The textured terrain emitters: one batched {@link import('pixi.js').Mesh} per texture page per draw
+ * layer (the GPU twin of the pure `data/terrain.ts` geometry), built once per map. A decoded map carrying
  * its 1:1 `ground` lanes (and a texture set exposing the pattern join) takes {@link buildGround}; the
  * approximated per-typeId path ({@link buildTextured}) stays for synthetic grids. The flat placeholder is
  * the twin file {@link import('./build-flat.js')}.
@@ -61,10 +61,8 @@ function pushTriangle(
 }
 
 /** One batched {@link import('pixi.js').Mesh} per texture page per draw layer + a fallback
- *  {@link import('pixi.js').Graphics} for unbound triangles, **per block** — built ONCE from the grid
- *  (no per-frame re-batch); the per-block split is what lets the layer's cull skip off-screen ground.
- *  A decoded map carrying its 1:1 `ground` lanes takes the per-triangle path; the approximated
- *  per-typeId path stays for synthetic grids. */
+ *  {@link import('pixi.js').Graphics} for unbound triangles, per block — built once from the grid
+ *  (no per-frame re-batch); the per-block split is what lets the layer's cull skip off-screen ground. */
 export function buildTextured(
   parent: Container,
   terrain: SceneTerrain,
@@ -119,7 +117,7 @@ export function buildTextured(
  * `data/terrain.ts`), plus the `emt1..emt4` transition overlays as translucent RGBA triangles on
  * the two overlay layers, all batched per texture page per layer per block. The per-map pattern
  * and transition names are resolved through {@link TerrainTextureSet.groundFor} /
- * {@link TerrainTextureSet.transitionFor} ONCE into index-aligned tables; a triangle whose
+ * {@link TerrainTextureSet.transitionFor} once into index-aligned tables; a triangle whose
  * pattern (or page) is unresolved falls back to a flat triangle, an unresolved overlay is skipped.
  */
 function buildGround(

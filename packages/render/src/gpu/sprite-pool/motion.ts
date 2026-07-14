@@ -8,20 +8,17 @@ import { TILE_HALF_W } from '../../data/iso.js';
 import { clamp01, lerp } from '../../data/math.js';
 
 /**
- * World-px jump between two consecutive tick anchors past which the motion track SNAPS instead of
+ * World-px jump between two consecutive tick anchors past which the motion track snaps instead of
  * lerping — a spawn/teleport, not a walk. The fastest legit case is a multi-tick catch-up frame of a
  * running unit (≈ 5 ticks × 17 px); real teleports jump hundreds of px, so the band between is safe.
  */
 const SNAP_DISTANCE = 128;
 
 /**
- * World px a FULL walking gait covers per sim tick — one cell (`2·TILE_HALF_W`, read at call time:
+ * World px a full walking gait covers per sim tick — one cell (`2·TILE_HALF_W`, read at call time:
  * the pitch is a live `?pitch=` knob) over the sim's {@link WALK_TICKS_PER_CELL}-tick walk cycle
  * (the sim's world metric makes every heading cover the same on-screen length per tick). The
- * {@link MotionTrack.gaitPhase} denominator: an anchor that advanced this much in a tick plays its
- * walk cycle at the authored one-frame-per-tick cadence and the feet grip the ground exactly as
- * before; anything slower (braking, acceleration, being body-pressed in a crowd) advances the cycle
- * proportionally less, so feet never skate in place (the reported treadmill look).
+ * denominator of {@link MotionTrack.gaitPhase}, which owns the cadence semantics.
  */
 function fullGaitPxPerTick(): number {
   return (2 * TILE_HALF_W) / WALK_TICKS_PER_CELL;
@@ -35,8 +32,8 @@ function fullGaitPxPerTick(): number {
  */
 const MAX_GAIT_RATE = 2.5;
 
-/** An entity's inter-tick motion track: the current and previous TICK anchors (world px), plus the
- *  DRAWN anchor the last {@link trackMotion} computed from them. */
+/** An entity's inter-tick motion track: the current and previous tick anchors (world px), plus the
+ *  drawn anchor the last {@link trackMotion} computed from them. */
 export interface MotionTrack {
   /** The tick `x`/`y` belong to; −1 = never tracked (the next update snaps both anchors). */
   tick: number;
@@ -44,12 +41,12 @@ export interface MotionTrack {
   y: number;
   prevX: number;
   prevY: number;
-  /** The anchor to DRAW at this frame — `prev` lerped toward `curr` by the frame alpha. */
+  /** The anchor to draw at this frame — `prev` lerped toward `curr` by the frame alpha. */
   drawX: number;
   drawY: number;
   /**
-   * The accumulated WALK-CYCLE clock, in tick units: advanced per sim tick by the fraction of a full
-   * gait the anchor ACTUALLY covered ({@link fullGaitPxPerTick}), so the walk animation's frame
+   * The accumulated walk-cycle clock, in tick units: advanced per sim tick by the fraction of a full
+   * gait the anchor actually covered ({@link fullGaitPxPerTick}), so the walk animation's frame
    * (`floor(gaitPhase)`, consumed by the pool's moving-state resolve) tracks ground covered, not wall
    * ticks. At full cruise it advances exactly 1/tick — the authored feet-per-cell sync is untouched —
    * and a body-pressed or braking walker's legs slow with it instead of jogging in place.
@@ -58,8 +55,8 @@ export interface MotionTrack {
 }
 
 /**
- * Advance a {@link MotionTrack} to this frame's (tick, anchor) and stamp the DRAWN position onto it
- * IN PLACE (`drawX`/`drawY`): the previous tick anchor lerped toward the current one by `alpha` (the
+ * Advance a {@link MotionTrack} to this frame's (tick, anchor) and stamp the drawn position onto it
+ * in place (`drawX`/`drawY`): the previous tick anchor lerped toward the current one by `alpha` (the
  * fixed-timestep fraction, clamped to [0,1]). A new tick rolls current→previous and advances the
  * {@link MotionTrack.gaitPhase} walk-cycle clock by the distance actually covered; a first sighting or
  * a jump past {@link SNAP_DISTANCE} (a spawn/teleport, not a walk) snaps both anchors so nothing

@@ -19,15 +19,13 @@ import { reconcileSprites } from './reconcile.js';
 import { type ResolvedLayer, resolveLayers } from './resolve-layers.js';
 
 /**
- * The retained per-entity sprite pool — a display object per drawable entity, keyed by its (monotonic,
- * never-reused) entity id and REUSED across frames: no display object is minted in the steady state (only
- * the container position, the sprites' textures/offsets, and their visibility change). Per-frame heap
- * allocation is O(VISIBLE), not zero — {@link import('./resolve-layers.js').resolveLayers} builds a small
- * layer array per drawn entity — but it stays bounded by the SCREEN, never the map (the render contract).
- * Each frame the pool is reconciled to the culled, depth-sorted draw list; an entity that scrolled off-screen is kept
- * pooled (it may scroll back), one that LEFT the snapshot (died) is destroyed. This is where the
- * frame-selection data decisions ({@link import('./resolve-layers.js').resolveLayers}, unit-tested
- * upstream) become actual bound textures — the GPU half a human judges.
+ * The retained per-entity sprite pool: one display object per drawable entity, keyed by its monotonic,
+ * never-reused entity id and reused across frames — the steady state mints nothing, only the container
+ * position, the sprites' textures/offsets, and their visibility change. Per-frame heap allocation is
+ * O(visible) — {@link import('./resolve-layers.js').resolveLayers} builds a small layer array per drawn
+ * entity — bounded by the screen, never the map (the render contract). Each frame the pool is reconciled
+ * to the culled, depth-sorted draw list: an entity that scrolled off-screen stays pooled (it may scroll
+ * back), one that left the snapshot (died) is destroyed.
  */
 
 /**
@@ -39,17 +37,16 @@ const SCREEN_PAINT_EPS = 0.25;
 
 /**
  * Per-frame easing factor for the construction bottom-up reveal — the displayed reveal moves this fraction
- * of the remaining distance toward the layer's target each frame. Tuned so the rise glides continuously
- * across the sim's per-swing `built` steps (~15 ticks / swing) without a visible catch-up snap; a
- * newly-seen site initialises to its target instead of easing up from zero (see {@link SpritePool.bindLayers}).
+ * of the remaining distance toward the layer's target each frame. Tuned so the rise glides across the
+ * sim's per-swing `built` steps (~15 ticks / swing) without a catch-up snap; a newly-seen site initialises
+ * to its target instead of easing up from zero (see {@link SpritePool.bindLayers}).
  */
 const CONSTRUCTION_REVEAL_EASE = 0.06;
 
 /**
  * Everything one {@link SpritePool.reconcile} pass needs beyond the pool's own state — built once per
  * frame by the {@link import('../world-renderer.js').WorldRenderer} (one small object per frame, not per
- * entity). Grouping the camera + canvas size + interpolation inputs keeps the per-frame plumbing in one
- * named shape instead of a positional-parameter tail that reshuffles on every new input.
+ * entity).
  */
 export interface PoolFrame {
   readonly snapshot: WorldSnapshot;
@@ -85,7 +82,7 @@ export class SpritePool {
 
   /**
    * @param spriteLayer the renderer's shared, depth-sorted entity layer (also holds the tall map
-   *   objects) — pooled entities attach HERE.
+   *   objects) — pooled entities attach here.
    * @param textures the renderer's shared frame→texture cache.
    * @param sheet the loaded bob atlas + bindings; `undefined` draws placeholder geometry for every entity.
    */
@@ -98,11 +95,11 @@ export class SpritePool {
   /**
    * Reconcile the pool to one frame: get-or-create a display object per drawn (culled, depth-sorted)
    * entity, update it in place, order it by its feet-anchor {@link depthKey}, detach entities not drawn
-   * this frame (culled or gone), and destroy the ones that LEFT the snapshot (died). No allocation in
+   * this frame (culled or gone), and destroy the ones that left the snapshot (died). No allocation in
    * the steady state — only a first-seen entity or a growing layer set mints a new object.
    */
   reconcile(frame: PoolFrame): void {
-    // ONE pass over the snapshot yields both the culled draw list and the pre-cull liveness set the
+    // One pass over the snapshot yields both the culled draw list and the pre-cull liveness set the
     // destroy step needs — classifying every entity a second time per frame would double the scan.
     const scene = collectSpriteScene(frame.snapshot, {
       viewport: frame.viewport,
@@ -122,17 +119,14 @@ export class SpritePool {
         this.pool.set(item.ref, pe);
       }
       this.updatePooled(pe, item, frame);
-      // Depth = the feet-anchor SCREEN y (+ a small deterministic x tiebreak), the same key the tall
-      // map objects use, so a settler and the tree it walks behind sort into one painter order.
-      // NOTE this deliberately diverges from the headless `buildScene` oracle's row-major
-      // (tileY, tileX) list order: the feet-anchor screen y (∝ row under the staggered raster) is
-      // the iso-correct occlusion key once static objects interleave with entities.
-      // The per-kind bias (a settler in front of the node it stands on, a flag in front of its ground
-      // drops — plus a half-step so a flag out-sorts a co-located heap of its own kind) is a sub-pixel
-      // epsilon — far below one row's screen-y gap — so it only breaks ties at a shared feet anchor, never
-      // reordering sprites a real row apart. See SPRITE_PAINT_ORDER / FLAG_PAINT_STEP.
-      // Depth reads the DRAWN (lerped) anchor restored to its PRE-LIFT y (`+ item.lift`), so occlusion
-      // still sorts by map row while the sprite itself rides the hill.
+      // Depth = the feet-anchor screen y (+ a small deterministic x tiebreak), the same key the tall map
+      // objects use, so a settler and the tree it walks behind sort into one painter order. This
+      // deliberately diverges from the headless `buildScene` oracle's row-major (tileY, tileX) list order:
+      // the feet-anchor screen y (∝ row under the staggered raster) is the iso-correct occlusion key once
+      // static objects interleave with entities. The per-kind bias (see SPRITE_PAINT_ORDER /
+      // FLAG_PAINT_STEP) is a sub-pixel epsilon, so it only breaks ties at a shared feet anchor, never
+      // reordering sprites a real row apart. Depth reads the drawn (lerped) anchor restored to its pre-lift
+      // y (`+ item.lift`), so occlusion still sorts by map row while the sprite itself rides the hill.
       pe.container.zIndex =
         depthKey(pe.motion.drawX, pe.motion.drawY + (item.lift ?? 0)) +
         paintOrderBias(item.kind, item.isFlag === true) * SCREEN_PAINT_EPS;
@@ -152,7 +146,7 @@ export class SpritePool {
       }
     }
 
-    // Destroy sprites of entities that LEFT the snapshot (died) — not the ones merely culled off-screen.
+    // Destroy sprites of entities that left the snapshot (died) — not the ones merely culled off-screen.
     for (const ref of reconcileSprites(scene.liveRefs, this.pool.keys()).toDestroy) {
       const pe = this.pool.get(ref);
       if (pe !== undefined) {
@@ -186,15 +180,14 @@ export class SpritePool {
   }
 
   /**
-   * Re-place every currently-drawn PALETTED settler's meshes for an ALTERNATE camera + target size. The
-   * details-panel portrait "observation window" renders the world re-aimed at one unit; plain sprites +
-   * terrain ride the re-aimed `worldLayer` transform, but the team-colour meshes self-place in SCREEN space
-   * (they can't ride it), so they must be re-placed for the inset camera before that render and restored to
-   * the main camera after. Mirrors {@link bindLayers}' placement exactly (same drawn anchor + art scale).
-   * `flipY` renders the mesh upright into a bottom-up render texture (true for the inset, false to restore
-   * the on-screen render). Scans the pool (O(pooled)) but only PLACES the drawn paletted meshes (skips
-   * culled/non-paletted) — no re-cull, no re-lerp, and the placement work is O(on-screen paletted), so the
-   * per-frame cost stays screen-bounded (rule 7); only runs while a portrait is open.
+   * Re-place every currently-drawn paletted settler's meshes for an alternate camera + target size. The
+   * details-panel portrait renders the world re-aimed at one unit; plain sprites + terrain ride the re-aimed
+   * `worldLayer` transform, but the team-colour meshes self-place in screen space, so they must be re-placed
+   * for the inset camera before that render and restored to the main camera after. Mirrors {@link bindLayers}'
+   * placement exactly (same drawn anchor + art scale). `flipY` renders the mesh upright into a bottom-up
+   * render texture (true for the inset, false to restore the on-screen render). Scans the pool (O(pooled))
+   * but only places the drawn paletted meshes, so the placement work stays O(on-screen paletted); only runs
+   * while a portrait is open.
    */
   placePalettedFor(camera: Camera, resWidth: number, resHeight: number, flipY: boolean): void {
     const camScale = camera.scale ?? 1;
@@ -212,7 +205,7 @@ export class SpritePool {
   }
 
   /**
-   * Destroy EVERY pooled entity — including ones currently detached (culled off-screen), which a
+   * Destroy every pooled entity — including ones currently detached (culled off-screen), which a
    * scene-graph walk from the sprite layer can't reach because they were removed from it. Called on the
    * renderer's dispose.
    */
@@ -223,27 +216,23 @@ export class SpritePool {
 
   /**
    * Update one pooled entity for this frame: move its container to the feet anchor, then either bind its
-   * atlas layers ({@link bindLayers}) or show its placeholder geometry ({@link showPlaceholder}) —
-   * reusing objects instead of re-creating them.
+   * atlas layers ({@link bindLayers}) or show its placeholder geometry ({@link showPlaceholder}).
    */
   private updatePooled(pe: PooledEntity, item: DrawItem, frame: PoolFrame): void {
-    // Fixed-timestep interpolation over the LIFTED feet: the sim advances in 20 Hz ticks, so drawing
-    // raw snapshot anchors steps a walking bob ~8 px every third frame (the visible judder). Track the
-    // last two TICK anchors of the terrain-lifted feet (`item.y − lift`, riding the ground up a hill —
-    // the lift is bilinear along the walk, so it lerps as smoothly as the motion) and draw at
-    // `prev + (curr − prev)·alpha` — the frame's fractional progress into the current tick — so motion
-    // is continuous at any display rate, half a tick behind the sim (an imperceptible ~25 ms). See
-    // {@link trackMotion} (the pure, unit-tested half). `item.lift` is 0 on a flat map; the depth key
-    // in `reconcile` restores the PRE-LIFT y, so occlusion still sorts by map row. Bounds/paletted
-    // origin below use the drawn anchor too, so the picker's hit box tracks the drawn graphic.
+    // Fixed-timestep interpolation over the lifted feet: the sim advances in 20 Hz ticks, so drawing raw
+    // snapshot anchors steps a walking bob ~8 px every third frame. Track the last two tick anchors of the
+    // terrain-lifted feet (`item.y − lift`, riding the ground up a hill — the lift is bilinear along the
+    // walk, so it lerps as smoothly as the motion) and draw at `prev + (curr − prev)·alpha`, the frame's
+    // fractional progress into the current tick, so motion is continuous at any display rate, half a tick
+    // behind the sim (~25 ms). See {@link trackMotion} for the pure half. `item.lift` is 0 on a flat map.
+    // Bounds/paletted origin below use the drawn anchor too, so the picker's hit box tracks the graphic.
     trackMotion(pe.motion, frame.tick, item.x, item.y - (item.lift ?? 0), frame.alpha);
     pe.container.position.set(pe.motion.drawX, pe.motion.drawY);
-    // Sticky facing: a MOVING settler that dropped its PathFollow for a tick (the repath gap — state stays
+    // Sticky facing: a moving settler that dropped its PathFollow for a tick (the repath gap — state stays
     // `moving` via MoveGoal/PathRequest but there is no heading to read) reuses its last real heading so the
     // walk doesn't flip to DEFAULT_FACING for a frame each tile (the pool half of what `readSpriteState`
-    // smooths). Gating on `state === 'moving'` is what keeps the spread to that RARE gap frame: an IDLE
-    // settler ALSO has no facing but must not allocate a copy every frame — it just draws the default idle
-    // facing, as before. A settler with a live heading has `facing` set and passes `item` through untouched.
+    // smooths). Gating on `state === 'moving'` keeps the per-frame copy to that gap frame: an idle settler
+    // also has no facing but must draw the default idle facing rather than allocate every frame.
     if (item.facing !== undefined) pe.lastFacing = item.facing;
     const drawItem =
       pe.kind === 'settler' &&
@@ -252,11 +241,10 @@ export class SpritePool {
       pe.lastFacing !== undefined
         ? { ...item, facing: pe.lastFacing }
         : item;
-    // The moving-state walk cycle runs on the motion-scaled gait clock (feet track ground covered —
-    // a body-pressed or braking walker's legs slow instead of jogging in place); everything else
-    // (idle loops, action clocks) stays on the free tick. A GHOST binds at a FROZEN clock instead:
-    // it is a memory, not a live feed — an animating ghost (a mill's turning sails under the fog)
-    // would leak that the fogged building is still manned.
+    // The moving-state walk cycle runs on the motion-scaled gait clock (feet track ground covered — a
+    // body-pressed or braking walker's legs slow instead of jogging in place); everything else (idle loops,
+    // action clocks) stays on the free tick. A ghost binds at a frozen clock: an animating ghost (a mill's
+    // turning sails under the fog) would leak that the fogged building is still manned.
     const animTick = item.ghost === true ? 0 : frame.tick;
     const layers = resolveLayers(this.sheet, drawItem, animTick, Math.floor(pe.motion.gaitPhase));
     if (layers === null) {
@@ -268,7 +256,7 @@ export class SpritePool {
   }
 
   /** Show (lazily building) the placeholder marker — the unbound / no-sheet fallback — and stamp the
-   *  entity's bounds from the placeholder's fixed body box. Any atlas sprites are hidden. A PROJECTILE
+   *  entity's bounds from the placeholder's fixed body box. Any atlas sprites are hidden. A projectile
    *  always draws this path (no decoded arrow bob exists): its arrow flies at body height and rotates
    *  to the item's flight heading each frame. */
   private showPlaceholder(pe: PooledEntity, item: DrawItem): void {
@@ -282,7 +270,7 @@ export class SpritePool {
     // The ghost dim + no-hit-bounds contract holds on the placeholder path too (see bindLayers).
     pe.placeholder.tint = item.ghost === true ? FOG_GHOST_TINT : 0xffffff;
     // Rotation applies about the graphic's own origin (the shaft centre), so the flight-height offset
-    // above is NOT rotated with it — the arrow stays level above its ground anchor and only aims.
+    // above is not rotated with it — the arrow stays level above its ground anchor and only aims.
     if (pe.kind === 'projectile') pe.placeholder.rotation = item.rotation ?? 0;
     if (item.ghost === true) return;
     const { bodyW, bodyH } = placeholderBody(pe.kind);
@@ -294,31 +282,31 @@ export class SpritePool {
 
   /**
    * Bind the entity's resolved atlas layers onto its pooled sprites (growing the sprite list only when a
-   * frame needs MORE layers than any before), and stamp the union of the drawn rects as the entity's
-   * world-space bounds. A PALETTED settler binds {@link PalettedSprite} meshes (screen-space,
+   * frame needs more layers than any before), and stamp the union of the drawn rects as the entity's
+   * world-space bounds. A paletted settler binds {@link PalettedSprite} meshes (screen-space,
    * self-placed); every other entity binds plain cached sub-textures.
    */
   private bindLayers(pe: PooledEntity, item: DrawItem, layers: ResolvedLayer[], frame: PoolFrame): void {
     const drawX = pe.motion.drawX;
     const drawY = pe.motion.drawY;
-    // A PALETTED settler draws team-coloured PalettedSprite meshes. A custom-shader mesh can't ride the
-    // camera-transformed spriteLayer (Pixi leaves its transform UBO unbound), so it SELF-places in screen
+    // A paletted settler draws team-coloured PalettedSprite meshes. A custom-shader mesh can't ride the
+    // camera-transformed spriteLayer (Pixi leaves its transform UBO unbound), so it self-places in screen
     // space — mirror the camera the plain sprites inherit: screen feet-anchor = camera applied to this
-    // entity's DRAWN (lerped) anchor. Cheap to compute once; unused on the plain-sprite path.
+    // entity's drawn (lerped) anchor. Unused on the plain-sprite path.
     const camScale = frame.camera.scale ?? 1;
     const originX = cameraScreenX(frame.camera, drawX);
     const originY = cameraScreenY(frame.camera, drawY);
     const playerRow = item.player ?? 0; // an unowned settler reads LUT row 0 (the base palette)
-    // Accumulate the union of the drawn layers' rects (feet-local) → the entity's exact sprite bounds. The
-    // bounds live in WORLD-screen space (item.x + feet-local offsets), the same for a mesh or a plain sprite,
-    // so the picker/selection ring reads one consistent box regardless of how the layer was drawn.
+    // Accumulate the union of the drawn layers' rects (feet-local) → the entity's exact sprite bounds, in
+    // world-screen space (item.x + feet-local offsets) for a mesh or a plain sprite alike, so the
+    // picker/selection ring reads one consistent box regardless of how the layer was drawn.
     let minX = Number.POSITIVE_INFINITY;
     let minY = Number.POSITIVE_INFINITY;
     let maxX = Number.NEGATIVE_INFINITY;
     let maxY = Number.NEGATIVE_INFINITY;
-    // Ease the DISPLAYED construction reveal toward the layers' target (they share one, keyed off the
+    // Ease the displayed construction reveal toward the layers' target (they share one, keyed off the
     // building's `builtPct`) so a rising building glides between the sim's per-swing steps. A first-seen
-    // site initialises straight to its target (no spurious grow-from-zero when a mid-build house scrolls in).
+    // site initialises straight to its target (no grow-from-zero when a mid-build house scrolls in).
     const revealTarget = layers.find((l) => l?.reveal !== undefined)?.reveal;
     if (revealTarget === undefined) {
       pe.reveal = undefined;
@@ -336,8 +324,8 @@ export class SpritePool {
       // A reveal layer with time data draws per-pixel: each pixel appears in place once the eased
       // progress, mapped into the stage's own [fromPct,toPct] window, reaches its baked TimeMask
       // threshold (the original's PrintBob_UsingTimeMask construction blit). `null` — no time data or
-      // no bake (headless, unreadable atlas pixels) — draws the legacy bottom-up crop below instead.
-      // Buildings never take the paletted path.
+      // no bake (headless, unreadable atlas pixels) — draws the bottom-up crop below instead. Buildings
+      // never take the paletted path.
       const revealTexture =
         layer.reveal !== undefined &&
         displayReveal !== undefined &&
@@ -368,7 +356,7 @@ export class SpritePool {
           pe.sprites[i] = spr;
           pe.container.addChild(spr);
         }
-        // The mesh samples the INDEXED atlas by UV, so it needs the sheet size; the frame's own draw offset
+        // The mesh samples the indexed atlas by UV, so it needs the sheet size; the frame's own draw offset
         // is baked into its quad, and place() maps native pixels → screen at the camera zoom (× the layer
         // art scale) about the feet anchor. `player` selects the LUT row (the team colour).
         spr.setFrame(
@@ -410,7 +398,7 @@ export class SpritePool {
       // An animated state overlay (the mill's rotor) draws but never moves the entity's box — its spin
       // frames breathe in size/offset, and the box feeds the selection ring + portrait framing.
       if (layer.boundsExempt === true) continue;
-      // A reveal layer stamps its FULL frame rect (not just the risen part): a construction site is
+      // A reveal layer stamps its full frame rect (not just the risen part): a construction site is
       // picked over the final building's whole box, so a barely-started foundation is still clickable.
       const boundsOy = layer.reveal !== undefined ? oy : drawnOy;
       const boundsH = layer.reveal !== undefined ? layer.frame.height * layer.scale : drawnH;
@@ -424,23 +412,23 @@ export class SpritePool {
       const s = pe.sprites[i];
       if (s !== undefined) s.visible = false;
     }
-    // A fog ghost stamps NO bounds: it must not be pickable — the ref may be a dead entity, and
+    // A fog ghost stamps no bounds: it must not be pickable — the ref may be a dead entity, and
     // click-selecting a live one through the fog would leak its current state into the details panel.
     if (minX <= maxX && item.ghost !== true) {
       this.stampBounds(pe, drawX + minX, drawY + minY, drawX + maxX, drawY + maxY);
     }
   }
 
-  /** Whether an entity of `kind` draws team-coloured {@link PalettedSprite} meshes: a settler, with BOTH the
+  /** Whether an entity of `kind` draws team-coloured {@link PalettedSprite} meshes: a settler, with both the
    *  player-colour LUT ({@link SpriteSheet.palette}) and the indexed {@link SpriteSheet.characters} loaded
    *  (real graphics + the pipeline's colour stage). Fixed for the pool's life — the sheet never changes — so
-   *  a pooled entity's sprite CLASS is decided once at creation. Without the LUT this is false everywhere and
-   *  every entity draws plain {@link Sprite}s exactly as before. */
+   *  a pooled entity's sprite class is decided once at creation. Without the LUT this is false everywhere and
+   *  every entity draws plain {@link Sprite}s. */
   private isPaletted(kind: SpriteKind): boolean {
     return kind === 'settler' && this.sheet?.palette !== undefined && this.sheet.characters !== undefined;
   }
 
-  /** Restamp a pooled entity's bounds IN PLACE for this frame — no allocation in the per-frame pass. */
+  /** Restamp a pooled entity's bounds in place for this frame — no allocation in the per-frame pass. */
   private stampBounds(pe: PooledEntity, minX: number, minY: number, maxX: number, maxY: number): void {
     pe.bounds.minX = minX;
     pe.bounds.minY = minY;

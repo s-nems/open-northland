@@ -5,15 +5,15 @@ import { readActingAtomic, readBuiltPct, readPosition } from './snapshot-readers
  * The per-snapshot memoized pre-scans {@link import('./sprite-scene.js').collectSpriteScene} reads before
  * the per-entity loop: the enterable-store set (which settlers are hidden mid-exchange) and the target
  * position index (to face a mid-swing actor / aim a projectile). Both are pure functions of the frozen
- * snapshot, memoized on its object identity — `collectSpriteScene` runs per FRAME while the snapshot
- * changes per TICK, so each scan happens once per tick, not once per frame. Plus the atomic-id contract
+ * snapshot, memoized on its object identity — `collectSpriteScene` runs per frame while the snapshot
+ * changes per tick, so each scan happens once per tick, not once per frame. Plus the atomic-id contract
  * that decides which actors face their target.
  */
 
 /**
  * The atomic id of a combat attack swing — the original's `setatomic <job> 81 "..._attack"` (id 81 is
  * the attack slot across every fighting job; the sim's `ATTACK_ATOMIC_ID`, `systems/conflict/weapons.ts`).
- * A settler mid-attack has stopped moving, so it has no walk heading; it FACES its target instead (the
+ * A settler mid-attack has stopped moving, so it has no walk heading; it faces its target instead (the
  * attacker→target screen step). The same numeric contract as the sim, transcribed here (like
  * {@link TARGET_FACING_ATOMIC_IDS}) rather than imported — render reads the snapshot's plain ids, never sim code.
  */
@@ -32,10 +32,10 @@ const HARVEST_ATOMIC_IDS = {
 } as const;
 
 /**
- * Every atomic whose runner FACES its target while the swing plays: the combat attack plus the per-good
+ * Every atomic whose runner faces its target while the swing plays: the combat attack plus the per-good
  * harvest actions ({@link HARVEST_ATOMIC_IDS}). A harvester, like an attacker, has stopped walking (no
  * walk heading), so without a target-derived facing it kept its last walk heading (or the default SE) and
- * swung its axe/pick into empty air BESIDE the node it works — a woodcutter standing east of a tree
+ * swung its axe/pick into empty air beside the node it works — a woodcutter standing east of a tree
  * chopped further east. Facing the node it targets is what the original does (`atomicanimations.ini` even
  * carries `startdirection` pins for a subset).
  */
@@ -44,15 +44,14 @@ export const TARGET_FACING_ATOMIC_IDS: ReadonlySet<number> = new Set([
   ...Object.values(HARVEST_ATOMIC_IDS),
 ]);
 
-/** Per-snapshot memo of {@link enterableStoresOf} — the set is a pure function of the snapshot, and
- *  {@link import('./sprite-scene.js').collectSpriteScene} runs per FRAME while the snapshot changes per
- *  TICK, so rebuilding it each frame was a second full entity pass against the function's own one-pass rule. */
+/** Per-snapshot memo of {@link enterableStoresOf}, keyed on snapshot identity — the module doc's
+ *  per-frame-vs-per-tick memo, so this full entity pass runs once per tick, not once per frame. */
 const enterableStoresBySnapshot = new WeakMap<WorldSnapshot, ReadonlySet<number>>();
 
 /**
- * COMPLETED buildings (built, not a construction site) — the "enterable store" set. A settler whose
- * running atomic exchanges goods with one of these (a pileup deposit / a pickup lift) is NOT drawn:
- * the original's carrier walks INTO the house and vanishes for the exchange (observed), so hiding it
+ * Completed buildings (built, not a construction site) — the "enterable store" set. A settler whose
+ * running atomic exchanges goods with one of these (a pileup deposit / a pickup lift) is not drawn:
+ * the original's carrier walks into the house and vanishes for the exchange (observed), so hiding it
  * for the atomic's duration reads as entering, instead of a deposit pantomimed at the door. A ground
  * pile / flag / construction site is not enterable — those exchanges keep their animation.
  */
@@ -78,14 +77,13 @@ const EMPTY_POS_INDEX: ReadonlyMap<number, { x: number; y: number }> = new Map()
 const targetPosBySnapshot = new WeakMap<WorldSnapshot, ReadonlyMap<number, { x: number; y: number }>>();
 
 /**
- * The `entity id → live Position` index used to FACE a mid-swing attacker/harvester at its target and to
+ * The `entity id → live Position` index used to face a mid-swing attacker/harvester at its target and to
  * aim an in-flight projectile — random access by id that `WorldSnapshot` carries no structure for. Built
- * ONLY for a snapshot that actually has such an actor (a cheap early-exit scan decides; a scene with
+ * only for a snapshot that actually has such an actor (a cheap early-exit scan decides; a scene with
  * nobody working, fighting or shooting memoizes the shared empty index and does no per-entity work), and
- * memoized per snapshot: {@link import('./sprite-scene.js').collectSpriteScene} runs per FRAME while the
- * snapshot changes per TICK, so both the scan and the fill happen once per tick, not once per frame. Stores
- * the snapshot's OWN Position object (readPosition returns it, not a copy), so the fill is N `Map.set`s
- * with NO per-entity allocation/divide; the `/ONE` to tile space is deferred to the rare facing lookups. Pure.
+ * memoized per snapshot (the module doc's per-frame-vs-per-tick memo). Stores the snapshot's own Position
+ * object (readPosition returns it, not a copy), so the fill is N `Map.set`s with no per-entity
+ * allocation/divide; the `/ONE` to tile space is deferred to the rare facing lookups.
  */
 export function targetPositionsOf(snapshot: WorldSnapshot): ReadonlyMap<number, { x: number; y: number }> {
   const cached = targetPosBySnapshot.get(snapshot);

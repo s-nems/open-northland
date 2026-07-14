@@ -23,7 +23,7 @@ export interface TerrainBatch {
   readonly indices: number[];
   /**
    * Per-vertex UVs into the map's brightness-lane texture (2 per position pair) — pushed by the
-   * caller in lockstep with {@link positions} ONLY on a shaded map (`BrightnessField.shaded`);
+   * caller in lockstep with {@link positions} only on a shaded map (`BrightnessField.shaded`);
    * left empty on the unshaded path so its geometry (and draw pipeline) stays byte-identical.
    */
   readonly brightnessUVs: number[];
@@ -52,12 +52,12 @@ export function meshGeometry(batch: TerrainBatch): MeshGeometry {
 }
 
 /**
- * The per-(layer × texture-page) batch accumulator for ONE chunk, shared by the two textured build
+ * The per-(layer × texture-page) batch accumulator for one chunk, shared by the two textured build
  * paths (1:1 ground and per-typeId): get-or-create a batch per page per {@link TerrainLayerKind},
  * trace unbound triangles into a shared fallback {@link Graphics}, then emit one {@link Mesh} per
  * batch in layer paint order (fallback first, then base pages, then the two overlay layers) — so
  * the draw-call count per block is ~one per touched page per layer, and the translucent transition
- * overlays composite over the opaque ground by child order alone. SINGLE-USE per chunk build:
+ * overlays composite over the opaque ground by child order alone. Single-use per chunk build:
  * accumulate first, then call {@link children} exactly once.
  */
 export class ChunkBatcher {

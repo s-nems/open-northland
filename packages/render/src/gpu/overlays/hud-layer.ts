@@ -2,16 +2,16 @@ import { Container, Graphics, Text } from 'pixi.js';
 import type { HudPlacement } from '../../data/hud.js';
 
 /**
- * The retained HUD overlay — a pinned panel (NOT under the camera), repainted from a placed
+ * The retained HUD overlay — a pinned panel (not under the camera), repainted from a placed
  * {@link import('../data/hud.js').HudPlacement}. The load-bearing decisions (which number, laid out
- * where) are the pure `hud.ts` half a human doesn't need for; this is only the pixel repaint + the
- * tunable style (colour/font/opacity).
+ * where) are the pure `hud.ts` half; this is only the pixel repaint + the tunable style
+ * (colour/font/opacity).
  *
- * RETAINED like every other layer ({@link import('./world-renderer.js').WorldRenderer} calls
+ * Retained like every other layer ({@link import('./world-renderer.js').WorldRenderer} calls
  * {@link draw} every frame): the panel {@link Graphics} and a {@link Text} pool persist across frames,
  * and a row's `.text` is only reassigned when the string actually changed — a Pixi `Text` re-rasterizes
- * its glyphs on every text/style write, so the old create-N-Texts-per-frame repaint was per-frame canvas
- * rasterization + GC churn for a panel that changes maybe once a second (a tick counter line).
+ * its glyphs on every text/style write, so repainting every row per frame would be canvas rasterization +
+ * GC churn for a panel that changes maybe once a second (a tick counter line).
  */
 
 /** Visual style for the HUD panel — the part a human tunes (colour/font/opacity). */
@@ -51,14 +51,14 @@ function sameStyle(a: HudStyle, b: HudStyle): boolean {
 }
 
 export class HudLayer {
-  /** The overlay container — a sibling of the world layer (NOT under the camera), so it stays pinned. */
+  /** The overlay container — a sibling of the world layer (not under the camera), so it stays pinned. */
   readonly container = new Container();
   /** The panel backdrop, repainted only when its box or style changes. */
   private readonly panel = new Graphics();
   /** The pooled text rows, grown on demand and hidden (never destroyed) when a frame needs fewer. */
   private readonly rows: Text[] = [];
   /** Monotonic style generation + the generation each pooled row was last styled at — a row hidden
-   *  across a style change is restyled on REUSE (the hide loop doesn't touch styles), never stale. */
+   *  across a style change is restyled on reuse (the hide loop doesn't touch styles), never stale. */
   private styleGen = 0;
   private readonly rowStyleGen: number[] = [];
   private lastStyle: HudStyle | undefined;
@@ -78,7 +78,7 @@ export class HudLayer {
     this.container.visible = true;
     const style = hud.style ?? DEFAULT_HUD_STYLE;
     const styleChanged = this.lastStyle === undefined || !sameStyle(style, this.lastStyle);
-    // Snapshot the style by VALUE — a caller may legally mutate one options object in place, and a
+    // Snapshot the style by value — a caller may legally mutate one options object in place, and a
     // stored reference would then always compare equal to itself and mask the change.
     if (styleChanged) {
       this.lastStyle = { ...style };
@@ -108,7 +108,7 @@ export class HudLayer {
         this.container.addChild(text);
       } else {
         // Only touch what re-rasterizes: `.text`/`.style` writes redraw the glyph canvas, a position
-        // write is a cheap transform update. Compare per-row GENERATIONS (not just this frame's
+        // write is a cheap transform update. Compare per-row generations (not just this frame's
         // `styleChanged`): a row that sat hidden across a style change was skipped then, so it
         // restyles here on reuse.
         if (this.rowStyleGen[i] !== this.styleGen) {

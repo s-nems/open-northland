@@ -8,18 +8,18 @@ import type { TextureCache } from '../texture-cache.js';
 import { type MapObjectSprite, objectFrameAt } from './map-object-sprite.js';
 
 /**
- * The TALL landscape objects (trees, stones — anything that occludes a settler): pooled sprites in the
- * renderer's shared ENTITY layer, depth-sorted against settlers/buildings by their world-`y` feet anchor
- * and viewport-culled each frame. A member's sprite is minted on FIRST visibility (a big map holds
+ * The tall landscape objects (trees, stones — anything that occludes a settler): pooled sprites in the
+ * renderer's shared entity layer, depth-sorted against settlers/buildings by their world-`y` feet anchor
+ * and viewport-culled each frame. A member's sprite is minted on first visibility (a big map holds
  * 10k–270k tall objects, most of which never scroll into view). Split from
  * {@link import('./map-object-layer.js').MapObjectLayer}, which owns the flat decor half and buckets the
  * placements into the per-block groups this consumes.
  */
 
-/** One tall (non-decor) map object: its static draw data + a LAZILY-minted pooled sprite. */
+/** One tall (non-decor) map object: its static draw data + a lazily-minted pooled sprite. */
 interface PooledObject {
   readonly obj: MapObjectSprite;
-  /** Minted on first visibility (a big map holds 10k–270k tall objects; most never scroll into view). */
+  /** Null until minted on first visibility. */
   sprite: Sprite | null;
   attached: boolean;
   /** The sprite's undimmed tint (the baked-shading multiplier, or white) — computed at mint so the
@@ -27,14 +27,14 @@ interface PooledObject {
   baseTint: number;
   /** {@link import('../../data/fog.js').fogGhostTint} of {@link baseTint} — the explored-ground dim. */
   ghostTint: number;
-  /** Whether the last bound frame was picked on the LIVE clock (visible ground) or the frozen one
+  /** Whether the last bound frame was picked on the live clock (visible ground) or the frozen one
    *  (a ghosted, explored-only object) — a state flip rebinds once even mid-animation-tick. */
   lastWatched: boolean;
 }
 
 /**
  * One block of tall map objects, AABB-culled as a whole before its members are point-tested — the
- * per-frame cull cost tracks the SCREEN (visible blocks), not the map (the render contract; a
+ * per-frame cull cost tracks the screen (visible blocks), not the map (the render contract; a
  * whole-map flat scan would be an O(objects) loop per frame on maps with 10k–270k trees).
  */
 interface TallBlock {
@@ -50,13 +50,13 @@ interface TallBlock {
 export class TallObjectLayer {
   /** Tall map objects (trees, stones) in AABB-culled blocks; sprites minted lazily on first view. */
   private blocks: TallBlock[] = [];
-  /** Removal handle per TALL object — which block holds it (see {@link remove}). */
+  /** Removal handle per tall object — which block holds it (see {@link remove}). */
   private blockByObject = new Map<MapObjectSprite, TallBlock>();
   /** The animation tick the tall-object frames were last refreshed for. */
   private lastAnimTick = -1;
 
   /**
-   * @param spriteLayer the renderer's shared, depth-sorted entity layer — tall objects attach HERE so
+   * @param spriteLayer the renderer's shared, depth-sorted entity layer — tall objects attach here so
    *   they interleave with settlers/buildings in one painter order.
    * @param textures the renderer's shared frame→texture cache.
    */
@@ -68,7 +68,7 @@ export class TallObjectLayer {
   /**
    * Build the AABB-culled blocks from the tall placements grouped by chunk key (the split is
    * {@link import('./map-object-layer.js').MapObjectLayer.set}'s — it partitions decor from tall). Each
-   * block's box covers only the feet ANCHORS (the per-object cull is a point test against the
+   * block's box covers only the feet anchors (the per-object cull is a point test against the
    * margin-inflated viewport), and every member starts sprite-less (minted on first visibility).
    */
   build(tallByBlock: Map<string, MapObjectSprite[]>): void {
@@ -78,8 +78,7 @@ export class TallObjectLayer {
       let maxX = Number.NEGATIVE_INFINITY;
       let maxY = Number.NEGATIVE_INFINITY;
       for (const obj of block) {
-        // The block box only needs to cover the feet ANCHORS (the per-object cull is a point test
-        // against the margin-inflated viewport, same convention as the entity cull).
+        // Box covers only the feet anchors; the per-object cull is a point test against it.
         minX = Math.min(minX, obj.x);
         minY = Math.min(minY, obj.y);
         maxX = Math.max(maxX, obj.x);
@@ -106,7 +105,7 @@ export class TallObjectLayer {
   }
 
   /**
-   * Take ONE tall object out of the built blocks (the `?map=` handover: a virgin resource node is first
+   * Take one tall object out of the built blocks (the `?map=` handover: a virgin resource node is first
    * worked, so its static drawing is removed and the live pool draws it from then on) — its pooled sprite
    * is detached + destroyed and its member dropped from the block. Returns whether the object was a tall
    * one (so the caller can try the decor half when it wasn't). O(block members), only on first-touch.
@@ -126,7 +125,7 @@ export class TallObjectLayer {
   }
 
   /**
-   * Detach a tall object's pooled sprite from the shared entity layer, returning whether it WAS attached
+   * Detach a tall object's pooled sprite from the shared entity layer, returning whether it was attached
    * (so the caller keeps its block's `attachedCount` correct — some callers zero the counter in bulk,
    * others decrement per member). Leaves the sprite pooled for re-attach; does not destroy it.
    */
@@ -140,15 +139,15 @@ export class TallObjectLayer {
   /**
    * Advance the tall objects for one frame: block-cull to the viewport, then per-member point-test the
    * visible blocks — the scan cost tracks the visible blocks, not the map. A member's sprite is minted on
-   * FIRST visibility and depth-sorted against entities by its feet anchor (the same world-`y` key the
+   * first visibility and depth-sorted against entities by its feet anchor (the same world-`y` key the
    * entity containers use); its texture is refreshed only on attach or an animation-tick advance.
    *
-   * `fogStateOfCell` is the fog-of-war gate over CELL coords (the viewer's effective `FOG_STATE`): a tall
-   * object (a tree/stone — a strategic resource) on UNEXPLORED ground is treated exactly like a
-   * viewport-culled one (detached, kept pooled for when the fog lifts); on EXPLORED ground it draws DIMMED
-   * to the ghost grading with its animation FROZEN (a ghost is a memory, not a live feed) — a virgin map
+   * `fogStateOfCell` is the fog-of-war gate over cell coords (the viewer's effective `FOG_STATE`): a tall
+   * object (a tree/stone — a strategic resource) on unexplored ground is treated exactly like a
+   * viewport-culled one (detached, kept pooled for when the fog lifts); on explored ground it draws dimmed
+   * to the ghost grading with its animation frozen (a ghost is a memory, not a live feed) — a virgin map
    * object never changes until first worked (the handover removes it at that moment), so the real object
-   * IS its own last-seen ghost, and RECON's known-terrain view shows the map's resources from the start.
+   * is its own last-seen ghost, and RECON's known-terrain view shows the map's resources from the start.
    */
   update(vp: Viewport, tick: number, fogStateOfCell?: (cellX: number, cellY: number) => number): void {
     const animAdvanced = tick !== this.lastAnimTick;
@@ -185,12 +184,11 @@ export class TallObjectLayer {
         }
         // Explored-but-unwatched ground dims the object to the ghost grading; re-assigned per frame
         // (a pick between two cached colours — Pixi's tint setter no-ops on an unchanged value).
-        // UNEXPLORED never reaches here (detached above), so VISIBLE is the one live state.
+        // Unexplored never reaches here (detached above), so visible is the one live state.
         const watched = fogState === FOG_STATE.VISIBLE;
         po.sprite.tint = watched ? po.baseTint : po.ghostTint;
-        // A ghosted object's animation FREEZES (a memory, not a live feed — swaying trees under the
-        // fog read as watched ground): unwatched frames bind at a fixed clock, live ones advance;
-        // a watched↔ghosted flip rebinds once so the pose switches with the tint.
+        // A ghosted object's animation freezes: unwatched frames bind at a fixed clock, live ones
+        // advance; a watched↔ghosted flip rebinds once so the pose switches with the tint.
         if (
           !po.attached ||
           watched !== po.lastWatched ||

@@ -7,34 +7,29 @@ import { resolveSettlerBobId } from './settler.js';
 import type { SettlerStateBinding } from './settler-bindings.js';
 
 /**
- * The top-level frame-selection dispatch: one entry point that routes a drawable
- * {@link DrawItem} to its kind's resolver. This is the PURE half of "draw a sprite from the bob
- * atlas" — the part an agent CAN self-verify, kept separate from the GPU texture binding (the
- * un-self-verifiable pixel half, deferred to a human).
+ * The top-level frame-selection dispatch: one entry point that routes a drawable {@link DrawItem} to
+ * its kind's resolver, kept separate from the GPU texture binding.
  */
 
 /**
  * Resolve the atlas bob id a drawable {@link DrawItem} should draw — the frame *selection* alone (no
- * atlas lookup), so the GPU layer can draw the **same** id from several layered atlases (body + head)
- * without re-deciding per layer. Returns `null` for a terrain tile or an unbound kind. A settler's id
- * is chosen by state + facing + `tick` via {@link resolveSettlerBobId} (animated/directional when the
- * binding is a {@link import('./bindings.js').DirectionalAnim}); a building's by its `typeId` via
- * {@link resolveBuildingDraw} (its own house bob when the binding is a
- * {@link BuildingTypeBinding}); a resource by its `goodType` via {@link resolveResourceDraw} (its own
- * species/deposit node); a stockpile by its good + fill via {@link resolveStockpileDraw} (a per-good
- * pile, or the flag when empty). Pure.
+ * atlas lookup), so the GPU layer can draw the same id from several layered atlases (body + head)
+ * without re-deciding per layer. Returns `null` for a terrain tile or an unbound kind. Routes a
+ * settler to {@link resolveSettlerBobId} (by state + facing + `tick`), a building to
+ * {@link resolveBuildingDraw} (by `typeId`), a resource to {@link resolveResourceDraw} (by
+ * `goodType`), and a stockpile to {@link resolveStockpileDraw} (by good + fill).
  */
 export function resolveSpriteBobId(item: DrawItem, bindings: SpriteBindings, tick = 0): number | null {
   if (item.kind === 'tile') return null; // tiles bind by typeId, not these per-kind bindings
   // A projectile never binds an atlas frame (no decoded arrow bob exists) — the GPU pool draws its
   // oriented-arrow marker instead (see gpu/sprite-pool/placeholder.ts).
   if (item.kind === 'projectile') return null;
-  // A ground drop (freshly-felled trunk) draws its per-good pickup-stage frame from the `trunk` binding via
-  // the SAME per-good resolver a node uses; the DrawKind ('grounddrop', the entity) and binding key ('trunk',
-  // the graphic) differ, so it is resolved explicitly rather than through the generic `bindings[kind]` lookup.
-  // (resolveResourceDraw's null means an INVISIBLE level; this bare-atlas path collapses it to the
-  // placeholder — the synthetic/debug sheet deliberately shows every entity. The real GPU path
-  // (gpu/sprite-pool/resolve-layers.ts) draws nothing instead.)
+  // A ground drop (freshly-felled trunk) draws its per-good pickup-stage frame from the `trunk` binding
+  // via the per-good resource resolver; the DrawKind ('grounddrop') and binding key ('trunk') differ, so
+  // it is resolved explicitly rather than through the generic `bindings[kind]` lookup. resolveResourceDraw's
+  // null means an invisible level; this bare-atlas path collapses it to the placeholder so the
+  // synthetic/debug sheet shows every entity, where the GPU path (gpu/sprite-pool/resolve-layers.ts) draws
+  // nothing.
   if (item.kind === 'grounddrop')
     return bindings.trunk === undefined ? null : (resolveResourceDraw(bindings.trunk, item)?.bob ?? null);
   const binding = bindings[item.kind];
@@ -63,10 +58,8 @@ export function resolveSpriteBobId(item: DrawItem, bindings: SpriteBindings, tic
  * mid-swing its `acting` frame — when the binding is a {@link SettlerStateBinding}; a plain-number
  * settler binding draws the same frame regardless of state (back-compat).
  *
- * Pure + total: a function of the item + the two tables only, no I/O or GPU. The GPU layer calls this
- * per draw item; a `null` keeps the current placeholder geometry, a frame is the atlas rect to blit.
- * This is the load-bearing data decision (which sprite) made self-verifiable; the un-self-verifiable
- * part (binding the rect to a texture and sampling pixels) stays on the GPU side for a human to judge.
+ * The GPU layer calls this per draw item; a `null` keeps the current placeholder geometry, a frame is
+ * the atlas rect to blit.
  */
 export function resolveSpriteFrame(
   item: DrawItem,

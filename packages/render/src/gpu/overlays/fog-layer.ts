@@ -5,29 +5,29 @@ import { TILE_HALF_H, TILE_HALF_W } from '../../data/iso.js';
 import { type Viewport, visibleTileRange } from '../../data/viewport.js';
 
 /**
- * The FOG-OF-WAR wash — the viewer player's visibility mask drawn over the ground: OPAQUE BLACK over
+ * The fog-of-war wash — the viewer player's visibility mask drawn over the ground: opaque black over
  * unexplored cells (nothing shows), a translucent dark wash over explored-but-unwatched cells (the
  * "terrain only" grey — entities there are separately fog-culled by the sprite pool / map-object
  * layer), and nothing over currently-visible cells. Which cell is which is decided upstream by the
  * sim's VisionSystem and handed here as a {@link FogView}; this layer is a pure projection.
  *
- * Implementation: ONE texture at **one texel per cell** (black texels, alpha by state), stretched
- * over the visible cell band and sampled with LINEAR filtering — the GPU's bilinear interpolation
+ * Implementation: one texture at one texel per cell (black texels, alpha by state), stretched
+ * over the visible cell band and sampled with linear filtering — the GPU's bilinear interpolation
  * spreads each state transition across a whole cell (~68 px), which is what melts the mask into the
  * soft, grid-free fog gradient every classic RTS shows. (A first cut composited per-cell diamonds at
  * reduced resolution, the build-overlay recipe — its half-cell zig-zag steps stayed readably hard at
  * any composite scale, because the softness of that recipe is only ever one composite texel wide.)
  *
- * TWO NAMED APPROXIMATIONS, both invisible under a cell-wide gradient: the rectangular texel lattice
+ * Two named approximations, both invisible under a cell-wide gradient: the rectangular texel lattice
  * ignores the odd-row half-cell stagger (fog is offset ≤ half a cell on odd rows), and the wash does
  * not ride the terrain elevation lift (a lifted hill's fog edge sits up to `maxLift` px low). The
  * minimap's fog mask shares the first one.
  *
- * SCREEN-BOUNDED + RETAINED (golden rule 6): only the visible cell band is rasterized, and only when
+ * Screen-bounded + retained (golden rule 6): only the visible cell band is rasterized, and only when
  * the band moved or the fog masks actually rebuilt (`FogView.generation` — the VisionSystem cadence,
- * a few times a second); a still camera over a still fog re-uploads nothing. Drawn in WORLD space
+ * a few times a second); a still camera over a still fog re-uploads nothing. Drawn in world space
  * above the terrain + flat decor and below the sprite layer: a fog-culled entity never draws at all,
- * so nothing legitimate can sit on fogged ground above the wash. The alphas are TUNED BY EYE (the
+ * so nothing legitimate can sit on fogged ground above the wash. The alphas are tuned by eye (the
  * grey layer is our modern addition — source basis "observed original behavior"; a human signs off).
  */
 
@@ -55,7 +55,7 @@ export class FogLayer {
 
   /**
    * Re-rasterize the wash for one frame: the visible cell band of `view`'s mask; `null` clears it
-   * (fog OFF). Skipped entirely while the band AND the fog generation are unchanged.
+   * (fog off). Skipped entirely while the band and the fog generation are unchanged.
    */
   update(view: FogView | null, vp: Viewport): void {
     if (view === null) {
@@ -75,7 +75,7 @@ export class FogLayer {
     const texture = this.texture;
     if (texture === null) return; // ensureTexture always sets it
 
-    // One texel per band cell: black RGB, alpha by state. The texture may be quantized LARGER than
+    // One texel per band cell: black RGB, alpha by state. The texture may be quantized larger than
     // the band — the sprite below crops to the band via the texture frame, so slack texels never show.
     const buf = this.buffer;
     for (let j = 0; j < bandH; j++) {
@@ -95,7 +95,7 @@ export class FogLayer {
     // texel (i, j) centres on cell (minCol+i, minRow+j) — cell centres sit at (2c·HALF_W, r·HALF_H)
     // (even rows; the odd-row stagger is the named approximation above), so the box starts half a
     // texel before the first centre and spans one full cell pitch per texel. `texture.update()` (not
-    // a bare `updateUvs()`) is REQUIRED after the frame mutation: it emits the texture's `update`
+    // a bare `updateUvs()`) is required after the frame mutation: it emits the texture's `update`
     // event, which is the only signal a bound `dynamic` Sprite re-reads UVs on — without it the
     // sprite keeps the previous band's UVs and the wash draws a wrong-sized mask slice the moment a
     // zoom changes the band dimensions (the fog-detaches-from-terrain corruption).
@@ -124,7 +124,7 @@ export class FogLayer {
     this.texH = Math.max(quantH, this.texH);
     this.texture?.destroy(true);
     this.buffer = new Uint8Array(this.texW * this.texH * 4); // RGB stay 0 (black); alpha is written per band
-    // LINEAR sampling is the whole trick: one texel per cell, so the GPU's bilinear filter spreads a
+    // Linear sampling is the whole trick: one texel per cell, so the GPU's bilinear filter spreads a
     // state change across a full cell — the soft fog gradient. An explicit `frame` (so `noFrame`
     // stays false and `texture.update()` cannot clobber the band crop back to the full source) +
     // `dynamic: true` (so the Sprite subscribes to `update` and re-reads UVs when the band resizes)

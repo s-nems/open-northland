@@ -1,6 +1,6 @@
 /**
  * The CPU-readable image kinds a loaded Pixi texture's `TextureSource.resource` can be — shared by the
- * consumers that need the atlas PIXELS back off the loaded image (the pick alpha masks, the construction
+ * consumers that need the atlas pixels back off the loaded image (the pick alpha masks, the construction
  * reveal bakes). Everything else (a render texture, a compressed source) is not canvas-drawable and the
  * caller degrades.
  */

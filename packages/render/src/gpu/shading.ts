@@ -5,23 +5,23 @@ import { BRIGHTNESS_NEUTRAL } from '../data/brightness.js';
  * The custom mesh shaders for the brightness-shaded ground and decor — the stock textured-mesh draw
  * plus the baked `embr` multiplier (`data/brightness.ts`). Needed because Pixi's built-in mesh shader
  * has no per-vertex/per-fragment shading lane, and a per-mesh `tint` cannot vary across a chunk —
- * while the lane both darkens (slope shadow, the border fade to 0) and BRIGHTENS (values > 127, up to
+ * while the lane both darkens (slope shadow, the border fade to 0) and brightens (values > 127, up to
  * ≈2×; the measured curve), so the multiplier must ride unclamped and the framebuffer write clamps.
  *
  * Two variants share one idea, two sampling grains:
- *  - **field** ({@link makeShadedTerrainShader}) — the GROUND mesh samples the whole lane per
- *    FRAGMENT from an R8 texture at each vertex's own cell-centre coordinate
+ *  - **field** ({@link makeShadedTerrainShader}) — the ground mesh samples the whole lane per
+ *    fragment from an R8 texture at each vertex's own cell-centre coordinate
  *    (`data/terrain.ts` {@link import('../data/terrain.js').nodeLaneUV}, interpolated across the
  *    triangle). The texture's own bilinear between those texel centres reproduces the original's
  *    smooth per-pixel banding (the map-border fade, the rock hill) instead of a per-vertex zigzag
  *    along triangle edges.
- *  - **per-vertex** ({@link makeShadedDecorShader}) — a DECOR quad batch carries one constant
+ *  - **per-vertex** ({@link makeShadedDecorShader}) — a decor quad batch carries one constant
  *    multiplier per quad (`aBrightness`, its anchor cell's value); a flat decal has no cell-space
  *    UV lattice to interpolate, and the anchor-constant is the recorded approximation.
  *
  * Batching stays intact: these swap the shader of the existing one-mesh-per-page-per-chunk draws —
  * same mesh count, same draw calls, no per-sprite filters (packages/render/AGENTS.md). Unlike
- * `PalettedSprite`, these meshes DO ride the scene-graph camera transform: for a custom mesh shader
+ * `PalettedSprite`, these meshes do ride the scene-graph camera transform: for a custom mesh shader
  * Pixi's `GlMeshAdaptor` binds the renderer's global uniforms (`uProjectionMatrix`,
  * `uWorldTransformMatrix`) and the mesh-pipe locals (`uTransformMatrix`, `uColor`) onto the shader's
  * groups, so declaring them as loose uniforms is enough (the official Pixi v8 mesh-and-shaders
@@ -108,7 +108,7 @@ let fieldProgram: GlProgram | undefined;
 let vertexProgram: GlProgram | undefined;
 
 /**
- * A {@link Shader} for the shaded GROUND mesh: draws `uTexture = source` with the per-fragment lane
+ * A {@link Shader} for the shaded ground mesh: draws `uTexture = source` with the per-fragment lane
  * multiplier sampled from `brightnessTex` (the map's `embr` bytes as an R8 texture, linear-filtered +
  * edge-clamped — the GPU twin of `makeCellSampler`) at the geometry's `aBrightnessUV`. One per
  * mesh/page; the compiled program is shared. WebGL-only, like
@@ -124,7 +124,7 @@ export function makeShadedTerrainShader(source: TextureSource, brightnessTex: Te
 }
 
 /**
- * A {@link Shader} for a shaded DECOR quad batch: draws `uTexture = source` with the constant
+ * A {@link Shader} for a shaded decor quad batch: draws `uTexture = source` with the constant
  * per-quad `aBrightness` multiplier (each quad's anchor-cell value). One per mesh/page; the compiled
  * program is shared.
  */
@@ -137,7 +137,7 @@ export function makeShadedDecorShader(source: TextureSource): Shader {
 }
 
 /**
- * Pad a row-major per-cell byte lane so each row is a multiple of `alignment` texels, REPLICATING the
+ * Pad a row-major per-cell byte lane so each row is a multiple of `alignment` texels, replicating the
  * last column into the padding. WebGL uploads with the default UNPACK_ALIGNMENT of 4 (Pixi never
  * lowers it), so an unpadded odd-width R8 grid would shear row by row; the replica columns keep the
  * right-edge clamp semantics identical to the CPU sampler (`data/cell-field.ts` `makeCellSampler`).

@@ -17,7 +17,7 @@ import type { TerrainChild } from './chunk-batcher.js';
  * world-space box meets the viewport are drawn. 32 keeps the visible-block count (≈ draw calls) low
  * while still culling tightly at the screen edges. Exported because the decor/tall map-object blocks
  * ({@link import('../map-objects/index.js').MapObjectLayer}) deliberately partition world space at the
- * SAME scale, so the two layers cull in lockstep.
+ * same scale, so the two layers cull in lockstep.
  */
 export const TERRAIN_CHUNK_TILES = 32;
 
@@ -75,7 +75,7 @@ export function positions(nodes: readonly [NodeXY, NodeXY, NodeXY], lift: NodeLi
 
 /**
  * One meshed terrain block: its display {@link Container} (built once) plus the world-space AABB used to
- * toggle `.visible` against the viewport each frame. Children hold ABSOLUTE world coords (the container
+ * toggle `.visible` against the viewport each frame. Children hold absolute world coords (the container
  * sits at the origin), so the box math and the sprite cull share one coordinate space.
  */
 export interface TerrainChunk {
@@ -88,7 +88,7 @@ export interface TerrainChunk {
 
 /**
  * Drive the chunked build: split the grid into {@link TERRAIN_CHUNK_TILES}-square blocks, hand each
- * block's inclusive tile range to `meshBlock`, wrap the display objects it returns in ONE {@link
+ * block's inclusive tile range to `meshBlock`, wrap the display objects it returns in one {@link
  * Container} (kept at the world origin, so children stay in absolute world coords), record the block's
  * AABB, add it under `parent`, and return the meshed blocks. Empty blocks are skipped. The box is
  * computed analytically from the block's corner cells' triangle extents — a cell's triangles span nodes
@@ -115,7 +115,7 @@ export function buildChunks(
         container,
         minX: (2 * c0 - 1) * TILE_HALF_W,
         maxX: (2 * c1 + 3) * TILE_HALF_W,
-        // The lift only ever raises a vertex (−y), so extend the box's TOP by the map-wide-max lift so
+        // The lift only ever raises a vertex (−y), so extend the box's top by the map-wide-max lift so
         // culling never clips a chunk whose meshed ground was baked up a hill (the analytic AABB can't
         // see the baked lift). `maxLift` is 0 for a flat field → the box is unchanged.
         minY: r0 * TILE_HALF_H - maxLift,
