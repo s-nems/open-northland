@@ -28,7 +28,7 @@ const ARROW_MUNITION = 1;
 /** The ranged weapon main-type (projectile weapons). */
 const RANGED_MAIN_TYPE = 6;
 /** The real short/long-bow projectile speed. */
-export const BOW_SPEED = 8;
+const BOW_SPEED = 8;
 /** ATTACK event type (25): the frame a melee blow lands / a bow draw looses its arrow. */
 export const ATTACK_EVENT_TYPE = 25;
 // Each swing's length + hit/release frame is its `viking_soldier_attack_*` record's length + `event
@@ -49,7 +49,7 @@ export const LONG_BOW_DRAW_LENGTH = 28; // viking_soldier_attack_bow_long
 export const LONG_BOW_RELEASE_FRAME = 22;
 // Damage on the sandbox's own synthetic scale (the real per-material tables live in the extracted
 // content; scene hitpoints are chosen so a duel takes several full swings — see the combat scene).
-export const BOW_DAMAGE = 34;
+const BOW_DAMAGE = 34;
 const SWORD_DAMAGE = 40;
 const SPEAR_DAMAGE = 45;
 const BROADSWORD_DAMAGE = 55;
