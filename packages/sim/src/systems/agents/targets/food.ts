@@ -19,7 +19,7 @@ import { interactionCell } from './workplaces.js';
  * depends on store insertion history. A producing workplace counts too (a settler eats the food it
  * makes); the eater consumes one unit on the `eat` atomic's completion (AtomicSystem).
  */
-export function nearestFoodStore(
+function nearestFoodStore(
   candidates: readonly Entity[],
   world: World,
   ctx: SystemContext,
@@ -75,7 +75,7 @@ const BUSH_INTERACTION_SLACK_NODES = 2;
  * is a provable superset of the radius disc, and the filter/rank loop is unchanged, so the winner is
  * identical to a full scan. Determinism: the candidate list is ascending-id and the pick is canonical.
  */
-export function nearestRipeBush(
+function nearestRipeBush(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,

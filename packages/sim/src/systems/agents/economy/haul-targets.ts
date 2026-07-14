@@ -91,7 +91,7 @@ export function boundProducerOutputToHaul(
   const stock = world.get(home, Stockpile).amounts;
   for (const goodType of buildingProduces(world, ctx, home)) {
     if ((stock.get(goodType) ?? 0) <= 0) continue; // none of this output on hand
-    if (sinks.has(goodType, true)) {
+    if (sinks.has(goodType, /* excludeProducers */ true)) {
       return { home, goodType };
     }
   }

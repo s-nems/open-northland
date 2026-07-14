@@ -1,5 +1,5 @@
 export { collectTargets, type TargetCandidates } from './candidates.js';
-export { type FoodTarget, nearestFood, nearestFoodStore, nearestRipeBush } from './food.js';
+export { type FoodTarget, nearestFood } from './food.js';
 export { closer } from './nearest.js';
 export { nearestCollectablePileFor, nearestHarvestableFor, nearestOwnDropFor } from './resources.js';
 export {
