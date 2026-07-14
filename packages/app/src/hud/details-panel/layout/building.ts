@@ -86,8 +86,9 @@ export interface BuildingLayout {
    * EMPTY for a compact/absent stock body (no tabs to click).
    */
   readonly stockTabHits: readonly Rect[];
-  /** Null while under construction (the Construction window stands in). */
-  readonly workers: SectionRect | null;
+  /** Always present: for a finished building the bound workers, for a construction site the live
+   *  building crew (the panel feeds the overlay a different selector — see panel.ts). */
+  readonly workers: SectionRect;
 }
 
 /**
@@ -141,9 +142,10 @@ export function layoutBuilding(
   const buttonH = Math.round(BUTTON_H * s);
   const buttonGap = Math.round(BUTTON_GAP * s);
   const generalBodyH = Math.round(PREVIEW_H * s);
-  // A construction site shows ONLY general + Construction: production/stock/workers/defence describe
-  // the finished building and mean nothing before completion (and delivered materials would read as
-  // store stock). The Construction body is one gauge row + one row per material line.
+  // A construction site swaps production/stock/defence for the Construction window: those describe the
+  // finished building and mean nothing before completion (and delivered materials would read as store
+  // stock). The workers window STAYS — it shows the live building crew (user-requested). The
+  // Construction body is one gauge row + one row per material line.
   const underConstruction = model.construction !== null;
   const constructionBodyH = underConstruction
     ? (1 + (model.construction?.rows.length ?? 0)) * Math.round(STOCK_ROW_H * s)
@@ -170,7 +172,7 @@ export function layoutBuilding(
     showDefence ? sectionAt(0, 0, w, defenceBodyH, s).frame.h : 0,
     showProduction ? sectionAt(0, 0, w, productionBodyH, s).frame.h : 0,
     stockRowCount > 0 ? sectionAt(0, 0, w, stockBodyH, s).frame.h : 0,
-    underConstruction ? 0 : sectionAt(0, 0, w, workersBodyH, s).frame.h,
+    sectionAt(0, 0, w, workersBodyH, s).frame.h,
   ];
   const gaps = gap * (heights.filter((h) => h > 0).length - 1);
   const panel = panelRect(heights.reduce((a, b) => a + b, 0) + gaps, screen, s);
@@ -224,7 +226,7 @@ export function layoutBuilding(
     };
     stockTabHits = stockTabRects(stockTabStrip, s);
   }
-  const workers = underConstruction ? null : next(workersBodyH);
+  const workers = next(workersBodyH);
 
   return {
     kind: 'building',

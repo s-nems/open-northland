@@ -75,7 +75,7 @@ describe('details panel layout', () => {
     expect(farm.panel.h).toBeLessThan(hq.panel.h);
   });
 
-  it('swaps to the Construction window while a site rises — no production/stock/workers sections', () => {
+  it('swaps to the Construction window while a site rises — no production/stock sections', () => {
     const screen = { width: 1600, height: 1200 };
     const model = buildUnitPanelModel(
       {
@@ -101,6 +101,7 @@ describe('details panel layout', () => {
     expect(site.production).toBeNull();
     expect(site.stock).toBeNull();
     expect(site.stockTabHits).toHaveLength(0);
-    expect(site.workers).toBeNull();
+    // The workers window STAYS — it shows the live building crew during construction.
+    expect(site.workers).not.toBeNull();
   });
 });
