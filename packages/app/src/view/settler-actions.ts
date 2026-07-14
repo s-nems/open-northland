@@ -15,7 +15,7 @@ import {
 } from '../hud/action-ring-layout.js';
 import { type Messages, messages } from '../i18n/index.js';
 import { createActionRingVisuals } from './action-ring-visuals.js';
-import { clientToCanvas, screenScale } from './camera.js';
+import { clientToScreen } from './camera.js';
 import { el } from './overlay.js';
 import { createProfessionPicker } from './profession-picker.js';
 
@@ -47,6 +47,9 @@ import { createProfessionPicker } from './profession-picker.js';
 
 /** Draw the menu above the world (and the tool panel, which is on the far-left strip — they rarely overlap). */
 const RING_Z = 1000;
+
+/** The "no ring" layout — menu closed or nothing selected (no buttons, zero bounds). */
+const EMPTY_LAYOUT: ActionRingLayout = { buttons: [], bounds: { x: 0, y: 0, w: 0, h: 0 } };
 
 /** Hover highlight over the button under the cursor. */
 const HOVER_TINT = 0xffffff;
@@ -138,7 +141,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
 
   // --- State ----------------------------------------------------------------------------------------
   let mode: MenuMode = 'closed';
-  let layout: ActionRingLayout = { buttons: [], bounds: { x: 0, y: 0, w: 0, h: 0 } };
+  let layout: ActionRingLayout = EMPTY_LAYOUT;
   /** The settler ids a click's command applies to (the selected settlers, filtered in `update`). */
   let actionTargets: number[] = [];
 
@@ -210,8 +213,6 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     };
   };
 
-  const EMPTY_LAYOUT: ActionRingLayout = { buttons: [], bounds: { x: 0, y: 0, w: 0, h: 0 } };
-
   const update = (camera: Camera, snapshot: WorldSnapshot, selection: ReadonlySet<number>): void => {
     const centre = mode === 'closed' ? null : selectionCentre(camera, snapshot, selection);
     if (centre === null) {
@@ -245,7 +246,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
 
   // --- Input (own listeners, mirroring the tool panel; registered before unit-controls' so a menu click wins) ---
   const toCanvas = (clientX: number, clientY: number): { x: number; y: number } =>
-    clientToCanvas(screenScale(canvas, app.renderer.resolution), clientX, clientY);
+    clientToScreen(canvas, app.renderer.resolution, clientX, clientY);
 
   const claimsPointer = (clientX: number, clientY: number): boolean => {
     if (mode === 'closed' || !root.visible) return false;

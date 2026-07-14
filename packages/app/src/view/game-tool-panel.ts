@@ -8,7 +8,7 @@ import type { GameSpeedChangeCause, GameSpeedStateSpec } from '../hud/tool-panel
 import type { MenuGoodEntry } from '../hud/tool-panel/goods-menu.js';
 import { mountToolPanel, type ToolPanelController } from '../hud/tool-panel/index.js';
 import { currentLocale } from '../i18n/index.js';
-import { clientToCanvas, screenScale } from './camera.js';
+import { clientToScreen, screenScale } from './camera.js';
 import { nodeBounds, screenToWorld, worldToTile } from './picking.js';
 
 /**
@@ -124,7 +124,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
   const { uiscale } = deps;
 
   const clientToTile = (clientX: number, clientY: number): { col: number; row: number } | null => {
-    const c = clientToCanvas(screenScale(deps.canvas, deps.app.renderer.resolution), clientX, clientY);
+    const c = clientToScreen(deps.canvas, deps.app.renderer.resolution, clientX, clientY);
     const w = screenToWorld(deps.camera(), c.x, c.y);
     const t = worldToTile(w.x, w.y, deps.elevation);
     // worldToTile yields half-cell nodes — bound against the node grid.

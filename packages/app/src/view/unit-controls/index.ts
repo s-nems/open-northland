@@ -1,7 +1,7 @@
 import type { Entity } from '@open-northland/sim';
 import { workFlagOf } from '../../game/snapshot.js';
 import { mountUnitPanel, type UnitPanel } from '../../hud/details-panel/index.js';
-import { clientToCanvas, screenScale } from '../camera.js';
+import { clientToScreen, screenScale } from '../camera.js';
 import { pickInRect, pickTopAt, screenToWorld } from '../picking.js';
 import { mountSettlerActions, type SettlerActions } from '../settler-actions.js';
 import { createUnitTargets } from '../unit-targets.js';
@@ -97,7 +97,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
 
   /** Client (CSS) coords → world px (through the client→screen scale + the camera inverse). */
   const toWorld = (clientX: number, clientY: number): { x: number; y: number } => {
-    const c = clientToCanvas(screenScale(canvas, opts.app.renderer.resolution), clientX, clientY);
+    const c = clientToScreen(canvas, opts.app.renderer.resolution, clientX, clientY);
     return screenToWorld(opts.camera(), c.x, c.y);
   };
 

@@ -262,63 +262,50 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
   // --- scrolling body: collapsible palette + action sections ---
   const body = el('div', BODY_STYLE);
 
-  // Wojownicy (open by default — the first thing a "spawn a fight" session reaches for).
-  const warriors = collapsibleSection(copy.warriors, WARRIOR_PRESETS.length, true);
-  warriors.content.append(
-    rowOf(
-      armEntries(
-        WARRIOR_PRESETS.map((preset) => ({ label: unitLabel(preset), armed: { kind: 'unit', preset } })),
-      ),
-    ),
-  );
-  body.append(warriors.wrap);
+  /** Append one collapsible palette section: a titled row of arm/disarm buttons, with an optional name
+   *  filter above the row (the ~70-entry goods wall). */
+  const addPaletteSection = (
+    title: string,
+    entries: readonly { readonly label: string; readonly armed: Armed }[],
+    startOpen: boolean,
+    filterHint?: string,
+  ): void => {
+    const section = collapsibleSection(title, entries.length, startOpen);
+    const buttons = armEntries(entries);
+    if (filterHint !== undefined) section.content.append(filterInput(buttons, filterHint));
+    section.content.append(rowOf(buttons));
+    body.append(section.wrap);
+  };
 
-  const civilians = collapsibleSection(copy.civilians, CIVILIAN_PRESETS.length, false);
-  civilians.content.append(
-    rowOf(
-      armEntries(
-        CIVILIAN_PRESETS.map((preset) => ({ label: unitLabel(preset), armed: { kind: 'unit', preset } })),
-      ),
-    ),
+  // Wojownicy open by default — the first thing a "spawn a fight" session reaches for.
+  addPaletteSection(
+    copy.warriors,
+    WARRIOR_PRESETS.map((preset) => ({ label: unitLabel(preset), armed: { kind: 'unit', preset } })),
+    true,
   );
-  body.append(civilians.wrap);
-
-  const resources = collapsibleSection(copy.resources, RESOURCE_ENTRIES.length, false);
-  resources.content.append(
-    rowOf(
-      armEntries(
-        RESOURCE_ENTRIES.map((r) => ({
-          label: localizedGood(r),
-          armed: { kind: 'resource', good: r.good },
-        })),
-      ),
-    ),
+  addPaletteSection(
+    copy.civilians,
+    CIVILIAN_PRESETS.map((preset) => ({ label: unitLabel(preset), armed: { kind: 'unit', preset } })),
+    false,
   );
-  body.append(resources.wrap);
-
-  // Towary — every good in the catalog dropped as a loose ground pile (`dropGood`). ~70 entries, so a
-  // name filter narrows the wall to what the human is after (the goods tool mirrors this list).
-  const goods = collapsibleSection(copy.goods, GOODS_ENTRIES.length, false);
-  const goodButtons = armEntries(
-    GOODS_ENTRIES.map((g) => ({
-      label: localizedGood(g),
-      armed: { kind: 'good', good: g.good },
-    })),
+  addPaletteSection(
+    copy.resources,
+    RESOURCE_ENTRIES.map((r) => ({ label: localizedGood(r), armed: { kind: 'resource', good: r.good } })),
+    false,
   );
-  goods.content.append(filterInput(goodButtons, copy.filterGoods), rowOf(goodButtons));
-  body.append(goods.wrap);
-
-  // Akcje debug — click-a-target tools (kill / needs / fill / finish). Inert if the host wired no
-  // entity picker (they need a clicked entity, not a tile); the section header still shows the count.
-  const actions = collapsibleSection(copy.actions, DEBUG_ACTIONS.length, false);
-  actions.content.append(
-    rowOf(
-      armEntries(
-        DEBUG_ACTIONS.map((action) => ({ label: actionLabel(action), armed: { kind: 'action', action } })),
-      ),
-    ),
+  // Towary — every good dropped as a loose ground pile (`dropGood`); the name filter narrows the ~70-entry wall.
+  addPaletteSection(
+    copy.goods,
+    GOODS_ENTRIES.map((g) => ({ label: localizedGood(g), armed: { kind: 'good', good: g.good } })),
+    false,
+    copy.filterGoods,
   );
-  body.append(actions.wrap);
+  // Akcje debug — click-a-target tools (kill / needs / fill / finish); inert without an entity picker.
+  addPaletteSection(
+    copy.actions,
+    DEBUG_ACTIONS.map((action) => ({ label: actionLabel(action), armed: { kind: 'action', action } })),
+    false,
+  );
 
   panel.append(header, body, status);
   document.body.append(toggle, panel);

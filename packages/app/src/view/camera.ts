@@ -168,16 +168,26 @@ export function screenScale(
 }
 
 /** Apply a {@link screenScale} result to a client (CSS) point → canvas (screen) px: subtract the canvas
- *  origin in CSS px, then scale. The one place the client→canvas mapping lives, so the drag/zoom/pick
- *  handlers that share it can't drift — a wrong anchor is exactly the bug {@link screenScale} guards
- *  against. (`hud/` handlers can't import `view/`, so they still apply this inline over their injected
- *  scale.) */
-export function clientToCanvas(
+ *  origin in CSS px, then scale. The building block behind {@link clientToScreen}; `hud/` handlers can't
+ *  import `view/`, so they apply this same mapping inline over their injected scale. */
+function clientToCanvas(
   scale: { sx: number; sy: number; rect: DOMRect },
   clientX: number,
   clientY: number,
 ): { x: number; y: number } {
   return { x: (clientX - scale.rect.left) * scale.sx, y: (clientY - scale.rect.top) * scale.sy };
+}
+
+/** Client (CSS) point → canvas (screen) px in one call ({@link screenScale} then {@link clientToCanvas}) —
+ *  the one composition the camera, tool panel, unit controls, settler ring and map view share, so the
+ *  `app.renderer.resolution` threading and anchor math can't drift between drag, zoom, pick and placement. */
+export function clientToScreen(
+  canvas: HTMLCanvasElement,
+  resolution: number,
+  clientX: number,
+  clientY: number,
+): { x: number; y: number } {
+  return clientToCanvas(screenScale(canvas, resolution), clientX, clientY);
 }
 
 /** `resolution` is the owning renderer's device-px-per-screen-px (`app.renderer.resolution`) — needed to
@@ -217,7 +227,7 @@ export function createCameraController(
     // for the panel's own handler (which scrolls + preventDefaults) and don't zoom the world behind it.
     if (pointerGuard?.(e.clientX, e.clientY)) return;
     e.preventDefault(); // don't scroll the page
-    const { x, y } = clientToCanvas(screenScale(canvas, resolution), e.clientX, e.clientY);
+    const { x, y } = clientToScreen(canvas, resolution, e.clientX, e.clientY);
     const factor = e.deltaY < 0 ? WHEEL_ZOOM_STEP : 1 / WHEEL_ZOOM_STEP;
     cam = zoomCameraAt(cam, factor, x, y);
   };
