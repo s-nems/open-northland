@@ -15,3 +15,32 @@ export function isDrawableResource(resource: unknown): resource is DrawableResou
     (typeof OffscreenCanvas !== 'undefined' && resource instanceof OffscreenCanvas)
   );
 }
+
+/**
+ * A fresh `width`×`height` 2d context for reading a drawable's pixels back (`willReadFrequently` so the
+ * platform keeps it CPU-side), or `null` when no canvas/context is available — a headless env without
+ * `OffscreenCanvas` or `document`, or a context the platform refuses. Never throws; the caller degrades.
+ * The shared readback surface behind the alpha-mask build and the construction-reveal bake.
+ */
+export function readable2dContext(
+  width: number,
+  height: number,
+): OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D | null {
+  try {
+    const canvas =
+      typeof OffscreenCanvas !== 'undefined'
+        ? new OffscreenCanvas(width, height)
+        : (() => {
+            const c = document.createElement('canvas');
+            c.width = width;
+            c.height = height;
+            return c;
+          })();
+    return canvas.getContext('2d', { willReadFrequently: true }) as
+      | OffscreenCanvasRenderingContext2D
+      | CanvasRenderingContext2D
+      | null;
+  } catch {
+    return null;
+  }
+}
