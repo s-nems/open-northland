@@ -1,4 +1,4 @@
-import { Building, Position } from '../../../../components/index.js';
+import { Building, ownerOf, ownersCompatible, Position } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
@@ -42,11 +42,13 @@ export function nearestTemple(
  * The nearest **construction site** a builder of `tribe` should raise — a {@link Building} still marked
  * {@link UnderConstruction} (a placed foundation being built up), by Manhattan distance from `here` with
  * an ascending-cell-id tie-break, scanned in canonical entity-id order (so the winner never depends on
- * store insertion history). Returns the site entity or null if the tribe has no site under construction.
+ * store insertion history). Returns the site entity or null if the side has no site under construction.
  * The builder drive walks here to hammer it, or — when the site has no material left to install — fetches
  * a missing construction good for it. Scans the {@link TargetCandidates.constructionSites} list — only the
  * sites still under construction — so with no foundations in progress the scan is O(0) however many
  * finished buildings stand, and a builder cohort never walks the whole building list to find nothing.
+ * `owner` is the builder's owning player ({@link ownerOf}) — a builder raises only ITS OWN player's
+ * foundations (two same-tribe players must not build each other's).
  */
 export function nearestConstructionSite(
   candidates: readonly Entity[],
@@ -55,14 +57,16 @@ export function nearestConstructionSite(
   terrain: TerrainGraph,
   here: NodeId,
   tribe: number,
+  owner: number | undefined,
 ): Entity | null {
   let best: Entity | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
   let bestCell = Number.POSITIVE_INFINITY;
   // `candidates` is the construction-site list (UnderConstruction + Building + Position guaranteed by
-  // collectTargets), so only the tribe filter remains — no per-entity marker re-check.
+  // collectTargets), so only the side filters remain — no per-entity marker re-check.
   for (const e of candidates) {
     if (world.get(e, Building).tribe !== tribe) continue; // another tribe's site
+    if (!ownersCompatible(owner, ownerOf(world, e))) continue; // another player's site (same tribe isn't same side)
     const cell = interactionCell(world, ctx, terrain, e, here);
     const dist = manhattan(terrain, here, cell);
     if (closer(dist, cell, bestDist, bestCell)) {

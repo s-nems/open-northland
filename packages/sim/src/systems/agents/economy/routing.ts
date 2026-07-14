@@ -2,6 +2,8 @@ import {
   Building,
   DeliveryFlag,
   JobAssignment,
+  ownerOf,
+  ownersCompatible,
   Position,
   Stockpile,
   WorkFlag,
@@ -37,7 +39,7 @@ import { hasRoom, isFarmCarrierHaulOutRole, isStorageSink } from './store-policy
  *     for an unbound hauler (so the vertical-slice woodcutter/carrier route exactly as before).
  */
 export function deliveryTargetFor(plan: PlannerContext, goodType: number): Entity | null {
-  const { world, ctx, terrain, here, entity: settler, jobType, tribe, targets } = plan;
+  const { world, ctx, terrain, here, entity: settler, jobType, tribe, owner, targets } = plan;
   const candidates = targets.stockpiles;
   const sites = targets.constructionSites;
   // 1. A fetched input goes to the bound workshop that consumes it.
@@ -85,7 +87,7 @@ export function deliveryTargetFor(plan: PlannerContext, goodType: number): Entit
   //    the material back into a warehouse. Scans the tiny `sites` list (each advertises its outstanding cost
   //    via `stockCapacity`); this only prioritises the pick — nearest needing site — leaving every
   //    non-construction good to the default below.
-  const site = nearestConstructionSiteNeeding(sites, world, ctx, terrain, here, tribe, goodType);
+  const site = nearestConstructionSiteNeeding(sites, world, ctx, terrain, here, tribe, owner, goodType);
   if (site !== null) return site;
   // 5. Otherwise the nearest capable store — the unchanged default (unbound haulers, the golden slice).
   return nearestStoreFor(candidates, world, ctx, terrain, here, goodType);
@@ -98,7 +100,8 @@ export function deliveryTargetFor(plan: PlannerContext, goodType: number): Entit
  * {@link import('../../targets/index.js').TargetCandidates.constructionSites} list (UnderConstruction + Building +
  * Position guaranteed) in canonical order with the standard Manhattan + ascending-cell-id tie-break.
  * Returns the site or null when no site needs the good — the routing preference behind a builder
- * self-supplying its own site and an assigned hauler topping it up.
+ * self-supplying its own site and an assigned hauler topping it up. `owner` is the hauler's owning
+ * player ({@link ownerOf}) — material flows only to the hauler's OWN player's sites.
  */
 function nearestConstructionSiteNeeding(
   sites: readonly Entity[],
@@ -107,6 +110,7 @@ function nearestConstructionSiteNeeding(
   terrain: TerrainGraph,
   here: NodeId,
   tribe: number,
+  owner: number | undefined,
   goodType: number,
 ): Entity | null {
   let best: Entity | null = null;
@@ -114,6 +118,7 @@ function nearestConstructionSiteNeeding(
   let bestCell = Number.POSITIVE_INFINITY;
   for (const e of sites) {
     if (world.get(e, Building).tribe !== tribe) continue;
+    if (!ownersCompatible(owner, ownerOf(world, e))) continue; // another player's site (same tribe isn't same side)
     // Count both what the site HOLDS and what other settlers' live supply errands already have inbound
     // (SupplyRun): a site whose last unit is on someone's back stops attracting more of the good, so a
     // duplicate fetch diverts to a warehouse instead of over-delivering.

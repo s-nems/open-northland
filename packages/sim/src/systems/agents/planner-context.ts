@@ -8,6 +8,10 @@ export interface PlannerWorker {
   readonly tribe: number;
   readonly jobType: number;
   readonly experience: ReadonlyMap<number, number>;
+  /** The settler's owning player, or `undefined` when neutral (every golden fixture). The SIDE key the
+   *  economy gates unbound targeting on — a settler builds/staffs/supplies only its own player's
+   *  buildings, since two players can field the same `tribe` (see {@link import('../../components/ownership.js').ownerOf}). */
+  readonly owner: number | undefined;
 }
 
 /**
