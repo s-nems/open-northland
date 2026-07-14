@@ -143,11 +143,17 @@ export class TerrainGraph {
     return (cy * this.width + cx) as NodeId;
   }
 
+  /** A per-node value from one of the row-major arrays, throwing on an id outside the grid
+   *  (a programmer error). Shared by {@link typeAt} and {@link componentOf}. */
+  private checkedSlot(arr: Int32Array, node: NodeId): number {
+    const v = arr[node];
+    if (v === undefined) throw new Error(`node id ${node} out of range (0..${this.nodeCount - 1})`);
+    return v;
+  }
+
   /** The landscape typeId tagged on a node. Throws on an id outside the grid (programmer error). */
   typeAt(node: NodeId): number {
-    const id = this.typeIds[node];
-    if (id === undefined) throw new Error(`node id ${node} out of range (0..${this.nodeCount - 1})`);
-    return id;
+    return this.checkedSlot(this.typeIds, node);
   }
 
   private propsOf(node: NodeId): NodeTypeProps {
@@ -275,9 +281,7 @@ export class TerrainGraph {
    * are a pure function of the terrain — lockstep-safe.
    */
   componentOf(node: NodeId): number {
-    const label = this.components[node];
-    if (label === undefined) throw new Error(`node id ${node} out of range (0..${this.nodeCount - 1})`);
-    return label;
+    return this.checkedSlot(this.components, node);
   }
 
   /** Flood-fill the static components over the pathfinder's own edge set ({@link steps} with no
