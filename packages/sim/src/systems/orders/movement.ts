@@ -22,35 +22,29 @@ import { MILITARY_MODE } from '../readviews/index.js';
 import { clearNavState } from '../spatial.js';
 
 /**
- * The PLAYER-order handlers (`moveUnit` / `setJob`) + the {@link playerOrderSystem} that plays a move
- * order out as a **soft override** — split out of command/ (the dispatcher + structure placement) and
- * spawn.ts (entity creation), so the "direct control the human exerts over its own units" concern has
- * its own home.
+ * The player-order handlers (`moveUnit` / `setJob`) + the {@link playerOrderSystem} that plays a move order
+ * out as a soft override — the direct control the human exerts over its own units.
  *
- * These are the FIRST commands that target an EXISTING entity to steer it (not create/destroy one).
- * The design is faithful to *Cultures*: settlers are autonomous, so a move order does NOT seize a unit
- * permanently — it sends the unit somewhere, then hands it back to the economy AI the tick it arrives.
- * There is no post-arrival stand (the timed hold was cut on user feedback 2026-07-14 — it read as the
- * unit pointlessly loitering; DEFEND's stance anchor is the position-holding tool), and the needs
- * drives (eat/sleep/pray) can pull the unit away at any time (see {@link playerOrderSystem}).
- * RTS-style box-select-and-move for civilians is itself a deviation from the original's
- * hand/profession control — recorded in source basis.
+ * The design is faithful to *Cultures*: settlers are autonomous, so a move order does not seize a unit
+ * permanently — it sends the unit somewhere, then hands it back to the economy AI the tick it arrives. There
+ * is no post-arrival stand (DEFEND's stance anchor is the position-holding tool), and the needs drives
+ * (eat/sleep/pray) can pull the unit away at any time (see {@link playerOrderSystem}). RTS-style
+ * box-select-and-move for civilians is itself a deviation from the original's hand/profession control
+ * (recorded in source basis).
  */
 
 /**
- * Resolve a raw clicked node to a node the unit can actually STAND on. A click that lands on a
- * resource footprint (tree/stone/iron/gold), a building body, or an unwalkable tile (water/rock) has
- * no standable goal there — the pathfinder rejects an occupied or unwalkable goal outright, so the
- * order would fail and the unit would simply stand still (the reported bug: accidentally clicking a
- * tree stops the unit). Snap such a goal to the NEAREST walkable, unblocked node so the unit walks to
- * the edge of what was clicked instead of refusing the order. A standable click is returned untouched.
+ * Resolve a raw clicked node to a node the unit can actually stand on. A click on a resource footprint
+ * (tree/stone/iron/gold), a building body, or an unwalkable tile (water/rock) has no standable goal there —
+ * the pathfinder rejects it outright and the order would fail with the unit standing still. Snap such a goal
+ * to the nearest walkable, unblocked node so the unit walks to the edge of what was clicked. A standable click
+ * is returned untouched.
  *
- * Only STATIC blockers (resource + building footprints) and terrain are considered — transient unit
- * BODIES are deliberately ignored, so this stays consistent with the economy's exact node-coincidence
- * walks; re-aiming a goal off a standing unit is the routing surround rule's job, applied only to
- * colliders (see movement/routing.ts). The overlay is a membership VIEW ({@link dynamicBlockOverlay}),
- * so a box-select issuing one move order per selected unit never re-copies the resource overlay per
- * order.
+ * Only static blockers (resource + building footprints) and terrain are considered; transient unit bodies are
+ * ignored, so this stays consistent with the economy's exact node-coincidence walks (re-aiming a goal off a
+ * standing unit is the routing surround rule's job, applied only to colliders — see movement/routing.ts). The
+ * overlay is a membership view ({@link dynamicBlockOverlay}), so a box-select issuing one move order per unit
+ * never re-copies the resource overlay per order.
  */
 function reachableMoveGoal(world: World, ctx: SystemContext, terrain: TerrainGraph, clicked: NodeId): NodeId {
   const blocked = dynamicBlockOverlay(world, ctx, terrain);
@@ -65,18 +59,16 @@ function clearPlayerOrder(world: World, e: Entity): void {
 }
 
 /**
- * Order one OWNED settler to walk to (x,y) — the RTS "go there" order. It drops whatever the unit was
- * doing (a mid-action atomic, a stale route, an old goal) so the order takes effect immediately, sets
- * a fresh {@link MoveGoal} (the existing pathfinding→movement pipeline carries it out), and stamps the
- * {@link PlayerOrder} en-route marker so the autonomous drives leave the walk alone until arrival
- * (see {@link playerOrderSystem}).
+ * Order one owned settler to walk to (x,y) — the RTS "go there" order. It drops whatever the unit was doing
+ * (a mid-action atomic, a stale route, an old goal) so the order takes effect immediately, sets a fresh
+ * {@link MoveGoal} (the existing pathfinding→movement pipeline carries it out), and stamps the
+ * {@link PlayerOrder} en-route marker so the autonomous drives leave the walk alone until arrival (see
+ * {@link playerOrderSystem}).
  *
- * Recoverable bad input (skipped, still logged for faithful replay): a dead/stale target, a
- * non-settler (a building/resource can't be walked), or a NEUTRAL entity with no {@link Owner} (only a
- * player-owned unit is orderable — wildlife isn't the player's to command). A mapless sim has no cells
- * to navigate, so the order is a no-op there too. The command carries no issuing-player yet, so it
- * doesn't verify WHICH player owns the unit — the app only issues orders for the human's own units;
- * the per-player check lands with lockstep (source basis).
+ * Recoverable bad input (skipped, still logged for faithful replay): a dead/stale target, a non-settler, or a
+ * neutral entity with no {@link Owner} (only a player-owned unit is orderable). A mapless sim is a no-op too.
+ * The command carries no issuing-player yet, so it doesn't verify which player owns the unit — the app only
+ * issues orders for the human's own units, and the per-player check lands with lockstep (source basis).
  */
 export function moveUnit(
   world: World,
@@ -89,28 +81,24 @@ export function moveUnit(
   if (!world.isAlive(e) || !world.has(e, Settler) || !world.has(e, Position) || !world.has(e, Owner)) return;
 
   const goal = reachableMoveGoal(world, ctx, terrain, terrain.nodeAtClamped(command.x, command.y));
-  // The order is authoritative — cancel the unit's current action + any pending route request so it
-  // obeys now, then set the new goal. (A non-interruptible-atomic exception is a deferred
-  // refinement.) A live PathFollow is deliberately KEPT: the navigation planner sees a route whose
-  // destination no longer matches the goal and re-routes the same tick, and the routing splice then
-  // replaces the path while carrying the walker's momentum through the turn (movement inertia) —
-  // dropping the path here made every redirect stop dead and re-accelerate from rest.
+  // The order is authoritative — cancel the unit's current action + any pending route request so it obeys
+  // now, then set the new goal. (A non-interruptible-atomic exception is a deferred refinement.) A live
+  // PathFollow is deliberately kept: the planner sees a route whose destination no longer matches the goal and
+  // re-routes the same tick, and the routing splice replaces the path while carrying the walker's momentum
+  // through the turn (movement inertia) — dropping it here made every redirect stop dead and re-accelerate.
   world.remove(e, CurrentAtomic);
   world.remove(e, MoveGoal);
   world.remove(e, PathRequest);
-  // A move order SUPERSEDES combat: drop any auto-engagement and attack focus so the unit walks off and
-  // holds instead of re-acquiring its target and fighting. Without this a soldier that was engaged keeps
-  // its Engagement, the CombatSystem re-chases the enemy, and the order only ever moves it one step (the
-  // reported bug). This is the same "the order is authoritative" principle applied above to the atomic +
-  // route: an explicit player command overrides the autonomous drives (economy AND auto-combat).
+  // A move order supersedes combat: drop any auto-engagement and attack focus so the unit walks off and holds
+  // instead of re-acquiring its target — otherwise the CombatSystem re-chases and the order only ever moves it
+  // one step.
   world.remove(e, Engagement);
   world.remove(e, AttackOrder);
   world.remove(e, Fleeing); // a move order supersedes the flee drive too
   world.add(e, MoveGoal, { cell: goal });
-  // A move order RELOCATES a DEFEND unit's post: the guard defends the spot it was sent to, not the
-  // tile the stance was set on. Without the re-anchor, the arrived-hold combat pass (which lets an
-  // ATTACK/DEFEND fighter keep its combat drive while holding) would march the guard straight back
-  // to its OLD anchor the moment it found no enemy there.
+  // A move order relocates a DEFEND unit's post: the guard defends the spot it was sent to, not the tile the
+  // stance was set on. Without the re-anchor, the arrived-hold combat pass would march the guard back to its
+  // old anchor the moment it found no enemy there.
   const stance = world.tryGet(e, Stance);
   if (stance !== undefined && stance.mode === MILITARY_MODE.DEFEND) stance.anchorCell = goal;
   world.add(e, PlayerOrder, {});
@@ -118,22 +106,18 @@ export function moveUnit(
 
 /**
  * PlayerOrderSystem — retires a move order the moment its walk is done and hands the unit back to the
- * autonomous economy. It runs just before {@link aiSystem} so an arriving unit is re-tasked in the
- * SAME tick (no idle stall).
+ * autonomous economy. It runs just before {@link aiSystem} so an arriving unit is re-tasked the same tick.
  *
  * Per unit under a {@link PlayerOrder}, in priority order:
- *  1. **Route failed** (an unwalkable/off-map target): the order can never be fulfilled — abandon it
- *     and clear the dead nav state (a failed {@link PathRequest} is never retried, so without this the
- *     unit would freeze on it forever).
- *  2. **Acting** (a {@link CurrentAtomic} appeared): a need drive took over (the economy branch is
- *     gated off by this order, so only a need could) — drop the order, leave the atomic running.
+ *  1. **Route failed** (an unwalkable/off-map target): abandon the order and clear the dead nav state (a
+ *     failed {@link PathRequest} is never retried, so without this the unit would freeze on it forever).
+ *  2. **Acting** (a {@link CurrentAtomic} appeared): a need drive took over (the economy branch is gated off
+ *     by this order, so only a need could) — drop the order, leave the atomic running.
  *  3. **Travelling** (goal/request/path present): the order's own walk — keep it.
- *  4. **Arrived & idle**: remove the order so {@link aiSystem} re-tasks the unit this tick — the
- *     worker turns around and goes straight back to its job; no post-arrival stand.
+ *  4. **Arrived & idle**: remove the order so {@link aiSystem} re-tasks the unit this tick; no post-arrival
+ *     stand.
  *
- * While the order stands, {@link aiSystem}'s ECONOMY branch skips the unit but its NEEDS drives still
- * run. Determinism: pure reads of the unit's components; no RNG, no wall-clock; no-op without a
- * terrain graph (nothing to have been ordered over).
+ * While the order stands, {@link aiSystem}'s economy branch skips the unit but its needs drives still run.
  */
 export const playerOrderSystem: System = (world, ctx) => {
   if (ctx.terrain === undefined) return; // mapless sim: no orders were issuable

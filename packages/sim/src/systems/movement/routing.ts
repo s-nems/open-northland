@@ -17,17 +17,14 @@ import { turnOntoNextLeg } from './stepping.js';
 // from the shared leaf.
 
 /**
- * The pathfinder's per-tick work budget, in A*-SETTLED NODES ({@link SearchStats.explored}) — the
- * unit search time is actually proportional to. Budgeting the COST (not a request count) is what
- * lets crowd orders start together: a battle-scale chase settles ~30–150 nodes, so a couple of
- * hundred fighters route in ONE tick, while a single cross-map route settling thousands still
- * spreads over ticks — the old fixed count of 8 made a hundred-strong front start walking in a
- * visible half-second top-to-bottom wave (spawn rows = id order), which read as a bug, yet allowed
- * eight map-long floods in one tick. The budget is a soft ceiling checked BEFORE each request (the
- * one that overshoots still completes, so every tick makes progress); serving stays lowest-entity-
- * id-first, never a wall-clock cutoff, and explored counts are themselves deterministic — the
- * spread is lockstep-safe. The magnitude is a tick-time guard (~a few ms of search on a modern
- * core), not data-pinned: tune against profiles as maps and armies grow.
+ * The pathfinder's per-tick work budget, in A*-settled nodes ({@link SearchStats.explored}) — what unit
+ * search time is actually proportional to. Budgeting the cost (not a request count) lets crowd orders start
+ * together: a battle-scale chase settles ~30–150 nodes, so a couple of hundred fighters route in one tick,
+ * while a single cross-map route settling thousands still spreads over ticks. The budget is a soft ceiling
+ * checked before each request (the one that overshoots still completes, so every tick makes progress);
+ * serving stays lowest-entity-id-first and explored counts are deterministic, so the spread is
+ * lockstep-safe. The magnitude is a tick-time guard (~a few ms of search on a modern core), not data-pinned:
+ * tune against profiles as maps and armies grow.
  */
 export const PATHFINDING_NODE_BUDGET_PER_TICK = 16384;
 
@@ -35,22 +32,14 @@ export const PATHFINDING_NODE_BUDGET_PER_TICK = 16384;
  * PathfindingSystem — drains pending {@link PathRequest}s and turns each into a followable path.
  *
  * Requests are served lowest entity id first until the tick's search-work budget
- * ({@link PATHFINDING_NODE_BUDGET_PER_TICK}, in A*-settled nodes) is spent — a cost cut, not a
- * request count, so a whole formation's cheap local routes land in one tick while expensive long
- * routes still spread (see the constant). For each served request it runs A* on `ctx.terrain` from
- * the request's `start` to `goal` cell. On success it writes the node sequence into the entity's
- * {@link PathFollow} (half-cell node positions in fixed-point tile units, plus a seam waypoint
- * inside each odd-row diagonal leg — {@link pathToWaypoints})
- * and removes the request; on failure it flags the request `failed` — keeping any live path, so a
- * failed mid-walk reroute parks the walker on a node centre instead of freezing it mid-leg — and
- * leaves the request for the planner to inspect rather than silently retrying the same dead query
- * every tick. No-ops entirely when no terrain graph is present — a
- * mapless sim (the determinism golden) has nothing to route over.
- *
- * Determinism: A* is pure and canonically tie-broken; requests are served in ascending entity-id
- * order (a canonical sort, not Map insertion order) with a deterministic cost cut (explored counts
- * are pure functions of the query); cell ids are validated against the graph so an out-of-range
- * request fails gracefully instead of throwing inside the search.
+ * ({@link PATHFINDING_NODE_BUDGET_PER_TICK}, in A*-settled nodes) is spent — a cost cut, not a request
+ * count, so a whole formation's cheap local routes land in one tick while expensive long routes still
+ * spread (see the constant). For each served request it runs A* on `ctx.terrain` from `start` to `goal`. On
+ * success it writes the node sequence into the entity's {@link PathFollow} (half-cell node positions in
+ * fixed-point tile units, plus a seam waypoint inside each odd-row diagonal leg — {@link pathToWaypoints})
+ * and removes the request; on failure it flags the request `failed` — keeping any live path, so a failed
+ * mid-walk reroute parks the walker on a node centre instead of freezing it mid-leg — and leaves the request
+ * for the planner to inspect rather than silently retrying. No-ops when no terrain graph is present.
  */
 export const pathfindingSystem: System = (world, ctx) => {
   const terrain = ctx.terrain;
@@ -70,26 +59,22 @@ export function drainPathRequests(
   terrain: TerrainGraph,
   nodeBudget: number,
 ): void {
-  // Serve in ascending entity-id order so the per-tick budget cut is canonical (never insertion
-  // order). Scan only the entities that HAVE a request (canonicalById over the query yields the same
-  // ascending-id subsequence a full canonicalEntities() filter did — store ⊆ alive), so a tick with
-  // no requests costs O(requests), not O(world).
+  // Serve in ascending entity-id order so the per-tick budget cut is canonical (never insertion order).
+  // Scanning only the entities that have a request (canonicalById over the query — store ⊆ alive) keeps a
+  // request-less tick at O(requests), not O(world).
   const spent: SearchStats = { explored: 0 };
-  // The walk-block overlays, built lazily ONCE per routing tick — only a tick that actually routes
-  // pays for them. `dynamic` is the standing building bodies + resource footprints — every
-  // requester sees it. `units` is the standing-collider stamp (see `unitWalkBlocks` — routing sees
-  // standing bodies, never moving ones), and it applies ONLY to a requester that itself collides
-  // (`hasBodyCollision`): a ghost walks straight through bodies, so detouring it — or re-aiming its
-  // goal off an occupied node — would break the economy's exact node-coincidence walks (the shared
-  // policy on `hasBodyCollision`). For a collider the two compose per REQUESTER player — another
-  // player's town posts block me, its own never block it — as a LAYERED membership view (the
-  // per-player union used to copy the whole `dynamic` set every tick), memoized per player id seen
-  // this tick (-1 = an unowned collider, which no player's town exempts).
+  // The walk-block overlays, built lazily once per routing tick — only a tick that actually routes pays for
+  // them. `dynamic` is the standing building bodies + resource footprints, seen by every requester. `units`
+  // is the standing-collider stamp (see `unitWalkBlocks` — routing sees standing bodies, never moving ones),
+  // and it applies only to a requester that itself collides (`hasBodyCollision`): a ghost walks straight
+  // through bodies, so detouring it would break the economy's exact node-coincidence walks. For a collider
+  // the two compose per requester player — another player's town posts block me, its own never block it — as
+  // a layered membership view, memoized per player id seen this tick (-1 = an unowned collider).
   let dynamic: ReadonlySet<NodeId> | undefined;
   let units: UnitWalkBlocks | undefined;
   const combinedByPlayer = new Map<number, BlockOverlay>();
-  // Goal stand-ins already handed out this tick, so two walkers aimed at one crowded node fan out
-  // to DIFFERENT free nodes (the surround rule) instead of both claiming the same one.
+  // Goal stand-ins already handed out this tick, so two walkers aimed at one crowded node fan out to
+  // different free nodes (the surround rule) instead of both claiming the same one.
   const claimedStandIns = new Set<NodeId>();
   const dynamicOnly = (): ReadonlySet<NodeId> => {
     dynamic ??= dynamicBlockedCells(world, ctx, terrain);
@@ -120,11 +105,10 @@ export function drainPathRequests(
     const blocked = collides ? blockedFor(world.tryGet(e, Owner)?.player ?? -1) : dynamicOnly();
     let path = resolvePath(terrain, req.start, req.goal, blocked, spent);
     if (path === null && collides && isValidNodeId(terrain, req.goal)) {
-      // A goal occupied by a STANDING UNIT (in the unit stamp but not a wall/resource) is a live,
-      // recoverable situation — someone is simply standing there. Re-aim at the nearest free node
-      // instead of failing: this is the rule that fans a charge out AROUND a crowded target (each
-      // arrival stands, occupies its node, and the next walker is dealt the next free one).
-      // Collider-only, like the overlay itself: a ghost's goal must stay EXACT.
+      // A goal occupied by a standing unit (in the unit stamp but not a wall/resource) is recoverable —
+      // someone is simply standing there. Re-aim at the nearest free node instead of failing: this fans a
+      // charge out around a crowded target (each arrival stands and the next walker is dealt the next free
+      // node). Collider-only, like the overlay: a ghost's goal must stay exact.
       const goal = req.goal;
       if (blocked.has(goal) && !(dynamic?.has(goal) ?? false)) {
         const standIn = nearestUnblockedNode(terrain, goal, blocked, claimedStandIns);
@@ -142,28 +126,24 @@ export function drainPathRequests(
     }
     if (path === null) {
       req.failed = true; // signal the planner; keep the request so it isn't silently re-issued
-      // A failed MID-WALK reroute keeps the live path: the walker plays out its old route and parks
-      // on a cell centre. Dropping it froze the walker wherever it stood — possibly on a seam
-      // waypoint, off any centre — with a goal nothing services (the planner skips entities with a
-      // request, and failed requests are never retried). A request with no live path changes nothing.
+      // A failed mid-walk reroute keeps the live path: the walker plays out its old route and parks on a
+      // cell centre rather than freezing mid-leg (possibly off any centre) with a goal nothing services. A
+      // request with no live path changes nothing.
       continue;
     }
 
-    // Success: hand the entity a fresh PathFollow of waypoints and clear the request. A REROUTE (an
-    // entity already walking a path) carries its gait `speed` AND heading over, then turns onto the
-    // new first leg through the SAME corner rule as a waypoint turn (`turnOntoNextLeg` below):
-    // straight-ahead re-orders keep full momentum (the responsive half of the movement-inertia
-    // approximation), a redirect sheds speed × cos(turn), and a reversal stops the gait dead.
-    // Without the projection a redirected walker kept full pace through any flip — the full-speed
-    // floor slide under rapid direction changes.
+    // Success: hand the entity a fresh PathFollow of waypoints and clear the request. A reroute (an entity
+    // already walking) carries its gait `speed` and heading over, then turns onto the new first leg through
+    // the same corner rule as a waypoint turn (`turnOntoNextLeg` below): a straight-ahead re-order keeps full
+    // momentum (the responsive half of the movement-inertia approximation), a redirect sheds speed ×
+    // cos(turn), and a reversal stops the gait dead.
     const prior = world.tryGet(e, PathFollow);
     const waypoints = pathToWaypoints(terrain, path);
-    // If the entity is mid-tile when this route is issued — a RE-PATH while it was between cell centres
-    // (e.g. a player move order interrupting a walk) — the first waypoint is the centre of the cell it is
-    // ALREADY in, so following the path verbatim makes it visibly back UP to that centre before turning.
-    // Drop that leading waypoint (when a next one exists) so it heads straight for the following cell. An
-    // entity standing exactly on a centre — every AI-issued route, since the planner sets a goal only while
-    // the unit is idle at a cell centre — keeps the full path, so the goldens are untouched.
+    // If the entity is mid-tile when this route is issued (a re-path between cell centres, e.g. a player move
+    // order interrupting a walk), the first waypoint is the centre of the cell it is already in, so following
+    // verbatim makes it back up to that centre before turning. Drop that leading waypoint (when a next one
+    // exists) so it heads straight for the following cell. An entity on a centre — every AI-issued route,
+    // since the planner sets a goal only at a cell centre — keeps the full path, so goldens are untouched.
     const head = waypoints[0];
     const p = world.tryGet(e, Position);
     if (
@@ -190,15 +170,14 @@ export function drainPathRequests(
 }
 
 /**
- * Turn a node path into the {@link PathFollow} waypoint list — half-cell node positions in
- * fixed-point tile units (`positionOfNode`), with one extra SEAM waypoint spliced into every
- * DIAGONAL leg that LEAVES AN ODD HALF-ROW. Such a leg spans rows `r±½ → r∓½` and crosses the
- * integer row mid-leg — exactly where the stagger's triangle wave kinks — so interpolating the grid
- * delta linearly would swing the mover a quarter-column sideways at the crossing. The seam is the
- * world-straight midpoint of the edge (`(hx₁+hx₂)/4` columns) expressed at the integer row it
- * crosses; with it each sub-leg stays inside one row interval, where linear grid motion IS straight
- * on screen. Every other edge needs no seam: E/W stays on one row, a half-row vertical and an
- * even-row diagonal stay inside a single row interval. Pure fixed-point.
+ * Turn a node path into the {@link PathFollow} waypoint list — half-cell node positions in fixed-point tile
+ * units (`positionOfNode`), with one extra seam waypoint spliced into every diagonal leg that leaves an odd
+ * half-row. Such a leg spans rows `r±½ → r∓½` and crosses the integer row mid-leg — where the stagger's
+ * triangle wave kinks — so interpolating the grid delta linearly would swing the mover a quarter-column
+ * sideways at the crossing. The seam is the world-straight midpoint of the edge (`(hx₁+hx₂)/4` columns) at
+ * the integer row it crosses; with it each sub-leg stays inside one row interval, where linear grid motion is
+ * straight on screen. Every other edge needs no seam: E/W stays on one row, and a half-row vertical or
+ * even-row diagonal stays inside a single row interval. Pure fixed-point.
  */
 function pathToWaypoints(terrain: TerrainGraph, path: ReadonlyArray<NodeId>): Array<{ x: Fixed; y: Fixed }> {
   const waypoints: Array<{ x: Fixed; y: Fixed }> = [];

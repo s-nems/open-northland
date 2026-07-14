@@ -23,17 +23,17 @@ export function recipeOf(world: World, ctx: SystemContext, building: Entity): Re
 }
 
 /**
- * The goods a building's type PRODUCES (`logicproduction` — its `produces` list), or empty when it has
- * no Building/type or produces nothing (a passive store: a warehouse/HQ). This is the data-driven
- * "is this a producing building" signal — the split behind "a carrier at production hauls the output
- * out, a carrier at a warehouse only brings goods in". A recipe workshop's `produces` mirrors its
- * recipe outputs, so this covers both producer kinds; a warehouse's is empty. NOTE it does NOT
- * distinguish a farm by recipe absence: the sandbox catalog's farm carries no recipe, but the asset
- * pipeline synthesizes a recipe for every producing building (`fillBuildingRecipes`), so "field
- * producer" must be keyed on the good's `farming` block (`farmWorkGood`), never on `recipeOf`.
+ * The goods a building's type produces (`logicproduction` — its `produces` list), or empty when it has no
+ * Building/type or produces nothing (a passive store: a warehouse/HQ). The data-driven "is this a producing
+ * building" signal — the split behind "a carrier at production hauls the output out, a carrier at a warehouse
+ * only brings goods in". A recipe workshop's `produces` mirrors its recipe outputs, so this covers both
+ * producer kinds; a warehouse's is empty. It does not distinguish a farm by recipe absence: the sandbox
+ * catalog's farm carries no recipe, but the asset pipeline synthesizes a recipe for every producing building
+ * (`fillBuildingRecipes`), so "field producer" must be keyed on the good's `farming` block (`farmWorkGood`),
+ * never on `recipeOf`.
  *
- * Cross-system: the AI carrier drive uses it to recognise a bound producing building whose finished
- * output it should haul to a warehouse (see `agents/economy/workshop/supply.ts`).
+ * Cross-system: the AI carrier drive uses it to recognise a bound producing building whose finished output it
+ * should haul to a warehouse (see `agents/economy/workshop/supply.ts`).
  */
 export function buildingProduces(world: World, ctx: SystemContext, building: Entity): readonly number[] {
   const b = world.tryGet(building, Building);
@@ -64,13 +64,12 @@ export function buildingWorkerJobs(world: World, ctx: SystemContext, building: E
 const EMPTY_JOBS: ReadonlySet<number> = new Set<number>();
 
 /**
- * Whether a job is the TRANSPORT trade — the original's carrier (`logicworker 24`, the "tragarz" who
- * ferries goods but never operates a workshop's craft). Identified by the content job's `id` slug
- * (`'carrier'`), the same id-based inference {@link isFood} uses (approximated — the readable rule
- * files carry no explicit transport flag; both the sandbox content and the extraction pipeline emit
- * the carrier job under this stable slug). Cross-system: the producer drive routes a carrier bound to
- * a workshop into the supply loop instead of the craft loop, and the production operator count
- * excludes carriers (a carrier at the door neither runs nor speeds the mill).
+ * Whether a job is the transport trade — the original's carrier (`logicworker 24`, the "tragarz" who ferries
+ * goods but never operates a workshop's craft). Identified by the content job's `id` slug (`'carrier'`), the
+ * same id-based inference {@link isFood} uses (approximated — the readable rule files carry no explicit
+ * transport flag; both the sandbox content and the extraction pipeline emit the carrier job under this stable
+ * slug). Cross-system: the producer drive routes a carrier bound to a workshop into the supply loop instead of
+ * the craft loop, and the production operator count excludes carriers.
  */
 export function isCarrierJob(ctx: SystemContext, jobType: number): boolean {
   return contentIndex(ctx.content).jobs.get(jobType)?.id === CARRIER_JOB_ID;
@@ -80,10 +79,10 @@ export function isCarrierJob(ctx: SystemContext, jobType: number): boolean {
 const CARRIER_JOB_ID = 'carrier';
 
 /**
- * The OPERATOR jobs of a workplace: its worker-slot jobs minus the carrier transport slots — the
- * trades that actually run the craft (the mill's millers, not its carrier). A building whose slots
- * are carrier-ONLY keeps them (the well's one carrier IS its operator — dropping it would let the
- * well run unstaffed); named approximation, the readable data doesn't say which slot operates.
+ * The operator jobs of a workplace: its worker-slot jobs minus the carrier transport slots — the trades that
+ * actually run the craft (the mill's millers, not its carrier). A building whose slots are carrier-only keeps
+ * them (the well's one carrier is its operator — dropping it would let the well run unstaffed); named
+ * approximation, the readable data doesn't say which slot operates.
  */
 function operatorJobsOf(world: World, ctx: SystemContext, building: Entity): ReadonlySet<number> {
   const jobs = buildingWorkerJobs(world, ctx, building);
@@ -94,22 +93,20 @@ function operatorJobsOf(world: World, ctx: SystemContext, building: Entity): Rea
 }
 
 /**
- * How many OPERATORS a workplace has on station *right now*: settlers whose `jobType` is one of the
- * building's operator jobs ({@link operatorJobsOf}) standing on its **interaction tile** (its door
- * cell when the type's footprint names one, else its anchor tile — {@link interactionNode}; the walls
- * themselves are walk-blocked, so operators work AT the door, exactly where the AI walk-to-station
- * drive delivers them). Capped at the building type's declared operator-slot headcount, so crowding
- * extra settlers onto the door can never overclock past the staffing plan.
+ * How many operators a workplace has on station right now: settlers whose `jobType` is one of the building's
+ * operator jobs ({@link operatorJobsOf}) standing on its interaction tile (its door cell when the type's
+ * footprint names one, else its anchor tile — {@link interactionNode}; the walls themselves are walk-blocked,
+ * so operators work at the door, where the AI walk-to-station drive delivers them). Capped at the building
+ * type's declared operator-slot headcount, so crowding extra settlers onto the door can't overclock past the
+ * staffing plan.
  *
- * A building type that declares **no** worker slots is unstaffed-by-design and counts as ONE operator
- * (passive stores / fixtures without workers keep working at the base rate). The count is a pure
- * tally (order-independent), so no determinism concern.
+ * A building type that declares no worker slots is unstaffed-by-design and counts as one operator (passive
+ * stores / fixtures keep working at the base rate). The count is an order-independent tally.
  *
- * Cross-system: ProductionSystem gates starting a cycle on `> 0` and each tick advances up to this
- * many SEPARATE batches by one tick each (oldest first — see the FIFO rule on the Production
- * component): two millers run two independent flours in parallel, doubling throughput, and a single
- * bar never flows faster than 1× (per-batch model; observed original behaviour, the exact staffing
- * rule isn't decoded).
+ * Cross-system: ProductionSystem gates starting a cycle on `> 0` and each tick advances up to this many
+ * separate batches by one tick each (oldest first — see the FIFO rule on the Production component): two
+ * millers run two independent flours in parallel, doubling throughput, and a single bar never flows faster
+ * than 1× (per-batch model; observed original behaviour, the exact staffing rule isn't decoded).
  */
 export function presentOperatorCount(world: World, ctx: SystemContext, building: Entity): number {
   const jobs = operatorJobsOf(world, ctx, building);
@@ -161,20 +158,18 @@ export function workerPresentAt(world: World, ctx: SystemContext, building: Enti
 }
 
 /**
- * Whether a building is a **temple** — the satisfier site for the piety need (where a settler runs
- * the `pray` atomic). The original's "work temple" (`logichousetype` `logictype 37`, the
- * `HOUSE_TYPE_WORK_TEMPLE` constant) is a `logicmaintype 3` workplace that, unlike a real production
- * workplace, declares **no `logicworker`, no `logicstock`, no `logicproduction`** — so it surfaces in
- * the IR as `kind === 'workplace'` with an empty `workers`, empty `stock`, and **no `recipe`**. That
- * "workplace with nothing to make and no one to staff it" shape is how a temple is told apart from a
- * sawmill/mill (which always carry a recipe + workers).
+ * Whether a building is a temple — the satisfier site for the piety need (where a settler runs the `pray`
+ * atomic). The original's "work temple" (`logichousetype` `logictype 37`, the `HOUSE_TYPE_WORK_TEMPLE`
+ * constant) is a `logicmaintype 3` workplace that, unlike a real production workplace, declares no
+ * `logicworker`, no `logicstock`, no `logicproduction` — so it surfaces in the IR as `kind === 'workplace'`
+ * with an empty `workers`, empty `stock`, and no `recipe`. That "workplace with nothing to make and no one to
+ * staff it" shape is how a temple is told apart from a sawmill/mill.
  *
- * source-basis (approximated — see source basis): the temple→pray need→satisfier link lives below the
- * readable rule files (the original binds the religious building to the pray slot at the engine level,
- * not in `houses.ini`), so the satisfier is *inferred* from this structural signature — exactly like
- * the food→eat-slot binding ({@link isFood}) is inferred from the `food_` id prefix. Refine to a
- * content flag if the building→need binding is later decoded. Cross-system: the AI pray-drive planner
- * uses it to find the nearest temple to walk to.
+ * Approximated: the temple→pray need→satisfier link lives below the readable rule files (the original binds
+ * the religious building to the pray slot at the engine level, not in `houses.ini`), so the satisfier is
+ * inferred from this structural signature — like the food→eat-slot binding ({@link isFood}) is inferred from
+ * the `food_` id prefix. Refine to a content flag if the building→need binding is later decoded. Cross-system:
+ * the AI pray-drive planner uses it to find the nearest temple to walk to.
  */
 export function isTemple(world: World, ctx: SystemContext, building: Entity): boolean {
   const b = world.tryGet(building, Building);

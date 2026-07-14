@@ -28,15 +28,14 @@ import { clearNavState } from '../spatial.js';
 import { stampDefaultStance } from './combat.js';
 
 /**
- * Change one OWNED settler's profession (the settler UI's "zmiana zawodu"): set its `Settler.jobType`
- * and reset it to a fresh idle worker of the new trade — drop the old workplace binding
- * ({@link JobAssignment}) so the JobSystem re-employs it at a building of the new job, cancel any
- * current action/route, and clear any {@link PlayerOrder} (a profession change hands the unit back to
- * the economy). The unit keeps any load it is carrying (it will still deposit it).
+ * Change one owned settler's profession: set its `Settler.jobType` and reset it to a fresh idle worker of the
+ * new trade — drop the old workplace binding ({@link JobAssignment}) so the JobSystem re-employs it at a
+ * building of the new job, cancel any current action/route, and clear any {@link PlayerOrder}. The unit keeps
+ * any load it is carrying (it will still deposit it).
  *
- * Recoverable bad input (skipped, still logged): a dead/stale target, a non-settler, a NEUTRAL entity
- * (no {@link Owner}), an unknown `jobType` (absent from the jobs table), or a still-growing child (an
- * {@link Age} unit — its job class is the GrowthSystem's to set, not the player's).
+ * Recoverable bad input (skipped, still logged): a dead/stale target, a non-settler, a neutral entity (no
+ * {@link Owner}), an unknown `jobType`, or a still-growing child (an {@link Age} unit — its job class is the
+ * GrowthSystem's to set, not the player's).
  */
 export function setJob(
   world: World,
@@ -53,16 +52,14 @@ export function setJob(
 }
 
 /**
- * Reset an OWNED settler to a fresh idle worker of `jobType`: set its `Settler.jobType`, cancel any
- * current action/route/hold, drop auto-combat state, stamp the new job's DEFAULT military stance (a
- * soldier→civilian flip stops auto-engaging and starts fleeing; the reverse engages — the player can
- * override afterwards with `setStance`), and SYNC the gatherer work flag to the new trade
- * ({@link syncWorkFlagToJob} — a gatherer trade gets a flag, leaving one drops it). It does NOT touch
- * {@link JobAssignment}: the caller owns the binding — {@link setJob} DROPS it (the JobSystem re-employs
- * at the first open building of the new job), while {@link assignWorker} SETS it (bind to the
- * player-chosen building). The one place the "re-idle to a new trade" reset lives, so the two employment
- * orders can't drift apart. Owned-only: the callers guard `e` is owned, so the stance stamp keeps the
- * "Stance is owned-only" invariant.
+ * Reset an owned settler to a fresh idle worker of `jobType`: set its `Settler.jobType`, cancel any current
+ * action/route/hold, drop auto-combat state, stamp the new job's default military stance (a soldier→civilian
+ * flip stops auto-engaging and starts fleeing; the reverse engages — the player can override with `setStance`),
+ * and sync the gatherer work flag to the new trade ({@link syncWorkFlagToJob} — a gatherer trade gets a flag,
+ * leaving one drops it). It does not touch {@link JobAssignment}: the caller owns the binding — {@link setJob}
+ * drops it (the JobSystem re-employs), while {@link assignWorker} sets it (bind to the player-chosen building).
+ * The single home of the "re-idle to a new trade" reset, so the two employment orders can't drift apart.
+ * Owned-only: the callers guard `e` is owned, so the stance stamp keeps the "Stance is owned-only" invariant.
  */
 function reidleAsJob(world: World, ctx: SystemContext, e: Entity, jobType: number): void {
   world.get(e, Settler).jobType = jobType;
@@ -78,20 +75,17 @@ function reidleAsJob(world: World, ctx: SystemContext, e: Entity, jobType: numbe
 }
 
 /**
- * Assign one OWNED settler to work at a SPECIFIC `building` (the `assignWorker` command — the
- * player-directed twin of the JobSystem's automatic assignment): resolve the building's open worker
- * job in the command's `jobPriority` preference order, through the SAME per-building openness gate the
- * JobSystem applies ({@link openWorkerJobFromList} — a same-tribe, tech-enabled workplace with an
- * understaffed slot the settler qualifies for), re-idle the settler as that job, and bind it to the
- * chosen building ({@link JobAssignment}). The priority is how the app expresses the RTS intent (a
- * tradesman first, a hauler as fallback, never a gatherer) but every candidate still clears the gate,
- * so the bound settler walks to and staffs that building through the normal AI planner, exactly like an
- * auto-assigned worker — a hand assignment can never reach a state the JobSystem wouldn't.
+ * Assign one owned settler to work at a specific `building` (the `assignWorker` command — the player-directed
+ * twin of the JobSystem's automatic assignment): resolve the building's open worker job in the command's
+ * `jobPriority` preference order, through the same per-building openness gate the JobSystem applies
+ * ({@link openWorkerJobFromList} — a same-tribe, tech-enabled workplace with an understaffed slot the settler
+ * qualifies for), re-idle the settler as that job, and bind it to the chosen building ({@link JobAssignment}).
+ * The priority expresses the RTS intent (a tradesman first, a hauler as fallback, never a gatherer), but every
+ * candidate still clears the gate, so a hand assignment can never reach a state the JobSystem wouldn't.
  *
- * Recoverable bad input (skipped, still logged for faithful replay): a dead/stale target, a non-settler
- * or NEUTRAL (unowned) issuer, a still-growing child (an {@link Age} unit — the GrowthSystem owns its
- * job class), a dead/stale/non-building target, or a building that offers this settler no open worker
- * job right now (full, wrong tribe, not a workplace, or gated).
+ * Recoverable bad input (skipped, still logged for faithful replay): a dead/stale target, a non-settler or
+ * neutral (unowned) issuer, a still-growing child ({@link Age}), a dead/stale/non-building target, or a
+ * building that offers this settler no open worker job right now (full, wrong tribe, not a workplace, or gated).
  */
 export function assignWorker(
   world: World,
@@ -117,24 +111,22 @@ export function assignWorker(
   if (jobType === null) return; // full / wrong tribe / other player / not a workplace / gated — no-op
 
   world.remove(e, JobAssignment); // drop any prior binding before re-binding to the chosen building
-  // reidleAsJob also syncs the work flag; here `jobType` is a BUILDING-worker job, so the flag path only
-  // ever REMOVES a stale flag (a gatherer reassigned to a building drops it). It never auto-plants: a
-  // building resolves no harvest job (`openWorkerJobFromList` — "never a gatherer"), so the plant-at-feet
-  // branch is unreachable through assignWorker. A future caller that DID pass a harvest job here would
-  // plant the flag at the settler's current tile, not near the building — a seam to revisit if that lands.
+  // reidleAsJob also syncs the work flag; here `jobType` is a building-worker job, so the flag path only ever
+  // removes a stale flag. It never auto-plants: a building resolves no harvest job (`openWorkerJobFromList` —
+  // "never a gatherer"), so the plant-at-feet branch is unreachable here. A future caller passing a harvest job
+  // would plant the flag at the settler's current tile, not near the building — a seam to revisit if that lands.
   reidleAsJob(world, ctx, e, jobType);
   world.add(e, JobAssignment, { workplace: b });
 }
 
 /**
- * Assign one OWNED **builder** to a specific construction `site` — the original's "put a builder on a
- * foundation" (right-click a site with a builder selected). It pins a {@link SiteAssignment} so the
- * builder drive raises THAT site over the nearest one and the site's workers window lists the settler
- * until the build finishes ({@link import('../agents/economy/index.js').planBuilder} re-stamps or drops
- * the pin). Only the builder trade qualifies (its job runs the build atomic) — a civilian right-clicked
- * onto a site is a no-op here (the app routes normal buildings to `assignWorker` instead). The order is
- * authoritative like every employment order: it cancels the current action/route/hold so the builder
- * heads for its site this tick.
+ * Assign one owned builder to a specific construction `site` — the original's "put a builder on a foundation"
+ * (right-click a site with a builder selected). It pins a {@link SiteAssignment} so the builder drive raises
+ * that site over the nearest one and the site's workers window lists the settler until the build finishes
+ * ({@link import('../agents/economy/index.js').planBuilder} re-stamps or drops the pin). Only the builder trade
+ * qualifies (its job runs the build atomic) — a civilian right-clicked onto a site is a no-op (the app routes
+ * normal buildings to `assignWorker` instead). Authoritative like every employment order: it cancels the
+ * current action/route/hold so the builder heads for its site this tick.
  *
  * Recoverable bad input (skipped, still logged for faithful replay): a dead/stale/non-settler/neutral
  * issuer, a still-growing child, a dead or not-under-construction target, a wrong-tribe site, or a site
@@ -162,19 +154,18 @@ export function assignBuilder(
 }
 
 /**
- * Place / move one OWNED gatherer's **work flag** to node (x,y) — the player's "work here" order (the
- * gathering twin of {@link moveUnit}, mapped from Ctrl+Right-Click). If the gatherer already carries a
- * {@link WorkFlag} whose flag entity still exists, that flag is **relocated** to (x,y) — only the marker
- * moves; the goods already dropped stay pinned to their tiles (a flag stores nothing). Otherwise a fresh
- * flag — a pure {@link DeliveryFlag} marker (no {@link Stockpile}: the harvest piles on the GROUND around
- * it, not into it) — is created there and bound with the {@link DEFAULT_WORK_FLAG_RADIUS}. From then on the
- * gatherer harvests only within that flag's radius, carries only what it dug, and banks it there
- * ({@link planGatherer}).
+ * Place / move one owned gatherer's work flag to node (x,y) — the player's "work here" order (the gathering
+ * twin of {@link moveUnit}, mapped from Ctrl+Right-Click). If the gatherer already carries a {@link WorkFlag}
+ * whose flag entity still exists, that flag is relocated to (x,y) — only the marker moves; the goods already
+ * dropped stay pinned to their tiles (a flag stores nothing). Otherwise a fresh flag — a pure
+ * {@link DeliveryFlag} marker (no {@link Stockpile}: the harvest piles on the ground around it, not into it) —
+ * is created there and bound with the {@link DEFAULT_WORK_FLAG_RADIUS}. From then on the gatherer harvests only
+ * within that flag's radius, carries only what it dug, and banks it there ({@link planGatherer}).
  *
- * Recoverable bad input (skipped, still logged for faithful replay): a mapless sim (no cells); a dead/stale
- * target, a non-settler, a NEUTRAL (unowned) entity, or a settler whose **job cannot harvest** — only a
- * gatherer carries a work flag, so Ctrl+Right-Click on a soldier is a no-op, never a stray flag. Carries no
- * issuing-player yet; the per-player authority check lands with lockstep.
+ * Recoverable bad input (skipped, still logged for faithful replay): a mapless sim; a dead/stale target, a
+ * non-settler, a neutral (unowned) entity, or a settler whose job cannot harvest — only a gatherer carries a
+ * work flag, so Ctrl+Right-Click on a soldier is a no-op, never a stray flag. Carries no issuing-player yet;
+ * the per-player authority check lands with lockstep.
  */
 export function setWorkFlag(
   world: World,
@@ -194,9 +185,8 @@ export function setWorkFlag(
 
   const live = liveWorkFlag(world, e);
   if (live !== undefined) {
-    // Relocate the gatherer's existing flag — only the marker moves (Position mutated in place, as the
-    // MovementSystem does). The goods already dropped are separate ground heaps pinned to their own tiles,
-    // so they stay put; the gatherer just starts piling FRESH harvest around the flag's new spot.
+    // Relocate the existing flag — only the marker moves (Position mutated in place). The goods already
+    // dropped are separate ground heaps pinned to their own tiles, so they stay put.
     const p = world.get(live.flag, Position);
     p.x = pos.x;
     p.y = pos.y;

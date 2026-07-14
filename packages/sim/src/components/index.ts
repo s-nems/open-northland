@@ -1,12 +1,10 @@
 /**
- * Components are PLAIN DATA only. Positions/velocities are fixed-point (see core/fixed.ts) — never
- * floats. This set covers the Phase-2 vertical slice and the atomic-action model; grow it as systems
- * land.
+ * Components are plain data only. Positions/velocities are fixed-point (see core/fixed.ts) — never floats.
  *
- * Barrel: the definitions are grouped by domain into sibling modules (movement / settler / combat /
- * economy); this re-exports them all, so `@open-northland/sim` and every intra-package importer keep a
- * single `components/index.js` surface. Splitting is hash-neutral — component registration order is
- * driven by the runtime first-`add()` sequence (see ecs/world.ts), not module-load order.
+ * Barrel: the definitions are grouped by domain into sibling modules (movement / settler / combat / economy);
+ * this re-exports them all, so `@open-northland/sim` and every intra-package importer keep a single
+ * `components/index.js` surface. Splitting is hash-neutral — component registration order is driven by the
+ * runtime first-`add()` sequence (see ecs/world.ts), not module-load order.
  */
 
 export * from './combat.js';

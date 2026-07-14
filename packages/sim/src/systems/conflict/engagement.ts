@@ -12,27 +12,26 @@ import { isHuntTarget, isValidTarget, SIGHT_RADIUS_NODES } from './targeting.js'
 // conflict/; {@link combatSystem} composes this with ./chase.ts (the walk-into-melee half).
 
 /**
- * DEFEND stance — how far (Manhattan half-cell nodes) from its **anchor** a defender auto-acquires an
- * enemy: it engages only threats inside this radius of the node the DEFEND stance was set on, ignoring
- * anything beyond (it holds its post rather than roaming). APPROXIMATED — the original's exact defend
- * radius is unreadable (source basis "Combat stances"); calibration-by-observation pending. Doubled
- * with the half-cell migration (same on-screen radius as the old 4-cell value).
+ * DEFEND stance — how far (Manhattan half-cell nodes) from its anchor a defender auto-acquires an enemy: it
+ * engages only threats inside this radius of the node the DEFEND stance was set on, ignoring anything beyond.
+ * Approximated — the original's exact defend radius is unreadable (source basis "Combat stances"); doubled with
+ * the half-cell migration (same on-screen radius as the old 4-cell value).
  */
 export const DEFEND_RADIUS_NODES = 8;
 
 /**
- * DEFEND stance — the **leash**: the farthest (Manhattan nodes) from its anchor a defender will step to
- * strike an in-radius enemy. Kept a little above {@link DEFEND_RADIUS_NODES} so a melee defender can walk
- * up to a threat at the radius edge, but never chases far — a target reachable only by breaking the leash
- * is left alone and the defender returns to its anchor. APPROXIMATED (source basis).
+ * DEFEND stance — the leash: the farthest (Manhattan nodes) from its anchor a defender will step to strike an
+ * in-radius enemy. Kept a little above {@link DEFEND_RADIUS_NODES} so a melee defender can walk up to a threat
+ * at the radius edge, but never chases far — a target reachable only by breaking the leash is left alone and the
+ * defender returns to its anchor. Approximated (source basis).
  */
 export const DEFEND_LEASH_NODES = 12;
 
 /**
- * The military mode an owned combatant acts under — its {@link Stance} `mode`, or (defensively, if the
- * component is somehow missing) the job's {@link defaultStanceForJob}. `NONE` (an unset mode the defaults
- * never produce) is normalized to the passive {@link MILITARY_MODE.IGNORE} so a stray value never becomes
- * an accidental aggressor. Pure component read, no RNG/wall-clock.
+ * The military mode an owned combatant acts under — its {@link Stance} `mode`, or (defensively, if the component
+ * is somehow missing) the job's {@link defaultStanceForJob}. `NONE` (an unset mode the defaults never produce)
+ * is normalized to the passive {@link MILITARY_MODE.IGNORE} so a stray value never becomes an accidental
+ * aggressor.
  */
 export function stanceMode(world: World, e: Entity, jobType: number | null): number {
   const s = world.tryGet(e, Stance);
@@ -41,14 +40,14 @@ export function stanceMode(world: World, e: Entity, jobType: number | null): num
 }
 
 /**
- * How a combatant acquires a target this tick, resolved from its stance — the ring-search `accept` filter,
- * the near/far reach band (`minDist`/`searchRadius`), and (DEFEND only) the anchor leash the chase respects.
+ * How a combatant acquires a target this tick, resolved from its stance — the ring-search `accept` filter, the
+ * near/far reach band (`minDist`/`searchRadius`), and (DEFEND only) the anchor leash the chase respects.
  *  - **DEFEND** (auto, not ordered) → accept only hostile targets within {@link DEFEND_RADIUS_NODES} of the
  *    anchor, spot within `radius + leash`, and carry the anchor+leash so {@link chase} never pursues past it.
- *  - **IGNORE hunter** → accept only catchable **prey** ({@link isHuntTarget}) — the predation that survives
- *    the IGNORE gate — spotted within the sight radius.
- *  - **ATTACK / ordered / unowned** → general hostility ({@link isValidTarget}); an owned unit spots within
- *    its {@link SIGHT_RADIUS_NODES} (it advances), an unowned one only within weapon reach (swing-in-place).
+ *  - **IGNORE hunter** → accept only catchable prey ({@link isHuntTarget}) — the predation that survives the
+ *    IGNORE gate — spotted within the sight radius.
+ *  - **ATTACK / ordered / unowned** → general hostility ({@link isValidTarget}); an owned unit spots within its
+ *    {@link SIGHT_RADIUS_NODES} (it advances), an unowned one only within weapon reach (swing-in-place).
  * The `minDist` is the weapon's near reach (a ranged weapon's dead zone) in every case.
  */
 export function engageSpec(
@@ -62,11 +61,11 @@ export function engageSpec(
   attacker: { tribe: number; jobType: number | null },
   weapon: { minRange: number; maxRange: number },
 ): EngageSpec {
-  // FOG GATE (full sim enforcement, user decision 2026-07-11): an OWNED unit auto-acquires only
-  // targets its PLAYER currently sees — an enemy in the fog is invisible to the drive. Composed into
-  // every auto-acquire accept below; the explicit-AttackOrder path (resolveTarget's direct
-  // isValidTarget) stays ungated — an ordered chase follows its target into fog, and the UI can only
-  // order onto a drawn (visible) unit in the first place. Unowned combatants (wildlife) have no fog.
+  // Fog gate (full sim enforcement, user decision): an owned unit auto-acquires only targets its player
+  // currently sees — an enemy in the fog is invisible to the drive. Composed into every auto-acquire accept
+  // below; the explicit-AttackOrder path (resolveTarget's direct isValidTarget) stays ungated — an ordered
+  // chase follows its target into fog, and the UI can only order onto a drawn (visible) unit anyway. Unowned
+  // combatants (wildlife) have no fog.
   const viewer = owned ? world.tryGet(e, Owner) : undefined;
   const seesTarget = (t: Entity): boolean =>
     viewer === undefined || playerSeesEntity(world, ctx.fog, viewer.player, t);

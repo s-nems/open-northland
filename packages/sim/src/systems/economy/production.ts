@@ -18,61 +18,49 @@ import { presentOperatorCount, recipeOf, stockCapacity } from '../stores/index.j
  * A workplace is a {@link Building} with a {@link Stockpile} whose building type carries a `recipe`
  * (inputs → outputs over `recipe.ticks`). Each tick, for every such building:
  *
- *  - **Running cycles** (`{@link Production}` present — a LIST of independent batches): advance as
- *    many cycles as there are OPERATORS on station ({@link presentOperatorCount}), oldest first
- *    (FIFO) — two millers each work their own batch, so a twin-staffed mill turns out two flours per
- *    cycle length (the parallel-batch model; observed original behaviour). A completed cycle deposits
- *    its recipe outputs into the building's own stockpile (the room was reserved when it started, so
- *    they fit) and emits a `goodProduced` event; the {@link Production} component is removed when the
- *    last cycle completes. With every operator away ALL cycles **pause** — `elapsed` is held, not
- *    lost — and with fewer operators than batches the youngest batches wait their turn.
- *  - **Starting** (fewer cycles than present operators): start another cycle iff (a) the workplace is
- *    **built** (`built >= ONE` — an under-construction site never produces, even if its delivered
- *    build materials happen to satisfy a recipe input), (b) the stockpile holds every input in full,
- *    and (c) every output has free room up to the building type's per-good capacity AFTER the
- *    already-running cycles deposit theirs ({@link canStartCycle} counts the in-flight batches).
- *    Starting consumes the inputs immediately (reserving them) and snapshots `recipe.ticks` as the
- *    cycle `duration`.
+ *  - Running cycles ({@link Production} present — a list of independent batches): advance as many cycles as
+ *    there are operators on station ({@link presentOperatorCount}), oldest first (FIFO) — two millers each
+ *    work their own batch, so a twin-staffed mill turns out two flours per cycle length (the parallel-batch
+ *    model; observed original behaviour). A completed cycle deposits its recipe outputs into the building's
+ *    own stockpile (the room was reserved at start) and emits a `goodProduced` event; the {@link Production}
+ *    component is removed when the last cycle completes. With every operator away all cycles pause —
+ *    `elapsed` is held, not lost — and with fewer operators than batches the youngest wait their turn.
+ *  - Starting (fewer cycles than present operators): start another cycle iff (a) the workplace is built
+ *    (`built >= ONE` — an under-construction site never produces), (b) the stockpile holds every input in
+ *    full, and (c) every output has free room up to the building type's per-good capacity after the
+ *    already-running cycles deposit theirs ({@link canStartCycle} counts the in-flight batches). Starting
+ *    consumes the inputs immediately (reserving them) and snapshots `recipe.ticks` as the cycle `duration`.
  *
- * **Worker-presence gate:** a workplace only produces while an OPERATOR is present — a settler whose
- * `jobType` matches one of the building type's operator slots (its `workers` minus the carrier
- * transport slots) is standing on its tile ({@link presentOperatorCount}). This is the original's "a
- * workshop runs only while staffed" rule (a sawmill with no operator makes no planks) — and a carrier
- * at the door neither runs nor speeds the craft (it only ferries goods). A building type that
- * declares no worker slots is unstaffed-by-design and produces freely (passive stores / worker-less
- * fixtures are unaffected).
+ * Worker-presence gate: a workplace produces only while an operator is present — a settler whose `jobType`
+ * matches one of the building type's operator slots (its `workers` minus the carrier transport slots) is
+ * standing on its tile ({@link presentOperatorCount}). This is the original's "a workshop runs only while
+ * staffed" rule; a carrier at the door neither runs nor speeds the craft (it only ferries goods). A
+ * building type that declares no worker slots is unstaffed-by-design and produces freely.
  *
- * Inputs are consumed at cycle start and outputs deposited at completion, so a cycle is the net
- * transformation inputs→outputs — goods are conserved (nothing teleports; consumption and production
- * are explicit stockpile writes). Per-good capacity is enforced on the output side: a cycle never
- * begins unless its outputs will fit, so the stockpile never overflows.
+ * Inputs are consumed at cycle start and outputs deposited at completion, so goods are conserved. Per-good
+ * capacity is enforced on the output side: a cycle never begins unless its outputs will fit.
  *
- * Determinism: no RNG, no wall-clock; buildings are visited in the Production/Building stores'
- * deterministic insertion order, the recipe is read from CONTENT, and every stockpile write goes
- * through the canonical Map (never iterated for a decision). Timing is the exact integer compare
- * `elapsed >= duration` — not an accumulated fixed-point step (which truncates and would hang).
+ * Timing is the exact integer compare `elapsed >= duration`, not an accumulated fixed-point step (which
+ * would truncate and hang).
  */
 export const productionSystem: System = (world, ctx) => {
   // Advance running cycles first, then start new ones — so a cycle started this tick doesn't also
   // get advanced in the same tick (it begins counting next tick, like CurrentAtomic).
   for (const e of world.query(Production, Stockpile)) {
-    // Note: an in-flight cycle is NOT re-gated on the tech-graph (`jobEnablesGood`) — the unlock is a
-    // start-only "can this tribe make this at all" gate (see canStartCycle), so a cycle that began is
-    // committed even if the enabling settler later dies. The worker-presence gate, by contrast, DOES
-    // pause mid-cycle (it models the operators physically being away, not a tech unlock).
+    // An in-flight cycle is not re-gated on the tech-graph (`jobEnablesGood`) — the unlock is a start-only
+    // gate (see canStartCycle), so a committed cycle finishes even if the enabling settler later dies. The
+    // worker-presence gate does pause mid-cycle (operators physically away, not a tech unlock).
     const operators = presentOperatorCount(world, ctx, e);
     if (operators <= 0) continue; // every operator left — all cycles pause (elapsed held)
     const prod = world.get(e, Production);
-    // Each present operator works ONE batch this tick, oldest first (FIFO) — a lone miller at a
-    // two-batch mill advances only the first; the second waits for its worker.
+    // Each present operator works one batch this tick, oldest first (FIFO) — a lone miller at a two-batch
+    // mill advances only the first.
     const advanced = Math.min(operators, prod.cycles.length);
     for (const cycle of prod.cycles.slice(0, advanced)) cycle.elapsed += 1;
 
-    // Completed batches: deposit each one's outputs (room was reserved at start), drop them from the
-    // list, and retire the component when the last batch is done (the workplace reads idle again).
-    // `completed` is DERIVED from the same filter that removes the crossers, so the deposit count and
-    // the removal can never diverge (a cycle somehow persisted at `elapsed >= duration` — a load path,
-    // a debug mutation — deposits exactly once as it leaves, never silently vanishing).
+    // Completed batches: deposit each one's outputs (room reserved at start), drop them from the list, and
+    // retire the component when the last is done. `completed` is derived from the same filter that removes
+    // them, so the deposit count and the removal can't diverge.
     const before = prod.cycles.length;
     prod.cycles = prod.cycles.filter((c) => c.elapsed < Math.max(1, c.duration));
     const completed = before - prod.cycles.length;
@@ -110,31 +98,26 @@ export const productionSystem: System = (world, ctx) => {
 };
 
 /**
- * Whether a workplace may begin ANOTHER production cycle now — the start gate the ProductionSystem
- * applies (see {@link startableCycleCount} for the checks; this is its `> 0` view).
+ * Whether a workplace may begin another production cycle now — the start gate the ProductionSystem applies
+ * (see {@link startableCycleCount} for the checks; this is its `> 0` view).
  */
 export function canStartCycle(world: World, ctx: SystemContext, building: Entity, recipe: Recipe): boolean {
   return startableCycleCount(world, ctx, building, recipe) > 0;
 }
 
 /**
- * How many MORE production cycles the workplace could start right now, beyond the batches already in
- * flight. A cycle is startable while: every output good is **tech-unlocked** for its tribe (the
- * `jobEnablesGood` gate — mirrors the `placeBuilding` house gate: a tannery makes no leather without
- * the tanner; any locked output means zero), the stockpile covers every input in full once per batch,
- * AND every output has free room up to its per-good stock capacity AFTER the in-flight batches
- * deposit theirs (each running cycle reserved its room when it started, so a further batch only
- * starts if the slot fits them all). The output room check is the capacity enforcement — a cycle that
- * couldn't deposit its outputs is never started, so the stockpile never overflows. The in-flight
- * reservation assumes every running batch runs THIS recipe — true today (one recipe per building
- * type); a future per-cycle recipe carries its own outputs and this accounting moves onto the cycle.
+ * How many more production cycles the workplace could start right now, beyond the batches already in
+ * flight. A cycle is startable while every output good is tech-unlocked for its tribe (the `jobEnablesGood`
+ * gate — mirrors the `placeBuilding` house gate; any locked output means zero), the stockpile covers every
+ * input in full once per batch, and every output has free room up to its per-good stock capacity after the
+ * in-flight batches deposit theirs (each running cycle reserved its room at start). The output-room check
+ * is the capacity enforcement — a cycle that couldn't deposit is never started, so the stockpile never
+ * overflows. The in-flight reservation assumes every running batch runs this recipe (true today: one recipe
+ * per building type).
  *
- * Exported so the AI planner can size the workplace's WORK SEATS (running + startable batches — the
- * producer stay-or-fetch decision, {@link workSeatCount}) with the exact same gate the
- * ProductionSystem applies, rather than a drifting re-implementation. Does NOT check `built >= ONE`
- * (the start loop checks that separately) or worker-presence (the caller decides whether the worker
- * is there), so the planner combines those itself. An input-less, output-less recipe reads as
- * unbounded (`Infinity`) — the degenerate always-startable case the `> 0` gate preserved.
+ * Exported so the AI planner can size the workplace's work seats ({@link workSeatCount}) with the exact gate
+ * the ProductionSystem applies. Does not check `built >= ONE` or worker-presence (the caller handles those).
+ * An input-less, output-less recipe reads as unbounded (`Infinity`).
  */
 export function startableCycleCount(
   world: World,

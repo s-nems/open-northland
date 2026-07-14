@@ -4,24 +4,20 @@ import { nodeOfPosition } from '../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../nav/terrain/index.js';
 import { manhattan, nodeKey } from './footprint/geometry.js';
 
-// The cross-system SPATIAL primitives — canonical scan order, the per-tick node bucket + ring
-// search, and the node/distance helpers. A leaf module (only footprint/geometry.ts below it) so every
-// per-system file imports these without creating cycles; the store/economy read-model lives in
-// ./stores.ts, the same split.
+// The cross-system spatial primitives — canonical scan order, the per-tick node bucket + ring search, and
+// the node/distance helpers. A leaf module (only footprint/geometry.ts below it) so every per-system file
+// imports these without creating cycles; the store/economy read-model lives in ./stores.ts, the same split.
 
 /**
- * Ascending entity-id (canonical) ordering of `entities` — the deterministic scan order a system needs
- * when it **picks** an entity (nearest target, first open job): the same order `World.canonicalEntities`
- * uses, so a distance / first-match tie-break lands on the identical winner (goldens unchanged). Build
- * this ONCE per tick from a `world.query(...)` (which is `O(min store)`) and scan the result across all
- * units, instead of each unit re-scanning + re-sorting the whole world — the fix that turns a per-unit
- * full-world scan from `O(units · entities · log n)` into `O(entities + units · matching)`.
+ * Ascending entity-id (canonical) ordering of `entities` — the deterministic scan order a system needs when
+ * it picks an entity (nearest target, first open job): the same order `World.canonicalEntities` uses, so a
+ * distance / first-match tie-break lands on the identical winner. Build this once per tick from a
+ * `world.query(...)` and scan the result across all units, instead of each unit re-scanning the whole world
+ * — turning `O(units · entities · log n)` into `O(entities + units · matching)`.
  *
- * Determinism note: fed a `world.query(C)` this yields the same ascending-id subsequence the old
- * `canonicalEntities()`-then-filter scan did — but only because the ECS holds `store ⊆ alive` (a
- * component store never keeps a destroyed entity; `destroy()` clears all stores). That invariant is
- * already load-bearing (`query` drives every system loop); a use-after-`destroy` bug would make
- * query-based pickers diverge from `alive`-based ones.
+ * Fed a `world.query(C)` this yields the same ascending-id subsequence the old `canonicalEntities()`-then-
+ * filter scan did, but only because the ECS holds `store ⊆ alive` (a store never keeps a destroyed entity):
+ * a use-after-`destroy` bug would make query-based pickers diverge from `alive`-based ones.
  */
 export function canonicalById(entities: Iterable<Entity>): Entity[] {
   return [...entities].sort((a, b) => a - b);
@@ -35,19 +31,16 @@ const NO_ENTITIES: readonly Entity[] = Object.freeze([]);
 export { nodeKey };
 
 /**
- * A per-tick **spatial bucket**: `entities` grouped by their integer node, each bucket preserving the
- * input order. **Feed it a {@link canonicalById} list** — the ring search's first-accepted-per-node
- * shortcut ({@link NodeBuckets.nearest}) is only canonical because buckets hold ascending ids; a raw
- * `world.query` iterable would silently change ring-search winners. Answers "what is on node
- * (x,y)?" in O(1) via {@link NodeBuckets.at}, replacing a full-world scan for on-node checks (am I
- * standing on a workplace?). The bucket grid is the half-cell NODE lattice (`nodeOfPosition`) — the
- * sim's one integer grid. By default an entity buckets by its {@link Position}'s node; an optional
+ * A per-tick spatial bucket: `entities` grouped by their integer node, each bucket preserving the input
+ * order. Feed it a {@link canonicalById} list — the ring search's first-accepted-per-node shortcut
+ * ({@link NodeBuckets.nearest}) is only canonical because buckets hold ascending ids; a raw `world.query`
+ * iterable would silently change ring-search winners. Answers "what is on node (x,y)?" in O(1) via
+ * {@link NodeBuckets.at}, replacing a full-world scan for on-node checks. The bucket grid is the half-cell
+ * node lattice (`nodeOfPosition`). By default an entity buckets by its {@link Position}'s node; an optional
  * `nodeOf` resolver overrides that per entity (the JobSystem buckets buildings by their door-aware
- * {@link interactionNode}) — an entity the resolver maps to `null` (and a Position-less one) is dropped.
- * Determinism: a first-match pick over a bucket lands on the same entity a canonical full scan would,
- * because the node is fixed and the bucket keeps ascending-id order. The nested numeric maps keep
- * negative/off-map probes collision-free without allocating string keys. Rebuilt each tick (derived
- * state, never hashed) — the cheap seam toward a full ring-search grid without touching sim state.
+ * {@link interactionNode}) — an entity the resolver maps to `null` (and a Position-less one) is dropped. The
+ * nested numeric maps keep negative/off-map probes collision-free without string keys; rebuilt each tick
+ * (derived state, never hashed).
  */
 export class NodeBuckets {
   private readonly byX = new Map<number, Map<number, Entity[]>>();
@@ -91,29 +84,23 @@ export class NodeBuckets {
   }
 
   /**
-   * The **nearest bucketed entity** to node `(fromX, fromY)` that satisfies `accept`, searched as
-   * expanding Manhattan node-RINGS from `minDist` outward to `maxDist` — the grid ring search the
-   * scaling doctrine (packages/sim/AGENTS.md "Full ring-search nearest-X", historical plan tier 3) calls for,
-   * so a per-seeker "who's the closest enemy?" query costs O(bounded rings) instead of a full-world
-   * scan. Returns the entity + its integer Manhattan distance, or null when nothing in the band matches.
+   * The nearest bucketed entity to node `(fromX, fromY)` that satisfies `accept`, searched as expanding
+   * Manhattan node-rings from `minDist` outward to `maxDist` — the grid ring search the scaling doctrine
+   * (packages/sim/AGENTS.md "Full ring-search nearest-X") calls for, so a per-seeker "who's the closest
+   * enemy?" query costs O(bounded rings) instead of a full-world scan. Returns the entity + its integer
+   * Manhattan distance, or null when nothing in the band matches.
    *
-   * The winner is the SAME one a canonical full scan would pick — **(min distance, then min entity
-   * id)** — because the search **finishes the whole minimum-distance ring before choosing**: it never
-   * stops at the first hit within a ring, it scans every node of that ring and keeps the smallest id
-   * (buckets are ascending-id, and the min is taken across the ring), so the result is independent of
-   * the node-iteration order (determinism). Rings are visited in strictly increasing distance, so the
-   * first ring with any accepted entity holds the nearest; the search then returns without touching a
-   * farther ring (the short-circuit that makes it cheap), and it stops entirely once `d` passes
-   * `maxDist` (an empty query never scans past its radius).
+   * The winner is the same one a canonical full scan would pick — min distance, then min entity id —
+   * because the search finishes the whole minimum-distance ring before choosing: it scans every node of that
+   * ring and keeps the smallest id (buckets are ascending-id), so the result is independent of node-iteration
+   * order. Rings are visited in strictly increasing distance, so the first ring with any accepted entity
+   * holds the nearest and the search returns without touching a farther ring; it stops entirely once `d`
+   * passes `maxDist`.
    *
-   * `minDist` skips entities nearer than a floor (a ranged weapon's near reach, or excluding the
-   * seeker itself at distance 0). The metric is integer HALF-CELL-NODE Manhattan — the exact metric
-   * {@link manhattan} measures over node coords and the one an entity's bucket key
-   * (`nodeOfPosition`) is derived from — so a ring at distance `d` holds precisely the entities a
-   * full scan would score at distance `d`. Determinism: no RNG/wall-clock; a pure ring walk with a
-   * min-id tie-break. Reads no world state beyond the pre-bucketed entities — `accept` is the
-   * caller's pure per-candidate relation (a hostility test), evaluated at most once per candidate
-   * in the band.
+   * `minDist` skips entities nearer than a floor (a ranged weapon's near reach, or excluding the seeker
+   * itself at distance 0). The metric is integer half-cell-node Manhattan — the exact metric
+   * {@link manhattan} measures and the one an entity's bucket key (`nodeOfPosition`) is derived from.
+   * `accept` is the caller's pure per-candidate relation, evaluated at most once per candidate in the band.
    */
   nearest(
     fromX: number,
@@ -124,9 +111,9 @@ export class NodeBuckets {
   ): { entity: Entity; distance: number } | null {
     for (let d = minDist; d <= maxDist; d++) {
       let best: Entity | null = null;
-      // Ring d = every node at Manhattan distance EXACTLY d. For each column offset dx in [-d, d] the
-      // two rows dy = ±(d - |dx|) complete the diamond (a single row when the remainder is 0, at the
-      // ring's E/W tips). The whole ring is scanned before choosing so the min-id pick is canonical.
+      // Ring d = every node at Manhattan distance exactly d. For each column offset dx in [-d, d] the two
+      // rows dy = ±(d - |dx|) complete the diamond (a single row when the remainder is 0, at the ring's E/W
+      // tips).
       for (let dx = -d; dx <= d; dx++) {
         const rem = d - Math.abs(dx);
         best = this.pickMinId(fromX + dx, fromY + rem, accept, best);
@@ -169,11 +156,11 @@ export function isValidNodeId(terrain: TerrainGraph, node: number): node is Node
 }
 
 /**
- * The half-cell node an entity occupies — its {@link Position} snapped to the navigation lattice.
- * The plain positional resolver for units/creatures/fixtures (a settler, a herd animal, a resource
- * node), where the entity's own node IS the node to measure from. Building targets a settler must
- * reach *through a door* use the AI planner's interaction-aware resolver instead (walls are
- * walk-blocked); this is the common case, shared by combat targeting and the herding follow-drive.
+ * The half-cell node an entity occupies — its {@link Position} snapped to the navigation lattice. The plain
+ * positional resolver for units/creatures/fixtures (a settler, a herd animal, a resource node), where the
+ * entity's own node is the node to measure from. Building targets a settler must reach through a door use the
+ * AI planner's interaction-aware resolver instead (walls are walk-blocked); this is the common case, shared
+ * by combat targeting and the herding follow-drive.
  */
 export function entityNode(world: World, terrain: TerrainGraph, e: Entity): NodeId {
   const p = world.get(e, Position);
@@ -186,10 +173,10 @@ export function entityNode(world: World, terrain: TerrainGraph, e: Entity): Node
 export { manhattan };
 
 /**
- * The 8 compass step offsets (E, W, S, N, then the four diagonals) in the fixed canonical order the
- * sim's direction-indexed picks share: the herd-spawn scatter ring walks it by member index and the
- * combat flee drive scores destinations along it. One shared tuple so the two can never drift —
- * the ORDER is part of the goldens (an index into this array is a deterministic pick).
+ * The 8 compass step offsets (E, W, S, N, then the four diagonals) in the fixed canonical order the sim's
+ * direction-indexed picks share: the herd-spawn scatter ring walks it by member index and the combat flee
+ * drive scores destinations along it. One shared tuple so the two can never drift — the order is part of the
+ * goldens (an index into this array is a deterministic pick).
  */
 export const COMPASS_DIRECTIONS: ReadonlyArray<readonly [number, number]> = [
   [1, 0],

@@ -39,12 +39,11 @@ export function playerSeesNode(fog: FogState | undefined, player: number, hx: nu
 }
 
 /**
- * Whether `player` currently sees the entity `target` — {@link playerSeesNode} at the target's
- * position. The per-candidate form the combat auto-acquire and flee-threat filters compose into their
- * `accept` relations (full sim enforcement — user decision 2026-07-11: a unit in fog can be neither
- * auto-engaged nor fled from). A position-less target has no cell to hide in — seen. Pure read of the
- * frozen-this-tick mask (visionSystem runs earlier in SYSTEM_ORDER), so ring-search winners stay
- * deterministic.
+ * Whether `player` currently sees the entity `target` — {@link playerSeesNode} at the target's position. The
+ * per-candidate form the combat auto-acquire and flee-threat filters compose into their `accept` relations
+ * (full sim enforcement — user decision: a unit in fog can be neither auto-engaged nor fled from). A
+ * position-less target has no cell to hide in — seen. Pure read of the frozen-this-tick mask (visionSystem runs
+ * earlier in SYSTEM_ORDER), so ring-search winners stay deterministic.
  */
 export function playerSeesEntity(
   world: World,

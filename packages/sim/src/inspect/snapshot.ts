@@ -3,22 +3,19 @@ import type { SimEvent } from '../core/events.js';
 import type { Entity, World } from '../ecs/world.js';
 
 /**
- * A read-only snapshot of the world at a tick boundary — the seam `render`/audio read instead of
- * the live component stores. Taken AFTER a `step()` completes (never mid-mutation), it is a plain,
- * structurally-cloned value: no class instances, no live `Map`s, no `Entity` brands — every
- * component value is JSON-ish data. That has two payoffs the plan calls for:
+ * A read-only snapshot of the world at a tick boundary — the seam `render`/audio read instead of the live
+ * component stores. Taken after a `step()` completes (never mid-mutation), it is a plain, structurally-cloned
+ * value: no class instances, no live `Map`s, no `Entity` brands — every component value is JSON-ish data. That
+ * has two payoffs:
  *
- *  1. **Render never reads mid-mutation.** `render` consumes a frozen snapshot + the tick's events,
- *     so a system writing a component store can't be observed half-applied. (The double-buffer
- *     alternative would keep two live worlds; a cloned snapshot is simpler and, because it's plain,
- *     also gives us...)
- *  2. **Transferable for free.** A plain structure with no class instances / live Maps can be
- *     `postMessage`d to a render thread (the "run the sim in a Web Worker" cross-cutting win) without
- *     a serialization retrofit later.
+ *  1. **Render never reads mid-mutation.** `render` consumes a frozen snapshot + the tick's events, so a system
+ *     writing a component store can't be observed half-applied. (The double-buffer alternative would keep two
+ *     live worlds; a cloned snapshot is simpler and, being plain, also transferable.)
+ *  2. **Transferable for free.** A plain structure with no class instances / live Maps can be `postMessage`d to
+ *     a render thread (the "run the sim in a Web Worker" win) without a serialization retrofit later.
  *
- * It is NOT the save format — that is the command log (replay-from-seed). This is a per-frame view.
- * Determinism is unaffected: a snapshot is a pure function of the world, never read back into sim
- * logic (it's read-only, and the events are the existing one-shot buffer, not a callback seam).
+ * It is not the save format — that is the command log (replay-from-seed). This is a per-frame view. Determinism
+ * is unaffected: a snapshot is a pure function of the world, never read back into sim logic.
  */
 export interface WorldSnapshot {
   readonly tick: number;
@@ -35,16 +32,15 @@ export interface EntitySnapshot {
 }
 
 /**
- * Per-world cache of SCENERY entities' cloned {@link EntitySnapshot}s — a decoded map plants tens of
- * thousands of {@link Resource} nodes that then sit unchanged for thousands of ticks, and deep-cloning
- * them every snapshot was the 28 ms/frame that pinned a real map at ~20 fps (golden rule 6: per-frame
- * cost scales with active work). An entry is reused verbatim until the World's touched-entity log names
- * its entity (any `add`/`remove`/`destroy`, or an in-place write the mutating system `touch`es — the
- * harvest decrements). Only entities carrying {@link Resource} or {@link Stump} are cached: their
- * mutation sites are few and named, unlike a settler whose Position mutates in place every tick.
- * Coherence is enforced by a {@link World.registerCacheVerifier} verifier (a fresh re-clone must equal
- * every cached entry), so a future un-`touch`ed mutation fails invariant-checked runs at the tick it
- * happens instead of shipping a stale render.
+ * Per-world cache of scenery entities' cloned {@link EntitySnapshot}s — a decoded map plants tens of thousands
+ * of {@link Resource} nodes that then sit unchanged for thousands of ticks, and deep-cloning them every snapshot
+ * was the 28 ms/frame that pinned a real map at ~20 fps (golden rule 6: per-frame cost scales with active work).
+ * An entry is reused verbatim until the World's touched-entity log names its entity (any `add`/`remove`/`destroy`,
+ * or an in-place write the mutating system `touch`es — the harvest decrements). Only entities carrying
+ * {@link Resource} or {@link Stump} are cached: their mutation sites are few and named, unlike a settler whose
+ * Position mutates in place every tick. Coherence is enforced by a {@link World.registerCacheVerifier} verifier
+ * (a fresh re-clone must equal every cached entry), so a future un-`touch`ed mutation fails invariant-checked
+ * runs at the tick it happens instead of shipping a stale render.
  */
 const sceneryClones = new WeakMap<World, Map<Entity, EntitySnapshot>>();
 

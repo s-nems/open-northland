@@ -1,14 +1,14 @@
 /**
- * A tiny, explicit ECS. Deliberately not a library: we need full control over iteration order
- * (for determinism) and maximum legibility. ~180 lines is the whole thing.
+ * A tiny, explicit ECS. Deliberately not a library: we need full control over iteration order (for
+ * determinism) and legibility.
  *
  * Rules (see docs/ECS.md):
- *  - Entities are integer ids from a MONOTONIC counter — never recycled. Entities are cheap; id
- *    reuse would make iteration order history-dependent in confusing ways. Don't recycle.
+ *  - Entities are integer ids from a monotonic counter — never recycled. Id reuse would make iteration order
+ *    history-dependent in confusing ways.
  *  - Components are plain data registered via defineComponent.
- *  - Queries iterate in DETERMINISTIC insertion order of the driving store (no per-call sort — that
- *    was a perf trap at thousands of entities). Order is reproducible across identical runs, which
- *    is what determinism requires. For a CANONICAL order (snapshots/hashes) sort ids explicitly.
+ *  - Queries iterate in deterministic insertion order of the driving store (no per-call sort — a perf trap at
+ *    thousands of entities). Order is reproducible across identical runs. For a canonical order
+ *    (snapshots/hashes) sort ids explicitly.
  *  - Components carry no behavior; Systems (plain functions) carry all behavior.
  */
 
@@ -49,15 +49,15 @@ export class World {
   private canonicalCache: readonly Entity[] | null = null;
   /**
    * Entities whose components changed since the last {@link drainTouched} — the invalidation feed for
-   * identity-keyed READ caches (the snapshot's per-entity clone cache). `add`/`remove`/`destroy` log
-   * automatically; a system that mutates a component value IN PLACE on a cache-eligible entity must call
-   * {@link touch} itself (the snapshot cache's verifier catches a missed call under invariant-checked
-   * runs). Purely a read-path aid: never consulted by a sim decision, so it cannot affect determinism.
+   * identity-keyed read caches (the snapshot's per-entity clone cache). `add`/`remove`/`destroy` log
+   * automatically; a system that mutates a component value in place on a cache-eligible entity must call
+   * {@link touch} itself (the snapshot cache's verifier catches a missed call under invariant-checked runs).
+   * Purely a read-path aid: never consulted by a sim decision, so it cannot affect determinism.
    */
   private readonly touched = new Set<Entity>();
-  /** Monotonic counter of ALL entity mutations (add/remove/destroy/touch) — the snapshot memo's
-   *  freshness key. Unlike "is the touched log empty" it cannot be falsified by another consumer
-   *  draining the log between two same-tick snapshots. */
+  /** Monotonic counter of all entity mutations (add/remove/destroy/touch) — the snapshot memo's freshness
+   *  key. Unlike "is the touched log empty" it cannot be falsified by another consumer draining the log
+   *  between two same-tick snapshots. */
   private mutations = 0;
   /** Set when the touched log overflowed and was dropped wholesale (a snapshot-less soak run) —
    *  the next {@link drainTouched} reports it so the consumer discards its whole cache. */
@@ -104,7 +104,7 @@ export class World {
   }
 
   /**
-   * Log an IN-PLACE component-value mutation on `entity` so identity-keyed read caches (the snapshot's
+   * Log an in-place component-value mutation on `entity` so identity-keyed read caches (the snapshot's
    * per-entity clone cache) drop their stale copy. `add`/`remove`/`destroy` log automatically — call this
    * only where a system writes a field of a stored value directly (e.g. the harvest effect decrementing
    * `Resource.remaining`). Read-path only; no sim decision ever consults the log.
@@ -114,20 +114,19 @@ export class World {
   }
 
   /**
-   * Monotonic version of ALL entity mutations (every `add`/`remove`/`destroy`/`touch`) — the
-   * "may the previous snapshot be reused?" key (`Simulation.snapshot`'s per-tick memo). A COUNTER,
-   * not the touched log's emptiness: any consumer may drain the log without falsifying another
-   * consumer's staleness probe.
+   * Monotonic version of all entity mutations (every `add`/`remove`/`destroy`/`touch`) — the "may the
+   * previous snapshot be reused?" key (`Simulation.snapshot`'s per-tick memo). A counter, not the touched
+   * log's emptiness: any consumer may drain the log without falsifying another consumer's staleness probe.
    */
   get mutationVersion(): number {
     return this.mutations;
   }
 
   /**
-   * Hand every logged-touched entity to `consume` and clear the log (the snapshot clone cache evicts
-   * each touched entity's cached clone). Returns `true` when the log OVERFLOWED since the last drain
-   * (dropped wholesale — a long snapshot-less run): the consumer must then discard its entire cache,
-   * because the individual evictions were lost.
+   * Hand every logged-touched entity to `consume` and clear the log (the snapshot clone cache evicts each
+   * touched entity's cached clone). Returns `true` when the log overflowed since the last drain (dropped
+   * wholesale — a long snapshot-less run): the consumer must then discard its entire cache, because the
+   * individual evictions were lost.
    */
   drainTouched(consume: (entity: Entity) => void): boolean {
     for (const e of this.touched) consume(e);
@@ -164,8 +163,8 @@ export class World {
   }
 
   /**
-   * Iterate entities that have ALL of the given components, in deterministic insertion order of
-   * the smallest store. O(min store size). No sorting in the hot path.
+   * Iterate entities that have all of the given components, in deterministic insertion order of the smallest
+   * store. O(min store size). No sorting in the hot path.
    */
   *query(...required: Array<Component<unknown>>): IterableIterator<Entity> {
     let smallest = required[0];
@@ -196,10 +195,9 @@ export class World {
    */
   canonicalEntities(): readonly Entity[] {
     if (this.canonicalCache === null) {
-      // Frozen so a consumer that mutates the shared array (.sort()/.reverse() in place — the
-      // documented never-do) throws AT THE MUTATION SITE instead of silently corrupting the
-      // canonical order every other consumer reads (a nondeterminism that would only surface as a
-      // distant golden/desync failure).
+      // Frozen so a consumer that mutates the shared array (.sort()/.reverse() in place — the documented
+      // never-do) throws at the mutation site instead of silently corrupting the canonical order every other
+      // consumer reads (a nondeterminism that would only surface as a distant golden/desync failure).
       this.canonicalCache = Object.freeze([...this.alive].sort((a, b) => a - b));
     }
     return this.canonicalCache;
@@ -216,13 +214,12 @@ export class World {
   }
 
   /**
-   * Recompute every incrementally-maintained cache from scratch and report mismatches with the live
-   * copy (empty = coherent). Incremental caches are the classic lockstep-desync source: a derived
-   * value must be re-derivable from authoritative state at any time, so a missed invalidation shows
-   * up HERE, at the tick it happens, not as an unexplained golden/hash divergence later. Wired into
-   * the core invariants (`harness/invariants.ts`), so every invariant-checked scenario/golden/fuzz
-   * run validates it each tick. Derived-cache owners register verifiers via {@link registerCacheVerifier}
-   * when they first build a cache for this world.
+   * Recompute every incrementally-maintained cache from scratch and report mismatches with the live copy
+   * (empty = coherent). Incremental caches are the classic lockstep-desync source: a derived value must be
+   * re-derivable from authoritative state at any time, so a missed invalidation shows up here, at the tick it
+   * happens, not as an unexplained golden/hash divergence later. Wired into the core invariants
+   * (`harness/invariants.ts`), so every invariant-checked scenario/golden/fuzz run validates it each tick.
+   * Derived-cache owners register verifiers via {@link registerCacheVerifier} when they first build a cache.
    */
   verifyCaches(): string[] {
     const out: string[] = [];

@@ -82,16 +82,16 @@ export const combatSystem: System = (world, ctx) => {
   // all combat work.
   if (!combatPossible(world, ctx, world.query(Settler, Health, Position))) return;
 
-  // A fight (or cleanup) IS possible: now build the canonical (ascending-id) combatant list — the scan
-  // order and the ring-search index are both built from it, so a distance/first-match tie-break lands on
-  // the same winner every run — and the per-tick spatial bucket for the ring-search enemy query.
+  // A fight (or cleanup) is possible: now build the canonical (ascending-id) combatant list — the scan order
+  // and the ring-search index are both built from it, so a distance/first-match tie-break lands on the same
+  // winner every run — and the per-tick spatial bucket for the ring-search enemy query.
   const combatants = canonicalById(world.query(Settler, Health, Position));
   const index = new NodeBuckets(world, combatants);
 
-  // The tick's MELEE-SLOT state (see {@link approachCell}): `standing` is the standing-collider node
-  // set (built lazily — a tick with no chaser pays nothing), `claimed` the approach cells already
-  // dealt out this tick. Chasers are served in the canonical combatant order, so slot assignment is
-  // deterministic; the sets are per-tick derived state, never hashed.
+  // The tick's melee-slot state (see {@link approachCell}): `standing` is the standing-collider node set (built
+  // lazily — a tick with no chaser pays nothing), `claimed` the approach cells already dealt out this tick.
+  // Chasers are served in the canonical combatant order, so slot assignment is deterministic; the sets are
+  // per-tick derived state, never hashed.
   const slots: MeleeSlots = { claimed: new Set() };
   for (const e of combatants) {
     engageCombatant(world, ctx, terrain, index, slots, e);
@@ -99,8 +99,8 @@ export const combatSystem: System = (world, ctx) => {
 };
 
 /**
- * The dormancy gate: whether any combat work is possible this tick — a cheap single pass over the
- * combatants. Combat runs if ANY of:
+ * The dormancy gate: whether any combat work is possible this tick — a cheap single pass over the combatants.
+ * Combat runs if any of:
  *  - a combatant already carries combat state ({@link Engagement}/{@link AttackOrder}/{@link Anger}) that
  *    must be resolved (disengaged, cleared, or an expired anger timer reaped) even with no live enemy;
  *  - **≥2 distinct player owners** are present (a possible player-vs-player fight);
@@ -108,9 +108,9 @@ export const combatSystem: System = (world, ctx) => {
  *  - a **hostile (aggressive) animal** and a **civilization** are both present (civ⇄animal aggression);
  *  - a **hunter** and a **catchable** animal are both present (a possible hunt).
  *
- * It is CONSERVATIVE — it may pass on a tick where the two hostile sides are out of range (combat then
- * simply finds no target), but it never skips a tick where a fight or a cleanup is due. This is the lever
- * that makes a peaceful map, or an all-one-player field, cost ~0 (no per-seeker scan runs at all).
+ * Conservative — it may pass on a tick where the two hostile sides are out of range (combat then simply finds
+ * no target), but it never skips a tick where a fight or a cleanup is due. This is the lever that makes a
+ * peaceful map, or an all-one-player field, cost ~0 (no per-seeker scan runs at all).
  */
 function combatPossible(world: World, ctx: SystemContext, combatants: Iterable<Entity>): boolean {
   const owners = new Set<number>();
@@ -145,19 +145,19 @@ function combatPossible(world: World, ctx: SystemContext, combatants: Iterable<E
 }
 
 /**
- * Resolve and act on one combatant's engagement this tick — now **stance-gated** for owned units: pick a
- * target and swing / chase / defend / flee / disengage per its {@link Stance} military mode. The gates:
+ * Resolve and act on one combatant's engagement this tick — stance-gated for owned units: pick a target and
+ * swing / chase / defend / flee / disengage per its {@link Stance} military mode. The gates:
  *  - **busy** (a {@link CurrentAtomic} running) or **dead** (`hitpoints <= 0`) → leave it (a mid-swing unit
  *    plays out; a felled-but-unreaped one gets no swing from beyond the grave);
- *  - **live player MOVE order** (a {@link PlayerOrder}, not an {@link AttackOrder}) → it suppresses ALL
- *    auto-behavior en route (engage AND flee — the reposition is authoritative) and dies on arrival, so
- *    the unit's own stance takes over at the spot;
+ *  - **live player move order** (a {@link PlayerOrder}, not an {@link AttackOrder}) → it suppresses all
+ *    auto-behavior en route (engage and flee — the reposition is authoritative) and dies on arrival, so the
+ *    unit's own stance takes over at the spot;
  *  - **FLEE** ({@link Stance} `FLEE`, no attack order) → run from the nearest threat ({@link fleeDrive}),
  *    re-evaluated even while travelling (to track a moving threat / wind the cool-down down);
- *  - **IGNORE** (or the passive `NONE`) → never auto-engage; a HUNTER is the exception (its catchable-prey
+ *  - **IGNORE** (or the passive `NONE`) → never auto-engage; a hunter is the exception (its catchable-prey
  *    predation survives the IGNORE gate), everything else disengages and waits for an explicit order;
  *  - **travelling and neither engaged nor ordered** → leave it (don't hijack an economy walk; an engaged /
- *    ordered / DEFEND-returning unit IS re-evaluated so a chaser stops-and-swings the instant it's in reach);
+ *    ordered / DEFEND-returning unit is re-evaluated so a chaser stops-and-swings the instant it's in reach);
  *  - **attacker eligibility** — an unowned passive animal runs no attack drive (also reaps a lapsed
  *    {@link Anger}); **unarmed** → disengage;
  *  - else resolve a target under the stance's {@link engageSpec} (ATTACK: sight; DEFEND: anchor radius;
@@ -179,19 +179,19 @@ function engageCombatant(
   const owned = world.has(e, Owner);
   let ordered = world.has(e, AttackOrder);
   const attacker = world.get(e, Settler);
-  // A live PLAYER MOVE order (a {@link PlayerOrder}, and NOT an explicit {@link AttackOrder}) is the human's
-  // authoritative "go there" command: en route it suppresses ALL auto-behavior — engage AND flee — so the
-  // reposition is carried out (ordering units PAST an enemy line routes around it, never into a fight). The
-  // order dies on arrival ({@link playerOrderSystem}), so the unit's own stance resumes there — a DEFEND
-  // guard fights around its relocated anchor, a passive unit stands. `moveUnit` clears any prior
-  // Engagement/AttackOrder/Fleeing, so an ordered unit starts its walk cleanly; an explicit AttackOrder is
-  // the OPPOSITE intent (fight THAT one) and always engages.
+  // A live player move order (a {@link PlayerOrder}, and not an explicit {@link AttackOrder}) is the human's
+  // authoritative "go there" command: en route it suppresses all auto-behavior — engage and flee — so the
+  // reposition is carried out (ordering units past an enemy line routes around it, never into a fight). The
+  // order dies on arrival ({@link playerOrderSystem}), so the unit's own stance resumes there — a DEFEND guard
+  // fights around its relocated anchor, a passive unit stands. `moveUnit` clears any prior
+  // Engagement/AttackOrder/Fleeing, so an ordered unit starts its walk cleanly; an explicit AttackOrder is the
+  // opposite intent (fight that one) and always engages.
   if (world.has(e, PlayerOrder) && !ordered) return;
-  // An explicit attack order that has OUTLIVED its target (dead / no longer a valid hostile) is dropped
-  // HERE, before the stance dispatch, so the unit re-decides by its STANCE this tick — an IGNORE scout goes
-  // back to ignoring, a FLEE civilian to fleeing, a DEFEND guard to its post — instead of the order's
-  // now-stale general-hostility spec falling through to a one-tick ATTACK-style re-acquire regardless of
-  // stance. An ATTACK unit still re-acquires the nearest enemy the SAME tick (its own stance path does).
+  // An explicit attack order that has outlived its target (dead / no longer a valid hostile) is dropped here,
+  // before the stance dispatch, so the unit re-decides by its stance this tick — an IGNORE scout goes back to
+  // ignoring, a FLEE civilian to fleeing, a DEFEND guard to its post — instead of the order's now-stale
+  // general-hostility spec falling through to a one-tick ATTACK-style re-acquire regardless of stance. An
+  // ATTACK unit still re-acquires the nearest enemy the same tick (its own stance path does).
   if (ordered && !isValidTarget(world, ctx, e, attacker, world.get(e, AttackOrder).target)) {
     world.remove(e, AttackOrder);
     ordered = false;
@@ -200,16 +200,16 @@ function engageCombatant(
   // `null`, they keep the legacy content-relation behaviour (swing an in-reach enemy, no advance/flee).
   const stance = owned ? stanceMode(world, e, attacker.jobType) : null;
 
-  // FLEE — run from the nearest threat. Runs even while travelling (re-evaluated each tick to track a
-  // moving threat and wind the cool-down down). An explicit attack order overrides the flee mode. A unit
-  // that has STOPPED fleeing (stance changed, or an order took over) sheds the flee state + its run route.
+  // FLEE — run from the nearest threat. Runs even while travelling (re-evaluated each tick to track a moving
+  // threat and wind the cool-down down). An explicit attack order overrides the flee mode. A unit that has
+  // stopped fleeing (stance changed, or an order took over) sheds the flee state + its run route.
   const willFlee = stance === MILITARY_MODE.FLEE && !ordered;
   if (world.has(e, Fleeing) && !willFlee) {
     world.remove(e, Fleeing);
     clearChase(world, e);
   }
   if (willFlee) {
-    // A fleeing unit is NOT attack-engaged: shed any Engagement left from a prior ATTACK/DEFEND chase (e.g.
+    // A fleeing unit is not attack-engaged: shed any Engagement left from a prior ATTACK/DEFEND chase (e.g.
     // `setStance(FLEE)` issued mid-chase). Without this the stale marker outlives the flee — once the threat
     // clears, `fleeDrive` drops `Fleeing` but not `Engagement`, benching the unit (aiSystem skips it) and
     // keeping combat awake forever. The `Fleeing` marker (not `Engagement`) is what holds a fleer off the economy.
@@ -219,9 +219,9 @@ function engageCombatant(
   }
 
   // IGNORE (and the passive NONE, normalized to IGNORE by {@link stanceMode}) — never auto-engage a hostile
-  // enemy; only an explicit attack order fights. A HUNTER is exempt: its catchable-prey predation is an
-  // economic drive independent of the military mode, so it falls through to the engage path (with a
-  // predation-only target filter, {@link engageSpec}).
+  // enemy; only an explicit attack order fights. A hunter is exempt: its catchable-prey predation is an economic
+  // drive independent of the military mode, so it falls through to the engage path (with a predation-only target
+  // filter, {@link engageSpec}).
   if (stance === MILITARY_MODE.IGNORE && !ordered && attacker.jobType !== HUNTER_JOB) {
     disengage(world, e);
     return;
@@ -263,29 +263,28 @@ function engageCombatant(
 
   const { target, dist } = found;
   if (dist >= weapon.minRange && dist <= weapon.maxRange && !travelling) {
-    // In the reach band AND standing: swing. The standstill gate matters for the FEEL of the swing —
-    // node positions TRUNCATE to the lattice (`nodeOfPosition`), so a walker can read as in-band
-    // MID-STRIDE (up to half an edge short of a centre); starting the swing there froze it off any
-    // node centre and the wind-up read as a glide/
-    // teleport. Gated, the walker finishes its (braked) last leg onto the slot's centre and swings
-    // from a standstill; an unowned unit never travels into combat, so its swing-in-place behaviour
-    // is untouched. The clearChase is then just stale-goal hygiene for the owned arrival.
+    // In the reach band and standing: swing. The standstill gate matters for the feel of the swing — node
+    // positions truncate to the lattice (`nodeOfPosition`), so a walker can read as in-band mid-stride (up to
+    // half an edge short of a centre); starting the swing there froze it off any node centre and the wind-up
+    // read as a glide/teleport. Gated, the walker finishes its (braked) last leg onto the slot's centre and
+    // swings from a standstill; an unowned unit never travels into combat, so its swing-in-place behaviour is
+    // untouched. The clearChase is then just stale-goal hygiene for the owned arrival.
     clearChase(world, e);
-    // The Engagement marker (economy-skip + chase throttle) is OWNED-only — an unowned combatant swings
-    // in place with no advance drive, so stamping it there would give it a spurious economy-skip AND
-    // perturb its hash (it must stay byte-identical to the pre-engagement behaviour). During the swing the
-    // unit is mid-`CurrentAtomic` anyway, which already gates it off the economy; the marker only matters
-    // in the idle tick between swings, where it keeps an OWNED unit engaged instead of re-tasked.
+    // The Engagement marker (economy-skip + chase throttle) is owned-only — an unowned combatant swings in place
+    // with no advance drive, so stamping it there would give it a spurious economy-skip and perturb its hash (it
+    // must stay byte-identical to the pre-engagement behaviour). During the swing the unit is mid-`CurrentAtomic`
+    // anyway, which already gates it off the economy; the marker only matters in the idle tick between swings,
+    // where it keeps an owned unit engaged instead of re-tasked.
     if (owned) world.add(e, Engagement, { repathAt: world.tryGet(e, Engagement)?.repathAt ?? ctx.tick });
     const damage = weaponDamageVsMaterial(weapon.weapon, targetMaterial(world, ctx, target));
     startAttack(world, ctx, attacker, e, target, damage, weapon.weapon);
     return;
   }
 
-  // Beyond reach. Only an OWNED combatant advances (the player's army walks into melee); an unowned one
-  // simply has no target this tick (the resolveTarget search radius was capped at maxRange for it, so this
-  // branch is unreachable for unowned — kept explicit for the owned chase). A DEFEND chase is leashed to
-  // the anchor (`spec.defend`), so it never pursues far.
+  // Beyond reach. Only an owned combatant advances (the player's army walks into melee); an unowned one simply
+  // has no target this tick (the resolveTarget search radius was capped at maxRange for it, so this branch is
+  // unreachable for unowned — kept explicit for the owned chase). A DEFEND chase is leashed to the anchor
+  // (`spec.defend`), so it never pursues far.
   if (!owned) {
     disengage(world, e);
     return;
