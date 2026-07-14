@@ -81,7 +81,7 @@ export class WorkerSpriteOverlay {
    * Redraw the workers of `buildingId` into `field` (screen px). A null building / field, or no sprite
    * sheet, clears the overlay. Called every frame from the panel's `tick` so the animation advances.
    */
-  update(snapshot: WorldSnapshot, buildingId: number | null, field: Rect | null): void {
+  update(snapshot: WorldSnapshot, buildingId: number | null, field: Rect | null, siteCrew = false): void {
     this.drawn.clear();
     this.hits = [];
     if (this.sheet === undefined || buildingId === null || field === null) {
@@ -89,7 +89,7 @@ export class WorkerSpriteOverlay {
       this.container.visible = false;
       return;
     }
-    const workerEntities = this.boundWorkers(snapshot, buildingId);
+    const workerEntities = this.boundWorkers(snapshot, buildingId, siteCrew);
     if (workerEntities.length === 0) {
       this.hideRest();
       this.container.visible = false;
@@ -169,14 +169,21 @@ export class WorkerSpriteOverlay {
   }
 
   /** The (snapshot-ordered, capped) settler ENTITIES bound to `buildingId` — one O(entities) scan, whose
-   *  result also narrows the sprite-scene build above. A view read, so snapshot order is fine. */
-  private boundWorkers(snapshot: WorldSnapshot, buildingId: number): WorkerEntity[] {
+   *  result also narrows the sprite-scene build above. With `siteCrew` (a construction site — builders
+   *  are never JobAssignment-bound to it) a settler also counts while it works the site: hammering /
+   *  depositing there (`CurrentAtomic.targetEntity`) or on a live supply errand for it (`SupplyRun`).
+   *  A view read, so snapshot order is fine. */
+  private boundWorkers(snapshot: WorldSnapshot, buildingId: number, siteCrew: boolean): WorkerEntity[] {
     const out: WorkerEntity[] = [];
     for (const e of snapshot.entities) {
       if (out.length >= MAX_WORKERS) break;
       if (!isSettler(e)) continue;
       const assignment = e.components.JobAssignment as { workplace?: unknown } | undefined;
-      if (num(assignment?.workplace) === buildingId) out.push(e);
+      const atomic = e.components.CurrentAtomic as { targetEntity?: unknown } | undefined;
+      const supply = e.components.SupplyRun as { site?: unknown } | undefined;
+      const working =
+        siteCrew && (num(atomic?.targetEntity) === buildingId || num(supply?.site) === buildingId);
+      if (num(assignment?.workplace) === buildingId || working) out.push(e);
     }
     return out;
   }

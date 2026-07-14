@@ -361,14 +361,17 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
   /** Redraw the animated worker sprites into the (live) Pracownicy field, or clear them when the current
    *  selection isn't a building. The field is the workers body minus the top row the limits strip occupies. */
   const refreshWorkers = (snapshot: WorldSnapshot): void => {
-    if (lastModel.kind !== 'building' || layout?.kind !== 'building' || layout.workers === null) {
+    if (lastModel.kind !== 'building' || layout?.kind !== 'building') {
       workerOverlay.update(snapshot, null, null);
       return;
     }
     const b = layout.workers.body;
-    const inset = Math.round(ROW_H * scale); // the compact limits line sits in the first row
+    // The compact limits line sits in the first row — except on a construction site, which shows no
+    // strip (the field holds the live building crew instead — the overlay's siteCrew selector).
+    const siteCrew = lastModel.construction !== null;
+    const inset = siteCrew ? 0 : Math.round(ROW_H * scale);
     const field: Rect = { x: b.x, y: b.y + inset, w: b.w, h: Math.max(0, b.h - inset) };
-    workerOverlay.update(snapshot, lastModel.entityId, field);
+    workerOverlay.update(snapshot, lastModel.entityId, field, siteCrew);
   };
 
   return {

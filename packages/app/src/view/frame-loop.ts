@@ -46,7 +46,8 @@ export interface FrameLoopDeps {
  * Start the fixed-timestep RAF loop. Per-frame order matters and is pinned here: sim steps (collecting
  * EVERY step's events for audio) → camera glide → ONE snapshot + ONE `buildHud` scan feeding the tool
  * panel's stats window → tool-panel re-place BEFORE the renderer's render (screen-space meshes carry the
- * canvas resolution) → the retained `renderer.update` → unit-controls tick reusing the same snapshot →
+ * canvas resolution) → unit-controls tick reusing the same snapshot (BEFORE the render, so a details-panel
+ * rebuild never covers the portrait inset the render re-raises) → the retained `renderer.update` →
  * sound → perf readout. The RAF chain keeps itself alive once kicked off.
  */
 export function startFrameLoop(loop: FrameLoopDeps): void {
@@ -163,6 +164,11 @@ export function startFrameLoop(loop: FrameLoopDeps): void {
         ? { col: hovered.col, row: hovered.row, buildingType: placeType }
         : null,
     );
+    // Tick the unit controls (details panel + action ring) BEFORE the renderer's update: a panel rebuild
+    // re-adds its root over the stage, and the portrait inset re-raises itself inside renderer.update —
+    // this order keeps the raise after the rebuild, so a rebuilding panel never covers the live portrait
+    // for a frame (the reported miniature flicker while a construction site's % ticks up).
+    controls.tick(snap); // reuse the frame's snapshot — don't rebuild a second one
     // Feed the details panel's live "observation window" — a world cutout centred on the selected entity,
     // rendered into the portrait box INSIDE renderer.update (a second world render, before the main stage
     // render). Null when the selection has no portrait; the inset fits the entity's bounds to the box.
@@ -205,7 +211,6 @@ export function startFrameLoop(loop: FrameLoopDeps): void {
       doorBadges,
       flagged: controls.flaggedFlagIds(),
     });
-    controls.tick(snap); // reuse the frame's snapshot — don't rebuild a second one
     pileTooltip.update(snap); // name-on-hover for the good pile under the cursor (after controls: claim state is current)
     deps.onFrame?.(snap);
     if (soundDriver !== null) {

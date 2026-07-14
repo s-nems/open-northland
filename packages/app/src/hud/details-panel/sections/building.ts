@@ -89,7 +89,10 @@ export function drawBuilding(
     w: layout.preview.w - previewInset * 2,
     h: layout.preview.h - previewInset * 2,
   };
-  if (!chrome.buildingPreview(model.typeId, previewArt)) {
+  // A construction site skips the finished-building bob: the live portrait inset covers this box while
+  // the site is on screen, and the moments it can't draw (site culled) must show the neutral plate, not
+  // a misleading complete house.
+  if (model.construction !== null || !chrome.buildingPreview(model.typeId, previewArt)) {
     chrome.guiCentered(GUI_FRAME.house_plate, layout.preview, 'magenta', 'bg_normal');
     chrome.guiCentered(GUI_FRAME.tool_button_buildings, layout.preview, 'full');
   }
@@ -287,18 +290,19 @@ export function drawBuilding(
     }
   }
 
-  // A rising site's panel drops the workers window (the crew shows in the Construction window instead),
-  // so `layout.workers` is null then — guard it. Otherwise the finished building's workers strip.
-  if (layout.workers !== null) {
-    chrome.window(layout.workers.frame);
-    chrome.headline(layout.workers.title, ui('housewindow', HOUSEWINDOW.workers, messages().hud.workers));
-    const body = layout.workers.body;
-    // The per-trade limits are ONE compact strip right under the header ("Kowal 1/3 · Tragarz 1/1 ·
-    // Zbieracz 0/1"), leaving the field BELOW free for the animated worker sprites (drawn on-map style,
-    // without terrain, by the panel's own sprite pass — see panel.ts). The limits use `s`-scaled row pad.
-    const limits = model.workerSlots.map((r) => `${r.label} ${r.filled}/${r.capacity}`).join('  ·  ');
-    if (limits.length > 0) chrome.textAt(limits, body.x, body.y + ROW_TEXT_PAD * s, 'dimmed');
-  }
+  chrome.window(layout.workers.frame);
+  chrome.headline(layout.workers.title, ui('housewindow', HOUSEWINDOW.workers, messages().hud.workers));
+  const body = layout.workers.body;
+  // The per-trade limits are ONE compact strip right under the header ("Kowal 1/3 · Tragarz 1/1 ·
+  // Zbieracz 0/1"), leaving the field BELOW free for the animated worker sprites (drawn on-map style,
+  // without terrain, by the panel's own sprite pass — see panel.ts). The limits use `s`-scaled row pad.
+  // A construction site hides the strip — the slots describe the FINISHED building's trades; the field
+  // instead shows the live building crew (the overlay's site selector).
+  const limits =
+    model.construction === null
+      ? model.workerSlots.map((r) => `${r.label} ${r.filled}/${r.capacity}`).join('  ·  ')
+      : '';
+  if (limits.length > 0) chrome.textAt(limits, body.x, body.y + ROW_TEXT_PAD * s, 'dimmed');
 }
 
 /**

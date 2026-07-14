@@ -42,7 +42,7 @@ export function mapLayout<T extends DetailsLayout>(layout: T, fn: (r: Rect) => R
       production: layout.production ? sec(layout.production) : null,
       stock: layout.stock ? sec(layout.stock) : null,
       stockTabHits: layout.stockTabHits.map(fn),
-      workers: layout.workers ? sec(layout.workers) : null,
+      workers: sec(layout.workers),
     };
   }
   if (layout.kind === 'settler') {
