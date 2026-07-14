@@ -126,6 +126,16 @@ export interface LandscapeGfxRow {
   readonly buildBlockAreas?: readonly Readonly<LandscapeBlockArea>[];
 }
 
+/** The served `/bobs/` atlas stem (`<bmd-basename-minus-.bmd>.<palette>`, the pipeline's naming) for a
+ *  landscape gfx record, or `undefined` when it names no body bob or palette (a pure-logic record with no
+ *  drawable atlas). The one home for the `.bmd`→stem convention the gathering-ref and map-object joins share. */
+export function servedAtlasStem(record: LandscapeGfxRow): string | undefined {
+  const bmd = record.bmd;
+  if (bmd === undefined || bmd.trim() === '') return undefined;
+  if (record.paletteName === undefined || record.paletteName.trim() === '') return undefined;
+  return `${bmd.slice(bmd.lastIndexOf('/') + 1).replace(/\.bmd$/i, '')}.${record.paletteName}`;
+}
+
 /** One resolved gathering-pipeline stage (a landscape type + the `landscapeGfx` records that place it). */
 export interface GatheringStageRow {
   readonly landscapeType: number;

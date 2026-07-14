@@ -2,6 +2,7 @@ import type { LayeredBobRef } from '@open-northland/render';
 import { TREE_ATLAS } from '../building-gfx/index.js';
 import { GENERIC_GOOD_ICON, type GoodIconMap } from '../goods-gfx.js';
 import type { ContentIr, GatheringPipelineRow, GatheringStageRow, LandscapeGfxRow } from '../ir.js';
+import { servedAtlasStem } from '../ir.js';
 import type { GoodRef } from '../settler-gfx/index.js';
 
 /**
@@ -93,20 +94,6 @@ export interface GatheringRefs {
   readonly flag?: GatheringNodeRef;
 }
 
-/** The trailing `<name>.bmd` of a normalized asset path — `data/.../ls_ground.bmd` → `ls_ground`. */
-function bmdStem(bmd: string): string {
-  const base = bmd.slice(bmd.lastIndexOf('/') + 1);
-  return base.endsWith('.bmd') ? base.slice(0, -'.bmd'.length) : base;
-}
-
-/** The served atlas stem (`<bmd-stem>.<palette>`) of a landscape gfx record, or `undefined` when it names
- *  no body bob or palette (a pure-logic record with no drawable atlas). */
-export function servedStem(record: LandscapeGfxRow): string | undefined {
-  if (record.bmd === undefined || record.bmd.trim() === '') return undefined;
-  if (record.paletteName === undefined || record.paletteName.trim() === '') return undefined;
-  return `${bmdStem(record.bmd)}.${record.paletteName}`;
-}
-
 /**
  * The representative full-grown bob of a node record: its highest-state frame list's first bob. States
  * count up with growth/valency (a tree's `s3` is the full tree, `s1` a sapling; a mine's `s5` is the full
@@ -128,7 +115,7 @@ export function nodeBob(record: LandscapeGfxRow): number | undefined {
  *  bob), or `undefined` when it names no drawable atlas/frame. The shared resolution behind the flag,
  *  stump and berry-bush draws. Pure. */
 export function nodeRefFrom(record: LandscapeGfxRow): GatheringNodeRef | undefined {
-  const stem = servedStem(record);
+  const stem = servedAtlasStem(record);
   const bob = nodeBob(record);
   return stem !== undefined && bob !== undefined ? { stem, bob } : undefined;
 }
@@ -216,7 +203,7 @@ export function resolveGatheringRefs(
     if (p === undefined) continue;
     const nodeRecord = representativeRecord(p.harvest ?? p.pickup, byIndex);
     if (nodeRecord !== undefined) {
-      const stem = servedStem(nodeRecord);
+      const stem = servedAtlasStem(nodeRecord);
       const bobs = nodeLevelBobs(nodeRecord); // empty→full fill states — a mined deposit shrinks through them
       if (stem !== undefined && bobs !== undefined) nodesByGood[good.typeId] = { stem, bobs };
     }
@@ -225,7 +212,7 @@ export function resolveGatheringRefs(
     for (const idx of (p.harvest ?? p.pickup)?.gfxIndices ?? []) {
       const record = byIndex.get(idx);
       if (record === undefined) continue;
-      const stem = servedStem(record);
+      const stem = servedAtlasStem(record);
       const bobs = nodeLevelBobs(record);
       if (stem !== undefined && bobs !== undefined) nodesByGfxIndex[idx] = { stem, bobs };
     }
@@ -235,13 +222,13 @@ export function resolveGatheringRefs(
     // actually has a distinct pickup stage; a good without one (harvest === pickup) falls back to the pile.
     const trunkRecord = representativeRecord(p.pickup, byIndex);
     if (trunkRecord !== undefined) {
-      const stem = servedStem(trunkRecord);
+      const stem = servedAtlasStem(trunkRecord);
       const bobs = nodeLevelBobs(trunkRecord);
       if (stem !== undefined && bobs !== undefined) trunksByGood[good.typeId] = { stem, bobs };
     }
     const pileRecord = representativeRecord(p.store, byIndex);
     if (pileRecord !== undefined) {
-      const stem = servedStem(pileRecord);
+      const stem = servedAtlasStem(pileRecord);
       const fillBobs = pileFillBobs(pileRecord);
       if (stem !== undefined && fillBobs !== undefined) pilesByGood[good.typeId] = { stem, fillBobs };
     }

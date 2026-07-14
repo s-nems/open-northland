@@ -6,7 +6,8 @@ import {
   type MapObjectSprite,
   type SpriteLayer,
 } from '@open-northland/render';
-import { type ContentIr, type LandscapeGfxRow, loadLayer, MissingAtlasError } from './ir.js';
+import { type ContentIr, type LandscapeGfxRow, loadLayer, MissingAtlasError, servedAtlasStem } from './ir.js';
+import { forEachPlacement } from './map-placements.js';
 
 /**
  * The map-object binding: turn a decoded map's `objects` layer (the original's `emla` half-cell
@@ -67,13 +68,6 @@ export function stateIndexForLevel(level: number, stateCount: number): number {
   return level >= 1 && level <= stateCount ? stateCount - level : 0;
 }
 
-/** The `/bobs/` atlas key for a record: `<bmd basename minus .bmd>.<palette>` (the pipeline's naming). */
-function atlasKeyOf(record: LandscapeGfxRow): string | null {
-  if (record.bmd === undefined || record.paletteName === undefined) return null;
-  const stem = (record.bmd.split('/').pop() ?? record.bmd).replace(/\.bmd$/i, '');
-  return `${stem}.${record.paletteName}`;
-}
-
 /** One decoded atlas via the shared {@link loadLayer}, with a 404 (partial `content/`) degraded to null. */
 async function loadLayerOrNull(key: string): Promise<SpriteLayer | null> {
   try {
@@ -102,8 +96,8 @@ export async function loadCombatBones(
   const rows = (ir.landscapeGfx ?? []).filter((r) => HUMAN_BONES_EDIT_NAMES.includes(r.editName ?? ''));
   const first = rows[0];
   if (first === undefined) return null;
-  const key = atlasKeyOf(first);
-  if (key === null) return null;
+  const key = servedAtlasStem(first);
+  if (key === undefined) return null;
   const layer = await loadLayerOrNull(key);
   if (layer === null) return null;
   const frames = rows
@@ -161,8 +155,8 @@ export async function loadMapObjects(
   const layerKeys = new Set<string>();
   for (const type of objects.types) {
     const record = recordByName.get(type);
-    const key = record !== undefined ? atlasKeyOf(record) : null;
-    if (key !== null) layerKeys.add(key);
+    const key = record !== undefined ? servedAtlasStem(record) : undefined;
+    if (key !== undefined) layerKeys.add(key);
   }
   const layers = new Map<string, SpriteLayer>();
   await Promise.all(
@@ -184,8 +178,8 @@ export async function loadMapObjects(
   const resolved: (ResolvedType | null)[][] = objects.types.map((type) => {
     const record = recordByName.get(type);
     if (record === undefined) return [];
-    const key = atlasKeyOf(record);
-    const layer = key !== null ? layers.get(key) : undefined;
+    const key = servedAtlasStem(record);
+    const layer = key !== undefined ? layers.get(key) : undefined;
     if (layer === undefined) return [];
     return (record.frames ?? []).map((stateList) => {
       const frames = stateList.bobIds
@@ -205,21 +199,17 @@ export async function loadMapObjects(
   const out: MapObjectSprite[] = [];
   const byPlacement = new Map<number, MapObjectSprite>();
   let skipped = 0;
-  for (let i = 0; i + 2 < objects.placements.length; i += 3) {
-    const hx = objects.placements[i] as number;
-    const hy = objects.placements[i + 1] as number;
-    const typeIndex = objects.placements[i + 2] as number;
+  forEachPlacement(objects.placements, (hx, hy, typeIndex, placement) => {
     const states = resolved[typeIndex] ?? [];
     // `lmlv` counts up from the lowest state (see stateIndexForLevel); absent lane → the full first list.
-    const level = objects.levels?.[i / 3] ?? states.length;
+    const level = objects.levels?.[placement] ?? states.length;
     const stateIndex = stateIndexForLevel(level, states.length);
     const type = states[stateIndex] ?? states[0];
     if (type === null || type === undefined) {
       skipped++;
-      continue;
+      return;
     }
     const screen = halfCellToScreen(hx, hy);
-    const placement = i / 3; // the triplet ordinal — the handover join key (see LoadedMapObjects)
     // The node sampler owns the half-cell→cell convention (a cell-centre node lifts exactly like
     // its ground-mesh vertex, so trees sit on the warped ground). The lift is the draw offset only;
     // `y` (the feet anchor + depth key) stays pre-lift so objects occlude by map row.
@@ -250,7 +240,7 @@ export async function loadMapObjects(
     };
     out.push(sprite);
     byPlacement.set(placement, sprite);
-  }
+  });
   if (skipped > 0) {
     console.warn(
       `loadMapObjects: ${skipped} of ${objects.placements.length / 3} placements had no resolvable graphics`,

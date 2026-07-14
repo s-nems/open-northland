@@ -1,5 +1,5 @@
 import { type Locale, type Messages, messages } from '../i18n/index.js';
-import { fetchJsonOrNull } from './net.js';
+import { loadGoodsManifest } from './goods-gfx.js';
 
 /**
  * Localized good display names — the loadable seam for the pipeline's per-locale good-name tables
@@ -13,11 +13,11 @@ import { fetchJsonOrNull } from './net.js';
  */
 
 /** The locales the pipeline emits (see `GOOD_NAME_LOCALES` in the goods stage). Preference order for fallback. */
-export const GOOD_LOCALES = ['pl', 'en'] as const;
+const GOOD_LOCALES = ['pl', 'en'] as const;
 export type GoodLocale = (typeof GOOD_LOCALES)[number];
 
 /** The good-table locale matching the app's default `pol` locale. */
-export const DEFAULT_GOOD_LOCALE: GoodLocale = 'pl';
+const DEFAULT_GOOD_LOCALE: GoodLocale = 'pl';
 
 /** Map the app-wide `?lang=pol|eng` value to the goods tables' `pl|en` codes. */
 export function goodLocaleParam(params: URLSearchParams): GoodLocale {
@@ -34,18 +34,10 @@ function localeMessages(locale: GoodLocale): Messages['goods'] {
   return messages(appLocale).goods;
 }
 
-const GOODS_MANIFEST_URL = '/goods/manifest.json';
-
-interface NamesManifest {
-  readonly names?: Readonly<Record<string, Readonly<Record<string, string>>>>;
-}
-
-let namesOnce: Promise<Readonly<Record<string, Readonly<Record<string, string>>>>> | null = null;
-
-/** Fetch the per-locale extracted good-name tables once, or `{}` when the goods stage has not run. */
+/** The per-locale extracted good-name tables from the shared goods manifest, or `{}` when the goods stage
+ *  has not run. */
 async function loadNameTables(): Promise<Readonly<Record<string, Readonly<Record<string, string>>>>> {
-  namesOnce ??= fetchJsonOrNull<NamesManifest>(GOODS_MANIFEST_URL).then((m) => m?.names ?? {});
-  return namesOnce;
+  return (await loadGoodsManifest())?.names ?? {};
 }
 
 /**

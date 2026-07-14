@@ -7,6 +7,7 @@ import {
   TERRAIN_MARGIN,
   TERRAIN_OPEN,
 } from '../catalog/terrain.js';
+import { forEachPlacement } from './map-placements.js';
 
 /**
  * The decoded-map → sim collision join: resolve a real map's grid into the four semantic terrain
@@ -179,20 +180,16 @@ export function buildCollisionTerrain(
       else if (current === TERRAIN_OPEN || current === TERRAIN_BARREN) typeIds[i] = cls;
     };
     const { types, placements } = map.objects;
-    for (let i = 0; i + 2 < placements.length; i += 3) {
-      const hx = placements[i];
-      const hy = placements[i + 1];
-      const typeIndex = placements[i + 2];
-      if (hx === undefined || hy === undefined || typeIndex === undefined) break;
+    forEachPlacement(placements, (hx, hy, typeIndex) => {
       const name = types[typeIndex];
       const gfx = name !== undefined ? gfxByName.get(name) : undefined;
-      if (gfx === undefined) continue;
+      if (gfx === undefined) return;
       // Anchor the object's block-area offsets on its half-cell verbatim: the `emla` placement,
       // the `lmlt` blocking lane, and the `LogicWalkBlockArea` offsets all live on the same 2W×2H
       // grid (source basis: mapdat lane layout), so no flooring is needed.
       for (const [dx, dy] of gfx.walk) stamp(hx + dx, hy + dy, TERRAIN_BLOCKED);
       for (const [dx, dy] of gfx.margin) stamp(hx + dx, hy + dy, TERRAIN_MARGIN);
-    }
+    });
   }
 
   return { resolution: 'half-cell', width: nodeW, height: nodeH, typeIds };

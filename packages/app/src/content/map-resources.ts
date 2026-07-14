@@ -1,5 +1,6 @@
 import type { TerrainObjects } from '@open-northland/data';
 import type { ContentIr } from './ir.js';
+import { forEachPlacement } from './map-placements.js';
 
 /**
  * The decoded-map → sim resource join: which placed landscape objects are harvestable, and the good each
@@ -78,17 +79,13 @@ export function mapResourceSpawns(
   const goodByName = harvestGoodByObjectName(ir);
   const { types, placements } = objects;
   const out: MapResourceSpawn[] = [];
-  for (let i = 0; i + 2 < placements.length; i += 3) {
-    const hx = placements[i];
-    const hy = placements[i + 1];
-    const typeIndex = placements[i + 2];
-    if (hx === undefined || hy === undefined || typeIndex === undefined) break;
+  forEachPlacement(placements, (hx, hy, typeIndex, placement) => {
     const name = types[typeIndex];
     const ref = name !== undefined ? goodByName.get(name) : undefined;
     if (ref !== undefined && spawnableGoodIds.has(ref.goodId)) {
-      out.push({ goodId: ref.goodId, gfxIndex: ref.gfxIndex, hx, hy, placement: i / 3 });
+      out.push({ goodId: ref.goodId, gfxIndex: ref.gfxIndex, hx, hy, placement });
     }
-  }
+  });
   return out;
 }
 
@@ -131,15 +128,11 @@ export function mapBerryBushSpawns(objects: TerrainObjects, ir: ContentIr): MapB
   const byName = fruitedBushRecordByName(ir);
   const { types, placements } = objects;
   const out: MapBerryBushSpawn[] = [];
-  for (let i = 0; i + 2 < placements.length; i += 3) {
-    const hx = placements[i];
-    const hy = placements[i + 1];
-    const typeIndex = placements[i + 2];
-    if (hx === undefined || hy === undefined || typeIndex === undefined) break;
+  forEachPlacement(placements, (hx, hy, typeIndex, placement) => {
     const name = types[typeIndex];
     const gfxIndex = name !== undefined ? byName.get(name) : undefined;
-    if (gfxIndex !== undefined) out.push({ gfxIndex, hx, hy, placement: i / 3 });
-  }
+    if (gfxIndex !== undefined) out.push({ gfxIndex, hx, hy, placement });
+  });
   return out;
 }
 

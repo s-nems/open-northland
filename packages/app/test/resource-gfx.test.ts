@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ContentIr, LandscapeGfxRow } from '../src/content/ir.js';
+import { type ContentIr, type LandscapeGfxRow, servedAtlasStem } from '../src/content/ir.js';
 import {
   buildResourceBinding,
   buildStockpileBinding,
@@ -10,7 +10,6 @@ import {
   nodeBob,
   pileFillBobs,
   resolveGatheringRefs,
-  servedStem,
 } from '../src/content/resource-gfx/index.js';
 import type { GoodRef } from '../src/content/settler-gfx/index.js';
 
@@ -111,16 +110,16 @@ const GOODS: readonly GoodRef[] = [
   { typeId: 2, id: 'stone' },
 ];
 
-describe('servedStem / nodeBob / pileFillBobs', () => {
+describe('servedAtlasStem / nodeBob / pileFillBobs', () => {
   it('derives the served atlas stem (<bmd-stem>.<palette>) from a record', () => {
-    expect(servedStem(WOOD_NODE)).toBe('ls_trees.tree_yew01');
-    expect(servedStem(STONE_NODE)).toBe('ls_ground.rock03');
-    expect(servedStem(WOOD_PILE)).toBe('ls_goods.goods_wood');
+    expect(servedAtlasStem(WOOD_NODE)).toBe('ls_trees.tree_yew01');
+    expect(servedAtlasStem(STONE_NODE)).toBe('ls_ground.rock03');
+    expect(servedAtlasStem(WOOD_PILE)).toBe('ls_goods.goods_wood');
   });
 
   it('returns undefined for a record naming no bmd or palette', () => {
-    expect(servedStem({ index: 1, logicType: 0 })).toBeUndefined();
-    expect(servedStem({ index: 1, logicType: 0, bmd: `${B}/x.bmd` })).toBeUndefined();
+    expect(servedAtlasStem({ index: 1, logicType: 0 })).toBeUndefined();
+    expect(servedAtlasStem({ index: 1, logicType: 0, bmd: `${B}/x.bmd` })).toBeUndefined();
   });
 
   it('picks the highest-state first bob as the full-grown node frame', () => {

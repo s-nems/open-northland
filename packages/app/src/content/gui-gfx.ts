@@ -46,17 +46,14 @@ export function guiPaletteRow(name: GuiPaletteName): number {
 }
 
 /** `loadLayer` stem of the whole-HUD bob sheet (tool panel, order buttons, window frames, bars). */
-export const GUI_WINDOW_STEM = 'ls_gui_window';
+const GUI_WINDOW_STEM = 'ls_gui_window';
 /** Path (relative to a `/bobs/` stem) of the recolourable indexed atlas: `<sheet>.indexed`. */
-export const INDEXED_GUI_SUFFIX = 'indexed';
+const INDEXED_GUI_SUFFIX = 'indexed';
 /** The `/bobs/` stem of the GUI palette LUT PNG. */
-export const GUI_PALETTE_LUT_STEM = 'gui-palettes-lut';
+const GUI_PALETTE_LUT_STEM = 'gui-palettes-lut';
 
 /** One language's decoded UI strings: `{ <table>: { <id>: <text> } }` (CP1250-decoded by the pipeline). */
 export type GuiStrings = Record<string, Record<string, string>>;
-
-/** The one default UI-string language — every HUD surface that isn't told otherwise uses this. */
-export const DEFAULT_UI_LANG = 'pol';
 
 /** Look up the decoded UI string for `(table, id)`, else the pinned fallback label. */
 export type UiString = (table: string, id: number, fallback: string) => string;

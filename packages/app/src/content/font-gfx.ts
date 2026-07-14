@@ -25,7 +25,7 @@ import { fetchJsonOrNull, loadTextureIfPresent } from './net.js';
  * pipeline bakes this order into the LUT rows and the renderer selects a row by index. The manifest also
  * carries the names, so a consumer can cross-check `fontColorRow` against `manifest.colorLut.names`.
  */
-export const FONT_COLORS = ['white', 'dark', 'dimmed', 'red'] as const;
+const FONT_COLORS = ['white', 'dark', 'dimmed', 'red'] as const;
 
 export type FontColorName = (typeof FONT_COLORS)[number];
 
@@ -50,9 +50,9 @@ export const FONT_FILL: Readonly<Record<FontColorName, string>> = {
 };
 
 /** Path (relative to a `/bobs/` stem) of the recolourable indexed glyph atlas: `<key>.indexed`. */
-export const INDEXED_FONT_SUFFIX = 'indexed';
+const INDEXED_FONT_SUFFIX = 'indexed';
 /** The `/bobs/` stem of the font colour LUT PNG. */
-export const FONT_COLOR_LUT_STEM = 'font-palettes-lut';
+const FONT_COLOR_LUT_STEM = 'font-palettes-lut';
 
 /** One glyph's layout metrics (mirrors the pipeline's `GlyphMetric`), keyed by character code. */
 export interface GlyphMetric {
