@@ -389,30 +389,35 @@ export class SpritePool {
           pe.container.addChild(spr);
         }
         if (revealTexture === null && hiddenTop >= layer.frame.height) {
-          // Nothing revealed yet (a foundation at 0%): draw nothing this frame, contribute no bounds.
+          // Nothing revealed yet (a foundation at 0%): draw nothing this frame — but still stamp
+          // bounds below, so the flat site stays clickable over its plot.
           spr.visible = false;
-          continue;
+        } else {
+          spr.texture =
+            revealTexture ??
+            (hiddenTop > 0
+              ? this.textures.cropped(layer.source, layer.frame, hiddenTop)
+              : this.textures.get(layer.source, layer.frame));
+          spr.position.set(ox, drawnOy);
+          spr.scale.set(layer.scale);
+          // A fog ghost dims to the explored-grey grading; assigned unconditionally so a sprite reused
+          // across the live↔ghost transition always carries the right tint (tint is a cheap batch
+          // attribute — ghosts are never paletted, statics don't take the mesh path).
+          spr.tint = item.ghost === true ? FOG_GHOST_TINT : 0xffffff;
+          spr.visible = true;
         }
-        spr.texture =
-          revealTexture ??
-          (hiddenTop > 0
-            ? this.textures.cropped(layer.source, layer.frame, hiddenTop)
-            : this.textures.get(layer.source, layer.frame));
-        spr.position.set(ox, drawnOy);
-        spr.scale.set(layer.scale);
-        // A fog ghost dims to the explored-grey grading; assigned unconditionally so a sprite reused
-        // across the live↔ghost transition always carries the right tint (tint is a cheap batch
-        // attribute — ghosts are never paletted, statics don't take the mesh path).
-        spr.tint = item.ghost === true ? FOG_GHOST_TINT : 0xffffff;
-        spr.visible = true;
       }
       // An animated state overlay (the mill's rotor) draws but never moves the entity's box — its spin
       // frames breathe in size/offset, and the box feeds the selection ring + portrait framing.
       if (layer.boundsExempt === true) continue;
+      // A reveal layer stamps its FULL frame rect (not just the risen part): a construction site is
+      // picked over the final building's whole box, so a barely-started foundation is still clickable.
+      const boundsOy = layer.reveal !== undefined ? oy : drawnOy;
+      const boundsH = layer.reveal !== undefined ? layer.frame.height * layer.scale : drawnH;
       if (ox < minX) minX = ox;
-      if (drawnOy < minY) minY = drawnOy;
+      if (boundsOy < minY) minY = boundsOy;
       if (ox + layer.frame.width * layer.scale > maxX) maxX = ox + layer.frame.width * layer.scale;
-      if (drawnOy + drawnH > maxY) maxY = drawnOy + drawnH;
+      if (boundsOy + boundsH > maxY) maxY = boundsOy + boundsH;
     }
     // Hide any leftover sprites from a frame that needed more layers than this one.
     for (let i = layers.length; i < pe.sprites.length; i++) {
