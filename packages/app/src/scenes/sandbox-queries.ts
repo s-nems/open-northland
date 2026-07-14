@@ -1,4 +1,4 @@
-import { type Component, components, type Simulation, systems } from '@open-northland/sim';
+import { type Component, components, type Entity, type Simulation, systems } from '@open-northland/sim';
 import { WOOD_YIELD_PER_NODE } from '../catalog/felling.js';
 import { HUMAN_PLAYER } from '../game/rules.js';
 import { type GathererSpec, JOB_SOLDIER_SWORD } from '../game/sandbox/index.js';
@@ -11,6 +11,14 @@ const { Building, GroundDrop, Health, Owner, Position, Settler, Stockpile } = co
  * check-side counterpart of the command-side placement helpers (`game/sandbox/place.ts`). They live
  * beside the scenes so `game/` carries content + rules, not test predicates.
  */
+
+/** The one placed building of `typeId`, or null before its placement command ran. */
+export function buildingOfType(sim: Simulation, typeId: number): Entity | null {
+  for (const e of sim.world.query(Building)) {
+    if (sim.world.get(e, Building).buildingType === typeId) return e;
+  }
+  return null;
+}
 
 /** How many units a gatherer's full scene setup should bank: nodes × per-node yield. */
 export function expectedGatherYield(g: GathererSpec): number {

@@ -1,15 +1,17 @@
 import type { CellTerrainMap, Entity, Simulation } from '@open-northland/sim';
-import { cellAnchorNode, components, nodeOfPosition } from '@open-northland/sim';
+import { components, nodeOfPosition } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
 import { TERRAIN_BARREN } from '../catalog/terrain.js';
-import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../game/rules.js';
+import { HUMAN_PLAYER } from '../game/rules.js';
 import {
   BUILDING_FARM,
   BUILDING_WAREHOUSE_00,
   GOOD_WHEAT,
   JOB_FARMER_SLOT,
   placeSandboxBuilding,
+  spawnWorkersAtDoor,
 } from '../game/sandbox/index.js';
+import { buildingOfType } from './sandbox-queries.js';
 import type { SceneDefinition } from './types.js';
 
 /**
@@ -51,7 +53,7 @@ const INITIAL_ZOOM = 0.8;
  *  never dot it (the original's `biocanplanton` belongs to `land` alone). */
 const BARREN = { x0: 17, x1: 27, y0: 9, y1: 15 } as const;
 
-const { Building, Crop, JobAssignment, Position, Settler, Stockpile } = components;
+const { Crop, JobAssignment, Position, Settler, Stockpile } = components;
 
 /** The scene's ground: grass everywhere except the {@link BARREN} sand patch under the farm. */
 function farmTerrain(): CellTerrainMap {
@@ -63,42 +65,17 @@ function farmTerrain(): CellTerrainMap {
   return { width: MAP_W, height: MAP_H, typeIds };
 }
 
-/**
- * The farm's door node — its anchor plus the content footprint's door offset (the sim's `interactionNode`).
- * The farmers spawn here so the JobSystem's adopt pass binds them to the farm on tick 1 (a pre-employed
- * settler standing at a workplace it staffs is bound to it); resolved from the loaded content so the
- * headless (approximate footprint) and browser (real extracted footprint) doors both work.
- */
-function farmDoorNode(sim: Simulation): { hx: number; hy: number } {
-  const anchor = cellAnchorNode(FARM_X, FARM_Y);
-  const door = sim.content.buildings.find((b) => b.typeId === BUILDING_FARM)?.footprint?.door;
-  return { hx: anchor.hx + (door?.dx ?? 0), hy: anchor.hy + (door?.dy ?? 0) };
-}
-
 function build(sim: Simulation): void {
   placeSandboxBuilding(sim, BUILDING_FARM, FARM_X, FARM_Y);
   placeSandboxBuilding(sim, BUILDING_WAREHOUSE_00, WAREHOUSE_X, WAREHOUSE_Y);
-  // The farmers spawn at the door (node coords — the raw command, not the tile helper, so the door
-  // offset lands exactly); the adopt pass staffs them, then the field loop takes over.
-  const door = farmDoorNode(sim);
-  for (let i = 0; i < FARMERS; i++) {
-    sim.enqueue({
-      kind: 'spawnSettler',
-      jobType: JOB_FARMER_SLOT,
-      x: door.hx,
-      y: door.hy,
-      tribe: PRIMARY_TRIBE,
-      owner: HUMAN_PLAYER,
-    });
-  }
+  // The farmers spawn at the farm door so the adopt pass staffs them on tick 1, then the field loop
+  // takes over (see spawnWorkersAtDoor — node-exact, keeping the door offset).
+  spawnWorkersAtDoor(sim, BUILDING_FARM, FARM_X, FARM_Y, JOB_FARMER_SLOT, FARMERS, HUMAN_PLAYER);
 }
 
 /** The scene's one farm entity, or null before the placement command ran. */
 function farmEntity(sim: Simulation): Entity | null {
-  for (const e of sim.world.query(Building)) {
-    if (sim.world.get(e, Building).buildingType === BUILDING_FARM) return e;
-  }
-  return null;
+  return buildingOfType(sim, BUILDING_FARM);
 }
 
 export const farmScene: SceneDefinition = {
