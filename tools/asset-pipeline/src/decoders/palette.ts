@@ -18,6 +18,7 @@
  * `encodePalette` is the faithful inverse, used to round-trip test without committing real assets.
  */
 
+import { viewOf } from './byte-cursor.js';
 import { StorableId } from './cif.js';
 import { assertPaletteBytes, PALETTE_RGB_BYTES } from './image.js';
 
@@ -50,7 +51,7 @@ export function decodePalette(bytes: Uint8Array): Palette {
     );
   }
 
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const view = viewOf(bytes);
   const id = view.getUint32(0, true);
   if (id !== StorableId.CPalette) {
     throw new Error(`palette: storable id is not CPalette (0x3F6); got 0x${id.toString(16)}`);

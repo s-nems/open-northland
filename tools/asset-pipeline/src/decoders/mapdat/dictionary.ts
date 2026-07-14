@@ -3,7 +3,7 @@
  * groups) — the by-name join tables a map uses to reference the shared `.cif` lists version-robustly.
  */
 
-import { LATIN1 } from '../byte-cursor.js';
+import { LATIN1, viewOf } from '../byte-cursor.js';
 import type { MapDatChunk } from './container.js';
 
 /**
@@ -21,7 +21,7 @@ export function decodeStringListChunk(chunk: MapDatChunk): string[] {
   if (p.length < 4) {
     throw new Error(`mapdat: chunk "${chunk.tag}" is too short for a string-list header`);
   }
-  const view = new DataView(p.buffer, p.byteOffset, p.byteLength);
+  const view = viewOf(p);
   const count = view.getUint32(0, true);
   const out: string[] = [];
   let off = 4;

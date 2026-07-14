@@ -36,6 +36,7 @@
  */
 
 import { type Bmd, BOB_TYPE_EMPTY, type BobRecord, decodeBmd, encodeBmd } from './bmd/index.js';
+import { viewOf } from './byte-cursor.js';
 import { StorableId } from './cif.js';
 
 const FONT_ID = StorableId.CFont; // 0x3F5
@@ -82,7 +83,7 @@ export function decodeFnt(bytes: Uint8Array): Font {
   if (bytes.length < FONT_PREFIX_BYTES + 4) {
     throw new Error(`fnt: buffer of ${bytes.length} bytes is too short for a CFont header`);
   }
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const view = viewOf(bytes);
 
   const id = view.getUint32(0, true);
   if (id !== FONT_ID) {

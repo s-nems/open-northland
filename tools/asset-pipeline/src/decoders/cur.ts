@@ -28,6 +28,7 @@
  * to round-trip test without committing copyrighted fixtures — same rationale as the other encoder pairs.
  */
 
+import { viewOf } from './byte-cursor.js';
 import { assertPaletteBytes, type RgbaImage } from './image.js';
 
 /** ICONDIR / ICONDIRENTRY sizes and the cursor resource type. */
@@ -74,7 +75,7 @@ export function decodeCursor(bytes: Uint8Array): DecodedCursor {
   if (bytes.length < ICONDIR_BYTES) {
     throw new Error(`cursor: buffer of ${bytes.length} bytes is too short for the ICONDIR header`);
   }
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const view = viewOf(bytes);
   const type = view.getUint16(2, true);
   if (type !== RES_TYPE_CURSOR && type !== RES_TYPE_ICON) {
     throw new Error(`cursor: not a cursor/icon (ICONDIR type ${type}, expected 1 or 2)`);

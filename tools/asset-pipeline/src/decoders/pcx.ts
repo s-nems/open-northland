@@ -27,6 +27,7 @@
  * them. `encodePcx` is the faithful inverse, used to round-trip test without committing real assets.
  */
 
+import { viewOf } from './byte-cursor.js';
 import { assertPaletteBytes, PALETTE_RGB_BYTES, paletteToRgba, type RgbaImage } from './image.js';
 
 const HEADER_BYTES = 0x80;
@@ -54,7 +55,7 @@ export function decodePcx(bytes: Uint8Array): PcxImage {
     throw new Error(`pcx: buffer of ${bytes.length} bytes is too short for the 128-byte header`);
   }
 
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const view = viewOf(bytes);
   const xMin = view.getUint16(4, true);
   const yMin = view.getUint16(6, true);
   const xMax = view.getUint16(8, true);

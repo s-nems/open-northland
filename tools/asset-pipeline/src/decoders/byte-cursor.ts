@@ -2,10 +2,19 @@
  * Shared little-endian primitives for the binary container decoders (`.cif`/`.bmd`/`.lib`/`.map`).
  *
  * Every Cultures container is little-endian with the same handful of reads (`u32`, occasional `u8`,
- * raw byte runs, ASCII names), so they all grew a near-identical private reader class. This is
- * the one copy. It is deliberately domain-free — no storable ids, no format knowledge — so the
- * format-specific helpers (e.g. `readCMemory` in `cif.ts`) build on it without a circular import.
+ * raw byte runs, ASCII names). This shared reader is deliberately domain-free — no storable ids, no
+ * format knowledge — so the format-specific helpers (e.g. `readCMemory` in `cif.ts`) build on it
+ * without a circular import.
  */
+
+/**
+ * A `DataView` spanning exactly `bytes` (its `byteOffset`/`byteLength`), not the whole backing buffer.
+ * The container and image decoders pass `.subarray()` slices, where the bare `new DataView(x.buffer)`
+ * would silently read from the start of the shared buffer — this is the one correct construction.
+ */
+export function viewOf(bytes: Uint8Array): DataView {
+  return new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+}
 
 /**
  * Little-endian sequential reader over a byte buffer. Throws on overrun — a corrupt container is a
@@ -23,7 +32,7 @@ export class ByteCursor {
     readonly prefix: string,
   ) {
     this.bytes = bytes;
-    this.view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    this.view = viewOf(bytes);
   }
 
   /** Current read position (bytes from the start of the buffer). */

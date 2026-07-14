@@ -38,7 +38,7 @@
  * (same rationale as the `.lib`/`.cif`/`.pcx`/`.palette` encoder pairs).
  */
 
-import { ByteCursor, ByteWriter } from '../byte-cursor.js';
+import { ByteCursor, ByteWriter, viewOf } from '../byte-cursor.js';
 import { readCMemory, StorableId } from '../cif.js';
 
 const BMD_ID = StorableId.CBobManager; // 0x3F4
@@ -168,7 +168,7 @@ export function decodeBmd(bytes: Uint8Array): Bmd {
   if (bobMem.length < needed) {
     throw new Error(`bmd: bob-data block is ${bobMem.length} bytes, need ${needed} for ${bobCount} records`);
   }
-  const bobView = new DataView(bobMem.buffer, bobMem.byteOffset, bobMem.byteLength);
+  const bobView = viewOf(bobMem);
   const bobs: BobRecord[] = [];
   for (let i = 0; i < bobCount; i++) {
     const base = i * BOB_RECORD_BYTES;
@@ -198,7 +198,7 @@ export function decodeBmd(bytes: Uint8Array): Bmd {
       `bmd: line-control block is ${lineMem.length} bytes, need ${lineNeeded} for ${lineControlCount} entries`,
     );
   }
-  const lineView = new DataView(lineMem.buffer, lineMem.byteOffset, lineMem.byteLength);
+  const lineView = viewOf(lineMem);
   const lineControl = new Uint32Array(lineControlCount);
   for (let i = 0; i < lineControlCount; i++) {
     lineControl[i] = lineView.getUint32(i * 4, true);

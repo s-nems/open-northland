@@ -21,7 +21,7 @@
  * (`SIoHelperChunk` / `IO_File_Chunk_*` / `FlipSIoHelperChunk`). Referenced @ working tree 2026-06.
  */
 
-import { LATIN1 } from '../byte-cursor.js';
+import { LATIN1, viewOf } from '../byte-cursor.js';
 
 /** "hoix" little-endian — the chunk marker every header opens with. */
 export const HOIX_MARKER = 0x78696f68;
@@ -93,7 +93,7 @@ export function tagToId(tag: string): number {
  * corrupt `map.dat` can't abort the run (mirrors `decodeLib`).
  */
 export function decodeMapDat(bytes: Uint8Array): MapDat {
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const view = viewOf(bytes);
   const chunks: MapDatChunk[] = [];
   let offset = 0;
 
@@ -153,7 +153,7 @@ export function decodeMapSize(map: MapDat): MapDatSize {
   if (chunk.length !== 8) {
     throw new Error(`mapdat: lsiz payload is ${chunk.length} bytes, expected 8 (u32 width+height)`);
   }
-  const view = new DataView(chunk.payload.buffer, chunk.payload.byteOffset, chunk.payload.byteLength);
+  const view = viewOf(chunk.payload);
   return { width: view.getUint32(0, true), height: view.getUint32(4, true) };
 }
 
