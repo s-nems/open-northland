@@ -29,7 +29,7 @@ export type TerrainGround = z.infer<typeof TerrainGround>;
  * {@link TerrainGround} joins patterns.
  */
 export const TerrainTransitions = z.strictObject({
-  /** The map's `eatd` transition-name dictionary, VERBATIM (lane `⌊v/6⌋` indexes it positionally). */
+  /** The map's `eatd` transition-name dictionary, verbatim (lane `⌊v/6⌋` indexes it positionally). */
   types: z.array(z.string()),
   /** Row-major per-cell `emt1` lane — layer 1 (topmost), triangle A. Raw u8; 255 = none. */
   a1: z.array(z.number().int().nonnegative()),

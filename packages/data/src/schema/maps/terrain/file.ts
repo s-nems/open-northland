@@ -7,12 +7,11 @@ import { TerrainGround, TerrainObjects, TerrainTransitions } from './layers.js';
 /**
  * A decoded terrain grid file (`content/maps/<id>.json`) — the per-map nav-graph input the pipeline
  * emits from `map.dat` (the `lmlt` half-cell landscape-object lane reduced to one typeId per cell;
- * raw values ARE the 1-based IR {@link LandscapeType} typeIds, with raw 0 = "no object" mapped to
- * `void`). This is the on-disk twin of the sim's `TerrainMap` (the sim defines that structural type
- * without zod; this schema is the validating loader boundary so the build tool / app can
- * `parseTerrainMap` a file before it ever reaches the pure sim). The
- * `typeIds.length === width * height` invariant is enforced here so a truncated/oversized grid fails
- * at load, not as a confusing out-of-bounds read inside `buildTerrainGraph`.
+ * raw values are the 1-based IR {@link LandscapeType} typeIds, with raw 0 = "no object" mapped to
+ * `void`). This is the on-disk twin of the sim's `TerrainMap`, which the sim defines structurally
+ * without zod, so this schema is the validating loader boundary before a file reaches the pure sim.
+ * The `typeIds.length === width * height` invariant is enforced here so a truncated/oversized grid
+ * fails at load, not as an out-of-bounds read inside `buildTerrainGraph`.
  *
  * The optional {@link ground} / {@link objects} layers carry the map's 1:1 visual data (per-triangle
  * ground patterns; placed landscape objects) — render-only consumers; the sim reads only the grid.
@@ -35,10 +34,10 @@ const TerrainMapFields = z.strictObject({
   objects: TerrainObjects.optional(),
   /**
    * Per-cell terrain height (`lmhe` lane), row-major, one value per cell (length = width*height) —
-   * NOT the `2W × 2H` half-cell resolution the {@link objects} lane uses. Raw byte values, 0..250
+   * not the `2W × 2H` half-cell resolution the {@link objects} lane uses. Raw byte values, 0..250
    * (a hard observed ceiling across the real maps).
    * Present when the map ships the lane (older/foreign saves omit it). Consumed by the render's
-   * elevation lift (≈1.24 native px/unit, MEASURED — see source basis "projection";
+   * elevation lift (≈1.24 native px/unit, measured — see source basis "projection";
    * `packages/render/src/data/elevation.ts`).
    */
   elevation: z.array(z.number().int().nonnegative()).optional(),
@@ -81,8 +80,8 @@ function placementsInRange(objects: NonNullable<TerrainMapValue['objects']>, m: 
 
 /**
  * The cross-lane invariants a valid decoded map must hold — each an `ok` predicate plus the message
- * and path pushed when it fails. Kept as a named table (not a chain of inline `.check` closures) so
- * the loader's structural contract reads at a glance and each rule is independently legible.
+ * and path pushed when it fails. Kept as a named table (not inline `.check` closures) so each rule
+ * reads independently.
  */
 const INVARIANTS: ReadonlyArray<{
   readonly ok: (m: TerrainMapValue) => boolean;

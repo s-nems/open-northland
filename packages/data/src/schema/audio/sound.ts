@@ -1,18 +1,14 @@
 import { z } from 'zod';
 
 /**
- * One `SFX "<path>" <n…>` line inside a sound group: the wav to play plus the record's trailing
- * integer parameters, kept verbatim. Their meaning is positional and section-specific — a
- * {@link SoundStaticGroup} carries one volume int (0–100); a {@link SoundAmbient} carries a
- * `(volume, probability, ...)` triple that drives the sparse one-shot birds/wingflaps. We keep the
- * raw list rather than naming each slot so the extractor stays faithful to a format we have only
- * partially reversed — captured for a future audio layer to interpret (per-SFX volume / spawn
- * probability), like {@link SoundStaticGroup.logicSoundType}; today's `@open-northland/audio` reads only
- * `file` (gains come from named constants). `file` is normalized to a forward-slash, lower-cased path
- * relative to the sounds root (`data/engine2d/bin/sounds`), so it joins onto the served `/sounds/<file>` route.
+ * One `SFX "<path>" <n…>` line: the wav to play plus the record's trailing integer parameters,
+ * kept verbatim. Their meaning is positional and section-specific — {@link SoundStaticGroup} carries
+ * one volume int (0–100); {@link SoundAmbient} carries a `(volume, probability, …)` triple driving
+ * the sparse one-shot birds. We keep the raw list rather than naming each slot: the format is only
+ * partially reversed, and today's audio layer reads only `file` (gains come from named constants).
  */
 export const SoundSfx = z.strictObject({
-  /** Wav path relative to `data/engine2d/bin/sounds`, forward-slashed + lower-cased (e.g. `ambient/water3.wav`). */
+  /** Wav path relative to `data/engine2d/bin/sounds`, forward-slashed + lower-cased (e.g. `ambient/water3.wav`); joins onto the served `/sounds/<file>` route. */
   file: z.string(),
   /** The trailing integers on the `SFX` line, in file order (volume first; ambient adds probability/period). */
   params: z.array(z.number().int()).default([]),
@@ -22,9 +18,8 @@ export type SoundSfx = z.infer<typeof SoundSfx>;
 /**
  * A `SoundFXStatic` group from `soundfx.cif`: a named bag of interchangeable wavs (the engine picks
  * one at play time) optionally bound to a numeric `LogicSoundType` the original triggers off an
- * animation/job/combat frame. GUI clicks, unit voices ("Viking male ok 13"), animal calls and work
- * sounds are all static groups. We extract every group so future slices can bind the remaining
- * `LogicSoundType`s without re-running the decoder; this slice wires only a hand-picked subset.
+ * animation/job/combat frame. Every group is extracted though this slice wires only a hand-picked
+ * subset, so later slices needn't re-run the decoder.
  */
 export const SoundStaticGroup = z.strictObject({
   /** `Name` — the group's join key (e.g. `"Gui_Click"`, `"Bear Sounds"`, `"Viking male ok 13"`). */
@@ -50,7 +45,7 @@ export const SoundAmbient = z.strictObject({
   patternGroups: z.array(z.string()).default([]),
   /** `LandscapeGroup` names this ambient covers (tree families etc.), lower-cased. */
   landscapeGroups: z.array(z.string()).default([]),
-  /** The bed's wavs — one loops; many play sparsely by their probability params. */
+  /** The bed's wavs (see the group doc for loop-vs-sparse play). */
   sfx: z.array(SoundSfx).default([]),
 });
 export type SoundAmbient = z.infer<typeof SoundAmbient>;

@@ -30,7 +30,7 @@ export interface PcxConversion {
 }
 
 /**
- * Composes each transition overlay's RGB texture + alpha-mask `.pcx` pair into ONE RGBA
+ * Composes each transition overlay's RGB texture + alpha-mask `.pcx` pair into one RGBA
  * `<stem>.masked.png` under {@link TEXTURES_DIR} (the `/textures/` serving contract). The mask's
  * RAW palette-index bytes become the alpha channel directly (the engine's convention — the mask
  * picture's index IS the coverage value; format oracle in docs/SOURCES.md), which the plain

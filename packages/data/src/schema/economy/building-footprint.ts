@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-/** One HALF-CELL offset of a building footprint, relative to the building's placed anchor node —
+/** One half-cell offset of a building footprint, relative to the building's placed anchor node —
  *  the original's `2W×2H` logic lattice, the same grid `map.cif` placements address. Extracted
  *  verbatim from the source's `<x> <y>` values. */
 export const FootprintCell = z.strictObject({

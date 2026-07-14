@@ -2,7 +2,7 @@
  * `map.dat` half-cell landscape reduction — collapses the `lmlt` `2W × 2H` half-cell landscape-object
  * lane into the per-cell landscape-typeId grid the sim's nav graph consumes.
  *
- * The landscape grid lanes (`lmlt`, `lmlv`, `emla`, …) carry 4 values per map cell — but NOT as
+ * The landscape grid lanes (`lmlt`, `lmlv`, `emla`, …) carry 4 values per map cell — but not as
  * per-cell corner quads: each lane is a plain row-major `2·width × 2·height` half-cell grid
  * (pinned empirically: rendering `lmlt`/`emla` as a `2W × 2H` image draws the map's island shapes
  * cleanly, while a per-cell 2×2 interleave draws two side-by-side half-resolution copies — the tell

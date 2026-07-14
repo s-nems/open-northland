@@ -24,7 +24,7 @@ export const AtomicId = z.number().int().nonnegative();
 
 /**
  * A coarse class id — a small enumerated category (weapon class, armour material tier, damage
- * class) that shares {@link TypeId}'s numeric domain but is NOT a cross-reference into any type
+ * class) that shares {@link TypeId}'s numeric domain but is not a cross-reference into any type
  * table. Named distinctly so a reader (and a would-be cross-ref check) does not mistake it for a
  * resolvable foreign key: e.g. a weapon's `munitionType 2` is "catapult ammo", not good id 2.
  */

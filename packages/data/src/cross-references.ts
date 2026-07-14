@@ -5,7 +5,7 @@ import { type ContentSet, LOGIC_TYPE_NONE } from './schema/index.js';
  * Catches dangling references at load time rather than as a runtime crash mid-game.
  *
  * The work is split into one `check*` per entity family, each taking the prebuilt id-sets so every
- * rule reads independently. The families run in a FIXED order and append to one shared list — the
+ * rule reads independently. The families run in a fixed order and append to one shared list — the
  * order the emitted error report is asserted in (`test/cross-references.test.ts`), so keep it stable.
  */
 export function validateCrossReferences(set: ContentSet): void {
@@ -103,9 +103,8 @@ function checkTribes(set: ContentSet, { goodIds, jobIds, buildingIds, vehicleIds
     }
     // Each `jobEnables*` tech-graph edge: the enabling `jobType` must resolve, and so must its
     // `targetId` within the kind's table — a good, a building (`house`), a job, or a vehicle. The
-    // `vehicle` kind keys into the `vehicletypes` `type` (`logicvehicletype`) namespace — distinct
-    // from buildings — which the `vehicles` table now extracts (`VehicleType.typeId`), so it is
-    // resolvable: the real `jobEnablesVehicle` ids (1..5) are a subset of the vehicle typeIds (1..6).
+    // `vehicle` kind keys into the `vehicletypes` `logicvehicletype` namespace (distinct from
+    // buildings), resolved against `VehicleType.typeId`.
     for (const e of t.jobEnables) {
       if (!jobIds.has(e.jobType))
         errors.push(`tribe "${t.id}" jobEnables-edge has unknown jobType ${e.jobType}`);
@@ -119,10 +118,9 @@ function checkTribes(set: ContentSet, { goodIds, jobIds, buildingIds, vehicleIds
         errors.push(`tribe "${t.id}" job ${e.jobType} enables unknown vehicleType ${e.targetId}`);
     }
     // Each `{need,train}for{job,good}` requirement: its `targetId` resolves within the `target`
-    // table (a job or a good). The `experienceTypes` are NOT checked: they span an id space wider
+    // table (a job or a good). The `experienceTypes` are not checked: they span an id space wider
     // than the extracted `humanjobexperiencetypes` table (observed need-ids 72/73/75 and the
-    // synthetic "school" markers 57/77 for `train`), so resolving them would false-positive — same
-    // stance as the `vehicle` jobEnables kind above.
+    // synthetic "school" markers 57/77 for `train`), so resolving them would false-positive.
     for (const r of t.jobRequirements) {
       if (r.target === 'job' && !jobIds.has(r.targetId))
         errors.push(`tribe "${t.id}" ${r.requirement}forjob requires unknown jobType ${r.targetId}`);
@@ -135,9 +133,9 @@ function checkTribes(set: ContentSet, { goodIds, jobIds, buildingIds, vehicleIds
 
 function checkWeaponsAndArmor(set: ContentSet, { goodIds, jobIds }: IdSets): string[] {
   const errors: string[] = [];
-  // A weapon's wielding job, when set, must resolve too (same dangling-reference class). Its
-  // `goodType` (the good that IS the weapon, the armor-`goodType` twin) likewise resolves into the
-  // good table — the extractor already drops the `goodtype 0` natural-weapon sentinel to undefined.
+  // A weapon's wielding job, when set, must resolve too. Its `goodType` (the good that is the weapon)
+  // likewise resolves into the good table — the extractor already drops the `goodtype 0`
+  // natural-weapon sentinel to undefined.
   for (const w of set.weapons) {
     if (w.jobType !== undefined && !jobIds.has(w.jobType))
       errors.push(`weapon "${w.id}" references unknown jobType ${w.jobType}`);
@@ -202,9 +200,7 @@ function checkGoodLandscape(set: ContentSet, { landscapeIds }: IdSets): string[]
 }
 
 // Each resolved gathering-pipeline record: its good resolves, every stage's landscape id resolves,
-// and every gfx index names a real landscapeGfx record. Checked against the SET of actual `.index`
-// values (not the array length) so the backstop holds even if the gfx table is ever filtered/reordered
-// while keeping original indices — a cheap integrity guard against a malformed hand-authored set.
+// and every gfx index names a real landscapeGfx record (checked against {@link IdSets.landscapeGfxIndices}).
 function checkGatheringPipeline(
   set: ContentSet,
   { goodIds, landscapeIds, landscapeGfxIndices }: IdSets,
@@ -232,7 +228,7 @@ function checkGatheringPipeline(
 }
 
 // A terrainPatterns row's representative pick must exist in the full pattern table when that
-// table is carried (it became in-set checkable once `gfxPatterns` joined the ContentSet).
+// table is carried.
 function checkTerrainPatterns(set: ContentSet, _ids: IdSets): string[] {
   if (set.gfxPatterns.length === 0) return [];
   const errors: string[] = [];

@@ -15,18 +15,12 @@ import {
 import { type BmdPaletteBinding, readBmdPaletteBindings } from './bmd-palette.js';
 
 /**
- * Extracts the readable `[jobgraphics]` records (`Data/engine2d/inis/animals/jobgraphics.ini` — the
- * one graphics binding file that ships as plain `.ini`, the rest being `.cif`) into `.bmd`→palette
- * bindings. Each record carries a `gfxbobmanagerbody "<body>.bmd" "<shadow>.bmd"` (the shadow value is
- * optional) and a `gfxpalettebody "<editname>"`; the shared {@link readBmdPaletteBindings} reads that
- * pairing (the `editname` resolves to a `.pcx` trailer palette via
- * {@link import('./palette.js').extractPaletteIndex}, completing what the `.bmd` container itself lacks).
- *
- * A record missing the body `.bmd` (nothing to colour) or the palette name (unbindable) is skipped
- * rather than throwing — this is an index over many records and one malformed entry must not abort the
- * offline batch. The richer mod `[jobbasegraphics]` variant (indexed body/head bobs +
- * `gfxpalettebasebody`/`gfxpalettebasehead`/`gfxpaletterandom`) is a separate extractor
- * ({@link extractJobBaseGraphics}); this one covers only the flat single-palette `[jobgraphics]` schema.
+ * Extracts the readable `[jobgraphics]` records (`.../animals/jobgraphics.ini`, the one binding file
+ * shipped as plain `.ini`) into `.bmd`→palette bindings via the shared {@link readBmdPaletteBindings}:
+ * `gfxbobmanagerbody "<body>.bmd" ["<shadow>.bmd"]` + `gfxpalettebody "<editname>"`, the `editname`
+ * resolving to a `.pcx` trailer palette ({@link import('./palette.js').extractPaletteIndex}). A record
+ * missing its body bob or palette is skipped. The richer indexed `[jobbasegraphics]` variant is a
+ * separate extractor ({@link extractJobBaseGraphics}).
  */
 export function extractGraphicsBindings(sections: readonly RuleSection[]): BmdPaletteBinding[] {
   return sections.flatMap((sec) =>
@@ -90,16 +84,10 @@ function parseIndexedBobManager(prop: RuleProp): IndexedBobManager | undefined {
 }
 
 /**
- * Reduces every section named `sectionName` to a {@link JobBaseGraphicsBinding}. The
- * `[jobbasegraphics]` (base appearance) and `[jobchangegraphics]` (equipment/job skin) records share
- * the same grammar — indexed `gfxbobmanagerbody/head` bob slots (the `.bmd` path on `values[1]`,
- * the leading int slot index on `values[0]`) + the three optional palette keys (`gfxpalettebasebody`/
- * `gfxpalettebasehead`/`gfxpaletterandom`, lower-cased to join onto the palette alias `name`
- * case-insensitively) — differing only in their section name and intent, so both public extractors
- * delegate here. A record with no usable body bob is skipped (nothing to colour) rather than throwing —
- * an index over many records must not abort the offline batch on one malformed entry, matching
- * {@link extractGraphicsBindings}. Head bobs and every palette are optional and simply omitted when
- * absent; the consumer resolves whichever palettes are present against the unpacked `--out` tree.
+ * Reduces every section named `sectionName` to a {@link JobBaseGraphicsBinding} — the shared reducer
+ * both public extractors delegate to, since `[jobbasegraphics]` and `[jobchangegraphics]` differ only in
+ * section name and intent, not grammar. A record with no usable body bob is skipped; head bobs and all
+ * palettes are optional and omitted when absent.
  */
 function extractIndexedGraphics(
   sections: readonly RuleSection[],
@@ -144,15 +132,10 @@ export function extractJobBaseGraphics(sections: readonly RuleSection[]): JobBas
 }
 
 /**
- * Extracts the `[jobchangegraphics]` records (the equipment/job skin layer) — the sibling of
- * {@link extractJobBaseGraphics}'s `[jobbasegraphics]` base-appearance layer. Both legs ship in the same
- * files: the base game's `Data/engine2d/inis/humans/jobgraphics.cif` and, preferred per golden rule #4,
- * the mod's `DataCnmd/types/humanstype/jobgraphics.ini`. A `[jobchangegraphics]` record reskins a human
- * for a specific `(logictribe, logicjob)` — e.g. swapping in a job's head/equipment bob set over the
- * shared body geometry — using the identical grammar as `[jobbasegraphics]` (indexed
- * `gfxbobmanagerbody/head` slots + `gfxpalettebasebody`/`gfxpalettebasehead`/`gfxpaletterandom`), so it
- * yields the same {@link JobBaseGraphicsBinding} shape and flattens via the same
- * `jobBaseGraphicsToBindings` path. A record with no usable body bob is skipped, matching the base leg.
+ * Extracts the `[jobchangegraphics]` records — the equipment/job-skin sibling of
+ * {@link extractJobBaseGraphics}'s base-appearance layer, shipping in the same files. A record reskins a
+ * human for a specific `(logictribe, logicjob)` (e.g. a job's head/equipment bob set over the shared
+ * body), same grammar and {@link JobBaseGraphicsBinding} shape as the base leg.
  */
 export function extractJobChangeGraphics(sections: readonly RuleSection[]): JobBaseGraphicsBinding[] {
   return extractIndexedGraphics(sections, 'jobchangegraphics');

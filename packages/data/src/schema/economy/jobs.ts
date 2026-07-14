@@ -18,17 +18,13 @@ export type JobType = z.infer<typeof JobType>;
 
 /**
  * One `[humanjobexperiencetype]` record (`Data/logic/humanjobexperiencetypes.ini`) — a
- * per-specialization experience track. The original game grants a settler experience *within a
- * narrow specialization* (a `(job, good)` pairing, e.g. "collector wood" = job 8 + good 5), not just
- * per job: doing the same job on the same good repeatedly is what makes a settler an expert at it.
- * This table is the source of those tracks, the input the Phase-3 ProgressionSystem accrues XP into.
+ * per-specialization experience track. The original grants a settler experience within a narrow
+ * `(job, good)` specialization (e.g. "collector wood" = job 8 + good 5), not just per job. This table
+ * is the source of those tracks, the input the ProgressionSystem accrues XP into.
  *
- * A record names its owning `jobType` (`job`, always present) and, when the specialization is
- * good-specific, the `goodType` it trains on (`good`, present on 44 of 70 base records — a "general"
- * track like "builder general" omits it). `experienceFactor` (`experiencefactor`) scales how fast XP
- * accrues on this track; `baseRepeatCounter` (`baserepeatcounter`, on a few records) is the original's
- * repeat-count tuning for the track. Both numbers are captured raw — their exact runtime curve is the
- * ProgressionSystem's concern, pinned later; this is the data-extraction slice only (no XP logic yet).
+ * A record names its owning `jobType` and, when good-specific, the `goodType` it trains on (present on
+ * 44 of 70 base records; a "general" track like "builder general" omits it). Both tuning numbers are
+ * captured raw; the runtime curve is the ProgressionSystem's concern (no XP logic in this slice).
  */
 export const HumanJobExperienceType = z.strictObject({
   /** The track's `type` id (unique within this table). */
