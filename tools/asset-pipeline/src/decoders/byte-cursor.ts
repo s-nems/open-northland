@@ -1,5 +1,6 @@
 /**
- * Shared little-endian primitives for the binary container decoders (`.cif`/`.bmd`/`.lib`/`.map`).
+ * Shared low-level byte primitives — the little-endian `ByteCursor`/`ByteWriter` for the container
+ * decoders (`.cif`/`.bmd`/`.lib`/`.map`), plus the endian-neutral `viewOf` the image decoders share.
  *
  * Every Cultures container is little-endian with the same handful of reads (`u32`, occasional `u8`,
  * raw byte runs, ASCII names). This shared reader is deliberately domain-free — no storable ids, no
