@@ -170,10 +170,11 @@ export interface AtlasBesideResult {
 
 /**
  * Writes a packed atlas as siblings of its source `.bmd` under `outDir` — `<bmd-stem>.<suffix>.png` +
- * `<bmd-stem>.<suffix>.atlas.json` — and returns the two relative paths. `bmdOnDisk` must end in `.bmd`
- * (the caller resolved the real cased path). The `<suffix>` distinguishes recolours of one shared body
- * bob (a palette slug, or `indexed` for the recolourable atlas) so variants don't clobber each other.
- * The bob-tree twin of {@link writeBobAtlas} (which writes to the fixed {@link BOBS_DIR} instead).
+ * `<bmd-stem>.<suffix>.atlas.json` (+ `<bmd-stem>.<suffix>.build.png` for a `'build-time'` bake's time
+ * sheet, announced by the manifest's `build` flag) — and returns the relative paths. `bmdOnDisk` must end
+ * in `.bmd` (the caller resolved the real cased path). The `<suffix>` distinguishes recolours of one
+ * shared body bob (a palette slug, or `indexed` for the recolourable atlas) so variants don't clobber
+ * each other. The bob-tree twin of {@link writeBobAtlas} (which writes to the fixed {@link BOBS_DIR} instead).
  */
 export async function writeAtlasBeside(
   outDir: string,
@@ -185,5 +186,11 @@ export async function writeAtlasBeside(
   const manifest = bmdOnDisk.replace(/\.bmd$/i, `.${suffix}.atlas.json`);
   await writeFile(join(outDir, png), encodePng(atlas.image));
   await writeFile(join(outDir, manifest), `${JSON.stringify(atlas.manifest, null, 2)}\n`);
+  if (atlas.timeImage !== undefined) {
+    await writeFile(
+      join(outDir, bmdOnDisk.replace(/\.bmd$/i, `.${suffix}.build.png`)),
+      encodePng(atlas.timeImage),
+    );
+  }
   return { png, manifest };
 }

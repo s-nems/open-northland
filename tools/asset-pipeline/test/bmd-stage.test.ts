@@ -38,8 +38,8 @@ describe('bmdToAtlas', () => {
     expect(() => bmdToAtlas(sampleBmdBytes(), new Uint8Array(100))).toThrow(/^atlas:/);
   });
 
-  it('bakes Double8Bit per-pixel alpha, or flattens it opaque for the house (plain-blit) path', () => {
-    // One type-4 bob, a 2x1 raw run of [index, alpha] pairs: [4, 0x60], [8, 0xff].
+  it('bakes Double8Bit per-pixel alpha, or opaque colour + a time sheet for the house build-time path', () => {
+    // One type-4 bob, a 2x1 raw run of [index, second] pairs: [4, 0x60], [8, 0xff].
     const bmd: Bmd = {
       version: 0,
       firstBobId: 10,
@@ -58,9 +58,18 @@ describe('bmdToAtlas', () => {
       atlas.image.rgba[((rect?.y ?? 0) * atlas.image.width + (rect?.x ?? 0) + x) * 4 + 3] ?? -1;
     expect(alphaAt(graded, 0)).toBe(0x60); // the alpha byte rides into the sheet
     expect(alphaAt(graded, 1)).toBe(0xff);
-    const flattened = bmdToAtlas(bytes, rampPalette(), 'opaque');
-    expect(alphaAt(flattened, 0)).toBe(0xff); // house atlases replay the opaque blit
-    expect(alphaAt(flattened, 1)).toBe(0xff);
+    const buildTime = bmdToAtlas(bytes, rampPalette(), 'build-time');
+    expect(alphaAt(buildTime, 0)).toBe(0xff); // house colour plane replays the opaque blit
+    expect(alphaAt(buildTime, 1)).toBe(0xff);
+    // The second byte lands in the same-placement time sheet (grayscale threshold, alpha = written).
+    expect(buildTime.manifest.build).toBe(true);
+    const timeAt = (x: number, c: number): number =>
+      buildTime.timeImage?.rgba[((rect?.y ?? 0) * buildTime.image.width + (rect?.x ?? 0) + x) * 4 + c] ?? -1;
+    expect(timeAt(0, 0)).toBe(0x60);
+    expect(timeAt(1, 0)).toBe(0xff);
+    expect(timeAt(0, 3)).toBe(0xff);
+    expect(graded.timeImage).toBeUndefined(); // the per-pixel bake emits no time sheet
+    expect(graded.manifest.build).toBeUndefined();
   });
 });
 
@@ -184,7 +193,7 @@ describe('convertBmdTree', () => {
   });
 });
 
-describe('convertBmdTree opaque-alpha bake', () => {
+describe('convertBmdTree build-time bake', () => {
   let out: string;
 
   beforeEach(async () => {
@@ -249,8 +258,17 @@ describe('convertBmdTree opaque-alpha bake', () => {
       const img = decodePng(await readFile(join(out, 'Data', 'Bobs', png)));
       return img.rgba[(1 * img.width + 1) * 4 + 3] ?? -1; // the 1x1 frame sits at the gutter origin
     };
-    expect(await alphaOf('House.house01.png')).toBe(255); // claimed → opaque
+    expect(await alphaOf('House.house01.png')).toBe(255); // claimed → opaque colour plane
     expect(await alphaOf('House.ruins01.png')).toBe(255); // ...for every recolour of that bmd
     expect(await alphaOf('Fern.house01.png')).toBe(0x40); // unclaimed → per-pixel alpha survives
+
+    // The claimed bmd's second byte lands in the sibling time sheet + the manifest announces it.
+    const timeSheet = decodePng(await readFile(join(out, 'Data', 'Bobs', 'House.house01.build.png')));
+    expect(timeSheet.rgba[(1 * timeSheet.width + 1) * 4] ?? -1).toBe(0x40); // the threshold, in R
+    const manifest = JSON.parse(
+      await readFile(join(out, 'Data', 'Bobs', 'House.house01.atlas.json'), 'utf8'),
+    ) as { build?: boolean };
+    expect(manifest.build).toBe(true);
+    await expect(readFile(join(out, 'Data', 'Bobs', 'Fern.house01.build.png'))).rejects.toThrow();
   });
 });

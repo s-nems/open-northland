@@ -10,12 +10,13 @@ import type {
 import {
   type AtlasManifest,
   atlasFromManifest,
+  type BuildTimeSheet,
   loadAtlasSource,
   type SpriteLayer,
   type TextureSource,
 } from '@open-northland/render';
 import { DOOR_SHIFTS } from '../catalog/building-tweaks.js';
-import { fetchJsonOrNull, loadTextureIfPresent } from './net.js';
+import { fetchImageData, fetchJsonOrNull, loadTextureIfPresent } from './net.js';
 
 /**
  * The decoded-content I/O layer for the served `content/ir.json` + `/bobs/` atlases: fetch the
@@ -196,9 +197,12 @@ export const BODY_IMAGELIB = 'cr_hum_body_00.bmd';
 
 /**
  * Load one decoded atlas layer (`<stem>.{atlas.json,png}`) from the gitignored `content/` (served at
- * `/bobs/`): the manifest → in-memory frame geometry, the PNG → a GPU texture. Throws
- * {@link MissingAtlasError} if the decoded files are missing (the pipeline hasn't been run / `content/`
- * is empty) — an environment precondition the caller may recover from; other failures throw as-is.
+ * `/bobs/`): the manifest → in-memory frame geometry, the PNG → a GPU texture. A manifest that
+ * announces a build-time sheet (`build: true`, the house atlases) also fetches the sibling
+ * `<stem>.build.png` CPU-side — the per-pixel construction-reveal thresholds; an unreadable build
+ * sheet just degrades that layer to the crop reveal. Throws {@link MissingAtlasError} if the decoded
+ * files are missing (the pipeline hasn't been run / `content/` is empty) — an environment precondition
+ * the caller may recover from; other failures throw as-is.
  */
 export async function loadLayer(stem: string): Promise<SpriteLayer> {
   const res = await fetch(`/bobs/${stem}.atlas.json`);
@@ -208,7 +212,21 @@ export async function loadLayer(stem: string): Promise<SpriteLayer> {
     );
   }
   const manifest = (await res.json()) as AtlasManifest;
-  return { atlas: atlasFromManifest(manifest), source: await loadAtlasSource(`/bobs/${stem}.png`) };
+  const [source, times] = await Promise.all([
+    loadAtlasSource(`/bobs/${stem}.png`),
+    manifest.build === true ? loadBuildTimeSheet(`/bobs/${stem}.build.png`) : Promise.resolve(undefined),
+  ]);
+  return { atlas: atlasFromManifest(manifest), source, ...(times !== undefined ? { times } : {}) };
+}
+
+/** Fetch a build-time sheet PNG and keep its R channel (the 0–255 thresholds) CPU-side, or `undefined`
+ *  when absent/unreadable (the layer degrades to the crop reveal). */
+async function loadBuildTimeSheet(url: string): Promise<BuildTimeSheet | undefined> {
+  const img = await fetchImageData(url);
+  if (img === null) return undefined;
+  const values = new Uint8Array(img.width * img.height);
+  for (let i = 0; i < values.length; i++) values[i] = img.data[i * 4] ?? 0;
+  return { width: img.width, height: img.height, values };
 }
 
 /**

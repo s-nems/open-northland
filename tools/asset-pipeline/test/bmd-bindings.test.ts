@@ -197,7 +197,7 @@ describe('resolveGraphicsBindings', () => {
         'GfxPalette "house01" "house02"\n',
     );
 
-    const { bindings, opaqueAlphaBmds } = await resolveGraphicsBindings(game, 'DataCnmd');
+    const { bindings, buildTimeBmds } = await resolveGraphicsBindings(game, 'DataCnmd');
 
     // Every palette recolour becomes a binding, and the CLAIM is on the .bmd path alone, so the
     // landscape twins of the same geometry bake opaque too (convertBmdTree keys on the bmd).
@@ -205,7 +205,7 @@ describe('resolveGraphicsBindings', () => {
       ['data/bobs/ls_houses_viking.bmd', 'house01'],
       ['data/bobs/ls_houses_viking.bmd', 'house02'],
     ]);
-    expect([...opaqueAlphaBmds]).toEqual(['data/bobs/ls_houses_viking.bmd']);
+    expect([...buildTimeBmds]).toEqual(['data/bobs/ls_houses_viking.bmd']);
   });
 
   it('returns empty lists with a warning when a binding source is missing', async () => {

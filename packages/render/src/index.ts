@@ -42,6 +42,7 @@ export {
   atlasFromManifest,
   type BuildingBobRef,
   type BuildingOverlayRef,
+  type BuildTimeSheet,
   type CarryingBinding,
   type ConstructionLayerRef,
   type DirectionalAnim,

@@ -114,6 +114,23 @@ export interface AtlasManifest {
   readonly width: number;
   readonly height: number;
   readonly frames: readonly AtlasManifestFrame[];
+  /** `true` when the build emitted a sibling `<stem>.build.png` time sheet (a `'build-time'` house
+   *  bake) — the loader's cue to fetch it into a {@link BuildTimeSheet}. */
+  readonly build?: boolean;
+}
+
+/**
+ * CPU-side copy of an atlas's build-progress time sheet (the `'build-time'` bake's `<stem>.build.png`):
+ * row-major 0–255 per-pixel thresholds over the WHOLE sheet, sampled at atlas coordinates — a pixel
+ * first appears when construction progress reaches its threshold (the original's TimeMask byte,
+ * OpenVikings CBobManager `PrintBob_UsingTimeMask`). Values at transparent atlas pixels are meaningless
+ * (the colour sheet's alpha already gates them).
+ */
+export interface BuildTimeSheet {
+  readonly width: number;
+  readonly height: number;
+  /** The sheet's R channel, `width * height` bytes. */
+  readonly values: Uint8Array;
 }
 
 /**

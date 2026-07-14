@@ -6,7 +6,7 @@ import type { FogGhost } from '../../data/fog-ghosts.js';
 import { type Camera, cameraScreenX, cameraScreenY, depthKey } from '../../data/iso.js';
 import { lerp } from '../../data/math.js';
 import { collectSpriteScene, type DrawItem, paintOrderBias } from '../../data/scene/index.js';
-import type { SpriteKind } from '../../data/sprites/index.js';
+import { buildTimeThreshold, type SpriteKind } from '../../data/sprites/index.js';
 import type { Viewport } from '../../data/viewport.js';
 import { PalettedSprite } from '../paletted-sprite/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
@@ -333,13 +333,31 @@ export class SpritePool {
       // Feet-anchored: the frame's authored draw offset, scaled about the anchor (the container origin).
       const ox = layer.frame.offsetX * layer.scale;
       const oy = layer.frame.offsetY * layer.scale;
-      // A reveal layer draws only its bottom `displayReveal` (cropped from the top, shifted down so its
-      // base stays put) — the building rising out of the ground. Buildings never take the paletted path.
+      // A reveal layer with time data draws per-pixel: each pixel appears in place once the eased
+      // progress, mapped into the stage's own [fromPct,toPct] window, reaches its baked TimeMask
+      // threshold (the original's PrintBob_UsingTimeMask construction blit). `null` — no time data or
+      // no bake (headless, unreadable atlas pixels) — draws the legacy bottom-up crop below instead.
+      // Buildings never take the paletted path.
+      const revealTexture =
+        layer.reveal !== undefined &&
+        displayReveal !== undefined &&
+        layer.times !== undefined &&
+        layer.revealWindow !== undefined
+          ? this.textures.revealed(
+              layer.source,
+              layer.frame,
+              layer.times,
+              buildTimeThreshold(displayReveal, layer.revealWindow[0], layer.revealWindow[1]),
+              this.frameId,
+            )
+          : null;
+      // The crop fallback draws only the layer's bottom `displayReveal` (cropped from the top, shifted
+      // down so its base stays put) — the building rising out of the ground.
       const hiddenTop =
-        layer.reveal !== undefined && displayReveal !== undefined
+        revealTexture === null && layer.reveal !== undefined && displayReveal !== undefined
           ? Math.round((1 - displayReveal) * layer.frame.height)
           : 0;
-      // The layer's drawn top/height in feet-local space — cropped for a reveal layer, full otherwise.
+      // The layer's drawn top/height in feet-local space — cropped for a crop-reveal layer, full otherwise.
       const drawnOy = oy + hiddenTop * layer.scale;
       const drawnH = (layer.frame.height - hiddenTop) * layer.scale;
       if (pe.paletted && this.sheet?.palette !== undefined) {
@@ -370,15 +388,16 @@ export class SpritePool {
           pe.sprites[i] = spr;
           pe.container.addChild(spr);
         }
-        if (hiddenTop >= layer.frame.height) {
+        if (revealTexture === null && hiddenTop >= layer.frame.height) {
           // Nothing revealed yet (a foundation at 0%): draw nothing this frame, contribute no bounds.
           spr.visible = false;
           continue;
         }
         spr.texture =
-          hiddenTop > 0
+          revealTexture ??
+          (hiddenTop > 0
             ? this.textures.cropped(layer.source, layer.frame, hiddenTop)
-            : this.textures.get(layer.source, layer.frame);
+            : this.textures.get(layer.source, layer.frame));
         spr.position.set(ox, drawnOy);
         spr.scale.set(layer.scale);
         // A fog ghost dims to the explored-grey grading; assigned unconditionally so a sprite reused

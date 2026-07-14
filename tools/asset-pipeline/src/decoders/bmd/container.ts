@@ -54,22 +54,26 @@ export const BOB_TYPE_EMPTY = 0;
 export const BOB_TYPE_8BIT = 1;
 /** 1-bit mask bob: each raw-run byte is 0/1; set pixels draw as index 0xFF (`TBobType.Bob1Bit`). */
 export const BOB_TYPE_1BIT = 2;
-/** TimeMask bob: same packed layout as 8-bit; print modes reinterpret it (`TBobType.TimeMask`). */
+/**
+ * TimeMask bob: each raw-run pixel is two bytes `[value, timeByte]` (`TBobType.TimeMask`). The time byte
+ * is a 0–255 visibility threshold — CBobManager `PrintPackedLine_TimeMaskAsImage` /
+ * `PrintBob_UsingTimeMask` draw a pixel only when the print-time `time` argument is `>= timeByte`, the
+ * engine's progressive-reveal (building construction) blit.
+ */
 export const BOB_TYPE_TIMEMASK = 3;
 /**
- * Double-byte bob: each raw-run pixel is two bytes `[index, alpha]` (`TBobType.Double8Bit`). The second
- * byte is the pixel's 8-bit opacity — CBobManager `PrintBob_UsingShadedAlpha` (OpenVikings' explicitly
- * best-effort reconstruction, corroborated by the measured alpha distributions below) blends
- * `a = alphaByte·(256−shade)/256` src-over the destination, so at shade 0 the alpha byte IS the pixel's
- * straight alpha; `a ≤ 0` pixels are skipped. The engine's plain `PrintPackedLine_DoubleByte` path skips
- * the byte and blits opaque. WHICH records route through which path is NOT in the oracle (it has no call
- * sites) — it is inferred per consumer class from the alpha-byte distributions + the original's look:
- * soft decals (ferns median 172, smoke 77, waves ~35) draw through the alpha path; houses (mean ≈100
- * over solid walls — not coverage) through the plain one (`AtlasAlphaMode` in atlas.ts).
+ * Double-byte bob: each raw-run pixel is two bytes `[index, second]` (`TBobType.Double8Bit`). What the
+ * second byte means depends on which print path the consumer routes through — the oracle has no call
+ * sites, so it is inferred per consumer class from the byte distributions and the original's look:
+ * alpha (`PrintBob_UsingShadedAlpha`, `a ≤ 0` skipped) for the soft decals (ferns median 172, smoke
+ * 77, waves ~35), or a 0–255 construction-progress threshold for the `[GfxHouse]` bobs (measured:
+ * spans ~0–255, row-correlated bottom-up, mean ≈100 over solid walls — not coverage), drawn via
+ * `PrintBob_UsingTimeMask` under construction and the plain byte-skipping blit when finished.
+ * `decodeBobFrame`'s `secondByte` option picks the interpretation (`AtlasAlphaMode` routes it).
  */
 export const BOB_TYPE_DOUBLE8BIT = 4;
 
-/** Coverage of a written pixel of a single-byte bob type (8-bit / 1-bit mask / TimeMask): fully opaque. */
+/** Coverage of a written pixel of a non-alpha bob type (8-bit / 1-bit mask / TimeMask): fully opaque. */
 export const BOB_ALPHA_OPAQUE = 0xff;
 
 /** Index written for a set pixel of a 1-bit mask bob (CBobManager draws masks as palette entry 0xFF). */

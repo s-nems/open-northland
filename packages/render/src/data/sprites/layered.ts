@@ -61,6 +61,13 @@ export function resolveBuildingDraw(binding: number | BuildingTypeBinding, item:
   return unwrapBobRef(ref);
 }
 
+/** A construction-stage draw: the stage's bob (+ family layer) AND its `[fromPct, toPct]` progress
+ *  window — the per-pixel reveal maps eased progress into this window as its TimeMask threshold. */
+export interface ConstructionDraw extends BuildingDraw {
+  readonly fromPct: number;
+  readonly toPct: number;
+}
+
 /**
  * Resolve the STACK of construction-stage draws an under-construction building shows, or `null` when
  * the normal body draw applies. Non-null only when the item is a building mid-construction
@@ -76,7 +83,7 @@ export function resolveBuildingDraw(binding: number | BuildingTypeBinding, item:
 export function resolveConstructionDraws(
   binding: number | BuildingTypeBinding,
   item: DrawItem,
-): BuildingDraw[] | null {
+): ConstructionDraw[] | null {
   if (typeof binding === 'number' || item.builtPct === undefined || item.typeId === undefined) return null;
   const layers = binding.constructionByType?.[item.typeId];
   if (layers === undefined || layers.length === 0) return null;
@@ -86,7 +93,26 @@ export function resolveConstructionDraws(
     active.length > 0
       ? active
       : [layers.reduce((lo, l) => (l.fromPct < lo.fromPct ? l : lo), layers[0] as ConstructionLayerRef)];
-  return chosen.map((l) => (l.layer === undefined ? { bob: l.bob } : { bob: l.bob, layer: l.layer }));
+  return chosen.map((l) =>
+    l.layer === undefined
+      ? { bob: l.bob, fromPct: l.fromPct, toPct: l.toPct }
+      : { bob: l.bob, layer: l.layer, fromPct: l.fromPct, toPct: l.toPct },
+  );
+}
+
+/**
+ * Map build progress (0..1 — `builtPct/100`, or the pool's eased display value) into a construction
+ * stage's `[fromPct, toPct]` window as the 0–255 TimeMask threshold — the `time` argument of the
+ * original's `PrintBob_UsingTimeMask` blit (a pixel draws once its `timeByte <= time`, OpenVikings
+ * CBobManager). The linear window→byte mapping is a named approximation: the oracle documents the
+ * blit's gate but no caller supplying `time`, so within-window linear (start → 0, end → 255) is the
+ * natural reading of its ranged entry points. A degenerate window (`toPct <= fromPct`) snaps whole.
+ */
+export function buildTimeThreshold(progress: number, fromPct: number, toPct: number): number {
+  const pct = progress * 100;
+  if (toPct <= fromPct) return pct >= fromPct ? 255 : 0;
+  const t = Math.min(1, Math.max(0, (pct - fromPct) / (toPct - fromPct)));
+  return Math.round(t * 255);
 }
 
 /**

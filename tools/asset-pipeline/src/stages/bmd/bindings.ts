@@ -109,7 +109,7 @@ export function jobBaseGraphicsToBindings(records: readonly JobBaseGraphicsBindi
 export async function resolveGraphicsBindings(
   gameDir: string,
   mod: string | undefined,
-): Promise<{ bindings: BmdPaletteBinding[]; palettes: PaletteAlias[]; opaqueAlphaBmds: Set<string> }> {
+): Promise<{ bindings: BmdPaletteBinding[]; palettes: PaletteAlias[]; buildTimeBmds: Set<string> }> {
   const readIni = async (rel: string): Promise<RuleSection[] | undefined> => {
     const path = join(gameDir, rel);
     try {
@@ -158,17 +158,17 @@ export async function resolveGraphicsBindings(
       bindings.push(b);
     }
   }
-  // The `.bmd`s claimed by a [GfxHouse] record bake OPAQUE (`convertBmdTree`'s `opaqueAlphaBmds`):
-  // a house bob's Double8Bit alpha bytes are measured NON-coverage (mean ≈100 across solid
-  // walls/roofs — used as alpha, the original's solid buildings would draw as 40% ghosts; the corpus
-  // shows them solid), so the house atlases replay the engine's plain PrintBob blit, which skips that
-  // byte. The routing is inferred from those measurements + the corpus — the oracle documents both
-  // blit paths' pixel semantics but has no call sites. Keyed on the `.bmd` path alone (the alpha bytes
-  // live in the shared bob geometry), so EVERY palette variant — including the [GfxLandscape] twins
-  // (residence houses / wonders placed as map decor) — bakes the same way. CAVEAT: [GfxHouse] is read
-  // only from the mod's houses.ini, so a mod-less run bakes house-family bmds per-pixel — acceptable
-  // while the documented run always passes --mod; revisit if a base-game-only run becomes real.
-  const opaqueAlphaBmds = new Set<string>();
+  // The `.bmd`s claimed by a [GfxHouse] record bake `'build-time'` (`convertBmdTree`'s `buildTimeBmds`):
+  // a house bob's Double8Bit second bytes are measured construction-progress thresholds, not coverage
+  // (they span ~0–255 and are strongly row-correlated bottom-up — foundation low, roof high; read as
+  // alpha they draw the solid buildings as 40% ghosts). The colour plane bakes opaque (the engine's
+  // plain PrintBob blit) and the thresholds bake into the sibling `.build.png` the renderer's
+  // per-pixel construction reveal reads (PrintBob_UsingTimeMask semantics; the oracle has no call
+  // sites, so the routing is inferred from the measurements). Keyed on the `.bmd` path alone so every
+  // palette variant — including the [GfxLandscape] residence/wonder twins — bakes the same way.
+  // Caveat: [GfxHouse] is read only from the mod's houses.ini, so a mod-less run bakes house-family
+  // bmds per-pixel — acceptable while the documented run always passes --mod.
+  const buildTimeBmds = new Set<string>();
   if (mod !== undefined) {
     const humanGraphics = await readIni(join(mod, 'types', 'humanstype', 'jobgraphics.ini'));
     if (humanGraphics) {
@@ -195,7 +195,7 @@ export async function resolveGraphicsBindings(
     if (buildingGraphics) {
       const seen = new Set<string>();
       for (const b of extractBuildingGraphics(buildingGraphics)) {
-        opaqueAlphaBmds.add(b.bmd);
+        buildTimeBmds.add(b.bmd);
         const key = bindingKey(b);
         if (seen.has(key)) continue;
         seen.add(key);
@@ -206,6 +206,6 @@ export async function resolveGraphicsBindings(
   return {
     bindings,
     palettes: palettesIni ? extractPaletteIndex(palettesIni) : [],
-    opaqueAlphaBmds,
+    buildTimeBmds,
   };
 }

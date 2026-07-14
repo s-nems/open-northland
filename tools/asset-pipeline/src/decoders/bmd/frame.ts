@@ -14,6 +14,7 @@ import {
   BOB_TYPE_1BIT,
   BOB_TYPE_DOUBLE8BIT,
   BOB_TYPE_EMPTY,
+  BOB_TYPE_TIMEMASK,
   type BobRecord,
   PACKED_OFFSET_MASK,
   PACKED_X_SHIFT,
@@ -38,11 +39,26 @@ export interface BobFrame {
   readonly pixels: Uint8Array;
   /**
    * Row-major opacity, 0–255: 0 where the codec skipped (transparent); a written pixel of a single-byte
-   * type is {@link BOB_ALPHA_OPAQUE}; a {@link BOB_TYPE_DOUBLE8BIT} pixel carries its per-pixel alpha
-   * byte (the soft decals — ferns, smoke, wave foam — encode their feathered translucency there).
+   * type is {@link BOB_ALPHA_OPAQUE}; a {@link BOB_TYPE_DOUBLE8BIT} pixel decoded as `'alpha'` carries
+   * its per-pixel alpha byte (the soft decals — ferns, smoke, wave foam — encode their feathered
+   * translucency there). A `'time'`-decoded pixel is fully opaque here; its threshold lives in {@link time}.
    */
   readonly mask: Uint8Array;
+  /**
+   * Row-major 0–255 build-progress thresholds — the pair's second byte read as the engine's TimeMask
+   * `timeByte` (a pixel first appears when construction progress reaches it; see {@link BOB_TYPE_TIMEMASK}).
+   * Present only for a {@link BOB_TYPE_TIMEMASK} bob or a {@link BOB_TYPE_DOUBLE8BIT} decoded with
+   * `secondByte: 'time'`; meaningful only where `mask ≠ 0`.
+   */
+  readonly time?: Uint8Array;
 }
+
+/**
+ * How {@link decodeBobFrame} reads a {@link BOB_TYPE_DOUBLE8BIT} pair's second byte — per-pixel `'alpha'`
+ * (the soft decals) or `'time'` (a `[GfxHouse]` bob's construction-progress threshold). The meaning is a
+ * property of the CONSUMER, not the file (see {@link BOB_TYPE_DOUBLE8BIT}); a TimeMask bob is always time.
+ */
+export type SecondByteMode = 'alpha' | 'time';
 
 /**
  * Decodes one bob's packed-line RLE into an indexed-pixel frame + opacity mask. Pure: it reads only the
@@ -59,16 +75,17 @@ export interface BobFrame {
  * advances `count` columns. Columns are in the bob's LOCAL frame space (starting at `xMin`); `area.x` is
  * the draw offset and is NOT applied here.
  *
- * Per-type pixel width within a raw run: 8-bit/TimeMask store one index byte each; Double8Bit stores two
- * bytes each (index, then the pixel's alpha byte — see {@link BOB_TYPE_DOUBLE8BIT}); 1-bit masks store one
- * 0/1 byte each, drawn as {@link BOB_MASK_INDEX}.
+ * Per-type pixel width within a raw run: 8-bit stores one index byte each; TimeMask and Double8Bit store
+ * two bytes each (`[value, timeByte]` / `[index, alpha-or-time]` — see {@link BOB_TYPE_TIMEMASK} /
+ * {@link BOB_TYPE_DOUBLE8BIT} and `secondByte`); 1-bit masks store one 0/1 byte each, drawn as
+ * {@link BOB_MASK_INDEX}.
  * An empty bob (`type 0`) or non-positive size yields a frame sized to the (clamped) area with an all-transparent mask.
  *
  * Throws a `bmd:`-prefixed error on an out-of-range `bobIndex` (a programmer error). A structurally
  * corrupt packed-line stream is tolerated, not thrown: the walker stops at the buffer end and at any
  * column outside the frame, exactly like the original's clipped `Draw_SetPixel` (a recoverable boundary).
  */
-export function decodeBobFrame(bmd: Bmd, bobIndex: number): BobFrame {
+export function decodeBobFrame(bmd: Bmd, bobIndex: number, secondByte: SecondByteMode = 'alpha'): BobFrame {
   if (bobIndex < 0 || bobIndex >= bmd.bobs.length) {
     throw new Error(`bmd: bob index ${bobIndex} out of range (have ${bmd.bobs.length} bobs)`);
   }
@@ -83,11 +100,16 @@ export function decodeBobFrame(bmd: Bmd, bobIndex: number): BobFrame {
     return { width, height, pixels, mask };
   }
 
-  // Per raw-run pixel: how many packed bytes it consumes, and the index it yields from those bytes.
-  const isDouble = bob.type === BOB_TYPE_DOUBLE8BIT;
+  // Per raw-run pixel: how many packed bytes it consumes and what the pair's second byte means — a
+  // TimeMask bob is always [value, timeByte]; a Double8Bit pair reads per `secondByte` (see SecondByteMode).
   const isMask = bob.type === BOB_TYPE_1BIT;
-  const bytesPerPixel = isDouble ? 2 : 1;
+  const isPair = bob.type === BOB_TYPE_DOUBLE8BIT || bob.type === BOB_TYPE_TIMEMASK;
+  const isAlpha = bob.type === BOB_TYPE_DOUBLE8BIT && secondByte === 'alpha';
+  const bytesPerPixel = isPair ? 2 : 1;
+  const time = isPair && !isAlpha ? new Uint8Array(width * height) : undefined;
   const packed = bmd.packedLineData;
+  const frame = (): BobFrame =>
+    time === undefined ? { width, height, pixels, mask } : { width, height, pixels, mask, time };
 
   for (let line = 0; line < height; line++) {
     // The bob's scanlines occupy a CONTIGUOUS block of the global line-control array starting at
@@ -118,16 +140,16 @@ export function decodeBobFrame(bmd: Bmd, bobIndex: number): BobFrame {
       if (isRaw) {
         for (let i = 0; i < count; i++) {
           if (pos + bytesPerPixel > packed.length) {
-            return { width, height, pixels, mask }; // truncated stream: stop, like the clipped original
+            return frame(); // truncated stream: stop, like the clipped original
           }
           const value = packed[pos] as number;
-          // Double8Bit: the pair's second byte is the pixel's alpha (see BOB_TYPE_DOUBLE8BIT). An
-          // alpha of 0 skips the write entirely — the engine's `a <= 0 → continue` — so the pixel
-          // stays genuinely unwritten (`index 0, mask 0`), keeping the frame invariant.
-          const coverage = isDouble ? (packed[pos + 1] as number) : BOB_ALPHA_OPAQUE;
+          const second = isPair ? (packed[pos + 1] as number) : BOB_ALPHA_OPAQUE;
           pos += bytesPerPixel;
           const col = absX + i;
-          if (col >= 0 && col < width && coverage !== 0) {
+          // An ALPHA pair's 0 skips the write entirely — the engine's `a <= 0 → continue` — so the
+          // pixel stays genuinely unwritten (`index 0, mask 0`). A TIME pair's 0 is a real pixel
+          // (visible from the very start of construction), written opaque with its threshold in `time`.
+          if (col >= 0 && col < width && !(isAlpha && second === 0)) {
             if (isMask) {
               if (value !== 0) {
                 pixels[rowBase + col] = BOB_MASK_INDEX;
@@ -135,7 +157,8 @@ export function decodeBobFrame(bmd: Bmd, bobIndex: number): BobFrame {
               }
             } else {
               pixels[rowBase + col] = value;
-              mask[rowBase + col] = coverage;
+              mask[rowBase + col] = isAlpha ? second : BOB_ALPHA_OPAQUE;
+              if (time !== undefined) time[rowBase + col] = second;
             }
           }
         }
@@ -148,5 +171,5 @@ export function decodeBobFrame(bmd: Bmd, bobIndex: number): BobFrame {
     }
   }
 
-  return { width, height, pixels, mask };
+  return frame();
 }

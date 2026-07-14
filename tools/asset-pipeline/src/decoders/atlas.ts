@@ -56,12 +56,18 @@ export interface AtlasManifest {
   readonly width: number;
   readonly height: number;
   readonly frames: readonly AtlasFrame[];
+  /** Present (`true`) when a `'build-time'` bake emitted the sibling `<stem>.build.png` time sheet —
+   *  the renderer's cue to fetch it for the per-pixel construction reveal. */
+  readonly build?: true;
 }
 
 /** A packed atlas: the RGBA sheet to PNG-encode plus its manifest to write as JSON. */
 export interface BobAtlas {
   readonly image: RgbaImage;
   readonly manifest: AtlasManifest;
+  /** The `'build-time'` bake's second sheet — same placement as {@link image}, grayscale build-progress
+   *  thresholds (see {@link expandBobFrameTime}). Absent for a `'per-pixel'` bake. */
+  readonly timeImage?: RgbaImage;
 }
 
 /**
@@ -122,22 +128,27 @@ interface PreparedFrame {
   readonly width: number;
   readonly height: number;
   readonly image: RgbaImage | undefined;
+  /** The frame's build-progress plane — only on a `'build-time'` bake (same size as {@link image}). */
+  readonly timeImage: RgbaImage | undefined;
   readonly opaque: boolean;
 }
 
 /**
- * How an atlas bakes the frames' 0–255 coverage ({@link BobFrame.mask}) into its alpha channel:
+ * How an atlas interprets a Double8Bit pair's second byte ({@link import('./bmd/index.js').SecondByteMode}):
  *
- *  - `'per-pixel'` — the coverage rides into the sheet as-is: Double8Bit decals (ferns, smoke, wave
- *    foam) keep their authored feathered translucency. The engine's alpha blit
+ *  - `'per-pixel'` — the byte is coverage and rides into the sheet's alpha as-is: Double8Bit decals
+ *    (ferns, smoke, wave foam) keep their authored feathered translucency. The engine's alpha blit
  *    (`PrintBob_UsingShadedAlpha`, OpenVikings' best-effort reconstruction corroborated by the
  *    measured alpha distributions) is the model.
- *  - `'opaque'` — every written pixel bakes fully opaque, replaying the engine's plain `PrintBob`
- *    blit, which skips the Double8Bit alpha byte. For the house atlases this is pinned by
- *    measurement: a `[GfxHouse]` bob's second byte is NOT coverage (≈100 mean across solid
- *    walls/roofs — through the alpha path the original's solid buildings would draw as 40% ghosts).
+ *  - `'build-time'` — the byte is a 0–255 construction-progress threshold, not coverage. Pinned by
+ *    measurement on the `[GfxHouse]` bobs: it spans ~0–255 and is strongly row-correlated bottom-up
+ *    (foundation low, roof high; ≈100 mean across solid walls — read as alpha, the original's solid
+ *    buildings would draw as 40% ghosts). Every written pixel bakes fully opaque into the colour
+ *    sheet (the engine's plain finished-building `PrintBob` blit), and the thresholds bake into a
+ *    second, same-placement grayscale sheet ({@link BobAtlas.timeImage}) for the renderer's per-pixel
+ *    construction reveal (`PrintBob_UsingTimeMask`: a pixel draws once progress reaches its byte).
  */
-export type AtlasAlphaMode = 'per-pixel' | 'opaque';
+export type AtlasAlphaMode = 'per-pixel' | 'build-time';
 
 /** Options for {@link packBobAtlas}. */
 export interface PackBobAtlasOptions {
@@ -160,19 +171,36 @@ export interface PackBobAtlasOptions {
  */
 export function packBobAtlas(bmd: Bmd, palette: Uint8Array, options: PackBobAtlasOptions = {}): BobAtlas {
   const { maxWidth = DEFAULT_ATLAS_MAX_WIDTH, alpha = 'per-pixel' } = options;
-  const expand =
-    alpha === 'opaque'
-      ? (frame: BobFrame): RgbaImage => expandBobFrame(flattenFrameAlpha(frame), palette)
-      : (frame: BobFrame): RgbaImage => expandBobFrame(frame, palette);
-  return packBobAtlasWith(bmd, expand, maxWidth);
+  const expand = (frame: BobFrame): RgbaImage => expandBobFrame(frame, palette);
+  // 'build-time' decodes the pair's second byte as a threshold ('time' mode: every written pixel is
+  // opaque in the colour plane — including the byte-0 pixels an alpha decode would hole) and packs the
+  // thresholds into the same-placement time sheet.
+  return alpha === 'build-time'
+    ? packBobAtlasWith(bmd, expand, maxWidth, expandBobFrameTime)
+    : packBobAtlasWith(bmd, expand, maxWidth);
 }
 
 /**
- * Every written (`mask≠0`) pixel forced fully opaque — the plain-blit twin of a decoded frame. Named
- * bound: a Double8Bit raw pixel whose alpha byte is 0 decodes as UNWRITTEN ({@link decodeBobFrame}),
- * so it stays a hole here although the engine's plain blit would draw it — measured ≈1.2% of raw
- * pixels on the (not yet emitted) saracen house sets; revisit with the `[GfxHouse]` lumping fix.
+ * The build-progress plane of a `'time'`-decoded {@link BobFrame}: R=G=B = the pixel's 0–255 threshold
+ * ({@link BobFrame.time}), alpha 255 where written and 0 elsewhere — grayscale, so the emitted
+ * `<stem>.build.png` is inspectable by eye (dark foundation → bright roof).
  */
+function expandBobFrameTime(frame: BobFrame): RgbaImage {
+  const { width, height, mask, time } = frame;
+  const rgba = new Uint8Array(width * height * 4);
+  for (let i = 0; i < mask.length; i++) {
+    if (mask[i] === 0) continue;
+    const t = time?.[i] ?? 0;
+    const o = i * 4;
+    rgba[o] = t;
+    rgba[o + 1] = t;
+    rgba[o + 2] = t;
+    rgba[o + 3] = BOB_ALPHA_OPAQUE;
+  }
+  return { width, height, rgba };
+}
+
+/** Every written (`mask≠0`) pixel forced fully opaque — the binary-alpha flattener of the INDEXED path. */
 function flattenFrameAlpha(frame: BobFrame): BobFrame {
   const mask = new Uint8Array(frame.mask.length);
   for (let i = 0; i < mask.length; i++) mask[i] = frame.mask[i] !== 0 ? BOB_ALPHA_OPAQUE : 0;
@@ -202,18 +230,21 @@ export function packIndexedBobAtlas(bmd: Bmd, maxWidth = DEFAULT_ATLAS_MAX_WIDTH
  * shelf-pack the non-empty frames, and emit the sheet + manifest. Parameterising only the per-frame
  * expansion keeps the RGB ({@link packBobAtlas}) and indexed ({@link packIndexedBobAtlas}) atlases on one
  * packing/manifest path. `expand` is called only for frames with pixels, so it always receives a real frame.
+ * `expandTime` (the `'build-time'` bake) switches the decode to `'time'` and emits a SECOND sheet with the
+ * identical placement — one shelf pack, two planes.
  */
 function packBobAtlasWith(
   bmd: Bmd,
   expand: (frame: BobFrame) => RgbaImage,
   maxWidth = DEFAULT_ATLAS_MAX_WIDTH,
+  expandTime?: (frame: BobFrame) => RgbaImage,
 ): BobAtlas {
   // 1. Decode + expand every bob; record which produced pixels.
   const prepared: PreparedFrame[] = [];
   for (let i = 0; i < bmd.bobCount; i++) {
     const bob = bmd.bobs[i];
     if (bob === undefined) continue;
-    const frame = decodeBobFrame(bmd, i);
+    const frame = decodeBobFrame(bmd, i, expandTime === undefined ? 'alpha' : 'time');
     const hasPixels = frame.width > 0 && frame.height > 0;
     let opaque = false;
     if (hasPixels) {
@@ -232,6 +263,7 @@ function packBobAtlasWith(
       width: frame.width,
       height: frame.height,
       image: hasPixels ? expand(frame) : undefined,
+      timeImage: hasPixels && expandTime !== undefined ? expandTime(frame) : undefined,
       opaque,
     });
   }
@@ -263,6 +295,8 @@ function packBobAtlasWith(
   const width = Math.max(1, atlasWidth);
   const height = Math.max(1, atlasHeight);
   const image: RgbaImage = { width, height, rgba: new Uint8Array(width * height * 4) };
+  const timeImage: RgbaImage | undefined =
+    expandTime === undefined ? undefined : { width, height, rgba: new Uint8Array(width * height * 4) };
 
   const frames: AtlasFrame[] = [];
   for (let i = 0; i < prepared.length; i++) {
@@ -271,6 +305,7 @@ function packBobAtlasWith(
     const at = placements.get(i);
     if (p.image !== undefined && at !== undefined) {
       blit(image, p.image, at.x, at.y);
+      if (timeImage !== undefined && p.timeImage !== undefined) blit(timeImage, p.timeImage, at.x, at.y);
       frames.push({
         bobId: p.bobId,
         type: p.type,
@@ -292,5 +327,7 @@ function packBobAtlasWith(
     }
   }
 
-  return { image, manifest: { width, height, frames } };
+  return timeImage === undefined
+    ? { image, manifest: { width, height, frames } }
+    : { image, manifest: { width, height, frames, build: true }, timeImage };
 }

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   type BuildingTypeBinding,
   bobKey,
+  buildTimeThreshold,
   finishedBuildingBobKeys,
   resolveBuildingDraw,
   resolveBuildingOverlayDraw,
@@ -114,13 +115,16 @@ describe('resolveConstructionDraws — construction-stage stack for an under-con
   };
 
   it('shows only the grey foundation at 0% and the full overlap mid-build, in stacking order', () => {
-    expect(resolveConstructionDraws(binding, site(2, 0))).toEqual([{ bob: 102 }]);
+    // Each draw carries its own [fromPct,toPct] window — the per-pixel reveal maps progress into it.
+    expect(resolveConstructionDraws(binding, site(2, 0))).toEqual([{ bob: 102, fromPct: 0, toPct: 50 }]);
     expect(resolveConstructionDraws(binding, site(2, 30))).toEqual([
-      { bob: 102 },
-      { bob: 103 },
-      { bob: 101, layer: 'viking4' },
+      { bob: 102, fromPct: 0, toPct: 50 },
+      { bob: 103, fromPct: 10, toPct: 70 },
+      { bob: 101, layer: 'viking4', fromPct: 20, toPct: 100 },
     ]);
-    expect(resolveConstructionDraws(binding, site(2, 99))).toEqual([{ bob: 101, layer: 'viking4' }]);
+    expect(resolveConstructionDraws(binding, site(2, 99))).toEqual([
+      { bob: 101, layer: 'viking4', fromPct: 20, toPct: 100 },
+    ]);
   });
 
   it('returns null for a finished building, an unmapped type, and a table-less/plain binding', () => {
@@ -136,7 +140,24 @@ describe('resolveConstructionDraws — construction-stage stack for an under-con
       default: 11,
       constructionByType: { 2: [{ bob: 102, fromPct: 10, toPct: 50 }] },
     };
-    expect(resolveConstructionDraws(gappy, site(2, 0))).toEqual([{ bob: 102 }]); // below every range
+    // Below every range: the earliest stage floors, its own window intact.
+    expect(resolveConstructionDraws(gappy, site(2, 0))).toEqual([{ bob: 102, fromPct: 10, toPct: 50 }]);
+  });
+});
+
+describe('buildTimeThreshold — progress → TimeMask threshold within a stage window', () => {
+  it('maps the window linearly onto 0–255 (window start → 0, window end → 255)', () => {
+    expect(buildTimeThreshold(0.2, 20, 100)).toBe(0);
+    expect(buildTimeThreshold(0.6, 20, 100)).toBe(128);
+    expect(buildTimeThreshold(1, 20, 100)).toBe(255);
+    expect(buildTimeThreshold(0.5, 0, 100)).toBe(128);
+  });
+
+  it('clamps outside the window and snaps a degenerate window whole', () => {
+    expect(buildTimeThreshold(0.1, 20, 100)).toBe(0); // eased display briefly below fromPct
+    expect(buildTimeThreshold(1.2, 20, 100)).toBe(255);
+    expect(buildTimeThreshold(0.3, 40, 40)).toBe(0); // degenerate: nothing until reached...
+    expect(buildTimeThreshold(0.5, 40, 40)).toBe(255); // ...then everything
   });
 });
 
@@ -210,7 +231,10 @@ describe('finishedBuildingBobKeys — the finished-sprite set excluded from the 
     const scaffold = (resolveConstructionDraws(binding, midBuild) ?? []).filter(
       (d) => !finished.has(bobKey(d)),
     );
-    expect(scaffold).toEqual([{ bob: 2 }, { bob: 3 }]);
+    expect(scaffold).toEqual([
+      { bob: 2, fromPct: 0, toPct: 100 },
+      { bob: 3, fromPct: 0, toPct: 100 },
+    ]);
   });
 
   it('memoizes per binding — the same set instance is returned across calls', () => {

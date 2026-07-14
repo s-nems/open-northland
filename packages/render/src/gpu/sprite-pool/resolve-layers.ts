@@ -4,6 +4,7 @@ import type { DrawItem } from '../../data/scene/index.js';
 import {
   type AtlasFrame,
   type BuildingDraw,
+  type BuildTimeSheet,
   bobKey,
   finishedBuildingBobKeys,
   lookupFrame,
@@ -38,18 +39,21 @@ export interface ResolvedLayer {
   readonly atlasW?: number;
   readonly atlasH?: number;
   /**
-   * Bottom-up REVEAL fraction (0..1) — draw only the bottom `reveal` of the layer's height, cropped from
-   * the top, so a growing thing rises out of the ground pixel by pixel. Present ONLY on the stage stack of
-   * an under-construction building (keyed off {@link DrawItem.builtPct}); absent everywhere else (the layer
-   * draws whole). The pool eases the displayed reveal toward this target so the rise is continuous between
-   * the sim's per-swing `built` steps. `1` (or absent) draws the full sprite.
-   *
-   * source basis: a VISUAL APPROXIMATION, not the original's model. The `[GfxHouse]` `GfxBobConstructionLayer`
-   * records swap WHOLE scaffold-stage bobs at `[fromPct,toPct]` thresholds (no crop field exists in the
-   * format); this continuous bottom-up crop of those same stage bobs is our embellishment — tuned by eye —
-   * so the frame grows smoothly instead of popping between discrete stages.
+   * Construction reveal fraction (0..1 of `builtPct/100`) — present only on the stage stack of an
+   * under-construction building; the pool eases the displayed value toward it between the sim's
+   * per-swing `built` steps. With {@link times} (+ {@link revealWindow}) the reveal is per-pixel:
+   * each pixel appears once the eased progress, mapped into the window
+   * ({@link import('../../data/sprites/index.js').buildTimeThreshold}), reaches its baked TimeMask
+   * threshold (OpenVikings `PrintBob_UsingTimeMask`). Without time data the layer falls back to the
+   * legacy bottom-up top-crop approximation.
    */
   readonly reveal?: number;
+  /** The atlas's build-progress time sheet, when the loaded {@link import('../sprite-sheet.js').SpriteLayer}
+   *  carries one — enables the per-pixel reveal (see {@link reveal}). */
+  readonly times?: BuildTimeSheet;
+  /** The construction stage's `[fromPct, toPct]` progress window — set with {@link times} on a reveal
+   *  layer so the pool can map eased progress into this stage's own threshold scale. */
+  readonly revealWindow?: readonly [number, number];
   /**
    * Excluded from the entity's stamped {@link import('./pooled-entity.js').EntityBounds} — set on a
    * building's ANIMATED state overlay (the mill's spinning rotor), whose per-frame rects differ in
@@ -181,21 +185,23 @@ function resolveBuildingLayers(sheet: SpriteSheet, item: DrawItem, tick: number)
   // layers; a stage whose frame is missing/empty is skipped; if none resolves, fall through to the body.
   const stack = resolveConstructionDraws(sheet.bindings.building, item);
   if (stack !== null && typeof sheet.bindings.building !== 'number') {
-    // Under construction only the SCAFFOLDING rises: each scaffold stage is cropped to the bottom
-    // `builtPct` of its height, so the timber frame grows upward as the build progresses. Any stage that
-    // is a FINISHED building sprite (this or another tier's completed home bob — the stages reuse them) is
-    // excluded from the rise; the real house appears only when the site completes (`builtPct` gone → the
-    // normal body draw), so it snaps in at 100% rather than a half-built cottage creeping up. `builtPct`
-    // is present whenever the stack is (resolveConstructionDraws requires it); the pool eases the displayed
-    // reveal so it glides between the sim's per-swing steps. At 0% the scaffold is fully hidden — a fresh
-    // site shows just its grey ground plot (the ConstructionPlotLayer), rising from nothing as swings land.
+    // Each active stage reveals as the build progresses (the pool eases the displayed value between
+    // the sim's per-swing steps). A stage whose atlas carries a time sheet reveals per-pixel in its
+    // own [fromPct,toPct] window — the original's model, where even the finished-house bob listed as
+    // the stack's top stage materialises pixel by pixel (why house bobs carry TimeMask bytes at all).
+    // Without time data a stage falls back to the bottom-up crop, and a finished building sprite is
+    // excluded from that rise (it would creep up as a half-built cottage) — it snaps in at completion.
     const finishedKeys = finishedBuildingBobKeys(sheet.bindings.building);
     const reveal = clamp01((item.builtPct ?? 0) / 100);
     const layers: ResolvedLayer[] = [];
     for (const draw of stack) {
-      if (finishedKeys.has(bobKey(draw))) continue; // a finished building sprite — only at 100%
       const resolved = layeredLayerFor(sheet, 'building', draw);
-      if (resolved !== null) layers.push({ ...resolved, reveal });
+      if (resolved === null) continue;
+      if (resolved.times !== undefined) {
+        layers.push({ ...resolved, reveal, revealWindow: [draw.fromPct, draw.toPct] });
+      } else if (!finishedKeys.has(bobKey(draw))) {
+        layers.push({ ...resolved, reveal });
+      }
     }
     if (layers.length > 0) return { done: true, layers };
   }
@@ -280,13 +286,25 @@ function layeredLayerFor(sheet: SpriteSheet, kind: SpriteKind, draw: BuildingDra
     const frame = lookupFrame(family.atlas, draw.bob);
     if (frame === null) return null;
     const scale = sheet.familyScales?.[draw.layer] ?? sheet.kindScales?.[kind] ?? 1;
-    return { source: family.source, frame, scale };
+    return {
+      source: family.source,
+      frame,
+      scale,
+      // The atlas's time sheet rides along so a construction stage from this family can reveal
+      // per-pixel; ignored (no reveal) on every other draw.
+      ...(family.times !== undefined ? { times: family.times } : {}),
+    };
   }
   const kindLayer = sheet.kindLayers?.[kind];
   if (kindLayer === undefined) return null;
   const frame = lookupFrame(kindLayer.atlas, draw.bob);
   if (frame === null) return null;
-  return { source: kindLayer.source, frame, scale: sheet.kindScales?.[kind] ?? 1 };
+  return {
+    source: kindLayer.source,
+    frame,
+    scale: sheet.kindScales?.[kind] ?? 1,
+    ...(kindLayer.times !== undefined ? { times: kindLayer.times } : {}),
+  };
 }
 
 /**

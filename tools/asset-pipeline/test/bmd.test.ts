@@ -334,11 +334,25 @@ describe('decodeBobFrame', () => {
     expect([...frame.mask]).toEqual([0, 0xff]);
   });
 
-  it('decodes a TimeMask bob like 8-bit (raw indices)', () => {
-    const bmd = frameBmd(BOB_TYPE_TIMEMASK, 2, 1, [0x02, 0x12, 0x34, 0x00], [0]);
+  it('decodes a TimeMask bob as [value, timeByte] pairs (CBobManager PrintPackedLine_TimeMaskAsImage)', () => {
+    // Raw run of 2 pairs: [value=0x12, time=0x34][value=0x56, time=0x00] — a time of 0 is a REAL pixel
+    // (visible from the start of construction), written opaque, unlike an alpha 0.
+    const bmd = frameBmd(BOB_TYPE_TIMEMASK, 2, 1, [0x02, 0x12, 0x34, 0x56, 0x00, 0x00], [0]);
     const frame = decodeBobFrame(bmd, 0);
-    expect([...frame.pixels]).toEqual([0x12, 0x34]);
+    expect([...frame.pixels]).toEqual([0x12, 0x56]);
     expect([...frame.mask]).toEqual([BOB_ALPHA_OPAQUE, BOB_ALPHA_OPAQUE]);
+    expect([...(frame.time ?? [])]).toEqual([0x34, 0x00]);
+  });
+
+  it("decodes a double-byte bob's second byte as build-progress time when asked ('time' mode)", () => {
+    // Same pairs as the alpha-0 case above: in 'time' mode the 0 byte no longer holes the pixel — it is
+    // the threshold "appears at progress 0", and the colour plane bakes opaque (the finished PrintBob blit).
+    const packed = [0x02, 0x40, 0x00, 0x50, 0xff, 0x00];
+    const bmd = frameBmd(BOB_TYPE_DOUBLE8BIT, 2, 1, packed, [0]);
+    const frame = decodeBobFrame(bmd, 0, 'time');
+    expect([...frame.pixels]).toEqual([0x40, 0x50]);
+    expect([...frame.mask]).toEqual([BOB_ALPHA_OPAQUE, BOB_ALPHA_OPAQUE]);
+    expect([...(frame.time ?? [])]).toEqual([0x00, 0xff]);
   });
 
   it('yields an all-transparent frame for an empty (type 0) bob', () => {

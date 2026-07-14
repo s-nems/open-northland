@@ -1,6 +1,6 @@
 import { TextureSource } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
-import type { AtlasFrame } from '../src/data/sprites/index.js';
+import type { AtlasFrame, BuildTimeSheet } from '../src/data/sprites/index.js';
 import { TextureCache } from '../src/gpu/texture-cache.js';
 
 /**
@@ -40,5 +40,19 @@ describe('TextureCache.cropped', () => {
     expect(cache.cropped(SOURCE, FRAME, 12)).not.toBe(cache.cropped(SOURCE, FRAME, 13));
     // The full-frame get() cache is independent of the crop cache.
     expect(cache.get(SOURCE, FRAME)).toBe(cache.get(SOURCE, FRAME));
+  });
+});
+
+describe('TextureCache.revealed', () => {
+  const TIMES: BuildTimeSheet = { width: 64, height: 64, values: new Uint8Array(64 * 64) };
+
+  it('returns the plain full frame at threshold 255 (fully revealed, no bake)', () => {
+    const cache = new TextureCache();
+    expect(cache.revealed(SOURCE, FRAME, TIMES, 255, 1)).toBe(cache.get(SOURCE, FRAME));
+  });
+
+  it('returns null when the atlas pixels are not CPU-readable (the caller falls back to the crop)', () => {
+    // A bare TextureSource has no drawable resource — no canvas bake is possible headless.
+    expect(new TextureCache().revealed(SOURCE, FRAME, TIMES, 100, 1)).toBeNull();
   });
 });

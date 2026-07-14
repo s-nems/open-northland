@@ -14,6 +14,7 @@ export {
   type AtlasManifest,
   type AtlasManifestFrame,
   atlasFromManifest,
+  type BuildTimeSheet,
   indexAtlasFrames,
   lookupFrame,
   type SpriteAtlas,
@@ -21,6 +22,8 @@ export {
 export type { SpriteBindings, SpriteKind } from './bindings.js';
 export {
   bobKey,
+  buildTimeThreshold,
+  type ConstructionDraw,
   finishedBuildingBobKeys,
   resolveBuildingDraw,
   resolveBuildingOverlayDraw,
