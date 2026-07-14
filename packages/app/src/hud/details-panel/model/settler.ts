@@ -1,4 +1,4 @@
-import { components, systems, TICKS_PER_SECOND, type WorldSnapshot } from '@open-northland/sim';
+import { components, systems, type WorldSnapshot } from '@open-northland/sim';
 import { entityById, num } from '../../../game/snapshot.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import { type PanelBar, pct, pctRatio } from './bars.js';
@@ -240,20 +240,12 @@ export function highestExperience(comps: Comp): { label: string; points: number 
     : { label: formatMessage(messages().hud.specialization, { id: best.spec }), points: best.points };
 }
 
-export function settlerStatus(components: Comp, tick: number): string {
+export function settlerStatus(components: Comp): string {
   const statuses = messages().hud.statuses;
-  const order = components.PlayerOrder as { expiresAt?: unknown } | undefined;
-  const moving = 'PathFollow' in components || 'MoveGoal' in components;
-  if (order !== undefined) {
-    if (moving) return statuses.ordered;
-    const expires = num(order.expiresAt);
-    return expires === undefined
-      ? statuses.atPosition
-      : formatMessage(statuses.standing, {
-          seconds: Math.max(0, Math.ceil((expires - tick) / TICKS_PER_SECOND)),
-        });
-  }
+  // PlayerOrder is a bare en-route marker the sim retires the tick the unit reaches its commanded
+  // destination, so a settler carrying it is always still walking there (no post-arrival dwell).
+  if ('PlayerOrder' in components) return statuses.ordered;
   if ('CurrentAtomic' in components) return statuses.working;
-  if (moving) return statuses.walking;
+  if ('PathFollow' in components || 'MoveGoal' in components) return statuses.walking;
   return statuses.idle;
 }
