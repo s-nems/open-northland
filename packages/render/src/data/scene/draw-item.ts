@@ -34,10 +34,8 @@ export type SpriteState = 'idle' | 'moving' | 'acting';
  * paints over the unit/flag by mere attach order. Applied as a sub-cell epsilon (`PAINT_ORDER_EPS` in
  * the scene builder; `SCREEN_PAINT_EPS` in the live painter) — orders of magnitude below one row's depth
  * separation — so it only breaks ties at a shared anchor and never reorders sprites a genuine row apart.
- * `tile` is 0 (tiles carry their own sub-zero depth band).
- *
- * Read this table through {@link paintOrderBias} rather than combining it with {@link FLAG_PAINT_STEP}
- * by hand at a depth site, so the tiebreak stays identical across the oracle sort and the live painter.
+ * Read it through {@link paintOrderBias} (never combined with {@link FLAG_PAINT_STEP} by hand). `tile`
+ * is 0 (tiles carry their own sub-zero depth band).
  */
 export const SPRITE_PAINT_ORDER: Readonly<Record<DrawKind, number>> = {
   tile: 0,
@@ -88,59 +86,50 @@ export interface DrawItem {
   /** The world-space sort key the item was ordered by (see {@link import('./terrain-scene.js').buildScene}). */
   readonly depth: number;
   /**
-   * The drawable's type id, so a per-type binding picks the right frame: for a terrain tile its
-   * landscape typeId (the GPU layer tints/textures by it); for a building its `Building.buildingType`
-   * (the `[GfxHouse]` `LogicType` — a per-type {@link import('../sprites/index.js').BuildingTypeBinding} draws
-   * each building's own house bob). Omitted for kinds that don't key off a type (settler/resource).
+   * The type id a per-type binding picks its frame by: a terrain tile's landscape typeId, or a
+   * building's `Building.buildingType` (the `[GfxHouse]` `LogicType` →
+   * {@link import('../sprites/index.js').BuildingTypeBinding}). Omitted for settler/resource.
    */
   readonly typeId?: number;
   /**
-   * For a resource node its `Resource.goodType`, and for a stockpile the good its ground pile mainly
-   * holds — the key a per-good {@link import('../sprites/index.js').ResourceTypeBinding} /
-   * {@link import('../sprites/index.js').StockpileBinding} draws each good's own object by. Omitted for a
-   * delivery flag ({@link isFlag}, which holds no goods) and an empty pile — both drawn as the flag
-   * sprite rather than a heap. Never set for tiles/buildings/settlers (they key off other fields).
+   * A resource node's `Resource.goodType`, or the good a stockpile pile mainly holds — the key a
+   * per-good {@link import('../sprites/index.js').ResourceTypeBinding} /
+   * {@link import('../sprites/index.js').StockpileBinding} draws by. Omitted for a delivery flag
+   * ({@link isFlag}) and an empty pile (both draw the flag, not a heap).
    */
   readonly goodType?: number;
   /**
-   * For a stockpile ground pile: how many units of its {@link goodType} it holds — the fill amount a
-   * {@link import('../sprites/index.js').StockpileBinding} maps to a per-fill heap frame (a small heap at 1, a
-   * full one at the pile's max state), so a pile visibly grows with its contents. Omitted for an empty
-   * pile (a flag) and for every non-stockpile kind.
+   * For a stockpile pile: units of {@link goodType} held — a
+   * {@link import('../sprites/index.js').StockpileBinding} maps it to a per-fill heap frame so the pile
+   * grows with its contents. Omitted for an empty pile (a flag) and non-stockpile kinds.
    */
   readonly fill?: number;
   /**
    * For a stockpile: whether it is a designated delivery flag (a
-   * {@link import('@open-northland/sim').DeliveryFlag} collection point) rather than a loose ground pile. A flag is
-   * a marker that holds no goods (no `goodType`/`fill`) — it draws the flag graphic and is painted a hair
-   * above any co-located goods heap ({@link FLAG_PAINT_STEP}). Omitted (falsy) for a loose pile and every
-   * non-stockpile.
+   * {@link import('@open-northland/sim').DeliveryFlag}) rather than a loose pile — a marker holding no
+   * goods that draws the flag graphic, painted a hair above any co-located heap ({@link FLAG_PAINT_STEP}).
+   * Omitted (falsy) for a loose pile and non-stockpiles.
    */
   readonly isFlag?: boolean;
   /**
-   * For a mined resource node (a {@link import('@open-northland/sim').MineDeposit} deposit): its visual fill
-   * level — a small integer in `[1, levels]`, `levels` when the deposit is full stepping down to `1` as it
-   * nears empty. A per-good {@link import('../sprites/index.js').ResourceTypeBinding} indexes the mine record's
-   * fill-state frames by it, so the drawn deposit shrinks in step with what has been mined (the node twin
-   * of a pile's {@link fill}). Omitted for a plain node (a tree/mushroom/full showcase deposit), which
-   * draws its full-state frame.
+   * For a mined resource node ({@link import('@open-northland/sim').MineDeposit}) or a crop: its visual
+   * fill level in `[1, levels]`, stepping down from `levels` (full) as it empties — a
+   * {@link import('../sprites/index.js').ResourceTypeBinding} indexes the fill-state frames by it (the node
+   * twin of a pile's {@link fill}). Omitted for a plain node, which draws its full-state frame.
    */
   readonly level?: number;
   /**
-   * For a mined resource node: how many levels its {@link level} ladder has (the sim's
-   * `MineDeposit.levels`, or a crop's `stages`) — `level === levels` is full. The resolver rescales the
-   * ladder onto the bound record's own frame count when the two differ (the sim buckets every deposit
-   * into one catalog level count, but each `[GfxLandscape]` variant authors its own state count — stone
-   * rocks carry 4, the ore mines 5), so a full deposit always draws its fullest authored frame. Omitted
-   * with {@link level} for a plain node.
+   * The {@link level} ladder's denominator (`MineDeposit.levels` or a crop's `stages`). The resolver
+   * rescales the ladder onto the bound record's own authored frame count when they differ (the sim
+   * buckets every deposit into one catalog count, but each `[GfxLandscape]` variant authors its own —
+   * stone rocks 4, ore mines 5), so a full deposit always draws its fullest frame. Omitted with {@link level}.
    */
   readonly levels?: number;
   /**
-   * For a resource node: the exact `[GfxLandscape]` record it was spawned from (the snapshot's
-   * `Resource.gfxIndex` render-variant tag) — a decoded map's own species variant ("pine 02",
-   * "stones 05 grey"). A {@link import('../sprites/index.js').ResourceTypeBinding.byGfxIndex} entry wins
-   * over the per-good representative, so a map keeps its full original variety. Omitted for an
-   * admin/scene-spawned node, which draws the per-good node.
+   * For a resource node: the exact `[GfxLandscape]` record it was spawned from (`Resource.gfxIndex` —
+   * a map's own species variant, "pine 02", "stones 05 grey"). A
+   * {@link import('../sprites/index.js').ResourceTypeBinding.byGfxIndex} entry wins over the per-good
+   * representative, so a map keeps its variety. Omitted for an admin/scene-spawned node.
    */
   readonly gfxIndex?: number;
   /** For a sprite: its coarse logical state, so a per-state binding can pick the right frame. */
@@ -148,111 +137,96 @@ export interface DrawItem {
   /** For an `acting` sprite: the numeric atomic id it's executing (the `setatomic` join key). */
   readonly atomicId?: number;
   /**
-   * For an `acting` sprite: whole ticks executed in its current atomic so far — the sim's
-   * `CurrentAtomic.elapsed`, the animation clock for an action. A directional binding advances its swing
-   * one frame every `ticksPerFrame` of these ticks, a fixed cadence — so every action animates at the
-   * same speed (a 15-tick chop and a 4-tick deposit step frames identically), and a swing plays its full
-   * cycle because the action's duration is tuned to a whole number of cycles. Omitted when idle.
+   * For an `acting` sprite: whole ticks in its current atomic so far (`CurrentAtomic.elapsed`), the
+   * action's animation clock. A directional binding advances one frame per `ticksPerFrame` of these, a
+   * fixed cadence, so every action animates at the same speed. Omitted when idle.
    */
   readonly elapsed?: number;
   /**
-   * For a settler: its facing direction index (0..7) — the screen-space heading a directional
-   * animation binding indexes by. The `CR_Hum_Body` bob layout is not a uniform rotation; its 8 blocks
-   * face (read off the decoded frames, `source basis` "Settler facing"): `0 SW, 1 W, 2 NW, 3 NE,
-   * 4 E, 5 SE, 6 S, 7 N`. Derived from the live {@link import('./snapshot-readers/index.js').readFacing}
-   * heading; omitted when the settler isn't moving (the binding then falls back to
+   * For a settler: facing direction index (0..7) a directional binding indexes by. The `CR_Hum_Body`
+   * blocks are not a uniform rotation (source basis "Settler facing"): `0 SW, 1 W, 2 NW, 3 NE, 4 E,
+   * 5 SE, 6 S, 7 N`. Omitted when not moving (binding falls back to
    * {@link import('../sprites/index.js').DEFAULT_FACING}).
    */
   readonly facing?: number;
   /**
-   * For a settler: whether it is currently hauling a good (the sim `Carrying` component is present).
-   * Orthogonal to {@link state} — a settler can be carrying while `moving` (walking a load home) or
-   * `acting` (depositing it). A binding reads it to swap the empty-handed gait for the loaded one (the
-   * original's `..._walk_wood` bobseq instead of `..._walk`). Omitted when the settler carries nothing.
+   * For a settler: whether it is hauling a good (`Carrying` present). Orthogonal to {@link state} (a
+   * settler can carry while `moving` or `acting`); a binding swaps the empty-handed gait for the loaded
+   * one (the original's `..._walk_wood` instead of `..._walk`). Omitted when carrying nothing.
    */
   readonly carrying?: boolean;
   /**
    * For a {@link carrying} settler: the hauled `Carrying.goodType`, so a per-good loaded-gait binding
-   * ({@link import('../sprites/index.js').CarryingBinding.byGood}) draws the matching load (the original's
-   * `..._walk_<good>` bobseq per good). Omitted when not carrying.
+   * ({@link import('../sprites/index.js').CarryingBinding.byGood}) draws the matching load. Omitted when
+   * not carrying.
    */
   readonly carryGood?: number;
   /**
-   * For a settler: whether it is combat-engaged (the sim `Engagement` marker is present) — advancing
-   * on or standing off against an enemy. Orthogonal to {@link state}: a binding reads it to swap the
-   * relaxed economy walk/wait for the readied `..._agressive` gait ({@link
-   * import('../sprites/index.js').SettlerStateBinding.engaged}). A bound attack swing still wins while
-   * mid-swing. Omitted when the unit is not fighting.
+   * For a settler: whether it is combat-engaged (`Engagement` present). Orthogonal to {@link state}: a
+   * binding swaps the relaxed economy gait for the readied `..._agressive` one
+   * ({@link import('../sprites/index.js').SettlerStateBinding.engaged}), though a bound attack swing still
+   * wins mid-swing. Omitted when not fighting.
    */
   readonly engaged?: boolean;
   /**
-   * For a settler: its `Settler.jobType` — the key a per-character binding
+   * For a settler: its `Settler.jobType`, the key a per-character binding
    * ({@link import('../sprites/index.js').ByJobTable}) picks the body/head look by (the original's
-   * `[jobbasegraphics]` job → body/head join: a soldier draws the armoured `cr_hum_body_05`, a woman
-   * `cr_hum_body_10`, …). Omitted when the settler has no job (`jobType` null) — the binding then falls
-   * back to its default look.
+   * `[jobbasegraphics]` job → body/head join). Omitted when the settler has no job (falls back to the
+   * default look).
    */
   readonly jobType?: number;
   /**
-   * For a settler: the `typeId` of the good in its `Equipment.weapon` slot, when it carries one. The
-   * per-character binding maps it to a warrior look ({@link import('../sprites/index.js').ByJobTable.byWeaponGood})
-   * so the drawn weapon follows the equipment slot rather than the job — equip a bow and the warrior
-   * draws the bow body. Omitted when the settler has no weapon equipped (falls back to the `jobType` look).
+   * For a settler: the `typeId` of the good in its `Equipment.weapon` slot. A per-character binding
+   * maps it to a warrior look ({@link import('../sprites/index.js').ByJobTable.byWeaponGood}) so the drawn
+   * weapon follows the slot rather than the job. Omitted when unarmed (falls back to the {@link jobType} look).
    */
   readonly weaponGood?: number;
   /**
-   * For a settler: the owning player slot (the sim `Owner.player`), so the renderer can paint the unit in
-   * that player's team colour — the render `PalettedSprite` reads its clothing-band indices through the
-   * player's row of the `256×N` colour LUT. Omitted for an unowned settler (wildlife / a neutral fixture),
-   * which draws the base palette (LUT row 0).
+   * For a settler: the owning `Owner.player` slot, so the `PalettedSprite` reads its clothing-band
+   * indices through that player's row of the `256×N` colour LUT. Omitted for an unowned settler
+   * (wildlife / neutral fixture), which draws the base palette (LUT row 0).
    */
   readonly player?: number;
   /**
-   * For a settler: whether it is a born-young (baby/child) settler — the sim `Age` component is present.
-   * Disambiguates the age-class `jobType` ids (1..4) from a synthetic fixture's colliding adult job ids
-   * (AGENTS.md [dc3ef54]): only a young settler keys the child/baby body table. Omitted for adults.
+   * For a settler: whether it is born-young (baby/child — `Age` present). Disambiguates the age-class
+   * `jobType` ids (1..4) from a synthetic fixture's colliding adult job ids (AGENTS.md [dc3ef54]): only a
+   * young settler keys the child/baby body table. Omitted for adults.
    */
   readonly young?: boolean;
   /**
-   * For an under-construction building: its build progress as a whole percent (0..99 — the sim's
-   * `Building.built` fixed-point fraction, floored). The construction-stage binding
+   * For an under-construction building: build progress as a whole percent (0..99, floored
+   * `Building.built`). The construction-stage binding
    * ({@link import('../sprites/index.js').BuildingTypeBinding.constructionByType}) picks which `[GfxHouse]`
-   * construction layers are visible at this progress (the grey foundation at 0, rising stages after).
-   * Omitted for a finished building (`built >= ONE`) — the normal per-type body draw then applies —
-   * and for non-building kinds.
+   * layers show at this progress (grey foundation at 0, rising stages after). Omitted for a finished
+   * building (`built >= ONE`) and non-building kinds.
    */
   readonly builtPct?: number;
   /**
-   * For a finished building: whether it is mid production cycle (the sim `Production` component
-   * is present) — the key an animated state overlay switches on (the mill's rotor spins while the
-   * mill produces, {@link import('../sprites/index.js').BuildingTypeBinding.overlayByType}). A named
-   * approximation of the original's overlay state 1: `Production` persists through a brief
-   * worker-away pause (the cycle holds, the drawn rotor keeps spinning); the original's exact
-   * pause behaviour is unobserved. Omitted for an idle workplace and every non-building kind.
+   * For a finished building: whether it is mid production cycle (`Production` present) — the key an
+   * animated state overlay switches on ({@link import('../sprites/index.js').BuildingTypeBinding.overlayByType},
+   * the mill's spinning rotor). A named approximation of the original's overlay state 1: `Production`
+   * persists through a brief worker-away pause (the rotor keeps spinning), whose exact behaviour is
+   * unobserved. Omitted for an idle workplace and non-building kinds.
    */
   readonly working?: boolean;
   /**
-   * For a projectile: its flight heading in screen space (radians, 0 = screen-east, clockwise) —
-   * the pooled arrow graphic (authored pointing screen-east) rotates to it so the shaft points along
-   * the flight. Derived from the projectile's position toward its target's live position (the sim's
-   * homing step re-aims every tick, so the heading tracks the flight), tilted along the drawn ballistic
-   * arc's tangent when the shot's launch origin is readable. Omitted for every other kind.
+   * For a projectile: flight heading in screen space (radians, 0 = screen-east, clockwise) — the pooled
+   * arrow (authored pointing screen-east) rotates to it so the shaft points along the flight, tilted
+   * along the drawn ballistic arc's tangent when the launch origin is readable. Omitted for other kinds.
    */
   readonly rotation?: number;
   /**
-   * Whether this item is a fog ghost — a remembered static (building/resource/stump) drawn from the
-   * viewer's {@link import('../fog-ghosts.js').FogGhostStore} memory on explored ground, not from a live
-   * snapshot entity. The pool dims it to the explored-grey grading ({@link import('../fog.js').FOG_GHOST_TINT})
-   * and stamps no hit bounds (a ghost is scenery intel — clicking it must not select a fogged, possibly
-   * dead, entity). Omitted (falsy) for every live-drawn item.
+   * Whether this item is a fog ghost — a remembered static drawn from the viewer's
+   * {@link import('../fog-ghosts.js').FogGhostStore} memory on explored ground, not a live entity. The pool
+   * dims it ({@link import('../fog.js').FOG_GHOST_TINT}) and stamps no hit bounds (clicking scenery intel
+   * must not select a fogged, possibly dead, entity). Omitted (falsy) for live-drawn items.
    */
   readonly ghost?: boolean;
   /**
-   * The draw-height lift (world px, ≥ 0) at this item's feet — terrain elevation, plus a projectile's
-   * ballistic-arc height while mid-lob — subtracted from the drawn `y` so the sprite sits on the lifted
-   * ground. The anchor {@link x}/{@link y} and its {@link depth} stay pre-lift: the painter key must
-   * remain the feet row, so a lifted-up sprite on a nearer row still occludes one behind it (draw at
-   * `y − lift`, sort by `y`). Omitted (treated as 0) on a flat map with nothing in flight.
+   * The draw-height lift (world px, ≥ 0) at this item's feet — terrain elevation plus a projectile's
+   * arc height — subtracted from the drawn `y`. The anchor {@link x}/{@link y} and {@link depth} stay
+   * pre-lift, so a lifted sprite still occludes by feet row (draw at `y − lift`, sort by `y`). Omitted
+   * (0) on a flat map with nothing in flight.
    */
   readonly lift?: number;
 }

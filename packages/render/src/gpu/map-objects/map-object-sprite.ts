@@ -4,8 +4,7 @@ import type { AtlasFrame } from '../../data/sprites/index.js';
 /**
  * One placed landscape object, fully resolved by the app (atlas source + frame list + position):
  * a tree, stone, bush, mine decal or animated wave from a decoded map's `objects` layer. `frames`
- * with more than one entry is a looping animation played from {@link phase} (the app sets phase 0
- * everywhere — the wave bobs tile seamlessly only when neighbours show the same frame). `decor`
+ * with more than one entry is a looping animation, offset per object by {@link phase}. `decor`
  * objects are flat ground decor (waves, grass, flowers, mine stains): they batch into per-chunk
  * meshes under the entity sprites; non-decor (tall) objects (trees, stones) depth-sort against
  * entities by their world-`y` feet anchor.
@@ -19,7 +18,8 @@ export interface MapObjectSprite {
   readonly frames: readonly AtlasFrame[];
   readonly scale: number;
   readonly decor: boolean;
-  /** Starting frame offset into {@link frames} (kept for future per-object phase data). */
+  /** Starting frame offset into {@link frames}; the app staggers looping decor by a spatial gradient so
+   *  neighbouring bobs don't pulse as one stamp. Static objects (one frame) ignore it. */
   readonly phase: number;
   /**
    * Terrain-elevation lift (world px, ≥ 0) at this object's half-cell — subtracted from the drawn `y` so
