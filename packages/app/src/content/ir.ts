@@ -200,9 +200,8 @@ export const BODY_IMAGELIB = 'cr_hum_body_00.bmd';
  * `/bobs/`): the manifest → in-memory frame geometry, the PNG → a GPU texture. A manifest that
  * announces a build-time sheet (`build: true`, the house atlases) also fetches the sibling
  * `<stem>.build.png` CPU-side — the per-pixel construction-reveal thresholds; an unreadable build
- * sheet just degrades that layer to the crop reveal. Throws {@link MissingAtlasError} if the decoded
- * files are missing (the pipeline hasn't been run / `content/` is empty) — an environment precondition
- * the caller may recover from; other failures throw as-is.
+ * sheet just degrades that layer to the crop reveal. Throws {@link MissingAtlasError} when the decoded
+ * files are missing.
  */
 export async function loadLayer(stem: string): Promise<SpriteLayer> {
   const res = await fetch(`/bobs/${stem}.atlas.json`);
@@ -244,10 +243,9 @@ let contentIrPromise: Promise<ContentIr | null> | null = null;
 /**
  * Fetch + parse the served `content/ir.json` once per page — memoized, because the document is multi-MB
  * and the sprite, terrain, map-object and audio domains all read their lanes from it. Returns `null` when
- * it is absent or unparsable — unlike a missing atlas (a hard precondition {@link loadLayer} throws on), a
- * missing IR degrades gracefully: the settler ranges fall back to the known-good `FALLBACK_*`, the house
- * bobs to the transcribed constant, terrain to the flat tint and audio to silence. Browser-only state: the
- * memo lives for the page's lifetime (a reload starts clean; tests never call this).
+ * it is absent or unparsable; unlike a missing atlas (which {@link loadLayer} throws on), a missing IR
+ * degrades gracefully and each consumer falls back per-lane. Browser-only: the memo lives for the page's
+ * lifetime (tests never call this).
  */
 export function loadIr(): Promise<ContentIr | null> {
   contentIrPromise ??= fetchJsonOrNull<ContentIr>('/ir.json').then((ir) => {
@@ -261,11 +259,10 @@ export function loadIr(): Promise<ContentIr | null> {
 
 /**
  * The extracted building ground footprints from the served IR, by typeId — the collision/build-exclusion
- * data the live content attaches so the real-content view (`?map=`) actually enforces and shows placement
- * collision (a bare checkout / a scene test never calls this, so its content stays footprint-less and the
- * pre-footprint free-placement behaviour holds there). Empty when the IR is absent or carries no footprints.
- * Door cells get the committed per-building {@link DOOR_SHIFTS} applied here — the one seam extracted
- * footprints pass through into live content — so the sim's walk-to-door target and the `?debug=geometry`
+ * data live content attaches so the real-content view (`?map=`) enforces and shows placement collision
+ * (scenes and bare checkouts stay footprint-less, keeping free placement). Empty when the IR is absent or
+ * carries no footprints. Door cells get the committed per-building {@link DOOR_SHIFTS} applied here — the
+ * one seam extracted footprints pass through — so the sim's walk-to-door target and the `?debug=geometry`
  * overlay read the same corrected door.
  */
 export function buildingFootprints(ir: ContentIr | null): Map<number, BuildingFootprint> {
@@ -300,12 +297,11 @@ export function sequencesFor(ir: ContentIr | null, imagelib: string): Map<string
 /**
  * The `[gfxanimatomic]` per-direction frame lists for one `(tribe, action)`, indexed by body bobseq name
  * — the directional action layout a bare bobseq range can't encode ({@link GfxAnimAtomicRow.dirFrames}).
- * The settler binding turns each into a render `FrameListAnim` on the atomic's key. First record wins per
- * seq (a job/action may list several variant seqs — the unarmed soldier's four punches; the caller names
- * the one it wants). Filtering by `tribe` matters: the same body bobseq name recurs across the human
- * tribes with different frame lists (each tribe's own swing layout), so passing the wrong tribe yields a
- * plausible-but-wrong animation. `tribe` is the `[gfxanimatomic]` `logictribe` (= the `logicdefines.inc`
- * `TRIBE_TYPE_*`; viking 1).
+ * First record wins per seq (a job/action may list several variant seqs — the unarmed soldier's four
+ * punches; the caller names the one it wants). Filtering by `tribe` matters: the same body bobseq name
+ * recurs across the human tribes with different frame lists (each tribe's own swing layout), so passing
+ * the wrong tribe yields a plausible-but-wrong animation. `tribe` is the `[gfxanimatomic]` `logictribe`
+ * (= the `logicdefines.inc` `TRIBE_TYPE_*`; viking 1).
  */
 export function gfxAtomicFrameLists(
   ir: ContentIr | null,
@@ -340,12 +336,11 @@ export async function loadBodyClips(imagelib: string = BODY_IMAGELIB): Promise<B
  * the tree / house / building-family atlases (a gallery never draws them), so a partial `content/` still opens
  * the gallery.
  *
- * The body is the hard requirement — an absent body throws {@link MissingAtlasError} (the precondition the
- * caller degrades on). A missing head degrades to `undefined` (its slot in `heads`) rather than failing the
- * whole character: the animation view needs only `heads[0]`, and the roster/heads montages skip an absent
- * look, so one 404'd head can't drop a body that decoded fine. `heads` preserves stem order, so it lines up
- * 1:1 with the character's head list; a body-only character (empty `headStems`) gets `[]`. Any
- * non-precondition error (a bad manifest, a texture-load failure) still propagates.
+ * The body is the hard requirement — an absent body throws {@link MissingAtlasError}. A missing head
+ * degrades to `undefined` (its slot in `heads`) rather than failing the whole character: the animation
+ * view needs only `heads[0]`, and the roster/heads montages skip an absent look, so one 404'd head can't
+ * drop a body that decoded fine. `heads` preserves stem order, so it lines up 1:1 with the character's
+ * head list; a body-only character (empty `headStems`) gets `[]`.
  */
 export async function loadGalleryLayers(
   bodyStem: string,

@@ -134,18 +134,14 @@ export function layoutBuilding(
   const w = Math.round(PANEL_W * s);
   const gap = Math.round(SECTION_GAP * s);
 
-  // Building: measure each section, then stack bottom-anchored. The tabbed stock and the workers body
-  // reserve their full fixed height regardless of content — the original's windows keep their height,
-  // they don't shrink; a compact stock (every good fits at once — few slots, no tabs) instead fits its
-  // rows exactly, and a store-less building (a home) has no Magazyn window at all.
+  // Building: measure each section, then stack bottom-anchored.
   const pad = Math.round(WIN_PAD * s);
   const buttonH = Math.round(BUTTON_H * s);
   const buttonGap = Math.round(BUTTON_GAP * s);
   const generalBodyH = Math.round(PREVIEW_H * s);
-  // A construction site swaps production/stock/defence for the Construction window: those describe the
-  // finished building and mean nothing before completion (and delivered materials would read as store
-  // stock). The workers window stays — it shows the live building crew (user-requested). The
-  // Construction body is one gauge row + one row per material line.
+  // A construction site swaps production/stock/defence for the Construction window (delivered materials
+  // would otherwise read as store stock). The workers window stays — it shows the live building crew
+  // (user-requested). The Construction body is one gauge row + one row per material line.
   const underConstruction = model.construction !== null;
   const constructionBodyH = underConstruction
     ? (1 + (model.construction?.rows.length ?? 0)) * Math.round(STOCK_ROW_H * s)

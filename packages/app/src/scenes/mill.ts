@@ -14,26 +14,24 @@ import {
 import type { SceneDefinition } from './types.js';
 
 /**
- * The MILL scene: prove the original's wheat→flour workshop end-to-end. A built mill employs two
- * MILLERS who — through the generic producer drive, no mill-specific code — fetch wheat sheaves from
- * the loose piles beside the mill (a harvest's yield resting on the ground), carry them into the
- * mill's wheat store, grind each into flour over the extracted 200-tick cycle, and haul the finished
- * flour out to the warehouse once the mill's 20-slot flour store fills. The store shape (wheat 10 in,
- * flour 20 out) and the grind length are EXTRACTED (`DataCnmd/types/houses.ini` "work mill 00";
- * `viking_miller_produce_flour` length 200); the 1:1 amounts are a named approximation (no readable
- * amount field). The headless half asserts the loop closes (millers bound, wheat consumed, flour
- * ground); the browser half is where a human judges the ROTOR — the original's mill body has no
- * blades, the rotor is a separate overlay sprite that stands still while the mill idles and SPINS
- * while it grinds — plus the panel (title „Młyn", the recipe Produkcja section with a progress bar,
- * the two-row Magazyn: Pszenica x/10, Mąka x/20).
+ * The mill scene: prove the original's wheat→flour workshop end-to-end. A built mill employs two
+ * millers who — through the generic producer drive, no mill-specific code — fetch wheat from the ground
+ * piles beside the mill, grind each sheaf into flour, and haul the flour to the warehouse once the
+ * mill's flour store fills. The store shape (wheat 10 in, flour 20 out) and the 200-tick grind are
+ * extracted (`DataCnmd/types/houses.ini` "work mill 00"; `viking_miller_produce_flour` length 200);
+ * the 1:1 amounts are a named approximation (no readable amount field). The headless half asserts the
+ * loop closes (millers bound, wheat consumed, flour ground); the browser half is where a human judges
+ * the rotor — a separate overlay sprite that stands still while the mill idles and spins while it
+ * grinds — plus the panel (title „Młyn", the Produkcja recipe with a progress bar, the two-row
+ * Magazyn: Pszenica x/10, Mąka x/20).
  */
 
 const MAP_W = 32;
 const MAP_H = 20;
 const MILL_X = 14;
 const MILL_Y = 10;
-/** The flour sink beside the mill — where the millers haul finished flour once the mill's own
- *  20-slot flour store fills (and the panel's second Magazyn to watch). */
+/** The flour sink beside the mill — where the millers haul finished flour once the mill's flour store
+ *  fills. */
 const WAREHOUSE_X = 21;
 const WAREHOUSE_Y = 10;
 /** Both extracted miller slots filled (`logicworker 19 2`) so the fetch/grind work parallelises. */
@@ -142,8 +140,7 @@ export const millScene: SceneDefinition = {
       label: 'no loose ground pile ever exceeds the per-tile engine cap (flour never dumps on a field)',
       predicate: (sim) => {
         // The engine's global per-tile limit (MAX_GROUND_STACK, 5): a loose heap — any positioned
-        // stockpile that is not a building store — holds at most that many of any one good. Guards
-        // the regression where hauled flour banked unbounded onto the wheat piles beside the mill.
+        // stockpile that is not a building store — holds at most that many of any one good.
         for (const e of sim.world.query(Stockpile)) {
           if (sim.world.has(e, Building)) continue;
           for (const amount of sim.world.get(e, Stockpile).amounts.values()) {

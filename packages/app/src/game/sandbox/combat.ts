@@ -31,11 +31,10 @@ export const RANGED_MAIN_TYPE = 6;
 export const BOW_SPEED = 8;
 /** ATTACK event type (25): the frame a melee blow lands / a bow draw looses its arrow. */
 export const ATTACK_EVENT_TYPE = 25;
-// Swing lengths + hit/release frames, TRANSCRIBED from the extracted viking `atomicanimations.ini`
-// records (`viking_soldier_attack_*` — length + the `event <frame> 25`). The sim swing duration must
-// equal the decoded gfx frame-list length (`[gfxanimatomic]` per-direction counts: sword 12, spear 27,
-// broadsword 29, bows 12/28) or the DRAWN swing truncates mid-animation — the sandbox previously ran a
-// made-up 4-tick sword swing against the 12-frame decoded swing, playing only its wind-up.
+// Each swing's length + hit/release frame is its `viking_soldier_attack_*` record's length + `event
+// <frame> 25`. The sim swing duration must equal the decoded gfx frame-list length (`[gfxanimatomic]`
+// per-direction counts: sword 12, spear 27, broadsword 29, bows 12/28) or the drawn swing truncates
+// mid-animation.
 export const FIST_SWING_LENGTH = 12; // viking_soldier_attack_unarmed
 export const FIST_HIT_FRAME = 6;
 export const SWORD_SWING_LENGTH = 12; // viking_soldier_attack_sword_short
@@ -55,7 +54,7 @@ export const SWORD_DAMAGE = 40;
 export const SPEAR_DAMAGE = 45;
 export const BROADSWORD_DAMAGE = 55;
 // The fist is the weakest strike — a quarter of the short sword's, matching weapons.ini's fist
-// damagevalue 0 (400) vs the short sword's (1600). Keeps the unarmed warrior a real but feeble brawler.
+// damagevalue 0 (400) vs the short sword's (1600).
 export const FIST_DAMAGE = 10;
 
 /** The equip classification (slot + wear) per good typeId, so `sandboxContent()` can merge it onto the

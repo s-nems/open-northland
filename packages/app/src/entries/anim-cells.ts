@@ -78,13 +78,12 @@ function clipFromRow(row: BobSeqRow): GalleryClip {
 }
 
 /**
- * Turn the decoded `[bobseq]` rows into {@link GalleryClip}s — the load-bearing, browser-free data step.
- * Each clip gets its {@link clipDirs} direction count; a `filter` substring narrows by name. The head
- * fallback: a walk-layout carry variant (`length === walk.length`, not walk itself) whose own head bob is
- * empty (`headAtlas` has no non-zero frame at its start) borrows the base `human_man_generic_walk` head, so
- * it isn't drawn headless (the head faces the walk heading while the body carries the load). `walkRow` is
- * resolved from the unfiltered rows, so `?filter=bread` still finds the walk head to borrow. Pure (given
- * the head atlas as data) + exported so this join is unit-tested without a browser.
+ * Turn the decoded `[bobseq]` rows into {@link GalleryClip}s. Each clip gets its {@link clipDirs} direction
+ * count; a `filter` substring narrows by name. The head fallback: a walk-layout carry variant
+ * (`length === walk.length`, not walk itself) whose own head bob is empty (`headAtlas` has no non-zero
+ * frame at its start) borrows the base `human_man_generic_walk` head, so it isn't drawn headless (the head
+ * faces the walk heading while the body carries the load). `walkRow` is resolved from the unfiltered rows,
+ * so `?filter=bread` still finds the walk head to borrow. Pure (given the head atlas as data).
  */
 export function buildGalleryClips(
   rows: readonly BobSeqRow[],
@@ -115,8 +114,8 @@ export function buildGalleryClips(
 
 /**
  * The cells for the animation view: every sequence of the body, each drawn with the character's default
- * head (`heads[0]`). Pure over the loaded layers — the browser-free join of {@link buildGalleryClips} with
- * the shared (body, head) so it's exercised without a GPU.
+ * head (`heads[0]`). Pure over the loaded layers — the join of {@link buildGalleryClips} with the shared
+ * (body, head).
  */
 export function buildAnimCells(
   rows: readonly BobSeqRow[],
@@ -133,7 +132,7 @@ export function buildAnimCells(
  * The cells for the heads view: the plain walk ({@link pickWalkRow}) played once per head look, each cell
  * captioned by its head. `heads[i]` lines up with `headBmds[i]` (both in roster/stem order). A `filter`
  * narrows by head label or bmd name. Returns `[]` when the body has no playable clip. Pure over the loaded
- * layers so the montage assembly is unit-tested without a browser.
+ * layers.
  */
 export function buildHeadsCells(
   char: VikingCharacter,
@@ -171,7 +170,7 @@ export function buildHeadsCells(
  * The cells for the colours view: the plain walk ({@link pickWalkRow}) played once per player colour, each
  * cell captioned by its colour name and tagged with its {@link GalleryCellSpec.player} row (so the paletted
  * gallery reads it through that LUT row). `colorNames[i]` is player `i`. A `filter` narrows by colour name.
- * Returns `[]` when the body has no playable walk. Pure over the loaded layers (browser-free, unit-tested).
+ * Returns `[]` when the body has no playable walk. Pure over the loaded layers.
  */
 export function buildColorCells(
   rows: readonly BobSeqRow[],
@@ -205,7 +204,7 @@ export interface RosterLoad {
 /**
  * The roster montage's cells: for each loaded character, its plain walk ({@link pickWalkRow}) played once
  * per head look, captioned {@link rosterLabel}. `heads[i]` lines up with `char.headBmds[i]`. A `filter`
- * narrows by caption. Pure over the loaded layers so the montage assembly is unit-tested without a browser.
+ * narrows by caption. Pure over the loaded layers.
  */
 export function buildRosterCells(loaded: readonly RosterLoad[], filter = ''): GalleryCellSpec[] {
   const needle = filter.toLowerCase();

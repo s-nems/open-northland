@@ -14,8 +14,7 @@ import { BUILDING_HOME_00, GOOD_STONE, GOOD_WOOD } from './ids/index.js';
  * deferred global-content id unification). So the COST is approximated in sandbox goods — a wood+stone
  * parcel scaled by building class (a warehouse/hall costs more units → more builder strikes than a hut) —
  * and HITPOINTS is a per-class default. Homes keep their level chain, each tier a parcel up (the cost
- * doubles as the next tier's upgrade bill — {@link import('@open-northland/sim').homeNextTier}). Tune freely; the
- * global mechanic, not these balance numbers, is the point.
+ * doubles as the next tier's upgrade bill — {@link import('@open-northland/sim').homeNextTier}).
  */
 function buildParcel(wood: number, stone: number): readonly { goodType: number; amount: number }[] {
   return [
@@ -23,8 +22,7 @@ function buildParcel(wood: number, stone: number): readonly { goodType: number; 
     { goodType: GOOD_STONE, amount: stone },
   ];
 }
-/** Per home tier (`home_level_00..04` = typeIds {@link BUILDING_HOME_00}+0..4): a rising wood+stone bill.
- *  Level 0 keeps the base cost the construction scene has always raised the starter home from. */
+/** Per home tier (`home_level_00..04` = typeIds {@link BUILDING_HOME_00}+0..4): a rising wood+stone bill. */
 const HOME_BUILD_COST_BY_LEVEL: readonly (readonly { goodType: number; amount: number }[])[] = [
   buildParcel(4, 2),
   buildParcel(4, 3),

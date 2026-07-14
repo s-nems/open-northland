@@ -28,9 +28,8 @@ import {
 import type { PanelContext } from './context.js';
 
 /**
- * The window title. The decoded `miscwindow` id 0 is the original's clunky internal name "Zbuduj Okno"
- * (literally "Build Window"), so we show a clean Polish title instead — the build/construction menu. A
- * future full i18n pass moves this into the string tables; for now it mirrors the in-code building names.
+ * The window title: the decoded `miscwindow` id 0 is the original's clunky internal name "Zbuduj Okno"
+ * ("Build Window"), so a clean Polish build-menu title is shown instead.
  */
 /** Text sizes (design px) — a larger title/tab heading over the body-size building rows. */
 const TITLE_PX = 13;
@@ -46,10 +45,7 @@ const CARD_INSET_Y = 2;
 const HEADLINE_INSET = 2;
 /** How many rows one mouse-wheel event scrolls the list. */
 const WHEEL_ROWS = 1;
-/**
- * Bottom margin (design px) the list keeps clear of the screen foot. Combined with {@link MAX_LIST_ROWS} it
- * keeps the window a compact panel.
- */
+/** Bottom margin (design px) the list keeps clear of the screen foot. */
 const LIST_BOTTOM_MARGIN = 24;
 /** Hard cap on visible rows so the window stays a tidy panel even on a very tall screen (the rest scroll). */
 const MAX_LIST_ROWS = 13;
@@ -79,14 +75,12 @@ export interface MenuWindow {
   handleWheel(x: number, y: number, deltaY: number): boolean;
   /** Update the row-hover highlight from a canvas-space point (no-op when closed). */
   handleHover(x: number, y: number): void;
-  /** Per-frame hook: reflow the list only when a canvas resize changes how many rows fit (cheap no-op
-   *  otherwise — the vector text runs stay put, so there is nothing to re-place every frame). */
+  /** Per-frame hook: reflow the list only when a canvas resize changes how many rows fit. */
   refresh(): void;
 }
 
-/** The window origin: to the right of the strip, dropping from the buildings button (so it clears the
- *  top-left debug overlay instead of colliding with it). Fixed for the controller's life (the strip
- *  geometry is pinned), so it is computed once. */
+/** The window origin: right of the strip, dropping from the buildings button so it clears the top-left
+ *  debug overlay. Fixed for the controller's life (pinned strip geometry), so computed once. */
 function menuOrigin(ctx: PanelContext): { x: number; y: number } {
   const buildingsBtn = ctx.layout.buttons.find((b) => b.id === 'buildings');
   return {
@@ -97,11 +91,10 @@ function menuOrigin(ctx: PanelContext): { x: number; y: number } {
 
 /**
  * Build the building-menu window controller over the pure {@link layoutBuildingMenu} geometry. Owns a
- * `back` container (the tiled wood/rust/button bitmap fills), a `Graphics` (frame + bevels + scrollbar), a
- * separate hover `Graphics`, and vector text runs inside `deps.container`. The chrome is rebuilt on open,
- * tab change and scroll; the hover layer redraws on its own (cheap); a per-frame {@link MenuWindow.refresh}
- * only reflows when a resize changes the row count. Every bitmap fill degrades to flat Graphics when the
- * decoded art is absent.
+ * `back` container (tiled wood/rust/button bitmap fills), a `Graphics` (frame + bevels + scrollbar), a
+ * separate hover `Graphics`, and vector text runs inside `deps.container`. The chrome rebuilds on open, tab
+ * change and scroll; the hover layer redraws on its own. Every bitmap fill degrades to flat Graphics when
+ * the decoded art is absent.
  */
 export function createMenuWindow(deps: MenuWindowDeps): MenuWindow {
   const { ctx } = deps;

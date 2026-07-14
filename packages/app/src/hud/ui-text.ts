@@ -4,11 +4,10 @@ import { UI_TEXT_FILL } from '../content/ui-font.js';
 import type { TextRun } from './bitmap-text.js';
 
 /**
- * The HUD's DEFAULT text face: the bundled vector serif (`content/ui-font.ts`, "Tinos") drawn as Pixi
+ * The HUD's default text face: the bundled vector serif (`content/ui-font.ts`, "Tinos") drawn as Pixi
  * `Text`. It replaces the decoded `.fnt` bitmap path for the on-screen HUD windows because a small indexed
- * bitmap glyph has no sub-pixel detail — at the HUD's fractional UI scale it can only be blocky or hazy
- * ("niewyraźna"), while a vector face rasters crisp at any scale + device-pixel-ratio. The details panel
- * already proved this face; making it the shared HUD default keeps every window's text consistent and sharp.
+ * bitmap glyph has no sub-pixel detail — at the HUD's fractional UI scale it can only be blocky or hazy,
+ * while a vector face rasters crisp at any scale + device-pixel-ratio.
  *
  * The `.fnt` path (`bitmap-text.ts`) stays for anything that must be the exact decoded original face, but
  * new HUD text should default here.

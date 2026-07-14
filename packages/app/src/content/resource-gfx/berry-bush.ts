@@ -15,9 +15,9 @@ export interface BerryBushRef {
 /**
  * Resolve every forageable berry bush's ripe+bare draw from the IR landscape gfx: each fruited-bush record
  * (`logicType === bush with fruits`) paired with its bare twin — the same species' "… empty" record
- * (`bush naked`), matched by editName ("bush 01 fruits" → "bush 01 empty", "bush snow 02 fruits" → "bush
- * snow 02 empty"). A bush with no matching empty record reuses its fruited frame for the bare state
- * (degraded, still drawn). Keyed by the fruited record index. Pure; degrades to empty on an older ir.json.
+ * (`bush naked`), matched by editName ("bush 01 fruits" → "bush 01 empty"). A bush with no matching empty
+ * record reuses its fruited frame for the bare state (degraded, still drawn). Keyed by the fruited record
+ * index. Pure; degrades to empty on an older ir.json.
  */
 export function resolveBerryBushRefs(ir: ContentIr | null): BerryBushRef[] {
   const records = ir?.landscapeGfx ?? [];
@@ -50,12 +50,11 @@ export function berryBushAtlasStems(refs: readonly BerryBushRef[]): Set<string> 
 
 /**
  * Reduce resolved berry-bush refs to a {@link ResourceTypeBinding}: each bush keyed under its fruited
- * `gfxIndex` with a TWO-frame level list — level 1 (bare) → the empty frame, level 2 (ripe) → the fruited
- * frame (the same empty→full order {@link import('./bindings.js').buildResourceBinding} uses, so
- * `DrawItem.level` picks straight). A bare frame whose atlas family did not load reuses the ripe frame
- * (the bush still draws, just always fruited); a bush whose RIPE family did not load is dropped (it falls
- * back to the placeholder). `default` is the first bush's ripe frame — what a bush with no matching
- * `gfxIndex` draws. Undefined when nothing loaded. Pure + unit-tested.
+ * `gfxIndex` with a TWO-frame level list — level 1 (bare) → empty frame, level 2 (ripe) → fruited frame
+ * (the empty→full order {@link import('./bindings.js').buildResourceBinding} uses, so `DrawItem.level`
+ * picks straight). A bare frame whose atlas family didn't load reuses the ripe frame; a bush whose RIPE
+ * family didn't load is dropped to the placeholder. `default` is the first bush's ripe frame — what a bush
+ * with no matching `gfxIndex` draws. Undefined when nothing loaded. Pure + unit-tested.
  */
 export function buildBerryBushBinding(
   refs: readonly BerryBushRef[],

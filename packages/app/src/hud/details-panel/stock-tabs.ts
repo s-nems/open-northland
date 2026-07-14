@@ -6,14 +6,13 @@ import type { Rect } from '../geometry.js';
  * The stock window's eight category tabs: geometry (shared by the drawer and the click hit-test) plus the
  * good→tab grouping that lets a click filter the Magazyn list to one category.
  *
- * The good→category mapping is a NAMED APPROXIMATION. The original's stock window filters its goods across
- * these eight tabs, but that mapping is NOT in the extracted data — no 8-way stock-tab category field exists
- * on goods (`goodtypes.ini` and ir.json carry only production flags and armor/weapon sub-types, not the tab
- * grouping); it is a hardcoded engine/GUI feature. On
- * top of that the tab-plate GLYPHS are still unread (montage guesses, pending the plan's step-3 human pass),
- * so WHICH glyph-tab a category maps to is provisional too. Both the categories below and their tab order are
- * meant to be corrected once the glyphs are read or a real category source is found. The map is keyed by the
- * good's STABLE string id, so it serves the sandbox and the real ir.json good sets identically.
+ * The good→category mapping is a NAMED APPROXIMATION. The original filters its goods across these eight
+ * tabs, but that mapping is not in the extracted data — no 8-way stock-tab category field exists on goods
+ * (`goodtypes.ini` and ir.json carry only production flags and armor/weapon sub-types); it is a hardcoded
+ * engine/GUI feature. The tab-plate glyphs are also still unread (montage guesses), so which glyph-tab a
+ * category maps to is provisional too; both the categories below and their tab order are meant to be
+ * corrected once the glyphs are read or a real category source is found. The map is keyed by the good's
+ * stable string id, so it serves the sandbox and the real ir.json good sets identically.
  */
 
 /** The stock tabs' native plate width — must track atlas frames 170–177 (decoded 32×18 plates). */
@@ -23,9 +22,8 @@ const STOCK_TAB_W = 32;
 const DEFAULT_TAB = 7;
 
 /**
- * The eight category tabs' display names (index = tab), shown as a hover tooltip — the tab-plate GLYPHS are
- * unread original art (montage guesses, see the file header), so the cryptic icon alone doesn't say what a
- * tab holds; the tooltip names it. Polish (the default UI language); a future locale pass can localize these.
+ * The eight category tabs' display names (index = tab), shown as a hover tooltip since the glyph plates
+ * are unread (see file header). Polish (the default UI language); a future locale pass can localize these.
  */
 export function stockTabLabels(): readonly string[] {
   return messages().hud.stockTabs;

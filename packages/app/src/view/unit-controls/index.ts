@@ -69,10 +69,9 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     onSelectEntity: (id) => selectFromPanel(id),
     ...(opts.tooltip !== undefined ? { tooltip: opts.tooltip } : {}),
   });
-  // The contextual action menu (full original-art default menu; only "change profession" is wired on this
-  // slice — it opens the profession picker), anchored on the selected settler. Mounted before this
-  // controller's own canvas listeners so a click on a menu button consumes the press (stopImmediatePropagation)
-  // and never falls through to selection / a move order.
+  // The contextual action menu, anchored on the selected settler. Mounted before this controller's own
+  // canvas listeners so a click on a menu button consumes the press (stopImmediatePropagation) and never
+  // falls through to selection / a move order.
   const actions: SettlerActions = await mountSettlerActions({
     app: opts.app,
     canvas,

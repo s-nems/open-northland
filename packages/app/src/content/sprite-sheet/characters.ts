@@ -97,8 +97,8 @@ export async function loadCharacters(
   const attackFrameLists = gfxAtomicFrameLists(ir, VIKING_ANIM_TRIBE, ATTACK_ATOMIC);
   // The gathering + field-work + builder frame lists (the collector job-8 chop/dig/pluck, the farmer
   // job-18 sow/water/reap, and the builder job-7 hammer `[gfxanimatomic]` records), keyed by atomic id —
-  // what each spec's `dirListAtomics` becomes FrameListAnims from (the attack mechanism generalized).
-  // Built once; an IR without them just leaves those actions on their fallback clips.
+  // what each spec's `dirListAtomics` becomes FrameListAnims from. Built once; an IR without them just
+  // leaves those actions on their fallback clips.
   const actionFrameLists = new Map(
     [
       HARVEST_ATOMIC,

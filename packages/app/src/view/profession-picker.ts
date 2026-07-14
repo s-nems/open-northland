@@ -4,11 +4,10 @@ import { uiLabel } from '../i18n/index.js';
 import { el } from './overlay.js';
 
 /**
- * The "Zmiana zawodu" profession picker: a DOM window styled to EVOKE the original's parchment/rope
- * selection windows (the details panel is the true original-art panel; this is a deliberately lighter DOM
- * approximation — a warm wood fill, a double rope-tan frame, an engraved headline bar with a close box, and
- * the same serif UI face — kept a DOM panel so the long profession set scrolls with no Pixi masking work).
- * Palette sampled to match the HUD's warm-wood windows (cf. hud/chrome.ts's flat parchment fill/border).
+ * The "Zmiana zawodu" profession picker: a DOM window approximating the original's parchment/rope
+ * selection windows (a deliberately lighter DOM take, not the true original-art details panel) — kept DOM
+ * so the long profession set scrolls with no Pixi masking work. Palette matches the HUD's warm-wood
+ * windows (hud/chrome.ts).
  *
  * It is the window half of the settler action menu ({@link import('./settler-actions.js')}): that module
  * owns the ring + the `closed`/`menu`/`jobs` mode machine and drives {@link ProfessionPicker.show}/`hide`;

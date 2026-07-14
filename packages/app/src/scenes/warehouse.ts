@@ -20,34 +20,29 @@ import {
 import type { SceneDefinition } from './types.js';
 
 /**
- * The WAREHOUSE-HAULING scene: prove a carrier ("Tragarz") ferries loose ground goods into the warehouse it
- * staffs, STOPS at the store's per-good limit, and MOVES ON to the next good instead of jamming.
+ * The warehouse-hauling scene: a carrier ("Tragarz") ferries loose ground goods into the warehouse it
+ * staffs, stops at the store's per-good limit, and moves on to the next good instead of jamming.
  *
  * One level-1 warehouse (`stock_00` → "Magazyn (poziom 1)", per-good cap 100) sits over a field of loose
- * good piles. Three carriers are spawned UNEMPLOYED next to it; because a passive store isn't adopted by a
- * settler standing at its door (only recipe workshops/farms are), the JobSystem's assign pass employs them
- * into the warehouse's three carrier slots (the lowest-job-id slot, {@link JOB_CARRIER}, fills first). Bound
- * to a store with no recipe, each becomes a PORTER: it collects the nearest loose pile whose good the store
- * can still take and carries it home, one unit per foot-trip.
+ * piles. Three carriers spawn unemployed beside it; a passive store isn't adopted by a settler at its door
+ * (only recipe workshops/farms are), so the JobSystem assign pass employs them into its three carrier slots
+ * ({@link JOB_CARRIER} fills first). Bound to a recipe-less store, each becomes a porter: it collects the
+ * nearest loose pile whose good the store can still take and carries it home one unit per foot-trip.
  *
- * WOOD is deliberately OVER-supplied (1.5× the wood cap, read from content) and sits nearest the door, so the
- * store fills to "100 / 100" and then the cap bites: the carriers STOP hauling wood entirely (the surplus
- * ~50 units simply rest on the ground) and switch to the other goods farther out — no pick-up/put-down loop,
- * no carrier stuck holding a unit it can't deposit. This is the fix for "jak jest limit to jest limit": a
- * porter never lifts a good the store is full of, and sheds any surplus it was already carrying.
+ * Wood is over-supplied (1.5× its cap, read from content) nearest the door, so the store fills to 100/100 and
+ * the cap bites: the carriers stop hauling wood (the ~50 surplus rests on the ground) and switch to the goods
+ * farther out — no pick-up/put-down loop, no carrier stuck holding a unit it can't deposit. A porter never
+ * lifts a good the store is full of and sheds any surplus it is already carrying.
  *
- * Headless proves the mechanic: three carriers employed BY the warehouse; wood pinned at its cap and no good
- * over cap; surplus wood still on the ground (the cap held); and the OTHER goods delivered too (the carriers
- * moved on). Browser is where a human watches the wood counter stop at 100 and the carriers walk off to the
- * rest of the field.
+ * Headless proves the mechanic; the browser is where a human watches the wood counter stop at 100 and the
+ * carriers walk off to the rest of the field.
  */
 
 const MAP_W = 40;
 const MAP_H = 34;
 const INITIAL_ZOOM = 0.7;
-/** Long enough for the wood to top out at the cap (~tick 4000, one foot-carried unit at a time) AND for the
- *  carriers to then move on and land a chunk of the other goods — headless gate only; the browser view runs
- *  continuously, so a human watches the whole fill-up, the wood counter stopping, and the switch regardless. */
+/** Long enough for the wood to top out (~tick 4000, one foot-carried unit at a time) and for the carriers to
+ *  then land a chunk of the other goods — headless gate only; the browser view runs continuously. */
 const RUN_TICKS = 6000;
 
 const WAREHOUSE_X = 20;
@@ -91,8 +86,8 @@ function build(sim: Simulation): void {
     spawnIdleSettler(sim, WAREHOUSE_X - 1 + i, CARRIER_ROW_Y, HUMAN_PLAYER);
   }
 
-  // WOOD OVER-supplied (1.5× cap): the store fills to its limit and the surplus stays on the ground — the
-  // carriers stop hauling wood and move on. Laid in full-stack tiles in rows near the store (worked first).
+  // Wood over-supplied (1.5× cap), in full-stack tiles in rows near the store (worked first): the store
+  // fills and the surplus stays on the ground.
   const woodTiles = Math.ceil((warehouseCapacity(sim, GOOD_WOOD) * WOOD_OVERSUPPLY) / STACK);
   for (let i = 0; i < woodTiles; i++) {
     const x = WAREHOUSE_X - WOOD_ROW_W / 2 + (i % WOOD_ROW_W);
@@ -148,8 +143,8 @@ function groundHolds(sim: Simulation, goodType: number): boolean {
   return false;
 }
 
-/** How many carriers are still holding wood — should be 0 after the cap: a porter never lifts a good the
- *  store is full of, and sheds any surplus it was already carrying (so none stays stuck holding wood). */
+/** How many carriers are still holding wood — should be 0 after the cap: a porter sheds any surplus it was
+ *  already carrying. */
 function carriersHoldingWood(sim: Simulation): number {
   let holding = 0;
   for (const e of sim.world.query(Settler, Carrying)) {

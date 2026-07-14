@@ -3,7 +3,7 @@ import { contains, type Rect } from '../geometry.js';
 
 /**
  * The goods-palette model — the eight category tabs, filtering, layout and hit-test (pure, no Pixi/DOM).
- * Twin of {@link import('./building-menu.js')} but for GOODS: it drives the "drop a good on the ground"
+ * Twin of {@link import('./building-menu.js')} but for goods: it drives the "drop a good on the ground"
  * tool, so a pick hands back a `goodType` the panel drops via the `dropGood` command.
  *
  * The tabs mirror the details-panel Magazyn's eight stock categories (via the shared {@link goodCategoryTab}
@@ -11,8 +11,7 @@ import { contains, type Rect } from '../geometry.js';
  * mapping is a NAMED APPROXIMATION (not in the extracted data — see `details-panel/stock-tabs.ts`).
  *
  * The layout is parameterised by a screen origin + integer scale (design px), so the view draws from it and
- * the input layer hit-tests it, both without touching Pixi. Eight tabs sit in TWO rows of four (keeping the
- * window narrow), then a single-column list of the selected category's goods.
+ * the input layer hit-tests it without touching Pixi.
  */
 
 /** A good as the palette needs it: the sim `goodType` (→ `dropGood`), its icon-keying id, and a label. */

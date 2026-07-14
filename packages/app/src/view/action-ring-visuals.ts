@@ -49,10 +49,9 @@ export function createActionRingVisuals(deps: ActionRingVisualsDeps): ActionRing
   const { app, art, scale, container } = deps;
 
   // The order-icon sprite + its atlas frame for one button, or null when the art / frame is missing.
-  // 'round' key: hard-clip everything outside the inscribed disc, dropping the square frame + corners so the
-  // button reads as a round wooden disc (the original has no square behind it) while keeping the engraved
-  // glyph intact. The hard clip aliases unless supersampled, so every icon goes through `bakeRoundIcon`
-  // below (bake + downscale). See PalettedSprite.colorKey / GuiColorKey.
+  // 'round' key: hard-clip outside the inscribed disc so the button reads as a round wooden disc (the
+  // original has no square behind it), keeping the engraved glyph. The hard clip aliases unless
+  // supersampled, so every icon goes through `bakeRoundIcon` below. See PalettedSprite.colorKey / GuiColorKey.
   const iconSprite = (frameName: string): GuiSprite | null =>
     art === null
       ? null

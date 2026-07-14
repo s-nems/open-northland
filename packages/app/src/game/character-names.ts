@@ -2,23 +2,12 @@ import { VIKING } from '../catalog/buildings.js';
 
 /**
  * Per-settler personal names, shown in the details panel in place of the generic "Ogólne" section title.
- *
- * A name is a first name plus a surname — "Bjørn Ulfsson", "Astrid Sveinsdóttir". Today every settler
- * carries their own patronymic surname (son/daughter of a father's name), so the space is the cross
- * product of the first-name and father-name pools, not a flat list, and both parts vary per settler.
- *
- * Family-ready (no sim family system exists yet): the surname is resolved through a single seam so a
- * future marriage/lineage system can pass a husband's or father's entity id and the wife + children then
- * inherit that person's surname verbatim (see the `surnameFromEntityId` argument of {@link characterName}).
+ * A name is a first name plus a patronymic surname — "Bjørn Ulfsson", "Astrid Sveinsdóttir" — over the
+ * first-name × father-name cross product, and is family-ready: the surname resolves through one seam
+ * ({@link characterName}'s `surnameFromEntityId`) for a future marriage/lineage system.
  *
  * These names are cosmetic and derived, not sim state: a settler's name is a pure function of its tribe,
- * sex and stable entity id, so the same settler always shows the same name and nothing here touches the
- * deterministic sim or its golden hashes. The original game assigns no per-settler names, so the pools are
- * a clean-room approximation (see `NAME_POOLS`) — named as such, not pinned to extracted data.
- *
- * Extensible by faction: add a tribe's pools to {@link NAME_POOLS} and settlers of that tribe get its
- * names automatically. Only the viking pool exists today (the one tribe in the current content); any other
- * tribe falls back to it until its own pool is added.
+ * sex and stable entity id, so nothing here touches the deterministic sim or its golden hashes.
  */
 
 export type Sex = 'male' | 'female';
@@ -79,8 +68,7 @@ function nameGridCell(id: number, firstCount: number, rootCount: number): { firs
 /**
  * The sex/age `jobType` ids that carry a fixed body sex, transcribed from the same `jobtypes.ini`
  * semantics the render body-join uses (`content/settler-gfx.ts` `YOUNG_CHARACTER_BY_JOB` maps job 1
- * baby_female / 2 baby_male / 3 child_female / 4 child_male; the adult woman is job 5). Named per the
- * no-magic-numbers rule so the sex classifier reads by meaning. Every other job draws a male body.
+ * baby_female / 2 baby_male / 3 child_female / 4 child_male; the adult woman is job 5).
  */
 const BABY_FEMALE_JOB = 1;
 const GIRL_JOB = 3;
@@ -91,7 +79,7 @@ const WOMAN_JOB = 5;
  * on-screen character. Young settlers (those carrying an `Age` component) key the age-class jobs: the two
  * female child bodies (baby_female 1, girl 3) are female, the male ones (baby_male 2, boy 4) male. Adults
  * are female only for the woman job (5); every other adult job draws the male body. (The two baby jobs draw
- * one sex-neutral `baby` body, so a baby's sex only shows through its name, not its sprite.) Pure + total.
+ * one sex-neutral `baby` body, so a baby's sex only shows through its name, not its sprite.)
  */
 export function settlerSex(jobType: number | null | undefined, young: boolean): Sex {
   if (young) return jobType === BABY_FEMALE_JOB || jobType === GIRL_JOB ? 'female' : 'male';
@@ -106,8 +94,7 @@ export function settlerSex(jobType: number | null | undefined, young: boolean): 
  * With the surname cross product (see {@link characterName}) these give 101 × 101 = 10 201 distinct male
  * full names and 72 × 101 = 7 272 female ones. The male pool is the larger because male settlers heavily
  * outnumber female ones, so more of them need distinct names; both counts sit far past any real settlement,
- * so a repeat is very rare. The pools stay finite on purpose (a name stock is finite), but large enough
- * that duplicates effectively never surface in play.
+ * so a repeat is very rare.
  */
 const VIKING_NAMES: NamePool = {
   male: [
@@ -327,9 +314,9 @@ export function characterName(
   const first = firstNames[nameGridCell(entityId, firstNames.length, fatherNames.length).first] as string;
 
   // The surname: inherited from a husband/father when the family seam supplies one, else the settler's own.
-  // An inherited surname is always the male `-sson` form of that person's father-name — the whole household
-  // shares it; an own surname takes the settler's sex. The father-name is picked on the male grid so a man
-  // and every relative resolving to his id land on the same root.
+  // An inherited surname is always the male `-sson` form of that person's father-name; an own surname takes
+  // the settler's sex. The father-name is picked on the male grid so a man and every relative resolving to
+  // his id land on the same root.
   const inherited = surnameFromEntityId !== undefined;
   const surnameOwnerId = surnameFromEntityId ?? entityId;
   const rootGridWidth = inherited ? fatherNames.length : firstNames.length;

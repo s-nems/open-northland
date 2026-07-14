@@ -11,11 +11,10 @@ export function workerSlotsFor(typeId: number): readonly { jobType: number; coun
 }
 
 /**
- * Extracted worker-slot trades that map to a picker PROFESSION, keyed by their ORIGINAL `jobtypes.ini` id
+ * Extracted worker-slot trades that map to a picker profession, keyed by their original `jobtypes.ini` id
  * (the pre-rebase id used in {@link BUILDING_WORKER_SLOTS}) → the shared profession `key`. The building
- * panel names each such worker via {@link professionLabel}, so a slot trade and the picker read the SAME
- * word — they used to be transcribed twice and drifted (joiner was "Cieśla" in the slot table but
- * "Stolarz" in the picker). Trades with no picker counterpart keep a slot-local name below.
+ * panel names each such worker via {@link professionLabel}, so a slot trade and the picker read the same
+ * word. Trades with no picker counterpart keep a slot-local name below.
  */
 const WORKER_SLOT_PROFESSION_KEYS: Readonly<Record<number, keyof Messages['profession']>> = {
   9: 'joiner',
@@ -55,20 +54,19 @@ export function workerSlotName(originalJobType: number): string {
 }
 
 /**
- * Per-building WORKER + CARRIER capacity, by typeId — how many settlers of each job a building employs,
+ * Per-building worker + carrier capacity, by typeId — how many settlers of each job a building employs,
  * so `assignWorker` (and the JobSystem) can staff it and the door-badge shows one marker per worker.
- * Source basis: EXTRACTED from `ir.json`'s `workers`, i.e. the `logicworker` keys of each
+ * Source basis: extracted from `ir.json`'s `workers`, i.e. the `logicworker` keys of each
  * `[logichousetype]` block in `DataCnmd/types/houses.ini`, verbatim — the counts and the worker/carrier
- * split are the original's. The `jobType`s here are the source's own `jobtypes.ini` ids and are REBASED
+ * split are the original's. The `jobType`s here are the source's own `jobtypes.ini` ids and are rebased
  * clear of the sandbox's own job band on the way in ({@link rebaseSlotJob}): the original ids overlap the
  * synthetic gatherer band (20..25), the carrier (26), and the soldier band (31..41), so e.g. original job
- * 22 would otherwise be read as the sandbox's MUD GATHERER and original 40/41 as ARCHERS — the bug that
- * let a "carpenter" slot fill with wood gatherers. The CARRIER job is the one exception: the original's
- * carrier (jobtype 24) is rebased to {@link JOB_CARRIER} (the one job the badge + assignment UI single out
- * as a hauler). Everything else becomes a distinct generic craftsman id (its trade identity is dropped —
- * the deferred global-content id unification); the COUNT and the carrier split — what the player assigns —
- * stay exact. Residences (homes) employ nobody; they carry no row. Kept as sandbox data (not the
- * clean-room catalog) because the rebase lives in the sandbox job space.
+ * 22 would otherwise be read as the sandbox's mud gatherer and original 40/41 as archers. The carrier job
+ * is the one exception: the original's carrier (jobtype 24) is rebased to {@link JOB_CARRIER} (the one job
+ * the badge + assignment UI single out as a hauler). Everything else becomes a distinct generic craftsman
+ * id (its trade identity is dropped — the deferred global-content id unification); the count and the
+ * carrier split — what the player assigns — stay exact. Residences (homes) employ nobody; they carry no
+ * row. Kept as sandbox data (not the clean-room catalog) because the rebase lives in the sandbox job space.
  */
 export const BUILDING_WORKER_SLOTS: Readonly<Record<number, readonly { jobType: number; count: number }[]>> =
   {

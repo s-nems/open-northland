@@ -12,10 +12,9 @@ import { DIRS } from './sequences.js';
 /**
  * Build a {@link DirectionalAnim} from a decoded `[bobseq]` sequence: `start` is the run's first bob id,
  * `stride = length / DIRS` (the per-direction frame count). Returns {@link fallback} verbatim when the
- * named sequence is missing from the manifest (a partial/old IR), so the render keeps the known-good
- * range rather than computing a bogus one. The render-taste overrides (`frames` for a single-frame idle
- * hold, `phaseStart` for the chop windup) are applied on top of the extracted range. Pure + exported so
- * the seq→frame math is unit-tested without a browser.
+ * named sequence is missing (a partial/old IR), so the render keeps the known-good range rather than
+ * computing a bogus one. The render-taste overrides (`frames` for a single-frame idle hold, `phaseStart`
+ * for the chop windup) are applied on top of the extracted range. Pure.
  */
 export function directionalAnimFromSeq(
   seqByName: ReadonlyMap<string, BobSeqRow>,
@@ -36,10 +35,9 @@ export function directionalAnimFromSeq(
 }
 
 /**
- * A named ×8 `[bobseq]` row as a {@link DirectionalAnim}, or `undefined` when the row is missing,
- * empty, or not a clean ×8 strip — the one guard every per-character animation slot shares, so a
- * malformed/partial IR can never become a bogus frame range. The null-on-miss twin of
- * {@link directionalAnimFromSeq} (which serves the legacy binding's fallback-required contract). Pure.
+ * A named ×8 `[bobseq]` row as a {@link DirectionalAnim}, or `undefined` when the row is missing, empty,
+ * or not a clean ×8 strip — the one guard every per-character animation slot shares, so a malformed IR
+ * can never become a bogus frame range. The null-on-miss twin of {@link directionalAnimFromSeq}. Pure.
  */
 export function eightDirAnim(
   seqByName: ReadonlyMap<string, BobSeqRow>,

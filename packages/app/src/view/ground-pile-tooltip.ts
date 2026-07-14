@@ -12,9 +12,9 @@ import { type Pickable, pickTopAt, screenToWorld } from './picking.js';
 import { createTooltip } from './tooltip.js';
 
 /**
- * The ground-pile NAME-ON-HOVER tooltip: a cursor label naming the loose good pile (with its count) under
- * the pointer, so a dropped heap the eye can't always tell apart — one bottle from another, one ring from
- * another — reads its good + how many units. Keyed by the sim goodType the pile's `DrawItem` carries.
+ * The ground-pile name-on-hover tooltip: a cursor label naming the loose good pile (with its count) under
+ * the pointer, so a dropped heap the eye can't always tell apart reads its good + how many units. Keyed
+ * by the sim goodType the pile's `DrawItem` carries.
  *
  * Screen-bounded (golden rule 6): its hit-target set comes from `buildSpriteScene` culled to the camera
  * viewport, so it only ever considers on-screen piles, and it re-picks a cached set while the tick and
@@ -58,11 +58,9 @@ export function createGroundPileTooltip(opts: GroundPileTooltipOptions): GroundP
     return screenToWorld(opts.camera(), p.x, p.y);
   };
 
-  // Pile hit-targets, rebuilt only when the sim tick OR the camera moves. buildSpriteScene is culled to the
-  // camera viewport (same margin the renderer draws with), so this is a SCREEN-bounded pass, not a whole-map
-  // one — the tooltip only names piles under the cursor, which are on-screen (golden rule 6). The set is
-  // camera-dependent now (culled), so the cache keys on the camera too; a still cursor over a still frame
-  // re-picks the cached set. Empty flags (no dominant good) carry nothing to name and are skipped.
+  // Pile hit-targets, rebuilt only when the sim tick OR the camera moves — the set is camera-dependent
+  // (culled to the viewport), so the cache keys on the camera too; a still cursor over a still frame
+  // re-picks the cached set.
   let hoverKey = '';
   let hoverTargets: Pickable[] = [];
   const hoverInfo = new Map<number, { goodType: number; amount: number }>();
@@ -79,7 +77,6 @@ export function createGroundPileTooltip(opts: GroundPileTooltipOptions): GroundP
       opts.app.screen.height,
       SPRITE_CULL_MARGIN + (opts.elevation?.maxLift ?? 0),
     );
-    // fogVisible: a fogged pile must not hit-test (its tooltip would read hidden stock through the fog).
     for (const it of buildSpriteScene(snap, {
       viewport: vp,
       elevation: opts.elevation,
@@ -95,8 +92,7 @@ export function createGroundPileTooltip(opts: GroundPileTooltipOptions): GroundP
 
   return {
     update(snap: WorldSnapshot): void {
-      // Suppress while placing a building and whenever the HUD owns the pointer (a tool-panel window, the
-      // details panel) — the tooltip names WORLD piles, not HUD chrome.
+      // Suppress while placing a building or when the HUD owns the pointer (see `suppressed`).
       const p = opts.pointer();
       if (p === null || opts.suppressed(p.clientX, p.clientY)) {
         tooltip.hide();

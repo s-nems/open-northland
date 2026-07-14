@@ -117,13 +117,10 @@ export async function loadCombatBones(
 /**
  * Resolve every placed object into a render-ready {@link MapObjectSprite}:
  *
- *  - **frames** — the `GfxFrames` state list the placement's `lmlv` LEVEL picks
- *    ({@link stateIndexForLevel}: level 1 = lowest state, level N = full-grown/full/intact, lists
- *    authored highest-first, so index = N − level; the wall sentinel `100` and any out-of-range
- *    value fall back to the first, full list), each bob id resolved through the atlas manifest
- *    (0×0 frames dropped). A record with `loopAnimation`
- *    plays the whole list at the sim tick rate (waves, swaying trees, fire); a static record shows
- *    the list's first frame.
+ *  - **frames** — the `GfxFrames` state list the placement's `lmlv` level picks
+ *    ({@link stateIndexForLevel}), each bob id resolved through the atlas manifest (0×0 frames
+ *    dropped). A record with `loopAnimation` plays the whole list at the sim tick rate (waves,
+ *    swaying trees, fire); a static record shows the list's first frame.
  *  - **decor vs tall** — an object with no `LogicWalkBlockArea` footprint (waves, grass, flowers,
  *    mine stains) is flat ground decor and draws under the entity sprites; one with a footprint
  *    (trees, stones) depth-sorts against settlers by its feet anchor.
@@ -239,12 +236,10 @@ export async function loadMapObjects(
       scale: 1,
       decor: type.decor,
       ...(lift !== 0 ? { lift } : {}),
-      // A slow spatial phase gradient (`hx + hy`), not a uniform phase: adjacent half-cells stay within
-      // one animation frame of each other (so the wave sheet still reads as continuous, no hard seam),
-      // but across the sea the phase drifts, so the surface no longer pulses as one identical stamp. A
-      // traveling diagonal ripple reads as moving water; the map stores no per-object phase, so this
-      // deterministic gradient is our choice (source basis). Static objects (`frames.length <= 1`) ignore
-      // phase, so this only staggers the looping bobs (waves, swaying trees/fire).
+      // Slow spatial phase gradient (`hx + hy`), not uniform: adjacent half-cells stay within one frame
+      // of each other (the wave sheet reads continuous) while the phase drifts across the map so the
+      // surface doesn't pulse as one stamp. The map stores no per-object phase (source basis). Static
+      // objects (`frames.length <= 1`) ignore phase, so this only staggers looping bobs.
       phase: hx + hy,
       // Translucency (the waves' watery blend, the ferns' feathered edges) is the Double8Bit bobs'
       // per-pixel alpha, baked into the atlas by the pipeline — no flat per-object opacity remains.

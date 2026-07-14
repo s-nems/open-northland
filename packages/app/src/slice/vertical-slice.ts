@@ -89,10 +89,8 @@ const PLACEMENT_CELL_COUNT = 6;
  * the slice's entities land only on cells the sim can stand on — placing a building on water would
  * make the gatherer's path unreachable. Deterministic: a fixed scan order, no RNG.
  *
- * Returns `null` (a recoverable boundary failure, not a throw) for a map with too few walkable cells:
- * some real grids are ~all water under the sandbox's base table (e.g. a coastal scenario whose
- * land is all typeId 1), and `runSlice` falls back to the synthetic strip rather than crashing the
- * shot/dev entry — the same graceful-degradation contract as `loadTerrainMap`.
+ * Some real grids are ~all water under the sandbox's base table (e.g. a coastal scenario whose land is
+ * all typeId 1), so the `null` return lets `runSlice` fall back to the synthetic strip rather than crash.
  */
 function walkableCells(
   map: TerrainMap,
@@ -177,8 +175,7 @@ function firstPlaceableCell(
  * nodes) land on the real grid instead of the hardcoded strip: the two buildings on the first anchors
  * their footprints actually fit ({@link firstPlaceableCell}, stepping one tick between them so the
  * second sees the first), settlers + trees on the first walkable cells. A loaded map with too few
- * walkable cells falls back to the strip — the slice always runs (matching the file's
- * graceful-degradation contract), never throwing.
+ * walkable cells falls back to the strip, so the slice always runs and never throws.
  */
 export function runSlice(
   seed: number,
@@ -288,8 +285,8 @@ export function runBareMap(
  *
  * The content is the global sandbox content plus any extra authored type ids that are not in the sandbox
  * catalog yet, so authored maps do not shrink the build menu or profession rules. Returns `null` when
- * nothing resolves (the caller falls back to {@link runSlice}) — the same graceful-degradation contract
- * as the loaders. Deterministic: placements enqueue in file order, no RNG.
+ * nothing resolves (the caller falls back to {@link runSlice}). Deterministic: placements enqueue in
+ * file order, no RNG.
  */
 export function runAuthoredSlice(
   seed: number,

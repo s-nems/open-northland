@@ -1,18 +1,16 @@
 import { type CellTerrainMap, components, type Simulation } from '@open-northland/sim';
 
 /**
- * The committed catalog of viking buildings — the SINGLE SOURCE OF TRUTH that maps a human name to the
- * one key the whole engine shares: `Building.buildingType` (the `typeId`, the original's `[GfxHouse]`
- * `LogicType`). That typeId is what a `placeBuilding` command stamps on the sim entity AND what the
- * renderer keys its per-type bob lookup on (`content/building-gfx.ts` `buildingBobRefsByType`), so naming a
- * building here is enough to place it on the map AND draw its own graphic — no guessing, no reaching into
- * the gitignored `content/ir.json`.
+ * The committed catalog of viking buildings, mapping a human name to the key the engine shares:
+ * `Building.buildingType` (the `typeId`, the original's `[GfxHouse]` `LogicType`). That typeId is what a
+ * `placeBuilding` command stamps on the sim entity and what the renderer keys its per-type bob lookup on
+ * (`content/building-gfx.ts` `buildingBobRefsByType`).
  *
  * The `typeId`/`id`/`kind` are transcribed verbatim from `ir.json`'s `buildings` (the pipeline output);
  * `label` is our own clean-room English naming for semantic lookup. Level suffixes are 1-based for the
  * player ("Warehouse (level 1..3)") even though the underlying ids stay 0-indexed (`stock_00`..`stock_02`).
  * `test/viking-buildings.test.ts` pins every row back to `ir.json` (id + kind match, and the typeId has a
- * bound bob) whenever `content/` is present, so this table cannot silently drift from the real data.
+ * bound bob) whenever `content/` is present.
  *
  * Scope: the 41 real viking buildings (`typeId` 1..41), every one of which has a decoded bob. `work_murek`
  * (typeId 55) is intentionally omitted — the mod binds no viking bob for it (its wall graphic is bound to
@@ -67,10 +65,10 @@ export const VIKING_BUILDINGS: readonly VikingBuilding[] = [
   { typeId: 19, id: 'work_sewery_01', label: 'Tailor / clothier (level 2)', kind: 'workplace' },
   { typeId: 20, id: 'work_pottery_00', label: 'Pottery (level 1)', kind: 'workplace' },
   { typeId: 21, id: 'work_pottery_01', label: 'Pottery (level 2)', kind: 'workplace' },
-  // typeId 22 is a DEFENCE WALL, not a pottery: the id `work_pottery_02` is a pipeline naming artifact
+  // typeId 22 is a defence wall, not a pottery: the id `work_pottery_02` is a pipeline naming artifact
   // (the type sits in the slot after the two potteries), but its kind is `tower` and the mod binds the
-  // wall bob ("Mur h", mur.bmd) to it — matching the original's eng string 22 "Defence wall". id + kind
-  // are carried verbatim (the drift test pins them to ir.json); the label names the real function.
+  // wall bob ("Mur h", mur.bmd) to it — matching the original's eng string 22 "Defence wall". The label
+  // names the real function.
   { typeId: 22, id: 'work_pottery_02', label: 'Defence wall', kind: 'tower' },
   { typeId: 23, id: 'work_joinery_00', label: 'Joinery (level 1)', kind: 'workplace' },
   { typeId: 24, id: 'work_joinery_01', label: 'Joinery (level 2)', kind: 'workplace' },

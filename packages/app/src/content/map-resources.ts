@@ -5,9 +5,9 @@ import type { ContentIr } from './ir.js';
  * The decoded-map → sim resource join: which placed landscape objects are harvestable, and the good each
  * yields. A decoded map ships its trees/ore/stone as pure render decor (`map.objects`, drawn by the static
  * map-object layer); this module is the reverse lookup that lets the `?map=` entry also spawn them as real
- * `Resource` sim nodes so a gatherer can actually work them (plan `gathering-economy.md` step 6). Without it
- * a map's trees are drawn but carry no `Resource`, so hovering shows nothing and gatherers idle — only an
- * admin-spawned node (a real sim entity) was ever harvestable.
+ * `Resource` sim nodes so a gatherer can actually work them. Without it a map's trees are drawn but carry
+ * no `Resource`, so hovering shows nothing and gatherers idle — only an admin-spawned node (a real sim
+ * entity) was ever harvestable.
  *
  * The join is data-driven off the real `ir.json`, not hardcoded: each good's gathering pipeline lists the
  * `landscapeGfx` indices of its standing harvest-stage forms (every tree variant for wood, every ore

@@ -101,8 +101,7 @@ export function startFrameLoop(loop: FrameLoopDeps): void {
         steps++;
       });
     }
-    // CPU split #1: the sim step(s). The overlay breaks the frame's CPU into sim/snap/draw so a slow
-    // scene can be blamed on the right layer (render/AGENTS.md: measure before blaming the GPU).
+    // CPU split #1: the sim step(s).
     const simMs = performance.now() - cpu0;
     cameraCtl.update(elapsed);
     // The sepia pause wash mirrors the loop's pause flag every frame (an idempotent visibility set), so
@@ -134,9 +133,8 @@ export function startFrameLoop(loop: FrameLoopDeps): void {
             const { cx, cy } = systems.cellOfNode(ev.at.x, ev.at.y);
             return fogView.stateAt(cx, cy) === FOG_STATE.VISIBLE;
           });
-    // The tribe HUD read-view (an O(entities) scan) for the tool panel's statistics window — memoized by
-    // snapshot identity above, so it rebuilds once per tick, not per RAF. This data shows only when the
-    // player opens the stats window.
+    // The tribe HUD read-view (an O(entities) scan) for the tool panel's statistics window — shown only
+    // when the player opens the stats window.
     const hud = hudFor(snap);
     // Re-place the tool panel's screen-space sprites before the renderer's render (they carry the
     // canvas resolution in their shader), and refresh an open stats window from this frame's HUD.
@@ -175,8 +173,8 @@ export function startFrameLoop(loop: FrameLoopDeps): void {
     renderer.setPortraitInset(controls.portrait());
     // Grey construction-site plots: every placed foundation's footprint cells, washed on the ground so a
     // fresh site reads as a marked-out plac budowy before the scaffold rises. Computed sim-side (footprint
-    // + positions) and handed over as plain cells — the renderer stays a pure projection. Cheap: the sim
-    // scans only the small under-construction set, and the layer skips the redraw when the set is unchanged.
+    // + positions) and handed over as plain cells. Cheap: the sim scans only the small under-construction
+    // set, and the layer skips the redraw when the set is unchanged.
     // Fog gate: the plot layer draws above the wash, so an enemy foundation in the black would paint
     // through it — keep only the cells (half-cell nodes) the player currently sees.
     const plots = sim.constructionPlots();
@@ -196,7 +194,7 @@ export function startFrameLoop(loop: FrameLoopDeps): void {
     // One retained update: reconcile the pooled sprites, draw the selection rings + door badges + the
     // selected gatherers' work-flag highlight, render once. `app.screen` tracks window resizes. No HUD frame
     // is passed — the debug tick lives in the top overlay and the population/jobs/stocks in the stats window.
-    const doorBadges = doorBadgesFor(snap); // memoized by snapshot identity — rebuilt per tick, not per RAF
+    const doorBadges = doorBadgesFor(snap); // memoized per tick, not per RAF
     // Combat ground marks (blood on hits, bones on deaths) from this frame's seen events — ingested
     // before the renderer's update draws them, decaying against the sim tick so a pause/screenshot
     // reproduces. Fog-filtered: a fight in unexplored/grey ground leaves no visible marks.

@@ -65,7 +65,7 @@ export async function renderSceneMode(
   // the human explicitly asked to watch the mechanic under a different fog rule.
   const fogOverride = fogModeParam(params);
   if (fogOverride !== null) sim.enqueue({ kind: 'setFogMode', mode: fogOverride });
-  // Goods are global sandbox content now, not scene-local data.
+  // Goods are global sandbox content, not scene-local data.
   const sheet = await resolveSpriteSheet(sim.content.goods);
   const terrain = await loadRealTerrain();
 
@@ -74,12 +74,12 @@ export async function renderSceneMode(
   const renderer = new WorldRenderer(app, { sheet });
   renderer.setTerrain(terrainGrid, terrain);
 
-  // Interactive camera over the scene: the scene supplies its starting frame, then the human pans
-  // (middle-mouse drag / arrow keys) and zooms (scroll wheel). Frame on the FIRST TICK's snapshot, not the initial
-  // one: a scene's SETTLER spawns are commands that run on tick 1 (direct-placed resources/flags do
-  // exist at tick 0), so the tick-0 settler centroid is empty and `cameraFor` fell back to the tile
-  // origin (an off-centre first frame on every scene). The one extra step is deterministic; the browser
-  // view simply runs `runTicks + 1` sim ticks vs the headless twin — harmless, the checks run headless.
+  // Interactive camera over the scene: the scene supplies its starting frame, then the human pans and
+  // zooms. Frame on the FIRST TICK's snapshot, not the initial one: a scene's SETTLER spawns run as
+  // tick-1 commands (direct-placed resources/flags exist at tick 0), so the tick-0 settler centroid is
+  // empty and `cameraFor` falls back to the tile origin (an off-centre first frame). The extra step is
+  // deterministic: the browser view runs `runTicks + 1` ticks vs the headless twin — harmless, the checks
+  // run headless.
   sim.step();
   const cameraCtl = createCameraController(
     canvas,

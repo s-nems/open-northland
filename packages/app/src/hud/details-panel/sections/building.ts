@@ -61,8 +61,8 @@ const STOCK_TAB_UNDERLINE_H = 2;
 /**
  * Stock amounts render with one decimal, left-aligned inside the plate ("15.0") — both observed off
  * the original's 1024×768 screenshots. A row with a declared slot also shows its ceiling
- * ("7.0 / 25.0" — user-requested; the capacity is the building's extracted `logicstock` slot), so a
- * filling store reads at a glance; a dynamic drop (no declared slot) keeps the bare amount.
+ * ("7.0 / 25.0" — the capacity is the building's extracted `logicstock` slot), so a filling store reads
+ * at a glance; a dynamic drop (no declared slot) keeps the bare amount.
  */
 function stockAmount(amount: number, capacity?: number): string {
   return capacity === undefined ? amount.toFixed(1) : `${amount.toFixed(1)} / ${capacity.toFixed(1)}`;
@@ -295,7 +295,7 @@ export function drawBuilding(
   const body = layout.workers.body;
   // The per-trade limits are one compact strip right under the header ("Kowal 1/3 · Tragarz 1/1 ·
   // Zbieracz 0/1"), leaving the field below free for the animated worker sprites (drawn on-map style,
-  // without terrain, by the panel's own sprite pass — see panel.ts). The limits use `s`-scaled row pad.
+  // without terrain, by the panel's own sprite pass — see panel.ts).
   // A construction site hides the strip — the slots describe the finished building's trades; the field
   // instead shows the live building crew (the overlay's site selector).
   const limits =
@@ -307,11 +307,10 @@ export function drawBuilding(
 
 /**
  * The stock window's eight category tabs, justified across the body width (whether the original spreads
- * or packs them flush is unread — a guess alongside the per-tab categories; montage provenance, pending
- * the plan's step-3 human pass). Each tab bob carries its own plate plus a category glyph; drawn through the
- * `bg_invert` palette, which renders the glyph as bright cream line-art on a recessed plate. The palette
- * pick is a named legibility choice, not verified to be the original's tab palette — pending the step-3
- * human pass.
+ * or packs them flush is unread — a guess alongside the per-tab categories, pending a human pass). Each
+ * tab bob carries its own plate plus a category glyph; drawn through the `bg_invert` palette, which renders
+ * the glyph as bright cream line-art on a recessed plate. The palette pick is a named legibility choice,
+ * not verified to be the original's tab palette.
  *
  * The tabs are interactive: clicking one filters the stock list to its category (see `stock-tabs.ts`
  * and `panel.ts`). The active tab carries a lime underline (the same selected-strip look as the name row)

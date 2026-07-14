@@ -9,23 +9,22 @@ import {
 import { type ContentIr, loadIr } from './ir.js';
 
 /**
- * The real-ground binding: draw the terrain from REAL decoded `text_*.pcx` textures instead of the
- * flat `TILE_COLOURS` tint. Two levels of fidelity, both served from the gitignored `content/` over
- * the dev/shot vite server (the `/ir.json` + `/textures/` routes — no copyrighted bytes in the repo):
+ * The real-ground binding: draw the terrain from decoded `text_*.pcx` textures instead of the flat
+ * `TILE_COLOURS` tint, served from the gitignored `content/` over the dev/shot vite server (the `/ir.json`
+ * + `/textures/` routes — no copyrighted bytes in the repo). Two levels of fidelity:
  *
- *  - **1:1 per-triangle** (a decoded original map): the map's `ground` lanes carry the exact
- *    `GfxPattern` choice per cell triangle (the editor bakes its pattern algorithm's output into
- *    `map.dat`); {@link TerrainTextureSet.groundFor} joins each pattern `EditName` onto the full
- *    927-record `gfxPatterns` IR table for its page + UV triangles, and
- *    {@link TerrainTextureSet.transitionFor} joins the map's `transitions.types` names onto the
- *    `gfxPatternTransitions` table (the composed `<stem>.masked.png` RGBA overlay pages).
- *  - **approximated per-typeId** (synthetic grids / maps without ground lanes): the
- *    `terrainPatterns` table binds each landscape typeId to one representative pattern
- *    (`buildTerrainPatterns` — a recorded deviation, source basis).
+ *  - **1:1 per-triangle** (a decoded original map): the map's `ground` lanes carry the exact `GfxPattern`
+ *    per cell triangle (baked into `map.dat`); {@link TerrainTextureSet.groundFor} joins each pattern
+ *    `EditName` onto the 927-record `gfxPatterns` IR table, and {@link TerrainTextureSet.transitionFor}
+ *    joins the map's `transitions.types` names onto `gfxPatternTransitions` (the composed
+ *    `<stem>.masked.png` RGBA overlay pages).
+ *  - **approximated per-typeId** (synthetic grids / maps without ground lanes): `terrainPatterns` binds
+ *    each landscape typeId to one representative pattern (`buildTerrainPatterns` — a recorded deviation,
+ *    source basis).
  *
- * All ground pages load LINEAR-filtered — the original samples its terrain pages bilinearly
- * (docs/SOURCES.md "terrain tessellation"), which melts pattern joins and transition masks into
- * smooth seams; the sprite atlases stay `nearest` (pixel art).
+ * All ground pages load LINEAR-filtered — the original samples its terrain pages bilinearly (docs/SOURCES.md
+ * "terrain tessellation"), melting pattern joins and transition masks into smooth seams; the sprite atlases
+ * stay `nearest` (pixel art).
  */
 
 type LoadedSource = Awaited<ReturnType<typeof loadAtlasSource>>;
@@ -116,10 +115,9 @@ export async function loadRealTerrain(ir?: ContentIr): Promise<TerrainTextureSet
     pageKeys.add(pageKey);
     transitionByName.set(row.editName, { pageKey, coordsA: row.coordsA, coordsB: row.coordsB });
   }
-  // Load the distinct pages any table references (~56 + ~19 overlays on the real data), in parallel
-  // like loadHumanSpriteSheet's layers. LINEAR-filtered (see the module doc). A page that fails to
-  // load is skipped (warn once): the renderer falls back per triangle / skips that overlay — e.g. a
-  // `content/` generated before the masked-overlay stage existed still draws its base ground.
+  // Load the distinct pages any table references (~56 + ~19 overlays on the real data) in parallel,
+  // LINEAR-filtered (see the module doc). A page that fails to load is skipped (warn once): the renderer
+  // falls back per triangle / skips that overlay.
   const pages = new Map<string, LoadedSource>();
   await Promise.all(
     [...pageKeys].map(async (key) => {

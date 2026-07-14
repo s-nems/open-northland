@@ -7,21 +7,19 @@ import { keyEdgeConnectedNearBlack, outlineOpaqueSilhouette } from './frame-keyi
 import { FRAME_NATIVE } from './model.js';
 
 /**
- * The minimap's braided window frame — the ORIGINAL overview-window art (`ls_gui_window` bob 55,
- * braid along top+right, hole flush to the bottom-left screen corner; geometry measured in
- * `model.ts` {@link FRAME_NATIVE}). Loaded through the shared GUI-art path (indexed atlas + palette
- * LUT, like the tool panel); a checkout without `content/` returns null and the mount draws its flat
- * fallback frame at the same geometry.
+ * The minimap's braided window frame — the original overview-window art (`ls_gui_window` bob 55, braid
+ * along top+right, hole flush to the bottom-left screen corner; geometry measured in `model.ts`
+ * {@link FRAME_NATIVE}). Loaded through the shared GUI-art path (indexed atlas + palette LUT, like the
+ * tool panel); a checkout without `content/` returns null and the mount draws its flat fallback frame.
  *
  * Two one-time raster passes shape the sprite:
- * - The indexed art is nearest-sampled, so a fractional UI scale drawn straight is "pixeloza" — the
- *   frame is BAKED at an integer oversample and linear-downscaled (the tool-panel strip's fix,
+ * - The indexed art is nearest-sampled, so a fractional UI scale drawn straight is "pixeloza" — the frame
+ *   is baked at an integer oversample and linear-downscaled (the tool-panel strip's fix,
  *   `render/gpu/supersample.ts`).
- * - The art fills the removable outside (margins around the braid + the window hole) AND the braid's
- *   own crevice shadows with one near-black band, so the shader's colour-only 'full' key would punch
- *   see-through holes in the braid. Instead the baked pixels are read back once and the outside band
- *   is keyed by CONNECTIVITY ({@link keyEdgeConnectedNearBlack}) — the frame ends where the braid
- *   graphic ends, while every enclosed shadow stays opaque.
+ * - The art fills the removable outside (margins + window hole) and the braid's own crevice shadows with
+ *   one near-black band, so the shader's colour-only 'full' key would punch see-through holes in the braid.
+ *   Instead the baked pixels are read back once and the outside band is keyed by connectivity
+ *   ({@link keyEdgeConnectedNearBlack}) — the frame ends where the braid ends, enclosed shadows stay opaque.
  */
 
 /** `oversampleFor` bounds: braid highlights want ≥2 for smoothing headroom; 8 caps texture memory. */

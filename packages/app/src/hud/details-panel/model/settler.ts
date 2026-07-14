@@ -92,14 +92,10 @@ export interface SettlerPanelModel {
   readonly bars: readonly PanelBar[];
   /** The Praca section: the workplace's name and the good it makes (or what the settler carries). */
   readonly work: { readonly place: string; readonly product: string };
-  /** The Doświadczenie section: the settler's highest recorded specialization, or null when it has none
-   *  (the sim awards no experience yet, so this is null in practice — the row then reads empty). */
+  /** The Doświadczenie section: the settler's highest recorded specialization, or null when it has none.
+   *  See {@link highestExperience}. */
   readonly experience: { readonly label: string; readonly points: number } | null;
-  /**
-   * The Ekwipunek section as labeled rows: Buty, Narzędzia, then Broń + Zbroja for a soldier (a unit
-   * with a combat `Weapon` or an equipped weapon/armour slot), then the misc Ekwipunek row. Read from
-   * the sim `Equipment` component; every slot empty for an unequipped settler. See {@link equipmentRows}.
-   */
+  /** The Ekwipunek section as labeled rows, from the sim `Equipment` component. See {@link equipmentRows}. */
   readonly equipmentRows: readonly EquipRow[];
 }
 

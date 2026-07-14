@@ -7,14 +7,13 @@ import type { StripSpriteSpec } from './strip-texture.js';
  * The tool-strip BUTTON composition — keyed glyphs plus a contrast outline (the policy half; the bake
  * itself is `strip-texture.ts`).
  *
- * The GUI palettes reserve index 0 (magenta) + a near-black band as each element's backdrop, and a bob
- * writes them opaque — the original engine blits the buttons WHOLE, dark socket backdrop included, hiding
- * gameplay in a separate area. Over our full-screen world that opaque socket column read as a heavy black
- * slab (user-rejected), so this is a DELIBERATE deviation: the backdrop is keyed transparent (the carved
- * strip shows through) and each glyph instead gets a 1-design-px rim in the socket's own colour — eight
- * offset silhouette stamps behind the real sprite ({@link PalettedSprite.silhouette}) — keeping the
- * original's glyph/backdrop contrast (thin glyphs like the ×1 speed digit frayed against bare stone)
- * without its full socket.
+ * The GUI palettes reserve index 0 (magenta) + a near-black band as each element's backdrop, written opaque
+ * by a bob — the original blits the buttons WHOLE, dark socket backdrop included. Over our full-screen world
+ * that opaque socket read as a heavy black slab (user-rejected), so this is a DELIBERATE deviation: the
+ * backdrop is keyed transparent (the carved strip shows through) and each glyph instead gets a 1-design-px
+ * rim in the socket's own colour — eight offset silhouette stamps behind the real sprite
+ * ({@link PalettedSprite.silhouette}) — keeping the original's glyph/backdrop contrast (thin glyphs like the
+ * ×1 speed digit frayed against bare stone) without its full socket.
  */
 
 /**

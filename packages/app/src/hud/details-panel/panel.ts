@@ -345,7 +345,6 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
   /** The current portrait box (preview rect, bevel-inset) + its entity, for the live observation window. */
   const portrait = (): PortraitBox | null => {
     if (layout === null) return null;
-    // Both the settler (Ogólne) and building (Ogólny) layouts expose a `preview`; any other kind has none.
     const box: Rect | undefined =
       layout.kind === 'settler' || layout.kind === 'building' ? layout.preview : undefined;
     if (box === undefined || (lastModel.kind !== 'settler' && lastModel.kind !== 'building')) return null;

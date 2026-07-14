@@ -193,9 +193,6 @@ export function createChrome(
   };
 
   const slotSocket = (r: Rect, filled: boolean): void => {
-    // A round recessed well like the original's equip sockets: a warm wood tint marks an occupied slot
-    // (so it reads even when the good has no bound icon), a dark inset an empty one, rimmed with the same
-    // dark/light bevel the inner box uses.
     const cx = r.x + r.w / 2;
     const cy = r.y + r.h / 2;
     const rad = Math.min(r.w, r.h) / 2;
@@ -221,9 +218,8 @@ export function createChrome(
   };
 
   const selectedUnderline = (r: Rect): void => {
-    // Flat lime strip — colour sampled off the 1024×768 original's name underline (avg #d8fb55);
-    // no shipped bitmap/palette pairing reproduces this lime (`bg_selected` — the card body — only ever
-    // expands to grey/grey-blue, and the other fills to browns/creams).
+    // Flat Graphics, not a bitmap: no shipped bitmap/palette pairing reproduces this lime (`bg_selected`,
+    // the card body, only ever expands to grey/grey-blue, and the other fills to browns/creams).
     g.rect(r.x, r.y, r.w, r.h).fill(SELECTED_LIME);
   };
 
@@ -277,9 +273,8 @@ export function createChrome(
 
   /**
    * A stock amount's numeric field: a subtle recessed slot on the wood, drawn as flat Graphics rather than
-   * the grey `bar_disabled` frame (which read as an opaque plate). A dark translucent fill lets the
-   * wood show through, with a thin dark top/left + light bottom/right bevel for the inset look — the
-   * original's amounts sit in a shallow recessed field, not on a solid grey bar.
+   * the grey `bar_disabled` frame (which read as an opaque plate). A dark translucent fill lets the wood
+   * show through, with a thin dark top/left + light bottom/right bevel for the inset look.
    */
   const stockField = (r: Rect): void => {
     const line = Math.max(1, Math.round(scale));

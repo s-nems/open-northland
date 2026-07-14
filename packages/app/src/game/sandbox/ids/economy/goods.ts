@@ -12,11 +12,10 @@ export const GOOD_IRON = 6;
 export const GOOD_GOLD = 7;
 export const GOOD_MUSHROOM = 8;
 
-// The equippable goods ride the SANDBOX-SCOPED catalog ids — `EXTENDED_GOOD_TYPE_OFFSET` (100) + the raw
-// `goodtypes.ini` id (30–55) = 130–155 — the SAME ids the global goods catalog (`catalog/goods.ts`
-// `EXTENDED_GOODS`) declares them at. So an EQUIPPED good is the same good as the one dropped on the ground
-// or stored in a warehouse: one id, one `ls_goods` icon, one name. The demo equipment scene stamps these;
-// EQUIP_GOODS below adds only the equip CLASSIFICATION (slot + wear), merged onto the catalog by good id.
+// The equippable goods ride the sandbox-scoped catalog ids — `EXTENDED_GOOD_TYPE_OFFSET` (100) + the raw
+// `goodtypes.ini` id (30–55) = 130–155 — the same ids the global goods catalog (`catalog/goods.ts`
+// `EXTENDED_GOODS`) declares them at, so an equipped good is the same good as the one dropped on the ground
+// or stored in a warehouse: one id, one `ls_goods` icon, one name.
 /** Wheat — the field-farmed grain (`goodtypes.ini` type 4, at the +100 catalog offset). */
 export const GOOD_WHEAT = 104;
 /** Flour — the mill's in-house product ground from wheat (`goodtypes.ini` type 11, at the +100 offset). */
@@ -48,13 +47,12 @@ export interface EquipGoodSpec {
 }
 
 /**
- * The equip CLASSIFICATION for the original's equippable goods (`goodtypes.ini` ids 30–55, carried by the
- * global catalog at the sandbox-scoped 130–155). The GOODS themselves — id, name, icon — live once in
- * `catalog/goods.ts` (`EXTENDED_GOODS`); `sandboxContent()` merges this slot/wear axis onto them by
- * `typeId`, so a good is declared once. Set MEMBERSHIP is source-pinned to `tribetypes.ini` `allowequip`;
- * the per-good SLOT CATEGORY is derived from the `goodtypes.ini` good names + the manual's Equipment
- * section (shoes/tools/mead/potions/amulets for anyone, weapons/armour for soldiers). `wears` is pinned to
- * the manual's two-axis split: potions, shoes and tools are "slowly used up" while "unused items such as
+ * The equip classification for the original's equippable goods (`goodtypes.ini` ids 30–55, carried by the
+ * global catalog at the sandbox-scoped 130–155); `sandboxContent()` merges this slot/wear axis onto the
+ * catalog goods by `typeId`. Set membership is source-pinned to `tribetypes.ini` `allowequip`; the per-good
+ * slot category is derived from the `goodtypes.ini` good names + the manual's Equipment section
+ * (shoes/tools/mead/potions/amulets for anyone, weapons/armour for soldiers). `wears` is pinned to the
+ * manual's two-axis split: potions, shoes and tools are "slowly used up" while "unused items such as
  * weapons, armour and amulets can be used again" (amulets "never wear out"). No per-good numeric
  * consumption rate exists in any readable `.ini` (engine-hardcoded), so none is modelled here — a wearing
  * item just carries a "degree of use".

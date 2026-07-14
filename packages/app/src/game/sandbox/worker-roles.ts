@@ -31,11 +31,11 @@ export function workerRoleOf(jobType: number): WorkerRole {
 
 /**
  * The right-click assignment PRIORITY for a building's worker slots: the jobs a player-directed
- * `assignWorker` may bind, most-preferred first — **craftsmen** (ascending job id) then the **carrier**,
- * with **gatherers excluded entirely** (a gatherer is never hand-assigned to a workshop). The sim walks
- * this list and binds the first job whose slot is genuinely open for the settler (see the `assignWorker`
- * command / `openWorkerJobFromList`), so the carrier is the fallback when every craft slot is full or the
- * settler lacks the trade's skill, exactly the original's "make him a tradesman, else a hauler" rule.
+ * `assignWorker` may bind, most-preferred first — craftsmen (ascending job id) then the carrier, with
+ * gatherers excluded (never hand-assigned to a workshop). The sim walks this list and binds the first job
+ * whose slot is open for the settler (see the `assignWorker` command / `openWorkerJobFromList`), so the
+ * carrier is the fallback when every craft slot is full or the settler lacks the trade's skill — the
+ * original's "make him a tradesman, else a hauler" rule.
  */
 export function assignmentPriority(slots: readonly { readonly jobType: number }[] | undefined): number[] {
   const craftsmen: number[] = [];

@@ -21,7 +21,7 @@ import {
 /** One material line of a construction site's cost — the Construction row "delivered / needed". */
 export interface ConstructionRow {
   readonly goodType: number;
-  /** The good's string id (stable across content sets) — the key the HUD resolves its icon by. */
+  /** The good's string id — the HUD's icon key (like {@link StockRow.goodId}). */
   readonly goodId?: string;
   readonly label: string;
   /** Units already in the site's hold, capped at the line's need (surplus never reads over-full). */
@@ -113,7 +113,7 @@ export interface BuildingPanelModel {
   readonly builtPct: number;
   readonly stock: readonly StockRow[];
   /** One row per worker slot (trade), each with its filled/capacity — the per-trade limits the panel
-   *  lists ("Cieśla 1/3 · Tragarz 1/1 · Zbieracz 0/1"). Empty for a building that employs nobody. */
+   *  lists. See {@link workerSlotsFor}. */
   readonly workerSlots: readonly WorkerSlotRow[];
   readonly showDefense: boolean;
   /** Approximation until a real building-defense mode component exists. */
@@ -224,8 +224,7 @@ function boundCountsByJob(snapshot: WorldSnapshot, buildingId: number): Map<numb
 
 /**
  * The per-trade worker rows: one per declared `workers` slot (in declared order), each with its
- * filled/capacity — so the panel lists "Cieśla 1/3 · Tragarz 1/1 · Zbieracz 0/1" instead of one aggregate
- * "Pracownicy 4/5". A building that employs nobody (a home) yields no rows.
+ * filled/capacity. A building that employs nobody (a home) yields no rows.
  */
 export function workerSlotsFor(
   ctx: UnitPanelModelContext,

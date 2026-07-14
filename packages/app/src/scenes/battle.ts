@@ -17,13 +17,13 @@ import { blueLivingSettlers, enemyLivingSettlers } from './sandbox-queries.js';
 import type { SceneDefinition } from './types.js';
 
 /**
- * The MASS-BATTLE feel scene — 100 fighters a side in mirrored four-rank armies (swords front, then
- * spears, broadswords, archers), auto-engaging on owner hostility. This is the crowd-scale sign-off
- * for the body-collision work: the failure mode it exists to judge is the pre-slot behaviour where a
- * converging army collapsed into one vibrating pile on the closest few contact cells. With melee
- * slots (`approachCell` deals FREE band cells; a full band makes the chaser STAND as a second rank)
- * and body separation, the expected picture is a battle LINE: first ranks fighting along the whole
- * front, second ranks standing behind, units stepping into gaps as front-liners fall.
+ * The mass-battle feel scene — 100 fighters a side in mirrored four-rank armies (swords front, then
+ * spears, broadswords, archers), auto-engaging on owner hostility. The crowd-scale sign-off for the
+ * body-collision work: the failure mode it judges is a converging army collapsing into one vibrating
+ * pile on the closest few contact cells. With melee slots (`approachCell` deals free band cells; a full
+ * band makes the chaser stand as a second rank) and body separation, the expected picture is a battle
+ * line: first ranks fighting along the whole front, second ranks standing behind, units stepping into
+ * gaps as front-liners fall.
  *
  * Both sides get the same HP (a sandbox scale — the original's human HP is unreadable, source basis
  * "Combat hit resolution"); the outcome is deterministic from the seed but not scripted, so the
@@ -52,8 +52,8 @@ const RED_RANKS: readonly { job: number; weapon: number; x: number }[] = [
 
 /** One shared HP pool (the sandbox damage scale): ~25 sword swings per kill. Deliberately much
  *  tankier than the duel scene — with melee slots a front-liner takes swords, second-rank spears
- *  AND arrows at once, so at duel-scale HP the whole 150-man melee resolved in ~20 s, too fast to
- *  judge the crowd feel this scene exists to show. Sized for roughly a minute of front-line churn. */
+ *  and arrows at once, so duel-scale HP would resolve the melee too fast to judge the crowd feel.
+ *  Sized for roughly a minute of front-line churn. */
 const FIGHTER_HP = 1000;
 
 /** The mechanic checks below: how many fighters (of 200) must have fallen for "the battle really

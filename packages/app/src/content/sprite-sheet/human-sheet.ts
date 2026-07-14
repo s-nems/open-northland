@@ -30,12 +30,12 @@ import { loadCharacters } from './characters.js';
 
 /**
  * Assemble the real decoded {@link SpriteSheet} from the loaded atlases + binding reducers — the
- * decoder/render-binding proof the plan gates on a human eye. It puts actual decoded `cr_hum_body_00`
- * + `cr_hum_head_00` pixels (plus the tree / per-building house bobs) on screen so a person can judge
- * palette / transparency / feet-anchor / animation fidelity against the original. Loads from the
- * gitignored `content/` over the dev/shot vite server — no copyrighted bytes enter the repo; the
- * committed default degrades to {@link import('./resolve.js').syntheticSpriteSheet} when `content/` is
- * absent, so tests + the reproducible shot are unaffected. The pure bindings live in
+ * decoder/render-binding proof a human eye validates: actual decoded `cr_hum_body_00` + `cr_hum_head_00`
+ * pixels (plus the tree / per-building house bobs) on screen so a person can judge palette / transparency /
+ * feet-anchor / animation fidelity against the original. Loads from the gitignored `content/` over the
+ * dev/shot vite server — no copyrighted bytes enter the repo; the committed default degrades to
+ * {@link import('./resolve.js').syntheticSpriteSheet} when `content/` is absent, so tests + the
+ * reproducible shot are unaffected. The pure bindings live in
  * {@link import('../settler-gfx/index.js')} / {@link import('../building-gfx/index.js')}; the byte loading
  * in {@link import('../ir.js')}; the per-job character join in {@link import('./characters.js')}.
  */
@@ -98,9 +98,7 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
   // BUILDING_FAMILIES is the single source of truth for the named building families: each entry's atlas is
   // loaded here and only its `layer` key is eligible for a layer-qualified ref from buildingBobRefsByType,
   // so the loaded set and the reducer's emitted set cannot drift (a ref to an unloaded family would fall
-  // through to the default layer and draw a wrong bob). All seven viking families load now (viking2/3/4 +
-  // the miller/druid skins + the two house02 families), so every viking building draws its own bob — see
-  // BUILDING_FAMILIES.
+  // through to the default layer and draw a wrong bob).
   const buildingFamilies = Object.fromEntries(familyEntries);
   const houseBobs = buildingBobRefsByType(
     ir?.buildingBobs ?? [],
