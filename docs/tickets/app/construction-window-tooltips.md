@@ -11,7 +11,8 @@ same `stockSlotRects` the draw uses). The Construction window's material rows
 
 - Extract the Construction rows' geometry into a shared helper (like `stockSlotRects`) so the draw
   and the hover probe read one source, then add a `hitConstructionGood` probe to `updateTooltip`.
-- Keep strings English (the i18n pass owns localization).
+- Keep strings on the existing decoded-string + English-fallback path (i18n is already wired —
+  `packages/app/src/i18n/` with type-enforced en/pl catalogs — no separate pass pending).
 
 ## Verify
 

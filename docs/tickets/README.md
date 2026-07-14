@@ -44,6 +44,15 @@ How tickets get filed (any agent, any session — not just `/worktree`):
   filed, not just reported;
 - `/ticket-scout` — the proactive sweep that scans a scope for ticket candidates and files them.
 
+Answering "which ticket next?" (any agent, on request):
+
+- Re-verify before recommending — tickets are research notes and rot. Grep the cited code first; a
+  ticket the code has outgrown is deleted or rewritten on the spot, not recommended.
+- Exclude in-flight work: check `git worktree list` and open branches for tickets another session
+  is already executing.
+- Then apply the priority rule above (skip `Needs user:` picks for autonomous work) and present:
+  the pick, why now (priority, what it unblocks, what's in flight), and the strongest alternative.
+
 Run one via `/worktree docs/tickets/<folder>/<name>.md`.
 
 Template:

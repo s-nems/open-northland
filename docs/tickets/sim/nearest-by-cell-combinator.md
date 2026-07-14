@@ -1,6 +1,7 @@
 # Extract a `nearestByCell` combinator for the economy nearest-X scans
 
-**Area:** sim · **Priority:** P3 (refactor / dedup — no behavior change)
+**Area:** sim · **Origin:** /refactor-cleanup on packages/sim, 2026-07-14 · **Priority:** P3
+(refactor / dedup — no behavior change)
 
 ## Context
 
