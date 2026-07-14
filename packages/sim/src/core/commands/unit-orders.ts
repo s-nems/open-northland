@@ -6,8 +6,8 @@ export type UnitOrderCommand =
       /**
        * Order one OWNED settler to walk to (x,y) — the RTS "go there" order (the FIRST command that
        * steers an existing unit rather than creating one). It sets a `MoveGoal` (the existing
-       * pathfinding→movement pipeline carries it out) + a `PlayerOrder` soft timed override, so the
-       * unit stands a while on arrival before the economy AI reclaims it. Skipped for a dead/stale
+       * pathfinding→movement pipeline carries it out) + a `PlayerOrder` en-route marker; on arrival
+       * the economy AI reclaims the unit at once (no post-arrival stand). Skipped for a dead/stale
        * target, a non-settler, or a neutral (unowned) entity. See the `moveUnit` handler.
        */
       readonly kind: 'moveUnit';
@@ -89,6 +89,22 @@ export type UnitOrderCommand =
       readonly building: Entity;
       /** Ordered candidate worker jobs to try (highest preference first); the first open one wins. */
       readonly jobPriority: readonly number[];
+    }
+  | {
+      /**
+       * Assign one OWNED **builder** to a specific construction `site` (the original's "put a builder
+       * on a foundation": right-clicking a site with a builder joins it to the crew). It pins a
+       * {@link import('../../components/index.js').SiteAssignment} so the builder raises THAT site
+       * (over the nearest one) and stays listed in its workers window until the site finishes.
+       * Recoverable bad input (skipped, still logged for faithful replay): a dead/stale/non-settler/
+       * neutral issuer, a still-growing child, a dead or not-under-construction target, a wrong-tribe
+       * site, or a settler whose job cannot run the build atomic (only the builder trade assigns —
+       * a civilian right-clicked onto a normal building takes the `assignWorker` path instead). See
+       * `assignBuilder`.
+       */
+      readonly kind: 'assignBuilder';
+      readonly entity: Entity;
+      readonly site: Entity;
     }
   | {
       /**

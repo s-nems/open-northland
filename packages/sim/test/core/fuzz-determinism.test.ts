@@ -156,7 +156,7 @@ function pick<T>(rng: Rng, options: readonly T[]): T {
 function nextCommand(rng: Rng): Command {
   const x = rng.int(NODE_W);
   const y = rng.int(NODE_H);
-  const roll = rng.int(19);
+  const roll = rng.int(20);
   switch (roll) {
     case 0:
       return {
@@ -314,6 +314,16 @@ function nextCommand(rng: Rng): Command {
       // invalid one — the skip path). Exercises the VisionSystem's RECON rebuild/downgrade,
       // sticky REVEAL, the OFF reset, the combat/flee fog gates, and the mask bytes in hashState.
       return { kind: 'setFogMode', mode: pick(rng, FOG_MODES) };
+    case 18:
+      // A builder assignment at two random ids: owned builders pinned to live construction sites
+      // (obeyed → a pinned SiteAssignment), plus non-settler/unowned/dead issuers, non-builder trades,
+      // and built/non-building/dead targets. Exercises the assignBuilder skip paths + the pinned-site
+      // preference in planBuilder under a fuzzed stream.
+      return {
+        kind: 'assignBuilder',
+        entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+        site: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+      };
     default:
       // A profession change at a random id: valid + unknown jobs, owned/unowned/dead targets.
       return {

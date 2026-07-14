@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   Building,
   Carrying,
+  Owner,
   Position,
   Settler,
+  SiteAssignment,
   Stockpile,
   UnderConstruction,
 } from '../../../src/components/index.js';
@@ -130,6 +132,67 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
       expect(siteStone).toBeLessThanOrEqual(2); // never above the cost line
     }
     expect(minWarehouseStone).toBe(2);
+  });
+
+  it('assignBuilder pins a builder to the CHOSEN site over a nearer one; a non-builder is a no-op', () => {
+    // A 4-row map: the near site's footprint must not wall off the corridor to the far one.
+    const sim = new Simulation({ seed: 6, content: constructionContent(), map: grassMap(10, 4) });
+    // Both sites fully stocked (hammer-ready), so without the pin the nearest would win.
+    const near = siteAt(sim, HOUSE, 2, 1);
+    const far = siteAt(sim, HOUSE, 8, 1);
+    for (const site of [near, far]) {
+      sim.world.get(site, Stockpile).amounts.set(STONE, 2);
+      sim.world.get(site, Stockpile).amounts.set(WOOD, 1);
+    }
+    const builder = builderAt(sim, 1, 2);
+    const carrier = loadedCarrierAt(sim, 0, 2, WOOD, 1); // hauls, but its job can't run the build atomic
+    sim.world.add(builder, Owner, { player: 0 }); // player commands steer only OWNED settlers
+    sim.world.add(carrier, Owner, { player: 0 });
+    sim.enqueue({ kind: 'assignBuilder', entity: builder, site: far });
+    sim.enqueue({ kind: 'assignBuilder', entity: carrier, site: far });
+    sim.step();
+    expect(sim.world.get(builder, SiteAssignment)).toEqual({ site: far, pinned: true });
+    expect(sim.world.has(carrier, SiteAssignment)).toBe(false); // only the builder trade assigns
+
+    // The pinned builder walks PAST the nearer stocked site and raises its assigned one to completion
+    // FIRST — the nearer site untouched until then (afterwards the pin retires and it may move on).
+    let nearLaborWhenFarFinished = -1;
+    for (let i = 0; i < 400 && nearLaborWhenFarFinished < 0; i++) {
+      sim.step();
+      if (!sim.world.has(far, UnderConstruction)) {
+        nearLaborWhenFarFinished = sim.world.get(near, UnderConstruction).labor;
+      }
+    }
+    expect(nearLaborWhenFarFinished).toBe(0);
+    expect(sim.world.get(far, Building).built).toBe(ONE);
+  });
+
+  it("a builder raises only its OWN player's site — a same-tribe enemy foundation is left alone", () => {
+    // A 4-row map so a site footprint doesn't wall off the corridor between the two.
+    const sim = new Simulation({ seed: 7, content: constructionContent(), map: grassMap(8, 4) });
+    // Two same-tribe (VIKING) foundations, different players; both fully stocked (hammer-ready).
+    const mine = siteAt(sim, HOUSE, 2, 1);
+    const enemy = siteAt(sim, HOUSE, 6, 1);
+    sim.world.add(mine, Owner, { player: 0 });
+    sim.world.add(enemy, Owner, { player: 1 });
+    for (const site of [mine, enemy]) {
+      sim.world.get(site, Stockpile).amounts.set(STONE, 2);
+      sim.world.get(site, Stockpile).amounts.set(WOOD, 1);
+    }
+    // My builder sits NEARER the enemy site (x=5 vs the enemy at 6, mine at 2) — proximity alone would
+    // pull an ownership-blind builder onto the enemy foundation.
+    const builder = builderAt(sim, 5, 2);
+    sim.world.add(builder, Owner, { player: 0 });
+
+    let mineBuilt = false;
+    for (let i = 0; i < 500 && !mineBuilt; i++) {
+      sim.step();
+      mineBuilt = sim.world.get(mine, Building).built >= ONE;
+    }
+    // My site rises; the enemy's is never touched by my builder.
+    expect(mineBuilt).toBe(true);
+    expect(sim.world.get(enemy, UnderConstruction).labor).toBe(0);
+    expect(sim.world.get(enemy, Stockpile).amounts.get(STONE)).toBe(2); // material untouched
   });
 
   it('is deterministic — two same-seed delivery+build runs reach the same finished state hash', () => {

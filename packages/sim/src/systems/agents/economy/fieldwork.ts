@@ -1,4 +1,11 @@
-import { Position, Resource, SupplyRun, UnderConstruction, WorkFlag } from '../../../components/index.js';
+import {
+  Position,
+  Resource,
+  SiteAssignment,
+  SupplyRun,
+  UnderConstruction,
+  WorkFlag,
+} from '../../../components/index.js';
 import type { Entity } from '../../../ecs/world.js';
 import type { NodeId } from '../../../nav/terrain/index.js';
 import { carrierCarryCapacity } from '../../progression/index.js';
@@ -26,11 +33,13 @@ import { deliveryTargetFor } from './routing.js';
 // settler never falls through to a lower rung), so their result carries no information.
 
 /**
- * 2b. BUILD — a **builder** raises the nearest construction site of its tribe, faithful to the original's
+ * 2b. BUILD — a **builder** raises a construction site of its tribe, faithful to the original's
  * "settlers search for a foundation, get put on it, and hammer it up carrying material" flow. A builder is
  * any job the data permits to run the build-house atomic ({@link BUILD_HOUSE_ATOMIC_ID}) — the data-driven
  * "who constructs" test, not a hardcoded jobType id — so a non-builder returns false at once and falls
- * through to the gather/porter/carrier rungs. In priority:
+ * through to the gather/porter/carrier rungs. The site is the player-PINNED one when an `assignBuilder`
+ * right-click bound it (while it still stands), else the nearest; the pick is stamped as a persistent
+ * {@link SiteAssignment} (the crew the site's workers window lists). In priority:
  *
  *  a. **Hammer** — while the site has material on hand to install (its builder-work `labor` still trails
  *     the delivered-material fraction), walk to the site and run a `construct` swing (each swing installs
@@ -53,9 +62,34 @@ import { deliveryTargetFor } from './routing.js';
 export function planBuilder(plan: PlannerContext, spacing: SpacingState): boolean {
   const { world, ctx, terrain, entity: e, here, targets } = plan;
   const settler = plan;
-  if (!jobAtomics(ctx, settler.jobType).has(BUILD_HOUSE_ATOMIC_ID)) return false; // not a builder
-  const site = nearestConstructionSite(targets.constructionSites, world, ctx, terrain, here, settler.tribe);
-  if (site === null) return false; // nothing under construction — fall through to hauling
+  if (!jobAtomics(ctx, settler.jobType).has(BUILD_HOUSE_ATOMIC_ID)) {
+    world.remove(e, SiteAssignment); // no longer the builder trade — any crew membership is stale
+    return false; // not a builder
+  }
+  // A player-PINNED site (the assignBuilder right-click) wins while it still stands; otherwise the
+  // nearest site. Either way the pick is stamped as SiteAssignment — persistent crew membership, so the
+  // workers window lists this builder even while it waits for material or walks a player detour.
+  const assigned = world.tryGet(e, SiteAssignment);
+  const pinned =
+    assigned?.pinned === true && world.has(assigned.site, UnderConstruction) ? assigned.site : null;
+  const site =
+    pinned ??
+    nearestConstructionSite(
+      targets.constructionSites,
+      world,
+      ctx,
+      terrain,
+      here,
+      settler.tribe,
+      settler.owner,
+    );
+  if (site === null) {
+    world.remove(e, SiteAssignment); // nothing under construction — the crew disbands
+    return false; // fall through to hauling
+  }
+  if (assigned === undefined || assigned.site !== site || assigned.pinned !== (pinned !== null)) {
+    world.add(e, SiteAssignment, { site, pinned: pinned !== null });
+  }
   const siteStand = (): NodeId =>
     claimWorkCell(world, ctx, terrain, e, here, interactionCell(world, ctx, terrain, site, here), spacing);
 

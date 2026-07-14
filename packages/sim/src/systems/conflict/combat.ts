@@ -155,10 +155,9 @@ function combatPossible(world: World, ctx: SystemContext, combatants: Iterable<E
  * target and swing / chase / defend / flee / disengage per its {@link Stance} military mode. The gates:
  *  - **busy** (a {@link CurrentAtomic} running) or **dead** (`hitpoints <= 0`) → leave it (a mid-swing unit
  *    plays out; a felled-but-unreaped one gets no swing from beyond the grave);
- *  - **live player MOVE order** (a {@link PlayerOrder}, not an {@link AttackOrder}) → EN ROUTE it suppresses
- *    ALL auto-behavior (engage AND flee — the reposition is authoritative); once ARRIVED, the timed hold
- *    keeps gating only a PASSIVE (IGNORE/FLEE) unit — an ATTACK/DEFEND fighter keeps its combat drive and
- *    engaging hands the unit from the order to combat (it never stands waiting a timer out under attack);
+ *  - **live player MOVE order** (a {@link PlayerOrder}, not an {@link AttackOrder}) → it suppresses ALL
+ *    auto-behavior en route (engage AND flee — the reposition is authoritative) and dies on arrival, so
+ *    the unit's own stance takes over at the spot;
  *  - **FLEE** ({@link Stance} `FLEE`, no attack order) → run from the nearest threat ({@link fleeDrive}),
  *    re-evaluated even while travelling (to track a moving threat / wind the cool-down down);
  *  - **IGNORE** (or the passive `NONE`) → never auto-engage; a HUNTER is the exception (its catchable-prey
@@ -187,20 +186,13 @@ function engageCombatant(
   let ordered = world.has(e, AttackOrder);
   const attacker = world.get(e, Settler);
   // A live PLAYER MOVE order (a {@link PlayerOrder}, and NOT an explicit {@link AttackOrder}) is the human's
-  // authoritative "go there" command. EN ROUTE (the hold hasn't begun) it suppresses ALL auto-behavior —
-  // engage AND flee — so the reposition is carried out (ordering units PAST an enemy line routes around it,
-  // never into a fight). Once ARRIVED, the hold gates only a PASSIVE unit: a fighter holding on
-  // ATTACK/DEFEND keeps its combat drive — an enemy walks up and beats a timer-waiting unit to death
-  // otherwise — and when it does engage, the chase/swing state it creates ends the order through
-  // {@link playerOrderSystem}'s own rules (a clean handoff). `moveUnit` clears any prior
+  // authoritative "go there" command: en route it suppresses ALL auto-behavior — engage AND flee — so the
+  // reposition is carried out (ordering units PAST an enemy line routes around it, never into a fight). The
+  // order dies on arrival ({@link playerOrderSystem}), so the unit's own stance resumes there — a DEFEND
+  // guard fights around its relocated anchor, a passive unit stands. `moveUnit` clears any prior
   // Engagement/AttackOrder/Fleeing, so an ordered unit starts its walk cleanly; an explicit AttackOrder is
   // the OPPOSITE intent (fight THAT one) and always engages.
-  const moveOrder = world.tryGet(e, PlayerOrder);
-  if (moveOrder !== undefined && !ordered) {
-    if (moveOrder.expiresAt === null) return; // still walking the order out — the reposition is authoritative
-    const mode = stanceMode(world, e, attacker.jobType);
-    if (mode !== MILITARY_MODE.ATTACK && mode !== MILITARY_MODE.DEFEND) return; // passive: hold the spot blindly
-  }
+  if (world.has(e, PlayerOrder) && !ordered) return;
   // An explicit attack order that has OUTLIVED its target (dead / no longer a valid hostile) is dropped
   // HERE, before the stance dispatch, so the unit re-decides by its STANCE this tick — an IGNORE scout goes
   // back to ignoring, a FLEE civilian to fleeing, a DEFEND guard to its post — instead of the order's

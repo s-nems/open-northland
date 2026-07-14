@@ -21,7 +21,15 @@ import { spawnAnimalHerd, spawnSettler } from '../conflict/spawn/index.js';
 import type { System, SystemContext } from '../context.js';
 import { forceFinishConstruction } from '../economy/construction.js';
 import { createResourceNode } from '../footprint/index.js';
-import { assignWorker, attackUnit, moveUnit, setJob, setStance, setWorkFlag } from '../orders/index.js';
+import {
+  assignBuilder,
+  assignWorker,
+  attackUnit,
+  moveUnit,
+  setJob,
+  setStance,
+  setWorkFlag,
+} from '../orders/index.js';
 import { buildingEnabled, tribeShipsUnlocked } from '../progression/index.js';
 
 import { placeBoat, placeBuilding, unbindWorkersOf } from './placement.js';
@@ -155,6 +163,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       return;
     case 'assignWorker':
       assignWorker(world, ctx, command);
+      return;
+    case 'assignBuilder':
+      assignBuilder(world, ctx, command);
       return;
     case 'setWorkFlag':
       setWorkFlag(world, ctx, command);
