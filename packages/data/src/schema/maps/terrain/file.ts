@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { TypeId } from '../../record.js';
 import { TerrainEntities } from '../entities.js';
 import { TRANSITION_NONE, TRANSITION_PAIRS } from './encoding.js';
-import { TerrainGround, TerrainObjects, TerrainTransitions } from './layers.js';
+import { CellLane, TerrainGround, TerrainObjects, TerrainTransitions } from './layers.js';
 
 /**
  * A decoded terrain grid file (`content/maps/<id>.json`) — the per-map nav-graph input the pipeline
@@ -40,7 +40,7 @@ const TerrainMapFields = z.strictObject({
    * elevation lift (≈1.24 native px/unit, measured — see source basis "projection";
    * `packages/render/src/data/elevation.ts`).
    */
-  elevation: z.array(z.number().int().nonnegative()).optional(),
+  elevation: CellLane.optional(),
   /**
    * Per-cell baked brightness (`embr` lane), row-major, one value per cell (length = width*height),
    * raw byte values 0..255 with 127 = neutral. The engine's baked shading plane: slope light/shadow
@@ -49,7 +49,7 @@ const TerrainMapFields = z.strictObject({
    * the response curve calibrated against the reference corpus —
    * `packages/render/src/data/brightness.ts`).
    */
-  brightness: z.array(z.number().int().nonnegative()).optional(),
+  brightness: CellLane.optional(),
   /** The authored entity placements (`map.cif` `StaticObjects`), when the map carries them. */
   entities: TerrainEntities.optional(),
 });
