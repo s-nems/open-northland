@@ -9,12 +9,11 @@ import {
   WorkFlag,
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
+import type { NodeId } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
-import { manhattan } from '../../spatial.js';
 import { buildingProduces, inboundSupply, recipeOf, stockCapacity } from '../../stores/index.js';
 import type { PlannerContext } from '../planner-context.js';
-import { boundWorkplaceTarget, closer, interactionCell, nearestStoreFor } from '../targets/index.js';
+import { boundWorkplaceTarget, type InteractionCellIndex, nearestStoreFor } from '../targets/index.js';
 import { hasRoom, isFarmCarrierHaulOutRole, isStorageSink } from './store-policy.js';
 
 /**
@@ -36,9 +35,9 @@ import { hasRoom, isFarmCarrierHaulOutRole, isStorageSink } from './store-policy
  *     hauler.
  */
 export function deliveryTargetFor(plan: PlannerContext, goodType: number): Entity | null {
-  const { world, ctx, terrain, here, entity: settler, jobType, tribe, owner, targets } = plan;
-  const candidates = targets.stockpiles;
-  const sites = targets.constructionSites;
+  const { world, ctx, here, entity: settler, jobType, tribe, owner, targets } = plan;
+  const stores = targets.stockpileCells;
+  const sites = targets.constructionSiteCells;
   // 1. A fetched input goes to the bound workshop that consumes it.
   const workplace = boundWorkplaceTarget(world, ctx, settler, jobType, tribe);
   if (workplace !== null) {
@@ -70,7 +69,7 @@ export function deliveryTargetFor(plan: PlannerContext, goodType: number): Entit
     isFarmCarrierHaulOutRole(world, ctx, home, jobType, tribe) &&
     buildingProduces(world, ctx, home).includes(goodType)
   ) {
-    return nearestStoreFor(candidates, world, ctx, terrain, here, goodType, /* excludeProducers */ true);
+    return nearestStoreFor(stores, world, ctx, here, goodType, /* excludeProducers */ true);
   }
   // 3b. Otherwise a porter's / farmer's load goes to the storage it is bound to (a warehouse, a flag pile,
   //     or the farm's own store when a farmer banks its sheaf and the farm still has room).
@@ -82,50 +81,39 @@ export function deliveryTargetFor(plan: PlannerContext, goodType: number): Entit
   //    the material back into a warehouse. Scans the tiny `sites` list (each advertises its outstanding cost
   //    via `stockCapacity`); this only prioritises the pick — nearest needing site — leaving every
   //    non-construction good to the default below.
-  const site = nearestConstructionSiteNeeding(sites, world, ctx, terrain, here, tribe, owner, goodType);
+  const site = nearestConstructionSiteNeeding(sites, world, ctx, here, tribe, owner, goodType);
   if (site !== null) return site;
   // 5. Otherwise the nearest capable store — the unchanged default (unbound haulers, the golden slice).
-  return nearestStoreFor(candidates, world, ctx, terrain, here, goodType);
+  return nearestStoreFor(stores, world, ctx, here, goodType);
 }
 
 /**
  * The nearest **construction site** of `tribe` that still has room for `goodType` in its `construction`
  * cost — a {@link Building} + {@link UnderConstruction} whose delivered amount of the good is below the
- * site's advertised {@link stockCapacity} for it (its outstanding demand). Scans the tiny
- * {@link import('../../targets/index.js').TargetCandidates.constructionSites} list (UnderConstruction + Building +
- * Position guaranteed) in canonical order with the standard Manhattan + ascending-cell-id tie-break.
- * Returns the site or null when no site needs the good — the routing preference behind a builder self-supplying
- * its own site and an assigned hauler topping it up. `owner` is the hauler's owning player ({@link ownerOf}) —
- * material flows only to the hauler's own player's sites.
+ * site's advertised {@link stockCapacity} for it (its outstanding demand). Searches the construction-site
+ * ring index with the standard Manhattan + ascending-cell-id tie-break. Returns the site or null when no
+ * site needs the good — the routing preference behind a builder self-supplying its own site and an
+ * assigned hauler topping it up. `owner` is the hauler's owning player ({@link ownerOf}) — material flows
+ * only to the hauler's own player's sites.
  */
 function nearestConstructionSiteNeeding(
-  sites: readonly Entity[],
+  index: InteractionCellIndex,
   world: World,
   ctx: SystemContext,
-  terrain: TerrainGraph,
   here: NodeId,
   tribe: number,
   owner: number | undefined,
   goodType: number,
 ): Entity | null {
-  let best: Entity | null = null;
-  let bestDist = Number.POSITIVE_INFINITY;
-  let bestCell = Number.POSITIVE_INFINITY;
-  for (const e of sites) {
-    if (world.get(e, Building).tribe !== tribe) continue;
-    if (!ownersCompatible(owner, ownerOf(world, e))) continue; // another player's site (same tribe isn't same side)
-    // Count both what the site holds and what other settlers' live supply errands already have inbound
-    // (SupplyRun): a site whose last unit is on someone's back stops attracting more of the good, so a
-    // duplicate fetch diverts to a warehouse instead of over-delivering.
-    const have = (world.get(e, Stockpile).amounts.get(goodType) ?? 0) + inboundSupply(world, e, goodType);
-    if (have >= stockCapacity(world, ctx, e, goodType)) continue; // full for this material (or not a cost good)
-    const cell = interactionCell(world, ctx, terrain, e, here);
-    const dist = manhattan(terrain, here, cell);
-    if (closer(dist, cell, bestDist, bestCell)) {
-      best = e;
-      bestDist = dist;
-      bestCell = cell;
-    }
-  }
-  return best;
+  return (
+    index.nearest(here, (e) => {
+      if (world.get(e, Building).tribe !== tribe) return false;
+      if (!ownersCompatible(owner, ownerOf(world, e))) return false; // another player's site (same tribe isn't same side)
+      // Count both what the site holds and what other settlers' live supply errands already have inbound
+      // (SupplyRun): a site whose last unit is on someone's back stops attracting more of the good, so a
+      // duplicate fetch diverts to a warehouse instead of over-delivering.
+      const have = (world.get(e, Stockpile).amounts.get(goodType) ?? 0) + inboundSupply(world, e, goodType);
+      return have < stockCapacity(world, ctx, e, goodType); // room left for this material (and it's a cost good)
+    })?.entity ?? null
+  );
 }

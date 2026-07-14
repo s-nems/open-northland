@@ -81,7 +81,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
   // `nearest*` call (`canonicalEntities()` allocates and sorts all entities — O(settlers · entities ·
   // log n) per tick). The ascending-id order matches a full scan, so the distance+id tie-break picks the
   // identical winner and the goldens hold.
-  const targets = collectTargets(world, ctx);
+  const targets = collectTargets(world, ctx, terrain);
   // Dormancy gate: the carrier fallback (`nearestWorkplaceOutput`) is a full stockpile scan per settler.
   // If nothing is haulable anywhere this tick, every settler's scan returns null — so decide it once and
   // let idle settlers skip the scan (identical outcome, no per-settler work). This is what keeps an idle

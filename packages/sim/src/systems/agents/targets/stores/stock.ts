@@ -18,6 +18,7 @@ import {
   recipeOf,
   stockCapacity,
 } from '../../../stores/index.js';
+import type { InteractionCellIndex } from '../cell-index.js';
 import { closer } from '../nearest.js';
 import { interactionCell } from '../workplaces.js';
 
@@ -28,10 +29,10 @@ import { interactionCell } from '../workplaces.js';
 // ascending-cell-id tie-break, so the winner never depends on store insertion history (goldens hold).
 
 /**
- * The nearest store (a {@link Building} with a {@link Stockpile}) that can stock `goodType` — i.e.
- * its building type declares a stock slot for that good and the slot is not already full — by
- * Manhattan distance from `here`, ascending-cell-id tie-break, scanned in canonical entity-id order.
- * Returns the store entity or null if none can take the good.
+ * The nearest store (typically a {@link Building} with a {@link Stockpile}, but a boat hull counts too)
+ * that can stock `goodType` — i.e. its type declares a stock slot for that good and the slot is not
+ * already full — by Manhattan distance from `here` with the shared ascending-cell-id tie-break. Returns
+ * the store entity or null if none can take the good.
  *
  * A workplace that PRODUCES `goodType` (a recipe output) is never a delivery target for it — goods
  * are hauled *out* of a producer to a store, never back into it (otherwise a carrier would deposit
@@ -39,10 +40,9 @@ import { interactionCell } from '../workplaces.js';
  * input, or a passive store, is a valid sink.
  */
 export function nearestStoreFor(
-  candidates: readonly Entity[],
+  index: InteractionCellIndex,
   world: World,
   ctx: SystemContext,
-  terrain: TerrainGraph,
   here: NodeId,
   goodType: number,
   /** Skip EVERY store whose building type PRODUCES `goodType` — the haul-OUT mode. A carrier
@@ -53,20 +53,7 @@ export function nearestStoreFor(
    *  own farm's slot as a sink, and generic hauls may still top up a producer that CONSUMES the good. */
   excludeProducers = false,
 ): Entity | null {
-  let best: Entity | null = null;
-  let bestDist = Number.POSITIVE_INFINITY;
-  let bestCell = Number.POSITIVE_INFINITY;
-  for (const e of candidates) {
-    if (!canStoreGood(world, ctx, e, goodType, excludeProducers)) continue;
-    const cell = interactionCell(world, ctx, terrain, e, here);
-    const dist = manhattan(terrain, here, cell);
-    if (closer(dist, cell, bestDist, bestCell)) {
-      best = e;
-      bestDist = dist;
-      bestCell = cell;
-    }
-  }
-  return best;
+  return index.nearest(here, (e) => canStoreGood(world, ctx, e, goodType, excludeProducers))?.entity ?? null;
 }
 
 /** Position-independent acceptance half of {@link nearestStoreFor}. Shared with the tick-local sink
@@ -111,9 +98,8 @@ const GOODS_YARD_MAX_RADIUS = 32;
  * Determinism: `occupied` is BUILT from the canonical candidate list and only `.get`-queried (never iterated
  * for a decision), and the ring pick is canonical. `candidates` is the per-tick stockpile list. Cost is
  * O(candidates) to index + a BOUNDED ring walk (up to {@link GOODS_YARD_MAX_RADIUS}², a constant, returning
- * at the first ring with a free node) — the same O(carriers·stockpiles) economy nearest-X shape as the other
- * scans here (a `NodeBuckets` index that would make both terms local is the shared follow-up in
- * docs/tickets/sim/economy-ring-index.md).
+ * at the first ring with a free node). This spirals out from the FLAG for a free TILE, a different shape
+ * from the nearest-entity picks that share {@link InteractionCellIndex}, so it keeps its own ring here.
  */
 export function nearestFreeYardNode(
   candidates: readonly Entity[],
