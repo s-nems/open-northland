@@ -4,17 +4,17 @@ import { nodeOfPosition } from '../nav/halfcell.js';
 import { canonicalById } from './spatial.js';
 
 /**
- * The per-world REGION spatial index shared by the resource and berry-bush indexes — the golden-rule-6
+ * The per-world region spatial index shared by the resource and berry-bush indexes — the golden-rule-6
  * lever that lets a radius-bounded scan (a flag-bound gatherer, a hungry forager) read only the standing
  * entities near a point instead of every one on a decoded map. Derived read-state, never hashed: rebuilt
  * wholesale whenever the indexed component's store generation moves (create/destroy — a standing entity
  * never moves or loses its Position without dying, the invariant the registered verifier re-checks), and
- * its `near` answers are provable SUPERSETS the caller's unchanged canonical filter/rank loop re-checks,
+ * its `near` answers are provable supersets the caller's unchanged canonical filter/rank loop re-checks,
  * so no winner can differ from a full scan.
  */
 
 /** Region edge (half-cell nodes): 32×32 (≈16×16 cells) — a flag/forage-radius query touches a handful of
- *  regions while region lists stay big enough that the merge cost is trivial. Only query COST depends on
+ *  regions while region lists stay big enough that the merge cost is trivial. Only query cost depends on
  *  it, never a winner. */
 const REGION_NODES = 32;
 /** Region key packing (`rx * STRIDE + ry`): maps up to 65k regions per axis while staying a plain-number
@@ -46,12 +46,12 @@ export interface RegionIndexLabels {
 
 /** A memoized region index over `(component, Position)` entities — see {@link createRegionIndex}. */
 export interface RegionIndex<Extra> {
-  /** The memoized ascending-id list of every indexed entity — shared, read-only and FROZEN (a consumer's
+  /** The memoized ascending-id list of every indexed entity — shared, read-only and frozen (a consumer's
    *  in-place sort throws at the mutation site). */
   canonical(world: World): readonly Entity[];
-  /** Every indexed entity whose ANCHOR node lies within the axis-aligned box `reach` nodes around
-   *  `(hx, hy)`, ascending-id — the caller's candidate SUPERSET (valid when `reach ≥ radius + the max
-   *  anchor→work-cell offset`). Cost: O(regions touched + matches), not O(all indexed). */
+  /** Every indexed entity whose anchor node lies within the axis-aligned box `reach` nodes around
+   *  `(hx, hy)`, ascending-id — the caller's candidate superset (valid when `reach ≥ radius + the max
+   *  anchor→interaction-cell offset`). Cost: O(regions touched + matches), not O(all indexed). */
   near(world: World, hx: number, hy: number, reach: number): Entity[];
   /** The per-index derived extra, folded over the canonical list at build time and cached alongside. */
   extra(world: World): Extra;
@@ -66,8 +66,8 @@ function regionKeyOf(hx: number, hy: number): number {
  * invalidated on that component's store generation. `reduceExtra` folds the canonical list into a derived
  * value cached alongside (the resource index's distinct-harvest-atomics set; berries pass none).
  */
-export function createRegionIndex<C, Extra>(
-  component: Component<C>,
+export function createRegionIndex<Extra>(
+  component: Component<unknown>,
   labels: RegionIndexLabels,
   reduceExtra: (world: World, list: readonly Entity[]) => Extra,
 ): RegionIndex<Extra> {
