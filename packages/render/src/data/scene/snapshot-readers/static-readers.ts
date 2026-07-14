@@ -15,7 +15,7 @@ import { readNumField } from './component-access.js';
  * per-type {@link import('../../sprites/index.js').BuildingTypeBinding} draws each building its own house
  * bob. `undefined` for a missing/malformed component (the binding falls back to its default house).
  */
-export function readBuildingType(components: Readonly<Record<string, unknown>>): number | undefined {
+function readBuildingType(components: Readonly<Record<string, unknown>>): number | undefined {
   return readNumField(components, 'Building', 'buildingType');
 }
 
@@ -50,7 +50,7 @@ export function readProducing(components: Readonly<Record<string, unknown>>): bo
  * draws its species/deposit by (a tree for wood, a mine for iron). `undefined` for a missing/malformed
  * component (the binding falls back to its default node).
  */
-export function readResourceGood(components: Readonly<Record<string, unknown>>): number | undefined {
+function readResourceGood(components: Readonly<Record<string, unknown>>): number | undefined {
   return readNumField(components, 'Resource', 'goodType');
 }
 
@@ -61,7 +61,7 @@ export function readResourceGood(components: Readonly<Record<string, unknown>>):
  * {@link import('../../sprites/index.js').ResourceTypeBinding.byGfxIndex} draws by. `undefined` for an
  * admin/scene-spawned node — the per-good binding then draws the representative node.
  */
-export function readResourceGfxIndex(components: Readonly<Record<string, unknown>>): number | undefined {
+function readResourceGfxIndex(components: Readonly<Record<string, unknown>>): number | undefined {
   return readNumField(components, 'Resource', 'gfxIndex');
 }
 
@@ -112,7 +112,7 @@ function readResourceLadder(
  * `undefined` for a plain node — the `level` field of the node's {@link readResourceLadder}. The binding
  * then draws its full-state frame when absent.
  */
-export function readResourceLevel(components: Readonly<Record<string, unknown>>): number | undefined {
+function readResourceLevel(components: Readonly<Record<string, unknown>>): number | undefined {
   return readResourceLadder(components)?.level;
 }
 
@@ -133,7 +133,7 @@ export function readResourceLevelCount(components: Readonly<Record<string, unkno
  * draws its debris frame by. `undefined` for a missing/malformed component (the binding falls back to
  * its default).
  */
-export function readStumpGood(components: Readonly<Record<string, unknown>>): number | undefined {
+function readStumpGood(components: Readonly<Record<string, unknown>>): number | undefined {
   return readNumField(components, 'Stump', 'goodType');
 }
 

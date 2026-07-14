@@ -25,15 +25,9 @@ export {
   depositVisualLevel,
   readBerryBushGfxIndex,
   readBerryBushLevel,
-  readBuildingType,
   readBuiltPct,
   readProducing,
-  readResourceGfxIndex,
-  readResourceGood,
-  readResourceLevel,
   readResourceLevelCount,
-  readStumpGood,
-  type StaticDrawFields,
 } from './static-readers.js';
 export { readStockpile } from './stockpile-readers.js';
 export {

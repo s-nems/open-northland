@@ -15,7 +15,7 @@ import type {
  */
 
 /** Unwrap a {@link LayeredBobRef} to the generic {@link BuildingDraw} shape (bob + optional family layer). */
-export function unwrapBobRef(ref: LayeredBobRef): BuildingDraw {
+function unwrapBobRef(ref: LayeredBobRef): BuildingDraw {
   return typeof ref === 'number' ? { bob: ref } : { bob: ref.bob, layer: ref.layer };
 }
 
