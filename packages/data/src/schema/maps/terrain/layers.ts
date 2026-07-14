@@ -1,6 +1,13 @@
 import { z } from 'zod';
 
 /**
+ * A row-major per-cell lane: one non-negative integer per map cell — the shared shape of every decoded
+ * terrain lane (ground pattern picks, transition overlays, elevation, brightness). Each lane's own
+ * `length === width * height` invariant is enforced in {@link TerrainMapFile}.
+ */
+export const CellLane = z.array(z.number().int().nonnegative());
+
+/**
  * The 1:1 ground-texture layer of a decoded map: the original's `empa`/`empb` per-cell lanes hold the
  * final per-triangle {@link GfxPattern} choice (the editor bakes its pattern algorithm's output
  * into the save), referenced through the map's own `eapd` pattern-name dictionary. {@link patterns}
@@ -13,9 +20,9 @@ export const TerrainGround = z.strictObject({
   /** The pattern `EditName`s this map uses (compacted from the map's `eapd` dictionary). */
   patterns: z.array(z.string()),
   /** Row-major per-cell index into {@link patterns} for triangle A (length = width*height). */
-  a: z.array(z.number().int().nonnegative()),
+  a: CellLane,
   /** Row-major per-cell index into {@link patterns} for triangle B (length = width*height). */
-  b: z.array(z.number().int().nonnegative()),
+  b: CellLane,
 });
 export type TerrainGround = z.infer<typeof TerrainGround>;
 
@@ -32,13 +39,13 @@ export const TerrainTransitions = z.strictObject({
   /** The map's `eatd` transition-name dictionary, verbatim (lane `⌊v/6⌋` indexes it positionally). */
   types: z.array(z.string()),
   /** Row-major per-cell `emt1` lane — layer 1 (topmost), triangle A. Raw u8; 255 = none. */
-  a1: z.array(z.number().int().nonnegative()),
+  a1: CellLane,
   /** Row-major per-cell `emt2` lane — layer 1 (topmost), triangle B. Raw u8; 255 = none. */
-  b1: z.array(z.number().int().nonnegative()),
+  b1: CellLane,
   /** Row-major per-cell `emt3` lane — layer 2 (under layer 1), triangle A. Raw u8; 255 = none. */
-  a2: z.array(z.number().int().nonnegative()),
+  a2: CellLane,
   /** Row-major per-cell `emt4` lane — layer 2 (under layer 1), triangle B. Raw u8; 255 = none. */
-  b2: z.array(z.number().int().nonnegative()),
+  b2: CellLane,
 });
 export type TerrainTransitions = z.infer<typeof TerrainTransitions>;
 
