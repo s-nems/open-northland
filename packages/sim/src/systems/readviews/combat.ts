@@ -2,24 +2,20 @@ import type { ContentSet, WeaponType } from '@open-northland/data';
 import { contentIndex } from '../../core/content-index.js';
 import { armorMaterialOf } from './classes/index.js';
 
-// Pure, terminal **read views** for combat — the static weapon-vs-armor damage *lookup* table the
-// CombatSystem reads, plus the shared damage-column resolution both it and the per-hit CombatSystem
-// join through. No mechanic is added here (nothing is hit, no hitpoints change); see ./index.ts
-// for how read views relate to systems.
+// Pure, terminal read views for combat — the static weapon-vs-armor damage lookup table the CombatSystem
+// reads, plus the shared damage-column resolution both it and the per-hit resolution join through. No
+// mechanic is added here.
 
 /**
- * The **armor material tier** a weapon's `damagevalue <material> <value>` table is indexed by — the
- * VICTIM's armor `materialType` (`logicdefines.inc` `ARMOR_MATERIAL_TYPE_*`, l.951). The per-material
- * value in the weapon's table **is** the resolved damage: armor works by **column selection**, not by
- * subtracting a mitigation. `NONE` (0) is a bare target (a weapon's `damage["0"]`). `WOOD` (6) and
- * `HOUSE` (7) are NOT worn armor — they are the damage a weapon does to **trees/walls** and to
- * **buildings**, surfaced by {@link damageVsWood}/{@link damageVsBuilding} rather than treated as a
- * living target's armor tier. For the four base armor records `materialType == typeId`
- * (woolen 1 / leather 2 / chain 3 / plate 4), so the column and the armor class coincide there; the
- * material is the faithful index for the higher structure columns and for legibility.
+ * The armor material tier a weapon's `damagevalue <material> <value>` table is indexed by — the victim's
+ * armor `materialType` (`logicdefines.inc` `ARMOR_MATERIAL_TYPE_*`, l.951). The per-material value in the
+ * weapon's table is the resolved damage: armor works by column selection, not by subtracting a mitigation.
+ * `NONE` (0) is a bare target (`damage["0"]`). `WOOD` (6) and `HOUSE` (7) are not worn armor — they are the
+ * damage a weapon does to trees/walls and to buildings, surfaced by {@link damageVsWood}/{@link damageVsBuilding}.
+ * For the four base armor records `materialType == typeId` (woolen 1 / leather 2 / chain 3 / plate 4), so the
+ * column and the armor class coincide there.
  *
- * source-basis: pinned to `logicdefines.inc` `ARMOR_MATERIAL_TYPE_*` (golden rule #4) — the original's own
- * material ids, not invented.
+ * source-basis: `logicdefines.inc` `ARMOR_MATERIAL_TYPE_*` (golden rule #4).
  */
 export const ARMOR_MATERIAL = {
   /** No armor — a bare target (`damage["0"]`). */
@@ -41,12 +37,11 @@ export const ARMOR_MATERIAL = {
 } as const;
 
 /**
- * The coarse **weapon class** a `WeaponType.mainType` carries (`logicdefines.inc` `WEAPON_MAIN_TYPE_*`,
- * l.892). Distinct from {@link ARMOR_MATERIAL} — this is the ATTACKER's weapon family, the axis the
- * fight-experience buckets key on (`progression/experience.ts` maps it to the
- * `JOB_EXPERIENCE_TYPE_FIGHT_*` id).
+ * The coarse weapon class a `WeaponType.mainType` carries (`logicdefines.inc` `WEAPON_MAIN_TYPE_*`, l.892).
+ * The attacker's weapon family, the axis the fight-experience buckets key on (`progression/experience.ts`
+ * maps it to the `JOB_EXPERIENCE_TYPE_FIGHT_*` id).
  *
- * source-basis: pinned to `logicdefines.inc` `WEAPON_MAIN_TYPE_*` — the original's own class ids.
+ * source-basis: `logicdefines.inc` `WEAPON_MAIN_TYPE_*` — the original's own class ids.
  */
 export const WEAPON_MAIN_TYPE = {
   /** No weapon. */
@@ -68,12 +63,12 @@ export const WEAPON_MAIN_TYPE = {
 } as const;
 
 /**
- * The damage a weapon lands on a target of armor `material` — the raw `weapon.damage[material]` value,
- * `0` when the weapon lists none for that material. This **is** the resolved damage: the original's
- * `damagevalue` table pre-tabulates the per-material outcome, so armor selects the column and nothing
- * is subtracted (the `blockingValue 5` uniform on every base armor record has an UNKNOWN engine role —
- * see source basis — and is deliberately NOT applied). Shared by {@link combatDamage} (the whole
- * table) and the CombatSystem's per-hit resolution (one column), so the two can't drift.
+ * The damage a weapon lands on a target of armor `material` — the raw `weapon.damage[material]` value, `0`
+ * when the weapon lists none. This is the resolved damage: the `damagevalue` table pre-tabulates the
+ * per-material outcome, so armor selects the column and nothing is subtracted (the uniform `blockingValue 5`
+ * on every base armor record has an unknown engine role — source basis — and is deliberately not applied).
+ * Shared by {@link combatDamage} (the whole table) and the CombatSystem's per-hit resolution (one column),
+ * so the two can't drift.
  */
 export function weaponDamageVsMaterial(weapon: Pick<WeaponType, 'damage'>, material: number): number {
   return weapon.damage[String(material)] ?? 0;
@@ -98,12 +93,11 @@ export function damageVsBuilding(weapon: Pick<WeaponType, 'damage'>): number {
 }
 
 /**
- * The armor **material tier** a worn `armorClass` (an {@link import('@open-northland/data').ArmorType} `typeId`)
- * resolves to — the column {@link weaponDamageVsMaterial} indexes. Resolves the class's `[armortype]`
- * record and reads its `materialType` (== `typeId` for the four base armors). A class with **no record**
- * (a bare 0, an out-of-table 6/7 stamped directly on a structure target, or a bad id) returns the
- * class value itself as its own material column, so an undefined tier resolves to *some* column rather
- * than crashing — the "armor the data doesn't define selects its own column" stance.
+ * The armor material tier a worn `armorClass` (an {@link import('@open-northland/data').ArmorType} `typeId`)
+ * resolves to — the column {@link weaponDamageVsMaterial} indexes. Resolves the class's `[armortype]` record
+ * and reads its `materialType` (== `typeId` for the four base armors). A class with no record (a bare 0, an
+ * out-of-table 6/7 stamped on a structure target, or a bad id) returns the class value itself as its own
+ * material column, so an undefined tier resolves to some column rather than crashing.
  */
 export function armorMaterialForClass(content: ContentSet, armorClass: number): number {
   const armor = contentIndex(content).armor.get(armorClass);
@@ -120,8 +114,8 @@ export interface CombatDamageRow {
    *  table is indexed by ({@link ARMOR_MATERIAL}: 0 unarmored, 1 wool, 2 leather, 3 chain, 4 plate). */
   material: number;
   /** The weapon's damage against this material (`weapon.damage[material]`) — the value the original
-   *  PRE-RESOLVES per material (armor selects the column; nothing is subtracted). `0` if the weapon
-   *  lists no value for this material (it does that target no harm). */
+   *  pre-resolves per material (armor selects the column; nothing is subtracted). `0` if the weapon lists
+   *  no value for this material. */
   damage: number;
 }
 
@@ -133,7 +127,7 @@ export interface CombatDamageRow {
 export interface CombatProfile {
   /** Owning tribe (`WeaponType.tribeType`) — part of the canonical `(tribeType, typeId)` identity. */
   tribeType: number | undefined;
-  /** The weapon's `typeId` — NOT globally unique on its own (recurs per tribe); paired with
+  /** The weapon's `typeId` — not globally unique on its own (recurs per tribe); paired with
    *  `tribeType` for identity, and even that pair is reused for a few animal weapons (see the fn doc). */
   typeId: number;
   /** The weapon's `id` slug (`"fist"`, `"wooden_spear"`, …) — also not globally unique. */
@@ -146,43 +140,33 @@ export interface CombatProfile {
 }
 
 /**
- * The **combat damage table** as a derived **read view** over `content` — the read half of the
- * CombatSystem, exactly analogous to the HUD's content-only {@link goodsGraph}: it joins each
- * {@link WeaponType} against every armor **material** a living target can wear (the unarmored material
- * `0` plus each `[armortype]` record's `materialType`), tabulating the damage the weapon lands —
- * `weapon.damage[material]`, the value the original pre-resolves per material. **No mitigation is
- * subtracted** (armor works by column selection; the uniform `blockingValue 5` has an unknown engine
- * role — source basis), and the structure columns {@link ARMOR_MATERIAL.WOOD}/`HOUSE` are NOT
- * rows here — they are the vs-tree/vs-building views ({@link damageVsWood}/{@link damageVsBuilding}),
- * not a living target's armor. No mechanic is added (nothing is hit, no entity loses hitpoints); this
- * is the static damage *lookup* the combat atomics read, surfaced once so a hit doesn't re-walk the
- * two tables.
+ * The combat damage table as a derived read view over `content` — the read half of the CombatSystem: it
+ * joins each {@link WeaponType} against every armor material a living target can wear (the unarmored material
+ * `0` plus each `[armortype]` record's `materialType`), tabulating the damage the weapon lands
+ * (`weapon.damage[material]`). No mitigation is subtracted (armor works by column selection; the uniform
+ * `blockingValue 5` has an unknown engine role — source basis), and the structure columns
+ * {@link ARMOR_MATERIAL.WOOD}/`HOUSE` are not rows here — they are the vs-tree/vs-building views
+ * ({@link damageVsWood}/{@link damageVsBuilding}). This is the static lookup the combat atomics read,
+ * surfaced once so a hit doesn't re-walk the two tables.
  *
- * The materials covered are the **union** of the unarmored material `0` and every `content.armor`
- * record's `materialType` (== `typeId` for the four base armors), sorted ascending — so every armor
- * tier gets a row and a weapon that lists no value for a tier still gets a `0`-damage row for it.
+ * The materials covered are the union of the unarmored material `0` and every `content.armor` record's
+ * `materialType` (== `typeId` for the four base armors), sorted ascending — so every armor tier gets a row
+ * and a weapon that lists no value for a tier still gets a `0`-damage row.
  *
- * Returned as an **array of {@link CombatProfile}**, one per `content.weapons` entry, in source array
- * order — **not** a Map keyed by weapon identity, deliberately: no weapon key is globally unique. A
- * `WeaponType.typeId` recurs per tribe (`2 = "fist"` for every tribe), so we carry the composite
- * `(tribeType, typeId)` `key`; but the real **animal** weapons reuse even that pair (tribe 5 has both
- * `chicken` and `claw` at typeId 1; tribe 8 lists `bearfist` twice), so a Map keyed on the composite
- * would silently drop those records (last-wins). An array loses nothing — every weapon gets a profile —
- * which a read view must guarantee. Each profile's `rows` are sorted ascending by `material`.
+ * Returned as an array of {@link CombatProfile}, one per `content.weapons` entry in source order — not a Map
+ * keyed by weapon identity, deliberately: no weapon key is globally unique. A `WeaponType.typeId` recurs per
+ * tribe (`2 = "fist"` for every tribe), so we carry the composite `(tribeType, typeId)` `key`; but the animal
+ * weapons reuse even that pair (tribe 5 has both `chicken` and `claw` at typeId 1; tribe 8 lists `bearfist`
+ * twice), so a Map would silently drop those records (last-wins). An array loses nothing. Each profile's
+ * `rows` are sorted ascending by `material`.
  *
- * source-basis: pinned to the extracted `weapontypes` `damagevalue` params, keyed by the victim's armor
- * `materialType` (`logicdefines.inc ARMOR_MATERIAL_TYPE`) — the original's own column-selection model
- * (see source basis "Combat damage read side"). It adds no behavior (no hit resolution, no
- * hitpoints, no targeting) and invents no data. The *combat behavior* (who hits whom, when, the
- * hitpoint loop) is a separate mechanic — this is only its lookup table.
- *
- * Determinism: a pure function of `content` (no world, no RNG, no wall-clock); the material union is
- * built by walking the armor `materialType`s into a Set then **sorting**, and the profiles keep
- * `content.weapons` array order, so the same content yields a byte-identical array every call.
+ * source-basis: the extracted `weapontypes` `damagevalue` params, keyed by the victim's armor `materialType`
+ * (`logicdefines.inc ARMOR_MATERIAL_TYPE`) — the original's own column-selection model (source basis "Combat
+ * damage read side"). It adds no behavior — this is only the lookup table for a separate combat mechanic.
  */
 export function combatDamage(content: ContentSet): CombatProfile[] {
-  // The armor materials a LIVING target can wear: the unarmored material 0 + every armor record's
-  // materialType. The structure columns (6/7) are NOT rows — they are damageVsWood/damageVsBuilding.
+  // The armor materials a living target can wear: the unarmored material 0 + every armor record's
+  // materialType. The structure columns (6/7) are not rows — they are damageVsWood/damageVsBuilding.
   const materials = new Set<number>([ARMOR_MATERIAL.NONE]);
   for (const armor of content.armor) materials.add(armorMaterialOf(armor) ?? armor.typeId);
   const sorted = [...materials].sort((a, b) => a - b);
@@ -205,12 +189,11 @@ export function combatDamage(content: ContentSet): CombatProfile[] {
 }
 
 /**
- * The composite key naming a weapon's cross-ref identity — `"<tribeType>:<typeId>"`. A
- * `WeaponType.typeId` is NOT globally unique (the same id recurs once per tribe — `2 = "fist"` for
- * every tribe), so a weapon is keyed by **both** ids; a weapon with no `tribeType` keys under the
- * empty-tribe slot (`":<typeId>"`). Mirrors how the extractor keys `weapontypes` by `(tribeType,
- * typeId)` (see AGENTS.md `[bfe2491]`). NOTE even this pair is reused by a few animal weapons,
- * so it identifies a weapon's *class* but is not a unique key — see {@link combatDamage}.
+ * The composite key naming a weapon's cross-ref identity — `"<tribeType>:<typeId>"`. A `WeaponType.typeId` is
+ * not globally unique (it recurs once per tribe — `2 = "fist"` for every tribe), so a weapon is keyed by both
+ * ids; a weapon with no `tribeType` keys under the empty-tribe slot (`":<typeId>"`). Mirrors how the extractor
+ * keys `weapontypes` by `(tribeType, typeId)`. Even this pair is reused by a few animal weapons, so it
+ * identifies a weapon's class but is not a unique key — see {@link combatDamage}.
  */
 export function weaponKey(weapon: Pick<WeaponType, 'tribeType' | 'typeId'>): string {
   return `${weapon.tribeType ?? ''}:${weapon.typeId}`;
