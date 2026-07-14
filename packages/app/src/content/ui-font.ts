@@ -17,6 +17,11 @@
 /** The text fill colours (shared with the bitmap font's fallback), re-exported so callers import one name. */
 export { FONT_FILL as UI_TEXT_FILL } from './font-gfx.js';
 
+/** A Pixi `Text` top-anchors at its line-box top, this fraction of the font size above the visible cap
+ *  tops (measured for Tinos: `fontBoundingBoxAscent − actualBoundingBoxAscent ≈ 0.22 em`). Both text kits
+ *  subtract it so a caller's `y` means the visible glyph top, matching the bitmap path's baseline contract. */
+export const CAP_TOP_RATIO = 0.22;
+
 /** The registered family name (both subsets share it); paired with a serif fallback stack in {@link UiFont}. */
 const UI_FONT_FAMILY = 'OpenNorthlandUi';
 /**

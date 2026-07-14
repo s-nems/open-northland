@@ -1,6 +1,6 @@
 import { type Container, Text } from 'pixi.js';
 import type { FontColorName } from '../../content/font-gfx.js';
-import { UI_TEXT_FILL } from '../../content/ui-font.js';
+import { CAP_TOP_RATIO, UI_TEXT_FILL } from '../../content/ui-font.js';
 import type { Rect } from '../geometry.js';
 
 /**
@@ -21,13 +21,6 @@ export type FontVariant = 'body' | 'title';
  * the serif's smaller x-height.
  */
 const FONT_PX: Readonly<Record<FontVariant, number>> = { body: 11, title: 13 };
-/**
- * A `Text` top-anchors at its line-box top, which sits this fraction of the font size above the visible cap
- * tops (measured for Tinos: `fontBoundingBoxAscent − actualBoundingBoxAscent ≈ 0.22 em`). Top-anchored
- * placements ({@link TextKit.textAt}/{@link TextKit.textRight}) subtract it so a caller's `y` means the
- * visible glyph top.
- */
-const CAP_TOP_RATIO = 0.22;
 /**
  * A tiny vertical nudge (native px) added when centring a line in a rect: Pixi measures a `Text` by its
  * full ascent+descent line box, so the visible caps sit a hair high — this drops them to the optical centre.

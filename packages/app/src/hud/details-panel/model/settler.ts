@@ -8,6 +8,7 @@ import {
   type Comp,
   goodDef,
   goodLabel,
+  recipeOutputs,
   type UnitPanelModelContext,
 } from './context.js';
 
@@ -208,7 +209,7 @@ export function settlerWork(
   const ent = entityById(snapshot, workplaceId);
   const rawType = num((ent?.components.Building as { buildingType?: unknown } | undefined)?.buildingType);
   const def = buildingDef(ctx, rawType);
-  const outputs = def?.recipe?.outputs ?? def?.produces?.map((goodType) => ({ goodType, amount: 1 })) ?? [];
+  const outputs = recipeOutputs(def);
   const product = outputs[0] === undefined ? undefined : goodLabel(ctx, outputs[0].goodType);
   return { place: buildingTitle(ctx, rawType), product: product ?? carried ?? '-' };
 }

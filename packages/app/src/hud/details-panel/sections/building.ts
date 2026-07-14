@@ -68,6 +68,8 @@ function stockAmount(amount: number, capacity?: number): string {
   return capacity === undefined ? amount.toFixed(1) : `${amount.toFixed(1)} / ${capacity.toFixed(1)}`;
 }
 
+/** Draw the building details panel, window by window (each section no-ops when its layout slot is absent).
+ *  Split per section to match the sibling `settler.ts`; each block is behaviour-preserving. */
 export function drawBuilding(
   chrome: Chrome,
   layout: BuildingLayout,
@@ -75,6 +77,23 @@ export function drawBuilding(
   ui: UiString,
   hover: ButtonAction | null,
   activeTab: number,
+  s: number,
+): void {
+  drawGeneralSection(chrome, layout, model, ui, hover, s);
+  drawConstructionSection(chrome, layout, model, s);
+  drawDefenceSection(chrome, layout, model, ui, s);
+  drawProductionSection(chrome, layout, model, s);
+  drawStockSection(chrome, layout, model, ui, activeTab, s);
+  drawWorkersSection(chrome, layout, model, ui, s);
+}
+
+/** General window: the building preview bob, the name row + selected underline, and the action buttons. */
+function drawGeneralSection(
+  chrome: Chrome,
+  layout: BuildingLayout,
+  model: BuildingPanelModel,
+  ui: UiString,
+  hover: ButtonAction | null,
   s: number,
 ): void {
   chrome.window(layout.general.frame);
@@ -108,196 +127,215 @@ export function drawBuilding(
       hover === hit.action,
     );
   }
+}
 
-  if (layout.construction !== null && model.construction !== null) {
-    // The Construction window of a site: the health gauge that ramps with the build (the sim raises
-    // hitpoints in step with `built`) beside the numeric %, then one stock-style row per material line
-    // reading "delivered / needed". No extracted title exists for a site window — 'Construction' is a
-    // named approximation (English pending the i18n pass), like 'Produkcja'.
-    chrome.window(layout.construction.frame);
-    chrome.headline(layout.construction.title, 'Construction');
-    const body = layout.construction.body;
-    const rowH = Math.round(STOCK_ROW_H * s);
-    chrome.textAt(`${model.builtPct}%`, body.x, body.y + ROW_TEXT_PAD * s, 'white');
-    const barX = body.x + Math.round(CONSTRUCTION_BAR_LEFT * s);
-    chrome.bar(
-      {
-        x: barX,
-        y: body.y + Math.round((STOCK_ROW_H - BAR_H) * s) / 2,
-        w: body.x + body.w - barX,
-        h: Math.round(BAR_H * s),
-      },
-      model.construction.hpPct ?? model.builtPct,
-      'gauge',
-    );
-    model.construction.rows.forEach((row, i) => {
-      const rowY = body.y + (i + 1) * rowH;
-      const icon: Rect = {
-        x: body.x,
-        y: rowY + Math.round(s),
-        w: Math.round(STOCK_ICON_W * s),
-        h: rowH - Math.round(2 * s),
-      };
-      const plate: Rect = {
-        x: body.x + icon.w,
-        y: rowY + Math.round((STOCK_ROW_H - STOCK_PLATE_H) * s) / 2,
-        w: Math.round(body.w / 2),
-        h: Math.round(STOCK_PLATE_H * s),
-      };
-      chrome.stockField(plate);
-      if (row.goodId !== undefined) chrome.goodIcon(row.goodId, icon);
-      chrome.textLeftMiddle(
-        stockAmount(row.delivered, row.needed),
-        plate.x + Math.round(STOCK_AMOUNT_INSET * s),
-        plate.y + plate.h / 2,
-        'white',
-      );
-    });
-  }
-
-  if (layout.defence !== null) {
-    chrome.window(layout.defence.frame);
-    chrome.headline(layout.defence.title, ui('housewindow', HOUSEWINDOW.defence, messages().hud.defence));
-    // Light body text like the original's defence status line (screenshot-observed).
-    chrome.textAt(
-      model.defenseLabel,
-      layout.defence.body.x,
-      layout.defence.body.y + ROW_TEXT_PAD * s,
+/**
+ * Construction window (a site only): the health gauge that ramps with the build (the sim raises hitpoints
+ * in step with `built`) beside the numeric %, then one stock-style row per material line reading
+ * "delivered / needed". No extracted title exists for a site window — 'Construction' is a named
+ * approximation (English pending the i18n pass), like 'Produkcja'.
+ */
+function drawConstructionSection(
+  chrome: Chrome,
+  layout: BuildingLayout,
+  model: BuildingPanelModel,
+  s: number,
+): void {
+  if (layout.construction === null || model.construction === null) return;
+  chrome.window(layout.construction.frame);
+  chrome.headline(layout.construction.title, 'Construction');
+  const body = layout.construction.body;
+  const rowH = Math.round(STOCK_ROW_H * s);
+  chrome.textAt(`${model.builtPct}%`, body.x, body.y + ROW_TEXT_PAD * s, 'white');
+  const barX = body.x + Math.round(CONSTRUCTION_BAR_LEFT * s);
+  chrome.bar(
+    {
+      x: barX,
+      y: body.y + Math.round((STOCK_ROW_H - BAR_H) * s) / 2,
+      w: body.x + body.w - barX,
+      h: Math.round(BAR_H * s),
+    },
+    model.construction.hpPct ?? model.builtPct,
+    'gauge',
+  );
+  model.construction.rows.forEach((row, i) => {
+    const rowY = body.y + (i + 1) * rowH;
+    const icon: Rect = {
+      x: body.x,
+      y: rowY + Math.round(s),
+      w: Math.round(STOCK_ICON_W * s),
+      h: rowH - Math.round(2 * s),
+    };
+    const plate: Rect = {
+      x: body.x + icon.w,
+      y: rowY + Math.round((STOCK_ROW_H - STOCK_PLATE_H) * s) / 2,
+      w: Math.round(body.w / 2),
+      h: Math.round(STOCK_PLATE_H * s),
+    };
+    chrome.stockField(plate);
+    if (row.goodId !== undefined) chrome.goodIcon(row.goodId, icon);
+    chrome.textLeftMiddle(
+      stockAmount(row.delivered, row.needed),
+      plate.x + Math.round(STOCK_AMOUNT_INSET * s),
+      plate.y + plate.h / 2,
       'white',
     );
-  }
+  });
+}
 
-  if (layout.production !== null && model.production !== null) {
-    chrome.window(layout.production.frame);
-    // No extracted title for the production strip (the original folds it into per-building tabs) —
-    // 'Produkcja' is a named approximation.
-    chrome.headline(layout.production.title, messages().hud.production);
-    const body = layout.production.body;
-    if (model.production.kind === 'fields') {
-      // A farm's production is its live fields: the farmed good's icon + the sown/growing/ripe
-      // counters (there is no recipe/cycle to bar) — the panel's window onto the field loop.
-      const p = model.production;
-      const icon: Rect = {
-        x: body.x,
-        y: body.y + Math.round(s),
-        w: Math.round(STOCK_ICON_W * s),
-        h: Math.round(STOCK_ROW_H * s) - Math.round(2 * s),
-      };
-      if (p.goodId !== undefined) chrome.goodIcon(p.goodId, icon);
-      const counters = formatMessage(messages().hud.fieldCounters, {
-        sown: p.sown,
-        growing: p.growing,
-        ripe: p.ripe,
-      });
-      chrome.textAt(
-        counters,
-        icon.x + icon.w + Math.round(STOCK_AMOUNT_INSET * s),
-        body.y + ROW_TEXT_PAD * s,
-        'white',
-      );
-    } else {
-      // A workshop's batches: the output's icon + localized name on the first row, then one long
-      // progress bar per reserved row (`p.rows` — one row per operator slot, so a twin-staffed mill
-      // always shows two bars and the section never changes height mid-work), each filling the row
-      // from the fixed label column to the body's edge; rows without an in-flight batch draw empty.
-      const p = model.production;
-      const rowH = Math.round(STOCK_ROW_H * s);
-      const icon: Rect = {
-        x: body.x,
-        y: body.y + Math.round(s),
-        w: Math.round(STOCK_ICON_W * s),
-        h: rowH - Math.round(2 * s),
-      };
-      if (p.goodId !== undefined) chrome.goodIcon(p.goodId, icon);
-      chrome.textAt(
-        p.label,
-        icon.x + icon.w + Math.round(STOCK_AMOUNT_INSET * s),
-        body.y + ROW_TEXT_PAD * s,
-        'white',
-      );
-      const barX = body.x + Math.round(PRODUCTION_BAR_LEFT * s);
-      const bars = Array.from({ length: p.rows }, (_, i) => p.pcts[i] ?? 0);
-      bars.forEach((pct, i) => {
-        chrome.bar(
-          {
-            x: barX,
-            y: body.y + i * rowH + Math.round((STOCK_ROW_H - BAR_H) * s) / 2,
-            w: body.x + body.w - barX,
-            h: Math.round(BAR_H * s),
-          },
-          pct,
-        );
-      });
-    }
-  }
+/** Defence window: the original's single status line. */
+function drawDefenceSection(
+  chrome: Chrome,
+  layout: BuildingLayout,
+  model: BuildingPanelModel,
+  ui: UiString,
+  s: number,
+): void {
+  if (layout.defence === null) return;
+  chrome.window(layout.defence.frame);
+  chrome.headline(layout.defence.title, ui('housewindow', HOUSEWINDOW.defence, messages().hud.defence));
+  // Light body text like the original's defence status line (screenshot-observed).
+  chrome.textAt(model.defenseLabel, layout.defence.body.x, layout.defence.body.y + ROW_TEXT_PAD * s, 'white');
+}
 
-  if (layout.stock !== null) {
-    chrome.window(layout.stock.frame);
-    chrome.headline(layout.stock.title, ui('housewindow', HOUSEWINDOW.stock, messages().hud.stock));
-    // A compact store (every good fits at once) has no category tabs and lists all its rows; only the
-    // full fixed-height store filters by the active tab (the dynamic-magazyn rule — see layout.ts).
-    if (!layout.stockCompact) drawStockTabs(chrome, layout.stockTabHits, activeTab, s);
-    const body = layout.stock.body;
-    // The fixed cell grid both the drawing and the hover hit-test share (column-major, two columns).
-    const slots = stockSlotRects(body, s, layout.stockRows);
-    const cellH = Math.round(STOCK_ROW_H * s);
-    // A compact store keeps the model's declared slot order, stable while amounts change (the mill's
-    // Pszenica/Mąka must not swap mid-work); only the big tabbed store bubbles held goods to the top —
-    // there the fixed row cap hides overflow, so actual stock earns its place above the fold. The sort
-    // is stable, so ties keep the declared order.
-    const inTab = layout.stockCompact ? model.stock : model.stock.filter((row) => row.category === activeTab);
-    const rows = layout.stockCompact
-      ? inTab
-      : [...inTab].sort((a, b) => (b.amount > 0 ? 1 : 0) - (a.amount > 0 ? 1 : 0));
-    const shown = rows.slice(0, layout.stockRows * 2);
-    shown.forEach((row, i) => {
-      const slot = slots[i];
-      if (slot === undefined) return;
-      // Icon, plate and amount all share the row's vertical centre so a row reads on one level: the icon box
-      // is inset symmetrically (top+bottom) instead of top-anchored, and the amount centres in the plate.
-      const icon: Rect = {
-        x: slot.x,
-        y: slot.y + Math.round(s),
-        w: Math.round(STOCK_ICON_W * s),
-        h: cellH - Math.round(2 * s),
-      };
-      const plate: Rect = {
-        x: slot.x + icon.w,
-        y: slot.y + Math.round((STOCK_ROW_H - STOCK_PLATE_H) * s) / 2,
-        w: slot.w - icon.w,
-        h: Math.round(STOCK_PLATE_H * s),
-      };
-      chrome.stockField(plate);
-      // The good's recoloured pile icon sits on the wood, left of the amount plate (drawn after the plate
-      // so a slightly oversized pile overlaps its edge rather than being clipped) — the original's row look.
-      if (row.goodId !== undefined) chrome.goodIcon(row.goodId, icon);
-      // The amount sits left-inset next to the icon, vertically centred on the plate's centre line (not
-      // top-anchored) — leaving the number left-aligned as in the original row.
-      chrome.textLeftMiddle(
-        stockAmount(row.amount, row.capacity),
-        plate.x + Math.round(STOCK_AMOUNT_INSET * s),
-        plate.y + plate.h / 2,
-        'white',
+/**
+ * Production window ('Produkcja' is a named approximation — no extracted title): a farm shows its live
+ * field counters (sown/growing/ripe, no recipe to bar); a workshop shows the output icon + name and one
+ * long progress bar per reserved operator row, so a twin-staffed mill always shows two and the section
+ * never changes height mid-work.
+ */
+function drawProductionSection(
+  chrome: Chrome,
+  layout: BuildingLayout,
+  model: BuildingPanelModel,
+  s: number,
+): void {
+  if (layout.production === null || model.production === null) return;
+  chrome.window(layout.production.frame);
+  chrome.headline(layout.production.title, messages().hud.production);
+  const body = layout.production.body;
+  if (model.production.kind === 'fields') {
+    const p = model.production;
+    const icon: Rect = {
+      x: body.x,
+      y: body.y + Math.round(s),
+      w: Math.round(STOCK_ICON_W * s),
+      h: Math.round(STOCK_ROW_H * s) - Math.round(2 * s),
+    };
+    if (p.goodId !== undefined) chrome.goodIcon(p.goodId, icon);
+    const counters = formatMessage(messages().hud.fieldCounters, {
+      sown: p.sown,
+      growing: p.growing,
+      ripe: p.ripe,
+    });
+    chrome.textAt(
+      counters,
+      icon.x + icon.w + Math.round(STOCK_AMOUNT_INSET * s),
+      body.y + ROW_TEXT_PAD * s,
+      'white',
+    );
+  } else {
+    const p = model.production;
+    const rowH = Math.round(STOCK_ROW_H * s);
+    const icon: Rect = {
+      x: body.x,
+      y: body.y + Math.round(s),
+      w: Math.round(STOCK_ICON_W * s),
+      h: rowH - Math.round(2 * s),
+    };
+    if (p.goodId !== undefined) chrome.goodIcon(p.goodId, icon);
+    chrome.textAt(
+      p.label,
+      icon.x + icon.w + Math.round(STOCK_AMOUNT_INSET * s),
+      body.y + ROW_TEXT_PAD * s,
+      'white',
+    );
+    const barX = body.x + Math.round(PRODUCTION_BAR_LEFT * s);
+    const bars = Array.from({ length: p.rows }, (_, i) => p.pcts[i] ?? 0);
+    bars.forEach((pct, i) => {
+      chrome.bar(
+        {
+          x: barX,
+          y: body.y + i * rowH + Math.round((STOCK_ROW_H - BAR_H) * s) / 2,
+          w: body.x + body.w - barX,
+          h: Math.round(BAR_H * s),
+        },
+        pct,
       );
     });
-    if (rows.length > shown.length) {
-      chrome.textRight(
-        `+${rows.length - shown.length}`,
-        body.x + body.w,
-        body.y - Math.round(2 * s),
-        'dimmed',
-      );
-    }
   }
+}
 
+/**
+ * Stock window (Magazyn): a compact store lists every good in its declared slot order (stable while amounts
+ * change); the full fixed-height store shows the active category tab and bubbles held goods above the fold.
+ */
+function drawStockSection(
+  chrome: Chrome,
+  layout: BuildingLayout,
+  model: BuildingPanelModel,
+  ui: UiString,
+  activeTab: number,
+  s: number,
+): void {
+  if (layout.stock === null) return;
+  chrome.window(layout.stock.frame);
+  chrome.headline(layout.stock.title, ui('housewindow', HOUSEWINDOW.stock, messages().hud.stock));
+  if (!layout.stockCompact) drawStockTabs(chrome, layout.stockTabHits, activeTab, s);
+  const body = layout.stock.body;
+  // The fixed cell grid both the drawing and the hover hit-test share (column-major, two columns).
+  const slots = stockSlotRects(body, s, layout.stockRows);
+  const cellH = Math.round(STOCK_ROW_H * s);
+  const inTab = layout.stockCompact ? model.stock : model.stock.filter((row) => row.category === activeTab);
+  const rows = layout.stockCompact
+    ? inTab
+    : [...inTab].sort((a, b) => (b.amount > 0 ? 1 : 0) - (a.amount > 0 ? 1 : 0));
+  const shown = rows.slice(0, layout.stockRows * 2);
+  shown.forEach((row, i) => {
+    const slot = slots[i];
+    if (slot === undefined) return;
+    // Icon, plate and amount all share the row's vertical centre so a row reads on one level: the icon box
+    // is inset symmetrically (top+bottom) instead of top-anchored, and the amount centres in the plate.
+    const icon: Rect = {
+      x: slot.x,
+      y: slot.y + Math.round(s),
+      w: Math.round(STOCK_ICON_W * s),
+      h: cellH - Math.round(2 * s),
+    };
+    const plate: Rect = {
+      x: slot.x + icon.w,
+      y: slot.y + Math.round((STOCK_ROW_H - STOCK_PLATE_H) * s) / 2,
+      w: slot.w - icon.w,
+      h: Math.round(STOCK_PLATE_H * s),
+    };
+    chrome.stockField(plate);
+    // The pile icon is drawn after the plate so a slightly oversized pile overlaps its edge, not clips.
+    if (row.goodId !== undefined) chrome.goodIcon(row.goodId, icon);
+    chrome.textLeftMiddle(
+      stockAmount(row.amount, row.capacity),
+      plate.x + Math.round(STOCK_AMOUNT_INSET * s),
+      plate.y + plate.h / 2,
+      'white',
+    );
+  });
+  if (rows.length > shown.length) {
+    chrome.textRight(`+${rows.length - shown.length}`, body.x + body.w, body.y - Math.round(2 * s), 'dimmed');
+  }
+}
+
+/** Workers window: a compact per-trade limits strip ("Kowal 1/3 · Tragarz 1/1"), leaving the field below
+ *  free for the animated worker sprites (drawn by the panel's own pass — see panel.ts). A site hides the
+ *  strip (the slots describe the finished building; the field shows the live build crew instead). */
+function drawWorkersSection(
+  chrome: Chrome,
+  layout: BuildingLayout,
+  model: BuildingPanelModel,
+  ui: UiString,
+  s: number,
+): void {
   chrome.window(layout.workers.frame);
   chrome.headline(layout.workers.title, ui('housewindow', HOUSEWINDOW.workers, messages().hud.workers));
   const body = layout.workers.body;
-  // The per-trade limits are one compact strip right under the header ("Kowal 1/3 · Tragarz 1/1 ·
-  // Zbieracz 0/1"), leaving the field below free for the animated worker sprites (drawn on-map style,
-  // without terrain, by the panel's own sprite pass — see panel.ts).
-  // A construction site hides the strip — the slots describe the finished building's trades; the field
-  // instead shows the live building crew (the overlay's site selector).
   const limits =
     model.construction === null
       ? model.workerSlots.map((r) => `${r.label} ${r.filled}/${r.capacity}`).join('  ·  ')

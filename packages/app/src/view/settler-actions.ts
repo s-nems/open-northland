@@ -9,10 +9,10 @@ import {
   type ActionButton,
   type ActionRingLayout,
   actionRingScale,
-  HUMAN_DEFAULT_MENU,
   hitTestActionRing,
   layoutActionRing,
 } from '../hud/action-ring-layout.js';
+import { HUMAN_DEFAULT_MENU } from '../hud/action-ring-menu.js';
 import { type Messages, messages } from '../i18n/index.js';
 import { createActionRingVisuals } from './action-ring-visuals.js';
 import { clientToScreen } from './camera.js';

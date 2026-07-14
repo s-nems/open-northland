@@ -36,7 +36,7 @@ export function barTone(pct: number): BarTone {
 }
 
 /** Round to an integer percent clamped into the drawable 0..100 bar range. */
-export function clampPct(n: number): number {
+function clampPct(n: number): number {
   return Math.max(0, Math.min(100, Math.round(n)));
 }
 

@@ -1,7 +1,7 @@
 import type { Texture } from 'pixi.js';
 import type { FontColorName } from '../../content/font-gfx.js';
 import type { UiString } from '../../content/gui-gfx.js';
-import type { TextRun } from '../bitmap-text.js';
+import type { TextRun } from '../text-run.js';
 import type { ToolPanelLayout } from './layout.js';
 
 /** The original window/button bitmap fills the pop-up windows tile for the in-game wood look (or `undefined`

@@ -1,26 +1,17 @@
 import { contains, type Rect } from './geometry.js';
 
 /**
- * The settler action menu — the contextual command buttons that fan out around a selected settler, with
- * geometry transcribed from the original engine and the button→icon assignment approximated.
+ * The settler action menu's geometry — the radial arm footprint the contextual command buttons fan out on
+ * around a selected settler, transcribed from the original engine. The menu content (which buttons, which
+ * icons) is plain data in `action-ring-menu.ts`.
  *
  * Original behaviour (OpenVikings `Source/NC2InGameGuiManager/CGuiManager.cs`): selecting 1–2 humans brings
  * up `BuildHumanActionButtons`, which lays the human's available commands out as small round gfx buttons in
  * up to five groups (group-type 0..4), each group a short row/column on one side of a 0xE8 (232) px box
  * centred on the cursor. This module reproduces that arm footprint (the 100 px arm offset, the 0x20 button
  * + step, the ∓5 corner nudge, the centring around the unit) — the part recoverable from the decompile.
- * What the decompile does not recover: which command maps to which gfx id (the engine's
- * `sHumanCommandTypeToIconId` table is an unfilled placeholder — only the 0x6B fallback is code-pinned). The
- * user supplied that binding for the civilian menu, read off the running original (clockwise from the
- * top-left), so {@link HUMAN_DEFAULT_MENU}'s command→icon assignment is user-confirmed (see source basis);
- * the warrior/scout variants remain to be read off.
- *
- * The whole default human menu renders as buttons — every arm of the original, in original art — but on
- * this slice only `open-jobs` (the "change profession" button) is wired: it opens a scrollable profession
- * list window (a DOM panel, built in `view/settler-actions.ts`); every other button is an inert
- * {@link placeholder} (tooltip only), left for a future pass (warrior/scout menus differ — a per-unit-type
- * menu is the hook). Pure geometry (no Pixi, no DOM), so the layout + hit-test + icon assignment are
- * unit-tested headlessly (the twin of `hud/tool-panel/layout.ts`).
+ * Pure geometry (no Pixi, no DOM), so the layout + hit-test are unit-tested headlessly (the twin of
+ * `hud/tool-panel/layout.ts`).
  */
 
 /** The GUI-atlas frame name (see `content/gui-atlas-map.ts`) a button draws; the view resolves it to an index. */
@@ -99,7 +90,8 @@ export function actionRingScale(uiscale: number): number {
   return Math.max(1, uiscale) * ACTION_RING_UI_FACTOR;
 }
 
-/** Group-type constants (indices into {@link ARMS}) — which arm a command family sits on. */
+/** Group-type constants (indices into {@link ARMS}) — which arm a command family sits on. Consumed by the
+ *  menu data (`action-ring-menu.ts`) and the layout tests. */
 export const BOTTOM_ARM = 0;
 export const TOP_ARM = 1;
 export const RIGHT_ARM = 2;
@@ -223,88 +215,3 @@ export function hitTestActionRing(layout: ActionRingLayout, x: number, y: number
   }
   return null;
 }
-
-// --- The default human menu (approximated — icons glyph-matched to the frame map + the user's read of the
-//     running original; every button but `open-jobs` is inert. See the file header + source basis) ------
-
-/**
- * The default order-button gfx — the only code-pinned icon: the original's `GetHumanCommandIconId` returns
- * `0x6B` for any command its (unfilled) table doesn't map (`CGuiManager.cs:2214`). The user placed frame 0x6b
- * itself in the last bottom slot, so it draws here too — the same round wooden button the original falls back to.
- */
-export const ACTION_ICON_FALLBACK = 'order_icon_fallback';
-
-/**
- * The "change profession" button — the one live default-menu button (opens the profession list window). Its
- * icon is the original's two-screws glyph (frame `order_change_profession`, user-identified off the running game).
- */
-const CHANGE_JOB: ActionButton = {
-  kind: 'open-jobs',
-  id: 'changeProfession',
-  icon: 'order_change_profession',
-};
-
-/** Build an inert default-menu button. */
-const placeholder = (id: string, icon: ActionIconFrame): ActionButton => ({
-  kind: 'placeholder',
-  id,
-  icon,
-});
-
-/**
- * The default menu of a civilian human, arm by arm. Each button's `icon` is the exact `ls_gui_window` frame
- * the original binds to that command — the user read the whole civilian menu off the running game
- * (clockwise from the top-left button), so this is the command→icon binding OpenVikings' unfilled
- * `sHumanCommandTypeToIconId` table could not recover. The frame names are glyph descriptions (from the
- * montage), so a command's icon name needn't match its label (the binding is arbitrary — e.g. the "eat"
- * command draws `order_assign_work`); the id + label carry the command, the icon carries the frame.
- *
- * Meant to become dynamic: a warrior and a scout show slightly different arms, and per-state buttons
- * appear/vanish (e.g. marriage hides once the settler is married). The hook is to keep the menu as plain
- * data — a future `menuFor(unitType, state)` returns the arm list, filtering by the stable button `id` and
- * swapping the per-unit-type variant. Only `open-jobs` fires today; every other button is an inert placeholder.
- */
-export const HUMAN_DEFAULT_MENU: readonly ActionGroup[] = [
-  // Top row, left→right (0x70 change-profession, 0x86 hammer, 0x6e "!", 0x63 "?").
-  {
-    group: TOP_ARM,
-    buttons: [
-      CHANGE_JOB,
-      placeholder('build', 'order_construct'),
-      placeholder('alert', 'order_alert'),
-      placeholder('query', 'order_query'),
-    ],
-  },
-  // Left column, top→bottom (0x76 attack, 0x77 house, 0x78 animal, 0x79 vehicle).
-  {
-    group: LEFT_ARM,
-    buttons: [
-      placeholder('attack', 'order_spearman'),
-      placeholder('assign_house', 'order_house'),
-      placeholder('animal', 'order_animal'),
-      placeholder('vehicle', 'order_transport'),
-    ],
-  },
-  // Bottom row, left→right (0x68 marry, 0x7e pray, 0x7d talk, 0x6c sleep, 0x7b eat, 0x6b fallback/last).
-  {
-    group: BOTTOM_ARM,
-    buttons: [
-      placeholder('marry', 'order_marry'),
-      placeholder('pray', 'order_pray'),
-      placeholder('talk', 'order_figure_hand'),
-      placeholder('sleep', 'unknown_108'),
-      placeholder('eat', 'order_assign_work'),
-      placeholder('bottom_last', ACTION_ICON_FALLBACK),
-    ],
-  },
-  // Right column, top→bottom (0x81, 0x60, 0x7f, 0x65) — the four "house assignment" buttons.
-  {
-    group: RIGHT_ARM,
-    buttons: [
-      placeholder('house_a', 'order_house_repair'),
-      placeholder('house_b', 'order_build'),
-      placeholder('house_c', 'order_crest'),
-      placeholder('house_d', 'order_house_enter'),
-    ],
-  },
-];
