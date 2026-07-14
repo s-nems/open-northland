@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { type BuildingFootprint, type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
 import type { Args } from '../../args.js';
@@ -34,6 +34,7 @@ import {
   parseIniSections,
   type SourceRef,
 } from '../../decoders/ini.js';
+import { writeJsonFile } from '../game-file.js';
 import { decodeMapTree } from '../maps/index.js';
 import { applyBuildingGraphicsOverlays } from './building-overlays.js';
 import { loadCifTable } from './cif-tables.js';
@@ -198,7 +199,6 @@ export async function buildIr(args: Args): Promise<ContentSet> {
  */
 export async function writeIr(args: Args): Promise<ContentSet> {
   const set = await buildIr(args);
-  await mkdir(args.out, { recursive: true });
-  await writeFile(join(args.out, 'ir.json'), `${JSON.stringify(set, null, 2)}\n`);
+  await writeJsonFile(args.out, 'ir.json', set);
   return set;
 }

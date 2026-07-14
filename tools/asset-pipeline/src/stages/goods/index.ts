@@ -1,4 +1,3 @@
-import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { decodeBmd } from '../../decoders/bmd/index.js';
 import {
@@ -6,6 +5,7 @@ import {
   emitIndexedAndPreviewAtlas,
   identityPalette,
   readGameFile,
+  writeJsonFile,
   writeLutPng,
 } from '../game-file.js';
 import { buildGoodIcons, GOODS_ATLAS_STEM, type GoodIcon, loadGoods } from './icons.js';
@@ -154,8 +154,7 @@ export async function convertGoodsStage(gameDir: string, outDir: string): Promis
     icons,
     names,
   };
-  await mkdir(join(outDir, GOODS_CONTENT_DIR), { recursive: true });
-  await writeFile(join(outDir, GOODS_CONTENT_DIR, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+  await writeJsonFile(outDir, join(GOODS_CONTENT_DIR, 'manifest.json'), manifest);
 
   return { frames, palettes: paletteNames.length, icons: Object.keys(icons).length };
 }

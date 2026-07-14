@@ -1,4 +1,3 @@
-import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { decodeFnt, type FontMetrics, fontMetrics } from '../decoders/fnt.js';
 import {
@@ -7,6 +6,7 @@ import {
   identityPalette,
   type PaletteLutResult,
   readGameFile,
+  writeJsonFile,
 } from './game-file.js';
 
 /**
@@ -187,10 +187,9 @@ export async function convertFonts(
       continue;
     }
 
-    await mkdir(join(outDir, FONTS_CONTENT_DIR), { recursive: true });
     const metricsPath = join(FONTS_CONTENT_DIR, `${src.key}.metrics.json`);
     const metricsFile: FontMetricsFile = { key: src.key, stem: src.stem, variant: src.variant, ...metrics };
-    await writeFile(join(outDir, metricsPath), `${JSON.stringify(metricsFile, null, 2)}\n`);
+    await writeJsonFile(outDir, metricsPath, metricsFile);
 
     done.push({
       key: src.key,
@@ -238,8 +237,7 @@ export async function convertFontStage(gameDir: string, outDir: string): Promise
     fonts,
     colorLut: { stem: colors.stem, names: colors.names },
   };
-  await mkdir(join(outDir, FONTS_CONTENT_DIR), { recursive: true });
-  await writeFile(join(outDir, FONTS_CONTENT_DIR, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+  await writeJsonFile(outDir, join(FONTS_CONTENT_DIR, 'manifest.json'), manifest);
 
   return {
     fonts: fonts.length,

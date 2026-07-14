@@ -7,9 +7,10 @@ import { buildPlayerLutImage } from '../decoders/player-palette.js';
 import { encodePng } from '../decoders/png.js';
 
 /**
- * Small helpers shared by the loose-file extraction stages (`gui`, `fonts`): reading straight from an owned
- * game tree (rather than the unpacked `.lib` output), and writing a bob atlas into the `/bobs/` content
- * tree. Kept here so a stage never imports another stage just for a shared read/write helper.
+ * Shared read/write helpers for the extraction stages (`bmd`, `goods`, `gui`, `fonts`, `pcx`,
+ * `player-colors`): reading straight from an owned game tree (rather than the unpacked `.lib` output),
+ * packing/writing bob atlases and palette LUTs into the `/bobs/` content tree, and writing JSON
+ * artifacts. Kept here so a stage never imports another stage just for a shared read/write helper.
  */
 
 /** The `content/` subtree served at the app's `/bobs/` route (bob atlases + the player/GUI/font colour LUTs). */
@@ -42,6 +43,16 @@ export async function readGameFile(gameDir: string, relPath: string): Promise<Ui
   const match = names.find((n) => n.toLowerCase() === want);
   if (match === undefined) throw new Error(`${relPath} not found under ${gameDir}`);
   return readFile(join(dir, match));
+}
+
+/**
+ * Writes `value` as pretty-printed JSON (2-space indent, trailing newline) to `<outDir>/<relPath>`,
+ * creating the parent directory. The shared JSON-artifact writer the stage manifest/metrics emits end with.
+ */
+export async function writeJsonFile(outDir: string, relPath: string, value: unknown): Promise<void> {
+  const path = join(outDir, relPath);
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(path, `${JSON.stringify(value, null, 2)}\n`);
 }
 
 /**

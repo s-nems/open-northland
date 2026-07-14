@@ -1,7 +1,6 @@
-import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { decodeCifStringTable } from '../../decoders/ini.js';
-import { readGameFile } from '../game-file.js';
+import { readGameFile, writeJsonFile } from '../game-file.js';
 import { GUI_CONTENT_DIR } from './paths.js';
 
 /** The nine in-game GUI string tables (files are `ingamegui<table>.cif` under `Data/text/<lang>/strings/ingamegui/`). */
@@ -60,9 +59,8 @@ export async function convertGuiStrings(
       stringCount += Object.keys(byId).length;
     }
     if (tableCount === 0) continue; // no tables for this language — emit nothing
-    await mkdir(join(outDir, GUI_CONTENT_DIR, 'strings'), { recursive: true });
     const path = join(GUI_CONTENT_DIR, 'strings', `${lang}.json`);
-    await writeFile(join(outDir, path), `${JSON.stringify(tables, null, 2)}\n`);
+    await writeJsonFile(outDir, path, tables);
     done.push({ lang, path, tables: tableCount, strings: stringCount });
   }
   return done;
