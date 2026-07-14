@@ -18,6 +18,7 @@ import {
   CHOP_SEQ,
   EAT_ATOMIC,
   HAMMER_SEQ,
+  HAMMER_TICKS_PER_FRAME,
   PICKUP_SEQ,
   PRAY_ATOMIC,
   REAP_SEQ,
@@ -57,16 +58,21 @@ export interface CharacterSpec {
   /** Prefix of this body's per-good carry cycles (`<prefix><good>`), when the body has any. */
   readonly carryPrefix?: string;
   /** Atomic id → its action sequence on this body (the `setatomic` join, e.g. the woodcut swing). */
-  readonly atomics?: Readonly<Record<number, { readonly seq: string; readonly phaseStart?: number }>>;
+  readonly atomics?: Readonly<
+    Record<number, { readonly seq: string; readonly phaseStart?: number; readonly ticksPerFrame?: number }>
+  >;
   /**
    * Atomic id → the action sequence whose DIRECTIONAL layout comes from the extracted `[gfxanimatomic]`
    * per-`<dir>` frame lists (the farmer's field clips) — for a clip that is neither a clean ×8 strip nor
    * a facing-locked one-off, the frame lists ARE the per-facing cut. {@link characterBinding} builds a
    * render `FrameListAnim` from the per-ATOMIC lists table (`actionFrameLists`), exactly the attack
    * swing's mechanism generalized beyond action 81. A seq that resolves here overrides any plain
-   * {@link atomics} fallback entry for the same id; missing data leaves the fallback in place.
+   * {@link atomics} fallback entry for the same id; missing data leaves the fallback in place. An
+   * object entry adds a per-clip cadence override (the hammer's half-speed swing).
    */
-  readonly dirListAtomics?: Readonly<Record<number, string>>;
+  readonly dirListAtomics?: Readonly<
+    Record<number, string | { readonly seq: string; readonly ticksPerFrame?: number }>
+  >;
   /**
    * The combat attack swing bobseq NAME (the `[gfxanimatomic]` action-81 `gfxbobseqbody` for this look's
    * viking job), bound to {@link ATTACK_ATOMIC}. Unlike {@link atomics}, its directional layout comes
@@ -109,7 +115,8 @@ export const CHARACTER_SPECS = {
       [IRON_HARVEST_ATOMIC]: { seq: STONECRUSH_SEQ }, // iron — the shared mining strike (faithful job→clip map)
       [GOLD_HARVEST_ATOMIC]: { seq: STONECRUSH_SEQ }, // gold — the shared mining strike (faithful job→clip map)
       [MUSHROOM_HARVEST_ATOMIC]: { seq: PICKUP_SEQ }, // mushroom — a bend-and-pluck (observed)
-      [BUILD_HOUSE_ATOMIC]: { seq: HAMMER_SEQ }, // builder — the construction hammer swing
+      // Builder fallback (no gfx lists): the whole strip facing-locked, at the swing's half cadence.
+      [BUILD_HOUSE_ATOMIC]: { seq: HAMMER_SEQ, ticksPerFrame: HAMMER_TICKS_PER_FRAME },
       [EAT_ATOMIC]: { seq: 'human_man_generic_eat' },
       [SLEEP_ATOMIC]: { seq: 'human_man_generic_sleep' },
       [PRAY_ATOMIC]: { seq: 'human_man_generic_pray' },
@@ -133,6 +140,8 @@ export const CHARACTER_SPECS = {
       [WHEAT_HARVEST_ATOMIC]: REAP_SEQ,
       [PLANT_ATOMIC]: SOW_SEQ,
       [CULTIVATE_ATOMIC]: WATER_SEQ,
+      // The builder's hammer (action 39, 13 entries/dir) at half cadence — see HAMMER_TICKS_PER_FRAME.
+      [BUILD_HOUSE_ATOMIC]: { seq: HAMMER_SEQ, ticksPerFrame: HAMMER_TICKS_PER_FRAME },
     },
   },
   woman: {
