@@ -8,7 +8,6 @@ export {
   COMPASS_TO_BLOCK,
   clipDirs,
   GALLERY_DIRS,
-  type GalleryCellBox,
   type GalleryClip,
   type GalleryDirection,
   galleryBobId,

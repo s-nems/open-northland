@@ -23,7 +23,6 @@ export type { SpriteBindings, SpriteKind } from './bindings.js';
 export {
   bobKey,
   buildTimeThreshold,
-  type ConstructionDraw,
   finishedBuildingBobKeys,
   resolveBuildingDraw,
   resolveBuildingOverlayDraw,
@@ -31,7 +30,6 @@ export {
   resolveResourceDraw,
   resolveStockpileDraw,
   resolveStockpileLayerDraws,
-  unwrapBobRef,
 } from './layered.js';
 export type {
   BuildingBobRef,
