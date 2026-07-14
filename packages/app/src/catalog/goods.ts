@@ -26,7 +26,7 @@ export const EXTENDED_GOOD_TYPE_OFFSET = 100;
 export interface CatalogGood {
   /** Sandbox-scoped `goodType` (= {@link EXTENDED_GOOD_TYPE_OFFSET} + the ir.json typeId). */
   readonly typeId: number;
-  /** Stable machine id, verbatim from `ir.json` — ALSO the `ls_goods` icon-manifest key. */
+  /** Stable machine id, verbatim from `ir.json` — also the `ls_goods` icon-manifest key. */
   readonly id: string;
   /** Human English label for the HUD (e.g. `"Leather"`) — our clean-room naming. */
   readonly name: string;

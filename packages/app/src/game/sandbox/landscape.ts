@@ -16,16 +16,16 @@ import { GATHERERS, type GathererSpec, GOOD_MUD } from './ids/index.js';
  */
 
 /** The one thing the sandbox landscape derivation reads off a terrain grid — its typeId lane.
- *  Structural, so both the authored CELL grids and the sim's half-cell maps satisfy it. */
+ *  Structural, so both the authored cell grids and the sim's half-cell maps satisfy it. */
 export interface TerrainTypeIds {
   readonly typeIds: ReadonlyArray<number>;
 }
 
 // The semantic terrain-class rows (see catalog/terrain.ts — the shared vocabulary scene grids are
 // authored in and `content/collision.ts` resolves real maps into). Row ids keep the authored-scene
-// reading: sandbox typeId 1 IS water; a resolved real map lands other impassable ground there too.
+// reading: sandbox typeId 1 is water; a resolved real map lands other impassable ground there too.
 const BASE_LANDSCAPE = [
-  // Grass is the ONE plantable class — the original's `biocanplanton` ground flag (trianglepattern-
+  // Grass is the one plantable class — the original's `biocanplanton` ground flag (trianglepattern-
   // types.cif) belongs to `land` alone, so grain fields land here and nowhere else.
   { typeId: TERRAIN_OPEN, id: 'grass', walkable: true, buildable: true, plantable: true },
   { typeId: TERRAIN_IMPASSABLE, id: 'water', walkable: false, buildable: false },
@@ -74,7 +74,7 @@ function buildBlockAreas(g: GathererSpec): number[][] {
 function workAreas(g: GathererSpec): number[][] {
   const state = landscapeState(g);
   if (g.mode === 'pick') return [[1, 0, 0, 1]];
-  // Clay includes its own ANCHOR (the digger stands ON the walkable deposit — resourceWorkCell's
+  // Clay includes its own anchor (the digger stands on the walkable deposit — resourceWorkCell's
   // anchor-first rule); the blocking nodes offer the 8-neighbour ring around theirs.
   if (g.good === GOOD_MUD) {
     return [

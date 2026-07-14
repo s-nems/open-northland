@@ -34,7 +34,7 @@ import type { SceneDefinition } from './types.js';
 const MAP_W = 34;
 const MAP_H = 42;
 
-/** Rank depth (cell column per weapon class) and the shared front width, in CELLS. */
+/** Rank depth (cell column per weapon class) and the shared front width, in cells. */
 const RANK_ROWS_FIRST = 8;
 const RANK_ROWS_LAST = 32; // 25 units per rank × 4 ranks = 100 a side
 const BLUE_RANKS: readonly { job: number; weapon: number; x: number }[] = [
@@ -57,7 +57,7 @@ const RED_RANKS: readonly { job: number; weapon: number; x: number }[] = [
 const FIGHTER_HP = 1000;
 
 /** The mechanic checks below: how many fighters (of 200) must have fallen for "the battle really
- *  happened at scale", and the most living fighters ever tolerated on ONE node at the end (transient
+ *  happened at scale", and the most living fighters ever tolerated on one node at the end (transient
  *  soft overlap allows 2; 3+ standing on a node is the stacking the collision work forbids). */
 const MIN_CASUALTIES = 60;
 const MAX_FIGHTERS_PER_NODE = 2;

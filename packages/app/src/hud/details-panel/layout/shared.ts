@@ -2,13 +2,13 @@ import { WIN_PAD } from '../../chrome.js';
 import type { Rect } from '../../geometry.js';
 
 /**
- * The details panel's SHARED geometry primitives — the panel-wide metrics and the section/panel rect
+ * The details panel's shared geometry primitives — the panel-wide metrics and the section/panel rect
  * builders every kind's layout (building, settler, compact) is measured from, so the height a section
- * RESERVES and the rows a section DRAWS cannot drift apart. Metrics are design px (multiplied by uiscale
+ * reserves and the rows a section draws cannot drift apart. Metrics are design px (multiplied by uiscale
  * at build time, so consumers only see screen-px rects).
  *
  * Source basis: the original hardcodes this window's geometry in `Game.exe` (`CSelectionHouseWindow` is
- * named-only in OpenVikings, not decompiled), so every metric is an explicit approximation MEASURED off
+ * named-only in OpenVikings, not decompiled), so every metric is an explicit approximation measured off
  * native 1024×768 screenshots of the original (panel ≈322 px wide, headline ≈18 px) — pending human
  * visual sign-off. The per-kind metrics live beside their layout in `./building.ts` / `./settler.ts`.
  */
@@ -18,7 +18,7 @@ export const PANEL_W = 322;
 /** Gap between the panel and the screen's right/bottom edge. */
 export const PANEL_MARGIN = 6;
 /**
- * Vertical gap between two section windows. The original stacks them FLUSH (adjacent rope borders touch,
+ * Vertical gap between two section windows. The original stacks them flush (adjacent rope borders touch,
  * no parchment seam between), so this is 0; a positive value would show a thin background strip between
  * the workers/stock/general windows that the original doesn't have.
  */

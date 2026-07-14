@@ -25,7 +25,7 @@ import { loadUiFont, type UiFont } from '../../content/ui-font.js';
  * degrades to `null`/`undefined`/empty when `content/` is absent — the panel then draws its flat Graphics
  * fallback; the bundled font always loads (falling back to a system serif only if its woff2 is blocked).
  *
- * The bitmap fills and previews are stored as READY `Texture`s minted once here: a Pixi `Texture`
+ * The bitmap fills and previews are stored as ready `Texture`s minted once here: a Pixi `Texture`
  * registers a resize listener on its shared `TextureSource`, so minting one per rebuild (the panel
  * rebuilds on model changes) would leak listener-pinned wrappers unboundedly.
  */

@@ -62,7 +62,7 @@ const SURROUND_MAX_SPREAD = 5;
 
 const { MoveGoal, Owner, Position, Settler } = components;
 
-/** A settler placed directly at a NODE (the sim-test idiom — the spawn command rounds to cell
+/** A settler placed directly at a node (the sim-test idiom — the spawn command rounds to cell
  *  anchors, too coarse for collision geometry). Mirrors the spawn handler's component set. */
 function settlerAtNode(sim: Simulation, job: number, x: number, y: number, player: number): Entity {
   const e = sim.world.create();
@@ -138,7 +138,7 @@ function wallUnmoved(sim: Simulation): boolean {
 function surroundFormedRing(sim: Simulation): boolean {
   const got = nodesOf(sim, HUMAN_PLAYER, JOB_SOLDIER_BROADSWORD);
   if (got.length !== SURROUND_STARTS.length) return false;
-  if (new Set(got).size !== got.length) return false; // all on DISTINCT nodes — no stacking
+  if (new Set(got).size !== got.length) return false; // all on distinct nodes — no stacking
   let goalTaken = false;
   for (const key of got) {
     const [x, y] = key.split(',').map(Number);

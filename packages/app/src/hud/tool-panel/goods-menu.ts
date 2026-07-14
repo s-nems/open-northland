@@ -28,7 +28,7 @@ export interface GoodsCategoryTab {
   readonly label: string;
 }
 
-// Derived from the ONE category-label source ({@link STOCK_TAB_LABELS}) so the drop palette's tabs can't
+// Derived from the one category-label source ({@link STOCK_TAB_LABELS}) so the drop palette's tabs can't
 // drift from the Magazyn's — index === the {@link goodCategoryTab} value === array position.
 export function goodsCategories(): readonly GoodsCategoryTab[] {
   return stockTabLabels().map((label, index) => ({ index, label }));

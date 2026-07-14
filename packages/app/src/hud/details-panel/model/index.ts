@@ -30,7 +30,7 @@ import {
 } from './settler.js';
 
 /**
- * The PURE selection→panel-model half of the details panel: what the bottom-right panel shows for the
+ * The pure selection→panel-model half of the details panel: what the bottom-right panel shows for the
  * current selection, with no Pixi/DOM in sight (the headless tests exercise exactly this seam). The
  * rendering half lives in `sections.ts`/`panel.ts`. The per-selection model builders are split by domain:
  * shared context/lookups in `context.ts`, gauge primitives in `bars.ts`, the settler half in `settler.ts`,
@@ -86,7 +86,7 @@ export function buildUnitPanelModel(
 ): UnitPanelModel {
   if (selected.size === 0) return { kind: 'empty' };
 
-  // ONE entity pass classifies the whole selection (never O(selected × entities) — a marquee can hold
+  // One entity pass classifies the whole selection (never O(selected × entities) — a marquee can hold
   // hundreds of ids). Ascending-id sort keeps the single-pick branches' winner deterministic.
   const settlerIds: number[] = [];
   const buildingIds: number[] = [];

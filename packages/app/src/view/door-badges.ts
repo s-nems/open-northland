@@ -5,19 +5,19 @@ import { isBuilding, isSettler, num, positionOf } from '../game/snapshot.js';
 import { type DoorFootprint, workerIconNode } from './building-points.js';
 
 /**
- * The DOOR-BADGE projection — turn the frozen snapshot into the per-building worker tally the render
- * {@link DoorBadge} layer draws beside each staffed building's door. It reads the SAME employment binding
+ * The door-badge projection — turn the frozen snapshot into the per-building worker tally the render
+ * {@link DoorBadge} layer draws beside each staffed building's door. It reads the same employment binding
  * the sim's JobSystem writes ({@link JobAssignment}.`workplace`), so a badge appears for every worker bound
  * to a building, whether auto-assigned or player-assigned (the `assignWorker` command). Pure over the
  * snapshot + the building-type door table + a job-role classifier (unit-tested); called once per frame.
  *
- * The badge anchors at the WORKER-ICON node — the door node (anchor + `footprint.door`) shifted one node
+ * The badge anchors at the worker-icon node — the door node (anchor + `footprint.door`) shifted one node
  * right of the doorway, or the building's committed override ({@link workerIconNode} over
  * `catalog/building-tweaks.ts`), the same point the `?debug=geometry` diagram marks — converted back to a
  * fixed-point `Position` the render layer projects with the same iso math as the building sprite.
  */
 
-/** The slice of a building TYPE this projection needs: its door offset (half-cell, from the placed
+/** The slice of a building type this projection needs: its door offset (half-cell, from the placed
  *  anchor; absent → the stack anchors beside the building's anchor node) and its stable `id`, the
  *  per-building worker-icon override key. */
 export interface BuildingDoorInfo {

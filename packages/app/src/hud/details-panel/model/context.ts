@@ -45,7 +45,7 @@ export function buildingDef(ctx: UnitPanelModelContext, typeId: number | undefin
 export function buildingTitle(ctx: UnitPanelModelContext, typeId: number | undefined): string {
   if (typeId === undefined) return messages().hud.build;
   const catalog = vikingBuildingByTypeId(typeId);
-  // The panel title reads the SAME localized name the build menu shows (catalog/building-i18n.ts —
+  // The panel title reads the same localized name the build menu shows (catalog/building-i18n.ts —
   // "Farma", "Chata"), falling back to the English catalog label for a building not yet localized.
   if (catalog !== undefined) return localizedBuildingName(catalog.id, catalog.label, currentLocale());
   return buildingDef(ctx, typeId)?.id ?? `#${typeId}`;
@@ -63,7 +63,7 @@ export function goodLabel(ctx: UnitPanelModelContext, goodType: number): string 
 }
 
 /**
- * A job's display name — shared by a building's worker-slot rows AND a settler's own profession title, so
+ * A job's display name — shared by a building's worker-slot rows and a settler's own profession title, so
  * the two never drift. The shared profession catalog + i18n names a known job (a gatherer → "Zbieracz
  * drewna", carrier → "Tragarz"); a trade the catalog doesn't carry (a rebased building slot like
  * "Cieśla"/"Druid" — a bound settler's `jobType` is that same rebased id) falls back to its content job

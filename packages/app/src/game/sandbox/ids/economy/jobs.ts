@@ -10,7 +10,7 @@ export const JOB_GATHERER_MUSHROOM = 25;
 // (so it falls to the civilian body); the real carrier id (type 24) is taken by the synthetic gatherer
 // band (20..25) above.
 export const JOB_CARRIER = 26;
-// Soldier jobs ride the REAL viking `jobtypes.ini` ids (soldiers 31..41) so the render's job→body map
+// Soldier jobs ride the real viking `jobtypes.ini` ids (soldiers 31..41) so the render's job→body map
 // (`ADULT_CHARACTER_BY_JOB`) draws each class's own warrior body + weapon animation set.
 export const JOB_SOLDIER_UNARMED = 31; // soldier_unarmed — the fists warrior (empty-hand body, brawls)
 // The base, unarmed soldier (`jobtypes.ini` type 31) is also the single profession the picker offers; a
@@ -32,8 +32,8 @@ export const JOB_ARCHER_LONG = 41; // soldier_bow_long
 export const WORKER_SLOT_JOB_BASE = 1000;
 
 /**
- * The extracted worker-slot trades that are OUTDOOR RESOURCE GATHERERS (`jobtypes.ini`: 8 collector,
- * 15 hunter, 22 fisher), keyed by their ORIGINAL id. This hand-classification is an approximation because
+ * The extracted worker-slot trades that are outdoor resource gatherers (`jobtypes.ini`: 8 collector,
+ * 15 hunter, 22 fisher), keyed by their original id. This hand-classification is an approximation because
  * `ir.json` carries no role field; it agrees with `UserShouldAttachWorkPlaceAfterJobChangeFlag`.
  */
 export const EXTRACTED_GATHERER_TRADES: ReadonlySet<number> = new Set([8, 15, 22]);
@@ -48,7 +48,7 @@ export const JOB_FARMER_SLOT = WORKER_SLOT_JOB_BASE + 18;
 /** The rebased miller worker-slot job used by the generic producer drive. */
 export const JOB_MILLER_SLOT = WORKER_SLOT_JOB_BASE + 19;
 
-// The builder trade — the REAL viking `jobtypes.ini` id 7. The planner puts this job on foundations.
+// The builder trade — the real viking `jobtypes.ini` id 7. The planner puts this job on foundations.
 export const JOB_BUILDER = 7;
 // Re-exported so the sandbox id space remains the single import surface used by scenes.
 export { BUILD_HOUSE_ATOMIC } from '../../../../catalog/atomics.js';

@@ -6,7 +6,7 @@ import { DIRS } from './sequences.js';
  * The pure seq→anim primitives every settler binding builds on: turn a decoded `[bobseq]` row into a
  * {@link DirectionalAnim} range. Kept apart from the binding assembly (`bindings-demo.ts`,
  * `bindings-character.ts`) so the frame math is unit-tested without a browser and both binding halves
- * share ONE reading of "row → range".
+ * share one reading of "row → range".
  */
 
 /**
@@ -50,7 +50,7 @@ export function eightDirAnim(
 }
 
 /**
- * A `[bobseq]` row as a FACING-LOCKED clip (`dirs: 1`, the whole strip played on one facing) — the
+ * A `[bobseq]` row as a facing-locked clip (`dirs: 1`, the whole strip played on one facing) — the
  * `clipDirs` reading for a non-×8 strip (a wait/idle, the aggressive ready stance). `undefined` for a
  * missing/empty row so a caller can chain a fallback. The single-direction twin of {@link eightDirAnim};
  * takes the row directly since its callers already hold it. Pure.
@@ -62,8 +62,8 @@ export function singleDirAnim(row: BobSeqRow | undefined): DirectionalAnim | und
 
 /**
  * A good the loaded content set defines — the `(typeId, id-slug)` pair the per-good carry join keys on.
- * Passed by the entry that KNOWS which content the sim runs (the live slice's demo goods, a scene's own
- * goods), since the render binding is per-`goodType` NUMBER and those ids are content-relative.
+ * Passed by the entry that knows which content the sim runs (the live slice's demo goods, a scene's own
+ * goods), since the render binding is per-`goodType` number and those ids are content-relative.
  */
 export interface GoodRef {
   readonly typeId: number;

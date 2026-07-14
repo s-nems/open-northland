@@ -60,7 +60,7 @@ export async function renderSceneMode(
     goodNames,
     ...(footprints.size > 0 ? { buildingFootprints: footprints } : {}),
   });
-  // `?fog=off|reveal|recon` overrides the scene's own fog mode (enqueued AFTER the scene's
+  // `?fog=off|reveal|recon` overrides the scene's own fog mode (enqueued after the scene's
   // setFogMode — FIFO, later write wins). A named divergence from the headless twin, like `?speed=`:
   // the human explicitly asked to watch the mechanic under a different fog rule.
   const fogOverride = fogModeParam(params);
@@ -69,13 +69,13 @@ export async function renderSceneMode(
   const sheet = await resolveSpriteSheet(sim.content.goods);
   const terrain = await loadRealTerrain();
 
-  // Retained renderer: mesh the terrain ONCE, then reuse a pooled sprite graph each frame (no per-frame
+  // Retained renderer: mesh the terrain once, then reuse a pooled sprite graph each frame (no per-frame
   // object churn), so a big scene renders + deep-zoom-outs without exhausting the GPU.
   const renderer = new WorldRenderer(app, { sheet });
   renderer.setTerrain(terrainGrid, terrain);
 
   // Interactive camera over the scene: the scene supplies its starting frame, then the human pans and
-  // zooms. Frame on the FIRST TICK's snapshot, not the initial one: a scene's SETTLER spawns run as
+  // zooms. Frame on the first tick's snapshot, not the initial one: a scene's settler spawns run as
   // tick-1 commands (direct-placed resources/flags exist at tick 0), so the tick-0 settler centroid is
   // empty and `cameraFor` falls back to the tile origin (an off-centre first frame). The extra step is
   // deterministic: the browser view runs `runTicks + 1` ticks vs the headless twin — harmless, the checks
@@ -88,7 +88,7 @@ export async function renderSceneMode(
   );
 
   // The shared in-game runtime (view/game-view.ts): the standard HUD mounts — tool panel, unit
-  // controls, perf overlay, positional sound — and the ONE fixed-timestep RAF loop, identical to the
+  // controls, perf overlay, positional sound — and the one fixed-timestep RAF loop, identical to the
   // `?map=` entry's.
   await startGameView({
     app,
@@ -105,7 +105,7 @@ export async function renderSceneMode(
   });
 
   // Dev/debug seam: the live instances, reachable from the browser console (`__opennorthland.sim` …) so a
-  // human or an automated probe can inspect the running scene without rebuilding it. READ-ONLY: a
+  // human or an automated probe can inspect the running scene without rebuilding it. Read-only: a
   // console mutation bypasses the command pipeline and silently voids determinism (state hashes and
   // golden comparability no longer mean anything for that session).
   window.__opennorthland = { sim, renderer, sheet, cameraCtl };

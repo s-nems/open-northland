@@ -3,7 +3,7 @@ import { TREE_BOB } from '../building-gfx/index.js';
 import { bobRef, DEFAULT_RESOURCE_STEM, type GatheringRefs, STOCKPILE_PLACEHOLDER_BOB } from './refs.js';
 
 /**
- * The gathering-economy render BINDINGS: reduce the resolved {@link GatheringRefs} to the renderer's
+ * The gathering-economy render bindings: reduce the resolved {@link GatheringRefs} to the renderer's
  * per-good {@link ResourceTypeBinding} (standing nodes + felled trunks) and {@link StockpileBinding}
  * (delivered ground piles + a delivery flag). Each applies the same loaded-then-drop-unloaded rule — a
  * good whose atlas family failed to load is dropped so it falls back to the default rather than borrowing
@@ -12,15 +12,15 @@ import { bobRef, DEFAULT_RESOURCE_STEM, type GatheringRefs, STOCKPILE_PLACEHOLDE
 
 /**
  * Reduce the resolved node refs to the renderer's per-good {@link ResourceTypeBinding}: each good whose
- * node stem is the default or a LOADED named family binds its own node bob; a good whose family failed to
+ * node stem is the default or a loaded named family binds its own node bob; a good whose family failed to
  * load is dropped (falls back to the {@link TREE_BOB} default rather than a wrong tree-atlas frame). Pure +
  * unit-tested.
  *
- * `familyFrames` (stem → the frame ids its LOADED atlas actually holds) marks data-pinned INVISIBLE
- * levels: when a record's level names a bob its own atlas doesn't have while its OTHER levels do, that
- * level binds `null` — the renderer then draws NOTHING for it. This is the original's freshly-sown wheat
+ * `familyFrames` (stem → the frame ids its loaded atlas actually holds) marks data-pinned invisible
+ * levels: when a record's level names a bob its own atlas doesn't have while its other levels do, that
+ * level binds `null` — the renderer then draws nothing for it. This is the original's freshly-sown wheat
  * (`wheat mine 01` state 1 → bob 4000, an out-of-atlas sentinel; states 2–5 are real frames). A good
- * whose levels are ALL missing keeps its refs instead — that is a genuinely broken binding and should
+ * whose levels are all missing keeps its refs instead — that is a genuinely broken binding and should
  * surface as the placeholder, not vanish.
  */
 export function buildResourceBinding(
@@ -39,7 +39,7 @@ export function buildResourceBinding(
       anyPresent && !(atlasFrames?.has(bob) ?? true) ? null : bobRef(node.stem, bob),
     );
   }
-  // The per-VARIANT table (a decoded-map node's own species/decal) — same load-then-drop rule; an
+  // The per-variant table (a decoded-map node's own species/decal) — same load-then-drop rule; an
   // unloaded variant family falls back to the per-good representative.
   const byGfxIndex: Record<number, readonly LayeredBobRef[]> = {};
   for (const [idx, node] of Object.entries(refs.nodesByGfxIndex)) {
@@ -69,7 +69,7 @@ export function buildTrunkBinding(refs: GatheringRefs, loaded: ReadonlySet<strin
 
 /**
  * Reduce the resolved pile + flag refs to the renderer's {@link StockpileBinding}: each good whose pile
- * atlas LOADED binds its per-fill heap frames; the flag binds the loaded `ls_temp` sign. A good whose pile
+ * atlas loaded binds its per-fill heap frames; the flag binds the loaded `ls_temp` sign. A good whose pile
  * atlas failed to load is dropped, and an unloaded flag / a held pile with no frames falls back to the
  * placeholder heap (a bare ref the renderer draws as the sandy marker). Pure + unit-tested.
  */

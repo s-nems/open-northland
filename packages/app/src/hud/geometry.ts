@@ -1,5 +1,5 @@
 /**
- * The ONE screen-space rect + point-in-rect test every HUD layout/hit-test module shares (tool panel,
+ * The one screen-space rect + point-in-rect test every HUD layout/hit-test module shares (tool panel,
  * building menu, action ring, pop-up windows). Pure — no Pixi, no DOM — so the layouts stay headlessly
  * unit-testable. Half-open on both axes (`[x, x+w) × [y, y+h)`), so adjacent rects never double-claim
  * a boundary pixel.

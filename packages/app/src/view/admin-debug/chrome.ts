@@ -1,7 +1,7 @@
 import { el } from '../overlay.js';
 
 /**
- * The admin/debug panel's shared DOM CHROME — the right-rail style vocabulary plus the small builders the
+ * The admin/debug panel's shared DOM chrome — the right-rail style vocabulary plus the small builders the
  * panel assembles itself from (collapsible sections, button rows, a name filter, the labelled number/
  * select fields). Kept apart from the panel wiring ({@link import('./index.js')}) and the spawn/action
  * data catalogs so "how the panel looks" has one home and the wiring reads as layout, not CSS strings.
@@ -150,7 +150,7 @@ export function numberField(label: string, value: number, onChange: (v: number) 
   input.type = 'number';
   input.min = '0';
   input.value = String(value);
-  // Commit on `input` (every keystroke), NOT `change` (blur): a spawn press `preventDefault()`s the
+  // Commit on `input` (every keystroke), not `change` (blur): a spawn press `preventDefault()`s the
   // click, which suppresses the field's blur, so a `change`-committed value would never reach a click.
   input.addEventListener('input', () => {
     const v = Number.parseInt(input.value, 10);

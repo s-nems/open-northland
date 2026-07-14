@@ -29,8 +29,8 @@ export function ownerPlayerOf(e: SnapshotEntity): number | undefined {
 }
 
 /** The entity's fixed-point `Position`, or undefined. The snapshot serializes the sim's branded
- *  `Fixed` values as plain numbers; this reader is the ONE place the brand is restored (by the
- *  sim's own invariant a snapshot Position IS fixed-point), so consumers can feed grid seams like
+ *  `Fixed` values as plain numbers; this reader is the one place the brand is restored (by the
+ *  sim's own invariant a snapshot Position is fixed-point), so consumers can feed grid seams like
  *  `nodeOfPosition` without minting the brand themselves. */
 export function positionOf(e: SnapshotEntity): { x: Fixed; y: Fixed } | undefined {
   const pos = e.components.Position as { x?: unknown; y?: unknown } | undefined;
@@ -52,15 +52,15 @@ export function buildingTypeOf(e: SnapshotEntity): number | undefined {
   return num(b?.buildingType);
 }
 
-/** The drop-off FLAG entity a gatherer carries (its `WorkFlag.flag`), or undefined for a non-gatherer. */
+/** The drop-off flag entity a gatherer carries (its `WorkFlag.flag`), or undefined for a non-gatherer. */
 export function workFlagOf(e: SnapshotEntity): number | undefined {
   const wf = e.components.WorkFlag as { flag?: unknown } | undefined;
   return num(wf?.flag);
 }
 
 /**
- * Map each gatherer's drop-off FLAG entity → its owning gatherer, for the human `player` only — the
- * INVERSE of the gatherer→flag {@link workFlagOf} edge (a flag stores no back-reference, so resolving
+ * Map each gatherer's drop-off flag entity → its owning gatherer, for the human `player` only — the
+ * inverse of the gatherer→flag {@link workFlagOf} edge (a flag stores no back-reference, so resolving
  * "which gatherer owns this flag" needs this scan). Lets a click on a flag resolve to the gatherer to
  * select. A gatherer binds to exactly one flag, so the map is 1:1.
  */

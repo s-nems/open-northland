@@ -2,9 +2,9 @@ import { fogTileVisible } from '@open-northland/render';
 import { FOG_STATE, type FogView, systems } from '@open-northland/sim';
 
 /**
- * The frame's fog-of-war gate for the HUMAN player — ONE mutable slot refreshed at the top of every
+ * The frame's fog-of-war gate for the human player — one mutable slot refreshed at the top of every
  * frame ({@link FogGates.setFrame}), so long-lived consumers (unit picking, the pile tooltip, the
- * placement gate, voice chatter) close over STABLE predicates instead of being re-wired per frame.
+ * placement gate, voice chatter) close over stable predicates instead of being re-wired per frame.
  * Null = fog off (everything shows).
  */
 export interface FogGates {
@@ -12,9 +12,9 @@ export interface FogGates {
   setFrame(fog: FogView | null): void;
   /** The current frame's fog view (null = fog off) — for consumers that need the raw view, not a predicate. */
   current(): FogView | null;
-  /** Whether the viewer currently SEES a fractional tile — the picking/tooltip/audio gate. */
+  /** Whether the viewer currently sees a fractional tile — the picking/tooltip/audio gate. */
   visibleTile(tileX: number, tileY: number): boolean;
-  /** Whether the viewer currently SEES a half-cell node's cell — the placement gate's coordinate space. */
+  /** Whether the viewer currently sees a half-cell node's cell — the placement gate's coordinate space. */
   seesNode(col: number, row: number): boolean;
 }
 

@@ -59,9 +59,9 @@ export async function renderShot(canvas: HTMLCanvasElement): Promise<void> {
   const terrainGrid = sliceTerrain(loaded ?? undefined);
 
   const app = await createPixiApp(canvas, CANVAS_W, CANVAS_H);
-  // `?atlas=real` binds the REAL decoded human-body atlas (settlers draw actual decoded pixels — the
+  // `?atlas=real` binds the real decoded human-body atlas (settlers draw actual decoded pixels — the
   // human-gated decoder/render check; gitignored content over the /bobs server, see content/sprite-sheet.ts).
-  // `?atlas` (or `?atlas=synthetic`) binds the FREE synthetic atlas so the textured-sprite draw path is
+  // `?atlas` (or `?atlas=synthetic`) binds the free synthetic atlas so the textured-sprite draw path is
   // exercised without copyrighted data. Absent, sprites draw as placeholder geometry — the
   // byte-reproducible default the committed shot PNG depends on.
   const sheet =
@@ -73,7 +73,7 @@ export async function renderShot(canvas: HTMLCanvasElement): Promise<void> {
   // `?zoom=N` magnifies + re-centres on the sprites so a human can judge a decoded bob's pixels (a
   // ~30px settler is otherwise lost on the canvas); absent, the historical centre-ish pan at scale 1.
   const camera = cameraFor(buildSpriteScene(snap), floatParam(params, 'zoom', 1), CANVAS_W, CANVAS_H);
-  // `?terrain` draws the ground from REAL decoded `text_*.pcx` textures (the approximated typeId→pattern
+  // `?terrain` draws the ground from real decoded `text_*.pcx` textures (the approximated typeId→pattern
   // map) for the human pixel-check; gitignored content over the /ir.json + /textures server (see
   // content/terrain.ts). Absent, terrain stays the reproducible flat-tint default the committed PNG depends on.
   const terrain = params.has('terrain') ? await loadRealTerrain() : undefined;

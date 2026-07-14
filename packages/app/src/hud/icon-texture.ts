@@ -10,21 +10,21 @@ import { type Application, Container, type Sprite } from 'pixi.js';
  * Crisp fractional scaling for a single round HUD icon (the settler action-ring order buttons), over the
  * render-layer supersample ({@link bakeToFlippedSprite}).
  *
- * The order buttons are {@link PalettedSprite} meshes over an INDEXED atlas, drawn with the `'round'` colour
+ * The order buttons are {@link PalettedSprite} meshes over an indexed atlas, drawn with the `'round'` colour
  * key (hard-clipped to the inscribed disc in the shader). At a fractional UI scale nearest sampling
  * stair-steps the disc rim and the hard clip aliases the circle. Fix it by supersampling: bake the icon at
- * an INTEGER oversample into a texture (nearest is exact at an integer zoom), then draw it linear-downscaled
+ * an integer oversample into a texture (nearest is exact at an integer zoom), then draw it linear-downscaled
  * so the downscale anti-aliases the disc edge. This module owns the layout (oversample choice, centering);
  * the render helper owns the texture + the WebGL Y-flip.
  *
- * Unlike the static strip, the ring is dynamic: the icon art is baked ONCE here, and the caller repositions
+ * Unlike the static strip, the ring is dynamic: the icon art is baked once here, and the caller repositions
  * the returned display sprite on the settlers' centroid every frame.
  */
 
 /** Oversample cap — the small disc icons are already crisp by here; the cap bounds texture memory. */
 const MAX_SUPERSAMPLE = 6;
-/** Oversample floor — a smooth downscaled CIRCLE wants a bit more headroom than the strip's flat edges.
- *  At small effective scales this floor deliberately EXITS oversampleFor's (1, 2] downscale window (e.g.
+/** Oversample floor — a smooth downscaled circle wants a bit more headroom than the strip's flat edges.
+ *  At small effective scales this floor deliberately exits oversampleFor's (1, 2] downscale window (e.g.
  *  uiscale 1 at DPR 1 → ratio ~2.9): the slight linear-tap undersample is accepted for the rim smoothing. */
 const MIN_SUPERSAMPLE = 3;
 
@@ -50,7 +50,7 @@ export function bakeRoundIcon(opts: {
 }): BakedIcon {
   const { app, sprite, frame, scale } = opts;
 
-  // Integer oversample so nearest sampling stays exact; sized at DOUBLE the DEVICE px the icon covers
+  // Integer oversample so nearest sampling stays exact; sized at double the device px the icon covers
   // so the downscale anti-aliases (see oversampleFor), floored so the disc rim always has headroom.
   const ss = oversampleFor(scale, app.renderer.resolution, MIN_SUPERSAMPLE, MAX_SUPERSAMPLE);
   const texW = Math.ceil(frame.width * ss);
@@ -79,7 +79,7 @@ export function bakedIconOrigin(
   height: number,
 ): { readonly x: number; readonly y: number } {
   return {
-    // Centre horizontally; the Y-flip draws the sprite UPWARD from its origin, so anchor at the box BOTTOM
+    // Centre horizontally; the Y-flip draws the sprite upward from its origin, so anchor at the box bottom
     // (centre + height/2) — a sign error here silently renders every icon vertically off-centre.
     x: Math.round(rect.x + rect.w / 2 - width / 2),
     y: Math.round(rect.y + rect.h / 2 + height / 2),

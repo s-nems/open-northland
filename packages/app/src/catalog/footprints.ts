@@ -31,7 +31,7 @@ const BODY_HALF_EXTENT: Readonly<Record<string, number>> = {
   training: 4, // ≈5×5 cells — barracks/school halls
 };
 const DEFAULT_BODY_HALF_EXTENT = 2;
-/** The build-exclusion ring beyond the body — one CELL (two nodes), the tightest packing the rule allows. */
+/** The build-exclusion ring beyond the body — one cell (two nodes), the tightest packing the rule allows. */
 const MARGIN = 2;
 
 function square(halfExtent: number): FootprintCell[] {

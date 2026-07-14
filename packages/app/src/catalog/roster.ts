@@ -19,7 +19,7 @@ import { formatMessage, type Messages, messages } from '../i18n/index.js';
 export interface VikingCharacter {
   /** URL id (`?char=`) + selector key, e.g. `warrior`. */
   readonly id: string;
-  /** The body bob-set stem WITHOUT palette, e.g. `cr_hum_body_05`. */
+  /** The body bob-set stem without palette, e.g. `cr_hum_body_05`. */
   readonly bodyBmd: string;
   /** The `bobSequences` key (the `.bmd` imagelib) whose `[bobseq]` this body plays, e.g. `cr_hum_body_05.bmd`. */
   readonly imagelib: string;

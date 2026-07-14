@@ -125,7 +125,7 @@ const JOB_ROW_BG = `linear-gradient(${WOOD_LIGHT},${WOOD})`;
 const JOB_STYLE_ID = 'opennorthland-job-picker-style';
 
 /**
- * Inject the profession list's scrollbar skin ONCE (a wood track + rope-tan thumb, matching the window),
+ * Inject the profession list's scrollbar skin once (a wood track + rope-tan thumb, matching the window),
  * guarded by {@link JOB_STYLE_ID} so remounts don't stack duplicate sheets. Scrollbar pseudo-elements can't
  * be set through inline `style`, so this is the one rule set that needs a real stylesheet.
  */

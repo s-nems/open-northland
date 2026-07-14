@@ -22,7 +22,7 @@ export function syntheticSpriteSheet(): SpriteSheet {
  * to the reproducible clean-room markers; renderer verification overrides remain confined to `?shot`.
  */
 export async function resolveSpriteSheet(
-  /** The goods of the content set the sim will RUN (demo/scene) — keys the per-good carry looks; the
+  /** The goods of the content set the sim will run (demo/scene) — keys the per-good carry looks; the
    *  ids are content-relative numbers, so only the entry that builds the sim knows them. */
   goods: readonly GoodRef[] = [],
 ): Promise<SpriteSheet> {

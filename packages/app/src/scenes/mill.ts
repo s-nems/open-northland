@@ -53,7 +53,7 @@ const INITIAL_ZOOM = 0.9;
 const { Building, JobAssignment, Settler, Stockpile } = components;
 
 /**
- * The mill's DOOR node — its anchor plus the content footprint's door offset. The millers spawn HERE
+ * The mill's door node — its anchor plus the content footprint's door offset. The millers spawn here
  * so the JobSystem's adopt pass binds them to the mill on tick 1 (a pre-employed settler standing at
  * a workplace it staffs is bound to it); resolved from the loaded content so the headless
  * (approximate footprint) and browser (real extracted footprint) doors both work.
@@ -128,9 +128,9 @@ export const millScene: SceneDefinition = {
     {
       label: 'wheat was consumed and never duplicated (each flour ate a sheaf)',
       predicate: (sim) => {
-        // At the cutoff tick a sheaf may be IN FLIGHT (on a miller's back, or consumed at cycle
+        // At the cutoff tick a sheaf may be in flight (on a miller's back, or consumed at cycle
         // start with its flour not yet deposited), so stockpile totals alone can dip below the
-        // dropped amount — assert consumption and the conservation CEILING, not exact equality.
+        // dropped amount — assert consumption and the conservation ceiling, not exact equality.
         const wheat = totalOf(sim, GOOD_WHEAT);
         const flour = totalOf(sim, GOOD_FLOUR);
         return wheat < WHEAT_DROPPED && wheat + flour <= WHEAT_DROPPED;
@@ -155,7 +155,7 @@ export const millScene: SceneDefinition = {
       predicate: (sim) => {
         const mill = millEntity(sim);
         if (mill === null) return false;
-        // The RUNTIME stockpile, not the content shape (that pin lives in sandbox-workers.test.ts):
+        // The runtime stockpile, not the content shape (that pin lives in sandbox-workers.test.ts):
         // after the whole run, nothing but wheat/flour may have been deposited into the mill — the
         // capacity gate (`stockCapacity` = 0 for an undeclared good) actually held.
         for (const [goodType, amount] of sim.world.get(mill, Stockpile).amounts) {

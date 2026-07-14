@@ -31,7 +31,7 @@ export interface GroundPileTooltipOptions {
   readonly clientToScreen: (clientX: number, clientY: number) => { x: number; y: number };
   /** The map's terrain-height field, so the viewport cull margin covers a lifted hill. Optional. */
   readonly elevation?: ElevationField | undefined;
-  /** Whether the viewer currently SEES a fractional tile — a fogged pile must not hit-test (its tooltip
+  /** Whether the viewer currently sees a fractional tile — a fogged pile must not hit-test (its tooltip
    *  would read hidden stock through the fog). */
   readonly fogVisible: (tileX: number, tileY: number) => boolean;
   /** The good's localized display name; a `#id` fallback is used when this returns undefined. */
@@ -39,8 +39,8 @@ export interface GroundPileTooltipOptions {
   /** The current cursor position (client coords), or null when the pointer left the canvas. */
   readonly pointer: () => { readonly clientX: number; readonly clientY: number } | null;
   /**
-   * Whether the world tooltip must YIELD the pointer this frame — build placement is active, or the HUD
-   * (a tool-panel window, the details panel) owns the cursor. The tooltip names WORLD piles, not chrome.
+   * Whether the world tooltip must yield the pointer this frame — build placement is active, or the HUD
+   * (a tool-panel window, the details panel) owns the cursor. The tooltip names world piles, not chrome.
    */
   readonly suppressed: (clientX: number, clientY: number) => boolean;
 }
@@ -58,7 +58,7 @@ export function createGroundPileTooltip(opts: GroundPileTooltipOptions): GroundP
     return screenToWorld(opts.camera(), p.x, p.y);
   };
 
-  // Pile hit-targets, rebuilt only when the sim tick OR the camera moves — the set is camera-dependent
+  // Pile hit-targets, rebuilt only when the sim tick or the camera moves — the set is camera-dependent
   // (culled to the viewport), so the cache keys on the camera too; a still cursor over a still frame
   // re-picks the cached set.
   let hoverKey = '';

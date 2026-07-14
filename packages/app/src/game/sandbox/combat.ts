@@ -19,7 +19,7 @@ import {
 /**
  * The sandbox combat content — the weapon swing timings, damages, and the {@link sandboxWeapons} table
  * the global {@link import('./content/index.js').sandboxContent} set assembles from. Swing lengths + hit frames
- * are TRANSCRIBED from the extracted viking `atomicanimations.ini` records; damages are on the sandbox's
+ * are transcribed from the extracted viking `atomicanimations.ini` records; damages are on the sandbox's
  * own synthetic scale (see the per-constant notes).
  */
 
@@ -58,7 +58,7 @@ export const BROADSWORD_DAMAGE = 55;
 export const FIST_DAMAGE = 10;
 
 /** The equip classification (slot + wear) per good typeId, so `sandboxContent()` can merge it onto the
- *  global catalog good of the same typeId (an equippable good is declared ONCE, in `EXTENDED_GOODS`). */
+ *  global catalog good of the same typeId (an equippable good is declared once, in `EXTENDED_GOODS`). */
 export const EQUIP_CLASS_BY_TYPE: ReadonlyMap<number, { category: EquipCategory; wears: boolean }> = new Map(
   EQUIP_GOODS.map((g) => [g.typeId, { category: g.category, wears: g.wears }]),
 );

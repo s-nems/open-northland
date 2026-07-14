@@ -1,18 +1,18 @@
 import { EXTRACTED_GATHERER_TRADES, GATHERERS, JOB_CARRIER, rebaseSlotJob } from './ids/index.js';
 
 /**
- * The three worker ROLES the badge colours and the right-click assignment priority distinguish — a
+ * The three worker roles the badge colours and the right-click assignment priority distinguish — a
  * gatherer (chops/mines/picks a raw good and hauls it to a flag), a carrier (a "tragarz" that ferries
  * goods between stores), and a craftsman (a trade like smith/joiner that works inside a workshop).
  * These are the sandbox's role buckets, keyed off the sandbox job-id bands ({@link GATHERERS} own
  * 20..25, {@link JOB_CARRIER} is 26, and every rebased building-slot trade lands high — see
- * `ids/economy/jobs.ts` `rebaseSlotJob`), NOT a sim concept: the sim treats a carrier as the job-agnostic haul
+ * `ids/economy/jobs.ts` `rebaseSlotJob`), not a sim concept: the sim treats a carrier as the job-agnostic haul
  * fallback and never names one. Faithful intent: in *Cultures* a gatherer is rarely hand-assigned to a
  * building (it belongs on the map delivering to flags), so the right-click gesture never offers one.
  */
 export type WorkerRole = 'gatherer' | 'carrier' | 'craftsman';
 
-/** The gatherer job ids — the sandbox's own {@link GATHERERS} table PLUS the extracted outdoor-gatherer
+/** The gatherer job ids — the sandbox's own {@link GATHERERS} table plus the extracted outdoor-gatherer
  *  trades ({@link EXTRACTED_GATHERER_TRADES}: collector/hunter/fisher, in their rebased slot ids). A
  *  settler of one of these harvests a raw good on the map, so it's excluded from right-click building
  *  assignment and draws the gatherer badge colour. */
@@ -30,7 +30,7 @@ export function workerRoleOf(jobType: number): WorkerRole {
 }
 
 /**
- * The right-click assignment PRIORITY for a building's worker slots: the jobs a player-directed
+ * The right-click assignment priority for a building's worker slots: the jobs a player-directed
  * `assignWorker` may bind, most-preferred first — craftsmen (ascending job id) then the carrier, with
  * gatherers excluded (never hand-assigned to a workshop). The sim walks this list and binds the first job
  * whose slot is open for the settler (see the `assignWorker` command / `openWorkerJobFromList`), so the

@@ -23,9 +23,9 @@ export interface DebugAction {
 // The button labels read as satisfaction (100% = full/rested, 0% = empty/starving), the inverse of the raw
 // `debugSetNeeds` need level (0 = sated, 1 = maxed → the NeedsSystem's starvation/rest drive). So
 // "Nasyć (100%)" drives every need to its raw min and "Zagłodź (0%)" to its raw max.
-/** Raw need level for a fully SATED settler (satisfaction 100%). */
+/** Raw need level for a fully sated settler (satisfaction 100%). */
 const NEED_RAW_SATED = 0;
-/** Raw need level for a fully DEPLETED settler (satisfaction 0% — starving/exhausted). */
+/** Raw need level for a fully depleted settler (satisfaction 0% — starving/exhausted). */
 const NEED_RAW_MAXED = 100;
 
 /** Set every need the sim tracks to one raw percent level — the payload the satisfy/starve tools share. */

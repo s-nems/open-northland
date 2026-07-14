@@ -30,6 +30,6 @@ export interface PanelContext {
   readonly bitmaps: PanelBitmaps;
   /** Prefer the decoded UI string for `(table, id)`, else the pinned fallback label. */
   readonly uiString: UiString;
-  /** The LIVE renderer size (tracks window resizes) — read at each placement, never cached. */
+  /** The live renderer size (tracks window resizes) — read at each placement, never cached. */
   readonly screen: () => { readonly width: number; readonly height: number };
 }

@@ -10,7 +10,7 @@ import type { ContentIr } from './ir.js';
  */
 
 /**
- * True when the bank actually carries at least one clip (in any category) — the ONE "is there anything
+ * True when the bank actually carries at least one clip (in any category) — the one "is there anything
  * to play / show?" test shared by the live {@link createSoundDriver} and the `?sounds` gallery, so their
  * silent/empty decisions can't drift (add a 4th category and both update together). Narrows `sounds` to a
  * present, non-empty {@link SoundBank}.

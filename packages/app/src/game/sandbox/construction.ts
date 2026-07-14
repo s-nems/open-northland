@@ -2,18 +2,18 @@ import { HOME_KIND, type VikingBuilding } from '../../catalog/buildings.js';
 import { BUILDING_HOME_00, GOOD_STONE, GOOD_WOOD } from './ids/index.js';
 
 /**
- * GLOBAL construction data — every building is raised the original way: the player places a foundation
+ * Global construction data — every building is raised the original way: the player places a foundation
  * (the tool panel enqueues `placeBuilding` `underConstruction`), carriers/builders deliver its materials,
- * and a builder hammers it up (the ConstructionSystem). This is not a per-scene demo: the SAME cost + life
- * pool apply in EVERY scene and on every map. A building with no cost would instead pop up instantly and a
+ * and a builder hammers it up (the ConstructionSystem). This is not a per-scene demo: the same cost + life
+ * pool apply in every scene and on every map. A building with no cost would instead pop up instantly and a
  * `GOOD_NONE` cost would stall (good 0 is undeliverable), so each carries a real, deliverable bill.
  *
  * Named approximation (source basis: our design — the engine's build loop has no oracle, AGENTS.md). The
- * real per-type material bill (`[GfxHouse] LogicConstructionGoods`) and `logichitpoints` ARE extracted, but
- * the bill is keyed by the ORIGINAL game's good ids, not yet unified into the sandbox good space (the
- * deferred global-content id unification). So the COST is approximated in sandbox goods — a wood+stone
+ * real per-type material bill (`[GfxHouse] LogicConstructionGoods`) and `logichitpoints` are extracted, but
+ * the bill is keyed by the original game's good ids, not yet unified into the sandbox good space (the
+ * deferred global-content id unification). So the cost is approximated in sandbox goods — a wood+stone
  * parcel scaled by building class (a warehouse/hall costs more units → more builder strikes than a hut) —
- * and HITPOINTS is a per-class default. Homes keep their level chain, each tier a parcel up (the cost
+ * and hitpoints is a per-class default. Homes keep their level chain, each tier a parcel up (the cost
  * doubles as the next tier's upgrade bill — {@link import('@open-northland/sim').homeNextTier}).
  */
 function buildParcel(wood: number, stone: number): readonly { goodType: number; amount: number }[] {

@@ -1,6 +1,6 @@
 /**
  * A cursor-following text tooltip — a small dark chip that names what's under the pointer (a ground pile's
- * good + count, a warehouse row's good). It is DOM, not Pixi: the chip must float ABOVE the WebGL canvas and
+ * good + count, a warehouse row's good). It is DOM, not Pixi: the chip must float above the WebGL canvas and
  * a per-hover text element has no place in the retained sprite batcher. One instance per hover surface (the
  * world, the warehouse panel); they are mutually exclusive by cursor position, so each surface owning its
  * own element needs no cross-surface coordination.

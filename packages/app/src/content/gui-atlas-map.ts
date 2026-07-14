@@ -1,7 +1,7 @@
-// AUTO-DRAFTED then hand-maintained. This file is the checked-in metadata map from GUI-atlas frame
+// Auto-drafted then hand-maintained. This file is the checked-in metadata map from GUI-atlas frame
 // index -> semantic meaning for `ls_gui_window.bmd` (the in-game HUD sheet; 193 bobs, firstBobId=0 so a
 // gfx-id in the original engine equals the atlas frame index directly). It exists so app HUD code refers
-// to UI sprites BY NAME, never by a magic frame number.
+// to UI sprites by name, never by a magic frame number.
 //
 // Provenance (per-frame `source`):
 //   'openvikings' — pinned to literal (rect, gfxId, command) triples in the OpenVikings reverse-engineering
@@ -9,12 +9,12 @@
 //                   MiscWindows_OverviewWindow_Closed). These names + rects are authoritative.
 //   'montage'     — identified by eye from a numbered render of every frame (the labeled-montage technique).
 //                   Once a human confirms the category and the glyph is legible, the frame carries a
-//                   PROVISIONAL descriptive name (a read of the drawn glyph, refine-able later); a frame
+//                   provisional descriptive name (a read of the drawn glyph, refine-able later); a frame
 //                   whose glyph is unread stays `unknown_NNN` with a best-guess `role`/`note`. See
 //                   docs/SOURCES.md (GUI).
 //   'unknown'     — not yet identified at all.
 //
-// The per-command order-icon gfx ids (the round wooden radial buttons, frames 96-136) are NOT recovered
+// The per-command order-icon gfx ids (the round wooden radial buttons, frames 96-136) are not recovered
 // from code: OpenVikings' `sHumanCommandTypeToIconId` lookup table is an unfilled placeholder, so only the
 // fallback (0x6b) is code-pinned. The rest were confirmed as order/command icons by a human and given
 // provisional glyph-names (`order_*`); the exact command each maps to is still to be nailed down.

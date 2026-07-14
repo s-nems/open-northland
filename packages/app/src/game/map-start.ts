@@ -3,24 +3,24 @@ import { HUMAN_PLAYER } from './rules.js';
 import { isBuilding, isSettler, ownerPlayerOf, positionOf, type SnapshotEntity } from './snapshot.js';
 
 /**
- * The starting camera FOCUS — the visual-tile `(col, row)` a decoded map opens centred on, so entering a
+ * The starting camera focus — the visual-tile `(col, row)` a decoded map opens centred on, so entering a
  * map lands on the player's start (the "startowa pozycja") instead of the top-left corner. Priority:
  *
- *   1. the HUMAN player's SETTLERS centroid — a scenario's own starting units spawn at/around its
- *      headquarters (`kwatera`), so their centre IS the base;
- *   2. the HUMAN player's BUILDINGS centroid — a base placed with no starting units;
+ *   1. the human player's settlers centroid — a scenario's own starting units spawn at/around its
+ *      headquarters (`kwatera`), so their centre is the base;
+ *   2. the human player's buildings centroid — a base placed with no starting units;
  *   3. any placed settler/building — a foreign-owned-only map (nothing is ours to prefer);
- *   4. the MAP CENTRE — a plain imported map with no authored entities at all.
+ *   4. the map centre — a plain imported map with no authored entities at all.
  *
- * Settlers are preferred over buildings BEFORE falling back because a scenario scatters its objective and
+ * Settlers are preferred over buildings before falling back because a scenario scatters its objective and
  * enemy buildings across the whole map (e.g. tutorial_003 places a farm cluster far from the player's HQ),
  * which would drag a buildings-only centroid off the actual start; the human player's own settlers cluster
- * AT the start.
+ * at the start.
  *
- * NAMED APPROXIMATION (golden rule #5): the ORIGINAL authors an explicit start point —
+ * NAMED APPROXIMATION (golden rule #5): the original authors an explicit start point —
  * `misc.inc` `[misc_startpositions]` `startposition <slot> <x> <y>`, slot 0 = the human — but only ~8 of
- * the 125 maps ship it (magiczny_las, and most single-player maps, comment the section out), so it is NOT
- * extracted. The HUMAN_PLAYER settler centroid stands in and MATCHES it wherever it exists: on every
+ * the 125 maps ship it (magiczny_las, and most single-player maps, comment the section out), so it is not
+ * extracted. The HUMAN_PLAYER settler centroid stands in and matches it wherever it exists: on every
  * startposition-bearing map the settlers are authored with distinct per-player slots
  * (`sethuman <player> …`), so filtering to `HUMAN_PLAYER` (= `sethuman` player 0) leaves just the human's
  * own cluster, which sits on `startposition 0` (verified on Battle_for_the_Four_Hills et al). Extracting

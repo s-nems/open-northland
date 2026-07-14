@@ -38,7 +38,7 @@ export function constructionRefsByType(
   const out: Record<number, ConstructionLayerRef[]> = {};
   for (const [typeId, list] of byType) {
     const pool = preferredPalettePool(list, defaultFamily.paletteName);
-    // ONE record-level group per type (see the JSDoc): group by (editName, level), pick canonically.
+    // one record-level group per type (see the JSDoc): group by (editName, level), pick canonically.
     const groups = new Map<string, ConstructionLayerRow[]>();
     for (const r of pool) {
       const key = `${r.editName ?? ''}|${r.level}`;

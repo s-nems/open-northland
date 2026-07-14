@@ -9,9 +9,9 @@ export interface UnitTargetsDeps {
   readonly snapshot: () => WorldSnapshot;
   /** The human player whose units are selectable/orderable. */
   readonly humanPlayer: number;
-  /** The renderer's EXACT per-entity sprite bounds (world px), or undefined for the kind box. */
+  /** The renderer's exact per-entity sprite bounds (world px), or undefined for the kind box. */
   readonly boundsOf: ((ref: number) => EntityBounds | undefined) | undefined;
-  /** PIXEL-accurate refinement of {@link boundsOf} for BUILDING targets, or undefined to keep the box. */
+  /** Pixel-accurate refinement of {@link boundsOf} for building targets, or undefined to keep the box. */
   readonly pixelHitOf: ((ref: number, wx: number, wy: number) => boolean | undefined) | undefined;
   /** The viewer's fog visibility at a fractional tile (gates the enemy hit-test set), or undefined = no fog. */
   readonly fogVisible: ((tileX: number, tileY: number) => boolean) | undefined;
@@ -21,9 +21,9 @@ export interface UnitTargetsDeps {
 export interface UnitTargets {
   /** Owned, pickable targets (settlers + buildings) with their world-px feet anchors. */
   owned(kind?: 'settler' | 'building'): Pickable[];
-  /** ENEMY settlers — units owned by ANOTHER player, fog-culled like the drawn scene. */
+  /** Enemy settlers — units owned by another player, fog-culled like the drawn scene. */
   enemies(): Pickable[];
-  /** The human's gatherers' drop-off FLAGS, each mapped to its OWNING gatherer (a flag→unit proxy). */
+  /** The human's gatherers' drop-off flags, each mapped to its owning gatherer (a flag→unit proxy). */
   flags(): Pickable[];
 }
 

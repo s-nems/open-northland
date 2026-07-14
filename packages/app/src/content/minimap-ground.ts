@@ -7,14 +7,14 @@ import {
 import { fetchImageData } from './net.js';
 
 /**
- * The minimap's ground-colour binding for a DECODED map: one `0xRRGGBB` per cell, averaged from the
- * REAL terrain texture pages the map's baked `ground` lanes point at. A real map's water/land look
- * lives in those per-triangle `GfxPattern` picks, NOT its landscape typeIds (~97% of a real map shares
+ * The minimap's ground-colour binding for a decoded map: one `0xRRGGBB` per cell, averaged from the
+ * real terrain texture pages the map's baked `ground` lanes point at. A real map's water/land look
+ * lives in those per-triangle `GfxPattern` picks, not its landscape typeIds (~97% of a real map shares
  * one typeId), so the typeId palette can never depict it — this join can.
  *
  * Source basis: the original's in-game minimap is the dynamically generated "world overview" window
  * (OpenVikings `CWorldOverviewStaticGuiWindow` — its rendering internals are not reversed, and the
- * shipped per-map `minimap.pcx` is the map-SELECTION card, sometimes a painted scene, so it can't
+ * shipped per-map `minimap.pcx` is the map-selection card, sometimes a painted scene, so it can't
  * serve in-game). NAMED APPROXIMATION: we colour each cell with the mean texel of its two triangles'
  * pattern rects — transition overlays, elevation shading and the `embr` brightness lane are ignored.
  */

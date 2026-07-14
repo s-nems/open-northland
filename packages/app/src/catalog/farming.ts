@@ -21,13 +21,13 @@ export const WHEAT_TICKS_PER_STAGE = 500;
 /** Units a ripe field drops as its cut sheaf when reaped. */
 export const WHEAT_YIELD_PER_FIELD = 1;
 
-/** How far from the farm's anchor its farmers sow, in half-cell NODES (16 nodes ≈ 8 tiles). */
+/** How far from the farm's anchor its farmers sow, in half-cell nodes (16 nodes ≈ 8 tiles). */
 export const FARM_FIELD_RADIUS = 16;
 
-/** The crew-independent BASE of the farm's field cap — the live cap is `FARM_FIELDS_BASE +
- *  FARM_FIELDS_PER_FARMER × bound field-farmers`, so the plot grows SUBLINEARLY with the crew:
+/** The crew-independent base of the farm's field cap — the live cap is `FARM_FIELDS_BASE +
+ *  FARM_FIELDS_PER_FARMER × bound field-farmers`, so the plot grows sublinearly with the crew:
  *  1 farmer works 6 fields, a pair 10, the full 4-man staff 18 (user-directed calibration — a lone
  *  farmer needed more than 5, but a pair at 12 read as too many). */
 export const FARM_FIELDS_BASE = 2;
-/** The per-farmer SLOPE of the field cap (see {@link FARM_FIELDS_BASE}). */
+/** The per-farmer slope of the field cap (see {@link FARM_FIELDS_BASE}). */
 export const FARM_FIELDS_PER_FARMER = 4;

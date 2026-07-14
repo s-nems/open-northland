@@ -2,7 +2,7 @@ import type { TerrainMapFile } from '@open-northland/data';
 import { components, type TerrainMap } from '@open-northland/sim';
 
 /**
- * The PURE middle of the authored-entity placement import: resolve a decoded map's `entities` layer
+ * The pure middle of the authored-entity placement import: resolve a decoded map's `entities` layer
  * (names + half-cells, verbatim from `map.cif` `StaticObjects`) into sim placements over narrow
  * structural views of the served IR. No fetch, no sim construction — headlessly unit-testable
  * (`test/vertical-slice.test.ts`); `runAuthoredSlice` consumes the result.
@@ -11,7 +11,7 @@ import { components, type TerrainMap } from '@open-northland/sim';
 /**
  * The narrow `ir.json` row views the authored-entity joins read — structural picks over the raw
  * fetched IR (the full zod `parseContentSet` over the multi-MB file is a load-time cost the entry
- * doesn't need; these are the same by-NAME join keys the engine itself uses).
+ * doesn't need; these are the same by-name join keys the engine itself uses).
  */
 export interface AuthoredJoinRows {
   readonly buildingBobs?: readonly {

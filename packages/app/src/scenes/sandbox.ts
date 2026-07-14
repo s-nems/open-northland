@@ -39,7 +39,7 @@ const { Felling, MineDeposit, Resource, Stump } = components;
 const MAP_W = 96;
 const MAP_H = 96;
 const INITIAL_ZOOM = 0.5;
-// Enough for the SLOWEST lane to finish: clay is 10 units × (6 strikes × 23-tick dig + 2 inter-swing
+// Enough for the slowest lane to finish: clay is 10 units × (6 strikes × 23-tick dig + 2 inter-swing
 // 15-tick rests — the breather lands every 2nd swing, never on the unit-completing one) = ~1 700 work
 // ticks, plus per-unit pickup + flag round trips — 4200 leaves honest headroom after the
 // strikes-per-unit + inter-swing-rest retune (was 3000, sized to the 1-swing-per-unit pace).
@@ -92,7 +92,7 @@ function buildBuildings(sim: Simulation): void {
 function buildGatheringLanes(sim: Simulation): void {
   GATHERERS.forEach((g, i) => {
     const y = GATHER_Y0 + i * GATHER_STEP;
-    // The flag is created first so the gatherer can be BOUND to it: each gatherer works only the nodes near
+    // The flag is created first so the gatherer can be bound to it: each gatherer works only the nodes near
     // its own flag, carries only what it dug, and banks its harvest at that flag (see spawnBoundGatherer).
     const flag = placeFlag(sim, GATHER_FLAG_X, y);
     for (let n = 0; n < g.nodes; n++) {

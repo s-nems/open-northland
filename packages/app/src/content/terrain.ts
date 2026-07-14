@@ -22,7 +22,7 @@ import { type ContentIr, loadIr } from './ir.js';
  *    each landscape typeId to one representative pattern (`buildTerrainPatterns` — a recorded deviation,
  *    source basis).
  *
- * All ground pages load LINEAR-filtered — the original samples its terrain pages bilinearly (docs/SOURCES.md
+ * All ground pages load linear-filtered — the original samples its terrain pages bilinearly (docs/SOURCES.md
  * "terrain tessellation"), melting pattern joins and transition masks into smooth seams; the sprite atlases
  * stay `nearest` (pixel art).
  */
@@ -74,7 +74,7 @@ export function buildTerrainDebugColourIndex(tables: ContentIr): ReadonlyMap<num
 
 /**
  * Load the real {@link TerrainTextureSet}: the approximated per-typeId {@link CellTexture} table
- * (from `terrainPatterns`) PLUS the 1:1 per-triangle pattern join (from the full `gfxPatterns`
+ * (from `terrainPatterns`) plus the 1:1 per-triangle pattern join (from the full `gfxPatterns`
  * table, keyed by `EditName`), then every referenced `text_NNN.png` page as a GPU source. Throws if
  * the IR is missing (an environment precondition, not a recoverable failure); the shared memoized
  * {@link loadIr} means the (multi-MB) fetch is paid once per page regardless of who reads it first.
@@ -116,7 +116,7 @@ export async function loadRealTerrain(ir?: ContentIr): Promise<TerrainTextureSet
     transitionByName.set(row.editName, { pageKey, coordsA: row.coordsA, coordsB: row.coordsB });
   }
   // Load the distinct pages any table references (~56 + ~19 overlays on the real data) in parallel,
-  // LINEAR-filtered (see the module doc). A page that fails to load is skipped (warn once): the renderer
+  // linear-filtered (see the module doc). A page that fails to load is skipped (warn once): the renderer
   // falls back per triangle / skips that overlay.
   const pages = new Map<string, LoadedSource>();
   await Promise.all(

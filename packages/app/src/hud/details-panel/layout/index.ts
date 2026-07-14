@@ -22,7 +22,7 @@ const COMPACT_ROWS = 1;
 
 /**
  * Apply `fn` to every rect in a layout, returning a new layout of the same shape. The off-screen
- * supersample DRAW layout is derived from the on-canvas HIT layout this way — scaled by the oversample /
+ * supersample draw layout is derived from the on-canvas hit layout this way — scaled by the oversample /
  * display ratio and re-origined to the texture (see `panel.ts`) — so the drawn geometry equals the
  * hit-tested geometry by construction, never by two independent `layoutDetails` roundings agreeing.
  */

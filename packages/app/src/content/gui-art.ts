@@ -8,7 +8,7 @@ import { GUI_FRAMES } from './gui-atlas-map.js';
 import { type GuiPaletteName, guiPaletteRow, loadGuiPaletteLut, loadGuiWindowIndexed } from './gui-gfx.js';
 
 /**
- * The ONE loader + sprite factory for the decoded GUI art (the indexed `ls_gui_window` sheet read
+ * The one loader + sprite factory for the decoded GUI art (the indexed `ls_gui_window` sheet read
  * through the GUI palette LUT) — shared by the tool panel and the settler action menu so the
  * load/degrade policy and the frame→palette resolution can't drift between HUD modules. A checkout
  * without `content/` yields `null` and every consumer falls back to its flat-`Graphics` look.

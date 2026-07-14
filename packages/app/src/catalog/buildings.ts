@@ -40,7 +40,7 @@ export interface VikingBuilding {
 }
 
 /**
- * Every viking building, in `typeId` order. The raw typeIds live HERE (their definition) and nowhere else
+ * Every viking building, in `typeId` order. The raw typeIds live here (their definition) and nowhere else
  * — code elsewhere refers to a building by id/label through the lookups below, never by a bare number.
  */
 export const VIKING_BUILDINGS: readonly VikingBuilding[] = [
@@ -117,7 +117,7 @@ export function resolveVikingBuilding(ref: number | string): VikingBuilding {
   return found;
 }
 
-/** An all-grass CELL grid of the given size (every cell walkable, buildable {@link GRASS}) — the
+/** An all-grass cell grid of the given size (every cell walkable, buildable {@link GRASS}) — the
  *  scene-authoring shape; the sim seam upsamples it to half-cells. */
 export function grassTerrain(width: number, height: number): CellTerrainMap {
   return { width, height, typeIds: new Array(width * height).fill(GRASS) };

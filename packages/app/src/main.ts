@@ -8,20 +8,20 @@ import { renderSoundGallery } from './entries/sound.js';
 import { localeParam, setActiveLocale } from './i18n/index.js';
 
 /**
- * App shell entry point — the URL DISPATCHER. It reads `window.location.search`, picks exactly one entry
- * (each in `entries/`), and hands off. This is the ONLY package that depends on both `sim` and `render`,
+ * App shell entry point — the URL dispatcher. It reads `window.location.search`, picks exactly one entry
+ * (each in `entries/`), and hands off. This is the only package that depends on both `sim` and `render`,
  * but the wiring lives in the entries; here we only route. See packages/app/AGENTS.md "URL-flag entries".
  *
  *  - `?shot`            → deterministic, headless screenshot entry (`entries/shot.ts`) — the harness waits
  *                         on `window.__opennorthlandShotReady`; no menu, no RAF loop.
  *  - `?scene=<id>`      → a registered acceptance scene (`entries/scene.ts`).
  *  - `?anim`            → the character animation gallery (`entries/anim.ts`).
- *  - `?icons[&atlas=]`  → the ICON gallery (`entries/icons.ts`) — browse every decoded bob-atlas frame by
+ *  - `?icons[&atlas=]`  → the icon gallery (`entries/icons.ts`) — browse every decoded bob-atlas frame by
  *                         index, to find a sprite for a feature. Dev-only (needs decoded `content/`).
- *  - `?sounds`          → the sound VERIFICATION gallery (`entries/sound.ts`) — click ▶ to audition every
- *                         wired clip. Distinct from the `?sound=off` MUTE modifier on live/scene (key `sound`).
+ *  - `?sounds`          → the sound verification gallery (`entries/sound.ts`) — click ▶ to audition every
+ *                         wired clip. Distinct from the `?sound=off` mute modifier on live/scene (key `sound`).
  *  - `?map=<id>`        → the decoded-map viewer (`entries/map.ts`) — a real `content/maps/<id>.json` grid.
- *  - otherwise          → the MAIN MENU to pick any of the above (`entries/menu.ts`) — the default landing,
+ *  - otherwise          → the main menu to pick any of the above (`entries/menu.ts`) — the default landing,
  *                         so a human never has to remember a `?…` string.
  */
 async function main(): Promise<void> {
