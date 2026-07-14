@@ -6,23 +6,21 @@ import { clamp } from './math.js';
  * renderer draws with ({@link tileToScreen} for fractional tile positions, {@link halfCellToScreen} for
  * half-cell node addresses, + `screen = world*scale + offset`), then decide whether the emitter is on
  * screen and, if so, how loud and how far left/right it sounds. An emitter outside the framed viewport
- * returns `null` (silent); one near a screen edge attenuates and pans toward that edge. Floats are fine —
- * a render-side concern.
+ * returns `null` (silent); one near a screen edge attenuates and pans toward that edge.
  */
 
 /** Emitter falls silent this many screen px beyond the canvas edge (slack so a straddling sprite still sounds). */
 export const CULL_MARGIN_PX = 96;
 
-/** Gain at the very edge of the screen; it rises to 1 at the centre. Edges stay audible, never silent. */
+/** Gain at the very edge of the screen; it rises to 1 at the centre. */
 export const EDGE_GAIN = 0.35;
 
 /** Pan strength: 1 = full hard-left/right at the screen sides. Kept < 1 so nothing fully leaves an ear. */
 export const MAX_PAN = 0.85;
 
 /**
- * Loudness floor as the camera zooms out. A zoomed-out camera is "further away", so its sounds fade
- * toward this floor (never to silence — a wide battle view still murmurs); zooming in past 1:1 never
- * boosts past full gain. At scale 1 (1:1) there is no zoom attenuation.
+ * Loudness floor as the camera zooms out — a zoomed-out camera is "further away", so its sounds fade
+ * toward this floor (never to silence); zooming in past 1:1 never boosts past full gain.
  */
 export const ZOOM_GAIN_FLOOR = 0.45;
 
@@ -36,9 +34,7 @@ export interface Spatial {
 
 /**
  * Project world tile `(col, row)` through `camera` onto a `canvasW × canvasH` screen and return its
- * spatialisation, or `null` when it lies outside the viewport (grown by {@link CULL_MARGIN_PX}). Gain
- * falls radially from 1 at the centre to {@link EDGE_GAIN} at the edge, scaled down as the camera zooms
- * out (floored at {@link ZOOM_GAIN_FLOOR}); pan tracks the horizontal screen fraction.
+ * spatialisation, or `null` when it lies outside the viewport (grown by {@link CULL_MARGIN_PX}).
  */
 export function computeSpatial(
   col: number,
@@ -90,8 +86,7 @@ function spatialiseScreenPoint(
   const ny = halfH === 0 ? 0 : (sy - halfH) / halfH;
   const dist = clamp(Math.hypot(nx, ny), 0, 1);
   const screenGain = EDGE_GAIN + (1 - EDGE_GAIN) * (1 - dist);
-  // Zoom attenuation: a zoomed-out camera (scale < 1) is further away, so quieter — floored so a wide
-  // view never goes silent; zooming in (scale >= 1) is clamped to 1, never boosting past full gain.
+  // Zoom attenuation: scale clamped into [ZOOM_GAIN_FLOOR, 1].
   const zoomGain = clamp(scale, ZOOM_GAIN_FLOOR, 1);
   const pan = clamp(nx, -1, 1) * MAX_PAN;
   return { gain: screenGain * zoomGain, pan };

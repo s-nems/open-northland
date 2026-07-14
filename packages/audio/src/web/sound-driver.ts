@@ -36,8 +36,7 @@ export interface SoundDriverOptions extends AudioEngineOptions, ChatterOptions {
  * The app-facing audio façade: per frame, turn the world state into playback. Every concern lives in its
  * own unit and this class only composes them — the pure decisions (which events sound, which beds loop,
  * who is on screen) in {@link directAudio} + {@link onScreenSettlers}, the stochastic voice chatter in
- * the {@link ChatterEmitter}, and the Web Audio playback in the {@link WebAudioEngine}. This is the one
- * object the app shell constructs and pumps.
+ * the {@link ChatterEmitter}, and the Web Audio playback in the {@link WebAudioEngine}.
  */
 export class SoundDriver {
   private readonly engine: WebAudioEngine;
@@ -85,8 +84,7 @@ export class SoundDriver {
       ...(input.terrain !== undefined ? { terrain: input.terrain } : {}),
       ...(input.localPlayer !== undefined ? { localPlayer: input.localPlayer } : {}),
     });
-    // Append the ambient settler-chatter voices (stochastic + time-based → owned by the emitter, not
-    // the pure director). The settler scan is a thunk so a no-dt frame never pays it.
+    // Append the ambient settler-chatter voices; the settler scan is a thunk so a no-dt frame never pays it.
     const voices = this.chatter.update(input.dtMs ?? 0, () =>
       onScreenSettlers(input.snapshot, input.camera, input.canvasW, input.canvasH, input.visibleTile),
     );

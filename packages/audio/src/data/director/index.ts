@@ -6,9 +6,7 @@ import { eventOneShots } from './events.js';
  * The pure audio decision: turn one frame's sim events + world snapshot + camera into the sounds that
  * should be audible — positioned one-shots for events ({@link import('./events.js').eventOneShots}),
  * looping beds for on-screen terrain ({@link import('./ambient.js').ambientBeds}). No Web Audio, no
- * randomness (the engine picks a wav from each group and owns the `AudioContext`), so the whole "what
- * plays right now" policy is unit-testable headless. It reuses `render`'s projection + viewport math
- * so a sound comes from exactly where its sprite draws and only while it is on screen.
+ * randomness — the engine picks a wav from each group and owns the `AudioContext`.
  */
 
 /** Decide the full audio for one frame: the one-shots to fire and the ambient loops that should be live. */
