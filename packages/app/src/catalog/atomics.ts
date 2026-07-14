@@ -1,13 +1,11 @@
 /**
- * The committed catalog of harvest ATOMIC ids — the original's `atomicForHarvesting` for each raw
- * good, transcribed from the extracted data (the collector job runs ONE per good). These are the
- * semantic action ids the SIM issues and the render/audio layers bind clips/SFX to, so they live in
- * `catalog/` where both the game content (`game/sandbox/`) and the binding reducers
- * (`content/settler-gfx.ts`) can read them without either owning the other's vocabulary.
- *
- * Each id binds to that good's OWN authored work clip (stone/iron/gold → the shared mining strike,
- * clay → shovel-dig, mushroom → pluck), not the shared woodcut swing — so a clay-digger visibly
- * SHOVELS and a stone miner STRIKES, neither chops (source basis; see `content/settler-gfx.ts`).
+ * The committed catalog of harvest atomic ids — the original's `atomicForHarvesting` for each raw good,
+ * transcribed from the extracted data (the collector job runs one per good). These are the semantic action
+ * ids the sim issues and the render/audio layers bind clips/SFX to, so they live in `catalog/` where both
+ * the game content (`game/sandbox/`) and the binding reducers (`content/settler-gfx.ts`) can read them
+ * without either owning the other's vocabulary. Each id binds to that good's own authored work clip
+ * (stone/iron/gold → the shared mining strike, clay → shovel-dig, mushroom → pluck), not the shared woodcut
+ * swing (source basis; see `content/settler-gfx.ts`).
  */
 
 /** The chop atomic id (the original's `harvest`) — wood's harvest action. */
@@ -28,7 +26,7 @@ export const PLANT_ATOMIC = 34;
 export const CULTIVATE_ATOMIC = 35;
 
 /**
- * The store-exchange PAIR every trade shares (`tribetypes.ini setatomic <job> 22/23
+ * The store-exchange pair every trade shares (`tribetypes.ini setatomic <job> 22/23
  * "viking_<class>_pickup"/"_pileup"`; the sim's `PICKUP/PILEUP_ATOMIC_ID`,
  * `packages/sim/src/systems/agents/actions.ts`): lift a load (22) and pile it into a store (23).
  * Shared vocabulary like the harvest ids — the sandbox content binds the clips, the settler binding

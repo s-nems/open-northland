@@ -14,8 +14,8 @@ import { type Camera, type DrawItem, tileToScreen } from '@open-northland/render
 
 /**
  * Build the camera for a frame. At zoom 1 it keeps the historical pan (the iso strip projects to
- * negative screen-x, so the offset nudges it into view). At a higher zoom it centres on the CENTROID of
- * the SETTLERS (the camera follows the people — they're the animated subjects a pixel check inspects),
+ * negative screen-x, so the offset nudges it into view). At a higher zoom it centres on the centroid of
+ * the settlers (the camera follows the people — they're the animated subjects a pixel check inspects),
  * falling back to all non-tile sprites, then the origin. This frames a small decoded bob reliably rather
  * than letting the big placeholder boxes drag the focus off it. `screen = world*scale + offset` (see
  * {@link Camera}).
@@ -46,7 +46,7 @@ export function cameraCenteredOnTile(
 }
 
 /**
- * The camera that puts WORLD point `(worldX, worldY)` (projected px, pre-camera) at the viewport centre
+ * The camera that puts world point `(worldX, worldY)` (projected px, pre-camera) at the viewport centre
  * at `zoom` — {@link cameraCenteredOnTile} without the tile→world projection, for callers that already
  * hold a world point (the minimap's click-to-jump). Pure.
  */
@@ -81,12 +81,11 @@ function centroid(
 
 /**
  * Zoom bounds the scroll-wheel clamps to, so the world can't shrink to nothing or balloon unusably. The
- * lower bound is a deliberate FLOOR on how far out you can go: an RTS renders only what's on screen, so
- * the min zoom is what bounds the visible tile + bob count (and thus the frame cost) — not a whole-map
- * fit. `0.15` (~6× out) frames a big slab of a large map — a battle, a settlement cluster — which is the
- * stated need; seeing an entire 256×256 map at once (`scale ≈ 0.06`, tens of thousands of bobs) is not a
- * requirement and is where cost balloons, so it's intentionally off the table. Raise it if a scene still
- * churns when fully out; lower it only alongside a zoom-out LOD (marker sprites + animation freeze).
+ * lower bound is deliberate: an RTS renders only what's on screen, so the min zoom bounds the visible tile
+ * + bob count (and thus frame cost), not a whole-map fit. `0.15` (~6× out) frames a big slab of a large
+ * map (a battle, a settlement cluster); seeing a whole 256×256 map at once (`scale ≈ 0.06`, tens of
+ * thousands of bobs) is where cost balloons, so it's off the table. Raise it if a scene still churns when
+ * fully out; lower it only alongside a zoom-out LOD (marker sprites + animation freeze).
  */
 export const MIN_ZOOM = 0.15;
 export const MAX_ZOOM = 8;
@@ -133,8 +132,8 @@ export interface CameraController {
   jumpTo(next: Camera): void;
   /**
    * Install a predicate that claims a client point for the HUD; while it returns true for the cursor, the
-   * wheel does NOT zoom (an open window scrolls instead). Pass `null` to clear. The game view wires the
-   * tool panel's `claimsWheel` here (an OPEN pop-up window only — NOT the broad `claimsPointer`, which also
+   * wheel does not zoom (an open window scrolls instead). Pass `null` to clear. The game view wires the
+   * tool panel's `claimsWheel` here (an open pop-up window only — not the broad `claimsPointer`, which also
    * covers the strip and active placement, where the wheel should still zoom) so scrolling a pop-up list
    * never also zooms the world behind it.
    */
@@ -144,16 +143,7 @@ export interface CameraController {
 }
 
 /**
- * Wire interactive camera movement onto `canvas`, starting from the `initial` frame: **middle-mouse
- * drag** grabs and pulls the world; the **arrow keys** scroll the camera (press right to look right);
- * the **scroll wheel** zooms toward the cursor. App-layer only — DOM + floats are fine here and the
- * sim is never touched; this just translates DOM events into the pure {@link panCamera}/
- * {@link zoomCameraAt} reducers over a mutable camera. Drag uses mouse (not pointer) events so
- * `preventDefault` on the middle button suppresses the browser's autoscroll widget; move/up listen on
- * `window` so a drag continues when the cursor leaves the canvas.
- */
-/**
- * The CSS-px → Pixi-SCREEN-px scale for a canvas (+ its client `rect`). Client (CSS-px) mouse coords
+ * The CSS-px → Pixi-screen-px scale for a canvas (+ its client `rect`). Client (CSS-px) mouse coords
  * must land in the screen px the camera + picking + HUD layouts work in — the backing store divided by
  * `resolution`, the renderer's device-px-per-screen-px (`app.renderer.resolution`: devicePixelRatio for
  * the HiDPI window canvas, 1 for the deterministic `?shot` canvas — every caller passes its app's live
@@ -258,7 +248,7 @@ export function createCameraController(
     camera: () => cam,
     jumpTo: (next) => {
       cam = next;
-      // A drag in flight keeps panning FROM the new frame: its deltas apply per-move (lastX/lastY track
+      // A drag in flight keeps panning from the new frame: its deltas apply per-move (lastX/lastY track
       // the cursor, not the camera), so no drag state needs resetting here.
     },
     setPointerGuard: (guard) => {
