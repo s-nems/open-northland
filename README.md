@@ -1,9 +1,9 @@
-# OpenNorthland
+# Open Northland
 
 [![CI](https://github.com/s-nems/open-northland/actions/workflows/ci.yml/badge.svg)](https://github.com/s-nems/open-northland/actions/workflows/ci.yml)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
-**OpenNorthland** is an open-source, cross-platform reimplementation of the Viking-era **Cultures**
+**Open Northland** is an open-source, cross-platform reimplementation of the Viking-era **Cultures**
 settler/colony strategy series: *Cultures 2*, *Northland* (*Die Sage der Wikinger*), and
 *8th Wonder of the World*. It is a fresh engine that pairs a deterministic simulation, an isometric
 renderer, and an offline pipeline converting your own copy of the original game's data into a modern,
