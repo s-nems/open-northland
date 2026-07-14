@@ -11,7 +11,7 @@ import { characterLabel, headLabel, pickWalkRow, type VikingCharacter } from '..
 import type { BobSeqRow } from '../content/ir.js';
 
 /**
- * The BROWSER-FREE data half of the `?anim` gallery ({@link import('./anim.js')}): turn decoded `[bobseq]`
+ * The browser-free data half of the `?anim` gallery ({@link import('./anim.js')}): turn decoded `[bobseq]`
  * rows into the {@link GalleryCellSpec}s the retained {@link import('@open-northland/render').AnimationGallery}
  * draws, and parse the gallery's URL knobs. Every function here is pure over its inputs (the loaded layers
  * as data), so the montage assembly + URL parsing are unit-tested without a GPU
@@ -24,7 +24,7 @@ const WALK_SEQ = 'human_man_generic_walk';
 
 /**
  * The gallery layouts: play every sequence (`anim`), play the walk once per head look (`heads`), or play
- * the walk once per **player colour** (`colors` — the team-colour montage).
+ * the walk once per player colour (`colors` — the team-colour montage).
  */
 export type GalleryView = 'anim' | 'heads' | 'colors';
 
@@ -79,11 +79,11 @@ function clipFromRow(row: BobSeqRow): GalleryClip {
 
 /**
  * Turn the decoded `[bobseq]` rows into {@link GalleryClip}s — the load-bearing, browser-free data step.
- * Each clip gets its {@link clipDirs} direction count; a `filter` substring narrows by name. The HEAD
- * FALLBACK: a walk-layout carry variant (`length === walk.length`, not walk itself) whose OWN head bob is
+ * Each clip gets its {@link clipDirs} direction count; a `filter` substring narrows by name. The head
+ * fallback: a walk-layout carry variant (`length === walk.length`, not walk itself) whose own head bob is
  * empty (`headAtlas` has no non-zero frame at its start) borrows the base `human_man_generic_walk` head, so
  * it isn't drawn headless (the head faces the walk heading while the body carries the load). `walkRow` is
- * resolved from the UNFILTERED rows, so `?filter=bread` still finds the walk head to borrow. Pure (given
+ * resolved from the unfiltered rows, so `?filter=bread` still finds the walk head to borrow. Pure (given
  * the head atlas as data) + exported so this join is unit-tested without a browser.
  */
 export function buildGalleryClips(
@@ -114,7 +114,7 @@ export function buildGalleryClips(
 }
 
 /**
- * The cells for the ANIMATION view: every sequence of the body, each drawn with the character's default
+ * The cells for the animation view: every sequence of the body, each drawn with the character's default
  * head (`heads[0]`). Pure over the loaded layers — the browser-free join of {@link buildGalleryClips} with
  * the shared (body, head) so it's exercised without a GPU.
  */
@@ -130,7 +130,7 @@ export function buildAnimCells(
 }
 
 /**
- * The cells for the HEADS view: the plain walk ({@link pickWalkRow}) played once per head LOOK, each cell
+ * The cells for the heads view: the plain walk ({@link pickWalkRow}) played once per head look, each cell
  * captioned by its head. `heads[i]` lines up with `headBmds[i]` (both in roster/stem order). A `filter`
  * narrows by head label or bmd name. Returns `[]` when the body has no playable clip. Pure over the loaded
  * layers so the montage assembly is unit-tested without a browser.
@@ -168,7 +168,7 @@ export function buildHeadsCells(
 }
 
 /**
- * The cells for the COLOURS view: the plain walk ({@link pickWalkRow}) played once per player colour, each
+ * The cells for the colours view: the plain walk ({@link pickWalkRow}) played once per player colour, each
  * cell captioned by its colour name and tagged with its {@link GalleryCellSpec.player} row (so the paletted
  * gallery reads it through that LUT row). `colorNames[i]` is player `i`. A `filter` narrows by colour name.
  * Returns `[]` when the body has no playable walk. Pure over the loaded layers (browser-free, unit-tested).

@@ -10,13 +10,13 @@ import { ROW_TEXT_PAD } from './shared.js';
 /** Key column width of a key/value row. */
 const KV_KEY_W = 82;
 /** The Ogólne stat rows' label column (fits the widest label, "Towarzystwo") — the gauge fills the
- *  REST of the row, so the bars run edge-to-edge with the column instead of floating as short stubs
+ *  rest of the row, so the bars run edge-to-edge with the column instead of floating as short stubs
  *  (user feedback 2026-07-11: wider bars). */
 const STAT_LABEL_W = 78;
 /** An Ogólne stat gauge's height — a touch taller than the building's 10-px progress bar so the
  *  gradient has room to read, still inside the 13-px bar row. */
 const STAT_BAR_H = 11;
-/** How far an equip good's icon EXTENDS beyond its socket ring on every side (design px). The original's
+/** How far an equip good's icon extends beyond its socket ring on every side (design px). The original's
  *  chunky equip icons spill a touch over the ring — a bigger icon reads far better than a tiny one
  *  rattling inside the circle. */
 const SLOT_ICON_OVERFLOW = 3;
@@ -71,7 +71,7 @@ function drawGeneralSection(
   chrome.textAt(model.meta, layout.meta.x, layout.meta.y + ROW_TEXT_PAD * s, 'dimmed');
 
   // Stat bars: the model's pinned label (Zdrowie/Głód/…) in a fixed column, then a level-coloured
-  // gauge (the decoded ramp sweeps red→orange→green with the level) filling the REST of the row; the
+  // gauge (the decoded ramp sweeps red→orange→green with the level) filling the rest of the row; the
   // hover value lives in the panel's cursor tooltip.
   const labelW = Math.round(STAT_LABEL_W * s);
   const barH = Math.round(STAT_BAR_H * s);
@@ -140,7 +140,7 @@ function drawExperienceSection(
  * Ekwipunek: one labeled row per slot group (Buty / Narzędzia / Broń / Zbroja / Ekwipunek). Each row's
  * label sits left of its round sockets; an occupied socket shows the good's icon (when it has an
  * `ls_goods` pile — potions/amulets have none, so they read by the warm-tinted socket) and, for a
- * WEARING good, its "degree of use" percent in the column right of the socket.
+ * wearing good, its "degree of use" percent in the column right of the socket.
  */
 function drawEquipmentSection(
   chrome: Chrome,

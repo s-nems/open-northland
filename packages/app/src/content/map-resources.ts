@@ -2,23 +2,23 @@ import type { TerrainObjects } from '@open-northland/data';
 import type { ContentIr } from './ir.js';
 
 /**
- * The decoded-map → sim RESOURCE join: which placed landscape objects are harvestable, and the good each
+ * The decoded-map → sim resource join: which placed landscape objects are harvestable, and the good each
  * yields. A decoded map ships its trees/ore/stone as pure render decor (`map.objects`, drawn by the static
- * map-object layer); this module is the reverse lookup that lets the `?map=` entry ALSO spawn them as real
+ * map-object layer); this module is the reverse lookup that lets the `?map=` entry also spawn them as real
  * `Resource` sim nodes so a gatherer can actually work them (plan `gathering-economy.md` step 6). Without it
  * a map's trees are drawn but carry no `Resource`, so hovering shows nothing and gatherers idle — only an
  * admin-spawned node (a real sim entity) was ever harvestable.
  *
- * The join is data-driven off the REAL `ir.json`, not hardcoded: each good's gathering pipeline lists the
- * `landscapeGfx` indices of its standing HARVEST-stage forms (every tree variant for wood, every ore
+ * The join is data-driven off the real `ir.json`, not hardcoded: each good's gathering pipeline lists the
+ * `landscapeGfx` indices of its standing harvest-stage forms (every tree variant for wood, every ore
  * outcrop for iron, …); inverting that index list → EditName → goodId names exactly the objects the
  * original treats as harvestable. Decor (grass, ferns, waves) appears in no harvest stage, so it is absent
- * from the map and never spawned. The pipeline's `goodId` STRING is the bridge across the two good-number
+ * from the map and never spawned. The pipeline's `goodId` string is the bridge across the two good-number
  * spaces — the IR's original numbering (`wood` = 5) and the app's clean-room numbering (`GOOD_WOOD` = 1) —
  * so the caller resolves the returned id against `GATHERERS` by `id`.
  */
 
-/** What one harvestable object `EditName` resolves to: the good it yields and its OWN harvest-stage
+/** What one harvestable object `EditName` resolves to: the good it yields and its own harvest-stage
  *  `[GfxLandscape]` record index (the species variant — "pine 02", not the good's representative). */
 export interface HarvestObjectRef {
   readonly goodId: string;
@@ -27,13 +27,13 @@ export interface HarvestObjectRef {
 
 /**
  * Map each placed landscape-object `EditName` (e.g. `"yew 01"`, `"iron mine 03"`) to the `goodId` string it
- * yields when harvested AND its own `[GfxLandscape]` record index, from the IR gathering pipeline's HARVEST
+ * yields when harvested and its own `[GfxLandscape]` record index, from the IR gathering pipeline's harvest
  * stage. Pure — one pass over the pipeline and the `landscapeGfx` index↔name table. An object in no harvest
  * stage is absent (a decor object stays decor). Degrades to an empty map when either lane is missing (an
- * older `ir.json`). The `gfxIndex` rides the spawn onto `Resource.gfxIndex` — an OPAQUE render-variant tag
+ * older `ir.json`). The `gfxIndex` rides the spawn onto `Resource.gfxIndex` — an opaque render-variant tag
  * (app numbering) the snapshot carries into `DrawItem.gfxIndex`, so a pool-drawn node keeps its exact
  * original graphic instead of collapsing to one species per good. It never reaches the sim's footprint
- * resolution: collision stays the good's own record in the SIM's content set (an unrelated number space).
+ * resolution: collision stays the good's own record in the sim's content set (an unrelated number space).
  */
 export function harvestGoodByObjectName(ir: ContentIr): ReadonlyMap<string, HarvestObjectRef> {
   const nameByIndex = new Map<number, string>();
@@ -51,8 +51,8 @@ export function harvestGoodByObjectName(ir: ContentIr): ReadonlyMap<string, Harv
 }
 
 /** One harvestable node a decoded map defines: the `goodId` it yields, its variant `gfxIndex`, at a
- *  HALF-CELL anchor `(hx, hy)` (the `map.objects` lattice is the sim's 2W×2H node grid verbatim — the
- *  same lane `collision.ts` reads). `placement` is the placement ORDINAL (triplet index) in
+ *  half-cell anchor `(hx, hy)` (the `map.objects` lattice is the sim's 2W×2H node grid verbatim — the
+ *  same lane `collision.ts` reads). `placement` is the placement ordinal (triplet index) in
  *  `objects.placements` — the join key back to the static layer's drawn sprite for the same placement
  *  (the `?map=` entry's static→dynamic handover). */
 export interface MapResourceSpawn {
@@ -94,7 +94,7 @@ export function mapResourceSpawns(
 
 /**
  * The `[GfxLandscape].logicType` of a fruited bush (`bush with fruits`, `landscapetypes.ini` type 11) —
- * the source-pinned marker that a placed bush object currently HOLDS FRUIT, so it becomes a forageable
+ * the source-pinned marker that a placed bush object currently holds fruit, so it becomes a forageable
  * {@link import('@open-northland/sim').BerryBush}. Bare/flowering/barren bush states (types 8/9/10) stay decor.
  * Exported as the single home for this constant — the render-side bush binding ({@link
  * import('./resource-gfx/index.js').resolveBerryBushRefs}) keys off the same value.
@@ -102,7 +102,7 @@ export function mapResourceSpawns(
 export const BUSH_WITH_FRUITS_LOGIC_TYPE = 11;
 
 /** One berry bush a decoded map defines: its render-variant `gfxIndex` (the fruited-bush record index) at
- *  a HALF-CELL anchor `(hx, hy)`, and the placement ORDINAL (the static-layer handover join key). */
+ *  a half-cell anchor `(hx, hy)`, and the placement ordinal (the static-layer handover join key). */
 export interface MapBerryBushSpawn {
   readonly gfxIndex: number;
   readonly hx: number;
@@ -144,12 +144,10 @@ export function mapBerryBushSpawns(objects: TerrainObjects, ir: ContentIr): MapB
 }
 
 /**
- * The object `EditName`s whose placements BECOME sim `Resource` entities (their good has a gatherer
- * trade) — exactly the set {@link mapResourceSpawns} spawns. The STATIC collision join must skip these
+ * The object `EditName`s whose placements become sim `Resource` entities (their good has a gatherer
+ * trade) — exactly the set {@link mapResourceSpawns} spawns. The static collision join must skip these
  * (`buildCollisionTerrain skipObjectNames`): their blocking lives in the sim's dynamic
- * resource-footprint overlay, stamped at spawn and UNSTAMPED when the node is felled/depleted. Baked
- * statically instead, a felled tree's cell stayed walled off forever and the collector could never
- * path to the trunk it had just dropped there. Pure.
+ * resource-footprint overlay, stamped at spawn and unstamped when the node is felled/depleted. Pure.
  */
 export function simResourceObjectNames(ir: ContentIr, spawnableGoodIds: ReadonlySet<string>): Set<string> {
   const out = new Set<string>();

@@ -12,19 +12,19 @@ import {
 } from './context.js';
 
 /**
- * The PURE settler half of the details-panel model: the Ogólne satisfaction bars, the Praca workplace/
+ * The pure settler half of the details-panel model: the Ogólne satisfaction bars, the Praca workplace/
  * product line, the Doświadczenie datum, the Ekwipunek rows, and the live status caption — all with no
  * Pixi/DOM in sight. The orchestrator in `index.ts` assembles a {@link SettlerPanelModel} from these.
  *
  * Label language note: the sim has no matching original string for its own states (stance names, status
- * lines, need names), so those carry pinned Polish fallbacks here; everything the original DOES provide
+ * lines, need names), so those carry pinned Polish fallbacks here; everything the original does provide
  * (section titles, button labels) is looked up from the decoded string tables at render time.
  */
 
 /**
- * The `humanwindow` string ids the settler panel resolves at draw time — the DECODED original section
+ * The `humanwindow` string ids the settler panel resolves at draw time — the decoded original section
  * titles and equipment-slot labels (`content/gui/strings/<lang>.json`, decoded from the original
- * `ingamegui` tables). Fidelity: everything the original DOES provide is looked up; the pinned Polish
+ * `ingamegui` tables). Fidelity: everything the original does provide is looked up; the pinned Polish
  * fallbacks the model rows carry only cover a checkout without `content/`. One deliberate exception:
  * the Ogólne stat bars pin their own labels instead of the decoded 11–15 strings — see
  * {@link satisfactionBars}. Named per the no-magic-numbers rule so a slot/label id reads by meaning,
@@ -56,9 +56,9 @@ export function stanceLabel(mode: number | undefined): string {
 
 /** One equipment slot's contents. Empty (`goodId` undefined, `usePct` null) for an unworn slot. */
 export interface EquipSlotModel {
-  /** The worn good's STRING id (the icon key) — undefined when the slot is empty. */
+  /** The worn good's string id (the icon key) — undefined when the slot is empty. */
   readonly goodId?: string;
-  /** The "degree of use" percent for an occupied WEARING item (potion/shoes/tool); null when the slot
+  /** The "degree of use" percent for an occupied wearing item (potion/shoes/tool); null when the slot
    *  is empty or holds a permanent good (weapon/armour/amulet). */
   readonly usePct: number | null;
 }
@@ -156,19 +156,19 @@ export function equipmentRows(ctx: UnitPanelModelContext, comps: Comp): EquipRow
   return rows;
 }
 
-/** A need bar's model: its satisfaction LEVEL as the gauge percent, the same percent as the hover value. */
+/** A need bar's model: its satisfaction level as the gauge percent, the same percent as the hover value. */
 function needBar(label: string, deficit: number | undefined): PanelBar {
   const level = 100 - pct(deficit);
   return { label, pct: level, hover: `${level}%` };
 }
 
 /**
- * The Ogólne stat bars. The sim stores needs as rising DEFICITS (`hunger`↑ = hungrier); the original's
- * window shows the SATISFACTION LEVEL (full = content), so each need bar is `100 − need`. Health leads
+ * The Ogólne stat bars. The sim stores needs as rising deficits (`hunger`↑ = hungrier); the original's
+ * window shows the satisfaction level (full = content), so each need bar is `100 − need`. Health leads
  * (only for a unit with a `Health` component, as `hitpoints/max` — its hover shows the raw points, the
- * need bars their percent). The labels are PINNED, deliberately diverging from the decoded `humanwindow`
+ * need bars their percent). The labels are pinned, deliberately diverging from the decoded `humanwindow`
  * 11–15 strings (Zdrowie/Energia/Wytrzymałość/Motywacja Społeczna/Religia): each bar is named after the
- * NEED it actually shows — Głód←hunger, Sen←fatigue, Towarzystwo←enjoyment — because the original's stat
+ * need it actually shows — Głód←hunger, Sen←fatigue, Towarzystwo←enjoyment — because the original's stat
  * names don't map 1:1 to the sim's four needs and read poorly (user decision 2026-07-11).
  */
 export function satisfactionBars(comps: Comp): PanelBar[] {

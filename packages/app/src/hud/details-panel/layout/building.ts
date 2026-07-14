@@ -66,14 +66,14 @@ export interface BuildingLayout {
   readonly construction: SectionRect | null;
   readonly defence: SectionRect | null;
   readonly production: SectionRect | null;
-  /** The Magazyn section — null for a building that stores NOTHING (no stock slots: a home), which
+  /** The Magazyn section — null for a building that stores nothing (no stock slots: a home), which
    *  simply has no store window, matching the original's per-building window set. */
   readonly stock: SectionRect | null;
   /**
-   * Whether the stock body is the COMPACT shape — a small store (every good fits the grid at once,
+   * Whether the stock body is the compact shape — a small store (every good fits the grid at once,
    * `rows ≤ MAX_STOCK_ROWS × 2`: the farm's single wheat slot, a mill's two) drops the category tabs
    * and shrinks the body to exactly its rows ({@link stockRows}); only a big store (a warehouse's full
-   * catalog) keeps the original's fixed-height eight-tab window. The dynamic-magazyn rule is a GENERAL
+   * catalog) keeps the original's fixed-height eight-tab window. The dynamic-magazyn rule is a general
    * one, keyed on the good count — never a per-building-type branch.
    */
   readonly stockCompact: boolean;
@@ -83,7 +83,7 @@ export interface BuildingLayout {
    * The eight category-tab plate rects at the top of the stock body — carried in the layout (like
    * {@link buttons}) so `mapLayout` derives the draw copy from the hit copy, and the drawn plate equals its
    * clickable rect by construction (never two independent `stockTabRects` roundings at different scales).
-   * EMPTY for a compact/absent stock body (no tabs to click).
+   * Empty for a compact/absent stock body (no tabs to click).
    */
   readonly stockTabHits: readonly Rect[];
   /** Always present: for a finished building the bound workers, for a construction site the live
@@ -92,10 +92,10 @@ export interface BuildingLayout {
 }
 
 /**
- * The stock body's cell rects (icon + amount plate together), COLUMN-MAJOR: the left column top→bottom,
- * then the right — the ONE geometry the stock rows draw into AND the hover hit-test probes, so a hovered
+ * The stock body's cell rects (icon + amount plate together), column-major: the left column top→bottom,
+ * then the right — the one geometry the stock rows draw into and the hover hit-test probes, so a hovered
  * slot is exactly a drawn slot by construction. `rowsPerColumn * 2` slots: the tabbed store body reserves
- * its fixed {@link MAX_STOCK_ROWS}; a COMPACT store (few goods, no tabs) passes its own fitted row count.
+ * its fixed {@link MAX_STOCK_ROWS}; a compact store (few goods, no tabs) passes its own fitted row count.
  * A slot past the current good count is simply empty. `s` is the caller's scale (the draw oversample
  * `ss`, or the hit scale), so the same fixed metrics resolve into either space.
  */
@@ -134,9 +134,9 @@ export function layoutBuilding(
   const w = Math.round(PANEL_W * s);
   const gap = Math.round(SECTION_GAP * s);
 
-  // Building: measure each section, then stack bottom-anchored. The TABBED stock and the workers body
-  // reserve their FULL fixed height regardless of content — the original's windows keep their height,
-  // they don't shrink; a COMPACT stock (every good fits at once — few slots, no tabs) instead fits its
+  // Building: measure each section, then stack bottom-anchored. The tabbed stock and the workers body
+  // reserve their full fixed height regardless of content — the original's windows keep their height,
+  // they don't shrink; a compact stock (every good fits at once — few slots, no tabs) instead fits its
   // rows exactly, and a store-less building (a home) has no Magazyn window at all.
   const pad = Math.round(WIN_PAD * s);
   const buttonH = Math.round(BUTTON_H * s);
@@ -144,7 +144,7 @@ export function layoutBuilding(
   const generalBodyH = Math.round(PREVIEW_H * s);
   // A construction site swaps production/stock/defence for the Construction window: those describe the
   // finished building and mean nothing before completion (and delivered materials would read as store
-  // stock). The workers window STAYS — it shows the live building crew (user-requested). The
+  // stock). The workers window stays — it shows the live building crew (user-requested). The
   // Construction body is one gauge row + one row per material line.
   const underConstruction = model.construction !== null;
   const constructionBodyH = underConstruction
@@ -153,7 +153,7 @@ export function layoutBuilding(
   const showDefence = model.showDefense && !underConstruction;
   const showProduction = model.production !== null && !underConstruction;
   const defenceBodyH = showDefence ? Math.round(ROW_H * s) : 0;
-  // A recipe workshop reserves one bar row PER OPERATOR SLOT (`ProductionModel.rows` — the model is
+  // A recipe workshop reserves one bar row per operator slot (`ProductionModel.rows` — the model is
   // the single source, the section's bar loop draws the same count), so the panel height is stable
   // while batches start/finish staggered; a farm's field counters keep the single row.
   const productionRows = model.production?.kind === 'recipe' ? model.production.rows : 1;

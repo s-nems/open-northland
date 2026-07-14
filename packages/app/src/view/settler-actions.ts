@@ -20,7 +20,7 @@ import { el } from './overlay.js';
 import { createProfessionPicker } from './profession-picker.js';
 
 /**
- * The settler ACTION MENU — the contextual command buttons that fan out around the selected settler(s), in
+ * The settler action menu — the contextual command buttons that fan out around the selected settler(s), in
  * original GUI art. It is the Pixi + input glue over the pure {@link import('../hud/action-ring-layout.js')}
  * geometry (the twin split of `hud/tool-panel*`): the layout module transcribes the original's radial arm
  * footprint and assigns each command a best-guess order-icon; this module draws those icons as
@@ -28,9 +28,9 @@ import { createProfessionPicker } from './profession-picker.js';
  * palette) and turns a click into a `setJob` through the callback seam — never touching sim state (app-layer
  * I/O, one-way flow).
  *
- * We draw the WHOLE default human menu (every arm of the original), but only the "change profession" button
- * (`open-jobs`) is wired on this slice: clicking it opens the scrollable profession-picker WINDOW — a DOM
- * panel styled to EVOKE the original's parchment/rope selection windows (warm-wood fill, double rope-tan
+ * We draw the whole default human menu (every arm of the original), but only the "change profession" button
+ * (`open-jobs`) is wired on this slice: clicking it opens the scrollable profession-picker window — a DOM
+ * panel styled to evoke the original's parchment/rope selection windows (warm-wood fill, double rope-tan
  * frame, engraved headline + close box, the shared serif face), kept DOM so the grouped profession set
  * scrolls with no Pixi masking; picking a row issues `setJob` and returns to the menu. The offered
  * professions + their labels come from the shared `catalog/professions.ts` roster + `i18n/` (Polish now),
@@ -38,10 +38,10 @@ import { createProfessionPicker } from './profession-picker.js';
  * future "implement the action" pass wires them (and the warrior/scout menu variants). Three modes: `closed`
  * → `menu` (the default arms) → `jobs` (the list window over the hidden ring).
  *
- * It is toggled with **Space** (the info card stays always-on) and anchored on the selected settlers'
+ * It is toggled with Space (the info card stays always-on) and anchored on the selected settlers'
  * on-screen centroid, re-placed every frame as the camera pans / the units move. The order buttons are drawn
  * with the `'round'` colour key, so each reads as a round disc (no square backdrop). When the decoded GUI art
- * is absent (a checkout that hasn't run the pipeline) it DEGRADES to flat `Graphics` discs at the exact same
+ * is absent (a checkout that hasn't run the pipeline) it degrades to flat `Graphics` discs at the exact same
  * geometry, staying visible and fully clickable — the tooltip (a DOM label) carries each button's meaning.
  */
 
@@ -83,7 +83,7 @@ export interface SettlerActionsOptions {
 export interface SettlerActions {
   /**
    * Per-frame: re-place the menu on the current selection's on-screen centroid (and show/hide it). Reads the
-   * settlers' positions from the frame's already-built snapshot; only runs a scan while the menu is OPEN and
+   * settlers' positions from the frame's already-built snapshot; only runs a scan while the menu is open and
    * a settler is selected, so a closed menu costs nothing.
    */
   update(camera: Camera, snapshot: WorldSnapshot, selection: ReadonlySet<number>): void;
@@ -94,7 +94,7 @@ export interface SettlerActions {
   isOpen(): boolean;
   /** Force-close (e.g. on a selection clear). */
   close(): void;
-  /** True when a client point is over a visible menu button — the input router asks BEFORE world picking. */
+  /** True when a client point is over a visible menu button — the input router asks before world picking. */
   claimsPointer(clientX: number, clientY: number): boolean;
   dispose(): void;
 }
@@ -106,13 +106,13 @@ export interface SettlerActions {
 export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<SettlerActions> {
   const { app, canvas } = opts;
   // The ring's effective scale: the shared uiscale, shrunk by the ring's own factor (see actionRingScale) —
-  // the SAME value feeds the icon bake and layoutActionRing, so the drawn icon always fills its hit-rect.
+  // the same value feeds the icon bake and layoutActionRing, so the drawn icon always fills its hit-rect.
   const scale = actionRingScale(opts.uiscale);
 
   const art = await loadGuiArt();
 
   // The static default menu (built once from HUMAN_DEFAULT_MENU) — the only face drawn on the canvas. The
-  // profession picker is now a DOM list window (below), so the canvas holds just the menu buttons.
+  // profession picker is a DOM list window (below), so the canvas holds just the menu buttons.
   const allButtons: readonly ActionButton[] = HUMAN_DEFAULT_MENU.flatMap((g) => g.buttons);
 
   const root = new Container();
@@ -139,7 +139,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
   // --- State ----------------------------------------------------------------------------------------
   let mode: MenuMode = 'closed';
   let layout: ActionRingLayout = { buttons: [], bounds: { x: 0, y: 0, w: 0, h: 0 } };
-  /** The settler ids a click's command applies to (the selected SETTLERS, filtered in `update`). */
+  /** The settler ids a click's command applies to (the selected settlers, filtered in `update`). */
   let actionTargets: number[] = [];
 
   // --- The "Zmiana zawodu" profession picker window: a parchment DOM panel over the (hidden) ring ------
@@ -151,7 +151,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     onPick: (jobType: number): void => {
       // Apply to whoever is selected right now (actionTargets is refreshed each frame in `update`).
       if (actionTargets.length > 0) opts.onSetJob(actionTargets, jobType);
-      // Picking a profession COMMITS the menu: close it entirely (list AND ring), rather than stepping back
+      // Picking a profession commits the menu: close it entirely (list and ring), rather than stepping back
       // to the arms — the order is issued, so there is nothing left to do in the menu.
       closeMenu();
     },
@@ -171,7 +171,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     if (mode === 'jobs') mode = 'menu';
   };
   /**
-   * Fully close the whole menu — the list AND the ring, back to `closed`. The COMMIT/teardown path (picking a
+   * Fully close the whole menu — the list and the ring, back to `closed`. The commit/teardown path (picking a
    * profession, or an external {@link SettlerActions.close}), as opposed to {@link closeJobWindow}'s "step back
    * to the ring" used by Escape / the ✕ box / a backdrop click. (`hideTransient` is defined below; this only
    * runs on user events after mount, so the forward reference is safe.)
@@ -250,7 +250,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
   const claimsPointer = (clientX: number, clientY: number): boolean => {
     if (mode === 'closed' || !root.visible) return false;
     const { x, y } = toCanvas(clientX, clientY);
-    // Claim only actual button squares — a click in the gap BETWEEN buttons (over the unit itself) still
+    // Claim only actual button squares — a click in the gap between buttons (over the unit itself) still
     // reaches world picking, so the settler stays selectable/orderable through the open menu.
     return hitTestActionRing(layout, x, y) !== null;
   };
@@ -299,11 +299,11 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     tooltip.style.display = 'none';
   };
 
-  // Register BEFORE unit-controls attaches its own canvas mousedown (this controller is mounted first), so a
+  // Register before unit-controls attaches its own canvas mousedown (this controller is mounted first), so a
   // click on a menu button consumes the event and never falls through to selection / a move order. The
   // `mouseleave` clears a hover highlight/tooltip that would otherwise linger when the cursor leaves the
   // canvas while still over a button (no further `mousemove` fires to clear it).
-  // Escape backs out of the open profession list (the twin of a backdrop click / Space). It must STOP here:
+  // Escape backs out of the open profession list (the twin of a backdrop click / Space). It must stop here:
   // unit-controls also listens for Escape on `window` (to clear the selection), and we registered first — so
   // without stopImmediatePropagation an Escape over the list would also deselect the unit and close the whole
   // menu, when it should only step back to the ring with the unit still selected.

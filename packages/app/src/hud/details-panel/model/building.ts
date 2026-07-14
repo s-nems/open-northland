@@ -13,7 +13,7 @@ import {
 } from './context.js';
 
 /**
- * The PURE building half of the details-panel model: the Magazyn stock rows, the per-trade worker slots,
+ * The pure building half of the details-panel model: the Magazyn stock rows, the per-trade worker slots,
  * and the Produkcja section (a workshop's recipe cycle or a farm's live field state) — all with no
  * Pixi/DOM in sight. The orchestrator in `index.ts` assembles a {@link BuildingPanelModel} from these.
  */
@@ -21,7 +21,7 @@ import {
 /** One material line of a construction site's cost — the Construction row "delivered / needed". */
 export interface ConstructionRow {
   readonly goodType: number;
-  /** The good's STRING id (stable across content sets) — the key the HUD resolves its icon by. */
+  /** The good's string id (stable across content sets) — the key the HUD resolves its icon by. */
   readonly goodId?: string;
   readonly label: string;
   /** Units already in the site's hold, capped at the line's need (surplus never reads over-full). */
@@ -39,7 +39,7 @@ export interface ConstructionModel {
 
 export interface StockRow {
   readonly goodType: number;
-  /** The good's STRING id (stable across content sets) — the key the HUD resolves its icon by. */
+  /** The good's string id (stable across content sets) — the key the HUD resolves its icon by. */
   readonly goodId?: string;
   readonly label: string;
   readonly amount: number;
@@ -49,7 +49,7 @@ export interface StockRow {
   readonly category: number;
 }
 
-/** One worker SLOT of a building, as a filled/capacity line — e.g. "Cieśla 1/3", "Tragarz 1/1",
+/** One worker slot of a building, as a filled/capacity line — e.g. "Cieśla 1/3", "Tragarz 1/1",
  *  "Zbieracz 0/1". One per declared `workers` slot, so each trade shows its own limit, not one aggregate. */
 export interface WorkerSlotRow {
   readonly jobType: number;
@@ -63,24 +63,24 @@ export interface WorkerSlotRow {
 /**
  * The Produkcja section's content, one of two shapes:
  *  - `recipe` — a workshop's abstract cycle (its outputs + the running cycle's progress bar);
- *  - `fields` — a FARM's live field state (the produced good's icon + the sown/growing/ripe counters),
+ *  - `fields` — a farm's live field state (the produced good's icon + the sown/growing/ripe counters),
  *    for a workplace producing a field-farmed good (`farming` on the good, no recipe): there is no
- *    recipe to show, the "production" IS the fields its farmers work around the building.
+ *    recipe to show, the "production" is the fields its farmers work around the building.
  */
 export type ProductionModel =
   | {
       readonly kind: 'recipe';
-      /** The FIRST output's STRING id — the row's icon key (like {@link StockRow.goodId}). */
+      /** The first output's string id — the row's icon key (like {@link StockRow.goodId}). */
       readonly goodId?: string;
       readonly label: string;
       /**
-       * One 0..100 progress per IN-FLIGHT batch (the sim `Production.cycles` list — each operator
+       * One 0..100 progress per in-flight batch (the sim `Production.cycles` list — each operator
        * works its own independent batch, so a twin-staffed mill shows two bars). Empty when the
        * workplace is idle.
        */
       readonly pcts: readonly number[];
       /**
-       * The bar rows the section RESERVES — `max(1, operator headcount, pcts.length)`, so the panel
+       * The bar rows the section reserves — `max(1, operator headcount, pcts.length)`, so the panel
        * geometry is stable while batches start/finish staggered (a mill always shows two bar rows,
        * empty or not), instead of growing/shrinking a row mid-work. The single source both the
        * layout's height math and the section's bar loop consume — they can never drift apart.
@@ -89,7 +89,7 @@ export type ProductionModel =
     }
   | {
       readonly kind: 'fields';
-      /** The farmed good's STRING id — the icon key (like {@link StockRow.goodId}). */
+      /** The farmed good's string id — the icon key (like {@link StockRow.goodId}). */
       readonly goodId?: string;
       /** The farmed good's display name. */
       readonly label: string;
@@ -139,14 +139,14 @@ function liveAmounts(stockpile: unknown): Map<number, number> {
 }
 
 /**
- * The Magazyn rows: every good the building can STORE (its `def.stock` slots), shown with its current
+ * The Magazyn rows: every good the building can store (its `def.stock` slots), shown with its current
  * amount — 0 when empty — so each storable good appears with its own icon, matching the original stock
- * window (which lists a store's ACCEPTED goods, not whatever it happens to hold). Held goods OUTSIDE
+ * window (which lists a store's accepted goods, not whatever it happens to hold). Held goods outside
  * the declared slots never show (and a slot-less building gets no Magazyn at all): a farm's leftover
  * construction wood, or a home's accumulating upgrade materials, are not store stock and reading them
  * as "drewno: 0 / kamień: 2" was noise (user feedback 2026-07-14).
  *
- * Ordering: the DECLARED slot order, stable while amounts change — a compact store's rows (the mill's
+ * Ordering: the declared slot order, stable while amounts change — a compact store's rows (the mill's
  * Pszenica/Mąka) must never swap places mid-work (user feedback 2026-07-11). Only the big tabbed store
  * bubbles its held goods up, and it does so at draw time (`sections.ts`), where the fixed row cap
  * (`MAX_STOCK_ROWS × 2` with a `+N`) makes visibility worth the reshuffle.
@@ -178,7 +178,7 @@ export function stockRows(
 
 /**
  * The Construction-window model of a site: one row per `construction` cost line with how much of it the
- * site's hold already has (the same Stockpile the finished building will store into — the sim keeps ONE
+ * site's hold already has (the same Stockpile the finished building will store into — the sim keeps one
  * hold, so the panel is what separates "materials for the build" from "the store"), plus the health ramp.
  * Null for a finished building (no `UnderConstruction` marker).
  */
@@ -208,7 +208,7 @@ export function constructionModel(
   };
 }
 
-/** How many settlers are currently BOUND to `buildingId`, per job — the per-slot "filled" count. */
+/** How many settlers are currently bound to `buildingId`, per job — the per-slot "filled" count. */
 function boundCountsByJob(snapshot: WorldSnapshot, buildingId: number): Map<number, number> {
   const counts = new Map<number, number>();
   for (const e of snapshot.entities) {
@@ -242,7 +242,7 @@ export function workerSlotsFor(
   }));
 }
 
-/** Count a FARM's fields in the snapshot: every `Crop` whose `farm` is this building, split into still
+/** Count a farm's fields in the snapshot: every `Crop` whose `farm` is this building, split into still
  *  growing vs ripe (`stage >= stages`). One entity pass, shared shape with the other snapshot scans. */
 function fieldCounts(snapshot: WorldSnapshot, buildingId: number): { growing: number; ripe: number } {
   let growing = 0;
@@ -264,7 +264,7 @@ export function productionModel(
   def: BuildingDef | undefined,
   ent: NonNullable<ReturnType<typeof entityById>>,
 ): ProductionModel | null {
-  // A FARM produces a field-farmed good — checked BEFORE the recipe, mirroring the sim: farmWorkGood
+  // A farm produces a field-farmed good — checked before the recipe, mirroring the sim: farmWorkGood
   // ignores recipe presence and ai.ts ranks the farmer rung above the producer rung precisely because
   // real extracted content synthesizes an abstract recipe from `logicproduction` for every producer.
   // Wherever the sim farms, the panel must show live field state, never a dead recipe bar.
@@ -302,9 +302,9 @@ export function productionModel(
 }
 
 /**
- * The declared OPERATOR headcount of a workplace — its `workers` slot counts minus the carrier
- * transport slots (mirrors the sim's `operatorJobsOf`: a carrier-ONLY building keeps its slots, the
- * well's carrier IS its operator). This is the batch ceiling, so the Produkcja section reserves this
+ * The declared operator headcount of a workplace — its `workers` slot counts minus the carrier
+ * transport slots (mirrors the sim's `operatorJobsOf`: a carrier-only building keeps its slots, the
+ * well's carrier is its operator). This is the batch ceiling, so the Produkcja section reserves this
  * many bar rows and keeps a stable height while batches start/finish staggered.
  */
 export function operatorHeadcount(ctx: UnitPanelModelContext, def: BuildingDef | undefined): number {

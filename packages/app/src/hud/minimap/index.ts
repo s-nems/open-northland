@@ -30,7 +30,7 @@ import {
  * The bottom-left minimap in the original's braided overview frame: the whole map's ground (built
  * once — terrain is static), the units/buildings as player-coloured dots (refreshed per sim tick),
  * the fog-of-war mask over both (a per-cell alpha raster refreshed only when the fog generation
- * moves; dots draw only on currently-VISIBLE ground) and the camera's view rectangle (refreshed per
+ * moves; dots draw only on currently-visible ground) and the camera's view rectangle (refreshed per
  * frame). Left-click (or drag) in the map hole jumps the camera to the pointed world spot; the whole
  * framed window claims its clicks so they never fall through to unit selection or world orders.
  *
@@ -38,7 +38,7 @@ import {
  * `model.ts` twin. Per the hud contract, view glue (client→screen px) is injected via options.
  */
 
-/** Ground-raster px per DEVICE px: 2 pins the GPU's linear downscale tap at full averaging (the
+/** Ground-raster px per device px: 2 pins the GPU's linear downscale tap at full averaging (the
  *  `supersample.ts` policy), so the per-cell mosaic's diamond edges resolve smooth on any DPR. */
 const RASTER_OVERSAMPLE = 2;
 /** How far (native frame px) the black hole backdrop underlaps the braid on its top/right inner edge:
@@ -52,7 +52,7 @@ const BUILDING_DOT_PX = 3;
 const VIEW_RECT_COLOUR = 0xffffff;
 const VIEW_RECT_ALPHA = 0.9;
 // The fog mask alphas are the render layer's FOG_*_ALPHA constants — the minimap shares the world
-// wash's exact grading, so the two surfaces cannot drift (review 2026-07-12: a local copy had).
+// wash's exact grading, so the two surfaces cannot drift.
 /** Dot colour for a player outside the swatch table — unreachable today (the index is taken modulo
  *  the table length); a named value so retuning the view rect never silently retunes stray dots. */
 const UNKNOWN_PLAYER_DOT_COLOUR = 0xffffff;
@@ -61,8 +61,8 @@ const HOLE_COLOUR = 0x000000;
 /** The flat fallback frame (bare checkout — no GUI art): parchment-dark border strokes. */
 const FALLBACK_FRAME_COLOUR = 0x2c241a;
 /** The HUD overlay plane (the tool-panel root and the settler action ring use the same). Equal
- *  zIndex keeps mount order, so the framed window draws OVER the earlier-mounted strip (whose lower
- *  buttons it covers on a short screen — the tool panel defers those clicks to us) and UNDER the
+ *  zIndex keeps mount order, so the framed window draws over the earlier-mounted strip (whose lower
+ *  buttons it covers on a short screen — the tool panel defers those clicks to us) and under the
  *  later-mounted action ring. */
 const MINIMAP_Z = 1000;
 
@@ -81,7 +81,7 @@ export interface MinimapOptions {
   readonly uiscale: number;
   /** The live camera (for the view rectangle). */
   readonly camera: () => Camera;
-  /** Centre the camera on a WORLD point (projected px, pre-camera) — the click-to-jump action. */
+  /** Centre the camera on a world point (projected px, pre-camera) — the click-to-jump action. */
   readonly onJump: (worldX: number, worldY: number) => void;
   /** Client (CSS px) → screen px, injected view glue (see `view/camera.ts` `screenScale`). */
   readonly toScreenPx: (clientX: number, clientY: number) => { x: number; y: number };
@@ -101,11 +101,11 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   const { app, canvas, terrain } = opts;
   const bounds = terrainWorldBounds(terrain.width, terrain.height);
   // The framed window's size is fixed (frame native × art scale); only its bottom-left anchor tracks
-  // the live screen height, so every rect is constant in PANEL-LOCAL coords and children draw local.
+  // the live screen height, so every rect is constant in panel-local coords and children draw local.
   let layout: MinimapLayout = minimapLayout(bounds, app.screen.height, opts.uiscale);
 
   const container = new Container();
-  // Hidden until the first update on a SETTLED screen (two consecutive frames with the same height):
+  // Hidden until the first update on a settled screen (two consecutive frames with the same height):
   // the canvas can still be resizing to the window during the first frames of a fresh view, and a
   // panel placed against a transient height would visibly jump to its corner.
   container.visible = false;
@@ -132,7 +132,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   });
 
   // The window hole backdrop (bottom of the stack): uniform near-black, so the letterbox bars around
-  // a non-square map read as one clean window. Under the braided frame it UNDERLAPS the braid's
+  // a non-square map read as one clean window. Under the braided frame it underlaps the braid's
   // top/right inner edge (left/bottom run flush to the screen corner) — the keyed braid crevices then
   // show black window, never a see-through gap to the world.
   const holeBg = new Graphics();
@@ -141,7 +141,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   holeBg.rect(innerL.x, innerL.y - underlap, innerL.w + underlap, innerL.h + underlap).fill(HOLE_COLOUR);
   container.addChild(holeBg);
 
-  // The original braided frame, drawn OVER the backdrop (its near-black hole + outer margins are keyed
+  // The original braided frame, drawn over the backdrop (its near-black hole + outer margins are keyed
   // transparent — see frame.ts — so the braid alone shows, covering the backdrop's underlap). Baked
   // supersampled to an ordinary top-anchored Sprite, so it rides the container like everything else.
   // Bare checkout: a flat Graphics frame at the same geometry.
@@ -173,9 +173,9 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   ground.height = mapL.h;
   container.addChild(ground);
 
-  // The fog-of-war mask over the ground: one CELL-resolution alpha raster (black texels, alpha by
+  // The fog-of-war mask over the ground: one cell-resolution alpha raster (black texels, alpha by
   // state) stretched over the map picture with linear filtering — the same soft edge the world wash
-  // shows. Rebuilt only when the fog GENERATION moves (the VisionSystem's cadence), never per frame.
+  // shows. Rebuilt only when the fog generation moves (the VisionSystem's cadence), never per frame.
   // NAMED APPROXIMATION: the stretch ignores the odd-row half-cell stagger the ground raster samples
   // (a half-cell skew on a soft mask, invisible at minimap scale).
   const fogSprite = new Sprite();
@@ -275,7 +275,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
       if (!settler && !isBuilding(e)) continue;
       const pos = positionOf(e);
       if (pos === undefined) continue;
-      // Fog: a dot only on currently-VISIBLE ground (the viewer's own forces always are — they see
+      // Fog: a dot only on currently-visible ground (the viewer's own forces always are — they see
       // their own cell; an enemy in unexplored/grey ground stays off the minimap).
       if (fog !== null && !fogTileVisible(fog, pos.x / ONE, pos.y / ONE)) continue;
       const s = tileToScreen(pos.x / ONE, pos.y / ONE);

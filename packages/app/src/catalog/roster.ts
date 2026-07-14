@@ -3,14 +3,14 @@ import type { BobSeqRow } from '../content/ir.js';
 import { formatMessage, type Messages, messages } from '../i18n/index.js';
 
 /**
- * The viking character ROSTER the `?anim` gallery can play — the data behind the character selector and
- * the "heads/looks" montage. Each entry is one composited human: a BODY bob set (its own `[bobseq]`
- * animation set) plus the HEAD looks that overlay it, exactly as the original's `[jobbasegraphics]`
+ * The viking character roster the `?anim` gallery can play — the data behind the character selector and
+ * the "heads/looks" montage. Each entry is one composited human: a body bob set (its own `[bobseq]`
+ * animation set) plus the head looks that overlay it, exactly as the original's `[jobbasegraphics]`
  * pairs `gfxbobmanagerbody` with one or more `gfxbobmanagerhead` slots. The set is transcribed straight
  * from the mod's `types/humanstype/jobgraphics.ini` for viking (`logictribe 1`) jobs — the same
  * body/head files the running game composes, so a look here is a real in-game viking, not a guess.
  *
- * Bodies are named WITHOUT a palette; {@link characterStems} appends the served palette
+ * Bodies are named without a palette; {@link characterStems} appends the served palette
  * ({@link DEFAULT_CHARACTER_PALETTE}) to form the atlas stem (`cr_hum_body_05` → `cr_hum_body_05.test_human_00`).
  * Skin/hair are palette remaps in the original (`randompalette.ini`), not separate art; our decode bakes
  * one palette, so the roster carries a single look per body today — a per-tone palette axis is the
@@ -24,7 +24,7 @@ export interface VikingCharacter {
   /** The `bobSequences` key (the `.bmd` imagelib) whose `[bobseq]` this body plays, e.g. `cr_hum_body_05.bmd`. */
   readonly imagelib: string;
   /**
-   * The head look bob-set stems WITHOUT palette, in `gfxbobmanagerhead` slot order. **May be empty** for a
+   * The head look bob-set stems without palette, in `gfxbobmanagerhead` slot order. May be empty for a
    * body-only creature whose head is baked into the body bob (the baby — its `cr_hum_head_22` is an empty
    * atlas), which then draws body-only. The animation view overlays `headBmds[0]` (the default look); the
    * "heads" montage plays the walk with each in turn (the full roster of faces/hats for this body).
@@ -36,7 +36,7 @@ export interface VikingCharacter {
 export const DEFAULT_CHARACTER_PALETTE = 'test_human_00';
 
 /**
- * The stem slug of the **indexed** (recolourable) character atlas — `<bmd>.indexed`, emitted by the
+ * The stem slug of the indexed (recolourable) character atlas — `<bmd>.indexed`, emitted by the
  * pipeline's player-colour stage alongside the baked ones. Passed to {@link characterStems} to load the
  * atlas the player-colour LUT is read through (see `packages/render` PalettedSprite).
  */
@@ -72,7 +72,7 @@ export const PLAYER_COLOR_COUNT = PLAYER_COLOR_NAMES.length;
 
 /**
  * One flat `0xRRGGBB` per player id for UI swatches (the minimap's unit dots), slot order =
- * {@link PLAYER_COLOR_NAMES}. A NAMED APPROXIMATION: the real team colours live only in the pipeline's
+ * {@link PLAYER_COLOR_NAMES}. A named approximation: the real team colours live only in the pipeline's
  * LUT texture (`player-lut.png`, band-limited palette ramps — no single "the colour" exists there), so
  * this table hand-picks one saturated representative per name — the original 10 by their `playerNN.pcx`
  * hue, the 6 synthetic extras at the pipeline's rotation hues (player-palette.ts).

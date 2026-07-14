@@ -2,14 +2,14 @@ import { messages } from '../i18n/index.js';
 
 /**
  * The on-canvas debug readout — the human-facing instrument for the render-scale + sim work. Pinned to
- * the top-LEFT of the screen (beside the tool-panel strip's top; the build menu drops BELOW it, from the
+ * the top-left of the screen (beside the tool-panel strip's top; the build menu drops below it, from the
  * buildings button, so the two never collide), lightly translucent so the strip reads through it, it
  * stacks two lines:
  *
- *  - **sim state:** the `tick` (the one field worth keeping from the removed always-on stocks HUD), the
- *    game-speed multiplier (or `paused`), how many sim `steps` the fixed-timestep loop advanced THIS
- *    frame (a spiking count means the sim is falling behind wall-clock), and the entity / drawn / pooled
- *    counts the retained {@link import('@open-northland/render').WorldRenderer} exposes (culling is biting when
+ *  - **sim state:** the `tick`, the game-speed multiplier (or `paused`), how many sim `steps` the
+ *    fixed-timestep loop advanced this frame (a spiking count means the sim is falling behind
+ *    wall-clock), and the entity / drawn / pooled counts the retained
+ *    {@link import('@open-northland/render').WorldRenderer} exposes (culling is biting when
  *    `drawn` ≪ `entities` zoomed in; `drawn ≈ entities` zoomed out).
  *  - **perf:** a smoothed FPS, the CPU cost split into `sim` / `snap` / `draw` (the exact breakdown
  *    `packages/render/AGENTS.md` says to measure before blaming the GPU — a slow scene is usually the
@@ -23,7 +23,7 @@ import { messages } from '../i18n/index.js';
 
 /** The per-frame sim + render stats the readout displays. */
 export interface PerfInfo {
-  /** The sim tick this frame (the snapshot's tick) — kept from the old stocks HUD, the one useful field. */
+  /** The sim tick this frame (the snapshot's tick). */
   readonly tick: number;
   /** Sim steps the fixed-timestep loop advanced this frame (0 when paused; >1 when catching up). */
   readonly steps: number;

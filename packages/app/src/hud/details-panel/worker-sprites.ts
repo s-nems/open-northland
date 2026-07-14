@@ -19,11 +19,11 @@ import { isSettler, num } from '../../game/snapshot.js';
 import type { Rect } from '../geometry.js';
 
 /**
- * The animated WORKER SPRITES drawn in the details panel's "Pracownicy" field — the settlers bound to
- * the selected building, drawn AS ON THE MAP (their real body/head, team colour and current-action
- * animation) but with NO terrain behind them, so the player sees who is working there.
+ * The animated worker sprites drawn in the details panel's "Pracownicy" field — the settlers bound to
+ * the selected building, drawn as on the map (their real body/head, team colour and current-action
+ * animation) but with no terrain behind them, so the player sees who is working there.
  *
- * It is a LIVE overlay, not part of the baked panel texture: the panel re-bakes at most 4 Hz (its values
+ * It is a live overlay, not part of the baked panel texture: the panel re-bakes at most 4 Hz (its values
  * barely change), but an animation must advance every frame — so the worker sprites are drawn straight to
  * the stage, one z above the baked panel, and re-resolved each tick. It reuses the world renderer's own
  * frame machinery ({@link buildSpriteScene} → {@link resolveLayers}) and draws each layer with a
@@ -34,12 +34,12 @@ import type { Rect } from '../geometry.js';
 
 /** At most this many worker sprites in the field (a store dispatches up to ~12; keep the row readable). */
 const MAX_WORKERS = 8;
-/** A worker who has stepped INSIDE the building stands FROZEN on this fixed animation tick — a still
+/** A worker who has stepped inside the building stands frozen on this fixed animation tick — a still
  *  standing pose in the panel (not the breathing wait loop), while active workers animate on the sim
  *  tick. 0 holds the idle sequence's first (neutral standing) frame. */
 const INDOOR_POSE_TICK = 0;
 /** Inset from the field edges (screen px), the fraction of the field height a character fills, and one
- *  worker's cell width as a fraction of the field height (they pack LEFT-to-right by this width). */
+ *  worker's cell width as a fraction of the field height (they pack left-to-right by this width). */
 const FIELD_PAD = 4;
 const CHAR_FILL = 0.82;
 const SLOT_W_FRAC = 0.72;
@@ -97,15 +97,15 @@ export class WorkerSpriteOverlay {
     }
     const workers = workerEntities.map((e) => e.id);
 
-    // Resolve each worker's draw item the SAME way the map does — same frame, same facing (forcing a fixed
-    // facing once made them animate walking the wrong way) — but project ONLY these ≤8 bound settlers, not
+    // Resolve each worker's draw item the same way the map does — same frame, same facing (forcing a fixed
+    // facing makes them animate walking the wrong way) — but project only these ≤8 bound settlers, not
     // the whole map: this overlay runs every frame while a building panel is open, so a full
     // `buildSpriteScene(snapshot)` (an O(entities) project + sort, per render/AGENTS) just to look up 8 ids
     // would duplicate the renderer's own scene build for the entire map every frame. Feeding the builder a
     // snapshot narrowed to the bound workers keeps the identical projection while the cost tracks the panel.
     //
-    // We build the narrowed scene TWICE: the plain build animates the workers currently OUT working, and the
-    // `keepIndoorSettlers` build adds a standing pose for any worker who has stepped INSIDE the building —
+    // We build the narrowed scene twice: the plain build animates the workers currently out working, and the
+    // `keepIndoorSettlers` build adds a standing pose for any worker who has stepped inside the building —
     // the map suppresses those (sim `Resting` / mid-store-exchange), so they'd otherwise vanish from the
     // panel. A worker absent from the plain build but present in the indoor one is inside → drawn frozen.
     // Both builds are O(≤8), negligible beside the renderer's own per-map scene build.
@@ -122,7 +122,7 @@ export class WorkerSpriteOverlay {
       w: Math.max(1, field.w - 2 * FIELD_PAD),
       h: Math.max(1, field.h - 2 * FIELD_PAD),
     };
-    // Pack LEFT-to-right by a fixed cell width (not spread across the whole field), so two workers sit at
+    // Pack left-to-right by a fixed cell width (not spread across the whole field), so two workers sit at
     // the left rather than centred; cells past the field's right edge are simply not drawn.
     const slotW = inner.h * SLOT_W_FRAC;
     const feetY = inner.y + inner.h;
@@ -168,7 +168,7 @@ export class WorkerSpriteOverlay {
     this.plainTextures.clear();
   }
 
-  /** The (snapshot-ordered, capped) settler ENTITIES bound to `buildingId` — one O(entities) scan, whose
+  /** The (snapshot-ordered, capped) settler entities bound to `buildingId` — one O(entities) scan, whose
    *  result also narrows the sprite-scene build above. With `siteCrew` (a construction site — builders
    *  are never JobAssignment-bound to it) a settler counts by its persistent crew membership
    *  (`SiteAssignment` — hammering, waiting for material, or detoured, it stays listed), and a plain

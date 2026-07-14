@@ -13,11 +13,11 @@ import { eightDirAnim, type GoodRef, singleDirAnim } from './seq-anim.js';
 import { DIRS } from './sequences.js';
 
 /**
- * Good id-slug → carry-walk sequence SUFFIX, where the slug itself isn't the suffix. The body bob sets
+ * Good id-slug → carry-walk sequence suffix, where the slug itself isn't the suffix. The body bob sets
  * name their loaded gaits `<body>_walk_<suffix>` (walk_wood, walk_stone, walk_iron_gold, …); most real
  * IR good slugs match their suffix verbatim (wood/stone/mud/flour/bread/…), and this table maps the
- * rest onto the CLOSEST authored carry look (several goods share one: every potion → `potion`, iron and
- * gold share the `iron_gold` ingot walk). There is NO readable good→carry-animation table in the mod
+ * rest onto the closest authored carry look (several goods share one: every potion → `potion`, iron and
+ * gold share the `iron_gold` ingot walk). There is no readable good→carry-animation table in the mod
  * (the base binding is encrypted `.cif`), so this name join is an approximation — source basis
  * "Carry look per good". A slug in neither the sequences nor this table falls back to the character's
  * generic loaded gait (the wood log), then to its plain walk.
@@ -50,27 +50,26 @@ const CARRY_SEQ_SUFFIX: Readonly<Record<string, string>> = {
 };
 
 /**
- * `gfxanimframelistdir <dir>` index → the render FACING (the `CR_Hum_Body` strip-block order
+ * `gfxanimframelistdir <dir>` index → the render facing (the `CR_Hum_Body` strip-block order
  * `0 SW, 1 W, 2 NW, 3 NE, 4 E, 5 SE, 6 S, 7 N` — source basis "Settler facing"). The source's `<dir>`
  * space is the engine's movement-direction ring: the staggered-lattice hex neighbours clockwise from
  * screen-east (`0 E, 1 SE, 2 SW, 3 W, 4 NW, 5 NE`) plus the two row-crossing verticals (`6 N, 7 S`).
- * DATA-PINNED, not guessed: across every extracted HUMAN character-body `[gfxanimatomic]` record whose
- * strip is a uniform ×8 block layout (`human_*`, the bodies these warrior bindings actually draw), each
- * dir-`d` frame list indexes exclusively into strip block `GFX_DIR_TO_BLOCK[d]` — ZERO dissent among the
- * human bodies. The animal and vehicle libs carry their own block orders (e.g. `animal_bear_fight`,
- * `animal_bull_wait`, `vehicles_bullcart_wait` each differ) — irrelevant here, since the remap is applied
- * only to human warrior bodies. Indexing frame lists by facing WITHOUT this remap draws the NW swing on
- * an east-facing attacker.
+ * Data-pinned: across every extracted human character-body `[gfxanimatomic]` record whose strip is a
+ * uniform ×8 block layout (`human_*`, the bodies these warrior bindings draw), each dir-`d` frame list
+ * indexes exclusively into strip block `GFX_DIR_TO_BLOCK[d]`. The animal and vehicle libs carry their
+ * own block orders (`animal_bear_fight`, `animal_bull_wait`, `vehicles_bullcart_wait` each differ) —
+ * irrelevant here, since the remap is applied only to human warrior bodies. Indexing frame lists by
+ * facing without this remap draws the NW swing on an east-facing attacker.
  */
 const GFX_DIR_TO_BLOCK = [4, 5, 0, 1, 2, 3, 7, 6] as const;
 
 /**
- * Reorder a `[gfxanimatomic]` per-`<dir>` frame-list table into the render's per-FACING order (a
+ * Reorder a `[gfxanimatomic]` per-`<dir>` frame-list table into the render's per-facing order (a
  * {@link FrameListAnim}'s `frameLists` is indexed by facing). A single-list table is facing-locked
- * (a bare `gfxanimframelist`) and plays verbatim on every facing. ANY multi-list table lives in the
+ * (a bare `gfxanimframelist`) and plays verbatim on every facing. Any multi-list table lives in the
  * `<dir>` space and is remapped — including a partial one (dirs authored sparsely): each authored dir
  * lands on its facing, and an unauthored slot stays an empty list (`frameOf` then holds the pool's
- * first frame for that facing rather than borrowing a neighbour's — or worse, an unremapped — swing). Pure.
+ * first frame for that facing rather than borrowing a neighbour's swing). Pure.
  */
 function frameListsByFacing(dirLists: readonly (readonly number[])[]): readonly (readonly number[])[] {
   if (dirLists.length === 1) return dirLists; // facing-locked single list — no direction table to remap
@@ -115,7 +114,7 @@ export function characterBinding(
   seqByName: ReadonlyMap<string, BobSeqRow>,
   goods: readonly GoodRef[],
   attackFrameLists?: ReadonlyMap<string, readonly (readonly number[])[]>,
-  /** Per-ATOMIC `[gfxanimatomic]` frame-list tables (atomic id → seq name → per-`<dir>` lists) for the
+  /** Per-atomic `[gfxanimatomic]` frame-list tables (atomic id → seq name → per-`<dir>` lists) for the
    *  spec's {@link CharacterSpec.dirListAtomics} — the attack mechanism generalized (farmer clips). */
   actionFrameLists?: ReadonlyMap<number, ReadonlyMap<string, readonly (readonly number[])[]>>,
 ): SettlerStateBinding | null {
@@ -132,7 +131,7 @@ export function characterBinding(
     const row = seqByName.get(action.seq);
     if (row === undefined || row.length <= 0) continue;
     // A clean ×8 action (the chop 120, the pray 120) is directional; a non-×8 one (eat 17, sleep 20,
-    // pick_up 19) plays its WHOLE strip facing-locked — the same `clipDirs` reading the waits use.
+    // pick_up 19) plays its whole strip facing-locked — the same `clipDirs` reading the waits use.
     const anim: DirectionalAnim =
       row.length % DIRS === 0
         ? { start: row.start, dirs: DIRS, stride: row.length / DIRS }
@@ -146,8 +145,8 @@ export function characterBinding(
 
   // The combat attack swing → a FrameListAnim on {@link ATTACK_ATOMIC}: the swing pool's `start` from the
   // `[bobseq]` row, its per-direction layout from the extracted viking `[gfxanimatomic]` frame lists
-  // (keyed by the same seq name), REORDERED from the source's <dir> space into the render's facing order
-  // ({@link frameListsByFacing}). Bound only when BOTH resolve — a body/IR missing either just has no
+  // (keyed by the same seq name), reordered from the source's <dir> space into the render's facing order
+  // ({@link frameListsByFacing}). Bound only when both resolve — a body/IR missing either just has no
   // attack animation (the unit stands its ready pose mid-swing), never a bogus uniform slice.
   if (spec.attack !== undefined) {
     const row = seqByName.get(spec.attack);
@@ -158,7 +157,7 @@ export function characterBinding(
     }
   }
 
-  // The frame-list actions beyond the attack (the farmer's field clips): each binds only when BOTH its
+  // The frame-list actions beyond the attack (the farmer's field clips): each binds only when both its
   // `[bobseq]` row and its per-atomic `[gfxanimatomic]` lists resolve, overriding any plain `atomics`
   // fallback for the same id — missing data leaves that fallback (or nothing) in place, never a bogus
   // uniform slice. Same reorder into facing space as the attack swing.
@@ -219,13 +218,13 @@ export function characterBinding(
 }
 
 /**
- * The HEAD-side twin of a per-good carry table: which anim the head overlay resolves through per good.
- * Most of the man's carry-walk variants ship **empty head bobs** (19 of 27 in the real decode — the
+ * The head-side twin of a per-good carry table: which anim the head overlay resolves through per good.
+ * Most of the man's carry-walk variants ship empty head bobs (19 of 27 in the real decode — the
  * head is authored once, on the base walk), so a head drawn at the carry range's own ids would vanish:
- * a stone-hauler would walk HEADLESS. For each good this checks the head atlas at the carry cycle's
- * first frame — authored → the good keeps its own range; empty → the head **borrows the base walk** at
+ * a stone-hauler would walk headless. For each good this checks the head atlas at the carry cycle's
+ * first frame — authored → the good keeps its own range; empty → the head borrows the base walk at
  * the same (facing, frame) offset, exactly the gallery's proven head-reuse rule (source basis
- * "Character animation gallery"). Returns the INPUT table by identity when nothing borrows (no walk to
+ * "Character animation gallery"). Returns the input table by identity when nothing borrows (no walk to
  * borrow, or every head is authored), so the caller can skip building a head binding at all. Pure +
  * exported for unit tests.
  */

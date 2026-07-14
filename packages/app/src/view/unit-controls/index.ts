@@ -20,20 +20,20 @@ export type { UnitControls, UnitControlsOptions } from './types.js';
  * Bindings (standard RTS, chosen to not clash with the camera's middle-drag/wheel/arrows):
  *  - **LPM click** — select the unit/building under the cursor (Shift adds to the selection).
  *  - **LPM drag** — a marquee box; on release, select every owned unit whose feet fall inside it.
- *  - **PPM** on one of your OWN units — select it and bring up its ACTION MENU (the original's
- *    "right-click a unit = its commands" idiom, alongside Space); **PPM** on an ENEMY unit — order the
- *    selected combatants to ATTACK it (the `attackUnit` command: they chase and strike that target);
- *    **PPM** on the ground — order them to walk there (a GROUP fans out into a formation cluster, a single
+ *  - **PPM** on one of your own units — select it and bring up its action menu (the original's
+ *    "right-click a unit = its commands" idiom, alongside Space); **PPM** on an enemy unit — order the
+ *    selected combatants to attack it (the `attackUnit` command: they chase and strike that target);
+ *    **PPM** on the ground — order them to walk there (a group fans out into a formation cluster, a single
  *    unit goes exactly there — the `moveUnit` command). The move-order-onto-an-enemy = attack idiom is the
  *    original's RTS convention.
- *  - **Space** — toggle the original-art ACTION MENU around the selected settler
+ *  - **Space** — toggle the original-art action menu around the selected settler
  *    ({@link import('../settler-actions.js')}): the full default menu in original art, of which only "change
  *    profession" is wired today (it opens a profession picker). The info card (needs / building state) is
  *    always shown bottom-right the moment something is selected — no keypress needed.
  *  - **Esc** — clear the selection.
  *
- * Only the human player's OWN units are pickable (the targets are pre-filtered by `Owner.player`), so a
- * drag never grabs wildlife or another player's settlers. Selection is CLIENT view state (a Set of ids),
+ * Only the human player's own units are pickable (the targets are pre-filtered by `Owner.player`), so a
+ * drag never grabs wildlife or another player's settlers. Selection is client view state (a Set of ids),
  * fed each frame to the renderer's selection rings via {@link selectedIds} — never into the sim.
  */
 
@@ -59,7 +59,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     uiscale: opts.uiscale ?? 1,
     lang: opts.lang,
     // Adapt main's `screenScale(canvas, resolution)` to the panel's `backingScale(canvas)` option by
-    // binding the renderer resolution (camera dropped the old zero-arg `backingScale`).
+    // binding the renderer resolution.
     backingScale: (c: HTMLCanvasElement) => screenScale(c, opts.app.renderer.resolution),
     buildings: opts.content.buildings,
     goods: opts.content.goods,
@@ -69,8 +69,8 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     onSelectEntity: (id) => selectFromPanel(id),
     ...(opts.tooltip !== undefined ? { tooltip: opts.tooltip } : {}),
   });
-  // The contextual ACTION MENU (full original-art default menu; only "change profession" is wired on this
-  // slice — it opens the profession picker), anchored on the selected settler. Mounted BEFORE this
+  // The contextual action menu (full original-art default menu; only "change profession" is wired on this
+  // slice — it opens the profession picker), anchored on the selected settler. Mounted before this
   // controller's own canvas listeners so a click on a menu button consumes the press (stopImmediatePropagation)
   // and never falls through to selection / a move order.
   const actions: SettlerActions = await mountSettlerActions({
@@ -96,7 +96,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     fogVisible: opts.fogVisible,
   });
 
-  /** Client (CSS) coords → WORLD px (through the client→screen scale + the camera inverse). */
+  /** Client (CSS) coords → world px (through the client→screen scale + the camera inverse). */
   const toWorld = (clientX: number, clientY: number): { x: number; y: number } => {
     const c = clientToCanvas(screenScale(canvas, opts.app.renderer.resolution), clientX, clientY);
     return screenToWorld(opts.camera(), c.x, c.y);
@@ -111,7 +111,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     if (!add) selected.clear();
     for (const id of ids) selected.add(id);
     changed();
-    // A CHANGED selection closes the action ring: picking a different unit (or clearing to empty) backs out
+    // A changed selection closes the action ring: picking a different unit (or clearing to empty) backs out
     // of an open menu, so the ring never lingers on a stale unit and Space stays the sole re-open. Re-selecting
     // the exact same set leaves it alone; right-click's "select-then-open" re-opens the ring on the new unit
     // in the very next call, so that path is unaffected.
@@ -136,9 +136,9 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   });
 
   const onMouseDown = (e: MouseEvent): void => {
-    // The HUD claims its own clicks BEFORE any world picking — a press over the tool panel / an open window /
-    // a placement-in-progress / an open action-ring BUTTON never starts a selection or issues an order. The
-    // ring claim covers the RIGHT button too (its own listener only consumes left clicks), so right-clicking
+    // The HUD claims its own clicks before any world picking — a press over the tool panel / an open window /
+    // a placement-in-progress / an open action-ring button never starts a selection or issues an order. The
+    // ring claim covers the right button too (its own listener only consumes left clicks), so right-clicking
     // a ring button doesn't fall through to a world move/attack order.
     if (opts.claimPointer?.(e.clientX, e.clientY) === true) return;
     // The details panel routes its own button clicks through the same claim (one mechanism, no
@@ -170,7 +170,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       setSelection(pickInRect(unitTargets.owned(), a.x, a.y, b.x, b.y), e.shiftKey);
     } else {
       const w = toWorld(e.clientX, e.clientY);
-      // A settler/building under the cursor wins; failing that, a gatherer's FLAG selects its gatherer.
+      // A settler/building under the cursor wins; failing that, a gatherer's flag selects its gatherer.
       const hit = pickTopAt(unitTargets.owned(), w.x, w.y) ?? pickTopAt(unitTargets.flags(), w.x, w.y);
       if (hit !== null) setSelection([hit], e.shiftKey);
       else if (!e.shiftKey) setSelection([], false); // click on empty ground clears

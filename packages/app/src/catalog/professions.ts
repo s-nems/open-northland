@@ -11,14 +11,14 @@ import {
 import { categoryLabel, type Locale, type Messages, professionLabel } from '../i18n/index.js';
 
 /**
- * The committed clean-room PROFESSION roster — the complete set of jobs a player can assign a settler to,
+ * The committed clean-room profession roster — the complete set of jobs a player can assign a settler to,
  * transcribed from the original `Data/logic/jobtypes.ini` (`[jobtype]` records). This is the source of
- * truth for BOTH the profession picker (what it offers + which job each row assigns) and the settler
+ * truth for both the profession picker (what it offers + which job each row assigns) and the settler
  * details-panel label (a settler's profession name), so the two can never drift.
  *
  * Faithfulness to the original's job model:
  *  - **One soldier.** `jobtypes.ini` splits soldiers into an unarmed base (type 31) plus ten weapon
- *    classes (32..41: spear/sword/saber/axe/bow). A settler's soldier CLASS is its weapon, not a separate
+ *    classes (32..41: spear/sword/saber/axe/bow). A settler's soldier class is its weapon, not a separate
  *    profession — so the picker offers a single "Żołnierz" that assigns the unarmed base ({@link JOB_SOLDIER}
  *    = 31); the weapon (a later step) specializes it. Only a soldier ever carries a weapon (weapons resolve
  *    by `(tribe, jobType)`, and no civilian trade has a binding), so a civilian is always unarmed.
@@ -28,7 +28,7 @@ import { categoryLabel, type Locale, type Messages, professionLabel } from '../i
  *    can actually harvest with those today), and the sea trades need a harbour/ship the sandbox lacks.
  *
  * jobType numbering: the six gatherers, the carrier, and the soldier use the sandbox's live job ids
- * (`game/sandbox/ids/`); the added production trades use their REAL `jobtypes.ini` ids where the
+ * (`game/sandbox/ids/`); the added production trades use their real `jobtypes.ini` ids where the
  * sandbox's synthetic gatherer band (20..25) does not shadow them, and a placeholder id
  * ({@link SHADOWED_TRADE_BASE}) for the four trades whose real ids that band occupies. Every id is a
  * placeholder until the global-content re-key (`docs/tickets/app/real-content-rekey.md`) runs the sim
@@ -52,7 +52,7 @@ export interface ProfessionDef {
 }
 
 /**
- * Real `jobtypes.ini` ids for the production trades the sandbox's gatherer band (20..25) does NOT shadow.
+ * Real `jobtypes.ini` ids for the production trades the sandbox's gatherer band (20..25) does not shadow.
  * Named (no bare numbers) so a reader sees the transcription; grouped here as the trade id space.
  */
 const JOB_BUILDER = 7;
@@ -95,7 +95,7 @@ export function isSoldierJob(jobType: number): boolean {
 
 /**
  * The complete roster, in picker order (gathering → transport → production → special → military). The
- * order here IS the list order; `pickerEntries` inserts a group header wherever the category changes.
+ * order here is the list order; `pickerEntries` inserts a group header wherever the category changes.
  */
 export const PROFESSIONS: readonly ProfessionDef[] = [
   { key: 'gatherer_wood', jobType: JOB_GATHERER_WOOD, category: 'gathering', source: 'collector (wood)' },

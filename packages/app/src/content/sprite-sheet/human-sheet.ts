@@ -33,7 +33,7 @@ import { loadCharacters } from './characters.js';
  * decoder/render-binding proof the plan gates on a human eye. It puts actual decoded `cr_hum_body_00`
  * + `cr_hum_head_00` pixels (plus the tree / per-building house bobs) on screen so a person can judge
  * palette / transparency / feet-anchor / animation fidelity against the original. Loads from the
- * GITIGNORED `content/` over the dev/shot vite server — no copyrighted bytes enter the repo; the
+ * gitignored `content/` over the dev/shot vite server — no copyrighted bytes enter the repo; the
  * committed default degrades to {@link import('./resolve.js').syntheticSpriteSheet} when `content/` is
  * absent, so tests + the reproducible shot are unaffected. The pure bindings live in
  * {@link import('../settler-gfx/index.js')} / {@link import('../building-gfx/index.js')}; the byte loading
@@ -46,7 +46,7 @@ const HUMAN_HEAD_ATLAS = 'cr_hum_head_00.test_human_00';
 
 /**
  * Load the gathering-economy family atlases (the rock/mine/mushroom node `.bmd`s, the `ls_goods` pile
- * skins, the `ls_temp` flag) named by the resolved gathering refs, BESIDE the building families. Each
+ * skins, the `ls_temp` flag) named by the resolved gathering refs, beside the building families. Each
  * loads best-effort: a {@link MissingAtlasError} (a partial `content/`) just drops that family — its
  * goods fall back to the yew node / placeholder heap, exactly the building-family degradation. Returns the
  * loaded layers keyed by served stem (= the `families` key a layer-qualified ref names) + the set of stems
@@ -85,8 +85,8 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
     Promise.all(BUILDING_FAMILIES.map(async (f) => [f.layer, await loadLayer(f.layer)] as const)),
     loadIr(),
   ]);
-  // Player-colour LUT for TEAM COLOURS: if the pipeline emitted it (`/bobs/player-lut.png`), load the
-  // characters as the recolourable INDEXED atlas and draw them through this LUT per player; if it is ABSENT
+  // Player-colour LUT for team colours: if the pipeline emitted it (`/bobs/player-lut.png`), load the
+  // characters as the recolourable indexed atlas and draw them through this LUT per player; if it is absent
   // (a checkout whose pipeline predates the LUT stage), fall back to the baked-palette characters so the
   // real-graphics path still draws (just single-coloured). One indexed atlas + one LUT serve every player.
   const lut = await loadPlayerLut();
@@ -95,11 +95,11 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
   // missing extra body degrades per look, never failing the sheet. `undefined` (no IR sequences / no
   // civilian look) keeps the legacy single-body settler path.
   const characters = await loadCharacters(ir, goods, characterPalette);
-  // BUILDING_FAMILIES is the SINGLE SOURCE OF TRUTH for the named building families: each entry's atlas is
-  // loaded here AND only its `layer` key is eligible for a layer-qualified ref from buildingBobRefsByType,
+  // BUILDING_FAMILIES is the single source of truth for the named building families: each entry's atlas is
+  // loaded here and only its `layer` key is eligible for a layer-qualified ref from buildingBobRefsByType,
   // so the loaded set and the reducer's emitted set cannot drift (a ref to an unloaded family would fall
-  // through to the default layer and draw a WRONG bob). All seven viking families load now (viking2/3/4 +
-  // the miller/druid skins + the two house02 families), so EVERY viking building draws its own bob — see
+  // through to the default layer and draw a wrong bob). All seven viking families load now (viking2/3/4 +
+  // the miller/druid skins + the two house02 families), so every viking building draws its own bob — see
   // BUILDING_FAMILIES.
   const buildingFamilies = Object.fromEntries(familyEntries);
   const houseBobs = buildingBobRefsByType(
@@ -124,17 +124,17 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
     DEFAULT_BUILDING_FAMILY,
     BUILDING_FAMILIES,
   );
-  // Gathering economy: resolve each RUN good's node/pile draw from the Step-1 pipeline join (matched by
+  // Gathering economy: resolve each run good's node/pile draw from the Step-1 pipeline join (matched by
   // id-slug), load the atlases they reference (rock/mine/mushroom nodes, `ls_goods` piles, the `ls_temp`
   // flag) as families, and build the per-good bindings against exactly the families that loaded — the same
   // load-then-drop-unloaded contract the building families use. The default yew node stays the
   // `kindLayers.resource` layer, so it is excluded from the loaded families.
-  // The goods-icon manifest gives EVERY good (not just the gathered ones) its `ls_goods` pile graphic by
+  // The goods-icon manifest gives every good (not just the gathered ones) its `ls_goods` pile graphic by
   // (frame, palette), so a dropped brick / sword / loaf draws its own heap instead of the placeholder marker.
   const goodIcons = await loadGoodsIconManifest();
   const gatheringRefs = resolveGatheringRefs(goods, ir, goodIcons);
   // The felled-tree stump/debris draws from `ls_trees_dead` — resolve its ref and load its atlas
-  // ALONGSIDE the node/pile/flag families (same load-then-drop-unloaded contract).
+  // alongside the node/pile/flag families (same load-then-drop-unloaded contract).
   const stumpRef = resolveStumpRef(ir);
   // Forageable berry bushes (fruited + bare states) draw from the `ls_trees` bush atlases — resolve their
   // refs and fold their stems into the loaded families alongside the node/pile/flag/stump ones.
@@ -144,7 +144,7 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
   for (const s of berryBushAtlasStems(berryBushRefs)) stems.add(s);
   const { families: gatheringFamilies, loaded: gatheringLoaded } = await loadGatheringFamilies(stems);
   // The frame ids each loaded family atlas actually holds — lets the node reducer mark a level whose bob
-  // the source record points OUTSIDE its own atlas (the original's "invisible state" sentinel — freshly-
+  // the source record points outside its own atlas (the original's "invisible state" sentinel — freshly-
   // sown wheat) as a draw-nothing level instead of a placeholder. See buildResourceBinding.
   const familyFrames = new Map(
     Object.entries(gatheringFamilies).map(
@@ -176,9 +176,9 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
       overlayRefs,
     ),
     overlays: [head],
-    // The tree and the DEFAULT building each draw from their OWN atlas (distinct id spaces), so they bind
+    // The tree and the default building each draw from their own atlas (distinct id spaces), so they bind
     // as per-kind layers rather than sharing the body atlas the settler uses. A bare-id `resource` (the
-    // default yew node) and a bare-id `building` resolve frames in THEIR respective layers.
+    // default yew node) and a bare-id `building` resolve frames in their respective layers.
     kindLayers: { resource: tree, building: house },
     // Named families (the multi-.bmd case) — a layer-qualified building/resource/stockpile binding draws
     // its bob from the matching family atlas here (its own frame-id space). A building family inherits the
@@ -191,7 +191,7 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
     // Per-job settler looks (woman / soldier family / children via Age) — the sim-state → skin join.
     ...(characters !== undefined ? { characters } : {}),
     // Team-colour LUT: present ⇒ characters are the indexed atlas and the pool paints each per its player
-    // (SpritePool's PalettedSprite path); absent ⇒ the baked characters draw as plain sprites, as before.
+    // (SpritePool's PalettedSprite path); absent ⇒ the baked characters draw as plain sprites.
     ...(lut !== undefined ? { palette: { source: lut, colours: lut.pixelHeight } } : {}),
   };
 }
