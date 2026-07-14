@@ -12,7 +12,7 @@ import { fetchImageData, fetchJsonOrNull, loadTextureIfPresent } from './net.js'
  *
  * Where each output lives (matching the pipeline stage + `vite.config.ts` routes):
  *  - **Atlases + palette LUT** ride the existing `/bobs/` route (they are bob atlases): the recolourable
- *    **indexed** atlas at stem `<sheet>.indexed`, the RGBA **preview** at `<sheet>.<previewPalette>`, and
+ *    indexed atlas at stem `<sheet>.indexed`, the RGBA preview at `<sheet>.<previewPalette>`, and
  *    the `256 × N` palette LUT at `/bobs/gui-palettes-lut.png` (loaded like the player-colour LUT). The
  *    renderer reads an indexed atlas pixel through the LUT row for its element's palette — same mechanism
  *    as the player-colour LUT + `PalettedSprite`.
@@ -20,7 +20,7 @@ import { fetchImageData, fetchJsonOrNull, loadTextureIfPresent } from './net.js'
  */
 
 /**
- * The GUI palette LUT row order (row index = palette). MIRRORS `GUI_PALETTES` in
+ * The GUI palette LUT row order (row index = palette). Mirrors `GUI_PALETTES` in
  * `tools/asset-pipeline/src/stages/gui.ts` — keep the two in lock-step (append, never reorder), since the
  * pipeline bakes this order into the LUT rows and the renderer selects a row by index. The manifest also
  * carries the names, so a consumer can cross-check `guiPaletteRow` against `manifest.paletteLut.names`.
@@ -76,7 +76,7 @@ const GUI_ROOT = '/gui';
 const GUI_BITMAP_ROOT = '/gui-bitmaps';
 
 /**
- * The recolourable INDEXED atlas of a GUI sheet (the whole-HUD window sheet / the speech-bubble sheet),
+ * The recolourable indexed atlas of a GUI sheet (the whole-HUD window sheet / the speech-bubble sheet),
  * loaded by its `<sheet>.indexed` stem through the shared {@link loadLayer} — so GUI atlases go through the
  * exact same manifest→geometry + PNG→texture path as the settler/building atlases; the renderer reads each
  * pixel's index through the GUI palette LUT at draw time. Throws `MissingAtlasError` when the decoded files
@@ -97,14 +97,14 @@ export function loadGuiPaletteLut(): Promise<TextureSource | undefined> {
 }
 
 /**
- * The decoded level→colour ramp of the ORIGINAL `bar_hitpoints.pcx` palette, as 256 packed `0xRRGGBB`
+ * The decoded level→colour ramp of the original `bar_hitpoints.pcx` palette, as 256 packed `0xRRGGBB`
  * entries: red `#ff0000` at index 0 (empty) → orange → yellow-green `#d4ff4b` at 255 (full). The
- * original ships this as a PALETTE whose entries sweep the colour with the index — the decoded
- * evidence that a bar's colour follows its LEVEL. How the engine consumes it isn't decompiled
- * (`PalBarHitpoints` is loaded in OpenVikings but its draw site isn't ported), so the panel's reading —
- * fill colour = `ramp[level]`, one colour per bar — is a named approximation. EVERY stat gauge uses
- * this ramp (user decision 2026-07-11): the sibling `bar_standart` ramp stays green until ~15%, so a
- * draining need showed no visible colour change; this one walks green→orange→red across the range.
+ * original ships this as a palette whose entries sweep the colour with the index — the decoded evidence
+ * that a bar's colour follows its level. How the engine consumes it isn't decompiled (`PalBarHitpoints`
+ * is loaded in OpenVikings but its draw site isn't ported), so the panel's reading — fill colour =
+ * `ramp[level]`, one colour per bar — is a named approximation. Every stat gauge uses this ramp (user
+ * decision 2026-07-11): the sibling `bar_standart` ramp stays green until ~15%, so a draining need showed
+ * no visible colour change; this one walks green→orange→red across the range.
  */
 export type GuiBarRamp = readonly number[];
 
@@ -117,7 +117,7 @@ export async function loadGuiBarRamp(): Promise<GuiBarRamp | undefined> {
   const image = await fetchImageData(`/bobs/${GUI_PALETTE_LUT_STEM}.png`);
   if (image === null) return undefined;
   const rowIndex = guiPaletteRow('bar_hitpoints');
-  // A stale LUT baked before this palette was appended is SHORTER than the row index; reading past it
+  // A stale LUT baked before this palette was appended is shorter than the row index; reading past it
   // would sample transparent black (an all-black ramp) — degrade instead.
   if (rowIndex >= image.height) return undefined;
   const { data, width } = image;
@@ -134,7 +134,7 @@ export async function loadGuiBarRamp(): Promise<GuiBarRamp | undefined> {
 export type GuiBitmapName = 'bg' | 'bg_button' | 'bg_button_hilite' | 'bg_headline' | 'bg_selected';
 
 /**
- * The served file per bitmap. Two draw through an ELEMENT palette rather than their embedded one (the
+ * The served file per bitmap. Two draw through an element palette rather than their embedded one (the
  * pipeline bakes the swap): `bg` uses `bg.bg_normal.png` — the window body's warm brown; `bg_selected`
  * uses `bg_selected.bg_normal.png` — the selected-item card body's grey-blue (its embedded palette is a
  * warm olive; through `bg_normal` its indices land cool, avg ≈ #3c4043). The other three match the

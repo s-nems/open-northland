@@ -21,25 +21,25 @@ import { type ContentIr, type LandscapeGfxRow, loadLayer, MissingAtlasError } fr
 export interface MapObjectsData {
   readonly types: readonly string[];
   readonly placements: readonly number[];
-  /** Per-placement 1-based LEVEL (`lmlv`), counting up from the lowest state ({@link stateIndexForLevel}). Absent → the full state. */
+  /** Per-placement 1-based level (`lmlv`), counting up from the lowest state ({@link stateIndexForLevel}). Absent → the full state. */
   readonly levels?: readonly number[] | undefined;
 }
 
 /**
- * The `[landscapetype]` names whose objects the original draws FULL-BRIGHT, exempt from the baked
+ * The `[landscapetype]` names whose objects the original draws full-bright, exempt from the baked
  * `embr` shading: standing + felled trees. Measured on the bridge-map corpus (source basis
  * "brightness"): tree canopies keep full luminance even anchored on embr=0 border cells (ratio ≈ 1.0
  * across the lane, n=118), while mine decals, stones and grass track the lane (masked opaque-pixel
- * ratio ×0.58 → ×1.58). Only STANDING trees were measured; `tree falling` is grouped with them by
+ * ratio ×0.58 → ×1.58). Only standing trees were measured; `tree falling` is grouped with them by
  * kinship (same art family mid-fall), not by measurement. The true engine rule is unknown (the
  * OpenVikings blitter exposes shaded and unshaded `PrintBob` paths but not which records pick which)
- * — this name-pinned exemption is the measured boundary, an APPROXIMATION beyond it.
+ * — this name-pinned exemption is the measured boundary, an approximation beyond it.
  */
 const UNSHADED_LANDSCAPE_TYPES: ReadonlySet<string> = new Set(['tree', 'tree falling']);
 
 /**
  * The logicType ids whose objects stay full-bright ({@link UNSHADED_LANDSCAPE_TYPES}), resolved from
- * the IR `[landscapetype]` table by NAME so no numeric id hardcodes. Pure; exported for unit tests.
+ * the IR `[landscapetype]` table by name so no numeric id hardcodes. Pure; exported for unit tests.
  */
 export function unshadedLogicTypeIds(landscape: ContentIr['landscape']): ReadonlySet<number> {
   const ids = new Set<number>();
@@ -52,10 +52,10 @@ export function unshadedLogicTypeIds(landscape: ContentIr['landscape']): Readonl
 }
 
 /**
- * Which `GfxFrames` state list a placement's 1-based `lmlv` LEVEL picks. The level counts what
- * REMAINS/has grown — level 1 is the lowest state (sapling / near-depleted deposit / rubble wall) and
+ * Which `GfxFrames` state list a placement's 1-based `lmlv` level picks. The level counts what
+ * remains/has grown — level 1 is the lowest state (sapling / near-depleted deposit / rubble wall) and
  * level N the highest (full-grown / full deposit / intact) — while the record's lists are authored
- * HIGHEST-FIRST (a tree's full-grown state first, a clay deposit's 74×51 full pile before its 32×18
+ * highest-first (a tree's full-grown state first, a clay deposit's 74×51 full pile before its 32×18
  * dregs), so the index is `N − level`. Pinned by calibration-by-observation on the bridge-map corpus:
  * the north forest is `lmlv=3` throughout and the original draws it full-grown (an isolated lmlv=3
  * cypress matches the full-grown frame at 0.99 vs 0.84/0.87 for the younger states), and the deposit
@@ -86,7 +86,7 @@ async function loadLayerOrNull(key: string): Promise<SpriteLayer | null> {
 
 /** The decoded human bone-pile records — the resting `cadaver human bones` states of `ls_skeletons.bmd`
  *  (each a single still frame). The render effects layer draws one at each death, so a battlefield leaves
- *  the SAME bones the original's cadaver landscape objects do (the map viewer shows them on `cn_0`). */
+ *  the same bones the original's cadaver landscape objects do (the map viewer shows them on `cn_0`). */
 const HUMAN_BONES_EDIT_NAMES = ['cadaver human bones01', 'cadaver human bones02', 'cadaver human bones03'];
 
 /**
@@ -124,19 +124,19 @@ export async function loadCombatBones(
  *    (0×0 frames dropped). A record with `loopAnimation`
  *    plays the whole list at the sim tick rate (waves, swaying trees, fire); a static record shows
  *    the list's first frame.
- *  - **decor vs tall** — an object with NO `LogicWalkBlockArea` footprint (waves, grass, flowers,
- *    mine stains) is flat ground decor and draws under the entity sprites; one WITH a footprint
+ *  - **decor vs tall** — an object with no `LogicWalkBlockArea` footprint (waves, grass, flowers,
+ *    mine stains) is flat ground decor and draws under the entity sprites; one with a footprint
  *    (trees, stones) depth-sorts against settlers by its feet anchor.
  *  - **position** — the half-cell `(hx, hy)` projected onto the plain half-cell lattice
  *    (`halfCellToScreen` — the `emla` grid the original places on; no row stagger at this level).
- *  - **phase** — 0 for every object, so the loops play IN UNISON: the wave bobs are authored to
- *    tile seamlessly with their neighbours at the SAME frame, and a per-object stagger breaks that
- *    tiling into noise (the map stores no per-object phase — source basis).
+ *  - **phase** — a slow spatial gradient (`hx + hy`), so a looping bob's neighbours stay within a
+ *    frame of each other (the wave sheet reads as continuous) while the surface drifts across the map
+ *    instead of pulsing as one identical stamp (the map stores no per-object phase — source basis).
  *
  * A type that can't resolve (no record, no atlas, no usable frame) is counted + skipped — a partial
  * `content/` must degrade, not abort. Placements resolve in file order (deterministic).
  *
- * Returns the sprites PLUS a placement-ordinal → sprite map (`byPlacement`, keyed by triplet index in
+ * Returns the sprites plus a placement-ordinal → sprite map (`byPlacement`, keyed by triplet index in
  * `objects.placements`): the join the `?map=` entry uses to hand a first-worked resource node's static
  * sprite over to the live sim pool (`WorldRenderer.removeMapObject`). Every placement — harvestable or
  * decor — draws here; the sim pool skips the virgin harvestables via the static-refs set instead.
@@ -213,7 +213,7 @@ export async function loadMapObjects(
     const hy = objects.placements[i + 1] as number;
     const typeIndex = objects.placements[i + 2] as number;
     const states = resolved[typeIndex] ?? [];
-    // `lmlv` counts up from the LOWEST state (see stateIndexForLevel); absent lane → the full first list.
+    // `lmlv` counts up from the lowest state (see stateIndexForLevel); absent lane → the full first list.
     const level = objects.levels?.[i / 3] ?? states.length;
     const stateIndex = stateIndexForLevel(level, states.length);
     const type = states[stateIndex] ?? states[0];
@@ -224,7 +224,7 @@ export async function loadMapObjects(
     const screen = halfCellToScreen(hx, hy);
     const placement = i / 3; // the triplet ordinal — the handover join key (see LoadedMapObjects)
     // The node sampler owns the half-cell→cell convention (a cell-centre node lifts exactly like
-    // its ground-mesh vertex, so trees sit ON the warped ground). The lift is the DRAW offset only;
+    // its ground-mesh vertex, so trees sit on the warped ground). The lift is the draw offset only;
     // `y` (the feet anchor + depth key) stays pre-lift so objects occlude by map row.
     const lift = elevation?.liftAtNode(hx, hy) ?? 0;
     // The baked `embr` multiplier at the anchor cell — the original shades landscape-object pixels
@@ -239,18 +239,17 @@ export async function loadMapObjects(
       scale: 1,
       decor: type.decor,
       ...(lift !== 0 ? { lift } : {}),
-      // A slow SPATIAL phase GRADIENT (`hx + hy`), not a uniform phase: adjacent half-cells stay within
+      // A slow spatial phase gradient (`hx + hy`), not a uniform phase: adjacent half-cells stay within
       // one animation frame of each other (so the wave sheet still reads as continuous, no hard seam),
-      // but across the sea the phase drifts, so the surface no longer pulses as ONE identical stamp — the
-      // "water looks repeated too many times / unnatural" report. A traveling diagonal ripple reads as
-      // moving water; the map stores no per-object phase, so this deterministic gradient is our choice
-      // (source basis). Static objects (`frames.length <= 1`) ignore phase, so this only staggers the
-      // looping bobs (waves, swaying trees/fire).
+      // but across the sea the phase drifts, so the surface no longer pulses as one identical stamp. A
+      // traveling diagonal ripple reads as moving water; the map stores no per-object phase, so this
+      // deterministic gradient is our choice (source basis). Static objects (`frames.length <= 1`) ignore
+      // phase, so this only staggers the looping bobs (waves, swaying trees/fire).
       phase: hx + hy,
       // Translucency (the waves' watery blend, the ferns' feathered edges) is the Double8Bit bobs'
-      // PER-PIXEL alpha, baked into the atlas by the pipeline — no flat per-object opacity remains.
-      // Named approximation: the engine's alpha blit folds the shade into the pixel ALPHA
-      // (a = alphaByte·(256−shade)/256), while we shade via the `brightness` COLOUR multiplier below
+      // per-pixel alpha, baked into the atlas by the pipeline — no flat per-object opacity remains.
+      // Named approximation: the engine's alpha blit folds the shade into the pixel alpha
+      // (a = alphaByte·(256−shade)/256), while we shade via the `brightness` colour multiplier below
       // with the baked alpha unchanged — identical at neutral shade, divergent on embr-shaded cells.
       ...(shade !== undefined ? { brightness: shade.brightnessAt(hx / 2, hy / 2) } : {}),
     };
