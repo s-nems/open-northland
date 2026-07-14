@@ -78,6 +78,9 @@ export interface ToolPanelOptions {
    *  overlay must never toggle the hidden button / drop a foundation sight-unseen. Right-click
    *  (cancel placement) is deliberately not deferred. Injected per the hud contract. */
   readonly deferToOverlay?: (clientX: number, clientY: number) => boolean;
+  /** Open the in-game system menu — the `options` button's action (view/system-menu.ts). Injected per
+   *  the hud contract (the panel invokes a callback; it never navigates or owns the session itself). */
+  readonly onSystemMenu?: () => void;
 }
 
 export interface ToolPanelController {
@@ -258,8 +261,11 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       case 'help': // placeholder alias: Help has no window yet, so it toggles Statistics for now.
         stats.toggle();
         break;
+      case 'options':
+        opts.onSystemMenu?.();
+        break;
       default:
-        // mission / diplomacy / population / tech_tree / options — not wired in v1.
+        // mission / diplomacy / population / tech_tree — not wired in v1.
         break;
     }
   };

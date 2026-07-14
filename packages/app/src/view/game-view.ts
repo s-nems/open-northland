@@ -3,6 +3,7 @@ import type { ElevationField, SceneTerrain, SpriteSheet, WorldRenderer } from '@
 import type { SimEvent, Simulation, WorldSnapshot } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import { pickerEntries } from '../catalog/professions.js';
+import { menuSearch } from '../entries/menu/settings.js';
 import { HUD_TRIBE, HUMAN_PLAYER } from '../game/rules.js';
 import { workerRoleOf } from '../game/sandbox/index.js';
 import { type MinimapHandle, mountMinimap } from '../hud/minimap/index.js';
@@ -27,7 +28,9 @@ import { floatParam } from './params.js';
 import { mountPerfOverlay } from './perf-overlay.js';
 import { makeOverlayFrameSource } from './placement-overlay.js';
 import { trackCanvasPointer } from './pointer-tracker.js';
+import type { RafLoop } from './raf-loop.js';
 import { createSnapshotProjections } from './snapshot-projections.js';
+import { createSystemMenu } from './system-menu.js';
 import { createTooltip } from './tooltip.js';
 import { createUnitControls } from './unit-controls/index.js';
 
@@ -80,15 +83,47 @@ export interface GameViewDeps {
   readonly onEvents?: (events: readonly SimEvent[]) => void;
 }
 
+/**
+ * A running game session — the one owner of "a running game" (this view plus its RAF loop) above the
+ * per-entry mounts. {@link destroy} is the single teardown seam quit-to-menu and a future
+ * load-game/restart share instead of each re-deriving how to stop the loop.
+ */
+export interface GameSession {
+  /** Stop the running game: halt the frame loop so no second loop steps the stage once a new game
+   *  starts, and remove this session's own overlays. Idempotent. Full-page navigation (the v1
+   *  transition) unloads the rest; per-subsystem teardown for an in-page transition is a follow-up
+   *  (docs/tickets/app/game-session-teardown.md). */
+  destroy(): void;
+}
+
 /** px gap between the tool-panel strip's right edge and the debug overlay's left edge. */
 const PERF_STRIP_GAP = 8;
 
 /**
- * Mount the standard in-game HUD over the assembled world and start the fixed-timestep loop.
- * Resolves once the loop is running (the RAF chain keeps itself alive from there).
+ * Mount the standard in-game HUD over the assembled world and start the fixed-timestep loop. Resolves
+ * with the {@link GameSession} once the loop is running (the RAF chain keeps itself alive from there).
  */
-export async function startGameView(deps: GameViewDeps): Promise<void> {
+export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   const { app, canvas, params, renderer, sim, cameraCtl } = deps;
+
+  // Session lifecycle. `loop` is captured once the RAF loop starts (bottom of this function); `destroy`
+  // halts it and removes this session's overlays so a later game never runs a second loop over the same
+  // stage. `quitToMenu` tears the session down and navigates back to the menu — full-page navigation is
+  // the v1 transition (the browser unloads the DOM/Pixi/listeners the per-subsystem teardown does not
+  // yet cover; see docs/tickets/app/game-session-teardown.md).
+  let loop: RafLoop | null = null;
+  let destroyed = false;
+  const systemMenu = createSystemMenu({ onQuit: () => quitToMenu() });
+  const destroy = (): void => {
+    if (destroyed) return;
+    destroyed = true;
+    loop?.stop();
+    systemMenu.dispose();
+  };
+  const quitToMenu = (): void => {
+    destroy();
+    window.location.search = menuSearch();
+  };
 
   // `?uiscale=` — parsed once, shared by the tool panel and the action ring. Fractional allowed (the
   // default is 1.4×); the consumers clamp it to ≥1.
@@ -155,6 +190,7 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     owner: HUMAN_PLAYER,
     onSpeed: (spec, cause) => applyGameSpeed(control, spec, cause),
     deferToOverlay: (clientX, clientY) => minimap?.claimsPointer(clientX, clientY) ?? false,
+    onSystemMenu: () => systemMenu.toggle(),
   });
 
   // The canvas-bound client→screen conversion injected into the minimap and world pickers (`hud/` never
@@ -304,8 +340,9 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
   const { hudFor, doorBadgesFor } = createSnapshotProjections(buildingDoors, workerRoleOf, fogGates);
 
   // Hand the assembled world + HUD subsystems to the steady-state RAF loop (view/frame-loop.ts). The
-  // mount above owns construction; the loop owns the pinned per-frame order.
-  startFrameLoop({
+  // mount above owns construction; the loop owns the pinned per-frame order. The returned stop handle is
+  // the session's — quit halts the loop before navigating away.
+  loop = startFrameLoop({
     deps,
     control,
     fogGates,
@@ -322,4 +359,6 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     perf,
     pointer: pointerAt,
   });
+
+  return { destroy };
 }

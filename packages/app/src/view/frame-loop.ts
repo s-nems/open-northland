@@ -11,6 +11,7 @@ import type { GeometryDebugOverlay } from './geometry-debug-items.js';
 import type { GroundPileTooltip } from './ground-pile-tooltip.js';
 import type { PerfOverlayHandle } from './perf-overlay.js';
 import type { makeOverlayFrameSource } from './placement-overlay.js';
+import { type RafLoop, startRafLoop } from './raf-loop.js';
 import type { UnitControls } from './unit-controls/index.js';
 
 /**
@@ -48,9 +49,10 @@ export interface FrameLoopDeps {
  * panel's stats window → tool-panel re-place before the renderer's render (screen-space meshes carry the
  * canvas resolution) → unit-controls tick reusing the same snapshot (before the render, so a details-panel
  * rebuild never covers the portrait inset the render re-raises) → the retained `renderer.update` →
- * sound → perf readout. The RAF chain keeps itself alive once kicked off.
+ * sound → perf readout. Returns the loop's stop handle: the game session halts it on quit so no second
+ * loop steps the stage once a new game starts (see view/game-view.ts).
  */
-export function startFrameLoop(loop: FrameLoopDeps): void {
+export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
   const {
     deps,
     control,
@@ -242,7 +244,6 @@ export function startFrameLoop(loop: FrameLoopDeps): void {
       drawMs,
       ...renderer.stats(),
     });
-    requestAnimationFrame(frame);
   }
-  requestAnimationFrame(frame);
+  return startRafLoop(frame);
 }

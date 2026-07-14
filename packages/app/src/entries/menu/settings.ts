@@ -118,6 +118,22 @@ export function bindLocaleFlags(root: HTMLElement): void {
   }
 }
 
+/**
+ * The search string for returning to the main menu from a running game: the carried settings
+ * (`lang`/`uiscale`/`speed`/`fog`/`debug`) kept, the entry-selecting flags (`scene`/`map`/…) dropped, so
+ * quit-to-menu lands on the default menu entry with the player's settings intact. The inverse of
+ * {@link targetSearch}. Empty (`''`) when nothing carries — a bare navigation to the menu.
+ */
+export function menuSearch(current = new URLSearchParams(window.location.search)): string {
+  const target = new URLSearchParams();
+  for (const key of CARRIED_PARAMS) {
+    const value = current.get(key);
+    if (value !== null) target.set(key, value);
+  }
+  const search = target.toString();
+  return search === '' ? '' : `?${search}`;
+}
+
 export function targetSearch(entry: string, current = new URLSearchParams(window.location.search)): string {
   const target = new URLSearchParams();
   for (const key of CARRIED_PARAMS) {
