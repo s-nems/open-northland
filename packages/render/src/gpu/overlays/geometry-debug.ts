@@ -63,8 +63,8 @@ export class GeometryDebugLayer {
   readonly container = new Container();
 
   /**
-   * Rebuild the overlay from `items` (or clear it with `null`). Node positions ride the same
-   * projection as everything else: `halfCellToScreen` lifted by the terrain height under the node.
+   * Rebuild the overlay from `items` (or clear it with `null`). Node positions ride the shared
+   * {@link projectNode} projection (half-cell, lifted by the terrain height under the node).
    */
   set(items: readonly GeometryDebugItem[] | null, elevation?: ElevationField): void {
     for (const child of this.container.removeChildren()) child.destroy();

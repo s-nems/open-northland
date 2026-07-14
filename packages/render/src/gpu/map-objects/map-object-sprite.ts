@@ -18,8 +18,8 @@ export interface MapObjectSprite {
   readonly frames: readonly AtlasFrame[];
   readonly scale: number;
   readonly decor: boolean;
-  /** Starting frame offset into {@link frames}; the app staggers looping decor by a spatial gradient so
-   *  neighbouring bobs don't pulse as one stamp. Static objects (one frame) ignore it. */
+  /** Starting frame offset into {@link frames}; the app staggers looping bobs by a spatial gradient so
+   *  neighbours don't pulse as one stamp. Static objects (one frame) ignore it. */
   readonly phase: number;
   /**
    * Terrain-elevation lift (world px, ≥ 0) at this object's half-cell — subtracted from the drawn `y` so
