@@ -45,9 +45,9 @@ export interface IndexedBobManager {
 }
 
 /**
- * One human's full graphics binding from a mod `[jobbasegraphics]` record — the **richer variant** of
+ * One human's full graphics binding from a mod `[jobbasegraphics]` record — the richer variant of
  * {@link BmdPaletteBinding}. Unlike the flat `[jobgraphics]` schema (one body
- * `.bmd` + one palette), a human draws as a **body** bob plus zero-or-more numbered **head** bobs, each
+ * `.bmd` + one palette), a human draws as a body bob plus zero-or-more numbered head bobs, each
  * a `gfxbobmanagerbody/head <index> "<bmd>" ["<shadow>"]` line whose leading int index shifts the `.bmd`
  * path off `values[0]` (so it cannot reuse {@link extractGraphicsBindings}). Palettes split three ways:
  * `gfxpalettebasebody`/`gfxpalettebasehead` colour the two bob sets, and `gfxpaletterandom` is the
@@ -92,7 +92,7 @@ function parseIndexedBobManager(prop: RuleProp): IndexedBobManager | undefined {
 /**
  * Reduces every section named `sectionName` to a {@link JobBaseGraphicsBinding}. The
  * `[jobbasegraphics]` (base appearance) and `[jobchangegraphics]` (equipment/job skin) records share
- * the **same grammar** — indexed `gfxbobmanagerbody/head` bob slots (the `.bmd` path on `values[1]`,
+ * the same grammar — indexed `gfxbobmanagerbody/head` bob slots (the `.bmd` path on `values[1]`,
  * the leading int slot index on `values[0]`) + the three optional palette keys (`gfxpalettebasebody`/
  * `gfxpalettebasehead`/`gfxpaletterandom`, lower-cased to join onto the palette alias `name`
  * case-insensitively) — differing only in their section name and intent, so both public extractors
@@ -133,7 +133,7 @@ function extractIndexedGraphics(
 }
 
 /**
- * Extracts the `[jobbasegraphics]` records (the **base appearance** layer) from the mod's richer human
+ * Extracts the `[jobbasegraphics]` records (the base appearance layer) from the mod's richer human
  * skin (`DataCnmd/types/humanstype/jobgraphics.ini`) or the base game's `humans/jobgraphics.cif` — the
  * second binding skin alongside the flat {@link extractGraphicsBindings} `[jobgraphics]` one. See
  * {@link extractIndexedGraphics} for the shared grammar; {@link extractJobChangeGraphics} is its
@@ -144,12 +144,12 @@ export function extractJobBaseGraphics(sections: readonly RuleSection[]): JobBas
 }
 
 /**
- * Extracts the `[jobchangegraphics]` records (the **equipment/job skin** layer) — the sibling of
+ * Extracts the `[jobchangegraphics]` records (the equipment/job skin layer) — the sibling of
  * {@link extractJobBaseGraphics}'s `[jobbasegraphics]` base-appearance layer. Both legs ship in the same
  * files: the base game's `Data/engine2d/inis/humans/jobgraphics.cif` and, preferred per golden rule #4,
  * the mod's `DataCnmd/types/humanstype/jobgraphics.ini`. A `[jobchangegraphics]` record reskins a human
  * for a specific `(logictribe, logicjob)` — e.g. swapping in a job's head/equipment bob set over the
- * shared body geometry — using the **identical grammar** as `[jobbasegraphics]` (indexed
+ * shared body geometry — using the identical grammar as `[jobbasegraphics]` (indexed
  * `gfxbobmanagerbody/head` slots + `gfxpalettebasebody`/`gfxpalettebasehead`/`gfxpaletterandom`), so it
  * yields the same {@link JobBaseGraphicsBinding} shape and flattens via the same
  * `jobBaseGraphicsToBindings` path. A record with no usable body bob is skipped, matching the base leg.

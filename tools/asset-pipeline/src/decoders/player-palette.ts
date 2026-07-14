@@ -1,24 +1,24 @@
 /**
  * Player (team) colour palettes — the data behind "player 0 is blue, player 1 is red, …". The original
  * *Cultures* engine gives each unit a per-creature palette composed from a base body palette plus a
- * player-colour ramp bound to the clothing/equipment patches; the unit's `.bmd` stores palette INDICES,
+ * player-colour ramp bound to the clothing/equipment patches; the unit's `.bmd` stores palette indices,
  * so the final colour is decided by whichever palette the index is read through. We reproduce that as a
  * render-time lookup: the character atlas keeps its raw indices (see `expandBobFrameIndexed` in
  * `atlas.ts`) and the renderer reads each index through a per-player palette row in a LUT texture.
  *
  * How the player colour is applied: the RandomPalette recipe (`randompalette.ini`, `player_00…09`) binds the
  * `Player NN` ramp — a 16-colour ramp at colour-range 1 of a `playerNN.pcx` ({@link PLAYER_RAMP_START}) — onto
- * the men's clothing **patches**: patch 10 (men's vest, indices 160–175) and patch 5 (80–95), which the recipe
+ * the men's clothing patches: patch 10 (men's vest, indices 160–175) and patch 5 (80–95), which the recipe
  * mirrors from patch 10. Those target index runs are {@link PLAYER_COLOR_BANDS}; each receives the full
  * 16-colour ramp. So a per-player palette is the shared base body palette with those bands overwritten by that
  * player's ramp — {@link composePlayerPalette}. (Confirmed visually: the base `test_human_00`'s patch 10 is the
  * cyan default vest, and remapping it turns the civilian's vest the player colour.) Patch 15 (240–255, the
  * carried-good + women's-dress band) is deliberately excluded — see {@link PLAYER_COLOR_BANDS}.
  *
- * The original ships **10** player colours; we generate **16** (up to 16 players) by hue-rotating a reference
- * ramp for the extra six — a conscious divergence, logged in source basis. Pure functions only (palette
- * maths on 768-byte RGB triples + RGBA LUT images); the I/O that reads the `.pcx` sources + writes the LUT PNG
- * lives in the pipeline stage.
+ * The original ships 10 player colours; we generate 16 (up to 16 players) by hue-rotating a reference ramp
+ * for the extra six — a conscious divergence, logged in source basis. Pure functions only (palette maths on
+ * 768-byte RGB triples + RGBA LUT images); the I/O that reads the `.pcx` sources + writes the LUT PNG lives
+ * in the pipeline stage.
  */
 
 import { assertPaletteBytes, PALETTE_ENTRIES, PALETTE_RGB_BYTES, type RgbaImage } from './image.js';

@@ -48,12 +48,12 @@ const EMLA_EMPTY = 0xffff;
 
 /**
  * Decodes the `empa`/`empb` per-cell ground-pattern lanes + the `eapd` pattern-name dictionary into
- * the emitted `ground` layer: each cell's two triangles as indices into a **compacted** per-map
+ * the emitted `ground` layer: each cell's two triangles as indices into a compacted per-map
  * pattern-name list (only the names the map actually uses, in ascending dictionary order — a
  * deterministic remap). The u16 lane values index `eapd` positionally; the emitted layer carries the
- * NAMES (the engine's own version-robust join key onto the extracted `GfxPattern` table). Returns
+ * names (the engine's version-robust join key onto the extracted `GfxPattern` table). Returns
  * undefined when the map lacks any of the three chunks (older/foreign saves); throws on an index
- * outside the dictionary (a corrupt lane — {@link mapDatToTerrain} catches per LAYER and emits the
+ * outside the dictionary (a corrupt lane — {@link mapDatToTerrain} catches per layer and emits the
  * grid without it).
  */
 function groundFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['ground'] {
@@ -94,14 +94,14 @@ function groundFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['gro
 
 /**
  * Decodes the `emt1..emt4` per-cell transition-overlay lanes + the `eatd` transition-name
- * dictionary into the emitted `transitions` layer. Each lane is one u8 PER CELL (row-major,
+ * dictionary into the emitted `transitions` layer. Each lane is one u8 per cell (row-major,
  * length === width·height — same resolution as `empa`/`empb`, confirmed on the real maps);
  * `255` = no overlay, `v < 255` selects transition `⌊v/6⌋` from the dictionary and pair variant
- * `v % 6` of its six UV pairs. The lanes and the dictionary are carried VERBATIM (no compaction —
- * the ⌊v/6⌋ join is positional, and re-encoding packed values would risk colliding with the 255
- * sentinel). Lane semantics: source basis in docs/SOURCES.md "terrain tessellation". Returns
- * undefined when the map lacks any of the five chunks; throws on a length mismatch or an
- * out-of-dictionary value (a corrupt lane — caught per LAYER by {@link mapDatToTerrain}).
+ * `v % 6` of its six UV pairs. The lanes and the dictionary are carried verbatim (no compaction —
+ * the ⌊v/6⌋ join is positional, and re-encoding packed values could collide with the 255 sentinel).
+ * Lane semantics: source basis in docs/SOURCES.md "terrain tessellation". Returns undefined when the
+ * map lacks any of the five chunks; throws on a length mismatch or an out-of-dictionary value (a
+ * corrupt lane — caught per layer by {@link mapDatToTerrain}).
  */
 function transitionsFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['transitions'] {
   const eatd = findChunk(map, 'eatd');
@@ -133,15 +133,14 @@ function transitionsFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile
 /**
  * Decodes the `emla` half-cell landscape-object lane + the `eald` object-name dictionary into the
  * emitted `objects` layer: a sparse flat `[hx, hy, typeIndex]` triple list (row-major half-cell scan
- * order — deterministic) over a **compacted** per-map type-name list (ascending dictionary order).
- * This is every pre-placed tree/stone/bush/mine decal/wave the map ships; a name joins onto the
- * extracted `[GfxLandscape]` table (`LandscapeGfx.editName`). The sibling `lmlv` byte lane carries
- * each placement's LEVEL — 1-based, counting UP from the lowest state (level 1 = sapling/dregs,
- * level N = full-grown/full/intact) onto the record's highest-first `GfxFrames` lists, so consumers
- * map `index = N − level` (a wall's `100` sentinel = intact) — emitted
- * as a parallel `levels` array (omitted when the map lacks the lane). Returns undefined when the
- * map lacks either object chunk; throws on an index outside the dictionary (corrupt lane — caught
- * per layer by {@link mapDatToTerrain}).
+ * order — deterministic) over a compacted per-map type-name list (ascending dictionary order). This is
+ * every pre-placed tree/stone/bush/mine decal/wave the map ships; a name joins onto the extracted
+ * `[GfxLandscape]` table (`LandscapeGfx.editName`). The sibling `lmlv` byte lane carries each
+ * placement's level — 1-based, counting up from the lowest state (level 1 = sapling/dregs, level N =
+ * full-grown/full/intact) onto the record's highest-first `GfxFrames` lists, so consumers map
+ * `index = N − level` (a wall's `100` sentinel = intact) — emitted as a parallel `levels` array
+ * (omitted when the map lacks the lane). Returns undefined when the map lacks either object chunk;
+ * throws on an index outside the dictionary (corrupt lane — caught per layer by {@link mapDatToTerrain}).
  */
 function objectsFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['objects'] {
   const emla = findChunk(map, 'emla');
@@ -188,14 +187,13 @@ function objectsFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['ob
 
 /**
  * Decodes the `lmhe` height lane into the emitted `elevation` layer: the raw per-cell terrain height,
- * one byte PER CELL (row-major, unpacked length === width·height — NOT the `2W × 2H` half-cell
+ * one byte per cell (row-major, unpacked length === width·height — not the `2W × 2H` half-cell
  * resolution the landscape-object lanes carry; confirmed empirically across the real maps, values
- * 0..250 — a hard observed ceiling across the full corpus). Returns undefined when the map lacks the
- * lane (older/foreign saves); throws on a
- * dims/length mismatch (a wrong/corrupt layer — caught per LAYER by {@link mapDatToTerrain}, which
- * then emits the grid without it). Carried through verbatim, mirroring `objects.levels`; consumed by
- * the render's elevation lift (≈1.24 native px/unit, MEASURED — see source basis "projection";
- * `packages/render/src/data/elevation.ts`).
+ * 0..250 — an observed ceiling across the corpus). Returns undefined when the map lacks the lane
+ * (older/foreign saves); throws on a dims/length mismatch (a corrupt layer — caught per layer by
+ * {@link mapDatToTerrain}, which then emits the grid without it). Carried through verbatim, mirroring
+ * `objects.levels`; consumed by the render's elevation lift (≈1.24 native px/unit, measured — see
+ * source basis "projection"; `packages/render/src/data/elevation.ts`).
  */
 function elevationFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['elevation'] {
   return perCellLaneFromMapDat(map, size, 'lmhe', 'height');
@@ -203,15 +201,14 @@ function elevationFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['
 
 /**
  * Decodes the `embr` brightness lane into the emitted `brightness` layer: the baked per-cell shading
- * plane, one byte PER CELL like `lmhe` (row-major, unpacked length === width·height — confirmed on the
+ * plane, one byte per cell like `lmhe` (row-major, unpacked length === width·height — confirmed on the
  * real maps, e.g. the 250×200 bridge map unpacks to exactly 50 000). 127 is the neutral value (flat
  * lit ground); lower values are baked slope shadow, higher baked slope light (up to 255 ≈ 2×), and the
- * map's outermost 2–3 rows/columns hold 0 — the engine's fade-to-black border is IN the lane (verified:
- * the corpus shots' border cells are literally black, and ~all of the bridge map's 2 323 zero cells
- * are that frame). Carried through verbatim, mirroring `elevation`; the render-side response curve
- * (luminance × brightness/127, calibrated against the corpus) lives in
+ * map's outermost 2–3 rows/columns hold 0 — the engine's fade-to-black border is in the lane (the
+ * corpus shots' border cells are black). Carried through verbatim, mirroring `elevation`; the
+ * render-side response curve (luminance × brightness/127, calibrated against the corpus) lives in
  * `packages/render/src/data/brightness.ts`. Returns undefined when the map lacks the lane; throws on a
- * dims/length mismatch (caught per LAYER by {@link mapDatToTerrain}).
+ * dims/length mismatch (caught per layer by {@link mapDatToTerrain}).
  */
 function brightnessFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['brightness'] {
   return perCellLaneFromMapDat(map, size, 'embr', 'brightness');
@@ -219,10 +216,10 @@ function brightnessFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile[
 
 /**
  * The shared per-cell byte-lane decode both wrappers above ride: unpack the tagged `X8el` chunk and
- * carry it VERBATIM, enforcing the one structural invariant these lanes share — one byte PER CELL
- * (row-major, unpacked length === width·height, NOT the `2W × 2H` half-cell resolution the
+ * carry it verbatim, enforcing the one structural invariant these lanes share — one byte per cell
+ * (row-major, unpacked length === width·height, not the `2W × 2H` half-cell resolution the
  * landscape-object lanes use). Returns undefined when the map lacks the chunk (older/foreign saves);
- * throws on a dims/length mismatch (caught per LAYER by {@link mapDatToTerrain}).
+ * throws on a dims/length mismatch (caught per layer by {@link mapDatToTerrain}).
  */
 function perCellLaneFromMapDat(
   map: MapDat,
@@ -250,16 +247,13 @@ function perCellLaneFromMapDat(
  * imports `sim`), and joins the 1:1 render layers when the map carries them: the per-triangle ground
  * patterns ({@link groundFromMapDat}: `empa`/`empb` + `eapd`) and the placed landscape objects
  * ({@link objectsFromMapDat}: `emla` + `eald`). The decoders stay pure; this is the only wiring.
- * Throws a `mapdat:`-prefixed error for a non-container or a missing/corrupt
- * `lsiz`/`lmlt` (the sim grid is mandatory; `convertMapDatTree` catches per-file); a corrupt
- * OPTIONAL render lane is caught per layer here (warn + emit the grid without it), so a map whose nav
- * grid decodes fine never disappears over its enrichments. The `lmhe` height lane rides along as the
- * per-cell `elevation` layer ({@link elevationFromMapDat}) — consumed render-side by the elevation
- * lift (`packages/render/src/data/elevation.ts`) — and the `embr` baked-shading lane as the per-cell
- * `brightness` layer ({@link brightnessFromMapDat}) — consumed by the ground's per-fragment
- * shading (`packages/render/src/data/brightness.ts`). The `emt1..emt4` transition-overlay lanes
- * ride as the `transitions` layer ({@link transitionsFromMapDat}) — consumed by the render's
- * per-triangle transition compositing.
+ * Throws a `mapdat:`-prefixed error for a non-container or a missing/corrupt `lsiz`/`lmlt` (the sim
+ * grid is mandatory; `convertMapDatTree` catches per-file); a corrupt optional render lane is caught
+ * per layer here (warn + emit the grid without it), so a map whose nav grid decodes fine never
+ * disappears over its enrichments. The `lmhe` height lane rides as the `elevation` layer
+ * ({@link elevationFromMapDat}), `embr` as `brightness` ({@link brightnessFromMapDat}), and
+ * `emt1..emt4` as `transitions` ({@link transitionsFromMapDat}) — each consumed by the matching
+ * render-side layer.
  */
 export function mapDatToTerrain(bytes: Uint8Array): MapDatTerrainFile {
   const map = decodeMapDat(bytes);
@@ -269,9 +263,9 @@ export function mapDatToTerrain(bytes: Uint8Array): MapDatTerrainFile {
     throw new Error('mapdat: no lmlt landscape-type chunk (cannot build the terrain grid)');
   }
   const terrain = lmltToTerrainMap(unpackMapLayer(lmlt), size);
-  // The render layers are OPTIONAL enrichments: a corrupt lane degrades to a grid-only artifact
-  // (warn + omit) rather than skipping the whole map — the sim nav grid emitted fine before these
-  // lanes existed and must keep doing so. `noun`/`plural` name the failed lane(s) in the shared warning.
+  // The render layers are optional enrichments: a corrupt lane degrades to a grid-only artifact
+  // (warn + omit) rather than dropping the whole map. `noun`/`plural` name the failed lane(s) in the
+  // shared warning.
   const tryLayer = <T>(noun: string, plural: boolean, build: () => T): T | undefined => {
     try {
       return build();
