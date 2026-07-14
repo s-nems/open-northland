@@ -38,6 +38,9 @@ export function pixelHit(
 ): boolean | undefined {
   if (pe === undefined || pe.boundsFrame !== frameId) return undefined;
   if (pe.paletted) return undefined; // settler meshes keep the (deliberately generous) box hit
+  // An under-construction site keeps the box hit too: its drawn pixels are the partial reveal, and a
+  // player clicks the site (its final-building rect), not whatever scattered pixels exist so far.
+  if (pe.reveal !== undefined) return undefined;
   let sampledEveryLayer = false;
   for (const spr of pe.sprites) {
     if (!(spr instanceof Sprite) || !spr.visible) continue;
