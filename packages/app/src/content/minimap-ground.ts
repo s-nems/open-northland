@@ -89,7 +89,7 @@ async function fetchPagePixels(
 
 /**
  * Build the per-cell minimap colours for a decoded map, or null when the map carries no ground lanes
- * / no texture set loaded (synthetic scenes, bare checkout, `?terrain=off`) — the minimap then falls
+ * or texture set (synthetic scenes or a bare checkout) — the minimap then falls
  * back to its typeId raster. One fetch per referenced page (browser-cached — the renderer already
  * loaded the same PNGs), one mean per distinct pattern, one pass over the cells.
  */

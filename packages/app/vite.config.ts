@@ -18,12 +18,12 @@ const here = dirname(fileURLToPath(import.meta.url));
 const mapsRoot = resolve(here, '../../content/maps');
 // Decoded bob atlases (`<name>.png` + `<name>.atlas.json`) the `.bmd`→atlas pipeline emits. Like the
 // maps, they are gitignored (decoded from an owned game copy) and sit outside the app's vite root, so a
-// middleware bridges them in at `/bobs/<name>.*` for the `?atlas=real` fetch (see real-sprites.ts). Path
+// middleware bridges them in at `/bobs/<name>.*` for normal world rendering and the atlas gallery. Path
 // traversal is rejected and only `.png` / `.atlas.json` are served, so `/bobs/` can only reach a decoded
 // atlas, never an arbitrary file.
 const bobsRoot = resolve(here, '../../content/Data/engine2d/bin/bobs');
-// Decoded ground textures (`text_NNN.png`, 256×256 RGBA) the `.pcx`→PNG pipeline stage emits — the
-// `?terrain` real-ground render samples them (see real-terrain.ts). Same stance as `/bobs`: gitignored,
+// Decoded ground textures (`text_NNN.png`, 256×256 RGBA) the `.pcx`→PNG pipeline stage emits. Normal
+// world rendering samples them through the terrain binding. Same stance as `/bobs`: gitignored,
 // outside the vite root, bridged in at `/textures/<name>.png` with traversal rejected + `.png` only.
 const texturesRoot = resolve(here, '../../content/Data/engine2d/bin/textures');
 // Decoded original sound effects (`.wav`) the `@open-northland/audio` layer plays. Same stance as `/bobs` /
@@ -32,8 +32,8 @@ const texturesRoot = resolve(here, '../../content/Data/engine2d/bin/textures');
 // Path traversal is rejected and only `.wav` is served, so `/sounds/` can only reach a real sound.
 const soundsRoot = resolve(here, '../../content/Data/engine2d/bin/sounds');
 
-// The validated IR (`content/ir.json`) carries the approximated `terrainPatterns` typeId→ground table
-// the `?terrain` binding reads; bridged in at `/ir.json` (the one file, not the tree).
+// The validated IR (`content/ir.json`) carries the approximated `terrainPatterns` typeId→ground table;
+// bridged in at `/ir.json` (the one file, not the tree).
 const irFile = resolve(here, '../../content/ir.json');
 // The GUI extraction stage's non-atlas outputs — the per-language UI string JSON, the mouse cursors
 // (`.cur` + decoded `.png`), and the top-level `content/gui/manifest.json` — bridged in at `/gui/<path>`

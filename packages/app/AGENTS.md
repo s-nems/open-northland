@@ -20,7 +20,8 @@ that matches its role instead of piling another method onto a growing file:
 
 - **`main.ts`** — the thin URL dispatcher. Reads `window.location.search`, picks ONE entry, hands off. No
   wiring lives here; it only routes.
-- **`entries/`** — one module per URL entry (the "modes"): `menu.ts` (the default landing), `map.ts`
+- **`entries/`** — one module per URL entry (the "modes"): `menu.ts` + `menu/` (the default landing,
+  backed by the semantic template in `index.html` and a normal CSS stylesheet), `map.ts`
   (`?map=`), `scene.ts` (`?scene=`), `anim.ts` (+ `anim-cells.ts` pure builders + `anim-overlay.ts`
   panel), `sound.ts` (`?sounds`), `shot.ts` (`?shot`). An entry assembles its world (terrain, sim, renderer,
   starting camera); the two playable entries then hand off to the shared `view/game-view.ts` runtime.
@@ -83,11 +84,10 @@ that matches its role instead of piling another method onto a growing file:
 ## URL-flag entries
 
 The app dispatches on `window.location.search` (see `main.ts`, a thin router into `entries/`). **With no
-flag the default is the main menu** (`entries/menu.ts`) — a landing page of clickable cards (every
-acceptance scene, the animation gallery, each decoded map from the dev server's
-`/maps-index` route), so a human never has to remember a `?…` string. Each flag below is opt-in and
-degrades to a reproducible default so the committed build + the `npm run shot` PNG never depend on
-gitignored bytes:
+flag the default is the main menu** (`entries/menu.ts`): scenes and decoded maps are selected from the
+left list, while the right panel shows their preview, localized description, game settings, and Start
+button. The compact tools list opens the animation, sound, and sprite galleries. Each entry degrades to
+a reproducible default so the committed build + the `npm run shot` PNG never depend on gitignored bytes:
 
 - `?map=<id>` — the **decoded-map viewer** (`entries/map.ts`): draws a real `content/maps/<id>.json` grid
   driven by the vertical-slice sim on the fixed-timestep loop, drawn every frame. The menu's "Mapy" section
@@ -135,27 +135,16 @@ gitignored bytes:
   audition every action→sound binding, the voice pools split by sex/age, the jingles and the ambient beds.
   The human-oracle seam for audio (an agent can't self-judge a sound). NOTE the key is `sounds` (plural) —
   distinct from the `sound` (singular) MUTE modifier above, so `?scene&sound=off` and `?sounds` don't collide.
-- `?map=<id>` · `?atlas` · `?terrain=off` · `?objects=off` · `?zoom=N` · `?speed=N` · `?center=x,y` ·
-  `?pitch=N` — real decoded map / sprite atlas / ground-texture + map-object opt-outs / camera magnify /
-  playback rate (seeds the INITIAL rate; the tool panel's game-speed button then drives it live in
-  `?map=`/`?scene` — use `?speed=` for a sub-1× pace the discrete button can't reach) / centre the camera on
-  tile `(x,y)` (an inspection knob for a decoded-map feature — a
-  bridge, a coastline — the settler-centroid framing never reaches; malformed → default framing) / **set
-  the cell-diamond width in px** (`?pitch`, the live master-scale knob — sprite-vs-terrain size; default the
-  MEASURED 68, row step following the measured 38/68 ratio; `?pitchy=<cellDiamondHeight>` — the full
-  diamond height, 2× the row step, measured 76 — overrides the height separately; `setTilePitch` in
-  `iso.ts`). These compose with
-  `?scene=`. The live view also mounts the top-left debug overlay (tick / speed / steps / entity counts +
-  the FPS and sim/snap/draw CPU split), like `?scene=`.
-  Real graphics are the **default** for live + scene (`resolveSpriteSheet` degrades to synthetic
-  markers when `content/` is absent, so a bare checkout still boots); `?atlas=synthetic` forces markers,
-  `?atlas=none` placeholder geometry. **Real ground textures are likewise default-on** in live mode
-  (degrading to the flat tint without `content/`); `?terrain=off` forces the flat tint. **`?map=<id>` is the
-  full original-map import view** — 1:1 per-triangle ground (the map's baked `GfxPattern` lanes) + every
-  placed landscape object (trees/stones/mines/palisades + animated waves); `?objects=off` shows the bare
-  ground. Like `?anim`, `?map=` is a real-content human-validation entry, NOT a `SceneDefinition` (a scene's
-  headless half must run on synthetic content — copyrighted map data can't enter the tests). `?shot` keeps
-  its own content-free default so the committed PNG never depends on gitignored bytes.
+- `?lang=pol|eng` · `?uiscale=N` · `?speed=N` · `?fog=off|reveal|recon|full` · `?debug=geometry` are the
+  player-facing settings carried by the main menu into scenes and maps. The language lives in the menu's
+  corner; the other settings live beside the selected world. `?center=x,y` remains a direct map inspection
+  aid for centring a bridge, coastline, or another decoded feature.
+  Normal map and scene play always attempts to load decoded sprites, terrain textures, and landscape
+  objects at the calibrated projection; a checkout without them degrades to clean-room markers and flat
+  ground. Renderer opt-outs are not player settings. Gallery-specific controls remain scoped to their
+  entries (`?anim&zoom=`, `?icons&atlas=`, and the deterministic `?shot` verification flags).
+  `?map=<id>` is a real-content human-validation entry, NOT a `SceneDefinition`; its headless counterpart
+  cannot depend on copyrighted map data.
 
 ## Acceptance scenes — let a human sign off a mechanic
 

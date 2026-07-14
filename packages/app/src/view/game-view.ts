@@ -59,8 +59,8 @@ export interface GameViewDeps {
   readonly cameraCtl: CameraController;
   /** The terrain grid the sound driver's ambient beds sample (and the minimap rasterizes). */
   readonly terrainGrid: SceneTerrain;
-  /** typeId → minimap ground colour (the real terrain set's per-type debug colours). Absent (bare
-   *  checkout / `?terrain=off`), the minimap falls back to the render flat-tint palette. */
+  /** typeId → minimap ground colour (the real terrain set's per-type debug colours). In a bare
+   *  checkout the minimap falls back to the render flat-tint palette. */
   readonly terrainColour?: (typeId: number) => number | undefined;
   /** Per-cell minimap ground colours from a decoded map's baked ground lanes
    *  (`content/minimap-ground.ts`) — preferred over the typeId palette, which can't depict them. */

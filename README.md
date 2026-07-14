@@ -65,8 +65,8 @@ npm run pipeline -- --game "../Cultures 8th Wonder" --mod DataCnmd --out content
 npm run dev                 # launch the app (Vite) in a browser
 ```
 
-Useful URL flags on the dev app: `?scene=sandbox` runs the current acceptance scene with its checklist
-overlay, and **`?anim`** opens the character **animation gallery** — every roster body, head, player
+The app opens on the main menu. `?scene=sandbox` starts the current acceptance scene directly, and
+**`?anim`** opens the character **animation gallery** — every roster body, head, player
 colour and facing (needs decoded `content/`). The full URL-flag reference lives in
 [`packages/app/AGENTS.md`](packages/app/AGENTS.md).
 

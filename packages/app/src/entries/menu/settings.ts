@@ -1,117 +1,42 @@
-import { localeParam, messages } from '../../i18n/index.js';
-import { el } from '../../view/overlay.js';
+import { currentLocale, type Locale, messages } from '../../i18n/index.js';
 
-const GLOBAL_PARAMS = [
-  'lang',
-  'uiscale',
-  'speed',
-  'zoom',
-  'sound',
-  'fog',
-  'debug',
-  'atlas',
-  'terrain',
-  'objects',
-  'pitch',
-  'pitchy',
-] as const;
+const CARRIED_PARAMS = ['lang', 'uiscale', 'speed', 'fog', 'debug'] as const;
+export const MENU_SPEEDS = ['0.25', '0.5', '1', '2', '3', '4', '6', '8'] as const;
 
-interface SelectSetting {
-  readonly kind: 'select';
-  readonly param: (typeof GLOBAL_PARAMS)[number];
+type CarriedParam = (typeof CARRIED_PARAMS)[number];
+
+interface SettingOption {
+  readonly value: string;
   readonly label: string;
-  readonly detail: string;
-  readonly options: readonly { readonly value: string; readonly label: string }[];
+}
+
+interface MenuSetting {
+  readonly param: Exclude<CarriedParam, 'lang'>;
   readonly fallback: string;
+  readonly options: readonly SettingOption[];
 }
 
-interface NumberSetting {
-  readonly kind: 'number';
-  readonly param: 'pitch' | 'pitchy';
-  readonly label: string;
-  readonly detail: string;
-  readonly placeholder: string;
-}
-
-type Setting = SelectSetting | NumberSetting;
-
-function currentGlobals(): URLSearchParams {
-  const current = new URLSearchParams(window.location.search);
-  const globals = new URLSearchParams();
-  for (const key of GLOBAL_PARAMS) {
-    const value = current.get(key);
-    if (value !== null) globals.set(key, value);
-  }
-  return globals;
-}
-
-export function targetSearch(entry: string): string {
-  const target = currentGlobals();
-  const entryParams = new URLSearchParams(entry.startsWith('?') ? entry.slice(1) : entry);
-  for (const [key, value] of entryParams) target.set(key, value);
-  return `?${target.toString()}`;
-}
-
-function settingsModel(): readonly Setting[] {
+function settingModel(): readonly MenuSetting[] {
   const copy = messages().menu;
   return [
     {
-      kind: 'select',
-      param: 'lang',
-      label: copy.language,
-      detail: copy.languageDetail,
-      fallback: localeParam(new URLSearchParams(window.location.search)),
-      options: [
-        { value: 'pol', label: copy.languagePolish },
-        { value: 'eng', label: copy.languageEnglish },
-      ],
-    },
-    {
-      kind: 'select',
       param: 'uiscale',
-      label: copy.uiScale,
-      detail: copy.uiScaleDetail,
       fallback: '1.4',
       options: ['1', '1.25', '1.4', '1.75', '2'].map((value) => ({ value, label: `${value}×` })),
     },
     {
-      kind: 'select',
       param: 'speed',
-      label: copy.speed,
-      detail: copy.speedDetail,
       fallback: '1',
-      options: ['0.5', '1', '2', '3'].map((value) => ({ value, label: `${value}×` })),
+      options: MENU_SPEEDS.map((value) => ({
+        value,
+        label: `${value}×`,
+      })),
     },
     {
-      kind: 'select',
-      param: 'zoom',
-      label: copy.zoom,
-      detail: copy.zoomDetail,
-      fallback: '',
-      options: [
-        { value: '', label: copy.automatic },
-        ...['0.5', '0.75', '1', '1.5', '2'].map((value) => ({ value, label: `${value}×` })),
-      ],
-    },
-    {
-      kind: 'select',
-      param: 'sound',
-      label: copy.sound,
-      detail: copy.soundDetail,
-      fallback: '',
-      options: [
-        { value: '', label: copy.enabled },
-        { value: 'off', label: copy.disabled },
-      ],
-    },
-    {
-      kind: 'select',
       param: 'fog',
-      label: copy.fog,
-      detail: copy.fogDetail,
       fallback: '',
       options: [
-        { value: '', label: copy.automatic },
+        { value: '', label: copy.worldDefault },
         { value: 'off', label: copy.disabled },
         { value: 'reveal', label: messages().admin.fogModes.reveal },
         { value: 'recon', label: messages().admin.fogModes.recon },
@@ -119,56 +44,17 @@ function settingsModel(): readonly Setting[] {
       ],
     },
     {
-      kind: 'select',
       param: 'debug',
-      label: copy.geometry,
-      detail: copy.geometryDetail,
       fallback: '',
       options: [
         { value: '', label: copy.disabled },
         { value: 'geometry', label: copy.enabled },
       ],
     },
-    {
-      kind: 'select',
-      param: 'atlas',
-      label: copy.atlas,
-      detail: copy.atlasDetail,
-      fallback: '',
-      options: [
-        { value: '', label: copy.automatic },
-        { value: 'synthetic', label: copy.synthetic },
-        { value: 'none', label: copy.none },
-      ],
-    },
-    {
-      kind: 'select',
-      param: 'terrain',
-      label: copy.terrain,
-      detail: copy.terrainDetail,
-      fallback: '',
-      options: [
-        { value: '', label: copy.automatic },
-        { value: 'off', label: copy.disabled },
-      ],
-    },
-    {
-      kind: 'select',
-      param: 'objects',
-      label: copy.objects,
-      detail: copy.objectsDetail,
-      fallback: '',
-      options: [
-        { value: '', label: copy.automatic },
-        { value: 'off', label: copy.disabled },
-      ],
-    },
-    { kind: 'number', param: 'pitch', label: copy.pitch, detail: copy.pitchDetail, placeholder: '68' },
-    { kind: 'number', param: 'pitchy', label: copy.pitchY, detail: copy.pitchYDetail, placeholder: '76' },
   ];
 }
 
-function replaceParam(param: string, value: string): void {
+function replaceParam(param: CarriedParam, value: string): void {
   const next = new URLSearchParams(window.location.search);
   if (value === '') next.delete(param);
   else next.set(param, value);
@@ -176,60 +62,56 @@ function replaceParam(param: string, value: string): void {
   window.history.replaceState(null, '', `${window.location.pathname}${search === '' ? '' : `?${search}`}`);
 }
 
-export function settingsPanel(): HTMLElement {
-  const copy = messages().menu;
-  const panel = el('section', '');
-  panel.className = 'on-settings';
-  const head = el('div', '');
-  head.className = 'on-settings-head';
-  const text = el('div', '');
-  const sub = el('p', '', copy.settingsSubtitle);
-  sub.className = 'on-subtitle';
-  text.append(el('h2', '', copy.settingsTitle), sub);
-  const reset = el('button', '', copy.reset) as HTMLButtonElement;
-  reset.className = 'on-reset';
-  reset.addEventListener('click', () => {
-    window.location.search = '';
-  });
-  head.append(text, reset);
-  const grid = el('div', '');
-  grid.className = 'on-settings-grid';
-  const current = new URLSearchParams(window.location.search);
-  for (const setting of settingsModel()) {
-    const wrap = el('div', '');
-    wrap.className = 'on-setting';
-    const label = el('label', '', setting.label) as HTMLLabelElement;
-    const detail = el('small', '', setting.detail);
-    const id = `setting-${setting.param}`;
-    label.htmlFor = id;
-    if (setting.kind === 'select') {
-      const select = el('select', '') as HTMLSelectElement;
-      select.id = id;
-      for (const option of setting.options) {
-        const node = document.createElement('option');
-        node.value = option.value;
-        node.textContent = option.label;
-        select.append(node);
-      }
-      select.value = current.get(setting.param) ?? setting.fallback;
-      select.addEventListener('change', () => {
-        replaceParam(setting.param, select.value);
-        if (setting.param === 'lang') window.location.reload();
-      });
-      wrap.append(label, detail, select);
-    } else {
-      const input = el('input', '') as HTMLInputElement;
-      input.id = id;
-      input.type = 'number';
-      input.min = '1';
-      input.step = '1';
-      input.placeholder = setting.placeholder;
-      input.value = current.get(setting.param) ?? '';
-      input.addEventListener('change', () => replaceParam(setting.param, input.value));
-      wrap.append(label, detail, input);
+function selectIn(root: ParentNode, param: MenuSetting['param']): HTMLSelectElement {
+  const select = root.querySelector(`[data-menu-setting="${param}"]`);
+  if (!(select instanceof HTMLSelectElement)) throw new Error(`missing menu setting: ${param}`);
+  return select;
+}
+
+export function bindMenuSettings(root: ParentNode, params: URLSearchParams): void {
+  for (const setting of settingModel()) {
+    const select = selectIn(root, setting.param);
+    for (const option of setting.options) {
+      const node = document.createElement('option');
+      node.value = option.value;
+      node.textContent = option.label;
+      select.append(node);
     }
-    grid.append(wrap);
+    select.value = params.get(setting.param) ?? setting.fallback;
+    select.addEventListener('change', () => replaceParam(setting.param, select.value));
   }
-  panel.append(head, grid);
-  return panel;
+}
+
+export function bindLocaleFlags(root: HTMLElement): void {
+  const copy = messages().menu;
+  const locales: readonly { readonly locale: Locale; readonly flag: string; readonly label: string }[] = [
+    { locale: 'pol', flag: '🇵🇱', label: copy.languagePolish },
+    { locale: 'eng', flag: '🇬🇧', label: copy.languageEnglish },
+  ];
+  for (const { locale, flag, label } of locales) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'game-menu__language';
+    button.textContent = flag;
+    button.title = label;
+    button.setAttribute('aria-label', label);
+    button.setAttribute('aria-pressed', String(currentLocale() === locale));
+    button.addEventListener('click', () => {
+      if (currentLocale() === locale) return;
+      replaceParam('lang', locale);
+      window.location.reload();
+    });
+    root.append(button);
+  }
+}
+
+export function targetSearch(entry: string, current = new URLSearchParams(window.location.search)): string {
+  const target = new URLSearchParams();
+  for (const key of CARRIED_PARAMS) {
+    const value = current.get(key);
+    if (value !== null) target.set(key, value);
+  }
+  const entryParams = new URLSearchParams(entry.startsWith('?') ? entry.slice(1) : entry);
+  for (const [key, value] of entryParams) target.set(key, value);
+  return `?${target.toString()}`;
 }

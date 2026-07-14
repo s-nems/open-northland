@@ -38,8 +38,8 @@ export interface SceneDefinition {
   /** Ticks the headless acceptance test advances before checking {@link checks}. */
   readonly runTicks: number;
   /**
-   * Starting camera zoom for the browser view when `?zoom=` is absent (default 1). A scene that spreads
-   * many entities (e.g. every building at once) sets this < 1 so it frames by default; `?zoom=` overrides.
+   * Starting camera zoom for the browser view (default 1). A scene that spreads many entities sets this
+   * below 1 so the whole setup fits before the player adjusts the camera with the mouse wheel.
    */
   readonly initialZoom?: number;
   /** Machine assertions the headless test enforces (the mechanic must hold). */

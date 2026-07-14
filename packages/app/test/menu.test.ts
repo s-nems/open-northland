@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { MENU_SPEEDS, targetSearch } from '../src/entries/menu/settings.js';
 import { parseMapsIndex } from '../src/entries/menu.js';
 
 /**
@@ -35,5 +36,21 @@ describe('parseMapsIndex', () => {
     expect(parseMapsIndex(undefined)).toEqual([]);
     expect(parseMapsIndex({ maps: [] })).toEqual([]);
     expect(parseMapsIndex('nope')).toEqual([]);
+  });
+});
+
+describe('targetSearch', () => {
+  it('carries only player-facing game settings into the selected entry', () => {
+    const current = new URLSearchParams(
+      'lang=eng&uiscale=1.75&speed=6&fog=recon&debug=geometry&zoom=2&sound=off&atlas=none&terrain=off&objects=off&pitch=44&pitchy=50',
+    );
+
+    expect(targetSearch('?scene=sandbox', current)).toBe(
+      '?lang=eng&uiscale=1.75&speed=6&fog=recon&debug=geometry&scene=sandbox',
+    );
+  });
+
+  it('offers slower and faster rates around the three in-game speeds', () => {
+    expect(MENU_SPEEDS).toEqual(['0.25', '0.5', '1', '2', '3', '4', '6', '8']);
   });
 });
