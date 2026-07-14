@@ -28,8 +28,8 @@ import { fetchImageData, fetchJsonOrNull, loadTextureIfPresent } from './net.js'
  */
 
 /**
- * The decoded atlas isn't served (the pipeline hasn't run / `content/` is empty) — an ENVIRONMENT
- * precondition, distinct from a genuine decode bug. The sheet loaders catch ONLY this to degrade to
+ * The decoded atlas isn't served (the pipeline hasn't run / `content/` is empty) — an environment
+ * precondition, distinct from a genuine decode bug. The sheet loaders catch only this to degrade to
  * the synthetic markers; any other error (a bad manifest, a texture-load failure) propagates so a real
  * bug surfaces instead of being silently masked as "missing content".
  */
@@ -52,7 +52,7 @@ export interface GfxAnimAtomicRow {
   readonly action: number;
   readonly bodySeq: string;
   readonly headSeq?: string;
-  /** Per-facing ordered lists of LOCAL frame indices into the `bodySeq` pool (outer length = directions). */
+  /** Per-facing ordered lists of local frame indices into the `bodySeq` pool (outer length = directions). */
   readonly dirFrames: readonly (readonly number[])[];
 }
 
@@ -107,7 +107,7 @@ export interface LandscapeGfxFramesRow {
 
 /** One `[GfxLandscape]` record as it ships in `content/ir.json`'s `landscapeGfx` — the placed decor/resource
  *  object's atlas binding, keyed to a `[landscapetype]` by {@link logicType} (the gathering-pipeline join)
- *  and to a map placement by `editName` (the map-object join). The ONE app-side view of this lane — the
+ *  and to a map placement by `editName` (the map-object join). The one app-side view of this lane — the
  *  gathering bindings read the id/frames half, the map-object loader additionally reads the draw flags. */
 export interface LandscapeGfxRow {
   readonly index: number;
@@ -152,7 +152,7 @@ export interface LandscapeTypeRow {
 
 /**
  * The app's view of the served `content/ir.json` — every lane any domain (sprites, terrain, map
- * objects, authored-entity joins, audio) reads, ALL optional: an `ir.json` generated before a lane
+ * objects, authored-entity joins, audio) reads, all optional: an `ir.json` generated before a lane
  * existed still loads, and each consumer degrades per-lane. The pipeline writes the file through the
  * `@open-northland/data` zod schema, so casting the fetched JSON to this view at the I/O boundary is the
  * boundary's stance (no re-validation of a multi-MB document per boot); the pattern/sound lanes use
@@ -242,17 +242,16 @@ export function loadPlayerLut(): Promise<TextureSource | undefined> {
 let contentIrPromise: Promise<ContentIr | null> | null = null;
 
 /**
- * Fetch + parse the served `content/ir.json` ONCE PER PAGE — memoized, because the document is
- * multi-MB and the sprite, terrain, map-object and audio domains all read their lanes from it (three
- * independent fetch+parse passes per boot before this was shared). Returns `null` when it is absent
- * or unparsable — unlike a missing atlas (a hard precondition {@link loadLayer} throws on), a missing
- * IR degrades gracefully: the settler ranges fall back to the known-good `FALLBACK_*`, the house bobs
- * to the transcribed constant, terrain to the flat tint and audio to silence. Browser-only state: the
+ * Fetch + parse the served `content/ir.json` once per page — memoized, because the document is multi-MB
+ * and the sprite, terrain, map-object and audio domains all read their lanes from it. Returns `null` when
+ * it is absent or unparsable — unlike a missing atlas (a hard precondition {@link loadLayer} throws on), a
+ * missing IR degrades gracefully: the settler ranges fall back to the known-good `FALLBACK_*`, the house
+ * bobs to the transcribed constant, terrain to the flat tint and audio to silence. Browser-only state: the
  * memo lives for the page's lifetime (a reload starts clean; tests never call this).
  */
 export function loadIr(): Promise<ContentIr | null> {
   contentIrPromise ??= fetchJsonOrNull<ContentIr>('/ir.json').then((ir) => {
-    // Memoize only SUCCESS: a transient boot-time fetch failure must not pin every domain (terrain,
+    // Memoize only success: a transient boot-time fetch failure must not pin every domain (terrain,
     // objects, sprites, audio) to the fallback for the page's lifetime — the next consumer retries.
     if (ir === null) contentIrPromise = null;
     return ir;
@@ -265,7 +264,7 @@ export function loadIr(): Promise<ContentIr | null> {
  * data the live content attaches so the real-content view (`?map=`) actually enforces and shows placement
  * collision (a bare checkout / a scene test never calls this, so its content stays footprint-less and the
  * pre-footprint free-placement behaviour holds there). Empty when the IR is absent or carries no footprints.
- * Door cells get the committed per-building {@link DOOR_SHIFTS} applied HERE — the one seam extracted
+ * Door cells get the committed per-building {@link DOOR_SHIFTS} applied here — the one seam extracted
  * footprints pass through into live content — so the sim's walk-to-door target and the `?debug=geometry`
  * overlay read the same corrected door.
  */
@@ -276,8 +275,8 @@ export function buildingFootprints(ir: ContentIr | null): Map<number, BuildingFo
     const shift = b.id !== undefined ? DOOR_SHIFTS.get(b.id) : undefined;
     const door = b.footprint.door;
     if (shift !== undefined && door === undefined) {
-      // A committed correction with nothing to correct — a re-extraction dropped the door. Loud, so
-      // the review-signed shift isn't silently lost (the type still gets its verbatim footprint).
+      // A committed correction with nothing to correct — a re-extraction dropped the door. Warn so the
+      // review-signed shift isn't silently lost (the type still gets its verbatim footprint).
       console.warn(`buildingFootprints: DOOR_SHIFTS['${b.id}'] has no extracted door to shift`);
     }
     out.set(
@@ -290,7 +289,7 @@ export function buildingFootprints(ir: ContentIr | null): Map<number, BuildingFo
   return out;
 }
 
-/** The `[bobseq]` rows of ONE imagelib in the served IR, indexed by verbatim sequence name. */
+/** The `[bobseq]` rows of one imagelib in the served IR, indexed by verbatim sequence name. */
 export function sequencesFor(ir: ContentIr | null, imagelib: string): Map<string, BobSeqRow> {
   const byName = new Map<string, BobSeqRow>();
   const set = (ir?.bobSequences ?? []).find((s) => s.imagelib === imagelib);
@@ -299,12 +298,12 @@ export function sequencesFor(ir: ContentIr | null, imagelib: string): Map<string
 }
 
 /**
- * The `[gfxanimatomic]` per-direction frame lists for ONE `(tribe, action)`, indexed by body bobseq NAME
+ * The `[gfxanimatomic]` per-direction frame lists for one `(tribe, action)`, indexed by body bobseq name
  * — the directional action layout a bare bobseq range can't encode ({@link GfxAnimAtomicRow.dirFrames}).
  * The settler binding turns each into a render `FrameListAnim` on the atomic's key. First record wins per
  * seq (a job/action may list several variant seqs — the unarmed soldier's four punches; the caller names
  * the one it wants). Filtering by `tribe` matters: the same body bobseq name recurs across the human
- * tribes with DIFFERENT frame lists (each tribe's own swing layout), so passing the wrong tribe yields a
+ * tribes with different frame lists (each tribe's own swing layout), so passing the wrong tribe yields a
  * plausible-but-wrong animation. `tribe` is the `[gfxanimatomic]` `logictribe` (= the `logicdefines.inc`
  * `TRIBE_TYPE_*`; viking 1).
  */
@@ -326,7 +325,7 @@ export function gfxAtomicFrameLists(
  * `content/ir.json`, in file order — the raw animation list the {@link import('@open-northland/render').AnimationGallery}
  * plays. Returns `[]` when the IR is absent (a checkout without `content/`), so the gallery can show a
  * "run the pipeline" message instead of crashing. The atlas *image* is loaded separately
- * ({@link import('./sprite-sheet/index.js').loadHumanSpriteSheet}); this is only the frame RANGES the gallery indexes.
+ * ({@link import('./sprite-sheet/index.js').loadHumanSpriteSheet}); this is only the frame ranges the gallery indexes.
  */
 export async function loadBodyClips(imagelib: string = BODY_IMAGELIB): Promise<BobSeqRow[]> {
   const ir = await loadIr();
@@ -337,15 +336,15 @@ export async function loadBodyClips(imagelib: string = BODY_IMAGELIB): Promise<B
 /**
  * Load a gallery character's layers: one body atlas + N head atlases, given the already-resolved served
  * stems (`<bmd-stem>.<palette>`, e.g. `cr_hum_body_05.test_human_00`) — the only human loader the animation
- * gallery (`?anim`) needs. Unlike {@link import('./sprite-sheet/index.js').loadHumanSpriteSheet} it does NOT pull in
+ * gallery (`?anim`) needs. Unlike {@link import('./sprite-sheet/index.js').loadHumanSpriteSheet} it does not pull in
  * the tree / house / building-family atlases (a gallery never draws them), so a partial `content/` still opens
  * the gallery.
  *
- * The **body is the hard requirement** — an absent body throws {@link MissingAtlasError} (the precondition
- * the caller degrades on). A **missing HEAD degrades to `undefined`** (its slot in `heads`) rather than
- * failing the whole character: the animation view needs only `heads[0]`, and the roster/heads montages skip
- * an absent look, so one 404'd head can't drop a body that decoded fine. `heads` preserves stem order, so
- * it lines up 1:1 with the character's head list; a body-only character (empty `headStems`) gets `[]`. Any
+ * The body is the hard requirement — an absent body throws {@link MissingAtlasError} (the precondition the
+ * caller degrades on). A missing head degrades to `undefined` (its slot in `heads`) rather than failing the
+ * whole character: the animation view needs only `heads[0]`, and the roster/heads montages skip an absent
+ * look, so one 404'd head can't drop a body that decoded fine. `heads` preserves stem order, so it lines up
+ * 1:1 with the character's head list; a body-only character (empty `headStems`) gets `[]`. Any
  * non-precondition error (a bad manifest, a texture-load failure) still propagates.
  */
 export async function loadGalleryLayers(

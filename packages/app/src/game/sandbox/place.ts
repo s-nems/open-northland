@@ -27,10 +27,10 @@ export const GATHERER_WORK_RADIUS = components.DEFAULT_WORK_FLAG_RADIUS;
 
 /**
  * The sandbox world-population helpers scenes and the vertical slice share. Buildings, settlers and
- * resource nodes all go through the ONE command seam at RUNTIME (`placeBuilding` / `spawnSettler` /
+ * resource nodes all go through the one command seam at runtime (`placeBuilding` / `spawnSettler` /
  * `placeResource`) — the admin/debug palette and a future scenario editor spawn through them so a mid-run
- * placement stays replay-faithful. The `place*` helpers below instead build a node DIRECTLY (the
- * sanctioned `sim.world` exception): they run as scene SETUP, before tick 0, where the command log is
+ * placement stays replay-faithful. The `place*` helpers below instead build a node directly (the
+ * sanctioned `sim.world` exception): they run as scene setup, before tick 0, where the command log is
  * empty and determinism is unaffected — the same "authored fixture state" stance as a decoded map's
  * `sethouse`/landscape records. Do not copy the direct-store pattern into render glue or a mid-run path
  * (packages/app/AGENTS.md, one-way flow) — use {@link resourceCommand} there instead.
@@ -38,8 +38,8 @@ export const GATHERER_WORK_RADIUS = components.DEFAULT_WORK_FLAG_RADIUS;
 
 /**
  * Place a viking building (by typeId or catalog id), fully built, via the `placeBuilding` command.
- * FORCED: scene setup is authored fixture state (like a decoded map's `sethouse` records), so it
- * loads as-is — the tech/collision gates govern the PLAYER's interactive placements, not the fixture
+ * Forced: scene setup is authored fixture state (like a decoded map's `sethouse` records), so it
+ * loads as-is — the tech/collision gates govern the player's interactive placements, not the fixture
  * a scene is defined to start from (a scene author placing two huts adjacently means it).
  */
 export function placeSandboxBuilding(
@@ -96,11 +96,11 @@ export function spawnSandboxSettler(
 }
 
 /**
- * Spawn an UNEMPLOYED settler (jobType null) DIRECTLY (scene setup, pre-tick-0) and return it. Unlike
+ * Spawn an unemployed settler (jobType null) directly (scene setup, pre-tick-0) and return it. Unlike
  * {@link spawnSandboxSettler} (which spawns a settler already doing a named job), an idle settler is the
- * one the JobSystem's SECOND pass employs — it binds an idle settler to the first canonical building with an
+ * one the JobSystem's second pass employs — it binds an idle settler to the first canonical building with an
  * open worker slot (lowest job id first). This is how a passive store's carrier slots get staffed: a
- * warehouse/HQ is NOT adopted by a settler standing at its door (adopt only pins recipe workshops + farms),
+ * warehouse/HQ is not adopted by a settler standing at its door (adopt only pins recipe workshops + farms),
  * so its haulers arrive as idle settlers the JobSystem assigns. Built via {@link systems.createSettler} then
  * re-idled, because the `spawnSettler` command has no null-job form.
  */
@@ -124,8 +124,8 @@ export function spawnIdleSettler(
 }
 
 /**
- * Resolve a gatherer's resource-node {@link ResourceNodeSpec} at a HALF-CELL NODE (`x`/`y` are node
- * coords, like every sim command) — the ONE place the app's felling/deposit balance constants become a
+ * Resolve a gatherer's resource-node {@link ResourceNodeSpec} at a half-cell node (`x`/`y` are node
+ * coords, like every sim command) — the one place the app's felling/deposit balance constants become a
  * node's starting yield + harvest lifecycle marker. Shared by the pre-tick-0 direct helper (which
  * converts its scene tile to a node first) and the runtime {@link resourceCommand} (whose caller already
  * holds node coords), so a scene-placed tree and a debug-spawned tree are the same node. A `fell` good is
@@ -163,7 +163,7 @@ export function resourceSpecFor(g: GathererSpec, x: number, y: number): Resource
   }
 }
 
-/** Create a resource node DIRECTLY (scene setup, pre-tick-0). Throws on a good with no footprint —
+/** Create a resource node directly (scene setup, pre-tick-0). Throws on a good with no footprint —
  *  a scene setup bug, not recoverable — unlike the runtime command which skips it. */
 function placeResourceDirect(sim: Simulation, spec: ResourceNodeSpec, what: string): void {
   if (systems.createResourceNode(sim.world, sim.content, spec) === null) {
@@ -172,9 +172,9 @@ function placeResourceDirect(sim: Simulation, spec: ResourceNodeSpec, what: stri
 }
 
 /**
- * Place a gatherer's resource node DIRECTLY (scene setup, pre-tick-0) — a felled tree, a mined deposit,
+ * Place a gatherer's resource node directly (scene setup, pre-tick-0) — a felled tree, a mined deposit,
  * or a pluck-whole node, chosen from the gatherer's own {@link GathererSpec.mode} by `resourceSpecFor`
- * (so the caller doesn't re-dispatch on the mode). Scenes author in whole TILES (`x`/`y`), so the tile is
+ * (so the caller doesn't re-dispatch on the mode). Scenes author in whole tiles (`x`/`y`), so the tile is
  * converted to its anchor node before assembly — the same tile→node seam `spawnSandboxSettler` uses.
  * Throws on a good with no footprint (a scene-setup bug), unlike the runtime {@link resourceCommand}.
  */
@@ -184,11 +184,11 @@ export function placeResourceNode(sim: Simulation, g: GathererSpec, x: number, y
 }
 
 /**
- * Place a wild berry bush DIRECTLY (scene setup, pre-tick-0) and return it — the bush twin of
- * {@link placeResourceNode}. Scenes author in whole TILES (`x`/`y`); the tile is converted to its anchor
+ * Place a wild berry bush directly (scene setup, pre-tick-0) and return it — the bush twin of
+ * {@link placeResourceNode}. Scenes author in whole tiles (`x`/`y`); the tile is converted to its anchor
  * node before assembly. `gfxIndex` is the render-variant tag (a real fruited-bush `[GfxLandscape]` index,
  * so the browser scene draws real bush art through the {@link buildBerryBushBinding} join); it is inert in
- * the headless test (no render). The bush spawns RIPE — a caller wanting a bare/regrowing bush mutates the
+ * the headless test (no render). The bush spawns ripe — a caller wanting a bare/regrowing bush mutates the
  * returned entity's {@link components.BerryBush} directly (still pre-tick-0 authored state).
  */
 export function placeSandboxBerryBush(sim: Simulation, x: number, y: number, gfxIndex?: number): Entity {
@@ -201,7 +201,7 @@ export function placeSandboxBerryBush(sim: Simulation, x: number, y: number, gfx
 }
 
 /**
- * Build a `placeResource` command for a good at a HALF-CELL NODE — the RUNTIME spawn path (the
+ * Build a `placeResource` command for a good at a half-cell node — the runtime spawn path (the
  * admin/debug palette, a future scenario editor): the node is created through the mutation seam on the
  * next tick, so a mid-run placement stays replay-faithful (unlike the direct helper, sound only before
  * tick 0). `x`/`y` are node coords, the space the UI's `clientToTile` already resolves to. Returns null
@@ -216,7 +216,7 @@ export function resourceCommand(good: number, x: number, y: number): Command | n
 /**
  * Drop a loose good pile on the ground via the `dropGood` command (the runtime mutation seam, so a
  * scene-authored drop and a player-tool drop are the same replay-faithful path). Scenes author in whole
- * TILES; the command speaks half-cell nodes. The pile is the felled-trunk shape (Stockpile + GroundDrop),
+ * tiles; the command speaks half-cell nodes. The pile is the felled-trunk shape (Stockpile + GroundDrop),
  * so with no carriers on the map it simply sits where it lands.
  */
 export function dropSandboxGood(sim: Simulation, good: number, x: number, y: number, amount: number): void {
@@ -225,7 +225,7 @@ export function dropSandboxGood(sim: Simulation, good: number, x: number, y: num
 }
 
 /** A drop-off flag: a pure {@link DeliveryFlag} marker at the given tile (it stores nothing — the harvest
- *  piles on the GROUND around it as separate heaps, so moving the flag never moves the goods). Returns the
+ *  piles on the ground around it as separate heaps, so moving the flag never moves the goods). Returns the
  *  flag entity so a gatherer can be bound to it ({@link spawnBoundGatherer}). */
 export function placeFlag(sim: Simulation, x: number, y: number): Entity {
   const e = sim.world.create();
@@ -235,7 +235,7 @@ export function placeFlag(sim: Simulation, x: number, y: number): Entity {
 }
 
 /**
- * Spawn a gatherer bound to its own `flag` DIRECTLY (scene setup, pre-tick-0) and return it. A bound
+ * Spawn a gatherer bound to its own `flag` directly (scene setup, pre-tick-0) and return it. A bound
  * gatherer must be assembled directly — via {@link systems.createSettler}, the settler twin of the
  * `placeResourceNode` helper — rather than through the `spawnSettler` command, because its {@link WorkFlag}
  * has to reference the flag entity, and a command-spawned settler's id is not known until the command runs.

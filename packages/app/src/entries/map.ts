@@ -32,7 +32,7 @@ import { startGameView } from '../view/game-view.js';
  * The decoded-map viewer entry (`?map=<id>`): draws an actual decoded `content/maps/<id>.json` grid — the
  * 1:1 per-triangle ground + placed landscape objects (trees/stones/mines + animated waves) — driven by the
  * deterministic vertical-slice sim on the fixed-timestep loop, drawn every frame so `npm run dev` is
- * watchable. The default landing is the MENU ({@link import('./menu.js')}), whose "Mapy" section links here
+ * watchable. The default landing is the menu ({@link import('./menu.js')}), whose "Mapy" section links here
  * per decoded map.
  *
  * The backing store tracks the window at device resolution (`createWindowPixiApp`; `app.screen` stays in
@@ -84,22 +84,22 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
       console.warn(`real terrain unavailable, flat tint fallback: ${String(err)}`);
     }
   }
-  // Retained renderer: mesh the terrain ONCE, reuse a pooled sprite graph each frame (no per-frame
+  // Retained renderer: mesh the terrain once, reuse a pooled sprite graph each frame (no per-frame
   // object churn) so large maps + deep zoom-out stay within the GPU budget.
   const renderer = new WorldRenderer(app, { sheet });
   renderer.setTerrain(terrainGrid, terrain);
   // A decoded map's placed landscape objects (trees/stones/mine decals + the animated wave fx that
-  // ARE the original's water surface) — resolved through the landscapeGfx IR + the /bobs atlases.
+  // are the original's water surface) — resolved through the landscapeGfx IR + the /bobs atlases.
   // The catch keeps a partial content/ (e.g. a missing atlas PNG) a degradation, not an app crash.
-  // EVERY placement draws here, harvestables included: a virgin tree/stone/mine is a built-once static
+  // Every placement draws here, harvestables included: a virgin tree/stone/mine is a built-once static
   // quad/sprite (zero per-frame cost — a far zoom-out shows thousands at once), and the sim's sprite
-  // pool SKIPS it via the static-refs set below until the moment it is first worked (the handover).
+  // pool skips it via the static-refs set below until the moment it is first worked (the handover).
   let staticObjects: Awaited<ReturnType<typeof loadMapObjects>> | undefined;
   if (loaded?.objects !== undefined && ir !== null) {
     try {
       const loadedObjects = await loadMapObjects(loaded.objects, ir, elevation, brightness);
       renderer.setMapObjects(loadedObjects.sprites);
-      // Assigned only AFTER the layer accepted the sprites: were setMapObjects to throw, registering
+      // Assigned only after the layer accepted the sprites: were setMapObjects to throw, registering
       // static refs against an empty layer would make every virgin node invisible until first touch.
       staticObjects = loadedObjects;
     } catch (err) {
@@ -107,20 +107,20 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     }
   }
   // The slice sim, kept live and stepped one tick per fixed interval below. A map that carries
-  // AUTHORED entities (map.cif StaticObjects) places those buildings/settlers at their authored
+  // authored entities (map.cif StaticObjects) places those buildings/settlers at their authored
   // cells; else the demo slice — on a loaded map's walkable cells, or the synthetic strip. The
   // demo's units are owned by the human player so they can be selected + ordered.
   // Extracted building footprints from the served IR give buildings real collision, so `placeBuilding`
   // is blocked where a house doesn't fit and the build overlay greys those tiles (empty without content/).
   const footprints = buildingFootprints(ir);
   const goodNames = await loadGoodNameMap(goodLocaleParam(params));
-  // The SIM navigates + validates placement against the COLLISION grid — the map's raw landscape lane
+  // The sim navigates + validates placement against the collision grid — the map's raw landscape lane
   // resolved into the semantic walk/build classes from the real ground + object data (water, trees,
-  // stones, ore deposits block; see content/collision.ts). The RENDER layers keep reading `loaded`
+  // stones, ore deposits block; see content/collision.ts). The render layers keep reading `loaded`
   // (raw typeIds drive the flat-tint fallback + the ambience beds). Without the IR the grid degrades
   // to all-open ground rather than mis-classing the raw lane against the synthetic table.
-  // Harvestable placements are EXCLUDED from the static grid: they spawn as `Resource` entities below,
-  // whose dynamic footprints block while standing and UNBLOCK when felled/depleted — statically baked,
+  // Harvestable placements are excluded from the static grid: they spawn as `Resource` entities below,
+  // whose dynamic footprints block while standing and unblock when felled/depleted — statically baked,
   // a felled tree's cell stayed walled off forever and its dropped trunk was unreachable.
   const simMap =
     loaded !== null && ir !== null
@@ -128,10 +128,10 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
       : loaded !== null
         ? halfCellMapFromCells(loaded)
         : null;
-  // A map that carries AUTHORED entities places those; a real decoded map WITHOUT them gets a bare sim
+  // A map that carries authored entities places those; a real decoded map without them gets a bare sim
   // (no demo cluster — {@link runBareMap}); only the synthetic-strip fallback (no map loaded) keeps the
   // HQ/joinery/gatherer/carrier demo world (via {@link runSlice}, shared with the deterministic shot PNG).
-  // The placing slices run ONE tick, not zero: `placeBuilding`/`spawnSettler` are queued commands that
+  // The placing slices run one tick, not zero: `placeBuilding`/`spawnSettler` are queued commands that
   // apply on the sim's first step, so a 0-tick sim's snapshot is still empty — the start-camera focus
   // below would then read no entities and fall back to the map centre. One tick applies every placement
   // (the command queue drains fully per step) while leaving the just-spawned settlers at their start.
@@ -154,9 +154,9 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // Direct spawn into the sim (after its one placement tick above), in the map's placement order
   // (deterministic ids) — the authored buildings/settlers already exist, so these nodes take later ids.
   //
-  // DRAW SPLIT (the static→dynamic handover): a VIRGIN node keeps its built-once static sprite (the
+  // Draw split (the static→dynamic handover): a virgin node keeps its built-once static sprite (the
   // layer loaded above draws all 40k+ placements for free per frame) and the sim pool skips it via
-  // `staticRefs`; the first time it is WORKED (`resourceFelled`/`resourceMined`/`resourceDepleted`) the
+  // `staticRefs`; the first time it is worked (`resourceFelled`/`resourceMined`/`resourceDepleted`) the
   // event handler below removes the static sprite and releases the ref, and the pool draws the entity
   // from then on — same graphic (its own species variant via `Resource.gfxIndex`), now shrinking with
   // its levels and vanishing on destroy. Without decoded atlases nothing is static, so the sim pool draws
@@ -166,7 +166,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   if (loaded?.objects !== undefined && ir !== null) {
     const { placementByEntity } = spawnMapResources(sim, loaded.objects, ir);
     // The map's own fruited bushes as forageable BerryBush entities (wild food) — same static→live
-    // handover as resources: the static layer draws each always-fruited until it is first FORAGED.
+    // handover as resources: the static layer draws each always-fruited until it is first foraged.
     const bushes = spawnMapBerryBushes(sim, loaded.objects, ir);
     if (staticObjects !== undefined) {
       staticResources = new Map();
@@ -175,7 +175,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
         // A placement whose atlas never resolved has no static sprite — leave that node pool-drawn.
         if (sprite !== undefined) staticResources.set(entity as number, sprite);
       }
-      // LIVE-VIEW contract (setStaticallyDrawnRefs): the renderer keeps this reference and reads it
+      // Live-view contract (setStaticallyDrawnRefs): the renderer keeps this reference and reads it
       // per frame; the handover below mutates it in place — O(1) per event, never a whole-set rebuild.
       staticRefs = new Set(staticResources.keys());
       renderer.setStaticallyDrawnRefs(staticRefs);
@@ -203,14 +203,14 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
             held.delete(entity);
             refs.delete(entity);
             renderer.removeMapObject(sprite);
-            // The static quad WAS this node's fog ghost (a virgin object is its own last-seen state);
+            // The static quad was this node's fog ghost (a virgin object is its own last-seen state);
             // adopt it into the ghost store so a node first worked under the fog keeps its remembered
             // look on explored ground instead of vanishing with the handover.
             renderer.adoptFogGhost(entity);
           }
         };
 
-  // Interactive camera: the START frame centres on the player's start ({@link mapStartFocus}: the human
+  // Interactive camera: the start frame centres on the player's start ({@link mapStartFocus}: the human
   // player's headquarters/settler cluster, else the map centre) so entering a map lands on the action, not
   // the top-left corner — from there a human pans (middle-mouse drag / arrow keys) and zooms (scroll
   // wheel). The HUD is drawn outside the camera layer below, so it stays pinned while the world moves.
@@ -222,14 +222,14 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     cameraCenteredOnTile(focus.x, focus.y, 1, app.screen.width, app.screen.height);
   const cameraCtl = createCameraController(canvas, initialCamera, app.renderer.resolution);
 
-  // The minimap's per-cell ground colours, averaged from the REAL texture pages the map's baked
-  // ground lanes point at (the shipped `minimap.pcx` is the map-SELECTION card — sometimes a painted
+  // The minimap's per-cell ground colours, averaged from the real texture pages the map's baked
+  // ground lanes point at (the shipped `minimap.pcx` is the map-selection card — sometimes a painted
   // scene, e.g. magiczny las — so the in-game minimap is rendered from map data, like the original's
   // dynamic overview window). Null without lanes/textures → the typeId raster fallback.
   const minimapCells = await loadMinimapCellColours(terrainGrid, terrain);
 
   // The shared in-game runtime (view/game-view.ts): the standard HUD mounts — tool panel, unit
-  // controls, perf overlay, positional sound — and the ONE fixed-timestep RAF loop, identical to the
+  // controls, perf overlay, positional sound — and the one fixed-timestep RAF loop, identical to the
   // `?scene=` entry's.
   await startGameView({
     app,
