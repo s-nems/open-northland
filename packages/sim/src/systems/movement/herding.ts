@@ -1,15 +1,7 @@
-import {
-  CurrentAtomic,
-  HerdMember,
-  MoveGoal,
-  PathFollow,
-  PathRequest,
-  Position,
-  Settler,
-} from '../../components/index.js';
+import { CurrentAtomic, HerdMember, MoveGoal, Position, Settler } from '../../components/index.js';
 import type { System } from '../context.js';
 import { herdParams } from '../readviews/index.js';
-import { entityNode, manhattan } from '../spatial.js';
+import { entityNode, isTravelling, manhattan } from '../spatial.js';
 
 /**
  * HerdingSystem — the **follow-the-leader** movement drive for a herding animal.
@@ -54,7 +46,7 @@ export const herdingSystem: System = (world, ctx) => {
     if (leader === e) continue; // the leader follows no one
     // Busy / already travelling: leave it (don't interrupt a swing or fight the navigation planner).
     if (world.has(e, CurrentAtomic)) continue;
-    if (world.has(e, MoveGoal) || world.has(e, PathRequest) || world.has(e, PathFollow)) continue;
+    if (isTravelling(world, e)) continue;
     // A leader that has been reaped (killed in combat) is gone — its components are removed, so a
     // follower has no cell to return to; leave it where it stands (the herd is leaderless until a
     // later slice re-designates one).
