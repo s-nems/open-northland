@@ -1,7 +1,7 @@
 import { CanvasSource, Rectangle, Texture, type TextureSource } from 'pixi.js';
 import { clamp } from '../data/math.js';
 import type { AtlasFrame, BuildTimeSheet } from '../data/sprites/index.js';
-import { isDrawableResource } from './drawable-resource.js';
+import { isDrawableResource, readable2dContext } from './drawable-resource.js';
 
 /**
  * Threshold quantisation step for the per-pixel reveal bakes ({@link TextureCache.revealed}): the eased
@@ -153,21 +153,9 @@ function bakeRevealCanvas(
 ): OffscreenCanvas | HTMLCanvasElement | null {
   const resource: unknown = source.resource;
   if (!isDrawableResource(resource)) return null;
+  const ctx = readable2dContext(frame.width, frame.height);
+  if (ctx === null) return null;
   try {
-    const canvas =
-      typeof OffscreenCanvas !== 'undefined'
-        ? new OffscreenCanvas(frame.width, frame.height)
-        : (() => {
-            const c = document.createElement('canvas');
-            c.width = frame.width;
-            c.height = frame.height;
-            return c;
-          })();
-    const ctx = canvas.getContext('2d', { willReadFrequently: true }) as
-      | OffscreenCanvasRenderingContext2D
-      | CanvasRenderingContext2D
-      | null;
-    if (ctx === null) return null;
     ctx.drawImage(resource, frame.x, frame.y, frame.width, frame.height, 0, 0, frame.width, frame.height);
     const img = ctx.getImageData(0, 0, frame.width, frame.height);
     const data = img.data;
@@ -179,7 +167,7 @@ function bakeRevealCanvas(
       }
     }
     ctx.putImageData(img, 0, 0);
-    return canvas;
+    return ctx.canvas;
   } catch {
     return null; // tainted/undecodable source — the caller falls back to the crop
   }

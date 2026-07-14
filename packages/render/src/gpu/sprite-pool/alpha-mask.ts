@@ -1,5 +1,5 @@
 import type { TextureSource } from 'pixi.js';
-import { type DrawableResource, isDrawableResource } from '../drawable-resource.js';
+import { type DrawableResource, isDrawableResource, readable2dContext } from '../drawable-resource.js';
 
 /**
  * Per-atlas alpha masks for pixel-accurate sprite hit-testing — "click the graphic, not the box".
@@ -63,21 +63,9 @@ const maskCache = new WeakMap<TextureSource, AlphaMask | null>();
 /** Read the RGBA pixels of a drawable via a throwaway 2d canvas, or `null` when unavailable
  *  (headless test env without canvas, or a context the platform refuses). */
 function readPixels(resource: DrawableResource, width: number, height: number): ImageData | null {
+  const ctx = readable2dContext(width, height);
+  if (ctx === null) return null;
   try {
-    const canvas =
-      typeof OffscreenCanvas !== 'undefined'
-        ? new OffscreenCanvas(width, height)
-        : (() => {
-            const c = document.createElement('canvas');
-            c.width = width;
-            c.height = height;
-            return c;
-          })();
-    const ctx = canvas.getContext('2d', { willReadFrequently: true }) as
-      | OffscreenCanvasRenderingContext2D
-      | CanvasRenderingContext2D
-      | null;
-    if (ctx === null) return null;
     ctx.drawImage(resource, 0, 0);
     return ctx.getImageData(0, 0, width, height);
   } catch {
