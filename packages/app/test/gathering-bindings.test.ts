@@ -1,6 +1,6 @@
 import { resolveResourceDraw, resolveStockpileDraw } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
-import type { ContentIr, LandscapeGfxRow } from '../src/content/ir.js';
+import type { ContentIr } from '../src/content/ir.js';
 import {
   buildResourceBinding,
   buildStockpileBinding,
@@ -9,6 +9,7 @@ import {
   resolveStumpRef,
 } from '../src/content/resource-gfx/index.js';
 import { GOOD_MUD, GOOD_STONE, GOOD_WOOD } from '../src/game/sandbox/index.js';
+import { landscapeRow } from './support/landscape.js';
 
 const GOODS = {
   wood: GOOD_WOOD,
@@ -20,27 +21,11 @@ describe('gathering scene — per-good + stump binding resolution (each draws it
   // A synthetic decoded IR mirroring the real join for the scene's goods (matched by id-slug) + the
   // dead-tree debris record. The scene typeIds differ from these pipeline goodTypes on purpose — the
   // render binds by slug (nodes/piles) or by a single default (the stump).
-  const B = 'data/engine2d/bin/bobs';
-  const rec = (
-    index: number,
-    logicType: number,
-    palette: string,
-    frames: LandscapeGfxRow['frames'],
-    bmd = 'ls_ground',
-    editName?: string,
-  ): LandscapeGfxRow => ({
-    index,
-    logicType,
-    bmd: `${B}/${bmd}.bmd`,
-    paletteName: palette,
-    frames,
-    ...(editName !== undefined ? { editName } : {}),
-  });
   const ir: ContentIr = {
     landscapeGfx: [
-      rec(1, 4, 'tree_yew01', [{ state: 3, bobIds: [60] }], 'ls_trees'),
-      rec(2, 15, 'rock03', [{ state: 4, bobIds: [10] }]),
-      rec(
+      landscapeRow(1, 4, 'tree_yew01', [{ state: 3, bobIds: [60] }], 'ls_trees'),
+      landscapeRow(2, 15, 'rock03', [{ state: 4, bobIds: [10] }]),
+      landscapeRow(
         3,
         7,
         'goods_wood',
@@ -50,9 +35,16 @@ describe('gathering scene — per-good + stump binding resolution (each draws it
         ],
         'ls_goods',
       ),
-      rec(4, 17, 'goods_stone', [{ state: 1, bobIds: [15] }], 'ls_goods'),
-      rec(5, 1, 'human_player01', [{ state: 1, bobIds: [76] }], 'ls_temp', 'player01 work extern 01'),
-      rec(6, 1, 'tree01', [{ state: 1, bobIds: [338] }], 'ls_trees_dead', 'tree debris medium'),
+      landscapeRow(4, 17, 'goods_stone', [{ state: 1, bobIds: [15] }], 'ls_goods'),
+      landscapeRow(
+        5,
+        1,
+        'human_player01',
+        [{ state: 1, bobIds: [76] }],
+        'ls_temp',
+        'player01 work extern 01',
+      ),
+      landscapeRow(6, 1, 'tree01', [{ state: 1, bobIds: [338] }], 'ls_trees_dead', 'tree debris medium'),
     ],
     gatheringPipeline: [
       {
@@ -110,7 +102,7 @@ describe('gathering scene — per-good + stump binding resolution (each draws it
     // by the node's shrink-by-level fill.
     const mine: ContentIr = {
       landscapeGfx: [
-        rec(
+        landscapeRow(
           10,
           12,
           'clay01',
@@ -153,7 +145,7 @@ describe('gathering scene — per-good + stump binding resolution (each draws it
     // out-of-atlas sentinel the original uses for "draw nothing" (a freshly-sown, still-bare field).
     const wheat: ContentIr = {
       landscapeGfx: [
-        rec(
+        landscapeRow(
           20,
           27,
           'wheat01',

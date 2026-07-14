@@ -18,12 +18,11 @@ import {
   buildUnitPanelModel,
   HUMANWINDOW,
   type SettlerPanelModel,
-  type UnitPanelModelContext,
 } from '../src/hud/details-panel/index.js';
 import { createSceneSim } from '../src/scenes/index.js';
 import { sandboxScene } from '../src/scenes/sandbox.js';
 import { equipmentFixture } from './support/equipment.js';
-import { sandboxCtx } from './support/sandbox.js';
+import { ctxOf, sandboxCtx } from './support/sandbox.js';
 
 function num(v: unknown): number | undefined {
   return typeof v === 'number' ? v : undefined;
@@ -40,11 +39,7 @@ describe('selection details panel model', () => {
     });
     if (hq === undefined) throw new Error('sandbox scene did not place the headquarters');
 
-    const model = buildUnitPanelModel(snapshot, new Set([hq.id]), {
-      buildings: sim.content.buildings,
-      goods: sim.content.goods,
-      jobs: sim.content.jobs,
-    });
+    const model = buildUnitPanelModel(snapshot, new Set([hq.id]), ctxOf(sim));
 
     expect(model.kind).toBe('building');
     if (model.kind !== 'building') return;
@@ -363,11 +358,7 @@ describe('selection details panel model', () => {
     const sim = createSceneSim(equipmentFixture);
     sim.step();
     const snapshot = sim.snapshot();
-    const ctx: UnitPanelModelContext = {
-      buildings: sim.content.buildings,
-      goods: sim.content.goods,
-      jobs: sim.content.jobs,
-    };
+    const ctx = ctxOf(sim);
     const bootsGood = (e: (typeof snapshot.entities)[number]): number | undefined =>
       num((e.components.Equipment as { boots?: { goodType?: unknown } } | undefined)?.boots?.goodType);
     const hasWeaponSlot = (e: (typeof snapshot.entities)[number]): boolean =>
@@ -418,11 +409,7 @@ describe('selection details panel model', () => {
     const sim = createSceneSim(equipmentFixture);
     sim.step();
     const snapshot = sim.snapshot();
-    const ctx: UnitPanelModelContext = {
-      buildings: sim.content.buildings,
-      goods: sim.content.goods,
-      jobs: sim.content.jobs,
-    };
+    const ctx = ctxOf(sim);
     const bare = snapshot.entities.find(
       (e) => e.components.Settler !== undefined && e.components.Equipment === undefined,
     );
