@@ -79,7 +79,7 @@ logicproduction 11     # (workplaces) output good id 11 — input side / amounts
 ```
 
 IR `content/types/buildings.json` entry (schema: `BuildingType` in
-`packages/data/src/schema/economy/workplaces.ts` — the schemas live under `packages/data/src/schema/`,
+`packages/data/src/schema/economy/buildings.ts` — the schemas live under `packages/data/src/schema/`,
 split by domain: `actors/`, `audio/`, `content/`, `economy/`, `graphics/`, `landscape/`, `maps/`;
 extracted by
 `extractBuildings` in `tools/asset-pipeline/src/decoders/ini/types/buildings.ts`):

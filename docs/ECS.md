@@ -129,13 +129,19 @@ A common misconception: that Cultures' "triangle grid" is the *navigation* model
   `(2c+(r&1), 2r)`). Each node has a landscape type carrying a per-node valency (capacity) and
   placement-layer flags (`landscapetypes.ini` — readable now). Walk cost is **uniform** per walkable
   step: that `.ini` carries no per-type movement weight (only `maximumValency` + the
-  `allowedon{land,water,everything}` placement flags — neither is a traversal cost), and the
-  original engine gates movement by walkability + valency, not a per-cell weight. So a variable
-  walk-cost field is not a "pending extraction" from this table — it would need a source that has
-  one. Pathfinding and placement operate here; this does **not** depend on triangle geometry.
-- **Triangle pattern = a render-time concern.** `trianglepatterntypes.cif` governs how terrain
-  types *blend visually* between cells. It lives in `render`, decoded later. Do **not** gate the
-  sim slice on it.
+  `allowedon{land,water,everything}` placement flags — neither is a traversal cost). A variable
+  walk-cost field is not a "pending extraction" from *this* table; the candidate source is the
+  per-triangle `moveResistance` below. Pathfinding and placement operate here; this does **not**
+  depend on triangle geometry.
+- **Triangle pattern = the ground's logic classification, not visual blending.**
+  `trianglepatterntypes.cif` is extracted to IR as `TrianglePatternType`
+  (`packages/data/src/schema/landscape/terrain.ts`) carrying `isWater` / `humanCanWalkOn` /
+  `houseCanBeBuildOn` / `moveResistance`; the decoded-map collision join already consumes
+  `humanCanWalkOn` (`packages/app/src/content/collision.ts`), and wiring the per-triangle map lanes
+  into sim nav is tracked in `docs/tickets/pipeline/map-triangle-walkability.md`. Visual blending
+  between terrain types is a different pair of tables (`GfxPattern`/`GfxPatternTransition`). The
+  sim still never consumes triangle *geometry* — cell-resolution data reaches the nav graph only
+  through the half-cell seam.
 
 Model the nav graph as a first-class world resource (`world.terrain`), not as entities. Pathfinding
 uses A* (or flow-fields/HPA* later for scale) with **canonical tie-breaking** so paths are identical
