@@ -1,12 +1,9 @@
 import {
-  CALIBRATED_HALF_H,
-  CALIBRATED_HALF_W,
   type Camera,
   createWindowPixiApp,
   type MapObjectSprite,
   makeBrightnessField,
   makeElevationField,
-  setTilePitch,
   WorldRenderer,
 } from '@open-northland/render';
 import { halfCellMapFromCells, type SimEvent } from '@open-northland/sim';
@@ -30,13 +27,6 @@ import { loadTerrainMap } from '../slice/map-loader.js';
 import { runAuthoredSlice, runBareMap, runSlice, sliceTerrain } from '../slice/vertical-slice.js';
 import { cameraCenteredOnTile, createCameraController } from '../view/camera.js';
 import { startGameView } from '../view/game-view.js';
-import { floatParam } from '../view/params.js';
-
-/**
- * The default full tile-diamond width in px (`2 × CALIBRATED_HALF_W`) when `?pitch=` is absent — the
- * cell width MEASURED from the original game (see iso.ts / source basis "projection").
- */
-const DEFAULT_TILE_WIDTH = 2 * CALIBRATED_HALF_W;
 
 /**
  * The decoded-map viewer entry (`?map=<id>`): draws an actual decoded `content/maps/<id>.json` grid — the
@@ -60,30 +50,18 @@ const SLICE_SEED = 7;
  * {@link cameraCenteredOnTile}), or `null` for an absent/malformed value so the caller falls back to the
  * default settler-centroid framing.
  */
-function centerTile(raw: string | null, zoom: number, width: number, height: number): Camera | null {
+function centerTile(raw: string | null, width: number, height: number): Camera | null {
   if (raw === null) return null;
   const parts = raw.split(',').map((s) => Number.parseInt(s, 10));
   const [tx, ty] = parts;
   if (parts.length !== 2 || tx === undefined || ty === undefined || Number.isNaN(tx) || Number.isNaN(ty)) {
     return null;
   }
-  return cameraCenteredOnTile(tx, ty, zoom, width, height);
+  return cameraCenteredOnTile(tx, ty, 1, width, height);
 }
 
 export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchParams): Promise<void> {
   const app = await createWindowPixiApp(canvas);
-  // `?pitch=<fullTileWidth>` — the live verification knob for the master sprite-vs-terrain scale (the
-  // whole look; a human dials it, an agent can't self-judge pixels — see `iso.ts`/source basis).
-  // Applied BEFORE any projection (scene build, terrain mesh, object lattice) so every layer picks it up.
-  // The height follows the MEASURED ratio (CALIBRATED_HALF_H/CALIBRATED_HALF_W ≈ 1.12 — the original's
-  // cells are near-square on screen, not iso 2:1); `?pitchy=<cellDiamondHeight>` overrides it separately.
-  // NOTE `?pitchy` is the full DIAMOND height (2× the row step): the measured 68×38 metric is
-  // `?pitch=68&pitchy=76` — passing the row step (38) squashes the world 2× (the aliasing failure the
-  // recalibration fixed).
-  const tileWidth = floatParam(params, 'pitch', DEFAULT_TILE_WIDTH);
-  const halfW = tileWidth / 2;
-  const cellDown = floatParam(params, 'pitchy', 2 * halfW * (CALIBRATED_HALF_H / CALIBRATED_HALF_W));
-  setTilePitch(halfW, cellDown / 2);
   const mapId = params.get('map');
   const loaded = mapId !== null ? await loadTerrainMap(mapId) : null;
   const terrainGrid = sliceTerrain(loaded ?? undefined);
@@ -95,25 +73,11 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // builds its own for the ground mesh; this shared instance shades the placed landscape objects at
   // load (mines/stones/grass track the lane in the original; trees stay full-bright — see objects.ts).
   const brightness = makeBrightnessField(loaded?.brightness, loaded?.width ?? 0, loaded?.height ?? 0);
-  // Real decoded graphics are the DEFAULT (see resolveSpriteSheet): absent or `?atlas=real` draws the real
-  // atlases (gitignored content over the /bobs server), degrading to synthetic markers when content/ is
-  // missing. `?atlas=synthetic` forces the free markers; `?atlas=none` draws placeholder geometry. Shared
-  // with the `?scene=` entry.
-  const sheet = await resolveSpriteSheet(params, sandboxGoods());
-  // Real ground textures + map objects are the DEFAULT (like the sprite atlases), each behind its
-  // own opt-out (`?terrain=off` → flat tint, `?objects=off` → bare ground) and each degrading
-  // gracefully when content/ is absent — the shared multi-MB ir.json is fetched once for everything
-  // (the memoized loadIr; the sprite-sheet resolution above already paid it).
-  let ir = null;
-  const wantTerrain = params.get('terrain') !== 'off';
-  const wantObjects = loaded?.objects !== undefined && params.get('objects') !== 'off';
-  const wantEntities = loaded?.entities !== undefined;
-  if (wantTerrain || wantObjects || wantEntities) {
-    ir = await loadIr();
-    if (ir === null) console.warn('content/ir.json unavailable, placeholder graphics fallback');
-  }
+  const sheet = await resolveSpriteSheet(sandboxGoods());
+  const ir = await loadIr();
+  if (ir === null) console.warn('content/ir.json unavailable, placeholder graphics fallback');
   let terrain: Awaited<ReturnType<typeof loadRealTerrain>> | undefined;
-  if (wantTerrain && ir !== null) {
+  if (ir !== null) {
     try {
       terrain = await loadRealTerrain(ir);
     } catch (err) {
@@ -131,7 +95,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // quad/sprite (zero per-frame cost — a far zoom-out shows thousands at once), and the sim's sprite
   // pool SKIPS it via the static-refs set below until the moment it is first worked (the handover).
   let staticObjects: Awaited<ReturnType<typeof loadMapObjects>> | undefined;
-  if (wantObjects && loaded?.objects !== undefined && ir !== null) {
+  if (loaded?.objects !== undefined && ir !== null) {
     try {
       const loadedObjects = await loadMapObjects(loaded.objects, ir, elevation, brightness);
       renderer.setMapObjects(loadedObjects.sprites);
@@ -142,9 +106,6 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
       console.warn(`map objects unavailable, bare ground fallback: ${String(err)}`);
     }
   }
-  // `?zoom=N` magnifies + re-centres on the sprites (the same knob the shot uses) so a decoded bob is
-  // big enough to inspect in the live view; absent, scale 1.
-  const zoom = floatParam(params, 'zoom', 1);
   // The slice sim, kept live and stepped one tick per fixed interval below. A map that carries
   // AUTHORED entities (map.cif StaticObjects) places those buildings/settlers at their authored
   // cells; else the demo slice — on a loaded map's walkable cells, or the synthetic strip. The
@@ -174,8 +135,6 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // apply on the sim's first step, so a 0-tick sim's snapshot is still empty — the start-camera focus
   // below would then read no entities and fall back to the map centre. One tick applies every placement
   // (the command queue drains fully per step) while leaving the just-spawned settlers at their start.
-  // `loaded?.entities !== undefined` (not the `wantEntities` alias) so TS narrows `loaded.entities`
-  // non-undefined for the runAuthoredSlice arg; the two are the same predicate.
   const authoredSim =
     loaded?.entities !== undefined && ir !== null && simMap !== null
       ? runAuthoredSlice(SLICE_SEED, 1, simMap, loaded.entities, ir, footprints, goodNames)
@@ -200,8 +159,8 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // `staticRefs`; the first time it is WORKED (`resourceFelled`/`resourceMined`/`resourceDepleted`) the
   // event handler below removes the static sprite and releases the ref, and the pool draws the entity
   // from then on — same graphic (its own species variant via `Resource.gfxIndex`), now shrinking with
-  // its levels and vanishing on destroy. With `?objects=off` (or no atlases) nothing is static, no refs
-  // are registered, and the sim pool simply draws every node — the pre-handover behaviour.
+  // its levels and vanishing on destroy. Without decoded atlases nothing is static, so the sim pool draws
+  // every node.
   let staticResources: Map<number, MapObjectSprite> | undefined;
   let staticRefs: Set<number> | undefined;
   if (loaded?.objects !== undefined && ir !== null) {
@@ -255,13 +214,12 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // player's headquarters/settler cluster, else the map centre) so entering a map lands on the action, not
   // the top-left corner — from there a human pans (middle-mouse drag / arrow keys) and zooms (scroll
   // wheel). The HUD is drawn outside the camera layer below, so it stays pinned while the world moves.
-  // `?center=x,y` overrides the start frame to centre a given tile (a decoded map's feature — a bridge, a
-  // coastline — the start framing would never land on); a human inspection knob like `?zoom`, degrading to
-  // the start framing on a malformed value.
+  // `?center=x,y` overrides the start frame to centre a given tile (a decoded map's feature — a bridge or
+  // coastline the start framing would never land on), degrading to the start framing when malformed.
   const focus = mapStartFocus(sim.snapshot(), terrainGrid.width, terrainGrid.height);
   const initialCamera =
-    centerTile(params.get('center'), zoom, app.screen.width, app.screen.height) ??
-    cameraCenteredOnTile(focus.x, focus.y, zoom, app.screen.width, app.screen.height);
+    centerTile(params.get('center'), app.screen.width, app.screen.height) ??
+    cameraCenteredOnTile(focus.x, focus.y, 1, app.screen.width, app.screen.height);
   const cameraCtl = createCameraController(canvas, initialCamera, app.renderer.resolution);
 
   // The minimap's per-cell ground colours, averaged from the REAL texture pages the map's baked
@@ -278,7 +236,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     canvas,
     params,
     renderer,
-    ...(sheet !== undefined ? { sheet } : {}),
+    sheet,
     sim,
     cameraCtl,
     terrainGrid,

@@ -30,15 +30,15 @@ rules live in `packages/app/src/game/sandbox/`.
 ## Add and verify a scene
 
 1. Add the definition and keep it focused on setup plus machine checks.
-2. Register it in `packages/app/src/scenes/index.ts`; this adds its test and main-menu card.
+2. Register it in `packages/app/src/scenes/index.ts`; this adds its test and main-menu entry.
 3. Run `npm test -- scenes`.
 4. Open `http://localhost:5173/?scene=<id>`, sanity-check that it runs, and hand the URL plus concise
    verification notes to the human reviewer. Record any reusable acceptance criteria in the ticket or
    test, not in an expandable in-game checklist.
 
-The left tool panel owns pause and speed. URL parameters such as `speed`, `zoom`, `fog`, `debug`, and
-the presentation controls can be configured from the main menu. Reloading restarts the deterministic
-scene.
+The left tool panel owns pause and its three standard speeds. Initial speed, interface scale, fog, and
+the geometry grid can be configured from the main menu. The mouse wheel controls camera zoom. Reloading
+restarts the deterministic scene.
 
 ## Determinism footgun
 

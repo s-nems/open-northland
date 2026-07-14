@@ -4,6 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/src/entries/menu/menu.css" />
+    <link rel="stylesheet" href="/src/entries/menu/details.css" />
     <title>OpenNorthland</title>
     <style>
       html, body { margin: 0; height: 100%; background: #1a1410; overflow: hidden; }
@@ -16,6 +18,69 @@
   </head>
   <body>
     <canvas id="game"></canvas>
+    <template id="main-menu-template">
+      <main class="game-menu">
+        <header class="game-menu__masthead">
+          <div class="game-menu__brand">OpenNorthland</div>
+          <nav class="game-menu__languages" data-menu-languages></nav>
+        </header>
+
+        <div class="game-menu__frame">
+          <aside class="game-menu__navigation">
+            <div class="game-menu__navigation-scroll">
+              <section class="game-menu__group">
+                <div class="game-menu__group-title" data-menu-text="scenesTitle"></div>
+                <div class="game-menu__entries" data-menu-list="scenes"></div>
+              </section>
+
+              <section class="game-menu__group">
+                <div class="game-menu__group-title" data-menu-text="mapsTitle"></div>
+                <div class="game-menu__entries" data-menu-list="maps"></div>
+              </section>
+
+              <section class="game-menu__group">
+                <div class="game-menu__group-title" data-menu-text="toolsTitle"></div>
+                <div class="game-menu__entries" data-menu-list="tools"></div>
+              </section>
+            </div>
+          </aside>
+
+          <section class="game-menu__details">
+            <div class="game-menu__preview-frame">
+              <img class="game-menu__preview" data-menu-preview alt="" />
+              <span class="game-menu__kind" data-menu-kind></span>
+            </div>
+
+            <div class="game-menu__description">
+              <div class="game-menu__description-title" data-menu-title></div>
+              <p data-menu-summary></p>
+            </div>
+
+            <fieldset class="game-menu__settings" data-menu-settings>
+              <legend data-menu-text="settingsTitle"></legend>
+              <div class="game-menu__setting">
+                <span id="menu-setting-uiscale" data-menu-text="uiScale"></span>
+                <select data-menu-setting="uiscale" aria-labelledby="menu-setting-uiscale"></select>
+              </div>
+              <div class="game-menu__setting">
+                <span id="menu-setting-speed" data-menu-text="speed"></span>
+                <select data-menu-setting="speed" aria-labelledby="menu-setting-speed"></select>
+              </div>
+              <div class="game-menu__setting">
+                <span id="menu-setting-fog" data-menu-text="fog"></span>
+                <select data-menu-setting="fog" aria-labelledby="menu-setting-fog"></select>
+              </div>
+              <div class="game-menu__setting">
+                <span id="menu-setting-debug" data-menu-text="geometry"></span>
+                <select data-menu-setting="debug" aria-labelledby="menu-setting-debug"></select>
+              </div>
+            </fieldset>
+
+            <button class="game-menu__start" type="button" data-menu-start></button>
+          </section>
+        </div>
+      </main>
+    </template>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

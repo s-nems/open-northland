@@ -1,0 +1,178 @@
+.game-menu__details {
+  min-height: 0;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-rows: minmax(190px, 1fr) auto auto auto;
+  gap: 14px;
+  padding: clamp(18px, 3vw, 30px);
+  overflow-y: auto;
+  background:
+    repeating-linear-gradient(0deg, rgba(93, 61, 25, 0.05) 0 1px, transparent 1px 5px),
+    linear-gradient(120deg, rgba(244, 224, 174, 0.97), rgba(199, 164, 103, 0.98));
+  box-shadow: inset 0 0 35px rgba(71, 38, 13, 0.58);
+}
+
+.game-menu__preview-frame {
+  position: relative;
+  min-height: 190px;
+  border: 7px ridge #70451f;
+  overflow: hidden;
+  background: #100c08;
+  box-shadow: 0 5px 12px rgba(53, 29, 10, 0.48);
+}
+
+.game-menu__preview {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  filter: saturate(0.82) contrast(1.06) sepia(0.08);
+}
+
+.game-menu__preview.is-map {
+  object-fit: contain;
+  image-rendering: pixelated;
+  filter: saturate(0.88) contrast(1.08);
+  background: #0f0c08;
+}
+
+.game-menu__kind {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  padding: 7px 14px 6px;
+  color: #f2d994;
+  border-top: 2px ridge #805326;
+  border-left: 2px ridge #805326;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  background: rgba(37, 20, 9, 0.93);
+}
+
+.game-menu__description {
+  min-height: 75px;
+  color: #2d1c0e;
+  border-bottom: 1px solid rgba(95, 58, 22, 0.42);
+  padding: 0 4px 13px;
+}
+
+.game-menu__description-title {
+  margin: 0;
+  font-size: clamp(25px, 3vw, 38px);
+  line-height: 1.05;
+  text-shadow: 0 1px rgba(255, 248, 218, 0.72);
+}
+
+.game-menu__description p {
+  max-width: 760px;
+  margin: 8px 0 0;
+  color: #50361c;
+  font:
+    600 15px / 1.4 Palatino,
+    "Palatino Linotype",
+    Georgia,
+    serif;
+}
+
+.game-menu__settings {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 12px 14px 14px;
+  color: #3f2915;
+  border: 2px groove rgba(102, 64, 25, 0.62);
+  background: rgba(255, 242, 201, 0.28);
+}
+
+.game-menu__settings[hidden] {
+  display: none;
+}
+
+.game-menu__settings legend {
+  padding: 0 7px;
+  color: #4b2d12;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.game-menu__setting {
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.game-menu__setting span {
+  display: block;
+  min-height: 30px;
+  line-height: 1.2;
+}
+
+.game-menu__settings select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 7px 8px;
+  color: #f0d9a1;
+  border: 2px inset #70461f;
+  border-radius: 1px;
+  font:
+    600 13px Palatino,
+    "Palatino Linotype",
+    Georgia,
+    serif;
+  background: #33200f;
+}
+
+.game-menu__start {
+  justify-self: end;
+  min-width: 190px;
+  padding: 11px 30px 10px;
+  color: #fff0b9;
+  border: 3px ridge #977040;
+  border-radius: 3px;
+  cursor: pointer;
+  font:
+    700 20px / 1 Palatino,
+    "Palatino Linotype",
+    Georgia,
+    serif;
+  letter-spacing: 0.06em;
+  text-shadow: 0 2px #17200d;
+  background: linear-gradient(#53662d, #273719);
+  box-shadow:
+    inset 0 1px rgba(255, 240, 177, 0.28),
+    0 4px 8px rgba(58, 32, 11, 0.44);
+}
+
+.game-menu__start:hover {
+  color: #fff8dc;
+  background: linear-gradient(#6d813d, #354a20);
+}
+
+.game-menu button:focus-visible,
+.game-menu select:focus-visible {
+  outline: 2px solid #fff0a8;
+  outline-offset: 2px;
+}
+
+@media (max-width: 820px) {
+  .game-menu__settings {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .game-menu__details {
+    overflow: visible;
+  }
+
+  .game-menu__preview-frame {
+    height: 230px;
+  }
+
+  .game-menu__start {
+    width: 100%;
+  }
+}

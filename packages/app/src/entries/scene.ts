@@ -12,7 +12,6 @@ import { fogModeParam } from '../game/fog.js';
 import { createSceneSim, getScene, SCENES } from '../scenes/index.js';
 import { cameraFor, createCameraController } from '../view/camera.js';
 import { startGameView } from '../view/game-view.js';
-import { floatParam } from '../view/params.js';
 import { mountUnknownSceneOverlay } from '../view/scene-overlay.js';
 
 declare global {
@@ -29,11 +28,8 @@ declare global {
 
 /**
  * The `?scene=<id>` entry renders a registered acceptance scene with the standard game HUD so a human
- * can watch the mechanic. The same `?atlas`/`?terrain`/`?zoom`/`?speed` flags
- * the live slice honours work here (e.g. `?scene=sandbox&zoom=2` to magnify one building). Real
- * decoded graphics are the DEFAULT now (`resolveSpriteSheet`) — no `?atlas=real` needed; `?atlas=none`
- * opts out to placeholder geometry. The sim is the exact one the headless acceptance test runs —
- * determinism guarantees the human watches what the test proved (see docs/SCENES.md).
+ * can watch the mechanic. Normal play always loads decoded sprites and terrain when available, with
+ * clean-room fallbacks for a bare checkout. The sim is the exact one the headless acceptance test runs.
  */
 
 export async function renderSceneMode(
@@ -70,17 +66,16 @@ export async function renderSceneMode(
   const fogOverride = fogModeParam(params);
   if (fogOverride !== null) sim.enqueue({ kind: 'setFogMode', mode: fogOverride });
   // Goods are global sandbox content now, not scene-local data.
-  const sheet = await resolveSpriteSheet(params, sim.content.goods);
-  const terrain = params.get('terrain') !== 'off' ? await loadRealTerrain() : undefined;
-  const zoom = floatParam(params, 'zoom', scene.initialZoom ?? 1);
+  const sheet = await resolveSpriteSheet(sim.content.goods);
+  const terrain = await loadRealTerrain();
 
   // Retained renderer: mesh the terrain ONCE, then reuse a pooled sprite graph each frame (no per-frame
   // object churn), so a big scene renders + deep-zoom-outs without exhausting the GPU.
   const renderer = new WorldRenderer(app, { sheet });
   renderer.setTerrain(terrainGrid, terrain);
 
-  // Interactive camera over the scene: `?zoom` is the starting frame, then the human pans (middle-mouse
-  // drag / arrow keys) and zooms (scroll wheel). Frame on the FIRST TICK's snapshot, not the initial
+  // Interactive camera over the scene: the scene supplies its starting frame, then the human pans
+  // (middle-mouse drag / arrow keys) and zooms (scroll wheel). Frame on the FIRST TICK's snapshot, not the initial
   // one: a scene's SETTLER spawns are commands that run on tick 1 (direct-placed resources/flags do
   // exist at tick 0), so the tick-0 settler centroid is empty and `cameraFor` fell back to the tile
   // origin (an off-centre first frame on every scene). The one extra step is deterministic; the browser
@@ -88,7 +83,7 @@ export async function renderSceneMode(
   sim.step();
   const cameraCtl = createCameraController(
     canvas,
-    cameraFor(buildSpriteScene(sim.snapshot()), zoom, app.screen.width, app.screen.height),
+    cameraFor(buildSpriteScene(sim.snapshot()), scene.initialZoom ?? 1, app.screen.width, app.screen.height),
     app.renderer.resolution,
   );
 
@@ -100,7 +95,7 @@ export async function renderSceneMode(
     canvas,
     params,
     renderer,
-    ...(sheet !== undefined ? { sheet } : {}),
+    sheet,
     sim,
     cameraCtl,
     terrainGrid,

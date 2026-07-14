@@ -1,15 +1,26 @@
 import { fetchJsonOrNull } from '../content/net.js';
 import { messages } from '../i18n/index.js';
 import { SCENES } from '../scenes/index.js';
-import { el } from '../view/overlay.js';
-import { settingsPanel, targetSearch } from './menu/settings.js';
-import { styleMenu } from './menu/styles.js';
+import { bindLocaleFlags, bindMenuSettings, targetSearch } from './menu/settings.js';
+
+const DEFAULT_PREVIEW = new URL('../../../../docs/images/settlement.webp', import.meta.url).href;
 
 export interface MapIndexEntry {
   readonly id: string;
   readonly name?: string;
   readonly description?: string;
   readonly minimap: boolean;
+}
+
+type EntryKind = 'scene' | 'map' | 'tool';
+
+interface MenuEntry {
+  readonly id: string;
+  readonly kind: EntryKind;
+  readonly title: string;
+  readonly summary: string;
+  readonly search: string;
+  readonly preview?: string;
 }
 
 export function parseMapsIndex(data: unknown): readonly MapIndexEntry[] {
@@ -33,135 +44,176 @@ async function loadMapList(): Promise<readonly MapIndexEntry[]> {
   return parseMapsIndex(await fetchJsonOrNull<unknown>('/maps-index'));
 }
 
-function card(
-  kicker: string,
-  title: string,
-  summary: string,
-  entry: string,
-  thumbnail?: string,
-): HTMLButtonElement {
-  const button = el('button', '', '') as HTMLButtonElement;
-  button.className = `on-card${thumbnail === undefined ? '' : ' on-map-card'}`;
-  if (thumbnail !== undefined) {
-    const image = el('img', '') as HTMLImageElement;
-    image.className = 'on-map-thumb';
-    image.src = thumbnail;
-    image.alt = '';
-    image.loading = 'lazy';
-    button.append(image);
+function templateRoot(): HTMLElement {
+  const template = document.getElementById('main-menu-template');
+  if (!(template instanceof HTMLTemplateElement)) throw new Error('missing #main-menu-template');
+  const fragment = template.content.cloneNode(true);
+  if (!(fragment instanceof DocumentFragment)) throw new Error('invalid #main-menu-template');
+  const root = fragment.querySelector('.game-menu');
+  if (!(root instanceof HTMLElement)) throw new Error('missing menu root');
+  document.body.append(fragment);
+  return root;
+}
+
+function htmlIn(root: ParentNode, selector: string): HTMLElement {
+  const node = root.querySelector(selector);
+  if (!(node instanceof HTMLElement)) throw new Error(`missing menu element: ${selector}`);
+  return node;
+}
+
+function imageIn(root: ParentNode, selector: string): HTMLImageElement {
+  const node = root.querySelector(selector);
+  if (!(node instanceof HTMLImageElement)) throw new Error(`missing menu image: ${selector}`);
+  return node;
+}
+
+function buttonIn(root: ParentNode, selector: string): HTMLButtonElement {
+  const node = root.querySelector(selector);
+  if (!(node instanceof HTMLButtonElement)) throw new Error(`missing menu button: ${selector}`);
+  return node;
+}
+
+function translatedShell(root: HTMLElement): void {
+  const copy = messages().menu;
+  for (const node of root.querySelectorAll<HTMLElement>('[data-menu-text]')) {
+    const key = node.dataset.menuText as keyof typeof copy;
+    const value = copy[key];
+    if (typeof value === 'string') node.textContent = value;
   }
-  const kickerLine = el('span', '', kicker);
-  kickerLine.className = 'on-card-kicker';
-  const titleLine = el('span', '', title);
-  titleLine.className = 'on-card-title';
-  const summaryLine = el('span', '', summary);
-  summaryLine.className = 'on-card-summary';
-  button.append(kickerLine, titleLine, summaryLine);
-  button.addEventListener('click', () => {
-    window.location.search = targetSearch(entry);
-  });
+}
+
+function entryButton(entry: MenuEntry, onSelect: (entry: MenuEntry, button: HTMLButtonElement) => void) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'game-menu__entry';
+  button.dataset.entryId = `${entry.kind}:${entry.id}`;
+  const title = document.createElement('span');
+  title.textContent = entry.title;
+  button.append(title);
+  button.addEventListener('click', () => onSelect(entry, button));
   return button;
 }
 
-function section(
-  title: string,
-  subtitle: string,
-): { readonly root: HTMLElement; readonly grid: HTMLElement } {
-  const root = el('section', '');
-  root.className = 'on-section';
-  const head = el('div', '');
-  head.className = 'on-section-head';
-  const text = el('div', '');
-  const sub = el('p', '', subtitle);
-  sub.className = 'on-subtitle';
-  text.append(el('h2', '', title), sub);
-  head.append(text);
-  const grid = el('div', '');
-  grid.className = 'on-grid';
-  root.append(head, grid);
-  return { root, grid };
-}
-
-function menuHeader(): readonly HTMLElement[] {
-  const copy = messages().menu;
-  const nav = el('div', '');
-  nav.className = 'on-nav';
-  const brand = el('div', '');
-  brand.className = 'on-brand';
-  const mark = el('span', '', 'ᛟ');
-  mark.className = 'on-mark';
-  brand.append(mark, el('span', '', 'OpenNorthland'));
-  const note = el('div', '', 'GPL-3.0-or-later · TypeScript');
-  note.className = 'on-nav-note';
-  nav.append(brand, note);
-
-  const hero = el('header', '');
-  hero.className = 'on-hero';
-  const heroMain = el('div', '');
-  const eyebrow = el('div', '', copy.eyebrow);
-  eyebrow.className = 'on-eyebrow';
-  const title = el('h1', '', copy.tagline);
-  title.className = 'on-title';
-  const intro = el('p', '', copy.intro);
-  intro.className = 'on-intro';
-  heroMain.append(eyebrow, title, intro);
-  const heroNote = el('div', '', copy.techNote);
-  heroNote.className = 'on-hero-note';
-  hero.append(heroMain, heroNote);
-  return [nav, hero];
-}
-
-export async function renderMenu(_canvas: HTMLCanvasElement, _params: URLSearchParams): Promise<void> {
-  styleMenu();
-  const copy = messages().menu;
-  const root = el('main', '');
-  root.className = 'on-menu';
-  const shell = el('div', '');
-  shell.className = 'on-shell';
-  shell.append(...menuHeader(), settingsPanel());
-
-  const scenes = section(copy.scenesTitle, copy.scenesSubtitle);
+function sceneEntries(): readonly MenuEntry[] {
   const sceneCopy = messages().scene;
-  for (const scene of SCENES) {
+  return SCENES.flatMap((scene) => {
     const metadata = sceneCopy[scene.id as keyof typeof sceneCopy];
-    if (metadata !== undefined) {
-      scenes.grid.append(
-        card(copy.open, metadata.title, metadata.summary, `?scene=${encodeURIComponent(scene.id)}`),
-      );
+    return metadata === undefined
+      ? []
+      : [
+          {
+            id: scene.id,
+            kind: 'scene' as const,
+            title: metadata.title,
+            summary: metadata.summary,
+            search: `?scene=${encodeURIComponent(scene.id)}`,
+          },
+        ];
+  });
+}
+
+function toolEntries(): readonly MenuEntry[] {
+  const copy = messages().menu;
+  return [
+    {
+      id: 'animation',
+      kind: 'tool',
+      title: copy.animationTitle,
+      summary: copy.animationSummary,
+      search: '?anim',
+    },
+    {
+      id: 'sound',
+      kind: 'tool',
+      title: copy.soundTitle,
+      summary: copy.soundSummary,
+      search: '?sounds',
+    },
+    {
+      id: 'icons',
+      kind: 'tool',
+      title: copy.iconsTitle,
+      summary: copy.iconsSummary,
+      search: '?icons',
+    },
+  ];
+}
+
+export async function renderMenu(canvas: HTMLCanvasElement, params: URLSearchParams): Promise<void> {
+  canvas.hidden = true;
+  const copy = messages().menu;
+  const root = templateRoot();
+  root.style.setProperty('--menu-backdrop', `url("${DEFAULT_PREVIEW}")`);
+  translatedShell(root);
+  bindMenuSettings(root, params);
+  bindLocaleFlags(htmlIn(root, '[data-menu-languages]'));
+
+  const lists: Record<EntryKind, HTMLElement> = {
+    scene: htmlIn(root, '[data-menu-list="scenes"]'),
+    map: htmlIn(root, '[data-menu-list="maps"]'),
+    tool: htmlIn(root, '[data-menu-list="tools"]'),
+  };
+  const preview = imageIn(root, '[data-menu-preview]');
+  const kind = htmlIn(root, '[data-menu-kind]');
+  const title = htmlIn(root, '[data-menu-title]');
+  const summary = htmlIn(root, '[data-menu-summary]');
+  const settings = htmlIn(root, '[data-menu-settings]');
+  const start = buttonIn(root, '[data-menu-start]');
+  let activeButton: HTMLButtonElement | null = null;
+  let selected: MenuEntry | null = null;
+
+  const select = (entry: MenuEntry, button: HTMLButtonElement): void => {
+    activeButton?.classList.remove('is-selected');
+    activeButton?.removeAttribute('aria-current');
+    activeButton = button;
+    activeButton.classList.add('is-selected');
+    activeButton.setAttribute('aria-current', 'true');
+    selected = entry;
+    kind.textContent = copy.entryKinds[entry.kind];
+    title.textContent = entry.title;
+    summary.textContent = entry.summary;
+    settings.hidden = entry.kind === 'tool';
+    start.textContent = entry.kind === 'tool' ? copy.open : copy.start;
+    preview.classList.toggle('is-map', entry.kind === 'map' && entry.preview !== undefined);
+    preview.src = entry.preview ?? DEFAULT_PREVIEW;
+    preview.alt = entry.title;
+  };
+
+  preview.addEventListener('error', () => {
+    preview.classList.remove('is-map');
+    preview.src = DEFAULT_PREVIEW;
+  });
+  start.addEventListener('click', () => {
+    if (selected !== null) window.location.search = targetSearch(selected.search);
+  });
+
+  const appendEntries = (entries: readonly MenuEntry[]): void => {
+    for (const entry of entries) {
+      const button = entryButton(entry, select);
+      lists[entry.kind].append(button);
+      if (selected === null) select(entry, button);
     }
-  }
-  shell.append(scenes.root);
+  };
 
-  const previews = section(copy.previewsTitle, copy.previewsSubtitle);
-  previews.grid.append(
-    card(copy.open, copy.animationTitle, copy.animationSummary, '?anim'),
-    card(copy.open, copy.soundTitle, copy.soundSummary, '?sounds'),
-    card(copy.open, copy.iconsTitle, copy.iconsSummary, '?icons'),
-  );
-  shell.append(previews.root);
-
-  const mapsSection = section(copy.mapsTitle, copy.mapsSubtitle);
-  shell.append(mapsSection.root);
-  root.append(shell);
-  document.body.append(root);
+  appendEntries(sceneEntries());
+  appendEntries(toolEntries());
 
   const maps = await loadMapList();
   if (maps.length === 0) {
-    const empty = el('div', '');
-    empty.className = 'on-empty';
-    empty.append(el('strong', '', copy.mapsEmptyTitle), document.createTextNode(copy.mapsEmptyDetail));
-    mapsSection.root.append(empty);
+    const empty = document.createElement('p');
+    empty.className = 'game-menu__empty';
+    empty.textContent = copy.mapsEmptyTitle;
+    lists.map.append(empty);
     return;
   }
-  for (const map of maps) {
-    mapsSection.grid.append(
-      card(
-        copy.open,
-        map.name ?? map.id,
-        map.description ?? copy.mapFallbackSummary,
-        `?map=${encodeURIComponent(map.id)}`,
-        map.minimap ? `/maps/${encodeURIComponent(map.id)}.png` : undefined,
-      ),
-    );
-  }
+  appendEntries(
+    maps.map((map) => ({
+      id: map.id,
+      kind: 'map' as const,
+      title: map.name ?? map.id,
+      summary: map.description ?? copy.mapFallbackSummary,
+      search: `?map=${encodeURIComponent(map.id)}`,
+      ...(map.minimap ? { preview: `/maps/${encodeURIComponent(map.id)}.png` } : {}),
+    })),
+  );
 }
