@@ -43,6 +43,10 @@ const SCREEN_PAINT_EPS = 0.25;
  */
 const CONSTRUCTION_REVEAL_EASE = 0.06;
 
+/** Whether a resolved layer carries a construction reveal fraction — module-scoped so the per-entity
+ *  {@link SpritePool.bindLayers} scan for the stage stack's shared target allocates no predicate. */
+const layerHasReveal = (layer: ResolvedLayer): boolean => layer.reveal !== undefined;
+
 /**
  * Everything one {@link SpritePool.reconcile} pass needs beyond the pool's own state — built once per
  * frame by the {@link import('../world-renderer.js').WorldRenderer} (one small object per frame, not per
@@ -112,10 +116,12 @@ export class SpritePool {
     for (let i = 0; i < scene.items.length; i++) {
       const item = scene.items[i];
       if (item === undefined) continue;
+      // The sprite scene never emits terrain tiles (they draw in the terrain layer); asserting it here
+      // narrows item.kind to SpriteKind for the rest of the loop instead of casting.
+      if (item.kind === 'tile') continue;
       let pe = this.pool.get(item.ref);
       if (pe === undefined) {
-        const kind = item.kind as SpriteKind;
-        pe = createPooled(kind, this.isPaletted(kind));
+        pe = createPooled(item.kind, this.isPaletted(item.kind));
         this.pool.set(item.ref, pe);
       }
       this.updatePooled(pe, item, frame);
@@ -307,7 +313,7 @@ export class SpritePool {
     // Ease the displayed construction reveal toward the layers' target (they share one, keyed off the
     // building's `builtPct`) so a rising building glides between the sim's per-swing steps. A first-seen
     // site initialises straight to its target (no grow-from-zero when a mid-build house scrolls in).
-    const revealTarget = layers.find((l) => l?.reveal !== undefined)?.reveal;
+    const revealTarget = layers.find(layerHasReveal)?.reveal;
     if (revealTarget === undefined) {
       pe.reveal = undefined;
     } else {
