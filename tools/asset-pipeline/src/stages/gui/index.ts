@@ -1,5 +1,5 @@
-import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { writeJsonFile } from '../game-file.js';
 import { convertGuiAtlases, type GuiAtlasResult } from './atlases.js';
 import { convertCursors, type GuiCursorResult } from './cursors.js';
 import { convertGuiPaletteLut } from './palette-lut.js';
@@ -81,8 +81,7 @@ export async function convertGuiStage(gameDir: string, outDir: string): Promise<
     strings: { languages: strings.map((s) => s.lang), tables: STRING_TABLES },
     cursors,
   };
-  await mkdir(join(outDir, GUI_CONTENT_DIR), { recursive: true });
-  await writeFile(join(outDir, GUI_CONTENT_DIR, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+  await writeJsonFile(outDir, join(GUI_CONTENT_DIR, 'manifest.json'), manifest);
 
   return {
     atlases: atlases.length,
