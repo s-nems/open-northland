@@ -31,7 +31,7 @@ export interface GoodIcon {
 }
 
 /** The emitted `goods/manifest.json` shape (mirrors the pipeline's `GoodsManifest`). */
-interface GoodsManifest {
+export interface GoodsManifest {
   readonly indexedStem: string;
   readonly previewStem: string;
   readonly paletteLutStem: string;
@@ -55,6 +55,16 @@ export interface GoodsArt {
 
 const GOODS_MANIFEST_URL = '/goods/manifest.json';
 
+let goodsManifestOnce: Promise<GoodsManifest | null> | null = null;
+
+/** Fetch + parse `content/goods/manifest.json` once per page — the shared source the goods icon art, the
+ *  in-world pile bindings and the localized good names ({@link import('./good-names.js')}) all slice. `null`
+ *  when the goods pipeline stage hasn't run. */
+export function loadGoodsManifest(): Promise<GoodsManifest | null> {
+  goodsManifestOnce ??= fetchJsonOrNull<GoodsManifest>(GOODS_MANIFEST_URL);
+  return goodsManifestOnce;
+}
+
 let goodsArtOnce: Promise<GoodsArt | null> | null = null;
 
 /**
@@ -64,7 +74,7 @@ let goodsArtOnce: Promise<GoodsArt | null> | null = null;
  */
 export function loadGoodsArt(): Promise<GoodsArt | null> {
   goodsArtOnce ??= (async () => {
-    const manifest = await fetchJsonOrNull<GoodsManifest>(GOODS_MANIFEST_URL);
+    const manifest = await loadGoodsManifest();
     if (manifest === null) return null;
     const [layer, lut] = await Promise.all([
       loadLayer(manifest.indexedStem).catch<SpriteLayer | null>(() => null),
@@ -105,7 +115,7 @@ let goodsIconManifestOnce: Promise<GoodIconMap | null> | null = null;
  */
 export function loadGoodsIconManifest(): Promise<GoodIconMap | null> {
   goodsIconManifestOnce ??= (async () => {
-    const manifest = await fetchJsonOrNull<GoodsManifest>(GOODS_MANIFEST_URL);
+    const manifest = await loadGoodsManifest();
     if (manifest === null) return null;
     return new Map(Object.entries(manifest.icons));
   })();
