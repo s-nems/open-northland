@@ -4,7 +4,7 @@ import { Provenance, TypeId } from '../record.js';
 /**
  * One `[animaltype]` record from the base `Data/logic/animaltypes.ini` — the per-tribe behaviour of a
  * non-controllable creature/monster tribe (bear, wolf, boar, cow, sheep, …). Unlike every other type
- * table, an animal record keys on **`tribetype`**, not `type`: the source carries no `type` id, and an
+ * table, an animal record keys on `tribetype`, not `type`: the source carries no `type` id, and an
  * animal's identity IS its owning tribe (the `Settler.tribe` cross-reference into {@link TribeType}).
  * `tribeType` is therefore the cross-ref key (validated against the tribe table). A handful of source
  * records carry no `tribetype` (a leftover/disabled stub); they are dropped at extract time since they

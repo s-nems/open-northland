@@ -100,7 +100,7 @@ const JOB_ENABLES_KIND: Readonly<Record<string, JobEnablesKind>> = {
 
 /**
  * Collects one `[tribetype]` section's `jobEnables<Kind> <jobType> <targetId>` lines into unified
- * {@link JobEnables} tech-graph edges in **exact source order**. The real data interleaves the four
+ * {@link JobEnables} tech-graph edges in exact source order. The real data interleaves the four
  * kinds within a job's block (e.g. job 8's goods, then its jobs, then its houses), so a single
  * file-order pass — recognizing any of the four keys — keeps that order verbatim rather than
  * regrouping by kind. A line missing either int is skipped, matching the `setatomic` malformed-line
@@ -131,7 +131,7 @@ const JOB_REQUIREMENT_KEY: Readonly<
 
 /**
  * Collects one `[tribetype]` section's `{need,train}for{job,good} <targetId> <amount> <expType>
- * [expType2]` lines into unified {@link JobRequirement} records in **exact source order** (the data
+ * [expType2]` lines into unified {@link JobRequirement} records in exact source order (the data
  * interleaves `need`/`train` blocks, kept verbatim like {@link JobEnables}). The `need`/`train`
  * prefix and `job`/`good` suffix of the key give the two dimensions; the remaining ints are the
  * target id, the amount, and one-or-two experience-type ids. A line missing the target id or the

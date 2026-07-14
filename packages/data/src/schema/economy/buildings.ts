@@ -44,7 +44,7 @@ export const BuildingType = z.strictObject({
   stock: z.array(StockSlot).default([]),
   /**
    * Good type ids this workplace can produce (`logichousetype` `logicproduction`), in file order.
-   * The *output side only*: the original house table names what a workplace makes, not the input
+   * The output side only: the original house table names what a workplace makes, not the input
    * goods. The pipeline's `fillBuildingRecipes` joins each output good through that good's
    * `goodtypes.productionInputGoods` (→ {@link GoodType.productionInputs}) to materialize `recipe`.
    */
@@ -57,19 +57,19 @@ export const BuildingType = z.strictObject({
    */
   recipe: Recipe.optional(),
   /**
-   * Build-material cost — the goods that must be delivered to *construct* this building, joined onto
+   * Build-material cost — the goods that must be delivered to construct this building, joined onto
    * the logic record from the graphics table's `[GfxHouse]` `LogicConstructionGoods` line (the readable
    * `DataCnmd/budynki12/houses/houses.ini`, keyed by the same `LogicType` id). The source line is a
-   * flat good-id list where a **repeat encodes quantity** (`3 3 26` = 2× stone + pillar), collapsed to
+   * flat good-id list where a repeat encodes quantity (`3 3 26` = 2× stone + pillar), collapsed to
    * `{goodType, amount}` pairs exactly like a recipe's inputs. Empty for the always-present
    * headquarters/wonder buildings (no construction cost) and for any type the graphics table omits.
    * For a home's level chain (`home level 00..04`) each level is a distinct `typeId` carrying its OWN
-   * upgrade cost, so a leveled `home` building resolves the cost of *its* tier here (not cumulative).
+   * upgrade cost, so a leveled `home` building resolves the cost of its tier here (not cumulative).
    * The input data the future ConstructionSystem (place → deliver materials → build) consumes.
    */
   construction: z.array(GoodQuantity).default([]),
   /**
-   * Max **hitpoints** — the building's full life pool, from the graphics table's `[GfxHouse]`
+   * Max hitpoints — the building's full life pool, from the graphics table's `[GfxHouse]`
    * `logichitpoints` line (`DataCnmd/budynki12/houses/houses.ini`), overlaid by `typeId` exactly like
    * {@link construction}. A home's level chain resolves each tier's own value (typeIds 2..6 =
    * 30000/40000/60000/70000/80000); walls are 100000, small workplaces ~25000–40000. During

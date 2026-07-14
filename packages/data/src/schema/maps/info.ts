@@ -3,13 +3,13 @@ import { Provenance } from '../record.js';
 
 /**
  * The decoded logic header of one `map.cif` — the readable, declarative scalars at the top of a map's
- * `CStringArray` (`logiccontrol` + the `misc_*` sections). This is **not** the playable terrain: the
+ * `CStringArray` (`logiccontrol` + the `misc_*` sections). This is not the playable terrain: the
  * binary tile/landscape grid (if stored outside this header) is a Phase-2 cell-graph concern. What is
  * captured here is the map's identity and metadata, which every map carries consistently:
  * dimensions, a stable GUID, its type/campaign slot, and the string-table ids of its name/description.
  *
  * The map's scripting payload — `MissionData` goals/results, `StaticObjects` pre-placed houses/goods,
- * `playerdata`/`AIData` — is deliberately **not** extracted here: it is the campaign/trigger layer,
+ * `playerdata`/`AIData` — is deliberately not extracted here: it is the campaign/trigger layer,
  * a far larger vocabulary than this metadata slice. See docs/SOURCES.md.
  */
 export const MapInfo = z.strictObject({

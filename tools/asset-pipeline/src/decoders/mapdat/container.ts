@@ -2,7 +2,7 @@
  * `map.dat` chunk container — the `hoix`-chunk table walk + the raw `lsiz` grid dims, plus the
  * faithful encoders used to round-trip test without committing copyrighted fixtures.
  *
- * On-disk layout: a flat sequence of chunks, each a **0x20-byte little-endian header** then
+ * On-disk layout: a flat sequence of chunks, each a 0x20-byte little-endian header then
  * `length` payload bytes, read sequentially to EOF:
  *
  *   +0x00 u32 marker   = 0x78696F68 ("hoix")
@@ -17,7 +17,7 @@
  * their sub-chunks follow immediately, so a single `offset += 0x20 + length` walk visits every
  * chunk — `depth` merely records the nesting.
  *
- * Ported FORMAT (not architecture) from OpenVikings `Source/NC2Logic/CIoHelper.cs`
+ * Ported format (not architecture) from OpenVikings `Source/NC2Logic/CIoHelper.cs`
  * (`SIoHelperChunk` / `IO_File_Chunk_*` / `FlipSIoHelperChunk`). Referenced @ working tree 2026-06.
  */
 

@@ -1,7 +1,7 @@
 /**
  * `.lib` archive decoder — Cultures "SimpleFileLibrary" packed container.
  *
- * Ported FORMAT (not architecture) from OpenVikings `Source/NXBasics/`:
+ * Ported format (not architecture) from OpenVikings `Source/NXBasics/`:
  *   - CSimpleFileLibrary.cs  header layout, ASCII length-prefixed names, filename checksum
  *   - Dexter/DexterEndian.cs `FileReadLongLSB` (u32 is little-endian)
  * Referenced at OpenVikings_reversing @ working tree 2026-06.

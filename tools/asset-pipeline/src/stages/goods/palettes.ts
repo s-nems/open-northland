@@ -5,7 +5,7 @@ import { readGameFile } from '../game-file.js';
 
 /**
  * Recolour-palette resolution for the goods stage: a `goods_*`/landscape palette name → its 256-colour
- * table, FIRST via the `palettes.ini` alias graph (`gold01` → `landscapes/gold.pcx`), then a direct
+ * table, first via the `palettes.ini` alias graph (`gold01` → `landscapes/gold.pcx`), then a direct
  * search of the goods/landscape palette dirs. The same resolution the bmd stage uses.
  */
 
@@ -34,7 +34,7 @@ export async function loadPaletteAliases(gameDir: string): Promise<PaletteAliasM
 }
 
 /**
- * Resolve a recolor palette by name to its 256-colour table. FIRST via the {@link PALETTES_INI} alias graph
+ * Resolve a recolor palette by name to its 256-colour table. First via the {@link PALETTES_INI} alias graph
  * (`gold01` → `landscapes/gold.pcx`) — a palette name rarely matches a `<name>.pcx` file directly, so without
  * this the aliased landscape palettes (`gold01`/`clay01`/`house_saracen01`/`human_colors`) fall to a neutral
  * row and their goods render washed-out white in the HUD (the coin, the plate/wool armour). Falls back to the

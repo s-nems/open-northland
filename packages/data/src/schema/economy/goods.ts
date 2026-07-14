@@ -4,7 +4,7 @@ import { AtomicId, Provenance, TypeId } from '../record.js';
 
 /**
  * Atomic ids that act on a good, keyed by role (from `goodtypes` `atomicFor*`). A good is the
- * *object* of the atomic: `harvest` cuts/mines/reaps it, `plant`/`cultivate` grow it, `produce`
+ * object of the atomic: `harvest` cuts/mines/reaps it, `plant`/`cultivate` grow it, `produce`
  * is the atomic a workplace runs to make it.
  */
 export const GoodAtomics = z.strictObject({

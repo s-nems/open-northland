@@ -1,7 +1,7 @@
 /**
  * `.cif` container decoder — Cultures Information File.
  *
- * Ported FORMAT (not architecture) from OpenVikings `Source/NXBasics/`:
+ * Ported format (not architecture) from OpenVikings `Source/NXBasics/`:
  *   - XBTools.cs          `XB_Decrypt_Memory` / `XB_Encrypt_Memory` (TEncryptMode.Mode1)
  *   - XBStorable.cs       storable factory: id -> class (0x3E9 CMemory, 0x3FD CStringArray, ...)
  *   - CStorable.cs        on-disk object header: [u32 id][u32 version][body]
@@ -142,7 +142,7 @@ function readLines(pool: Uint8Array, offsets: Uint8Array, slotCount: number, use
  * batch pipeline over many owned files must wrap each call per-file (one corrupt `.cif` shouldn't
  * abort the run).
  *
- * NOTE: text is decoded as latin1 to match the OpenVikings oracle byte-for-byte. Display strings
+ * Text is decoded as latin1 to match the OpenVikings oracle byte-for-byte. Display strings
  * carrying Polish glyphs are actually CP1250 — re-decode those at the IR layer where it matters.
  */
 export function decodeCifStringArray(bytes: Uint8Array): CifStringArray {

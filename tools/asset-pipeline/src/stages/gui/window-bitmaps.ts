@@ -10,7 +10,7 @@ import { readGameFile } from '../game-file.js';
  * body in the original renders it warm brown — the `bg_normal` element palette applied to the same indices
  * matches those screenshots (verified visually at 1024×768; the palette's name states the pairing, but
  * OpenVikings only shows the palette being loaded, not the draw-site pairing itself).
- * `bg_selected` — the original's SELECTED-item card body, which is exactly what the selection info panel is —
+ * `bg_selected` — the original's selected-item card body, which is exactly what the selection info panel is —
  * shows as a grey-blue marble in the original, and its embedded palette (a warm olive) does not reproduce
  * that. `bg_normal` is the pairing chosen here NOT because a decoded draw-site or the palette name pins it —
  * by name `bg_hilite`/`bg_invert` would fit "selected" better — but because, among the loaded element

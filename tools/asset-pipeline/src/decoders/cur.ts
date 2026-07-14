@@ -1,9 +1,9 @@
 /**
  * Windows cursor (`.cur`) decoder — the ICO/CUR container: a directory of DIB (BMP) images plus a
  * per-image hotspot. A `.cur` is byte-identical to a `.ico` except the two `ICONDIRENTRY` fields that
- * an icon uses for colour-planes / bit-count instead carry the cursor **hotspot** (X, Y).
+ * an icon uses for colour-planes / bit-count instead carry the cursor hotspot (X, Y).
  *
- * This ports the FORMAT of a standard Microsoft resource, not any OpenVikings code: the original engine
+ * This ports the format of a standard Microsoft resource, not any OpenVikings code: the original engine
  * loads cursors through Win32 `LoadCursorFromFileW` (see `Source/SystemHandles/InitGameHandler.cs`), so
  * there is no decoder to mirror — the OS reads the same header this does. Layout (all multi-byte fields
  * little-endian):
@@ -13,15 +13,15 @@
  *     u8 width(0 = 256), u8 height, u8 colorCount, u8 reserved,
  *     u16 hotspotX, u16 hotspotY,          (planes / bitCount in a .ico)
  *     u32 bytesInRes, u32 imageOffset
- *   image = a bottom-up `BITMAPINFOHEADER` DIB whose `biHeight` is DOUBLED (the XOR colour bitmap
+ *   image = a bottom-up `BITMAPINFOHEADER` DIB whose `biHeight` is doubled (the XOR colour bitmap
  *     stacked over a 1-bpp AND transparency mask). Real height = biHeight / 2.
  *
  * The game's three cursors each pack 1/4/8-bpp variants of one 32×32 image; we decode the highest
  * colour depth available (only 8/24/32-bpp are implemented — the shipped cursors always carry an 8-bpp
  * entry, which is the one selected, so a ≤4-bpp-only cursor is not a real case) and take transparency
- * from the AND mask (a set AND bit = transparent). The hotspot is read from that SAME selected entry, so
+ * from the AND mask (a set AND bit = transparent). The hotspot is read from that same selected entry, so
  * image + hotspot stay self-consistent — matching what the original's Win32 `LoadCursorFromFileW`
- * best-fits on the game's 32-bpp display (it picks the 8-bpp image and uses *its* hotspot, not a
+ * best-fits on the game's 32-bpp display (it picks the 8-bpp image and uses its hotspot, not a
  * lower-depth entry's; e.g. `MouseRight`'s 8-bpp hotspot is (1,1), while its 1-bpp fallback carries (10,10)).
  *
  * Pure functions only (no I/O): `(bytes) => decoded`. `encodeCursor` is a faithful (8-bpp) inverse used
@@ -68,7 +68,7 @@ interface DirEntry {
  * Decodes a `.cur` into straight RGBA, choosing the highest-colour-depth image in the directory and
  * taking transparency from its AND mask. Throws a `cursor:`-prefixed error on a structurally invalid
  * container or an unsupported pixel format (a batch walk should wrap the call per-file). The hotspot is
- * read from the SELECTED (highest-depth) entry, so it is consistent with the decoded image.
+ * read from the selected (highest-depth) entry, so it is consistent with the decoded image.
  */
 export function decodeCursor(bytes: Uint8Array): DecodedCursor {
   if (bytes.length < ICONDIR_BYTES) {
@@ -114,7 +114,7 @@ export function decodeCursor(bytes: Uint8Array): DecodedCursor {
   }
   if (best < 0) throw new Error('cursor: no image entry has a readable DIB header');
 
-  // Decode the selected entry and take the hotspot from that SAME entry (not entry 0's lower-depth
+  // Decode the selected entry and take the hotspot from that same entry (not entry 0's lower-depth
   // fallback), matching the original's Win32 best-fit, which uses the selected image's own hotspot.
   const chosen = entries[best] as DirEntry;
   const image = decodeDib(bytes, view, chosen.imageOffset);

@@ -43,7 +43,7 @@ export { type IniSource, resolveIniSources } from './sources.js';
 
 /**
  * Reads + parses every resolved `.ini` source and runs the typed extractors, then assembles and
- * **validates** a {@link ContentSet} via `parseContentSet` (zod + cross-reference checks). Decoding
+ * validates a {@link ContentSet} via `parseContentSet` (zod + cross-reference checks). Decoding
  * stays pure (`decodeIni`/`parseIniSections`/`extract*` take bytes/text, not the filesystem); the
  * only I/O here is reading the resolved files. Each extractor pulls only its own `[section]`s from a
  * file, so passing every file's sections to every extractor is correct and order-independent.

@@ -3,7 +3,7 @@
  * `.cif`/`.lib` object graphs (used by bobs and maps). This is NOT the `.pcx` trailing palette —
  * that one is RGB triples handled in `pcx.ts`; this one is the engine's native `[B,G,R,_]` table.
  *
- * Ported FORMAT (not architecture) from OpenVikings `Source/NXBasics/`:
+ * Ported format (not architecture) from OpenVikings `Source/NXBasics/`:
  *   - CStorable.cs    on-disk object header: [u32 id][u32 version][body]
  *   - XBStorable.cs   factory: id 0x3F6 -> `new CPalette(file, version)`, read straight from the stream
  *   - CPalette.cs     body: a bare 0x400-byte blob = 256 entries × 4 bytes, layout [B, G, R, _]

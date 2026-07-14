@@ -18,7 +18,7 @@ import { writeAtlasBeside } from '../game-file.js';
  * decoders stay pure, this is the only wiring between them. The atlas PNG is `encodePng(atlas.image)`;
  * the manifest serializes straight to JSON. Throws a `bmd:`/`atlas:`-prefixed error for a malformed
  * container or a wrong-sized palette — the batch tree-walk (a later step) catches it per-file. The
- * **palette source** for a given `.bmd` (which `palettes.ini` entry / `.pcx` trailer pairs with it) is
+ * palette source for a given `.bmd` (which `palettes.ini` entry / `.pcx` trailer pairs with it) is
  * the open question that gates the full tree-walk, so this seam takes the palette as a parameter today.
  * `alpha` picks the bake mode — see {@link AtlasAlphaMode}; the house atlases need `'build-time'`.
  */

@@ -18,8 +18,8 @@ import {
 /**
  * Extracts the `[bobseq]` records from `animations.ini` (the mod's
  * `animation/mapmoveableanimations/animations.ini`) into one {@link BobSequenceSet} per bob set — the
- * named animation ranges (`seq "<name>" <start> <length>`) the renderer previously hard-coded as magic
- * frame constants (`WALK` start 1988, `CHOP` 5106, …). Each record names its `imagelib` `.bmd` (the bob
+ * named animation ranges (`seq "<name>" <start> <length>`, e.g. `WALK` start 1988, `CHOP` 5106). Each
+ * record names its `imagelib` `.bmd` (the bob
  * set the ids index into) plus an optional `shadowlib`, and lists every sequence as a `seq` line whose
  * three values are the quoted name, the first bob id, and the total frame count across all directions.
  *
@@ -61,7 +61,7 @@ export function extractBobSequences(sections: readonly RuleSection[], src: Sourc
 /**
  * Extracts the `[gfxanimatomic]` records from `mapmoveableanimations/animations.ini` into
  * {@link GfxAnimAtomic} rows — the atomic-action → directional body-animation binding the renderer needs
- * to play an ACTION (an attack swing, a work stroke) FACING its target. Unlike {@link extractBobSequences}
+ * to play an action (an attack swing, a work stroke) facing its target. Unlike {@link extractBobSequences}
  * (which reads only the `[bobseq]` frame ranges), this reads the `gfxanimframelistdir <dir> <idx…>` lines
  * that lay an animation out per facing — the layout a bare `start`/`length` cannot encode (a melee swing
  * pool is not `length / 8` and authors per-facing holds/reuse; see {@link GfxAnimAtomic}).
@@ -70,7 +70,7 @@ export function extractBobSequences(sections: readonly RuleSection[], src: Sourc
  * regardless of file order; a record with a single non-directional `gfxanimframelist` yields one
  * facing-locked list. A record missing its tribe/job/action/body-seq, or carrying no frame list at all, is
  * skipped (never thrown) — one malformed record must not abort the batch. The same `(job, action)` recurs
- * per tribe, and one job/action may have SEVERAL records (the unarmed soldier's four punch variants); all
+ * per tribe, and one job/action may have several records (the unarmed soldier's four punch variants); all
  * are emitted, and a consumer resolves by `(tribe, job, action)` or by `bodySeq` name.
  */
 export function extractGfxAnimAtomics(sections: readonly RuleSection[], src: SourceRef): GfxAnimAtomic[] {

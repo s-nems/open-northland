@@ -205,7 +205,7 @@ function flattenFrameAlpha(frame: BobFrame): BobFrame {
 }
 
 /**
- * Packs every bob into an **indexed** atlas (palette index in red, mask in alpha) instead of an RGB one —
+ * Packs every bob into an indexed atlas (palette index in red, mask in alpha) instead of an RGB one —
  * the {@link expandBobFrameIndexed} twin of {@link packBobAtlas}, for the character bodies whose player
  * colour is applied at draw time via a palette LUT. Placement + manifest are byte-identical to the RGB
  * atlas of the same `.bmd` (same frame sizes → same shelf packing), so the two atlases share frame

@@ -45,7 +45,7 @@ export function extractStringTable(sections: readonly RuleSection[]): Record<num
 }
 
 /**
- * Reads ONLY the explicit `stringn <id> "<text>"` lines of a `[text]` string table into `{ <id>: <text> }`,
+ * Reads only the explicit `stringn <id> "<text>"` lines of a `[text]` string table into `{ <id>: <text> }`,
  * ignoring the bare `string` (auto-incrementing) lines. Unlike {@link extractStringTable} it applies no
  * `stringidmultiplier` and no running id, so an entry's id is exactly its `stringn` number.
  *
