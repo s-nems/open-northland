@@ -1,19 +1,17 @@
 /**
- * The details panel's VECTOR text face — a deliberate, named approximation of the original UI font.
+ * The details panel's vector text face — a deliberate, named approximation of the original UI font.
  *
  * The original game draws HUD text with a small (~10 px) bitmap `.fnt` face (decoded by the `fonts`
- * pipeline stage, drawn by `hud/bitmap-text.ts`). That face is a classic transitional *serif* (see the
- * extracted `font12` glyph sheet: serifed A–Z, an old-style lower-case). At the panel's fractional UI
- * scale a 10 px bitmap has no sub-pixel detail to stay crisp — upscaling can only be blocky or hazy, which
- * reads as the "postrzępiona" (frayed) text the original bitmap path produced. So the details panel swaps
- * that bitmap face for **Tinos** — a metric-compatible "Times"-class serif (Apache-2.0; see
- * `public/fonts/LICENSE-Tinos.txt`) — rendered as vector Pixi text that stays sharp at any scale. This is a
- * legibility approximation, NOT the decoded original face; the bitmap path stays for the tool-panel HUD.
+ * pipeline stage, drawn by `hud/bitmap-text.ts`), a transitional serif. At the panel's fractional UI
+ * scale a 10 px bitmap has no sub-pixel detail to stay crisp — upscaling reads as the "postrzępiona"
+ * (frayed) text the original bitmap path produced. So the details panel swaps it for Tinos — a
+ * metric-compatible "Times"-class serif (Apache-2.0; see `public/fonts/LICENSE-Tinos.txt`) — rendered as
+ * vector Pixi text that stays sharp at any scale. The bitmap path stays for the tool-panel HUD.
  *
  * Coverage: the UI strings are Polish (CP1250-origin), so two woff2 subsets are registered under one family
  * — Latin (ASCII + Latin-1 + the punctuation range the tables use) and Latin-Extended (the Polish
- * diacritics ą ć ę ł ń ó ś ź ż). The two `unicode-range`s are the canonical Google-Fonts subset ranges;
- * the browser (and the canvas text raster Pixi uses) composes glyphs across both faces of the family.
+ * diacritics ą ć ę ł ń ó ś ź ż). The browser (and the canvas text raster Pixi uses) composes glyphs across
+ * both faces of the family.
  */
 
 /** The text fill colours (shared with the bitmap font's fallback), re-exported so callers import one name. */
@@ -22,9 +20,8 @@ export { FONT_FILL as UI_TEXT_FILL } from './font-gfx.js';
 /** The registered family name (both subsets share it); paired with a serif fallback stack in {@link UiFont}. */
 const UI_FONT_FAMILY = 'OpenNorthlandUi';
 /**
- * System serifs to fall back to before generic `serif`, chosen to stay close to the Tinos/Times look if the
- * bundled woff2 ever fails to load (offline first paint, a stripped build). Kept a plain CSS stack so a
- * `Text` still renders *something* serifed rather than the platform sans.
+ * System serifs to fall back to before generic `serif`, chosen to stay close to the Tinos/Times look if
+ * the bundled woff2 ever fails to load (offline first paint, a stripped build).
  */
 const SERIF_FALLBACK = "'Times New Roman', Georgia, 'Nimbus Roman', serif";
 

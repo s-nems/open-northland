@@ -132,9 +132,8 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   });
 
   // The window hole backdrop (bottom of the stack): uniform near-black, so the letterbox bars around
-  // a non-square map read as one clean window. Under the braided frame it underlaps the braid's
-  // top/right inner edge (left/bottom run flush to the screen corner) — the keyed braid crevices then
-  // show black window, never a see-through gap to the world.
+  // a non-square map read as one clean window. It underlaps the braid's top/right inner edge
+  // (see HOLE_UNDERLAP_NATIVE_PX; left/bottom run flush to the screen corner).
   const holeBg = new Graphics();
   const innerL = local(layout.inner);
   const underlap = frame !== null ? HOLE_UNDERLAP_NATIVE_PX * layout.artScale : 0;

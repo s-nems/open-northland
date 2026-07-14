@@ -38,9 +38,9 @@ import {
  * dominant value, 1 = "void", is plain ground), so the object join above is its authoritative,
  * area-accurate source.
  *
- * Pure and synchronous — unit-testable against synthetic fixtures; the `?map=` entry calls it once at
- * load. Missing lanes degrade: no ground lane → no ground blocking, no objects lane (or no IR rows)
- * → no object blocking; a map with neither comes back all-open (never a crash).
+ * Pure and synchronous; the `?map=` entry calls it once at load. Missing lanes degrade: no ground
+ * lane → no ground blocking, no objects lane (or no IR rows) → no object blocking; a map with
+ * neither comes back all-open (never a crash).
  */
 
 /** The two IR lanes the join reads — a structural view (`ContentIr` satisfies it), so the pure
@@ -102,7 +102,7 @@ function groundClassTable(ir: CollisionIrView): ReadonlyMap<number, number> {
 }
 
 /** The worse of two ground classes (impassable > margin > barren > open) — a cell takes its worst
- *  triangle, so a half-sand cell rejects the plough like it rejects nothing else. */
+ *  triangle. */
 function worseGroundClass(a: number, b: number): number {
   if (a === TERRAIN_IMPASSABLE || b === TERRAIN_IMPASSABLE) return TERRAIN_IMPASSABLE;
   if (a === TERRAIN_MARGIN || b === TERRAIN_MARGIN) return TERRAIN_MARGIN;

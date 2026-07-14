@@ -1,7 +1,7 @@
 /**
- * The farm's field-cultivation calibration — the ONE global source for the wheat sow→water→grow→reap
- * loop's numbers, the farming twin of `felling.ts`: every scene/content set that farms wheat builds its
- * `farming` block from THESE constants so the pace can't drift per scene.
+ * The farm's field-cultivation calibration — the one global source for the wheat sow→water→grow→reap
+ * loop's numbers: every scene/content set that farms wheat builds its `farming` block from these
+ * constants so the pace can't drift per scene.
  *
  * Source split (see the sim's `GoodFarming` schema): {@link WHEAT_GROWTH_STAGES} is DATA — the
  * `landscapetypes.ini` `wheat (growing)` lane's `maximumValency 5`, matching the field gfx's 5 growth
@@ -13,10 +13,9 @@
 /** Growth stages a sown field passes through before it is ripe (DATA: `maximumValency 5`). */
 export const WHEAT_GROWTH_STAGES = 5;
 
-/** Ticks a WATERED field takes per growth stage (an unwatered field does not grow at all — watering
+/** Ticks a watered field takes per growth stage (an unwatered field does not grow at all — watering
  *  is the sim's growth gate). 500 ticks × 4 stage steps = 2000 ticks ≈ 100 s at 20 ticks/s from
- *  watering to ripe — OBSERVED pacing: the first calibration (100/stage, ~10 s to ripe) read as
- *  arcade-fast against the original's slow field turnaround ("nie za szybko względem oryginału?"). */
+ *  watering to ripe (observed pacing, against the original's slow field turnaround). */
 export const WHEAT_TICKS_PER_STAGE = 500;
 
 /** Units a ripe field drops as its cut sheaf when reaped. */

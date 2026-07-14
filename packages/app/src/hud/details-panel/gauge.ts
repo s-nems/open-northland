@@ -3,10 +3,9 @@ import type { Rect } from '../geometry.js';
 import { type BarTone, barTone } from './model/index.js';
 
 /**
- * The details panel's progress/need bar rendering — the recessed-groove gauge and its colour ramp,
- * pulled out of the {@link import('./chrome.js').Chrome} drawing kit as pure functions over a passed
- * `Graphics`. All gauge shading strengths are eyeballed against the parchment panel, not sampled from
- * the original (which has no decoded bar-draw code).
+ * The details panel's progress/need bar rendering — the recessed-groove gauge and its colour ramp, drawn
+ * as pure functions over a passed `Graphics`. All gauge shading strengths are eyeballed against the
+ * parchment panel, not sampled from the original (which has no decoded bar-draw code).
  */
 
 /**
@@ -21,7 +20,7 @@ const BAR_TONE_FILL: Readonly<Record<BarTone, number>> = {
   critical: 0xb5392b,
 };
 /** The neutral production-progress fill — a warm amber that sits on the parchment without reading as a
- *  health/need level (eyeballed, not sampled; the original's bar-draw code isn't decompiled). */
+ *  health/need level (eyeballed). */
 export const PRODUCTION_BAR_FILL = 0xb8894a;
 
 /** Where the gauge fill's vertical gradient rolls over from the lit top into the shaded bottom
@@ -61,13 +60,10 @@ function mixColor(from: number, to: number, t: number): number {
 }
 
 /**
- * The shared BAR track+fill draw (not the grey `bar_disabled` art, whose middle read as a stuck bar —
- * user feedback 2026-07-11, and which broke down entirely when stretched long for the production row).
- * Drawn entirely as Graphics (the PalettedSprite art can't be tinted per-sprite — see
- * paletted-sprite.ts): a recessed near-black groove with an inner top shadow and an embossed light
- * catch under its lip, filled by a smooth vertical gradient of `base` (1-px strips — no gradient
- * textures to leak on the panel's 4 Hz rebuilds). The stat gauge feeds the decoded level-ramp colour;
- * the production bar a fixed warm amber.
+ * The shared bar track+fill draw. Drawn entirely as Graphics, not the grey `bar_disabled` art (whose
+ * middle read as a stuck bar and broke down when stretched long for the production row) — the
+ * PalettedSprite art can't be tinted per-sprite (see paletted-sprite.ts). The fill is a smooth vertical
+ * gradient of `base` in 1-px strips (no gradient textures to leak on the panel's 4 Hz rebuilds).
  */
 export function drawGauge(
   g: Graphics,

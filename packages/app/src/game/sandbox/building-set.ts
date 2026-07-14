@@ -75,8 +75,8 @@ const STORE_GOODS: readonly number[] = [
 ];
 
 /**
- * Build a general-goods store's slot list at one per-good capacity — a store's limit lives in this single
- * number, not repeated per good. Every good in {@link STORE_GOODS} gets the same cap.
+ * Build a general-goods store's slot list at one per-good capacity — every good in {@link STORE_GOODS}
+ * gets the same cap.
  */
 function storeStock(capacity: number): readonly StockSlot[] {
   return STORE_GOODS.map((goodType) => ({ goodType, capacity, initial: 0 }));
@@ -114,10 +114,9 @@ export interface SandboxBuildingRow {
 
 /**
  * Per-building sandbox behaviour overrides, keyed by typeId — a data table, so {@link buildingRow}
- * stays a pure spread and a new special building means a new row here, not another branch. (The
- * clean-room catalog stays pinned to ir.json; these stock/recipe pins are sandbox balance, not
- * extracted data.) A `workers` here replaces the extracted {@link import('./worker-slots.js').BUILDING_WORKER_SLOTS}
- * default (the joinery pins its own gatherer-fed plank producer for the production demo).
+ * stays a pure spread and a new special building means a new row here, not another branch. A `workers`
+ * here replaces the extracted {@link import('./worker-slots.js').BUILDING_WORKER_SLOTS} default (the
+ * joinery pins its own gatherer-fed plank producer for the production demo).
  */
 const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> = {
   [BUILDING_HEADQUARTERS]: { stock: storeStock(HQ_SLOT_CAPACITY) },

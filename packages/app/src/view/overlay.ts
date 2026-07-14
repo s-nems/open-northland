@@ -4,9 +4,7 @@ import { messages } from '../i18n/index.js';
  * Shared DOM chrome for the app's on-canvas panels — the scene routing error
  * ({@link import('./scene-overlay.js')}), the animation gallery panel
  * ({@link import('../entries/anim-overlay.js')}) and the main menu ({@link import('../entries/menu.js')}).
- * Plain DOM + floats, app-layer only (never in `sim`). Kept in ONE place so the panels can't drift in
- * look and an agent has an obvious home for panel helpers instead of re-declaring `el`/`navButton`/the
- * style strings per file.
+ * Plain DOM + floats, app-layer only (never in `sim`).
  */
 
 /** The right-docked panel look (dark parchment card) every overlay shares. */
@@ -92,11 +90,10 @@ const SOUND_TOGGLE_STYLE = [
 ].join(';');
 
 /**
- * Mount the bottom-centre sound toggle button. Audio starts **muted** (the driver is created with
+ * Mount the bottom-centre sound toggle button. Audio starts muted (the driver is created with
  * `setEnabled(false)`); the game is silent until the user clicks this button. The click doubles as the
  * autoplay gesture — browsers keep an `AudioContext` suspended until a trusted user gesture, so the same
  * click that unmutes also `resume()`s the context. Clicking again re-mutes (the context stays running).
- * The button reflects the current state in its label. Returns nothing; the button persists.
  */
 export function mountSoundToggle(driver: SoundToggleDriver): void {
   const button = el('button', SOUND_TOGGLE_STYLE, messages().common.soundOff);
@@ -118,8 +115,7 @@ export function mountSoundToggle(driver: SoundToggleDriver): void {
 
 /**
  * The full-page (scrollable) entry shell — the dark-parchment page behind the main menu and the sound
- * gallery. Shared here so the full-page entries can't drift in look; each page passes only its own
- * density knobs (top padding / body font / content width).
+ * gallery. Each page passes only its own density knobs (top padding / body font / content width).
  */
 export function pageRootStyle(paddingTopPx: number, fontPx: number): string {
   return [

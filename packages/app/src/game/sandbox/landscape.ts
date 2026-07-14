@@ -53,11 +53,11 @@ function landscapeState(g: GathererSpec): number {
   return Math.max(1, g.depositLevels ?? BIO_LANDSCAPE_STATES);
 }
 
-// The invented resource areas below are HALF-CELL node offsets (`[state, dx, dy, run]`, the real
-// block-area grammar). The BUILD ring keeps its doubled (one-cell) extent from the half-cell
-// migration; the WORK cells sit ONE NODE from the anchor on every side, matching the real records
-// (the yew's `workAreas` are the ±1-node neighbours) — so a harvester stands half a cell from its
-// node and works it from whichever side it arrived, instead of circling to a distant east/west post.
+// The invented resource areas below are half-cell node offsets (`[state, dx, dy, run]`, the real
+// block-area grammar). The build ring keeps its doubled (one-cell) extent; the work cells sit one
+// node from the anchor on every side, matching the real records (the yew's `workAreas` are the
+// ±1-node neighbours) — so a harvester stands half a cell from its node and works it from whichever
+// side it arrived, instead of circling to a distant east/west post.
 
 function walkBlockAreas(g: GathererSpec): number[][] {
   const state = landscapeState(g);

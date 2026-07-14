@@ -38,8 +38,7 @@ import {
  * test entities by clicking the map (any soldier class with its weapon, any civilian, any resource node
  * or good, each owned by a chosen player) and run entity-action tools on what's already there (kill a
  * unit, drive its needs to full/empty, fill a warehouse, finish a construction site). It exists so combat,
- * ownership, economy and lifecycle can be exercised on a live map without hand-authoring a scene — "spawn
- * a few of mine, a few enemies, fill their stores, watch them fight".
+ * ownership, economy and lifecycle can be exercised on a live map without hand-authoring a scene.
  *
  * Everything goes through the one sim command seam (`spawnSettler` / `placeResource` / the `debug*`
  * commands), so a debug poke is as replay-faithful as any player order — the panel never touches
@@ -49,9 +48,8 @@ import {
  *
  * Layout: the panel is a right-docked rail (never the screen centre — it must not hide the map it
  * acts on), a fixed-height flex column — a static header carrying the spawn "stamp" settings (owner / HP /
- * armor / needs), a scrolling body of collapsible palette sections (only the section in use need be
- * open — the goods list alone is ~70 entries, so it also carries a name filter), and a pinned status
- * footer that always shows what the next click will do (see {@link import('./chrome.js')}).
+ * armor / needs), a scrolling body of collapsible palette sections (only the section in use need be open),
+ * and a pinned status footer that always shows what the next click will do (see {@link import('./chrome.js')}).
  *
  * Interaction: click a palette / action button to arm it (the cursor becomes a crosshair). A spawn arm
  * places at each clicked tile; an action arm applies to the entity clicked (a unit or a building, per the

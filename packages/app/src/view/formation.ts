@@ -12,8 +12,8 @@ import type { Tile } from './picking.js';
 
 /**
  * A move target for one unit in a group order — the unit's entity id + the tile it should walk to.
- * The controller turns each into a `moveUnit` command; a single-unit order yields one entry aimed at
- * the clicked tile exactly (the array-of-one case of {@link assignFormation}).
+ * A single-unit order yields one entry aimed at the clicked tile exactly (the array-of-one case of
+ * {@link assignFormation}).
  */
 export interface FormationOrder {
   readonly ref: number;
@@ -21,8 +21,8 @@ export interface FormationOrder {
 }
 
 /**
- * A group of units at these world-px feet anchors — the input the formation assigner keeps together so
- * the nearest unit takes the nearest slot (no criss-cross). Just the fields {@link assignFormation} needs.
+ * A group of units at these world-px feet anchors — the input {@link assignFormation} pairs to
+ * formation slots. Just the fields it needs.
  */
 export interface FormationUnit {
   readonly ref: number;
@@ -39,8 +39,7 @@ export interface FormationUnit {
  * ring 2's 16, …), each kept only if it is in `[0,width)×[0,height)` (node dims) and `blocked(col,row)`
  * is false (an occupied/unwalkable node is skipped). A single-unit order (`count === 1`) returns just
  * the target node when it is free, so one unit still goes exactly where clicked. Deterministic + pure
- * (no DOM/sim) — unit-tested like the rest of the picking math; the ring order is fixed, so the same
- * click always yields the same slots.
+ * (no DOM/sim): the ring order is fixed, so the same click always yields the same slots.
  */
 export function formationTiles(
   target: Tile,

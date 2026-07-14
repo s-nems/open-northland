@@ -12,23 +12,21 @@ import { nodeBandOfCells } from './picking.js';
 const OVERLAY_BAND_MARGIN = 2;
 
 /**
- * The build-mode overlay-frame builder: the visible band plus which of its HALF-CELL NODES reject
- * the held building's anchor — the SAME rule `placeBuilding` gates on (`Simulation.placementProbe`),
- * so the dimmed area is exactly where a click would be refused (blocked by terrain — trees/stones/
- * ore/water — or by another building's margin). The camera cull yields a CELL band
- * (`visibleTileRange`); the probe walks its 2× node band, since anchors live on the half-cell
- * lattice. Screen-bounded per golden rule 6 (per-frame cost scales with the screen): only the
- * visible band is probed, and only while placing — and the band probe is MEMOIZED on (type,
- * placement-blocker version, band). The version (`Simulation.placementBlockerVersion`) moves only
- * when a building/resource is added or removed, NOT every tick — so a still camera over a RUNNING sim
- * reuses last frame's blocked set instead of re-probing the whole node band per RAF (keying on the
- * tick instead makes the O(4×visible×footprint) loop re-run 20×/s while the game plays). Returns null
- * for a mapless sim (no placement rule → no wash).
+ * The build-mode overlay-frame builder: the visible band plus which of its half-cell nodes reject the
+ * held building's anchor — the same rule `placeBuilding` gates on (`Simulation.placementProbe`), so the
+ * dimmed area is exactly where a click would be refused (blocked by terrain — trees/stones/ore/water — or
+ * by another building's margin). The camera cull yields a cell band (`visibleTileRange`); the probe walks
+ * its 2× node band, since anchors live on the half-cell lattice. Screen-bounded per golden rule 6: only the
+ * visible band is probed, only while placing, and the probe is memoized on (type, placement-blocker
+ * version, band). The version (`Simulation.placementBlockerVersion`) moves only when a building/resource is
+ * added or removed, not every tick — so a still camera over a running sim reuses last frame's blocked set
+ * instead of re-probing the whole node band per RAF (keying on the tick would re-run the
+ * O(4×visible×footprint) loop 20×/s while the game plays). Returns null for a mapless sim.
  *
- * Under FOG, every node whose cell the player does not currently SEE dims too — the overlay half of
- * the `canPlaceAt` fog gate (the two must never drift), which also stops the probe from leaking
- * fogged occupancy (a blocked-cells pattern inside the black would read as enemy buildings). The
- * memo key carries the fog generation+mode, so a mask rebuild re-probes but a still fog reuses.
+ * Under fog, every node whose cell the player does not currently see dims too — the overlay half of the
+ * `canPlaceAt` fog gate (the two must never drift), which also stops the probe from leaking fogged
+ * occupancy (a blocked-cells pattern inside the black would read as enemy buildings). The memo key carries
+ * the fog generation+mode, so a mask rebuild re-probes but a still fog reuses.
  */
 export function makeOverlayFrameSource(
   sim: Simulation,

@@ -18,13 +18,13 @@ import { floatParam, intParam } from '../view/params.js';
 
 /**
  * The deterministic, headless render entry the screenshot harness waits on (docs/TESTING.md
- * "Visual validation via Playwright"): *render scenario X at seed S, advance N ticks, draw ONE
- * frame, then signal ready* — explicitly NOT the wall-clock `requestAnimationFrame` loop. The
- * harness boots the page with `?shot`, polls `window.__opennorthlandShotReady`, and screenshots the canvas.
+ * "Visual validation via Playwright"): render scenario X at seed S, advance N ticks, draw one frame, then
+ * signal ready — not the wall-clock `requestAnimationFrame` loop. The harness boots the page with `?shot`,
+ * polls `window.__opennorthlandShotReady`, and screenshots the canvas.
  *
- * Because the sim is seed-deterministic and `buildScene` is pure, the same `?shot&seed=…&ticks=…`
- * always produces the same draw list — so the *only* source of frame variance is the GPU rasteriser,
- * which is why the harness output is eyeballed for gross correctness, never byte-compared.
+ * The sim is seed-deterministic and `buildScene` is pure, so the same `?shot&seed=…&ticks=…` produces the
+ * same draw list; the only source of frame variance is the GPU rasteriser, so the output is eyeballed for
+ * gross correctness, never byte-compared.
  */
 
 /** Set on `window` once the single frame has been drawn, so Playwright can wait deterministically. */
@@ -79,8 +79,7 @@ export async function renderShot(canvas: HTMLCanvasElement): Promise<void> {
   const terrain = params.has('terrain') ? await loadRealTerrain() : undefined;
 
   // The retained renderer draws the single deterministic frame: terrain meshed once, sprites pooled, one
-  // render pass. The default frame closely matches the old immediate-mode shot, but is NOT pixel-identical:
-  // the flat-tint ground drops the old per-cell grid outline (`buildFlatTerrain`), same as the textured path.
+  // render pass.
   const renderer = new WorldRenderer(app, { sheet });
   renderer.setTerrain(terrainGrid, terrain);
   // Overlay the single-tribe (viking) HUD panel unless `?hud=0` (a clean sprite-inspection

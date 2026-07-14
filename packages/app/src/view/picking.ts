@@ -69,11 +69,9 @@ function worldToTileFlat(wx: number, wy: number): Tile {
 }
 
 /**
- * How many correction passes the elevation-aware inverse takes before giving up. The renderer lifts a
- * cell's ground UP by `LIFT·elev` (up to ~7–8 rows on a tall map), so the flat inverse lands rows below
- * the clicked hilltop; each pass re-samples the current guess's lift and re-solves, converging to the
- * cell actually drawn under the cursor. A handful of passes reaches a fixed point for real terrain
- * (smooth slopes); the loop also breaks as soon as the estimate stops moving.
+ * How many correction passes the elevation-aware inverse ({@link worldToTile}) takes before giving up.
+ * A handful reaches a fixed point for real terrain (smooth slopes; the lift is up to ~7–8 rows on a tall
+ * map), and the loop also breaks as soon as the estimate stops moving.
  */
 const PICK_ELEVATION_PASSES = 8;
 

@@ -43,9 +43,8 @@ export interface PlacementController {
    * Route a left-click while placing: on a tile the placement rule ACCEPTS, enqueue `placeBuilding` as a
    * CONSTRUCTION SITE (`underConstruction`) and exit build mode (one click = one foundation); on a rejecting
    * or off-map tile the click is consumed but inert (placement claims the canvas until placed or cancelled).
-   * Every player-placed building is raised the original way — a grey foundation that builders deliver
-   * materials to and hammer up (the ConstructionSystem) — so construction is GLOBAL across every scene and
-   * map, not a per-scene demo. Returns true when consumed.
+   * The foundation is then raised the original way — builders deliver materials and hammer it up
+   * (the ConstructionSystem). Returns true when consumed.
    */
   handleClick(clientX: number, clientY: number): boolean;
   /** Per-frame: re-place the banner text against the live canvas size. */
@@ -96,9 +95,8 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
     handleClick: (clientX, clientY): boolean => {
       if (placementType === null) return false;
       const tile = deps.screenToTile(clientX, clientY);
-      // Placement claims every click; only one on ACCEPTED ground places — and then exits build mode
-      // (the original's flow: pick → place once → the build UI is gone). A rejected tile is inert, so
-      // the mode survives a mis-click on the dimmed wash (Esc / right-click still abandon).
+      // Placement claims every click; only one on ACCEPTED ground places and exits build mode. A rejected
+      // tile is inert, so the mode survives a mis-click on the dimmed wash (Esc / right-click still abandon).
       if (tile !== null && deps.canPlaceAt(placementType, tile.col, tile.row)) {
         deps.enqueue({
           kind: 'placeBuilding',
@@ -115,8 +113,7 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
       }
       return true;
     },
-    // NOTE the old code inset the text by WIN_PAD on enter but dropped the inset in its per-frame
-    // re-place (the visible position) — unified here on the inset version, a ~6px banner-text fix.
+    // Inset the banner text by WIN_PAD to match the position set on enter.
     placeBanner: (): void => {
       if (bannerRun === null) return;
       const { width: rw, height: rh } = ctx.screen();

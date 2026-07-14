@@ -91,9 +91,8 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // A decoded map's placed landscape objects (trees/stones/mine decals + the animated wave fx that
   // are the original's water surface) — resolved through the landscapeGfx IR + the /bobs atlases.
   // The catch keeps a partial content/ (e.g. a missing atlas PNG) a degradation, not an app crash.
-  // Every placement draws here, harvestables included: a virgin tree/stone/mine is a built-once static
-  // quad/sprite (zero per-frame cost — a far zoom-out shows thousands at once), and the sim's sprite
-  // pool skips it via the static-refs set below until the moment it is first worked (the handover).
+  // Harvestables draw here too: a virgin node is a built-once static quad (zero per-frame cost — a far
+  // zoom-out shows thousands at once), handed to the live sim pool the first time it is worked (below).
   let staticObjects: Awaited<ReturnType<typeof loadMapObjects>> | undefined;
   if (loaded?.objects !== undefined && ir !== null) {
     try {
@@ -106,10 +105,8 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
       console.warn(`map objects unavailable, bare ground fallback: ${String(err)}`);
     }
   }
-  // The slice sim, kept live and stepped one tick per fixed interval below. A map that carries
-  // authored entities (map.cif StaticObjects) places those buildings/settlers at their authored
-  // cells; else the demo slice — on a loaded map's walkable cells, or the synthetic strip. The
-  // demo's units are owned by the human player so they can be selected + ordered.
+  // The slice sim (kept live and stepped one tick per fixed interval) is built below; its demo units are
+  // owned by the human player so they can be selected + ordered.
   // Extracted building footprints from the served IR give buildings real collision, so `placeBuilding`
   // is blocked where a house doesn't fit and the build overlay greys those tiles (empty without content/).
   const footprints = buildingFootprints(ir);
@@ -149,8 +146,8 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   const fogOverride = fogModeParam(params);
   if (fogOverride !== null) sim.enqueue({ kind: 'setFogMode', mode: fogOverride });
 
-  // Spawn the map's own trees/ore/stone as real harvestable `Resource` sim nodes (plan step 6), so a
-  // gatherer can actually work them — before this they were render-only decor and every gatherer idled.
+  // Spawn the map's own trees/ore/stone as real harvestable `Resource` sim nodes, so a gatherer can
+  // actually work them, not just see render-only decor.
   // Direct spawn into the sim (after its one placement tick above), in the map's placement order
   // (deterministic ids) — the authored buildings/settlers already exist, so these nodes take later ids.
   //

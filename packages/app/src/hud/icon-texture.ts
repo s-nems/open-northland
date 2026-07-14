@@ -7,16 +7,15 @@ import {
 import { type Application, Container, type Sprite } from 'pixi.js';
 
 /**
- * Crisp fractional scaling for a single round HUD icon (the settler action-ring order buttons) — the
- * per-icon twin of the tool panel's {@link import('./tool-panel/strip-texture.js')}, over the same
+ * Crisp fractional scaling for a single round HUD icon (the settler action-ring order buttons), over the
  * render-layer supersample ({@link bakeToFlippedSprite}).
  *
  * The order buttons are {@link PalettedSprite} meshes over an INDEXED atlas, drawn with the `'round'` colour
- * key (hard-clipped to the inscribed disc in the shader). At a fractional UI scale the nearest sampling
+ * key (hard-clipped to the inscribed disc in the shader). At a fractional UI scale nearest sampling
  * stair-steps the disc rim and the hard clip aliases the circle. Fix it by supersampling: bake the icon at
- * an INTEGER oversample into a texture (nearest is exact at an integer zoom, the clip is a clean high-res
- * circle), then draw it linear-downscaled — the downscale anti-aliases the disc edge uniformly. This module
- * owns the layout (oversample choice, centering); the render helper owns the texture + the WebGL Y-flip.
+ * an INTEGER oversample into a texture (nearest is exact at an integer zoom), then draw it linear-downscaled
+ * so the downscale anti-aliases the disc edge. This module owns the layout (oversample choice, centering);
+ * the render helper owns the texture + the WebGL Y-flip.
  *
  * Unlike the static strip, the ring is dynamic: the icon art is baked ONCE here, and the caller repositions
  * the returned display sprite on the settlers' centroid every frame.

@@ -38,9 +38,8 @@ export const GATHERER_WORK_RADIUS = components.DEFAULT_WORK_FLAG_RADIUS;
 
 /**
  * Place a viking building (by typeId or catalog id), fully built, via the `placeBuilding` command.
- * Forced: scene setup is authored fixture state (like a decoded map's `sethouse` records), so it
- * loads as-is — the tech/collision gates govern the player's interactive placements, not the fixture
- * a scene is defined to start from (a scene author placing two huts adjacently means it).
+ * Forced because the tech/collision gates govern the player's interactive placements, not an authored
+ * scene fixture (a scene author placing two huts adjacently means it).
  */
 export function placeSandboxBuilding(
   sim: Simulation,

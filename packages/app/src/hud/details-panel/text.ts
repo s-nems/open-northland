@@ -6,27 +6,26 @@ import type { Rect } from '../geometry.js';
 /**
  * The details panel's vector-text primitives — the placement half of the drawing kit
  * ({@link import('./chrome.js')}). Text draws in the bundled vector serif (`content/ui-font.ts`, always
- * present), NOT the original bitmap `.fnt`: a larger `title` size for headlines/buttons/the building name,
- * a `body` size for everything else. Lines are placed by Pixi `Text` anchors (top-left / centred / right)
- * rather than the bitmap face's baseline metrics. Every `Text` is Pixi-native content (like the panel's
- * Graphics), so it bakes upright with no `flipY`; the bake disposes it with the offscreen root each rebuild.
+ * present), not the original bitmap `.fnt`: a larger `title` size for headlines/buttons/the building name,
+ * a `body` size for the rest. Lines are placed by Pixi `Text` anchors (top-left / centred / right) rather
+ * than the bitmap face's baseline metrics. Each `Text` is Pixi-native, so it bakes upright with no `flipY`
+ * and is disposed with the offscreen root each rebuild.
  */
 
 /** Which of the two panel text sizes a call draws at. */
 export type FontVariant = 'body' | 'title';
 
 /**
- * The vector text sizes in NATIVE (pre-scale) px: `title` for headlines/buttons/the building name, `body`
- * for rows. Multiplied by the chrome scale (the bake oversample) at draw time. Calibrated against the
- * original's font-10 body / font-12 title cap heights, then nudged for the serif's smaller x-height.
+ * The vector text sizes in native (pre-scale) px, multiplied by the chrome scale (the bake oversample) at
+ * draw time. Calibrated against the original's font-10 body / font-12 title cap heights, then nudged for
+ * the serif's smaller x-height.
  */
 const FONT_PX: Readonly<Record<FontVariant, number>> = { body: 11, title: 13 };
 /**
- * A `Text` top-anchors at its line-box top, which sits this fraction of the font size ABOVE the visible cap
+ * A `Text` top-anchors at its line-box top, which sits this fraction of the font size above the visible cap
  * tops (measured for Tinos: `fontBoundingBoxAscent − actualBoundingBoxAscent ≈ 0.22 em`). Top-anchored
  * placements ({@link TextKit.textAt}/{@link TextKit.textRight}) subtract it so a caller's `y` means the
- * visible glyph top — the same contract the old bitmap path gave via its baseline metrics, so row text
- * keeps its `ROW_TEXT_PAD`.
+ * visible glyph top.
  */
 const CAP_TOP_RATIO = 0.22;
 /**

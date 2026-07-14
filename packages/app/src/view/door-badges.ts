@@ -6,19 +6,15 @@ import { type DoorFootprint, workerIconNode } from './building-points.js';
 
 /**
  * The DOOR-BADGE projection — turn the frozen snapshot into the per-building worker tally the render
- * {@link DoorBadge} layer draws beside each staffed building's door. It reads the SAME employment
- * binding the sim's JobSystem writes ({@link JobAssignment}.`workplace`), so a badge appears for every
- * worker bound to a building — whether the economy auto-assigned it or the player did (the
- * `assignWorker` command). Pure over the snapshot + the building-type door table + a job-role classifier
- * (unit-tested); the app calls it once per frame and hands the result to `renderer.update(...)`.
+ * {@link DoorBadge} layer draws beside each staffed building's door. It reads the SAME employment binding
+ * the sim's JobSystem writes ({@link JobAssignment}.`workplace`), so a badge appears for every worker bound
+ * to a building, whether auto-assigned or player-assigned (the `assignWorker` command). Pure over the
+ * snapshot + the building-type door table + a job-role classifier (unit-tested); called once per frame.
  *
- * Two passes over the entities (buildings and their workers can appear in any order): tally each
- * building's bound settlers, split by worker ROLE (craftsman / carrier / gatherer, via `roleOf`), then
- * project the WORKER-ICON anchor of every building that has a tally: the door node (anchor +
- * `footprint.door`, {@link interactionNode}'s app-side twin) shifted one node right of the doorway —
- * or that building's committed override ({@link workerIconNode} over `catalog/building-tweaks.ts`), the
- * same point the `?debug=geometry` diagram marks with the blue dot — converted back to a fixed-point
- * `Position` the render layer projects with the same iso math as the building sprite.
+ * The badge anchors at the WORKER-ICON node — the door node (anchor + `footprint.door`) shifted one node
+ * right of the doorway, or the building's committed override ({@link workerIconNode} over
+ * `catalog/building-tweaks.ts`), the same point the `?debug=geometry` diagram marks — converted back to a
+ * fixed-point `Position` the render layer projects with the same iso math as the building sprite.
  */
 
 /** The slice of a building TYPE this projection needs: its door offset (half-cell, from the placed

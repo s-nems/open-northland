@@ -168,8 +168,7 @@ export const VIKING_CHARACTERS: readonly VikingCharacter[] = [
     id: 'baby',
     bodyBmd: 'cr_hum_body_22',
     imagelib: 'cr_hum_body_22.bmd',
-    // Body-only: `cr_hum_head_22` decodes to an empty atlas (the swaddled baby's head is part of the body
-    // bob), so there is no separate head look — the baby draws body-only in every view.
+    // Body-only: `cr_hum_head_22` is an empty atlas (the swaddled baby's head is baked into the body bob).
     headBmds: [],
   },
 ];
@@ -199,7 +198,7 @@ export function characterStems(
  * Pick the sequence to drive the "heads" montage: the plain locomotion cycle, so every look is compared
  * doing the same clean 8-direction walk. Prefers a row whose name ends in `_walk` and is a full ×8 strip
  * (the true walk, not `_walk_agressive` or a carry variant), then the longest ×8 clip (a body with no
- * `_walk` — the baby's `crouch`), then the first row. Pure + total (returns `undefined` only for `[]`).
+ * `_walk` — the baby's `crouch`), then the first row. Pure; returns `undefined` only for `[]`.
  */
 export function pickWalkRow(rows: readonly BobSeqRow[]): BobSeqRow | undefined {
   // A ×8 strip is the compass-directional layout the montage's direction selector needs — the same rule

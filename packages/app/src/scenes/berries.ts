@@ -6,17 +6,17 @@ import { JOB_GATHERER_WOOD, placeSandboxBerryBush } from '../game/sandbox/index.
 import type { SceneDefinition } from './types.js';
 
 /**
- * The BERRIES scene: prove wild berry bushes are forageable natural food. Hungry settlers (no larder in
- * sight) each walk to the nearest RIPE bush and forage it — hunger resets, the bush's fruit is eaten so it
- * goes BARE, then it REGROWS its fruit after a while ({@link systems.BERRY_REGROW_TICKS}). A separate bush
- * placed already-bare regrows on its own, proving the growth loop independent of foraging. There is
- * deliberately NO food store, so the ONLY way a settler's hunger can reset is by foraging a bush — the
- * headless half asserts exactly that (every hungry settler ends fed, and every bush ends ripe again). The
- * browser half is where a human judges the pixels: the red-berry bush, the eat animation, the bush turning
- * bare the instant it's foraged, and the berries growing back.
+ * The berries scene: prove wild berry bushes are forageable natural food. Hungry settlers each forage the
+ * nearest ripe bush — hunger resets, the bush goes bare, then regrows its fruit after
+ * {@link systems.BERRY_REGROW_TICKS}. A separate bush placed already-bare regrows on its own, proving the
+ * growth loop independent of foraging. There is deliberately no food store, so the only way a settler's
+ * hunger can reset is by foraging a bush — the headless half asserts exactly that (every hungry settler
+ * ends fed, every bush ends ripe again). The browser half is where a human judges the pixels: the
+ * red-berry bush, the eat animation, the bush going bare the instant it's foraged, and the berries
+ * growing back.
  *
- * The bushes carry a REAL fruited-bush render-variant index ({@link BUSH_FRUITS_GFX}) so the browser draws
- * the original "bush 01 fruits"/"bush 01 empty" art through the berry-bush binding; it is inert headlessly.
+ * The bushes carry a real fruited-bush render-variant index ({@link BUSH_FRUITS_GFX}) so the browser draws
+ * the original "bush 01 fruits"/"bush 01 empty" art through the berry-bush binding; inert headlessly.
  */
 
 const MAP_W = 30;
@@ -27,8 +27,8 @@ const ROW_Y = 6;
 const STATION_GAP = 6;
 const STATIONS = 4;
 const FIRST_STATION_X = 5;
-/** A bush placed already BARE (regrowing) to prove the growth loop runs without being foraged first. It
- *  regrows at this absolute tick — comfortably inside the run, and well before the run ends. */
+/** A bush placed already bare (regrowing) to prove the growth loop runs without being foraged first. It
+ *  regrows at this absolute tick — well inside the run. */
 const LONE_BARE_BUSH = { x: 27, y: 9, ripeAtTick: 300 } as const;
 /**
  * Long enough for the whole cycle to close: the foragers walk one tile + eat (~tens of ticks), then every
@@ -37,15 +37,13 @@ const LONE_BARE_BUSH = { x: 27, y: 9, ripeAtTick: 300 } as const;
  */
 const RUN_TICKS = 1500;
 /** Frames the whole bush row; ≠ 1 so `cameraFor` centres on the scene's settlers (zoom 1 keeps the fixed
- *  origin offset), like the farm scene. */
+ *  origin offset). */
 const INITIAL_ZOOM = 1.2;
 /** Clearly over the ¾·ONE eat threshold — these settlers seek food before anything else. */
 const HUNGRY = fx.div(fx.fromInt(9), fx.fromInt(10));
 /**
  * The `[GfxLandscape]` record index of "bush 01 fruits" (source: decoded `landscapes.cif`, logicType 11 =
- * `bush with fruits`). Authoring a REAL render-variant so the browser scene draws the original bush art —
- * the same stance a scene takes when it uses the real extracted building footprints. Inert in the headless
- * test (no render).
+ * `bush with fruits`).
  */
 const BUSH_FRUITS_GFX = 806;
 

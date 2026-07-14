@@ -13,16 +13,15 @@ import type { DesignRect } from './layout.js';
  *
  * The strip + buttons are {@link PalettedSprite} meshes over an INDEXED atlas (red = palette index), read
  * through the GUI palette LUT and sampled NEAREST — palette indices can't be linearly filtered (an averaged
- * index decodes to a wrong colour). Drawn straight at a fractional `uiscale` (the 1.4× default) that nearest
- * sampling doubles some texel columns and not others ("pixeloza"). The fix is to supersample: place the
- * meshes at an INTEGER oversample `ss` into a texture, then draw that texture linear-downscaled to the
- * display size — this module owns the layout (design bounds → texel placement, the display anchor); the
- * render helper owns the texture + the WebGL Y-flip.
+ * index decodes to a wrong colour). At a fractional `uiscale` (the 1.4× default) nearest sampling doubles
+ * some texel columns and not others ("pixeloza"). The fix: place the meshes at an INTEGER oversample `ss`
+ * into a texture, then draw that texture linear-downscaled to the display size — this module owns the layout
+ * (design bounds → texel placement, the display anchor); the render helper owns the texture + the WebGL
+ * Y-flip.
  *
- * This also makes the strip STATIC: it bakes once (and re-bakes only when a glyph changes, e.g. the
- * game-speed button — {@link SupersampledStrip.redraw}), replacing the old per-frame screen-space
- * re-placement of every panel mesh. The display `Sprite` is a normal scene-graph child, so it batches and
- * follows canvas resizes for free.
+ * This also makes the strip STATIC: it bakes once, re-baking only when a glyph changes (e.g. the game-speed
+ * button — {@link SupersampledStrip.redraw}). The display `Sprite` is a normal scene-graph child, so it
+ * batches and follows canvas resizes for free.
  */
 
 /**

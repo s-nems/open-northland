@@ -3,12 +3,11 @@ import type { Rect } from './geometry.js';
 
 /**
  * The shared chrome of the HUD's pop-up windows (building menu, statistics, placement banner) plus the
- * hover highlight theme — ONE home so the look can't drift per window. It offers two tiers over the same
- * geometry: {@link tileBitmap} lays the decoded `bg*.pcx` wood/rust/button fills (the in-game look), and
- * the `draw*` Graphics helpers (gilt frame, bevels, tab plates, scrollbar) both frame those tiles AND
- * stand in as the flat fallback when `content/` is absent. The details panel (`details-panel/chrome.ts`)
- * draws the higher-fidelity rope-and-knot borders over the same bitmap fills; its rope-frame helpers are
- * the remaining thing to lift up here (rather than fork) when these windows want that border too.
+ * hover highlight theme — one home so the look can't drift per window. Two tiers over the same geometry:
+ * {@link tileBitmap} lays the decoded `bg*.pcx` wood/rust/button fills (the in-game look), and the `draw*`
+ * Graphics helpers (gilt frame, bevels, tab plates, scrollbar) both frame those tiles and stand in as the
+ * flat fallback when `content/` is absent. The details panel (`details-panel/chrome.ts`) draws
+ * higher-fidelity rope borders over the same fills.
  */
 
 /** Design-space window metrics (scaled by uiscale, like the strip): padding, title row, text line. */
@@ -49,9 +48,8 @@ export const HOVER_ALPHA = 0.16;
 const bevelLine = (scale: number): number => Math.max(1, Math.round(scale));
 
 /**
- * Draw a two-tone bevel INSIDE `r`: light edges top+left, dark edges bottom+right for a RAISED look;
- * swapped for a PRESSED (inset) look. The shared primitive behind the panel frame, tab buttons and the
- * scrollbar thumb/track, so every recessed/raised affordance reads consistently.
+ * Draw a two-tone bevel inside `r`: light edges top+left, dark edges bottom+right for a raised look,
+ * swapped for a pressed (inset) look. Shared by the panel frame, tab buttons and the scrollbar thumb/track.
  */
 export function drawBevel(g: Graphics, r: Rect, scale: number, style: 'raised' | 'pressed'): void {
   const w = bevelLine(scale);
@@ -75,8 +73,7 @@ export function drawWindowPanel(g: Graphics, r: Rect, scale: number): void {
 
 /**
  * Tile `texture` over `r` into `target` at the panel scale (the original bitmap fills are 300×300 wood/rust
- * tiles). Returns false when the texture is absent so the caller draws a flat-Graphics fallback. Mirrors the
- * details panel's `tile` — the shared way both pop-up families reuse the decoded `bg*.pcx` fills.
+ * tiles). Returns false when the texture is absent so the caller draws a flat-Graphics fallback.
  */
 export function tileBitmap(target: Container, texture: Texture | undefined, r: Rect, scale: number): boolean {
   if (texture === undefined) return false;
@@ -91,8 +88,8 @@ export function tileBitmap(target: Container, texture: Texture | undefined, r: R
   return true;
 }
 
-/** Draw the gilt window frame around `r`: a bright gold bead between two dark lines (a flat evocation of the
- *  original's gilded rope border — the higher-fidelity rope art stays in the details panel). */
+/** Draw the gilt window frame around `r`: a bright gold bead between two dark lines (a flat evocation of
+ *  the original's gilded rope border). */
 export function drawWindowFrame(g: Graphics, r: Rect, scale: number): void {
   const w = bevelLine(scale);
   g.rect(r.x, r.y, r.w, r.h).stroke({ color: FRAME_DARK, width: w, alignment: 0 });

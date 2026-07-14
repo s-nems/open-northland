@@ -20,11 +20,11 @@ export function expectedGatherYield(g: GathererSpec): number {
 }
 
 /**
- * Total `good` banked in the goods YARD — summed across every loose ground heap holding it. A flag-bound
- * gatherer no longer stores its harvest ON the flag (a pure marker now); it spreads the load onto separate
- * ground heaps around the flag, capped per tile, so a good's yield lives across several pinned heaps. Each
- * gatherable good is unique to its lane, so summing all heaps of `good` gives that lane's banked total. A
- * heap is a bare loose pile ({@link systems.isYardHeap}) — the ONE shared "settled ground heap" predicate.
+ * Total `good` banked in the goods yard — summed across every loose ground heap holding it. A flag-bound
+ * gatherer spreads its harvest onto separate ground heaps around the flag, capped per tile, so a good's
+ * yield lives across several pinned heaps. Each gatherable good is unique to its lane, so summing all heaps
+ * of `good` gives that lane's banked total. A heap is a bare loose pile ({@link systems.isYardHeap}) — the
+ * shared "settled ground heap" predicate.
  */
 export function yardGood(sim: Simulation, good: number): number {
   let total = 0;

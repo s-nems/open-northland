@@ -3,27 +3,23 @@ import { loadLayer } from './ir.js';
 import { fetchImageData, fetchJsonOrNull, loadTextureIfPresent } from './net.js';
 
 /**
- * GUI (in-game HUD) content bindings — the loadable seam for the pipeline's `gui` stage outputs, the GUI
- * twin of {@link import('./building-gfx/index.js')} / {@link import('./settler-gfx/index.js')}. No HUD is rendered
- * yet; this module just makes the decoded GUI art/palettes/strings/cursors reachable so the HUD slice
- * can consume them. Nothing here pulls in copyrighted bytes — a checkout without `content/` degrades
- * gracefully (a missing manifest/strings return `null`; a missing atlas throws `MissingAtlasError`
- * via {@link loadLayer}, the same precondition the settler/building loaders degrade on).
+ * GUI (in-game HUD) content bindings — the loadable seam for the pipeline's `gui` stage outputs. It makes
+ * the decoded GUI art/palettes/strings/cursors reachable for the HUD slice; no HUD is rendered yet. A
+ * checkout without `content/` degrades gracefully: a missing manifest/strings return `null`, a missing
+ * atlas throws `MissingAtlasError` via {@link loadLayer}.
  *
  * Where each output lives (matching the pipeline stage + `vite.config.ts` routes):
- *  - **Atlases + palette LUT** ride the existing `/bobs/` route (they are bob atlases): the recolourable
- *    indexed atlas at stem `<sheet>.indexed`, the RGBA preview at `<sheet>.<previewPalette>`, and
- *    the `256 × N` palette LUT at `/bobs/gui-palettes-lut.png` (loaded like the player-colour LUT). The
- *    renderer reads an indexed atlas pixel through the LUT row for its element's palette — same mechanism
- *    as the player-colour LUT + `PalettedSprite`.
- *  - **Strings + cursors + the top-level manifest** are served at `/gui/…` (they are not bob atlases).
+ *  - **Atlases + palette LUT** ride the `/bobs/` route (they are bob atlases): the recolourable indexed
+ *    atlas at stem `<sheet>.indexed`, the RGBA preview at `<sheet>.<previewPalette>`, and the `256 × N`
+ *    palette LUT at `/bobs/gui-palettes-lut.png`. The renderer reads an indexed atlas pixel through the
+ *    LUT row for its element's palette (same mechanism as the player-colour LUT + `PalettedSprite`).
+ *  - **Strings + cursors + the top-level manifest** are served at `/gui/…` (not bob atlases).
  */
 
 /**
- * The GUI palette LUT row order (row index = palette). Mirrors `GUI_PALETTES` in
- * `tools/asset-pipeline/src/stages/gui.ts` — keep the two in lock-step (append, never reorder), since the
- * pipeline bakes this order into the LUT rows and the renderer selects a row by index. The manifest also
- * carries the names, so a consumer can cross-check `guiPaletteRow` against `manifest.paletteLut.names`.
+ * The GUI palette LUT row order (row index = palette). Kept in lock-step with `GUI_PALETTES` in
+ * `tools/asset-pipeline/src/stages/gui.ts` (append, never reorder): the pipeline bakes this order into the
+ * LUT rows and the renderer selects a row by index.
  */
 export const GUI_PALETTES = [
   'iconsleft',
@@ -77,11 +73,8 @@ const GUI_BITMAP_ROOT = '/gui-bitmaps';
 
 /**
  * The recolourable indexed atlas of a GUI sheet (the whole-HUD window sheet / the speech-bubble sheet),
- * loaded by its `<sheet>.indexed` stem through the shared {@link loadLayer} — so GUI atlases go through the
- * exact same manifest→geometry + PNG→texture path as the settler/building atlases; the renderer reads each
- * pixel's index through the GUI palette LUT at draw time. Throws `MissingAtlasError` when the decoded files
- * are absent (the pipeline hasn't run). The RGBA preview atlases load the same way — `loadLayer(previewStem)`
- * off a {@link GuiManifest} atlas entry — so no separate preview loader is needed.
+ * loaded by its `<sheet>.indexed` stem through the shared {@link loadLayer}. Throws `MissingAtlasError`
+ * when the decoded files are absent (the pipeline hasn't run).
  */
 export function loadGuiWindowIndexed(): Promise<SpriteLayer> {
   return loadLayer(`${GUI_WINDOW_STEM}.${INDEXED_GUI_SUFFIX}`);
@@ -89,8 +82,8 @@ export function loadGuiWindowIndexed(): Promise<SpriteLayer> {
 
 /**
  * Load the GUI palette LUT texture (`/bobs/gui-palettes-lut.png`, a `256 × N` sheet, one composed palette
- * per row) the indexed GUI atlases are coloured through — the GUI twin of `loadPlayerLut`. Returns
- * `undefined` when the pipeline hasn't produced it, so a caller degrades to the RGBA preview atlas.
+ * per row) the indexed GUI atlases are coloured through. Returns `undefined` when the pipeline hasn't
+ * produced it, so a caller degrades to the RGBA preview atlas.
  */
 export function loadGuiPaletteLut(): Promise<TextureSource | undefined> {
   return loadTextureIfPresent(`/bobs/${GUI_PALETTE_LUT_STEM}.png`);
@@ -98,20 +91,19 @@ export function loadGuiPaletteLut(): Promise<TextureSource | undefined> {
 
 /**
  * The decoded level→colour ramp of the original `bar_hitpoints.pcx` palette, as 256 packed `0xRRGGBB`
- * entries: red `#ff0000` at index 0 (empty) → orange → yellow-green `#d4ff4b` at 255 (full). The
- * original ships this as a palette whose entries sweep the colour with the index — the decoded evidence
- * that a bar's colour follows its level. How the engine consumes it isn't decompiled (`PalBarHitpoints`
- * is loaded in OpenVikings but its draw site isn't ported), so the panel's reading — fill colour =
- * `ramp[level]`, one colour per bar — is a named approximation. Every stat gauge uses this ramp (user
- * decision 2026-07-11): the sibling `bar_standart` ramp stays green until ~15%, so a draining need showed
- * no visible colour change; this one walks green→orange→red across the range.
+ * entries: red `#ff0000` at index 0 (empty) → orange → yellow-green `#d4ff4b` at 255 (full), the decoded
+ * evidence that a bar's colour follows its level. How the engine consumes it isn't decompiled
+ * (`PalBarHitpoints` loads in OpenVikings but its draw site isn't ported), so the panel's reading (fill
+ * colour = `ramp[level]`, one colour per bar) is a named approximation. Every stat gauge uses this ramp
+ * (user decision 2026-07-11): the sibling `bar_standart` ramp stays green until ~15%, so a draining need
+ * showed no colour change, while this one walks green→orange→red across the range.
  */
 export type GuiBarRamp = readonly number[];
 
 /**
- * Read the `bar_hitpoints` LUT row CPU-side: fetch the same `/bobs/gui-palettes-lut.png` the renderer
- * samples on the GPU, draw it onto a 2D canvas, and pack the row's 256 RGB entries. `undefined` when
- * the LUT is absent (no `content/`) or unreadable — the bars then fall back to their flat banded colours.
+ * Read the `bar_hitpoints` LUT row CPU-side (the renderer samples the same `/bobs/gui-palettes-lut.png` on
+ * the GPU) and pack its 256 RGB entries. `undefined` when the LUT is absent (no `content/`) or unreadable,
+ * so the bars fall back to their flat banded colours.
  */
 export async function loadGuiBarRamp(): Promise<GuiBarRamp | undefined> {
   const image = await fetchImageData(`/bobs/${GUI_PALETTE_LUT_STEM}.png`);

@@ -10,24 +10,23 @@ import {
 
 /**
  * Reduce the decoded `constructionLayers` IR (the `extractConstructionLayers` leg) to the render's
- * per-type construction-stage binding for ONE tribe — the staged-graphics twin of
+ * per-type construction-stage binding for one tribe — the staged-graphics twin of
  * {@link import('./families.js').buildingBobRefsByType}, sharing its family rules: a row's
  * `(bmd, palette)` must be the {@link defaultFamily} (a bare-id stage on the default building layer) or a
- * loaded named family (a layer-qualified stage); a row in an UNLOADED family is dropped (its frame-id
- * space differs — never borrow), and a typeId whose stages end up ALL dropped is omitted entirely (it
- * keeps its normal body draw at every progress rather than showing a partial stack). Only from-scratch
- * rows are consumed (`upgrade === false`; the 1-rows are the original's upgrade-overlay pass — source basis).
+ * loaded named family (a layer-qualified stage); a row in an unloaded family is dropped (its frame-id space
+ * differs — never borrow), and a typeId whose stages end up all dropped is omitted entirely (it keeps its
+ * normal body draw rather than showing a partial stack). Only from-scratch rows are consumed
+ * (`upgrade === false`; the 1-rows are the original's upgrade-overlay pass — source basis).
  *
- * A typeId's stages must all come from **one source record at one size level** — several records can
- * carry the same typeId (the HQ's `"viking headquarters"` vs its `"viking headquarters house"` variant;
- * the pottery maps one typeId at two sizeIdx; the two wall orientations share typeId 22), and merging
- * their per-record `stackIdx` streams would interleave two different stage stacks. So the reduction
- * first restricts to the preferred palette (when present), then picks ONE `(editName, level)` group:
- * the {@link CANONICAL_EDIT_NAME} match when it names this typeId (the same disambiguation the body
- * binding applies), else the lowest `level` (the base build stage — the extractors' lowest-sizeIdx
- * convention), ties to the lexicographically smallest `editName` (deterministic, order-independent).
- * The chosen group's stages keep their source stacking order (`stackIdx`). Pure + exported so the
- * reduction is unit-tested without a browser.
+ * A typeId's stages must all come from one source record at one size level — several records can carry the
+ * same typeId (the HQ's `"viking headquarters"` vs its `"viking headquarters house"` variant; the pottery
+ * maps one typeId at two sizeIdx; the two wall orientations share typeId 22), and merging their per-record
+ * `stackIdx` streams would interleave two different stage stacks. So the reduction first restricts to the
+ * preferred palette (when present), then picks one `(editName, level)` group: the {@link CANONICAL_EDIT_NAME}
+ * match when it names this typeId (the same disambiguation the body binding applies), else the lowest
+ * `level` (the base build stage — the extractors' lowest-sizeIdx convention), ties to the lexicographically
+ * smallest `editName` (deterministic, order-independent). The chosen group's stages keep their source
+ * stacking order (`stackIdx`). Pure.
  */
 export function constructionRefsByType(
   rows: readonly ConstructionLayerRow[],

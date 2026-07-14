@@ -79,7 +79,7 @@ export const TOOL_BUTTONS: readonly ToolButtonSpec[] = [
   { id: 'speed', rect: { x: 0, y: 0x175, w: 0x28, h: 0x23 }, gfx: 0x31, tooltipStringId: 0x0d },
 ];
 
-/** A rect placed in screen (canvas) pixels after top-left anchoring + integer scaling. */
+/** A rect placed in screen (canvas) pixels after top-left anchoring + uniform scaling. */
 export type PlacedRect = Rect;
 
 /** A button spec resolved to its on-screen rect. */

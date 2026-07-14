@@ -13,44 +13,42 @@ import {
 import type { SceneDefinition } from './types.js';
 
 /**
- * The FARM scene: prove the original's field-farming loop end-to-end. A built grain farm — standing on
- * a BARREN sand patch — employs two FARMERS who — with no per-scene code — walk OFF the sand to the
- * surrounding grass SOWING wheat fields (slightly scattered, the jittered lattice; never on the sand —
- * the `biocanplanton` gate), WATER each field with the can (the growth GATE: an unwatered field stands
- * bare), REAP each ripe field with the scythe (the cut wheat drops as a sheaf where the field stood)
- * and CARRY every sheaf home into the farm's own wheat-only store (`logicstock 4 25 0`), stepping
- * INSIDE the farm for the deposit. A WAREHOUSE stands beside the farm on the same sand: once the
- * farm's 25-slot fills, the delivery rung overflows further sheaves there instead of leaving a
- * farmer frozen mid-carry at the door (the user-reported stuck carrier). The headless half asserts
- * the loop closes (fields exist, on grass alone, the farmers are bound, wheat lands in the farm
- * store); the browser half is where a human judges the animations (sowing / watering / scythe / the
- * grain carry / the store visit) and the farm's panel (the "Farma" title, the fields Produkcja
- * section, the compact tab-less Magazyn with the amount/capacity row).
+ * The farm scene: prove the original's field-farming loop end-to-end. A grain farm standing on a barren
+ * sand patch employs two farmers who, with no per-scene code, walk off the sand to the surrounding grass to
+ * sow wheat fields (jittered lattice; never on the sand — the `biocanplanton` gate), water each field (the
+ * growth gate: an unwatered field stays bare), reap each ripe field with the scythe (the cut wheat drops as
+ * a sheaf), and carry every sheaf into the farm's wheat-only store (`logicstock 4 25 0`), stepping inside
+ * for the deposit. A warehouse beside the farm on the same sand overflows further sheaves once the farm's
+ * 25-slot store fills, so no farmer freezes mid-carry (user-reported stuck carrier). The headless half
+ * asserts the loop closes (fields on grass alone, farmers bound, wheat in the farm store); the browser half
+ * is where a human judges the animations (sowing / watering / scythe / grain carry / store visit) and the
+ * farm's panel (the "Farma" title, the Produkcja fields section, the compact Magazyn with its
+ * amount/capacity row).
  */
 
 const MAP_W = 40;
 const MAP_H = 24;
 const FARM_X = 20;
 const FARM_Y = 12;
-/** The overflow WAREHOUSE beside the farm (same sand patch, two cells of yard between the walls):
- *  where the farmers carry the wheat once the farm's own 25-slot store is full. */
+/** The overflow warehouse beside the farm (same sand patch, two cells of yard between the walls): where
+ *  the farmers carry wheat once the farm's own 25-slot store is full. */
 const WAREHOUSE_X = 25;
 const WAREHOUSE_Y = 12;
 /** Two farmers read clearly (the original farm employs up to four — `logicworker 18 4`). */
 const FARMERS = 2;
 /**
- * Long enough for the full loop to close: a field needs a sowing plus ONE WATERING PER STAGE (growth
- * is farmer-fueled — 4 stage steps × 500 ticks plus the can's round trips), then reap + carry, with
- * margin for the sand walk-out and the crew splitting its time across the 10-field roster.
+ * Long enough for the full loop to close: a field needs a sowing plus one watering per stage (growth is
+ * farmer-fueled — 4 stage steps × 500 ticks plus watering round trips), then reap + carry, with margin
+ * for the sand walk-out and the crew splitting its time across the 10-field roster.
  */
 const RUN_TICKS = 3600;
 /** Frames the farm + its whole field ring (`FARM_FIELD_RADIUS` ≈ 8 tiles each way). Also deliberately
  *  ≠ 1: `cameraFor` only centres on the scene's settlers at a non-1 zoom (zoom 1 keeps the fixed
  *  origin offset), and this scene's action is at the map's centre. */
 const INITIAL_ZOOM = 0.8;
-/** A BARREN (sand) patch the farm AND the warehouse STAND ON — the user-requested proof of the
- *  grass-only sowing gate: the farmers must walk OFF the sand to the surrounding grass to sow, so the
- *  fields ring the tan patch and never dot it (the original's `biocanplanton` belongs to `land` alone). */
+/** A barren (sand) patch the farm and warehouse stand on — the proof of the grass-only sowing gate: the
+ *  farmers must walk off the sand to the surrounding grass to sow, so the fields ring the tan patch and
+ *  never dot it (the original's `biocanplanton` belongs to `land` alone). */
 const BARREN = { x0: 17, x1: 27, y0: 9, y1: 15 } as const;
 
 const { Building, Crop, JobAssignment, Position, Settler, Stockpile } = components;
@@ -66,11 +64,10 @@ function farmTerrain(): CellTerrainMap {
 }
 
 /**
- * The farm's DOOR node — its anchor plus the content footprint's door offset (the sim's
- * `interactionNode`). The farmers spawn HERE so the JobSystem's adopt pass binds them to the farm on
- * tick 1 (a pre-employed settler standing at a workplace it staffs is bound to it); resolved from the
- * loaded content so the headless (approximate footprint) and browser (real extracted footprint) doors
- * both work without scene-side guessing.
+ * The farm's door node — its anchor plus the content footprint's door offset (the sim's `interactionNode`).
+ * The farmers spawn here so the JobSystem's adopt pass binds them to the farm on tick 1 (a pre-employed
+ * settler standing at a workplace it staffs is bound to it); resolved from the loaded content so the
+ * headless (approximate footprint) and browser (real extracted footprint) doors both work.
  */
 function farmDoorNode(sim: Simulation): { hx: number; hy: number } {
   const anchor = cellAnchorNode(FARM_X, FARM_Y);

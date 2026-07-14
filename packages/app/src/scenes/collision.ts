@@ -11,22 +11,21 @@ import {
 import type { SceneDefinition } from './types.js';
 
 /**
- * The UNIT-COLLISION sign-off scene — the three player-facing promises of the body-collision
- * deviation (see `sim`'s `systems/movement/collision` for the model), each as its own vignette
- * on one map:
+ * The unit-collision sign-off scene — the three player-facing promises of the body-collision deviation
+ * (see `sim`'s `systems/movement/collision` for the model), each as its own vignette on one map:
  *
- *  1. **The wall** — a red spear line standing across the middle. A blue sword squad ordered PAST it
- *     must route AROUND its ends (standing bodies are stamped into the walk overlay) and never
- *     pushes a red an ulp out of place.
- *  2. **The surround** — eight blue broadswords all ordered onto ONE node. The first arrival takes
- *     it; the rest pack into a ring around it and settle on distinct nearby nodes instead of
- *     stacking into a single sprite (the anti-death-ball rule).
- *  3. **The economy exemption** — two carriers ordered straight THROUGH the wall walk through the
- *     bodies untouched: civilians keep the original's pass-through, only fighters collide.
+ *  1. **The wall** — a red spear line standing across the middle. A blue sword squad ordered past it must
+ *     route around its ends (standing bodies are stamped into the walk overlay) and never pushes a red an
+ *     ulp out of place.
+ *  2. **The surround** — eight blue broadswords all ordered onto one node. The first arrival takes it; the
+ *     rest settle on distinct nearby nodes around it instead of stacking into one sprite (the
+ *     anti-death-ball rule).
+ *  3. **The economy exemption** — two carriers ordered straight through the wall walk through the bodies
+ *     untouched: civilians keep the original's pass-through, only fighters collide.
  *
- * No Health is stamped, so owner-hostility never starts a fight — the scene isolates collision.
- * Everything below is authored in half-cell NODE coordinates (the collision radius is sub-node, so
- * cell resolution would hide the geometry the human is judging).
+ * No Health is stamped, so owner-hostility never starts a fight — the scene isolates collision. Everything
+ * below is authored in half-cell node coordinates (the collision radius is sub-node, so cell resolution
+ * would hide the geometry the human is judging).
  */
 
 const MAP_W = 30;

@@ -7,7 +7,7 @@ import { isBuilding, isSettler, ownerPlayerOf, positionOf, type SnapshotEntity }
  * map lands on the player's start (the "startowa pozycja") instead of the top-left corner. Priority:
  *
  *   1. the HUMAN player's SETTLERS centroid — a scenario's own starting units spawn at/around its
- *      headquarters (`kwatera`), so their centre IS the base; the settlers are the reliable start signal;
+ *      headquarters (`kwatera`), so their centre IS the base;
  *   2. the HUMAN player's BUILDINGS centroid — a base placed with no starting units;
  *   3. any placed settler/building — a foreign-owned-only map (nothing is ours to prefer);
  *   4. the MAP CENTRE — a plain imported map with no authored entities at all.
@@ -31,9 +31,8 @@ import { isBuilding, isSettler, ownerPlayerOf, positionOf, type SnapshotEntity }
  * Harvestable map resources carry no Settler/Building marker, so they never pull the focus. Positions are
  * fixed-point visual-tile coords — the same `fx.toFloat` the renderer divides by to project a bob (see
  * `render`'s `sprite-scene.ts`), so the focus lands on the drawn anchor. This is the map entry's
- * base-seeking framing; the shot/scene entries keep `view/camera.ts` `cameraFor`'s inspection-zoom policy
- * (settlers → any non-tile → origin over the projected DrawItem scene) — deliberately not unified, the
- * inputs differ (snapshot entities vs projected draw items).
+ * base-seeking framing, deliberately not unified with `view/camera.ts` `cameraFor`'s inspection-zoom
+ * policy — the inputs differ (snapshot entities vs projected draw items).
  */
 export function mapStartFocus(
   snapshot: WorldSnapshot,

@@ -4,9 +4,9 @@ import { fetchJsonOrNull } from './net.js';
 /**
  * Localized good DISPLAY names — the loadable seam for the pipeline's per-locale good-name tables
  * (`content/goods/manifest.json` `names`: locale → good STRING id → name, extracted from the game's own
- * `text/<lang>/strings/gameobjects/goods.{ini,cif}`). The whole catalog reads in the player's language, and
- * adding/switching a language follows the app-wide `?lang=` value. Authored names keep the UI complete
- * in a bare checkout, while extracted content overrides them when the local pipeline output is available.
+ * `text/<lang>/strings/gameobjects/goods.{ini,cif}`, following the app-wide `?lang=` value). Authored names
+ * keep the UI complete in a bare checkout; extracted content overrides them when the local pipeline output
+ * is available.
  *
  * Keyed by good STRING id (not typeId), stable across the sandbox and the extracted IR — the same key the
  * icon manifest uses — so one lookup serves every scene and both good-id namespaces.

@@ -56,10 +56,8 @@ const CARRY_SEQ_SUFFIX: Readonly<Record<string, string>> = {
  * screen-east (`0 E, 1 SE, 2 SW, 3 W, 4 NW, 5 NE`) plus the two row-crossing verticals (`6 N, 7 S`).
  * Data-pinned: across every extracted human character-body `[gfxanimatomic]` record whose strip is a
  * uniform ×8 block layout (`human_*`, the bodies these warrior bindings draw), each dir-`d` frame list
- * indexes exclusively into strip block `GFX_DIR_TO_BLOCK[d]`. The animal and vehicle libs carry their
- * own block orders (`animal_bear_fight`, `animal_bull_wait`, `vehicles_bullcart_wait` each differ) —
- * irrelevant here, since the remap is applied only to human warrior bodies. Indexing frame lists by
- * facing without this remap draws the NW swing on an east-facing attacker.
+ * indexes exclusively into strip block `GFX_DIR_TO_BLOCK[d]`. Indexing frame lists by facing without this
+ * remap draws the NW swing on an east-facing attacker.
  */
 const GFX_DIR_TO_BLOCK = [4, 5, 0, 1, 2, 3, 7, 6] as const;
 
@@ -85,7 +83,7 @@ function frameListsByFacing(dirLists: readonly (readonly number[])[]): readonly 
  * sequence `<prefix><suffix>` (suffix = the slug, via {@link CARRY_SEQ_SUFFIX} when aliased) and bind
  * `moving` to the full ×8 cycle + `idle` to its first-frame hold (the still loaded pose a depositor
  * stands in). A good whose sequence is missing (or not a clean ×8 strip) is simply omitted — the
- * generic carrying slots back it. Pure + exported for unit tests.
+ * generic carrying slots back it. Pure.
  */
 export function carryAnimsByGood(
   seqByName: ReadonlyMap<string, BobSeqRow>,
@@ -107,7 +105,7 @@ export function carryAnimsByGood(
  * walk → `moving`, the wait (loop or walk-hold) → `idle`, the spec's atomics → `byAtomic`, and the
  * per-good carry table (+ the wood-log generic fallback) → `carrying`. Returns `null` when neither the
  * walk nor a loop wait resolves (an IR predating this body's sequences) — the character is then dropped
- * and its jobs fall back to the default look, never a bogus frame range. Pure + exported for unit tests.
+ * and its jobs fall back to the default look, never a bogus frame range. Pure.
  */
 export function characterBinding(
   spec: CharacterSpec,
@@ -225,8 +223,7 @@ export function characterBinding(
  * first frame — authored → the good keeps its own range; empty → the head borrows the base walk at
  * the same (facing, frame) offset, exactly the gallery's proven head-reuse rule (source basis
  * "Character animation gallery"). Returns the input table by identity when nothing borrows (no walk to
- * borrow, or every head is authored), so the caller can skip building a head binding at all. Pure +
- * exported for unit tests.
+ * borrow, or every head is authored), so the caller can skip building a head binding at all. Pure.
  */
 export function carryHeadAnims(
   byGood: NonNullable<CarryingBinding['byGood']>,
