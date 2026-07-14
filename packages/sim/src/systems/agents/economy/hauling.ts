@@ -1,9 +1,8 @@
 import { JobAssignment } from '../../../components/index.js';
-import { carrierCarryCapacity } from '../../progression/index.js';
 import { isCarrierJob } from '../../stores/index.js';
-import { atOrWalk, startPickup } from '../actions.js';
+import { walkPickupBatch } from '../actions.js';
 import type { PlannerContext } from '../planner-context.js';
-import { interactionCell, nearestWorkplaceOutput } from '../targets/index.js';
+import { nearestWorkplaceOutput } from '../targets/index.js';
 import { boundProducerOutputToHaul, isPorterBoundToStore, nearestGroundPile } from './haul-targets.js';
 
 /**
@@ -29,33 +28,13 @@ export function planPorter(plan: PlannerContext): boolean {
   // to storage, never into another producer of the good (deliveryTargetFor case 3).
   const haul = boundProducerOutputToHaul(targets.sinks, world, ctx, e, settler.jobType, settler.tribe);
   if (haul !== null) {
-    atOrWalk(world, e, here, interactionCell(world, ctx, terrain, haul.home, here), () =>
-      startPickup(
-        world,
-        ctx,
-        e,
-        settler,
-        haul.home,
-        haul.goodType,
-        carrierCarryCapacity(world, ctx, settler.tribe),
-      ),
-    );
+    walkPickupBatch(plan, haul.home, haul.goodType);
     return true;
   }
   // Otherwise bring a loose ground pile IN to the bound store (the warehouse/HQ porter, unchanged).
   const pile = nearestGroundPile(targets.stockpiles, targets.sinks, world, ctx, terrain, here);
   if (pile === null) return false;
-  atOrWalk(world, e, here, interactionCell(world, ctx, terrain, pile.pile, here), () =>
-    startPickup(
-      world,
-      ctx,
-      e,
-      settler,
-      pile.pile,
-      pile.goodType,
-      carrierCarryCapacity(world, ctx, settler.tribe),
-    ),
-  );
+  walkPickupBatch(plan, pile.pile, pile.goodType);
   return true;
 }
 
@@ -81,18 +60,6 @@ export function planCarrierHaul(plan: PlannerContext, anyHaulable: boolean): boo
     ? nearestWorkplaceOutput(targets.stockpiles, targets.sinks, world, ctx, terrain, here)
     : null;
   if (haul === null) return false;
-  atOrWalk(world, e, here, interactionCell(world, ctx, terrain, haul.workplace, here), () =>
-    // Lift a batch sized by the tribe's best unlocked vehicle (`stockSlots`), or one unit on foot
-    // when no vehicle is available — `pickupFromStore` caps the move to what the source actually holds.
-    startPickup(
-      world,
-      ctx,
-      e,
-      settler,
-      haul.workplace,
-      haul.goodType,
-      carrierCarryCapacity(world, ctx, settler.tribe),
-    ),
-  );
+  walkPickupBatch(plan, haul.workplace, haul.goodType);
   return true;
 }

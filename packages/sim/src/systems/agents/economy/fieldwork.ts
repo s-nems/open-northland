@@ -11,7 +11,7 @@ import type { NodeId } from '../../../nav/terrain/index.js';
 import { carrierCarryCapacity } from '../../progression/index.js';
 import { atomicDuration } from '../../readviews/animations.js';
 import { deliveredConstructionFraction, nextNeededConstructionGood } from '../../stores/index.js';
-import { atOrWalk, BUILD_HOUSE_ATOMIC_ID, startAtomic, startPickup } from '../actions.js';
+import { atOrWalk, BUILD_HOUSE_ATOMIC_ID, startAtomic, startPickup, walkPickupBatch } from '../actions.js';
 import { claimWorkCell, type SpacingState } from '../destack.js';
 import type { PlannerContext } from '../planner-context.js';
 import {
@@ -166,31 +166,11 @@ export function planGatherer(plan: PlannerContext): boolean {
   const nodeDist = node !== null ? node.dist : Number.POSITIVE_INFINITY;
   // Prefer the trunk on a tie (it is the wood already at hand — grab it before a fresh tree).
   if (trunk !== null && trunk.dist <= nodeDist) {
-    atOrWalk(world, e, here, interactionCell(world, ctx, terrain, trunk.pile, here), () =>
-      startPickup(
-        world,
-        ctx,
-        e,
-        settler,
-        trunk.pile,
-        trunk.goodType,
-        carrierCarryCapacity(world, ctx, settler.tribe),
-      ),
-    );
+    walkPickupBatch(plan, trunk.pile, trunk.goodType);
     return true;
   }
   if (node !== null) {
-    const res = world.get(node.entity, Resource);
-    atOrWalk(world, e, here, node.cell, () =>
-      startAtomic(
-        world,
-        e,
-        res.harvestAtomic,
-        { kind: 'harvest', resource: node.entity, goodType: res.goodType },
-        atomicDuration(ctx.content, settler, res.harvestAtomic),
-        node.entity,
-      ),
-    );
+    startHarvestFromNode(plan, node);
     return true;
   }
   return false;
@@ -220,17 +200,7 @@ function planFlagGatherer(plan: PlannerContext, flag: { flag: Entity; radius: nu
   // 1. Carry off a trunk/ore this gatherer dug (only its own — foreign piles are left in peace).
   const own = nearestOwnDropFor(targets.groundDrops, world, ctx, terrain, here, e);
   if (own !== null) {
-    atOrWalk(world, e, here, interactionCell(world, ctx, terrain, own.pile, here), () =>
-      startPickup(
-        world,
-        ctx,
-        e,
-        settler,
-        own.pile,
-        own.goodType,
-        carrierCarryCapacity(world, ctx, settler.tribe),
-      ),
-    );
+    walkPickupBatch(plan, own.pile, own.goodType);
     return true;
   }
 
@@ -240,21 +210,28 @@ function planFlagGatherer(plan: PlannerContext, flag: { flag: Entity; radius: nu
     radius: flag.radius,
   });
   if (node !== null) {
-    const res = world.get(node.entity, Resource);
-    atOrWalk(world, e, here, node.cell, () =>
-      startAtomic(
-        world,
-        e,
-        res.harvestAtomic,
-        { kind: 'harvest', resource: node.entity, goodType: res.goodType },
-        atomicDuration(ctx.content, settler, res.harvestAtomic),
-        node.entity,
-      ),
-    );
+    startHarvestFromNode(plan, node);
     return true;
   }
 
   // 3. Nothing to dig and nothing of its own to carry — stand idle beside the flag.
   atOrWalk(world, e, here, flagCell, () => {});
   return true;
+}
+
+/** Walk to a harvestable node's work cell and start its content-defined harvest atomic — the shared body of
+ *  the roaming and flag-bound gatherer's "chop/mine the nearest node" step. */
+function startHarvestFromNode(plan: PlannerContext, node: { entity: Entity; cell: NodeId }): void {
+  const { world, ctx, entity: e, here } = plan;
+  const res = world.get(node.entity, Resource);
+  atOrWalk(world, e, here, node.cell, () =>
+    startAtomic(
+      world,
+      e,
+      res.harvestAtomic,
+      { kind: 'harvest', resource: node.entity, goodType: res.goodType },
+      atomicDuration(ctx.content, plan, res.harvestAtomic),
+      node.entity,
+    ),
+  );
 }
