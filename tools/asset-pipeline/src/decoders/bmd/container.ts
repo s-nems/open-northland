@@ -18,19 +18,19 @@
  *     (3) line-control     = lineControlCount × u32, indexed by absolute Y; each packs
  *                            [xMin (top 10 bits)][offset into packed-line data (low 22 bits)]
  *
- * This module solves the **container** layer only: it splits a `.bmd` into the header fields, the typed
- * bob records, and the two raw blocks (packed-line bytes + line-control words). Turning the packed-line
+ * This module solves the container layer only: it splits a `.bmd` into the header fields, the typed bob
+ * records, and the two raw blocks (packed-line bytes + line-control words). Turning the packed-line
  * stream into actual frame pixels (the RLE codec) lives beside it in {@link ./frame} — the same way `.pcx`
  * keeps `decodePcx` (container) separate from `expandToRgba` (pixels).
  *
- * Ported FORMAT (not architecture) from OpenVikings `Source/NXBasics/`:
+ * Ported format (not architecture) from OpenVikings `Source/NXBasics/`:
  *   - CStorable.cs    on-disk object header: [u32 id][u32 version][body]; `Storable_Save` writes id+ver
  *   - XBStorable.cs   factory: id 0x3F4 -> `new CBobManager(file)`
  *   - CBobManager.cs  `CBobManager(CFile)` ctor (0x1C-byte header + 3 CMemory blocks),
  *                     `ReadBobDataFromMemory` (24-byte record layout), `Storable_SaveData` (inverse),
  *                     `SBobData` struct {int Type; SRectangle Area; uint Misc}, `IsBobHit` (line-control
  *                     packing: offset = ctrl & 0x3FFFFF, xMin = ctrl >> 22)
- *   - CMemory.cs      body: [u32 size][size bytes] (raw; NOT encrypted in the bob graph)
+ *   - CMemory.cs      body: [u32 size][size bytes] (raw; not encrypted in the bob graph)
  * Referenced at OpenVikings_reversing @ working tree 2026-06.
  *
  * Pure functions only (no I/O): `(bytes) => decoded`. The CLI wires file reads around them.
@@ -92,16 +92,16 @@ export interface BobRecord {
   /** Bob kind (0 = empty/absent slot; nonzero = 1-bit / 8-bit / double-byte variants). Carried raw. */
   readonly type: number;
   /**
-   * The bob's draw rectangle: `width`×`height` is the frame size; `x`/`y` are the DRAW OFFSET (where to
+   * The bob's draw rectangle: `width`×`height` is the frame size; `x`/`y` are the draw offset (where to
    * blit the frame relative to the entity's anchor/feet — often negative). These are render-time offsets
-   * ONLY; they are NOT indices into the packed-line / line-control data (that base is {@link misc}).
+   * only, not indices into the packed-line / line-control data (that base is {@link misc}).
    */
   readonly area: BobArea;
   /**
-   * The bob's FIRST-LINE index into the global line-control array (record+0x14): its `height` scanlines
+   * The bob's first-line index into the global line-control array (record+0x14): its `height` scanlines
    * are `lineControl[misc .. misc+height)`. The line-control array is the per-bob scanlines stacked
    * contiguously (its length equals the sum of every bob's height), so this is each bob's base offset
-   * into that stack — the load-bearing field {@link import('./frame.js').decodeBobFrame} walks, not `area.y`.
+   * into that stack — the field {@link import('./frame.js').decodeBobFrame} walks, not `area.y`.
    */
   readonly misc: number;
 }

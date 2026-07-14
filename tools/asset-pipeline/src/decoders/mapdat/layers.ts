@@ -16,12 +16,11 @@
  *   +0x15 …    the RLE stream, running to the end of the payload
  *
  * The RLE stream (the same packed-line family as the `.bmd` codec, `CBobManager.cs`, with the
- * raw/run roles swapped): each control byte `b` is either a **run** (high bit set) of `count =
- * b & 0x7F` copies of the single element that follows, or a **literal** (high bit clear) run of
- * `count = b` elements copied verbatim. `X8el` and `X6el` share this stream grammar exactly and
- * differ ONLY in element width, so both directions route through one codec parameterized by
- * {@link elementBytes} — {@link unpackRle}/{@link packRle}. Decoding stops at exactly the declared
- * unpacked byte length.
+ * raw/run roles swapped): each control byte `b` is either a run (high bit set) of `count = b & 0x7F`
+ * copies of the single element that follows, or a literal (high bit clear) run of `count = b` elements
+ * copied verbatim. `X8el` and `X6el` share this stream grammar exactly and differ only in element
+ * width, so both directions route through one codec parameterized by {@link elementBytes} —
+ * {@link unpackRle}/{@link packRle}. Decoding stops at exactly the declared unpacked byte length.
  */
 
 import { asciiBytes, LATIN1 } from '../byte-cursor.js';
@@ -40,8 +39,8 @@ export const MAP_LAYER_SUBFORMAT = 0x72;
 const X8EL_BYTES_PER_CELL = 1;
 /**
  * The number of bytes one `X6el` element occupies in the unpacked grid (a little-endian u16). The
- * `empa`/`empb` ground-pattern lanes carry one element per map CELL (unpacked length exactly
- * `width × height × 2`); `emla` carries one per HALF-CELL (`2W × 2H` elements).
+ * `empa`/`empb` ground-pattern lanes carry one element per map cell (unpacked length exactly
+ * `width × height × 2`); `emla` carries one per half-cell (`2W × 2H` elements).
  */
 const X6EL_BYTES_PER_CELL = 2;
 
@@ -259,7 +258,7 @@ export function packMapLayer(cells: Uint8Array, version = 1): Uint8Array {
 
 /**
  * Unpacks an `X6el` grid layer (`empa`/`empb` ground-pattern picks, `emla` object placements) into
- * its row-major **u16** grid. The container header is byte-identical to {@link unpackMapLayer}'s
+ * its row-major u16 grid. The container header is byte-identical to {@link unpackMapLayer}'s
  * `X8el` header, but the RLE stream operates on 2-byte little-endian elements (reverse-engineered
  * from real maps — the oracle decodes the container but not the layer codecs).
  *

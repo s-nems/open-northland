@@ -5,20 +5,18 @@
  * bob's indexed pixels + opacity mask; this module colours them with a palette and shelf-packs every
  * frame into a single sheet so a renderer loads one texture and looks each sprite up by rect.
  *
- * Not a ported format. A `.bmd` has no atlas/anim layout of its own — it is a flat array of bobs
- * ({type, area, misc}); animation *grouping* lives outside it (the `.ini`/`tribetypes` `setatomic`
- * bindings reference bob ids, joined in a later stage). So the manifest here is faithfully a per-bob
- * **frame** table: each entry carries the bob's id (`firstBobId + index`), its packed rect in the
- * atlas, the bob's source `area` (the draw anchor / offset a renderer needs to place the sprite), the
- * raw bob `type`, and whether it produced any opaque pixels. Empty/zero-size bobs are recorded with a
- * 0×0 rect so a consumer can still index every bob id without a gap.
+ * A `.bmd` has no atlas/anim layout of its own — it is a flat array of bobs ({type, area, misc});
+ * animation grouping lives outside it (the `.ini`/`tribetypes` `setatomic` bindings reference bob ids,
+ * joined in a later stage). So the manifest is a per-bob frame table: each entry carries the bob's id
+ * (`firstBobId + index`), its packed rect, the bob's source `area` (the draw anchor a renderer needs),
+ * the raw bob `type`, and whether it produced any opaque pixels. Empty/zero-size bobs get a 0×0 rect so
+ * a consumer can still index every bob id without a gap.
  *
  * Packing is a deterministic top-left shelf/row packer (frames placed left→right into rows of a fixed
- * max width, wrapping to a new row when the current one is full), with a 1px transparent gutter so
- * bilinear sampling can't bleed neighbours. It is intentionally simple, not optimal — the atlas is a
- * build artifact, and a stable, obvious layout makes the manifest easy to diff and verify against the
- * OpenVikings oracle. Transparency: index 0 is a *real* palette colour for bobs (unlike a reserved
- * colour-key), so alpha comes from each frame's `mask`, never from the index.
+ * max width, wrapping when the row is full), with a 1px transparent gutter so bilinear sampling can't
+ * bleed neighbours. Simple, not optimal — a stable layout keeps the manifest easy to diff against the
+ * OpenVikings oracle. Index 0 is a real palette colour for bobs (not a reserved colour-key), so alpha
+ * comes from each frame's `mask`, never from the index.
  *
  * Pure functions only (no I/O). The CLI wires file reads + `encodePng` + JSON writes around them.
  */
@@ -86,13 +84,12 @@ export function expandBobFrame(frame: BobFrame, palette: Uint8Array): RgbaImage 
 }
 
 /**
- * Expands one decoded {@link BobFrame} into an **indexed** RGBA image: the palette INDEX in the red
+ * Expands one decoded {@link BobFrame} into an indexed RGBA image: the palette index in the red
  * channel, `mask` in alpha, green/blue left 0. No palette is applied — the colour is deferred to the
- * renderer, which reads each index through a per-player palette LUT (see `player-palette.ts`). This is
- * the alternative to {@link expandBobFrame} for the character bodies, whose clothing band must be
- * recoloured per player at draw time. A written pixel carries its real index (index 0 is a valid colour
- * for bobs) with the frame's 0–255 coverage as alpha; an unwritten pixel is fully transparent
- * (all-zero), so the index is only read where alpha is set. NOTE the indexed PACKER
+ * renderer, which reads each index through a per-player palette LUT (see `player-palette.ts`). The
+ * alternative to {@link expandBobFrame} for the character bodies, whose clothing band is recoloured per
+ * player at draw time. A written pixel carries its real index (index 0 is a valid colour for bobs) with
+ * the frame's 0–255 coverage as alpha; an unwritten pixel is fully transparent. The indexed packer
  * ({@link packIndexedBobAtlas}) flattens coverage before this runs — see its doc for why.
  */
 export function expandBobFrameIndexed(frame: BobFrame): RgbaImage {
@@ -214,12 +211,11 @@ function flattenFrameAlpha(frame: BobFrame): BobFrame {
  * atlas of the same `.bmd` (same frame sizes → same shelf packing), so the two atlases share frame
  * geometry; only the pixel channels differ.
  *
- * Coverage is FLATTENED here (every written pixel opaque): the indexed sheets' one consumer — the
+ * Coverage is flattened here (every written pixel opaque): the indexed sheets' one consumer — the
  * `PalettedSprite` LUT shader — draws binary alpha (`texel.a < 0.5 → discard`, survivors opaque), so a
- * graded bake would silently ERODE the GUI chrome / goods icons / font glyphs whose type-4 bobs carry
- * sub-128 alpha bytes (measured: 12.6% of ls_goods' visible pixels). Baking opaque preserves the
- * pre-per-pixel-alpha look end-to-end; a graded indexed path needs a shader change plus its own human
- * pixel pass — a deliberate follow-up, not this bake.
+ * graded bake would erode the GUI chrome / goods icons / font glyphs whose type-4 bobs carry sub-128
+ * alpha bytes (measured: 12.6% of ls_goods' visible pixels). A graded indexed path needs a shader
+ * change plus its own human pixel pass — a deliberate follow-up, not this bake.
  */
 export function packIndexedBobAtlas(bmd: Bmd, maxWidth = DEFAULT_ATLAS_MAX_WIDTH): BobAtlas {
   return packBobAtlasWith(bmd, (frame) => expandBobFrameIndexed(flattenFrameAlpha(frame)), maxWidth);
@@ -230,7 +226,7 @@ export function packIndexedBobAtlas(bmd: Bmd, maxWidth = DEFAULT_ATLAS_MAX_WIDTH
  * shelf-pack the non-empty frames, and emit the sheet + manifest. Parameterising only the per-frame
  * expansion keeps the RGB ({@link packBobAtlas}) and indexed ({@link packIndexedBobAtlas}) atlases on one
  * packing/manifest path. `expand` is called only for frames with pixels, so it always receives a real frame.
- * `expandTime` (the `'build-time'` bake) switches the decode to `'time'` and emits a SECOND sheet with the
+ * `expandTime` (the `'build-time'` bake) switches the decode to `'time'` and emits a second sheet with the
  * identical placement — one shelf pack, two planes.
  */
 function packBobAtlasWith(

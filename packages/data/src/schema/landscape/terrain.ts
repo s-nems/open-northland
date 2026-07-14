@@ -5,13 +5,13 @@ export const RgbColor = z.tuple([z.number().int(), z.number().int(), z.number().
 export type RgbColor = z.infer<typeof RgbColor>;
 
 /**
- * One `[trianglepatterntype]` from `Data/logic/trianglepatterntypes.cif` — the **logic classification**
- * of the terrain triangles (water / land / mountain / sand / beach / desertStone / moor / snow / plaster
- * / blocked): 10 records, `type` ids 1..10. This is the cross-reference target of a {@link GfxPattern}'s
+ * One `[trianglepatterntype]` from `Data/logic/trianglepatterntypes.cif` — the logic classification of
+ * the terrain triangles (water / land / mountain / sand / beach / desertStone / moor / snow / plaster /
+ * blocked): 10 records, `type` ids 1..10. The cross-reference target of a {@link GfxPattern}'s
  * {@link GfxPattern.logicType}: every visual ground tile is classified as one of these logic types, which
- * carries the walk/build/water semantics + a per-type debug colour. The boolean flags are
- * **absent-means-false** — the source omits a `0` flag entirely (e.g. the `water` record lists no
- * `humancanwalkon`), so a missing key is a `false`, not unknown.
+ * carries the walk/build/water semantics + a per-type debug colour. The boolean flags are absent-means-
+ * false — the source omits a `0` flag entirely (e.g. the `water` record lists no `humancanwalkon`), so a
+ * missing key is `false`, not unknown.
  */
 export const TrianglePatternType = z.strictObject({
   /** `type` — the logic-type id (1..10) a {@link GfxPattern.logicType} references. */
@@ -53,17 +53,16 @@ export const GfxCoords = z.tuple([
 export type GfxCoords = z.infer<typeof GfxCoords>;
 
 /**
- * One `[GfxPattern]` from `Data/engine2d/inis/patterns/pattern.cif` — the **texture→cell binding** for
- * the triangle-mesh terrain (927 records). A pattern names a `text_NNN.pcx` ground texture and the two
+ * One `[GfxPattern]` from `Data/engine2d/inis/patterns/pattern.cif` — the texture→cell binding for the
+ * triangle-mesh terrain (927 records). A pattern names a `text_NNN.pcx` ground texture and the two
  * triangles' UVs ({@link coordsA}/{@link coordsB}) that tile a diamond cell out of it, classified by a
  * {@link logicType} (a {@link TrianglePatternType.type} cross-ref).
  *
- * The record carries **no explicit id field** — the engine references a pattern by its **position** in
- * the list, so {@link id} is the 0-based index. Because of that, the extractor must keep every record
- * (skipping one would renumber the rest): the visual fields are therefore optional rather than
- * skip-on-missing, so even a degenerate record still occupies its positional slot. In the real data all
- * 927 records are well-formed (name + texture + 6-int coords + a `logicType` of 0..10, where `0` is the
- * misc/border tiles that classify to no logic type).
+ * The record carries no explicit id field — the engine references a pattern by its position in the list,
+ * so {@link id} is the 0-based index. The extractor keeps every record (skipping one would renumber the
+ * rest), so the visual fields are optional rather than skip-on-missing and even a degenerate record still
+ * occupies its slot. In the real data all 927 records are well-formed (name + texture + 6-int coords + a
+ * `logicType` of 0..10, where `0` is the misc/border tiles that classify to no logic type).
  */
 export const GfxPattern = z.strictObject({
   /** The 0-based position in the `GfxPattern` list — the engine's positional pattern id (no explicit field exists). */
@@ -85,10 +84,10 @@ export const GfxPattern = z.strictObject({
 export type GfxPattern = z.infer<typeof GfxPattern>;
 
 /**
- * One `[transition]` from `Data/engine2d/inis/patterntransitions/transitions.cif` — a **ground
- * transition overlay** (38 records): a translucent 256×256 texture blended over the base pattern
- * where two ground families meet. A record names an RGB texture and a separate alpha-mask picture
- * ({@link texture}/{@link textureAlpha} — the pipeline composes them into one RGBA page), plus SIX
+ * One `[transition]` from `Data/engine2d/inis/patterntransitions/transitions.cif` — a ground transition
+ * overlay (38 records): a translucent 256×256 texture blended over the base pattern where two ground
+ * families meet. A record names an RGB texture and a separate alpha-mask picture
+ * ({@link texture}/{@link textureAlpha} — the pipeline composes them into one RGBA page), plus six
  * `GfxCoordsA`/`GfxCoordsB` triangle-UV pairs (file order = the pair index a map lane's `value % 6`
  * selects; `⌊value / 6⌋` picks the record through the map's `eatd` name dictionary). The UV point
  * convention matches {@link GfxPattern}: `coordsA` = (TL, BR, BL), `coordsB` = (TL, TR, BR) of a
@@ -114,15 +113,15 @@ export const GfxPatternTransition = z.strictObject({
 export type GfxPatternTransition = z.infer<typeof GfxPatternTransition>;
 
 /**
- * The **approximated** per-landscape-typeId ground binding — the typeId→pattern map the terrain renderer
- * consumes. Every map cell carries a {@link LandscapeType.typeId} (1-based, the
- * `lmlt` per-cell value), but those types are mostly OBJECTS (void/tree/rock/iron/wheat…), not ground
- * classes. This table approximates each typeId's GROUND by a coarse **family** — its `id` slug naming
- * water → `water`, `rock`/`stone` → `mountain`, everything else (incl. tree/bush/wood, whose ground is
- * land) → `land` — and binds the family to ONE representative {@link GfxPattern} (its `text_NNN` texture +
- * the two triangles' UVs). **This is a deviation, not a 1:1 match** (source basis): the original
- * computes the per-cell pattern from corner types + variant lanes, an oracle-blocked algorithm. The
- * `debugColor` is the flat-tint fallback when the texture is unavailable.
+ * The approximated per-landscape-typeId ground binding — the typeId→pattern map the terrain renderer
+ * consumes. Every map cell carries a {@link LandscapeType.typeId} (1-based, the `lmlt` per-cell value),
+ * but those types are mostly objects (void/tree/rock/iron/wheat…), not ground classes. This table
+ * approximates each typeId's ground by a coarse family — its `id` slug naming water → `water`,
+ * `rock`/`stone` → `mountain`, everything else (incl. tree/bush/wood, whose ground is land) → `land` —
+ * and binds the family to one representative {@link GfxPattern} (its `text_NNN` texture + the two
+ * triangles' UVs). A deviation, not a 1:1 match (source basis): the original computes the per-cell
+ * pattern from corner types + variant lanes, an oracle-blocked algorithm. The `debugColor` is the
+ * flat-tint fallback when the texture is unavailable.
  */
 export const TerrainPattern = z.strictObject({
   /** The {@link LandscapeType.typeId} (1-based) this ground binding applies to — the per-cell value in `content/maps`. */

@@ -28,20 +28,16 @@ export const GoodQuantity = z.strictObject({
 export type GoodQuantity = z.infer<typeof GoodQuantity>;
 
 /**
- * One input good consumed to produce this good — the *input side* of the goods graph, keyed by the
- * **output** good (the good being made). A semantic alias of {@link GoodQuantity} (same shape), kept
- * as its own name for the good's `productionInputs` field and its sim consumers.
+ * One input good consumed to produce this good — the input side of the goods graph. A semantic alias
+ * of {@link GoodQuantity} kept under its own name for `productionInputs` and its sim consumers.
  */
 export const ProductionInput = GoodQuantity;
 export type ProductionInput = GoodQuantity;
 
 /**
- * The game's own classification of a good, from the boolean flags on each `[goodtype]` record. These
- * are the source-pinned node layers of the goods graph (the {@link ProductionInput} edges connect
- * them): a *raw* good is gathered from the map (`isProducedOnMapFlag`), a *produced* good is made in
- * a workplace (`isProducedInHouseFlag`, e.g. flour, bread, the two food tiers), and an *input* good
- * can be consumed by some recipe (`isInputGoodFlag`). A good may be several at once (a produced good
- * that is itself an input to another recipe); all default false when the flag is absent.
+ * The game's own classification of a good, from the boolean flags on each `[goodtype]` record — the
+ * source-pinned node layers of the goods graph that {@link ProductionInput} edges connect. A good may
+ * be several layers at once (a produced good that is itself a recipe input); all default false.
  */
 export const GoodClassification = z.strictObject({
   /** `isProducedOnMapFlag` — a raw good harvested/gathered from the map (wheat, stone, fruit, water). */
@@ -54,15 +50,14 @@ export const GoodClassification = z.strictObject({
 export type GoodClassification = z.infer<typeof GoodClassification>;
 
 /**
- * A raw good's three-stage gathering pipeline, from the `[goodtype]` `landscapeTo*` fields. The
- * original models gathering as a chain of {@link LandscapeType} states a cell passes through: a
- * settler HARVESTS the source object ({@link harvest} — a `tree`/`rock`/`mine`), it becomes a
- * PICKUP-able intermediate ({@link pickup} — a `trunk`/`ore`), and the finished good rests on the
- * ground as a STORE landscape ({@link store} — `wood`/`stone`) until a carrier stocks it. Wood is
- * `tree(4) → trunk(6) → wood(7)`. Present only on the ~11 map-gathered goods; a produced/in-house
- * good (flour, bread) carries none. The resolved good→landscape→gfx join is emitted once as the
- * {@link GatheringPipeline} artifact so consumers don't re-derive it. Absent stage = the source
- * omits that lane (honey has no {@link harvest} — it is picked up, not cut).
+ * A raw good's three-stage gathering pipeline, from the `[goodtype]` `landscapeTo*` fields — a chain
+ * of {@link LandscapeType} states a cell passes through: a settler harvests the source object
+ * ({@link harvest} — a `tree`/`rock`/`mine`), it becomes a pickup intermediate ({@link pickup} — a
+ * `trunk`/`ore`), and the finished good rests on the ground as a store landscape ({@link store} —
+ * `wood`/`stone`) until stocked. Wood is `tree(4) → trunk(6) → wood(7)`. Present only on map-gathered
+ * goods; produced goods carry none. The resolved good→landscape→gfx join is emitted once as
+ * {@link GatheringPipeline}. An absent stage means the source omits that lane (honey has no
+ * {@link harvest}).
  */
 export const GoodGathering = z.strictObject({
   /** `landscapeToHarvest` — the source landscape a settler works to start the pipeline (wood: `tree`=4). */
@@ -74,66 +69,55 @@ export const GoodGathering = z.strictObject({
   /** `isBioLandscapeFlag` — the pipeline's landscapes are living/growing (trees, herb, mushroom) vs mined (stone, ore, gold). */
   bioLandscape: z.boolean().default(false),
   /**
-   * **OBSERVED, not extracted** — how many chop atomics fell a standing node of this good before it
-   * drops its whole yield as a ground trunk (the tree→"tree falling"→trunk lifecycle the
-   * {@link harvest}/{@link pickup} stages name). The readable `.ini` carries NO such count (no
-   * `baserepeatcounter` for the collector job — verified absent), so this is a calibration constant
-   * a scene/fixture sets and `source basis` tracks ("observed, pending calibration against the
-   * original"). `0` (the default, and what the extractor emits) means **not a felling good** — a
-   * single-hit gather (stone/clay yield one unit per swing, the node persisting), the pre-felling
-   * behaviour Step 4 reworks. `> 0` marks a fell-once-whole-yield good (wood) — the sim stamps a
-   * `Felling` component on such a node so the harvest atomic chops it down instead of yielding a unit.
+   * Observed, not extracted — chop atomics needed to fell a standing node before it drops its whole
+   * yield as a ground trunk. The readable `.ini` carries no such count (no collector-job
+   * `baserepeatcounter`), so it is a calibration constant a scene/fixture sets. `0` (the extractor
+   * default) means not a felling good — a single-hit gather (stone/clay yield one unit per swing, the
+   * node persisting). `> 0` marks a fell-once-whole-yield good (wood); the sim stamps a `Felling`
+   * component so the harvest atomic chops the node down instead of yielding a unit.
    */
   chopsToFell: z.number().int().nonnegative().default(0),
   /**
-   * **OBSERVED, not extracted** — the whole-node yield a felled node drops as its ground trunk (units
-   * of this good). Like {@link chopsToFell} the readable data carries no per-tree wood count, so this
-   * is a calibration constant (source basis). Only meaningful when {@link chopsToFell} `> 0` (a
-   * felling good); the sim stamps it as the node's `Resource.remaining`, released in full as the trunk
-   * pile when the node falls. `0` (the default) leaves it to the spawn site.
+   * Observed, not extracted — the whole-node yield a felled node drops as its ground trunk. Like
+   * {@link chopsToFell} the readable data carries no per-tree count, so it is a calibration constant.
+   * Only meaningful when {@link chopsToFell} `> 0`; the sim stamps it as `Resource.remaining`, released
+   * in full as the trunk pile when the node falls. `0` leaves it to the spawn site.
    */
   yieldPerNode: z.number().int().nonnegative().default(0),
   /**
-   * **OBSERVED, not extracted** — the units a MINED deposit of this good holds (stone/iron/gold/clay).
-   * The readable `.ini` has no field established to be the harvestable-unit count: `landscapetypes.ini`
-   * `maximumValency` is a per-CELL valency (constant across a good's stages — mud_mine = mud_ore = mud = 6,
-   * and a 1-unit dropped ore pile shares it), NOT the deposit size, so this stays a calibration constant a
-   * scene/fixture sets and `source basis` tracks (unlike {@link depositLevels}, which IS gfx data).
-   * `> 0` marks a **mined** good — a
-   * distinct-`landscapeToPickup` "ore" deposit the collector chips one unit at a time, dropping each as a
-   * ground ore pile and shrinking the node by level until empty (the sim stamps a `MineDeposit` on such a
-   * node). `0` (the default, and what the extractor emits) means NOT a mined good — a fell-once tree
-   * (`chopsToFell > 0`) or the trivial direct pickup (a mushroom, harvested straight onto the back).
+   * Observed, not extracted — the units a mined deposit holds (stone/iron/gold/clay). The readable
+   * `.ini` has no field pinned to this: `landscapetypes.ini` `maximumValency` is a per-cell valency
+   * (constant across a good's stages — mud_mine = mud_ore = mud = 6), not the deposit size, so it stays
+   * a calibration constant. `> 0` marks a mined good — a distinct-`landscapeToPickup` ore deposit the
+   * collector chips one unit at a time (the sim stamps a `MineDeposit`). `0` (the extractor default)
+   * means not a mined good.
    */
   depositSize: z.number().int().nonnegative().default(0),
   /**
-   * The number of discrete VISUAL fill states a mined deposit steps down through as it empties. **DATA,
-   * not yet plumbed here** — this IS the deposit's harvest `[GfxLandscape]` record's own state count
-   * (`frames.length`/`maxValency`: the `ls_ground` clay/iron/gold mines carry 5, stone's rock 4, mushroom
-   * 1 — the render already derives it directly in `nodeLevelBobs`, see source basis), so it is NOT an
-   * observed guess. The extractor emits `0` for now (a future join would copy the harvest record's frame
-   * count here); the sim stamps it on the deposit's `MineDeposit` so `render` buckets `remaining/depositSize`
-   * into the right fill-state frame. Only meaningful when {@link depositSize} `> 0`; `0` (the default)
-   * leaves the per-good level count to the spawn site (which sets it to match that good's gfx).
+   * Discrete visual fill states a mined deposit steps down through as it empties. Data, not yet plumbed
+   * here — this is the harvest `[GfxLandscape]` record's own state count (`frames.length`/`maxValency`:
+   * clay/iron/gold mines 5, stone's rock 4, mushroom 1; `render` derives it in `nodeLevelBobs`), but the
+   * extractor emits `0` for now. The sim stamps it on `MineDeposit` so `render` buckets
+   * `remaining/depositSize` into the right fill-state frame. Only meaningful when {@link depositSize}
+   * `> 0`; `0` leaves the per-good level count to the spawn site.
    */
   depositLevels: z.number().int().nonnegative().default(0),
 });
 export type GoodGathering = z.infer<typeof GoodGathering>;
 
 /**
- * A FIELD-FARMED good's cultivation parameters (wheat) — the sow→grow→water→reap loop a farm's worker
- * runs on map fields, distinct from {@link GoodGathering}'s harvest-a-standing-node pipeline. The
- * original wires the loop's VOCABULARY in readable data (`goodtypes.ini` wheat: `atomicForPlanting 34`,
- * `atomicForCultivating 35`, `atomicForHarvesting 29`, `isProducedOnMapFlag 1`; `landscapetypes.ini`
- * 27/28/29 = wheat growing/harvested/pile) but the loop's TIMINGS and the farm's field area live in the
- * native engine, so every numeric here except {@link stages} is an OBSERVED calibration constant the
- * content set pins (the app's `catalog/farming.ts` carries the named calibration and its rationale).
+ * A field-farmed good's cultivation parameters (wheat) — the sow→grow→water→reap loop a farm's worker
+ * runs on map fields, distinct from {@link GoodGathering}. The original wires the loop's vocabulary in
+ * readable data (`goodtypes.ini` wheat: `atomicForPlanting 34`, `atomicForCultivating 35`,
+ * `atomicForHarvesting 29`; `landscapetypes.ini` 27/28/29 = growing/harvested/pile) but its timings and
+ * field area live in the native engine, so every number except {@link stages} is an observed
+ * calibration constant (see the app's `catalog/farming.ts`).
  */
 export const GoodFarming = z.strictObject({
   /**
-   * Growth stages a sown field passes through before it is ripe. DATA, not observed: the growing
-   * landscape's own state count (`landscapetypes.ini` wheat(growing) `maximumValency 5`, matching the
-   * `[GfxLandscape]` record's 5 growth frames the render steps through).
+   * Growth stages a sown field passes before ripe. Data, not observed: the growing landscape's own
+   * state count (`landscapetypes.ini` wheat(growing) `maximumValency 5`, matching the `[GfxLandscape]`
+   * record's 5 growth frames).
    */
   stages: z.number().int().positive(),
   /** OBSERVED — ticks an unwatered field takes to advance one growth stage (no readable growth timing). */
@@ -143,10 +127,9 @@ export const GoodFarming = z.strictObject({
   yieldPerField: z.number().int().positive(),
   /** OBSERVED — how far from the farm's anchor its workers sow, in half-cell NODES (no radius in data). */
   fieldRadius: z.number().int().positive(),
-  /** OBSERVED — the crew-independent part of a farm's field cap. The live cap is
-   *  `fieldsBase + fieldsPerFarmer × bound field-farmers`, so the plot grows SUBLINEARLY with the
-   *  crew (user-directed calibration: one farmer works 6 fields, a pair 10 — not 12). Defaults to 0
-   *  (pure per-farmer scaling) so a content set without the knob reads unchanged. */
+  /** OBSERVED — the crew-independent part of a farm's field cap. Live cap is
+   *  `fieldsBase + fieldsPerFarmer × bound field-farmers`, so the plot grows sublinearly with the crew
+   *  (calibration: one farmer works 6 fields, a pair 10). Defaults to 0 (pure per-farmer scaling). */
   fieldsBase: z.number().int().nonnegative().default(0),
   /** OBSERVED — the per-farmer slope of the field cap (see {@link fieldsBase}; no field-count in data). */
   fieldsPerFarmer: z.number().int().positive(),
@@ -160,43 +143,37 @@ export const GoodType = z.strictObject({
   weight: z.number().default(0),
   atomics: GoodAtomics.default({}),
   /**
-   * `landscapetype` — the {@link LandscapeType} that represents this good as a placed object on the
-   * map (its "on the ground" lane). Present on every good: for a gathered good it equals the
-   * {@link GoodGathering.store} stage (`wood`=7), for a produced good it is a distinct dropped-good
-   * type, and for a non-landscape good (a vehicle/animal token) it is the `void` type (1).
+   * `landscapetype` — the {@link LandscapeType} representing this good as a placed object on the map.
+   * Present on every good: a gathered good's equals its {@link GoodGathering.store} stage (`wood`=7), a
+   * produced good's is a distinct dropped-good type, a non-landscape good's (vehicle/animal token) is
+   * the `void` type (1).
    */
   landscapeType: TypeId.optional(),
   /**
-   * The three-stage map-gathering pipeline, when this is a raw map-gathered good — the
-   * `landscapeTo{Harvest,Pickup,Store}` chain + `isBioLandscapeFlag`. Omitted for a produced/in-house
-   * good. See {@link GoodGathering} and the resolved {@link GatheringPipeline} artifact.
+   * The three-stage map-gathering pipeline when this is a raw map-gathered good. Omitted for a produced
+   * good. See {@link GoodGathering} and the resolved {@link GatheringPipeline}.
    */
   gathering: GoodGathering.optional(),
   /**
-   * The field-cultivation loop parameters, when this good is FIELD-FARMED (sown/watered/reaped on map
-   * fields by a farm's worker — wheat). Omitted for every other good; a good with `farming` should also
-   * carry the plant/cultivate/harvest {@link atomics} the loop's actions run. See {@link GoodFarming}.
+   * The field-cultivation loop parameters when this good is field-farmed (wheat). Omitted otherwise;
+   * such a good also carries the plant/cultivate/harvest {@link atomics}. See {@link GoodFarming}.
    */
   farming: GoodFarming.optional(),
   /**
-   * Input goods (+ per-cycle amounts) consumed to produce THIS good — the input side of the goods
-   * graph, from `goodtypes` `productionInputGoods`. Empty for a raw/harvested good (no recipe). This
-   * is the source the building `recipe` inputs are filled from (the workplace's `produces` output good
-   * names the output; this good's `productionInputs` names what that cycle consumes).
+   * Input goods (+ per-cycle amounts) consumed to produce this good, from `goodtypes`
+   * `productionInputGoods`. Empty for a raw good. Fills the building `recipe` inputs (the workplace's
+   * `produces` names the output; this names what the cycle consumes).
    */
   productionInputs: z.array(ProductionInput).default([]),
   /**
-   * The good's node layer in the goods graph, from the `[goodtype]` boolean flags — distinguishes a
-   * raw (map-gathered) good from a produced (in-house) one, and marks which goods are recipe inputs.
-   * The {@link productionInputs} edges plus these layers are the explicit goods-graph IR. See
+   * The good's node layer in the goods graph, from the `[goodtype]` boolean flags. See
    * {@link GoodClassification}.
    */
   classification: GoodClassification.prefault({}),
   /**
-   * The good's character-equipment classification — its slot category + whether it wears out. Present
-   * only on the equippable goods (the original's ids 30–55: shoes, tools, armour, weapons, mead,
-   * potions, amulets); omitted for every economy good. Consumed by the sim's `Equipment` component and
-   * the selection UI's equipment-slots row. See {@link EquipClass}.
+   * The good's character-equipment classification — slot category + whether it wears out. Present only
+   * on equippable goods (original ids 30–55: shoes, tools, armour, weapons, mead, potions, amulets);
+   * omitted for economy goods. See {@link EquipClass}.
    */
   equip: EquipClass.optional(),
   source: Provenance.optional(),

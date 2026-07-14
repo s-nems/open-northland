@@ -2,7 +2,7 @@
  * `.fnt` bitmap-font decoder — CFont (storable id 0x3F5), a thin wrapper around the `.bmd` bob container.
  *
  * A `.fnt` is one serialized `CStorable` whose body is two font-level words followed by a nested
- * `CBobManager` (id 0x3F4) — the SAME bob container the `.bmd` decoder already parses. Each glyph is one
+ * `CBobManager` (id 0x3F4) — the same bob container the `.bmd` decoder already parses. Each glyph is one
  * bob; character `c` (>= 0x20) draws bob `c - 0x20`. On disk:
  *
  *   [u32 id=0x3F5][u32 version]                  CFont storable header
@@ -13,10 +13,10 @@
  *
  * So a `.fnt` is exactly a 16-byte CFont prefix in front of a `.bmd`: we read the four words, then hand
  * the remainder straight to {@link decodeBmd}. The glyph atlas is then the ordinary bob atlas of that
- * inner container ({@link import('./atlas.js').packBobAtlas}); this module adds the font-specific LAYOUT
+ * inner container ({@link import('./atlas.js').packBobAtlas}); this module adds the font-specific layout
  * on top of it (per-glyph advance, line height, baseline).
  *
- * Ported FORMAT (not architecture) from OpenVikings `Source/NXBasics/`:
+ * Ported format (not architecture) from OpenVikings `Source/NXBasics/`:
  *   - CFont.cs      `CFont(CFile, version)` ctor (value08/value0C then the nested storable),
  *                   `Storable_GetId` (0x3F5), and the layout formulas ported below:
  *                     · glyph lookup   `bobId = char - 0x20`  (`GetBobId_Default`), and space/tab
@@ -46,12 +46,12 @@ const FONT_PREFIX_BYTES = 16;
 /** Lowest character code a font renders; bob 0 is this char (CFont `FirstPrintableChar`). */
 export const FONT_FIRST_CHAR = 0x20;
 /**
- * The bob a space/tab is measured through — NOT `' ' - 0x20` (which is bob 0, an empty slot). CFont's
- * `GetPixelWidth` special-cases whitespace to this bob, so a space takes this bob's ADVANCE. We reproduce
- * only that width redirect: a space draws NOTHING. The oracle's `PrintCharacter`/`GetBobIdForPrint` would
- * literally BLIT bob 0x49 — but in a 0x20-based font that bob is the `'i'` glyph (char 0x69), so drawing it
- * for every space is the original's own quirk that real text layout avoids by advancing the pen and
- * skipping the blit. That deliberate print-side divergence is recorded in `source basis`.
+ * The bob a space/tab is measured through — not `' ' - 0x20` (which is bob 0, an empty slot). CFont's
+ * `GetPixelWidth` special-cases whitespace to this bob, so a space takes this bob's advance. We
+ * reproduce only that width redirect: a space draws nothing. The oracle's
+ * `PrintCharacter`/`GetBobIdForPrint` would blit bob 0x49 — but in a 0x20-based font that bob is the
+ * `'i'` glyph (char 0x69), so drawing it for every space is a quirk real text layout avoids by advancing
+ * the pen and skipping the blit (deliberate print-side divergence, source basis).
  */
 export const FONT_SPACE_BOB_ID = 0x49;
 
@@ -62,9 +62,9 @@ export interface Font {
   /** CFont+0x08 — unknown font-level word, carried verbatim for a faithful round-trip. */
   readonly value08: number;
   /**
-   * CFont+0x0C — carried verbatim. Empirically the font's NOMINAL PIXEL SIZE: 8/10/12 for
-   * font08/10/12 and 8 for fontdebug. Exposed as {@link FontMetrics.nominalSize}; not load-bearing
-   * (the real layout comes from the per-glyph rects), so it is surfaced as an observation, not a contract.
+   * CFont+0x0C — carried verbatim. Empirically the font's nominal pixel size: 8/10/12 for font08/10/12
+   * and 8 for fontdebug. Exposed as {@link FontMetrics.nominalSize}; not load-bearing (the real layout
+   * comes from the per-glyph rects), so it is an observation, not a contract.
    */
   readonly value0C: number;
   /** The glyph bobs: bob `c - 0x20` is character `c`. Parsed by the shared `.bmd` container decoder. */
@@ -134,8 +134,8 @@ function bobAt(bmd: Bmd, bobId: number): BobRecord | undefined {
 
 /**
  * The pen advance for one bob: `spacing + area.x + area.width + 1` (CFont `GetCharacterWidth` /
- * `GetPixelWidth`). Returns 0 for an absent OR EMPTY bob — CFont reads the rect via
- * `GetBobAreaRectanglePtr`, which nulls both when the id is out of range AND when `Type == 0`
+ * `GetPixelWidth`). Returns 0 for an absent or empty bob — CFont reads the rect via
+ * `GetBobAreaRectanglePtr`, which nulls both when the id is out of range and when `Type == 0`
  * (`CBobManager.cs`), and a null rect makes the advance 0.
  */
 export function bobAdvance(bmd: Bmd, bobId: number, spacing = 0): number {
@@ -145,10 +145,10 @@ export function bobAdvance(bmd: Bmd, bobId: number, spacing = 0): number {
 }
 
 /**
- * The line height: the max glyph extent `area.height + area.y + 1` over every NON-EMPTY bob (CFont
+ * The line height: the max glyph extent `area.height + area.y + 1` over every non-empty bob (CFont
  * `GetPixelHeight` measures a string's height as this max, skipping any char whose `GetBobAreaRectanglePtr`
- * is null — i.e. a `Type == 0` bob; over all glyphs it is the font's line height). Empty bobs are skipped so
- * a stale rect on a `Type == 0` slot can't inflate the height (matching the oracle's null-rect skip).
+ * is null — a `Type == 0` bob). Empty bobs are skipped so a stale rect on a `Type == 0` slot can't inflate
+ * the height (matching the oracle's null-rect skip).
  */
 export function deriveLineHeight(bmd: Bmd): number {
   let max = 0;
@@ -161,13 +161,11 @@ export function deriveLineHeight(bmd: Bmd): number {
 }
 
 /**
- * A DERIVED baseline (advisory, not from the oracle): the bottom edge `area.y + area.height` of the first
+ * A derived baseline (advisory, not from the oracle): the bottom edge `area.y + area.height` of the first
  * available reference capital ({@link BASELINE_REFERENCE_CHARS}), since capitals sit on the baseline.
- * The original has NO baseline concept — it lays glyphs out top-anchored, blitting each at `pen + (x, y)`
- * and advancing by {@link bobAdvance}, which reproduces the original layout exactly without a baseline.
- * This value is a convenience for a renderer that wants to align mixed content; it falls back to the line
- * height when no reference glyph has pixels (e.g. a partial debug font). Documented as heuristic in
- * `source basis`.
+ * The original has no baseline concept — it lays glyphs out top-anchored, blitting each at `pen + (x, y)`
+ * and advancing by {@link bobAdvance}. A convenience for a renderer aligning mixed content; falls back to
+ * the line height when no reference glyph has pixels (e.g. a partial debug font). Heuristic, source basis.
  */
 export function deriveBaseline(bmd: Bmd): number {
   for (const ch of BASELINE_REFERENCE_CHARS) {

@@ -7,30 +7,29 @@ export const LandscapeType = z.strictObject({
   /** `name` — the raw display name (`"tree"`, `"stone_ore"`, `"cadaver_leather"`); {@link id} is its slug. */
   name: z.string().optional(),
   walkable: z.boolean().default(true),
-  /** LOAD-BEARING default: the extractor keeps `true` here (the source table carries no per-type
-   *  build flag), and the sim's placement rule now reads it (`TerrainGraph.isBuildable`). Feeding
-   *  extracted landscape rows STRAIGHT into a sim terrain would therefore make water/rock buildable —
-   *  real maps must go through the app's collision resolve (semantic classes), never raw. */
+  /** The extractor keeps `true` (the source table carries no per-type build flag) and the sim's
+   *  placement rule reads it (`TerrainGraph.isBuildable`). Feeding extracted landscape rows straight
+   *  into a sim terrain would make water/rock buildable — real maps must go through the app's collision
+   *  resolve (semantic classes), never raw. */
   buildable: z.boolean().default(true),
   /**
-   * Whether crops may be SOWN on ground of this type (`TerrainGraph.isPlantable` — the farmer drive's
-   * field gate). Source basis: the original's `biocanplanton` flag on the GROUND classes
-   * (`trianglepatterntypes.cif` — only `land` carries it; sand/beach/desertstone/mountain/snow do
-   * not), resolved onto the sim's semantic terrain rows by the app's collision join. Defaults FALSE —
-   * `landscapetypes.ini` (this table's extraction source) has no such flag, so an extracted row never
-   * becomes sowable by accident; only the semantic ground rows opt in.
+   * Whether crops may be sown on ground of this type (`TerrainGraph.isPlantable` — the farmer drive's
+   * field gate). Source basis: the original's `biocanplanton` flag on the ground classes
+   * (`trianglepatterntypes.cif` — only `land` carries it; sand/beach/desertstone/mountain/snow do not),
+   * resolved onto the sim's semantic terrain rows by the app's collision join. Defaults false —
+   * `landscapetypes.ini` (this table's source) has no such flag, so an extracted row never becomes
+   * sowable by accident.
    */
   plantable: z.boolean().default(false),
   /**
-   * `maximumValency` — the per-cell capacity of this landscape type, the number that gates how many
-   * units can share / cluster on a cell of this type in the cell-adjacency graph (Phase 2). The
-   * passable terrain types ("void") carry a large value (100); obstacles/decor carry a small one
-   * (e.g. trees=5, bushes=1). Defaults to 0 when the source omits it (no record observed without it).
+   * `maximumValency` — the per-cell capacity of this landscape type, gating how many units can share a
+   * cell in the cell-adjacency graph. Passable "void" carries a large value (100); obstacles/decor a
+   * small one (trees=5, bushes=1). Defaults to 0 when the source omits it.
    */
   maxValency: z.number().int().nonnegative().default(0),
   /**
    * `allowedonland` — this type sits on the land layer. Nearly every type sets it (terrain, decor,
-   * dropped goods). Defaults false; the placement layer is derived from these flags, not `walkable`.
+   * dropped goods); the placement layer is derived from these flags, not `walkable`. Defaults false.
    */
   allowedOnLand: z.boolean().default(false),
   /** `allowedonwater` — this type sits on the water layer (e.g. walls/gates over water). */
@@ -38,11 +37,10 @@ export const LandscapeType = z.strictObject({
   /** `allowedoneverything` — this type sits on any layer (only the "void"/empty type). */
   allowedOnEverything: z.boolean().default(false),
   /**
-   * Raw `transition` tuples in file order, each a variable-length int list captured VERBATIM. These
-   * drive the landscape lifecycle (how a `tree` becomes a `trunk`, how a mine depletes) but their
-   * field semantics are NOT decoded — do not read meaning into the positions here. Most are 5 ints
-   * (`transition <a> <b> <c> <d> <e>`), a few `mine` types carry a 2-int form. Kept so a future
-   * lifecycle system can consume them once the encoding is reversed. See docs/SOURCES.md.
+   * Raw `transition` tuples in file order, each a variable-length int list captured verbatim. These
+   * drive the landscape lifecycle (tree→trunk, mine depletion) but their field semantics are not
+   * decoded — do not read meaning into the positions. Most are 5 ints, a few `mine` types carry a 2-int
+   * form. Kept for a future lifecycle system. See docs/SOURCES.md.
    */
   transitions: z.array(z.array(z.number().int())).default([]),
   source: Provenance.optional(),
@@ -79,16 +77,16 @@ export type LandscapeGfxFrames = z.infer<typeof LandscapeGfxFrames>;
 
 /**
  * One full `[GfxLandscape]` record from `Data/engine2d/inis/landscapes/landscapes.cif` (866 records)
- * — a placeable **landscape object** (tree, stone, bush, mine decal, wave fx, sign, wonder, …): the
- * visual half (`GfxBobLibs` body+shadow `.bmd`, `GfxPalette` recolour, per-state `GfxFrames`,
- * static/loop animation flags) joined to the logic half (`LogicType` → the {@link LandscapeType}
- * table, valency, workability, walk/build/work footprints). A decoded original map places these by
- * **`EditName`** (the map's `eald` dictionary stores the names; its `emla` half-cell lane indexes
- * that dictionary), so the name is the join key from `content/maps/<id>.json` objects to this table.
+ * — a placeable landscape object (tree, stone, bush, mine decal, wave fx, sign, wonder): the visual
+ * half (`GfxBobLibs` body+shadow `.bmd`, `GfxPalette` recolour, per-state `GfxFrames`, static/loop
+ * flags) joined to the logic half (`LogicType` → the {@link LandscapeType} table, valency, workability,
+ * walk/build/work footprints). A decoded map places these by `EditName` (the map's `eald` dictionary
+ * stores the names; its `emla` half-cell lane indexes it), so the name is the join key from
+ * `content/maps/<id>.json` objects to this table.
  *
- * Like {@link GfxPattern}, the record has no explicit id — {@link index} is the 0-based position in
- * the `.cif`, and the extractor keeps every record so positions never renumber. The pure sim ignores
- * the Gfx fields; the Logic fields feed a future object-collision/harvest slice.
+ * Like {@link GfxPattern} the record has no explicit id — {@link index} is the 0-based `.cif` position,
+ * kept for every record so positions never renumber. The pure sim ignores the Gfx fields; the Logic
+ * fields feed a future object-collision/harvest slice.
  */
 export const LandscapeGfx = z.strictObject({
   /** The 0-based position in the `[GfxLandscape]` list (the engine's positional id). */
@@ -122,10 +120,9 @@ export const LandscapeGfx = z.strictObject({
   /** `GfxLoopAnimation` — 1 = the state's frame list loops continuously (waves, fire, smoke). */
   loopAnimation: z.boolean().default(false),
   /**
-   * `GfxDynamicBackground` — set on exactly the 8 wave records in the real data. Carried for
-   * provenance; the renderer no longer branches on it: the waves' watery translucency is their
-   * Double8Bit bobs' PER-PIXEL alpha, baked into the atlas by the pipeline (see the asset-pipeline's
-   * `AtlasAlphaMode`), not a flat per-record blend.
+   * `GfxDynamicBackground` — set on exactly the 8 wave records. Carried for provenance; the renderer
+   * doesn't branch on it: the waves' watery translucency is their Double8Bit bobs' per-pixel alpha,
+   * baked into the atlas by the pipeline (see `AtlasAlphaMode`), not a flat per-record blend.
    */
   dynamicBackground: z.boolean().default(false),
   source: Provenance.optional(),
