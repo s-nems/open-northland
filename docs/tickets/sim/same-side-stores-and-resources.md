@@ -15,7 +15,8 @@ settler could still:
 - gather from / haul another player's dropped piles or resource nodes (the gatherer/porter rungs).
 
 The user's rule is "all logic" — a settler works only its own side. The reported cases (build,
-farm/workshop staffing) are covered; this is the completeness sweep.
+farm/workshop staffing) are covered; this is the completeness sweep. (Absorbs the older
+store-tribe-filter ticket, deleted 2026-07-14: same gap, pre-ownership vocabulary.)
 
 ## Scope
 
@@ -25,6 +26,10 @@ farm/workshop staffing) are covered; this is the completeness sweep.
 - A ground pile dropped by a settler currently carries no `Owner` — decide whether loose piles are
   neutral (anyone may haul) or inherit the dropper's owner; the original treats dropped goods as the
   owner's. Name the choice.
+- Sweep every economy nearest-X pick under `agents/targets/*` and `agents/economy/*`, not just the
+  three cases above; prefer gating at the candidate-collection seam so all picks inherit it, over
+  per-scan filters. Check per pick whether the `tribe` gate that `nearestConstructionSite` already
+  applies belongs there too (`tribe` decides look/rules, `Owner.player` decides side — they are separate axes).
 - Add a two-player scene/test (like the `sameSide` construction test in
   `construction-system/delivery.cases.ts`) proving a hauler ignores an enemy store and an enemy pile.
 

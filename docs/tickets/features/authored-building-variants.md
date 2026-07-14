@@ -21,6 +21,9 @@ building bodies. No entityId→BuildingBobRef override channel exists.
   SpriteSheet-binding channel; the sprite pool consults it before the per-type binding.
 - Only override with refs whose `BUILDING_FAMILIES` family is loaded (count + report the rest).
 - No-entity/no-override path stays byte-identical; gfx never enters the sim.
+- Adjacent decoded-but-unconsumed field (noted 2026-07-14): authored buildings also carry `rot`
+  (`packages/data/src/schema/maps/entities.ts`) with no consumer — rotation→facing could ride this
+  same override channel; take it or explicitly defer it, either way name the decision.
 
 ## Verify
 

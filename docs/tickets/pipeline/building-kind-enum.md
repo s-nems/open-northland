@@ -2,7 +2,7 @@
 
 **Area:** data (+ pipeline, app consumers) · **Origin:** data schema refactor review, 2026-07-12 · **Priority:** P3
 
-`packages/data` `schema/economy/workplaces.ts` — `BuildingType.kind` is `z.string()` with a JSDoc
+`packages/data` `schema/economy/buildings.ts` — `BuildingType.kind` is `z.string()` with a JSDoc
 that enumerates a **closed** set (`storage | home | workplace | training | tower | vehicle |
 wonder`). Typing it as a free string is the "enum expressed as a string" smell flagged during the
 data refactor: a typo or an unmapped `logicmaintype` flows through as an unclassified building
@@ -31,7 +31,7 @@ requires reconciling the vocabulary first, not a mechanical retype.
 2. Decide the canonical set: either unify the authored values onto the extractor's 7 (rename
    `headquarters`/`house`/`building` → `storage`/`home`/`workplace` etc. at the authoring sites) or
    widen the enum to the true union with documented meaning for each.
-3. Define `export const BuildingKind = z.enum([...])` in `workplaces.ts`, set `kind: BuildingKind`,
+3. Define `export const BuildingKind = z.enum([...])` in `buildings.ts`, set `kind: BuildingKind`,
    and (optionally) type `houseKind()`'s return as `BuildingKind` so the extractor is checked too.
 
 ## Verify

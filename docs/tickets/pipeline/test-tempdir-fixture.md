@@ -1,5 +1,7 @@
 # Extract a shared `useTempDir` test fixture
 
+**Area:** pipeline (tests) · **Origin:** data+pipeline refactor-cleanup (deferred), 2026-07-13 · **Priority:** P3
+
 `tools/asset-pipeline/test` — ~13 stage specs hand-roll the same per-test temp-directory lifecycle:
 `beforeEach(async () => { out = await mkdtemp(join(tmpdir(), 'opennorthland-<name>-')) })` plus
 `afterEach(async () => { await rm(out, { recursive: true, force: true }) })`, with the imports

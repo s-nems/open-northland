@@ -1,6 +1,7 @@
 # Generalize `indexById` into a keyed `indexBy` and drop sim's `byKeyLast`
 
-**Priority:** P3 (refactor / dedup — no behavior change)
+**Area:** data + sim · **Origin:** data+pipeline refactor-cleanup (deferred), 2026-07-13 · **Priority:** P3
+(refactor / dedup — no behavior change)
 
 ## Context
 

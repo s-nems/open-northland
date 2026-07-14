@@ -1,6 +1,8 @@
 # Stop biome from silently checking 0 files inside `.claude/worktrees/`
 
-**Area:** repo tooling (`biome.json`) · **Origin:** /trim-comments render sweep, 2026-07-14 · **Priority:** P2
+**Area:** repo tooling (`biome.json`) · **Origin:** /trim-comments render sweep, 2026-07-14 · **Priority:** P1
+(re-stamped P2→P1 2026-07-14: every `/worktree` session's lint gate silently no-ops, so this
+undermines the verification of all other tickets — fix before more agent sessions run)
 
 `npm run check` is a **silent no-op inside any `/worktree` session**, which makes the project's primary
 lint/format gate useless exactly where agents do their work.
@@ -32,9 +34,8 @@ skills, hooks), not worktrees — which are real checkouts of this repo and shou
   2.5's glob semantics rather than assuming, since `**/.claude` vs `.claude` anchoring is the whole bug.
 - Confirm `npm run check` processes a non-zero file count from *both* the main checkout and a worktree
   under `.claude/worktrees/`.
-- Consider whether `npm test` deserves the same look: a fresh worktree has no `node_modules`/`dist`, so
-  tests fail on unresolved workspace packages until `npm install && npm run build` are run there. If
-  that is expected, say so in `AGENTS.md` under Commands; if not, file separately.
+- The sibling gap — `npm test` failing in a fresh worktree without a prior build — is filed
+  separately: [worktree-test-needs-build](worktree-test-needs-build.md).
 
 ## Verify
 

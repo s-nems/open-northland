@@ -62,13 +62,7 @@ now shares `emitIndexedAndPreviewAtlas` + `writeAtlasBeside` (same file). **Rema
 `stages/goods/index.ts` (`convertGoodsStage`, the goods-palettes LUT), `stages/player-colors.ts`
 (`convertPlayerColorLut`), and inside `buildPaletteLut` itself — extract one write-LUT-PNG helper.
 
-### 5. Named decoder types over `ReturnType`
-
-Two stages type locals as `ReturnType<typeof decodeX>` where the decoder already exports the named
-type: `stages/gui/cursors.ts` (`ReturnType<typeof decodeCursor>` → exported `DecodedCursor`) and
-`stages/lib.ts` (`ReturnType<typeof decodeLib>['files']`). Use the exported names.
-
-### 6. Generic RLE run/literal codec
+### 5. Generic RLE run/literal codec
 
 The high-bit run-vs-literal codec is written per element width in `decoders/mapdat/layers.ts`:
 `unpackMapLayer`/`packMapLayer` (bytes) vs `unpackX6elLayer`/`packX6elLayer` (u16) differ only in

@@ -19,7 +19,7 @@ assumed, like walk-block) against OpenVikings before trusting it.
 ## Scope
 
 1. Add a `constructionWorkArea` `FootprintCell[]` to `BuildingFootprint`
-   (`packages/data/src/schema/economy/workplaces.ts`).
+   (`packages/data/src/schema/economy/building-footprint.ts`).
 2. Parse the key in `extractBuildingFootprints` via the existing `expandAreaRun` + per-`sizeIdx` +
    tribe/size winner path.
 3. In `claimWorkCell`/`yardCells`: when the site's type carries a work area, use those cells

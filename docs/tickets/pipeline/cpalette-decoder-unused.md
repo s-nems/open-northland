@@ -1,5 +1,9 @@
 # Decide the fate of the standalone `CPalette` decoder
 
+**Area:** pipeline · **Origin:** data+pipeline refactor review, 2026-07-13 · **Priority:** P3
+**Needs user:** keep-vs-delete is a product-scope call (the decoder may be deliberately staged for
+the `.hlt`/remap work) — get the owner's decision before executing.
+
 `tools/asset-pipeline/src/decoders/palette.ts` — `decodePalette`/`encodePalette` (the standalone
 `CPalette` storable, id 0x3F6: an 8-byte header + a 0x400-byte `[B,G,R,_]` body) are referenced
 **only** by `test/palette.test.ts`. No `src/stages/*` consumes them: the stages use the `.pcx` trailer
