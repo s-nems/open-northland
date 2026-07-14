@@ -17,9 +17,7 @@ import { writeAtlasBeside } from '../game-file.js';
  * PNG-encode + the JSON manifest of per-bob frame rects/metadata). Mirrors {@link pcxToPng}: the
  * decoders stay pure, this is the only wiring between them. The atlas PNG is `encodePng(atlas.image)`;
  * the manifest serializes straight to JSON. Throws a `bmd:`/`atlas:`-prefixed error for a malformed
- * container or a wrong-sized palette — the batch tree-walk (a later step) catches it per-file. The
- * palette source for a given `.bmd` (which `palettes.ini` entry / `.pcx` trailer pairs with it) is
- * the open question that gates the full tree-walk, so this seam takes the palette as a parameter today.
+ * container or a wrong-sized palette — the batch tree-walk (a later step) catches it per-file.
  * `alpha` picks the bake mode — see {@link AtlasAlphaMode}; the house atlases need `'build-time'`.
  */
 export function bmdToAtlas(
@@ -138,9 +136,6 @@ export async function convertBmdTree(
       console.warn(`[pipeline] skipped ${binding.bmd}: source has no .bmd extension`);
       continue;
     }
-    // Name on (bmd, palette), not the .bmd alone: many bindings share one body bob recoloured per
-    // creature, so `<bmd>.png` would collapse them last-palette-wins. The palette editname is the only
-    // per-creature differentiator, so it rides in the filename — `<bmd-stem>.<palette>.png`.
     const { png, manifest } = await writeAtlasBeside(
       outDir,
       bmdOnDisk,
