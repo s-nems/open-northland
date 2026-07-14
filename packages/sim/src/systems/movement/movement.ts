@@ -21,35 +21,30 @@ export const WALK_TICKS_PER_CELL = 12;
  * {@link WALK_TICKS_PER_CELL} ticks and a row-crossing lattice leg (¾ the world length) takes nine —
  * the on-screen pace is the same either way, by construction.
  *
- * Source basis "Movement step speed": no readable human `movespeed` exists (`animaltypes.ini` and
- * the `logicwalkspeed` animation field are animal-only; the human default is compiled into the
- * original binary, unreconstructed by OpenVikings), so the magnitude hangs on the walk-cycle anchor
- * above — which also matches the original's unhurried walk far better than the earlier ⅛ read (a
- * pure calibration-by-observation, still visibly too brisk).
+ * source-basis (approximated): no readable human `movespeed` exists (`animaltypes.ini` and the
+ * `logicwalkspeed` animation field are animal-only; the human default is compiled into the original binary,
+ * unreconstructed by OpenVikings), so the magnitude hangs on the walk-cycle anchor above.
  *
- * Minted with `divCeil`, NOT `div`: trunc(ONE/12) leaves a 4-ulp remainder, so every cell leg would
- * cost a 13th, nearly-stationary snap tick — a visible per-cell hitch. Ceil makes a leg's LAST step
- * slightly short instead (absorbed by the arrival snap, so no drift accumulates across legs).
+ * Minted with `divCeil`, not `div`: trunc(ONE/12) leaves a 4-ulp remainder, so every cell leg would cost a
+ * 13th, nearly-stationary snap tick — a visible per-cell hitch. Ceil makes a leg's last step slightly short
+ * instead, absorbed by the arrival snap so no drift accumulates across legs.
  */
 export const MOVE_SPEED_PER_TICK: Fixed = fx.divCeil(ONE, fx.fromInt(WALK_TICKS_PER_CELL));
 
 /*
- * MOVEMENT INERTIA — the three constants below shape it. A NAMED APPROXIMATION that deliberately
- * departs from the original: the original engine moves a unit at a constant ticks-per-step pace
- * with no acceleration anywhere (no accel/inertia state exists in OpenVikings or any readable data
- * — source basis "Movement step speed"). OpenNorthland adds a light ease-in/out for movement FEEL: a
- * unit ramps up from rest, sheds speed through corners (momentum projected onto the new heading),
- * and brakes over the final approach instead of stopping dead. The gait lives in sim state
- * ({@link PathFollow}.`speed`), so it is deterministic and replay-exact; the render keeps
- * interpolating positions exactly as before. All three are feel-tuning knobs.
+ * Movement inertia — the three feel-tuning constants below shape it. A named approximation that
+ * deliberately departs from the original: the original engine moves a unit at a constant ticks-per-step pace
+ * with no acceleration anywhere (no accel/inertia state exists in OpenVikings or any readable data).
+ * OpenNorthland adds a light ease-in/out for feel: a unit ramps up from rest, sheds speed through corners
+ * (momentum projected onto the new heading), and brakes over the final approach instead of stopping dead.
+ * The gait lives in sim state ({@link PathFollow}.`speed`), so it stays deterministic and replay-exact.
  */
 
 /**
- * Ticks from rest to full gait (0.15 s at 20 Hz): the ramp accelerates by `divCeil(gait /
- * ACCEL_TICKS)` per tick (ceil keeps the step ≥ 1 ulp for any gait AND makes the ramp exactly this
- * many ticks). Also the recovery rate after a corner sheds speed. Deliberately SHORT — the inertia
- * should read as body weight, not sluggishness (feel-tuned: the first 4-tick cut was visibly too
- * heavy).
+ * Ticks from rest to full gait (0.15 s at 20 Hz): the ramp accelerates by `divCeil(gait / ACCEL_TICKS)` per
+ * tick (ceil keeps the step ≥ 1 ulp for any gait and makes the ramp exactly this many ticks). Also the
+ * recovery rate after a corner sheds speed. Deliberately short — the inertia should read as body weight,
+ * not sluggishness.
  */
 export const ACCEL_TICKS = 3;
 
@@ -72,26 +67,24 @@ export const ARRIVAL_SPEED_DIV = 2;
  *
  * Two movement modes, in this precedence:
  *  1. {@link PathFollow}: ramp the follower's gait `speed` toward its cruise pace ({@link MoveSpeed}'s
- *     `perTick` if it carries one, else the universal {@link MOVE_SPEED_PER_TICK}; the gait is the
- *     SAME whatever the entity is doing — no run gait is modeled, OUR design: no human run speed is
- *     readable and the animal `runspeed` is deliberately unconsumed, so a fleeing unit walks at its
- *     one pace) — accelerating from rest by {@link ACCEL_TICKS}, braking over the last leg's final
- *     approach ({@link BRAKE_HORIZON_TICKS}/{@link ARRIVAL_SPEED_DIV}) — then step STRAIGHT toward
- *     the current waypoint (a cell centre, or the seam point a vertical leg crosses the intermediate
- *     row at — `routing.ts`) by that speed, along the LINE to the waypoint with the step length
- *     measured in the staggered lattice's WORLD metric — so every heading covers the same on-screen
- *     distance per tick ({@link stepTowardPoint}).
+ *     `perTick` if it carries one, else the universal {@link MOVE_SPEED_PER_TICK}) — accelerating from rest
+ *     by {@link ACCEL_TICKS}, braking over the last leg's final approach
+ *     ({@link BRAKE_HORIZON_TICKS}/{@link ARRIVAL_SPEED_DIV}) — then step straight toward the current
+ *     waypoint (a cell centre, or the seam point a vertical leg crosses the intermediate row at —
+ *     `routing.ts`) by that speed, with the step length measured in the staggered lattice's world metric so
+ *     every heading covers the same on-screen distance per tick ({@link stepTowardPoint}). The gait is the
+ *     same whatever the entity is doing — no run gait is modeled (our design: no human run speed is
+ *     readable and the animal `runspeed` is deliberately unconsumed), so a fleeing unit walks at its one
+ *     pace.
  *     On reaching the waypoint, advance `index` and project the momentum onto the next leg's heading
  *     ({@link turnOntoNextLeg}: straight through costs nothing, a corner sheds speed); when the last
  *     waypoint is reached the path is complete and {@link PathFollow} is removed (the planner sees an
  *     entity with no path as idle/arrived). A path-following entity ignores any Velocity.
- *  2. {@link Velocity} (no PathFollow): the original constant-velocity integration — kept for the
- *     determinism golden and any free-moving entity that isn't path-driven.
+ *  2. {@link Velocity} (no PathFollow): constant-velocity integration — kept for the determinism golden and
+ *     any free-moving entity that isn't path-driven.
  *
- * Fixed-point only; the straight-line step (isqrt homing, mirroring the projectile advance) means no
- * floats and no overshoot — a pure function of position + waypoint, so identical inputs yield identical
- * state. An E/W leg's step is bit-exact `speed`; every other heading paces by the world metric
- * (see {@link stepTowardPoint}).
+ * An E/W leg's step is bit-exact `speed`; every other heading paces by the world metric. The straight-line
+ * step uses isqrt homing (mirroring the projectile advance), so there are no floats and no overshoot.
  */
 export const movementSystem: System = (world) => {
   // Entities the path pass moved this tick. A path can complete (PathFollow removed) within the
@@ -111,16 +104,13 @@ export const movementSystem: System = (world) => {
       continue;
     }
 
-    // The entity's ONE pace: its own MoveSpeed when it carries one (a data-paced animal), else the
-    // universal settler default. Deliberately unconditional — no run/sprint mode exists, OUR
-    // design: a fleeing unit escapes by pathing away, not by speeding up (no human run speed is
-    // readable; the original's animal `runspeed` stays extracted-but-unconsumed).
+    // The entity's one pace: its own MoveSpeed when it carries one (a data-paced animal), else the
+    // universal settler default.
     //
-    // Degenerate-pace guard: `ONE/movespeed` truncation can mint a perTick as small as 0 ulps — a
-    // 0-ulp gait makes no progress EVER, so the walker would stall and the path never complete
-    // (the planner would see it as busy forever). Floor the gait at one ULP (the derived accel
-    // step and brake floor stay ≥ 1 by their ceil mints below): an absurdly slow data-pinned pace
-    // stays absurdly slow, but the sim stays total (every path still terminates).
+    // Degenerate-pace guard: `ONE/movespeed` truncation can mint a perTick as small as 0 ulps, and a 0-ulp
+    // gait makes no progress ever — the walker would stall and the path never complete (the planner would
+    // see it as busy forever). Floor the gait at one ULP: an absurdly slow data-pinned pace stays absurdly
+    // slow, but every path still terminates.
     const rawGait = world.has(e, MoveSpeed) ? world.get(e, MoveSpeed).perTick : MOVE_SPEED_PER_TICK;
     const gait = rawGait > ULP ? rawGait : ULP;
     const p = world.get(e, Position);

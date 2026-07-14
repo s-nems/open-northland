@@ -20,23 +20,22 @@ import { dropGroundPile } from './piles.js';
 // follow. Every mutation conserves goods.
 
 /**
- * Consecutive work swings a gatherer lands BEFORE standing its inter-swing breather — the observed
- * work rhythm: the original's collector swings a couple of times in a row, then rests ~0.5–1 s, then
- * swings again ("po dwóch zamachach staje bezczynnie"). No readable data field paces this (the
- * animations carry only the per-swing cycle); a rest after EVERY swing read as a strange stutter, so
- * the breather lands only on every {@link HARVEST_SWINGS_PER_REST}-th swing of a job still in
- * progress ({@link restAfterHarvest}).
+ * Consecutive work swings a gatherer lands before standing its inter-swing breather.
+ *
+ * source-basis (observed): the original's collector swings a couple of times in a row, then rests ~0.5–1 s,
+ * then swings again. No readable data field paces this (the animations carry only the per-swing cycle), and
+ * a rest after every swing reads as a stutter, so the breather lands only on every
+ * {@link HARVEST_SWINGS_PER_REST}-th swing of a job still in progress ({@link restAfterHarvest}).
  */
 export const HARVEST_SWINGS_PER_REST = 2;
 
 /**
- * Whether the swing that JUST resolved against `node` left its multi-swing job STILL IN PROGRESS —
- * the executor then CHAINS the next swing (or the breather) directly instead of releasing the
- * settler for a tick: the one-tick planner gap between swings drew a flick of the idle pose
- * mid-work (the reported "mignięcie" between strikes). True only for a standing {@link Felling}
- * tree with chops left or a {@link MineDeposit} mid-unit (`strikes` advanced but the unit not yet
- * loose); the swing that fells / chips a unit loose / depletes releases the settler — the planner
- * routes the pickup/carry, which is the job's natural break. A plain node (a mushroom — gone after
+ * Whether the swing that just resolved against `node` left its multi-swing job still in progress — the
+ * executor then chains the next swing (or the breather) directly instead of releasing the settler for a
+ * tick, since the one-tick planner gap between swings draws a flick of the idle pose mid-work. True only
+ * for a standing {@link Felling} tree with chops left or a {@link MineDeposit} mid-unit (`strikes` advanced
+ * but the unit not yet loose); the swing that fells / chips a unit loose / depletes releases the settler,
+ * and the planner routes the pickup/carry — the job's natural break. A plain node (a mushroom, gone after
  * its single pluck) never chains.
  */
 export function continuesHarvest(world: World, node: Entity): boolean {

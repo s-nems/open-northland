@@ -184,8 +184,8 @@ export class TerrainGraph {
   }
 
   /**
-   * The in-bounds 4-connected neighbours of a node, in canonical N, E, S, W order. Border nodes
-   * simply yield fewer neighbours. Deterministic: the order never depends on map history.
+   * The in-bounds 4-connected neighbours of a node, in canonical N, E, S, W order. Border nodes simply
+   * yield fewer neighbours.
    */
   neighbours(node: NodeId): NodeId[] {
     const { x, y } = this.coordsOf(node);
@@ -213,18 +213,16 @@ export class TerrainGraph {
    * two straight vertical half-row steps N, S (the enum tail of the original's `THexagonDirection`,
    * NORTH = 6, SOUTH = 7). Each step is paired with its fixed-point cost: the destination node's
    * {@link walkCost} × the edge's world length (E/W = {@link HALF_COLUMN}, diagonal =
-   * {@link DIAGONAL_STEP} ≈ ¾, vertical = {@link HALF_ROW}) — so A* minimises TRUE on-screen
-   * distance. `blocked` is the dynamic walk-block overlay (nodes standing buildings occupy); a step
-   * onto a blocked or unwalkable node is omitted. E/W and N/S steps connect directly adjacent nodes,
-   * so walkability is a property of the DESTINATION node (the original's vertex-graph movement
-   * model). A DIAGONAL edge passes exactly between the two nodes flanking its midpoint (offsets
-   * `(0, dy/2)` and `(dx, dy/2)`), so it additionally requires at least ONE of those flanks
-   * passable: with both flanks blocked the seam is a wall joint, not a gap (the same rule the old
-   * two-row vertical step carried — a named approximation, no readable movement source).
+   * {@link DIAGONAL_STEP} ≈ ¾, vertical = {@link HALF_ROW}) — so A* minimises true on-screen distance.
+   * `blocked` is the dynamic walk-block overlay (nodes standing buildings occupy); a step onto a blocked or
+   * unwalkable node is omitted. E/W and N/S steps connect directly adjacent nodes, so walkability is a
+   * property of the destination node (the original's vertex-graph movement model). A diagonal edge passes
+   * exactly between the two nodes flanking its midpoint (offsets `(0, dy/2)` and `(dx, dy/2)`), so it
+   * additionally requires at least one of those flanks passable: with both blocked the seam is a wall joint,
+   * not a gap (a named approximation — no readable movement source).
    *
-   * Determinism: fixed emission order + fixed per-step costs, all `Fixed`; the returned list drives
-   * the A* relaxation, so its order is part of the canonical path choice (pinned by the pathfinding
-   * goldens).
+   * The emission order is part of the canonical path choice: this list drives the A* relaxation and is
+   * pinned by the pathfinding goldens, so it must not be reordered.
    */
   steps(node: NodeId, blocked?: BlockOverlay): Array<{ node: NodeId; cost: Fixed }> {
     const { x, y } = this.coordsOf(node);

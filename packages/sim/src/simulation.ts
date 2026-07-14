@@ -23,10 +23,9 @@ export interface SimOptions {
   seed: number;
   content: ContentSet;
   /**
-   * The terrain map (dimensions + row-major landscape-typeId grid). Optional: trivial fixtures and
-   * the determinism golden run mapless. When given, the sim builds the cell-adjacency graph once and
-   * exposes it as the `terrain` resource on every system's context. The full `map.cif` tile-grid
-   * decoder will feed this in Phase 2 — for now a scenario/test supplies a small synthetic grid.
+   * The terrain map (dimensions + row-major landscape-typeId grid). Optional: trivial fixtures and the
+   * determinism golden run mapless. When given, the sim builds the cell-adjacency graph once and exposes it
+   * as the `terrain` resource on every system's context.
    */
   map?: TerrainMap;
 }
@@ -49,6 +48,11 @@ export interface FogView {
 /**
  * The simulation: owns the world, the RNG, and the system schedule. Advance one deterministic
  * tick with `step()`. No rendering, no I/O — see docs/ECS.md.
+ *
+ * The read seams ({@link snapshot}, {@link placementProbe}, {@link constructionPlots},
+ * {@link needsEnabled}, {@link fogMode}, {@link fogView}) are the sanctioned way the app and render
+ * observe state instead of reaching into live component stores. None of them mutate, so none affect
+ * determinism.
  */
 export class Simulation {
   readonly world = new World();
@@ -135,14 +139,14 @@ export class Simulation {
    * class instances / live Maps), so it is also transferable to a render Web Worker for free. Pure:
    * a snapshot is a function of state and is never read back into sim logic.
    *
-   * Memoized per tick: the app's frame loop (and its pointer handlers) snapshot every RAF while the
-   * fixed timestep may not have stepped — re-cloning an unchanged world each frame was a large share of
-   * a real map's frame cost. The memo is reused while the tick AND the World's {@link
-   * World.mutationVersion} are unchanged (any `add`/`remove`/`destroy`/`touch` — e.g. a pre-tick-0
-   * fixture spawn — bumps the version). A monotonic COUNTER, not the touched log's emptiness, so a
-   * direct external `takeSnapshot` call draining the log between two same-tick snapshots cannot make
-   * this serve a stale view. A DIRECT in-place store write without `World.touch` between same-tick
-   * snapshots is the one blind spot; sim systems only mutate inside `step()`, which advances the tick.
+   * Memoized per tick: the app's frame loop (and its pointer handlers) snapshot every RAF while the fixed
+   * timestep may not have stepped, and re-cloning an unchanged world each frame was a large share of a real
+   * map's frame cost. The memo is reused while the tick and the World's {@link World.mutationVersion} are
+   * unchanged (any `add`/`remove`/`destroy`/`touch` — e.g. a pre-tick-0 fixture spawn — bumps the version).
+   * A monotonic counter, not the touched log's emptiness, so a direct external `takeSnapshot` draining the
+   * log between two same-tick snapshots cannot make this serve a stale view. A direct in-place store write
+   * without `World.touch` between same-tick snapshots is the one blind spot; sim systems only mutate inside
+   * `step()`, which advances the tick.
    */
   snapshot(): WorldSnapshot {
     const memo = this.snapshotMemo;
@@ -161,9 +165,8 @@ export class Simulation {
    * command gates on ({@link canPlaceBuilding}). The world's obstacle sets are memoized per
    * {@link placementBlockerVersion}, so the once-per-frame probe build re-scans the world only when a
    * building/resource actually appears or disappears (not every tick), and probing a viewport is then
-   * O(visible tiles). Read-only, like {@link snapshot}; never mutates and so is determinism-irrelevant.
-   * Returns null for a mapless sim (no terrain graph → no placement rule), where the caller shows no
-   * overlay.
+   * O(visible tiles). Returns null for a mapless sim (no terrain graph → no placement rule), where the
+   * caller shows no overlay.
    */
   placementProbe(buildingType: number): PlacementProbe | null {
     if (this.terrain === undefined) return null;
@@ -183,18 +186,16 @@ export class Simulation {
 
   /**
    * The ground plots of every under-construction building — its footprint body cells, for the render's
-   * grey "construction site" decal (see {@link constructionSitePlots}). Read-only render support like
-   * {@link placementProbe}: never mutates, determinism-irrelevant. Empty when nothing is under construction.
+   * grey "construction site" decal (see {@link constructionSitePlots}). Empty when nothing is under
+   * construction.
    */
   constructionPlots(): ConstructionPlot[] {
     return constructionSitePlots(this.world, this.content);
   }
 
   /**
-   * Whether the needs mechanic is currently on (the `WorldRules` rule the `setNeedsEnabled` command
-   * sets; absent = enabled). A sanctioned read seam like {@link placementProbe} — the app's admin
-   * toggle labels itself from this instead of reaching into live component stores. Read-only,
-   * determinism-irrelevant.
+   * Whether the needs mechanic is currently on (the `WorldRules` rule the `setNeedsEnabled` command sets;
+   * absent = enabled). The app's admin toggle labels itself from this.
    */
   needsEnabled(): boolean {
     return needsEnabled(this.world);
@@ -202,19 +203,17 @@ export class Simulation {
 
   /**
    * The active fog-of-war mode (the `FogRules` rule the `setFogMode` command sets; absent =
-   * `FOG_MODE.OFF`). The same sanctioned read seam as {@link needsEnabled} — the app's admin fog
-   * switcher labels itself from this. Read-only, determinism-irrelevant.
+   * `FOG_MODE.OFF`). The app's admin fog switcher labels itself from this.
    */
   fogMode(): number {
     return fogMode(this.world);
   }
 
   /**
-   * The fog-of-war read view for ONE viewer player — the seam the render (terrain wash, sprite cull,
-   * minimap) consumes, like {@link placementProbe}: read-only, never mutates, determinism-irrelevant.
-   * `stateAt` answers the EFFECTIVE `FOG_STATE` of a cell (RECON's known-terrain view rule applied);
-   * `generation` bumps only when the masks actually rebuilt, so a render layer re-composites on it
-   * instead of per tick. Returns null when fog is OFF (the default) or the sim is mapless — the
+   * The fog-of-war read view for one viewer player — the seam the render (terrain wash, sprite cull,
+   * minimap) consumes. `stateAt` answers the effective `FOG_STATE` of a cell (RECON's known-terrain view
+   * rule applied); `generation` bumps only when the masks actually rebuilt, so a render layer re-composites
+   * on it instead of per tick. Returns null when fog is OFF (the default) or the sim is mapless — the
    * caller then draws no fog at all.
    */
   fogView(player: number): FogView | null {

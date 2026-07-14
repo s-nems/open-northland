@@ -36,56 +36,50 @@ export { DEFEND_LEASH_NODES, DEFEND_RADIUS_NODES } from './engagement.js';
 export { SIGHT_RADIUS_NODES } from './targeting.js';
 
 /**
- * CombatSystem — the whole combat loop's **decision** stage: for each combatant, pick who to fight and
- * either **swing** at an enemy in reach or **advance** on one that is spotted but out of reach. It closes
- * the front half of the targeting→attack→hit→death loop (the AtomicSystem's `attack` effect lands the
- * hit, the CleanupSystem reaps the felled), and it now also drives the *engagement* half — walk-into-melee.
+ * CombatSystem — the combat loop's decision stage: for each combatant, pick who to fight and either swing at
+ * an enemy in reach or advance on one spotted but out of reach. The AtomicSystem's `attack` effect lands the
+ * hit and the CleanupSystem reaps the felled.
  *
- * A **combatant** is a {@link Settler} carrying a {@link Health} pool; a non-combat settler / the golden
- * slice carries none, so the whole system is inert on them (the hash stays untouched). Each tick:
+ * A combatant is a {@link Settler} carrying a {@link Health} pool; a non-combat settler carries none, so the
+ * system is inert on them. Each tick:
  *
- *  1. **Dormancy gate** ({@link combatPossible}) — one cheap pass decides whether any hostile pair (or any
- *     lingering combat state to clean up) exists. If not, the system does **zero** further work: a map of
- *     peaceful settlers, or an all-one-player field, costs nothing (golden rule 7 — no full-world scan on
- *     an idle tick).
- *  2. **Spatial index** — all combatants are bucketed by tile ONCE ({@link NodeBuckets}), so a seeker's
- *     "nearest enemy" query is a bounded grid RING SEARCH ({@link NodeBuckets.nearest}) instead of an
- *     O(entities) full scan per seeker (the historical plan tier-3 ring-search consumer).
- *  3. **Per combatant** ({@link engageCombatant}) — act on the unit's {@link Stance} military mode (owned
- *     units; the original's `MILITARY_MODE`): **ATTACK** auto-acquires the nearest enemy in sight and
- *     swings (in the weapon reach band) or chases (beyond it, throttled to {@link REPATH_CADENCE});
- *     **DEFEND** engages only within {@link DEFEND_RADIUS_NODES} of an anchor and never chases past
- *     {@link DEFEND_LEASH_NODES}, returning to post when clear; **IGNORE** never auto-engages (a hunter
- *     still hunts prey); **FLEE** paths away from the nearest threat ({@link fleeDrive}). An
- *     explicit {@link AttackOrder} overrides the mode (fight THAT one). Unowned combatants carry no Stance
- *     and keep the legacy swing-in-place behaviour.
+ *  1. Dormancy gate ({@link combatPossible}) — one cheap pass decides whether any hostile pair (or any
+ *     lingering combat state to clean up) exists. If not, the system does no further work: a map of peaceful
+ *     settlers, or an all-one-player field, costs nothing (golden rule 7).
+ *  2. Spatial index — all combatants are bucketed by tile once ({@link NodeBuckets}), so a seeker's
+ *     "nearest enemy" query is a bounded grid ring search ({@link NodeBuckets.nearest}) instead of an
+ *     O(entities) full scan per seeker. The search finishes the whole minimum-distance band and picks
+ *     (distance, then id) — the same winner a full scan would, so the pick stays order-independent.
+ *  3. Per combatant ({@link engageCombatant}) — act on the unit's {@link Stance} military mode (owned units;
+ *     the original's `MILITARY_MODE`): ATTACK auto-acquires the nearest enemy in sight and swings (in the
+ *     weapon reach band) or chases (beyond it, throttled to {@link REPATH_CADENCE}); DEFEND engages only
+ *     within {@link DEFEND_RADIUS_NODES} of an anchor and never chases past {@link DEFEND_LEASH_NODES},
+ *     returning to post when clear; IGNORE never auto-engages (a hunter still hunts prey); FLEE paths away
+ *     from the nearest threat ({@link fleeDrive}). An explicit {@link AttackOrder} overrides the mode.
+ *     Unowned combatants carry no Stance and swing in place.
  *
- * **Two hostility axes.** *Who* is an enemy is the {@link mayTarget} relation, which composes:
- *  - **Owner (player) hostility** — two OWNED combatants of DIFFERENT players are enemies; SAME player are
- *    friendly (a player's mixed-tribe army never fights itself). This is the axis battle scenes key on
- *    (viking-vs-viking told apart by player). Binary, no diplomacy/alliances (source basis).
- *  - **Tribe hostility + predation + provoked anger** ({@link mayAttack}/{@link mayHunt}/{@link Anger}) —
- *    the existing content relations for any pair where at least one side is unowned (wildlife, economy
- *    fixtures, the golden path): civ-vs-civ by tribe, civ⇄aggressive-animal, hunter→catchable-prey, and a
- *    struck `getAngry` animal fighting back. Unchanged for unowned combatants.
+ * Two hostility axes compose into the {@link mayTarget} relation:
+ *  - Owner (player) hostility — two owned combatants of different players are enemies; same player are
+ *    friendly, so a player's mixed-tribe army never fights itself. This is the axis battle scenes key on
+ *    (viking-vs-viking told apart by player). Binary: no diplomacy/alliances.
+ *  - Tribe hostility + predation + provoked anger ({@link mayAttack}/{@link mayHunt}/{@link Anger}) — the
+ *    content relations for any pair where at least one side is unowned (wildlife, economy fixtures, the
+ *    golden path): civ-vs-civ by tribe, civ⇄aggressive-animal, hunter→catchable-prey, and a struck
+ *    `getAngry` animal fighting back.
  *
- * **Two reach radii.** The weapon's extracted `[minRange, maxRange]` band is where a swing LANDS; an
- * approximated {@link SIGHT_RADIUS_NODES} is how far an owned combatant SPOTS an enemy to advance on. An
- * unowned combatant has no advance drive (its search radius is just `maxRange`), so its behaviour is
- * byte-identical to before — it swings an in-range enemy and otherwise does nothing.
- *
- * Determinism: no RNG, no wall-clock. Combatants are scanned in canonical ({@link canonicalById}) order;
- * the ring search finishes the whole minimum-distance band and picks (distance, then id) — the same winner
- * a full scan would, provably order-independent. No-op without a terrain graph.
+ * Two reach radii: the weapon's extracted `[minRange, maxRange]` band is where a swing lands, while the
+ * approximated {@link SIGHT_RADIUS_NODES} is how far an owned combatant spots an enemy to advance on. An
+ * unowned combatant has no advance drive (its search radius is just `maxRange`) — it swings an in-range
+ * enemy and otherwise does nothing.
  */
 export const combatSystem: System = (world, ctx) => {
   if (ctx.terrain === undefined) return; // mapless sim: no cells to measure reach over
   const terrain = ctx.terrain;
 
-  // Dormancy gate FIRST, over the raw (unsorted) combatant query: it is order-independent (Set
-  // membership + a boolean any-match), so an idle standing army pays only an O(combatants) scan, not the
-  // O(c log c) canonical sort, on a tick with no fight. No possible hostile pair AND no combat state to
-  // resolve ⇒ skip all combat work (golden rule 7 — zero cost when nothing can happen).
+  // Dormancy gate first, over the raw (unsorted) combatant query: it is order-independent (Set membership
+  // + a boolean any-match), so an idle standing army pays only an O(combatants) scan, not the O(c log c)
+  // canonical sort, on a tick with no fight. No possible hostile pair and no combat state to resolve ⇒ skip
+  // all combat work.
   if (!combatPossible(world, ctx, world.query(Settler, Health, Position))) return;
 
   // A fight (or cleanup) IS possible: now build the canonical (ascending-id) combatant list — the scan

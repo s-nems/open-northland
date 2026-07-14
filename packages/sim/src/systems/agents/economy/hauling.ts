@@ -60,15 +60,14 @@ export function planPorter(plan: PlannerContext): boolean {
 }
 
 /**
- * 5. STORE-CARRIER HAUL — an **employed carrier** (the transport trade, bound to a building — in
- * practice a warehouse/HQ transport slot; a workshop-bound carrier never falls this far, rung 2a owns
- * it) hauls a finished workplace output to a store, so producing workshops don't clog and goods reach
- * the settlement's stores; the delivery rung then routes the load to ITS bound store when that store
- * can take it. NOBODY else ferries: a settler of another trade with nothing to do idles, and an
- * unemployed or unbound settler does no work at all — transport is a job one is hired for, never a
- * default pastime (observed original behaviour: "bezrobotny to bezrobotny", a carrier works only
- * through its assignment; the JobSystem's report-in pass is what binds a loose carrier to an open
- * transport slot).
+ * 5. STORE-CARRIER HAUL — an employed carrier (the transport trade, bound to a building — in practice a
+ * warehouse/HQ transport slot; a workshop-bound carrier never falls this far, rung 2a owns it) hauls a
+ * finished workplace output to a store, so producing workshops don't clog and goods reach the settlement's
+ * stores; the delivery rung then routes the load to its bound store when that store can take it. Nobody
+ * else ferries: a settler of another trade with nothing to do idles, and an unemployed or unbound settler
+ * does no work at all — transport is a job one is hired for, never a default pastime (observed original
+ * behaviour; a carrier works only through its assignment, and the JobSystem's report-in pass is what binds
+ * a loose carrier to an open transport slot).
  * `anyHaulable` is the planner's per-tick dormancy gate — when nothing is haulable anywhere the
  * per-settler scan is provably null and skipped. Returns false when this settler may not / need not
  * haul (the caller de-stacks it).

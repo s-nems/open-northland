@@ -51,10 +51,6 @@ import { boundWorkplaceTarget, collectTargets, hasHaulableOutput } from './targe
  * The split mirrors the original: the atomic vocabulary is the soul of the behavior, and navigation
  * is just how a settler physically reaches an atomic's target. The atomic planner runs first so a
  * freshly-set goal is picked up by the navigation pass in the same tick (no one-tick stall).
- *
- * Determinism: no RNG, no wall-clock; entities are visited in deterministic store order and every
- * choice is a pure function of the settler's components + the (canonically-scanned) world. No-ops
- * without a terrain graph (a mapless sim has no cells to navigate over — the golden is untouched).
  */
 export const aiSystem: System = (world, ctx) => {
   if (ctx.terrain === undefined) return; // mapless sim: no cells to navigate over
@@ -70,34 +66,33 @@ export const aiSystem: System = (world, ctx) => {
  *   needs (eat > sleep > pray) → combat/hold gates → deliver a carried load → bound-farmer field loop →
  *   bound-producer loop → gather (chop/collect) → porter ferrying → store-carrier haul → idle de-stack.
  *
- * The ORDER is part of the design (and of the goldens): needs sit ABOVE the combat/hold gates so a
+ * The order is part of the design (and of the goldens): needs sit above the combat/hold gates so a
  * starving combatant still feeds (a soft override), and the economy rungs go most-specific-first so
  * a gatherer works its own trade before ferrying others' goods.
  *
- * The atomic id and its duration come from CONTENT, not code (the drives resolve them through the
- * tribe's `setatomic` binding — see ./actions.ts); "utility" is minimal (nearest reachable target by
- * Manhattan distance). Targets are scanned in canonical (ascending entity-id) order with a
- * deterministic distance+cell tie-break, so the choice never depends on store insertion history.
+ * The atomic id and its duration come from content, not code (the drives resolve them through the tribe's
+ * `setatomic` binding — see ./actions.ts); "utility" is minimal (nearest reachable target by Manhattan
+ * distance). Targets are scanned in canonical (ascending entity-id) order with a deterministic
+ * distance+cell tie-break, so the choice never depends on store insertion history.
  */
 function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph): void {
-  // Build each target category ONCE per tick (ascending entity-id, canonical). Without this every idle
-  // settler re-scanned + re-sorted the WHOLE world per `nearest*` call — `canonicalEntities()` is an
-  // alloc+sort of all entities — so the planner was O(settlers · entities · log n) and pinned a big idle
-  // crowd at ~480 ms/tick. Scanning a per-tick candidate list is O(candidates); the ascending-id order
-  // matches the old full scan, so the distance+id tie-break picks the identical winner (goldens hold).
+  // Build each target category once per tick (ascending entity-id, canonical), so a scan is
+  // O(candidates) rather than every idle settler re-scanning and re-sorting the whole world per
+  // `nearest*` call (`canonicalEntities()` allocates and sorts all entities — O(settlers · entities ·
+  // log n) per tick). The ascending-id order matches a full scan, so the distance+id tie-break picks the
+  // identical winner and the goldens hold.
   const targets = collectTargets(world, ctx);
   // Dormancy gate: the carrier fallback (`nearestWorkplaceOutput`) is a full stockpile scan per settler.
-  // If NOTHING is haulable anywhere this tick, every settler's scan returns null — so decide it ONCE and
-  // let idle settlers skip the scan (identical outcome, no per-settler work). This is what makes an idle
-  // crowd cost ~0: a settler with no reachable work does not re-scan the world every tick.
+  // If nothing is haulable anywhere this tick, every settler's scan returns null — so decide it once and
+  // let idle settlers skip the scan (identical outcome, no per-settler work). This is what keeps an idle
+  // crowd at ~0 cost.
   const anyHaulable = hasHaulableOutput(world, ctx, targets.stockpiles);
-  // Spacing occupancy — shared by BOTH spacing consumers (the idle de-stack rung and the builder
-  // work slots, see ./destack.ts): owned settlers currently STATIONARY (not travelling — distinct
-  // from the waiting-inside `Resting` marker) bucketed by integer tile, in ascending-id order.
-  // Gated on Owner so it only ever moves gameplay
-  // (player-owned) units; the unowned golden/economy fixtures build an empty bucket set, so their
-  // planner output is byte-identical. Built ONCE from the tick-start positions (stable across the
-  // loop's own mutations).
+  // Spacing occupancy — shared by both spacing consumers (the idle de-stack rung and the builder work
+  // slots, see ./destack.ts): owned settlers currently stationary (not travelling — distinct from the
+  // waiting-inside `Resting` marker) bucketed by integer tile, in ascending-id order. Gated on Owner so it
+  // only ever moves player-owned units; the unowned golden/economy fixtures build an empty bucket set, so
+  // their planner output is byte-identical. Built once from the tick-start positions, stable across the
+  // loop's own mutations.
   const stationaryOwned = canonicalById(world.query(Settler, Position, Owner)).filter(
     (e) => !isTravelling(world, e),
   );
@@ -111,10 +106,10 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
   // operator goes fetching/hauling instead of idling inside beside a colleague's batch.
   const seatClaims: WorkSeatClaims = new Map();
 
-  // CANONICAL settler order: the per-tick claim maps (farmClaims, seatClaims) hand out targets/seats
-  // first-come-first-served, so the visit order is a PICK, not a mere sweep — it must be ascending
-  // entity-id, never store insertion history (AGENTS.md). Today Settler stores happen to insert in id
-  // order (settlers are never re-added), but nothing enforces that; the sort pins the winner.
+  // Canonical settler order: the per-tick claim maps (farmClaims, seatClaims) hand out targets/seats
+  // first-come-first-served, so the visit order is a pick, not a mere sweep — it must be ascending
+  // entity-id, never store insertion history. Today Settler stores happen to insert in id order (settlers
+  // are never re-added), but nothing enforces that; the sort pins the winner.
   for (const e of canonicalById(world.query(Settler, Position))) {
     // Busy: an atomic is running, or the settler is en route to a target. Leave it to play out (its
     // FarmTask claim, if any, stays live so colleagues keep avoiding its target).
@@ -133,12 +128,11 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     const settler = world.get(e, Settler);
     if (settler.jobType === null) continue; // an unemployed settler has no job atomics to run
     // A baby/child is a non-working life stage: it runs no atomics and, faithful to the original (a baby
-    // is cared for, it doesn't self-feed), does NOT run the adult needs-drives (eat/sleep/pray) — it just
-    // grows up (GrowthSystem). Key on the Age COMPONENT, not on `isNonWorkingAge(jobType)`: Age is present
-    // ⟺ the settler is in a baby/child stage (the GrowthSystem invariant), and keying on it avoids a
-    // jobType-id collision — a synthetic fixture's adult job id can coincide with a real age-class id (the
-    // golden slice's woodcutter is jobType 1, the same number as `baby_female`), but only a settler BORN
-    // young carries an Age, so an adult worker is never mistaken for a child.
+    // is cared for, it doesn't self-feed), does not run the adult needs-drives — it just grows up
+    // (GrowthSystem). Key on the Age component, not `isNonWorkingAge(jobType)`: Age is present ⟺ the
+    // settler is in a baby/child stage (the GrowthSystem invariant), and keying on it avoids a jobType-id
+    // collision — the golden slice's woodcutter is jobType 1, the same number as `baby_female`, but only a
+    // settler born young carries an Age.
     if (world.has(e, Age)) continue;
 
     const p = world.get(e, Position);
@@ -149,19 +143,19 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // NEEDS (highest priority): eat > sleep > pray. An unsatisfiable need falls through to work.
     if (planNeeds(world, ctx, terrain, e, settler, here, load, targets)) continue;
 
-    // COMBAT / HOLD gates — a unit combat or the player currently owns skips economy planning. All
-    // four sit BELOW the needs drives on purpose (soft overrides — hunger/fatigue/piety still pull
-    // the unit away, faithful to the autonomous-settler model):
-    //  - Engagement: fighting/advancing — the CombatSystem owns its movement (the chase) and its
-    //    atomic (the swing); it clears the marker when the fight ends.
-    //  - Fleeing: running from danger (the FLEE stance's active drive) — matters while it STANDS
-    //    (boxed in, or in the flee cool-down); while running it carries a MoveGoal and was skipped
-    //    above. combatSystem sheds the marker when the threat is gone; a COLLAPSING need overrides
-    //    the flee inside combatSystem, so this never traps a starving unit.
-    //  - DEFEND stance: a guard HOLDS its post against the economy (the CombatSystem walks it back
-    //    when displaced); owned-only, so unowned/golden fixtures are untouched.
-    //  - PlayerOrder: a unit standing where the human sent it stays put until the timed hold expires
-    //    (playerOrderSystem removes the order), then the economy re-tasks it.
+    // Combat / hold gates — a unit that combat or the player currently owns skips economy planning. All
+    // four sit below the needs drives on purpose (soft overrides — hunger/fatigue/piety still pull the
+    // unit away, faithful to the autonomous-settler model):
+    //  - Engagement: fighting/advancing — the CombatSystem owns its movement (the chase) and its atomic
+    //    (the swing); it clears the marker when the fight ends.
+    //  - Fleeing: running from danger (the FLEE stance's active drive) — matters while it stands (boxed
+    //    in, or in the flee cool-down); while running it carries a MoveGoal and was skipped above.
+    //    combatSystem sheds the marker when the threat is gone; a collapsing need overrides the flee
+    //    inside combatSystem, so this never traps a starving unit.
+    //  - DEFEND stance: a guard holds its post against the economy (the CombatSystem walks it back when
+    //    displaced); owned-only, so unowned/golden fixtures are untouched.
+    //  - PlayerOrder: a unit still walking out the player's move order. playerOrderSystem removes the
+    //    order on arrival, and the economy re-tasks it the same tick.
     if (world.has(e, Engagement)) continue;
     if (world.has(e, Fleeing)) continue;
     const stance = world.tryGet(e, Stance);
@@ -222,10 +216,9 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // 4. PORTER — a settler bound to a storage fixture ferries loose ground piles into it.
     if (planPorter(plan)) continue;
 
-    // 5. STORE-CARRIER HAUL — an employed carrier (bound to a store's transport slot) ferries
-    // finished workplace outputs to the stores; everyone else with nothing above is genuinely idle
-    // ("bezrobotny to bezrobotny" — hauling is a trade, not a default): de-stack off a shared tile
-    // so an idle crowd spreads out (see ./destack.ts).
+    // 5. STORE-CARRIER HAUL — an employed carrier (bound to a store's transport slot) ferries finished
+    // workplace outputs to the stores. Hauling is a trade, not a default, so everyone else with nothing
+    // above is genuinely idle: de-stack off a shared tile so an idle crowd spreads out (./destack.ts).
     if (!planCarrierHaul(plan, anyHaulable)) {
       deStackIdle(world, ctx, terrain, e, hereNode.hx, hereNode.hy, spacing);
     }

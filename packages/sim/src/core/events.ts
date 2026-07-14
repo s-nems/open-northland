@@ -35,11 +35,11 @@ export type SimEvent =
       /**
        * A combatant was reaped this tick — its {@link import('../components/combat.js').Health} pool hit 0
        * and `cleanupSystem` removed it. `cause` is a render/audio hint (`'damage'` today). `player` is the
-       * dead unit's {@link import('../components/ownership.js').Owner} slot, read BEFORE the destroy (the
+       * dead unit's {@link import('../components/ownership.js').Owner} slot, read before the destroy (the
        * entity is gone by the snapshot, so a consumer can't look it up) — `null` for an unowned death
-       * (wildlife / a neutral), so audio can play the "your settler died" stinger for the LOCAL player only.
-       * `at` is the death HALF-CELL NODE (the reaped unit's last position), so render can leave a cadaver /
-       * bones marker there; omitted only if the dying entity somehow carried no `Position`.
+       * (wildlife / a neutral), so audio can play the "your settler died" stinger for the local player only.
+       * `at` is the death node (the reaped unit's last position), so render can leave a cadaver/bones marker
+       * there; omitted only if the dying entity somehow carried no `Position`.
        */
       readonly kind: 'settlerDied';
       readonly entity: Entity;
@@ -53,10 +53,9 @@ export type SimEvent =
        * An atomic reached its authored PLAY_SOUND_FX frame this tick — the mid-animation cue the
        * original triggers the action's sound at (`ATOMIC_ANIMATION_EVENT_TYPE_PLAY_SOUND_FX`, e.g. the
        * builder's hammer knock at frame 4 of its 15-frame swing). Distinct from `atomicCompleted` (the
-       * swing END): audio plays the per-swing SFX HERE so it lands on the visual strike instead of
-       * trailing to completion. Fires only for an atomic whose animation carries the cue; the emitter's
-       * snapshot position locates the sound. Deterministic like every event — a pure function of the
-       * tick's atomics reaching their cue frame.
+       * swing end): audio plays the per-swing SFX here so it lands on the visual strike instead of trailing
+       * to completion. Fires only for an atomic whose animation carries the cue; the emitter's snapshot
+       * position locates the sound.
        */
       readonly kind: 'atomicSound';
       readonly entity: Entity;
@@ -64,16 +63,14 @@ export type SimEvent =
     }
   | {
       /**
-       * A MELEE blow CONNECTED this tick — an in-place `attack` swing reached a live target and drained
-       * its {@link import('../components/combat.js').Health} at the ATTACK-event frame. `at` is the
-       * VICTIM's HALF-CELL NODE (where the wound is), so render draws its blood there and audio plays the
-       * weapon-impact SFX from that spot; `weaponMainType` is the striker's weapon class (1 fist / 2 spear /
-       * 3 sword / 4 saber / 5 axe — `WEAPON_MAIN_TYPE_*`, ranged classes never emit this) so the impact
-       * sound can be weapon-specific, `undefined` when the weapon lists no class. A swing that struck AIR
-       * (no adjacent live target) resolves nothing and emits NO `combatHit` — the "miss = no blood" rule
-       * falls straight out of the hit-resolution guard. The RANGED twin is {@link 'projectileHit'} (the
-       * arrow/rock landing), which render/audio treat the same way (blood + impact). Deterministic like
-       * every event: a pure function of the tick's landed melee blows.
+       * A melee blow connected this tick — an in-place `attack` swing reached a live target and drained its
+       * {@link import('../components/combat.js').Health} at the ATTACK-event frame. `at` is the victim's
+       * node (where the wound is), so render draws its blood there and audio plays the weapon-impact SFX
+       * from that spot; `weaponMainType` is the striker's weapon class (1 fist / 2 spear / 3 sword /
+       * 4 saber / 5 axe — `WEAPON_MAIN_TYPE_*`, ranged classes never emit this) so the impact sound can be
+       * weapon-specific, `undefined` when the weapon lists no class. A swing that struck air resolves
+       * nothing and emits no `combatHit` — "miss = no blood" falls out of the hit-resolution guard. The
+       * ranged twin is {@link 'projectileHit'}, which render/audio treat the same way.
        */
       readonly kind: 'combatHit';
       readonly attacker: Entity;
@@ -83,12 +80,11 @@ export type SimEvent =
     }
   | {
       /**
-       * A MELEE swing was LOOSED this tick — a fighter started an in-place `attack` (the swoosh, at the
-       * attacker's node), the melee twin of `projectileLaunched` (a bow's release). Fires on EVERY melee
-       * swing whether it connects or whiffs, so combat is audible throughout the animation, not just at the
-       * brief connect; the impact clang is the separate {@link 'combatHit'}. `at` is the ATTACKER's HALF-CELL
-       * NODE. Render ignores it (no wound → no blood); it drives only the swing SFX. Ranged swings emit
-       * `projectileLaunched` instead. Deterministic like every event: a pure function of the tick's swings.
+       * A melee swing was loosed this tick — a fighter started an in-place `attack` (the swoosh, at the
+       * attacker's node), the melee twin of `projectileLaunched`. Fires on every melee swing whether it
+       * connects or whiffs, so combat is audible throughout the animation and not just at the brief connect;
+       * the impact clang is the separate {@link 'combatHit'}. Render ignores it (no wound → no blood); it
+       * drives only the swing SFX. Ranged swings emit `projectileLaunched` instead.
        */
       readonly kind: 'combatSwing';
       readonly attacker: Entity;
@@ -107,8 +103,7 @@ export type SimEvent =
        * {@link import('../components/economy/index.js').GroundDrop} holding the whole `amount` of `goodType`)
        * plus a {@link import('../components/economy/index.js').Stump} decor. Render/audio use it for the
        * felling cue (a "timber!" sound, a falling-tree effect); render otherwise reconciles the new
-       * trunk/stump straight from the snapshot, so this is a one-shot notification, not the source of
-       * truth. Deterministic like every event: a pure function of the tick's felled nodes.
+       * trunk/stump straight from the snapshot, so this is a one-shot notification, not the source of truth.
        */
       readonly kind: 'resourceFelled';
       readonly node: Entity;
@@ -122,9 +117,9 @@ export type SimEvent =
       /**
        * A ranged weapon LOOSED a {@link import('../components/combat.js').Projectile} this tick — the
        * `shooter` released an arrow/rock (`munitionType`: 1 arrow / 2 rock) at `target` from `at`, at its
-       * ATTACK-event frame. `projectile` is the entity now in flight (render draws it from the snapshot
-       * each frame; this one-shot is the launch CUE — a bow-twang sound, a muzzle puff). Deterministic
-       * like every event: a pure function of the tick's launched shots. Paired with {@link 'projectileHit'}.
+       * ATTACK-event frame. `projectile` is the entity now in flight (render draws it from the snapshot each
+       * frame; this one-shot is the launch cue — a bow-twang sound, a muzzle puff). Paired with
+       * {@link 'projectileHit'}.
        */
       readonly kind: 'projectileLaunched';
       readonly projectile: Entity;
@@ -139,7 +134,7 @@ export type SimEvent =
        * `projectile` (loosed by `shooter`, `munitionType` 1 arrow / 2 rock) reached `target` at `at` and
        * dealt its damage; the projectile entity is destroyed the same tick. Render/audio use it for the
        * impact cue (a thunk sound, a hit spark) — the ranged twin of an `atomicCompleted` melee swing. A
-       * projectile whose target died mid-flight EXPIRES silently (no hit event). Deterministic like every event.
+       * projectile whose target died mid-flight expires silently (no hit event).
        */
       readonly kind: 'projectileHit';
       readonly projectile: Entity;
@@ -153,10 +148,9 @@ export type SimEvent =
        * A {@link import('../components/economy/index.js').Resource} node was EXHAUSTED and removed this tick —
        * a mined {@link import('../components/economy/index.js').MineDeposit} deposit whose last unit was chipped
        * off, or a trivial direct-pickup node (a mushroom) after its single harvest. Distinct from
-       * `resourceFelled` (a tree coming DOWN, which leaves a trunk + stump): a depleted node just
-       * vanishes, its yield already dropped/carried. Render reaps the sprite straight from the snapshot
-       * (the node left it), so this is a one-shot cue for audio/effects and the seam Step 5 hooks to
-       * UNBLOCK the node's collision when it is removed. Deterministic like every event.
+       * `resourceFelled` (a tree coming down, which leaves a trunk + stump): a depleted node just vanishes,
+       * its yield already dropped/carried. Render reaps the sprite straight from the snapshot, so this is a
+       * one-shot cue for audio/effects and the seam that unblocks the node's collision on removal.
        */
       readonly kind: 'resourceDepleted';
       readonly node: Entity;
@@ -166,11 +160,11 @@ export type SimEvent =
   | {
       /**
        * One unit was chipped off a still-standing {@link import('../components/economy/index.js').MineDeposit}
-       * node this tick — the node SURVIVES (its `remaining` is the value after the chip; the removal of
-       * the last unit emits `resourceDepleted` instead). The cue a consumer needs the moment a virgin
-       * node is first WORKED: the `?map=` view hands the node from its retained static decor layer to
-       * the live sprite pool here (so the drawn deposit starts shrinking with its levels), and audio can
-       * hook a chip effect. Deterministic like every event.
+       * node this tick — the node survives (its `remaining` is the value after the chip; the removal of the
+       * last unit emits `resourceDepleted` instead). The cue a consumer needs the moment a virgin node is
+       * first worked: the `?map=` view hands the node from its retained static decor layer to the live
+       * sprite pool here, so the drawn deposit starts shrinking with its levels; audio can hook a chip
+       * effect.
        */
       readonly kind: 'resourceMined';
       readonly node: Entity;
@@ -180,11 +174,11 @@ export type SimEvent =
   | {
       /**
        * A {@link import('../components/economy/index.js').BerryBush} was just FORAGED — its last ripe fruit
-       * eaten this tick, so it flips ripe→bare and starts regrowing. The cue a consumer needs the moment
-       * a virgin bush is first worked: the `?map=` view hands the bush from its retained static decor
-       * layer (drawn always-fruited) to the live sprite pool here, so from now on the drawn bush tracks
-       * its ripe/bare state (bare after this event, ripe again when the BerryGrowthSystem regrows it).
-       * Audio can hook a rustle/pick effect. Deterministic like every event.
+       * eaten this tick, so it flips ripe→bare and starts regrowing. The cue a consumer needs the moment a
+       * virgin bush is first worked: the `?map=` view hands the bush from its retained static decor layer
+       * (drawn always-fruited) to the live sprite pool here, so from now on the drawn bush tracks its
+       * ripe/bare state (ripe again when the BerryGrowthSystem regrows it). Audio can hook a rustle/pick
+       * effect.
        */
       readonly kind: 'berryForaged';
       readonly bush: Entity;
