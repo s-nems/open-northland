@@ -1,0 +1,33 @@
+# Extend the same-side rule to store delivery, store fetching, and resource gathering
+
+**Area:** sim (economy) · **Origin:** multiplayer ownership work, 2026-07-14 · **Priority:** P2
+
+The `sameSide` friend/foe rule (`components/ownership.ts`) is applied to the construction-site pick
+(`nearestConstructionSite`), the site-delivery routing (`nearestConstructionSiteNeeding`), and the
+JobSystem staffing/adoption. It is **not yet** applied to the general store and resource paths, so a
+settler could still:
+
+- deliver a harvested/hauled good into another player's warehouse (`nearestStoreFor` /
+  `deliveryTargetFor` rungs 3/5, `packages/sim/src/systems/agents/economy/routing.ts`;
+  `nearestStoreFor`/`nearestStoreHolding` in `targets/stores/stock.ts`),
+- fetch construction material or a recipe input from another player's store
+  (`nearestStoreHolding`, the builder self-supply in `fieldwork.ts` and the workshop supplier),
+- gather from / haul another player's dropped piles or resource nodes (the gatherer/porter rungs).
+
+The user's rule is "all logic" — a settler works only its own side. The reported cases (build,
+farm/workshop staffing) are covered; this is the completeness sweep.
+
+## Scope
+
+- Thread `owner` (already on `PlannerContext`) into the store scans (`nearestStoreFor`,
+  `nearestStoreHolding`) and the resource/pile scans, gating each candidate with `ownersCompatible`
+  (buildings/piles carry an `Owner`; a neutral one stays usable by anyone, keeping goldens intact).
+- A ground pile dropped by a settler currently carries no `Owner` — decide whether loose piles are
+  neutral (anyone may haul) or inherit the dropper's owner; the original treats dropped goods as the
+  owner's. Name the choice.
+- Add a two-player scene/test (like the `sameSide` construction test in
+  `construction-system/delivery.cases.ts`) proving a hauler ignores an enemy store and an enemy pile.
+
+## Verify
+
+- `npm test` (goldens must not move — all golden fixtures are neutral); a two-player headless assertion.
