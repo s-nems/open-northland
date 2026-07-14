@@ -43,8 +43,7 @@ export interface StockRow {
   readonly goodId?: string;
   readonly label: string;
   readonly amount: number;
-  /** The good's declared store ceiling (its `stock` slot capacity) — the row then reads "7.0 / 25.0".
-   *  Undefined for a good the building holds without a declared slot (a dynamic drop): amount only. */
+  /** The good's declared store ceiling (its `stock` slot capacity) — the row reads "7.0 / 25.0". */
   readonly capacity?: number;
   /** The stock-window category tab (0–7) this good belongs to — see `stock-tabs.ts`. */
   readonly category: number;
@@ -142,8 +141,10 @@ function liveAmounts(stockpile: unknown): Map<number, number> {
 /**
  * The Magazyn rows: every good the building can STORE (its `def.stock` slots), shown with its current
  * amount — 0 when empty — so each storable good appears with its own icon, matching the original stock
- * window (which lists a store's accepted goods, not only what it currently holds). A good held but not in
- * the declared slots (defensive — dynamic drops) is appended.
+ * window (which lists a store's ACCEPTED goods, not whatever it happens to hold). Held goods OUTSIDE
+ * the declared slots never show (and a slot-less building gets no Magazyn at all): a farm's leftover
+ * construction wood, or a home's accumulating upgrade materials, are not store stock and reading them
+ * as "drewno: 0 / kamień: 2" was noise (user feedback 2026-07-14).
  *
  * Ordering: the DECLARED slot order, stable while amounts change — a compact store's rows (the mill's
  * Pszenica/Mąka) must never swap places mid-work (user feedback 2026-07-11). Only the big tabbed store
@@ -160,33 +161,17 @@ export function stockRows(
   stockpile: unknown,
 ): StockRow[] {
   const live = liveAmounts(stockpile);
-  const order: number[] = [];
-  const seen = new Set<number>();
-  const push = (goodType: number): void => {
-    if (seen.has(goodType)) return;
-    seen.add(goodType);
-    order.push(goodType);
-  };
-  // Declared slot → its capacity, so each row can read "amount / capacity" (a dynamic drop has none).
-  const capacities = new Map<number, number>();
-  for (const slot of def?.stock ?? []) {
-    push(slot.goodType);
-    capacities.set(slot.goodType, slot.capacity);
-  }
-  for (const goodType of live.keys()) push(goodType);
-
-  return order.map((goodType) => {
-    const goodId = goodDef(ctx, goodType)?.id;
-    const capacity = capacities.get(goodType);
+  return (def?.stock ?? []).map((slot) => {
+    const goodId = goodDef(ctx, slot.goodType)?.id;
     return {
-      goodType,
+      goodType: slot.goodType,
       // The stock row's display name (localized content name, else the id) — shown by the hover tooltip;
       // the row itself draws only the icon + amount, so a nicer name here doesn't change the drawn row.
-      label: goodLabel(ctx, goodType),
-      amount: live.get(goodType) ?? 0,
+      label: goodLabel(ctx, slot.goodType),
+      amount: live.get(slot.goodType) ?? 0,
       category: goodCategoryTab(goodId),
+      capacity: slot.capacity,
       ...(goodId !== undefined ? { goodId } : {}),
-      ...(capacity !== undefined ? { capacity } : {}),
     };
   });
 }
