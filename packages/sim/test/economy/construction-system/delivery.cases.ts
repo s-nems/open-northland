@@ -105,6 +105,33 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
     expect(sim.world.get(site, Stockpile).amounts.get(STONE) ?? 0).toBe(0); // and spent into the build
   });
 
+  it('only ONE builder fetches the last missing unit — the supply-run reservation stops the duplicate', () => {
+    const sim = new Simulation({ seed: 5, content: constructionContent(), map: grassMap(8, 1) });
+    const site = siteAt(sim, HOUSE, 4, 0); // cost 2 stone + 1 wood…
+    sim.world.get(site, Stockpile).amounts.set(STONE, 1);
+    sim.world.get(site, Stockpile).amounts.set(WOOD, 1); // …with only 1 stone still missing
+    const warehouse = sim.world.create();
+    sim.world.add(warehouse, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
+    sim.world.add(warehouse, Building, { buildingType: HEADQUARTERS, tribe: VIKING, built: ONE, level: 0 });
+    sim.world.add(warehouse, Stockpile, { amounts: new Map<number, number>([[STONE, 3]]) });
+    builderAt(sim, 3, 0);
+    builderAt(sim, 5, 0);
+
+    // Run through the hammer-then-fetch phase: the warehouse must only ever lose the ONE lifted stone —
+    // without the SupplyRun reservation both builders raced to fetch it and the surplus wandered off.
+    let minWarehouseStone = 3;
+    for (let i = 0; i < 240; i++) {
+      sim.step();
+      minWarehouseStone = Math.min(
+        minWarehouseStone,
+        sim.world.get(warehouse, Stockpile).amounts.get(STONE) ?? 0,
+      );
+      const siteStone = sim.world.tryGet(site, Stockpile)?.amounts.get(STONE) ?? 0;
+      expect(siteStone).toBeLessThanOrEqual(2); // never above the cost line
+    }
+    expect(minWarehouseStone).toBe(2);
+  });
+
   it('is deterministic — two same-seed delivery+build runs reach the same finished state hash', () => {
     const run = (): string => {
       clearComponentStores();

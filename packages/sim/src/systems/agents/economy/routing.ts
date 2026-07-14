@@ -10,7 +10,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { manhattan } from '../../spatial.js';
-import { buildingProduces, recipeOf, stockCapacity } from '../../stores/index.js';
+import { buildingProduces, inboundSupply, recipeOf, stockCapacity } from '../../stores/index.js';
 import type { PlannerContext } from '../planner-context.js';
 import { boundWorkplaceTarget, closer, interactionCell, nearestStoreFor } from '../targets/index.js';
 import { hasRoom, isFarmCarrierHaulOutRole, isStorageSink } from './store-policy.js';
@@ -114,7 +114,10 @@ function nearestConstructionSiteNeeding(
   let bestCell = Number.POSITIVE_INFINITY;
   for (const e of sites) {
     if (world.get(e, Building).tribe !== tribe) continue;
-    const have = world.get(e, Stockpile).amounts.get(goodType) ?? 0;
+    // Count both what the site HOLDS and what other settlers' live supply errands already have inbound
+    // (SupplyRun): a site whose last unit is on someone's back stops attracting more of the good, so a
+    // duplicate fetch diverts to a warehouse instead of over-delivering.
+    const have = (world.get(e, Stockpile).amounts.get(goodType) ?? 0) + inboundSupply(world, e, goodType);
     if (have >= stockCapacity(world, ctx, e, goodType)) continue; // full for this material (or not a cost good)
     const cell = interactionCell(world, ctx, terrain, e, here);
     const dist = manhattan(terrain, here, cell);

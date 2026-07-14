@@ -84,6 +84,18 @@ export const CurrentAtomic = defineComponent<{
 export const Carrying = defineComponent<{ goodType: number; amount: number }>('Carrying');
 
 /**
+ * A settler's live construction-supply errand: it is fetching (or hauling) `amount` of `goodType`
+ * toward `site`. Stamped when the builder drive commits a fetch or the delivery drive routes a load to
+ * a site, cleared at the top of the settler's own next planning (the rungs re-stamp it while the errand
+ * lasts) — so it persists through the walk/pickup/haul and dies with the errand. Later-planned settlers
+ * subtract these from a site's outstanding need ({@link
+ * import('../systems/stores/construction.js').inboundSupply}), so two builders don't race to fetch the
+ * same last unit and a crew spreads over different materials. Entity id + integers — hashes like any
+ * other component.
+ */
+export const SupplyRun = defineComponent<{ site: Entity; goodType: number; amount: number }>('SupplyRun');
+
+/**
  * A worker→workplace binding: the specific {@link Building} a settler is employed at. The JobSystem assigns
  * it when it gives an idle settler a job (it picks a concrete understaffed building, not just a job type),
  * and the AI planner uses it as the source of truth for "which mill is mine": the walk-to-workplace drive
