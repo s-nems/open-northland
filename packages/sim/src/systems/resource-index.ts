@@ -20,16 +20,16 @@ const index = createRegionIndex(
 
 /** The memoized ascending-id list of every `Resource`+`Position` entity — what `collectTargets` used to
  *  rebuild (query + sort) every tick; with ~17k standing nodes that per-tick sort alone was a
- *  milliseconds-scale cost. Shared, read-only and FROZEN. */
+ *  milliseconds-scale cost. Shared, read-only and frozen. */
 export function canonicalResources(world: World): readonly Entity[] {
   return index.canonical(world);
 }
 
 /**
- * Every DISTINCT `harvestAtomic` present on the standing resources — the exact dormancy probe for a
+ * Every distinct `harvestAtomic` present on the standing resources — the exact dormancy probe for a
  * nearest-harvestable scan: a settler whose allowed atomics intersect none of these can match no
  * candidate, so its whole scan is provably null and skipped in O(present atomics). A drained node
- * (`remaining <= 0`) still contributes its atomic — the gate only ever ELIDES provably-null scans.
+ * (`remaining <= 0`) still contributes its atomic — the gate only ever elides provably-null scans.
  */
 export function resourceHarvestAtomics(world: World): ReadonlySet<number> {
   return index.extra(world);
