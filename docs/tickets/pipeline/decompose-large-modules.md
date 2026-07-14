@@ -28,6 +28,11 @@ call site only to re-spread it.
 `transitions`, `objects`, `elevation`, `brightness`). Collapse them into a `DecodedMap { map, size }`
 decoded once in `mapDatToTerrain` and passed down.
 
+While restructuring these lane helpers, drop two type/readability nits in the same file:
+`transitions()`'s `lanes as [number[], number[], number[], number[]]` cast (build the four-lane tuple
+directly so the arity is proven, not asserted) and `tryLayer`'s `plural: boolean` grammar flag (pass
+the pre-pluralized noun phrase instead of toggling `'lanes'`/`'lane'` + `'them'`/`'it'` inline).
+
 ### 3. Named decoder types over `ReturnType`
 
 `stages/gui/cursors.ts` (`ReturnType<typeof decodeCursor>` → the exported `DecodedCursor`) and

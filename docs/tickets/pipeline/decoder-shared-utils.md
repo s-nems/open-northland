@@ -6,27 +6,30 @@ after the mapdat/gui/bmd/goods module splits) · **Priority:** P3
 `tools/asset-pipeline/src` — the decoders and stages re-roll the same low-level machinery in several
 places. Each item below is real duplication with 2+ call sites (re-verified 2026-07-13; the ini
 god-module dedup, the class-reader unification, the ASCII-encode fold, the gui/font LUT-helper
-extraction, the shared `ByteWriter`, and the pcx+atlas `paletteToRgba` extraction already landed —
-this is the remainder). All are behavior-preserving: the round-trip test suite + a byte-identical
-`content/` regeneration guard them. Do them as separate commit-sized units; byte-reading utils extend
-`decoders/byte-cursor.ts`, colour utils live beside the palette decoders — no flat `utils/`. Anchors
-below are file + symbol (line numbers rot).
+extraction, the shared `ByteWriter`, the pcx+atlas `paletteToRgba` extraction, and the inline-`DataView`
+`viewOf` consolidation (item 1, 2026-07-14) already landed — this is the remainder). All are
+behavior-preserving: the round-trip test suite + a byte-identical `content/` regeneration guard them.
+Do them as separate commit-sized units; byte-reading utils extend `decoders/byte-cursor.ts`, colour
+utils live beside the palette decoders — no flat `utils/`. Anchors below are file + symbol (line
+numbers rot).
 
 ## Scope
 
-### 1. Adopt the shared `ByteCursor` at the inline-`DataView` read sites
+### 1. Inline-`DataView` read sites — resolved (2026-07-14)
 
-`decoders/byte-cursor.ts` (`ByteCursor` + `ByteWriter` + `asciiBytes` + `LATIN1`) and `readCMemory`
-(`decoders/cif.ts`) already replaced the old class readers, and the growing `ByteWriter` is now shared
-(`bmd`/`lib` route through it; the fixed-layout serializers `png`/`cursor`/`palette`/`mapdat` stay on
-random-access `DataView` by design). **Remaining:** decode paths that still re-roll `new
-DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)` + explicit-LE getters —
-`decoders/mapdat/{container,layers,dictionary}.ts`, `decoders/palette.ts` (`decodePalette`),
-`decoders/fnt.ts` (`decodeFnt`), `decoders/cursor.ts` (`decodeCursor`), `decoders/pcx.ts`
-(`decodePcx`), `decoders/png.ts` (`decodePng`), plus the leftover raw reads in
-`decoders/bmd/container.ts` (`decodeBmd`'s bob/line table views) and `decoders/cif.ts` (the
-string-table offsets view). Adopt `ByteCursor` there, and fold the `[u32 id][u32 version]`
-storable-header read (`decodePalette`, `decodeBmd`, `decodeFnt`) onto it.
+**Landed:** every fixed-layout decode site that re-rolled `new DataView(bytes.buffer, bytes.byteOffset,
+bytes.byteLength)` — `decoders/mapdat/{container,layers,dictionary}.ts`, `palette.ts`, `fnt.ts`,
+`cur.ts`, `pcx.ts`, `png.ts`, `bmd/container.ts`, and the `cif.ts` offsets view — now routes through
+one `viewOf(bytes)` primitive in `byte-cursor.ts` (which the `ByteCursor` constructor uses too). That
+is the right fix for these random-access decoders: this item's own note keeps the fixed-layout
+serializers on `DataView` by design, so forcing sequential `ByteCursor` onto them was never wanted —
+`viewOf` removes the boilerplate and the `new DataView(x.buffer)` slice footgun instead.
+
+**Declined:** folding the `[u32 id][u32 version]` storable-header read (`decodePalette`/`decodeBmd`/
+`decodeFnt`, plus `readCMemory`/`decodeCifStringArray`) onto one helper. It converges the per-format
+error text the tests assert on (`/storable id is not CPalette/`, `/not a CFont/`, `/root is not a
+CBobManager/`, `/not a CStringArray/`) — an observable behavior change — while each per-format message
+is locally appropriate. Reopen only with an explicit decision to change those messages (and the tests).
 
 ### 2. Palette / RGBA utilities
 
