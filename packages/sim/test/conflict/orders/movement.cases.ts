@@ -13,12 +13,7 @@ import {
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, ONE } from '../../../src/index.js';
 import { worldDistance } from '../../../src/nav/metric.js';
-import {
-  ACCEL_TICKS,
-  MOVE_ORDER_HOLD_CIVILIAN,
-  MOVE_ORDER_HOLD_SOLDIER,
-  MOVE_SPEED_PER_TICK,
-} from '../../../src/systems/index.js';
+import { ACCEL_TICKS, MOVE_SPEED_PER_TICK } from '../../../src/systems/index.js';
 import {
   HEADQUARTERS,
   HUMAN_PLAYER,
@@ -93,19 +88,20 @@ describe('moveUnit order', () => {
     expect(s.commands.log).toHaveLength(2); // still logged for faithful replay
   });
 
-  it('gives a combatant a LONGER hold than a civilian (a warrior stands, a worker returns to work)', () => {
+  it('releases a combatant on arrival exactly like a worker — no post-arrival hold', () => {
     const s = sim();
-    const civ = ownedWoodcutter(s, 0, 0);
     const warrior = ownedWoodcutter(s, 0, 1);
     s.world.add(warrior, Health, { hitpoints: 100, max: 100 }); // a combatant
 
-    orderMove(s, civ, 2, 0);
     orderMove(s, warrior, 2, 1);
-    s.step();
-
-    expect(s.world.get(civ, PlayerOrder).holdTicks).toBe(MOVE_ORDER_HOLD_CIVILIAN);
-    expect(s.world.get(warrior, PlayerOrder).holdTicks).toBe(MOVE_ORDER_HOLD_SOLDIER);
-    expect(MOVE_ORDER_HOLD_SOLDIER).toBeGreaterThan(MOVE_ORDER_HOLD_CIVILIAN);
+    let released = false;
+    for (let t = 0; t < 100 && !released; t++) {
+      s.step();
+      released = !s.world.has(warrior, PlayerOrder);
+    }
+    // The timed soldier stand was cut (user feedback 2026-07-14): arriving ends the order for every
+    // unit — a DEFEND stance (its relocated anchor) is the position-holding tool now.
+    expect(released).toBe(true);
   });
 
   it('carries momentum through a mid-walk redirect (no dead stop, no full-speed flip)', () => {

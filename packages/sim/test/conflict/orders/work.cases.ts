@@ -13,7 +13,6 @@ import {
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx } from '../../../src/index.js';
-import { MOVE_ORDER_HOLD_CIVILIAN } from '../../../src/systems/index.js';
 import { CARPENTER, orderMove, ownedWoodcutter, sim, VIKING, WOODCUTTER } from './support.js';
 
 describe('setJob order', () => {
@@ -114,7 +113,7 @@ describe('PlayerOrder abandonment', () => {
     // playerOrderSystem must free the unit rather than let it freeze forever. Set that state up
     // directly (an all-grass fixture can't produce an unreachable cell through normal routing).
     s.world.add(e, MoveGoal, { cell: 3 });
-    s.world.add(e, PlayerOrder, { holdTicks: MOVE_ORDER_HOLD_CIVILIAN, expiresAt: null });
+    s.world.add(e, PlayerOrder, {});
     s.world.add(e, PathRequest, { start: 0, goal: 3, failed: true });
 
     s.step();

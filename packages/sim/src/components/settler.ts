@@ -84,6 +84,18 @@ export const CurrentAtomic = defineComponent<{
 export const Carrying = defineComponent<{ goodType: number; amount: number }>('Carrying');
 
 /**
+ * A builder's CONSTRUCTION-SITE crew membership: the site this settler is raising. Stamped by the
+ * builder drive whenever it engages a site (hammer / fetch / wait), so membership survives waiting for
+ * material, a player detour, or a meal — the workers window lists the crew stably instead of flickering
+ * with each atomic. `pinned` marks a player-made assignment (the `assignBuilder` right-click, faithful
+ * to the original's "put a builder on a foundation"): a pinned site wins over the nearest-site pick
+ * while it still stands. Cleared when the settler stops being a builder, no site remains, or the
+ * pinned site finishes (the drive re-stamps or removes it). Entity id + boolean — hashes like any
+ * other component.
+ */
+export const SiteAssignment = defineComponent<{ site: Entity; pinned: boolean }>('SiteAssignment');
+
+/**
  * A settler's live construction-supply errand: it is fetching (or hauling) `amount` of `goodType`
  * toward `site`. Stamped when the builder drive commits a fetch or the delivery drive routes a load to
  * a site, cleared at the top of the settler's own next planning (the rungs re-stamp it while the errand
@@ -125,19 +137,13 @@ export const JobAssignment = defineComponent<{ workplace: Entity }>('JobAssignme
 export const Age = defineComponent<{ ticks: number }>('Age');
 
 /**
- * A player move order in flight on a settler — the soft, timed override the RTS "go there" command stamps
- * ({@link import('../systems/orders/index.js').moveUnit}). Faithful to Cultures: the unit walks to the
- * ordered spot, stands there a while, then the economy AI reclaims it — the order never seizes the unit
- * permanently.
- *
- * `holdTicks` is how long to stand after arriving (short for a worker, long for a soldier — set from the
- * unit's combatant-ness at order time). `expiresAt` is the tick the hold ends, null until the unit arrives
- * and the hold begins — the {@link import('../systems/orders/index.js').playerOrderSystem} sets it on
- * arrival and removes the component on expiry (or when a need drive takes over). While present, the
- * AISystem's economy branch skips the unit but its needs drives still fire, so hunger/fatigue can pull it
- * away mid-hold.
- *
- * A separate optional component (the JobAssignment/Age pattern): only a unit under an active order carries
- * one. `holdTicks`/`expiresAt` are plain integers (or null).
+ * A **player move order** in flight on a settler — the EN-ROUTE marker the RTS "go there" command
+ * stamps ({@link import('../systems/orders/index.js').moveUnit}). While present, the AISystem's ECONOMY
+ * branch and the combat auto-drives leave the unit alone (the reposition is authoritative), but its
+ * NEEDS drives still fire. The {@link import('../systems/orders/index.js').playerOrderSystem} removes
+ * it the tick the unit arrives (or the route fails / a need takes over) — no post-arrival hold: a unit
+ * sent somewhere resumes autonomy the moment it gets there (the timed stand was cut on user feedback
+ * 2026-07-14; DEFEND's stance anchor is the "hold position" tool). A separate optional marker
+ * component (the JobAssignment/Age pattern).
  */
-export const PlayerOrder = defineComponent<{ holdTicks: number; expiresAt: number | null }>('PlayerOrder');
+export const PlayerOrder = defineComponent<Record<string, never>>('PlayerOrder');

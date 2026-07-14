@@ -7,14 +7,20 @@ import {
   Fleeing,
   JobAssignment,
   Owner,
+  ownerOf,
   PlayerOrder,
   Position,
   Settler,
+  SiteAssignment,
+  sameSide,
+  UnderConstruction,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { positionOfNode } from '../../nav/halfcell.js';
+import { BUILD_HOUSE_ATOMIC_ID } from '../agents/actions.js';
+import { jobAtomics } from '../agents/targets/index.js';
 import type { SystemContext } from '../context.js';
 import { bindFreshFlag, jobCanHarvest, liveWorkFlag, syncWorkFlagToJob } from '../economy/flags.js';
 import { openWorkerJobFromList } from '../economy/jobs/index.js';
@@ -62,6 +68,7 @@ function reidleAsJob(world: World, ctx: SystemContext, e: Entity, jobType: numbe
   world.get(e, Settler).jobType = jobType;
   world.remove(e, CurrentAtomic); // cancel whatever it was doing under the old job
   world.remove(e, PlayerOrder); // an employment change returns the unit to the economy
+  world.remove(e, SiteAssignment); // and drops any construction-crew membership of the old trade
   clearNavState(world, e);
   world.remove(e, Engagement); // drop any auto-combat state — the new trade re-decides its stance
   world.remove(e, AttackOrder);
@@ -103,10 +110,11 @@ export function assignWorker(
     ctx,
     b,
     settler.tribe,
+    ownerOf(world, e),
     settler.experience,
     command.jobPriority,
   );
-  if (jobType === null) return; // building full / wrong tribe / not a workplace / gated — no-op
+  if (jobType === null) return; // full / wrong tribe / other player / not a workplace / gated — no-op
 
   world.remove(e, JobAssignment); // drop any prior binding before re-binding to the chosen building
   // reidleAsJob also syncs the work flag; here `jobType` is a BUILDING-worker job, so the flag path only
@@ -116,6 +124,41 @@ export function assignWorker(
   // plant the flag at the settler's current tile, not near the building — a seam to revisit if that lands.
   reidleAsJob(world, ctx, e, jobType);
   world.add(e, JobAssignment, { workplace: b });
+}
+
+/**
+ * Assign one OWNED **builder** to a specific construction `site` — the original's "put a builder on a
+ * foundation" (right-click a site with a builder selected). It pins a {@link SiteAssignment} so the
+ * builder drive raises THAT site over the nearest one and the site's workers window lists the settler
+ * until the build finishes ({@link import('../agents/economy/index.js').planBuilder} re-stamps or drops
+ * the pin). Only the builder trade qualifies (its job runs the build atomic) — a civilian right-clicked
+ * onto a site is a no-op here (the app routes normal buildings to `assignWorker` instead). The order is
+ * authoritative like every employment order: it cancels the current action/route/hold so the builder
+ * heads for its site this tick.
+ *
+ * Recoverable bad input (skipped, still logged for faithful replay): a dead/stale/non-settler/neutral
+ * issuer, a still-growing child, a dead or not-under-construction target, a wrong-tribe site, or a site
+ * owned by another player (a player pins only its own foundations — two same-tribe players stay apart).
+ */
+export function assignBuilder(
+  world: World,
+  ctx: SystemContext,
+  command: Extract<Command, { kind: 'assignBuilder' }>,
+): void {
+  const e = command.entity;
+  if (!world.isAlive(e) || !world.has(e, Settler) || !world.has(e, Owner)) return;
+  if (world.has(e, Age)) return; // a growing child's job class is GrowthSystem's, not the player's
+  const site = command.site;
+  if (!world.isAlive(site) || !world.has(site, Building) || !world.has(site, UnderConstruction)) return;
+  const settler = world.get(e, Settler);
+  if (settler.tribe !== world.get(site, Building).tribe) return; // not this tribe's foundation
+  if (!sameSide(world, e, site)) return; // another player's foundation — not this side's
+  if (settler.jobType === null || !jobAtomics(ctx, settler.jobType).has(BUILD_HOUSE_ATOMIC_ID)) return;
+
+  world.add(e, SiteAssignment, { site, pinned: true });
+  world.remove(e, CurrentAtomic); // obey now — the planner heads for the pinned site this tick
+  world.remove(e, PlayerOrder);
+  clearNavState(world, e);
 }
 
 /**

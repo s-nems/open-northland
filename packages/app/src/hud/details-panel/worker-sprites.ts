@@ -170,9 +170,10 @@ export class WorkerSpriteOverlay {
 
   /** The (snapshot-ordered, capped) settler ENTITIES bound to `buildingId` — one O(entities) scan, whose
    *  result also narrows the sprite-scene build above. With `siteCrew` (a construction site — builders
-   *  are never JobAssignment-bound to it) a settler also counts while it works the site: hammering /
-   *  depositing there (`CurrentAtomic.targetEntity`) or on a live supply errand for it (`SupplyRun`).
-   *  A view read, so snapshot order is fine. */
+   *  are never JobAssignment-bound to it) a settler counts by its persistent crew membership
+   *  (`SiteAssignment` — hammering, waiting for material, or detoured, it stays listed), and a plain
+   *  hauler shows transiently while depositing there (`CurrentAtomic.targetEntity`) or on a supply
+   *  errand for it (`SupplyRun`). A view read, so snapshot order is fine. */
   private boundWorkers(snapshot: WorldSnapshot, buildingId: number, siteCrew: boolean): WorkerEntity[] {
     const out: WorkerEntity[] = [];
     for (const e of snapshot.entities) {
@@ -181,8 +182,12 @@ export class WorkerSpriteOverlay {
       const assignment = e.components.JobAssignment as { workplace?: unknown } | undefined;
       const atomic = e.components.CurrentAtomic as { targetEntity?: unknown } | undefined;
       const supply = e.components.SupplyRun as { site?: unknown } | undefined;
+      const crew = e.components.SiteAssignment as { site?: unknown } | undefined;
       const working =
-        siteCrew && (num(atomic?.targetEntity) === buildingId || num(supply?.site) === buildingId);
+        siteCrew &&
+        (num(crew?.site) === buildingId ||
+          num(atomic?.targetEntity) === buildingId ||
+          num(supply?.site) === buildingId);
       if (num(assignment?.workplace) === buildingId || working) out.push(e);
     }
     return out;

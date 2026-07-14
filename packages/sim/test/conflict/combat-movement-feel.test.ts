@@ -130,15 +130,15 @@ describe('swing from a standstill — no wind-up mid-stride, off a node centre',
   });
 });
 
-describe('the arrived hold vs the combat drive', () => {
-  /** Order `e` to cell (x, y) and step until the hold has begun (arrived), then `extra` more ticks. */
+describe('arrival vs the combat drive', () => {
+  /** Order `e` to cell (x, y) and step until the order retires (arrived), then `extra` more ticks. */
   function orderAndArrive(sim: Simulation, e: Entity, x: number, y: number, extra: number): void {
     const spot = cellAnchorNode(x, y);
     sim.enqueue({ kind: 'moveUnit', entity: e, x: spot.hx, y: spot.hy });
     let arrived = false;
     for (let t = 0; t < 300 && !arrived; t++) {
       sim.step();
-      arrived = sim.world.tryGet(e, PlayerOrder)?.expiresAt != null || !sim.world.has(e, PlayerOrder);
+      arrived = !sim.world.has(e, PlayerOrder);
     }
     expect(arrived).toBe(true);
     for (let t = 0; t < extra; t++) sim.step();
@@ -158,7 +158,7 @@ describe('the arrived hold vs the combat drive', () => {
     expect(sim.world.has(a, PlayerOrder)).toBe(false);
   });
 
-  it('a PASSIVE (IGNORE) unit keeps holding the spot blindly — no auto-engage from the hold', () => {
+  it('a PASSIVE (IGNORE) unit stands at the spot without auto-engaging after arrival', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 1) });
     const a = fighterAt(sim, 0, 0, P0, MILITARY_MODE.IGNORE);
     const enemy = fighterAt(sim, 8, 0, P1, MILITARY_MODE.IGNORE);
@@ -168,7 +168,7 @@ describe('the arrived hold vs the combat drive', () => {
 
     expect(sim.world.get(enemy, Health).hitpoints).toBe(hp0); // it never swung
     expect(sim.world.has(a, Engagement)).toBe(false);
-    expect(sim.world.has(a, PlayerOrder)).toBe(true); // still holding (60 < the 300-tick soldier hold)
+    expect(sim.world.has(a, PlayerOrder)).toBe(false); // the order retired on arrival; IGNORE just stands
   });
 
   it('a DEFEND guard holding at the ordered spot fights an enemy inside its (relocated) radius', () => {
