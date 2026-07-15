@@ -179,3 +179,17 @@ export const GoodType = z.strictObject({
   source: Provenance.optional(),
 });
 export type GoodType = z.infer<typeof GoodType>;
+
+/**
+ * Whether a good is field-farmed — grown on the map through the sow→water→reap loop rather than
+ * gathered or manufactured indoors. The signal is the three field-cultivation atomics present together
+ * (`plant`+`cultivate`+`harvest` — the original's `atomicForPlanting`/`Cultivating`/`Harvesting`); wheat,
+ * herb, and mushroom carry all three. The extraction pipeline uses it to skip synthesizing an in-house
+ * recipe for such a good (it is grown, not made — `fillBuildingRecipes`), and the app's real-content
+ * merge to spot a field good still lacking its clean-room {@link GoodFarming} block. The sim gates the
+ * field loop on the same three atomics plus that growth block (`farmingSpecFor`).
+ */
+export function hasFieldFarmAtomics(good: GoodType): boolean {
+  const { plant, cultivate, harvest } = good.atomics;
+  return plant !== undefined && cultivate !== undefined && harvest !== undefined;
+}
