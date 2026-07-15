@@ -17,8 +17,8 @@ This repo (`open-northland/`) normally sits beside two read-only reference folde
   asset-pipeline input. Never commit its assets, decoded content, or binaries.
 
 Legal guardrails: OpenNorthland is an independent clean-room GPL-3.0-or-later rebuild. Do not copy original
-assets into the repo, do not port OpenVikings source, and do not brand this project with the
-original's names, logos, or screenshots of the original game. Screenshots of OpenNorthland's *own*
+assets into the repo and do not brand this project with the original's names, logos, 
+or screenshots of the original game. Screenshots of OpenNorthland's *own*
 renderer drawing locally-decoded assets are fine (the README hero image is one — the same practice
 as OpenMW/devilutionX). The canonical legal wording is in `docs/SOURCES.md`.
 
@@ -111,9 +111,6 @@ hygiene test rejects nondeterministic globals in `packages/sim`.
   ideas noted mid-task — is **filed as a self-contained ticket before the session ends** (on the
   executing branch when there is one), never just named in a report. `/ticket-scout` is the
   proactive sweep that scans a scope for ticket candidates and files them.
-- `docs/plans/` was retired 2026-07-12: its open work was converted to tickets and the files were
-  deleted (git history keeps them). Do not recreate it — planned work is a ticket.
-- Do not revive old global planning, fidelity, lessons, or tech-debt ledgers.
 - If a ticket's research note is wrong, update it with the corrected fact and source basis rather
   than propagating the stale claim.
 
@@ -151,8 +148,6 @@ hygiene test rejects nondeterministic globals in `packages/sim`.
   half-cell node; fixed-point Positions stay fractional visual-tile coords (`nav/halfcell.ts` is the
   one conversion seam). Cell-resolution grids must pass through `halfCellMapFromCells` before
   reaching a `TerrainGraph`.
-- The original game has no automatic sim oracle in OpenVikings. When behavior is not data-pinned,
-  prefer a small named approximation over a hidden magic constant.
 
 ## Per-Package Contracts
 

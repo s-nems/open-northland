@@ -20,28 +20,20 @@ OpenNorthland is free to fix it.
 > [OpenMW](https://openmw.org/), [OpenRA](https://www.openra.net/) and
 > [devilutionX](https://github.com/diasurgical/devilutionX).
 
-> **Name.** *OpenNorthland* is an **open** reimplementation of the series, named for *Northland*,
-> one of its three games.
-
 ## What it is (and isn't)
 
 - **Is:** a fresh, deterministic colony simulation in TypeScript; an isometric PixiJS renderer; and
   an offline pipeline that decodes the original's `.cif` / `.bmd` / `.pcx` / `.lib` / `.ini` files
   into a versioned, diffable intermediate format (JSON + texture atlases).
-- **Is not:** a binary-faithful re-implementation. That role belongs to a separate, third-party
-  project — [`OpenVikings_reversing`](https://github.com/Ravo92/OpenVikings_reversing) by Ravo92 —
-  which we consult as **file-format documentation**, never as a code dependency and never by porting
-  its architecture. It is **optional:** you do not need it to build, test, or play OpenNorthland, and
-  it matters only to contributors working on the asset pipeline (see [Acknowledgements](#acknowledgements)).
+- **Is not:** a binary-faithful re-implementation. 
 
 ## Status
 
-Single-tribe economy running end-to-end. The deterministic sim core, the asset pipeline (including
+Still a lot of work on the roadmap. 
+Currently working on a single-tribe economy. The deterministic sim core, the asset pipeline (including
 `.cif` decode), and a self-sustaining one-tribe settlement all run headless and deterministic:
-settlers executing atomic actions, a goods economy, a progression/tech graph, and population growth.
-Combat, the five playable tribes, animals-as-tribes, and original-asset render paths are in progress.
-Several render/pixel checks stay human-gated because an agent cannot self-judge pixels. Active work is
-tracked in [`docs/tickets/`](docs/tickets/).
+settlers executing atomic actions, a goods economy, a progression/tech graph, and population growth. 
+Active work is temporarily tracked in [`docs/tickets/`](docs/tickets/) - to be moved to GitHub issues.
 
 ## Getting started
 
@@ -123,10 +115,11 @@ the contract for conventions, the determinism rules, and the legal guardrails.
 
 ## Acknowledgements
 
-- [`OpenVikings_reversing`](https://github.com/Ravo92/OpenVikings_reversing) by **Ravo92** is an
+- Credits to [`OpenVikings_reversing`](https://github.com/Ravo92/OpenVikings_reversing) by **Ravo92** - an
   independent, binary-faithful reverse-engineering of the original engine. OpenNorthland is a
   separate project that consults it as file-format documentation and as an oracle for validating
   decoded assets. None of its source is ported. Thank you for the format work.
+- [culturesnation](https://culturesnation.pl/) community for still keeping the game alive and all excellent work on the mod.
 
 ## Legal
 
