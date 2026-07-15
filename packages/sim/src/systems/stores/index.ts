@@ -8,11 +8,17 @@ export {
   constructionMaterialsPresent,
   constructionTotalUnits,
   deliveredConstructionFraction,
-  inboundSupply,
   nextNeededConstructionGood,
 } from './construction.js';
 export { isFood } from './food.js';
 export { homeNextTier, housingCapacity, tribePopulation } from './housing.js';
+export {
+  collectInboundSupply,
+  type InboundSupplyTally,
+  inboundSupplyOf,
+  releaseSupplyRun,
+  stampSupplyRun,
+} from './supply-tally.js';
 export {
   buildingProduces,
   buildingWorkerJobs,

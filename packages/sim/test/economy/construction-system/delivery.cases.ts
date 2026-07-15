@@ -134,6 +134,45 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
     expect(minWarehouseStone).toBe(2);
   });
 
+  it('a builder COHORT self-supplying one site never over-fetches — the inbound tally sums concurrent runs', () => {
+    // Four builders, one foundation needing 2 stone + 1 wood, one warehouse holding a big surplus of both.
+    // Each tick several builders replan at once and read the shared inbound tally: it must fold every
+    // concurrent SupplyRun so the crew fetches exactly the 3 outstanding units (spread across materials),
+    // never a duplicate — the tally reproducing the old per-call full-store scan under real concurrency.
+    const sim = new Simulation({ seed: 11, content: constructionContent(), map: grassMap(10, 1) });
+    const site = siteAt(sim, HOUSE, 5, 0); // cost 2 stone + 1 wood, empty hold
+    const warehouse = sim.world.create();
+    sim.world.add(warehouse, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
+    sim.world.add(warehouse, Building, { buildingType: HEADQUARTERS, tribe: VIKING, built: ONE, level: 0 });
+    sim.world.add(warehouse, Stockpile, {
+      amounts: new Map<number, number>([
+        [STONE, 9],
+        [WOOD, 9],
+      ]),
+    });
+    for (const x of [3, 4, 6, 7]) builderAt(sim, x, 0);
+
+    // The warehouse must lose exactly the site's total cost (2 stone + 1 wood) and no more — a crew that
+    // ignored each other's inbound runs would drain extra units that then wander off to a store.
+    let built = false;
+    for (let i = 0; i < 400 && !built; i++) {
+      sim.step();
+      built = sim.world.get(site, Building).built >= ONE;
+      expect(sim.world.get(site, Stockpile).amounts.get(STONE) ?? 0).toBeLessThanOrEqual(2);
+      expect(sim.world.get(site, Stockpile).amounts.get(WOOD) ?? 0).toBeLessThanOrEqual(1);
+    }
+    expect(built).toBe(true);
+    expect(sim.world.get(warehouse, Stockpile).amounts.get(STONE) ?? 0).toBe(7); // 9 − 2 spent
+    expect(sim.world.get(warehouse, Stockpile).amounts.get(WOOD) ?? 0).toBe(8); // 9 − 1 spent
+    // Nothing left in flight — every lifted unit reached the site and was consumed.
+    let materialInFlight = 0;
+    for (const e of sim.world.query(Carrying)) {
+      const load = sim.world.get(e, Carrying);
+      if (load.goodType === STONE || load.goodType === WOOD) materialInFlight += load.amount;
+    }
+    expect(materialInFlight).toBe(0);
+  });
+
   it('assignBuilder pins a builder to the CHOSEN site over a nearer one; a non-builder is a no-op', () => {
     // A 4-row map: the near site's footprint must not wall off the corridor to the far one.
     const sim = new Simulation({ seed: 6, content: constructionContent(), map: grassMap(10, 4) });

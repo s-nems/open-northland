@@ -11,7 +11,6 @@ import {
   Resting,
   Settler,
   Stance,
-  SupplyRun,
 } from '../../components/index.js';
 import type { World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
@@ -19,7 +18,7 @@ import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
 import { MILITARY_MODE } from '../readviews/index.js';
 import { canonicalById, isTravelling, NodeBuckets } from '../spatial.js';
-import { isCarrierJob } from '../stores/index.js';
+import { collectInboundSupply, isCarrierJob, releaseSupplyRun } from '../stores/index.js';
 import { deStackIdle, type SpacingState } from './destack.js';
 import { planNeeds } from './drives-needs.js';
 import {
@@ -105,6 +104,11 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
   // staffed (see workSeatCount); operators planned earlier this tick take them first, so a surplus
   // operator goes fetching/hauling instead of idling inside beside a colleague's batch.
   const seatClaims: WorkSeatClaims = new Map();
+  // Inbound-supply tally: units already committed to each construction site by live SupplyRun errands
+  // (this tick's stamps included), seeded once from the store and kept in lockstep as the pass releases a
+  // replanner's stale run and stamps fresh ones — the hoisted form of the old per-call SupplyRun scan, so
+  // a mid-pass read sees exactly what a full scan would (`./stores/supply-tally.ts`).
+  const inbound = collectInboundSupply(world);
 
   // Canonical settler order: the per-tick claim maps (farmClaims, seatClaims) hand out targets/seats
   // first-come-first-served, so the visit order is a pick, not a mere sweep — it must be ascending
@@ -122,8 +126,9 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // nothing to do (so the render never sees a gap), and it stays off the moment real work appears.
     world.remove(e, Resting);
     // And its supply errand (SupplyRun): the fetch/delivery rungs re-stamp it below while the errand
-    // lasts; a settler re-planning has, by definition, finished or abandoned the previous leg.
-    world.remove(e, SupplyRun);
+    // lasts; a settler re-planning has, by definition, finished or abandoned the previous leg. Releasing
+    // through the tally keeps the inbound count in lockstep with the store.
+    releaseSupplyRun(world, e, inbound);
 
     const settler = world.get(e, Settler);
     if (settler.jobType === null) continue; // an unemployed settler has no job atomics to run
@@ -175,6 +180,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
       owner: ownerOf(world, e),
       here,
       targets,
+      inbound,
     };
 
     // 1. CARRYING — deliver first (a settler must free its hands before any empty-handed work).

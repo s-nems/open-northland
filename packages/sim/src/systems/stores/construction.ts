@@ -1,8 +1,9 @@
-import { Building, holdsAll, Stockpile, SupplyRun } from '../../components/index.js';
+import { Building, holdsAll, Stockpile } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { type Fixed, fx, ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
+import { type InboundSupplyTally, inboundSupplyOf } from './supply-tally.js';
 
 // Construction-material accounting: what a site's `construction` cost demands, how much is delivered,
 // and the next good a builder must fetch. Read by the ConstructionSystem, the builder drive, and the
@@ -59,32 +60,18 @@ export function constructionMaterialsPresent(world: World, ctx: SystemContext, s
 }
 
 /**
- * Units of `goodType` already COMMITTED toward `site` by settlers' live supply errands ({@link SupplyRun}
- * — a builder walking to fetch it, or a hauler carrying it over) — the in-flight amount the outstanding
- * need must subtract so idle builders don't race to fetch the same last unit. A commutative sum over the
- * SupplyRun store, so store order can't leak into the result.
- */
-export function inboundSupply(world: World, site: Entity, goodType: number): number {
-  let inbound = 0;
-  for (const e of world.query(SupplyRun)) {
-    const run = world.get(e, SupplyRun);
-    if (run.site === site && run.goodType === goodType) inbound += run.amount;
-  }
-  return inbound;
-}
-
-/**
  * The `construction` material a site still lacks, with the unclaimed shortfall (`need − held − inbound`)
  * — the good, and how much, a builder fetches to keep its OWN site supplied — or null when every
- * material is on hand or already inbound ({@link inboundSupply}). Picks the LEAST-COVERED line
- * (`(held+inbound)/need`, compared by integer cross-multiplication), so a crew spreads over different
- * materials instead of queueing on the first one; ties keep the ascending-goodType scan's first hit, so
- * the pick never depends on Map insertion order.
+ * material is on hand or already inbound (the `inbound` tally, {@link inboundSupplyOf}). Picks the
+ * LEAST-COVERED line (`(held+inbound)/need`, compared by integer cross-multiplication), so a crew spreads
+ * over different materials instead of queueing on the first one; ties keep the ascending-goodType scan's
+ * first hit, so the pick never depends on Map insertion order.
  */
 export function nextNeededConstructionGood(
   world: World,
   ctx: SystemContext,
   site: Entity,
+  inbound: InboundSupplyTally,
 ): { goodType: number; amount: number } | null {
   const stock = world.tryGet(site, Stockpile)?.amounts;
   const cost = [...constructionCostOf(world, ctx, site)].sort((a, b) => a.goodType - b.goodType);
@@ -93,7 +80,7 @@ export function nextNeededConstructionGood(
   let bestNeed = 1;
   for (const line of cost) {
     const held = Math.max(stock?.get(line.goodType) ?? 0, 0);
-    const covered = Math.min(held + inboundSupply(world, site, line.goodType), line.amount);
+    const covered = Math.min(held + inboundSupplyOf(inbound, site, line.goodType), line.amount);
     if (covered >= line.amount) continue; // fully on hand or inbound
     if (best === null || covered * bestNeed < bestCovered * line.amount) {
       best = { goodType: line.goodType, amount: line.amount - covered };
