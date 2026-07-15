@@ -55,11 +55,11 @@ export interface RealContentMerge {
  * {@link GATHERING_BALANCE_BY_ID} (the same table the sandbox reads) into those four fields by the good's
  * string id, preserving everything else real ships (harvest/pickup/store atomics, `bioLandscape`).
  *
- * It is data-completion, not today's felling driver: resource nodes seed from that same balance via the
- * `GATHERERS` table at placement (`game/sandbox/place.ts`, which the re-key aligned to real ids), so real
- * trees already fell. This keeps the ContentSet self-consistent and readies it for a content-driven
- * resource-spawn system. Gathered goods with no clean-room balance, and buildings beyond the clean-room
- * catalog, are reported — not silently dropped — so the caller can log the gap.
+ * This only completes the ContentSet's gathering data (keeping it self-consistent and ready for a
+ * content-driven resource-spawn system); today's felling is driven by the sandbox `GATHERERS` placement
+ * path (`game/sandbox/place.ts`, re-keyed to real ids) reading the same balance table, proven by
+ * `test/map-gatherer-cycle.test.ts`. Gathered goods with no clean-room balance, and buildings beyond the
+ * clean-room catalog, are reported — not silently dropped — so the caller can log the gap.
  *
  * It also injects the sim's semantic nav-terrain classes ({@link NAV_LANDSCAPE_TYPES}) into `landscape`:
  * real content's detailed types (1..87) don't carry the collision classes a resolved grid
@@ -99,6 +99,8 @@ export function mergeRealContent(
   const landscapeIds = new Set(real.landscape.map((t) => t.typeId));
   const navRows = NAV_LANDSCAPE_TYPES.filter((t) => !landscapeIds.has(t.typeId));
   const landscape = [...real.landscape, ...navRows];
+  // Re-validate the transformed set so a bad balance pin or injected landscape row fails here at the
+  // app boundary, not deep in the sim.
   return { content: parseContentSet({ ...real, goods, landscape }), unbalancedGoods, uncatalogedBuildings };
 }
 

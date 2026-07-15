@@ -1,4 +1,5 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
+import { flatTileColour } from '@open-northland/render';
 import { buildTerrainGraph, halfCellMapFromCells } from '@open-northland/sim';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../src/catalog/felling.js';
@@ -26,6 +27,9 @@ function goodById(content: ContentSet, id: string) {
   return good;
 }
 
+// A typeId past the real 1..87 range; goods and buildings are separate id spaces, so one value serves both.
+const OUT_OF_CATALOG_TYPE_ID = 900;
+
 function rawRealLike(): ContentSet {
   const base = sandboxContent();
   const zeroGathering = (g: ContentSet['goods'][number]) =>
@@ -36,11 +40,15 @@ function rawRealLike(): ContentSet {
           gathering: { ...g.gathering, chopsToFell: 0, yieldPerNode: 0, depositSize: 0, depositLevels: 0 },
         };
   // A gathered good (wood's shape) whose string id is absent from GATHERING_BALANCE_BY_ID — stays uncalibrated.
-  const unbalanced = zeroGathering({ ...goodById(base, 'wood'), typeId: 900, id: 'testberry' });
+  const unbalanced = zeroGathering({
+    ...goodById(base, 'wood'),
+    typeId: OUT_OF_CATALOG_TYPE_ID,
+    id: 'testberry',
+  });
   // A building absent from VIKING_BUILDINGS (headquarters' shape, a fresh id) — uncataloged.
   const firstBuilding = base.buildings[0];
   if (firstBuilding === undefined) throw new Error('fixture: no buildings');
-  const uncataloged = { ...firstBuilding, typeId: 900, id: 'wonder_test' };
+  const uncataloged = { ...firstBuilding, typeId: OUT_OF_CATALOG_TYPE_ID, id: 'wonder_test' };
   return parseContentSet({
     ...base,
     goods: [...base.goods.map(zeroGathering), unbalanced],
@@ -144,8 +152,21 @@ describe('logRealContentGaps', () => {
     const content = sandboxContent();
     logRealContentGaps({ content, unbalancedGoods: ['wheat'], uncatalogedBuildings: ['wonder'] });
     expect(info).toHaveBeenCalledOnce();
+    const line = String(info.mock.calls[0]?.[0] ?? '');
+    expect(line).toContain('wheat'); // names the uncalibrated good
+    expect(line).toContain('wonder'); // names the uncataloged building
     info.mockClear();
     logRealContentGaps({ content, unbalancedGoods: [], uncatalogedBuildings: [] });
     expect(info).not.toHaveBeenCalled();
+  });
+});
+
+describe('nav-terrain flat colours', () => {
+  it('re-banded class ids still render as their base index colour', () => {
+    // The reband keeps TERRAIN_CLASS_BASE a multiple of the render TILE_COLOURS length, so a class id
+    // indexes back to its own flat colour — the cross-package coupling only two comments guard otherwise.
+    NAV_LANDSCAPE_TYPES.forEach((t, k) => {
+      expect(flatTileColour(t.typeId)).toBe(flatTileColour(k));
+    });
   });
 });

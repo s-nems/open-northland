@@ -6,12 +6,9 @@
  * before it reaches the sim. The sim never navigates the detailed landscape types — always these five
  * classes.
  *
- * The class ids sit in a reserved high band ({@link TERRAIN_CLASS_BASE}) so they never collide with a
- * real content set's detailed landscape typeIds (`landscapetypes.ini` runs 1..87: 1 = void, 3 = water,
- * 4 = tree, …). A sim built on real content resolves these class ids through its `landscape` table too
- * — {@link NAV_LANDSCAPE_TYPES} is injected by `content/real-content.ts` `mergeRealContent`, the same
- * five rows the sandbox's `landscape` derivation carries — so the two id spaces stay disjoint and both
- * content sets can drive `buildTerrainGraph`.
+ * The ids sit in a reserved high band ({@link TERRAIN_CLASS_BASE}) disjoint from any content set's
+ * detailed landscape typeIds; `content/real-content.ts` `mergeRealContent` injects
+ * {@link NAV_LANDSCAPE_TYPES} so a real-content sim resolves them through its `landscape` table too.
  */
 
 /** The base of the reserved class-id band. Above every real landscape typeId (`landscapetypes.ini`
@@ -49,12 +46,10 @@ export interface NavLandscapeType {
 }
 
 /**
- * The five nav-terrain classes as `landscape` rows — the sim-side vocabulary a collision-resolved grid
- * (`content/collision.ts`) or an authored scene grid navigates on. Every content set that drives a sim
- * carries these: the sandbox's `landscape` derivation lists them, and `mergeRealContent` injects them
- * into real content beside its detailed 1..87 types. Row ids keep the authored-scene reading (class 0
- * shows as grass, class 1 as water); they are documentary — landscape rows are only ever looked up by
- * `typeId`.
+ * The five nav-terrain classes as `landscape` rows — the walk/build/plant flags a collision-resolved
+ * grid (`content/collision.ts`) or an authored scene grid navigates on. Row ids keep the authored-scene
+ * reading (class 0 shows as grass, class 1 as water) but are documentary: landscape rows are only ever
+ * looked up by `typeId`.
  */
 export const NAV_LANDSCAPE_TYPES: readonly NavLandscapeType[] = [
   // Grass is the one plantable class — the original's `biocanplanton` ground flag
