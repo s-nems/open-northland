@@ -9,6 +9,7 @@ import {
 } from '@open-northland/sim';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../src/catalog/felling.js';
+import { TERRAIN_OPEN } from '../src/catalog/terrain.js';
 import { buildCollisionTerrain } from '../src/content/collision.js';
 import type { ContentIr } from '../src/content/ir.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../src/game/rules.js';
@@ -37,7 +38,11 @@ beforeEach(clearComponentStores);
 
 /** An all-grass CELL map (the sim runs its 2× half-cell lattice). */
 function grassMap(cells: number) {
-  return halfCellMapFromCells({ width: cells, height: cells, typeIds: new Array(cells * cells).fill(0) });
+  return halfCellMapFromCells({
+    width: cells,
+    height: cells,
+    typeIds: new Array(cells * cells).fill(TERRAIN_OPEN),
+  });
 }
 
 /** A footprinted map-style tree (the exact spec `spawnMapResources` builds) at half-cell (hx, hy). */

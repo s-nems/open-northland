@@ -1,4 +1,5 @@
 import { type CellTerrainMap, components, type Simulation } from '@open-northland/sim';
+import { TERRAIN_OPEN } from './terrain.js';
 
 /**
  * The committed catalog of viking buildings, mapping a human name to the key the engine shares:
@@ -20,8 +21,9 @@ import { type CellTerrainMap, components, type Simulation } from '@open-northlan
 
 /** The viking `LogicTribeType` (the `[GfxHouse]` `LogicTribeType 1`) — the tribe every building here belongs to. */
 export const VIKING = 1;
-/** The all-walkable, buildable grass landscape typeId used by scene terrain. */
-export const GRASS = 0;
+/** The all-walkable, buildable grass landscape typeId used by scene terrain — the open nav-terrain
+ *  class ({@link TERRAIN_OPEN}), so a scene's grass resolves against the sim's `landscape` table. */
+export const GRASS = TERRAIN_OPEN;
 /** The `home` building class — the only kind the ConstructionSystem upgrades up a level chain. */
 export const HOME_KIND = 'home';
 

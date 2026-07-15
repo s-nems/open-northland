@@ -22,7 +22,10 @@ import type { TerrainChild } from './chunk-batcher.js';
 export const TERRAIN_CHUNK_TILES = 32;
 
 /** A flat colour per landscape typeId for the placeholder terrain (cycled if a typeId exceeds the table).
- *  Indexed by the semantic terrain classes (app `catalog/terrain.ts`): open/impassable/blocked/margin/barren. */
+ *  Indexed by the semantic terrain classes (app `catalog/terrain.ts`): open/impassable/blocked/margin/barren.
+ *  The app keeps its `TERRAIN_CLASS_BASE` a multiple of this length so the re-banded class ids still index
+ *  back to their own colour here (`flatTileColour(base + k) === TILE_COLOURS[k]`); keep that in mind if the
+ *  table's length changes. */
 const TILE_COLOURS: readonly number[] = [
   0x4a7c3a, // 0: grass (open)
   0x3a6ea5, // 1: water (impassable)

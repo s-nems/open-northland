@@ -1,10 +1,4 @@
-import {
-  TERRAIN_BARREN,
-  TERRAIN_BLOCKED,
-  TERRAIN_IMPASSABLE,
-  TERRAIN_MARGIN,
-  TERRAIN_OPEN,
-} from '../../catalog/terrain.js';
+import { NAV_LANDSCAPE_TYPES } from '../../catalog/terrain.js';
 import { GATHERERS, type GathererSpec, GOOD_MUD } from './ids/index.js';
 
 /**
@@ -20,20 +14,6 @@ import { GATHERERS, type GathererSpec, GOOD_MUD } from './ids/index.js';
 export interface TerrainTypeIds {
   readonly typeIds: ReadonlyArray<number>;
 }
-
-// The semantic terrain-class rows (see catalog/terrain.ts — the shared vocabulary scene grids are
-// authored in and `content/collision.ts` resolves real maps into). Row ids keep the authored-scene
-// reading: sandbox typeId 1 is water; a resolved real map lands other impassable ground there too.
-const BASE_LANDSCAPE = [
-  // Grass is the one plantable class — the original's `biocanplanton` ground flag (trianglepattern-
-  // types.cif) belongs to `land` alone, so grain fields land here and nowhere else.
-  { typeId: TERRAIN_OPEN, id: 'grass', walkable: true, buildable: true, plantable: true },
-  { typeId: TERRAIN_IMPASSABLE, id: 'water', walkable: false, buildable: false },
-  { typeId: TERRAIN_BLOCKED, id: 'landscape_body', walkable: false, buildable: false },
-  { typeId: TERRAIN_MARGIN, id: 'landscape_margin', walkable: true, buildable: false },
-  // Sand/beach/desert stone: open for walking and building, closed to the plough (no `biocanplanton`).
-  { typeId: TERRAIN_BARREN, id: 'barren', walkable: true, buildable: true },
-] as const;
 
 const RESOURCE_LANDSCAPE_BASE = 1000;
 const RESOURCE_GFX_BASE = 2000;
@@ -95,7 +75,7 @@ export function sandboxLandscape(
   map?: TerrainTypeIds,
 ): Array<{ typeId: number; id: string; walkable: boolean; buildable: boolean }> {
   const base = [
-    ...BASE_LANDSCAPE,
+    ...NAV_LANDSCAPE_TYPES,
     ...GATHERERS.map((g) => ({
       typeId: resourceLandscapeType(g.good),
       id: `${g.id}_harvest_node`,

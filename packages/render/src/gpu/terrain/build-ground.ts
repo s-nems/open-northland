@@ -17,6 +17,7 @@ import { ChunkBatcher, type TerrainBatch, type TerrainLayerKind } from './chunk-
 import {
   buildChunks,
   DEFAULT_TILE_COLOUR,
+  flatTileColour,
   type LaneShading,
   liftFn,
   type NodeLiftFn,
@@ -88,7 +89,9 @@ export function buildTextured(
           for (const nodes of triangles) {
             batcher.drawFallbackTriangle(
               positions(nodes, lift),
-              cellTex?.fallbackColour ?? DEFAULT_TILE_COLOUR,
+              // Unbound typeId → the semantic-class flat colour (the same table `buildFlat` uses), so a
+              // synthetic grid's nav-terrain classes read as grass/water/sand rather than one default tint.
+              cellTex?.fallbackColour ?? flatTileColour(typeId),
               shaded ? brightness.brightnessAt(col, row) : 1,
             );
           }

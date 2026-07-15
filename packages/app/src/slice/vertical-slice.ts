@@ -9,6 +9,7 @@ import {
   type TerrainMap,
 } from '@open-northland/sim';
 import { HARVEST_ATOMIC } from '../catalog/atomics.js';
+import { GRASS } from '../catalog/buildings.js';
 import { PRIMARY_TRIBE } from '../game/rules.js';
 import {
   BUILDING_HEADQUARTERS,
@@ -38,8 +39,6 @@ import {
  * decoded-map fetch lives in `./map-loader.ts` and the pure authored-entity join in
  * `./authored-placements.ts`.
  */
-
-const GRASS = 0;
 
 const { Position, Resource } = components;
 

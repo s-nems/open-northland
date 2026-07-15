@@ -2,6 +2,8 @@ import { buildScene, terrainMapToScene } from '@open-northland/render';
 import type { TerrainMap } from '@open-northland/sim';
 import { clearComponentStores, components, halfCellMapFromCells } from '@open-northland/sim';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { GRASS } from '../src/catalog/buildings.js';
+import { TERRAIN_IMPASSABLE } from '../src/catalog/terrain.js';
 import { type AuthoredJoinRows, resolveAuthoredPlacements } from '../src/slice/authored-placements.js';
 import { loadTerrainMap } from '../src/slice/map-loader.js';
 import { runAuthoredSlice, runBareMap, runSlice, sliceTerrain } from '../src/slice/vertical-slice.js';
@@ -80,7 +82,7 @@ describe('sliceTerrain', () => {
     const fallback = sliceTerrain();
     expect(fallback.width).toBe(6);
     expect(fallback.height).toBe(1);
-    expect(fallback.typeIds).toEqual([0, 0, 0, 0, 0, 0]);
+    expect(fallback.typeIds).toEqual(new Array(6).fill(GRASS));
 
     // An injected (loaded) map drives the terrain instead.
     const loaded = sliceTerrain({ width: 2, height: 1, typeIds: [4, 9] });
@@ -104,7 +106,7 @@ describe('runSlice on a loaded map', () => {
   }
 
   it('builds + steps the sim over the real grid without a content gap', () => {
-    // The plain strip uses only typeIds {0,1}; this grid uses {5,16,22}. If the global sandbox content did
+    // The plain strip uses only the grass class; this grid uses {5,16,22}. If the global sandbox content did
     // not fold those in, buildTerrainGraph would throw "landscape typeId N absent from content".
     const sim = runSlice(7, 30, gridMap());
     expect(sim.terrain?.width).toBe(4);
@@ -142,13 +144,13 @@ describe('runSlice on a loaded map', () => {
   });
 
   it('falls back to the synthetic strip when a loaded map has too few walkable cells', () => {
-    // typeId 1 is the demo's non-walkable water; an all-water grid has 0 walkable cells, so placement
-    // can't fit the slice — runSlice must degrade to the 6×1 strip (HQ@5 etc.) rather than throw.
+    // TERRAIN_IMPASSABLE is the demo's non-walkable water class; an all-impassable grid has 0 walkable
+    // cells, so placement can't fit the slice — runSlice must degrade to the 6×1 strip rather than throw.
     const allWater: TerrainMap = {
       resolution: 'half-cell',
       width: 3,
       height: 3,
-      typeIds: new Array(9).fill(1),
+      typeIds: new Array(9).fill(TERRAIN_IMPASSABLE),
     };
     expect(() => runSlice(7, 1, allWater)).not.toThrow();
     clearComponentStores();
