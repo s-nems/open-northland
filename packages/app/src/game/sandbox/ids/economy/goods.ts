@@ -1,8 +1,9 @@
 import type { EquipCategory } from '@open-northland/data';
 
-/** Goods and equipment ids in the sandbox-scoped economy namespace. The gathered/core goods carry their
- *  real `goodtypes.ini` (ir.json) typeIds so one id space works whether the sandbox or the real extracted
- *  content is the base; the extended catalog rides `EXTENDED_GOOD_TYPE_OFFSET`, synthetic goods a band above. */
+/** Goods and equipment ids in the sandbox-scoped economy namespace. The six gathered goods + coin carry
+ *  their real `goodtypes.ini` (ir.json) typeIds, so a placed wood/stone/… resolves against either the
+ *  sandbox or the real content base; the rest of the catalog — including the food chain (wheat 104 /
+ *  flour 111) — rides `EXTENDED_GOOD_TYPE_OFFSET`, and synthetic goods sit in a band above. */
 
 export const GOOD_NONE = 0;
 export const GOOD_MUD = 2;

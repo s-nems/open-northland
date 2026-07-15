@@ -14,6 +14,7 @@ import {
   JOB_ARCHER,
   JOB_ARCHER_LONG,
   JOB_CARRIER,
+  JOB_COLLECTOR,
   JOB_IDLE,
   JOB_SOLDIER_BROADSWORD,
   JOB_SOLDIER_SPEAR,
@@ -99,11 +100,12 @@ export const WARRIOR_PRESETS: readonly UnitPreset[] = [
   { id: 'longbow', jobType: JOB_ARCHER_LONG, weaponTypeId: WEAPON_LONG_BOW },
 ];
 
-/** The civilian units: an idle townsperson, a carrier, and one worker per gatherer profession. */
+/** The civilian units: an idle townsperson, a carrier, and the collector (the one outdoor gatherer trade
+ *  — every gathered good is worked by the same collector, so one preset, not one per good). */
 export const CIVILIAN_PRESETS: readonly UnitPreset[] = [
   { id: 'civilian', jobType: JOB_IDLE },
   { id: 'carrier', jobType: JOB_CARRIER },
-  ...GATHERERS.map((g) => ({ id: `gatherer_${g.id}`, jobType: g.job })),
+  { id: 'collector', jobType: JOB_COLLECTOR },
 ];
 
 /** One spawnable resource node: its good + a short material label (the gatherer label without the

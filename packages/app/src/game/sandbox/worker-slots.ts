@@ -59,11 +59,11 @@ export function workerSlotName(originalJobType: number): string {
  * Source basis: extracted from `ir.json`'s `workers`, i.e. the `logicworker` keys of each
  * `[logichousetype]` block in `DataCnmd/types/houses.ini`, verbatim — the counts and the worker/carrier
  * split are the original's. The `jobType`s here are the source's own `jobtypes.ini` ids and are rebased
- * clear of the sandbox's own job band on the way in ({@link rebaseSlotJob}): the original ids overlap the
- * synthetic gatherer band (20..25), the carrier (26), and the soldier band (31..41), so e.g. original job
- * 22 would otherwise be read as the sandbox's mud gatherer and original 40/41 as archers. The carrier job
- * is the one exception: the original's carrier (jobtype 24) is rebased to {@link JOB_CARRIER} (the one job
- * the badge + assignment UI single out as a hauler). Everything else becomes a distinct generic craftsman
+ * clear of the sandbox's own functional job band on the way in ({@link rebaseSlotJob}): the original ids
+ * overlap the collector (8), builder (7), and soldier band (31..41), so e.g. original job 8 would otherwise
+ * be read as the sandbox's collector and original 40/41 as archers. The carrier job is the one exception:
+ * the original's carrier (jobtype 24) is {@link JOB_CARRIER} itself — kept, not rebased (the one job the
+ * badge + assignment UI single out as a hauler). Everything else becomes a distinct generic craftsman
  * id (its trade identity is dropped — the deferred global-content id unification); the count and the
  * carrier split — what the player assigns — stay exact. Residences (homes) employ nobody; they carry no
  * row. Kept as sandbox data (not the hand-authored catalog) because the rebase lives in the sandbox job space.

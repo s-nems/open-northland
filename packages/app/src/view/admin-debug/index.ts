@@ -113,10 +113,7 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
   const unitLabel = (preset: UnitPreset): string => {
     const direct = copy.units[preset.id as keyof Messages['admin']['units']];
     if (direct !== undefined) return direct;
-    if (preset.id.startsWith('gatherer_')) {
-      const key = preset.id as keyof Messages['profession'];
-      return professionLabel(key);
-    }
+    if (preset.id === 'collector') return professionLabel('collector');
     return preset.id;
   };
   const actionLabel = (action: DebugAction): string => copy.actionsCatalog[action.id];
