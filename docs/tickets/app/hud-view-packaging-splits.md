@@ -7,11 +7,11 @@ a clean seam (a verbatim-move packaging split, no rewrite):
 
 ## Scope
 
-- `view/settler-actions.ts` (~355 lines, flat file) — `mountSettlerActions` mixes the pure
+- `view/unit-controls/settler-actions.ts` (~355 lines) — `mountSettlerActions` mixes the pure
   selection-centroid projection (`selectionCentre`), the profession-picker window lifecycle, and
-  the pointer/keyboard input controller. Promote to a `view/settler-actions/` feature folder whose
-  `index.ts` re-exports `mountSettlerActions` (single consumer: `view/unit-controls/index.ts`);
-  `selectionCentre` becomes separately unit-testable.
+  the pointer/keyboard input controller. Promote to a `view/unit-controls/settler-actions/` feature
+  folder whose `index.ts` re-exports `mountSettlerActions` (single consumer: the sibling
+  `unit-controls/index.ts`); `selectionCentre` becomes separately unit-testable.
 
 The sibling `hud/details-panel/sections/building.ts` split (the other half of the original ticket)
 is done — the six section renderers now live under `sections/building/` with an `index.ts` barrel.
