@@ -1,7 +1,13 @@
 /**
  * Building logic types and the cross-table recipe fill (produce-atomic animation lengths → production ticks).
  */
-import { type AtomicAnimation, BuildingType, type GoodType, type TribeType } from '@open-northland/data';
+import {
+  type AtomicAnimation,
+  BuildingType,
+  type GoodType,
+  hasFieldFarmAtomics,
+  type TribeType,
+} from '@open-northland/data';
 import {
   findProps,
   getInt,
@@ -165,6 +171,8 @@ function resolveRecipeTicks(
  *     table carries no per-good output quantity, only which good; uniform 1 is the faithful default,
  *     matching the `logicproduction <good>` semantics). A repeated `logicproduction` id is summed
  *     into one output (symmetry with the input side + the production system's per-good stockpile model).
+ *     A field-farmed output ({@link hasFieldFarmAtomics}: wheat/herb/mushroom) is excluded — it is grown
+ *     on the map, not made in-house — so a workplace producing only field goods (a farm) gets no recipe.
  *   - `recipe.inputs` = the merged `productionInputs` of every produced good, summed per input
  *     goodType (a workplace making several goods consumes the union of their inputs per cycle).
  *     Both sides are emitted in ascending goodType order — deterministic, source-order-independent.
@@ -208,11 +216,20 @@ export function fillBuildingRecipes(
     const mergedInputs = new Map<number, number>();
     const mergedOutputs = new Map<number, number>();
     for (const outputGood of b.produces) {
+      // A field-farmed output (wheat/herb/mushroom — {@link hasFieldFarmAtomics}) is grown on the map
+      // by the farmer's sow→water→reap loop, not manufactured indoors, so it forms no recipe. Skipping
+      // it leaves a farm/herb-hut whose only output is field-grown with no recipe at all, so the sim
+      // drives it through the field loop (`farmWorkGood`) instead of a spurious 0-input in-house cycle.
+      const good = goodById.get(outputGood);
+      if (good !== undefined && hasFieldFarmAtomics(good)) continue;
       mergedOutputs.set(outputGood, (mergedOutputs.get(outputGood) ?? 0) + 1);
       for (const inp of inputsByGood.get(outputGood) ?? []) {
         mergedInputs.set(inp.goodType, (mergedInputs.get(inp.goodType) ?? 0) + inp.amount);
       }
     }
+    // Every declared output was field-grown → not a recipe workplace; leave it recipe-less (as with an
+    // empty `produces`).
+    if (mergedOutputs.size === 0) return b;
     const sortedPairs = (m: Map<number, number>): { goodType: number; amount: number }[] =>
       [...m].sort(([a], [c]) => a - c).map(([goodType, amount]) => ({ goodType, amount }));
 

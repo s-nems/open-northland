@@ -162,6 +162,25 @@ describe('fillBuildingRecipes', () => {
     expect(store?.recipe).toBeUndefined();
   });
 
+  it('gives no recipe to a workplace whose only output is field-farmed (grown, not made)', () => {
+    // palegrain (24) carries all three field atomics (plant 64 / cultivate 63 / harvest 62) → grown on
+    // the map, so a farm producing only it forms no in-house recipe (the sim field-farms it instead).
+    const [farm] = fillBuildingRecipes([building(12, 'farm', [24])], GOODS);
+    expect(farm?.recipe).toBeUndefined();
+  });
+
+  it('drops only the field-farmed output when a workplace also makes a manufactured good', () => {
+    // produces [24, 27]: palegrain (24) is field-grown and excluded; guildmark (27) stays, so the recipe
+    // is guildmark alone — with its own inputs thornreed (22) + palegrain (24), a field good being a
+    // valid recipe *input* even though it is never a synthesized *output*.
+    const [mixed] = fillBuildingRecipes([building(17, 'mixed', [24, 27])], GOODS);
+    expect(mixed?.recipe?.outputs).toEqual([{ goodType: 27, amount: 1 }]);
+    expect(mixed?.recipe?.inputs).toEqual([
+      { goodType: 22, amount: 1 },
+      { goodType: 24, amount: 1 },
+    ]);
+  });
+
   it('does not mutate the input building records', () => {
     const input = building(13, 'mint', [27]);
     fillBuildingRecipes([input], GOODS);
