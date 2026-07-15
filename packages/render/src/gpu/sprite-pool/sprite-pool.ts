@@ -49,10 +49,9 @@ const layerHasReveal = (layer: ResolvedLayer): boolean => layer.reveal !== undef
 
 /**
  * How often (in reconciled frames) the pool is swept for entities that left the snapshot (died) so their
- * display objects can be freed. A death detaches immediately — invisible that same frame — and destroying
- * it only reclaims memory, so this one whole-pool diff against the live set runs a few times a second
- * rather than every frame, keeping the per-frame reconcile bounded by the screen. ~30 ≈ twice a second at
- * 60 fps.
+ * display objects can be freed. A death detaches immediately — invisible that same frame — so destroying
+ * it only reclaims memory; this whole-pool diff against the live set therefore runs on an interval, not
+ * every frame, keeping the per-frame reconcile bounded by the screen. 30 ≈ twice a second at 60 fps.
  */
 const POOL_REAP_INTERVAL_FRAMES = 30;
 
@@ -117,9 +116,9 @@ export class SpritePool {
    * steady state — only a first-seen entity or a growing layer set mints a new object.
    *
    * Per-frame work tracks the SCREEN, not the pool: the get-or-create and detach passes iterate this
-   * frame's draw list and the {@link attached} set (both O(visible)), never the whole pool — which only
-   * shrinks on death, so it grows to every entity ever seen. Only the death reap must diff the whole pool
-   * against the live set, so it runs on an interval ({@link POOL_REAP_INTERVAL_FRAMES}), off the hot path.
+   * frame's draw list and the {@link attached} set (both O(visible)). Only the death reap must diff the
+   * whole pool against the live set, so it runs on an interval ({@link POOL_REAP_INTERVAL_FRAMES}), off
+   * the hot path.
    */
   reconcile(frame: PoolFrame): void {
     // One pass over the snapshot yields both the culled draw list and the pre-cull liveness set the
@@ -164,10 +163,10 @@ export class SpritePool {
     }
     this.drawn = scene.items.length;
 
-    // Detach entities not drawn this frame (culled or gone). Iterating the attached set — the entities on
-    // the layer, an O(visible) set — instead of the whole pool keeps this scan bounded by the screen, not
-    // by every entity ever seen (the pool only shrinks on death). Deleting the current entry mid-iteration
-    // is well-defined for a Set. After this pass `attached` is exactly this frame's drawn entities.
+    // Detach entities not drawn this frame (culled or gone). Iterating the attached set (the entities on
+    // the layer, O(visible)) instead of the whole pool keeps this scan bounded by the screen. Deleting the
+    // current entry mid-iteration is well-defined for a Set. After this pass `attached` is exactly this
+    // frame's drawn entities.
     for (const pe of this.attached) {
       if (pe.lastSeen === this.frameId) continue; // still drawn this frame — keep attached
       this.spriteLayer.removeChild(pe.container);
