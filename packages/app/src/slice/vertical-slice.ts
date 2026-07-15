@@ -1,4 +1,4 @@
-import type { BuildingFootprint, TerrainMapFile } from '@open-northland/data';
+import type { BuildingFootprint, ContentSet, TerrainMapFile } from '@open-northland/data';
 import { type SceneTerrain, terrainMapToScene } from '@open-northland/render';
 import {
   type CellTerrainMap,
@@ -183,6 +183,7 @@ export function runSlice(
   owner?: number,
   footprints?: ReadonlyMap<number, BuildingFootprint>,
   goodNames?: ReadonlyMap<string, string>,
+  contentOverride?: ContentSet,
 ): Simulation {
   // Resolve placement first: a usable map yields its first six walkable cells; no map (or a map with
   // too few walkable cells) falls back to the synthetic strip — content + terrain + cells all revert
@@ -191,12 +192,16 @@ export function runSlice(
   // fixtures force-place, so nothing behavioral changes).
   const mapCells = map ? walkableCells(map, sandboxWalkableTypeIds(map), PLACEMENT_CELL_COUNT) : null;
   const usable = map !== undefined && mapCells !== null;
-  // `footprints` (the live real-content entry passes them, from ir.json) replace the catalog's
-  // hand-authored approximations with the buildings' real collision bodies (see SandboxContentExtras).
-  const content = sandboxContent(usable ? map : undefined, {
-    ...(footprints ? { buildingFootprints: footprints } : {}),
-    ...(goodNames ? { goodNames } : {}),
-  });
+  // `contentOverride` (the live real-content entry) runs the sim on the merged real content; otherwise the
+  // clean-room sandbox, where `footprints`/`goodNames` overlay the real collision bodies + localized names
+  // onto the approximations (see SandboxContentExtras). Real content already ships both, so the override
+  // ignores them.
+  const content =
+    contentOverride ??
+    sandboxContent(usable ? map : undefined, {
+      ...(footprints ? { buildingFootprints: footprints } : {}),
+      ...(goodNames ? { goodNames } : {}),
+    });
   const terrain = usable ? map : grassMap();
   const cells = mapCells ?? STRIP_CELLS;
   const sim = new Simulation({ seed, content, map: terrain });
@@ -268,11 +273,14 @@ export function runBareMap(
   map: TerrainMap,
   footprints?: ReadonlyMap<number, BuildingFootprint>,
   goodNames?: ReadonlyMap<string, string>,
+  contentOverride?: ContentSet,
 ): Simulation {
-  const content = sandboxContent(map, {
-    ...(footprints ? { buildingFootprints: footprints } : {}),
-    ...(goodNames ? { goodNames } : {}),
-  });
+  const content =
+    contentOverride ??
+    sandboxContent(map, {
+      ...(footprints ? { buildingFootprints: footprints } : {}),
+      ...(goodNames ? { goodNames } : {}),
+    });
   return new Simulation({ seed, content, map });
 }
 
@@ -295,6 +303,7 @@ export function runAuthoredSlice(
   rows: AuthoredJoinRows,
   footprints?: ReadonlyMap<number, BuildingFootprint>,
   goodNames?: ReadonlyMap<string, string>,
+  contentOverride?: ContentSet,
 ): Simulation | null {
   const { placements, skipped } = resolveAuthoredPlacements(entities, rows, map);
   if (placements.length === 0) return null;
@@ -316,21 +325,26 @@ export function runAuthoredSlice(
     (a, b) => a - b,
   );
   const usedTribes = [...new Set(placements.map((p) => p.tribe))].sort((a, b) => a - b);
-  const content = sandboxContent(map, {
-    jobs: usedJobs.filter((typeId) => typeId !== 0).map((typeId) => ({ typeId, id: `job_${typeId}` })),
-    buildings: usedBuildings.map((typeId) => {
-      const def = buildingDefById.get(typeId);
-      return {
-        typeId,
-        id: def?.id ?? `building_${typeId}`,
-        ...(def?.kind !== undefined ? { kind: def.kind } : {}),
-      };
-    }),
-    tribes: usedTribes.map((typeId) => ({ typeId, id: `tribe_${typeId}` })),
-    // Live real-content footprints (from ir.json), so authored + interactively-placed buildings collide.
-    ...(footprints ? { buildingFootprints: footprints } : {}),
-    ...(goodNames ? { goodNames } : {}),
-  });
+  // `contentOverride` (real content) already carries every real job/building/tribe, so the authored-id
+  // fold below is moot for it; it only fleshes out the smaller sandbox catalog so authored maps don't
+  // shrink the build menu. Real content also ships the footprints + localized names the extras overlay.
+  const content =
+    contentOverride ??
+    sandboxContent(map, {
+      jobs: usedJobs.filter((typeId) => typeId !== 0).map((typeId) => ({ typeId, id: `job_${typeId}` })),
+      buildings: usedBuildings.map((typeId) => {
+        const def = buildingDefById.get(typeId);
+        return {
+          typeId,
+          id: def?.id ?? `building_${typeId}`,
+          ...(def?.kind !== undefined ? { kind: def.kind } : {}),
+        };
+      }),
+      tribes: usedTribes.map((typeId) => ({ typeId, id: `tribe_${typeId}` })),
+      // Live real-content footprints (from ir.json), so authored + interactively-placed buildings collide.
+      ...(footprints ? { buildingFootprints: footprints } : {}),
+      ...(goodNames ? { goodNames } : {}),
+    });
 
   const sim = new Simulation({ seed, content, map });
   enqueuePlacements(sim, placements);
