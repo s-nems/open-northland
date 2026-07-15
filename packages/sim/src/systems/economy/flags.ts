@@ -90,19 +90,15 @@ export function removeWorkFlag(world: World, e: Entity): void {
 }
 
 /**
- * Whether a job may harvest any flag-gathered good — i.e. its allowed atomics include some good's harvest
- * atomic. The gate for `setWorkFlag` and {@link syncWorkFlagToJob}: only a gatherer carries a work flag.
- * Mirrors the harvest-atomic knowledge the AI target scan uses (`atomicsByJob` ∩ the goods' harvest atomics).
- * A field-farmed good (a `farming` block — wheat) is deliberately excluded: its harvester is a farmer, bound to
- * its farm and banking the crop in the farm's own store (`logicstock 4 25 0`), never a flag gatherer — a flag
- * would hijack every sheaf delivery (`deliveryTargetFor`'s flag rung outranks the bound store).
+ * Whether a job is a flag-gathering trade — its grants (`allowedAtomics`) include some good's harvest
+ * atomic ({@link ContentIndex.harvestJobs}). The gate for `setWorkFlag` and {@link syncWorkFlagToJob}:
+ * only a gatherer carries a work flag. Trade grants only, NOT the `jobAtomics` permission union the
+ * planner runs on: a tribe-wide `baseAtomics` entry that coincides with a good's harvest atomic (real
+ * soldier `baseAtomics=[31]` == herb's harvest 31) must not flag every soldier as a gatherer.
+ * A field-farmed good (a `farming` block — wheat) is excluded from the harvest set: its harvester is a
+ * farmer bound to its farm, banking the crop in the farm's own store (`logicstock 4 25 0`), never a flag
+ * gatherer — a flag would hijack every sheaf delivery (`deliveryTargetFor`'s flag rung outranks the store).
  */
 export function jobCanHarvest(ctx: SystemContext, jobType: number): boolean {
-  const allowed = contentIndex(ctx.content).atomicsByJob.get(jobType);
-  if (allowed === undefined) return false;
-  for (const g of ctx.content.goods) {
-    if (g.farming !== undefined) continue; // field-farmed — farm-bound, not flag-gathered
-    if (g.atomics.harvest !== undefined && allowed.has(g.atomics.harvest)) return true;
-  }
-  return false;
+  return contentIndex(ctx.content).harvestJobs.has(jobType);
 }

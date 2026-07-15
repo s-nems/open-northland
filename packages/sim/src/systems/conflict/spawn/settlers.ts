@@ -37,6 +37,11 @@ export type SettlerSpec = Omit<Extract<Command, { kind: 'spawnSettler' }>, 'kind
  */
 export const DEFAULT_SETTLER_HITPOINTS = 300;
 
+/** The idle/unemployed job sentinel — always a valid {@link createSettler} input, even on content whose
+ *  job table starts at typeId 1 (real ir.json has no job 0). A settler spawned idle is then re-set to
+ *  `jobType: null` (see the app's `spawnIdleSettler`). */
+export const IDLE_JOB_TYPE = 0;
+
 /**
  * Assemble a settler entity from a {@link SettlerSpec} and return it (or null for an unknown job id — bad
  * input, no entity created). The pure entity-construction core shared by the `spawnSettler` command handler
@@ -49,8 +54,9 @@ export const DEFAULT_SETTLER_HITPOINTS = 300;
  * separate-optional-component pattern: absent input leaves the component off and the golden hash untouched.
  */
 export function createSettler(world: World, content: ContentSet, spec: SettlerSpec): Entity | null {
-  // jobType 0 ("idle"/unemployed) is allowed; only an id absent from the job table is bad input.
-  if (!contentIndex(content).commandJobs.has(spec.jobType)) return null;
+  // The idle sentinel is valid on any content (even one whose job table starts at typeId 1); any other
+  // id must be in the job table or it is bad input.
+  if (spec.jobType !== IDLE_JOB_TYPE && !contentIndex(content).commandJobs.has(spec.jobType)) return null;
 
   const e = world.create();
   world.add(e, Position, positionOfNode(spec.x, spec.y));
