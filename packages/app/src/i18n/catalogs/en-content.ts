@@ -160,17 +160,13 @@ export const enContent = {
       title: 'Goods catalog',
       summary: 'Every storable good and its warehouse slot in one compact reference scene.',
     },
-    farm: {
-      title: 'Grain farm',
-      summary: 'Farmers sow, grow, reap and store wheat in a complete production loop.',
-    },
     berries: {
       title: 'Wild berries',
       summary: 'Foragers eat from wild bushes and the harvested plants regrow.',
     },
-    mill: {
-      title: 'Grain mill',
-      summary: 'Millers turn stored wheat into flour and respect stock limits.',
+    chain: {
+      title: 'Production chain',
+      summary: 'Farm, mill, bakery and well in one loop: wheat → flour → bread, fed by water.',
     },
     warehouse: {
       title: 'Warehouse logistics',

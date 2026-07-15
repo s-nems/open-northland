@@ -160,17 +160,13 @@ export const plContent = {
       title: 'Katalog towarów',
       summary: 'Wszystkie towary i odpowiadające im miejsca w magazynie w jednej scenie.',
     },
-    farm: {
-      title: 'Farma zboża',
-      summary: 'Rolnicy sieją, uprawiają, zbierają i magazynują pszenicę.',
-    },
     berries: {
       title: 'Dzikie jagody',
       summary: 'Zbieracze jedzą dzikie owoce, a ogołocone krzewy odrastają.',
     },
-    mill: {
-      title: 'Młyn zbożowy',
-      summary: 'Młynarze przerabiają pszenicę na mąkę i przestrzegają limitów magazynu.',
+    chain: {
+      title: 'Łańcuch produkcji',
+      summary: 'Farma, młyn, piekarnia i studnia w jednej pętli: pszenica → mąka → chleb, zasilane wodą.',
     },
     warehouse: {
       title: 'Logistyka magazynu',
