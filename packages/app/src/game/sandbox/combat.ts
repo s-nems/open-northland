@@ -19,8 +19,9 @@ import {
 /**
  * The sandbox combat content — the weapon swing timings, damages, and the {@link sandboxWeapons} table
  * the global {@link import('./content/index.js').sandboxContent} set assembles from. Swing lengths + hit frames
- * are transcribed from the extracted viking `atomicanimations.ini` records; damages are on the sandbox's
- * own synthetic scale (see the per-constant notes).
+ * are transcribed from the extracted viking `atomicanimations.ini` records; the bare-target damages from the
+ * readable `weapons.ini` `damagevalue 0` (same source basis), so sandbox combat resolves on the real scale —
+ * a headless scene fights like the browser on real content, no separate sandbox-scale tuning.
  */
 
 /** Munition type 1 = arrow — what the bows fire. */
@@ -47,15 +48,16 @@ export const SHORT_BOW_DRAW_LENGTH = 12; // viking_soldier_attack_bow_short
 export const SHORT_BOW_RELEASE_FRAME = 10;
 export const LONG_BOW_DRAW_LENGTH = 28; // viking_soldier_attack_bow_long
 export const LONG_BOW_RELEASE_FRAME = 22;
-// Damage on the sandbox's own synthetic scale (the real per-material tables live in the extracted
-// content; scene hitpoints are chosen so a duel takes several full swings — see the combat scene).
-const BOW_DAMAGE = 34;
-const SWORD_DAMAGE = 40;
-const SPEAR_DAMAGE = 45;
-const BROADSWORD_DAMAGE = 55;
-// The fist is the weakest strike — a quarter of the short sword's, matching weapons.ini's fist
-// damagevalue 0 (400) vs the short sword's (1600).
-const FIST_DAMAGE = 10;
+// Bare-target damage (`weapons.ini` `damagevalue 0`) per weapon, transcribed from the readable source like
+// the swing timings above, so sandbox combat runs on the real scale (a ~5000-HP fighter takes several
+// swings — see the battle scene). The per-armor-material columns stay in the extracted IR; the sandbox
+// models only the bare-target column each soldier job actually swings with.
+const FIST_DAMAGE = 400; // fist
+const SWORD_DAMAGE = 1600; // short_sword
+const SPEAR_DAMAGE = 3800; // iron_spear
+const BROADSWORD_DAMAGE = 3800; // long_sword
+const BOW_DAMAGE = 500; // short_bow
+const LONG_BOW_DAMAGE = 700; // long_bow
 
 /** The equip classification (slot + wear) per good typeId, so `sandboxContent()` can merge it onto the
  *  global catalog good of the same typeId (an equippable good is declared once, in `EXTENDED_GOODS`). */
@@ -127,7 +129,7 @@ export function sandboxWeapons() {
       speed: BOW_SPEED,
       minRange: 4,
       maxRange: 23,
-      damage: { '0': BOW_DAMAGE },
+      damage: { '0': LONG_BOW_DAMAGE },
     },
   ];
 }

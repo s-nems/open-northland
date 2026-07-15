@@ -67,9 +67,6 @@ const BLUE_SOLDIER_ROWS = [18, 19, 20, 21] as const;
 const RED_SOLDIER_ROWS = [19, 20, 21] as const;
 const BLUE_SOLDIER_X = 60;
 const RED_SOLDIER_X = 66;
-const BLUE_HP = 320;
-const RED_HP = 170;
-
 const ARCHER_POSTS = [
   { x: 58, y: 28 },
   { x: 58, y: 30 },
@@ -112,7 +109,6 @@ function buildControllableUnits(sim: Simulation): void {
   }
   for (const y of BLUE_SOLDIER_ROWS) {
     spawnSandboxSettler(sim, JOB_SOLDIER_SWORD, BLUE_SOLDIER_X, y, HUMAN_PLAYER, {
-      hitpoints: BLUE_HP,
       weaponTypeId: WEAPON_SWORD,
     });
   }
@@ -120,7 +116,6 @@ function buildControllableUnits(sim: Simulation): void {
     // The long bow is job 41's weapon (the real viking job split) — job 40 would draw the short-bow
     // body and truncate the 28-frame long-bow draw against job 40's 12-tick animation.
     spawnSandboxSettler(sim, JOB_ARCHER_LONG, post.x, post.y, HUMAN_PLAYER, {
-      hitpoints: BLUE_HP,
       weaponTypeId: WEAPON_LONG_BOW,
     });
   }
@@ -129,7 +124,6 @@ function buildControllableUnits(sim: Simulation): void {
 function buildEnemies(sim: Simulation): void {
   for (const y of RED_SOLDIER_ROWS) {
     spawnSandboxSettler(sim, JOB_SOLDIER_SWORD, RED_SOLDIER_X, y, ENEMY_PLAYER, {
-      hitpoints: RED_HP,
       weaponTypeId: WEAPON_SWORD,
     });
   }

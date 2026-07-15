@@ -1,4 +1,5 @@
-import { type Command, type Entity, systems } from '@open-northland/sim';
+import type { Command, Entity } from '@open-northland/sim';
+import { HUMAN_HITPOINTS } from '../../catalog/units.js';
 import { HUMAN_PLAYER } from '../../game/rules.js';
 import { resourceCommand } from '../../game/sandbox/place.js';
 import { formatMessage, type Messages, messages, professionLabel } from '../../i18n/index.js';
@@ -91,9 +92,9 @@ type Armed =
   | { readonly kind: 'good'; readonly good: number }
   | { readonly kind: 'action'; readonly action: DebugAction };
 
-/** The default hitpoint pool shown in the HP field — the sim's own settler default, so the palette's
- *  number matches what an untouched spawn would get anyway. */
-const DEFAULT_HITPOINTS = systems.DEFAULT_SETTLER_HITPOINTS;
+/** The default hitpoint pool shown in the HP field — the clean-room settler HP the content's tribes carry
+ *  ({@link HUMAN_HITPOINTS}), so the palette's number matches what an untouched spawn gets from its tribe. */
+const DEFAULT_HITPOINTS = HUMAN_HITPOINTS;
 
 /** Mount the admin/debug spawn palette (toggle button + hidden panel). Mount-and-forget. */
 export function mountAdminDebug(deps: AdminDebugDeps): void {
