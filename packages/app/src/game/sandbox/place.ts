@@ -113,13 +113,14 @@ export function spawnWorkersAtDoor(
   }
 }
 
-/** A building's primary production worker-slot jobType from the sim's loaded content — its first worker
- *  slot that isn't the {@link JOB_CARRIER} hauler slot. Throws if the building employs no producer (a
- *  scene-setup bug: {@link spawnWorkersAtDoor} on a store or well that has only carrier slots). */
+/** A building's primary worker-slot jobType from the sim's loaded content — its first non-{@link JOB_CARRIER}
+ *  production slot, or, for a workplace staffed only by carriers (the well draws water with its carrier), the
+ *  carrier slot itself. Throws only if the building employs no worker at all (a store — a scene-setup bug). */
 function primaryWorkerJob(sim: Simulation, buildingType: number): number {
-  const slot = buildingDef(sim, buildingType)?.workers.find((w) => w.jobType !== JOB_CARRIER);
+  const slots = buildingDef(sim, buildingType)?.workers ?? [];
+  const slot = slots.find((w) => w.jobType !== JOB_CARRIER) ?? slots[0];
   if (slot === undefined) {
-    throw new Error(`spawnWorkersAtDoor: building ${buildingType} has no production worker slot`);
+    throw new Error(`spawnWorkersAtDoor: building ${buildingType} has no worker slot`);
   }
   return slot.jobType;
 }

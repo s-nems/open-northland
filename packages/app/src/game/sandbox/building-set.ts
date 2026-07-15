@@ -5,6 +5,7 @@ import { STORABLE_EXTENDED_GOODS } from '../../catalog/goods.js';
 import { buildingConstructionCost, buildingHitpoints } from './construction.js';
 import type { SandboxContentExtras } from './content/types.js';
 import {
+  BUILDING_BAKERY,
   BUILDING_FARM,
   BUILDING_HEADQUARTERS,
   BUILDING_JOINERY,
@@ -12,6 +13,8 @@ import {
   BUILDING_WAREHOUSE_00,
   BUILDING_WAREHOUSE_01,
   BUILDING_WAREHOUSE_02,
+  BUILDING_WELL,
+  GOOD_BREAD,
   GOOD_COIN,
   GOOD_FLOUR,
   GOOD_GOLD,
@@ -20,6 +23,7 @@ import {
   GOOD_MUSHROOM,
   GOOD_PLANK,
   GOOD_STONE,
+  GOOD_WATER,
   GOOD_WHEAT,
   GOOD_WOOD,
   JOB_COLLECTOR,
@@ -48,6 +52,20 @@ const MILL_FLOUR_CAPACITY = 20;
 // The 1 wheat → 1 flour amounts are a NAMED APPROXIMATION: `productionInputGoods 4` names the input
 // but no readable amount field exists.
 const MILL_GRIND_TICKS = 200;
+// The well's water-only store — EXTRACTED: `logicstock 1 1 0` on the "work well 00" block, one slot, 1
+// water. Its draw cycle length is a NAMED APPROXIMATION: water carries no `atomicForProduction`, so the
+// pipeline pins the DEFAULT_RECIPE_TICKS (20) into ir.json — mirrored here.
+const WELL_WATER_CAPACITY = 1;
+const WELL_DRAW_TICKS = 20;
+// The bakery's three-slot store — EXTRACTED: `logicstock 1 10 1` (water, 10) + `logicstock 11 10 1`
+// (flour, 10) + `logicstock 19 20 0` (bread, 20) on the "work bakery 00" block; slots start empty (the
+// trailing int is the consumed-here flag, see the mill note). One bake cycle is EXTRACTED: bread's
+// `atomicForProduction 47` is `length 200`. The 1 water + 1 flour → 1 bread amounts are a NAMED
+// APPROXIMATION (`productionInputGoods 11 1` names the inputs, no readable amount field).
+const BAKERY_WATER_CAPACITY = 10;
+const BAKERY_FLOUR_CAPACITY = 10;
+const BAKERY_BREAD_CAPACITY = 20;
+const BAKERY_BAKE_TICKS = 200;
 
 /** A store slot: how much of one good a general-goods building may hold, and its starting amount. */
 export interface StockSlot {
@@ -120,6 +138,34 @@ export interface SandboxBuildingRow {
  */
 const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> = {
   [BUILDING_HEADQUARTERS]: { stock: storeStock(HQ_SLOT_CAPACITY) },
+  // The well — EXTRACTED shape (`DataCnmd/types/houses.ini` "work well 00"): a water-only store and
+  // `logicproduction 1` (produces water), drawn by the standard recipe cycle from no inputs (water is
+  // producedInHouse in `goodtypes.ini`, not map-gathered). The lone worker is a carrier (BUILDING_WORKER_SLOTS).
+  [BUILDING_WELL]: {
+    stock: [{ goodType: GOOD_WATER, capacity: WELL_WATER_CAPACITY, initial: 0 }],
+    produces: [GOOD_WATER],
+    recipe: { inputs: [], outputs: [{ goodType: GOOD_WATER, amount: 1 }], ticks: WELL_DRAW_TICKS },
+  },
+  // The bakery — EXTRACTED shape (`DataCnmd/types/houses.ini` "work bakery 00"): a water-in/flour-in/
+  // bread-out three-slot store and `logicproduction 19` (produces bread), baked by the standard recipe
+  // cycle (water + flour → bread over the extracted 200-tick bake). The worker slots (1 baker + 1 carrier)
+  // come from BUILDING_WORKER_SLOTS; the generic producer drive gives the baker the fetch → bake → haul loop.
+  [BUILDING_BAKERY]: {
+    stock: [
+      { goodType: GOOD_WATER, capacity: BAKERY_WATER_CAPACITY, initial: 0 },
+      { goodType: GOOD_FLOUR, capacity: BAKERY_FLOUR_CAPACITY, initial: 0 },
+      { goodType: GOOD_BREAD, capacity: BAKERY_BREAD_CAPACITY, initial: 0 },
+    ],
+    produces: [GOOD_BREAD],
+    recipe: {
+      inputs: [
+        { goodType: GOOD_WATER, amount: 1 },
+        { goodType: GOOD_FLOUR, amount: 1 },
+      ],
+      outputs: [{ goodType: GOOD_BREAD, amount: 1 }],
+      ticks: BAKERY_BAKE_TICKS,
+    },
+  },
   // The grain farm — EXTRACTED shape (`DataCnmd/types/houses.ini` "work farm 00"): a wheat-only store
   // (`logicstock 4 25 0`) and `logicproduction 4` (produces wheat). Deliberately no recipe: the field
   // loop (its farmers sowing/watering/reaping around the building) is what makes the wheat — the
