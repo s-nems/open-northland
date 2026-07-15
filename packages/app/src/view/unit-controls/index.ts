@@ -3,11 +3,11 @@ import { workFlagOf } from '../../game/snapshot.js';
 import { mountUnitPanel, type UnitPanel } from '../../hud/details-panel/index.js';
 import { clientToScreen, screenScale } from '../camera.js';
 import { pickInRect, pickTopAt, screenToWorld } from '../picking.js';
-import { mountSettlerActions, type SettlerActions } from '../settler-actions.js';
-import { createUnitTargets } from '../unit-targets.js';
 import { createSelectionMarquee } from './marquee.js';
 import { createUnitOrderController } from './orders.js';
+import { mountSettlerActions, type SettlerActions } from './settler-actions.js';
 import type { UnitControls, UnitControlsOptions } from './types.js';
+import { createUnitTargets } from './unit-targets.js';
 
 export type { UnitControls, UnitControlsOptions } from './types.js';
 
@@ -27,7 +27,7 @@ export type { UnitControls, UnitControlsOptions } from './types.js';
  *    unit goes exactly there — the `moveUnit` command). The move-order-onto-an-enemy = attack idiom is the
  *    original's RTS convention.
  *  - **Space** — toggle the original-art action menu around the selected settler
- *    ({@link import('../settler-actions.js')}): the full default menu in original art, of which only "change
+ *    ({@link import('./settler-actions.js')}): the full default menu in original art, of which only "change
  *    profession" is wired today (it opens a profession picker). The info card (needs / building state) is
  *    always shown bottom-right the moment something is selected — no keypress needed.
  *  - **Esc** — clear the selection.
@@ -85,7 +85,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   const marquee = createSelectionMarquee();
 
   // The snapshot-derived pickable target sets a click hit-tests against — owned units/buildings, enemy
-  // units, and the gatherers' work-flag proxies. See view/unit-targets.ts (they read only the snapshot +
+  // units, and the gatherers' work-flag proxies. See unit-targets.ts (they read only the snapshot +
   // the injected render hit-test helpers, so they live apart from the selection/order logic here).
   const unitTargets = createUnitTargets({
     snapshot: opts.snapshot,

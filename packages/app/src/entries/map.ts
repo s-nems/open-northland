@@ -27,7 +27,7 @@ import {
 import { loadTerrainMap } from '../slice/map-loader.js';
 import { runAuthoredSlice, runBareMap, runSlice, sliceTerrain } from '../slice/vertical-slice.js';
 import { cameraCenteredOnTile, createCameraController } from '../view/camera.js';
-import { startGameView } from '../view/game-view.js';
+import { startGameView } from '../view/runtime/game-view.js';
 
 /**
  * The decoded-map viewer entry (`?map=<id>`): draws an actual decoded `content/maps/<id>.json` grid — the
@@ -241,7 +241,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // dynamic overview window). Null without lanes/textures → the typeId raster fallback.
   const minimapCells = await loadMinimapCellColours(terrainGrid, terrain);
 
-  // The shared in-game runtime (view/game-view.ts): the standard HUD mounts — tool panel, unit
+  // The shared in-game runtime (view/runtime/game-view.ts): the standard HUD mounts — tool panel, unit
   // controls, perf overlay, positional sound — and the one fixed-timestep RAF loop, identical to the
   // `?scene=` entry's.
   await startGameView({

@@ -1,7 +1,7 @@
 import { fx, nodeOfPosition, positionOfNode } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { workerIconOffset } from '../src/catalog/building-tweaks.js';
-import { type BuildingDoorInfo, computeDoorBadges } from '../src/view/door-badges.js';
+import { type BuildingDoorInfo, computeDoorBadges } from '../src/view/projections/index.js';
 import { building, settler, snapshotOf } from './support/snapshot.js';
 
 /**

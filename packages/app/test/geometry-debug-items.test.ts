@@ -5,7 +5,7 @@ import {
   computeGeometryDebugItems,
   createGeometryDebugOverlay,
   type GeometryBuildingInfo,
-} from '../src/view/geometry-debug-items.js';
+} from '../src/view/projections/index.js';
 import { building, snapshotOf } from './support/snapshot.js';
 
 /**

@@ -1,5 +1,5 @@
 import { halfCellToScreen } from '@open-northland/render';
-import type { Tile } from './picking.js';
+import type { Tile } from '../picking.js';
 
 /**
  * Pure formation assignment — turning one group move order (a clicked target node + the units' on-screen

@@ -1,5 +1,5 @@
 import type { HudLabels } from '@open-northland/render';
-import { formatMessage, messages } from '../i18n/index.js';
+import { formatMessage, messages } from '../../i18n/index.js';
 
 /** Bridge the app locale catalog into render's pure HUD layout. */
 export function hudLabels(): HudLabels {

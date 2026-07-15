@@ -2,7 +2,7 @@ import type { BuildingFootprint } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_WORKER_ICON_OFFSET, DOOR_SHIFTS, workerIconOffset } from '../src/catalog/building-tweaks.js';
 import { buildingFootprints } from '../src/content/ir.js';
-import { doorNode, workerIconNode } from '../src/view/building-points.js';
+import { doorNode, workerIconNode } from '../src/view/projections/index.js';
 
 /** A minimal footprint carrying just a door (the only field these helpers read). */
 function footprintWithDoor(dx: number, dy: number): BuildingFootprint {

@@ -1,6 +1,6 @@
 import type { FootprintCell } from '@open-northland/data';
 import type { HalfCellNode } from '@open-northland/sim';
-import { workerIconOffset } from '../catalog/building-tweaks.js';
+import { workerIconOffset } from '../../catalog/building-tweaks.js';
 
 /**
  * Per-building UI anchor points derived from the extracted footprint — the door node and the

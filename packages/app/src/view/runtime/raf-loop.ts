@@ -7,7 +7,7 @@ export interface RafLoop {
 /**
  * Drive `frame` once per animation frame until stopped. The chain reschedules itself, so the sole owner
  * of the loop's lifetime is the returned {@link RafLoop.stop} — a game session calls it on quit so a
- * later game can start without a second loop stepping the same stage (see view/game-view.ts). Split out
+ * later game can start without a second loop stepping the same stage (see game-view.ts). Split out
  * from the per-frame body (frame-loop.ts) so the start/stop lifecycle is unit-testable on its own.
  */
 export function startRafLoop(frame: (nowMs: number) => void): RafLoop {

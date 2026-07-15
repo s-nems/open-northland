@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { type RafLoop, startRafLoop } from '../src/view/raf-loop.js';
+import { type RafLoop, startRafLoop } from '../src/view/runtime/raf-loop.js';
 
 /**
  * A controllable `requestAnimationFrame`: queued callbacks fire only when the test flushes, so the

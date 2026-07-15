@@ -10,9 +10,9 @@ import {
   positionOf,
   settlerJobType,
 } from '../../game/snapshot.js';
-import { assignFormation, type FormationUnit } from '../formation.js';
 import { clampTile, nodeBounds, type Pickable, pickTopAt, worldToTile } from '../picking.js';
-import type { UnitTargets } from '../unit-targets.js';
+import { assignFormation, type FormationUnit } from './formation.js';
+import type { UnitTargets } from './unit-targets.js';
 
 export interface UnitOrderDeps {
   readonly selected: ReadonlySet<number>;

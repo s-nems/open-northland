@@ -1,7 +1,7 @@
 import { buildHud, fogTileVisible, layoutHud, ONE } from '@open-northland/render';
 import type { WorldSnapshot } from '@open-northland/sim';
-import { HUD_TRIBE } from '../game/rules.js';
-import type { WorkerRole } from '../game/sandbox/index.js';
+import { HUD_TRIBE } from '../../game/rules.js';
+import type { WorkerRole } from '../../game/sandbox/index.js';
 import { type BuildingDoorInfo, computeDoorBadges } from './door-badges.js';
 import type { FogGates } from './fog-gates.js';
 import { hudLabels } from './hud-labels.js';
