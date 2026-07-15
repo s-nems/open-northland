@@ -4,7 +4,7 @@ import type { ContentSet, LandscapeType } from '@open-northland/data';
 // straight off `landscapetypes.ini`'s `allowedon{land,water,everything}` flags. These three flags are
 // extracted by the pipeline (unlike `walkable`/`buildable`, which keep their schema defaults — see
 // tools/asset-pipeline/src/decoders/ini.ts) yet had no sim consumer; the terrain graph reads only
-// `walkable`/`maxValency`. The water-layer view is placement-side, distinct from water-valency terrain
+// `walkable`/`buildable`/`plantable`/`walkCost`. The water-layer view is placement-side, distinct from water-valency terrain
 // (which cells are water), which lives in the map tile grid, not this table.
 
 /**

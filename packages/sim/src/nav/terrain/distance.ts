@@ -4,13 +4,13 @@ import type { TerrainGraph } from './graph.js';
 import type { NodeId } from './types.js';
 
 /**
- * The fixed-point HALF-CELL LATTICE step distance between two nodes — the admissible, consistent A*
+ * The fixed-point half-cell lattice step distance between two nodes — the admissible, consistent A*
  * heuristic for the 8-direction graph ({@link TerrainGraph.steps}: E/W cost {@link HALF_COLUMN},
- * diagonal cost {@link DIAGONAL_STEP}, vertical cost {@link HALF_ROW}). It is the EXACT minimum
- * cost across open terrain. With `ax = |Δhx|` (half-columns) and `ay = |Δhy|` (half-rows): a
- * diagonal covers `(1, 2)` and is cheaper than its straight substitute `E + 2·N`
- * (DIAGONAL_STEP < HALF_COLUMN + 2·HALF_ROW), so use as many diagonals as either axis allows —
- * `d = min(ax, ⌊ay/2⌋)` — and cover the remainder with straight steps:
+ * diagonal {@link DIAGONAL_STEP}, vertical {@link HALF_ROW}), and the exact minimum cost across open
+ * terrain. With `ax = |Δhx|` (half-columns) and `ay = |Δhy|` (half-rows): a diagonal covers `(1, 2)`
+ * and is cheaper than its straight substitute `E + 2·N` (DIAGONAL_STEP < HALF_COLUMN + 2·HALF_ROW),
+ * so use as many diagonals as either axis allows — `d = min(ax, ⌊ay/2⌋)` — and cover the remainder
+ * with straight steps:
  *
  *  - `2·ax ≤ ay` (vertical dominates): `ax·DIAGONAL_STEP + (ay − 2ax)·HALF_ROW`;
  *  - otherwise (sideways dominates): `⌊ay/2⌋·DIAGONAL_STEP + (ax − ⌊ay/2⌋)·HALF_COLUMN +
@@ -19,9 +19,8 @@ import type { NodeId } from './types.js';
  * No wasteful composition beats it: a zigzag diagonal pair covering one column costs
  * 2·DIAGONAL_STEP > 2·HALF_COLUMN, an opposing pair covering four rows costs 2·DIAGONAL_STEP >
  * 4·HALF_ROW, and a diagonal-plus-backtrack substitute for one E step costs DIAGONAL_STEP +
- * 2·HALF_ROW > HALF_COLUMN. Every term composes the very integers the edge costs are built from,
- * so on unit-cost terrain the heuristic EQUALS the true open-terrain graph distance — admissible
- * and consistent by construction; obstacles only raise the true cost, so A* stays optimal.
+ * 2·HALF_ROW > HALF_COLUMN. So on unit-cost terrain the heuristic equals the true open-terrain graph
+ * distance (admissible and consistent); obstacles only raise the true cost, so A* stays optimal.
  */
 export function nodeLatticeDistance(g: TerrainGraph, a: NodeId, b: NodeId): Fixed {
   const ca = g.coordsOf(a);
