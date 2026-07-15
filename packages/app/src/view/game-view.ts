@@ -295,6 +295,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     }),
     claimPointer: (x, y) => controls.claimsPointer(x, y),
     goodLabel: (typeId) => goodLabelByType.get(typeId),
+    // The droppable-goods palette is the running content's own goods (sandbox on a bare checkout, the real
+    // extracted goods on a scene/map) — the one source, so every listed good actually drops.
+    goods: sim.content.goods.map((g) => ({ good: g.typeId, id: g.id })),
     // The needs-toggle button's live state (scenes boot it off, maps on) — read through the sim's
     // sanctioned read accessor (the placementProbe pattern), never the live component stores.
     needsEnabled: () => sim.needsEnabled(),
