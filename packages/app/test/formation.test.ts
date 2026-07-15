@@ -1,7 +1,7 @@
 import { halfCellToScreen, tileToScreen } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
-import { assignFormation, type FormationUnit, formationTiles } from '../src/view/formation.js';
 import type { Tile } from '../src/view/picking.js';
+import { assignFormation, type FormationUnit, formationTiles } from '../src/view/unit-controls/formation.js';
 
 const NONE = (): boolean => false;
 

@@ -12,7 +12,7 @@ import { loadRealTerrain } from '../content/terrain.js';
 import { fogModeParam } from '../game/fog.js';
 import { createSceneSim, getScene, SCENES } from '../scenes/index.js';
 import { cameraFor, createCameraController } from '../view/camera.js';
-import { startGameView } from '../view/game-view.js';
+import { startGameView } from '../view/runtime/game-view.js';
 import { mountUnknownSceneOverlay } from '../view/scene-overlay.js';
 
 declare global {
@@ -97,7 +97,7 @@ export async function renderSceneMode(
     app.renderer.resolution,
   );
 
-  // The shared in-game runtime (view/game-view.ts): the standard HUD mounts — tool panel, unit
+  // The shared in-game runtime (view/runtime/game-view.ts): the standard HUD mounts — tool panel, unit
   // controls, perf overlay, positional sound — and the one fixed-timestep RAF loop, identical to the
   // `?map=` entry's.
   await startGameView({

@@ -1,9 +1,9 @@
 import type { WorldRenderer } from '@open-northland/render';
-import { BUILD_HOUSE_ATOMIC, HARVEST_ATOMIC } from '../catalog/atomics.js';
-import { createSoundDriver } from '../content/audio.js';
-import { loadIr } from '../content/ir.js';
-import { loadCombatBones } from '../content/objects.js';
-import { mountSoundToggle } from './overlay.js';
+import { BUILD_HOUSE_ATOMIC, HARVEST_ATOMIC } from '../../catalog/atomics.js';
+import { createSoundDriver } from '../../content/audio.js';
+import { loadIr } from '../../content/ir.js';
+import { loadCombatBones } from '../../content/objects.js';
+import { mountSoundToggle } from '../overlay.js';
 
 /** Load optional decoded presentation assets shared by the game view's sound and combat rendering. */
 export async function mountGamePresentation(

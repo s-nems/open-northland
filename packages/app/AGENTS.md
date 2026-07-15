@@ -24,7 +24,7 @@ that matches its role instead of piling another method onto a growing file:
   backed by the semantic template in `index.html` and a normal CSS stylesheet), `map.ts`
   (`?map=`), `scene.ts` (`?scene=`), `anim.ts` (+ `anim-cells.ts` pure builders + `anim-overlay.ts`
   panel), `sound.ts` (`?sounds`), `shot.ts` (`?shot`). An entry assembles its world (terrain, sim, renderer,
-  starting camera); the two playable entries then hand off to the shared `view/game-view.ts` runtime.
+  starting camera); the two playable entries then hand off to the shared `view/runtime/game-view.ts` runtime.
 - **`content/`** — the decoded-content bindings (the gitignored-`content/` I/O boundary; mostly →
   render, plus one → sim): `net.ts` (the shared fetch/degrade helpers), `ir.ts` (the ONE memoized
   `ir.json` fetch + the `ContentIr` view + atlas loading), the `building-gfx/` package (per-render-aspect
@@ -66,15 +66,23 @@ that matches its role instead of piling another method onto a growing file:
   the HUD's fractional UI scale where a small indexed bitmap glyph reads blocky; the decoded `.fnt`
   bitmap path (`bitmap-text.ts`) stays available for anything that must be the exact original face. The
   hud layer never imports `view/` — view glue (e.g. `backingScale`) is injected via options.
-- **`view/`** — browser-view helpers: `game-view.ts` (the SHARED in-game runtime — the one-time HUD mount)
-  + `frame-loop.ts` (the per-frame fixed-timestep RAF loop both playable entries run on, over an explicit
-  `FrameLoopDeps` context), `camera.ts` (pure pan/zoom math + the DOM
-  controller), `params.ts` (URL-param parsing), `picking.ts`,
-  `overlay.ts` (shared panel + full-page chrome — `el`/`navButton`/`pageSection`/styles),
-  `game-tool-panel.ts`, `unit-controls/` (input controller + orders/marquee), `settler-actions.ts`,
-  `game-presentation.ts` (one-time game/HUD presentation mount), `snapshot-projections.ts`
-  (identity-memoized HUD projections; the selection details panel itself lives in
-  `hud/details-panel/`), `scene-overlay.ts`, `perf-overlay.ts`.
+- **`view/`** — browser-view helpers, grouped by concern:
+  - **`runtime/`** — the in-game loop: `game-view.ts` (the SHARED runtime — the one-time HUD mount),
+    `frame-loop.ts` (the per-frame fixed-timestep RAF loop both playable entries run on, over an explicit
+    `FrameLoopDeps` context), `game-presentation.ts` (one-time game/HUD presentation mount),
+    `raf-loop.ts`, `pointer-tracker.ts`.
+  - **`unit-controls/`** — the RTS select-and-command feature: `index.ts` (input controller) +
+    `orders.ts`/`marquee.ts`/`types.ts`, plus `settler-actions.ts` (the action-ring menu),
+    `action-ring-visuals.ts`, `profession-picker.ts`, `unit-targets.ts`, `formation.ts`.
+  - **`projections/`** — pure snapshot → render/HUD projections (`index.ts` barrel):
+    `snapshot-projections.ts` (identity-memoized HUD projections), `door-badges.ts`,
+    `building-points.ts`, `geometry-debug-items.ts`, `fog-gates.ts`, `hud-labels.ts`. The selection
+    details panel itself lives in `hud/details-panel/`.
+  - **`admin-debug/`** — the `?debug=admin` entity picker + overlay.
+  - Shared leaves: `camera.ts` (pure pan/zoom math + the DOM controller), `picking.ts` (screen↔world
+    hit-testing math), `params.ts` (URL-param parsing), `overlay.ts` (shared panel + full-page chrome —
+    `el`/`navButton`/`pageSection`/styles), `game-tool-panel.ts`, `perf-overlay.ts`, `system-menu.ts`,
+    `tooltip.ts`, `ground-pile-tooltip.ts`, `placement-overlay.ts`, `scene-overlay.ts`.
 - **`slice/`** — the demo scenario the live + shot entries share: `vertical-slice.ts` (`runSlice` /
   `runAuthoredSlice` over the global `game/` content), `map-loader.ts` (the decoded-map fetch),
   `authored-placements.ts` (the pure authored-entity join).

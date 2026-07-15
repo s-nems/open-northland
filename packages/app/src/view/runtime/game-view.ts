@@ -2,36 +2,38 @@ import { indexById } from '@open-northland/data';
 import type { ElevationField, SceneTerrain, SpriteSheet, WorldRenderer } from '@open-northland/render';
 import type { SimEvent, Simulation, WorldSnapshot } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
-import { pickerEntries } from '../catalog/professions.js';
-import { HUD_TRIBE, HUMAN_PLAYER } from '../game/rules.js';
-import { workerRoleOf } from '../game/sandbox/index.js';
-import { type MinimapHandle, mountMinimap } from '../hud/minimap/index.js';
-import { buildToolPanelLayout, DEFAULT_UI_SCALE } from '../hud/tool-panel/layout.js';
-import { currentLocale } from '../i18n/index.js';
-import { createAdminEntityPicker } from './admin-debug/entity-picker.js';
-import { mountAdminDebug } from './admin-debug/index.js';
-import type { CameraController } from './camera.js';
-import { cameraCenteredOnWorld, clientToScreen as clientToScreenPx } from './camera.js';
-import { createFogGates } from './fog-gates.js';
-import { startFrameLoop } from './frame-loop.js';
-import { mountGamePresentation } from './game-presentation.js';
+import { pickerEntries } from '../../catalog/professions.js';
+import { HUD_TRIBE, HUMAN_PLAYER } from '../../game/rules.js';
+import { workerRoleOf } from '../../game/sandbox/index.js';
+import { type MinimapHandle, mountMinimap } from '../../hud/minimap/index.js';
+import { buildToolPanelLayout, DEFAULT_UI_SCALE } from '../../hud/tool-panel/layout.js';
+import { currentLocale } from '../../i18n/index.js';
+import { createAdminEntityPicker } from '../admin-debug/entity-picker.js';
+import { mountAdminDebug } from '../admin-debug/index.js';
+import type { CameraController } from '../camera.js';
+import { cameraCenteredOnWorld, clientToScreen as clientToScreenPx } from '../camera.js';
 import {
   applyGameSpeed,
   menuEntriesFromContent,
   menuGoodsFromContent,
   mountGameToolPanel,
-} from './game-tool-panel.js';
-import { createGeometryDebugOverlay } from './geometry-debug-items.js';
-import { createGroundPileTooltip } from './ground-pile-tooltip.js';
-import { floatParam, menuSearch } from './params.js';
-import { mountPerfOverlay } from './perf-overlay.js';
-import { makeOverlayFrameSource } from './placement-overlay.js';
+} from '../game-tool-panel.js';
+import { createGroundPileTooltip } from '../ground-pile-tooltip.js';
+import { floatParam, menuSearch } from '../params.js';
+import { mountPerfOverlay } from '../perf-overlay.js';
+import { makeOverlayFrameSource } from '../placement-overlay.js';
+import {
+  createFogGates,
+  createGeometryDebugOverlay,
+  createSnapshotProjections,
+} from '../projections/index.js';
+import { createSystemMenu } from '../system-menu.js';
+import { createTooltip } from '../tooltip.js';
+import { createUnitControls } from '../unit-controls/index.js';
+import { startFrameLoop } from './frame-loop.js';
+import { mountGamePresentation } from './game-presentation.js';
 import { trackCanvasPointer } from './pointer-tracker.js';
 import type { RafLoop } from './raf-loop.js';
-import { createSnapshotProjections } from './snapshot-projections.js';
-import { createSystemMenu } from './system-menu.js';
-import { createTooltip } from './tooltip.js';
-import { createUnitControls } from './unit-controls/index.js';
 
 /**
  * The shared in-game runtime both playable entries (`?map=` and `?scene=`) run on top of: the standard
@@ -105,11 +107,10 @@ const PERF_STRIP_GAP = 8;
 export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   const { app, canvas, params, renderer, sim, cameraCtl } = deps;
 
-  // Session lifecycle. `loop` is captured once the RAF loop starts (bottom of this function); `destroy`
-  // halts it and removes this session's overlays so a later game never runs a second loop over the same
-  // stage. `quitToMenu` tears the session down and navigates back to the menu — full-page navigation is
-  // the v1 transition (the browser unloads the DOM/Pixi/listeners the per-subsystem teardown does not
-  // yet cover; see docs/tickets/app/game-session-teardown.md).
+  // `destroy` halts the loop and drops this session's overlays so a later game never runs a second loop
+  // over the same stage; `quitToMenu` then navigates back. Full-page navigation is the v1 transition —
+  // the browser unloads the DOM/Pixi/listeners the per-subsystem teardown does not yet cover (see
+  // docs/tickets/app/game-session-teardown.md).
   let loop: RafLoop | null = null;
   let destroyed = false;
   const systemMenu = createSystemMenu({ onQuit: () => quitToMenu() });
@@ -151,10 +152,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   // build menu drops below it (from the buildings button), so the two never overlap.
   const perf = mountPerfOverlay(buildToolPanelLayout(uiscale).width + PERF_STRIP_GAP);
 
-  // The frame's fog-of-war gate for the human player — one mutable view refreshed at the top of every
-  // frame (`fogGates.setFrame` below), so long-lived consumers created here (unit picking, the pile
-  // tooltip, the placement gate, voice chatter) close over stable predicates instead of being re-wired
-  // per frame. See view/fog-gates.ts.
+  // The frame's fog gate for the human player: the long-lived consumers here (unit picking, the pile
+  // tooltip, the placement gate, voice chatter) close over its stable predicates, refreshed via
+  // `fogGates.setFrame` each frame (see projections/fog-gates.ts).
   const fogGates = createFogGates();
 
   // The original left tool panel — the standard game HUD. Its game-speed button drives `control`, the
@@ -341,7 +341,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   // its HUD read-view and fog-filtered door badges instead of re-scanning every entity.
   const { hudFor, doorBadgesFor } = createSnapshotProjections(buildingDoors, workerRoleOf, fogGates);
 
-  // Hand the assembled world + HUD subsystems to the steady-state RAF loop (view/frame-loop.ts). The
+  // Hand the assembled world + HUD subsystems to the steady-state RAF loop (frame-loop.ts). The
   // mount above owns construction; the loop owns the pinned per-frame order. The returned stop handle is
   // the session's — quit halts the loop before navigating away.
   loop = startFrameLoop({

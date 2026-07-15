@@ -1,22 +1,22 @@
 import { type Camera, tileToScreen } from '@open-northland/render';
 import { ONE, type WorldSnapshot } from '@open-northland/sim';
 import { type Application, Container, Graphics } from 'pixi.js';
-import type { PickerEntry } from '../catalog/professions.js';
-import { loadGuiArt } from '../content/gui-art.js';
-import { loadUiFont } from '../content/ui-font.js';
-import { isSettler, positionOf } from '../game/snapshot.js';
+import type { PickerEntry } from '../../catalog/professions.js';
+import { loadGuiArt } from '../../content/gui-art.js';
+import { loadUiFont } from '../../content/ui-font.js';
+import { isSettler, positionOf } from '../../game/snapshot.js';
 import {
   type ActionButton,
   type ActionRingLayout,
   actionRingScale,
   hitTestActionRing,
   layoutActionRing,
-} from '../hud/action-ring-layout.js';
-import { HUMAN_DEFAULT_MENU } from '../hud/action-ring-menu.js';
-import { type Messages, messages } from '../i18n/index.js';
+} from '../../hud/action-ring-layout.js';
+import { HUMAN_DEFAULT_MENU } from '../../hud/action-ring-menu.js';
+import { type Messages, messages } from '../../i18n/index.js';
+import { clientToScreen } from '../camera.js';
+import { el } from '../overlay.js';
 import { createActionRingVisuals } from './action-ring-visuals.js';
-import { clientToScreen } from './camera.js';
-import { el } from './overlay.js';
 import { createProfessionPicker } from './profession-picker.js';
 
 /**
@@ -130,7 +130,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
   document.body.append(tooltip);
 
   // The retained button graphics (round order-icon discs, real art or flat fallback) — built once, placed
-  // each frame by layout. See view/action-ring-visuals.ts.
+  // each frame by layout. See action-ring-visuals.ts.
   const visuals = createActionRingVisuals({
     app,
     art,

@@ -1,7 +1,7 @@
 import { buildSpriteScene, type EntityBounds } from '@open-northland/render';
 import type { WorldSnapshot } from '@open-northland/sim';
-import { gathererByFlag, ownerPlayerOf } from '../game/snapshot.js';
-import type { Pickable } from './picking.js';
+import { gathererByFlag, ownerPlayerOf } from '../../game/snapshot.js';
+import type { Pickable } from '../picking.js';
 
 /** What the pickable target sets need from the unit-controls options (a subset threaded through). */
 export interface UnitTargetsDeps {

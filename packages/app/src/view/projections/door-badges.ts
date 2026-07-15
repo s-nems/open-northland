@@ -1,7 +1,7 @@
 import type { DoorBadge } from '@open-northland/render';
 import { nodeOfPosition, positionOfNode, type WorldSnapshot } from '@open-northland/sim';
-import type { WorkerRole } from '../game/sandbox/index.js';
-import { buildingTypeOf, isBuilding, isSettler, num, positionOf } from '../game/snapshot.js';
+import type { WorkerRole } from '../../game/sandbox/index.js';
+import { buildingTypeOf, isBuilding, isSettler, num, positionOf } from '../../game/snapshot.js';
 import { type DoorFootprint, workerIconNode } from './building-points.js';
 
 /**

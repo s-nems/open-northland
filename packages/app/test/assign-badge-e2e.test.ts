@@ -5,7 +5,7 @@ import { HUMAN_PLAYER } from '../src/game/rules.js';
 import { assignmentPriority, workerRoleOf } from '../src/game/sandbox/index.js';
 import { buildingTypeOf, isBuilding, isSettler, num, ownerPlayerOf } from '../src/game/snapshot.js';
 import { createSceneSim, getScene } from '../src/scenes/index.js';
-import { computeDoorBadges } from '../src/view/door-badges.js';
+import { computeDoorBadges } from '../src/view/projections/index.js';
 
 /**
  * End-to-end proof of the door-badge chain over the REAL sandbox content (the seam the right-click

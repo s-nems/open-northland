@@ -1,24 +1,17 @@
 import { messages } from '../i18n/index.js';
 
 /**
- * The on-canvas debug readout — the human-facing instrument for the render-scale + sim work. Pinned to
- * the top-left of the screen (beside the tool-panel strip's top; the build menu drops below it, from the
- * buildings button, so the two never collide), lightly translucent so the strip reads through it, it
- * stacks two lines:
+ * The on-canvas debug readout — the human-facing instrument for render-scale + sim work. Pinned top-left
+ * (beside the tool-panel strip; the build menu drops below it so the two never collide), lightly
+ * translucent. Two lines: sim state (tick / speed / steps / entity·drawn·pooled counts — a spiking
+ * `steps` means the sim is falling behind wall-clock, `drawn ≪ entities` means culling is biting) and
+ * perf (smoothed FPS, the CPU `sim`/`snap`/`draw` split, GPU/compositor remainder, worst recent frame,
+ * Chrome-only JS heap). Per-field detail lives on {@link PerfInfo}.
  *
- *  - **sim state:** the `tick`, the game-speed multiplier (or `paused`), how many sim `steps` the
- *    fixed-timestep loop advanced this frame (a spiking count means the sim is falling behind
- *    wall-clock), and the entity / drawn / pooled counts the retained
- *    {@link import('@open-northland/render').WorldRenderer} exposes (culling is biting when
- *    `drawn` ≪ `entities` zoomed in; `drawn ≈ entities` zoomed out).
- *  - **perf:** a smoothed FPS, the CPU cost split into `sim` / `snap` / `draw` (the exact breakdown
- *    `packages/render/AGENTS.md` says to measure before blaming the GPU — a slow scene is usually the
- *    sim, not the draw), the leftover `gpu`/compositor time, the worst recent frame, and (Chrome only)
- *    the JS heap so a leak or GC sawtooth is visible.
- *
- * Plain DOM + floats — app-layer I/O, outside the deterministic sim (never affects a tick or the
- * headless test). Times are smoothed with an exponential moving average so they read steadily instead of
- * flickering; the tick / steps / counts are shown raw (they are exact per-frame facts, not estimates).
+ * Plain DOM + floats — app-layer I/O, outside the deterministic sim. Times are smoothed with an EMA so
+ * they read steadily; the tick / steps / counts are shown raw (exact per-frame facts, not estimates).
+ * The `sim`/`snap`/`draw` split is the breakdown `packages/render/AGENTS.md` says to measure before
+ * blaming the GPU — a slow scene is usually the sim, not the draw.
  */
 
 /** The per-frame sim + render stats the readout displays. */

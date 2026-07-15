@@ -1,18 +1,16 @@
 import type { layoutHud } from '@open-northland/render';
 import { FixedTimestep, FOG_STATE, type SimEvent, systems, type WorldSnapshot } from '@open-northland/sim';
-import type { createSoundDriver } from '../content/audio.js';
-import { HUMAN_PLAYER } from '../game/rules.js';
-import type { MinimapHandle } from '../hud/minimap/index.js';
-import type { computeDoorBadges } from './door-badges.js';
-import type { FogGates } from './fog-gates.js';
-import type { GameToolPanelHandle } from './game-tool-panel.js';
+import type { createSoundDriver } from '../../content/audio.js';
+import { HUMAN_PLAYER } from '../../game/rules.js';
+import type { MinimapHandle } from '../../hud/minimap/index.js';
+import type { GameToolPanelHandle } from '../game-tool-panel.js';
+import type { GroundPileTooltip } from '../ground-pile-tooltip.js';
+import type { PerfOverlayHandle } from '../perf-overlay.js';
+import type { makeOverlayFrameSource } from '../placement-overlay.js';
+import type { computeDoorBadges, FogGates, GeometryDebugOverlay } from '../projections/index.js';
+import type { UnitControls } from '../unit-controls/index.js';
 import type { GameViewDeps } from './game-view.js';
-import type { GeometryDebugOverlay } from './geometry-debug-items.js';
-import type { GroundPileTooltip } from './ground-pile-tooltip.js';
-import type { PerfOverlayHandle } from './perf-overlay.js';
-import type { makeOverlayFrameSource } from './placement-overlay.js';
 import { type RafLoop, startRafLoop } from './raf-loop.js';
-import type { UnitControls } from './unit-controls/index.js';
 
 /**
  * Everything the per-frame loop reads — assembled once by {@link import('./game-view.js').startGameView}
@@ -50,7 +48,7 @@ export interface FrameLoopDeps {
  * canvas resolution) → unit-controls tick reusing the same snapshot (before the render, so a details-panel
  * rebuild never covers the portrait inset the render re-raises) → the retained `renderer.update` →
  * sound → perf readout. Returns the loop's stop handle: the game session halts it on quit so no second
- * loop steps the stage once a new game starts (see view/game-view.ts).
+ * loop steps the stage once a new game starts (see game-view.ts).
  */
 export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
   const {
