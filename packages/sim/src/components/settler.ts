@@ -1,6 +1,7 @@
 import type { AtomicEffect } from '../core/atomic-effect.js';
 import type { Fixed } from '../core/fixed.js';
 import { defineComponent, type Entity } from '../ecs/world.js';
+import type { NodeId } from '../nav/terrain/index.js';
 
 /**
  * A settler: an autonomous individual. In Cultures, settlers don't "do jobs" as monolithic logic —
@@ -133,5 +134,11 @@ export const Age = defineComponent<{ ticks: number }>('Age');
  * The {@link import('../systems/orders/index.js').playerOrderSystem} removes it the tick the unit arrives (or
  * the route fails / a need takes over) — there is no post-arrival hold, so a unit resumes autonomy on
  * arrival; DEFEND's stance anchor is the "hold position" tool.
+ *
+ * `pendingGoal` holds a move order issued to a settler that was still carrying a load: it can't walk with its
+ * hands full, so `moveUnit` starts the drop atomic and parks the destination node here. The
+ * {@link import('../systems/orders/index.js').playerOrderSystem} launches the walk (sets the {@link MoveGoal})
+ * the tick the drop finishes, then clears the field — from then on it is an ordinary en-route order. Absent on
+ * a move order issued to an empty-handed settler (the walk begins immediately).
  */
-export const PlayerOrder = defineComponent<Record<string, never>>('PlayerOrder');
+export const PlayerOrder = defineComponent<{ pendingGoal?: NodeId }>('PlayerOrder');

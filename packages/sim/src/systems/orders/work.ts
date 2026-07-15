@@ -2,6 +2,7 @@ import {
   Age,
   AttackOrder,
   Building,
+  Carrying,
   CurrentAtomic,
   Engagement,
   Fleeing,
@@ -20,7 +21,7 @@ import type { Command } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { positionOfNode } from '../../nav/halfcell.js';
-import { BUILD_HOUSE_ATOMIC_ID } from '../agents/actions.js';
+import { BUILD_HOUSE_ATOMIC_ID, startDrop } from '../agents/actions.js';
 import { jobAtomics } from '../agents/targets/index.js';
 import type { SystemContext } from '../context.js';
 import {
@@ -39,8 +40,9 @@ import { isOrderableSettler } from './guards.js';
 /**
  * Change one owned settler's profession: set its `Settler.jobType` and reset it to a fresh idle worker of the
  * new trade — drop the old workplace binding ({@link JobAssignment}) so the JobSystem re-employs it at a
- * building of the new job, cancel any current action/route, and clear any {@link PlayerOrder}. The unit keeps
- * any load it is carrying (it will still deposit it).
+ * building of the new job, cancel any current action/route, and clear any {@link PlayerOrder}. A unit carrying
+ * a load sets it down first ({@link reidleAsJob} starts the drop atomic) so the old trade's haul isn't
+ * teleported into the new job — it re-idles into the new trade once the load is on the ground.
  *
  * Recoverable bad input (skipped, still logged): a dead/stale target, a non-settler, a neutral entity (no
  * {@link Owner}), an unknown `jobType`, or a still-growing child (an {@link Age} unit — its job class is the
@@ -73,6 +75,10 @@ export function setJob(
 function reidleAsJob(world: World, ctx: SystemContext, e: Entity, jobType: number): void {
   world.get(e, Settler).jobType = jobType;
   world.remove(e, CurrentAtomic); // cancel whatever it was doing under the old job
+  // A profession change makes a hands-full settler set its load down first: it replaces the cancelled action
+  // with the drop atomic, so the old trade's haul lands on the ground here rather than being carried on to a
+  // store under the new trade (the requested "drop when you change job" behavior).
+  if (world.has(e, Carrying)) startDrop(world, ctx, e);
   world.remove(e, PlayerOrder); // an employment change returns the unit to the economy
   world.remove(e, SiteAssignment); // and drops any construction-crew membership of the old trade
   clearNavState(world, e);
@@ -160,6 +166,9 @@ export function assignBuilder(
 
   world.add(e, SiteAssignment, { site, pinned: true });
   world.remove(e, CurrentAtomic); // obey now — the planner heads for the pinned site this tick
+  // A builder pinned mid-haul keeps its load (unlike a profession change): re-pinning is the same trade, just a
+  // different site, so it carries the (often scarce) material onward and the delivery drive banks it, rather
+  // than dumping it in the field. Only a job change or an enemy makes a carrier set its load down.
   world.remove(e, PlayerOrder);
   clearNavState(world, e);
 }

@@ -3,7 +3,7 @@
 // is conjured or silently destroyed); see each function's contract. Split by concern into this folder;
 // import the barrel, not the leaves.
 
-export { addCarry, dropCarryAtOwnTile } from './carry.js';
+export { addCarry, dropCarriedLoad, dropCarryAtOwnTile } from './carry.js';
 export { consumeFood, forageBerry } from './consume.js';
 export { continuesHarvest, HARVEST_SWINGS_PER_REST, harvestFromNode, restAfterHarvest } from './harvest.js';
 export { dropGroundPile, dropOrStackGood } from './piles.js';

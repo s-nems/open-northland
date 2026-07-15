@@ -51,6 +51,8 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
 
   const issueMoveOrder = (event: MouseEvent, ownSettlers: readonly Pickable[]): void => {
     if (deps.selected.size === 0) return;
+    // A carrying settler is ordered like any other — the sim makes it set its load down first, then walk
+    // (moveUnit / PlayerOrder.pendingGoal). So it stays in the formation; no client-side filtering.
     const movers: FormationUnit[] = ownSettlers.filter((target) => deps.selected.has(target.ref));
     if (movers.length === 0) return;
     const { width, height } = nodeBounds(deps.mapSize);

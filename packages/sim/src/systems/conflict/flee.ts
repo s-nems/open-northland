@@ -1,7 +1,8 @@
-import { Fleeing, Owner, PathRequest, Settler } from '../../components/index.js';
+import { Carrying, Fleeing, Owner, PathRequest, Settler } from '../../components/index.js';
 import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import { startDrop } from '../agents/actions.js';
 import type { SystemContext } from '../context.js';
 import {
   COMPASS_DIRECTIONS,
@@ -77,6 +78,15 @@ export function fleeDrive(
   e: Entity,
   attacker: { tribe: number; jobType: number | null },
 ): void {
+  // Hands full: a settler set upon by an enemy drops its load before it runs — it can't flee carrying a haul.
+  // Start the drop atomic and stand this tick; the combat gate (engageCombatant skips a unit with a
+  // CurrentAtomic) holds it here until the load is on the ground, then the next tick it flees empty-handed.
+  // Checked before the flee itself so the drop, not the run, is what happens the tick the threat appears.
+  if (world.has(e, Carrying)) {
+    startDrop(world, ctx, e);
+    return;
+  }
+
   // A collapsing need overrides the flee whether or not a threat is in sight, and is checked first so it wins
   // over both the threat and the cool-down. Yield only on the transition (Fleeing still set): shed the marker +
   // flee route so the AISystem re-tasks the unit; once yielded (no marker) leave the need-walk alone so we

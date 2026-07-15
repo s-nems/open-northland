@@ -1,6 +1,7 @@
 import { Carrying, Position } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../../nav/halfcell.js';
+import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { stackOntoTile } from './piles.js';
 
 // A settler's carried load (single-slot {@link Carrying}): add to it, shrink it, or set it down on the
@@ -58,4 +59,69 @@ export function dropCarryAtOwnTile(world: World, settler: Entity): number {
   const placed = stackOntoTile(world, at.x, at.y, load.goodType, load.amount);
   if (placed > 0) shrinkCarry(world, settler, load, placed); // fully placed ⇒ Carrying removed
   return placed;
+}
+
+/**
+ * The greatest Manhattan ring radius (in half-cell nodes) the spill search of {@link dropCarriedLoad} walks
+ * before giving up. Matches the goods-yard search bound (`nearestFreeYardNode`); a ring at radius `r` holds
+ * O(r) nodes, so the whole bounded walk is a constant, and a load never spills further than this from the
+ * settler's feet (the tail simply stays on its back if every hex within the bound is saturated — better than
+ * teleporting). Named approximation (the original's drop-scatter extent is not decoded).
+ */
+const DROP_SPILL_MAX_RADIUS = 32;
+
+/**
+ * Force a settler's whole carried load onto the ground — the "set it down before an interrupt takes over"
+ * primitive, unlike {@link dropCarryAtOwnTile} which keeps any tile-overflow on the back for the next walk.
+ * Places up to `MAX_GROUND_STACK` on the settler's own tile (via {@link dropCarryAtOwnTile}), then spills the
+ * remainder to the nearest free walkable hexes (Manhattan rings out to {@link DROP_SPILL_MAX_RADIUS}), stacking
+ * onto an existing heap of the good below the cap or starting a fresh heap on an empty tile — so a full tile
+ * diverts the spill to a neighbour instead of silently dropping it (goods are conserved). A tile holding a
+ * different good is skipped ({@link stackOntoTile} never overwrites). Returns how many units reached the ground
+ * (short of the load only when every hex within the bound is saturated — the tail then stays carried). No-op if
+ * it carries nothing / has no position. Mapless (no `terrain`): drops only on the own tile, no spill search.
+ *
+ * Determinism: the own tile first, then each ring's free nodes visited in ascending {@link NodeId} order (a
+ * canonical which-tile-wins pick), no RNG. Cost is a bounded ring walk that only runs while a remainder is
+ * still carried — a single on-foot unit almost always fits its own tile and never enters the search.
+ */
+export function dropCarriedLoad(world: World, terrain: TerrainGraph | undefined, settler: Entity): number {
+  const load = world.tryGet(settler, Carrying);
+  if (load === undefined || load.amount <= 0) return 0;
+  const pos = world.tryGet(settler, Position);
+  if (pos === undefined) return 0;
+  const good = load.goodType;
+
+  let total = dropCarryAtOwnTile(world, settler); // own tile first (the shared set-down-at-feet step)
+  if (terrain === undefined) return total; // mapless: no lattice to spill onto
+
+  // Set `load`'s remainder down at the half-cell node (hx, hy); returns how many units actually fit there.
+  const placeAt = (hx: number, hy: number): number => {
+    const at = positionOfNode(hx, hy);
+    const placed = stackOntoTile(world, at.x, at.y, good, load.amount);
+    if (placed > 0) shrinkCarry(world, settler, load, placed); // fully placed ⇒ Carrying removed
+    return placed;
+  };
+
+  // Spill the remainder to the nearest free hexes, Manhattan rings out from the settler's node.
+  const start = nodeOfPosition(pos.x, pos.y);
+  const origin = terrain.nodeAtClamped(start.hx, start.hy);
+  const { x: cx, y: cy } = terrain.coordsOf(origin);
+  for (let r = 1; r <= DROP_SPILL_MAX_RADIUS && world.has(settler, Carrying); r++) {
+    const ring: NodeId[] = [];
+    for (let dy = -r; dy <= r; dy++) {
+      const dxMag = r - Math.abs(dy); // the Manhattan ring |dx| + |dy| = r
+      for (const dx of dxMag === 0 ? [0] : [-dxMag, dxMag]) {
+        const node = terrain.nodeAtClamped(cx + dx, cy + dy);
+        if (node !== origin && terrain.isWalkable(node)) ring.push(node);
+      }
+    }
+    ring.sort((a, b) => a - b); // canonical (ascending NodeId) placement order
+    for (const node of ring) {
+      if (!world.has(settler, Carrying)) break; // load fully down
+      const c = terrain.coordsOf(node);
+      total += placeAt(c.x, c.y);
+    }
+  }
+  return total;
 }
