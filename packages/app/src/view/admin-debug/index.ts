@@ -25,7 +25,7 @@ import { createFogSwitcher, createGeometryToggle, createNeedsToggle } from './li
 import {
   ARMOR_CLASSES,
   CIVILIAN_PRESETS,
-  GOODS_ENTRIES,
+  type GoodEntry,
   goodDropCommand,
   PLAYER_SWATCHES,
   RESOURCE_ENTRIES,
@@ -75,6 +75,10 @@ export interface AdminDebugDeps {
   /** The localized display name for a good typeId (from the shared sim content), or `undefined` to keep the
    *  catalog's built-in label. Localizes the goods/resource palette from the one name source the HUD uses. */
   readonly goodLabel?: (typeId: number) => string | undefined;
+  /** Every good the running content defines (`sim.content.goods` → its typeId + string id), each droppable
+   *  as a loose ground pile. Driven from the live content so the palette always matches whatever the view
+   *  runs (sandbox or the real extracted goods) and every entry clears the sim's `dropGood` content guard. */
+  readonly goods: readonly GoodEntry[];
   /** The sim's live needs-rule state — drawn on the "Potrzeby" toggle button so it reflects the entry's
    *  default (scenes boot needs OFF, maps ON). The toggle itself goes through `enqueue` like any command. */
   readonly needsEnabled?: () => boolean;
@@ -150,7 +154,7 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
     }
     if (armed.kind === 'good') {
       const good = armed.good;
-      const entry = GOODS_ENTRIES.find((candidate) => candidate.good === good);
+      const entry = deps.goods.find((candidate) => candidate.good === good);
       const label = entry === undefined ? copy.goodFallback : localizedGood(entry);
       return formatMessage(copy.armedGood, { label });
     }
@@ -291,10 +295,12 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
     RESOURCE_ENTRIES.map((r) => ({ label: localizedGood(r), armed: { kind: 'resource', good: r.good } })),
     false,
   );
-  // Towary — every good dropped as a loose ground pile (`dropGood`); the name filter narrows the ~70-entry wall.
+  // Towary — every good the running content defines, dropped as a loose ground pile (`dropGood`); the name
+  // filter narrows the ~70-entry wall. Sourced from the live content so the palette can't offer a good the
+  // sim would refuse to drop (the mismatch when a sandbox-scoped list met real content).
   addPaletteSection(
     copy.goods,
-    GOODS_ENTRIES.map((g) => ({ label: localizedGood(g), armed: { kind: 'good', good: g.good } })),
+    deps.goods.map((g) => ({ label: localizedGood(g), armed: { kind: 'good', good: g.good } })),
     false,
     copy.filterGoods,
   );

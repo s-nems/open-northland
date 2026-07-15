@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { grassTerrain } from '../src/catalog/buildings.js';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../src/catalog/felling.js';
 import { STONE_DEPOSIT_UNITS } from '../src/catalog/mining.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../src/game/rules.js';
@@ -22,11 +23,11 @@ import {
   WEAPON_SWORD,
   weaponEquipmentFor,
 } from '../src/game/sandbox/ids/index.js';
+import { sandboxContent } from '../src/game/sandbox/index.js';
 import { resourceCommand } from '../src/game/sandbox/place.js';
 import {
   ADMIN_DROP_AMOUNT,
   CIVILIAN_PRESETS,
-  GOODS_ENTRIES,
   goodDropCommand,
   RESOURCE_ENTRIES,
   unitSpawnCommand,
@@ -101,13 +102,16 @@ describe('admin spawn command mapping', () => {
     expect(RESOURCE_ENTRIES.length).toBeGreaterThanOrEqual(6);
   });
 
-  it('the palette offers EVERY good as a droppable ground pile (core + the whole extended catalog)', () => {
-    const goods = new Set(GOODS_ENTRIES.map((g) => g.good));
-    expect(goods.has(GOOD_WOOD)).toBe(true);
-    // A spread across the extended catalog families (their sandbox typeIds are 100 + the ir typeId).
-    expect(GOODS_ENTRIES.some((g) => g.id === 'bread')).toBe(true);
-    expect(GOODS_ENTRIES.some((g) => g.id === 'armor_plate')).toBe(true);
-    expect(GOODS_ENTRIES.length).toBeGreaterThanOrEqual(60);
+  it('the goods palette is the running content — every good it defines is droppable (bare-checkout sandbox)', () => {
+    // The panel builds its goods list from `sim.content.goods`, so it can only offer goods the sim will
+    // actually drop (a good absent from the content is a `dropGood` no-op). Assert the source it reads on a
+    // bare checkout — the sandbox content — spans the whole catalog, so nothing silently drops out.
+    const goods = sandboxContent(grassTerrain(4, 4)).goods;
+    const ids = new Set(goods.map((g) => g.id));
+    expect(ids.has('wood')).toBe(true);
+    expect(ids.has('bread')).toBe(true);
+    expect(ids.has('armor_plate')).toBe(true);
+    expect(goods.length).toBeGreaterThanOrEqual(60);
   });
 
   it('a good drops as a loose ground pile via dropGood', () => {

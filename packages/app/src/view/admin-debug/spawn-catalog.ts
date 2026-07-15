@@ -1,16 +1,7 @@
 import type { Command } from '@open-northland/sim';
-import { EXTENDED_GOODS } from '../../catalog/goods.js';
 import { PRIMARY_TRIBE } from '../../game/rules.js';
 import {
   GATHERERS,
-  GOOD_COIN,
-  GOOD_GOLD,
-  GOOD_IRON,
-  GOOD_MUD,
-  GOOD_MUSHROOM,
-  GOOD_PLANK,
-  GOOD_STONE,
-  GOOD_WOOD,
   JOB_ARCHER,
   JOB_ARCHER_LONG,
   JOB_CARRIER,
@@ -121,31 +112,15 @@ export const RESOURCE_ENTRIES: readonly ResourceEntry[] = GATHERERS.map((g) => (
   id: g.id,
 }));
 
-/** One droppable good: its `dropGood` goodType + a short label. */
+/** One droppable good: its `dropGood` goodType + its stable string id (for the localized label + icon
+ *  keying). The admin panel builds its goods list from the LIVE content set (`sim.content.goods`), not a
+ *  fixed catalog, so the palette matches whatever content the view is running — the sandbox on a bare
+ *  checkout, the real extracted goods on a scene/map — and every listed good passes the `dropGood`
+ *  content guard (a good absent from the running content is a silent skip in the sim). */
 export interface GoodEntry {
   readonly good: number;
   readonly id: string;
 }
-
-/** The core economy goods' Polish labels (the gathered set + plank + coin), paired with their sandbox
- *  typeIds — the extended catalog carries its own English `name`. */
-const CORE_GOOD_ENTRIES: readonly GoodEntry[] = [
-  { good: GOOD_WOOD, id: 'wood' },
-  { good: GOOD_PLANK, id: 'plank' },
-  { good: GOOD_COIN, id: 'coin' },
-  { good: GOOD_STONE, id: 'stone' },
-  { good: GOOD_MUD, id: 'mud' },
-  { good: GOOD_IRON, id: 'iron' },
-  { good: GOOD_GOLD, id: 'gold' },
-  { good: GOOD_MUSHROOM, id: 'mushroom' },
-];
-
-/** Every good the catalog defines — the core economy goods followed by the whole extended catalog — each
- *  droppable on the ground as a loose pile via {@link goodDropCommand} (the admin "spawn any good" list). */
-export const GOODS_ENTRIES: readonly GoodEntry[] = [
-  ...CORE_GOOD_ENTRIES,
-  ...EXTENDED_GOODS.map((g) => ({ good: g.typeId, id: g.id })),
-];
 
 /** Units dropped per admin click — one, like the in-game goods tool: each click adds a single unit and the
  *  sim stacks repeat clicks on the same tile up to its ground-stack cap, so the pile grows one at a time. */
