@@ -1,8 +1,15 @@
 import { type ContentSet, indexById } from '@open-northland/data';
 import type { ElevationField } from '@open-northland/render';
 import { type Command, type Entity, nodeOfPosition, type WorldSnapshot } from '@open-northland/sim';
-import { assignmentPriority } from '../../game/sandbox/index.js';
-import { buildingTypeOf, entityById, isBuilding, isSettler, positionOf } from '../../game/snapshot.js';
+import { assignmentPriorityFor } from '../../game/sandbox/index.js';
+import {
+  buildingTypeOf,
+  entityById,
+  isBuilding,
+  isSettler,
+  positionOf,
+  settlerJobType,
+} from '../../game/snapshot.js';
 import { assignFormation, type FormationUnit } from '../formation.js';
 import { clampTile, nodeBounds, type Pickable, pickTopAt, worldToTile } from '../picking.js';
 import type { UnitTargets } from '../unit-targets.js';
@@ -81,7 +88,8 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     }
     const building = pickTopAt(deps.targets.owned('building'), world.x, world.y);
     if (building !== null) {
-      const entity = entityById(deps.snapshot(), building);
+      const snapshot = deps.snapshot();
+      const entity = entityById(snapshot, building);
       // A construction site takes the builder-assignment path (the original's "put a builder on a
       // foundation"): every selected settler gets the order, and the sim binds only the builder trade
       // (a non-builder is a logged no-op — a site offers no worker jobs to fall back to).
@@ -94,20 +102,23 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
         return;
       }
       const type = entity !== undefined ? buildingTypeOf(entity) : undefined;
-      const jobPriority = assignmentPriority(
-        type !== undefined ? buildingsByType.get(type)?.workers : undefined,
-      );
-      if (jobPriority.length > 0) {
-        for (const target of ownSettlers) {
-          if (deps.selected.has(target.ref)) {
-            deps.enqueue({
-              kind: 'assignWorker',
-              entity: target.ref as Entity,
-              building: building as Entity,
-              jobPriority,
-            });
-          }
-        }
+      const slots = type !== undefined ? buildingsByType.get(type)?.workers : undefined;
+      // One command per selected settler, its priority computed from ITS current trade: keep it where the
+      // building offers that slot (a miller stays a miller at the mill), else the building's default order
+      // (craftsman → carrier, gatherers excluded — so a plain settler on a warehouse becomes a carrier, not
+      // a hunter). The sim gates every candidate, so an unoffered/full trade just falls through.
+      for (const target of ownSettlers) {
+        if (!deps.selected.has(target.ref)) continue;
+        const self = entityById(snapshot, target.ref);
+        const currentJob = self !== undefined ? settlerJobType(self) : undefined;
+        const jobPriority = assignmentPriorityFor(currentJob, slots);
+        if (jobPriority.length === 0) continue;
+        deps.enqueue({
+          kind: 'assignWorker',
+          entity: target.ref as Entity,
+          building: building as Entity,
+          jobPriority,
+        });
       }
       return;
     }
