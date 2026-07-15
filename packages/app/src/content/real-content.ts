@@ -39,9 +39,10 @@ async function fetchContentSet(fetchImpl: typeof fetch): Promise<ContentSet | nu
 
 /** The real content with its clean-room balance completed, plus the gaps the overlay cannot fill. */
 export interface RealContentMerge {
-  /** The real content readied for the sim: the clean-room felling/mining balance pinned into its zeroed
-   *  gathering blocks, the clean-room field-farming block added to farmed goods, and the sim's nav-terrain
-   *  classes ({@link NAV_LANDSCAPE_TYPES}) added to `landscape`. */
+  /** The real content readied for the sim: localized good names, the clean-room felling/mining balance
+   *  pinned into its zeroed gathering blocks, the clean-room field-farming block added to farmed goods,
+   *  the clean-room settler HP set on the playable tribes, and the sim's nav-terrain classes
+   *  ({@link NAV_LANDSCAPE_TYPES}) added to `landscape`. */
   readonly content: ContentSet;
   /** Gathered goods (they carry a `gathering` block) with no clean-room balance — they stay uncalibrated
    *  (leather/honey/meat are animal/production goods the sandbox never map-gathers). */
@@ -133,10 +134,14 @@ export function mergeRealContent(
   const landscapeIds = new Set(real.landscape.map((t) => t.typeId));
   const navRows = NAV_LANDSCAPE_TYPES.filter((t) => !landscapeIds.has(t.typeId));
   const landscape = [...real.landscape, ...navRows];
-  // Overlay the clean-room settler HP onto every tribe that ships without one (the real IR carries no human
-  // hitpoints — unreadable, source basis "Combat hit resolution"), the same value the sandbox tribes use, so
-  // a settler has one HP on either content base (`settlerHitpoints` reads it at every spawn).
-  const tribes = real.tribes.map((t) => (t.hitpoints > 0 ? t : { ...t, hitpoints: HUMAN_HITPOINTS }));
+  // Overlay the clean-room settler HP onto each playable tribe that ships without one (the real IR carries
+  // no human hitpoints — unreadable, source basis "Combat hit resolution"), the same value the sandbox
+  // tribes use, so a settler has one HP on either content base (`settlerHitpoints` reads it at every spawn).
+  // Scoped to the player civs (a `jobEnables` tech-graph): an animal/monster tribe is no settler's tribe, so
+  // it stays at its own (0) HP rather than carrying a stray human pool it never uses.
+  const tribes = real.tribes.map((t) =>
+    t.hitpoints > 0 || t.jobEnables.length === 0 ? t : { ...t, hitpoints: HUMAN_HITPOINTS },
+  );
   // Re-validate the transformed set so a bad overlay or injected row fails here at the app boundary,
   // not deep in the sim.
   return {
