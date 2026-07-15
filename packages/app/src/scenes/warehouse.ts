@@ -88,10 +88,9 @@ function warehouseCapacity(sim: Simulation, goodType: number): number {
 function build(sim: Simulation): void {
   placeSandboxBuilding(sim, BUILDING_WAREHOUSE_00, WAREHOUSE_X, WAREHOUSE_Y, HUMAN_PLAYER);
 
-  // A lone collector stands as the tribe's tech enabler: the warehouse (house 7) is gated `jobEnablesHouse` on
-  // a collector being present (mirrors real content — see tech-graph.ts), so without one the carriers below
-  // would never be employed. In a real game the HQ seeds this gatherer; the scene has no HQ, so it is placed
-  // directly, off in a corner where it idles.
+  // The warehouse (house 7) is `jobEnablesHouse`-gated on a collector (see tech-graph.ts), so a lone collector
+  // must be present or the carriers below never get employed — the gatherer a real game's HQ seeds, placed
+  // off in a corner where it idles.
   spawnSandboxSettler(sim, JOB_COLLECTOR, ENABLER.x, ENABLER.y, HUMAN_PLAYER);
 
   // Three unemployed settlers by the warehouse — the assign pass employs them into its carrier slots.
