@@ -3,7 +3,6 @@ import type { ElevationField, SceneTerrain, SpriteSheet, WorldRenderer } from '@
 import type { SimEvent, Simulation, WorldSnapshot } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import { pickerEntries } from '../catalog/professions.js';
-import { menuSearch } from '../entries/menu/settings.js';
 import { HUD_TRIBE, HUMAN_PLAYER } from '../game/rules.js';
 import { workerRoleOf } from '../game/sandbox/index.js';
 import { type MinimapHandle, mountMinimap } from '../hud/minimap/index.js';
@@ -24,7 +23,7 @@ import {
 } from './game-tool-panel.js';
 import { createGeometryDebugOverlay } from './geometry-debug-items.js';
 import { createGroundPileTooltip } from './ground-pile-tooltip.js';
-import { floatParam } from './params.js';
+import { floatParam, menuSearch } from './params.js';
 import { mountPerfOverlay } from './perf-overlay.js';
 import { makeOverlayFrameSource } from './placement-overlay.js';
 import { trackCanvasPointer } from './pointer-tracker.js';
