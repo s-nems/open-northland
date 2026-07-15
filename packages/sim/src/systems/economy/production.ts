@@ -2,14 +2,17 @@ import type { Recipe } from '@open-northland/data';
 import {
   Building,
   consumeGoods,
+  Position,
   Production,
   type ProductionCycle,
+  Settler,
   Stockpile,
 } from '../../components/index.js';
 import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
 import { goodEnabled } from '../progression/index.js';
+import { NodeBuckets } from '../spatial.js';
 import { presentOperatorCount, recipeOf, stockCapacity } from '../stores/index.js';
 
 /**
@@ -44,13 +47,16 @@ import { presentOperatorCount, recipeOf, stockCapacity } from '../stores/index.j
  * would truncate and hang).
  */
 export const productionSystem: System = (world, ctx) => {
+  // Settlers bucketed by their node once per tick, so each workplace's operator count is an O(1) door-node
+  // lookup instead of a full settler scan (jobSystem builds the mirror index over buildings for staffing).
+  const operatorsByNode = new NodeBuckets(world, world.query(Settler, Position));
   // Advance running cycles first, then start new ones — so a cycle started this tick doesn't also
   // get advanced in the same tick (it begins counting next tick, like CurrentAtomic).
   for (const e of world.query(Production, Stockpile)) {
     // An in-flight cycle is not re-gated on the tech-graph (`jobEnablesGood`) — the unlock is a start-only
     // gate (see canStartCycle), so a committed cycle finishes even if the enabling settler later dies. The
     // worker-presence gate does pause mid-cycle (operators physically away, not a tech unlock).
-    const operators = presentOperatorCount(world, ctx, e);
+    const operators = presentOperatorCount(world, ctx, e, operatorsByNode);
     if (operators <= 0) continue; // every operator left — all cycles pause (elapsed held)
     const prod = world.get(e, Production);
     // Each present operator works one batch this tick, oldest first (FIFO) — a lone miller at a two-batch
@@ -79,12 +85,11 @@ export const productionSystem: System = (world, ctx) => {
     if (world.get(e, Building).built < ONE) continue; // under construction — a site doesn't produce
     const recipe = recipeOf(world, ctx, e);
     if (recipe === undefined) continue; // not a producing workplace
-    // Dormancy gate BEFORE the operator scan: `canStartCycle` is O(recipe goods) while
-    // `presentOperatorCount` walks every settler — a starved/output-blocked workshop must not pay
-    // the settler scan every tick (RTS budget: cost scales with active work). canStartCycle doesn't
-    // depend on operators, so skipping here elides only a provably-empty start loop.
+    // Dormancy gate before the operator lookup: `canStartCycle` is O(recipe goods) and doesn't depend on
+    // operators, so a starved/output-blocked workshop skips the operator-count work entirely (RTS budget:
+    // cost scales with active work). It elides only a provably-empty start loop.
     if (!canStartCycle(world, ctx, e, recipe)) continue;
-    const operators = presentOperatorCount(world, ctx, e);
+    const operators = presentOperatorCount(world, ctx, e, operatorsByNode);
     let running = world.tryGet(e, Production)?.cycles.length ?? 0;
     while (running < operators && canStartCycle(world, ctx, e, recipe)) {
       consumeInputs(world, e, recipe);
