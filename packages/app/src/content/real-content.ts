@@ -1,4 +1,6 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
+import { VIKING_BUILDINGS } from '../catalog/buildings.js';
+import { GATHERING_BALANCE_BY_ID } from '../catalog/gathering.js';
 import { fetchJsonOrNull } from './net.js';
 
 /** The one in-flight/settled parse of the served IR into a `ContentSet` — memoized like {@link loadRealContent}. */
@@ -30,4 +32,54 @@ export function loadRealContent(fetchImpl: typeof fetch = fetch): Promise<Conten
 async function fetchContentSet(fetchImpl: typeof fetch): Promise<ContentSet | null> {
   const raw = await fetchJsonOrNull<unknown>('/ir.json', fetchImpl);
   return raw === null ? null : parseContentSet(raw);
+}
+
+/** The real content with its gathering data completed, plus the gaps the clean-room overlay cannot fill. */
+export interface RealContentMerge {
+  /** The real content with the clean-room felling/mining balance pinned into its zeroed gathering blocks. */
+  readonly content: ContentSet;
+  /** Gathered goods (they carry a `gathering` block) with no clean-room balance — they stay uncalibrated
+   *  (wheat is farmed, and leather/honey/herb/meat are animal/production goods the sandbox never map-gathers). */
+  readonly unbalancedGoods: readonly string[];
+  /** Real buildings absent from the clean-room catalog (`VIKING_BUILDINGS`) — the wonders/vehicles/special
+   *  the sandbox never modelled. They keep their extracted footprint/stock/recipe but no clean-room tuning. */
+  readonly uncatalogedBuildings: readonly string[];
+}
+
+/**
+ * Complete the real content's gathering DATA and surface what it cannot fill. The pipeline's
+ * `extractGoodGathering` emits 0 for chops-to-fell / yield / deposit size / levels — uncalibrated, since the
+ * mod data carries no chop count (`catalog/felling.ts`). This pins the clean-room balance from the shared
+ * {@link GATHERING_BALANCE_BY_ID} (the same table the sandbox reads) into those four fields, matched by the
+ * good's string id, preserving everything else real ships (harvest/pickup/store atomics, `bioLandscape`).
+ *
+ * This is the forward-looking "real-content lever" `felling.ts` anticipates, not today's felling driver:
+ * resource nodes are currently seeded from that same clean-room balance via the `GATHERERS` table at
+ * placement (`game/sandbox/place.ts` `resourceSpecFor`), which the good/job re-key already aligned to the
+ * real ids — so real trees already fell and deposits deplete. Completing `good.gathering` keeps the
+ * ContentSet self-consistent (a good that fells carries its own felling balance) and readies it for a
+ * content-driven resource-spawn system. Goods with a `gathering` block but no clean-room balance, and
+ * buildings beyond the clean-room catalog, are reported — not silently dropped — so the caller can log the gap.
+ */
+export function mergeRealContent(real: ContentSet): RealContentMerge {
+  const goods = real.goods.map((good) => {
+    const balance = good.gathering === undefined ? undefined : GATHERING_BALANCE_BY_ID[good.id];
+    if (good.gathering === undefined || balance === undefined) return good;
+    return {
+      ...good,
+      gathering: {
+        ...good.gathering,
+        ...(balance.chopsToFell !== undefined ? { chopsToFell: balance.chopsToFell } : {}),
+        ...(balance.yieldPerNode !== undefined ? { yieldPerNode: balance.yieldPerNode } : {}),
+        ...(balance.depositSize !== undefined ? { depositSize: balance.depositSize } : {}),
+        ...(balance.depositLevels !== undefined ? { depositLevels: balance.depositLevels } : {}),
+      },
+    };
+  });
+  const unbalancedGoods = real.goods
+    .filter((good) => good.gathering !== undefined && GATHERING_BALANCE_BY_ID[good.id] === undefined)
+    .map((good) => good.id);
+  const cataloged = new Set(VIKING_BUILDINGS.map((b) => b.id));
+  const uncatalogedBuildings = real.buildings.filter((b) => !cataloged.has(b.id)).map((b) => b.id);
+  return { content: parseContentSet({ ...real, goods }), unbalancedGoods, uncatalogedBuildings };
 }
