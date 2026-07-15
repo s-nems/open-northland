@@ -17,6 +17,17 @@ import {
   type RuleSection,
 } from '../../decoders/ini.js';
 
+/**
+ * The graphics-binding resolution {@link resolveGraphicsBindings} produces and
+ * {@link import('./convert.js').convertBmdTree} consumes: every `(bmd, palette)` binding, the palette
+ * `editname` index, and the `.bmd`s that bake build-time alpha. The three always travel together.
+ */
+export interface GraphicsBindingSet {
+  readonly bindings: readonly BmdPaletteBinding[];
+  readonly palettes: readonly PaletteAlias[];
+  readonly buildTimeBmds: ReadonlySet<string>;
+}
+
 /** The `(bmd, palette)` identity of a binding — the unit an atlas file is emitted (and deduped) per. */
 function bindingKey(binding: Pick<BmdPaletteBinding, 'bmd' | 'paletteName'>): string {
   return `${binding.bmd} ${binding.paletteName}`;
@@ -113,7 +124,7 @@ export function jobBaseGraphicsToBindings(records: readonly JobBaseGraphicsBindi
 export async function resolveGraphicsBindings(
   gameDir: string,
   mod: string | undefined,
-): Promise<{ bindings: BmdPaletteBinding[]; palettes: PaletteAlias[]; buildTimeBmds: Set<string> }> {
+): Promise<GraphicsBindingSet> {
   const readIni = async (rel: string): Promise<RuleSection[] | undefined> => {
     const path = join(gameDir, rel);
     try {

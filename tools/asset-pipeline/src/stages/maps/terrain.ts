@@ -46,6 +46,12 @@ export interface MapDatTerrainFile extends MapDatTerrainMap {
 /** The `emla` lane's "no object here" sentinel (u16 max). */
 const EMLA_EMPTY = 0xffff;
 
+/** One decoded `map.dat`: the chunk container + its `lsiz` grid dims, decoded once and threaded to every lane helper. */
+interface DecodedMap {
+  readonly map: MapDat;
+  readonly size: MapDatSize;
+}
+
 /**
  * Decodes the `empa`/`empb` per-cell ground-pattern lanes + the `eapd` pattern-name dictionary into
  * the emitted `ground` layer: each cell's two triangles as indices into a compacted per-map
@@ -56,7 +62,7 @@ const EMLA_EMPTY = 0xffff;
  * outside the dictionary (a corrupt lane — {@link mapDatToTerrain} catches per layer and emits the
  * grid without it).
  */
-function groundFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['ground'] {
+function groundFromMapDat({ map, size }: DecodedMap): MapDatTerrainFile['ground'] {
   const empa = findChunk(map, 'empa');
   const empb = findChunk(map, 'empb');
   const eapd = findChunk(map, 'eapd');
@@ -103,14 +109,14 @@ function groundFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['gro
  * map lacks any of the five chunks; throws on a length mismatch or an out-of-dictionary value (a
  * corrupt lane — caught per layer by {@link mapDatToTerrain}).
  */
-function transitionsFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['transitions'] {
+function transitionsFromMapDat({ map, size }: DecodedMap): MapDatTerrainFile['transitions'] {
   const eatd = findChunk(map, 'eatd');
   if (eatd === undefined) return undefined;
-  const laneTags = ['emt1', 'emt2', 'emt3', 'emt4'] as const;
-  const lanes: number[][] = [];
   const cells = size.width * size.height;
   const types = decodeStringListChunk(eatd);
-  for (const tag of laneTags) {
+  // Returns undefined for a missing lane chunk (older/foreign saves); throws on a length mismatch or an
+  // out-of-dictionary value (a corrupt lane).
+  const decodeLane = (tag: string): number[] | undefined => {
     const chunk = findChunk(map, tag);
     if (chunk === undefined) return undefined;
     const lane = unpackMapLayer(chunk).cells;
@@ -124,9 +130,14 @@ function transitionsFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile
         );
       }
     }
-    lanes.push(Array.from(lane));
-  }
-  const [a1, b1, a2, b2] = lanes as [number[], number[], number[], number[]];
+    return Array.from(lane);
+  };
+  // Naming the four lanes proves the arity by construction (no tuple cast); any missing lane omits the layer.
+  const a1 = decodeLane('emt1');
+  const b1 = decodeLane('emt2');
+  const a2 = decodeLane('emt3');
+  const b2 = decodeLane('emt4');
+  if (a1 === undefined || b1 === undefined || a2 === undefined || b2 === undefined) return undefined;
   return { types, a1, b1, a2, b2 };
 }
 
@@ -142,7 +153,7 @@ function transitionsFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile
  * (omitted when the map lacks the lane). Returns undefined when the map lacks either object chunk;
  * throws on an index outside the dictionary (corrupt lane — caught per layer by {@link mapDatToTerrain}).
  */
-function objectsFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['objects'] {
+function objectsFromMapDat({ map, size }: DecodedMap): MapDatTerrainFile['objects'] {
   const emla = findChunk(map, 'emla');
   const eald = findChunk(map, 'eald');
   if (emla === undefined || eald === undefined) return undefined;
@@ -195,8 +206,8 @@ function objectsFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['ob
  * `objects.levels`; consumed by the render's `TILE_HALF_H/32` elevation lift
  * (`packages/render/src/data/elevation.ts`).
  */
-function elevationFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['elevation'] {
-  return perCellLaneFromMapDat(map, size, 'lmhe', 'height');
+function elevationFromMapDat(decoded: DecodedMap): MapDatTerrainFile['elevation'] {
+  return perCellLaneFromMapDat(decoded, 'lmhe', 'height');
 }
 
 /**
@@ -210,8 +221,8 @@ function elevationFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['
  * `packages/render/src/data/brightness.ts`. Returns undefined when the map lacks the lane; throws on a
  * dims/length mismatch (caught per layer by {@link mapDatToTerrain}).
  */
-function brightnessFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['brightness'] {
-  return perCellLaneFromMapDat(map, size, 'embr', 'brightness');
+function brightnessFromMapDat(decoded: DecodedMap): MapDatTerrainFile['brightness'] {
+  return perCellLaneFromMapDat(decoded, 'embr', 'brightness');
 }
 
 /**
@@ -221,12 +232,7 @@ function brightnessFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile[
  * landscape-object lanes use). Returns undefined when the map lacks the chunk (older/foreign saves);
  * throws on a dims/length mismatch (caught per layer by {@link mapDatToTerrain}).
  */
-function perCellLaneFromMapDat(
-  map: MapDat,
-  size: MapDatSize,
-  tag: string,
-  label: string,
-): number[] | undefined {
+function perCellLaneFromMapDat({ map, size }: DecodedMap, tag: string, label: string): number[] | undefined {
   const chunk = findChunk(map, tag);
   if (chunk === undefined) return undefined;
   const cells = unpackMapLayer(chunk).cells;
@@ -263,26 +269,25 @@ export function mapDatToTerrain(bytes: Uint8Array): MapDatTerrainFile {
     throw new Error('mapdat: no lmlt landscape-type chunk (cannot build the terrain grid)');
   }
   const terrain = lmltToTerrainMap(unpackMapLayer(lmlt), size);
+  const decoded: DecodedMap = { map, size };
   // The render layers are optional enrichments: a corrupt lane degrades to a grid-only artifact
-  // (warn + omit) rather than dropping the whole map. `noun`/`plural` name the failed lane(s) in the
-  // shared warning.
-  const tryLayer = <T>(noun: string, plural: boolean, build: () => T): T | undefined => {
+  // (warn + omit) rather than dropping the whole map. `lanes` is the pre-pluralized noun phrase naming
+  // the failed lane(s) in the shared warning.
+  const tryLayer = <T>(lanes: string, build: () => T): T | undefined => {
     try {
       return build();
     } catch (err) {
-      const lanes = plural ? 'lanes' : 'lane';
-      const pronoun = plural ? 'them' : 'it';
       console.warn(
-        `[pipeline] map ${noun} ${lanes} unreadable, emitting grid without ${pronoun}: ${(err as Error).message}`,
+        `[pipeline] map ${lanes} unreadable, emitting grid without that layer: ${(err as Error).message}`,
       );
       return undefined;
     }
   };
-  const ground = tryLayer('ground', true, () => groundFromMapDat(map, size));
-  const transitions = tryLayer('transition', true, () => transitionsFromMapDat(map, size));
-  const objects = tryLayer('object', true, () => objectsFromMapDat(map, size));
-  const elevation = tryLayer('elevation', false, () => elevationFromMapDat(map, size));
-  const brightness = tryLayer('brightness', false, () => brightnessFromMapDat(map, size));
+  const ground = tryLayer('ground lanes', () => groundFromMapDat(decoded));
+  const transitions = tryLayer('transition lanes', () => transitionsFromMapDat(decoded));
+  const objects = tryLayer('object lanes', () => objectsFromMapDat(decoded));
+  const elevation = tryLayer('elevation lane', () => elevationFromMapDat(decoded));
+  const brightness = tryLayer('brightness lane', () => brightnessFromMapDat(decoded));
   return {
     ...terrain,
     ...(ground !== undefined ? { ground } : {}),

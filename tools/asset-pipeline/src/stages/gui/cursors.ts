@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { decodeCursor } from '../../decoders/cur.js';
+import { type DecodedCursor, decodeCursor } from '../../decoders/cur.js';
 import { encodePng } from '../../decoders/png.js';
 import { readGameFile } from '../game-file.js';
 import { GUI_CONTENT_DIR } from './paths.js';
@@ -38,7 +38,7 @@ export async function convertCursors(gameDir: string, outDir: string): Promise<G
       console.warn(`[pipeline] gui: skipped cursor ${name}: ${(err as Error).message}`);
       continue;
     }
-    let cursor: ReturnType<typeof decodeCursor>;
+    let cursor: DecodedCursor;
     try {
       cursor = decodeCursor(bytes);
     } catch (err) {
