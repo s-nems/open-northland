@@ -4,11 +4,11 @@ import {
   JobAssignment,
   Position,
   Resting,
-  SupplyRun,
   UnderConstruction,
 } from '../../../components/index.js';
 import { farmWorkGood } from '../../economy/farming.js';
 import { atomicDuration } from '../../readviews/animations.js';
+import { stampSupplyRun } from '../../stores/index.js';
 import { atOrWalk, PILEUP_ATOMIC_ID, startAtomic } from '../actions.js';
 import { dropCarryAtOwnTile } from '../effects-goods/index.js';
 import type { PlannerContext } from '../planner-context.js';
@@ -18,7 +18,7 @@ import { deliveryTargetFor } from './routing.js';
 
 /** Deposit a carried load, or hold/drop it deterministically when no eligible sink exists. */
 export function planDelivery(plan: PlannerContext, load: { goodType: number; amount: number }): void {
-  const { world, ctx, terrain, entity, here, targets } = plan;
+  const { world, ctx, terrain, entity, here, targets, inbound } = plan;
   const worker = plan;
   const store = deliveryTargetFor(plan, load.goodType);
 
@@ -51,7 +51,7 @@ export function planDelivery(plan: PlannerContext, load: { goodType: number; amo
   // A load headed for a construction site is a live supply errand: stamp it so later-planned settlers
   // count it as inbound (SupplyRun — no duplicate fetch of a unit already on someone's back).
   if (world.has(store, UnderConstruction)) {
-    world.add(entity, SupplyRun, { site: store, goodType: load.goodType, amount: load.amount });
+    stampSupplyRun(world, entity, inbound, { site: store, goodType: load.goodType, amount: load.amount });
   }
   const cell = world.has(store, DeliveryFlag)
     ? // A flag is a marker, not a stock sink: the pile belongs on a free yard node around it.

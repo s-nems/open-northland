@@ -11,7 +11,13 @@ import {
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
-import { buildingProduces, inboundSupply, recipeOf, stockCapacity } from '../../stores/index.js';
+import {
+  buildingProduces,
+  type InboundSupplyTally,
+  inboundSupplyOf,
+  recipeOf,
+  stockCapacity,
+} from '../../stores/index.js';
 import type { PlannerContext } from '../planner-context.js';
 import { boundWorkplaceTarget, type InteractionCellIndex, nearestStoreFor } from '../targets/index.js';
 import { hasRoom, isFarmCarrierHaulOutRole, isStorageSink } from './store-policy.js';
@@ -35,7 +41,7 @@ import { hasRoom, isFarmCarrierHaulOutRole, isStorageSink } from './store-policy
  *     hauler.
  */
 export function deliveryTargetFor(plan: PlannerContext, goodType: number): Entity | null {
-  const { world, ctx, here, entity: settler, jobType, tribe, owner, targets } = plan;
+  const { world, ctx, here, entity: settler, jobType, tribe, owner, targets, inbound } = plan;
   const stores = targets.stockpileCells;
   const sites = targets.constructionSiteCells;
   // 1. A fetched input goes to the bound workshop that consumes it.
@@ -81,7 +87,7 @@ export function deliveryTargetFor(plan: PlannerContext, goodType: number): Entit
   //    the material back into a warehouse. Scans the tiny `sites` list (each advertises its outstanding cost
   //    via `stockCapacity`); this only prioritises the pick — nearest needing site — leaving every
   //    non-construction good to the default below.
-  const site = nearestConstructionSiteNeeding(sites, world, ctx, here, tribe, owner, goodType);
+  const site = nearestConstructionSiteNeeding(sites, world, ctx, here, tribe, owner, goodType, inbound);
   if (site !== null) return site;
   // 5. Otherwise the nearest capable store — the unchanged default (unbound haulers, the golden slice).
   return nearestStoreFor(stores, world, ctx, here, goodType);
@@ -104,15 +110,17 @@ function nearestConstructionSiteNeeding(
   tribe: number,
   owner: number | undefined,
   goodType: number,
+  inbound: InboundSupplyTally,
 ): Entity | null {
   return (
     index.nearest(here, (e) => {
       if (world.get(e, Building).tribe !== tribe) return false;
       if (!ownersCompatible(owner, ownerOf(world, e))) return false; // another player's site (same tribe isn't same side)
       // Count both what the site holds and what other settlers' live supply errands already have inbound
-      // (SupplyRun): a site whose last unit is on someone's back stops attracting more of the good, so a
-      // duplicate fetch diverts to a warehouse instead of over-delivering.
-      const have = (world.get(e, Stockpile).amounts.get(goodType) ?? 0) + inboundSupply(world, e, goodType);
+      // (the `inbound` tally): a site whose last unit is on someone's back stops attracting more of the
+      // good, so a duplicate fetch diverts to a warehouse instead of over-delivering.
+      const have =
+        (world.get(e, Stockpile).amounts.get(goodType) ?? 0) + inboundSupplyOf(inbound, e, goodType);
       return have < stockCapacity(world, ctx, e, goodType); // room left for this material (and it's a cost good)
     })?.entity ?? null
   );

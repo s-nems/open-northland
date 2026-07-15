@@ -94,8 +94,8 @@ export const SiteAssignment = defineComponent<{ site: Entity; pinned: boolean }>
  * `site`. Stamped when the builder drive commits a fetch or the delivery drive routes a load to a site,
  * cleared at the top of the settler's own next planning (the rungs re-stamp it while the errand lasts), so it
  * persists through the walk/pickup/haul and dies with the errand. Later-planned settlers subtract these from
- * a site's outstanding need ({@link import('../systems/stores/construction.js').inboundSupply}), so two
- * builders don't race to fetch the same last unit and a crew spreads over different materials.
+ * a site's outstanding need (the planner's inbound-supply tally, {@link import('../systems/stores/supply-tally.js').InboundSupplyTally}),
+ * so two builders don't race to fetch the same last unit and a crew spreads over different materials.
  */
 export const SupplyRun = defineComponent<{ site: Entity; goodType: number; amount: number }>('SupplyRun');
 

@@ -1,6 +1,7 @@
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
+import type { InboundSupplyTally } from '../stores/index.js';
 import type { TargetCandidates } from './targets/index.js';
 
 /** The non-null worker state shared by every economy rung for one idle settler. */
@@ -27,4 +28,8 @@ export interface PlannerContext extends PlannerWorker {
   readonly entity: Entity;
   readonly here: NodeId;
   readonly targets: TargetCandidates;
+  /** Tick-shared construction inbound-supply tally, seeded from live {@link import('../../components/settler.js').SupplyRun}
+   *  errands and kept in lockstep as the pass stamps/releases them — the hoisted form of a per-call
+   *  SupplyRun scan (see {@link InboundSupplyTally}). */
+  readonly inbound: InboundSupplyTally;
 }
