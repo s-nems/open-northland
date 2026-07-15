@@ -114,8 +114,6 @@ function transitionsFromMapDat({ map, size }: DecodedMap): MapDatTerrainFile['tr
   if (eatd === undefined) return undefined;
   const cells = size.width * size.height;
   const types = decodeStringListChunk(eatd);
-  // Returns undefined for a missing lane chunk (older/foreign saves); throws on a length mismatch or an
-  // out-of-dictionary value (a corrupt lane).
   const decodeLane = (tag: string): number[] | undefined => {
     const chunk = findChunk(map, tag);
     if (chunk === undefined) return undefined;
