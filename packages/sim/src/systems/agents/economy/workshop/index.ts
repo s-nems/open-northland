@@ -1,6 +1,5 @@
-import { Resting } from '../../../../components/index.js';
+import { CARRY_CAPACITY, Resting } from '../../../../components/index.js';
 import type { Entity } from '../../../../ecs/world.js';
-import { carrierCarryCapacity } from '../../../progression/index.js';
 import { recipeOf } from '../../../stores/index.js';
 import { atOrWalk, startPickup } from '../../actions.js';
 import type { PlannerContext } from '../../planner-context.js';
@@ -66,7 +65,7 @@ export function planWorkshopSupplier(plan: PlannerContext, workplace: Entity): v
     restockToCapacity,
   );
   if (source !== null) {
-    const batch = Math.min(source.amount, carrierCarryCapacity(world, ctx, worker.tribe));
+    const batch = Math.min(source.amount, CARRY_CAPACITY);
     atOrWalk(world, entity, here, interactionCell(world, ctx, terrain, source.store, here), () =>
       startPickup(world, ctx, entity, worker, source.store, source.goodType, batch),
     );
@@ -101,7 +100,7 @@ function haulWorkplaceOutput(
       worker,
       workplace,
       output,
-      carrierCarryCapacity(world, ctx, worker.tribe),
+      CARRY_CAPACITY,
     ),
   );
   return true;

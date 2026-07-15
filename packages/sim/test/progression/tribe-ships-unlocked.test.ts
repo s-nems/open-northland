@@ -10,7 +10,7 @@ import { ctxOf } from '../fixtures/context.js';
  * tribeShipsUnlocked — the ship vehicle types a tribe has currently UNLOCKED: the `vehicle_ship` rows
  * (`passengerSlots > 0`, the `isShipVehicle` classification) whose `jobEnablesVehicle` tech-graph gate
  * is satisfied for the tribe, sorted ascending by `typeId`. It composes the content-only ship split
- * with the SAME `vehicle`-kind tech-graph gate `carrierCarryCapacity` uses — the "ship-unlock tech gate"
+ * with the SAME `vehicle`-kind tech-graph gate `tribeUnlockEnabled` provides — the "ship-unlock tech gate"
  * the Sea/Northland item names — so a boat-building/embark slice can ask which hulls a tribe may field.
  *
  * The fixture mirrors the real `vehicletypes.ini` shape: two land carts (no passengers) plus the two

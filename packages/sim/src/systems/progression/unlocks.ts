@@ -77,37 +77,13 @@ function tribeUnlockEnabled(
 }
 
 /**
- * The carry batch a `tribe`'s carrier hauls in one swing: the largest `stockSlots` among the vehicle types
- * the tribe has currently unlocked (handcart 15 → oxcart 30, …), falling back to a single unit carried on
- * foot before any cart is available. Vehicles unlock exactly like a house/good ({@link tribeUnlockEnabled} on
- * the `vehicle` kind); `targetId` keys into `VehicleType.typeId`, the distinct `logicvehicletype` namespace.
- *
- * source-basis: the capacity numbers are the extracted `stockSlots` param and the unlock is the extracted
- * `jobEnablesVehicle` edge. The carrier→vehicle *pairing* is approximated: the original assigns a specific
- * vehicle per haul and a carrier visibly fetches/parks a cart, whereas here a carrier abstractly hauls at its
- * tribe's best unlocked capacity — cart logistics wait on the vehicle-entity slice.
- */
-/** What a carrier hauls with no unlocked vehicle: one unit, carried on foot. */
-const ON_FOOT_CARRY_CAPACITY = 1;
-
-export function carrierCarryCapacity(world: World, ctx: SystemContext, tribe: number): number {
-  let best = ON_FOOT_CARRY_CAPACITY;
-  for (const vehicle of ctx.content.vehicles) {
-    if (vehicle.stockSlots <= best) continue; // can't beat the running best — skip the unlock check
-    if (!tribeUnlockEnabled(world, ctx, tribe, 'vehicle', vehicle.typeId)) continue;
-    best = vehicle.stockSlots;
-  }
-  return best;
-}
-
-/**
  * The ship types a `tribe` has currently unlocked, sorted ascending by `typeId` so the result order can't
  * depend on `content.vehicles` declaration order. Where the content-only {@link shipVehicles} answers *which
  * vehicles are ships*, this answers *which of those this tribe can field yet* — the gate a
  * boat-building/embark slice asks before letting a tribe spawn a hull.
  *
- * Composes the `passengerSlots` ship classification ({@link isShipVehicle}) with the same `vehicle`-kind
- * tech-graph gate {@link carrierCarryCapacity} uses: a ship is unlocked when no `jobEnablesVehicle` edge
+ * Composes the `passengerSlots` ship classification ({@link isShipVehicle}) with the `vehicle`-kind
+ * tech-graph gate ({@link tribeUnlockEnabled}): a ship is unlocked when no `jobEnablesVehicle` edge
  * gates its `typeId`, or a settler of a gating job (e.g. a shipwright) is alive in the tribe. Both axes are
  * pinned to extracted data; this adds no mechanic — nothing embarks and no hull is spawned.
  */

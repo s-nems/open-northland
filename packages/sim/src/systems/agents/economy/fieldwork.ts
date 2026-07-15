@@ -1,4 +1,5 @@
 import {
+  CARRY_CAPACITY,
   Position,
   Resource,
   SiteAssignment,
@@ -7,7 +8,6 @@ import {
 } from '../../../components/index.js';
 import type { Entity } from '../../../ecs/world.js';
 import type { NodeId } from '../../../nav/terrain/index.js';
-import { carrierCarryCapacity } from '../../progression/index.js';
 import { atomicDuration } from '../../readviews/animations.js';
 import {
   deliveredConstructionFraction,
@@ -102,14 +102,13 @@ export function planBuilder(plan: PlannerContext, spacing: SpacingState): boolea
   }
 
   // b. Out of material — fetch a still-needed construction good from a store that holds it (the delivery
-  // drive routes the load back to the site next tick). Lift a batch bounded by the tribe's carry
-  // capacity (one unit on foot), capped again by `pickupFromStore` to what the source actually holds.
+  // drive routes the load back to the site next tick). One unit per trip (the global CARRY_CAPACITY).
   // The need already discounts other settlers' live supply errands (SupplyRun), and this fetch stamps
   // its own — so a crew spreads over the still-unclaimed materials instead of racing to the same unit.
   const need = nextNeededConstructionGood(world, ctx, site, plan.inbound);
   const src = need && nearestStoreHolding(targets.stockpileCells, world, here, need.goodType);
   if (need !== null && src != null) {
-    const batch = Math.min(need.amount, carrierCarryCapacity(world, ctx, settler.tribe));
+    const batch = Math.min(need.amount, CARRY_CAPACITY);
     stampSupplyRun(world, e, plan.inbound, { site, goodType: need.goodType, amount: batch });
     atOrWalk(world, e, here, interactionCell(world, ctx, terrain, src, here), () =>
       startPickup(world, ctx, e, settler, src, need.goodType, batch),
