@@ -4,7 +4,7 @@ import { Provenance } from '../record.js';
 /**
  * The decoded logic header of one `map.cif` — the readable, declarative scalars at the top of a map's
  * `CStringArray` (`logiccontrol` + the `misc_*` sections). This is not the playable terrain: the
- * binary tile/landscape grid (if stored outside this header) is a Phase-2 cell-graph concern. What is
+ * binary tile/landscape grid (if stored outside this header) is a cell-graph concern. What is
  * captured here is the map's identity and metadata, which every map carries consistently:
  * dimensions, a stable GUID, its type/campaign slot, and the string-table ids of its name/description.
  *

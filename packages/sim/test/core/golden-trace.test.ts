@@ -6,7 +6,7 @@ import { clearComponentStores } from '../fixtures/stores.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
- * GOLDEN STATE-HASH + GOLDEN ATOMIC-ACTION TRACE — the Phase-2 determinism tripwire (plan).
+ * GOLDEN STATE-HASH + GOLDEN ATOMIC-ACTION TRACE — the determinism tripwire.
  *
  * The lower-level golden tests pin one mechanic each over tens of ticks; this is the *integration*
  * golden. It drives the **whole vertical slice** end-to-end for ~1000 ticks through the real
@@ -92,7 +92,7 @@ function runSlice(seed: number, ticks: number): GoldenRun {
   // Finite FELLABLE wood nodes (no resource command exists yet — placed directly, like the lower
   // goldens). The wood good declares the felling lifecycle (chops + whole yield), so each tree is
   // chopped DOWN over several swings and drops a trunk the collector then carries off — the multi-hit
-  // harvest + drop-on-ground (plan Phase 3). `yieldPerNode` 4 keeps each tree worth 4 wood (2 trees
+  // harvest + drop-on-ground. `yieldPerNode` 4 keeps each tree worth 4 wood (2 trees
   // → 8 harvested), so the goods total is unchanged (10 stored + 8 → 18 planks).
   const woodFell = sim.content.goods.find((g) => g.id === 'wood')?.gathering;
   for (const x of [2, 3]) {

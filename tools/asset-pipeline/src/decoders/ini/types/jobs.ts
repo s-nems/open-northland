@@ -26,8 +26,7 @@ import {
 /**
  * Extracts `[jobtype]` sections into validated {@link JobType} IR, capturing the atomic vocabulary a
  * job may perform: `allowatomic` (granted), `baseatomics` (always-available base set) and
- * `forbidatomic` (hard-denied) — all repeated single-value lines kept in file order. The Phase-2
- * atomic planner picks among these.
+ * `forbidatomic` (hard-denied) — all repeated single-value lines kept in file order.
  */
 export function extractJobs(sections: readonly RuleSection[], src: SourceRef): JobType[] {
   const jobs: JobType[] = [];
@@ -52,7 +51,7 @@ export function extractJobs(sections: readonly RuleSection[], src: SourceRef): J
 
 /**
  * Extracts `[humanjobexperiencetype]` sections (`Data/logic/humanjobexperiencetypes.ini`) into
- * validated {@link HumanJobExperienceType} IR — the per-specialization experience tracks the Phase-3
+ * validated {@link HumanJobExperienceType} IR — the per-specialization experience tracks the
  * ProgressionSystem accrues XP into. A track names its owning `job` (always) and, when good-specific,
  * the `good` it trains on; `experiencefactor` scales accrual and `baserepeatcounter` (on a few records)
  * is the original's repeat-count tuning. The numeric semantics are captured raw — interpreting the XP

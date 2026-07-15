@@ -27,7 +27,7 @@ import {
 } from './authored-placements.js';
 
 /**
- * The Phase-2 vertical-slice scenario, built deterministically so a screenshot frame is reproducible.
+ * The vertical-slice scenario, built deterministically so a screenshot frame is reproducible.
  *
  * This mirrors the world the render scene integration test exercises (a 6×1 grass strip: HQ +
  * joinery placed via commands, a wood gatherer + a carrier, two wood nodes), so the headless shot entry

@@ -76,7 +76,7 @@ export function extractAtomicAnimations(sections: readonly RuleSection[], src: S
  * class-enum fields (`mainType`, `munitiontype`, `damagetype`, `speed`) and the `goodtype`-0 sentinel
  * are documented at their field reads below and on {@link WeaponType}. Note `mainType` is the file's
  * exact camelCase key — a lowercased `maintype` would silently vanish (AGENTS.md). The combat extras
- * (`soundtype_*`, `createsmoke`) are not in the schema yet and are skipped (Phase-4 CombatSystem). Throws
+ * (`soundtype_*`, `createsmoke`) are not in the schema yet and are skipped. Throws
  * on a section missing the required numeric `type` (matches {@link extractGoods}).
  */
 export function extractWeapons(sections: readonly RuleSection[], src: SourceRef): WeaponType[] {

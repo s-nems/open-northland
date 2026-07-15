@@ -17,7 +17,6 @@ const forbiddenGameExtensions = new Set([
 ]);
 
 const reviewedBinaryAssets = new Set([
-  'docs/images/field-geometry-staggered-lattice.png',
   'docs/images/settlement.webp',
   'packages/app/public/fonts/tinos-latin-400.woff2',
   'packages/app/public/fonts/tinos-latinext-400.woff2',

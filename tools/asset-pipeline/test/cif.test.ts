@@ -4,8 +4,7 @@ import { decodeCifStringArray, decryptMode1, encryptMode1, StorableId } from '..
 /**
  * `.cif` container decoder tests. No copyrighted fixtures are committed: we synthesize a
  * CStringArray container in memory with the inverse cipher implemented by the encoder,
- * then assert the decoder recovers it. The structure mirrors the real `housetypes.cif` verified
- * during the Phase-1 spike.
+ * then assert the decoder recovers it. The structure mirrors the real `housetypes.cif`.
  */
 
 const NUL = 0x00;

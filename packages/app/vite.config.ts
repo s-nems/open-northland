@@ -6,7 +6,7 @@ import { buildBobsIndexEntries } from './vite/bobs-index.js';
 import { buildMapsIndexEntries } from './vite/maps-index.js';
 
 // Browser-first app shell. `npm run dev` serves this with HMR; cross-platform by construction.
-// Desktop (Mac/Win/Linux) packaging via Tauri comes later (Phase 5).
+// Desktop (Mac/Win/Linux) packaging via Tauri comes later.
 
 const here = dirname(fileURLToPath(import.meta.url));
 // The decoded `content/maps/<id>.json` grids live at the repo root (gitignored; generated from an

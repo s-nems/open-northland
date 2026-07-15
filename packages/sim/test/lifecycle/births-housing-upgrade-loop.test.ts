@@ -9,7 +9,7 @@ import { ctxOf } from '../fixtures/context.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 /**
- * GAME-LEVEL (e2e) — the full births → housing → upgrade → more-births loop, the Phase-3 exit ("a
+ * GAME-LEVEL (e2e) — the full births → housing → upgrade → more-births loop, the exit ("a
  * self-sustaining, progressing single-tribe settlement you can grow"). Every slice (births fill spare
  * housing; a built home accumulating its next-tier cost levels up; carriers deliver that cost) is
  * proven in isolation elsewhere, each calling ONE system directly. This proves they COMPOSE under the
