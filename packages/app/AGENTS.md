@@ -54,12 +54,13 @@ that matches its role instead of piling another method onto a growing file:
   factory — the HUD default text face), `bitmap-text.ts` (the `.fnt` glyph runs + the `makeTextRun`
   factory — retained for exact-decoded-face needs, but not the current default),
   `action-ring-layout.ts` (the settler action-menu geometry), the `tool-panel/` package —
-  pure models (`layout.ts`, `building-menu.ts`, `game-speed.ts`, headlessly unit-tested) + window
-  controllers (`menu-window.ts`, `stats-window.ts`, `placement.ts` over the shared `context.ts`) +
+  pure models (`layout.ts`, `building-menu.ts`, `goods-menu.ts`, `game-speed.ts`, headlessly unit-tested)
+  + window controllers (`menu-window.ts`, `goods-window.ts`, `stats-window.ts`, `placement.ts` over the
+  shared `context.ts`, the first three on the shared `window-shell.ts` open/close lifecycle) +
   `index.ts` (the mount + input routing) — and the `details-panel/` package (the bottom-right selection
   panel in original art: pure `model/` (bars/context/settler/building split) + `layout/` (per-kind
   geometry: `shared.ts` primitives, `building.ts`, `settler.ts`), `chrome.ts`/`gauge.ts` + `sections/`
-  (per-kind drawing: `building.ts`, `settler.ts`, `compact.ts`), `panel.ts`
+  (per-kind drawing: the `building/` section subfolder, `settler.ts`, `compact.ts`), `panel.ts`
   mount). Text: both the tool-panel and details-panel HUD draw the bundled vector serif
   (`content/ui-font.ts`) — the tool-panel via `ui-text.ts`'s `makeUiTextRun`, the details-panel from
   `content/ui-font.ts` directly — an intentional, named legibility approximation that rasters crisp at
