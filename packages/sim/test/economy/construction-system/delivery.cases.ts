@@ -152,25 +152,25 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
     });
     for (const x of [3, 4, 6, 7]) builderAt(sim, x, 0);
 
-    // The warehouse must lose exactly the site's total cost (2 stone + 1 wood) and no more — a crew that
-    // ignored each other's inbound runs would drain extra units that then wander off to a store.
+    // Track the warehouse LOW-WATER mark across every step, not just the final stock: a final-only check
+    // self-heals, because a crew that ignored each other's inbound runs over-fetches, the site rejects the
+    // surplus (stockCapacity gate), and the extra loads wander back INTO the warehouse — restoring the
+    // final count. Only 2 stone + 1 wood are ever genuinely needed, so with the tally folding concurrent
+    // runs the low-water mark must be exactly 9−2 / 9−1; a broken fold would dip it lower.
     let built = false;
+    let minStone = 9;
+    let minWood = 9;
     for (let i = 0; i < 400 && !built; i++) {
       sim.step();
       built = sim.world.get(site, Building).built >= ONE;
-      expect(sim.world.get(site, Stockpile).amounts.get(STONE) ?? 0).toBeLessThanOrEqual(2);
-      expect(sim.world.get(site, Stockpile).amounts.get(WOOD) ?? 0).toBeLessThanOrEqual(1);
+      minStone = Math.min(minStone, sim.world.get(warehouse, Stockpile).amounts.get(STONE) ?? 0);
+      minWood = Math.min(minWood, sim.world.get(warehouse, Stockpile).amounts.get(WOOD) ?? 0);
     }
     expect(built).toBe(true);
+    expect(minStone).toBe(7); // only the 2 stone the site needs were ever lifted — never a duplicate
+    expect(minWood).toBe(8); // only the 1 wood
     expect(sim.world.get(warehouse, Stockpile).amounts.get(STONE) ?? 0).toBe(7); // 9 − 2 spent
     expect(sim.world.get(warehouse, Stockpile).amounts.get(WOOD) ?? 0).toBe(8); // 9 − 1 spent
-    // Nothing left in flight — every lifted unit reached the site and was consumed.
-    let materialInFlight = 0;
-    for (const e of sim.world.query(Carrying)) {
-      const load = sim.world.get(e, Carrying);
-      if (load.goodType === STONE || load.goodType === WOOD) materialInFlight += load.amount;
-    }
-    expect(materialInFlight).toBe(0);
   });
 
   it('assignBuilder pins a builder to the CHOSEN site over a nearer one; a non-builder is a no-op', () => {
