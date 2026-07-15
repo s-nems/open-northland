@@ -98,6 +98,7 @@ export {
   mayAttack,
   mayHunt,
   playableTribes,
+  settlerHitpoints,
 } from './tribes/index.js';
 export {
   isShipVehicle,

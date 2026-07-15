@@ -20,6 +20,7 @@ import { positionOfNode } from '../../../nav/halfcell.js';
 import type { SystemContext } from '../../context.js';
 import { syncWorkFlagToJob } from '../../economy/flags.js';
 import { stampDefaultStance } from '../../orders/index.js';
+import { settlerHitpoints } from '../../readviews/index.js';
 
 /**
  * The DATA of a settler to create — the {@link Command} `spawnSettler` payload minus its `kind`, so a
@@ -69,10 +70,18 @@ export function createSettler(world: World, content: ContentSet, spec: SettlerSp
     enjoyment: fx.fromInt(0),
     experience: new Map<number, number>(),
   });
-  // Every settler carries a `Health` pool: a command with positive `hitpoints` sets it, one without gets
+  // Every settler carries a `Health` pool. The pool comes from the content — the settler's tribe HP
+  // ({@link settlerHitpoints}), the human counterpart to an animal's `hitpointsAdult` — so every spawn on
+  // one content base shares one value (no per-scene tuning). A command may still pass an explicit positive
+  // `hitpoints` to override (admin/debug); a tribe that leaves it unset falls back to
   // {@link DEFAULT_SETTLER_HITPOINTS}.
+  const tribeHitpoints = settlerHitpoints(content, spec.tribe);
   const hitpoints =
-    spec.hitpoints !== undefined && spec.hitpoints > 0 ? spec.hitpoints : DEFAULT_SETTLER_HITPOINTS;
+    spec.hitpoints !== undefined && spec.hitpoints > 0
+      ? spec.hitpoints
+      : tribeHitpoints > 0
+        ? tribeHitpoints
+        : DEFAULT_SETTLER_HITPOINTS;
   world.add(e, Health, { hitpoints, max: hitpoints });
   // A combatant wearing armor carries an `Armor` class: an incoming hit is mitigated by that tier's
   // `blockingValue` rather than landing on the unarmored class 0. Only a positive class is stamped.

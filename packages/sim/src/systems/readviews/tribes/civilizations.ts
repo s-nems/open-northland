@@ -48,6 +48,18 @@ export function isPlayableTribe(content: ContentSet, tribeType: number): boolean
 }
 
 /**
+ * The hitpoint pool a settler of `tribeType` is born with — the human counterpart to
+ * {@link import('./animals.js').animalHitpoints}, read straight from the tribe's clean-room
+ * {@link TribeType.hitpoints}. `0` when the tribe has no record or leaves it unset; the caller
+ * (`createSettler`) then falls back to `DEFAULT_SETTLER_HITPOINTS`. Source basis "Combat hit resolution":
+ * the original's human HP is not in the readable data, so it is supplied at the content boundary (sandbox
+ * tribes + the real-content overlay). Pure over `content`, no RNG/wall-clock.
+ */
+export function settlerHitpoints(content: ContentSet, tribeType: number): number {
+  return contentIndex(content).tribes.get(tribeType)?.hitpoints ?? 0;
+}
+
+/**
  * Whether `tribeType` is a **known animal/monster tribe** — a `[tribetype]` the pipeline DID extract
  * (so it has a record) but that carries **no tech graph** (`jobEnables.length === 0`). This is the
  * complement of {@link isPlayableTribe} *restricted to recorded tribes*: of the 41 extracted tribes
