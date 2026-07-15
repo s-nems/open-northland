@@ -6,6 +6,6 @@
  * kit; `shared.ts` holds the one row-text metric they share.
  */
 
-export { drawBuilding } from './building.js';
+export { drawBuilding } from './building/index.js';
 export { drawCompact } from './compact.js';
 export { drawSettler } from './settler.js';
