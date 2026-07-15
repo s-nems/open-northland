@@ -76,6 +76,14 @@ export const TribeType = z.strictObject({
   typeId: TypeId,
   id: z.string(),
   name: z.string().optional(),
+  /**
+   * The hitpoint pool a settler of this tribe is born with — the human counterpart to an animal's
+   * `hitpointsAdult`, read by every settler spawn ({@link import('../../../sim').settlerHitpoints}). The
+   * original's human HP is not in the readable data (source basis "Combat hit resolution"), so it is a
+   * clean-room approximation supplied at the content boundary (sandbox tribes + the real-content overlay
+   * both set the same value); `0` means unset and the sim falls back to its `DEFAULT_SETTLER_HITPOINTS`.
+   */
+  hitpoints: z.number().int().nonnegative().default(0),
   /** `setatomic` bindings in file order — a tribe's atomic→animation vocabulary, per job. */
   atomicBindings: z.array(AtomicBinding).default([]),
   /** `jobEnables*` tech-graph edges in file order — what each job unlocks for the tribe. */
