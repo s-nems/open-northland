@@ -104,10 +104,8 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
   // staffed (see workSeatCount); operators planned earlier this tick take them first, so a surplus
   // operator goes fetching/hauling instead of idling inside beside a colleague's batch.
   const seatClaims: WorkSeatClaims = new Map();
-  // Inbound-supply tally: units already committed to each construction site by live SupplyRun errands
-  // (this tick's stamps included), seeded once from the store and kept in lockstep as the pass releases a
-  // replanner's stale run and stamps fresh ones — the hoisted form of the old per-call SupplyRun scan, so
-  // a mid-pass read sees exactly what a full scan would (`./stores/supply-tally.ts`).
+  // Inbound-supply tally: units committed to each construction site by live SupplyRun errands, seeded
+  // once and kept in lockstep as the pass releases/stamps runs (see InboundSupplyTally).
   const inbound = collectInboundSupply(world);
 
   // Canonical settler order: the per-tick claim maps (farmClaims, seatClaims) hand out targets/seats

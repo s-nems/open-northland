@@ -28,8 +28,7 @@ export interface PlannerContext extends PlannerWorker {
   readonly entity: Entity;
   readonly here: NodeId;
   readonly targets: TargetCandidates;
-  /** Tick-shared construction inbound-supply tally, seeded from live {@link import('../../components/settler.js').SupplyRun}
-   *  errands and kept in lockstep as the pass stamps/releases them — the hoisted form of a per-call
-   *  SupplyRun scan (see {@link InboundSupplyTally}). */
+  /** Tick-shared tally of units committed to each construction site by live
+   *  {@link import('../../components/settler.js').SupplyRun} errands (see {@link InboundSupplyTally}). */
   readonly inbound: InboundSupplyTally;
 }
