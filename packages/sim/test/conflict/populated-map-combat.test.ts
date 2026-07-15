@@ -6,8 +6,8 @@ import { fx, halfCellMapFromCells, Simulation, seedAnimalHerds, type TerrainMap 
 import { testContent } from '../fixtures/content.js';
 
 /**
- * **Populated-map combat scenario** — the end-to-end slice the plan Phase-4 "animals as
- * non-controllable tribes" item names ("a scenario/slice that *runs* a populated map end-to-end:
+ * **Populated-map combat scenario**
+ * animals as non-controllable tribes" item names ("a scenario/slice that *runs* a populated map end-to-end:
  * civ + seeded wildlife fighting via the combat drive"). Every piece is unit-tested in isolation
  * (the `seedAnimalHerds` populator, the `spawnAnimalHerd` command, the `combatSystem` targeting drive,
  * the `cleanupSystem` death reaper). This test wires them together as ONE integrated run through the

@@ -90,7 +90,7 @@ export type TribeType = z.infer<typeof TribeType>;
  * One timed event inside an atomic animation (`event`/`eventx <at> <type> [value]` in
  * `atomicanimations.ini`). `at` is the offset within the animation's `length`; `type` + `value`
  * form an undocumented numeric vocabulary (good yields, hunger/morale deltas, sound/effect cues) —
- * captured faithfully here and interpreted later by the Phase-2 AtomicSystem, mirroring how
+ * captured faithfully here and interpreted later by the AtomicSystem, mirroring how
  * {@link AtomicId} stays a raw id with no master table. `value` is optional and may be signed.
  * `extended` marks the `eventx` variant (a distinct event channel in the source) from plain `event`.
  */

@@ -5,8 +5,7 @@ import { bytesOf, le32 } from './support/bytes.js';
 /**
  * `.lib` archive decoder tests. No copyrighted fixtures are committed: we synthesize an archive
  * in memory with the faithful `encodeLib`, then assert `decodeLib` recovers the directory and
- * payloads. The shape mirrors the real `data0001.lib` inspected during Phase 1 (version 1, groups
- * like `data\`, files keyed by backslash paths).
+ * payloads. The shape mirrors the real `data0001.lib`.
  */
 
 describe('filenameChecksum', () => {

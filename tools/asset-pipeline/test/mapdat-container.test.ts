@@ -16,9 +16,8 @@ import { le32 } from './support/bytes.js';
 /**
  * `map.dat` container decoder tests. No copyrighted fixtures are committed: we synthesize a
  * `hoix`-chunk file in memory with the faithful `encodeMapDat`, then assert `decodeMapDat` recovers
- * the chunk table. The shape mirrors a real tutorial map.dat inspected during the Phase-2 spike (a
- * `logi`/`lgmm` landscape group → `lsiz`/`lm**` layers → `xend`, then an `emmm` entity group →
- * `xend`, then `tend`).
+ * the chunk table. The shape mirrors a real tutorial map.dat inspected `logi`/`lgmm` landscape group → `lsiz`/`lm**`
+ * layers → `xend`, then an `emmm` entity group → `xend`, then `tend`).
  */
 
 describe('tagToId / tag round-trip', () => {

@@ -23,8 +23,7 @@ for player-visible slices and area folders (`sim/`, `render/`, `app/`, `pipeline
 technical work. The user picks the next ticket and invokes `/worktree` on it; the completing commit
 deletes the ticket file. Every workflow files tickets for real-but-deferred discoveries — see
 [`tickets/README.md`](tickets/README.md) for the rules and template.
-
-(`docs/plans/` was retired 2026-07-12: open work became tickets, the files live in git history.)
+To be replaced with Github Issues.
 
 ## Reference
 

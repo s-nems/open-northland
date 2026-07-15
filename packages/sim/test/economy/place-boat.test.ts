@@ -6,7 +6,7 @@ import { cellAnchorNode, Simulation } from '../../src/index.js';
 import { clearComponentStores } from '../fixtures/stores.js';
 
 /**
- * `placeBoat` — the **boats as mobile stores** entity slice the plan Phase-4 Sea/Northland item
+ * `placeBoat` — the **boats as mobile stores** entity slice the plan Sea/Northland item
  * names: a placed {@link Vehicle} hull carrying an (empty) {@link Stockpile}, the boat analogue of
  * `placeBuilding`. The placement is gated by the tribe's ship-unlock tech graph (`tribeShipsUnlocked`):
  * only a `vehicle_ship` row the tribe has currently UNLOCKED is fielded; a cart, a catapult, an unknown

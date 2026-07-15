@@ -1,5 +1,5 @@
 /**
- * The terrain half-cell adjacency graph — the sim's navigation model (docs/ECS.md, Phase 2).
+ * The terrain half-cell adjacency graph — the sim's navigation model (docs/ECS.md).
  *
  * This is not the triangle render tessellation: navigation, pathfinding, and placement all operate on a graph
  * of half-cells — the original's `2W×2H` logic lattice. That resolution is pinned by the data, not invented:

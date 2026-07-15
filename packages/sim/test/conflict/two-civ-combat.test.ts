@@ -14,7 +14,7 @@ import {
 import { isPlayableTribe, mayAttack } from '../../src/systems/index.js';
 
 /**
- * **Two-playable-civilization combat scenario** — the end-to-end slice the plan Phase-4
+ * **Two-playable-civilization combat scenario**
  * "N data-defined tribes" item names as its remaining "Next:" ("seed a real **multi-civilization**
  * scenario exercising two playable tribes' asymmetric bindings end-to-end — the asymmetry is in the
  * data; a scenario proves the sim runs it").

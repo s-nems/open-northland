@@ -23,11 +23,10 @@ import type { SceneDefinition } from './types.js';
  * The global goods-catalog scene: proves the whole original goods catalog is available in every scene —
  * storable in a warehouse (with its HUD icon, across the eight category tabs) and droppable on the ground.
  *
- * It places one warehouse (click it to read the full Magazyn) and drops one loose pile of every storable
+ * It places one warehouse and drops one loose pile of every storable
  * good on a grid, via the `dropGood` command. There are no settlers, so the piles simply rest where they
  * land — a static field of the full catalog for the human to eyeball. The headless half asserts the
- * catalog is wired (Phase 1), every good rests as its own pile (Phase 3), and the warehouse advertises a
- * stock slot for each (Phase 2).
+ * catalog is wired, every good rests as its own pile, and the warehouse advertises a stock slot for each.
  */
 
 const MAP_W = 44;
@@ -88,7 +87,7 @@ function warehouseStockGoods(sim: Simulation): Set<number> {
   return new Set((def?.stock ?? []).map((s) => s.goodType));
 }
 
-/** Ids that must exist in the catalog — a spread across the extended families (proves Phase 1 is wired). */
+/** Ids that must exist in the catalog — a spread across the extended families. */
 const REPRESENTATIVE_EXTENDED_IDS = ['leather', 'bread', 'mead', 'armor_plate', 'sword_long'] as const;
 
 export const goodsCatalogScene: SceneDefinition = {

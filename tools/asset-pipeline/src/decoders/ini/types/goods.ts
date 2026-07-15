@@ -65,7 +65,7 @@ function extractProductionInputs(sec: RuleSection): { goodType: number; amount: 
  * {@link GoodClassification}: `isProducedOnMapFlag` (raw/map-gathered), `isProducedInHouseFlag`
  * (workplace-produced), `isInputGoodFlag` (consumable as a recipe input). An absent flag is `false`.
  * These layers + the `productionInputGoods` edges are the explicit goods-graph IR (raw → produced →
- * food tiers) the Phase-3 economy reads.
+ * food tiers) the economy reads.
  */
 function extractGoodClassification(sec: RuleSection): GoodClassification {
   return {

@@ -15,6 +15,6 @@ export type { SettlerEquipment, SettlerEquipmentSlot } from './spawn.js';
  *
  * This is a discriminated union, not a bag of methods or numeric opcodes — adding a variant forces
  * every handler's `switch` to acknowledge it (via assertNever), which is the modern guard against
- * the original's "magic number opcode" fragility. Grow this as Phase 2 systems land.
+ * the original's "magic number opcode" fragility.
  */
 export type Command = PlacementCommand | SpawnCommand | UnitOrderCommand | RulesCommand | DebugCommand;
