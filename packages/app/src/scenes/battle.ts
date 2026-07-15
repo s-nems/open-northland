@@ -25,10 +25,11 @@ import type { SceneDefinition } from './types.js';
  * line: first ranks fighting along the whole front, second ranks standing behind, units stepping into
  * gaps as front-liners fall.
  *
- * Both sides get the same HP (a sandbox scale — the original's human HP is unreadable, source basis
- * "Combat hit resolution"); the outcome is deterministic from the seed but not scripted, so the
- * headless checks assert crowd-shape properties (the battle really runs at scale; nobody stacks),
- * not a winner.
+ * Both sides get the settler HP from the loaded content's tribe (`settlerHitpoints`, one value for every
+ * spawn — no per-scene override), and the sandbox weapon damages are transcribed on the real scale
+ * (`game/sandbox/combat.ts`), so the headless twin resolves combat like the browser on real content. The
+ * outcome is deterministic from the seed but not scripted, so the headless checks assert crowd-shape
+ * properties (the battle really runs at scale; nobody stacks), not a winner.
  */
 
 const MAP_W = 34;
@@ -50,12 +51,6 @@ const RED_RANKS: readonly { job: number; weapon: number; x: number }[] = [
   { job: JOB_ARCHER, weapon: WEAPON_SHORT_BOW, x: 23 },
 ];
 
-/** One shared HP pool (the sandbox damage scale): ~25 sword swings per kill. Deliberately much
- *  tankier than the duel scene — with melee slots a front-liner takes swords, second-rank spears
- *  and arrows at once, so duel-scale HP would resolve the melee too fast to judge the crowd feel.
- *  Sized for roughly a minute of front-line churn. */
-const FIGHTER_HP = 1000;
-
 /** The mechanic checks below: how many fighters (of 200) must have fallen for "the battle really
  *  happened at scale", and the most living fighters ever tolerated on one node at the end (transient
  *  soft overlap allows 2; 3+ standing on a node is the stacking the collision work forbids). */
@@ -70,16 +65,10 @@ const { Owner, Position, Settler } = components;
 function build(sim: Simulation): void {
   for (let y = RANK_ROWS_FIRST; y <= RANK_ROWS_LAST; y++) {
     for (const rank of BLUE_RANKS) {
-      spawnSandboxSettler(sim, rank.job, rank.x, y, HUMAN_PLAYER, {
-        hitpoints: FIGHTER_HP,
-        weaponTypeId: rank.weapon,
-      });
+      spawnSandboxSettler(sim, rank.job, rank.x, y, HUMAN_PLAYER, { weaponTypeId: rank.weapon });
     }
     for (const rank of RED_RANKS) {
-      spawnSandboxSettler(sim, rank.job, rank.x, y, ENEMY_PLAYER, {
-        hitpoints: FIGHTER_HP,
-        weaponTypeId: rank.weapon,
-      });
+      spawnSandboxSettler(sim, rank.job, rank.x, y, ENEMY_PLAYER, { weaponTypeId: rank.weapon });
     }
   }
 }

@@ -6,6 +6,7 @@ import {
   STORE_PILEUP_ATOMIC,
   WHEAT_HARVEST_ATOMIC,
 } from '../../../../catalog/atomics.js';
+import { HUMAN_HITPOINTS } from '../../../../catalog/units.js';
 import { PRIMARY_TRIBE } from '../../../rules.js';
 import {
   BUILD_HOUSE_ATOMIC,
@@ -34,6 +35,7 @@ import type { SandboxContentExtras } from '../types.js';
 export interface SandboxTribe {
   readonly typeId: number;
   readonly id: string;
+  readonly hitpoints?: number;
   readonly jobEnables?: unknown[];
   readonly atomicBindings?: unknown[];
 }
@@ -47,6 +49,7 @@ export function buildSandboxTribes(
   tribes.set(PRIMARY_TRIBE, {
     typeId: PRIMARY_TRIBE,
     id: 'viking',
+    hitpoints: HUMAN_HITPOINTS,
     atomicBindings: [
       ...GATHERERS.map((gatherer) => ({
         jobType: gatherer.job,
@@ -75,6 +78,7 @@ export function buildSandboxTribes(
       tribes.set(tribe.typeId, {
         typeId: tribe.typeId,
         id: tribe.id,
+        hitpoints: HUMAN_HITPOINTS,
         jobEnables: [{ jobType: JOB_IDLE, kind: 'good', targetId: GOOD_COIN }],
       });
     }

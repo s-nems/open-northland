@@ -3,6 +3,7 @@ import { VIKING_BUILDINGS } from '../catalog/buildings.js';
 import { FARMING_BALANCE_BY_ID } from '../catalog/farming.js';
 import { GATHERING_BALANCE_BY_ID } from '../catalog/gathering.js';
 import { NAV_LANDSCAPE_TYPES } from '../catalog/terrain.js';
+import { HUMAN_HITPOINTS } from '../catalog/units.js';
 import { fetchJsonOrNull } from './net.js';
 
 /** The one in-flight/settled parse of the served IR into a `ContentSet` — memoized like {@link loadRealContent}. */
@@ -132,10 +133,14 @@ export function mergeRealContent(
   const landscapeIds = new Set(real.landscape.map((t) => t.typeId));
   const navRows = NAV_LANDSCAPE_TYPES.filter((t) => !landscapeIds.has(t.typeId));
   const landscape = [...real.landscape, ...navRows];
+  // Overlay the clean-room settler HP onto every tribe that ships without one (the real IR carries no human
+  // hitpoints — unreadable, source basis "Combat hit resolution"), the same value the sandbox tribes use, so
+  // a settler has one HP on either content base (`settlerHitpoints` reads it at every spawn).
+  const tribes = real.tribes.map((t) => (t.hitpoints > 0 ? t : { ...t, hitpoints: HUMAN_HITPOINTS }));
   // Re-validate the transformed set so a bad overlay or injected row fails here at the app boundary,
   // not deep in the sim.
   return {
-    content: parseContentSet({ ...real, goods, landscape }),
+    content: parseContentSet({ ...real, goods, landscape, tribes }),
     unbalancedGoods,
     unfarmedFieldGoods,
     uncatalogedBuildings,
