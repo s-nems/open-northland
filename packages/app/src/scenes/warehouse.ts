@@ -15,8 +15,10 @@ import {
   GOOD_STONE,
   GOOD_WOOD,
   JOB_CARRIER,
+  JOB_COLLECTOR,
   placeSandboxBuilding,
   spawnIdleSettler,
+  spawnSandboxSettler,
 } from '../game/sandbox/index.js';
 import { buildingOfType } from './sandbox-queries.js';
 import type { SceneDefinition } from './types.js';
@@ -49,6 +51,9 @@ const RUN_TICKS = 6000;
 
 const WAREHOUSE_X = 20;
 const WAREHOUSE_Y = 6;
+/** The tech enabler's corner — far from the store, goods and carriers so it just idles (no gathering: the loose
+ *  piles are ground drops, not resource nodes a collector harvests). */
+const ENABLER = { x: 2, y: MAP_H - 2 } as const;
 /** Three carriers — the warehouse's carrier-slot count; spawned unemployed just below it so the assign pass
  *  staffs all three into its carrier slots on the first tick. */
 const CARRIERS = 3;
@@ -82,6 +87,12 @@ function warehouseCapacity(sim: Simulation, goodType: number): number {
 
 function build(sim: Simulation): void {
   placeSandboxBuilding(sim, BUILDING_WAREHOUSE_00, WAREHOUSE_X, WAREHOUSE_Y, HUMAN_PLAYER);
+
+  // A lone collector stands as the tribe's tech enabler: the warehouse (house 7) is gated `jobEnablesHouse` on
+  // a collector being present (mirrors real content — see tech-graph.ts), so without one the carriers below
+  // would never be employed. In a real game the HQ seeds this gatherer; the scene has no HQ, so it is placed
+  // directly, off in a corner where it idles.
+  spawnSandboxSettler(sim, JOB_COLLECTOR, ENABLER.x, ENABLER.y, HUMAN_PLAYER);
 
   // Three unemployed settlers by the warehouse — the assign pass employs them into its carrier slots.
   for (let i = 0; i < CARRIERS; i++) {
