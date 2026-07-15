@@ -1,16 +1,24 @@
 import type { EquipCategory } from '@open-northland/data';
 
-/** Goods and equipment ids in the sandbox-scoped economy namespace. */
+/** Goods and equipment ids in the sandbox-scoped economy namespace. The gathered/core goods carry their
+ *  real `goodtypes.ini` (ir.json) typeIds so one id space works whether the sandbox or the real extracted
+ *  content is the base; the extended catalog rides `EXTENDED_GOOD_TYPE_OFFSET`, synthetic goods a band above. */
 
 export const GOOD_NONE = 0;
-export const GOOD_WOOD = 1;
-export const GOOD_PLANK = 2;
-export const GOOD_COIN = 3;
-export const GOOD_STONE = 4;
-export const GOOD_MUD = 5;
+export const GOOD_MUD = 2;
+export const GOOD_STONE = 3;
+export const GOOD_WOOD = 5;
 export const GOOD_IRON = 6;
 export const GOOD_GOLD = 7;
-export const GOOD_MUSHROOM = 8;
+export const GOOD_COIN = 8;
+export const GOOD_MUSHROOM = 14;
+
+/** Synthetic sandbox-only goods have no ir.json counterpart, so they sit above the real (1–65) and
+ *  extended (101–165) id ranges and never collide with a real good. */
+const SYNTHETIC_GOOD_BASE = 200;
+/** `plank` — the joinery slice's synthetic demo output (sawn `wood`); no real good matches it, so it
+ *  lives in the {@link SYNTHETIC_GOOD_BASE} band rather than among the real economy ids. */
+export const GOOD_PLANK = SYNTHETIC_GOOD_BASE;
 
 // The equippable goods ride the sandbox-scoped catalog ids — `EXTENDED_GOOD_TYPE_OFFSET` (100) + the raw
 // `goodtypes.ini` id (30–55) = 130–155 — the same ids the global goods catalog (`catalog/goods.ts`
