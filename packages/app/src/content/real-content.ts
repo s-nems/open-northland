@@ -1,5 +1,6 @@
-import { type ContentSet, parseContentSet } from '@open-northland/data';
+import { type ContentSet, type GoodType, hasFieldFarmAtomics, parseContentSet } from '@open-northland/data';
 import { VIKING_BUILDINGS } from '../catalog/buildings.js';
+import { FARMING_BALANCE_BY_ID } from '../catalog/farming.js';
 import { GATHERING_BALANCE_BY_ID } from '../catalog/gathering.js';
 import { NAV_LANDSCAPE_TYPES } from '../catalog/terrain.js';
 import { fetchJsonOrNull } from './net.js';
@@ -35,73 +36,110 @@ async function fetchContentSet(fetchImpl: typeof fetch): Promise<ContentSet | nu
   return raw === null ? null : parseContentSet(raw);
 }
 
-/** The real content with its gathering data completed, plus the gaps the clean-room overlay cannot fill. */
+/** The real content with its clean-room balance completed, plus the gaps the overlay cannot fill. */
 export interface RealContentMerge {
   /** The real content readied for the sim: the clean-room felling/mining balance pinned into its zeroed
-   *  gathering blocks, and the sim's nav-terrain classes ({@link NAV_LANDSCAPE_TYPES}) added to `landscape`. */
+   *  gathering blocks, the clean-room field-farming block added to farmed goods, and the sim's nav-terrain
+   *  classes ({@link NAV_LANDSCAPE_TYPES}) added to `landscape`. */
   readonly content: ContentSet;
   /** Gathered goods (they carry a `gathering` block) with no clean-room balance — they stay uncalibrated
-   *  (wheat is farmed, and leather/honey/herb/meat are animal/production goods the sandbox never map-gathers). */
+   *  (leather/honey/meat are animal/production goods the sandbox never map-gathers). */
   readonly unbalancedGoods: readonly string[];
+  /** Field-farmed goods (they carry the three field atomics) with no clean-room `farming` block yet — the
+   *  pipeline correctly gives them no recipe (grown, not made), so until a block lands they neither
+   *  field-farm nor produce. Wheat is calibrated; herb/mushroom are the known gap (see the tracker). */
+  readonly unfarmedFieldGoods: readonly string[];
   /** Real buildings absent from the clean-room catalog (`VIKING_BUILDINGS`) — the wonders/vehicles/special
    *  the sandbox never modelled. They keep their extracted footprint/stock/recipe but no clean-room tuning. */
   readonly uncatalogedBuildings: readonly string[];
 }
 
+/** Localize a good's display name from the app-wide `?lang=` map, keyed by its string id — the real IR
+ *  ships raw ids where the sandbox carried English `name`s. A good the map lacks keeps its own name. */
+function withLocalizedName(good: GoodType, goodNames?: ReadonlyMap<string, string>): GoodType {
+  const name = goodNames?.get(good.id);
+  return name !== undefined ? { ...good, name } : good;
+}
+
+/** Overlay the clean-room field-farming block (growth timing, field radius/count) the pipeline cannot
+ *  extract — no readable growth constants — keyed by good id from the shared {@link FARMING_BALANCE_BY_ID}
+ *  the sandbox also reads, so wheat farms at one pace on either content base. The pipeline extracts the
+ *  field atomics + `producedOnMap` flag and (correctly) gives the farm no recipe; this block is the last
+ *  piece the sim's field loop needs. A good absent from the table is returned unchanged. */
+function withFarmingBalance(good: GoodType): GoodType {
+  const farming = FARMING_BALANCE_BY_ID[good.id];
+  return farming !== undefined ? { ...good, farming } : good;
+}
+
+/** Overlay the clean-room felling/mining balance (chops-to-fell / yield / deposit size+levels) into the
+ *  pipeline's zeroed gathering block, keyed by good id from the shared {@link GATHERING_BALANCE_BY_ID}
+ *  (the mod data carries no chop count — `catalog/felling.ts`), preserving everything else real ships
+ *  (harvest/pickup/store atomics, `bioLandscape`). A good with no gathering block, or none in the table,
+ *  is returned unchanged. */
+function withGatheringBalance(good: GoodType): GoodType {
+  if (good.gathering === undefined) return good;
+  const balance = GATHERING_BALANCE_BY_ID[good.id];
+  if (balance === undefined) return good;
+  return {
+    ...good,
+    gathering: {
+      ...good.gathering,
+      ...(balance.chopsToFell !== undefined ? { chopsToFell: balance.chopsToFell } : {}),
+      ...(balance.yieldPerNode !== undefined ? { yieldPerNode: balance.yieldPerNode } : {}),
+      ...(balance.depositSize !== undefined ? { depositSize: balance.depositSize } : {}),
+      ...(balance.depositLevels !== undefined ? { depositLevels: balance.depositLevels } : {}),
+    },
+  };
+}
+
 /**
- * Complete the real content's gathering data and surface what it cannot fill. The pipeline's
- * `extractGoodGathering` emits 0 for chops-to-fell / yield / deposit size / levels (the mod data carries no
- * chop count — `catalog/felling.ts`), so this pins the clean-room balance from the shared
- * {@link GATHERING_BALANCE_BY_ID} (the same table the sandbox reads) into those four fields by the good's
- * string id, preserving everything else real ships (harvest/pickup/store atomics, `bioLandscape`).
+ * Ready the real content for the sim by completing the clean-room balance the pipeline cannot extract,
+ * then surface what it still cannot fill. Each good passes through three named overlays, all keyed by the
+ * good's string id: {@link withLocalizedName}, {@link withFarmingBalance} (the field-cultivation timing),
+ * and {@link withGatheringBalance} (the felling/mining tuning). The farming and gathering tables are the
+ * same ones the sandbox reads, so a mechanic runs at one pace on either content base.
  *
- * This only completes the ContentSet's gathering data (keeping it self-consistent and ready for a
- * content-driven resource-spawn system); today's felling is driven by the sandbox `GATHERERS` placement
- * path (`game/sandbox/place.ts`, re-keyed to real ids) reading the same balance table, proven by
- * `test/map-gatherer-cycle.test.ts`. Gathered goods with no clean-room balance, and buildings beyond the
- * clean-room catalog, are reported — not silently dropped — so the caller can log the gap.
+ * Today's felling still runs through the sandbox `GATHERERS` placement path (`game/sandbox/place.ts`,
+ * re-keyed to real ids) reading the same balance table, proven by `test/map-gatherer-cycle.test.ts`;
+ * completing the ContentSet keeps it self-consistent and ready for a content-driven resource-spawn system.
+ * Gathered goods with no clean-room balance, field goods with no clean-room `farming` block, and buildings
+ * beyond the clean-room catalog are reported — not silently dropped — so the caller can log the gap.
  *
  * It also injects the sim's semantic nav-terrain classes ({@link NAV_LANDSCAPE_TYPES}) into `landscape`:
  * real content's detailed types (1..87) don't carry the collision classes a resolved grid
  * (`content/collision.ts`) or a scene grid navigates on, and those class ids sit in a reserved band that
  * never aliases the detailed types, so `buildTerrainGraph` on real content resolves both. Idempotent — a
- * class row already present (a set that already lists them) is not duplicated.
- *
- * `goodNames` (the app-wide `?lang=` good-name map, keyed by good string id) localizes each good's
- * display name — the real IR ships raw ids where the sandbox carried English `name`s; a good the map
- * lacks keeps its own name.
+ * class row already present is not duplicated.
  */
 export function mergeRealContent(
   real: ContentSet,
   goodNames?: ReadonlyMap<string, string>,
 ): RealContentMerge {
-  const goods = real.goods.map((raw) => {
-    const localized = goodNames?.get(raw.id);
-    const good = localized !== undefined ? { ...raw, name: localized } : raw;
-    const balance = good.gathering === undefined ? undefined : GATHERING_BALANCE_BY_ID[good.id];
-    if (good.gathering === undefined || balance === undefined) return good;
-    return {
-      ...good,
-      gathering: {
-        ...good.gathering,
-        ...(balance.chopsToFell !== undefined ? { chopsToFell: balance.chopsToFell } : {}),
-        ...(balance.yieldPerNode !== undefined ? { yieldPerNode: balance.yieldPerNode } : {}),
-        ...(balance.depositSize !== undefined ? { depositSize: balance.depositSize } : {}),
-        ...(balance.depositLevels !== undefined ? { depositLevels: balance.depositLevels } : {}),
-      },
-    };
-  });
-  const unbalancedGoods = real.goods
-    .filter((good) => good.gathering !== undefined && GATHERING_BALANCE_BY_ID[good.id] === undefined)
-    .map((good) => good.id);
+  const goods = real.goods.map((raw) =>
+    withGatheringBalance(withFarmingBalance(withLocalizedName(raw, goodNames))),
+  );
+  // A gathered good (carries a `gathering` block) still lacking clean-room balance stays uncalibrated.
+  const unbalancedGoods = goods
+    .filter((g) => g.gathering !== undefined && GATHERING_BALANCE_BY_ID[g.id] === undefined)
+    .map((g) => g.id);
+  // A field-farmed good (three field atomics) the farming overlay does not yet cover — the pipeline gives
+  // it no recipe, so without a `farming` block it neither field-farms nor produces (herb/mushroom today).
+  const unfarmedFieldGoods = goods
+    .filter((g) => hasFieldFarmAtomics(g) && g.farming === undefined)
+    .map((g) => g.id);
   const cataloged = new Set(VIKING_BUILDINGS.map((b) => b.id));
   const uncatalogedBuildings = real.buildings.filter((b) => !cataloged.has(b.id)).map((b) => b.id);
   const landscapeIds = new Set(real.landscape.map((t) => t.typeId));
   const navRows = NAV_LANDSCAPE_TYPES.filter((t) => !landscapeIds.has(t.typeId));
   const landscape = [...real.landscape, ...navRows];
-  // Re-validate the transformed set so a bad balance pin or injected landscape row fails here at the
-  // app boundary, not deep in the sim.
-  return { content: parseContentSet({ ...real, goods, landscape }), unbalancedGoods, uncatalogedBuildings };
+  // Re-validate the transformed set so a bad overlay or injected row fails here at the app boundary,
+  // not deep in the sim.
+  return {
+    content: parseContentSet({ ...real, goods, landscape }),
+    unbalancedGoods,
+    unfarmedFieldGoods,
+    uncatalogedBuildings,
+  };
 }
 
 /**
@@ -120,16 +158,18 @@ export async function loadRuntimeRealContent(
 }
 
 /**
- * Log the gaps {@link mergeRealContent} surfaced — gathered goods with no clean-room balance and
- * buildings beyond the clean-room catalog — as one console line, so a browser run shows what the overlay
- * could not fill. No-op when there is nothing to report.
+ * Log the gaps {@link mergeRealContent} surfaced — gathered goods with no clean-room balance, field goods
+ * with no clean-room `farming` block, and buildings beyond the clean-room catalog — as one console line,
+ * so a browser run shows what the overlay could not fill. No-op when there is nothing to report.
  */
 export function logRealContentGaps(merge: RealContentMerge): void {
-  const { unbalancedGoods, uncatalogedBuildings } = merge;
-  if (unbalancedGoods.length === 0 && uncatalogedBuildings.length === 0) return;
+  const { unbalancedGoods, unfarmedFieldGoods, uncatalogedBuildings } = merge;
+  if (unbalancedGoods.length === 0 && unfarmedFieldGoods.length === 0 && uncatalogedBuildings.length === 0)
+    return;
   console.info(
     `real content gaps: ${unbalancedGoods.length} gathered good(s) without clean-room balance ` +
-      `[${unbalancedGoods.join(', ')}], ${uncatalogedBuildings.length} building(s) beyond the catalog ` +
+      `[${unbalancedGoods.join(', ')}], ${unfarmedFieldGoods.length} field good(s) without a farming block ` +
+      `[${unfarmedFieldGoods.join(', ')}], ${uncatalogedBuildings.length} building(s) beyond the catalog ` +
       `[${uncatalogedBuildings.join(', ')}]`,
   );
 }
