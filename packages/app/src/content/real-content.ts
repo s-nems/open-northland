@@ -1,6 +1,7 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { VIKING_BUILDINGS } from '../catalog/buildings.js';
 import { GATHERING_BALANCE_BY_ID } from '../catalog/gathering.js';
+import { NAV_LANDSCAPE_TYPES } from '../catalog/terrain.js';
 import { fetchJsonOrNull } from './net.js';
 
 /** The one in-flight/settled parse of the served IR into a `ContentSet` — memoized like {@link loadRealContent}. */
@@ -36,7 +37,8 @@ async function fetchContentSet(fetchImpl: typeof fetch): Promise<ContentSet | nu
 
 /** The real content with its gathering data completed, plus the gaps the clean-room overlay cannot fill. */
 export interface RealContentMerge {
-  /** The real content with the clean-room felling/mining balance pinned into its zeroed gathering blocks. */
+  /** The real content readied for the sim: the clean-room felling/mining balance pinned into its zeroed
+   *  gathering blocks, and the sim's nav-terrain classes ({@link NAV_LANDSCAPE_TYPES}) added to `landscape`. */
   readonly content: ContentSet;
   /** Gathered goods (they carry a `gathering` block) with no clean-room balance — they stay uncalibrated
    *  (wheat is farmed, and leather/honey/herb/meat are animal/production goods the sandbox never map-gathers). */
@@ -58,6 +60,12 @@ export interface RealContentMerge {
  * trees already fell. This keeps the ContentSet self-consistent and readies it for a content-driven
  * resource-spawn system. Gathered goods with no clean-room balance, and buildings beyond the clean-room
  * catalog, are reported — not silently dropped — so the caller can log the gap.
+ *
+ * It also injects the sim's semantic nav-terrain classes ({@link NAV_LANDSCAPE_TYPES}) into `landscape`:
+ * real content's detailed types (1..87) don't carry the collision classes a resolved grid
+ * (`content/collision.ts`) or a scene grid navigates on, and those class ids sit in a reserved band that
+ * never aliases the detailed types, so `buildTerrainGraph` on real content resolves both. Idempotent — a
+ * class row already present (a set that already lists them) is not duplicated.
  */
 export function mergeRealContent(real: ContentSet): RealContentMerge {
   const goods = real.goods.map((good) => {
@@ -79,5 +87,8 @@ export function mergeRealContent(real: ContentSet): RealContentMerge {
     .map((good) => good.id);
   const cataloged = new Set(VIKING_BUILDINGS.map((b) => b.id));
   const uncatalogedBuildings = real.buildings.filter((b) => !cataloged.has(b.id)).map((b) => b.id);
-  return { content: parseContentSet({ ...real, goods }), unbalancedGoods, uncatalogedBuildings };
+  const landscapeIds = new Set(real.landscape.map((t) => t.typeId));
+  const navRows = NAV_LANDSCAPE_TYPES.filter((t) => !landscapeIds.has(t.typeId));
+  const landscape = [...real.landscape, ...navRows];
+  return { content: parseContentSet({ ...real, goods, landscape }), unbalancedGoods, uncatalogedBuildings };
 }
