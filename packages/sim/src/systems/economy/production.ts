@@ -86,8 +86,8 @@ export const productionSystem: System = (world, ctx) => {
     const recipe = recipeOf(world, ctx, e);
     if (recipe === undefined) continue; // not a producing workplace
     // Dormancy gate before the operator lookup: `canStartCycle` is O(recipe goods) and doesn't depend on
-    // operators, so a starved/output-blocked workshop skips the operator-count work entirely (RTS budget:
-    // cost scales with active work). It elides only a provably-empty start loop.
+    // operators, so a starved/output-blocked workshop skips the per-building operator-count work (the door-node
+    // lookup + content reads) entirely. It elides only a provably-empty start loop.
     if (!canStartCycle(world, ctx, e, recipe)) continue;
     const operators = presentOperatorCount(world, ctx, e, operatorsByNode);
     let running = world.tryGet(e, Production)?.cycles.length ?? 0;

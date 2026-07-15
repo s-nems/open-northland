@@ -108,10 +108,10 @@ function operatorJobsOf(world: World, ctx: SystemContext, building: Entity): Rea
  * millers run two independent flours in parallel, doubling throughput, and a single bar never flows faster
  * than 1× (per-batch model; observed original behaviour, the exact staffing rule isn't decoded).
  *
- * The hot caller (ProductionSystem) passes a per-tick `operatorsByNode` index built once for every workplace,
- * so the door-tile lookup is O(operators on the node) instead of a full-world settler scan; an ad-hoc caller
- * omits it and pays a one-shot index build. The count is clamped to `cap` and order-independent, so both paths
- * yield the identical number.
+ * The hot caller (ProductionSystem) passes a per-tick `operatorsByNode` index built once and shared across
+ * every workplace, so the door-tile lookup is O(settlers on the node) instead of a full-world settler scan;
+ * an ad-hoc caller omits it and pays a one-shot index build. The count is clamped to `cap` and
+ * order-independent, so both paths yield the identical number.
  */
 export function presentOperatorCount(
   world: World,
