@@ -103,10 +103,8 @@ export function screenToCell(x: number, y: number): { col: number; row: number }
 /**
  * The flat `[x, y, …]` point list of a node diamond centred at `(cx, cy)` with half-extents `(hw, hh)`,
  * wound top → right → bottom → left — the shape a single half-cell node fills on the lattice. The
- * world-space per-cell washes ({@link import('../gpu/overlays/construction-plot.js').ConstructionPlotLayer},
- * {@link import('../gpu/overlays/placement-overlay.js').PlacementOverlayLayer}) feed it straight to
- * `Graphics.poly`; each computes its own `(hw, hh)` (raw cell pitch, or padded + resolution-scaled), so
- * only the diamond winding is shared here.
+ * world-space per-cell wash ({@link import('../gpu/overlays/placement-overlay.js').PlacementOverlayLayer})
+ * feeds it straight to `Graphics.poly` with its own padded + resolution-scaled `(hw, hh)`.
  */
 export function nodeDiamondPoly(cx: number, cy: number, hw: number, hh: number): number[] {
   return [cx, cy - hh, cx + hw, cy, cx, cy + hh, cx - hw, cy];
