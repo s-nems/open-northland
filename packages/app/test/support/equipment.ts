@@ -11,7 +11,7 @@ import {
   GOOD_SHOES,
   GOOD_SWORD_SHORT,
   GOOD_TOOL_IRON,
-  JOB_GATHERER_WOOD,
+  JOB_COLLECTOR,
   JOB_SOLDIER_SWORD,
   placeSandboxBuilding,
   spawnSandboxSettler,
@@ -21,7 +21,7 @@ import type { SceneDefinition } from '../../src/scenes/index.js';
 
 function build(sim: Simulation): void {
   placeSandboxBuilding(sim, BUILDING_HEADQUARTERS, 9, 12, HUMAN_PLAYER);
-  spawnSandboxSettler(sim, JOB_GATHERER_WOOD, 9, 8, HUMAN_PLAYER, {
+  spawnSandboxSettler(sim, JOB_COLLECTOR, 9, 8, HUMAN_PLAYER, {
     equipment: {
       boots: { goodType: GOOD_SHOES, degreeOfUsePct: 70 },
       tool: { goodType: GOOD_TOOL_IRON, degreeOfUsePct: 40 },
@@ -43,7 +43,7 @@ function build(sim: Simulation): void {
       misc: [{ goodType: GOOD_POTION_STAMINA_SMALL, degreeOfUsePct: 60 }, null, null, null],
     },
   });
-  spawnSandboxSettler(sim, JOB_GATHERER_WOOD, 15, 8, HUMAN_PLAYER);
+  spawnSandboxSettler(sim, JOB_COLLECTOR, 15, 8, HUMAN_PLAYER);
 }
 
 export const equipmentFixture: SceneDefinition = {

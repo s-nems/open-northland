@@ -22,7 +22,7 @@ import {
   GOOD_STONE,
   GOOD_WHEAT,
   GOOD_WOOD,
-  JOB_GATHERER_WOOD,
+  JOB_COLLECTOR,
 } from './ids/index.js';
 import { workerSlotsFor } from './worker-slots.js';
 
@@ -116,7 +116,7 @@ export interface SandboxBuildingRow {
  * Per-building sandbox behaviour overrides, keyed by typeId — a data table, so {@link buildingRow}
  * stays a pure spread and a new special building means a new row here, not another branch. A `workers`
  * here replaces the extracted {@link import('./worker-slots.js').BUILDING_WORKER_SLOTS} default (the
- * joinery pins its own gatherer-fed plank producer for the production demo).
+ * joinery pins its own collector-fed plank producer for the production demo).
  */
 const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> = {
   [BUILDING_HEADQUARTERS]: { stock: storeStock(HQ_SLOT_CAPACITY) },
@@ -152,7 +152,7 @@ const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> 
   [BUILDING_WAREHOUSE_01]: { stock: storeStock(WAREHOUSE_SLOT_CAPACITY[1]) },
   [BUILDING_WAREHOUSE_02]: { stock: storeStock(WAREHOUSE_SLOT_CAPACITY[2]) },
   [BUILDING_JOINERY]: {
-    workers: [{ jobType: JOB_GATHERER_WOOD, count: 1 }],
+    workers: [{ jobType: JOB_COLLECTOR, count: 1 }],
     // A workplace general store (the plank-producer demo), capped like the HQ so the panel shows a sane
     // limit rather than a huge number.
     stock: storeStock(HQ_SLOT_CAPACITY),

@@ -1,12 +1,6 @@
 export const enContent = {
   profession: {
     idle: 'Unemployed',
-    gatherer_wood: 'Wood gatherer',
-    gatherer_stone: 'Stone gatherer',
-    gatherer_mud: 'Clay gatherer',
-    gatherer_iron: 'Iron gatherer',
-    gatherer_gold: 'Gold gatherer',
-    gatherer_mushroom: 'Mushroom gatherer',
     carrier: 'Carrier',
     builder: 'Builder',
     joiner: 'Joiner',

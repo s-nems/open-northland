@@ -14,14 +14,7 @@ import {
   STONE_DEPOSIT_UNITS,
 } from '../../../../catalog/mining.js';
 import { GOOD_GOLD, GOOD_IRON, GOOD_MUD, GOOD_MUSHROOM, GOOD_STONE, GOOD_WOOD } from './goods.js';
-import {
-  JOB_GATHERER_GOLD,
-  JOB_GATHERER_IRON,
-  JOB_GATHERER_MUD,
-  JOB_GATHERER_MUSHROOM,
-  JOB_GATHERER_STONE,
-  JOB_GATHERER_WOOD,
-} from './jobs.js';
+import { JOB_COLLECTOR } from './jobs.js';
 
 /** How a good leaves the landscape: chop a tree down, dig a finite deposit, or pluck a small node. */
 export type GatherMode = 'fell' | 'mine' | 'pick';
@@ -29,6 +22,7 @@ export type GatherMode = 'fell' | 'mine' | 'pick';
 export interface GathererSpec {
   readonly good: number;
   readonly id: string;
+  /** The gatherer trade — always {@link JOB_COLLECTOR}: the original's one collector does every harvest. */
   readonly job: number;
   readonly atomic: number;
   readonly animation: string;
@@ -43,7 +37,7 @@ export const GATHERERS: readonly GathererSpec[] = [
   {
     good: GOOD_WOOD,
     id: 'wood',
-    job: JOB_GATHERER_WOOD,
+    job: JOB_COLLECTOR,
     atomic: HARVEST_ATOMIC,
     animation: 'viking_collector_harvest_tree',
     mode: 'fell',
@@ -52,7 +46,7 @@ export const GATHERERS: readonly GathererSpec[] = [
   {
     good: GOOD_STONE,
     id: 'stone',
-    job: JOB_GATHERER_STONE,
+    job: JOB_COLLECTOR,
     atomic: STONE_HARVEST_ATOMIC,
     animation: 'viking_collector_harvest_stone',
     mode: 'mine',
@@ -63,7 +57,7 @@ export const GATHERERS: readonly GathererSpec[] = [
   {
     good: GOOD_MUD,
     id: 'mud',
-    job: JOB_GATHERER_MUD,
+    job: JOB_COLLECTOR,
     atomic: CLAY_HARVEST_ATOMIC,
     animation: 'viking_collector_harvest_mud',
     mode: 'mine',
@@ -74,7 +68,7 @@ export const GATHERERS: readonly GathererSpec[] = [
   {
     good: GOOD_IRON,
     id: 'iron',
-    job: JOB_GATHERER_IRON,
+    job: JOB_COLLECTOR,
     atomic: IRON_HARVEST_ATOMIC,
     animation: 'viking_collector_harvest_iron',
     mode: 'mine',
@@ -85,7 +79,7 @@ export const GATHERERS: readonly GathererSpec[] = [
   {
     good: GOOD_GOLD,
     id: 'gold',
-    job: JOB_GATHERER_GOLD,
+    job: JOB_COLLECTOR,
     atomic: GOLD_HARVEST_ATOMIC,
     animation: 'viking_collector_harvest_gold',
     mode: 'mine',
@@ -96,7 +90,7 @@ export const GATHERERS: readonly GathererSpec[] = [
   {
     good: GOOD_MUSHROOM,
     id: 'mushroom',
-    job: JOB_GATHERER_MUSHROOM,
+    job: JOB_COLLECTOR,
     atomic: MUSHROOM_HARVEST_ATOMIC,
     animation: 'viking_collector_harvest_mushroom',
     mode: 'pick',

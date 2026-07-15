@@ -6,7 +6,7 @@ import {
   GATHERERS,
   GOOD_WOOD,
   JOB_ARCHER_LONG,
-  JOB_GATHERER_WOOD,
+  JOB_COLLECTOR,
   JOB_SOLDIER_SWORD,
   placeFlag,
   placeResourceNode,
@@ -58,7 +58,7 @@ const GATHER_FLAG_X = 18;
 const PLAYER_CLUSTER: ReadonlyArray<{ x: number; y: number; job: number }> = (() => {
   const out: Array<{ x: number; y: number; job: number }> = [];
   for (let row = 0; row < 3; row++) {
-    for (let col = 0; col < 5; col++) out.push({ x: 42 + col, y: 56 + row, job: JOB_GATHERER_WOOD });
+    for (let col = 0; col < 5; col++) out.push({ x: 42 + col, y: 56 + row, job: JOB_COLLECTOR });
   }
   return out;
 })();

@@ -11,7 +11,7 @@ import {
   GOOD_STONE,
   GOOD_WHEAT,
   GOOD_WOOD,
-  JOB_GATHERER_WOOD,
+  JOB_COLLECTOR,
 } from '../src/game/sandbox/ids/index.js';
 import {
   barTone,
@@ -83,7 +83,7 @@ describe('selection details panel model', () => {
           components: {
             Settler: {
               tribe: 1,
-              jobType: JOB_GATHERER_WOOD,
+              jobType: JOB_COLLECTOR,
               hunger: 0,
               fatigue: 0,
               piety: 0,
@@ -118,10 +118,10 @@ describe('selection details panel model', () => {
     // change, so a compact store's rows never swap places mid-work.
     expect(model.stock[0]?.goodType).toBe(GOOD_WOOD);
     expect(model.stock[0]?.amount).toBe(3);
-    // The worker section is a per-trade filled/capacity line: the joinery's one gatherer slot, now filled
+    // The worker section is a per-trade filled/capacity line: the joinery's one collector slot, now filled
     // (the bound settler), named from the shared catalog + i18n (Polish), not the raw job id.
     expect(model.workerSlots).toEqual([
-      expect.objectContaining({ label: 'Zbieracz drewna', filled: 1, capacity: 1 }),
+      expect.objectContaining({ label: 'Zbieracz', filled: 1, capacity: 1 }),
     ]);
   });
 
