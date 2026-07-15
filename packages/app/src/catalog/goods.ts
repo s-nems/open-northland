@@ -13,13 +13,13 @@
  * palette the pipeline bound), so no typeId needs to match for art to appear.
  *
  * The `typeId` is sandbox-scoped, not the ir.json typeId: it is `EXTENDED_GOOD_TYPE_OFFSET + irTypeId`,
- * offset so the block clears the core economy ids 0–8 (`GOOD_NONE`..`GOOD_MUSHROOM` in `sandbox/ids/`)
- * without renumbering them (which would move the gathered-economy goldens). Subtracting the offset recovers
- * the ir typeId. Goods are their own typeId namespace (the `goodType` key in stockpiles/recipes/drops), so
- * this block collides with no building/job/weapon id.
+ * offset so the extended block (101+) clears the core economy goods (`GOOD_NONE`..`GOOD_MUSHROOM` in
+ * `sandbox/ids/`), which carry their real ir.json ids (≤ mushroom 14). Subtracting the offset recovers the
+ * ir typeId. Goods are their own typeId namespace (the `goodType` key in stockpiles/recipes/drops), so this
+ * block collides with no building/job/weapon id.
  */
 
-/** The offset added to each ir.json good typeId to mint its sandbox-scoped id, clearing the core 0–8 block. */
+/** The offset added to each ir.json good typeId to mint its sandbox-scoped id, clearing the real core ids (≤ 14). */
 export const EXTENDED_GOOD_TYPE_OFFSET = 100;
 
 /** One extended good: the sim `goodType` key + its stable icon-keying id, English name, and storability. */
