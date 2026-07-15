@@ -104,7 +104,7 @@ describe('convertBmdTree', () => {
     await layDownAssets();
     const { bindings, palettes } = sampleBinding();
 
-    const done = await convertBmdTree(bindings, palettes, out, new Set());
+    const done = await convertBmdTree({ bindings, palettes, buildTimeBmds: new Set() }, out);
 
     expect(done).toHaveLength(1);
     // The case-insensitive resolution maps the normalized refs onto the real mixed-case on-disk paths,
@@ -137,7 +137,7 @@ describe('convertBmdTree', () => {
       { name: 'wolf01', gfxFile: 'data/pal/wolf01.pcx' },
     ];
 
-    const done = await convertBmdTree(bindings, palettes, out, new Set());
+    const done = await convertBmdTree({ bindings, palettes, buildTimeBmds: new Set() }, out);
 
     expect(done).toHaveLength(2);
     // Two distinct atlas files from one shared .bmd — the palette name is the differentiator.
@@ -156,7 +156,7 @@ describe('convertBmdTree', () => {
     const { bindings } = sampleBinding();
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
-    const done = await convertBmdTree(bindings, [], out, new Set()); // empty palette index
+    const done = await convertBmdTree({ bindings, palettes: [], buildTimeBmds: new Set() }, out); // empty palette index
 
     expect(done).toEqual([]);
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/unknown palette "bear01"/));
@@ -170,7 +170,7 @@ describe('convertBmdTree', () => {
     const { bindings, palettes } = sampleBinding();
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
-    const done = await convertBmdTree(bindings, palettes, out, new Set());
+    const done = await convertBmdTree({ bindings, palettes, buildTimeBmds: new Set() }, out);
 
     expect(done).toEqual([]);
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/bmd data\/bobs\/body\.bmd not found/));
@@ -185,7 +185,7 @@ describe('convertBmdTree', () => {
     const { bindings, palettes } = sampleBinding();
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
-    const done = await convertBmdTree(bindings, palettes, out, new Set());
+    const done = await convertBmdTree({ bindings, palettes, buildTimeBmds: new Set() }, out);
 
     expect(done).toEqual([]);
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/skipped data\/bobs\/body\.bmd:/));
@@ -252,7 +252,7 @@ describe('convertBmdTree build-time bake', () => {
       { name: 'ruins01', gfxFile: 'data/pal/ruins01.pcx' },
     ];
 
-    await convertBmdTree(bindings, palettes, out, new Set(['data/bobs/house.bmd']));
+    await convertBmdTree({ bindings, palettes, buildTimeBmds: new Set(['data/bobs/house.bmd']) }, out);
 
     const alphaOf = async (png: string): Promise<number> => {
       const img = decodePng(await readFile(join(out, 'Data', 'Bobs', png)));

@@ -46,8 +46,9 @@ async function run(args: Args): Promise<void> {
   // Convert every (bmd, palette) graphics binding (resolved by resolveGraphicsBindings) to an atlas PNG +
   // manifest JSON. A binding names its palette by editname, which palettes.ini resolves to the .pcx whose
   // trailer colours the bobs; both the .bmd and .pcx are read from the just-unpacked <out> tree.
-  const { bindings, palettes, buildTimeBmds } = await resolveGraphicsBindings(args.game, args.mod);
-  const atlases = await convertBmdTree(bindings, palettes, args.out, buildTimeBmds);
+  const graphics = await resolveGraphicsBindings(args.game, args.mod);
+  const atlases = await convertBmdTree(graphics, args.out);
+  const { bindings, palettes } = graphics;
   // Atlases are named per (bmd, palette), so the log reports both the distinct atlas files and the
   // distinct body .bmd geometries behind them — the gap is the per-creature recolour fan-out.
   const distinct = new Set(atlases.map((a) => a.png)).size;

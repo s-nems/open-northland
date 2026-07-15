@@ -2,15 +2,11 @@ import { readFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import { type AtlasAlphaMode, type BobAtlas, packBobAtlas } from '../../decoders/atlas.js';
 import { decodeBmd } from '../../decoders/bmd/index.js';
-import {
-  type BmdPaletteBinding,
-  normalizeAssetPath,
-  type PaletteAlias,
-  paletteAliasMap,
-} from '../../decoders/ini.js';
+import { normalizeAssetPath, paletteAliasMap } from '../../decoders/ini.js';
 import { decodePcx } from '../../decoders/pcx.js';
 import { walkFiles } from '../../walk.js';
 import { writeAtlasBeside } from '../game-file.js';
+import type { GraphicsBindingSet } from './bindings.js';
 
 /**
  * Pure composition: `.bmd` bytes + a 768-byte RGB palette -> a packed bob atlas (the RGBA sheet to
@@ -94,12 +90,8 @@ function paletteSlug(name: string): string {
  * variant of a claimed `.bmd` must bake the same way. Required (no default) because an
  * accidentally-empty set silently ghosts every building.
  */
-export async function convertBmdTree(
-  bindings: readonly BmdPaletteBinding[],
-  palettes: readonly PaletteAlias[],
-  outDir: string,
-  buildTimeBmds: ReadonlySet<string>,
-): Promise<BmdConversion[]> {
+export async function convertBmdTree(graphics: GraphicsBindingSet, outDir: string): Promise<BmdConversion[]> {
+  const { bindings, palettes, buildTimeBmds } = graphics;
   const done: BmdConversion[] = [];
   const paletteByName = paletteAliasMap(palettes);
   const tree = await indexOutTree(outDir);

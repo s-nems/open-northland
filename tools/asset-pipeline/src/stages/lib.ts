@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, normalize, relative, sep } from 'node:path';
-import { decodeLib } from '../decoders/lib.js';
+import { decodeLib, type LibFile } from '../decoders/lib.js';
 import { walkFiles } from '../walk.js';
 
 /**
@@ -51,7 +51,7 @@ export async function unpackLibTree(gameDir: string, outDir: string): Promise<Li
       console.warn(`[pipeline] skipped archive ${archive}: ${(err as Error).message}`);
       continue;
     }
-    let files: ReturnType<typeof decodeLib>['files'];
+    let files: readonly LibFile[];
     try {
       files = decodeLib(archiveBytes).files;
     } catch (err) {
