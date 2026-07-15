@@ -8,10 +8,10 @@ import { type PoolFrame, SpritePool } from '../src/gpu/sprite-pool/index.js';
 import { TextureCache } from '../src/gpu/texture-cache.js';
 
 /**
- * The retained pool's SCREEN-bounded reconcile: per-frame work must track what's on screen, not the pool,
- * which only shrinks on death and so grows to every entity ever seen (the render contract). The detach and
- * paletted-placement passes iterate the {@link SpritePool} `attached` set — the entities on the layer — so
- * the attached-layer child count IS that scan domain, and `stats().pooled` is the whole pool.
+ * The retained pool's SCREEN-bounded reconcile: per-frame work must track what's on screen, not the whole
+ * pool (the render contract). The detach and paletted-placement passes iterate the {@link SpritePool}
+ * `attached` set — the entities on the layer — so the attached-layer child count IS that scan domain,
+ * while `stats().pooled` is the whole pool.
  *
  * SpritePool is Pixi-coupled, but its display objects construct headlessly (the map-object-removal +
  * chunk-batcher tests rely on the same), so the attach/detach/reap bookkeeping is checkable without a GL
@@ -90,21 +90,27 @@ describe('SpritePool — reconcile scans track the screen, not the pool', () => 
     expect(pool.stats().pooled).toBe(3);
   });
 
-  it('reaps an entity that left the snapshot but keeps a merely-culled live one', () => {
+  it('detaches a dead entity immediately, defers its reap, and keeps a culled-but-live one', () => {
     const layer = new Container();
     const pool = new SpritePool(layer, new TextureCache(), undefined);
 
-    pool.reconcile(poolFrame(snapshotOf(BUILDINGS), FRAMES_ALL));
+    pool.reconcile(poolFrame(snapshotOf(BUILDINGS), FRAMES_ALL)); // frame 1
+    expect(layer.children.length).toBe(3);
     expect(pool.stats().pooled).toBe(3);
 
-    // Building 2 leaves the snapshot (died); building 3 stays live but off-screen under FRAMES_FIRST.
+    // Building 2 leaves the snapshot (died) while still framed. The next frame is not a reap frame, so it
+    // detaches at once (invisible) but its display object is not yet freed — the deferred-reap contract.
     const survivors = snapshotOf([BUILDINGS[0], BUILDINGS[2]]);
-    // The death reap runs on an interval, so drive frames until it fires (bounded, interval-agnostic).
+    pool.reconcile(poolFrame(survivors, FRAMES_ALL)); // frame 2 — not a reap multiple
+    expect(layer.children.length).toBe(2); // detached the same frame it died
+    expect(pool.stats().pooled).toBe(3); // still pooled — reap runs on an interval, not every frame
+
+    // Now frame only building 1 (building 3 stays live but culled). Drive frames until the reap fires.
     for (let i = 0; i < 64 && pool.stats().pooled > 2; i++) {
       pool.reconcile(poolFrame(survivors, FRAMES_FIRST));
     }
-    expect(pool.stats().pooled).toBe(2); // the dead entity's display object is freed...
-    expect(layer.children.length).toBe(1); // ...building 1 stays visible; building 3 is pooled-but-culled
+    expect(pool.stats().pooled).toBe(2); // the dead entity is freed; the culled-but-live one is kept
+    expect(layer.children.length).toBe(1); // only building 1 is framed
   });
 
   it('destroy() frees the pool and detaches everything', () => {
