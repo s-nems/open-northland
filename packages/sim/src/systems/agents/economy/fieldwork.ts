@@ -107,7 +107,7 @@ export function planBuilder(plan: PlannerContext, spacing: SpacingState): boolea
   // The need already discounts other settlers' live supply errands (SupplyRun), and this fetch stamps
   // its own — so a crew spreads over the still-unclaimed materials instead of racing to the same unit.
   const need = nextNeededConstructionGood(world, ctx, site, plan.inbound);
-  const src = need && nearestStoreHolding(targets.stockpiles, world, ctx, terrain, here, need.goodType);
+  const src = need && nearestStoreHolding(targets.stockpileCells, world, here, need.goodType);
   if (need !== null && src != null) {
     const batch = Math.min(need.amount, carrierCarryCapacity(world, ctx, settler.tribe));
     stampSupplyRun(world, e, plan.inbound, { site, goodType: need.goodType, amount: batch });

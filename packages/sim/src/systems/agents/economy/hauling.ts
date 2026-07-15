@@ -52,12 +52,12 @@ export function planPorter(plan: PlannerContext): boolean {
  * haul (the caller de-stacks it).
  */
 export function planCarrierHaul(plan: PlannerContext, anyHaulable: boolean): boolean {
-  const { world, ctx, terrain, entity: e, here, targets } = plan;
+  const { world, ctx, entity: e, here, targets } = plan;
   const settler = plan;
   if (!isCarrierJob(ctx, settler.jobType)) return false; // hauling is the carrier trade's job alone
   if (!world.has(e, JobAssignment)) return false; // an unassigned carrier has no store to work for
   const haul = anyHaulable
-    ? nearestWorkplaceOutput(targets.stockpiles, targets.sinks, world, ctx, terrain, here)
+    ? nearestWorkplaceOutput(targets.stockpileCells, targets.sinks, world, ctx, here)
     : null;
   if (haul === null) return false;
   walkPickupBatch(plan, haul.workplace, haul.goodType);

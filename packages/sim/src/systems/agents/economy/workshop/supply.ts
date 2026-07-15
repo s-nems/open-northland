@@ -1,13 +1,12 @@
 import type { Recipe } from '@open-northland/data';
-import { Building, Position, Production, Stockpile } from '../../../../components/index.js';
+import { Building, Production, Stockpile } from '../../../../components/index.js';
 import { ONE } from '../../../../core/fixed.js';
 import type { Entity, World } from '../../../../ecs/world.js';
-import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
+import type { NodeId } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
 import { startableCycleCount } from '../../../economy/production.js';
-import { manhattan } from '../../../spatial.js';
 import { stockCapacity } from '../../../stores/index.js';
-import { closer, interactionCell } from '../../targets/index.js';
+import type { InteractionCellIndex } from '../../targets/index.js';
 import type { SinkAvailability } from '../../targets/stores/sinks.js';
 
 // The AI planner's SUPPLY layer: the scans behind a *producer worker running its own supply→produce→
@@ -61,10 +60,9 @@ export function workSeatCount(world: World, ctx: SystemContext, workplace: Entit
  * pinned exactly as before — the fetch only fires once an input lives in a *separate* store.
  */
 export function nearestMissingInputSource(
-  candidates: readonly Entity[],
+  index: InteractionCellIndex,
   world: World,
   ctx: SystemContext,
-  terrain: TerrainGraph,
   here: NodeId,
   workplace: Entity,
   recipe: Recipe,
@@ -75,22 +73,13 @@ export function nearestMissingInputSource(
     const have = stock.get(input.goodType) ?? 0;
     const target = restockToCapacity ? stockCapacity(world, ctx, workplace, input.goodType) : input.amount;
     if (have >= target) continue; // this input is already covered (for a cycle / to the slot's brim)
-    let best: Entity | null = null;
-    let bestDist = Number.POSITIVE_INFINITY;
-    let bestCell = Number.POSITIVE_INFINITY;
-    for (const e of candidates) {
-      if (e === workplace) continue; // never source an input from the workplace we're supplying
-      if (!world.has(e, Stockpile) || !world.has(e, Position)) continue;
-      if ((world.get(e, Stockpile).amounts.get(input.goodType) ?? 0) <= 0) continue; // holds none
-      const cell = interactionCell(world, ctx, terrain, e, here);
-      const dist = manhattan(terrain, here, cell);
-      if (closer(dist, cell, bestDist, bestCell)) {
-        best = e;
-        bestDist = dist;
-        bestCell = cell;
-      }
-    }
-    if (best !== null) return { store: best, goodType: input.goodType, amount: target - have };
+    // The stockpile index holds every Stockpile+Position candidate; source any store that isn't the
+    // workplace itself and holds the good (a warehouse, a flag pile, another workplace's output).
+    const winner = index.nearest(
+      here,
+      (e) => e !== workplace && (world.get(e, Stockpile).amounts.get(input.goodType) ?? 0) > 0,
+    );
+    if (winner !== null) return { store: winner.entity, goodType: input.goodType, amount: target - have };
   }
   return null;
 }

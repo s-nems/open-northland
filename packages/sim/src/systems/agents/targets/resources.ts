@@ -7,7 +7,7 @@ import { settlerMeetsNeed } from '../../progression/index.js';
 import { resourceHarvestAtomics, resourcesNearNode } from '../../resource-index.js';
 import { manhattan } from '../../spatial.js';
 import { lowestStockedGood } from '../../stores/index.js';
-import { closer } from './nearest.js';
+import { nearestByCell } from './cell-index.js';
 import { interactionCell, jobAtomics } from './workplaces.js';
 
 /**
@@ -84,16 +84,15 @@ export function nearestHarvestableFor(
           area.radius + contentIndex(ctx.content).maxResourceWorkOffset,
         )
       : candidates;
-  let best: { entity: Entity; cell: NodeId; dist: number } | null = null;
-  let bestDist = Number.POSITIVE_INFINITY;
-  let bestCell = Number.POSITIVE_INFINITY;
-  for (const e of scanned) {
+  // Ranked from `origin` (the flag when bound, the settler when roaming); the interaction cell still resolves
+  // from `here`, the settler's actual route start. Same filter/rank the shared loop applies to every scan.
+  const best = nearestByCell(terrain, scanned, origin, (e) => {
     const res = world.tryGet(e, Resource);
-    if (res === undefined || res.remaining <= 0) continue;
-    if (!world.has(e, Position)) continue;
-    if (!allowed.has(res.harvestAtomic)) continue; // data-driven gate: job must permit this atomic
+    if (res === undefined || res.remaining <= 0) return null;
+    if (!world.has(e, Position)) return null;
+    if (!allowed.has(res.harvestAtomic)) return null; // data-driven gate: job must permit this atomic
     // XP gate: this settler must have cleared the harvested good's `needforgood` thresholds.
-    if (!settlerMeetsNeed(ctx, settler.tribe, 'good', res.goodType, settler.experience)) continue;
+    if (!settlerMeetsNeed(ctx, settler.tribe, 'good', res.goodType, settler.experience)) return null;
     const cell = interactionCell(world, ctx, terrain, e, here); // work cell the settler walks to (from here)
     // Reachability gate: a resource walled off from the settler by static terrain — the far bank of a river
     // with no land crossing — sits in a different connected component, so `findPath` would reject the route
@@ -102,16 +101,11 @@ export function nearestHarvestableFor(
     // to path to it, never falling through to a reachable tree slightly farther. `componentOf` is an O(1)
     // array read (a build-time flood-fill). Measured from `here`, the settler's actual route start (bridges
     // are not yet walkable, so the two banks are genuinely separate components — a named limitation).
-    if (terrain.componentOf(here) !== terrain.componentOf(cell)) continue;
-    const dist = manhattan(terrain, origin, cell); // distance from the flag (bound) or the settler (roaming)
-    if (dist > radius) continue; // outside the flag's work radius — a bound gatherer leaves it be
-    if (closer(dist, cell, bestDist, bestCell)) {
-      best = { entity: e, cell, dist };
-      bestDist = dist;
-      bestCell = cell;
-    }
-  }
-  return best;
+    if (terrain.componentOf(here) !== terrain.componentOf(cell)) return null;
+    if (manhattan(terrain, origin, cell) > radius) return null; // outside the flag's work radius — leave it be
+    return cell;
+  });
+  return best === null ? null : { entity: best.entity, cell: best.cell, dist: best.distance };
 }
 
 /**
@@ -139,25 +133,18 @@ export function nearestCollectablePileFor(
   jobType: number,
 ): { pile: Entity; goodType: number; dist: number } | null {
   const allowed = jobAtomics(ctx, jobType);
-  let best: { pile: Entity; goodType: number } | null = null;
-  let bestDist = Number.POSITIVE_INFINITY;
-  let bestCell = Number.POSITIVE_INFINITY;
   // `candidates` is the GroundDrop candidate list, so every entry already has GroundDrop+Stockpile+Position
   // (built by collectTargets) — no per-pile marker re-check, and the scan is O(drops), ~0 when none exist.
-  for (const e of candidates) {
+  const best = nearestByCell(terrain, candidates, here, (e) => {
     const good = lowestStockedGood(world.get(e, Stockpile));
-    if (good === null) continue; // an emptied drop (about to be reaped) — nothing to collect
+    if (good === null) return null; // an emptied drop (about to be reaped) — nothing to collect
     const harvestAtomic = harvestAtomicByGood.get(good);
-    if (harvestAtomic === undefined || !allowed.has(harvestAtomic)) continue; // not this job's trade
-    const cell = interactionCell(world, ctx, terrain, e, here);
-    const dist = manhattan(terrain, here, cell);
-    if (closer(dist, cell, bestDist, bestCell)) {
-      best = { pile: e, goodType: good };
-      bestDist = dist;
-      bestCell = cell;
-    }
-  }
-  return best === null ? null : { ...best, dist: bestDist };
+    if (harvestAtomic === undefined || !allowed.has(harvestAtomic)) return null; // not this job's trade
+    return interactionCell(world, ctx, terrain, e, here);
+  });
+  if (best === null) return null;
+  const good = lowestStockedGood(world.get(best.entity, Stockpile)); // the winner's good (accept required one)
+  return good === null ? null : { pile: best.entity, goodType: good, dist: best.distance };
 }
 
 /**
@@ -177,21 +164,13 @@ export function nearestOwnDropFor(
   here: NodeId,
   owner: Entity,
 ): { pile: Entity; goodType: number; dist: number } | null {
-  let best: { pile: Entity; goodType: number } | null = null;
-  let bestDist = Number.POSITIVE_INFINITY;
-  let bestCell = Number.POSITIVE_INFINITY;
-  for (const e of candidates) {
+  const best = nearestByCell(terrain, candidates, here, (e) => {
     const mark = world.tryGet(e, HarvestedBy);
-    if (mark === undefined || mark.by !== owner) continue; // not this gatherer's own drop — leave it be
-    const good = lowestStockedGood(world.get(e, Stockpile));
-    if (good === null) continue; // an emptied drop (about to be reaped) — nothing to collect
-    const cell = interactionCell(world, ctx, terrain, e, here);
-    const dist = manhattan(terrain, here, cell);
-    if (closer(dist, cell, bestDist, bestCell)) {
-      best = { pile: e, goodType: good };
-      bestDist = dist;
-      bestCell = cell;
-    }
-  }
-  return best === null ? null : { ...best, dist: bestDist };
+    if (mark === undefined || mark.by !== owner) return null; // not this gatherer's own drop — leave it be
+    if (lowestStockedGood(world.get(e, Stockpile)) === null) return null; // emptied (about to be reaped)
+    return interactionCell(world, ctx, terrain, e, here);
+  });
+  if (best === null) return null;
+  const good = lowestStockedGood(world.get(best.entity, Stockpile)); // the winner's good (accept required one)
+  return good === null ? null : { pile: best.entity, goodType: good, dist: best.distance };
 }
