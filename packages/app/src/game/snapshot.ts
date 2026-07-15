@@ -52,6 +52,13 @@ export function buildingTypeOf(e: SnapshotEntity): number | undefined {
   return num(b?.buildingType);
 }
 
+/** The settler's current trade (`Settler.jobType`), or undefined for a jobless/idle settler (jobType
+ *  `null`) or a non-settler. Drives the right-click "keep the current trade" assignment preference. */
+export function settlerJobType(e: SnapshotEntity): number | undefined {
+  const s = e.components.Settler as { jobType?: unknown } | undefined;
+  return num(s?.jobType);
+}
+
 /** The drop-off flag entity a gatherer carries (its `WorkFlag.flag`), or undefined for a non-gatherer. */
 export function workFlagOf(e: SnapshotEntity): number | undefined {
   const wf = e.components.WorkFlag as { flag?: unknown } | undefined;
