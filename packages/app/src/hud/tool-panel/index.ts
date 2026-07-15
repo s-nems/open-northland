@@ -41,8 +41,9 @@ import { createSupersampledStrip, type StripSpriteSpec, type SupersampledStrip }
  *
  * The package splits by concern: the pure geometry / speed-state / menu models (`layout.ts`,
  * `game-speed.ts`, `building-menu.ts` — headlessly unit-tested) from the window controllers
- * (`menu-window.ts`, `stats-window.ts`, `placement.ts` — each owning its own graphics + state over the
- * shared {@link PanelContext}); this module mounts the strip, owns the speed button, and routes input.
+ * (`menu-window.ts`, `goods-window.ts`, `stats-window.ts` on the shared `window-shell.ts` lifecycle, plus
+ * `placement.ts` — each over the shared {@link PanelContext}); this module mounts the strip, owns the
+ * speed button, and routes input.
  */
 
 export interface ToolPanelOptions {

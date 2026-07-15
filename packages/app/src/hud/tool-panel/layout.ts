@@ -3,19 +3,13 @@ import { contains, type Rect } from '../geometry.js';
 /**
  * The left in-game tool panel — geometry, pinned to the original.
  *
- * Every rect below is the project's current mapping in the original's 640×480–1024×768 design space.
- * The mapping should be checked against the running original before pixel-fidelity sign-off. We keep the
- * hex→decimal literals in a named table (the constant *is* the geometry, so this
- * satisfies the no-magic-numbers rule) and anchor the strip top-left, scaling the whole thing by
- * `uiscale` (default 1.4× — see {@link DEFAULT_UI_SCALE} — with a `?uiscale=` override) so it reads on an
- * arbitrary-size canvas. The panel's internal layout stays pinned — only the uniform scale is ours
- * (logged in source basis "Left tool panel"). The scale may be fractional (the 1.4× default) — it is
- * clamped to ≥1 but not floored. The GUI art is a nearest-sampled indexed bitmap (palette indices can't
- * be linearly filtered), so drawing it straight at a fractional scale doubles some texel columns and not
- * others ("pixeloza"). To keep a fractional scale crisp, the strip+buttons are rasterized at an integer
- * oversample into an off-screen texture and linear-downscaled to the display size (`strip-texture.ts`);
- * {@link designBounds} sizes that texture. This scale knob is the single input a future in-game UI-size
- * slider would drive.
+ * Every rect below maps into the original's 640×480–1024×768 design space (provisional until checked
+ * against the running original before pixel-fidelity sign-off). The hex→decimal literals live in a named
+ * table (the constant *is* the geometry, satisfying the no-magic-numbers rule); the strip anchors top-left
+ * and scales by `uiscale` (default 1.4× — see {@link DEFAULT_UI_SCALE}, `?uiscale=` override, clamped ≥1,
+ * fractional allowed) so it reads on any canvas size. Rendering that fractional scale of the nearest-sampled
+ * indexed art crisply is `strip-texture.ts`'s job (it oversamples into an off-screen texture sized via
+ * {@link designBounds}); this scale is the one knob a future in-game UI-size slider would drive.
  *
  * `gfx` is the original engine gfx id, which for `ls_gui_window` equals the atlas frame id (firstBobId=0,
  * see `content/gui-atlas-map.ts`), so the view resolves the sprite with `atlas.frames.get(spec.gfx)`.
