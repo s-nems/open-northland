@@ -7,7 +7,6 @@ import {
   BUILDING_FARM,
   BUILDING_WAREHOUSE_00,
   GOOD_WHEAT,
-  JOB_FARMER_SLOT,
   placeSandboxBuilding,
   spawnWorkersAtDoor,
 } from '../game/sandbox/index.js';
@@ -70,7 +69,7 @@ function build(sim: Simulation): void {
   placeSandboxBuilding(sim, BUILDING_WAREHOUSE_00, WAREHOUSE_X, WAREHOUSE_Y);
   // The farmers spawn at the farm door so the adopt pass staffs them on tick 1, then the field loop
   // takes over (see spawnWorkersAtDoor — node-exact, keeping the door offset).
-  spawnWorkersAtDoor(sim, BUILDING_FARM, FARM_X, FARM_Y, JOB_FARMER_SLOT, FARMERS, HUMAN_PLAYER);
+  spawnWorkersAtDoor(sim, BUILDING_FARM, FARM_X, FARM_Y, FARMERS, HUMAN_PLAYER);
 }
 
 /** The scene's one farm entity, or null before the placement command ran. */
