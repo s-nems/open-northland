@@ -24,6 +24,7 @@ export * from './lifecycle/cleanup.js';
 export * from './lifecycle/needs.js';
 export * from './lifecycle/reproduction.js';
 export * from './movement/collision/index.js';
+export * from './movement/evict.js';
 export * from './movement/herding.js';
 export * from './movement/movement.js';
 export * from './movement/routing.js';

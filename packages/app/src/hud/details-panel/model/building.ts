@@ -1,4 +1,4 @@
-import type { WorldSnapshot } from '@open-northland/sim';
+import { constructionBillForType, type WorldSnapshot } from '@open-northland/sim';
 import { type entityById, isSettler, num } from '../../../game/snapshot.js';
 import { messages } from '../../../i18n/index.js';
 import { goodCategoryTab } from '../stock-tabs.js';
@@ -178,10 +178,12 @@ export function stockRows(
 }
 
 /**
- * The Construction-window model of a site: one row per `construction` cost line with how much of it the
- * site's hold already has (the same Stockpile the finished building will store into — the sim keeps one
- * hold, so the panel is what separates "materials for the build" from "the store"), plus the health ramp.
- * Null for a finished building (no `UnderConstruction` marker).
+ * The Construction-window model of a site: one row per line of the type's FROM-SCRATCH construction bill
+ * ({@link constructionBillForType} — a home tier's whole cumulative chain cost, exactly what the sim
+ * demands before the site finishes) with how much of it the site's hold already has (the same Stockpile
+ * the finished building will store into — the sim keeps one hold, so the panel is what separates
+ * "materials for the build" from "the store"), plus the health ramp. Null for a finished building (no
+ * `UnderConstruction` marker).
  */
 export function constructionModel(
   ctx: UnitPanelModelContext,
@@ -193,7 +195,8 @@ export function constructionModel(
   const health = ent.components.Health as { hitpoints?: unknown; max?: unknown } | undefined;
   const hitpoints = num(health?.hitpoints);
   const max = num(health?.max);
-  const rows = (def?.construction ?? []).map((line) => {
+  const bill = def === undefined ? [] : constructionBillForType(ctx.buildings, def.typeId);
+  const rows = bill.map((line) => {
     const goodId = goodDef(ctx, line.goodType)?.id;
     return {
       goodType: line.goodType,

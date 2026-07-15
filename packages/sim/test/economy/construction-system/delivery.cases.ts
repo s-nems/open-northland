@@ -97,7 +97,9 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
     builderAt(sim, 6, 0);
 
     let built = false;
-    for (let i = 0; i < 400 && !built; i++) {
+    // Generous tick budget: the builder makes three fetch trips AND hammers out every strike alone
+    // (3 units × STRIKES_PER_UNIT swings, several ticks each).
+    for (let i = 0; i < 1200 && !built; i++) {
       sim.step();
       built = sim.world.get(site, Building).built >= ONE;
     }

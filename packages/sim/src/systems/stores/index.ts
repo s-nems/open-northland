@@ -5,6 +5,7 @@
 
 export { isYardHeap, lowestStockedGood, MAX_GROUND_STACK, stockCapacity } from './capacity.js';
 export {
+  constructionBillOf,
   constructionMaterialsPresent,
   constructionTotalUnits,
   deliveredConstructionFraction,

@@ -9,18 +9,20 @@ import { type InboundSupplyTally, inboundSupplyOf } from './supply-tally.js';
 // and the next good a builder must fetch. Read by the ConstructionSystem, the builder drive, and the
 // store capacity math (a site advertises room for exactly its outstanding materials).
 
-/** The `construction` material cost of a building entity's type — the goods that must be delivered and
- *  hammered in to raise it — or an empty list when the entity is not a typed building (a bare fixture)
- *  or its type declares no cost (a free type). The shared read behind {@link deliveredConstructionFraction},
+/** The material cost of raising a building entity FROM SCRATCH — its type's from-scratch construction
+ *  bill (for a home tier, the merged cost of every chain stage up to it — see
+ *  {@link import('../../core/content-index.js').ContentIndex.constructionBillByBuilding}) — or an empty
+ *  list when the entity is not a typed building (a bare fixture) or its type declares no cost (a free
+ *  type). The shared read behind {@link deliveredConstructionFraction},
  *  {@link constructionMaterialsPresent}, {@link nextNeededConstructionGood}, and {@link constructionTotalUnits}. */
-function constructionCostOf(
+export function constructionBillOf(
   world: World,
   ctx: SystemContext,
   site: Entity,
 ): readonly { goodType: number; amount: number }[] {
   const b = world.tryGet(site, Building);
   if (b === undefined) return EMPTY_CONSTRUCTION;
-  return contentIndex(ctx.content).buildings.get(b.buildingType)?.construction ?? EMPTY_CONSTRUCTION;
+  return contentIndex(ctx.content).constructionBillByBuilding.get(b.buildingType) ?? EMPTY_CONSTRUCTION;
 }
 
 const EMPTY_CONSTRUCTION: readonly { goodType: number; amount: number }[] = [];
@@ -29,7 +31,7 @@ const EMPTY_CONSTRUCTION: readonly { goodType: number; amount: number }[] = [];
  *  fraction and the per-swing labor quantum divide against. 0 for a free (empty-cost) type. */
 export function constructionTotalUnits(world: World, ctx: SystemContext, site: Entity): number {
   let units = 0;
-  for (const line of constructionCostOf(world, ctx, site)) units += line.amount;
+  for (const line of constructionBillOf(world, ctx, site)) units += line.amount;
   return units;
 }
 
@@ -44,7 +46,7 @@ export function deliveredConstructionFraction(world: World, ctx: SystemContext, 
   const stock = world.tryGet(site, Stockpile)?.amounts;
   let needed = 0;
   let delivered = 0;
-  for (const line of constructionCostOf(world, ctx, site)) {
+  for (const line of constructionBillOf(world, ctx, site)) {
     needed += line.amount;
     delivered += Math.min(Math.max(stock?.get(line.goodType) ?? 0, 0), line.amount);
   }
@@ -56,7 +58,7 @@ export function deliveredConstructionFraction(world: World, ctx: SystemContext, 
  *  A free (empty-cost) type is trivially satisfied. The completion gate the ConstructionSystem ANDs with
  *  a fully-hammered `labor`. */
 export function constructionMaterialsPresent(world: World, ctx: SystemContext, site: Entity): boolean {
-  return holdsAll(world.tryGet(site, Stockpile)?.amounts, constructionCostOf(world, ctx, site));
+  return holdsAll(world.tryGet(site, Stockpile)?.amounts, constructionBillOf(world, ctx, site));
 }
 
 /**
@@ -74,7 +76,7 @@ export function nextNeededConstructionGood(
   inbound: InboundSupplyTally,
 ): { goodType: number; amount: number } | null {
   const stock = world.tryGet(site, Stockpile)?.amounts;
-  const cost = [...constructionCostOf(world, ctx, site)].sort((a, b) => a.goodType - b.goodType);
+  const cost = [...constructionBillOf(world, ctx, site)].sort((a, b) => a.goodType - b.goodType);
   let best: { goodType: number; amount: number } | null = null;
   let bestCovered = 0;
   let bestNeed = 1;

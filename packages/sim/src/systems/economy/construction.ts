@@ -11,7 +11,9 @@ import { contentIndex } from '../../core/content-index.js';
 import { type Fixed, fx, ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
+import { evictSettlersFromFootprint } from '../movement/evict.js';
 import {
+  constructionBillOf,
   constructionMaterialsPresent,
   constructionTotalUnits,
   deliveredConstructionFraction,
@@ -48,8 +50,10 @@ import {
  * and — when it runs dry — fetches a missing material itself. A built home that can still upgrade advertises
  * its next tier's cost the same way, so the upgrade materials accumulate with no upgrade-specific transport code.
  *
- * Source basis: the site-then-build flow, the material cost (`construction`, graphics-table
- * `LogicConstructionGoods`), and the per-building max HP (`logichitpoints`) are extracted/faithful; the
+ * Source basis: the site-then-build flow, the per-tier material cost (`construction`, graphics-table
+ * `LogicConstructionGoods`), and the per-building max HP (`logichitpoints`) are extracted/faithful; a
+ * directly-placed home tier paying its whole cumulative chain bill matches the observed original (building
+ * tier N is never cheaper than upgrading to it — see `constructionBillOf`); the
  * builder-driven pace (several hammer strikes per unit) and the consume-when-complete / upgrade-when-paid
  * behaviors are our design (the engine's build/upgrade loop has no oracle). Determinism: buildings are visited
  * in the Building store's insertion order, every decision reads content + the site's own components, and every
@@ -64,7 +68,7 @@ export const constructionSystem: System = (world, ctx) => {
     if (type === undefined) continue; // unknown type — can't price the build (shouldn't happen)
 
     if (world.has(e, UnderConstruction)) {
-      advanceSite(world, ctx, e, building, type.construction);
+      advanceSite(world, ctx, e, building, constructionBillOf(world, ctx, e));
       continue;
     }
 
@@ -82,14 +86,17 @@ export const constructionSystem: System = (world, ctx) => {
     consumeMaterials(world, e, next.construction);
     building.buildingType = next.typeId; // adopt the larger tier — homeSize/housingCapacity grow
     building.level += 1;
+    // The larger tier's footprint may enclose cells settlers were standing on — push them out.
+    evictSettlersFromFootprint(world, ctx, e);
     ctx.events.emit({ kind: 'buildingUpgraded', entity: e, level: building.level });
   }
 };
 
 /**
  * Advance one construction site this tick: reflect builder work + delivered material into `built` and
- * `Health`, and finish the build when both gates are complete. `cost` is the site type's `construction`
- * (spent into the structure on completion).
+ * `Health`, and finish the build when both gates are complete. `cost` is the site type's from-scratch
+ * construction bill (for a home tier, every chain stage's cost — see `constructionBillOf`), spent into
+ * the structure on completion.
  */
 function advanceSite(
   world: World,
@@ -107,6 +114,9 @@ function advanceSite(
     building.built = ONE; // built — production / housing now count it
     world.remove(e, UnderConstruction); // a finished building is a plain Building again
     setHealth(world, e, ONE); // full life
+    // A settler that strayed onto the plot during the build (a stale route, a spawn) must not be
+    // left standing inside the finished walls.
+    evictSettlersFromFootprint(world, ctx, e);
     ctx.events.emit({ kind: 'buildingFinished', entity: e });
     return;
   }
@@ -162,12 +172,13 @@ function consumeMaterials(world: World, building: Entity, cost: readonly GoodsLi
 /**
  * Hammer strikes a builder sinks into each unit of construction material. A build swing is a small step —
  * `ONE / (units · this)` of the work, not a whole unit installed — so a builder visibly works a foundation up
- * over many strikes, and the total strikes to raise a building scale with its size through its material cost (a
- * bigger house costs more units → proportionally more swings; the base-tier home the scene builds costs 6 units
- * → two dozen strikes' worth of work). Our design (the engine's build loop has no oracle), tuned for a
- * watchable build.
+ * over many strikes, and the total strikes to raise a building scale with its size through its material cost
+ * (a bigger house costs more units → proportionally more swings, and a directly-placed higher home tier pays
+ * its whole cumulative bill — see `constructionBillOf` — so it also builds proportionally slower). Our design
+ * (the engine's build loop has no oracle), tuned against the observed original's pace: each strike advances
+ * the build by a small single-digit-percent step, far less than the quarter-unit the first cut used.
  */
-const STRIKES_PER_UNIT = 4;
+const STRIKES_PER_UNIT = 16;
 
 /**
  * Advance a construction site's builder-work `labor` by one swing — the `construct` atomic's effect, applied by

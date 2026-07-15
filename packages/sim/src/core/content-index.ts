@@ -93,6 +93,16 @@ export interface ContentIndex {
    *  must not make that job a gatherer. See {@link import('../systems/economy/flags.js').jobCanHarvest}. */
   readonly harvestJobs: ReadonlySet<number>;
   /**
+   * Per building type: the FROM-SCRATCH construction bill — what a newly-placed site of this type must
+   * be delivered and hammer in. For a `home` tier this is the merged sum of every chain tier's own
+   * `construction` up to and including it (the chain is the consecutive `home` typeIds — see
+   * `homeNextTier`), so building tier N directly costs stages 1..N, exactly like building tier 1 and
+   * upgrading N−1 times (source basis: observed original behavior — a directly-placed higher home is
+   * never cheaper than the upgrade path). Every other type's bill is its own `construction`. Lines are
+   * merged per goodType and sorted ascending (canonical order for the picks that scan them).
+   */
+  readonly constructionBillByBuilding: ReadonlyMap<number, readonly { goodType: number; amount: number }[]>;
+  /**
    * The largest Manhattan node-offset any resource's work cell can sit from its anchor, over every
    * `landscapeGfx` work-area cell — floored at 3, covering both `resourceWorkCell` fallbacks with headroom:
    * `nearestFreeNeighbour` walks the orthogonal neighbour set (Manhattan 1, `nav/terrain/graph.ts`
@@ -135,6 +145,7 @@ function buildIndex(content: ContentSet): ContentIndex {
     gatheringPipelinesByGood: byKey(content.gatheringPipeline, (p) => p.goodType),
     landscapeGfxByIndex: new Map(content.landscapeGfx.map((g) => [g.index, g])), // last-wins, as before
     atomicsByJob: jobAtomicSets(content),
+    constructionBillByBuilding: constructionBills(content),
     harvestJobs: harvestCapableJobs(content),
     maxResourceWorkOffset: maxWorkCellOffset(content),
     // A weapon row's tribeType/jobType are optional in the schema; a row missing the key could never
@@ -258,6 +269,59 @@ function workerJobSets(content: ContentSet): ReadonlyMap<number, ReadonlySet<num
     map.set(b.typeId, new Set(b.workers.map((w) => w.jobType)));
   }
   return map;
+}
+
+/**
+ * The per-type from-scratch construction bills ({@link ContentIndex.constructionBillByBuilding}).
+ * First-wins per typeId, like the other tables (a home tier resolves each chain member through the
+ * first-wins `byKey` view, so the summed rows are the ones every other read sees).
+ */
+function constructionBills(
+  content: ContentSet,
+): ReadonlyMap<number, readonly { goodType: number; amount: number }[]> {
+  const buildings = byKey(content.buildings, (b) => b.typeId);
+  const bills = new Map<number, readonly { goodType: number; amount: number }[]>();
+  for (const b of content.buildings) {
+    if (!bills.has(b.typeId)) bills.set(b.typeId, billOf(buildings, b));
+  }
+  return bills;
+}
+
+/** One type's from-scratch bill over a typeId-keyed building view: a home's chain base is found by
+ *  walking the consecutive `home` typeIds downward (the mirror of `homeNextTier`'s upward walk), and
+ *  the tiers' costs are merged per goodType and sorted ascending; any other kind is its own cost. */
+function billOf(
+  buildings: ReadonlyMap<number, BuildingType>,
+  building: BuildingType,
+): readonly { goodType: number; amount: number }[] {
+  if (building.kind !== 'home') return building.construction;
+  let base = building.typeId;
+  while (buildings.get(base - 1)?.kind === 'home') base -= 1;
+  const merged = new Map<number, number>();
+  for (let typeId = base; typeId <= building.typeId; typeId++) {
+    for (const line of buildings.get(typeId)?.construction ?? []) {
+      merged.set(line.goodType, (merged.get(line.goodType) ?? 0) + line.amount);
+    }
+  }
+  return [...merged.entries()]
+    .sort((x, y) => x[0] - y[0])
+    .map(([goodType, amount]) => ({ goodType, amount }));
+}
+
+/**
+ * The from-scratch construction bill of one `buildingType` over a plain building list — the pure
+ * content-level accessor for a consumer holding building defs but no `ContentSet` (the HUD's
+ * construction window shows the same delivered/needed rows the sim demands). Empty for an unknown
+ * type. The same math as {@link ContentIndex.constructionBillByBuilding}; sim systems read that
+ * memoized table instead.
+ */
+export function constructionBillForType(
+  buildings: readonly BuildingType[],
+  buildingType: number,
+): readonly { goodType: number; amount: number }[] {
+  const byId = byKey(buildings, (b) => b.typeId);
+  const building = byId.get(buildingType);
+  return building === undefined ? [] : billOf(byId, building);
 }
 
 /** Map `items` by `key`, first-wins — a duplicate key keeps the first entry, matching `.find`. */
