@@ -37,7 +37,8 @@ export const MAX_GROUND_STACK = 5;
  * subtract what's on hand (`nearestStoreFor`'s `have >= capacity` full-check, `pileup`'s `capacity - have`).
  *
  * - An **under-construction building** (a {@link Building} still at `built < ONE`): the per-good ceiling is
- *   that good's line in the building type's `construction` cost; any other good gets 0 (refused). So a site
+ *   that good's line in the type's from-scratch construction bill (for a home tier, the merged cost of
+ *   every chain stage up to it); any other good gets 0 (refused). So a site
  *   advertises room for exactly its outstanding materials — the carrier path hauls the `construction` goods
  *   in and the ConstructionSystem consumes them and flips `built`. An unbuilt building never produces
  *   (`productionSystem` gates on `built >= ONE`), so its stockpile can't be raided to feed a recipe.
@@ -93,9 +94,11 @@ function buildingStockCapacity(
   goodType: number,
 ): number {
   if (built < ONE) {
-    // Construction site: the per-good ceiling is the building's full `construction` cost for that material
-    // (a non-material good gets 0 — refused).
-    const line = type.construction.find((c) => c.goodType === goodType);
+    // Construction site: the per-good ceiling is the type's from-scratch construction bill for that
+    // material (for a home tier, the whole chain's merged cost — the site must be delivered every
+    // stage's materials); a non-material good gets 0 — refused.
+    const bill = contentIndex(ctx.content).constructionBillByBuilding.get(type.typeId) ?? [];
+    const line = bill.find((c) => c.goodType === goodType);
     return line?.amount ?? 0;
   }
   // Built building: its normal per-good stock-slot ceiling…

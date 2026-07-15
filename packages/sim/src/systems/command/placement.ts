@@ -16,6 +16,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import { positionOfNode } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
 import { canPlaceBuilding } from '../footprint/index.js';
+import { evictSettlersFromFootprint } from '../movement/evict.js';
 import { buildingEnabled, tribeShipsUnlocked } from '../progression/index.js';
 
 /**
@@ -96,6 +97,8 @@ export function placeBuilding(
   // A building placed for a specific player carries an `Owner` — that player's to select/command. Omitted /
   // out-of-range leaves it neutral.
   stampOwner(world, e, command.owner);
+  // The plot is impassable from this tick — settlers standing on it step aside instead of being walled in.
+  evictSettlersFromFootprint(world, ctx, e);
   ctx.events.emit({ kind: 'buildingPlaced', entity: e, at: { x: command.x, y: command.y } });
 }
 

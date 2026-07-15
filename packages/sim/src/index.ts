@@ -7,6 +7,7 @@ export type { Brand } from './core/brand.js';
 export { assertNever } from './core/brand.js';
 export { CommandQueue, type LoggedCommand } from './core/command-queue.js';
 export type { Command, SettlerEquipment, SettlerEquipmentSlot } from './core/commands/index.js';
+export { constructionBillForType } from './core/content-index.js';
 export { EventBuffer, type SimEvent, type SimEventKind } from './core/events.js';
 export { type Fixed, fx, ONE } from './core/fixed.js';
 export { FixedTimestep, MS_PER_TICK, TICKS_PER_SECOND } from './core/loop.js';
