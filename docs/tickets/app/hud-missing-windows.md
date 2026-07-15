@@ -30,7 +30,8 @@ implementing the single top-ranked window in the same session in scope if it fit
    frame + stringId, data source in sim/content, and what the original window shows through direct
    observation).
 4. If the top-ranked window is small (options likely is), implement it in the same session:
-   button wired in the tool panel, window in the existing tool-panel window style.
+   button wired in the tool panel, window built on the shared `tool-panel/window-shell.ts` lifecycle
+   (open flag + text runs + graphics buffer + open-gated claim) — the seam menu/goods/stats already share.
 
 ## Verify
 
