@@ -54,21 +54,25 @@ export function assignmentPriority(slots: readonly { readonly jobType: number }[
 }
 
 /**
- * The right-click assignment priority for ONE settler at a building: its current trade first (so a
- * miller re-assigned to a mill stays a miller when a miller slot is open), then the building's default
- * {@link assignmentPriority}. `currentJob` is the settler's `Settler.jobType`; it is only promoted when
- * the building actually offers that slot — an idle/absent job, or one the building doesn't employ, leaves
- * the default order untouched. The sim still gates every candidate (offered + understaffed + qualified),
- * so a full current-trade slot simply falls through to the default. Promoting a gatherer the settler
- * already holds is intentional: the exclusion is only about not *turning* a hand-picked settler into a
- * gatherer, not about demoting one that already is.
+ * The right-click assignment priority for ONE settler at a building: its current trade first (so a miller
+ * re-assigned to a mill stays a miller when a miller slot is open), then the building's default
+ * {@link assignmentPriority}. A clean-room convenience (not pinned to observed original behavior): a
+ * right-click rarely means "re-trade the specialist I aimed at his own workshop".
+ *
+ * `currentJob` is the settler's `Settler.jobType`; it is promoted only when it is a craft/carrier trade
+ * the building actually offers. Idle/absent has no trade, and a gatherer is never promoted — the same
+ * "never hand-assign a gatherer to a building" rule {@link assignmentPriority} applies, so the gesture
+ * behaves uniformly on both content bases (a gatherer id classifies identically raw or rebased). The sim
+ * still gates every candidate, so a full/unoffered current trade falls through to the default order.
  */
 export function assignmentPriorityFor(
   currentJob: number | undefined,
   slots: readonly { readonly jobType: number }[] | undefined,
 ): number[] {
   const base = assignmentPriority(slots);
-  if (currentJob === undefined || currentJob === JOB_IDLE) return base;
+  if (currentJob === undefined || currentJob === JOB_IDLE || workerRoleOf(currentJob) === 'gatherer') {
+    return base;
+  }
   const offered = (slots ?? []).some((slot) => slot.jobType === currentJob);
   if (!offered || base[0] === currentJob) return base;
   return [currentJob, ...base.filter((jobType) => jobType !== currentJob)];
