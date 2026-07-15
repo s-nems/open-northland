@@ -17,15 +17,8 @@ import {
   WHEAT_TICKS_PER_STAGE,
   WHEAT_YIELD_PER_FIELD,
 } from '../../../../catalog/farming.js';
-import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../../../../catalog/felling.js';
+import { GATHERING_BALANCE_BY_ID } from '../../../../catalog/gathering.js';
 import { EXTENDED_GOODS } from '../../../../catalog/goods.js';
-import {
-  CLAY_DEPOSIT_UNITS,
-  GOLD_DEPOSIT_UNITS,
-  IRON_DEPOSIT_UNITS,
-  MINE_LEVELS,
-  STONE_DEPOSIT_UNITS,
-} from '../../../../catalog/mining.js';
 import { EQUIP_CLASS_BY_TYPE } from '../../combat.js';
 import {
   GOOD_COIN,
@@ -56,11 +49,7 @@ export function buildSandboxGoods(extras: SandboxContentExtras): readonly object
       ...localName('wood'),
       weight: 1,
       atomics: { harvest: HARVEST_ATOMIC },
-      gathering: {
-        bioLandscape: true,
-        chopsToFell: WOOD_CHOPS_TO_FELL,
-        yieldPerNode: WOOD_YIELD_PER_NODE,
-      },
+      gathering: GATHERING_BALANCE_BY_ID.wood,
     },
     { typeId: GOOD_PLANK, id: 'plank', ...localName('plank'), weight: 1 },
     { typeId: GOOD_COIN, id: 'coin', ...localName('coin') },
@@ -70,7 +59,7 @@ export function buildSandboxGoods(extras: SandboxContentExtras): readonly object
       ...localName('stone'),
       weight: 1,
       atomics: { harvest: STONE_HARVEST_ATOMIC },
-      gathering: { bioLandscape: false, depositSize: STONE_DEPOSIT_UNITS, depositLevels: MINE_LEVELS },
+      gathering: GATHERING_BALANCE_BY_ID.stone,
     },
     {
       typeId: GOOD_MUD,
@@ -78,7 +67,7 @@ export function buildSandboxGoods(extras: SandboxContentExtras): readonly object
       ...localName('mud'),
       weight: 1,
       atomics: { harvest: CLAY_HARVEST_ATOMIC },
-      gathering: { bioLandscape: false, depositSize: CLAY_DEPOSIT_UNITS, depositLevels: MINE_LEVELS },
+      gathering: GATHERING_BALANCE_BY_ID.mud,
     },
     {
       typeId: GOOD_IRON,
@@ -86,7 +75,7 @@ export function buildSandboxGoods(extras: SandboxContentExtras): readonly object
       ...localName('iron'),
       weight: 1,
       atomics: { harvest: IRON_HARVEST_ATOMIC },
-      gathering: { bioLandscape: false, depositSize: IRON_DEPOSIT_UNITS, depositLevels: MINE_LEVELS },
+      gathering: GATHERING_BALANCE_BY_ID.iron,
     },
     {
       typeId: GOOD_GOLD,
@@ -94,7 +83,7 @@ export function buildSandboxGoods(extras: SandboxContentExtras): readonly object
       ...localName('gold'),
       weight: 1,
       atomics: { harvest: GOLD_HARVEST_ATOMIC },
-      gathering: { bioLandscape: false, depositSize: GOLD_DEPOSIT_UNITS, depositLevels: MINE_LEVELS },
+      gathering: GATHERING_BALANCE_BY_ID.gold,
     },
     {
       typeId: GOOD_MUSHROOM,
@@ -102,7 +91,7 @@ export function buildSandboxGoods(extras: SandboxContentExtras): readonly object
       ...localName('mushroom'),
       weight: 1,
       atomics: { harvest: MUSHROOM_HARVEST_ATOMIC },
-      gathering: { bioLandscape: true },
+      gathering: GATHERING_BALANCE_BY_ID.mushroom,
     },
     ...EXTENDED_GOODS.map((good) => {
       const equip = EQUIP_CLASS_BY_TYPE.get(good.typeId);
