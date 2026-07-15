@@ -1,42 +1,30 @@
 /**
- * The terrain HALF-CELL ADJACENCY GRAPH — the sim's navigation model (docs/ECS.md).
+ * The terrain half-cell adjacency graph — the sim's navigation model (docs/ECS.md), distinct from
+ * the triangle render tessellation. Navigation, pathfinding, and placement operate on the original's
+ * `2W×2H` logic lattice (source basis: decoded map object lanes `lmlt`/`emla`/`lmlv`, `map.cif`
+ * StaticObjects placements, and `LogicWalkBlockArea`/`LogicBuildBlockArea` footprint offsets all
+ * address `2W×2H`; the half-cell anchoring is the best-aligned reading of the `lmlt` blocking lane —
+ * measurement in docs/formats/MAPDAT.md). Each node carries a landscape `typeId` (IR's
+ * {@link LandscapeType}) resolving to walkability and a fixed-point walk cost.
  *
- * This is NOT the triangle render tessellation: navigation, pathfinding, and placement all operate
- * on a graph of HALF-CELLS — the original's `2W×2H` logic lattice. That resolution is pinned by the
- * data, not invented: the decoded map's object lanes (`lmlt`/`emla`/`lmlv`), `map.cif` StaticObjects
- * placements, and the `LogicWalkBlockArea`/`LogicBuildBlockArea` footprint offsets all address a
- * `2W×2H` grid (source basis: decoded map lane dimensions and footprint coordinates; the half-cell
- * anchoring is additionally the best-aligned reading of the real maps' own `lmlt` blocking lane —
- * the measurement lives in docs/formats/MAPDAT.md). Each node carries a landscape `typeId` (from the IR's
- * {@link LandscapeType} table) which resolves to walkability, a fixed-point walk cost, and a
- * per-node valency (capacity).
+ * Geometry: node `(hx, hy)` sits at world `(hx·½ column, hy·½ row)` = (34 px, 19 px) pitch under the
+ * measured 68×38 px projection; cell `(c, r)` = node `(2c + (r&1), 2r)`, so the staggered raster
+ * becomes a rectangular lattice with one parity-independent neighbour table.
  *
- * GEOMETRY: in half-cell coordinates the staggered raster becomes a PLAIN RECTANGULAR lattice —
- * node `(hx, hy)` sits at world `(hx·½ column, hy·½ row)` = (34 px, 19 px) pitch under the measured
- * 68×38 px projection, with the visual stagger arising from which nodes the cell centres occupy
- * (cell `(c, r)` = node `(2c + (r&1), 2r)`). So the old parity-dependent offset tables vanish: every
- * node has the SAME neighbour offsets.
+ * Movement keeps the original's 8 directions (`THexagonDirection`: E/SE/SW/W/NW/NE plus NORTH = 6,
+ * SOUTH = 7, from the shipped `Data/GameSourceIncludes/logicdefines.inc`), one half-cell fine
+ * ({@link TerrainGraph.steps}): E/W = `(±1, 0)`, cost {@link HALF_COLUMN}; NE/SE/SW/NW = `(±1, ±2)`
+ * (the 51 px lattice edge), cost {@link DIAGONAL_STEP}; N/S = `(0, ±1)`, cost {@link HALF_ROW}. That
+ * the original walks this lattice (rather than only blocking on it) is a named approximation — no
+ * movement code survives readable, but the direction set, edge geometry, and half-cell collision are
+ * data-pinned and the observed unit packing density matches it. A diagonal edge passes between the
+ * two nodes flanking its midpoint and stays passable
+ * while at least one flank is (both blocked = a wall joint, not a gap); E/W and N/S connect directly
+ * adjacent nodes, so walkability is a property of the destination node.
  *
- * MOVEMENT keeps the original's 8 directions (`THexagonDirection`: E/SE/SW/W/NW/NE plus NORTH = 6,
- * SOUTH = 7 — readable in the original's shipped `Data/GameSourceIncludes/logicdefines.inc`, the
- * "Logic directions" block), now one half-cell fine ({@link TerrainGraph.steps}):
- *  - E/W = `(±1, 0)`, a 34 px half-column step, cost {@link HALF_COLUMN};
- *  - NE/SE/SW/NW = `(±1, ±2)`, the SAME 51 px lattice edge the full-cell graph priced (half a column
- *    sideways, one full row up/down), cost {@link DIAGONAL_STEP};
- *  - N/S = `(0, ±1)`, a 19 px half-row step, cost {@link HALF_ROW} — the straight vertical the old
- *    graph needed a two-row flanked seam for.
- * That the original WALKS this lattice (rather than only blocking on it) is a NAMED APPROXIMATION —
- * no movement code survives readable — but the direction set, the edge geometry, and the half-cell
- * collision resolution are all data-pinned, and the observed unit packing density matches it.
- * A diagonal edge passes between the two nodes flanking its midpoint; it stays passable while at
- * least ONE flank is (both blocked = a wall joint, not a gap — the same seam rule the old vertical
- * step carried). E/W and N/S steps connect directly adjacent nodes: walkability is a property of the
- * DESTINATION node, the original's vertex-graph movement model.
- *
- * DETERMINISM: the graph is a plain-data world resource (not entities). Nodes are addressed by a
- * monotonic row-major id (`hy * width + hx`), and neighbours are emitted in a fixed canonical order
- * so traversal is byte-identical across runs — the precondition for A* with canonical tie-breaking
- * and lockstep replay. All costs are `Fixed`; no floats touch state.
+ * Determinism: a plain-data world resource (not entities), nodes addressed by row-major id
+ * (`hy * width + hx`), neighbours emitted in a fixed canonical order so traversal is byte-identical
+ * across runs. All costs are `Fixed`.
  */
 import { type Fixed, fx } from '../../core/fixed.js';
 import { DIAGONAL_STEP, HALF_COLUMN, HALF_ROW } from '../metric.js';
@@ -45,7 +33,7 @@ import { type NodeTypeProps, UNKNOWN_NODE_TYPE } from './node-types.js';
 import type { BlockOverlay, NodeId } from './types.js';
 
 /** Canonical orthogonal neighbour offsets in N, E, S, W order — the fixed traversal order for
- *  determinism. On the half-cell lattice these are a 19 px half-row and a 34 px half-column. */
+ *  determinism. */
 const NEIGHBOUR_OFFSETS: ReadonlyArray<readonly [dx: number, dy: number]> = [
   [0, -1], // N
   [1, 0], // E
@@ -59,12 +47,8 @@ const COLUMN_STEP_OFFSETS: ReadonlyArray<readonly [dx: number, dy: number]> = [
   [-1, 0], // W
 ] as const;
 
-/**
- * The four DIAGONAL lattice edges in canonical NE, SE, SW, NW screen-heading order — `(±1, ±2)` in
- * half-cells is exactly the old full-cell row-crossing edge (half a column sideways, one full row
- * up/down, 51 px). Parity-independent: the half-cell lattice is rectangular, so every node shares
- * this one table. The fixed order (after E/W) keeps A* expansion history-independent.
- */
+/** The four diagonal lattice edges (`(±1, ±2)`, 51 px) in canonical NE, SE, SW, NW screen-heading
+ *  order — the fixed order (after E/W) keeps A* expansion history-independent. */
 const DIAGONAL_STEP_OFFSETS: ReadonlyArray<readonly [dx: number, dy: number]> = [
   [1, -2], // NE
   [1, 2], // SE
@@ -72,7 +56,7 @@ const DIAGONAL_STEP_OFFSETS: ReadonlyArray<readonly [dx: number, dy: number]> = 
   [-1, -2], // NW
 ] as const;
 
-/** The two straight VERTICAL edges (19 px half-row), canonical N then S — the `THexagonDirection`
+/** The two straight vertical edges (19 px half-row), canonical N then S — the `THexagonDirection`
  *  enum tail (NORTH = 6, SOUTH = 7). */
 const VERTICAL_STEP_OFFSETS: ReadonlyArray<readonly [dx: number, dy: number]> = [
   [0, -1], // N
@@ -80,7 +64,7 @@ const VERTICAL_STEP_OFFSETS: ReadonlyArray<readonly [dx: number, dy: number]> = 
 ] as const;
 
 /**
- * The terrain navigation graph: a width×height grid of HALF-CELL nodes (`2W×2H` for a `W×H`-cell
+ * The terrain navigation graph: a width×height grid of half-cell nodes (`2W×2H` for a `W×H`-cell
  * map), each tagged with a landscape typeId, plus the resolved per-type properties. Construct via
  * {@link buildTerrainGraph}.
  */
@@ -119,11 +103,17 @@ export class TerrainGraph {
     return x >= 0 && y >= 0 && x < this.width && y < this.height;
   }
 
+  /** The row-major node id for in-bounds coordinates — the class's addressing invariant, unchecked
+   *  (callers that reach here have already bounds- or clamp-checked `x`, `y`). */
+  private idAt(x: number, y: number): NodeId {
+    return (y * this.width + x) as NodeId;
+  }
+
   /** The node id at (x, y). Throws if out of bounds — an out-of-range lookup is a programmer error. */
   nodeAt(x: number, y: number): NodeId {
     if (!this.inBounds(x, y))
       throw new Error(`node (${x}, ${y}) out of bounds (${this.width}x${this.height})`);
-    return (y * this.width + x) as NodeId;
+    return this.idAt(x, y);
   }
 
   /** The (x, y) coordinates of a node id. */
@@ -140,7 +130,7 @@ export class TerrainGraph {
   nodeAtClamped(x: number, y: number): NodeId {
     const cx = x < 0 ? 0 : x >= this.width ? this.width - 1 : x;
     const cy = y < 0 ? 0 : y >= this.height ? this.height - 1 : y;
-    return (cy * this.width + cx) as NodeId;
+    return this.idAt(cx, cy);
   }
 
   /** A per-node value from one of the row-major arrays, throwing on an id outside the grid
@@ -184,11 +174,6 @@ export class TerrainGraph {
     return this.propsOf(node).walkCost;
   }
 
-  /** Per-node capacity (how many units may cluster here). */
-  maxValency(node: NodeId): number {
-    return this.propsOf(node).maxValency;
-  }
-
   /**
    * The in-bounds 4-connected neighbours of a node, in canonical N, E, S, W order. Border nodes simply
    * yield fewer neighbours.
@@ -199,36 +184,28 @@ export class TerrainGraph {
     for (const [dx, dy] of NEIGHBOUR_OFFSETS) {
       const nx = x + dx;
       const ny = y + dy;
-      if (this.inBounds(nx, ny)) out.push((ny * this.width + nx) as NodeId);
+      if (this.inBounds(nx, ny)) out.push(this.idAt(nx, ny));
     }
     return out;
   }
 
   /**
-   * The walkable subset of {@link neighbours} (4-connected), same canonical order. This is the
-   * ADJACENCY relation for placement/valency, NOT the pathfinder's edge set — movement is
-   * 8-connected via {@link steps}.
+   * The walkable subset of {@link neighbours} (4-connected), same canonical order — the adjacency
+   * relation for placement, not the pathfinder's edge set (movement is 8-connected via {@link steps}).
    */
   walkableNeighbours(node: NodeId): NodeId[] {
     return this.neighbours(node).filter((n) => this.isWalkable(n));
   }
 
   /**
-   * The pathfinder's 8-direction edge set from `node` on the half-cell lattice: the E/W half-column
-   * steps, then the four diagonal edges in canonical NE, SE, SW, NW screen-heading order, then the
-   * two straight vertical half-row steps N, S (the enum tail of the original's `THexagonDirection`,
-   * NORTH = 6, SOUTH = 7). Each step is paired with its fixed-point cost: the destination node's
+   * The pathfinder's 8-direction edge set from `node`: E/W half-column steps, then the four diagonals
+   * (NE, SE, SW, NW), then N/S half-row steps. Each step's cost is the destination node's
    * {@link walkCost} × the edge's world length (E/W = {@link HALF_COLUMN}, diagonal =
-   * {@link DIAGONAL_STEP} ≈ ¾, vertical = {@link HALF_ROW}) — so A* minimises true on-screen distance.
-   * `blocked` is the dynamic walk-block overlay (nodes standing buildings occupy); a step onto a blocked or
-   * unwalkable node is omitted. E/W and N/S steps connect directly adjacent nodes, so walkability is a
-   * property of the destination node (the original's vertex-graph movement model). A diagonal edge passes
-   * exactly between the two nodes flanking its midpoint (offsets `(0, dy/2)` and `(dx, dy/2)`), so it
-   * additionally requires at least one of those flanks passable: with both blocked the seam is a wall joint,
-   * not a gap (a named approximation — no readable movement source).
-   *
-   * The emission order is part of the canonical path choice: this list drives the A* relaxation and is
-   * pinned by the pathfinding goldens, so it must not be reordered.
+   * {@link DIAGONAL_STEP}, vertical = {@link HALF_ROW}), so A* minimises true on-screen distance.
+   * `blocked` is the dynamic walk-block overlay; a step onto a blocked or unwalkable destination is
+   * omitted, and a diagonal additionally needs at least one of its two midpoint flanks passable (both
+   * blocked = a wall joint, not a gap). The emission order is pinned by the pathfinding goldens and
+   * must not be reordered.
    */
   steps(node: NodeId, blocked?: BlockOverlay): Array<{ node: NodeId; cost: Fixed }> {
     const { x, y } = this.coordsOf(node);
@@ -238,7 +215,7 @@ export class TerrainGraph {
       const nx = x + dx;
       const ny = y + dy;
       if (!this.passable(nx, ny, blocked)) continue;
-      const c = (ny * this.width + nx) as NodeId;
+      const c = this.idAt(nx, ny);
       out.push({ node: c, cost: fx.mul(this.walkCost(c), HALF_COLUMN) });
     }
     // Diagonal steps, canonical NE,SE,SW,NW — gated on the flanked midpoint seam.
@@ -246,10 +223,9 @@ export class TerrainGraph {
       const nx = x + dx;
       const ny = y + dy;
       if (!this.passable(nx, ny, blocked)) continue;
-      // The seam between two blocked flanks is a wall joint, not a walkable gap.
       const fy = y + dy / 2;
       if (!this.passable(x, fy, blocked) && !this.passable(nx, fy, blocked)) continue;
-      const c = (ny * this.width + nx) as NodeId;
+      const c = this.idAt(nx, ny);
       out.push({ node: c, cost: fx.mul(this.walkCost(c), DIAGONAL_STEP) });
     }
     // Vertical half-row steps last, canonical N then S (the THexagonDirection tail order).
@@ -257,7 +233,7 @@ export class TerrainGraph {
       const nx = x + dx;
       const ny = y + dy;
       if (!this.passable(nx, ny, blocked)) continue;
-      const c = (ny * this.width + nx) as NodeId;
+      const c = this.idAt(nx, ny);
       out.push({ node: c, cost: fx.mul(this.walkCost(c), HALF_ROW) });
     }
     return out;
@@ -268,17 +244,16 @@ export class TerrainGraph {
    *  not a per-call closure, so the A* edge generator allocates nothing extra per settled node). */
   private passable(nx: number, ny: number, blocked?: BlockOverlay): boolean {
     if (!this.inBounds(nx, ny)) return false;
-    const c = (ny * this.width + nx) as NodeId;
+    const c = this.idAt(nx, ny);
     return this.isWalkable(c) && !(blocked?.has(c) ?? false);
   }
 
   /**
-   * The STATIC-connectivity label of a node: nodes reachable from each other over static terrain
-   * share a label; unwalkable nodes are -1. The dynamic walk-block overlay only ever REMOVES edges,
-   * so two nodes with different labels are provably unreachable under ANY overlay — the pathfinder
-   * uses this to answer "no route" without flooding the whole component (an island right-click used
-   * to cost a full-map Dijkstra). Labels are assigned by ascending seed id at build time, so they
-   * are a pure function of the terrain — lockstep-safe.
+   * The static-connectivity label of a node: nodes reachable over static terrain share a label,
+   * unwalkable nodes are -1. The dynamic walk-block overlay only ever removes edges, so two nodes with
+   * different labels are provably unreachable under any overlay — the pathfinder uses this to answer
+   * "no route" without flooding the component. Labels are assigned by ascending seed id at build time,
+   * so they are a pure function of the terrain (lockstep-safe).
    */
   componentOf(node: NodeId): number {
     return this.checkedSlot(this.components, node);

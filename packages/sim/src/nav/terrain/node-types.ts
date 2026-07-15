@@ -5,17 +5,15 @@ import { type Fixed, ONE } from '../../core/fixed.js';
 export interface NodeTypeProps {
   readonly walkable: boolean;
   /** Whether a building's reserved zone may cover a node of this type. Distinct from `walkable`: a
-   *  real map's margin band around a tree/rock is walkable ground you may not BUILD on, while water
-   *  is neither. The build-placement rule reads this; navigation never does. */
+   *  real map's margin band around a tree/rock is walkable ground you may not build on, while water
+   *  is neither. Read by build placement, never by navigation. */
   readonly buildable: boolean;
-  /** Whether crops may be SOWN on a node of this type (the farmer drive's field gate). Distinct from
-   *  both flags above: desert sand is walkable AND buildable but grows nothing — the original's
-   *  `biocanplanton` ground flag (`trianglepatterntypes.cif`, only `land` carries it). */
+  /** Whether crops may be sown on a node of this type (the farmer drive's field gate) — the original's
+   *  `biocanplanton` ground flag (`trianglepatterntypes.cif`, only `land` carries it). Distinct from
+   *  the flags above: desert sand is walkable and buildable but grows nothing. */
   readonly plantable: boolean;
-  /** Cost to step ONTO a node of this type, in fixed-point. Walkable nodes cost one unit. */
+  /** Cost to step onto a node of this type, in fixed-point. Walkable nodes cost one unit. */
   readonly walkCost: Fixed;
-  /** Per-node capacity — how many units may cluster on a node of this type (0 = unset/blocking). */
-  readonly maxValency: number;
 }
 
 /** Default props for a landscape typeId not present in the content table (treated as blocking). */
@@ -24,7 +22,6 @@ export const UNKNOWN_NODE_TYPE: NodeTypeProps = {
   buildable: false,
   plantable: false,
   walkCost: ONE,
-  maxValency: 0,
 };
 
 export function resolveTypeProps(t: LandscapeType): NodeTypeProps {
@@ -32,15 +29,12 @@ export function resolveTypeProps(t: LandscapeType): NodeTypeProps {
     walkable: t.walkable,
     buildable: t.buildable,
     plantable: t.plantable,
-    // Walk cost is a uniform unit per walkable step — faithful for THIS table:
-    // `landscapetypes.ini` carries NO per-type movement weight (its only per-type numbers are
-    // `maximumValency` = a per-cell capacity cap, and the `allowedon{land,water,everything}`
-    // PLACEMENT-layer flags — neither is a traversal cost). The original DOES weight movement by
-    // GROUND class, though: `trianglepatterntypes.cif` carries per-logicType `moveresistance`
-    // (land 2, sand 3, mountain 4, snow 5 — now emitted as the IR's `trianglePatternTypes`); a
-    // ground-class walk-cost is a future step, not this landscape-object table's field. Stays Fixed
-    // so the pathfinder never converts; blocking nodes keep this cost but are never traversed.
+    // Uniform unit cost per walkable step — faithful for this table: `landscapetypes.ini` carries no
+    // per-type movement weight (its per-type numbers are `maximumValency` and the
+    // `allowedon{land,water,everything}` placement flags, neither a traversal cost). The original
+    // weights movement by ground class instead (`trianglepatterntypes.cif` `moveresistance`: land 2,
+    // sand 3, mountain 4, snow 5, emitted as the IR's `trianglePatternTypes`) — a ground-class
+    // walk-cost is a future step. Stays Fixed so the pathfinder never converts.
     walkCost: ONE,
-    maxValency: t.maxValency,
   };
 }
