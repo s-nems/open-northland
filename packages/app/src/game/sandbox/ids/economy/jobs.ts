@@ -41,6 +41,16 @@ export function rebaseSlotJob(jobType: number): number {
   return jobType === JOB_CARRIER ? JOB_CARRIER : WORKER_SLOT_JOB_BASE + jobType;
 }
 
+/**
+ * De-rebase a job id back to its raw `jobtypes.ini` id — the inverse of {@link rebaseSlotJob} for the ids
+ * it lifts (>= {@link WORKER_SLOT_JOB_BASE}), leaving the functional band (builder/collector/carrier/
+ * soldiers, all < BASE) untouched. The single normalization seam so a job's role is classified in one id
+ * space whether it arrived as a raw real-content id or a sandbox-rebased slot id.
+ */
+export function canonicalJobType(jobType: number): number {
+  return jobType >= WORKER_SLOT_JOB_BASE ? jobType - WORKER_SLOT_JOB_BASE : jobType;
+}
+
 /** The rebased farmer worker-slot job, with real field-loop behaviour in the sandbox content. */
 export const JOB_FARMER_SLOT = WORKER_SLOT_JOB_BASE + 18;
 /** The rebased miller worker-slot job used by the generic producer drive. */

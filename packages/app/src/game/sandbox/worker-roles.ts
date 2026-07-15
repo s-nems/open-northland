@@ -1,4 +1,10 @@
-import { EXTRACTED_GATHERER_TRADES, GATHERERS, JOB_CARRIER, JOB_IDLE, rebaseSlotJob } from './ids/index.js';
+import {
+  canonicalJobType,
+  EXTRACTED_GATHERER_TRADES,
+  GATHERERS,
+  JOB_CARRIER,
+  JOB_IDLE,
+} from './ids/index.js';
 
 /**
  * The three worker roles the badge colours and the right-click assignment priority distinguish — a
@@ -12,23 +18,24 @@ import { EXTRACTED_GATHERER_TRADES, GATHERERS, JOB_CARRIER, JOB_IDLE, rebaseSlot
  */
 export type WorkerRole = 'gatherer' | 'carrier' | 'craftsman';
 
-/** The gatherer job ids — the sandbox's own {@link GATHERERS} table plus the extracted outdoor-gatherer
- *  trades ({@link EXTRACTED_GATHERER_TRADES}: collector/hunter/fisher). A settler of one of these harvests
- *  a raw good on the map, so it's excluded from right-click building assignment and draws the gatherer
- *  badge colour. The trades are registered in BOTH id spaces the classifier is handed slots from: their
- *  raw `jobtypes.ini` ids (real content — the browser scene/map path) and their rebased sandbox ids
- *  (sandbox content), so hunter/fisher classify as gatherers whichever content the view is running. */
+/** The gatherer job ids in the raw `jobtypes.ini` space — the sandbox's own {@link GATHERERS} table
+ *  (all collector) plus the extracted outdoor-gatherer trades ({@link EXTRACTED_GATHERER_TRADES}:
+ *  collector/hunter/fisher). A settler of one of these harvests a raw good on the map, so it's excluded
+ *  from right-click building assignment and draws the gatherer badge colour. Membership is tested against
+ *  the canonical (de-rebased) id, so a sandbox-rebased slot id classifies the same as its raw twin. */
 const GATHERER_JOB_TYPES: ReadonlySet<number> = new Set([
   ...GATHERERS.map((g) => g.job),
   ...EXTRACTED_GATHERER_TRADES,
-  ...[...EXTRACTED_GATHERER_TRADES].map(rebaseSlotJob),
 ]);
 
-/** Classify a worker job into its {@link WorkerRole}: a gatherer (in {@link GATHERER_JOB_TYPES}), the
- *  carrier ({@link JOB_CARRIER}), or otherwise a craftsman (every rebased in-workshop trade). */
+/** Classify a worker job into its {@link WorkerRole}: the carrier ({@link JOB_CARRIER}), a gatherer (in
+ *  {@link GATHERER_JOB_TYPES}), or otherwise a craftsman. The job is de-rebased to its raw id first
+ *  ({@link canonicalJobType}), so the same job classifies identically whether it arrived raw (real
+ *  content) or sandbox-rebased. */
 export function workerRoleOf(jobType: number): WorkerRole {
-  if (jobType === JOB_CARRIER) return 'carrier';
-  if (GATHERER_JOB_TYPES.has(jobType)) return 'gatherer';
+  const raw = canonicalJobType(jobType);
+  if (raw === JOB_CARRIER) return 'carrier';
+  if (GATHERER_JOB_TYPES.has(raw)) return 'gatherer';
   return 'craftsman';
 }
 

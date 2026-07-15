@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { JOB_CARRIER, JOB_COLLECTOR } from '../src/game/sandbox/ids/index.js';
+import { JOB_CARRIER, JOB_COLLECTOR, rebaseSlotJob } from '../src/game/sandbox/ids/index.js';
 import { assignmentPriority, assignmentPriorityFor, workerRoleOf } from '../src/game/sandbox/worker-roles.js';
 
 /**
@@ -50,6 +50,38 @@ describe('workerRoleOf classifies the raw real trades', () => {
     expect(workerRoleOf(REAL_JOB.carrier)).toBe('carrier');
     expect(workerRoleOf(REAL_JOB.miller)).toBe('craftsman');
     expect(workerRoleOf(REAL_JOB.farmer)).toBe('craftsman');
+  });
+});
+
+describe('classification is independent of the id space (raw real vs sandbox-rebased)', () => {
+  // The classifier is one pure function fed slots from either content base, so a trade must
+  // classify the same whether it arrives as its raw `jobtypes.ini` id or its sandbox-rebased id — the
+  // role is keyed off the de-rebased (canonical) id, not a per-base id table — the fix that removed the
+  // dual raw∪rebased gatherer registration.
+  it('a trade classifies the same raw and rebased', () => {
+    for (const raw of [
+      REAL_JOB.collector,
+      REAL_JOB.hunter,
+      REAL_JOB.fisher,
+      REAL_JOB.miller,
+      REAL_JOB.farmer,
+    ]) {
+      expect(workerRoleOf(rebaseSlotJob(raw))).toBe(workerRoleOf(raw));
+    }
+    // The carrier keeps its own id under the rebase, so it stays a carrier either way.
+    expect(workerRoleOf(rebaseSlotJob(REAL_JOB.carrier))).toBe('carrier');
+  });
+
+  it('assignmentPriority over rebased slots offers the same trades, in the rebased space', () => {
+    const rebasedWarehouse = WAREHOUSE_SLOTS.map((s) => ({ jobType: rebaseSlotJob(s.jobType) }));
+    // Only the carrier is offered (gatherers excluded), and it is the rebased carrier id — which equals
+    // the raw one, since the rebase leaves the carrier untouched.
+    expect(assignmentPriority(rebasedWarehouse)).toEqual([rebaseSlotJob(REAL_JOB.carrier)]);
+    const rebasedMill = MILL_SLOTS.map((s) => ({ jobType: rebaseSlotJob(s.jobType) }));
+    expect(assignmentPriority(rebasedMill)).toEqual([
+      rebaseSlotJob(REAL_JOB.miller),
+      rebaseSlotJob(REAL_JOB.carrier),
+    ]);
   });
 });
 
