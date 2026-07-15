@@ -1,3 +1,4 @@
+import type { JobEnables } from '@open-northland/data';
 import {
   ATTACK_ATOMIC,
   CULTIVATE_ATOMIC,
@@ -11,12 +12,10 @@ import { PRIMARY_TRIBE } from '../../../rules.js';
 import {
   BUILD_HOUSE_ATOMIC,
   GATHERERS,
-  GOOD_COIN,
   JOB_ARCHER,
   JOB_ARCHER_LONG,
   JOB_BUILDER,
   JOB_FARMER_SLOT,
-  JOB_IDLE,
   JOB_SOLDIER_BROADSWORD,
   JOB_SOLDIER_SPEAR,
   JOB_SOLDIER_SWORD,
@@ -31,12 +30,13 @@ import {
   STORE_PILEUP_ANIMATION,
 } from '../../work-animations.js';
 import type { SandboxContentExtras } from '../types.js';
+import { SANDBOX_JOB_ENABLES } from './tech-graph.js';
 
 export interface SandboxTribe {
   readonly typeId: number;
   readonly id: string;
   readonly hitpoints?: number;
-  readonly jobEnables?: unknown[];
+  readonly jobEnables?: readonly JobEnables[];
   readonly atomicBindings?: unknown[];
 }
 
@@ -71,16 +71,16 @@ export function buildSandboxTribes(
         { jobType, atomicId: STORE_PILEUP_ATOMIC, animation: STORE_PILEUP_ANIMATION },
       ]),
     ],
-    jobEnables: [{ jobType: JOB_IDLE, kind: 'good', targetId: GOOD_COIN }],
+    // The real-shaped tech graph: the collector gates the economy houses + gathered goods, mirroring the
+    // extracted viking `jobEnables` (see tech-graph.ts). This is what makes a gated workshop stay locked until
+    // the tribe has its gatherer — exercised headlessly instead of only surfacing in browser play.
+    jobEnables: SANDBOX_JOB_ENABLES,
   });
   for (const tribe of extras.tribes ?? []) {
     if (!tribes.has(tribe.typeId)) {
-      tribes.set(tribe.typeId, {
-        typeId: tribe.typeId,
-        id: tribe.id,
-        hitpoints: HUMAN_HITPOINTS,
-        jobEnables: [{ jobType: JOB_IDLE, kind: 'good', targetId: GOOD_COIN }],
-      });
+      // Extra tribes (enemy raiders, wildlife) carry no tech graph — an empty edge list gates nothing, so their
+      // buildings stay enabled without needing an enabler settler.
+      tribes.set(tribe.typeId, { typeId: tribe.typeId, id: tribe.id, hitpoints: HUMAN_HITPOINTS });
     }
   }
   return tribes;

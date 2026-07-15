@@ -10,7 +10,9 @@ import {
   GOOD_BREAD,
   GOOD_FLOUR,
   GOOD_WATER,
+  JOB_COLLECTOR,
   placeSandboxBuilding,
+  spawnSandboxSettler,
   spawnWorkersAtDoor,
 } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
@@ -55,7 +57,15 @@ const INITIAL_ZOOM = 0.7;
 
 const { Crop, Stockpile } = components;
 
+/** The tech enabler's corner — clear of the chain so the lone collector just idles (no resource nodes to
+ *  harvest; the farm's wheat is a Crop, not a collector's gatherable). */
+const ENABLER = { x: 2, y: 2 } as const;
+
 function build(sim: Simulation): void {
+  // A lone collector is the tribe's tech enabler: the workshops (farm/mill/bakery/well are all gated
+  // `jobEnablesHouse` on a collector, mirroring real content — see tech-graph.ts), so without one none of the
+  // crews below would be employed. In a real game the HQ seeds this gatherer; the scene has no HQ.
+  spawnSandboxSettler(sim, JOB_COLLECTOR, ENABLER.x, ENABLER.y);
   placeSandboxBuilding(sim, BUILDING_FARM, FARM.x, FARM.y);
   placeSandboxBuilding(sim, BUILDING_MILL, MILL.x, MILL.y);
   placeSandboxBuilding(sim, BUILDING_BAKERY, BAKERY.x, BAKERY.y);
