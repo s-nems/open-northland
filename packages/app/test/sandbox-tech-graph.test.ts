@@ -14,12 +14,10 @@ import {
 import { buildingOfType } from '../src/scenes/sandbox-queries.js';
 
 /**
- * The sandbox tribe's `jobEnablesHouse` tech graph (tech-graph.ts), exercised headlessly on the real
- * mechanism — the gate that in browser play only surfaced as the warehouse "employs nobody" catch-22. The
- * warehouse (house 7) is gated on a collector being present; both employment paths (the JobSystem's auto
- * assign and the player's `assignWorker` command) run through the same `buildingEnabled` gate, so with no
- * collector alive neither can staff it, and with one alive both can. Proves the enrichment reproduces the
- * bug class instead of leaving it a browser-only surprise.
+ * The sandbox tribe's `jobEnablesHouse` gate (tech-graph.ts): the warehouse (house 7) is gated on a collector
+ * being present. Both employment paths — the JobSystem's auto assign and the player's `assignWorker` command —
+ * run through the same `buildingEnabled` gate, so with no collector alive neither staffs it and with one alive
+ * both do.
  */
 
 const { JobAssignment, Settler } = components;

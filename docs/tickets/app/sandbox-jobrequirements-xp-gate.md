@@ -12,7 +12,7 @@ CI.
 
 Source basis: the real viking tribe carries 115 `jobRequirements` in ir.json (`needforjob <targetId> <amount>
 <expType>`); e.g. `{requirement:'need', target:'job', targetId:19, amount:10, experienceTypes:[45]}`. The
-sandbox reuses the original job/good ids, so a faithful SUBSET resolves against the same id space (the same
+sandbox reuses the original job/good ids, so a faithful subset resolves against the same id space (the same
 approach `tech-graph.ts` took for `jobEnables`).
 
 ## Scope

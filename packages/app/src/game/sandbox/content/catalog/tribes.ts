@@ -71,9 +71,8 @@ export function buildSandboxTribes(
         { jobType, atomicId: STORE_PILEUP_ATOMIC, animation: STORE_PILEUP_ANIMATION },
       ]),
     ],
-    // The real-shaped tech graph: the collector gates the economy houses + gathered goods, mirroring the
-    // extracted viking `jobEnables` (see tech-graph.ts). This is what makes a gated workshop stay locked until
-    // the tribe has its gatherer — exercised headlessly instead of only surfacing in browser play.
+    // The collector gates the economy houses + gathered goods, mirroring the extracted viking `jobEnables`
+    // (see tech-graph.ts): a gated workshop stays locked until the tribe has its gatherer.
     jobEnables: SANDBOX_JOB_ENABLES,
   });
   for (const tribe of extras.tribes ?? []) {

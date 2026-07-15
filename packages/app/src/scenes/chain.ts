@@ -62,9 +62,8 @@ const { Crop, Stockpile } = components;
 const ENABLER = { x: 2, y: 2 } as const;
 
 function build(sim: Simulation): void {
-  // A lone collector is the tribe's tech enabler: the workshops (farm/mill/bakery/well are all gated
-  // `jobEnablesHouse` on a collector, mirroring real content — see tech-graph.ts), so without one none of the
-  // crews below would be employed. In a real game the HQ seeds this gatherer; the scene has no HQ.
+  // The farm/mill/bakery/well are `jobEnablesHouse`-gated on a collector (see tech-graph.ts), so a lone
+  // collector must be present or none of the crews below get employed — the gatherer a real game's HQ seeds.
   spawnSandboxSettler(sim, JOB_COLLECTOR, ENABLER.x, ENABLER.y);
   placeSandboxBuilding(sim, BUILDING_FARM, FARM.x, FARM.y);
   placeSandboxBuilding(sim, BUILDING_MILL, MILL.x, MILL.y);

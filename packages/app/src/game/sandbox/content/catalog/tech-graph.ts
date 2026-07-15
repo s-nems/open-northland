@@ -22,22 +22,17 @@ import {
 } from '../../ids/index.js';
 
 /**
- * The sandbox tribe's `jobEnables` tech graph — the read side {@link import('@open-northland/sim').systems}
- * `buildingEnabled`/`goodEnabled`/`jobEnabled` gate on. Each edge means "a settler of `jobType` being alive in
- * the tribe unlocks this `targetId`"; a target with no edge is ungated (the HQ, the food-chain goods).
+ * The sandbox tribe's `jobEnables` tech graph — what the sim's `buildingEnabled`/`goodEnabled`/`jobEnabled`
+ * gate reads. Each edge means a settler of `jobType` being alive in the tribe unlocks `targetId`.
  *
- * Source basis: a faithful SUBSET of the extracted viking `tribetypes.ini jobEnables` (ir.json) restricted to
- * the sandbox's modelled economy. Every edge here is a real viking edge — the collector (`jobtypes.ini` 8) is
- * in the enabling set of every one of these houses and gathered goods in ir.json, and the two soldier
- * specialization edges (long blade / long bow gated on the short one) are the real `jobEnablesJob` edges. The
- * sandbox reuses the original typeIds, so these ids resolve against either content base. Not a copy of the full
- * 265-edge graph: only the collector's economy edges plus the two soldier specializations the sandbox models,
- * enough to exercise the gate the way real content does (a warehouse/workshop stays locked until the tribe has
- * its gatherer — the warehouse-employment catch-22 in browser play).
+ * Source basis: a faithful subset of the extracted viking `tribetypes.ini jobEnables` (ir.json) — every edge
+ * below is a real viking edge, restricted to the collector's economy edges plus the two soldier
+ * specializations the sandbox models (not the full 265-edge graph). The sandbox reuses the original typeIds,
+ * so the ids resolve against either content base.
  */
 
-/** The economy houses gated on a collector being present (real ir.json: job 8 is in each one's enabling set;
- *  the HQ is ungated, the bootstrap building that seeds the first collector). */
+/** The economy houses gated on the collector (real ir.json: job 8 is in each one's enabling set); the HQ
+ *  carries no edge, the ungated bootstrap building that seeds the first collector. */
 const COLLECTOR_GATED_HOUSES: readonly number[] = [
   BUILDING_HOME_00,
   BUILDING_WAREHOUSE_00,
@@ -50,9 +45,10 @@ const COLLECTOR_GATED_HOUSES: readonly number[] = [
   BUILDING_JOINERY,
 ];
 
-/** The map-gathered goods gated on the collector (real ir.json `jobEnablesGood 8 <good>`); the food-chain
- *  goods (water/wheat/flour/bread) stay ungated, as in ir.json. Gating a good gates its production recipe, not
- *  its harvest — inert in the sandbox (no recipe outputs these) but the faithful shape. */
+/** The map-gathered goods gated on the collector (real ir.json `jobEnablesGood 8 <good>`). Gating a good gates
+ *  its production recipe, not its harvest — inert in the sandbox (no recipe outputs these) but the faithful
+ *  shape. The food-chain goods are left ungated here: water is ungated in ir.json too, but wheat/flour/bread
+ *  are really gated on the farmer/miller/baker — an approximation, since the sandbox omits those enable-jobs. */
 const COLLECTOR_GATED_GOODS: readonly number[] = [GOOD_WOOD, GOOD_STONE, GOOD_IRON, GOOD_GOLD, GOOD_MUSHROOM];
 
 /** Soldier specializations gated on the shorter-weapon trade being present (real ir.json `jobEnablesJob`): the
