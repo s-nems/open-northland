@@ -8,7 +8,6 @@ import {
   dropSandboxGood,
   GOOD_FLOUR,
   GOOD_WHEAT,
-  JOB_MILLER_SLOT,
   placeSandboxBuilding,
   spawnWorkersAtDoor,
 } from '../game/sandbox/index.js';
@@ -59,7 +58,7 @@ function build(sim: Simulation): void {
   placeSandboxBuilding(sim, BUILDING_WAREHOUSE_00, WAREHOUSE_X, WAREHOUSE_Y);
   for (const pile of WHEAT_PILES) dropSandboxGood(sim, GOOD_WHEAT, pile.x, pile.y, pile.amount);
   // The millers spawn at the mill door so the adopt pass binds them on tick 1 (see spawnWorkersAtDoor).
-  spawnWorkersAtDoor(sim, BUILDING_MILL, MILL_X, MILL_Y, JOB_MILLER_SLOT, MILLERS, HUMAN_PLAYER);
+  spawnWorkersAtDoor(sim, BUILDING_MILL, MILL_X, MILL_Y, MILLERS, HUMAN_PLAYER);
 }
 
 /** The scene's one mill entity, or null before the placement command ran. */

@@ -13,7 +13,7 @@ import { resolveVikingBuilding } from '../../catalog/buildings.js';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../../catalog/felling.js';
 import { MINE_STRIKES_PER_UNIT } from '../../catalog/mining.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../rules.js';
-import { GATHERERS, type GathererSpec, JOB_IDLE, weaponEquipmentFor } from './ids/index.js';
+import { GATHERERS, type GathererSpec, JOB_CARRIER, JOB_IDLE, weaponEquipmentFor } from './ids/index.js';
 
 const { DeliveryFlag, Position, WorkFlag } = components;
 
@@ -90,23 +90,38 @@ export function buildingDoorNode(
 }
 
 /**
- * Spawn `count` pre-employed workers at a building's door node ({@link buildingDoorNode}) via the raw
- * `spawnSettler` command — node-exact, unlike {@link spawnSandboxSettler}, which rounds through the cell
- * anchor and would drop the door offset. The adopt pass then binds them to the building on tick 1.
+ * Spawn `count` pre-employed workers at a building's door node ({@link buildingDoorNode}) to staff its
+ * primary production slot, via the raw `spawnSettler` command — node-exact, unlike
+ * {@link spawnSandboxSettler}, which rounds through the cell anchor and would drop the door offset. The
+ * worker's job is the building's first non-carrier worker slot read from the sim's loaded content
+ * ({@link primaryWorkerJob}), so the same call staffs the building on sandbox (headless) and real
+ * (browser) content, whose slot job ids differ — the sandbox rebases to `WORKER_SLOT_JOB_BASE + n`,
+ * real ir.json keeps the raw id. The adopt pass then binds them to the building on tick 1.
  */
 export function spawnWorkersAtDoor(
   sim: Simulation,
   buildingType: number,
   x: number,
   y: number,
-  jobType: number,
   count: number,
   owner: number = HUMAN_PLAYER,
 ): void {
   const door = buildingDoorNode(sim, buildingType, x, y);
+  const jobType = primaryWorkerJob(sim, buildingType);
   for (let i = 0; i < count; i++) {
     sim.enqueue({ kind: 'spawnSettler', jobType, x: door.hx, y: door.hy, tribe: PRIMARY_TRIBE, owner });
   }
+}
+
+/** A building's primary production worker-slot jobType from the sim's loaded content — its first worker
+ *  slot that isn't the {@link JOB_CARRIER} hauler slot. Throws if the building employs no producer (a
+ *  scene-setup bug: {@link spawnWorkersAtDoor} on a store or well that has only carrier slots). */
+function primaryWorkerJob(sim: Simulation, buildingType: number): number {
+  const slot = buildingDef(sim, buildingType)?.workers.find((w) => w.jobType !== JOB_CARRIER);
+  if (slot === undefined) {
+    throw new Error(`spawnWorkersAtDoor: building ${buildingType} has no production worker slot`);
+  }
+  return slot.jobType;
 }
 
 /** Spawn a settler with the given job via the `spawnSettler` command. */
