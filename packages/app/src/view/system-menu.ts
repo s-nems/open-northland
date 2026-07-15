@@ -12,7 +12,7 @@ export interface SystemMenuDeps {
   readonly onQuit: () => void;
 }
 
-const PANEL_STYLE = [
+const MODAL_PANEL_STYLE = [
   'min-width:220px',
   'display:flex',
   'flex-direction:column',
@@ -26,7 +26,7 @@ const PANEL_STYLE = [
   'box-shadow:0 8px 32px rgba(0,0,0,0.5)',
 ].join(';');
 
-const BUTTON_STYLE = [
+const MODAL_BUTTON_STYLE = [
   'padding:8px 14px',
   'background:rgba(74,63,40,0.9)',
   'color:#e8dcc0',
@@ -56,11 +56,14 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
     display: 'none',
     placeItems: 'center',
     background: 'rgba(0,0,0,0.45)',
-    zIndex: '2000', // above the Pixi canvas and the DOM perf/admin overlays
+    // Above the Pixi canvas and the DOM perf/admin overlays (z 50/150/160); a peer of the hover
+    // tooltips (also 2000), which is moot while open — the full-viewport backdrop eats canvas pointer
+    // events, so no canvas-driven tooltip fires behind it.
+    zIndex: '2000',
   });
 
   const panel = document.createElement('div');
-  panel.style.cssText = PANEL_STYLE;
+  panel.style.cssText = MODAL_PANEL_STYLE;
   panel.setAttribute('role', 'dialog');
   panel.setAttribute('aria-modal', 'true');
   panel.setAttribute('aria-label', copy.systemMenu);
@@ -72,13 +75,13 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
   const quit = document.createElement('button');
   quit.type = 'button';
   quit.textContent = copy.returnToMenu;
-  quit.style.cssText = BUTTON_STYLE;
+  quit.style.cssText = MODAL_BUTTON_STYLE;
   quit.addEventListener('click', deps.onQuit);
 
   const close = document.createElement('button');
   close.type = 'button';
   close.textContent = copy.closeMenu;
-  close.style.cssText = BUTTON_STYLE;
+  close.style.cssText = MODAL_BUTTON_STYLE;
 
   const hide = (): void => {
     backdrop.style.display = 'none';
