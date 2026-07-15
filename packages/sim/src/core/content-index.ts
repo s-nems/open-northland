@@ -87,6 +87,11 @@ export interface ContentIndex {
    * Precomputed so the per-settler planner reads a shared set instead of building one per call.
    */
   readonly atomicsByJob: ReadonlyMap<number, ReadonlySet<number>>;
+  /** The flag-gathering trades: jobs whose grants (`allowedAtomics` minus `forbiddenAtomics`) include a
+   *  non-farmed good's harvest atomic. Excludes the tribe-wide `baseAtomics` on purpose — a base atomic
+   *  that coincides with a good's harvest atomic (real soldier `baseAtomics=[31]` == herb's harvest 31)
+   *  must not make that job a gatherer. See {@link import('../systems/economy/flags.js').jobCanHarvest}. */
+  readonly harvestJobs: ReadonlySet<number>;
   /**
    * The largest Manhattan node-offset any resource's work cell can sit from its anchor, over every
    * `landscapeGfx` work-area cell — floored at 3, covering both `resourceWorkCell` fallbacks with headroom:
@@ -130,6 +135,7 @@ function buildIndex(content: ContentSet): ContentIndex {
     gatheringPipelinesByGood: byKey(content.gatheringPipeline, (p) => p.goodType),
     landscapeGfxByIndex: new Map(content.landscapeGfx.map((g) => [g.index, g])), // last-wins, as before
     atomicsByJob: jobAtomicSets(content),
+    harvestJobs: harvestCapableJobs(content),
     maxResourceWorkOffset: maxWorkCellOffset(content),
     // A weapon row's tribeType/jobType are optional in the schema; a row missing the key could never
     // match the numeric comparison the old scans made, so it is simply absent from that table.
@@ -192,6 +198,32 @@ function jobAtomicSets(content: ContentSet): ReadonlyMap<number, ReadonlySet<num
     map.set(job.typeId, set);
   }
   return map;
+}
+
+/** The flag-gathering trades ({@link ContentIndex.harvestJobs}): a job whose grants (`allowedAtomics`
+ *  minus `forbiddenAtomics`) include some non-farmed good's harvest atomic. `baseAtomics` are excluded —
+ *  a tribe-wide default equal to a good's harvest atomic (real soldier `baseAtomics=[31]` == herb's
+ *  harvest) must not classify the job as a gatherer. First-wins per typeId, like the other tables. */
+function harvestCapableJobs(content: ContentSet): ReadonlySet<number> {
+  const harvestAtomics = new Set<number>();
+  for (const g of content.goods) {
+    if (g.farming !== undefined) continue; // field-farmed — its harvester is a bound farmer, not a flag gatherer
+    if (g.atomics.harvest !== undefined) harvestAtomics.add(g.atomics.harvest);
+  }
+  const seen = new Set<number>();
+  const jobs = new Set<number>();
+  for (const job of content.jobs) {
+    if (seen.has(job.typeId)) continue;
+    seen.add(job.typeId);
+    const forbidden = new Set(job.forbiddenAtomics);
+    for (const a of job.allowedAtomics) {
+      if (!forbidden.has(a) && harvestAtomics.has(a)) {
+        jobs.add(job.typeId);
+        break;
+      }
+    }
+  }
+  return jobs;
 }
 
 /** The per-tribe `setatomic` binding tables (first-wins per tribe typeId; last-wins per binding —
