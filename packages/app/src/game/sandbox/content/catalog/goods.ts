@@ -9,14 +9,7 @@ import {
   STONE_HARVEST_ATOMIC,
   WHEAT_HARVEST_ATOMIC,
 } from '../../../../catalog/atomics.js';
-import {
-  FARM_FIELD_RADIUS,
-  FARM_FIELDS_BASE,
-  FARM_FIELDS_PER_FARMER,
-  WHEAT_GROWTH_STAGES,
-  WHEAT_TICKS_PER_STAGE,
-  WHEAT_YIELD_PER_FIELD,
-} from '../../../../catalog/farming.js';
+import { FARMING_BALANCE_BY_ID } from '../../../../catalog/farming.js';
 import { GATHERING_BALANCE_BY_ID } from '../../../../catalog/gathering.js';
 import { EXTENDED_GOODS } from '../../../../catalog/goods.js';
 import { EQUIP_CLASS_BY_TYPE } from '../../combat.js';
@@ -108,14 +101,7 @@ export function buildSandboxGoods(extras: SandboxContentExtras): readonly object
                 cultivate: CULTIVATE_ATOMIC,
                 plant: PLANT_ATOMIC,
               },
-              farming: {
-                stages: WHEAT_GROWTH_STAGES,
-                ticksPerStage: WHEAT_TICKS_PER_STAGE,
-                yieldPerField: WHEAT_YIELD_PER_FIELD,
-                fieldRadius: FARM_FIELD_RADIUS,
-                fieldsBase: FARM_FIELDS_BASE,
-                fieldsPerFarmer: FARM_FIELDS_PER_FARMER,
-              },
+              farming: FARMING_BALANCE_BY_ID.wheat,
             }
           : {}),
       };

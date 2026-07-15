@@ -1,3 +1,5 @@
+import type { GoodFarming } from '@open-northland/data';
+
 /**
  * The farm's field-cultivation calibration — the one global source for the wheat sow→water→grow→reap
  * loop's numbers: every scene/content set that farms wheat builds its `farming` block from these
@@ -31,3 +33,20 @@ export const FARM_FIELD_RADIUS = 16;
 export const FARM_FIELDS_BASE = 2;
 /** The per-farmer slope of the field cap (see {@link FARM_FIELDS_BASE}). */
 export const FARM_FIELDS_PER_FARMER = 4;
+
+/** The clean-room field-farming `farming` block per farmed good, keyed by its stable string id — the ONE
+ *  source both the sandbox goods builder (`game/sandbox/content/catalog/goods.ts`) and the real-content
+ *  overlay (`content/real-content.ts` `mergeRealContent`) read, so wheat farms at the same pace on either
+ *  content base. Real ir.json extracts wheat's plant/cultivate/harvest atomics and its `producedOnMap`
+ *  flag but not this growth timing (no readable growth constants), so the overlay pins it here — the last
+ *  piece the sim's field loop needs, once the pipeline has (correctly) declined to give the farm a recipe. */
+export const FARMING_BALANCE_BY_ID: Readonly<Record<string, GoodFarming>> = {
+  wheat: {
+    stages: WHEAT_GROWTH_STAGES,
+    ticksPerStage: WHEAT_TICKS_PER_STAGE,
+    yieldPerField: WHEAT_YIELD_PER_FIELD,
+    fieldRadius: FARM_FIELD_RADIUS,
+    fieldsBase: FARM_FIELDS_BASE,
+    fieldsPerFarmer: FARM_FIELDS_PER_FARMER,
+  },
+};

@@ -2,6 +2,7 @@ import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { flatTileColour } from '@open-northland/render';
 import { buildTerrainGraph, halfCellMapFromCells } from '@open-northland/sim';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { FARMING_BALANCE_BY_ID } from '../src/catalog/farming.js';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../src/catalog/felling.js';
 import { MINE_LEVELS, STONE_DEPOSIT_UNITS } from '../src/catalog/mining.js';
 import {
@@ -17,9 +18,10 @@ import { sandboxContent } from '../src/game/sandbox/index.js';
 
 /**
  * `mergeRealContent` is exercised on a clean-room stand-in for raw ir.json — never the copyrighted content.
- * We take the sandbox ContentSet and zero its gathering balance the way the pipeline ships it
- * (`extractGoodGathering` emits 0), then add one gathered good with no clean-room balance and one building
- * beyond the clean-room catalog, so the gap surfacing has something to report.
+ * We take the sandbox ContentSet and reproduce the way the pipeline ships it — gathering balance zeroed
+ * (`extractGoodGathering` emits 0) and farmed goods carrying their field atomics but NO `farming` block
+ * (no readable growth timing) — then add one gathered good with no clean-room balance, one field good with
+ * none, and one building beyond the clean-room catalog, so the gap surfacing has something to report.
  */
 function goodById(content: ContentSet, id: string) {
   const good = content.goods.find((g) => g.id === id);
@@ -27,7 +29,8 @@ function goodById(content: ContentSet, id: string) {
   return good;
 }
 
-// A typeId past the real 1..87 range; goods and buildings are separate id spaces, so one value serves both.
+// typeIds past the real 1..87 range; goods and buildings are separate id spaces, so one base value serves
+// both (the extra field good takes the next id).
 const OUT_OF_CATALOG_TYPE_ID = 900;
 
 function rawRealLike(): ContentSet {
@@ -39,19 +42,33 @@ function rawRealLike(): ContentSet {
           ...g,
           gathering: { ...g.gathering, chopsToFell: 0, yieldPerNode: 0, depositSize: 0, depositLevels: 0 },
         };
+  // Real ir.json ships a farmed good with its field atomics but no clean-room `farming` block — strip it
+  // so the merge has to re-add it (and so a field good with none surfaces as a gap).
+  const stripFarming = (g: ContentSet['goods'][number]) => {
+    if (g.farming === undefined) return g;
+    const { farming: _farming, ...rest } = g;
+    return rest;
+  };
   // A gathered good (wood's shape) whose string id is absent from GATHERING_BALANCE_BY_ID — stays uncalibrated.
   const unbalanced = zeroGathering({
     ...goodById(base, 'wood'),
     typeId: OUT_OF_CATALOG_TYPE_ID,
     id: 'testberry',
   });
+  // A field-farmed good (wheat's three field atomics) whose id is absent from FARMING_BALANCE_BY_ID — the
+  // overlay cannot complete it, so it surfaces as an unfarmed field good.
+  const unfarmed = {
+    ...stripFarming(goodById(base, 'wheat')),
+    typeId: OUT_OF_CATALOG_TYPE_ID + 1,
+    id: 'testherb',
+  };
   // A building absent from VIKING_BUILDINGS (headquarters' shape, a fresh id) — uncataloged.
   const firstBuilding = base.buildings[0];
   if (firstBuilding === undefined) throw new Error('fixture: no buildings');
   const uncataloged = { ...firstBuilding, typeId: OUT_OF_CATALOG_TYPE_ID, id: 'wonder_test' };
   return parseContentSet({
     ...base,
-    goods: [...base.goods.map(zeroGathering), unbalanced],
+    goods: [...base.goods.map((g) => stripFarming(zeroGathering(g))), unbalanced, unfarmed],
     buildings: [...base.buildings, uncataloged],
   });
 }
@@ -80,10 +97,19 @@ describe('mergeRealContent', () => {
     expect(goodById(content, 'coin').gathering).toBeUndefined();
   });
 
-  it('surfaces gathered goods it has no balance for, and buildings beyond the clean-room catalog', () => {
-    const { unbalancedGoods, uncatalogedBuildings } = mergeRealContent(rawRealLike());
+  it('re-adds the clean-room farming block to a farmed good the pipeline shipped without one', () => {
+    const raw = rawRealLike();
+    expect(goodById(raw, 'wheat').farming).toBeUndefined(); // stand-in ships no block, like real ir.json
+    const { content } = mergeRealContent(raw);
+    expect(goodById(content, 'wheat').farming).toEqual(FARMING_BALANCE_BY_ID.wheat);
+  });
+
+  it('surfaces gathered/field goods it cannot complete, and buildings beyond the clean-room catalog', () => {
+    const { unbalancedGoods, unfarmedFieldGoods, uncatalogedBuildings } = mergeRealContent(rawRealLike());
     expect(unbalancedGoods).toContain('testberry');
     expect(unbalancedGoods).not.toContain('wood'); // wood has a clean-room balance
+    expect(unfarmedFieldGoods).toContain('testherb');
+    expect(unfarmedFieldGoods).not.toContain('wheat'); // wheat got its clean-room farming block
     expect(uncatalogedBuildings).toEqual(['wonder_test']);
   });
 
@@ -150,13 +176,19 @@ describe('logRealContentGaps', () => {
   it('logs one line when there are gaps, and is silent otherwise', () => {
     const info = vi.spyOn(console, 'info').mockImplementation(() => {});
     const content = sandboxContent();
-    logRealContentGaps({ content, unbalancedGoods: ['wheat'], uncatalogedBuildings: ['wonder'] });
+    logRealContentGaps({
+      content,
+      unbalancedGoods: ['testberry'],
+      unfarmedFieldGoods: ['herb'],
+      uncatalogedBuildings: ['wonder'],
+    });
     expect(info).toHaveBeenCalledOnce();
     const line = String(info.mock.calls[0]?.[0] ?? '');
-    expect(line).toContain('wheat'); // names the uncalibrated good
+    expect(line).toContain('testberry'); // names the uncalibrated gathered good
+    expect(line).toContain('herb'); // names the unfarmed field good
     expect(line).toContain('wonder'); // names the uncataloged building
     info.mockClear();
-    logRealContentGaps({ content, unbalancedGoods: [], uncatalogedBuildings: [] });
+    logRealContentGaps({ content, unbalancedGoods: [], unfarmedFieldGoods: [], uncatalogedBuildings: [] });
     expect(info).not.toHaveBeenCalled();
   });
 });
