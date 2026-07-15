@@ -20,6 +20,7 @@ const REAL_JOB = {
   fisher: 22,
   farmer: 18,
   miller: 19,
+  potter: 11, // an in-house craftsman (jobtypes.ini)
 } as const;
 
 // Real ir.json worker slots, verbatim shapes (stock_00 / work_mill_00 / work_farm_00).
@@ -78,5 +79,23 @@ describe('assignmentPriorityFor keeps the settler`s current trade', () => {
   it('a current trade the building does not offer leaves the default order untouched', () => {
     // A hunter right-clicking a mill: the mill has no hunter slot, so it falls through to the default.
     expect(assignmentPriorityFor(REAL_JOB.hunter, MILL_SLOTS)).toEqual([REAL_JOB.miller, REAL_JOB.carrier]);
+  });
+
+  it('never keeps a gatherer current trade — a collector on a workshop that has a collector slot still gets the craft', () => {
+    // A real pottery offers collector + potter + carrier. A settler who is already a collector must NOT be
+    // re-bound to that gatherer slot (the "never hand-assign a gatherer" rule), so the current-trade
+    // promotion is skipped and the default order (potter → carrier) stands. This also removes the
+    // sandbox↔real divergence: a gatherer is never promoted whichever id space its slots come in.
+    const POTTERY_SLOTS = [
+      { jobType: REAL_JOB.collector, count: 1 },
+      { jobType: REAL_JOB.potter, count: 1 },
+      { jobType: REAL_JOB.carrier, count: 1 },
+    ];
+    expect(assignmentPriorityFor(REAL_JOB.collector, POTTERY_SLOTS)).toEqual([
+      REAL_JOB.potter,
+      REAL_JOB.carrier,
+    ]);
+    // And a hunter right-clicking the warehouse still becomes a carrier, not kept a hunter.
+    expect(assignmentPriorityFor(REAL_JOB.hunter, WAREHOUSE_SLOTS)).toEqual([REAL_JOB.carrier]);
   });
 });
