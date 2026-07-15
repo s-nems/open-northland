@@ -26,6 +26,7 @@ import {
   type MenuRow,
 } from './building-menu.js';
 import type { PanelContext } from './context.js';
+import { createWindowShell } from './window-shell.js';
 
 /**
  * The window title: the decoded `miscwindow` id 0 is the original's clunky internal name "Zbuduj Okno"
@@ -101,7 +102,6 @@ export function createMenuWindow(deps: MenuWindowDeps): MenuWindow {
   const { scale } = ctx;
   const origin = menuOrigin(ctx); // fixed for the controller's life (pinned strip geometry)
 
-  let open = false;
   let category: BuildingCategory = 'all';
   let scrollTop = 0;
   let menuLayout: BuildingMenuLayout | null = null;
@@ -111,11 +111,16 @@ export function createMenuWindow(deps: MenuWindowDeps): MenuWindow {
   let lastPointer: { x: number; y: number } | null = null;
   // The viewport row count the current layout was built for — a resize that changes it triggers a reflow.
   let builtRows = 0;
-  const runs: TextRun[] = [];
+  // The build menu keeps two extra draw layers around the shared shell: `back` (the tiled wood/rust/button
+  // bitmap fills, behind the frame) and `hoverG` (the row-hover highlight, in front), so the container
+  // child order stays back < frame < hover.
   const back = new Container();
-  const graphics = new Graphics();
+  deps.container.addChild(back);
+  const shell = createWindowShell(deps.container);
+  const graphics = shell.graphics;
+  const runs = shell.runs;
   const hoverG = new Graphics();
-  deps.container.addChild(back, graphics, hoverG);
+  deps.container.addChild(hoverG);
 
   /** The viewport height in rows, from the live screen height (bounded to a tidy compact panel). */
   const listRows = (): number => {
@@ -134,9 +139,7 @@ export function createMenuWindow(deps: MenuWindowDeps): MenuWindow {
   };
 
   const clear = (): void => {
-    for (const r of runs) r.destroy();
-    runs.length = 0;
-    graphics.clear();
+    shell.clear();
     for (const child of back.removeChildren()) child.destroy();
   };
 
@@ -256,12 +259,12 @@ export function createMenuWindow(deps: MenuWindowDeps): MenuWindow {
   };
 
   const openMenu = (): void => {
-    open = true;
+    shell.setOpen(true);
     rebuild();
     place();
   };
   const close = (): void => {
-    open = false;
+    shell.setOpen(false);
     hoveredType = null;
     lastPointer = null;
     clear();
@@ -279,12 +282,12 @@ export function createMenuWindow(deps: MenuWindowDeps): MenuWindow {
   };
 
   return {
-    isOpen: () => open,
-    toggle: () => (open ? close() : openMenu()),
+    isOpen: shell.isOpen,
+    toggle: () => (shell.isOpen() ? close() : openMenu()),
     close,
-    claims: (x, y) => open && menuLayout !== null && contains(menuLayout.window, x, y),
+    claims: (x, y) => shell.claims(menuLayout?.window ?? null, x, y),
     handleClick: (x, y): boolean => {
-      if (!open || menuLayout === null) return false;
+      if (!shell.isOpen() || menuLayout === null) return false;
       const hit = hitTestBuildingMenu(menuLayout, x, y);
       if (hit === null) return false;
       if (hit.kind === 'close') close();
@@ -303,12 +306,12 @@ export function createMenuWindow(deps: MenuWindowDeps): MenuWindow {
       return true;
     },
     handleWheel: (x, y, deltaY): boolean => {
-      if (!open || menuLayout === null || !contains(menuLayout.window, x, y)) return false;
+      if (!shell.isOpen() || menuLayout === null || !contains(menuLayout.window, x, y)) return false;
       scrollBy(Math.sign(deltaY) * WHEEL_ROWS);
       return true;
     },
     handleHover: (x, y): void => {
-      if (!open || menuLayout === null) return;
+      if (!shell.isOpen() || menuLayout === null) return;
       lastPointer = { x, y };
       const next = hoverAt(x, y);
       if (next === hoveredType) return;
@@ -318,7 +321,7 @@ export function createMenuWindow(deps: MenuWindowDeps): MenuWindow {
     refresh: (): void => {
       // The vector runs don't move between rebuilds, so the only per-frame work is reflowing the list
       // when a canvas resize changes how many rows fit.
-      if (!open || menuLayout === null) return;
+      if (!shell.isOpen() || menuLayout === null) return;
       if (listRows() !== builtRows) {
         rebuild();
         place();

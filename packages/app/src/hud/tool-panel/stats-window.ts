@@ -1,10 +1,10 @@
 import type { HudLayout } from '@open-northland/render';
-import { type Container, Graphics } from 'pixi.js';
+import type { Container } from 'pixi.js';
 import { messages } from '../../i18n/index.js';
 import { drawWindowPanel, WIN_LINE_H, WIN_PAD, WIN_TITLE_H } from '../chrome.js';
-import { contains, type Rect } from '../geometry.js';
-import type { TextRun } from '../text-run.js';
+import type { Rect } from '../geometry.js';
 import type { PanelContext } from './context.js';
+import { createWindowShell } from './window-shell.js';
 
 /** Stats window width (design px) — sized to the read-view's longest tally rows. */
 const STATS_WIDTH = 150;
@@ -37,38 +37,29 @@ export interface StatsWindow {
 }
 
 /**
- * Build the statistics-window controller. The per-frame `refresh` is allocation-light: it derives a
- * change key in one pass over the HUD rows and returns early when nothing but the tick moved — the
- * glyph meshes rebuild only on a real tally change.
+ * Build the statistics-window controller on the shared {@link createWindowShell} lifecycle. The per-frame
+ * `refresh` is allocation-light: it derives a change key in one pass over the HUD rows and returns early
+ * when nothing but the tick moved — the glyph meshes rebuild only on a real tally change.
  */
 export function createStatsWindow(deps: StatsWindowDeps): StatsWindow {
   const { ctx } = deps;
   const { scale } = ctx;
+  const shell = createWindowShell(deps.container);
 
-  let open = false;
   let key = '';
   /** The window's actual drawn rect — the single source of truth for its hit region + close-on-inside. */
   let rect: Rect | null = null;
-  const runs: TextRun[] = [];
-  const graphics = new Graphics();
-  deps.container.addChild(graphics);
 
   const origin = (): { x: number; y: number } => ({
     x: ctx.layout.width + STATS_GAP_X * scale,
     y: ctx.layout.strip.y + STATS_OFFSET_Y * scale,
   });
 
-  const clear = (): void => {
-    for (const r of runs) r.destroy();
-    runs.length = 0;
-    graphics.clear();
-    rect = null;
-  };
-
   const place = (): void => {
     const { x: ox, y: oy } = origin();
     const { width: rw, height: rh } = ctx.screen();
     const pad = WIN_PAD * scale;
+    const runs = shell.runs;
     let i = 0;
     runs[i++]?.place(ox + pad, oy + TITLE_INSET_Y * scale, scale, rw, rh);
     for (let r = 0; r < runs.length - 1; r++) {
@@ -77,44 +68,45 @@ export function createStatsWindow(deps: StatsWindowDeps): StatsWindow {
   };
 
   const rebuild = (rows: readonly string[]): void => {
-    clear();
+    shell.clear();
     const { x: ox, y: oy } = origin();
     const w = STATS_WIDTH * scale;
     const h = (WIN_TITLE_H + rows.length * WIN_LINE_H + WIN_PAD) * scale;
     rect = { x: ox, y: oy, w, h };
-    drawWindowPanel(graphics, rect, scale);
+    drawWindowPanel(shell.graphics, rect, scale);
     const title = ctx.makeText(ctx.uiString('miscwindow', 180, messages().hud.statistics), 'white');
     deps.container.addChild(title.container);
-    runs.push(title);
+    shell.runs.push(title);
     for (const text of rows) {
       const run = ctx.makeText(text, 'white');
       deps.container.addChild(run.container);
-      runs.push(run);
+      shell.runs.push(run);
     }
     place();
   };
 
   const close = (): void => {
-    open = false;
+    shell.setOpen(false);
+    shell.clear();
+    rect = null;
     key = '';
-    clear();
   };
 
   return {
-    isOpen: () => open,
+    isOpen: shell.isOpen,
     toggle: () => {
-      if (open) close();
-      else open = true; // built on the next refresh (the frame's HUD read-view supplies the rows)
+      if (shell.isOpen()) close();
+      else shell.setOpen(true); // built on the next refresh (the frame's HUD read-view supplies the rows)
     },
     close,
-    claims: (x, y) => open && rect !== null && contains(rect, x, y),
+    claims: (x, y) => shell.claims(rect, x, y),
     handleClick: (x, y): boolean => {
-      if (!open || rect === null || !contains(rect, x, y)) return false;
+      if (!shell.claims(rect, x, y)) return false;
       close();
       return true;
     },
     refresh: (hud): void => {
-      if (!open) return;
+      if (!shell.isOpen()) return;
       // Change-detection key excludes the volatile tick line (`layoutHud` row 0 is `Tribe N · tick T`): the
       // tick advances every frame, so keying on it would defeat the guard and rebuild the ~hundreds of glyph
       // meshes each frame. Keyed by row index (0 is the tick row), not a substring match, so a future tally
