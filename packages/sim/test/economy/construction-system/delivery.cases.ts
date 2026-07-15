@@ -60,7 +60,9 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
     builderAt(sim, 4, 0);
 
     let built = false;
-    for (let i = 0; i < 200 && !built; i++) {
+    // The build takes 3 units × STRIKES_PER_UNIT swings (several ticks each) even with the material
+    // already inbound, so the tick budget covers the full hammer-out at the tuned ~1%/strike pace.
+    for (let i = 0; i < 600 && !built; i++) {
       sim.step();
       built = sim.world.get(site, Building).built >= ONE;
     }
