@@ -12,6 +12,7 @@ import { goodLocaleParam, loadGoodNameMap } from '../content/good-names.js';
 import { buildingFootprints, loadIr } from '../content/ir.js';
 import { loadMinimapCellColours } from '../content/minimap-ground.js';
 import { loadMapObjects } from '../content/objects.js';
+import { loadRuntimeRealContent, logRealContentGaps } from '../content/real-content.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet/index.js';
 import { loadRealTerrain } from '../content/terrain.js';
 import { fogModeParam } from '../game/fog.js';
@@ -73,7 +74,14 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // builds its own for the ground mesh; this shared instance shades the placed landscape objects at
   // load (mines/stones/grass track the lane in the original; trees stay full-bright — see objects.ts).
   const brightness = makeBrightnessField(loaded?.brightness, loaded?.width ?? 0, loaded?.height ?? 0);
-  const sheet = await resolveSpriteSheet(sandboxGoods());
+  // The app-wide `?lang=` good-name map + the merged real content it localizes — loaded before the
+  // sprite sheet so the goods icon atlas is built from the real goods when served (null on a bare
+  // checkout → the sandbox goods below). Its gaps (uncalibrated gathered goods, uncataloged buildings)
+  // are logged once.
+  const goodNames = await loadGoodNameMap(goodLocaleParam(params));
+  const realContent = await loadRuntimeRealContent(goodNames);
+  if (realContent !== null) logRealContentGaps(realContent);
+  const sheet = await resolveSpriteSheet(realContent?.content.goods ?? sandboxGoods());
   const ir = await loadIr();
   if (ir === null) console.warn('content/ir.json unavailable, placeholder graphics fallback');
   let terrain: Awaited<ReturnType<typeof loadRealTerrain>> | undefined;
@@ -110,7 +118,6 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // Extracted building footprints from the served IR give buildings real collision, so `placeBuilding`
   // is blocked where a house doesn't fit and the build overlay greys those tiles (empty without content/).
   const footprints = buildingFootprints(ir);
-  const goodNames = await loadGoodNameMap(goodLocaleParam(params));
   // The sim navigates + validates placement against the collision grid — the map's raw landscape lane
   // resolved into the semantic walk/build classes from the real ground + object data (water, trees,
   // stones, ore deposits block; see content/collision.ts). The render layers keep reading `loaded`
@@ -134,13 +141,22 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // (the command queue drains fully per step) while leaving the just-spawned settlers at their start.
   const authoredSim =
     loaded?.entities !== undefined && ir !== null && simMap !== null
-      ? runAuthoredSlice(SLICE_SEED, 1, simMap, loaded.entities, ir, footprints, goodNames)
+      ? runAuthoredSlice(
+          SLICE_SEED,
+          1,
+          simMap,
+          loaded.entities,
+          ir,
+          footprints,
+          goodNames,
+          realContent?.content,
+        )
       : null;
   const sim =
     authoredSim ??
     (simMap !== null
-      ? runBareMap(SLICE_SEED, simMap, footprints, goodNames)
-      : runSlice(SLICE_SEED, 1, undefined, HUMAN_PLAYER, footprints, goodNames));
+      ? runBareMap(SLICE_SEED, simMap, footprints, goodNames, realContent?.content)
+      : runSlice(SLICE_SEED, 1, undefined, HUMAN_PLAYER, footprints, goodNames, realContent?.content));
 
   // `?fog=off|reveal|recon` selects the map's fog rule (direct URLs without the flag remain revealed).
   const fogOverride = fogModeParam(params);

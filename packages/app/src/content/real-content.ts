@@ -66,9 +66,18 @@ export interface RealContentMerge {
  * (`content/collision.ts`) or a scene grid navigates on, and those class ids sit in a reserved band that
  * never aliases the detailed types, so `buildTerrainGraph` on real content resolves both. Idempotent — a
  * class row already present (a set that already lists them) is not duplicated.
+ *
+ * `goodNames` (the app-wide `?lang=` good-name map, keyed by good string id) localizes each good's
+ * display name — the real IR ships raw ids where the sandbox carried English `name`s; a good the map
+ * lacks keeps its own name.
  */
-export function mergeRealContent(real: ContentSet): RealContentMerge {
-  const goods = real.goods.map((good) => {
+export function mergeRealContent(
+  real: ContentSet,
+  goodNames?: ReadonlyMap<string, string>,
+): RealContentMerge {
+  const goods = real.goods.map((raw) => {
+    const localized = goodNames?.get(raw.id);
+    const good = localized !== undefined ? { ...raw, name: localized } : raw;
     const balance = good.gathering === undefined ? undefined : GATHERING_BALANCE_BY_ID[good.id];
     if (good.gathering === undefined || balance === undefined) return good;
     return {
@@ -91,4 +100,34 @@ export function mergeRealContent(real: ContentSet): RealContentMerge {
   const navRows = NAV_LANDSCAPE_TYPES.filter((t) => !landscapeIds.has(t.typeId));
   const landscape = [...real.landscape, ...navRows];
   return { content: parseContentSet({ ...real, goods, landscape }), unbalancedGoods, uncatalogedBuildings };
+}
+
+/**
+ * Load the served real content and ready it for the sim in one call: fetch + validate via
+ * {@link loadRealContent}, then {@link mergeRealContent} (gathering balance + nav-terrain classes +
+ * localized `goodNames`). Returns `null` on a bare checkout (no `content/ir.json`) so the interactive
+ * entries fall back to the clean-room sandbox content. The pure sim never does I/O — this is the app
+ * boundary that mints the sim-ready set (`packages/app/AGENTS.md`).
+ */
+export async function loadRuntimeRealContent(
+  goodNames?: ReadonlyMap<string, string>,
+  fetchImpl: typeof fetch = fetch,
+): Promise<RealContentMerge | null> {
+  const real = await loadRealContent(fetchImpl);
+  return real === null ? null : mergeRealContent(real, goodNames);
+}
+
+/**
+ * Log the gaps {@link mergeRealContent} surfaced — gathered goods with no clean-room balance and
+ * buildings beyond the clean-room catalog — as one console line, so a browser run shows what the overlay
+ * could not fill. No-op when there is nothing to report.
+ */
+export function logRealContentGaps(merge: RealContentMerge): void {
+  const { unbalancedGoods, uncatalogedBuildings } = merge;
+  if (unbalancedGoods.length === 0 && uncatalogedBuildings.length === 0) return;
+  console.info(
+    `real content gaps: ${unbalancedGoods.length} gathered good(s) without clean-room balance ` +
+      `[${unbalancedGoods.join(', ')}], ${uncatalogedBuildings.length} building(s) beyond the catalog ` +
+      `[${uncatalogedBuildings.join(', ')}]`,
+  );
 }

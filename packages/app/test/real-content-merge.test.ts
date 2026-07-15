@@ -1,6 +1,6 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { buildTerrainGraph, halfCellMapFromCells } from '@open-northland/sim';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../src/catalog/felling.js';
 import { MINE_LEVELS, STONE_DEPOSIT_UNITS } from '../src/catalog/mining.js';
 import {
@@ -11,7 +11,7 @@ import {
   TERRAIN_MARGIN,
   TERRAIN_OPEN,
 } from '../src/catalog/terrain.js';
-import { mergeRealContent } from '../src/content/real-content.js';
+import { loadRuntimeRealContent, logRealContentGaps, mergeRealContent } from '../src/content/real-content.js';
 import { sandboxContent } from '../src/game/sandbox/index.js';
 
 /**
@@ -105,5 +105,47 @@ describe('mergeRealContent', () => {
     expect(content.landscape.find((t) => t.typeId === TERRAIN_OPEN)?.plantable).toBe(true);
     expect(content.landscape.find((t) => t.typeId === TERRAIN_IMPASSABLE)?.walkable).toBe(false);
     expect(() => buildTerrainGraph(content, grid)).not.toThrow();
+  });
+
+  it('localizes good display names from the goodNames map, leaving unlisted goods as-is', () => {
+    const raw = rawRealLike();
+    const { content } = mergeRealContent(raw, new Map([['wood', 'Drewno']]));
+    expect(goodById(content, 'wood').name).toBe('Drewno');
+    // A good absent from the map keeps whatever name it shipped with (unchanged).
+    expect(goodById(content, 'coin').name).toBe(goodById(raw, 'coin').name);
+  });
+});
+
+/** A Response-shaped stub for the injected fetch — only `ok` + `json()` are read (see net.ts). */
+function fetchStub(body: unknown, ok = true): typeof fetch {
+  return (async () => ({ ok, json: async () => body })) as unknown as typeof fetch;
+}
+
+describe('loadRuntimeRealContent', () => {
+  it('fetches + merges the served content (nav classes injected), or null when absent', async () => {
+    // A plain-JSON round-trip of the stand-in, like the served ir.json the loader parses.
+    const served = JSON.parse(JSON.stringify(rawRealLike()));
+    const merge = await loadRuntimeRealContent(new Map([['wood', 'Drewno']]), fetchStub(served));
+    expect(merge).not.toBeNull();
+    expect(merge?.content.landscape.some((t) => t.typeId === TERRAIN_OPEN)).toBe(true);
+    expect(goodById(merge?.content ?? sandboxContent(), 'wood').name).toBe('Drewno');
+    expect(merge?.unbalancedGoods).toContain('testberry');
+
+    // A bare checkout (no ir.json → 404) degrades to null so the entries fall back to sandbox content.
+    expect(await loadRuntimeRealContent(undefined, fetchStub(null, false))).toBeNull();
+  });
+});
+
+describe('logRealContentGaps', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('logs one line when there are gaps, and is silent otherwise', () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const content = sandboxContent();
+    logRealContentGaps({ content, unbalancedGoods: ['wheat'], uncatalogedBuildings: ['wonder'] });
+    expect(info).toHaveBeenCalledOnce();
+    info.mockClear();
+    logRealContentGaps({ content, unbalancedGoods: [], uncatalogedBuildings: [] });
+    expect(info).not.toHaveBeenCalled();
   });
 });

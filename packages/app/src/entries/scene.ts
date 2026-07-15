@@ -6,6 +6,7 @@ import {
 } from '@open-northland/render';
 import { goodLocaleParam, loadGoodNameMap } from '../content/good-names.js';
 import { buildingFootprints, loadIr } from '../content/ir.js';
+import { loadRuntimeRealContent, logRealContentGaps } from '../content/real-content.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet/index.js';
 import { loadRealTerrain } from '../content/terrain.js';
 import { fogModeParam } from '../game/fog.js';
@@ -56,10 +57,19 @@ export async function renderSceneMode(
   // exactly like the live map view instead of the hand-authored class squares. Empty on a bare checkout
   // (no ir.json) — the approximations then stand, and the headless twin never loads them at all.
   const footprints = buildingFootprints(await loadIr());
-  const sim = createSceneSim(scene, {
-    goodNames,
-    ...(footprints.size > 0 ? { buildingFootprints: footprints } : {}),
-  });
+  // Run the browser scene on the merged real content when it is served (localized good names, real
+  // footprints/recipes); a bare checkout falls back to sandbox content, and the headless twin never
+  // loads it — so copyrighted content stays out of tests. Its gaps are logged once.
+  const realContent = await loadRuntimeRealContent(goodNames);
+  if (realContent !== null) logRealContentGaps(realContent);
+  const sim = createSceneSim(
+    scene,
+    {
+      goodNames,
+      ...(footprints.size > 0 ? { buildingFootprints: footprints } : {}),
+    },
+    realContent?.content,
+  );
   // `?fog=off|reveal|recon` overrides the scene's own fog mode (enqueued after the scene's
   // setFogMode — FIFO, later write wins). A named divergence from the headless twin, like `?speed=`:
   // the human explicitly asked to watch the mechanic under a different fog rule.
