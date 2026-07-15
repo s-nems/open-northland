@@ -71,7 +71,7 @@ describe('IR integration', () => {
       parseContentSet({
         manifest: { version: 1, generatedFrom: { game: 'Cultures 8th Wonder' } },
         goods: [], // no goods defined -> the workplace's logicproduction ids dangle
-        jobs: [{ typeId: 51, id: 'job_51' }], // the buildings' worker job, so only the good dangles
+        jobs: [{ typeId: 51, id: 'job_51' }], // the buildings' worker job, so the danglers are all good-side
         buildings,
       }),
     ).toThrow(/produces unknown goodType/);

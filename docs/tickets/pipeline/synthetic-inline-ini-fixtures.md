@@ -29,7 +29,9 @@ real game data).
   `GFXHOUSE_*` inline `[GfxHouse]` fixtures (`LogicType`, `LogicConstructionGoods`, `GfxFrames`,
   bob ids) mirror real `budynki12/houses/houses.ini` graphics records.
 - `test/ini-integration.test.ts` — the inline cross-reference snippets author `name "wood"` /
-  `name "coin"` / `"gold"` record names (real good names) as arbitrary ids.
+  `name "coin"` / `"gold"` record names (real good names), and inline synthetic IR objects use real
+  game vehicle identifiers as ids (`'handcart'`, `'oxcart'`, `'catapult'`, `'ship small'` — confirmed
+  in `CnModMaps/*/staticobjects.inc`).
 
 ## Scope
 
