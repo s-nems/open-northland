@@ -74,8 +74,11 @@ function buildQuadBatch(objects: readonly MapObjectSprite[], source: TextureSour
   const shaded = objects.some((obj) => obj.brightness !== undefined);
   const brightness = shaded ? new Float32Array(objects.length * 4) : null;
   for (let q = 0; q < objects.length; q++) {
-    const obj = objects[q] as MapObjectSprite;
-    const frame = objectFrameAt(obj, 0) as AtlasFrame;
+    const obj = objects[q];
+    // The caller drops frame-less objects before batching, so frame 0 always resolves; guard rather
+    // than assert so an unfiltered object leaves a degenerate quad instead of a bad cast.
+    const frame = obj === undefined ? undefined : objectFrameAt(obj, 0);
+    if (obj === undefined || frame === undefined) continue;
     writeObjectQuad(positions, uvs, q, obj, frame, source.width, source.height);
     indices.set([q * 4, q * 4 + 1, q * 4 + 2, q * 4, q * 4 + 2, q * 4 + 3], q * 6);
     brightness?.fill(obj.brightness ?? 1, q * 4, q * 4 + 4);

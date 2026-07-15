@@ -65,9 +65,8 @@ export interface WorldFrame {
 
 /**
  * The retained-mode world renderer — a thin orchestrator over the sub-layers it composes. It owns a
- * persistent scene graph (never immediate mode: per-frame Pixi object churn, not draw calls, is what
- * exhausts GC/GPU past a couple thousand tiles), split across four sub-layers each owning its slice
- * of state:
+ * persistent scene graph (never immediate mode; see the package `AGENTS.md`), split across four
+ * sub-layers each owning its slice of state:
  *  - {@link TerrainLayer} — the ground, meshed once and drawn per visible block;
  *  - {@link MapObjectLayer} — the decoded map's decor (batched meshes) + tall objects (pooled sprites);
  *  - {@link SpritePool} — a display object per entity, keyed by id and reused across frames;

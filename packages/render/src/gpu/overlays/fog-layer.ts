@@ -124,11 +124,10 @@ export class FogLayer {
     this.texH = Math.max(quantH, this.texH);
     this.texture?.destroy(true);
     this.buffer = new Uint8Array(this.texW * this.texH * 4); // RGB stay 0 (black); alpha is written per band
-    // Linear sampling is the whole trick: one texel per cell, so the GPU's bilinear filter spreads a
-    // state change across a full cell — the soft fog gradient. An explicit `frame` (so `noFrame`
-    // stays false and `texture.update()` cannot clobber the band crop back to the full source) +
-    // `dynamic: true` (so the Sprite subscribes to `update` and re-reads UVs when the band resizes)
-    // are both load-bearing — see the frame-mutation comment in {@link update}.
+    // The one-texel-per-cell linear filter (see the class doc) needs two texture options set here: an
+    // explicit `frame` (so `noFrame` stays false and `texture.update()` cannot clobber the band crop
+    // back to the full source) and `dynamic: true` (so the Sprite subscribes to `update` and re-reads
+    // UVs when the band resizes) — see the frame-mutation comment in {@link update}.
     this.texture = new Texture({
       source: new BufferImageSource({
         resource: this.buffer,

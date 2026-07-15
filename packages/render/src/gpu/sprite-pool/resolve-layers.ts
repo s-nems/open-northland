@@ -139,12 +139,11 @@ export function resolveLayers(
   }
   if (bobId === null) return null;
 
-  const kindLayer: SpriteLayer | undefined =
-    item.kind === 'tile' ? undefined : sheet.kindLayers?.[item.kind as SpriteKind];
-  if (kindLayer !== undefined) {
+  const kindLayer: SpriteLayer | undefined = item.kind === 'tile' ? undefined : sheet.kindLayers?.[item.kind];
+  if (kindLayer !== undefined && item.kind !== 'tile') {
     const frame = lookupFrame(kindLayer.atlas, bobId);
     if (frame === null) return null;
-    const scale = sheet.kindScales?.[item.kind as SpriteKind] ?? 1;
+    const scale = sheet.kindScales?.[item.kind] ?? 1;
     const body = { source: kindLayer.source, frame, scale };
     return buildingOverlay === null ? [body] : [body, buildingOverlay];
   }
