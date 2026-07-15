@@ -115,10 +115,9 @@ export class SpritePool {
    * this frame (culled or gone), and reap the ones that left the snapshot (died). No allocation in the
    * steady state — only a first-seen entity or a growing layer set mints a new object.
    *
-   * Per-frame work tracks the SCREEN, not the pool: the get-or-create and detach passes iterate this
-   * frame's draw list and the {@link attached} set (both O(visible)). Only the death reap must diff the
-   * whole pool against the live set, so it runs on an interval ({@link POOL_REAP_INTERVAL_FRAMES}), off
-   * the hot path.
+   * The get-or-create and detach passes are O(visible) — they iterate this frame's draw list and the
+   * {@link attached} set. Only the death reap must diff the whole pool against the live set, so it runs
+   * on an interval ({@link POOL_REAP_INTERVAL_FRAMES}), off the hot path.
    */
   reconcile(frame: PoolFrame): void {
     // One pass over the snapshot yields both the culled draw list and the pre-cull liveness set the

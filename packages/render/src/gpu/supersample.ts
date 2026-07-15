@@ -32,7 +32,7 @@ import { clamp } from '../data/math.js';
  * hard palette edges resolve anti-aliased. Integer device scales stay pixel-exact — each device px
  * then averages a uniform block of one source texel. The `ceil` term only bites below 0.5 device px
  * per design px, where `floor(2×)` alone would upscale (there the (1, 2] guarantee yields to "never
- * upscale") — do not "simplify" the max away. `floor` is the caller's quality floor (a
+ * upscale"). `floor` is the caller's quality floor (a
  * hard-clipped disc rim wants ≥3 for smoothing headroom; a flat strip is fine from 1); `cap` bounds
  * the texture memory a pathological `?uiscale=`/DPR combination could request. Lives beside the
  * bake so the sizing policy can't drift between callers.

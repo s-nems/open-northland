@@ -162,11 +162,6 @@ export class AnimationGallery {
     this.direction = direction;
   }
 
-  /** The current direction (for the overlay readout). */
-  getDirection(): GalleryDirection {
-    return this.direction;
-  }
-
   /** The pixel size of the whole grid (so the app can frame it with an initial camera). */
   contentSize(): { readonly width: number; readonly height: number } {
     const rows = Math.max(1, Math.ceil(this.cellCount / this.columns));

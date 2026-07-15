@@ -25,9 +25,8 @@ const APP_OPTIONS = {
   resolution: 1,
   // No Pixi auto-render ticker: every consumer (WorldRenderer.update, animationGallery.update, the shot
   // entry) drives its own RAF loop and calls `app.render()` explicitly with the camera already applied.
-  // Left on (the default), Pixi's shared ticker renders the stage the instant a layer is populated —
-  // before the first frame sets the camera transform — so the world flashes at the identity transform
-  // (tile 0,0 pinned to screen origin) and then jumps to the start focus.
+  // Left on, the shared ticker would render the stage before the first frame sets the camera transform,
+  // flashing the world at the identity transform.
   autoStart: false,
 } as const;
 
