@@ -29,7 +29,7 @@ declare global {
 /**
  * The `?scene=<id>` entry renders a registered acceptance scene with the standard game HUD so a human
  * can watch the mechanic. Normal play always loads decoded sprites and terrain when available, with
- * clean-room fallbacks for a bare checkout. The sim is the exact one the headless acceptance test runs.
+ * hand-authored fallbacks for a bare checkout. The sim is the exact one the headless acceptance test runs.
  */
 
 export async function renderSceneMode(
@@ -53,7 +53,7 @@ export async function renderSceneMode(
   // Authored names keep a bare checkout localized.
   const goodNames = await loadGoodNameMap(goodLocaleParam(params));
   // Real extracted building footprints (like the `?map=` entry): browser scenes collide/door/place
-  // exactly like the live map view instead of the clean-room class squares. Empty on a bare checkout
+  // exactly like the live map view instead of the hand-authored class squares. Empty on a bare checkout
   // (no ir.json) — the approximations then stand, and the headless twin never loads them at all.
   const footprints = buildingFootprints(await loadIr());
   const sim = createSceneSim(scene, {

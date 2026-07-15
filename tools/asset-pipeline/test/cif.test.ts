@@ -3,7 +3,7 @@ import { decodeCifStringArray, decryptMode1, encryptMode1, StorableId } from '..
 
 /**
  * `.cif` container decoder tests. No copyrighted fixtures are committed: we synthesize a
- * CStringArray container in memory (encrypting it with the faithful port of XB_Encrypt_Memory),
+ * CStringArray container in memory with the inverse cipher implemented by the encoder,
  * then assert the decoder recovers it. The structure mirrors the real `housetypes.cif` verified
  * during the Phase-1 spike.
  */
@@ -31,7 +31,7 @@ function buildPool(lines: ReadonlyArray<{ level: number; text: string }>): {
   return { pool: Uint8Array.from(chunks), offsets };
 }
 
-/** Serializes a CStringArray `.cif`, encrypting the offsets + pool exactly as the original does. */
+/** Serializes a CStringArray `.cif`, encrypting its offsets and pool for a synthetic round trip. */
 function buildCif(lines: ReadonlyArray<{ level: number; text: string }>): Uint8Array {
   const { pool, offsets } = buildPool(lines);
   const encOffsets = Uint8Array.from(offsets);

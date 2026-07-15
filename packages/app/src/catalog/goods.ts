@@ -8,7 +8,7 @@
  * the wares) a warehouse stock slot + its recoloured `ls_goods` HUD icon, drawable in the Magazyn panel.
  *
  * Source basis: `id` and catalog order are transcribed verbatim from the extracted `content/ir.json` goods
- * (itself decoded from `Data/logic/goodtypes.ini`); `name` is our own clean-room English naming. The icon
+ * (itself decoded from `Data/logic/goodtypes.ini`); `name` is our own hand-authored English naming. The icon
  * for each ware resolves by its string id through `content/goods/manifest.json` (the `ls_goods` frame +
  * palette the pipeline bound), so no typeId needs to match for art to appear.
  *
@@ -28,7 +28,7 @@ export interface CatalogGood {
   readonly typeId: number;
   /** Stable machine id, verbatim from `ir.json` — also the `ls_goods` icon-manifest key. */
   readonly id: string;
-  /** Human English label for the HUD (e.g. `"Leather"`) — our clean-room naming. */
+  /** Human English label for the HUD (e.g. `"Leather"`) — our hand-authored naming. */
   readonly name: string;
   /**
    * Whether a general-goods store (HQ / warehouse) advertises a stock slot for it. True for the carried

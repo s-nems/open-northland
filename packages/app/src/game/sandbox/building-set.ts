@@ -29,7 +29,7 @@ import { workerSlotsFor } from './worker-slots.js';
 /**
  * The sandbox building set — the per-building store slots, capacities, recipes, and worker overrides
  * the global {@link import('./content/index.js').sandboxContent} set assembles its `buildings` field from
- * ({@link buildSandboxBuildings}). The clean-room catalog stays pinned to ir.json; the stock/recipe
+ * ({@link buildSandboxBuildings}). The hand-authored catalog stays pinned to ir.json; the stock/recipe
  * pins here are sandbox balance, not extracted data (see the per-table notes).
  */
 
@@ -178,11 +178,11 @@ function buildingRow(b: VikingBuilding): SandboxBuildingRow {
 }
 
 /**
- * The building set: every clean-room catalog building carrying its extracted-or-approximated footprint,
+ * The building set: every hand-authored catalog building carrying its extracted-or-approximated footprint,
  * plus any extra buildings the caller declares. See {@link buildingRow} for the per-building shape.
  */
 export function buildSandboxBuildings(extras: SandboxContentExtras): Map<number, SandboxBuildingRow> {
-  // Real extracted footprints (live content) replace the clean-room approximations wholesale — see
+  // Real extracted footprints (live content) replace the hand-authored approximations wholesale — see
   // SandboxContentExtras.buildingFootprints. Without them every building approximates by class.
   const footprintOf = (typeId: number, kind: string): { footprint?: BuildingFootprint } => {
     const real = extras.buildingFootprints;

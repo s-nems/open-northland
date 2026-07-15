@@ -19,7 +19,7 @@ import type { GoodLike } from './icons.js';
 /**
  * The languages whose localized good-name table we extract, most-preferred first. Each good-name string
  * file lives at `text/<dir>/strings/gameobjects/goods.{ini,cif}`; the mod ships Polish as a plaintext `.ini`
- * (CP1250, decoded directly) and English as encrypted `.cif` (latin1 through the oracle seam, then
+ * (CP1250, decoded directly) and English as encrypted `.cif` (byte-preserving latin1, then
  * re-decoded to CP1250 for display). The app intentionally exposes only Polish and English.
  */
 const GOOD_NAME_LOCALES = [

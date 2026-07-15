@@ -9,8 +9,8 @@ data, so any residual must be shading/overlay/object-level, not the pattern choi
 
 ## Scope
 
-- Re-compare columns ~150–178 of mosty-5 vs our render (aligned crops + difference heatmap; kit in
-  `docs/SOURCES.md`).
+- Re-compare columns ~150–178 of mosty-5 against our render using aligned local crops and a
+  difference heatmap.
 - Fix only what the evidence pins; **deferring with numbers is a legitimate outcome**.
 
 ## Verify

@@ -37,8 +37,8 @@ const TerrainMapFields = z.strictObject({
    * not the `2W × 2H` half-cell resolution the {@link objects} lane uses. Raw byte values, 0..250
    * (a hard observed ceiling across the real maps).
    * Present when the map ships the lane (older/foreign saves omit it). Consumed by the render's
-   * elevation lift (≈1.24 native px/unit, measured — see source basis "projection";
-   * `packages/render/src/data/elevation.ts`).
+   * elevation lift (`TILE_HALF_H/32`, 1.1875 native px/unit at the current projection;
+   * see `packages/render/src/data/elevation.ts`).
    */
   elevation: CellLane.optional(),
   /**

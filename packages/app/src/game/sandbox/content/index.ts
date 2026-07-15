@@ -16,7 +16,7 @@ import type { SandboxContentExtras } from './types.js';
 
 export type { SandboxContentExtras } from './types.js';
 
-/** The complete validated clean-room content set shared by scenes and the playable vertical slice. */
+/** The complete validated hand-authored content set shared by scenes and the playable vertical slice. */
 export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtras = {}): ContentSet {
   const buildings = buildSandboxBuildings(extras);
   const jobs = buildSandboxJobs(extras);

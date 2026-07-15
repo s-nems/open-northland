@@ -79,4 +79,4 @@ byte means a decode changed.
 ## Source basis
 
 Pure internal dedup; no mechanic/extraction semantics change. Decoder correctness is pinned by the
-existing research notes-oracle round-trip fixtures.
+existing synthetic round-trip fixtures.

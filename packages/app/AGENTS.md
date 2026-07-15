@@ -35,7 +35,7 @@ that matches its role instead of piling another method onto a growing file:
   `SpriteSheet` + `resolveSpriteSheet`), `terrain.ts`, `objects.ts`, `collision.ts` (the decoded-map →
   SIM join: ground classes + object block areas → the semantic collision grid), `gui-gfx.ts`/
   `gui-art.ts`/`gui-atlas-map.ts` + `font-gfx.ts` (the GUI/font art bindings), `audio.ts`.
-- **`catalog/`** — committed clean-room data catalogs (English naming over the original's typeIds):
+- **`catalog/`** — committed hand-authored data catalogs (English naming over the original's typeIds):
   `buildings.ts` (the 41 viking buildings), `roster.ts` (the character roster), `atomics.ts` (the harvest
   atomic ids), `felling.ts`/`mining.ts` (gathering pins).
 - **`game/`** — the GLOBAL game content + rules shared by every mode: `rules.ts` (player/tribe constants
@@ -141,7 +141,7 @@ a reproducible default so the committed build + the `npm run shot` PNG never dep
   or known-terrain recon; the menu defaults new worlds to classic. `?center=x,y` remains a direct map inspection
   aid for centring a bridge, coastline, or another decoded feature.
   Normal map and scene play always attempts to load decoded sprites, terrain textures, and landscape
-  objects at the calibrated projection; a checkout without them degrades to clean-room markers and flat
+  objects at the calibrated projection; a checkout without them degrades to hand-authored markers and flat
   ground. Renderer opt-outs are not player settings. Gallery-specific controls remain scoped to their
   entries (`?anim&zoom=`, `?icons&atlas=`, and the deterministic `?shot` verification flags).
   `?map=<id>` is a real-content human-validation entry, NOT a `SceneDefinition`; its headless counterpart
@@ -156,7 +156,7 @@ An agent **cannot self-judge pixels** (root `AGENTS.md` "How to verify your work
 - **browser** (`?scene=<id>`) renders the SAME run so a *human* judges the pixels.
 
 One NAMED divergence: the browser entry feeds the real extracted building footprints (sim-affecting —
-collision, placement, doors) while the headless twin keeps the clean-room approximations (copyrighted
+collision, placement, doors) while the headless twin keeps the hand-authored approximations (copyrighted
 `content/` never enters tests). Keep scene placements comfortably legal under both; see
 `scenes/runtime.ts` (`createSceneSim` doc) for the full contract.
 

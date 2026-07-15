@@ -10,7 +10,7 @@
     "tools/*"
   ],
   "scripts": {
-    "build": "tsc --build",
+    "build": "npm run typecheck && npm run build --workspace @open-northland/app",
     "clean": "tsc --build --clean",
     "typecheck": "tsc --build",
     "test": "vitest run",
@@ -19,6 +19,7 @@
     "format": "biome format --write .",
     "check": "biome check .",
     "check:fix": "biome check --write .",
+    "check:assets": "node scripts/check-repository-assets.mjs",
     "dev": "npm run dev --workspace @open-northland/app",
     "dev:ports": "scripts/dev-ports.sh",
     "dev:reset": "scripts/dev-reset.sh",

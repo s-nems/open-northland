@@ -14,7 +14,7 @@ describe('application locale', () => {
     expect(localeParam(new URLSearchParams('lang=en'))).toBe('eng');
   });
 
-  it('drives clean-room profession and building labels from one active locale', () => {
+  it('drives hand-authored profession and building labels from one active locale', () => {
     setActiveLocale('eng');
     expect(professionLabel('smith')).toBe('Smith');
     expect(localizedBuildingName('barracks', 'fallback')).toBe('Barracks');

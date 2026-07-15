@@ -72,7 +72,7 @@ describe('extractStringnById (singular-only, multiplier-free)', () => {
 });
 
 describe('latin1ToCp1250', () => {
-  it('re-decodes an oracle-faithful latin1 string as CP1250 display text', () => {
+  it('re-decodes byte-preserving latin1 as CP1250 display text', () => {
     // 0xB3 is ³ in latin1 but ł in CP1250 — the .cif seam decodes latin1, display needs CP1250.
     expect(latin1ToCp1250('B\xb3\xeakitny')).toBe('Błękitny');
   });

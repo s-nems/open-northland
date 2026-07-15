@@ -23,7 +23,7 @@ import { resourceSpecFor } from './place.js';
 const SPAWNABLE_GOOD_IDS: ReadonlySet<string> = new Set(GATHERERS.map((g) => g.id));
 
 /** A `goodId` string → its {@link GathererSpec} (the map-resource join returns pipeline goodId strings, the
- *  bridge across the IR's original good numbering and the app's clean-room ids). */
+ *  bridge across the IR's original good numbering and the app's hand-authored ids). */
 const GATHERER_BY_GOOD_ID: ReadonlyMap<string, GathererSpec> = new Map(GATHERERS.map((g) => [g.id, g]));
 
 /**

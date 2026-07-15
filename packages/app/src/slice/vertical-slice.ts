@@ -193,7 +193,7 @@ export function runSlice(
   const mapCells = map ? walkableCells(map, sandboxWalkableTypeIds(map), PLACEMENT_CELL_COUNT) : null;
   const usable = map !== undefined && mapCells !== null;
   // `footprints` (the live real-content entry passes them, from ir.json) replace the catalog's
-  // clean-room approximations with the buildings' real collision bodies (see SandboxContentExtras).
+  // hand-authored approximations with the buildings' real collision bodies (see SandboxContentExtras).
   const content = sandboxContent(usable ? map : undefined, {
     ...(footprints ? { buildingFootprints: footprints } : {}),
     ...(goodNames ? { goodNames } : {}),

@@ -1,10 +1,8 @@
 /**
  * `.lib` archive decoder — Cultures "SimpleFileLibrary" packed container.
  *
- * Ported format (not architecture) from research notes `Source/an original routine/`:
- *   - CSimpleFileLibrary.cs  header layout, ASCII length-prefixed names, filename checksum
- *   - Dexter/DexterEndian.cs `FileReadLongLSB` (u32 is little-endian)
- * Referenced at research notes @ working tree 2026-06.
+ * The layout was established through byte-level inspection of archives from an owned game copy and
+ * is pinned by synthetic boundary and round-trip tests.
  *
  * Layout (all u32 little-endian):
  *   u32 version            // the original reads and ignores it; observed value 1

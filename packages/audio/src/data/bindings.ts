@@ -3,7 +3,7 @@ import type { EventSound, SoundBindings } from './types.js';
 /**
  * The Cultures event→sound map: which sim event triggers which sound group. The original drives these
  * off animation / `LogicSoundType` / `MusicType` ids; this binds by the names + `MusicType`s decoded
- * from `soundfx.cif` (the reversed mapping as data).
+ * from the decoded `soundfx.cif` mapping.
  */
 
 // --- Jingle MusicType ids, straight from soundfx.cif's SoundFXJingle records ---

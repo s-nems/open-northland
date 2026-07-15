@@ -15,7 +15,7 @@ outcomes: implement, or defer with evidence.
 
 1. Investigate: dump wall placements' neighbour adjacency; decode `lmlp` for wall cells
    (`tools/asset-pipeline/src/decoders/mapdat.ts`) and test whether 4/5 splits by run direction;
-   template-match `wall_03/04/05` against the corpus (kit in `docs/SOURCES.md`).
+   template-match `wall_03/04/05` against locally captured reference images.
 2. Implement a per-placement variant/frame pick in `objects.ts` — still one sprite per placement,
    deterministic, load-time. Record the pinned-vs-approximated split.
 3. Split into two tickets if `lmlp` must become a pipeline-emitted lane.

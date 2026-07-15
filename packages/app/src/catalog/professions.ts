@@ -11,7 +11,7 @@ import {
 import { categoryLabel, type Locale, type Messages, professionLabel } from '../i18n/index.js';
 
 /**
- * The committed clean-room profession roster — the complete set of jobs a player can assign a settler to,
+ * The committed hand-authored profession roster — the complete set of jobs a player can assign a settler to,
  * transcribed from the original `Data/logic/jobtypes.ini` (`[jobtype]` records). This is the source of
  * truth for both the profession picker (what it offers + which job each row assigns) and the settler
  * details-panel label (a settler's profession name), so the two can never drift.

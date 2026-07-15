@@ -1,8 +1,8 @@
 import { encryptMode1, StorableId } from '../../src/decoders/cif.js';
 
 /**
- * Serializes level-tagged lines into a real `CStringArray` byte stream (offsets + pool encrypted
- * exactly as the original), so the map/gui stages can be exercised end-to-end without committing a
+ * Serializes level-tagged lines into a `CStringArray` byte stream using the decoder's inverse cipher,
+ * so the map/gui stages can be exercised end-to-end without committing a
  * copyrighted fixture. Kept local to the tests rather than exported from the decoder, which only
  * needs to decode.
  */

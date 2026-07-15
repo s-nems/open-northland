@@ -27,8 +27,8 @@ import {
  *    for its text colour.
  *  - **Metrics.** Per font, a `content/gui/fonts/<key>.metrics.json` carries the {@link FontMetrics}: the
  *    per-glyph advance/offset/size, line height, baseline, and space bob — the layout the renderer needs
- *    (the atlas gives where the pixels are; the metrics give how to lay them out). Ported from the
- *    CFont formulas (see `decoders/fnt.ts`).
+ *    (the atlas gives where the pixels are; the metrics give how to lay them out). Metrics are
+ *    derived from decoded font rectangles and pinned by synthetic layout tests.
  *
  * The three shipped sets — the root `Data/gui/fonts/` (the central-European set that carries the Polish
  * CP1250 glyph range) plus the `latin/` and `rus/` alternate-codepage variants — are all extracted, keyed

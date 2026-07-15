@@ -18,8 +18,8 @@ time of filing: the resolve-rate warning in `packages/app/src/content/objects.ts
 - Verify the vegetation species/palette mix visually (mechanism landed via `nodesByGfxIndex`;
   examples: OrangeTree 01 vs 02, yew 01 vs 02 — same bmd, different palettes → the yellow/green
   canopy mix).
-- Build the 7-frame aligned original-vs-ours panorama over mosty-1..7 (verification kit in
-  `docs/SOURCES.md`) as the acceptance artifact.
+- Build a 7-frame aligned original-vs-ours panorama over mosty-1..7 from local captures as the
+  acceptance artifact.
 
 ## Verify
 

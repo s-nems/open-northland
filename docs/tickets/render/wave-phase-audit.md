@@ -12,9 +12,8 @@ not from observation.
 
 ## Scope
 
-- Template-match wave frames over one corpus water patch (the kit lives in `docs/SOURCES.md`
-  "Reference-screenshot corpus + template matching" — it serves several map-visual tickets, so it
-  stays there) → decide unison vs gradient with evidence.
+- Template-match wave frames over one locally captured water patch to decide unison vs gradient
+  with evidence.
 - Update the code and its comment to the finding; name the source basis at the site. Confirming
   the current gradient is a valid outcome — then only the source-basis note changes.
 

@@ -9,7 +9,7 @@ authored-placements.ts`) and every typeId draws its canonical bob
 authors `"viking headquarters house"` = bob 44 (longhouse) — so imported bases draw the wrong
 building bodies. No entityId→BuildingBobRef override channel exists.
 
-**Source basis (corpus, see the verification kit in `docs/SOURCES.md`):** HQ template match 0.966
+**Source basis (locally captured reference corpus):** HQ template match 0.966
 → bob 44 `ls_houses_viking4.house02`; name distribution across the 122 entity-bearing maps: 131
 "viking headquarters house" vs 60 "viking headquarters" (6 maps author the plain name).
 

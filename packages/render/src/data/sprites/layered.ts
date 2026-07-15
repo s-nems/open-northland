@@ -97,9 +97,9 @@ export function resolveConstructionDraws(
 /**
  * Map build progress (0..1 — `builtPct/100`, or the pool's eased display value) into a construction
  * stage's `[fromPct, toPct]` window as the 0–255 TimeMask threshold — the `time` argument of the
- * original's `PrintBob_UsingTimeMask` blit (a pixel draws once its `timeByte <= time`, research notes
- * CBobManager). The linear window→byte mapping (start → 0, end → 255) is a named approximation: the
- * oracle documents the blit's gate but no caller supplying `time`. A degenerate window
+ * original's observed time-mask rule (a pixel draws once its `timeByte <= time`). The linear
+ * window→byte mapping (start → 0, end → 255) is a named approximation because the original caller's
+ * mapping is not established. A degenerate window
  * (`toPct <= fromPct`) snaps whole.
  */
 export function buildTimeThreshold(progress: number, fromPct: number, toPct: number): number {
