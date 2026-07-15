@@ -12,7 +12,7 @@ import {
   GOOD_WOOD,
   JOB_ARCHER,
   JOB_ARCHER_LONG,
-  JOB_GATHERER_WOOD,
+  JOB_COLLECTOR,
   JOB_IDLE,
   JOB_SOLDIER_BROADSWORD,
   JOB_SOLDIER_SPEAR,
@@ -155,7 +155,7 @@ describe('weaponEquipmentFor — the one job→equipment-weapon map every spawn 
 
   it('the bare-handed warrior and a civilian get no equipment weapon (empty slot → their own body)', () => {
     expect(weaponEquipmentFor(JOB_SOLDIER_UNARMED)).toBeUndefined();
-    expect(weaponEquipmentFor(JOB_GATHERER_WOOD)).toBeUndefined();
+    expect(weaponEquipmentFor(JOB_COLLECTOR)).toBeUndefined();
     expect(weaponEquipmentFor(JOB_IDLE)).toBeUndefined();
   });
 });

@@ -1,12 +1,6 @@
 export const plContent = {
   profession: {
     idle: 'Bezrobotny',
-    gatherer_wood: 'Zbieracz drewna',
-    gatherer_stone: 'Zbieracz kamienia',
-    gatherer_mud: 'Zbieracz gliny',
-    gatherer_iron: 'Zbieracz żelaza',
-    gatherer_gold: 'Zbieracz złota',
-    gatherer_mushroom: 'Zbieracz grzybów',
     carrier: 'Tragarz',
     builder: 'Budowniczy',
     joiner: 'Cieśla',

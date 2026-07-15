@@ -13,7 +13,7 @@ import { buildCollisionTerrain } from '../src/content/collision.js';
 import type { ContentIr } from '../src/content/ir.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../src/game/rules.js';
 import { sandboxContent } from '../src/game/sandbox/content/index.js';
-import { GOOD_WOOD, JOB_GATHERER_WOOD } from '../src/game/sandbox/ids/index.js';
+import { GOOD_WOOD, JOB_COLLECTOR } from '../src/game/sandbox/ids/index.js';
 import { mapResourceObjectNames } from '../src/game/sandbox/map-spawn.js';
 import { GATHERER_WORK_RADIUS } from '../src/game/sandbox/place.js';
 
@@ -78,7 +78,7 @@ describe('map-style gathering cycle (sandbox content, footprinted trees, dense f
     // A command-spawned gatherer — the map path: the spawn handler plants its work flag at its feet.
     sim.enqueue({
       kind: 'spawnSettler',
-      jobType: JOB_GATHERER_WOOD,
+      jobType: JOB_COLLECTOR,
       x: 40,
       y: 40,
       tribe: PRIMARY_TRIBE,
@@ -134,7 +134,7 @@ describe('map-style gathering cycle (sandbox content, footprinted trees, dense f
     const sim = new Simulation({ seed: 12, content: sandboxContent(), map: grid });
     sim.enqueue({
       kind: 'spawnSettler',
-      jobType: JOB_GATHERER_WOOD,
+      jobType: JOB_COLLECTOR,
       x: 40,
       y: 40,
       tribe: PRIMARY_TRIBE,

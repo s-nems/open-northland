@@ -38,7 +38,7 @@ describe('profession catalog + i18n', () => {
 
   it('resolves Polish labels for professions, and idle for off-roster jobs', () => {
     expect(professionLabel('smith')).toBe('Kowal');
-    expect(professionLabel('gatherer_wood')).toBe('Zbieracz drewna');
+    expect(professionLabel('collector')).toBe('Zbieracz');
     // Idle is not a picker profession; professionDefForJob returns undefined so the panel labels it itself.
     expect(professionDefForJob(JOB_IDLE)).toBeUndefined();
     expect(professionLabel('idle')).toBe('Bezrobotny');

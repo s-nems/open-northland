@@ -2,7 +2,7 @@ import type { CellTerrainMap, Simulation } from '@open-northland/sim';
 import { cellAnchorNode, components, fx, systems } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../game/rules.js';
-import { JOB_GATHERER_WOOD, placeSandboxBerryBush } from '../game/sandbox/index.js';
+import { JOB_COLLECTOR, placeSandboxBerryBush } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
 
 /**
@@ -54,7 +54,7 @@ const { BerryBush, Settler } = components;
 function spawnHungryForager(sim: Simulation, x: number, y: number): void {
   const node = cellAnchorNode(x, y); // whole-tile → half-cell node anchor
   const e = systems.createSettler(sim.world, sim.content, {
-    jobType: JOB_GATHERER_WOOD,
+    jobType: JOB_COLLECTOR,
     x: node.hx,
     y: node.hy,
     tribe: PRIMARY_TRIBE,

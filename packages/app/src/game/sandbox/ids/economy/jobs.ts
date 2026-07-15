@@ -1,15 +1,13 @@
 export const JOB_IDLE = 0;
-export const JOB_GATHERER_WOOD = 20;
-export const JOB_GATHERER_STONE = 21;
-export const JOB_GATHERER_MUD = 22;
-export const JOB_GATHERER_IRON = 23;
-export const JOB_GATHERER_GOLD = 24;
-export const JOB_GATHERER_MUSHROOM = 25;
-// Deliberately outside the real soldier band (31..41) so the job→body map draws the civilian body. 26 is
-// the real `jobtypes.ini` `trader_sea`, borrowed here only because it isn't in `ADULT_CHARACTER_BY_JOB`
-// (so it falls to the civilian body); the real carrier id (type 24) is taken by the synthetic gatherer
-// band (20..25) above.
-export const JOB_CARRIER = 26;
+// The collector — the original's single outdoor gatherer trade (`jobtypes.ini` type 8). One collector
+// fells wood, mines every deposit, and picks mushrooms (its real `allowedAtomics` cover all six harvest
+// atomics), so the sandbox's per-good {@link import('./gatherers.js').GATHERERS} rows all bind this one
+// job rather than a per-good gatherer trade. Real ir.json numbers it the same, so a placed collector
+// resolves against either the sandbox or the real content base.
+export const JOB_COLLECTOR = 8;
+// The carrier/porter — the real `jobtypes.ini` type 24. Ferries goods between stores; the sim's
+// job-agnostic haul fallback. Not in `ADULT_CHARACTER_BY_JOB`, so it draws the civilian body.
+export const JOB_CARRIER = 24;
 // Soldier jobs ride the real viking `jobtypes.ini` ids (soldiers 31..41) so the render's job→body map
 // (`ADULT_CHARACTER_BY_JOB`) draws each class's own warrior body + weapon animation set.
 export const JOB_SOLDIER_UNARMED = 31; // soldier_unarmed — the fists warrior (empty-hand body, brawls)
@@ -25,9 +23,9 @@ export const JOB_ARCHER_LONG = 41; // soldier_bow_long
 
 /**
  * Base offset the extracted building worker-slot job ids are lifted by so they clear the sandbox's own
- * job band (idle 0, gatherers 20..25, carrier 26, soldiers 31..41, the picker professions — all < 1000).
- * A rebased slot job is `BASE + originalId`; the carrier keeps its own {@link JOB_CARRIER} id. See
- * {@link import('../../worker-slots.js')} `BUILDING_WORKER_SLOTS` for why the rebase is needed.
+ * functional job band (idle 0, builder 7, collector 8, carrier 24, soldiers 31..41, the picker
+ * professions — all < 1000). A rebased slot job is `BASE + originalId`; the carrier keeps its own
+ * {@link JOB_CARRIER} id. See {@link import('../../worker-slots.js')} `BUILDING_WORKER_SLOTS` for why the rebase is needed.
  */
 export const WORKER_SLOT_JOB_BASE = 1000;
 

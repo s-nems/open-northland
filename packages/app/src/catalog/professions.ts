@@ -1,13 +1,4 @@
-import {
-  JOB_CARRIER,
-  JOB_GATHERER_GOLD,
-  JOB_GATHERER_IRON,
-  JOB_GATHERER_MUD,
-  JOB_GATHERER_MUSHROOM,
-  JOB_GATHERER_STONE,
-  JOB_GATHERER_WOOD,
-  JOB_SOLDIER,
-} from '../game/sandbox/ids/index.js';
+import { JOB_CARRIER, JOB_COLLECTOR, JOB_SOLDIER } from '../game/sandbox/ids/index.js';
 import { categoryLabel, type Locale, type Messages, professionLabel } from '../i18n/index.js';
 
 /**
@@ -23,16 +14,13 @@ import { categoryLabel, type Locale, type Messages, professionLabel } from '../i
  *    = 31); the weapon (a later step) specializes it. Only a soldier ever carries a weapon (weapons resolve
  *    by `(tribe, jobType)`, and no civilian trade has a binding), so a civilian is always unarmed.
  *  - **Life stages, animals, vehicles, and named heroes are not professions** (jobtypes 1..6, 42..55) and
- *    are omitted. Sea variants (`fisher_sea` 23, `trader_sea` 26) and the generic `collector` (8) are
- *    omitted too: the sandbox realizes collecting as the six concrete resource gatherers below (a settler
- *    can actually harvest with those today), and the sea trades need a harbour/ship the sandbox lacks.
+ *    are omitted. Sea variants (`fisher_sea` 23, `trader_sea` 26) are omitted too: they need a harbour/ship
+ *    the sandbox lacks. Collecting is the single `collector` ({@link JOB_COLLECTOR} = 8): the original's one
+ *    outdoor gatherer fells wood, mines every deposit, and picks mushrooms, so there is one gatherer row.
  *
- * jobType numbering: the six gatherers, the carrier, and the soldier use the sandbox's live job ids
- * (`game/sandbox/ids/`); the added production trades use their real `jobtypes.ini` ids where the
- * sandbox's synthetic gatherer band (20..25) does not shadow them, and a placeholder id
- * ({@link SHADOWED_TRADE_BASE}) for the four trades whose real ids that band occupies. Every id is a
- * placeholder until the global-content re-key (`docs/tickets/app/real-content-rekey.md`) runs the sim
- * on real `ir.json`; the fidelity anchor is each row's `jobtypes.ini` `source`, not the number.
+ * jobType numbering: every row carries its real `jobtypes.ini` id (collector 8, carrier 24, soldier 31, and
+ * the production trades at their own ids). The synthetic per-good gatherer band that used to shadow
+ * baker/brewer/fisher/trader (real ids 20..22, 25) is gone, so those trades now sit at their real ids too.
  *
  * The added trades render as the generic civilian body (only jobtypes 5 and 31..41 have their own body in
  * `content/settler-gfx.ts`); in the current sandbox they have no workhouse, so an assigned smith/baker/…
@@ -52,8 +40,9 @@ export interface ProfessionDef {
 }
 
 /**
- * Real `jobtypes.ini` ids for the production trades the sandbox's gatherer band (20..25) does not shadow.
- * Named (no bare numbers) so a reader sees the transcription; grouped here as the trade id space.
+ * Real `jobtypes.ini` ids for the production trades. Named (no bare numbers) so a reader sees the
+ * transcription; grouped here as the trade id space. Baker/brewer/fisher/trader (20..22, 25) now sit at
+ * their real ids too — the synthetic gatherer band that used to shadow them is gone.
  */
 const JOB_BUILDER = 7;
 const JOB_JOINER = 9;
@@ -67,22 +56,14 @@ const JOB_BREEDER = 16;
 const JOB_TAILOR = 17; // jobtypes.ini "sewer"
 const JOB_FARMER = 18;
 const JOB_MILLER = 19;
+const JOB_BAKER = 20;
+const JOB_BREWER = 21;
+const JOB_FISHER = 22;
+const JOB_TRADER = 25;
 const JOB_SCOUT = 27;
 const JOB_JESTER = 28;
 const JOB_HERBALIST = 29; // jobtypes.ini "herb & mush guy"
 const JOB_DRUID = 30;
-
-/**
- * The four trades whose real `jobtypes.ini` ids (baker 20, brewer 21, fisher 22, trader 25) are shadowed
- * by the sandbox's synthetic gatherer band (20..25). They take a placeholder id here until the
- * global-content re-key frees the real ids; the picker still assigns them (any id in `content.jobs` works),
- * they just render as the civilian body like every other trade.
- */
-const SHADOWED_TRADE_BASE = 200;
-const JOB_BAKER = SHADOWED_TRADE_BASE + 0;
-const JOB_BREWER = SHADOWED_TRADE_BASE + 1;
-const JOB_FISHER = SHADOWED_TRADE_BASE + 2;
-const JOB_TRADER = SHADOWED_TRADE_BASE + 3;
 
 /** The `jobtypes.ini` soldier band (unarmed base + weapon classes) — every one reads as "Żołnierz". */
 const SOLDIER_JOB_MIN = 31;
@@ -98,17 +79,7 @@ export function isSoldierJob(jobType: number): boolean {
  * order here is the list order; `pickerEntries` inserts a group header wherever the category changes.
  */
 export const PROFESSIONS: readonly ProfessionDef[] = [
-  { key: 'gatherer_wood', jobType: JOB_GATHERER_WOOD, category: 'gathering', source: 'collector (wood)' },
-  { key: 'gatherer_stone', jobType: JOB_GATHERER_STONE, category: 'gathering', source: 'collector (stone)' },
-  { key: 'gatherer_mud', jobType: JOB_GATHERER_MUD, category: 'gathering', source: 'collector (clay)' },
-  { key: 'gatherer_iron', jobType: JOB_GATHERER_IRON, category: 'gathering', source: 'collector (iron)' },
-  { key: 'gatherer_gold', jobType: JOB_GATHERER_GOLD, category: 'gathering', source: 'collector (gold)' },
-  {
-    key: 'gatherer_mushroom',
-    jobType: JOB_GATHERER_MUSHROOM,
-    category: 'gathering',
-    source: 'collector (mushroom)',
-  },
+  { key: 'collector', jobType: JOB_COLLECTOR, category: 'gathering', source: 'jobtypes.ini 8 "collector"' },
   { key: 'carrier', jobType: JOB_CARRIER, category: 'transport', source: 'jobtypes.ini 24 "carrier"' },
   { key: 'builder', jobType: JOB_BUILDER, category: 'production', source: 'jobtypes.ini 7 "builder"' },
   { key: 'joiner', jobType: JOB_JOINER, category: 'production', source: 'jobtypes.ini 9 "joiner"' },
@@ -131,19 +102,19 @@ export const PROFESSIONS: readonly ProfessionDef[] = [
     key: 'baker',
     jobType: JOB_BAKER,
     category: 'production',
-    source: 'jobtypes.ini 20 "baker" (id shadowed)',
+    source: 'jobtypes.ini 20 "baker"',
   },
   {
     key: 'brewer',
     jobType: JOB_BREWER,
     category: 'production',
-    source: 'jobtypes.ini 21 "brewer" (id shadowed)',
+    source: 'jobtypes.ini 21 "brewer"',
   },
   {
     key: 'fisher',
     jobType: JOB_FISHER,
     category: 'production',
-    source: 'jobtypes.ini 22 "fisher" (id shadowed)',
+    source: 'jobtypes.ini 22 "fisher"',
   },
   {
     key: 'herbalist',
@@ -158,7 +129,7 @@ export const PROFESSIONS: readonly ProfessionDef[] = [
     key: 'trader',
     jobType: JOB_TRADER,
     category: 'special',
-    source: 'jobtypes.ini 25 "trader" (id shadowed)',
+    source: 'jobtypes.ini 25 "trader"',
   },
   { key: 'soldier', jobType: JOB_SOLDIER, category: 'military', source: 'jobtypes.ini 31 "soldier_unarmed"' },
 ];

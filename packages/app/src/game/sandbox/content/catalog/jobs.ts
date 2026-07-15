@@ -1,6 +1,6 @@
 import { CULTIVATE_ATOMIC, PLANT_ATOMIC, WHEAT_HARVEST_ATOMIC } from '../../../../catalog/atomics.js';
 import { PROFESSIONS } from '../../../../catalog/professions.js';
-import { type Messages, messages, professionLabel } from '../../../../i18n/index.js';
+import { messages, professionLabel } from '../../../../i18n/index.js';
 import {
   BUILD_HOUSE_ATOMIC,
   GATHERERS,
@@ -8,6 +8,7 @@ import {
   JOB_ARCHER_LONG,
   JOB_BUILDER,
   JOB_CARRIER,
+  JOB_COLLECTOR,
   JOB_FARMER_SLOT,
   JOB_IDLE,
   JOB_SOLDIER_BROADSWORD,
@@ -26,26 +27,19 @@ export interface SandboxJob {
   readonly allowedAtomics?: number[];
 }
 
-const GATHERER_PROFESSIONS: Readonly<Record<string, keyof Messages['profession']>> = {
-  wood: 'gatherer_wood',
-  stone: 'gatherer_stone',
-  mud: 'gatherer_mud',
-  iron: 'gatherer_iron',
-  gold: 'gatherer_gold',
-  mushroom: 'gatherer_mushroom',
-};
-
 /** Build every functional, picker and worker-slot job the sandbox content references. */
 export function buildSandboxJobs(extras: SandboxContentExtras): Map<number, SandboxJob> {
   const jobs = new Map<number, SandboxJob>();
   for (const job of [
     { typeId: JOB_IDLE, id: 'idle', name: professionLabel('idle') },
-    ...GATHERERS.map((gatherer) => ({
-      typeId: gatherer.job,
-      id: `gatherer_${gatherer.id}`,
-      name: professionLabel(GATHERER_PROFESSIONS[gatherer.id] ?? 'collector'),
-      allowedAtomics: [gatherer.atomic],
-    })),
+    // One collector trade allowed on every gathered good's harvest atomic (the original's single
+    // collector fells, mines, and picks) — see {@link GATHERERS}.
+    {
+      typeId: JOB_COLLECTOR,
+      id: 'collector',
+      name: professionLabel('collector'),
+      allowedAtomics: GATHERERS.map((gatherer) => gatherer.atomic),
+    },
     { typeId: JOB_CARRIER, id: 'carrier', name: professionLabel('carrier') },
     {
       typeId: JOB_FARMER_SLOT,

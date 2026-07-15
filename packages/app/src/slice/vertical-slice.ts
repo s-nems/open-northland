@@ -15,7 +15,7 @@ import {
   BUILDING_JOINERY,
   GOOD_WOOD,
   JOB_CARRIER,
-  JOB_GATHERER_WOOD,
+  JOB_COLLECTOR,
   sandboxContent,
   sandboxWalkableTypeIds,
   weaponEquipmentFor,
@@ -230,14 +230,14 @@ export function runSlice(
     ]);
     sim.run(1);
     enqueuePlacements(sim, [
-      { kind: 'human', jobType: JOB_GATHERER_WOOD, tribe: PRIMARY_TRIBE, ...cellAt(2), ...own },
+      { kind: 'human', jobType: JOB_COLLECTOR, tribe: PRIMARY_TRIBE, ...cellAt(2), ...own },
       { kind: 'human', jobType: JOB_CARRIER, tribe: PRIMARY_TRIBE, ...cellAt(3), ...own },
     ]);
   } else {
     enqueuePlacements(sim, [
       { kind: 'building', typeId: BUILDING_HEADQUARTERS, tribe: PRIMARY_TRIBE, ...cellAt(0), ...own },
       { kind: 'building', typeId: BUILDING_JOINERY, tribe: PRIMARY_TRIBE, ...cellAt(1), ...own },
-      { kind: 'human', jobType: JOB_GATHERER_WOOD, tribe: PRIMARY_TRIBE, ...cellAt(2), ...own },
+      { kind: 'human', jobType: JOB_COLLECTOR, tribe: PRIMARY_TRIBE, ...cellAt(2), ...own },
       { kind: 'human', jobType: JOB_CARRIER, tribe: PRIMARY_TRIBE, ...cellAt(3), ...own },
     ]);
   }
