@@ -25,7 +25,7 @@ export interface GatheringBalance {
  * Clean-room felling/mining balance per gathered good, keyed by its stable string id. The ONE source both
  * the sandbox goods builder (`game/sandbox/content/catalog/goods.ts` `buildSandboxGoods`) and the
  * real-content overlay (`content/real-content.ts` `mergeRealContent`) read, so the two content bases can
- * never balance the same good differently. The original's `extractGoodGathering` emits 0 for these fields
+ * never balance the same good's felling/mining fields differently. The original's `extractGoodGathering` emits 0 for these fields
  * (`felling.ts` — "the live game does not yet fell"); this table is the scene-and-real-content lever.
  */
 export const GATHERING_BALANCE_BY_ID: Readonly<Record<string, GatheringBalance>> = {

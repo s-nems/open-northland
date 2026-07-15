@@ -89,8 +89,9 @@ export function buildTextured(
           for (const nodes of triangles) {
             batcher.drawFallbackTriangle(
               positions(nodes, lift),
-              // Unbound typeId → the semantic-class flat colour (the same table `buildFlat` uses), so a
-              // synthetic grid's nav-terrain classes read as grass/water/sand rather than one default tint.
+              // Unbound typeId → its flat class colour (`flatTileColour`, the table `buildFlat` uses): a
+              // synthetic grid's nav classes read as grass/water/sand, and a real map's rare untextured
+              // type tints by id rather than one grey (both placeholder-only; a textured cell never gets here).
               cellTex?.fallbackColour ?? flatTileColour(typeId),
               shaded ? brightness.brightnessAt(col, row) : 1,
             );

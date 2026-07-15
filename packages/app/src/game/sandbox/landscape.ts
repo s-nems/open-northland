@@ -73,7 +73,7 @@ function workAreas(g: GathererSpec): number[][] {
 
 export function sandboxLandscape(
   map?: TerrainTypeIds,
-): Array<{ typeId: number; id: string; walkable: boolean; buildable: boolean }> {
+): Array<{ typeId: number; id: string; walkable: boolean; buildable: boolean; plantable?: boolean }> {
   const base = [
     ...NAV_LANDSCAPE_TYPES,
     ...GATHERERS.map((g) => ({

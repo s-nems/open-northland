@@ -108,8 +108,7 @@ export const CIVILIAN_PRESETS: readonly UnitPreset[] = [
   { id: 'collector', jobType: JOB_COLLECTOR },
 ];
 
-/** One spawnable resource node: its good + a short material label (the gatherer label without the
- *  "Zbieracz (…)" wrapper). */
+/** One spawnable resource node: its good's typeId + its string id (a short material label). */
 export interface ResourceEntry {
   readonly good: number;
   readonly id: string;
