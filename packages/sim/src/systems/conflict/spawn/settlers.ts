@@ -41,7 +41,7 @@ export const DEFAULT_SETTLER_HITPOINTS = 300;
 /** The idle/unemployed job sentinel — always a valid {@link createSettler} input, even on content whose
  *  job table starts at typeId 1 (real ir.json has no job 0). A settler spawned idle is then re-set to
  *  `jobType: null` (see the app's `spawnIdleSettler`). */
-export const IDLE_JOB_TYPE = 0;
+const IDLE_JOB_TYPE = 0;
 
 /**
  * Assemble a settler entity from a {@link SettlerSpec} and return it (or null for an unknown job id — bad
@@ -75,13 +75,9 @@ export function createSettler(world: World, content: ContentSet, spec: SettlerSp
   // one content base shares one value (no per-scene tuning). A command may still pass an explicit positive
   // `hitpoints` to override (admin/debug); a tribe that leaves it unset falls back to
   // {@link DEFAULT_SETTLER_HITPOINTS}.
+  const override = spec.hitpoints !== undefined && spec.hitpoints > 0 ? spec.hitpoints : undefined;
   const tribeHitpoints = settlerHitpoints(content, spec.tribe);
-  const hitpoints =
-    spec.hitpoints !== undefined && spec.hitpoints > 0
-      ? spec.hitpoints
-      : tribeHitpoints > 0
-        ? tribeHitpoints
-        : DEFAULT_SETTLER_HITPOINTS;
+  const hitpoints = override ?? (tribeHitpoints > 0 ? tribeHitpoints : DEFAULT_SETTLER_HITPOINTS);
   world.add(e, Health, { hitpoints, max: hitpoints });
   // A combatant wearing armor carries an `Armor` class: an incoming hit is mitigated by that tier's
   // `blockingValue` rather than landing on the unarmored class 0. Only a positive class is stamped.
