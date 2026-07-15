@@ -1,10 +1,9 @@
-import { type Container, Graphics } from 'pixi.js';
+import type { Container } from 'pixi.js';
 import { messages } from '../../i18n/index.js';
 import { drawCloseX, drawWindowPanel, HOVER_ALPHA, HOVER_TINT, WIN_PAD } from '../chrome.js';
-import { contains } from '../geometry.js';
-import type { TextRun } from '../text-run.js';
 import type { PanelContext } from './context.js';
 import { type GoodsMenuLayout, hitTestGoodsMenu, layoutGoodsMenu, type MenuGoodEntry } from './goods-menu.js';
+import { createWindowShell } from './window-shell.js';
 
 /** Text insets (design px) — where a run sits inside its rect. Match the building menu's nudges. */
 const TITLE_INSET_Y = 2;
@@ -40,59 +39,50 @@ export interface GoodsWindow {
 }
 
 /**
- * Build the goods-palette window controller over the pure {@link layoutGoodsMenu} geometry — the twin of
- * `createMenuWindow` (buildings), owning its own `Graphics` + text runs inside `deps.container`, rebuilt on
- * open and on a tab change, placed each frame while open.
+ * Build the goods-palette window controller over the pure {@link layoutGoodsMenu} geometry, on the shared
+ * {@link createWindowShell} lifecycle — rebuilt on open and on a tab change, placed each frame while open.
  */
 export function createGoodsWindow(deps: GoodsWindowDeps): GoodsWindow {
   const { ctx } = deps;
   const { scale } = ctx;
+  const shell = createWindowShell(deps.container);
 
-  let open = false;
   let category = DEFAULT_CATEGORY;
   let menuLayout: GoodsMenuLayout | null = null;
-  const runs: TextRun[] = [];
-  const graphics = new Graphics();
-  deps.container.addChild(graphics);
-
-  const clear = (): void => {
-    for (const r of runs) r.destroy();
-    runs.length = 0;
-    graphics.clear();
-  };
 
   const rebuild = (): void => {
-    clear();
+    shell.clear();
     const originX = ctx.layout.width + WIN_PAD * scale;
     const originY = ctx.layout.strip.y;
     menuLayout = layoutGoodsMenu(deps.goods, { originX, originY, scale, selected: category });
-    drawWindowPanel(graphics, menuLayout.window, scale);
-    drawCloseX(graphics, menuLayout.closeRect, scale);
+    drawWindowPanel(shell.graphics, menuLayout.window, scale);
+    drawCloseX(shell.graphics, menuLayout.closeRect, scale);
 
     const title = ctx.makeText(messages().hud.resources, 'white');
     deps.container.addChild(title.container);
-    runs.push(title);
+    shell.runs.push(title);
 
     for (const tab of menuLayout.tabs) {
       if (tab.selected) {
-        graphics
+        shell.graphics
           .rect(tab.rect.x, tab.rect.y, tab.rect.w, tab.rect.h)
           .fill({ color: HOVER_TINT, alpha: HOVER_ALPHA });
       }
       const run = ctx.makeText(tab.label, tab.selected ? 'white' : 'dimmed');
       deps.container.addChild(run.container);
-      runs.push(run);
+      shell.runs.push(run);
     }
     for (const row of menuLayout.rows) {
       const run = ctx.makeText(row.label, 'white');
       deps.container.addChild(run.container);
-      runs.push(run);
+      shell.runs.push(run);
     }
   };
 
   const place = (): void => {
     if (menuLayout === null) return;
     const { width: rw, height: rh } = ctx.screen();
+    const runs = shell.runs;
     // runs order: [title, ...tabs, ...rows]
     let i = 0;
     runs[i++]?.place(menuLayout.titleRect.x, menuLayout.titleRect.y + TITLE_INSET_Y * scale, scale, rw, rh);
@@ -103,23 +93,23 @@ export function createGoodsWindow(deps: GoodsWindowDeps): GoodsWindow {
   };
 
   const openMenu = (): void => {
-    open = true;
+    shell.setOpen(true);
     rebuild();
     place();
   };
   const close = (): void => {
-    open = false;
-    clear();
+    shell.setOpen(false);
+    shell.clear();
     menuLayout = null;
   };
 
   return {
-    isOpen: () => open,
-    toggle: () => (open ? close() : openMenu()),
+    isOpen: shell.isOpen,
+    toggle: () => (shell.isOpen() ? close() : openMenu()),
     close,
-    claims: (x, y) => open && menuLayout !== null && contains(menuLayout.window, x, y),
+    claims: (x, y) => shell.claims(menuLayout?.window ?? null, x, y),
     handleClick: (x, y): boolean => {
-      if (!open || menuLayout === null) return false;
+      if (!shell.isOpen() || menuLayout === null) return false;
       const hit = hitTestGoodsMenu(menuLayout, x, y);
       if (hit === null) return false;
       if (hit.kind === 'close') close();

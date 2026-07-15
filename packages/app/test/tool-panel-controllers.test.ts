@@ -6,6 +6,8 @@ import { WIN_PAD } from '../src/hud/chrome.js';
 import type { TextRun } from '../src/hud/text-run.js';
 import { layoutBuildingMenu, type MenuBuildingEntry } from '../src/hud/tool-panel/building-menu.js';
 import type { PanelContext } from '../src/hud/tool-panel/context.js';
+import { layoutGoodsMenu, type MenuGoodEntry } from '../src/hud/tool-panel/goods-menu.js';
+import { createGoodsWindow } from '../src/hud/tool-panel/goods-window.js';
 import { buildToolPanelLayout } from '../src/hud/tool-panel/layout.js';
 import { createMenuWindow } from '../src/hud/tool-panel/menu-window.js';
 import { createPlacementController } from '../src/hud/tool-panel/placement.js';
@@ -161,6 +163,76 @@ describe('menu window controller', () => {
     for (let i = 0; i < 5; i++) menu.handleWheel(p.x, p.y, 120);
     menu.handleClick(p.x, p.y);
     expect(picks.at(-1)).toBe(top + 5);
+  });
+});
+
+describe('goods window controller', () => {
+  // Both sit in the default 'Surowce' tab (category 2, see stock-tabs.ts), so they list on open.
+  const GOODS: readonly MenuGoodEntry[] = [
+    { goodType: 10, id: 'wood', label: 'Drewno' },
+    { goodType: 11, id: 'stone', label: 'Kamień' },
+  ];
+
+  /** The same layout the controller builds internally (same origin formula + default category). */
+  function expectedLayout(ctx: PanelContext) {
+    return layoutGoodsMenu(GOODS, {
+      originX: ctx.layout.width + WIN_PAD * ctx.scale,
+      originY: ctx.layout.strip.y,
+      scale: ctx.scale,
+      selected: 2, // DEFAULT_CATEGORY (raw materials)
+    });
+  }
+
+  it('opens on toggle, claims the window rect, and closes on the close box', () => {
+    const { ctx } = stubContext();
+    const goods = createGoodsWindow({
+      ctx,
+      goods: GOODS,
+      container: new Container(),
+      onPick: () => undefined,
+    });
+    const geo = expectedLayout(ctx);
+
+    expect(goods.isOpen()).toBe(false);
+    expect(goods.claims(geo.window.x + 1, geo.window.y + 1)).toBe(false); // closed → no claim
+
+    goods.toggle();
+    expect(goods.isOpen()).toBe(true);
+    expect(goods.claims(geo.window.x + 1, geo.window.y + 1)).toBe(true);
+    expect(goods.claims(geo.window.x - 1, geo.window.y - 1)).toBe(false); // outside the window
+
+    const close = centreOf(geo.closeRect);
+    expect(goods.handleClick(close.x, close.y)).toBe(true);
+    expect(goods.isOpen()).toBe(false);
+  });
+
+  it('closes itself BEFORE handing a picked good to onPick', () => {
+    const { ctx } = stubContext();
+    const picks: Array<{ goodType: number; openAtPick: boolean }> = [];
+    const goods = createGoodsWindow({
+      ctx,
+      goods: GOODS,
+      container: new Container(),
+      onPick: (goodType) => picks.push({ goodType, openAtPick: goods.isOpen() }),
+    });
+    goods.toggle();
+    const row = centreOf(expectedLayout(ctx).rows[0]?.rect ?? { x: 0, y: 0, w: 0, h: 0 });
+
+    expect(goods.handleClick(row.x, row.y)).toBe(true);
+    expect(picks).toEqual([{ goodType: 10, openAtPick: false }]);
+  });
+
+  it('does not consume clicks outside the open window', () => {
+    const { ctx } = stubContext();
+    const goods = createGoodsWindow({
+      ctx,
+      goods: GOODS,
+      container: new Container(),
+      onPick: () => undefined,
+    });
+    goods.toggle();
+    expect(goods.handleClick(SCREEN.width - 1, SCREEN.height - 1)).toBe(false);
+    expect(goods.isOpen()).toBe(true);
   });
 });
 
