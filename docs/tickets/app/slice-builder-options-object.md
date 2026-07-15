@@ -1,0 +1,28 @@
+# Fold the vertical-slice builders' optional tail into an options object
+
+**Area:** app (slice) · **Origin:** real-content-switch introduced the 7th/8th positional param · **Priority:** P3
+
+`slice/vertical-slice.ts`'s `runSlice`, `runBareMap`, and `runAuthoredSlice` grew a long tail of optional
+positional params — `owner?`, `footprints?`, `goodNames?`, `contentOverride?` — so call sites read as
+opaque argument runs, e.g.:
+
+```ts
+runSlice(SLICE_SEED, 1, undefined, HUMAN_PLAYER, footprints, goodNames, realContent?.content)
+runAuthoredSlice(SLICE_SEED, 1, simMap, loaded.entities, ir, footprints, goodNames, realContent?.content)
+```
+
+The `undefined` placeholder and the trailing map/map/ContentSet triple are exactly the readability smell
+`AGENTS.md` ("Readability first") warns about — a reader can't tell what each slot is without counting.
+
+## Scope
+
+Collapse the optional tail into a single `opts?: { owner?; footprints?; goodNames?; content? }` object on
+all three builders (keep the required leading params — `seed`, `ticks`/`map`, etc. — positional). Update
+the two call sites in `entries/map.ts`, the `?shot` call in `entries/shot.ts`, and the
+`test/vertical-slice.test.ts` cases. Behavior is unchanged — a pure signature refactor; the sim goldens and
+the deterministic shot PNG must stay byte-identical.
+
+## Verify
+
+`npm test` + `npm run build` + `npm run check` green; sim-package goldens and the `?shot` PNG unchanged
+(this is a call-shape refactor only, no behavior change).
