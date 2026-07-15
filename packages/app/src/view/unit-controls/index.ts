@@ -1,8 +1,12 @@
+import { indexById } from '@open-northland/data';
+import type { BuildingHighlightItem } from '@open-northland/render';
 import type { Entity } from '@open-northland/sim';
-import { workFlagOf } from '../../game/snapshot.js';
+import { assignmentPriorityFor } from '../../game/sandbox/index.js';
+import { buildingTypeOf, entityById, settlerJobType, workFlagOf } from '../../game/snapshot.js';
 import { mountUnitPanel, type UnitPanel } from '../../hud/details-panel/index.js';
 import { clientToScreen, screenScale } from '../camera.js';
 import { pickInRect, pickTopAt, screenToWorld } from '../picking.js';
+import { assignableJobForBuilding, computeAssignHighlight } from './assign-highlight.js';
 import { createSelectionMarquee } from './marquee.js';
 import { createUnitOrderController } from './orders.js';
 import { mountSettlerActions, type SettlerActions } from './settler-actions.js';
@@ -50,6 +54,14 @@ const sameSelection = (a: ReadonlySet<number>, b: ReadonlySet<number>): boolean 
 export async function createUnitControls(opts: UnitControlsOptions): Promise<UnitControls> {
   const { canvas } = opts;
   const selected = new Set<number>();
+  const buildingsByType = indexById(opts.content.buildings);
+  // "Przydziel miejsce pracy" mode: the settler whose workplace the player is choosing (null = not in the
+  // mode). While set, candidate buildings are washed green/red and the next left-click on a green one binds
+  // the settler; a click on a red building / terrain, right-click, Esc, or a selection change cancels.
+  let assignSettler: number | null = null;
+  const cancelAssign = (): void => {
+    assignSettler = null;
+  };
   // Late-bound: the panel's "clicked a worker sprite" callback needs `setSelection`, which is defined
   // below (it closes over `panel`). Assigned once everything exists; a click can only fire afterwards.
   let selectFromPanel: (id: number) => void = () => {};
@@ -66,6 +78,9 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     jobs: opts.content.jobs,
     ...(opts.sheet !== undefined ? { sheet: opts.sheet } : {}),
     onDemolish: (id) => opts.enqueue({ kind: 'demolish', building: id as Entity }),
+    onAssignWorkplace: (id) => {
+      assignSettler = id;
+    },
     onSelectEntity: (id) => selectFromPanel(id),
     ...(opts.tooltip !== undefined ? { tooltip: opts.tooltip } : {}),
   });
@@ -109,6 +124,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     const before = new Set(selected); // snapshot to detect whether the selection actually changed
     if (!add) selected.clear();
     for (const id of ids) selected.add(id);
+    if (!sameSelection(before, selected)) cancelAssign(); // a new selection backs out of assign mode
     changed();
     // A changed selection closes the action ring: picking a different unit (or clearing to empty) backs out
     // of an open menu, so the ring never lingers on a stale unit and Space stays the sole re-open. Re-selecting
@@ -134,6 +150,38 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     openActions: () => actions.open(),
   });
 
+  /** Resolve a world click while in "przydziel miejsce pracy" mode: bind the settler to the building under
+   *  the cursor when it offers an open slot (a green building), else cancel. Any resolving click exits the
+   *  mode (the chosen UX: assign-and-leave; a red building / terrain click just leaves). */
+  const resolveAssign = (e: MouseEvent): void => {
+    const settlerId = assignSettler;
+    cancelAssign();
+    if (settlerId === null) return;
+    const w = toWorld(e.clientX, e.clientY);
+    const building = pickTopAt(unitTargets.owned('building'), w.x, w.y);
+    if (building === null) return; // clicked terrain / a unit — cancel
+    const snapshot = opts.snapshot();
+    if (assignableJobForBuilding(snapshot, building, settlerId, buildingsByType) === null) return; // red — cancel
+    const bEnt = entityById(snapshot, building);
+    const type = bEnt !== undefined ? buildingTypeOf(bEnt) : undefined;
+    const slots = type !== undefined ? buildingsByType.get(type)?.workers : undefined;
+    const self = entityById(snapshot, settlerId);
+    const jobPriority = assignmentPriorityFor(self !== undefined ? settlerJobType(self) : undefined, slots);
+    if (jobPriority.length === 0) return;
+    opts.enqueue({
+      kind: 'assignWorker',
+      entity: settlerId as Entity,
+      building: building as Entity,
+      jobPriority,
+    });
+  };
+
+  /** The green/red workplace-assignment wash for the render layer — the candidate buildings for the settler
+   *  being placed, or null when not in assign mode. Recomputed per frame from the live snapshot (bounded by
+   *  the building count) so a slot filling elsewhere re-colours immediately. */
+  const assignHighlight = (): readonly BuildingHighlightItem[] | null =>
+    assignSettler === null ? null : computeAssignHighlight(opts.snapshot(), assignSettler, buildingsByType);
+
   const onMouseDown = (e: MouseEvent): void => {
     // The HUD claims its own clicks before any world picking — a press over the tool panel / an open window /
     // a placement-in-progress / an open action-ring button never starts a selection or issues an order. The
@@ -144,6 +192,13 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     // panel-owned mousedown listener racing this one).
     if (panel.handleMouseDown(e.clientX, e.clientY, e.button)) return;
     if (actions.claimsPointer(e.clientX, e.clientY)) return;
+    // In "przydziel miejsce pracy" mode a world click resolves the assignment (left = bind a green building,
+    // else cancel; right = cancel) and consumes the press — it never falls through to selection / an order.
+    if (assignSettler !== null) {
+      if (e.button === 0) resolveAssign(e);
+      else cancelAssign();
+      return;
+    }
     if (e.button === 2) {
       // Ctrl+Right (⌘ on macOS): plant/move the selected gatherer(s)' work flag on the clicked tile —
       // "work here". Plain Right: attack an enemy under the cursor, else move to the clicked tile.
@@ -198,7 +253,9 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       e.preventDefault(); // Space would otherwise scroll the page
       actions.toggle(); // the info card is always-on; Space only toggles the action ring
     } else if (e.code === 'Escape') {
-      setSelection([], false);
+      if (assignSettler !== null)
+        cancelAssign(); // Esc first backs out of assign mode, keeping the selection
+      else setSelection([], false);
     }
   };
 
@@ -212,6 +269,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     selectedIds: () => selected,
     portrait: () => panel.portrait(),
     flaggedFlagIds,
+    assignHighlight,
     // The HUD this controller defers to before world picking: the tool panel/windows (handed in), the
     // bottom-right details panel, and its own settler action ring. Including the details panel means a
     // consumer that gates on this — the admin spawn palette, the world hover tooltip — treats a point over

@@ -1,6 +1,7 @@
 import { WIN_PAD } from '../../chrome.js';
 import type { Rect } from '../../geometry.js';
 import type { UnitPanelModel } from '../model/index.js';
+import type { ButtonHit } from './building.js';
 import { PANEL_W, panelRect, ROW_H, SECTION_GAP, type SectionRect, sectionAt } from './shared.js';
 
 /** The settler selection model — the `layoutSettler` input narrowed off the panel model union. */
@@ -20,6 +21,11 @@ const BAR_ROW_H = 13;
 /** Text rows the fixed Praca / Doświadczenie bodies reserve. */
 const WORK_ROWS = 2;
 const EXP_ROWS = 1;
+/** The "przydziel miejsce pracy" button's row height under the Praca text rows (a touch taller than a
+ *  text row so the plated label reads). */
+const ASSIGN_BUTTON_H = 18;
+/** Gap between the Praca text rows and the assign button. */
+const ASSIGN_BUTTON_GAP = 3;
 /** One labeled equipment row (Buty/Narzędzia/…): a label column + a row of slot sockets. */
 export const EQUIP_ROW_H = 24;
 /** A round equipment-slot socket's square bounding box (design px). */
@@ -56,6 +62,8 @@ export interface SettlerLayout {
   readonly work: SectionRect;
   /** The Praca body's two text rows (workplace, product). */
   readonly workRows: readonly Rect[];
+  /** The "przydziel miejsce pracy" button under the Praca rows (its `enabled` tracks `canAssignWorkplace`). */
+  readonly assignButton: ButtonHit;
   readonly experience: SectionRect;
   /** The Doświadczenie body's single text row. */
   readonly expRow: Rect;
@@ -79,7 +87,9 @@ export function layoutSettler(
   const barRowH = Math.round(BAR_ROW_H * s);
   const equipRowH = Math.round(EQUIP_ROW_H * s);
   const generalBodyH = Math.round(SETTLER_PREVIEW * s);
-  const workBodyH = WORK_ROWS * rowH;
+  const assignButtonH = Math.round(ASSIGN_BUTTON_H * s);
+  const assignButtonGap = Math.round(ASSIGN_BUTTON_GAP * s);
+  const workBodyH = WORK_ROWS * rowH + assignButtonGap + assignButtonH;
   const expBodyH = EXP_ROWS * rowH;
   const equipBodyH = model.equipmentRows.length * equipRowH;
 
@@ -123,6 +133,16 @@ export function layoutSettler(
     w: work.body.w,
     h: rowH,
   }));
+  const assignButton: ButtonHit = {
+    action: 'assign-workplace',
+    enabled: model.canAssignWorkplace,
+    rect: {
+      x: work.body.x,
+      y: work.body.y + WORK_ROWS * rowH + assignButtonGap,
+      w: work.body.w,
+      h: assignButtonH,
+    },
+  };
 
   const experience = next(expBodyH);
   const expRow: Rect = { x: experience.body.x, y: experience.body.y, w: experience.body.w, h: rowH };
@@ -158,6 +178,7 @@ export function layoutSettler(
     bars,
     work,
     workRows,
+    assignButton,
     experience,
     expRow,
     equipment,

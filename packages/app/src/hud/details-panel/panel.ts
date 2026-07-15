@@ -7,6 +7,7 @@ import {
 import type { WorldSnapshot } from '@open-northland/sim';
 import { type Application, Container, Graphics } from 'pixi.js';
 import { uiStringLookup } from '../../content/gui-gfx.js';
+import { messages } from '../../i18n/index.js';
 import { contains, type Rect } from '../geometry.js';
 import { loadDetailsPanelAssets } from './assets.js';
 import { createChrome, type PanelLayers } from './chrome.js';
@@ -59,6 +60,10 @@ export interface UnitPanelOptions extends UnitPanelModelContext {
   /** Client→canvas coordinate mapping, injected like the tool panel's (the hud layer stays view-free). */
   readonly backingScale: (canvas: HTMLCanvasElement) => { sx: number; sy: number; rect: DOMRect };
   readonly onDemolish: (entityId: number) => void;
+  /** Enter "assign a workplace" mode for the selected settler — invoked when the player clicks the Praca
+   *  section's assign button. The view then highlights candidate buildings and binds the settler to the one
+   *  the next left-click hits. Absent → the button is inert. */
+  readonly onAssignWorkplace?: (settlerId: number) => void;
   /** The loaded sprite sheet, so the workers field can draw its bound workers as animated on-map sprites.
    *  Absent (a bare checkout / headless test) → the field just stays empty. */
   readonly sheet?: SpriteSheet;
@@ -193,7 +198,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     if (draw.kind === 'building' && model.kind === 'building') {
       drawBuilding(chrome, draw, model, uiString, hoverAction, activeStockTab, ss);
     } else if (draw.kind === 'settler' && model.kind === 'settler') {
-      drawSettler(chrome, draw, model, uiString, ss);
+      drawSettler(chrome, draw, model, uiString, hoverAction, ss);
     } else if (draw.kind === 'compact' && (model.kind === 'multi-settler' || model.kind === 'generic')) {
       drawCompact(chrome, draw, model, uiString, ss);
     }
@@ -234,7 +239,8 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     return { x: (clientX - rect.left) * sx, y: (clientY - rect.top) * sy };
   };
 
-  const buttons = (): readonly ButtonHit[] => (layout?.kind === 'building' ? layout.buttons : []);
+  const buttons = (): readonly ButtonHit[] =>
+    layout?.kind === 'building' ? layout.buttons : layout?.kind === 'settler' ? [layout.assignButton] : [];
 
   const hitButton = (x: number, y: number): ButtonHit | null =>
     buttons().find((b) => contains(b.rect, x, y)) ?? null;
@@ -273,6 +279,8 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     const hit = hitButton(x, y);
     if (hit?.action === 'demolish' && hit.enabled && lastModel.kind === 'building') {
       opts.onDemolish(lastModel.entityId);
+    } else if (hit?.action === 'assign-workplace' && hit.enabled && lastModel.kind === 'settler') {
+      opts.onAssignWorkplace?.(lastModel.entityId);
     }
     return true;
   };
@@ -302,6 +310,13 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     return i < 0 ? null : (lastModel.bars[i]?.hover ?? null);
   };
 
+  /** The assign-workplace button's tooltip when the cursor is over it (settler layouts only) — the
+   *  "co robi ten guzik" hint the user asked for. */
+  const assignButtonHint = (x: number, y: number): string | null => {
+    if (layout?.kind !== 'settler') return null;
+    return contains(layout.assignButton.rect, x, y) ? messages().hud.assignWorkplaceHint : null;
+  };
+
   /** Recompute + show/hide the value/name tooltip for the cursor at a client point: a Magazyn stock
    *  row's good name or a category tab's name for a building (the tab glyphs are cryptic unread art,
    *  so the tooltip is what names a category), a stat bar's live value for a settler. The probes are
@@ -318,7 +333,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     const rowName = hitStockGood(x, y);
     const tab = rowName === null ? hitStockTab(x, y) : null;
     const tabLabel = tab !== null ? (stockTabLabels()[tab] ?? null) : null;
-    const text = rowName ?? tabLabel ?? hitBarValue(x, y);
+    const text = rowName ?? tabLabel ?? hitBarValue(x, y) ?? assignButtonHint(x, y);
     if (text === null) opts.tooltip.hide();
     else opts.tooltip.show(clientX, clientY, text);
   };

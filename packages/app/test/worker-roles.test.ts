@@ -113,21 +113,44 @@ describe('assignmentPriorityFor keeps the settler`s current trade', () => {
     expect(assignmentPriorityFor(REAL_JOB.hunter, MILL_SLOTS)).toEqual([REAL_JOB.miller, REAL_JOB.carrier]);
   });
 
-  it('never keeps a gatherer current trade — a collector on a workshop that has a collector slot still gets the craft', () => {
-    // A real pottery offers collector + potter + carrier. A settler who is already a collector must NOT be
-    // re-bound to that gatherer slot (the "never hand-assign a gatherer" rule), so the current-trade
-    // promotion is skipped and the default order (potter → carrier) stands. This also removes the
-    // sandbox↔real divergence: a gatherer is never promoted whichever id space its slots come in.
+  it('keeps a gatherer current trade — a collector on a workshop with a collector slot gets that slot first', () => {
+    // A real pottery offers collector + potter + carrier. A settler who is already a collector prefers that
+    // gatherer slot (its current trade — the building becomes its delivery target), then the default
+    // craft → carrier fallback. Gatherers ARE hand-assignable now, but only as the settler's current trade.
     const POTTERY_SLOTS = [
       { jobType: REAL_JOB.collector, count: 1 },
       { jobType: REAL_JOB.potter, count: 1 },
       { jobType: REAL_JOB.carrier, count: 1 },
     ];
     expect(assignmentPriorityFor(REAL_JOB.collector, POTTERY_SLOTS)).toEqual([
+      REAL_JOB.collector,
       REAL_JOB.potter,
       REAL_JOB.carrier,
     ]);
-    // And a hunter right-clicking the warehouse still becomes a carrier, not kept a hunter.
-    expect(assignmentPriorityFor(REAL_JOB.hunter, WAREHOUSE_SLOTS)).toEqual([REAL_JOB.carrier]);
+  });
+
+  it('a hunter right-clicking a warehouse is bound to its gatherer slots, its own slot first', () => {
+    // The warehouse offers collector/fisher/hunter gatherer slots + a carrier. A hunter prefers the exact
+    // hunter slot, then the other gatherer slots, then the carrier fallback.
+    expect(assignmentPriorityFor(REAL_JOB.hunter, WAREHOUSE_SLOTS)).toEqual([
+      REAL_JOB.hunter,
+      REAL_JOB.collector,
+      REAL_JOB.fisher,
+      REAL_JOB.carrier,
+    ]);
+  });
+
+  it('a gatherer on a building with no gatherer slot falls back to the default craft → carrier order', () => {
+    // A mill has no gatherer slot, so a collector right-clicking it takes the default order (miller → carrier)
+    // rather than staying a gatherer with nowhere to gather-in.
+    expect(assignmentPriorityFor(REAL_JOB.collector, MILL_SLOTS)).toEqual([
+      REAL_JOB.miller,
+      REAL_JOB.carrier,
+    ]);
+  });
+
+  it('a plain/idle settler is never offered a gatherer slot (only a gatherer current trade is)', () => {
+    // Idle on a warehouse still becomes a carrier — the default excludes gatherers for a non-gatherer.
+    expect(assignmentPriorityFor(undefined, WAREHOUSE_SLOTS)).toEqual([REAL_JOB.carrier]);
   });
 });

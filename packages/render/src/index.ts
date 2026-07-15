@@ -77,6 +77,8 @@ export {
 } from './gpu/gallery/index.js';
 export type { MapObjectSprite } from './gpu/map-objects/index.js';
 export type {
+  BuildingHighlightCell,
+  BuildingHighlightItem,
   DoorBadge,
   GeometryDebugCell,
   GeometryDebugItem,

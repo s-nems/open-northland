@@ -18,6 +18,9 @@ export const enGame = {
     highestExperience: 'Highest experience',
     specialization: 'Specialization {id}',
     noWorkplace: 'No workplace',
+    assignWorkplace: 'Assign a workplace',
+    assignWorkplaceHint:
+      'Click, then pick a building: green ones have an open slot for this settler, red ones do not. Left-click assigns, right-click or Esc cancels.',
     readyToWork: 'Ready to work',
     defenseStopped: 'Defence stopped',
     demolish: 'Demolish',

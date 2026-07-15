@@ -79,17 +79,36 @@ export function isCarrierJob(ctx: SystemContext, jobType: number): boolean {
 const CARRIER_JOB_ID = 'carrier';
 
 /**
- * The operator jobs of a workplace: its worker-slot jobs minus the carrier transport slots — the trades that
- * actually run the craft (the mill's millers, not its carrier). A building whose slots are carrier-only keeps
- * them (the well's one carrier is its operator — dropping it would let the well run unstaffed); named
- * approximation, the readable data doesn't say which slot operates.
+ * The operator jobs of a workplace: its worker-slot jobs minus the transport (carrier) and gatherer slots —
+ * the trades that actually run the craft (the mill's millers, not its carrier, nor a collector employed to
+ * fetch its raw input). A gatherer bound to a workshop gathers a raw good and delivers it into the building
+ * (the building is its flag — see the gatherer drive); it never operates the craft, so it must not satisfy
+ * the production worker-presence gate. A building whose slots are all carrier/gatherer keeps them (the well's
+ * one carrier is its operator — dropping it would let the well run unstaffed); named approximation, the
+ * readable data doesn't say which slot operates.
  */
 function operatorJobsOf(world: World, ctx: SystemContext, building: Entity): ReadonlySet<number> {
   const jobs = buildingWorkerJobs(world, ctx, building);
   if (jobs.size === 0) return jobs;
+  const harvest = contentIndex(ctx.content).harvestJobs;
   const operators = new Set<number>();
-  for (const job of jobs) if (!isCarrierJob(ctx, job)) operators.add(job);
+  for (const job of jobs) if (!isCarrierJob(ctx, job) && !harvest.has(job)) operators.add(job);
   return operators.size > 0 ? operators : jobs;
+}
+
+/**
+ * Whether `jobType` is one of a workplace's operator jobs — the trades whose presence at the door runs the
+ * craft ({@link operatorJobsOf}: worker slots minus carriers/gatherers, or the whole slot set when a
+ * building is carrier/gatherer-only, e.g. a well whose lone carrier IS its operator). The planner uses it to
+ * keep such an operator standing ON the door (driving production) instead of loitering beside it.
+ */
+export function isWorkplaceOperator(
+  world: World,
+  ctx: SystemContext,
+  building: Entity,
+  jobType: number,
+): boolean {
+  return operatorJobsOf(world, ctx, building).has(jobType);
 }
 
 /**

@@ -131,6 +131,48 @@ export function claimWorkCell(
 }
 
 /**
+ * Claim a stand cell BESIDE the shared `anchor` for a worker with nothing to do — the "bored by the door"
+ * stand (user-directed behaviour: an off-duty worker loiters visibly next to its workplace door, not on
+ * it). Same yard/claim machinery as {@link claimWorkCell} with one inversion: the anchor itself is never
+ * returned — the door node stays free for working traffic, and a loitering operator never lands on the
+ * node {@link presentOperatorCount} reads (standing ON the door would silently run the workshop). A worker
+ * already alone on a non-anchor yard cell stays put (stable across re-plans); with no free yard cell it
+ * simply stays where it is (`here`) — loitering is a stance, never a refusal that must relocate someone.
+ */
+export function loiterCell(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  e: Entity,
+  here: NodeId,
+  anchor: NodeId,
+  spacing: SpacingState,
+): NodeId {
+  if (!world.has(e, Owner)) return here; // unowned fixtures never relocate (the deStackIdle Owner gate)
+  spacing.blockedCells ??= dynamicBlockedCells(world, ctx, terrain);
+  spacing.yards ??= new Map();
+  let yard = spacing.yards.get(anchor);
+  if (yard === undefined) {
+    yard = yardCells(terrain, anchor, spacing.blockedCells);
+    spacing.yards.set(anchor, yard);
+  }
+  if (here !== anchor && yard.has(here)) {
+    const hereXY = terrain.coordsOf(here);
+    const bucket = spacing.occupancy.at(hereXY.x, hereXY.y);
+    if (bucket.length === 0 || (bucket.length === 1 && bucket[0] === e)) return here;
+  }
+  for (const cell of yard) {
+    if (cell === anchor) continue; // the door node stays free — loiterers stand beside it
+    if (spacing.claimed.has(cell)) continue;
+    const { x, y } = terrain.coordsOf(cell);
+    if (spacing.occupancy.at(x, y).length > 0) continue;
+    spacing.claimed.add(cell);
+    return cell;
+  }
+  return here; // no free yard cell — stay put rather than stack on the door
+}
+
+/**
  * A work anchor's yard: every walkable, unblocked node reachable from `anchor` within
  * {@link WORK_YARD_RADIUS_NODES} 4-connected steps, in canonical ring order (anchor first when it
  * qualifies — Set insertion order is the claim priority). Blocked cells are neither entered nor

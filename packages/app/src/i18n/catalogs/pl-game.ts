@@ -18,6 +18,9 @@ export const plGame = {
     highestExperience: 'Najwyższe doświadczenie',
     specialization: 'Specjalizacja {id}',
     noWorkplace: 'Brak miejsca pracy',
+    assignWorkplace: 'Przydziel miejsce pracy',
+    assignWorkplaceHint:
+      'Kliknij, a następnie wskaż budynek: zielone mają wolne miejsce dla tego osadnika, czerwone nie. LPM przydziela, PPM lub Esc anuluje.',
     readyToWork: 'Gotowe do pracy',
     defenseStopped: 'Obrona zatrzymana',
     demolish: 'Zniszcz',

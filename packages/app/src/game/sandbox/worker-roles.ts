@@ -60,25 +60,44 @@ export function assignmentPriority(slots: readonly { readonly jobType: number }[
   return [...craftsmen, ...carriers];
 }
 
+/** The building's gatherer slots (collector/hunter/fisher), ascending by job id. Empty when the building
+ *  employs no gatherer — the signal that a gatherer settler has no place here. */
+function gathererSlots(slots: readonly { readonly jobType: number }[] | undefined): number[] {
+  return (slots ?? [])
+    .map((slot) => slot.jobType)
+    .filter((jobType) => workerRoleOf(jobType) === 'gatherer')
+    .sort((a, b) => a - b);
+}
+
 /**
  * The right-click assignment priority for ONE settler at a building: its current trade first (so a miller
  * re-assigned to a mill stays a miller when a miller slot is open), then the building's default
  * {@link assignmentPriority}. A clean-room convenience (not pinned to observed original behavior): a
  * right-click rarely means "re-trade the specialist I aimed at his own workshop".
  *
- * `currentJob` is the settler's `Settler.jobType`; it is promoted only when it is a craft/carrier trade
- * the building actually offers. Idle/absent has no trade, and a gatherer is never promoted — the same
- * "never hand-assign a gatherer to a building" rule {@link assignmentPriority} applies, so the gesture
- * behaves uniformly on both content bases (a gatherer id classifies identically raw or rebased). The sim
- * still gates every candidate, so a full/unoffered current trade falls through to the default order.
+ * The priority mirrors the player's intent, most-preferred first, and the sim still gates every candidate,
+ * so a full/unoffered/gated trade falls through:
+ *  - **A gatherer** (collector/hunter/fisher current trade) prefers the building's own gatherer slots — its
+ *    exact slot when the building offers it, then the building's other gatherer slots — before the default
+ *    craftsman→carrier fallback. This is how a hunter right-clicked onto a warehouse (or a smith with a
+ *    collector slot) is bound as a gatherer whose delivery target becomes the building. A building with no
+ *    gatherer slot leaves the gatherer with the default order (craft → carrier).
+ *  - **A craftsman/carrier** current trade is promoted only when the building actually offers it.
+ *  - **Idle/absent** has no trade to keep, so the default {@link assignmentPriority} stands (gatherers
+ *    excluded — a plain settler on a warehouse becomes a carrier, not a gatherer).
  */
 export function assignmentPriorityFor(
   currentJob: number | undefined,
   slots: readonly { readonly jobType: number }[] | undefined,
 ): number[] {
   const base = assignmentPriority(slots);
-  if (currentJob === undefined || currentJob === JOB_IDLE || workerRoleOf(currentJob) === 'gatherer') {
-    return base;
+  if (currentJob === undefined || currentJob === JOB_IDLE) return base;
+  if (workerRoleOf(currentJob) === 'gatherer') {
+    const gatherers = gathererSlots(slots);
+    if (gatherers.length === 0) return base; // no gatherer slot here — fall to craft/carrier
+    const offeredExactly = gatherers.includes(currentJob);
+    const ordered = offeredExactly ? [currentJob, ...gatherers.filter((j) => j !== currentJob)] : gatherers;
+    return [...ordered, ...base];
   }
   const offered = (slots ?? []).some((slot) => slot.jobType === currentJob);
   if (!offered || base[0] === currentJob) return base;

@@ -104,9 +104,10 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       const type = entity !== undefined ? buildingTypeOf(entity) : undefined;
       const slots = type !== undefined ? buildingsByType.get(type)?.workers : undefined;
       // One command per selected settler, its priority computed from ITS current trade: keep it where the
-      // building offers that slot (a miller stays a miller at the mill), else the building's default order
-      // (craftsman → carrier, gatherers excluded — so a plain settler on a warehouse becomes a carrier, not
-      // a hunter). The sim gates every candidate, so an unoffered/full trade just falls through.
+      // building offers that slot (a miller stays a miller at the mill; a hunter stays a gatherer at a
+      // warehouse's gatherer slot), else the building's default order (craftsman → carrier, gatherers
+      // excluded for a non-gatherer — so a plain settler on a warehouse becomes a carrier). The sim gates
+      // every candidate, so an unoffered/full trade just falls through.
       for (const target of ownSettlers) {
         if (!deps.selected.has(target.ref)) continue;
         const self = entityById(snapshot, target.ref);
