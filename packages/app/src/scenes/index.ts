@@ -1,9 +1,8 @@
 import { battleScene } from './battle.js';
 import { berriesScene } from './berries.js';
+import { chainScene } from './chain.js';
 import { collisionScene } from './collision.js';
-import { farmScene } from './farm.js';
 import { goodsCatalogScene } from './goods-catalog.js';
-import { millScene } from './mill.js';
 import { sandboxScene } from './sandbox.js';
 import type { SceneDefinition } from './types.js';
 import { warehouseScene } from './warehouse.js';
@@ -21,9 +20,8 @@ export const SCENES: readonly SceneDefinition[] = [
   collisionScene,
   battleScene,
   goodsCatalogScene,
-  farmScene,
   berriesScene,
-  millScene,
+  chainScene,
   warehouseScene,
 ];
 
