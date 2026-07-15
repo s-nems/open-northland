@@ -5,13 +5,11 @@ import { grassCellMap as grassMap } from '../../fixtures/terrain.js';
 export { grassMap };
 
 import { type ContentSet, parseContentSet } from '@open-northland/data';
-import { beforeEach } from 'vitest';
 import { Building } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { Simulation, type TerrainMap } from '../../../src/index.js';
 import type { TerrainGraph } from '../../../src/nav/terrain/index.js';
 import { testContent } from '../../fixtures/content.js';
-import { clearComponentStores } from '../../fixtures/stores.js';
 
 /**
  * The building GROUND-FOOTPRINT mechanics — the original's free placement model:
@@ -103,7 +101,3 @@ export function placedBuilding(sim: Simulation, index = 0): Entity {
 export function buildingsPlaced(sim: Simulation): number {
   return [...sim.world.query(Building)].length;
 }
-
-beforeEach(clearComponentStores);
-
-export { clearComponentStores };

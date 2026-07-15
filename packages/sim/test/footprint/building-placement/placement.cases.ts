@@ -6,7 +6,6 @@ import { buildingBlockedCells, canPlaceBuilding, placementProbe } from '../../..
 
 import {
   buildingsPlaced,
-  clearComponentStores,
   ctxOf,
   grassCells,
   grassMap,
@@ -294,7 +293,6 @@ describe('building walk-block — houses have collision', () => {
 describe('determinism', () => {
   it('two same-seed runs through placement + rejection + pathing hash identically', () => {
     const run = (): string => {
-      clearComponentStores();
       const sim = mappedSim();
       sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING });
       sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 6, y: 5, tribe: VIKING }); // rejected

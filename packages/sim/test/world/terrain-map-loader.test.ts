@@ -1,7 +1,6 @@
 import { parseTerrainMap } from '@open-northland/data';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { MoveGoal, Position } from '../../src/components/index.js';
-import { clearComponentStores } from '../../src/harness/stores.js';
 import { fx, Simulation, scenario } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 
@@ -17,12 +16,6 @@ import { testContent } from '../fixtures/content.js';
 
 const GRASS = 0; // fixture landscape typeId 0 — walkable
 const WATER = 1; // fixture landscape typeId 1 — not walkable
-
-// Component stores are module-level singletons, so clear the ones these cases touch before each test
-// to keep membership assertions and hash equality scoped to the current case (see ai-system.test.ts).
-beforeEach(() => {
-  clearComponentStores();
-});
 
 /**
  * The literal text of a `content/maps/<id>.json` file: a 5×5 grass field with a water wall down
@@ -139,7 +132,6 @@ describe('a loaded map drives the sim in place of the synthetic grass grid', () 
 
   it('a settler navigates the loaded map (detours around the water wall) deterministically', () => {
     function run(): { ticks: number; arrived: boolean; hash: string } {
-      clearComponentStores();
       const map = parseTerrainMap(JSON.parse(mapFileJson()));
       const sim = new Simulation({ seed: 7, content: testContent(), map });
       // A lone mover at (0,0) given only a MoveGoal to (4,0): the navigation planner must issue a

@@ -13,27 +13,19 @@ import { stepReplaying } from './replay.js';
  * `traceEntity()` (which wants the whole window) and `diffSnapshots()` (adjacent pairs).
  *
  * It exists for the same reason `localizeDivergence` does: the overlay would otherwise have to drive
- * {@link replay} by hand AND know the single-world store constraint (below) — exactly the
- * footgun-laden glue these compositions encapsulate so the only part left is the human-eyed UI.
+ * {@link replay} by hand — exactly the glue these compositions encapsulate so the only part left is
+ * the human-eyed UI.
  *
  * ## One forward pass, not N replays (still byte-identical)
  *
- * A naive scrub would `replay()` from tick 1 once PER tick in the window — O(window × toTick) work
- * and a store-clear between each. Instead this replays the log into ONE fresh sim, steps from tick 1
+ * A naive scrub would `replay()` from tick 1 once PER tick in the window — O(window × toTick) work.
+ * Instead this replays the log into ONE fresh sim, steps from tick 1
  * to `toTick` enqueuing each logged command on exactly its recorded tick (identically to
  * {@link replay}), and snapshots whenever the running tick lands inside `[fromTick, toTick]`. A
  * `WorldSnapshot` is a plain value (no live store views — see `snapshot.ts`), so every captured tick
  * survives the sim continuing to mutate the stores; the result is byte-identical to having replayed
- * each tick separately, at a fraction of the cost.
- *
- * ## Single-world constraint (the reason this isn't trivial glue)
- *
- * Component stores are MODULE-LEVEL SINGLETONS shared across every `Simulation` ({@link replay}'s
- * doc; AGENTS.md [56e8d3e]) — so this rebuilds a sim in the shared stores as a side effect (that
- * is what reconstructing state requires) and SUPERSEDES any prior live sim. The caller must hold no
- * live sim across this call; on return the stores hold the run's reconstructed state at `toTick`. The
- * returned snapshots are plain values and stay valid regardless. It is otherwise as "pure" as
- * `replay()`: it reads only plain inputs (a command log) and touches no clock, DOM, or I/O.
+ * each tick separately, at a fraction of the cost. It is as "pure" as `replay()`: it builds its own
+ * sim (own stores), reads only plain inputs (a command log), and touches no clock, DOM, or I/O.
  */
 
 /**
@@ -50,9 +42,6 @@ import { stepReplaying } from './replay.js';
  * Throws on a negative `fromTick`/`toTick` (a nonsense target, like {@link replay}'s negative
  * `untilTick`) — a caller bug, not recoverable bad content. An out-of-range-high `toTick` is fine:
  * the sim keeps stepping deterministically past the last logged command (the deterministic tail).
- *
- * Side effect: rebuilds a sim in the shared component stores (see the module doc). The caller must
- * hold no live sim across this call.
  */
 export function scrubWindow(run: RunReplay, fromTick: number, toTick: number): WorldSnapshot[] {
   if (fromTick < 0) {

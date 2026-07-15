@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   AttackOrder,
   Engagement,
@@ -27,7 +27,6 @@ import {
   visionRadiusForJob,
 } from '../../src/systems/vision/index.js';
 import { testContent } from '../fixtures/content.js';
-import { clearComponentStores } from '../fixtures/stores.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
@@ -41,8 +40,6 @@ const VIKING = 1;
 const WOODCUTTER = 1; // fixture job 1 — carries test_axe (band [1,2]); a civilian eye
 const P0 = 0;
 const P1 = 1;
-
-beforeEach(clearComponentStores);
 
 function simOn(mode: number, w = 24, h = 8): Simulation {
   const sim = new Simulation({ seed: 7, content: testContent(), map: grassMap(w, h) });
@@ -213,7 +210,6 @@ describe('fog gates — combat auto-acquire and flee react only to SEEN enemies'
       [FOG_MODE.REVEAL, false],
       [FOG_MODE.OFF, true],
     ] as const) {
-      clearComponentStores();
       const sim = simOn(mode);
       const attacker = unit(sim, ATTACKER.x, ATTACKER.y, P0, { mode: MILITARY_MODE.ATTACK });
       unit(sim, ENEMY.x, ENEMY.y, P1);
@@ -237,7 +233,6 @@ describe('fog gates — combat auto-acquire and flee react only to SEEN enemies'
       [FOG_MODE.REVEAL, false],
       [FOG_MODE.OFF, true],
     ] as const) {
-      clearComponentStores();
       const sim = simOn(mode);
       const civ = unit(sim, ATTACKER.x, ATTACKER.y, P0, { mode: MILITARY_MODE.FLEE });
       unit(sim, ENEMY.x, ENEMY.y, P1, { mode: MILITARY_MODE.IGNORE });

@@ -1,7 +1,6 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { Carrying, CurrentAtomic, MoveGoal, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { clearComponentStores } from '../../src/harness/stores.js';
 import { cellAnchorNode, type Fixed, fx, ONE, Simulation } from '../../src/index.js';
 import { aiSystem, atomicSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
@@ -22,8 +21,6 @@ const SLEEP_ATOMIC = 8;
 const TIRED: Fixed = justAbove(NEED_THRESHOLD);
 // Comfortably below the threshold — a rested settler ignores the sleep drive and works as normal.
 const RESTED: Fixed = fx.div(ONE, fx.fromInt(2));
-
-beforeEach(clearComponentStores);
 
 function settlerAt(sim: Simulation, x: number, y: number, fatigue: Fixed, hunger = fx.fromInt(0)): Entity {
   return needsSettlerAt(sim, x, y, { hunger, fatigue });
@@ -116,7 +113,6 @@ describe('sleep drive — closing the rise→sleep→reset loop through the real
 
   it('is byte-identical across two same-seed runs (determinism)', () => {
     const run = (): string => {
-      clearComponentStores();
       const sim = new Simulation({ seed: 5, content: testContent(), map: grassMap(3, 1) });
       settlerAt(sim, 0, 0, NEED_THRESHOLD);
       for (let i = 0; i < 200; i++) sim.step();

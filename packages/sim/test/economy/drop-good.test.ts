@@ -1,8 +1,7 @@
 import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { Building, GroundDrop, Position, Stockpile } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { clearComponentStores } from '../../src/harness/stores.js';
 import { cellAnchorNode, Simulation } from '../../src/index.js';
 import { MAX_GROUND_STACK } from '../../src/systems/stores/index.js';
 
@@ -33,11 +32,6 @@ function dropContent(): ContentSet {
     tribes: [{ typeId: 1, id: 'viking' }],
   });
 }
-
-/** Clear the WHOLE component namespace (module-level singletons) so runs can't leak into each other —
- *  a hand-picked subset would miss a component a future system adds (sim AGENTS.md). */
-
-beforeEach(clearComponentStores);
 
 function fresh(seed = 1): Simulation {
   return new Simulation({ seed, content: dropContent() });
@@ -131,7 +125,6 @@ describe('dropGood', () => {
     drop(runA);
     const hashA = runA.hashState();
 
-    clearComponentStores();
     const runB = fresh(7);
     drop(runB);
     const hashB = runB.hashState();

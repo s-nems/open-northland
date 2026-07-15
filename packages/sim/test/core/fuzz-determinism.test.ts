@@ -1,7 +1,6 @@
 import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import type { Entity } from '../../src/ecs/world.js';
-import { clearComponentStores } from '../../src/harness/stores.js';
 import {
   CORE_INVARIANTS,
   type Command,
@@ -343,7 +342,6 @@ interface FuzzRun {
 }
 
 function runFuzz(fuzzSeed: number, ticks: number): FuzzRun {
-  clearComponentStores();
   const sim = new Simulation({ seed: fuzzSeed, content: fuzzContent(), map: grassMap(MAP_W, MAP_H) });
   // An independent generator stream (any fixed derivation of the fuzz seed works — it only must
   // differ from the sim's seed so the two streams aren't trivially correlated).
@@ -378,7 +376,6 @@ describe('fuzz: randomized command streams stay deterministic, replayable, and i
     it(`seed ${seed}: replaying the recorded log reproduces the final state`, () => {
       const live = runFuzz(seed, TICKS);
       expect(live.log.length).toBeGreaterThan(0); // the stream actually exercised the command seam
-      clearComponentStores(); // replay() rebuilds in the shared stores — the live sim is superseded
       const replayed = replay({
         content: fuzzContent(),
         seed,

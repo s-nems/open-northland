@@ -1,8 +1,7 @@
 import { parseContentSet } from '@open-northland/data';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { Health } from '../../src/components/index.js';
 import { World } from '../../src/ecs/world.js';
-import { clearComponentStores } from '../../src/harness/stores.js';
 import { createSettler, DEFAULT_SETTLER_HITPOINTS } from '../../src/systems/conflict/spawn/index.js';
 import { settlerHitpoints } from '../../src/systems/readviews/index.js';
 import { testContent } from '../fixtures/content.js';
@@ -34,10 +33,6 @@ function contentWithTribeHp(hitpoints: number) {
     tribes: base.tribes.map((t) => (t.typeId === VIKING ? { ...t, hitpoints } : t)),
   });
 }
-
-beforeEach(() => {
-  clearComponentStores();
-});
 
 describe('settlerHitpoints — the tribe HP pool read at spawn', () => {
   it("reads the tribe's hitpoints, or 0 when it carries none", () => {

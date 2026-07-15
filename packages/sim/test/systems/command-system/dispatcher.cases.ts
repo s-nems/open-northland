@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Building, Settler } from '../../../src/components/index.js';
 import type { Command } from '../../../src/index.js';
-import { clearComponentStores } from '../../fixtures/stores.js';
 
 import { fresh, HEADQUARTERS, nthEntity, VIKING, WOODCUTTER } from './support.js';
 
@@ -43,7 +42,6 @@ describe('CommandSystem — dispatch and logging', () => {
     runA.run(50);
     const hashA = runA.hashState();
 
-    clearComponentStores();
     const runB = fresh(7);
     for (const c of cmds) runB.enqueue(c);
     runB.run(50);

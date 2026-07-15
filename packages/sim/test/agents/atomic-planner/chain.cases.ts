@@ -1,11 +1,8 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { Carrying, Resource, Stockpile } from '../../../src/components/index.js';
 import { Simulation } from '../../../src/index.js';
 import { testContent } from '../../fixtures/content.js';
-import { clearComponentStores } from '../../fixtures/stores.js';
 import { grassMap, storeAt, WOOD, woodAt, woodcutterAt } from './support.js';
-
-beforeEach(clearComponentStores);
 
 describe('atomicPlanner — end-to-end harvest -> carry -> pileup through the real schedule', () => {
   it('a woodcutter walks to wood, harvests, walks to the store, and piles it up', () => {

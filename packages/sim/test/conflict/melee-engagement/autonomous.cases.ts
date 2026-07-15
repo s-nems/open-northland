@@ -1,12 +1,9 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { CurrentAtomic, Engagement, Health, MoveGoal } from '../../../src/components/index.js';
 import { Simulation } from '../../../src/index.js';
 import { combatSystem, SIGHT_RADIUS_NODES } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
-import { clearComponentStores } from '../../fixtures/stores.js';
 import { BEAR, ctxOf, FRANK, fighterAt, grassMap, P0, P1, VIKING, WOODCUTTER } from './support.js';
-
-beforeEach(clearComponentStores);
 
 describe('combat hostility — the owner (player) axis', () => {
   it('two OWNED same-tribe combatants of DIFFERENT players are enemies (they fight)', () => {
@@ -51,7 +48,6 @@ describe('combat hostility — the owner (player) axis', () => {
     combatSystem(same.world, ctxOf(same));
     expect(same.world.has(bearSame, CurrentAtomic)).toBe(false); // same player — the bear holds its swing
 
-    clearComponentStores();
     const diff = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const bearDiff = fighterAt(diff, 0, 0, BEAR, WOODCUTTER, { owner: P0 });
     const vikingDiff = fighterAt(diff, 1, 0, VIKING, WOODCUTTER, { owner: P1 });

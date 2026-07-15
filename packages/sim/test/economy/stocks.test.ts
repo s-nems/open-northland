@@ -1,7 +1,6 @@
 import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { Building, Stockpile } from '../../src/components/index.js';
-import { clearComponentStores } from '../../src/harness/stores.js';
 import { ONE, Simulation } from '../../src/index.js';
 import { tribeStocks } from '../../src/systems/index.js';
 
@@ -34,10 +33,6 @@ function stocksContent(): ContentSet {
     buildings: [{ typeId: 1, id: 'warehouse', kind: 'headquarters' }],
   });
 }
-
-beforeEach(() => {
-  clearComponentStores();
-});
 
 function placeStore(sim: Simulation, tribe: number, amounts: Map<number, number>): void {
   const e = sim.world.create();

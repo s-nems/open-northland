@@ -5,7 +5,6 @@ import { grassNodeMap as grassMap } from '../../fixtures/terrain.js';
 export { grassMap };
 
 import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
-import { beforeEach } from 'vitest';
 import {
   Building,
   Carrying,
@@ -16,7 +15,6 @@ import {
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, ONE, type SimEvent, type Simulation } from '../../../src/index.js';
-import { clearComponentStores } from '../../fixtures/stores.js';
 
 /**
  * Unit + integration tests for the ConstructionSystem — a construction site (`UnderConstruction`) rises to
@@ -151,13 +149,6 @@ export function placeBuiltHome(
 export function upgradedEvents(sim: Simulation): readonly SimEvent[] {
   return sim.events.current().filter((ev) => ev.kind === 'buildingUpgraded');
 }
-
-// Clear EVERY component store — the module-level singleton stores are shared across Simulation
-// instances (AGENTS.md [ac6a287]); a store missed here leaks a prior test's entity, which
-// (e.g. a stale Health/CurrentAtomic on a reused id) silently diverts the carrier-delivery scan.
-beforeEach(clearComponentStores);
-
-export { clearComponentStores };
 
 /** Place an under-construction building (`built = 0`, labor 0) holding the given starting materials. */
 export function placeSite(sim: Simulation, buildingType: number, stock: Record<number, number> = {}): Entity {

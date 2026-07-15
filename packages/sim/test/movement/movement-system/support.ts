@@ -2,12 +2,10 @@ import { grassNodeMap as grassMap } from '../../fixtures/terrain.js';
 
 export { grassMap };
 
-import { beforeEach } from 'vitest';
 import { PathFollow, Position } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, type Simulation } from '../../../src/index.js';
 import { ACCEL_TICKS, MOVE_SPEED_PER_TICK } from '../../../src/systems/index.js';
-import { clearComponentStores } from '../../fixtures/stores.js';
 
 /**
  * Unit + integration tests for the MovementSystem's path-following mode — the seam that consumes a
@@ -24,8 +22,6 @@ import { clearComponentStores } from '../../fixtures/stores.js';
  */
 
 export const GRASS = 0;
-
-beforeEach(clearComponentStores);
 
 export const FX_ZERO = fx.fromInt(0);
 

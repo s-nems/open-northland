@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   CurrentAtomic,
   Engagement,
@@ -17,7 +17,6 @@ import { moveUnit } from '../../src/systems/orders/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
-import { clearComponentStores } from '../fixtures/stores.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
@@ -45,8 +44,6 @@ const VIKING = 1;
 const WOODCUTTER = 1;
 const P0 = 0;
 const P1 = 1;
-
-beforeEach(clearComponentStores);
 
 /** An owned combatant (Settler + Health + Owner + an explicit stance) at cell (x, y). */
 function fighterAt(

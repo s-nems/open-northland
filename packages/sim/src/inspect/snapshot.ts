@@ -103,7 +103,9 @@ export function takeSnapshot(world: World, tick: number, events: readonly SimEve
     // BerryBush joins Resource/Stump as cached scenery: a ripe bush sits unchanged for its whole regrow
     // cycle, so it is re-cloned only at the two `touch`ed moments it flips (foraged, regrown) — not every
     // frame like a moving settler. `ripeAtTick` is an absolute schedule, so a regrowing bush doesn't churn.
-    if (Resource.store.has(id) || Stump.store.has(id) || BerryBush.store.has(id)) cache.set(id, snap);
+    if (world.has(id, Resource) || world.has(id, Stump) || world.has(id, BerryBush)) {
+      cache.set(id, snap);
+    }
   }
   return { tick, entities, events: events.map(clonePlain) as readonly SimEvent[] };
 }

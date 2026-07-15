@@ -170,5 +170,6 @@ To add one (full guide in [`docs/SCENES.md`](../../docs/SCENES.md)):
 3. `npm test` (mechanic green) → then surface `npm run dev` → `http://localhost:5173/?scene=<id>` with
    concise verification notes, and ask the user whether it looks right. Don't claim visual correctness.
 
-Scene sims share `sim`'s **module-level component stores** (a known footgun), so `createSceneSim` resets
-them on every build — don't bypass it (the headless harness builds many scene sims in one process).
+Each scene sim owns its component stores (`new Simulation()` is a complete reset), so the headless harness
+builds many scene sims in one process with no isolation ritual. Use `createSceneSim` for its scene defaults
+(needs-off, fog), not for store clearing.

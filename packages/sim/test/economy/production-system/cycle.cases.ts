@@ -1,13 +1,10 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { Production, Stockpile } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { Simulation } from '../../../src/index.js';
 import { productionSystem } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
-import { clearComponentStores } from '../../fixtures/stores.js';
 import { CYCLE_TICKS, ctxOf, PLANK, sawmill, WOOD } from './support.js';
-
-beforeEach(clearComponentStores);
 
 describe('productionSystem — cycle lifecycle', () => {
   it('consumes the input at cycle start and produces the output on the duration-th tick', () => {

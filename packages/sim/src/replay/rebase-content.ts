@@ -32,13 +32,9 @@ import { replay } from './replay.js';
  * deterministic-rebase price; an app may instead apply new content only to FUTURE ticks, which needs
  * no replay — a different, also-valid policy the app layer chooses.)
  *
- * ## Single-world constraint (inherited from {@link replay})
- *
- * Component stores are module-level singletons shared across every `Simulation` (AGENTS.md
- * [56e8d3e]); the rebuilt sim therefore SUPERSEDES the original — the caller must stop reading the old
- * sim's live stores once this returns `ok` (its captured `snapshot()`/`hashState()` strings, being
- * plain values, stay valid). On an `error` result NOTHING is rebuilt: the bad content never reached a
- * `Simulation`, so the original sim is untouched and the caller keeps using it.
+ * The rebuilt sim is independent of the original (each `replay()` owns its stores), so both stay valid
+ * side by side. On an `error` result NOTHING is rebuilt: the bad content never reached a `Simulation`,
+ * so the original sim is untouched and the caller keeps using it.
  */
 export interface RebaseInputs {
   /** The seed the running sim was constructed with — replay must reuse it or state diverges. */
@@ -89,8 +85,8 @@ export function rebaseContent(rawContent: unknown, inputs: RebaseInputs): Rebase
     return { kind: 'error', message: e instanceof Error ? e.message : String(e) };
   }
 
-  // Content is valid → rebuild the run on it. Only here do we touch the shared stores (replay builds a
-  // fresh Simulation), so an invalid reload above never perturbs the original sim.
+  // Content is valid → rebuild the run on it in a fresh Simulation, so an invalid reload above never
+  // perturbs the original sim.
   const sim = replay({
     content,
     seed: inputs.seed,

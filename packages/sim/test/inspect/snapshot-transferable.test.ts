@@ -1,5 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
-import { clearComponentStores } from '../../src/harness/stores.js';
+import { describe, expect, it } from 'vitest';
 import { type Command, Simulation, type WorldSnapshot } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
@@ -18,8 +17,6 @@ import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 const HEADQUARTERS = 1;
 const WOODCUTTER = 1;
 const VIKING = 1;
-
-/** Clear every component store (shared singletons) so each run starts clean. */
 
 /**
  * Drive a short real run that exercises the snapshot's non-trivial shapes: a building (a `Stockpile`
@@ -40,8 +37,6 @@ function realRunSnapshot(): WorldSnapshot {
 }
 
 describe('snapshot is transferable (Web-Worker boundary)', () => {
-  beforeEach(clearComponentStores);
-
   it('survives structuredClone — no functions / class instances / live Maps', () => {
     const snap = realRunSnapshot();
     // It must have real content, or the clone proves nothing.

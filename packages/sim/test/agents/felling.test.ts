@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   Building,
   Carrying,
@@ -17,7 +17,6 @@ import { aiSystem, atomicSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { settlerAt } from '../fixtures/settler.js';
-import { clearComponentStores } from '../fixtures/stores.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 /**
@@ -41,8 +40,6 @@ const HARVEST_ATOMIC = 24;
 const WOOD_GATHERING = testContent().goods.find((g) => g.id === 'wood')?.gathering;
 const CHOPS_TO_FELL = WOOD_GATHERING?.chopsToFell ?? 0;
 const TREE_WOOD_YIELD = WOOD_GATHERING?.yieldPerNode ?? 0;
-
-beforeEach(clearComponentStores);
 
 /** A proper woodcutter settler at integer tile (x,y): needs at 0, empty experience. */
 function makeWoodcutter(sim: Simulation, x: number, y: number): Entity {

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   Building,
   MoveGoal,
@@ -11,7 +11,6 @@ import {
 import { fx } from '../../../src/core/fixed.js';
 import { halfCellMapFromCells, positionOfNode, Simulation } from '../../../src/index.js';
 import { testContent } from '../../fixtures/content.js';
-import { clearComponentStores } from '../../fixtures/stores.js';
 import {
   ANY_BUILDING_TYPE,
   GRASS,
@@ -27,8 +26,6 @@ import {
   walkStraightTo,
   wallAt,
 } from './support.js';
-
-beforeEach(clearComponentStores);
 
 describe('unit body collision — firm routing and resolution', () => {
   it('two walking fighters cross head-on and both arrive — movers never deadlock movers', () => {

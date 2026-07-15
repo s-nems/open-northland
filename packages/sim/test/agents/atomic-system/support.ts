@@ -1,10 +1,8 @@
 export { ctxOf } from '../../fixtures/context.js';
 
-import { beforeEach } from 'vitest';
 import { CurrentAtomic } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { type AtomicEffect, fx, type Simulation } from '../../../src/index.js';
-import { clearComponentStores } from '../../fixtures/stores.js';
 
 /**
  * Unit + integration tests for the AtomicSystem — the executor half of the settler planner. It
@@ -17,8 +15,6 @@ import { clearComponentStores } from '../../fixtures/stores.js';
 export const WOOD = 1;
 export const PLANK = 2;
 export const SAWMILL = 2; // fixture buildingType: wood capacity 20
-
-beforeEach(clearComponentStores);
 
 /** Give an entity a CurrentAtomic with the given effect/duration (progress starts at 0). */
 export function startAtomic(

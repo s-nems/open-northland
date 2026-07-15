@@ -6,7 +6,6 @@ import { ctxOf } from '../../fixtures/context.js';
 
 export { ctxOf };
 
-import { beforeEach } from 'vitest';
 import {
   CurrentAtomic,
   DeliveryFlag,
@@ -29,7 +28,6 @@ import {
 } from '../../../src/index.js';
 import { atomicSystem, isYardHeap } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
-import { clearComponentStores } from '../../fixtures/stores.js';
 
 /**
  * THE FLAG-BOUND GATHERER (user-specified behaviour): each gatherer is bound to its own flag ({@link
@@ -58,8 +56,6 @@ export const NARROW_RADIUS = 4; // tight enough that a distant node falls outsid
 export const WOOD_GATHERING = testContent().goods.find((g) => g.id === 'wood')?.gathering;
 export const CHOPS_TO_FELL = WOOD_GATHERING?.chopsToFell ?? 0;
 export const TREE_WOOD_YIELD = WOOD_GATHERING?.yieldPerNode ?? 0;
-
-beforeEach(clearComponentStores);
 
 /** A grass half-cell map split by a vertical WATER wall on node columns `riverCols` (all rows) — a
  *  river with no crossing, so the nodes left and right of it are separate static components (the

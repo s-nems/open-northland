@@ -2,12 +2,10 @@ import { grassCellMap as grassMap } from '../../fixtures/terrain.js';
 
 export { grassMap };
 
-import { beforeEach } from 'vitest';
 import { Owner, Position, Resource, Settler } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { cellAnchorNode, fx, Simulation } from '../../../src/index.js';
 import { testContent } from '../../fixtures/content.js';
-import { clearComponentStores } from '../../fixtures/stores.js';
 
 /**
  * Tests for the PLAYER-order commands (`moveUnit` / `setJob`) and the PlayerOrder timed-override system
@@ -25,8 +23,6 @@ export const VIKING = 1;
 export const HEADQUARTERS = 1;
 export const HARVEST_ATOMIC = 24;
 export const HUMAN_PLAYER = 0;
-
-beforeEach(clearComponentStores);
 
 /** An all-grass CELL-resolution strip, upsampled to the 2W×2H half-cell navigation lattice. */
 

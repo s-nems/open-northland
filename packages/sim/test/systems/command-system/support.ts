@@ -1,8 +1,6 @@
-import { beforeEach } from 'vitest';
 import type { Entity } from '../../../src/ecs/world.js';
 import { Simulation } from '../../../src/index.js';
 import { testContent } from '../../fixtures/content.js';
-import { clearComponentStores } from '../../fixtures/stores.js';
 
 /**
  * Tests for CommandSystem + the serializable command queue + the snapshot read-view (the
@@ -11,8 +9,7 @@ import { clearComponentStores } from '../../fixtures/stores.js';
  * snapshot is a plain, canonical, non-aliasing read-view render consumes instead of live stores.
  *
  * Fixture (fixtures/content.ts): building type 1 = HEADQUARTERS (storage, stock wood init 10 / plank
- * init 0), job 1 = woodcutter. Stores are module-level singletons shared across sims, so each test
- * clears them first (see other sim tests).
+ * init 0), job 1 = woodcutter.
  */
 
 export const HEADQUARTERS = 1;
@@ -23,8 +20,6 @@ export const CARPENTER = 2; // the job that unlocks the SMITHY for the viking tr
 export const WOOD = 1;
 export const VIKING = 1;
 export const FRANK = 2; // a tribe absent from the fixture's tribe table — its tech-graph gates nothing
-
-beforeEach(clearComponentStores);
 
 export function fresh(seed = 1): Simulation {
   return new Simulation({ seed, content: testContent() });

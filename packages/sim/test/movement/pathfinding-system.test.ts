@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { PathFollow, PathRequest, Position } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, nodeOfPosition, ONE, Simulation, type TerrainMap } from '../../src/index.js';
@@ -10,7 +10,6 @@ import {
   type SystemContext,
 } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
-import { clearComponentStores } from '../fixtures/stores.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 /**
@@ -27,8 +26,6 @@ const WATER = 1;
 
 /** Exact quarter-tile fixed-point values — node positions land on quarters (ONE % 4 === 0). */
 const Q = (n: number): number => (n * ONE) / 4;
-
-beforeEach(clearComponentStores);
 
 /** A flat all-grass NODE grid of the given dimensions. */
 

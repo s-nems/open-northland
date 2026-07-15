@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   BerryBush,
   Building,
@@ -10,7 +10,6 @@ import {
   Stockpile,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { clearComponentStores } from '../../src/harness/stores.js';
 import { type Fixed, fx, ONE, Simulation } from '../../src/index.js';
 import {
   aiSystem,
@@ -38,8 +37,6 @@ const HEADQUARTERS = 1;
 const EAT_ATOMIC = 10;
 // Just over the ¾·ONE eat threshold — a settler this hungry seeks food before any work.
 const HUNGRY: Fixed = justAbove(NEED_THRESHOLD);
-
-beforeEach(clearComponentStores);
 
 function settlerAt(sim: Simulation, x: number, y: number, hunger: Fixed): Entity {
   return needsSettlerAt(sim, x, y, { hunger });
@@ -207,7 +204,6 @@ describe('forage drive — closing the rise→forage→reset loop through the re
 
   it('is byte-identical across two same-seed runs (determinism)', () => {
     const run = (): string => {
-      clearComponentStores();
       const sim = new Simulation({ seed: 5, content: testContent(), map: grassMap(5, 1) });
       settlerAt(sim, 0, 0, NEED_THRESHOLD);
       bushAt(sim, 2, 0);

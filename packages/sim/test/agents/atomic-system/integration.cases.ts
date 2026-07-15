@@ -3,7 +3,6 @@ import { Building, Carrying, Resource, Stockpile } from '../../../src/components
 import { ONE, Simulation } from '../../../src/index.js';
 import { atomicSystem } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
-import { clearComponentStores } from '../../fixtures/stores.js';
 import { ctxOf, PLANK, SAWMILL, startAtomic, WOOD } from './support.js';
 
 describe('atomicSystem — end-to-end: harvest -> carry -> pileup', () => {
@@ -35,7 +34,6 @@ describe('atomicSystem — end-to-end: harvest -> carry -> pileup', () => {
 describe('atomicSystem — determinism', () => {
   it('two same-seed runs reach the same state hash', () => {
     const run = (): string => {
-      clearComponentStores();
       const sim = new Simulation({ seed: 5, content: testContent() });
       const settler = sim.world.create();
       const store = sim.world.create();

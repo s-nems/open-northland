@@ -1,8 +1,7 @@
 import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { Building, Carrying, Position, Settler, Stockpile } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { clearComponentStores } from '../../src/harness/stores.js';
 import { fx, ONE, populationWithinHousing, type SimEvent, Simulation } from '../../src/index.js';
 import { housingCapacity, NEWBORN_AGE_CLASS, tribePopulation } from '../../src/systems/index.js';
 import { ctxOf } from '../fixtures/context.js';
@@ -66,11 +65,6 @@ function loopContent(): ContentSet {
     ],
   });
 }
-
-// Clear EVERY component store — the module-level singleton stores are shared across Simulation
-// instances (AGENTS.md [ac6a287]/[f4593c4]); a missed store leaks a prior test's entity, which
-// (a stale Health/CurrentAtomic on a reused id) silently diverts a planner/carrier decision.
-beforeEach(clearComponentStores);
 
 /** A fully-BUILT level-0 home at a map tile (the births anchor + the upgrade-materials delivery sink). */
 function builtHomeAt(sim: Simulation, x: number, y: number): Entity {
@@ -176,7 +170,6 @@ describe('e2e: the births → housing → upgrade → more-births loop (full ste
 
   it('is deterministic — two same-seed loop runs reach the same final state hash', () => {
     const run = (): string => {
-      clearComponentStores();
       const sim = new Simulation({ seed: 9, content: loopContent(), map: grassMap(6, 1) });
       builtHomeAt(sim, 3, 0);
       loadedCarrierAt(sim, 0, 0, STONE, 1);

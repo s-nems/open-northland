@@ -1,9 +1,8 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { Age, Health, HerdMember, MoveSpeed, Position, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, fx, nodeOfPosition, ONE, Simulation } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
-import { clearComponentStores } from '../fixtures/stores.js';
 
 /**
  * Tests for the `spawnAnimalHerd` command — the animal-PLACEMENT mechanic:
@@ -13,16 +12,13 @@ import { clearComponentStores } from '../fixtures/stores.js';
  * (tribe 11) is solitary (no group size, searchForLeader false). The VIKING (tribe 1) is a civilization
  * (no animaltypes record) — bad input for this command.
  *
- * Stores are module-level singletons shared across sims, so each test clears them first. The sim has no
- * terrain map, so the full `step()` schedule runs but the CombatSystem (which needs cells to measure
- * range) is inert — a spawned herd is placed, not immediately fighting.
+ * The sim has no terrain map, so the full `step()` schedule runs but the CombatSystem (which needs cells
+ * to measure range) is inert — a spawned herd is placed, not immediately fighting.
  */
 
 const BEAR = 10; // aggressive herd animal: group 3, searchForLeader, range 2, hitpointsAdult 15000; moveSpeed 8 + runSpeed 4
 const BEE = 11; // solitary decorative animal: no group size, searchForLeader false, hitpointsAdult 200
 const VIKING = 1; // a civilization — no animaltypes record (bad input for spawnAnimalHerd)
-
-beforeEach(clearComponentStores);
 
 function fresh(seed = 1): Simulation {
   return new Simulation({ seed, content: testContent() });
@@ -138,7 +134,6 @@ describe('spawnAnimalHerd command', () => {
 
   it('two same-seed runs spawn the same herd (deterministic — no RNG)', () => {
     const run = (): string => {
-      clearComponentStores();
       const sim = fresh(7);
       spawnHerdAt(sim, BEAR, 4, 6);
       sim.step();

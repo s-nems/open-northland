@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import * as components from '../../src/components/index.js';
 import {
   CurrentAtomic,
@@ -21,7 +21,6 @@ import {
   stampResourceFootprint,
   unstampResourceFootprint,
 } from '../../src/systems/index.js';
-import { clearComponentStores } from '../fixtures/stores.js';
 import {
   CLAY,
   CLAY_ATOMIC,
@@ -50,8 +49,6 @@ import {
   placeWoodcutter,
   terrainOf,
 } from './resource-footprint/support.js';
-
-beforeEach(clearComponentStores);
 
 describe('resource footprints', () => {
   it('derives walk/build/work cells from the harvest-stage LandscapeGfx full state', () => {

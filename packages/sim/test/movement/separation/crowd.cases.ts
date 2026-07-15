@@ -1,10 +1,7 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { PathFollow } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { clearComponentStores } from '../../fixtures/stores.js';
 import { orderTo, P0, P1, SOLDIER, settlerAt, sim } from './support.js';
-
-beforeEach(clearComponentStores);
 
 describe('unit body collision — crowded determinism', () => {
   it('a crowd mass-ordered onto one node never crashes mid-tick and every walker stands down', () => {
@@ -38,7 +35,6 @@ describe('unit body collision — crowded determinism', () => {
       return s.hashState();
     };
     const first = play();
-    clearComponentStores();
     expect(play()).toBe(first);
   });
 });

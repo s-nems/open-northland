@@ -1,8 +1,7 @@
 import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { CurrentAtomic, Health, Position, Projectile, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { clearComponentStores } from '../../src/harness/stores.js';
 import { fx, Simulation } from '../../src/index.js';
 import { PROJECTILE_TILES_PER_SPEED_UNIT } from '../../src/systems/index.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
@@ -38,10 +37,6 @@ const TARGET_HP = 1000; // high enough that one 30-dmg hit leaves the target ali
  *  the ¼-tile-per-unit constant, `speed 8` = exactly 2 tiles/tick (an integer, so the same-row shot's
  *  arithmetic is exact). */
 const BOW_STEP_TILES = fx.toInt(fx.mul(fx.fromInt(BOW_SPEED), PROJECTILE_TILES_PER_SPEED_UNIT));
-
-beforeEach(() => {
-  clearComponentStores();
-});
 
 function content(): ContentSet {
   return parseContentSet({
@@ -243,7 +238,6 @@ describe('projectiles — expiry + dead zone', () => {
 describe('projectiles — determinism', () => {
   it('two same-seed runs with projectiles active reach the same state hash', () => {
     const run = (): { hash: string; sawProjectile: boolean } => {
-      clearComponentStores();
       const sim = new Simulation({ seed: 9, content: content(), map: grassMap(24, 1) });
       fighterAt(sim, 0, 0, VIKING, ARCHER);
       fighterAt(sim, 8, 0, FRANK, IDLE, 90); // frail, in band — dies under the volley, exercising the death path too

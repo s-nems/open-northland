@@ -19,17 +19,28 @@ export type Entity = Brand<number, 'Entity'>;
 
 export interface Component<T> {
   readonly name: string;
-  /** internal: dense store keyed by entity id. */
-  readonly store: Map<Entity, T>;
+  /**
+   * Phantom type brand: `T` never exists at runtime (a component value is just `{ name }`), but
+   * carrying it in the type keeps `Component<A>` unassignable where a `Component<B>` is expected. The
+   * entity→value store lives on the {@link World}, not here — a component is a pure key, so `new World()`
+   * is a complete reset with no shared state to leak between sims.
+   */
+  readonly __value?: T;
 }
 
 export function defineComponent<T>(name: string): Component<T> {
-  return { name, store: new Map<Entity, T>() };
+  return { name };
 }
 
 export class World {
   private nextId = 1;
   private readonly alive = new Set<Entity>();
+  /**
+   * The per-component entity→value stores, owned by this World and created on first {@link add}. Holding
+   * them here (not on the shared {@link Component} key) is what makes `new World()` a complete reset — no
+   * cross-sim leak, no clear-the-stores ritual. Map insertion order is registration order.
+   */
+  private readonly stores = new Map<Component<unknown>, Map<Entity, unknown>>();
   /** Components in first-registration order — stable, used for canonical hashing/snapshots. */
   private readonly registered: Array<Component<unknown>> = [];
   /** Per-component mutation generation, used by derived caches that depend on a component store. */
@@ -75,7 +86,7 @@ export class World {
 
   destroy(entity: Entity): void {
     for (const c of this.registered) {
-      if (c.store.delete(entity)) this.bumpComponentGeneration(c);
+      if (this.stores.get(c)?.delete(entity)) this.bumpComponentGeneration(c);
     }
     this.alive.delete(entity);
     this.canonicalCache = null;
@@ -87,20 +98,34 @@ export class World {
   }
 
   add<T>(entity: Entity, component: Component<T>, value: T): T {
-    if (!this.registered.includes(component as Component<unknown>)) {
-      this.registered.push(component as Component<unknown>);
-    }
-    component.store.set(entity, value);
+    const store = this.storeFor(component);
+    store.set(entity, value);
     this.bumpComponentGeneration(component as Component<unknown>);
     this.logTouched(entity);
     return value;
   }
 
   remove<T>(entity: Entity, component: Component<T>): void {
-    if (component.store.delete(entity)) {
+    if (this.storeOf(component)?.delete(entity)) {
       this.bumpComponentGeneration(component as Component<unknown>);
       this.logTouched(entity);
     }
+  }
+
+  /** This World's store for `component`, or `undefined` if nothing was ever {@link add}ed to it. */
+  private storeOf<T>(component: Component<T>): Map<Entity, T> | undefined {
+    return this.stores.get(component as Component<unknown>) as Map<Entity, T> | undefined;
+  }
+
+  /** This World's store for `component`, creating (and registering) it on first use. */
+  private storeFor<T>(component: Component<T>): Map<Entity, T> {
+    let store = this.storeOf(component);
+    if (store === undefined) {
+      store = new Map<Entity, T>();
+      this.stores.set(component as Component<unknown>, store as Map<Entity, unknown>);
+      this.registered.push(component as Component<unknown>);
+    }
+    return store;
   }
 
   /**
@@ -147,11 +172,11 @@ export class World {
   }
 
   has<T>(entity: Entity, component: Component<T>): boolean {
-    return component.store.has(entity);
+    return this.storeOf(component)?.has(entity) ?? false;
   }
 
   get<T>(entity: Entity, component: Component<T>): T {
-    const v = component.store.get(entity);
+    const v = this.storeOf(component)?.get(entity);
     if (v === undefined) {
       throw new Error(`entity ${entity} has no component ${component.name}`);
     }
@@ -159,7 +184,7 @@ export class World {
   }
 
   tryGet<T>(entity: Entity, component: Component<T>): T | undefined {
-    return component.store.get(entity);
+    return this.storeOf(component)?.get(entity);
   }
 
   /**
@@ -167,14 +192,23 @@ export class World {
    * store. O(min store size). No sorting in the hot path.
    */
   *query(...required: Array<Component<unknown>>): IterableIterator<Entity> {
-    let smallest = required[0];
-    if (smallest === undefined) return;
-    for (const c of required) if (c.store.size < smallest.store.size) smallest = c;
+    if (required.length === 0) return;
+    // Resolve every required store once, tracking the smallest to drive iteration; a never-added
+    // required component means no matches at all.
+    const stores: Array<Map<Entity, unknown>> = [];
+    let smallest: Map<Entity, unknown> | undefined;
+    for (const c of required) {
+      const s = this.stores.get(c);
+      if (s === undefined) return;
+      stores.push(s);
+      if (smallest === undefined || s.size < smallest.size) smallest = s;
+    }
+    if (smallest === undefined) return; // unreachable (required is non-empty), but proves it to the type
 
-    for (const id of smallest.store.keys()) {
+    for (const id of smallest.keys()) {
       let ok = true;
-      for (const c of required) {
-        if (c !== smallest && !c.store.has(id)) {
+      for (const s of stores) {
+        if (s !== smallest && !s.has(id)) {
           ok = false;
           break;
         }
@@ -250,7 +284,7 @@ export class World {
   componentEntries(entity: Entity): Array<[string, unknown]> {
     const out: Array<[string, unknown]> = [];
     for (const c of this.registered) {
-      const v = c.store.get(entity);
+      const v = this.stores.get(c)?.get(entity);
       if (v !== undefined) out.push([c.name, v]);
     }
     return out;

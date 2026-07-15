@@ -1,5 +1,5 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   Building,
   Carrying,
@@ -14,7 +14,6 @@ import { fx, ONE, Simulation } from '../../src/index.js';
 import { stockCapacity } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
-import { clearComponentStores } from '../fixtures/stores.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 /**
@@ -50,8 +49,6 @@ function boatContent(): ContentSet {
     vehicles: [{ typeId: BOAT, id: 'ship', stockSlots: HOLD, passengerSlots: 9, cargoGoods: [PLANK] }],
   });
 }
-
-beforeEach(clearComponentStores);
 
 /** A carrier POSTED to `boundTo` (the hull's loader) — the haul rung works only through a binding. */
 function carrierAt(sim: Simulation, x: number, y: number, boundTo?: Entity): Entity {
@@ -150,7 +147,6 @@ describe('boat cargo-load gate — stockCapacity over a Vehicle hull', () => {
 
   it('is deterministic: two same-seed runs of the load reach the same state hash', () => {
     const run = (): string => {
-      clearComponentStores();
       const sim = new Simulation({ seed: 9, content: boatContent(), map: grassMap(3, 1) });
       carrierAt(sim, 0, 0);
       sawmillAt(sim, 1, 0, 2);

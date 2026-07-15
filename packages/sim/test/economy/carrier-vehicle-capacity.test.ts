@@ -1,8 +1,7 @@
 import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { clearComponentStores } from '../../src/harness/stores.js';
 import { fx, Simulation } from '../../src/index.js';
 import { carrierCarryCapacity } from '../../src/systems/index.js';
 import { ctxOf } from '../fixtures/context.js';
@@ -55,10 +54,6 @@ function vehicleContent(): ContentSet {
     ],
   });
 }
-
-beforeEach(() => {
-  clearComponentStores();
-});
 
 function settlerOf(sim: Simulation, jobType: number, tribe: number): Entity {
   const e = sim.world.create();

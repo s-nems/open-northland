@@ -1,9 +1,8 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { Building, Production, Stockpile } from '../../../src/components/index.js';
 import { fx, ONE, Simulation } from '../../../src/index.js';
 import { productionSystem } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
-import { clearComponentStores } from '../../fixtures/stores.js';
 import {
   CYCLE_TICKS,
   ctxOf,
@@ -14,8 +13,6 @@ import {
   WOOD,
   WOODCUTTER,
 } from './support.js';
-
-beforeEach(clearComponentStores);
 
 describe('productionSystem — gating', () => {
   it('does not start a cycle when the input good is missing', () => {

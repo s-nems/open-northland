@@ -1,13 +1,6 @@
 import type { TerrainMapFile } from '@open-northland/data';
-import {
-  clearComponentStores,
-  components,
-  halfCellMapFromCells,
-  Simulation,
-  systems,
-  type TerrainMap,
-} from '@open-northland/sim';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { components, halfCellMapFromCells, Simulation, systems, type TerrainMap } from '@open-northland/sim';
+import { describe, expect, it } from 'vitest';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../src/catalog/felling.js';
 import { TERRAIN_OPEN } from '../src/catalog/terrain.js';
 import { buildCollisionTerrain } from '../src/content/collision.js';
@@ -33,8 +26,6 @@ import { GATHERER_WORK_RADIUS } from '../src/game/sandbox/place.js';
  */
 
 const { GroundDrop, Stockpile, WorkFlag } = components;
-
-beforeEach(clearComponentStores);
 
 /** An all-grass CELL map (the sim runs its 2× half-cell lattice). */
 function grassMap(cells: number) {

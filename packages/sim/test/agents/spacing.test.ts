@@ -1,5 +1,5 @@
 import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   Building,
   CurrentAtomic,
@@ -15,7 +15,6 @@ import type { Entity } from '../../src/ecs/world.js';
 import { fx, halfCellMapFromCells, nodeOfPosition, positionOfNode, Simulation } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 import { settlerAt as spawnSettler } from '../fixtures/settler.js';
-import { clearComponentStores } from '../fixtures/stores.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
@@ -31,8 +30,6 @@ const GRASS = 0;
 const VIKING = 1;
 const WOODCUTTER = 1;
 const HUMAN_PLAYER = 0;
-
-beforeEach(clearComponentStores);
 
 function sim(): Simulation {
   return new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 6) });

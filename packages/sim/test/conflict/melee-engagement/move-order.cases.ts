@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   AttackOrder,
   CurrentAtomic,
@@ -12,10 +12,7 @@ import { cellAnchorNode, fx, Simulation } from '../../../src/index.js';
 import { combatSystem } from '../../../src/systems/index.js';
 import { attackUnit, moveUnit } from '../../../src/systems/orders/index.js';
 import { testContent } from '../../fixtures/content.js';
-import { clearComponentStores } from '../../fixtures/stores.js';
 import { ctxOf, fighterAt, grassMap, P0, P1, VIKING, WOODCUTTER } from './support.js';
-
-beforeEach(clearComponentStores);
 
 describe('a player order is authoritative — it overrides the autonomous drives (economy AND auto-combat)', () => {
   it('moveUnit drops a soldier’s Engagement/AttackOrder so the order supersedes the fight', () => {

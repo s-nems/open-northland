@@ -17,15 +17,8 @@ import { Simulation } from '../simulation.js';
  * It is render-agnostic and pure (no DOM, no Pixi) — the dev overlay that scrubs/diffs/dumps is a
  * `render` concern built ON this; this is the part an agent can self-verify headlessly.
  *
- * ## Single-world constraint (important)
- *
- * Component stores are MODULE-LEVEL SINGLETONS shared across every `Simulation` (see
- * `ecs/world.ts` `defineComponent`; every sim test `beforeEach`-clears them; AGENTS.md
- * [56e8d3e]). So a replayed sim and the original sim CANNOT be alive at once — they would collide in
- * the same stores. `replay()` therefore returns a reconstructed sim that supersedes any prior one;
- * the caller must not keep reading the old sim's live stores afterward (its frozen `snapshot()` /
- * `hashState()` string, captured before the replay, stay valid — they are plain values, not store
- * views). A scrub overlay holds only the log + per-tick hashes/snapshots, never two live sims.
+ * Each `replay()` builds a FRESH `Simulation` with its own component stores (owned by the `World`), so
+ * a replayed sim and the original coexist independently — hold as many live as you like.
  */
 export interface ReplayOptions {
   readonly content: ContentSet;
