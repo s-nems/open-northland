@@ -101,4 +101,11 @@ export type AtomicEffect =
    *  unwatered field stalls at its sown stage (a named approximation — the engine's watering semantics are not
    *  decoded). A field already reaped/ripe, or gone, is a no-op. */
   | { readonly kind: 'water'; readonly crop: Entity }
+  /** The settler sets its carried load down on the ground before an interrupt takes over (a profession
+   *  change, or fleeing an enemy): on completion the whole {@link import('../components/settler.js').Carrying}
+   *  load is placed on the settler's own tile, spilling any remainder over the `MAX_GROUND_STACK` cap to the
+   *  nearest free walkable hexes ({@link import('../systems/agents/effects-goods/index.js').dropCarriedLoad}).
+   *  No good is lost — a dropped load becomes loose ground heaps. Carries no payload: the load is read off the
+   *  settler at apply time. */
+  | { readonly kind: 'drop' }
   | { readonly kind: 'idle' };

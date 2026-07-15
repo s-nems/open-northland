@@ -21,6 +21,7 @@ import {
 import {
   consumeFood,
   continuesHarvest,
+  dropCarriedLoad,
   forageBerry,
   harvestFromNode,
   pickupFromStore,
@@ -272,6 +273,11 @@ function applyEffect(world: World, ctx: SystemContext, settler: Entity, effect: 
     case 'water':
       // A farmer's watering (cultivate) marks the field watered — which opens its growth (the gate).
       applyWater(world, effect.crop);
+      return;
+    case 'drop':
+      // Set the carried load on the ground so the interrupting action proceeds empty-handed (see
+      // dropCarriedLoad for the own-tile-then-spill placement). A settler carrying nothing is a no-op.
+      dropCarriedLoad(world, ctx.terrain, settler);
       return;
     default:
       assertNever(effect); // a new AtomicEffect variant is a compile error until handled above

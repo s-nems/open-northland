@@ -1,5 +1,6 @@
 import {
   AttackOrder,
+  Carrying,
   CurrentAtomic,
   Engagement,
   Fleeing,
@@ -15,6 +16,7 @@ import type { Command } from '../../core/commands/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nearestUnblockedNode } from '../../nav/nearest.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import { startDrop } from '../agents/actions.js';
 import type { System, SystemContext } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
 import { MILITARY_MODE } from '../readviews/index.js';
@@ -64,6 +66,12 @@ function clearPlayerOrder(world: World, e: Entity): void {
  * {@link PlayerOrder} en-route marker so the autonomous drives leave the walk alone until arrival (see
  * {@link playerOrderSystem}).
  *
+ * A settler ordered to walk while carrying a load sets the load down first — it can't walk with its hands
+ * full. The order starts the drop atomic (the same set-it-down animation a profession change / enemy uses) and
+ * parks the destination on {@link PlayerOrder}'s `pendingGoal`; {@link playerOrderSystem} launches the walk the
+ * tick the drop finishes. So an ordered porter drops its wood where it stands, then walks off empty-handed —
+ * never hauling the load to the ordered spot, and never ignoring the order.
+ *
  * Recoverable bad input (skipped, still logged for faithful replay): a dead/stale target, a non-settler, or a
  * neutral entity with no {@link Owner} (only a player-owned unit is orderable). A mapless sim is a no-op too.
  * The command carries no issuing-player yet, so it doesn't verify which player owns the unit — the app only
@@ -94,12 +102,21 @@ export function moveUnit(
   world.remove(e, Engagement);
   world.remove(e, AttackOrder);
   world.remove(e, Fleeing); // a move order supersedes the flee drive too
-  world.add(e, MoveGoal, { cell: goal });
   // A move order relocates a DEFEND unit's post: the guard defends the spot it was sent to, not the tile the
   // stance was set on. Without the re-anchor, the arrived-hold combat pass would march the guard back to its
   // old anchor the moment it found no enemy there.
   const stance = world.tryGet(e, Stance);
   if (stance !== undefined && stance.mode === MILITARY_MODE.DEFEND) stance.anchorCell = goal;
+
+  // Hands full: halt and set the load down first (the drop atomic stops any walk in progress — startDrop
+  // clears the nav state), parking the destination. The walk starts once the drop completes
+  // (playerOrderSystem). CurrentAtomic was just cleared above, so startDrop always takes.
+  if (world.has(e, Carrying)) {
+    startDrop(world, ctx, e);
+    world.add(e, PlayerOrder, { pendingGoal: goal });
+    return;
+  }
+  world.add(e, MoveGoal, { cell: goal });
   world.add(e, PlayerOrder, {});
 }
 
@@ -108,12 +125,16 @@ export function moveUnit(
  * autonomous economy. It runs just before {@link aiSystem} so an arriving unit is re-tasked the same tick.
  *
  * Per unit under a {@link PlayerOrder}, in priority order:
- *  1. **Route failed** (an unwalkable/off-map target): abandon the order and clear the dead nav state (a
+ *  1. **Pending drop** (a `pendingGoal` parked on the order): the ordered unit was carrying and is setting its
+ *     load down first (`moveUnit`). While the drop atomic runs, wait; the tick it finishes (no
+ *     {@link CurrentAtomic}), launch the parked walk — set the {@link MoveGoal} and clear `pendingGoal`, so
+ *     from here it is an ordinary en-route order.
+ *  2. **Route failed** (an unwalkable/off-map target): abandon the order and clear the dead nav state (a
  *     failed {@link PathRequest} is never retried, so without this the unit would freeze on it forever).
- *  2. **Acting** (a {@link CurrentAtomic} appeared): a need drive took over (the economy branch is gated off
+ *  3. **Acting** (a {@link CurrentAtomic} appeared): a need drive took over (the economy branch is gated off
  *     by this order, so only a need could) — drop the order, leave the atomic running.
- *  3. **Travelling** (goal/request/path present): the order's own walk — keep it.
- *  4. **Arrived & idle**: remove the order so {@link aiSystem} re-tasks the unit this tick; no post-arrival
+ *  4. **Travelling** (goal/request/path present): the order's own walk — keep it.
+ *  5. **Arrived & idle**: remove the order so {@link aiSystem} re-tasks the unit this tick; no post-arrival
  *     stand.
  *
  * While the order stands, {@link aiSystem}'s economy branch skips the unit but its needs drives still run.
@@ -121,6 +142,13 @@ export function moveUnit(
 export const playerOrderSystem: System = (world, ctx) => {
   if (ctx.terrain === undefined) return; // mapless sim: no orders were issuable
   for (const e of world.query(Settler, PlayerOrder)) {
+    const pendingGoal = world.get(e, PlayerOrder).pendingGoal;
+    if (pendingGoal !== undefined) {
+      if (world.has(e, CurrentAtomic)) continue; // still setting the load down — the walk waits
+      world.add(e, MoveGoal, { cell: pendingGoal }); // drop done — start the parked walk now
+      world.add(e, PlayerOrder, {}); // clear pendingGoal: an ordinary en-route order from here
+      continue;
+    }
     if (world.tryGet(e, PathRequest)?.failed) {
       clearPlayerOrder(world, e); // target unreachable — return to autonomy
       continue;

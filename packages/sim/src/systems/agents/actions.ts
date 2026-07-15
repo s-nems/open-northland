@@ -1,10 +1,11 @@
-import { CARRY_CAPACITY, CurrentAtomic, MoveGoal } from '../../components/index.js';
+import { CARRY_CAPACITY, Carrying, CurrentAtomic, MoveGoal, Settler } from '../../components/index.js';
 import type { AtomicEffect } from '../../core/atomic-effect.js';
 import { fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { atomicDuration } from '../readviews/animations.js';
+import { clearNavState } from '../spatial.js';
 import type { PlannerContext } from './planner-context.js';
 import { interactionCell } from './targets/index.js';
 
@@ -70,6 +71,41 @@ export const BUILD_HOUSE_ATOMIC_ID = 39;
  *  data-driven where it matters (the harvest atomic is read from content) without inventing a per-good deposit
  *  binding the data lacks. */
 export const PILEUP_ATOMIC_ID = 23;
+
+/**
+ * The atomic id a settler runs to set a carried load down before an interrupt takes over (a profession
+ * change, or fleeing an enemy). The readable data binds no dedicated putdown clip (source basis: no `drop`
+ * atomic in `atomicanimations`/`setatomic`), so the drop reuses the pickup gesture's animation — the same
+ * bend-to-the-ground motion in reverse — as a named approximation; the typed `drop` effect
+ * ({@link import('../../core/atomic-effect.js').AtomicEffect}) sets the whole load on the ground on completion,
+ * so the behavior is the effect, not the shared id. */
+export const DROP_ATOMIC_ID = PICKUP_ATOMIC_ID;
+
+/**
+ * Start a settler setting its carried load down (the {@link DROP_ATOMIC_ID} atomic, `drop` effect): it stops
+ * where it is, plays the drop animation, then {@link import('./effects-goods/index.js').dropCarriedLoad} sets
+ * the whole load on the ground on completion. Clearing the nav state ({@link clearNavState}) is what makes the
+ * drop a standstill: a settler interrupted mid-walk (a porter re-ordered elsewhere, or scared into fleeing)
+ * halts and sets the load down before moving, instead of dropping on the move. A busy settler is left alone —
+ * the AI/combat gates already skip a unit with a {@link CurrentAtomic}, so the interrupting action
+ * (re-employment, the parked walk, flee) only proceeds once the load is down. No-op on a settler already acting
+ * (its atomic must not be clobbered) or one carrying nothing.
+ */
+export function startDrop(world: World, ctx: SystemContext, settler: Entity): void {
+  if (world.has(settler, CurrentAtomic)) return; // already acting — don't clobber the running atomic
+  const s = world.tryGet(settler, Settler);
+  if (s === undefined || !world.has(settler, Carrying)) return; // nothing to set down
+  clearNavState(world, settler); // stand still to drop — halt any walk in progress
+  world.add(settler, CurrentAtomic, {
+    atomicId: DROP_ATOMIC_ID,
+    elapsed: 0,
+    progress: fx.fromInt(0),
+    duration: atomicDuration(ctx.content, s, DROP_ATOMIC_ID),
+    effect: { kind: 'drop' },
+    targetEntity: null,
+    targetTile: null,
+  });
+}
 
 /**
  * Start a {@link CurrentAtomic} on a settler: the executor (AtomicSystem) will advance it and apply
