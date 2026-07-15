@@ -13,6 +13,7 @@ import {
   TERRAIN_MARGIN,
   TERRAIN_OPEN,
 } from '../src/catalog/terrain.js';
+import { HUMAN_HITPOINTS } from '../src/catalog/units.js';
 import { loadRuntimeRealContent, logRealContentGaps, mergeRealContent } from '../src/content/real-content.js';
 import { sandboxContent } from '../src/game/sandbox/index.js';
 
@@ -139,6 +140,29 @@ describe('mergeRealContent', () => {
     expect(content.landscape.find((t) => t.typeId === TERRAIN_OPEN)?.plantable).toBe(true);
     expect(content.landscape.find((t) => t.typeId === TERRAIN_IMPASSABLE)?.walkable).toBe(false);
     expect(() => buildTerrainGraph(content, grid)).not.toThrow();
+  });
+
+  it('sets the clean-room settler HP on a playable tribe that ships without one, never on an animal tribe', () => {
+    // Real ir.json ships human tribes with no `hitpoints`; the overlay fills each PLAYABLE tribe (one with a
+    // `jobEnables` tech-graph) and leaves an animal/monster tribe (none) at its own pool.
+    const base = rawRealLike();
+    const zeroed = base.tribes.map((t) => ({ ...t, hitpoints: 0 })); // all sandbox tribes are playable
+    const firstTribe = base.tribes[0];
+    if (firstTribe === undefined) throw new Error('fixture: no tribes');
+    const animal = {
+      ...firstTribe,
+      typeId: OUT_OF_CATALOG_TYPE_ID + 5,
+      id: 'beast_test',
+      hitpoints: 0,
+      jobEnables: [],
+    };
+    const raw = parseContentSet({ ...base, tribes: [...zeroed, animal] });
+
+    const { content } = mergeRealContent(raw);
+    for (const t of zeroed) {
+      expect(content.tribes.find((x) => x.typeId === t.typeId)?.hitpoints).toBe(HUMAN_HITPOINTS);
+    }
+    expect(content.tribes.find((t) => t.typeId === animal.typeId)?.hitpoints).toBe(0);
   });
 
   it('localizes good display names from the goodNames map, leaving unlisted goods as-is', () => {
