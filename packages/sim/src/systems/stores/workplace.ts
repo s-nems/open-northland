@@ -2,9 +2,9 @@ import type { Recipe } from '@open-northland/data';
 import { Building, Position, Settler } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
 import { interactionNode } from '../footprint/index.js';
+import { NodeBuckets } from '../spatial.js';
 
 // The workplace read model: what a building's type makes, who is allowed to staff it, and how many
 // operators are on station right now. Read by the AI planner (recognising workplaces / bound
@@ -107,26 +107,31 @@ function operatorJobsOf(world: World, ctx: SystemContext, building: Entity): Rea
  * separate batches by one tick each (oldest first — see the FIFO rule on the Production component): two
  * millers run two independent flours in parallel, doubling throughput, and a single bar never flows faster
  * than 1× (per-batch model; observed original behaviour, the exact staffing rule isn't decoded).
+ *
+ * The hot caller (ProductionSystem) passes a per-tick `operatorsByNode` index built once for every workplace,
+ * so the door-tile lookup is O(operators on the node) instead of a full-world settler scan; an ad-hoc caller
+ * omits it and pays a one-shot index build. The count is clamped to `cap` and order-independent, so both paths
+ * yield the identical number.
  */
-export function presentOperatorCount(world: World, ctx: SystemContext, building: Entity): number {
+export function presentOperatorCount(
+  world: World,
+  ctx: SystemContext,
+  building: Entity,
+  operatorsByNode?: NodeBuckets,
+): number {
   const jobs = operatorJobsOf(world, ctx, building);
   if (jobs.size === 0) return 1; // unstaffed-by-design: no worker requirement to satisfy
   const at = interactionNode(world, ctx, building);
   if (at === null) return 0; // a placed-but-position-less workplace can't be stood on
   const cap = operatorSlotHeadcount(world, ctx, building, jobs);
   if (cap <= 0) return 0;
-  const bx = at.x;
-  const by = at.y;
+  const index = operatorsByNode ?? new NodeBuckets(world, world.query(Settler, Position));
   let present = 0;
-  for (const e of world.query(Settler, Position)) {
-    const settler = world.get(e, Settler);
-    if (settler.jobType === null || !jobs.has(settler.jobType)) continue;
-    const p = world.get(e, Position);
-    const n = nodeOfPosition(p.x, p.y);
-    if (n.hx === bx && n.hy === by) {
-      present++;
-      if (present >= cap) return cap; // the clamp is reached — counting further can't change it
-    }
+  for (const e of index.at(at.x, at.y)) {
+    const jobType = world.get(e, Settler).jobType;
+    if (jobType === null || !jobs.has(jobType)) continue;
+    present++;
+    if (present >= cap) return cap; // the clamp is reached — counting further can't change it
   }
   return present;
 }
