@@ -25,10 +25,14 @@ export const GOOD_PLANK = SYNTHETIC_GOOD_BASE;
 // `goodtypes.ini` id (30–55) = 130–155 — the same ids the global goods catalog (`catalog/goods.ts`
 // `EXTENDED_GOODS`) declares them at, so an equipped good is the same good as the one dropped on the ground
 // or stored in a warehouse: one id, one `ls_goods` icon, one name.
+/** Water — the well's in-house product, a bakery input (`goodtypes.ini` type 1, at the +100 catalog offset). */
+export const GOOD_WATER = 101;
 /** Wheat — the field-farmed grain (`goodtypes.ini` type 4, at the +100 catalog offset). */
 export const GOOD_WHEAT = 104;
 /** Flour — the mill's in-house product ground from wheat (`goodtypes.ini` type 11, at the +100 offset). */
 export const GOOD_FLOUR = 111;
+/** Bread — the bakery's in-house product baked from water + flour (`goodtypes.ini` type 19, at the +100 offset). */
+export const GOOD_BREAD = 119;
 export const GOOD_SHOES = 130;
 export const GOOD_TOOL_IRON = 132;
 export const GOOD_ARMOR_CHAIN = 135;
