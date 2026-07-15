@@ -93,15 +93,7 @@ function haulWorkplaceOutput(
   const output = workplaceOutputToHaul(targets.sinks, world, workplace, recipe);
   if (output === null) return false;
   atOrWalk(world, entity, here, interactionCell(world, ctx, terrain, workplace, here), () =>
-    startPickup(
-      world,
-      ctx,
-      entity,
-      worker,
-      workplace,
-      output,
-      CARRY_CAPACITY,
-    ),
+    startPickup(world, ctx, entity, worker, workplace, output, CARRY_CAPACITY),
   );
   return true;
 }

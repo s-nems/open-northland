@@ -175,10 +175,10 @@ function consumeMaterials(world: World, building: Entity, cost: readonly GoodsLi
  * over many strikes, and the total strikes to raise a building scale with its size through its material cost
  * (a bigger house costs more units → proportionally more swings, and a directly-placed higher home tier pays
  * its whole cumulative bill — see `constructionBillOf` — so it also builds proportionally slower). Our design
- * (the engine's build loop has no oracle), tuned against the observed original's pace: each strike advances
- * the build by a small single-digit-percent step, far less than the quarter-unit the first cut used.
+ * (the engine's build loop has no oracle), tuned to the observed original's pace: a base home (6 units →
+ * 6·this ≈ 100 strikes) advances ~1% per hammer strike, matching the original checked in-game.
  */
-const STRIKES_PER_UNIT = 16;
+const STRIKES_PER_UNIT = 17;
 
 /**
  * Advance a construction site's builder-work `labor` by one swing — the `construct` atomic's effect, applied by

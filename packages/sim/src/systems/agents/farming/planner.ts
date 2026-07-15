@@ -202,15 +202,7 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
     const cell = interactionCell(world, ctx, terrain, sheaf, here);
     take(cell, false);
     atOrWalk(world, e, here, cell, () =>
-      startPickup(
-        world,
-        ctx,
-        e,
-        settler,
-        sheaf,
-        spec.goodType,
-        CARRY_CAPACITY,
-      ),
+      startPickup(world, ctx, e, settler, sheaf, spec.goodType, CARRY_CAPACITY),
     );
     return true;
   }
