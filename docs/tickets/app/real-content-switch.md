@@ -48,5 +48,5 @@ further golden moves are whatever the real-content browser path changes — none
 - Headless: sim-package goldens byte-identical — real content is browser-only; tests stay clean-room.
 - Browser `?map=<real map>`: real buildings place, Magazyn shows a real store's larder with icons, the
   economy runs, no terrain crash — **user's eyes** (screenshot first yourself).
-- The gap log (`mergeRealContent` → `logRealContentGaps`) already prints the 5 unbalanced gathered goods +
-  14 uncataloged buildings; keep it.
+- Once wired, the gap log (`mergeRealContent` → the rebuilt `logRealContentGaps`) prints the 5 unbalanced
+  gathered goods + 14 uncataloged buildings — verified in-browser during the blocker investigation.

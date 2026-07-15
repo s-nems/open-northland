@@ -47,19 +47,17 @@ export interface RealContentMerge {
 }
 
 /**
- * Complete the real content's gathering DATA and surface what it cannot fill. The pipeline's
- * `extractGoodGathering` emits 0 for chops-to-fell / yield / deposit size / levels — uncalibrated, since the
- * mod data carries no chop count (`catalog/felling.ts`). This pins the clean-room balance from the shared
- * {@link GATHERING_BALANCE_BY_ID} (the same table the sandbox reads) into those four fields, matched by the
- * good's string id, preserving everything else real ships (harvest/pickup/store atomics, `bioLandscape`).
+ * Complete the real content's gathering data and surface what it cannot fill. The pipeline's
+ * `extractGoodGathering` emits 0 for chops-to-fell / yield / deposit size / levels (the mod data carries no
+ * chop count — `catalog/felling.ts`), so this pins the clean-room balance from the shared
+ * {@link GATHERING_BALANCE_BY_ID} (the same table the sandbox reads) into those four fields by the good's
+ * string id, preserving everything else real ships (harvest/pickup/store atomics, `bioLandscape`).
  *
- * This is the forward-looking "real-content lever" `felling.ts` anticipates, not today's felling driver:
- * resource nodes are currently seeded from that same clean-room balance via the `GATHERERS` table at
- * placement (`game/sandbox/place.ts` `resourceSpecFor`), which the good/job re-key already aligned to the
- * real ids — so real trees already fell and deposits deplete. Completing `good.gathering` keeps the
- * ContentSet self-consistent (a good that fells carries its own felling balance) and readies it for a
- * content-driven resource-spawn system. Goods with a `gathering` block but no clean-room balance, and
- * buildings beyond the clean-room catalog, are reported — not silently dropped — so the caller can log the gap.
+ * It is data-completion, not today's felling driver: resource nodes seed from that same balance via the
+ * `GATHERERS` table at placement (`game/sandbox/place.ts`, which the re-key aligned to real ids), so real
+ * trees already fell. This keeps the ContentSet self-consistent and readies it for a content-driven
+ * resource-spawn system. Gathered goods with no clean-room balance, and buildings beyond the clean-room
+ * catalog, are reported — not silently dropped — so the caller can log the gap.
  */
 export function mergeRealContent(real: ContentSet): RealContentMerge {
   const goods = real.goods.map((good) => {
