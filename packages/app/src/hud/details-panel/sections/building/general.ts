@@ -7,7 +7,8 @@ import { type BuildingLayout, type ButtonAction, PREVIEW_INSET } from '../../lay
 import type { BuildingPanelModel } from '../../model/index.js';
 import { HOUSEWINDOW } from './shared.js';
 
-const BUTTON_STRING: Readonly<Record<ButtonAction, number>> = {
+// The building's own action buttons (assign-workplace is a settler-panel action, never drawn here).
+const BUTTON_STRING: Readonly<Partial<Record<ButtonAction, number>>> = {
   demolish: HOUSEWINDOW.demolish,
   center: HOUSEWINDOW.center,
   workers: HOUSEWINDOW.workersButton,
@@ -58,7 +59,7 @@ export function drawGeneralSection(
   for (const hit of layout.buttons) {
     chrome.button(
       hit,
-      ui('housewindow', BUTTON_STRING[hit.action], buttonFallback(hit.action)),
+      ui('housewindow', BUTTON_STRING[hit.action] ?? HOUSEWINDOW.help, buttonFallback(hit.action)),
       hover === hit.action,
     );
   }

@@ -1,5 +1,11 @@
 import type { ContentSet } from '@open-northland/data';
-import type { Camera, ElevationField, EntityBounds, SpriteSheet } from '@open-northland/render';
+import type {
+  BuildingHighlightItem,
+  Camera,
+  ElevationField,
+  EntityBounds,
+  SpriteSheet,
+} from '@open-northland/render';
 import type { Command, WorldSnapshot } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import type { PickerEntry } from '../../catalog/professions.js';
@@ -33,6 +39,9 @@ export interface UnitControls {
   readonly selectedIds: () => ReadonlySet<number>;
   readonly portrait: () => PortraitBox | null;
   readonly flaggedFlagIds: () => ReadonlySet<number>;
+  /** The green/red workplace-assignment wash for the render building-highlight layer, or null when the
+   *  player isn't choosing a workplace. Read each frame by the game loop. */
+  readonly assignHighlight: () => readonly BuildingHighlightItem[] | null;
   readonly tick: (snapshot: WorldSnapshot) => void;
   readonly claimsPointer: (clientX: number, clientY: number) => boolean;
   readonly dispose: () => void;

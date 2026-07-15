@@ -3,6 +3,7 @@ import { PROFESSIONS } from '../../../../catalog/professions.js';
 import { messages, professionLabel } from '../../../../i18n/index.js';
 import {
   BUILD_HOUSE_ATOMIC,
+  EXTRACTED_GATHERER_TRADES,
   GATHERERS,
   JOB_ARCHER,
   JOB_ARCHER_LONG,
@@ -67,15 +68,25 @@ export function buildSandboxJobs(extras: SandboxContentExtras): Map<number, Sand
       jobs.set(profession.jobType, { typeId: profession.jobType, id: profession.key });
     }
   }
+  // The collector's harvest atomics — every gathered good's harvest atomic (fell/mine/pick). Shared by the
+  // gatherer worker-slot trades below so a settler hand-assigned to a building's collector/hunter/fisher slot
+  // can actually harvest and bank into the building (the building is its flag). Reusing the collector's set
+  // for hunter/fisher is a named approximation: the sandbox has no distinct hunt/fish resources.
+  const gathererAtomics = GATHERERS.map((gatherer) => gatherer.atomic);
   for (const slots of Object.values(BUILDING_WORKER_SLOTS)) {
     for (const worker of slots) {
       const jobType = rebaseSlotJob(worker.jobType);
       if (!jobs.has(jobType)) {
-        jobs.set(jobType, {
+        const job: SandboxJob = {
           typeId: jobType,
           id: `worker_${jobType}`,
           name: workerSlotName(worker.jobType),
-        });
+        };
+        // A gatherer slot (original collector 8 / hunter 15 / fisher 22) is a real harvest trade: it
+        // gathers a raw good on the map and delivers into its building, so it needs the harvest atomics.
+        if (EXTRACTED_GATHERER_TRADES.has(worker.jobType))
+          jobs.set(jobType, { ...job, allowedAtomics: gathererAtomics });
+        else jobs.set(jobType, job);
       }
     }
   }

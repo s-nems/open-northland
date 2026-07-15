@@ -25,6 +25,7 @@ export {
   buildingWorkerJobs,
   isCarrierJob,
   isTemple,
+  isWorkplaceOperator,
   presentOperatorCount,
   recipeOf,
   workerPresentAt,

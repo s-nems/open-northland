@@ -21,7 +21,13 @@ import { positionOfNode } from '../../nav/halfcell.js';
 import { BUILD_HOUSE_ATOMIC_ID } from '../agents/actions.js';
 import { jobAtomics } from '../agents/targets/index.js';
 import type { SystemContext } from '../context.js';
-import { bindFreshFlag, jobCanHarvest, liveWorkFlag, syncWorkFlagToJob } from '../economy/flags.js';
+import {
+  bindFreshFlag,
+  jobCanHarvest,
+  liveWorkFlag,
+  removeWorkFlag,
+  syncWorkFlagToJob,
+} from '../economy/flags.js';
 import { openWorkerJobFromList } from '../economy/jobs/index.js';
 import { clearNavState } from '../spatial.js';
 import { stampDefaultStance } from './combat.js';
@@ -111,12 +117,13 @@ export function assignWorker(
   if (jobType === null) return; // full / wrong tribe / other player / not a workplace / gated — no-op
 
   world.remove(e, JobAssignment); // drop any prior binding before re-binding to the chosen building
-  // reidleAsJob also syncs the work flag; here `jobType` is a building-worker job, so the flag path only ever
-  // removes a stale flag. It never auto-plants: a building resolves no harvest job (`openWorkerJobFromList` —
-  // "never a gatherer"), so the plant-at-feet branch is unreachable here. A future caller passing a harvest job
-  // would plant the flag at the settler's current tile, not near the building — a seam to revisit if that lands.
   reidleAsJob(world, ctx, e, jobType);
   world.add(e, JobAssignment, { workplace: b });
+  // A gatherer hand-assigned to a building delivers its harvest INTO that building — the building is its
+  // flag, so it carries no work flag. reidleAsJob auto-plants one for a harvest trade (the free-gatherer
+  // default); drop it here so the bound gatherer banks at the building (deliveryTargetFor cases 1/3b) and
+  // never at a stray flag. A non-harvest job never carries one, so this is a no-op for craftsmen/carriers.
+  if (jobCanHarvest(ctx, jobType)) removeWorkFlag(world, e);
 }
 
 /**

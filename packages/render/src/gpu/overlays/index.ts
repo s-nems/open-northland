@@ -17,6 +17,11 @@
  * this barrel.
  */
 export { BadgeLayer, type DoorBadge } from './badge-layer.js';
+export {
+  type BuildingHighlightCell,
+  type BuildingHighlightItem,
+  BuildingHighlightLayer,
+} from './building-highlight.js';
 export { type ConstructionPlotFrame, ConstructionPlotLayer } from './construction-plot.js';
 export { CombatEffectsLayer } from './effects-layer.js';
 export { FogLayer } from './fog-layer.js';

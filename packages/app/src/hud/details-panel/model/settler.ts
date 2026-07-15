@@ -83,6 +83,9 @@ export interface SettlerPanelModel {
   readonly name: string;
   /** The character's profession (its job label) — the name line under the headline. */
   readonly profession: string;
+  /** Whether the "przydziel miejsce pracy" button is active — true for a settler with a real trade (an
+   *  idle/jobless settler has no trade to place, so the button is greyed until a profession is chosen). */
+  readonly canAssignWorkplace: boolean;
   /** Owner/tribe meta line under the name, with the military stance appended for a soldier. */
   readonly meta: string;
   /** A short live-state caption drawn in the portrait box — an honest stand-in for the original's

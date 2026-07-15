@@ -16,6 +16,7 @@ import type { World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
+import { jobCanHarvest } from '../economy/flags.js';
 import { MILITARY_MODE } from '../readviews/index.js';
 import { canonicalById, isTravelling, NodeBuckets } from '../spatial.js';
 import { collectInboundSupply, isCarrierJob, releaseSupplyRun } from '../stores/index.js';
@@ -199,12 +200,17 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // ferries (top up inputs, carry outputs out — it never operates the craft); a craftsman claims a
     // work seat and produces, fetches a missing input itself when starved (even beside a carrier),
     // and leaves the output run to its carrier when one is bound.
-    const workplace = boundWorkplaceTarget(world, ctx, e, plan.jobType, plan.tribe);
+    // A gatherer bound to a recipe workshop (a collector employed to feed a smith its ore) is NOT its
+    // operator — it runs the gather drive below and banks its harvest into the building. Excluded here so
+    // boundWorkplaceTarget doesn't route it into the producer/supplier craft loop.
+    const workplace = jobCanHarvest(ctx, plan.jobType)
+      ? null
+      : boundWorkplaceTarget(world, ctx, e, plan.jobType, plan.tribe);
     if (workplace !== null) {
       if (isCarrierJob(ctx, plan.jobType)) {
-        planWorkshopSupplier(plan, workplace);
+        planWorkshopSupplier(plan, workplace, spacing);
       } else {
-        planProducer(plan, workplace, seatClaims, targets.carrierSuppliedWorkplaces.has(workplace));
+        planProducer(plan, workplace, seatClaims, targets.carrierSuppliedWorkplaces.has(workplace), spacing);
       }
       continue;
     }

@@ -157,6 +157,9 @@ export function buildUnitPanelModel(
       // The profession name resolves through the shared catalog + i18n (and, for a building-bound settler,
       // its rebased slot job's content name) so a bound druid reads "Druid", not "Bezrobotny".
       profession: jobDisplayName(ctx, num(s.jobType)),
+      // The assign-workplace button is active only for a settler with a real trade (jobType not idle/absent):
+      // an idle settler has no trade to place at a building.
+      canAssignWorkplace: num(s.jobType) !== undefined && num(s.jobType) !== 0,
       meta,
       statusCaption: settlerStatus(comps),
       bars: satisfactionBars(comps),

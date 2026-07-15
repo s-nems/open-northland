@@ -191,6 +191,10 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
             .filter((p) => p.cells.length > 0),
     );
     geometryDebug.update(snap);
+    // The "przydziel miejsce pracy" wash: candidate buildings washed green (an open slot for the settler
+    // being placed) or red, or cleared when not in assign mode. Computed app-side from the snapshot and
+    // handed over as plain data, like every other overlay.
+    renderer.setBuildingHighlight(controls.assignHighlight());
     // One retained update: reconcile the pooled sprites, draw the selection rings + door badges + the
     // selected gatherers' work-flag highlight, render once. `app.screen` tracks window resizes. No HUD frame
     // is passed — the debug tick lives in the top overlay and the population/jobs/stocks in the stats window.

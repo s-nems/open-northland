@@ -3,7 +3,7 @@ import type { UiString } from '../../../content/gui-gfx.js';
 import { messages } from '../../../i18n/index.js';
 import type { Rect } from '../../geometry.js';
 import type { Chrome } from '../chrome.js';
-import { EQUIP_ROW_H, ROW_H, type SettlerLayout } from '../layout/index.js';
+import { type ButtonAction, EQUIP_ROW_H, ROW_H, type SettlerLayout } from '../layout/index.js';
 import { HUMANWINDOW, type SettlerPanelModel } from '../model/index.js';
 import { ROW_TEXT_PAD } from './shared.js';
 
@@ -30,10 +30,11 @@ export function drawSettler(
   layout: SettlerLayout,
   model: SettlerPanelModel,
   ui: UiString,
+  hoverAction: ButtonAction | null,
   s: number,
 ): void {
   drawGeneralSection(chrome, layout, model, s);
-  drawWorkSection(chrome, layout, model, ui, s);
+  drawWorkSection(chrome, layout, model, ui, hoverAction, s);
   drawExperienceSection(chrome, layout, model, ui, s);
   drawEquipmentSection(chrome, layout, model, ui, s);
 }
@@ -94,6 +95,7 @@ function drawWorkSection(
   layout: SettlerLayout,
   model: SettlerPanelModel,
   ui: UiString,
+  hoverAction: ButtonAction | null,
   s: number,
 ): void {
   chrome.window(layout.work.frame);
@@ -109,6 +111,8 @@ function drawWorkSection(
     chrome.textAt(hud.product, product.x, product.y + ROW_TEXT_PAD * s, 'white');
     chrome.textAt(model.work.product, product.x + keyW, product.y + ROW_TEXT_PAD * s, 'white');
   }
+  // The "przydziel miejsce pracy" button — greyed for a jobless settler (nothing to place).
+  chrome.button(layout.assignButton, hud.assignWorkplace, hoverAction === 'assign-workplace');
 }
 
 /** Doświadczenie: the settler's highest recorded specialization (or "żadne" — the sim awards none yet). */
