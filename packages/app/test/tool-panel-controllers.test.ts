@@ -14,7 +14,7 @@ import { createPlacementController } from '../src/hud/tool-panel/placement.js';
 import { createStatsWindow } from '../src/hud/tool-panel/stats-window.js';
 
 /**
- * Headless tests for the tool-panel WINDOW CONTROLLERS (menu / stats / placement) over a stubbed
+ * Headless tests for the tool-panel WINDOW CONTROLLERS (menu / goods / stats / placement) over a stubbed
  * {@link PanelContext} — the seams the package split opened up. These pin the input-routing contracts
  * the mount relies on (claim regions, close-on-pick, close-on-inside) and the stats change-key guard
  * (a tick-only change must NOT rebuild the glyph runs — the per-frame perf contract).
