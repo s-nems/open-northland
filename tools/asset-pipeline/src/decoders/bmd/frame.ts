@@ -4,7 +4,8 @@
  * separate from `decodePcx`: the container yields indexed pixels + an opacity mask; palette/atlas
  * concerns stay out (the bob's palette lives outside the `.bmd`).
  *
- * Ported format from CBobManager `PrintBob_*Core` + the `PrintPackedLine_*` walkers.
+ * The packed-line layout was established through owned-file inspection and is pinned by synthetic
+ * run, skip, mask, clipping, and round-trip tests.
  */
 
 import {
@@ -20,7 +21,7 @@ import {
   PACKED_X_SHIFT,
 } from './container.js';
 
-/** Sentinel line-control word meaning "this scanline is fully transparent" (CBobManager `0xFFFFFFFF`). */
+/** Sentinel line-control word meaning "this scanline is fully transparent". */
 const LINE_CONTROL_EMPTY = 0xffffffff;
 
 /**
@@ -65,8 +66,8 @@ export type SecondByteMode = 'alpha' | 'time';
  * already-parsed {@link Bmd} blocks, so palette/atlas concerns stay out of the codec (mirrors how `.pcx`
  * yields indexed pixels and `expandToRgba` is a separate step).
  *
- * Format (ported from CBobManager `PrintBob_*Core` + the `PrintPackedLine_*` walkers): the bob's `area`
- * gives the frame size; its scanlines are `lineControl[bob.misc + line]` (`misc` is the bob's first-line
+ * Format: the bob's `area` gives the frame size; its scanlines are
+ * `lineControl[bob.misc + line]` (`misc` is the bob's first-line
  * index into the contiguously-stacked line-control array — not `area.y`, which is the draw offset). For
  * each of `height` scanlines that word is either {@link LINE_CONTROL_EMPTY} (fully transparent row) or
  * `[xMin (10b)][offset (22b)]`. From `packedLineData[offset]` we walk control bytes until a `0`

@@ -17,8 +17,8 @@ import { packLineControl } from './fixtures/bmd.js';
 /**
  * `.fnt` (CFont) decoder tests. No copyrighted fixtures: we synthesize a CFont — the 16-byte font prefix
  * in front of a hand-built `.bmd` bob container — and assert the envelope parse, the `encodeFnt`/`decodeFnt`
- * round-trip, and the layout metrics ported from `CFont.cs` (advance, line height, baseline, the space→bob
- * 0x49 whitespace rule). The bob-pixel decode itself is covered by the `.bmd`/atlas tests.
+ * round-trip, and the layout metrics used by this project (advance, line height, baseline, and the
+ * space-to-bob-0x49 width rule). The bob-pixel decode itself is covered by the `.bmd`/atlas tests.
  */
 
 /** A tiny valid `.bmd` (2 8-bit bobs with pixels), the same shape a real CBobManager round-trips through. */
@@ -120,7 +120,7 @@ describe('fontMetrics', () => {
     });
   });
 
-  it('advances a glyph by x + width + 1 (CFont GetCharacterWidth, spacing 0)', () => {
+  it('advances a glyph by x + width + 1 at zero spacing', () => {
     const glyphA = metrics.glyphs[AT_A];
     expect(glyphA?.advance).toBe(1 + 5 + 1);
     expect([glyphA?.offsetX, glyphA?.offsetY, glyphA?.width, glyphA?.height]).toEqual([1, 4, 5, 10]);
@@ -145,15 +145,15 @@ describe('fontMetrics', () => {
     expect(metrics.nominalSize).toBe(10); // value0C carried through as the observed size
   });
 
-  it('applies an external spacing to every advance (CFont SetSpacing)', () => {
+  it('applies external spacing to every advance', () => {
     const spaced = fontMetrics(font, 2);
     expect(spaced.glyphs[AT_A]?.advance).toBe(2 + 1 + 5 + 1); // spacing folded in
     expect(bobAdvance(font.bmd, AT_A, 2)).toBe(2 + 1 + 5 + 1);
   });
 
   it('gives an empty (Type 0) glyph advance 0 and never lets its rect inflate line height', () => {
-    // The oracle's GetBobAreaRectanglePtr nulls a Type==0 bob → advance 0 and skipped for height. A packed
-    // asset can leave STALE nonzero rect bytes on an empty slot, so the guard must key on the type, not the rect.
+    // A packed asset can leave stale nonzero rectangle bytes on an empty slot, so metrics must key on
+    // the type rather than the rectangle.
     const bmd = metricsBmd(FONT_SPACE_BOB_ID + 1, {
       [AT_A]: { x: 1, y: 4, width: 5, height: 10 }, // the only real glyph → extent 15
       [FONT_SPACE_BOB_ID]: { x: 1, y: 4, width: 2, height: 10 },

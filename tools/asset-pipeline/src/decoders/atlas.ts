@@ -14,8 +14,8 @@
  *
  * Packing is a deterministic top-left shelf/row packer (frames placed left→right into rows of a fixed
  * max width, wrapping when the row is full), with a 1px transparent gutter so bilinear sampling can't
- * bleed neighbours. Simple, not optimal — a stable layout keeps the manifest easy to diff against the
- * OpenVikings oracle. Index 0 is a real palette colour for bobs (not a reserved colour-key), so alpha
+ * bleed neighbours. Simple, not optimal — a stable layout keeps manifests reproducible. Index 0 is a
+ * real palette colour for bobs (not a reserved colour-key), so alpha
  * comes from each frame's `mask`, never from the index.
  *
  * Pure functions only (no I/O). The CLI wires file reads + `encodePng` + JSON writes around them.
@@ -135,8 +135,7 @@ interface PreparedFrame {
  *
  *  - `'per-pixel'` — the byte is coverage and rides into the sheet's alpha as-is: Double8Bit decals
  *    (ferns, smoke, wave foam) keep their authored feathered translucency. The engine's alpha blit
- *    (`PrintBob_UsingShadedAlpha`, OpenVikings' best-effort reconstruction corroborated by the
- *    measured alpha distributions) is the model.
+ *    is the model, based on measured alpha distributions in decoded frames.
  *  - `'build-time'` — the byte is a 0–255 construction-progress threshold, not coverage. Pinned by
  *    measurement on the `[GfxHouse]` bobs: it spans ~0–255 and is strongly row-correlated bottom-up
  *    (foundation low, roof high; ≈100 mean across solid walls — read as alpha, the original's solid

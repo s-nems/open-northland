@@ -5,11 +5,9 @@ import { contains, type Rect } from './geometry.js';
  * around a selected settler, transcribed from the original engine. The menu content (which buttons, which
  * icons) is plain data in `action-ring-menu.ts`.
  *
- * Original behaviour (OpenVikings `Source/NC2InGameGuiManager/CGuiManager.cs`): selecting 1–2 humans brings
- * up `BuildHumanActionButtons`, which lays the human's available commands out as small round gfx buttons in
- * up to five groups (group-type 0..4), each group a short row/column on one side of a 0xE8 (232) px box
- * centred on the cursor. This module reproduces that arm footprint (the 100 px arm offset, the 0x20 button
- * + step, the ∓5 corner nudge, the centring around the unit) — the part recoverable from the decompile.
+ * The current layout uses up to five short button groups around a 232 px box centered on the cursor.
+ * Its 100 px arm offset, 32 px button step, and 5 px corner nudge are project-maintained approximations
+ * that need visual confirmation against the running original.
  * Pure geometry (no Pixi, no DOM), so the layout + hit-test are unit-tested headlessly (the twin of
  * `hud/tool-panel/layout.ts`).
  */
@@ -60,17 +58,17 @@ export interface ActionRingLayout {
   readonly bounds: PlacedRect;
 }
 
-// --- Geometry (original design pixels, pre-uiscale) — transcribed from `BuildHumanActionButtons` ----------
+// --- Geometry in project design pixels, before UI scaling -----------------------------------------------
 
 /** Button square edge (`SRectangle(x-0x10, y-0x10, 0x20, 0x20)`). */
 export const ACTION_BUTTON_PX = 0x20;
-/** Step between adjacent buttons in a group (the decompile's `stepX/stepY = 0x20`). */
+/** Step between adjacent buttons in a group. */
 export const ACTION_STEP_PX = 0x20;
-/** Arm offset from centre for the four cardinal groups (the decompile's `±100`). */
+/** Arm offset from centre for the four cardinal groups. */
 export const ACTION_ARM_PX = 100;
 /** The fifth group's inner-left column offset (`centerX - 0x44`). */
 export const ACTION_INNER_ARM_PX = 0x44;
-/** First/last-in-group corner nudge (the decompile's `±5` `cornerBias`). */
+/** First/last-in-group corner nudge. */
 export const ACTION_EDGE_NUDGE_PX = 5;
 
 /**

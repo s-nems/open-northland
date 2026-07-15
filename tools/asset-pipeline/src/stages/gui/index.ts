@@ -24,9 +24,8 @@ import { convertWindowBitmaps } from './window-bitmaps.js';
  *    mechanism as the player-colour LUT (`buildPaletteLut`) — with the row order fixed by
  *    `GUI_PALETTES` (in `palette-lut.ts`, mirrored app-side, so no sidecar descriptor is needed). The renderer reads an
  *    indexed atlas pixel through the LUT row for its element's palette. Which palette pairs with which
- *    element is documented in `docs/SOURCES.md` (from the OpenVikings `CGuiBaseDataManager`/`CGuiManager`
- *    oracle: `iconsleft` = the whole tool panel, `context` = the order icons, `frame`/`bg_*`/`bar_*`/
- *    `papyrus` = windows & bars).
+ *    element is documented in `docs/formats/GRAPHICS.md`: `iconsleft` for the tool panel, `context`
+ *    for order icons, and the named `frame`/`bg_*`/`bar_*`/`papyrus` palettes for windows and bars.
  *  - **Strings.** The nine `ingamegui*.cif` UI tables per language are `CStringArray`s (already decoded by
  *    `cif.ts`); we emit id→text JSON per language, re-decoded to CP1250 for the display glyphs.
  *  - **Cursors.** The three `DataX/Mouse/*.cur` are standard Win32 cursors — decoded to PNG (with hotspot)

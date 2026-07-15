@@ -1,9 +1,9 @@
-# Rebind clean-room tuning and animation bindings onto real content ids
+# Rebind hand-authored tuning and animation bindings onto real content ids
 
 **Area:** app (`game/sandbox/` + catalog) · **Origin:** global-content plan reconciliation,
 2026-07-12 · **Blocked by:** [real-content-balance-overlay](real-content-balance-overlay.md) · **Priority:** P1
 
-The clean-room tuning tables are keyed by the sandbox's fabricated ids; once the real ContentSet
+The hand-authored tuning tables are keyed by the sandbox's fabricated ids; once the real ContentSet
 is the base (previous tickets in the chain), they must be re-pointed at the real numbering or the
 merged content animates and works nothing.
 

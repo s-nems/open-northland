@@ -13,7 +13,7 @@ import { cifLinesToSections, decodeIni, type RuleSection } from './grammar.js';
  * The multiplier (1 in every shipped table) scales the id, matching the engine's per-table id
  * namespacing. Values are returned as they appear in `sections` — the byte→text codepage is the
  * caller's seam ({@link decodeIni} already yields CP1250 for readable `.ini`; `.cif` text is decoded
- * latin1 to match the OpenVikings oracle and needs {@link latin1ToCp1250} for display).
+ * latin1 to preserve its source bytes and needs {@link latin1ToCp1250} for display).
  */
 export function extractStringTable(sections: readonly RuleSection[]): Record<number, string> {
   const control = sections.find((s) => s.name === 'control');
@@ -69,7 +69,7 @@ export function extractStringnById(sections: readonly RuleSection[]): Record<num
   return byId;
 }
 
-/** Re-decodes an oracle-faithful latin1 string (the `.cif` seam) as CP1250, its real display codepage. */
+/** Re-decodes a byte-preserving latin1 string from the `.cif` seam as CP1250 display text. */
 export function latin1ToCp1250(latin1: string): string {
   return new TextDecoder('windows-1250').decode(Uint8Array.from(latin1, (c) => c.charCodeAt(0) & 0xff));
 }
@@ -77,7 +77,7 @@ export function latin1ToCp1250(latin1: string): string {
 /**
  * Decodes one encrypted `.cif` string table (a `CStringArray` of `[control]`/`[text]` lines) straight
  * to display text: {@link decodeCifStringArray} → {@link cifLinesToSections} → {@link extractStringTable},
- * with every value re-decoded through {@link latin1ToCp1250}. The `.cif` seam is oracle-faithful latin1,
+ * with every value re-decoded through {@link latin1ToCp1250}. The `.cif` seam preserves bytes as latin1,
  * so a caller composing the steps by hand can silently ship mojibake by forgetting the re-decode — this
  * helper keeps the codepage invariant in one place for both `.cif` string-table consumers (the
  * `ingamegui*` UI tables and the map folders' `strings.cif`).

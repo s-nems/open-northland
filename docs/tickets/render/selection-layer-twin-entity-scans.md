@@ -2,7 +2,7 @@
 
 **Area:** render · **Origin:** /refactor-cleanup on packages/render, 2026-07-14 · **Priority:** P3
 
-Sibling of [sprite-pool-per-frame-scans](sprite-pool-per-frame-scans.md) (that one is the pool;
+Sibling of the completed sprite-pool per-frame scan work (that one is the pool;
 this one is the selection rings).
 
 `gpu/overlays/selection-layer.ts` `SelectionLayer.draw` calls `reconcile` twice — once for the green

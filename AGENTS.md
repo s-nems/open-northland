@@ -9,18 +9,14 @@ config or growing process ledgers.
 
 ## Where Things Are
 
-This repo (`open-northland/`) normally sits beside two read-only reference folders:
+This repo (`open-northland/`) normally sits beside a read-only copy of *Cultures - 8th Wonder of
+the World* and the `culturesnation` mod (`DataCnmd/`). That installation is the asset-pipeline
+input. Never commit its assets, decoded content, or binaries.
 
-- `OpenVikings_reversing/` — C#/.NET reverse engineering of original file formats. Use it as an
-  oracle for layouts and decoders, not as architecture to port.
-- `Cultures 8th Wonder/` — the original game plus the `culturesnation` mod (`DataCnmd/`). It is the
-  asset-pipeline input. Never commit its assets, decoded content, or binaries.
-
-Legal guardrails: OpenNorthland is an independent clean-room GPL-3.0-or-later rebuild. Do not copy original
-assets into the repo and do not brand this project with the original's names, logos, 
-or screenshots of the original game. Screenshots of OpenNorthland's *own*
-renderer drawing locally-decoded assets are fine (the README hero image is one — the same practice
-as OpenMW/devilutionX). The canonical legal wording is in `docs/SOURCES.md`.
+Legal guardrails: OpenNorthland is an independent GPL-3.0-or-later implementation. Do not copy
+original assets into the repo or use the original game's names, logos, or screenshots as project
+branding. Screenshots of OpenNorthland's renderer drawing locally decoded assets are fine; the
+README hero image is one. The canonical legal wording is in `docs/LEGAL.md`.
 
 ## Golden Rules
 
@@ -33,12 +29,13 @@ as OpenMW/devilutionX). The canonical legal wording is in `docs/SOURCES.md`.
    balance live in the validated IR under `content/`; systems consume data instead of hardcoding
    special cases.
 4. **Prefer readable original sources.** The mod's `.ini` files under `DataCnmd/` are preferred when
-   present; base-game plaintext `.ini` files are still better than encrypted `.cif`; OpenVikings is
-   the format oracle.
+   present; base-game plaintext `.ini` files are still better than encrypted `.cif`. For binary
+   formats, document byte-level evidence from files in the owned game copy and pin it in synthetic
+   tests.
 5. **Faithful first, with named approximations.** Tests prove self-consistency, not that a mechanic
    matches the original. For mechanics, extraction, timings, visuals, and constants, state the source
-   basis: extracted data, readable source semantics, OpenVikings format evidence, or observed original
-   behavior. If something is approximated, name what and why in the code comment, test, commit, or
+   basis: extracted data, readable source semantics, byte-level format evidence, a published
+   standard, or observed original behavior. If something is approximated, name what and why in the code comment, test, commit, or
    ticket. Do not create a new running ledger.
 6. **RTS scale is a budget.** Per-tick sim cost scales with active work, never entities squared.
    Per-frame render cost scales with the screen, never the whole map.
@@ -142,7 +139,7 @@ hygiene test rejects nondeterministic globals in `packages/sim`.
 - Decoded maps already store final ground-pattern choices in their ground lanes; do not reinvent a
   terrain transition algorithm for imported maps.
 - The current map projection is observed from the original: staggered raster, 68 px cell width, 38 px
-  row step, elevation lift about 1.24 native px/unit, and pre-lift depth sorting.
+  row step, elevation lift `TILE_HALF_H/32` (1.1875 native px/unit), and pre-lift depth sorting.
 - The sim's logic grid is the original's HALF-CELL lattice (`2W×2H`; cell `(c,r)` = node
   `(2c+(r&1), 2r)`). Every integer grid coordinate in sim commands, footprints, and nav is a
   half-cell node; fixed-point Positions stay fractional visual-tile coords (`nav/halfcell.ts` is the
@@ -157,7 +154,7 @@ Load these only when working in that area:
 - `packages/render/AGENTS.md` — screen-bounded Pixi rendering and visual verification.
 - `packages/audio/AGENTS.md` — pure-decision/Web-Audio split, sink-only sim boundary, human-ear verification.
 - `packages/app/AGENTS.md` — URL entries, real-content loading, acceptance scenes.
-- `tools/asset-pipeline/AGENTS.md` — extraction, decoder provenance, source/oracle discipline.
+- `tools/asset-pipeline/AGENTS.md` — extraction, decoder provenance, and source discipline.
 
 ## Docs
 
@@ -169,6 +166,7 @@ Start with `docs/README.md`. The core design docs are:
 - `docs/TESTING.md`
 - `docs/SCENES.md`
 - `docs/SOURCES.md`
+- `docs/LEGAL.md`
 
 `docs/tickets/` holds the open work items — keep each ticket concise enough for the next agent to
 continue the work without reading old transcripts.

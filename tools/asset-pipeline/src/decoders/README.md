@@ -1,25 +1,26 @@
 # Decoders
 
-One module per original format. Each ports the **byte-layout / decompression logic** (not the
-architecture) from the matching OpenVikings C# file. Put a header comment in every decoder naming
-the source file + commit you referenced, for traceability.
+Each original file format has a small decoder with a pure byte-oriented core. Layout decisions must
+be supported by inspection of files from an owned game copy, a published format specification, or
+observed behavior, then pinned with synthetic fixtures.
 
-| Decoder | Original format | Port from `../../OpenVikings_reversing/Source/` |
+| Decoder | Input | Status and basis |
 |---|---|---|
-| `cif.ts` ✅ | `.cif` container (encrypted CStringArray) | `NXBasics/XBStorable.cs`, `CStringArray.cs`, `CMemory.cs`, `XBTools.cs` |
-| `lib.ts` ✅ | `.lib` archive (directory + payload views) | `NXBasics/CSimpleFileLibrary.cs`, `Dexter/DexterEndian.cs` |
-| `palette.ts` | palettes, `.hlt` | `NXBasics/CPalette.cs`, `CRemapTable.cs`, `CHighColorCreator.cs` |
-| `pcx.ts` ✅ | `.pcx` picture | `NXBasics/CPicture.cs`, `XBPictureTool.cs` |
-| `png.ts` ✅ | PNG **output** container (RGBA → PNG) | — (not an original format; ports the PNG spec: zlib + IHDR/IDAT/IEND) |
-| `bmd/` | `.bmd` bob/anim | `NXBasics/CBobManager.cs`, `CBitmap.cs` — **hardest, do last** |
-| `atlas.ts` | bob atlas **output** (frames → sheet + manifest) | — (not an original format; shelf-packs `decodeBobFrame` output into one RGBA atlas + a per-bob JSON manifest) |
-| `ini.ts` ✅ | `.ini` **and** decoded-`.cif` rules | plain text parse; emit IR validated by `@open-northland/data` (parser + `goodtypes`/`landscapetypes`/`jobtypes`/`tribetypes` extractors + the atomic vocabulary — `atomicFor*`/`allowatomic`/`setatomic` — done; more type extractors incremental) |
-| `mapdat/` ⏳ | `map.dat` `hoix`-chunk container + `pck`/`X8el` packed layers | `NC2Logic/CIoHelper.cs` (`SIoHelperChunk` / `IO_File_Chunk_*`) for the container; the X8el RLE codec reverse-engineered (the `.bmd` packed-line family, roles swapped). Container + `lsiz` dims + X8el layer unpack done; X6el layers + landscape-type-grid semantics pending |
+| `cif.ts` | encrypted `.cif` tables | Implemented; owned-file inspection and synthetic round trips |
+| `lib.ts` | `.lib` archives | Implemented; owned-file inspection and boundary tests |
+| `palette.ts` | palettes and `.hlt` remaps | Implemented; decoded palette checks |
+| `pcx.ts` | `.pcx` images | Implemented from the published PCX layout |
+| `png.ts` | RGBA output | Implemented from the PNG specification |
+| `bmd/` | `.bmd` sprites and animation metadata | Implemented; owned-file inspection and synthetic frame tests |
+| `atlas.ts` | decoded frames | Packs frames into an RGBA atlas and JSON manifest |
+| `ini.ts` | `.ini` and decoded `.cif` rules | Incremental typed extractors validated by `@open-northland/data` |
+| `mapdat/` | `map.dat` chunks and packed lanes | Container and X8el lanes implemented; X6el and some lane semantics remain incomplete |
 
-Guidance:
+Guidelines:
 
-- **Prefer `.ini` over `.cif`.** The `culturesnation` mod ships readable `.ini` for most rule
-  types under `DataCnmd/types/`. Only attempt `.cif` decoding for types with no `.ini` source.
-- Decoders are pure functions `(bytes: Uint8Array, ...) => IR` where possible — unit-testable with
-  a tiny captured fixture (do NOT commit copyrighted fixtures; generate them locally).
-- Output goes to `content/` (gitignored). Never write decoded assets into the repo source tree.
+- Prefer readable `.ini` files over `.cif` when both exist.
+- Keep decoding cores pure: `(bytes: Uint8Array, ...) => decoded value` where practical.
+- Generate test fixtures in the test itself. Do not commit original or decoded game data.
+- Write generated content only under the gitignored `content/` directory.
+- Keep format notes in `docs/formats/`; comments should state only the evidence needed to maintain
+  the code.

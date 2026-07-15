@@ -12,9 +12,9 @@ The root [`AGENTS.md`](../../AGENTS.md) carries the project-wide + legal rules; 
   `houses.ini`/`weapons.ini` and graphics ship readable under `DataCnmd/`. Many core types
   (`housetypes`/`weapontypes`/`trianglepatterntypes`/`atomicanimations`) and **all maps** are
   `.cif`-only — those go through `src/decoders/cif.ts`.
-- **Validate visual decoders against the OpenVikings oracle** (`.pcx`/`.bmd`/palette → PNG/atlas):
-  an agent can't self-judge pixels. Round-trip unit-test every decoder against tiny
-  locally-generated fixtures.
+- **Validate visual decoders at two levels** (`.pcx`/`.bmd`/palette → PNG/atlas): round-trip each
+  decoder against tiny locally generated fixtures, then compare representative locally rendered
+  output with the running original. An agent cannot sign off on pixel fidelity alone.
 - **Never commit decoded or copyrighted bytes.** `content/` is gitignored; tests use the synthetic
   fixture, never real game data. No original assets enter the repo (root `AGENTS.md` Legal).
 - The documented run: `npm run pipeline -- --game "../Cultures 8th Wonder" --mod DataCnmd --out content`.

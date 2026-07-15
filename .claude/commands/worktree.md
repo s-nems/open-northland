@@ -13,23 +13,32 @@ The task from the invocation: **$ARGUMENTS**. If it is empty, ask for the task b
 Hard rules:
 - Read `AGENTS.md` before editing. Load package-local `AGENTS.md` only for packages you touch.
 - The user's task/ticket is authoritative. Do not substitute your own next step or pull adjacent work.
-- Never touch the primary checkout (`~/Projects/vikings/opennorthland`) until the final merge step.
+- Never edit the primary checkout until the final merge step. Derive its path from Git; do not
+  hardcode a machine-specific location.
 - Never merge without explicit user approval.
 - Before merge, close the executed ticket so progress survives across worktree sessions — and file
   NEW tickets for real work you discovered but deferred.
 
 ## 1. Create the Worktree
 
+- Find the shared repository and primary checkout without assuming where the user cloned it:
+  `git_common_dir=$(git rev-parse --path-format=absolute --git-common-dir)` and
+  `primary_root=$(dirname "$git_common_dir")`. Record these paths for the whole workflow.
 - Derive a short kebab-case slug. Branch name: `feat/<slug>` or the honest conventional type
-  (`fix/<slug>`, `refactor/<slug>`, `docs/<slug>`). Worktree path:
-  `~/Projects/vikings/opennorthland-<slug>`.
+  (`fix/<slug>`, `refactor/<slug>`, `docs/<slug>`). Put the worktree beside the primary checkout:
+  `worktree_path="$(dirname "$primary_root")/$(basename "$primary_root")-$slug"`.
 - Create it from `main`, regardless of the primary checkout's current branch:
-  `git -C ~/Projects/vikings/opennorthland worktree add ../opennorthland-<slug> -b <branch> main`.
+  `git -C "$primary_root" worktree add "$worktree_path" -b "$branch" main`.
+- If the requested branch already has a linked worktree, verify it is for this task and reuse that
+  path. Never create a second worktree for the same branch or silently delete an existing one.
 - Switch this session into that path with the available worktree/session tool.
 - Provision gitignored local state if missing:
   - `npm install`
+  - `npm run build` (workspace packages export `dist/`, so a fresh worktree needs one build before
+    its first test run)
   - clone real generated content from the primary checkout when needed:
-    `cp -Rc ../open-northland/content content`. Do not symlink `content/`; the pipeline writes in place.
+    `cp -Rc "$primary_root/content/." "$worktree_path/content"`. Do not symlink `content/`; the
+    pipeline writes in place.
   - copy `.claude/settings.local.json` from the primary checkout if the local Claude session needs it.
 
 ## 2. Understand the Step
@@ -44,9 +53,10 @@ Hard rules:
 ## 3. Do the Work
 
 - Keep edits scoped to the requested step.
-- Mechanics and extracted data must name their source basis in the changed code, tests, plan progress
-  note, or commit message: extracted `.ini`/`.cif` data, OpenVikings format oracle, or observation of
-  the running original. If behavior is approximated, say what is approximated and why.
+- Mechanics and extracted data must name their source basis in the changed code, tests, ticket, or
+  commit message: extracted `.ini`/`.cif` data, byte-level evidence from owned files, a published
+  specification, or observation of the running original. If behavior is approximated, say what is
+  approximated and why.
 - Do not create new running ledgers for lessons, tech debt, fidelity, or roadmap state. Durable rules
   belong in `AGENTS.md` or package-local `AGENTS.md`; planned future work is a ticket under
   `docs/tickets/` (one self-contained task per file — see `docs/tickets/README.md`).
@@ -126,7 +136,7 @@ Then merge:
   update if the outcome changed. The branch must still include the final tracker update (step 6)
   before merge.
 - Fast-forward `main`:
-  - If the primary checkout is clean on `main`: `git -C ~/Projects/vikings/opennorthland merge --ff-only <branch>`.
+  - If the primary checkout is clean on `main`: `git -C "$primary_root" merge --ff-only "$branch"`.
   - If the primary checkout is on another branch: from the worktree, `git fetch . <branch>:main`.
   - If the primary checkout is dirty on `main`: stop and report. Do not stash or reset it.
 - If the pipeline output changed, regenerate primary `content/` from the primary checkout after merge.
@@ -136,8 +146,8 @@ Then merge:
 - Stop processes started by this workflow.
 - Verify `git merge-base --is-ancestor <branch> main`.
 - Exit the worktree session, then remove the worktree and branch:
-  `git worktree remove --force ~/Projects/vikings/opennorthland-<slug>`
-  `git branch -d <branch>`
+  `git -C "$primary_root" worktree remove "$worktree_path"`
+  `git -C "$primary_root" branch -d "$branch"`
 - Final report: merged commits, removed worktree/branch/processes, and any primary `content/`
   regeneration summary.
 

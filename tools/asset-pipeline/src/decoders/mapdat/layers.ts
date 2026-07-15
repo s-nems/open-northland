@@ -15,8 +15,8 @@
  *   +0x11 u32  innerSize      (the +0x01 value repeated)
  *   +0x15 …    the RLE stream, running to the end of the payload
  *
- * The RLE stream (the same packed-line family as the `.bmd` codec, `CBobManager.cs`, with the
- * raw/run roles swapped): each control byte `b` is either a run (high bit set) of `count = b & 0x7F`
+ * The RLE stream resembles the `.bmd` packed-line family with raw/run roles swapped. Each control byte
+ * `b` is either a run (high bit set) of `count = b & 0x7F`
  * copies of the single element that follows, or a literal (high bit clear) run of `count = b` elements
  * copied verbatim. `X8el` and `X6el` share this stream grammar exactly and differ only in element
  * width, so both directions route through one codec parameterized by {@link elementBytes} —
@@ -259,8 +259,8 @@ export function packMapLayer(cells: Uint8Array, version = 1): Uint8Array {
 /**
  * Unpacks an `X6el` grid layer (`empa`/`empb` ground-pattern picks, `emla` object placements) into
  * its row-major u16 grid. The container header is byte-identical to {@link unpackMapLayer}'s
- * `X8el` header, but the RLE stream operates on 2-byte little-endian elements (reverse-engineered
- * from real maps — the oracle decodes the container but not the layer codecs).
+ * `X8el` header, but the RLE stream operates on 2-byte little-endian elements, established through
+ * byte-level inspection of owned map files.
  *
  * Throws on a non-packed chunk, a codec that isn't `X6el`, an odd declared length (not whole u16s),
  * or a stream that underruns/overflows its declared length (a corrupt/truncated layer). A batch

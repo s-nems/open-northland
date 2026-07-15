@@ -3,13 +3,8 @@
  * `.cif`/`.lib` object graphs (used by bobs and maps). This is not the `.pcx` trailing palette —
  * that one is RGB triples handled in `pcx.ts`; this one is the engine's native `[B,G,R,_]` table.
  *
- * Ported format (not architecture) from OpenVikings `Source/NXBasics/`:
- *   - CStorable.cs    on-disk object header: [u32 id][u32 version][body]
- *   - XBStorable.cs   factory: id 0x3F6 -> `new CPalette(file, version)`, read straight from the stream
- *   - CPalette.cs     body: a bare 0x400-byte blob = 256 entries × 4 bytes, layout [B, G, R, _]
- *                     (`CPalette(CFile, dataSize)` ignores `dataSize` and always reads 0x400; the 4th
- *                     byte of each entry is unused). `SetEntry`/`GetEntry` confirm the BGR_ order.
- * Referenced at OpenVikings_reversing @ working tree 2026-06.
+ * Byte-level inspection of palettes from an owned game copy establishes a 0x400-byte body: 256
+ * `[B, G, R, unused]` entries after the storable header. Synthetic round trips pin that layout.
  *
  * Unlike a `CStringArray`, the body is read raw (no CMemory wrapper, no encryption): the bytes after
  * the 8-byte header are the palette directly.

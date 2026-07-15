@@ -7,7 +7,7 @@ import { type CellTerrainMap, components, type Simulation } from '@open-northlan
  * (`content/building-gfx.ts` `buildingBobRefsByType`).
  *
  * The `typeId`/`id`/`kind` are transcribed verbatim from `ir.json`'s `buildings` (the pipeline output);
- * `label` is our own clean-room English naming for semantic lookup. Level suffixes are 1-based for the
+ * `label` is our own hand-authored English naming for semantic lookup. Level suffixes are 1-based for the
  * player ("Warehouse (level 1..3)") even though the underlying ids stay 0-indexed (`stock_00`..`stock_02`).
  * `test/viking-buildings.test.ts` pins every row back to `ir.json` (id + kind match, and the typeId has a
  * bound bob) whenever `content/` is present.
@@ -33,7 +33,7 @@ export interface VikingBuilding {
   readonly typeId: number;
   /** Stable machine id, verbatim from `ir.json` (e.g. `"stock_02"`). */
   readonly id: string;
-  /** Human English label for semantic lookup (e.g. `"Warehouse (level 2)"`) — our clean-room naming. */
+  /** Human English label for semantic lookup (e.g. `"Warehouse (level 2)"`) — our hand-authored naming. */
   readonly label: string;
   /** Coarse class from `ir.json`: `home` | `storage` | `workplace` | `tower` | `training`. */
   readonly kind: string;

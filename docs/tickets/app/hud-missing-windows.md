@@ -3,8 +3,8 @@
 **Area:** app (hud) · **Origin:** gap-analysis audit 2026-07-13 · **Priority:** P2
 
 The decoded GUI atlas pins **9** left-panel buttons but the HUD implements only a few of their
-windows. Source basis: the `openvikings`-provenance GUI-button table in `docs/SOURCES.md` (from
-`CGuiManager.cs` `Desktop_Open`/`MiscButtons_*`/`MiscWindows_*`, each pinned by tooltip stringId) —
+windows. Source basis: the project-maintained GUI-button table in
+`packages/app/src/content/gui-atlas-map.ts`, with tooltip ids from the decoded string tables —
 `0x2a` buildings, `0x2b` population, `0x2c` diplomacy, `0x2d` extras, `0x2e` mission, `0x2f`
 options, `0x30` help, `0x32` statistics, `0x38` tech-tree. Implemented under
 `packages/app/src/hud/tool-panel/` (2026-07-13): `building-menu.ts`, `stats-window.ts`,
@@ -19,15 +19,16 @@ implementing the single top-ranked window in the same session in scope if it fit
 ## Scope
 
 1. Reconcile the implemented windows against the 9 decoded buttons (which stringId each maps to;
-   which buttons are currently dead or absent in the tool panel).
+   which buttons are currently dead or absent in the tool panel, checking uncertain mappings in the
+   running original).
 2. Rank the missing windows by player value against what the sim/app can already feed them
    (suggested starting order: **options, mission/objectives, tech-tree** — options needs no sim
    data; mission pairs with docs/tickets/features/victory-defeat-conditions.md; tech-tree depends on
    whether any tech/progress data exists in the IR — check before ranking it high). Population and
    diplomacy need sim surfaces that may not exist yet; say what's missing.
 3. File one self-contained ticket per window the survey decides to pursue (context: decoded button
-   frame + stringId, data source in sim/content, and what the original window shows — check
-   OpenVikings `CGuiManager.cs` `MiscWindows_*` for the window's contents as format evidence).
+   frame + stringId, data source in sim/content, and what the original window shows through direct
+   observation).
 4. If the top-ranked window is small (options likely is), implement it in the same session:
    button wired in the tool panel, window in the existing tool-panel window style.
 

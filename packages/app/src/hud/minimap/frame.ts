@@ -29,7 +29,7 @@ const FRAME_SS_CAP = 8;
 /**
  * Warm carved-wood tint multiplied onto the baked braid. The LUT's braid-coloured palettes are the
  * silver-olive 'iconsleft' (washed-out) and the order-buttons 'context' (garishly orange at this
- * size); the original draw site's palette is not decompiled, so the braid keeps 'iconsleft''s
+ * size); the original draw-site palette has not been established, so the braid keeps 'iconsleft''s
  * shading contrast and this tint warms it to wood — a named approximation, montage-picked.
  */
 const BRAID_WOOD_TINT = 0xc89868;

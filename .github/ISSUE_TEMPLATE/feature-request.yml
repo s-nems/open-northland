@@ -1,0 +1,29 @@
+name: Feature request
+description: Propose a focused improvement or player-visible feature
+title: "feature: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or opportunity
+      description: What is missing, and who would benefit?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed outcome
+      description: Describe the observable result rather than a preferred implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Source basis
+      description: If fidelity matters, cite readable data, direct observation, or a published format specification. Do not paste original data.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Optional tradeoffs, approximations, or smaller versions of the idea.

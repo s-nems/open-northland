@@ -13,15 +13,14 @@ ground's water/land classification — so sea, mountain, and blocked ground are 
 insofar as an object happens to sit on them. The authoritative water/walkability classification is
 in a **different, currently-unconsumed lane**.
 
-**Source basis (OpenVikings + extracted data):** the `map.dat` **`lmpa`/`lmpb`** lanes (u8, per
+**Source basis (extracted data and owned-file inspection):** the `map.dat` **`lmpa`/`lmpb`** lanes (u8, per
 cell, one per triangle A/B) are the per-triangle **logic pattern type** — ids into
 `trianglepatterntypes.cif` (10 records: water/land/blocked/mountain/sand/beach/desertstone/moor/
 snow/plaster). Those records are **already extracted to IR** as `TrianglePatternType`
 (`packages/data/src/schema/landscape/terrain.ts`, via `stages/ir.ts`) carrying `isWater` /
 `humanCanWalkOn` / `houseCanBeBuildOn`. The lanes themselves are already decoded to bytes
 (`decoders/mapdat/layers.ts` unpacks `lmpa`/`lmpb` as `X8el` packed layers) — they are read but
-never consumed. This is the "Remaining: `lmpa`/`lmpb` → sim water/walkability" item named in
-`docs/SOURCES.md`.
+never consumed.
 
 ## Scope
 

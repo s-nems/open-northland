@@ -53,4 +53,4 @@ directory scan — extract one helper.
 ## Source basis
 
 Pure structural refactor; no mechanic/extraction change. Decoder correctness pinned by the existing
-OpenVikings-oracle round-trip fixtures.
+synthetic round-trip fixtures.

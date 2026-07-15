@@ -7,7 +7,7 @@ function localeFromCode(lang: string): Locale {
   return lang === 'eng' || lang === 'en' ? 'eng' : 'pol';
 }
 
-/** Resolve a catalog building id through the active clean-room locale. */
+/** Resolve a catalog building id through the active hand-authored locale. */
 export function localizedBuildingName(id: string, fallback: string, lang: string = currentLocale()): string {
   const names = messages(localeFromCode(lang)).building;
   return names[id as keyof Messages['building']] ?? fallback;

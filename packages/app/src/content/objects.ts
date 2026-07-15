@@ -32,9 +32,8 @@ export interface MapObjectsData {
  * "brightness"): tree canopies keep full luminance even anchored on embr=0 border cells (ratio ≈ 1.0
  * across the lane, n=118), while mine decals, stones and grass track the lane (masked opaque-pixel
  * ratio ×0.58 → ×1.58). Only standing trees were measured; `tree falling` is grouped with them by
- * kinship (same art family mid-fall), not by measurement. The true engine rule is unknown (the
- * OpenVikings blitter exposes shaded and unshaded `PrintBob` paths but not which records pick which)
- * — this name-pinned exemption is the measured boundary, an approximation beyond it.
+ * kinship (same art family mid-fall), not by measurement. The true engine rule is unknown, so this
+ * name-pinned exemption is the measured boundary and an approximation beyond it.
  */
 const UNSHADED_LANDSCAPE_TYPES: ReadonlySet<string> = new Set(['tree', 'tree falling']);
 

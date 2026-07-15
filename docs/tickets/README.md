@@ -19,7 +19,8 @@ Rules:
   (why it matters, where it came from), concrete scope, and how to verify. Tickets are research
   notes, not ground truth — the executor re-verifies claims against the code and sources.
 - **Source basis named.** A ticket that touches mechanics, extraction, or visuals states what pins
-  it: extracted `.ini`/`.cif` data, OpenVikings format evidence, or observed original behavior.
+  it: extracted `.ini`/`.cif` data, byte-level format evidence, a published specification, or
+  observed original behavior.
   An unknown becomes an explicit investigate-first item, never a guess.
 - **Dedupe before filing.** Grep this folder first; extend or sharpen an existing ticket instead of
   filing a near-duplicate. Delete a ticket that code reality has made obsolete (say why in the

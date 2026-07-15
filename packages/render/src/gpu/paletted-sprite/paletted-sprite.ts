@@ -203,8 +203,8 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
 
   /**
    * Stretch the current frame to a screen-space rectangle, ignoring its original bob draw offset. Used
-   * for GUI chrome pieces we stretch into arbitrary window edges/bars (our composition choice — the
-   * original's draw sites for these frames aren't decompiled in OpenVikings); ordinary world sprites
+   * for GUI chrome pieces we stretch into arbitrary window edges/bars (an OpenNorthland composition
+   * choice because the original draw-site behavior has not been established); ordinary world sprites
    * should keep using {@link place}.
    */
   stretchToRect(

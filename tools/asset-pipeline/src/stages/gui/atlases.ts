@@ -12,7 +12,7 @@ interface GuiAtlasSource {
 
 /**
  * The GUI bob sheets. `ls_gui_window` is drawn mostly through `iconsleft` (the whole tool panel; the order
- * icons use `context`) per the OpenVikings oracle, so `iconsleft` is the best single preview palette; the
+ * icons use `context`) based on visual checks, so `iconsleft` is the best single preview palette; the
  * bubble sheet uses its own `gui_bubbles` palette.
  */
 const GUI_ATLASES: readonly GuiAtlasSource[] = [

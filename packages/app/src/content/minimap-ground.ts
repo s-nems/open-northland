@@ -12,9 +12,8 @@ import { fetchImageData } from './net.js';
  * lives in those per-triangle `GfxPattern` picks, not its landscape typeIds (~97% of a real map shares
  * one typeId), so the typeId palette can never depict it — this join can.
  *
- * Source basis: the original's in-game minimap is the dynamically generated "world overview" window
- * (OpenVikings `CWorldOverviewStaticGuiWindow` — its rendering internals are not reversed, and the
- * shipped per-map `minimap.pcx` is the map-selection card, sometimes a painted scene, so it can't
+ * Source basis: the original's in-game minimap is dynamically generated. The shipped per-map
+ * `minimap.pcx` is a map-selection card, sometimes a painted scene, so it cannot
  * serve in-game). NAMED APPROXIMATION: we colour each cell with the mean texel of its two triangles'
  * pattern rects — transition overlays, elevation shading and the `embr` brightness lane are ignored.
  */

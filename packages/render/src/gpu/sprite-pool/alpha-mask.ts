@@ -9,12 +9,8 @@ import { type DrawableResource, isDrawableResource, readable2dContext } from '..
  * selected it. This module supplies the refinement: a 1-bit solid/transparent mask per atlas sheet,
  * built lazily from the decoded atlas pixels and sampled at the clicked texel.
  *
- * Source basis: this is a deliberate deviation from the original engine, which resolves a world click
- * to a half-cell and asks the logic layer which house occupies it (OpenVikings
- * `CWorldDisplayElement.l_UpdateCursorPosition` → `DED_WorldPixelToMapMIGCoordinates` → cell→house
- * lookup — footprint-based, so a tall tower's roof was not clickable there). Per the user's direction,
- * OpenNorthland instead hit-tests the drawn sprite itself: anywhere on the graphic selects, anywhere off it
- * does not.
+ * This deliberately uses pixel hit-testing rather than the original's observed footprint-based house
+ * selection. Anywhere on the drawn graphic selects; transparent pixels do not.
  */
 
 /**

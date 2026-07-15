@@ -8,8 +8,7 @@ import { readGameFile } from '../game-file.js';
  * Window-fill bitmaps that the engine draws through an element palette instead of their embedded one.
  * `Data/gui/bitmaps/bg.pcx` expands to grey marble through its embedded palette, but every in-game window
  * body in the original renders it warm brown — the `bg_normal` element palette applied to the same indices
- * matches those screenshots (verified visually at 1024×768; the palette's name states the pairing, but
- * OpenVikings only shows the palette being loaded, not the draw-site pairing itself).
+ * matches those screenshots (verified visually at 1024×768; the palette's name also states the pairing).
  * `bg_selected` — the original's selected-item card body, which is exactly what the selection info panel is —
  * shows as a grey-blue marble in the original, and its embedded palette (a warm olive) does not reproduce
  * that. `bg_normal` is the pairing chosen here not because a decoded draw-site or the palette name pins it —

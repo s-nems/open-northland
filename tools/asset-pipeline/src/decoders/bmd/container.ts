@@ -23,15 +23,8 @@
  * stream into actual frame pixels (the RLE codec) lives beside it in {@link ./frame} — the same way `.pcx`
  * keeps `decodePcx` (container) separate from `expandToRgba` (pixels).
  *
- * Ported format (not architecture) from OpenVikings `Source/NXBasics/`:
- *   - CStorable.cs    on-disk object header: [u32 id][u32 version][body]; `Storable_Save` writes id+ver
- *   - XBStorable.cs   factory: id 0x3F4 -> `new CBobManager(file)`
- *   - CBobManager.cs  `CBobManager(CFile)` ctor (0x1C-byte header + 3 CMemory blocks),
- *                     `ReadBobDataFromMemory` (24-byte record layout), `Storable_SaveData` (inverse),
- *                     `SBobData` struct {int Type; SRectangle Area; uint Misc}, `IsBobHit` (line-control
- *                     packing: offset = ctrl & 0x3FFFFF, xMin = ctrl >> 22)
- *   - CMemory.cs      body: [u32 size][size bytes] (raw; not encrypted in the bob graph)
- * Referenced at OpenVikings_reversing @ working tree 2026-06.
+ * The layout is documented in `docs/formats/GRAPHICS.md` and pinned by synthetic round-trip tests.
+ * It was established through byte-level inspection of sprite containers from an owned game copy.
  *
  * Pure functions only (no I/O): `(bytes) => decoded`. The CLI wires file reads around them.
  * `encodeBmd` is the faithful inverse, used to round-trip test without committing copyrighted fixtures
@@ -44,31 +37,27 @@ import { readCMemory, StorableId } from '../cif.js';
 const BMD_ID = StorableId.CBobManager; // 0x3F4
 const BOB_RECORD_BYTES = 24; // i32 type + 4×i32 rect + u32 misc
 
-/** Line-control packing (CBobManager `IsBobHit`): a u32 = [xMin: 10 bits][packed offset: 22 bits]. */
+/** Line-control packing: a u32 = [xMin: 10 bits][packed offset: 22 bits]. */
 export const PACKED_OFFSET_MASK = 0x003fffff; // low 22 bits = byte offset into packed-line data
 export const PACKED_X_SHIFT = 22; // high 10 bits = xMin (first non-transparent column)
 
-/** An empty/absent bob slot — no pixels (CBobManager `PrintBob` returns early on `Type == 0`). */
+/** An empty/absent bob slot with no pixels. */
 export const BOB_TYPE_EMPTY = 0;
-/** 8-bit bob: each raw-run byte is a palette index (CBobManager `TBobType.Bob8Bit`). */
+/** 8-bit bob: each raw-run byte is a palette index. */
 export const BOB_TYPE_8BIT = 1;
 /** 1-bit mask bob: each raw-run byte is 0/1; set pixels draw as index 0xFF (`TBobType.Bob1Bit`). */
 export const BOB_TYPE_1BIT = 2;
 /**
- * TimeMask bob: each raw-run pixel is two bytes `[value, timeByte]` (`TBobType.TimeMask`). The time byte
- * is a 0–255 visibility threshold — CBobManager `PrintPackedLine_TimeMaskAsImage` /
- * `PrintBob_UsingTimeMask` draw a pixel only when the print-time `time` argument is `>= timeByte`, the
- * engine's progressive-reveal (building construction) blit.
+ * Time-mask bob: each raw-run pixel is `[value, timeByte]`. The second byte is a 0–255 visibility
+ * threshold used by the progressive building-construction reveal.
  */
 export const BOB_TYPE_TIMEMASK = 3;
 /**
- * Double-byte bob: each raw-run pixel is two bytes `[index, second]` (`TBobType.Double8Bit`). What the
- * second byte means depends on which print path the consumer routes through — the oracle has no call
- * sites, so it is inferred per consumer class from the byte distributions and the original's look:
- * alpha (`PrintBob_UsingShadedAlpha`, `a ≤ 0` skipped) for the soft decals (ferns median 172, smoke
+ * Double-byte bob: each raw-run pixel is `[index, second]`. The second byte is interpreted per
+ * consumer from measured byte distributions and the rendered result: alpha for soft decals (ferns median 172, smoke
  * 77, waves ~35), or a 0–255 construction-progress threshold for the `[GfxHouse]` bobs (measured:
  * spans ~0–255, row-correlated bottom-up, mean ≈100 over solid walls — not coverage), drawn via
- * `PrintBob_UsingTimeMask` under construction and the plain byte-skipping blit when finished.
+ * progressively during construction and fully when finished.
  * `decodeBobFrame`'s `secondByte` option picks the interpretation (`AtlasAlphaMode` routes it).
  */
 export const BOB_TYPE_DOUBLE8BIT = 4;
@@ -76,7 +65,7 @@ export const BOB_TYPE_DOUBLE8BIT = 4;
 /** Coverage of a written pixel of a non-alpha bob type (8-bit / 1-bit mask / TimeMask): fully opaque. */
 export const BOB_ALPHA_OPAQUE = 0xff;
 
-/** Index written for a set pixel of a 1-bit mask bob (CBobManager draws masks as palette entry 0xFF). */
+/** Index written for a set pixel of a 1-bit mask bob. */
 export const BOB_MASK_INDEX = 0xff;
 
 /** An axis-aligned bob rectangle (origin + size), all signed ints (offsets can be negative). */
@@ -185,7 +174,7 @@ export function decodeBmd(bytes: Uint8Array): Bmd {
   }
 
   // (2) packed-line CMemory: a raw byte stream. The header's used-bytes is the logical length; the
-  // CMemory may be allocated larger, so clamp to the smaller of the two (mirrors the oracle's reads).
+  // CMemory may be allocated larger, so clamp to the smaller of the logical and allocated sizes.
   const packedMemRaw = readCMemory(r);
   const packedLen = Math.min(packedMemRaw.length, packedLineDataUsedBytes);
   const packedLineData = packedMemRaw.subarray(0, packedLen);

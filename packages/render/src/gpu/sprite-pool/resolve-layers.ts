@@ -44,7 +44,7 @@ export interface ResolvedLayer {
    * per-swing `built` steps. With {@link times} (+ {@link revealWindow}) the reveal is per-pixel:
    * each pixel appears once the eased progress, mapped into the window
    * ({@link import('../../data/sprites/index.js').buildTimeThreshold}), reaches its baked TimeMask
-   * threshold (OpenVikings `PrintBob_UsingTimeMask`). Without time data the layer falls back to the
+   * threshold. Without time data the layer falls back to the
    * bottom-up top-crop approximation.
    */
   readonly reveal?: number;

@@ -15,7 +15,7 @@ import {
 
 /**
  * Coarse building class from the original `logichousetype` `logicmaintype`. The mapping is taken from
- * the readable `houses.ini` records themselves (OpenVikings decodes formats, not house semantics):
+ * the readable `houses.ini` records themselves:
  *   1 = storage (headquarters + the stock houses), 2 = home (residences with a `logichomesize`),
  *   3 = workplace (production, carries `logicproduction`), 4 = training (barracks/school),
  *   5 = tower (defence), 6 = vehicle (buildable carts/ships, carries `logicvehicletype`),

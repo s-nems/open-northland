@@ -20,7 +20,21 @@ dist/
 *.lib
 *.sgt
 *.dls
+*.fnt
+*.wav
+*.cur
+map.dat
 *.exe
+*.dll
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
 
 # OS / editor / local agent tooling
 .DS_Store

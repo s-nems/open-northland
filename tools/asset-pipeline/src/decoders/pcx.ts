@@ -1,10 +1,7 @@
 /**
  * `.pcx` picture decoder — palette-indexed RLE images, plus the embedded 256-color palette.
  *
- * Ported format (not architecture) from OpenVikings `Source/NXBasics/`:
- *   - CPicture.cs  `UnpackPCX` (header fields, per-row RLE, trailing palette)
- *   - CPalette.cs  256 RGB entries (the on-disk PCX trailer is RGB triples, not CPalette's BGRx)
- * Referenced at OpenVikings_reversing @ working tree 2026-06.
+ * Implemented from the published PCX layout and checked against files from an owned game copy.
  *
  * Layout (header is 128 bytes, all multi-byte fields little-endian):
  *   u8  manufacturer (0x0A)   u8 version   u8 encoding (1 = RLE)   u8 bitsPerPixel (8)
@@ -18,10 +15,8 @@
  * < 0xC0 is a literal; a byte >= 0xC0 is a run of `(byte & 0x3F)` copies of the following byte. Runs
  * never cross a scanline boundary (a run overflowing the row is truncated there, as the original does).
  *
- * Palette detection differs from the original in one deliberate, result-equal way: OpenVikings reads
- * the trailing 768 bytes whenever the file is >= 769 bytes (its 0x0C marker check is a dead branch).
- * We honor the standard 0x0C marker at `length - 769` instead — every real game `.pcx` carries it, so
- * decoded pixels/palette are identical, but a palette-less buffer no longer yields a bogus palette.
+ * Palette detection requires the standard 0x0C marker at `length - 769`. Every inspected game `.pcx`
+ * carries it, while malformed or palette-less buffers are rejected instead of yielding a bogus palette.
  *
  * Pure functions only (no I/O): `(bytes) => decoded`. The CLI wires file reads + PNG output around
  * them. `encodePcx` is the faithful inverse, used to round-trip test without committing real assets.

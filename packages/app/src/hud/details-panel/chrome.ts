@@ -14,9 +14,8 @@ import { createTextKit, type FontVariant } from './text.js';
 
 /**
  * The details panel's original-art drawing kit. A `Chrome` is created per rebuild over the panel's fresh
- * layer containers and draws window fills (the original 300×300 `bg*.pcx` bitmaps, drawn tiled — our
- * choice, not decompiled behavior: OpenVikings only loads these bitmaps, their draw sites aren't ported,
- * and tiling avoids squashing the texture), the rope-and-knot window borders (edge strips tiled along
+ * layer containers and draws window fills (the original 300×300 `bg*.pcx` bitmaps, tiled as an
+ * OpenNorthland composition choice to avoid squashing the texture), the rope-and-knot window borders (edge strips tiled along
  * their length — stretching smears the rope pattern — with the knot corners at native size), headline
  * strips, buttons, bars, text, and the building preview.
  * Every piece degrades to the flat parchment Graphics look when `content/` is absent (`assets.art ===

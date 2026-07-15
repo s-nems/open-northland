@@ -96,15 +96,14 @@ discipline: `packages/sim/AGENTS.md` ("Proving your change").
   *gross* correctness (blank screen, missing terrain, sprites in the wrong iso half) — see
   *Visual validation via Playwright* below; (b) explicitly defer to a human and *say so* rather
   than asserting it works from a green typecheck. Either way: never auto-pass a render result.
-- **Asset-decode correctness** — use the **OpenVikings oracle**: OpenVikings boots and renders the
-  original assets, so compare the pipeline's decoded PNG/atlas output pixel-for-pixel against it.
-  Plus decoder round-trip unit tests against tiny locally-generated fixtures (never commit
-  copyrighted fixtures).
+- **Asset-decode correctness** — use decoder round-trip tests against tiny locally generated
+  fixtures, inspect decoded dimensions and metadata, and compare locally rendered output with the
+  running original when visual fidelity matters. Never commit copyrighted fixtures or output.
 - **Behavioral fidelity to the original** — the pyramid proves the sim is self-consistent and
   deterministic *against the synthetic fixture*; it does **not** prove a mechanic behaves like
-  *Cultures*. There is no automatic mechanics oracle (OpenVikings' logic tick is a stub). Faithfulness
-  is pinned to the extracted data params, readable `.ini` semantics, OpenVikings format evidence, or
-  calibration-by-observation. Record that basis in the code, test, commit, or relevant plan progress
+  *Cultures*. There is no automatic mechanics oracle. Faithfulness
+  is pinned to extracted data, readable `.ini` semantics, byte-level format evidence, published
+  specifications, or calibration by observation. Record that basis in the code, test, commit, or relevant plan progress
   note. Green + deterministic != faithful.
 
 ### Visual validation via Playwright — the decision (and why not the MCP)

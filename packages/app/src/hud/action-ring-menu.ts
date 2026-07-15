@@ -11,17 +11,15 @@ import {
 /**
  * The settler action menu's content — the command buttons and their icon bindings, kept as plain data
  * apart from the geometry engine (`action-ring-layout.ts`) so a warrior/scout variant is a new table, not
- * new code. OpenVikings' `sHumanCommandTypeToIconId` table is an unfilled placeholder (only the 0x6B
- * fallback is code-pinned), so the command→icon binding here was read off the running original by the user,
+ * new code. The command→icon binding here was read off the running original by the user,
  * clockwise from the top-left button (source basis "settler action menu"); the frame names are glyph
  * descriptions from the montage, so a command's icon name needn't match its label. Only `open-jobs` fires
  * today; every other button is an inert placeholder.
  */
 
 /**
- * The default order-button gfx — the only code-pinned icon: the original's `GetHumanCommandIconId` returns
- * `0x6B` for any command its (unfilled) table doesn't map (`CGuiManager.cs:2214`). The user placed frame 0x6b
- * itself in the last bottom slot, so it draws here too — the same round wooden button the original falls back to.
+ * The default order-button gfx. The user placed frame 0x6b in the last bottom slot, so it draws here too;
+ * exact command-to-frame bindings remain provisional until checked in the running original.
  */
 const ACTION_ICON_FALLBACK = 'order_icon_fallback';
 

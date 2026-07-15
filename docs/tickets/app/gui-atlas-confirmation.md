@@ -4,11 +4,10 @@
 **Needs user:** live naming Q&A with the user — not autonomously runnable.
 
 `packages/app/src/content/gui-atlas-map.ts` is total over the 193-frame `ls_gui_window` sheet
-(totality enforced by `packages/app/test/gui-atlas-map.test.ts`) but only 20 frames are
-authoritatively `source:'openvikings'`; 173 are `source:'montage'` best-guesses, many still named
-`unknown_NNN`. The order-command icons (frames ~96–136, consumed by the action ring) can NEVER be
-code-recovered: OpenVikings' `sHumanCommandTypeToIconId` lookup is an unfilled placeholder — only
-the 0x6b fallback is code-pinned. The user is the only oracle.
+(totality enforced by `packages/app/test/gui-atlas-map.test.ts`) but only 20 frames are maintained as
+`source:'manual'`; 173 are `source:'montage'` best guesses, many still named `unknown_NNN`. The
+order-command icons (frames ~96–136, consumed by the action ring) need confirmation from the running
+original. The user is the visual authority.
 
 **This is a live interactive session** (repeated user Q&A) — it cannot run autonomously.
 

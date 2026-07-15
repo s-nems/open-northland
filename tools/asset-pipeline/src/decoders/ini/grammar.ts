@@ -11,7 +11,7 @@ import type { CifLine } from '../cif.js';
  * and survive any of these single-byte encodings unchanged — only the human-facing names differ.
  *
  * This is the byte->text seam for the readable `.ini` skin; the `.cif` skin's seam lives in
- * `cif.ts` (decoded latin1 to match the OpenVikings oracle byte-for-byte). Re-decoding a `.cif`
+ * `cif.ts` (decoded as latin1 to preserve every source byte). Re-decoding a `.cif`
  * display string as CP1250 is the IR-layer concern cif.ts's note defers — out of scope here.
  */
 export function decodeIni(bytes: Uint8Array): string {

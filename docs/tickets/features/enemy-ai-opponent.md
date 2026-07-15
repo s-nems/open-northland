@@ -17,7 +17,7 @@ approximation** is expected. What can pin the design:
   enemy observably does (does it expand? rebuild? raid on a timer? escalate?). If no observation
   session is feasible, say so and design from genre convention, named as such.
 - Decoded map data: `map.cif` `playerdata` (per-player + diplomacy) and `MissionData` triggers
-  (docs/SOURCES.md ~lines 75-83) suggest campaign "AI" may largely be authored triggers — check
+  suggest campaign "AI" may largely be authored triggers — check
   whether the original even has an autonomous economic AI before designing one. This is the key
   investigate-first question; docs/tickets/pipeline/missiondata-extraction.md will make the trigger
   payload readable (useful input, not a hard blocker for the survey).

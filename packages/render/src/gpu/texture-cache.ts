@@ -83,8 +83,8 @@ export class TextureCache {
 
   /**
    * The frame with only its pixels whose baked build-time threshold ({@link BuildTimeSheet}) is
-   * `<= threshold` — the per-pixel construction reveal (OpenVikings CBobManager
-   * `PrintBob_UsingTimeMask`: a pixel draws once progress reaches its TimeMask byte). Unlike
+   * `<= threshold` — the per-pixel construction reveal, where a pixel appears once progress reaches
+   * its time-mask byte. Unlike
    * {@link cropped}'s free sub-rect views this is a real canvas bake, so thresholds are quantised
    * ({@link REVEAL_QUANT}) and only the freshest {@link REVEAL_BAKES_PER_FRAME} bakes per frame are
    * kept — `frameStamp` (the pool's frame counter) guards a bake bound earlier this frame from

@@ -3,21 +3,18 @@
 // gfx-id in the original engine equals the atlas frame index directly). It exists so app HUD code refers
 // to UI sprites by name, never by a magic frame number.
 //
-// Provenance (per-frame `source`):
-//   'openvikings' — pinned to literal (rect, gfxId, command) triples in the OpenVikings reverse-engineering
-//                   (`Source/NC2InGameGuiManager/CGuiManager.cs`: Desktop_Open, MiscButtons_*_Update,
-//                   MiscWindows_OverviewWindow_Closed). These names + rects are authoritative.
+// Identification basis (per-frame `source`):
+//   'manual'      — a project-maintained mapping of frame, rectangle, and HUD purpose. Recheck it
+//                   against the running original when exact UI behavior matters.
 //   'montage'     — identified by eye from a numbered render of every frame (the labeled-montage technique).
 //                   Once a human confirms the category and the glyph is legible, the frame carries a
 //                   provisional descriptive name (a read of the drawn glyph, refine-able later); a frame
 //                   whose glyph is unread stays `unknown_NNN` with a best-guess `role`/`note`. See
-//                   docs/SOURCES.md (GUI).
+//                   docs/formats/GRAPHICS.md.
 //   'unknown'     — not yet identified at all.
 //
-// The per-command order-icon gfx ids (the round wooden radial buttons, frames 96-136) are not recovered
-// from code: OpenVikings' `sHumanCommandTypeToIconId` lookup table is an unfilled placeholder, so only the
-// fallback (0x6b) is code-pinned. The rest were confirmed as order/command icons by a human and given
-// provisional glyph-names (`order_*`); the exact command each maps to is still to be nailed down.
+// The round wooden radial buttons at frames 96–136 were identified visually. Their `order_*` names
+// remain provisional until each command is confirmed in the running original.
 import type { GuiPaletteName } from './gui-gfx.js';
 
 /** Total bob count of `ls_gui_window.bmd` (decoded from the sheet; firstBobId=0 so ids are 0..192). */
@@ -42,7 +39,7 @@ export type GuiFrameRole =
   | 'unknown'; // not yet categorized
 
 /** Where a frame's identification comes from — see the file header. */
-export type GuiFrameSource = 'openvikings' | 'montage' | 'unknown';
+export type GuiFrameSource = 'manual' | 'montage' | 'unknown';
 
 /** One GUI-atlas frame's metadata. `name` is unique across the sheet; unidentified frames are `unknown_NNN`. */
 export interface GuiFrameMeta {
@@ -362,56 +359,56 @@ export const GUI_FRAMES: readonly GuiFrameMeta[] = [
     name: 'tool_button_buildings',
     role: 'tool_button',
     palette: 'iconsleft',
-    source: 'openvikings',
+    source: 'manual',
     note: 'gfx 0x2a, rect (0,41,40x35), str 2 "opens buildings menu", msg 0xf3e',
   },
   /* 043 0x2b */ {
     name: 'tool_button_population',
     role: 'tool_button',
     palette: 'iconsleft',
-    source: 'openvikings',
+    source: 'manual',
     note: 'gfx 0x2b, rect (0,204,40x35), str 6 "opens subjects window", msg 0xf40',
   },
   /* 044 0x2c */ {
     name: 'tool_button_diplomacy',
     role: 'tool_button',
     palette: 'iconsleft',
-    source: 'openvikings',
+    source: 'manual',
     note: 'gfx 0x2c, rect (0,151,40x35), str 4 "opens diplomacy window", msg 0xf3f',
   },
   /* 045 0x2d */ {
     name: 'tool_button_extras',
     role: 'tool_button',
     palette: 'iconsleft',
-    source: 'openvikings',
+    source: 'manual',
     note: 'gfx 0x2d, rect (0,73,40x35), str 5 "opens extras window", msg 0xf3d',
   },
   /* 046 0x2e */ {
     name: 'tool_button_mission',
     role: 'tool_button',
     palette: 'iconsleft',
-    source: 'openvikings',
+    source: 'manual',
     note: 'gfx 0x2e, rect (0,117,40x35), str 3 "opens mission window", msg 0xf42',
   },
   /* 047 0x2f */ {
     name: 'tool_button_options',
     role: 'tool_button',
     palette: 'iconsleft',
-    source: 'openvikings',
+    source: 'manual',
     note: 'gfx 0x2f, rect (0,295,40x35), str 1 "opens options menu", msg 0xf3c',
   },
   /* 048 0x30 */ {
     name: 'tool_button_help',
     role: 'tool_button',
     palette: 'iconsleft',
-    source: 'openvikings',
+    source: 'manual',
     note: 'gfx 0x30, rect (0,329,40x35), str 0 "opens help window", msg 0xf44',
   },
   /* 049 0x31 */ {
     name: 'speed_button',
     role: 'speed_button',
     palette: 'iconsleft',
-    source: 'openvikings',
+    source: 'manual',
     states: ['speed_button_x2', 'speed_button_x3', 'speed_button_paused'],
     note: 'gfx 0x31 _btnSpeed, rect (0,373,40x35), msg 0xf46, tooltip str 0x0D "game speed"; base state (x1/MAX)',
   },
@@ -419,35 +416,35 @@ export const GUI_FRAMES: readonly GuiFrameMeta[] = [
     name: 'tool_button_statistics',
     role: 'tool_button',
     palette: 'iconsleft',
-    source: 'openvikings',
+    source: 'manual',
     note: 'gfx 0x32, rect (0,176,40x35), str 7 "opens statistics window", msg 0xf41',
   },
   /* 051 0x33 */ {
     name: 'tool_panel_background',
     role: 'panel',
     palette: 'iconsleft',
-    source: 'openvikings',
+    source: 'manual',
     note: 'gfx 0x33 CBaseToolGfxElement _toolBackground, rect (0,10,50x433), palette iconsleft',
   },
   /* 052 0x34 */ {
     name: 'speed_button_x2',
     role: 'speed_button',
     palette: 'iconsleft',
-    source: 'openvikings',
+    source: 'manual',
     note: 'gfx 0x34, speed state speedFactor==2',
   },
   /* 053 0x35 */ {
     name: 'speed_button_x3',
     role: 'speed_button',
     palette: 'iconsleft',
-    source: 'openvikings',
+    source: 'manual',
     note: 'gfx 0x35, speed state speedFactor==3',
   },
   /* 054 0x36 */ {
     name: 'speed_button_paused',
     role: 'speed_button',
     palette: 'iconsleft',
-    source: 'openvikings',
+    source: 'manual',
     note: 'gfx 0x36, speed state speedFactor==0 (paused)',
   },
   /* 055 0x37 */ {
@@ -461,7 +458,7 @@ export const GUI_FRAMES: readonly GuiFrameMeta[] = [
     name: 'tool_button_tech_tree',
     role: 'tool_button',
     palette: 'iconsleft',
-    source: 'openvikings',
+    source: 'manual',
     note: 'gfx 0x38, rect (0,238,40x35), str 8 "opens tech tree", msg 0xf43',
   },
   /* 057 0x39 */ {
@@ -510,14 +507,14 @@ export const GUI_FRAMES: readonly GuiFrameMeta[] = [
     name: 'message_priority_frame',
     role: 'message_priority',
     palette: 'iconsleft',
-    source: 'openvikings',
+    source: 'manual',
     note: 'gfx 0x3f CBaseToolGfxElement _priorityFrame, rect (24,0,126x41)',
   },
   /* 064 0x40 */ {
     name: 'message_priority_button',
     role: 'message_priority',
     palette: 'iconsleft',
-    source: 'openvikings',
+    source: 'manual',
     states: ['message_priority_button_important', 'message_priority_button_only_important'],
     note: 'gfx 0x40 _btnPriority, rect (106,3,37x31), msg 0xf47, tooltip str 0x0E; priority mode 0',
   },
@@ -525,14 +522,14 @@ export const GUI_FRAMES: readonly GuiFrameMeta[] = [
     name: 'message_priority_button_important',
     role: 'message_priority',
     palette: 'iconsleft',
-    source: 'openvikings',
+    source: 'manual',
     note: 'gfx 0x41, priority mode 1 (hide unimportant)',
   },
   /* 066 0x42 */ {
     name: 'message_priority_button_only_important',
     role: 'message_priority',
     palette: 'iconsleft',
-    source: 'openvikings',
+    source: 'manual',
     note: 'gfx 0x42, priority mode 2 (only important)',
   },
   /* 067 0x43 */ {
@@ -819,8 +816,8 @@ export const GUI_FRAMES: readonly GuiFrameMeta[] = [
     name: 'order_icon_fallback',
     role: 'order_icon',
     palette: 'context',
-    source: 'openvikings',
-    note: 'gfx 0x6b default order/command icon when a command has no specific gfx (CGuiManager.cs:1962 "gfxId = 0x6Bu", GetHumanCommandIconId fallback :2223); round wooden button, context palette',
+    source: 'manual',
+    note: 'gfx 0x6b default order/command icon; round wooden button using the context palette',
   },
   /* 108 0x6c */ {
     name: 'unknown_108',
@@ -1085,7 +1082,7 @@ export const GUI_FRAMES: readonly GuiFrameMeta[] = [
     name: 'overview_toggle_button',
     role: 'overview_toggle',
     palette: 'iconsleft',
-    source: 'openvikings',
+    source: 'manual',
     note: 'gfx 0x91 _overviewToggleButton, rect (0,TopBarY-38,38x38), msg 0x0f45, tooltip str 0x0C "opens overview map"; code palette is TopBarPalette (iconsleft is a best-guess default)',
   },
   /* 146 0x92 */ {

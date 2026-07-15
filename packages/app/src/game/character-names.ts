@@ -87,7 +87,7 @@ export function settlerSex(jobType: number | null | undefined, young: boolean): 
 }
 
 /**
- * Clean-room Old Norse given names, split by sex to match the drawn body. Drawn from common historical
+ * Hand-authored Old Norse given names, split by sex to match the drawn body. Drawn from common historical
  * Norse name lists; the original game carries none of these, so this is an independent approximation, not
  * extracted content.
  *

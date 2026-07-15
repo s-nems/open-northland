@@ -6,8 +6,8 @@ The render snapshot carries no health today and `world-renderer.ts` has no HP-ba
 only health readout is the selected-unit gauge in the details panel (`hud/details-panel/model.ts`,
 drawn through the decoded `bar_hitpoints` ramp in `app/src/content/gui-gfx.ts` `GUI_PALETTES`).
 
-**Source basis:** the original draws one — OpenVikings `CGuiBaseDataManager` loads
-`gui/palettes/bar_hitpoints.pcx`. WHEN the bar shows is unreadable → damaged-only is the named
+**Source basis:** the bar is visible in the running original, and the owned data includes
+`gui/palettes/bar_hitpoints.pcx`. WHEN the bar shows remains uncertain; damaged-only is the named
 approximation, calibration-pending (see [combat-calibration](combat-calibration.md)).
 
 ## Scope

@@ -66,7 +66,7 @@ export function workerSlotName(originalJobType: number): string {
  * the badge + assignment UI single out as a hauler). Everything else becomes a distinct generic craftsman
  * id (its trade identity is dropped — the deferred global-content id unification); the count and the
  * carrier split — what the player assigns — stay exact. Residences (homes) employ nobody; they carry no
- * row. Kept as sandbox data (not the clean-room catalog) because the rebase lives in the sandbox job space.
+ * row. Kept as sandbox data (not the hand-authored catalog) because the rebase lives in the sandbox job space.
  */
 export const BUILDING_WORKER_SLOTS: Readonly<Record<number, readonly { jobType: number; count: number }[]>> =
   {

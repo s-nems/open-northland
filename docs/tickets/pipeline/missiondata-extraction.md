@@ -5,7 +5,7 @@
 The map extractor deliberately skips the campaign/trigger payload, so authored mission goals,
 triggers, and per-player setup are invisible to the game. Source basis (verified 2026-07-13):
 
-- `docs/SOURCES.md` (~lines 75-83): a decoded `map.cif` `CStringArray` carries, besides the already
+- Inspection of decoded `map.cif` tables shows that a `CStringArray` carries, besides the already
   extracted `StaticObjects`, a **`MissionData` section per trigger (goal/result opcodes)** and a
   **`playerdata` section (per-player + diplomacy)** as readable `level`-tagged lines
   (`decoders/cif.ts` `decodeCifStringArray` already produces the plaintext).
@@ -14,10 +14,8 @@ triggers, and per-player setup are invisible to the game. Source basis (verified
   `MissionData`/`StaticObjects`/`playerdata` scripting is out of scope for the `MapInfo` slice.
 - `tools/asset-pipeline/src/stages/maps/convert.ts` extracts only the `StaticObjects` section.
 
-**Investigate first — the opcode structure is unknown.** A grep of `OpenVikings_reversing/` for
-`MissionData` finds nothing (it is file-format decoders with no game-logic layer), so the format
-oracle likely does not cover trigger semantics — re-check for related logic (e.g. `NC2Logic`,
-goal/level handling) before concluding. The primary evidence is the decoded plaintext itself:
+**Investigate first — the opcode structure is unknown.** The primary evidence is the decoded
+plaintext itself:
 enumerate `MissionData`/`playerdata` sections across all decodable maps — the 13 packed `map.cif`
 maps, plus the unpacked `CnModMaps/` folders (123 top-level; 107 carry a plaintext `mission.inc`
 that opens with `[MissionData]`, alongside sibling `ai.inc`/`player.inc`/`staticobjects.inc` —

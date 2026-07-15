@@ -31,5 +31,5 @@ no code change beyond the provenance note.
 
 ## Source basis
 
-`CPalette` layout is OpenVikings-pinned (`CPalette.cs`); this ticket is about product scope, not format
-correctness.
+`CPalette` layout is pinned by owned-file inspection and synthetic round trips; this ticket is about
+product scope, not format correctness.

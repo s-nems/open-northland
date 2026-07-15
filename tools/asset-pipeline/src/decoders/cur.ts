@@ -3,10 +3,8 @@
  * per-image hotspot. A `.cur` is byte-identical to a `.ico` except the two `ICONDIRENTRY` fields that
  * an icon uses for colour-planes / bit-count instead carry the cursor hotspot (X, Y).
  *
- * This ports the format of a standard Microsoft resource, not any OpenVikings code: the original engine
- * loads cursors through Win32 `LoadCursorFromFileW` (see `Source/SystemHandles/InitGameHandler.cs`), so
- * there is no decoder to mirror — the OS reads the same header this does. Layout (all multi-byte fields
- * little-endian):
+ * This is a standard Microsoft cursor resource. The original uses the operating system's cursor
+ * loader, so this decoder reads the same public container layout (all multi-byte fields little-endian):
  *
  *   ICONDIR    : u16 reserved(0), u16 type(2 = cursor / 1 = icon), u16 count
  *   ICONDIRENTRY[count], 16 bytes each:

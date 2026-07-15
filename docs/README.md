@@ -13,7 +13,8 @@ determinism, data-not-code, verification. It overrides older notes in plans or c
 3. [DATA-FORMAT.md](DATA-FORMAT.md) — the validated content IR and id conventions.
 4. [TESTING.md](TESTING.md) — deterministic test pyramid and visual/audio limits.
 5. [SCENES.md](SCENES.md) — acceptance scenes for human sign-off.
-6. [SOURCES.md](SOURCES.md) — original file formats, source/oracle map, and legal statement.
+6. [SOURCES.md](SOURCES.md) — source policy and original file-format research.
+7. [LEGAL.md](LEGAL.md) — project license, local game-data policy, and trademark notice.
 
 ## Tickets
 
@@ -27,8 +28,6 @@ deletes the ticket file. Every workflow files tickets for real-but-deferred disc
 
 ## Reference
 
-- [PRIOR-ART.md](PRIOR-ART.md) — practices from other engine reimplementations. Optional, useful when
-  choosing an architecture or validation approach.
 - [GLOSSARY.md](GLOSSARY.md) — the project's domain vocabulary (formats, lattice terms, sim/test
   jargon), one entry each with a pointer to the detailed home.
 - Package-local `AGENTS.md` files hold area-specific rules:
@@ -36,10 +35,10 @@ deletes the ticket file. Every workflow files tickets for real-but-deferred disc
   `../packages/app/AGENTS.md`, `../packages/audio/AGENTS.md`,
   `../tools/asset-pipeline/AGENTS.md`.
 
-## Workflow Files
+## Automated contributor files
 
-The agent contract is tool-agnostic: root `AGENTS.md` plus the package-local `AGENTS.md` files are
-the single source of truth. Per-tool wiring:
+The root `AGENTS.md` and package-local `AGENTS.md` files are the tool-neutral source of truth.
+Tool-specific files are thin adapters:
 
 - **Claude Code** — `CLAUDE.md` shims import `AGENTS.md`. Slash commands under `.claude/commands/`,
   reviewer lenses under `.claude/agents/`, and a committed PostToolUse hook
@@ -52,7 +51,7 @@ the single source of truth. Per-tool wiring:
   that reuse the canonical workflows in `.claude/commands/`, applying reviewer lenses inline
   instead of as subagents.
 
-The canonical workflow prose lives under `.claude/commands/` (shared by the shims, not Claude-only):
+Workflow prose lives under `.claude/commands/` as plain Markdown and is shared by the adapters:
 
 - `/worktree` — primary workflow: isolated branch/worktree, verify, review, update the ticket
   tracker, wait for user approval, fast-forward merge.

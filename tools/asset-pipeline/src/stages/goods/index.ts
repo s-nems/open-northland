@@ -39,7 +39,7 @@ export { resolveGoodNames } from './names.js';
  *
  * Source basis: the atlas + palettes are decoded original data; the state-1-pile-frame = store-icon choice
  * is observed from the original 1024×768 storehouse (its row icons are each good's smallest pile — a single
- * stone, a small wheat sheaf), not a code-pinned lookup (OpenVikings has no good→icon table). Binding prefers
+ * stone, a small wheat sheaf), not an extracted lookup. Binding prefers
  * a good's dedicated `good piles all` record, falling back to its broader `goods all` item record (see
  * {@link ./icons}). The goods sharing `landscapeType 1` with no record at all (prey, sheep, cattle, hand/ox
  * carts, ships, catapult, chest) stay unbound and render iconless.

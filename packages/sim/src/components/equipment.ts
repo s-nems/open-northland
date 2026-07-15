@@ -3,10 +3,9 @@ import { defineComponent } from '../ecs/world.js';
 
 /**
  * The number of general "misc" consumable slots a character carries (mead / potions / amulets). The
- * equipment CATEGORIES are source-pinned (see {@link Equipment}), but the per-category slot COUNTS are
- * NOT in any readable data or in the reversed GUI code — OpenVikings proves an `(equipmentType, slot)`
- * model (`MiscWindows_HumanChangeEquippedGoodsWindow_Open`) but not the slot counts. So `4` is a named
- * APPROXIMATION (the count the feature request assumed); revise it if the original count is recovered.
+ * equipment categories are source-pinned (see {@link Equipment}), but the per-category slot counts are
+ * not present in readable data. `4` is a named approximation from the feature specification; revise it
+ * if observation or extracted data establishes the original count.
  */
 export const MISC_EQUIP_SLOTS = 4;
 

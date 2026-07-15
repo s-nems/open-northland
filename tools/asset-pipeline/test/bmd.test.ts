@@ -21,7 +21,7 @@ import { packLineControl } from './fixtures/bmd.js';
  * `.bmd` (CBobManager, id 0x3F4) container decoder tests. No copyrighted fixtures: we synthesize bob
  * sets in memory with the faithful `encodeBmd`, then assert `decodeBmd` recovers the header, records,
  * and the two raw blocks. A couple of cases hand-build bytes to pin the storable header + the 24-byte
- * record layout against the OpenVikings format, and one exercises the line-control packing constants.
+ * record layout through a synthetic round trip, and one exercises the line-control packing constants.
  */
 
 /** A bob record with the given rectangle; type/misc default to distinguishable values. */
@@ -243,7 +243,7 @@ describe('line-control packing constants', () => {
 /**
  * `decodeBobFrame` packed-line RLE -> indexed pixels tests. Each case hand-builds a tiny `Bmd` with one
  * bob, a packed-line byte stream, and per-row line-control words, then asserts the decoded frame's
- * `pixels`/`mask`. Bytes are the codec from CBobManager `PrintPackedLine_*`: `0` terminates a line, a
+ * `pixels`/`mask`. In the packed codec, `0` terminates a line, a
  * byte with the high bit clear is a raw run of `count = b & 0x7F` pixels (data inline), high bit set is
  * a transparent skip run of `count`. The control word packs `[xMin (10b)][offset into packed data (22b)]`.
  */
@@ -313,8 +313,7 @@ describe('decodeBobFrame', () => {
   });
 
   it('decodes a double-byte bob: first byte is the index, the second its per-pixel alpha', () => {
-    // Raw run of 2 double-pixels: [idx=0x40, a=0x99][idx=0x50, a=0x88], then terminator (CBobManager
-    // PrintBob_UsingShadedAlpha: the pair is [indexByte, alphaByte]).
+    // Raw run of 2 double-pixels: [idx=0x40, a=0x99][idx=0x50, a=0x88], then terminator.
     const packed = [0x02, 0x40, 0x99, 0x50, 0x88, 0x00];
     const bmd = frameBmd(BOB_TYPE_DOUBLE8BIT, 2, 1, packed, [0]);
     const frame = decodeBobFrame(bmd, 0);
@@ -331,7 +330,7 @@ describe('decodeBobFrame', () => {
     expect([...frame.mask]).toEqual([0, 0xff]);
   });
 
-  it('decodes a TimeMask bob as [value, timeByte] pairs (CBobManager PrintPackedLine_TimeMaskAsImage)', () => {
+  it('decodes a time-mask bob as [value, timeByte] pairs', () => {
     // Raw run of 2 pairs: [value=0x12, time=0x34][value=0x56, time=0x00] — a time of 0 is a REAL pixel
     // (visible from the start of construction), written opaque, unlike an alpha 0.
     const bmd = frameBmd(BOB_TYPE_TIMEMASK, 2, 1, [0x02, 0x12, 0x34, 0x56, 0x00, 0x00], [0]);

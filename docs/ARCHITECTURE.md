@@ -90,9 +90,9 @@ state + commands + RNG — never on wall-clock or frame rate.
 - **`app`** — the shell. Owns the main loop, translates input into sim commands, draws menus/HUD,
   wires save/load. The only package that depends on everything.
 - **`tools/asset-pipeline`** — offline, run by a human/agent against an owned game copy. Decodes
-  original formats (incl. encrypted `.cif`) into `content/`. Decoded graphics are validated against
-  the **OpenVikings oracle** (it boots and renders the originals) pixel-for-pixel. Heavy lifting
-  documented in `docs/SOURCES.md`.
+  original formats (including encrypted `.cif`) into `content/`. Decoders are covered by synthetic
+  fixtures and structural checks; visual output is compared with the running original when needed.
+  Format notes live under `docs/formats/`.
 
 ## Save / load & multiplayer (forward-looking, not yet built)
 

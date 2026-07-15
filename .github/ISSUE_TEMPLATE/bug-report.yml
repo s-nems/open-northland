@@ -1,0 +1,49 @@
+name: Bug report
+description: Report a reproducible problem in Open Northland
+title: "bug: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Do not attach original or decoded game files.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe the problem and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction
+      description: Give the shortest reliable sequence of steps, including the URL flags or scene used.
+      placeholder: |
+        1. Run ...
+        2. Open ...
+        3. Click ...
+    validations:
+      required: true
+  - type: input
+    id: commit
+    attributes:
+      label: Commit or version
+      description: Paste the commit hash, branch, or release version.
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system, browser, and Node.js version where relevant.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Remove personal paths and do not include original or decoded game data.
+  - type: checkboxes
+    id: asset-policy
+    attributes:
+      label: Asset policy
+      options:
+        - label: I have not attached original or decoded game files.
+          required: true

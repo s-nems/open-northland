@@ -37,7 +37,7 @@ content/
 (1) Generated **`content/`** (repo root) — the pipeline's output: IR JSON, atlases, maps, GUI/fonts;
 gitignored and fetched at runtime via the app's `vite.config.ts` routes. Never hand-edit it — change
 the pipeline (`tools/asset-pipeline/`) or the schemas (`packages/data/src/schema/`) and regenerate.
-(2) Committed clean-room **`packages/app/src/catalog/`** — hand-authored balance/bindings (building
+(2) Committed fallback **`packages/app/src/catalog/`** — hand-authored balance/bindings (building
 and goods rosters, farming/felling/mining constants, footprints, professions, labels); edit it for
 balance or naming, and note its tests pin rows back to `ir.json` whenever `content/` is present.
 (3) **`packages/app/src/game/sandbox/`** — the ONE global sandbox `ContentSet` (built from the
@@ -55,7 +55,7 @@ rules — scenes never define their own content (docs/SCENES.md).
    the `culturesnation` mod (`DataCnmd`), which provides a *subset* (`houses.ini`, `weapons.ini`,
    graphics) plus new campaigns/maps. The pipeline records which layer won for each record.
    (Note: `housetypes`/`weapontypes`/`trianglepatterntypes`/`atomicanimations` and all maps are
-   `.cif`-only — these go through the `.cif` decoder, see docs/SOURCES.md.)
+   `.cif`-only — these go through the `.cif` decoder, see docs/formats/CIF.md.)
 4. **Versioned.** `ir.json.version` bumps on schema changes; the sim refuses to load a mismatched
    major version. Golden tests pin a sample content set.
    **Policy:** the version is a single integer, bumped whenever a schema in `packages/data` changes
@@ -120,8 +120,8 @@ referenced numeric id resolves to a defined type — catching dangling reference
 
 ## Sprites & animations
 
-`.bmd` "bob" files hold framed, palette-indexed animations (decoded by OpenVikings'
-`CBobManager`/`CBitmap` — see `docs/SOURCES.md`). The pipeline unpacks them into a PNG atlas plus
+`.bmd` "bob" files hold framed, palette-indexed animations (see `docs/formats/GRAPHICS.md`). The
+pipeline unpacks them into a PNG atlas plus
 JSON describing frames, per-frame anchor (feet position for correct isometric sorting), and named
 animation sequences (walk/work/idle/fight per direction). `render` loads these; `sim` never does —
 the sim only knows an entity's logical state, and `render` maps state → animation.
@@ -150,7 +150,7 @@ type list (see docs/ECS.md for why these are central):
   → wood(7)` for wood) each joined to the `[GfxLandscape]` records that place it (by `logicType`).
   Materialized from the new `GoodType.gathering` chain + the `landscape`/`landscapeGfx` tables so a
   later gathering system reads the stages and their placeable gfx directly — see `buildGatheringPipeline`
-  and docs/SOURCES.md "Gathering pipeline". The per-good source fields also land on `GoodType`
+  and `buildGatheringPipeline`. The per-good source fields also land on `GoodType`
   (`landscapeType`, `gathering`) and the `[landscapetype]` lifecycle inputs on `LandscapeType`
   (`name`, raw `transitions`).
 - **`experience.json` + the tribe dependency graph** — `humanjobexperiencetypes` XP factors plus

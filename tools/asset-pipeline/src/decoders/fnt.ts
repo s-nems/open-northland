@@ -16,19 +16,11 @@
  * inner container ({@link import('./atlas.js').packBobAtlas}); this module adds the font-specific layout
  * on top of it (per-glyph advance, line height, baseline).
  *
- * Ported format (not architecture) from OpenVikings `Source/NXBasics/`:
- *   - CFont.cs      `CFont(CFile, version)` ctor (value08/value0C then the nested storable),
- *                   `Storable_GetId` (0x3F5), and the layout formulas ported below:
- *                     · glyph lookup   `bobId = char - 0x20`  (`GetBobId_Default`), and space/tab
- *                       redirect to bob 0x49 at print/measure time (`GetBobIdForPrint` / `GetPixelWidth`)
- *                     · pen advance    `spacing + rect.X + rect.Width + 1`  (`GetCharacterWidth`)
- *                     · glyph extent   `rect.Height + rect.Y + 1`           (`GetCharacterHeight`)
- *                     · line height    max glyph extent over the string     (`GetPixelHeight`)
- *   - XBStorable.cs storable factory (id 0x3F5 -> `new CFont`; id 0x3F4 -> `new CBobManager`).
- * Referenced at OpenVikings_reversing @ working tree 2026-06.
+ * The wrapper and glyph metrics are documented in `docs/formats/GRAPHICS.md` and pinned by synthetic
+ * round trips. Layout was established by inspecting owned font files and decoded glyph placement.
  *
- * `_spacing` (CFont+0x10) is not stored in the file — it is applied externally via `SetSpacing`, defaulting
- * to 0 — so the decoded advances use spacing 0 (a caller may pass a spacing to {@link fontMetrics}).
+ * Spacing is not stored in the file, so decoded advances default to zero extra spacing; callers may
+ * provide one to {@link fontMetrics}.
  *
  * Pure functions only (no I/O): `(bytes) => decoded`. The CLI/stage wires file reads + atlas/PNG/JSON
  * writes around them. `encodeFnt` is the faithful inverse, used to round-trip test without committing
@@ -44,15 +36,11 @@ const BOB_MANAGER_ID = StorableId.CBobManager; // 0x3F4
 /** Bytes of the CFont prefix before the nested CBobManager: id + version + value08 + value0C. */
 const FONT_PREFIX_BYTES = 16;
 
-/** Lowest character code a font renders; bob 0 is this char (CFont `FirstPrintableChar`). */
+/** Lowest character code represented by bob 0. */
 export const FONT_FIRST_CHAR = 0x20;
 /**
- * The bob a space/tab is measured through — not `' ' - 0x20` (which is bob 0, an empty slot). CFont's
- * `GetPixelWidth` special-cases whitespace to this bob, so a space takes this bob's advance. We
- * reproduce only that width redirect: a space draws nothing. The oracle's
- * `PrintCharacter`/`GetBobIdForPrint` would blit bob 0x49 — but in a 0x20-based font that bob is the
- * `'i'` glyph (char 0x69), so drawing it for every space is a quirk real text layout avoids by advancing
- * the pen and skipping the blit (deliberate print-side divergence, source basis).
+ * The bob whose advance is used for spaces. Bob 0 is an empty slot, while bob 0x49 provides the
+ * measured whitespace width. Rendering advances the pen without drawing that glyph.
  */
 export const FONT_SPACE_BOB_ID = 0x49;
 
@@ -107,9 +95,8 @@ export function decodeFnt(bytes: Uint8Array): Font {
 }
 
 /**
- * Inverse of {@link decodeFnt}: serializes a `.fnt` (CFont) — the 16-byte prefix then {@link encodeBmd} of
- * the nested container. Faithful to CFont's `Storable_SaveData` (value08/value0C then the saved bob
- * manager), so a decode round-trips without committing copyrighted fixtures.
+ * Inverse of {@link decodeFnt}: serializes the 16-byte prefix and nested bob container so a decode
+ * can be round-tripped without committing copyrighted fixtures.
  */
 export function encodeFnt(font: Font): Uint8Array {
   const bmdBytes = encodeBmd(font.bmd);
@@ -134,10 +121,8 @@ function bobAt(bmd: Bmd, bobId: number): BobRecord | undefined {
 }
 
 /**
- * The pen advance for one bob: `spacing + area.x + area.width + 1` (CFont `GetCharacterWidth` /
- * `GetPixelWidth`). Returns 0 for an absent or empty bob — CFont reads the rect via
- * `GetBobAreaRectanglePtr`, which nulls both when the id is out of range and when `Type == 0`
- * (`CBobManager.cs`), and a null rect makes the advance 0.
+ * The pen advance for one bob: `spacing + area.x + area.width + 1`. Returns 0 for an absent or empty
+ * bob; synthetic metrics tests pin both cases.
  */
 export function bobAdvance(bmd: Bmd, bobId: number, spacing = 0): number {
   const bob = bobAt(bmd, bobId);
@@ -146,10 +131,8 @@ export function bobAdvance(bmd: Bmd, bobId: number, spacing = 0): number {
 }
 
 /**
- * The line height: the max glyph extent `area.height + area.y + 1` over every non-empty bob (CFont
- * `GetPixelHeight` measures a string's height as this max, skipping any char whose `GetBobAreaRectanglePtr`
- * is null — a `Type == 0` bob). Empty bobs are skipped so a stale rect on a `Type == 0` slot can't inflate
- * the height (matching the oracle's null-rect skip).
+ * The line height: the maximum `area.height + area.y + 1` over non-empty bobs. Empty slots are skipped
+ * so stale rectangle values cannot inflate the result.
  */
 export function deriveLineHeight(bmd: Bmd): number {
   let max = 0;
@@ -162,7 +145,7 @@ export function deriveLineHeight(bmd: Bmd): number {
 }
 
 /**
- * A derived baseline (advisory, not from the oracle): the bottom edge `area.y + area.height` of the first
+ * A derived baseline (advisory, not stored in the format): the bottom edge `area.y + area.height` of the first
  * available reference capital ({@link BASELINE_REFERENCE_CHARS}), since capitals sit on the baseline.
  * The original has no baseline concept — it lays glyphs out top-anchored, blitting each at `pen + (x, y)`
  * and advancing by {@link bobAdvance}. A convenience for a renderer aligning mixed content; falls back to
@@ -219,12 +202,10 @@ export interface FontMetrics {
 /**
  * Builds a font's full layout table from a decoded {@link Font}: one {@link GlyphMetric} per bob (char
  * `FONT_FIRST_CHAR + bobId`), plus the font-wide line height, baseline, and nominal size. Space (char
- * 0x20) is special-cased to borrow bob {@link FONT_SPACE_BOB_ID}'s advance (CFont `GetPixelWidth`) while
- * drawing nothing (its own bob 0 is empty; the literal `PrintCharacter` 0x49 blit is not reproduced — see
- * {@link FONT_SPACE_BOB_ID}). Pure; deterministic char-order output.
+ * 0x20) borrows bob {@link FONT_SPACE_BOB_ID}'s advance while drawing nothing. Pure; deterministic
+ * character-order output.
  *
- * `spacing` mirrors CFont's external `SetSpacing` (added into every advance); the file carries none, so it
- * defaults to 0 — the value the fonts are drawn with unless the GUI overrides it.
+ * `spacing` is added to every advance. The file carries none, so it defaults to zero.
  */
 export function fontMetrics(font: Font, spacing = 0): FontMetrics {
   const { bmd } = font;
@@ -236,8 +217,7 @@ export function fontMetrics(font: Font, spacing = 0): FontMetrics {
     const bobId = bmd.firstBobId + i;
     const char = FONT_FIRST_CHAR + bobId;
     const empty = bob.type === BOB_TYPE_EMPTY || bob.area.width <= 0 || bob.area.height <= 0;
-    // Space redirects its advance to bob 0x49 (CFont whitespace rule); every other char uses its own bob's
-    // advance ({@link bobAdvance}, which is 0 for an empty `Type == 0` slot — the oracle's null-rect guard).
+    // Space uses bob 0x49's width; every other character uses its own bob's advance.
     const advance = char === FONT_FIRST_CHAR ? spaceAdvance : bobAdvance(bmd, bobId, spacing);
     glyphs.push({
       char,

@@ -1,13 +1,8 @@
 /**
  * `.cif` container decoder — Cultures Information File.
  *
- * Ported format (not architecture) from OpenVikings `Source/NXBasics/`:
- *   - XBTools.cs          `XB_Decrypt_Memory` / `XB_Encrypt_Memory` (TEncryptMode.Mode1)
- *   - XBStorable.cs       storable factory: id -> class (0x3E9 CMemory, 0x3FD CStringArray, ...)
- *   - CStorable.cs        on-disk object header: [u32 id][u32 version][body]
- *   - CMemory.cs          body: [u32 size][size bytes] (raw; decrypted separately by the consumer)
- *   - CStringArray.cs     body: 5*u32 header, encrypted offsets CMemory, flag, encrypted pool CMemory
- * Referenced at OpenVikings_reversing @ working tree 2026-06.
+ * The layout is documented in `docs/formats/CIF.md` and pinned by synthetic round-trip tests. It was
+ * established through byte-level inspection of tables from an owned game copy.
  *
  * The decrypted record layout, verified empirically against `Data/logic/housetypes.cif`: the
  * decrypted string pool is depth-prefixed text lines, e.g.
@@ -51,7 +46,7 @@ export interface CifStringArray {
 }
 
 /**
- * Mode1 stream cipher (XBTools.cs). Symmetric keystream depending only on byte position.
+ * Mode1 stream cipher. The symmetric keystream depends only on byte position.
  * Decrypt: `out = (in - 1) ^ key`. Mutates `buf` in place.
  */
 export function decryptMode1(buf: Uint8Array): void {
@@ -71,7 +66,7 @@ export function decryptMode1(buf: Uint8Array): void {
 }
 
 /**
- * Inverse of {@link decryptMode1} (XBTools.cs `XB_Encrypt_Memory`): `out = (in ^ key) + 1`.
+ * Inverse of {@link decryptMode1}: `out = (in ^ key) + 1`.
  * Kept faithful so decode can be round-trip tested without committing copyrighted fixtures.
  * Mutates `buf` in place.
  */
@@ -109,8 +104,7 @@ export function readCMemory(r: ByteCursor): Uint8Array {
 
 /**
  * Splits a NUL-separated, level-prefixed string pool into {@link CifLine}s by the offsets table.
- * Bounds are the logical `usedBytes` (CStringArray.cs `GetString` clamps to `_stringPoolUsedBytes`,
- * not the raw buffer length, which may carry trailing 0xEE alloc padding).
+ * Bounds use the logical `usedBytes`, not the raw buffer length, which may include allocation padding.
  */
 function readLines(pool: Uint8Array, offsets: Uint8Array, slotCount: number, usedBytes: number): CifLine[] {
   const INVALID = 0xffffffff;
@@ -142,8 +136,8 @@ function readLines(pool: Uint8Array, offsets: Uint8Array, slotCount: number, use
  * batch pipeline over many owned files must wrap each call per-file (one corrupt `.cif` shouldn't
  * abort the run).
  *
- * Text is decoded as latin1 to match the OpenVikings oracle byte-for-byte. Display strings
- * carrying Polish glyphs are actually CP1250 — re-decode those at the IR layer where it matters.
+ * Text is decoded as latin1 to preserve every source byte. Display strings carrying Polish glyphs
+ * are actually CP1250; re-decode those at the IR layer where it matters.
  */
 export function decodeCifStringArray(bytes: Uint8Array): CifStringArray {
   const r = new ByteCursor(bytes, 'cif');

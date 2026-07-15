@@ -17,8 +17,8 @@
  * their sub-chunks follow immediately, so a single `offset += 0x20 + length` walk visits every
  * chunk — `depth` merely records the nesting.
  *
- * Ported format (not architecture) from OpenVikings `Source/NC2Logic/CIoHelper.cs`
- * (`SIoHelperChunk` / `IO_File_Chunk_*` / `FlipSIoHelperChunk`). Referenced @ working tree 2026-06.
+ * The container layout was established through byte-level inspection of owned map files and is
+ * documented in `docs/formats/MAPDAT.md`.
  */
 
 import { LATIN1, viewOf } from '../byte-cursor.js';

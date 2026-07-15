@@ -5,22 +5,23 @@ platforms we don't cover (especially Windows), and documentation fixes.
 
 ## Ground rules (legal — read this first)
 
-OpenNorthland is a clean-room reimplementation. Its repository must stay free of copyrighted
-material, so **never** include in a PR, issue, or commit:
+OpenNorthland is an independent implementation. Its repository must stay free of copyrighted
+game material, so **never** include in a PR, issue, or commit:
 
 - **Original game assets** — no `.bmd`, `.cif`, `.pcx`, `.lib`, `.sgt`, `.dls`, `.fnt`, `.hlt`,
   sounds, or any file from a *Cultures* installation.
 - **Decoded content** — anything generated under `content/` is derived from copyrighted data and is
   gitignored on purpose. Each player generates it locally from their own copy.
-- **Ported code** — [`OpenVikings_reversing`](https://github.com/Ravo92/OpenVikings_reversing) is
-  consulted as file-format *documentation only*. Do not port its source or architecture.
+- **Third-party engine code** — do not copy or translate another implementation's source or
+  architecture. Format work must be supported by the owned data files, published specifications,
+  or observed game behavior.
 
 PRs containing any of the above will be closed. The authoritative legal statement lives in
-[`docs/SOURCES.md`](docs/SOURCES.md).
+[`docs/LEGAL.md`](docs/LEGAL.md).
 
 ## Getting set up
 
-Follow [Getting started](README.md#getting-started) in the README. In short: Node ≥ 20.19,
+Follow [Build and test](README.md#build-and-test) in the README. In short: Node ≥ 20.19,
 `npm install`, and you can build, test, and develop the engine **without owning the game** — the
 sim runs headless against synthetic fixtures. You only need your own copy of
 *Cultures – 8th Wonder of the World* to generate playable content.
@@ -37,7 +38,7 @@ sim runs headless against synthetic fixtures. You only need your own copy of
 
    ```bash
    npm run check   # Biome lint + format
-   npm run build   # tsc --build (also the typecheck)
+   npm run build   # typecheck + production app bundle
    npm test        # Vitest, including determinism golden tests
    ```
 

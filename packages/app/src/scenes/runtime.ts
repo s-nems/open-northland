@@ -10,7 +10,7 @@ import type { SceneDefinition } from './types.js';
  * proof and the human's view are the same world, with one named exception. `extras` is mostly display-only
  * (e.g. localized `goodNames`), except `buildingFootprints`: the browser feeds the real extracted
  * (door-shifted) footprints, which are sim-affecting (collision, placement legality, walk-to-door), while
- * the headless twin keeps the clean-room approximations (copyrighted `content/` never enters tests). So a
+ * the headless twin keeps the hand-authored approximations (copyrighted `content/` never enters tests). So a
  * placement-sensitive scene must keep its placements legal under both geometries.
  */
 export function createSceneSim(scene: SceneDefinition, extras?: SandboxContentExtras): Simulation {

@@ -90,11 +90,9 @@ export interface WorldFrame {
 export const SPRITE_CULL_MARGIN = 512;
 
 /**
- * The paused-game wash: one screen-sized multiply quad over the world, not the HUD. The original halves
- * every channel of the world element's clip rect while paused (OpenVikings
- * `CWorldDisplayElement.XGui_BE_Element_Draw` + `CBitmap.Tool_Darken`, `value >> 1 & 0x7F7F7F`), a
- * neutral 50% darken that would be `0x808080` here; this warmer brown is an approved deviation from that
- * grade. Costs one extra draw call while paused — its blend mode flushes the batcher, but it sits at the
+ * The paused-game wash: one screen-sized multiply quad over the world, not the HUD. The original's
+ * observed pause treatment is a neutral 50% darken; this warmer brown is an intentional visual
+ * deviation. It costs one extra draw call while paused, but it sits at the
  * world→HUD boundary, which flushes anyway.
  */
 const PAUSE_WASH_TINT = 0xc9a87c;

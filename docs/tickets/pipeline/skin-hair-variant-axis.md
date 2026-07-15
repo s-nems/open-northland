@@ -20,9 +20,8 @@ variants. Evidence to check, in order:
 
 1. `randompalette.ini` itself — enumerate the non-player `[RandomPalette]` recipes: which palette
    bands they patch (skin? hair?), and what selects a recipe per settler.
-2. `OpenVikings_reversing` remap machinery — `NXBasics/CRemapTable.cs` and the `.hlt`
-   lighting/remap tables (242 files, docs/SOURCES.md) for how the engine applies those recipes and
-   picks a variant per settler (`CBobManager`/creature setup paths).
+2. The `.hlt` lighting/remap tables (242 files) and their decoded byte patterns: determine how the
+   recipes affect palette bands and whether another owned data file selects a variant per settler.
 3. The decoded character palettes/LUT the pipeline already emits — does the indexed atlas reserve
    distinct skin and hair palette bands (the way it reserves the clothing band), or are tones baked
    into the pixels?
@@ -44,8 +43,8 @@ variants. Evidence to check, in order:
 
 ## Verify
 
-- Investigation findings carry named evidence (file + symbol in OpenVikings, or decoded-data proof,
-  or observed behavior).
+- Investigation findings carry named evidence from readable files, decoded-data proof, a published
+  specification, or observed behavior.
 - If implemented: `?view=colors`-style gallery check that team colour and skin/hair vary
   independently and clothing-band recolouring is unchanged — **user's eyes**; pipeline run against
   the owned game copy; `npm test`, `npm run check`, `npm run build`.

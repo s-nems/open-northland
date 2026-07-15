@@ -8,8 +8,8 @@ Every `constructionLayers` row in `content/ir.json` carries a `shadowBobId` besi
 (`packages/app/src/content/building-gfx/construction.ts`) drops it — construction sites cast no
 shadow until the finished body draws. The referenced bobs are real: type-1 (1-bit mask) silhouettes
 in the house `.bmd`s (e.g. `ls_houses_viking2.bmd` bob 223, a 535×210 ground shape). The original
-prints shadows via a dedicated darkening blit (OpenVikings `CBobManager.PrintBob_Shadow*`,
-including a time-gated `PrintBob_Shadow_TimeMask` variant).
+draws a darkening shadow under construction. Whether that shadow is revealed progressively still
+needs observation.
 
 ## Scope
 

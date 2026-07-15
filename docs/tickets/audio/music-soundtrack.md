@@ -2,13 +2,13 @@
 
 **Area:** audio (+ offline tooling) · **Origin:** gap-analysis audit 2026-07-13 · **Priority:** P2
 
-The game is silent of music. `docs/SOURCES.md` (~line 21) catalogs **49+ `.sgt`/`.dls` DirectMusic
+The game is silent of music. A local inventory found **49+ `.sgt`/`.dls` DirectMusic
 segments/instruments** (Windows-only format) with the stated plan "transcode offline to ogg; do not
 depend on DirectMusic". `packages/audio` handles positional SFX + ambient terrain beds + life-event
 jingles + settler voice only (`packages/audio/src/index.ts` module doc, verified 2026-07-13) — no
 music channel exists.
 
-**Legal guardrail (docs/SOURCES.md):** transcoded music is copyrighted original content — the
+**Legal guardrail (`docs/LEGAL.md`):** transcoded music is copyrighted original content — the
 transcode is an offline tool whose *output stays in the gitignored `content/` tree* like every other
 decoded asset; never commit rendered audio or the originals.
 
@@ -16,8 +16,8 @@ decoded asset; never commit rendered audio or the originals.
 (instrument bank) need a renderer; candidates to evaluate: a DAW/fluidsynth-style route if segments
 reduce to MIDI + DLS soundfont (there are `.sgt`→MIDI extractors in the wild; DLS→SF2 conversion is
 well-trodden), Wine + DirectMusic capture as a fallback, or an existing open DirectMusic
-implementation. Check what `OpenVikings_reversing` knows about how the original selects/loops
-segments (grep for `sgt`/music manager) — that pins track selection semantics. Which track plays
+implementation. Inspect readable configuration and observe the running original to establish how
+segments are selected and looped. Which track plays
 when (per-map? mood/combat-driven? shuffled?) is an investigate item; if no evidence is found, a
 named approximation (simple per-map or shuffled playlist) is acceptable.
 

@@ -5,8 +5,8 @@ import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { isFighterJob } from '../../readviews/index.js';
 
 /**
- * Unit body collision — a named deviation from the original, which has none (walkers pass through each other
- * freely; OpenVikings carries no unit-vs-unit collision state and none is observable in play). Added
+ * Unit body collision — a named deviation from the original, where walkers are observed passing through
+ * each other. Added
  * deliberately for RTS depth, on the user's design decision: a standing line of fighters must physically hold
  * a chokepoint, a charge must fan out around its target instead of stacking a tile, and the economy must keep
  * the original's frictionless flow. The model is the modern-RTS split: collision is local resolution only —

@@ -1,5 +1,5 @@
 /**
- * The semantic terrain classes every sim grid uses — committed clean-room vocabulary, not extracted
+ * The semantic terrain classes every sim grid uses — committed hand-authored vocabulary, not extracted
  * data (a catalog leaf both `game/sandbox` and `content/` may import without coupling to each other).
  * Scene grids are authored in these ids directly; a real decoded map is resolved into them by
  * `content/collision.ts` (its ground/object lanes joined against the extracted class tables) before

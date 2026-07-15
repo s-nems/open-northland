@@ -1,7 +1,7 @@
 import type { BuildingFootprint, FootprintCell } from '@open-northland/data';
 
 /**
- * Clean-room approximate building footprints for the global sandbox content — rectangles sized by
+ * Hand-authored approximate building footprints for the global sandbox content — rectangles sized by
  * building class, not the extracted `[GfxHouse]` cell tables (those are decoded game data, which never
  * enters the repo; the live real-content path loads them from the gitignored `content/ir.json` at
  * runtime and they override these). Approximated, source basis "Building placement": the original

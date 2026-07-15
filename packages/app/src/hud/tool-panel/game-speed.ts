@@ -1,16 +1,13 @@
 /**
  * The game-speed button state machine — the factor→gfx family pinned to the original's speed button.
  *
- * OpenVikings `CGuiManager.cs` `MiscButtons_SpeedButton_Update()` chooses the button's gfx from the current
- * speed factor (`DAT_1003a6488 / 12`): factor 0 → gfx 0x36 (paused), 1 → gfx 0x31 (the base sprite), 2 →
- * gfx 0x34, 3 → gfx 0x35 (and a separate "maximise" flag reuses 0x31 with a "MAX!" tooltip). We map each
- * visible state to an app-side tick multiplier — game speed is an app concern (the sim tick stays
- * fixed-step at `TICKS_PER_SECOND`), so what's pinned is the factor→gfx family and the factor values.
+ * The four decoded frames map to factor 0 → gfx 0x36 (paused), 1 → gfx 0x31, 2 → gfx 0x34, and 3 →
+ * gfx 0x35. We map each visible state to an app-side tick multiplier; game speed is an app concern and
+ * the sim tick stays fixed at `TICKS_PER_SECOND`. Confirm exact cycling behavior in the running original.
  *
  * The control model is ours (source basis; a user-requested deviation): clicking the button cycles only the
  * running speeds (×1 → ×2 → ×3 → ×1, never into pause), while pause is a separate toggle (the `P` key, or a
- * click while paused resumes) that remembers the running speed and restores it on unpause. The decompile
- * does not recover the original's click routing, so no pinned cycle order is being overridden.
+ * click while paused resumes) that remembers the running speed and restores it on unpause.
  *
  * Pure (no Pixi/DOM): the view reads `gfx`, the loop reads `tickMultiplier`, both unit-tested.
  */

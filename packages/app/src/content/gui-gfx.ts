@@ -89,8 +89,8 @@ export function loadGuiPaletteLut(): Promise<TextureSource | undefined> {
 /**
  * The decoded level→colour ramp of the original `bar_hitpoints.pcx` palette, as 256 packed `0xRRGGBB`
  * entries: red `#ff0000` at index 0 (empty) → orange → yellow-green `#d4ff4b` at 255 (full), the decoded
- * evidence that a bar's colour follows its level. How the engine consumes it isn't decompiled
- * (`PalBarHitpoints` loads in OpenVikings but its draw site isn't ported), so the panel's reading (fill
+ * evidence that a bar's colour follows its level. The exact original draw behavior is not established,
+ * so the panel's reading (fill
  * colour = `ramp[level]`, one colour per bar) is a named approximation. Every stat gauge uses this ramp
  * (user decision 2026-07-11): the sibling `bar_standart` ramp stays green until ~15%, so a draining need
  * showed no colour change, while this one walks green→orange→red across the range.

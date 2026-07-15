@@ -15,7 +15,7 @@ import { forEachPlacement } from './map-placements.js';
  * outcrop for iron, …); inverting that index list → EditName → goodId names exactly the objects the
  * original treats as harvestable. Decor (grass, ferns, waves) appears in no harvest stage, so it is absent
  * from the map and never spawned. The pipeline's `goodId` string is the bridge across the two good-number
- * spaces — the IR's original numbering (`wood` = 5) and the app's clean-room numbering (`GOOD_WOOD` = 1) —
+ * spaces — the IR's original numbering (`wood` = 5) and the app's hand-authored numbering (`GOOD_WOOD` = 1) —
  * so the caller resolves the returned id against `GATHERERS` by `id`.
  */
 

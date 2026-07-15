@@ -34,8 +34,8 @@ skills, hooks), not worktrees — which are real checkouts of this repo and shou
   2.5's glob semantics rather than assuming, since `**/.claude` vs `.claude` anchoring is the whole bug.
 - Confirm `npm run check` processes a non-zero file count from *both* the main checkout and a worktree
   under `.claude/worktrees/`.
-- The sibling gap — `npm test` failing in a fresh worktree without a prior build — is filed
-  separately: [worktree-test-needs-build](worktree-test-needs-build.md).
+- The sibling gap — `npm test` failing in a fresh worktree without a prior build — is handled by
+  `/worktree` provisioning, which now runs the initial build before tests.
 
 ## Verify
 

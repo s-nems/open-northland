@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   build-test:
     # Three OSes on purpose: the sim promises byte-identical state across platforms (replays, future
@@ -19,12 +22,13 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
+      - run: npm run check:assets # reject original, decoded, or unreviewed binary assets
       - run: npm ci
       - run: npm run check       # biome lint + format check
-      - run: npm run typecheck    # tsc --build
+      - run: npm run build        # typecheck + production Vite bundle
       - run: npm test             # vitest: unit + integration + e2e + determinism hygiene

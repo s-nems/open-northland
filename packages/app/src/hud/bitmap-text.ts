@@ -16,8 +16,8 @@ import type { TextRun } from './text-run.js';
  * A glyph-run drawer for the decoded `.fnt` bitmap fonts — the first runtime consumer of the pipeline's
  * font outputs. A `.fnt` glyph atlas is indexed (like the settler/GUI atlases), so each glyph is drawn by a
  * {@link PalettedSprite} reading the `256 × 4` font colour LUT: same mechanism as player/GUI colours, one
- * row per colour (white/dark/dimmed/red). Layout follows the original's top-anchored model (OpenVikings
- * `CFont.cs`): blit each non-empty glyph at `pen + (offsetX, offsetY)`, advance the pen by the glyph's
+ * row per colour (white/dark/dimmed/red). Layout follows decoded glyph metrics: blit each non-empty
+ * glyph at `pen + (offsetX, offsetY)`, advance the pen by the glyph's
  * `advance`, skip empty glyphs (space/undefined). See source basis ".fnt".
  *
  * A run is a retained `Container` of one PalettedSprite per glyph; {@link BitmapTextRun.place} re-anchors it

@@ -27,15 +27,15 @@ describe('gui-atlas-map', () => {
       // exact canonical placeholder for its index — so a mis-padded `unknown_42` can't masquerade as identified.
       if (!frame.name.startsWith('unknown')) return; // an identified name — nothing to check here
       expect(frame.name).toBe(`unknown_${String(index).padStart(3, '0')}`);
-      // an unknown_NNN name may carry a 'montage' best-guess role, but a code-pinned frame is always named
-      expect(frame.source).not.toBe('openvikings');
+      // An unknown_NNN name may carry a montage best-guess role, but a manually mapped frame is named.
+      expect(frame.source).not.toBe('manual');
     });
   });
 
-  it('gives every identified (non-unknown) frame a source of openvikings or montage', () => {
+  it('gives every identified (non-unknown) frame a manual or montage source', () => {
     for (const frame of GUI_FRAMES) {
       if (UNKNOWN_NAME.test(frame.name)) continue;
-      expect(frame.source === 'openvikings' || frame.source === 'montage').toBe(true);
+      expect(frame.source === 'manual' || frame.source === 'montage').toBe(true);
     }
   });
 

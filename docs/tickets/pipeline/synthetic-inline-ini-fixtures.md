@@ -6,7 +6,7 @@ The shared `test/fixtures/ini-sources.ts` fixtures were rewritten to invented co
 `synthetic-ini-fixtures` ticket). But several **per-spec inline fixtures** — `.ini`/CIF snippets
 defined as string/`CifLine[]` constants inside the test files, not in the shared fixture — still copy
 real game record names and values verbatim, the same legal problem and the same release blocker
-(README / `docs/SOURCES.md` / `tools/asset-pipeline/AGENTS.md`: tests use synthetic fixtures, never
+(README / `docs/LEGAL.md` / `tools/asset-pipeline/AGENTS.md`: tests use synthetic fixtures, never
 real game data).
 
 ## Confirmed verbatim copies (grepped against the owned game copy 2026-07-14)
@@ -53,5 +53,5 @@ message.
 ## Source basis
 
 Legal hygiene only — no production behavior change. The `.ini`/CIF grammar shapes being preserved are
-format knowledge (OpenVikings + readable mod sources); the copied *content* (record names, stat
+format knowledge from readable mod sources and owned-file inspection; the copied *content* (record names, stat
 values, bob-lib paths, frame ids) is not.

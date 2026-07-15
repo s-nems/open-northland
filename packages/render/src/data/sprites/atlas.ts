@@ -112,8 +112,8 @@ export interface AtlasManifest {
 /**
  * CPU-side copy of an atlas's build-progress time sheet (the `'build-time'` bake's `<stem>.build.png`):
  * row-major 0–255 per-pixel thresholds over the whole sheet, sampled at atlas coordinates — a pixel
- * first appears when construction progress reaches its threshold (the original's TimeMask byte,
- * OpenVikings CBobManager `PrintBob_UsingTimeMask`). Values at transparent atlas pixels are meaningless
+ * first appears when construction progress reaches its threshold (the original's time-mask byte).
+ * Values at transparent atlas pixels are meaningless
  * (the colour sheet's alpha already gates them).
  */
 export interface BuildTimeSheet {

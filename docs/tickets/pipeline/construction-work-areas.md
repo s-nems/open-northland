@@ -13,8 +13,8 @@ region within `WORK_YARD_RADIUS_NODES = 4` of the site's `interactionCell` (flag
 `LogicWalkBlockArea`/`LogicDoorPoint` keys the pipeline already parses, same run encoding. The
 pipeline's `extractBuildingFootprints` (`tools/asset-pipeline/src/decoders/ini/buildings-gfx/structure.ts`,
 re-exported via `decoders/ini.ts`) skips this key and `BuildingFootprint` has no work-area field.
-Sanity-check the `run` semantics (+x half-cell run
-assumed, like walk-block) against OpenVikings before trusting it.
+Sanity-check the assumed `+x` half-cell run against neighboring decoded placements and the running
+original before trusting it.
 
 ## Scope
 

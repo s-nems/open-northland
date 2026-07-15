@@ -5,9 +5,9 @@
  * on a graph of HALF-CELLS — the original's `2W×2H` logic lattice. That resolution is pinned by the
  * data, not invented: the decoded map's object lanes (`lmlt`/`emla`/`lmlv`), `map.cif` StaticObjects
  * placements, and the `LogicWalkBlockArea`/`LogicBuildBlockArea` footprint offsets all address a
- * `2W×2H` grid (source basis: mapdat lane layout, OpenVikings format oracle; the verbatim half-cell
+ * `2W×2H` grid (source basis: decoded map lane dimensions and footprint coordinates; the half-cell
  * anchoring is additionally the best-aligned reading of the real maps' own `lmlt` blocking lane —
- * the measurement lives in docs/SOURCES.md). Each node carries a landscape `typeId` (from the IR's
+ * the measurement lives in docs/formats/MAPDAT.md). Each node carries a landscape `typeId` (from the IR's
  * {@link LandscapeType} table) which resolves to walkability, a fixed-point walk cost, and a
  * per-node valency (capacity).
  *

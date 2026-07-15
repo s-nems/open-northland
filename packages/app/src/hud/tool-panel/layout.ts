@@ -3,10 +3,9 @@ import { contains, type Rect } from '../geometry.js';
 /**
  * The left in-game tool panel — geometry, pinned to the original.
  *
- * Every rect below is transcribed verbatim from the OpenVikings reverse-engineering of the original
- * engine — `Source/NC2InGameGuiManager/CGuiManager.cs` `Desktop_Open()`, where the toolbar strip and each
- * button is created with an `SRectangle(left, top, width, height)` in the original's 640×480–1024×768
- * design space. We keep the hex→decimal literals in a named table (the constant *is* the geometry, so this
+ * Every rect below is the project's current mapping in the original's 640×480–1024×768 design space.
+ * The mapping should be checked against the running original before pixel-fidelity sign-off. We keep the
+ * hex→decimal literals in a named table (the constant *is* the geometry, so this
  * satisfies the no-magic-numbers rule) and anchor the strip top-left, scaling the whole thing by
  * `uiscale` (default 1.4× — see {@link DEFAULT_UI_SCALE} — with a `?uiscale=` override) so it reads on an
  * arbitrary-size canvas. The panel's internal layout stays pinned — only the uniform scale is ours
@@ -63,8 +62,8 @@ export interface ToolButtonSpec {
  * The nine tool buttons plus the speed button, in the engine's creation order (see `Desktop_Open`).
  * Each `CreateToolButton(SRectangle(x,y,w,h), gfxId, stringId, msgId, …)` maps 1:1 to a row here; the msg
  * ids (0xf3c–0xf46) are the click routes and are recorded in the commit, not needed at draw/hit-test time.
- * Ids follow the checked-in atlas-map names; the OpenVikings decompile labels gfx 0x2f `_btnHelp` (str 1)
- * where the atlas map names 47 `options`/48 `help` — a provisional-naming discrepancy tracked in source-basis.
+ * Ids follow the checked-in atlas-map names. The `options`/`help` names for frames 47–48 remain
+ * provisional and are tracked in the source-basis notes.
  */
 export const TOOL_BUTTONS: readonly ToolButtonSpec[] = [
   { id: 'buildings', rect: { x: 0, y: 0x29, w: 0x28, h: 0x23 }, gfx: 0x2a, tooltipStringId: 2 },

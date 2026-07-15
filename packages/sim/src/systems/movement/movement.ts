@@ -22,8 +22,7 @@ export const WALK_TICKS_PER_CELL = 12;
  * the on-screen pace is the same either way, by construction.
  *
  * source-basis (approximated): no readable human `movespeed` exists (`animaltypes.ini` and the
- * `logicwalkspeed` animation field are animal-only; the human default is compiled into the original binary,
- * unreconstructed by OpenVikings), so the magnitude hangs on the walk-cycle anchor above.
+ * `logicwalkspeed` animation field are animal-only), so the magnitude hangs on the walk-cycle anchor above.
  *
  * Minted with `divCeil`, not `div`: trunc(ONE/12) leaves a 4-ulp remainder, so every cell leg would cost a
  * 13th, nearly-stationary snap tick — a visible per-cell hitch. Ceil makes a leg's last step slightly short
@@ -34,7 +33,7 @@ export const MOVE_SPEED_PER_TICK: Fixed = fx.divCeil(ONE, fx.fromInt(WALK_TICKS_
 /*
  * Movement inertia — the three feel-tuning constants below shape it. A named approximation that
  * deliberately departs from the original: the original engine moves a unit at a constant ticks-per-step pace
- * with no acceleration anywhere (no accel/inertia state exists in OpenVikings or any readable data).
+ * without observed acceleration and with no acceleration parameter in readable data.
  * OpenNorthland adds a light ease-in/out for feel: a unit ramps up from rest, sheds speed through corners
  * (momentum projected onto the new heading), and brakes over the final approach instead of stopping dead.
  * The gait lives in sim state ({@link PathFollow}.`speed`), so it stays deterministic and replay-exact.

@@ -192,8 +192,8 @@ function objectsFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['ob
  * 0..250 — an observed ceiling across the corpus). Returns undefined when the map lacks the lane
  * (older/foreign saves); throws on a dims/length mismatch (a corrupt layer — caught per layer by
  * {@link mapDatToTerrain}, which then emits the grid without it). Carried through verbatim, mirroring
- * `objects.levels`; consumed by the render's elevation lift (≈1.24 native px/unit, measured — see
- * source basis "projection"; `packages/render/src/data/elevation.ts`).
+ * `objects.levels`; consumed by the render's `TILE_HALF_H/32` elevation lift
+ * (`packages/render/src/data/elevation.ts`).
  */
 function elevationFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['elevation'] {
   return perCellLaneFromMapDat(map, size, 'lmhe', 'height');

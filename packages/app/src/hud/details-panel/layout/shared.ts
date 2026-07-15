@@ -7,9 +7,8 @@ import type { Rect } from '../../geometry.js';
  * reserves and the rows a section draws cannot drift apart. Metrics are design px (multiplied by uiscale
  * at build time, so consumers only see screen-px rects).
  *
- * Source basis: the original hardcodes this window's geometry in `Game.exe` (`CSelectionHouseWindow` is
- * named-only in OpenVikings, not decompiled), so every metric is an explicit approximation measured off
- * native 1024×768 screenshots of the original (panel ≈322 px wide, headline ≈18 px) — pending human
+ * Source basis: every metric is an explicit approximation measured from native 1024×768 screenshots of
+ * the original (panel ≈322 px wide, headline ≈18 px), pending human
  * visual sign-off. The per-kind metrics live beside their layout in `./building.ts` / `./settler.ts`.
  */
 

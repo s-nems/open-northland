@@ -8,10 +8,8 @@ import { halfCellToScreen, TILE_HALF_H } from './iso.js';
  * identically.
  *
  * The map's `lmhe` lane is a per-cell height (0..~250 observed corpus-wide, `content/maps/<id>.json`
- * `elevation`). The original lifts each mesh node up by elevation/16 half-row-steps — the engine
- * tessellation's exact divisor (source basis: docs/SOURCES.md "terrain tessellation") — i.e.
- * `TILE_HALF_H/32` px per elevation unit (1.1875 px at the measured 38 px row step; supersedes an
- * earlier photogrammetric fit of ≈1.24). The ground mesh samples nodes exactly (`terrain.ts`
+ * `elevation`). Observed map alignment pins each mesh node to elevation/16 half-row-steps, or
+ * `TILE_HALF_H/32` px per elevation unit (1.1875 px at the measured 38 px row step). The ground mesh samples nodes exactly (`terrain.ts`
  * `nodeLift`); sprites/objects at fractional positions ride the bilinear sampler here — a named
  * approximation of the mesh's piecewise-triangle surface: {@link ElevationField.liftAt} is exact at
  * integer cell coordinates, {@link ElevationField.liftAtNode} exact at every same-row node (centres

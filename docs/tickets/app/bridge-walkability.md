@@ -9,8 +9,8 @@ separate, larger gap" during the far-zoom gathering work.
 
 ## Scope
 
-- Investigate-first: how the original marks bridge walkability (the decoded ground lanes vs the
-  bridge object's footprint — check OpenVikings for a walk-unblock lane before inventing one).
+- Investigate first how the original marks bridge walkability: compare decoded ground lanes and the
+  bridge object's footprint, then observe routing in the running original before inventing an override.
 - Let bridge objects clear/override water blocking along their span; feed the sim's `TerrainGraph`
   through the existing `halfCellMapFromCells` seam.
 - Reachability caches must see the join (static component ids are precomputed — re-derive after
