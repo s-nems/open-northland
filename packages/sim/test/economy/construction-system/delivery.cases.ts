@@ -97,13 +97,20 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
     builderAt(sim, 6, 0);
 
     let built = false;
+    let maxCarried = 0;
     // Generous tick budget: the builder makes three fetch trips AND hammers out every strike alone
     // (3 units × STRIKES_PER_UNIT swings, several ticks each).
     for (let i = 0; i < 1200 && !built; i++) {
       sim.step();
       built = sim.world.get(site, Building).built >= ONE;
+      for (const c of sim.world.query(Carrying)) {
+        maxCarried = Math.max(maxCarried, sim.world.get(c, Carrying).amount);
+      }
     }
     expect(built).toBe(true); // the builder hauled every material itself and hammered the site up
+    // The global one-good-per-person rule: no lift ever exceeds CARRY_CAPACITY — three units take
+    // three trips (source basis: observed original behavior — no on-foot batch exists in the game).
+    expect(maxCarried).toBe(1);
     expect(sim.world.get(warehouse, Stockpile).amounts.get(STONE) ?? 0).toBe(0); // drawn from the warehouse
     expect(sim.world.get(site, Stockpile).amounts.get(STONE) ?? 0).toBe(0); // and spent into the build
   });

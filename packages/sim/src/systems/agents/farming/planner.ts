@@ -1,5 +1,6 @@
 import {
   Building,
+  CARRY_CAPACITY,
   Crop,
   FarmTask,
   JobAssignment,
@@ -13,7 +14,7 @@ import { nodeOfPosition } from '../../../nav/halfcell.js';
 import type { NodeId } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { type FarmingSpec, farmWorkGood } from '../../economy/farming.js';
-import { buildingEnabled, carrierCarryCapacity } from '../../progression/index.js';
+import { buildingEnabled } from '../../progression/index.js';
 import { atomicDuration } from '../../readviews/animations.js';
 import { manhattan } from '../../spatial.js';
 import { buildingWorkerJobs } from '../../stores/index.js';
@@ -208,7 +209,7 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
         settler,
         sheaf,
         spec.goodType,
-        carrierCarryCapacity(world, ctx, settler.tribe),
+        CARRY_CAPACITY,
       ),
     );
     return true;

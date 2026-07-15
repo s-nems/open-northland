@@ -1,10 +1,9 @@
-import { CurrentAtomic, MoveGoal } from '../../components/index.js';
+import { CARRY_CAPACITY, CurrentAtomic, MoveGoal } from '../../components/index.js';
 import type { AtomicEffect } from '../../core/atomic-effect.js';
 import { fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { carrierCarryCapacity } from '../progression/index.js';
 import { atomicDuration } from '../readviews/animations.js';
 import type { PlannerContext } from './planner-context.js';
 import { interactionCell } from './targets/index.js';
@@ -131,14 +130,13 @@ export function startPickup(
 }
 
 /**
- * Walk to a store/pile's interaction cell and lift a full carrier batch of `goodType` from it — the shared
- * tail of every haul rung (trunk collection, porter ferrying, the carrier fallback). The batch is the tribe's
- * carry capacity (one unit on foot, a vehicle's `stockSlots` when unlocked), capped by `pickupFromStore` to
- * what the source actually holds.
+ * Walk to a store/pile's interaction cell and lift ONE unit of `goodType` from it — the shared tail of
+ * every haul rung (trunk collection, porter ferrying, the carrier fallback). The batch is the global
+ * {@link CARRY_CAPACITY} (a settler carries a single good unit; hauling more takes more trips).
  */
 export function walkPickupBatch(plan: PlannerContext, from: Entity, goodType: number): void {
   const { world, ctx, terrain, entity: e, here } = plan;
   atOrWalk(world, e, here, interactionCell(world, ctx, terrain, from, here), () =>
-    startPickup(world, ctx, e, plan, from, goodType, carrierCarryCapacity(world, ctx, plan.tribe)),
+    startPickup(world, ctx, e, plan, from, goodType, CARRY_CAPACITY),
   );
 }

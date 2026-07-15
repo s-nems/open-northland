@@ -27,7 +27,7 @@ export function shipVehicles(content: ContentSet): VehicleType[] {
 
 /**
  * The largest ship cargo capacity in content — the maximum `stockSlots` over {@link shipVehicles} (`ship
- * small` 50, `ship big` 200), or 0 when no ship exists. Unlike `carrierCarryCapacity` this is the static
+ * small` 50, `ship big` 200), or 0 when no ship exists. Unlike the tribe unlock gates this is the static
  * content capacity: it does not gate on a tribe's tech graph, since the unlock rides on the later boat-entity
  * slice.
  *

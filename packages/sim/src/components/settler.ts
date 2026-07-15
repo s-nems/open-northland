@@ -79,6 +79,12 @@ export const CurrentAtomic = defineComponent<{
 /** A settler carrying goods (carriers physically haul; goods never teleport to a global bank). */
 export const Carrying = defineComponent<{ goodType: number; amount: number }>('Carrying');
 
+/** The most units a settler PICKS UP in one lift — one, globally: a person carries a single good unit
+ *  at a time (source basis: observed original behavior; no on-foot batch exists anywhere in the game).
+ *  Every pickup batch caps here; hauling more takes more trips. A real cart/vehicle slice would model
+ *  the vehicle as an entity with its own hold, never as a bigger personal carry. */
+export const CARRY_CAPACITY = 1;
+
 /**
  * A builder's construction-site crew membership: the site this settler is raising. Stamped by the builder
  * drive whenever it engages a site (hammer / fetch / wait), so membership survives waiting for material, a
