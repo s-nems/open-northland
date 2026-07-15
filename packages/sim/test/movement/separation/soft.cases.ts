@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   Building,
   MoveGoal,
@@ -10,7 +10,6 @@ import {
 } from '../../../src/components/index.js';
 import { fx } from '../../../src/core/fixed.js';
 import { positionOfNode } from '../../../src/index.js';
-import { clearComponentStores } from '../../fixtures/stores.js';
 import {
   ANY_BUILDING_TYPE,
   nodeOf,
@@ -25,8 +24,6 @@ import {
   walkStraightTo,
   wallAt,
 } from './support.js';
-
-beforeEach(clearComponentStores);
 
 describe('unit body collision — soft and civilian traffic', () => {
   it('civilians never collide: a worker walks straight through an enemy line, untouched', () => {

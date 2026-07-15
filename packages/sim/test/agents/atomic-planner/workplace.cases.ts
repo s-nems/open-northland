@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   Building,
   CurrentAtomic,
@@ -12,10 +12,7 @@ import type { Entity } from '../../../src/ecs/world.js';
 import { fx, ONE, Simulation } from '../../../src/index.js';
 import { aiSystem } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
-import { clearComponentStores } from '../../fixtures/stores.js';
 import { anchorCell, ctxOf, grassMap, VIKING, woodAt, woodcutterAt } from './support.js';
-
-beforeEach(clearComponentStores);
 
 describe('atomicPlanner — walk-to-workplace drive (a BOUND operator reaches ITS station)', () => {
   const CARPENTER = 2; // the sawmill's worker job; harvests nothing (empty allowedAtomics)

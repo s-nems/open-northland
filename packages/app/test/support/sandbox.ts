@@ -9,8 +9,8 @@ export function ctxOf(sim: Simulation): UnitPanelModelContext {
   return { buildings: sim.content.buildings, goods: sim.content.goods, jobs: sim.content.jobs };
 }
 
-/** {@link ctxOf} for a fresh `sandbox` scene sim. A fresh sim per call keeps each test isolated (the scene
- *  build resets the shared component stores; see {@link createSceneSim}). */
+/** {@link ctxOf} for a fresh `sandbox` scene sim. A fresh sim per call keeps each test isolated (each sim
+ *  owns its component stores; see {@link createSceneSim}). */
 export function sandboxCtx(): UnitPanelModelContext {
   return ctxOf(createSceneSim(sandboxScene));
 }

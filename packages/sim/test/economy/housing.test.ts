@@ -1,7 +1,6 @@
 import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { Building, Settler } from '../../src/components/index.js';
-import { clearComponentStores } from '../../src/harness/stores.js';
 import { fx, ONE, Simulation } from '../../src/index.js';
 import { housingCapacity, tribePopulation } from '../../src/systems/index.js';
 import { ctxOf } from '../fixtures/context.js';
@@ -34,10 +33,6 @@ function housingContent(): ContentSet {
     ],
   });
 }
-
-beforeEach(() => {
-  clearComponentStores();
-});
 
 function placeBuilding(sim: Simulation, buildingType: number, tribe: number, built = ONE): void {
   const e = sim.world.create();

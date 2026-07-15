@@ -1,7 +1,6 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { Building, CurrentAtomic, MoveGoal, Position, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { clearComponentStores } from '../../src/harness/stores.js';
 import { type Fixed, fx, ONE, Simulation } from '../../src/index.js';
 import { aiSystem, atomicSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
@@ -34,8 +33,6 @@ const PRAY_ATOMIC = 12;
 const DEVOUT: Fixed = justAbove(NEED_THRESHOLD);
 // Comfortably below the threshold — a piety-satisfied settler ignores the pray drive and works.
 const PIOUS: Fixed = fx.div(ONE, fx.fromInt(2));
-
-beforeEach(clearComponentStores);
 
 function settlerAt(
   sim: Simulation,
@@ -172,7 +169,6 @@ describe('pray drive — closing the rise→pray→reset loop through the real s
 
   it('is byte-identical across two same-seed runs (determinism)', () => {
     const run = (): string => {
-      clearComponentStores();
       const sim = new Simulation({ seed: 5, content: testContent(), map: grassMap(4, 1) });
       settlerAt(sim, 0, 0, NEED_THRESHOLD);
       templeAt(sim, 3, 0);

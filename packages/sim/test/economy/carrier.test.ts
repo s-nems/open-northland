@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   Building,
   Carrying,
@@ -14,7 +14,6 @@ import { cellAnchorNode, fx, ONE, Simulation } from '../../src/index.js';
 import { aiSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
-import { clearComponentStores } from '../fixtures/stores.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
@@ -41,7 +40,6 @@ const VIKING = 1;
 // The WHOLE component namespace, not a hand-picked subset — the JobSystem's report-in pass now
 // stamps JobAssignment in the end-to-end runs, and a missed store leaks across the in-test reruns
 // (the sim AGENTS.md's most-rediscovered trap).
-beforeEach(clearComponentStores);
 
 /** A `width`×`height` CELL strip of grass, upsampled to the half-cell navigation lattice. */
 
@@ -251,7 +249,6 @@ describe('carrier — end-to-end haul through the real schedule', () => {
 describe('carrier — determinism', () => {
   it('two same-seed runs of the haul reach the same state hash', () => {
     const run = (): string => {
-      clearComponentStores();
       const sim = new Simulation({ seed: 13, content: testContent(), map: grassMap(4, 1) });
       carrierAt(sim, 0, 0);
       sawmillAt(sim, 1, 0, 3);

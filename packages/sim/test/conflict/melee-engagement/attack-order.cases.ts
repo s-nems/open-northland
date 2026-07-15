@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   AttackOrder,
   CurrentAtomic,
@@ -14,10 +14,7 @@ import { fx, Simulation } from '../../../src/index.js';
 import { combatSystem, SIGHT_RADIUS_NODES } from '../../../src/systems/index.js';
 import { attackUnit } from '../../../src/systems/orders/index.js';
 import { testContent } from '../../fixtures/content.js';
-import { clearComponentStores } from '../../fixtures/stores.js';
 import { ctxOf, fighterAt, grassMap, P0, P1, VIKING, WOODCUTTER } from './support.js';
-
-beforeEach(clearComponentStores);
 
 describe('attackUnit — the explicit attack order', () => {
   it('stamps an AttackOrder + Engagement and chases the target REGARDLESS of sight radius', () => {

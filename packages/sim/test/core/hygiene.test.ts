@@ -9,7 +9,6 @@ import { describe, expect, it } from 'vitest';
  * turns "the agent read the rule" into "the build fails". Scans packages/sim/src only (not tests).
  */
 const SIM_SRC = fileURLToPath(new URL('../../src', import.meta.url));
-const SIM_TEST = fileURLToPath(new URL('..', import.meta.url));
 
 const FORBIDDEN: Array<{ pattern: RegExp; why: string; allowFile?: RegExp }> = [
   { pattern: /\bMath\.random\b/, why: 'use world.rng (seeded) — Math.random is nondeterministic' },
@@ -66,20 +65,6 @@ describe('determinism hygiene', () => {
           if (pattern.test(line)) violations.push(`${file}:${i + 1}  ${line.trim()}  -> ${why}`);
         }
       });
-    }
-    expect(violations, violations.join('\n')).toEqual([]);
-  });
-
-  it('tests reset the complete component namespace through the shared helper', () => {
-    const thisFile = fileURLToPath(import.meta.url);
-    const violations: string[] = [];
-    for (const file of tsFiles(SIM_TEST)) {
-      if (file === thisFile) continue;
-      const source = readFileSync(file, 'utf8');
-      if (/\.store\.clear\(\)/.test(source)) violations.push(`${file}: clears a hand-picked store`);
-      if (/function clearComponentStores\s*\(/.test(source)) {
-        violations.push(`${file}: duplicates the shared clearComponentStores helper`);
-      }
     }
     expect(violations, violations.join('\n')).toEqual([]);
   });

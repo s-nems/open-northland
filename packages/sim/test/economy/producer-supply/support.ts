@@ -4,11 +4,9 @@ import { grassCellMap as grassMap } from '../../fixtures/terrain.js';
 
 export { grassMap };
 
-import { beforeEach } from 'vitest';
 import { Building, JobAssignment, Position, Settler, Stockpile } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { cellAnchorNode, fx, ONE, type Simulation } from '../../../src/index.js';
-import { clearComponentStores } from '../../fixtures/stores.js';
 
 /**
  * The PRODUCER SELF-SERVICE + PORTER drives (`systems/agents/economy`): a worker
@@ -38,11 +36,6 @@ export const FARM = 5;
 export const GRANARY = 6; // a passive wheat store (the warehouse a farm's wheat is hauled OUT to)
 export const VIKING = 1;
 export const PICKUP_ATOMIC = 22;
-
-// Component stores are module-level singletons — clear the WHOLE namespace between sims (AGENTS.md):
-// the end-to-end runs here mint components (Resting, FarmTask, Crop, …) a hand-picked list misses,
-// and their leftovers would leak onto reused entity ids in later tests in this file.
-beforeEach(clearComponentStores);
 
 /** A `width`×`height` CELL strip of grass, upsampled to the half-cell navigation lattice. */
 

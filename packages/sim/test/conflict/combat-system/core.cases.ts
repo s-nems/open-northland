@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { CurrentAtomic, MoveGoal, Position, Settler } from '../../../src/components/index.js';
-import { clearComponentStores } from '../../../src/harness/stores.js';
 import { fx, Simulation } from '../../../src/index.js';
 import { combatSystem } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
@@ -173,7 +172,6 @@ describe('combatSystem — end-to-end through the real schedule', () => {
 
   it('two same-seed runs of a skirmish reach the same state hash (determinism)', () => {
     const run = (): string => {
-      clearComponentStores();
       const sim = new Simulation({ seed: 7, content: testContent(), map: grassMap(5, 1) });
       fighterAt(sim, 0, 0, VIKING, WOODCUTTER, 1000);
       fighterAt(sim, 1, 0, FRANK, 2, 200);

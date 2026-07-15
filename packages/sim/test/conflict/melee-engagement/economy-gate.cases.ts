@@ -1,12 +1,9 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { CurrentAtomic, Engagement, Position, Resource } from '../../../src/components/index.js';
 import { fx, Simulation } from '../../../src/index.js';
 import { aiSystem } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
-import { clearComponentStores } from '../../fixtures/stores.js';
 import { ctxOf, fighterAt, grassMap, HARVEST_ATOMIC, P0, VIKING, WOOD, WOODCUTTER } from './support.js';
-
-beforeEach(clearComponentStores);
 
 describe('engagement gates the economy (the PlayerOrder-skip pattern)', () => {
   /** A harvestable wood node (a separate entity) at (x,y). */

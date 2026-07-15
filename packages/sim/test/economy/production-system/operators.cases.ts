@@ -1,13 +1,10 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { Building, Position, Production, Settler, Stockpile } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, ONE, Simulation } from '../../../src/index.js';
 import { productionSystem } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
-import { clearComponentStores } from '../../fixtures/stores.js';
 import { CARPENTER, CYCLE_TICKS, ctxOf, PLANK, sawmill, spawnSettler, WOOD, WOODCUTTER } from './support.js';
-
-beforeEach(clearComponentStores);
 
 describe('productionSystem — worker-presence gate', () => {
   it('does not start a cycle on an unstaffed workplace (no worker present)', () => {

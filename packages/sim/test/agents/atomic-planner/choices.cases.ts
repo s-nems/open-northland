@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   Carrying,
   CurrentAtomic,
@@ -10,7 +10,6 @@ import {
 import { fx, Simulation } from '../../../src/index.js';
 import { aiSystem } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
-import { clearComponentStores } from '../../fixtures/stores.js';
 import {
   anchorCell,
   ctxOf,
@@ -22,8 +21,6 @@ import {
   woodAt,
   woodcutterAt,
 } from './support.js';
-
-beforeEach(clearComponentStores);
 
 describe('atomicPlanner — choosing the next atomic', () => {
   it('sets a MoveGoal to the nearest harvestable resource when empty-handed and not on one', () => {

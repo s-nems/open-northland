@@ -1,8 +1,7 @@
 import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { Age, Building, Position, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { clearComponentStores } from '../../src/harness/stores.js';
 import { fx, ONE, Simulation } from '../../src/index.js';
 import {
   BABY_FEMALE,
@@ -33,10 +32,6 @@ function growthContent(): ContentSet {
     buildings: [{ typeId: 2, id: 'home_small', kind: 'home', homeSize: 3 }],
   });
 }
-
-beforeEach(() => {
-  clearComponentStores();
-});
 
 /** Add a settler in a given non-working age class WITH an Age component at `ticks`. */
 function bornSettler(sim: Simulation, jobType: number, ticks: number): Entity {
@@ -124,7 +119,6 @@ describe('GrowthSystem — non-working settlers mature into workers', () => {
 
   it('is deterministic: two runs from the same seed hash-equal across the full maturation', () => {
     const hashAfter = (): string => {
-      clearComponentStores();
       const sim = new Simulation({ seed: 7, content: growthContent() });
       bornSettler(sim, BABY_FEMALE, 0);
       bornSettler(sim, BABY_MALE, 0);

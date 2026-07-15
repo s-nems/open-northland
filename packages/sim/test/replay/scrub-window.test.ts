@@ -1,5 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
-import { clearComponentStores } from '../../src/harness/stores.js';
+import { describe, expect, it } from 'vitest';
 import {
   type Command,
   diffSnapshots,
@@ -19,10 +18,6 @@ import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
  * window of plain snapshots `[fromTick, toTick]` from one command log, ready to feed `traceEntity`
  * (the whole window) and `diffSnapshots` (adjacent pairs). Its oracle is byte-equality with a
  * per-tick `replay()` — the same determinism guarantee `localizeDivergence` leans on.
- *
- * Component stores are module-level singletons SHARED across every `Simulation` (AGENTS.md
- * [56e8d3e]) — so each recording phase and each manual replay clears the stores first, exactly as
- * localize-divergence.test.ts does, and `scrubWindow` supersedes the stores like `replay`.
  */
 
 const HEADQUARTERS = 1;
@@ -30,10 +25,6 @@ const SAWMILL = 2;
 const WOODCUTTER = 1;
 const CARPENTER = 2;
 const VIKING = 1;
-
-/** Clear every component store (shared singletons) so each sim phase starts clean. */
-
-beforeEach(clearComponentStores);
 
 /** Drive a fresh sim through a scripted schedule, returning its replay inputs (a plain log). */
 function recordRun(
@@ -47,7 +38,7 @@ function recordRun(
     for (const cmd of schedule.get(tick) ?? []) sim.enqueue(cmd);
     sim.step();
   }
-  // The log is a plain value (LoggedCommand[]) — safe to keep after the stores are cleared.
+  // The log is a plain value (LoggedCommand[]) — the replay inputs the tests reconstruct from.
   const log: LoggedCommand[] = [...sim.commands.log];
   return { content: testContent(), seed, map, log };
 }
@@ -61,14 +52,12 @@ function sampleRun(): { run: RunReplay; map: TerrainMap } {
     [5, [{ kind: 'placeBuilding', buildingType: SAWMILL, x: 2, y: 0, tribe: VIKING }]],
     [6, [{ kind: 'spawnSettler', jobType: CARPENTER, x: 3, y: 0, tribe: VIKING }]],
   ]);
-  clearComponentStores();
   return { run: recordRun(7, 20, schedule, map), map };
 }
 
 describe('scrubWindow', () => {
   it('returns a contiguous ascending window with one plain snapshot per tick', () => {
     const { run } = sampleRun();
-    clearComponentStores();
     const window = scrubWindow(run, 3, 8);
 
     // Inclusive on both ends: ticks 3,4,5,6,7,8.
@@ -83,13 +72,11 @@ describe('scrubWindow', () => {
   it('each scrubbed tick is byte-identical to a per-tick replay() (the composition is faithful)', () => {
     const { run } = sampleRun();
 
-    clearComponentStores();
     const window = scrubWindow(run, 4, 7);
 
     // Hand-reconstruct each tick independently via replay() and compare — the single forward pass must
     // produce exactly what N separate replays would, byte-for-byte.
     for (const snap of window) {
-      clearComponentStores();
       const expected = replay({ ...run, untilTick: snap.tick }).snapshot();
       expect(JSON.stringify(snap)).toBe(JSON.stringify(expected));
     }
@@ -97,7 +84,6 @@ describe('scrubWindow', () => {
 
   it('feeds traceEntity end-to-end: the tick-6 carpenter shows absent → SPAWNED@6', () => {
     const { run } = sampleRun();
-    clearComponentStores();
     const window = scrubWindow(run, 4, 8);
 
     // The carpenter is spawned at tick 6 — find the settler entity present at 6 but absent at 5
@@ -120,7 +106,6 @@ describe('scrubWindow', () => {
 
   it('adjacent pairs feed diffSnapshots: the tick-5→6 step adds exactly the carpenter', () => {
     const { run } = sampleRun();
-    clearComponentStores();
     const window = scrubWindow(run, 5, 6);
     expect(window).toHaveLength(2);
 
@@ -134,7 +119,6 @@ describe('scrubWindow', () => {
 
   it('clamps fromTick to 1 (tick 0 is the un-snapshotted initial state)', () => {
     const { run } = sampleRun();
-    clearComponentStores();
     const window = scrubWindow(run, 0, 3);
     // from 0 means "from the start" — the first reconstructable tick is 1, not 0.
     expect(window.map((s) => s.tick)).toEqual([1, 2, 3]);
@@ -142,22 +126,18 @@ describe('scrubWindow', () => {
 
   it('yields an empty window when toTick is below the (clamped) fromTick', () => {
     const { run } = sampleRun();
-    clearComponentStores();
     expect(scrubWindow(run, 5, 4)).toEqual([]);
     // from 0 clamps to 1, so to 0 is below it ⇒ empty (no tick 0 snapshot exists).
-    clearComponentStores();
     expect(scrubWindow(run, 0, 0)).toEqual([]);
   });
 
   it('steps deterministically past the last logged command (the tail), like replay()', () => {
     const { run } = sampleRun();
     // The last command is at tick 6; a window past it keeps stepping deterministically.
-    clearComponentStores();
     const window = scrubWindow(run, 24, 26);
     expect(window.map((s) => s.tick)).toEqual([24, 25, 26]);
     // And each tail tick still equals an independent replay to it.
     for (const snap of window) {
-      clearComponentStores();
       const expected = replay({ ...run, untilTick: snap.tick }).snapshot();
       expect(JSON.stringify(snap)).toBe(JSON.stringify(expected));
     }
@@ -165,7 +145,6 @@ describe('scrubWindow', () => {
 
   it('throws on a negative tick target (a nonsense caller bug, like replay)', () => {
     const { run } = sampleRun();
-    clearComponentStores();
     expect(() => scrubWindow(run, -1, 5)).toThrow(/negative/);
     expect(() => scrubWindow(run, 1, -5)).toThrow(/negative/);
   });

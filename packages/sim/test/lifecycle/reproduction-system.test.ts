@@ -1,5 +1,5 @@
 import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { Building, Position, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, ONE, populationWithinHousing, Simulation } from '../../src/index.js';
@@ -11,7 +11,6 @@ import {
   tribePopulation,
 } from '../../src/systems/index.js';
 import { ctxOf } from '../fixtures/context.js';
-import { clearComponentStores } from '../fixtures/stores.js';
 
 /**
  * ReproductionSystem (birth half) — a tribe grows one settler per tick while its population is below
@@ -37,10 +36,6 @@ function reproContent(): ContentSet {
     ],
   });
 }
-
-beforeEach(() => {
-  clearComponentStores();
-});
 
 /** Place a built home (or any building type) for `tribe` at (x, y). */
 function placeBuilding(sim: Simulation, buildingType: number, tribe: number, x = 4, y = 4): Entity {

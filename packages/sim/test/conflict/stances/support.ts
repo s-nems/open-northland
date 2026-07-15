@@ -4,12 +4,10 @@ import { grassCellMap as grassMap } from '../../fixtures/terrain.js';
 
 export { grassMap };
 
-import { beforeEach } from 'vitest';
 import { Health, Owner, Position, Settler, Stance } from '../../../src/components/index.js';
 import { type Fixed, fx } from '../../../src/core/fixed.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { cellAnchorNode, positionOfNode, type Simulation } from '../../../src/index.js';
-import { clearComponentStores } from '../../fixtures/stores.js';
 
 /**
  * The four **military stances** (`MILITARY_MODE`) as a per-unit auto-engagement mode, plus the civilian
@@ -27,8 +25,6 @@ export const VIKING = 1;
 export const WOODCUTTER = 1; // has the axe weapon; a civilian job (default FLEE)
 export const P0 = 0;
 export const P1 = 1;
-
-beforeEach(clearComponentStores);
 
 export const WOOD = 1; // the fixture's wood good (harvest atomic 24), what a woodcutter (job 1) gathers
 export const HARVEST_ATOMIC = 24;

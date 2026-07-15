@@ -34,7 +34,6 @@ export {
   type ScenarioResult,
   scenario,
 } from './harness/scenario.js';
-export { clearComponentStores } from './harness/stores.js';
 export {
   dumpEntity,
   type EntityDump,

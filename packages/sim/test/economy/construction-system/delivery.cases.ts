@@ -15,7 +15,6 @@ import { housingCapacity } from '../../../src/systems/index.js';
 import {
   builderAt,
   builtHomeAt,
-  clearComponentStores,
   constructionContent,
   ctxOf,
   grassMap,
@@ -236,7 +235,6 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
 
   it('is deterministic — two same-seed delivery+build runs reach the same finished state hash', () => {
     const run = (): string => {
-      clearComponentStores();
       const sim = new Simulation({ seed: 9, content: constructionContent(), map: grassMap(6, 1) });
       siteAt(sim, HOUSE, 3, 0);
       loadedCarrierAt(sim, 0, 0, STONE, 1);
@@ -289,7 +287,6 @@ describe('constructionSystem — upgrade-material DELIVERY dispatch (carrier pat
 
   it('is deterministic — two same-seed upgrade-delivery runs reach the same state hash', () => {
     const run = (): string => {
-      clearComponentStores();
       const sim = new Simulation({ seed: 9, content: levelChainWithCarrier(), map: grassMap(6, 1) });
       builtHomeAt(sim, HOME_L0, 0, 3, 0);
       loadedCarrierAt(sim, 0, 0, STONE, 1);

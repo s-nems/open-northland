@@ -1,8 +1,7 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { Felling, Position, Resource } from '../../src/components/index.js';
 import { CORE_INVARIANTS, checkInvariants, fx, Simulation } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
-import { clearComponentStores } from '../fixtures/stores.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
@@ -56,11 +55,6 @@ const SAWMILL = 2;
 const VIKING = 1;
 const HARVEST_ATOMIC = 24;
 
-// Component stores are module-level singletons — clear every store this slice touches so the run is
-// scoped to this test regardless of execution order (see atomic-planner.test.ts).
-
-beforeEach(clearComponentStores);
-
 interface GoldenRun {
   readonly hash: string;
   /** The atomic-action trace as compact `"tick:entity:atomicId"` strings — the behavioral fingerprint. */
@@ -75,7 +69,6 @@ interface GoldenRun {
  * of `goodProduced` events, and the first invariant violation (checked every tick).
  */
 function runSlice(seed: number, ticks: number): GoldenRun {
-  clearComponentStores();
   const sim = new Simulation({ seed, content: testContent(), map: grassMap(6, 1) });
 
   // Placement via the command log (CommandSystem applies these on tick 1) — the seam the UI uses.

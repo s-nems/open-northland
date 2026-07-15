@@ -1,7 +1,6 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { CurrentAtomic, Health, Position } from '../../src/components/index.js';
 import { eventAt } from '../../src/core/events.js';
-import { clearComponentStores } from '../../src/harness/stores.js';
 import { fx, Simulation } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 import { grassCellMap } from '../fixtures/terrain.js';
@@ -12,10 +11,6 @@ import { grassCellMap } from '../fixtures/terrain.js';
  * draws nothing" — the render layer just consumes the event. The ranged twin (`projectileHit`) is covered
  * by the projectile tests; here we pin the melee `combatHit` and its miss guard.
  */
-
-beforeEach(() => {
-  clearComponentStores();
-});
 
 /** A 1-tick melee attack atomic (id 81) — AtomicSystem lands the blow the first tick. */
 function attack(

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   Building,
   CurrentAtomic,
@@ -13,7 +13,6 @@ import {
 } from '../../src/components/index.js';
 import { eventAt } from '../../src/core/events.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { clearComponentStores } from '../../src/harness/stores.js';
 import { fx, ONE, Simulation } from '../../src/index.js';
 import { cleanupSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
@@ -25,10 +24,6 @@ import { ctxOf } from '../fixtures/context.js';
  * render/audio. Pairs with the AtomicSystem's `attack` effect (which drains hitpoints): attack drives
  * the pool to 0, cleanup reaps it.
  */
-
-beforeEach(() => {
-  clearComponentStores();
-});
 
 describe('cleanupSystem — reaping 0-HP combatants', () => {
   it('destroys an entity whose hitpoints reached 0 and emits settlerDied', () => {
@@ -180,7 +175,6 @@ describe('cleanupSystem — end-to-end with attack', () => {
 describe('cleanupSystem — determinism', () => {
   it('two same-seed runs that kill the same entities reach the same state hash', () => {
     const run = (): string => {
-      clearComponentStores();
       const sim = new Simulation({ seed: 9, content: testContent() });
       const survivor = sim.world.create();
       const doomed = sim.world.create();

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   Building,
   Carrying,
@@ -15,7 +15,6 @@ import { CORE_INVARIANTS, cellAnchorNode, checkInvariants, fx, Simulation } from
 import { atomicSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
-import { clearComponentStores } from '../fixtures/stores.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
@@ -45,8 +44,6 @@ const HARVEST_MUSHROOM = 32;
 const STONE_GATHERING = testContent().goods.find((g) => g.id === 'stone')?.gathering;
 const DEPOSIT_SIZE = STONE_GATHERING?.depositSize ?? 0;
 const DEPOSIT_LEVELS = STONE_GATHERING?.depositLevels ?? 0;
-
-beforeEach(clearComponentStores);
 
 /** A `width`×`height` CELL strip of grass, upsampled to the half-cell navigation lattice. */
 

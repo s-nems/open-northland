@@ -1,7 +1,6 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { Position } from '../../src/components/index.js';
 import { type Entity, World } from '../../src/ecs/world.js';
-import { clearComponentStores } from '../../src/harness/stores.js';
 import { positionOfNode } from '../../src/index.js';
 import { NodeBuckets } from '../../src/systems/spatial.js';
 
@@ -30,10 +29,6 @@ function place(coords: ReadonlyArray<{ x: number; y: number }>): { world: World;
 }
 
 const ALL = (): boolean => true;
-
-beforeEach(() => {
-  clearComponentStores();
-});
 
 describe('NodeBuckets.nearest — grid ring search', () => {
   it('finds the nearest entity by integer Manhattan distance', () => {

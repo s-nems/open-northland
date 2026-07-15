@@ -1,8 +1,7 @@
 import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { CurrentAtomic, Health, Position, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { clearComponentStores } from '../../src/harness/stores.js';
 import {
   type Fixed,
   fx,
@@ -151,10 +150,6 @@ function fighterAtPosition(
   return e;
 }
 
-beforeEach(() => {
-  clearComponentStores();
-});
-
 describe('two-civ combat scenario (two playable tribes, asymmetric bindings, end-to-end)', () => {
   it('recognizes BOTH tribes as playable civilizations by their tech graph alone', () => {
     const content = twoCivContent();
@@ -225,7 +220,6 @@ describe('two-civ combat scenario (two playable tribes, asymmetric bindings, end
 
   it('is deterministic: two same-seed runs of the skirmish reach the same state hash', () => {
     const run = (): string => {
-      clearComponentStores();
       const content = twoCivContent();
       const sim = new Simulation({ seed: 7, content, map: grass(5, 1) });
       fighterAt(sim, 0, 0, VIKING, 500);

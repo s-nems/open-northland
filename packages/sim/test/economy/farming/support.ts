@@ -4,11 +4,9 @@ import { grassCellMap as grassMap } from '../../fixtures/terrain.js';
 
 export { grassMap };
 
-import { beforeEach } from 'vitest';
 import * as components from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, halfCellMapFromCells, ONE, type Simulation, type TerrainMap } from '../../../src/index.js';
-import { clearComponentStores } from '../../fixtures/stores.js';
 
 export const { Building, Carrying, Crop, GroundDrop, JobAssignment, Position, Resource, Settler, Stockpile } =
   components;
@@ -43,9 +41,6 @@ const BARREN = 2;
 const GRANARY = 6;
 /** The fixture farm's wheat-slot ceiling (`stock` capacity 25 — keep in sync with fixtures/content.ts). */
 export const FARM_WHEAT_CAP = 25;
-
-// Component stores are module-level singletons — clear the WHOLE namespace between sims (AGENTS.md).
-beforeEach(clearComponentStores);
 
 /** A `width`×`height` CELL square of grass, upsampled to the half-cell navigation lattice. */
 

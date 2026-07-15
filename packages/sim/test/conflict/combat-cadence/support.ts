@@ -1,6 +1,5 @@
 export { ctxOf } from '../../fixtures/context.js';
 
-import { beforeEach } from 'vitest';
 import { Armor, CurrentAtomic, Health, Position, Settler } from '../../../src/components/index.js';
 import type { AtomicEffect } from '../../../src/core/atomic-effect.js';
 import type { Entity } from '../../../src/ecs/world.js';
@@ -12,7 +11,6 @@ import {
   type Simulation,
   type TerrainMap,
 } from '../../../src/index.js';
-import { clearComponentStores } from '../../fixtures/stores.js';
 
 import { ATTACK_ATOMIC } from './content.js';
 
@@ -88,5 +86,3 @@ export function startSwing(
     targetTile: null,
   });
 }
-
-beforeEach(clearComponentStores);

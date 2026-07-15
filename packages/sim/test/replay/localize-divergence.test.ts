@@ -1,5 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
-import { clearComponentStores } from '../../src/harness/stores.js';
+import { describe, expect, it } from 'vitest';
 import {
   type Command,
   diffSnapshots,
@@ -18,10 +17,6 @@ import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
  * Tests for `localizeDivergence()` — the headless composition that wires the four replay-inspector
  * primitives (`HashTrace.divergedFrom` → `replay` ×2 → `diffSnapshots`) into the inspector's
  * documented "hash diverged at tick N → jump there → inspect what differs" workflow.
- *
- * Component stores are module-level singletons SHARED across every `Simulation` (AGENTS.md
- * [56e8d3e]) — so each recording phase and each manual replay clears the stores first, exactly as
- * replay.test.ts does, and `localizeDivergence` clears between its own two internal replays.
  */
 
 const HEADQUARTERS = 1;
@@ -29,10 +24,6 @@ const SAWMILL = 2;
 const WOODCUTTER = 1;
 const CARPENTER = 2;
 const VIKING = 1;
-
-/** Clear every component store (shared singletons) so each sim phase starts clean. */
-
-beforeEach(clearComponentStores);
 
 /** Drive a fresh sim through a scripted schedule, recording its log + a per-tick HashTrace (with snapshots). */
 function recordRun(
@@ -48,7 +39,7 @@ function recordRun(
     sim.step();
     trace.record(sim.tick, sim.hashState(), sim.snapshot());
   }
-  // The log is a plain value (LoggedCommand[]) — safe to keep after the stores are cleared.
+  // The log is a plain value (LoggedCommand[]) — the replay inputs the tests reconstruct from.
   const log: LoggedCommand[] = [...sim.commands.log];
   return { run: { content: testContent(), seed, map, log }, trace };
 }
@@ -66,12 +57,9 @@ describe('localizeDivergence', () => {
       [7, [{ kind: 'spawnSettler', jobType: CARPENTER, x: 4, y: 0, tribe: VIKING }]],
     ]);
 
-    clearComponentStores();
     const a = recordRun(7, 20, base, map);
-    clearComponentStores();
     const b = recordRun(7, 20, variant, map);
 
-    clearComponentStores();
     const report = localizeDivergence(a.run, a.trace, b.run, b.trace);
 
     expect(report).not.toBeNull();
@@ -102,24 +90,19 @@ describe('localizeDivergence', () => {
       [5, [{ kind: 'placeBuilding', buildingType: SAWMILL, x: 2, y: 0, tribe: VIKING }]],
     ]);
 
-    clearComponentStores();
     const a = recordRun(2, 15, base, map);
-    clearComponentStores();
     const b = recordRun(2, 15, variant, map);
 
-    // Hand-compute the expected diff: replay BOTH runs to the split tick (serially, clearing between),
-    // capture each plain snapshot, diff them. This must equal what localizeDivergence produced.
+    // Hand-compute the expected diff: replay BOTH runs to the split tick, capture each plain
+    // snapshot, diff them. This must equal what localizeDivergence produced.
     const splitTick = a.trace.divergedFrom(b.trace)?.tick;
     expect(splitTick).toBe(5);
     if (splitTick === undefined) return;
 
-    clearComponentStores();
     const snapA = replay({ ...a.run, untilTick: splitTick }).snapshot();
-    clearComponentStores();
     const snapB = replay({ ...b.run, untilTick: splitTick }).snapshot();
     const expectedDiff = diffSnapshots(snapA, snapB);
 
-    clearComponentStores();
     const report = localizeDivergence(a.run, a.trace, b.run, b.trace);
     expect(report).not.toBeNull();
     // Byte-identical: the composition just wires divergedFrom → replay×2 → diffSnapshots.
@@ -133,12 +116,9 @@ describe('localizeDivergence', () => {
       [2, [{ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING }]],
     ]);
 
-    clearComponentStores();
     const a = recordRun(3, 12, schedule, map);
-    clearComponentStores();
     const b = recordRun(3, 12, schedule, map); // same seed + same schedule ⇒ identical run
 
-    clearComponentStores();
     expect(localizeDivergence(a.run, a.trace, b.run, b.trace)).toBeNull();
   });
 });

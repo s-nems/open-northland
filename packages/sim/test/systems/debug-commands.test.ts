@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   Building,
   Health,
@@ -8,7 +8,6 @@ import {
   UnderConstruction,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { clearComponentStores } from '../../src/harness/stores.js';
 import { fx, ONE, Simulation } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 
@@ -29,11 +28,6 @@ const WORKPLACE_STOCK: readonly [number, number][] = [
 ];
 const GRANARY = 6; // fixture building kind 'storage' — used as a construction-site body (no home upgrade)
 const GRANARY_MAX_HP = 100;
-
-/** Clear the WHOLE component namespace (module-level singletons) so runs can't leak into each other —
- *  a hand-picked subset would miss a component a future system adds (sim AGENTS.md). */
-
-beforeEach(clearComponentStores);
 
 function fresh(seed = 1): Simulation {
   return new Simulation({ seed, content: testContent() });

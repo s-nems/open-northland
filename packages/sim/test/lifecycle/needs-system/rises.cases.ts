@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { Settler } from '../../../src/components/index.js';
 import { fx, ONE, Simulation } from '../../../src/index.js';
 import {
@@ -9,10 +9,7 @@ import {
   PIETY_RISE_PER_TICK,
 } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
-import { clearComponentStores } from '../../fixtures/stores.js';
 import { ctxOf, settlerWithHunger } from './support.js';
-
-beforeEach(clearComponentStores);
 
 describe('needsSystem — hunger rises over time', () => {
   it('raises a settler hunger by exactly HUNGER_RISE_PER_TICK each tick', () => {

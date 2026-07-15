@@ -1,5 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
-import { clearComponentStores } from '../../src/harness/stores.js';
+import { describe, expect, it } from 'vitest';
 import {
   type Command,
   type LoggedCommand,
@@ -18,10 +17,6 @@ import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
  * into a fresh sim built with the NEW content. Two oracles: (1) rebasing onto the SAME content
  * reproduces the run byte-for-byte (`hashState()` — inherited from `replay`); (2) rebasing onto
  * CHANGED content reaches a state the changed data dictates, NOT the old one.
- *
- * Component stores are module-level singletons SHARED across every `Simulation` (AGENTS.md
- * [56e8d3e]) — a rebased sim supersedes the original. So each phase CLEARS the stores before building
- * a new sim, and any value compared across the boundary (a hash STRING) is captured BEFORE the rebuild.
  */
 
 const HEADQUARTERS = 1;
@@ -41,8 +36,6 @@ function rawContent(mutate?: (c: ReturnType<typeof testContent>) => void): unkno
   mutate?.(blob);
   return blob;
 }
-
-beforeEach(clearComponentStores);
 
 /** Drive a fresh sim through a scripted command schedule and return its log + per-tick hashes. */
 function recordRun(
@@ -77,7 +70,6 @@ describe('rebaseContent', () => {
     const { log, hashes } = recordRun(7, 60, schedule, grassMap(6, 1));
     const finalHash = hashes[hashes.length - 1];
 
-    clearComponentStores();
     const result = rebaseContent(rawContent(), {
       seed: 7,
       map: grassMap(6, 1),
@@ -103,7 +95,6 @@ describe('rebaseContent', () => {
     const { log, hashes } = recordRun(7, 60, schedule, grassMap(6, 1));
     const originalFinal = hashes[hashes.length - 1];
 
-    clearComponentStores();
     const tweaked = rebaseContent(
       rawContent((c) => {
         const hq = c.buildings.find((b) => b.id === 'headquarters');
@@ -136,7 +127,6 @@ describe('rebaseContent', () => {
     const { log, hashes } = recordRun(7, 80, schedule, grassMap(6, 1));
     const originalFinal = hashes[hashes.length - 1];
 
-    clearComponentStores();
     rebaseContent(
       rawContent((c) => {
         const sawmill = c.buildings.find((b) => b.id === 'sawmill');
@@ -145,7 +135,6 @@ describe('rebaseContent', () => {
       { seed: 7, map: grassMap(6, 1), log, untilTick: 80 },
     );
 
-    clearComponentStores();
     const back = rebaseContent(rawContent(), { seed: 7, map: grassMap(6, 1), log, untilTick: 80 });
     expect(back.kind).toBe('ok');
     if (back.kind !== 'ok') return;
@@ -168,7 +157,6 @@ describe('rebaseContent', () => {
     const finalHash = hashes[hashes.length - 1];
 
     // First reload (a balance edit), rebased from the live run's log.
-    clearComponentStores();
     const first = rebaseContent(
       rawContent((c) => {
         const sawmill = c.buildings.find((b) => b.id === 'sawmill');
@@ -179,14 +167,12 @@ describe('rebaseContent', () => {
     expect(first.kind).toBe('ok');
     if (first.kind !== 'ok') return;
     // The rebased sim must carry the WHOLE history forward — its log equals the input log byte-for-byte
-    // (CommandSystem re-records each replayed command on the same apply tick). Captured as a plain
-    // array before the next rebuild clobbers the shared stores.
+    // (CommandSystem re-records each replayed command on the same apply tick).
     const rebasedLog = [...first.sim.commands.log];
     expect(rebasedLog).toEqual(log);
 
     // Second reload: edit AGAIN, rebasing off the FIRST rebased sim's log (the chain). Back to the
     // ORIGINAL rules ⇒ the original state, proving the history survived the first rebase intact.
-    clearComponentStores();
     const second = rebaseContent(rawContent(), {
       seed: 7,
       map: grassMap(6, 1),
@@ -228,7 +214,7 @@ describe('rebaseContent', () => {
 
   it('a malformed reload does NOT disturb a live sim (the error path builds nothing)', () => {
     // A live run exists; a bad reload arrives. The original sim must keep working: rebaseContent
-    // returns `error` WITHOUT touching the shared stores, so the live sim's state is unchanged.
+    // returns `error` and builds no sim at all, so the live sim's state is unchanged.
     const sim = new Simulation({ seed: 5, content: testContent(), map: grassMap(4, 1) });
     sim.enqueue({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 2, y: 0, tribe: VIKING });
     sim.run(10);
@@ -254,7 +240,6 @@ describe('rebaseContent', () => {
     ]);
     const { log } = recordRun(3, 20, schedule, grassMap(4, 1));
 
-    clearComponentStores();
     const result = rebaseContent(rawContent(), { seed: 3, map: grassMap(4, 1), log });
     expect(result.kind).toBe('ok');
     if (result.kind !== 'ok') return;
@@ -262,11 +247,8 @@ describe('rebaseContent', () => {
     expect(result.sim.tick).toBe(4);
 
     // Identical to an explicit replay to the same tick (rebaseContent IS replay + validation).
-    // Capture each hash as a plain string BEFORE the next sim clobbers the shared stores.
-    clearComponentStores();
     const direct = replay({ content: testContent(), seed: 3, map: grassMap(4, 1), log, untilTick: 4 });
     const directHash = direct.hashState();
-    clearComponentStores();
     const viaRebase = rebaseContent(rawContent(), { seed: 3, map: grassMap(4, 1), log });
     expect(viaRebase.kind).toBe('ok');
     if (viaRebase.kind !== 'ok') return;

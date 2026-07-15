@@ -1,5 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
-import { clearComponentStores } from '../../src/harness/stores.js';
+import { describe, expect, it } from 'vitest';
 import { type Command, HashTrace, Simulation, type TerrainMap } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
@@ -16,10 +15,6 @@ import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 const HEADQUARTERS = 1;
 const WOODCUTTER = 1;
 const VIKING = 1;
-
-/** Clear every component store (shared singletons) so each sim phase starts clean. */
-
-beforeEach(clearComponentStores);
 
 /** Drive a fresh sim through a scripted schedule, feeding each tick's hash into a HashTrace. */
 function traceRun(
@@ -170,7 +165,6 @@ describe('HashTrace', () => {
       ]);
       const reference = traceRun(1, 40, schedule, { map: grassMap(5, 1) });
 
-      clearComponentStores();
       // Same commands, DIFFERENT seed: the RNG state is hashed, so the very first tick already
       // differs — divergedFrom must point at tick 1 (the inspector's "hash diverged at tick N").
       const variant = traceRun(2, 40, schedule, { map: grassMap(5, 1) });
@@ -186,7 +180,6 @@ describe('HashTrace', () => {
         [2, [{ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING }]],
       ]);
       const a = traceRun(7, 30, schedule, { map: grassMap(4, 1) });
-      clearComponentStores();
       const b = traceRun(7, 30, schedule, { map: grassMap(4, 1) });
       expect(a.divergedFrom(b)).toBeUndefined();
     });

@@ -1,7 +1,6 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { Building, JobAssignment, Position, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { clearComponentStores } from '../../src/harness/stores.js';
 import { fx, Simulation } from '../../src/index.js';
 import { jobSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
@@ -25,10 +24,6 @@ const CARRIER = 36; // the HQ's transport-slot job
 const WOOD_TRACK = 1; // the wood-specific humanjobexperiencetype typeId in the fixture
 const SAWMILL = 2; // building type
 const SMITHY = 4; // building type gated by `jobEnablesHouse 2 4` (needs a carpenter present)
-
-beforeEach(() => {
-  clearComponentStores();
-});
 
 /** Place a building of `buildingType` for the viking tribe at (x, y). */
 function placeBuilding(sim: Simulation, buildingType: number, x: number, y: number): Entity {

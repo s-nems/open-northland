@@ -1,13 +1,10 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import * as components from '../../../src/components/index.js';
 import { Settler } from '../../../src/components/index.js';
 import { fx, Simulation } from '../../../src/index.js';
 import { HUNGER_RISE_PER_TICK } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
-import { clearComponentStores } from '../../fixtures/stores.js';
 import { settlerWithHunger } from './support.js';
-
-beforeEach(clearComponentStores);
 
 describe('needsSystem — the setNeedsEnabled world rule (the dev/admin toggle)', () => {
   it('freezes every need while disabled and resumes on re-enable', () => {
@@ -35,7 +32,7 @@ describe('needsSystem — the setNeedsEnabled world rule (the dev/admin toggle)'
     sim.enqueue({ kind: 'setNeedsEnabled', enabled: true });
     sim.enqueue({ kind: 'setNeedsEnabled', enabled: false });
     sim.step();
-    expect([...components.WorldRules.store.keys()]).toHaveLength(1);
+    expect([...sim.world.query(components.WorldRules)]).toHaveLength(1);
     expect(components.needsEnabled(sim.world)).toBe(false);
   });
 });

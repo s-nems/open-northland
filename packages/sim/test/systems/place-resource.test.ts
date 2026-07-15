@@ -1,10 +1,9 @@
 import { parseContentSet } from '@open-northland/data';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import * as components from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { CORE_INVARIANTS, checkInvariants, Simulation } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
-import { clearComponentStores } from '../fixtures/stores.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
@@ -109,8 +108,6 @@ function nodeOf(sim: Simulation, good: number): Entity | null {
 }
 
 describe('placeResource command', () => {
-  beforeEach(clearComponentStores);
-
   it('stamps a felled tree for a fell good (Felling, no MineDeposit)', () => {
     const sim = newSim();
     sim.enqueue({
@@ -182,7 +179,6 @@ describe('placeResource command', () => {
 
   it('is byte-identical from the same seed and holds the core invariants', () => {
     const runOnce = (): string => {
-      clearComponentStores();
       const sim = newSim();
       sim.enqueue({
         kind: 'placeResource',

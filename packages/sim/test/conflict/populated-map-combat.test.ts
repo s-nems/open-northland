@@ -1,7 +1,6 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { CurrentAtomic, Health, HerdMember, Position, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { clearComponentStores } from '../../src/harness/stores.js';
 import { fx, halfCellMapFromCells, Simulation, seedAnimalHerds, type TerrainMap } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 
@@ -32,10 +31,6 @@ const VIKING = 1;
 const WOODCUTTER = 1; // job 1 — test_axe binds here (tribe 1, job 1)
 const BEAR = 10;
 const GRASS = 0; // walkable landscape typeId
-
-beforeEach(() => {
-  clearComponentStores();
-});
 
 /** An all-grass (fully walkable) w×h CELL map, upsampled to the 2W×2H half-cell lattice. */
 function grass(width: number, height: number): TerrainMap {
@@ -147,7 +142,6 @@ describe('populated-map combat scenario (civ vs seeded wildlife, end-to-end)', (
 
   it('the populated-map skirmish is deterministic: two same-seed runs reach the same state hash', () => {
     const run = (): string => {
-      clearComponentStores();
       const content = testContent();
       const map = grass(9, 1);
       const sim = new Simulation({ seed: 7, content, map });

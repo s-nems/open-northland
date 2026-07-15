@@ -40,10 +40,10 @@ The left tool panel owns pause and its three standard speeds. Initial speed, int
 the geometry grid can be configured from the main menu. The mouse wheel controls camera zoom. Reloading
 restarts the deterministic scene.
 
-## Determinism footgun
+## Building a scene sim
 
-Sim component stores are module-level singletons. `createSceneSim` clears them before building a scene,
-which is required when the test process creates several sims. Do not instantiate a scene with
-`new Simulation` directly.
+Each sim owns its component stores, so the headless test can build many scene sims in one process
+independently — no reset ritual. Build scenes through `createSceneSim`: it applies the scene defaults
+(needs-off, fog) the headless twin and the browser must share.
 
 See also `packages/app/AGENTS.md`, `docs/TESTING.md`, and `docs/ARCHITECTURE.md`.

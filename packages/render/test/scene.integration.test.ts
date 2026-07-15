@@ -1,5 +1,5 @@
 import { components, fx, Simulation, type TerrainMap } from '@open-northland/sim';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { testContent } from '../../sim/test/fixtures/content.js';
 import { buildScene, type SceneTerrain } from '../src/index.js';
 
@@ -23,27 +23,6 @@ const VIKING = 1;
 const HARVEST_ATOMIC = 24;
 
 const { Position, Resource } = components;
-
-// Component stores are module-level singletons (see golden-trace.test.ts) — clear before each run.
-function clearStores(): void {
-  for (const c of [
-    components.Position,
-    components.Settler,
-    components.Resource,
-    components.Building,
-    components.Stockpile,
-    components.Carrying,
-    components.CurrentAtomic,
-    components.MoveGoal,
-    components.PathFollow,
-    components.PathRequest,
-    components.Production,
-  ]) {
-    c.store.clear();
-  }
-}
-
-beforeEach(clearStores);
 
 function grassMap(width: number, height: number): TerrainMap {
   return { width, height, typeIds: new Array(width * height).fill(GRASS) };

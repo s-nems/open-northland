@@ -1,7 +1,7 @@
 import { buildScene, terrainMapToScene } from '@open-northland/render';
 import type { TerrainMap } from '@open-northland/sim';
-import { clearComponentStores, components, halfCellMapFromCells } from '@open-northland/sim';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { components, halfCellMapFromCells } from '@open-northland/sim';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GRASS } from '../src/catalog/buildings.js';
 import { TERRAIN_IMPASSABLE } from '../src/catalog/terrain.js';
 import { type AuthoredJoinRows, resolveAuthoredPlacements } from '../src/slice/authored-placements.js';
@@ -91,8 +91,6 @@ describe('sliceTerrain', () => {
 });
 
 describe('runSlice on a loaded map', () => {
-  beforeEach(clearComponentStores);
-
   // A small HALF-CELL grid (runSlice takes the sim's node-resolution map) with typeIds the synthetic
   // strip never declares (5, 16, 22, …) — folding them into the demo content is exactly what lets the
   // sim's node-graph build over a real decoded map.
@@ -138,7 +136,6 @@ describe('runSlice on a loaded map', () => {
 
   it('is deterministic over the loaded map (same seed+map ⇒ same hash)', () => {
     const a = runSlice(7, 60, gridMap()).hashState();
-    clearComponentStores(); // the two runs share the global stores; isolate the second like the golden suite
     const b = runSlice(7, 60, gridMap()).hashState();
     expect(a).toBe(b);
   });
@@ -153,9 +150,7 @@ describe('runSlice on a loaded map', () => {
       typeIds: new Array(9).fill(TERRAIN_IMPASSABLE),
     };
     expect(() => runSlice(7, 1, allWater)).not.toThrow();
-    clearComponentStores();
     const fallback = runSlice(7, 1, allWater).hashState();
-    clearComponentStores();
     const strip = runSlice(7, 1).hashState();
     // Falling back means the sim is byte-identical to the no-map slice (same content, terrain, cells).
     expect(fallback).toBe(strip);
@@ -163,8 +158,6 @@ describe('runSlice on a loaded map', () => {
 });
 
 describe('runBareMap (imported map with no authored entities)', () => {
-  beforeEach(clearComponentStores);
-
   function gridMap(): TerrainMap {
     return {
       resolution: 'half-cell',
@@ -188,14 +181,12 @@ describe('runBareMap (imported map with no authored entities)', () => {
 
   it('is deterministic over the loaded map (same seed+map ⇒ same hash)', () => {
     const a = runBareMap(7, gridMap()).hashState();
-    clearComponentStores();
     const b = runBareMap(7, gridMap()).hashState();
     expect(a).toBe(b);
   });
 });
 
 describe('authored placements (map.cif StaticObjects → sim commands)', () => {
-  beforeEach(clearComponentStores);
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -279,7 +270,6 @@ describe('authored placements (map.cif StaticObjects → sim commands)', () => {
   it('is deterministic (same seed + same authored entities ⇒ same hash)', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     const a = runAuthoredSlice(7, 40, authoredMap(), entities, rows)?.hashState();
-    clearComponentStores();
     const b = runAuthoredSlice(7, 40, authoredMap(), entities, rows)?.hashState();
     expect(a).toBeDefined();
     expect(a).toBe(b);

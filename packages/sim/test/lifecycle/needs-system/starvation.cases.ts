@@ -1,14 +1,11 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import * as components from '../../../src/components/index.js';
 import { Health, Settler } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, ONE, Simulation } from '../../../src/index.js';
 import { STARVATION_BITES_TO_DIE, STARVATION_DAMAGE_INTERVAL_TICKS } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
-import { clearComponentStores } from '../../fixtures/stores.js';
 import { settlerWithHunger } from './support.js';
-
-beforeEach(clearComponentStores);
 
 describe('needsSystem — starvation (a pinned hunger drains hitpoints)', () => {
   /** A settler whose hunger is already pinned at ONE, carrying an explicit Health pool. */

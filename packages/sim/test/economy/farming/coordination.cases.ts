@@ -4,7 +4,6 @@ import type { Entity } from '../../../src/ecs/world.js';
 import { cellAnchorNode, nodeOfPosition, Simulation } from '../../../src/index.js';
 import { aiSystem, applySow } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
-import { clearComponentStores } from '../../fixtures/stores.js';
 
 import {
   Carrying,
@@ -81,7 +80,6 @@ describe('work division — two farmers never share a target', () => {
 
   it('a second farmer roughly doubles the banked wheat', () => {
     const run = (farmers: number): number => {
-      clearComponentStores();
       const sim = new Simulation({ seed: 7, content: testContent(), map: grassMap(10, 10) });
       const farm = farmAt(sim, 5, 5);
       for (let i = 0; i < farmers; i++) farmerAt(sim, 5, 5, farm);
@@ -209,7 +207,6 @@ describe('store-full pause and overflow', () => {
 describe('end-to-end — the loop closes', () => {
   it('a bound farmer sows, waters, reaps and banks wheat in the farm store, deterministically', () => {
     const run = (): { wheat: number; hash: string } => {
-      clearComponentStores();
       const sim = new Simulation({ seed: 7, content: testContent(), map: grassMap(10, 10) });
       const farm = farmAt(sim, 5, 5);
       farmerAt(sim, 5, 5, farm);

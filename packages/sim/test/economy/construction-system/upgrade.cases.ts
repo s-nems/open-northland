@@ -4,7 +4,6 @@ import { ONE, Simulation } from '../../../src/index.js';
 import { constructionSystem, housingCapacity } from '../../../src/systems/index.js';
 
 import {
-  clearComponentStores,
   constructionContent,
   ctxOf,
   HEADQUARTERS,
@@ -87,7 +86,6 @@ describe('constructionSystem — home level-up', () => {
 
   it('is deterministic — two same-seed upgrade runs reach the same state hash', () => {
     const run = (): string => {
-      clearComponentStores();
       const sim = new Simulation({ seed: 5, content: levelChainContent() });
       placeBuiltHome(sim, HOME_L0, 0, { [STONE]: 2 });
       constructionSystem(sim.world, ctxOf(sim));

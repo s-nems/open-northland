@@ -126,8 +126,8 @@ hygiene test rejects nondeterministic globals in `packages/sim`.
 
 ## Durable Gotchas
 
-- Component stores are module-level singletons. Any test or harness that builds more than one sim in a
-  process must clear the whole component namespace, not a hand-picked subset.
+- Component stores are owned by the `World`, so `new Simulation()`/`new World()` is a complete reset;
+  many sims can live in one process independently, with no store-clearing ritual.
 - Canonicalize only decisions whose result depends on which entity wins. Membership checks and
   commutative sums do not need sorting; picks and first-found mutations do.
 - Before extracting data, grep the real source file, the extractor, and generated `ir.json`. Do not

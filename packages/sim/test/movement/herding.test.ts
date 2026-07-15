@@ -1,7 +1,6 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { CurrentAtomic, HerdMember, MoveGoal, Position, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { clearComponentStores } from '../../src/harness/stores.js';
 import { fx, nodeOfPosition, positionOfNode, Simulation } from '../../src/index.js';
 import { herdingSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
@@ -20,10 +19,6 @@ import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 const BEAR = 10; // herd animal: searchForLeader, maximumLeaderDistance 3
 const LEADER_DISTANCE = 3; // the fixture bear's maximumLeaderDistance, in half-cell nodes
-
-beforeEach(() => {
-  clearComponentStores();
-});
 
 /** A herd animal at half-cell NODE (x,y) following `leader` (or itself, the leader marker). */
 function herderAt(sim: Simulation, x: number, y: number, leader: Entity | 'self'): Entity {
@@ -127,7 +122,6 @@ describe('herdingSystem — follow-the-leader cohesion', () => {
 
   it('two same-seed runs herd identically (deterministic — no RNG)', () => {
     const run = (): string => {
-      clearComponentStores();
       const sim = new Simulation({ seed: 7, content: testContent(), map: grassMap(20, 1) });
       const leader = herderAt(sim, 0, 0, 'self');
       herderAt(sim, 10, 0, leader);

@@ -49,14 +49,11 @@ streams (run-twice hash equality + replay fidelity + invariants) — **add new c
 generator in the same commit**, and register any new incrementally-maintained cache in
 `World.verifyCaches()` (the `cachesCoherent` invariant re-derives every cache each checked tick).
 
-**Component stores are module-level singletons shared by every `Simulation`/`World`** (`defineComponent`
-makes one `Map`; `new World()` resets the id counter, NOT the stores). So anything that builds >1 sim in
-one process — a test file, or a hands-on smoke/determinism harness — MUST clear the whole component
-namespace between runs, or the earlier run's entities leak onto the later run's reused ids and a
-query-order decision diverges: `for (const c of Object.values(components)) if (c?.store instanceof Map)
-c.store.clear()` (a hand-picked subset misses a component a future system adds). The vitest suites do this
-in `beforeEach`; a throwaway harness does not get it for free. This is the loop's most-rediscovered trap
-and belongs in every new multi-sim harness.
+**Component stores are owned by the `World`** (`defineComponent` returns a pure key; each `World` holds its
+own `Map<Entity, value>` per component). So `new World()` — and thus `new Simulation()` — is a complete
+reset: two sims in one process are fully independent, with no shared state to clear between them. Each
+store iterates in the insertion order of *that* World's `add` calls, so same seed + same inputs still
+produces byte-identical query order.
 
 ## Scaling to thousands of units
 
@@ -79,8 +76,8 @@ never add `performance.now` to `src` (the hygiene scan fails the build).
   `commands.ts` + `command-queue.ts`, `events.ts` (typed `SimEvent`s), `loop.ts`,
   `content-index.ts` (memoized O(1) content lookups), `atomic-effect.ts`, `brand.ts`.
 - **`ecs/world.ts`** — the `World`: entities, queries, `canonicalEntities()`, `verifyCaches()`.
-- **`components/`** — the component stores (module-level singletons — see above): `settler.ts`,
-  `movement.ts`, `combat.ts`, `equipment.ts`, `ownership.ts`, `rules.ts`, `economy/`.
+- **`components/`** — the component keys (`defineComponent`; the entity→value stores live on the `World`):
+  `settler.ts`, `movement.ts`, `combat.ts`, `equipment.ts`, `ownership.ts`, `rules.ts`, `economy/`.
 - **`systems/`** — the per-tick systems, grouped by concern: `agents/` (AI, the atomic planner,
   effects), `economy/` (jobs, production, construction, farming, berries, flags), `conflict/`,
   `lifecycle/`, `movement/`, `orders/`, `command/` (command application + placement), `vision/`,
@@ -93,5 +90,4 @@ never add `performance.now` to `src` (the hygiene scan fails the build).
   `scrub-window.ts`, `rebase-content.ts`).
 - **`inspect/`** — state introspection: `snapshot.ts` (plain `WorldSnapshot`), `snapshot-diff.ts`,
   `hashtrace.ts` (per-tick hash ring buffer), `entity-dump.ts`.
-- **`harness/`** — test/scenario helpers: `invariants.ts`, `scenario.ts`, `populate.ts`, `stores.ts`
-  (the clear-every-component-store multi-sim reset).
+- **`harness/`** — test/scenario helpers: `invariants.ts`, `scenario.ts`, `populate.ts`.

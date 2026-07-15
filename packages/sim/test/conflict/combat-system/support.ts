@@ -1,10 +1,8 @@
-import { beforeEach } from 'vitest';
 import { Health } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { type Fixed, fx, positionOfNode, type Simulation } from '../../../src/index.js';
 import { ctxOf } from '../../fixtures/context.js';
 import { settlerAt } from '../../fixtures/settler.js';
-import { clearComponentStores } from '../../fixtures/stores.js';
 import { grassCellMap as grassMap } from '../../fixtures/terrain.js';
 
 export { ctxOf, grassMap };
@@ -29,8 +27,6 @@ export const DEER = 14; // a CATCHABLE-and-PROVOKABLE prey animal tribe (catchab
 export const WOODCUTTER = 1; // job 1 — the test_axe binds to this (tribe 1, job 1)
 export const HUNTER = 15; // job 15 (JOB_TYPE_HUMAN_HUNTER) — the test_spear binds to this (tribe 1, job 15)
 export const ATTACK_ATOMIC = 81;
-
-beforeEach(clearComponentStores);
 
 /** A combatant: a settler with a Health pool at visual cell (x,y). `tribe`/`jobType` decide its weapon. */
 export function fighterAt(

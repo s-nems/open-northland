@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import * as components from '../../src/components/index.js';
-import { clearComponentStores, Simulation } from '../../src/index.js';
+import { Simulation } from '../../src/index.js';
 import { positionOfNode } from '../../src/nav/halfcell.js';
 import { canonicalResources, resourcesNearNode } from '../../src/systems/resource-index.js';
 import { testContent } from '../fixtures/content.js';
@@ -30,8 +30,6 @@ function nodeAt(sim: Simulation, hx: number, hy: number) {
 }
 
 describe('resourcesNearNode (the flag-bound scan index)', () => {
-  beforeEach(clearComponentStores);
-
   it('returns exactly the anchors within the reach box, ascending-id, across region borders', () => {
     const sim = newSim();
     const far = nodeAt(sim, 2, 2); // outside the box
