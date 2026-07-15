@@ -1,4 +1,4 @@
-import { BerryBush, Position, Stockpile, stockpileEntries } from '../../../components/index.js';
+import { BerryBush, Stockpile, stockpileEntries } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { bushesNearNode } from '../../berry-index.js';
@@ -7,6 +7,7 @@ import { BERRY_FORAGE_RADIUS } from '../../economy/berries.js';
 import { manhattan } from '../../spatial.js';
 import { isFood } from '../../stores/index.js';
 import type { TargetCandidates } from './candidates.js';
+import { type InteractionCellIndex, nearestByCell } from './cell-index.js';
 import { closer } from './nearest.js';
 import { interactionCell } from './workplaces.js';
 
@@ -20,36 +21,28 @@ import { interactionCell } from './workplaces.js';
  * makes); the eater consumes one unit on the `eat` atomic's completion (AtomicSystem).
  */
 function nearestFoodStore(
-  candidates: readonly Entity[],
+  index: InteractionCellIndex,
   world: World,
   ctx: SystemContext,
-  terrain: TerrainGraph,
   here: NodeId,
 ): { store: Entity; goodType: number; dist: number; cell: NodeId } | null {
-  let best: { store: Entity; goodType: number; dist: number; cell: NodeId } | null = null;
-  let bestDist = Number.POSITIVE_INFINITY;
-  let bestCell = Number.POSITIVE_INFINITY;
-  for (const e of candidates) {
-    if (!world.has(e, Stockpile) || !world.has(e, Position)) continue;
-    const stock = world.get(e, Stockpile);
-    // Find the store's candidate food FIRST (its lowest-goodType stocked edible); only a store that
-    // holds food pays for the interaction-cell + distance work (pure elision — same winner).
-    let food: number | null = null;
-    for (const [goodType, amount] of stockpileEntries(stock)) {
-      if (amount <= 0 || !isFood(ctx, goodType)) continue;
-      food = goodType;
-      break; // this store's lowest-id food good is its candidate
-    }
-    if (food === null) continue;
-    const cell = interactionCell(world, ctx, terrain, e, here);
-    const dist = manhattan(terrain, here, cell);
-    if (closer(dist, cell, bestDist, bestCell)) {
-      best = { store: e, goodType: food, dist, cell };
-      bestDist = dist;
-      bestCell = cell;
-    }
+  const winner = index.nearest(here, (e) => storedFoodGood(world, ctx, e) !== null);
+  if (winner === null) return null;
+  const goodType = storedFoodGood(world, ctx, winner.entity);
+  return goodType === null
+    ? null
+    : { store: winner.entity, goodType, dist: winner.distance, cell: winner.cell };
+}
+
+/** A store's candidate food good: its lowest-goodType stocked edible ({@link isFood}), or null when it holds
+ *  none. Canonical (ascending goodType via {@link stockpileEntries}) so the choice never depends on Map
+ *  insertion history; side-effect-free, so the ring may re-evaluate it on the fallback scan. */
+function storedFoodGood(world: World, ctx: SystemContext, entity: Entity): number | null {
+  for (const [goodType, amount] of stockpileEntries(world.get(entity, Stockpile))) {
+    if (amount <= 0 || !isFood(ctx, goodType)) continue;
+    return goodType; // this store's lowest-id food good is its candidate
   }
-  return best;
+  return null;
 }
 
 /**
@@ -83,23 +76,15 @@ function nearestRipeBush(
 ): { bush: Entity; dist: number; cell: NodeId } | null {
   const { x: hx, y: hy } = terrain.coordsOf(here);
   const candidates = bushesNearNode(world, hx, hy, BERRY_FORAGE_RADIUS + BUSH_INTERACTION_SLACK_NODES);
-  let best: { bush: Entity; dist: number; cell: NodeId } | null = null;
-  let bestDist = Number.POSITIVE_INFINITY;
-  let bestCell = Number.POSITIVE_INFINITY;
-  for (const e of candidates) {
+  const best = nearestByCell(terrain, candidates, here, (e) => {
     const bush = world.tryGet(e, BerryBush);
-    if (bush === undefined || !bush.ripe) continue; // bare/regrowing — nothing to forage
+    if (bush === undefined || !bush.ripe) return null; // bare/regrowing — nothing to forage
     const cell = interactionCell(world, ctx, terrain, e, here);
-    if (terrain.componentOf(here) !== terrain.componentOf(cell)) continue; // walled off — leave it be
-    const dist = manhattan(terrain, here, cell);
-    if (dist > BERRY_FORAGE_RADIUS) continue; // beyond the forage reach (interim, pre-signpost limit)
-    if (closer(dist, cell, bestDist, bestCell)) {
-      best = { bush: e, dist, cell };
-      bestDist = dist;
-      bestCell = cell;
-    }
-  }
-  return best;
+    if (terrain.componentOf(here) !== terrain.componentOf(cell)) return null; // walled off — leave it be
+    if (manhattan(terrain, here, cell) > BERRY_FORAGE_RADIUS) return null; // beyond forage reach (interim limit)
+    return cell;
+  });
+  return best === null ? null : { bush: best.entity, dist: best.distance, cell: best.cell };
 }
 
 /** A resolved food target for the eat drive: a store to eat a stocked/produced good FROM, or a wild
@@ -130,7 +115,7 @@ export function nearestFood(
   terrain: TerrainGraph,
   here: NodeId,
 ): FoodTarget | null {
-  const store = nearestFoodStore(targets.stockpiles, world, ctx, terrain, here);
+  const store = nearestFoodStore(targets.stockpileCells, world, ctx, here);
   const bush = nearestRipeBush(world, ctx, terrain, here);
   if (bush !== null && (store === null || closer(bush.dist, bush.cell, store.dist, store.cell))) {
     return { kind: 'bush', bush: bush.bush };

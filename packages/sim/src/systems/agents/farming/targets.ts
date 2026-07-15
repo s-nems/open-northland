@@ -7,7 +7,7 @@ import type { FarmingSpec } from '../../economy/farming.js';
 import { dynamicBlockedCells } from '../../footprint/index.js';
 import { manhattan } from '../../spatial.js';
 import { lowestStockedGood } from '../../stores/index.js';
-import { closer, interactionCell, type TargetCandidates } from '../targets/index.js';
+import { interactionCell, nearestByCell, type TargetCandidates } from '../targets/index.js';
 import type { FarmClaims, SowScan } from './claims.js';
 
 /**
@@ -27,31 +27,26 @@ export function nearestFarmSheaf(
   spec: FarmingSpec,
   claims: FarmClaims,
 ): Entity | null {
-  let best: Entity | null = null;
-  let bestDist = Number.POSITIVE_INFINITY;
-  let bestCell = Number.POSITIVE_INFINITY;
-  for (const e of targets.groundDrops) {
-    if (lowestStockedGood(world.get(e, Stockpile)) !== spec.goodType) continue; // not this farm's crop
-    // Cheap radius PREFILTER on the drop's own anchor node before the interaction-cell resolve — that
-    // resolve walks the resource store per drop, so paying it for every same-good drop WORLD-WIDE per
-    // replanning farmer was an O(drops × resources) tick cost. The slack covers the most an interaction
-    // cell can sit from its anchor (one footprint cell), so no drop the exact check below would accept
-    // is ever pre-dropped.
-    const p = world.get(e, Position);
-    const n = nodeOfPosition(p.x, p.y);
-    const own = terrain.nodeAtClamped(n.hx, n.hy);
-    if (manhattan(terrain, anchor, own) > spec.farming.fieldRadius + SHEAF_PREFILTER_SLACK) continue;
-    const cell = interactionCell(world, ctx, terrain, e, here);
-    if (claims.nodes.has(cell)) continue; // a colleague is already carrying this one off
-    if (manhattan(terrain, anchor, cell) > spec.farming.fieldRadius) continue; // beyond the farm's fields
-    const dist = manhattan(terrain, here, cell);
-    if (closer(dist, cell, bestDist, bestCell)) {
-      best = e;
-      bestDist = dist;
-      bestCell = cell;
-    }
-  }
-  return best;
+  // Ranked from the farmer (`here`); the field-radius gate measures from the farm `anchor` instead, so a
+  // farmer never chases a sheaf across the map (a separate origin the shared loop leaves inside `resolve`).
+  return (
+    nearestByCell(terrain, targets.groundDrops, here, (e) => {
+      if (lowestStockedGood(world.get(e, Stockpile)) !== spec.goodType) return null; // not this farm's crop
+      // Cheap radius prefilter on the drop's own anchor node before the interaction-cell resolve — that
+      // resolve walks the resource store per drop, so paying it for every same-good drop world-wide per
+      // replanning farmer was an O(drops × resources) tick cost. The slack covers the most an interaction
+      // cell can sit from its anchor (one footprint cell), so no drop the exact check below would accept
+      // is ever pre-dropped.
+      const p = world.get(e, Position);
+      const n = nodeOfPosition(p.x, p.y);
+      const own = terrain.nodeAtClamped(n.hx, n.hy);
+      if (manhattan(terrain, anchor, own) > spec.farming.fieldRadius + SHEAF_PREFILTER_SLACK) return null;
+      const cell = interactionCell(world, ctx, terrain, e, here);
+      if (claims.nodes.has(cell)) return null; // a colleague is already carrying this one off
+      if (manhattan(terrain, anchor, cell) > spec.farming.fieldRadius) return null; // beyond the farm's fields
+      return cell;
+    })?.entity ?? null
+  );
 }
 
 /** Node slack the sheaf-carry radius PREFILTER allows over `fieldRadius`: an interaction cell sits at

@@ -33,7 +33,7 @@ export function planProducer(
     return;
   }
 
-  const source = nearestMissingInputSource(targets.stockpiles, world, ctx, terrain, here, workplace, recipe);
+  const source = nearestMissingInputSource(targets.stockpileCells, world, ctx, here, workplace, recipe);
   if (source !== null) {
     atOrWalk(world, entity, here, interactionCell(world, ctx, terrain, source.store, here), () =>
       startPickup(world, ctx, entity, worker, source.store, source.goodType, source.amount),
@@ -57,10 +57,9 @@ export function planWorkshopSupplier(plan: PlannerContext, workplace: Entity): v
 
   const restockToCapacity = true;
   const source = nearestMissingInputSource(
-    targets.stockpiles,
+    targets.stockpileCells,
     world,
     ctx,
-    terrain,
     here,
     workplace,
     recipe,

@@ -2,9 +2,8 @@ import { Building, JobAssignment, Position, Stockpile } from '../../../component
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
-import { manhattan } from '../../spatial.js';
 import { buildingProduces, lowestStockedGood } from '../../stores/index.js';
-import { closer, interactionCell } from '../targets/index.js';
+import { interactionCell, nearestByCell } from '../targets/index.js';
 import type { SinkAvailability } from '../targets/stores/sinks.js';
 import { isFarmCarrierHaulOutRole, isStorageSink } from './store-policy.js';
 
@@ -30,24 +29,17 @@ export function nearestGroundPile(
   terrain: TerrainGraph,
   here: NodeId,
 ): { pile: Entity; goodType: number } | null {
-  let best: { pile: Entity; goodType: number } | null = null;
-  let bestDist = Number.POSITIVE_INFINITY;
-  let bestCell = Number.POSITIVE_INFINITY;
-  for (const e of candidates) {
-    if (world.has(e, Building)) continue; // a building store isn't a loose ground pile
-    if (!world.has(e, Stockpile) || !world.has(e, Position)) continue;
+  const best = nearestByCell(terrain, candidates, here, (e) => {
+    if (world.has(e, Building)) return null; // a building store isn't a loose ground pile
+    if (!world.has(e, Stockpile) || !world.has(e, Position)) return null;
     const good = lowestStockedGood(world.get(e, Stockpile));
-    if (good === null) continue; // an empty pile is nothing to collect
-    if (!sinks.has(good)) continue; // every store full for this good — leave it, try another good
-    const cell = interactionCell(world, ctx, terrain, e, here);
-    const dist = manhattan(terrain, here, cell);
-    if (closer(dist, cell, bestDist, bestCell)) {
-      best = { pile: e, goodType: good };
-      bestDist = dist;
-      bestCell = cell;
-    }
-  }
-  return best;
+    if (good === null) return null; // an empty pile is nothing to collect
+    if (!sinks.has(good)) return null; // every store full for this good — leave it, try another good
+    return interactionCell(world, ctx, terrain, e, here);
+  });
+  if (best === null) return null;
+  const good = lowestStockedGood(world.get(best.entity, Stockpile)); // the winner's good (accept required one)
+  return good === null ? null : { pile: best.entity, goodType: good };
 }
 
 /**

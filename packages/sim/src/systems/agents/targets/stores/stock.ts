@@ -9,7 +9,6 @@ import type { Entity, World } from '../../../../ecs/world.js';
 import { nodeOfPosition } from '../../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
-import { manhattan } from '../../../spatial.js';
 import {
   buildingProduces,
   isYardHeap,
@@ -19,8 +18,6 @@ import {
   stockCapacity,
 } from '../../../stores/index.js';
 import type { InteractionCellIndex } from '../cell-index.js';
-import { closer } from '../nearest.js';
-import { interactionCell } from '../workplaces.js';
 
 // The AI planner's TARGET-SCAN layer: build the per-tick candidate lists and answer every "nearest X"
 // / "may this settler staff that workplace" query the atomic planner asks. Split out of ai.ts (which
@@ -153,27 +150,19 @@ export function nearestFreeYardNode(
  * a construction material its site is short on.
  */
 export function nearestStoreHolding(
-  candidates: readonly Entity[],
+  index: InteractionCellIndex,
   world: World,
-  ctx: SystemContext,
-  terrain: TerrainGraph,
   here: NodeId,
   goodType: number,
 ): Entity | null {
-  let best: Entity | null = null;
-  let bestDist = Number.POSITIVE_INFINITY;
-  let bestCell = Number.POSITIVE_INFINITY;
-  for (const e of candidates) {
-    if (!world.has(e, Stockpile) || !world.has(e, Position)) continue;
-    if (world.has(e, UnderConstruction)) continue; // a site is a sink, never a source to strip
-    if ((world.get(e, Stockpile).amounts.get(goodType) ?? 0) <= 0) continue; // doesn't hold the good
-    const cell = interactionCell(world, ctx, terrain, e, here);
-    const dist = manhattan(terrain, here, cell);
-    if (closer(dist, cell, bestDist, bestCell)) {
-      best = e;
-      bestDist = dist;
-      bestCell = cell;
-    }
-  }
-  return best;
+  // The stockpile index holds every Stockpile+Position candidate (construction sites among them), so the
+  // accept just excludes sites and stores that don't hold the good.
+  return (
+    index.nearest(
+      here,
+      (e) =>
+        !world.has(e, UnderConstruction) && // a site is a sink, never a source to strip
+        (world.get(e, Stockpile).amounts.get(goodType) ?? 0) > 0,
+    )?.entity ?? null
+  );
 }

@@ -137,27 +137,47 @@ export class InteractionCellIndex {
   }
 
   /** The `closer` winner over `list`, measuring each candidate's `interactionCell` from `here` — the exact
-   *  linear scan the ring accelerates, used for the seeker-dependent tail and the out-of-range fallback. */
+   *  linear scan the ring accelerates, used for the seeker-dependent tail and the out-of-range fallback.
+   *  Shares the standalone {@link nearestByCell} loop (ranked from `here`), so the tie-break lives in one place. */
   private linearNearest(
     list: readonly Entity[],
     here: NodeId,
     accept: (e: Entity) => boolean,
   ): NearestByCell | null {
-    let best: NearestByCell | null = null;
-    let bestDist = Number.POSITIVE_INFINITY;
-    let bestCell = Number.POSITIVE_INFINITY;
-    for (const e of list) {
-      if (!accept(e)) continue;
-      const cell = interactionCell(this.world, this.ctx, this.terrain, e, here);
-      const dist = manhattan(this.terrain, here, cell);
-      if (closer(dist, cell, bestDist, bestCell)) {
-        best = { entity: e, cell, distance: dist };
-        bestDist = dist;
-        bestCell = cell;
-      }
-    }
-    return best;
+    return nearestByCell(this.terrain, list, here, (e) =>
+      accept(e) ? interactionCell(this.world, this.ctx, this.terrain, e, here) : null,
+    );
   }
+}
+
+/**
+ * The `closer` `(distance, cell-id, entity-id)` winner over `list`, where `resolve` maps a candidate to its
+ * interaction cell — or null to skip it (a failed gate) — and distance is Manhattan from `rank`. The
+ * seeker-dependent linear scans (ground piles, resource work cells, farm sheaves) share this one loop so
+ * none re-open the `best / bestDist / bestCell` skeleton {@link InteractionCellIndex} already owns. `rank` is
+ * the ranking origin: usually the seeker, but a flag centre when a bound gatherer works outward from its flag
+ * (so the interaction cell may resolve from a different node than the one it is ranked by).
+ */
+export function nearestByCell(
+  terrain: TerrainGraph,
+  list: readonly Entity[],
+  rank: NodeId,
+  resolve: (entity: Entity) => NodeId | null,
+): NearestByCell | null {
+  let best: NearestByCell | null = null;
+  let bestDist = Number.POSITIVE_INFINITY;
+  let bestCell = Number.POSITIVE_INFINITY;
+  for (const entity of list) {
+    const cell = resolve(entity);
+    if (cell === null) continue;
+    const distance = manhattan(terrain, rank, cell);
+    if (closer(distance, cell, bestDist, bestCell)) {
+      best = { entity, cell, distance };
+      bestDist = distance;
+      bestCell = cell;
+    }
+  }
+  return best;
 }
 
 /** The lower of two winners by `(distance, cell-id, entity-id)` — the same total order the linear scans

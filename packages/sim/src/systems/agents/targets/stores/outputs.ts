@@ -1,11 +1,9 @@
-import { Position, Stockpile, stockpileEntries } from '../../../../components/index.js';
+import { Stockpile, stockpileEntries } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
-import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
+import type { NodeId } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
-import { manhattan } from '../../../spatial.js';
 import { recipeOf } from '../../../stores/index.js';
-import { closer } from '../nearest.js';
-import { interactionCell } from '../workplaces.js';
+import type { InteractionCellIndex } from '../cell-index.js';
 import type { SinkAvailability } from './sinks.js';
 
 /**
@@ -43,36 +41,37 @@ export function hasHaulableOutput(world: World, ctx: SystemContext, stockpiles: 
  * could never deliver (which would just shuttle it back and forth).
  */
 export function nearestWorkplaceOutput(
-  candidates: readonly Entity[],
+  index: InteractionCellIndex,
   sinks: SinkAvailability,
   world: World,
   ctx: SystemContext,
-  terrain: TerrainGraph,
   here: NodeId,
 ): { workplace: Entity; goodType: number } | null {
-  let best: { workplace: Entity; goodType: number } | null = null;
-  let bestDist = Number.POSITIVE_INFINITY;
-  let bestCell = Number.POSITIVE_INFINITY;
-  for (const e of candidates) {
-    if (!world.has(e, Stockpile) || !world.has(e, Position)) continue;
-    const recipe = recipeOf(world, ctx, e);
-    if (recipe === undefined) continue; // not a workplace — passive stores aren't hauled FROM
-    const stock = world.get(e, Stockpile);
-    const cell = interactionCell(world, ctx, terrain, e, here);
-    const dist = manhattan(terrain, here, cell);
-    // Canonical (ascending goodType) so the chosen good never depends on Map insertion history.
-    for (const [goodType, amount] of stockpileEntries(stock)) {
-      if (amount <= 0) continue;
-      if (!recipe.outputs.some((o) => o.goodType === goodType)) continue; // only haul outputs
-      // Deliverability check reuses the SAME stockpile candidates (a store is a Stockpile+Position too).
-      if (!sinks.has(goodType)) continue;
-      if (closer(dist, cell, bestDist, bestCell)) {
-        best = { workplace: e, goodType };
-        bestDist = dist;
-        bestCell = cell;
-      }
-      break; // this workplace's lowest haulable goodType is its candidate; move to the next workplace
-    }
+  // The stockpile index holds every Stockpile+Position candidate; only workplaces with a deliverable output
+  // pass `accept`, and the winner's good is re-derived by the same canonical rule below.
+  const winner = index.nearest(here, (e) => haulableOutputGood(world, ctx, sinks, e) !== null);
+  if (winner === null) return null;
+  const goodType = haulableOutputGood(world, ctx, sinks, winner.entity);
+  return goodType === null ? null : { workplace: winner.entity, goodType };
+}
+
+/** The lowest-goodType output a workplace currently stocks (>0), that its recipe produces and some OTHER
+ *  store can take ({@link SinkAvailability}) — or null when the entity is not a workplace holding a
+ *  deliverable output. Canonical (ascending goodType via {@link stockpileEntries}) so the chosen good never
+ *  depends on Map insertion history; side-effect-free, so the ring may re-evaluate it on the fallback scan. */
+function haulableOutputGood(
+  world: World,
+  ctx: SystemContext,
+  sinks: SinkAvailability,
+  entity: Entity,
+): number | null {
+  const recipe = recipeOf(world, ctx, entity);
+  if (recipe === undefined) return null; // not a workplace — passive stores aren't hauled FROM
+  for (const [goodType, amount] of stockpileEntries(world.get(entity, Stockpile))) {
+    if (amount <= 0) continue;
+    if (!recipe.outputs.some((o) => o.goodType === goodType)) continue; // only haul outputs
+    if (!sinks.has(goodType)) continue; // no store can take it — never pick a good it couldn't deliver
+    return goodType;
   }
-  return best;
+  return null;
 }
