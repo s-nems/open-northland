@@ -254,5 +254,7 @@ export default defineConfig({
     serveContentGoods(),
   ],
   server: { port: 5173, open: false },
-  build: { target: 'es2022', outDir: 'dist' },
+  // Pixi + the app ship as one ~810 kB main chunk (≈248 kB gzip). That is expected for a Pixi game
+  // loaded once, so lift Vite's 500 kB chunk-size warning to 1 MB instead of splitting the renderer out.
+  build: { target: 'es2022', outDir: 'dist', chunkSizeWarningLimit: 1024 },
 });
