@@ -247,15 +247,6 @@ export function loadPlayerLut(): Promise<TextureSource | undefined> {
   return loadTextureIfPresent('/bobs/player-lut.png');
 }
 
-/**
- * Load the guidepost's colour LUT (`/bobs/guidepost-lut.png`, full player palettes — the guidepost bob
- * reads every lane through the owner's palette, see the pipeline's `convertGuidepostLut`). `undefined`
- * (pipeline predates it) degrades to the baked single-colour guidepost.
- */
-export function loadGuidepostLut(): Promise<TextureSource | undefined> {
-  return loadTextureIfPresent('/bobs/guidepost-lut.png');
-}
-
 /** The one in-flight/settled `ir.json` fetch — every domain shares it (see {@link loadIr}). */
 let contentIrPromise: Promise<ContentIr | null> | null = null;
 

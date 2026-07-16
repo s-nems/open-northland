@@ -21,7 +21,7 @@ import { unpackLibTree } from './stages/lib.js';
 import { convertMapDatTree } from './stages/maps/index.js';
 import { composeMaskedTransitionPages, convertPcxTree } from './stages/pcx.js';
 import {
-  convertGuidepostLut,
+  convertGuidepostPlayerAtlases,
   convertIndexedCharacterAtlases,
   convertPlayerColorLut,
 } from './stages/player-colors.js';
@@ -71,16 +71,16 @@ async function run(args: Args): Promise<void> {
     console.warn(`[pipeline] player-colour LUT skipped: ${(err as Error).message}`);
     return undefined;
   });
-  // The guidepost's own LUT (full player palettes — the bob reads every lane through the player palette,
-  // see stages/player-colors.ts convertGuidepostLut).
-  const guideLut = await convertGuidepostLut(args.out).catch((err: unknown) => {
-    console.warn(`[pipeline] guidepost LUT skipped: ${(err as Error).message}`);
-    return undefined;
+  // Per-player baked guidepost atlases (full player palettes; baked, not indexed, so the guidepost's
+  // graded edge alpha survives — see stages/player-colors.ts convertGuidepostPlayerAtlases).
+  const guideAtlases = await convertGuidepostPlayerAtlases(args.out).catch((err: unknown) => {
+    console.warn(`[pipeline] guidepost player atlases skipped: ${(err as Error).message}`);
+    return 0;
   });
   console.log(
     `[pipeline] player colours: ${indexed.length} indexed character atlas(es)` +
       `${lut ? `, ${lut.colors}-colour LUT -> ${lut.png}` : ' (LUT skipped)'}` +
-      `${guideLut ? `, guidepost LUT -> ${guideLut.png}` : ' (guidepost LUT skipped)'}`,
+      `, ${guideAtlases} guidepost player atlas(es)`,
   );
 
   // GUI/HUD: the HUD bob sheets -> indexed + preview atlas + palette LUT, the ingamegui string tables

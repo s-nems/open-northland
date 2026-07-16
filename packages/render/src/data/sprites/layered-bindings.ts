@@ -151,6 +151,13 @@ export interface SignpostBinding {
   readonly post: LayeredBobRef;
   /** Direction-board frames in angular order (index = the scene collector's angle bucket). */
   readonly boards: readonly LayeredBobRef[];
+  /**
+   * Per-player recolour variants, indexed by `DrawItem.player` (the owner slot): the same post/board
+   * frames from that player's baked `ls_guidepost.player_NN` atlas — the guidepost is drawn through the
+   * owner's full palette in the original, and its graded edge alpha rules out the characters' indexed
+   * LUT path. A missing slot (or the whole list) falls back to this binding's own frames.
+   */
+  readonly byPlayer?: readonly (SignpostBinding | undefined)[];
 }
 
 export interface StockpileBinding {
