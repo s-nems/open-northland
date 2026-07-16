@@ -1,5 +1,12 @@
 import type { BuildingFootprint, ContentSet } from '@open-northland/data';
-import { Building, DeliveryFlag, Position, Resource, ResourceFootprint } from '../../components/index.js';
+import {
+  Building,
+  DeliveryFlag,
+  Position,
+  Resource,
+  ResourceFootprint,
+  Signpost,
+} from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
@@ -57,6 +64,13 @@ function eachBlockerCell(
     const zone = fp?.reserved.length ? fp.reserved : ANCHOR_ONLY;
     for (const c of body) visit(hx + c.dx, hy + c.dy, OBSTACLE);
     for (const c of zone) visit(hx + c.dx, hy + c.dy, EXCLUSION);
+  }
+  // A signpost blocks building placement on its cell (never movement — it enters no walk overlay): its
+  // anchor is an OBSTACLE, so no building's reserved zone may cover it (observed original behaviour).
+  for (const e of world.query(Signpost, Position)) {
+    const p = world.get(e, Position);
+    const { hx, hy } = nodeOfPosition(p.x, p.y);
+    visit(hx, hy, OBSTACLE);
   }
 }
 
@@ -119,6 +133,11 @@ function workFlagPlacementBlocks(
     const p = world.get(e, Position);
     const anchor = nodeOfPosition(p.x, p.y);
     add(anchor.hx, anchor.hy);
+  }
+  for (const e of world.query(Signpost, Position)) {
+    const p = world.get(e, Position);
+    const anchor = nodeOfPosition(p.x, p.y);
+    add(anchor.hx, anchor.hy); // a marker can't share a signpost's cell (and vice versa — see canPlaceSignpost)
   }
   return blocked;
 }
@@ -250,7 +269,7 @@ export interface PlacementProbe {
  * Read-only + deterministic (a pure function of the mutation history); never hashed, never a sim decision.
  */
 export function placementBlockerVersion(world: World): string {
-  return `${world.componentGeneration(Building)}.${world.componentGeneration(Resource)}.${world.componentGeneration(ResourceFootprint)}`;
+  return `${world.componentGeneration(Building)}.${world.componentGeneration(Resource)}.${world.componentGeneration(ResourceFootprint)}.${world.componentGeneration(Signpost)}`;
 }
 
 /**

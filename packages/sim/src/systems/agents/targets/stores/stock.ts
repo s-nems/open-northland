@@ -152,15 +152,18 @@ export function nearestStoreHolding(
   world: World,
   here: NodeId,
   goodType: number,
+  cellGate?: (cell: NodeId) => boolean,
 ): Entity | null {
   // The stockpile index holds every Stockpile+Position candidate (construction sites among them), so the
-  // accept just excludes sites and stores that don't hold the good.
+  // accept just excludes sites and stores that don't hold the good. `cellGate` is the fetcher's signpost
+  // confinement: a store standing outside its allowed area is not a source it knows the way to.
   return (
     index.nearest(
       here,
       (e) =>
         !world.has(e, UnderConstruction) && // a site is a sink, never a source to strip
         (world.get(e, Stockpile).amounts.get(goodType) ?? 0) > 0,
+      cellGate,
     )?.entity ?? null
   );
 }

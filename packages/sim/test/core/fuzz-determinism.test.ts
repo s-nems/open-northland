@@ -109,8 +109,8 @@ function fuzzContent() {
     ],
   });
 }
-/** Job types: idle / woodcutter / carpenter / hunter / carrier / unknown. */
-const JOB_TYPES = [0, 1, 2, 15, 36, INVALID_TYPE] as const;
+/** Job types: idle / woodcutter / carpenter / hunter / scout / carrier / unknown. */
+const JOB_TYPES = [0, 1, 2, 15, 27, 36, INVALID_TYPE] as const;
 /** Herd tribes: bear pack / bee / boar / cow / deer, plus two non-animals (viking, unknown) — skipped. */
 const HERD_TRIBES = [10, 11, 12, 13, 14, VIKING, INVALID_TYPE] as const;
 /** The viking woodcutter's weapon (test_axe) and leather armor — the combatant-spawn extras. */
@@ -155,7 +155,7 @@ function pick<T>(rng: Rng, options: readonly T[]): T {
 function nextCommand(rng: Rng): Command {
   const x = rng.int(NODE_W);
   const y = rng.int(NODE_H);
-  const roll = rng.int(21);
+  const roll = rng.int(23);
   switch (roll) {
     case 0:
       return {
@@ -332,6 +332,16 @@ function nextCommand(rng: Rng): Command {
         entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
         goodType: pick(rng, [null, RESOURCE_GOOD, 4, INVALID_TYPE]),
       };
+    case 21:
+      // A signpost order at a random id + tile: hits owned scouts (walk + hammer + a Signpost entity
+      // conjured mid-stream, feeding the network memo, the placement blockers, and the vision stamp),
+      // plus non-scout / unowned / dead issuers and illegal spots (skipped). Exercises the placeSignpost
+      // create/skip paths, the spacing gate, and the erect order's abandon paths.
+      return { kind: 'placeSignpost', entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity, x, y };
+    case 22:
+      // The signpost-navigation toggle: flips the SignpostRules singleton mid-stream, confining/freeing
+      // every civilian's target scans + move orders — the rule must hash and replay like any state.
+      return { kind: 'setSignpostNavigation', enabled: rng.int(2) === 0 };
     default:
       // A profession change at a random id: valid + unknown jobs, owned/unowned/dead targets.
       return {

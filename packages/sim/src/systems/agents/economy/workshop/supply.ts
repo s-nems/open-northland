@@ -67,6 +67,7 @@ export function nearestMissingInputSource(
   workplace: Entity,
   recipe: Recipe,
   restockToCapacity = false,
+  cellGate?: (cell: NodeId) => boolean,
 ): { store: Entity; goodType: number; amount: number } | null {
   const stock = world.get(workplace, Stockpile).amounts;
   for (const input of recipe.inputs) {
@@ -75,9 +76,11 @@ export function nearestMissingInputSource(
     if (have >= target) continue; // this input is already covered (for a cycle / to the slot's brim)
     // The stockpile index holds every Stockpile+Position candidate; source any store that isn't the
     // workplace itself and holds the good (a warehouse, a flag pile, another workplace's output).
+    // `cellGate` is the fetcher's signpost confinement — an out-of-area store is not a known source.
     const winner = index.nearest(
       here,
       (e) => e !== workplace && (world.get(e, Stockpile).amounts.get(input.goodType) ?? 0) > 0,
+      cellGate,
     );
     if (winner !== null) return { store: winner.entity, goodType: input.goodType, amount: target - have };
   }

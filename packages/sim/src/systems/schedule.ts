@@ -17,7 +17,7 @@ import { separationSystem } from './movement/collision/index.js';
 import { herdingSystem } from './movement/herding.js';
 import { movementSystem } from './movement/movement.js';
 import { pathfindingSystem } from './movement/routing.js';
-import { playerOrderSystem } from './orders/index.js';
+import { playerOrderSystem, signpostOrderSystem } from './orders/index.js';
 import { visionSystem } from './vision/index.js';
 
 /** Canonical per-tick execution order. Engine wiring, not part of the public systems namespace. */
@@ -27,6 +27,9 @@ export const SYSTEM_ORDER: readonly System[] = [
   jobSystem,
   herdingSystem,
   playerOrderSystem,
+  // After playerOrderSystem retires the walk and before aiSystem could re-task the scout: an arrived
+  // erect order starts its hammer swing this same tick.
+  signpostOrderSystem,
   aiSystem,
   pathfindingSystem,
   movementSystem,

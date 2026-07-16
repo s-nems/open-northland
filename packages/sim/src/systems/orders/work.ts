@@ -33,6 +33,7 @@ import {
 } from '../economy/flags.js';
 import { openWorkerJobFromList } from '../economy/jobs/index.js';
 import { canPlaceWorkFlag } from '../footprint/index.js';
+import { navigationLimitFor } from '../signposts/index.js';
 import { clearNavState } from '../spatial.js';
 import { stampDefaultStance } from './combat.js';
 import { isOrderableSettler } from './guards.js';
@@ -204,6 +205,9 @@ export function setWorkFlag(
   const c = terrain.coordsOf(terrain.nodeAtClamped(command.x, command.y));
   const target = terrain.nodeAt(c.x, c.y);
   if (!canPlaceWorkFlag(world, ctx, terrain, target, live?.flag)) return;
+  // Signpost confinement: a gatherer can't be sent to work ground it doesn't know the way to.
+  const limit = navigationLimitFor(world, terrain, e);
+  if (limit !== null && !limit.allowsNode(target)) return;
   const pos = positionOfNode(c.x, c.y);
 
   if (live !== undefined) {

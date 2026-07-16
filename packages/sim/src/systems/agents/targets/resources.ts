@@ -48,6 +48,7 @@ export function nearestHarvestableFor(
   here: NodeId,
   settler: { jobType: number; tribe: number; experience: ReadonlyMap<number, number> },
   area?: { center: NodeId; radius: number; goodType?: number },
+  cellGate?: (cell: NodeId) => boolean,
 ): { entity: Entity; cell: NodeId; dist: number } | null {
   const allowed = jobAtomics(ctx, settler.jobType);
   // Dormancy gate: if the job's allowed atomics intersect no harvest atomic present on any standing resource,
@@ -104,6 +105,7 @@ export function nearestHarvestableFor(
     // are not yet walkable, so the two banks are genuinely separate components — a named limitation).
     if (terrain.componentOf(here) !== terrain.componentOf(cell)) return null;
     if (manhattan(terrain, origin, cell) > radius) return null; // outside the flag's work radius — leave it be
+    if (cellGate !== undefined && !cellGate(cell)) return null; // outside the settler's signpost area
     return cell;
   });
   return best === null ? null : { entity: best.entity, cell: best.cell, dist: best.distance };
@@ -132,6 +134,7 @@ export function nearestCollectablePileFor(
   terrain: TerrainGraph,
   here: NodeId,
   jobType: number,
+  cellGate?: (cell: NodeId) => boolean,
 ): { pile: Entity; goodType: number; dist: number } | null {
   const allowed = jobAtomics(ctx, jobType);
   // `candidates` is the GroundDrop candidate list, so every entry already has GroundDrop+Stockpile+Position
@@ -141,7 +144,8 @@ export function nearestCollectablePileFor(
     if (good === null) return null; // an emptied drop (about to be reaped) — nothing to collect
     const harvestAtomic = harvestAtomicByGood.get(good);
     if (harvestAtomic === undefined || !allowed.has(harvestAtomic)) return null; // not this job's trade
-    return interactionCell(world, ctx, terrain, e, here);
+    const cell = interactionCell(world, ctx, terrain, e, here);
+    return cellGate === undefined || cellGate(cell) ? cell : null; // signpost confinement
   });
   if (best === null) return null;
   const good = lowestStockedGood(world.get(best.entity, Stockpile)); // the winner's good (accept required one)

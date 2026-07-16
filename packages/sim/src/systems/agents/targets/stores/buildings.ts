@@ -35,12 +35,15 @@ export function nearestConstructionSite(
   here: NodeId,
   tribe: number,
   owner: number | undefined,
+  cellGate?: (cell: NodeId) => boolean,
 ): Entity | null {
   // The index holds only UnderConstruction + Building + Position sites, so just the side filters remain.
+  // `cellGate` is the builder's signpost confinement: a site outside its allowed area is left unbuilt.
   return (
     index.nearest(
       here,
       (e) => world.get(e, Building).tribe === tribe && ownersCompatible(owner, ownerOf(world, e)),
+      cellGate,
     )?.entity ?? null
   );
 }

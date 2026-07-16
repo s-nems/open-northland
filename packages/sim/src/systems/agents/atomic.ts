@@ -1,4 +1,4 @@
-import { CurrentAtomic, Settler } from '../../components/index.js';
+import { CurrentAtomic, ownerOf, Settler } from '../../components/index.js';
 import type { AtomicEffect } from '../../core/atomic-effect.js';
 import { assertNever } from '../../core/brand.js';
 import { fx } from '../../core/fixed.js';
@@ -7,6 +7,7 @@ import type { System, SystemContext } from '../context.js';
 import { advanceConstructionLabor } from '../economy/construction.js';
 import { applySow, applyWater } from '../economy/farming.js';
 import { grantWorkExperience } from '../progression/index.js';
+import { erectSignpost } from '../signposts/index.js';
 import {
   ATOMIC_EVENT_TYPE_PLAY_SOUND_FX,
   atomicAnimationName,
@@ -258,6 +259,16 @@ function applyEffect(world: World, ctx: SystemContext, settler: Entity, effect: 
       // Owned by ProductionSystem (a later slice). Completing the atomic + emitting the event is
       // enough for now; the heavy mutation lands when that system exists.
       return;
+    case 'erectSignpost': {
+      // The scout's completed build-guide swing raises the signpost at the target node — instant and
+      // free (one strike). Re-validated inside erectSignpost: a spot taken mid-swing whiffs (no post).
+      const terrain = ctx.terrain;
+      const player = ownerOf(world, settler);
+      if (terrain !== undefined && player !== undefined) {
+        erectSignpost(world, ctx, terrain, terrain.nodeAt(effect.x, effect.y), player);
+      }
+      return;
+    }
     case 'construct':
       // A builder's completed build swing is one hammer STRIKE — advance the site's construction `labor` a
       // small step (several strikes per unit, scaled to size); the ConstructionSystem reflects it into

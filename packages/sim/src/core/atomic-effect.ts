@@ -77,6 +77,10 @@ export type AtomicEffect =
    *  and the visible `Building.built` is derived from `min(labor, deliveredFraction)`. A `site` no longer
    *  under construction (finished or demolished) is a no-op. */
   | { readonly kind: 'construct'; readonly site: Entity }
+  /** The scout's build-guide swing completed: a signpost owned by the swinging scout's player appears at
+   *  half-cell node `(x, y)` — one hammer strike, instant, no materials (source basis: observed original).
+   *  The spot is re-validated at application (`erectSignpost`); an illegal spot means the swing whiffs. */
+  | { readonly kind: 'erectSignpost'; readonly x: number; readonly y: number }
   /** A farmer's sowing swing at a free field node `(x, y)` (half-cell coords): on completion it plants a
    *  {@link import('../components/economy/index.js').Crop} field of `goodType` there for `farm`, unless the
    *  node was taken since the planner chose it (another field, a fresh resource/heap), in which case it plants

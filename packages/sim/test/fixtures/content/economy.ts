@@ -66,6 +66,9 @@ export const economyContent = {
     // The farmer (the original's job 18) is permitted wheat's plant/cultivate/harvest atomics — the
     // data-driven gate the field-farmer drive (planFarmer) keys on.
     { typeId: 18, id: 'farmer', allowedAtomics: [29, 34, 35] },
+    // The scout (job 27 — `JOB_TYPE_HUMAN_SCOUT`) is permitted only the build-guide atomic (43), the
+    // signpost-erecting swing — mirrors the original's `allowatomic 43`.
+    { typeId: 27, id: 'scout', allowedAtomics: [43] },
     { typeId: 36, id: 'carrier' },
   ],
   buildings: [
