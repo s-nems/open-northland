@@ -155,9 +155,10 @@ export function menuForSettler(state: SettlerMenuState): readonly ActionGroup[] 
 }
 
 /**
- * The static default menu (every dynamic button visible, the civilian top row) — the multi-selection
- * face. The view bakes its retained icon visuals from {@link ALL_MENU_BUTTONS}, which also carries the
- * scout-variant button this face omits.
+ * The everything-visible civilian face (every dynamic button on) — the LAYOUT superset the geometry
+ * tests pin, not what any live selection renders (multi-selection shows
+ * `menuForSettler(DEFAULT_MENU_STATE)`, family buttons hidden). {@link ALL_MENU_BUTTONS} extends it
+ * with the scout-variant button for the view's icon bake.
  */
 export const HUMAN_DEFAULT_MENU: readonly ActionGroup[] = menuForSettler({
   canChangeJob: true,

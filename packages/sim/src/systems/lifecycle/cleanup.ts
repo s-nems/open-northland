@@ -4,6 +4,7 @@ import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
 import { removeWorkFlag } from '../economy/flags.js';
+import { isMinor } from '../family/households.js';
 
 /**
  * CleanupSystem (the death/cleanup half of the combat loop) — destroy every entity whose
@@ -59,9 +60,17 @@ function reap(world: World, ctx: SystemContext, e: Entity): void {
   });
   removeWorkFlag(world, e); // a flag-bound gatherer's flag has no owner once it's gone — reap it too
   // Death dissolves the union: the surviving spouse is widowed (free to remarry — "for life" ends at a
-  // death), and a partner mid-wedding is released from the ceremony.
+  // death), and a partner mid-wedding is released from the ceremony. EXCEPT a widowed parent whose
+  // child still grows: its Marriage is the only carrier of the parent-child edge (familyOf/assignHouse
+  // move the child with the survivor, the child's surname resolves through it), so it stays until the
+  // child grows up — `mayMarry` treats a dead-spouse marriage with no growing child as dissolved, and
+  // the next wedding simply overwrites the stale component.
   const marriage = world.tryGet(e, Marriage);
-  if (marriage !== undefined && world.isAlive(marriage.spouse)) world.remove(marriage.spouse, Marriage);
+  if (marriage !== undefined && world.isAlive(marriage.spouse)) {
+    const child = marriage.child;
+    const raising = child !== null && world.isAlive(child) && isMinor(world, child);
+    if (!raising) world.remove(marriage.spouse, Marriage);
+  }
   const wedding = world.tryGet(e, Wedding);
   if (wedding !== undefined && world.isAlive(wedding.partner)) world.remove(wedding.partner, Wedding);
   world.destroy(e);

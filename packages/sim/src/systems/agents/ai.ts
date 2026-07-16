@@ -192,7 +192,14 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     const limit = navigationLimitFor(world, terrain, e);
 
     // NEEDS (highest priority): eat > sleep > pray. An unsatisfiable need falls through to work.
-    if (planNeeds(world, ctx, terrain, e, settler, here, load, targets, limit)) continue;
+    if (planNeeds(world, ctx, terrain, e, settler, here, load, targets, limit)) {
+      // A needs drive pulled the settler away: shed a lingering waiting-inside marker (preserved
+      // above for family duty) so the walk to food/temple is visible (the render hides a Resting
+      // settler) and the family stages stop reading a foraging parent as "inside". The needs drives
+      // never stamp Resting themselves (sleep is in place), so this only clears a stale marker.
+      world.remove(e, Resting);
+      continue;
+    }
 
     // Combat / hold gates — a unit that combat or the player currently owns skips economy planning. All
     // four sit below the needs drives on purpose (soft overrides — hunger/fatigue/piety still pull the

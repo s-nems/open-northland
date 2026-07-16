@@ -16,6 +16,10 @@ Give the drain a readable surface — candidates (pick the cheapest that answers
   larder sum), so the settlement total visibly isn't shrinking, just moving.
 - A carry tooltip / selection caption for a hoarding woman ("znosi jedzenie do domu"), so the walking
   carrier explains herself when clicked.
+- The same caption seam should cover a woman driving a standing child order (the ChildOrder stages —
+  stocking the child fund, waiting inside): today the only readable state is the make-child button
+  disappearing and, much later, the hearts badge; a one-line status ("czeka na dziecko") in the
+  settler panel's status text answers "what is she doing?".
 - The home panel already shows the larder stock — no change needed there.
 
 ## Verify

@@ -15,7 +15,13 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { ONE, type SimEvent, Simulation } from '../../src/index.js';
-import { BABY_FEMALE, KISS_ATOMIC_ID, KISSED_ATOMIC_ID } from '../../src/systems/index.js';
+import {
+  BABY_FEMALE,
+  familyOf,
+  KISS_ATOMIC_ID,
+  KISSED_ATOMIC_ID,
+  mayMarry,
+} from '../../src/systems/index.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 /**
@@ -199,6 +205,27 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     sim.enqueue({ kind: 'debugKill', target: man() });
     runUntil(sim, () => !sim.world.isAlive(man()), 5, 'death');
     expect(sim.world.has(woman(), Marriage)).toBe(false); // widowed — free to remarry
+  });
+
+  it('a widowed parent keeps the Marriage (the parent-child edge) until the child grows up', () => {
+    const { sim, woman, man, home } = familySim(13);
+    sim.enqueue({ kind: 'marry', entity: woman() });
+    runUntil(sim, () => sim.world.has(woman(), Marriage), 400, 'wedding');
+    sim.enqueue({ kind: 'assignHouse', entity: woman(), house: home() });
+    sim.step();
+    sim.enqueue({ kind: 'makeChild', entity: woman(), child: 'male' });
+    runUntil(sim, () => sim.world.get(woman(), Marriage).child !== null, 4000, 'birth');
+    const child = sim.world.get(woman(), Marriage).child as Entity;
+    sim.enqueue({ kind: 'debugKill', target: man() });
+    runUntil(sim, () => !sim.world.isAlive(man()), 5, 'death');
+    // Widowed mid-raising: the Marriage survives as the carrier of the parent-child edge — the family
+    // still moves as one household, and the widow may not remarry yet.
+    expect(sim.world.has(woman(), Marriage)).toBe(true);
+    expect(familyOf(sim.world, woman())).toEqual([woman(), child]);
+    expect(mayMarry(sim.world, woman())).toBe(false);
+    // The child growing up dissolves the stale dead-spouse union: the widow is free again.
+    sim.world.remove(child, Age);
+    expect(mayMarry(sim.world, woman())).toBe(true);
   });
 
   it('home food feeds only residents (and never the reserved child fund)', () => {
