@@ -1,4 +1,5 @@
 import type { GameFolderProbe, PipelineStageId } from '@open-northland/asset-pipeline';
+import type { ContentStatus } from './content-state.js';
 
 /**
  * The desktop shell's IPC vocabulary — one shared module so the main process, the preload bridge,
@@ -20,8 +21,8 @@ export interface DesktopState {
   /** Where `content/` + the config live: the portable dir, the per-user data dir, or the dev repo root. */
   readonly dataRoot: string;
   readonly portable: boolean;
-  /** Whether generated content is already present (the shell then boots straight into the game). */
-  readonly contentReady: boolean;
+  /** How the installed content compares to this shell's pipeline (see `content-state.ts`). */
+  readonly contentStatus: ContentStatus;
   /** The game folder remembered from a previous run, to prefill the picker. */
   readonly gamePath?: string;
 }

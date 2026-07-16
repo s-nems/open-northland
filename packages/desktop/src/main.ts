@@ -1,8 +1,14 @@
 import { existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
-import { CULTURESNATION_MOD, probeGameFolder } from '@open-northland/asset-pipeline';
-import { app, BrowserWindow, dialog, ipcMain } from 'electron';
+import {
+  CULTURESNATION_MOD,
+  CURRENT_MANIFEST,
+  probeGameFolder,
+  readPipelineManifest,
+} from '@open-northland/asset-pipeline';
+import { app, BrowserWindow, dialog, ipcMain, Menu, shell } from 'electron';
 import { readConfig, writeConfig } from './config.js';
+import { type ContentStatus, classifyContent } from './content-state.js';
 import { detectGameFolders } from './detect.js';
 import type { DesktopState, GameFolderCandidate, PipelineEvent } from './ipc.js';
 import { IPC_CHANNELS } from './ipc.js';
@@ -37,17 +43,18 @@ const configFile = configFileOf(dataRoot.path);
 
 const pipeline = new PipelineHost(join(here, 'pipeline-child.cjs'));
 
-/** Content counts as installed when the pipeline's final validated artifact is present. */
-function contentReady(): boolean {
-  return existsSync(join(contentDir, 'ir.json'));
+/** Compare the data root's conversion stamp to this shell's pipeline; see `content-state.ts`. */
+async function contentStatus(): Promise<ContentStatus> {
+  const stored = await readPipelineManifest(contentDir);
+  return classifyContent(stored, CURRENT_MANIFEST, existsSync(join(contentDir, 'ir.json')));
 }
 
-function desktopState(): DesktopState {
+async function desktopState(): Promise<DesktopState> {
   const remembered = readConfig(configFile).gamePath;
   return {
     dataRoot: dataRoot.path,
     portable: dataRoot.portable,
-    contentReady: contentReady(),
+    contentStatus: await contentStatus(),
     ...(remembered !== undefined ? { gamePath: remembered } : {}),
   };
 }
@@ -56,16 +63,37 @@ async function candidateOf(path: string): Promise<GameFolderCandidate> {
   return { path, probe: await probeGameFolder(path) };
 }
 
-function createWindow(): BrowserWindow {
+function createWindow(initial: ContentStatus): BrowserWindow {
   const win = new BrowserWindow({
     width: 1440,
     height: 900,
     backgroundColor: '#1d1a15',
+    // Hidden until Alt on Windows/Linux (macOS keeps the system bar) — the menu carries the
+    // reinstall-content and open-data-folder actions, so it must stay reachable.
+    autoHideMenuBar: true,
     webPreferences: { preload: join(here, 'preload.cjs') },
   });
-  win.setMenuBarVisibility(false);
-  void win.loadURL(contentReady() ? GAME_URL : SETUP_URL);
+  void win.loadURL(initial === 'ready' ? GAME_URL : SETUP_URL);
   return win;
+}
+
+/** The native menu owns the shell-level actions the in-game UI must not know about. */
+function buildAppMenu(win: BrowserWindow): void {
+  const gameSubmenu: Electron.MenuItemConstructorOptions[] = [
+    // The setup page reads the current content status and offers Regenerate / Play accordingly.
+    { label: 'Reinstall game content…', click: () => void win.loadURL(SETUP_URL) },
+    { label: 'Open data folder', click: () => void shell.openPath(dataRoot.path) },
+    { type: 'separator' },
+    process.platform === 'darwin' ? { role: 'close' } : { role: 'quit' },
+  ];
+  Menu.setApplicationMenu(
+    Menu.buildFromTemplate([
+      ...(process.platform === 'darwin' ? [{ role: 'appMenu' } as const] : []),
+      { label: 'Game', submenu: gameSubmenu },
+      { role: 'editMenu' },
+      { role: 'viewMenu' },
+    ]),
+  );
 }
 
 function wireIpc(win: BrowserWindow): void {
@@ -98,9 +126,11 @@ function wireIpc(win: BrowserWindow): void {
 
 registerAppScheme();
 
-void app.whenReady().then(() => {
+void app.whenReady().then(async () => {
   handleAppProtocol({ appRoot, setupRoot, contentRoot: contentDir });
-  wireIpc(createWindow());
+  const win = createWindow(await contentStatus());
+  buildAppMenu(win);
+  wireIpc(win);
 });
 
 app.on('window-all-closed', () => {

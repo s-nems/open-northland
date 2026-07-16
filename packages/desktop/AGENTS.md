@@ -16,6 +16,11 @@ first-run installer that converts the user's owned game copy with the asset pipe
 - **Data lives in the data root, never in the install dir** (`src/paths.ts`): env override
   `OPEN_NORTHLAND_DATA_DIR` → `portable-data/` marker beside the executable → dev repo root →
   Electron `userData`. The pipeline writes `<dataRoot>/content`; `desktop-config.json` sits beside it.
+- **Content staleness is stamp-compared, never guessed** (`src/content-state.ts`): the pipeline
+  stamps `content/pipeline-manifest.json` last (also the completed-conversion marker); the shell
+  compares it to its bundled `CURRENT_MANIFEST` — IR schema mismatch blocks play, an older
+  `CONTENT_REVISION` (or no stamp) recommends regeneration. Shell-level actions (reinstall content,
+  open data folder) live in the NATIVE app menu, never in the web app's UI.
 
 ## Build & run
 

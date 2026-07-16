@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 import type { Args } from './args.js';
+import { PIPELINE_MANIFEST_NAME, writePipelineManifest } from './manifest.js';
 import type { PipelineProgress } from './progress.js';
 import { convertBmdTree, convertShadowBmdTree, resolveGraphicsBindings } from './stages/bmd/index.js';
 import { convertFontStage } from './stages/fonts.js';
@@ -161,4 +162,9 @@ export async function runPipeline(args: Args, progress?: PipelineProgress): Prom
       `(${totalCells} cells total, ${metas} name/description sidecar(s), ${minimaps} minimap(s)) ` +
       `into ${join(args.out, 'maps')}`,
   );
+
+  // Stamped LAST on purpose: its presence marks a conversion that ran to completion, and its
+  // versions let an installed shell detect stale content (see manifest.ts).
+  await writePipelineManifest(args.out);
+  console.log(`[pipeline] stamped ${join(args.out, PIPELINE_MANIFEST_NAME)}`);
 }

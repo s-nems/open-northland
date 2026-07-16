@@ -17,6 +17,7 @@
       </p>
 
       <section id="pick" class="phase">
+        <p id="status-note" class="note hidden"></p>
         <div class="pick-row">
           <input id="game-path" type="text" placeholder="Path to your Cultures 8th Wonder folder…" spellcheck="false" />
           <button id="browse" type="button">Browse…</button>
@@ -26,7 +27,10 @@
           <p class="note">Found on this computer:</p>
           <div id="detected-list"></div>
         </div>
-        <button id="install" type="button" class="primary" disabled>Install game content</button>
+        <div class="actions">
+          <button id="install" type="button" class="primary" disabled>Install game content</button>
+          <button id="play-now" type="button" class="hidden">Play</button>
+        </div>
       </section>
 
       <section id="run" class="phase hidden">

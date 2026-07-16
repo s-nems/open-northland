@@ -92,12 +92,22 @@ button:disabled {
   cursor: default;
 }
 
-button.primary {
+.actions {
   margin-top: 16px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+button.primary {
   background: var(--accent);
   border-color: var(--accent);
   color: #201808;
   font-weight: 600;
+}
+
+.note.blocking {
+  color: var(--error);
 }
 
 .detected button {
