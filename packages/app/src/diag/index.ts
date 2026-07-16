@@ -1,3 +1,13 @@
+export {
+  buildDiagnosticsBundle,
+  DIAGNOSTICS_BUNDLE_KIND,
+  DIAGNOSTICS_BUNDLE_VERSION,
+  type DiagnosticsBundle,
+  type DiagnosticsGameReport,
+  downloadDiagnosticsBundle,
+  serializeDiagnosticsBundle,
+} from './bundle.js';
+export { installCrashCapture } from './crash.js';
 export { logBootHeader } from './env-header.js';
 export {
   type ConsoleSink,
@@ -7,3 +17,11 @@ export {
   type DiagLogOptions,
   diag,
 } from './log.js';
+export {
+  currentDiagGameSession,
+  type DiagGameSession,
+  HASH_TRACE_EVERY_TICKS,
+  hashTraceFor,
+  recordDiagHash,
+  setDiagGameSession,
+} from './session.js';

@@ -1,4 +1,4 @@
-import { logBootHeader } from './diag/index.js';
+import { installCrashCapture, logBootHeader } from './diag/index.js';
 import { renderAnimationGallery } from './entries/anim.js';
 import { renderIconGallery } from './entries/icons.js';
 import { renderMap } from './entries/map.js';
@@ -30,6 +30,7 @@ async function main(): Promise<void> {
   if (!(canvas instanceof HTMLCanvasElement)) throw new Error('missing #game canvas');
 
   logBootHeader();
+  installCrashCapture();
   const params = new URLSearchParams(window.location.search);
   setActiveLocale(localeParam(params));
   if (params.has('shot')) return renderShot(canvas);

@@ -15,7 +15,7 @@ import { loadMapObjects } from '../content/objects.js';
 import { loadRuntimeRealContent, logRealContentGaps } from '../content/real-content.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet/index.js';
 import { loadRealTerrain } from '../content/terrain.js';
-import { diag } from '../diag/index.js';
+import { diag, hashTraceFor, setDiagGameSession } from '../diag/index.js';
 import { fogModeParam } from '../game/fog.js';
 import { mapStartFocus } from '../game/map-start.js';
 import { HUMAN_PLAYER } from '../game/rules.js';
@@ -159,6 +159,13 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     (simMap !== null
       ? runBareMap(SLICE_SEED, simMap, footprints, goodNames, realContent?.content)
       : runSlice(SLICE_SEED, 1, undefined, HUMAN_PLAYER, footprints, goodNames, realContent?.content));
+  setDiagGameSession({
+    entry: 'map',
+    worldId: mapId,
+    seed: SLICE_SEED,
+    sim,
+    hashTrace: hashTraceFor(params),
+  });
 
   // `?fog=off|reveal|recon` selects the map's fog rule (direct URLs without the flag remain revealed).
   const fogOverride = fogModeParam(params);

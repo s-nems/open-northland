@@ -1,3 +1,4 @@
+import { downloadDiagnosticsBundle } from '../diag/index.js';
 import { messages } from '../i18n/index.js';
 
 export interface SystemMenu {
@@ -78,6 +79,14 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
   quit.style.cssText = MODAL_BUTTON_STYLE;
   quit.addEventListener('click', deps.onQuit);
 
+  // The "something looks wrong" report path: the same bundle the crash banner offers, reachable
+  // without a crash (see docs/tickets/app/crash-capture-diagnostics-bundle.md's manual trigger).
+  const diagnostics = document.createElement('button');
+  diagnostics.type = 'button';
+  diagnostics.textContent = copy.downloadDiagnostics;
+  diagnostics.style.cssText = MODAL_BUTTON_STYLE;
+  diagnostics.addEventListener('click', () => downloadDiagnosticsBundle());
+
   const close = document.createElement('button');
   close.type = 'button';
   close.textContent = copy.closeMenu;
@@ -92,7 +101,7 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
     if (event.target === backdrop) hide();
   });
 
-  panel.append(title, quit, close);
+  panel.append(title, quit, diagnostics, close);
   backdrop.append(panel);
   document.body.append(backdrop);
 
