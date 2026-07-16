@@ -38,6 +38,9 @@ interface RevealBake {
  */
 export class TextureCache {
   private readonly cache = new Map<AtlasFrame, Texture>();
+  /** Every distinct atlas page a texture was minted from — the world-sampling toggle
+   *  ({@link import('./world-renderer.js').WorldRenderer}) flips these between nearest/linear. */
+  private readonly pages = new Set<TextureSource>();
   /** Bottom-cropped views of a frame, keyed by how many top pixels are hidden — the reveal path
    *  ({@link cropped}). Nested so the primary frame→texture cache above stays a clean 1:1. */
   private readonly cropCache = new Map<AtlasFrame, Map<number, Texture>>();
@@ -50,8 +53,16 @@ export class TextureCache {
     if (tex === undefined) {
       tex = new Texture({ source, frame: new Rectangle(frame.x, frame.y, frame.width, frame.height) });
       this.cache.set(frame, tex);
+      this.pages.add(source);
     }
     return tex;
+  }
+
+  /** The distinct atlas pages served so far — world RGB/shadow bob atlases only (paletted character
+   *  meshes and the reveal bakes never pass through here), so a sampling toggle can't touch an
+   *  indexed sheet whose palette indices must stay nearest-sampled. */
+  pageSources(): ReadonlySet<TextureSource> {
+    return this.pages;
   }
 
   /**
@@ -77,6 +88,7 @@ export class TextureCache {
         frame: new Rectangle(frame.x, frame.y + top, frame.width, frame.height - top),
       });
       byTop.set(top, tex);
+      this.pages.add(source);
     }
     return tex;
   }
@@ -133,6 +145,7 @@ export class TextureCache {
   clear(): void {
     this.cache.clear();
     this.cropCache.clear();
+    this.pages.clear();
     for (const byThreshold of this.revealCache.values()) {
       for (const bake of byThreshold.values()) bake.texture.destroy(true);
     }

@@ -24,6 +24,7 @@ export {
   halfCellToScreen,
   ONE,
   setTilePitch,
+  snapCameraToDevicePixels,
   TILE_HALF_H,
   TILE_HALF_W,
   tileToScreen,
@@ -120,6 +121,7 @@ export {
   SPRITE_CULL_MARGIN,
   type WorldFrame,
   WorldRenderer,
+  type WorldRendererOptions,
 } from './gpu/world-renderer.js';
 
 /*
