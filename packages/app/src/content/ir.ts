@@ -16,6 +16,7 @@ import {
   type TextureSource,
 } from '@open-northland/render';
 import { DOOR_SHIFTS } from '../catalog/building-tweaks.js';
+import { diag } from '../diag/index.js';
 import { fetchImageData, fetchJsonOrNull, loadTextureIfPresent } from './net.js';
 
 /**
@@ -284,7 +285,7 @@ export function buildingFootprints(ir: ContentIr | null): Map<number, BuildingFo
     if (shift !== undefined && door === undefined) {
       // A committed correction with nothing to correct — a re-extraction dropped the door. Warn so the
       // review-signed shift isn't silently lost (the type still gets its verbatim footprint).
-      console.warn(`buildingFootprints: DOOR_SHIFTS['${b.id}'] has no extracted door to shift`);
+      diag.warn('content', `buildingFootprints: DOOR_SHIFTS['${b.id}'] has no extracted door to shift`);
     }
     out.set(
       b.typeId,

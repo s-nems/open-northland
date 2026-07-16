@@ -1,4 +1,5 @@
 import type { BuildingOverlayRef } from '@open-northland/render';
+import { diag } from '../../diag/index.js';
 import type { BuildingOverlayRow } from '../ir.js';
 import { type BuildingFamily, familyLayerFor, preferredPalettePool, rowsByType } from './families.js';
 
@@ -44,7 +45,8 @@ export function buildingOverlayRefsByType(
     // viking overlay row is `0 0`, so the overlay anchors like the body bob. A mod row with a real
     // offset would draw misplaced; surface it instead of failing silently.
     if (anchor.x !== 0 || anchor.y !== 0) {
-      console.warn(
+      diag.warn(
+        'content',
         `building overlay type ${typeId}: nonzero offset ${anchor.x},${anchor.y} ignored (not implemented)`,
       );
     }

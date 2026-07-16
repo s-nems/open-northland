@@ -6,6 +6,7 @@ import {
   type MapObjectSprite,
   type SpriteLayer,
 } from '@open-northland/render';
+import { diag } from '../diag/index.js';
 import { type ContentIr, type LandscapeGfxRow, loadLayer, MissingAtlasError, servedAtlasStem } from './ir.js';
 import { forEachPlacement } from './map-placements.js';
 
@@ -241,7 +242,8 @@ export async function loadMapObjects(
     byPlacement.set(placement, sprite);
   });
   if (skipped > 0) {
-    console.warn(
+    diag.warn(
+      'content',
       `loadMapObjects: ${skipped} of ${objects.placements.length / 3} placements had no resolvable graphics`,
     );
   }

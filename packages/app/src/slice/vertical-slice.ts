@@ -10,6 +10,7 @@ import {
 } from '@open-northland/sim';
 import { HARVEST_ATOMIC } from '../catalog/atomics.js';
 import { GRASS } from '../catalog/buildings.js';
+import { diag } from '../diag/index.js';
 import { PRIMARY_TRIBE } from '../game/rules.js';
 import {
   BUILDING_HEADQUARTERS,
@@ -308,7 +309,8 @@ export function runAuthoredSlice(
   const { placements, skipped } = resolveAuthoredPlacements(entities, rows, map);
   if (placements.length === 0) return null;
   if (skipped > 0 || entities.animals.length > 0) {
-    console.warn(
+    diag.warn(
+      'content',
       `runAuthoredSlice: placed ${placements.length}, skipped ${skipped} unresolvable/out-of-bounds, deferred ${entities.animals.length} animals`,
     );
   }
