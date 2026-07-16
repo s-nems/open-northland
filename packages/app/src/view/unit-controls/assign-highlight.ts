@@ -9,6 +9,7 @@ import {
   num,
   ownerPlayerOf,
   settlerJobType,
+  type SnapshotEntity,
 } from '../../game/snapshot.js';
 
 /**
@@ -20,9 +21,9 @@ import {
  *
  * A building offers the current trade when one of its worker slots is the same trade canonically
  * ({@link canonicalJobType} — a settler's picker id 14 and a building's rebased slot id 1014 are both
- * coin-maker) and that slot still has room (`held < count` at this building). Tribe/owner/tech gates are
- * the sim's to enforce on the command; here green = "this building has my trade's free slot", the
- * capacity half the player reads at a glance.
+ * coin-maker) and that slot still has room (`held < count` at this building). The sim still enforces its
+ * own tech/XP gate on the `assignWorker` command; here green = "an own, built building with my trade's free
+ * slot", the candidacy + capacity half the player reads at a glance.
  */
 
 /** The slice of a building type this projection needs: its worker slots. */
@@ -58,6 +59,27 @@ function settlerTribe(e: { readonly components: Record<string, unknown> }): numb
 }
 
 /**
+ * The candidacy gate — the worker slots of a building this settler could be assigned to at all, or null
+ * when it is not a candidate: another owner's / tribe's building, a construction site (takes builders, not
+ * workers), or a building that employs nobody (a home). The single home of "which buildings the assign
+ * gesture considers", shared by the highlight (a non-candidate is skipped, not tinted red) and the click
+ * resolver (a non-candidate cancels) so the green wash and the bind can never disagree about candidacy.
+ */
+function candidateSlots(
+  building: SnapshotEntity,
+  settler: SnapshotEntity,
+  buildingsByType: ReadonlyMap<number, AssignBuildingInfo>,
+): readonly { readonly jobType: number; readonly count: number }[] | null {
+  if (!isBuilding(building)) return null;
+  if (ownerPlayerOf(building) !== ownerPlayerOf(settler)) return null; // only the settler's own buildings
+  if (buildingTribe(building) !== settlerTribe(settler)) return null;
+  if (building.components.UnderConstruction !== undefined) return null; // a site takes builders, not workers
+  const typeId = buildingTypeOf(building);
+  const slots = typeId !== undefined ? buildingsByType.get(typeId)?.workers : undefined;
+  return slots !== undefined && slots.length > 0 ? slots : null; // employs nobody (a home) → not a candidate
+}
+
+/**
  * The building's slot job that IS the settler's current trade with a free seat, or null — the exact job
  * the button would bind. Matches by canonical trade ({@link canonicalJobType}) so a picker-assigned trade
  * (raw id) lines up with the building's rebased slot id, and checks live capacity at this building. This
@@ -90,19 +112,12 @@ export function computeAssignHighlight(
 ): BuildingHighlightItem[] {
   const settler = entityById(snapshot, settlerId);
   if (settler === undefined || !isSettler(settler)) return [];
-  const owner = ownerPlayerOf(settler);
-  const tribe = settlerTribe(settler);
   const currentJob = settlerJobType(settler);
   const staffing = buildStaffing(snapshot);
   const items: BuildingHighlightItem[] = [];
   for (const e of snapshot.entities) {
-    if (!isBuilding(e)) continue;
-    if (ownerPlayerOf(e) !== owner) continue; // only the settler's own buildings are candidates
-    if (buildingTribe(e) !== tribe) continue;
-    if (e.components.UnderConstruction !== undefined) continue; // a site takes builders, not workers
-    const typeId = buildingTypeOf(e);
-    const slots = typeId !== undefined ? buildingsByType.get(typeId)?.workers : undefined;
-    if (slots === undefined || slots.length === 0) continue; // employs nobody (a home) — not a candidate
+    const slots = candidateSlots(e, settler, buildingsByType);
+    if (slots === null) continue; // not a candidate — skipped, never tinted
     const ok = currentTradeSlotAt(currentJob, slots, staffing.get(e.id)) !== null;
     items.push({ id: e.id, ok });
   }
@@ -123,12 +138,8 @@ export function assignableJobForBuilding(
 ): number | null {
   const settler = entityById(snapshot, settlerId);
   const building = entityById(snapshot, buildingId);
-  if (settler === undefined || !isSettler(settler)) return null;
-  if (building === undefined || !isBuilding(building)) return null;
-  if (ownerPlayerOf(building) !== ownerPlayerOf(settler)) return null;
-  if (buildingTribe(building) !== settlerTribe(settler)) return null;
-  if (building.components.UnderConstruction !== undefined) return null;
-  const typeId = buildingTypeOf(building);
-  const slots = typeId !== undefined ? buildingsByType.get(typeId)?.workers : undefined;
+  if (settler === undefined || !isSettler(settler) || building === undefined) return null;
+  const slots = candidateSlots(building, settler, buildingsByType);
+  if (slots === null) return null; // not a candidate — the click cancels
   return currentTradeSlotAt(settlerJobType(settler), slots, buildStaffing(snapshot).get(buildingId));
 }

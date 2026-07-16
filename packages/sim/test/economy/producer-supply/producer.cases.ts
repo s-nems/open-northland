@@ -3,6 +3,7 @@ import {
   Carrying,
   CurrentAtomic,
   MoveGoal,
+  Owner,
   Production,
   Resting,
   Stockpile,
@@ -275,6 +276,34 @@ describe('producer work seats — one stay-inside seat per batch', () => {
     const atomic = sim.world.get(second, CurrentAtomic);
     expect(atomic.atomicId).toBe(PICKUP_ATOMIC);
     expect(atomic.effect).toMatchObject({ kind: 'pickup', goodType: PLANK, from: mill });
+  });
+});
+
+describe('producer loiter — an idle owned worker waits BESIDE the door, not inside', () => {
+  it('an owned operator with nothing to do loiters off the door (a MoveGoal beside it, no Resting)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    const mill = buildingAt(sim, SAWMILL, 3, 0); // no wood anywhere → nothing to produce/fetch/haul
+    const worker = settlerAt(sim, 3, 0, CARPENTER, mill);
+    sim.world.add(worker, Owner, { player: 0 });
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    // The user-facing "bored by the door" look: it steps OFF the door to loiter beside it (a MoveGoal to a
+    // non-door cell) and never stamps the wait-inside Resting marker.
+    expect(sim.world.has(worker, Resting)).toBe(false);
+    expect(sim.world.has(worker, CurrentAtomic)).toBe(false);
+    expect(sim.world.has(worker, MoveGoal)).toBe(true);
+    expect(sim.world.get(worker, MoveGoal).cell).not.toBe(cell(sim, 3, 0)); // beside the door, not on it
+  });
+
+  it('an UNOWNED operator keeps the wait-inside (Resting) behaviour — golden fixtures stay byte-identical', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    const mill = buildingAt(sim, SAWMILL, 3, 0);
+    const worker = settlerAt(sim, 3, 0, CARPENTER, mill); // no Owner
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.tryGet(worker, Resting)).toEqual({ at: mill }); // waits inside on the door, unchanged
   });
 });
 
