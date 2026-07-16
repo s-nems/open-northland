@@ -82,12 +82,12 @@ function centroid(
 /**
  * Zoom bounds the scroll-wheel clamps to, so the world can't shrink to nothing or balloon unusably. The
  * lower bound is deliberate: an RTS renders only what's on screen, so the min zoom bounds the visible tile
- * + bob count (and thus frame cost), not a whole-map fit. `0.15` (~6× out) frames a big slab of a large
- * map (a battle, a settlement cluster); seeing a whole 256×256 map at once (`scale ≈ 0.06`, tens of
- * thousands of bobs) is where cost balloons, so it's off the table. Raise it if a scene still churns when
- * fully out; lower it only alongside a zoom-out LOD (marker sprites + animation freeze).
+ * + bob count (and thus frame cost), not a whole-map fit — a mid-size decoded map must NOT fit on screen
+ * whole (hands-on feedback + the measured zoomed-out allocation churn,
+ * `docs/tickets/render/zoom-out-allocation-churn.md`). `0.25` (4× out) still frames a battle or a
+ * settlement cluster; lower it only alongside a zoom-out LOD (marker sprites + animation freeze).
  */
-export const MIN_ZOOM = 0.15;
+export const MIN_ZOOM = 0.25;
 export const MAX_ZOOM = 8;
 /** Per-wheel-notch zoom factor (one notch in multiplies, one out divides). */
 const WHEEL_ZOOM_STEP = 1.1;
@@ -97,12 +97,6 @@ const ARROW_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']);
 const MAX_PAN_STEP_MS = 100;
 /** CSS px from a canvas edge within which the pointer edge-scrolls (the RTS screen-edge pan). */
 export const EDGE_SCROLL_MARGIN = 24;
-/** Half-life (ms) of the pan-velocity easing: held-key/edge pans ramp up and glide out briefly
- *  instead of starting and stopping dead. Short — feel, not float. */
-const PAN_EASE_HALF_LIFE_MS = 60;
-/** Pan speed (px/s) below which a decaying glide is stopped dead (avoids an endless sub-pixel tail). */
-const PAN_STOP_SPEED = 1;
-
 /**
  * The interactive camera's speed knobs — internal tuning today, the seam a future in-game options
  * screen drives (the controller reads its mutable {@link CameraController.tuning} live each frame,
@@ -128,12 +122,6 @@ export const DEFAULT_CAMERA_TUNING: CameraTuning = {
   edgeScrollSpeed: 1500,
   zoomGlideRate: 4,
 };
-
-/** The fraction of the remaining gap an exponential ease covers in `dtMs` at the given half-life —
- *  frame-rate independent (two 8 ms steps land where one 16 ms step does). Pure. */
-export function easeFactor(dtMs: number, halfLifeMs: number): number {
-  return 1 - 0.5 ** (dtMs / halfLifeMs);
-}
 
 /**
  * The edge-scroll pan velocity (screen px/s, camera-scroll convention: pointer at the LEFT edge reveals
@@ -302,9 +290,6 @@ export function createCameraController(
   let targetScale = initial.scale ?? 1;
   let zoomAnchorX = 0;
   let zoomAnchorY = 0;
-  // The eased pan velocity (screen px/s) the held keys + edge scroll drive; decays to a stop.
-  let panVx = 0;
-  let panVy = 0;
   // Last known pointer position (client px) + whether it is over the canvas — the edge-scroll probe.
   let pointerX = 0;
   let pointerY = 0;
@@ -357,14 +342,11 @@ export function createCameraController(
     held.delete(e.key);
   };
   // Losing focus mid-gesture (alt-tab, devtools) drops the keyup/mouseup, which would otherwise leave a
-  // key stuck in `held` (the camera pans forever) or `dragging` stuck true. Reset on blur; the eased pan
-  // velocity is killed too so the camera doesn't glide on while the window is unfocused.
+  // key stuck in `held` (the camera pans forever) or `dragging` stuck true. Reset on blur.
   const onBlur = (): void => {
     held.clear();
     dragging = false;
     pointerInside = false;
-    panVx = 0;
-    panVy = 0;
   };
 
   canvas.addEventListener('mousedown', onMouseDown);
@@ -382,11 +364,9 @@ export function createCameraController(
     tuning,
     jumpTo: (next) => {
       cam = next;
-      // The jump replaces the frame outright, so the wheel glide retargets to the new scale and any
-      // in-flight eased pan stops (a minimap jump must not carry the old glide into the new view).
+      // The jump replaces the frame outright, so the wheel glide retargets to the new scale (a minimap
+      // jump must not carry the old glide into the new view).
       targetScale = next.scale ?? 1;
-      panVx = 0;
-      panVy = 0;
       // A drag in flight keeps panning from the new frame: its deltas apply per-move (lastX/lastY track
       // the cursor, not the camera), so no drag state needs resetting here.
     },
@@ -404,9 +384,11 @@ export function createCameraController(
       if (targetScale !== (cam.scale ?? 1)) {
         cam = stepZoomToward(cam, targetScale, zoomAnchorX, zoomAnchorY, dt, tuning.zoomGlideRate);
       }
-      // Desired pan velocity (screen px/s): held arrows plus the screen-edge pointer. Camera-scroll
-      // convention throughout: an input reveals the world in its direction (look right → the world
-      // slides left → offset shrinks).
+      // Pan velocity (screen px/s), applied DIRECTLY — no ramp-up/glide-out easing: an RTS pan must
+      // start and stop with the input (hands-on feedback; the spatial edge-margin ramp in
+      // `edgePanVelocity` still grades the speed by pointer depth). Camera-scroll convention
+      // throughout: an input reveals the world in its direction (look right → the world slides
+      // left → offset shrinks).
       let desiredX = 0;
       let desiredY = 0;
       if (held.has('ArrowLeft')) desiredX += tuning.arrowPanSpeed;
@@ -428,15 +410,8 @@ export function createCameraController(
         desiredX += edge.vx * sx; // CSS px/s → screen px/s, same scroll convention as the arrows
         desiredY += edge.vy * sy;
       }
-      // Ease the velocity toward the desire (ramp up + glide out), stopping dead below the sub-pixel
-      // tail threshold so an idle camera does no per-frame work.
-      const ease = easeFactor(dt, PAN_EASE_HALF_LIFE_MS);
-      panVx += (desiredX - panVx) * ease;
-      panVy += (desiredY - panVy) * ease;
-      if (desiredX === 0 && Math.abs(panVx) < PAN_STOP_SPEED) panVx = 0;
-      if (desiredY === 0 && Math.abs(panVy) < PAN_STOP_SPEED) panVy = 0;
-      if (panVx !== 0 || panVy !== 0) {
-        cam = panCamera(cam, (panVx * dt) / 1000, (panVy * dt) / 1000);
+      if (desiredX !== 0 || desiredY !== 0) {
+        cam = panCamera(cam, (desiredX * dt) / 1000, (desiredY * dt) / 1000);
       }
     },
     dispose: () => {
