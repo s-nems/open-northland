@@ -29,6 +29,7 @@ import {
   PortraitInsetLayer,
   SelectionLayer,
 } from './overlays/index.js';
+import { makeVignetteSprite } from './post-fx.js';
 import { type EntityBounds, SpritePool } from './sprite-pool/index.js';
 import type { SpriteSheet } from './sprite-sheet.js';
 import { TerrainLayer } from './terrain/index.js';
@@ -53,6 +54,12 @@ export interface WorldRendererOptions {
    * `?shot` capture must stay byte-stable, so it never enables this.
    */
   readonly viewSmoothing?: boolean | undefined;
+  /**
+   * The world post pass (`gpu/post-fx.ts`): a warm-graded vignette multiply over the world, under the
+   * HUD. An OpenNorthland enhancement for the live entries; the deterministic `?shot` capture never
+   * enables it (`?postfx=off` disables it live).
+   */
+  readonly postFx?: boolean | undefined;
 }
 
 /** Shared empty highlight so clearing the assign-mode tint allocates nothing. */
@@ -174,6 +181,8 @@ export class WorldRenderer {
 
   /** Interactive view smoothing ({@link WorldRendererOptions.viewSmoothing}). */
   private readonly viewSmoothing: boolean;
+  /** The post-pass vignette sprite ({@link WorldRendererOptions.postFx}); null when off/unavailable. */
+  private readonly vignette: Sprite | null;
   /** Atlas pages currently flipped to linear minification by {@link applyWorldSampling} — exactly the
    *  set to restore to nearest when the camera zooms back in. */
   private readonly linearPages = new Set<TextureSource>();
@@ -210,6 +219,10 @@ export class WorldRenderer {
     this.worldLayer.addChild(this.badgeLayer.container);
     this.worldLayer.addChild(this.geometryDebug.container);
     app.stage.addChild(this.worldLayer);
+    // The post-pass vignette sits directly over the world and under the pause wash + HUD, so the grade
+    // colours the map but never the chrome. One multiply draw; absent entirely when postFx is off.
+    this.vignette = opts?.postFx === true ? makeVignetteSprite() : null;
+    if (this.vignette !== null) app.stage.addChild(this.vignette);
     // The pause wash sits above the world and below the HUD (stage order), so pausing browns the map
     // but never the always-on HUD or the tool panel (both are later stage children).
     this.pauseWash.tint = PAUSE_WASH_TINT;
@@ -454,6 +467,10 @@ export class WorldRenderer {
       this.pauseWash.width = this.app.screen.width;
       this.pauseWash.height = this.app.screen.height;
     }
+    if (this.vignette !== null) {
+      this.vignette.width = this.app.screen.width;
+      this.vignette.height = this.app.screen.height;
+    }
     this.hud.draw(hud);
     // The portrait inset is a second render of the world (re-aimed at the selected unit) into the panel's
     // box texture — must run after the pool reconcile above (so it uses this frame's positions) and before
@@ -557,6 +574,7 @@ export class WorldRenderer {
     this.badgeLayer.destroy();
     this.geometryDebug.destroy();
     this.worldLayer.destroy({ children: true });
+    this.vignette?.destroy(true); // owns its baked gradient texture
     this.pauseWash.destroy(); // the shared Texture.WHITE itself is left alone
     this.hud.destroy();
     this.portrait.destroy();

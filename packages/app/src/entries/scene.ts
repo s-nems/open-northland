@@ -90,7 +90,11 @@ export async function renderSceneMode(
 
   // Retained renderer: mesh the terrain once, then reuse a pooled sprite graph each frame (no per-frame
   // object churn), so a big scene renders + deep-zoom-outs without exhausting the GPU.
-  const renderer = new WorldRenderer(app, { sheet, viewSmoothing: true });
+  const renderer = new WorldRenderer(app, {
+    sheet,
+    viewSmoothing: true,
+    postFx: params.get('postfx') !== 'off',
+  });
   renderer.setTerrain(terrainGrid, terrain);
 
   // Interactive camera over the scene: the scene supplies its starting frame, then the human pans and
