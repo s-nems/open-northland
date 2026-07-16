@@ -33,7 +33,15 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
     const reported = new Set(merge.unbalancedGoods);
     for (const good of merge.content.goods) {
       if (good.gathering === undefined || reported.has(good.id)) continue;
-      if (KNOWN_UNCALIBRATED_GOOD_IDS.includes(good.id)) continue;
+      if (KNOWN_UNCALIBRATED_GOOD_IDS.includes(good.id)) {
+        // The allow-list must not outlive its gap: once the good gains a live balance, this fails
+        // so the entry is removed in the same change that calibrates it.
+        expect(
+          good.gathering.yieldPerNode === 0 && good.gathering.depositSize === 0,
+          `'${good.id}' is calibrated now — drop it from KNOWN_UNCALIBRATED_GOOD_IDS`,
+        ).toBe(true);
+        continue;
+      }
       // The pipeline emits zeroed gathering balance (no readable constants); the merge overlays the
       // clean-room pins. Calibration means a per-node yield (felled/plucked goods) or a deposit size
       // (mined goods, e.g. mud) — a good with neither could never bank a single unit.
