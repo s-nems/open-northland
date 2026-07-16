@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   CURRENT_MANIFEST,
+  clearPipelineManifest,
   PIPELINE_MANIFEST_NAME,
   readPipelineManifest,
   writePipelineManifest,
@@ -24,6 +25,13 @@ describe('pipeline manifest', () => {
   it('round-trips the current stamp', async () => {
     await writePipelineManifest(out.path);
     expect(await readPipelineManifest(out.path)).toEqual(CURRENT_MANIFEST);
+  });
+
+  it('clears a previous stamp so an interrupted rerun cannot pass as complete', async () => {
+    await writePipelineManifest(out.path);
+    await clearPipelineManifest(out.path);
+    expect(await readPipelineManifest(out.path)).toBeUndefined();
+    await clearPipelineManifest(out.path); // absent stamp (first run) is a no-op, not an error
   });
 
   it('reads absent or malformed stamps as undefined', async () => {

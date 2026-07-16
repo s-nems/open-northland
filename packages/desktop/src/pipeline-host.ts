@@ -11,6 +11,8 @@ import type { PipelineEvent } from './ipc.js';
  */
 export class PipelineHost {
   private child: Electron.UtilityProcess | undefined;
+  /** Marks the live run finished so a deliberate `stop()` emits no trailing error event. */
+  private silence: (() => void) | undefined;
 
   constructor(private readonly childScript: string) {}
 
@@ -33,6 +35,9 @@ export class PipelineHost {
     });
     this.child = child;
     let finished = false;
+    this.silence = () => {
+      finished = true;
+    };
     const emit = (event: PipelineEvent): void => {
       if (finished) return;
       if (event.kind === 'done' || event.kind === 'error') finished = true;
@@ -53,11 +58,14 @@ export class PipelineHost {
     });
   }
 
-  /** Kill a running conversion (window closed mid-run); resolves after the child exits. */
+  /** Kill a running conversion (wizard Cancel, window closed); resolves after the child exits.
+   * Deliberate, so the sink gets no done/error for this run — the caller owns the UI transition. */
   async stop(): Promise<void> {
     const child = this.child;
     if (child === undefined) return;
     this.child = undefined;
+    this.silence?.();
+    this.silence = undefined;
     child.kill();
     await once(child, 'exit');
   }

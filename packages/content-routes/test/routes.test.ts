@@ -109,4 +109,19 @@ describe('resolveContentRequest', () => {
     expect(resolveContentRequest('/', contentRoot)).toBeUndefined();
     expect(resolveContentRequest('/maps', contentRoot)).toBeUndefined();
   });
+
+  it('percent-decodes the raw pathname the same way for every host', async () => {
+    const spaced = await put('maps/two words.json');
+    expect(resolveContentRequest('/maps/two%20words.json', contentRoot)).toMatchObject({ path: spaced });
+  });
+
+  it('rejects encoded traversal and malformed percent sequences without throwing', async () => {
+    await put('maps/campaign01.json');
+    // Single-encoded dots decode to a real `..` and must still fail the containment check.
+    expect(
+      resolveContentRequest('/bobs/%2e%2e/%2e%2e/%2e%2e/%2e%2e/maps/campaign01.json', contentRoot),
+    ).toBeUndefined();
+    expect(resolveContentRequest('/maps/%zz.json', contentRoot)).toBeUndefined();
+    expect(resolveContentRequest('/maps/%.json', contentRoot)).toBeUndefined();
+  });
 });

@@ -1,4 +1,5 @@
-import type { GameFolderProbe, PipelineStageId } from '@open-northland/asset-pipeline';
+import type { GameFolderProbe } from '@open-northland/asset-pipeline';
+import type { PipelineStageId } from '@open-northland/asset-pipeline/progress';
 import type { ContentStatus } from './content-state.js';
 
 /**
@@ -12,6 +13,7 @@ export const IPC_CHANNELS = {
   probeGamePath: 'desktop:probe-game-path',
   detectGameFolders: 'desktop:detect-game-folders',
   runPipeline: 'desktop:run-pipeline',
+  stopPipeline: 'desktop:stop-pipeline',
   pipelineEvent: 'desktop:pipeline-event',
   startGame: 'desktop:start-game',
 } as const;
@@ -52,6 +54,8 @@ export interface DesktopApi {
   detectGameFolders(): Promise<GameFolderCandidate[]>;
   /** Start the conversion of `gamePath` into the data root; events arrive via {@link onPipelineEvent}. */
   runPipeline(gamePath: string): Promise<void>;
+  /** Abort a running conversion (the wizard's Cancel); resolves after the child exited, silently. */
+  stopPipeline(): Promise<void>;
   onPipelineEvent(listener: (event: PipelineEvent) => void): void;
   /** Swap the window from the setup page to the game. */
   startGame(): Promise<void>;

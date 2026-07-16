@@ -68,20 +68,46 @@ function createWindow(initial: ContentStatus): BrowserWindow {
     width: 1440,
     height: 900,
     backgroundColor: '#1d1a15',
-    // Hidden until Alt on Windows/Linux (macOS keeps the system bar) — the menu carries the
-    // reinstall-content and open-data-folder actions, so it must stay reachable.
-    autoHideMenuBar: true,
-    webPreferences: { preload: join(here, 'preload.cjs') },
+    // The menu bar stays visible on Windows/Linux: it is the only home of the reinstall-content
+    // and open-data-folder actions, and a bar hidden behind Alt is undiscoverable.
+    webPreferences: {
+      preload: join(here, 'preload.cjs'),
+      // Electron 43 defaults, pinned so a future option edit can't silently regress them.
+      sandbox: true,
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+  // The window renders only the shell's own app:// pages — no popups, no navigation elsewhere.
+  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  win.webContents.on('will-navigate', (event, target) => {
+    if (!target.startsWith('app://')) event.preventDefault();
   });
   void win.loadURL(initial === 'ready' ? GAME_URL : SETUP_URL);
   return win;
+}
+
+/** Swap to the setup page; a running game session (there is no saving yet) needs a confirmation. */
+async function openSetupPage(win: BrowserWindow): Promise<void> {
+  if (win.webContents.getURL() === GAME_URL) {
+    const choice = await dialog.showMessageBox(win, {
+      type: 'question',
+      buttons: ['Leave game', 'Stay'],
+      defaultId: 1,
+      cancelId: 1,
+      message: 'Leave the running game?',
+      detail: 'There is no saving yet — the current session will be lost.',
+    });
+    if (choice.response !== 0) return;
+  }
+  await win.loadURL(SETUP_URL);
 }
 
 /** The native menu owns the shell-level actions the in-game UI must not know about. */
 function buildAppMenu(win: BrowserWindow): void {
   const gameSubmenu: Electron.MenuItemConstructorOptions[] = [
     // The setup page reads the current content status and offers Regenerate / Play accordingly.
-    { label: 'Reinstall game content…', click: () => void win.loadURL(SETUP_URL) },
+    { label: 'Reinstall game content…', click: () => void openSetupPage(win) },
     { label: 'Open data folder', click: () => void shell.openPath(dataRoot.path) },
     { type: 'separator' },
     process.platform === 'darwin' ? { role: 'close' } : { role: 'quit' },
@@ -96,11 +122,34 @@ function buildAppMenu(win: BrowserWindow): void {
   );
 }
 
+/** Every invoke must come from one of the shell's own app:// pages; a foreign frame gets nothing. */
+function assertAppSender(event: Electron.IpcMainInvokeEvent): void {
+  if (!(event.senderFrame?.url ?? '').startsWith('app://')) {
+    throw new Error('IPC from an untrusted frame');
+  }
+}
+
+/** IPC arguments cross the bridge untyped; reject anything a tampered renderer could substitute. */
+function assertString(value: unknown): asserts value is string {
+  if (typeof value !== 'string') throw new Error('expected a string argument');
+}
+
 function wireIpc(win: BrowserWindow): void {
-  ipcMain.handle(IPC_CHANNELS.getState, () => desktopState());
-  ipcMain.handle(IPC_CHANNELS.probeGamePath, (_ev, path: string) => candidateOf(path));
-  ipcMain.handle(IPC_CHANNELS.detectGameFolders, () => detectGameFolders());
-  ipcMain.handle(IPC_CHANNELS.pickGameFolder, async () => {
+  ipcMain.handle(IPC_CHANNELS.getState, (ev) => {
+    assertAppSender(ev);
+    return desktopState();
+  });
+  ipcMain.handle(IPC_CHANNELS.probeGamePath, (ev, path: unknown) => {
+    assertAppSender(ev);
+    assertString(path);
+    return candidateOf(path);
+  });
+  ipcMain.handle(IPC_CHANNELS.detectGameFolders, (ev) => {
+    assertAppSender(ev);
+    return detectGameFolders();
+  });
+  ipcMain.handle(IPC_CHANNELS.pickGameFolder, async (ev) => {
+    assertAppSender(ev);
     const picked = await dialog.showOpenDialog(win, {
       title: 'Select your Cultures - 8th Wonder of the World folder',
       properties: ['openDirectory'],
@@ -108,10 +157,11 @@ function wireIpc(win: BrowserWindow): void {
     const path = picked.filePaths[0];
     return picked.canceled || path === undefined ? null : candidateOf(path);
   });
-  ipcMain.handle(IPC_CHANNELS.runPipeline, async (_ev, gamePath: string) => {
+  ipcMain.handle(IPC_CHANNELS.runPipeline, async (ev, gamePath: unknown) => {
+    assertAppSender(ev);
+    assertString(gamePath);
     const probe = await probeGameFolder(gamePath);
     if (!probe.hasArchives) throw new Error('no game archives (.lib) found under the selected folder');
-    writeConfig(configFile, { gamePath });
     pipeline.start(
       gamePath,
       contentDir,
@@ -120,19 +170,45 @@ function wireIpc(win: BrowserWindow): void {
         if (!win.isDestroyed()) win.webContents.send(IPC_CHANNELS.pipelineEvent, event);
       },
     );
+    // Remembered only after start() accepted the run — a double-start throw must not clobber it.
+    writeConfig(configFile, { gamePath });
   });
-  ipcMain.handle(IPC_CHANNELS.startGame, () => win.loadURL(GAME_URL));
+  ipcMain.handle(IPC_CHANNELS.stopPipeline, (ev) => {
+    assertAppSender(ev);
+    return pipeline.stop();
+  });
+  ipcMain.handle(IPC_CHANNELS.startGame, async (ev) => {
+    assertAppSender(ev);
+    // Re-checked here, not only in the setup UI: incompatible content must never boot.
+    if ((await contentStatus()) === 'stale-schema') {
+      throw new Error('content was generated for an incompatible schema — regenerate it first');
+    }
+    await win.loadURL(GAME_URL);
+  });
 }
 
-registerAppScheme();
+// One shell per data root: a second instance would race a second conversion into the same content/.
+if (app.requestSingleInstanceLock()) {
+  registerAppScheme();
 
-void app.whenReady().then(async () => {
-  handleAppProtocol({ appRoot, setupRoot, contentRoot: contentDir });
-  const win = createWindow(await contentStatus());
-  buildAppMenu(win);
-  wireIpc(win);
-});
+  let mainWindow: BrowserWindow | undefined;
+  app.on('second-instance', () => {
+    if (mainWindow === undefined) return;
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  });
 
+  void app.whenReady().then(async () => {
+    handleAppProtocol({ appRoot, setupRoot, contentRoot: contentDir });
+    mainWindow = createWindow(await contentStatus());
+    buildAppMenu(mainWindow);
+    wireIpc(mainWindow);
+  });
+} else {
+  app.quit();
+}
+
+// Quits on macOS too, deliberately: a single-window game shell has nothing to reopen from the Dock.
 app.on('window-all-closed', () => {
   void pipeline.stop().then(() => app.quit());
 });

@@ -4,12 +4,14 @@ import { buildBobsIndexEntries } from './bobs-index.js';
 import { buildMapsIndexEntries } from './maps-index.js';
 
 /**
- * The ONE table of app-facing `content/` routes, shared by every host that serves the pipeline's
+ * The single table of app-facing `content/` routes, shared by every host that serves the pipeline's
  * output to the app (the Vite dev middleware in `packages/app/vite.config.ts` and the desktop
- * shell's `app://` protocol handler). Semantics both hosts must honour: path traversal is rejected
- * (the resolved file must stay under the route's root), only the route's listed extensions are
- * served, and anything unmatched or absent resolves to `undefined` so the host falls through to its
- * own 404 — a checkout or data dir without `content/` must degrade, never crash.
+ * shell's `app://` protocol handler). Semantics both hosts must honour: hosts pass the raw URL
+ * pathname and percent-decoding happens here (a malformed sequence is a miss, never a throw), path
+ * traversal is rejected (the resolved file must stay under the route's root), only the route's
+ * listed extensions are served, and anything unmatched or absent resolves to `undefined` so the
+ * host falls through to its own 404 — a checkout or data dir without `content/` must degrade,
+ * never crash.
  */
 
 /** A static file hit: stream `path` with `contentType`. */
@@ -68,10 +70,17 @@ function servedExtension(file: string, allowed: readonly ServedExtension[]): Ser
 }
 
 /**
- * Resolve a request path (the URL pathname, query already stripped) against the content dir.
- * Returns a file/JSON hit, or `undefined` for anything unmatched, traversal-escaping, or absent.
+ * Resolve a request path (the raw URL pathname, query already stripped) against the content dir.
+ * Returns a file/JSON hit, or `undefined` for anything unmatched, malformed, traversal-escaping,
+ * or absent.
  */
-export function resolveContentRequest(pathname: string, contentRoot: string): ContentHit | undefined {
+export function resolveContentRequest(rawPathname: string, contentRoot: string): ContentHit | undefined {
+  let pathname: string;
+  try {
+    pathname = decodeURIComponent(rawPathname);
+  } catch {
+    return undefined;
+  }
   if (pathname === '/ir.json') {
     const file = join(contentRoot, 'ir.json');
     return existsSync(file) ? { kind: 'file', path: file, contentType: CONTENT_TYPES['.json'] } : undefined;

@@ -9,6 +9,7 @@ const api: DesktopApi = {
   probeGamePath: (path) => ipcRenderer.invoke(IPC_CHANNELS.probeGamePath, path),
   detectGameFolders: () => ipcRenderer.invoke(IPC_CHANNELS.detectGameFolders),
   runPipeline: (gamePath) => ipcRenderer.invoke(IPC_CHANNELS.runPipeline, gamePath),
+  stopPipeline: () => ipcRenderer.invoke(IPC_CHANNELS.stopPipeline),
   onPipelineEvent: (listener) => {
     ipcRenderer.on(IPC_CHANNELS.pipelineEvent, (_ev, event: PipelineEvent) => listener(event));
   },

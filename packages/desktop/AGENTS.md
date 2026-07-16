@@ -8,7 +8,7 @@ first-run installer that converts the user's owned game copy with the asset pipe
 
 - **The web app stays shell-agnostic.** `packages/app` never imports desktop; the shell serves
   `packages/app/dist` byte-identical to the browser build and reuses the app's content routes via
-  `@open-northland/content-routes` (the ONE route table, shared with the Vite dev middleware).
+  `@open-northland/content-routes` (the single route table, shared with the Vite dev middleware).
 - **The pipeline runs out of process.** The conversion is CPU-bound; it always runs as a
   `utilityProcess` fork of the bundled `pipeline-child.cjs`, never on the main-process event loop.
   Progress rides the pipeline's `PipelineProgress` seam (`@open-northland/asset-pipeline/progress`
@@ -20,7 +20,7 @@ first-run installer that converts the user's owned game copy with the asset pipe
   stamps `content/pipeline-manifest.json` last (also the completed-conversion marker); the shell
   compares it to its bundled `CURRENT_MANIFEST` — IR schema mismatch blocks play, an older
   `CONTENT_REVISION` (or no stamp) recommends regeneration. Shell-level actions (reinstall content,
-  open data folder) live in the NATIVE app menu, never in the web app's UI.
+  open data folder) live in the native app menu, never in the web app's UI.
 
 ## Build & run
 
@@ -39,6 +39,7 @@ first-run installer that converts the user's owned game copy with the asset pipe
 
 ## Verifying
 
-Pure logic (paths, config, progress model) is unit-tested; the wizard + pipeline + game boot flow is
-driven end-to-end with Playwright's `_electron` against the real game copy (local-only, like
-`test:content`). Visual sign-off of the setup page and the in-shell game remains the user's.
+Pure logic (paths, config, progress model, protocol routing, content staleness) is unit-tested.
+There is no committed end-to-end harness yet (docs/tickets/tooling/desktop-e2e-harness.md); the
+wizard + pipeline + game boot flow was verified with ad-hoc Playwright `_electron` sessions against
+the real game copy. Visual sign-off of the setup page and the in-shell game remains the user's.

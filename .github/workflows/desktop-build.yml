@@ -56,6 +56,11 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           ref: ${{ inputs.commit || github.ref }}
+          fetch-depth: 0
+      - name: Refuse to publish a commit that is not on main
+        # The `commit` input could otherwise tag any object in the repo network (including fork-PR
+        # heads) as an official-looking prerelease. Loosen deliberately when stable branches ship.
+        run: git merge-base --is-ancestor "$(git rev-parse HEAD)" origin/main
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           path: installers
