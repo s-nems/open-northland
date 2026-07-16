@@ -58,33 +58,38 @@ export function constructionMaterialsPresent(world: World, ctx: SystemContext, s
 }
 
 /**
- * The `construction` material a site still lacks, with the unclaimed shortfall (`need − held − inbound`)
- * — the good, and how much, a builder fetches to keep its OWN site supplied — or null when every
- * material is on hand or already inbound (the `inbound` tally, {@link inboundSupplyOf}). Picks the
- * LEAST-COVERED line (`(held+inbound)/need`, compared by integer cross-multiplication), so a crew spreads
- * over different materials instead of queueing on the first one; ties keep the ascending-goodType scan's
- * first hit, so the pick never depends on Map insertion order.
+ * Every `construction` material a site still lacks, with each line's unclaimed shortfall
+ * (`need − held − inbound`, the `inbound` tally per {@link inboundSupplyOf}) — the fetch menu a builder
+ * works through to keep its OWN site supplied. Ordered LEAST-COVERED first (`(held+inbound)/need`,
+ * compared by integer cross-multiplication) so a crew spreads over different materials instead of
+ * queueing on one; ties break by ascending goodType, so the order never depends on Map insertion order.
+ * Empty when every material is on hand or already inbound.
  */
+export function neededConstructionGoods(
+  world: World,
+  ctx: SystemContext,
+  site: Entity,
+  inbound: InboundSupplyTally,
+): ReadonlyArray<{ goodType: number; amount: number }> {
+  const stock = world.tryGet(site, Stockpile)?.amounts;
+  const shortfalls: Array<{ goodType: number; amount: number; covered: number; need: number }> = [];
+  for (const line of constructionBillOf(world, ctx, site)) {
+    const held = Math.max(stock?.get(line.goodType) ?? 0, 0);
+    const covered = Math.min(held + inboundSupplyOf(inbound, site, line.goodType), line.amount);
+    if (covered >= line.amount) continue; // fully on hand or inbound
+    shortfalls.push({ goodType: line.goodType, amount: line.amount - covered, covered, need: line.amount });
+  }
+  shortfalls.sort((a, b) => a.covered * b.need - b.covered * a.need || a.goodType - b.goodType);
+  return shortfalls.map(({ goodType, amount }) => ({ goodType, amount }));
+}
+
+/** The single most-lacking construction material — {@link neededConstructionGoods}' first line — or
+ *  null when every material is on hand or inbound. */
 export function nextNeededConstructionGood(
   world: World,
   ctx: SystemContext,
   site: Entity,
   inbound: InboundSupplyTally,
 ): { goodType: number; amount: number } | null {
-  const stock = world.tryGet(site, Stockpile)?.amounts;
-  const cost = [...constructionBillOf(world, ctx, site)].sort((a, b) => a.goodType - b.goodType);
-  let best: { goodType: number; amount: number } | null = null;
-  let bestCovered = 0;
-  let bestNeed = 1;
-  for (const line of cost) {
-    const held = Math.max(stock?.get(line.goodType) ?? 0, 0);
-    const covered = Math.min(held + inboundSupplyOf(inbound, site, line.goodType), line.amount);
-    if (covered >= line.amount) continue; // fully on hand or inbound
-    if (best === null || covered * bestNeed < bestCovered * line.amount) {
-      best = { goodType: line.goodType, amount: line.amount - covered };
-      bestCovered = covered;
-      bestNeed = line.amount;
-    }
-  }
-  return best;
+  return neededConstructionGoods(world, ctx, site, inbound)[0] ?? null;
 }

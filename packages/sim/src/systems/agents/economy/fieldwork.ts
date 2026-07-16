@@ -13,7 +13,7 @@ import type { NodeId } from '../../../nav/terrain/index.js';
 import { atomicDuration } from '../../readviews/animations.js';
 import {
   deliveredConstructionFraction,
-  nextNeededConstructionGood,
+  neededConstructionGoods,
   stampSupplyRun,
   workplaceStoredGoods,
 } from '../../stores/index.js';
@@ -51,9 +51,10 @@ import { deliveryTargetFor } from './routing.js';
  *     delivered-material fraction), walk to the site and run a `construct` swing (each swing installs one
  *     delivered unit — the ConstructionSystem reflects it into `built`/`Health`).
  *  b. **Self-supply** — the site has run dry (labor caught up to delivered material): fetch a still-needed
- *     construction good from a store that holds it. The delivery drive then routes the load to the site (which
+ *     construction good from a store that holds it — any available bill line, not in bill order, so one
+ *     scarce material never blocks the others. The delivery drive then routes the load to the site (which
  *     advertises the demand), while an assigned hauler tops the same site up through the identical path.
- *  c. **Wait** — nothing to install and nothing to fetch (no source holds a needed good): hold at the site
+ *  c. **Wait** — nothing to install and nothing to fetch (no source holds any needed good): hold at the site
  *     until a hauler delivers. A builder is committed to its site — it does not fall through to haul someone
  *     else's goods while a foundation of its own stands unraised.
  *
@@ -113,13 +114,21 @@ export function planBuilder(plan: PlannerContext, spacing: SpacingState): boolea
   }
 
   // b. Out of material — fetch a still-needed construction good from a store that holds it (the delivery
-  // drive routes the load back to the site next tick). One unit per trip (the global CARRY_CAPACITY).
-  // The need already discounts other settlers' live supply errands (SupplyRun), and this fetch stamps
-  // its own — so a crew spreads over the still-unclaimed materials instead of racing to the same unit.
-  const need = nextNeededConstructionGood(world, ctx, site, plan.inbound);
-  const src =
-    need && nearestStoreHolding(targets.stockpileCells, world, here, need.goodType, plan.limit ?? undefined);
-  if (need !== null && src != null) {
+  // drive routes the load back to the site next tick). Tries the least-covered material first but falls
+  // through the whole bill: the goods need not arrive in bill order, so a good with no source anywhere
+  // never blocks fetching the ones that are available (the site accumulates what it can and waits for
+  // the scarce good). One unit per trip (the global CARRY_CAPACITY). The needs already discount other
+  // settlers' live supply errands (SupplyRun), and this fetch stamps its own — so a crew spreads over
+  // the still-unclaimed materials instead of racing to the same unit.
+  for (const need of neededConstructionGoods(world, ctx, site, plan.inbound)) {
+    const src = nearestStoreHolding(
+      targets.stockpileCells,
+      world,
+      here,
+      need.goodType,
+      plan.limit ?? undefined,
+    );
+    if (src == null) continue; // no store holds this material — try the next bill line
     const batch = Math.min(need.amount, CARRY_CAPACITY);
     stampSupplyRun(world, e, plan.inbound, { site, goodType: need.goodType, amount: batch });
     atOrWalk(world, e, here, interactionCell(world, ctx, terrain, src, here), () =>

@@ -117,6 +117,39 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
     expect(sim.world.get(site, Stockpile).amounts.get(STONE) ?? 0).toBe(0); // and spent into the build
   });
 
+  it('a missing material never blocks the others — the builder fetches what IS available and builds partway', () => {
+    // The house bill is 2 stone + 1 wood; the warehouse holds ONLY the wood. The least-covered pick on an
+    // empty hold is stone (tie broken by ascending goodType), which has no source anywhere — the builder
+    // must fall through the bill and fetch the wood rather than wait, then hammer the delivered third and
+    // hold for the stone (the fetch-any-available-line rule).
+    const sim = new Simulation({ seed: 12, content: constructionContent(), map: grassMap(8, 1) });
+    const site = siteAt(sim, HOUSE, 4, 0);
+    const warehouse = sim.world.create();
+    sim.world.add(warehouse, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
+    sim.world.add(warehouse, Building, { buildingType: HEADQUARTERS, tribe: VIKING, built: ONE, level: 0 });
+    sim.world.add(warehouse, Stockpile, { amounts: new Map<number, number>([[WOOD, 1]]) });
+    builderAt(sim, 6, 0);
+
+    let woodAtSite = 0;
+    for (let i = 0; i < 400 && woodAtSite === 0; i++) {
+      sim.step();
+      woodAtSite = sim.world.get(site, Stockpile).amounts.get(WOOD) ?? 0;
+    }
+    expect(woodAtSite).toBe(1); // fetched despite stone (the least-covered line) having no source
+    expect(sim.world.get(warehouse, Stockpile).amounts.get(WOOD) ?? 0).toBe(0);
+
+    // With the wood on hand the builder hammers the delivered third and no further — the site keeps
+    // standing (still under construction), waiting for stone to appear.
+    let built = sim.world.get(site, Building).built;
+    for (let i = 0; i < 200; i++) {
+      sim.step();
+      built = sim.world.get(site, Building).built;
+    }
+    expect(built).toBeGreaterThan(0); // hammered up the delivered material…
+    expect(built).toBeLessThan(ONE); // …but capped at the delivered fraction (1 of 3 units)
+    expect(sim.world.has(site, UnderConstruction)).toBe(true); // still waiting for the stone
+  });
+
   it('only ONE builder fetches the last missing unit — the supply-run reservation stops the duplicate', () => {
     const sim = new Simulation({ seed: 5, content: constructionContent(), map: grassMap(8, 1) });
     const site = siteAt(sim, HOUSE, 4, 0); // cost 2 stone + 1 wood…
