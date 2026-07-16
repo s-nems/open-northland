@@ -28,6 +28,7 @@ export {
   resolveBuildingOverlayDraw,
   resolveConstructionDraws,
   resolveResourceDraw,
+  resolveSignpostDraw,
   resolveStockpileDraw,
   resolveStockpileLayerDraws,
 } from './layered.js';
@@ -39,6 +40,7 @@ export type {
   ConstructionLayerRef,
   LayeredBobRef,
   ResourceTypeBinding,
+  SignpostBinding,
   StockpileBinding,
 } from './layered-bindings.js';
 export { resolveSpriteBobId, resolveSpriteFrame } from './resolve.js';

@@ -16,6 +16,8 @@ import {
 } from '../../combat.js';
 import { GATHERERS } from '../../ids/index.js';
 import {
+  BUILD_GUIDE_ANIMATION,
+  BUILD_GUIDE_SWING_LENGTH,
   BUILD_HOUSE_ANIMATION,
   BUILD_HOUSE_STRIKE_FRAME,
   BUILD_HOUSE_SWING_LENGTH,
@@ -84,6 +86,14 @@ export function buildSandboxAtomicAnimations(): readonly object[] {
       // The hammer knock sounds MID-swing at the authored PLAY_SOUND_FX frame (`event 4 34 1`), so audio
       // drives the per-swing hammer off the sim's `atomicSound` cue there instead of at swing completion.
       events: [{ at: BUILD_HOUSE_STRIKE_FRAME, type: PLAY_SOUND_FX_EVENT_TYPE, value: 1 }],
+    },
+    {
+      // The scout's signpost swing — the same authored hammer beat as the builder's (the transcribed
+      // `viking_scout_build_guide` shares the sound-FX frame; `event 4 34 2` — the wood-sign knock).
+      id: BUILD_GUIDE_ANIMATION,
+      name: BUILD_GUIDE_ANIMATION,
+      length: BUILD_GUIDE_SWING_LENGTH,
+      events: [{ at: BUILD_HOUSE_STRIKE_FRAME, type: PLAY_SOUND_FX_EVENT_TYPE, value: 2 }],
     },
     { id: FARMER_REAP_ANIMATION, name: FARMER_REAP_ANIMATION, length: FARMER_REAP_LENGTH },
     { id: FARMER_SOW_ANIMATION, name: FARMER_SOW_ANIMATION, length: FARMER_SOW_LENGTH },

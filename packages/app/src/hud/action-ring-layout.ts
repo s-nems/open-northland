@@ -24,6 +24,13 @@ export type ActionButton =
       readonly icon: ActionIconFrame;
     }
   | {
+      /** The scout's "Erect Signpost" button — arms the click-to-place mode (the next world click issues
+       *  `placeSignpost`). Shown only on the scout's menu, in the original's top-right slots. */
+      readonly kind: 'erect-signpost';
+      readonly id: 'erectSignpost';
+      readonly icon: ActionIconFrame;
+    }
+  | {
       /** A default-menu button whose action is not yet implemented — drawn + tooltipped, but inert on click. */
       readonly kind: 'placeholder';
       /** Stable id (keys the retained visual, and is what a test asserts). */

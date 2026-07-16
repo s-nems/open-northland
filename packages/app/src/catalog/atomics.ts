@@ -53,3 +53,10 @@ export const ATTACK_ATOMIC = 81;
  * (`viking_builder_build_house`) is 15 frames long (`atomicanimations.ini`, extracted).
  */
 export const BUILD_HOUSE_ATOMIC = 39;
+
+/**
+ * The scout's signpost-erecting swing (`jobtypes.ini` scout `allowatomic 43`; `logicdefines.inc`
+ * `MAP_MOVEABLES_ATOMIC_ACTION_TYPE_BUILD_GUIDE 43`). The extracted `gfxAtomics` binds tribe 1 / job 27 /
+ * action 43 to the shared hammer clip, so the render times it like the builder's swing.
+ */
+export const BUILD_GUIDE_ATOMIC = 43;

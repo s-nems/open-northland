@@ -172,5 +172,9 @@ export const plContent = {
       title: 'Logistyka magazynu',
       summary: 'Tragarze zbierają luźne towary, dopóki magazyn nie osiągnie pojemności.',
     },
+    signposts: {
+      title: 'Drogowskazy',
+      summary: 'Zwiadowca stawia drogowskaz; osadnicy pracują tylko w zasięgu połączonej sieci drogowskazów.',
+    },
   },
 } as const;

@@ -4,7 +4,7 @@ import type { Entity } from '@open-northland/sim';
 import { workFlagOf } from '../../game/snapshot.js';
 import { mountUnitPanel, type UnitPanel } from '../../hud/details-panel/index.js';
 import { clientToScreen, screenScale } from '../camera.js';
-import { pickInRect, pickTopAt, screenToWorld } from '../picking.js';
+import { clampTile, nodeBounds, pickInRect, pickTopAt, screenToWorld, worldToTile } from '../picking.js';
 import { assignableJobForBuilding, computeAssignHighlight } from './assign-highlight.js';
 import { createSelectionMarquee } from './marquee.js';
 import { createUnitOrderController } from './orders.js';
@@ -61,6 +61,13 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   const cancelAssign = (): void => {
     assignSettler = null;
   };
+  // "Erect Signpost" mode: the scout(s) the placement click applies to (null = not in the mode). While
+  // set, the next left-click on the world orders the first scout to erect a signpost on the clicked node
+  // (the original's "Select place for signpost" flow); right-click, Esc, or a selection change cancels.
+  let signpostScouts: readonly number[] | null = null;
+  const cancelSignpost = (): void => {
+    signpostScouts = null;
+  };
   // Late-bound: the panel's "clicked a worker sprite" callback needs `setSelection`, which is defined
   // below (it closes over `panel`). Assigned once everything exists; a click can only fire afterwards.
   let selectFromPanel: (id: number) => void = () => {};
@@ -96,6 +103,9 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     onSetJob: (ids, jobType) => {
       for (const id of ids) opts.enqueue({ kind: 'setJob', entity: id as Entity, jobType });
     },
+    onErectSignpost: (ids) => {
+      signpostScouts = ids;
+    },
   });
 
   const marquee = createSelectionMarquee();
@@ -125,7 +135,10 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     const before = new Set(selected); // snapshot to detect whether the selection actually changed
     if (!add) selected.clear();
     for (const id of ids) selected.add(id);
-    if (!sameSelection(before, selected)) cancelAssign(); // a new selection backs out of assign mode
+    if (!sameSelection(before, selected)) {
+      cancelAssign(); // a new selection backs out of assign mode
+      cancelSignpost(); // …and out of the signpost-placement mode
+    }
     changed();
     // A changed selection closes the action ring: picking a different unit (or clearing to empty) backs out
     // of an open menu, so the ring never lingers on a stale unit and Space stays the sole re-open. Re-selecting
@@ -198,6 +211,20 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       else cancelAssign();
       return;
     }
+    // In "Erect Signpost" mode a left world click orders the scout to erect on the clicked node and
+    // consumes the press; any other button cancels the mode. Legality is the sim command's gate (an
+    // illegal spot is a logged no-op), so a bad click simply leaves the scout unmoved.
+    if (signpostScouts !== null) {
+      const scout = signpostScouts[0];
+      cancelSignpost();
+      if (e.button === 0 && scout !== undefined) {
+        const { width, height } = nodeBounds(opts.mapSize);
+        const w = toWorld(e.clientX, e.clientY);
+        const target = clampTile(worldToTile(w.x, w.y, opts.elevation), width, height);
+        opts.enqueue({ kind: 'placeSignpost', entity: scout as Entity, x: target.col, y: target.row });
+      }
+      return;
+    }
     if (e.button === 2) {
       // Ctrl+Right (⌘ on macOS): plant/move the selected gatherer(s)' work flag on the clicked tile —
       // "work here". Plain Right: attack an enemy under the cursor, else move to the clicked tile.
@@ -252,9 +279,13 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       e.preventDefault(); // Space would otherwise scroll the page
       actions.toggle(); // the info card is always-on; Space only toggles the action ring
     } else if (e.code === 'Escape') {
-      if (assignSettler !== null)
+      if (assignSettler !== null) {
         cancelAssign(); // Esc first backs out of assign mode, keeping the selection
-      else setSelection([], false);
+      } else if (signpostScouts !== null) {
+        cancelSignpost(); // …or out of signpost placement, likewise keeping the selection
+      } else {
+        setSelection([], false);
+      }
     }
   };
 

@@ -1,5 +1,10 @@
 import type { DrawKind } from '../scene/index.js';
-import type { BuildingTypeBinding, ResourceTypeBinding, StockpileBinding } from './layered-bindings.js';
+import type {
+  BuildingTypeBinding,
+  ResourceTypeBinding,
+  SignpostBinding,
+  StockpileBinding,
+} from './layered-bindings.js';
 import type { SettlerStateBinding } from './settler-bindings.js';
 
 /**
@@ -47,4 +52,8 @@ export type SpriteBindings = Readonly<{
    *  bush tracks its forage/regrow state. Reuses the resource resolver ({@link import('./layered.js').resolveResourceDraw});
    *  absent keeps old sheets valid (a bush draws the placeholder). */
   berrybush?: number | ResourceTypeBinding;
+  /** A scout-erected signpost binding — the post + angular direction-board frames
+   *  ({@link SignpostBinding}, the decoded `ls_guidepost` atlas). Absent keeps old sheets valid
+   *  (a signpost draws the placeholder). */
+  signpost?: SignpostBinding;
 }>;

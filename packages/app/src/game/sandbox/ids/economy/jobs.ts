@@ -8,6 +8,8 @@ export const JOB_COLLECTOR = 8;
 // The carrier/porter — the real `jobtypes.ini` type 24. Ferries goods between stores; the sim's
 // job-agnostic haul fallback. Not in `ADULT_CHARACTER_BY_JOB`, so it draws the civilian body.
 export const JOB_CARRIER = 24;
+/** The scout (`jobtypes.ini` type 27) — erects signposts (its one allowed atomic, build-guide 43). */
+export const JOB_SCOUT = 27;
 // Soldier jobs ride the real viking `jobtypes.ini` ids (soldiers 31..41) so the render's job→body map
 // (`ADULT_CHARACTER_BY_JOB`) draws each class's own warrior body + weapon animation set.
 export const JOB_SOLDIER_UNARMED = 31; // soldier_unarmed — the fists warrior (empty-hand body, brawls)

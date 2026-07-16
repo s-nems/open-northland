@@ -97,13 +97,22 @@ export const PLAYER_SWATCH_COLORS: readonly number[] = [
 ];
 
 /** The civilist-job (`logicjob 6`) head looks `head_00..03` — the in-game generic man's faces. The
- *  per-job settler binding (`content/settler-gfx.ts`) overlays exactly these; the scout (80..83) and druid
- *  (90..93) looks below stay gallery-only until those jobs exist in a running sim. */
+ *  per-job settler binding (`content/settler-gfx.ts`) overlays exactly these; the druid looks (90..93)
+ *  below stay gallery-only until that job exists in a running sim. */
 export const CIVILIST_JOB_HEADS = [
   'cr_hum_head_00',
   'cr_hum_head_01',
   'cr_hum_head_02',
   'cr_hum_head_03',
+] as const;
+
+/** The scout-job (`logicjob 27`) head looks `head_80..83` — the hatted scout faces bound to the same
+ *  generic man body (`jobgraphics.ini` logictribe 1 / logicjob 27, `gfxbobmanagerhead 0..3`). */
+export const SCOUT_JOB_HEADS = [
+  'cr_hum_head_80',
+  'cr_hum_head_81',
+  'cr_hum_head_82',
+  'cr_hum_head_83',
 ] as const;
 
 /** The civilist looks plus the extra viking male job looks (`head_80..83` scout, `head_90..93` druid)

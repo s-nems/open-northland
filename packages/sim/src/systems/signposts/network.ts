@@ -46,7 +46,10 @@ const verifierRegistered = new WeakSet<World>();
 function buildNetwork(world: World): ReadonlyMap<number, readonly SignpostSite[]> {
   // Collect per player in canonical (ascending entity id) order — group labels derive from ids, so the
   // result is independent of store insertion history.
-  const perPlayer = new Map<number, { entity: Entity; hx: number; hy: number; nav: number; spacing: number }[]>();
+  const perPlayer = new Map<
+    number,
+    { entity: Entity; hx: number; hy: number; nav: number; spacing: number }[]
+  >();
   for (const e of world.canonicalEntities()) {
     const post = world.tryGet(e, Signpost);
     if (post === undefined) continue;

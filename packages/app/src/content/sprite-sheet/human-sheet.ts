@@ -44,6 +44,13 @@ import { loadCharacters } from './characters.js';
 const HUMAN_BODY_ATLAS = 'cr_hum_body_00.test_human_00';
 const HUMAN_HEAD_ATLAS = 'cr_hum_head_00.test_human_00';
 
+/** The scout's guidepost atlas (the pipeline's hand-authored `ls_guidepost` binding — engine-bound in
+ *  the original, `bridge01` wooden palette approximated): bob 0 the post, bobs 1..18 the direction
+ *  board in ~20° angular steps around the post top. */
+const GUIDEPOST_ATLAS = 'ls_guidepost.bridge01';
+const GUIDEPOST_POST_BOB = 0;
+const GUIDEPOST_BOARD_BOBS = Array.from({ length: 18 }, (_, i) => i + 1);
+
 /**
  * Load the gathering-economy family atlases (the rock/mine/mushroom node `.bmd`s, the `ls_goods` pile
  * skins, the `ls_temp` flag) named by the resolved gathering refs, beside the building families. Each
@@ -140,6 +147,7 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
   const stems = gatheringAtlasStems(gatheringRefs);
   if (stumpRef !== undefined) stems.add(stumpRef.stem);
   for (const s of berryBushAtlasStems(berryBushRefs)) stems.add(s);
+  stems.add(GUIDEPOST_ATLAS); // the signpost family rides the same load-then-drop-unloaded contract
   const { families: gatheringFamilies, loaded: gatheringLoaded } = await loadGatheringFamilies(stems);
   // The frame ids each loaded family atlas actually holds — lets the node reducer mark a level whose bob
   // the source record points outside its own atlas (the original's "invisible state" sentinel — freshly-
@@ -159,20 +167,33 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
   // One family map: the building families + the gathering families. Their served stems are disjoint
   // (`ls_houses_*` vs `ls_ground`/`ls_goods`/`ls_temp`/`ls_mushrooms`), so the merge never collides.
   const families = { ...buildingFamilies, ...gatheringFamilies };
+  // The signpost binding: layer-qualified refs into the guidepost family, emitted only when its atlas
+  // actually loaded (an unbound signpost falls back to the pool placeholder, like every family miss).
+  const signpostBinding = gatheringLoaded.has(GUIDEPOST_ATLAS)
+    ? {
+        signpost: {
+          post: { layer: GUIDEPOST_ATLAS, bob: GUIDEPOST_POST_BOB },
+          boards: GUIDEPOST_BOARD_BOBS.map((bob) => ({ layer: GUIDEPOST_ATLAS, bob })),
+        },
+      }
+    : {};
   return {
     source: body.source,
     atlas: body.atlas,
-    bindings: buildHumanBindings(
-      sequencesFor(ir, BODY_IMAGELIB),
-      houseBobs,
-      constructionRefs,
-      resourceBinding,
-      stockpileBinding,
-      stumpBinding,
-      trunkBinding,
-      berryBushBinding,
-      overlayRefs,
-    ),
+    bindings: {
+      ...buildHumanBindings(
+        sequencesFor(ir, BODY_IMAGELIB),
+        houseBobs,
+        constructionRefs,
+        resourceBinding,
+        stockpileBinding,
+        stumpBinding,
+        trunkBinding,
+        berryBushBinding,
+        overlayRefs,
+      ),
+      ...signpostBinding,
+    },
     overlays: [head],
     // The tree and the default building each draw from their own atlas (distinct id spaces), so they bind
     // as per-kind layers rather than sharing the body atlas the settler uses. A bare-id `resource` (the

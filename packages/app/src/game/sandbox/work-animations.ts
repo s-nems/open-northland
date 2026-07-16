@@ -14,6 +14,11 @@ import { HAMMER_TICKS_PER_FRAME } from '../../content/settler-gfx/index.js';
 // step: labor advances per completed swing.
 export const BUILD_HOUSE_SWING_LENGTH = 15 * HAMMER_TICKS_PER_FRAME;
 export const BUILD_HOUSE_ANIMATION = 'viking_builder_build_house';
+// The scout's one-shot signpost-erecting swing — the transcribed `viking_scout_build_guide`
+// atomicanimation (`length 15`, DataCnmd atomicanimations.ini), the same authored hammer clip at the
+// same half cadence as the builder's swing.
+export const BUILD_GUIDE_SWING_LENGTH = 15 * HAMMER_TICKS_PER_FRAME;
+export const BUILD_GUIDE_ANIMATION = 'viking_scout_build_guide';
 // The `atomicanimations.ini` `event <at> <type>` type marking the frame an animation plays its sound FX
 // (`ATOMIC_ANIMATION_EVENT_TYPE_PLAY_SOUND_FX`, logicdefines.inc l.754) — the mid-swing cue the sim reads
 // to sound an action on its visual beat rather than at swing completion. Mirrors the ATTACK_EVENT_TYPE

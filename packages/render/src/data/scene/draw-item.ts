@@ -15,6 +15,7 @@ export type DrawKind =
   | 'stockpile'
   | 'stump'
   | 'grounddrop'
+  | 'signpost'
   | 'projectile';
 
 /**
@@ -44,6 +45,7 @@ export const SPRITE_PAINT_ORDER: Readonly<Record<DrawKind, number>> = {
   stump: 0,
   building: 1,
   grounddrop: 1,
+  signpost: 1, // the post occludes like a small building; its boards ride the flag half-step above it
   stockpile: 2,
   settler: 3,
   projectile: 4, // an arrow in flight crosses over the fighters it flies between
@@ -111,6 +113,14 @@ export interface DrawItem {
    * Omitted (falsy) for a loose pile and non-stockpiles.
    */
   readonly isFlag?: boolean;
+  /**
+   * For a `signpost` item: which direction-board frame to draw — an index into the binding's angular
+   * board list ({@link import('../sprites/index.js').SignpostBinding.boards}, 20°-step frames around
+   * the post top). Omitted for the post itself. Board items are synthesized per connected in-range
+   * neighbour by the scene collector, anchored on the same feet position (the frames' offsets carry
+   * the nail-point pivot).
+   */
+  readonly boardIndex?: number;
   /**
    * For a mined resource node ({@link import('@open-northland/sim').MineDeposit}) or a crop: its visual
    * fill level in `[1, levels]`, stepping down from `levels` (full) as it empties — a

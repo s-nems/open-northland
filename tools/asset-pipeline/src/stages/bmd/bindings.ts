@@ -165,19 +165,6 @@ export async function resolveGraphicsBindings(
     // dozen palettes and decor records repeat one bob across variants, so the records dedup on (bmd, palette).
     pushDeduped(bindings, extractLandscapeGraphics(landscapesCif));
   }
-  // The scout's guidepost (the signpost object) is bound by the ENGINE, not by any data table —
-  // "guidepost" appears in no decodable binding (landscapes.cif and palettes.ini both checked), only in
-  // the executables — so this one binding is hand-authored to emit its atlas. Frame layout (decoded):
-  // bob 0 is the post, bobs 1..18 the direction board in 18 ~20° angular steps around the post top.
-  // `bridge01` is a named palette approximation: no alias names the guidepost, and the wooden-bridge
-  // palette renders the wooden post/boards plausibly; the engine's exact palette is unrecovered.
-  bindings.push({
-    bmd: 'data/engine2d/bin/bobs/ls_guidepost.bmd',
-    shadowBmd: 'data/engine2d/bin/bobs/ls_guidepost_s.bmd',
-    paletteName: 'bridge01',
-    tribeId: undefined,
-    jobId: undefined,
-  });
   // The `.bmd`s claimed by a [GfxHouse] record bake `'build-time'` (`convertBmdTree`'s `buildTimeBmds`):
   // a house bob's Double8Bit second bytes are measured construction-progress thresholds, not coverage
   // (they span ~0–255 and are strongly row-correlated bottom-up — foundation low, roof high; read as
@@ -214,6 +201,20 @@ export async function resolveGraphicsBindings(
       pushDeduped(bindings, extractBuildingGraphics(buildingGraphics), (b) => buildTimeBmds.add(b.bmd));
     }
   }
+  // The scout's guidepost (the signpost object) is bound by the ENGINE, not by any data table —
+  // "guidepost" appears in no decodable binding (landscapes.cif and palettes.ini both checked), only in
+  // the executables — so this one binding is hand-authored, appended last, to emit its atlas. Frame
+  // layout (decoded): bob 0 is the post, bobs 1..18 the direction board in ~20° angular steps around
+  // the post top. `bridge01` is a named palette approximation: no alias names the guidepost, and the
+  // wooden-bridge palette renders the wooden post/boards plausibly; the engine's exact palette is
+  // unrecovered. Skipped silently by convertBmdTree on an install with no such file/palette.
+  bindings.push({
+    bmd: 'data/engine2d/bin/bobs/ls_guidepost.bmd',
+    shadowBmd: 'data/engine2d/bin/bobs/ls_guidepost_s.bmd',
+    paletteName: 'bridge01',
+    tribeId: undefined,
+    jobId: undefined,
+  });
   return {
     bindings,
     palettes: palettesIni ? extractPaletteIndex(palettesIni) : [],

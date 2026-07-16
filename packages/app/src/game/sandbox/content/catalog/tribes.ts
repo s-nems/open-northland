@@ -1,6 +1,7 @@
 import type { JobEnables } from '@open-northland/data';
 import {
   ATTACK_ATOMIC,
+  BUILD_GUIDE_ATOMIC,
   CULTIVATE_ATOMIC,
   PLANT_ATOMIC,
   STORE_PICKUP_ATOMIC,
@@ -16,12 +17,14 @@ import {
   JOB_ARCHER_LONG,
   JOB_BUILDER,
   JOB_FARMER_SLOT,
+  JOB_SCOUT,
   JOB_SOLDIER_BROADSWORD,
   JOB_SOLDIER_SPEAR,
   JOB_SOLDIER_SWORD,
   JOB_SOLDIER_UNARMED,
 } from '../../ids/index.js';
 import {
+  BUILD_GUIDE_ANIMATION,
   BUILD_HOUSE_ANIMATION,
   FARMER_REAP_ANIMATION,
   FARMER_SOW_ANIMATION,
@@ -58,6 +61,7 @@ export function buildSandboxTribes(
       })),
       { jobType: JOB_SOLDIER_UNARMED, atomicId: ATTACK_ATOMIC, animation: 'viking_fist_attack' },
       { jobType: JOB_BUILDER, atomicId: BUILD_HOUSE_ATOMIC, animation: BUILD_HOUSE_ANIMATION },
+      { jobType: JOB_SCOUT, atomicId: BUILD_GUIDE_ATOMIC, animation: BUILD_GUIDE_ANIMATION },
       { jobType: JOB_FARMER_SLOT, atomicId: WHEAT_HARVEST_ATOMIC, animation: FARMER_REAP_ANIMATION },
       { jobType: JOB_FARMER_SLOT, atomicId: PLANT_ATOMIC, animation: FARMER_SOW_ANIMATION },
       { jobType: JOB_FARMER_SLOT, atomicId: CULTIVATE_ATOMIC, animation: FARMER_WATER_ANIMATION },

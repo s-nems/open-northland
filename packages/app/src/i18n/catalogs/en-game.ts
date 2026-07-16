@@ -101,6 +101,7 @@ export const enGame = {
     build: 'Build',
     alert: 'Alert',
     query: 'Information',
+    erectSignpost: 'Erect Signpost', // the original's scout action string (gui strings misclogic)
     attack: 'Attack',
     assign_house: 'Assign home',
     animal: 'Animal',
