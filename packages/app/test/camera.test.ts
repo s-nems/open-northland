@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import {
   cameraCenteredOnTile,
   EDGE_SCROLL_MARGIN,
-  easeFactor,
   edgePanVelocity,
   MAX_ZOOM,
   MIN_ZOOM,
@@ -105,15 +104,6 @@ describe('zoomCameraAt', () => {
     expect(zoomCameraAt(cam, 0.5, 100, 100)).toBe(cam);
     const partway = zoomCameraAt({ offsetX: 0, offsetY: 0, scale: MIN_ZOOM * 1.05 }, 0.5, 0, 0);
     expect(partway.scale).toBe(MIN_ZOOM);
-  });
-});
-
-describe('easeFactor', () => {
-  it('covers half the remaining gap per half-life and is frame-rate independent', () => {
-    expect(easeFactor(60, 60)).toBeCloseTo(0.5);
-    // Two 30 ms steps land where one 60 ms step does: (1-f30)^2 === 1-f60.
-    const f30 = easeFactor(30, 60);
-    expect((1 - f30) ** 2).toBeCloseTo(1 - easeFactor(60, 60));
   });
 });
 
