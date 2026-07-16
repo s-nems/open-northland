@@ -14,6 +14,7 @@
 import type { LoggedCommand } from '@open-northland/sim';
 import { type DiagEntry, type DiagLog, diag } from './log.js';
 import { currentDiagGameSession, type DiagGameSession } from './session.js';
+import { recordedTraceEvents, type TraceEvent } from './trace.js';
 
 export const DIAGNOSTICS_BUNDLE_KIND = 'opennorthland-diagnostics';
 export const DIAGNOSTICS_BUNDLE_VERSION = 1;
@@ -39,12 +40,15 @@ export interface DiagnosticsBundle {
   readonly generatedAt: string;
   readonly log: readonly DiagEntry[];
   readonly game: DiagnosticsGameReport | null;
+  /** The Trace Event recording, attached when a `?debug=trace` run generates the bundle. */
+  readonly trace?: readonly TraceEvent[];
 }
 
 /** Assemble the bundle from the log ring and the registered game session. Pure given its inputs. */
 export function buildDiagnosticsBundle(
   log: DiagLog = diag,
   session: DiagGameSession | null = currentDiagGameSession(),
+  trace: readonly TraceEvent[] | null = recordedTraceEvents(),
 ): DiagnosticsBundle {
   return {
     kind: DIAGNOSTICS_BUNDLE_KIND,
@@ -52,6 +56,7 @@ export function buildDiagnosticsBundle(
     generatedAt: new Date().toISOString(),
     log: log.entries(),
     game: session === null ? null : gameReport(session),
+    ...(trace !== null ? { trace } : {}),
   };
 }
 

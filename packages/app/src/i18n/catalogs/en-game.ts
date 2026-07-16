@@ -34,6 +34,7 @@ export const enGame = {
     returnToMenu: 'Return to menu',
     closeMenu: 'Close',
     downloadDiagnostics: 'Download diagnostics report',
+    downloadTrace: 'Download performance trace',
     crashTitle: 'The game hit an error',
     crashHint: 'Download the report and attach it to your bug report.',
     fieldCounters: 'Sown {sown} · Growing {growing} · Ripe {ripe}',

@@ -26,3 +26,16 @@ export {
   recordDiagHash,
   setDiagGameSession,
 } from './session.js';
+export {
+  downloadTraceFile,
+  installSimTrace,
+  isTraceRecording,
+  recordedTraceEvents,
+  recordTraceEvent,
+  startTraceRecording,
+  stopTraceRecording,
+  TRACE_CAPACITY,
+  TRACE_DEBUG_FLAG,
+  type TraceEvent,
+  traceFileJson,
+} from './trace.js';
