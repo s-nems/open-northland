@@ -85,3 +85,24 @@ export function fogMode(world: World): number {
   const e = fogRulesEntity(world);
   return e === null ? FOG_MODE.OFF : world.get(e, FogRules).mode;
 }
+
+/**
+ * The signpost-navigation rules singleton — whether civilian settlers are confined to the signpost
+ * work-area network (`systems/signposts/`). A separate singleton beside {@link WorldRules}/{@link FogRules}
+ * for the same reason those are separate: a command stream that never touches it leaves every existing
+ * golden hash untouched. Default OFF — the original always confines, but our maps/scenes opt in via the
+ * `setSignpostNavigation` command (a named deviation: existing scenes and goldens predate signposts).
+ */
+export const SignpostRules = defineComponent<{ navigationEnabled: boolean }>('SignpostRules');
+
+/** The signpost-rules singleton's entity, or null when never set (lowest id wins — the
+ *  {@link worldRulesEntity} convention). */
+export function signpostRulesEntity(world: World): Entity | null {
+  return singletonCarrier(world, SignpostRules);
+}
+
+/** Whether signpost navigation confinement is on — defaults to false when the singleton is absent. */
+export function signpostNavigationEnabled(world: World): boolean {
+  const e = signpostRulesEntity(world);
+  return e === null ? false : world.get(e, SignpostRules).navigationEnabled;
+}

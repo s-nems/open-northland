@@ -88,18 +88,29 @@ export class InteractionCellIndex {
    * The nearest candidate to `here` that passes `accept`, by the shared `(distance, cell-id, entity-id)`
    * order, or null when none passes. Falls back to a full linear scan when no bucketed candidate lies
    * within the ring bound (identical result). `accept` must be side-effect-free — a ring miss re-runs it
-   * on the fallback scan, so it may be evaluated more than once per candidate.
+   * on the fallback scan, so it may be evaluated more than once per candidate. `cellGate` (optional)
+   * rejects whole interaction CELLS before any entity is consulted — the signpost-confinement seam: a
+   * gated cell's bucket is skipped in O(1), and the linear fallback applies the same gate, so both paths
+   * agree on the winner.
    */
-  nearest(here: NodeId, accept: (e: Entity) => boolean): NearestByCell | null {
-    const ring = this.ringNearest(here, accept);
-    if (ring !== null) return combine(ring, this.linearNearest(this.dynamic, here, accept));
-    return this.linearNearest(this.candidates, here, accept);
+  nearest(
+    here: NodeId,
+    accept: (e: Entity) => boolean,
+    cellGate?: (cell: NodeId) => boolean,
+  ): NearestByCell | null {
+    const ring = this.ringNearest(here, accept, cellGate);
+    if (ring !== null) return combine(ring, this.linearNearest(this.dynamic, here, accept, cellGate));
+    return this.linearNearest(this.candidates, here, accept, cellGate);
   }
 
   /** The nearest bucketed candidate within {@link NEAREST_RING_MAX_RADIUS}, or null. The first non-empty
    *  ring holds the minimum distance, so its `(cell-id, entity-id)` winner is the global bucketed winner.
    *  The ring stops at the farthest bucket's Manhattan reach, so a sparse or empty index rings no wider. */
-  private ringNearest(here: NodeId, accept: (e: Entity) => boolean): NearestByCell | null {
+  private ringNearest(
+    here: NodeId,
+    accept: (e: Entity) => boolean,
+    cellGate?: (cell: NodeId) => boolean,
+  ): NearestByCell | null {
     if (this.maxX < this.minX) return null; // no bucketed candidates — the linear fallback handles the tail
     const { x: hx, y: hy } = this.terrain.coordsOf(here);
     const reach = Math.max(hx - this.minX, this.maxX - hx) + Math.max(hy - this.minY, this.maxY - hy);
@@ -109,8 +120,8 @@ export class InteractionCellIndex {
       // Ring d = every node at Manhattan distance exactly d; the two rows dy = ±(d - |dx|) trace the diamond.
       for (let dx = -d; dx <= d; dx++) {
         const rem = d - Math.abs(dx);
-        best = this.pickInRing(hx + dx, hy + rem, d, accept, best);
-        if (rem !== 0) best = this.pickInRing(hx + dx, hy - rem, d, accept, best);
+        best = this.pickInRing(hx + dx, hy + rem, d, accept, cellGate, best);
+        if (rem !== 0) best = this.pickInRing(hx + dx, hy - rem, d, accept, cellGate, best);
       }
       if (best !== null) return best;
     }
@@ -125,11 +136,13 @@ export class InteractionCellIndex {
     y: number,
     distance: number,
     accept: (e: Entity) => boolean,
+    cellGate: ((cell: NodeId) => boolean) | undefined,
     best: NearestByCell | null,
   ): NearestByCell | null {
     const bucket = this.byX.get(x)?.get(y);
     if (bucket === undefined) return best;
     if (best !== null && bucket.cell >= best.cell) return best; // can't beat a lower cell at the same distance
+    if (cellGate !== undefined && !cellGate(bucket.cell)) return best; // the whole cell is out of bounds
     for (const e of bucket.entities) {
       if (accept(e)) return { entity: e, cell: bucket.cell, distance };
     }
@@ -143,10 +156,13 @@ export class InteractionCellIndex {
     list: readonly Entity[],
     here: NodeId,
     accept: (e: Entity) => boolean,
+    cellGate?: (cell: NodeId) => boolean,
   ): NearestByCell | null {
-    return nearestByCell(this.terrain, list, here, (e) =>
-      accept(e) ? interactionCell(this.world, this.ctx, this.terrain, e, here) : null,
-    );
+    return nearestByCell(this.terrain, list, here, (e) => {
+      if (!accept(e)) return null;
+      const cell = interactionCell(this.world, this.ctx, this.terrain, e, here);
+      return cellGate === undefined || cellGate(cell) ? cell : null;
+    });
   }
 }
 

@@ -1,5 +1,6 @@
 import { CARRY_CAPACITY, Owner, Resting } from '../../../../components/index.js';
 import type { Entity } from '../../../../ecs/world.js';
+import { cellGateOf } from '../../../signposts/index.js';
 import { isWorkplaceOperator, recipeOf } from '../../../stores/index.js';
 import { atOrWalk, startPickup } from '../../actions.js';
 import { loiterCell, type SpacingState } from '../../destack.js';
@@ -35,7 +36,16 @@ export function planProducer(
     return;
   }
 
-  const source = nearestMissingInputSource(targets.stockpileCells, world, ctx, here, workplace, recipe);
+  const source = nearestMissingInputSource(
+    targets.stockpileCells,
+    world,
+    ctx,
+    here,
+    workplace,
+    recipe,
+    false,
+    cellGateOf(plan.limit),
+  );
   if (source !== null) {
     atOrWalk(world, entity, here, interactionCell(world, ctx, terrain, source.store, here), () =>
       startPickup(world, ctx, entity, worker, source.store, source.goodType, source.amount),
@@ -68,6 +78,7 @@ export function planWorkshopSupplier(plan: PlannerContext, workplace: Entity, sp
     workplace,
     recipe,
     restockToCapacity,
+    cellGateOf(plan.limit),
   );
   if (source !== null) {
     const batch = Math.min(source.amount, CARRY_CAPACITY);

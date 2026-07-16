@@ -125,4 +125,20 @@ export type UnitOrderCommand =
       readonly kind: 'setGatherGood';
       readonly entity: Entity;
       readonly goodType: number | null;
+    }
+  | {
+      /**
+       * Order one owned scout to erect a signpost at node (x,y) — the original's "Erect Signpost" scout
+       * action. The scout walks there (a normal {@link import('../../components/index.js').PlayerOrder}
+       * walk), plays the one-shot build-guide hammer atomic (jobtypes.ini scout `allowatomic 43`,
+       * `viking_scout_build_guide`) and the signpost appears when it completes — instant, no materials
+       * (source basis: observed original behaviour; a single hammer-strike animation, no cost). Recoverable
+       * bad input (skipped, still logged): a dead/stale/non-settler/neutral issuer, a non-scout job, or a
+       * spot that fails the signpost placement gate (unwalkable, inside a standing body, or within another
+       * same-player signpost's spacing circle). See `placeSignpost`.
+       */
+      readonly kind: 'placeSignpost';
+      readonly entity: Entity;
+      readonly x: number;
+      readonly y: number;
     };

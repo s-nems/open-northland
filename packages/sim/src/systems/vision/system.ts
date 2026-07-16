@@ -1,4 +1,13 @@
-import { Building, FOG_MODE, fogMode, Owner, Position, Settler, Vehicle } from '../../components/index.js';
+import {
+  Building,
+  FOG_MODE,
+  fogMode,
+  Owner,
+  Position,
+  Settler,
+  Signpost,
+  Vehicle,
+} from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { System } from '../context.js';
@@ -108,12 +117,16 @@ export const visionSystem: System = (world, ctx) => {
 
 /** The vision radius (nodes) of one owned entity, or null when it is not an eye: settlers see by job,
  *  buildings (finished or under construction — a rising site is manned ground) see the building
- *  radius, boat hulls see like a civilian. Owned markers (flags) and piles see nothing. */
+ *  radius, boat hulls see like a civilian, a signpost watches its whole navigation circle (a standing
+ *  eye, so its area stays visible in RECON — our design: the user-specified permanent recon reveal).
+ *  Owned markers (flags) and piles see nothing. */
 function visionRadiusOf(world: World, e: Entity): number | null {
   const settler = world.tryGet(e, Settler);
   if (settler !== undefined) return visionRadiusForJob(settler.jobType);
   if (world.has(e, Building)) return BUILDING_VISION_NODES;
   if (world.has(e, Vehicle)) return CIVILIAN_VISION_NODES;
+  const signpost = world.tryGet(e, Signpost);
+  if (signpost !== undefined) return signpost.navRadius;
   return null;
 }
 

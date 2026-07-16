@@ -14,3 +14,4 @@ export * from './movement.js';
 export * from './ownership.js';
 export * from './rules.js';
 export * from './settler.js';
+export * from './signpost.js';

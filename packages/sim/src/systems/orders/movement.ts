@@ -3,6 +3,7 @@ import {
   Carrying,
   CurrentAtomic,
   Engagement,
+  ErectSignpostOrder,
   Fleeing,
   MoveGoal,
   Owner,
@@ -20,6 +21,7 @@ import { startDrop } from '../agents/actions.js';
 import type { System, SystemContext } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
 import { MILITARY_MODE } from '../readviews/index.js';
+import { navigationLimitFor } from '../signposts/index.js';
 import { clearNavState, isTravelling } from '../spatial.js';
 
 /**
@@ -88,6 +90,11 @@ export function moveUnit(
   if (!world.isAlive(e) || !world.has(e, Settler) || !world.has(e, Position) || !world.has(e, Owner)) return;
 
   const goal = reachableMoveGoal(world, ctx, terrain, terrain.nodeAtClamped(command.x, command.y));
+  // Signpost confinement: a civilian ordered beyond its allowed area doesn't know the way — the order
+  // is refused and the unit stays put (source basis: observed original guidepost behaviour). Scouts and
+  // fighters are exempt (navigationLimitFor returns null for them, and whenever confinement is off).
+  const limit = navigationLimitFor(world, terrain, e);
+  if (limit !== null && !limit.allowsNode(goal)) return;
   // The order is authoritative — cancel the unit's current action + any pending route request so it obeys
   // now, then set the new goal. (A non-interruptible-atomic exception is a deferred refinement.) A live
   // PathFollow is deliberately kept: the planner sees a route whose destination no longer matches the goal and
@@ -102,6 +109,7 @@ export function moveUnit(
   world.remove(e, Engagement);
   world.remove(e, AttackOrder);
   world.remove(e, Fleeing); // a move order supersedes the flee drive too
+  world.remove(e, ErectSignpostOrder); // a fresh move order supersedes a pending erect intent
   // A move order relocates a DEFEND unit's post: the guard defends the spot it was sent to, not the tile the
   // stance was set on. Without the re-anchor, the arrived-hold combat pass would march the guard back to its
   // old anchor the moment it found no enemy there.

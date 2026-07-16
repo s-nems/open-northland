@@ -22,6 +22,7 @@ import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
 import { jobCanHarvest } from '../economy/flags.js';
 import { MILITARY_MODE } from '../readviews/index.js';
+import { navigationLimitFor } from '../signposts/index.js';
 import { canonicalById, clearNavState, isTravelling, NodeBuckets } from '../spatial.js';
 import { collectInboundSupply, isCarrierJob, releaseSupplyRun } from '../stores/index.js';
 import { deStackIdle, type SpacingState } from './destack.js';
@@ -208,6 +209,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
       here,
       targets,
       inbound,
+      limit: navigationLimitFor(world, terrain, e),
     };
 
     // 1. CARRYING — deliver first (a settler must free its hands before any empty-handed work).

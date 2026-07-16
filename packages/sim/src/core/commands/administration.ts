@@ -25,6 +25,17 @@ export type RulesCommand =
       readonly kind: 'setFogMode';
       /** The target {@link import('../../components/rules.js').FOG_MODE} id (0..2). */
       readonly mode: number;
+    }
+  | {
+      /**
+       * Toggle signpost-navigation confinement globally: while enabled, a civilian settler may only work and
+       * walk within its local reach plus a reachable signpost group's circles (`systems/signposts/`). Sets the
+       * {@link import('../../components/rules.js').SignpostRules} singleton (created on first use), so the
+       * toggle hashes and replays like any other state. Default off — maps/scenes that ship signposts opt in
+       * (a named deviation: the original always confines, but existing scenes/goldens predate signposts).
+       */
+      readonly kind: 'setSignpostNavigation';
+      readonly enabled: boolean;
     };
 
 /** Replayable admin commands used to drive existing mechanics during testing. */

@@ -5,6 +5,8 @@ import {
   Health,
   isFogMode,
   Settler,
+  SignpostRules,
+  signpostRulesEntity,
   Stockpile,
   Vehicle,
   WorldRules,
@@ -26,6 +28,7 @@ import {
   assignWorker,
   attackUnit,
   moveUnit,
+  placeSignpost,
   setGatherGood,
   setJob,
   setStance,
@@ -161,6 +164,20 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
     case 'setGatherGood':
       setGatherGood(world, ctx, command);
       return;
+    case 'placeSignpost':
+      placeSignpost(world, ctx, command);
+      return;
+    case 'setSignpostNavigation': {
+      // Set the SignpostRules singleton (the WorldRules pattern: created lazily, mutated thereafter) —
+      // the confinement toggle changes settler decisions, so it hashes/replays like any component.
+      const signpostRules = signpostRulesEntity(world);
+      if (signpostRules === null) {
+        world.add(world.create(), SignpostRules, { navigationEnabled: command.enabled });
+      } else {
+        world.get(signpostRules, SignpostRules).navigationEnabled = command.enabled;
+      }
+      return;
+    }
     case 'setNeedsEnabled': {
       // Set the WorldRules singleton (created lazily on first use, mutated thereafter) — the toggle is
       // simulated state, so it hashes/replays like any component. Idempotent re-sends just overwrite.

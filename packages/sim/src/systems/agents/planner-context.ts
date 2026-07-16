@@ -1,6 +1,7 @@
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
+import type { NavigationLimit } from '../signposts/index.js';
 import type { InboundSupplyTally } from '../stores/index.js';
 import type { TargetCandidates } from './targets/index.js';
 
@@ -31,4 +32,9 @@ export interface PlannerContext extends PlannerWorker {
   /** Tick-shared tally of units committed to each construction site by live
    *  {@link import('../../components/settler.js').SupplyRun} errands (see {@link InboundSupplyTally}). */
   readonly inbound: InboundSupplyTally;
+  /** This settler's signpost-navigation confinement, or null when unlimited (confinement off, or an
+   *  exempt job — see {@link import('../signposts/network.js').navigationLimitFor}). The economy drives
+   *  gate every NEW work target's interaction cell on it (harvest nodes, trunks, fetch stores, build
+   *  sites); a delivery of an already-carried load stays ungated so goods never strand mid-haul. */
+  readonly limit: NavigationLimit | null;
 }

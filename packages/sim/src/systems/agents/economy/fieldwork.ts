@@ -16,6 +16,7 @@ import {
 } from '../../stores/index.js';
 import { atOrWalk, BUILD_HOUSE_ATOMIC_ID, startAtomic, startPickup, walkPickupBatch } from '../actions.js';
 import { claimWorkCell, type SpacingState } from '../destack.js';
+import { cellGateOf } from '../../signposts/index.js';
 import type { PlannerContext } from '../planner-context.js';
 import {
   interactionCell,
@@ -75,7 +76,14 @@ export function planBuilder(plan: PlannerContext, spacing: SpacingState): boolea
     assigned?.pinned === true && world.has(assigned.site, UnderConstruction) ? assigned.site : null;
   const site =
     pinned ??
-    nearestConstructionSite(targets.constructionSiteCells, world, here, settler.tribe, settler.owner);
+    nearestConstructionSite(
+      targets.constructionSiteCells,
+      world,
+      here,
+      settler.tribe,
+      settler.owner,
+      cellGateOf(plan.limit),
+    );
   if (site === null) {
     world.remove(e, SiteAssignment); // nothing under construction — the crew disbands
     return false; // fall through to hauling
@@ -106,7 +114,8 @@ export function planBuilder(plan: PlannerContext, spacing: SpacingState): boolea
   // The need already discounts other settlers' live supply errands (SupplyRun), and this fetch stamps
   // its own — so a crew spreads over the still-unclaimed materials instead of racing to the same unit.
   const need = nextNeededConstructionGood(world, ctx, site, plan.inbound);
-  const src = need && nearestStoreHolding(targets.stockpileCells, world, here, need.goodType);
+  const src =
+    need && nearestStoreHolding(targets.stockpileCells, world, here, need.goodType, cellGateOf(plan.limit));
   if (need !== null && src != null) {
     const batch = Math.min(need.amount, CARRY_CAPACITY);
     stampSupplyRun(world, e, plan.inbound, { site, goodType: need.goodType, amount: batch });
@@ -147,7 +156,16 @@ export function planGatherer(plan: PlannerContext): boolean {
     return planFlagGatherer(plan, flag);
   }
 
-  const node = nearestHarvestableFor(targets.resources, world, ctx, terrain, here, settler);
+  const node = nearestHarvestableFor(
+    targets.resources,
+    world,
+    ctx,
+    terrain,
+    here,
+    settler,
+    undefined,
+    cellGateOf(plan.limit),
+  );
   const trunk = nearestCollectablePileFor(
     targets.groundDrops,
     targets.harvestAtomicByGood,
@@ -156,6 +174,7 @@ export function planGatherer(plan: PlannerContext): boolean {
     terrain,
     here,
     settler.jobType,
+    cellGateOf(plan.limit),
   );
   const nodeDist = node !== null ? node.dist : Number.POSITIVE_INFINITY;
   // Prefer the trunk on a tie (it is the wood already at hand — grab it before a fresh tree).
@@ -202,11 +221,20 @@ function planFlagGatherer(
   }
 
   // 2. Chop / mine the nearest node within the flag's work radius (nothing beyond it).
-  const node = nearestHarvestableFor(targets.resources, world, ctx, terrain, here, settler, {
-    center: flagCell,
-    radius: flag.radius,
-    ...(flag.goodType !== undefined ? { goodType: flag.goodType } : {}),
-  });
+  const node = nearestHarvestableFor(
+    targets.resources,
+    world,
+    ctx,
+    terrain,
+    here,
+    settler,
+    {
+      center: flagCell,
+      radius: flag.radius,
+      ...(flag.goodType !== undefined ? { goodType: flag.goodType } : {}),
+    },
+    cellGateOf(plan.limit),
+  );
   if (node !== null) {
     startHarvestFromNode(plan, node);
     return true;
