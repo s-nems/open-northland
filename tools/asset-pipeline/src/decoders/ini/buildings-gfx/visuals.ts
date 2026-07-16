@@ -225,7 +225,7 @@ export function extractBuildingBobs(sections: readonly RuleSection[], src: Sourc
     for (const rec of splitGfxHouseRecords(sec)) {
       const record = readGfxHouseGraphicsRecord(rec);
       if (record === undefined) continue;
-      const { tribeId, normalizedBmd, palettes, editName, typeByLevel } = record;
+      const { tribeId, normalizedBmd, normalizedShadowBmd, palettes, editName, typeByLevel } = record;
       // Pair the two per-level tables by their leading level index. A typeId may recur at several
       // levels; each level keeps its own bob.
       const bobByLevel = new Map<number, number>();
@@ -249,6 +249,7 @@ export function extractBuildingBobs(sections: readonly RuleSection[], src: Sourc
               typeId,
               level,
               bmd: normalizedBmd,
+              shadowBmd: normalizedShadowBmd,
               paletteName: pal,
               bobId,
               editName,

@@ -7,7 +7,14 @@ import {
   type SpriteLayer,
 } from '@open-northland/render';
 import { diag } from '../diag/index.js';
-import { type ContentIr, type LandscapeGfxRow, loadLayer, MissingAtlasError, servedAtlasStem } from './ir.js';
+import {
+  type ContentIr,
+  type LandscapeGfxRow,
+  loadLayer,
+  MissingAtlasError,
+  servedAtlasStem,
+  servedShadowStem,
+} from './ir.js';
 import { forEachPlacement } from './map-placements.js';
 
 /**
@@ -68,10 +75,11 @@ export function stateIndexForLevel(level: number, stateCount: number): number {
   return level >= 1 && level <= stateCount ? stateCount - level : 0;
 }
 
-/** One decoded atlas via the shared {@link loadLayer}, with a 404 (partial `content/`) degraded to null. */
-async function loadLayerOrNull(key: string): Promise<SpriteLayer | null> {
+/** One decoded atlas via the shared {@link loadLayer} (with its optional shadow twin), a 404 (partial
+ *  `content/`) degraded to null. */
+async function loadLayerOrNull(key: string, shadowStem?: string): Promise<SpriteLayer | null> {
   try {
-    return await loadLayer(key);
+    return await loadLayer(key, shadowStem);
   } catch (err) {
     if (err instanceof MissingAtlasError) return null;
     throw err;
@@ -151,17 +159,20 @@ export async function loadMapObjects(
   }
   // The logicType ids whose objects stay full-bright (trees — the measured exemption).
   const unshadedLogicTypes = unshadedLogicTypeIds(ir.landscape);
-  // Resolve each used type once: its record, atlas layer, frame list and decor split.
-  const layerKeys = new Set<string>();
+  // Resolve each used type once: its record, atlas layer (+ its shadow twin, keyed by the record's
+  // `shadowBmd`), frame list and decor split.
+  const layerKeys = new Map<string, string | undefined>();
   for (const type of objects.types) {
     const record = recordByName.get(type);
     const key = record !== undefined ? servedAtlasStem(record) : undefined;
-    if (key !== undefined) layerKeys.add(key);
+    if (key !== undefined && !layerKeys.has(key)) {
+      layerKeys.set(key, servedShadowStem(record?.shadowBmd));
+    }
   }
   const layers = new Map<string, SpriteLayer>();
   await Promise.all(
-    [...layerKeys].map(async (key) => {
-      const layer = await loadLayerOrNull(key);
+    [...layerKeys].map(async ([key, shadowStem]) => {
+      const layer = await loadLayerOrNull(key, shadowStem);
       if (layer !== null) layers.set(key, layer);
     }),
   );
@@ -169,6 +180,8 @@ export async function loadMapObjects(
   interface ResolvedType {
     readonly source: SpriteLayer['source'];
     readonly frames: MapObjectSprite['frames'];
+    /** The cast-shadow twin frames, index-paired with {@link frames}; absent when no pose casts one. */
+    readonly shadow: MapObjectSprite['shadow'];
     readonly decor: boolean;
     /** False for the tree logic types (the measured full-bright exemption — {@link UNSHADED_LANDSCAPE_TYPES}). */
     readonly shaded: boolean;
@@ -182,14 +195,27 @@ export async function loadMapObjects(
     const layer = key !== undefined ? layers.get(key) : undefined;
     if (layer === undefined) return [];
     return (record.frames ?? []).map((stateList) => {
-      const frames = stateList.bobIds
-        .map((bobId) => layer.atlas.frames.get(bobId))
-        .filter((f): f is NonNullable<typeof f> => f !== undefined && f.width > 0 && f.height > 0);
+      // Body + shadow resolve in one pass so the pair stays index-aligned across the 0×0-frame drops
+      // (the shadow set parallels the body's bob ids; a pose without a silhouette gets `undefined`).
+      const frames: MapObjectSprite['frames'][number][] = [];
+      const shadowFrames: (MapObjectSprite['frames'][number] | undefined)[] = [];
+      for (const bobId of stateList.bobIds) {
+        const f = layer.atlas.frames.get(bobId);
+        if (f === undefined || f.width <= 0 || f.height <= 0) continue;
+        frames.push(f);
+        const s = layer.shadow?.atlas.frames.get(bobId);
+        shadowFrames.push(s !== undefined && s.width > 0 && s.height > 0 ? s : undefined);
+      }
       if (frames.length === 0) return null;
       const animated = record.loopAnimation === true && record.isStatic !== true && frames.length > 1;
+      const count = animated ? frames.length : 1;
+      const shadowSource = layer.shadow?.source;
+      const hasShadow =
+        shadowSource !== undefined && shadowFrames.slice(0, count).some((s) => s !== undefined);
       return {
         source: layer.source,
-        frames: animated ? frames : frames.slice(0, 1),
+        frames: frames.slice(0, count),
+        shadow: hasShadow ? { source: shadowSource, frames: shadowFrames.slice(0, count) } : undefined,
         decor: (record.walkBlockAreas ?? []).length === 0,
         shaded: record.logicType === undefined || !unshadedLogicTypes.has(record.logicType),
       };
@@ -223,6 +249,7 @@ export async function loadMapObjects(
       y: screen.y,
       source: type.source,
       frames: type.frames,
+      ...(type.shadow !== undefined ? { shadow: type.shadow } : {}),
       scale: 1,
       decor: type.decor,
       ...(lift !== 0 ? { lift } : {}),

@@ -38,10 +38,26 @@ export interface MapObjectSprite {
    * approximation, Pixi's batch tint cannot brighten.
    */
   readonly brightness?: number;
+  /**
+   * The object's cast shadow (the `GfxBobLibs` shadow `.bmd` atlas — pre-baked translucent-black
+   * silhouettes), when the record names one and it loaded. `frames[i]` pairs with the body
+   * {@link frames}`[i]` (`undefined` = that pose casts none), so an animated loop's shadow follows the
+   * pose. Only tall objects draw it ({@link import('./tall-blocks.js').TallObjectLayer}); flat decor
+   * (waves, grass, mine stains) ignores the field — a named approximation, no decor shadow is known.
+   */
+  readonly shadow?: {
+    readonly source: TextureSource;
+    readonly frames: readonly (AtlasFrame | undefined)[];
+  };
+}
+
+/** The {@link MapObjectSprite.frames} index an object shows at a given animation tick (static objects
+ *  always show frame 0) — shared by the body and shadow binds so the pair can never drift. */
+export function objectFrameIndexAt(obj: MapObjectSprite, tick: number): number {
+  return obj.frames.length <= 1 ? 0 : (tick + obj.phase) % obj.frames.length;
 }
 
 /** The frame an object shows at a given animation tick (static objects always show frame 0). */
 export function objectFrameAt(obj: MapObjectSprite, tick: number): AtlasFrame | undefined {
-  if (obj.frames.length <= 1) return obj.frames[0];
-  return obj.frames[(tick + obj.phase) % obj.frames.length];
+  return obj.frames[objectFrameIndexAt(obj, tick)];
 }

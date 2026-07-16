@@ -12,7 +12,17 @@ import {
   VIKING_TRIBE,
 } from '../building-gfx/index.js';
 import { loadGoodsIconManifest } from '../goods-gfx.js';
-import { BODY_IMAGELIB, loadIr, loadLayer, loadPlayerLut, MissingAtlasError, sequencesFor } from '../ir.js';
+import {
+  BODY_IMAGELIB,
+  type ContentIr,
+  loadIr,
+  loadLayer,
+  loadPlayerLut,
+  MissingAtlasError,
+  sequencesFor,
+  servedAtlasStem,
+  servedShadowStem,
+} from '../ir.js';
 import {
   berryBushAtlasStems,
   buildBerryBushBinding,
@@ -54,13 +64,14 @@ const HUMAN_HEAD_ATLAS = 'cr_hum_head_00.test_human_00';
  */
 async function loadGatheringFamilies(
   stems: ReadonlySet<string>,
+  shadowStems: ReadonlyMap<string, string>,
 ): Promise<{ families: Record<string, SpriteLayer>; loaded: Set<string> }> {
   const families: Record<string, SpriteLayer> = {};
   const loaded = new Set<string>();
   await Promise.all(
     [...stems].map(async (stem) => {
       try {
-        families[stem] = await loadLayer(stem);
+        families[stem] = await loadLayer(stem, shadowStems.get(stem));
         loaded.add(stem);
       } catch (err) {
         if (!(err instanceof MissingAtlasError)) throw err; // a real decode bug still surfaces
@@ -71,19 +82,45 @@ async function loadGatheringFamilies(
 }
 
 /**
+ * The served body-atlas stem → shadow-atlas stem join, from every IR row pairing a body `.bmd` with a
+ * shadow `.bmd` (`GfxBobLibs` second value): the landscape records (trees, stones, flags) and the
+ * `[GfxHouse]` building rows. Loading a body layer with its entry attaches the shadow twin the resolve
+ * step draws under each bob ({@link import('@open-northland/render').SpriteLayer.shadow}). First-wins on
+ * a repeated stem — the recolours of one `.bmd` share its single shadow set.
+ */
+function shadowStemsByAtlasStem(ir: ContentIr | null): Map<string, string> {
+  const map = new Map<string, string>();
+  const put = (stem: string | undefined, shadowBmd: string | undefined): void => {
+    const shadowStem = servedShadowStem(shadowBmd);
+    if (stem !== undefined && shadowStem !== undefined && !map.has(stem)) map.set(stem, shadowStem);
+  };
+  for (const row of ir?.landscapeGfx ?? []) put(servedAtlasStem(row), row.shadowBmd);
+  for (const row of ir?.buildingBobs ?? []) put(servedAtlasStem(row), row.shadowBmd);
+  return map;
+}
+
+/**
  * Load the real human {@link SpriteSheet}: the body layer as the base sheet, the head layer as an overlay
  * drawn on top at the same bob id, paired with bindings whose walk/chop ranges are read from the decoded
  * `bobSequences` (see {@link buildHumanBindings}). Together they compose a complete settler (body + head)
  * the renderer animates directionally per tick.
  */
 export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Promise<SpriteSheet> {
-  const [body, head, tree, house, familyEntries, ir] = await Promise.all([
+  // The IR resolves first (memoized — every domain shares the fetch): the tree/house/family loads need
+  // its body-stem → shadow-stem join to attach each atlas's cast-shadow twin. The character body/head
+  // atlases deliberately get none — settlers draw shadow-less by design.
+  const ir = await loadIr();
+  const shadowStems = shadowStemsByAtlasStem(ir);
+  const [body, head, tree, house, familyEntries] = await Promise.all([
     loadLayer(HUMAN_BODY_ATLAS),
     loadLayer(HUMAN_HEAD_ATLAS),
-    loadLayer(TREE_ATLAS),
-    loadLayer(HOUSE_ATLAS),
-    Promise.all(BUILDING_FAMILIES.map(async (f) => [f.layer, await loadLayer(f.layer)] as const)),
-    loadIr(),
+    loadLayer(TREE_ATLAS, shadowStems.get(TREE_ATLAS)),
+    loadLayer(HOUSE_ATLAS, shadowStems.get(HOUSE_ATLAS)),
+    Promise.all(
+      BUILDING_FAMILIES.map(
+        async (f) => [f.layer, await loadLayer(f.layer, shadowStems.get(f.layer))] as const,
+      ),
+    ),
   ]);
   // Player-colour LUT for team colours: if the pipeline emitted it (`/bobs/player-lut.png`), load the
   // characters as the recolourable indexed atlas and draw them through this LUT per player; if it is absent
@@ -140,7 +177,10 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
   const stems = gatheringAtlasStems(gatheringRefs);
   if (stumpRef !== undefined) stems.add(stumpRef.stem);
   for (const s of berryBushAtlasStems(berryBushRefs)) stems.add(s);
-  const { families: gatheringFamilies, loaded: gatheringLoaded } = await loadGatheringFamilies(stems);
+  const { families: gatheringFamilies, loaded: gatheringLoaded } = await loadGatheringFamilies(
+    stems,
+    shadowStems,
+  );
   // The frame ids each loaded family atlas actually holds — lets the node reducer mark a level whose bob
   // the source record points outside its own atlas (the original's "invisible state" sentinel — freshly-
   // sown wheat) as a draw-nothing level instead of a placeholder. See buildResourceBinding.

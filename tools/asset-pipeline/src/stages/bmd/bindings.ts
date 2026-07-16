@@ -64,8 +64,8 @@ function pushDeduped(
  * is dropped here (there is nothing to resolve it against — not even a name `convertBmdTree` could
  * warn about); the `gfxpaletterandom` tint is a per-settler runtime range, not a bob palette, so it is
  * not emitted. The `logictribe`/`logicjob` cross-refs ride along on each binding. Head bobs carry no
- * shadow `.bmd` (the extractor never sets one); body shadows are left for the later shadow-palette step,
- * exactly as the `[jobgraphics]` leg leaves `shadowBmd` unconverted today.
+ * shadow `.bmd` (the extractor never sets one); body `shadowBmd`s ride along for
+ * {@link import('./convert.js').convertShadowBmdTree}.
  */
 export function jobBaseGraphicsToBindings(records: readonly JobBaseGraphicsBinding[]): BmdPaletteBinding[] {
   const bindings: BmdPaletteBinding[] = [];

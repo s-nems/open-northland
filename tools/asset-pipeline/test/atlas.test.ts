@@ -6,9 +6,12 @@ import {
   expandBobFrameIndexed,
   packBobAtlas,
   packIndexedBobAtlas,
+  packShadowBobAtlas,
+  SHADOW_ALPHA,
 } from '../src/decoders/atlas.js';
 import {
   type Bmd,
+  BOB_TYPE_1BIT,
   BOB_TYPE_8BIT,
   BOB_TYPE_DOUBLE8BIT,
   BOB_TYPE_EMPTY,
@@ -305,5 +308,36 @@ describe('packIndexedBobAtlas', () => {
     // Indexed atlas carries the raw index in red (7, 8), alpha opaque — not the palette colour.
     expect(px(indexed.image, ATLAS_GUTTER, ATLAS_GUTTER)).toEqual([7, 0, 0, 255]);
     expect(px(indexed.image, ATLAS_GUTTER + 1, ATLAS_GUTTER)).toEqual([8, 0, 0, 255]);
+  });
+});
+
+describe('packShadowBobAtlas', () => {
+  it('bakes 1-bit mask pixels black at SHADOW_ALPHA and leaves unset pixels transparent', () => {
+    // One 1-bit mask bob (the shadow `.bmd` type), 3×1: draw 1, skip 1, draw 1 — a mask raw run
+    // carries no pixel bytes (see decodeBobFrame's mask branch).
+    const bmd = makeBmd([
+      {
+        type: BOB_TYPE_1BIT,
+        width: 3,
+        height: 1,
+        packed: [0x01, 0x81, 0x01, 0x00],
+        lines: [{ offset: 0, xMin: 0 }],
+        areaX: -2,
+        areaY: -1,
+      },
+    ]);
+    const { image, manifest } = packShadowBobAtlas(bmd);
+    const px = (x: number, y: number): number[] => {
+      const o = (y * image.width + x) * 4;
+      return [...image.rgba.subarray(o, o + 4)];
+    };
+    expect(px(ATLAS_GUTTER, ATLAS_GUTTER)).toEqual([0, 0, 0, SHADOW_ALPHA]);
+    expect(px(ATLAS_GUTTER + 1, ATLAS_GUTTER)).toEqual([0, 0, 0, 0]);
+    expect(px(ATLAS_GUTTER + 2, ATLAS_GUTTER)).toEqual([0, 0, 0, SHADOW_ALPHA]);
+    // The manifest keeps the bob's draw offset — the renderer anchors the shadow like any frame.
+    const frame = frameOf(manifest, 10);
+    expect(frame.offsetX).toBe(-2);
+    expect(frame.offsetY).toBe(-1);
+    expect(frame.opaque).toBe(true);
   });
 });

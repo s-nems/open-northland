@@ -44,6 +44,9 @@ export interface PooledEntity {
   /** This entity's atlas layers. A paletted settler (team colours on) draws {@link PalettedSprite} meshes;
    *  every other entity draws plain {@link Sprite}s. Homogeneous per entity — set by {@link PooledEntity.paletted}. */
   readonly sprites: (Sprite | PalettedSprite)[];
+  /** Per-{@link sprites}-index: whether that layer is a cast shadow this frame — restamped by
+   *  `bindLayers`, read by the pixel hit test (a shadow must not make its caster clickable). */
+  readonly shadowFlags: boolean[];
   /** Whether this entity draws team-coloured {@link PalettedSprite} meshes (a settler, with a LUT + indexed
    *  characters loaded). Fixed at creation — the sprite class can't change, so the pool decides once. */
   readonly paletted: boolean;
@@ -75,6 +78,7 @@ export function createPooled(kind: SpriteKind, paletted: boolean): PooledEntity 
     container: new Container(),
     kind,
     sprites: [],
+    shadowFlags: [],
     paletted,
     attached: false,
     lastSeen: 0,

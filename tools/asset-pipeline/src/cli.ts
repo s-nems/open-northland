@@ -12,7 +12,7 @@ import { realpathSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { type Args, assertOutStaysInCheckout, parseArgs, resolveArgs } from './args.js';
-import { convertBmdTree, resolveGraphicsBindings } from './stages/bmd/index.js';
+import { convertBmdTree, convertShadowBmdTree, resolveGraphicsBindings } from './stages/bmd/index.js';
 import { convertFontStage } from './stages/fonts.js';
 import { convertGoodsStage } from './stages/goods/index.js';
 import { convertGuiStage } from './stages/gui/index.js';
@@ -57,6 +57,13 @@ async function run(args: Args): Promise<void> {
     `[pipeline] bmd -> atlas: ${atlases.length} of ${bindings.length} readable binding(s) -> ` +
       `${distinct} atlas file(s) (${distinctBmd} distinct .bmd) into ${args.out} ` +
       `(${palettes.length} palette aliases)`,
+  );
+
+  // Shadow bob sets (the `GfxBobLibs`/`shadowlib` second value): each converts once into a palette-less
+  // black translucent-silhouette atlas the renderer draws under its caster (bob ids parallel the body's).
+  const shadowAtlases = await convertShadowBmdTree(graphics, args.out);
+  console.log(
+    `[pipeline] shadow bmd -> atlas: ${shadowAtlases.length} shadow atlas file(s) into ${args.out}`,
   );
 
   // Player (team) colours: an indexed atlas (palette index in red, mask in alpha) per `cr_hum_*` body/head

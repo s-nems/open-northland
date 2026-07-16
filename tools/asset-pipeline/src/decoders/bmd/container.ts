@@ -45,7 +45,8 @@ export const PACKED_X_SHIFT = 22; // high 10 bits = xMin (first non-transparent 
 export const BOB_TYPE_EMPTY = 0;
 /** 8-bit bob: each raw-run byte is a palette index. */
 export const BOB_TYPE_8BIT = 1;
-/** 1-bit mask bob: each raw-run byte is 0/1; set pixels draw as index 0xFF (`TBobType.Bob1Bit`). */
+/** 1-bit mask bob (`TBobType.Bob1Bit`) — the shadow silhouettes: a raw run carries no pixel bytes
+ *  (the run IS the coverage); set pixels draw as index 0xFF. */
 export const BOB_TYPE_1BIT = 2;
 /**
  * Time-mask bob: each raw-run pixel is `[value, timeByte]`. The second byte is a 0–255 visibility
