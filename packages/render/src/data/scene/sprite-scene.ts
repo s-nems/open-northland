@@ -15,6 +15,7 @@ import {
   readAtomicTargetEntity,
   readBerryBushGfxIndex,
   readBerryBushLevel,
+  readOwnerPlayer,
   readPosition,
   readProducing,
   readResourceLevelCount,
@@ -221,6 +222,7 @@ export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOpt
       // same feet anchor (the board frames' offsets carry the post-top pivot), painted the flag
       // half-step above the post. Synthetic negative refs keep the boards pooled/reconciled per
       // (signpost, angle-bucket) without colliding with real entity ids.
+      const postPlayer = readOwnerPlayer(components);
       for (const bucket of signpostBoardsOf(snapshot).get(entity.id) ?? []) {
         const boardRef = -(entity.id * (SIGNPOST_BOARD_FRAMES + 1) + bucket + 1);
         liveRefs.add(boardRef);
@@ -233,6 +235,8 @@ export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOpt
           state: 'idle',
           boardIndex: bucket,
         };
+        // The board's lettering is the team colour — it reads the same owner LUT row as its post.
+        if (postPlayer !== undefined) board.player = postPlayer;
         if (lift !== 0) board.lift = lift;
         items.push(board);
       }

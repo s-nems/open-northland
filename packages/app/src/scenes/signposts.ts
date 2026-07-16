@@ -1,7 +1,7 @@
 import type { Entity, Simulation } from '@open-northland/sim';
 import { cellAnchorNode, components, fx, systems } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
-import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../game/rules.js';
+import { ENEMY_PLAYER, HUMAN_PLAYER, PRIMARY_TRIBE } from '../game/rules.js';
 import { GATHERERS, JOB_COLLECTOR, JOB_SCOUT, placeResourceNode } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
 
@@ -28,6 +28,9 @@ const CHAIN_RADIUS_NODES = 12;
 const CHAIN_A = { x: 16, y: 8 } as const;
 const CHAIN_B = { x: 26, y: 8 } as const;
 const LONE_POST = { x: 44, y: 8 } as const;
+/** A rival's post beside ours: signposts are per player (networks, spacing, selection, and the board
+ *  lettering colour — red for the enemy slot vs the human's blue). */
+const ENEMY_POST = { x: 52, y: 4 } as const;
 /** The collector and its two trees: NEAR is beyond the 12-tile local circle but inside CHAIN_B's
  *  circle (reachable through the chain); FAR is outside every circle and must stay untouched. */
 const COLLECTOR = { x: 4, y: 4 } as const;
@@ -54,10 +57,10 @@ function spawnUnit(sim: Simulation, jobType: number, x: number, y: number): Enti
 }
 
 /** Stamp a standing signpost directly (pre-tick-0) — the scene's pre-existing network fixture. */
-function stampPost(sim: Simulation, x: number, y: number, navRadius: number): void {
+function stampPost(sim: Simulation, x: number, y: number, navRadius: number, player = HUMAN_PLAYER): void {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Owner, { player: HUMAN_PLAYER });
+  sim.world.add(e, Owner, { player });
   sim.world.add(e, Signpost, {
     navRadius,
     spacingRadius: components.SIGNPOST_SPACING_RADIUS_NODES,
@@ -83,6 +86,7 @@ function build(sim: Simulation): void {
   stampPost(sim, CHAIN_A.x, CHAIN_A.y, CHAIN_RADIUS_NODES);
   stampPost(sim, CHAIN_B.x, CHAIN_B.y, CHAIN_RADIUS_NODES);
   stampPost(sim, LONE_POST.x, LONE_POST.y, CHAIN_RADIUS_NODES);
+  stampPost(sim, ENEMY_POST.x, ENEMY_POST.y, CHAIN_RADIUS_NODES, ENEMY_PLAYER);
   spawnUnit(sim, JOB_COLLECTOR, COLLECTOR.x, COLLECTOR.y);
   // The scout erects the fourth post on command: walk two tiles, one hammer swing, the post rises.
   const scout = spawnUnit(sim, JOB_SCOUT, SCOUT.x, SCOUT.y);
@@ -113,8 +117,20 @@ export const signpostsScene: SceneDefinition = {
       },
     },
     {
-      label: 'four signposts stand (three pre-placed + the erected one)',
-      predicate: (sim) => [...sim.world.query(Signpost)].length === 4,
+      label: 'five signposts stand (three of ours pre-placed + the erected one + a rival post)',
+      predicate: (sim) => [...sim.world.query(Signpost)].length === 5,
+    },
+    {
+      label: "the rival's post is owned by the enemy slot (per-player networks + red board lettering)",
+      predicate: (sim) => {
+        for (const e of sim.world.query(Signpost, Position)) {
+          const p = sim.world.get(e, Position);
+          if (fx.toInt(p.x) === ENEMY_POST.x && fx.toInt(p.y) === ENEMY_POST.y) {
+            return sim.world.get(e, Owner).player === ENEMY_PLAYER;
+          }
+        }
+        return false;
+      },
     },
     {
       label: 'the collector reached the NEAR tree through the signpost chain (felled it)',

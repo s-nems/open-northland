@@ -143,4 +143,13 @@ export interface SpriteSheet {
    * One indexed atlas + one LUT serve all `colours` players.
    */
   readonly palette?: { readonly source: TextureSource; readonly colours: number };
+  /**
+   * The guidepost's own colour LUT: full player palettes (wood + lettering + ground lanes all read
+   * through the owner's row), for the indexed `ls_guidepost` atlas the {@link bindings} signpost entry
+   * points at. Separate from {@link palette} because the characters' LUT swaps only clothing bands into
+   * a body base palette. Present ⇒ signpost draw items take the {@link
+   * import('./paletted-sprite/index.js').PalettedSprite} path at their `DrawItem.player` row; absent ⇒
+   * signposts draw as plain sprites (the baked-palette guidepost, single-coloured).
+   */
+  readonly signpostPalette?: { readonly source: TextureSource; readonly colours: number };
 }

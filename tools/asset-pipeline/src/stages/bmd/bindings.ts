@@ -205,9 +205,11 @@ export async function resolveGraphicsBindings(
   // "guidepost" appears in no decodable binding (landscapes.cif and palettes.ini both checked), only in
   // the executables — so this one binding is hand-authored, appended last, to emit its atlas. Frame
   // layout (decoded): bob 0 is the post, bobs 1..18 the direction board in ~20° angular steps around
-  // the post top. `bridge01` is a named palette approximation: no alias names the guidepost, and the
-  // wooden-bridge palette renders the wooden post/boards plausibly; the engine's exact palette is
-  // unrecovered. Skipped silently by convertBmdTree on an install with no such file/palette.
+  // the post top. The engine draws the guidepost through the OWNER'S full player palette (the
+  // board-text indices 23–30 sit inside the `playerNN.pcx` player ramp) — served as the indexed atlas +
+  // `guidepost-lut.png` (see stages/player-colors.ts). This baked `bridge01` variant stays as the
+  // single-colour no-LUT fallback (a plausible wooden palette, a named approximation). Skipped silently
+  // by convertBmdTree on an install with no such file/palette.
   bindings.push({
     bmd: 'data/engine2d/bin/bobs/ls_guidepost.bmd',
     shadowBmd: 'data/engine2d/bin/bobs/ls_guidepost_s.bmd',
