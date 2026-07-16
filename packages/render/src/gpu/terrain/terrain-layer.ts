@@ -4,6 +4,7 @@ import { type ElevationField, makeElevationField } from '../../data/elevation.js
 import { composeShadingLane } from '../../data/hillshade.js';
 import type { SceneTerrain } from '../../data/scene/index.js';
 import { aabbIntersects, type Viewport } from '../../data/viewport.js';
+import { makeWaveField } from '../../data/water.js';
 import { destroyMeshChildren } from '../mesh-teardown.js';
 import { padLaneRows } from '../shading.js';
 import type { TerrainTextureSet } from '../terrain-textures.js';
@@ -88,7 +89,12 @@ export class TerrainLayer {
         addressMode: 'clamp-to-edge',
       });
     }
-    const lane: LaneShading = { brightnessTex: this.brightnessTex, laneTexWidth: this.laneTexWidth };
+    const lane: LaneShading = {
+      brightnessTex: this.brightnessTex,
+      laneTexWidth: this.laneTexWidth,
+      // Water-wave amplitudes ride the shaded mesh path (`data/water.ts`); NO_WAVE on land maps.
+      wave: makeWaveField(terrain.ground, terrain.width, terrain.height),
+    };
     this.chunks =
       textures !== undefined
         ? buildTextured(this.container, terrain, textures, elevation, brightness, lane)
@@ -110,6 +116,22 @@ export class TerrainLayer {
   cull(vp: Viewport): void {
     for (const chunk of this.chunks) {
       chunk.container.visible = aabbIntersects(vp, chunk);
+    }
+  }
+
+  /**
+   * Advance the water-surface animation to `timeTicks` (the interpolated sim clock, `tick + alpha` —
+   * deterministic, so a `?shot` frame reproduces). Writes only the VISIBLE blocks' wave uniforms
+   * (call after {@link cull}), so the per-frame cost tracks the screen; an off-screen block simply
+   * picks up the current time when it scrolls back in. A land map's blocks carry no handles — no-op.
+   */
+  animate(timeTicks: number): void {
+    for (const chunk of this.chunks) {
+      if (!chunk.container.visible || chunk.waveUniforms.length === 0) continue;
+      for (const wave of chunk.waveUniforms) {
+        wave.uniforms.uWave[0] = timeTicks;
+        wave.update();
+      }
     }
   }
 

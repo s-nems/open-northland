@@ -50,6 +50,13 @@ const TerrainMapFields = z.strictObject({
    * `packages/render/src/data/brightness.ts`).
    */
   brightness: CellLane.optional(),
+  /**
+   * Per-cell water-depth/shore band (`lmms` lane collapsed to each cell's centre node), row-major,
+   * one value per cell: 0 = land, 1..6 = shore rings counting out from the coast, 7 = open sea
+   * (value histogram on the owned maps + docs/formats/MAPDAT.md). Present when the map ships the
+   * lane. Consumed by the render's water-surface animation (band → wave amplitude ramp).
+   */
+  shore: CellLane.optional(),
   /** The authored entity placements (`map.cif` `StaticObjects`), when the map carries them. */
   entities: TerrainEntities.optional(),
 });
@@ -155,6 +162,11 @@ const INVARIANTS: ReadonlyArray<{
     ok: (m) => m.brightness === undefined || m.brightness.length === cellCount(m),
     message: (m) => `terrain map brightness length ${m.brightness?.length} != width*height (${cellCount(m)})`,
     path: ['brightness'],
+  },
+  {
+    ok: (m) => m.shore === undefined || m.shore.length === cellCount(m),
+    message: (m) => `terrain map shore length ${m.shore?.length} != width*height (${cellCount(m)})`,
+    path: ['shore'],
   },
 ];
 

@@ -1,6 +1,6 @@
 import { Graphics, Mesh, MeshGeometry, type Shader, Texture, type TextureSource } from 'pixi.js';
 import { scaleColour } from '../../data/brightness.js';
-import { makeShadedTerrainShader } from '../shading.js';
+import { makeShadedTerrainShader, type WaveUniforms } from '../shading.js';
 
 /** A chunk's display child: a per-page mesh (stock or brightness-shaded shader) or the fallback trace. */
 export type TerrainChild = Mesh<MeshGeometry, Shader> | Graphics;
@@ -27,11 +27,17 @@ export interface TerrainBatch {
    * left empty on the unshaded path so its geometry (and draw pipeline) stays byte-identical.
    */
   readonly brightnessUVs: number[];
+  /**
+   * Per-vertex water-wave amplitude (1 per position pair, `data/water.ts`) — pushed in lockstep with
+   * {@link brightnessUVs} (the shaded ground program declares both attributes; a land map pushes
+   * zeros). Empty exactly when {@link brightnessUVs} is.
+   */
+  readonly waves: number[];
 }
 
 /** Make an empty {@link TerrainBatch} (also the flat-tint path's accumulator shape). */
 export function emptyBatch(): TerrainBatch {
-  return { positions: [], uvs: [], indices: [], brightnessUVs: [] };
+  return { positions: [], uvs: [], indices: [], brightnessUVs: [], waves: [] };
 }
 
 /**
@@ -47,6 +53,7 @@ export function meshGeometry(batch: TerrainBatch): MeshGeometry {
   });
   if (batch.brightnessUVs.length > 0) {
     geometry.addAttribute('aBrightnessUV', { buffer: new Float32Array(batch.brightnessUVs) });
+    geometry.addAttribute('aWave', { buffer: new Float32Array(batch.waves) });
   }
   return geometry;
 }
@@ -64,6 +71,9 @@ export class ChunkBatcher {
   private readonly byLayerPage = new Map<string, TerrainBatch & { source: TextureSource; order: number }>();
   private readonly fallback = new Graphics();
   private fallbackUsed = false;
+  /** The wave-uniform handles of the shaded meshes {@link children} emitted — the per-frame water
+   *  animation writes these (`TerrainLayer.animate`). */
+  private readonly waves: WaveUniforms[] = [];
 
   /** @param brightnessTex the map's `embr` lane as an R8 texture — bound into the shaded ground
    *  shader of every mesh whose batch accumulated `brightnessUVs`; undefined on an unshaded map. */
@@ -105,16 +115,19 @@ export class ChunkBatcher {
     for (const batch of batches) {
       const geometry = meshGeometry(batch);
       const texture = new Texture({ source: batch.source });
-      out.push(
-        batch.brightnessUVs.length > 0 && this.brightnessTex !== undefined
-          ? new Mesh({
-              geometry,
-              texture,
-              shader: makeShadedTerrainShader(batch.source, this.brightnessTex),
-            })
-          : new Mesh({ geometry, texture }),
-      );
+      if (batch.brightnessUVs.length > 0 && this.brightnessTex !== undefined) {
+        const { shader, wave } = makeShadedTerrainShader(batch.source, this.brightnessTex);
+        this.waves.push(wave);
+        out.push(new Mesh({ geometry, texture, shader }));
+      } else {
+        out.push(new Mesh({ geometry, texture }));
+      }
     }
     return out;
+  }
+
+  /** The emitted shaded meshes' water-animation handles (call after {@link children}). */
+  waveUniforms(): readonly WaveUniforms[] {
+    return this.waves;
   }
 }

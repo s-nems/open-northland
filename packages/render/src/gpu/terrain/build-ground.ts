@@ -41,7 +41,8 @@ interface ResolvedTransition {
   readonly coordsB: readonly (readonly number[])[];
 }
 
-/** Append one triangle (positions + UVs + optional per-node brightness-lane UVs) to a batch. */
+/** Append one triangle (positions + UVs + optional per-node brightness-lane UVs and wave amplitudes)
+ *  to a batch. */
 function pushTriangle(
   batch: TerrainBatch,
   nodes: readonly [NodeXY, NodeXY, NodeXY],
@@ -56,6 +57,7 @@ function pushTriangle(
   if (lane.brightnessTex !== undefined) {
     for (const [hx, hy] of nodes) {
       batch.brightnessUVs.push(...nodeLaneUV(hx, hy, terrain.width, terrain.height, lane.laneTexWidth));
+      batch.waves.push(lane.wave(hx, hy));
     }
   }
   batch.indices.push(base, base + 1, base + 2);
@@ -111,7 +113,7 @@ export function buildTextured(
         }
       }
     }
-    return batcher.children();
+    return { children: batcher.children(), waveUniforms: batcher.waveUniforms() };
   });
 }
 
@@ -222,6 +224,6 @@ function buildGround(
         }
       }
     }
-    return batcher.children();
+    return { children: batcher.children(), waveUniforms: batcher.waveUniforms() };
   });
 }
