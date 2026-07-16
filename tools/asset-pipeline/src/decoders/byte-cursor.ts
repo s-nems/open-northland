@@ -71,7 +71,7 @@ export class ByteCursor {
 
   /** Next `n` bytes as a latin1 string — the faithful 1:1 mapping for the containers' ASCII names. */
   ascii(n: number): string {
-    return LATIN1.decode(this.take(n));
+    return decodeLatin1(this.take(n));
   }
 }
 
@@ -114,13 +114,20 @@ export class ByteWriter {
 }
 
 /**
- * Latin1 maps all 256 byte values 1:1, so it losslessly round-trips the containers' ASCII names and
- * the `.cif` structural keywords. (Display strings carrying Polish glyphs are actually CP1250 —
- * re-decode those at the IR layer where it matters; see `cif.ts`.)
+ * Decodes bytes as ISO-8859-1: code point = byte value, a true 1:1 map for all 256 values. This
+ * losslessly round-trips the containers' ASCII names, the `.cif` structural keywords, and the
+ * byte-preserving display-string payloads that `latin1ToCp1250` (`ini/string-tables.ts`) later
+ * re-decodes to their real codepage (Polish text is CP1250).
+ *
+ * Deliberately not `new TextDecoder('latin1')`: that WHATWG label is an alias for windows-1252, which
+ * remaps 0x80–0x9F (e.g. byte 0x9C → U+0153 'œ' instead of U+009C), silently corrupting the CP1250
+ * letters ś/ź/Ś/Ź that live in that range. Node's `Buffer.toString('latin1')` is genuine byte-identity.
  */
-export const LATIN1 = new TextDecoder('latin1');
+export function decodeLatin1(bytes: Uint8Array): string {
+  return Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).toString('latin1');
+}
 
-/** Encodes a string as latin1 bytes (1:1 byte mapping; ASCII stays exact). Inverse of {@link LATIN1}. */
+/** Encodes a string as latin1 bytes (1:1 byte mapping; ASCII stays exact). Inverse of {@link decodeLatin1}. */
 export function asciiBytes(s: string): Uint8Array {
   const out = new Uint8Array(s.length);
   for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i) & 0xff;
