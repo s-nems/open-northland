@@ -2,10 +2,10 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 /**
- * Node-side builder for the dev server's `/maps-index` payload (`vite.config.ts` `serveMapsIndex`).
- * Lives outside `src/` with the vite config it serves — this is dev-server code, not app code — but
- * in its own module so the join logic is unit-testable against a fixture directory (the middleware
- * closure itself is unreachable from a test).
+ * Node-side builder for the `/maps-index` payload — the decoded-maps list the app menu renders.
+ * Shared by every host that serves `content/` over the app's routes (the Vite dev middleware and
+ * the desktop shell's protocol handler); kept in its own module so the join logic is unit-testable
+ * against a fixture directory.
  */
 
 /** One `/maps-index` entry: a decoded map's stem id + the pipeline's optional menu sidecars. */
@@ -41,10 +41,12 @@ export function buildMapsIndexEntries(mapsRoot: string): MapsIndexEntry[] {
             if (typeof meta.name === 'string') name = meta.name;
             if (typeof meta.description === 'string') description = meta.description;
           } else {
-            console.warn(`[vite] maps-index: ${id}.meta.json is not an object; serving the bare id`);
+            console.warn(
+              `[content-server] maps-index: ${id}.meta.json is not an object; serving the bare id`,
+            );
           }
         } catch (err) {
-          console.warn(`[vite] maps-index: ${id}.meta.json unreadable: ${(err as Error).message}`);
+          console.warn(`[content-server] maps-index: ${id}.meta.json unreadable: ${(err as Error).message}`);
         }
       }
       return {

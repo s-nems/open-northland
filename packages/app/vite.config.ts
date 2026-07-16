@@ -1,258 +1,46 @@
-import { createReadStream, existsSync } from 'node:fs';
-import { dirname, normalize, resolve, sep } from 'node:path';
+import { createReadStream } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { resolveContentRequest } from '@open-northland/content-server';
 import { defineConfig, type Plugin } from 'vite';
-import { buildBobsIndexEntries } from './vite/bobs-index.js';
-import { buildMapsIndexEntries } from './vite/maps-index.js';
 
-// Browser-first app shell. `npm run dev` serves this with HMR; cross-platform by construction.
-// Desktop (Mac/Win/Linux) packaging via Tauri comes later.
+// Browser-first app shell. `npm run dev` serves this with HMR; the desktop shell (packages/desktop)
+// wraps the same build and serves the same routes over its app:// protocol.
 
 const here = dirname(fileURLToPath(import.meta.url));
-// The decoded `content/maps/<id>.json` grids live at the repo root (gitignored; generated from an
-// owned game copy). They sit OUTSIDE the app's vite root, so a dev-server middleware bridges them in
-// at `/maps/<id>.json` for the browser `loadTerrainMap` fetch — and `/maps/<id>.png` for the menu's
-// minimap thumbnails. Path traversal is rejected (the resolved file must stay under `content/maps`),
-// so `?map=` can only reach a real map grid, never an arbitrary file. Both `npm run dev` and the shot
-// harness boot this same root, so both can `?map=`.
-const mapsRoot = resolve(here, '../../content/maps');
-// Decoded bob atlases (`<name>.png` + `<name>.atlas.json`) the `.bmd`→atlas pipeline emits. Like the
-// maps, they are gitignored (decoded from an owned game copy) and sit outside the app's vite root, so a
-// middleware bridges them in at `/bobs/<name>.*` for normal world rendering and the atlas gallery. Path
-// traversal is rejected and only `.png` / `.atlas.json` are served, so `/bobs/` can only reach a decoded
-// atlas, never an arbitrary file.
-const bobsRoot = resolve(here, '../../content/Data/engine2d/bin/bobs');
-// Decoded ground textures (`text_NNN.png`, 256×256 RGBA) the `.pcx`→PNG pipeline stage emits. Normal
-// world rendering samples them through the terrain binding. Same stance as `/bobs`: gitignored,
-// outside the vite root, bridged in at `/textures/<name>.png` with traversal rejected + `.png` only.
-const texturesRoot = resolve(here, '../../content/Data/engine2d/bin/textures');
-// Decoded original sound effects (`.wav`) the `@open-northland/audio` layer plays. Same stance as `/bobs` /
-// `/textures`: gitignored (copied from an owned game copy by the pipeline), outside the vite root, so a
-// middleware bridges them in at `/sounds/<path>` for the audio engine's `fetch` + `decodeAudioData`.
-// Path traversal is rejected and only `.wav` is served, so `/sounds/` can only reach a real sound.
-const soundsRoot = resolve(here, '../../content/Data/engine2d/bin/sounds');
+// The decoded `content/` tree lives at the repo root (gitignored; generated from an owned game copy),
+// OUTSIDE the app's vite root. The shared route table (`@open-northland/content-server`) bridges it in
+// — `/maps`, `/bobs`, `/textures`, `/sounds`, `/ir.json`, `/gui`, `/gui-bitmaps`, `/goods`, plus the
+// computed `/maps-index` + `/bobs-index` menu/gallery payloads — with path traversal rejected and only
+// per-route extensions served. Anything unmatched or absent falls through to Vite's 404, so a checkout
+// without `content/` still boots (the menu shows a "run the pipeline" hint instead of map cards).
+const contentRoot = resolve(here, '../../content');
 
-// The validated IR (`content/ir.json`) carries the approximated `terrainPatterns` typeId→ground table;
-// bridged in at `/ir.json` (the one file, not the tree).
-const irFile = resolve(here, '../../content/ir.json');
-// The GUI extraction stage's non-atlas outputs — the per-language UI string JSON, the mouse cursors
-// (`.cur` + decoded `.png`), and the top-level `content/gui/manifest.json` — bridged in at `/gui/<path>`
-// for the GUI bindings (`content/gui-gfx.ts`). The GUI *atlases* + palette LUT ride the `/bobs/` route
-// above (they are bob atlases); only these text/cursor assets need their own root. Same stance as the
-// others: gitignored, outside the vite root, traversal rejected, and only `.json`/`.png`/`.cur` served.
-const guiRoot = resolve(here, '../../content/gui');
-// Original GUI bitmap fills (`Data/gui/bitmaps/bg*.png`) converted by the loose `.pcx` pass. These are
-// gitignored original-derived bytes, served only from a local pipeline output and used by the in-game HUD
-// chrome as tiled/stretched fills beside the bob-atlas frame pieces.
-const guiBitmapsRoot = resolve(here, '../../content/Data/gui/bitmaps');
-// The goods-icon binding manifest (`content/goods/manifest.json`) — good string id → (ls_goods frame,
-// recolor palette) plus the atlas/LUT stems. The goods *atlas* + palette LUT ride `/bobs/` (they are bob
-// atlases); only the manifest needs this root. Same stance as the others: gitignored, traversal rejected.
-const goodsRoot = resolve(here, '../../content/goods');
-
-// The MENU (entries/menu.ts) lists the decoded maps as clickable cards; it reads them from this route —
-// one entry per `content/maps/<id>.json` grid, joined with the pipeline's optional menu sidecars
-// (`buildMapsIndexEntries` — the `<id>.meta.json` display name/description and whether an `<id>.png`
-// minimap exists; both files served by the `/maps` route above, with traversal rejected). Absent
-// `content/` returns nothing (the middleware falls through to Vite's 404), so the menu shows a "run
-// the pipeline" hint instead of map cards.
-function serveMapsIndex(): Plugin {
+function serveContent(): Plugin {
   return {
-    name: 'opennorthland-serve-maps-index',
+    name: 'opennorthland-serve-content',
     configureServer(server) {
-      server.middlewares.use('/maps-index', (_req, res, next) => {
-        if (!existsSync(mapsRoot)) {
+      server.middlewares.use((req, res, next) => {
+        const pathname = (req.url ?? '').split('?')[0] ?? '';
+        const hit = resolveContentRequest(pathname, contentRoot);
+        if (hit === undefined) {
           next();
           return;
         }
-        res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify(buildMapsIndexEntries(mapsRoot)));
-      });
-    },
-  };
-}
-
-// The `/bobs-index` list the in-app icon gallery (`?icons`) browses: every viewable RGBA bob atlas the
-// pipeline emitted (see `vite/bobs-index.ts`). Absent `content/` falls through to Vite's 404, so the
-// gallery shows a "run the pipeline" hint instead of an empty grid (mirrors `/maps-index`).
-function serveBobsIndex(): Plugin {
-  return {
-    name: 'opennorthland-serve-bobs-index',
-    configureServer(server) {
-      server.middlewares.use('/bobs-index', (_req, res, next) => {
-        if (!existsSync(bobsRoot)) {
-          next();
+        if (hit.kind === 'json') {
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify(hit.body()));
           return;
         }
-        res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify(buildBobsIndexEntries(bobsRoot)));
-      });
-    },
-  };
-}
-
-function serveContentMaps(): Plugin {
-  return {
-    name: 'opennorthland-serve-content-maps',
-    configureServer(server) {
-      server.middlewares.use('/maps', (req, res, next) => {
-        const rel = (req.url ?? '').split('?')[0]?.replace(/^\/+/, '') ?? '';
-        const file = normalize(resolve(mapsRoot, rel));
-        const isJson = file.endsWith('.json');
-        const isPng = file.endsWith('.png'); // the pipeline's decoded minimap thumbnails
-        if (!file.startsWith(mapsRoot + sep) || (!isJson && !isPng) || !existsSync(file)) {
-          next();
-          return;
-        }
-        res.setHeader('Content-Type', isPng ? 'image/png' : 'application/json');
-        createReadStream(file).pipe(res);
-      });
-    },
-  };
-}
-
-function serveContentBobs(): Plugin {
-  return {
-    name: 'opennorthland-serve-content-bobs',
-    configureServer(server) {
-      server.middlewares.use('/bobs', (req, res, next) => {
-        const rel = (req.url ?? '').split('?')[0]?.replace(/^\/+/, '') ?? '';
-        const file = normalize(resolve(bobsRoot, rel));
-        const isPng = file.endsWith('.png');
-        const isManifest = file.endsWith('.atlas.json');
-        if (!file.startsWith(bobsRoot + sep) || (!isPng && !isManifest) || !existsSync(file)) {
-          next();
-          return;
-        }
-        res.setHeader('Content-Type', isPng ? 'image/png' : 'application/json');
-        createReadStream(file).pipe(res);
-      });
-    },
-  };
-}
-
-function serveContentTextures(): Plugin {
-  return {
-    name: 'opennorthland-serve-content-textures',
-    configureServer(server) {
-      server.middlewares.use('/textures', (req, res, next) => {
-        const rel = (req.url ?? '').split('?')[0]?.replace(/^\/+/, '') ?? '';
-        const file = normalize(resolve(texturesRoot, rel));
-        if (!file.startsWith(texturesRoot + sep) || !file.endsWith('.png') || !existsSync(file)) {
-          next();
-          return;
-        }
-        res.setHeader('Content-Type', 'image/png');
-        createReadStream(file).pipe(res);
-      });
-    },
-  };
-}
-
-function serveContentSounds(): Plugin {
-  return {
-    name: 'opennorthland-serve-content-sounds',
-    configureServer(server) {
-      server.middlewares.use('/sounds', (req, res, next) => {
-        const rel = (req.url ?? '').split('?')[0]?.replace(/^\/+/, '') ?? '';
-        const file = normalize(resolve(soundsRoot, rel));
-        if (!file.startsWith(soundsRoot + sep) || !file.endsWith('.wav') || !existsSync(file)) {
-          next();
-          return;
-        }
-        res.setHeader('Content-Type', 'audio/wav');
-        createReadStream(file).pipe(res);
-      });
-    },
-  };
-}
-
-function serveContentIr(): Plugin {
-  return {
-    name: 'opennorthland-serve-content-ir',
-    configureServer(server) {
-      server.middlewares.use('/ir.json', (_req, res, next) => {
-        if (!existsSync(irFile)) {
-          next();
-          return;
-        }
-        res.setHeader('Content-Type', 'application/json');
-        createReadStream(irFile).pipe(res);
-      });
-    },
-  };
-}
-
-function serveContentGui(): Plugin {
-  return {
-    name: 'opennorthland-serve-content-gui',
-    configureServer(server) {
-      server.middlewares.use('/gui', (req, res, next) => {
-        const rel = (req.url ?? '').split('?')[0]?.replace(/^\/+/, '') ?? '';
-        const file = normalize(resolve(guiRoot, rel));
-        const isJson = file.endsWith('.json');
-        const isPng = file.endsWith('.png');
-        const isCur = file.endsWith('.cur');
-        if (!file.startsWith(guiRoot + sep) || (!isJson && !isPng && !isCur) || !existsSync(file)) {
-          next();
-          return;
-        }
-        res.setHeader('Content-Type', isPng ? 'image/png' : isCur ? 'image/x-icon' : 'application/json');
-        createReadStream(file).pipe(res);
-      });
-    },
-  };
-}
-
-function serveContentGuiBitmaps(): Plugin {
-  return {
-    name: 'opennorthland-serve-content-gui-bitmaps',
-    configureServer(server) {
-      server.middlewares.use('/gui-bitmaps', (req, res, next) => {
-        const rel = (req.url ?? '').split('?')[0]?.replace(/^\/+/, '') ?? '';
-        const file = normalize(resolve(guiBitmapsRoot, rel));
-        if (!file.startsWith(guiBitmapsRoot + sep) || !file.endsWith('.png') || !existsSync(file)) {
-          next();
-          return;
-        }
-        res.setHeader('Content-Type', 'image/png');
-        createReadStream(file).pipe(res);
-      });
-    },
-  };
-}
-
-function serveContentGoods(): Plugin {
-  return {
-    name: 'opennorthland-serve-content-goods',
-    configureServer(server) {
-      server.middlewares.use('/goods', (req, res, next) => {
-        const rel = (req.url ?? '').split('?')[0]?.replace(/^\/+/, '') ?? '';
-        const file = normalize(resolve(goodsRoot, rel));
-        if (!file.startsWith(goodsRoot + sep) || !file.endsWith('.json') || !existsSync(file)) {
-          next();
-          return;
-        }
-        res.setHeader('Content-Type', 'application/json');
-        createReadStream(file).pipe(res);
+        res.setHeader('Content-Type', hit.contentType);
+        createReadStream(hit.path).pipe(res);
       });
     },
   };
 }
 
 export default defineConfig({
-  plugins: [
-    serveMapsIndex(),
-    serveBobsIndex(),
-    serveContentMaps(),
-    serveContentBobs(),
-    serveContentTextures(),
-    serveContentSounds(),
-    serveContentIr(),
-    serveContentGui(),
-    serveContentGuiBitmaps(),
-    serveContentGoods(),
-  ],
+  plugins: [serveContent()],
   server: { port: 5173, open: false },
   // Pixi + the app ship as one ~810 kB main chunk (≈248 kB gzip). That is expected for a Pixi game
   // loaded once, so lift Vite's 500 kB chunk-size warning to 1 MB instead of splitting the renderer out.

@@ -2,9 +2,9 @@ import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 /**
- * Node-side builder for the dev server's `/bobs-index` payload (`vite.config.ts` `serveBobsIndex`) — the
- * list the in-app icon gallery (`?icons`, `entries/icons.ts`) browses. Dev-server code, kept beside the
- * vite config it serves but in its own module so the scan is unit-testable against a fixture directory.
+ * Node-side builder for the `/bobs-index` payload — the list the in-app icon gallery (`?icons`)
+ * browses. Shared by every host that serves `content/` over the app's routes; kept in its own
+ * module so the scan is unit-testable against a fixture directory.
  *
  * It lists every VIEWABLE bob atlas: a palette-applied RGBA sheet (`<stem>.png` + `<stem>.atlas.json`)
  * the pipeline already emits for the GUI, goods, and every landscape/house/object set. The `.indexed.*`
@@ -26,7 +26,7 @@ export interface BobsIndexEntry {
 /**
  * Build one entry per viewable RGBA atlas under `bobsRoot`, sorted by (base, variant). An atlas is
  * viewable when it has both `<stem>.png` and `<stem>.atlas.json` and the stem does NOT end in `.indexed`.
- * `bobsRoot` must exist (the caller guards); a missing `content/` yields the middleware falling through.
+ * `bobsRoot` must exist (the caller guards); a missing `content/` yields the route falling through.
  */
 export function buildBobsIndexEntries(bobsRoot: string): BobsIndexEntry[] {
   const stems = readdirSync(bobsRoot)
