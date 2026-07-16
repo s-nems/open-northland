@@ -2,6 +2,7 @@ import type { WorldSnapshot } from '@open-northland/sim';
 import { vikingBuildingByTypeId } from '../../../catalog/buildings.js';
 import { characterName } from '../../../game/character-names.js';
 import { PRIMARY_TRIBE } from '../../../game/rules.js';
+import { JOB_IDLE } from '../../../game/sandbox/ids/index.js';
 import { entityById, isBuilding, isSettler, num, ownerPlayerOf } from '../../../game/snapshot.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import { pct } from './bars.js';
@@ -159,7 +160,7 @@ export function buildUnitPanelModel(
       profession: jobDisplayName(ctx, num(s.jobType)),
       // The assign-workplace button is active only for a settler with a real trade (jobType not idle/absent):
       // an idle settler has no trade to place at a building.
-      canAssignWorkplace: num(s.jobType) !== undefined && num(s.jobType) !== 0,
+      canAssignWorkplace: num(s.jobType) !== undefined && num(s.jobType) !== JOB_IDLE,
       meta,
       statusCaption: settlerStatus(comps),
       bars: satisfactionBars(comps),

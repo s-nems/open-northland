@@ -1,6 +1,14 @@
+import { indexById } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
+import { HUMAN_PLAYER } from '../src/game/rules.js';
 import { JOB_CARRIER, JOB_COLLECTOR, rebaseSlotJob } from '../src/game/sandbox/ids/index.js';
-import { currentTradeSlotAt } from '../src/view/unit-controls/assign-highlight.js';
+import { isBuilding, isSettler, ownerPlayerOf, settlerJobType } from '../src/game/snapshot.js';
+import { createSceneSim, getScene } from '../src/scenes/index.js';
+import {
+  assignableJobForBuilding,
+  computeAssignHighlight,
+  currentTradeSlotAt,
+} from '../src/view/unit-controls/assign-highlight.js';
 
 /**
  * The "przydziel miejsce pracy" verdict — the button places the settler's CURRENT trade only, so a
@@ -50,5 +58,49 @@ describe('currentTradeSlotAt — the current-trade green/red verdict', () => {
   it('reds an employed-nobody / jobless case', () => {
     expect(currentTradeSlotAt(COIN_MAKER, undefined, undefined)).toBeNull();
     expect(currentTradeSlotAt(undefined, MINT_SLOTS, undefined)).toBeNull();
+  });
+});
+
+/**
+ * The snapshot-level projection over real sandbox content — the functions the view actually calls. The
+ * key invariant: the highlight verdict (`computeAssignHighlight`, what the player sees green) and the click
+ * resolver (`assignableJobForBuilding`, what a click binds) must agree building-for-building, so a green
+ * building never silently cancels the click and a red one never binds. Both share one `candidateSlots`
+ * gate; this proves they stay in lockstep over a live world.
+ */
+describe('computeAssignHighlight / assignableJobForBuilding over sandbox content', () => {
+  it('highlights own candidate buildings and the green/red verdict matches what a click would bind', () => {
+    const scene = getScene('sandbox');
+    if (scene === undefined) throw new Error('sandbox scene missing');
+    const sim = createSceneSim(scene);
+    sim.step();
+    const snapshot = sim.snapshot();
+    const buildingsByType = indexById(sim.content.buildings);
+
+    const settler = snapshot.entities.find(
+      (e) => isSettler(e) && ownerPlayerOf(e) === HUMAN_PLAYER && settlerJobType(e) !== undefined,
+    );
+    if (settler === undefined) throw new Error('no employed owned settler in the sandbox');
+
+    const items = computeAssignHighlight(snapshot, settler.id, buildingsByType);
+    expect(items.length).toBeGreaterThan(0); // some own building employs someone
+
+    // Lockstep: for every highlighted building, `ok` iff the click resolver would bind a job there.
+    for (const item of items) {
+      const job = assignableJobForBuilding(snapshot, item.id, settler.id, buildingsByType);
+      expect(item.ok).toBe(job !== null);
+    }
+    // At least one candidate is green (the settler's trade has an open slot somewhere) and the resolver
+    // returns a real job id for it.
+    const green = items.find((i) => i.ok);
+    expect(green).toBeDefined();
+    expect(assignableJobForBuilding(snapshot, green?.id ?? -1, settler.id, buildingsByType)).not.toBeNull();
+
+    // Every highlighted building is one the player owns (a candidate), never an enemy/neutral building.
+    const byId = new Map(snapshot.entities.map((e) => [e.id, e]));
+    for (const item of items) {
+      const b = byId.get(item.id);
+      expect(b !== undefined && isBuilding(b) && ownerPlayerOf(b) === HUMAN_PLAYER).toBe(true);
+    }
   });
 });

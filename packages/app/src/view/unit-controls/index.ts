@@ -173,8 +173,9 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   };
 
   /** The green/red workplace-assignment wash for the render layer — the candidate buildings for the settler
-   *  being placed, or null when not in assign mode. Recomputed per frame from the live snapshot (bounded by
-   *  the building count) so a slot filling elsewhere re-colours immediately. */
+   *  being placed, or null when not in assign mode. Recomputed per frame from the live snapshot (an O(entity
+   *  count) pass — one settler scan for staffing + one building scan) so a slot filling elsewhere re-colours
+   *  immediately; only runs while assign mode is active, a transient gesture. */
   const assignHighlight = (): readonly BuildingHighlightItem[] | null =>
     assignSettler === null ? null : computeAssignHighlight(opts.snapshot(), assignSettler, buildingsByType);
 

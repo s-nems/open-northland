@@ -86,10 +86,10 @@ export function openJobAt(
  * whose job is tech-enabled, and whose `needforjob` XP threshold the settler clears (the four openness
  * conditions of {@link jobSystem}, per-building). The lowest job id among open slots wins
  * ({@link canonicalJobs}). This is the automatic {@link openJobAt} scan's per-building probe; the
- * player-directed `assignWorker` command resolves the same slots through {@link openWorkerJobFromList}
- * (its own preference order over the identical per-slot gate), so a hand assignment can never bind a
- * settler to a job the JobSystem itself wouldn't (the invariant the badge/employment display and the
- * goldens both rely on).
+ * player-directed `assignWorker` command resolves the same slots through {@link openWorkerJobFromList},
+ * which keeps the tribe/owner/building + capacity gates but deliberately RELAXES the per-slot tech/XP gate
+ * (see there), so the two paths are no longer identical — a hand assignment can bind a job the automatic
+ * scan would refuse.
  */
 export function openWorkerJobAt(
   world: World,
@@ -118,12 +118,15 @@ export function openWorkerJobAt(
  * a job the building doesn't employ is skipped, and the same-tribe/same-owner + per-building capacity gates
  * still run on every entry.
  *
- * Unlike the automatic scan, this path RELAXES the job-level tech gate (`jobEnablesJob`) and the XP
- * threshold (`needforjob`): the player is explicitly staffing a building that already stands (the original's
- * "put a settler in a built workshop and they take up its trade"), so a right-click on a mint makes a
- * coin-maker even before the tribe has auto-unlocked that specialization — otherwise the craft slot is
- * silently rejected and the settler falls back to the carrier slot (the reported "mennica → tragarz" bug).
- * The building-level gate (`buildingEnabled`) still holds — you can only staff a building the tribe may run.
+ * Unlike the automatic scan, this path RELAXES the job-level tech gate (`jobEnablesJob`) and the per-settler
+ * XP threshold (`needforjob`). This is a deliberate player-convenience DEVIATION from the original, not a
+ * faithful reading of it: the extracted `tribetypes.ini` gates a specialization on both a tribe-tech
+ * progression and accrued settler XP (e.g. the coiner needs `jobEnablesJob 8/13 14` + `needforjob 14 …`), so
+ * the original models a fresh 0-XP settler becoming a coiner as impossible. We override that on an explicit
+ * hand assignment so a right-click / the assign-workplace button staffs a built workshop with its own trade
+ * instead of silently downgrading to the carrier slot (the reported "mennica → tragarz" bug). The
+ * building-level gate (`buildingEnabled`) is kept, and the automatic JobSystem still enforces both gates, so
+ * the AI never self-unlocks a specialization — only the player can.
  */
 export function openWorkerJobFromList(
   world: World,
@@ -150,10 +153,11 @@ export function openWorkerJobFromList(
 
 /**
  * Walk `orderedJobs` (already a subset of the building's slots) and return the first one open for a
- * `tribe` settler with the given `experience` — understaffed at this building, tech-enabled, XP-cleared —
- * or `null`. The shared core of {@link openWorkerJobAt} (canonical order) and {@link openWorkerJobFromList}
- * (priority order): both apply the SAME per-slot gate, differing only in the order they try slots in, so a
- * player assignment can never bind a settler to a job the automatic economy wouldn't.
+ * `tribe` settler with the given `experience` — understaffed at this building, and (unless `playerDirected`)
+ * tech-enabled + XP-cleared — or `null`. The shared core of {@link openWorkerJobAt} (canonical order) and
+ * {@link openWorkerJobFromList} (priority order): both apply the same tribe/owner/building + capacity gates;
+ * they differ in slot order AND in `playerDirected`, which the command path sets to skip the per-slot tech/XP
+ * gate (see {@link openWorkerJobFromList} — the deliberate player-convenience deviation).
  */
 function resolveOpenWorkerJob(
   world: World,

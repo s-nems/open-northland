@@ -57,6 +57,9 @@ export function drawGeneralSection(
   chrome.selectedUnderline(layout.underline);
 
   for (const hit of layout.buttons) {
+    // Every building button has a BUTTON_STRING entry; the `?? help` guard only satisfies the Partial type
+    // (the settler-only 'assign-workplace' action never reaches a building layout). A new building action
+    // added without a BUTTON_STRING row would fall back to the help label — add its row when introducing one.
     chrome.button(
       hit,
       ui('housewindow', BUTTON_STRING[hit.action] ?? HOUSEWINDOW.help, buttonFallback(hit.action)),

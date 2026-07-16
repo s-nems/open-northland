@@ -83,11 +83,11 @@ function reidleAsJob(world: World, ctx: SystemContext, e: Entity, jobType: numbe
 /**
  * Assign one owned settler to work at a specific `building` (the `assignWorker` command — the player-directed
  * twin of the JobSystem's automatic assignment): resolve the building's open worker job in the command's
- * `jobPriority` preference order, through the same per-building openness gate the JobSystem applies
- * ({@link openWorkerJobFromList} — a same-tribe, tech-enabled workplace with an understaffed slot the settler
- * qualifies for), re-idle the settler as that job, and bind it to the chosen building ({@link JobAssignment}).
- * The priority expresses the RTS intent (a tradesman first, a hauler as fallback, never a gatherer), but every
- * candidate still clears the gate, so a hand assignment can never reach a state the JobSystem wouldn't.
+ * `jobPriority` preference order ({@link openWorkerJobFromList} — a same-tribe/same-owner, tech-enabled
+ * building with an understaffed slot), re-idle the settler as that job, and bind it to the chosen building
+ * ({@link JobAssignment}). The priority expresses the RTS intent (a tradesman first, a hauler as fallback).
+ * Unlike the automatic scan, this path relaxes the per-slot tech/XP gate — the player staffs a built workshop
+ * with its own trade — a deliberate deviation named in {@link openWorkerJobFromList}.
  *
  * Recoverable bad input (skipped, still logged for faithful replay): a dead/stale target, a non-settler or
  * neutral (unowned) issuer, a still-growing child ({@link Age}), a dead/stale/non-building target, or a
@@ -119,10 +119,11 @@ export function assignWorker(
   world.remove(e, JobAssignment); // drop any prior binding before re-binding to the chosen building
   reidleAsJob(world, ctx, e, jobType);
   world.add(e, JobAssignment, { workplace: b });
-  // A gatherer hand-assigned to a building delivers its harvest INTO that building — the building is its
-  // flag, so it carries no work flag. reidleAsJob auto-plants one for a harvest trade (the free-gatherer
-  // default); drop it here so the bound gatherer banks at the building (deliveryTargetFor cases 1/3b) and
-  // never at a stray flag. A non-harvest job never carries one, so this is a no-op for craftsmen/carriers.
+  // A gatherer hand-assigned to a building carries no work flag: reidleAsJob auto-plants one for a harvest
+  // trade (the free-gatherer default), so drop it here. Where the harvest then goes is deliveryTargetFor's
+  // call: into the bound building when it consumes the good (case 1 — a workshop's raw input) or is a plain
+  // store (case 3b — a warehouse/HQ); a good the bound workshop doesn't stock still routes to the nearest
+  // warehouse (case 5), so "the building is its flag" holds for a warehouse or a matching input, not every good.
   if (jobCanHarvest(ctx, jobType)) removeWorkFlag(world, e);
 }
 
