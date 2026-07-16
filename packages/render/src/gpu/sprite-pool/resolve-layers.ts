@@ -62,6 +62,27 @@ export interface ResolvedLayer {
    * overlay still draws and still pixel-hit-tests — it just doesn't move the box.
    */
   readonly boundsExempt?: boolean;
+  /**
+   * A cast-shadow layer ({@link shadowLayerFor}) — always also {@link boundsExempt}, and additionally
+   * excluded from the pixel hit test: clicking the darkened ground beside a caster must not select it
+   * (unlike the rotor overlay, which is a clickable part of the building).
+   */
+  readonly shadow?: true;
+}
+
+/**
+ * Resolve the cast-shadow layer a drawn bob prepends under itself: the same bob id looked up in the
+ * source layer's {@link SpriteLayer.shadow} twin (shadow bob sets parallel their body's ids — observed
+ * on the tree and house `_s.bmd`s). Null when the layer has no shadow twin or the twin holds no visible
+ * frame at that id (most bobs cast none — the data decides). `boundsExempt`: a shadow darkens the
+ * ground; it must not grow the caster's selection/picking box.
+ */
+export function shadowLayerFor(layer: SpriteLayer, bobId: number, scale: number): ResolvedLayer | null {
+  const shadow = layer.shadow;
+  if (shadow === undefined) return null;
+  const frame = lookupFrame(shadow.atlas, bobId);
+  if (frame === null) return null;
+  return { source: shadow.source, frame, scale, boundsExempt: true, shadow: true };
 }
 
 /**
@@ -126,8 +147,7 @@ export function resolveLayers(
     const draw = resolveResourceDraw(sheet.bindings.resource, item);
     if (draw === null) return [];
     if (draw.layer !== undefined && sheet.families?.[draw.layer] !== undefined) {
-      const resolved = layeredLayerFor(sheet, 'resource', draw);
-      return resolved === null ? null : [resolved];
+      return layeredLayersWithShadow(sheet, 'resource', draw);
     }
     bobId = draw.bob;
   } else if (item.kind === 'stockpile') {
@@ -144,8 +164,11 @@ export function resolveLayers(
     const frame = lookupFrame(kindLayer.atlas, bobId);
     if (frame === null) return null;
     const scale = sheet.kindScales?.[item.kind] ?? 1;
-    const body = { source: kindLayer.source, frame, scale };
-    return buildingOverlay === null ? [body] : [body, buildingOverlay];
+    const shadow = shadowLayerFor(kindLayer, bobId, scale);
+    const layers: ResolvedLayer[] = shadow === null ? [] : [shadow];
+    layers.push({ source: kindLayer.source, frame, scale });
+    if (buildingOverlay !== null) layers.push(buildingOverlay);
+    return layers;
   }
 
   // Shared body atlas + overlay (head) layers, all indexed by the same resolved bob id.
@@ -212,9 +235,10 @@ function resolveBuildingLayers(sheet: SpriteSheet, item: DrawItem, tick: number)
   // unloaded one falls through to the default building layer (a deliberate difference from the
   // construction path, which drops the stage instead).
   if (draw.layer !== undefined && sheet.families?.[draw.layer] !== undefined) {
-    const resolved = layeredLayerFor(sheet, 'building', draw);
-    if (resolved === null) return { done: true, layers: null }; // a broken body never draws a floating overlay
-    return { done: true, layers: overlay === null ? [resolved] : [resolved, overlay] };
+    const layers = layeredLayersWithShadow(sheet, 'building', draw);
+    if (layers === null) return { done: true, layers: null }; // a broken body never draws a floating overlay
+    if (overlay !== null) layers.push(overlay);
+    return { done: true, layers };
   }
   return { done: false, bobId: draw.bob, overlay };
 }
@@ -261,8 +285,25 @@ function resolveDecorLayers(
   const draw = resolveResourceDraw(binding, item);
   if (draw === null) return []; // a data-pinned invisible level — draw nothing, not the placeholder
   if (draw.layer === undefined) return null; // no family → placeholder
-  const resolved = layeredLayerFor(sheet, kind, draw);
-  return resolved === null ? null : [resolved];
+  return layeredLayersWithShadow(sheet, kind, draw);
+}
+
+/**
+ * {@link layeredLayerFor} plus the body's cast shadow: `[shadow, body]` when the draw's source layer
+ * carries a {@link SpriteLayer.shadow} twin with a visible frame at the same bob id, else `[body]`;
+ * null exactly when {@link layeredLayerFor} is. The construction stack keeps {@link layeredLayerFor}
+ * directly — its stage shadows are a separate lane (the `shadowBobId` ticket).
+ */
+function layeredLayersWithShadow(
+  sheet: SpriteSheet,
+  kind: SpriteKind,
+  draw: BuildingDraw,
+): ResolvedLayer[] | null {
+  const body = layeredLayerFor(sheet, kind, draw);
+  if (body === null) return null;
+  const source = draw.layer !== undefined ? sheet.families?.[draw.layer] : sheet.kindLayers?.[kind];
+  const shadow = source === undefined ? null : shadowLayerFor(source, draw.bob, body.scale);
+  return shadow === null ? [body] : [shadow, body];
 }
 
 /**

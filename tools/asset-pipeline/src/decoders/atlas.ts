@@ -196,6 +196,40 @@ function expandBobFrameTime(frame: BobFrame): RgbaImage {
   return { width, height, rgba };
 }
 
+/**
+ * The baked alpha of a shadow-atlas pixel. The exact high-colour blend of the original's shadow blit
+ * is not pinned (OpenVikings simplifies it); cultures2-gl — the reimplementation whose output was
+ * matched against the running original — bakes shadow pixels as `rgba(0,0,0,0x50)` (cultures2-wasm
+ * `read_bmd`), so this adopts that observed parity value. A named approximation; one knob to retune.
+ */
+export const SHADOW_ALPHA = 0x50;
+
+/**
+ * Expands one decoded {@link BobFrame} into a shadow plane: every written pixel is black at
+ * {@link SHADOW_ALPHA} (a shadow bob is a solid 1-bit silhouette — see `BOB_TYPE_1BIT`'s pure-RLE
+ * coverage), unwritten pixels fully transparent. No palette: the darkening is the blit's, not the art's.
+ */
+export function expandBobFrameShadow(frame: BobFrame): RgbaImage {
+  const { width, height, mask } = frame;
+  const rgba = new Uint8Array(width * height * 4);
+  for (let i = 0; i < mask.length; i++) {
+    if ((mask[i] ?? 0) === 0) continue; // transparent: leave RGBA all-zero
+    rgba[i * 4 + 3] = SHADOW_ALPHA;
+  }
+  return { width, height, rgba };
+}
+
+/**
+ * Packs every bob of a shadow `.bmd` (the `GfxBobLibs`/`shadowlib` second value — 1-bit silhouette
+ * masks paralleling the body bob ids) into one atlas of pre-baked black-at-{@link SHADOW_ALPHA}
+ * silhouettes, so the renderer draws a cast shadow as a plain batched sprite instead of a
+ * blend-mode blit.
+ * Placement/manifest semantics match {@link packBobAtlas}; no palette is involved.
+ */
+export function packShadowBobAtlas(bmd: Bmd, maxWidth = DEFAULT_ATLAS_MAX_WIDTH): BobAtlas {
+  return packBobAtlasWith(bmd, expandBobFrameShadow, maxWidth);
+}
+
 /** Every written (`mask≠0`) pixel forced fully opaque — the binary-alpha flattener of the indexed path. */
 function flattenFrameAlpha(frame: BobFrame): BobFrame {
   const mask = new Uint8Array(frame.mask.length);

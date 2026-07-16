@@ -449,6 +449,9 @@ export class SpritePool {
     for (let i = 0; i < layers.length; i++) {
       const layer = layers[i];
       if (layer === undefined) continue;
+      // Restamped per frame beside the sprite itself: the pixel hit test must skip a cast-shadow layer
+      // (clicking darkened ground beside a caster is not clicking the caster).
+      pe.shadowFlags[i] = layer.shadow === true;
       // Feet-anchored: the frame's authored draw offset, scaled about the anchor (the container origin).
       const ox = layer.frame.offsetX * layer.scale;
       const oy = layer.frame.offsetY * layer.scale;

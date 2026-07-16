@@ -83,6 +83,8 @@ export interface GfxHouseGraphicsRecord {
   readonly tribeId: number;
   /** The body bob set (`GfxBobLibs[0]`), path-normalized. */
   readonly normalizedBmd: string;
+  /** The shadow bob set (`GfxBobLibs[1]`), path-normalized, when the record names one. */
+  readonly normalizedShadowBmd: string | undefined;
   /** The non-empty palette skins on the record's `GfxPalette` line, in file order. */
   readonly palettes: string[];
   /** The record's `EditName`, or undefined when absent. */
@@ -100,13 +102,17 @@ export interface GfxHouseGraphicsRecord {
 export function readGfxHouseGraphicsRecord(rec: RuleSection): GfxHouseGraphicsRecord | undefined {
   const tribeId = getInt(rec, 'LogicTribeType');
   if (tribeId === undefined) return undefined;
-  const bmd = findProp(rec, 'GfxBobLibs')?.values[0];
+  const libs = findProp(rec, 'GfxBobLibs');
+  const bmd = libs?.values[0];
   if (bmd === undefined || bmd.trim() === '') return undefined;
+  const shadowBmd = libs?.values[1];
   const palettes = (findProp(rec, 'GfxPalette')?.values ?? []).filter((v) => v.trim() !== '');
   if (palettes.length === 0) return undefined;
   return {
     tribeId,
     normalizedBmd: normalizeAssetPath(bmd),
+    normalizedShadowBmd:
+      shadowBmd === undefined || shadowBmd.trim() === '' ? undefined : normalizeAssetPath(shadowBmd),
     palettes,
     editName: getStr(rec, 'EditName'),
     typeByLevel: logicTypeByLevel(rec),

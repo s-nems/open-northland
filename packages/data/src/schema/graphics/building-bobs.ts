@@ -16,6 +16,9 @@ const BuildingBobBase = z.strictObject({
   level: z.number().int().nonnegative(),
   /** The body bob set, normalized (lower-case, forward slashes), e.g. `data/engine2d/bin/bobs/ls_houses_viking.bmd`. */
   bmd: z.string(),
+  /** The shadow bob set (`GfxBobLibs` second value), normalized, when the record names one — its 1-bit
+   *  silhouettes parallel the body's bob ids (the finished bob's cast shadow lives at the same id). */
+  shadowBmd: z.string().optional(),
   /** One recolour skin (`GfxPalette` value), lower-cased — the atlas this bob is drawn in (`house01`/`house02`/…). */
   paletteName: z.string(),
   /** The record's `EditName` (`"viking home"`), kept as a render/debug handle when present. */
