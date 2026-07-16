@@ -123,6 +123,13 @@ export class SpritePool {
    *  DrawItem.portraitOnly}); the portrait's second render reveals it via {@link showPortraitSubject}.
    *  Null when the subject draws normally or no portrait is open. */
   private portraitHidden: PooledEntity | null = null;
+  /** Whether {@link portraitHidden} is inside a building (drawn frozen — {@link DrawItem.frozen}); the
+   *  portrait then renders it alone so its cutout drops the world backdrop and it doesn't read as standing
+   *  on top of the building. */
+  private portraitIndoor = false;
+  /** Sprite-layer children hidden during an indoor portrait's solo render, with their prior visibility so
+   *  {@link endPortraitSolo} restores exactly what {@link beginPortraitSolo} changed. */
+  private readonly portraitSolo: { child: { visible: boolean }; wasVisible: boolean }[] = [];
 
   /**
    * @param spriteLayer the renderer's shared, depth-sorted entity layer (also holds the tall map
@@ -164,6 +171,7 @@ export class SpritePool {
       this.portraitHidden.container.visible = true;
       this.portraitHidden = null;
     }
+    this.portraitIndoor = false;
     for (let i = 0; i < scene.items.length; i++) {
       const item = scene.items[i];
       if (item === undefined) continue;
@@ -200,6 +208,7 @@ export class SpritePool {
       if (item.portraitOnly === true) {
         pe.container.visible = false;
         this.portraitHidden = pe;
+        this.portraitIndoor = item.frozen === true;
       }
     }
     this.drawn = scene.items.length;
@@ -289,6 +298,37 @@ export class SpritePool {
   /** Re-hide the portrait subject after its cutout render (see {@link showPortraitSubject}). */
   hidePortraitSubject(): void {
     if (this.portraitHidden !== null) this.portraitHidden.container.visible = false;
+  }
+
+  /** The pooled container of the force-hidden portrait subject (if any) — the portrait reads it to keep
+   *  its parent sprite layer visible while blanking the rest of the world for an indoor solo render. */
+  portraitSubjectContainer(): Container | null {
+    return this.portraitHidden?.container ?? null;
+  }
+
+  /** Whether the force-hidden portrait subject is inside a building, so its cutout should drop the world
+   *  backdrop (a frozen settler standing on its own, not on top of the building). */
+  portraitSubjectIsIndoor(): boolean {
+    return this.portraitIndoor;
+  }
+
+  /** Hide every sprite-layer child except the portrait subject, so its second render draws the subject
+   *  alone (no other units, no map objects behind it). {@link endPortraitSolo} restores them. Paired only
+   *  with an indoor portrait render; the world's other layers (terrain, fog…) are blanked by the caller. */
+  beginPortraitSolo(): void {
+    const subject = this.portraitHidden?.container;
+    if (subject === undefined) return;
+    for (const child of this.spriteLayer.children) {
+      if (child === subject) continue;
+      this.portraitSolo.push({ child, wasVisible: child.visible });
+      child.visible = false;
+    }
+  }
+
+  /** Restore the sprite-layer children {@link beginPortraitSolo} hid for the indoor portrait render. */
+  endPortraitSolo(): void {
+    for (const { child, wasVisible } of this.portraitSolo) child.visible = wasVisible;
+    this.portraitSolo.length = 0;
   }
 
   /**

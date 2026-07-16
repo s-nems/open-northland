@@ -157,7 +157,23 @@ export class PortraitInsetLayer {
     // Reveal the subject if the pool force-hid it on the main map (off-screen / inside a building), draw
     // the cutout, then hide it again so the main stage render below still omits it.
     this.pool.showPortraitSubject();
+    // An indoor subject (frozen, standing in its workplace) renders ALONE on the transparent cutout: blank
+    // every world layer but the one holding the subject, and let the pool hide the subject's sprite-layer
+    // siblings — otherwise the building it stands in draws behind it and it reads as standing on the roof.
+    const subjectContainer = this.pool.portraitSubjectContainer();
+    const soloParent =
+      this.pool.portraitSubjectIsIndoor() && subjectContainer !== null ? subjectContainer.parent : null;
+    let worldSaved: { child: { visible: boolean }; wasVisible: boolean }[] | null = null;
+    if (soloParent !== null) {
+      worldSaved = this.worldLayer.children.map((child) => ({ child, wasVisible: child.visible }));
+      for (const child of this.worldLayer.children) if (child !== soloParent) child.visible = false;
+      this.pool.beginPortraitSolo();
+    }
     this.app.renderer.render({ container: this.worldLayer, target: this.texture, clear: true });
+    if (worldSaved !== null) {
+      this.pool.endPortraitSolo();
+      for (const { child, wasVisible } of worldSaved) child.visible = wasVisible;
+    }
     this.pool.hidePortraitSubject();
     this.worldLayer.scale.set(savedScale);
     this.worldLayer.position.set(savedX, savedY);
