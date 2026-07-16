@@ -17,6 +17,7 @@ const forbiddenGameExtensions = new Set([
 ]);
 
 const reviewedBinaryAssets = new Set([
+  'docs/images/logo.webp',
   'docs/images/settlement.webp',
   'packages/app/public/favicon.png',
   'packages/app/public/fonts/tinos-latin-400.woff2',
@@ -25,11 +26,13 @@ const reviewedBinaryAssets = new Set([
   // backdrop + logo, and the emblem as favicon/app icon.
   'packages/app/src/entries/menu/assets/logo.webp',
   'packages/app/src/entries/menu/assets/village.webp',
+  'packages/desktop/build/icon.icns',
   'packages/desktop/build/icon.png',
 ]);
 
 const reviewRequiredExtensions = new Set([
   '.gif',
+  '.icns',
   '.ico',
   '.jpeg',
   '.jpg',

@@ -31,6 +31,9 @@ first-run installer that converts the user's owned game copy with the asset pipe
   portable, macOS dmg, Linux AppImage; all unsigned (docs/tickets/tooling/desktop-code-signing.md).
 - CI installers: manually dispatch `.github/workflows/desktop-build.yml` — native per-OS builds
   versioned `0.0.0-<short-sha>`, published as a public `build-<short-sha>` prerelease.
+- App icon: `build/icon.png` (512², transparent) feeds the win/linux targets; `build/icon.icns` is
+  committed pre-built (`iconutil` over Lanczos resizes) because electron-builder's png→icns
+  converter flattens the 16/32 px entries onto white.
 - tsc typechecks only (`emitDeclarationOnly`); esbuild bundles the four runtime files into `dist/`
   (`scripts/bundle.mjs`) so electron-builder never packs workspace-symlinked node_modules.
 
