@@ -3,6 +3,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
 import type { System, SystemContext } from '../../context.js';
 import { interactionNode } from '../../footprint/index.js';
+import { navigationLimitFor } from '../../signposts/index.js';
 import { canonicalById, NodeBuckets } from '../../spatial.js';
 import { buildingWorkerJobs, isCarrierJob, recipeOf } from '../../stores/index.js';
 import { farmWorkGood } from '../farming.js';
@@ -54,9 +55,23 @@ export const jobSystem: System = (world, ctx) => {
   // otherwise — {@link interactionNode}): "adopt" binds the workplace a settler is standing at, and the O(1)
   // per-settler lookup replaces a full building scan.
   const buildingsByNode = new NodeBuckets(world, buildings, (b) => interactionNode(world, ctx, b));
+  const terrain = ctx.terrain;
   for (const e of world.canonicalEntities()) {
     const settler = world.tryGet(e, Settler);
     if (settler === undefined || world.has(e, JobAssignment)) continue; // already bound: nothing to do
+
+    // The settler's signpost confinement over a candidate workplace: an out-of-area building never employs
+    // it — employment would immediately send it walking beyond its allowed area. The adopt pass needs no
+    // gate (the building is under the settler's feet — inside its local circle by definition).
+    const limit = terrain === undefined ? null : navigationLimitFor(world, terrain, e);
+    const withinArea =
+      limit === null || terrain === undefined
+        ? undefined
+        : (b: Entity): boolean => {
+            const inode = interactionNode(world, ctx, b);
+            if (inode === null) return true; // no resolvable cell — leave the openness gates to decide
+            return limit.allowsNode(terrain.nodeAtClamped(inode.x, inode.y));
+          };
 
     if (settler.jobType !== null) {
       // Pass 1 — adopt a pre-employed, unbound settler standing on a workplace it staffs.
@@ -78,6 +93,7 @@ export const jobSystem: System = (world, ctx) => {
           settler.jobType,
           settler.experience,
           staffing,
+          withinArea,
         );
         if (post !== null) bind(world, staffing, e, post, settler.jobType);
       }
@@ -93,6 +109,7 @@ export const jobSystem: System = (world, ctx) => {
       ownerOf(world, e),
       settler.experience,
       staffing,
+      withinArea,
     );
     if (open !== null) {
       settler.jobType = open.jobType;

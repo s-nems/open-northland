@@ -40,8 +40,12 @@ export function openPostFor(
   jobType: number,
   experience: ReadonlyMap<number, number>,
   staffing: StaffingTally,
+  /** The settler's signpost confinement over a candidate building — an out-of-area workplace never
+   *  employs it (see the jobSystem's area gate). Omitted when the settler is unlimited. */
+  withinArea?: (building: Entity) => boolean,
 ): Entity | null {
   for (const b of buildings) {
+    if (withinArea !== undefined && !withinArea(b)) continue;
     if (resolveOpenWorkerJob(world, ctx, b, tribe, owner, experience, [jobType], staffing) !== null) {
       return b;
     }
@@ -62,8 +66,11 @@ export function openJobAt(
   owner: number | undefined,
   experience: ReadonlyMap<number, number>,
   staffing: StaffingTally,
+  /** The settler's signpost confinement over a candidate building — see {@link openPostFor}. */
+  withinArea?: (building: Entity) => boolean,
 ): { building: Entity; jobType: number } | null {
   for (const b of buildings) {
+    if (withinArea !== undefined && !withinArea(b)) continue;
     const jobType = resolveOpenWorkerJob(
       world,
       ctx,

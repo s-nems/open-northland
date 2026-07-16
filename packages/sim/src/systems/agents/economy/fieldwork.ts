@@ -83,6 +83,7 @@ export function planBuilder(plan: PlannerContext, spacing: SpacingState): boolea
       settler.tribe,
       settler.owner,
       cellGateOf(plan.limit),
+      plan.limit?.bounds,
     );
   if (site === null) {
     world.remove(e, SiteAssignment); // nothing under construction — the crew disbands
@@ -115,7 +116,15 @@ export function planBuilder(plan: PlannerContext, spacing: SpacingState): boolea
   // its own — so a crew spreads over the still-unclaimed materials instead of racing to the same unit.
   const need = nextNeededConstructionGood(world, ctx, site, plan.inbound);
   const src =
-    need && nearestStoreHolding(targets.stockpileCells, world, here, need.goodType, cellGateOf(plan.limit));
+    need &&
+    nearestStoreHolding(
+      targets.stockpileCells,
+      world,
+      here,
+      need.goodType,
+      cellGateOf(plan.limit),
+      plan.limit?.bounds,
+    );
   if (need !== null && src != null) {
     const batch = Math.min(need.amount, CARRY_CAPACITY);
     stampSupplyRun(world, e, plan.inbound, { site, goodType: need.goodType, amount: batch });
@@ -165,6 +174,7 @@ export function planGatherer(plan: PlannerContext): boolean {
     settler,
     undefined,
     cellGateOf(plan.limit),
+    plan.limit?.bounds,
   );
   const trunk = nearestCollectablePileFor(
     targets.groundDrops,
@@ -214,7 +224,7 @@ function planFlagGatherer(
   const flagCell = interactionCell(world, ctx, terrain, flag.flag, here);
 
   // 1. Carry off a trunk/ore this gatherer dug (only its own — foreign piles are left in peace).
-  const own = nearestOwnDropFor(targets.groundDrops, world, ctx, terrain, here, e);
+  const own = nearestOwnDropFor(targets.groundDrops, world, ctx, terrain, here, e, cellGateOf(plan.limit));
   if (own !== null) {
     walkPickupBatch(plan, own.pile, own.goodType);
     return true;

@@ -9,6 +9,7 @@ import {
 } from '../../../components/index.js';
 import { farmWorkGood } from '../../economy/farming.js';
 import { atomicDuration } from '../../readviews/animations.js';
+import { cellGateOf } from '../../signposts/index.js';
 import { stampSupplyRun } from '../../stores/index.js';
 import { atOrWalk, PILEUP_ATOMIC_ID, startAtomic } from '../actions.js';
 import { dropCarryAtOwnTile } from '../effects-goods/index.js';
@@ -66,7 +67,16 @@ export function planDelivery(plan: PlannerContext, load: { goodType: number; amo
     ? sameYard !== undefined && !sameYard.failed
       ? sameYard.goal
       : // A flag is a marker, not a stock sink: resume after a proven failed yard candidate, or start nearest.
-        nearestFreeYardNode(targets.yard, world, terrain, store, load.goodType, here, sameYard?.goal)
+        nearestFreeYardNode(
+          targets.yard,
+          world,
+          terrain,
+          store,
+          load.goodType,
+          here,
+          sameYard?.goal,
+          cellGateOf(plan.limit),
+        )
     : interactionCell(world, ctx, terrain, store, here);
   if (cell === null) return;
   if (world.has(store, DeliveryFlag)) {

@@ -32,7 +32,7 @@ import {
   syncWorkFlagToJob,
 } from '../economy/flags.js';
 import { openWorkerJobFromList } from '../economy/jobs/index.js';
-import { canPlaceWorkFlag } from '../footprint/index.js';
+import { canPlaceWorkFlag, interactionNode } from '../footprint/index.js';
 import { navigationLimitFor } from '../signposts/index.js';
 import { clearNavState } from '../spatial.js';
 import { stampDefaultStance } from './combat.js';
@@ -113,6 +113,16 @@ export function assignWorker(
   if (world.has(e, Age)) return; // a growing child's job class is GrowthSystem's, not the player's
   const b = command.building;
   if (!world.isAlive(b) || !world.has(b, Building)) return;
+  // Signpost confinement: a workplace beyond the settler's allowed area is refused like an out-of-area
+  // move order (moveUnit) — the player extends the network first, then staffs the far building.
+  const terrain = ctx.terrain;
+  if (terrain !== undefined) {
+    const limit = navigationLimitFor(world, terrain, e);
+    if (limit !== null) {
+      const inode = interactionNode(world, ctx, b);
+      if (inode !== null && !limit.allowsNode(terrain.nodeAtClamped(inode.x, inode.y))) return;
+    }
+  }
 
   const settler = world.get(e, Settler);
   const jobType = openWorkerJobFromList(

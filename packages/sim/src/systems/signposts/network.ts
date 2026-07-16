@@ -10,7 +10,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import { isFighterJob, SCOUT_JOB } from '../readviews/index.js';
-import { withinNodeRadius } from './geometry.js';
+import { type NodeBox, nodeBoxOfCircles, withinNodeRadius } from './geometry.js';
 
 /**
  * The per-player SIGNPOST NETWORK — which signposts exist, where, and which belong to one connected
@@ -141,6 +141,9 @@ function verifyNetwork(world: World): string[] {
 export interface NavigationLimit {
   /** Whether `node` lies inside this settler's allowed area. */
   allowsNode(node: NodeId): boolean;
+  /** A box provably containing every allowed node ({@link nodeBoxOfCircles}) — lets a search BOUND its
+   *  scan/ring expansion to the confined area; membership stays {@link allowsNode}'s call. */
+  readonly bounds: NodeBox;
 }
 
 /** `limit` as the optional cell-gate shape the target queries take (`InteractionCellIndex.nearest`,
@@ -172,7 +175,12 @@ export function navigationLimitFor(world: World, terrain: TerrainGraph, e: Entit
     }
   }
   const inRange = posts.filter((s) => reachable.has(s.group));
+  const bounds = nodeBoxOfCircles([
+    { x: here.hx, y: here.hy, r: LOCAL_NAV_RADIUS_NODES },
+    ...inRange.map((s) => ({ x: s.hx, y: s.hy, r: s.navRadius })),
+  ]);
   return {
+    bounds,
     allowsNode(node: NodeId): boolean {
       const c = terrain.coordsOf(node);
       if (withinNodeRadius(here.hx, here.hy, c.x, c.y, LOCAL_NAV_RADIUS_NODES)) return true;

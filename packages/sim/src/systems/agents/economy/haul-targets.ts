@@ -28,6 +28,8 @@ export function nearestGroundPile(
   ctx: SystemContext,
   terrain: TerrainGraph,
   here: NodeId,
+  /** The porter's signpost confinement — an out-of-area pile is not one it fetches. */
+  cellGate?: (cell: NodeId) => boolean,
 ): { pile: Entity; goodType: number } | null {
   const best = nearestByCell(terrain, candidates, here, (e) => {
     if (world.has(e, Building)) return null; // a building store isn't a loose ground pile
@@ -35,7 +37,8 @@ export function nearestGroundPile(
     const good = lowestStockedGood(world.get(e, Stockpile));
     if (good === null) return null; // an empty pile is nothing to collect
     if (!sinks.has(good)) return null; // every store full for this good — leave it, try another good
-    return interactionCell(world, ctx, terrain, e, here);
+    const cell = interactionCell(world, ctx, terrain, e, here);
+    return cellGate === undefined || cellGate(cell) ? cell : null;
   });
   if (best === null) return null;
   const good = lowestStockedGood(world.get(best.entity, Stockpile)); // the winner's good (accept required one)

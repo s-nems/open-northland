@@ -2,6 +2,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { interactionNode } from '../../footprint/index.js';
+import type { NodeBox } from '../../signposts/index.js';
 import { manhattan } from '../../spatial.js';
 import { closer } from './nearest.js';
 import { interactionCell } from './workplaces.js';
@@ -91,30 +92,49 @@ export class InteractionCellIndex {
    * on the fallback scan, so it may be evaluated more than once per candidate. `cellGate` (optional)
    * rejects whole interaction CELLS before any entity is consulted — the signpost-confinement seam: a
    * gated cell's bucket is skipped in O(1), and the linear fallback applies the same gate, so both paths
-   * agree on the winner.
+   * agree on the winner. `gateBounds` (the confinement's {@link NodeBox}) is a pure scan bound: every
+   * gate-passing cell provably lies inside it, so the ring sweep stops at the box's reach — and a sweep
+   * that covered that whole reach PROVES no bucketed candidate passes, eliding the full linear fallback.
    */
   nearest(
     here: NodeId,
     accept: (e: Entity) => boolean,
     cellGate?: (cell: NodeId) => boolean,
+    gateBounds?: NodeBox,
   ): NearestByCell | null {
-    const ring = this.ringNearest(here, accept, cellGate);
-    if (ring !== null) return combine(ring, this.linearNearest(this.dynamic, here, accept, cellGate));
+    const ring = this.ringNearest(here, accept, cellGate, gateBounds);
+    if (ring.best !== null) {
+      return combine(ring.best, this.linearNearest(this.dynamic, here, accept, cellGate));
+    }
+    // An exhaustive sweep (the rings covered every bucket that could pass) proves the bucketed side empty
+    // — only the seeker-dependent tail remains. Otherwise the ring cap stopped short: fall back to the
+    // exact full linear scan (identical winner).
+    if (ring.exhaustive) return this.linearNearest(this.dynamic, here, accept, cellGate);
     return this.linearNearest(this.candidates, here, accept, cellGate);
   }
 
   /** The nearest bucketed candidate within {@link NEAREST_RING_MAX_RADIUS}, or null. The first non-empty
    *  ring holds the minimum distance, so its `(cell-id, entity-id)` winner is the global bucketed winner.
-   *  The ring stops at the farthest bucket's Manhattan reach, so a sparse or empty index rings no wider. */
+   *  The ring stops at the farthest bucket's Manhattan reach — clamped further to `gateBounds`'s reach when
+   *  the search is confined — so a sparse/empty index or a small confined area rings no wider. `exhaustive`
+   *  reports whether the sweep covered that whole reach (a null `best` is then a proof, not a cap). */
   private ringNearest(
     here: NodeId,
     accept: (e: Entity) => boolean,
     cellGate?: (cell: NodeId) => boolean,
-  ): NearestByCell | null {
-    if (this.maxX < this.minX) return null; // no bucketed candidates — the linear fallback handles the tail
+    gateBounds?: NodeBox,
+  ): { best: NearestByCell | null; exhaustive: boolean } {
+    if (this.maxX < this.minX) return { best: null, exhaustive: true }; // no bucketed candidates at all
     const { x: hx, y: hy } = this.terrain.coordsOf(here);
-    const reach = Math.max(hx - this.minX, this.maxX - hx) + Math.max(hy - this.minY, this.maxY - hy);
+    let reach = Math.max(hx - this.minX, this.maxX - hx) + Math.max(hy - this.minY, this.maxY - hy);
+    if (gateBounds !== undefined) {
+      const boundsReach =
+        Math.max(hx - gateBounds.minX, gateBounds.maxX - hx) +
+        Math.max(hy - gateBounds.minY, gateBounds.maxY - hy);
+      reach = Math.min(reach, boundsReach);
+    }
     const maxRadius = Math.min(NEAREST_RING_MAX_RADIUS, reach);
+    const exhaustive = reach <= NEAREST_RING_MAX_RADIUS;
     for (let d = 0; d <= maxRadius; d++) {
       let best: NearestByCell | null = null;
       // Ring d = every node at Manhattan distance exactly d; the two rows dy = ±(d - |dx|) trace the diamond.
@@ -123,9 +143,9 @@ export class InteractionCellIndex {
         best = this.pickInRing(hx + dx, hy + rem, d, accept, cellGate, best);
         if (rem !== 0) best = this.pickInRing(hx + dx, hy - rem, d, accept, cellGate, best);
       }
-      if (best !== null) return best;
+      if (best !== null) return { best, exhaustive };
     }
-    return null;
+    return { best: null, exhaustive };
   }
 
   /** Fold node `(x,y)`'s bucket into the running ring `best`. Distinct nodes carry distinct cell ids, so a

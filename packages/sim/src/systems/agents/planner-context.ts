@@ -33,8 +33,9 @@ export interface PlannerContext extends PlannerWorker {
    *  {@link import('../../components/settler.js').SupplyRun} errands (see {@link InboundSupplyTally}). */
   readonly inbound: InboundSupplyTally;
   /** This settler's signpost-navigation confinement, or null when unlimited (confinement off, or an
-   *  exempt job — see {@link import('../signposts/network.js').navigationLimitFor}). The economy drives
-   *  gate every NEW work target's interaction cell on it (harvest nodes, trunks, fetch stores, build
-   *  sites); a delivery of an already-carried load stays ungated so goods never strand mid-haul. */
+   *  exempt job — see {@link import('../signposts/network.js').navigationLimitFor}). Every drive gates its
+   *  searched targets' interaction cells on it (harvest nodes, trunks, stores, sites, piles, needs
+   *  satisfiers, delivery sinks); only a settler's BOUND targets (its own workplace/flag/storage binding)
+   *  stay ungated, and a load with no in-area sink takes planDelivery's no-sink drop/rest branch. */
   readonly limit: NavigationLimit | null;
 }

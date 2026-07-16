@@ -1,4 +1,5 @@
 import { JobAssignment } from '../../../components/index.js';
+import { cellGateOf } from '../../signposts/index.js';
 import { isCarrierJob } from '../../stores/index.js';
 import { walkPickupBatch } from '../actions.js';
 import type { PlannerContext } from '../planner-context.js';
@@ -31,8 +32,17 @@ export function planPorter(plan: PlannerContext): boolean {
     walkPickupBatch(plan, haul.home, haul.goodType);
     return true;
   }
-  // Otherwise bring a loose ground pile IN to the bound store (the warehouse/HQ porter, unchanged).
-  const pile = nearestGroundPile(targets.stockpiles, targets.sinks, world, ctx, terrain, here);
+  // Otherwise bring a loose ground pile IN to the bound store (the warehouse/HQ porter), confined to the
+  // porter's signpost area — an out-of-area pile is not one it knows about.
+  const pile = nearestGroundPile(
+    targets.stockpiles,
+    targets.sinks,
+    world,
+    ctx,
+    terrain,
+    here,
+    cellGateOf(plan.limit),
+  );
   if (pile === null) return false;
   walkPickupBatch(plan, pile.pile, pile.goodType);
   return true;
@@ -57,7 +67,15 @@ export function planCarrierHaul(plan: PlannerContext, anyHaulable: boolean): boo
   if (!isCarrierJob(ctx, settler.jobType)) return false; // hauling is the carrier trade's job alone
   if (!world.has(e, JobAssignment)) return false; // an unassigned carrier has no store to work for
   const haul = anyHaulable
-    ? nearestWorkplaceOutput(targets.stockpileCells, targets.sinks, world, ctx, here)
+    ? nearestWorkplaceOutput(
+        targets.stockpileCells,
+        targets.sinks,
+        world,
+        ctx,
+        here,
+        cellGateOf(plan.limit),
+        plan.limit?.bounds,
+      )
     : null;
   if (haul === null) return false;
   walkPickupBatch(plan, haul.workplace, haul.goodType);

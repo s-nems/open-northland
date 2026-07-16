@@ -11,6 +11,7 @@ import {
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
+import { cellGateOf, type NodeBox } from '../../signposts/index.js';
 import {
   buildingProduces,
   type InboundSupplyTally,
@@ -44,6 +45,12 @@ export function deliveryTargetFor(plan: PlannerContext, goodType: number): Entit
   const { world, ctx, here, entity: settler, jobType, tribe, owner, targets, inbound } = plan;
   const stores = targets.stockpileCells;
   const sites = targets.constructionSiteCells;
+  // The carrier's signpost confinement gates every SEARCHED sink (cases 3/4/5) — an out-of-area store is
+  // not one it knows the way to; a load with no in-area sink falls to planDelivery's no-sink branches
+  // (drop at feet / rest at the workplace). The BOUND targets (cases 1–3b: the own workshop, flag, or
+  // storage binding) stay ungated — a settler always knows the way home.
+  const gate = cellGateOf(plan.limit);
+  const gateBounds = plan.limit?.bounds;
   // 1. A fetched input goes to the bound workshop that consumes it.
   const workplace = boundWorkplaceTarget(world, ctx, settler, jobType, tribe);
   if (workplace !== null) {
@@ -75,7 +82,7 @@ export function deliveryTargetFor(plan: PlannerContext, goodType: number): Entit
     isFarmCarrierHaulOutRole(world, ctx, home, jobType, tribe) &&
     buildingProduces(world, ctx, home).includes(goodType)
   ) {
-    return nearestStoreFor(stores, world, ctx, here, goodType, /* excludeProducers */ true);
+    return nearestStoreFor(stores, world, ctx, here, goodType, /* excludeProducers */ true, gate, gateBounds);
   }
   // 3b. Otherwise a porter's / farmer's load goes to the storage it is bound to (a warehouse, a flag pile,
   //     or the farm's own store when a farmer banks its sheaf and the farm still has room).
@@ -87,10 +94,21 @@ export function deliveryTargetFor(plan: PlannerContext, goodType: number): Entit
   //    the material back into a warehouse. Scans the tiny `sites` list (each advertises its outstanding cost
   //    via `stockCapacity`); this only prioritises the pick — nearest needing site — leaving every
   //    non-construction good to the default below.
-  const site = nearestConstructionSiteNeeding(sites, world, ctx, here, tribe, owner, goodType, inbound);
+  const site = nearestConstructionSiteNeeding(
+    sites,
+    world,
+    ctx,
+    here,
+    tribe,
+    owner,
+    goodType,
+    inbound,
+    gate,
+    gateBounds,
+  );
   if (site !== null) return site;
-  // 5. Otherwise the nearest capable store — the unchanged default (unbound haulers, the golden slice).
-  return nearestStoreFor(stores, world, ctx, here, goodType);
+  // 5. Otherwise the nearest capable store — the default (unbound haulers, the golden slice).
+  return nearestStoreFor(stores, world, ctx, here, goodType, false, gate, gateBounds);
 }
 
 /**
@@ -111,17 +129,24 @@ function nearestConstructionSiteNeeding(
   owner: number | undefined,
   goodType: number,
   inbound: InboundSupplyTally,
+  cellGate?: (cell: NodeId) => boolean,
+  gateBounds?: NodeBox,
 ): Entity | null {
   return (
-    index.nearest(here, (e) => {
-      if (world.get(e, Building).tribe !== tribe) return false;
-      if (!ownersCompatible(owner, ownerOf(world, e))) return false; // another player's site (same tribe isn't same side)
-      // Count both what the site holds and what other settlers' live supply errands already have inbound
-      // (the `inbound` tally): a site whose last unit is on someone's back stops attracting more of the
-      // good, so a duplicate fetch diverts to a warehouse instead of over-delivering.
-      const have =
-        (world.get(e, Stockpile).amounts.get(goodType) ?? 0) + inboundSupplyOf(inbound, e, goodType);
-      return have < stockCapacity(world, ctx, e, goodType); // room left for this material (and it's a cost good)
-    })?.entity ?? null
+    index.nearest(
+      here,
+      (e) => {
+        if (world.get(e, Building).tribe !== tribe) return false;
+        if (!ownersCompatible(owner, ownerOf(world, e))) return false; // another player's site (same tribe isn't same side)
+        // Count both what the site holds and what other settlers' live supply errands already have inbound
+        // (the `inbound` tally): a site whose last unit is on someone's back stops attracting more of the
+        // good, so a duplicate fetch diverts to a warehouse instead of over-delivering.
+        const have =
+          (world.get(e, Stockpile).amounts.get(goodType) ?? 0) + inboundSupplyOf(inbound, e, goodType);
+        return have < stockCapacity(world, ctx, e, goodType); // room left for this material (and it's a cost good)
+      },
+      cellGate,
+      gateBounds,
+    )?.entity ?? null
   );
 }
