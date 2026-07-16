@@ -101,7 +101,7 @@ describe('gui stage', () => {
   });
 
   it('builds a 256×N palette LUT with a stable row order and resolves the preview palettes', async () => {
-    const res = await convertGuiPaletteLut(game, out);
+    const res = await convertGuiPaletteLut({ game, mod: undefined }, out);
     expect(res.names).toHaveLength(14);
     expect(res.names[0]).toBe('iconsleft'); // row 0 is the default window preview palette
     expect(res.names.at(-1)).toBe('gui_bubbles');
@@ -114,15 +114,15 @@ describe('gui stage', () => {
   it('keeps LUT rows stable (neutral fill) when a palette carrier is missing, with a warning', async () => {
     await rm(join(game, 'Data', 'gui', 'palettes', 'frame.pcx'));
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    const res = await convertGuiPaletteLut(game, out);
+    const res = await convertGuiPaletteLut({ game, mod: undefined }, out);
     expect(res.names).toHaveLength(14); // row count unchanged despite the missing carrier
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/palette frame unreadable.*neutral row/));
     warn.mockRestore();
   });
 
   it('emits an indexed + preview atlas (with manifest) per bob sheet under the /bobs tree', async () => {
-    const { byName } = await convertGuiPaletteLut(game, out);
-    const atlases = await convertGuiAtlases(game, out, byName);
+    const { byName } = await convertGuiPaletteLut({ game, mod: undefined }, out);
+    const atlases = await convertGuiAtlases({ game, mod: undefined }, out, byName);
 
     expect(atlases.map((a) => a.stem).sort()).toEqual(['ls_gui_bubbles', 'ls_gui_window']);
     const window = atlases.find((a) => a.stem === 'ls_gui_window');
@@ -141,7 +141,7 @@ describe('gui stage', () => {
   });
 
   it('decodes the nine ingamegui tables per language, id→text, CP1250-decoded', async () => {
-    const res = await convertGuiStrings(game, out);
+    const res = await convertGuiStrings({ game, mod: undefined }, out);
     expect(res.map((r) => r.lang)).toEqual(['eng', 'pol']);
     expect(res.every((r) => r.tables === 9)).toBe(true);
 
@@ -169,7 +169,7 @@ describe('gui stage', () => {
         { level: 2, text: 'stringn 5 "Ok"' },
       ]),
     );
-    await convertGuiStrings(game, out, ['eng']);
+    await convertGuiStrings({ game, mod: undefined }, out, ['eng']);
     const eng = JSON.parse(await readFile(join(out, 'gui', 'strings', 'eng.json'), 'utf8'));
     expect(eng.main['0']).toBe('AfterBad'); // survived — the bad stringn didn't NaN-poison the counter
     expect(eng.main['5']).toBe('Ok');
@@ -177,7 +177,7 @@ describe('gui stage', () => {
   });
 
   it('decodes each cursor to a PNG, copies the .cur through, and records the hotspot', async () => {
-    const cursors = await convertCursors(game, out);
+    const cursors = await convertCursors({ game, mod: undefined }, out);
     expect(cursors.map((c) => c.name)).toEqual(['MouseNormal', 'MousePressed', 'MouseRight']);
     const right = cursors.find((c) => c.name === 'MouseRight');
     expect([right?.hotspotX, right?.hotspotY]).toEqual([10, 10]);
@@ -190,7 +190,7 @@ describe('gui stage', () => {
   });
 
   it('ties everything together into content/gui/manifest.json', async () => {
-    const summary = await convertGuiStage(game, out);
+    const summary = await convertGuiStage({ game, mod: undefined }, out);
     expect(summary).toMatchObject({ atlases: 2, frames: 4, palettes: 14, cursors: 3 });
 
     const manifest = JSON.parse(await readFile(join(out, 'gui', 'manifest.json'), 'utf8'));
@@ -204,9 +204,9 @@ describe('gui stage', () => {
 
   it('skips a missing bob sheet with a warning instead of aborting', async () => {
     await rm(join(game, BOBS_DIR, 'ls_gui_bubbles.bmd'));
-    const { byName } = await convertGuiPaletteLut(game, out);
+    const { byName } = await convertGuiPaletteLut({ game, mod: undefined }, out);
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    const atlases = await convertGuiAtlases(game, out, byName);
+    const atlases = await convertGuiAtlases({ game, mod: undefined }, out, byName);
     expect(atlases.map((a) => a.stem)).toEqual(['ls_gui_window']); // the good one still converts
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/skipped ls_gui_bubbles/));
     warn.mockRestore();

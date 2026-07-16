@@ -37,7 +37,7 @@ requires reconciling the vocabulary first, not a mechanical retype.
 ## Verify
 
 - `npm test` green (the fixtures/authored content must parse under the enum).
-- `npm run pipeline -- --game "../Cultures 8th Wonder" --mod DataCnmd --out content` still succeeds
+- `npm run pipeline -- --game "../Cultures 8th Wonder" --out content` still succeeds
   and `content/ir.json` `buildings[].kind` values are unchanged (byte-identical IR if the extractor
   output set was already within the enum).
 

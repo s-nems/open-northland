@@ -1,9 +1,9 @@
 import { readFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { dirname } from 'node:path';
 import type { MapInfo } from '@open-northland/data';
 import { decodeCifStringArray } from '../../decoders/cif.js';
 import { cifLinesToSections, extractMapInfo, type SourceRef } from '../../decoders/ini.js';
-import { collectFilesNamed } from '../../walk.js';
+import { collectSourceFilesNamed, type SourceRoots } from '../../roots.js';
 
 /**
  * Pure composition: one `map.cif`'s bytes + a slug id -> its validated {@link MapInfo} logic header.
@@ -34,20 +34,21 @@ export function mapIdFromPath(mapCifRelPath: string): string {
 }
 
 /**
- * Decodes the logic header of every `map.cif` under `gameDir` into a validated {@link MapInfo}, in a
- * stable order (the maps are sorted by their relative path so the IR is reproducible regardless of
- * directory-entry order). Each map's `id` comes from its containing folder ({@link mapIdFromPath}).
- * A `.cif` that fails to read or decode (not a map, missing `mapsize`/`mapguid`, corrupt container) is
- * logged and skipped — a batch over many maps must not abort on one bad file, matching the other
- * tree-walk stages. Only the declarative header metadata is extracted; the binary tile grid and the
- * `MissionData`/`StaticObjects` scripting are out of scope here (see {@link extractMapInfo}).
+ * Decodes the logic header of every `map.cif` under the source roots (overlay-first union) into a
+ * validated {@link MapInfo}, in a stable order (the maps are sorted by their relative path so the IR
+ * is reproducible regardless of directory-entry order). Each map's `id` comes from its containing
+ * folder ({@link mapIdFromPath}). A `.cif` that fails to read or decode (not a map, missing
+ * `mapsize`/`mapguid`, corrupt container) is logged and skipped — a batch over many maps must not
+ * abort on one bad file, matching the other tree-walk stages. Only the declarative header metadata is
+ * extracted; the binary tile grid and the `MissionData`/`StaticObjects` scripting are out of scope
+ * here (see {@link extractMapInfo}).
  */
-export async function decodeMapTree(gameDir: string): Promise<MapInfo[]> {
-  const found = await collectFilesNamed(gameDir, 'map.cif');
+export async function decodeMapTree(roots: SourceRoots): Promise<MapInfo[]> {
+  const found = await collectSourceFilesNamed(roots, 'map.cif');
   const maps: MapInfo[] = [];
-  for (const rel of found) {
+  for (const { rel, path } of found) {
     try {
-      const bytes = await readFile(join(gameDir, rel));
+      const bytes = await readFile(path);
       maps.push(mapCifToInfo(bytes, mapIdFromPath(rel), { file: rel, layer: 'base' }));
     } catch (err) {
       console.warn(`[pipeline] skipped map ${rel}: ${(err as Error).message}`);

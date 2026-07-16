@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import { decodeCifStringTable } from '../../decoders/ini.js';
-import { readGameFile, writeJsonFile } from '../game-file.js';
+import type { SourceRoots } from '../../roots.js';
+import { readSourceFile, writeJsonFile } from '../game-file.js';
 import { GUI_CONTENT_DIR } from './paths.js';
 
 /** The nine in-game GUI string tables (files are `ingamegui<table>.cif` under `Data/text/<lang>/strings/ingamegui/`). */
@@ -36,7 +37,7 @@ export interface GuiStringsResult {
  * language's JSON); a language with no tables at all is skipped entirely.
  */
 export async function convertGuiStrings(
-  gameDir: string,
+  roots: SourceRoots,
   outDir: string,
   langs: readonly string[] = STRING_LANGS,
 ): Promise<GuiStringsResult[]> {
@@ -49,7 +50,7 @@ export async function convertGuiStrings(
       const rel = join('Data', 'text', lang, 'strings', 'ingamegui', `ingamegui${table}.cif`);
       let byId: Record<number, string>;
       try {
-        byId = decodeCifStringTable(await readGameFile(gameDir, rel));
+        byId = decodeCifStringTable(await readSourceFile(roots, rel));
       } catch (err) {
         console.warn(`[pipeline] gui: skipped strings ${lang}/${table}: ${(err as Error).message}`);
         continue;

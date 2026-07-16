@@ -3,8 +3,9 @@
 // (docs/TESTING.md "Real-content test modes"): run the full asset pipeline against the owned game
 // copy into a throwaway directory, then run the real-content suite over that FRESH output via
 // `ON_CONTENT_DIR` — the checkout's `content/` is never touched. Manual/local only: it needs the
-// copyrighted game copy (`CULTURES_GAME_DIR`, default `../Cultures 8th Wonder`; `CULTURES_MOD`,
-// default `DataCnmd`). On failure the output directory is kept for inspection.
+// copyrighted game copy (`CULTURES_GAME_DIR`, default `../Cultures 8th Wonder`; a mod installed in
+// the game folder is auto-detected, `CULTURES_MOD_ROOT` points at one unpacked elsewhere). On
+// failure the output directory is kept for inspection.
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -13,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 
 const repoRoot = resolve(fileURLToPath(import.meta.url), '../..');
 const gameDir = process.env.CULTURES_GAME_DIR ?? resolve(repoRoot, '../Cultures 8th Wonder');
-const mod = process.env.CULTURES_MOD ?? 'DataCnmd';
+const modRoot = process.env.CULTURES_MOD_ROOT;
 
 if (!existsSync(gameDir)) {
   console.error(`test:pipeline needs the owned game copy — no directory at ${gameDir}`);
@@ -25,8 +26,17 @@ const outDir = mkdtempSync(join(tmpdir(), 'open-northland-pipeline-'));
 const run = (cmd, args, extraEnv = {}) =>
   spawnSync(cmd, args, { stdio: 'inherit', cwd: repoRoot, env: { ...process.env, ...extraEnv } });
 
-console.log(`test:pipeline — running the pipeline against "${gameDir}" (mod ${mod}) into ${outDir}`);
-const pipeline = run('npm', ['run', 'pipeline', '--', '--game', gameDir, '--mod', mod, '--out', outDir]);
+console.log(`test:pipeline — running the pipeline against "${gameDir}" into ${outDir}`);
+const pipeline = run('npm', [
+  'run',
+  'pipeline',
+  '--',
+  '--game',
+  gameDir,
+  ...(modRoot === undefined ? [] : ['--mod-root', modRoot]),
+  '--out',
+  outDir,
+]);
 if (pipeline.status !== 0) {
   console.error(`pipeline run failed; partial output kept at ${outDir}`);
   process.exit(pipeline.status ?? 1);

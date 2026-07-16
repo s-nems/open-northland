@@ -7,7 +7,8 @@ import {
   latin1ToCp1250,
   parseIniSections,
 } from '../../decoders/ini.js';
-import { readGameFile } from '../game-file.js';
+import type { SourceRoots } from '../../roots.js';
+import { readSourceFile } from '../game-file.js';
 import type { GoodLike } from './icons.js';
 
 /**
@@ -56,14 +57,14 @@ export function resolveGoodNames(
 
 /** Read every {@link GOOD_NAME_LOCALES} good-name table (missing files skipped) and join onto the goods. */
 export async function loadGoodNames(
-  gameDir: string,
+  roots: SourceRoots,
   goods: readonly (GoodLike & { readonly typeId: number })[],
 ): Promise<Record<string, Record<string, string>>> {
   const tables: Record<string, Record<number, string>> = {};
   for (const { code, dir, encrypted } of GOOD_NAME_LOCALES) {
     let bytes: Uint8Array;
     try {
-      bytes = await readGameFile(gameDir, goodNamesPath(dir, encrypted));
+      bytes = await readSourceFile(roots, goodNamesPath(dir, encrypted));
     } catch {
       console.warn(`[pipeline] goods: name table for "${code}" missing; skipping that locale`);
       continue;

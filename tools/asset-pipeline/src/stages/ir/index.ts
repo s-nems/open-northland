@@ -1,7 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { type BuildingFootprint, type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
-import type { Args } from '../../args.js';
 import {
   buildGatheringPipeline,
   buildTerrainPatterns,
@@ -35,6 +34,7 @@ import {
   type SourceRef,
   stripVehicleGoods,
 } from '../../decoders/ini.js';
+import type { SourceRoots } from '../../roots.js';
 import { writeJsonFile } from '../game-file.js';
 import { decodeMapTree } from '../maps/index.js';
 import { applyBuildingGraphicsOverlays } from './building-overlays.js';
@@ -50,8 +50,8 @@ export { type IniSource, resolveIniSources } from './sources.js';
  * only I/O here is reading the resolved files. Each extractor pulls only its own `[section]`s from a
  * file, so passing every file's sections to every extractor is correct and order-independent.
  */
-export async function buildIr(args: Args): Promise<ContentSet> {
-  const sources = await resolveIniSources(args.game, args.mod);
+export async function buildIr(roots: SourceRoots): Promise<ContentSet> {
+  const sources = await resolveIniSources(roots);
   const goods = [];
   const jobs = [];
   const jobExperience = [];
@@ -110,14 +110,14 @@ export async function buildIr(args: Args): Promise<ContentSet> {
       footprints.set(typeId, footprint);
     }
   }
-  const maps = await decodeMapTree(args.game);
+  const maps = await decodeMapTree(roots);
   // Terrain ground graphics (`.cif`-only tables) → the approximated typeId→pattern map the renderer
   // consumes. Both files ship in the base game; a partial install that lacks them simply yields no
   // `terrainPatterns` (the renderer keeps its flat-colour fallback).
   const patternFile = join('Data', 'engine2d', 'inis', 'patterns', 'pattern.cif');
-  const gfxPatterns = await loadCifTable(args.game, patternFile, extractPatterns, []);
+  const gfxPatterns = await loadCifTable(roots, patternFile, extractPatterns, []);
   const triangleFile = join('Data', 'logic', 'trianglepatterntypes.cif');
-  const triangleTypes = await loadCifTable(args.game, triangleFile, extractTrianglePatternTypes, []);
+  const triangleTypes = await loadCifTable(roots, triangleFile, extractTrianglePatternTypes, []);
   const terrainPatterns = buildTerrainPatterns(landscape, gfxPatterns, triangleTypes, {
     file: patternFile,
     layer: 'base',
@@ -125,12 +125,12 @@ export async function buildIr(args: Args): Promise<ContentSet> {
   // The `[transition]` ground-overlay table (`.cif`-only) — a decoded map's `transitions.types`
   // names join onto it (`editName`) for the overlay texture + the six per-pair UV triangles.
   const transitionFile = join('Data', 'engine2d', 'inis', 'patterntransitions', 'transitions.cif');
-  const gfxPatternTransitions = await loadCifTable(args.game, transitionFile, extractPatternTransitions, []);
+  const gfxPatternTransitions = await loadCifTable(roots, transitionFile, extractPatternTransitions, []);
   // The full `[GfxLandscape]` object table (`.cif`-only) — the table a decoded map's `objects`
   // placements join onto by `EditName` (trees/stones/bushes/mine decals/waves; visual frames +
   // logic footprints). Distinct from the `(bmd, palette)` atlas work list the bmd stage derives.
   const landscapeFile = join('Data', 'engine2d', 'inis', 'landscapes', 'landscapes.cif');
-  const landscapeGfx = await loadCifTable(args.game, landscapeFile, extractLandscapeGfx, []);
+  const landscapeGfx = await loadCifTable(roots, landscapeFile, extractLandscapeGfx, []);
   // The resolved gathering-pipeline join: per map-gathered good, its three landscape stages +
   // the `[GfxLandscape]` records (by `logicType`) that place each — materialized once so a later
   // gathering system doesn't re-scan the goods × landscapeGfx tables. See `buildGatheringPipeline`.
@@ -140,7 +140,7 @@ export async function buildIr(args: Args): Promise<ContentSet> {
   // file; a partial install that lacks it yields an empty bank (the app degrades to silence). Purely
   // render/audio-binding data — the pure sim never reads it.
   const soundFile = join('Data', 'engine2d', 'inis', 'soundfx', 'soundfx.cif');
-  const sounds = await loadCifTable(args.game, soundFile, extractSounds, {
+  const sounds = await loadCifTable(roots, soundFile, extractSounds, {
     staticGroups: [],
     ambient: [],
     jingles: [],
@@ -161,7 +161,7 @@ export async function buildIr(args: Args): Promise<ContentSet> {
   return parseContentSet({
     manifest: {
       version: IR_VERSION,
-      generatedFrom: { game: args.game, mod: args.mod },
+      generatedFrom: { game: roots.game, mod: roots.mod },
     },
     goods,
     jobs,
@@ -200,8 +200,8 @@ export async function buildIr(args: Args): Promise<ContentSet> {
  * Returns the assembled set so the caller can report record counts. The write target lives under the
  * gitignored `content/` — no copyrighted bytes enter the repo source.
  */
-export async function writeIr(args: Args): Promise<ContentSet> {
-  const set = await buildIr(args);
-  await writeJsonFile(args.out, 'ir.json', set);
+export async function writeIr(roots: SourceRoots, out: string): Promise<ContentSet> {
+  const set = await buildIr(roots);
+  await writeJsonFile(out, 'ir.json', set);
   return set;
 }

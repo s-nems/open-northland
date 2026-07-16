@@ -1,7 +1,8 @@
 import { join } from 'node:path';
 import { decodeIni, extractPaletteIndex, paletteAliasMap, parseIniSections } from '../../decoders/ini.js';
 import { decodePcx } from '../../decoders/pcx.js';
-import { readGameFile } from '../game-file.js';
+import type { SourceRoots } from '../../roots.js';
+import { readSourceFile } from '../game-file.js';
 
 /**
  * Recolour-palette resolution for the goods stage: a `goods_*`/landscape palette name → its 256-colour
@@ -23,9 +24,9 @@ export type PaletteAliasMap = ReadonlyMap<string, string>;
 
 /** Read {@link PALETTES_INI} into a name→`.pcx` alias map (the same graph the bmd stage uses). Empty (and
  *  warned) when the file is unreadable, so palette resolution degrades to the {@link PALETTE_DIRS} search. */
-export async function loadPaletteAliases(gameDir: string): Promise<PaletteAliasMap> {
+export async function loadPaletteAliases(roots: SourceRoots): Promise<PaletteAliasMap> {
   try {
-    const sections = parseIniSections(decodeIni(await readGameFile(gameDir, PALETTES_INI)));
+    const sections = parseIniSections(decodeIni(await readSourceFile(roots, PALETTES_INI)));
     return paletteAliasMap(extractPaletteIndex(sections));
   } catch (err) {
     console.warn(`[pipeline] goods: palettes.ini unreadable (${(err as Error).message}); resolving by path`);
@@ -41,21 +42,21 @@ export async function loadPaletteAliases(gameDir: string): Promise<PaletteAliasM
  * direct {@link PALETTE_DIRS} search for a name with no alias entry; `undefined` if unresolved everywhere.
  */
 export async function loadGoodsPalette(
-  gameDir: string,
+  roots: SourceRoots,
   name: string,
   aliases: PaletteAliasMap,
 ): Promise<Uint8Array | undefined> {
   const aliased = aliases.get(name.toLowerCase());
   if (aliased !== undefined) {
     try {
-      return decodePcx(await readGameFile(gameDir, aliased)).palette;
+      return decodePcx(await readSourceFile(roots, aliased)).palette;
     } catch {
       // aliased file unreadable — fall through to the by-path search
     }
   }
   for (const dir of PALETTE_DIRS) {
     try {
-      return decodePcx(await readGameFile(gameDir, join(dir, `${name}.pcx`))).palette;
+      return decodePcx(await readSourceFile(roots, join(dir, `${name}.pcx`))).palette;
     } catch {
       // try the next dir
     }

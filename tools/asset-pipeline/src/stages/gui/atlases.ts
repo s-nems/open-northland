@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import { decodeBmd } from '../../decoders/bmd/index.js';
-import { BOBS_DIR, emitIndexedAndPreviewAtlas, readGameFile } from '../game-file.js';
+import type { SourceRoots } from '../../roots.js';
+import { BOBS_DIR, emitIndexedAndPreviewAtlas, readSourceFile } from '../game-file.js';
 
 /** The GUI bob sheets to atlas, each with the palette its RGBA preview is coloured through. */
 interface GuiAtlasSource {
@@ -38,7 +39,7 @@ export interface GuiAtlasResult {
  * sheet that converted.
  */
 export async function convertGuiAtlases(
-  gameDir: string,
+  roots: SourceRoots,
   outDir: string,
   paletteByName: ReadonlyMap<string, Uint8Array>,
 ): Promise<GuiAtlasResult[]> {
@@ -46,7 +47,7 @@ export async function convertGuiAtlases(
   for (const src of GUI_ATLASES) {
     let bytes: Uint8Array;
     try {
-      bytes = await readGameFile(gameDir, src.bmd);
+      bytes = await readSourceFile(roots, src.bmd);
     } catch (err) {
       console.warn(`[pipeline] gui: skipped ${src.stem}: ${(err as Error).message}`);
       continue;

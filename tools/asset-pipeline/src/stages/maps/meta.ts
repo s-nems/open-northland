@@ -6,7 +6,7 @@ import {
   parseIniSections,
   type RuleSection,
 } from '../../decoders/ini.js';
-import { findPathCaseInsensitive } from './case-path.js';
+import { findPathCaseInsensitiveInDirs } from './case-path.js';
 
 /**
  * The emitted `maps/<id>.meta.json` sidecar: the map's menu-facing display strings, resolved to one
@@ -59,7 +59,7 @@ function sectionInt(sections: readonly RuleSection[], key: string): number | und
  * resolve independently, first source naming each wins.
  */
 async function resolveMapNameStringIds(
-  mapDir: string,
+  mapDirs: readonly string[],
   rel: string,
   cifSections: readonly RuleSection[] | undefined,
 ): Promise<MapNameStringIds> {
@@ -71,7 +71,7 @@ async function resolveMapNameStringIds(
   };
   for (const file of ['misc.inc', 'map.ini']) {
     if (nameStringId !== undefined && descriptionStringId !== undefined) break;
-    const path = await findPathCaseInsensitive(mapDir, [file]);
+    const path = await findPathCaseInsensitiveInDirs(mapDirs, [file]);
     if (path === null) continue;
     try {
       consider(parseIniSections(decodeIni(await readFile(path))));
@@ -96,10 +96,13 @@ async function resolveMapNameStringIds(
  * Returns undefined when no language yields strings — the caller then emits no meta sidecar (the menu
  * card degrades).
  */
-async function loadMapStringTable(mapDir: string, rel: string): Promise<Record<number, string> | undefined> {
+async function loadMapStringTable(
+  mapDirs: readonly string[],
+  rel: string,
+): Promise<Record<number, string> | undefined> {
   for (const lang of MAP_TEXT_LANGS) {
     for (const form of ['strings.ini', 'strings.cif'] as const) {
-      const path = await findPathCaseInsensitive(mapDir, ['text', lang, form]);
+      const path = await findPathCaseInsensitiveInDirs(mapDirs, ['text', lang, form]);
       if (path === null) continue;
       let table: Record<number, string>;
       try {
@@ -126,13 +129,13 @@ async function loadMapStringTable(mapDir: string, rel: string): Promise<Record<n
  * cif is decoded once per map, by the caller that also needs its entity layer.
  */
 export async function resolveMapMeta(
-  mapDir: string,
+  mapDirs: readonly string[],
   rel: string,
   cifSections: readonly RuleSection[] | undefined,
 ): Promise<MapMetaFile | undefined> {
-  const strings = await loadMapStringTable(mapDir, rel);
+  const strings = await loadMapStringTable(mapDirs, rel);
   if (strings === undefined) return undefined;
-  const { nameStringId, descriptionStringId } = await resolveMapNameStringIds(mapDir, rel, cifSections);
+  const { nameStringId, descriptionStringId } = await resolveMapNameStringIds(mapDirs, rel, cifSections);
   const name = strings[nameStringId];
   const description = strings[descriptionStringId];
   if (name === undefined && description === undefined) return undefined;

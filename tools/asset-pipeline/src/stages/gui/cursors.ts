@@ -2,7 +2,8 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { type DecodedCursor, decodeCursor } from '../../decoders/cur.js';
 import { encodePng } from '../../decoders/png.js';
-import { readGameFile } from '../game-file.js';
+import type { SourceRoots } from '../../roots.js';
+import { readSourceFile } from '../game-file.js';
 import { GUI_CONTENT_DIR } from './paths.js';
 
 /** The three mouse cursors under `DataX/Mouse/`, in a stable order. */
@@ -26,14 +27,14 @@ export interface GuiCursorResult {
  * Decodes each `DataX/Mouse/*.cur` to a PNG (with its hotspot) and copies the raw `.cur` through, both
  * under `content/gui/cursors/`. A missing/malformed cursor warns-and-skips. Returns one result per cursor.
  */
-export async function convertCursors(gameDir: string, outDir: string): Promise<GuiCursorResult[]> {
+export async function convertCursors(roots: SourceRoots, outDir: string): Promise<GuiCursorResult[]> {
   const done: GuiCursorResult[] = [];
   await mkdir(join(outDir, GUI_CONTENT_DIR, 'cursors'), { recursive: true });
   for (const name of CURSORS) {
     const rel = join(MOUSE_DIR, `${name}.cur`);
     let bytes: Uint8Array;
     try {
-      bytes = await readGameFile(gameDir, rel);
+      bytes = await readSourceFile(roots, rel);
     } catch (err) {
       console.warn(`[pipeline] gui: skipped cursor ${name}: ${(err as Error).message}`);
       continue;

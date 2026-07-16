@@ -1,11 +1,12 @@
 import { join } from 'node:path';
 import { decodeFnt, type FontMetrics, fontMetrics } from '../decoders/fnt.js';
+import type { SourceRoots } from '../roots.js';
 import {
   buildPaletteLut,
   emitIndexedAndPreviewAtlas,
   identityPalette,
   type PaletteLutResult,
-  readGameFile,
+  readSourceFile,
   writeJsonFile,
 } from './game-file.js';
 
@@ -51,7 +52,7 @@ export const FONT_COLOR_LUT_STEM = 'font-palettes-lut';
 /** The colour a font's RGBA preview atlas is rendered in (the LUT's first row). */
 export const DEFAULT_FONT_COLOR = 'white';
 
-/** One font text colour: its LUT-row name and the `.pcx` carrier it is read from (under `gameDir`). */
+/** One font text colour: its LUT-row name and the `.pcx` carrier it is read from (under `roots`). */
 interface FontColorSource {
   readonly name: string;
   readonly file: string;
@@ -88,7 +89,7 @@ const FONT_VARIANTS: readonly FontVariant[] = [
   { name: 'rus', dir: 'rus' },
 ];
 
-/** One `.fnt` to extract: its output key + the size stem + the variant + the on-disk path (under `gameDir`). */
+/** One `.fnt` to extract: its output key + the size stem + the variant + the on-disk path (under `roots`). */
 interface FontSource {
   /** Flat output key / atlas-stem base: the stem for the default set, `<variant>_<stem>` otherwise. */
   readonly key: string;
@@ -113,8 +114,8 @@ const FONT_SOURCES: readonly FontSource[] = FONT_VARIANTS.flatMap((v) =>
  * under `BOBS_DIR`. A missing/palette-less carrier is warned and replaced with a neutral grayscale row
  * so the row order (the app's contract) stays fixed regardless of a partial install.
  */
-export function convertFontColorLut(gameDir: string, outDir: string): Promise<PaletteLutResult> {
-  return buildPaletteLut(gameDir, outDir, FONT_COLORS, FONT_COLOR_LUT_STEM, {
+export function convertFontColorLut(roots: SourceRoots, outDir: string): Promise<PaletteLutResult> {
+  return buildPaletteLut(roots, outDir, FONT_COLORS, FONT_COLOR_LUT_STEM, {
     label: 'fonts',
     noun: 'colour',
   });
@@ -156,7 +157,7 @@ interface FontMetricsFile extends FontMetrics {
  * per font that converted, in {@link FONT_SOURCES} order.
  */
 export async function convertFonts(
-  gameDir: string,
+  roots: SourceRoots,
   outDir: string,
   previewPalette: Uint8Array | undefined,
 ): Promise<FontResult[]> {
@@ -165,7 +166,7 @@ export async function convertFonts(
   for (const src of FONT_SOURCES) {
     let bytes: Uint8Array;
     try {
-      bytes = await readGameFile(gameDir, src.file);
+      bytes = await readSourceFile(roots, src.file);
     } catch (err) {
       console.warn(`[pipeline] fonts: skipped ${src.key}: ${(err as Error).message}`);
       continue;
@@ -232,9 +233,9 @@ export interface FontStageSummary {
  * log. Each sub-step is independently resilient (warn-and-skip), so a partial game install still produces
  * whatever it can.
  */
-export async function convertFontStage(gameDir: string, outDir: string): Promise<FontStageSummary> {
-  const colors = await convertFontColorLut(gameDir, outDir);
-  const fonts = await convertFonts(gameDir, outDir, colors.byName.get(DEFAULT_FONT_COLOR));
+export async function convertFontStage(roots: SourceRoots, outDir: string): Promise<FontStageSummary> {
+  const colors = await convertFontColorLut(roots, outDir);
+  const fonts = await convertFonts(roots, outDir, colors.byName.get(DEFAULT_FONT_COLOR));
 
   const manifest: FontManifest = {
     fonts,

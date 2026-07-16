@@ -7,7 +7,8 @@ import {
   extractLandscapeGfx,
   parseIniSections,
 } from '../../decoders/ini.js';
-import { readGameFile } from '../game-file.js';
+import type { SourceRoots } from '../../roots.js';
+import { readSourceFile } from '../game-file.js';
 
 /**
  * The good→icon join: read the good table (`goodtypes.ini`) + the `[GfxLandscape]` good-pile records
@@ -113,19 +114,19 @@ export function resolveGoodIcons(
 }
 
 /** Read `goodtypes.ini` + `landscapes.cif` and resolve the good→icon bindings ({@link resolveGoodIcons}). */
-export async function buildGoodIcons(gameDir: string): Promise<Record<string, GoodIcon>> {
-  const { lines } = decodeCifStringArray(await readGameFile(gameDir, LANDSCAPES_CIF));
+export async function buildGoodIcons(roots: SourceRoots): Promise<Record<string, GoodIcon>> {
+  const { lines } = decodeCifStringArray(await readSourceFile(roots, LANDSCAPES_CIF));
   const landscapeGfx = extractLandscapeGfx(cifLinesToSections(lines), {
     file: LANDSCAPES_CIF,
     layer: 'base',
   });
-  return resolveGoodIcons(await loadGoods(gameDir), landscapeGfx);
+  return resolveGoodIcons(await loadGoods(roots), landscapeGfx);
 }
 
 /** Parse `goodtypes.ini` into the goods list (the id/typeId/landscapeType the icon + name joins key off). */
 export async function loadGoods(
-  gameDir: string,
+  roots: SourceRoots,
 ): Promise<readonly (GoodLike & { readonly typeId: number })[]> {
-  const sections = parseIniSections(decodeIni(await readGameFile(gameDir, GOODTYPES_INI)));
+  const sections = parseIniSections(decodeIni(await readSourceFile(roots, GOODTYPES_INI)));
   return extractGoods(sections, { file: GOODTYPES_INI, layer: 'base' });
 }

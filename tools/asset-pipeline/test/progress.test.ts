@@ -38,7 +38,7 @@ describe('unpackLibTree item reporting', () => {
       }),
     );
     const ticks: number[] = [];
-    const extracted = await unpackLibTree(game, out, (done) => ticks.push(done));
+    const extracted = await unpackLibTree({ game, mod: undefined }, out, (done) => ticks.push(done));
     expect(extracted).toHaveLength(2);
     expect(ticks).toEqual([1, 2]);
   });

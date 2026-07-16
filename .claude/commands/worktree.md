@@ -71,7 +71,7 @@ Run the gates that match the change, and do not fake them:
 - Pipeline/data path: when extraction output or schema behavior changes, run `npm run test:pipeline`
   (a fresh pipeline run against the owned game copy into a throwaway dir, validated by the
   real-content suite). Refresh the checkout's content with
-  `npm run pipeline -- --game "../Cultures 8th Wonder" --mod DataCnmd --out content` when the new
+  `npm run pipeline -- --game "../Cultures 8th Wonder" --out content` when the new
   output should land in `content/`.
 - Player-visible or visual path: start the dev server from the worktree on a non-5173 port, use the
   actual printed URL, exercise the relevant scene/page, and report the URL plus a short checklist for

@@ -72,7 +72,7 @@ in `decoders/pcx.ts` are related but diverge more — evaluate after.
 ## Verify
 
 `npm test` (round-trip suite), `npm run check`, `npm run build`. Then regenerate and diff:
-`npm run pipeline -- --game "../Cultures 8th Wonder" --mod DataCnmd --out content` must leave
+`npm run pipeline -- --game "../Cultures 8th Wonder" --out content` must leave
 `content/ir.json` (and the emitted atlases/LUTs) byte-identical to the pre-change baseline — a moved
 byte means a decode changed.
 

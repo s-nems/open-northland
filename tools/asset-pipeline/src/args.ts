@@ -1,9 +1,12 @@
 import { realpathSync } from 'node:fs';
-import { resolve, sep } from 'node:path';
+import { access } from 'node:fs/promises';
+import { join, resolve, sep } from 'node:path';
+import { CULTURESNATION_MOD } from './probe.js';
 
 export interface Args {
   game: string;
-  mod: string | undefined;
+  /** The culturesnation mod overlay root (a game-root-shaped directory), or undefined to auto-detect. */
+  modRoot: string | undefined;
   out: string;
 }
 
@@ -13,22 +16,63 @@ export function parseArgs(argv: readonly string[]): Args {
     return i >= 0 ? argv[i + 1] : undefined;
   };
   const game = get('--game');
-  if (game === undefined) {
-    throw new Error('usage: pipeline --game <dir> [--mod <subdir>] [--out <dir>]');
+  if (game === undefined || get('--mod') !== undefined) {
+    throw new Error(
+      'usage: pipeline --game <dir> [--mod-root <dir>] [--out <dir>] — a mod installed inside the ' +
+        `game folder is auto-detected (${CULTURESNATION_MOD}/); --mod-root points at a mod unpacked ` +
+        'elsewhere (the former --mod <subdir> flag is gone)',
+    );
   }
-  return { game, mod: get('--mod'), out: get('--out') ?? 'content' };
+  return { game, modRoot: get('--mod-root'), out: get('--out') ?? 'content' };
 }
 
 /**
- * Resolves the filesystem args (`game`, `out`) against `baseDir`, leaving absolute paths untouched.
- * The entry point passes `process.env.INIT_CWD` — the directory `npm run` was invoked from. npm runs
- * a workspace script with cwd set to the workspace package dir (`tools/asset-pipeline/`), so a
- * relative `--game ../Cultures 8th Wonder` would otherwise resolve there instead of where the user
- * typed it. Resolving against `INIT_CWD` makes the documented repo-root command work. `mod` stays a
- * bare subdir — it is always joined onto the resolved `game` ({@link resolveIniSources}).
+ * Resolves the filesystem args against `baseDir`, leaving absolute paths untouched. The entry point
+ * passes `process.env.INIT_CWD` — the directory `npm run` was invoked from. npm runs a workspace
+ * script with cwd set to the workspace package dir (`tools/asset-pipeline/`), so a relative
+ * `--game ../Cultures 8th Wonder` would otherwise resolve there instead of where the user typed it.
+ * Resolving against `INIT_CWD` makes the documented repo-root command work.
  */
 export function resolveArgs(args: Args, baseDir: string): Args {
-  return { ...args, game: resolve(baseDir, args.game), out: resolve(baseDir, args.out) };
+  return {
+    game: resolve(baseDir, args.game),
+    modRoot: args.modRoot === undefined ? undefined : resolve(baseDir, args.modRoot),
+    out: resolve(baseDir, args.out),
+  };
+}
+
+/** Where players get the culturesnation mod — named in the fail-fast error and the installer UI. */
+export const CULTURESNATION_HOME_URL = 'https://culturesnation.pl/news.php';
+
+/**
+ * Resolves the mod overlay root the conversion reads from ({@link import('./roots.js').SourceRoots}):
+ * an explicit `modRoot` must contain `DataCnmd/`; with none given, a game folder that contains
+ * `DataCnmd/` (the mod installed in place) is its own overlay. No mod anywhere fails fast here — a
+ * mod-less conversion would otherwise die deep in IR cross-reference validation (the tribe/weapon/
+ * house tables are readable only under `DataCnmd/`) with an error nobody can act on.
+ */
+export async function resolveModRoot(game: string, modRoot: string | undefined): Promise<string> {
+  const hasMod = async (root: string): Promise<boolean> => {
+    try {
+      await access(join(root, CULTURESNATION_MOD));
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  if (modRoot !== undefined) {
+    if (await hasMod(modRoot)) return modRoot;
+    throw new Error(
+      `--mod-root ${modRoot} has no ${CULTURESNATION_MOD}/ — point it at the unpacked culturesnation ` +
+        'mod folder (the directory that contains DataCnmd/ and CnModMaps/).',
+    );
+  }
+  if (await hasMod(game)) return game;
+  throw new Error(
+    `the culturesnation mod is required and was not found: ${game} has no ${CULTURESNATION_MOD}/ and ` +
+      `no --mod-root was given. Download the mod from ${CULTURESNATION_HOME_URL}, unpack it, and pass ` +
+      '--mod-root <unpacked dir> (or install it into the game folder).',
+  );
 }
 
 /**

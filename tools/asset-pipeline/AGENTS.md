@@ -17,10 +17,13 @@ The root [`AGENTS.md`](../../AGENTS.md) carries the project-wide + legal rules; 
   output with the running original. An agent cannot sign off on pixel fidelity alone.
 - **Never commit decoded or copyrighted bytes.** `content/` is gitignored; tests use the synthetic
   fixture, never real game data. No original assets enter the repo (root `AGENTS.md` Legal).
-- The documented run: `npm run pipeline -- --game "../Cultures 8th Wonder" --mod DataCnmd --out content`.
-  `start` runs the compiled `dist/cli.js` (raw-TS strip-types can't resolve the `.js` import
-  specifiers). Rebuild `dist/` before trusting cross-package pipeline tests after adding exports or
-  schema fields.
+- The documented run: `npm run pipeline -- --game "../Cultures 8th Wonder" --out content`. The
+  culturesnation mod is required (`resolveModRoot` fails fast without it): installed in the game
+  folder it is auto-detected; unpacked elsewhere it is passed with `--mod-root <dir>`, and every
+  read resolves overlay-first through `SourceRoots` (`src/roots.ts`) — the mod zip also patches base
+  `Data/` files, so the overlay applies to base reads too. `start` runs the compiled `dist/cli.js`
+  (raw-TS strip-types can't resolve the `.js` import specifiers). Rebuild `dist/` before trusting
+  cross-package pipeline tests after adding exports or schema fields.
 - **Provenance:** every IR record keeps its source file + original field names so the conversion is
   auditable and re-runnable. Don't silently rename semantics.
 - **Probe the real source before coding.** `.ini` keys are case-sensitive, repeated keys and
