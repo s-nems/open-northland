@@ -2,7 +2,6 @@ import {
   Building,
   GroundDrop,
   Position,
-  Resource,
   ResourceFootprint,
   Stockpile,
   stockpileEntries,
@@ -13,6 +12,7 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { buildingFootprintOf, nearestCell, nearestFreeNeighbour, translatedCells } from './geometry.js';
 import { resourceBlockedCells } from './resource-blocked-cache.js';
+import { resourceAtTile } from './resource-tile-cache.js';
 
 // INTERACTION — where a unit stands to use a building or resource: a building's door node, and the
 // walkable work cell adjacent to (or on) a resource/ground drop.
@@ -45,22 +45,6 @@ export function interactionNode(
   const at = { x: ax + door.dx, y: ay + door.dy };
   if (ctx.terrain !== undefined && !ctx.terrain.inBounds(at.x, at.y)) return { x: ax, y: ay };
   return at;
-}
-
-function resourceAtTile(world: World, x: number, y: number, goodType: number): Entity | null {
-  // A PICK, so the winner must be canonical: keep the LOWEST id among matches rather than the first
-  // in query order (store insertion order is history-dependent — two same-good resources sharing a
-  // node would otherwise resolve differently after a snapshot rebuild).
-  let best: Entity | null = null;
-  for (const resource of world.query(Resource, Position)) {
-    if (best !== null && resource >= best) continue;
-    const pos = world.get(resource, Position);
-    const n = nodeOfPosition(pos.x, pos.y);
-    if (n.hx !== x || n.hy !== y) continue;
-    if (world.get(resource, Resource).goodType !== goodType) continue;
-    best = resource;
-  }
-  return best;
 }
 
 function stockedGoodAt(world: World, entity: Entity): number | null {
