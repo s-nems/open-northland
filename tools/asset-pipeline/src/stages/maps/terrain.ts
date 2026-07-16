@@ -39,6 +39,9 @@ export interface MapDatTerrainFile extends MapDatTerrainMap {
   readonly elevation?: number[];
   /** Per-cell baked brightness (`embr` lane, one byte per cell, 127 = neutral); omitted when the map lacks it. */
   readonly brightness?: number[];
+  /** Per-cell water-depth/shore band (`lmms` lane collapsed to the cell-centre node — 0 land,
+   *  1..6 shore rings, 7 open sea); omitted when the map lacks it. */
+  readonly shore?: number[];
   /** Authored entity placements (the sibling `map.cif`'s `StaticObjects` verbs, names verbatim). */
   readonly entities?: MapStaticObjects;
 }
@@ -224,6 +227,36 @@ function brightnessFromMapDat(decoded: DecodedMap): MapDatTerrainFile['brightnes
 }
 
 /**
+ * Decodes the `lmms` water-depth/shore lane into the emitted `shore` layer. Unlike `lmhe`/`embr` the
+ * lane is HALF-CELL resolution (2W × 2H, like `emla` — verified by unpacked length and pinned by the
+ * value histogram on the owned maps: 0 = land, 1..6 = shore rings counting out from the coast,
+ * 7 = open sea; docs/formats/MAPDAT.md names the semantics). Collapsed to one value per cell by
+ * sampling each cell's CENTRE node (`(2x + (y&1), 2y)` — the vertex the ground mesh bakes for the
+ * cell), matching the per-cell resolution of the other render lanes; a named approximation that
+ * halves the ring resolution, fine for the wave-amplitude ramp that consumes it. Returns undefined
+ * when the map lacks the lane; throws on a length mismatch (caught by {@link mapDatToTerrain}).
+ */
+function shoreFromMapDat({ map, size }: DecodedMap): MapDatTerrainFile['shore'] {
+  const chunk = findChunk(map, 'lmms');
+  if (chunk === undefined) return undefined;
+  const lane = unpackMapLayer(chunk).cells;
+  const hw = size.width * 2;
+  const expected = hw * size.height * 2;
+  if (lane.length !== expected) {
+    throw new Error(
+      `mapdat: lmms shore lane has ${lane.length} half-cells, expected ${expected} (${size.width}×${size.height} × 4)`,
+    );
+  }
+  const out = new Array<number>(size.width * size.height);
+  for (let y = 0; y < size.height; y++) {
+    for (let x = 0; x < size.width; x++) {
+      out[y * size.width + x] = lane[2 * y * hw + 2 * x + (y & 1)] as number;
+    }
+  }
+  return out;
+}
+
+/**
  * The shared per-cell byte-lane decode both wrappers above ride: unpack the tagged `X8el` chunk and
  * carry it verbatim, enforcing the one structural invariant these lanes share — one byte per cell
  * (row-major, unpacked length === width·height, not the `2W × 2H` half-cell resolution the
@@ -286,6 +319,7 @@ export function mapDatToTerrain(bytes: Uint8Array): MapDatTerrainFile {
   const objects = tryLayer('object lanes', () => objectsFromMapDat(decoded));
   const elevation = tryLayer('elevation lane', () => elevationFromMapDat(decoded));
   const brightness = tryLayer('brightness lane', () => brightnessFromMapDat(decoded));
+  const shore = tryLayer('shore lane', () => shoreFromMapDat(decoded));
   return {
     ...terrain,
     ...(ground !== undefined ? { ground } : {}),
@@ -293,5 +327,6 @@ export function mapDatToTerrain(bytes: Uint8Array): MapDatTerrainFile {
     ...(objects !== undefined ? { objects } : {}),
     ...(elevation !== undefined ? { elevation } : {}),
     ...(brightness !== undefined ? { brightness } : {}),
+    ...(shore !== undefined ? { shore } : {}),
   };
 }

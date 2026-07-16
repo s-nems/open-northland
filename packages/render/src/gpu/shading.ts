@@ -36,37 +36,69 @@ const matrixBlock = `
   uniform mat3 uTransformMatrix;
 `;
 
+// Water-surface animation constants (an OpenNorthland enhancement — the original's water is static
+// geometry; `data/water.ts`). Time is measured in sim ticks (tick + alpha), so a `?shot` frame at a
+// fixed tick is byte-reproducible. Tuned by eye.
+/** Peak vertical bob (world px) at full wave amplitude. */
+const WAVE_AMPLITUDE_PX = 1.75;
+/** Swell angular speed: one bob cycle every 30 ticks (~2.5 s at the 12 Hz sim). */
+const WAVE_RADIANS_PER_TICK = (2 * Math.PI) / 30;
+/** Spatial phase gradient (radians per world px along x+y) — the swell travels diagonally. */
+const WAVE_PHASE_PER_PX = (2 * Math.PI) / 150;
+/** Peak brightness modulation of the water shimmer (fraction of the lane multiplier). */
+const WAVE_SHIMMER = 0.08;
+/** The shimmer's own angular speed — off the swell's so glints don't pulse in lockstep. */
+const WAVE_SHIMMER_RADIANS_PER_TICK = (2 * Math.PI) / 21;
+
 const FIELD_VERTEX = `#version 300 es
   in vec2 aPosition;
   in vec2 aUV;
   in vec2 aBrightnessUV;
+  in float aWave;
 
   out vec2 vUV;
   out vec2 vBrightnessUV;
+  out float vWave;
+  out float vWavePhase;
+  uniform vec2 uWave; // x = animation time (sim ticks), y = master amplitude scale (0 = still)
   ${matrixBlock}
   void main(void) {
+    float phase = (aPosition.x + aPosition.y) * ${WAVE_PHASE_PER_PX.toFixed(8)};
+    vec2 pos = aPosition;
+    // Water swell: bob the vertex by its wave amplitude (0 on land and along the coast, data/water.ts).
+    pos.y -= aWave * uWave.y * ${WAVE_AMPLITUDE_PX.toFixed(4)}
+      * sin(uWave.x * ${WAVE_RADIANS_PER_TICK.toFixed(8)} + phase);
     mat3 mvp = uProjectionMatrix * uWorldTransformMatrix * uTransformMatrix;
-    gl_Position = vec4((mvp * vec3(aPosition, 1.0)).xy, 0.0, 1.0);
+    gl_Position = vec4((mvp * vec3(pos, 1.0)).xy, 0.0, 1.0);
     vUV = aUV;
     vBrightnessUV = aBrightnessUV;
+    vWave = aWave;
+    vWavePhase = phase;
   }
 `;
 
 // texel.r is the raw lane byte / 255; the measured curve is byte / BRIGHTNESS_NEUTRAL — one constant
 // rescale. uColor is the mesh-pipe group colour (premultiplied tint·alpha) the stock shader applies.
 const FIELD_FRAGMENT = `#version 300 es
+  precision highp float;
   in vec2 vUV;
   in vec2 vBrightnessUV;
+  in float vWave;
+  in float vWavePhase;
 
   uniform sampler2D uTexture;
   uniform sampler2D uBrightnessTex;
   uniform vec4 uColor;
+  uniform vec2 uWave;
 
   out vec4 finalColor;
 
   void main(void) {
     vec4 texel = texture(uTexture, vUV);
     float lane = texture(uBrightnessTex, vBrightnessUV).r * ${(255 / BRIGHTNESS_NEUTRAL).toFixed(8)};
+    // Water shimmer: a second travelling wave glints the shaded water surface (0 on land).
+    lane *= 1.0 + vWave * uWave.y * ${WAVE_SHIMMER.toFixed(4)}
+      * sin(uWave.x * ${WAVE_SHIMMER_RADIANS_PER_TICK.toFixed(8)} + vWavePhase * 1.7);
     // Unclamped multiply: > 1 brightens (the lane's 128..255 half); the FB write clamps per channel.
     finalColor = vec4(texel.rgb * lane, texel.a) * uColor;
   }
@@ -107,20 +139,42 @@ const VERTEX_FRAGMENT = `#version 300 es
 let fieldProgram: GlProgram | undefined;
 let vertexProgram: GlProgram | undefined;
 
+/** The mutable water-animation uniform handle of one shaded ground mesh: `uWave = [timeTicks,
+ *  amplitudeScale]`, mutated in place per frame (a `Float32Array` so the shared program re-uploads
+ *  changed contents — the same rule as the paletted sprite's uniforms). */
+export interface WaveUniforms {
+  uniforms: { uWave: Float32Array };
+  /** Bump the group's dirty id so Pixi re-uploads the changed contents. */
+  update(): void;
+}
+
 /**
  * A {@link Shader} for the shaded ground mesh: draws `uTexture = source` with the per-fragment lane
  * multiplier sampled from `brightnessTex` (the map's `embr` bytes as an R8 texture, linear-filtered +
- * edge-clamped — the GPU twin of `makeCellSampler`) at the geometry's `aBrightnessUV`. One per
- * mesh/page; the compiled program is shared. WebGL-only, like
+ * edge-clamped — the GPU twin of `makeCellSampler`) at the geometry's `aBrightnessUV`, plus the
+ * water-wave vertex bob/shimmer driven by the returned {@link WaveUniforms}. One per mesh/page; the
+ * compiled program is shared. WebGL-only, like
  * {@link import('./paletted-sprite/index.js').PalettedSprite} — the renderer preference is `webgl`
  * (`pixi-app.ts`).
  */
-export function makeShadedTerrainShader(source: TextureSource, brightnessTex: TextureSource): Shader {
+export function makeShadedTerrainShader(
+  source: TextureSource,
+  brightnessTex: TextureSource,
+): { shader: Shader; wave: WaveUniforms } {
   fieldProgram ??= new GlProgram({ vertex: FIELD_VERTEX, fragment: FIELD_FRAGMENT });
-  return new Shader({
+  const waveVars = {
+    uWave: { value: new Float32Array([0, 1]), type: 'vec2<f32>' as const },
+  };
+  const shader = new Shader({
     glProgram: fieldProgram,
-    resources: { uTexture: source, uSampler: source.style, uBrightnessTex: brightnessTex },
+    resources: {
+      uTexture: source,
+      uSampler: source.style,
+      uBrightnessTex: brightnessTex,
+      waveVars,
+    },
   });
+  return { shader, wave: shader.resources.waveVars as WaveUniforms };
 }
 
 /**

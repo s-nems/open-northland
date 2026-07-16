@@ -397,6 +397,9 @@ export class WorldRenderer {
       SPRITE_CULL_MARGIN + this.elevation.maxLift,
     );
     this.terrain.cull(vp);
+    // Water-surface animation on the interpolated sim clock (deterministic — `?shot` at a fixed tick
+    // reproduces byte-identically); only the visible blocks' uniforms are written.
+    this.terrain.animate(tick + alpha);
     // Recomposite the fog wash (band/generation-keyed — usually a no-op) and build this frame's cull
     // predicates for the tall objects + the sprite pool below. Both close over the same FogView, so the
     // wash, the trees and the entities can never disagree about a cell.
