@@ -12,6 +12,8 @@ export interface IniSource {
   readonly path: string;
   /** Path stamped onto each record's `source.file` — relative so the IR is location-agnostic. */
   readonly file: string;
+  /** The path's namespace (`Data/logic` vs `DataCnmd`), not which root supplied the bytes — a mod
+   * overlay patching a base file still stamps `base`, matching the old in-place provenance. */
   readonly layer: 'base' | 'mod';
 }
 

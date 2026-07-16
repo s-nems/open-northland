@@ -1,5 +1,6 @@
-import { access } from 'node:fs/promises';
+import { access, stat } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
+import { CULTURESNATION_MOD } from './probe.js';
 import { walkFiles } from './walk.js';
 
 /**
@@ -42,23 +43,27 @@ export async function resolveSourceFile(roots: SourceRoots, rel: string): Promis
 
 /**
  * Recursively collects every file under the roots whose lower-cased relative path satisfies `match`,
- * as a union keyed by relative path — the overlay's copy wins on a collision — sorted by `rel` so a
- * re-run is reproducible regardless of directory-entry order. A missing `game` root propagates (an
- * environmental error); the mod root's existence is the caller's contract ({@link SourceRoots}).
+ * as a union keyed by the case-folded relative path — the overlay's copy wins a collision even when
+ * the two trees spell the path with different case (the shipped trees mix case freely and the
+ * default target filesystems are case-insensitive, so an over-install would have merged such paths
+ * into one file) — sorted by `rel` so a re-run is reproducible regardless of directory-entry order.
+ * A missing `game` root propagates (an environmental error); the mod root's existence is the
+ * caller's contract ({@link SourceRoots}).
  */
 export async function collectSourceFiles(
   roots: SourceRoots,
   match: (relLower: string) => boolean,
 ): Promise<SourceFile[]> {
-  const byRel = new Map<string, string>();
+  const byRel = new Map<string, SourceFile>();
   for (const root of rootsInOrder(roots)) {
     for await (const file of walkFiles(root)) {
       const rel = relative(root, file);
-      if (!match(rel.toLowerCase()) || byRel.has(rel)) continue;
-      byRel.set(rel, file);
+      const key = rel.toLowerCase();
+      if (!match(key) || byRel.has(key)) continue;
+      byRel.set(key, { rel, path: file });
     }
   }
-  return [...byRel.entries()].map(([rel, path]) => ({ rel, path })).sort((a, b) => (a.rel < b.rel ? -1 : 1));
+  return [...byRel.values()].sort((a, b) => (a.rel < b.rel ? -1 : 1));
 }
 
 /**
@@ -68,4 +73,37 @@ export async function collectSourceFiles(
 export async function collectSourceFilesNamed(roots: SourceRoots, name: string): Promise<SourceFile[]> {
   const suffix = `${sep}${name.toLowerCase()}`;
   return collectSourceFiles(roots, (rel) => `${sep}${rel}`.endsWith(suffix));
+}
+
+/** Where players get the culturesnation mod — named in the fail-fast error and the installer UI. */
+export const CULTURESNATION_HOME_URL = 'https://culturesnation.pl/news.php';
+
+/**
+ * Resolves the mod overlay root the conversion reads from: an explicit `modRoot` must contain a
+ * `DataCnmd/` directory; with none given, a game folder that contains one (the mod installed in
+ * place) is its own overlay. No mod anywhere fails fast here — a mod-less conversion would
+ * otherwise die deep in IR cross-reference validation (the tribe/weapon/house tables are readable
+ * only under `DataCnmd/`) with an error nobody can act on.
+ */
+export async function resolveModRoot(game: string, modRoot: string | undefined): Promise<string> {
+  const hasMod = async (root: string): Promise<boolean> => {
+    try {
+      return (await stat(join(root, CULTURESNATION_MOD))).isDirectory();
+    } catch {
+      return false;
+    }
+  };
+  if (modRoot !== undefined) {
+    if (await hasMod(modRoot)) return modRoot;
+    throw new Error(
+      `--mod-root ${modRoot} has no ${CULTURESNATION_MOD}/ — point it at the unpacked culturesnation ` +
+        'mod folder (the directory that contains DataCnmd/ and CnModMaps/).',
+    );
+  }
+  if (await hasMod(game)) return game;
+  throw new Error(
+    `the culturesnation mod is required and was not found: ${game} has no ${CULTURESNATION_MOD}/ and ` +
+      `no --mod-root was given. Download the mod from ${CULTURESNATION_HOME_URL}, unpack it, and pass ` +
+      '--mod-root <unpacked dir> (or install it into the game folder).',
+  );
 }

@@ -5,6 +5,7 @@ import { basename, dirname, isAbsolute, join, normalize, sep } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { CULTURESNATION_MOD } from '@open-northland/asset-pipeline';
+import type { ModEvent } from './ipc.js';
 import { readZipEntries, readZipEntryData } from './zip.js';
 
 /**
@@ -23,11 +24,9 @@ export const CNMOD_DOWNLOAD_URL =
 /** SHA-256 of the known-good `CnMod 1.3.1.zip`; a mismatch means a new (unverified) mod version. */
 export const CNMOD_KNOWN_SHA256 = '847e974a4a56960e081fb313d655a85b6256cd2e6cb9430d4974ff1826170ad9';
 
-/** Progress the installer streams to the wizard; completion/failure ride the returned promise. */
-export type ModInstallEvent =
-  | { readonly kind: 'mod-download'; readonly received: number; readonly total?: number }
-  | { readonly kind: 'mod-extract'; readonly done: number; readonly total: number }
-  | { readonly kind: 'mod-warning'; readonly message: string };
+/** The largest Drive interstitial page the downloader will buffer — a hop that answers with more
+ * HTML than this is not the confirm form (the real one is ~2 KB). */
+const MAX_INTERSTITIAL_BYTES = 1 << 20;
 
 /** The Google Drive file id out of a `drive.google.com/file/d/<id>/…` URL. */
 export function parseDriveFileId(url: string): string | undefined {
@@ -42,6 +41,14 @@ export function parseDriveFileId(url: string): string | undefined {
 export function parseDriveConfirmUrl(html: string): string | undefined {
   const action = /<form[^>]+action="([^"]+)"/.exec(html)?.[1];
   if (action === undefined) return undefined;
+  // The form must submit back to Google — a page steering the download anywhere else (a tampered
+  // interstitial) is refused rather than fetched, since the pinned hash only warns on a mismatch.
+  try {
+    const host = new URL(action).hostname;
+    if (host !== 'google.com' && !host.endsWith('.google.com')) return undefined;
+  } catch {
+    return undefined;
+  }
   const params = new URLSearchParams();
   for (const input of html.matchAll(/<input type="hidden" name="([^"]+)" value="([^"]*)"/g)) {
     const [, name, value] = input;
@@ -57,11 +64,31 @@ function isFileResponse(response: Response): boolean {
   return !type.includes('text/html');
 }
 
+/** Rejects a non-2xx hop with its real status instead of streaming an error page to disk. */
+function assertOk(response: Response, hop: string): void {
+  if (!response.ok)
+    throw new Error(`mod download: ${hop} answered ${response.status} ${response.statusText}`);
+}
+
+/** Reads at most {@link MAX_INTERSTITIAL_BYTES} of a text response — never the whole body. */
+async function readBoundedText(response: Response): Promise<string> {
+  if (response.body === null) return '';
+  const chunks: Uint8Array[] = [];
+  let received = 0;
+  for await (const chunk of response.body as unknown as AsyncIterable<Uint8Array>) {
+    chunks.push(chunk);
+    received += chunk.length;
+    if (received >= MAX_INTERSTITIAL_BYTES) break;
+  }
+  await response.body.cancel().catch(() => undefined);
+  return Buffer.concat(chunks, Math.min(received, MAX_INTERSTITIAL_BYTES)).toString('utf8');
+}
+
 /** Streams `response` to `file`, reporting progress and returning the stream's SHA-256 hex. */
 async function streamToFile(
   response: Response,
   file: string,
-  onEvent: (event: ModInstallEvent) => void,
+  onEvent: (event: ModEvent) => void,
   signal: AbortSignal | undefined,
 ): Promise<string> {
   if (response.body === null) throw new Error('mod download: empty response body');
@@ -92,12 +119,13 @@ async function streamToFile(
  */
 export async function downloadCnModZip(
   destZip: string,
-  onEvent: (event: ModInstallEvent) => void,
+  onEvent: (event: ModEvent) => void,
   options?: { readonly signal?: AbortSignal; readonly fetchFn?: typeof fetch; readonly url?: string },
 ): Promise<string> {
   const fetchFn = options?.fetchFn ?? fetch;
   const signal = options?.signal;
   const first = await fetchFn(options?.url ?? CNMOD_DOWNLOAD_URL, { signal: signal ?? null });
+  assertOk(first, 'the culturesnation.pl link');
   if (isFileResponse(first)) return streamToFile(first, destZip, onEvent, signal);
 
   const fileId = parseDriveFileId(first.url);
@@ -110,15 +138,17 @@ export async function downloadCnModZip(
   const second = await fetchFn(`https://drive.usercontent.google.com/download?id=${fileId}&export=download`, {
     signal: signal ?? null,
   });
+  assertOk(second, 'Google Drive');
   if (isFileResponse(second)) return streamToFile(second, destZip, onEvent, signal);
 
-  const confirmUrl = parseDriveConfirmUrl(await second.text());
+  const confirmUrl = parseDriveConfirmUrl(await readBoundedText(second));
   if (confirmUrl === undefined) {
     throw new Error(
       'mod download: Google Drive did not offer a download form (quota exceeded, or the page changed)',
     );
   }
   const third = await fetchFn(confirmUrl, { signal: signal ?? null });
+  assertOk(third, 'the Google Drive download');
   if (!isFileResponse(third)) {
     throw new Error('mod download: Google Drive kept answering with a page instead of the file');
   }
@@ -127,6 +157,8 @@ export async function downloadCnModZip(
 
 /** A zip member name (forward-slash separated) as a safe extraction-relative path, or undefined to skip. */
 export function zipMemberRelPath(name: string): string | undefined {
+  // A Windows drive-relative name (`C:evil`) is not absolute, so guard it explicitly.
+  if (/^[A-Za-z]:/.test(name)) return undefined;
   const native = name.replace(/\//g, sep);
   const norm = normalize(native);
   if (norm === '' || norm === '.') return undefined;
@@ -134,19 +166,21 @@ export function zipMemberRelPath(name: string): string | undefined {
   return norm;
 }
 
-/** Extracts every file member of `zipPath` under `destDir`; returns the number of files written. */
+/** Extracts every file member of `zipPath` under `destDir`; returns the number of files written.
+ * An aborted `signal` stops between entries (the wizard's Cancel stays live while unpacking). */
 export async function extractModZip(
   zipPath: string,
   destDir: string,
-  onEvent: (event: ModInstallEvent) => void,
+  onEvent: (event: ModEvent) => void,
+  signal?: AbortSignal,
 ): Promise<number> {
   const fh = await open(zipPath, 'r');
   try {
-    const entries = (await readZipEntries(fh, (await stat(zipPath)).size)).filter(
-      (e) => !e.name.endsWith('/'),
-    );
+    const fileSize = (await stat(zipPath)).size;
+    const entries = (await readZipEntries(fh, fileSize)).filter((e) => !e.name.endsWith('/'));
     let done = 0;
     for (const entry of entries) {
+      signal?.throwIfAborted();
       const rel = zipMemberRelPath(entry.name);
       if (rel === undefined) {
         onEvent({ kind: 'mod-warning', message: `skipped unsafe zip member "${entry.name}"` });
@@ -154,7 +188,7 @@ export async function extractModZip(
       }
       const outPath = join(destDir, rel);
       await mkdir(dirname(outPath), { recursive: true });
-      await writeFile(outPath, await readZipEntryData(fh, entry));
+      await writeFile(outPath, await readZipEntryData(fh, entry, fileSize));
       done++;
       onEvent({ kind: 'mod-extract', done, total: entries.length });
     }
@@ -203,7 +237,9 @@ export async function discoverInstalledMod(modsDir: string): Promise<string | un
   let children: string[];
   try {
     children = (await readdir(modsDir, { withFileTypes: true }))
-      .filter((e) => e.isDirectory())
+      // Dot-dirs are never installed mods — `.installing/` in particular is the extraction staging
+      // area, whose half-written DataCnmd/ must not be discovered after an interrupted install.
+      .filter((e) => e.isDirectory() && !e.name.startsWith('.'))
       .map((e) => e.name);
   } catch {
     return undefined;
@@ -223,7 +259,7 @@ export async function discoverInstalledMod(modsDir: string): Promise<string | un
  */
 export async function installCnMod(
   modsDir: string,
-  onEvent: (event: ModInstallEvent) => void,
+  onEvent: (event: ModEvent) => void,
   options?: { readonly signal?: AbortSignal; readonly fetchFn?: typeof fetch; readonly url?: string },
 ): Promise<string> {
   await mkdir(modsDir, { recursive: true });
@@ -239,7 +275,7 @@ export async function installCnMod(
     }
     await rm(stagingDir, { recursive: true, force: true });
     await mkdir(stagingDir, { recursive: true });
-    const files = await extractModZip(zipPath, stagingDir, onEvent);
+    const files = await extractModZip(zipPath, stagingDir, onEvent, options?.signal);
     if (files === 0) throw new Error('mod install: the downloaded archive contained no files');
     const root = await findModRootUnder(stagingDir);
     if (root === undefined) {

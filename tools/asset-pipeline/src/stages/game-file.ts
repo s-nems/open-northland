@@ -30,15 +30,11 @@ export const TEXTURES_DIR = join('Data', 'engine2d', 'bin', 'textures');
  */
 export async function readSourceFile(roots: SourceRoots, relPath: string): Promise<Uint8Array> {
   const order = rootsInOrder(roots);
-  for (const root of order.slice(0, -1)) {
+  for (const root of order) {
     const bytes = await readLooseFile(root, relPath);
     if (bytes !== undefined) return bytes;
   }
-  const last = order[order.length - 1];
-  if (last === undefined) throw new Error(`${relPath} not found (no source roots)`);
-  const bytes = await readLooseFile(last, relPath);
-  if (bytes === undefined) throw new Error(`${relPath} not found under ${order.join(' or ')}`);
-  return bytes;
+  throw new Error(`${relPath} not found under ${order.join(' or ')}`);
 }
 
 /** One root's leaf-case-tolerant read; undefined when the file is absent there. */

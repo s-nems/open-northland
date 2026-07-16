@@ -93,6 +93,18 @@ describe('source roots', () => {
       const found = await collectSourceFilesNamed({ game, mod: game }, 'map.dat');
       expect(found).toHaveLength(1);
     });
+
+    it('collapses a case-divergent spelling of the same path (overlay wins, like an over-install)', async () => {
+      await write(game, join('Data', 'Maps', 'shared', 'map.dat'), 'base');
+      await write(mod, join('data', 'maps', 'shared', 'map.dat'), 'overlay');
+      const found = await collectSourceFilesNamed({ game, mod }, 'map.dat');
+      expect(found).toEqual([
+        {
+          rel: join('data', 'maps', 'shared', 'map.dat'),
+          path: join(mod, 'data', 'maps', 'shared', 'map.dat'),
+        },
+      ]);
+    });
   });
 
   describe('collectSourceFiles', () => {

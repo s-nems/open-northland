@@ -34,6 +34,15 @@ describe('drive URL parsing', () => {
     );
     expect(parseDriveConfirmUrl('<html><body>quota exceeded</body></html>')).toBeUndefined();
   });
+
+  it('refuses a confirm form that submits anywhere but Google', () => {
+    const html =
+      '<form action="https://evil.example/download"><input type="hidden" name="id" value="FILE"></form>';
+    expect(parseDriveConfirmUrl(html)).toBeUndefined();
+    const lookalike =
+      '<form action="https://notgoogle.com/download"><input type="hidden" name="id" value="FILE"></form>';
+    expect(parseDriveConfirmUrl(lookalike)).toBeUndefined();
+  });
 });
 
 describe('zipMemberRelPath', () => {
@@ -43,6 +52,7 @@ describe('zipMemberRelPath', () => {
     );
     expect(zipMemberRelPath('../evil')).toBeUndefined();
     expect(zipMemberRelPath('/abs')).toBeUndefined();
+    expect(zipMemberRelPath('C:evil')).toBeUndefined(); // Windows drive-relative, not caught by isAbsolute
     expect(zipMemberRelPath('')).toBeUndefined();
   });
 });
