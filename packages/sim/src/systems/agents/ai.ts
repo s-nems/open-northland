@@ -15,11 +15,13 @@ import {
   Resting,
   Settler,
   Stance,
+  Stranded,
   Wedding,
   WorkFlag,
   YardDeliveryRoute,
 } from '../../components/index.js';
-import type { World } from '../../ecs/world.js';
+import { TICKS_PER_SECOND } from '../../core/loop.js';
+import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
@@ -68,6 +70,21 @@ export const aiSystem: System = (world, ctx) => {
   atomicPlanner(world, ctx, ctx.terrain);
   navigationPlanner(world, ctx.terrain);
 };
+
+/** How long a stranded walker parks before shedding its failed route and re-planning — long enough that
+ *  a permanently blocked target costs one path query per episode, short enough that a transient blockage
+ *  (a footprint stamped mid-walk, a crowd) heals within seconds. Our recovery pacing (the original's
+ *  retry cadence is not readable). */
+const STRANDED_RETRY_TICKS = 4 * TICKS_PER_SECOND;
+
+/** Whether a drive that runs its own failed-route protocol owns `e`'s walk: the player-order, chase,
+ *  flee, and wedding systems each read the `failed` flag and clear/cancel it themselves — the planner's
+ *  stranded recovery must not eat their signal. */
+function ownsFailedRoute(world: World, e: Entity): boolean {
+  return (
+    world.has(e, PlayerOrder) || world.has(e, Engagement) || world.has(e, Fleeing) || world.has(e, Wedding)
+  );
+}
 
 /**
  * The atomic-utility planner: pick the next atomic for each idle settler by running the drive
@@ -155,7 +172,24 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // Busy: an atomic is running, or the settler is en route to a target. Leave it to play out (its
     // FarmTask claim, if any, stays live so colleagues keep avoiding its target).
     if (world.has(e, CurrentAtomic)) continue;
-    if (isTravelling(world, e)) continue;
+    // A FAILED route is not travel — nothing on the nav side retries it (navigationPlanner skips any
+    // entity with a live request; routing skips failed ones), so a settler left in that state stands
+    // forever. Drives with their own failure protocol keep the signal (the player-order, flee, chase,
+    // and wedding systems read and clear the flag themselves); for everyone else the planner parks the
+    // dead route (Stranded), then sheds it and re-plans — the pacing costs one path query per retry
+    // instead of per tick when the target stays blocked, and a transient blockage heals on its own.
+    const request = world.tryGet(e, PathRequest); // fresh read — the yard block above may have cleared it
+    if (request?.failed === true && !ownsFailedRoute(world, e)) {
+      const stranded = world.tryGet(e, Stranded);
+      if (stranded === undefined) {
+        world.add(e, Stranded, { retryAt: ctx.tick + STRANDED_RETRY_TICKS });
+        continue;
+      }
+      if (ctx.tick < stranded.retryAt) continue;
+      clearNavState(world, e); // sheds Stranded with the route — fall through and re-plan this tick
+    } else if (isTravelling(world, e)) {
+      continue;
+    }
     // Replanning from here: the settler's previous farm intent is spent/stale — release its claim so
     // it never blocks ITSELF from re-choosing (planFarmer re-stamps a fresh task if it takes over).
     releaseFarmTask(world, e, farmClaims);

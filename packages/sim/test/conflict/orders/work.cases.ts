@@ -9,11 +9,15 @@ import {
   PlayerOrder,
   Position,
   Settler,
+  Stranded,
+  SupplyRun,
   WorkFlag,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, nodeOfPosition } from '../../../src/index.js';
-import { CARPENTER, orderMove, ownedWoodcutter, sim, VIKING, WOODCUTTER, woodAt } from './support.js';
+import { setJob } from '../../../src/systems/index.js';
+import { ctxOf } from '../../fixtures/context.js';
+import { CARPENTER, orderMove, ownedWoodcutter, sim, VIKING, WOOD, WOODCUTTER, woodAt } from './support.js';
 
 describe('setJob order', () => {
   it("changes an owned settler's profession and re-idles it (drops binding/action/order)", () => {
@@ -54,6 +58,23 @@ describe('setJob order', () => {
     s.enqueue({ kind: 'setJob', entity: neutral, jobType: CARPENTER }); // unowned — skipped
     s.step();
     expect(s.world.get(neutral, Settler).jobType).toBe(WOODCUTTER); // unchanged
+  });
+
+  it('unsticks a stranded settler and abandons its supply errand (the reset the player reaches for)', () => {
+    const s = sim();
+    const e = ownedWoodcutter(s, 0, 0);
+    // A frozen worker: its walk failed (parked by the planner's stranded recovery) mid supply errand.
+    s.world.add(e, MoveGoal, { cell: 3 });
+    s.world.add(e, PathRequest, { start: 0, goal: 3, failed: true });
+    s.world.add(e, Stranded, { retryAt: 9999 });
+    s.world.add(e, SupplyRun, { site: 999 as Entity, goodType: WOOD, amount: 1 });
+
+    setJob(s.world, ctxOf(s), { kind: 'setJob', entity: e, jobType: CARPENTER });
+
+    expect(s.world.has(e, MoveGoal)).toBe(false); // the whole nav state resets at once…
+    expect(s.world.has(e, PathRequest)).toBe(false);
+    expect(s.world.has(e, Stranded)).toBe(false); // …including the stranded-retry pacing
+    expect(s.world.has(e, SupplyRun)).toBe(false); // the site stops counting the errand as inbound
   });
 });
 

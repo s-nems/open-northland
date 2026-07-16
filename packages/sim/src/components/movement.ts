@@ -84,6 +84,15 @@ export const MoveGoal = defineComponent<{ cell: NodeId }>('MoveGoal');
 export const PathRequest = defineComponent<{ start: NodeId; goal: NodeId; failed: boolean }>('PathRequest');
 
 /**
+ * A stranded walker's retry pacing: its route FAILED ({@link PathRequest} `failed`) and no drive with its
+ * own failure protocol owns it, so the AI planner parks the dead nav state until tick `retryAt`, then sheds
+ * it and re-plans (the stranded-recovery block in `systems/agents/ai.ts`). Without it a failed request
+ * reads as "travelling" forever and the settler freezes. Cleared with the rest of the nav state
+ * (`clearNavState`), so an authoritative cancel — a player order, a job change — restarts the walk at once.
+ */
+export const Stranded = defineComponent<{ retryAt: number }>('Stranded');
+
+/**
  * A walker's grind-window state among unit bodies — the SeparationSystem stamps it on a path-follower with
  * colliders in its immediate (3×3 bucket) neighbourhood and judges blockage by progress, not push direction.
  * `x`/`y` anchor the current grind window — the walker's position when it began — and `ticks` counts the

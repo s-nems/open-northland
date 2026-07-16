@@ -1,4 +1,4 @@
-import { MoveGoal, PathFollow, PathRequest, Position } from '../components/index.js';
+import { MoveGoal, PathFollow, PathRequest, Position, Stranded } from '../components/index.js';
 import type { Entity, World } from '../ecs/world.js';
 import { nodeOfPosition } from '../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../nav/terrain/index.js';
@@ -196,12 +196,14 @@ export function isTravelling(world: World, e: Entity): boolean {
   return world.has(e, MoveGoal) || world.has(e, PathRequest) || world.has(e, PathFollow);
 }
 
-/** Drop `e`'s whole navigation state (goal + pending request + followed path) — the counterpart of
- *  {@link isTravelling}, used when an authoritative drive (a chase ending, an order) cancels travel. */
+/** Drop `e`'s whole navigation state (goal + pending request + followed path + stranded-retry pacing)
+ *  — the counterpart of {@link isTravelling}, used when an authoritative drive (a chase ending, an
+ *  order) cancels travel. */
 export function clearNavState(world: World, e: Entity): void {
   world.remove(e, MoveGoal);
   world.remove(e, PathRequest);
   world.remove(e, PathFollow);
+  world.remove(e, Stranded);
 }
 
 /** Re-aim `e`'s live route at `dest` — the throttled-re-aim twin of {@link clearNavState} (chase and
