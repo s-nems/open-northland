@@ -53,6 +53,9 @@ export function nearestHarvestableFor(
   opts: {
     readonly area?: { center: NodeId; radius: number; goodType?: number };
     readonly goodFilter?: ReadonlySet<number>;
+    /** Resource nodes already claimed this tick (a colleague's live harvest or an earlier pick) —
+     *  skipped, so one node is dug by one settler at a time (see economy/harvest-claims.ts). */
+    readonly exclude?: ReadonlySet<Entity>;
     /** The settler's signpost confinement ({@link SpatialGate}): membership rejects out-of-area work
      *  cells, and its bounds let a roaming scan read only the resources near the allowed box instead of
      *  the full canonical list — every gate-passing work cell provably lies inside the box (+ work-offset
@@ -60,7 +63,7 @@ export function nearestHarvestableFor(
     readonly gate?: SpatialGate;
   } = {},
 ): { entity: Entity; cell: NodeId; dist: number } | null {
-  const { area, goodFilter, gate } = opts;
+  const { area, goodFilter, gate, exclude } = opts;
   const allowed = jobAtomics(ctx, settler.jobType);
   // Dormancy gate: if the job's allowed atomics intersect no harvest atomic present on any standing resource,
   // every candidate fails the `allowed.has` check below — the whole scan is provably null. Skip it in
@@ -115,6 +118,7 @@ export function nearestHarvestableFor(
   // Ranked from `origin` (the flag when bound, the settler when roaming); the interaction cell still resolves
   // from `here`, the settler's actual route start. Same filter/rank the shared loop applies to every scan.
   const best = nearestByCell(terrain, scanned, origin, (e) => {
+    if (exclude?.has(e)) return null; // a colleague already digs this node
     const res = world.tryGet(e, Resource);
     if (res === undefined || res.remaining <= 0) return null;
     if (area?.goodType !== undefined && res.goodType !== area.goodType) return null;

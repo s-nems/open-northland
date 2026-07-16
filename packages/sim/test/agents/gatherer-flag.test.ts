@@ -1,3 +1,4 @@
+import './gatherer-flag/harvest/claims.cases.js';
 import './gatherer-flag/harvest/delivery.cases.js';
 import './gatherer-flag/harvest/ownership.cases.js';
 import './gatherer-flag/harvest/radius.cases.js';

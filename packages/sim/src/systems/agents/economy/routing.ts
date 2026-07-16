@@ -5,7 +5,9 @@ import {
   ownerOf,
   ownersCompatible,
   Position,
+  SiteAssignment,
   Stockpile,
+  UnderConstruction,
   WorkFlag,
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
@@ -88,6 +90,14 @@ export function deliveryTargetFor(plan: PlannerContext, goodType: number): Entit
   if (home !== undefined && isStorageSink(world, ctx, home) && hasRoom(world, ctx, home, goodType)) {
     return home;
   }
+  // 3c. A builder's own crew site ({@link SiteAssignment}) is a BOUND target like the workplace/flag above,
+  //     so it stays ungated: the player's pin (assignBuilder) may point beyond the signpost area, and
+  //     planBuilder fetches for the pinned site unconditionally — a gated delivery would disagree with that
+  //     fetch and shuttle the material back to its source forever.
+  const crew = world.tryGet(settler, SiteAssignment)?.site;
+  if (crew !== undefined && constructionSiteNeeds(world, ctx, crew, tribe, owner, goodType, inbound)) {
+    return crew;
+  }
   // 4. A construction material flows to a construction site of the tribe that still needs it, so a builder
   //    self-supplying its own foundation (and any hauler topping it up) reaches the site instead of shuttling
   //    the material back into a warehouse. Scans the tiny `sites` list (each advertises its outstanding cost
@@ -97,6 +107,32 @@ export function deliveryTargetFor(plan: PlannerContext, goodType: number): Entit
   if (site !== null) return site;
   // 5. Otherwise the nearest capable store — the default (unbound haulers, the golden slice).
   return nearestStoreFor(stores, world, ctx, here, goodType, false, gate);
+}
+
+/**
+ * A memoized "could this settler's `good` actually be delivered anywhere right now" probe —
+ * {@link deliveryTargetFor} under the settler's own signpost gate, the exact decision the delivery rung
+ * makes once the good is on its back. The pickup rungs consult it before lifting, so fetch and delivery
+ * can never disagree: a disagreement is a livelock (a porter lifting a pile whose only sink is out of its
+ * area sheds it at its feet and re-lifts it next tick). Memoized per planner call — a scan probes few
+ * distinct goods, and the answer is position-stable for the one decision the caller makes this tick.
+ */
+export function deliverableGoodProbe(plan: PlannerContext): (goodType: number) => boolean {
+  const memo = new Map<number, boolean>();
+  return (goodType: number): boolean => {
+    // Tick-global cheap precondition first ({@link SinkAvailability}): when no store ANYWHERE could take
+    // the good, the full routing walk below is skipped — this keeps a saturated settlement (every store
+    // full, every idle hauler re-probing each tick) at ~zero probe cost. It deliberately ignores
+    // construction-site sinks, exactly like the pre-confinement gate: builders supply sites through
+    // their own fetch rung, so a hauler passing on such a pile matches the long-standing behavior.
+    if (!plan.targets.sinks.has(goodType)) return false;
+    let known = memo.get(goodType);
+    if (known === undefined) {
+      known = deliveryTargetFor(plan, goodType) !== null;
+      memo.set(goodType, known);
+    }
+    return known;
+  };
 }
 
 /**
@@ -120,19 +156,27 @@ function nearestConstructionSiteNeeding(
   gate?: SpatialGate,
 ): Entity | null {
   return (
-    index.nearest(
-      here,
-      (e) => {
-        if (world.get(e, Building).tribe !== tribe) return false;
-        if (!ownersCompatible(owner, ownerOf(world, e))) return false; // another player's site (same tribe isn't same side)
-        // Count both what the site holds and what other settlers' live supply errands already have inbound
-        // (the `inbound` tally): a site whose last unit is on someone's back stops attracting more of the
-        // good, so a duplicate fetch diverts to a warehouse instead of over-delivering.
-        const have =
-          (world.get(e, Stockpile).amounts.get(goodType) ?? 0) + inboundSupplyOf(inbound, e, goodType);
-        return have < stockCapacity(world, ctx, e, goodType); // room left for this material (and it's a cost good)
-      },
-      gate,
-    )?.entity ?? null
+    index.nearest(here, (e) => constructionSiteNeeds(world, ctx, e, tribe, owner, goodType, inbound), gate)
+      ?.entity ?? null
   );
+}
+
+/** Whether construction site `e` (of this settler's `tribe`/`owner` side) still has room for `goodType`
+ *  in its bill — the shared accept of the case-4 scan and the bound crew-site (3c) check. Counts both
+ *  what the site holds and what other settlers' live supply errands already have inbound (the `inbound`
+ *  tally), so a unit already on someone's back stops attracting a duplicate fetch. */
+function constructionSiteNeeds(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  tribe: number,
+  owner: number | undefined,
+  goodType: number,
+  inbound: InboundSupplyTally,
+): boolean {
+  if (!world.has(e, UnderConstruction) || !world.has(e, Building)) return false;
+  if (world.get(e, Building).tribe !== tribe) return false;
+  if (!ownersCompatible(owner, ownerOf(world, e))) return false; // another player's site (same tribe isn't same side)
+  const have = (world.get(e, Stockpile).amounts.get(goodType) ?? 0) + inboundSupplyOf(inbound, e, goodType);
+  return have < stockCapacity(world, ctx, e, goodType); // room left for this material (and it's a cost good)
 }

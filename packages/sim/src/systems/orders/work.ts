@@ -1,11 +1,13 @@
 import {
   Age,
+  Armor,
   AttackOrder,
   Building,
   Carrying,
   CraftSelection,
   CurrentAtomic,
   Engagement,
+  Equipment,
   Female,
   Fleeing,
   GatherSelection,
@@ -18,6 +20,7 @@ import {
   SupplyRun,
   sameSide,
   UnderConstruction,
+  Weapon,
   WorkFlag,
   YardDeliveryRoute,
 } from '../../components/index.js';
@@ -37,6 +40,7 @@ import {
 } from '../economy/flags.js';
 import { openWorkerJobFromList } from '../economy/jobs/index.js';
 import { canPlaceWorkFlag, interactionNode } from '../footprint/index.js';
+import { isFighterJob } from '../readviews/index.js';
 import { navigationLimitFor } from '../signposts/index.js';
 import { clearNavState } from '../spatial.js';
 import { workplaceStoredGoods } from '../stores/index.js';
@@ -98,6 +102,19 @@ function reidleAsJob(world: World, ctx: SystemContext, e: Entity, jobType: numbe
   world.remove(e, AttackOrder);
   world.remove(e, Fleeing);
   stampDefaultStance(world, e, jobType);
+  // Leaving the fighter trades disarms the settler: the arms are the soldier's role kit, and the render
+  // draws the armed look from the equipped weapon good over the job — a kept weapon would freeze an
+  // ex-soldier in the warrior skin. Both axes go: the Equipment display slots and the combat Weapon/Armor.
+  if (!isFighterJob(jobType)) {
+    world.remove(e, Weapon);
+    world.remove(e, Armor);
+    const equipment = world.tryGet(e, Equipment);
+    if (equipment !== undefined && (equipment.weapon !== null || equipment.armor !== null)) {
+      equipment.weapon = null;
+      equipment.armor = null;
+      world.touch(e);
+    }
+  }
   syncWorkFlagToJob(world, ctx, e, jobType); // a gatherer trade carries a work flag; other trades don't
   // Both per-employment picks die with the employment they were made under — a new workplace offers a
   // different product/store set, so a stale pick would silently mis-steer (or stall) the new post.

@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { Fleeing, MoveGoal, PathFollow, Position, Settler } from '../../../src/components/index.js';
+import {
+  Carrying,
+  CurrentAtomic,
+  Fleeing,
+  MoveGoal,
+  PathFollow,
+  Position,
+  Settler,
+} from '../../../src/components/index.js';
 import { fx, ONE } from '../../../src/core/fixed.js';
 import { cellAnchorNode, Simulation } from '../../../src/index.js';
 import { combatSystem } from '../../../src/systems/index.js';
@@ -64,6 +72,38 @@ describe('FLEE — civilians run from danger', () => {
     sim.world.get(civ, Settler).hunger = ONE; // collapse mid-cool-down
     combatSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(civ, Fleeing)).toBe(false); // shed at once, not after FLEE_COOLDOWN_TICKS
+  });
+});
+
+describe('FLEE + a carried load — the drop-on-flee rule fires only on a real threat', () => {
+  const WOOD = 5;
+
+  it('keeps its load when no threat is in sight, even with combat awake (two players on the map)', () => {
+    // Regression: fleeDrive runs every tick for every FLEE-stance unit whenever combat is awake at all
+    // (two players present), and an unconditional hands-full drop stripped every carrying civilian each
+    // tick — the pickup→drop livelock that froze builders/porters/gatherers on multi-player maps.
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(40, 1) });
+    const civ = combatant(sim, 2, 0, P0, MILITARY_MODE.FLEE);
+    combatant(sim, 38, 0, P1, MILITARY_MODE.IGNORE); // a rival player far beyond sight — combat is awake
+    sim.world.add(civ, Carrying, { goodType: WOOD, amount: 1 });
+
+    for (let i = 0; i < 10; i++) combatSystem(sim.world, ctxOf(sim));
+    expect(sim.world.has(civ, Fleeing)).toBe(false); // nothing in sight — never fled
+    expect(sim.world.get(civ, Carrying)).toEqual({ goodType: WOOD, amount: 1 }); // load kept
+    expect(sim.world.has(civ, CurrentAtomic)).toBe(false); // no drop atomic was started
+  });
+
+  it('drops its load first when a threat IS in sight, then flees empty-handed', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(40, 1) });
+    const civ = combatant(sim, 20, 0, P0, MILITARY_MODE.FLEE);
+    combatant(sim, 25, 0, P1, MILITARY_MODE.IGNORE); // a stationary threat in sight
+    sim.world.add(civ, Carrying, { goodType: WOOD, amount: 1 });
+
+    combatSystem(sim.world, ctxOf(sim));
+    expect(sim.world.tryGet(civ, CurrentAtomic)?.effect.kind).toBe('drop'); // set the load down first
+    sim.run(30); // play the drop out; the flee takes over empty-handed
+    expect(sim.world.has(civ, Carrying)).toBe(false);
+    expect(sim.world.has(civ, Fleeing)).toBe(true);
   });
 });
 

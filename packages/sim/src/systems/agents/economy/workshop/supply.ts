@@ -8,7 +8,6 @@ import { startableCycleCount } from '../../../economy/production.js';
 import type { SpatialGate } from '../../../node-metric.js';
 import { recipesByProductOf, stockCapacity } from '../../../stores/index.js';
 import type { InteractionCellIndex } from '../../targets/index.js';
-import type { SinkAvailability } from '../../targets/stores/sinks.js';
 
 // The AI planner's SUPPLY layer: the scans behind a *producer worker running its own supply→produce→
 // deliver loop* — the "kowal fetches the goods a sword needs, forges it, and carries it back" behavior.
@@ -106,7 +105,7 @@ export function nearestMissingInputSource(
  * hauling its output never steals a tick it should have spent producing.
  */
 export function workplaceOutputToHaul(
-  sinks: SinkAvailability,
+  deliverable: (goodType: number) => boolean,
   world: World,
   workplace: Entity,
   recipe: Recipe,
@@ -114,8 +113,8 @@ export function workplaceOutputToHaul(
   const stock = world.get(workplace, Stockpile).amounts;
   for (const output of recipe.outputs) {
     if ((stock.get(output.goodType) ?? 0) <= 0) continue; // nothing of this output on hand
-    // Deliverable somewhere that isn't this workplace? (nearestStoreFor already excludes the producer.)
-    if (sinks.has(output.goodType)) {
+    // Deliverable somewhere that isn't this workplace? (The routing itself excludes the producer.)
+    if (deliverable(output.goodType)) {
       return output.goodType;
     }
   }

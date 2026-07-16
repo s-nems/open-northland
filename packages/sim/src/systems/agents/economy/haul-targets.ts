@@ -5,7 +5,6 @@ import type { SystemContext } from '../../context.js';
 import type { SpatialGate } from '../../node-metric.js';
 import { buildingProduces, lowestStockedGood } from '../../stores/index.js';
 import { interactionCell, nearestByCell } from '../targets/index.js';
-import type { SinkAvailability } from '../targets/stores/sinks.js';
 import { isFarmCarrierHaulOutRole, isStorageSink } from './store-policy.js';
 
 /**
@@ -16,15 +15,16 @@ import { isFarmCarrierHaulOutRole, isStorageSink } from './store-policy.js';
  * scan); within the chosen pile the good is its lowest-id stocked good ({@link stockpileEntries}, never
  * raw Map order). The porter then delivers the load through {@link deliveryTargetFor} to its warehouse.
  *
- * A pile is skipped when **no store can currently take its good** (every warehouse full for it): lifting it
- * would just make the porter hold a load it can't deposit, so instead it leaves that good on the ground and
- * collects the next DELIVERABLE pile — "the store is full of wood, so stop hauling wood and fetch something
- * else" (the same deliverability gate {@link nearestWorkplaceOutput} applies to workplace output). The
- * check is memoised per good — its deliverability is the same for every pile of that good in one scan.
+ * A pile is skipped when its good is currently **undeliverable for this porter** — `deliverable` is the
+ * settler's own {@link deliverableGoodProbe} (the delivery rung's exact routing decision, signpost gate
+ * included): lifting it would just make the porter hold a load it can't deposit and shed it at its feet,
+ * so instead it leaves that good on the ground and collects the next deliverable pile — "the store is
+ * full of wood, so stop hauling wood and fetch something else" (the same gate
+ * {@link nearestWorkplaceOutput} applies to workplace output).
  */
 export function nearestGroundPile(
   candidates: readonly Entity[],
-  sinks: SinkAvailability,
+  deliverable: (goodType: number) => boolean,
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
@@ -37,7 +37,7 @@ export function nearestGroundPile(
     if (!world.has(e, Stockpile) || !world.has(e, Position)) return null;
     const good = lowestStockedGood(world.get(e, Stockpile));
     if (good === null) return null; // an empty pile is nothing to collect
-    if (!sinks.has(good)) return null; // every store full for this good — leave it, try another good
+    if (!deliverable(good)) return null; // no sink this porter can reach — leave it, try another good
     const cell = interactionCell(world, ctx, terrain, e, here);
     return gate === undefined || gate.allowsNode(cell) ? cell : null;
   });
@@ -54,10 +54,10 @@ export function nearestGroundPile(
  * stationed at a warehouse/HQ only brings goods IN.
  *
  * A candidate is a good the bound building's type PRODUCES ({@link buildingProduces}) that the building
- * currently stocks (>0) and that some STORAGE sink can take ({@link nearestStoreFor} with EVERY producer
- * of the good excluded — per-entity exclusion of only the own farm let two farms shuttle wheat between
- * each other forever). Walked in `produces` order (a fixed content array, so the pick never depends on
- * store insertion history), first haulable output wins.
+ * currently stocks (>0) and that this carrier could actually deliver somewhere (`deliverable`, its
+ * {@link deliverableGoodProbe} — the delivery rung's routing, producer-exclusion and signpost gate
+ * included). Walked in `produces` order (a fixed content array, so the pick never depends on store
+ * insertion history), first haulable output wins.
  *
  * Scoped to a bound building whose produced good is **field-farmed** (a `farming` block —
  * {@link farmWorkGood}), the field loop's own data signal: a recipe workshop's finished output is already
@@ -70,7 +70,7 @@ export function nearestGroundPile(
  * the good to lift, or null when there is nothing to haul.
  */
 export function boundProducerOutputToHaul(
-  sinks: SinkAvailability,
+  deliverable: (goodType: number) => boolean,
   world: World,
   ctx: SystemContext,
   settler: Entity,
@@ -87,7 +87,7 @@ export function boundProducerOutputToHaul(
   const stock = world.get(home, Stockpile).amounts;
   for (const goodType of buildingProduces(world, ctx, home)) {
     if ((stock.get(goodType) ?? 0) <= 0) continue; // none of this output on hand
-    if (sinks.has(goodType, /* excludeProducers */ true)) {
+    if (deliverable(goodType)) {
       return { home, goodType };
     }
   }

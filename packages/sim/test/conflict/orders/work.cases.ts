@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  Armor,
   CurrentAtomic,
   DEFAULT_WORK_FLAG_RADIUS,
   DeliveryFlag,
+  Equipment,
   JobAssignment,
   MoveGoal,
   PathRequest,
@@ -11,6 +13,7 @@ import {
   Settler,
   Stranded,
   SupplyRun,
+  Weapon,
   WorkFlag,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
@@ -75,6 +78,38 @@ describe('setJob order', () => {
     expect(s.world.has(e, PathRequest)).toBe(false);
     expect(s.world.has(e, Stranded)).toBe(false); // …including the stranded-retry pacing
     expect(s.world.has(e, SupplyRun)).toBe(false); // the site stops counting the errand as inbound
+  });
+});
+
+describe('setJob disarm on leaving the fighter trades', () => {
+  const SOLDIER_JOB = 31; // jobtypes.ini soldier band 31..41 — isFighterJob's lower bound
+  const SWORD_GOOD = 44;
+
+  it('a soldier converted to a civilian trade sheds its arms (equipment slots + combat components)', () => {
+    // The render draws the armed look from the equipped weapon good over the job, so a kept weapon
+    // froze an ex-soldier in the warrior skin (the reported soldier→civilian/scout stale-skin bug).
+    const s = sim();
+    const e = ownedWoodcutter(s, 0, 0);
+    s.world.get(e, Settler).jobType = SOLDIER_JOB;
+    s.world.add(e, Weapon, { weaponTypeId: 3 });
+    s.world.add(e, Armor, { armorClass: 2 });
+    s.world.add(e, Equipment, {
+      boots: { goodType: 30, degreeOfUse: fx.fromInt(0) },
+      tool: null,
+      weapon: { goodType: SWORD_GOOD, degreeOfUse: fx.fromInt(0) },
+      armor: { goodType: 50, degreeOfUse: fx.fromInt(0) },
+      misc: [null, null, null, null],
+    });
+
+    s.enqueue({ kind: 'setJob', entity: e, jobType: CARPENTER });
+    s.step();
+    expect(s.world.get(e, Settler).jobType).toBe(CARPENTER);
+    expect(s.world.has(e, Weapon)).toBe(false);
+    expect(s.world.has(e, Armor)).toBe(false);
+    const equipment = s.world.get(e, Equipment);
+    expect(equipment.weapon).toBeNull();
+    expect(equipment.armor).toBeNull();
+    expect(equipment.boots).toEqual({ goodType: 30, degreeOfUse: fx.fromInt(0) }); // civil kit stays
   });
 });
 

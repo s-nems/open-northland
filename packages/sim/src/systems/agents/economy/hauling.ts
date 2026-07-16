@@ -4,6 +4,7 @@ import { walkPickupBatch } from '../actions.js';
 import type { PlannerContext } from '../planner-context.js';
 import { nearestWorkplaceOutput } from '../targets/index.js';
 import { boundProducerOutputToHaul, isPorterBoundToStore, nearestGroundPile } from './haul-targets.js';
+import { deliverableGoodProbe } from './routing.js';
 
 /**
  * 4. PORTER — a settler bound to a storage fixture (no recipe) that moves loose goods. The full carrier
@@ -24,9 +25,12 @@ export function planPorter(plan: PlannerContext): boolean {
   const { world, ctx, terrain, entity: e, here, targets } = plan;
   const settler = plan;
   if (!isPorterBoundToStore(world, ctx, e)) return false;
+  // Every pickup consults the settler's own delivery routing (deliverableGoodProbe) before lifting, so
+  // fetch and delivery can never disagree — a disagreement is a pick-up→shed livelock.
+  const deliverable = deliverableGoodProbe(plan);
   // Haul the bound producer's finished output OUT to a warehouse (a farm's wheat) — the load then routes
   // to storage, never into another producer of the good (deliveryTargetFor case 3).
-  const haul = boundProducerOutputToHaul(targets.sinks, world, ctx, e, settler.jobType, settler.tribe);
+  const haul = boundProducerOutputToHaul(deliverable, world, ctx, e, settler.jobType, settler.tribe);
   if (haul !== null) {
     walkPickupBatch(plan, haul.home, haul.goodType);
     return true;
@@ -35,7 +39,7 @@ export function planPorter(plan: PlannerContext): boolean {
   // porter's signpost area — an out-of-area pile is not one it knows about.
   const pile = nearestGroundPile(
     targets.stockpiles,
-    targets.sinks,
+    deliverable,
     world,
     ctx,
     terrain,
@@ -66,7 +70,14 @@ export function planCarrierHaul(plan: PlannerContext, anyHaulable: boolean): boo
   if (!isCarrierJob(ctx, settler.jobType)) return false; // hauling is the carrier trade's job alone
   if (!world.has(e, JobAssignment)) return false; // an unassigned carrier has no store to work for
   const haul = anyHaulable
-    ? nearestWorkplaceOutput(targets.stockpileCells, targets.sinks, world, ctx, here, plan.limit ?? undefined)
+    ? nearestWorkplaceOutput(
+        targets.stockpileCells,
+        deliverableGoodProbe(plan),
+        world,
+        ctx,
+        here,
+        plan.limit ?? undefined,
+      )
     : null;
   if (haul === null) return false;
   walkPickupBatch(plan, haul.workplace, haul.goodType);

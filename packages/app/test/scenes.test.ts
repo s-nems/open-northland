@@ -9,8 +9,10 @@ import { createSceneSim, SCENES } from '../src/scenes/index.js';
  * builds an independent sim (its own component stores), so the cases are isolated regardless of order.
  */
 /** A full-scene sim run is seconds-long (battle is ~3s per run, and the determinism case runs each
- *  scene twice), so the sim-running cases carry their own budget instead of Vitest's 5s default. */
-const SCENE_RUN_TIMEOUT_MS = 30_000;
+ *  scene twice; the sandbox stress world under signpost confinement runs ~20s — see
+ *  docs/tickets/sim/confined-idle-worker-dormancy.md for the perf follow-up), so the sim-running
+ *  cases carry their own budget instead of Vitest's 5s default. */
+const SCENE_RUN_TIMEOUT_MS = 60_000;
 
 describe('acceptance scenes', () => {
   for (const scene of SCENES) {
