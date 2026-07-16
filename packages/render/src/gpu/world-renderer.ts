@@ -398,7 +398,7 @@ export class WorldRenderer {
     );
     this.terrain.cull(vp);
     // Water-surface animation on the interpolated sim clock (deterministic — `?shot` at a fixed tick
-    // reproduces byte-identically); only the visible blocks' uniforms are written.
+    // reproduces byte-identically); one shared uniform write, a no-op on waterless maps.
     this.terrain.animate(tick + alpha);
     // Recomposite the fog wash (band/generation-keyed — usually a no-op) and build this frame's cull
     // predicates for the tall objects + the sprite pool below. Both close over the same FogView, so the

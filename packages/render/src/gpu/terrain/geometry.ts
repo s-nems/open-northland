@@ -55,12 +55,14 @@ export type NodeLiftFn = (hx: number, hy: number) => number;
 export const NO_LIFT: NodeLiftFn = () => 0;
 
 /** The map's shading + water inputs the mesh emitters thread to {@link pushTriangle}: the R8 lane
- *  texture (undefined → unshaded), its padded width (the brightness-lane `u` denominator), and the
- *  per-node wave amplitude field (`data/water.ts`; NO_WAVE on land maps). */
+ *  texture (undefined → unshaded), its padded width (the brightness-lane `u` denominator), the
+ *  per-node wave amplitude field (`data/water.ts`; NO_WAVE on land maps), and the map's ONE shared
+ *  water-animation uniform group every shaded mesh binds. */
 export interface LaneShading {
   readonly brightnessTex: BufferImageSource | undefined;
   readonly laneTexWidth: number;
   readonly wave: NodeWaveFn;
+  readonly waveUniforms: WaveUniforms;
 }
 
 /** The per-node lift for this map: 0 everywhere on a flat field, else the node's own cell's lift with
@@ -91,16 +93,6 @@ export interface TerrainChunk {
   readonly minY: number;
   readonly maxX: number;
   readonly maxY: number;
-  /** The block's shaded meshes' water-animation handles — written per frame for VISIBLE blocks only
-   *  ({@link import('./terrain-layer.js').TerrainLayer.animate}), so the cost tracks the screen. */
-  readonly waveUniforms: readonly WaveUniforms[];
-}
-
-/** One meshed block as returned by a build strategy's `meshBlock`: its display children plus the
- *  water-animation handles of any shaded meshes among them. */
-export interface MeshedBlock {
-  readonly children: TerrainChild[];
-  readonly waveUniforms?: readonly WaveUniforms[];
 }
 
 /**
@@ -116,21 +108,20 @@ export function buildChunks(
   parent: Container,
   terrain: SceneTerrain,
   maxLift: number,
-  meshBlock: (c0: number, r0: number, c1: number, r1: number) => MeshedBlock,
+  meshBlock: (c0: number, r0: number, c1: number, r1: number) => TerrainChild[],
 ): TerrainChunk[] {
   const chunks: TerrainChunk[] = [];
   for (let r0 = 0; r0 < terrain.height; r0 += TERRAIN_CHUNK_TILES) {
     for (let c0 = 0; c0 < terrain.width; c0 += TERRAIN_CHUNK_TILES) {
       const c1 = Math.min(c0 + TERRAIN_CHUNK_TILES, terrain.width) - 1;
       const r1 = Math.min(r0 + TERRAIN_CHUNK_TILES, terrain.height) - 1;
-      const { children, waveUniforms = [] } = meshBlock(c0, r0, c1, r1);
+      const children = meshBlock(c0, r0, c1, r1);
       if (children.length === 0) continue;
       const container = new Container();
       for (const child of children) container.addChild(child);
       parent.addChild(container);
       chunks.push({
         container,
-        waveUniforms,
         minX: (2 * c0 - 1) * TILE_HALF_W,
         maxX: (2 * c1 + 3) * TILE_HALF_W,
         // The lift only ever raises a vertex (−y), so extend the box's top by the map-wide-max lift so

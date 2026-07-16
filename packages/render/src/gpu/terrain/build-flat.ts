@@ -62,6 +62,6 @@ export function buildFlat(
       mesh.tint = colour;
       children.push(mesh);
     }
-    return { children };
+    return children;
   });
 }
