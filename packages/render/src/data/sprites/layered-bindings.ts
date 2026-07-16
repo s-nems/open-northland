@@ -140,6 +140,19 @@ export interface ResourceTypeBinding {
  * {@link import('../scene/index.js').DrawItem.fill} amount (clamped), so the heap visibly grows.
  * A good with no bound frames falls back to {@link default}.
  */
+/**
+ * A signpost's draw binding: the standing post plus the direction-board frames in angular order (the
+ * decoded `ls_guidepost.bmd`: bob 0 the post, bobs 1..18 the board in ~20° steps around the post-top
+ * nail point — each frame's own offsets carry the pivot, so a board draws at the post's feet anchor).
+ * {@link import('./layered.js').resolveSignpostDraw} picks the post or the board by
+ * {@link import('../scene/index.js').DrawItem.boardIndex}.
+ */
+export interface SignpostBinding {
+  readonly post: LayeredBobRef;
+  /** Direction-board frames in angular order (index = the scene collector's angle bucket). */
+  readonly boards: readonly LayeredBobRef[];
+}
+
 export interface StockpileBinding {
   /** Per-`goodType` ground-pile heap frames, ordered fewest→most units (the `landscapeToStore` join). */
   readonly byGood: Readonly<Record<number, readonly LayeredBobRef[]>>;

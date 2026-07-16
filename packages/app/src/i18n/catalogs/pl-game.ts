@@ -92,6 +92,9 @@ export const plGame = {
     build: 'Budowa',
     alert: 'Alarm',
     query: 'Informacja',
+    // The mod's Polish gui strings mistranslate this slot ("Wyburz drogowskaz"); the natural imperative
+    // of the English original "Erect Signpost" is used instead (named deviation).
+    erectSignpost: 'Postaw drogowskaz',
     attack: 'Atak',
     assign_house: 'Przypisz dom',
     animal: 'Zwierzę',

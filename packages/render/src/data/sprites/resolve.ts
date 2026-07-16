@@ -1,7 +1,12 @@
 import type { DrawItem } from '../scene/index.js';
 import { type AtlasFrame, lookupFrame, type SpriteAtlas } from './atlas.js';
 import type { SpriteBindings } from './bindings.js';
-import { resolveBuildingDraw, resolveResourceDraw, resolveStockpileDraw } from './layered.js';
+import {
+  resolveBuildingDraw,
+  resolveResourceDraw,
+  resolveSignpostDraw,
+  resolveStockpileDraw,
+} from './layered.js';
 import type { BuildingTypeBinding, ResourceTypeBinding, StockpileBinding } from './layered-bindings.js';
 import { resolveSettlerBobId } from './settler.js';
 import type { SettlerStateBinding } from './settler-bindings.js';
@@ -32,6 +37,8 @@ export function resolveSpriteBobId(item: DrawItem, bindings: SpriteBindings, tic
   // nothing.
   if (item.kind === 'grounddrop')
     return bindings.trunk === undefined ? null : (resolveResourceDraw(bindings.trunk, item)?.bob ?? null);
+  // A signpost resolves its post/board frame from the dedicated binding (placeholder when unbound).
+  if (item.kind === 'signpost') return resolveSignpostDraw(bindings.signpost, item)?.bob ?? null;
   const binding = bindings[item.kind];
   if (binding === undefined) return null; // kind unbound -> placeholder
   if (item.kind === 'settler')

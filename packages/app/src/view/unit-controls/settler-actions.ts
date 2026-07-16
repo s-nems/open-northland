@@ -4,7 +4,7 @@ import { type Application, Container, Graphics } from 'pixi.js';
 import type { PickerEntry } from '../../catalog/professions.js';
 import { loadGuiArt } from '../../content/gui-art.js';
 import { loadUiFont } from '../../content/ui-font.js';
-import { isSettler, positionOf } from '../../game/snapshot.js';
+import { isSettler, positionOf, settlerJobType } from '../../game/snapshot.js';
 import {
   type ActionButton,
   type ActionRingLayout,
@@ -12,7 +12,7 @@ import {
   hitTestActionRing,
   layoutActionRing,
 } from '../../hud/action-ring-layout.js';
-import { HUMAN_DEFAULT_MENU } from '../../hud/action-ring-menu.js';
+import { HUMAN_DEFAULT_MENU, menuForJob, SCOUT_MENU } from '../../hud/action-ring-menu.js';
 import { type Messages, messages } from '../../i18n/index.js';
 import { clientToScreen } from '../camera.js';
 import { el } from '../overlay.js';
@@ -81,6 +81,8 @@ export interface SettlerActionsOptions {
   readonly professions: readonly PickerEntry[];
   /** Issue a `setJob` on every selected settler (the one-way command seam). */
   readonly onSetJob: (ids: readonly number[], jobType: number) => void;
+  /** Arm the erect-signpost click-to-place mode for the selected scout(s) (the scout menu's button). */
+  readonly onErectSignpost: (ids: readonly number[]) => void;
 }
 
 export interface SettlerActions {
@@ -114,9 +116,14 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
 
   const art = await loadGuiArt();
 
-  // The static default menu (built once from HUMAN_DEFAULT_MENU) — the only face drawn on the canvas. The
+  // Every button any menu variant can show (default + scout), deduped by id — the retained visuals are
+  // baked once for the union, and each frame's layout places only the active variant's subset. The
   // profession picker is a DOM list window (below), so the canvas holds just the menu buttons.
-  const allButtons: readonly ActionButton[] = HUMAN_DEFAULT_MENU.flatMap((g) => g.buttons);
+  const byId = new Map<string, ActionButton>();
+  for (const g of [...HUMAN_DEFAULT_MENU, ...SCOUT_MENU]) {
+    for (const b of g.buttons) byId.set(b.id, b);
+  }
+  const allButtons: readonly ActionButton[] = [...byId.values()];
 
   const root = new Container();
   root.zIndex = RING_Z;
@@ -191,10 +198,13 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     camera: Camera,
     snapshot: WorldSnapshot,
     selection: ReadonlySet<number>,
-  ): { x: number; y: number; ids: number[] } | null => {
+  ): { x: number; y: number; ids: number[]; jobType: number | undefined } | null => {
     let wx = 0;
     let wy = 0;
     const ids: number[] = [];
+    // The selection's common trade (undefined when mixed) — picks the per-profession menu variant.
+    let jobType: number | undefined;
+    let mixed = false;
     for (const e of snapshot.entities) {
       if (!selection.has(e.id) || !isSettler(e)) continue;
       const pos = positionOf(e);
@@ -202,6 +212,9 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
       const s = tileToScreen(pos.x / ONE, pos.y / ONE); // the drawn feet anchor (world px)
       wx += s.x;
       wy += s.y;
+      const job = settlerJobType(e);
+      if (ids.length === 0) jobType = job;
+      else if (job !== jobType) mixed = true;
       ids.push(e.id);
     }
     if (ids.length === 0) return null;
@@ -210,6 +223,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
       x: (wx / ids.length) * cameraScale + camera.offsetX,
       y: (wy / ids.length) * cameraScale + camera.offsetY,
       ids,
+      jobType: mixed ? undefined : jobType,
     };
   };
 
@@ -233,7 +247,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
       return;
     }
     layout = layoutActionRing(
-      HUMAN_DEFAULT_MENU,
+      menuForJob(centre.jobType ?? null),
       centre.x,
       centre.y,
       scale,
@@ -266,6 +280,12 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     e.stopImmediatePropagation();
     if (hit.kind === 'open-jobs') {
       openJobWindow(); // swap the ring for the scrollable profession list window
+    } else if (hit.kind === 'erect-signpost') {
+      // Arm the click-to-place mode for the selected scout(s) and close the ring — the next world click
+      // places the signpost (the "Select place for signpost" flow of the original).
+      const targets = [...actionTargets];
+      closeMenu();
+      opts.onErectSignpost(targets);
     }
     // kind 'placeholder' — consumed above, but its action is not yet implemented (inert on this slice).
   };

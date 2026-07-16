@@ -14,6 +14,7 @@ import {
   resolveConstructionDraws,
   resolveResourceDraw,
   resolveSettlerBobId,
+  resolveSignpostDraw,
   resolveSpriteBobId,
   resolveStockpileLayerDraws,
   type SpriteKind,
@@ -132,6 +133,16 @@ export function resolveLayers(
     bobId = draw.bob;
   } else if (item.kind === 'stockpile') {
     return resolveStockpileLayers(sheet, item);
+  } else if (item.kind === 'signpost') {
+    // A signpost (post or one of its direction boards) draws its layer-qualified frame from the
+    // guidepost family atlas; an unbound sheet / unloaded family keeps the placeholder.
+    const draw = resolveSignpostDraw(sheet.bindings.signpost, item);
+    if (draw === null) return null;
+    if (draw.layer !== undefined && sheet.families?.[draw.layer] !== undefined) {
+      const resolved = layeredLayerFor(sheet, 'signpost', draw);
+      return resolved === null ? null : [resolved];
+    }
+    bobId = draw.bob;
   } else if (item.kind === 'grounddrop' || item.kind === 'stump' || item.kind === 'berrybush') {
     return resolveDecorLayers(sheet, item, item.kind);
   } else {

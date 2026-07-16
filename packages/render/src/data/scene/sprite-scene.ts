@@ -5,6 +5,7 @@ import { ONE, tileToScreen } from '../iso.js';
 import { isVisible, type Viewport } from '../viewport.js';
 import { assignProjectileArc, assignSettlerFields, pushGhostItems, spriteDepth } from './collect-fields.js';
 import type { DrawItem, MutableDrawItem, SpriteState } from './draw-item.js';
+import { SIGNPOST_BOARD_FRAMES, signpostBoardsOf } from './signpost-boards.js';
 import { enterableStoresOf, TARGET_FACING_ATOMIC_IDS, targetPositionsOf } from './snapshot-index.js';
 import {
   assignStaticFields,
@@ -215,6 +216,26 @@ export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOpt
       if (gfxIndex !== undefined) item.gfxIndex = gfxIndex;
       const level = readBerryBushLevel(components);
       if (level !== undefined) item.level = level;
+    } else if (kind === 'signpost') {
+      // The post draws as-is; each connected in-range neighbour adds one direction-board item at the
+      // same feet anchor (the board frames' offsets carry the post-top pivot), painted the flag
+      // half-step above the post. Synthetic negative refs keep the boards pooled/reconciled per
+      // (signpost, angle-bucket) without colliding with real entity ids.
+      for (const bucket of signpostBoardsOf(snapshot).get(entity.id) ?? []) {
+        const boardRef = -(entity.id * (SIGNPOST_BOARD_FRAMES + 1) + bucket + 1);
+        liveRefs.add(boardRef);
+        const board: MutableDrawItem = {
+          kind: 'signpost',
+          ref: boardRef,
+          x: drawX,
+          y: drawY,
+          depth: spriteDepth(tileX, tileY, 'signpost', true),
+          state: 'idle',
+          boardIndex: bucket,
+        };
+        if (lift !== 0) board.lift = lift;
+        items.push(board);
+      }
     } else if (kind === 'projectile') {
       // Rides the lift draw channel, like terrain lift — never the depth key (see assignProjectileArc).
       arcLift = assignProjectileArc(item, components, screen, posByRef);

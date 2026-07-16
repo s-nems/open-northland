@@ -172,5 +172,9 @@ export const enContent = {
       title: 'Warehouse logistics',
       summary: 'Carriers collect loose goods until each warehouse capacity is reached.',
     },
+    signposts: {
+      title: 'Signposts',
+      summary: 'A scout erects a signpost; settlers work only within the connected guidepost network.',
+    },
   },
 } as const;

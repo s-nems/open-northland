@@ -7,12 +7,12 @@ import type { System, SystemContext } from '../context.js';
 import { advanceConstructionLabor } from '../economy/construction.js';
 import { applySow, applyWater } from '../economy/farming.js';
 import { grantWorkExperience } from '../progression/index.js';
-import { erectSignpost } from '../signposts/index.js';
 import {
   ATOMIC_EVENT_TYPE_PLAY_SOUND_FX,
   atomicAnimationName,
   atomicEventFrame,
 } from '../readviews/animations.js';
+import { erectSignpost } from '../signposts/index.js';
 import {
   applyPendingStaggers,
   type PendingStagger,

@@ -5,6 +5,7 @@ import type {
   ConstructionLayerRef,
   LayeredBobRef,
   ResourceTypeBinding,
+  SignpostBinding,
   StockpileBinding,
 } from './layered-bindings.js';
 
@@ -199,6 +200,21 @@ export function resolveStockpileDraw(binding: number | StockpileBinding, item: D
   // 1-based fill amount → a 0-based frame index, clamped to the heap's available fill states.
   const idx = Math.min(frames.length, Math.max(1, item.fill ?? 1)) - 1;
   return unwrapBobRef(frames[idx] ?? binding.default);
+}
+
+/**
+ * Resolve which bob — and from which named atlas-layer family — a signpost draw item draws: the post
+ * when {@link DrawItem.boardIndex} is absent, else that angular direction-board frame (clamped into
+ * the bound board list). `null` when the binding is absent (placeholder).
+ */
+export function resolveSignpostDraw(
+  binding: SignpostBinding | undefined,
+  item: DrawItem,
+): BuildingDraw | null {
+  if (binding === undefined) return null;
+  if (item.boardIndex === undefined) return unwrapBobRef(binding.post);
+  const board = binding.boards[Math.min(binding.boards.length - 1, Math.max(0, item.boardIndex))];
+  return board === undefined ? null : unwrapBobRef(board);
 }
 
 /**

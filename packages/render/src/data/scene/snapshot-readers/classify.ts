@@ -20,6 +20,9 @@ export function classify(components: Readonly<Record<string, unknown>>): DrawKin
   // component), drawn by a per-good {@link import('../../sprites/index.js').ResourceTypeBinding} like a resource
   // node but from the dead-tree/debris atlas. Checked before Settler/Stockpile (a stump is neither).
   if ('Stump' in components) return 'stump';
+  // A scout-erected signpost (Position + Owner + Signpost) — drawn as the guidepost post, with its
+  // direction boards synthesized as extra items by the scene collector.
+  if ('Signpost' in components) return 'signpost';
   if ('Settler' in components) return 'settler';
   // A designated delivery flag — a pure marker (Position + DeliveryFlag, no Stockpile: it holds no goods,
   // the harvest piles as separate loose heaps around it). Drawn as the flag graphic and painted on top of

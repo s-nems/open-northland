@@ -9,6 +9,7 @@ import {
 import type { Entity } from '../../../ecs/world.js';
 import type { NodeId } from '../../../nav/terrain/index.js';
 import { atomicDuration } from '../../readviews/animations.js';
+import { cellGateOf } from '../../signposts/index.js';
 import {
   deliveredConstructionFraction,
   nextNeededConstructionGood,
@@ -16,7 +17,6 @@ import {
 } from '../../stores/index.js';
 import { atOrWalk, BUILD_HOUSE_ATOMIC_ID, startAtomic, startPickup, walkPickupBatch } from '../actions.js';
 import { claimWorkCell, type SpacingState } from '../destack.js';
-import { cellGateOf } from '../../signposts/index.js';
 import type { PlannerContext } from '../planner-context.js';
 import {
   interactionCell,

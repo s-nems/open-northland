@@ -1,4 +1,5 @@
 import {
+  BUILD_GUIDE_ATOMIC,
   BUILD_HOUSE_ATOMIC,
   CLAY_HARVEST_ATOMIC,
   CULTIVATE_ATOMIC,
@@ -12,7 +13,7 @@ import {
   STORE_PILEUP_ATOMIC,
   WHEAT_HARVEST_ATOMIC,
 } from '../../catalog/atomics.js';
-import { CIVILIST_JOB_HEADS } from '../../catalog/roster.js';
+import { CIVILIST_JOB_HEADS, SCOUT_JOB_HEADS } from '../../catalog/roster.js';
 import {
   CHOP_PHASE_START,
   CHOP_SEQ,
@@ -144,6 +145,29 @@ export const CHARACTER_SPECS = {
       [BUILD_HOUSE_ATOMIC]: { seq: HAMMER_SEQ, ticksPerFrame: HAMMER_TICKS_PER_FRAME },
     },
   },
+  scout: {
+    // The scout: the same generic man body, distinguished by the hatted scout heads (`jobgraphics.ini`
+    // logicjob 27 binds `cr_hum_body_00` + heads 80..83). Its one trade action is the build-guide swing
+    // (action 43) — the extracted gfxAtomics binds it to the shared hammer clip, per-direction lists
+    // included, exactly like the builder's action 39.
+    rosterId: 'civilian',
+    headBmds: SCOUT_JOB_HEADS,
+    walkSeq: 'human_man_generic_walk',
+    waitSeq: 'human_man_generic_wait',
+    carryPrefix: 'human_man_generic_walk_',
+    attack: 'human_man_Civilian_Fight_punch',
+    atomics: {
+      [BUILD_GUIDE_ATOMIC]: { seq: HAMMER_SEQ, ticksPerFrame: HAMMER_TICKS_PER_FRAME },
+      [EAT_ATOMIC]: { seq: 'human_man_generic_eat' },
+      [SLEEP_ATOMIC]: { seq: 'human_man_generic_sleep' },
+      [PRAY_ATOMIC]: { seq: 'human_man_generic_pray' },
+      [STORE_PICKUP_ATOMIC]: { seq: PICKUP_SEQ },
+      [STORE_PILEUP_ATOMIC]: { seq: PICKUP_SEQ },
+    },
+    dirListAtomics: {
+      [BUILD_GUIDE_ATOMIC]: { seq: HAMMER_SEQ, ticksPerFrame: HAMMER_TICKS_PER_FRAME },
+    },
+  },
   woman: {
     rosterId: 'woman',
     walkSeq: 'human_woman_generic_walk',
@@ -257,6 +281,7 @@ export const CHARACTER_SPEC_ENTRIES = Object.entries(CHARACTER_SPECS) as readonl
  */
 export const ADULT_CHARACTER_BY_JOB: Readonly<Record<number, CharacterSpecId>> = {
   5: 'woman', // woman
+  27: 'scout', // scout — the generic man body under the hatted scout heads (80..83)
   31: 'warrior', // soldier_unarmed
   32: 'warrior-spear', // soldier_spear_wooden
   33: 'warrior-spear', // soldier_spear_iron

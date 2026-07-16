@@ -5,6 +5,10 @@ import { jobBaseGraphicsToBindings, resolveGraphicsBindings } from '../src/stage
 import { buildStringCif } from './fixtures/cif.js';
 import { makeTempDir } from './support/game-tree.js';
 
+/** The hand-authored guidepost binding appended LAST on every resolve (engine-bound in the original —
+ *  no data table names it; see resolveGraphicsBindings). */
+const GUIDEPOST_BINDING = ['data/engine2d/bin/bobs/ls_guidepost.bmd', 'bridge01'];
+
 describe('resolveGraphicsBindings', () => {
   let game: string;
 
@@ -31,9 +35,10 @@ describe('resolveGraphicsBindings', () => {
 
     const { bindings, palettes } = await resolveGraphicsBindings(game, undefined);
 
-    expect(bindings).toHaveLength(1);
+    expect(bindings).toHaveLength(2); // the animals record + the appended guidepost hand-binding
     expect(bindings[0]?.bmd).toBe('data/bobs/body.bmd');
     expect(bindings[0]?.paletteName).toBe('bear01');
+    expect([bindings[1]?.bmd, bindings[1]?.paletteName]).toEqual(GUIDEPOST_BINDING);
     expect(palettes).toEqual([{ name: 'bear01', gfxFile: 'data/pal/bear01.pcx' }]);
   });
 
@@ -62,6 +67,7 @@ describe('resolveGraphicsBindings', () => {
       ['data/bobs/body00.bmd', 'human_body'],
       ['data/bobs/head00.bmd', 'human_head'],
       ['data/bobs/head01.bmd', 'human_head'],
+      GUIDEPOST_BINDING,
     ]);
     // The body slot keeps its shadow + cross-refs; the random tint is not emitted as a binding.
     expect(bindings[1]?.shadowBmd).toBe('data/bobs/body00_s.bmd');
@@ -104,6 +110,7 @@ describe('resolveGraphicsBindings', () => {
       ['data/bobs/lion.bmd', 'lion01'],
       ['data/bobs/body00.bmd', 'test_human_00'],
       ['data/bobs/head00.bmd', 'test_human_00'],
+      GUIDEPOST_BINDING,
     ]);
     expect(bindings[1]?.shadowBmd).toBe('data/bobs/body00_s.bmd');
     expect(bindings[1]?.tribeId).toBe(1);
@@ -137,6 +144,7 @@ describe('resolveGraphicsBindings', () => {
     expect(bindings.map((b) => [b.bmd, b.paletteName])).toEqual([
       ['data/bobs/lion.bmd', 'lion01'],
       ['data/bobs/cart.bmd', 'oxcart'],
+      GUIDEPOST_BINDING,
     ]);
     expect(bindings[1]?.shadowBmd).toBe('data/bobs/cart_s.bmd');
     expect(bindings[1]?.tribeId).toBe(1);
@@ -181,6 +189,7 @@ describe('resolveGraphicsBindings', () => {
       ['data/bobs/cart.bmd', 'oxcart'],
       ['data/bobs/cart.bmd', 'oxcart'],
       ['data/bobs/ship.bmd', 'human_ship01'],
+      GUIDEPOST_BINDING,
     ]);
     // The mod's extra tribe-3 ship carries its own per-tribe cross-ref (the base .cif lacks it).
     expect(bindings[3]?.tribeId).toBe(3);
@@ -204,16 +213,18 @@ describe('resolveGraphicsBindings', () => {
     expect(bindings.map((b) => [b.bmd, b.paletteName])).toEqual([
       ['data/bobs/ls_houses_viking.bmd', 'house01'],
       ['data/bobs/ls_houses_viking.bmd', 'house02'],
+      GUIDEPOST_BINDING,
     ]);
     expect([...buildTimeBmds]).toEqual(['data/bobs/ls_houses_viking.bmd']);
   });
 
-  it('returns empty lists with a warning when a binding source is missing', async () => {
+  it('returns only the hand-authored guidepost with a warning when every source is missing', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
     const { bindings, palettes } = await resolveGraphicsBindings(game, undefined); // nothing laid down
 
-    expect(bindings).toEqual([]);
+    // The unconditional guidepost hand-binding remains (convertBmdTree skips it when unresolvable).
+    expect(bindings.map((b) => [b.bmd, b.paletteName])).toEqual([GUIDEPOST_BINDING]);
     expect(palettes).toEqual([]);
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/jobgraphics\.ini/));
     warn.mockRestore();

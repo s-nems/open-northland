@@ -1,4 +1,9 @@
-import { CULTIVATE_ATOMIC, PLANT_ATOMIC, WHEAT_HARVEST_ATOMIC } from '../../../../catalog/atomics.js';
+import {
+  BUILD_GUIDE_ATOMIC,
+  CULTIVATE_ATOMIC,
+  PLANT_ATOMIC,
+  WHEAT_HARVEST_ATOMIC,
+} from '../../../../catalog/atomics.js';
 import { PROFESSIONS } from '../../../../catalog/professions.js';
 import { messages, professionLabel } from '../../../../i18n/index.js';
 import {
@@ -12,6 +17,7 @@ import {
   JOB_COLLECTOR,
   JOB_FARMER_SLOT,
   JOB_IDLE,
+  JOB_SCOUT,
   JOB_SOLDIER_BROADSWORD,
   JOB_SOLDIER_SPEAR,
   JOB_SOLDIER_SWORD,
@@ -42,6 +48,14 @@ export function buildSandboxJobs(extras: SandboxContentExtras): Map<number, Sand
       allowedAtomics: GATHERERS.map((gatherer) => gatherer.atomic),
     },
     { typeId: JOB_CARRIER, id: 'carrier', name: professionLabel('carrier') },
+    // The scout's one allowed atomic is the signpost-erecting build-guide swing (jobtypes.ini 27
+    // `allowatomic 43`) — the placeSignpost flow's animation gate.
+    {
+      typeId: JOB_SCOUT,
+      id: 'scout',
+      name: professionLabel('scout'),
+      allowedAtomics: [BUILD_GUIDE_ATOMIC],
+    },
     {
       typeId: JOB_FARMER_SLOT,
       id: 'farmer',
