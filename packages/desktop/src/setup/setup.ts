@@ -1,0 +1,159 @@
+import type { DesktopApi, GameFolderCandidate, PipelineEvent } from '../ipc.js';
+import { overallFraction, STAGE_LABELS } from '../progress-model.js';
+
+/**
+ * The first-run installer page. Phases: pick (path input + browse + auto-detected candidates) →
+ * run (progress bar + stage line + log tail) → done | failed. All game-folder knowledge lives
+ * behind `window.desktop` ({@link DesktopApi}); this file is DOM glue only.
+ */
+
+declare global {
+  interface Window {
+    readonly desktop: DesktopApi;
+  }
+}
+
+const LOG_TAIL_LINES = 8;
+
+const el = <T extends HTMLElement>(id: string): T => {
+  const found = document.getElementById(id);
+  if (found === null) throw new Error(`setup page is missing #${id}`);
+  return found as T;
+};
+
+const phases = { pick: el('pick'), run: el('run'), done: el('done'), failed: el('failed') } as const;
+const pathInput = el<HTMLInputElement>('game-path');
+const probeNote = el('probe-note');
+const installButton = el<HTMLButtonElement>('install');
+const barFill = el('bar-fill');
+const stageLabel = el('stage-label');
+const itemCount = el('item-count');
+const logTail = el('log-tail');
+
+function showPhase(name: keyof typeof phases): void {
+  for (const [key, section] of Object.entries(phases)) {
+    section.classList.toggle('hidden', key !== name);
+  }
+}
+
+let validPath: string | undefined;
+
+function applyCandidate(candidate: GameFolderCandidate): void {
+  pathInput.value = candidate.path;
+  if (candidate.probe.hasArchives) {
+    validPath = candidate.path;
+    probeNote.textContent = candidate.probe.hasMod
+      ? 'Game found (with the culturesnation mod).'
+      : 'Game found.';
+    installButton.disabled = false;
+  } else {
+    validPath = undefined;
+    probeNote.textContent =
+      'No game archives (.lib) found there — pick the folder that contains Game.exe and DataX.';
+    installButton.disabled = true;
+  }
+}
+
+async function probeTyped(): Promise<void> {
+  const typed = pathInput.value.trim();
+  if (typed === '') {
+    validPath = undefined;
+    probeNote.textContent = '';
+    installButton.disabled = true;
+    return;
+  }
+  applyCandidate(await window.desktop.probeGamePath(typed));
+}
+
+const logLines: string[] = [];
+
+function pushLog(line: string): void {
+  logLines.push(line);
+  if (logLines.length > LOG_TAIL_LINES) logLines.shift();
+  logTail.textContent = logLines.join('\n');
+}
+
+let currentStage: Extract<PipelineEvent, { kind: 'stage' }> | undefined;
+
+function onEvent(event: PipelineEvent): void {
+  switch (event.kind) {
+    case 'stage': {
+      currentStage = event;
+      stageLabel.textContent = `${STAGE_LABELS[event.stage]}…`;
+      itemCount.textContent = '';
+      barFill.style.width = `${overallFraction({ stage: event.stage, done: 0, total: undefined }) * 100}%`;
+      return;
+    }
+    case 'item': {
+      if (currentStage === undefined) return;
+      const fraction = overallFraction({ stage: currentStage.stage, done: event.done, total: event.total });
+      barFill.style.width = `${fraction * 100}%`;
+      itemCount.textContent =
+        event.total === undefined
+          ? `${event.done.toLocaleString('en')} files`
+          : `${event.done.toLocaleString('en')} / ${event.total.toLocaleString('en')}`;
+      return;
+    }
+    case 'log': {
+      pushLog(event.line);
+      return;
+    }
+    case 'done': {
+      barFill.style.width = '100%';
+      showPhase('done');
+      return;
+    }
+    case 'error': {
+      el('error-message').textContent = 'Installing the game content failed.';
+      el('error-log').textContent = [...logLines, event.message].join('\n');
+      showPhase('failed');
+      return;
+    }
+    default: {
+      const exhaustive: never = event;
+      throw new Error(`unhandled pipeline event ${JSON.stringify(exhaustive)}`);
+    }
+  }
+}
+
+async function boot(): Promise<void> {
+  const state = await window.desktop.getState();
+  el('data-root').textContent = state.dataRoot;
+  if (state.gamePath !== undefined) {
+    applyCandidate(await window.desktop.probeGamePath(state.gamePath));
+  }
+  window.desktop.onPipelineEvent(onEvent);
+
+  const detected = await window.desktop.detectGameFolders();
+  if (detected.length > 0) {
+    el('detected').classList.remove('hidden');
+    const list = el('detected-list');
+    for (const candidate of detected) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = candidate.path;
+      button.addEventListener('click', () => applyCandidate(candidate));
+      list.appendChild(button);
+    }
+  }
+
+  el('browse').addEventListener('click', async () => {
+    const picked = await window.desktop.pickGameFolder();
+    if (picked !== null) applyCandidate(picked);
+  });
+  pathInput.addEventListener('change', () => void probeTyped());
+  el('install').addEventListener('click', async () => {
+    if (validPath === undefined) return;
+    showPhase('run');
+    stageLabel.textContent = 'Starting…';
+    try {
+      await window.desktop.runPipeline(validPath);
+    } catch (err) {
+      onEvent({ kind: 'error', message: err instanceof Error ? err.message : String(err) });
+    }
+  });
+  el('play').addEventListener('click', () => void window.desktop.startGame());
+  el('retry').addEventListener('click', () => showPhase('pick'));
+}
+
+void boot();

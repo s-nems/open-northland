@@ -89,6 +89,8 @@ npm run check:fix
 npm run scan:structure
 npm run pipeline -- --game "../Cultures 8th Wonder" --mod DataCnmd --out content
 npm run dev
+npm run desktop
+npm run desktop:dist
 ```
 
 Biome handles formatting/linting, Vitest handles tests, and CI runs check + typecheck + test. The sim
@@ -160,6 +162,8 @@ Load these only when working in that area:
 - `packages/render/AGENTS.md` — screen-bounded Pixi rendering and visual verification.
 - `packages/audio/AGENTS.md` — pure-decision/Web-Audio split, sink-only sim boundary, human-ear verification.
 - `packages/app/AGENTS.md` — URL entries, real-content loading, acceptance scenes.
+- `packages/desktop/AGENTS.md` — the Electron shell: `app://` serving, the first-run installer,
+  data-root rules, packaging targets.
 - `tools/asset-pipeline/AGENTS.md` — extraction, decoder provenance, and source discipline.
 
 ## Docs

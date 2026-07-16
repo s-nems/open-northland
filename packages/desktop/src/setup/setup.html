@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OpenNorthland — first-run setup</title>
+    <link rel="stylesheet" href="setup.css" />
+  </head>
+  <body>
+    <main class="card">
+      <h1>OpenNorthland</h1>
+      <p class="intro">
+        OpenNorthland is a free re-implementation of <em>Cultures — 8th Wonder of the World</em>. It
+        ships no game art or sounds: on this first run it converts the assets of your own copy of the
+        original game into its data folder. Select the folder your game is installed in (the one with
+        <code>Game.exe</code> and <code>DataX</code>) to begin.
+      </p>
+
+      <section id="pick" class="phase">
+        <div class="pick-row">
+          <input id="game-path" type="text" placeholder="Path to your Cultures 8th Wonder folder…" spellcheck="false" />
+          <button id="browse" type="button">Browse…</button>
+        </div>
+        <p id="probe-note" class="note"></p>
+        <div id="detected" class="detected hidden">
+          <p class="note">Found on this computer:</p>
+          <div id="detected-list"></div>
+        </div>
+        <button id="install" type="button" class="primary" disabled>Install game content</button>
+      </section>
+
+      <section id="run" class="phase hidden">
+        <div class="bar"><div id="bar-fill" class="bar-fill"></div></div>
+        <p class="status-row"><span id="stage-label">Preparing…</span><span id="item-count"></span></p>
+        <pre id="log-tail" class="log"></pre>
+      </section>
+
+      <section id="done" class="phase hidden">
+        <p class="ok">Game content installed.</p>
+        <button id="play" type="button" class="primary">Play</button>
+      </section>
+
+      <section id="failed" class="phase hidden">
+        <p class="error" id="error-message"></p>
+        <pre id="error-log" class="log"></pre>
+        <button id="retry" type="button">Back</button>
+      </section>
+
+      <p class="legal">
+        Your original game files are only read, never modified. The converted data stays on this
+        computer in <code id="data-root"></code>.
+      </p>
+    </main>
+    <script src="setup.js"></script>
+  </body>
+</html>

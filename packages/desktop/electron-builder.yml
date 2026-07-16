@@ -1,0 +1,40 @@
+# Packaging for the desktop shell. Unsigned on every platform for now — code signing (SignPath on
+# Windows, notarization on macOS) is docs/tickets/tooling/desktop-code-signing.md; release CI is
+# docs/tickets/tooling/desktop-release-ci.md.
+appId: org.opennorthland.desktop
+productName: OpenNorthland
+# electron-builder needs an exact Electron release to fetch platform binaries; keep in lockstep
+# with the devDependency.
+electronVersion: 43.1.1
+directories:
+  output: release
+files:
+  - dist/**
+  - package.json
+extraResources:
+  # The built web app rides as a plain resource (resources/app) — it is served by the app://
+  # protocol, not loaded as Electron code.
+  - from: ../app/dist
+    to: app
+win:
+  # x64 pinned: the default is the build host's arch, and an arm64 mac would silently ship
+  # win-arm64 binaries almost no player can run.
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+nsis:
+  # A game install: let the player pick the directory, real shortcuts, no one-click surprise.
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+portable:
+  artifactName: ${productName}-${version}-portable.exe
+mac:
+  target:
+    - dmg
+  identity: null
+linux:
+  target:
+    - AppImage
+  category: Game
