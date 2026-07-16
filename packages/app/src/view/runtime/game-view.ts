@@ -245,6 +245,13 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     (clientX, clientY) =>
       toolPanel.claimsWheel(clientX, clientY) || mountedMinimap.claimsPointer(clientX, clientY),
   );
+  // Edge scrolling yields to ANY HUD surface under the cursor (broader than the wheel guard): the
+  // tool-panel strip hugs the left screen edge and the minimap a corner, and hovering them must not
+  // also pan the world behind.
+  cameraCtl.setEdgeGuard(
+    (clientX, clientY) =>
+      toolPanel.claimPointer(clientX, clientY) || mountedMinimap.claimsPointer(clientX, clientY),
+  );
 
   // The cursor position for the build-mode ghost (client coords; null when the pointer left the
   // canvas). Tracked persistently — the ghost must follow the mouse between clicks, and reading it in
