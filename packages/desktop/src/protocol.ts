@@ -21,6 +21,7 @@ const STATIC_TYPES: Readonly<Record<string, string>> = {
   '.css': 'text/css',
   '.json': 'application/json',
   '.png': 'image/png',
+  '.webp': 'image/webp',
   '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon',
   '.cur': 'image/x-icon',

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="stylesheet" href="/src/entries/menu/menu.css" />
     <link rel="stylesheet" href="/src/entries/menu/details.css" />
     <title>Open Northland</title>
@@ -21,7 +21,8 @@
     <template id="main-menu-template">
       <main class="game-menu">
         <header class="game-menu__masthead">
-          <div class="game-menu__brand">Open Northland</div>
+          <!-- src is bound in entries/menu.ts so Vite fingerprints the asset like the backdrop. -->
+          <img class="game-menu__brand" alt="Open Northland" data-menu-logo />
           <nav class="game-menu__languages" data-menu-languages></nav>
         </header>
 

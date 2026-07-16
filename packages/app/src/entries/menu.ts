@@ -4,7 +4,8 @@ import { SCENES } from '../scenes/index.js';
 import { generatedMapPreview } from './menu/map-preview.js';
 import { bindLocaleFlags, bindMenuSettings, targetSearch } from './menu/settings.js';
 
-const DEFAULT_PREVIEW = new URL('../../../../docs/images/settlement.webp', import.meta.url).href;
+const MENU_BACKDROP = new URL('./menu/assets/village.webp', import.meta.url).href;
+const MENU_LOGO = new URL('./menu/assets/logo.webp', import.meta.url).href;
 
 export interface MapIndexEntry {
   readonly id: string;
@@ -144,7 +145,8 @@ export async function renderMenu(canvas: HTMLCanvasElement, params: URLSearchPar
   canvas.hidden = true;
   const copy = messages().menu;
   const root = templateRoot();
-  root.style.setProperty('--menu-backdrop', `url("${DEFAULT_PREVIEW}")`);
+  root.style.setProperty('--menu-backdrop', `url("${MENU_BACKDROP}")`);
+  imageIn(root, '[data-menu-logo]').src = MENU_LOGO;
   translatedShell(root);
   bindMenuSettings(root, params);
   bindLocaleFlags(htmlIn(root, '[data-menu-languages]'));
