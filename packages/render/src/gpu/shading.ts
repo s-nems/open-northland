@@ -1,4 +1,4 @@
-import { GlProgram, Shader, type TextureSource } from 'pixi.js';
+import { GlProgram, Shader, type TextureSource, UniformGroup } from 'pixi.js';
 import { BRIGHTNESS_NEUTRAL } from '../data/brightness.js';
 
 /**
@@ -139,42 +139,49 @@ const VERTEX_FRAGMENT = `#version 300 es
 let fieldProgram: GlProgram | undefined;
 let vertexProgram: GlProgram | undefined;
 
-/** The mutable water-animation uniform handle of one shaded ground mesh: `uWave = [timeTicks,
- *  amplitudeScale]`, mutated in place per frame (a `Float32Array` so the shared program re-uploads
- *  changed contents — the same rule as the paletted sprite's uniforms). */
+/** The mutable water-animation uniform handle: `uWave = [timeTicks, amplitudeScale]`, mutated in place
+ *  per frame (a `Float32Array` so the shared program re-uploads changed contents — the same rule as the
+ *  paletted sprite's uniforms). ONE group per map, shared by every shaded mesh
+ *  ({@link makeShadedTerrainShader}), so the per-frame animation is a single write + dirty bump instead
+ *  of one per chunk mesh. */
 export interface WaveUniforms {
-  uniforms: { uWave: Float32Array };
+  readonly uniforms: { readonly uWave: Float32Array };
   /** Bump the group's dirty id so Pixi re-uploads the changed contents. */
   update(): void;
+}
+
+/** Make the map's shared water-animation uniform group (time 0, full amplitude). */
+export function makeWaveUniforms(): WaveUniforms {
+  const group = new UniformGroup({
+    uWave: { value: new Float32Array([0, 1]), type: 'vec2<f32>' },
+  });
+  return group as unknown as WaveUniforms;
 }
 
 /**
  * A {@link Shader} for the shaded ground mesh: draws `uTexture = source` with the per-fragment lane
  * multiplier sampled from `brightnessTex` (the map's `embr` bytes as an R8 texture, linear-filtered +
  * edge-clamped — the GPU twin of `makeCellSampler`) at the geometry's `aBrightnessUV`, plus the
- * water-wave vertex bob/shimmer driven by the returned {@link WaveUniforms}. One per mesh/page; the
- * compiled program is shared. WebGL-only, like
+ * water-wave vertex bob/shimmer driven by `wave`, the map's ONE shared {@link WaveUniforms} group.
+ * One shader per mesh/page; the compiled program is shared. WebGL-only, like
  * {@link import('./paletted-sprite/index.js').PalettedSprite} — the renderer preference is `webgl`
  * (`pixi-app.ts`).
  */
 export function makeShadedTerrainShader(
   source: TextureSource,
   brightnessTex: TextureSource,
-): { shader: Shader; wave: WaveUniforms } {
+  wave: WaveUniforms,
+): Shader {
   fieldProgram ??= new GlProgram({ vertex: FIELD_VERTEX, fragment: FIELD_FRAGMENT });
-  const waveVars = {
-    uWave: { value: new Float32Array([0, 1]), type: 'vec2<f32>' as const },
-  };
-  const shader = new Shader({
+  return new Shader({
     glProgram: fieldProgram,
     resources: {
       uTexture: source,
       uSampler: source.style,
       uBrightnessTex: brightnessTex,
-      waveVars,
+      waveVars: wave as unknown as UniformGroup,
     },
   });
-  return { shader, wave: shader.resources.waveVars as WaveUniforms };
 }
 
 /**

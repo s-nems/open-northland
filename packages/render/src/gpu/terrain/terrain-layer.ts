@@ -4,9 +4,9 @@ import { type ElevationField, makeElevationField } from '../../data/elevation.js
 import { composeShadingLane } from '../../data/hillshade.js';
 import type { SceneTerrain } from '../../data/scene/index.js';
 import { aabbIntersects, type Viewport } from '../../data/viewport.js';
-import { makeWaveField } from '../../data/water.js';
+import { makeWaveField, NO_WAVE } from '../../data/water.js';
 import { destroyMeshChildren } from '../mesh-teardown.js';
-import { padLaneRows } from '../shading.js';
+import { makeWaveUniforms, padLaneRows, type WaveUniforms } from '../shading.js';
 import type { TerrainTextureSet } from '../terrain-textures.js';
 import { buildFlat } from './build-flat.js';
 import { buildTextured } from './build-ground.js';
@@ -46,6 +46,11 @@ export class TerrainLayer {
   private laneTexWidth = 0;
   /** The composed shading field ({@link brightnessField}) — neutral until {@link set} builds a shaded map. */
   private field: BrightnessField = makeBrightnessField(undefined, 0, 0);
+  /** The map's ONE shared water-animation uniform group, bound into every shaded mesh — so
+   *  {@link animate} is a single write per frame, not one per chunk. Undefined until {@link set}. */
+  private waveGroup: WaveUniforms | undefined;
+  /** Whether the current map has any water-patterned cell — a land map skips {@link animate} outright. */
+  private hasWater = false;
 
   /**
    * (Re)build the cached terrain from a grid — call once per map (a terrain edit re-invalidates). With
@@ -89,11 +94,15 @@ export class TerrainLayer {
         addressMode: 'clamp-to-edge',
       });
     }
+    // Water-wave amplitudes ride the shaded mesh path (`data/water.ts`); NO_WAVE on land maps.
+    const wave = makeWaveField(terrain.ground, terrain.width, terrain.height);
+    this.hasWater = wave !== NO_WAVE;
+    this.waveGroup = makeWaveUniforms();
     const lane: LaneShading = {
       brightnessTex: this.brightnessTex,
       laneTexWidth: this.laneTexWidth,
-      // Water-wave amplitudes ride the shaded mesh path (`data/water.ts`); NO_WAVE on land maps.
-      wave: makeWaveField(terrain.ground, terrain.width, terrain.height),
+      wave,
+      waveUniforms: this.waveGroup,
     };
     this.chunks =
       textures !== undefined
@@ -121,18 +130,14 @@ export class TerrainLayer {
 
   /**
    * Advance the water-surface animation to `timeTicks` (the interpolated sim clock, `tick + alpha` —
-   * deterministic, so a `?shot` frame reproduces). Writes only the VISIBLE blocks' wave uniforms
-   * (call after {@link cull}), so the per-frame cost tracks the screen; an off-screen block simply
-   * picks up the current time when it scrolls back in. A land map's blocks carry no handles — no-op.
+   * deterministic, so a `?shot` frame reproduces). One write + dirty bump on the map's shared uniform
+   * group — every shaded mesh binds the same group, so the per-frame cost is O(1); a map with no
+   * water-patterned cell is a no-op.
    */
   animate(timeTicks: number): void {
-    for (const chunk of this.chunks) {
-      if (!chunk.container.visible || chunk.waveUniforms.length === 0) continue;
-      for (const wave of chunk.waveUniforms) {
-        wave.uniforms.uWave[0] = timeTicks;
-        wave.update();
-      }
-    }
+    if (!this.hasWater || this.waveGroup === undefined) return;
+    this.waveGroup.uniforms.uWave[0] = timeTicks;
+    this.waveGroup.update();
   }
 
   /**
@@ -152,5 +157,7 @@ export class TerrainLayer {
     this.brightnessTex = undefined;
     this.laneTexWidth = 0;
     this.field = makeBrightnessField(undefined, 0, 0);
+    this.waveGroup = undefined;
+    this.hasWater = false;
   }
 }

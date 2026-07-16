@@ -71,13 +71,14 @@ export class ChunkBatcher {
   private readonly byLayerPage = new Map<string, TerrainBatch & { source: TextureSource; order: number }>();
   private readonly fallback = new Graphics();
   private fallbackUsed = false;
-  /** The wave-uniform handles of the shaded meshes {@link children} emitted — the per-frame water
-   *  animation writes these (`TerrainLayer.animate`). */
-  private readonly waves: WaveUniforms[] = [];
 
   /** @param brightnessTex the map's `embr` lane as an R8 texture — bound into the shaded ground
-   *  shader of every mesh whose batch accumulated `brightnessUVs`; undefined on an unshaded map. */
-  constructor(private readonly brightnessTex?: TextureSource) {}
+   *  shader of every mesh whose batch accumulated `brightnessUVs`; undefined on an unshaded map.
+   *  @param wave the map's ONE shared water-animation uniform group, bound into the same shaders. */
+  constructor(
+    private readonly brightnessTex?: TextureSource,
+    private readonly wave?: WaveUniforms,
+  ) {}
 
   /** The (created-on-first-use) batch for triangles sampling `pageKey` on the given draw layer. */
   batchFor(pageKey: string, source: TextureSource, layer: TerrainLayerKind = 'base'): TerrainBatch {
@@ -115,19 +116,13 @@ export class ChunkBatcher {
     for (const batch of batches) {
       const geometry = meshGeometry(batch);
       const texture = new Texture({ source: batch.source });
-      if (batch.brightnessUVs.length > 0 && this.brightnessTex !== undefined) {
-        const { shader, wave } = makeShadedTerrainShader(batch.source, this.brightnessTex);
-        this.waves.push(wave);
+      if (batch.brightnessUVs.length > 0 && this.brightnessTex !== undefined && this.wave !== undefined) {
+        const shader = makeShadedTerrainShader(batch.source, this.brightnessTex, this.wave);
         out.push(new Mesh({ geometry, texture, shader }));
       } else {
         out.push(new Mesh({ geometry, texture }));
       }
     }
     return out;
-  }
-
-  /** The emitted shaded meshes' water-animation handles (call after {@link children}). */
-  waveUniforms(): readonly WaveUniforms[] {
-    return this.waves;
   }
 }

@@ -80,7 +80,7 @@ export function buildTextured(
   const lift = liftFn(terrain, elevation);
   const shaded = lane.brightnessTex !== undefined;
   return buildChunks(parent, terrain, elevation.maxLift, (c0, r0, c1, r1) => {
-    const batcher = new ChunkBatcher(lane.brightnessTex);
+    const batcher = new ChunkBatcher(lane.brightnessTex, lane.waveUniforms);
     for (let row = r0; row <= r1; row++) {
       for (let col = c0; col <= c1; col++) {
         const typeId = terrain.typeIds[row * terrain.width + col] ?? -1;
@@ -113,7 +113,7 @@ export function buildTextured(
         }
       }
     }
-    return { children: batcher.children(), waveUniforms: batcher.waveUniforms() };
+    return batcher.children();
   });
 }
 
@@ -157,7 +157,7 @@ function buildGround(
   const lift = liftFn(terrain, elevation);
   const shaded = lane.brightnessTex !== undefined;
   return buildChunks(parent, terrain, elevation.maxLift, (c0, r0, c1, r1) => {
-    const batcher = new ChunkBatcher(lane.brightnessTex);
+    const batcher = new ChunkBatcher(lane.brightnessTex, lane.waveUniforms);
     // One transition overlay onto one triangle: lane value → record ⌊v/6⌋ + pair v%6 → that
     // pair's A or B UV tuple, batched on the overlay's draw layer.
     const pushOverlay = (
@@ -224,6 +224,6 @@ function buildGround(
         }
       }
     }
-    return { children: batcher.children(), waveUniforms: batcher.waveUniforms() };
+    return batcher.children();
   });
 }
