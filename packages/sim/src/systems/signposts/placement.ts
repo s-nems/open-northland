@@ -1,3 +1,4 @@
+import type { ContentSet } from '@open-northland/data';
 import {
   Owner,
   Position,
@@ -9,7 +10,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import { positionOfNode } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { canPlaceWorkFlag } from '../footprint/index.js';
+import { canPlaceWorkFlag, workFlagPlacementBlocks } from '../footprint/index.js';
 import { withinNodeRadius } from './geometry.js';
 import { signpostNetwork } from './network.js';
 
@@ -36,6 +37,40 @@ export function canPlaceSignpost(
     if (withinNodeRadius(s.hx, s.hy, c.x, c.y, s.spacingRadius)) return false;
   }
   return true;
+}
+
+/** A ready-to-query erectability test for ONE player: the same rule as {@link canPlaceSignpost}, with the
+ *  blocked set and the player's spacing circles resolved once — the signpost placement-overlay's
+ *  screen-bounded seam (asked per visible node, like the building `PlacementProbe`). */
+export interface SignpostProbe {
+  /** Whether `player` may erect a signpost at half-cell node `(x, y)`. */
+  canPlace(x: number, y: number): boolean;
+}
+
+/**
+ * Build a {@link SignpostProbe} for `player`. Mirrors `placementProbe`: the world's blocked set is
+ * collected once (O(world)), then each `canPlace` is O(player's posts). The overlay memoizes the whole
+ * band result on `workFlagBlockerVersion`, so this rebuilds only when a blocker appears or disappears.
+ */
+export function signpostProbe(
+  world: World,
+  content: ContentSet,
+  terrain: TerrainGraph,
+  player: number,
+): SignpostProbe {
+  const blocked = workFlagPlacementBlocks(world, content, terrain);
+  const posts = signpostNetwork(world).get(player) ?? [];
+  return {
+    canPlace: (x, y) => {
+      if (!terrain.inBounds(x, y)) return false;
+      const node = terrain.nodeAt(x, y);
+      if (!terrain.isWalkable(node) || blocked.has(node)) return false;
+      for (const s of posts) {
+        if (withinNodeRadius(s.hx, s.hy, x, y, s.spacingRadius)) return false;
+      }
+      return true;
+    },
+  };
 }
 
 /**

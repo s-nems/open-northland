@@ -6,8 +6,10 @@ export { createResourceNode } from './footprint/resources.js';
 export { MILITARY_MODE, SCOUT_JOB } from './readviews/stances.js';
 export {
   canPlaceSignpost,
+  type SignpostProbe,
   type SignpostSite,
   signpostNetwork,
+  signpostProbe,
   withinNodeRadius,
 } from './signposts/index.js';
 export { isYardHeap, MAX_GROUND_STACK } from './stores/index.js';

@@ -87,4 +87,7 @@ export type PlacementCommand =
       readonly y: number;
       readonly amount: number;
     }
-  | { readonly kind: 'demolish'; readonly building: Entity };
+  | { readonly kind: 'demolish'; readonly building: Entity }
+  /** Tear down a standing signpost (the original's "Tear down this signpost" — miscwindow 273). Instant
+   *  and free like erecting; skipped for a non-signpost target. */
+  | { readonly kind: 'demolishSignpost'; readonly signpost: Entity };

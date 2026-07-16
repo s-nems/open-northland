@@ -5,6 +5,7 @@ import {
   Health,
   isFogMode,
   Settler,
+  Signpost,
   SignpostRules,
   Stockpile,
   signpostRulesEntity,
@@ -139,6 +140,11 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
         unbindWorkersOf(world, command.building);
         world.destroy(command.building);
       }
+      return;
+    case 'demolishSignpost':
+      // Same kind-at-execution rule as `demolish`: only a live Signpost falls. Destroying it moves the
+      // Signpost generation, so the network memo, placement blockers, and vision all pick it up.
+      if (world.has(command.signpost, Signpost)) world.destroy(command.signpost);
       return;
     case 'moveUnit':
       moveUnit(world, ctx, command);
