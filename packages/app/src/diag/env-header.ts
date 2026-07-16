@@ -1,6 +1,5 @@
 /**
- * The environment header — the boot-time facts that make a tester's log actionable (the part every
- * studied engine writes first: OpenRA's debug.log header, Spring's infolog preamble). Logged once
+ * The environment header — the boot-time facts that make a tester's log actionable. Logged once
  * into the ring on channel `boot`; browser-only, so it lives apart from the DOM-free logger core.
  */
 import { type DiagLog, diag } from './log.js';
