@@ -16,7 +16,7 @@
  * and `gpu/gallery` feature folders. Files inside the folder import their deps directly, not through
  * this barrel.
  */
-export { BadgeLayer, type DoorBadge } from './badge-layer.js';
+export { BadgeLayer, type DoorBadge, type HouseholdKind } from './badge-layer.js';
 export { type ConstructionPlotFrame, ConstructionPlotLayer } from './construction-plot.js';
 export { CombatEffectsLayer } from './effects-layer.js';
 export { FogLayer } from './fog-layer.js';

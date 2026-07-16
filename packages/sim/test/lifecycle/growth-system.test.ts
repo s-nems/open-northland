@@ -1,25 +1,26 @@
 import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { Age, Building, Position, Settler } from '../../src/components/index.js';
+import { Age, Position, Residence, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { fx, ONE, Simulation } from '../../src/index.js';
+import { fx, Simulation } from '../../src/index.js';
 import {
   BABY_FEMALE,
   BABY_MALE,
   CHILD_FEMALE,
   CHILD_MALE,
+  CIVILIST_JOB,
   GROWUP_TICKS,
   growthSystem,
   isNonWorkingAge,
-  NEWBORN_AGE_CLASS,
-  reproductionSystem,
+  WOMAN_JOB,
 } from '../../src/systems/index.js';
 import { ctxOf } from '../fixtures/context.js';
 
 /**
- * GrowthSystem — a settler born young ({@link Age}-bearing) matures baby → child → adult-eligible over
- * {@link GROWUP_TICKS} per stage, sex preserved, losing its Age component once employable. Adults never
- * carry an Age, so the system is a no-op for them (the goldens stay untouched).
+ * GrowthSystem — a settler born young ({@link Age}-bearing) matures baby → child → adult over
+ * {@link GROWUP_TICKS} per stage, sex preserved (a boy grows into a civilian, a girl into
+ * the adult woman role), losing its Age component and its childhood home once grown. Adults never carry an Age, so the system
+ * is a no-op for them (the goldens stay untouched).
  */
 
 const VIKING = 1;
@@ -55,20 +56,6 @@ function run(sim: Simulation, n: number): void {
 }
 
 describe('GrowthSystem — non-working settlers mature into workers', () => {
-  it('a newborn gets an Age component at tick 0 (the ReproductionSystem)', () => {
-    const sim = new Simulation({ seed: 1, content: growthContent() });
-    const home = sim.world.create();
-    sim.world.add(home, Position, { x: fx.fromInt(4), y: fx.fromInt(4) });
-    sim.world.add(home, Building, { buildingType: 2, tribe: VIKING, built: ONE, level: 0 });
-
-    reproductionSystem(sim.world, ctxOf(sim));
-    const [born] = [...sim.world.query(Settler)];
-    expect(born).toBeDefined();
-    expect(sim.world.has(born as Entity, Age)).toBe(true);
-    expect(sim.world.get(born as Entity, Age).ticks).toBe(0);
-    expect(sim.world.get(born as Entity, Settler).jobType).toBe(NEWBORN_AGE_CLASS); // born a baby
-  });
-
   it('a baby becomes a child of the same sex after GROWUP_TICKS', () => {
     const sim = new Simulation({ seed: 1, content: growthContent() });
     const she = bornSettler(sim, BABY_FEMALE, 0);
@@ -85,17 +72,26 @@ describe('GrowthSystem — non-working settlers mature into workers', () => {
     expect(isNonWorkingAge(sim.world.get(she, Settler).jobType)).toBe(true);
   });
 
-  it('a child becomes an adult-eligible settler (jobType null) after the second stage, losing Age', () => {
+  it('a child grows up after the second stage, losing Age and its home — a boy a civilian, a girl a woman', () => {
     const sim = new Simulation({ seed: 1, content: growthContent() });
     const she = bornSettler(sim, BABY_FEMALE, 0);
+    const he = bornSettler(sim, BABY_MALE, 0);
+    const home = 999 as Entity; // any id — graduation must drop the binding regardless
+    sim.world.add(she, Residence, { home });
+    sim.world.add(he, Residence, { home });
 
-    run(sim, GROWUP_TICKS * 2 - 1); // one short of adulthood: a child
+    run(sim, GROWUP_TICKS * 2 - 1); // one short of adulthood: children
     expect(sim.world.get(she, Settler).jobType).toBe(CHILD_FEMALE);
     expect(sim.world.has(she, Age)).toBe(true);
+    expect(sim.world.has(she, Residence)).toBe(true); // a minor lives with its parents
 
-    run(sim, 1); // crosses 2*GROWUP_TICKS: child → adult-eligible
-    expect(sim.world.get(she, Settler).jobType).toBeNull(); // employable now
+    run(sim, 1); // crosses 2*GROWUP_TICKS: child → adult
+    expect(sim.world.get(he, Settler).jobType).toBe(CIVILIST_JOB); // a grown boy is a civilian
+    expect(sim.world.get(she, Settler).jobType).toBe(WOMAN_JOB); // the adult woman role
     expect(sim.world.has(she, Age)).toBe(false); // grown — no age bookkeeping
+    expect(sim.world.has(he, Age)).toBe(false);
+    expect(sim.world.has(she, Residence)).toBe(false); // moved out — its family slot frees
+    expect(sim.world.has(he, Residence)).toBe(false);
   });
 
   it('does not touch an adult settler (no Age component)', () => {

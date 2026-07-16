@@ -26,8 +26,11 @@ import { forceFinishConstruction } from '../economy/construction.js';
 import { createResourceNode } from '../footprint/index.js';
 import {
   assignBuilder,
+  assignHouse,
   assignWorker,
   attackUnit,
+  makeChild,
+  marry,
   moveUnit,
   placeSignpost,
   setCraftGoods,
@@ -187,6 +190,15 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
     }
     case 'setCraftGoods':
       setCraftGoods(world, ctx, command);
+      return;
+    case 'marry':
+      marry(world, ctx, command);
+      return;
+    case 'assignHouse':
+      assignHouse(world, ctx, command);
+      return;
+    case 'makeChild':
+      makeChild(world, ctx, command);
       return;
     case 'setNeedsEnabled': {
       // Set the WorldRules singleton (created lazily on first use, mutated thereafter) — the toggle is

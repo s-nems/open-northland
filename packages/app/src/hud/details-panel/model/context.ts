@@ -74,13 +74,17 @@ export function goodLabel(ctx: UnitPanelModelContext, goodType: number): string 
 /**
  * A job's display name — shared by a building's worker-slot rows and a settler's own profession title, so
  * the two never drift. The shared profession catalog + i18n names a known job (a gatherer → "Zbieracz
- * drewna", carrier → "Tragarz"); a trade the catalog doesn't carry (a rebased building slot like
- * "Cieśla"/"Druid" — a bound settler's `jobType` is that same rebased id) falls back to its content job
- * name, then to the localized idle label. `undefined` (an unbound settler) resolves to the idle label.
+ * drewna", carrier → "Tragarz"); the life-stage roles (baby/child/woman/civilist — not picker
+ * professions) resolve by their content job SLUG through `messages().lifeStage`; a trade the catalog
+ * doesn't carry (a rebased building slot like "Cieśla"/"Druid" — a bound settler's `jobType` is that same
+ * rebased id) falls back to its content job name, then to the localized idle label. `undefined` (an
+ * unbound settler) resolves to the idle label.
  */
 export function jobDisplayName(ctx: UnitPanelModelContext, jobType: number | undefined): string {
   if (jobType === undefined) return jobLabel(undefined);
-  return professionDefForJob(jobType) !== undefined
-    ? jobLabel(jobType)
-    : (ctx.jobs.find((j) => j.typeId === jobType)?.name ?? jobLabel(jobType));
+  if (professionDefForJob(jobType) !== undefined) return jobLabel(jobType);
+  const job = ctx.jobs.find((j) => j.typeId === jobType);
+  const stages: Readonly<Record<string, string | undefined>> = messages().lifeStage;
+  const stage = job?.id !== undefined ? stages[job.id] : undefined;
+  return stage ?? job?.name ?? jobLabel(jobType);
 }

@@ -3,6 +3,8 @@ import {
   Armor,
   Equipment,
   type EquipmentSlot,
+  FEMALE,
+  Female,
   Health,
   MISC_EQUIP_SLOTS,
   MoveSpeed,
@@ -20,6 +22,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import { positionOfNode } from '../../../nav/halfcell.js';
 import type { SystemContext } from '../../context.js';
 import { syncWorkFlagToJob } from '../../economy/flags.js';
+import { isFemaleJobId } from '../../family/eligibility.js';
 import { rollInitialNeed } from '../../lifecycle/needs.js';
 import { stampDefaultStance } from '../../orders/index.js';
 import { settlerHitpoints } from '../../readviews/index.js';
@@ -77,6 +80,13 @@ export function createSettler(world: World, content: ContentSet, rng: Rng, spec:
     // Starting XP (a spawned veteran) or empty; the map hashes in sorted-key order either way.
     experience: new Map<number, number>(spec.experience ?? []),
   });
+  // Sex is explicit (the `Female` marker) because `jobType` loses it on adult trades: the sex-tagged
+  // job slugs (`baby_female`/`child_female`/`woman`) stamp it at creation; every other spawn is male.
+  // Matched by the job's `id` slug, not its numeric id (a fixture's adult trade may reuse a low id).
+  // Births stamp it from the parents' `makeChild` choice instead (systems/family/children.ts).
+  if (isFemaleJobId(contentIndex(content).commandJobs.get(spec.jobType)?.id)) {
+    world.add(e, Female, FEMALE);
+  }
   // Every settler carries a `Health` pool. The pool comes from the content — the settler's tribe HP
   // ({@link settlerHitpoints}), the human counterpart to an animal's `hitpointsAdult` — so every spawn on
   // one content base shares one value (no per-scene tuning). A command may still pass an explicit positive

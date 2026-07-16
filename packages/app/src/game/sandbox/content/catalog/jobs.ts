@@ -12,8 +12,13 @@ import {
   GATHERERS,
   JOB_ARCHER,
   JOB_ARCHER_LONG,
+  JOB_BABY_FEMALE,
+  JOB_BABY_MALE,
   JOB_BUILDER,
   JOB_CARRIER,
+  JOB_CHILD_FEMALE,
+  JOB_CHILD_MALE,
+  JOB_CIVILIST,
   JOB_COLLECTOR,
   JOB_FARMER_SLOT,
   JOB_IDLE,
@@ -22,6 +27,7 @@ import {
   JOB_SOLDIER_SPEAR,
   JOB_SOLDIER_SWORD,
   JOB_SOLDIER_UNARMED,
+  JOB_WOMAN,
   rebaseSlotJob,
 } from '../../ids/index.js';
 import { BUILDING_WORKER_SLOTS, workerSlotName } from '../../worker-slots.js';
@@ -39,6 +45,14 @@ export function buildSandboxJobs(extras: SandboxContentExtras): Map<number, Sand
   const jobs = new Map<number, SandboxJob>();
   for (const job of [
     { typeId: JOB_IDLE, id: 'idle', name: professionLabel('idle') },
+    // The life-stage classes + the two generic adults (`jobtypes.ini` 1..6): the family mechanics'
+    // vocabulary — sex is stamped from these slugs at spawn and a girl matures into `woman`.
+    { typeId: JOB_BABY_FEMALE, id: 'baby_female' },
+    { typeId: JOB_BABY_MALE, id: 'baby_male' },
+    { typeId: JOB_CHILD_FEMALE, id: 'child_female' },
+    { typeId: JOB_CHILD_MALE, id: 'child_male' },
+    { typeId: JOB_WOMAN, id: 'woman' },
+    { typeId: JOB_CIVILIST, id: 'civilist' },
     // One collector trade allowed on every gathered good's harvest atomic (the original's single
     // collector fells, mines, and picks) — see {@link GATHERERS}.
     {

@@ -24,7 +24,6 @@ export {
   hungerInRange,
   type Invariant,
   pietyInRange,
-  populationWithinHousing,
   stockNonNegative,
 } from './harness/invariants.js';
 export { type SeedAnimalsOptions, seedAnimalHerds } from './harness/populate.js';

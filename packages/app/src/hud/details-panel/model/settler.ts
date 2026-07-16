@@ -36,6 +36,8 @@ export const HUMANWINDOW = {
   work: 3, // 'Praca'
   equip: 4, // 'Ekwipunek'
   experience: 5, // 'Doświadczenie'
+  assignHome: 28, // 'Przydziel Dom'
+  assignWork: 31, // 'Przydziel Miejsce Pracy'
   weapon: 60, // 'Broń'
   none: 61, // 'żadna' / 'żadne' — an empty slot
   armor: 63, // 'Zbroja'
@@ -86,6 +88,9 @@ export interface SettlerPanelModel {
   /** Whether the "przydziel miejsce pracy" button is active — true for a settler with a real trade (an
    *  idle/jobless settler has no trade to place, so the button is greyed until a profession is chosen). */
   readonly canAssignWorkplace: boolean;
+  /** Whether the "przypisz dom" button is active — any adult settler may be housed (the sim's
+   *  `assignHouse` gates the rest); greyed for a growing child, whose family is housed via its parents. */
+  readonly canAssignHome: boolean;
   /** Owner/tribe meta line under the name, with the military stance appended for a soldier. */
   readonly meta: string;
   /** A short live-state caption drawn in the portrait box — an honest stand-in for the original's

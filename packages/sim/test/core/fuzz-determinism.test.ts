@@ -43,8 +43,16 @@ const INVALID_TYPE = 99;
  *  stream exercises the ground-collision gate and `force`'s collision-skip — random anchors on the
  *  small map often clip the reserved ring off the edge or overlap an earlier house. */
 const FOOTPRINTED_TYPE = 5;
-/** Building types: HQ / sawmill / temple / tech-gated smithy / footprinted hut / unknown. */
-const BUILDING_TYPES = [1, 2, 3, 4, FOOTPRINTED_TYPE, INVALID_TYPE] as const;
+/** A HOME building type added on top of the fixture tables (see {@link fuzzContent}) so `assignHouse`
+ *  and the family loop reach their ACCEPT paths — without it every fuzzed house assignment dies on the
+ *  `builtHomeType` gate and the wedding/birth machinery never runs under the harness. The id must be
+ *  FREE in the fixture (9; 1–8 are taken): `contentIndex.buildings` is first-wins, so a shadowed id
+ *  would place as this type but resolve to the fixture's entry in every system. */
+const HOME_TYPE = 9;
+/** The fixture's `food_simple` good — what the fuzz home's larder stocks and the preamble drops. */
+const FOOD_GOOD = 3;
+/** Building types: HQ / sawmill / temple / tech-gated smithy / footprinted hut / home / unknown. */
+const BUILDING_TYPES = [1, 2, 3, 4, FOOTPRINTED_TYPE, HOME_TYPE, INVALID_TYPE] as const;
 
 /** A footprinted RESOURCE good the stream drops at runtime via `placeResource` — reuses the fixture's
  *  wood good (typeId 1, whose felling lifecycle is already modelled), joined to a landscape logic type +
@@ -56,15 +64,24 @@ const RESOURCE_GOOD = 1;
 const RESOURCE_LANDSCAPE_TYPE = 20;
 const RESOURCE_GFX_INDEX = 200;
 
-/** The fixture content plus the footprinted hut + the footprinted wood resource — fuzz-local so the
- *  golden fixtures stay untouched (a footprint on a shared type would re-gate the goldens' pinned
- *  placements). */
+/** The fixture content plus the footprinted hut, the home, the woman job, and the footprinted wood
+ *  resource — all fuzz-local so the golden fixtures stay untouched (a footprint on a shared type would
+ *  re-gate the goldens' pinned placements; a female slug would re-sex their spawns). */
 function fuzzContent() {
   const base = testContent();
   return parseContentSet({
     ...base,
+    jobs: [...base.jobs, { typeId: WOMAN_TYPE, id: 'woman' }],
     buildings: [
       ...base.buildings,
+      {
+        typeId: HOME_TYPE,
+        id: 'fuzz_home',
+        kind: 'home',
+        homeSize: 2,
+        // A stocked larder is what arms the birth path.
+        stock: [{ goodType: FOOD_GOOD, capacity: 5 }],
+      },
       {
         typeId: FOOTPRINTED_TYPE,
         id: 'footprinted_hut',
@@ -109,8 +126,12 @@ function fuzzContent() {
     ],
   });
 }
-/** Job types: idle / woodcutter / carpenter / hunter / scout / carrier / unknown. */
-const JOB_TYPES = [0, 1, 2, 15, 27, 36, INVALID_TYPE] as const;
+/** A `woman`-slug job added on top of the fixture tables (see {@link fuzzContent}): a spawn with it
+ *  stamps {@link import('../../src/components/index.js').Female}, so `marry` can find opposite-sex
+ *  pairs and `makeChild`/the hoard rung run their accept paths — the fixture's own jobs are all male. */
+const WOMAN_TYPE = 7;
+/** Job types: idle / woodcutter / carpenter / hunter / scout / carrier / woman / unknown. */
+const JOB_TYPES = [0, 1, 2, 15, 27, 36, WOMAN_TYPE, INVALID_TYPE] as const;
 /** Herd tribes: bear pack / bee / boar / cow / deer, plus two non-animals (viking, unknown) — skipped. */
 const HERD_TRIBES = [10, 11, 12, 13, 14, VIKING, INVALID_TYPE] as const;
 /** The viking woodcutter's weapon (test_axe) and leather armor — the combatant-spawn extras. */
@@ -131,6 +152,12 @@ const STANCE_MODES = [0, 1, 2, 3, 4, 7] as const;
 const FOG_MODES = [0, 1, 2, 9] as const;
 /** Entity-targeting commands draw ids from [1, TARGET_ID_RANGE] — live, dead, and never-created. */
 const TARGET_ID_RANGE = 80;
+/** The AIMED family commands (rolls 24–26) draw ids from [1, NUCLEUS_ID_RANGE] instead — the band the
+ *  {@link runFuzz} preamble's home + six adults land in (plus early stream spawns/buildings, so
+ *  wrong-kind and same-sex skips stay in the mix). The wide-range variants (rolls 21–23) alone
+ *  virtually never hit an eligible target in a 300-tick stream, leaving the wedding/household/birth
+ *  machinery — RNG-consuming, mid-tick-spawning, the likeliest desync source — fuzz-untouched. */
+const NUCLEUS_ID_RANGE = 8;
 /** ~1 command every this-many ticks keeps the stream busy without swamping the map. */
 const COMMAND_EVERY = 4;
 /** Hash checkpoint cadence — a run-twice divergence is localized to a 50-tick window. */
@@ -143,7 +170,7 @@ const MAP_H = 12;
 const NODE_W = MAP_W * 2;
 const NODE_H = MAP_H * 2;
 const FUZZ_SEEDS = [11, 29, 47] as const;
-const TICKS = 300;
+const TICKS = 600;
 
 function pick<T>(rng: Rng, options: readonly T[]): T {
   const v = options[rng.int(options.length)];
@@ -155,8 +182,42 @@ function pick<T>(rng: Rng, options: readonly T[]): T {
 function nextCommand(rng: Rng): Command {
   const x = rng.int(NODE_W);
   const y = rng.int(NODE_H);
-  const roll = rng.int(25);
+  const roll = rng.int(31);
   switch (roll) {
+    case 24:
+      // A marry order at a random id: live adults, children, already-married, unowned/dead targets.
+      return { kind: 'marry', entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
+    case 25:
+      // A house assignment at random ids: real homes, wrong-kind buildings, settlers-as-house, dead ids.
+      return {
+        kind: 'assignHouse',
+        entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+        house: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+      };
+    case 26:
+      // A make-child order at a random id: women/men/children/unmarried — mostly no-ops, all replayable.
+      return {
+        kind: 'makeChild',
+        entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+        child: pick(rng, ['female', 'male'] as const),
+      };
+    case 27:
+      // An AIMED marry (see NUCLEUS_ID_RANGE) — likely to hit a live adult and actually start a wedding.
+      return { kind: 'marry', entity: (rng.int(NUCLEUS_ID_RANGE) + 1) as Entity };
+    case 28:
+      // An AIMED house assignment — likely to bind a nucleus adult to the preamble's built home.
+      return {
+        kind: 'assignHouse',
+        entity: (rng.int(NUCLEUS_ID_RANGE) + 1) as Entity,
+        house: (rng.int(NUCLEUS_ID_RANGE) + 1) as Entity,
+      };
+    case 29:
+      // An AIMED make-child order — accepted once a nucleus wife is married (the stream's weddings).
+      return {
+        kind: 'makeChild',
+        entity: (rng.int(NUCLEUS_ID_RANGE) + 1) as Entity,
+        child: pick(rng, ['female', 'male'] as const),
+      };
     case 0:
       return {
         kind: 'placeBuilding',
@@ -380,12 +441,37 @@ interface FuzzRun {
 
 function runFuzz(fuzzSeed: number, ticks: number): FuzzRun {
   const sim = new Simulation({ seed: fuzzSeed, content: fuzzContent(), map: grassMap(MAP_W, MAP_H) });
+  // A fixed family nucleus ahead of the stream — a built home and three owned couples-to-be — so the
+  // AIMED family rolls (24–26) have eligible targets and the wedding → household → child machinery runs
+  // under the fuzz harness. Part of the input by construction (identical for both live runs), and
+  // recorded in the log like every command, so replay fidelity covers it too.
+  sim.enqueue({ kind: 'placeBuilding', buildingType: HOME_TYPE, x: 10, y: 10, tribe: VIKING, owner: 0 });
+  for (let i = 0; i < 3; i++) {
+    sim.enqueue({ kind: 'spawnSettler', jobType: WOMAN_TYPE, x: 6 + 4 * i, y: 6, tribe: VIKING, owner: 0 });
+    sim.enqueue({ kind: 'spawnSettler', jobType: 0, x: 6 + 4 * i, y: 14, tribe: VIKING, owner: 0 });
+  }
+  // Loose food outside the home — the source the housed women's hoard rung and a child order's haul
+  // stage draw from.
+  sim.enqueue({ kind: 'dropGood', good: FOOD_GOOD, x: 14, y: 10, amount: 5 });
   // An independent generator stream (any fixed derivation of the fuzz seed works — it only must
   // differ from the sim's seed so the two streams aren't trivially correlated).
   const gen = new Rng(fuzzSeed ^ 0x5eed);
   const checkpoints: string[] = [];
   const violations: string[] = [];
   for (let t = 0; t < ticks; t++) {
+    // House one nucleus woman and man on the second tick (ids are monotonic from 1: the home, then the
+    // six spawns in order). Not in the preamble: the home's `built` flips within tick 1's system run,
+    // AFTER that tick's commands applied, so a tick-1 assignHouse dies on the built gate. Fixed input,
+    // logged like every command — replay fidelity covers it.
+    if (t === 1) {
+      sim.enqueue({ kind: 'assignHouse', entity: 2 as Entity, house: 1 as Entity });
+      sim.enqueue({ kind: 'assignHouse', entity: 3 as Entity, house: 1 as Entity });
+      sim.enqueue({ kind: 'marry', entity: 2 as Entity });
+    }
+    // A child order for the housed wife once her scripted wedding has had time to finish — arms the
+    // stock-the-larder → wait-inside → MakingLove → birth stages under the stream's interference (a
+    // seed where the wedding hasn't completed just exercises the unmarried skip instead).
+    if (t === 150) sim.enqueue({ kind: 'makeChild', entity: 2 as Entity, child: 'female' });
     if (gen.int(COMMAND_EVERY) === 0) sim.enqueue(nextCommand(gen));
     sim.step();
     if (violations.length === 0) {

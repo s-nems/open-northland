@@ -33,6 +33,18 @@ export type SimEvent =
   | { readonly kind: 'settlerBorn'; readonly entity: Entity }
   | {
       /**
+       * Two settlers became spouses this tick — the pair finished its wedding kiss (FamilySystem) and
+       * now carries mirrored {@link import('../components/family.js').Marriage} components. `at` is the
+       * kiss node (where the ceremony stood), for a render/audio cue — the original's marriage jingle
+       * (`DM_MUSIC_TYPE_JINGLE_MARRIAGE`, `logicdefines.inc`).
+       */
+      readonly kind: 'settlersMarried';
+      readonly a: Entity;
+      readonly b: Entity;
+      readonly at: { readonly x: number; readonly y: number };
+    }
+  | {
+      /**
        * A combatant was reaped this tick — its {@link import('../components/combat.js').Health} pool hit 0
        * and `cleanupSystem` removed it. `cause` is a render/audio hint (`'damage'` today). `player` is the
        * dead unit's {@link import('../components/ownership.js').Owner} slot, read before the destroy (the

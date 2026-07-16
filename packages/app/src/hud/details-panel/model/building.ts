@@ -109,6 +109,15 @@ export type ProductionModel =
       readonly ripe: number;
     };
 
+/** The residents view of a `home`-kind building: its families (each a member id list, drawn grouped in
+ *  the field) and the family-slot capacity (`logichomesize`) for the "Rodziny 1/3" line. */
+export interface HomeResidentsModel {
+  /** One entry per resident family, in ascending head-id order; members ids, adults before the child. */
+  readonly families: readonly { readonly members: readonly number[] }[];
+  /** Family slots this home tier offers (`homeSize`). */
+  readonly capacity: number;
+}
+
 export interface BuildingPanelModel {
   readonly kind: 'building';
   readonly entityId: number;
@@ -123,6 +132,9 @@ export interface BuildingPanelModel {
   /** One row per worker slot (trade), each with its filled/capacity — the per-trade limits the panel
    *  lists. See {@link workerSlotsFor}. */
   readonly workerSlots: readonly WorkerSlotRow[];
+  /** Non-null for a `home`-kind building: the workers window becomes the residents window
+   *  ("Mieszkańcy" + "Rodziny 1/3" + the family-grouped sprite field). */
+  readonly home: HomeResidentsModel | null;
   readonly showDefense: boolean;
   /** Approximation until a real building-defense mode component exists. */
   readonly defenseLabel: string;

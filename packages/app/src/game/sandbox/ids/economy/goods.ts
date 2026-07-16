@@ -33,6 +33,10 @@ export const GOOD_WHEAT = 104;
 export const GOOD_FLOUR = 111;
 /** Bread — the bakery's in-house product baked from water + flour (`goodtypes.ini` type 19, at the +100 offset). */
 export const GOOD_BREAD = 119;
+/** The two eat-slot foods homes stock (`goodtypes.ini` types 16/17, at the +100 offset) — the `food_`
+ *  slug prefix is what the sim's `isFood` recognizes as edible. */
+export const GOOD_FOOD_SIMPLE = 116;
+export const GOOD_FOOD_EXTRA = 117;
 export const GOOD_SHOES = 130;
 export const GOOD_TOOL_IRON = 132;
 export const GOOD_ARMOR_CHAIN = 135;

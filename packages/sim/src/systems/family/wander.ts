@@ -1,0 +1,50 @@
+import { MoveGoal, Owner, PathRequest, Position, Residence } from '../../components/index.js';
+import type { Entity, World } from '../../ecs/world.js';
+import { nodeOfPosition } from '../../nav/halfcell.js';
+import type { TerrainGraph } from '../../nav/terrain/index.js';
+import type { SpacingState } from '../agents/destack.js';
+import type { SystemContext } from '../context.js';
+import { dynamicBlockedCells } from '../footprint/index.js';
+import { clearNavState } from '../spatial.js';
+
+/**
+ * The child stroll — a growing settler (baby/child) with a home occasionally walks to a random spot
+ * beside it instead of standing frozen at the door (user-requested feel; the original's children
+ * likewise potter around the house). Runs from the planner's Age gate for an idle child, so it never
+ * competes with a drive — a child has none.
+ */
+
+/** How far from the home anchor a stroll may aim (half-cell nodes — ~3 visual tiles). */
+const CHILD_WANDER_RADIUS_NODES = 6;
+/** Mean ticks between strolls (each idle tick rolls 1/N) — a stroll every few seconds, not a patrol. */
+const CHILD_WANDER_PERIOD_TICKS = 90;
+
+/**
+ * Maybe send the idle child `e` on a stroll near its home. Owned children only (unowned fixtures stay
+ * byte-identical, the {@link SpacingState} Owner convention); a homeless or orphaned-of-home child
+ * stays put. The target must be walkable and outside building footprints — a goal the router would
+ * refuse would freeze the child (nothing clears a failed non-player request), so an unlucky roll just
+ * waits for the next one.
+ */
+export function planChildWander(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  e: Entity,
+  spacing: SpacingState,
+): void {
+  if (!world.has(e, Owner)) return;
+  if (world.tryGet(e, PathRequest)?.failed === true) clearNavState(world, e); // recover a dead-end stroll
+  const home = world.tryGet(e, Residence)?.home;
+  if (home === undefined || !world.isAlive(home)) return;
+  const homePos = world.tryGet(home, Position);
+  if (homePos === undefined) return;
+  if (ctx.rng.int(CHILD_WANDER_PERIOD_TICKS) !== 0) return;
+  const anchor = nodeOfPosition(homePos.x, homePos.y);
+  const dx = ctx.rng.int(2 * CHILD_WANDER_RADIUS_NODES + 1) - CHILD_WANDER_RADIUS_NODES;
+  const dy = ctx.rng.int(2 * CHILD_WANDER_RADIUS_NODES + 1) - CHILD_WANDER_RADIUS_NODES;
+  spacing.blockedCells ??= dynamicBlockedCells(world, ctx, terrain);
+  const target = terrain.nodeAtClamped(anchor.hx + dx, anchor.hy + dy);
+  if (!terrain.isWalkable(target) || spacing.blockedCells.has(target)) return;
+  world.add(e, MoveGoal, { cell: target });
+}

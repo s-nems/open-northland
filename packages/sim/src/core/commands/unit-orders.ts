@@ -154,4 +154,42 @@ export type UnitOrderCommand =
       readonly kind: 'setCraftGoods';
       readonly entity: Entity;
       readonly goods: readonly number[];
+    }
+  | {
+      /**
+       * Order one owned unmarried adult settler to marry: it seeks the nearest eligible partner of its
+       * tribe (opposite sex, adult, unmarried, not a soldier/scout — the "on a mission" trades) and the
+       * pair walks together and kisses (atomics 20/21), becoming spouses for life. Auto-cancels (a skip,
+       * still logged) when no eligible partner exists right now — and is likewise skipped for a
+       * dead/stale/non-settler/neutral issuer, a child, an already-married or already-marrying settler,
+       * or a soldier/scout issuer. See `marry`.
+       */
+      readonly kind: 'marry';
+      readonly entity: Entity;
+    }
+  | {
+      /**
+       * Assign one owned adult settler's FAMILY (the settler, its spouse, their still-growing child) to
+       * live in `house`: each member gets a {@link Residence} there. A home houses up to `homeSize`
+       * FAMILIES (`houses.ini` `logichomesize`, 1..5 by level; see `familiesOf`) — the command is
+       * skipped when every family slot is taken by another household. Re-assigning moves the family
+       * (their previous residences are dropped). Skipped for a dead/stale/non-settler/neutral issuer, a
+       * child, or a target that is not a built same-tribe `home`. See `assignHouse`.
+       */
+      readonly kind: 'assignHouse';
+      readonly entity: Entity;
+      readonly house: Entity;
+    }
+  | {
+      /**
+       * Order one owned married woman to make a child of the chosen sex — a standing order (it persists
+       * until the birth succeeds; other orders interrupt but never cancel it). The FamilySystem drives
+       * its stages: she stocks the couple's home with food, waits inside for her husband, and the child
+       * is born once they have made love (see `ChildOrder`). Re-issuing replaces the chosen sex. Skipped
+       * for a dead/stale/non-settler/neutral issuer, a male, a child, an unmarried woman, or while the
+       * couple's previous child is still growing up. See `makeChild`.
+       */
+      readonly kind: 'makeChild';
+      readonly entity: Entity;
+      readonly child: 'female' | 'male';
     };

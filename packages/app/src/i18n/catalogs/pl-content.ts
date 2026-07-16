@@ -177,5 +177,9 @@ export const plContent = {
       title: 'Drogowskazy',
       summary: 'Zwiadowca stawia drogowskaz; osadnicy pracują tylko w zasięgu połączonej sieci drogowskazów.',
     },
+    family: {
+      title: 'Śluby i dzieci',
+      summary: 'Para bierze ślub z pocałunkiem; żona znosi jedzenie do domu i rodzi dziecko.',
+    },
   },
 } as const;

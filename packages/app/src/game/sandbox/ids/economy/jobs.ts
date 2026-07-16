@@ -1,4 +1,14 @@
 export const JOB_IDLE = 0;
+// The age/sex life-stage classes + the two generic adults (`jobtypes.ini`/`logicdefines.inc` 1..6).
+// The family mechanics' vocabulary: sex is stamped from these slugs at spawn (`baby_female`/
+// `child_female`/`woman` → the sim's Female marker), a girl matures into `woman`, and the kiss/
+// make_love animation durations resolve through the woman/civilist bindings.
+export const JOB_BABY_FEMALE = 1;
+export const JOB_BABY_MALE = 2;
+export const JOB_CHILD_FEMALE = 3;
+export const JOB_CHILD_MALE = 4;
+export const JOB_WOMAN = 5;
+export const JOB_CIVILIST = 6;
 // The collector — the original's single outdoor gatherer trade (`jobtypes.ini` type 8). One collector
 // fells wood, mines every deposit, and picks mushrooms (its real `allowedAtomics` cover all six harvest
 // atomics), so the sandbox's per-good {@link import('./gatherers.js').GATHERERS} rows all bind this one

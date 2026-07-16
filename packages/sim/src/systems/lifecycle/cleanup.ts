@@ -1,4 +1,4 @@
-import { Health, Owner, Position, Settler } from '../../components/index.js';
+import { Health, Marriage, Owner, Position, Settler, Wedding } from '../../components/index.js';
 import { eventAt } from '../../core/events.js';
 import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -58,6 +58,12 @@ function reap(world: World, ctx: SystemContext, e: Entity): void {
     ...(pos !== undefined ? { at: eventAt(pos.x, pos.y) } : {}),
   });
   removeWorkFlag(world, e); // a flag-bound gatherer's flag has no owner once it's gone — reap it too
+  // Death dissolves the union: the surviving spouse is widowed (free to remarry — "for life" ends at a
+  // death), and a partner mid-wedding is released from the ceremony.
+  const marriage = world.tryGet(e, Marriage);
+  if (marriage !== undefined && world.isAlive(marriage.spouse)) world.remove(marriage.spouse, Marriage);
+  const wedding = world.tryGet(e, Wedding);
+  if (wedding !== undefined && world.isAlive(wedding.partner)) world.remove(wedding.partner, Wedding);
   world.destroy(e);
 }
 

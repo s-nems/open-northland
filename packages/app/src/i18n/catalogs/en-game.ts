@@ -9,6 +9,8 @@ export const enGame = {
     production: 'Production',
     stock: 'Stock',
     workers: 'Workers',
+    residents: 'Residents',
+    families: 'Number of Families',
     work: 'Work',
     experience: 'Experience',
     equipment: 'Equipment',
@@ -28,6 +30,8 @@ export const enGame = {
     assignWorkplace: 'Assign a workplace',
     assignWorkplaceHint:
       'Click, then pick a building: green ones have an open slot for this settler, red ones do not. Left-click assigns, right-click or Esc cancels.',
+    assignHomeHint:
+      'Click, then pick a house: green ones have a free family slot, red ones do not. Left-click moves the whole family in, right-click or Esc cancels.',
     defenseStopped: 'Defence stopped',
     demolish: 'Demolish',
     signpost: 'Signpost',
@@ -59,6 +63,7 @@ export const enGame = {
       idle: 'idle',
     },
     playerTribe: 'Player #{player} · Tribe {tribe}{stance}',
+    age: 'Age: {years}',
     stance: ' · {stance}',
     health: 'Health',
     hunger: 'Hunger',
@@ -116,7 +121,11 @@ export const enGame = {
     assign_house: 'Assign home',
     animal: 'Animal',
     vehicle: 'Vehicle',
-    marry: 'Find partner',
+    // The family action labels are the decoded originals (`content/gui/strings/eng.json` humanwindow
+    // 21/23/24/28), not invented phrasing.
+    marry: 'Marry',
+    make_son: 'Have a Boy',
+    make_daughter: 'Have a Girl',
     pray: 'Pray',
     talk: 'Talk',
     sleep: 'Sleep',
@@ -126,6 +135,16 @@ export const enGame = {
     house_b: 'Home assignment',
     house_c: 'Home assignment',
     house_d: 'Home assignment',
+  },
+  // The non-trade life-stage roles (`jobtypes.ini` 1..6), keyed by the content job SLUG — the details
+  // panel resolves these before falling back to the raw content name (which is the untranslated slug).
+  lifeStage: {
+    baby_female: 'Baby (girl)',
+    baby_male: 'Baby (boy)',
+    child_female: 'Girl',
+    child_male: 'Boy',
+    woman: 'Woman',
+    civilist: 'Civilian',
   },
   admin: {
     toggle: '🛠 Admin / Debug',

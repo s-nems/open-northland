@@ -1,7 +1,16 @@
-import type { DoorBadge } from '@open-northland/render';
+import type { DoorBadge, HouseholdKind } from '@open-northland/render';
 import { nodeOfPosition, positionOfNode, type WorldSnapshot } from '@open-northland/sim';
 import type { WorkerRole } from '../../game/sandbox/index.js';
-import { buildingTypeOf, isBuilding, isSettler, num, positionOf } from '../../game/snapshot.js';
+import {
+  buildingTypeOf,
+  familiesByHome,
+  type HomeFamily,
+  isBuilding,
+  isMakingLove,
+  isSettler,
+  num,
+  positionOf,
+} from '../../game/snapshot.js';
 import { type DoorFootprint, workerIconNode } from './building-points.js';
 
 /**
@@ -33,6 +42,8 @@ export function computeDoorBadges(
   // Pass 1 — tally the settlers bound to each building, split by worker role. A count (addition commutes)
   // so entity order doesn't matter; this is a view read, not a sim decision.
   const tally = new Map<number, { craftsmen: number; carriers: number; gatherers: number }>();
+  // Resident families per home — one door dot per family (see familiesByHome).
+  const households = familiesByHome(snapshot);
   for (const e of snapshot.entities) {
     if (!isSettler(e)) continue;
     const assignment = e.components.JobAssignment as { workplace?: unknown } | undefined;
@@ -48,14 +59,15 @@ export function computeDoorBadges(
     else bucket.craftsmen++;
     tally.set(workplace, bucket);
   }
-  if (tally.size === 0) return [];
 
-  // Pass 2 — project the worker-icon anchor of every building that has bound workers.
+  // Pass 2 — project the worker-icon anchor of every building with workers, residents, or hearts.
   const out: DoorBadge[] = [];
   for (const e of snapshot.entities) {
     if (!isBuilding(e)) continue;
     const counts = tally.get(e.id);
-    if (counts === undefined) continue; // no workers here — no badge
+    const families = households.get(e.id);
+    const hearts = isMakingLove(e);
+    if (counts === undefined && families === undefined && !hearts) continue; // nothing to draw here
     const pos = positionOf(e);
     if (pos === undefined) continue;
     const anchor = nodeOfPosition(pos.x, pos.y);
@@ -67,10 +79,20 @@ export function computeDoorBadges(
       id: e.id,
       x: dpos.x,
       y: dpos.y,
-      craftsmen: counts.craftsmen,
-      carriers: counts.carriers,
-      gatherers: counts.gatherers,
+      craftsmen: counts?.craftsmen ?? 0,
+      carriers: counts?.carriers ?? 0,
+      gatherers: counts?.gatherers ?? 0,
+      ...(families !== undefined ? { households: families.map(householdKindOf) } : {}),
+      ...(hearts ? { hearts } : {}),
     });
   }
   return out;
+}
+
+/** Classify one resident family into its door dot: parents raising a child read 'family', a childless
+ *  pair 'couple', anyone alone (including an orphaned minor) 'single'. */
+function householdKindOf(family: HomeFamily): HouseholdKind {
+  if (family.adults > 0 && family.minors > 0) return 'family';
+  if (family.adults >= 2) return 'couple';
+  return 'single';
 }

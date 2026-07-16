@@ -1,8 +1,8 @@
 # Give a "can't" cue for a refused worker/builder assignment click
 
-**Area:** app (input/feedback) · **Origin:** bmd-build-progress review, 2026-07-14; extended by workplace-assignment review, 2026-07-16 · **Priority:** P3
+**Area:** app (input/feedback) · **Origin:** bmd-build-progress review, 2026-07-14; extended by workplace-assignment review, 2026-07-16, and the marriage/children review, 2026-07-16 · **Priority:** P3
 
-Two sibling assignment gestures produce a silent refusal with no player feedback:
+Seven sibling gestures produce a silent refusal with no player feedback:
 
 1. **Foundation, no builder selected.** Right-clicking an under-construction building routes every
    selected settler to the `assignBuilder` command (`packages/app/src/view/unit-controls/orders.ts`).
@@ -30,6 +30,15 @@ Two sibling assignment gestures produce a silent refusal with no player feedback
    (`unit-controls/index.ts`), the handler cancels the mode BEFORE dispatching the click, so a click on
    dimmed/illegal ground both does nothing and silently leaves placement — a retry costs a full
    ring-menu round-trip. Keep the mode armed on an illegal click (or at least give the "can't" cue).
+6. **RMB "move in" on a full home.** Right-clicking a home enqueues `assignHouse` per selected settler
+   (`unit-controls/orders.ts`); success shows immediately (door family dot, panel count), but a home
+   with no free family slot no-ops with nothing — unlike the LMB pick mode, which at least washes the
+   home red. Same "can't" cue applies.
+7. **A wedding that cancels mid-walk.** When a `Wedding` dissolves before the kiss (a partner dies, the
+   walk fails — `packages/sim/src/systems/family/weddings.ts` failed-path cancel), the pair silently
+   gives up and idles. Event-driven rather than a click, but the same feedback gap: consider a brief
+   cue (a status caption on the selected settler / a denied jingle) when the cancellation reaches the
+   snapshot.
 
 ## Scope
 

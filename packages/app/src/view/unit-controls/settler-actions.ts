@@ -1,10 +1,22 @@
 import { type Camera, tileToScreen } from '@open-northland/render';
-import { ONE, type WorldSnapshot } from '@open-northland/sim';
+import { ONE, systems, type WorldSnapshot } from '@open-northland/sim';
 import { type Application, Container, Graphics } from 'pixi.js';
 import type { PickerEntry } from '../../catalog/professions.js';
+import { JOB_SCOUT } from '../../game/sandbox/index.js';
 import { loadGuiArt } from '../../content/gui-art.js';
 import { loadUiFont } from '../../content/ui-font.js';
-import { isSettler, positionOf, settlerJobType } from '../../game/snapshot.js';
+import {
+  childOrderOf,
+  entityById,
+  hasEligiblePartner,
+  isAdult,
+  isFemale,
+  isMarrying,
+  isSettler,
+  marriageOf,
+  positionOf,
+  settlerJobType,
+} from '../../game/snapshot.js';
 import {
   type ActionButton,
   type ActionRingLayout,
@@ -12,7 +24,12 @@ import {
   hitTestActionRing,
   layoutActionRing,
 } from '../../hud/action-ring-layout.js';
-import { HUMAN_DEFAULT_MENU, menuForJob, SCOUT_MENU } from '../../hud/action-ring-menu.js';
+import {
+  ALL_MENU_BUTTONS,
+  DEFAULT_MENU_STATE,
+  menuForSettler,
+  type SettlerMenuState,
+} from '../../hud/action-ring-menu.js';
 import { type Messages, messages } from '../../i18n/index.js';
 import { clientToScreen } from '../camera.js';
 import { el } from '../overlay.js';
@@ -28,15 +45,17 @@ import { createProfessionPicker } from './profession-picker.js';
  * palette) and turns a click into a `setJob` through the callback seam — never touching sim state (app-layer
  * I/O, one-way flow).
  *
- * We draw the whole default human menu (every arm of the original), but only the "change profession" button
- * (`open-jobs`) is wired on this slice: clicking it opens the scrollable profession-picker window — a DOM
- * panel styled to evoke the original's parchment/rope selection windows (warm-wood fill, double rope-tan
- * frame, engraved headline + close box, the shared serif face), kept DOM so the grouped profession set
- * scrolls with no Pixi masking; picking a row issues `setJob` and returns to the menu. The offered
- * professions + their labels come from the shared `catalog/professions.ts` roster + `i18n/` (Polish now),
- * so the picker and the details-panel label can't drift. Every other button is an inert placeholder — the
- * future "implement the action" pass wires them (and the warrior/scout menu variants). Three modes: `closed`
- * → `menu` (the default arms) → `jobs` (the list window over the hidden ring).
+ * We draw the whole default human menu (every arm of the original), rebuilt per frame from the selected
+ * settler's state ({@link menuForSettler}): "change profession" (`open-jobs`) opens the scrollable
+ * profession-picker window — a DOM panel styled to evoke the original's parchment/rope selection windows
+ * (warm-wood fill, double rope-tan frame, engraved headline + close box, the shared serif face), kept DOM
+ * so the grouped profession set scrolls with no Pixi masking; picking a row issues `setJob` and returns to
+ * the menu. The family buttons are live too: `marry` (an unmarried eligible adult), `assign_house` (arms
+ * the click-a-house pick mode), and the make-son/make-daughter pair (a married woman) — each issued
+ * through its callback seam. The offered professions + their labels come from the shared
+ * `catalog/professions.ts` roster + `i18n/`, so the picker and the details-panel label can't drift. The
+ * remaining buttons are inert placeholders. Three modes: `closed` → `menu` (the default arms) → `jobs`
+ * (the list window over the hidden ring).
  *
  * It is toggled with Space (the info card stays always-on) and anchored on the selected settlers'
  * on-screen centroid, re-placed every frame as the camera pans / the units move. The order buttons are drawn
@@ -83,6 +102,12 @@ export interface SettlerActionsOptions {
   readonly onSetJob: (ids: readonly number[], jobType: number) => void;
   /** Arm the erect-signpost click-to-place mode for the selected scout(s) (the scout menu's button). */
   readonly onErectSignpost: (ids: readonly number[]) => void;
+  /** Issue a `marry` order on the (single) selected settler. */
+  readonly onMarry: (id: number) => void;
+  /** Arm the click-a-house pick mode for the (single) selected settler. */
+  readonly onAssignHouse: (id: number) => void;
+  /** Issue a `makeChild` order of the chosen sex on the (single) selected woman. */
+  readonly onMakeChild: (id: number, sex: 'male' | 'female') => void;
 }
 
 export interface SettlerActions {
@@ -116,14 +141,10 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
 
   const art = await loadGuiArt();
 
-  // Every button any menu variant can show (default + scout), deduped by id — the retained visuals are
-  // baked once for the union, and each frame's layout places only the active variant's subset. The
+  // Every button any menu state can show (family + scout variants included) — the retained visuals are
+  // baked once for the union, and each frame's layout places only the active state's subset. The
   // profession picker is a DOM list window (below), so the canvas holds just the menu buttons.
-  const byId = new Map<string, ActionButton>();
-  for (const g of [...HUMAN_DEFAULT_MENU, ...SCOUT_MENU]) {
-    for (const b of g.buttons) byId.set(b.id, b);
-  }
-  const allButtons: readonly ActionButton[] = [...byId.values()];
+  const allButtons: readonly ActionButton[] = ALL_MENU_BUTTONS;
 
   const root = new Container();
   root.zIndex = RING_Z;
@@ -227,6 +248,42 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     };
   };
 
+  /**
+   * The menu state of the single selected settler — which per-state buttons (marry / assign home /
+   * make son+daughter) its ring shows. A multi-selection (or a missing entity) shows none: the family
+   * orders are per-settler, so they only surface when exactly one settler anchors the ring. The scout
+   * swap (erect-signpost replaces alert/query) keys on the selection's UNIFORM jobType, so a multi-scout
+   * selection keeps the button (the erect order takes several scouts).
+   */
+  const menuStateFor = (
+    snapshot: WorldSnapshot,
+    ids: readonly number[],
+    uniformJobType: number | undefined,
+  ): SettlerMenuState => {
+    const erectSignpost = uniformJobType === JOB_SCOUT;
+    if (ids.length !== 1 || ids[0] === undefined) return { ...DEFAULT_MENU_STATE, erectSignpost };
+    const e = entityById(snapshot, ids[0]);
+    if (e === undefined || !isSettler(e)) return { ...DEFAULT_MENU_STATE, erectSignpost };
+    // A single selected child shows no change-profession button (its stage is the GrowthSystem's) and
+    // no family buttons.
+    if (!isAdult(e)) return { ...DEFAULT_MENU_STATE, canChangeJob: false, erectSignpost };
+    const married = marriageOf(e);
+    const onMission = systems.isOnMission(settlerJobType(e) ?? null);
+    // The one-child limit: a living, still-growing child blocks a fresh order (a grown or dead child
+    // frees it — the sim command re-validates either way; this only decides button visibility).
+    const child = married?.child ?? null;
+    const childEntity = child !== null ? entityById(snapshot, child) : undefined;
+    const raisingChild = childEntity !== undefined && !isAdult(childEntity);
+    return {
+      canChangeJob: !isFemale(e), // women keep the woman role for life (the sim guards setJob too)
+      // Marry only lights up when somebody eligible exists — otherwise the click would silently cancel.
+      canMarry: married === undefined && !isMarrying(e) && !onMission && hasEligiblePartner(snapshot, e),
+      canAssignHouse: true,
+      canOrderChild: married !== undefined && isFemale(e) && !raisingChild && childOrderOf(e) === undefined,
+      erectSignpost,
+    };
+  };
+
   const update = (camera: Camera, snapshot: WorldSnapshot, selection: ReadonlySet<number>): void => {
     const centre = mode === 'closed' ? null : selectionCentre(camera, snapshot, selection);
     if (centre === null) {
@@ -247,7 +304,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
       return;
     }
     layout = layoutActionRing(
-      menuForJob(centre.jobType ?? null),
+      menuForSettler(menuStateFor(snapshot, centre.ids, centre.jobType)),
       centre.x,
       centre.y,
       scale,
@@ -278,6 +335,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     // A menu click is the menu's — stop it reaching world picking (we register before unit-controls). This
     // consumes a placeholder click too, so an inert button never falls through to a move/attack order.
     e.stopImmediatePropagation();
+    const single = actionTargets.length === 1 ? actionTargets[0] : undefined;
     if (hit.kind === 'open-jobs') {
       openJobWindow(); // swap the ring for the scrollable profession list window
     } else if (hit.kind === 'erect-signpost') {
@@ -286,6 +344,15 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
       const targets = [...actionTargets];
       closeMenu();
       opts.onErectSignpost(targets);
+    } else if (hit.kind === 'marry' && single !== undefined) {
+      opts.onMarry(single);
+      closeMenu(); // the order is issued — nothing left to do in the menu
+    } else if (hit.kind === 'assign-house' && single !== undefined) {
+      opts.onAssignHouse(single);
+      closeMenu(); // hands off to the click-a-house pick mode
+    } else if (hit.kind === 'make-child' && single !== undefined) {
+      opts.onMakeChild(single, hit.sex);
+      closeMenu();
     }
     // kind 'placeholder' — consumed above, but its action is not yet implemented (inert on this slice).
   };

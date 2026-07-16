@@ -146,3 +146,7 @@ export const HARVEST_TICKS: Readonly<Record<number, number>> = {
 export const EAT_ATOMIC = 10;
 export const SLEEP_ATOMIC = 8;
 export const PRAY_ATOMIC = 12;
+/** The wedding pair (`logicdefines.inc` KISS 20 / KISSED 21, sim `systems/family/weddings.ts`). Each
+ *  body authors ONE kiss clip (`human_*_generic_kiss`), so both roles bind the same sequence. */
+export const KISS_ATOMIC = 20;
+export const KISSED_ATOMIC = 21;

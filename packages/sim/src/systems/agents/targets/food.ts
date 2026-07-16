@@ -1,9 +1,11 @@
-import { BerryBush, Stockpile, stockpileEntries } from '../../../components/index.js';
+import { BerryBush, Building, Residence, Stockpile, stockpileEntries } from '../../../components/index.js';
+import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { bushesNearNode } from '../../berry-index.js';
 import type { SystemContext } from '../../context.js';
 import { BERRY_FORAGE_RADIUS } from '../../economy/berries.js';
+import { reservedFoodUnits, storedFoodUnits } from '../../family/households.js';
 import type { SpatialGate } from '../../node-metric.js';
 import { manhattan } from '../../spatial.js';
 import { isFood } from '../../stores/index.js';
@@ -26,14 +28,38 @@ function nearestFoodStore(
   world: World,
   ctx: SystemContext,
   here: NodeId,
+  eater: Entity,
   gate?: SpatialGate,
 ): { store: Entity; goodType: number; dist: number; cell: NodeId } | null {
-  const winner = index.nearest(here, (e) => storedFoodGood(world, ctx, e) !== null, gate);
+  const home = world.tryGet(eater, Residence)?.home ?? null;
+  const winner = index.nearest(here, (e) => edibleFoodGoodFor(world, ctx, e, home) !== null, gate);
   if (winner === null) return null;
-  const goodType = storedFoodGood(world, ctx, winner.entity);
+  const goodType = edibleFoodGoodFor(world, ctx, winner.entity, home);
   return goodType === null
     ? null
     : { store: winner.entity, goodType, dist: winner.distance, cell: winner.cell };
+}
+
+/**
+ * The food good `eater` may eat from `store`, or null. Beyond {@link storedFoodGood}'s "holds an
+ * edible", a HOME larder feeds only its own residents (`eaterHome` must be that home), and the
+ * resident share stops at the home's {@link reservedFoodUnits} (the child fund nobody eats).
+ */
+function edibleFoodGoodFor(
+  world: World,
+  ctx: SystemContext,
+  store: Entity,
+  eaterHome: Entity | null,
+): number | null {
+  const building = world.tryGet(store, Building);
+  if (
+    building !== undefined &&
+    contentIndex(ctx.content).buildings.get(building.buildingType)?.kind === 'home'
+  ) {
+    if (store !== eaterHome) return null; // another family's larder
+    if (storedFoodUnits(world, ctx, store) <= reservedFoodUnits(world, store)) return null; // all reserved
+  }
+  return storedFoodGood(world, ctx, store);
 }
 
 /** A store's candidate food good: its lowest-goodType stocked edible ({@link isFood}), or null when it holds
@@ -118,9 +144,10 @@ export function nearestFood(
   ctx: SystemContext,
   terrain: TerrainGraph,
   here: NodeId,
+  eater: Entity,
   gate?: SpatialGate,
 ): FoodTarget | null {
-  const store = nearestFoodStore(targets.stockpileCells, world, ctx, here, gate);
+  const store = nearestFoodStore(targets.stockpileCells, world, ctx, here, eater, gate);
   const bush = nearestRipeBush(world, ctx, terrain, here, gate);
   if (bush !== null && (store === null || closer(bush.dist, bush.cell, store.dist, store.cell))) {
     return { kind: 'bush', bush: bush.bush };

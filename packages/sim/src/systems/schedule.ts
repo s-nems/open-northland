@@ -9,10 +9,10 @@ import { constructionSystem } from './economy/construction.js';
 import { cropGrowthSystem } from './economy/farming.js';
 import { jobSystem } from './economy/jobs/index.js';
 import { productionSystem } from './economy/production.js';
+import { familySystem } from './family/index.js';
 import { growthSystem } from './lifecycle/ageclass.js';
 import { cleanupSystem } from './lifecycle/cleanup.js';
 import { needsSystem } from './lifecycle/needs.js';
-import { reproductionSystem } from './lifecycle/reproduction.js';
 import { separationSystem } from './movement/collision/index.js';
 import { herdingSystem } from './movement/herding.js';
 import { movementSystem } from './movement/movement.js';
@@ -36,6 +36,8 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   // After playerOrderSystem retires the walk and before aiSystem could re-task the scout: an arrived
   // erect order starts its hammer swing this same tick.
   { name: 'signpostOrder', system: signpostOrderSystem },
+  // Family runs before ai so its walks route the same tick and its duty/wedding fences are fresh.
+  { name: 'family', system: familySystem },
   { name: 'ai', system: aiSystem },
   { name: 'pathfinding', system: pathfindingSystem },
   { name: 'movement', system: movementSystem },
@@ -49,7 +51,6 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   { name: 'vision', system: visionSystem },
   { name: 'combat', system: combatSystem },
   { name: 'projectile', system: projectileSystem },
-  { name: 'reproduction', system: reproductionSystem },
   { name: 'growth', system: growthSystem },
   { name: 'cleanup', system: cleanupSystem },
 ];

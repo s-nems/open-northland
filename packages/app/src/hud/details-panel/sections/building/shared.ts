@@ -8,6 +8,8 @@ export const HOUSEWINDOW = {
   defence: 2, // 'Obrona'
   stock: 5, // 'Magazyn'
   workers: 7, // 'Pracownicy'
+  residents: 8, // 'Mieszkańcy'
+  families: 52, // 'Liczba Rodzin'
   demolish: 114, // 'Zniszcz'
   center: 116, // 'Wycentruj'
   workersButton: 118, // 'Pracownicy'

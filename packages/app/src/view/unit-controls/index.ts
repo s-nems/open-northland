@@ -6,6 +6,7 @@ import { mountUnitPanel, type UnitPanel } from '../../hud/details-panel/index.js
 import { clientToScreen, screenScale } from '../camera.js';
 import { clampTile, nodeBounds, pickInRect, pickTopAt, screenToWorld, worldToTile } from '../picking.js';
 import { assignableJobForBuilding, computeAssignHighlight } from './assign-highlight.js';
+import { computeHouseHighlight, houseAssignableAt } from './house-highlight.js';
 import { createSelectionMarquee } from './marquee.js';
 import { createUnitOrderController } from './orders.js';
 import { mountSettlerActions, type SettlerActions } from './settler-actions.js';
@@ -58,8 +59,13 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   // mode). While set, candidate buildings are washed green/red and the next left-click on a green one binds
   // the settler; a click on a red building / terrain, right-click, Esc, or a selection change cancels.
   let assignSettler: number | null = null;
+  // "Przypisz dom" mode: the settler whose home the player is choosing (null = not in the mode) — the
+  // residential twin of assign mode: homes wash green/red and the next left-click on a green home
+  // assigns the settler's family there; the same gestures cancel.
+  let houseSettler: number | null = null;
   const cancelAssign = (): void => {
     assignSettler = null;
+    houseSettler = null;
   };
   // "Erect Signpost" mode: the scout(s) the placement click applies to (null = not in the mode). While
   // set, the next left-click on the world orders the first scout to erect a signpost on the clicked node
@@ -87,6 +93,11 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     onDemolishSignpost: (id) => opts.enqueue({ kind: 'demolishSignpost', signpost: id as Entity }),
     onAssignWorkplace: (id) => {
       assignSettler = id;
+      houseSettler = null; // the two pick modes are exclusive — arming one disarms the other
+    },
+    onAssignHome: (id) => {
+      houseSettler = id;
+      assignSettler = null;
     },
     onSetGatherGood: (id, goodType) =>
       opts.enqueue({ kind: 'setGatherGood', entity: id as Entity, goodType }),
@@ -109,6 +120,13 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     onErectSignpost: (ids) => {
       signpostScouts = ids;
     },
+    onMarry: (id) => opts.enqueue({ kind: 'marry', entity: id as Entity }),
+    onAssignHouse: (id) => {
+      houseSettler = id;
+      assignSettler = null; // exclusive with the workplace pick mode
+      signpostScouts = null; // …and with signpost placement
+    },
+    onMakeChild: (id, sex) => opts.enqueue({ kind: 'makeChild', entity: id as Entity, child: sex }),
   });
 
   const marquee = createSelectionMarquee();
@@ -190,12 +208,29 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     });
   };
 
-  /** The green/red workplace-assignment wash for the render layer — the candidate buildings for the settler
-   *  being placed, or null when not in assign mode. Recomputed per frame from the live snapshot (an O(entity
-   *  count) pass — one settler scan for staffing + one building scan) so a slot filling elsewhere re-colours
-   *  immediately; only runs while assign mode is active, a transient gesture. */
-  const assignHighlight = (): readonly BuildingHighlightItem[] | null =>
-    assignSettler === null ? null : computeAssignHighlight(opts.snapshot(), assignSettler, buildingsByType);
+  /** Resolve a world click in "przypisz dom" mode: assign the family to the home under the cursor when
+   *  it fits (a green home), else cancel. Any resolving click exits the mode (assign-and-leave). */
+  const resolveHouseAssign = (e: MouseEvent): void => {
+    const settlerId = houseSettler;
+    cancelAssign();
+    if (settlerId === null) return;
+    const w = toWorld(e.clientX, e.clientY);
+    const building = pickTopAt(unitTargets.owned('building'), w.x, w.y);
+    if (building === null) return; // clicked terrain / a unit — cancel
+    if (!houseAssignableAt(opts.snapshot(), building, settlerId, buildingsByType)) return; // red — cancel
+    opts.enqueue({ kind: 'assignHouse', entity: settlerId as Entity, house: building as Entity });
+  };
+
+  /** The green/red building wash for the render layer — the workplace-assign candidates, the home-assign
+   *  candidates, or null when neither pick mode is active. Recomputed per frame from the live snapshot
+   *  (an O(entity count) pass) so a slot/house filling elsewhere re-colours immediately; only runs while
+   *  a pick mode is active, a transient gesture. */
+  const assignHighlight = (): readonly BuildingHighlightItem[] | null => {
+    if (assignSettler !== null)
+      return computeAssignHighlight(opts.snapshot(), assignSettler, buildingsByType);
+    if (houseSettler !== null) return computeHouseHighlight(opts.snapshot(), houseSettler, buildingsByType);
+    return null;
+  };
 
   const onMouseDown = (e: MouseEvent): void => {
     // The HUD claims its own clicks before any world picking — a press over the tool panel / an open window /
@@ -229,6 +264,11 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
         const target = clampTile(worldToTile(w.x, w.y, opts.elevation), width, height);
         opts.enqueue({ kind: 'placeSignpost', entity: scout as Entity, x: target.col, y: target.row });
       }
+      return;
+    }
+    if (houseSettler !== null) {
+      if (e.button === 0) resolveHouseAssign(e);
+      else cancelAssign();
       return;
     }
     if (e.button === 2) {
@@ -289,8 +329,8 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       e.preventDefault(); // Space would otherwise scroll the page
       actions.toggle(); // the info card is always-on; Space only toggles the action ring
     } else if (e.code === 'Escape') {
-      if (assignSettler !== null) {
-        cancelAssign(); // Esc first backs out of assign mode, keeping the selection
+      if (assignSettler !== null || houseSettler !== null) {
+        cancelAssign(); // Esc first backs out of a pick mode, keeping the selection
       } else if (signpostScouts !== null) {
         cancelSignpost(); // …or out of signpost placement, likewise keeping the selection
       } else {

@@ -8,6 +8,7 @@ import {
   BUILDING_BAKERY,
   BUILDING_FARM,
   BUILDING_HEADQUARTERS,
+  BUILDING_HOME_00,
   BUILDING_JOINERY,
   BUILDING_MILL,
   BUILDING_WAREHOUSE_00,
@@ -17,6 +18,8 @@ import {
   GOOD_BREAD,
   GOOD_COIN,
   GOOD_FLOUR,
+  GOOD_FOOD_EXTRA,
+  GOOD_FOOD_SIMPLE,
   GOOD_GOLD,
   GOOD_IRON,
   GOOD_MUD,
@@ -107,6 +110,8 @@ export interface SandboxBuildingRow {
   typeId: number;
   id: string;
   kind: string;
+  /** A home's shelter capacity (`logichomesize`); absent on non-residences. */
+  homeSize?: number;
   stock?: readonly StockSlot[];
   construction?: readonly { goodType: number; amount: number }[];
   hitpoints?: number;
@@ -209,6 +214,25 @@ const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> 
   },
 };
 
+/** Per home tier: how many settlers it shelters (`houses.ini` `logichomesize` 1..5 — EXTRACTED) and
+ *  its private larder capacity per food good (`logicstock 16/17 <cap> 1` — EXTRACTED: 5/10/15/15/15). */
+const HOME_SIZE_BY_TIER = [1, 2, 3, 4, 5] as const;
+const HOME_FOOD_CAPACITY_BY_TIER = [5, 10, 15, 15, 15] as const;
+
+/** A home's residence data: its shelter capacity + the food-only larder its family (and only its
+ *  family) eats from — the family mechanics' per-house gate. */
+function homeRow(b: VikingBuilding): Partial<SandboxBuildingRow> {
+  const tier = Math.max(0, Math.min(HOME_SIZE_BY_TIER.length - 1, b.typeId - BUILDING_HOME_00));
+  const capacity = HOME_FOOD_CAPACITY_BY_TIER[tier] as number;
+  return {
+    homeSize: HOME_SIZE_BY_TIER[tier] as number,
+    stock: [
+      { goodType: GOOD_FOOD_SIMPLE, capacity, initial: 0 },
+      { goodType: GOOD_FOOD_EXTRA, capacity, initial: 0 },
+    ],
+  };
+}
+
 function buildingRow(b: VikingBuilding): SandboxBuildingRow {
   const slots = workerSlotsFor(b.typeId);
   return {
@@ -218,6 +242,7 @@ function buildingRow(b: VikingBuilding): SandboxBuildingRow {
     construction: buildingConstructionCost(b), // a deliverable bill so it raises as a construction site
     hitpoints: buildingHitpoints(b.kind), // the Health pool the ramp fills as it rises
     ...(slots !== undefined ? { workers: slots } : {}),
+    ...(b.kind === 'home' ? homeRow(b) : {}),
     ...BUILDING_OVERRIDES[b.typeId], // an override's `workers` (the joinery's demo) wins over the default
   };
 }

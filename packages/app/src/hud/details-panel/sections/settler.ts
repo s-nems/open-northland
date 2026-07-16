@@ -150,16 +150,26 @@ function drawWorkSection(
   for (const choice of layout.craftChoiceHits) {
     drawChoice(choice.rect, choice.goodId, choice.selected || choice.goodType === hoveredGatherGood);
   }
-  // The "przydziel miejsce pracy" control: its description on the left, a small round house button on the
-  // right (greyed for a jobless settler — nothing to place). The hint stays in the cursor tooltip.
+  // The "przydziel miejsce pracy" control: a small round button on the left, its decoded-original
+  // description to the right (greyed for a jobless settler — nothing to place). The hint stays in the
+  // cursor tooltip.
   chrome.textLeftMiddle(
-    hud.assignWorkplace,
+    ui('humanwindow', HUMANWINDOW.assignWork, hud.assignWorkplace),
     layout.assignLabel.x,
     layout.assignLabel.y + layout.assignLabel.h / 2,
     model.canAssignWorkplace ? 'white' : 'dimmed',
   );
   chrome.roundButton(layout.assignIcon, model.canAssignWorkplace, hoverAction === 'assign-workplace');
   chrome.glyphHouse(layout.assignIcon, model.canAssignWorkplace);
+  // The "przydziel dom" control below it — same shape, arms the click-a-house pick mode.
+  chrome.textLeftMiddle(
+    ui('humanwindow', HUMANWINDOW.assignHome, hud.assignHome),
+    layout.homeLabel.x,
+    layout.homeLabel.y + layout.homeLabel.h / 2,
+    model.canAssignHome ? 'white' : 'dimmed',
+  );
+  chrome.roundButton(layout.homeIcon, model.canAssignHome, hoverAction === 'assign-home');
+  chrome.glyphHouse(layout.homeIcon, model.canAssignHome);
 }
 
 /** Doświadczenie: the settler's highest recorded specialization (or "żadne" — the sim awards none yet). */

@@ -8,7 +8,7 @@
  * pinned to `Data/GameSourceIncludes/logicdefines.inc` (`JOB_TYPE_HUMAN_BABY_FEMALE = 1` …
  * `JOB_TYPE_HUMAN_WOMAN = 5`, `JOB_TYPE_HUMAN_CIVILIST = 6`) and the matching `Data/logic/jobtypes.ini`
  * records. Those ids are already in the extracted `JobType` IR; this module is the sim-side recognition that
- * ids 1–4 are the non-working life stages, so the ReproductionSystem can birth a settler as a baby rather
+ * ids 1–4 are the non-working life stages, so a birth (`family/children.ts`) creates a baby rather
  * than an instantly-employable adult, and the JobSystem leaves a baby/child unemployed.
  *
  * The AI planner skips an {@link Age}-bearing settler, so a baby/child does not run the adult needs-drives
@@ -18,12 +18,12 @@
  * the structural id→stage predicate the JobSystem uses.
  *
  * source-basis: the age-class ids are pinned to `logicdefines.inc` + `jobtypes.ini` (no interpretation). The
- * growth cadence ({@link GROWUP_TICKS}) is approximated — no readable "grows up after N ticks" key exists —
- * as is sex selection at birth (see {@link NEWBORN_AGE_CLASS}). A settler grows up keeping the sex it was
- * born with (baby_female → child_female → adult; baby_male → child_male → adult).
+ * growth cadence ({@link GROWUP_TICKS}) is approximated — no readable "grows up after N ticks" key exists.
+ * A settler grows up keeping the sex it was born with (the `makeChild` order picks it; baby_female →
+ * child_female → woman; baby_male → child_male → civilist).
  */
 
-import { Age, Settler } from '../../components/index.js';
+import { Age, Residence, Settler } from '../../components/index.js';
 import type { Entity } from '../../ecs/world.js';
 import type { System } from '../context.js';
 
@@ -34,10 +34,14 @@ export const BABY_MALE = 2;
 export const CHILD_FEMALE = 3;
 export const CHILD_MALE = 4;
 
-/** The job id a newborn is born at. The original picks a sex per birth; with no readable sex-determination
- * oracle and no RNG-free source at the birth site, the youngest age class is chosen deterministically — the
- * structure "a newborn is a baby" is pinned, which sex is approximated. */
-export const NEWBORN_AGE_CLASS = BABY_FEMALE;
+/** The adult female role (`JOB_TYPE_HUMAN_WOMAN = 5`) — a girl matures into it. It is an adult job,
+ * not a non-working age class: the original employs women (domestic/`make_love`), and the marriage/child
+ * mechanics pair a woman with a working man. */
+export const WOMAN_JOB = 5;
+
+/** The generic adult man (`JOB_TYPE_HUMAN_CIVILIST = 6`) — a boy matures into it (user decision
+ * 2026-07-16: a grown boy is a civilian the player re-trades, not an auto-employed jobless idler). */
+export const CIVILIST_JOB = 6;
 
 /** Whether a `jobType` is a baby (the youngest, pre-child stage) — ids 1–2. */
 export function isBaby(jobType: number | null): boolean {
@@ -81,7 +85,7 @@ function isMaleStage(jobType: number | null): boolean {
  * GrowthSystem — age each {@link Age}-bearing settler one tick and promote it through the non-working life
  * stages: baby → child after {@link GROWUP_TICKS}, child → adult-eligible after another.
  *
- * Only a settler born young carries an {@link Age} (the ReproductionSystem adds it at `ticks: 0`), so this is
+ * Only a settler born young carries an {@link Age} (the FamilySystem's `birth` adds it at `ticks: 0`), so this is
  * a no-op for every settler spawned already-adult. On reaching adulthood (`jobType` cleared to `null`) the
  * `Age` component is removed — a grown settler is just an idle adult the JobSystem employs next.
  *
@@ -94,23 +98,32 @@ export const growthSystem: System = (world) => {
     const age = world.get(e, Age);
     const settler = world.get(e, Settler);
     age.ticks += 1;
-    const target = ageClassAt(age.ticks, isMaleStage(settler.jobType));
-    if (target !== settler.jobType) {
-      settler.jobType = target;
-      if (target === null) graduated.push(e); // grown to an adult — its Age is now meaningless
+    if (age.ticks >= GROWUP_TICKS * 2) {
+      // Grown to an adult — a boy becomes a civilian ({@link CIVILIST_JOB}), a girl the adult woman
+      // role ({@link WOMAN_JOB}); neither is auto-employed, the player assigns work.
+      settler.jobType = isMaleStage(settler.jobType) ? CIVILIST_JOB : WOMAN_JOB;
+      graduated.push(e); // its Age is now meaningless
+      continue;
     }
+    const target = ageClassAt(age.ticks, isMaleStage(settler.jobType));
+    if (target !== settler.jobType) settler.jobType = target;
   }
-  for (const e of graduated) world.remove(e, Age);
+  for (const e of graduated) {
+    world.remove(e, Age);
+    // A grown child moves out: it stops counting in its parents' family slot (a homeSize-3 home would
+    // otherwise silently fill with grown-up "families") and picks its own home when the player assigns
+    // one (user decision 2026-07-16).
+    world.remove(e, Residence);
+  }
 };
 
 /**
- * The age-class `jobType` a settler that has lived `ticks` should currently be, for the given sex: a baby for
- * the first {@link GROWUP_TICKS}, a child for the next, an adult (`null` — employable) thereafter. A pure
- * function of the count + sex (not of how many times it ran), so re-evaluating it every tick is idempotent
- * within a stage and the promotion never double-fires.
+ * The age-class `jobType` a settler that has lived `ticks` (still short of adulthood) should currently be,
+ * for the given sex: a baby for the first {@link GROWUP_TICKS}, a child thereafter. A pure function of the
+ * count + sex (not of how many times it ran), so re-evaluating it every tick is idempotent within a stage
+ * and the promotion never double-fires.
  */
-function ageClassAt(ticks: number, male: boolean): number | null {
+function ageClassAt(ticks: number, male: boolean): number {
   if (ticks < GROWUP_TICKS) return male ? BABY_MALE : BABY_FEMALE;
-  if (ticks < GROWUP_TICKS * 2) return male ? CHILD_MALE : CHILD_FEMALE;
-  return null; // adult-eligible
+  return male ? CHILD_MALE : CHILD_FEMALE;
 }

@@ -12,6 +12,9 @@ import { layoutDetails, MAX_STOCK_ROWS, stockSlotRects } from '../src/hud/detail
 import { ALL_STOCK_TAB, visibleStockRows } from '../src/hud/details-panel/stock-tabs.js';
 import { sandboxCtx } from './support/sandbox.js';
 
+/** The watchtower (`tower_00`, catalog typeId 40) — a store-less building (declares no stock slots). */
+const BUILDING_TOWER = 40;
+
 describe('details panel layout', () => {
   it('lays every gather filter as a clickable Praca button with the current good selected', () => {
     const model = buildUnitPanelModel(
@@ -102,12 +105,19 @@ describe('details panel layout', () => {
     expect(hq.stockRows).toBe(MAX_STOCK_ROWS);
     expect(hq.stockTabHits.length).toBeGreaterThan(0);
 
-    // A home stores nothing → no Magazyn window at all, and the panel is SHORTER than the farm's.
+    // A home stocks its family larder (the two foods) → a compact tab-less store, like the farm.
     const home = layoutDetails(buildingModel(BUILDING_HOME_00), screen, 1);
     if (home?.kind !== 'building') throw new Error('expected a building layout');
-    expect(home.stock).toBeNull();
+    expect(home.stock).not.toBeNull();
+    expect(home.stockCompact).toBe(true);
     expect(home.stockTabHits).toHaveLength(0);
-    expect(home.panel.h).toBeLessThan(farm.panel.h);
+
+    // A watchtower stores nothing → no Magazyn window at all, and the panel is SHORTER than the farm's.
+    const tower = layoutDetails(buildingModel(BUILDING_TOWER), screen, 1);
+    if (tower?.kind !== 'building') throw new Error('expected a building layout');
+    expect(tower.stock).toBeNull();
+    expect(tower.stockTabHits).toHaveLength(0);
+    expect(tower.panel.h).toBeLessThan(farm.panel.h);
     expect(farm.panel.h).toBeLessThan(hq.panel.h);
   });
 

@@ -6,6 +6,7 @@ import {
   CraftSelection,
   CurrentAtomic,
   Engagement,
+  Female,
   Fleeing,
   GatherSelection,
   JobAssignment,
@@ -60,6 +61,9 @@ export function setJob(
   const e = command.entity;
   if (!isOrderableSettler(world, e)) return;
   if (world.has(e, Age)) return; // a growing child's job class is GrowthSystem's, not the player's
+  // A woman keeps the woman role for life — the trades are male (faithful to the original's job model;
+  // user decision 2026-07-16). Her work is the household: hoarding food home, bearing children.
+  if (world.has(e, Female)) return;
   if (!contentIndex(ctx.content).commandJobs.has(command.jobType)) return; // unknown job — skip
 
   world.remove(e, JobAssignment); // re-employed at a building of the NEW job by the JobSystem
@@ -118,6 +122,7 @@ export function assignWorker(
   const e = command.entity;
   if (!isOrderableSettler(world, e)) return;
   if (world.has(e, Age)) return; // a growing child's job class is GrowthSystem's, not the player's
+  if (world.has(e, Female)) return; // women take no trade — see the setJob guard
   const b = command.building;
   if (!world.isAlive(b) || !world.has(b, Building)) return;
   // Signpost confinement: a workplace beyond the settler's allowed area is refused like an out-of-area

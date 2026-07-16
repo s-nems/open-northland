@@ -31,6 +31,26 @@ export type ActionButton =
       readonly icon: ActionIconFrame;
     }
   | {
+      /** "Find a partner" — issues the sim `marry` order (shown only for an unmarried eligible adult). */
+      readonly kind: 'marry';
+      readonly id: 'marry';
+      readonly icon: ActionIconFrame;
+    }
+  | {
+      /** "Assign home" — arms the click-a-house pick mode (shown for any adult settler). */
+      readonly kind: 'assign-house';
+      readonly id: 'assign_house';
+      readonly icon: ActionIconFrame;
+    }
+  | {
+      /** "Make a son / daughter" — issues the sim `makeChild` order (shown for a married woman with
+       *  no growing child). Two instances, one per sex. */
+      readonly kind: 'make-child';
+      readonly id: 'make_son' | 'make_daughter';
+      readonly sex: 'male' | 'female';
+      readonly icon: ActionIconFrame;
+    }
+  | {
       /** A default-menu button whose action is not yet implemented — drawn + tooltipped, but inert on click. */
       readonly kind: 'placeholder';
       /** Stable id (keys the retained visual, and is what a test asserts). */
