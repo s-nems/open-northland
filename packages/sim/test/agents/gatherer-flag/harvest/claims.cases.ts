@@ -1,16 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { CurrentAtomic, Position, Settler } from '../../../../src/components/index.js';
+import { CurrentAtomic } from '../../../../src/components/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import { Simulation } from '../../../../src/index.js';
 import { testContent } from '../../../fixtures/content.js';
 import {
   bindToFlag,
-  CHOPS_TO_FELL,
   grassMap,
   groundHeapWood,
   makeWoodcutter,
   placeFellableTree,
-  TREE_WOOD_YIELD,
   WIDE_RADIUS,
 } from '../support.js';
 
@@ -55,11 +53,9 @@ describe('flag gatherers — one digger per node (harvest claims)', () => {
     // or its yield reached the flag yard).
     const remaining = trees.filter((tree) => sim.world.isAlive(tree)).length;
     expect(remaining < trees.length || groundHeapWood(sim) > 0).toBe(true);
-    expect(CHOPS_TO_FELL).toBeGreaterThan(0); // fixture sanity: felling takes several swings
-    expect(TREE_WOOD_YIELD).toBeGreaterThan(0);
   });
 
-  it('with one free node, exactly one gatherer digs and the surplus waits by the flag', () => {
+  it('with one free node, exactly one gatherer ever digs it — the surplus never joins the swing', () => {
     const sim = new Simulation({ seed: 5, content: testContent(), map: grassMap(30, 6) });
     const tree = placeFellableTree(sim, 10, 2);
     const crew: Entity[] = [];
@@ -68,17 +64,18 @@ describe('flag gatherers — one digger per node (harvest claims)', () => {
       bindToFlag(sim, g, 7, 2, WIDE_RADIUS);
       crew.push(g);
     }
-    // Run just long enough for the crew to reach the tree and the first swings to land — but not to
-    // fell it (CHOPS_TO_FELL swings × several ticks each stays comfortably ahead).
-    for (let t = 0; t < 60; t++) {
+    // Assert the one-digger rule every tick AND witness digging actually starting — a fixture change
+    // that stalls the walk past the budget must fail here, not silently void the ≤1 assertion. The
+    // surplus is not pinned to a spot: while one digs, the others legitimately collect its chips (the
+    // pile-collection rung), so the claim rule is exactly "never two swings on one node".
+    const MAX_TICKS = 400;
+    let sawDigger = false;
+    for (let t = 0; t < MAX_TICKS; t++) {
       sim.step();
       const diggers = crew.filter((g) => harvestTargetOf(sim, g) === tree);
       expect(diggers.length, `tick ${sim.tick}`).toBeLessThanOrEqual(1);
+      if (diggers.length === 1) sawDigger = true;
     }
-    // Everyone is still a settler standing somewhere sane (nobody teleported or got stuck without state).
-    for (const g of crew) {
-      expect(sim.world.has(g, Settler)).toBe(true);
-      expect(sim.world.has(g, Position)).toBe(true);
-    }
+    expect(sawDigger).toBe(true);
   });
 });

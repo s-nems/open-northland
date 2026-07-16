@@ -107,9 +107,10 @@ function walkableCells(
   return out.length < count ? null : out;
 }
 
-/** Signpost navigation confinement is a game fundament (user decision 2026-07-16): every playable world
- *  runs with it ON. Enqueued per slice builder (scenes get it in `createSceneSim`), keeping the sim-level
- *  default off so pre-signpost goldens stay byte-identical. */
+/** Signpost navigation confinement is a game fundament: every playable world runs with it ON — a
+ *  civilian acts only within its local circle + its player's reachable signpost network (scouts and
+ *  fighters roam free). Enqueued per slice builder (scenes get it in `createSceneSim`), keeping the
+ *  sim-level default off so pre-signpost goldens stay byte-identical. */
 function enableSignpostNavigation(sim: Simulation): void {
   sim.enqueue({ kind: 'setSignpostNavigation', enabled: true });
 }
@@ -142,6 +143,10 @@ function enqueuePlacements(sim: Simulation, placements: readonly AuthoredPlaceme
       // decoded maps): real content's `needforgood` gates iron/gold behind clay/stone-digging XP, and a
       // map settler converted to a collector and pinned to an iron camp would otherwise never qualify.
       // Granted to every human, not just collectors, because profession changes keep `experience`.
+      // Named approximation: it skips the original's dig-clay-first apprenticeship for the authored
+      // starting population only — children born later still earn the gate. `sethuman`'s undecoded
+      // trailing columns (tools/asset-pipeline maps decoder) may carry the original per-human stats
+      // and would be the real source to pin.
       const mastery = gatherMasteryExperienceFor(sim.content, p.tribe);
       sim.enqueue({
         kind: 'spawnSettler',

@@ -14,7 +14,7 @@ import { type InboundSupplyTally, inboundSupplyOf } from './supply-tally.js';
  *  {@link import('../../core/content-index.js').ContentIndex.constructionBillByBuilding}) — or an empty
  *  list when the entity is not a typed building (a bare fixture) or its type declares no cost (a free
  *  type). The shared read behind {@link deliveredConstructionFraction},
- *  {@link constructionMaterialsPresent}, {@link nextNeededConstructionGood}, and {@link constructionTotalUnits}. */
+ *  {@link constructionMaterialsPresent}, {@link neededConstructionGoods}, and {@link constructionTotalUnits}. */
 export function constructionBillOf(world: World, ctx: SystemContext, site: Entity): readonly GoodsLine[] {
   const b = world.tryGet(site, Building);
   if (b === undefined) return EMPTY_CONSTRUCTION;
@@ -81,15 +81,4 @@ export function neededConstructionGoods(
   }
   shortfalls.sort((a, b) => a.covered * b.need - b.covered * a.need || a.goodType - b.goodType);
   return shortfalls.map(({ goodType, amount }) => ({ goodType, amount }));
-}
-
-/** The single most-lacking construction material — {@link neededConstructionGoods}' first line — or
- *  null when every material is on hand or inbound. */
-export function nextNeededConstructionGood(
-  world: World,
-  ctx: SystemContext,
-  site: Entity,
-  inbound: InboundSupplyTally,
-): { goodType: number; amount: number } | null {
-  return neededConstructionGoods(world, ctx, site, inbound)[0] ?? null;
 }

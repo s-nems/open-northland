@@ -8,7 +8,9 @@ import type { Entity, World } from '../../../ecs/world.js';
  * to one deposit spreads over its free nodes instead of stacking on the nearest, and when no free node
  * remains the surplus gatherers wait rather than crowd a colleague's swing. A walker en route still
  * re-checks on arrival (its replan consults the claims), so two walkers converging on one node resolve
- * to one swinging and one re-targeting — never two simultaneous harvests of the same node.
+ * to one swinging and one re-targeting — never two simultaneous harvests of the same node. Claims are
+ * cross-player by design (the query spans all owners): two settlers can't share one swing whoever
+ * commands them, so a rival's live dig excludes the node exactly like a colleague's.
  */
 export type HarvestClaims = Set<Entity>;
 

@@ -1,6 +1,12 @@
 # Give a "can't" cue for a refused worker/builder assignment click
 
-**Area:** app (input/feedback) · **Origin:** bmd-build-progress review, 2026-07-14; extended by workplace-assignment review, 2026-07-16, and the marriage/children review, 2026-07-16 · **Priority:** P3
+**Area:** app (input/feedback) · **Origin:** bmd-build-progress review, 2026-07-14; extended by workplace-assignment review, 2026-07-16, and the marriage/children review, 2026-07-16 · **Priority:** P2
+
+Re-ranked P3 → P2 (fix/regression-fixes, 2026-07-16): signpost confinement is now enabled in EVERY
+playable world (scenes, decoded maps, the slice), so the out-of-area refusals of items 3, 4, and 8 —
+previously an opt-in scene's edge case — are the default play experience. "Nothing happened" clicks
+and inexplicably idle crews are now the norm wherever the player's network doesn't reach; the
+original notifies (item 4's quoted message) rather than no-oping.
 
 Eight sibling gestures produce a silent refusal with no player feedback:
 

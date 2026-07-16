@@ -10,7 +10,6 @@ export {
   constructionTotalUnits,
   deliveredConstructionFraction,
   neededConstructionGoods,
-  nextNeededConstructionGood,
 } from './construction.js';
 export { isFood } from './food.js';
 export { homeNextTier, housingCapacity, tribePopulation } from './housing.js';
