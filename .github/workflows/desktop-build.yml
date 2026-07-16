@@ -1,0 +1,81 @@
+name: Desktop build
+
+# Manually-dispatched installer build: run it from the Actions tab against main (optionally an
+# older commit via the `commit` input). Each OS builds its own installers natively, then `publish`
+# collects them into a `build-<short-sha>` prerelease — release assets are plain public download
+# links, unlike workflow artifacts which require a GitHub login. There is no semver release train
+# yet; the version IS the commit (0.0.0-<short-sha>), stamped via electron-builder extraMetadata.
+on:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: Full SHA of the commit to build (defaults to the branch head)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  installers:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ inputs.commit || github.ref }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Derive the build version from the commit
+        id: version
+        shell: bash
+        run: echo "version=0.0.0-$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
+      - run: npm ci
+      - run: npm run build
+      - run: npm run dist --workspace @open-northland/desktop -- --config.extraMetadata.version=${{ steps.version.outputs.version }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: installers-${{ runner.os }}
+          path: |
+            packages/desktop/release/*.exe
+            packages/desktop/release/*.dmg
+            packages/desktop/release/*.AppImage
+          if-no-files-found: error
+
+  publish:
+    needs: installers
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ inputs.commit || github.ref }}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          path: installers
+          merge-multiple: true
+      - name: Publish the build-<short-sha> prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha="$(git rev-parse HEAD)"
+          short="$(git rev-parse --short=7 HEAD)"
+          tag="build-$short"
+          # Re-dispatching the same commit replaces that build's assets instead of failing.
+          if gh release view "$tag" --json tagName --jq .tagName >/dev/null 2>&1; then
+            gh release upload "$tag" installers/* --clobber
+          else
+            gh release create "$tag" installers/* \
+              --prerelease \
+              --target "$sha" \
+              --title "Dev build $short" \
+              --notes "Unsigned development build of commit $sha. Windows SmartScreen and macOS Gatekeeper will warn about an unknown publisher (docs/tickets/tooling/desktop-code-signing.md)."
+          fi
+          url="$(gh release view "$tag" --json url --jq .url)"
+          echo "Download page: $url" >> "$GITHUB_STEP_SUMMARY"

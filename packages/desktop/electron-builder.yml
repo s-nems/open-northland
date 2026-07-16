@@ -24,10 +24,12 @@ win:
       arch: [x64]
     - target: portable
       arch: [x64]
+# Space-free artifact names: these become GitHub release asset URLs (.github/workflows/desktop-build.yml).
 nsis:
   # A game install: let the player pick the directory, real shortcuts, no one-click surprise.
   oneClick: false
   allowToChangeInstallationDirectory: true
+  artifactName: ${productName}-${version}-setup.exe
 portable:
   artifactName: ${productName}-${version}-portable.exe
 mac:
@@ -37,7 +39,9 @@ mac:
     - target: dmg
       arch: [x64, arm64]
   identity: null
+  artifactName: ${productName}-${version}-${arch}.dmg
 linux:
   target:
     - AppImage
   category: Game
+  artifactName: ${productName}-${version}-${arch}.AppImage
