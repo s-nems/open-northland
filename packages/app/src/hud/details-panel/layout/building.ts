@@ -73,11 +73,11 @@ export interface BuildingLayout {
    *  simply has no store window, matching the original's per-building window set. */
   readonly stock: SectionRect | null;
   /**
-   * Whether the stock body is the compact shape — a small store (every good fits the grid at once,
-   * `rows ≤ MAX_STOCK_ROWS × 2`: the farm's single wheat slot, a mill's two) drops the category tabs
-   * and shrinks the body to exactly its rows ({@link stockRows}); only a big store (a warehouse's full
-   * catalog) keeps the original's fixed-height eight-tab window. The dynamic-magazyn rule is a general
-   * one, keyed on the good count — never a per-building-type branch.
+   * Whether the stock body is the compact shape — a small store (up to {@link COMPACT_STOCK_MAX}
+   * goods: the farm's single wheat slot, the mint's 16) drops the category tabs and sizes the body to
+   * exactly its rows ({@link stockRows}); only a big store (a warehouse's full catalog) keeps the
+   * original's fixed-height tabbed window. The dynamic-magazyn rule is a general one, keyed on the
+   * good count — never a per-building-type branch.
    */
   readonly stockCompact: boolean;
   /** Rows per column the stock body reserves ({@link MAX_STOCK_ROWS}, or the compact fitted count). */
@@ -121,6 +121,14 @@ export function stockSlotRects(body: Rect, s: number, rowsPerColumn: number = MA
   return slots;
 }
 
+/**
+ * A store with up to this many goods draws the compact tab-less body (fitted rows, taller panel);
+ * bigger stores (the barracks' arsenal, the warehouse/HQ catalogs) keep the fixed tabbed window.
+ * Sized to the biggest specialist workshop store — the mint's 16 slots — which should read on one
+ * page (user decision 2026-07-16); the rule stays keyed on the good count, never the building type.
+ */
+const COMPACT_STOCK_MAX = 16;
+
 /** Which buttons the building's general section offers; only demolish is wired on this slice. */
 const BUILDING_BUTTONS: ReadonlyArray<{ action: ButtonAction; enabled: boolean }> = [
   { action: 'demolish', enabled: true },
@@ -158,7 +166,7 @@ export function layoutBuilding(
   const productionRows = model.production?.kind === 'recipe' ? Math.max(1, model.production.rows.length) : 1;
   const productionBodyH = showProduction ? productionRows * Math.round(STOCK_ROW_H * s) : 0;
   const stockRowCount = underConstruction ? 0 : model.stock.length;
-  const stockCompact = stockRowCount <= MAX_STOCK_ROWS * 2;
+  const stockCompact = stockRowCount <= COMPACT_STOCK_MAX;
   const stockRows = stockCompact ? Math.ceil(stockRowCount / 2) : MAX_STOCK_ROWS;
   const stockBodyH =
     (stockCompact ? 0 : Math.round(STOCK_TAB_H * s) + Math.round(STOCK_TAB_GAP * s)) +

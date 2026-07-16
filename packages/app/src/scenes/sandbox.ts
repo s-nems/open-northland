@@ -196,6 +196,14 @@ const BUSH_FRUITS_GFX = 806;
 
 const GATHERER_BY_GOOD: ReadonlyMap<number, GathererSpec> = new Map(GATHERERS.map((g) => [g.good, g]));
 
+/**
+ * How many times over the catalog size each mined deposit is filled here. At the catalog sizes a
+ * triple-staffed camp drains its outcrop in ~10 minutes of 1× play and the miners then stand idle
+ * (user-observed as "the iron/gold miners stopped") — the inspection world wants camps that outlast
+ * any session, while normal play keeps the catalog's finite deposits.
+ */
+const MINE_DEPOSIT_SCALE = 100;
+
 function buildVillage(sim: Simulation): void {
   for (const b of VILLAGE) {
     placeSandboxBuilding(sim, b.id, b.x, b.y, HUMAN_PLAYER, {
@@ -210,7 +218,9 @@ function buildResourceBase(sim: Simulation): void {
     const g = GATHERER_BY_GOOD.get(camp.good);
     if (g === undefined) throw new Error(`sandbox camp: no gatherer trade for good ${camp.good}`);
     for (const { dx, dy } of camp.nodes) {
-      placeResourceNode(sim, g, camp.center.x + dx, camp.center.y + dy);
+      placeResourceNode(sim, g, camp.center.x + dx, camp.center.y + dy, {
+        unitsScale: g.mode === 'mine' ? MINE_DEPOSIT_SCALE : 1,
+      });
     }
     // One flag per gatherer (the flag-click selection inverse is 1:1 — a flag resolves to its one
     // gatherer), planted in a short row on the camp's village side; each gatherer works only this camp
@@ -274,7 +284,12 @@ function settlementFullyStaffed(sim: Simulation): boolean {
 function initialUnits(camp: GatherCamp): number {
   const g = GATHERER_BY_GOOD.get(camp.good);
   if (g === undefined) return 0;
-  const perNode = g.mode === 'fell' ? WOOD_YIELD_PER_NODE : g.mode === 'mine' ? (g.depositUnits ?? 0) : 1;
+  const perNode =
+    g.mode === 'fell'
+      ? WOOD_YIELD_PER_NODE
+      : g.mode === 'mine'
+        ? (g.depositUnits ?? 0) * MINE_DEPOSIT_SCALE
+        : 1;
   return camp.nodes.length * perNode;
 }
 

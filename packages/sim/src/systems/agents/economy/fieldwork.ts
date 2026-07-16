@@ -1,5 +1,7 @@
 import {
   CARRY_CAPACITY,
+  GatherSelection,
+  JobAssignment,
   Position,
   Resource,
   SiteAssignment,
@@ -13,6 +15,7 @@ import {
   deliveredConstructionFraction,
   nextNeededConstructionGood,
   stampSupplyRun,
+  workplaceStoredGoods,
 } from '../../stores/index.js';
 import { atOrWalk, BUILD_HOUSE_ATOMIC_ID, startAtomic, startPickup, walkPickupBatch } from '../actions.js';
 import { claimWorkCell, type SpacingState } from '../destack.js';
@@ -131,7 +134,9 @@ export function planBuilder(plan: PlannerContext, spacing: SpacingState): boolea
  *    true), so it never ferries other settlers' goods or de-stacks off its post.
  *  - **Unbound roaming** (no WorkFlag): chops the nearest standing resource its job may harvest, or carries off
  *    the nearest loose trunk of that trade, whichever is nearer, delivering to the nearest capable store.
- *    Returns false when nothing is reachable, falling through to the porter/carrier drives.
+ *    A roamer EMPLOYED at a stocking building forages only the goods that building stores (its
+ *    {@link GatherSelection} pick when set, else all of them). Returns false when nothing is reachable,
+ *    falling through to the porter/carrier drives.
  *
  * Harvesting is gated by the job's atomic permissions and the good's `needforgood` XP threshold; collecting an
  * already-dropped good is hauling, not harvesting. Ordered before the porter/carrier drives so a gatherer works
@@ -147,7 +152,26 @@ export function planGatherer(plan: PlannerContext): boolean {
     return planFlagGatherer(plan, flag);
   }
 
-  const node = nearestHarvestableFor(targets.resources, world, ctx, terrain, here, settler);
+  // A building-employed roamer forages ONLY for its workplace: goods the bound building's stockpile
+  // stores, narrowed to its GatherSelection pick when one is set (the flag-less collector rule — a
+  // smithy's collector fetches iron/wood, never the quarry's stone). An unemployed roamer, or one at
+  // a store-less building, stays unrestricted.
+  const workplace = world.tryGet(e, JobAssignment)?.workplace;
+  const stored = workplace !== undefined ? workplaceStoredGoods(world, ctx, workplace) : undefined;
+  const pick = world.tryGet(e, GatherSelection)?.goodType;
+  const goodFilter =
+    stored !== undefined && pick !== undefined && stored.has(pick) ? new Set([pick]) : stored;
+
+  const node = nearestHarvestableFor(
+    targets.resources,
+    world,
+    ctx,
+    terrain,
+    here,
+    settler,
+    undefined,
+    goodFilter,
+  );
   const trunk = nearestCollectablePileFor(
     targets.groundDrops,
     targets.harvestAtomicByGood,
@@ -156,6 +180,7 @@ export function planGatherer(plan: PlannerContext): boolean {
     terrain,
     here,
     settler.jobType,
+    goodFilter,
   );
   const nodeDist = node !== null ? node.dist : Number.POSITIVE_INFINITY;
   // Prefer the trunk on a tie (it is the wood already at hand — grab it before a fresh tree).

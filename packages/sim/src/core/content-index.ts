@@ -66,6 +66,9 @@ export interface ContentIndex {
   /** Per building type: the set of job types its `workers` slots name (empty for a type with no
    *  worker slots). Precomputed so the per-tick staffing gates don't allocate. */
   readonly workerJobsByBuilding: ReadonlyMap<number, ReadonlySet<number>>;
+  /** Per building type: the set of good types its `stock` slots store — what an employed gatherer may
+   *  forage for. Absent for a type declaring no stock slots. */
+  readonly storedGoodsByBuilding: ReadonlyMap<number, ReadonlySet<number>>;
   /**
    * Per producing building type: `product goodType → its recipe` (the recipe whose first output is
    * that good; first-wins on a duplicate product). The ProductionSystem's cycle-start/deposit lookup.
@@ -162,6 +165,7 @@ function buildIndex(content: ContentSet): ContentIndex {
     animalsByTribe: byKey(content.animals, (a) => a.tribeType),
     atomicAnimationsByName: byKey(content.atomicAnimations, (a) => a.name),
     workerJobsByBuilding: workerJobSets(content),
+    storedGoodsByBuilding: storedGoodSets(content),
     recipeByProductByBuilding: recipeProductTables(content),
     mergedRecipeByBuilding: mergedRecipes(content),
     atomicBindingsByTribe: atomicBindingTables(content),
@@ -340,6 +344,17 @@ function workerJobSets(content: ContentSet): ReadonlyMap<number, ReadonlySet<num
   for (const b of content.buildings) {
     if (map.has(b.typeId)) continue;
     map.set(b.typeId, new Set(b.workers.map((w) => w.jobType)));
+  }
+  return map;
+}
+
+/** The per-type stored-good sets ({@link ContentIndex.storedGoodsByBuilding}); first-wins per typeId,
+ *  types with no stock slots omitted (an employed gatherer there stays unrestricted). */
+function storedGoodSets(content: ContentSet): ReadonlyMap<number, ReadonlySet<number>> {
+  const map = new Map<number, ReadonlySet<number>>();
+  for (const b of content.buildings) {
+    if (map.has(b.typeId) || b.stock.length === 0) continue;
+    map.set(b.typeId, new Set(b.stock.map((s) => s.goodType)));
   }
   return map;
 }

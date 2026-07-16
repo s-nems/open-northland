@@ -1,7 +1,13 @@
 /**
  * Building logic types and the cross-table recipe fill (per-product input joins → production recipes).
  */
-import { BuildingType, DEFAULT_RECIPE_TICKS, type GoodType, hasFieldFarmAtomics } from '@open-northland/data';
+import {
+  BuildingType,
+  DEFAULT_RECIPE_TICKS,
+  type GoodType,
+  hasFieldFarmAtomics,
+  type VehicleType,
+} from '@open-northland/data';
 import {
   findProps,
   getInt,
@@ -123,6 +129,30 @@ export function extractBuildings(sections: readonly RuleSection[], src: SourceRe
  * A building that already carries `recipes` (e.g. a future explicit override) is left as-is; one with
  * an empty `produces` is not a producer and is returned unchanged.
  */
+/**
+ * TEMPORARILY strips the vehicle goods (handcart/oxcart/ships/catapult) from every building's `stock`
+ * slots and `produces` list, so no workshop stores or crafts a vehicle as a ware. A vehicle good is a
+ * `[goodtype]` whose id slug matches a `[logicvehicletype]`'s (the two tables share the debugname slugs).
+ * Vehicles are not goods — the original builds them physically on a yard beside the workshop; restoring
+ * them as yard-built vehicles is tracked in `docs/tickets/features/vehicle-yard-construction.md`. Runs
+ * before {@link fillBuildingRecipes} so the recipe join never materializes a vehicle recipe.
+ */
+export function stripVehicleGoods(
+  buildings: readonly BuildingType[],
+  goods: readonly GoodType[],
+  vehicles: readonly VehicleType[],
+): BuildingType[] {
+  const vehicleIds = new Set(vehicles.map((v) => v.id));
+  const vehicleGoods = new Set(goods.filter((g) => vehicleIds.has(g.id)).map((g) => g.typeId));
+  if (vehicleGoods.size === 0) return [...buildings];
+  return buildings.map((b) => {
+    const stock = b.stock.filter((s) => !vehicleGoods.has(s.goodType));
+    const produces = b.produces.filter((g) => !vehicleGoods.has(g));
+    if (stock.length === b.stock.length && produces.length === b.produces.length) return b;
+    return BuildingType.parse({ ...b, stock, produces });
+  });
+}
+
 export function fillBuildingRecipes(
   buildings: readonly BuildingType[],
   goods: readonly GoodType[],

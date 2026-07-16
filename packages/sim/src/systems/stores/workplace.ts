@@ -81,6 +81,21 @@ export function buildingWorkerJobs(world: World, ctx: SystemContext, building: E
 const EMPTY_JOBS: ReadonlySet<number> = new Set<number>();
 
 /**
+ * The set of good types a building's `stock` slots store, or undefined when it has no Building/type
+ * or declares no stock slots. Cross-system: what a building-employed gatherer may forage for (the
+ * flag-less collector rule — `planGatherer`'s roaming filter and the `setGatherGood` employed path).
+ */
+export function workplaceStoredGoods(
+  world: World,
+  ctx: SystemContext,
+  building: Entity,
+): ReadonlySet<number> | undefined {
+  const b = world.tryGet(building, Building);
+  if (b === undefined) return undefined;
+  return contentIndex(ctx.content).storedGoodsByBuilding.get(b.buildingType);
+}
+
+/**
  * Whether a job is the transport trade — the original's carrier (`logicworker 24`, the "tragarz" who ferries
  * goods but never operates a workshop's craft). Identified by the content job's `id` slug (`'carrier'`), the
  * same id-based inference {@link isFood} uses (approximated — the readable rule files carry no explicit

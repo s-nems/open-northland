@@ -191,7 +191,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     if (opts.claimPointer?.(e.clientX, e.clientY) === true) return;
     // The details panel routes its own button clicks through the same claim (one mechanism, no
     // panel-owned mousedown listener racing this one).
-    if (panel.handleMouseDown(e.clientX, e.clientY, e.button)) return;
+    if (panel.handleMouseDown(e.clientX, e.clientY, e.button, e.ctrlKey || e.metaKey)) return;
     if (actions.claimsPointer(e.clientX, e.clientY)) return;
     // In "przydziel miejsce pracy" mode a world click resolves the assignment (left = bind a green building,
     // else cancel; right = cancel) and consumes the press — it never falls through to selection / an order.

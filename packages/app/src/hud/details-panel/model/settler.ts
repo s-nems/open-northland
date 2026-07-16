@@ -228,37 +228,11 @@ export function settlerWork(
     carry === undefined
       ? undefined
       : `${goodLabel(ctx, num(carry.goodType) ?? -1)} ×${num(carry.amount) ?? 0}`;
+  const jobType = num((comps.Settler as { jobType?: unknown } | undefined)?.jobType);
   const workFlag = comps.WorkFlag as { goodType?: unknown } | undefined;
   if (workFlag !== undefined) {
-    const settler = comps.Settler as { jobType?: unknown } | undefined;
-    const jobType = num(settler?.jobType);
-    const job =
-      jobType === undefined ? undefined : ctx.jobs.find((candidate) => candidate.typeId === jobType);
-    const allowed = new Set(job?.allowedAtomics ?? []);
-    for (const atomic of job?.baseAtomics ?? []) allowed.add(atomic);
-    for (const atomic of job?.forbiddenAtomics ?? []) allowed.delete(atomic);
     const selectedGood = num(workFlag.goodType) ?? null;
-    const gatherChoices = [
-      { goodType: null, label: messages().hud.gatherAll },
-      ...ctx.goods
-        .filter(
-          (good) =>
-            good.farming === undefined &&
-            good.atomics.harvest !== undefined &&
-            allowed.has(good.atomics.harvest),
-        )
-        .map((good) => ({ goodType: good.typeId, label: goodLabel(ctx, good.typeId), goodId: good.id })),
-    ];
-    const product =
-      gatherChoices.find((choice) => choice.goodType === selectedGood)?.label ?? messages().hud.gatherAll;
-    return {
-      place: messages().hud.workFlag,
-      product,
-      gatherChoices,
-      selectedGood,
-      craftChoices: [],
-      selectedCraftGoods: [],
-    };
+    return gatherWork(ctx, messages().hud.workFlag, harvestableGoodsFor(ctx, jobType), selectedGood);
   }
   const assignment = comps.JobAssignment as { workplace?: unknown } | undefined;
   const workplaceId = num(assignment?.workplace);
@@ -275,15 +249,35 @@ export function settlerWork(
   const ent = entityById(snapshot, workplaceId);
   const rawType = num((ent?.components.Building as { buildingType?: unknown } | undefined)?.buildingType);
   const def = buildingDef(ctx, rawType);
+  // A building-employed GATHERER (a harvest-capable trade, no flag) forages only what its workplace
+  // stockpiles — its menu is the workplace-stored slice of its harvest vocabulary, its pick the sim's
+  // GatherSelection (absent = every stored good). It never gets the craft menu (it fetches, not forges).
+  const harvestable = harvestableGoodsFor(ctx, jobType);
+  if (harvestable.length > 0) {
+    const stored = new Set((def?.stock ?? []).map((slot) => slot.goodType));
+    const choices = harvestable.filter((good) => stored.has(good.typeId));
+    if (choices.length > 0) {
+      const selectedGood =
+        num((comps.GatherSelection as { goodType?: unknown } | undefined)?.goodType) ?? null;
+      return gatherWork(ctx, buildingTitle(ctx, rawType), choices, selectedGood);
+    }
+  }
   const craft = craftChoicesFor(ctx, def, comps);
   if (craft !== null) {
     const selectedLabels = craft.choices
       .filter((choice) => craft.selected.includes(choice.goodType))
       .map((choice) => choice.label);
     const allSelected = selectedLabels.length === craft.choices.length;
+    // A long multi-selection is summarized as a count ("Wybrano: 3") — the highlighted product buttons
+    // below already name the picks, and four joined labels overflow the panel column.
+    const product = allSelected
+      ? messages().hud.gatherAll
+      : selectedLabels.length > 2
+        ? formatMessage(messages().hud.selectedCount, { count: selectedLabels.length })
+        : selectedLabels.join(', ');
     return {
       place: buildingTitle(ctx, rawType),
-      product: allSelected ? messages().hud.gatherAll : selectedLabels.join(', '),
+      product,
       gatherChoices: [],
       selectedGood: null,
       craftChoices: craft.choices,
@@ -300,6 +294,42 @@ export function settlerWork(
     craftChoices: [],
     selectedCraftGoods: [],
   };
+}
+
+/** A goods-catalog entry the gather menus filter over. */
+type GoodEntry = UnitPanelModelContext['goods'][number];
+
+/** The non-farmed goods `jobType` may harvest (its gather-menu vocabulary), in goods-catalog order —
+ *  the job's allowed+base atomics minus its forbidden ones, matched against each good's harvest atomic. */
+function harvestableGoodsFor(ctx: UnitPanelModelContext, jobType: number | undefined): GoodEntry[] {
+  if (jobType === undefined) return [];
+  const job = ctx.jobs.find((candidate) => candidate.typeId === jobType);
+  if (job === undefined) return [];
+  const allowed = new Set(job.allowedAtomics ?? []);
+  for (const atomic of job.baseAtomics ?? []) allowed.add(atomic);
+  for (const atomic of job.forbiddenAtomics ?? []) allowed.delete(atomic);
+  return ctx.goods.filter(
+    (good) =>
+      good.farming === undefined && good.atomics.harvest !== undefined && allowed.has(good.atomics.harvest),
+  );
+}
+
+/** Assemble a gatherer's Praca model: the "Wszystko" choice plus one per allowed good, with the
+ *  selected pick (or the all-mode) named in the product line. Shared by the flag-bound and the
+ *  building-employed gather menus. */
+function gatherWork(
+  ctx: UnitPanelModelContext,
+  place: string,
+  goods: readonly GoodEntry[],
+  selectedGood: number | null,
+): SettlerPanelModel['work'] {
+  const gatherChoices = [
+    { goodType: null, label: messages().hud.gatherAll },
+    ...goods.map((good) => ({ goodType: good.typeId, label: goodLabel(ctx, good.typeId), goodId: good.id })),
+  ];
+  const product =
+    gatherChoices.find((choice) => choice.goodType === selectedGood)?.label ?? messages().hud.gatherAll;
+  return { place, product, gatherChoices, selectedGood, craftChoices: [], selectedCraftGoods: [] };
 }
 
 /**

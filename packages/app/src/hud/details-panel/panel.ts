@@ -95,11 +95,11 @@ export interface UnitPanel {
   /**
    * Route a mousedown: true when the point is over the panel (the caller must not world-pick it);
    * a left press on an enabled button performs its action. Part of the unit-controls claim chain.
+   * `toggleModifier` (Ctrl/Cmd held) switches a craft-choice click from replace-selection to toggle.
    */
-  handleMouseDown(clientX: number, clientY: number, button: number): boolean;
+  handleMouseDown(clientX: number, clientY: number, button: number, toggleModifier?: boolean): boolean;
   dispose(): void;
 }
-
 
 export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel> {
   const { app, canvas } = opts;
@@ -263,16 +263,19 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
   };
 
   /**
-   * The next selection after toggling `goodType`: flip it in the effective set, then normalize — all
-   * products selected reads as the `[]` all-mode (so the sim drops the component), and toggling the
-   * LAST product off falls back to all-mode too (a worker can't craft nothing; clicking the lone
-   * selected product returns it to everything, the same way the gatherer's "Wszystko" resets).
+   * The next selection after a craft-choice click. A plain click REPLACES the selection with just the
+   * clicked product (the RTS radio-button default); a Ctrl/Cmd click TOGGLES it in the multi-set
+   * (user decision 2026-07-16). The toggle normalizes both edges — all products selected reads as the
+   * `[]` all-mode (so the sim drops the component), and toggling the LAST product off falls back to
+   * all-mode too (a worker can't craft nothing).
    */
-  const toggledCraftGoods = (
+  const nextCraftGoods = (
     model: Extract<UnitPanelModel, { kind: 'settler' }>,
     goodType: number,
+    toggle: boolean,
   ): readonly number[] => {
     const products = model.work.craftChoices.map((c) => c.goodType);
+    if (!toggle) return products.length === 1 ? [] : [goodType];
     const next = new Set(model.work.selectedCraftGoods);
     if (next.has(goodType)) next.delete(goodType);
     else next.add(goodType);
@@ -286,7 +289,12 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     return contains(layout.panel, x, y);
   };
 
-  const handleMouseDown = (clientX: number, clientY: number, button: number): boolean => {
+  const handleMouseDown = (
+    clientX: number,
+    clientY: number,
+    button: number,
+    toggleModifier = false,
+  ): boolean => {
     if (!claimsPointer(clientX, clientY)) return false;
     if (button !== 0) return true; // over the panel — swallow, but only the left button acts
     const { x, y } = toCanvas(clientX, clientY);
@@ -303,7 +311,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     }
     const craftGood = hitCraftChoice(x, y);
     if (craftGood !== undefined && lastModel.kind === 'settler') {
-      opts.onSetCraftGoods(lastModel.entityId, toggledCraftGoods(lastModel, craftGood));
+      opts.onSetCraftGoods(lastModel.entityId, nextCraftGoods(lastModel, craftGood, toggleModifier));
       return true;
     }
     const tab = hitStockTab(x, y);
