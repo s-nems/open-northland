@@ -62,13 +62,16 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
     const { merge } = await loadContentUnderTest();
     for (const id of CORE_GOOD_IDS) {
       const good = merge.content.goods.find((g) => g.id === id);
-      if (good?.gathering === undefined && !hasFieldFarmAtomics(good ?? { atomics: {} })) continue;
-      const harvest = good?.atomics.harvest;
+      // The raw-IR presence test checks `real`; this one must not silently pass if the MERGE dropped it.
+      expect(good, `core good '${id}' missing from the merged content`).toBeDefined();
+      if (good === undefined || (good.gathering === undefined && !hasFieldFarmAtomics(good))) continue;
+      const harvest = good.atomics.harvest;
       expect(harvest, `core good '${id}' carries no harvest atomic`).toBeDefined();
+      if (harvest === undefined) continue;
       // Flag-gathering classifies by trade grants minus hard exclusions (ContentIndex.harvestJobs);
       // a good only reachable via a tribe-wide baseAtomic would flag non-gatherer trades instead.
       const grantedTo = merge.content.jobs.filter(
-        (j) => j.allowedAtomics.includes(harvest ?? -1) && !j.forbiddenAtomics.includes(harvest ?? -1),
+        (j) => j.allowedAtomics.includes(harvest) && !j.forbiddenAtomics.includes(harvest),
       );
       expect(grantedTo.length, `no trade is granted '${id}' harvest atomic ${harvest}`).toBeGreaterThan(0);
     }

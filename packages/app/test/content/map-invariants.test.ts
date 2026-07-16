@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parseTerrainMap, type TerrainMapFile } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { contentDir, hasRealIr, loadContentUnderTest } from './helpers.js';
+import { contentDir, hasRealIr, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
 
 /**
  * Cross-file invariants between the decoded maps (`<content>/maps/*.json`) and the IR — the seam
@@ -64,9 +64,7 @@ describe.runIf(hasRealIr() && existsSync(resolve(contentDir(), 'maps')))('decode
     () => {
       // The collision/resource joins key placed objects by their [GfxLandscape] editName; a name the
       // IR lacks silently drops the object (no footprint, no resource) instead of erroring.
-      const irRaw: { landscapeGfx?: readonly { editName: string }[] } = JSON.parse(
-        readFileSync(resolve(contentDir(), 'ir.json'), 'utf8'),
-      );
+      const irRaw = rawIrUnderTest() as { landscapeGfx?: readonly { editName: string }[] };
       const known = new Set((irRaw.landscapeGfx ?? []).map((g) => g.editName));
       expect(known.size).toBeGreaterThan(0);
       for (const [file, map] of parsedMaps()) {
