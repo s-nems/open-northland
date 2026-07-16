@@ -222,7 +222,10 @@ export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOpt
       // same feet anchor (the board frames' offsets carry the post-top pivot), painted the flag
       // half-step above the post. Synthetic negative refs keep the boards pooled/reconciled per
       // (signpost, angle-bucket) without colliding with real entity ids.
+      // The post's ribbon and runic lettering are the team colour — the owner picks the baked
+      // per-player guidepost atlas; the boards below read the same owner.
       const postPlayer = readOwnerPlayer(components);
+      if (postPlayer !== undefined) item.player = postPlayer;
       for (const bucket of signpostBoardsOf(snapshot).get(entity.id) ?? []) {
         const boardRef = -(entity.id * (SIGNPOST_BOARD_FRAMES + 1) + bucket + 1);
         liveRefs.add(boardRef);
