@@ -2,10 +2,14 @@ import { type Camera, tileToScreen } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
 import {
   cameraCenteredOnTile,
+  EDGE_SCROLL_MARGIN,
+  easeFactor,
+  edgePanVelocity,
   MAX_ZOOM,
   MIN_ZOOM,
   panCamera,
   screenScale,
+  stepZoomToward,
   zoomCameraAt,
 } from '../src/view/camera.js';
 
@@ -101,5 +105,69 @@ describe('zoomCameraAt', () => {
     expect(zoomCameraAt(cam, 0.5, 100, 100)).toBe(cam);
     const partway = zoomCameraAt({ offsetX: 0, offsetY: 0, scale: MIN_ZOOM * 1.05 }, 0.5, 0, 0);
     expect(partway.scale).toBe(MIN_ZOOM);
+  });
+});
+
+describe('easeFactor', () => {
+  it('covers half the remaining gap per half-life and is frame-rate independent', () => {
+    expect(easeFactor(60, 60)).toBeCloseTo(0.5);
+    // Two 30 ms steps land where one 60 ms step does: (1-f30)^2 === 1-f60.
+    const f30 = easeFactor(30, 60);
+    expect((1 - f30) ** 2).toBeCloseTo(1 - easeFactor(60, 60));
+  });
+});
+
+describe('edgePanVelocity', () => {
+  const W = 800;
+  const H = 600;
+
+  it('is zero anywhere deeper than the margin', () => {
+    expect(edgePanVelocity(W / 2, H / 2, W, H)).toEqual({ vx: 0, vy: 0 });
+    expect(edgePanVelocity(EDGE_SCROLL_MARGIN, EDGE_SCROLL_MARGIN, W, H)).toEqual({ vx: 0, vy: 0 });
+  });
+
+  it('pans toward the hovered edge (camera-scroll convention, like the arrows)', () => {
+    // Left edge reveals the world leftward → positive vx (the world slides right), like ArrowLeft.
+    expect(edgePanVelocity(0, H / 2, W, H).vx).toBeGreaterThan(0);
+    expect(edgePanVelocity(W, H / 2, W, H).vx).toBeLessThan(0);
+    expect(edgePanVelocity(W / 2, 0, W, H).vy).toBeGreaterThan(0);
+    expect(edgePanVelocity(W / 2, H, W, H).vy).toBeLessThan(0);
+  });
+
+  it('ramps linearly with depth into the margin', () => {
+    const shallow = edgePanVelocity(EDGE_SCROLL_MARGIN * 0.75, H / 2, W, H).vx;
+    const deep = edgePanVelocity(EDGE_SCROLL_MARGIN * 0.25, H / 2, W, H).vx;
+    expect(deep).toBeCloseTo(shallow * 3);
+  });
+
+  it('pans diagonally from a corner', () => {
+    const corner = edgePanVelocity(0, 0, W, H);
+    expect(corner.vx).toBeGreaterThan(0);
+    expect(corner.vy).toBeGreaterThan(0);
+  });
+});
+
+describe('stepZoomToward', () => {
+  it('glides toward the target and keeps the anchor point pinned', () => {
+    const cam: Camera = { offsetX: 100, offsetY: 50, scale: 1 };
+    const worldX = (400 - cam.offsetX) / 1;
+    const stepped = stepZoomToward(cam, 2, 400, 300, 30);
+    const scale = stepped.scale ?? 1;
+    expect(scale).toBeGreaterThan(1);
+    expect(scale).toBeLessThan(2);
+    expect(stepped.offsetX + worldX * scale).toBeCloseTo(400);
+  });
+
+  it('snaps onto the target when nearly there, and is identity at the target', () => {
+    const nearly: Camera = { offsetX: 0, offsetY: 0, scale: 1.9999 };
+    expect(stepZoomToward(nearly, 2, 0, 0, 16).scale).toBe(2);
+    const at: Camera = { offsetX: 0, offsetY: 0, scale: 2 };
+    expect(stepZoomToward(at, 2, 0, 0, 16)).toBe(at);
+  });
+
+  it('converges to the target over repeated frames', () => {
+    let cam: Camera = { offsetX: 0, offsetY: 0, scale: 1 };
+    for (let i = 0; i < 120; i++) cam = stepZoomToward(cam, 3, 200, 200, 16);
+    expect(cam.scale).toBe(3);
   });
 });

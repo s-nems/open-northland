@@ -6,8 +6,8 @@ import { type Camera, type DrawItem, tileToScreen } from '@open-northland/render
  * pixels: a ~30px sprite is lost on a 960px canvas, so a verification frame magnifies and re-centres.
  *
  * The interactive entries additionally wrap a {@link CameraController} around the static
- * {@link cameraFor} starting frame, so a human can pan (middle-mouse drag / arrow keys) and zoom
- * (scroll wheel) the view. That's app-layer I/O (DOM + floats — fine here, never in `sim`); the pan/
+ * {@link cameraFor} starting frame, so a human can pan (middle-mouse drag / arrow keys / the RTS
+ * screen-edge scroll) and zoom (scroll wheel, eased toward its target) the view. That's app-layer I/O (DOM + floats — fine here, never in `sim`); the pan/
  * zoom *math* is the pure {@link panCamera}/{@link zoomCameraAt} reducers, unit-tested headless. The
  * deterministic `?shot` entry never installs the controller, so the reproducible PNG is unaffected.
  */
@@ -97,6 +97,65 @@ const WHEEL_ZOOM_STEP = 1.1;
 const ARROW_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']);
 /** Max wall-clock ms one held-key pan step integrates — a backgrounded tab resumes smoothly, not with a lurch. */
 const MAX_PAN_STEP_MS = 100;
+/** CSS px from a canvas edge within which the pointer edge-scrolls (the RTS screen-edge pan). */
+export const EDGE_SCROLL_MARGIN = 24;
+/** Edge-scroll speed (screen px/s) at the deepest point of the margin; ramps linearly from 0. */
+const EDGE_SCROLL_SPEED = 900;
+/** Half-life (ms) of the pan-velocity easing: held-key/edge pans ramp up and glide out briefly
+ *  instead of starting and stopping dead. Short — feel, not float. */
+const PAN_EASE_HALF_LIFE_MS = 60;
+/** Half-life (ms) of the wheel zoom's glide toward its target scale. */
+const ZOOM_EASE_HALF_LIFE_MS = 50;
+/** Relative gap to the zoom target below which the eased scale snaps onto it exactly. */
+const ZOOM_SNAP_EPS = 1e-3;
+/** Pan speed (px/s) below which a decaying glide is stopped dead (avoids an endless sub-pixel tail). */
+const PAN_STOP_SPEED = 1;
+
+/** The fraction of the remaining gap an exponential ease covers in `dtMs` at the given half-life —
+ *  frame-rate independent (two 8 ms steps land where one 16 ms step does). Pure. */
+export function easeFactor(dtMs: number, halfLifeMs: number): number {
+  return 1 - 0.5 ** (dtMs / halfLifeMs);
+}
+
+/**
+ * The edge-scroll pan velocity (screen px/s, camera-scroll convention: pointer at the LEFT edge reveals
+ * the world leftward → positive `vx`, like a held ArrowLeft) for a pointer at canvas CSS position
+ * `(x, y)` in a `width × height` canvas. Ramps linearly from 0 at the margin's inner boundary to
+ * {@link EDGE_SCROLL_SPEED} at the edge; `(0, 0)` anywhere deeper inside. Pure.
+ */
+export function edgePanVelocity(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+): { vx: number; vy: number } {
+  const depth = (into: number): number =>
+    into >= EDGE_SCROLL_MARGIN ? 0 : (EDGE_SCROLL_MARGIN - Math.max(0, into)) / EDGE_SCROLL_MARGIN;
+  return {
+    vx: (depth(x) - depth(width - x)) * EDGE_SCROLL_SPEED,
+    vy: (depth(y) - depth(height - y)) * EDGE_SCROLL_SPEED,
+  };
+}
+
+/**
+ * One eased step of the wheel zoom: glide the camera's scale toward `target` (frame-rate-independent
+ * exponential, {@link ZOOM_EASE_HALF_LIFE_MS}), anchored at the cursor like {@link zoomCameraAt},
+ * snapping onto the target when within {@link ZOOM_SNAP_EPS} of it. Returns the camera untouched when
+ * already there. Pure.
+ */
+export function stepZoomToward(
+  cam: Camera,
+  target: number,
+  cursorX: number,
+  cursorY: number,
+  dtMs: number,
+): Camera {
+  const scale = cam.scale ?? 1;
+  if (scale === target) return cam;
+  const eased = scale + (target - scale) * easeFactor(dtMs, ZOOM_EASE_HALF_LIFE_MS);
+  const next = Math.abs(eased - target) <= target * ZOOM_SNAP_EPS ? target : eased;
+  return zoomCameraAt(cam, next / scale, cursorX, cursorY);
+}
 
 /** Pan the camera by a screen-pixel delta (mouse drag / arrow step). Pure; preserves `scale`. */
 export function panCamera(cam: Camera, dx: number, dy: number): Camera {
@@ -138,6 +197,13 @@ export interface CameraController {
    * never also zooms the world behind it.
    */
   setPointerGuard(guard: ((clientX: number, clientY: number) => boolean) | null): void;
+  /**
+   * Install a predicate that claims a client point for the HUD against EDGE SCROLLING (the tool-panel
+   * strip hugs the left edge, the minimap the corner — hovering them must not also pan the camera).
+   * Broader than the wheel guard on purpose: the wheel should still zoom over the strip, but the
+   * edge-pan must yield to any HUD surface under the cursor. Pass `null` to clear.
+   */
+  setEdgeGuard(guard: ((clientX: number, clientY: number) => boolean) | null): void;
   /** Remove every installed DOM listener. */
   dispose(): void;
 }
@@ -204,6 +270,20 @@ export function createCameraController(
   let lastY = 0;
   // While this claims the cursor (an open HUD window), the wheel scrolls that window, not the camera.
   let pointerGuard: ((clientX: number, clientY: number) => boolean) | null = null;
+  // While this claims the cursor (any HUD surface), the screen edge under it does not pan.
+  let edgeGuard: ((clientX: number, clientY: number) => boolean) | null = null;
+  // The wheel zoom's glide state: the clamped scale the camera eases toward, anchored at the last
+  // wheel cursor (screen px) so a rapid notch burst magnifies about one point, smoothly.
+  let targetScale = initial.scale ?? 1;
+  let zoomAnchorX = 0;
+  let zoomAnchorY = 0;
+  // The eased pan velocity (screen px/s) the held keys + edge scroll drive; decays to a stop.
+  let panVx = 0;
+  let panVy = 0;
+  // Last known pointer position (client px) + whether it is over the canvas — the edge-scroll probe.
+  let pointerX = 0;
+  let pointerY = 0;
+  let pointerInside = false;
 
   const onMouseDown = (e: MouseEvent): void => {
     if (e.button !== 1) return; // middle button only
@@ -213,6 +293,8 @@ export function createCameraController(
     e.preventDefault(); // suppress the middle-click autoscroll widget
   };
   const onMouseMove = (e: MouseEvent): void => {
+    pointerX = e.clientX;
+    pointerY = e.clientY;
     if (!dragging) return;
     const { sx, sy } = screenScale(canvas, resolution);
     cam = panCamera(cam, (e.clientX - lastX) * sx, (e.clientY - lastY) * sy);
@@ -222,14 +304,24 @@ export function createCameraController(
   const onMouseUp = (e: MouseEvent): void => {
     if (e.button === 1) dragging = false;
   };
+  const onPointerEnter = (): void => {
+    pointerInside = true;
+  };
+  const onPointerLeave = (): void => {
+    pointerInside = false;
+  };
   const onWheel = (e: WheelEvent): void => {
     // Over an open HUD window the wheel belongs to that window's list, not the camera — leave the event
     // for the panel's own handler (which scrolls + preventDefaults) and don't zoom the world behind it.
     if (pointerGuard?.(e.clientX, e.clientY)) return;
     e.preventDefault(); // don't scroll the page
     const { x, y } = clientToScreen(canvas, resolution, e.clientX, e.clientY);
+    // Retarget the glide instead of zooming outright: update() eases the scale toward the (clamped)
+    // target about this anchor, so stacked notches read as one smooth magnification.
     const factor = e.deltaY < 0 ? WHEEL_ZOOM_STEP : 1 / WHEEL_ZOOM_STEP;
-    cam = zoomCameraAt(cam, factor, x, y);
+    targetScale = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, targetScale * factor));
+    zoomAnchorX = x;
+    zoomAnchorY = y;
   };
   const onKeyDown = (e: KeyboardEvent): void => {
     if (!ARROW_KEYS.has(e.key)) return;
@@ -240,15 +332,21 @@ export function createCameraController(
     held.delete(e.key);
   };
   // Losing focus mid-gesture (alt-tab, devtools) drops the keyup/mouseup, which would otherwise leave a
-  // key stuck in `held` (the camera pans forever) or `dragging` stuck true. Reset on blur.
+  // key stuck in `held` (the camera pans forever) or `dragging` stuck true. Reset on blur; the eased pan
+  // velocity is killed too so the camera doesn't glide on while the window is unfocused.
   const onBlur = (): void => {
     held.clear();
     dragging = false;
+    pointerInside = false;
+    panVx = 0;
+    panVy = 0;
   };
 
   canvas.addEventListener('mousedown', onMouseDown);
   window.addEventListener('mousemove', onMouseMove);
   window.addEventListener('mouseup', onMouseUp);
+  canvas.addEventListener('mouseenter', onPointerEnter);
+  canvas.addEventListener('mouseleave', onPointerLeave);
   canvas.addEventListener('wheel', onWheel, { passive: false });
   window.addEventListener('keydown', onKeyDown);
   window.addEventListener('keyup', onKeyUp);
@@ -258,31 +356,63 @@ export function createCameraController(
     camera: () => cam,
     jumpTo: (next) => {
       cam = next;
+      // The jump replaces the frame outright, so the wheel glide retargets to the new scale and any
+      // in-flight eased pan stops (a minimap jump must not carry the old glide into the new view).
+      targetScale = next.scale ?? 1;
+      panVx = 0;
+      panVy = 0;
       // A drag in flight keeps panning from the new frame: its deltas apply per-move (lastX/lastY track
       // the cursor, not the camera), so no drag state needs resetting here.
     },
     setPointerGuard: (guard) => {
       pointerGuard = guard;
     },
+    setEdgeGuard: (guard) => {
+      edgeGuard = guard;
+    },
     update: (dtMs) => {
-      if (held.size === 0) return;
       // Clamp the delta so a held key doesn't lurch the camera after the tab was backgrounded (RAF
       // pauses, then resumes with one huge elapsed) — the pan stays smooth, never a jump.
-      const step = (ARROW_PAN_SPEED * Math.min(dtMs, MAX_PAN_STEP_MS)) / 1000;
-      let dx = 0;
-      let dy = 0;
-      // Camera-scroll convention: an arrow reveals the world in its direction (press right → look
-      // right → the world slides left → offset shrinks).
-      if (held.has('ArrowLeft')) dx += step;
-      if (held.has('ArrowRight')) dx -= step;
-      if (held.has('ArrowUp')) dy += step;
-      if (held.has('ArrowDown')) dy -= step;
-      cam = panCamera(cam, dx, dy);
+      const dt = Math.min(dtMs, MAX_PAN_STEP_MS);
+      // Wheel zoom glide: ease the scale toward the last wheel target about its cursor anchor.
+      if (targetScale !== (cam.scale ?? 1)) {
+        cam = stepZoomToward(cam, targetScale, zoomAnchorX, zoomAnchorY, dt);
+      }
+      // Desired pan velocity (screen px/s): held arrows plus the screen-edge pointer. Camera-scroll
+      // convention throughout: an input reveals the world in its direction (look right → the world
+      // slides left → offset shrinks).
+      let desiredX = 0;
+      let desiredY = 0;
+      if (held.has('ArrowLeft')) desiredX += ARROW_PAN_SPEED;
+      if (held.has('ArrowRight')) desiredX -= ARROW_PAN_SPEED;
+      if (held.has('ArrowUp')) desiredY += ARROW_PAN_SPEED;
+      if (held.has('ArrowDown')) desiredY -= ARROW_PAN_SPEED;
+      // Edge scroll: pointer resting in the margin band pans, unless mid-drag (the drag owns the
+      // motion), the window is unfocused (RAF still runs when visible), or a HUD surface claims the
+      // point (hovering the strip/minimap must not also pan).
+      if (pointerInside && !dragging && document.hasFocus() && edgeGuard?.(pointerX, pointerY) !== true) {
+        const { sx, sy, rect } = screenScale(canvas, resolution);
+        const edge = edgePanVelocity(pointerX - rect.left, pointerY - rect.top, rect.width, rect.height);
+        desiredX += edge.vx * sx; // CSS px/s → screen px/s, same scroll convention as the arrows
+        desiredY += edge.vy * sy;
+      }
+      // Ease the velocity toward the desire (ramp up + glide out), stopping dead below the sub-pixel
+      // tail threshold so an idle camera does no per-frame work.
+      const ease = easeFactor(dt, PAN_EASE_HALF_LIFE_MS);
+      panVx += (desiredX - panVx) * ease;
+      panVy += (desiredY - panVy) * ease;
+      if (desiredX === 0 && Math.abs(panVx) < PAN_STOP_SPEED) panVx = 0;
+      if (desiredY === 0 && Math.abs(panVy) < PAN_STOP_SPEED) panVy = 0;
+      if (panVx !== 0 || panVy !== 0) {
+        cam = panCamera(cam, (panVx * dt) / 1000, (panVy * dt) / 1000);
+      }
     },
     dispose: () => {
       canvas.removeEventListener('mousedown', onMouseDown);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
+      canvas.removeEventListener('mouseenter', onPointerEnter);
+      canvas.removeEventListener('mouseleave', onPointerLeave);
       canvas.removeEventListener('wheel', onWheel);
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
