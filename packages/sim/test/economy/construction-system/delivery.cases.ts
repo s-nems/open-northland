@@ -284,15 +284,16 @@ describe('constructionSystem — upgrade-material DELIVERY dispatch (carrier pat
     for (const e of sim.world.query(Settler)) expect(sim.world.has(e, Carrying)).toBe(false); // both unloaded
   });
 
-  it('a TOP-TIER home does not attract upgrade materials — a carrier with no other sink keeps its load', () => {
+  it('a TOP-TIER home does not attract upgrade materials — an orphaned carrier sets its load down', () => {
     // HOME_L2 is the top of the chain (no typeId-5 home), so `stockCapacity` advertises no upgrade demand
     // (and the home has no stock slots) — the carrier finds no valid sink and never delivers its stone.
+    // Being unbound (no workplace to wait in), it sets the stone down rather than stand holding it forever.
     const sim = new Simulation({ seed: 3, content: levelChainWithCarrier(), map: grassMap(6, 1) });
     const home = builtHomeAt(sim, HOME_L2, 2, 3, 0);
     const carrier = loadedCarrierAt(sim, 0, 0, STONE, 1);
     for (let i = 0; i < 60; i++) sim.step();
-    expect(sim.world.get(home, Stockpile).amounts.get(STONE) ?? 0).toBe(0); // nothing delivered
-    expect(sim.world.has(carrier, Carrying)).toBe(true); // still holding its load — no sink
+    expect(sim.world.get(home, Stockpile).amounts.get(STONE) ?? 0).toBe(0); // nothing delivered to the home
+    expect(sim.world.has(carrier, Carrying)).toBe(false); // no sink → set the load on the ground
     expect(sim.world.get(home, Building).buildingType).toBe(HOME_L2); // unchanged
   });
 

@@ -131,8 +131,9 @@ describe('boat cargo-load gate — stockCapacity over a Vehicle hull', () => {
 
   it('refuses a forbidden good directly even when a unit is already in the carrier-deposit path', () => {
     // A carrier standing ON the boat, already carrying WOOD (not on the allow-list): the deposit gate
-    // (`stockCapacity(boat, WOOD) === 0`) means the pileup atomic moves nothing — the load stays on the
-    // carrier's back, the hold stays empty. This is the allow-list refusal at the deposit seam.
+    // (`stockCapacity(boat, WOOD) === 0`) means the pileup atomic moves nothing — wood never enters the
+    // hold. This is the allow-list refusal at the deposit seam. The carrier is unbound (not this boat's
+    // loader), so with no sink for the wood it sets the load down rather than stand holding it forever.
     const sim = new Simulation({ seed: 1, content: boatContent(), map: grassMap(3, 1) });
     const carrier = carrierAt(sim, 2, 0); // standing on the boat's tile
     sim.world.add(carrier, Carrying, { goodType: WOOD, amount: 1 });
@@ -140,9 +141,9 @@ describe('boat cargo-load gate — stockCapacity over a Vehicle hull', () => {
 
     for (let i = 0; i < 40; i++) sim.step();
 
-    // Wood never lands in the boat (forbidden cargo); the carrier still holds its unit.
+    // Wood never lands in the boat (forbidden cargo); the unbound carrier put its unit down on the ground.
     expect(sim.world.get(boat, Stockpile).amounts.get(WOOD) ?? 0).toBe(0);
-    expect(sim.world.has(carrier, Carrying)).toBe(true);
+    expect(sim.world.has(carrier, Carrying)).toBe(false);
   });
 
   it('is deterministic: two same-seed runs of the load reach the same state hash', () => {
