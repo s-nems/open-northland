@@ -316,6 +316,7 @@ export class SpritePool {
    *  alone (no other units, no map objects behind it). {@link endPortraitSolo} restores them. Paired only
    *  with an indoor portrait render; the world's other layers (terrain, fog…) are blanked by the caller. */
   beginPortraitSolo(): void {
+    this.portraitSolo.length = 0; // start clean, so a skipped endPortraitSolo can't corrupt the restore
     const subject = this.portraitHidden?.container;
     if (subject === undefined) return;
     for (const child of this.spriteLayer.children) {
