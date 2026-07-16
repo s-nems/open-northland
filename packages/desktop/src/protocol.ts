@@ -84,7 +84,8 @@ export function handleAppProtocol(roots: AppProtocolRoots): void {
     // Pixi's path resolver mis-joins root-relative asset URLs on a custom scheme: a worker-side
     // `/bobs/<stem>.png` arrives as `app://bobs/<stem>.png` — the route segment lands in the HOST.
     // Fold such hosts back into the pathname so both spellings hit the same route table.
-    const routePath = url.host === 'game' ? pathname : url.host === 'setup' ? undefined : `/${url.host}${pathname}`;
+    const routePath =
+      url.host === 'game' ? pathname : url.host === 'setup' ? undefined : `/${url.host}${pathname}`;
     if (routePath !== undefined) {
       const hit = resolveContentRequest(routePath, roots.contentRoot);
       if (hit !== undefined) {
