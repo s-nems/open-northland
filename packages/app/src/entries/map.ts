@@ -1,5 +1,6 @@
 import {
   type Camera,
+  composeShadingLane,
   createWindowPixiApp,
   type MapObjectSprite,
   makeBrightnessField,
@@ -72,10 +73,15 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // builds its own from the terrain grid for the ground mesh + entity lift; this shared instance lifts
   // the map objects at load and drives elevation-aware picking (worldToTile) below.
   const elevation = makeElevationField(loaded?.elevation, loaded?.width ?? 0, loaded?.height ?? 0);
-  // The decoded map's baked `embr` shading field (neutral when the map lacks the lane). The renderer
-  // builds its own for the ground mesh; this shared instance shades the placed landscape objects at
-  // load (mines/stones/grass track the lane in the original; trees stay full-bright — see objects.ts).
-  const brightness = makeBrightnessField(loaded?.brightness, loaded?.width ?? 0, loaded?.height ?? 0);
+  // The composed shading field — the baked `embr` lane accented by elevation hillshade, the same
+  // composition the renderer's ground mesh draws with (`composeShadingLane`). This shared instance
+  // shades the placed landscape objects at load (mines/stones/grass track the lane in the original;
+  // trees stay full-bright — see objects.ts), so an object can't disagree with the ground under it.
+  const brightness = makeBrightnessField(
+    composeShadingLane(loaded?.brightness, loaded?.elevation, loaded?.width ?? 0, loaded?.height ?? 0),
+    loaded?.width ?? 0,
+    loaded?.height ?? 0,
+  );
   // The app-wide `?lang=` good-name map + the merged real content it localizes — loaded before the
   // sprite sheet so the goods icon atlas is built from the real goods when served (null on a bare
   // checkout → the sandbox goods below). Its gaps (uncalibrated gathered goods, uncataloged buildings)
