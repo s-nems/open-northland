@@ -8,11 +8,12 @@ import { createSceneSim, SCENES } from '../src/scenes/index.js';
  * (`?scene=<id>`) view is for the HUMAN to judge the pixels (see docs/SCENES.md). Each `createSceneSim`
  * builds an independent sim (its own component stores), so the cases are isolated regardless of order.
  */
-/** A full-scene sim run is seconds-long (battle is ~3s per run, and the determinism case runs each
- *  scene twice; the sandbox stress world under signpost confinement runs ~20s — see
- *  docs/tickets/sim/confined-idle-worker-dormancy.md for the perf follow-up), so the sim-running
- *  cases carry their own budget instead of Vitest's 5s default. */
+/** A full-scene sim run is seconds-long (the sandbox stress world under signpost confinement runs
+ *  ~35s on a slow CI runner — see docs/tickets/sim/confined-idle-worker-dormancy.md for the perf
+ *  follow-up), so the sim-running cases carry their own budget instead of Vitest's 5s default; the
+ *  determinism case runs each scene twice, so it gets twice the budget. */
 const SCENE_RUN_TIMEOUT_MS = 60_000;
+const DETERMINISM_TIMEOUT_MS = 2 * SCENE_RUN_TIMEOUT_MS;
 
 describe('acceptance scenes', () => {
   for (const scene of SCENES) {
@@ -28,7 +29,7 @@ describe('acceptance scenes', () => {
         }
       });
 
-      it('is byte-identical from the same seed (determinism)', { timeout: SCENE_RUN_TIMEOUT_MS }, () => {
+      it('is byte-identical from the same seed (determinism)', { timeout: DETERMINISM_TIMEOUT_MS }, () => {
         const a = createSceneSim(scene);
         a.run(scene.runTicks);
         const first = a.hashState();
