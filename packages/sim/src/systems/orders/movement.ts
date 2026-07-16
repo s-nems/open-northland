@@ -12,6 +12,7 @@ import {
   Position,
   Settler,
   Stance,
+  Stranded,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -103,6 +104,7 @@ export function moveUnit(
   world.remove(e, CurrentAtomic);
   world.remove(e, MoveGoal);
   world.remove(e, PathRequest);
+  world.remove(e, Stranded); // a fresh order ends a stranded park — the next strand re-paces from zero
   // A move order supersedes combat: drop any auto-engagement and attack focus so the unit walks off and holds
   // instead of re-acquiring its target — otherwise the CombatSystem re-chases and the order only ever moves it
   // one step.

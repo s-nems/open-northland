@@ -9,7 +9,10 @@ footprints, buildings placed after the static pass) can be picked as "reachable"
 Since the planner's stranded-route recovery (`systems/agents/ai.ts`, `Stranded`), a failed route no
 longer freezes the settler — it parks for the retry pace, re-plans, and typically re-picks the same
 enclosed target: a paced retry loop (one path query per episode), visible as a worker standing in
-place. The remaining cost is that loop's wasted queries and the un-harvested target, not a freeze.
+place. The remaining cost is that loop's wasted queries and the un-harvested target, not a freeze —
+plus errand-hogging: a parked fetcher keeps its SupplyRun counted as inbound for each park window, so
+a site behind a permanently enclosed source starves slowly while substitutes defer to the dead errand
+(the investigate-first step should measure this too).
 
 ## Scope
 

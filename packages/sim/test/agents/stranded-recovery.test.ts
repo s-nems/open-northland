@@ -3,17 +3,13 @@ import { CurrentAtomic, MoveGoal, PathRequest, PlayerOrder, Stranded } from '../
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, type Simulation } from '../../src/index.js';
 import { aiSystem } from '../../src/systems/index.js';
-import { ownedWoodcutter, sim, woodAt } from '../conflict/orders/support.js';
+import { orderMove, ownedWoodcutter, sim, woodAt } from '../conflict/orders/support.js';
 import { ctxOf } from '../fixtures/context.js';
 
 /**
- * The planner's stranded-route recovery: a FAILED PathRequest reads as "travelling" to every idle
- * check, and nothing on the nav side retries it — so before this slice a settler whose walk failed
- * (a footprint stamped mid-walk, a crowd, a dynamically enclosed target) stood frozen forever, and
- * only an authoritative reset (a job change's clearNavState) revived it. The planner now parks the
- * dead route briefly (Stranded — one path query per retry, not per tick), then sheds it and
- * re-plans. Drives that read the failed flag themselves (player order, chase, flee, wedding) keep
- * their signal.
+ * The planner's stranded-route recovery (see the block in systems/agents/ai.ts): a failed walk is
+ * parked (Stranded — paced, not per-tick), then shed and re-planned; drives with their own failure
+ * protocol keep their signal; an authoritative order ends the park at once.
  */
 
 /** The cell id of visual tile (x, y)'s anchor node. */
@@ -52,6 +48,19 @@ describe('aiSystem — stranded-route recovery (a failed walk no longer freezes 
     }
     expect(harvesting).toBe(true);
     expect(s.world.has(e, Stranded)).toBe(false);
+  });
+
+  it('a fresh move order ends the park at once — the marker never outlives the cancel', () => {
+    const s = sim();
+    const e = ownedWoodcutter(s, 0, 0);
+    strandOn(s, e, 3);
+    s.step();
+    expect(s.world.has(e, Stranded)).toBe(true); // parked
+
+    orderMove(s, e, 2, 0); // moveUnit clears PathRequest directly (keeps PathFollow) — Stranded must go too
+    s.step();
+    expect(s.world.has(e, Stranded)).toBe(false); // no stale pacing left to skip the NEXT park
+    expect(s.world.has(e, MoveGoal)).toBe(true); // and the ordered walk starts immediately
   });
 
   it("leaves the failure signal of a drive with its own protocol alone (a player order's walk)", () => {
