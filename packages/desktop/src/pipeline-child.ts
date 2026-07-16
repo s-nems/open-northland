@@ -5,8 +5,9 @@ import type { PipelineEvent } from './ipc.js';
 /**
  * The pipeline runner forked as an Electron `utilityProcess` — the conversion is CPU-bound JS
  * (image decoding, zlib), so it must not share the main process event loop. argv: `<gameDir> <outDir>
- * [mod]` (no third arg = no mod). Progress goes to the parent as {@link PipelineEvent}s; the
- * pipeline's own console logs ride the piped stdio and are forwarded by the host as `log` events.
+ * [modRoot]` (empty third arg = auto-detect the mod inside the game folder). Progress goes to the
+ * parent as {@link PipelineEvent}s; the pipeline's own console logs ride the piped stdio and are
+ * forwarded by the host as `log` events.
  */
 
 /** Minimum ms between forwarded item events — the unpack stage ticks thousands of times per second. */
@@ -26,9 +27,9 @@ function post(event: PipelineEvent): void {
   parent.postMessage(event);
 }
 
-const [gameDir, outDir, mod] = process.argv.slice(2);
+const [gameDir, outDir, modRoot] = process.argv.slice(2);
 if (gameDir === undefined || outDir === undefined) {
-  post({ kind: 'error', message: 'pipeline-child usage: <gameDir> <outDir> [mod]' });
+  post({ kind: 'error', message: 'pipeline-child usage: <gameDir> <outDir> [modRoot]' });
   process.exit(2);
 }
 
@@ -49,7 +50,7 @@ const progress: PipelineProgress = {
 // No process.exit() after posting: postMessage is asynchronous and exiting on the same tick can
 // drop the terminal event (a finished conversion would then surface as a failure). The process
 // ends by draining naturally; the host kills it if it ever lingers.
-runPipeline({ game: gameDir, out: outDir, mod: mod === '' ? undefined : mod }, progress)
+runPipeline({ game: gameDir, out: outDir, modRoot: modRoot === '' ? undefined : modRoot }, progress)
   .then(() => {
     post({ kind: 'done' });
   })

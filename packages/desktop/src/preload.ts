@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { DesktopApi, PipelineEvent } from './ipc.js';
+import type { DesktopApi, ModEvent, PipelineEvent } from './ipc.js';
 import { IPC_CHANNELS } from './ipc.js';
 
 /** The sandboxed bridge: the setup renderer sees exactly {@link DesktopApi} as `window.desktop`. */
@@ -12,6 +12,12 @@ const api: DesktopApi = {
   stopPipeline: () => ipcRenderer.invoke(IPC_CHANNELS.stopPipeline),
   onPipelineEvent: (listener) => {
     ipcRenderer.on(IPC_CHANNELS.pipelineEvent, (_ev, event: PipelineEvent) => listener(event));
+  },
+  downloadMod: () => ipcRenderer.invoke(IPC_CHANNELS.downloadMod),
+  cancelModDownload: () => ipcRenderer.invoke(IPC_CHANNELS.cancelModDownload),
+  pickModFolder: () => ipcRenderer.invoke(IPC_CHANNELS.pickModFolder),
+  onModEvent: (listener) => {
+    ipcRenderer.on(IPC_CHANNELS.modEvent, (_ev, event: ModEvent) => listener(event));
   },
   startGame: () => ipcRenderer.invoke(IPC_CHANNELS.startGame),
 };

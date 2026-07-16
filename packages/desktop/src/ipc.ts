@@ -16,6 +16,10 @@ export const IPC_CHANNELS = {
   stopPipeline: 'desktop:stop-pipeline',
   pipelineEvent: 'desktop:pipeline-event',
   startGame: 'desktop:start-game',
+  downloadMod: 'desktop:download-mod',
+  cancelModDownload: 'desktop:cancel-mod-download',
+  pickModFolder: 'desktop:pick-mod-folder',
+  modEvent: 'desktop:mod-event',
 } as const;
 
 /** What the setup renderer needs to render its first screen. */
@@ -27,6 +31,8 @@ export interface DesktopState {
   readonly contentStatus: ContentStatus;
   /** The game folder remembered from a previous run, to prefill the picker. */
   readonly gamePath?: string;
+  /** A usable culturesnation mod root outside the game folder (downloaded or hand-picked), if any. */
+  readonly modRoot?: string;
 }
 
 /** A candidate original-game folder: the path plus what the probe found there. */
@@ -43,6 +49,12 @@ export type PipelineEvent =
   | { readonly kind: 'done' }
   | { readonly kind: 'error'; readonly message: string };
 
+/** Mod download/extract progress streamed to the setup renderer (see `mod-install.ts`). */
+export type ModEvent =
+  | { readonly kind: 'mod-download'; readonly received: number; readonly total?: number }
+  | { readonly kind: 'mod-extract'; readonly done: number; readonly total: number }
+  | { readonly kind: 'mod-warning'; readonly message: string };
+
 /** The `window.desktop` API the preload bridge exposes to the setup renderer. */
 export interface DesktopApi {
   getState(): Promise<DesktopState>;
@@ -57,6 +69,13 @@ export interface DesktopApi {
   /** Abort a running conversion (the wizard's Cancel); resolves after the child exited, silently. */
   stopPipeline(): Promise<void>;
   onPipelineEvent(listener: (event: PipelineEvent) => void): void;
+  /** Download + install the culturesnation mod into the data root; resolves to the mod root. */
+  downloadMod(): Promise<string>;
+  /** Abort a running mod download (its downloadMod promise then rejects). */
+  cancelModDownload(): Promise<void>;
+  /** Native picker for a hand-downloaded mod folder; resolves to the validated mod root, or null. */
+  pickModFolder(): Promise<string | null>;
+  onModEvent(listener: (event: ModEvent) => void): void;
   /** Swap the window from the setup page to the game. */
   startGame(): Promise<void>;
 }

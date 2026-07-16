@@ -110,6 +110,21 @@ button.primary {
   color: var(--error);
 }
 
+.mod-panel {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #4a4131;
+  border-radius: 8px;
+}
+
+.mod-panel .actions {
+  margin-top: 8px;
+}
+
+#mod-progress {
+  margin-top: 10px;
+}
+
 .detected button {
   display: block;
   width: 100%;

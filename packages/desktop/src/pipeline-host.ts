@@ -20,16 +20,17 @@ export class PipelineHost {
     return this.child !== undefined;
   }
 
-  /** Fork the conversion of `gameDir` into `outDir`; every event lands in `sink` (ending in done/error). */
+  /** Fork the conversion of `gameDir` into `outDir` (`modRoot` = a mod unpacked outside the game
+   * folder; undefined auto-detects it inside); every event lands in `sink` (ending in done/error). */
   start(
     gameDir: string,
     outDir: string,
-    mod: string | undefined,
+    modRoot: string | undefined,
     sink: (event: PipelineEvent) => void,
   ): void {
     if (this.child !== undefined) throw new Error('pipeline already running');
     mkdirSync(outDir, { recursive: true });
-    const child = utilityProcess.fork(this.childScript, [gameDir, outDir, mod ?? ''], {
+    const child = utilityProcess.fork(this.childScript, [gameDir, outDir, modRoot ?? ''], {
       stdio: ['ignore', 'pipe', 'pipe'],
       serviceName: 'open-northland-pipeline',
     });
