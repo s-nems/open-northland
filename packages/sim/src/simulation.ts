@@ -45,6 +45,9 @@ export interface FogView {
   readonly stateAt: (cellX: number, cellY: number) => number;
 }
 
+/** Wraps one system invocation for timing (see {@link Simulation.setInstrument}) — observational only. */
+export type SystemInstrument = (name: string, run: () => void) => void;
+
 /**
  * The simulation: owns the world, the RNG, and the system schedule. Advance one deterministic
  * tick with `step()`. No rendering, no I/O — see docs/ECS.md.
@@ -79,6 +82,8 @@ export class Simulation {
    */
   readonly commands = new CommandQueue();
   private currentTick = 0;
+  /** The per-system instrumentation hook, or `null` for the direct (zero-overhead) call. */
+  private instrument: SystemInstrument | null = null;
   /** The last {@link snapshot} result, reusable while the tick and the World's mutation version are
    *  unchanged (see snapshot). */
   private snapshotMemo: {
@@ -105,6 +110,17 @@ export class Simulation {
   }
 
   /**
+   * Install (or clear) the per-system instrumentation hook — the timing seam for the app's perf
+   * marks and the bench harness. The hook wraps each system invocation and MUST call `run` exactly
+   * once and stay hands-off otherwise (it gets no world/ctx access); the timer itself lives in the
+   * caller, keeping `performance.now` out of sim src (the hygiene scan). Purely observational, so
+   * an instrumented run hashes byte-identically to a bare one (pinned in test/core/instrument.test.ts).
+   */
+  setInstrument(instrument: SystemInstrument | null): void {
+    this.instrument = instrument;
+  }
+
+  /**
    * Queue a serializable command — the only way to mutate sim state from outside. It is applied (and
    * appended to the command log) by CommandSystem on the next `step()`. The UI, the AI, and a save
    * loader all go through here; nothing else pokes the world directly.
@@ -128,8 +144,10 @@ export class Simulation {
       ...(this.terrain !== undefined ? { terrain: this.terrain } : {}),
       ...(this.fog !== undefined ? { fog: this.fog } : {}),
     };
-    for (const system of SYSTEM_ORDER) {
-      system(this.world, ctx);
+    const instrument = this.instrument;
+    for (const { name, system } of SYSTEM_ORDER) {
+      if (instrument === null) system(this.world, ctx);
+      else instrument(name, () => system(this.world, ctx));
     }
   }
 
