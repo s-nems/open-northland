@@ -9,8 +9,9 @@ cull (see `sprite-scene.ts` `portraitRef`), so the settler always shows — but 
 are still culled to the MAIN viewport (`WorldRenderer.update` → `this.terrain.cull(vp)`). When the
 subject is panned far off-screen, the chunk under it is `visible = false`, so the cutout draws the
 settler over transparent, which composites over the panel's parchment preview box. That reads fine
-(the settler is clearly shown), so this is polish, not a defect — the common cases (subject on/near
-screen, or an indoor subject at its on-screen workplace) already show terrain.
+(the settler is clearly shown), so this is polish, not a defect — a subject on/near screen already
+shows terrain. (An INDOOR subject deliberately renders with NO backdrop — see `PortraitInsetLayer`'s
+solo path — so it is out of scope here; this ticket is only the off-screen outdoor case.)
 
 Source basis: observed behavior of this renderer; the original's portrait backdrop fidelity is not a
 pinned reference, so the target is "cutout shows the ground under the subject", not a byte match.
