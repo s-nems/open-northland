@@ -1,6 +1,7 @@
 import { BufferImageSource, Container } from 'pixi.js';
-import { makeBrightnessField } from '../../data/brightness.js';
+import { type BrightnessField, makeBrightnessField } from '../../data/brightness.js';
 import { type ElevationField, makeElevationField } from '../../data/elevation.js';
+import { composeShadingLane } from '../../data/hillshade.js';
 import type { SceneTerrain } from '../../data/scene/index.js';
 import { aabbIntersects, type Viewport } from '../../data/viewport.js';
 import { destroyMeshChildren } from '../mesh-teardown.js';
@@ -38,10 +39,12 @@ export class TerrainLayer {
   readonly container = new Container();
   /** The meshed terrain blocks + their world-space AABBs, culled to the viewport each frame. */
   private chunks: TerrainChunk[] = [];
-  /** The map's `embr` lane as an R8 texture (per-fragment shading); undefined on an unshaded map. */
+  /** The composed shading lane as an R8 texture (per-fragment shading); undefined on an unshaded map. */
   private brightnessTex: BufferImageSource | undefined;
   /** The lane texture's padded width in texels (the `u` denominator; see {@link set}'s padding note). */
   private laneTexWidth = 0;
+  /** The composed shading field ({@link brightnessField}) — neutral until {@link set} builds a shaded map. */
+  private field: BrightnessField = makeBrightnessField(undefined, 0, 0);
 
   /**
    * (Re)build the cached terrain from a grid — call once per map (a terrain edit re-invalidates). With
@@ -55,15 +58,24 @@ export class TerrainLayer {
   set(terrain: SceneTerrain, textures?: TerrainTextureSet, elevation: ElevationField = FLAT_ELEVATION): void {
     this.destroy();
     // One source for the shading: both the CPU field (fallback/flat tints) and the R8 lane texture
-    // are built here from `terrain.brightness`, so no caller can hand the mesh and the fallbacks
-    // disagreeing inputs (the elevation field stays injected — the renderer retains it per frame).
-    const brightness = makeBrightnessField(terrain.brightness, terrain.width, terrain.height);
-    // The lane texture the shaded ground shader samples per fragment: the raw `embr` bytes as an R8
+    // are built here from the composed lane — the decoded `embr` bake accented (or replaced, on maps
+    // without it) by elevation hillshade (`data/hillshade.ts`) — so no caller can hand the mesh and
+    // the fallbacks disagreeing inputs (the elevation field stays injected — the renderer retains it
+    // per frame).
+    const shadingLane = composeShadingLane(
+      terrain.brightness,
+      terrain.elevation,
+      terrain.width,
+      terrain.height,
+    );
+    const brightness = makeBrightnessField(shadingLane, terrain.width, terrain.height);
+    this.field = brightness;
+    // The lane texture the shaded ground shader samples per fragment: the composed lane bytes as an R8
     // grid, linear-filtered + edge-clamped (the GPU twin of `makeCellSampler`'s bilinear + clamp).
     // ~W×H bytes once per map; undefined on an unshaded map (the stock-shader path) and on the flat
     // placeholder path (which shades CPU-side). Rows are alignment-padded — see `padLaneRows`.
-    if (brightness.shaded && terrain.brightness !== undefined && textures !== undefined) {
-      const lane = padLaneRows(terrain.brightness, terrain.width, terrain.height, ROW_ALIGN);
+    if (brightness.shaded && shadingLane !== undefined && textures !== undefined) {
+      const lane = padLaneRows(shadingLane, terrain.width, terrain.height, ROW_ALIGN);
       this.laneTexWidth = lane.paddedWidth;
       this.brightnessTex = new BufferImageSource({
         resource: lane.data,
@@ -81,6 +93,13 @@ export class TerrainLayer {
       textures !== undefined
         ? buildTextured(this.container, terrain, textures, elevation, brightness, lane)
         : buildFlat(this.container, terrain, elevation, brightness);
+  }
+
+  /** The composed shading field the ground drew with — the one source sprite-anchor shading must share
+   *  so an entity can't disagree with the ground it stands on. Neutral (`shaded: false`) until a shaded
+   *  map is {@link set}. */
+  brightnessField(): BrightnessField {
+    return this.field;
   }
 
   /**
@@ -110,5 +129,6 @@ export class TerrainLayer {
     this.brightnessTex?.destroy();
     this.brightnessTex = undefined;
     this.laneTexWidth = 0;
+    this.field = makeBrightnessField(undefined, 0, 0);
   }
 }
