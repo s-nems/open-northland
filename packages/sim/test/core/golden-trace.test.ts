@@ -188,8 +188,10 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
 
   it('matches the golden final state hash', () => {
     const run = runSlice(SEED, TICKS);
-    // Intentional movement calibration: 18 rather than 12 ticks per cell changes the 1000-tick state.
-    expect(run.hash).toBe('a84d0a80');
+    // Intentional: settlers now spawn with seeded random starting needs (50–100%), hunger/fatigue/enjoyment
+    // drain at the retuned rate, and piety no longer rises per tick — all of which change the 1000-tick
+    // state. (The atomic trace below is unchanged: behavior/order is the same, only need magnitudes differ.)
+    expect(run.hash).toBe('f8f7cb80');
   });
 
   it('matches the golden atomic-action trace', () => {

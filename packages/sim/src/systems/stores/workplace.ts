@@ -155,6 +155,37 @@ export function presentOperatorCount(
   return present;
 }
 
+/**
+ * The operator settlers on station at `building` right now, in canonical ascending-id order and capped at the
+ * type's operator headcount — the entity-list twin of {@link presentOperatorCount} for a caller that must act
+ * ON the operators (e.g. charge their piety per weapon/armor production cycle), not just count them. Same
+ * gates: operator jobs standing on the interaction tile, clamped to the declared slot headcount. Sorted by id
+ * so any pick over the result is order-independent (the bucket's own order is insertion history). An
+ * unstaffed-by-design building has no operator entity to return, so this yields `[]` (unlike the count's `1`).
+ */
+export function presentOperators(
+  world: World,
+  ctx: SystemContext,
+  building: Entity,
+  operatorsByNode?: NodeBuckets,
+): Entity[] {
+  const jobs = operatorJobsOf(world, ctx, building);
+  if (jobs.size === 0) return []; // unstaffed-by-design: no operator entity to act on
+  const at = interactionNode(world, ctx, building);
+  if (at === null) return [];
+  const cap = operatorSlotHeadcount(world, ctx, building, jobs);
+  if (cap <= 0) return [];
+  const index = operatorsByNode ?? new NodeBuckets(world, world.query(Settler, Position));
+  const present: Entity[] = [];
+  for (const e of index.at(at.x, at.y)) {
+    const jobType = world.get(e, Settler).jobType;
+    if (jobType === null || !jobs.has(jobType)) continue;
+    present.push(e);
+  }
+  present.sort((a, b) => a - b); // canonical order — the charge target must not depend on bucket insertion order
+  return present.length > cap ? present.slice(0, cap) : present;
+}
+
 /** The declared headcount across a building's operator slots (Σ `count` over `workers` whose job is in
  *  `jobs`) — the ceiling {@link presentOperatorCount} clamps to. */
 function operatorSlotHeadcount(

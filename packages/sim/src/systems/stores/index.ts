@@ -27,6 +27,7 @@ export {
   isTemple,
   isWorkplaceOperator,
   presentOperatorCount,
+  presentOperators,
   recipeOf,
   workerPresentAt,
 } from './workplace.js';

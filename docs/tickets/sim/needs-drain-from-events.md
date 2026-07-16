@@ -2,11 +2,14 @@
 
 **Area:** sim + pipeline · **Origin:** original-ui plan reconciliation, 2026-07-12 · **Priority:** P2
 
-Needs drain is a named constant stand-in today (`ONE/4096`/tick hunger,
-`packages/sim/src/systems/lifecycle/needs.ts`) — NOT the original's per-animation event scale. The
-faithful target: the original drains needs via atomic animation `event (type,value)` rows (e.g.
-soldier swing = `event 2 1 −20` + `event 2 2 −20`; woman/civilist −100), so drain is
-per-activity, not per-tick-uniform, across all four needs (hunger/fatigue/piety/enjoyment).
+Needs drain is a named constant stand-in today (hunger/fatigue/enjoyment share one uniform per-tick rate
+calibrated to a measured 1× feel — 10% of a bar per 1min20s, `packages/sim/src/systems/lifecycle/needs.ts`)
+— NOT the original's per-animation event scale. Two needs are now special-cased and out of scope for a
+naive event-drive: piety no longer drains per-tick at all (it climbs only when a smith forges a
+weapon/armor — `chargeMilitaryPiety`), and enjoyment is frozen for fighter jobs. The faithful target: the
+original drains needs via atomic animation `event (type,value)` rows (e.g. soldier swing = `event 2 1 −20`
++ `event 2 2 −20`; woman/civilist −100), so drain is per-activity, not per-tick-uniform. Reconcile the
+event-driven model with the piety/enjoyment special cases when doing this.
 
 **Source basis:** atomicanimations.ini event rows (extracted; the combat and gathering lanes
 already decode event frames). `CHANGE_ENERGY` bucket 2 = hunger, `CHANGE_CONDITION` bucket 1 =
