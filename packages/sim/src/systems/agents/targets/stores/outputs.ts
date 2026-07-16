@@ -5,7 +5,6 @@ import type { SystemContext } from '../../../context.js';
 import type { SpatialGate } from '../../../node-metric.js';
 import { mergedRecipeOf } from '../../../stores/index.js';
 import type { InteractionCellIndex } from '../cell-index.js';
-import type { SinkAvailability } from './sinks.js';
 
 /**
  * Whether ANY workplace holds a haulable output this tick — a producing {@link Building} ({@link mergedRecipeOf}
@@ -43,7 +42,7 @@ export function hasHaulableOutput(world: World, ctx: SystemContext, stockpiles: 
  */
 export function nearestWorkplaceOutput(
   index: InteractionCellIndex,
-  sinks: SinkAvailability,
+  deliverable: (goodType: number) => boolean,
   world: World,
   ctx: SystemContext,
   here: NodeId,
@@ -52,20 +51,21 @@ export function nearestWorkplaceOutput(
 ): { workplace: Entity; goodType: number } | null {
   // The stockpile index holds every Stockpile+Position candidate; only workplaces with a deliverable output
   // pass `accept`, and the winner's good is re-derived by the same canonical rule below.
-  const winner = index.nearest(here, (e) => haulableOutputGood(world, ctx, sinks, e) !== null, gate);
+  const winner = index.nearest(here, (e) => haulableOutputGood(world, ctx, deliverable, e) !== null, gate);
   if (winner === null) return null;
-  const goodType = haulableOutputGood(world, ctx, sinks, winner.entity);
+  const goodType = haulableOutputGood(world, ctx, deliverable, winner.entity);
   return goodType === null ? null : { workplace: winner.entity, goodType };
 }
 
-/** The lowest-goodType output a workplace currently stocks (>0), that its recipe produces and some OTHER
- *  store can take ({@link SinkAvailability}) — or null when the entity is not a workplace holding a
- *  deliverable output. Canonical (ascending goodType via {@link stockpileEntries}) so the chosen good never
- *  depends on Map insertion history; side-effect-free, so the ring may re-evaluate it on the fallback scan. */
+/** The lowest-goodType output a workplace currently stocks (>0), that its recipe produces and the seeking
+ *  carrier could actually deliver (`deliverable` — its {@link deliverableGoodProbe}) — or null when the
+ *  entity is not a workplace holding a deliverable output. Canonical (ascending goodType via
+ *  {@link stockpileEntries}) so the chosen good never depends on Map insertion history; side-effect-free,
+ *  so the ring may re-evaluate it on the fallback scan. */
 function haulableOutputGood(
   world: World,
   ctx: SystemContext,
-  sinks: SinkAvailability,
+  deliverable: (goodType: number) => boolean,
   entity: Entity,
 ): number | null {
   const recipe = mergedRecipeOf(world, ctx, entity);
@@ -73,7 +73,7 @@ function haulableOutputGood(
   for (const [goodType, amount] of stockpileEntries(world.get(entity, Stockpile))) {
     if (amount <= 0) continue;
     if (!recipe.outputs.some((o) => o.goodType === goodType)) continue; // only haul outputs
-    if (!sinks.has(goodType)) continue; // no store can take it — never pick a good it couldn't deliver
+    if (!deliverable(goodType)) continue; // no reachable sink — never pick a good it couldn't deliver
     return goodType;
   }
   return null;

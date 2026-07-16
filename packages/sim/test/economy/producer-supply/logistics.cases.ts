@@ -141,10 +141,13 @@ describe('carrier at a PRODUCING building — hauls the finished output OUT to a
     if (terrain === undefined) throw new Error('map sim always has terrain');
     const candidates = [farm, granary];
     const ctx = ctxOf(sim);
+    // The pickup deliverability probe the planner would build — "some candidate store takes it" is
+    // enough here; the role split under test lives in boundProducerOutputToHaul itself.
     const sinks = new SinkAvailability(candidates, sim.world, ctx);
+    const deliverable = (good: number): boolean => sinks.has(good, /* excludeProducers */ true);
 
-    expect(boundProducerOutputToHaul(sinks, sim.world, ctx, farmer, FARMER, VIKING)).toBeNull();
-    expect(boundProducerOutputToHaul(sinks, sim.world, ctx, carrier, CARRIER, VIKING)).toMatchObject({
+    expect(boundProducerOutputToHaul(deliverable, sim.world, ctx, farmer, FARMER, VIKING)).toBeNull();
+    expect(boundProducerOutputToHaul(deliverable, sim.world, ctx, carrier, CARRIER, VIKING)).toMatchObject({
       home: farm,
       goodType: WHEAT,
     });

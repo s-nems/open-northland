@@ -35,6 +35,11 @@ export function createSceneSim(
   // needsSystem; a needs-exercising scene opts back in via `SceneDefinition.needs` (FIFO, later write
   // wins). Live maps keep the sim default (enabled); the admin "Potrzeby" button flips it at runtime.
   if (scene.needs !== true) sim.enqueue({ kind: 'setNeedsEnabled', enabled: false });
+  // Signpost navigation confinement is a game fundament (user decision 2026-07-16): every playable world
+  // runs with it ON — a settler acts only within its local circle + its player's reachable signpost
+  // network. Enqueued for scenes here and for map worlds in the slice builders, keeping the sim-level
+  // default off so pre-signpost goldens stay byte-identical.
+  sim.enqueue({ kind: 'setSignpostNavigation', enabled: true });
   // The scene's fog-of-war mode (omitted = no fog, the sim default), enqueued here so the headless twin
   // and browser run share it; the browser `?fog=` flag enqueues its override after this one (FIFO).
   if (scene.fog !== undefined && scene.fog !== 'off') {

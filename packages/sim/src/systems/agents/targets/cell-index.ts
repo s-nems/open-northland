@@ -16,6 +16,16 @@ import { interactionCell } from './workplaces.js';
  */
 const NEAREST_RING_MAX_RADIUS = 48;
 
+/**
+ * Bucket count at or below which `nearest` skips the ring sweep for the exact linear scan. A ring sweep
+ * pays off only when buckets are dense enough that a hit ends it early; a MISS costs the full diamond —
+ * O(maxRadius²) ≈ 4600 node probes — regardless of how few buckets exist, and a confined (gated) search
+ * misses often (every sink out of the settler's area). With ≤ this many buckets the linear scan's
+ * `accept` calls are provably cheaper than the empty sweep; the winner is identical (the ring is only an
+ * accelerator over the linear reference). Performance knob, not behavior (named approximation).
+ */
+const RING_MIN_BUCKETS = 64;
+
 /** A candidate's interaction cell plus the distance a scan measured to it. */
 export interface NearestByCell {
   readonly entity: Entity;
@@ -49,6 +59,10 @@ interface CellBucket {
 export class InteractionCellIndex {
   private readonly byX = new Map<number, Map<number, CellBucket>>();
   private readonly dynamic: Entity[] = [];
+  private bucketCount = 0;
+  // Seeker-independent interaction cells resolved once at construction, so the linear scans don't
+  // re-derive a building's door footprint per candidate per query (only the dynamic tail stays per-query).
+  private readonly staticCell = new Map<Entity, NodeId>();
   // Bounding box of the bucketed cells (empty ⟹ minX > maxX), so a ring search never expands past the
   // farthest bucket — an index with no buckets (a store-less / site-less tick) costs no ring probes.
   private minX = Number.POSITIVE_INFINITY;
@@ -69,6 +83,7 @@ export class InteractionCellIndex {
         continue;
       }
       const cell = terrain.nodeAtClamped(inode.x, inode.y);
+      this.staticCell.set(e, cell);
       const { x, y } = terrain.coordsOf(cell);
       if (x < this.minX) this.minX = x;
       if (x > this.maxX) this.maxX = x;
@@ -80,8 +95,10 @@ export class InteractionCellIndex {
         this.byX.set(x, column);
       }
       const bucket = column.get(y);
-      if (bucket === undefined) column.set(y, { cell, entities: [e] });
-      else bucket.entities.push(e); // candidates arrive ascending-id, so buckets stay ascending-id
+      if (bucket === undefined) {
+        column.set(y, { cell, entities: [e] });
+        this.bucketCount++;
+      } else bucket.entities.push(e); // candidates arrive ascending-id, so buckets stay ascending-id
     }
   }
 
@@ -97,6 +114,10 @@ export class InteractionCellIndex {
    * PROVES no bucketed candidate passes, eliding the full linear fallback.
    */
   nearest(here: NodeId, accept: (e: Entity) => boolean, gate?: SpatialGate): NearestByCell | null {
+    // A sparse index skips the ring for the exact linear reference scan ({@link RING_MIN_BUCKETS}):
+    // a ring MISS costs the whole O(maxRadius²) diamond however few buckets exist, and confined
+    // searches miss constantly.
+    if (this.bucketCount <= RING_MIN_BUCKETS) return this.linearNearest(this.candidates, here, accept, gate);
     const ring = this.ringNearest(here, accept, gate);
     if (ring.best !== null) {
       return combine(ring.best, this.linearNearest(this.dynamic, here, accept, gate));
@@ -174,7 +195,7 @@ export class InteractionCellIndex {
   ): NearestByCell | null {
     return nearestByCell(this.terrain, list, here, (e) => {
       if (!accept(e)) return null;
-      const cell = interactionCell(this.world, this.ctx, this.terrain, e, here);
+      const cell = this.staticCell.get(e) ?? interactionCell(this.world, this.ctx, this.terrain, e, here);
       return gate === undefined || gate.allowsNode(cell) ? cell : null;
     });
   }

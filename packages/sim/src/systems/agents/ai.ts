@@ -35,6 +35,7 @@ import { canonicalById, clearNavState, isTravelling, NodeBuckets } from '../spat
 import { collectInboundSupply, isCarrierJob, releaseSupplyRun } from '../stores/index.js';
 import { deStackIdle, type SpacingState } from './destack.js';
 import { planNeeds } from './drives-needs.js';
+import { collectHarvestClaims } from './economy/harvest-claims.js';
 import {
   planBuilder,
   planCarrierHaul,
@@ -139,6 +140,9 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
   // Inbound-supply tally: units committed to each construction site by live SupplyRun errands, seeded
   // once and kept in lockstep as the pass releases/stamps runs (see InboundSupplyTally).
   const inbound = collectInboundSupply(world);
+  // Harvest claims: one digger per resource node at a time — nodes under a live harvest atomic plus the
+  // picks made earlier this pass (see economy/harvest-claims.ts).
+  const harvestClaims = collectHarvestClaims(world);
 
   // Canonical settler order: the per-tick claim maps (farmClaims, seatClaims) hand out targets/seats
   // first-come-first-served, so the visit order is a pick, not a mere sweep — it must be ascending
@@ -319,8 +323,8 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // its yard (see ./destack.ts claimWorkCell).
     if (planBuilder(plan, spacing)) continue;
 
-    // 3. HARVEST / COLLECT — a gatherer chops the nearest resource or collects the nearest trunk.
-    if (planGatherer(plan)) continue;
+    // 3. HARVEST / COLLECT — a gatherer chops the nearest FREE resource or collects the nearest trunk.
+    if (planGatherer(plan, harvestClaims)) continue;
 
     // 4. PORTER — a settler bound to a storage fixture ferries loose ground piles into it.
     if (planPorter(plan)) continue;

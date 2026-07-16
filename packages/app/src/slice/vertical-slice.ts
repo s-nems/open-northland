@@ -16,6 +16,7 @@ import {
   BUILDING_HEADQUARTERS,
   BUILDING_JOINERY,
   GOOD_WOOD,
+  gatherMasteryExperienceFor,
   JOB_CARRIER,
   JOB_COLLECTOR,
   sandboxContent,
@@ -106,6 +107,13 @@ function walkableCells(
   return out.length < count ? null : out;
 }
 
+/** Signpost navigation confinement is a game fundament (user decision 2026-07-16): every playable world
+ *  runs with it ON. Enqueued per slice builder (scenes get it in `createSceneSim`), keeping the sim-level
+ *  default off so pre-signpost goldens stay byte-identical. */
+function enableSignpostNavigation(sim: Simulation): void {
+  sim.enqueue({ kind: 'setSignpostNavigation', enabled: true });
+}
+
 /**
  * Enqueue resolved placements in order — the one spot the `placeBuilding`/`spawnSettler` command
  * shapes are written, shared by the demo strip and the authored import (list order = enqueue order,
@@ -130,6 +138,11 @@ function enqueuePlacements(sim: Simulation, placements: readonly AuthoredPlaceme
       // A warrior placement (scene author or imported-map `sethuman`) carries its class weapon in the
       // equipment slot, so an existing soldier's Broń row + drawn weapon match — like an admin spawn.
       const equipment = weaponEquipmentFor(p.jobType);
+      // Every authored human spawns with the gather-mastery XP (the sandbox veteran rule applied to
+      // decoded maps): real content's `needforgood` gates iron/gold behind clay/stone-digging XP, and a
+      // map settler converted to a collector and pinned to an iron camp would otherwise never qualify.
+      // Granted to every human, not just collectors, because profession changes keep `experience`.
+      const mastery = gatherMasteryExperienceFor(sim.content, p.tribe);
       sim.enqueue({
         kind: 'spawnSettler',
         jobType: p.jobType,
@@ -138,6 +151,7 @@ function enqueuePlacements(sim: Simulation, placements: readonly AuthoredPlaceme
         tribe: p.tribe,
         ...own,
         ...(equipment !== undefined ? { equipment } : {}),
+        ...(mastery.length > 0 ? { experience: mastery } : {}),
       });
     }
   }
@@ -206,6 +220,7 @@ export function runSlice(
   const terrain = usable ? map : grassMap();
   const cells = mapCells ?? STRIP_CELLS;
   const sim = new Simulation({ seed, content, map: terrain });
+  enableSignpostNavigation(sim);
 
   const cellAt = (i: number): { x: number; y: number } => {
     const c = cells[i];
@@ -282,7 +297,9 @@ export function runBareMap(
       ...(footprints ? { buildingFootprints: footprints } : {}),
       ...(goodNames ? { goodNames } : {}),
     });
-  return new Simulation({ seed, content, map });
+  const sim = new Simulation({ seed, content, map });
+  enableSignpostNavigation(sim);
+  return sim;
 }
 
 /**
@@ -349,6 +366,7 @@ export function runAuthoredSlice(
     });
 
   const sim = new Simulation({ seed, content, map });
+  enableSignpostNavigation(sim);
   enqueuePlacements(sim, placements);
   sim.run(ticks);
   return sim;

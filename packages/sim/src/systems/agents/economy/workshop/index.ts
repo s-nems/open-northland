@@ -5,6 +5,7 @@ import { atOrWalk, startPickup } from '../../actions.js';
 import { loiterCell, type SpacingState } from '../../destack.js';
 import type { PlannerContext } from '../../planner-context.js';
 import { interactionCell } from '../../targets/index.js';
+import { deliverableGoodProbe } from '../routing.js';
 import { nearestMissingInputSource, workplaceOutputToHaul, workSeatCount } from './supply.js';
 
 /** Work seats already claimed at each workplace during the canonical planner sweep. */
@@ -131,9 +132,9 @@ function haulWorkplaceOutput(
   workplace: Entity,
   recipe: NonNullable<ReturnType<typeof mergedRecipeOf>>,
 ): boolean {
-  const { world, ctx, terrain, entity, here, targets } = plan;
+  const { world, ctx, terrain, entity, here } = plan;
   const worker = plan;
-  const output = workplaceOutputToHaul(targets.sinks, world, workplace, recipe);
+  const output = workplaceOutputToHaul(deliverableGoodProbe(plan), world, workplace, recipe);
   if (output === null) return false;
   atOrWalk(world, entity, here, interactionCell(world, ctx, terrain, workplace, here), () =>
     startPickup(world, ctx, entity, worker, workplace, output, CARRY_CAPACITY),

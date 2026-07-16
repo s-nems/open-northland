@@ -29,6 +29,7 @@ import {
   nearestOwnDropFor,
   nearestStoreHolding,
 } from '../targets/index.js';
+import type { HarvestClaims } from './harvest-claims.js';
 import { deliveryTargetFor } from './routing.js';
 
 // The economy drives — the work rungs of the planner ladder, in priority order: deliver a carried load, run a
@@ -150,14 +151,14 @@ export function planBuilder(plan: PlannerContext, spacing: SpacingState): boolea
  * already-dropped good is hauling, not harvesting. Ordered before the porter/carrier drives so a gatherer works
  * its own resources+trunks before ferrying others'. `jobType` is non-null here.
  */
-export function planGatherer(plan: PlannerContext): boolean {
+export function planGatherer(plan: PlannerContext, harvestClaims: HarvestClaims): boolean {
   const { world, ctx, terrain, entity: e, here, targets } = plan;
   const settler = plan;
   const flag = world.tryGet(e, WorkFlag);
   // A live flag binding switches on the bounded collector behaviour; a stale binding (the flag was removed)
   // falls back to roaming so the gatherer is never stranded pointing at a gone flag.
   if (flag !== undefined && world.has(flag.flag, Position)) {
-    return planFlagGatherer(plan, flag);
+    return planFlagGatherer(plan, flag, harvestClaims);
   }
 
   // A building-employed roamer forages ONLY for its workplace: goods the bound building's stockpile
@@ -171,6 +172,7 @@ export function planGatherer(plan: PlannerContext): boolean {
     stored !== undefined && pick !== undefined && stored.has(pick) ? new Set([pick]) : stored;
 
   const node = nearestHarvestableFor(targets.resources, world, ctx, terrain, here, settler, {
+    exclude: harvestClaims,
     ...(goodFilter !== undefined ? { goodFilter } : {}),
     ...(plan.limit !== null ? { gate: plan.limit } : {}),
   });
@@ -192,7 +194,7 @@ export function planGatherer(plan: PlannerContext): boolean {
     return true;
   }
   if (node !== null) {
-    startHarvestFromNode(plan, node);
+    startHarvestFromNode(plan, node, harvestClaims);
     return true;
   }
   return false;
@@ -217,6 +219,7 @@ export function planGatherer(plan: PlannerContext): boolean {
 function planFlagGatherer(
   plan: PlannerContext,
   flag: { flag: Entity; radius: number; goodType?: number },
+  harvestClaims: HarvestClaims,
 ): boolean {
   const { world, ctx, terrain, entity: e, here, targets } = plan;
   const settler = plan;
@@ -229,8 +232,10 @@ function planFlagGatherer(
     return true;
   }
 
-  // 2. Chop / mine the nearest node within the flag's work radius (nothing beyond it).
+  // 2. Chop / mine the nearest FREE node within the flag's work radius (nothing beyond it; a node a
+  //    colleague already digs is claimed — one digger per node).
   const node = nearestHarvestableFor(targets.resources, world, ctx, terrain, here, settler, {
+    exclude: harvestClaims,
     area: {
       center: flagCell,
       radius: flag.radius,
@@ -239,7 +244,7 @@ function planFlagGatherer(
     ...(plan.limit !== null ? { gate: plan.limit } : {}),
   });
   if (node !== null) {
-    startHarvestFromNode(plan, node);
+    startHarvestFromNode(plan, node, harvestClaims);
     return true;
   }
 
@@ -249,9 +254,15 @@ function planFlagGatherer(
 }
 
 /** Walk to a harvestable node's work cell and start its content-defined harvest atomic — the shared body of
- *  the roaming and flag-bound gatherer's "chop/mine the nearest node" step. */
-function startHarvestFromNode(plan: PlannerContext, node: { entity: Entity; cell: NodeId }): void {
+ *  the roaming and flag-bound gatherer's "chop/mine the nearest node" step. Claims the node for this tick,
+ *  so colleagues planned later this pass pick other nodes (one digger per node). */
+function startHarvestFromNode(
+  plan: PlannerContext,
+  node: { entity: Entity; cell: NodeId },
+  harvestClaims: HarvestClaims,
+): void {
   const { world, ctx, entity: e, here } = plan;
+  harvestClaims.add(node.entity);
   const res = world.get(node.entity, Resource);
   atOrWalk(world, e, here, node.cell, () =>
     startAtomic(
