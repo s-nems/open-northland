@@ -1,4 +1,6 @@
-# Open Northland
+<h1 align="center">
+  <img src="docs/images/logo.webp" alt="Open Northland" width="520">
+</h1>
 
 [![CI](https://github.com/s-nems/open-northland/actions/workflows/ci.yml/badge.svg)](https://github.com/s-nems/open-northland/actions/workflows/ci.yml)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
