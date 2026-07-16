@@ -146,7 +146,8 @@ export const enContent = {
   scene: {
     sandbox: {
       title: 'Open sandbox',
-      summary: 'A broad economy and combat playground with buildings, workers and resources.',
+      summary:
+        'A small production village: full crews, a pre-stocked warehouse, and gathering camps at a forest, quarry and ore fields.',
     },
     collision: {
       title: 'Unit collision',

@@ -168,6 +168,8 @@ function nextCommand(rng: Rng): Command {
         ...(rng.int(2) === 0 ? { owner: pick(rng, OWNERS) } : {}),
         // Occasionally an authored-import-style forced placement (skips the tech/collision gates).
         ...(rng.int(4) === 0 ? { force: true } : {}),
+        // Occasionally an authored pre-stocked placement (every stock slot seeded to capacity).
+        ...(rng.int(4) === 0 ? { fillStock: true } : {}),
       };
     case 1: {
       // Every third settler is a combatant (Health + armor + a specific weapon + a walk pace) so the

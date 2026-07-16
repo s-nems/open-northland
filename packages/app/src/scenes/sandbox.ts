@@ -1,149 +1,266 @@
-import type { Simulation } from '@open-northland/sim';
-import { components, fx } from '@open-northland/sim';
-import { grassTerrain, placedBuildingTypes, VIKING_BUILDINGS } from '../catalog/buildings.js';
-import { ENEMY_PLAYER, HUMAN_PLAYER } from '../game/rules.js';
+import type { Entity, Simulation } from '@open-northland/sim';
+import { components } from '@open-northland/sim';
+import { grassTerrain, placedBuildingTypes, resolveVikingBuilding } from '../catalog/buildings.js';
+import { WOOD_YIELD_PER_NODE } from '../catalog/felling.js';
+import { HUMAN_PLAYER } from '../game/rules.js';
 import {
   GATHERERS,
+  type GathererSpec,
+  GOOD_GOLD,
+  GOOD_IRON,
+  GOOD_MUD,
+  GOOD_MUSHROOM,
+  GOOD_STONE,
   GOOD_WOOD,
-  JOB_ARCHER_LONG,
-  JOB_COLLECTOR,
-  JOB_SOLDIER_SWORD,
+  JOB_CARRIER,
   placeFlag,
   placeResourceNode,
+  placeSandboxBerryBush,
   placeSandboxBuilding,
   spawnBoundGatherer,
-  spawnSandboxSettler,
-  WEAPON_LONG_BOW,
-  WEAPON_SWORD,
+  staffableCrewFor,
+  staffBuildingFully,
 } from '../game/sandbox/index.js';
-import {
-  blueLivingSoldiers,
-  blueOwnedSettlers,
-  countComponent,
-  enemyLivingSettlers,
-  expectedGatherYield,
-  yardGood,
-} from './sandbox-queries.js';
+import { createSceneSim } from './runtime.js';
+import { yardGood } from './sandbox-queries.js';
 import type { SceneDefinition } from './types.js';
 
-const { Felling, MineDeposit, Resource, Stump } = components;
+const { Building, JobAssignment, Owner, Resource, Settler, Stockpile } = components;
 
 /**
- * The current single sandbox scene: one large deterministic map used to inspect global gameplay systems.
- *
- * The scene itself defines only placement: where buildings, resources, blue player units, and hostile units
- * start. It does not own content, build rules, animation bindings, sounds, speed, tool panel, or controls;
- * those are shared by `game/sandbox/`, `entries/scene.ts`, and `entries/map.ts`.
+ * The main sandbox scene: a small, fully staffed viking settlement over a resource-gathering base — the
+ * production inspection world. The village (storage + homes + one workshop per trade) sits in the north
+ * with every building staffed to its worker capacity and the warehouse pre-filled to its limits; the south
+ * is a spread of gathering camps (a forest, a quarry, a clay pit, iron and gold outcrops, a mushroom grove),
+ * each with its own delivery flag and bound gatherers. The scene defines only placement — content, rules,
+ * and controls stay in `game/sandbox/`, `entries/scene.ts`, and `entries/map.ts`.
  */
 
 const MAP_W = 96;
 const MAP_H = 96;
 const INITIAL_ZOOM = 0.5;
-// Enough for the slowest lane to finish: clay is 10 units × (6 strikes × 23-tick dig + 2 inter-swing
-// 15-tick rests — the breather lands every 2nd swing, never on the unit-completing one) = ~1 700 work
-// ticks, plus per-unit pickup + flag round trips — 4200 leaves honest headroom after the
-// strikes-per-unit + inter-swing-rest retune (was 3000, sized to the 1-swing-per-unit pace).
-const RUN_TICKS = 4200;
+/** Enough for the slowest first delivery — a mined unit (clay: 6 strikes × 23-tick digs + rests) dug,
+ *  carried to its flag, and banked — with headroom for the walk from every camp's spawn. */
+const RUN_TICKS = 2400;
 
-const BUILDING_COLUMNS = 7;
-const BUILDING_STEP = 6;
-const BUILDING_ORIGIN = { x: 8, y: 8 };
+/**
+ * The village: every building placed, hand-authored so the settlement reads as one — storage row on top,
+ * homes beside it, two workshop streets below, and the two farms on the western edge with open grass to
+ * sow/graze. Positions keep every real extracted footprint comfortably clear of its neighbours (7-tile
+ * street pitch; homes are small, so 5).
+ */
+const VILLAGE: ReadonlyArray<{ readonly id: string; readonly x: number; readonly y: number }> = [
+  // Storage row + homes.
+  { id: 'home_level_00', x: 24, y: 8 },
+  { id: 'home_level_00', x: 29, y: 8 },
+  { id: 'home_level_00', x: 34, y: 8 },
+  { id: 'headquarters', x: 42, y: 8 },
+  { id: 'stock_00', x: 52, y: 8 },
+  // Craft street.
+  { id: 'work_joinery_00', x: 18, y: 16 },
+  { id: 'work_mason_hut_00', x: 25, y: 16 },
+  { id: 'work_smithy_00', x: 32, y: 16 },
+  { id: 'work_armory_00', x: 39, y: 16 },
+  { id: 'work_coin_mint', x: 46, y: 16 },
+  { id: 'work_pottery_00', x: 53, y: 16 },
+  { id: 'work_sewery_00', x: 60, y: 16 },
+  { id: 'work_druid_00', x: 67, y: 16 },
+  // Food street.
+  { id: 'work_hive_00', x: 18, y: 24 },
+  { id: 'work_mill_00', x: 25, y: 24 },
+  { id: 'work_bakery_00', x: 32, y: 24 },
+  { id: 'work_well_00', x: 39, y: 24 },
+  { id: 'work_brewery', x: 46, y: 24 },
+  { id: 'work_herb_hut', x: 53, y: 24 },
+  { id: 'work_animal_farm', x: 64, y: 24 },
+  // Farms on the open western edge (field-farming sows the grass around the building).
+  { id: 'work_farm_00', x: 8, y: 32 },
+];
 
-const GATHER_Y0 = 54;
-const GATHER_STEP = 2;
-const GATHER_WORKER_X = 8;
-const GATHER_NODE_X = 13;
-const GATHER_FLAG_X = 18;
+/** The pre-stocked store — the warehouse the scene seeds full (`fillStock`) so production has inputs
+ *  from tick 1. */
+const WAREHOUSE_ID = 'stock_00';
 
-const PLAYER_CLUSTER: ReadonlyArray<{ x: number; y: number; job: number }> = (() => {
-  const out: Array<{ x: number; y: number; job: number }> = [];
-  for (let row = 0; row < 3; row++) {
-    for (let col = 0; col < 5; col++) out.push({ x: 42 + col, y: 56 + row, job: JOB_COLLECTOR });
+/**
+ * One gathering camp: a cluster of `nodes` around `center` (hand-authored offsets so each camp reads
+ * organic, not gridded), a delivery flag on its village side, and `gatherers` collectors bound to that
+ * flag and pinned to the camp's good.
+ */
+interface GatherCamp {
+  readonly good: number;
+  readonly center: { readonly x: number; readonly y: number };
+  readonly nodes: ReadonlyArray<{ readonly dx: number; readonly dy: number }>;
+  readonly flag: { readonly x: number; readonly y: number };
+  readonly gatherers: number;
+}
+
+/** An organic ~14-node blob for the forest camp (also reused, truncated, by the smaller camps). */
+const BLOB: ReadonlyArray<{ readonly dx: number; readonly dy: number }> = [
+  { dx: 0, dy: 0 },
+  { dx: 2, dy: -1 },
+  { dx: -2, dy: 1 },
+  { dx: 1, dy: 2 },
+  { dx: -1, dy: -2 },
+  { dx: 3, dy: 1 },
+  { dx: -3, dy: -1 },
+  { dx: 0, dy: 3 },
+  { dx: 2, dy: -3 },
+  { dx: -2, dy: 3 },
+  { dx: 4, dy: -1 },
+  { dx: -4, dy: 0 },
+  { dx: 1, dy: -4 },
+  { dx: -1, dy: 4 },
+];
+
+/**
+ * The southern resource base: one camp per gatherable good, each a stretch of map apart (camp centres
+ * ≥ ~20 tiles) so no flag radius overlaps a neighbour and the base reads as distinct sites — a small
+ * forest, a quarry, a clay pit, iron and gold outcrops, and a mushroom grove.
+ */
+const CAMPS: readonly GatherCamp[] = [
+  { good: GOOD_WOOD, center: { x: 14, y: 60 }, nodes: BLOB, flag: { x: 20, y: 60 }, gatherers: 3 },
+  {
+    good: GOOD_STONE,
+    center: { x: 36, y: 68 },
+    nodes: BLOB.slice(0, 5),
+    flag: { x: 40, y: 66 },
+    gatherers: 2,
+  },
+  { good: GOOD_MUD, center: { x: 54, y: 58 }, nodes: BLOB.slice(0, 4), flag: { x: 58, y: 58 }, gatherers: 2 },
+  {
+    good: GOOD_IRON,
+    center: { x: 70, y: 66 },
+    nodes: BLOB.slice(0, 4),
+    flag: { x: 74, y: 64 },
+    gatherers: 2,
+  },
+  {
+    good: GOOD_GOLD,
+    center: { x: 84, y: 56 },
+    nodes: BLOB.slice(0, 3),
+    flag: { x: 86, y: 59 },
+    gatherers: 1,
+  },
+  {
+    good: GOOD_MUSHROOM,
+    center: { x: 26, y: 80 },
+    nodes: BLOB.slice(0, 8),
+    flag: { x: 30, y: 80 },
+    gatherers: 2,
+  },
+];
+
+/** A wild berry patch beside the mushroom grove — forage decor (needs are off by default), drawn with the
+ *  real fruited-bush art (the same `[GfxLandscape]` variant the berries scene pins). */
+const BERRY_PATCH = { x: 56, y: 80 } as const;
+const BERRY_BUSHES = 5;
+const BUSH_FRUITS_GFX = 806;
+
+const GATHERER_BY_GOOD: ReadonlyMap<number, GathererSpec> = new Map(GATHERERS.map((g) => [g.good, g]));
+
+function buildVillage(sim: Simulation): void {
+  for (const b of VILLAGE) {
+    placeSandboxBuilding(sim, b.id, b.x, b.y, HUMAN_PLAYER, {
+      fillStock: b.id === WAREHOUSE_ID,
+    });
+    staffBuildingFully(sim, resolveVikingBuilding(b.id).typeId, b.x, b.y);
   }
-  return out;
-})();
-
-const BLUE_SOLDIER_ROWS = [18, 19, 20, 21] as const;
-const RED_SOLDIER_ROWS = [19, 20, 21] as const;
-const BLUE_SOLDIER_X = 60;
-const RED_SOLDIER_X = 66;
-const ARCHER_POSTS = [
-  { x: 58, y: 28 },
-  { x: 58, y: 30 },
-] as const;
-
-function buildingTile(index: number): { x: number; y: number } {
-  return {
-    x: BUILDING_ORIGIN.x + (index % BUILDING_COLUMNS) * BUILDING_STEP,
-    y: BUILDING_ORIGIN.y + Math.floor(index / BUILDING_COLUMNS) * BUILDING_STEP,
-  };
 }
 
-function buildBuildings(sim: Simulation): void {
-  VIKING_BUILDINGS.forEach((b, index) => {
-    const { x, y } = buildingTile(index);
-    placeSandboxBuilding(sim, b.typeId, x, y, HUMAN_PLAYER);
-  });
-}
-
-function buildGatheringLanes(sim: Simulation): void {
-  GATHERERS.forEach((g, i) => {
-    const y = GATHER_Y0 + i * GATHER_STEP;
-    // The flag is created first so the gatherer can be bound to it: each gatherer works only the nodes near
-    // its own flag, carries only what it dug, and banks its harvest at that flag (see spawnBoundGatherer).
-    const flag = placeFlag(sim, GATHER_FLAG_X, y);
-    for (let n = 0; n < g.nodes; n++) {
-      placeResourceNode(sim, g, GATHER_NODE_X + n, y);
+function buildResourceBase(sim: Simulation): void {
+  for (const camp of CAMPS) {
+    const g = GATHERER_BY_GOOD.get(camp.good);
+    if (g === undefined) throw new Error(`sandbox camp: no gatherer trade for good ${camp.good}`);
+    for (const { dx, dy } of camp.nodes) {
+      placeResourceNode(sim, g, camp.center.x + dx, camp.center.y + dy);
     }
-    spawnBoundGatherer(sim, g.job, GATHER_WORKER_X, y, flag);
-  });
-}
-
-function buildControllableUnits(sim: Simulation): void {
-  // The selectable cluster are gatherers too, so each gets its own flag at its spawn tile — without one an
-  // unbound gatherer roams the map for the nearest wood. With no resource in its flag radius it simply
-  // stands idle by its flag; the player moves that flag onto work with Ctrl+Right-Click (setWorkFlag).
-  for (const u of PLAYER_CLUSTER) {
-    const flag = placeFlag(sim, u.x, u.y);
-    spawnBoundGatherer(sim, u.job, u.x, u.y, flag);
+    // One flag per gatherer (the flag-click selection inverse is 1:1 — a flag resolves to its one
+    // gatherer), planted in a short row on the camp's village side; each gatherer works only this camp
+    // (radius + good filter) and banks its harvest at its own flag (see spawnBoundGatherer).
+    for (let i = 0; i < camp.gatherers; i++) {
+      const flag = placeFlag(sim, camp.flag.x + i, camp.flag.y);
+      spawnBoundGatherer(sim, g.job, camp.flag.x + i, camp.flag.y + 1, flag, { goodType: camp.good });
+    }
   }
-  for (const y of BLUE_SOLDIER_ROWS) {
-    spawnSandboxSettler(sim, JOB_SOLDIER_SWORD, BLUE_SOLDIER_X, y, HUMAN_PLAYER, {
-      weaponTypeId: WEAPON_SWORD,
-    });
-  }
-  for (const post of ARCHER_POSTS) {
-    // The long bow is job 41's weapon (the real viking job split) — job 40 would draw the short-bow
-    // body and truncate the 28-frame long-bow draw against job 40's 12-tick animation.
-    spawnSandboxSettler(sim, JOB_ARCHER_LONG, post.x, post.y, HUMAN_PLAYER, {
-      weaponTypeId: WEAPON_LONG_BOW,
-    });
-  }
-}
-
-function buildEnemies(sim: Simulation): void {
-  for (const y of RED_SOLDIER_ROWS) {
-    spawnSandboxSettler(sim, JOB_SOLDIER_SWORD, RED_SOLDIER_X, y, ENEMY_PLAYER, {
-      weaponTypeId: WEAPON_SWORD,
-    });
+  for (let i = 0; i < BERRY_BUSHES; i++) {
+    placeSandboxBerryBush(sim, BERRY_PATCH.x + i * 2, BERRY_PATCH.y + (i % 2), BUSH_FRUITS_GFX);
   }
 }
 
 function build(sim: Simulation): void {
-  buildBuildings(sim);
-  buildGatheringLanes(sim);
-  buildControllableUnits(sim);
-  buildEnemies(sim);
+  buildVillage(sim);
+  buildResourceBase(sim);
 }
 
-const { Owner, Settler } = components;
+/** The distinct building typeIds the village places (homes repeat one type). */
+const VILLAGE_TYPE_IDS: ReadonlySet<number> = new Set(VILLAGE.map((b) => resolveVikingBuilding(b.id).typeId));
 
-function everyNonEnemySettlerIsBlue(sim: Simulation): boolean {
-  for (const e of sim.world.query(Settler, Owner)) {
-    const owner = sim.world.get(e, Owner).player;
-    if (owner !== HUMAN_PLAYER && owner !== ENEMY_PLAYER) return false;
+/** Bound settlers per (building, jobType) — the check-side mirror of the JobSystem's staffing tally. */
+function boundCrewCount(sim: Simulation, building: Entity, jobType: number): number {
+  let n = 0;
+  for (const e of sim.world.query(Settler, JobAssignment)) {
+    if (sim.world.get(e, JobAssignment).workplace !== building) continue;
+    if (sim.world.get(e, Settler).jobType === jobType) n++;
+  }
+  return n;
+}
+
+/** Every placed building's staffable production (non-carrier) slots hold exactly their crew. Carriers are
+ *  covered by the settlement-wide total instead (a loose carrier reports in to the first open post in
+ *  canonical order, so an individual carrier may post to a neighbour). */
+function producingCrewsComplete(sim: Simulation): boolean {
+  for (const e of sim.world.query(Building)) {
+    const type = sim.world.get(e, Building).buildingType;
+    for (const slot of staffableCrewFor(sim, type)) {
+      if (slot.jobType === JOB_CARRIER) continue;
+      if (boundCrewCount(sim, e, slot.jobType) !== slot.count) return false;
+    }
   }
   return true;
+}
+
+/** Total staffable slots across the placed settlement vs total bound settlers — the carriers' half of the
+ *  staffing proof (see {@link producingCrewsComplete}). */
+function settlementFullyStaffed(sim: Simulation): boolean {
+  let expected = 0;
+  for (const e of sim.world.query(Building)) {
+    const type = sim.world.get(e, Building).buildingType;
+    for (const slot of staffableCrewFor(sim, type)) expected += slot.count;
+  }
+  let bound = 0;
+  for (const _ of sim.world.query(JobAssignment)) bound++;
+  return expected > 0 && bound === expected;
+}
+
+/** The units a camp's authored nodes start with, from the gatherer catalog (per-mode node yield). */
+function initialUnits(camp: GatherCamp): number {
+  const g = GATHERER_BY_GOOD.get(camp.good);
+  if (g === undefined) return 0;
+  const perNode = g.mode === 'fell' ? WOOD_YIELD_PER_NODE : g.mode === 'mine' ? (g.depositUnits ?? 0) : 1;
+  return camp.nodes.length * perNode;
+}
+
+/** The units still sitting in `good`'s live resource nodes (a fully consumed node is gone entirely). */
+function remainingUnits(sim: Simulation, good: number): number {
+  let total = 0;
+  for (const e of sim.world.query(Resource)) {
+    const r = sim.world.get(e, Resource);
+    if (r.goodType === good) total += r.remaining;
+  }
+  return total;
+}
+
+/** The one placed warehouse holds every stock slot at its capacity. */
+function warehouseFull(sim: Simulation): boolean {
+  const typeId = resolveVikingBuilding(WAREHOUSE_ID).typeId;
+  const slots = sim.content.buildings.find((b) => b.typeId === typeId)?.stock ?? [];
+  if (slots.length === 0) return false;
+  for (const e of sim.world.query(Building)) {
+    if (sim.world.get(e, Building).buildingType !== typeId) continue;
+    const amounts = sim.world.get(e, Stockpile).amounts;
+    return slots.every((s) => (amounts.get(s.goodType) ?? 0) === s.capacity);
+  }
+  return false;
 }
 
 export const sandboxScene: SceneDefinition = {
@@ -155,44 +272,48 @@ export const sandboxScene: SceneDefinition = {
   initialZoom: INITIAL_ZOOM,
   checks: [
     {
-      label: 'the global viking building catalog is present on the map',
-      predicate: (sim) => placedBuildingTypes(sim).size === VIKING_BUILDINGS.length,
+      label: 'the village settlement is fully placed (every authored building type present)',
+      predicate: (sim) => {
+        const placed = placedBuildingTypes(sim);
+        return [...VILLAGE_TYPE_IDS].every((t) => placed.has(t)) && placed.size === VILLAGE_TYPE_IDS.size;
+      },
     },
     {
-      label: 'all non-enemy owned settlers use the blue human player slot',
-      predicate: (sim) => everyNonEnemySettlerIsBlue(sim) && blueOwnedSettlers(sim) > PLAYER_CLUSTER.length,
+      label: 'the warehouse is seeded full at placement (checked on a fresh 2-tick run of the same build)',
+      predicate: () => {
+        // The end-of-run world is the wrong witness (production legitimately consumes the stores), so the
+        // full-at-start claim is proven on a fresh sim of the same scene advanced just past its placement
+        // commands. Deterministic and sandbox-content only, like the whole headless twin.
+        const fresh = createSceneSim(sandboxScene);
+        fresh.run(2);
+        return warehouseFull(fresh);
+      },
     },
     {
-      label: 'the red hostile squad is defeated and blue soldiers survive',
-      predicate: (sim) => enemyLivingSettlers(sim) === 0 && blueLivingSoldiers(sim) > 0,
+      label: 'every staffable worker slot in the settlement is filled',
+      predicate: settlementFullyStaffed,
     },
     {
-      label: 'every source node is fully consumed',
-      predicate: (sim) => countComponent(sim, Resource) === 0,
+      label: 'every producing workshop holds its full non-carrier crew',
+      predicate: producingCrewsComplete,
     },
     {
-      label: 'every felled tree leaves a stump',
-      predicate: (sim) => countComponent(sim, Stump) === GATHERERS.find((g) => g.good === GOOD_WOOD)?.nodes,
+      label: 'every gathering camp is being worked (its nodes are partly consumed)',
+      // Node depletion is the harvest witness — the banked heaps are the wrong one, because the village
+      // carriers legitimately haul them off to the stores as part of the living economy.
+      predicate: (sim) => CAMPS.every((camp) => remainingUnits(sim, camp.good) < initialUnits(camp)),
     },
     {
-      label: 'every felling and mine-deposit workflow has completed',
-      predicate: (sim) => countComponent(sim, Felling) === 0 && countComponent(sim, MineDeposit) === 0,
+      label: 'some harvest reached the ground heaps or moved on into the stores',
+      predicate: (sim) => CAMPS.some((camp) => yardGood(sim, camp.good) > 0),
     },
     {
-      label: 'each gathered good piles WHOLE onto the ground heaps by its flag',
-      predicate: (sim) => GATHERERS.every((g) => yardGood(sim, g.good) === expectedGatherYield(g)),
-    },
-    {
-      label: 'the blue soldiers advanced from their start column into combat',
+      label: 'every settler belongs to the blue human player (no hostiles on the map)',
       predicate: (sim) => {
         for (const e of sim.world.query(Settler, Owner)) {
-          if (sim.world.get(e, Owner).player !== HUMAN_PLAYER) continue;
-          const s = sim.world.get(e, Settler);
-          if (s.jobType !== JOB_SOLDIER_SWORD) continue;
-          const p = sim.world.get(e, components.Position);
-          if (fx.toInt(p.x) > BLUE_SOLDIER_X) return true;
+          if (sim.world.get(e, Owner).player !== HUMAN_PLAYER) return false;
         }
-        return false;
+        return true;
       },
     },
   ],

@@ -46,7 +46,7 @@ export function placeSandboxBuilding(
   x: number,
   y: number,
   owner: number = HUMAN_PLAYER,
-  opts: { readonly underConstruction?: boolean } = {},
+  opts: { readonly underConstruction?: boolean; readonly fillStock?: boolean } = {},
 ): void {
   // Scenes author in whole tiles; the command seam speaks half-cell nodes.
   const node = cellAnchorNode(x, y);
@@ -60,6 +60,8 @@ export function placeSandboxBuilding(
     force: true,
     // A construction site starts as a grey foundation a builder raises (default: fully built).
     ...(opts.underConstruction ? { underConstruction: true } : {}),
+    // A pre-stocked fixture (a scene's full warehouse): every stock slot seeded to its capacity.
+    ...(opts.fillStock ? { fillStock: true } : {}),
   });
 }
 
@@ -109,6 +111,52 @@ export function spawnWorkersAtDoor(
   const jobType = primaryWorkerJob(sim, buildingType);
   for (let i = 0; i < count; i++) {
     sim.enqueue({ kind: 'spawnSettler', jobType, x: door.hx, y: door.hy, tribe: PRIMARY_TRIBE, owner });
+  }
+}
+
+/**
+ * The worker slots a scene can actually staff at `buildingType`, from the sim's loaded content: every slot
+ * of a producing building (a recipe workshop or a farm — the adopt pass binds a worker standing at its
+ * door), but only the carrier slots of a passive store (HQ/warehouse — never adopted, its haulers report in
+ * loose via the JobSystem's pass 1b). The skipped store slots (collector/fisher/hunter) would otherwise
+ * spawn employed-but-unbindable gatherers that roam the map.
+ */
+export function staffableCrewFor(
+  sim: Simulation,
+  buildingType: number,
+): readonly { jobType: number; count: number }[] {
+  const def = buildingDef(sim, buildingType);
+  if (def === undefined) return [];
+  const producing = def.recipe !== undefined || def.produces.length > 0;
+  return def.workers.filter((slot) => producing || slot.jobType === JOB_CARRIER);
+}
+
+/**
+ * Staff a building to its full worker capacity: for every staffable slot ({@link staffableCrewFor}) spawn
+ * `count` settlers of the slot's job at the door, via the raw `spawnSettler` command (node-exact, like
+ * {@link spawnWorkersAtDoor}). Production workers are bound by the adopt pass on tick 1; carriers take the
+ * first open transport post in canonical building order (pass 1b), so with every placement staffed this way
+ * each carrier slot in the settlement fills even when an individual carrier posts to a neighbour.
+ */
+export function staffBuildingFully(
+  sim: Simulation,
+  buildingType: number,
+  x: number,
+  y: number,
+  owner: number = HUMAN_PLAYER,
+): void {
+  const door = buildingDoorNode(sim, buildingType, x, y);
+  for (const slot of staffableCrewFor(sim, buildingType)) {
+    for (let i = 0; i < slot.count; i++) {
+      sim.enqueue({
+        kind: 'spawnSettler',
+        jobType: slot.jobType,
+        x: door.hx,
+        y: door.hy,
+        tribe: PRIMARY_TRIBE,
+        owner,
+      });
+    }
   }
 }
 
@@ -301,7 +349,9 @@ export function placeFlag(sim: Simulation, x: number, y: number): Entity {
  * `placeResourceNode` helper — rather than through the `spawnSettler` command, because its {@link WorkFlag}
  * has to reference the flag entity, and a command-spawned settler's id is not known until the command runs.
  * With the binding it harvests only within `radius` of the flag, carries only what it dug, and banks it at
- * the flag. Throws on an unknown job (a scene-setup bug, like {@link placeResourceNode}).
+ * the flag. An optional `goodType` pins the gatherer to one resource (the same filter the `setGatherGood`
+ * command sets), so neighbouring camps of different goods never poach each other's nodes. Throws on an
+ * unknown job (a scene-setup bug, like {@link placeResourceNode}).
  */
 export function spawnBoundGatherer(
   sim: Simulation,
@@ -309,8 +359,7 @@ export function spawnBoundGatherer(
   x: number,
   y: number,
   flag: Entity,
-  radius: number = GATHERER_WORK_RADIUS,
-  owner: number = HUMAN_PLAYER,
+  opts: { readonly radius?: number; readonly owner?: number; readonly goodType?: number } = {},
 ): Entity {
   const node = cellAnchorNode(x, y);
   const e = systems.createSettler(sim.world, sim.content, sim.rng, {
@@ -318,9 +367,13 @@ export function spawnBoundGatherer(
     x: node.hx,
     y: node.hy,
     tribe: PRIMARY_TRIBE,
-    owner,
+    owner: opts.owner ?? HUMAN_PLAYER,
   });
   if (e === null) throw new Error(`spawnBoundGatherer: unknown job ${jobType}`);
-  sim.world.add(e, WorkFlag, { flag, radius });
+  sim.world.add(e, WorkFlag, {
+    flag,
+    radius: opts.radius ?? GATHERER_WORK_RADIUS,
+    ...(opts.goodType !== undefined ? { goodType: opts.goodType } : {}),
+  });
   return e;
 }

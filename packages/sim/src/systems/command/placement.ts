@@ -88,6 +88,9 @@ export function placeBuilding(
     // no Health — it still builds, just without a life pool.
     world.add(e, UnderConstruction, { labor: fx.fromInt(0) });
     if (type.hitpoints !== undefined) world.add(e, Health, { hitpoints: 1, max: type.hitpoints });
+  } else if (command.fillStock) {
+    // An authored pre-stocked placement (a scene's full warehouse): every stock slot at capacity.
+    for (const slot of type.stock) amounts.set(slot.goodType, slot.capacity);
   } else {
     for (const slot of type.stock) {
       if (slot.initial > 0) amounts.set(slot.goodType, slot.initial);
