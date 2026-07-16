@@ -112,28 +112,35 @@ function drawWorkSection(
     chrome.textAt(model.work.place, place.x + keyW, place.y + ROW_TEXT_PAD * s, 'white');
   }
   if (product !== undefined) {
-    chrome.textAt(
-      model.work.gatherChoices.length > 0 ? hud.gatherTarget : hud.product,
-      product.x,
-      product.y + ROW_TEXT_PAD * s,
-      'white',
-    );
+    const key =
+      model.work.gatherChoices.length > 0
+        ? hud.gatherTarget
+        : model.work.craftChoices.length > 0
+          ? hud.craftTarget
+          : hud.product;
+    chrome.textAt(key, product.x, product.y + ROW_TEXT_PAD * s, 'white');
     chrome.textAt(model.work.product, product.x + keyW, product.y + ROW_TEXT_PAD * s, 'white');
   }
-  // Round gather-choice buttons hugging the left edge, each showing the good's icon (the generic pile for
-  // the "Wszystko" choice); their names live in the cursor tooltip. Selected/hovered ones read brighter.
+  // Round choice buttons hugging the left edge — a gatherer's single-select goods or a craft worker's
+  // multi-select products (never both) — each showing the good's icon (the generic pile for the
+  // "Wszystko" choice); their names live in the cursor tooltip. Selected/hovered ones read brighter.
   const iconPad = Math.round(GATHER_ICON_PAD * s);
-  for (const choice of layout.gatherChoiceHits) {
-    const active = choice.selected || choice.goodType === hoveredGatherGood;
-    chrome.roundButton(choice.rect, true, active);
+  const drawChoice = (rect: Rect, goodId: string | undefined, active: boolean): void => {
+    chrome.roundButton(rect, true, active);
     const face: Rect = {
-      x: choice.rect.x + iconPad,
-      y: choice.rect.y + iconPad,
-      w: choice.rect.w - 2 * iconPad,
-      h: choice.rect.h - 2 * iconPad,
+      x: rect.x + iconPad,
+      y: rect.y + iconPad,
+      w: rect.w - 2 * iconPad,
+      h: rect.h - 2 * iconPad,
     };
-    if (choice.goodId !== undefined) chrome.goodIcon(choice.goodId, face);
+    if (goodId !== undefined) chrome.goodIcon(goodId, face);
     else chrome.glyphAll(face);
+  };
+  for (const choice of layout.gatherChoiceHits) {
+    drawChoice(choice.rect, choice.goodId, choice.selected || choice.goodType === hoveredGatherGood);
+  }
+  for (const choice of layout.craftChoiceHits) {
+    drawChoice(choice.rect, choice.goodId, choice.selected || choice.goodType === hoveredGatherGood);
   }
   // The "przydziel miejsce pracy" control: its description on the left, a small round house button on the
   // right (greyed for a jobless settler — nothing to place). The hint stays in the cursor tooltip.

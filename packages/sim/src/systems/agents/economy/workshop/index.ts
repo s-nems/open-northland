@@ -29,7 +29,7 @@ export function planProducer(
   if (recipe === undefined) return;
 
   const claimed = seatClaims.get(workplace) ?? 0;
-  if (claimed < workSeatCount(world, ctx, workplace, recipe)) {
+  if (claimed < workSeatCount(world, ctx, workplace)) {
     seatClaims.set(workplace, claimed + 1);
     holdInsideWorkplace(plan, workplace);
     return;

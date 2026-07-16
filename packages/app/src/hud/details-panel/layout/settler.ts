@@ -61,6 +61,16 @@ export interface GatherChoiceHit {
   readonly rect: Rect;
 }
 
+/** A craft operator's product toggle — the multi-select twin of {@link GatherChoiceHit} (same round
+ *  button grid; a settler shows one block or the other, never both). */
+export interface CraftChoiceHit {
+  readonly goodType: number;
+  readonly label: string;
+  readonly goodId?: string;
+  readonly selected: boolean;
+  readonly rect: Rect;
+}
+
 /**
  * The settler view: the original's stacked human-window sections — Ogólne (portrait + name + meta + stat
  * bars), Praca (workplace + product), Doświadczenie (highest specialization), Ekwipunek (labeled slot
@@ -88,6 +98,8 @@ export interface SettlerLayout {
   /** The assign row's description column, right of the round button ("Przydziel miejsce pracy"). */
   readonly assignLabel: Rect;
   readonly gatherChoiceHits: readonly GatherChoiceHit[];
+  /** The craft product toggles (exclusive with {@link gatherChoiceHits} — same grid slot). */
+  readonly craftChoiceHits: readonly CraftChoiceHit[];
   readonly experience: SectionRect;
   /** The Doświadczenie body's single text row. */
   readonly expRow: Rect;
@@ -122,8 +134,10 @@ export function layoutSettler(
   // the block's height.
   const bodyW = sectionAt(0, 0, w, 0, s).body.w;
   const gatherPerRow = Math.max(1, Math.floor((bodyW + gatherIconGap) / (gatherIcon + gatherIconGap)));
-  const gatherRows =
-    model.work.gatherChoices.length > 0 ? Math.ceil(model.work.gatherChoices.length / gatherPerRow) : 0;
+  // Gather and craft choices never coexist (a flag gatherer vs a workplace-bound crafter), so the one
+  // non-empty list sizes the shared round-button block.
+  const choiceCount = model.work.gatherChoices.length + model.work.craftChoices.length;
+  const gatherRows = choiceCount > 0 ? Math.ceil(choiceCount / gatherPerRow) : 0;
   const hasGather = gatherRows > 0;
   const gatherBlockH = hasGather ? gatherRows * gatherIcon + (gatherRows - 1) * gatherIconGap : 0;
   const gatherTopGap = hasGather ? gatherRowGap : 0;
@@ -173,22 +187,25 @@ export function layoutSettler(
     w: work.body.w,
     h: rowH,
   }));
-  // Round gather buttons hugging the left edge, wrapping across the body width.
+  // Round choice buttons hugging the left edge, wrapping across the body width (gather or craft —
+  // the same grid, whichever list the model filled).
   const gatherTop = work.body.y + WORK_ROWS * rowH + gatherTopGap;
-  const gatherChoiceHits: GatherChoiceHit[] = model.work.gatherChoices.map((choice, i) => {
-    const col = i % gatherPerRow;
-    const row = Math.floor(i / gatherPerRow);
-    return {
-      ...choice,
-      selected: choice.goodType === model.work.selectedGood,
-      rect: {
-        x: work.body.x + col * (gatherIcon + gatherIconGap),
-        y: gatherTop + row * (gatherIcon + gatherIconGap),
-        w: gatherIcon,
-        h: gatherIcon,
-      },
-    };
+  const choiceRect = (i: number): Rect => ({
+    x: work.body.x + (i % gatherPerRow) * (gatherIcon + gatherIconGap),
+    y: gatherTop + Math.floor(i / gatherPerRow) * (gatherIcon + gatherIconGap),
+    w: gatherIcon,
+    h: gatherIcon,
   });
+  const gatherChoiceHits: GatherChoiceHit[] = model.work.gatherChoices.map((choice, i) => ({
+    ...choice,
+    selected: choice.goodType === model.work.selectedGood,
+    rect: choiceRect(i),
+  }));
+  const craftChoiceHits: CraftChoiceHit[] = model.work.craftChoices.map((choice, i) => ({
+    ...choice,
+    selected: model.work.selectedCraftGoods.includes(choice.goodType),
+    rect: choiceRect(i),
+  }));
   // The assign row: the small round button on the left (aligned under the gather buttons), its description
   // to the right. Only the round button is the hit target — hover/click/tooltip stay on the control, so
   // pointing at the label text doesn't light the button.
@@ -249,6 +266,7 @@ export function layoutSettler(
     assignIcon,
     assignLabel,
     gatherChoiceHits,
+    craftChoiceHits,
     experience,
     expRow,
     equipment,

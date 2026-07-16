@@ -127,7 +127,7 @@ export function staffableCrewFor(
 ): readonly { jobType: number; count: number }[] {
   const def = buildingDef(sim, buildingType);
   if (def === undefined) return [];
-  const producing = def.recipe !== undefined || def.produces.length > 0;
+  const producing = def.recipes.length > 0 || def.produces.length > 0;
   return def.workers.filter((slot) => producing || slot.jobType === JOB_CARRIER);
 }
 

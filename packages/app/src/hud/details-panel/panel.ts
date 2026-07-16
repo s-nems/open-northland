@@ -65,6 +65,9 @@ export interface UnitPanelOptions extends UnitPanelModelContext {
    *  the next left-click hits. Absent → the button is inert. */
   readonly onAssignWorkplace?: (settlerId: number) => void;
   readonly onSetGatherGood: (entityId: number, goodType: number | null) => void;
+  /** Replace a craft worker's product selection (the `setCraftGoods` command); `[]` = every product.
+   *  The panel computes the toggled set from the clicked button + the model's effective selection. */
+  readonly onSetCraftGoods: (entityId: number, goods: readonly number[]) => void;
   /** The loaded sprite sheet, so the workers field can draw its bound workers as animated on-map sprites.
    *  Absent (a bare checkout / headless test) → the field just stays empty. */
   readonly sheet?: SpriteSheet;
@@ -259,6 +262,30 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     return layout.gatherChoiceHits.find((hit) => contains(hit.rect, x, y))?.goodType;
   };
 
+  /** The craft product toggle under a canvas point, or undefined (settler layouts only). */
+  const hitCraftChoice = (x: number, y: number): number | undefined => {
+    if (layout?.kind !== 'settler') return undefined;
+    return layout.craftChoiceHits.find((hit) => contains(hit.rect, x, y))?.goodType;
+  };
+
+  /**
+   * The next selection after toggling `goodType`: flip it in the effective set, then normalize — all
+   * products selected reads as the `[]` all-mode (so the sim drops the component), and toggling the
+   * LAST product off falls back to all-mode too (a worker can't craft nothing; clicking the lone
+   * selected product returns it to everything, the same way the gatherer's "Wszystko" resets).
+   */
+  const toggledCraftGoods = (
+    model: Extract<UnitPanelModel, { kind: 'settler' }>,
+    goodType: number,
+  ): readonly number[] => {
+    const products = model.work.craftChoices.map((c) => c.goodType);
+    const next = new Set(model.work.selectedCraftGoods);
+    if (next.has(goodType)) next.delete(goodType);
+    else next.add(goodType);
+    if (next.size === 0 || next.size === products.length) return [];
+    return products.filter((g) => next.has(g));
+  };
+
   const claimsPointer = (clientX: number, clientY: number): boolean => {
     if (layout === null || lastModel.kind === 'empty') return false;
     const { x, y } = toCanvas(clientX, clientY);
@@ -278,6 +305,11 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     const gatherGood = hitGatherChoice(x, y);
     if (gatherGood !== undefined && lastModel.kind === 'settler') {
       opts.onSetGatherGood(lastModel.entityId, gatherGood);
+      return true;
+    }
+    const craftGood = hitCraftChoice(x, y);
+    if (craftGood !== undefined && lastModel.kind === 'settler') {
+      opts.onSetCraftGoods(lastModel.entityId, toggledCraftGoods(lastModel, craftGood));
       return true;
     }
     const tab = hitStockTab(x, y);
@@ -329,11 +361,26 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     return contains(layout.assignButton.rect, x, y) ? messages().hud.assignWorkplaceHint : null;
   };
 
-  /** The hovered gather-choice round button's good name ("Wszystko" for the gather-all choice), or null —
-   *  the icon buttons carry no drawn label, so the tooltip is what names them. */
+  /** The hovered choice round button's good name ("Wszystko" for the gather-all choice), or null —
+   *  the icon buttons carry no drawn label, so the tooltip is what names them (gather or craft; the
+   *  two blocks never coexist). */
   const gatherChoiceHint = (x: number, y: number): string | null => {
     if (layout?.kind !== 'settler') return null;
-    return layout.gatherChoiceHits.find((hit) => contains(hit.rect, x, y))?.label ?? null;
+    return (
+      layout.gatherChoiceHits.find((hit) => contains(hit.rect, x, y))?.label ??
+      layout.craftChoiceHits.find((hit) => contains(hit.rect, x, y))?.label ??
+      null
+    );
+  };
+
+  /** The hovered Produkcja row's recipe-inputs line ("Krótki miecz — Wymaga: Żelazo ×2"), or null. */
+  const productionRowHint = (x: number, y: number): string | null => {
+    if (layout?.kind !== 'building' || lastModel.kind !== 'building') return null;
+    if (lastModel.production?.kind !== 'recipe') return null;
+    const i = layout.productionRowRects.findIndex((r) => contains(r, x, y));
+    const row = i < 0 ? undefined : lastModel.production.rows[i];
+    if (row === undefined || row.inputs.length === 0) return null;
+    return `${row.label} — ${row.inputs}`;
   };
 
   /** Recompute + show/hide the value/name tooltip for the cursor at a client point: a Magazyn stock
@@ -352,7 +399,13 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     const rowName = hitStockGood(x, y);
     const tab = rowName === null ? hitStockTab(x, y) : null;
     const tabLabel = tab !== null ? (stockTabLabels()[tab] ?? null) : null;
-    const text = rowName ?? tabLabel ?? hitBarValue(x, y) ?? gatherChoiceHint(x, y) ?? assignButtonHint(x, y);
+    const text =
+      rowName ??
+      tabLabel ??
+      hitBarValue(x, y) ??
+      gatherChoiceHint(x, y) ??
+      productionRowHint(x, y) ??
+      assignButtonHint(x, y);
     if (text === null) opts.tooltip.hide();
     else opts.tooltip.show(clientX, clientY, text);
   };
@@ -362,7 +415,10 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     updateTooltip(e.clientX, e.clientY);
     const { x, y } = toCanvas(e.clientX, e.clientY);
     const next = hitButton(x, y)?.action ?? null;
-    const nextGatherGood = hitGatherChoice(x, y);
+    // One hover slot serves both choice blocks — they never coexist, and `null` (the gather-all
+    // button) must not fall through to the craft probe, so this is an explicit undefined-check.
+    const gather = hitGatherChoice(x, y);
+    const nextGatherGood = gather !== undefined ? gather : hitCraftChoice(x, y);
     if (next === hoverAction && nextGatherGood === hoveredGatherGood) return;
     hoverAction = next;
     hoveredGatherGood = nextGatherGood;

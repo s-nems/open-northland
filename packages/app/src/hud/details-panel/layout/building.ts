@@ -66,6 +66,9 @@ export interface BuildingLayout {
   readonly construction: SectionRect | null;
   readonly defence: SectionRect | null;
   readonly production: SectionRect | null;
+  /** One rect per Produkcja product row (same order as `ProductionModel.rows`) — the hover target the
+   *  inputs tooltip probes; empty for a farm's fields view or no production window. */
+  readonly productionRowRects: readonly Rect[];
   /** The Magazyn section — null for a building that stores nothing (no stock slots: a home), which
    *  simply has no store window, matching the original's per-building window set. */
   readonly stock: SectionRect | null;
@@ -149,10 +152,10 @@ export function layoutBuilding(
   const showDefence = model.showDefense && !underConstruction;
   const showProduction = model.production !== null && !underConstruction;
   const defenceBodyH = showDefence ? Math.round(ROW_H * s) : 0;
-  // A recipe workshop reserves one bar row per operator slot (`ProductionModel.rows` — the model is
-  // the single source, the section's bar loop draws the same count), so the panel height is stable
-  // while batches start/finish staggered; a farm's field counters keep the single row.
-  const productionRows = model.production?.kind === 'recipe' ? model.production.rows : 1;
+  // A recipe workshop reserves one row per producible good (`ProductionModel.rows` — the model is
+  // the single source, the section's row loop draws the same count); a farm's field counters keep
+  // the single row.
+  const productionRows = model.production?.kind === 'recipe' ? Math.max(1, model.production.rows.length) : 1;
   const productionBodyH = showProduction ? productionRows * Math.round(STOCK_ROW_H * s) : 0;
   const stockRowCount = underConstruction ? 0 : model.stock.length;
   const stockCompact = stockRowCount <= MAX_STOCK_ROWS * 2;
@@ -210,6 +213,15 @@ export function layoutBuilding(
   const construction = underConstruction ? next(constructionBodyH) : null;
   const defence = showDefence ? next(defenceBodyH) : null;
   const production = showProduction ? next(productionBodyH) : null;
+  const productionRowRects: Rect[] =
+    production !== null && model.production?.kind === 'recipe'
+      ? model.production.rows.map((_, i) => ({
+          x: production.body.x,
+          y: production.body.y + i * Math.round(STOCK_ROW_H * s),
+          w: production.body.w,
+          h: Math.round(STOCK_ROW_H * s),
+        }))
+      : [];
   const stock = stockRowCount > 0 ? next(stockBodyH) : null;
   // Only the full tabbed store carries clickable tabs; a compact/absent body has none.
   let stockTabHits: readonly Rect[] = [];
@@ -235,6 +247,7 @@ export function layoutBuilding(
     construction,
     defence,
     production,
+    productionRowRects,
     stock,
     stockCompact,
     stockRows,

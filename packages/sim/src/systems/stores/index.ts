@@ -29,5 +29,6 @@ export {
   presentOperatorCount,
   presentOperators,
   recipeOf,
+  recipesByProductOf,
   workerPresentAt,
 } from './workplace.js';

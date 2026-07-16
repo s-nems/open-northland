@@ -11,15 +11,32 @@ import { NodeBuckets } from '../spatial.js';
 // operators) and the ProductionSystem (worker-presence gate, per-batch parallelism).
 
 /**
- * The recipe a building's type declares, or undefined if it has no Building/type or no recipe.
+ * The UNION view over a building type's per-product recipes (inputs summed, outputs one line per
+ * product — {@link import('../../core/content-index.js').ContentIndex.mergedRecipeByBuilding}), or
+ * undefined if it has no Building/type or no recipes.
  *
- * Cross-system: the AI uses it to recognise a workplace (haul source / never-deliver-back-to-producer),
- * and ProductionSystem uses it to run the cycle.
+ * Cross-system: the AI plans against it (recognise a workplace, fetch any input some product needs,
+ * haul any product out); the ProductionSystem runs the per-product recipes ({@link recipesByProductOf}).
  */
 export function recipeOf(world: World, ctx: SystemContext, building: Entity): Recipe | undefined {
   const b = world.tryGet(building, Building);
   if (b === undefined) return undefined;
-  return contentIndex(ctx.content).buildings.get(b.buildingType)?.recipe;
+  return contentIndex(ctx.content).mergedRecipeByBuilding.get(b.buildingType);
+}
+
+/**
+ * A building's per-product recipe table (`product goodType → recipe`), or undefined when it has no
+ * Building/type or no recipes. The ProductionSystem's cycle-start/deposit lookup; iteration follows
+ * the type's `recipes` content order (fixed data, deterministic).
+ */
+export function recipesByProductOf(
+  world: World,
+  ctx: SystemContext,
+  building: Entity,
+): ReadonlyMap<number, Recipe> | undefined {
+  const b = world.tryGet(building, Building);
+  if (b === undefined) return undefined;
+  return contentIndex(ctx.content).recipeByProductByBuilding.get(b.buildingType);
 }
 
 /**
@@ -155,37 +172,6 @@ export function presentOperatorCount(
   return present;
 }
 
-/**
- * The operator settlers on station at `building` right now, in canonical ascending-id order and capped at the
- * type's operator headcount — the entity-list twin of {@link presentOperatorCount} for a caller that must act
- * ON the operators (e.g. charge their piety per weapon/armor production cycle), not just count them. Same
- * gates: operator jobs standing on the interaction tile, clamped to the declared slot headcount. Sorted by id
- * so any pick over the result is order-independent (the bucket's own order is insertion history). An
- * unstaffed-by-design building has no operator entity to return, so this yields `[]` (unlike the count's `1`).
- */
-export function presentOperators(
-  world: World,
-  ctx: SystemContext,
-  building: Entity,
-  operatorsByNode?: NodeBuckets,
-): Entity[] {
-  const jobs = operatorJobsOf(world, ctx, building);
-  if (jobs.size === 0) return []; // unstaffed-by-design: no operator entity to act on
-  const at = interactionNode(world, ctx, building);
-  if (at === null) return [];
-  const cap = operatorSlotHeadcount(world, ctx, building, jobs);
-  if (cap <= 0) return [];
-  const index = operatorsByNode ?? new NodeBuckets(world, world.query(Settler, Position));
-  const present: Entity[] = [];
-  for (const e of index.at(at.x, at.y)) {
-    const jobType = world.get(e, Settler).jobType;
-    if (jobType === null || !jobs.has(jobType)) continue;
-    present.push(e);
-  }
-  present.sort((a, b) => a - b); // canonical order — the charge target must not depend on bucket insertion order
-  return present.length > cap ? present.slice(0, cap) : present;
-}
-
 /** The declared headcount across a building's operator slots (Σ `count` over `workers` whose job is in
  *  `jobs`) — the ceiling {@link presentOperatorCount} clamps to. */
 function operatorSlotHeadcount(
@@ -203,6 +189,39 @@ function operatorSlotHeadcount(
 }
 
 /**
+ * The operators on station right now as ENTITIES, ascending id (canonical) and capped at the declared
+ * operator-slot headcount like {@link presentOperatorCount} — the same tally, listed. The
+ * ProductionSystem's cycle-START path uses it to pair each spare operator with the product choice it
+ * starts ({@link CraftSelection}); the pairing "first `running` operators work the running batches,
+ * the rest may start" is a named approximation (batches are anonymous — the original's exact
+ * worker↔batch binding isn't decoded), deterministic via the ascending-id order. Its completion path
+ * uses the same list to charge forging piety per finished military batch. Empty when the workplace is
+ * unstaffed-by-design (no worker slots) — the caller treats that as one anonymous operator with no
+ * selection.
+ */
+export function presentOperators(
+  world: World,
+  ctx: SystemContext,
+  building: Entity,
+  operatorsByNode?: NodeBuckets,
+): Entity[] {
+  const jobs = operatorJobsOf(world, ctx, building);
+  if (jobs.size === 0) return [];
+  const at = interactionNode(world, ctx, building);
+  if (at === null) return [];
+  const cap = operatorSlotHeadcount(world, ctx, building, jobs);
+  if (cap <= 0) return [];
+  const index = operatorsByNode ?? new NodeBuckets(world, world.query(Settler, Position));
+  const present: Entity[] = [];
+  for (const e of index.at(at.x, at.y)) {
+    const jobType = world.get(e, Settler).jobType;
+    if (jobType !== null && jobs.has(jobType)) present.push(e);
+  }
+  present.sort((a, b) => a - b); // canonical: the clamp keeps the lowest ids, order-independent
+  return present.length > cap ? present.slice(0, cap) : present;
+}
+
+/**
  * Whether a workplace is staffed *right now* — at least one operator on station. This is the
  * production worker-presence model: a workplace only produces while its worker is present, like the
  * original (a sawmill with no operator makes no planks). The boolean face of
@@ -217,7 +236,7 @@ export function workerPresentAt(world: World, ctx: SystemContext, building: Enti
  * atomic). The original's "work temple" (`logichousetype` `logictype 37`, the `HOUSE_TYPE_WORK_TEMPLE`
  * constant) is a `logicmaintype 3` workplace that, unlike a real production workplace, declares no
  * `logicworker`, no `logicstock`, no `logicproduction` — so it surfaces in the IR as `kind === 'workplace'`
- * with an empty `workers`, empty `stock`, and no `recipe`. That "workplace with nothing to make and no one to
+ * with an empty `workers`, empty `stock`, and no `recipes`. That "workplace with nothing to make and no one to
  * staff it" shape is how a temple is told apart from a sawmill/mill.
  *
  * Approximated: the temple→pray need→satisfier link lives below the readable rule files (the original binds
@@ -231,5 +250,5 @@ export function isTemple(world: World, ctx: SystemContext, building: Entity): bo
   if (b === undefined) return false;
   const type = contentIndex(ctx.content).buildings.get(b.buildingType);
   if (type === undefined) return false;
-  return type.kind === 'workplace' && type.recipe === undefined && type.workers.length === 0;
+  return type.kind === 'workplace' && type.recipes.length === 0 && type.workers.length === 0;
 }

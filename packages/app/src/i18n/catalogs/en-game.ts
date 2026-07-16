@@ -17,6 +17,9 @@ export const enGame = {
     product: 'Product',
     gatherTarget: 'Gather',
     gatherAll: 'All',
+    craftTarget: 'Craft',
+    recipeNeeds: 'Needs',
+    recipeNoInputs: 'no materials',
     workFlag: 'Work flag',
     highestExperience: 'Highest experience',
     specialization: 'Specialization {id}',
@@ -24,7 +27,6 @@ export const enGame = {
     assignWorkplace: 'Assign a workplace',
     assignWorkplaceHint:
       'Click, then pick a building: green ones have an open slot for this settler, red ones do not. Left-click assigns, right-click or Esc cancels.',
-    readyToWork: 'Ready to work',
     defenseStopped: 'Defence stopped',
     demolish: 'Demolish',
     center: 'Center',

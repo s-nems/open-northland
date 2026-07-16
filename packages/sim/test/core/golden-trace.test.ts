@@ -188,10 +188,11 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
 
   it('matches the golden final state hash', () => {
     const run = runSlice(SEED, TICKS);
-    // Intentional: settlers now spawn with seeded random starting needs (50–100%), hunger/fatigue/enjoyment
-    // drain at the retuned rate, and piety no longer rises per tick — all of which change the 1000-tick
-    // state. (The atomic trace below is unchanged: behavior/order is the same, only need magnitudes differ.)
-    expect(run.hash).toBe('f8f7cb80');
+    // Intentional mechanic changes baked into this hash: the needs retune (seeded random starting
+    // needs, retuned drains, piety only from forging) AND per-product production (cycles carry their
+    // product `goodType` and pace at the uniform 180-tick design cycle instead of the extracted
+    // per-animation lengths).
+    expect(run.hash).toBe('53f618b5');
   });
 
   it('matches the golden atomic-action trace', () => {
