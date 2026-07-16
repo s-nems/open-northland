@@ -245,12 +245,12 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     (clientX, clientY) =>
       toolPanel.claimsWheel(clientX, clientY) || mountedMinimap.claimsPointer(clientX, clientY),
   );
-  // Edge scrolling yields to ANY HUD surface under the cursor (broader than the wheel guard): the
-  // tool-panel strip hugs the left screen edge and the minimap a corner, and hovering them must not
-  // also pan the world behind.
+  // Edge scrolling keeps working over the tool-panel STRIP (it hugs the left screen edge — an RTS
+  // player aiming for the edge shouldn't have to thread past the icons), but yields to an open
+  // pop-up window and to the minimap: hovering those must not also pan the world behind.
   cameraCtl.setEdgeGuard(
     (clientX, clientY) =>
-      toolPanel.claimPointer(clientX, clientY) || mountedMinimap.claimsPointer(clientX, clientY),
+      toolPanel.claimsWheel(clientX, clientY) || mountedMinimap.claimsPointer(clientX, clientY),
   );
 
   // The cursor position for the build-mode ghost (client coords; null when the pointer left the

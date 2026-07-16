@@ -89,8 +89,6 @@ function centroid(
  */
 export const MIN_ZOOM = 0.15;
 export const MAX_ZOOM = 8;
-/** Screen pixels the camera scrolls per second while an arrow key is held. */
-const ARROW_PAN_SPEED = 600;
 /** Per-wheel-notch zoom factor (one notch in multiplies, one out divides). */
 const WHEEL_ZOOM_STEP = 1.1;
 /** The arrow keys the controller pans on (so it ignores every other key). */
@@ -99,17 +97,35 @@ const ARROW_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']);
 const MAX_PAN_STEP_MS = 100;
 /** CSS px from a canvas edge within which the pointer edge-scrolls (the RTS screen-edge pan). */
 export const EDGE_SCROLL_MARGIN = 24;
-/** Edge-scroll speed (screen px/s) at the deepest point of the margin; ramps linearly from 0. */
-const EDGE_SCROLL_SPEED = 900;
 /** Half-life (ms) of the pan-velocity easing: held-key/edge pans ramp up and glide out briefly
  *  instead of starting and stopping dead. Short — feel, not float. */
 const PAN_EASE_HALF_LIFE_MS = 60;
-/** Half-life (ms) of the wheel zoom's glide toward its target scale. */
-const ZOOM_EASE_HALF_LIFE_MS = 50;
-/** Relative gap to the zoom target below which the eased scale snaps onto it exactly. */
-const ZOOM_SNAP_EPS = 1e-3;
 /** Pan speed (px/s) below which a decaying glide is stopped dead (avoids an endless sub-pixel tail). */
 const PAN_STOP_SPEED = 1;
+
+/**
+ * The interactive camera's speed knobs — internal tuning today, the seam a future in-game options
+ * screen drives (the controller reads its mutable {@link CameraController.tuning} live each frame,
+ * so an options slider can adjust these without re-installing listeners). Eye-tuned defaults in
+ * {@link DEFAULT_CAMERA_TUNING}.
+ */
+export interface CameraTuning {
+  /** Screen px/s the camera pans while an arrow key is held. */
+  arrowPanSpeed: number;
+  /** Edge-scroll speed (screen px/s) at the deepest point of the margin; ramps linearly from 0. */
+  edgeScrollSpeed: number;
+  /** Wheel-zoom glide speed in log-zoom units per second — LINEAR: the scale travels toward its
+   *  target at this constant perceptual rate (each ×e of zoom takes `1/rate` seconds), so a long
+   *  glide never lurches fast then crawls the tail like an exponential ease. */
+  zoomGlideRate: number;
+}
+
+/** The default camera speeds ({@link CameraTuning}). */
+export const DEFAULT_CAMERA_TUNING: CameraTuning = {
+  arrowPanSpeed: 900,
+  edgeScrollSpeed: 1500,
+  zoomGlideRate: 1.6,
+};
 
 /** The fraction of the remaining gap an exponential ease covers in `dtMs` at the given half-life —
  *  frame-rate independent (two 8 ms steps land where one 16 ms step does). Pure. */
@@ -121,26 +137,28 @@ export function easeFactor(dtMs: number, halfLifeMs: number): number {
  * The edge-scroll pan velocity (screen px/s, camera-scroll convention: pointer at the LEFT edge reveals
  * the world leftward → positive `vx`, like a held ArrowLeft) for a pointer at canvas CSS position
  * `(x, y)` in a `width × height` canvas. Ramps linearly from 0 at the margin's inner boundary to
- * {@link EDGE_SCROLL_SPEED} at the edge; `(0, 0)` anywhere deeper inside. Pure.
+ * `speed` ({@link CameraTuning.edgeScrollSpeed}) at the edge; `(0, 0)` anywhere deeper inside. Pure.
  */
 export function edgePanVelocity(
   x: number,
   y: number,
   width: number,
   height: number,
+  speed: number = DEFAULT_CAMERA_TUNING.edgeScrollSpeed,
 ): { vx: number; vy: number } {
   const depth = (into: number): number =>
     into >= EDGE_SCROLL_MARGIN ? 0 : (EDGE_SCROLL_MARGIN - Math.max(0, into)) / EDGE_SCROLL_MARGIN;
   return {
-    vx: (depth(x) - depth(width - x)) * EDGE_SCROLL_SPEED,
-    vy: (depth(y) - depth(height - y)) * EDGE_SCROLL_SPEED,
+    vx: (depth(x) - depth(width - x)) * speed,
+    vy: (depth(y) - depth(height - y)) * speed,
   };
 }
 
 /**
- * One eased step of the wheel zoom: glide the camera's scale toward `target` (frame-rate-independent
- * exponential, {@link ZOOM_EASE_HALF_LIFE_MS}), anchored at the cursor like {@link zoomCameraAt},
- * snapping onto the target when within {@link ZOOM_SNAP_EPS} of it. Returns the camera untouched when
+ * One LINEAR step of the wheel-zoom glide: move the camera's scale toward `target` at a constant
+ * `ratePerS` in log-zoom space ({@link CameraTuning.zoomGlideRate} — perceptually uniform: ×2 takes
+ * the same time zooming from 1→2 as from 4→8), anchored at the cursor like {@link zoomCameraAt},
+ * landing exactly on the target when within one step of it. Returns the camera untouched when
  * already there. Pure.
  */
 export function stepZoomToward(
@@ -149,11 +167,13 @@ export function stepZoomToward(
   cursorX: number,
   cursorY: number,
   dtMs: number,
+  ratePerS: number = DEFAULT_CAMERA_TUNING.zoomGlideRate,
 ): Camera {
   const scale = cam.scale ?? 1;
   if (scale === target) return cam;
-  const eased = scale + (target - scale) * easeFactor(dtMs, ZOOM_EASE_HALF_LIFE_MS);
-  const next = Math.abs(eased - target) <= target * ZOOM_SNAP_EPS ? target : eased;
+  const gap = Math.log(target / scale);
+  const step = (ratePerS * dtMs) / 1000;
+  const next = Math.abs(gap) <= step ? target : scale * Math.exp(Math.sign(gap) * step);
   return zoomCameraAt(cam, next / scale, cursorX, cursorY);
 }
 
@@ -182,6 +202,8 @@ export function zoomCameraAt(cam: Camera, factor: number, cursorX: number, curso
 export interface CameraController {
   /** The current {@link Camera} to hand the renderer's `update`. */
   camera(): Camera;
+  /** The live speed knobs ({@link CameraTuning}) — mutate fields to retune; read each frame. */
+  readonly tuning: CameraTuning;
   /** Apply held-arrow-key panning for a wall-clock delta in ms — call once per frame. */
   update(dtMs: number): void;
   /**
@@ -198,10 +220,10 @@ export interface CameraController {
    */
   setPointerGuard(guard: ((clientX: number, clientY: number) => boolean) | null): void;
   /**
-   * Install a predicate that claims a client point for the HUD against EDGE SCROLLING (the tool-panel
-   * strip hugs the left edge, the minimap the corner — hovering them must not also pan the camera).
-   * Broader than the wheel guard on purpose: the wheel should still zoom over the strip, but the
-   * edge-pan must yield to any HUD surface under the cursor. Pass `null` to clear.
+   * Install a predicate that claims a client point for the HUD against EDGE SCROLLING. The game view
+   * wires the open pop-up windows + the minimap here — surfaces whose hover must not also pan the
+   * camera. The tool-panel STRIP deliberately does NOT claim: it hugs the left screen edge, and the
+   * RTS edge-pan must keep working when the cursor rests on it. Pass `null` to clear.
    */
   setEdgeGuard(guard: ((clientX: number, clientY: number) => boolean) | null): void;
   /** Remove every installed DOM listener. */
@@ -264,6 +286,7 @@ export function createCameraController(
   resolution: number,
 ): CameraController {
   let cam: Camera = initial;
+  const tuning: CameraTuning = { ...DEFAULT_CAMERA_TUNING };
   const held = new Set<string>();
   let dragging = false;
   let lastX = 0;
@@ -354,6 +377,7 @@ export function createCameraController(
 
   return {
     camera: () => cam,
+    tuning,
     jumpTo: (next) => {
       cam = next;
       // The jump replaces the frame outright, so the wheel glide retargets to the new scale and any
@@ -376,23 +400,29 @@ export function createCameraController(
       const dt = Math.min(dtMs, MAX_PAN_STEP_MS);
       // Wheel zoom glide: ease the scale toward the last wheel target about its cursor anchor.
       if (targetScale !== (cam.scale ?? 1)) {
-        cam = stepZoomToward(cam, targetScale, zoomAnchorX, zoomAnchorY, dt);
+        cam = stepZoomToward(cam, targetScale, zoomAnchorX, zoomAnchorY, dt, tuning.zoomGlideRate);
       }
       // Desired pan velocity (screen px/s): held arrows plus the screen-edge pointer. Camera-scroll
       // convention throughout: an input reveals the world in its direction (look right → the world
       // slides left → offset shrinks).
       let desiredX = 0;
       let desiredY = 0;
-      if (held.has('ArrowLeft')) desiredX += ARROW_PAN_SPEED;
-      if (held.has('ArrowRight')) desiredX -= ARROW_PAN_SPEED;
-      if (held.has('ArrowUp')) desiredY += ARROW_PAN_SPEED;
-      if (held.has('ArrowDown')) desiredY -= ARROW_PAN_SPEED;
+      if (held.has('ArrowLeft')) desiredX += tuning.arrowPanSpeed;
+      if (held.has('ArrowRight')) desiredX -= tuning.arrowPanSpeed;
+      if (held.has('ArrowUp')) desiredY += tuning.arrowPanSpeed;
+      if (held.has('ArrowDown')) desiredY -= tuning.arrowPanSpeed;
       // Edge scroll: pointer resting in the margin band pans, unless mid-drag (the drag owns the
       // motion), the window is unfocused (RAF still runs when visible), or a HUD surface claims the
       // point (hovering the strip/minimap must not also pan).
       if (pointerInside && !dragging && document.hasFocus() && edgeGuard?.(pointerX, pointerY) !== true) {
         const { sx, sy, rect } = screenScale(canvas, resolution);
-        const edge = edgePanVelocity(pointerX - rect.left, pointerY - rect.top, rect.width, rect.height);
+        const edge = edgePanVelocity(
+          pointerX - rect.left,
+          pointerY - rect.top,
+          rect.width,
+          rect.height,
+          tuning.edgeScrollSpeed,
+        );
         desiredX += edge.vx * sx; // CSS px/s → screen px/s, same scroll convention as the arrows
         desiredY += edge.vy * sy;
       }

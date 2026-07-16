@@ -170,4 +170,11 @@ describe('stepZoomToward', () => {
     for (let i = 0; i < 120; i++) cam = stepZoomToward(cam, 3, 200, 200, 16);
     expect(cam.scale).toBe(3);
   });
+
+  it('travels at a constant log-zoom rate (linear glide, no exponential fast-start)', () => {
+    // The same dt covers the same log-zoom distance whether the target is far (1→8) or near (4→8).
+    const early = stepZoomToward({ offsetX: 0, offsetY: 0, scale: 1 }, 8, 0, 0, 100);
+    const late = stepZoomToward({ offsetX: 0, offsetY: 0, scale: 4 }, 8, 0, 0, 100);
+    expect(Math.log((late.scale ?? 1) / 4)).toBeCloseTo(Math.log(early.scale ?? 1));
+  });
 });
