@@ -38,11 +38,11 @@ export interface SpriteLayer {
   /**
    * The layer's cast-shadow twin (the decoded shadow `.bmd` atlas — pre-baked translucent-black
    * silhouettes whose frame ids parallel this layer's bob ids), when the content names one and it
-   * loaded. A drawn bob prepends its same-id shadow frame under the body
-   * ({@link import('./sprite-pool/resolve-layers.js').shadowLayerFor}); absent, the bob casts none.
-   * Character atlases never carry one (settlers draw shadow-less by design).
+   * loaded. A drawn bob prepends its same-id shadow frame under the body; absent, the bob casts
+   * none. Character atlases never carry one (settlers draw shadow-less by design). Only the texture
+   * and frame geometry are meaningful — a shadow has no `times`/`shadow` of its own.
    */
-  readonly shadow?: SpriteLayer;
+  readonly shadow?: Pick<SpriteLayer, 'source' | 'atlas'>;
 }
 
 /**

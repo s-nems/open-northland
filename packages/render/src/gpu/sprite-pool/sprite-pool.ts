@@ -541,7 +541,10 @@ export class SpritePool {
       if (ox + layer.frame.width * layer.scale > maxX) maxX = ox + layer.frame.width * layer.scale;
       if (boundsOy + boundsH > maxY) maxY = boundsOy + boundsH;
     }
-    // Hide any leftover sprites from a frame that needed more layers than this one.
+    // Hide any leftover sprites from a frame that needed more layers than this one, and drop their
+    // stale shadow flags with them (pixelHit skips hidden sprites, but the flag array must not
+    // outlive the layers it described).
+    pe.shadowFlags.length = layers.length;
     for (let i = layers.length; i < pe.sprites.length; i++) {
       const s = pe.sprites[i];
       if (s !== undefined) s.visible = false;

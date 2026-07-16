@@ -209,7 +209,7 @@ export const SHADOW_ALPHA = 0x50;
  * {@link SHADOW_ALPHA} (a shadow bob is a solid 1-bit silhouette — see `BOB_TYPE_1BIT`'s pure-RLE
  * coverage), unwritten pixels fully transparent. No palette: the darkening is the blit's, not the art's.
  */
-export function expandBobFrameShadow(frame: BobFrame): RgbaImage {
+function expandBobFrameShadow(frame: BobFrame): RgbaImage {
   const { width, height, mask } = frame;
   const rgba = new Uint8Array(width * height * 4);
   for (let i = 0; i < mask.length; i++) {

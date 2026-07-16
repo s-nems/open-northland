@@ -88,7 +88,7 @@ async function loadGatheringFamilies(
  * step draws under each bob ({@link import('@open-northland/render').SpriteLayer.shadow}). First-wins on
  * a repeated stem — the recolours of one `.bmd` share its single shadow set.
  */
-function shadowStemsByAtlasStem(ir: ContentIr | null): Map<string, string> {
+export function shadowStemsByAtlasStem(ir: ContentIr | null): Map<string, string> {
   const map = new Map<string, string>();
   const put = (stem: string | undefined, shadowBmd: string | undefined): void => {
     const shadowStem = servedShadowStem(shadowBmd);

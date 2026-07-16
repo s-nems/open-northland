@@ -77,7 +77,7 @@ export interface ResolvedLayer {
  * frame at that id (most bobs cast none — the data decides). `boundsExempt`: a shadow darkens the
  * ground; it must not grow the caster's selection/picking box.
  */
-export function shadowLayerFor(layer: SpriteLayer, bobId: number, scale: number): ResolvedLayer | null {
+function shadowLayerFor(layer: SpriteLayer, bobId: number, scale: number): ResolvedLayer | null {
   const shadow = layer.shadow;
   if (shadow === undefined) return null;
   const frame = lookupFrame(shadow.atlas, bobId);

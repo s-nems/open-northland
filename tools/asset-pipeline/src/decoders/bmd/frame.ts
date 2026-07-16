@@ -78,7 +78,7 @@ export type SecondByteMode = 'alpha' | 'time';
  *
  * Per-type pixel width within a raw run: 8-bit stores one index byte each; TimeMask and Double8Bit store
  * two bytes each (`[value, timeByte]` / `[index, alpha-or-time]` — see {@link BOB_TYPE_TIMEMASK} /
- * {@link BOB_TYPE_DOUBLE8BIT} and `secondByte`); 1-bit masks store NO pixel bytes — a raw run is itself
+ * {@link BOB_TYPE_DOUBLE8BIT} and `secondByte`); 1-bit masks store no pixel bytes — a raw run is itself
  * the coverage (`count` set pixels, drawn as {@link BOB_MASK_INDEX}; pinned on the real shadow `.bmd`s,
  * whose silhouettes only decode coherently this way).
  * An empty bob (`type 0`) or non-positive size yields a frame sized to the (clamped) area with an all-transparent mask.
@@ -138,7 +138,7 @@ export function decodeBobFrame(bmd: Bmd, bobIndex: number, secondByte: SecondByt
       const isRaw = (b & 0x80) === 0;
 
       if (isRaw && isMask) {
-        // A 1-bit mask raw run carries NO pixel bytes — the run itself is the coverage (draw `count`
+        // A 1-bit mask raw run carries no pixel bytes — the run itself is the coverage (draw `count`
         // set pixels, then the next control byte follows immediately). Pinned by decoding real shadow
         // `.bmd`s: this reading yields coherent solid silhouettes on every shadow lib, while a
         // byte-per-pixel reading desyncs the stream into noise. Matches cultures2-wasm's `read_bmd`

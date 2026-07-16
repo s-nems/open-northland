@@ -4,16 +4,20 @@
 
 Sprite culling tests only the entity's anchor point against the viewport grown by
 `SPRITE_CULL_MARGIN = 512` (`packages/render/src/gpu/world-renderer.ts`); a frame whose pixels reach
-farther than the margin from its anchor would pop at the screen edge. Measured over every baked atlas
-manifest (bodies and shadows), the worst extent today is **497 px** (`ls_houses_frank_s` bob 4,
-619×281 at offset −122,−163) — safe by only 15 px, and nothing guards the invariant.
+farther than the margin from its anchor pops at the screen edge. Measured over every baked manifest
+(bodies and shadow twins, 2026-07-16): everything is under the margin (worst 444 px, the `ls_caves`
+sets) except the wonder atlases — `ls_wonders3` reaches **651 px** (bob 0) and `ls_wonders2`
+**568 px** (bob 2). Nothing loads those two today, but a map or binding that references a wonder
+will pop it at screen edges, and no test guards the invariant for the atlases that do load.
 
-Add a real-content test (`npm run test:content` suite) that walks all `content/.../*.atlas.json`
-manifests and asserts `max(|offsetX|, |offsetX + width|, |offsetY|, |offsetY + height|) ×
-worst-case draw scale ≤ SPRITE_CULL_MARGIN` per frame, so a future mod atlas or scale change can't
-silently introduce edge popping. Export or mirror the margin constant so the test and renderer can't
-drift.
+Add a real-content test (`npm run test:content` suite) that walks the baked `*.atlas.json`
+manifests and asserts per frame
+`max(|offsetX|, |offsetX + width|, |offsetY|, |offsetY + height|) × draw scale ≤ SPRITE_CULL_MARGIN`,
+with the two wonder stems as a pinned, named exemption list. Export or mirror the margin constant so
+the test and renderer can't drift. Loading a wonder family later means raising the margin or culling
+by entity bounds instead of anchors — the exemption list is the prompt for that decision.
 
 ## Verify
 
-- Test fails when the margin is artificially lowered below 497; passes on current content.
+- Test fails when the margin is artificially lowered below 444 or when a non-exempt atlas grows past
+  512; passes on current content.
