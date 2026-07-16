@@ -401,8 +401,9 @@ export class SpritePool {
       // The layer's drawn top/height in feet-local space — cropped for a crop-reveal layer, full otherwise.
       const drawnOy = oy + hiddenTop * layer.scale;
       const drawnH = (layer.frame.height - hiddenTop) * layer.scale;
-      if (pe.paletted && this.sheet?.palette !== undefined) {
-        const lut = this.sheet.palette;
+      const palettedLut = pe.paletted ? this.lutFor(item.kind) : undefined;
+      if (palettedLut !== undefined) {
+        const lut = palettedLut;
         let spr = pe.sprites[i] as PalettedSprite | undefined; // pe.paletted ⇒ every layer is a PalettedSprite
         if (spr === undefined) {
           spr = new PalettedSprite(lut.source, lut.colours);
@@ -478,7 +479,16 @@ export class SpritePool {
    *  a pooled entity's sprite class is decided once at creation. Without the LUT this is false everywhere and
    *  every entity draws plain {@link Sprite}s. */
   private isPaletted(kind: SpriteKind): boolean {
-    return kind === 'settler' && this.sheet?.palette !== undefined && this.sheet.characters !== undefined;
+    if (kind === 'settler') return this.sheet?.palette !== undefined && this.sheet.characters !== undefined;
+    // A signpost recolours per owner through its own LUT (full player palettes — the guidepost bob reads
+    // every lane through the player palette); bound together with the indexed guidepost atlas app-side.
+    if (kind === 'signpost') return this.sheet?.signpostPalette !== undefined;
+    return false;
+  }
+
+  /** The colour LUT a paletted entity of `kind` reads its indexed atlas through. */
+  private lutFor(kind: DrawItem['kind']): SpriteSheet['palette'] {
+    return kind === 'signpost' ? this.sheet?.signpostPalette : this.sheet?.palette;
   }
 
   /** Restamp a pooled entity's bounds in place for this frame — no allocation in the per-frame pass. */

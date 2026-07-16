@@ -36,6 +36,14 @@ const BASE_PALETTE_PCX = 'test_human_00.pcx';
 const SYNTHETIC_REFERENCE_PCX = 'player01.pcx';
 /** Human character bobs get the recolourable indexed atlas; everything else keeps its baked RGB atlas. */
 const CHARACTER_BMD_RE = /(^|\/)cr_hum_/i;
+/**
+ * The scout's guidepost also takes the indexed path: in the original it is drawn through the player's own
+ * full palette (source basis: the board-text indices 23–30 sit inside the `playerNN.pcx` player ramp
+ * 16–31 — blue for player 1, red for player 2 — and those palettes carry a brown wood ramp at the
+ * guidepost's body indices 131–141), so the board lettering is the team colour. It reads a separate LUT
+ * ({@link convertGuidepostLut}) built from the full player palettes, not the composed body palettes.
+ */
+const GUIDEPOST_BMD_RE = /(^|\/)ls_guidepost\.bmd$/i;
 
 /**
  * Read a `creatures/<file>.pcx` 768-byte trailer palette from the unpacked tree, resolved case-insensitively
@@ -88,6 +96,29 @@ export async function convertPlayerColorLut(outDir: string): Promise<PlayerColor
 }
 
 /**
+ * Build the guidepost's 16-row LUT (`bobs/guidepost-lut.png`): each row is one player's FULL palette —
+ * the shipped `playerNN.pcx` verbatim for the faithful ten, the hue-rotated reference for the six
+ * synthetic extras — because the guidepost bob reads every lane (wood, lettering, ground) from the
+ * player palette, unlike the characters whose LUT swaps only the clothing bands into a body base.
+ */
+export async function convertGuidepostLut(outDir: string): Promise<PlayerColorLutResult> {
+  const tree = await indexOutTree(outDir);
+  const reference = await readCreaturePalette(outDir, tree, SYNTHETIC_REFERENCE_PCX);
+  const palettes: Uint8Array[] = [];
+  for (const color of PLAYER_COLORS) {
+    palettes.push(
+      color.source.kind === 'pcx'
+        ? await readCreaturePalette(outDir, tree, color.source.file)
+        : synthesizePlayerSource(reference, color.source.hue),
+    );
+  }
+  await mkdir(join(outDir, BOBS_DIR), { recursive: true });
+  const pngRel = join(BOBS_DIR, 'guidepost-lut.png');
+  await writeFile(join(outDir, pngRel), encodePng(buildPlayerLutImage(palettes)));
+  return { png: pngRel, colors: palettes.length };
+}
+
+/**
  * Emit an indexed atlas (`<bmd>.indexed.png` + `<bmd>.indexed.atlas.json`) for every human character `.bmd`
  * referenced by `bindings` (deduped — many bindings share one body). The `.bmd`s are read from the unpacked
  * `<out>` tree, resolved case-insensitively via {@link indexOutTree}. A missing/malformed `.bmd` is
@@ -100,7 +131,8 @@ export async function convertIndexedCharacterAtlases(
   const tree = await indexOutTree(outDir);
   const characterBmds = new Set<string>();
   for (const b of bindings) {
-    if (CHARACTER_BMD_RE.test(b.bmd) && /\.bmd$/i.test(b.bmd)) characterBmds.add(b.bmd);
+    const recolourable = CHARACTER_BMD_RE.test(b.bmd) || GUIDEPOST_BMD_RE.test(b.bmd);
+    if (recolourable && /\.bmd$/i.test(b.bmd)) characterBmds.add(b.bmd);
   }
   const done: string[] = [];
   for (const bmdRef of characterBmds) {
