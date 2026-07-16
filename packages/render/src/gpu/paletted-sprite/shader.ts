@@ -46,6 +46,7 @@ uniform vec4 uPlacement;    // .w = player-colour row to read (0 .. N-1)
 uniform vec2 uColorKey;     // .x > 0.5: key magenta; .y: near-black mode (0 off / 1 full band / 2 round corners)
 uniform vec4 uFrameUV;      // the current frame's atlas-UV box (min.xy, max.zw) — for the 'round' corner key
 uniform vec4 uSilhouette;   // .rgb: flat override colour, .w > 0.5: silhouette mode on (see the setter)
+uniform vec2 uBrightness;   // .x: terrain-shading multiplier (1 = neutral; may exceed 1, the FB write clamps)
 
 // GUI transparent key — our floating-HUD deviation, not an original mechanism (the engine blitter has no
 // colour key; see source basis "Left tool panel"). The in-game GUI palettes (iconsleft/context/…) reserve
@@ -103,9 +104,10 @@ void main(void) {
   if (uSilhouette.w > 0.5) {
     rgb = uSilhouette.rgb;
   }
-  // Modulate by the texel's authored coverage (premultiplied — Pixi's normal blend expects it), so the
-  // graded indexed bake's feathered edges draw translucent instead of binary.
-  finalColor = vec4(rgb, 1.0) * texel.a;
+  // Terrain shading (unclamped multiply, like the ground shader), then modulate by the texel's authored
+  // coverage (premultiplied — Pixi's normal blend expects it), so the graded indexed bake's feathered
+  // edges draw translucent instead of binary.
+  finalColor = vec4(rgb * uBrightness.x, 1.0) * texel.a;
 }`;
 
 /** A unit quad's index buffer (two triangles) — positions/UVs are rewritten per frame by the sprite's `setFrame`. */
@@ -132,6 +134,9 @@ export interface PalettedUniforms {
     uFrameUV: Float32Array;
     /** [r, g, b, on] — the flat silhouette override colour (normalized), on > 0.5 enables it. */
     uSilhouette: Float32Array;
+    /** [multiplier, _] — the terrain-shading multiplier (a `Float32Array` for the per-mesh re-upload
+     *  reason above). */
+    uBrightness: Float32Array;
   };
   /** Bump the group's dirty id so Pixi re-uploads the changed contents. */
   update(): void;
@@ -161,6 +166,7 @@ export function createPalettedShader(lut: TextureSource, colours: number): Shade
     uFlip: { value: new Float32Array([0, 0]), type: 'vec2<f32>' as const },
     uFrameUV: { value: new Float32Array([0, 0, 1, 1]), type: 'vec4<f32>' as const },
     uSilhouette: { value: new Float32Array([0, 0, 0, 0]), type: 'vec4<f32>' as const },
+    uBrightness: { value: new Float32Array([1, 0]), type: 'vec2<f32>' as const },
   };
   return Shader.from({
     gl: { vertex: VERTEX, fragment: FRAGMENT },

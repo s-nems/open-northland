@@ -1,4 +1,5 @@
 import type { WorldSnapshot } from '@open-northland/sim';
+import type { BrightnessField } from '../brightness.js';
 import { type ElevationField, terrainLiftAt } from '../elevation.js';
 import type { FogGhost } from '../fog-ghosts.js';
 import { ONE, tileToScreen } from '../iso.js';
@@ -53,6 +54,9 @@ export interface SpriteSceneOptions {
   readonly viewport?: Viewport | undefined;
   /** The map's terrain-height field; absent/flat = no lift. */
   readonly elevation?: ElevationField | undefined;
+  /** The composed terrain-shading field ({@link import('../brightness.js')} + hillshade); absent or
+   *  unshaded = no entity shading. Sampled at each item's feet into {@link DrawItem.shade}. */
+  readonly brightness?: BrightnessField | undefined;
   /** Entities the retained static map-object layer draws instead (skipped entirely). */
   readonly staticRefs?: ReadonlySet<number> | undefined;
   /** The fog-of-war cull (`data/fog.ts` over the viewer's `FogView`); absent = no fog. */
@@ -113,7 +117,9 @@ export function buildSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOptio
  * cull drops live items elsewhere.
  */
 export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOptions = {}): SpriteScene {
-  const { viewport, elevation, staticRefs, fogVisible, ghosts, keepIndoorSettlers, portraitRef } = opts;
+  const { viewport, elevation, brightness, staticRefs, fogVisible, ghosts, keepIndoorSettlers, portraitRef } =
+    opts;
+  const shadeField = brightness !== undefined && brightness.shaded ? brightness : undefined;
   const items: MutableDrawItem[] = [];
   const liveRefs = new Set<number>();
   // Target positions for facing mid-swing actors and aiming projectiles: built once per snapshot and
@@ -273,6 +279,12 @@ export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOpt
     }
     const drawLift = lift + arcLift;
     if (drawLift !== 0) item.lift = drawLift;
+    // Feet-anchor terrain shading (see DrawItem.shade): resource nodes stay full-bright (the measured
+    // tree-canopy exemption, applied kind-wide so the static→pool handover can't jump) and projectiles
+    // are airborne; every other kind samples the same field the ground drew with.
+    if (shadeField !== undefined && kind !== 'resource' && kind !== 'projectile') {
+      item.shade = shadeField.brightnessAt(tileX, tileY);
+    }
     // The portrait subject that only survived a cull (off-screen/fogged/indoor) is drawn for the panel
     // cutout but hidden on the main map; an indoor one also freezes to a motionless standing pose.
     if (isPortrait && (offscreen || fogged || indoorSettler)) item.portraitOnly = true;

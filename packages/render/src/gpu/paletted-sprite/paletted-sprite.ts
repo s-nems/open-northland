@@ -130,6 +130,16 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
     return (this.vars.uniforms.uFlip[0] ?? 0) > 0.5;
   }
 
+  /** The terrain-shading multiplier (1 = neutral) the fragment shader scales the LUT colour by — the
+   *  paletted twin of a plain sprite's brightness tint, except it can brighten past 1 (the FB clamps). */
+  set brightness(value: number) {
+    this.vars.uniforms.uBrightness[0] = value;
+    this.vars.update();
+  }
+  get brightness(): number {
+    return this.vars.uniforms.uBrightness[0] ?? 1;
+  }
+
   /**
    * Point the sprite at one atlas frame: bind the (indexed) atlas source and rewrite the quad to the frame's
    * native pixel size at its draw offset, with UVs into the `atlasWidth × atlasHeight` sheet. Screen
