@@ -109,8 +109,9 @@ function drivePair(
     wb.kissing = true;
     return;
   }
-  // Apart: the seeker (the lower id drives, but the SEEKER is whoever isn't standing) walks to the
-  // partner; the partner stands and waits. A failed route means the partner is unreachable — cancel.
+  // Apart: the lower id (`a`) always does the walking — regardless of who issued `marry` — and the
+  // higher id stands and waits (a canonical, symmetric convention: one walker, one waiter). A failed
+  // route means the partner is unreachable — cancel.
   if (world.tryGet(a, PathRequest)?.failed === true || world.tryGet(b, PathRequest)?.failed === true) {
     clearNavState(world, a);
     clearNavState(world, b);

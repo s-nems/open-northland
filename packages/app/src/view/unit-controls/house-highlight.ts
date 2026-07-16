@@ -19,7 +19,10 @@ import {
  * button + the green/red house tint, the residential twin of `assign-highlight.ts`. Green = an own,
  * built `home` with a free family slot for this settler's family (`homeSize` — the original
  * `logichomesize` 1..5 by level — counts FAMILIES, see {@link familiesByHome}). The sim's `assignHouse`
- * command re-validates on click; this is the at-a-glance candidacy the player reads.
+ * command re-validates on click; this is the at-a-glance candidacy the player reads. KNOWN GAP: like
+ * the workplace wash, signpost confinement is not mirrored — under `setSignpostNavigation` an
+ * out-of-area home still washes green and the click is refused by the sim (ticketed:
+ * docs/tickets/app/assign-builder-refusal-cue.md).
  */
 
 /** The slice of a building type this projection needs: the residence discriminant + its capacity. */

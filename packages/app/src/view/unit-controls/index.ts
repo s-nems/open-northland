@@ -74,6 +74,19 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   const cancelSignpost = (): void => {
     signpostScouts = null;
   };
+  // The three pick modes are exclusive: arming one disarms the others (a scout's panel offers the
+  // assign buttons too, so a panel arm must also drop a live signpost placement — every entry path
+  // funnels through these two).
+  const armWorkplacePick = (id: number): void => {
+    assignSettler = id;
+    houseSettler = null;
+    signpostScouts = null;
+  };
+  const armHousePick = (id: number): void => {
+    houseSettler = id;
+    assignSettler = null;
+    signpostScouts = null;
+  };
   // Late-bound: the panel's "clicked a worker sprite" callback needs `setSelection`, which is defined
   // below (it closes over `panel`). Assigned once everything exists; a click can only fire afterwards.
   let selectFromPanel: (id: number) => void = () => {};
@@ -91,14 +104,8 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     ...(opts.sheet !== undefined ? { sheet: opts.sheet } : {}),
     onDemolish: (id) => opts.enqueue({ kind: 'demolish', building: id as Entity }),
     onDemolishSignpost: (id) => opts.enqueue({ kind: 'demolishSignpost', signpost: id as Entity }),
-    onAssignWorkplace: (id) => {
-      assignSettler = id;
-      houseSettler = null; // the two pick modes are exclusive — arming one disarms the other
-    },
-    onAssignHome: (id) => {
-      houseSettler = id;
-      assignSettler = null;
-    },
+    onAssignWorkplace: armWorkplacePick,
+    onAssignHome: armHousePick,
     onSetGatherGood: (id, goodType) =>
       opts.enqueue({ kind: 'setGatherGood', entity: id as Entity, goodType }),
     onSetCraftGoods: (id, goods) =>
@@ -119,13 +126,10 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     },
     onErectSignpost: (ids) => {
       signpostScouts = ids;
+      cancelAssign(); // exclusive with the workplace/home pick modes, like every arming path
     },
     onMarry: (id) => opts.enqueue({ kind: 'marry', entity: id as Entity }),
-    onAssignHouse: (id) => {
-      houseSettler = id;
-      assignSettler = null; // exclusive with the workplace pick mode
-      signpostScouts = null; // …and with signpost placement
-    },
+    onAssignHouse: armHousePick,
     onMakeChild: (id, sex) => opts.enqueue({ kind: 'makeChild', entity: id as Entity, child: sex }),
   });
 

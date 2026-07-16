@@ -2,7 +2,7 @@
 
 **Area:** app (input/feedback) · **Origin:** bmd-build-progress review, 2026-07-14; extended by workplace-assignment review, 2026-07-16, and the marriage/children review, 2026-07-16 · **Priority:** P3
 
-Seven sibling gestures produce a silent refusal with no player feedback:
+Eight sibling gestures produce a silent refusal with no player feedback:
 
 1. **Foundation, no builder selected.** Right-clicking an under-construction building routes every
    selected settler to the `assignBuilder` command (`packages/app/src/view/unit-controls/orders.ts`).
@@ -39,6 +39,14 @@ Seven sibling gestures produce a silent refusal with no player feedback:
    gives up and idles. Event-driven rather than a click, but the same feedback gap: consider a brief
    cue (a status caption on the selected settler / a denied jingle) when the cancellation reaches the
    snapshot.
+8. **The family gestures don't mirror confinement.** Under `setSignpostNavigation` the sim's
+   `findPartnerFor` (`packages/sim/src/systems/family/eligibility.ts`) only sees partners inside the
+   issuer's allowed area, but the ring's marry button lights via `hasEligiblePartner`
+   (`packages/app/src/game/snapshot.ts`) with no such filter — the only-partner-out-of-area click is a
+   lit button that silently cancels. Likewise the house-pick wash (`unit-controls/house-highlight.ts`)
+   paints an out-of-area home green while the sim's `assignHouse` refuses it. When item 3's wash work
+   lands, mirror the allowed-area rule in these two snapshot projections too (both name the gap in
+   their doc comments).
 
 ## Scope
 

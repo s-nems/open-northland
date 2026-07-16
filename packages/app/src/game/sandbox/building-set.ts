@@ -110,7 +110,8 @@ export interface SandboxBuildingRow {
   typeId: number;
   id: string;
   kind: string;
-  /** A home's shelter capacity (`logichomesize`); absent on non-residences. */
+  /** How many FAMILIES a home houses (`logichomesize` — see the sim's `familiesOf`); absent on
+   *  non-residences. */
   homeSize?: number;
   stock?: readonly StockSlot[];
   construction?: readonly { goodType: number; amount: number }[];
@@ -214,13 +215,14 @@ const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> 
   },
 };
 
-/** Per home tier: how many settlers it shelters (`houses.ini` `logichomesize` 1..5 — EXTRACTED) and
- *  its private larder capacity per food good (`logicstock 16/17 <cap> 1` — EXTRACTED: 5/10/15/15/15). */
+/** Per home tier: how many FAMILIES it houses (`houses.ini` `logichomesize` 1..5 — EXTRACTED; the
+ *  sim's `familiesOf` grouping counts against it) and its private larder capacity per food good
+ *  (`logicstock 16/17 <cap> 1` — EXTRACTED: 5/10/15/15/15). */
 const HOME_SIZE_BY_TIER = [1, 2, 3, 4, 5] as const;
 const HOME_FOOD_CAPACITY_BY_TIER = [5, 10, 15, 15, 15] as const;
 
-/** A home's residence data: its shelter capacity + the food-only larder its family (and only its
- *  family) eats from — the family mechanics' per-house gate. */
+/** A home's residence data: its family capacity + the food-only larder its residents (and only its
+ *  residents) eat from — the family mechanics' per-house gate. */
 function homeRow(b: VikingBuilding): Partial<SandboxBuildingRow> {
   const tier = Math.max(0, Math.min(HOME_SIZE_BY_TIER.length - 1, b.typeId - BUILDING_HOME_00));
   const capacity = HOME_FOOD_CAPACITY_BY_TIER[tier] as number;

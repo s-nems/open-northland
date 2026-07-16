@@ -10,6 +10,7 @@ import {
   entityById,
   hasEligiblePartner,
   isAdult,
+  isBoundByMarriage,
   isFemale,
   isMarrying,
   isSettler,
@@ -268,6 +269,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     // no family buttons.
     if (!isAdult(e)) return { ...DEFAULT_MENU_STATE, canChangeJob: false, erectSignpost };
     const married = marriageOf(e);
+    const spouseAlive = married !== undefined && entityById(snapshot, married.spouse) !== undefined;
     const onMission = systems.isOnMission(settlerJobType(e) ?? null);
     // The one-child limit: a living, still-growing child blocks a fresh order (a grown or dead child
     // frees it — the sim command re-validates either way; this only decides button visibility).
@@ -277,9 +279,12 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     return {
       canChangeJob: !isFemale(e), // women keep the woman role for life (the sim guards setJob too)
       // Marry only lights up when somebody eligible exists — otherwise the click would silently cancel.
-      canMarry: married === undefined && !isMarrying(e) && !onMission && hasEligiblePartner(snapshot, e),
+      // isBoundByMarriage mirrors the widowing rule: a widow is free again once her child grows up.
+      canMarry:
+        !isBoundByMarriage(snapshot, e) && !isMarrying(e) && !onMission && hasEligiblePartner(snapshot, e),
       canAssignHouse: true,
-      canOrderChild: married !== undefined && isFemale(e) && !raisingChild && childOrderOf(e) === undefined,
+      // Ordering a child needs a LIVING spouse (a widow's stale marriage doesn't light the button).
+      canOrderChild: spouseAlive && isFemale(e) && !raisingChild && childOrderOf(e) === undefined,
       erectSignpost,
     };
   };

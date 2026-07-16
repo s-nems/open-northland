@@ -94,6 +94,20 @@ export function isMarrying(e: SnapshotEntity): boolean {
   return e.components.Wedding !== undefined;
 }
 
+/**
+ * Whether the settler is bound by a live marriage — the snapshot mirror of the sim's widowing rule
+ * (`mayMarry`): bound while the spouse lives, and a widowed parent stays bound until the couple's
+ * child grows up; a dead-spouse marriage with no growing child is dissolved (the component lingers
+ * until the next wedding overwrites it — a destroyed spouse is simply absent from the snapshot).
+ */
+export function isBoundByMarriage(snapshot: WorldSnapshot, e: SnapshotEntity): boolean {
+  const marriage = marriageOf(e);
+  if (marriage === undefined) return false;
+  if (entityById(snapshot, marriage.spouse) !== undefined) return true;
+  const child = marriage.child !== null ? entityById(snapshot, marriage.child) : undefined;
+  return child !== undefined && !isAdult(child);
+}
+
 /** The settler's tribe (`Settler.tribe`), or undefined for a non-settler. */
 export function settlerTribeOf(e: SnapshotEntity): number | undefined {
   const settler = e.components.Settler as { tribe?: unknown } | undefined;
@@ -104,7 +118,10 @@ export function settlerTribeOf(e: SnapshotEntity): number | undefined {
  * Whether any eligible marriage partner for `seeker` exists — the snapshot mirror of the sim's
  * `mayMarry` + `findPartnerFor` filters (same tribe, opposite sex, unmarried adult, not mid-wedding,
  * not away on a mission, positioned), used to grey the ring's marry button instead of offering a
- * silent dead click. The sim command re-validates; a stale frame just mislabels the button.
+ * silent dead click. The sim command re-validates; a stale frame just mislabels the button. KNOWN
+ * GAP: the sim's signpost-confinement filter is not mirrored (the network isn't in the snapshot), so
+ * under `setSignpostNavigation` an out-of-area-only match still lights the button and the click
+ * cancels — ticketed with the other confinement cues (docs/tickets/app/assign-builder-refusal-cue.md).
  */
 export function hasEligiblePartner(snapshot: WorldSnapshot, seeker: SnapshotEntity): boolean {
   const tribe = settlerTribeOf(seeker);
@@ -115,7 +132,7 @@ export function hasEligiblePartner(snapshot: WorldSnapshot, seeker: SnapshotEnti
       isSettler(e) &&
       isAdult(e) &&
       isFemale(e) !== seekerFemale &&
-      marriageOf(e) === undefined &&
+      !isBoundByMarriage(snapshot, e) &&
       !isMarrying(e) &&
       positionOf(e) !== undefined &&
       settlerTribeOf(e) === tribe &&

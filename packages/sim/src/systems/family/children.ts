@@ -63,7 +63,9 @@ import { builtHomeType, consumeFoodUnits, isMinor, setFoodReserve, storedFoodUni
  * Source basis: the stage vocabulary (kiss → make_love at the home → give_birth; hearts anchored to the
  * house) is pinned to `logicdefines.inc` atomics 78–80 + the MAKE_LOVE house overlay; the food threshold,
  * the ordered sex, and the one-child limit are user-specified design (the original gates conception
- * engine-internally — homes are its only food-stocking residences).
+ * engine-internally — homes are its only food-stocking residences). Named approximation: the give_birth
+ * atomic (80) is never played — the family simply steps out with the newborn (no birth animation is
+ * bound in the sandbox catalog).
  */
 
 /** The make-love atomic id (`logicdefines.inc` `MAKE_LOVE = 78`) — used only to resolve the hearts
@@ -281,6 +283,9 @@ function enterHome(
   home: Entity,
 ): void {
   if (!isDrivable(world, e)) return;
+  // A husband claimed straight out of a workshop/farm rest still carries that marker — shed it so
+  // the walk home is visible (the render hides any Resting settler); `enter` re-stamps it at the home.
+  if (world.tryGet(e, Resting)?.at !== home) world.remove(e, Resting);
   const enter = (): void => {
     world.add(e, Resting, { at: home });
   };

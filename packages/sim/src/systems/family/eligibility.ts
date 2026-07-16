@@ -6,6 +6,7 @@ import { isNonWorkingAge } from '../lifecycle/ageclass.js';
 import { isFighterJob, SCOUT_JOB } from '../readviews/stances.js';
 import type { NavigationLimit } from '../signposts/index.js';
 import { canonicalById } from '../spatial.js';
+import { isMinor } from './households.js';
 
 // Who may marry, and how a partner is picked — the pure predicates behind the `marry` command and the
 // FamilySystem's activity gates.
@@ -42,11 +43,22 @@ export function isAdultSettler(world: World, e: Entity): boolean {
 }
 
 /** Whether `e` may enter a marriage right now: a living adult settler, unmarried, not mid-wedding, and
- *  not away on a mission ({@link isOnMission}). */
+ *  not away on a mission ({@link isOnMission}). A widowed parent counts as married until the couple's
+ *  child grows up (the widowing rule — see the CleanupSystem's reap); with the child grown (or none)
+ *  the dead-spouse marriage is dissolved and the next wedding overwrites the stale component. */
 export function mayMarry(world: World, e: Entity): boolean {
   if (!world.isAlive(e) || !isAdultSettler(world, e)) return false;
-  if (world.has(e, Marriage) || world.has(e, Wedding)) return false;
+  if (world.has(e, Wedding)) return false;
+  const marriage = world.tryGet(e, Marriage);
+  if (marriage !== undefined && (world.isAlive(marriage.spouse) || raisingChild(world, marriage))) {
+    return false;
+  }
   return !isOnMission(world.get(e, Settler).jobType);
+}
+
+/** Whether the marriage still has a growing child to raise (alive and still a minor). */
+function raisingChild(world: World, marriage: { child: Entity | null }): boolean {
+  return marriage.child !== null && world.isAlive(marriage.child) && isMinor(world, marriage.child);
 }
 
 /**

@@ -62,6 +62,8 @@ export class ExternalFoodIndex {
     const store = hit?.entity ?? this.linearNearest(from, accept);
     if (store === null) return null;
     const goodType = lowestStockedFood(this.world, this.ctx, store);
+    // Unreachable while the candidacy invariant above holds (stock mutates only on atomic completion);
+    // a null here would mean a mid-pass mutation drained the winner — fail the query, don't guess.
     return goodType === null ? null : { store, goodType };
   }
 

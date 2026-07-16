@@ -19,11 +19,13 @@ export const Female = defineComponent<{ readonly female: true }>('Female');
 export const FEMALE = { female: true } as const;
 
 /**
- * A married settler: `spouse` is its partner for life (both partners carry the mirrored component; only a
- * spouse's death removes it — see the CleanupSystem's widowing). `child` is the couple's one child while it
- * is still growing up — the couple may conceive again only once the child reaches adulthood (its `Age`
- * component is gone) or dies; entity ids are never recycled, so a stale `child` id stays a safe liveness
- * probe. Set on both partners together at birth.
+ * A married settler: `spouse` is its partner for life (both partners carry the mirrored component; a
+ * spouse's death removes it — see the CleanupSystem's widowing — EXCEPT while the couple's child still
+ * grows: the widowed parent keeps it as the carrier of the parent-child edge, and `mayMarry` treats
+ * that dead-spouse marriage as dissolved once the child is grown). `child` is the couple's one child
+ * while it is still growing up — the couple may conceive again only once the child reaches adulthood
+ * (its `Age` component is gone) or dies; entity ids are never recycled, so a stale `child` id stays a
+ * safe liveness probe. Set on both partners together at birth.
  */
 export const Marriage = defineComponent<{ spouse: Entity; child: Entity | null }>('Marriage');
 
