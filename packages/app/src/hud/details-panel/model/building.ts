@@ -74,8 +74,9 @@ export interface ProductionRow {
    * over to the next-furthest batch). 0 when none runs.
    */
   readonly pct: number;
-  /** The hover tooltip: "Wymaga: Żelazo ×2, Skóra ×1" from the product's recipe inputs, or the
-   *  no-materials label for an input-less craft; empty when the inputs are unknown (no recipe). */
+  /** The hover tooltip's ingredient list — one "- Żelazo ×2" line per recipe input (newline-joined; the
+   *  panel prefixes the product name line), or the no-materials label for an input-less craft; empty
+   *  when the inputs are unknown (no recipe). */
   readonly inputs: string;
 }
 
@@ -321,14 +322,12 @@ export function productionModel(
   return { kind: 'recipe', rows };
 }
 
-/** A recipe's inputs as the tooltip line — "Wymaga: Żelazo ×2, Skóra ×1", or the no-materials label
- *  for an input-less craft (the well). */
+/** A recipe's inputs as the tooltip's ingredient lines — one "- Żelazo ×2" per line — or the
+ *  no-materials label for an input-less craft (the well). */
 function recipeInputsLabel(
   ctx: UnitPanelModelContext,
   inputs: readonly { goodType: number; amount: number }[],
 ): string {
-  const hud = messages().hud;
-  if (inputs.length === 0) return hud.recipeNoInputs;
-  const list = inputs.map((i) => `${goodLabel(ctx, i.goodType)} ×${i.amount}`).join(', ');
-  return `${hud.recipeNeeds}: ${list}`;
+  if (inputs.length === 0) return messages().hud.recipeNoInputs;
+  return inputs.map((i) => `- ${goodLabel(ctx, i.goodType)} ×${i.amount}`).join('\n');
 }

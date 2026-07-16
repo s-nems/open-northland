@@ -1,7 +1,7 @@
 import { WIN_PAD } from '../../chrome.js';
 import type { Rect } from '../../geometry.js';
 import type { UnitPanelModel } from '../model/index.js';
-import { stockTabRects } from '../stock-tabs.js';
+import { DETAILS_STOCK_TAB_COUNT, stockTabRects } from '../stock-tabs.js';
 import { PANEL_W, panelRect, ROW_H, SECTION_GAP, type SectionRect, sectionAt } from './shared.js';
 
 /** The building selection model — the `layoutBuilding` input narrowed off the panel model union. */
@@ -232,7 +232,7 @@ export function layoutBuilding(
       w: stock.body.w,
       h: Math.round(STOCK_TAB_H * s),
     };
-    stockTabHits = stockTabRects(stockTabStrip, s);
+    stockTabHits = stockTabRects(stockTabStrip, s, DETAILS_STOCK_TAB_COUNT);
   }
   const workers = next(workersBodyH);
 

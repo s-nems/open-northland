@@ -21,7 +21,7 @@ import {
 } from './layout/index.js';
 import { buildUnitPanelModel, type UnitPanelModel, type UnitPanelModelContext } from './model/index.js';
 import { drawBuilding, drawCompact, drawSettler } from './sections/index.js';
-import { stockTabLabels } from './stock-tabs.js';
+import { ALL_STOCK_TAB, detailsStockTabLabels, visibleStockRows } from './stock-tabs.js';
 import { WorkerSpriteOverlay } from './worker-sprites.js';
 
 /**
@@ -100,13 +100,6 @@ export interface UnitPanel {
   dispose(): void;
 }
 
-/** The stock category tab a freshly-selected building opens on: the first (lowest-index) category that
- *  holds any of its goods, so the panel lands on the leading tab (Żywność for a general store) rather than
- *  on whichever category happens to be fullest. */
-export function defaultStockTab(model: UnitPanelModel): number {
-  if (model.kind !== 'building' || model.stock.length === 0) return 0;
-  return Math.min(...model.stock.map((row) => row.category));
-}
 
 export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel> {
   const { app, canvas } = opts;
@@ -153,8 +146,9 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
    *  rebuild refresh a still cursor's tooltip with live values (a held hover must not show a stale
    *  "80%" while the bar drains; user feedback 2026-07-11). */
   let lastPointer: { clientX: number; clientY: number } | null = null;
-  /** The selected stock category tab (0–7); reset to the leading category (`defaultStockTab`) on each new selection. */
-  let activeStockTab = 0;
+  /** The selected stock tab ("Wszystkie" + the eight categories); every new selection opens on the
+   *  "Wszystkie" view (held goods, fullest first) so a general store shows its contents at a glance. */
+  let activeStockTab = ALL_STOCK_TAB;
 
   /** Fresh draw-order layers over an off-screen container (baked to a texture): fills, graphics, frames, glyphs. */
   const makeLayers = (into: Container): PanelLayers => {
@@ -231,9 +225,9 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
       model.kind === 'building' || model.kind === 'settler' ? `${model.kind}:${model.entityId}` : model.kind;
     const structural = force || structureKey !== lastStructureKey;
     if (!structural && performance.now() - lastRebuildAt < VALUE_REBUILD_MIN_MS) return;
-    // A new selection opens the stock view on its leading category, so the panel never lands on an empty
-    // tab (with a store's goods spread across tabs, tab 0 may hold none of this building's stock).
-    if (structural) activeStockTab = defaultStockTab(model);
+    // A new selection opens the stock view on "Wszystkie" — never an empty tab, and a general store
+    // reads its actual contents immediately.
+    if (structural) activeStockTab = ALL_STOCK_TAB;
     lastModelKey = key;
     lastStructureKey = structureKey;
     rebuild(model);
@@ -339,9 +333,12 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
       contains(r, x, y),
     );
     if (slot < 0) return null;
-    const rows = (
-      layout.stockCompact ? lastModel.stock : lastModel.stock.filter((row) => row.category === activeStockTab)
-    ).slice(0, layout.stockRows * 2);
+    // The same row source the section draws from (visibleStockRows), so a hovered slot names exactly
+    // the drawn good.
+    const rows = visibleStockRows(lastModel.stock, layout.stockCompact, activeStockTab).slice(
+      0,
+      layout.stockRows * 2,
+    );
     return rows[slot]?.label ?? null;
   };
 
@@ -373,14 +370,15 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     );
   };
 
-  /** The hovered Produkcja row's recipe-inputs line ("Krótki miecz — Wymaga: Żelazo ×2"), or null. */
+  /** The hovered Produkcja row's recipe card ("Krótki Miecz:" then one "- Żelazo ×2" line per input),
+   *  or null. */
   const productionRowHint = (x: number, y: number): string | null => {
     if (layout?.kind !== 'building' || lastModel.kind !== 'building') return null;
     if (lastModel.production?.kind !== 'recipe') return null;
     const i = layout.productionRowRects.findIndex((r) => contains(r, x, y));
     const row = i < 0 ? undefined : lastModel.production.rows[i];
     if (row === undefined || row.inputs.length === 0) return null;
-    return `${row.label} — ${row.inputs}`;
+    return `${row.label}:\n${row.inputs}`;
   };
 
   /** Recompute + show/hide the value/name tooltip for the cursor at a client point: a Magazyn stock
@@ -398,7 +396,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     }
     const rowName = hitStockGood(x, y);
     const tab = rowName === null ? hitStockTab(x, y) : null;
-    const tabLabel = tab !== null ? (stockTabLabels()[tab] ?? null) : null;
+    const tabLabel = tab !== null ? (detailsStockTabLabels()[tab] ?? null) : null;
     const text =
       rowName ??
       tabLabel ??
