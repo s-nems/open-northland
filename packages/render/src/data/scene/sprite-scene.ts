@@ -119,7 +119,7 @@ export function buildSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOptio
 export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOptions = {}): SpriteScene {
   const { viewport, elevation, brightness, staticRefs, fogVisible, ghosts, keepIndoorSettlers, portraitRef } =
     opts;
-  const shadeField = brightness !== undefined && brightness.shaded ? brightness : undefined;
+  const shadeField = brightness?.shaded === true ? brightness : undefined;
   const items: MutableDrawItem[] = [];
   const liveRefs = new Set<number>();
   // Target positions for facing mid-swing actors and aiming projectiles: built once per snapshot and
