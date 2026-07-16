@@ -2,10 +2,10 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { buildMapsIndexEntries } from '../vite/maps-index.js';
+import { buildMapsIndexEntries } from '../src/maps-index.js';
 
 /**
- * The dev server's `/maps-index` join (`vite/maps-index.ts`): grids + optional sidecars → menu
+ * The `/maps-index` join (`src/maps-index.ts`): grids + optional sidecars → menu
  * entries. The invariant under test is per-entry tolerance — one malformed sidecar (including the
  * `JSON.parse('null')` trap, which parses successfully) degrades its own entry, never the list.
  */

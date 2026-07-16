@@ -2,10 +2,10 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { buildBobsIndexEntries } from '../vite/bobs-index.js';
+import { buildBobsIndexEntries } from '../src/bobs-index.js';
 
 /**
- * The dev server's `/bobs-index` scan (`vite/bobs-index.ts`): the list the `?icons` gallery browses.
+ * The `/bobs-index` scan (`src/bobs-index.ts`): the list the `?icons` gallery browses.
  * Invariants: only VIEWABLE RGBA atlases (a `<stem>.atlas.json` WITH a matching `<stem>.png`, and NOT
  * an `.indexed` sheet) are listed, split into base + palette variant, sorted by (base, variant).
  */
