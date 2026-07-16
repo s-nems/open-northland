@@ -1,5 +1,9 @@
 import type { SpriteLayer, SpriteSheet } from '@open-northland/render';
-import { DEFAULT_CHARACTER_PALETTE, INDEXED_CHARACTER_PALETTE } from '../../catalog/roster.js';
+import {
+  DEFAULT_CHARACTER_PALETTE,
+  INDEXED_CHARACTER_PALETTE,
+  PLAYER_COLOR_COUNT,
+} from '../../catalog/roster.js';
 import {
   BUILDING_FAMILIES,
   BUILDING_SCALE,
@@ -12,15 +16,7 @@ import {
   VIKING_TRIBE,
 } from '../building-gfx/index.js';
 import { loadGoodsIconManifest } from '../goods-gfx.js';
-import {
-  BODY_IMAGELIB,
-  loadGuidepostLut,
-  loadIr,
-  loadLayer,
-  loadPlayerLut,
-  MissingAtlasError,
-  sequencesFor,
-} from '../ir.js';
+import { BODY_IMAGELIB, loadIr, loadLayer, loadPlayerLut, MissingAtlasError, sequencesFor } from '../ir.js';
 import {
   berryBushAtlasStems,
   buildBerryBushBinding,
@@ -52,13 +48,14 @@ import { loadCharacters } from './characters.js';
 const HUMAN_BODY_ATLAS = 'cr_hum_body_00.test_human_00';
 const HUMAN_HEAD_ATLAS = 'cr_hum_head_00.test_human_00';
 
-/** The scout's guidepost atlases (the pipeline's hand-authored `ls_guidepost` binding — engine-bound in
- *  the original): bob 0 the post, bobs 1..18 the direction board in ~20° angular steps around the post
- *  top. The indexed variant + the guidepost LUT recolour it per owner (the original draws the guidepost
- *  through the player's full palette — the board lettering is the team colour); the baked `bridge01`
- *  variant is the single-colour fallback for a pipeline output that predates the LUT. */
-const GUIDEPOST_ATLAS_INDEXED = 'ls_guidepost.indexed';
+/** The scout's guidepost atlases (engine-bound in the original): bob 0 the post, bobs 1..18 the
+ *  direction board in ~20° angular steps around the post top. Each owner draws its own
+ *  `ls_guidepost.player_NN` bake (the original decodes the guidepost through the player's full palette
+ *  — the board lettering is the team colour; baked rather than indexed+LUT so the bob's graded edge
+ *  alpha survives). The `bridge01` bake is the single-colour fallback for older pipeline output. */
 const GUIDEPOST_ATLAS_BAKED = 'ls_guidepost.bridge01';
+const guidepostPlayerAtlas = (player: number): string =>
+  `ls_guidepost.player_${String(player).padStart(2, '0')}`;
 const GUIDEPOST_POST_BOB = 0;
 const GUIDEPOST_BOARD_BOBS = Array.from({ length: 18 }, (_, i) => i + 1);
 
@@ -109,10 +106,6 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
   // real-graphics path still draws (just single-coloured). One indexed atlas + one LUT serve every player.
   const lut = await loadPlayerLut();
   const characterPalette = lut !== undefined ? INDEXED_CHARACTER_PALETTE : DEFAULT_CHARACTER_PALETTE;
-  // The guidepost's own LUT (full player palettes) — present ⇒ load the indexed guidepost atlas and
-  // recolour each signpost per its owner; absent ⇒ the baked single-colour guidepost.
-  const guidepostLut = await loadGuidepostLut();
-  const guidepostAtlas = guidepostLut !== undefined ? GUIDEPOST_ATLAS_INDEXED : GUIDEPOST_ATLAS_BAKED;
   // Per-job characters (the `[jobbasegraphics]` join): built after the hard-required layers above so a
   // missing extra body degrades per look, never failing the sheet. `undefined` (no IR sequences / no
   // civilian look) keeps the legacy single-body settler path.
@@ -162,7 +155,10 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
   const stems = gatheringAtlasStems(gatheringRefs);
   if (stumpRef !== undefined) stems.add(stumpRef.stem);
   for (const s of berryBushAtlasStems(berryBushRefs)) stems.add(s);
-  stems.add(guidepostAtlas); // the signpost family rides the same load-then-drop-unloaded contract
+  // The signpost families ride the same load-then-drop-unloaded contract: every per-player bake plus
+  // the single-colour fallback (all tiny — 19 small bobs each).
+  stems.add(GUIDEPOST_ATLAS_BAKED);
+  for (let p = 0; p < PLAYER_COLOR_COUNT; p++) stems.add(guidepostPlayerAtlas(p));
   const { families: gatheringFamilies, loaded: gatheringLoaded } = await loadGatheringFamilies(stems);
   // The frame ids each loaded family atlas actually holds — lets the node reducer mark a level whose bob
   // the source record points outside its own atlas (the original's "invisible state" sentinel — freshly-
@@ -182,16 +178,30 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
   // One family map: the building families + the gathering families. Their served stems are disjoint
   // (`ls_houses_*` vs `ls_ground`/`ls_goods`/`ls_temp`/`ls_mushrooms`), so the merge never collides.
   const families = { ...buildingFamilies, ...gatheringFamilies };
-  // The signpost binding: layer-qualified refs into the guidepost family, emitted only when its atlas
+  // The signpost binding: layer-qualified refs into the guidepost families, emitted only when an atlas
   // actually loaded (an unbound signpost falls back to the pool placeholder, like every family miss).
-  const signpostBinding = gatheringLoaded.has(guidepostAtlas)
-    ? {
-        signpost: {
-          post: { layer: guidepostAtlas, bob: GUIDEPOST_POST_BOB },
-          boards: GUIDEPOST_BOARD_BOBS.map((bob) => ({ layer: guidepostAtlas, bob })),
-        },
-      }
-    : {};
+  // Each owner's post/boards resolve into that player's bake via `byPlayer`; the base frames (an unowned
+  // item / a missing per-player bake) come from player 0's bake, else the single-colour fallback.
+  const guidepostFrames = (layer: string) => ({
+    post: { layer, bob: GUIDEPOST_POST_BOB },
+    boards: GUIDEPOST_BOARD_BOBS.map((bob) => ({ layer, bob })),
+  });
+  const guidepostPlayerLayers = Array.from({ length: PLAYER_COLOR_COUNT }, (_, p) => {
+    const stem = guidepostPlayerAtlas(p);
+    return gatheringLoaded.has(stem) ? stem : undefined;
+  });
+  const guidepostBaseLayer =
+    guidepostPlayerLayers[0] ??
+    (gatheringLoaded.has(GUIDEPOST_ATLAS_BAKED) ? GUIDEPOST_ATLAS_BAKED : undefined);
+  const signpostBinding =
+    guidepostBaseLayer !== undefined
+      ? {
+          signpost: {
+            ...guidepostFrames(guidepostBaseLayer),
+            byPlayer: guidepostPlayerLayers.map((l) => (l === undefined ? undefined : guidepostFrames(l))),
+          },
+        }
+      : {};
   return {
     source: body.source,
     atlas: body.atlas,
@@ -227,10 +237,5 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
     // Team-colour LUT: present ⇒ characters are the indexed atlas and the pool paints each per its player
     // (SpritePool's PalettedSprite path); absent ⇒ the baked characters draw as plain sprites.
     ...(lut !== undefined ? { palette: { source: lut, colours: lut.pixelHeight } } : {}),
-    // The guidepost's LUT — only alongside its loaded indexed atlas, so the pool never paints a baked
-    // guidepost through a palette (the pair degrades together).
-    ...(guidepostLut !== undefined && gatheringLoaded.has(GUIDEPOST_ATLAS_INDEXED)
-      ? { signpostPalette: { source: guidepostLut, colours: guidepostLut.pixelHeight } }
-      : {}),
   };
 }

@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { packIndexedBobAtlas } from '../decoders/atlas.js';
+import { packBobAtlas, packIndexedBobAtlas } from '../decoders/atlas.js';
 import { decodeBmd } from '../decoders/bmd/index.js';
 import { type BmdPaletteBinding, normalizeAssetPath } from '../decoders/ini.js';
 import { decodePcx } from '../decoders/pcx.js';
@@ -36,14 +36,12 @@ const BASE_PALETTE_PCX = 'test_human_00.pcx';
 const SYNTHETIC_REFERENCE_PCX = 'player01.pcx';
 /** Human character bobs get the recolourable indexed atlas; everything else keeps its baked RGB atlas. */
 const CHARACTER_BMD_RE = /(^|\/)cr_hum_/i;
-/**
- * The scout's guidepost also takes the indexed path: in the original it is drawn through the player's own
- * full palette (source basis: the board-text indices 23–30 sit inside the `playerNN.pcx` player ramp
- * 16–31 — blue for player 1, red for player 2 — and those palettes carry a brown wood ramp at the
- * guidepost's body indices 131–141), so the board lettering is the team colour. It reads a separate LUT
- * ({@link convertGuidepostLut}) built from the full player palettes, not the composed body palettes.
- */
-const GUIDEPOST_BMD_RE = /(^|\/)ls_guidepost\.bmd$/i;
+/** The guidepost bob — drawn through the player's own FULL palette in the original (source basis: the
+ *  board-text indices 23–30 sit inside the `playerNN.pcx` player ramp — blue for player 1, red for
+ *  player 2 — and those palettes carry the wood ramp at the body indices 131–141). Unlike the character
+ *  bobs it has heavily graded edge alpha (25% of its visible pixels), which the binary-alpha indexed
+ *  path would shred — so it gets per-player BAKED atlases instead ({@link convertGuidepostPlayerAtlases}). */
+const GUIDEPOST_BMD = 'data/engine2d/bin/bobs/ls_guidepost.bmd';
 
 /**
  * Read a `creatures/<file>.pcx` 768-byte trailer palette from the unpacked tree, resolved case-insensitively
@@ -96,26 +94,29 @@ export async function convertPlayerColorLut(outDir: string): Promise<PlayerColor
 }
 
 /**
- * Build the guidepost's 16-row LUT (`bobs/guidepost-lut.png`): each row is one player's FULL palette —
- * the shipped `playerNN.pcx` verbatim for the faithful ten, the hue-rotated reference for the six
- * synthetic extras — because the guidepost bob reads every lane (wood, lettering, ground) from the
- * player palette, unlike the characters whose LUT swaps only the clothing bands into a body base.
+ * Bake one guidepost atlas per player (`ls_guidepost.player_NN.{png,atlas.json}`): the bob decoded
+ * through that player's FULL palette — the shipped `playerNN.pcx` verbatim for the faithful ten, the
+ * hue-rotated reference for the six synthetic extras. Baked (not indexed+LUT) because the guidepost's
+ * graded edge alpha survives only the RGB bake; the atlases are tiny (19 small bobs), so 16 of them
+ * cost nothing next to one house sheet. Returns the emitted per-player atlas count.
  */
-export async function convertGuidepostLut(outDir: string): Promise<PlayerColorLutResult> {
+export async function convertGuidepostPlayerAtlases(outDir: string): Promise<number> {
   const tree = await indexOutTree(outDir);
+  const onDisk = tree.get(normalizeAssetPath(GUIDEPOST_BMD));
+  if (onDisk === undefined) throw new Error('guidepost atlases: ls_guidepost.bmd not found under out');
+  const bmd = decodeBmd(await readFile(join(outDir, onDisk)));
   const reference = await readCreaturePalette(outDir, tree, SYNTHETIC_REFERENCE_PCX);
-  const palettes: Uint8Array[] = [];
+  let emitted = 0;
   for (const color of PLAYER_COLORS) {
-    palettes.push(
+    const palette =
       color.source.kind === 'pcx'
         ? await readCreaturePalette(outDir, tree, color.source.file)
-        : synthesizePlayerSource(reference, color.source.hue),
-    );
+        : synthesizePlayerSource(reference, color.source.hue);
+    const suffix = `player_${String(color.id).padStart(2, '0')}`;
+    await writeAtlasBeside(outDir, onDisk, suffix, packBobAtlas(bmd, palette));
+    emitted++;
   }
-  await mkdir(join(outDir, BOBS_DIR), { recursive: true });
-  const pngRel = join(BOBS_DIR, 'guidepost-lut.png');
-  await writeFile(join(outDir, pngRel), encodePng(buildPlayerLutImage(palettes)));
-  return { png: pngRel, colors: palettes.length };
+  return emitted;
 }
 
 /**
@@ -131,8 +132,7 @@ export async function convertIndexedCharacterAtlases(
   const tree = await indexOutTree(outDir);
   const characterBmds = new Set<string>();
   for (const b of bindings) {
-    const recolourable = CHARACTER_BMD_RE.test(b.bmd) || GUIDEPOST_BMD_RE.test(b.bmd);
-    if (recolourable && /\.bmd$/i.test(b.bmd)) characterBmds.add(b.bmd);
+    if (CHARACTER_BMD_RE.test(b.bmd) && /\.bmd$/i.test(b.bmd)) characterBmds.add(b.bmd);
   }
   const done: string[] = [];
   for (const bmdRef of characterBmds) {

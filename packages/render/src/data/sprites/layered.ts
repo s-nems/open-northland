@@ -212,8 +212,10 @@ export function resolveSignpostDraw(
   item: DrawItem,
 ): BuildingDraw | null {
   if (binding === undefined) return null;
-  if (item.boardIndex === undefined) return unwrapBobRef(binding.post);
-  const board = binding.boards[Math.min(binding.boards.length - 1, Math.max(0, item.boardIndex))];
+  // The owner's recolour variant when one is bound (the per-player baked atlas); else the base frames.
+  const b = (item.player !== undefined ? binding.byPlayer?.[item.player] : undefined) ?? binding;
+  if (item.boardIndex === undefined) return unwrapBobRef(b.post);
+  const board = b.boards[Math.min(b.boards.length - 1, Math.max(0, item.boardIndex))];
   return board === undefined ? null : unwrapBobRef(board);
 }
 
