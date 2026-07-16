@@ -54,3 +54,8 @@ export function contentDirOf(dataRoot: string): string {
 export function configFileOf(dataRoot: string): string {
   return join(dataRoot, 'desktop-config.json');
 }
+
+/** Where downloaded mods live under a data root (`mods/<name>/DataCnmd/…`) — never the game folder. */
+export function modsDirOf(dataRoot: string): string {
+  return join(dataRoot, 'mods');
+}

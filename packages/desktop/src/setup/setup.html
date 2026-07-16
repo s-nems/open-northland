@@ -23,6 +23,23 @@
           <button id="browse" type="button">Browse…</button>
         </div>
         <p id="probe-note" class="note"></p>
+        <div id="mod-panel" class="mod-panel hidden">
+          <p class="note">
+            The free community mod <strong>CulturesNation</strong> is required to play, and your game
+            folder does not have it. Open Northland can download it for you (~600 MB, from
+            <code>culturesnation.pl</code>) into its data folder — your game folder stays untouched.
+          </p>
+          <div class="actions">
+            <button id="mod-download" type="button" class="primary">Download the mod</button>
+            <button id="mod-pick" type="button">I already have it…</button>
+          </div>
+          <div id="mod-progress" class="hidden">
+            <div class="bar"><div id="mod-bar-fill" class="bar-fill"></div></div>
+            <p class="status-row"><span id="mod-stage"></span><span id="mod-count"></span></p>
+            <div class="actions"><button id="mod-cancel" type="button">Cancel</button></div>
+          </div>
+          <p id="mod-note" class="note"></p>
+        </div>
         <div id="detected" class="detected hidden">
           <p class="note">Found on this computer:</p>
           <div id="detected-list"></div>

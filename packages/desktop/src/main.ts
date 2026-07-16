@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import {
-  CULTURESNATION_MOD,
+  CULTURESNATION_HOME_URL,
   CURRENT_MANIFEST,
   probeGameFolder,
   readPipelineManifest,
@@ -10,9 +10,10 @@ import { app, BrowserWindow, dialog, ipcMain, Menu, shell } from 'electron';
 import { readConfig, writeConfig } from './config.js';
 import { type ContentStatus, classifyContent } from './content-state.js';
 import { detectGameFolders } from './detect.js';
-import type { DesktopState, GameFolderCandidate, PipelineEvent } from './ipc.js';
+import type { DesktopState, GameFolderCandidate, ModEvent, PipelineEvent } from './ipc.js';
 import { IPC_CHANNELS } from './ipc.js';
-import { configFileOf, contentDirOf, DATA_DIR_ENV, resolveDataRoot } from './paths.js';
+import { discoverInstalledMod, findModRootUnder, installCnMod } from './mod-install.js';
+import { configFileOf, contentDirOf, DATA_DIR_ENV, modsDirOf, resolveDataRoot } from './paths.js';
 import { PipelineHost } from './pipeline-host.js';
 import { GAME_URL, handleAppProtocol, registerAppScheme, SETUP_URL } from './protocol.js';
 
@@ -40,8 +41,22 @@ const dataRoot = resolveDataRoot({
 });
 const contentDir = contentDirOf(dataRoot.path);
 const configFile = configFileOf(dataRoot.path);
+const modsDir = modsDirOf(dataRoot.path);
 
 const pipeline = new PipelineHost(join(here, 'pipeline-child.cjs'));
+
+/**
+ * A usable mod root outside the game folder: the config's hand-picked folder (re-validated — the
+ * user may have deleted it) first, then a mod downloaded into the data root's `mods/`.
+ */
+async function availableModRoot(): Promise<string | undefined> {
+  const remembered = readConfig(configFile).modPath;
+  if (remembered !== undefined) {
+    const validated = await findModRootUnder(remembered);
+    if (validated !== undefined) return validated;
+  }
+  return discoverInstalledMod(modsDir);
+}
 
 /** Compare the data root's conversion stamp to this shell's pipeline; see `content-state.ts`. */
 async function contentStatus(): Promise<ContentStatus> {
@@ -51,11 +66,13 @@ async function contentStatus(): Promise<ContentStatus> {
 
 async function desktopState(): Promise<DesktopState> {
   const remembered = readConfig(configFile).gamePath;
+  const modRoot = await availableModRoot();
   return {
     dataRoot: dataRoot.path,
     portable: dataRoot.portable,
     contentStatus: await contentStatus(),
     ...(remembered !== undefined ? { gamePath: remembered } : {}),
+    ...(modRoot !== undefined ? { modRoot } : {}),
   };
 }
 
@@ -162,20 +179,62 @@ function wireIpc(win: BrowserWindow): void {
     assertString(gamePath);
     const probe = await probeGameFolder(gamePath);
     if (!probe.hasArchives) throw new Error('no game archives (.lib) found under the selected folder');
-    pipeline.start(
-      gamePath,
-      contentDir,
-      probe.hasMod ? CULTURESNATION_MOD : undefined,
-      (event: PipelineEvent) => {
-        if (!win.isDestroyed()) win.webContents.send(IPC_CHANNELS.pipelineEvent, event);
-      },
-    );
+    // A mod inside the game folder is auto-detected by the pipeline; otherwise pass the external
+    // mod root — the conversion is materially incomplete without the mod, so none anywhere is an error.
+    const modRoot = probe.hasMod ? undefined : await availableModRoot();
+    if (!probe.hasMod && modRoot === undefined) {
+      throw new Error(
+        'the culturesnation mod is required — download it below, or point the wizard at an unpacked copy',
+      );
+    }
+    pipeline.start(gamePath, contentDir, modRoot, (event: PipelineEvent) => {
+      if (!win.isDestroyed()) win.webContents.send(IPC_CHANNELS.pipelineEvent, event);
+    });
     // Remembered only after start() accepted the run — a double-start throw must not clobber it.
-    writeConfig(configFile, { gamePath });
+    writeConfig(configFile, { ...readConfig(configFile), gamePath });
   });
   ipcMain.handle(IPC_CHANNELS.stopPipeline, (ev) => {
     assertAppSender(ev);
     return pipeline.stop();
+  });
+  let modDownload: AbortController | undefined;
+  ipcMain.handle(IPC_CHANNELS.downloadMod, async (ev) => {
+    assertAppSender(ev);
+    if (modDownload !== undefined) throw new Error('mod download already running');
+    modDownload = new AbortController();
+    try {
+      return await installCnMod(
+        modsDir,
+        (event: ModEvent) => {
+          if (!win.isDestroyed()) win.webContents.send(IPC_CHANNELS.modEvent, event);
+        },
+        { signal: modDownload.signal },
+      );
+    } finally {
+      modDownload = undefined;
+    }
+  });
+  ipcMain.handle(IPC_CHANNELS.cancelModDownload, (ev) => {
+    assertAppSender(ev);
+    modDownload?.abort();
+  });
+  ipcMain.handle(IPC_CHANNELS.pickModFolder, async (ev) => {
+    assertAppSender(ev);
+    const picked = await dialog.showOpenDialog(win, {
+      title: 'Select the unpacked CulturesNation mod folder',
+      properties: ['openDirectory'],
+    });
+    const path = picked.filePaths[0];
+    if (picked.canceled || path === undefined) return null;
+    // Accept the mod root itself, its wrapping folder, or a directly-picked DataCnmd child.
+    const root = (await findModRootUnder(path)) ?? (await findModRootUnder(dirname(path)));
+    if (root === undefined) {
+      throw new Error(
+        `no DataCnmd/ found there — pick the unpacked mod folder (download it from ${CULTURESNATION_HOME_URL})`,
+      );
+    }
+    writeConfig(configFile, { ...readConfig(configFile), modPath: root });
+    return root;
   });
   ipcMain.handle(IPC_CHANNELS.startGame, async (ev) => {
     assertAppSender(ev);
