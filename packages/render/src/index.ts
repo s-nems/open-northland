@@ -1,8 +1,8 @@
 export type { TextureSource } from 'pixi.js';
 export { type BrightnessField, makeBrightnessField } from './data/brightness.js';
 export { type ElevationField, makeElevationField } from './data/elevation.js';
-export { composeShadingLane } from './data/hillshade.js';
 export { FOG_EXPLORED_ALPHA, FOG_UNEXPLORED_ALPHA, fogTileVisible } from './data/fog.js';
+export { composeShadingLane } from './data/hillshade.js';
 export {
   buildHud,
   type HudCorner,

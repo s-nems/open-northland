@@ -102,7 +102,11 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   }
   // Retained renderer: mesh the terrain once, reuse a pooled sprite graph each frame (no per-frame
   // object churn) so large maps + deep zoom-out stay within the GPU budget.
-  const renderer = new WorldRenderer(app, { sheet, viewSmoothing: true });
+  const renderer = new WorldRenderer(app, {
+    sheet,
+    viewSmoothing: true,
+    postFx: params.get('postfx') !== 'off',
+  });
   renderer.setTerrain(terrainGrid, terrain);
   // A decoded map's placed landscape objects (trees/stones/mine decals + the animated wave fx that
   // are the original's water surface) — resolved through the landscapeGfx IR + the /bobs atlases.
