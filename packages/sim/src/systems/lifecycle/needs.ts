@@ -84,11 +84,11 @@ export const STARVATION_BITES_TO_DIE = 240;
  * Each tick every {@link Settler}'s `hunger` and `fatigue` rise by their rate above, and `enjoyment` too for
  * every non-fighter (a soldier's/hero's company need is frozen — {@link isFighterJob}, user rule). Each is
  * clamped at `ONE` (a fully-spent settler stays pinned at the top of its bar until it acts — the
- * `hungerInRange`/`fatigueInRange`/`pietyInRange`/`enjoymentInRange` invariants require the need ∈ [0, ONE]).
- * `piety` does NOT rise here: it climbs only when the settler forges a weapon/armor good
- * ({@link chargeMilitaryPiety}, driven by ProductionSystem) and resets at a temple (the `pray` drive). Every
- * named non-food need has its atomic reset wired (sleep/pray/enjoy/make_love); only the eat, sleep, and pray
- * *drives* exist so far.
+ * `hungerInRange`/`fatigueInRange`/`enjoymentInRange` invariants require the need ∈ [0, ONE]). `piety` is not
+ * touched here: it climbs only when the settler forges a weapon/armor good ({@link chargeMilitaryPiety},
+ * driven by ProductionSystem, which applies its own `pietyInRange` clamp) and resets at a temple (the `pray`
+ * drive). Every named non-food need has its atomic reset wired (sleep/pray/enjoy/make_love); only the eat,
+ * sleep, and pray *drives* exist so far.
  *
  * Starvation: a settler whose hunger is pinned at `ONE` loses hitpoints on the
  * {@link STARVATION_DAMAGE_INTERVAL_TICKS} beat until the eat drive feeds it or the pool empties (the
