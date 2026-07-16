@@ -34,6 +34,7 @@ export const plGame = {
     returnToMenu: 'Wróć do menu',
     closeMenu: 'Zamknij',
     downloadDiagnostics: 'Pobierz raport diagnostyczny',
+    downloadTrace: 'Pobierz zapis wydajności',
     crashTitle: 'Gra napotkała błąd',
     crashHint: 'Pobierz raport i załącz go do zgłoszenia błędu.',
     fieldCounters: 'Posiane {sown} · Rosnące {growing} · Dojrzałe {ripe}',
