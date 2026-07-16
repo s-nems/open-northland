@@ -8,6 +8,7 @@ import {
   parseIniSections,
   type RuleSection,
 } from '../../decoders/ini.js';
+import type { StageItemReporter } from '../../progress.js';
 import { collectFilesNamed } from '../../walk.js';
 import { findPathCaseInsensitive } from './case-path.js';
 import { mapIdFromPath } from './info.js';
@@ -58,10 +59,15 @@ export interface MapDatConversion {
  * together. (A localization sub-folder like `WICHRY_ZIMY/text/map.dat` likewise slugs to `text`; that
  * too matches the existing `map.cif` behavior.)
  */
-export async function convertMapDatTree(gameDir: string, outDir: string): Promise<MapDatConversion[]> {
+export async function convertMapDatTree(
+  gameDir: string,
+  outDir: string,
+  onItem?: StageItemReporter,
+): Promise<MapDatConversion[]> {
   const found = await collectFilesNamed(gameDir, 'map.dat');
   const done: MapDatConversion[] = [];
-  for (const rel of found) {
+  for (const [processed, rel] of found.entries()) {
+    onItem?.(processed, found.length);
     const id = mapIdFromPath(rel);
     let terrain: MapDatTerrainFile;
     try {

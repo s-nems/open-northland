@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, relative } from 'node:path';
 import { decodePcx, expandToRgba } from '../decoders/pcx.js';
 import { encodePng } from '../decoders/png.js';
+import type { StageItemReporter } from '../progress.js';
 import { walkFiles } from '../walk.js';
 import { readGameFile, TEXTURES_DIR } from './game-file.js';
 
@@ -92,7 +93,11 @@ export async function composeMaskedTransitionPages(
  * An output-write failure (and a missing/unreadable `gameDir`) propagates instead: that's an
  * environmental error, not a per-file boundary failure, and should fail loudly rather than be lost.
  */
-export async function convertPcxTree(gameDir: string, outDir: string): Promise<PcxConversion[]> {
+export async function convertPcxTree(
+  gameDir: string,
+  outDir: string,
+  onItem?: StageItemReporter,
+): Promise<PcxConversion[]> {
   const done: PcxConversion[] = [];
   for await (const file of walkFiles(gameDir)) {
     if (!file.toLowerCase().endsWith('.pcx')) continue;
@@ -109,6 +114,7 @@ export async function convertPcxTree(gameDir: string, outDir: string): Promise<P
     await mkdir(dirname(outPath), { recursive: true });
     await writeFile(outPath, png);
     done.push({ input, output });
+    onItem?.(done.length);
   }
   return done;
 }
