@@ -69,6 +69,13 @@ export class PortraitInsetLayer {
     this.frame = frame;
   }
 
+  /** The entity the portrait is centred on, so the sprite pool can force-draw it through the cull (its
+   *  cutout must survive the subject scrolling off-screen or stepping inside a building). Null when no
+   *  portrait is set. */
+  subjectRef(): number | null {
+    return this.frame?.entityRef ?? null;
+  }
+
   /**
    * The inset camera framing (world centre + px-per-world scale) for the portrait's entity, or `null` when
    * it wasn't drawn this frame (off-screen / culled). A building fits its static drawn bounds in the box; a
@@ -147,7 +154,32 @@ export class PortraitInsetLayer {
     this.pool.placePalettedFor(insetCamera, w, h, true);
     this.worldLayer.scale.set(scale);
     this.worldLayer.position.set(insetCamera.offsetX, insetCamera.offsetY);
-    this.app.renderer.render({ container: this.worldLayer, target: this.texture, clear: true });
+    // Reveal the subject if the pool force-hid it on the main map (off-screen / inside a building), draw
+    // the cutout, then hide it again so the main stage render below still omits it.
+    this.pool.showPortraitSubject();
+    // An indoor subject (frozen, standing in its workplace) renders ALONE on the transparent cutout: blank
+    // every world layer but the one holding the subject, and let the pool hide the subject's sprite-layer
+    // siblings — otherwise the building it stands in draws behind it and it reads as standing on the roof.
+    const subjectContainer = this.pool.portraitSubjectContainer();
+    const soloParent =
+      this.pool.portraitSubjectIsIndoor() && subjectContainer !== null ? subjectContainer.parent : null;
+    let worldSaved: { child: { visible: boolean }; wasVisible: boolean }[] | null = null;
+    if (soloParent !== null) {
+      worldSaved = this.worldLayer.children.map((child) => ({ child, wasVisible: child.visible }));
+      for (const child of this.worldLayer.children) if (child !== soloParent) child.visible = false;
+      this.pool.beginPortraitSolo();
+    }
+    // Restore every visibility toggle even if the render throws, so a failed cutout can't leave a real unit
+    // hidden on the main map or the pool's solo bookkeeping stale for the next frame.
+    try {
+      this.app.renderer.render({ container: this.worldLayer, target: this.texture, clear: true });
+    } finally {
+      if (worldSaved !== null) {
+        this.pool.endPortraitSolo();
+        for (const { child, wasVisible } of worldSaved) child.visible = wasVisible;
+      }
+      this.pool.hidePortraitSubject();
+    }
     this.worldLayer.scale.set(savedScale);
     this.worldLayer.position.set(savedX, savedY);
     this.pool.placePalettedFor(mainCamera, this.app.screen.width, this.app.screen.height, false);

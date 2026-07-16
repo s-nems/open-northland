@@ -42,10 +42,13 @@ export function buildingDef(ctx: UnitPanelModelContext, typeId: number | undefin
   return ctx.buildings.find((b) => b.typeId === typeId);
 }
 
-/** A building def's production outputs: its recipe outputs, else a unit-amount entry per `produces` good,
- *  else empty — the one source the settler Praca product and the building Produkcja list must agree on. */
+/** A building def's production outputs: one line per per-product recipe (its first output), else a
+ *  unit-amount entry per `produces` good, else empty — the one source the settler Praca product and
+ *  the building Produkcja list must agree on. */
 export function recipeOutputs(def: BuildingDef | undefined): { goodType: number; amount: number }[] {
-  return def?.recipe?.outputs ?? def?.produces?.map((goodType) => ({ goodType, amount: 1 })) ?? [];
+  const fromRecipes = def?.recipes.flatMap((r) => r.outputs) ?? [];
+  if (fromRecipes.length > 0) return fromRecipes;
+  return def?.produces?.map((goodType) => ({ goodType, amount: 1 })) ?? [];
 }
 
 export function buildingTitle(ctx: UnitPanelModelContext, typeId: number | undefined): string {

@@ -65,7 +65,7 @@ export function placementContent(): ContentSet {
           { goodType: 1, capacity: 10, initial: 0 },
           { goodType: 2, capacity: 10, initial: 0 },
         ],
-        recipe: { inputs: [{ goodType: 1, amount: 1 }], outputs: [{ goodType: 2, amount: 1 }], ticks: 20 },
+        recipes: [{ inputs: [{ goodType: 1, amount: 1 }], outputs: [{ goodType: 2, amount: 1 }], ticks: 20 }],
         footprint: HUT_FOOTPRINT,
       },
     ],

@@ -152,10 +152,39 @@ game copy and is gitignored. Therefore tests use the **committed synthetic fixtu
 (`packages/sim/test/fixtures/content.ts`) — hand-authored, no copyrighted data. Keep it in lockstep
 with the schema. Never make a golden test depend on generated `content/`.
 
+## Real-content test modes (manual, local — `test:content` / `test:pipeline`)
+
+The pyramid above proves the sim against the synthetic fixture; a separate class of regression is
+schema-valid content the game economically dies on (raw id-space joins, zeroed balance nobody
+overlays, a field good that neither farms nor produces). Two explicit modes cover it, both bound to
+a local game copy so **CI never runs them** — they are an agent/developer gate, not a merge gate:
+
+- **`npm run test:content`** — the real-content suite (`packages/app/test/content/`): property
+  invariants over the generated `content/ir.json` + its `mergeRealContent` output, cross-file
+  invariants between the decoded maps and the IR, the loader/catalog/roster/animation pins to the
+  real bytes, and the gathering + field-farming cycles (with same-seed determinism) over the merged
+  real content. Under plain `npm test`
+  these files `runIf`-skip on a bare checkout; this mode hard-fails instead when `ir.json` is
+  absent, so it can never pass vacuously (the guard requires the IR, maps, and bob lanes).
+  Assertions are overwhelmingly properties (references resolve, balance is live-or-reported, a
+  trade can harvest the core goods) so the suite survives mod/data drift; the one exception is the
+  loader's dated full-parse count pin, updated deliberately when the data refreshes. No goldens:
+  golden tests stay on the committed synthetic fixture.
+- **`npm run test:pipeline`** — the executable form of "pipeline or schema changes need a real
+  pipeline run": runs the full pipeline against the owned game copy (`CULTURES_GAME_DIR`, default
+  `../Cultures 8th Wonder`; `CULTURES_MOD`, default `DataCnmd`) into a throwaway directory, then
+  points the same suite at that fresh output via `ON_CONTENT_DIR`. The checkout's `content/` is
+  never touched; a failing run keeps the output directory for inspection.
+
+Run `test:content` when a change touches real-content consumers (loaders, id joins, merge overlays,
+content-driven UI tables); run `test:pipeline` when it touches the pipeline or the content schema.
+
 ## The agent's checklist (also in AGENTS.md)
 
 1. Write/extend the test at the **lowest level** that proves the change (unit > integration > e2e).
 2. Run `npm test`. Read failures; if invariants fired, note the **tick** they reported.
 3. Determinism golden changed? Only update it if the change was **intentional** — say which mechanic.
-4. Visual/render change? Run the screenshot diff if available; otherwise state plainly it needs a
+4. Touched real-content consumers or the pipeline? Run `npm run test:content` / `npm run test:pipeline`
+   (local-only — they need the game copy; see *Real-content test modes* above).
+5. Visual/render change? Run the screenshot diff if available; otherwise state plainly it needs a
    human. Never claim a visual result from a passing typecheck.

@@ -1,0 +1,76 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, isAbsolute, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import type { ContentSet } from '@open-northland/data';
+import { loadRealContent, mergeRealContent, type RealContentMerge } from '../../src/content/real-content.js';
+
+/**
+ * Shared plumbing for the manual real-content suite (`npm run test:content` / `test:pipeline` —
+ * docs/TESTING.md "Real-content test modes"). The suite validates whatever content directory
+ * `ON_CONTENT_DIR` points at (a fresh pipeline output under `test:pipeline`), defaulting to the
+ * checkout's gitignored `content/`; every describe gates on {@link hasRealIr} so plain `npm test`
+ * still skips cleanly on a bare checkout.
+ */
+
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
+
+/** The content directory under test: `ON_CONTENT_DIR` (absolute, or relative to the repo root) when set,
+ *  else `content/`. Resolution rules mirror `scripts/test-content.mjs` — keep them in step. */
+export function contentDir(): string {
+  const override = process.env.ON_CONTENT_DIR;
+  if (override === undefined || override === '') return resolve(REPO_ROOT, 'content');
+  return isAbsolute(override) ? override : resolve(REPO_ROOT, override);
+}
+
+export function irPath(): string {
+  return resolve(contentDir(), 'ir.json');
+}
+
+/** `describe.runIf` gate: the whole suite skips on a checkout without generated content. */
+export function hasRealIr(): boolean {
+  return existsSync(irPath());
+}
+
+/** The raw IR plus its sim-ready merge, loaded once per test run. */
+export interface RealContentUnderTest {
+  readonly real: ContentSet;
+  readonly merge: RealContentMerge;
+}
+
+let rawIr: unknown;
+
+/**
+ * The raw parsed ir.json under test — for assertions over graphics lanes (`bobSequences`,
+ * `buildingBobs`, `landscapeGfx`) that the sim's `ContentSet` does not carry. Callers gate on
+ * {@link hasRealIr} and cast to a narrow local interface; a present-but-malformed IR throws loudly
+ * (this suite never skips over broken content). Memoized like {@link loadContentUnderTest}.
+ */
+export function rawIrUnderTest(): unknown {
+  rawIr ??= JSON.parse(readFileSync(irPath(), 'utf8'));
+  return rawIr;
+}
+
+let underTest: Promise<RealContentUnderTest> | null = null;
+
+/**
+ * Parse the IR under test through the app's real boundary — `loadRealContent` (schema +
+ * cross-reference validation) then `mergeRealContent` (clean-room balance overlays) — exactly the
+ * path the browser entries run, so a break here is a break the game would hit. Memoized: the
+ * multi-MB IR parses once for the whole suite.
+ */
+/** A `fetch` that serves the IR under test off disk for the one URL the loader requests. */
+export const serveIrFetch: typeof fetch = (input) =>
+  Promise.resolve(
+    String(input) === '/ir.json'
+      ? new Response(readFileSync(irPath(), 'utf8'))
+      : new Response(null, { status: 404 }),
+  );
+
+export function loadContentUnderTest(): Promise<RealContentUnderTest> {
+  underTest ??= (async () => {
+    const real = await loadRealContent(serveIrFetch);
+    if (real === null) throw new Error(`no ir.json at ${irPath()} — run via npm run test:content`);
+    return { real, merge: mergeRealContent(real) };
+  })();
+  return underTest;
+}

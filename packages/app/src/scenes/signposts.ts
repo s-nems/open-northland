@@ -45,7 +45,7 @@ const { Owner, Position, Resource, Settler, Signpost, signpostNavigationEnabled 
 /** Spawn a settler of `jobType` directly (pre-tick-0) so the scene can address it in commands. */
 function spawnUnit(sim: Simulation, jobType: number, x: number, y: number): Entity {
   const node = cellAnchorNode(x, y);
-  const e = systems.createSettler(sim.world, sim.content, {
+  const e = systems.createSettler(sim.world, sim.content, sim.rng, {
     jobType,
     x: node.hx,
     y: node.hy,

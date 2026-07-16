@@ -1,6 +1,11 @@
 import { readFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
-import { type AtlasAlphaMode, type BobAtlas, packBobAtlas } from '../../decoders/atlas.js';
+import {
+  type AtlasAlphaMode,
+  type BobAtlas,
+  packBobAtlas,
+  packShadowBobAtlas,
+} from '../../decoders/atlas.js';
 import { decodeBmd } from '../../decoders/bmd/index.js';
 import { normalizeAssetPath, paletteAliasMap } from '../../decoders/ini.js';
 import { decodePcx } from '../../decoders/pcx.js';
@@ -80,8 +85,8 @@ function paletteSlug(name: string): string {
  * bindings share one body `.bmd` recoloured per creature (the animals are a single geometry, the humans
  * one body re-tinted per tribe/job), so naming on the `.bmd` alone would collapse them onto one file
  * (last-palette-wins). The palette name is the only per-creature differentiator, so it goes in the
- * filename — `(bmd, palette)` now names a distinct atlas. The shadow `.bmd` is left for a later step
- * (shadows use a separate, single-colour palette path).
+ * filename — `(bmd, palette)` now names a distinct atlas. The shadow `.bmd`s convert separately
+ * ({@link convertShadowBmdTree} — no palette, one atlas per shadow `.bmd`).
  *
  * `buildTimeBmds` (the `.bmd` paths claimed by a `[GfxHouse]` record — see
  * {@link resolveGraphicsBindings}, which documents why their second bytes are build-time thresholds,
@@ -135,6 +140,48 @@ export async function convertBmdTree(graphics: GraphicsBindingSet, outDir: strin
       atlas,
     );
     done.push({ bmd: binding.bmd, paletteName: binding.paletteName, png, manifest });
+  }
+  return done;
+}
+
+/** The atlas-filename suffix of a converted shadow `.bmd` (`<shadow-stem>.shadow.{png,atlas.json}`) —
+ *  the palette slug's slot, fixed because a shadow atlas is palette-less. */
+const SHADOW_ATLAS_SUFFIX = 'shadow';
+
+/**
+ * Converts the shadow `.bmd` of every binding that names one (`GfxBobLibs`/`shadowlib` second value)
+ * into a packed shadow atlas ({@link packShadowBobAtlas} — black-at-`SHADOW_ALPHA` silhouettes,
+ * the shadow blit pre-baked) written beside the shadow `.bmd` as
+ * `<shadow-stem>.shadow.{png,atlas.json}`. A shadow bob set parallels its body's bob ids (observed:
+ * `ls_trees_s.bmd` mirrors `ls_trees.bmd`'s 493 slots; the house `_s.bmd`s hold a ground silhouette at
+ * each finished `GfxBobId`), so a consumer looks a caster's shadow up by the body's own bob id. One
+ * atlas per shadow `.bmd` — recolours share it (a shadow has no palette). Boundary failures
+ * warn-and-skip per file, like every tree-walk stage.
+ */
+export async function convertShadowBmdTree(graphics: GraphicsBindingSet, outDir: string): Promise<string[]> {
+  const tree = await indexOutTree(outDir);
+  const seen = new Set<string>();
+  const done: string[] = [];
+  for (const binding of graphics.bindings) {
+    const shadowBmd = binding.shadowBmd;
+    if (shadowBmd === undefined || seen.has(shadowBmd)) continue;
+    seen.add(shadowBmd);
+    const onDisk = tree.get(shadowBmd);
+    if (onDisk === undefined) {
+      console.warn(`[pipeline] skipped shadow ${shadowBmd}: not found under out`);
+      continue;
+    }
+    if (!/\.bmd$/i.test(onDisk)) {
+      console.warn(`[pipeline] skipped shadow ${shadowBmd}: source has no .bmd extension`);
+      continue;
+    }
+    try {
+      const atlas = packShadowBobAtlas(decodeBmd(await readFile(join(outDir, onDisk))));
+      const { png } = await writeAtlasBeside(outDir, onDisk, SHADOW_ATLAS_SUFFIX, atlas);
+      done.push(png);
+    } catch (err) {
+      console.warn(`[pipeline] skipped shadow ${shadowBmd}: ${(err as Error).message}`);
+    }
   }
   return done;
 }

@@ -6,10 +6,12 @@ import {
   FATIGUE_RISE_PER_TICK,
   HUNGER_RISE_PER_TICK,
   needsSystem,
-  PIETY_RISE_PER_TICK,
 } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf, settlerWithHunger } from './support.js';
+
+/** A soldier job id (jobtypes.ini soldiers 31..41) — a fighter, whose company need is frozen. */
+const SOLDIER_JOB = 31;
 
 describe('needsSystem — hunger rises over time', () => {
   it('raises a settler hunger by exactly HUNGER_RISE_PER_TICK each tick', () => {
@@ -71,9 +73,8 @@ describe('needsSystem — fatigue rises over time', () => {
     expect(sim.world.get(e, Settler).fatigue).toBe(fx.add(FATIGUE_RISE_PER_TICK, FATIGUE_RISE_PER_TICK));
   });
 
-  it('rises slower than hunger (a settler eats more often than it sleeps)', () => {
-    // The cadence choice: fatigue at ONE/8192 vs hunger at ONE/4096 — fatigue fills in twice the ticks.
-    expect(FATIGUE_RISE_PER_TICK).toBeLessThan(HUNGER_RISE_PER_TICK);
+  it('rises at the same rate as hunger (both drain 10% in 1min20s at 1×)', () => {
+    expect(FATIGUE_RISE_PER_TICK).toBe(HUNGER_RISE_PER_TICK);
   });
 
   it('clamps fatigue at ONE (never above — the fatigueInRange invariant ceiling)', () => {
@@ -89,7 +90,7 @@ describe('needsSystem — fatigue rises over time', () => {
     expect(sim.world.get(e, Settler).fatigue).toBe(ONE);
   });
 
-  it('rises hunger and fatigue independently in the same tick, invariant-clean', () => {
+  it('rises hunger and fatigue together at the same rate in the same tick, invariant-clean', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = settlerWithHunger(sim, fx.fromInt(0));
 
@@ -97,57 +98,40 @@ describe('needsSystem — fatigue rises over time', () => {
     const settler = sim.world.get(e, Settler);
     expect(settler.hunger).toBe(fx.mul(HUNGER_RISE_PER_TICK, fx.fromInt(100)));
     expect(settler.fatigue).toBe(fx.mul(FATIGUE_RISE_PER_TICK, fx.fromInt(100)));
-    expect(settler.fatigue).toBeLessThan(settler.hunger); // slower rate ⇒ lower after equal ticks
+    expect(settler.fatigue).toBe(settler.hunger); // same rate ⇒ equal after equal ticks
     expect(sim.checkInvariants()).toEqual([]);
   });
 });
 
-describe('needsSystem — piety rises over time (the first target-bound need)', () => {
-  it('raises a settler piety by exactly PIETY_RISE_PER_TICK each tick', () => {
+describe('needsSystem — piety no longer rises over time', () => {
+  it('leaves a settler piety untouched each tick (forging weapons is its only source)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = settlerWithHunger(sim, fx.fromInt(0)); // starts with piety 0 too
 
     needsSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(e, Settler).piety).toBe(PIETY_RISE_PER_TICK);
+    expect(sim.world.get(e, Settler).piety).toBe(fx.fromInt(0));
 
-    needsSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(e, Settler).piety).toBe(fx.add(PIETY_RISE_PER_TICK, PIETY_RISE_PER_TICK));
+    // A non-zero starting piety is also held, not decayed toward the ceiling.
+    const held = fx.div(ONE, fx.fromInt(3));
+    sim.world.get(e, Settler).piety = held;
+    for (let i = 0; i < 50; i++) needsSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(e, Settler).piety).toBe(held);
   });
 
-  it('rises slower than fatigue (a settler prays far less often than it sleeps)', () => {
-    // The cadence choice: piety at ONE/16384 vs fatigue at ONE/8192 — piety fills in twice the ticks.
-    expect(PIETY_RISE_PER_TICK).toBeLessThan(FATIGUE_RISE_PER_TICK);
-  });
-
-  it('clamps piety at ONE (never above — the pietyInRange invariant ceiling)', () => {
-    const sim = new Simulation({ seed: 1, content: testContent() });
-    const e = settlerWithHunger(sim, fx.fromInt(0));
-    // Start one half-step below the ceiling: the next rise would overshoot ONE and must clamp.
-    sim.world.get(e, Settler).piety = fx.sub(ONE, fx.div(PIETY_RISE_PER_TICK, fx.fromInt(2)));
-
-    needsSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(e, Settler).piety).toBe(ONE);
-
-    needsSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(e, Settler).piety).toBe(ONE);
-  });
-
-  it('rises three needs independently in the same tick, invariant-clean', () => {
+  it('stays at 0 across the real Simulation.step() schedule with no production', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = settlerWithHunger(sim, fx.fromInt(0));
 
     for (let i = 0; i < 100; i++) sim.step();
-    const settler = sim.world.get(e, Settler);
-    expect(settler.piety).toBe(fx.mul(PIETY_RISE_PER_TICK, fx.fromInt(100)));
-    expect(settler.piety).toBeLessThan(settler.fatigue); // slower than fatigue ⇒ lower after equal ticks
+    expect(sim.world.get(e, Settler).piety).toBe(fx.fromInt(0));
     expect(sim.checkInvariants()).toEqual([]);
   });
 });
 
-describe('needsSystem — enjoyment rises over time (the recreation/leisure need)', () => {
-  it('raises a settler enjoyment by exactly ENJOYMENT_RISE_PER_TICK each tick', () => {
+describe('needsSystem — enjoyment (company) rises for civilians, frozen for fighters', () => {
+  it('raises a civilian enjoyment by exactly ENJOYMENT_RISE_PER_TICK each tick', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    const e = settlerWithHunger(sim, fx.fromInt(0)); // starts with enjoyment 0 too
+    const e = settlerWithHunger(sim, fx.fromInt(0)); // a woodcutter (civilian), enjoyment 0
 
     needsSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(e, Settler).enjoyment).toBe(ENJOYMENT_RISE_PER_TICK);
@@ -158,12 +142,22 @@ describe('needsSystem — enjoyment rises over time (the recreation/leisure need
     );
   });
 
-  it('rises slower than piety (recreation is the least-pressing of the bars)', () => {
-    // The cadence choice: enjoyment at ONE/32768 vs piety at ONE/16384 — enjoyment fills in twice the ticks.
-    expect(ENJOYMENT_RISE_PER_TICK).toBeLessThan(PIETY_RISE_PER_TICK);
+  it('rises at the same rate as hunger for a civilian', () => {
+    expect(ENJOYMENT_RISE_PER_TICK).toBe(HUNGER_RISE_PER_TICK);
   });
 
-  it('clamps enjoyment at ONE (never above — the enjoymentInRange invariant ceiling)', () => {
+  it('does not raise a fighter enjoyment (a soldier company need is frozen)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const e = settlerWithHunger(sim, fx.fromInt(0));
+    sim.world.get(e, Settler).jobType = SOLDIER_JOB;
+
+    for (let i = 0; i < 100; i++) needsSystem(sim.world, ctxOf(sim));
+    const settler = sim.world.get(e, Settler);
+    expect(settler.enjoyment).toBe(fx.fromInt(0)); // never rose
+    expect(settler.hunger).toBe(fx.mul(HUNGER_RISE_PER_TICK, fx.fromInt(100))); // hunger still rises for all
+  });
+
+  it('clamps a civilian enjoyment at ONE (never above — the enjoymentInRange invariant ceiling)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = settlerWithHunger(sim, fx.fromInt(0));
     // Start one half-step below the ceiling: the next rise would overshoot ONE and must clamp.
@@ -174,16 +168,5 @@ describe('needsSystem — enjoyment rises over time (the recreation/leisure need
 
     needsSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(e, Settler).enjoyment).toBe(ONE);
-  });
-
-  it('rises all four needs independently in the same tick, invariant-clean', () => {
-    const sim = new Simulation({ seed: 1, content: testContent() });
-    const e = settlerWithHunger(sim, fx.fromInt(0));
-
-    for (let i = 0; i < 100; i++) sim.step();
-    const settler = sim.world.get(e, Settler);
-    expect(settler.enjoyment).toBe(fx.mul(ENJOYMENT_RISE_PER_TICK, fx.fromInt(100)));
-    expect(settler.enjoyment).toBeLessThan(settler.piety); // slowest rate ⇒ lowest after equal ticks
-    expect(sim.checkInvariants()).toEqual([]);
   });
 });

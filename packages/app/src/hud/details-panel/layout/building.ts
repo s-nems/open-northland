@@ -1,7 +1,7 @@
 import { WIN_PAD } from '../../chrome.js';
 import type { Rect } from '../../geometry.js';
 import type { UnitPanelModel } from '../model/index.js';
-import { stockTabRects } from '../stock-tabs.js';
+import { DETAILS_STOCK_TAB_COUNT, stockTabRects } from '../stock-tabs.js';
 import { PANEL_W, panelRect, ROW_H, SECTION_GAP, type SectionRect, sectionAt } from './shared.js';
 
 /** The building selection model — the `layoutBuilding` input narrowed off the panel model union. */
@@ -66,15 +66,18 @@ export interface BuildingLayout {
   readonly construction: SectionRect | null;
   readonly defence: SectionRect | null;
   readonly production: SectionRect | null;
+  /** One rect per Produkcja product row (same order as `ProductionModel.rows`) — the hover target the
+   *  inputs tooltip probes; empty for a farm's fields view or no production window. */
+  readonly productionRowRects: readonly Rect[];
   /** The Magazyn section — null for a building that stores nothing (no stock slots: a home), which
    *  simply has no store window, matching the original's per-building window set. */
   readonly stock: SectionRect | null;
   /**
-   * Whether the stock body is the compact shape — a small store (every good fits the grid at once,
-   * `rows ≤ MAX_STOCK_ROWS × 2`: the farm's single wheat slot, a mill's two) drops the category tabs
-   * and shrinks the body to exactly its rows ({@link stockRows}); only a big store (a warehouse's full
-   * catalog) keeps the original's fixed-height eight-tab window. The dynamic-magazyn rule is a general
-   * one, keyed on the good count — never a per-building-type branch.
+   * Whether the stock body is the compact shape — a small store (up to {@link COMPACT_STOCK_MAX}
+   * goods: the farm's single wheat slot, the mint's 16) drops the category tabs and sizes the body to
+   * exactly its rows ({@link stockRows}); only a big store (a warehouse's full catalog) keeps the
+   * original's fixed-height tabbed window. The dynamic-magazyn rule is a general one, keyed on the
+   * good count — never a per-building-type branch.
    */
   readonly stockCompact: boolean;
   /** Rows per column the stock body reserves ({@link MAX_STOCK_ROWS}, or the compact fitted count). */
@@ -118,6 +121,14 @@ export function stockSlotRects(body: Rect, s: number, rowsPerColumn: number = MA
   return slots;
 }
 
+/**
+ * A store with up to this many goods draws the compact tab-less body (fitted rows, taller panel);
+ * bigger stores (the barracks' arsenal, the warehouse/HQ catalogs) keep the fixed tabbed window.
+ * Sized to the biggest specialist workshop store — the mint's 16 slots — which should read on one
+ * page (user decision 2026-07-16); the rule stays keyed on the good count, never the building type.
+ */
+const COMPACT_STOCK_MAX = 16;
+
 /** Which buttons the building's general section offers; only demolish is wired on this slice. */
 const BUILDING_BUTTONS: ReadonlyArray<{ action: ButtonAction; enabled: boolean }> = [
   { action: 'demolish', enabled: true },
@@ -149,13 +160,13 @@ export function layoutBuilding(
   const showDefence = model.showDefense && !underConstruction;
   const showProduction = model.production !== null && !underConstruction;
   const defenceBodyH = showDefence ? Math.round(ROW_H * s) : 0;
-  // A recipe workshop reserves one bar row per operator slot (`ProductionModel.rows` — the model is
-  // the single source, the section's bar loop draws the same count), so the panel height is stable
-  // while batches start/finish staggered; a farm's field counters keep the single row.
-  const productionRows = model.production?.kind === 'recipe' ? model.production.rows : 1;
+  // A recipe workshop reserves one row per producible good (`ProductionModel.rows` — the model is
+  // the single source, the section's row loop draws the same count); a farm's field counters keep
+  // the single row.
+  const productionRows = model.production?.kind === 'recipe' ? Math.max(1, model.production.rows.length) : 1;
   const productionBodyH = showProduction ? productionRows * Math.round(STOCK_ROW_H * s) : 0;
   const stockRowCount = underConstruction ? 0 : model.stock.length;
-  const stockCompact = stockRowCount <= MAX_STOCK_ROWS * 2;
+  const stockCompact = stockRowCount <= COMPACT_STOCK_MAX;
   const stockRows = stockCompact ? Math.ceil(stockRowCount / 2) : MAX_STOCK_ROWS;
   const stockBodyH =
     (stockCompact ? 0 : Math.round(STOCK_TAB_H * s) + Math.round(STOCK_TAB_GAP * s)) +
@@ -210,6 +221,15 @@ export function layoutBuilding(
   const construction = underConstruction ? next(constructionBodyH) : null;
   const defence = showDefence ? next(defenceBodyH) : null;
   const production = showProduction ? next(productionBodyH) : null;
+  const productionRowRects: Rect[] =
+    production !== null && model.production?.kind === 'recipe'
+      ? model.production.rows.map((_, i) => ({
+          x: production.body.x,
+          y: production.body.y + i * Math.round(STOCK_ROW_H * s),
+          w: production.body.w,
+          h: Math.round(STOCK_ROW_H * s),
+        }))
+      : [];
   const stock = stockRowCount > 0 ? next(stockBodyH) : null;
   // Only the full tabbed store carries clickable tabs; a compact/absent body has none.
   let stockTabHits: readonly Rect[] = [];
@@ -220,7 +240,7 @@ export function layoutBuilding(
       w: stock.body.w,
       h: Math.round(STOCK_TAB_H * s),
     };
-    stockTabHits = stockTabRects(stockTabStrip, s);
+    stockTabHits = stockTabRects(stockTabStrip, s, DETAILS_STOCK_TAB_COUNT);
   }
   const workers = next(workersBodyH);
 
@@ -235,6 +255,7 @@ export function layoutBuilding(
     construction,
     defence,
     production,
+    productionRowRects,
     stock,
     stockCompact,
     stockRows,

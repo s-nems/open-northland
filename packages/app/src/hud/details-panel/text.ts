@@ -35,8 +35,16 @@ export interface TextKit {
    *  the box instead of overflowing it — the seam for long personalized names in the section headline. */
   textCentered(text: string, r: Rect, color: FontColorName, variant?: FontVariant, maxWidth?: number): void;
   /** Left-anchor a line of text at `x`, vertically centred on `centerY` — a left-aligned value that must
-   *  still sit on a field's centre line (the stock amount in its plate). */
-  textLeftMiddle(text: string, x: number, centerY: number, color: FontColorName, variant?: FontVariant): void;
+   *  still sit on a field's centre line (the stock amount in its plate). `maxWidth` shrinks an over-long
+   *  line to fit instead of overflowing (a production row's label column before its bar). */
+  textLeftMiddle(
+    text: string,
+    x: number,
+    centerY: number,
+    color: FontColorName,
+    variant?: FontVariant,
+    maxWidth?: number,
+  ): void;
   /** Right-align a line of text's end at `rightX` (top at `y`). */
   textRight(text: string, rightX: number, y: number, color: FontColorName, variant?: FontVariant): void;
 }
@@ -93,9 +101,13 @@ export function createTextKit(textLayer: Container, fontFamily: string, scale: n
     centerY: number,
     color: FontColorName,
     variant: FontVariant = 'body',
+    maxWidth?: number,
   ): void => {
     const t = makeText(text, color, variant);
     t.anchor.set(0, 0.5);
+    // Shrink an over-long line to its column (like textCentered's headline seam); the left-middle anchor
+    // keeps it pinned to the label column while it scales.
+    if (maxWidth !== undefined && t.width > maxWidth) t.scale.set(maxWidth / t.width);
     t.position.set(Math.round(x), Math.round(centerY + CENTER_BIAS * scale));
   };
 

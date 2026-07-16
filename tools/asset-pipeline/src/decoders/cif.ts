@@ -13,7 +13,7 @@
  * Pure functions only (no I/O): `(bytes) => decoded`. The CLI wires file reads around them.
  */
 
-import { ByteCursor, LATIN1, viewOf } from './byte-cursor.js';
+import { ByteCursor, decodeLatin1, viewOf } from './byte-cursor.js';
 
 /** Storable class ids from the original factory (XBStorable.cs `LoadObjectOrNull`). */
 export const StorableId = {
@@ -124,7 +124,7 @@ function readLines(pool: Uint8Array, offsets: Uint8Array, slotCount: number, use
     const hasLevel = first < 0x20;
     lines.push({
       level: hasLevel ? first : 0,
-      text: LATIN1.decode(hasLevel ? raw.subarray(1) : raw),
+      text: decodeLatin1(hasLevel ? raw.subarray(1) : raw),
     });
   }
   return lines;

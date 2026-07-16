@@ -15,6 +15,7 @@ import { loadMapObjects } from '../content/objects.js';
 import { loadRuntimeRealContent, logRealContentGaps } from '../content/real-content.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet/index.js';
 import { loadRealTerrain } from '../content/terrain.js';
+import { diag, hashTraceFor, setDiagGameSession } from '../diag/index.js';
 import { fogModeParam } from '../game/fog.js';
 import { mapStartFocus } from '../game/map-start.js';
 import { HUMAN_PLAYER } from '../game/rules.js';
@@ -65,6 +66,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   const app = await createWindowPixiApp(canvas);
   const mapId = params.get('map');
   const loaded = mapId !== null ? await loadTerrainMap(mapId) : null;
+  diag.info('boot', 'game start', { entry: 'map', mapId, decodedMap: loaded !== null, seed: SLICE_SEED });
   const terrainGrid = sliceTerrain(loaded ?? undefined);
   // The decoded map's terrain-height field (flat when the map carries no `lmhe` lane). The renderer
   // builds its own from the terrain grid for the ground mesh + entity lift; this shared instance lifts
@@ -83,13 +85,13 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   if (realContent !== null) logRealContentGaps(realContent);
   const sheet = await resolveSpriteSheet(realContent?.content.goods ?? sandboxGoods());
   const ir = await loadIr();
-  if (ir === null) console.warn('content/ir.json unavailable, placeholder graphics fallback');
+  if (ir === null) diag.warn('content', 'content/ir.json unavailable, placeholder graphics fallback');
   let terrain: Awaited<ReturnType<typeof loadRealTerrain>> | undefined;
   if (ir !== null) {
     try {
       terrain = await loadRealTerrain(ir);
     } catch (err) {
-      console.warn(`real terrain unavailable, flat tint fallback: ${String(err)}`);
+      diag.warn('content', `real terrain unavailable, flat tint fallback: ${String(err)}`);
     }
   }
   // Retained renderer: mesh the terrain once, reuse a pooled sprite graph each frame (no per-frame
@@ -110,7 +112,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
       // static refs against an empty layer would make every virgin node invisible until first touch.
       staticObjects = loadedObjects;
     } catch (err) {
-      console.warn(`map objects unavailable, bare ground fallback: ${String(err)}`);
+      diag.warn('content', `map objects unavailable, bare ground fallback: ${String(err)}`);
     }
   }
   // The slice sim (kept live and stepped one tick per fixed interval) is built below; its demo units are
@@ -157,6 +159,13 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     (simMap !== null
       ? runBareMap(SLICE_SEED, simMap, footprints, goodNames, realContent?.content)
       : runSlice(SLICE_SEED, 1, undefined, HUMAN_PLAYER, footprints, goodNames, realContent?.content));
+  setDiagGameSession({
+    entry: 'map',
+    worldId: mapId,
+    seed: SLICE_SEED,
+    sim,
+    hashTrace: hashTraceFor(params),
+  });
 
   // `?fog=off|reveal|recon` selects the map's fog rule (direct URLs without the flag remain revealed).
   const fogOverride = fogModeParam(params);

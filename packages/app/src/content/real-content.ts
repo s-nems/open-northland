@@ -4,6 +4,7 @@ import { FARMING_BALANCE_BY_ID } from '../catalog/farming.js';
 import { GATHERING_BALANCE_BY_ID } from '../catalog/gathering.js';
 import { NAV_LANDSCAPE_TYPES } from '../catalog/terrain.js';
 import { HUMAN_HITPOINTS } from '../catalog/units.js';
+import { diag } from '../diag/index.js';
 import { fetchJsonOrNull } from './net.js';
 
 /** The one in-flight/settled parse of the served IR into a `ContentSet` — memoized like {@link loadRealContent}. */
@@ -169,14 +170,15 @@ export async function loadRuntimeRealContent(
 
 /**
  * Log the gaps {@link mergeRealContent} surfaced — gathered goods with no clean-room balance, field goods
- * with no clean-room `farming` block, and buildings beyond the clean-room catalog — as one console line,
+ * with no clean-room `farming` block, and buildings beyond the clean-room catalog — as one log line,
  * so a browser run shows what the overlay could not fill. No-op when there is nothing to report.
  */
 export function logRealContentGaps(merge: RealContentMerge): void {
   const { unbalancedGoods, unfarmedFieldGoods, uncatalogedBuildings } = merge;
   if (unbalancedGoods.length === 0 && unfarmedFieldGoods.length === 0 && uncatalogedBuildings.length === 0)
     return;
-  console.info(
+  diag.info(
+    'content',
     `real content gaps: ${unbalancedGoods.length} gathered good(s) without clean-room balance ` +
       `[${unbalancedGoods.join(', ')}], ${unfarmedFieldGoods.length} field good(s) without a farming block ` +
       `[${unfarmedFieldGoods.join(', ')}], ${uncatalogedBuildings.length} building(s) beyond the catalog ` +

@@ -16,10 +16,14 @@ export const WorkerSlot = z.strictObject({
 });
 export type WorkerSlot = z.infer<typeof WorkerSlot>;
 
-/** Game ticks for one production cycle when the source pins no atomic-animation length (unpinned). */
-export const DEFAULT_RECIPE_TICKS = 20;
+/**
+ * Game ticks for one production cycle: uniform 15 s at 1× speed (× the sim's 12 ticks/s). A design
+ * decision replacing the extracted per-animation cycle lengths — every craft paces identically so
+ * production chains are comparable at a glance (named approximation of the original's per-good pacing).
+ */
+export const DEFAULT_RECIPE_TICKS = 180;
 
-/** A recipe: a workplace turns inputs into outputs over time. */
+/** A recipe: a workplace turns inputs into ONE product over time (one recipe per producible good). */
 export const Recipe = z.strictObject({
   inputs: z.array(GoodQuantity).default([]),
   outputs: z.array(GoodQuantity).default([]),
@@ -46,16 +50,18 @@ export const BuildingType = z.strictObject({
    * Good type ids this workplace can produce (`logichousetype` `logicproduction`), in file order.
    * The output side only: the original house table names what a workplace makes, not the input
    * goods. The pipeline's `fillBuildingRecipes` joins each output good through that good's
-   * `goodtypes.productionInputGoods` (→ {@link GoodType.productionInputs}) to materialize `recipe`.
+   * `goodtypes.productionInputGoods` (→ {@link GoodType.productionInputs}) to materialize `recipes`.
    */
   produces: z.array(TypeId).default([]),
   /**
-   * The production recipe, filled by the pipeline's output-side join (`fillBuildingRecipes`) for a
-   * workplace with a non-empty `produces`; absent on a non-producing building. `inputs` come from the
-   * produced good's `productionInputs`, `outputs` = each `produces` good at amount 1; `ticks` is the
-   * schema default until the per-tribe atomic-timing pass pins it (source basis).
+   * The production recipes — ONE per producible good, filled by the pipeline's output-side join
+   * (`fillBuildingRecipes`) for a workplace with a non-empty `produces`; empty on a non-producing
+   * building. Each recipe's `inputs` come from that produced good's `productionInputs` and its
+   * `outputs` is that single good (amount = its `produces` multiplicity), in `produces` file order —
+   * so a multi-product workshop (a smithy) crafts its goods one at a time, per worker choice, not
+   * all at once. Field-farmed goods form no recipe (they are grown, not made).
    */
-  recipe: Recipe.optional(),
+  recipes: z.array(Recipe).default([]),
   /**
    * Build-material cost — the goods that must be delivered to construct this building, joined onto
    * the logic record from the graphics table's `[GfxHouse]` `LogicConstructionGoods` line (the readable

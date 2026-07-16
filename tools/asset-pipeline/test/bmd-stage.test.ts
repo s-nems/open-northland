@@ -1,10 +1,10 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { type Bmd, BOB_TYPE_DOUBLE8BIT, encodeBmd } from '../src/decoders/bmd/index.js';
+import { type Bmd, BOB_TYPE_1BIT, BOB_TYPE_DOUBLE8BIT, encodeBmd } from '../src/decoders/bmd/index.js';
 import type { BmdPaletteBinding, PaletteAlias } from '../src/decoders/ini.js';
 import { decodePng, encodePng } from '../src/decoders/png.js';
-import { bmdToAtlas, convertBmdTree } from '../src/stages/bmd/index.js';
+import { bmdToAtlas, convertBmdTree, convertShadowBmdTree } from '../src/stages/bmd/index.js';
 import { packLineControl, sampleBmdBytes } from './fixtures/bmd.js';
 import { rampPalette } from './fixtures/palette.js';
 import { samplePcx } from './fixtures/pcx.js';
@@ -189,6 +189,86 @@ describe('convertBmdTree', () => {
 
     expect(done).toEqual([]);
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/skipped data\/bobs\/body\.bmd:/));
+    warn.mockRestore();
+  });
+});
+
+describe('convertShadowBmdTree', () => {
+  let out: string;
+
+  beforeEach(async () => {
+    out = (await makeTempDir('bmd')).path;
+  });
+
+  afterEach(async () => {
+    await rm(out, { recursive: true, force: true });
+  });
+
+  /** One type-2 (1-bit mask) shadow bob — a raw run of 2 set pixels (pure RLE, no pixel bytes). */
+  const shadowBmdBytes = (): Uint8Array =>
+    encodeBmd({
+      version: 0,
+      firstBobId: 10,
+      bobCount: 1,
+      generatedNonEmptyLines: 0,
+      generatedEmptyLines: 0,
+      generatedPackedLines: 0,
+      bobs: [{ type: BOB_TYPE_1BIT, area: { x: 0, y: 0, width: 2, height: 1 }, misc: 0 }],
+      packedLineData: Uint8Array.from([0x02, 0x00]),
+      lineControl: Uint32Array.from([packLineControl(0, 0)]),
+    });
+
+  const shadowBinding = (paletteName = 'bear01'): BmdPaletteBinding => ({
+    bmd: 'data/bobs/body.bmd',
+    shadowBmd: 'data/bobs/body_s.bmd',
+    paletteName,
+    tribeId: 1,
+    jobId: 2,
+  });
+
+  const convert = (bindings: BmdPaletteBinding[]): Promise<string[]> =>
+    convertShadowBmdTree({ bindings, palettes: [], buildTimeBmds: new Set() }, out);
+
+  it('writes `<shadow-stem>.shadow.{png,atlas.json}` beside the shadow .bmd — the name the app joins on', async () => {
+    await mkdir(join(out, 'Data', 'Bobs'), { recursive: true });
+    await writeFile(join(out, 'Data', 'Bobs', 'Body_s.bmd'), shadowBmdBytes());
+
+    const done = await convert([shadowBinding()]);
+
+    // The literal `.shadow.` filenames are the contract `servedShadowStem` (packages/app) resolves
+    // against — a drift here silently degrades to shadow-less rendering.
+    expect(done).toEqual([join('Data', 'Bobs', 'Body_s.shadow.png')]);
+    const decoded = decodePng(await readFile(join(out, 'Data', 'Bobs', 'Body_s.shadow.png')));
+    expect(decoded.width).toBeGreaterThan(0);
+    const manifest = JSON.parse(
+      await readFile(join(out, 'Data', 'Bobs', 'Body_s.shadow.atlas.json'), 'utf8'),
+    ) as { frames: { bobId: number }[] };
+    expect(manifest.frames).toHaveLength(1);
+    expect(manifest.frames[0]?.bobId).toBe(10);
+  });
+
+  it('bakes one shared atlas when several recolour bindings name the same shadow .bmd', async () => {
+    await mkdir(join(out, 'Data', 'Bobs'), { recursive: true });
+    await writeFile(join(out, 'Data', 'Bobs', 'Body_s.bmd'), shadowBmdBytes());
+
+    const done = await convert([shadowBinding('bear01'), shadowBinding('wolf01')]);
+
+    expect(done).toEqual([join('Data', 'Bobs', 'Body_s.shadow.png')]); // deduped, not clobbered twice
+  });
+
+  it('skips a missing shadow .bmd with a warning; bindings without one are not shadow work at all', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const done = await convert([
+      shadowBinding(),
+      { bmd: 'data/bobs/body.bmd', shadowBmd: undefined, paletteName: 'bear01', tribeId: 1, jobId: 3 },
+    ]);
+
+    expect(done).toEqual([]);
+    expect(warn).toHaveBeenCalledTimes(1); // only the named-but-missing shadow warns
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringMatching(/skipped shadow data\/bobs\/body_s\.bmd: not found/),
+    );
     warn.mockRestore();
   });
 });

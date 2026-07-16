@@ -82,9 +82,9 @@ export {
   type RebaseResult,
   rebaseContent,
 } from './replay/rebase-content.js';
-export { type ReplayOptions, replay } from './replay/replay.js';
+export { type ReplayOptions, replay, stepReplaying } from './replay/replay.js';
 export { scrubWindow } from './replay/scrub-window.js';
-export { type FogView, type SimOptions, Simulation } from './simulation.js';
+export { type FogView, type SimOptions, Simulation, type SystemInstrument } from './simulation.js';
 export type { ConstructionPlot, PlacementProbe, ResourceNodeSpec } from './systems/footprint/index.js';
 // The walk cadence (ticks per visual cell at cruise), exposed so render can tune animation cadence
 // independently without restating the sim's travel time.

@@ -61,6 +61,10 @@ export const economyContent = {
     { typeId: 2, id: 'carpenter' },
     // The miner is permitted the stone harvest atomic (25) — it chips a `MineDeposit` deposit.
     { typeId: 5, id: 'miner', allowedAtomics: [25] },
+    // A two-trade collector (wood 24 + stone 25) — what the employed-gatherer store-filter tests use
+    // (the filter only shows on a job that could harvest MORE than its workplace stores). Nothing in
+    // the golden slice spawns it.
+    { typeId: 7, id: 'collector', allowedAtomics: [24, 25] },
     // The hunter (job 15 — `JOB_TYPE_HUMAN_HUNTER`) — the trade that strikes `catchable` prey.
     { typeId: 15, id: 'hunter' },
     // The farmer (the original's job 18) is permitted wheat's plant/cultivate/harvest atomics — the
@@ -104,7 +108,7 @@ export const economyContent = {
         { goodType: 1, capacity: 20, initial: 0 },
         { goodType: 2, capacity: 20, initial: 0 },
       ],
-      recipe: { inputs: [{ goodType: 1, amount: 1 }], outputs: [{ goodType: 2, amount: 1 }], ticks: 20 },
+      recipes: [{ inputs: [{ goodType: 1, amount: 1 }], outputs: [{ goodType: 2, amount: 1 }], ticks: 20 }],
     },
     {
       // The "work temple" (original logictype 37, logicmaintype 3): a `workplace` kind with NO
@@ -176,7 +180,25 @@ export const economyContent = {
         { goodType: 1, capacity: 10, initial: 0 },
         { goodType: 2, capacity: 20, initial: 0 },
       ],
-      recipe: { inputs: [{ goodType: 1, amount: 1 }], outputs: [{ goodType: 2, amount: 1 }], ticks: 20 },
+      recipes: [{ inputs: [{ goodType: 1, amount: 1 }], outputs: [{ goodType: 2, amount: 1 }], ticks: 20 }],
+    },
+    {
+      // A MULTI-PRODUCT workshop (the real smithy-2 shape, shrunk to fixture goods): ONE carpenter
+      // operator and two per-product recipes off the same wood input — what the craft-selection /
+      // product-rotation tests staff. Nothing in the golden slice places it.
+      typeId: 9,
+      id: 'forge',
+      kind: 'workplace',
+      workers: [{ jobType: 2, count: 1 }],
+      stock: [
+        { goodType: 1, capacity: 20, initial: 0 },
+        { goodType: 2, capacity: 20, initial: 0 },
+        { goodType: 3, capacity: 20, initial: 0 },
+      ],
+      recipes: [
+        { inputs: [{ goodType: 1, amount: 1 }], outputs: [{ goodType: 2, amount: 1 }], ticks: 20 },
+        { inputs: [{ goodType: 1, amount: 1 }], outputs: [{ goodType: 3, amount: 1 }], ticks: 20 },
+      ],
     },
   ],
   landscape: [

@@ -42,8 +42,11 @@ export function pixelHit(
   // player clicks the site (its final-building rect), not whatever scattered pixels exist so far.
   if (pe.reveal !== undefined) return undefined;
   let sampledEveryLayer = false;
-  for (const spr of pe.sprites) {
+  for (let i = 0; i < pe.sprites.length; i++) {
+    const spr = pe.sprites[i];
     if (!(spr instanceof Sprite) || !spr.visible) continue;
+    // A cast-shadow layer never makes its caster clickable — darkened ground is still ground.
+    if (pe.shadowFlags[i] === true) continue;
     const mask = alphaMaskOf(spr.texture.source);
     if (mask === null) return undefined; // pixels unreadable → the box hit stands
     sampledEveryLayer = true;

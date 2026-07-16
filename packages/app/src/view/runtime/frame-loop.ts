@@ -1,6 +1,13 @@
 import type { layoutHud, PlacementGhost } from '@open-northland/render';
 import { FixedTimestep, FOG_STATE, type SimEvent, systems, type WorldSnapshot } from '@open-northland/sim';
 import type { createSoundDriver } from '../../content/audio.js';
+import {
+  emitPerfMeasure,
+  PERF_MARKS_DEBUG_FLAG,
+  recordDiagHash,
+  recordTraceEvent,
+  TRACE_DEBUG_FLAG,
+} from '../../diag/index.js';
 import { HUMAN_PLAYER } from '../../game/rules.js';
 import type { MinimapHandle } from '../../hud/minimap/index.js';
 import type { GameToolPanelHandle } from '../game-tool-panel.js';
@@ -77,6 +84,10 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
   const { app, renderer, sim, cameraCtl } = deps;
 
   const timestep = new FixedTimestep();
+  // `?debug=perf`: emit the frame phases as User Timing measures (the per-system slices come from
+  // the sim instrument installed by game-view) so one DevTools recording shows the whole anatomy.
+  const perfMarks = deps.params.get('debug') === PERF_MARKS_DEBUG_FLAG;
+  const tracePhases = deps.params.get('debug') === TRACE_DEBUG_FLAG;
   let lastMs = performance.now();
   // The fixed-timestep interpolation fraction the renderer lerps entity anchors by — refreshed each
   // un-paused frame from `advance` (a pause freezes it, so units hold their drawn spot mid-leg).
@@ -87,6 +98,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
   const frameEvents: SimEvent[] = [];
   const collect = (): void => {
     sim.step();
+    recordDiagHash(sim);
     for (const ev of sim.events.current()) frameEvents.push(ev);
   };
 
@@ -251,6 +263,14 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     // CPU split #3: the render build + submit and the rest of the frame's app work (camera, controls,
     // sound) — the remainder after sim + snapshot, so the three sum to cpuMs.
     const drawMs = cpuMs - simMs - snapMs;
+    if (perfMarks || tracePhases) {
+      // Named approximation: drawMs is the cpu REMAINDER (two intervals — camera/fog work between
+      // sim end and snapshot start, then build+submit); one slice draws it as the tail interval.
+      const emit = perfMarks ? emitPerfMeasure : recordTraceEvent;
+      emit('frame/sim', cpu0, cpu0 + simMs);
+      emit('frame/snapshot', snap0, snap0 + snapMs);
+      emit('frame/draw', snap0 + snapMs, cpu0 + cpuMs);
+    }
     perf.update(elapsed, {
       tick: snap.tick,
       steps,

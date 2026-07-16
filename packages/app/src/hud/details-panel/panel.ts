@@ -21,7 +21,7 @@ import {
 } from './layout/index.js';
 import { buildUnitPanelModel, type UnitPanelModel, type UnitPanelModelContext } from './model/index.js';
 import { drawBuilding, drawCompact, drawSettler, drawSignpost } from './sections/index.js';
-import { stockTabLabels } from './stock-tabs.js';
+import { ALL_STOCK_TAB, detailsStockTabLabels, visibleStockRows } from './stock-tabs.js';
 import { WorkerSpriteOverlay } from './worker-sprites.js';
 
 /**
@@ -67,6 +67,9 @@ export interface UnitPanelOptions extends UnitPanelModelContext {
    *  the next left-click hits. Absent → the button is inert. */
   readonly onAssignWorkplace?: (settlerId: number) => void;
   readonly onSetGatherGood: (entityId: number, goodType: number | null) => void;
+  /** Replace a craft worker's product selection (the `setCraftGoods` command); `[]` = every product.
+   *  The panel computes the toggled set from the clicked button + the model's effective selection. */
+  readonly onSetCraftGoods: (entityId: number, goods: readonly number[]) => void;
   /** The loaded sprite sheet, so the workers field can draw its bound workers as animated on-map sprites.
    *  Absent (a bare checkout / headless test) → the field just stays empty. */
   readonly sheet?: SpriteSheet;
@@ -94,17 +97,10 @@ export interface UnitPanel {
   /**
    * Route a mousedown: true when the point is over the panel (the caller must not world-pick it);
    * a left press on an enabled button performs its action. Part of the unit-controls claim chain.
+   * `toggleModifier` (Ctrl/Cmd held) switches a craft-choice click from replace-selection to toggle.
    */
-  handleMouseDown(clientX: number, clientY: number, button: number): boolean;
+  handleMouseDown(clientX: number, clientY: number, button: number, toggleModifier?: boolean): boolean;
   dispose(): void;
-}
-
-/** The stock category tab a freshly-selected building opens on: the first (lowest-index) category that
- *  holds any of its goods, so the panel lands on the leading tab (Żywność for a general store) rather than
- *  on whichever category happens to be fullest. */
-export function defaultStockTab(model: UnitPanelModel): number {
-  if (model.kind !== 'building' || model.stock.length === 0) return 0;
-  return Math.min(...model.stock.map((row) => row.category));
 }
 
 export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel> {
@@ -152,8 +148,9 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
    *  rebuild refresh a still cursor's tooltip with live values (a held hover must not show a stale
    *  "80%" while the bar drains; user feedback 2026-07-11). */
   let lastPointer: { clientX: number; clientY: number } | null = null;
-  /** The selected stock category tab (0–7); reset to the leading category (`defaultStockTab`) on each new selection. */
-  let activeStockTab = 0;
+  /** The selected stock tab ("Wszystkie" + the eight categories); every new selection opens on the
+   *  "Wszystkie" view (held goods, fullest first) so a general store shows its contents at a glance. */
+  let activeStockTab = ALL_STOCK_TAB;
 
   /** Fresh draw-order layers over an off-screen container (baked to a texture): fills, graphics, frames, glyphs. */
   const makeLayers = (into: Container): PanelLayers => {
@@ -234,9 +231,9 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
         : model.kind;
     const structural = force || structureKey !== lastStructureKey;
     if (!structural && performance.now() - lastRebuildAt < VALUE_REBUILD_MIN_MS) return;
-    // A new selection opens the stock view on its leading category, so the panel never lands on an empty
-    // tab (with a store's goods spread across tabs, tab 0 may hold none of this building's stock).
-    if (structural) activeStockTab = defaultStockTab(model);
+    // A new selection opens the stock view on "Wszystkie" — never an empty tab, and a general store
+    // reads its actual contents immediately.
+    if (structural) activeStockTab = ALL_STOCK_TAB;
     lastModelKey = key;
     lastStructureKey = structureKey;
     rebuild(model);
@@ -271,13 +268,45 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     return layout.gatherChoiceHits.find((hit) => contains(hit.rect, x, y))?.goodType;
   };
 
+  /** The craft product toggle under a canvas point, or undefined (settler layouts only). */
+  const hitCraftChoice = (x: number, y: number): number | undefined => {
+    if (layout?.kind !== 'settler') return undefined;
+    return layout.craftChoiceHits.find((hit) => contains(hit.rect, x, y))?.goodType;
+  };
+
+  /**
+   * The next selection after a craft-choice click. A plain click REPLACES the selection with just the
+   * clicked product (the RTS radio-button default); a Ctrl/Cmd click TOGGLES it in the multi-set
+   * (user decision 2026-07-16). The toggle normalizes both edges — all products selected reads as the
+   * `[]` all-mode (so the sim drops the component), and toggling the LAST product off falls back to
+   * all-mode too (a worker can't craft nothing).
+   */
+  const nextCraftGoods = (
+    model: Extract<UnitPanelModel, { kind: 'settler' }>,
+    goodType: number,
+    toggle: boolean,
+  ): readonly number[] => {
+    const products = model.work.craftChoices.map((c) => c.goodType);
+    if (!toggle) return products.length === 1 ? [] : [goodType];
+    const next = new Set(model.work.selectedCraftGoods);
+    if (next.has(goodType)) next.delete(goodType);
+    else next.add(goodType);
+    if (next.size === 0 || next.size === products.length) return [];
+    return products.filter((g) => next.has(g));
+  };
+
   const claimsPointer = (clientX: number, clientY: number): boolean => {
     if (layout === null || lastModel.kind === 'empty') return false;
     const { x, y } = toCanvas(clientX, clientY);
     return contains(layout.panel, x, y);
   };
 
-  const handleMouseDown = (clientX: number, clientY: number, button: number): boolean => {
+  const handleMouseDown = (
+    clientX: number,
+    clientY: number,
+    button: number,
+    toggleModifier = false,
+  ): boolean => {
     if (!claimsPointer(clientX, clientY)) return false;
     if (button !== 0) return true; // over the panel — swallow, but only the left button acts
     const { x, y } = toCanvas(clientX, clientY);
@@ -290,6 +319,11 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     const gatherGood = hitGatherChoice(x, y);
     if (gatherGood !== undefined && lastModel.kind === 'settler') {
       opts.onSetGatherGood(lastModel.entityId, gatherGood);
+      return true;
+    }
+    const craftGood = hitCraftChoice(x, y);
+    if (craftGood !== undefined && lastModel.kind === 'settler') {
+      opts.onSetCraftGoods(lastModel.entityId, nextCraftGoods(lastModel, craftGood, toggleModifier));
       return true;
     }
     const tab = hitStockTab(x, y);
@@ -321,9 +355,12 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
       contains(r, x, y),
     );
     if (slot < 0) return null;
-    const rows = (
-      layout.stockCompact ? lastModel.stock : lastModel.stock.filter((row) => row.category === activeStockTab)
-    ).slice(0, layout.stockRows * 2);
+    // The same row source the section draws from (visibleStockRows), so a hovered slot names exactly
+    // the drawn good.
+    const rows = visibleStockRows(lastModel.stock, layout.stockCompact, activeStockTab).slice(
+      0,
+      layout.stockRows * 2,
+    );
     return rows[slot]?.label ?? null;
   };
 
@@ -343,6 +380,29 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     return contains(layout.assignButton.rect, x, y) ? messages().hud.assignWorkplaceHint : null;
   };
 
+  /** The hovered choice round button's good name ("Wszystko" for the gather-all choice), or null —
+   *  the icon buttons carry no drawn label, so the tooltip is what names them (gather or craft; the
+   *  two blocks never coexist). A craft button also spells out the click semantics (plain = pick one,
+   *  Ctrl/Cmd = toggle) — there is no other affordance for the modifier. */
+  const gatherChoiceHint = (x: number, y: number): string | null => {
+    if (layout?.kind !== 'settler') return null;
+    const gather = layout.gatherChoiceHits.find((hit) => contains(hit.rect, x, y))?.label;
+    if (gather !== undefined) return gather;
+    const craft = layout.craftChoiceHits.find((hit) => contains(hit.rect, x, y))?.label;
+    return craft !== undefined ? `${craft}\n${messages().hud.craftToggleHint}` : null;
+  };
+
+  /** The hovered Produkcja row's recipe card ("Krótki Miecz:" then one "- Żelazo ×2" line per input),
+   *  or null. */
+  const productionRowHint = (x: number, y: number): string | null => {
+    if (layout?.kind !== 'building' || lastModel.kind !== 'building') return null;
+    if (lastModel.production?.kind !== 'recipe') return null;
+    const i = layout.productionRowRects.findIndex((r) => contains(r, x, y));
+    const row = i < 0 ? undefined : lastModel.production.rows[i];
+    if (row === undefined || row.inputs.length === 0) return null;
+    return `${row.label}:\n${row.inputs}`;
+  };
+
   /** Recompute + show/hide the value/name tooltip for the cursor at a client point: a Magazyn stock
    *  row's good name or a category tab's name for a building (the tab glyphs are cryptic unread art,
    *  so the tooltip is what names a category), a stat bar's live value for a settler. The probes are
@@ -358,8 +418,14 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     }
     const rowName = hitStockGood(x, y);
     const tab = rowName === null ? hitStockTab(x, y) : null;
-    const tabLabel = tab !== null ? (stockTabLabels()[tab] ?? null) : null;
-    const text = rowName ?? tabLabel ?? hitBarValue(x, y) ?? assignButtonHint(x, y);
+    const tabLabel = tab !== null ? (detailsStockTabLabels()[tab] ?? null) : null;
+    const text =
+      rowName ??
+      tabLabel ??
+      hitBarValue(x, y) ??
+      gatherChoiceHint(x, y) ??
+      productionRowHint(x, y) ??
+      assignButtonHint(x, y);
     if (text === null) opts.tooltip.hide();
     else opts.tooltip.show(clientX, clientY, text);
   };
@@ -369,7 +435,10 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     updateTooltip(e.clientX, e.clientY);
     const { x, y } = toCanvas(e.clientX, e.clientY);
     const next = hitButton(x, y)?.action ?? null;
-    const nextGatherGood = hitGatherChoice(x, y);
+    // One hover slot serves both choice blocks — they never coexist, and `null` (the gather-all
+    // button) must not fall through to the craft probe, so this is an explicit undefined-check.
+    const gather = hitGatherChoice(x, y);
+    const nextGatherGood = gather !== undefined ? gather : hitCraftChoice(x, y);
     if (next === hoverAction && nextGatherGood === hoveredGatherGood) return;
     hoverAction = next;
     hoveredGatherGood = nextGatherGood;

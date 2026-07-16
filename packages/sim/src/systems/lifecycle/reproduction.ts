@@ -1,12 +1,13 @@
 import { Age, Building, Health, Position, Settler } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
-import { type Fixed, fx, ONE } from '../../core/fixed.js';
+import { type Fixed, ONE } from '../../core/fixed.js';
 import type { World } from '../../ecs/world.js';
 import { DEFAULT_SETTLER_HITPOINTS } from '../conflict/spawn/index.js';
 import type { System, SystemContext } from '../context.js';
 import { canonicalById } from '../spatial.js';
 import { housingCapacity, tribePopulation } from '../stores/index.js';
 import { NEWBORN_AGE_CLASS } from './ageclass.js';
+import { rollInitialNeed } from './needs.js';
 
 /**
  * ReproductionSystem (birth half) — grow a tribe's population while it has spare housing. The first writer of
@@ -15,9 +16,10 @@ import { NEWBORN_AGE_CLASS } from './ageclass.js';
  * population is below the capacity its built homes provide.
  *
  * One birth per tribe per tick while `tribePopulation(tribe) < housingCapacity(tribe)`. That cadence is itself
- * the gate: deterministic (no RNG, no birth-rate constant) and self-limiting — once population reaches capacity
- * the gate is false and growth stops, so the population-vs-housing invariant ({@link populationWithinHousing})
- * can never be breached by a birth. The newborn is placed at the tribe's home anchor ({@link homeAnchorFor}):
+ * the gate: the birth *timing* uses no RNG or birth-rate constant and is self-limiting — once population reaches
+ * capacity the gate is false and growth stops, so the population-vs-housing invariant
+ * ({@link populationWithinHousing}) can never be breached by a birth. (The newborn's *starting needs* are the
+ * one seeded-random draw — {@link rollInitialNeed} — which does not affect the birth cadence.) The newborn is placed at the tribe's home anchor ({@link homeAnchorFor}):
  * the lowest-id built `home` building's tile. A tribe eligible for a birth always has a built home; one with no
  * position (a mapless fixture) skips the birth that tick rather than spawning a position-less settler.
  *
@@ -48,7 +50,8 @@ export const reproductionSystem: System = (world, ctx) => {
 };
 
 /** Create one newborn settler of `tribe` at the `anchor` tile — born a **baby**
- * ({@link NEWBORN_AGE_CLASS}, the youngest age class, NOT an adult trade), every need at 0 and no
+ * ({@link NEWBORN_AGE_CLASS}, the youngest age class, NOT an adult trade), each need seeded at a random
+ * 50–100% ({@link rollInitialNeed}, one `ctx.rng` draw per need — same order as {@link createSettler}) and no
  * experience, otherwise the `spawnSettler` shape. Emits `settlerBorn`. */
 function bornAt(world: World, ctx: SystemContext, tribe: number, anchor: { x: Fixed; y: Fixed }): void {
   const e = world.create();
@@ -56,10 +59,10 @@ function bornAt(world: World, ctx: SystemContext, tribe: number, anchor: { x: Fi
   world.add(e, Settler, {
     tribe,
     jobType: NEWBORN_AGE_CLASS,
-    hunger: fx.fromInt(0),
-    fatigue: fx.fromInt(0),
-    piety: fx.fromInt(0),
-    enjoyment: fx.fromInt(0),
+    hunger: rollInitialNeed(ctx.rng),
+    fatigue: rollInitialNeed(ctx.rng),
+    piety: rollInitialNeed(ctx.rng),
+    enjoyment: rollInitialNeed(ctx.rng),
     experience: new Map<number, number>(),
   });
   // Born young: the {@link Age} component starts the settler at tick 0 of its life so the GrowthSystem

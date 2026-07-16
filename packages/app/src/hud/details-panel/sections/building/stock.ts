@@ -5,6 +5,7 @@ import type { Rect } from '../../../geometry.js';
 import type { Chrome } from '../../chrome.js';
 import { type BuildingLayout, STOCK_PLATE_H, STOCK_ROW_H, stockSlotRects } from '../../layout/index.js';
 import type { BuildingPanelModel } from '../../model/index.js';
+import { visibleStockRows } from '../../stock-tabs.js';
 import { HOUSEWINDOW, STOCK_AMOUNT_INSET, STOCK_ICON_W, stockAmount } from './shared.js';
 
 /** The active stock tab's lime underline height in design px (kept ≥2 screen px so it reads at uiscale 1). */
@@ -30,12 +31,9 @@ export function drawStockSection(
   // The fixed cell grid both the drawing and the hover hit-test share (column-major, two columns).
   const slots = stockSlotRects(body, s, layout.stockRows);
   const cellH = Math.round(STOCK_ROW_H * s);
-  const inTab = layout.stockCompact ? model.stock : model.stock.filter((row) => row.category === activeTab);
-  // The compact store keeps the declared slot order (the mill's Pszenica/Mąka must not swap mid-work); the
-  // tabbed store bubbles held goods above the fold with a stable sort, so equal-amount ties keep their order.
-  const rows = layout.stockCompact
-    ? inTab
-    : [...inTab].sort((a, b) => (b.amount > 0 ? 1 : 0) - (a.amount > 0 ? 1 : 0));
+  // The one shared row source (draw == hover hit-test): compact declared order, the "Wszystkie" tab's
+  // held-goods-fullest-first view, or a category tab with held goods bubbled up — see visibleStockRows.
+  const rows = visibleStockRows(model.stock, layout.stockCompact, activeTab);
   const shown = rows.slice(0, layout.stockRows * 2);
   shown.forEach((row, i) => {
     const slot = slots[i];
@@ -70,29 +68,33 @@ export function drawStockSection(
 }
 
 /**
- * The original tab-plate glyph (frame 170–177) drawn on each category tab, index = tab — reordered from the
- * sheet's raw order so each category gets the fitting glyph (identified by eye: cutlery→food, house→building,
- * hammer→tools, boots→crafted, weapon→military…). The glyph semantics aren't decoded, so this pairing is a
- * named approximation; the hover tooltip carries the authoritative category name either way.
+ * The original tab-plate glyph (frame 170–177) drawn on each tab, index = details tab. The category
+ * glyphs are reordered from the sheet's raw order so each gets the fitting one (identified by eye:
+ * cutlery→food, house→building, hammer→tools, boots→crafted, weapon→military…); the leading
+ * "Wszystkie" tab takes the set's remaining glyph so the whole strip is the one original art style.
+ * The glyph semantics aren't decoded, so this pairing is a named approximation; the hover tooltip
+ * carries the authoritative name either way.
  */
-const STOCK_TAB_GLYPH: readonly number[] = [
-  GUI_FRAME.stock_tab_0 + 2, // 0 Żywność — cutlery
-  guiFrameIndex('resource_icon_water_drop'), // 1 Napoje — water drop (the tab set has no drink glyph)
-  GUI_FRAME.stock_tab_0 + 4, // 2 Surowce — (unread)
-  GUI_FRAME.stock_tab_0 + 1, // 3 Budulec — house
-  GUI_FRAME.stock_tab_0 + 0, // 4 Narzędzia — hammer
-  GUI_FRAME.stock_tab_0 + 5, // 5 Wyroby — boots
-  GUI_FRAME.stock_tab_0 + 6, // 6 Wojsko — weapon
-  GUI_FRAME.stock_tab_0 + 7, // 7 Inne — (spare)
+const STOCK_TAB_GLYPH: readonly (number | undefined)[] = [
+  GUI_FRAME.stock_tab_0 + 7, // 0 Wszystkie — the assorted-goods pile (reads as "everything")
+  GUI_FRAME.stock_tab_0 + 2, // 1 Żywność — cutlery
+  guiFrameIndex('resource_icon_water_drop'), // 2 Napoje — water drop (the tab set has no drink glyph)
+  GUI_FRAME.stock_tab_0 + 4, // 3 Surowce — (unread)
+  GUI_FRAME.stock_tab_0 + 1, // 4 Budulec — house
+  GUI_FRAME.stock_tab_0 + 0, // 5 Narzędzia — hammer
+  GUI_FRAME.stock_tab_0 + 5, // 6 Wyroby — boots
+  GUI_FRAME.stock_tab_0 + 6, // 7 Wojsko — weapon
+  GUI_FRAME.stock_tab_0 + 3, // 8 Inne — the set's remaining glyph (shears)
 ];
 
 /**
- * The stock window's eight category tabs, justified across the body width (whether the original spreads
- * or packs them flush is unread — a guess alongside the per-tab categories, pending a human pass). Each
- * tab bob carries its own plate plus a category glyph, drawn through the `bg_invert` palette as bright cream
- * line-art on a recessed plate (a named legibility choice, not verified to be the original's tab palette).
- * Clicking a tab filters the stock list to its category (see `stock-tabs.ts` and `panel.ts`); the active
- * tab carries a lime underline (the name row's selected-strip look) so the current category reads at a glance.
+ * The stock window's tabs — the "Wszystkie" (held goods, fullest first) tab then the eight categories —
+ * justified across the body width (whether the original spreads or packs them flush is unread — a guess
+ * alongside the per-tab categories, pending a human pass). Each tab bob carries its own plate plus a
+ * glyph, drawn through the `bg_invert` palette as bright cream line-art on a recessed plate (a named
+ * legibility choice, not verified to be the original's tab palette). Clicking a tab filters the stock
+ * list (see `stock-tabs.ts` and `panel.ts`); the active tab carries a lime underline (the name row's
+ * selected-strip look) so the current view reads at a glance.
  */
 function drawStockTabs(chrome: Chrome, rects: readonly Rect[], activeTab: number, s: number): void {
   rects.forEach((r, i) => {

@@ -65,8 +65,14 @@ Hard rules:
 
 Run the gates that match the change, and do not fake them:
 - Normal code path: `npm test`, `npm run check`, `npm run build`.
-- Pipeline/data path: run the real pipeline command when extraction output or schema behavior changes:
-  `npm run pipeline -- --game "../Cultures 8th Wonder" --mod DataCnmd --out content`.
+- Real-content path: when the change consumes real content (loaders, id joins, merge overlays,
+  content-driven UI tables) and the worktree has `content/`, run `npm run test:content` — it
+  hard-fails without generated content instead of skipping (docs/TESTING.md "Real-content test modes").
+- Pipeline/data path: when extraction output or schema behavior changes, run `npm run test:pipeline`
+  (a fresh pipeline run against the owned game copy into a throwaway dir, validated by the
+  real-content suite). Refresh the checkout's content with
+  `npm run pipeline -- --game "../Cultures 8th Wonder" --mod DataCnmd --out content` when the new
+  output should land in `content/`.
 - Player-visible or visual path: start the dev server from the worktree on a non-5173 port, use the
   actual printed URL, exercise the relevant scene/page, and report the URL plus a short checklist for
   the user. Visual and audio correctness require the user's sign-off.

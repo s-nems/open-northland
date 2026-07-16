@@ -74,6 +74,9 @@ export type SpawnCommand =
        *  out-of-range value) for a neutral/unowned settler. Orthogonal to `tribe` (the civilization). Only an
        *  owned settler is selectable/orderable. */
       readonly owner?: number;
+      /** Starting specialization XP as `[trackTypeId, points]` pairs — a scene spawning a veteran (e.g. a
+       *  sandbox miner already past a good's `needforgood` gate). Omit for a fresh settler (empty XP). */
+      readonly experience?: ReadonlyArray<readonly [number, number]>;
     }
   | {
       /**

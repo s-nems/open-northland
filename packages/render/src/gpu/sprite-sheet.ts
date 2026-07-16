@@ -35,6 +35,14 @@ export interface SpriteLayer {
    * building falls back to the bottom-up crop approximation.
    */
   readonly times?: BuildTimeSheet;
+  /**
+   * The layer's cast-shadow twin (the decoded shadow `.bmd` atlas — pre-baked translucent-black
+   * silhouettes whose frame ids parallel this layer's bob ids), when the content names one and it
+   * loaded. A drawn bob prepends its same-id shadow frame under the body; absent, the bob casts
+   * none. Character atlases never carry one (settlers draw shadow-less by design). Only the texture
+   * and frame geometry are meaningful — a shadow has no `times`/`shadow` of its own.
+   */
+  readonly shadow?: Pick<SpriteLayer, 'source' | 'atlas'>;
 }
 
 /**

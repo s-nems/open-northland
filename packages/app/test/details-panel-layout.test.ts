@@ -9,7 +9,7 @@ import {
 } from '../src/game/sandbox/ids/index.js';
 import { buildUnitPanelModel, type StockRow, type UnitPanelModel } from '../src/hud/details-panel/index.js';
 import { layoutDetails, MAX_STOCK_ROWS, stockSlotRects } from '../src/hud/details-panel/layout/index.js';
-import { defaultStockTab } from '../src/hud/details-panel/panel.js';
+import { ALL_STOCK_TAB, visibleStockRows } from '../src/hud/details-panel/stock-tabs.js';
 import { sandboxCtx } from './support/sandbox.js';
 
 describe('details panel layout', () => {
@@ -56,16 +56,20 @@ describe('details panel layout', () => {
     }
   });
 
-  it('opens a building on the FIRST (lowest-index) category that holds any of its goods', () => {
-    const row = (category: number): StockRow => ({ goodType: category, label: 'g', amount: 0, category });
-    const building = (stock: StockRow[]): UnitPanelModel =>
-      ({ kind: 'building', stock }) as unknown as UnitPanelModel;
-    // The panel opens on the lowest tab that has goods, regardless of which category is fullest.
-    expect(defaultStockTab(building([row(2), row(2), row(2), row(5)]))).toBe(2);
-    // A general store holding goods across many tabs opens on the leading one (tab 0).
-    expect(defaultStockTab(building([row(5), row(0), row(7), row(7), row(7)]))).toBe(0);
-    // No stock → tab 0.
-    expect(defaultStockTab(building([]))).toBe(0);
+  it('the "Wszystkie" stock tab lists only held goods, fullest first; category tabs shift by one', () => {
+    const row = (goodType: number, category: number, amount: number): StockRow => ({
+      goodType,
+      label: `g${goodType}`,
+      amount,
+      category,
+    });
+    const stock = [row(1, 2, 0), row(2, 2, 5), row(3, 5, 9), row(4, 0, 0), row(5, 2, 5)];
+    // ALL tab: zeros hidden, descending by amount, equal amounts keep declared order (stable).
+    expect(visibleStockRows(stock, false, ALL_STOCK_TAB).map((r) => r.goodType)).toEqual([3, 2, 5]);
+    // A category tab is its category's slots (details tab = category + 1), held goods bubbled up.
+    expect(visibleStockRows(stock, false, 2 + 1).map((r) => r.goodType)).toEqual([2, 5, 1]);
+    // A compact store ignores tabs and keeps the declared slot order.
+    expect(visibleStockRows(stock, true, ALL_STOCK_TAB).map((r) => r.goodType)).toEqual([1, 2, 3, 4, 5]);
   });
 
   it('lays a small store out compact (no tabs, fitted rows) and drops Magazyn for a store-less building', () => {

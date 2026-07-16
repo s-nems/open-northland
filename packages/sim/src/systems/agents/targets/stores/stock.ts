@@ -14,7 +14,7 @@ import {
   buildingProduces,
   isYardHeap,
   MAX_GROUND_STACK,
-  recipeOf,
+  mergedRecipeOf,
   stockCapacity,
 } from '../../../stores/index.js';
 import type { YardTargets } from '../candidates.js';
@@ -72,7 +72,7 @@ export function canStoreGood(
   if (!world.has(entity, Stockpile) || !world.has(entity, Position)) return false;
   if (world.has(entity, GroundDrop)) return false;
   if (isYardHeap(world, entity)) return false;
-  const recipe = recipeOf(world, ctx, entity);
+  const recipe = mergedRecipeOf(world, ctx, entity);
   if (recipe?.outputs.some((output) => output.goodType === goodType)) return false;
   const stock = world.get(entity, Stockpile);
   const have = stock.amounts.get(goodType) ?? 0;

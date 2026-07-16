@@ -163,18 +163,26 @@ describe('confinement gates the hauler pickups', () => {
 });
 
 describe('confinement gates the carried-load delivery sink', () => {
-  it('a loaded settler holds its load when the only capable store is out of area', () => {
+  it('a loaded settler sheds its load in place when the only capable store is out of area', () => {
     const sim = confinedSim();
     const u = ownedSettler(sim, 2, 2, WOODCUTTER);
     sim.world.add(u, Carrying, { goodType: PLANK, amount: 1 });
     storeAt(sim, OUT_OF_AREA, 2, []);
     sim.step();
-    expect(sim.world.has(u, MoveGoal)).toBe(false); // no in-area sink — the no-sink branch holds the load
-    expect(sim.world.get(u, Carrying).amount).toBe(1);
+    // No in-area sink: the no-sink branch sheds the load at the settler's feet (the drop atomic) —
+    // it never sets out toward the out-of-area store.
+    expect(sim.world.has(u, MoveGoal)).toBe(false);
+    expect(sim.world.tryGet(u, CurrentAtomic)?.effect.kind).toBe('drop');
+  });
 
+  it('a loaded settler delivers to an in-area store', () => {
+    const sim = confinedSim();
+    const u = ownedSettler(sim, 2, 2, WOODCUTTER);
+    sim.world.add(u, Carrying, { goodType: PLANK, amount: 1 });
     storeAt(sim, IN_AREA, 2, []);
     sim.step();
     expect(sim.world.has(u, MoveGoal)).toBe(true); // the in-area store is a known sink
+    expect(sim.world.get(u, Carrying).amount).toBe(1);
   });
 });
 

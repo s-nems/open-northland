@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { decodeCifStringArray, decryptMode1, encryptMode1, StorableId } from '../src/decoders/cif.js';
+import { decodeCifStringTable } from '../src/decoders/ini.js';
 
 /**
  * `.cif` container decoder tests. No copyrighted fixtures are committed: we synthesize a
@@ -170,6 +171,15 @@ describe('decodeCifStringArray', () => {
     expect(cif.lines).toEqual([]);
   });
 
+  it('byte-preserves 0x80–0x9F payload bytes (no windows-1252 remap)', () => {
+    // 0x9C is ś and 0xBF is ż in CP1250; 0x9C sits in the 0x80–0x9F range that the WHATWG
+    // `TextDecoder('latin1')` alias (= windows-1252) remaps to U+0153 'œ'. The `.cif` seam must keep
+    // the raw byte so the IR-layer CP1250 re-decode can recover the real letter.
+    const cif = decodeCifStringArray(buildCif([{ level: 0, text: 'Najwy\xbfsze Do\x9cwiadczenie' }]));
+    const text = cif.lines[0]?.text ?? '';
+    expect(text.charCodeAt(text.indexOf('Do') + 2)).toBe(0x9c); // raw ś byte, not U+0153
+  });
+
   it('rejects a non-CStringArray root', () => {
     const bad = new Uint8Array(8); // id 0, version 0
     expect(() => decodeCifStringArray(bad)).toThrow(/not a CStringArray/);
@@ -178,5 +188,18 @@ describe('decodeCifStringArray', () => {
   it('throws a cif-prefixed error on a truncated header (not a raw RangeError)', () => {
     expect(() => decodeCifStringArray(new Uint8Array(0))).toThrow(/cif: read of 4 bytes overruns/);
     expect(() => decodeCifStringArray(new Uint8Array(6))).toThrow(/cif: read of 4 bytes overruns/);
+  });
+});
+
+describe('decodeCifStringTable', () => {
+  it('decodes CP1250 display letters through the full seam (ś, not S — the reported bug)', () => {
+    // The real ingameguihumanwindow.cif string 130. 0xBF is ż and 0x9C is ś in CP1250; the earlier
+    // windows-1252 latin1 alias mangled ś (0x9C → U+0153 → &0xff → 0x53 'S'), so this string shipped
+    // as "Najwyższe DoSwiadczenie". Guards the byte-preserving `.cif` seam end to end.
+    const cif = buildCif([
+      { level: 1, text: 'text' },
+      { level: 2, text: 'stringn 130 "Najwy\xbfsze Do\x9cwiadczenie"' },
+    ]);
+    expect(decodeCifStringTable(cif)[130]).toBe('Najwyższe Doświadczenie');
   });
 });

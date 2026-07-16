@@ -135,12 +135,18 @@ export class WorkerSpriteOverlay {
       if (item === undefined) return;
       // A worker inside the building (absent from the plain build) stands frozen; an active one animates.
       const clock = activeItem !== undefined ? snapshot.tick : INDOOR_POSE_TICK;
-      const layers = resolveLayers(this.sheet, item, clock);
+      // Size the worker off its NEUTRAL standing frame (INDOOR_POSE_TICK), not the live animation frame:
+      // each walk-cycle frame is a differently-trimmed pixel rect (arms/legs extended → taller bbox), so
+      // normalising the current frame's height would rescale the whole body every step — the "camera bob"
+      // size pulse. The stance frame is stable, so the drawn size holds constant while the gait's own
+      // per-frame offsets still animate the body within it.
+      const stanceLayers = resolveLayers(this.sheet, item, INDOOR_POSE_TICK);
+      const stanceBody = stanceLayers?.[0];
+      if (stanceLayers === null || stanceBody === undefined) return;
+      const layers = clock === INDOOR_POSE_TICK ? stanceLayers : resolveLayers(this.sheet, item, clock);
       if (layers === null || layers.length === 0) return;
-      const body = layers[0];
-      if (body === undefined) return;
-      // Zoom so the body layer fills CHAR_FILL of the field height; every layer shares this zoom.
-      const zoom = (inner.h * CHAR_FILL) / Math.max(1, body.frame.height * body.scale);
+      // Zoom so the neutral stance body fills CHAR_FILL of the field height; every layer shares this zoom.
+      const zoom = (inner.h * CHAR_FILL) / Math.max(1, stanceBody.frame.height * stanceBody.scale);
       const feetX = cellX + slotW / 2;
       for (let li = 0; li < layers.length; li++) {
         const layer = layers[li];

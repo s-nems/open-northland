@@ -303,9 +303,10 @@ describe('decodeBobFrame', () => {
     expect([...frame.mask]).toEqual([0, 0, BOB_ALPHA_OPAQUE, BOB_ALPHA_OPAQUE]);
   });
 
-  it('decodes a 1-bit mask: set bits become index 0xFF, clear bits stay transparent', () => {
-    // Mask raw run of 3 stored as 0/1 bytes [1,0,1] -> cols 0 and 2 set, col 1 clear.
-    const packed = [0x03, 0x01, 0x00, 0x01, 0x00];
+  it('decodes a 1-bit mask: a raw run is itself the coverage (no pixel bytes), skips stay transparent', () => {
+    // Draw 1, skip 1, draw 1 -> cols 0 and 2 set, col 1 clear. Mask raw runs carry no data bytes
+    // (pinned on the real shadow .bmds - only this reading decodes coherent silhouettes).
+    const packed = [0x01, 0x81, 0x01, 0x00];
     const bmd = frameBmd(BOB_TYPE_1BIT, 3, 1, packed, [0]);
     const frame = decodeBobFrame(bmd, 0);
     expect([...frame.pixels]).toEqual([BOB_MASK_INDEX, 0x00, BOB_MASK_INDEX]);

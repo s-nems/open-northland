@@ -78,8 +78,9 @@ export type SecondByteMode = 'alpha' | 'time';
  *
  * Per-type pixel width within a raw run: 8-bit stores one index byte each; TimeMask and Double8Bit store
  * two bytes each (`[value, timeByte]` / `[index, alpha-or-time]` — see {@link BOB_TYPE_TIMEMASK} /
- * {@link BOB_TYPE_DOUBLE8BIT} and `secondByte`); 1-bit masks store one 0/1 byte each, drawn as
- * {@link BOB_MASK_INDEX}.
+ * {@link BOB_TYPE_DOUBLE8BIT} and `secondByte`); 1-bit masks store no pixel bytes — a raw run is itself
+ * the coverage (`count` set pixels, drawn as {@link BOB_MASK_INDEX}; pinned on the real shadow `.bmd`s,
+ * whose silhouettes only decode coherently this way).
  * An empty bob (`type 0`) or non-positive size yields a frame sized to the (clamped) area with an all-transparent mask.
  *
  * Throws a `bmd:`-prefixed error on an out-of-range `bobIndex` (a programmer error). A structurally
@@ -136,7 +137,20 @@ export function decodeBobFrame(bmd: Bmd, bobIndex: number, secondByte: SecondByt
       const count = b & 0x7f;
       const isRaw = (b & 0x80) === 0;
 
-      if (isRaw) {
+      if (isRaw && isMask) {
+        // A 1-bit mask raw run carries no pixel bytes — the run itself is the coverage (draw `count`
+        // set pixels, then the next control byte follows immediately). Pinned by decoding real shadow
+        // `.bmd`s: this reading yields coherent solid silhouettes on every shadow lib, while a
+        // byte-per-pixel reading desyncs the stream into noise. Matches cultures2-wasm's `read_bmd`
+        // shadow-frame path.
+        for (let i = 0; i < count; i++) {
+          const col = absX + i;
+          if (col >= 0 && col < width) {
+            pixels[rowBase + col] = BOB_MASK_INDEX;
+            mask[rowBase + col] = BOB_ALPHA_OPAQUE;
+          }
+        }
+      } else if (isRaw) {
         for (let i = 0; i < count; i++) {
           if (pos + bytesPerPixel > packed.length) {
             return frame(); // truncated stream: stop, like the clipped original
@@ -149,20 +163,13 @@ export function decodeBobFrame(bmd: Bmd, bobIndex: number, secondByte: SecondByt
           // pixel stays genuinely unwritten (`index 0, mask 0`). A time pair's 0 is a real pixel
           // (visible from the very start of construction), written opaque with its threshold in `time`.
           if (col >= 0 && col < width && !(isAlpha && second === 0)) {
-            if (isMask) {
-              if (value !== 0) {
-                pixels[rowBase + col] = BOB_MASK_INDEX;
-                mask[rowBase + col] = BOB_ALPHA_OPAQUE;
-              }
-            } else {
-              pixels[rowBase + col] = value;
-              mask[rowBase + col] = isAlpha ? second : BOB_ALPHA_OPAQUE;
-              if (time !== undefined) time[rowBase + col] = second;
-            }
+            pixels[rowBase + col] = value;
+            mask[rowBase + col] = isAlpha ? second : BOB_ALPHA_OPAQUE;
+            if (time !== undefined) time[rowBase + col] = second;
           }
         }
       }
-      // Skip runs (and the not-drawn pixels of a mask raw run) leave mask=0 — already transparent.
+      // Skip runs leave mask=0 — already transparent.
 
       absX += count;
       if (pos >= packed.length) break;

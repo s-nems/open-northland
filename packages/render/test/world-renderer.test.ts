@@ -183,3 +183,98 @@ describe('resolveLayers — construction reveal: per-pixel with time data, crop 
     ]);
   });
 });
+
+describe('resolveLayers — cast shadows draw under the body from the atlas shadow twin', () => {
+  const source = {} as TextureSource;
+  const shadowSource = {} as TextureSource;
+  const frame = (
+    n: number,
+  ): [number, { x: number; y: number; width: number; height: number; offsetX: number; offsetY: number }] => [
+    n,
+    { x: n, y: 0, width: 10, height: 10, offsetX: 0, offsetY: 0 },
+  ];
+  const atlas: SpriteAtlas = {
+    width: 100,
+    height: 10,
+    frames: new Map([frame(60), frame(70), frame(85)]),
+  };
+  // The shadow twin holds a silhouette at the finished bob (70) only — bob 85 casts none.
+  const shadowAtlas: SpriteAtlas = { width: 100, height: 10, frames: new Map([frame(70)]) };
+  const shadow = { source: shadowSource, atlas: shadowAtlas };
+  const building = {
+    byType: { 13: { layer: 'houses', bob: 70 }, 14: { layer: 'houses', bob: 85 } },
+    default: 70,
+    // The scaffold stage (60) is not any type's finished bob, so the timeless crop-reveal draws it.
+    constructionByType: { 13: [{ layer: 'houses', bob: 60, fromPct: 0, toPct: 60 }] },
+  };
+  const sheet: SpriteSheet = {
+    source,
+    atlas: { width: 0, height: 0, frames: new Map() },
+    bindings: { settler: 1, resource: 1, building },
+    families: { houses: { source, atlas, shadow } },
+  };
+  const finished: DrawItem = { kind: 'building', ref: 1, x: 0, y: 0, depth: 0, typeId: 13 };
+
+  it('prepends the same-id shadow frame, bounds-exempt, under a finished building body', () => {
+    const layers = resolveLayers(sheet, finished, 0) ?? [];
+    expect(layers.map((l) => [l.frame.x, l.source === shadowSource, l.boundsExempt ?? false])).toEqual([
+      [70, true, true],
+      [70, false, false],
+    ]);
+  });
+
+  it('draws only the body when the shadow twin has no frame at the bob id', () => {
+    const noShadowBob: DrawItem = { ...finished, typeId: 14 };
+    const layers = resolveLayers(sheet, noShadowBob, 0) ?? [];
+    expect(layers.map((l) => [l.frame.x, l.source === shadowSource])).toEqual([[85, false]]);
+  });
+
+  it('keeps the construction stack shadow-less (stage shadows are the shadowBobId lane)', () => {
+    const site: DrawItem = { ...finished, builtPct: 30 };
+    const layers = resolveLayers(sheet, site, 0) ?? [];
+    expect(layers.map((l) => [l.frame.x, l.source === shadowSource])).toEqual([[60, false]]);
+  });
+
+  it('prepends the shadow on a per-kind layer draw (the tree/resource path)', () => {
+    const treeSheet: SpriteSheet = {
+      source,
+      atlas: { width: 0, height: 0, frames: new Map() },
+      bindings: { settler: 1, resource: 70, building: 1 },
+      kindLayers: { resource: { source, atlas, shadow } },
+    };
+    const tree: DrawItem = { kind: 'resource', ref: 1, x: 0, y: 0, depth: 0 };
+    const layers = resolveLayers(treeSheet, tree, 0) ?? [];
+    expect(layers.map((l) => [l.frame.x, l.source === shadowSource, l.boundsExempt ?? false])).toEqual([
+      [70, true, true],
+      [70, false, false],
+    ]);
+  });
+
+  it('prepends the pile shadow on a stockpile heap (the `ls_goods_s` silhouettes)', () => {
+    const stockSheet: SpriteSheet = {
+      source,
+      atlas: { width: 0, height: 0, frames: new Map() },
+      bindings: {
+        settler: 1,
+        resource: 1,
+        building: 1,
+        // Wood heap at bob 70 (shadow twin has a silhouette there); the flag bob (85) casts none.
+        stockpile: {
+          byGood: { 5: [{ layer: 'goods', bob: 70 }] },
+          flag: { layer: 'goods', bob: 85 },
+          default: 0,
+        },
+      },
+      families: { goods: { source, atlas, shadow } },
+    };
+    const pile: DrawItem = { kind: 'stockpile', ref: 1, x: 0, y: 0, depth: 0, goodType: 5, fill: 1 };
+    const layers = resolveLayers(stockSheet, pile, 0) ?? [];
+    expect(layers.map((l) => [l.frame.x, l.source === shadowSource, l.boundsExempt ?? false])).toEqual([
+      [70, true, true],
+      [70, false, false],
+    ]);
+    const empty: DrawItem = { kind: 'stockpile', ref: 2, x: 0, y: 0, depth: 0 };
+    const flagLayers = resolveLayers(stockSheet, empty, 0) ?? [];
+    expect(flagLayers.map((l) => [l.frame.x, l.source === shadowSource])).toEqual([[85, false]]);
+  });
+});

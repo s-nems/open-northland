@@ -121,7 +121,7 @@ describe('validateCrossReferences', () => {
             typeId: 1,
             id: 'shed',
             kind: 'workplace',
-            recipe: { inputs: [{ goodType: UNKNOWN, amount: 1 }], outputs: [] },
+            recipes: [{ inputs: [{ goodType: UNKNOWN, amount: 1 }], outputs: [] }],
           },
         ],
       },

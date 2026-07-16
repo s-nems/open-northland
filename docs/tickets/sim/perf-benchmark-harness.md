@@ -19,9 +19,10 @@ Source basis: none needed — this is self-consistency tooling, not a mechanic.
    copyrighted map data in the repo.
 2. Per-system timing: measure ms/tick per system across N ticks (warmup + measured window), report
    median/p95 per system plus total tick cost, machine-readable (JSON) + human-readable table.
-   Timing instrumentation must live outside sim purity — wrap the system loop from the harness (or
-   inject a timer through the existing system-runner seam) rather than putting `performance.now()`
-   inside `packages/sim` (the hygiene test rejects nondeterministic globals there).
+   Timing instrumentation must live outside sim purity — inject a timer through
+   `Simulation.setInstrument` (the per-system seam; system names come from `SYSTEM_ORDER` in
+   `systems/schedule.ts`) rather than putting `performance.now()` inside `packages/sim` (the
+   hygiene test rejects nondeterministic globals there).
 3. Runnable on demand: an npm script (e.g. `npm run bench:sim`), excluded from the default
    `npm test` run so CI time is unaffected; runnable *in* CI manually/optionally.
 4. A CI regression gate (thresholds, baseline tracking) is **optional/deferred** — if worth doing,

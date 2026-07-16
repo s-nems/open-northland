@@ -188,8 +188,11 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
 
   it('matches the golden final state hash', () => {
     const run = runSlice(SEED, TICKS);
-    // Intentional movement calibration: 18 rather than 12 ticks per cell changes the 1000-tick state.
-    expect(run.hash).toBe('a84d0a80');
+    // Intentional mechanic changes baked into this hash: the needs retune (seeded random starting
+    // needs, retuned drains, piety only from forging) AND per-product production (cycles carry their
+    // product `goodType` and pace at the uniform 180-tick design cycle instead of the extracted
+    // per-animation lengths).
+    expect(run.hash).toBe('53f618b5');
   });
 
   it('matches the golden atomic-action trace', () => {

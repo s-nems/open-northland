@@ -3,12 +3,12 @@ import type { Entity, World } from '../../../../ecs/world.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
 import type { SpatialGate } from '../../../node-metric.js';
-import { recipeOf } from '../../../stores/index.js';
+import { mergedRecipeOf } from '../../../stores/index.js';
 import type { InteractionCellIndex } from '../cell-index.js';
 import type { SinkAvailability } from './sinks.js';
 
 /**
- * Whether ANY workplace holds a haulable output this tick — a producing {@link Building} ({@link recipeOf}
+ * Whether ANY workplace holds a haulable output this tick — a producing {@link Building} ({@link mergedRecipeOf}
  * defined) whose {@link Stockpile} holds ≥1 unit of one of its recipe outputs. The population-level gate
  * for {@link nearestWorkplaceOutput}: if this is false no carrier can haul, so idle settlers skip the
  * per-settler scan entirely (the same "holds an output" test the scan's inner loop applies, so a false
@@ -18,7 +18,7 @@ import type { SinkAvailability } from './sinks.js';
  */
 export function hasHaulableOutput(world: World, ctx: SystemContext, stockpiles: readonly Entity[]): boolean {
   for (const e of stockpiles) {
-    const recipe = recipeOf(world, ctx, e);
+    const recipe = mergedRecipeOf(world, ctx, e);
     if (recipe === undefined) continue;
     const stock = world.get(e, Stockpile);
     for (const [goodType, amount] of stockpileEntries(stock)) {
@@ -68,7 +68,7 @@ function haulableOutputGood(
   sinks: SinkAvailability,
   entity: Entity,
 ): number | null {
-  const recipe = recipeOf(world, ctx, entity);
+  const recipe = mergedRecipeOf(world, ctx, entity);
   if (recipe === undefined) return null; // not a workplace — passive stores aren't hauled FROM
   for (const [goodType, amount] of stockpileEntries(world.get(entity, Stockpile))) {
     if (amount <= 0) continue;

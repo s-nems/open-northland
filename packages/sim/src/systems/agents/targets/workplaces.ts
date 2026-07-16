@@ -5,7 +5,7 @@ import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { interactionNode, positionedInteractionCell, resourceWorkCell } from '../../footprint/index.js';
 import { buildingEnabled } from '../../progression/index.js';
-import { buildingWorkerJobs, recipeOf } from '../../stores/index.js';
+import { buildingWorkerJobs, mergedRecipeOf } from '../../stores/index.js';
 
 const EMPTY_ATOMICS: ReadonlySet<number> = new Set<number>();
 
@@ -33,7 +33,7 @@ export function boundWorkplaceTarget(
   const workplace = binding.workplace;
   const building = world.tryGet(workplace, Building);
   if (building === undefined || building.tribe !== tribe) return null;
-  if (recipeOf(world, ctx, workplace) === undefined) return null;
+  if (mergedRecipeOf(world, ctx, workplace) === undefined) return null;
   if (!buildingWorkerJobs(world, ctx, workplace).has(jobType)) return null;
   if (!buildingEnabled(world, ctx, tribe, building.buildingType)) return null;
   if (!world.has(workplace, Position)) return null;

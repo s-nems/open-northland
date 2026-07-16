@@ -81,8 +81,8 @@ function checkBuildings(set: ContentSet, { goodIds, jobIds }: IdSets): string[] 
       if (!goodIds.has(c.goodType))
         errors.push(`building "${b.id}" construction needs unknown goodType ${c.goodType}`);
     }
-    if (b.recipe) {
-      for (const io of [...b.recipe.inputs, ...b.recipe.outputs]) {
+    for (const recipe of b.recipes) {
+      for (const io of [...recipe.inputs, ...recipe.outputs]) {
         if (!goodIds.has(io.goodType))
           errors.push(`building "${b.id}" recipe references unknown goodType ${io.goodType}`);
       }

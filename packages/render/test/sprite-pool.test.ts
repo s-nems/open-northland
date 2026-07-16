@@ -123,3 +123,68 @@ describe('SpritePool — reconcile scans track the screen, not the pool', () => 
     expect(layer.children.length).toBe(0);
   });
 });
+
+/** A drawable settler at a tile — `Settler` + `Position` is all the scene collector needs. */
+function settler(id: number, col: number, row: number, extra: Record<string, unknown> = {}): EntitySnapshot {
+  return { id, components: { Settler: { tribe: 0 }, Position: { x: col * ONE, y: row * ONE }, ...extra } };
+}
+
+describe('SpritePool — details-panel portrait subject visibility', () => {
+  it('force-draws an off-screen subject but hides it on the main map; show/hide toggles it', () => {
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), undefined);
+    const onScreen = building(1, 0, 0);
+    const subject = settler(2, 0, 20); // far off-screen relative to FRAMES_FIRST
+
+    pool.reconcile({ ...poolFrame(snapshotOf([onScreen, subject]), FRAMES_FIRST), portraitRef: 2 });
+
+    const subjectContainer = pool.portraitSubjectContainer();
+    expect(subjectContainer).not.toBeNull();
+    expect(layer.children.includes(subjectContainer as never)).toBe(true); // force-drawn (attached)…
+    expect((subjectContainer as { visible: boolean }).visible).toBe(false); // …but hidden on the main map
+    expect(pool.portraitSubjectIsIndoor()).toBe(false); // off-screen, still animates
+
+    pool.showPortraitSubject();
+    expect((subjectContainer as { visible: boolean }).visible).toBe(true); // revealed for the cutout render
+    pool.hidePortraitSubject();
+    expect((subjectContainer as { visible: boolean }).visible).toBe(false); // hidden again for the main stage
+  });
+
+  it('un-hides the subject when the portrait closes (next reconcile restores its visibility)', () => {
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), undefined);
+    const onScreen = building(1, 0, 0);
+    const subject = settler(2, 0, 20);
+
+    pool.reconcile({ ...poolFrame(snapshotOf([onScreen, subject]), FRAMES_FIRST), portraitRef: 2 });
+    const subjectContainer = pool.portraitSubjectContainer() as { visible: boolean };
+    expect(subjectContainer.visible).toBe(false);
+
+    // Portrait closes: no portraitRef. The off-screen subject is culled again, but its forced-hidden
+    // visibility is restored at the top of reconcile so it never stays invisible when it scrolls back.
+    pool.reconcile(poolFrame(snapshotOf([onScreen, subject]), FRAMES_FIRST));
+    expect(subjectContainer.visible).toBe(true);
+    expect(pool.portraitSubjectContainer()).toBeNull();
+  });
+
+  it('an indoor subject reports indoor and solos: siblings hide during the render, then restore', () => {
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), undefined);
+    const workplace = building(10, 0, 0);
+    const other = settler(2, 0, 0); // another on-screen unit — a sprite-layer sibling
+    const subject = settler(1, 0, 0, { Resting: { at: 10 } }); // waiting inside its workplace
+
+    pool.reconcile({ ...poolFrame(snapshotOf([workplace, other, subject]), FRAMES_ALL), portraitRef: 1 });
+
+    expect(pool.portraitSubjectIsIndoor()).toBe(true);
+    const subjectContainer = pool.portraitSubjectContainer();
+    expect(subjectContainer).not.toBeNull();
+
+    pool.showPortraitSubject();
+    const beforeSolo = layer.children.map((c) => c.visible);
+    pool.beginPortraitSolo();
+    for (const c of layer.children) expect(c.visible).toBe(c === subjectContainer); // only the subject draws
+    pool.endPortraitSolo();
+    expect(layer.children.map((c) => c.visible)).toEqual(beforeSolo); // every sibling restored exactly
+  });
+});

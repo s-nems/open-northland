@@ -53,7 +53,7 @@ const { BerryBush, Settler } = components;
  *  settler's id isn't known until tick 0. With no trees to fell it forages, then idles. */
 function spawnHungryForager(sim: Simulation, x: number, y: number): void {
   const node = cellAnchorNode(x, y); // whole-tile → half-cell node anchor
-  const e = systems.createSettler(sim.world, sim.content, {
+  const e = systems.createSettler(sim.world, sim.content, sim.rng, {
     jobType: JOB_COLLECTOR,
     x: node.hx,
     y: node.hy,

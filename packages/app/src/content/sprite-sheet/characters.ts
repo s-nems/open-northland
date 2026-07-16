@@ -18,6 +18,7 @@ import {
   WHEAT_HARVEST_ATOMIC,
 } from '../../catalog/atomics.js';
 import { characterStem, characterStems, VIKING_CHARACTERS } from '../../catalog/roster.js';
+import { diag } from '../../diag/index.js';
 import {
   type ContentIr,
   gfxAtomicFrameLists,
@@ -85,7 +86,11 @@ export async function loadCharacters(
         // — surface it loudly, but still degrade this look to the default instead of failing the whole
         // sheet. Strict propagation stays on the base sheet's own loads (loadHumanSpriteSheet).
         if (!(err instanceof MissingAtlasError)) {
-          console.warn(`character look '${rosterId}' failed to load — falling back to the default look`, err);
+          diag.warn(
+            'content',
+            `character look '${rosterId}' failed to load — falling back to the default look`,
+            err,
+          );
         }
       }
     }),
@@ -126,7 +131,8 @@ export async function loadCharacters(
             if (list.length !== MUSHROOM_PLUCK_FRAMES) {
               // The atomic duration is sized off the pin, not this list — a drifted extraction would
               // cut the repeated motion short or pad it; surface it instead of silently mistiming.
-              console.warn(
+              diag.warn(
+                'content',
                 `mushroom pluck list '${seq}' is ${list.length} frames; HARVEST_TICKS is sized for ${MUSHROOM_PLUCK_FRAMES}`,
               );
             }

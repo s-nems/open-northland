@@ -26,6 +26,10 @@ export type PlacementCommand =
        *  re-validating them against the interactive placement rule. A player-issued placement must not set
        *  this — the UI goes through the gated path. */
       readonly force?: boolean;
+      /** Seed every stock slot of a fully-built placement to its capacity (the placement twin of
+       *  `debugFillStockpile`) — for authored fixtures like a scene's pre-stocked warehouse. Ignored for an
+       *  `underConstruction` site (its hold accumulates delivered materials instead). */
+      readonly fillStock?: boolean;
     }
   | {
       /**
