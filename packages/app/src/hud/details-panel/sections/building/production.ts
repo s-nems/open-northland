@@ -3,13 +3,15 @@ import type { Rect } from '../../../geometry.js';
 import type { Chrome } from '../../chrome.js';
 import { BAR_H, type BuildingLayout, STOCK_ROW_H } from '../../layout/index.js';
 import type { BuildingPanelModel } from '../../model/index.js';
-import { ROW_TEXT_PAD } from '../shared.js';
 import { STOCK_AMOUNT_INSET, STOCK_ICON_W } from './shared.js';
 
 /** Where a production row's long progress bar starts (design px) — a fixed label column on the LEFT of
  *  every row that fits the product's icon + a localized name like "Zbroja płytowa"; the bar fills the
- *  rest of the row's width. */
-const PRODUCTION_BAR_LEFT = 128;
+ *  rest of the row's width. A name still wider than the column shrinks to fit (textLeftMiddle maxWidth)
+ *  rather than running under the bar. */
+const PRODUCTION_BAR_LEFT = 150;
+/** Breathing room between the end of a row's label column and its bar (design px). */
+const PRODUCTION_LABEL_GAP = 6;
 
 /**
  * Production window ('Produkcja' is a named approximation — no extracted title): a farm shows its live
@@ -43,10 +45,10 @@ export function drawProductionSection(
       growing: p.growing,
       ripe: p.ripe,
     });
-    chrome.textAt(
+    chrome.textLeftMiddle(
       counters,
       icon.x + icon.w + Math.round(STOCK_AMOUNT_INSET * s),
-      body.y + ROW_TEXT_PAD * s,
+      body.y + rowH / 2,
       'white',
     );
   } else {
@@ -55,11 +57,16 @@ export function drawProductionSection(
       const rowY = body.y + i * rowH;
       const icon = rowIcon(rowY);
       if (row.goodId !== undefined) chrome.goodIcon(row.goodId, icon);
-      chrome.textAt(
+      // Icon, label, and bar all centre on the same row midline; the label shrinks to its column so a
+      // long product name ("Duża mikstura leczenia") never runs under the bar.
+      const labelX = icon.x + icon.w + Math.round(STOCK_AMOUNT_INSET * s);
+      chrome.textLeftMiddle(
         row.label,
-        icon.x + icon.w + Math.round(STOCK_AMOUNT_INSET * s),
-        rowY + ROW_TEXT_PAD * s,
+        labelX,
+        rowY + rowH / 2,
         'white',
+        'body',
+        barX - labelX - Math.round(PRODUCTION_LABEL_GAP * s),
       );
       chrome.bar(
         {
