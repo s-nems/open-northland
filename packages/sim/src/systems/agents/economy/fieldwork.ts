@@ -162,16 +162,9 @@ export function planGatherer(plan: PlannerContext): boolean {
   const goodFilter =
     stored !== undefined && pick !== undefined && stored.has(pick) ? new Set([pick]) : stored;
 
-  const node = nearestHarvestableFor(
-    targets.resources,
-    world,
-    ctx,
-    terrain,
-    here,
-    settler,
-    undefined,
-    goodFilter,
-  );
+  const node = nearestHarvestableFor(targets.resources, world, ctx, terrain, here, settler, {
+    ...(goodFilter !== undefined ? { goodFilter } : {}),
+  });
   const trunk = nearestCollectablePileFor(
     targets.groundDrops,
     targets.harvestAtomicByGood,
@@ -228,9 +221,11 @@ function planFlagGatherer(
 
   // 2. Chop / mine the nearest node within the flag's work radius (nothing beyond it).
   const node = nearestHarvestableFor(targets.resources, world, ctx, terrain, here, settler, {
-    center: flagCell,
-    radius: flag.radius,
-    ...(flag.goodType !== undefined ? { goodType: flag.goodType } : {}),
+    area: {
+      center: flagCell,
+      radius: flag.radius,
+      ...(flag.goodType !== undefined ? { goodType: flag.goodType } : {}),
+    },
   });
   if (node !== null) {
     startHarvestFromNode(plan, node);

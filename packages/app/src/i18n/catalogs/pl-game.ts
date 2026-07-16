@@ -18,6 +18,7 @@ export const plGame = {
     gatherTarget: 'Zbieraj',
     gatherAll: 'Wszystko',
     craftTarget: 'Wytwarzaj',
+    craftToggleHint: 'Klik wybiera jeden produkt; Ctrl/Cmd+klik dodaje lub usuwa z wyboru.',
     recipeNoInputs: 'bez surowców',
     stockAllTab: 'Wszystkie',
     workFlag: 'Flaga robocza',

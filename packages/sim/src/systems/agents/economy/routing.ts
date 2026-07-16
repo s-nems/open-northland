@@ -15,7 +15,7 @@ import {
   buildingProduces,
   type InboundSupplyTally,
   inboundSupplyOf,
-  recipeOf,
+  mergedRecipeOf,
   stockCapacity,
 } from '../../stores/index.js';
 import type { PlannerContext } from '../planner-context.js';
@@ -47,7 +47,7 @@ export function deliveryTargetFor(plan: PlannerContext, goodType: number): Entit
   // 1. A fetched input goes to the bound workshop that consumes it.
   const workplace = boundWorkplaceTarget(world, ctx, settler, jobType, tribe);
   if (workplace !== null) {
-    const recipe = recipeOf(world, ctx, workplace);
+    const recipe = mergedRecipeOf(world, ctx, workplace);
     if (recipe?.inputs.some((i) => i.goodType === goodType) && hasRoom(world, ctx, workplace, goodType)) {
       return workplace;
     }

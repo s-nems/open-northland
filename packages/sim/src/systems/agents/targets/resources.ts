@@ -28,14 +28,14 @@ import { interactionCell, jobAtomics } from './workplaces.js';
  * the settler), or null if none qualifies. Scanned in canonical entity-id order so the result never depends
  * on store insertion history.
  *
- * `area` bounds the scan to a gatherer's flag work-area ({@link WorkFlag}): only nodes whose work cell is
+ * `opts.area` bounds the scan to a gatherer's flag work-area ({@link WorkFlag}): only nodes whose work cell is
  * within `radius` (integer node-distance) of `center` qualify, and the winner is the one nearest the flag (so
  * a bound gatherer works outward from its flag, not wherever it stands). Omitted — the default for an unbound
  * roaming collector — measures from `here` with no radius. With `area` set, `candidates` is superseded by the
  * resource region index (`resourcesNearNode` — a provable superset of the in-radius nodes); pass the full
  * canonical resource list, never a pre-filtered one, or the two paths disagree on the winner.
- * `goodFilter` restricts eligible goods to the given set (a building-employed gatherer foraging only what
- * its workplace stores); omitted = every good the job may harvest.
+ * `opts.goodFilter` restricts eligible goods to the given set (a building-employed gatherer foraging only
+ * what its workplace stores); omitted = every good the job may harvest.
  *
  * Known limitation (like the bridge case): the reachability gate below reads static components only. A
  * same-component node whose anchor and every work cell are enclosed by dynamic resource footprints (a sealed
@@ -49,9 +49,12 @@ export function nearestHarvestableFor(
   terrain: TerrainGraph,
   here: NodeId,
   settler: { jobType: number; tribe: number; experience: ReadonlyMap<number, number> },
-  area?: { center: NodeId; radius: number; goodType?: number },
-  goodFilter?: ReadonlySet<number>,
+  opts: {
+    readonly area?: { center: NodeId; radius: number; goodType?: number };
+    readonly goodFilter?: ReadonlySet<number>;
+  } = {},
 ): { entity: Entity; cell: NodeId; dist: number } | null {
+  const { area, goodFilter } = opts;
   const allowed = jobAtomics(ctx, settler.jobType);
   // Dormancy gate: if the job's allowed atomics intersect no harvest atomic present on any standing resource,
   // every candidate fails the `allowed.has` check below — the whole scan is provably null. Skip it in

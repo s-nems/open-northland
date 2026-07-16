@@ -33,7 +33,9 @@ export const Production = defineComponent<{
 
 /**
  * A craft worker's product order — which of its workplace's products it crafts, set by the
- * `setCraftGoods` command (the crafting twin of the gatherer's `WorkFlag.goodType` filter). `goods`
+ * `setCraftGoods` command (the crafting twin of the gatherer's `WorkFlag.goodType` filter; the 1:1
+ * alternation over a multi-pick is a design decision, user-specified 2026-07-16 — the original's
+ * per-worker product scheduling is not decoded). `goods`
  * empty means "every product the workplace offers" (the default; the component may simply be absent).
  * With several products in rotation the worker alternates: each started cycle takes the product at
  * `cursor` (skipping ones whose inputs/room don't allow a start) and advances past it — one short

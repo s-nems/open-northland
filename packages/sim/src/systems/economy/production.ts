@@ -137,7 +137,9 @@ function anyCycleStartable(
 /**
  * Start one cycle of `operator`'s next product choice, or nothing when no chosen product can start.
  * The choice walks the operator's rotation — its {@link CraftSelection} goods, or every product of the
- * workplace when it has none — from the rotation cursor, taking the first startable product and
+ * workplace when it has none (or when its picks name nothing this workplace makes — an orphaned pick
+ * degrades to all-products rather than stalling) — from the rotation cursor, taking the first startable
+ * product and
  * advancing the cursor past it (so alternation resumes after the started product, and a blocked
  * product is retried next start instead of being skipped forever). A first-ever start stamps the
  * "all products" selection so the worker's rotation position persists.
@@ -150,11 +152,15 @@ function startCycleFor(
   recipes: ReadonlyMap<number, Recipe>,
 ): void {
   let selection = world.tryGet(operator, CraftSelection);
-  const pool =
+  const picked =
     selection !== undefined && selection.goods.length > 0
       ? selection.goods.filter((g) => recipes.has(g))
-      : [...recipes.keys()];
-  if (pool.length === 0) return; // the selection names nothing this workplace makes
+      : [];
+  // A selection naming nothing this workplace makes degrades to the all-products default (like the
+  // gather pick's graceful fallback) — employment changes clear picks, but a content rebase can still
+  // orphan one, and an orphaned pick must not stall a staffed workshop.
+  const pool = picked.length > 0 ? picked : [...recipes.keys()];
+  if (pool.length === 0) return; // a workplace with no recipes at all
   const cursor = selection?.cursor ?? 0;
   for (let i = 0; i < pool.length; i++) {
     const good = pool[(cursor + i) % pool.length];
@@ -167,6 +173,7 @@ function startCycleFor(
       selection = world.get(operator, CraftSelection);
     }
     selection.cursor = (cursor + i + 1) % pool.length;
+    world.touch(operator); // an in-place component write — evict any cached snapshot clone
     return;
   }
 }

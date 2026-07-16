@@ -96,7 +96,9 @@ describe('employed gatherer — the workplace store filter', () => {
     const stone = placeStone(sim, 9, 1);
     placeTree(sim, 14, 1);
     sim.run(120);
-    expect(sim.world.get(stone, Resource).remaining).toBeLessThan(5); // the nearer stone is mined
+    // The nearer stone is mined — possibly to depletion (a drained deposit entity is reaped entirely).
+    const left = sim.world.isAlive(stone) ? sim.world.get(stone, Resource).remaining : 0;
+    expect(left).toBeLessThan(5);
   });
 
   it('setGatherGood pins an employed gatherer to ONE stored good and null resets it', () => {
