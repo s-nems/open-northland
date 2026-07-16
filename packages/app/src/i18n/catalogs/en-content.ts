@@ -147,7 +147,7 @@ export const enContent = {
     sandbox: {
       title: 'Open sandbox',
       summary:
-        'A small production village: full crews, a pre-stocked warehouse, and gathering camps at a forest, quarry and ore fields.',
+        'A compact production village: every building at every level with full crews, pre-stocked warehouses, and gathering camps beside the village.',
     },
     collision: {
       title: 'Unit collision',

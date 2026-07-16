@@ -147,7 +147,7 @@ export const plContent = {
     sandbox: {
       title: 'Otwarty sandbox',
       summary:
-        'Mała osada produkcyjna: pełne załogi, zapełniony magazyn i obozy zbieraczy przy lasku, kamieniołomie i złożach.',
+        'Zwarta osada produkcyjna: wszystkie budynki (każdy poziom) z pełną obsadą, pełne magazyny i obozy zbieraczy tuż przy wiosce.',
     },
     collision: {
       title: 'Kolizja jednostek',

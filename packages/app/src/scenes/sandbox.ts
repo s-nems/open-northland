@@ -1,6 +1,11 @@
 import type { Entity, Simulation } from '@open-northland/sim';
 import { components } from '@open-northland/sim';
-import { grassTerrain, placedBuildingTypes, resolveVikingBuilding } from '../catalog/buildings.js';
+import {
+  grassTerrain,
+  placedBuildingTypes,
+  resolveVikingBuilding,
+  VIKING_BUILDINGS,
+} from '../catalog/buildings.js';
 import { WOOD_YIELD_PER_NODE } from '../catalog/felling.js';
 import { HUMAN_PLAYER } from '../game/rules.js';
 import {
@@ -28,12 +33,13 @@ import type { SceneDefinition } from './types.js';
 const { Building, JobAssignment, Owner, Resource, Settler, Stockpile } = components;
 
 /**
- * The main sandbox scene: a small, fully staffed viking settlement over a resource-gathering base — the
- * production inspection world. The village (storage + homes + one workshop per trade) sits in the north
- * with every building staffed to its worker capacity and the warehouse pre-filled to its limits; the south
- * is a spread of gathering camps (a forest, a quarry, a clay pit, iron and gold outcrops, a mushroom grove),
- * each with its own delivery flag and bound gatherers. The scene defines only placement — content, rules,
- * and controls stay in `game/sandbox/`, `entries/scene.ts`, and `entries/map.ts`.
+ * The main sandbox scene: a compact, fully staffed viking settlement over a resource-gathering base — the
+ * production inspection world. The village carries the FULL viking catalog (all 41 building types, every
+ * level of every chain) packed to the placement rule's limits, every building staffed to its worker
+ * capacity, and all three warehouse tiers pre-filled to their limits; gathering camps hug the village
+ * (a forest, a quarry, a clay pit, iron and gold outcrops, a mushroom grove), each with per-gatherer
+ * delivery flags and good-pinned bindings. The scene defines only placement — content, rules, and
+ * controls stay in `game/sandbox/`, `entries/scene.ts`, and `entries/map.ts`.
  */
 
 const MAP_W = 96;
@@ -44,42 +50,67 @@ const INITIAL_ZOOM = 0.5;
 const RUN_TICKS = 2400;
 
 /**
- * The village: every building placed, hand-authored so the settlement reads as one — storage row on top,
- * homes beside it, two workshop streets below, and the two farms on the western edge with open grass to
- * sow/graze. Positions keep every real extracted footprint comfortably clear of its neighbours (7-tile
- * street pitch; homes are small, so 5).
+ * The village: the FULL viking catalog — all 41 building types, every level of every chain — packed as
+ * tight as the placement rule allows. The coordinates are the output of a layout pass over the real
+ * extracted footprints (each building's blocked cells stay outside every neighbour's reserved zone,
+ * mutually, with one node of slack — the `canPlaceBuilding` walls-outside-zones rule on bounding boxes),
+ * so the authored placements would also be legal interactively. Streets group by trade: homes/civic on
+ * top, storage + towers, two craft streets, the food street, and the space-hungry farms/barracks at the
+ * bottom edge with open grass to sow and graze.
  */
 const VILLAGE: ReadonlyArray<{ readonly id: string; readonly x: number; readonly y: number }> = [
-  // Storage row + homes.
-  { id: 'home_level_00', x: 24, y: 8 },
-  { id: 'home_level_00', x: 29, y: 8 },
-  { id: 'home_level_00', x: 34, y: 8 },
-  { id: 'headquarters', x: 42, y: 8 },
-  { id: 'stock_00', x: 52, y: 8 },
-  // Craft street.
-  { id: 'work_joinery_00', x: 18, y: 16 },
-  { id: 'work_mason_hut_00', x: 25, y: 16 },
-  { id: 'work_smithy_00', x: 32, y: 16 },
-  { id: 'work_armory_00', x: 39, y: 16 },
-  { id: 'work_coin_mint', x: 46, y: 16 },
-  { id: 'work_pottery_00', x: 53, y: 16 },
-  { id: 'work_sewery_00', x: 60, y: 16 },
-  { id: 'work_druid_00', x: 67, y: 16 },
+  // Homes (every level) + civic row.
+  { id: 'home_level_00', x: 8, y: 7 },
+  { id: 'home_level_01', x: 13, y: 7 },
+  { id: 'home_level_02', x: 18, y: 7 },
+  { id: 'home_level_03', x: 23, y: 7 },
+  { id: 'home_level_04', x: 28, y: 7 },
+  { id: 'school', x: 33, y: 7 },
+  { id: 'work_temple', x: 39, y: 7 },
+  // Storage row + watchtowers.
+  { id: 'headquarters', x: 8, y: 15 },
+  { id: 'stock_00', x: 14, y: 15 },
+  { id: 'stock_01', x: 18, y: 15 },
+  { id: 'stock_02', x: 22, y: 15 },
+  { id: 'tower_00', x: 26, y: 15 },
+  { id: 'tower_01', x: 29, y: 15 },
+  // Wood & stone craft street.
+  { id: 'work_joinery_00', x: 8, y: 23 },
+  { id: 'work_joinery_01', x: 12, y: 23 },
+  { id: 'work_joinery_02', x: 16, y: 23 },
+  { id: 'work_joinery_03', x: 20, y: 23 },
+  { id: 'work_mason_hut_00', x: 25, y: 23 },
+  { id: 'work_mason_hut_01', x: 31, y: 23 },
+  { id: 'work_smithy_00', x: 38, y: 23 },
+  { id: 'work_smithy_01', x: 43, y: 23 },
+  // Metal & wares craft street.
+  { id: 'work_armory_00', x: 8, y: 31 },
+  { id: 'work_armory_01', x: 13, y: 31 },
+  { id: 'work_pottery_00', x: 17, y: 31 },
+  { id: 'work_pottery_01', x: 22, y: 31 },
+  { id: 'work_pottery_02', x: 27, y: 31 },
+  { id: 'work_sewery_00', x: 31, y: 31 },
+  { id: 'work_sewery_01', x: 36, y: 31 },
+  { id: 'work_coin_mint', x: 41, y: 31 },
   // Food street.
-  { id: 'work_hive_00', x: 18, y: 24 },
-  { id: 'work_mill_00', x: 25, y: 24 },
-  { id: 'work_bakery_00', x: 32, y: 24 },
-  { id: 'work_well_00', x: 39, y: 24 },
-  { id: 'work_brewery', x: 46, y: 24 },
-  { id: 'work_herb_hut', x: 53, y: 24 },
-  { id: 'work_animal_farm', x: 64, y: 24 },
-  // Farms on the open western edge (field-farming sows the grass around the building).
-  { id: 'work_farm_00', x: 8, y: 32 },
+  { id: 'work_well_00', x: 8, y: 39 },
+  { id: 'work_hive_00', x: 10, y: 39 },
+  { id: 'work_mill_00', x: 13, y: 39 },
+  { id: 'work_bakery_00', x: 18, y: 39 },
+  { id: 'work_bakery_01', x: 23, y: 39 },
+  { id: 'work_brewery', x: 28, y: 39 },
+  { id: 'work_herb_hut', x: 33, y: 39 },
+  { id: 'work_druid_00', x: 37, y: 39 },
+  { id: 'work_druid_01', x: 42, y: 39 },
+  // The space-hungry bottom edge: farms with sow/graze grass, and the deep barracks footprint.
+  { id: 'work_farm_00', x: 8, y: 49 },
+  { id: 'work_animal_farm', x: 13, y: 49 },
+  { id: 'barracks', x: 20, y: 49 },
 ];
 
-/** The pre-stocked store — the warehouse the scene seeds full (`fillStock`) so production has inputs
- *  from tick 1. */
-const WAREHOUSE_ID = 'stock_00';
+/** The pre-stocked stores — every warehouse tier the scene seeds full (`fillStock`) so production has
+ *  inputs from tick 1. */
+const WAREHOUSE_IDS: ReadonlySet<string> = new Set(['stock_00', 'stock_01', 'stock_02']);
 
 /**
  * One gathering camp: a cluster of `nodes` around `center` (hand-authored offsets so each camp reads
@@ -94,7 +125,7 @@ interface GatherCamp {
   readonly gatherers: number;
 }
 
-/** An organic ~14-node blob for the forest camp (also reused, truncated, by the smaller camps). */
+/** An organic ~20-node blob for the forest camp (also reused, truncated, by the smaller camps). */
 const BLOB: ReadonlyArray<{ readonly dx: number; readonly dy: number }> = [
   { dx: 0, dy: 0 },
   { dx: 2, dy: -1 },
@@ -110,50 +141,57 @@ const BLOB: ReadonlyArray<{ readonly dx: number; readonly dy: number }> = [
   { dx: -4, dy: 0 },
   { dx: 1, dy: -4 },
   { dx: -1, dy: 4 },
+  { dx: 5, dy: 2 },
+  { dx: -5, dy: 3 },
+  { dx: 3, dy: 4 },
+  { dx: -3, dy: -4 },
+  { dx: 6, dy: 0 },
+  { dx: 0, dy: -6 },
 ];
 
 /**
- * The southern resource base: one camp per gatherable good, each a stretch of map apart (camp centres
- * ≥ ~20 tiles) so no flag radius overlaps a neighbour and the base reads as distinct sites — a small
- * forest, a quarry, a clay pit, iron and gold outcrops, and a mushroom grove.
+ * The resource base hugging the village: the forest, quarry and clay pit just south of the bottom edge,
+ * the iron/gold outcrops and the mushroom grove on the open eastern flank beside their consumer streets.
+ * Camps sit close (short haul walks); each gatherer's good filter keeps overlapping flag radii from
+ * poaching a neighbour camp's nodes.
  */
 const CAMPS: readonly GatherCamp[] = [
-  { good: GOOD_WOOD, center: { x: 14, y: 60 }, nodes: BLOB, flag: { x: 20, y: 60 }, gatherers: 3 },
+  { good: GOOD_WOOD, center: { x: 10, y: 64 }, nodes: BLOB, flag: { x: 16, y: 62 }, gatherers: 4 },
   {
     good: GOOD_STONE,
-    center: { x: 36, y: 68 },
-    nodes: BLOB.slice(0, 5),
-    flag: { x: 40, y: 66 },
-    gatherers: 2,
+    center: { x: 30, y: 60 },
+    nodes: BLOB.slice(0, 8),
+    flag: { x: 34, y: 58 },
+    gatherers: 3,
   },
-  { good: GOOD_MUD, center: { x: 54, y: 58 }, nodes: BLOB.slice(0, 4), flag: { x: 58, y: 58 }, gatherers: 2 },
+  { good: GOOD_MUD, center: { x: 44, y: 58 }, nodes: BLOB.slice(0, 6), flag: { x: 48, y: 55 }, gatherers: 2 },
   {
     good: GOOD_IRON,
-    center: { x: 70, y: 66 },
-    nodes: BLOB.slice(0, 4),
-    flag: { x: 74, y: 64 },
-    gatherers: 2,
+    center: { x: 58, y: 24 },
+    nodes: BLOB.slice(0, 6),
+    flag: { x: 53, y: 23 },
+    gatherers: 3,
   },
   {
     good: GOOD_GOLD,
-    center: { x: 84, y: 56 },
-    nodes: BLOB.slice(0, 3),
-    flag: { x: 86, y: 59 },
-    gatherers: 1,
+    center: { x: 58, y: 36 },
+    nodes: BLOB.slice(0, 5),
+    flag: { x: 53, y: 35 },
+    gatherers: 2,
   },
   {
     good: GOOD_MUSHROOM,
-    center: { x: 26, y: 80 },
-    nodes: BLOB.slice(0, 8),
-    flag: { x: 30, y: 80 },
+    center: { x: 54, y: 46 },
+    nodes: BLOB.slice(0, 12),
+    flag: { x: 50, y: 46 },
     gatherers: 2,
   },
 ];
 
 /** A wild berry patch beside the mushroom grove — forage decor (needs are off by default), drawn with the
  *  real fruited-bush art (the same `[GfxLandscape]` variant the berries scene pins). */
-const BERRY_PATCH = { x: 56, y: 80 } as const;
-const BERRY_BUSHES = 5;
+const BERRY_PATCH = { x: 60, y: 52 } as const;
+const BERRY_BUSHES = 6;
 const BUSH_FRUITS_GFX = 806;
 
 const GATHERER_BY_GOOD: ReadonlyMap<number, GathererSpec> = new Map(GATHERERS.map((g) => [g.good, g]));
@@ -161,7 +199,7 @@ const GATHERER_BY_GOOD: ReadonlyMap<number, GathererSpec> = new Map(GATHERERS.ma
 function buildVillage(sim: Simulation): void {
   for (const b of VILLAGE) {
     placeSandboxBuilding(sim, b.id, b.x, b.y, HUMAN_PLAYER, {
-      fillStock: b.id === WAREHOUSE_ID,
+      fillStock: WAREHOUSE_IDS.has(b.id),
     });
     staffBuildingFully(sim, resolveVikingBuilding(b.id).typeId, b.x, b.y);
   }
@@ -250,17 +288,21 @@ function remainingUnits(sim: Simulation, good: number): number {
   return total;
 }
 
-/** The one placed warehouse holds every stock slot at its capacity. */
-function warehouseFull(sim: Simulation): boolean {
-  const typeId = resolveVikingBuilding(WAREHOUSE_ID).typeId;
-  const slots = sim.content.buildings.find((b) => b.typeId === typeId)?.stock ?? [];
-  if (slots.length === 0) return false;
-  for (const e of sim.world.query(Building)) {
-    if (sim.world.get(e, Building).buildingType !== typeId) continue;
-    const amounts = sim.world.get(e, Stockpile).amounts;
-    return slots.every((s) => (amounts.get(s.goodType) ?? 0) === s.capacity);
+/** Every placed warehouse tier holds every one of its stock slots at its capacity. */
+function warehousesFull(sim: Simulation): boolean {
+  let seen = 0;
+  for (const id of WAREHOUSE_IDS) {
+    const typeId = resolveVikingBuilding(id).typeId;
+    const slots = sim.content.buildings.find((b) => b.typeId === typeId)?.stock ?? [];
+    if (slots.length === 0) return false;
+    for (const e of sim.world.query(Building)) {
+      if (sim.world.get(e, Building).buildingType !== typeId) continue;
+      seen++;
+      const amounts = sim.world.get(e, Stockpile).amounts;
+      if (!slots.every((s) => (amounts.get(s.goodType) ?? 0) === s.capacity)) return false;
+    }
   }
-  return false;
+  return seen === WAREHOUSE_IDS.size;
 }
 
 export const sandboxScene: SceneDefinition = {
@@ -272,21 +314,25 @@ export const sandboxScene: SceneDefinition = {
   initialZoom: INITIAL_ZOOM,
   checks: [
     {
-      label: 'the village settlement is fully placed (every authored building type present)',
+      label: 'the full viking building catalog is placed (every type, every level)',
       predicate: (sim) => {
         const placed = placedBuildingTypes(sim);
-        return [...VILLAGE_TYPE_IDS].every((t) => placed.has(t)) && placed.size === VILLAGE_TYPE_IDS.size;
+        return (
+          [...VILLAGE_TYPE_IDS].every((t) => placed.has(t)) &&
+          placed.size === VILLAGE_TYPE_IDS.size &&
+          placed.size === VIKING_BUILDINGS.length
+        );
       },
     },
     {
-      label: 'the warehouse is seeded full at placement (checked on a fresh 2-tick run of the same build)',
+      label: 'every warehouse tier is seeded full at placement (fresh 2-tick run of the same build)',
       predicate: () => {
         // The end-of-run world is the wrong witness (production legitimately consumes the stores), so the
         // full-at-start claim is proven on a fresh sim of the same scene advanced just past its placement
         // commands. Deterministic and sandbox-content only, like the whole headless twin.
         const fresh = createSceneSim(sandboxScene);
         fresh.run(2);
-        return warehouseFull(fresh);
+        return warehousesFull(fresh);
       },
     },
     {
