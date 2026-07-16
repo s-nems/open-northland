@@ -36,8 +36,10 @@ export class CommandQueue {
   }
 
   /**
-   * Take and clear the pending commands (CommandSystem-only). Returns them in enqueue order; the
-   * caller is responsible for recording each applied command via {@link record}.
+   * Take and clear the pending commands. Returns them in enqueue order; CommandSystem (the one
+   * per-tick caller) records each applied command via {@link record}. The other sanctioned caller is
+   * replay reconstruction: a rebuilt world discards its duplicate setup enqueues before a log replay
+   * supplies every command verbatim (see `stepReplaying`).
    */
   drain(): readonly Command[] {
     const out = this.pending;

@@ -1,6 +1,7 @@
 import type { layoutHud } from '@open-northland/render';
 import { FixedTimestep, FOG_STATE, type SimEvent, systems, type WorldSnapshot } from '@open-northland/sim';
 import type { createSoundDriver } from '../../content/audio.js';
+import { recordDiagHash } from '../../diag/index.js';
 import { HUMAN_PLAYER } from '../../game/rules.js';
 import type { MinimapHandle } from '../../hud/minimap/index.js';
 import type { GameToolPanelHandle } from '../game-tool-panel.js';
@@ -81,6 +82,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
   const frameEvents: SimEvent[] = [];
   const collect = (): void => {
     sim.step();
+    recordDiagHash(sim);
     for (const ev of sim.events.current()) frameEvents.push(ev);
   };
 

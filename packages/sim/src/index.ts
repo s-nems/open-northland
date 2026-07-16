@@ -82,7 +82,7 @@ export {
   type RebaseResult,
   rebaseContent,
 } from './replay/rebase-content.js';
-export { type ReplayOptions, replay } from './replay/replay.js';
+export { type ReplayOptions, replay, stepReplaying } from './replay/replay.js';
 export { scrubWindow } from './replay/scrub-window.js';
 export { type FogView, type SimOptions, Simulation } from './simulation.js';
 export type { ConstructionPlot, PlacementProbe, ResourceNodeSpec } from './systems/footprint/index.js';
