@@ -14,14 +14,14 @@
 
 /**
  * The units a mineral deposit holds — each chipped off one at a time as an ore pile the collector carries
- * off, the deposit shrinking a visual level as it drains. Observed (no readable unit-count source): a
- * modest count so a scene depletes a deposit within its run while still reading as many units (unlike a
- * fell-once tree). Demonstrative until calibrated against the original.
+ * off, the deposit shrinking a visual level as it drains. Observed original behavior (user recollection
+ * 2026-07-16, no readable unit-count source): one deposit hex holds only a few units — at most about
+ * five — so a single outcrop is a short dig, not a quarry. Gold is pinned smallest (the scarcest ore).
  */
-export const STONE_DEPOSIT_UNITS = 8;
-export const CLAY_DEPOSIT_UNITS = 10;
-export const IRON_DEPOSIT_UNITS = 8;
-export const GOLD_DEPOSIT_UNITS = 6;
+export const STONE_DEPOSIT_UNITS = 5;
+export const CLAY_DEPOSIT_UNITS = 5;
+export const IRON_DEPOSIT_UNITS = 4;
+export const GOLD_DEPOSIT_UNITS = 3;
 
 /** Full strikes needed for one hard-mineral unit. Observed original pacing is 20–25 s: eight 29-tick
  * cycles plus three 15-tick rests take 277 ticks (about 23.1 s at 12 ticks/s). */

@@ -12,7 +12,14 @@ import {
 import { resolveVikingBuilding } from '../../catalog/buildings.js';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../../catalog/felling.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../rules.js';
-import { GATHERERS, type GathererSpec, JOB_CARRIER, JOB_IDLE, weaponEquipmentFor } from './ids/index.js';
+import {
+  GATHERERS,
+  type GathererSpec,
+  JOB_CARRIER,
+  JOB_COLLECTOR,
+  JOB_IDLE,
+  weaponEquipmentFor,
+} from './ids/index.js';
 
 const { DeliveryFlag, Position, WorkFlag } = components;
 
@@ -146,6 +153,7 @@ export function staffBuildingFully(
   owner: number = HUMAN_PLAYER,
 ): void {
   const door = buildingDoorNode(sim, buildingType, x, y);
+  const mastery = gatherMasteryExperience(sim);
   for (const slot of staffableCrewFor(sim, buildingType)) {
     for (let i = 0; i < slot.count; i++) {
       sim.enqueue({
@@ -155,9 +163,35 @@ export function staffBuildingFully(
         y: door.hy,
         tribe: PRIMARY_TRIBE,
         owner,
+        // A collector spawns a veteran, so real content's `needforgood` gates (iron/gold behind
+        // clay/stone-digging XP) don't leave a pre-staffed crew unable to forage its wares.
+        ...(slot.jobType === JOB_COLLECTOR && mastery.length > 0 ? { experience: mastery } : {}),
       });
     }
   }
+}
+
+/**
+ * The starting XP that clears every `needforgood` gate on the sandbox's gatherable goods for
+ * {@link PRIMARY_TRIBE}, as `[trackTypeId, points]` pairs. Each `need` requirement sums the XP across
+ * its named tracks, so granting its `amount` into its FIRST track satisfies it. Real extracted content
+ * gates iron/gold behind clay/stone-digging XP (`needforgood 6/7 10` over tracks 4+5) — a fresh
+ * collector pinned to an iron camp would never qualify and stands idle beside the deposit, so sandbox
+ * collectors spawn as veterans instead. Empty on the synthetic sandbox content (it declares no
+ * requirements), keeping the headless twin byte-identical.
+ */
+export function gatherMasteryExperience(sim: Simulation): ReadonlyArray<readonly [number, number]> {
+  const tribe = sim.content.tribes.find((t) => t.typeId === PRIMARY_TRIBE);
+  if (tribe === undefined) return [];
+  const gathered = new Set(GATHERERS.map((g) => g.good));
+  const byTrack = new Map<number, number>();
+  for (const req of tribe.jobRequirements) {
+    if (req.requirement !== 'need' || req.target !== 'good' || !gathered.has(req.targetId)) continue;
+    const track = req.experienceTypes[0];
+    if (track === undefined) continue;
+    byTrack.set(track, Math.max(byTrack.get(track) ?? 0, req.amount));
+  }
+  return [...byTrack].sort((a, b) => a[0] - b[0]);
 }
 
 /** A building's primary worker-slot jobType from the sim's loaded content — its first non-{@link JOB_CARRIER}
@@ -376,12 +410,16 @@ export function spawnBoundGatherer(
   opts: { readonly radius?: number; readonly owner?: number; readonly goodType?: number } = {},
 ): Entity {
   const node = cellAnchorNode(x, y);
+  const mastery = gatherMasteryExperience(sim);
   const e = systems.createSettler(sim.world, sim.content, sim.rng, {
     jobType,
     x: node.hx,
     y: node.hy,
     tribe: PRIMARY_TRIBE,
     owner: opts.owner ?? HUMAN_PLAYER,
+    // A camp gatherer spawns a veteran (see gatherMasteryExperience) — a fresh collector pinned to
+    // iron/gold would fail real content's `needforgood` gate forever and stand beside its deposit.
+    ...(mastery.length > 0 ? { experience: mastery } : {}),
   });
   if (e === null) throw new Error(`spawnBoundGatherer: unknown job ${jobType}`);
   sim.world.add(e, WorkFlag, {
