@@ -11,7 +11,10 @@
    tests, replays, and lockstep multiplayer.
 3. **Agent-legible.** Small, typed, dependency-light code. Rules live in data. A model should be
    able to read a system and a content file and understand a mechanic end-to-end.
-4. **Cross-platform from day one.** Browser-first (Mac/Win/Linux). Native desktop later via Tauri.
+4. **Cross-platform from day one.** Browser-first (Mac/Win/Linux). Desktop distribution wraps the
+   same build in Electron (`packages/desktop`) — chosen over Tauri because the shell embeds the
+   Node asset pipeline as-is and a WebGL game needs one predictable Chromium instead of three OS
+   webviews.
 
 ## Layered design
 
@@ -89,6 +92,14 @@ state + commands + RNG — never on wall-clock or frame rate.
   sink (`src/web/`, engine under `src/web/engine/`).
 - **`app`** — the shell. Owns the main loop, translates input into sim commands, draws menus/HUD,
   wires save/load. The only package that depends on everything.
+- **`content-routes`** — the one table mapping the app's content URLs (`/maps`, `/bobs`, `/ir.json`,
+  the `/maps-index` + `/bobs-index` payloads, …) onto the generated `content/` tree, with traversal
+  and extension guards. Node-side, consumed by the Vite dev middleware and the desktop shell so the
+  two hosts cannot drift.
+- **`desktop`** — the Electron shell for players: serves the built `app` + `content-routes` over its
+  `app://` protocol, and on first run converts the user's owned game copy with the asset pipeline
+  (forked as a `utilityProcess`) into a per-user data root. electron-builder packages it as Windows
+  NSIS/portable, macOS dmg, Linux AppImage. See `packages/desktop/AGENTS.md`.
 - **`tools/asset-pipeline`** — offline, run by a human/agent against an owned game copy. Decodes
   original formats (including encrypted `.cif`) into `content/`. Decoders are covered by synthetic
   fixtures and structural checks; visual output is compared with the running original when needed.

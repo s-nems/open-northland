@@ -32,7 +32,7 @@ To be replaced with Github Issues.
 - Package-local `AGENTS.md` files hold area-specific rules:
   `../packages/sim/AGENTS.md`, `../packages/render/AGENTS.md`,
   `../packages/app/AGENTS.md`, `../packages/audio/AGENTS.md`,
-  `../tools/asset-pipeline/AGENTS.md`.
+  `../packages/desktop/AGENTS.md`, `../tools/asset-pipeline/AGENTS.md`.
 
 ## Automated contributor files
 

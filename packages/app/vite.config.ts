@@ -1,7 +1,7 @@
 import { createReadStream } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { resolveContentRequest } from '@open-northland/content-server';
+import { resolveContentRequest } from '@open-northland/content-routes';
 import { defineConfig, type Plugin } from 'vite';
 
 // Browser-first app shell. `npm run dev` serves this with HMR; the desktop shell (packages/desktop)
@@ -9,7 +9,7 @@ import { defineConfig, type Plugin } from 'vite';
 
 const here = dirname(fileURLToPath(import.meta.url));
 // The decoded `content/` tree lives at the repo root (gitignored; generated from an owned game copy),
-// OUTSIDE the app's vite root. The shared route table (`@open-northland/content-server`) bridges it in
+// OUTSIDE the app's vite root. The shared route table (`@open-northland/content-routes`) bridges it in
 // — `/maps`, `/bobs`, `/textures`, `/sounds`, `/ir.json`, `/gui`, `/gui-bitmaps`, `/goods`, plus the
 // computed `/maps-index` + `/bobs-index` menu/gallery payloads — with path traversal rejected and only
 // per-route extensions served. Anything unmatched or absent falls through to Vite's 404, so a checkout

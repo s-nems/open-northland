@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@open-northland/asset-pipeline": "*",
-    "@open-northland/content-server": "*"
+    "@open-northland/content-routes": "*"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",

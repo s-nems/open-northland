@@ -16,7 +16,7 @@
     "@open-northland/sim": "*"
   },
   "devDependencies": {
-    "@open-northland/content-server": "*",
+    "@open-northland/content-routes": "*",
     "vite": "^8.1.4"
   }
 }
