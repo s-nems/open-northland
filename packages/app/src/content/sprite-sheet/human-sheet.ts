@@ -106,14 +106,20 @@ function shadowStemsByAtlasStem(ir: ContentIr | null): Map<string, string> {
  * the renderer animates directionally per tick.
  */
 export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Promise<SpriteSheet> {
-  // The IR resolves first (memoized — every domain shares the fetch): the tree/house/family loads need
-  // its body-stem → shadow-stem join to attach each atlas's cast-shadow twin. The character body/head
-  // atlases deliberately get none — settlers draw shadow-less by design.
+  // The character body/head atlases need no shadow twin (settlers draw shadow-less by design), so
+  // their fetches start before the IR await; the tree/house/family loads wait for the IR's (memoized)
+  // body-stem → shadow-stem join to attach each atlas's cast-shadow twin.
+  const bodyLoad = loadLayer(HUMAN_BODY_ATLAS);
+  const headLoad = loadLayer(HUMAN_HEAD_ATLAS);
+  // A rejection (absent content/) must wait for the Promise.all below, not surface as unhandled
+  // while the IR await is still pending.
+  bodyLoad.catch(() => undefined);
+  headLoad.catch(() => undefined);
   const ir = await loadIr();
   const shadowStems = shadowStemsByAtlasStem(ir);
   const [body, head, tree, house, familyEntries] = await Promise.all([
-    loadLayer(HUMAN_BODY_ATLAS),
-    loadLayer(HUMAN_HEAD_ATLAS),
+    bodyLoad,
+    headLoad,
     loadLayer(TREE_ATLAS, shadowStems.get(TREE_ATLAS)),
     loadLayer(HOUSE_ATLAS, shadowStems.get(HOUSE_ATLAS)),
     Promise.all(
