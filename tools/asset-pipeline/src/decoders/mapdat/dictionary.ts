@@ -3,7 +3,7 @@
  * groups) — the by-name join tables a map uses to reference the shared `.cif` lists version-robustly.
  */
 
-import { LATIN1, viewOf } from '../byte-cursor.js';
+import { decodeLatin1, viewOf } from '../byte-cursor.js';
 import type { MapDatChunk } from './container.js';
 
 /**
@@ -38,7 +38,7 @@ export function decodeStringListChunk(chunk: MapDatChunk): string[] {
       // A misidentified chunk decodes to garbage names silently unless the terminator is verified.
       throw new Error(`mapdat: chunk "${chunk.tag}" string entry ${i} is not 0x00-terminated`);
     }
-    out.push(LATIN1.decode(p.subarray(off, off + len)));
+    out.push(decodeLatin1(p.subarray(off, off + len)));
     off += len + 1; // skip the (verified) trailing 0x00
   }
   return out;
