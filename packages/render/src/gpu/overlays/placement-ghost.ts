@@ -21,13 +21,12 @@ import type { TextureCache } from '../texture-cache.js';
  * (or an unbound type) it degrades to a translucent placeholder diamond at the same anchor.
  */
 
-/** What the app hands the layer each frame while a building is held over a placeable node —
- *  `col`/`row` are half-cell coordinates on the `2W×2H` lattice. */
-export interface PlacementGhost {
-  readonly col: number;
-  readonly row: number;
-  readonly buildingType: number;
-}
+/** What the app hands the layer each frame while a placement cursor hovers a placeable node —
+ *  `col`/`row` are half-cell coordinates on the `2W×2H` lattice. A held building previews its own
+ *  sprite stack; the scout's pending signpost previews the owner's guidepost post. */
+export type PlacementGhost =
+  | { readonly kind: 'building'; readonly col: number; readonly row: number; readonly buildingType: number }
+  | { readonly kind: 'signpost'; readonly col: number; readonly row: number; readonly player: number };
 
 /** Tuned by eye against the original's translucent cursor house (no measurable oracle). */
 const GHOST_ALPHA = 0.55;
@@ -36,7 +35,7 @@ const PLACEHOLDER_COLOR = 0xc8a04a;
 
 export class PlacementGhostLayer {
   readonly container = new Container();
-  private builtForType: number | null = null;
+  private builtForKey: string | null = null;
 
   constructor(
     private readonly sheet: SpriteSheet | undefined,
@@ -52,9 +51,10 @@ export class PlacementGhostLayer {
       this.container.visible = false;
       return;
     }
-    if (this.builtForType !== ghost.buildingType) {
-      this.builtForType = ghost.buildingType;
-      this.rebuild(ghost.buildingType);
+    const key = ghost.kind === 'building' ? `b:${ghost.buildingType}` : `s:${ghost.player}`;
+    if (this.builtForKey !== key) {
+      this.builtForKey = key;
+      this.rebuild(ghost);
     }
     const p = halfCellToScreen(ghost.col, ghost.row);
     const lift = terrainLiftAtNode(elevation, ghost.col, ghost.row);
@@ -64,13 +64,16 @@ export class PlacementGhostLayer {
     this.container.visible = true;
   }
 
-  /** Rebuild the sprite stack for a building type through the placed-building resolution path. */
-  private rebuild(buildingType: number): void {
+  /** Rebuild the sprite stack through the placed entity's own resolution path (building or signpost). */
+  private rebuild(ghost: PlacementGhost): void {
     for (const child of this.container.removeChildren()) child.destroy();
-    // A minimal building DrawItem: the resolver keys the body frame off `typeId` alone (position and
-    // depth live on the container; ref -1 marks "no entity" and only feeds head-variation picks,
-    // which buildings don't have).
-    const item: DrawItem = { kind: 'building', ref: -1, x: 0, y: 0, depth: 0, typeId: buildingType };
+    // A minimal DrawItem: the resolver keys a building's body frame off `typeId`, a signpost's post off
+    // the owner's `player` recolour (position and depth live on the container; ref -1 marks "no entity"
+    // and only feeds head-variation picks, which neither kind has).
+    const item: DrawItem =
+      ghost.kind === 'building'
+        ? { kind: 'building', ref: -1, x: 0, y: 0, depth: 0, typeId: ghost.buildingType }
+        : { kind: 'signpost', ref: -1, x: 0, y: 0, depth: 0, player: ghost.player };
     const layers = resolveLayers(this.sheet, item, 0);
     if (layers === null) {
       const g = new Graphics();
