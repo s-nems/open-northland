@@ -131,4 +131,36 @@ describe('collectSpriteScene — the single-pass draw list + liveness set', () =
     expect(drawn.every((d) => d.state === 'idle')).toBe(true);
     expect(drawn.every((d) => d.atomicId === undefined && d.elapsed === undefined)).toBe(true);
   });
+
+  // The details-panel portrait's subject is force-drawn through the cull so its live cutout never blanks.
+  // A forced item is tagged `portraitOnly` (the pool hides it on the main map, draws it only in the
+  // portrait's second render); an indoor one is additionally `frozen` (a motionless standing pose).
+  it('portraitRef force-draws its off-screen subject, tagged portraitOnly (not frozen)', () => {
+    const near = tileToScreen(1, 1);
+    const viewport = { minX: near.x - 10, maxX: near.x + 10, minY: near.y - 10, maxY: near.y + 10 };
+    const snapshot = snapshotOf([
+      entity(1, 1, 1, { Settler: { tribe: 0 } }), // framed
+      entity(2, 40, 40, { Settler: { tribe: 0 } }), // far off-screen — culled unless it is the portrait subject
+    ]);
+    // Without the force the far settler is culled (control); with portraitRef it is drawn for the cutout.
+    expect(collectSpriteScene(snapshot, { viewport }).items.map((d) => d.ref)).toEqual([1]);
+    const forced = collectSpriteScene(snapshot, { viewport, portraitRef: 2 });
+    const far = forced.items.find((d) => d.ref === 2);
+    expect(far?.portraitOnly).toBe(true);
+    expect(far?.frozen).toBeUndefined(); // outdoors → still animates in the cutout
+  });
+
+  it('portraitRef keeps its indoor subject, tagged portraitOnly + frozen (a still standing pose)', () => {
+    const snapshot = snapshotOf([
+      entity(10, 2, 2, { Building: { buildingType: 1, tribe: 1, built: ONE, level: 0 } }),
+      entity(1, 2, 2, { Settler: { tribe: 0 }, Resting: { at: 10 } }), // waiting inside its workplace
+    ]);
+    // Control: the indoor settler is normally hidden.
+    expect(collectSpriteScene(snapshot).items.some((d) => d.ref === 1)).toBe(false);
+    const forced = collectSpriteScene(snapshot, { portraitRef: 1 });
+    const subject = forced.items.find((d) => d.ref === 1);
+    expect(subject?.portraitOnly).toBe(true);
+    expect(subject?.frozen).toBe(true);
+    expect(subject?.state).toBe('idle'); // not a stale gait/swing
+  });
 });

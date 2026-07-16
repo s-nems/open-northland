@@ -89,6 +89,10 @@ export interface PoolFrame {
    *  map draws with a faint green/red tint on its sprite (the assign-mode "lekko zielony/czerwony" look);
    *  absent/empty = no tint. Transient view state like the selection, never sim state. */
   readonly highlight?: ReadonlyMap<number, boolean>;
+  /** The details-panel portrait's subject: force-drawn through the cull so its live cutout survives
+   *  off-screen / inside a building, but hidden on the main map (see {@link DrawItem.portraitOnly}).
+   *  Absent = no portrait open. */
+  readonly portraitRef?: number;
 }
 
 /** The faint tints an assign-mode candidate building draws with — a light green when the settler can be
@@ -115,6 +119,10 @@ export class SpritePool {
   private readonly attached = new Set<PooledEntity>();
   private frameId = 0;
   private drawn = 0;
+  /** The portrait subject kept hidden on the main map this frame (off-screen/indoor — {@link
+   *  DrawItem.portraitOnly}); the portrait's second render reveals it via {@link showPortraitSubject}.
+   *  Null when the subject draws normally or no portrait is open. */
+  private portraitHidden: PooledEntity | null = null;
 
   /**
    * @param spriteLayer the renderer's shared, depth-sorted entity layer (also holds the tall map
@@ -147,8 +155,15 @@ export class SpritePool {
       staticRefs: frame.staticRefs,
       fogVisible: frame.fogVisible,
       ghosts: frame.ghosts,
+      ...(frame.portraitRef !== undefined ? { portraitRef: frame.portraitRef } : {}),
     });
     this.frameId++;
+    // Un-hide last frame's force-hidden portrait subject before re-deciding this frame's; the subject may
+    // have scrolled back on-screen (drawn normally) or the portrait may have closed.
+    if (this.portraitHidden !== null) {
+      this.portraitHidden.container.visible = true;
+      this.portraitHidden = null;
+    }
     for (let i = 0; i < scene.items.length; i++) {
       const item = scene.items[i];
       if (item === undefined) continue;
@@ -178,6 +193,14 @@ export class SpritePool {
         this.attached.add(pe);
       }
       pe.lastSeen = this.frameId;
+      // A portrait-only subject (drawn solely for the panel cutout) is hidden on the main map: an
+      // off-screen one is off-canvas anyway, and an indoor one must not pop into view at its door. It
+      // stays reconciled/attached (so `anchorOf` + `placePalettedFor` still serve the portrait) — the
+      // portrait's second render reveals it, then hides it again before the main stage render.
+      if (item.portraitOnly === true) {
+        pe.container.visible = false;
+        this.portraitHidden = pe;
+      }
     }
     this.drawn = scene.items.length;
 
@@ -255,6 +278,19 @@ export class SpritePool {
     }
   }
 
+  /** Reveal the portrait subject that is force-hidden on the main map (if any), so the portrait's second
+   *  render of the world can draw its cutout. Paired with {@link hidePortraitSubject}, which the caller
+   *  runs right after that render so the subject stays hidden on the main stage. No-op when the subject is
+   *  drawn normally or no portrait is open. */
+  showPortraitSubject(): void {
+    if (this.portraitHidden !== null) this.portraitHidden.container.visible = true;
+  }
+
+  /** Re-hide the portrait subject after its cutout render (see {@link showPortraitSubject}). */
+  hidePortraitSubject(): void {
+    if (this.portraitHidden !== null) this.portraitHidden.container.visible = false;
+  }
+
   /**
    * Destroy every pooled entity — including ones currently detached (culled off-screen), which a
    * scene-graph walk from the sprite layer can't reach because they were removed from it. Called on the
@@ -295,9 +331,10 @@ export class SpritePool {
         : item;
     // The moving-state walk cycle runs on the motion-scaled gait clock (feet track ground covered — a
     // body-pressed or braking walker's legs slow instead of jogging in place); everything else (idle loops,
-    // action clocks) stays on the free tick. A ghost binds at a frozen clock: an animating ghost (a mill's
-    // turning sails under the fog) would leak that the fogged building is still manned.
-    const animTick = item.ghost === true ? 0 : frame.tick;
+    // action clocks) stays on the free tick. A frozen clock (0) holds a still frame for two cases: a ghost
+    // (an animating mill's sails under the fog would leak that the building is still manned) and the
+    // portrait subject inside a building (a motionless standing pose, not the breathing idle loop).
+    const animTick = item.ghost === true || item.frozen === true ? 0 : frame.tick;
     const layers = resolveLayers(this.sheet, drawItem, animTick, Math.floor(pe.motion.gaitPhase));
     if (layers === null) {
       this.showPlaceholder(pe, item, frame);

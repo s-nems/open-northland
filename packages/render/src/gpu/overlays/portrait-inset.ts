@@ -69,6 +69,13 @@ export class PortraitInsetLayer {
     this.frame = frame;
   }
 
+  /** The entity the portrait is centred on, so the sprite pool can force-draw it through the cull (its
+   *  cutout must survive the subject scrolling off-screen or stepping inside a building). Null when no
+   *  portrait is set. */
+  subjectRef(): number | null {
+    return this.frame?.entityRef ?? null;
+  }
+
   /**
    * The inset camera framing (world centre + px-per-world scale) for the portrait's entity, or `null` when
    * it wasn't drawn this frame (off-screen / culled). A building fits its static drawn bounds in the box; a
@@ -147,7 +154,11 @@ export class PortraitInsetLayer {
     this.pool.placePalettedFor(insetCamera, w, h, true);
     this.worldLayer.scale.set(scale);
     this.worldLayer.position.set(insetCamera.offsetX, insetCamera.offsetY);
+    // Reveal the subject if the pool force-hid it on the main map (off-screen / inside a building), draw
+    // the cutout, then hide it again so the main stage render below still omits it.
+    this.pool.showPortraitSubject();
     this.app.renderer.render({ container: this.worldLayer, target: this.texture, clear: true });
+    this.pool.hidePortraitSubject();
     this.worldLayer.scale.set(savedScale);
     this.worldLayer.position.set(savedX, savedY);
     this.pool.placePalettedFor(mainCamera, this.app.screen.width, this.app.screen.height, false);

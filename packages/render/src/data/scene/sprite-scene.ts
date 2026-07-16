@@ -64,6 +64,14 @@ export interface SpriteSceneOptions {
    * details panel's worker field sets this so a bound worker who stepped inside still shows there.
    */
   readonly keepIndoorSettlers?: boolean;
+  /**
+   * The details-panel portrait's subject: this one entity is emitted even when the viewport/fog cull or
+   * the indoor-settler suppression would drop it, so its live cutout never blanks when the settler walks
+   * off-screen or steps inside its workplace. A forced item is tagged {@link DrawItem.portraitOnly} (the
+   * pool hides it on the main map) and, when it is an indoor settler, {@link DrawItem.frozen} (a
+   * motionless standing pose). Absent = no portrait open.
+   */
+  readonly portraitRef?: number | undefined;
 }
 
 /**
@@ -103,7 +111,7 @@ export function buildSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOptio
  * cull drops live items elsewhere.
  */
 export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOptions = {}): SpriteScene {
-  const { viewport, elevation, staticRefs, fogVisible, ghosts, keepIndoorSettlers } = opts;
+  const { viewport, elevation, staticRefs, fogVisible, ghosts, keepIndoorSettlers, portraitRef } = opts;
   const items: MutableDrawItem[] = [];
   const liveRefs = new Set<number>();
   // Target positions for facing mid-swing actors and aiming projectiles: built once per snapshot and
@@ -118,13 +126,17 @@ export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOpt
     if (kind === null) continue;
     const pos = readPosition(components);
     if (pos === null) continue;
+    // The details-panel portrait's subject is force-emitted through every cull below, so its live cutout
+    // never blanks off-screen or when it steps inside a building.
+    const isPortrait = portraitRef !== undefined && entity.id === portraitRef;
     // A settler inside a building (mid-exchange in a completed store, or the `Resting` marker in its
-    // workplace) stays live/pooled but is not drawn, unless `keepIndoorSettlers` overrides it.
+    // workplace) stays live/pooled but is not drawn, unless `keepIndoorSettlers` (the worker field) or the
+    // portrait force overrides it.
     let indoorSettler = false;
     if (kind === 'settler') {
       const store = readStoreExchangeRef(components);
       indoorSettler = 'Resting' in components || (store !== null && enterableStores.has(store));
-      if (indoorSettler && keepIndoorSettlers !== true) {
+      if (indoorSettler && keepIndoorSettlers !== true && !isPortrait) {
         liveRefs.add(entity.id);
         continue;
       }
@@ -157,12 +169,15 @@ export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOpt
     const drawX = screen.x;
     const drawY = screen.y;
     // Cull to the framed viewport. Uses the drawn anchor; the box is pre-inflated by the renderer to
-    // cover a tall sprite's extent, so a building straddling the edge still draws.
-    if (viewport !== undefined && !isVisible(viewport, drawX, drawY)) continue;
+    // cover a tall sprite's extent, so a building straddling the edge still draws. The portrait subject is
+    // never culled — it must stay drawn for its cutout even when scrolled off-screen.
+    const offscreen = viewport !== undefined && !isVisible(viewport, drawX, drawY);
+    if (offscreen && !isPortrait) continue;
     // Fog-of-war cull: an entity on ground the viewer does not currently see stays pooled but draws
     // nothing, the same contract as the viewport cull. After the viewport cull on purpose: the fog probe
     // costs a mask lookup per call, so it runs for the few on-screen entities, not the map.
-    if (fogVisible !== undefined && !fogVisible(tileX, tileY)) continue;
+    const fogged = fogVisible !== undefined && !fogVisible(tileX, tileY);
+    if (fogged && !isPortrait) continue;
     // Terrain lift at the feet (bilinear over the elevation lane) is the draw offset, not the depth key:
     // the anchor and `depth` below stay pre-lift so occlusion sorts by map row, not by lifted screen y.
     // A flat map (`maxLift === 0`) skips the sampler entirely.
@@ -230,6 +245,10 @@ export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOpt
     }
     const drawLift = lift + arcLift;
     if (drawLift !== 0) item.lift = drawLift;
+    // The portrait subject that only survived a cull (off-screen/fogged/indoor) is drawn for the panel
+    // cutout but hidden on the main map; an indoor one also freezes to a motionless standing pose.
+    if (isPortrait && (offscreen || fogged || indoorSettler)) item.portraitOnly = true;
+    if (isPortrait && indoorSettler) item.frozen = true;
     items.push(item);
   }
   if (ghosts !== undefined) pushGhostItems(items, liveRefs, ghosts, viewport, elevation);
