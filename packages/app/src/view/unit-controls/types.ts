@@ -42,6 +42,9 @@ export interface UnitControls {
   /** The green/red workplace-assignment wash for the render building-highlight layer, or null when the
    *  player isn't choosing a workplace. Read each frame by the game loop. */
   readonly assignHighlight: () => readonly BuildingHighlightItem[] | null;
+  /** Whether the player is choosing a signpost spot ("Erect Signpost" mode) — the game loop shows the
+   *  placement overlay (dim where the erect click would be refused) while this is true. */
+  readonly signpostPlacementActive: () => boolean;
   readonly tick: (snapshot: WorldSnapshot) => void;
   readonly claimsPointer: (clientX: number, clientY: number) => boolean;
   readonly dispose: () => void;

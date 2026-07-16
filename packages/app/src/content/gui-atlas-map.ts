@@ -845,7 +845,7 @@ export const GUI_FRAMES: readonly GuiFrameMeta[] = [
     role: 'order_icon',
     palette: 'context',
     source: 'montage',
-    note: 'round wooden order button (context palette), user-confirmed order/command icon; glyph: pickaxe; provisional name pending exact command',
+    note: "round wooden order button (context palette); glyph: pickaxe; user-identified as the scout's Erect Signpost order button",
   },
   /* 112 0x70 */ {
     name: 'order_change_profession',

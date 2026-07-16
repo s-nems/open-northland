@@ -96,13 +96,13 @@ const SCOUT_JOB_TYPE = 27;
 
 /**
  * The scout's "Erect Signpost" button — the original's scout action ("Erect Signpost" gui string; it
- * replaces the civilian's alert/query pair in the top-right slots). Icon: the eye-with-rays scout order
- * glyph (`order_scout`) — a provisional binding until the exact original frame is confirmed on screen.
+ * replaces the civilian's alert/query pair in the top-right slots). Icon: frame 111 (`order_mine`,
+ * the pickaxe glyph) — user-identified against the running original.
  */
 const ERECT_SIGNPOST: ActionButton = {
   kind: 'erect-signpost',
   id: 'erectSignpost',
-  icon: 'order_scout',
+  icon: 'order_mine',
 };
 
 /**

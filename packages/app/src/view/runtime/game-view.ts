@@ -21,7 +21,7 @@ import {
 import { createGroundPileTooltip } from '../ground-pile-tooltip.js';
 import { floatParam, menuSearch } from '../params.js';
 import { mountPerfOverlay } from '../perf-overlay.js';
-import { makeOverlayFrameSource } from '../placement-overlay.js';
+import { makeOverlayFrameSource, makeSignpostOverlaySource } from '../placement-overlay.js';
 import {
   createFogGates,
   createGeometryDebugOverlay,
@@ -335,8 +335,10 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
       controls.claimsPointer(clientX, clientY),
   });
 
-  // The memoized build-mode band probe (see makeOverlayFrameSource) — one instance per view.
+  // The memoized build-mode band probe (see makeOverlayFrameSource) — one instance per view — and its
+  // erect-signpost twin (shown while the scout's placement click is pending).
   const overlayFrame = makeOverlayFrameSource(sim, deps.mapSize);
+  const signpostOverlayFrame = makeSignpostOverlaySource(sim, deps.mapSize);
   // Per-frame O(entities) projections memoized by snapshot identity: a frame that did not step reuses
   // its HUD read-view and fog-filtered door badges instead of re-scanning every entity.
   const { hudFor, doorBadgesFor } = createSnapshotProjections(buildingDoors, workerRoleOf, fogGates);
@@ -354,6 +356,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     pileTooltip,
     geometryDebug,
     overlayFrame,
+    signpostOverlayFrame,
     hudFor,
     doorBadgesFor,
     canPlaceAt,

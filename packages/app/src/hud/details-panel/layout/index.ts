@@ -1,6 +1,6 @@
 import type { Rect } from '../../geometry.js';
 import type { UnitPanelModel } from '../model/index.js';
-import { type BuildingLayout, layoutBuilding } from './building.js';
+import { type BuildingLayout, type ButtonHit, layoutBuilding } from './building.js';
 import { layoutSettler, type SettlerLayout } from './settler.js';
 import { PANEL_W, panelRect, ROW_H, type SectionRect, sectionAt } from './shared.js';
 
@@ -15,10 +15,21 @@ export interface CompactLayout {
   readonly section: SectionRect;
 }
 
-export type DetailsLayout = BuildingLayout | SettlerLayout | CompactLayout;
+/** A selected signpost: one section window whose body is the tear-down button. */
+export interface SignpostLayout {
+  readonly kind: 'signpost';
+  readonly panel: Rect;
+  readonly section: SectionRect;
+  readonly button: ButtonHit;
+}
+
+export type DetailsLayout = BuildingLayout | SettlerLayout | CompactLayout | SignpostLayout;
 
 /** Compact (multi/generic) rows: the count lives in the headline, the body is the controls hint. */
 const COMPACT_ROWS = 1;
+/** The signpost tear-down button height/side inset (matches the settler assign button's proportions). */
+const SIGNPOST_BUTTON_H = 18;
+const SIGNPOST_BUTTON_PAD = 2;
 
 /**
  * Apply `fn` to every rect in a layout, returning a new layout of the same shape. The off-screen
@@ -64,6 +75,14 @@ export function mapLayout<T extends DetailsLayout>(layout: T, fn: (r: Rect) => R
       equipRows: layout.equipRows.map((r) => ({ label: fn(r.label), slots: r.slots.map(fn) })),
     };
   }
+  if (layout.kind === 'signpost') {
+    return {
+      ...layout,
+      panel: fn(layout.panel),
+      section: sec(layout.section),
+      button: { ...layout.button, rect: fn(layout.button.rect) },
+    };
+  }
   return { ...layout, panel: fn(layout.panel), section: sec(layout.section) };
 }
 
@@ -85,6 +104,26 @@ export function layoutDetails(
     const probe = sectionAt(0, 0, w, bodyH, s);
     const panel = panelRect(probe.frame.h, screen, s);
     return { kind: 'compact', panel, section: sectionAt(panel.x, panel.y, w, bodyH, s) };
+  }
+
+  if (model.kind === 'signpost') {
+    const w = Math.round(PANEL_W * s);
+    const pad = Math.round(SIGNPOST_BUTTON_PAD * s);
+    const bodyH = Math.round(SIGNPOST_BUTTON_H * s) + pad * 2;
+    const probe = sectionAt(0, 0, w, bodyH, s);
+    const panel = panelRect(probe.frame.h, screen, s);
+    const section = sectionAt(panel.x, panel.y, w, bodyH, s);
+    const button: ButtonHit = {
+      action: 'demolish',
+      enabled: true,
+      rect: {
+        x: section.body.x + pad,
+        y: section.body.y + pad,
+        w: section.body.w - pad * 2,
+        h: Math.round(SIGNPOST_BUTTON_H * s),
+      },
+    };
+    return { kind: 'signpost', panel, section, button };
   }
 
   if (model.kind === 'settler') return layoutSettler(model, screen, s);

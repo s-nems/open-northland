@@ -20,7 +20,7 @@ import {
   stockSlotRects,
 } from './layout/index.js';
 import { buildUnitPanelModel, type UnitPanelModel, type UnitPanelModelContext } from './model/index.js';
-import { drawBuilding, drawCompact, drawSettler } from './sections/index.js';
+import { drawBuilding, drawCompact, drawSettler, drawSignpost } from './sections/index.js';
 import { stockTabLabels } from './stock-tabs.js';
 import { WorkerSpriteOverlay } from './worker-sprites.js';
 
@@ -60,6 +60,8 @@ export interface UnitPanelOptions extends UnitPanelModelContext {
   /** Client→canvas coordinate mapping, injected like the tool panel's (the hud layer stays view-free). */
   readonly backingScale: (canvas: HTMLCanvasElement) => { sx: number; sy: number; rect: DOMRect };
   readonly onDemolish: (entityId: number) => void;
+  /** Tear down the selected signpost — invoked by the signpost panel's one button. */
+  readonly onDemolishSignpost: (entityId: number) => void;
   /** Enter "assign a workplace" mode for the selected settler — invoked when the player clicks the Praca
    *  section's assign button. The view then highlights candidate buildings and binds the settler to the one
    *  the next left-click hits. Absent → the button is inert. */
@@ -203,6 +205,8 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
       drawSettler(chrome, draw, model, uiString, hoverAction, hoveredGatherGood, ss);
     } else if (draw.kind === 'compact' && (model.kind === 'multi-settler' || model.kind === 'generic')) {
       drawCompact(chrome, draw, model, uiString, ss);
+    } else if (draw.kind === 'signpost' && model.kind === 'signpost') {
+      drawSignpost(chrome, draw, uiString, hoverAction);
     }
 
     // Mixed source (Pixi-native fills/preview + flipY PalettedSprites), so it bakes upright — display
@@ -225,7 +229,9 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     if (!force && key === lastModelKey) return;
     // What is selected changed → rebuild now; only live values drifted → rebuild at most 4 Hz.
     const structureKey =
-      model.kind === 'building' || model.kind === 'settler' ? `${model.kind}:${model.entityId}` : model.kind;
+      model.kind === 'building' || model.kind === 'settler' || model.kind === 'signpost'
+        ? `${model.kind}:${model.entityId}`
+        : model.kind;
     const structural = force || structureKey !== lastStructureKey;
     if (!structural && performance.now() - lastRebuildAt < VALUE_REBUILD_MIN_MS) return;
     // A new selection opens the stock view on its leading category, so the panel never lands on an empty
@@ -242,7 +248,13 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
   };
 
   const buttons = (): readonly ButtonHit[] =>
-    layout?.kind === 'building' ? layout.buttons : layout?.kind === 'settler' ? [layout.assignButton] : [];
+    layout?.kind === 'building'
+      ? layout.buttons
+      : layout?.kind === 'settler'
+        ? [layout.assignButton]
+        : layout?.kind === 'signpost'
+          ? [layout.button]
+          : [];
 
   const hitButton = (x: number, y: number): ButtonHit | null =>
     buttons().find((b) => contains(b.rect, x, y)) ?? null;
@@ -291,6 +303,8 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     const hit = hitButton(x, y);
     if (hit?.action === 'demolish' && hit.enabled && lastModel.kind === 'building') {
       opts.onDemolish(lastModel.entityId);
+    } else if (hit?.action === 'demolish' && hit.enabled && lastModel.kind === 'signpost') {
+      opts.onDemolishSignpost(lastModel.entityId);
     } else if (hit?.action === 'assign-workplace' && hit.enabled && lastModel.kind === 'settler') {
       opts.onAssignWorkplace?.(lastModel.entityId);
     }

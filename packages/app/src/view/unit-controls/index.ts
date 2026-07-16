@@ -84,6 +84,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     jobs: opts.content.jobs,
     ...(opts.sheet !== undefined ? { sheet: opts.sheet } : {}),
     onDemolish: (id) => opts.enqueue({ kind: 'demolish', building: id as Entity }),
+    onDemolishSignpost: (id) => opts.enqueue({ kind: 'demolishSignpost', signpost: id as Entity }),
     onAssignWorkplace: (id) => {
       assignSettler = id;
     },
@@ -250,8 +251,12 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       setSelection(pickInRect(unitTargets.owned(), a.x, a.y, b.x, b.y), e.shiftKey);
     } else {
       const w = toWorld(e.clientX, e.clientY);
-      // A settler/building under the cursor wins; failing that, a gatherer's flag selects its gatherer.
-      const hit = pickTopAt(unitTargets.owned(), w.x, w.y) ?? pickTopAt(unitTargets.flags(), w.x, w.y);
+      // A settler/building under the cursor wins; failing that, a gatherer's flag selects its gatherer,
+      // then an own signpost (direct click only — the marquee never grabs a post).
+      const hit =
+        pickTopAt(unitTargets.owned(), w.x, w.y) ??
+        pickTopAt(unitTargets.flags(), w.x, w.y) ??
+        pickTopAt(unitTargets.signposts(), w.x, w.y);
       if (hit !== null) setSelection([hit], e.shiftKey);
       else if (!e.shiftKey) setSelection([], false); // click on empty ground clears
     }
@@ -300,6 +305,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     portrait: () => panel.portrait(),
     flaggedFlagIds,
     assignHighlight,
+    signpostPlacementActive: () => signpostScouts !== null,
     // The HUD this controller defers to before world picking: the tool panel/windows (handed in), the
     // bottom-right details panel, and its own settler action ring. Including the details panel means a
     // consumer that gates on this — the admin spawn palette, the world hover tooltip — treats a point over
