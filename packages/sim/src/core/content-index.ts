@@ -10,6 +10,7 @@ import {
   type HumanJobExperienceType,
   type JobType,
   type LandscapeGfx,
+  type Recipe,
   type TribeType,
   type VehicleType,
   type WeaponType,
@@ -65,6 +66,18 @@ export interface ContentIndex {
   /** Per building type: the set of job types its `workers` slots name (empty for a type with no
    *  worker slots). Precomputed so the per-tick staffing gates don't allocate. */
   readonly workerJobsByBuilding: ReadonlyMap<number, ReadonlySet<number>>;
+  /**
+   * Per producing building type: `product goodType → its recipe` (the recipe whose first output is
+   * that good; first-wins on a duplicate product). The ProductionSystem's cycle-start/deposit lookup.
+   */
+  readonly recipeByProductByBuilding: ReadonlyMap<number, ReadonlyMap<number, Recipe>>;
+  /**
+   * Per producing building type: the UNION view over its per-product recipes — inputs summed per
+   * goodType, outputs one line per product, both ascending (canonical). What the supply AI plans
+   * against (fetch any input some product needs, haul any product out); the ProductionSystem itself
+   * runs the per-product recipes. Absent for a non-producing type.
+   */
+  readonly mergedRecipeByBuilding: ReadonlyMap<number, Recipe>;
   /** Weapons by `(tribeType, typeId)` — the worn-weapon override key; first-wins per pair, the
    *  first-in-source-order record the old `.find` scan returned. */
   readonly weaponsByTribeAndTypeId: ReadonlyMap<number, ReadonlyMap<number, WeaponType>>;
@@ -149,6 +162,8 @@ function buildIndex(content: ContentSet): ContentIndex {
     animalsByTribe: byKey(content.animals, (a) => a.tribeType),
     atomicAnimationsByName: byKey(content.atomicAnimations, (a) => a.name),
     workerJobsByBuilding: workerJobSets(content),
+    recipeByProductByBuilding: recipeProductTables(content),
+    mergedRecipeByBuilding: mergedRecipes(content),
     atomicBindingsByTribe: atomicBindingTables(content),
     gatheringPipelinesByGood: byKey(content.gatheringPipeline, (p) => p.goodType),
     landscapeGfxByIndex: new Map(content.landscapeGfx.map((g) => [g.index, g])), // last-wins, as before
@@ -274,6 +289,47 @@ function atomicBindingTables(
     byTribe.set(tribe.typeId, byJob);
   }
   return byTribe;
+}
+
+/** The per-building-type `product → recipe` tables ({@link ContentIndex.recipeByProductByBuilding}) —
+ *  first-wins per typeId like the other tables; a recipe's product key is its first output's goodType
+ *  (per-product recipes carry exactly one output), first-wins on a duplicate product. Types without
+ *  recipes are absent. */
+function recipeProductTables(content: ContentSet): ReadonlyMap<number, ReadonlyMap<number, Recipe>> {
+  const map = new Map<number, ReadonlyMap<number, Recipe>>();
+  for (const b of content.buildings) {
+    if (map.has(b.typeId) || b.recipes.length === 0) continue;
+    const byProduct = new Map<number, Recipe>();
+    for (const recipe of b.recipes) {
+      const product = recipe.outputs[0]?.goodType;
+      if (product !== undefined && !byProduct.has(product)) byProduct.set(product, recipe);
+    }
+    map.set(b.typeId, byProduct);
+  }
+  return map;
+}
+
+/** The per-building-type union recipes ({@link ContentIndex.mergedRecipeByBuilding}): inputs summed per
+ *  goodType and outputs merged per goodType across the type's per-product recipes, both ascending —
+ *  the single-recipe view the supply AI plans against. First-wins per typeId; `ticks` is the max over
+ *  the merged recipes (the union view never times a cycle, but the field is required). */
+function mergedRecipes(content: ContentSet): ReadonlyMap<number, Recipe> {
+  const map = new Map<number, Recipe>();
+  for (const b of content.buildings) {
+    if (map.has(b.typeId) || b.recipes.length === 0) continue;
+    const inputs = new Map<number, number>();
+    const outputs = new Map<number, number>();
+    let ticks = 1;
+    for (const recipe of b.recipes) {
+      for (const io of recipe.inputs) inputs.set(io.goodType, (inputs.get(io.goodType) ?? 0) + io.amount);
+      for (const io of recipe.outputs) outputs.set(io.goodType, (outputs.get(io.goodType) ?? 0) + io.amount);
+      if (recipe.ticks > ticks) ticks = recipe.ticks;
+    }
+    const lines = (m: Map<number, number>) =>
+      [...m].sort(([a], [c]) => a - c).map(([goodType, amount]) => ({ goodType, amount }));
+    map.set(b.typeId, { inputs: lines(inputs), outputs: lines(outputs), ticks });
+  }
+  return map;
 }
 
 /** The per-building-type worker-job sets — first-wins per typeId unconditionally (a first record with zero

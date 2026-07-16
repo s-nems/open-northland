@@ -155,7 +155,7 @@ function pick<T>(rng: Rng, options: readonly T[]): T {
 function nextCommand(rng: Rng): Command {
   const x = rng.int(NODE_W);
   const y = rng.int(NODE_H);
-  const roll = rng.int(21);
+  const roll = rng.int(22);
   switch (roll) {
     case 0:
       return {
@@ -333,6 +333,15 @@ function nextCommand(rng: Rng): Command {
         kind: 'setGatherGood',
         entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
         goodType: pick(rng, [null, RESOURCE_GOOD, 4, INVALID_TYPE]),
+      };
+    case 20:
+      // A craft-selection order at a random id: empty (all-products reset), single and multi-good picks,
+      // duplicates, and invalid goods — against bound craft workers plus unemployed/wrong-kind/dead
+      // targets. The command must hash and replay even when validation turns it into a no-op.
+      return {
+        kind: 'setCraftGoods',
+        entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+        goods: Array.from({ length: rng.int(3) }, () => pick(rng, [RESOURCE_GOOD, 4, 2, INVALID_TYPE])),
       };
     default:
       // A profession change at a random id: valid + unknown jobs, owned/unowned/dead targets.

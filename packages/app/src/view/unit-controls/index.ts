@@ -82,6 +82,8 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     },
     onSetGatherGood: (id, goodType) =>
       opts.enqueue({ kind: 'setGatherGood', entity: id as Entity, goodType }),
+    onSetCraftGoods: (id, goods) =>
+      opts.enqueue({ kind: 'setCraftGoods', entity: id as Entity, goods: [...goods] }),
     onSelectEntity: (id) => selectFromPanel(id),
     ...(opts.tooltip !== undefined ? { tooltip: opts.tooltip } : {}),
   });

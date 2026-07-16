@@ -5,7 +5,7 @@ import type { Entity, World } from '../../../../ecs/world.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
 import { startableCycleCount } from '../../../economy/production.js';
-import { stockCapacity } from '../../../stores/index.js';
+import { recipesByProductOf, stockCapacity } from '../../../stores/index.js';
 import type { InteractionCellIndex } from '../../targets/index.js';
 import type { SinkAvailability } from '../../targets/stores/sinks.js';
 
@@ -30,14 +30,22 @@ import type { SinkAvailability } from '../../targets/stores/sinks.js';
  * deterministic settler order, and a worker who finds them all taken is SURPLUS — its batch is done
  * or can't start, so it is freed to fetch inputs / haul output instead of idling inside while a
  * colleague's batch finishes (the "drugi młynarz czeka w środku" bug). An unbuilt/gone workplace
- * offers no seats. Reuses the ProductionSystem's own start gate, so the planner and the producer
- * never disagree about whether a cycle can run.
+ * offers no seats. Reuses the ProductionSystem's own per-product start gate, so the planner and the
+ * producer never disagree about whether a cycle can run. The further-seat estimate is the MAX over
+ * the type's per-product recipes (named approximation: two spare operators choosing DIFFERENT
+ * startable products the same tick would fill two seats where this counts one — the short-changed
+ * worker fetches/loiters one tick and reclaims its seat next tick once the batch count has grown).
  */
-export function workSeatCount(world: World, ctx: SystemContext, workplace: Entity, recipe: Recipe): number {
+export function workSeatCount(world: World, ctx: SystemContext, workplace: Entity): number {
   const running = world.tryGet(workplace, Production)?.cycles.length ?? 0;
   const b = world.tryGet(workplace, Building);
   if (b === undefined || b.built < ONE) return running; // a construction site never starts a cycle
-  return running + startableCycleCount(world, ctx, workplace, recipe);
+  const recipes = recipesByProductOf(world, ctx, workplace);
+  let startable = 0;
+  for (const recipe of recipes?.values() ?? []) {
+    startable = Math.max(startable, startableCycleCount(world, ctx, workplace, recipe));
+  }
+  return running + startable;
 }
 
 /**

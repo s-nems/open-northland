@@ -61,9 +61,28 @@ export interface WorkerSlotRow {
   readonly capacity: number;
 }
 
+/** One product row of a workshop's Produkcja section — its icon/name on the left, the bar's live
+ *  progress, and the hover tooltip naming the recipe's inputs. */
+export interface ProductionRow {
+  readonly goodType: number;
+  /** The product's string id — the row's icon key (like {@link StockRow.goodId}). */
+  readonly goodId?: string;
+  readonly label: string;
+  /**
+   * The row's bar: the FRONT-RUNNER batch of this product — the highest progress among the in-flight
+   * `Production.cycles` crafting it (a finished batch deposits and leaves the list, so the bar hands
+   * over to the next-furthest batch). 0 when none runs.
+   */
+  readonly pct: number;
+  /** The hover tooltip: "Wymaga: Żelazo ×2, Skóra ×1" from the product's recipe inputs, or the
+   *  no-materials label for an input-less craft; empty when the inputs are unknown (no recipe). */
+  readonly inputs: string;
+}
+
 /**
  * The Produkcja section's content, one of two shapes:
- *  - `recipe` — a workshop's abstract cycle (its outputs + the running cycle's progress bar);
+ *  - `recipe` — a workshop's per-product rows (one bar per producible good — a smithy 2 lists all
+ *    five wares; see {@link ProductionRow});
  *  - `fields` — a farm's live field state (the produced good's icon + the sown/growing/ripe counters),
  *    for a workplace producing a field-farmed good (`farming` on the good, no recipe): there is no
  *    recipe to show, the "production" is the fields its farmers work around the building.
@@ -71,22 +90,9 @@ export interface WorkerSlotRow {
 export type ProductionModel =
   | {
       readonly kind: 'recipe';
-      /** The first output's string id — the row's icon key (like {@link StockRow.goodId}). */
-      readonly goodId?: string;
-      readonly label: string;
-      /**
-       * One 0..100 progress per in-flight batch (the sim `Production.cycles` list — each operator
-       * works its own independent batch, so a twin-staffed mill shows two bars). Empty when the
-       * workplace is idle.
-       */
-      readonly pcts: readonly number[];
-      /**
-       * The bar rows the section reserves — `max(1, operator headcount, pcts.length)`, so the panel
-       * geometry is stable while batches start/finish staggered (a mill always shows two bar rows,
-       * empty or not), instead of growing/shrinking a row mid-work. The single source both the
-       * layout's height math and the section's bar loop consume — they can never drift apart.
-       */
-      readonly rows: number;
+      /** One row per producible good (recipe order) — the single source both the layout's height math
+       *  and the section's row loop consume, so they can never drift apart. Never empty. */
+      readonly rows: readonly ProductionRow[];
     }
   | {
       readonly kind: 'fields';
@@ -267,11 +273,10 @@ export function productionModel(
   def: BuildingDef | undefined,
   ent: NonNullable<ReturnType<typeof entityById>>,
 ): ProductionModel | null {
-  // A farm produces a field-farmed good — checked before the recipe, mirroring the sim: farmWorkGood
+  // A farm produces a field-farmed good — checked before the recipes, mirroring the sim: farmWorkGood
   // ignores recipe presence and ai.ts ranks the farmer rung above the producer rung precisely because
-  // real extracted content synthesizes an abstract recipe from `logicproduction` for every producer.
+  // real extracted content synthesizes abstract recipes from `logicproduction` for every producer.
   // Wherever the sim farms, the panel must show live field state, never a dead recipe bar.
-  const recipe = def?.recipe;
   const fieldGood = (def?.produces ?? []).map((g) => goodDef(ctx, g)).find((g) => g?.farming !== undefined);
   if (fieldGood !== undefined) {
     const { growing, ripe } = fieldCounts(snapshot, ent.id);
@@ -284,35 +289,46 @@ export function productionModel(
       ...(fieldGood.id !== undefined ? { goodId: fieldGood.id } : {}),
     };
   }
-  const production = ent.components.Production as { cycles?: unknown } | undefined;
   const outputs = recipeOutputs(def);
-  if (production === undefined && recipe === undefined && outputs.length === 0) return null;
-  const out = outputs.map((o) => `${goodLabel(ctx, o.goodType)} x${o.amount}`).join(', ');
-  const firstOutId = outputs[0] === undefined ? undefined : goodDef(ctx, outputs[0].goodType)?.id;
-  // One progress per in-flight batch (each operator grinds its own — the panel bars one per cycle).
-  const rawCycles = Array.isArray(production?.cycles) ? production.cycles : [];
-  const pcts = rawCycles.map((c) => {
-    const cycle = c as { elapsed?: unknown; duration?: unknown } | null;
-    return pctRatio(num(cycle?.elapsed), num(cycle?.duration));
+  if (outputs.length === 0) return null; // not a producer — no Produkcja window
+  // The front-runner batch per product: the highest progress among the cycles crafting that good
+  // (a completed batch deposits and leaves the list, so the bar hands over to the runner-up).
+  const production = ent.components.Production as { cycles?: unknown } | undefined;
+  const bestPct = new Map<number, number>();
+  for (const c of Array.isArray(production?.cycles) ? production.cycles : []) {
+    const cycle = c as { elapsed?: unknown; duration?: unknown; goodType?: unknown } | null;
+    const good = num(cycle?.goodType);
+    if (good === undefined) continue;
+    const pct = pctRatio(num(cycle?.elapsed), num(cycle?.duration));
+    if (pct > (bestPct.get(good) ?? -1)) bestPct.set(good, pct);
+  }
+  const inputsByProduct = new Map<number, string>();
+  for (const recipe of def?.recipes ?? []) {
+    const product = recipe.outputs[0]?.goodType;
+    if (product === undefined || inputsByProduct.has(product)) continue;
+    inputsByProduct.set(product, recipeInputsLabel(ctx, recipe.inputs));
+  }
+  const rows = outputs.map((o) => {
+    const goodId = goodDef(ctx, o.goodType)?.id;
+    return {
+      goodType: o.goodType,
+      label: o.amount > 1 ? `${goodLabel(ctx, o.goodType)} ×${o.amount}` : goodLabel(ctx, o.goodType),
+      pct: bestPct.get(o.goodType) ?? 0,
+      inputs: inputsByProduct.get(o.goodType) ?? '',
+      ...(goodId !== undefined ? { goodId } : {}),
+    };
   });
-  return {
-    kind: 'recipe',
-    label: out.length > 0 ? out : messages().hud.readyToWork,
-    pcts,
-    rows: Math.max(1, operatorHeadcount(ctx, def), pcts.length),
-    ...(firstOutId !== undefined ? { goodId: firstOutId } : {}),
-  };
+  return { kind: 'recipe', rows };
 }
 
-/**
- * The declared operator headcount of a workplace — its `workers` slot counts minus the carrier
- * transport slots (mirrors the sim's `operatorJobsOf`: a carrier-only building keeps its slots, the
- * well's carrier is its operator). This is the batch ceiling, so the Produkcja section reserves this
- * many bar rows and keeps a stable height while batches start/finish staggered.
- */
-export function operatorHeadcount(ctx: UnitPanelModelContext, def: BuildingDef | undefined): number {
-  const slots = def?.workers ?? [];
-  const operators = slots.filter((s) => ctx.jobs.find((j) => j.typeId === s.jobType)?.id !== 'carrier');
-  const counted = operators.length > 0 ? operators : slots;
-  return counted.reduce((sum, s) => sum + s.count, 0);
+/** A recipe's inputs as the tooltip line — "Wymaga: Żelazo ×2, Skóra ×1", or the no-materials label
+ *  for an input-less craft (the well). */
+function recipeInputsLabel(
+  ctx: UnitPanelModelContext,
+  inputs: readonly { goodType: number; amount: number }[],
+): string {
+  const hud = messages().hud;
+  if (inputs.length === 0) return hud.recipeNoInputs;
+  const list = inputs.map((i) => `${goodLabel(ctx, i.goodType)} ×${i.amount}`).join(', ');
+  return `${hud.recipeNeeds}: ${list}`;
 }

@@ -106,6 +106,17 @@ export interface SettlerPanelModel {
       readonly goodId?: string;
     }[];
     readonly selectedGood: number | null;
+    /** A craft operator's product toggles — one per product its workplace's recipes make (in recipe
+     *  order), multi-selectable (the crafting twin of {@link gatherChoices}; the two never coexist).
+     *  Empty for a non-craft settler. */
+    readonly craftChoices: readonly {
+      readonly goodType: number;
+      readonly label: string;
+      readonly goodId?: string;
+    }[];
+    /** The EFFECTIVE craft selection: the settler's `CraftSelection` goods, or every product when it
+     *  has none (the all-products default reads as everything selected). */
+    readonly selectedCraftGoods: readonly number[];
   };
   /** The Doświadczenie section: the settler's highest recorded specialization, or null when it has none.
    *  See {@link highestExperience}. */
@@ -240,7 +251,14 @@ export function settlerWork(
     ];
     const product =
       gatherChoices.find((choice) => choice.goodType === selectedGood)?.label ?? messages().hud.gatherAll;
-    return { place: messages().hud.workFlag, product, gatherChoices, selectedGood };
+    return {
+      place: messages().hud.workFlag,
+      product,
+      gatherChoices,
+      selectedGood,
+      craftChoices: [],
+      selectedCraftGoods: [],
+    };
   }
   const assignment = comps.JobAssignment as { workplace?: unknown } | undefined;
   const workplaceId = num(assignment?.workplace);
@@ -250,11 +268,28 @@ export function settlerWork(
       product: carried ?? '-',
       gatherChoices: [],
       selectedGood: null,
+      craftChoices: [],
+      selectedCraftGoods: [],
     };
   }
   const ent = entityById(snapshot, workplaceId);
   const rawType = num((ent?.components.Building as { buildingType?: unknown } | undefined)?.buildingType);
   const def = buildingDef(ctx, rawType);
+  const craft = craftChoicesFor(ctx, def, comps);
+  if (craft !== null) {
+    const selectedLabels = craft.choices
+      .filter((choice) => craft.selected.includes(choice.goodType))
+      .map((choice) => choice.label);
+    const allSelected = selectedLabels.length === craft.choices.length;
+    return {
+      place: buildingTitle(ctx, rawType),
+      product: allSelected ? messages().hud.gatherAll : selectedLabels.join(', '),
+      gatherChoices: [],
+      selectedGood: null,
+      craftChoices: craft.choices,
+      selectedCraftGoods: craft.selected,
+    };
+  }
   const outputs = recipeOutputs(def);
   const product = outputs[0] === undefined ? undefined : goodLabel(ctx, outputs[0].goodType);
   return {
@@ -262,7 +297,50 @@ export function settlerWork(
     product: product ?? carried ?? '-',
     gatherChoices: [],
     selectedGood: null,
+    craftChoices: [],
+    selectedCraftGoods: [],
   };
+}
+
+/**
+ * The craft product toggles for a settler bound to a recipe workplace, or null when there is nothing
+ * to choose: the workplace has fewer than one product, or the settler's job is not one of the type's
+ * OPERATOR slots (mirrors the sim's `operatorJobsOf`: worker slots minus the carrier transport slot —
+ * a carrier ferries goods, it never picks what the smiths forge; when every slot is carrier the
+ * building is carrier-operated and the carrier does choose, like the well). The effective selection
+ * comes from the snapshot's `CraftSelection` goods; absent/empty reads as every product selected (the
+ * sim's all-products default).
+ */
+function craftChoicesFor(
+  ctx: UnitPanelModelContext,
+  def: ReturnType<typeof buildingDef>,
+  comps: Comp,
+): { choices: SettlerPanelModel['work']['craftChoices']; selected: number[] } | null {
+  if (def === undefined || def.recipes.length === 0) return null;
+  const jobType = num((comps.Settler as { jobType?: unknown } | undefined)?.jobType);
+  if (jobType === undefined) return null;
+  const isCarrier = (jt: number) => ctx.jobs.find((j) => j.typeId === jt)?.id === 'carrier';
+  const operatorSlots = def.workers.filter((slot) => !isCarrier(slot.jobType));
+  const operators = operatorSlots.length > 0 ? operatorSlots : def.workers;
+  if (!operators.some((slot) => slot.jobType === jobType)) return null;
+  const choices = def.recipes.flatMap((recipe) => {
+    const goodType = recipe.outputs[0]?.goodType;
+    if (goodType === undefined) return [];
+    const good = goodDef(ctx, goodType);
+    return [
+      {
+        goodType,
+        label: goodLabel(ctx, goodType),
+        ...(good?.id !== undefined ? { goodId: good.id } : {}),
+      },
+    ];
+  });
+  if (choices.length === 0) return null;
+  const raw = (comps.CraftSelection as { goods?: unknown } | undefined)?.goods;
+  const picked = Array.isArray(raw) ? raw.map(num).filter((g): g is number => g !== undefined) : [];
+  const products = choices.map((c) => c.goodType);
+  const selected = picked.length > 0 ? products.filter((g) => picked.includes(g)) : products;
+  return { choices, selected: selected.length > 0 ? selected : products };
 }
 
 /**

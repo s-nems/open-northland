@@ -150,11 +150,10 @@ export async function buildIr(args: Args): Promise<ContentSet> {
     hitpoints,
     footprints,
   });
-  // Output-side recipe join: a workplace's `produces` output good -> that good's `productionInputs`
-  // materializes each producing building's `recipe` (cross-table, so after the tables are built).
-  // The recipe `ticks` is resolved through the produce-atomic animation length of the reference
-  // tribe, so the tribes + atomicAnimations tables feed in too (fall back to a default otherwise).
-  const buildingsWithRecipes = fillBuildingRecipes(buildingsWithCosts, goods, tribes, atomicAnimations);
+  // Output-side recipe join: a workplace's `produces` output goods -> each good's `productionInputs`
+  // materializes each producing building's per-product `recipes` (cross-table, so after the tables
+  // are built). Cycle ticks are the uniform design pacing (DEFAULT_RECIPE_TICKS).
+  const buildingsWithRecipes = fillBuildingRecipes(buildingsWithCosts, goods);
   return parseContentSet({
     manifest: {
       version: IR_VERSION,

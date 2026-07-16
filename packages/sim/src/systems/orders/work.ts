@@ -3,6 +3,7 @@ import {
   AttackOrder,
   Building,
   Carrying,
+  CraftSelection,
   CurrentAtomic,
   Engagement,
   Fleeing,
@@ -253,4 +254,43 @@ export function setGatherGood(
   const atomic = world.tryGet(e, CurrentAtomic);
   if (atomic?.effect.kind === 'harvest') world.remove(e, CurrentAtomic);
   clearNavState(world, e);
+}
+
+/**
+ * Set a craft worker's product selection ({@link CraftSelection}) — which of its bound workplace's
+ * products it crafts, alternating when several are chosen (see the component doc for the rotation).
+ * The selection is stored ascending and deduped (canonical; the rotation order is by goodType, not
+ * click order) with the cursor reset. Goods the workplace's recipes don't make are dropped; a
+ * selection with none left is ignored (recoverable bad input), and an empty selection restores the
+ * all-products default by removing the component. Batches already grinding keep their product — the
+ * choice applies from the next cycle start, mirroring how a mid-harvest `setGatherGood` cancels only
+ * the not-yet-banked work.
+ */
+export function setCraftGoods(
+  world: World,
+  ctx: SystemContext,
+  command: Extract<Command, { kind: 'setCraftGoods' }>,
+): void {
+  const e = command.entity;
+  if (!isOrderableSettler(world, e)) return;
+  const workplace = world.tryGet(e, JobAssignment)?.workplace;
+  if (workplace === undefined) return;
+  const buildingType = world.tryGet(workplace, Building)?.buildingType;
+  if (buildingType === undefined) return;
+  const recipes = contentIndex(ctx.content).recipeByProductByBuilding.get(buildingType);
+  if (recipes === undefined) return; // not a recipe workplace — nothing to choose
+  if (command.goods.length === 0) {
+    world.remove(e, CraftSelection); // back to the all-products default
+    return;
+  }
+  const goods = [...new Set(command.goods)].filter((g) => recipes.has(g)).sort((a, b) => a - b);
+  if (goods.length === 0) return; // named nothing this workplace makes
+  const selection = world.tryGet(e, CraftSelection);
+  if (selection === undefined) {
+    world.add(e, CraftSelection, { goods, cursor: 0 });
+  } else {
+    selection.goods = goods;
+    selection.cursor = 0;
+    world.touch(e);
+  }
 }

@@ -11,6 +11,7 @@ import {
   GOOD_IRON,
   GOOD_MUD,
   GOOD_MUSHROOM,
+  GOOD_PLANK,
   GOOD_SHOES,
   GOOD_STONE,
   GOOD_WHEAT,
@@ -73,11 +74,11 @@ describe('selection details panel model', () => {
             Building: { buildingType: BUILDING_JOINERY, tribe: 1, built: ONE, level: 0 },
             Owner: { player: 0 },
             Stockpile: { amounts: [[GOOD_WOOD, 3]] },
-            // TWO in-flight batches (one per operator) at different progress — the panel bars each.
+            // TWO in-flight plank batches at different progress — the plank row bars the front-runner.
             Production: {
               cycles: [
-                { elapsed: 5, duration: 20 },
-                { elapsed: 10, duration: 20 },
+                { elapsed: 5, duration: 20, goodType: GOOD_PLANK },
+                { elapsed: 10, duration: 20, goodType: GOOD_PLANK },
               ],
             },
           },
@@ -106,13 +107,13 @@ describe('selection details panel model', () => {
     if (model.kind !== 'building') return;
     expect(model.production?.kind).toBe('recipe');
     if (model.production?.kind !== 'recipe') return;
-    expect(model.production.pcts).toEqual([25, 50]); // one bar per batch, in cycle (FIFO) order
-    // The section RESERVES at least one row per in-flight batch (and per operator slot — stable
-    // height while batches stagger); with two batches running it can never be fewer than two.
-    expect(model.production.rows).toBeGreaterThanOrEqual(2);
-    expect(model.production.label).toContain('plank x1');
-    // The production row carries its output's string id — the icon key the panel draws beside the bar.
-    expect(model.production.goodId).toBe('plank');
+    // One row PER PRODUCT (the joinery makes plank only); its bar shows the front-runner batch (50%).
+    expect(model.production.rows).toHaveLength(1);
+    expect(model.production.rows[0]).toMatchObject({ goodType: GOOD_PLANK, pct: 50, label: 'plank' });
+    // The production row carries its output's string id — the icon key the panel draws beside the bar —
+    // and its recipe-inputs tooltip line ("Wymaga: <wood> ×1").
+    expect(model.production.rows[0]?.goodId).toBe('plank');
+    expect(model.production.rows[0]?.inputs).toContain('×1');
     expect(model.stock).toEqual(
       expect.arrayContaining([expect.objectContaining({ goodType: GOOD_WOOD, amount: 3 })]),
     );
@@ -226,8 +227,8 @@ describe('selection details panel model', () => {
     if (model.kind !== 'building') throw new Error('expected a building model');
     expect(model.production?.kind).toBe('recipe');
     if (model.production?.kind !== 'recipe') return;
-    expect(model.production.label).toContain('Mąka x1');
-    expect(model.production.goodId).toBe('flour'); // the icon key stays the machine id
+    expect(model.production.rows[0]?.label).toBe('Mąka');
+    expect(model.production.rows[0]?.goodId).toBe('flour'); // the icon key stays the machine id
   });
 
   it('lists each worker trade with its own filled/capacity (Druid 1/1 · Tragarz 0/1 · Zbieracz 0/1)', () => {
