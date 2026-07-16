@@ -27,6 +27,8 @@ export const plGame = {
     readyToWork: 'Gotowe do pracy',
     defenseStopped: 'Obrona zatrzymana',
     demolish: 'Zniszcz',
+    signpost: 'Drogowskaz',
+    demolishSignpost: 'Wyburz ten drogowskaz',
     center: 'Wycentruj',
     help: 'Pomoc',
     statistics: 'Statystyki',

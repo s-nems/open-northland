@@ -26,7 +26,7 @@ export interface Pickable {
   readonly x: number;
   readonly y: number;
   /** The drawable kind, so a click hit-box can be sized per kind when exact bounds aren't available. */
-  readonly kind?: 'settler' | 'building';
+  readonly kind?: 'settler' | 'building' | 'signpost';
   /**
    * The entity's exact rendered sprite bounds (world px), from the renderer's per-entity bounds. When
    * present the hit test uses this box — so a click anywhere on the actual graphic selects, a big building
@@ -144,6 +144,9 @@ export function nodeBandOfCells(cells: {
 const PICK_BOX = {
   settler: { halfW: 18, up: 42, down: 12 },
   building: { halfW: 44, up: 104, down: 22 },
+  // The guidepost post bob is 22×72 native px; a slim box with a little slack keeps it clickable
+  // without swallowing the ground beside it.
+  signpost: { halfW: 14, up: 76, down: 8 },
 } as const;
 
 /** Whether a world-px point falls within a target's clickable area: its exact sprite {@link Pickable.box}
@@ -161,7 +164,7 @@ function hits(t: Pickable, wx: number, wy: number): boolean {
 
 /** The feet-anchored per-kind fallback box test — used when the exact sprite bounds aren't known. */
 function boxFallbackHit(t: Pickable, wx: number, wy: number): boolean {
-  const box = PICK_BOX[t.kind === 'building' ? 'building' : 'settler'];
+  const box = PICK_BOX[t.kind ?? 'settler'];
   return Math.abs(wx - t.x) <= box.halfW && wy >= t.y - box.up && wy <= t.y + box.down;
 }
 

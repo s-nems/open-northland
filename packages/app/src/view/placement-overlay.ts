@@ -32,9 +32,58 @@ export function makeOverlayFrameSource(
   sim: Simulation,
   mapSize: { readonly width: number; readonly height: number },
 ): (buildingType: number, camera: Camera, screenW: number, screenH: number) => PlacementOverlayFrame | null {
+  const band = makeBandProber(sim, mapSize);
+  return (buildingType, camera, screenW, screenH) =>
+    band(
+      `b${buildingType}:${sim.placementBlockerVersion()}`,
+      () => sim.placementProbe(buildingType),
+      camera,
+      screenW,
+      screenH,
+    );
+}
+
+/**
+ * The erect-signpost twin of {@link makeOverlayFrameSource}: the dimmed area is exactly where the
+ * scout's placement click would be refused (`Simulation.signpostProbe` — occupied ground or inside an
+ * own signpost's minimum-spacing circle). Same band cull, fog gate, and memo discipline; the memo keys
+ * on `signpostBlockerVersion`, which also tracks the work-flag markers buildings ignore.
+ */
+export function makeSignpostOverlaySource(
+  sim: Simulation,
+  mapSize: { readonly width: number; readonly height: number },
+): (camera: Camera, screenW: number, screenH: number) => PlacementOverlayFrame | null {
+  const band = makeBandProber(sim, mapSize);
+  return (camera, screenW, screenH) =>
+    band(
+      `s:${sim.signpostBlockerVersion()}`,
+      () => sim.signpostProbe(HUMAN_PLAYER),
+      camera,
+      screenW,
+      screenH,
+    );
+}
+
+/** A per-node placement test with a `canPlace(col,row)` face — what both overlay probes resolve to. */
+interface NodeProbe {
+  canPlace(x: number, y: number): boolean;
+}
+
+/** The shared band walk both frame sources close over: cull to the visible node band, drop fogged or
+ *  probe-rejected nodes into `blocked`, memoize the whole frame on (probe key, fog, band). */
+function makeBandProber(
+  sim: Simulation,
+  mapSize: { readonly width: number; readonly height: number },
+): (
+  probeKey: string,
+  probeOf: () => NodeProbe | null,
+  camera: Camera,
+  screenW: number,
+  screenH: number,
+) => PlacementOverlayFrame | null {
   let key = '';
   let frame: PlacementOverlayFrame | null = null;
-  return (buildingType, camera, screenW, screenH) => {
+  return (probeKey, probeOf, camera, screenW, screenH) => {
     const cells = visibleTileRange(
       cameraViewport(camera, screenW, screenH),
       mapSize.width,
@@ -45,11 +94,11 @@ export function makeOverlayFrameSource(
     const range = nodeBandOfCells(cells);
     const fog = sim.fogView(HUMAN_PLAYER);
     const fogKey = fog === null ? 'off' : `${fog.mode}:${fog.generation}`;
-    const nextKey = `${buildingType}:${sim.placementBlockerVersion()}:${fogKey}:${range.minCol},${range.maxCol},${range.minRow},${range.maxRow}`;
-    // Nothing that moves the blocked set changed (same type, same blockers, same fog, same camera
-    // band): reuse last frame's result and skip both the probe build and the whole-band re-probe.
+    const nextKey = `${probeKey}:${fogKey}:${range.minCol},${range.maxCol},${range.minRow},${range.maxRow}`;
+    // Nothing that moves the blocked set changed (same probe inputs, same fog, same camera band):
+    // reuse last frame's result and skip both the probe build and the whole-band re-probe.
     if (nextKey === key && frame !== null) return frame;
-    const probe = sim.placementProbe(buildingType);
+    const probe = probeOf();
     if (probe === null) return null;
     const blocked: { col: number; row: number }[] = [];
     for (let row = range.minRow; row <= range.maxRow; row++) {

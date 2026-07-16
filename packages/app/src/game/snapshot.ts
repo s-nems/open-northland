@@ -46,6 +46,9 @@ export function isSettler(e: SnapshotEntity): boolean {
 export function isBuilding(e: SnapshotEntity): boolean {
   return e.components.Building !== undefined;
 }
+export function isSignpost(e: SnapshotEntity): boolean {
+  return e.components.Signpost !== undefined;
+}
 /** The `buildingType` typeId of a building entity, or undefined if it isn't one / carries none. */
 export function buildingTypeOf(e: SnapshotEntity): number | undefined {
   const b = e.components.Building as { buildingType?: unknown } | undefined;

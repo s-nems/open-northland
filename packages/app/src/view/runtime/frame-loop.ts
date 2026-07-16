@@ -6,7 +6,7 @@ import type { MinimapHandle } from '../../hud/minimap/index.js';
 import type { GameToolPanelHandle } from '../game-tool-panel.js';
 import type { GroundPileTooltip } from '../ground-pile-tooltip.js';
 import type { PerfOverlayHandle } from '../perf-overlay.js';
-import type { makeOverlayFrameSource } from '../placement-overlay.js';
+import type { makeOverlayFrameSource, makeSignpostOverlaySource } from '../placement-overlay.js';
 import type { computeDoorBadges, FogGates, GeometryDebugOverlay } from '../projections/index.js';
 import type { UnitControls } from '../unit-controls/index.js';
 import type { GameViewDeps } from './game-view.js';
@@ -29,6 +29,8 @@ export interface FrameLoopDeps {
   readonly pileTooltip: GroundPileTooltip;
   readonly geometryDebug: GeometryDebugOverlay;
   readonly overlayFrame: ReturnType<typeof makeOverlayFrameSource>;
+  /** The erect-signpost band probe — shown while unit-controls' signpost placement mode is active. */
+  readonly signpostOverlayFrame: ReturnType<typeof makeSignpostOverlaySource>;
   /** The tribe HUD read-view, memoized by snapshot identity (rebuilt per tick, not per RAF). */
   readonly hudFor: (snap: WorldSnapshot) => ReturnType<typeof layoutHud>;
   /** The door-badge projection, memoized + fog-filtered, by snapshot identity. */
@@ -61,6 +63,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     pileTooltip,
     geometryDebug,
     overlayFrame,
+    signpostOverlayFrame,
     hudFor,
     doorBadgesFor,
     canPlaceAt,
@@ -147,9 +150,16 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     // are computed here, in the app, from the sim's placement probe and handed to the renderer as
     // plain data — the renderer stays a pure projection and never calls back into the sim.
     const placeType = toolPanel.controller.placementType();
+    // Signpost mode reuses the same wash: while the scout's placement click is pending, dim exactly
+    // where the erect would be refused (spacing circles + occupied ground). Build mode wins if both
+    // are somehow active — the held building is the more specific intent.
+    const signpostFrame =
+      placeType === null && controls.signpostPlacementActive()
+        ? signpostOverlayFrame(cameraCtl.camera(), app.screen.width, app.screen.height)
+        : null;
     renderer.updatePlacementOverlay(
       placeType === null
-        ? null
+        ? signpostFrame
         : overlayFrame(placeType, cameraCtl.camera(), app.screen.width, app.screen.height),
     );
     // (No HUD-claim check: the HUD draws over the world layer, so the ghost can't cover it.)

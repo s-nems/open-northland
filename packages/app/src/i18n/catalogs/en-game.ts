@@ -27,6 +27,8 @@ export const enGame = {
     readyToWork: 'Ready to work',
     defenseStopped: 'Defence stopped',
     demolish: 'Demolish',
+    signpost: 'Signpost',
+    demolishSignpost: 'Tear down this signpost',
     center: 'Center',
     help: 'Help',
     statistics: 'Statistics',

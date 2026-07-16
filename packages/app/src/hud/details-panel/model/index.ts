@@ -3,7 +3,7 @@ import { vikingBuildingByTypeId } from '../../../catalog/buildings.js';
 import { characterName } from '../../../game/character-names.js';
 import { PRIMARY_TRIBE } from '../../../game/rules.js';
 import { JOB_IDLE } from '../../../game/sandbox/ids/index.js';
-import { entityById, isBuilding, isSettler, num, ownerPlayerOf } from '../../../game/snapshot.js';
+import { entityById, isBuilding, isSettler, isSignpost, num, ownerPlayerOf } from '../../../game/snapshot.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import { pct } from './bars.js';
 import {
@@ -70,10 +70,17 @@ export interface EmptyPanelModel {
   readonly kind: 'empty';
 }
 
+/** A selected signpost: title (miscwindow 270 "Signpost") + the tear-down button (miscwindow 273). */
+export interface SignpostPanelModel {
+  readonly kind: 'signpost';
+  readonly entityId: number;
+}
+
 export type UnitPanelModel =
   | EmptyPanelModel
   | BuildingPanelModel
   | SettlerPanelModel
+  | SignpostPanelModel
   | MultiSettlerPanelModel
   | GenericSelectionPanelModel;
 
@@ -91,13 +98,21 @@ export function buildUnitPanelModel(
   // hundreds of ids). Ascending-id sort keeps the single-pick branches' winner deterministic.
   const settlerIds: number[] = [];
   const buildingIds: number[] = [];
+  const signpostIds: number[] = [];
   for (const e of snapshot.entities) {
     if (!selected.has(e.id)) continue;
     if (isSettler(e)) settlerIds.push(e.id);
     else if (isBuilding(e)) buildingIds.push(e.id);
+    else if (isSignpost(e)) signpostIds.push(e.id);
   }
   settlerIds.sort((a, b) => a - b);
   buildingIds.sort((a, b) => a - b);
+  signpostIds.sort((a, b) => a - b);
+
+  // A signpost is a direct-click-only selection (never marquee'd), so units/buildings always outrank it.
+  if (settlerIds.length === 0 && buildingIds.length === 0 && signpostIds.length === 1) {
+    return { kind: 'signpost', entityId: signpostIds[0] as number };
+  }
 
   if (settlerIds.length === 0 && buildingIds.length === 1) {
     const entityId = buildingIds[0] as number;

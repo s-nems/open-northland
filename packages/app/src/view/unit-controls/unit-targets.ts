@@ -25,6 +25,8 @@ export interface UnitTargets {
   enemies(): Pickable[];
   /** The human's gatherers' drop-off flags, each mapped to its owning gatherer (a flag→unit proxy). */
   flags(): Pickable[];
+  /** The human's standing signposts — direct-click targets only (a marquee never grabs a post). */
+  signposts(): Pickable[];
 }
 
 /**
@@ -91,6 +93,19 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
         const gatherer = gathererOf.get(it.ref);
         if (gatherer === undefined) continue; // an unbound / non-human flag — not a selection proxy
         out.push({ ref: gatherer, x: it.x, y: it.y, kind: 'settler' });
+      }
+      return out;
+    },
+
+    signposts(): Pickable[] {
+      const snap = deps.snapshot();
+      const ownerOf = ownersOf(snap);
+      const out: Pickable[] = [];
+      for (const it of buildSpriteScene(snap)) {
+        // Only the post itself — its direction boards ride synthetic negative refs (see sprite-scene.ts).
+        if (it.kind !== 'signpost' || it.ref <= 0) continue;
+        if (ownerOf.get(it.ref) !== deps.humanPlayer) continue;
+        out.push({ ref: it.ref, x: it.x, y: it.y, kind: it.kind, box: deps.boundsOf?.(it.ref) });
       }
       return out;
     },
