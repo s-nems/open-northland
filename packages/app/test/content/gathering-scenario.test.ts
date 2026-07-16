@@ -33,7 +33,13 @@ function grassMap(cells: number) {
 }
 
 /** Resolve wood + a trade granted its harvest + a playable tribe from the content, never from pinned ids. */
-function resolveActors(content: ContentSet): { wood: GoodType; gatherer: JobType; tribe: TribeType } {
+function resolveActors(content: ContentSet): {
+  wood: GoodType;
+  gathering: NonNullable<GoodType['gathering']>;
+  harvest: number;
+  gatherer: JobType;
+  tribe: TribeType;
+} {
   const wood = content.goods.find((g) => g.id === 'wood');
   if (wood?.gathering === undefined || wood.atomics.harvest === undefined)
     throw new Error('real content ships no gatherable wood');
@@ -47,12 +53,12 @@ function resolveActors(content: ContentSet): { wood: GoodType; gatherer: JobType
     .sort((a, b) => a.typeId - b.typeId)
     .find((t) => t.jobEnables.length > 0 && t.hitpoints > 0);
   if (tribe === undefined) throw new Error('no playable tribe with hitpoints');
-  return { wood, gatherer, tribe };
+  return { wood, gathering: wood.gathering, harvest, gatherer, tribe };
 }
 
 /** Build the scenario sim: one wood gatherer (flag auto-planted at its feet) beside a dense tree cluster. */
 function buildScenario(content: ContentSet): Simulation {
-  const { wood, gatherer, tribe } = resolveActors(content);
+  const { wood, gathering, harvest, gatherer, tribe } = resolveActors(content);
   const sim = new Simulation({ seed: SEED, content, map: grassMap(MAP_CELLS) });
   sim.enqueue({
     kind: 'spawnSettler',
@@ -64,8 +70,6 @@ function buildScenario(content: ContentSet): Simulation {
   });
   sim.step();
   expect([...sim.world.query(WorkFlag)].length, 'the gatherer spawn planted no work flag').toBeGreaterThan(0);
-  const gathering = wood.gathering;
-  if (gathering === undefined) throw new Error('unreachable: resolveActors requires gathering');
   for (let ty = CLUSTER.y0; ty <= CLUSTER.y1; ty += CLUSTER.step) {
     for (let tx = CLUSTER.x0; tx <= CLUSTER.x1; tx += CLUSTER.step) {
       const node = systems.createResourceNode(sim.world, content, {
@@ -73,7 +77,7 @@ function buildScenario(content: ContentSet): Simulation {
         x: tx,
         y: ty,
         remaining: gathering.yieldPerNode,
-        harvestAtomic: wood.atomics.harvest ?? 0,
+        harvestAtomic: harvest,
         ...(gathering.chopsToFell > 0 ? { felling: { chopsLeft: gathering.chopsToFell } } : {}),
       });
       expect(node, `real wood could not footprint a node at (${tx},${ty})`).not.toBeNull();
@@ -104,7 +108,7 @@ function bankedGood(sim: Simulation, good: number): number {
 describe.runIf(hasRealIr())('gathering cycle over merged real content', () => {
   it('fells, banks wood at the flag, and holds the core invariants every tick', async () => {
     const { merge } = await loadContentUnderTest();
-    const { wood } = resolveActors(merge.content);
+    const { wood, gathering } = resolveActors(merge.content);
     const sim = buildScenario(merge.content);
     for (let t = 0; t < CYCLE_TICKS; t++) {
       sim.step();
@@ -113,8 +117,7 @@ describe.runIf(hasRealIr())('gathering cycle over merged real content', () => {
     }
     expect(bankedGood(sim, wood.typeId), 'no wood ever banked — the cycle stalled').toBeGreaterThan(0);
     // After this long with one gatherer and a near flag, at most the one active carry lies loose.
-    const gathering = wood.gathering;
-    expect(looseGood(sim, wood.typeId)).toBeLessThanOrEqual(gathering?.yieldPerNode ?? 0);
+    expect(looseGood(sim, wood.typeId)).toBeLessThanOrEqual(gathering.yieldPerNode);
   });
 
   it('is deterministic on real content: two same-seed runs end byte-identical', async () => {

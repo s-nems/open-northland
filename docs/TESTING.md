@@ -165,9 +165,11 @@ a local game copy so **CI never runs them** — they are an agent/developer gate
   real bytes, and the gathering + field-farming cycles (with same-seed determinism) over the merged
   real content. Under plain `npm test`
   these files `runIf`-skip on a bare checkout; this mode hard-fails instead when `ir.json` is
-  absent, so it can never pass vacuously. Assertions are properties (references resolve, balance is
-  live-or-reported, a trade can harvest the core goods), never exact counts — the suite survives
-  mod/data drift. No goldens: golden tests stay on the committed synthetic fixture.
+  absent, so it can never pass vacuously (the guard requires the IR, maps, and bob lanes).
+  Assertions are overwhelmingly properties (references resolve, balance is live-or-reported, a
+  trade can harvest the core goods) so the suite survives mod/data drift; the one exception is the
+  loader's dated full-parse count pin, updated deliberately when the data refreshes. No goldens:
+  golden tests stay on the committed synthetic fixture.
 - **`npm run test:pipeline`** — the executable form of "pipeline or schema changes need a real
   pipeline run": runs the full pipeline against the owned game copy (`CULTURES_GAME_DIR`, default
   `../Cultures 8th Wonder`; `CULTURES_MOD`, default `DataCnmd`) into a throwaway directory, then

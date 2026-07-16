@@ -10,6 +10,7 @@ import { isAbsolute, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = resolve(fileURLToPath(import.meta.url), '../..');
+// Resolution rules mirror packages/app/test/content/helpers.ts `contentDir()` — keep them in step.
 const override = process.env.ON_CONTENT_DIR;
 const contentDir =
   override === undefined || override === ''
@@ -17,10 +18,12 @@ const contentDir =
     : isAbsolute(override)
       ? override
       : resolve(repoRoot, override);
-const irPath = resolve(contentDir, 'ir.json');
-
-if (!existsSync(irPath)) {
-  console.error(`test:content needs generated content — no ir.json at ${irPath}`);
+// A full pipeline run emits all three; guarding each keeps the explicit mode from passing
+// vacuously when a lane vanishes (the map suite and the roster's on-disk checks would skip).
+const REQUIRED = ['ir.json', 'maps', 'Data/engine2d/bin/bobs'];
+const missing = REQUIRED.filter((rel) => !existsSync(resolve(contentDir, rel)));
+if (missing.length > 0) {
+  console.error(`test:content needs generated content — missing under ${contentDir}: ${missing.join(', ')}`);
   console.error(
     'Generate it with: npm run pipeline -- --game "../Cultures 8th Wonder" --mod DataCnmd --out content',
   );

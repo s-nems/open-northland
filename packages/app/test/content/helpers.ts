@@ -14,7 +14,8 @@ import { loadRealContent, mergeRealContent, type RealContentMerge } from '../../
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 
-/** The content directory under test: `ON_CONTENT_DIR` (absolute, or relative to the repo root) when set, else `content/`. */
+/** The content directory under test: `ON_CONTENT_DIR` (absolute, or relative to the repo root) when set,
+ *  else `content/`. Resolution rules mirror `scripts/test-content.mjs` — keep them in step. */
 export function contentDir(): string {
   const override = process.env.ON_CONTENT_DIR;
   if (override === undefined || override === '') return resolve(REPO_ROOT, 'content');
@@ -57,15 +58,17 @@ let underTest: Promise<RealContentUnderTest> | null = null;
  * path the browser entries run, so a break here is a break the game would hit. Memoized: the
  * multi-MB IR parses once for the whole suite.
  */
+/** A `fetch` that serves the IR under test off disk for the one URL the loader requests. */
+export const serveIrFetch: typeof fetch = (input) =>
+  Promise.resolve(
+    String(input) === '/ir.json'
+      ? new Response(readFileSync(irPath(), 'utf8'))
+      : new Response(null, { status: 404 }),
+  );
+
 export function loadContentUnderTest(): Promise<RealContentUnderTest> {
   underTest ??= (async () => {
-    const serveIr: typeof fetch = (input) =>
-      Promise.resolve(
-        String(input) === '/ir.json'
-          ? new Response(readFileSync(irPath(), 'utf8'))
-          : new Response(null, { status: 404 }),
-      );
-    const real = await loadRealContent(serveIr);
+    const real = await loadRealContent(serveIrFetch);
     if (real === null) throw new Error(`no ir.json at ${irPath()} — run via npm run test:content`);
     return { real, merge: mergeRealContent(real) };
   })();
