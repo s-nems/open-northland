@@ -237,21 +237,15 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     toScreenPx: clientToScreen,
   });
 
-  // Scrolling an open HUD window (the build menu / stats list) must not also zoom the world behind it,
-  // and a wheel over the minimap window must not zoom the world about a point hidden under the panel —
-  // the camera skips the wheel while the pointer is over either surface.
+  // The open pop-up windows (build menu / goods / stats) and the minimap claim the cursor against BOTH
+  // camera gestures: the wheel belongs to the window's list (not a zoom behind it) and the screen edge
+  // under them must not pan. The tool-panel STRIP deliberately does not claim — it hugs the left screen
+  // edge, and the RTS edge-pan (and wheel zoom) keep working over it.
   const mountedMinimap = minimap;
-  cameraCtl.setPointerGuard(
-    (clientX, clientY) =>
-      toolPanel.claimsWheel(clientX, clientY) || mountedMinimap.claimsPointer(clientX, clientY),
-  );
-  // Edge scrolling keeps working over the tool-panel STRIP (it hugs the left screen edge — an RTS
-  // player aiming for the edge shouldn't have to thread past the icons), but yields to an open
-  // pop-up window and to the minimap: hovering those must not also pan the world behind.
-  cameraCtl.setEdgeGuard(
-    (clientX, clientY) =>
-      toolPanel.claimsWheel(clientX, clientY) || mountedMinimap.claimsPointer(clientX, clientY),
-  );
+  const hudClaims = (clientX: number, clientY: number): boolean =>
+    toolPanel.claimsWheel(clientX, clientY) || mountedMinimap.claimsPointer(clientX, clientY);
+  cameraCtl.setPointerGuard(hudClaims);
+  cameraCtl.setEdgeGuard(hudClaims);
 
   // The cursor position for the build-mode ghost (client coords; null when the pointer left the
   // canvas). Tracked persistently — the ghost must follow the mouse between clicks, and reading it in

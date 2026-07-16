@@ -216,6 +216,35 @@ describe('mapDatToTerrain', () => {
     warn.mockRestore();
   });
 
+  it('collapses the half-cell lmms lane to each cell centre node in the shore layer', () => {
+    // lmms is HALF-CELL resolution (2W×2H, unlike per-cell lmhe/embr). A 1×2 grid's lane is a 2×4
+    // node grid; each cell keeps its CENTRE node `(2x + (y&1), 2y)` — row 0 reads node index 0,
+    // row 1 reads index 2·1·2 + 0 + 1 = 5, pinning the odd-row parity of the half-cell lattice.
+    const bytes = encodeMapDat([
+      { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 1, height: 2 }) },
+      { tag: 'lmlt', version: 1, payload: packMapLayer(new Uint8Array(8)) },
+      { tag: 'lmms', version: 1, payload: packMapLayer(Uint8Array.from([4, 0, 0, 0, 0, 3, 0, 0])) },
+    ]);
+    const terrain = mapDatToTerrain(bytes);
+    expect(terrain.shore).toEqual([4, 3]);
+  });
+
+  it('degrades a wrong-sized lmms lane to a grid-only artifact (warn, keep the nav grid)', () => {
+    // A per-cell-sized (1) lane instead of the half-cell count (4): the optional shore layer drops,
+    // the nav grid survives — the same degrade contract as lmhe/embr.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const bytes = encodeMapDat([
+      { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 1, height: 1 }) },
+      { tag: 'lmlt', version: 1, payload: packMapLayer(new Uint8Array(4)) },
+      { tag: 'lmms', version: 1, payload: packMapLayer(Uint8Array.from([7])) },
+    ]);
+    const terrain = mapDatToTerrain(bytes);
+    expect(terrain.typeIds).toEqual([1]); // the nav grid survives
+    expect(terrain.shore).toBeUndefined();
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/shore lane unreadable.*expected 4/));
+    warn.mockRestore();
+  });
+
   it('emits the per-cell brightness lane from embr (baked shading, carried verbatim)', () => {
     // Like lmhe, embr is PER CELL — exactly width·height values. 127 = neutral, 0 = the border
     // fade-to-black, >127 = baked slope light; all carried through untouched (the response curve is

@@ -12,6 +12,23 @@ import { lerp } from './math.js';
 type CellSampler = (col: number, row: number) => number;
 
 /**
+ * The edge-clamped integer-cell lookup over a row-major lane — the shared nearest-cell core under
+ * {@link makeCellSampler}'s bilinear taps and the whole-cell scans in `hillshade.ts`/`water.ts`
+ * (out-of-range coordinates repeat the boundary cell, matching the GPU lane texture's clamp).
+ */
+export function clampedCellAt(
+  values: ArrayLike<number>,
+  width: number,
+  height: number,
+): (col: number, row: number) => number {
+  return (col, row) => {
+    const c = col < 0 ? 0 : col >= width ? width - 1 : col;
+    const r = row < 0 ? 0 : row >= height ? height - 1 : row;
+    return values[r * width + c] ?? 0;
+  };
+}
+
+/**
  * Build the bilinear, edge-clamped sampler over a row-major per-cell lane. Fractional inputs (a
  * walking settler, a position between cell centres) interpolate; a sample past an edge repeats
  * the boundary cell (no wrap, no OOB). The sampler closes over the array by reference (never
@@ -19,11 +36,7 @@ type CellSampler = (col: number, row: number) => number;
  * shared flat/neutral fields instead).
  */
 export function makeCellSampler(values: readonly number[], width: number, height: number): CellSampler {
-  const at = (col: number, row: number): number => {
-    const c = col < 0 ? 0 : col >= width ? width - 1 : col;
-    const r = row < 0 ? 0 : row >= height ? height - 1 : row;
-    return values[r * width + c] ?? 0;
-  };
+  const at = clampedCellAt(values, width, height);
   return (col: number, row: number): number => {
     const c0 = Math.floor(col);
     const r0 = Math.floor(row);

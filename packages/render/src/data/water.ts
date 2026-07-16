@@ -1,3 +1,4 @@
+import { clampedCellAt } from './cell-field.js';
 import type { SceneGround } from './scene/index.js';
 import { nodeCell } from './terrain.js';
 
@@ -44,11 +45,7 @@ export function makeWaveField(ground: SceneGround | undefined, width: number, he
     if (w > 0) anyWater = true;
   }
   if (!anyWater) return NO_WAVE; // a dictionary may name water no cell draws — still a land map
-  const at = (col: number, row: number): number => {
-    const c = col < 0 ? 0 : col >= width ? width - 1 : col;
-    const r = row < 0 ? 0 : row >= height ? height - 1 : row;
-    return water[r * width + c] ?? 0;
-  };
+  const at = clampedCellAt(water, width, height);
   // Node amplitude = the minimum water fraction over the node's 3×3 cell neighbourhood, so any node
   // shared with a land triangle stays exactly still and the swell lives offshore.
   const amp = new Float32Array(cells);

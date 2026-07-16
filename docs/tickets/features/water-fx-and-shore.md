@@ -11,10 +11,15 @@ Resolved on the visual-polish branch (evidence pinned there):
   the effect procedurally (`dynamicBackground: true`, no palette). Drawing the bob would paint
   rectangles over water. The shader water animation below is OpenNorthland's replacement.
 - **`lmms`** — decoded into `maps/<id>.json` `shore` (half-cell lane collapsed to cell-centre nodes;
-  0 land, 1..6 bands, 7 open). Probed caveat: it tracks water depth only on maps WITH water
-  (oasis_o_plenty: band 7 = `block water`); on waterless maps the same bands cover plain meadow
-  (Tale_of_Six_Sons), so it is NOT a water mask. The render's wave field keys off ground-pattern
-  names instead (`packages/render/src/data/water.ts`).
+  observed byte values 0..7). It is NOT a water mask: 18 genuinely waterless owned maps carry the
+  same 1..7 bands (e.g. `battle_for_the_four_hills_multiplayer`, `ucieczka_z_gazy` — re-probed
+  2026-07-16; an earlier note citing `Tale_of_Six_Sons` was wrong, that map draws water), band 7
+  sits mostly under LAND patterns on river maps (`blekiny_nurt`: 2035/2036 band-7 cells), and even
+  bands are nearly absent in the per-cell collapse (a possible node-parity effect of sampling centre
+  nodes) — so the band semantics are unconfirmed and NOTHING consumes the lane yet. The render's
+  wave field keys off ground-pattern names instead (`packages/render/src/data/water.ts`). Any foam
+  work below must first re-establish what the bands mean (probe the half-cell lane directly, not the
+  per-cell collapse).
 - Water surface now animates: per-node wave amplitudes + tick-driven vertex bob and brightness
   shimmer in the shaded ground shader (`gpu/shading.ts`), deterministic under `?shot`.
 

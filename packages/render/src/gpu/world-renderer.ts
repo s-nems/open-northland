@@ -242,11 +242,15 @@ export class WorldRenderer {
   }
 
   /**
-   * Match the world atlases' minification to the zoom: below scale 1 nearest sampling drops texels and
-   * the zoomed-out world sparkles while panning, so the texture-cache pages (RGB bob + shadow atlases —
+   * Match the SPRITE atlases' minification to the zoom: below scale 1 nearest sampling drops texels and
+   * the zoomed-out bobs sparkle while panning, so the texture-cache pages (RGB bob + shadow atlases —
    * never the indexed character sheets, which don't pass through the cache) flip to linear; at scale ≥ 1
-   * exactly the flipped set restores to nearest, keeping magnified pixel art crisp. O(new pages) per
-   * frame — already-flipped pages are skipped via {@link linearPages}.
+   * exactly the flipped set restores to nearest, keeping magnified pixel art crisp. The terrain pages
+   * are untouched — they load linear at every zoom (the original samples them bilinearly). O(new pages)
+   * per frame — already-flipped pages are skipped via {@link linearPages}. Known limit: the portrait
+   * inset re-renders the world magnified in the same frame, so while zoomed out its cutout samples the
+   * flipped pages linear (slightly soft) — accepted; a per-render flip would touch every page twice a
+   * frame.
    */
   private applyWorldSampling(scale: number): void {
     if (scale < 1) {
@@ -288,6 +292,15 @@ export class WorldRenderer {
     this.terrain.set(terrain, textures, this.elevation);
     const field = this.terrain.brightnessField();
     this.brightness = field.shaded ? field : undefined;
+  }
+
+  /**
+   * The composed terrain-shading field the ground drew with ({@link TerrainLayer.brightnessField}) —
+   * the one source for anchor-shading landscape objects at load, so an object can't disagree with the
+   * ground under it. Neutral (`shaded: false`) until {@link setTerrain} builds a shaded map.
+   */
+  brightnessField(): BrightnessField {
+    return this.terrain.brightnessField();
   }
 
   /**
