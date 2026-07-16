@@ -4,7 +4,7 @@ import type { BrightnessField } from '../data/brightness.js';
 import { type ElevationField, makeElevationField } from '../data/elevation.js';
 import { fogTileVisible } from '../data/fog.js';
 import { type FogGhost, FogGhostStore } from '../data/fog-ghosts.js';
-import type { Camera } from '../data/iso.js';
+import { type Camera, snapCameraToDevicePixels } from '../data/iso.js';
 import type { SceneTerrain } from '../data/scene/index.js';
 import type { AtlasFrame } from '../data/sprites/index.js';
 import { cameraViewport } from '../data/viewport.js';
@@ -40,6 +40,19 @@ import { TextureCache } from './texture-cache.js';
 export interface BuildingHighlightItem {
   readonly id: number;
   readonly ok: boolean;
+}
+
+/** Construction options of a {@link WorldRenderer}. */
+export interface WorldRendererOptions {
+  /** The loaded bob atlas + bindings; `undefined` draws placeholder geometry for every entity. */
+  readonly sheet?: SpriteSheet | undefined;
+  /**
+   * Interactive view smoothing: snap the camera pan to whole device pixels (nearest-sampled art
+   * shimmer-crawls on fractional-pixel pans) and switch the world atlases to linear minification while
+   * zoomed out below 1 (nearest minification sparkles). For the live entries only — the deterministic
+   * `?shot` capture must stay byte-stable, so it never enables this.
+   */
+  readonly viewSmoothing?: boolean | undefined;
 }
 
 /** Shared empty highlight so clearing the assign-mode tint allocates nothing. */
@@ -159,8 +172,15 @@ export class WorldRenderer {
    *  {@link PortraitInsetLayer}. */
   private readonly portrait: PortraitInsetLayer;
 
-  constructor(app: Application, opts?: { readonly sheet?: SpriteSheet | undefined }) {
+  /** Interactive view smoothing ({@link WorldRendererOptions.viewSmoothing}). */
+  private readonly viewSmoothing: boolean;
+  /** Atlas pages currently flipped to linear minification by {@link applyWorldSampling} — exactly the
+   *  set to restore to nearest when the camera zooms back in. */
+  private readonly linearPages = new Set<TextureSource>();
+
+  constructor(app: Application, opts?: WorldRendererOptions) {
     this.app = app;
+    this.viewSmoothing = opts?.viewSmoothing === true;
     this.spriteLayer.sortableChildren = true;
     this.mapObjects = new MapObjectLayer(this.spriteLayer, this.textureCache);
     this.pool = new SpritePool(this.spriteLayer, this.textureCache, opts?.sheet);
@@ -206,6 +226,27 @@ export class WorldRenderer {
   /** Show/hide the paused-game wash — the app's loop control drives this alongside the sim pause. */
   setPaused(paused: boolean): void {
     this.pauseWash.visible = paused;
+  }
+
+  /**
+   * Match the world atlases' minification to the zoom: below scale 1 nearest sampling drops texels and
+   * the zoomed-out world sparkles while panning, so the texture-cache pages (RGB bob + shadow atlases —
+   * never the indexed character sheets, which don't pass through the cache) flip to linear; at scale ≥ 1
+   * exactly the flipped set restores to nearest, keeping magnified pixel art crisp. O(new pages) per
+   * frame — already-flipped pages are skipped via {@link linearPages}.
+   */
+  private applyWorldSampling(scale: number): void {
+    if (scale < 1) {
+      for (const source of this.textureCache.pageSources()) {
+        if (this.linearPages.has(source)) continue;
+        if (source.scaleMode !== 'nearest') continue; // a page someone loaded linear stays theirs
+        source.scaleMode = 'linear';
+        this.linearPages.add(source);
+      }
+    } else if (this.linearPages.size > 0) {
+      for (const source of this.linearPages) source.scaleMode = 'nearest';
+      this.linearPages.clear();
+    }
   }
 
   /**
@@ -317,7 +358,6 @@ export class WorldRenderer {
   update(frame: WorldFrame): void {
     const {
       snapshot,
-      camera,
       tick = 0,
       hud,
       selection = NO_SELECTION,
@@ -325,6 +365,13 @@ export class WorldRenderer {
       doorBadges = NO_BADGES,
       flagged = NO_SELECTION,
     } = frame;
+    // View smoothing: pin the pan to whole device pixels (kills nearest-sampling shimmer-crawl) and
+    // linear-minify the world atlases when zoomed out (below). The deterministic `?shot` renderer is
+    // constructed without it, so its bytes never move.
+    const camera = this.viewSmoothing
+      ? snapCameraToDevicePixels(frame.camera, this.app.renderer.resolution)
+      : frame.camera;
+    if (this.viewSmoothing) this.applyWorldSampling(camera.scale ?? 1);
     this.worldLayer.scale.set(camera.scale ?? 1);
     this.worldLayer.position.set(camera.offsetX, camera.offsetY);
     // Cull to the framed viewport (grown to cover tall sprites). Elevation lifts ground + sprites up by

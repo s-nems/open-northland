@@ -129,6 +129,21 @@ export interface Camera {
 }
 
 /**
+ * Snap a camera's pan offsets to whole device pixels (`resolution` device px per screen px), leaving
+ * `scale` untouched. Nearest-sampled pixel art shimmer-crawls when a smooth pan puts texel boundaries
+ * on fractional device pixels — snapping the layer offset pins the sampling phase so a pan steps
+ * texels whole. Returns the same object when already snapped (no per-frame allocation on an idle
+ * camera). Pure; the interactive renderer applies it, the deterministic `?shot` path never does.
+ */
+export function snapCameraToDevicePixels(camera: Camera, resolution: number): Camera {
+  const r = resolution > 0 ? resolution : 1;
+  const offsetX = Math.round(camera.offsetX * r) / r;
+  const offsetY = Math.round(camera.offsetY * r) / r;
+  if (offsetX === camera.offsetX && offsetY === camera.offsetY) return camera;
+  return { ...camera, offsetX, offsetY };
+}
+
+/**
  * Apply the camera to one world axis — `screen = world·scale + offset` — for the case that needs it
  * explicitly: the team-colour {@link import('../gpu/paletted-sprite/index.js').PalettedSprite} meshes
  * self-place in screen space (a custom-shader mesh can't ride the camera-transformed layer), so they
