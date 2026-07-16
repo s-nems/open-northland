@@ -100,16 +100,19 @@ describe('buildIr / resolveIniSources', () => {
     // The DataCnmd rels are always requested; without an overlay they still resolve against the game
     // tree itself (the mod-installed-in-place layout this fixture lays down).
     const noOverlay = await resolveIniSources({ game, mod: undefined });
-    expect(noOverlay.map((s) => s.file).sort()).toEqual([
-      join('Data', 'logic', 'armortypes.ini'),
-      join('Data', 'logic', 'goodtypes.ini'),
-      join('Data', 'logic', 'jobtypes.ini'),
-      join('Data', 'logic', 'landscapetypes.ini'),
-      join('Data', 'logic', 'vehicletypes.ini'),
-      join('DataCnmd', 'atomicanimations12', 'atomicanimations.ini'),
-      join('DataCnmd', 'tribetypes12', 'tribetypes.ini'),
-      join('DataCnmd', 'types', 'weapons.ini'),
-    ]);
+    // Sort both sides: Windows '\' separators order Data/ vs DataCnmd/ differently than '/'.
+    expect(noOverlay.map((s) => s.file).sort()).toEqual(
+      [
+        join('Data', 'logic', 'armortypes.ini'),
+        join('Data', 'logic', 'goodtypes.ini'),
+        join('Data', 'logic', 'jobtypes.ini'),
+        join('Data', 'logic', 'landscapetypes.ini'),
+        join('Data', 'logic', 'vehicletypes.ini'),
+        join('DataCnmd', 'atomicanimations12', 'atomicanimations.ini'),
+        join('DataCnmd', 'tribetypes12', 'tribetypes.ini'),
+        join('DataCnmd', 'types', 'weapons.ini'),
+      ].sort(),
+    );
 
     // Remove a base file: it's resolved-away with a warning, not a throw. (Drop the armor source
     // too: it references good 7, which the cross-ref would flag as dangling once goods is empty —
