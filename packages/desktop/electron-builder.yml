@@ -41,6 +41,9 @@ mac:
   identity: null
   artifactName: ${productName}-${version}-${arch}.dmg
 linux:
+  # Without this the executable defaults to the scoped package name (@open-northland/desktop),
+  # whose "@" electron-builder rejects as unsafe in file paths.
+  executableName: OpenNorthland
   target:
     - AppImage
   category: Game
