@@ -148,12 +148,14 @@ describe('carrier — choosing what to haul', () => {
     expect(sim.world.has(carrier, MoveGoal)).toBe(false);
   });
 
-  it('never dumps a carried good into a loose ground pile (no full-store shuffle livelock)', () => {
+  it('never shuttles a carried good into an existing loose pile (no full-store shuffle livelock)', () => {
     // Regression: a delivery SINK must be a TYPED store (Building/Vehicle), never a bare loose pile. A
     // loose pile has no store type, so its capacity reads as uncapped; if a carrier could "deliver" its
     // load there when every real store is full (or absent), a porter would immediately re-collect it and
-    // the good would shuttle pile→back→pile forever. With only a loose pile present, there is nowhere
-    // valid to deliver, so the carrier keeps its load and the pile never grows.
+    // the good would shuttle pile→back→pile forever. So the distant pile is never a sink and never grows.
+    // The orphaned (unbound) carrier still can't stand frozen holding the plank, so it sets it down on its
+    // OWN tile and goes idle — an unbound carrier never re-collects (transport is a worked assignment), so
+    // that own-tile heap is stable, not a shuttle.
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const carrier = carrierAt(sim, 0, 0);
     sim.world.add(carrier, Carrying, { goodType: PLANK, amount: 1 });
@@ -163,8 +165,14 @@ describe('carrier — choosing what to haul', () => {
 
     for (let i = 0; i < 60; i++) sim.step();
 
-    expect(sim.world.get(pile, Stockpile).amounts.get(PLANK)).toBe(3); // the pile never grew
-    expect(sim.world.get(carrier, Carrying).amount).toBe(1); // the carrier still holds its load
+    expect(sim.world.get(pile, Stockpile).amounts.get(PLANK)).toBe(3); // the distant pile was never a sink
+    expect(sim.world.has(carrier, Carrying)).toBe(false); // set its load down rather than stand holding it
+    // The plank landed once on the carrier's own tile and stayed there — no re-collect, no shuttle.
+    const ownHeap = sim.world.get(carrier, Position);
+    const dropped = [...sim.world.query(Stockpile, Position)].find(
+      (e) => e !== pile && sim.world.get(e, Position).x === ownHeap.x,
+    );
+    expect(dropped !== undefined && sim.world.get(dropped, Stockpile).amounts.get(PLANK)).toBe(1);
   });
 
   it('a porter skips a good its store is full of and hauls the deliverable one (limit reached → next good)', () => {

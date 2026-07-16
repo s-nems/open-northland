@@ -10,7 +10,7 @@ import {
 import { farmWorkGood } from '../../economy/farming.js';
 import { atomicDuration } from '../../readviews/animations.js';
 import { stampSupplyRun } from '../../stores/index.js';
-import { atOrWalk, PILEUP_ATOMIC_ID, startAtomic } from '../actions.js';
+import { atOrWalk, PILEUP_ATOMIC_ID, startAtomic, startDrop } from '../actions.js';
 import { dropCarryAtOwnTile } from '../effects-goods/index.js';
 import type { PlannerContext } from '../planner-context.js';
 import { interactionCell, nearestFreeYardNode } from '../targets/index.js';
@@ -46,7 +46,16 @@ export function planDelivery(plan: PlannerContext, load: { goodType: number; amo
       atOrWalk(world, entity, here, interactionCell(world, ctx, terrain, workplace, here), () =>
         world.add(entity, Resting, { at: workplace }),
       );
+      return;
     }
+    // Reaching here: no sink, and not a producer resting in a completed Building workplace. A settler still
+    // bound to a LIVING sink (a store or a boat hold that is only momentarily full) keeps its load and waits
+    // — dropping would churn, since a bound carrier re-collects and re-drops. Only a genuinely orphaned
+    // settler — unbound, or its bound workplace was removed/changed — sets the load down rather than stand
+    // holding it forever. `startDrop` plays the putdown; `dropCarriedLoad` banks it on the settler's own tile,
+    // spilling to the nearest free tiles when that heap is full, so the load is off its back and it re-plans
+    // (idle/de-stack) next tick.
+    if (workplace === undefined || !world.isAlive(workplace)) startDrop(world, ctx, entity);
     return;
   }
 
