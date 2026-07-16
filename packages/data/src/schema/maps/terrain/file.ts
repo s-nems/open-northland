@@ -51,10 +51,12 @@ const TerrainMapFields = z.strictObject({
    */
   brightness: CellLane.optional(),
   /**
-   * Per-cell water-depth/shore band (`lmms` lane collapsed to each cell's centre node), row-major,
-   * one value per cell: 0 = land, 1..6 = shore rings counting out from the coast, 7 = open sea
-   * (value histogram on the owned maps + docs/formats/MAPDAT.md). Present when the map ships the
-   * lane. Consumed by the render's water-surface animation (band → wave amplitude ramp).
+   * Per-cell `lmms` band (the lane collapsed to each cell's centre node), row-major, one value per
+   * cell. Observed byte values are 0..7 on the owned corpus, but the band SEMANTICS are unconfirmed:
+   * it is NOT a water mask (waterless maps carry the same 1..7 bands over meadow, and band 7 sits
+   * mostly under land patterns on river maps — probed 2026-07-16), so the render keys water off
+   * ground-pattern names instead (`packages/render/src/data/water.ts`). Decoded for the shore-foam
+   * follow-up (`docs/tickets/features/water-fx-and-shore.md`); no consumer yet.
    */
   shore: CellLane.optional(),
   /** The authored entity placements (`map.cif` `StaticObjects`), when the map carries them. */

@@ -87,9 +87,10 @@ export interface ToolPanelOptions {
 export interface ToolPanelController {
   /** True when a client point should be claimed by the HUD (over the strip, an open window, or in placement). */
   claimsPointer(clientX: number, clientY: number): boolean;
-  /** True when a client point is over an open pop-up window (menu / stats) — the surface that owns the
-   *  wheel, so the camera must not also zoom there. Narrower than {@link claimsPointer}: it excludes the
-   *  strip and active placement, so the wheel still zooms the world in those. */
+  /** True when a client point is over an open pop-up window (menu / goods / stats) — the surface that
+   *  owns the wheel (the camera must not also zoom there) and that edge scrolling yields to. Narrower
+   *  than {@link claimsPointer}: it excludes the strip and active placement, so the wheel still zooms
+   *  (and the screen edge still pans) the world in those. */
   claimsWheel(clientX: number, clientY: number): boolean;
   /** The building typeId currently being placed, or null when not in build mode — the frame loop reads it
    *  to drive the map's buildable/blocked overlay. */
@@ -379,7 +380,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
 
   const claimsWheel = (clientX: number, clientY: number): boolean => {
     const { x, y } = toCanvas(clientX, clientY);
-    return menu.claims(x, y) || stats.claims(x, y);
+    return menu.claims(x, y) || goodsWindow.claims(x, y) || stats.claims(x, y);
   };
 
   return {

@@ -231,6 +231,13 @@ export const BODY_IMAGELIB = 'cr_hum_body_00.bmd';
  * missing shadow atlas degrades to a shadow-less layer (`content/` generated before the shadow stage),
  * never fails the body.
  */
+/** Whether a served atlas stem names a palette-indexed sheet (the pipeline emits every one as
+ *  `<stem>.indexed` — characters, GUI, fonts, goods). Indexed sheets carry a palette INDEX in red, so
+ *  they must load straight-alpha (`loadAtlasSource`'s `'straight'`). */
+export function isIndexedStem(stem: string): boolean {
+  return stem.endsWith('.indexed');
+}
+
 export async function loadLayer(stem: string, shadowStem?: string): Promise<SpriteLayer> {
   const res = await fetch(`/bobs/${stem}.atlas.json`);
   if (!res.ok) {
@@ -240,7 +247,9 @@ export async function loadLayer(stem: string, shadowStem?: string): Promise<Spri
   }
   const manifest = (await res.json()) as AtlasManifest;
   const [source, times, shadow] = await Promise.all([
-    loadAtlasSource(`/bobs/${stem}.png`),
+    // Indexed sheets must load straight-alpha: premultiply would corrupt the palette index in red
+    // (see `loadAtlasSource`); the `.indexed` stem suffix is the pipeline's naming contract for them.
+    loadAtlasSource(`/bobs/${stem}.png`, 'nearest', isIndexedStem(stem) ? 'straight' : 'premultiplied'),
     manifest.build === true ? loadBuildTimeSheet(`/bobs/${stem}.build.png`) : Promise.resolve(undefined),
     shadowStem === undefined
       ? Promise.resolve(undefined)

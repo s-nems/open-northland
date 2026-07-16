@@ -2,6 +2,7 @@ import { type Camera, tileToScreen } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
 import {
   cameraCenteredOnTile,
+  DEFAULT_CAMERA_TUNING,
   EDGE_SCROLL_MARGIN,
   edgePanVelocity,
   MAX_ZOOM,
@@ -110,38 +111,40 @@ describe('zoomCameraAt', () => {
 describe('edgePanVelocity', () => {
   const W = 800;
   const H = 600;
+  const SPEED = DEFAULT_CAMERA_TUNING.edgeScrollSpeed;
 
   it('is zero anywhere deeper than the margin', () => {
-    expect(edgePanVelocity(W / 2, H / 2, W, H)).toEqual({ vx: 0, vy: 0 });
-    expect(edgePanVelocity(EDGE_SCROLL_MARGIN, EDGE_SCROLL_MARGIN, W, H)).toEqual({ vx: 0, vy: 0 });
+    expect(edgePanVelocity(W / 2, H / 2, W, H, SPEED)).toEqual({ vx: 0, vy: 0 });
+    expect(edgePanVelocity(EDGE_SCROLL_MARGIN, EDGE_SCROLL_MARGIN, W, H, SPEED)).toEqual({ vx: 0, vy: 0 });
   });
 
   it('pans toward the hovered edge (camera-scroll convention, like the arrows)', () => {
     // Left edge reveals the world leftward → positive vx (the world slides right), like ArrowLeft.
-    expect(edgePanVelocity(0, H / 2, W, H).vx).toBeGreaterThan(0);
-    expect(edgePanVelocity(W, H / 2, W, H).vx).toBeLessThan(0);
-    expect(edgePanVelocity(W / 2, 0, W, H).vy).toBeGreaterThan(0);
-    expect(edgePanVelocity(W / 2, H, W, H).vy).toBeLessThan(0);
+    expect(edgePanVelocity(0, H / 2, W, H, SPEED).vx).toBeGreaterThan(0);
+    expect(edgePanVelocity(W, H / 2, W, H, SPEED).vx).toBeLessThan(0);
+    expect(edgePanVelocity(W / 2, 0, W, H, SPEED).vy).toBeGreaterThan(0);
+    expect(edgePanVelocity(W / 2, H, W, H, SPEED).vy).toBeLessThan(0);
   });
 
   it('ramps linearly with depth into the margin', () => {
-    const shallow = edgePanVelocity(EDGE_SCROLL_MARGIN * 0.75, H / 2, W, H).vx;
-    const deep = edgePanVelocity(EDGE_SCROLL_MARGIN * 0.25, H / 2, W, H).vx;
+    const shallow = edgePanVelocity(EDGE_SCROLL_MARGIN * 0.75, H / 2, W, H, SPEED).vx;
+    const deep = edgePanVelocity(EDGE_SCROLL_MARGIN * 0.25, H / 2, W, H, SPEED).vx;
     expect(deep).toBeCloseTo(shallow * 3);
   });
 
   it('pans diagonally from a corner', () => {
-    const corner = edgePanVelocity(0, 0, W, H);
+    const corner = edgePanVelocity(0, 0, W, H, SPEED);
     expect(corner.vx).toBeGreaterThan(0);
     expect(corner.vy).toBeGreaterThan(0);
   });
 });
 
 describe('stepZoomToward', () => {
+  const RATE = DEFAULT_CAMERA_TUNING.zoomGlideRate;
   it('glides toward the target and keeps the anchor point pinned', () => {
     const cam: Camera = { offsetX: 100, offsetY: 50, scale: 1 };
     const worldX = (400 - cam.offsetX) / 1;
-    const stepped = stepZoomToward(cam, 2, 400, 300, 30);
+    const stepped = stepZoomToward(cam, 2, 400, 300, 30, RATE);
     const scale = stepped.scale ?? 1;
     expect(scale).toBeGreaterThan(1);
     expect(scale).toBeLessThan(2);
@@ -150,21 +153,21 @@ describe('stepZoomToward', () => {
 
   it('snaps onto the target when nearly there, and is identity at the target', () => {
     const nearly: Camera = { offsetX: 0, offsetY: 0, scale: 1.9999 };
-    expect(stepZoomToward(nearly, 2, 0, 0, 16).scale).toBe(2);
+    expect(stepZoomToward(nearly, 2, 0, 0, 16, RATE).scale).toBe(2);
     const at: Camera = { offsetX: 0, offsetY: 0, scale: 2 };
-    expect(stepZoomToward(at, 2, 0, 0, 16)).toBe(at);
+    expect(stepZoomToward(at, 2, 0, 0, 16, RATE)).toBe(at);
   });
 
   it('converges to the target over repeated frames', () => {
     let cam: Camera = { offsetX: 0, offsetY: 0, scale: 1 };
-    for (let i = 0; i < 120; i++) cam = stepZoomToward(cam, 3, 200, 200, 16);
+    for (let i = 0; i < 120; i++) cam = stepZoomToward(cam, 3, 200, 200, 16, RATE);
     expect(cam.scale).toBe(3);
   });
 
   it('travels at a constant log-zoom rate (linear glide, no exponential fast-start)', () => {
     // The same dt covers the same log-zoom distance whether the target is far (1→8) or near (4→8).
-    const early = stepZoomToward({ offsetX: 0, offsetY: 0, scale: 1 }, 8, 0, 0, 100);
-    const late = stepZoomToward({ offsetX: 0, offsetY: 0, scale: 4 }, 8, 0, 0, 100);
+    const early = stepZoomToward({ offsetX: 0, offsetY: 0, scale: 1 }, 8, 0, 0, 100, RATE);
+    const late = stepZoomToward({ offsetX: 0, offsetY: 0, scale: 4 }, 8, 0, 0, 100, RATE);
     expect(Math.log((late.scale ?? 1) / 4)).toBeCloseTo(Math.log(early.scale ?? 1));
   });
 });

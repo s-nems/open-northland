@@ -39,8 +39,8 @@ export interface MapDatTerrainFile extends MapDatTerrainMap {
   readonly elevation?: number[];
   /** Per-cell baked brightness (`embr` lane, one byte per cell, 127 = neutral); omitted when the map lacks it. */
   readonly brightness?: number[];
-  /** Per-cell water-depth/shore band (`lmms` lane collapsed to the cell-centre node — 0 land,
-   *  1..6 shore rings, 7 open sea); omitted when the map lacks it. */
+  /** Per-cell `lmms` band (the lane collapsed to the cell-centre node; observed values 0..7,
+   *  semantics unconfirmed — see {@link shoreFromMapDat}); omitted when the map lacks it. */
   readonly shore?: number[];
   /** Authored entity placements (the sibling `map.cif`'s `StaticObjects` verbs, names verbatim). */
   readonly entities?: MapStaticObjects;
@@ -227,14 +227,16 @@ function brightnessFromMapDat(decoded: DecodedMap): MapDatTerrainFile['brightnes
 }
 
 /**
- * Decodes the `lmms` water-depth/shore lane into the emitted `shore` layer. Unlike `lmhe`/`embr` the
- * lane is HALF-CELL resolution (2W × 2H, like `emla` — verified by unpacked length and pinned by the
- * value histogram on the owned maps: 0 = land, 1..6 = shore rings counting out from the coast,
- * 7 = open sea; docs/formats/MAPDAT.md names the semantics). Collapsed to one value per cell by
- * sampling each cell's CENTRE node (`(2x + (y&1), 2y)` — the vertex the ground mesh bakes for the
- * cell), matching the per-cell resolution of the other render lanes; a named approximation that
- * halves the ring resolution, fine for the wave-amplitude ramp that consumes it. Returns undefined
- * when the map lacks the lane; throws on a length mismatch (caught by {@link mapDatToTerrain}).
+ * Decodes the `lmms` lane into the emitted `shore` layer. Unlike `lmhe`/`embr` the lane is HALF-CELL
+ * resolution (2W × 2H, like `emla` — verified by unpacked length; observed byte values 0..7 across
+ * the owned corpus). The band SEMANTICS are unconfirmed — it is NOT a water mask (waterless maps
+ * carry the same 1..7 bands, and band 7 sits mostly under land patterns on river maps; probed
+ * 2026-07-16), so no renderer consumes it yet — it is carried for the shore-foam follow-up
+ * (`docs/tickets/features/water-fx-and-shore.md`). Collapsed to one value per cell by sampling each
+ * cell's CENTRE node (`(2x + (y&1), 2y)` — the vertex the ground mesh bakes for the cell), matching
+ * the per-cell resolution of the other render lanes (a named approximation that halves the lane's
+ * resolution). Returns undefined when the map lacks the lane; throws on a length mismatch (caught by
+ * {@link mapDatToTerrain}).
  */
 function shoreFromMapDat({ map, size }: DecodedMap): MapDatTerrainFile['shore'] {
   const chunk = findChunk(map, 'lmms');

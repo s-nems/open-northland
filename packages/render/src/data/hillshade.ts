@@ -1,4 +1,5 @@
 import { BRIGHTNESS_NEUTRAL } from './brightness.js';
+import { clampedCellAt } from './cell-field.js';
 import { elevationLiftPerUnit } from './elevation.js';
 import { TILE_HALF_H, TILE_HALF_W } from './iso.js';
 
@@ -97,11 +98,7 @@ function hillshadeField(
   const lx = HILLSHADE_LIGHT.x / lightLen;
   const ly = HILLSHADE_LIGHT.y / lightLen;
   const lz = HILLSHADE_LIGHT.z / lightLen;
-  const at = (col: number, row: number): number => {
-    const c = col < 0 ? 0 : col >= width ? width - 1 : col;
-    const r = row < 0 ? 0 : row >= height ? height - 1 : row;
-    return elevation[r * width + c] ?? 0;
-  };
+  const at = clampedCellAt(elevation, width, height);
   const out = new Array<number>(width * height);
   let anySlope = false;
   for (let row = 0; row < height; row++) {

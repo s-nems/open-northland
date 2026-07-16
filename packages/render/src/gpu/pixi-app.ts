@@ -89,12 +89,26 @@ export async function createWindowPixiApp(canvas: HTMLCanvasElement): Promise<Ap
  * copyrighted game copy and gitignored (see AGENTS.md "Legal guardrails"); this only takes a URL, so the
  * bytes never live in the repo — the app serves them from the gitignored `content/` over the dev/shot
  * server.
+ *
+ * `alpha: 'straight'` is REQUIRED for palette-indexed sheets (`<stem>.indexed`): their red channel is a
+ * palette INDEX, not colour, so Pixi's default premultiply-on-upload would scale the index by the frame's
+ * graded coverage and every feathered pixel would look up the wrong LUT entry. The load passes Pixi's
+ * `data.alphaMode: 'premultiplied-alpha'` — its only hook that decodes the bitmap with
+ * `premultiplyAlpha: 'none'` (`loadTextures.ts`) — then relabels the source `no-premultiply-alpha`, so
+ * the raw bytes survive decode AND upload. The `PalettedSprite` shader premultiplies its own output, so
+ * straight-alpha sampling is the correct pairing. RGB atlases keep Pixi's premultiplied default (its
+ * batcher blends premultiplied).
  */
 export async function loadAtlasSource(
   url: string,
   scaleMode: 'nearest' | 'linear' = 'nearest',
+  alpha: 'premultiplied' | 'straight' = 'premultiplied',
 ): Promise<TextureSource> {
-  const texture = (await Assets.load(url)) as Texture;
+  const texture =
+    alpha === 'straight'
+      ? ((await Assets.load({ src: url, data: { alphaMode: 'premultiplied-alpha' } })) as Texture)
+      : ((await Assets.load(url)) as Texture);
+  if (alpha === 'straight') texture.source.alphaMode = 'no-premultiply-alpha';
   texture.source.scaleMode = scaleMode;
   return texture.source;
 }

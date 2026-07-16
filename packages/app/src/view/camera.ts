@@ -134,7 +134,7 @@ export function edgePanVelocity(
   y: number,
   width: number,
   height: number,
-  speed: number = DEFAULT_CAMERA_TUNING.edgeScrollSpeed,
+  speed: number,
 ): { vx: number; vy: number } {
   const depth = (into: number): number =>
     into >= EDGE_SCROLL_MARGIN ? 0 : (EDGE_SCROLL_MARGIN - Math.max(0, into)) / EDGE_SCROLL_MARGIN;
@@ -157,7 +157,7 @@ export function stepZoomToward(
   cursorX: number,
   cursorY: number,
   dtMs: number,
-  ratePerS: number = DEFAULT_CAMERA_TUNING.zoomGlideRate,
+  ratePerS: number,
 ): Camera {
   const scale = cam.scale ?? 1;
   if (scale === target) return cam;
@@ -291,6 +291,7 @@ export function createCameraController(
   let zoomAnchorX = 0;
   let zoomAnchorY = 0;
   // Last known pointer position (client px) + whether it is over the canvas — the edge-scroll probe.
+  // `pointerInside` starts false, so a cursor parked in the margin at load doesn't pan until it moves.
   let pointerX = 0;
   let pointerY = 0;
   let pointerInside = false;
@@ -397,7 +398,9 @@ export function createCameraController(
       if (held.has('ArrowDown')) desiredY -= tuning.arrowPanSpeed;
       // Edge scroll: pointer resting in the margin band pans, unless mid-drag (the drag owns the
       // motion), the window is unfocused (RAF still runs when visible), or a HUD surface claims the
-      // point (hovering the strip/minimap must not also pan).
+      // point (an open window / the minimap must not also pan). A LEFT-drag marquee is not suppressed
+      // — dragging a selection box into the margin pans under the screen-anchored box (a named
+      // tradeoff: RTS players use exactly that to select past the screen edge).
       if (pointerInside && !dragging && document.hasFocus() && edgeGuard?.(pointerX, pointerY) !== true) {
         const { sx, sy, rect } = screenScale(canvas, resolution);
         const edge = edgePanVelocity(

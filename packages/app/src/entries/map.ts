@@ -1,9 +1,7 @@
 import {
   type Camera,
-  composeShadingLane,
   createWindowPixiApp,
   type MapObjectSprite,
-  makeBrightnessField,
   makeElevationField,
   WorldRenderer,
 } from '@open-northland/render';
@@ -73,15 +71,6 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // builds its own from the terrain grid for the ground mesh + entity lift; this shared instance lifts
   // the map objects at load and drives elevation-aware picking (worldToTile) below.
   const elevation = makeElevationField(loaded?.elevation, loaded?.width ?? 0, loaded?.height ?? 0);
-  // The composed shading field — the baked `embr` lane accented by elevation hillshade, the same
-  // composition the renderer's ground mesh draws with (`composeShadingLane`). This shared instance
-  // shades the placed landscape objects at load (mines/stones/grass track the lane in the original;
-  // trees stay full-bright — see objects.ts), so an object can't disagree with the ground under it.
-  const brightness = makeBrightnessField(
-    composeShadingLane(loaded?.brightness, loaded?.elevation, loaded?.width ?? 0, loaded?.height ?? 0),
-    loaded?.width ?? 0,
-    loaded?.height ?? 0,
-  );
   // The app-wide `?lang=` good-name map + the merged real content it localizes — loaded before the
   // sprite sheet so the goods icon atlas is built from the real goods when served (null on a bare
   // checkout → the sandbox goods below). Its gaps (uncalibrated gathered goods, uncataloged buildings)
@@ -108,6 +97,11 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     postFx: params.get('postfx') !== 'off',
   });
   renderer.setTerrain(terrainGrid, terrain);
+  // The composed shading field the ground mesh just drew with (`embr` accented by elevation hillshade)
+  // — the ONE instance that also shades the placed landscape objects below (mines/stones/grass track
+  // the lane in the original; trees stay full-bright — see objects.ts), so an object can't disagree
+  // with the ground under it.
+  const brightness = renderer.brightnessField();
   // A decoded map's placed landscape objects (trees/stones/mine decals + the animated wave fx that
   // are the original's water surface) — resolved through the landscapeGfx IR + the /bobs atlases.
   // The catch keeps a partial content/ (e.g. a missing atlas PNG) a degradation, not an app crash.

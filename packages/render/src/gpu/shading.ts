@@ -49,6 +49,9 @@ const WAVE_PHASE_PER_PX = (2 * Math.PI) / 150;
 const WAVE_SHIMMER = 0.08;
 /** The shimmer's own angular speed — off the swell's so glints don't pulse in lockstep. */
 const WAVE_SHIMMER_RADIANS_PER_TICK = (2 * Math.PI) / 21;
+/** The two waves' exact common period (lcm of 30 and 21 ticks): the animation clock wraps modulo
+ *  this, so the f32 `uWave.x` never grows into `sin` precision loss over a long session. */
+export const WAVE_TIME_PERIOD_TICKS = 210;
 
 const FIELD_VERTEX = `#version 300 es
   in vec2 aPosition;
@@ -139,23 +142,18 @@ const VERTEX_FRAGMENT = `#version 300 es
 let fieldProgram: GlProgram | undefined;
 let vertexProgram: GlProgram | undefined;
 
-/** The mutable water-animation uniform handle: `uWave = [timeTicks, amplitudeScale]`, mutated in place
+/** The map's water-animation uniform group: `uWave = [timeTicks, amplitudeScale]`, mutated in place
  *  per frame (a `Float32Array` so the shared program re-uploads changed contents — the same rule as the
  *  paletted sprite's uniforms). ONE group per map, shared by every shaded mesh
  *  ({@link makeShadedTerrainShader}), so the per-frame animation is a single write + dirty bump instead
- *  of one per chunk mesh. */
-export interface WaveUniforms {
-  readonly uniforms: { readonly uWave: Float32Array };
-  /** Bump the group's dirty id so Pixi re-uploads the changed contents. */
-  update(): void;
-}
+ *  of one per chunk mesh. A real {@link UniformGroup}, typed to its known uniform view. */
+export type WaveUniforms = UniformGroup & { readonly uniforms: { readonly uWave: Float32Array } };
 
 /** Make the map's shared water-animation uniform group (time 0, full amplitude). */
 export function makeWaveUniforms(): WaveUniforms {
-  const group = new UniformGroup({
+  return new UniformGroup({
     uWave: { value: new Float32Array([0, 1]), type: 'vec2<f32>' },
-  });
-  return group as unknown as WaveUniforms;
+  }) as WaveUniforms;
 }
 
 /**
@@ -179,7 +177,7 @@ export function makeShadedTerrainShader(
       uTexture: source,
       uSampler: source.style,
       uBrightnessTex: brightnessTex,
-      waveVars: wave as unknown as UniformGroup,
+      waveVars: wave,
     },
   });
 }

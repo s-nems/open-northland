@@ -6,7 +6,7 @@ import type { SceneTerrain } from '../../data/scene/index.js';
 import { aabbIntersects, type Viewport } from '../../data/viewport.js';
 import { makeWaveField, NO_WAVE } from '../../data/water.js';
 import { destroyMeshChildren } from '../mesh-teardown.js';
-import { makeWaveUniforms, padLaneRows, type WaveUniforms } from '../shading.js';
+import { makeWaveUniforms, padLaneRows, WAVE_TIME_PERIOD_TICKS, type WaveUniforms } from '../shading.js';
 import type { TerrainTextureSet } from '../terrain-textures.js';
 import { buildFlat } from './build-flat.js';
 import { buildTextured } from './build-ground.js';
@@ -94,9 +94,11 @@ export class TerrainLayer {
         addressMode: 'clamp-to-edge',
       });
     }
-    // Water-wave amplitudes ride the shaded mesh path (`data/water.ts`); NO_WAVE on land maps.
+    // Water-wave amplitudes ride the shaded mesh path only (`pushTriangle` uploads `aWave` exactly
+    // when the batch carries brightness UVs), so a water map WITHOUT a shading lane draws stock
+    // meshes and stays still — gate the per-frame animate() on both, not just the wave field.
     const wave = makeWaveField(terrain.ground, terrain.width, terrain.height);
-    this.hasWater = wave !== NO_WAVE;
+    this.hasWater = wave !== NO_WAVE && this.brightnessTex !== undefined;
     this.waveGroup = makeWaveUniforms();
     const lane: LaneShading = {
       brightnessTex: this.brightnessTex,
@@ -136,7 +138,9 @@ export class TerrainLayer {
    */
   animate(timeTicks: number): void {
     if (!this.hasWater || this.waveGroup === undefined) return;
-    this.waveGroup.uniforms.uWave[0] = timeTicks;
+    // Wrapped modulo the waves' exact common period: identical phases, but the f32 uniform never
+    // grows into `sin` precision loss over a long session.
+    this.waveGroup.uniforms.uWave[0] = timeTicks % WAVE_TIME_PERIOD_TICKS;
     this.waveGroup.update();
   }
 
