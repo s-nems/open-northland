@@ -12,6 +12,8 @@ import {
   mayMarry,
   startWedding,
 } from '../family/index.js';
+import { interactionNode } from '../footprint/index.js';
+import { navigationLimitFor } from '../signposts/index.js';
 import { isOrderableSettler } from './guards.js';
 
 // The family order handlers — marry / assignHouse / makeChild. Like every order, bad input is a
@@ -22,10 +24,14 @@ import { isOrderableSettler } from './guards.js';
  * (see {@link startWedding}; the FamilySystem walks them together and kisses them into a
  * {@link Marriage}). No eligible partner right now = the order auto-cancels (a skip).
  */
-export function marry(world: World, _ctx: SystemContext, command: Extract<Command, { kind: 'marry' }>): void {
+export function marry(world: World, ctx: SystemContext, command: Extract<Command, { kind: 'marry' }>): void {
   const e = command.entity;
   if (!isOrderableSettler(world, e) || !mayMarry(world, e)) return;
-  const partner = findPartnerFor(world, e);
+  // Signpost confinement: the partner search only sees candidates inside the issuer's allowed area
+  // (local circle + reachable guidepost network) — the same rule as every other target search.
+  const terrain = ctx.terrain;
+  const limit = terrain !== undefined ? navigationLimitFor(world, terrain, e) : null;
+  const partner = findPartnerFor(world, e, terrain, limit);
   if (partner === null) return; // nobody to marry — the order cancels itself
   startWedding(world, e, partner);
 }
@@ -47,6 +53,16 @@ export function assignHouse(
   const type = builtHomeType(world, ctx, house);
   if (type === undefined) return;
   if (world.get(house, Building).tribe !== world.get(e, Settler).tribe) return;
+  // Signpost confinement: a home beyond the issuer's allowed area is refused like an out-of-area
+  // assignWorker/move order — the player extends the network first, then houses the far family.
+  const terrain = ctx.terrain;
+  if (terrain !== undefined) {
+    const limit = navigationLimitFor(world, terrain, e);
+    if (limit !== null) {
+      const inode = interactionNode(world, ctx, house);
+      if (inode !== null && !limit.allowsNode(terrain.nodeAtClamped(inode.x, inode.y))) return;
+    }
+  }
   const family = familyOf(world, e);
   const members = new Set(family);
   // Households already living here, minus the mover's own (a re-assign into the same home is a no-op

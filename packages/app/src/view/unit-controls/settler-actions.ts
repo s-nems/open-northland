@@ -2,9 +2,9 @@ import { type Camera, tileToScreen } from '@open-northland/render';
 import { ONE, systems, type WorldSnapshot } from '@open-northland/sim';
 import { type Application, Container, Graphics } from 'pixi.js';
 import type { PickerEntry } from '../../catalog/professions.js';
-import { JOB_SCOUT } from '../../game/sandbox/index.js';
 import { loadGuiArt } from '../../content/gui-art.js';
 import { loadUiFont } from '../../content/ui-font.js';
+import { JOB_SCOUT } from '../../game/sandbox/index.js';
 import {
   childOrderOf,
   entityById,

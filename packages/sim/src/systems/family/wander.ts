@@ -5,6 +5,7 @@ import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SpacingState } from '../agents/destack.js';
 import type { SystemContext } from '../context.js';
 import { dynamicBlockedCells } from '../footprint/index.js';
+import { navigationLimitFor } from '../signposts/index.js';
 import { clearNavState } from '../spatial.js';
 
 /**
@@ -46,5 +47,9 @@ export function planChildWander(
   spacing.blockedCells ??= dynamicBlockedCells(world, ctx, terrain);
   const target = terrain.nodeAtClamped(anchor.hx + dx, anchor.hy + dy);
   if (!terrain.isWalkable(target) || spacing.blockedCells.has(target)) return;
+  // Signpost confinement: a stroll spot outside the child's allowed area is skipped like a blocked one
+  // (checked after the rolls, so the RNG stream is identical whether or not confinement is on).
+  const limit = navigationLimitFor(world, terrain, e);
+  if (limit !== null && !limit.allowsNode(target)) return;
   world.add(e, MoveGoal, { cell: target });
 }

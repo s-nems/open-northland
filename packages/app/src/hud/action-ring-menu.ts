@@ -173,4 +173,3 @@ export const ALL_MENU_BUTTONS: readonly ActionButton[] = [
   ...HUMAN_DEFAULT_MENU.flatMap((g) => g.buttons),
   ERECT_SIGNPOST,
 ];
-

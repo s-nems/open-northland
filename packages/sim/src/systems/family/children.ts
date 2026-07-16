@@ -33,6 +33,7 @@ import type { SystemContext } from '../context.js';
 import { BABY_FEMALE, BABY_MALE, CIVILIST_JOB, WOMAN_JOB } from '../lifecycle/ageclass.js';
 import { stampDefaultStance } from '../orders/index.js';
 import { atomicAnimationName, atomicDuration, atomicDurationForName } from '../readviews/animations.js';
+import { navigationLimitFor } from '../signposts/index.js';
 import { canonicalById, isTravelling } from '../spatial.js';
 import { isFood } from '../stores/index.js';
 import { isOnMission } from './eligibility.js';
@@ -95,7 +96,7 @@ export function driveChildOrders(world: World, ctx: SystemContext, terrain: Terr
   const dutyNow = new Set<Entity>();
   const reservedHomes = new Set<Entity>();
   // One shared food index for every order this tick (it self-builds on the first larder-short order).
-  const externalFood = new ExternalFoodIndex(world, ctx);
+  const externalFood = new ExternalFoodIndex(world, ctx, terrain);
   for (const e of canonicalById(world.query(ChildOrder, Settler, Position))) {
     driveOrder(world, ctx, terrain, e, dutyNow, reservedHomes, externalFood);
   }
@@ -262,8 +263,11 @@ function driveOrder(
     deliverHome(world, ctx, terrain, woman, womanView, home, hereNode);
     return;
   }
-  const source = externalFood.nearest(hereNode);
-  if (source === null) return; // no food anywhere outside homes — she waits (the order stands)
+  // Signpost confinement: she only sees sources inside her local circle + reachable guidepost network
+  // (null when navigation is off/unlimited — the pre-signpost behaviour, byte-identical).
+  const limit = terrain !== undefined ? navigationLimitFor(world, terrain, woman) : null;
+  const source = externalFood.nearest(hereNode, limit);
+  if (source === null) return; // no reachable food outside homes — she waits (the order stands)
   fetchFrom(world, ctx, terrain, woman, womanView, source, hereNode);
 }
 

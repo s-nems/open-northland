@@ -100,7 +100,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
   const anyHaulable = hasHaulableOutput(world, ctx, targets.stockpiles);
   // One shared external-food index for every housewife's hoard rung this tick (it self-builds on the
   // first woman who actually needs a source, so a woman-less or fully-stocked tick pays nothing).
-  const externalFood = new ExternalFoodIndex(world, ctx);
+  const externalFood = new ExternalFoodIndex(world, ctx, terrain);
   // Spacing occupancy — shared by both spacing consumers (the idle de-stack rung and the builder work
   // slots, see ./destack.ts): owned settlers currently stationary (not travelling — distinct from the
   // waiting-inside `Resting` marker) bucketed by integer tile, in ascending-id order. Gated on Owner so it
@@ -219,7 +219,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // The housewife rung: a woman takes no trade — her work is stocking the family larder (hoarding,
     // see planWomanHoard). Above the carry-delivery rung so food she lifted for the pantry goes HOME,
     // not to the nearest store.
-    if (world.has(e, Female) && planWomanHoard(world, ctx, terrain, e, externalFood)) continue;
+    if (world.has(e, Female) && planWomanHoard(world, ctx, terrain, e, externalFood, limit)) continue;
 
     // The worker view of the settler — re-stated so `jobType`'s non-null narrowing carries into the
     // economy drives' signatures (the ladder skipped jobless settlers above).

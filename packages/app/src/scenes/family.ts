@@ -85,7 +85,7 @@ function homeFoodUnits(sim: Simulation): number {
 /** Create one adult settler directly (pre-tick-0, so its id is known to the build's orders). */
 function spawnAdult(sim: Simulation, jobType: number, x: number, y: number): Entity {
   const node = cellAnchorNode(x, y);
-  const e = systems.createSettler(sim.world, sim.content, {
+  const e = systems.createSettler(sim.world, sim.content, sim.rng, {
     jobType,
     x: node.hx,
     y: node.hy,
