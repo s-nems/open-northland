@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { type ContentIr, type LandscapeGfxRow, servedAtlasStem } from '../src/content/ir.js';
+import {
+  type ContentIr,
+  type LandscapeGfxRow,
+  servedAtlasStem,
+  servedShadowStem,
+} from '../src/content/ir.js';
 import {
   buildResourceBinding,
   buildStockpileBinding,
@@ -120,6 +125,12 @@ describe('servedAtlasStem / nodeBob / pileFillBobs', () => {
   it('returns undefined for a record naming no bmd or palette', () => {
     expect(servedAtlasStem({ index: 1, logicType: 0 })).toBeUndefined();
     expect(servedAtlasStem({ index: 1, logicType: 0, bmd: `${B}/x.bmd` })).toBeUndefined();
+  });
+
+  it('derives the palette-less served shadow stem (<shadow-basename>.shadow); blanks stay undefined', () => {
+    expect(servedShadowStem(`${B}/ls_trees_s.bmd`)).toBe('ls_trees_s.shadow');
+    expect(servedShadowStem(undefined)).toBeUndefined();
+    expect(servedShadowStem('   ')).toBeUndefined();
   });
 
   it('picks the highest-state first bob as the full-grown node frame', () => {

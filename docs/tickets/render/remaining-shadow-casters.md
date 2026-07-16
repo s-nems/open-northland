@@ -5,7 +5,7 @@
 
 Buildings, trees and the other tall/pooled landscape casters now draw cast shadows from the decoded
 shadow-twin atlases (`SpriteLayer.shadow`, `MapObjectSprite.shadow`; the pipeline's
-`convertShadowBmdTree` already bakes EVERY referenced shadow `.bmd`, including the creature/vehicle
+`convertShadowBmdTree` already bakes every referenced shadow `.bmd`, including the creature/vehicle
 ones). Settlers stay shadow-less by design (user decision). Not yet drawing:
 
 - **Animals and vehicles/ships** — their animation sets name a `shadowlib`
@@ -23,9 +23,10 @@ ones). Settlers stay shadow-less by design (user decision). Not yet drawing:
 
 Notes pinned by the shadow research (2026-07-16):
 
-- The original stacks overlapping shadows — `PrintBob_Shadow` → `ShadePixel16/32` is a per-blit
-  destination multiply with no "already shadowed" guard (OpenVikings `CBobManager.cs`). Do NOT add a
-  shared shadow-mask/single-darken pass; per-sprite alpha black is the faithful model.
+- The original stacks overlapping shadows — the shadow blit (`PrintBob_Shadow_TimeMask` →
+  `PrintBob_Shade_HighColor/_MMX` → `ShadePixel16/32`, OpenVikings `CBobManager.cs`) is a per-blit
+  destination multiply with no "already shadowed" guard. Do not add a shared
+  shadow-mask/single-darken pass; per-sprite alpha black is the faithful model.
 - The pipeline intentionally bakes `cr_hum_*_s` shadow atlases nothing loads (settlers are
   shadow-less by user decision) — do not "fix" them into the loader; the animal/vehicle subset is
   the part this ticket will consume.

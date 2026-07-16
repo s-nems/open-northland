@@ -43,7 +43,8 @@ export interface MapObjectSprite {
    * silhouettes), when the record names one and it loaded. `frames[i]` pairs with the body
    * {@link frames}`[i]` (`undefined` = that pose casts none), so an animated loop's shadow follows the
    * pose. Only tall objects draw it ({@link import('./tall-blocks.js').TallObjectLayer}); flat decor
-   * (waves, grass, mine stains) ignores the field — a named approximation, no decor shadow is known.
+   * ignores the field even though the data holds real decor silhouettes (mushrooms, bushes, ground
+   * props) — a named gap, see `docs/tickets/render/remaining-shadow-casters.md`.
    */
   readonly shadow?: {
     readonly source: TextureSource;

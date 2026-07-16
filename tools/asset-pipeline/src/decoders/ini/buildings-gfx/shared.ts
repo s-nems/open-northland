@@ -9,6 +9,7 @@ import {
   getInt,
   getStr,
   normalizeAssetPath,
+  normalizeOptionalPath,
   type RuleProp,
   type RuleSection,
 } from '../grammar.js';
@@ -105,14 +106,12 @@ export function readGfxHouseGraphicsRecord(rec: RuleSection): GfxHouseGraphicsRe
   const libs = findProp(rec, 'GfxBobLibs');
   const bmd = libs?.values[0];
   if (bmd === undefined || bmd.trim() === '') return undefined;
-  const shadowBmd = libs?.values[1];
   const palettes = (findProp(rec, 'GfxPalette')?.values ?? []).filter((v) => v.trim() !== '');
   if (palettes.length === 0) return undefined;
   return {
     tribeId,
     normalizedBmd: normalizeAssetPath(bmd),
-    normalizedShadowBmd:
-      shadowBmd === undefined || shadowBmd.trim() === '' ? undefined : normalizeAssetPath(shadowBmd),
+    normalizedShadowBmd: normalizeOptionalPath(libs?.values[1]),
     palettes,
     editName: getStr(rec, 'EditName'),
     typeByLevel: logicTypeByLevel(rec),

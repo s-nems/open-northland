@@ -145,6 +145,28 @@ export interface LoadedMapObjects {
   readonly byPlacement: ReadonlyMap<number, MapObjectSprite>;
 }
 
+/**
+ * Body + shadow frames of one state's bob-id list, resolved in one pass so the pair stays
+ * index-aligned across the 0×0-frame drops (the shadow set parallels the body's bob ids; a pose
+ * without a silhouette holds `undefined`). Null when no body frame survives — the caller falls
+ * back to another state or the placeholder.
+ */
+export function pairedStateFrames(
+  layer: Pick<SpriteLayer, 'atlas' | 'shadow'>,
+  bobIds: readonly number[],
+): { frames: AtlasFrame[]; shadowFrames: (AtlasFrame | undefined)[] } | null {
+  const frames: AtlasFrame[] = [];
+  const shadowFrames: (AtlasFrame | undefined)[] = [];
+  for (const bobId of bobIds) {
+    const f = layer.atlas.frames.get(bobId);
+    if (f === undefined || f.width <= 0 || f.height <= 0) continue;
+    frames.push(f);
+    const s = layer.shadow?.atlas.frames.get(bobId);
+    shadowFrames.push(s !== undefined && s.width > 0 && s.height > 0 ? s : undefined);
+  }
+  return frames.length === 0 ? null : { frames, shadowFrames };
+}
+
 export async function loadMapObjects(
   objects: MapObjectsData,
   ir: ContentIr,
@@ -165,8 +187,13 @@ export async function loadMapObjects(
   for (const type of objects.types) {
     const record = recordByName.get(type);
     const key = record !== undefined ? servedAtlasStem(record) : undefined;
-    if (key !== undefined && !layerKeys.has(key)) {
-      layerKeys.set(key, servedShadowStem(record?.shadowBmd));
+    if (key === undefined) continue;
+    const shadowStem = servedShadowStem(record?.shadowBmd);
+    // First DEFINED shadow stem wins (records sharing one atlas may differ in `shadowBmd`); a plain
+    // first-wins would let a shadow-less record block the twin for every type on that atlas,
+    // dependent on the map's type-list order.
+    if (!layerKeys.has(key) || (layerKeys.get(key) === undefined && shadowStem !== undefined)) {
+      layerKeys.set(key, shadowStem);
     }
   }
   const layers = new Map<string, SpriteLayer>();
@@ -195,18 +222,9 @@ export async function loadMapObjects(
     const layer = key !== undefined ? layers.get(key) : undefined;
     if (layer === undefined) return [];
     return (record.frames ?? []).map((stateList) => {
-      // Body + shadow resolve in one pass so the pair stays index-aligned across the 0×0-frame drops
-      // (the shadow set parallels the body's bob ids; a pose without a silhouette gets `undefined`).
-      const frames: MapObjectSprite['frames'][number][] = [];
-      const shadowFrames: (MapObjectSprite['frames'][number] | undefined)[] = [];
-      for (const bobId of stateList.bobIds) {
-        const f = layer.atlas.frames.get(bobId);
-        if (f === undefined || f.width <= 0 || f.height <= 0) continue;
-        frames.push(f);
-        const s = layer.shadow?.atlas.frames.get(bobId);
-        shadowFrames.push(s !== undefined && s.width > 0 && s.height > 0 ? s : undefined);
-      }
-      if (frames.length === 0) return null;
+      const paired = pairedStateFrames(layer, stateList.bobIds);
+      if (paired === null) return null;
+      const { frames, shadowFrames } = paired;
       const animated = record.loopAnimation === true && record.isStatic !== true && frames.length > 1;
       const count = animated ? frames.length : 1;
       const shadowSource = layer.shadow?.source;

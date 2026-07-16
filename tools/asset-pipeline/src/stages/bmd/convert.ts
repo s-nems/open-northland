@@ -146,7 +146,7 @@ export async function convertBmdTree(graphics: GraphicsBindingSet, outDir: strin
 
 /** The atlas-filename suffix of a converted shadow `.bmd` (`<shadow-stem>.shadow.{png,atlas.json}`) —
  *  the palette slug's slot, fixed because a shadow atlas is palette-less. */
-export const SHADOW_ATLAS_SUFFIX = 'shadow';
+const SHADOW_ATLAS_SUFFIX = 'shadow';
 
 /**
  * Converts the shadow `.bmd` of every binding that names one (`GfxBobLibs`/`shadowlib` second value)
