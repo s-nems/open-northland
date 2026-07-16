@@ -14,6 +14,10 @@ Two sibling assignment gestures produce a silent refusal with no player feedback
    (`packages/app/src/view/unit-controls/index.ts` — `resolveAssign`), a left-click on a red (no open
    slot for the settler's trade) building, on terrain, or on a unit silently exits the mode. The
    vanishing green/red wash is the only feedback; there is no positive "can't" cue for the refused bind.
+3. **Out-of-area assignment under signpost navigation.** With `setSignpostNavigation` on, the sim
+   refuses `assignWorker` to a building beyond the settler's allowed area (`orders/work.ts`, the same
+   rule as a refused move order) — another silent no-op the cue should cover, and the assign-mode
+   green/red wash should paint such buildings red for the selected settler.
 
 ## Scope
 
