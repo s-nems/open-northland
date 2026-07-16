@@ -1,4 +1,4 @@
-import { MoveGoal, Owner, PathRequest, Position, Residence } from '../../components/index.js';
+import { MoveGoal, Owner, Position, Residence } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
@@ -6,7 +6,6 @@ import type { SpacingState } from '../agents/destack.js';
 import type { SystemContext } from '../context.js';
 import { dynamicBlockedCells } from '../footprint/index.js';
 import { navigationLimitFor } from '../signposts/index.js';
-import { clearNavState } from '../spatial.js';
 
 /**
  * The child stroll — a growing settler (baby/child) with a home occasionally walks to a random spot
@@ -24,8 +23,8 @@ const CHILD_WANDER_PERIOD_TICKS = 90;
  * Maybe send the idle child `e` on a stroll near its home. Owned children only (unowned fixtures stay
  * byte-identical, the {@link SpacingState} Owner convention); a homeless or orphaned-of-home child
  * stays put. The target must be walkable and outside building footprints — a goal the router would
- * refuse would freeze the child (nothing clears a failed non-player request), so an unlucky roll just
- * waits for the next one.
+ * refuse wastes the stroll (the planner's stranded recovery parks the child for its retry pace), so
+ * an unlucky roll just waits for the next one.
  */
 export function planChildWander(
   world: World,
@@ -35,7 +34,6 @@ export function planChildWander(
   spacing: SpacingState,
 ): void {
   if (!world.has(e, Owner)) return;
-  if (world.tryGet(e, PathRequest)?.failed === true) clearNavState(world, e); // recover a dead-end stroll
   const home = world.tryGet(e, Residence)?.home;
   if (home === undefined || !world.isAlive(home)) return;
   const homePos = world.tryGet(home, Position);

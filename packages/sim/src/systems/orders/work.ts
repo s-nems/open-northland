@@ -15,6 +15,7 @@ import {
   Position,
   Settler,
   SiteAssignment,
+  SupplyRun,
   sameSide,
   UnderConstruction,
   WorkFlag,
@@ -89,6 +90,9 @@ function reidleAsJob(world: World, ctx: SystemContext, e: Entity, jobType: numbe
   if (world.has(e, Carrying)) startDrop(world, ctx, e);
   world.remove(e, PlayerOrder); // an employment change returns the unit to the economy
   world.remove(e, SiteAssignment); // and drops any construction-crew membership of the old trade
+  // And its supply errand: the old trade's fetch is abandoned with the load, so the site must stop
+  // counting it as inbound (the planner's tally re-seeds from live components each tick).
+  world.remove(e, SupplyRun);
   clearNavState(world, e);
   world.remove(e, Engagement); // drop any auto-combat state — the new trade re-decides its stance
   world.remove(e, AttackOrder);

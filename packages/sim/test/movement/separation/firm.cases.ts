@@ -47,10 +47,14 @@ describe('unit body collision — firm routing and resolution', () => {
     wallAt(s, 10, P1);
     const runner = settlerAt(s, 4, 6, SOLDIER, P0);
     orderTo(s, runner, 16, 6);
-    s.run(120);
+    s.run(20); // inside the stranded-recovery park window
 
     expect(nodeOf(s, runner)).toEqual({ x: 4, y: 6 }); // never set off — no route exists
-    expect(s.world.tryGet(runner, PathRequest)?.failed).toBe(true);
+    expect(s.world.tryGet(runner, PathRequest)?.failed).toBe(true); // parked on the failed route
+
+    s.run(100); // past the retry pace: the planner sheds the dead goal instead of freezing on it
+    expect(nodeOf(s, runner)).toEqual({ x: 4, y: 6 }); // still standing clean where it began
+    expect(s.world.has(runner, PathRequest)).toBe(false);
   });
 
   it('the wall is physically impassable even for a stale route aimed straight through it, and the walker gives up', () => {
