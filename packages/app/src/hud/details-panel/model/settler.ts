@@ -98,7 +98,13 @@ export interface SettlerPanelModel {
   readonly work: {
     readonly place: string;
     readonly product: string;
-    readonly gatherChoices: readonly { readonly goodType: number | null; readonly label: string }[];
+    readonly gatherChoices: readonly {
+      readonly goodType: number | null;
+      readonly label: string;
+      /** The good's string id — the key the round button draws its icon by; absent for the "Wszystko"
+       *  (gather-everything) choice, which has no single good and draws the generic pile instead. */
+      readonly goodId?: string;
+    }[];
     readonly selectedGood: number | null;
   };
   /** The Doświadczenie section: the settler's highest recorded specialization, or null when it has none.
@@ -230,7 +236,7 @@ export function settlerWork(
             good.atomics.harvest !== undefined &&
             allowed.has(good.atomics.harvest),
         )
-        .map((good) => ({ goodType: good.typeId, label: goodLabel(ctx, good.typeId) })),
+        .map((good) => ({ goodType: good.typeId, label: goodLabel(ctx, good.typeId), goodId: good.id })),
     ];
     const product =
       gatherChoices.find((choice) => choice.goodType === selectedGood)?.label ?? messages().hud.gatherAll;

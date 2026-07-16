@@ -329,6 +329,13 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     return contains(layout.assignButton.rect, x, y) ? messages().hud.assignWorkplaceHint : null;
   };
 
+  /** The hovered gather-choice round button's good name ("Wszystko" for the gather-all choice), or null —
+   *  the icon buttons carry no drawn label, so the tooltip is what names them. */
+  const gatherChoiceHint = (x: number, y: number): string | null => {
+    if (layout?.kind !== 'settler') return null;
+    return layout.gatherChoiceHits.find((hit) => contains(hit.rect, x, y))?.label ?? null;
+  };
+
   /** Recompute + show/hide the value/name tooltip for the cursor at a client point: a Magazyn stock
    *  row's good name or a category tab's name for a building (the tab glyphs are cryptic unread art,
    *  so the tooltip is what names a category), a stat bar's live value for a settler. The probes are
@@ -345,7 +352,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     const rowName = hitStockGood(x, y);
     const tab = rowName === null ? hitStockTab(x, y) : null;
     const tabLabel = tab !== null ? (stockTabLabels()[tab] ?? null) : null;
-    const text = rowName ?? tabLabel ?? hitBarValue(x, y) ?? assignButtonHint(x, y);
+    const text = rowName ?? tabLabel ?? hitBarValue(x, y) ?? gatherChoiceHint(x, y) ?? assignButtonHint(x, y);
     if (text === null) opts.tooltip.hide();
     else opts.tooltip.show(clientX, clientY, text);
   };

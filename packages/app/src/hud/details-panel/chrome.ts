@@ -1,7 +1,7 @@
 import type { GuiColorKey } from '@open-northland/render';
 import { type Application, type Container, type Graphics, Sprite, type Texture } from 'pixi.js';
 import type { FontColorName } from '../../content/font-gfx.js';
-import { GENERIC_GOOD_ICON, makeGoodSprite } from '../../content/goods-gfx.js';
+import { GENERIC_GOOD_ICON, type GoodIcon, makeGoodSprite } from '../../content/goods-gfx.js';
 import { makeGuiSprite } from '../../content/gui-art.js';
 import type { GuiPaletteName } from '../../content/gui-gfx.js';
 import { HOVER_ALPHA, HOVER_TINT, tileBitmap, WINDOW_BORDER } from '../chrome.js';
@@ -40,6 +40,16 @@ const INNER_BOX_LIGHT = 0x7a6244;
 const CARD_FILL = 0x3c4043;
 /** Warm wood tint of an occupied equipment slot (eyeballed, not sampled). */
 const SLOT_FILL = 0x4a2b1d;
+/** Round-button wood fills — the same warm-wood/brighter-wood pairing the rectangular button and tab
+ *  plates use as their no-bitmap fallback, so the round gather/assign controls read as the same material. */
+const ROUND_BUTTON_FILL = 0x4a2b1d;
+const ROUND_BUTTON_ACTIVE_FILL = 0x6b4426;
+/** Cream tones of the assign glyph — lit vs. dimmed, matching the button label's gold-cream / grey pair. */
+const GLYPH_LIGHT = 0xead9a0;
+const GLYPH_DIM = 0x8b7a55;
+/** The four good tones of the "Wszystko" (gather-everything) tile — stone / wood / gold / herb — so it
+ *  reads as a mix, distinct from any single good's pile. */
+const ALL_GLYPH_TILES = [0xb8b0a0, 0x9a6a34, 0xe0b455, 0x7f9a2a] as const;
 
 /** Draw order inside the panel: flat fills, bitmap fills, frame sprites/icons, then text. */
 export interface PanelLayers {
@@ -67,6 +77,9 @@ export interface Chrome {
   /** A recoloured per-good resource icon (the good's `ls_goods` pile frame), fitted centered into `r`.
    *  No-op when the good has no bound icon (non-map goods) or the goods art is absent. */
   goodIcon(goodId: string, r: Rect): void;
+  /** A 2×2 grid of mixed-good tiles centered in `r` — the "gather everything" round button's face, drawn
+   *  distinct from any single good's pile so it never reads as one specific good. */
+  glyphAll(r: Rect): void;
   /** A section window: the tiled grey-blue card fill + the rope-strip border with knot corners. */
   window(r: Rect): void;
   /** An inner content box (the preview): thin dark bevel frame, no rope — the original's inner framing. */
@@ -82,6 +95,13 @@ export interface Chrome {
   scrim(r: Rect, alpha: number): void;
   /** A general-section button (tiled button fill, hover/disabled states, centered label). */
   button(hit: { readonly rect: Rect; readonly enabled: boolean }, label: string, hovered: boolean): void;
+  /** A small round wooden button (the gather-choice / assign-workplace controls): a warm-wood disc with a
+   *  raised rim, brightened when `active` (hovered or selected) and darkened when disabled. The caller
+   *  overlays the face (a good icon / the assign glyph) centered in `r`. */
+  roundButton(r: Rect, enabled: boolean, active: boolean): void;
+  /** A small house glyph centered in `r` — the assign-workplace round button's face (assign this settler
+   *  to a building); `enabled` picks the lit vs. dimmed cream. */
+  glyphHouse(r: Rect, enabled: boolean): void;
   /** A category-tab plate: the tiled wooden button fill + light edge, brighter when `active` and dimmed
    *  otherwise — the frame a stock-tab's representative good icon is drawn onto (no label). */
   tabButton(r: Rect, active: boolean): void;
@@ -150,11 +170,8 @@ export function createChrome(
     made.sprite.place(x, y, scale, w, h);
   };
 
-  const goodIcon = (goodId: string, r: Rect): void => {
+  const placeGoodIcon = (icon: GoodIcon, r: Rect): void => {
     if (assets.goods === null) return;
-    // A good with no `ls_goods` art (potions/amulets/fruit) falls back to the neutral generic icon, so the
-    // Magazyn never shows a blank slot — the same fallback the in-world dropped pile uses (goods-gfx).
-    const icon = assets.goods.icon(goodId) ?? GENERIC_GOOD_ICON;
     const made = makeGoodSprite(assets.goods, icon);
     if (made === null) return;
     made.sprite.flipY = flipY;
@@ -168,6 +185,28 @@ export function createChrome(
     const x = Math.round(r.x + r.w / 2 - (made.frame.offsetX + made.frame.width / 2) * drawScale);
     const y = Math.round(r.y + r.h / 2 - (made.frame.offsetY + made.frame.height / 2) * drawScale);
     made.sprite.place(x, y, drawScale, w, h);
+  };
+
+  // A good with no `ls_goods` art (potions/amulets/fruit) falls back to the neutral generic icon, so the
+  // Magazyn never shows a blank slot — the same fallback the in-world dropped pile uses (goods-gfx).
+  const goodIcon = (goodId: string, r: Rect): void =>
+    placeGoodIcon(assets.goods?.icon(goodId) ?? GENERIC_GOOD_ICON, r);
+
+  const glyphAll = (r: Rect): void => {
+    const cell = Math.max(2, Math.round(r.w * 0.34));
+    const gap = Math.max(1, Math.round(r.w * 0.12));
+    const block = cell * 2 + gap;
+    const x0 = Math.round(r.x + (r.w - block) / 2);
+    const y0 = Math.round(r.y + (r.h - block) / 2);
+    const line = Math.max(1, Math.round(scale));
+    // Four distinct good tones (stone / wood / gold / herb) so the tile reads as "a mix of everything",
+    // never as one specific good.
+    ALL_GLYPH_TILES.forEach((color, i) => {
+      const tx = x0 + (i % 2) * (cell + gap);
+      const ty = y0 + Math.floor(i / 2) * (cell + gap);
+      g.rect(tx, ty, cell, cell).fill(color);
+      g.rect(tx, ty, cell, cell).stroke({ color: INNER_BOX_DARK, width: line, alpha: 0.6 });
+    });
   };
 
   // Named to avoid shadowing the global `window` inside this closure. The body tiles the grey-blue
@@ -200,6 +239,39 @@ export function createChrome(
     );
     g.circle(cx, cy, rad).stroke({ color: INNER_BOX_DARK, width: line });
     g.circle(cx, cy, Math.max(1, rad - line)).stroke({ color: INNER_BOX_LIGHT, width: line, alpha: 0.7 });
+  };
+
+  const roundButton = (r: Rect, enabled: boolean, active: boolean): void => {
+    const cx = r.x + r.w / 2;
+    const cy = r.y + r.h / 2;
+    const rad = Math.min(r.w, r.h) / 2;
+    const line = Math.max(1, Math.round(scale));
+    const fill = active && enabled ? ROUND_BUTTON_ACTIVE_FILL : ROUND_BUTTON_FILL;
+    g.circle(cx, cy, rad).fill({ color: fill, alpha: enabled ? 0.95 : 0.5 });
+    g.circle(cx, cy, rad).stroke({ color: INNER_BOX_DARK, width: line });
+    // A brighter inner rim reads the disc as raised (a button), not recessed (the equip well).
+    g.circle(cx, cy, Math.max(1, rad - line)).stroke({ color: INNER_BOX_LIGHT, width: line, alpha: 0.9 });
+    if (!enabled) g.circle(cx, cy, rad).fill({ color: 0x000000, alpha: 0.28 });
+    else if (active) g.circle(cx, cy, rad).fill({ color: HOVER_TINT, alpha: HOVER_ALPHA });
+  };
+
+  const glyphHouse = (r: Rect, enabled: boolean): void => {
+    const color = enabled ? GLYPH_LIGHT : GLYPH_DIM;
+    const cx = r.x + r.w / 2;
+    const pad = r.w * 0.28;
+    const x0 = r.x + pad;
+    const x1 = r.x + r.w - pad;
+    const y0 = r.y + pad;
+    const y1 = r.y + r.h - pad;
+    const eaveY = y0 + (y1 - y0) * 0.42;
+    const wallW = x1 - x0;
+    // Roof gable, then the wall box, then a punched door in the plate's dark tone.
+    g.moveTo(x0, eaveY).lineTo(cx, y0).lineTo(x1, eaveY).closePath().fill(color);
+    g.rect(x0 + wallW * 0.12, eaveY, wallW * 0.76, y1 - eaveY).fill(color);
+    g.rect(cx - wallW * 0.11, y1 - (y1 - eaveY) * 0.55, wallW * 0.22, (y1 - eaveY) * 0.55).fill({
+      color: INNER_BOX_DARK,
+      alpha: 0.85,
+    });
   };
 
   const headline = (r: Rect, title: string): void => {
@@ -314,9 +386,12 @@ export function createChrome(
     tile,
     guiCentered,
     goodIcon,
+    glyphAll,
     window: windowBox,
     innerBox,
     slotSocket,
+    roundButton,
+    glyphHouse,
     headline,
     selectedUnderline,
     scrim,

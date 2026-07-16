@@ -21,14 +21,20 @@ const BAR_ROW_H = 13;
 /** Text rows the fixed Praca / Doświadczenie bodies reserve. */
 const WORK_ROWS = 2;
 const EXP_ROWS = 1;
-/** The "przydziel miejsce pracy" button's row height under the Praca text rows (a touch taller than a
- *  text row so the plated label reads). */
-const ASSIGN_BUTTON_H = 18;
-/** Gap between the Praca text rows and the assign button. */
+/** Diameter of the small round "przydziel miejsce pracy" button — left-aligned under the gather row, with
+ *  its description to its right. */
+const ASSIGN_ICON = 20;
+/** Gap between the Praca text rows and the assign row when there are no gather buttons above it. */
 const ASSIGN_BUTTON_GAP = 3;
-const GATHER_BUTTON_H = 16;
-const GATHER_BUTTON_GAP = 3;
-const GATHER_BUTTON_COLS = 2;
+/** Diameter of a round gather-choice button (a good's icon in a wooden well); small, left-aligned. */
+const GATHER_ICON = 20;
+/** Gap between adjacent round gather buttons (both axes). */
+const GATHER_ICON_GAP = 4;
+/** Gap between the Praca text rows and the row of round gather buttons. */
+const GATHER_ROW_GAP = 3;
+/** Extra separation between the gather-button block and the assign row, so the two don't read as one
+ *  cluster. */
+const GATHER_ASSIGN_SEP = 9;
 /** One labeled equipment row (Buty/Narzędzia/…): a label column + a row of slot sockets. */
 export const EQUIP_ROW_H = 24;
 /** A round equipment-slot socket's square bounding box (design px). */
@@ -49,6 +55,8 @@ export interface EquipRowRect {
 export interface GatherChoiceHit {
   readonly goodType: number | null;
   readonly label: string;
+  /** The good's icon key, carried through from the model; absent for the "Wszystko" choice. */
+  readonly goodId?: string;
   readonly selected: boolean;
   readonly rect: Rect;
 }
@@ -72,8 +80,13 @@ export interface SettlerLayout {
   readonly work: SectionRect;
   /** The Praca body's two text rows (workplace, product). */
   readonly workRows: readonly Rect[];
-  /** The "przydziel miejsce pracy" button under the Praca rows (its `enabled` tracks `canAssignWorkplace`). */
+  /** The "przydziel miejsce pracy" hit target — the round button disc only (its `enabled` tracks
+   *  `canAssignWorkplace`), so hover/click/tooltip stay on the control, not the label. Equals {@link assignIcon}. */
   readonly assignButton: ButtonHit;
+  /** The small round assign button, left-aligned under the gather row (the drawn control). */
+  readonly assignIcon: Rect;
+  /** The assign row's description column, right of the round button ("Przydziel miejsce pracy"). */
+  readonly assignLabel: Rect;
   readonly gatherChoiceHits: readonly GatherChoiceHit[];
   readonly experience: SectionRect;
   /** The Doświadczenie body's single text row. */
@@ -98,13 +111,25 @@ export function layoutSettler(
   const barRowH = Math.round(BAR_ROW_H * s);
   const equipRowH = Math.round(EQUIP_ROW_H * s);
   const generalBodyH = Math.round(SETTLER_PREVIEW * s);
-  const assignButtonH = Math.round(ASSIGN_BUTTON_H * s);
-  const assignButtonGap = Math.round(ASSIGN_BUTTON_GAP * s);
-  const gatherRows = Math.ceil(model.work.gatherChoices.length / GATHER_BUTTON_COLS);
-  const gatherButtonH = Math.round(GATHER_BUTTON_H * s);
-  const gatherButtonGap = Math.round(GATHER_BUTTON_GAP * s);
-  const gatherBodyH = gatherRows > 0 ? gatherRows * gatherButtonH + (gatherRows - 1) * gatherButtonGap : 0;
-  const workBodyH = WORK_ROWS * rowH + gatherBodyH + assignButtonGap + assignButtonH;
+  const assignIconSize = Math.round(ASSIGN_ICON * s);
+  const assignRowGap = Math.round(ASSIGN_BUTTON_GAP * s);
+  const gatherIcon = Math.round(GATHER_ICON * s);
+  const gatherIconGap = Math.round(GATHER_ICON_GAP * s);
+  const gatherRowGap = Math.round(GATHER_ROW_GAP * s);
+  const gatherAssignSep = Math.round(GATHER_ASSIGN_SEP * s);
+  // Round gather buttons wrap left-to-right across the section body; the body width is padding-inset from
+  // the panel width the same for every section, so probe it here (before the section rects exist) to size
+  // the block's height.
+  const bodyW = sectionAt(0, 0, w, 0, s).body.w;
+  const gatherPerRow = Math.max(1, Math.floor((bodyW + gatherIconGap) / (gatherIcon + gatherIconGap)));
+  const gatherRows =
+    model.work.gatherChoices.length > 0 ? Math.ceil(model.work.gatherChoices.length / gatherPerRow) : 0;
+  const hasGather = gatherRows > 0;
+  const gatherBlockH = hasGather ? gatherRows * gatherIcon + (gatherRows - 1) * gatherIconGap : 0;
+  const gatherTopGap = hasGather ? gatherRowGap : 0;
+  // Larger separation before the assign row when gather buttons sit above it; the small default otherwise.
+  const preAssignGap = hasGather ? gatherAssignSep : assignRowGap;
+  const workBodyH = WORK_ROWS * rowH + gatherTopGap + gatherBlockH + preAssignGap + assignIconSize;
   const expBodyH = EXP_ROWS * rowH;
   const equipBodyH = model.equipmentRows.length * equipRowH;
 
@@ -148,32 +173,42 @@ export function layoutSettler(
     w: work.body.w,
     h: rowH,
   }));
-  const choiceGap = Math.round(GATHER_BUTTON_GAP * s);
-  const choiceW = Math.floor((work.body.w - choiceGap) / GATHER_BUTTON_COLS);
-  const choicesTop = work.body.y + WORK_ROWS * rowH;
+  // Round gather buttons hugging the left edge, wrapping across the body width.
+  const gatherTop = work.body.y + WORK_ROWS * rowH + gatherTopGap;
   const gatherChoiceHits: GatherChoiceHit[] = model.work.gatherChoices.map((choice, i) => {
-    const col = i % GATHER_BUTTON_COLS;
-    const row = Math.floor(i / GATHER_BUTTON_COLS);
+    const col = i % gatherPerRow;
+    const row = Math.floor(i / gatherPerRow);
     return {
       ...choice,
       selected: choice.goodType === model.work.selectedGood,
       rect: {
-        x: work.body.x + col * (choiceW + choiceGap),
-        y: choicesTop + row * (gatherButtonH + gatherButtonGap),
-        w: choiceW,
-        h: gatherButtonH,
+        x: work.body.x + col * (gatherIcon + gatherIconGap),
+        y: gatherTop + row * (gatherIcon + gatherIconGap),
+        w: gatherIcon,
+        h: gatherIcon,
       },
     };
   });
+  // The assign row: the small round button on the left (aligned under the gather buttons), its description
+  // to the right. Only the round button is the hit target — hover/click/tooltip stay on the control, so
+  // pointing at the label text doesn't light the button.
+  const assignTop = (hasGather ? gatherTop + gatherBlockH : work.body.y + WORK_ROWS * rowH) + preAssignGap;
+  const assignIcon: Rect = {
+    x: work.body.x,
+    y: assignTop,
+    w: assignIconSize,
+    h: assignIconSize,
+  };
+  const assignLabel: Rect = {
+    x: assignIcon.x + assignIconSize + pad,
+    y: assignTop,
+    w: Math.max(0, work.body.x + work.body.w - (assignIcon.x + assignIconSize + pad)),
+    h: assignIconSize,
+  };
   const assignButton: ButtonHit = {
     action: 'assign-workplace',
     enabled: model.canAssignWorkplace,
-    rect: {
-      x: work.body.x,
-      y: choicesTop + gatherBodyH + assignButtonGap,
-      w: work.body.w,
-      h: assignButtonH,
-    },
+    rect: assignIcon,
   };
 
   const experience = next(expBodyH);
@@ -211,6 +246,8 @@ export function layoutSettler(
     work,
     workRows,
     assignButton,
+    assignIcon,
+    assignLabel,
     gatherChoiceHits,
     experience,
     expRow,

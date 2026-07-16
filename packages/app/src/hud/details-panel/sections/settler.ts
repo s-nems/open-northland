@@ -20,6 +20,8 @@ const STAT_BAR_H = 11;
  *  chunky equip icons spill a touch over the ring — a bigger icon reads far better than a tiny one
  *  rattling inside the circle. */
 const SLOT_ICON_OVERFLOW = 3;
+/** Inset (design px) of a gather-choice good icon inside its round button, so the pile clears the rim. */
+const GATHER_ICON_PAD = 3;
 
 /**
  * The settler view: the original's stacked human-window sections — Ogólne, Praca, Doświadczenie,
@@ -118,15 +120,31 @@ function drawWorkSection(
     );
     chrome.textAt(model.work.product, product.x + keyW, product.y + ROW_TEXT_PAD * s, 'white');
   }
+  // Round gather-choice buttons hugging the left edge, each showing the good's icon (the generic pile for
+  // the "Wszystko" choice); their names live in the cursor tooltip. Selected/hovered ones read brighter.
+  const iconPad = Math.round(GATHER_ICON_PAD * s);
   for (const choice of layout.gatherChoiceHits) {
-    chrome.button(
-      { rect: choice.rect, enabled: true },
-      choice.label,
-      choice.selected || choice.goodType === hoveredGatherGood,
-    );
+    const active = choice.selected || choice.goodType === hoveredGatherGood;
+    chrome.roundButton(choice.rect, true, active);
+    const face: Rect = {
+      x: choice.rect.x + iconPad,
+      y: choice.rect.y + iconPad,
+      w: choice.rect.w - 2 * iconPad,
+      h: choice.rect.h - 2 * iconPad,
+    };
+    if (choice.goodId !== undefined) chrome.goodIcon(choice.goodId, face);
+    else chrome.glyphAll(face);
   }
-  // The "przydziel miejsce pracy" button — greyed for a jobless settler (nothing to place).
-  chrome.button(layout.assignButton, hud.assignWorkplace, hoverAction === 'assign-workplace');
+  // The "przydziel miejsce pracy" control: its description on the left, a small round house button on the
+  // right (greyed for a jobless settler — nothing to place). The hint stays in the cursor tooltip.
+  chrome.textLeftMiddle(
+    hud.assignWorkplace,
+    layout.assignLabel.x,
+    layout.assignLabel.y + layout.assignLabel.h / 2,
+    model.canAssignWorkplace ? 'white' : 'dimmed',
+  );
+  chrome.roundButton(layout.assignIcon, model.canAssignWorkplace, hoverAction === 'assign-workplace');
+  chrome.glyphHouse(layout.assignIcon, model.canAssignWorkplace);
 }
 
 /** Doświadczenie: the settler's highest recorded specialization (or "żadne" — the sim awards none yet). */
