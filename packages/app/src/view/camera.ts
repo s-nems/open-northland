@@ -120,11 +120,13 @@ export interface CameraTuning {
   zoomGlideRate: number;
 }
 
-/** The default camera speeds ({@link CameraTuning}). */
+/** The default camera speeds ({@link CameraTuning}). The zoom rate is tuned so one wheel notch
+ *  (×1.1 ≈ 0.095 log units) lands in ~2 frames — responsive, the glide only smooths the step — while
+ *  a stacked burst still travels the full MIN..MAX range in under a second. */
 export const DEFAULT_CAMERA_TUNING: CameraTuning = {
   arrowPanSpeed: 900,
   edgeScrollSpeed: 1500,
-  zoomGlideRate: 1.6,
+  zoomGlideRate: 4,
 };
 
 /** The fraction of the remaining gap an exponential ease covers in `dtMs` at the given half-life —
