@@ -93,7 +93,9 @@ describe('constructionSystem', () => {
     // fraction — the truncated per-swing quantum must not park it a hair above (that overshoot is what
     // made `built` visibly jump the instant the next material landed instead of at a swing).
     const delivered = fx.div(ONE, fx.fromInt(3));
-    for (let i = 0; i < 24; i++) advanceConstructionLabor(sim.world, ctx, e);
+    // Far more swings than the 1/3-of-the-build the delivered unit backs (a 3-unit HOUSE is
+    // 3·STRIKES_PER_UNIT swings total, so ~a third of that fills the delivered third) — labor must cap.
+    for (let i = 0; i < 40; i++) advanceConstructionLabor(sim.world, ctx, e);
     expect(sim.world.get(e, UnderConstruction).labor).toBe(delivered);
     // More material lands: the cap rises but labor doesn't — built holds until the next swing.
     sim.world.get(e, Stockpile).amounts.set(STONE, 2);
