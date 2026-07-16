@@ -18,6 +18,18 @@ Two sibling assignment gestures produce a silent refusal with no player feedback
    refuses `assignWorker` to a building beyond the settler's allowed area (`orders/work.ts`, the same
    rule as a refused move order) — another silent no-op the cue should cover, and the assign-mode
    green/red wash should paint such buildings red for the selected settler.
+4. **The other out-of-area refusals under signpost navigation.** A refused move order
+   (`orders/movement.ts` — the unit silently stays put), a refused `setWorkFlag` (`orders/work.ts`),
+   and the stuck states confinement can produce (a loaded settler holding a load with no in-area sink;
+   an idle population with every open workplace out of area) all read as "nothing happened" with no
+   explanation. Original evidence for a positive cue: the engine's message string "…zgubił się. Twój
+   zwiadowca powinien postawić więcej drogowskazów" ("…got lost. Your scout should erect more
+   signposts", `ingameguimessages.ini` 16) — the original NOTIFIES the player about navigation
+   failures rather than no-oping silently.
+5. **Signpost placement misclick exits the mode.** In erect mode
+   (`unit-controls/index.ts`), the handler cancels the mode BEFORE dispatching the click, so a click on
+   dimmed/illegal ground both does nothing and silently leaves placement — a retry costs a full
+   ring-menu round-trip. Keep the mode armed on an illegal click (or at least give the "can't" cue).
 
 ## Scope
 

@@ -2,6 +2,7 @@ import { Building, JobAssignment, Position, Stockpile } from '../../../component
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
+import type { SpatialGate } from '../../node-metric.js';
 import { buildingProduces, lowestStockedGood } from '../../stores/index.js';
 import { interactionCell, nearestByCell } from '../targets/index.js';
 import type { SinkAvailability } from '../targets/stores/sinks.js';
@@ -29,7 +30,7 @@ export function nearestGroundPile(
   terrain: TerrainGraph,
   here: NodeId,
   /** The porter's signpost confinement — an out-of-area pile is not one it fetches. */
-  cellGate?: (cell: NodeId) => boolean,
+  gate?: SpatialGate,
 ): { pile: Entity; goodType: number } | null {
   const best = nearestByCell(terrain, candidates, here, (e) => {
     if (world.has(e, Building)) return null; // a building store isn't a loose ground pile
@@ -38,7 +39,7 @@ export function nearestGroundPile(
     if (good === null) return null; // an empty pile is nothing to collect
     if (!sinks.has(good)) return null; // every store full for this good — leave it, try another good
     const cell = interactionCell(world, ctx, terrain, e, here);
-    return cellGate === undefined || cellGate(cell) ? cell : null;
+    return gate === undefined || gate.allowsNode(cell) ? cell : null;
   });
   if (best === null) return null;
   const good = lowestStockedGood(world.get(best.entity, Stockpile)); // the winner's good (accept required one)

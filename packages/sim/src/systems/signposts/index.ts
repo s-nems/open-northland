@@ -1,6 +1,4 @@
-export { type NodeBox, nodeBoxOfCircles, withinNodeRadius } from './geometry.js';
 export {
-  cellGateOf,
   type NavigationLimit,
   navigationLimitFor,
   type SignpostSite,

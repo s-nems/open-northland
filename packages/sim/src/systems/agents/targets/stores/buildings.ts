@@ -2,7 +2,7 @@ import { Building, ownerOf, ownersCompatible } from '../../../../components/inde
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
-import type { NodeBox } from '../../../signposts/index.js';
+import type { SpatialGate } from '../../../node-metric.js';
 import { isTemple } from '../../../stores/index.js';
 import type { InteractionCellIndex } from '../cell-index.js';
 
@@ -10,7 +10,7 @@ import type { InteractionCellIndex } from '../cell-index.js';
  * The nearest {@link isTemple temple} a devout settler should walk to in order to pray, by Manhattan
  * distance from `here` with the shared ascending-cell-id tie-break. Returns the temple entity or null
  * if no temple exists — the piety need's satisfier→building-target lookup (eat resolves to a store,
- * sleep to no site; pray resolves to a specific building the settler must reach). `cellGate` is the
+ * sleep to no site; pray resolves to a specific building the settler must reach). `gate` is the
  * settler's signpost confinement — a temple outside its allowed area is not one it knows the way to.
  */
 export function nearestTemple(
@@ -18,11 +18,10 @@ export function nearestTemple(
   world: World,
   ctx: SystemContext,
   here: NodeId,
-  cellGate?: (cell: NodeId) => boolean,
-  gateBounds?: NodeBox,
+  gate?: SpatialGate,
 ): Entity | null {
   // buildingCells holds only Building + Position candidates, so only the temple filter remains.
-  return index.nearest(here, (e) => isTemple(world, ctx, e), cellGate, gateBounds)?.entity ?? null;
+  return index.nearest(here, (e) => isTemple(world, ctx, e), gate)?.entity ?? null;
 }
 
 /**
@@ -39,17 +38,15 @@ export function nearestConstructionSite(
   here: NodeId,
   tribe: number,
   owner: number | undefined,
-  cellGate?: (cell: NodeId) => boolean,
-  gateBounds?: NodeBox,
+  gate?: SpatialGate,
 ): Entity | null {
   // The index holds only UnderConstruction + Building + Position sites, so just the side filters remain.
-  // `cellGate` is the builder's signpost confinement: a site outside its allowed area is left unbuilt.
+  // `gate` is the builder's signpost confinement: a site outside its allowed area is left unbuilt.
   return (
     index.nearest(
       here,
       (e) => world.get(e, Building).tribe === tribe && ownersCompatible(owner, ownerOf(world, e)),
-      cellGate,
-      gateBounds,
+      gate,
     )?.entity ?? null
   );
 }

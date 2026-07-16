@@ -14,6 +14,7 @@ import type { System, SystemContext } from '../context.js';
 import { atomicDuration } from '../readviews/animations.js';
 import { SCOUT_JOB } from '../readviews/index.js';
 import { canPlaceSignpost } from '../signposts/index.js';
+import { canonicalById } from '../spatial.js';
 import { isOrderableSettler } from './guards.js';
 import { moveUnit } from './movement.js';
 
@@ -67,7 +68,9 @@ export function placeSignpost(
 export const signpostOrderSystem: System = (world, ctx) => {
   const terrain = ctx.terrain;
   if (terrain === undefined) return; // mapless: no orders were issuable
-  for (const e of world.query(Settler, ErectSignpostOrder)) {
+  // Canonical order: two scouts arriving the same tick at mutually-exclusive spots (overlapping spacing
+  // circles) race — the lower entity id must win, not whichever the store iterated first.
+  for (const e of canonicalById(world.query(Settler, ErectSignpostOrder))) {
     const settler = world.get(e, Settler);
     const owner = world.tryGet(e, Owner);
     if (settler.jobType !== SCOUT_JOB || owner === undefined) {

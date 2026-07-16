@@ -112,6 +112,8 @@ export async function convertGuidepostPlayerAtlases(outDir: string): Promise<num
       color.source.kind === 'pcx'
         ? await readCreaturePalette(outDir, tree, color.source.file)
         : synthesizePlayerSource(reference, color.source.hue);
+    // The `player_NN` suffix is a string contract with the app loader (`guidepostPlayerAtlas`,
+    // packages/app/src/content/sprite-sheet/human-sheet.ts) — a drift falls back silently to bridge01.
     const suffix = `player_${String(color.id).padStart(2, '0')}`;
     await writeAtlasBeside(outDir, onDisk, suffix, packBobAtlas(bmd, palette));
     emitted++;

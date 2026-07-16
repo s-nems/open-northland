@@ -2,7 +2,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { interactionNode } from '../../footprint/index.js';
-import type { NodeBox } from '../../signposts/index.js';
+import type { SpatialGate } from '../../node-metric.js';
 import { manhattan } from '../../spatial.js';
 import { closer } from './nearest.js';
 import { interactionCell } from './workplaces.js';
@@ -89,48 +89,42 @@ export class InteractionCellIndex {
    * The nearest candidate to `here` that passes `accept`, by the shared `(distance, cell-id, entity-id)`
    * order, or null when none passes. Falls back to a full linear scan when no bucketed candidate lies
    * within the ring bound (identical result). `accept` must be side-effect-free — a ring miss re-runs it
-   * on the fallback scan, so it may be evaluated more than once per candidate. `cellGate` (optional)
-   * rejects whole interaction CELLS before any entity is consulted — the signpost-confinement seam: a
-   * gated cell's bucket is skipped in O(1), and the linear fallback applies the same gate, so both paths
-   * agree on the winner. `gateBounds` (the confinement's {@link NodeBox}) is a pure scan bound: every
-   * gate-passing cell provably lies inside it, so the ring sweep stops at the box's reach — and a sweep
-   * that covered that whole reach PROVES no bucketed candidate passes, eliding the full linear fallback.
+   * on the fallback scan, so it may be evaluated more than once per candidate. `gate` (the settler's
+   * confinement, a {@link SpatialGate}) rejects whole interaction CELLS before any entity is consulted —
+   * a gated cell's bucket is skipped in O(1), and the linear fallback applies the same gate, so both
+   * paths agree on the winner — and BOUNDS the sweep: every gate-passing cell provably lies inside
+   * `gate.bounds`, so the ring sweep stops at the box's reach, and a sweep that covered that whole reach
+   * PROVES no bucketed candidate passes, eliding the full linear fallback.
    */
-  nearest(
-    here: NodeId,
-    accept: (e: Entity) => boolean,
-    cellGate?: (cell: NodeId) => boolean,
-    gateBounds?: NodeBox,
-  ): NearestByCell | null {
-    const ring = this.ringNearest(here, accept, cellGate, gateBounds);
+  nearest(here: NodeId, accept: (e: Entity) => boolean, gate?: SpatialGate): NearestByCell | null {
+    const ring = this.ringNearest(here, accept, gate);
     if (ring.best !== null) {
-      return combine(ring.best, this.linearNearest(this.dynamic, here, accept, cellGate));
+      return combine(ring.best, this.linearNearest(this.dynamic, here, accept, gate));
     }
     // An exhaustive sweep (the rings covered every bucket that could pass) proves the bucketed side empty
     // — only the seeker-dependent tail remains. Otherwise the ring cap stopped short: fall back to the
     // exact full linear scan (identical winner).
-    if (ring.exhaustive) return this.linearNearest(this.dynamic, here, accept, cellGate);
-    return this.linearNearest(this.candidates, here, accept, cellGate);
+    if (ring.exhaustive) return this.linearNearest(this.dynamic, here, accept, gate);
+    return this.linearNearest(this.candidates, here, accept, gate);
   }
 
   /** The nearest bucketed candidate within {@link NEAREST_RING_MAX_RADIUS}, or null. The first non-empty
    *  ring holds the minimum distance, so its `(cell-id, entity-id)` winner is the global bucketed winner.
-   *  The ring stops at the farthest bucket's Manhattan reach — clamped further to `gateBounds`'s reach when
-   *  the search is confined — so a sparse/empty index or a small confined area rings no wider. `exhaustive`
-   *  reports whether the sweep covered that whole reach (a null `best` is then a proof, not a cap). */
+   *  The ring stops at the farthest bucket's Manhattan reach — clamped further to `gate.bounds`'s reach
+   *  when the search is confined — so a sparse/empty index or a small confined area rings no wider.
+   *  `exhaustive` reports whether the sweep covered that whole reach (a null `best` is then a proof, not a
+   *  cap). */
   private ringNearest(
     here: NodeId,
     accept: (e: Entity) => boolean,
-    cellGate?: (cell: NodeId) => boolean,
-    gateBounds?: NodeBox,
+    gate?: SpatialGate,
   ): { best: NearestByCell | null; exhaustive: boolean } {
     if (this.maxX < this.minX) return { best: null, exhaustive: true }; // no bucketed candidates at all
     const { x: hx, y: hy } = this.terrain.coordsOf(here);
     let reach = Math.max(hx - this.minX, this.maxX - hx) + Math.max(hy - this.minY, this.maxY - hy);
-    if (gateBounds !== undefined) {
-      const boundsReach =
-        Math.max(hx - gateBounds.minX, gateBounds.maxX - hx) +
-        Math.max(hy - gateBounds.minY, gateBounds.maxY - hy);
+    if (gate !== undefined) {
+      const b = gate.bounds;
+      const boundsReach = Math.max(hx - b.minX, b.maxX - hx) + Math.max(hy - b.minY, b.maxY - hy);
       reach = Math.min(reach, boundsReach);
     }
     const maxRadius = Math.min(NEAREST_RING_MAX_RADIUS, reach);
@@ -140,8 +134,8 @@ export class InteractionCellIndex {
       // Ring d = every node at Manhattan distance exactly d; the two rows dy = ±(d - |dx|) trace the diamond.
       for (let dx = -d; dx <= d; dx++) {
         const rem = d - Math.abs(dx);
-        best = this.pickInRing(hx + dx, hy + rem, d, accept, cellGate, best);
-        if (rem !== 0) best = this.pickInRing(hx + dx, hy - rem, d, accept, cellGate, best);
+        best = this.pickInRing(hx + dx, hy + rem, d, accept, gate, best);
+        if (rem !== 0) best = this.pickInRing(hx + dx, hy - rem, d, accept, gate, best);
       }
       if (best !== null) return { best, exhaustive };
     }
@@ -156,13 +150,13 @@ export class InteractionCellIndex {
     y: number,
     distance: number,
     accept: (e: Entity) => boolean,
-    cellGate: ((cell: NodeId) => boolean) | undefined,
+    gate: SpatialGate | undefined,
     best: NearestByCell | null,
   ): NearestByCell | null {
     const bucket = this.byX.get(x)?.get(y);
     if (bucket === undefined) return best;
     if (best !== null && bucket.cell >= best.cell) return best; // can't beat a lower cell at the same distance
-    if (cellGate !== undefined && !cellGate(bucket.cell)) return best; // the whole cell is out of bounds
+    if (gate !== undefined && !gate.allowsNode(bucket.cell)) return best; // the whole cell is out of bounds
     for (const e of bucket.entities) {
       if (accept(e)) return { entity: e, cell: bucket.cell, distance };
     }
@@ -176,12 +170,12 @@ export class InteractionCellIndex {
     list: readonly Entity[],
     here: NodeId,
     accept: (e: Entity) => boolean,
-    cellGate?: (cell: NodeId) => boolean,
+    gate?: SpatialGate,
   ): NearestByCell | null {
     return nearestByCell(this.terrain, list, here, (e) => {
       if (!accept(e)) return null;
       const cell = interactionCell(this.world, this.ctx, this.terrain, e, here);
-      return cellGate === undefined || cellGate(cell) ? cell : null;
+      return gate === undefined || gate.allowsNode(cell) ? cell : null;
     });
   }
 }

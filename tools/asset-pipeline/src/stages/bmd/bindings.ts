@@ -206,10 +206,11 @@ export async function resolveGraphicsBindings(
   // the executables — so this one binding is hand-authored, appended last, to emit its atlas. Frame
   // layout (decoded): bob 0 is the post, bobs 1..18 the direction board in ~20° angular steps around
   // the post top. The engine draws the guidepost through the OWNER'S full player palette (the
-  // board-text indices 23–30 sit inside the `playerNN.pcx` player ramp) — served as the indexed atlas +
-  // `guidepost-lut.png` (see stages/player-colors.ts). This baked `bridge01` variant stays as the
-  // single-colour no-LUT fallback (a plausible wooden palette, a named approximation). Skipped silently
-  // by convertBmdTree on an install with no such file/palette.
+  // board-text indices 23–30 sit inside the `playerNN.pcx` player ramp) — served as 16 per-player BAKED
+  // atlases (`convertGuidepostPlayerAtlases`, stages/player-colors.ts; the indexed+LUT path would
+  // flatten the sprite's graded edge alpha). This baked `bridge01` variant stays as the single-colour
+  // fallback (a plausible wooden palette, a named approximation). Skipped silently by convertBmdTree on
+  // an install with no such file/palette.
   bindings.push({
     bmd: 'data/engine2d/bin/bobs/ls_guidepost.bmd',
     shadowBmd: 'data/engine2d/bin/bobs/ls_guidepost_s.bmd',

@@ -9,7 +9,7 @@ import type { Entity, World } from '../../../../ecs/world.js';
 import { nodeOfPosition } from '../../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
-import type { NodeBox } from '../../../signposts/index.js';
+import type { SpatialGate } from '../../../node-metric.js';
 import {
   buildingProduces,
   isYardHeap,
@@ -50,13 +50,11 @@ export function nearestStoreFor(
    *  Omit (false) for the ordinary "nearest capable store" pick — the farmer's reap gate counts its
    *  own farm's slot as a sink, and generic hauls may still top up a producer that CONSUMES the good. */
   excludeProducers = false,
-  /** The hauler's signpost confinement (+ its scan bound): an out-of-area store is not a sink it knows. */
-  cellGate?: (cell: NodeId) => boolean,
-  gateBounds?: NodeBox,
+  /** The hauler's signpost confinement — an out-of-area store is not a sink it knows the way to. */
+  gate?: SpatialGate,
 ): Entity | null {
   return (
-    index.nearest(here, (e) => canStoreGood(world, ctx, e, goodType, excludeProducers), cellGate, gateBounds)
-      ?.entity ?? null
+    index.nearest(here, (e) => canStoreGood(world, ctx, e, goodType, excludeProducers), gate)?.entity ?? null
   );
 }
 
@@ -114,7 +112,7 @@ export function nearestFreeYardNode(
   after?: NodeId,
   /** The gatherer's signpost confinement — a yard tile outside its allowed area is never a drop spot
    *  (the flag itself was placed inside the area, so in practice this trims only the yard's far fringe). */
-  allows?: (node: NodeId) => boolean,
+  gate?: SpatialGate,
 ): NodeId | null {
   const fp = world.get(flag, Position);
   const fn = nodeOfPosition(fp.x, fp.y);
@@ -128,7 +126,7 @@ export function nearestFreeYardNode(
     terrain.isWalkable(node) &&
     !yard.blocked.has(node) &&
     terrain.componentOf(node) === component &&
-    (allows === undefined || allows(node)) &&
+    (gate === undefined || gate.allowsNode(node)) &&
     hasRoom(node);
   const { x: cx, y: cy } = terrain.coordsOf(flagNode);
   const afterRank = after === undefined ? null : terrain.coordsOf(after);
@@ -163,11 +161,10 @@ export function nearestStoreHolding(
   world: World,
   here: NodeId,
   goodType: number,
-  cellGate?: (cell: NodeId) => boolean,
-  gateBounds?: NodeBox,
+  gate?: SpatialGate,
 ): Entity | null {
   // The stockpile index holds every Stockpile+Position candidate (construction sites among them), so the
-  // accept just excludes sites and stores that don't hold the good. `cellGate` is the fetcher's signpost
+  // accept just excludes sites and stores that don't hold the good. `gate` is the fetcher's signpost
   // confinement: a store standing outside its allowed area is not a source it knows the way to.
   return (
     index.nearest(
@@ -175,8 +172,7 @@ export function nearestStoreHolding(
       (e) =>
         !world.has(e, UnderConstruction) && // a site is a sink, never a source to strip
         (world.get(e, Stockpile).amounts.get(goodType) ?? 0) > 0,
-      cellGate,
-      gateBounds,
+      gate,
     )?.entity ?? null
   );
 }

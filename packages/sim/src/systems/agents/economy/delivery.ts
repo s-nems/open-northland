@@ -9,7 +9,6 @@ import {
 } from '../../../components/index.js';
 import { farmWorkGood } from '../../economy/farming.js';
 import { atomicDuration } from '../../readviews/animations.js';
-import { cellGateOf } from '../../signposts/index.js';
 import { stampSupplyRun } from '../../stores/index.js';
 import { atOrWalk, PILEUP_ATOMIC_ID, startAtomic } from '../actions.js';
 import { dropCarryAtOwnTile } from '../effects-goods/index.js';
@@ -75,7 +74,7 @@ export function planDelivery(plan: PlannerContext, load: { goodType: number; amo
           load.goodType,
           here,
           sameYard?.goal,
-          cellGateOf(plan.limit),
+          plan.limit ?? undefined,
         )
     : interactionCell(world, ctx, terrain, store, here);
   if (cell === null) return;

@@ -18,6 +18,7 @@ import { FOG_STATE } from '../../src/systems/vision/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
+import { stampPost } from './support.js';
 
 /**
  * The scout's signpost (the original's guidepost): erected by the one-shot build-guide hammer swing
@@ -182,14 +183,6 @@ describe('placeSignpost — the scout erects a guidepost', () => {
 
 describe('signpostNetwork — connected groups', () => {
   /** Stamp a signpost directly (the fixture idiom) at tile (x,y) with the given nav radius. */
-  function stampPost(sim: Simulation, x: number, y: number, navRadius: number, player = P0): Entity {
-    const e = sim.world.create();
-    sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-    sim.world.add(e, Owner, { player });
-    sim.world.add(e, Signpost, { navRadius, spacingRadius: SIGNPOST_SPACING_RADIUS_NODES });
-    return e;
-  }
-
   it('overlapping circles join one group; a distant post forms its own', () => {
     const sim = freshSim(96, 8);
     // Tiles are 2 nodes wide: posts at tiles 2 and 10 are 16 nodes apart — overlapping at radius 10.

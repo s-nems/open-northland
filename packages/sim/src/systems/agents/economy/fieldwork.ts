@@ -9,7 +9,6 @@ import {
 import type { Entity } from '../../../ecs/world.js';
 import type { NodeId } from '../../../nav/terrain/index.js';
 import { atomicDuration } from '../../readviews/animations.js';
-import { cellGateOf } from '../../signposts/index.js';
 import {
   deliveredConstructionFraction,
   nextNeededConstructionGood,
@@ -82,8 +81,7 @@ export function planBuilder(plan: PlannerContext, spacing: SpacingState): boolea
       here,
       settler.tribe,
       settler.owner,
-      cellGateOf(plan.limit),
-      plan.limit?.bounds,
+      plan.limit ?? undefined,
     );
   if (site === null) {
     world.remove(e, SiteAssignment); // nothing under construction — the crew disbands
@@ -116,15 +114,7 @@ export function planBuilder(plan: PlannerContext, spacing: SpacingState): boolea
   // its own — so a crew spreads over the still-unclaimed materials instead of racing to the same unit.
   const need = nextNeededConstructionGood(world, ctx, site, plan.inbound);
   const src =
-    need &&
-    nearestStoreHolding(
-      targets.stockpileCells,
-      world,
-      here,
-      need.goodType,
-      cellGateOf(plan.limit),
-      plan.limit?.bounds,
-    );
+    need && nearestStoreHolding(targets.stockpileCells, world, here, need.goodType, plan.limit ?? undefined);
   if (need !== null && src != null) {
     const batch = Math.min(need.amount, CARRY_CAPACITY);
     stampSupplyRun(world, e, plan.inbound, { site, goodType: need.goodType, amount: batch });
@@ -173,8 +163,7 @@ export function planGatherer(plan: PlannerContext): boolean {
     here,
     settler,
     undefined,
-    cellGateOf(plan.limit),
-    plan.limit?.bounds,
+    plan.limit ?? undefined,
   );
   const trunk = nearestCollectablePileFor(
     targets.groundDrops,
@@ -184,7 +173,7 @@ export function planGatherer(plan: PlannerContext): boolean {
     terrain,
     here,
     settler.jobType,
-    cellGateOf(plan.limit),
+    plan.limit ?? undefined,
   );
   const nodeDist = node !== null ? node.dist : Number.POSITIVE_INFINITY;
   // Prefer the trunk on a tie (it is the wood already at hand — grab it before a fresh tree).
@@ -224,7 +213,7 @@ function planFlagGatherer(
   const flagCell = interactionCell(world, ctx, terrain, flag.flag, here);
 
   // 1. Carry off a trunk/ore this gatherer dug (only its own — foreign piles are left in peace).
-  const own = nearestOwnDropFor(targets.groundDrops, world, ctx, terrain, here, e, cellGateOf(plan.limit));
+  const own = nearestOwnDropFor(targets.groundDrops, world, ctx, terrain, here, e, plan.limit ?? undefined);
   if (own !== null) {
     walkPickupBatch(plan, own.pile, own.goodType);
     return true;
@@ -243,7 +232,7 @@ function planFlagGatherer(
       radius: flag.radius,
       ...(flag.goodType !== undefined ? { goodType: flag.goodType } : {}),
     },
-    cellGateOf(plan.limit),
+    plan.limit ?? undefined,
   );
   if (node !== null) {
     startHarvestFromNode(plan, node);

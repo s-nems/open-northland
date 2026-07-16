@@ -17,6 +17,7 @@ import { navigationLimitFor } from '../../src/systems/index.js';
 import { makeWoodcutter, placeFellableTree, VIKING } from '../agents/gatherer-flag/support.js';
 import { testContent } from '../fixtures/content.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
+import { stampPost } from './support.js';
 
 /**
  * Signpost navigation confinement (`setSignpostNavigation`): a civilian may only work/walk within its
@@ -42,14 +43,6 @@ function ownedUnit(sim: Simulation, x: number, y: number, jobType: number): Enti
     experience: new Map<number, number>(),
   });
   sim.world.add(e, Owner, { player: P0 });
-  return e;
-}
-
-function stampPost(sim: Simulation, x: number, y: number, navRadius: number): Entity {
-  const e = sim.world.create();
-  sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Owner, { player: P0 });
-  sim.world.add(e, Signpost, { navRadius, spacingRadius: SIGNPOST_SPACING_RADIUS_NODES });
   return e;
 }
 

@@ -1,9 +1,13 @@
+import type { NodeId } from '../nav/terrain/index.js';
+
 /**
- * The signpost circles' WORLD-METRIC node distance test — the node-lattice twin of the vision ellipse
- * (`vision/system.ts` `stampVision`): a half-cell node step is 34 px E/W and 19 px N/S of the measured
- * 68×38 projection pitch, and a radius of R nodes means R·34 px, so circles read circular on screen. The
- * per-row stagger's ±half-node wobble is deliberately ignored, exactly as vision ignores it (a half-cell
- * fringe on a work-area edge — named approximation). Exact integer arithmetic, no floats.
+ * The WORLD-METRIC node-lattice geometry shared by every circle-shaped area rule (signpost circles, and
+ * the node-lattice twin of the vision ellipse in `vision/system.ts` `stampVision`): a half-cell node step
+ * is 34 px E/W and 19 px N/S of the measured 68×38 projection pitch, and a radius of R nodes means
+ * R·34 px, so circles read circular on screen. The per-row stagger's ±half-node wobble is deliberately
+ * ignored, exactly as vision ignores it (a half-cell fringe on a work-area edge — named approximation).
+ * Exact integer arithmetic, no floats. A leaf module (one type import) so the target searches, the
+ * signpost feature, and the public barrel can all read it without a feature-module dependency.
  */
 
 /** One node's E/W pitch in native px (half the 68 px column step) — the radius unit. */
@@ -20,9 +24,22 @@ export interface NodeBox {
 }
 
 /**
+ * A spatial confinement over half-cell nodes: membership (`allowsNode`) plus a {@link NodeBox} every
+ * allowed node provably lies in (`bounds`). The target searches take the PAIR as one value — membership
+ * decides, the box only bounds ring expansion / region scans — so a bound can never be applied without
+ * its matching gate (applying `bounds` alone would silently drop valid candidates).
+ */
+export interface SpatialGate {
+  /** Whether `node` lies inside the allowed area. */
+  allowsNode(node: NodeId): boolean;
+  /** A box provably containing every allowed node — a scan bound, never a membership test. */
+  readonly bounds: NodeBox;
+}
+
+/**
  * The bounding {@link NodeBox} of a set of world-metric node circles: a radius of R nodes spans ±R on the
  * x axis but ±⌈R·34/19⌉ rows on the y axis (the anisotropic pitch above), so the box provably contains
- * every node any circle admits — the searches use it to BOUND a scan, never to decide membership.
+ * every node any circle admits.
  */
 export function nodeBoxOfCircles(
   circles: readonly { readonly x: number; readonly y: number; readonly r: number }[],

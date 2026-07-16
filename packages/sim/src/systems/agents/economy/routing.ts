@@ -11,7 +11,7 @@ import {
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
-import { cellGateOf, type NodeBox } from '../../signposts/index.js';
+import type { SpatialGate } from '../../node-metric.js';
 import {
   buildingProduces,
   type InboundSupplyTally,
@@ -49,8 +49,7 @@ export function deliveryTargetFor(plan: PlannerContext, goodType: number): Entit
   // not one it knows the way to; a load with no in-area sink falls to planDelivery's no-sink branches
   // (drop at feet / rest at the workplace). The BOUND targets (cases 1–3b: the own workshop, flag, or
   // storage binding) stay ungated — a settler always knows the way home.
-  const gate = cellGateOf(plan.limit);
-  const gateBounds = plan.limit?.bounds;
+  const gate = plan.limit ?? undefined;
   // 1. A fetched input goes to the bound workshop that consumes it.
   const workplace = boundWorkplaceTarget(world, ctx, settler, jobType, tribe);
   if (workplace !== null) {
@@ -82,7 +81,7 @@ export function deliveryTargetFor(plan: PlannerContext, goodType: number): Entit
     isFarmCarrierHaulOutRole(world, ctx, home, jobType, tribe) &&
     buildingProduces(world, ctx, home).includes(goodType)
   ) {
-    return nearestStoreFor(stores, world, ctx, here, goodType, /* excludeProducers */ true, gate, gateBounds);
+    return nearestStoreFor(stores, world, ctx, here, goodType, /* excludeProducers */ true, gate);
   }
   // 3b. Otherwise a porter's / farmer's load goes to the storage it is bound to (a warehouse, a flag pile,
   //     or the farm's own store when a farmer banks its sheaf and the farm still has room).
@@ -94,21 +93,10 @@ export function deliveryTargetFor(plan: PlannerContext, goodType: number): Entit
   //    the material back into a warehouse. Scans the tiny `sites` list (each advertises its outstanding cost
   //    via `stockCapacity`); this only prioritises the pick — nearest needing site — leaving every
   //    non-construction good to the default below.
-  const site = nearestConstructionSiteNeeding(
-    sites,
-    world,
-    ctx,
-    here,
-    tribe,
-    owner,
-    goodType,
-    inbound,
-    gate,
-    gateBounds,
-  );
+  const site = nearestConstructionSiteNeeding(sites, world, ctx, here, tribe, owner, goodType, inbound, gate);
   if (site !== null) return site;
   // 5. Otherwise the nearest capable store — the default (unbound haulers, the golden slice).
-  return nearestStoreFor(stores, world, ctx, here, goodType, false, gate, gateBounds);
+  return nearestStoreFor(stores, world, ctx, here, goodType, false, gate);
 }
 
 /**
@@ -129,8 +117,7 @@ function nearestConstructionSiteNeeding(
   owner: number | undefined,
   goodType: number,
   inbound: InboundSupplyTally,
-  cellGate?: (cell: NodeId) => boolean,
-  gateBounds?: NodeBox,
+  gate?: SpatialGate,
 ): Entity | null {
   return (
     index.nearest(
@@ -145,8 +132,7 @@ function nearestConstructionSiteNeeding(
           (world.get(e, Stockpile).amounts.get(goodType) ?? 0) + inboundSupplyOf(inbound, e, goodType);
         return have < stockCapacity(world, ctx, e, goodType); // room left for this material (and it's a cost good)
       },
-      cellGate,
-      gateBounds,
+      gate,
     )?.entity ?? null
   );
 }

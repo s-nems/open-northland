@@ -5,7 +5,7 @@ import type { Entity, World } from '../../../../ecs/world.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
 import { startableCycleCount } from '../../../economy/production.js';
-import type { NodeBox } from '../../../signposts/index.js';
+import type { SpatialGate } from '../../../node-metric.js';
 import { stockCapacity } from '../../../stores/index.js';
 import type { InteractionCellIndex } from '../../targets/index.js';
 import type { SinkAvailability } from '../../targets/stores/sinks.js';
@@ -68,8 +68,7 @@ export function nearestMissingInputSource(
   workplace: Entity,
   recipe: Recipe,
   restockToCapacity = false,
-  cellGate?: (cell: NodeId) => boolean,
-  gateBounds?: NodeBox,
+  gate?: SpatialGate,
 ): { store: Entity; goodType: number; amount: number } | null {
   const stock = world.get(workplace, Stockpile).amounts;
   for (const input of recipe.inputs) {
@@ -78,12 +77,11 @@ export function nearestMissingInputSource(
     if (have >= target) continue; // this input is already covered (for a cycle / to the slot's brim)
     // The stockpile index holds every Stockpile+Position candidate; source any store that isn't the
     // workplace itself and holds the good (a warehouse, a flag pile, another workplace's output).
-    // `cellGate` is the fetcher's signpost confinement — an out-of-area store is not a known source.
+    // `gate` is the fetcher's signpost confinement — an out-of-area store is not a known source.
     const winner = index.nearest(
       here,
       (e) => e !== workplace && (world.get(e, Stockpile).amounts.get(input.goodType) ?? 0) > 0,
-      cellGate,
-      gateBounds,
+      gate,
     );
     if (winner !== null) return { store: winner.entity, goodType: input.goodType, amount: target - have };
   }

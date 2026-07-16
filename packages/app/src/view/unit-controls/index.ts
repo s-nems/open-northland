@@ -215,6 +215,9 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     // In "Erect Signpost" mode a left world click orders the scout to erect on the clicked node and
     // consumes the press; any other button cancels the mode. Legality is the sim command's gate (an
     // illegal spot is a logged no-op), so a bad click simply leaves the scout unmoved.
+    // Named deviation (observed original, tutorial_001 briefing): the original erects with RIGHT-click
+    // on ground that is "lit up"; we place with LEFT-click and dim blocked ground instead — the same
+    // convention as our build placement, so the two placement modes read identically.
     if (signpostScouts !== null) {
       const scout = signpostScouts[0];
       cancelSignpost();

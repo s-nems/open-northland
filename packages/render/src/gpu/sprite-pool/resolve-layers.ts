@@ -135,14 +135,15 @@ export function resolveLayers(
     return resolveStockpileLayers(sheet, item);
   } else if (item.kind === 'signpost') {
     // A signpost (post or one of its direction boards) draws its layer-qualified frame from the
-    // guidepost family atlas; an unbound sheet / unloaded family keeps the placeholder.
+    // guidepost family atlas. Every signpost ref IS layer-qualified (human-sheet emits the binding only
+    // for loaded families), so a missing family here is a placeholder, never a bare-bob fall-through
+    // into the shared body atlas (a human frame drawn as a post).
     const draw = resolveSignpostDraw(sheet.bindings.signpost, item);
-    if (draw === null) return null;
-    if (draw.layer !== undefined && sheet.families?.[draw.layer] !== undefined) {
-      const resolved = layeredLayerFor(sheet, 'signpost', draw);
-      return resolved === null ? null : [resolved];
+    if (draw === null || draw.layer === undefined || sheet.families?.[draw.layer] === undefined) {
+      return null;
     }
-    bobId = draw.bob;
+    const resolved = layeredLayerFor(sheet, 'signpost', draw);
+    return resolved === null ? null : [resolved];
   } else if (item.kind === 'grounddrop' || item.kind === 'stump' || item.kind === 'berrybush') {
     return resolveDecorLayers(sheet, item, item.kind);
   } else {

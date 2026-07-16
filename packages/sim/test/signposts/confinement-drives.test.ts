@@ -13,6 +13,7 @@ import {
 import { type Fixed, fx, ONE } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
+import { justAbove, NEED_THRESHOLD } from '../agents/needs/support.js';
 import { testContent } from '../fixtures/content.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
@@ -40,8 +41,8 @@ const PLANK = 2;
 const FOOD = 3;
 const IN_AREA = 6;
 const OUT_OF_AREA = 40;
-// Just over the ¾·ONE needs threshold — enough to trigger the eat/pray drive on the next tick.
-const URGENT: Fixed = fx.add(fx.div(fx.mul(ONE, fx.fromInt(3)), fx.fromInt(4)), fx.fromInt(1) as Fixed);
+// Just over the shared ¾·ONE needs threshold — enough to trigger the eat/pray drive on the next tick.
+const URGENT: Fixed = justAbove(NEED_THRESHOLD);
 
 function confinedSim(): Simulation {
   const sim = new Simulation({ seed: 5, content: testContent(), map: grassMap(192, 8) });

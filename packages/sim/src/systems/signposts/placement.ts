@@ -11,7 +11,7 @@ import { positionOfNode } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { canPlaceWorkFlag, workFlagPlacementBlocks } from '../footprint/index.js';
-import { withinNodeRadius } from './geometry.js';
+import { withinNodeRadius } from '../node-metric.js';
 import { signpostNetwork } from './network.js';
 
 /**
@@ -30,6 +30,9 @@ export function canPlaceSignpost(
 ): boolean {
   // canPlaceWorkFlag covers ground quality, standing bodies, markers AND existing signpost cells (its
   // blocked set includes signpost anchors); the spacing circle is the signpost-specific extra gate.
+  // Spacing is SAME-PLAYER only — a rival's post blocks just its own cell (approximation: the
+  // original's cross-player spacing rule is not observed; per-player networks make per-player spacing
+  // the conservative reading).
   if (!canPlaceWorkFlag(world, ctx, terrain, node)) return false;
   const c = terrain.coordsOf(node);
   const posts = signpostNetwork(world).get(player) ?? [];

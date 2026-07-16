@@ -12,9 +12,15 @@ can pin down:
   all directions; fix the bucket formula (offset/direction/mirroring) if not.
 
 (The palette question is resolved: the guidepost is drawn through the owner's full player palette —
-the board-text indices 23–30 sit inside the `playerNN.pcx` ramp — via the indexed atlas +
-`guidepost-lut.png`; `bridge01` remains only the no-LUT fallback. Still eyeball the wood tones
-against the original while checking the boards.)
+the board-text indices 23–30 sit inside the `playerNN.pcx` ramp — served as 16 per-player baked
+atlases (`ls_guidepost.player_NN`; the indexed+LUT path shredded the graded edge alpha);
+`bridge01` remains only the single-colour fallback. Still eyeball the wood tones against the
+original while checking the boards.)
+
+Also observed-original deviations to weigh while in there (named in
+`packages/app/src/view/unit-controls/index.ts`): the original places a signpost with RIGHT-click on
+ground that is "lit up" (tutorial_001 briefing); we place with left-click and DIM blocked ground,
+matching our building-placement convention.
 
 Also worth checking there: the sim radii approximations (`SIGNPOST_NAV_RADIUS_NODES` 40 /
 `SIGNPOST_SPACING_RADIUS_NODES` 16 / `LOCAL_NAV_RADIUS_NODES` 24, `packages/sim/src/components/signpost.ts`)
