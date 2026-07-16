@@ -11,7 +11,15 @@ Two occupant classes therefore still end up standing inside walls:
   house is placed stays inside the finished building.
 - **Unowned settlers** — neutral/scenario units on the plot are left in place by the Owner gate.
 
+A related gap on the *destination* side: `nearestFreeCellOutside` builds its `occupancy` only from the
+owned, non-travelling settlers it also considers for eviction. So an evictee can be placed on a cell
+already occupied by a travelling settler, an unowned settler, or an animal, producing a transient stack.
+Owned stacks resolve via the spacing drive next tick, but an unowned/animal co-occupant will not
+de-stack. When widening who gets evicted, also widen the occupancy filter so displaced units don't land
+on top of the very classes this ticket adds.
+
 Task: extend the eviction to herd animals (and decide whether unowned settlers should keep the
 byte-identical stance or be displaced too — if they move, the affected goldens must be updated
-intentionally). Reuse the existing displacement search (`nearestFreeCellOutside`), keep canonical
-ascending-id order, and cover with a test beside `packages/sim/test/movement/evict.test.ts`.
+intentionally); widen the free-cell `occupancy` filter to match. Reuse the existing displacement search
+(`nearestFreeCellOutside`), keep canonical ascending-id order, and cover with a test beside
+`packages/sim/test/movement/evict.test.ts`.

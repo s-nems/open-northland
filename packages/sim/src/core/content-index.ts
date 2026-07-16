@@ -14,6 +14,7 @@ import {
   type VehicleType,
   type WeaponType,
 } from '@open-northland/data';
+import type { GoodsLine } from '../components/economy/infrastructure.js';
 
 /**
  * O(1) lookup maps over a {@link ContentSet}'s arrays, keyed the way per-tick code queries them.
@@ -97,11 +98,13 @@ export interface ContentIndex {
    * be delivered and hammer in. For a `home` tier this is the merged sum of every chain tier's own
    * `construction` up to and including it (the chain is the consecutive `home` typeIds — see
    * `homeNextTier`), so building tier N directly costs stages 1..N, exactly like building tier 1 and
-   * upgrading N−1 times (source basis: observed original behavior — a directly-placed higher home is
-   * never cheaper than the upgrade path). Every other type's bill is its own `construction`. Lines are
-   * merged per goodType and sorted ascending (canonical order for the picks that scan them).
+   * upgrading N−1 times. Source basis: the per-tier `construction` costs are extracted; the merge is our
+   * design invariant. The original never places a higher tier directly (homes start at tier 1 and level
+   * up), so direct placement is an OpenNorthland capability priced to match the original's tier-1-then-
+   * upgrade total rather than let it undercut that path. Every other type's bill is its own `construction`.
+   * Lines are merged per goodType and sorted ascending (canonical order for the picks that scan them).
    */
-  readonly constructionBillByBuilding: ReadonlyMap<number, readonly { goodType: number; amount: number }[]>;
+  readonly constructionBillByBuilding: ReadonlyMap<number, readonly GoodsLine[]>;
   /**
    * The largest Manhattan node-offset any resource's work cell can sit from its anchor, over every
    * `landscapeGfx` work-area cell — floored at 3, covering both `resourceWorkCell` fallbacks with headroom:
@@ -276,11 +279,9 @@ function workerJobSets(content: ContentSet): ReadonlyMap<number, ReadonlySet<num
  * First-wins per typeId, like the other tables (a home tier resolves each chain member through the
  * first-wins `byKey` view, so the summed rows are the ones every other read sees).
  */
-function constructionBills(
-  content: ContentSet,
-): ReadonlyMap<number, readonly { goodType: number; amount: number }[]> {
+function constructionBills(content: ContentSet): ReadonlyMap<number, readonly GoodsLine[]> {
   const buildings = byKey(content.buildings, (b) => b.typeId);
-  const bills = new Map<number, readonly { goodType: number; amount: number }[]>();
+  const bills = new Map<number, readonly GoodsLine[]>();
   for (const b of content.buildings) {
     if (!bills.has(b.typeId)) bills.set(b.typeId, billOf(buildings, b));
   }
@@ -290,10 +291,7 @@ function constructionBills(
 /** One type's from-scratch bill over a typeId-keyed building view: a home's chain base is found by
  *  walking the consecutive `home` typeIds downward (the mirror of `homeNextTier`'s upward walk), and
  *  the tiers' costs are merged per goodType and sorted ascending; any other kind is its own cost. */
-function billOf(
-  buildings: ReadonlyMap<number, BuildingType>,
-  building: BuildingType,
-): readonly { goodType: number; amount: number }[] {
+function billOf(buildings: ReadonlyMap<number, BuildingType>, building: BuildingType): readonly GoodsLine[] {
   if (building.kind !== 'home') return building.construction;
   let base = building.typeId;
   while (buildings.get(base - 1)?.kind === 'home') base -= 1;
@@ -318,7 +316,7 @@ function billOf(
 export function constructionBillForType(
   buildings: readonly BuildingType[],
   buildingType: number,
-): readonly { goodType: number; amount: number }[] {
+): readonly GoodsLine[] {
   const byId = byKey(buildings, (b) => b.typeId);
   const building = byId.get(buildingType);
   return building === undefined ? [] : billOf(byId, building);

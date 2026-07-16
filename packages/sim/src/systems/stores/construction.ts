@@ -1,4 +1,4 @@
-import { Building, holdsAll, Stockpile } from '../../components/index.js';
+import { Building, type GoodsLine, holdsAll, Stockpile } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { type Fixed, fx, ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -15,17 +15,13 @@ import { type InboundSupplyTally, inboundSupplyOf } from './supply-tally.js';
  *  list when the entity is not a typed building (a bare fixture) or its type declares no cost (a free
  *  type). The shared read behind {@link deliveredConstructionFraction},
  *  {@link constructionMaterialsPresent}, {@link nextNeededConstructionGood}, and {@link constructionTotalUnits}. */
-export function constructionBillOf(
-  world: World,
-  ctx: SystemContext,
-  site: Entity,
-): readonly { goodType: number; amount: number }[] {
+export function constructionBillOf(world: World, ctx: SystemContext, site: Entity): readonly GoodsLine[] {
   const b = world.tryGet(site, Building);
   if (b === undefined) return EMPTY_CONSTRUCTION;
   return contentIndex(ctx.content).constructionBillByBuilding.get(b.buildingType) ?? EMPTY_CONSTRUCTION;
 }
 
-const EMPTY_CONSTRUCTION: readonly { goodType: number; amount: number }[] = [];
+const EMPTY_CONSTRUCTION: readonly GoodsLine[] = [];
 
 /** Total material units a construction site's cost sums to (Σ amount) — the denominator the delivered
  *  fraction and the per-swing labor quantum divide against. 0 for a free (empty-cost) type. */

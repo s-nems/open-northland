@@ -13,6 +13,19 @@ function vertexSet(loop: readonly { u: number; v: number }[]): string[] {
   return loop.map((p) => `${p.u},${p.v}`).sort();
 }
 
+/** Twice the signed area of a loop (shoelace): positive = CCW, negative = CW. Used to prove a hole's
+ *  boundary winds opposite its outer boundary, so nonzero-winding fill cuts the hole out. */
+function signedArea2(loop: readonly { u: number; v: number }[]): number {
+  let a = 0;
+  for (let i = 0; i < loop.length; i++) {
+    const p = loop[i];
+    const q = loop[(i + 1) % loop.length];
+    if (p === undefined || q === undefined) continue;
+    a += p.u * q.v - q.u * p.v;
+  }
+  return a;
+}
+
 describe('plotOutlines', () => {
   it('a single cell outlines as its diamond — one 4-corner square in (u,v)', () => {
     const loops = plotOutlines([{ cells: [{ col: 5, row: 5 }] }]);
@@ -62,5 +75,46 @@ describe('plotOutlines', () => {
       const straightV = prev.v === here.v && here.v === next.v;
       expect(straightU || straightV).toBe(false); // a kept vertex is a corner, never mid-run
     }
+  });
+
+  it('a corner-pinch (two diamonds touching at one vertex) splits into two separate loops', () => {
+    // Cells (0,0)→block [-1,1]² and (2,0)→block [1,3]² touch only at (u,v)=(1,1). The left-turn
+    // priority must keep them as two loops (each region on the left), never one self-crossing figure-8.
+    const loops = plotOutlines([
+      {
+        cells: [
+          { col: 0, row: 0 },
+          { col: 2, row: 0 },
+        ],
+      },
+    ]);
+    expect(loops).toHaveLength(2);
+    expect(vertexSet(loops[0] ?? [])).toEqual(['-1,-1', '-1,1', '1,-1', '1,1'].sort());
+    expect(vertexSet(loops[1] ?? [])).toEqual(['1,1', '1,3', '3,1', '3,3'].sort());
+  });
+
+  it('a ring footprint yields an outer loop plus an oppositely-wound hole (fill cuts it out)', () => {
+    // Eight diamonds tiling a 6×6 (u,v) block around an empty 2×2 centre (node (2,0) omitted) — a hole.
+    const loops = plotOutlines([
+      {
+        cells: [
+          { col: 3, row: 1 },
+          { col: 1, row: 1 },
+          { col: 3, row: -1 },
+          { col: 1, row: -1 },
+          { col: 4, row: 0 },
+          { col: 0, row: 0 },
+          { col: 2, row: 2 },
+          { col: 2, row: -2 },
+        ],
+      },
+    ]);
+    expect(loops).toHaveLength(2);
+    const outer = loops.find((l) => Math.abs(signedArea2(l)) > 8) ?? [];
+    const hole = loops.find((l) => Math.abs(signedArea2(l)) <= 8) ?? [];
+    expect(vertexSet(outer)).toEqual(['-1,-1', '-1,5', '5,-1', '5,5'].sort()); // the 6×6 perimeter
+    expect(vertexSet(hole)).toEqual(['1,1', '1,3', '3,1', '3,3'].sort()); // the 2×2 centre hole
+    // Opposite windings: nonzero-winding fill leaves the enclosed hole empty.
+    expect(Math.sign(signedArea2(outer))).toBe(-Math.sign(signedArea2(hole)));
   });
 });
