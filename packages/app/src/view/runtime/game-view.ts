@@ -167,6 +167,10 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   // stays ungated so admin/scenario spawns bypass the UI rule.
   const canPlaceAt = (typeId: number, col: number, row: number): boolean =>
     fogGates.seesNode(col, row) && (sim.placementProbe(typeId)?.canPlace(col, row) ?? true);
+  // The signpost twin of canPlaceAt, for the erect-mode cursor ghost (same fog stance; a mapless sim
+  // has no probe and shows no ghost — the erect command would be a no-op there anyway).
+  const canPlaceSignpostAt = (col: number, row: number): boolean =>
+    fogGates.seesNode(col, row) && (sim.signpostProbe(HUMAN_PLAYER)?.canPlace(col, row) ?? false);
 
   // The minimap handle, assigned right after the tool panel mounts (the panel must mount first — stage
   // order is draw order, and the minimap window draws over the strip's lower buttons on a short
@@ -360,6 +364,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     hudFor,
     doorBadgesFor,
     canPlaceAt,
+    canPlaceSignpostAt,
     soundDriver,
     perf,
     pointer: pointerAt,

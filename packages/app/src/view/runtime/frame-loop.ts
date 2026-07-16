@@ -1,4 +1,4 @@
-import type { layoutHud } from '@open-northland/render';
+import type { layoutHud, PlacementGhost } from '@open-northland/render';
 import { FixedTimestep, FOG_STATE, type SimEvent, systems, type WorldSnapshot } from '@open-northland/sim';
 import type { createSoundDriver } from '../../content/audio.js';
 import { HUMAN_PLAYER } from '../../game/rules.js';
@@ -37,6 +37,8 @@ export interface FrameLoopDeps {
   readonly doorBadgesFor: (snap: WorldSnapshot) => ReturnType<typeof computeDoorBadges>;
   /** The one live placement rule the click gate and the cursor ghost share. */
   readonly canPlaceAt: (typeId: number, col: number, row: number) => boolean;
+  /** The erect-signpost twin of {@link canPlaceAt} — gates the signpost cursor ghost. */
+  readonly canPlaceSignpostAt: (col: number, row: number) => boolean;
   readonly soundDriver: ReturnType<typeof createSoundDriver> | null;
   readonly perf: PerfOverlayHandle;
   /** The current build-ghost cursor position (client coords; null when the pointer left the canvas). */
@@ -67,6 +69,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     hudFor,
     doorBadgesFor,
     canPlaceAt,
+    canPlaceSignpostAt,
     soundDriver,
     perf,
     pointer: pointerAt,
@@ -163,15 +166,19 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
         : overlayFrame(placeType, cameraCtl.camera(), app.screen.width, app.screen.height),
     );
     // (No HUD-claim check: the HUD draws over the world layer, so the ghost can't cover it.)
+    const ghostMode = placeType !== null || signpostFrame !== null;
     const hovered =
-      placeType !== null && pointer !== null
-        ? toolPanel.clientToTile(pointer.clientX, pointer.clientY)
-        : null;
-    renderer.updatePlacementGhost(
-      placeType !== null && hovered !== null && canPlaceAt(placeType, hovered.col, hovered.row)
-        ? { col: hovered.col, row: hovered.row, buildingType: placeType }
-        : null,
-    );
+      ghostMode && pointer !== null ? toolPanel.clientToTile(pointer.clientX, pointer.clientY) : null;
+    // The cursor ghost matching the active placement: the held building's translucent sprite, or the
+    // pending signpost's own guidepost post — both hidden over rejecting ground (the original's
+    // vanishing cursor).
+    let ghost: PlacementGhost | null = null;
+    if (hovered !== null && placeType !== null && canPlaceAt(placeType, hovered.col, hovered.row)) {
+      ghost = { kind: 'building', col: hovered.col, row: hovered.row, buildingType: placeType };
+    } else if (hovered !== null && signpostFrame !== null && canPlaceSignpostAt(hovered.col, hovered.row)) {
+      ghost = { kind: 'signpost', col: hovered.col, row: hovered.row, player: HUMAN_PLAYER };
+    }
+    renderer.updatePlacementGhost(ghost);
     // Tick the unit controls (details panel + action ring) before the renderer's update: a panel rebuild
     // re-adds its root over the stage, and the portrait inset re-raises itself inside renderer.update —
     // this order keeps the raise after the rebuild, so a rebuilding panel never covers the live portrait
