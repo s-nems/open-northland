@@ -43,7 +43,7 @@ export const MAX_WORKER_ROWS = 4;
 /** Horizontal gap between the stock window's two columns (a window pad). */
 export const STOCK_COL_GAP = WIN_PAD;
 
-export type ButtonAction = 'demolish' | 'center' | 'workers' | 'help' | 'assign-workplace';
+export type ButtonAction = 'demolish' | 'center' | 'workers' | 'help' | 'assign-workplace' | 'assign-home';
 
 export interface ButtonHit {
   readonly action: ButtonAction;

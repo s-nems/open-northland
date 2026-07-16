@@ -24,9 +24,13 @@ import { retainOffscreen, retireUndrawn } from './retained-pool.js';
  * behaviour. The app classifies each bound worker into one of the three counts (sandbox `workerRoleOf`).
  */
 
+/** One family living in a home, as its door dot reads it: a single, a childless couple, or a couple
+ *  with their growing child — each draws its own dot colour. */
+export type HouseholdKind = 'single' | 'couple' | 'family';
+
 /** One building's badge data: its worker-icon anchor position (snapshot `Position` fixed-point units,
  *  projected here) and the counts of settlers bound to it, split by worker role so each draws its own
- *  colour. */
+ *  colour — plus, for a home, its resident family dot and the make-love hearts. */
 export interface DoorBadge {
   /** The building entity id — the retained-pool key (ids are monotonic, a stable key). */
   readonly id: number;
@@ -39,6 +43,11 @@ export interface DoorBadge {
   readonly carriers: number;
   /** Gatherers bound here (e.g. the joinery's demo woodcutter) — drawn in {@link GATHERER_COLOR}. */
   readonly gatherers: number;
+  /** The families living in this home — one round dot each (`homeSize` counts families); absent/empty
+   *  = nobody lives here. */
+  readonly households?: readonly HouseholdKind[];
+  /** True while the resident couple makes love here — draws the hearts over the house. */
+  readonly hearts?: boolean;
 }
 
 /** Placeholder square edge + vertical gap between stacked badges (world px). */
@@ -52,12 +61,34 @@ const CRAFTSMAN_COLOR = 0x5ab6ff; // blue — a workshop tradesman
 const CARRIER_COLOR = 0xffbb33; // amber — a hauler (tragarz)
 const GATHERER_COLOR = 0x7ed957; // green — a raw-good gatherer
 const BORDER_COLOR = 0x1a1206;
+/** Household dot colours — one per family shape ({@link HouseholdKind}), round so it reads apart from
+ *  the square worker badges. */
+const HOUSEHOLD_COLOR: Readonly<Record<HouseholdKind, number>> = {
+  single: 0xd9d9d9, // grey — one settler lives here
+  couple: 0xff7a9c, // pink — a married couple
+  family: 0xffd24d, // gold — a couple raising a child
+};
+/** Hearts (make-love) drawing: colour, per-heart radius and the column they float in above the stack. */
+const HEART_COLOR = 0xff4d78;
+const HEART_RADIUS = 3.5;
+const HEART_GAP = 12;
+const HEART_LIFT = 26; // px above the stack's top — "hearts over the house"
+const HEART_DRIFT = 4; // px of horizontal drift per heart, so the column reads as rising, not stacked
+const HEART_COUNT = 3;
 
 interface BadgeStack {
   readonly node: Container;
   readonly craftsmen: number;
   readonly carriers: number;
   readonly gatherers: number;
+  /** The drawn family dots, joined into a change-detection key ('' = none). */
+  readonly households: string;
+  readonly hearts: boolean;
+}
+
+/** A badge's family-dot list as a change-detection key (order matters — it is the drawn order). */
+function householdsKey(badge: DoorBadge): string {
+  return badge.households?.join(',') ?? '';
 }
 
 export class BadgeLayer {
@@ -77,7 +108,11 @@ export class BadgeLayer {
   draw(badges: readonly DoorBadge[], elevation?: ElevationField, viewport?: Viewport): void {
     this.drawn.clear();
     for (const badge of badges) {
-      if (badge.craftsmen + badge.carriers + badge.gatherers <= 0) continue;
+      const empty =
+        badge.craftsmen + badge.carriers + badge.gatherers <= 0 &&
+        (badge.households === undefined || badge.households.length === 0) &&
+        badge.hearts !== true;
+      if (empty) continue;
       const tileX = badge.x / ONE;
       const tileY = badge.y / ONE;
       const p = tileToScreen(tileX, tileY);
@@ -95,12 +130,21 @@ export class BadgeLayer {
         stack === undefined ||
         stack.craftsmen !== badge.craftsmen ||
         stack.carriers !== badge.carriers ||
-        stack.gatherers !== badge.gatherers
+        stack.gatherers !== badge.gatherers ||
+        stack.households !== householdsKey(badge) ||
+        stack.hearts !== (badge.hearts === true)
       ) {
         stack?.node.destroy({ children: true });
-        const node = makeStack(badge.craftsmen, badge.carriers, badge.gatherers);
+        const node = makeStack(badge);
         this.container.addChild(node);
-        stack = { node, craftsmen: badge.craftsmen, carriers: badge.carriers, gatherers: badge.gatherers };
+        stack = {
+          node,
+          craftsmen: badge.craftsmen,
+          carriers: badge.carriers,
+          gatherers: badge.gatherers,
+          households: householdsKey(badge),
+          hearts: badge.hearts === true,
+        };
         this.stacks.set(badge.id, stack);
       }
       stack.node.visible = true;
@@ -119,19 +163,49 @@ export class BadgeLayer {
 
 /** A door badge stack: one square per bound worker, grouped by role bottom-to-top — `carriers` (amber),
  *  then `craftsmen` (blue), then `gatherers` (green) — growing up from the door anchor (row 0 is the
- *  lowest square, just above the door). */
-function makeStack(craftsmen: number, carriers: number, gatherers: number): Container {
+ *  lowest square, just above the door). A home's family dots stack at the base, one round dot per
+ *  resident family (round, so they read apart from the squares), and the make-love hearts float in a
+ *  short column above it all. */
+function makeStack(badge: DoorBadge): Container {
   const c = new Container();
+  let rows = 0;
+  for (const household of badge.households ?? []) {
+    const g = new Graphics();
+    const yCentre = -(rows + 1) * (SIZE + GAP) + SIZE / 2;
+    g.circle(SIZE / 2, yCentre, SIZE / 2)
+      .fill({ color: HOUSEHOLD_COLOR[household] })
+      .stroke({ width: 1, color: BORDER_COLOR, alpha: 0.9 });
+    c.addChild(g);
+    rows++;
+  }
   const colors = [
-    ...new Array<number>(carriers).fill(CARRIER_COLOR),
-    ...new Array<number>(craftsmen).fill(CRAFTSMAN_COLOR),
-    ...new Array<number>(gatherers).fill(GATHERER_COLOR),
+    ...new Array<number>(badge.carriers).fill(CARRIER_COLOR),
+    ...new Array<number>(badge.craftsmen).fill(CRAFTSMAN_COLOR),
+    ...new Array<number>(badge.gatherers).fill(GATHERER_COLOR),
   ];
-  colors.forEach((color, i) => {
-    const yTop = -(i + 1) * (SIZE + GAP);
+  for (const color of colors) {
+    const yTop = -(rows + 1) * (SIZE + GAP);
     const g = new Graphics();
     g.rect(0, yTop, SIZE, SIZE).fill({ color }).stroke({ width: 1, color: BORDER_COLOR, alpha: 0.9 });
     c.addChild(g);
-  });
+    rows++;
+  }
+  if (badge.hearts === true) {
+    const top = -(rows * (SIZE + GAP)) - HEART_LIFT;
+    for (let i = 0; i < HEART_COUNT; i++) {
+      c.addChild(makeHeart(SIZE / 2 + (i - 1) * HEART_DRIFT, top - i * HEART_GAP));
+    }
+  }
   return c;
+}
+
+/** One small heart at (`x`, `y`): two lobes + a point, in {@link HEART_COLOR}. */
+function makeHeart(x: number, y: number): Graphics {
+  const g = new Graphics();
+  const r = HEART_RADIUS;
+  g.circle(x - r * 0.6, y - r * 0.4, r * 0.7)
+    .circle(x + r * 0.6, y - r * 0.4, r * 0.7)
+    .poly([x - r * 1.25, y - r * 0.1, x + r * 1.25, y - r * 0.1, x, y + r * 1.4])
+    .fill({ color: HEART_COLOR });
+  return g;
 }

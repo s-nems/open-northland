@@ -120,7 +120,7 @@ export const JobAssignment = defineComponent<{ workplace: Entity }>('JobAssignme
 
 /**
  * A settler's age in whole ticks while it is still a non-working life stage. Only a settler born young (the
- * ReproductionSystem) carries one: the GrowthSystem increments it each tick and promotes the age-class
+ * FamilySystem's birth) carries one: the GrowthSystem increments it each tick and promotes the age-class
  * `jobType` (baby → child → adult-eligible) at each stage boundary, then removes the component once the
  * settler reaches adult-eligibility (`jobType` cleared to `null`). So an adult never carries an `Age`, and
  * every settler from `spawnSettler` (born adult) has none.

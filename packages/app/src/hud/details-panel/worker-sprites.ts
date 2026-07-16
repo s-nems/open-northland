@@ -34,6 +34,9 @@ import type { Rect } from '../geometry.js';
 
 /** At most this many worker sprites in the field (a store dispatches up to ~12; keep the row readable). */
 const MAX_WORKERS = 8;
+/** Extra horizontal gap between family groups in a home's residents field, as a fraction of one cell —
+ *  members of one family stand close, the next family starts after this breather. */
+const FAMILY_GAP_FRAC = 0.45;
 /** A worker who has stepped inside the building stands frozen on this fixed animation tick — a still
  *  standing pose in the panel (not the breathing wait loop), while active workers animate on the sim
  *  tick. 0 holds the idle sequence's first (neutral standing) frame. */
@@ -80,8 +83,17 @@ export class WorkerSpriteOverlay {
   /**
    * Redraw the workers of `buildingId` into `field` (screen px). A null building / field, or no sprite
    * sheet, clears the overlay. Called every frame from the panel's `tick` so the animation advances.
+   * `opts.siteCrew` selects the live build crew instead of the bound workers; `opts.groups` (a home's
+   * residents, one id list per family) overrides the bound-worker scan entirely — the field then draws
+   * each family as a close cluster with a breather gap before the next.
    */
-  update(snapshot: WorldSnapshot, buildingId: number | null, field: Rect | null, siteCrew = false): void {
+  update(
+    snapshot: WorldSnapshot,
+    buildingId: number | null,
+    field: Rect | null,
+    opts: { siteCrew?: boolean; groups?: readonly (readonly number[])[] } = {},
+  ): void {
+    const { siteCrew = false, groups } = opts;
     this.drawn.clear();
     this.hits = [];
     if (this.sheet === undefined || buildingId === null || field === null) {
@@ -89,13 +101,17 @@ export class WorkerSpriteOverlay {
       this.container.visible = false;
       return;
     }
-    const workerEntities = this.boundWorkers(snapshot, buildingId, siteCrew);
+    const grouped = groups !== undefined ? this.groupedEntities(snapshot, groups) : undefined;
+    const workerEntities = grouped?.entities ?? this.boundWorkers(snapshot, buildingId, siteCrew);
     if (workerEntities.length === 0) {
       this.hideRest();
       this.container.visible = false;
       return;
     }
     const workers = workerEntities.map((e) => e.id);
+    // Per-slot extra left gap (in slot widths): a family-grouped field inserts a breather where a new
+    // group starts; the flat worker field has none.
+    const gapBefore = grouped?.gaps;
 
     // Resolve each worker's draw item the same way the map does — same frame, same facing (forcing a fixed
     // facing makes them animate walking the wrong way) — but project only these ≤8 bound settlers, not
@@ -127,12 +143,13 @@ export class WorkerSpriteOverlay {
     const slotW = inner.h * SLOT_W_FRAC;
     const feetY = inner.y + inner.h;
 
-    workers.forEach((id, i) => {
-      const cellX = inner.x + slotW * i;
-      if (cellX + slotW > inner.x + inner.w + 1) return; // no room — overflow past the field's right edge
+    // Resolve every drawn worker's layers first: the field shares ONE zoom — the tallest body fills
+    // CHAR_FILL of the field height — so a baby beside its parents reads baby-sized instead of each
+    // body being blown up to the same height.
+    const resolved = workers.map((id) => {
       const activeItem = active.get(id);
       const item = activeItem ?? withIndoor.get(id);
-      if (item === undefined) return;
+      if (item === undefined) return null;
       // A worker inside the building (absent from the plain build) stands frozen; an active one animates.
       const clock = activeItem !== undefined ? snapshot.tick : INDOOR_POSE_TICK;
       // Size the worker off its NEUTRAL standing frame (INDOOR_POSE_TICK), not the live animation frame:
@@ -142,17 +159,27 @@ export class WorkerSpriteOverlay {
       // per-frame offsets still animate the body within it.
       const stanceLayers = resolveLayers(this.sheet, item, INDOOR_POSE_TICK);
       const stanceBody = stanceLayers?.[0];
-      if (stanceLayers === null || stanceBody === undefined) return;
+      if (stanceLayers === null || stanceBody === undefined) return null;
       const layers = clock === INDOOR_POSE_TICK ? stanceLayers : resolveLayers(this.sheet, item, clock);
-      if (layers === null || layers.length === 0) return;
-      // Zoom so the neutral stance body fills CHAR_FILL of the field height; every layer shares this zoom.
-      const zoom = (inner.h * CHAR_FILL) / Math.max(1, stanceBody.frame.height * stanceBody.scale);
+      if (layers === null || layers.length === 0) return null;
+      return { id, item, layers, bodyH: Math.max(1, stanceBody.frame.height * stanceBody.scale) };
+    });
+    const tallest = Math.max(1, ...resolved.map((r) => r?.bodyH ?? 1));
+    const zoom = (inner.h * CHAR_FILL) / tallest;
+
+    let gapOffset = 0;
+    resolved.forEach((r, i) => {
+      gapOffset += (gapBefore?.[i] ?? 0) * slotW;
+      if (r === null) return;
+      const cellX = inner.x + slotW * i + gapOffset;
+      if (cellX + slotW > inner.x + inner.w + 1) return; // no room — overflow past the field's right edge
       const feetX = cellX + slotW / 2;
-      for (let li = 0; li < layers.length; li++) {
-        const layer = layers[li];
-        if (layer !== undefined) this.drawLayer(`${id}:${li}`, layer, feetX, feetY, zoom, item.player ?? 0);
+      for (let li = 0; li < r.layers.length; li++) {
+        const layer = r.layers[li];
+        if (layer !== undefined)
+          this.drawLayer(`${r.id}:${li}`, layer, feetX, feetY, zoom, r.item.player ?? 0);
       }
-      this.hits.push({ id, x: cellX, y: inner.y, w: slotW, h: inner.h });
+      this.hits.push({ id: r.id, x: cellX, y: inner.y, w: slotW, h: inner.h });
     });
 
     this.hideRest();
@@ -172,6 +199,36 @@ export class WorkerSpriteOverlay {
     this.container.destroy({ children: true });
     this.sprites.clear();
     this.plainTextures.clear();
+  }
+
+  /** The entities of a grouped id list (a home's residents), flattened in group order and capped like
+   *  the worker scan, plus each drawn slot's leading gap ({@link FAMILY_GAP_FRAC} where a new family
+   *  starts). One entity pass builds the id→entity map; missing ids (a member died between frames)
+   *  are skipped. */
+  private groupedEntities(
+    snapshot: WorldSnapshot,
+    groups: readonly (readonly number[])[],
+  ): { entities: WorkerEntity[]; gaps: number[] } {
+    const wanted = new Set<number>();
+    for (const group of groups) for (const id of group) wanted.add(id);
+    const byId = new Map<number, WorkerEntity>();
+    for (const e of snapshot.entities) {
+      if (wanted.has(e.id) && isSettler(e)) byId.set(e.id, e);
+    }
+    const entities: WorkerEntity[] = [];
+    const gaps: number[] = [];
+    for (const group of groups) {
+      let firstOfGroup = true;
+      for (const id of group) {
+        if (entities.length >= MAX_WORKERS) return { entities, gaps };
+        const e = byId.get(id);
+        if (e === undefined) continue;
+        gaps.push(firstOfGroup && entities.length > 0 ? FAMILY_GAP_FRAC : 0);
+        entities.push(e);
+        firstOfGroup = false;
+      }
+    }
+    return { entities, gaps };
   }
 
   /** The (snapshot-ordered, capped) settler entities bound to `buildingId` — one O(entities) scan, whose

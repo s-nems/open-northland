@@ -95,7 +95,7 @@ export function planNeeds(
     // Find the NEAREST food of any kind — a stocked/produced larder or a wild berry bush (the fallback
     // when no larder is near). The eat animation (id 10) is shared; only the completion EFFECT differs
     // (consume a stored unit vs forage a bush), so the walk-or-act tail is identical for both.
-    const food = nearestFood(targets, world, ctx, terrain, here, gate);
+    const food = nearestFood(targets, world, ctx, terrain, here, e, gate);
     if (food !== null) {
       const target = food.kind === 'store' ? food.store : food.bush;
       const effect =

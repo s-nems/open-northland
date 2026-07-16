@@ -66,6 +66,9 @@ export interface UnitPanelOptions extends UnitPanelModelContext {
    *  section's assign button. The view then highlights candidate buildings and binds the settler to the one
    *  the next left-click hits. Absent → the button is inert. */
   readonly onAssignWorkplace?: (settlerId: number) => void;
+  /** Enter "assign a home" mode for the selected settler — the residential twin of
+   *  {@link onAssignWorkplace} (the view washes candidate homes green/red). Absent → the button is inert. */
+  readonly onAssignHome?: (settlerId: number) => void;
   readonly onSetGatherGood: (entityId: number, goodType: number | null) => void;
   /** Replace a craft worker's product selection (the `setCraftGoods` command); `[]` = every product.
    *  The panel computes the toggled set from the clicked button + the model's effective selection. */
@@ -248,7 +251,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     layout?.kind === 'building'
       ? layout.buttons
       : layout?.kind === 'settler'
-        ? [layout.assignButton]
+        ? [layout.assignButton, layout.homeButton]
         : layout?.kind === 'signpost'
           ? [layout.button]
           : [];
@@ -341,6 +344,8 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
       opts.onDemolishSignpost(lastModel.entityId);
     } else if (hit?.action === 'assign-workplace' && hit.enabled && lastModel.kind === 'settler') {
       opts.onAssignWorkplace?.(lastModel.entityId);
+    } else if (hit?.action === 'assign-home' && hit.enabled && lastModel.kind === 'settler') {
+      opts.onAssignHome?.(lastModel.entityId);
     }
     return true;
   };
@@ -377,7 +382,9 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
    *  "co robi ten guzik" hint the user asked for. */
   const assignButtonHint = (x: number, y: number): string | null => {
     if (layout?.kind !== 'settler') return null;
-    return contains(layout.assignButton.rect, x, y) ? messages().hud.assignWorkplaceHint : null;
+    if (contains(layout.assignButton.rect, x, y)) return messages().hud.assignWorkplaceHint;
+    if (contains(layout.homeButton.rect, x, y)) return messages().hud.assignHomeHint;
+    return null;
   };
 
   /** The hovered choice round button's good name ("Wszystko" for the gather-all choice), or null —
@@ -487,7 +494,13 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     const siteCrew = lastModel.construction !== null;
     const inset = siteCrew ? 0 : Math.round(ROW_H * scale);
     const field: Rect = { x: b.x, y: b.y + inset, w: b.w, h: Math.max(0, b.h - inset) };
-    workerOverlay.update(snapshot, lastModel.entityId, field, siteCrew);
+    // A home's field draws its residents grouped per family (the Mieszkańcy window) instead of the
+    // bound-worker scan.
+    const groups = lastModel.home?.families.map((f) => f.members);
+    workerOverlay.update(snapshot, lastModel.entityId, field, {
+      siteCrew,
+      ...(groups !== undefined ? { groups } : {}),
+    });
   };
 
   return {

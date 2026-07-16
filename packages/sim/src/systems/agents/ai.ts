@@ -4,6 +4,8 @@ import {
   CurrentAtomic,
   DeliveryFlag,
   Engagement,
+  FamilyDuty,
+  Female,
   Fleeing,
   Owner,
   ownerOf,
@@ -13,6 +15,7 @@ import {
   Resting,
   Settler,
   Stance,
+  Wedding,
   WorkFlag,
   YardDeliveryRoute,
 } from '../../components/index.js';
@@ -21,6 +24,9 @@ import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
 import { jobCanHarvest } from '../economy/flags.js';
+import { ExternalFoodIndex } from '../family/food-search.js';
+import { planWomanHoard } from '../family/hoard.js';
+import { planChildWander } from '../family/wander.js';
 import { MILITARY_MODE } from '../readviews/index.js';
 import { navigationLimitFor } from '../signposts/index.js';
 import { canonicalById, clearNavState, isTravelling, NodeBuckets } from '../spatial.js';
@@ -92,6 +98,9 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
   // let idle settlers skip the scan (identical outcome, no per-settler work). This is what keeps an idle
   // crowd at ~0 cost.
   const anyHaulable = hasHaulableOutput(world, ctx, targets.stockpiles);
+  // One shared external-food index for every housewife's hoard rung this tick (it self-builds on the
+  // first woman who actually needs a source, so a woman-less or fully-stocked tick pays nothing).
+  const externalFood = new ExternalFoodIndex(world, ctx);
   // Spacing occupancy — shared by both spacing consumers (the idle de-stack rung and the builder work
   // slots, see ./destack.ts): owned settlers currently stationary (not travelling — distinct from the
   // waiting-inside `Resting` marker) bucketed by integer tile, in ascending-id order. Gated on Owner so it
@@ -152,7 +161,8 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     releaseFarmTask(world, e, farmClaims);
     // Likewise its rest-inside marker: the drive re-stamps it within this same tick if there is still
     // nothing to do (so the render never sees a gap), and it stays off the moment real work appears.
-    world.remove(e, Resting);
+    // A settler on family duty keeps it — the FamilySystem owns its waiting-inside-the-home marker.
+    if (!world.has(e, FamilyDuty)) world.remove(e, Resting);
     // And its supply errand (SupplyRun): the fetch/delivery rungs re-stamp it below while the errand
     // lasts; a settler re-planning has, by definition, finished or abandoned the previous leg. Releasing
     // through the tally keeps the inbound count in lockstep with the store.
@@ -162,11 +172,15 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     if (settler.jobType === null) continue; // an unemployed settler has no job atomics to run
     // A baby/child is a non-working life stage: it runs no atomics and, faithful to the original (a baby
     // is cared for, it doesn't self-feed), does not run the adult needs-drives — it just grows up
-    // (GrowthSystem). Key on the Age component, not `isNonWorkingAge(jobType)`: Age is present ⟺ the
-    // settler is in a baby/child stage (the GrowthSystem invariant), and keying on it avoids a jobType-id
-    // collision — the golden slice's woodcutter is jobType 1, the same number as `baby_female`, but only a
-    // settler born young carries an Age.
-    if (world.has(e, Age)) continue;
+    // (GrowthSystem) and potters around its home (planChildWander). Key on the Age component, not
+    // `isNonWorkingAge(jobType)`: Age is present ⟺ the settler is in a baby/child stage (the
+    // GrowthSystem invariant), and keying on it avoids a jobType-id collision — the golden slice's
+    // woodcutter is jobType 1, the same number as `baby_female`, but only a settler born young carries
+    // an Age.
+    if (world.has(e, Age)) {
+      planChildWander(world, ctx, terrain, e, spacing);
+      continue;
+    }
 
     const p = world.get(e, Position);
     const hereNode = nodeOfPosition(p.x, p.y);
@@ -198,6 +212,14 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     const stance = world.tryGet(e, Stance);
     if (stance !== undefined && stance.mode === MILITARY_MODE.DEFEND) continue;
     if (world.has(e, PlayerOrder)) continue;
+    // Family fences (below needs, like the gates above, so a marrying/child-making settler still eats):
+    // the FamilySystem drives a settler mid-wedding or on family duty; the economy leaves it alone.
+    if (world.has(e, Wedding)) continue;
+    if (world.has(e, FamilyDuty)) continue;
+    // The housewife rung: a woman takes no trade — her work is stocking the family larder (hoarding,
+    // see planWomanHoard). Above the carry-delivery rung so food she lifted for the pantry goes HOME,
+    // not to the nearest store.
+    if (world.has(e, Female) && planWomanHoard(world, ctx, terrain, e, externalFood)) continue;
 
     // The worker view of the settler — re-stated so `jobType`'s non-null narrowing carries into the
     // economy drives' signatures (the ladder skipped jobless settlers above).

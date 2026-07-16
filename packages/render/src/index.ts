@@ -80,6 +80,7 @@ export type {
   DoorBadge,
   GeometryDebugCell,
   GeometryDebugItem,
+  HouseholdKind,
   HudFrame,
   HudStyle,
   PlacementGhost,

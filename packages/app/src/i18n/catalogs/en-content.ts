@@ -177,5 +177,9 @@ export const enContent = {
       title: 'Signposts',
       summary: 'A scout erects a signpost; settlers work only within the connected guidepost network.',
     },
+    family: {
+      title: 'Marriage and children',
+      summary: 'A couple weds with a kiss; a married wife stocks the home with food and bears a child.',
+    },
   },
 } as const;

@@ -1,9 +1,19 @@
-import type { WorldSnapshot } from '@open-northland/sim';
+import { systems, type WorldSnapshot } from '@open-northland/sim';
 import { vikingBuildingByTypeId } from '../../../catalog/buildings.js';
 import { characterName } from '../../../game/character-names.js';
 import { PRIMARY_TRIBE } from '../../../game/rules.js';
 import { JOB_IDLE } from '../../../game/sandbox/ids/index.js';
-import { entityById, isBuilding, isSettler, isSignpost, num, ownerPlayerOf } from '../../../game/snapshot.js';
+import {
+  entityById,
+  familiesByHome,
+  isBuilding,
+  isFemale,
+  isSettler,
+  isSignpost,
+  num,
+  ownerPlayerOf,
+  surnameSourceOf,
+} from '../../../game/snapshot.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import { pct } from './bars.js';
 import {
@@ -44,6 +54,7 @@ export type {
   BuildingPanelModel,
   ConstructionModel,
   ConstructionRow,
+  HomeResidentsModel,
   ProductionModel,
   StockRow,
   WorkerSlotRow,
@@ -86,6 +97,10 @@ export type UnitPanelModel =
 
 /** The catalog id of the one storage building that also mounts a defence (the HQ's defence section). */
 const HEADQUARTERS_ID = 'headquarters';
+
+/** The "years" a settler reaching adulthood displays as — the meta line's Age ramp top (a display
+ *  approximation; the sim's growth cadence is ticks, not a calendar). */
+const ADULT_AGE_YEARS = 16;
 
 export function buildUnitPanelModel(
   snapshot: WorldSnapshot,
@@ -136,6 +151,14 @@ export function buildUnitPanelModel(
       builtPct: pct(num(b.built)),
       stock: stockRows(ctx, def, ent.components.Stockpile),
       workerSlots: workerSlotsFor(ctx, snapshot, def, entityId),
+      // A home shows its residents (family-grouped) where a workshop shows workers.
+      home:
+        def?.kind === 'home'
+          ? {
+              families: (familiesByHome(snapshot).get(entityId) ?? []).map((f) => ({ members: f.members })),
+              capacity: def.homeSize,
+            }
+          : null,
       showDefense: catalog?.id === HEADQUARTERS_ID || category === 'tower',
       // Pinned approximation until a defence-mode component exists; the original state/toggle strings
       // live at `housewindow` 140–143 ("Rozpocznij/Zatrzymaj Tryb Obrony", "Obrona rozpoczęta/zakończona.").
@@ -166,17 +189,36 @@ export function buildUnitPanelModel(
     // Only a born-young (baby/child) settler carries `Age`; that flag, with the job, fixes the drawn body's
     // sex so the name matches the character (mirrors the render body-join in `content/settler-gfx.ts`).
     const young = comps.Age !== undefined;
+    // A child's age in "years" — its Age ticks mapped onto a 0..ADULT_AGE_YEARS ramp (adulthood at
+    // 2×GROWUP_TICKS ⇒ 16 "years"; a display approximation, the sim has no calendar). Appended to the meta.
+    const ageTicks = num((comps.Age as { ticks?: unknown } | undefined)?.ticks);
+    const ageSuffix =
+      young && ageTicks !== undefined
+        ? ` · ${formatMessage(messages().hud.age, {
+            years: Math.floor((ageTicks / (2 * systems.GROWUP_TICKS)) * ADULT_AGE_YEARS),
+          })}`
+        : '';
     return {
       kind: 'settler',
       entityId,
-      name: characterName(num(s.tribe) ?? PRIMARY_TRIBE, num(s.jobType), young, entityId),
+      // The family surname: a wife shows her husband's, a child its father's (see surnameSourceOf).
+      name: characterName(
+        num(s.tribe) ?? PRIMARY_TRIBE,
+        num(s.jobType),
+        young,
+        entityId,
+        surnameSourceOf(snapshot, ent),
+        isFemale(ent),
+      ),
       // The profession name resolves through the shared catalog + i18n (and, for a building-bound settler,
       // its rebased slot job's content name) so a bound druid reads "Druid", not "Bezrobotny".
       profession: jobDisplayName(ctx, num(s.jobType)),
       // The assign-workplace button is active only for a settler with a real trade (jobType not idle/absent):
-      // an idle settler has no trade to place at a building.
-      canAssignWorkplace: num(s.jobType) !== undefined && num(s.jobType) !== JOB_IDLE,
-      meta,
+      // an idle settler has no trade to place, and a woman takes no trade at all (her work is the household).
+      canAssignWorkplace: num(s.jobType) !== undefined && num(s.jobType) !== JOB_IDLE && !isFemale(ent),
+      // Any adult may pick a home; a growing child (`Age`) moves with its parents instead.
+      canAssignHome: !young,
+      meta: meta + ageSuffix,
       statusCaption: settlerStatus(comps),
       bars: satisfactionBars(comps),
       work: settlerWork(ctx, snapshot, comps),

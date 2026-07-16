@@ -9,6 +9,7 @@ import {
   WHEAT_HARVEST_ATOMIC,
 } from '../../../../catalog/atomics.js';
 import { HUMAN_HITPOINTS } from '../../../../catalog/units.js';
+import { KISS_ATOMIC, KISSED_ATOMIC } from '../../../../content/settler-gfx/index.js';
 import { PRIMARY_TRIBE } from '../../../rules.js';
 import {
   BUILD_HOUSE_ATOMIC,
@@ -16,12 +17,14 @@ import {
   JOB_ARCHER,
   JOB_ARCHER_LONG,
   JOB_BUILDER,
+  JOB_CIVILIST,
   JOB_FARMER_SLOT,
   JOB_SCOUT,
   JOB_SOLDIER_BROADSWORD,
   JOB_SOLDIER_SPEAR,
   JOB_SOLDIER_SWORD,
   JOB_SOLDIER_UNARMED,
+  JOB_WOMAN,
 } from '../../ids/index.js';
 import {
   BUILD_GUIDE_ANIMATION,
@@ -34,6 +37,11 @@ import {
 } from '../../work-animations.js';
 import type { SandboxContentExtras } from '../types.js';
 import { SANDBOX_JOB_ENABLES } from './tech-graph.js';
+
+/** The make-love atomic (`logicdefines.inc` MAKE_LOVE = 78) — the hearts phase's duration key. The
+ *  sim transcribes the same id (`systems/family/children.ts` MAKE_LOVE_ATOMIC_ID); both pin to the
+ *  decoded define, so neither can drift alone. */
+const MAKE_LOVE_ATOMIC = 78;
 
 export interface SandboxTribe {
   readonly typeId: number;
@@ -59,6 +67,14 @@ export function buildSandboxTribes(
         atomicId: gatherer.atomic,
         animation: gatherer.animation,
       })),
+      // The family pair: kiss/kissed (atomics 20/21) time the wedding, make_love (78) times the
+      // hearts phase — bound for the woman/civilist jobs like the original's `setatomic 5/6` rows.
+      { jobType: JOB_WOMAN, atomicId: KISS_ATOMIC, animation: 'viking_woman_kiss' },
+      { jobType: JOB_WOMAN, atomicId: KISSED_ATOMIC, animation: 'viking_woman_kissed' },
+      { jobType: JOB_WOMAN, atomicId: MAKE_LOVE_ATOMIC, animation: 'viking_woman_make_love' },
+      { jobType: JOB_CIVILIST, atomicId: KISS_ATOMIC, animation: 'viking_civilist_kiss' },
+      { jobType: JOB_CIVILIST, atomicId: KISSED_ATOMIC, animation: 'viking_civilist_kissed' },
+      { jobType: JOB_CIVILIST, atomicId: MAKE_LOVE_ATOMIC, animation: 'viking_civilist_make_love' },
       { jobType: JOB_SOLDIER_UNARMED, atomicId: ATTACK_ATOMIC, animation: 'viking_fist_attack' },
       { jobType: JOB_BUILDER, atomicId: BUILD_HOUSE_ATOMIC, animation: BUILD_HOUSE_ANIMATION },
       { jobType: JOB_SCOUT, atomicId: BUILD_GUIDE_ATOMIC, animation: BUILD_GUIDE_ANIMATION },

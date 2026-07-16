@@ -43,6 +43,15 @@ export function buildSandboxAtomicAnimations(): readonly object[] {
     })),
     { id: STORE_PICKUP_ANIMATION, name: STORE_PICKUP_ANIMATION, length: STORE_EXCHANGE_LENGTH },
     { id: STORE_PILEUP_ANIMATION, name: STORE_PILEUP_ANIMATION, length: STORE_EXCHANGE_LENGTH },
+    // The wedding kiss + the couple's make-love clocks — EXTRACTED lengths from the mod's
+    // `atomicanimations12/atomicanimations.ini` (kiss/kissed 50; woman make_love 50, civilist 200 —
+    // the hearts phase runs the longer clock).
+    { id: 'viking_woman_kiss', name: 'viking_woman_kiss', length: 50 },
+    { id: 'viking_woman_kissed', name: 'viking_woman_kissed', length: 50 },
+    { id: 'viking_civilist_kiss', name: 'viking_civilist_kiss', length: 50 },
+    { id: 'viking_civilist_kissed', name: 'viking_civilist_kissed', length: 50 },
+    { id: 'viking_woman_make_love', name: 'viking_woman_make_love', length: 50 },
+    { id: 'viking_civilist_make_love', name: 'viking_civilist_make_love', length: 200 },
     {
       id: 'viking_fist_attack',
       name: 'viking_fist_attack',

@@ -306,9 +306,12 @@ export function characterName(
   young: boolean,
   entityId: number,
   surnameFromEntityId?: number,
+  female?: boolean,
 ): string {
   const pool = NAME_POOLS[tribe] ?? FALLBACK_POOL;
-  const sex = settlerSex(jobType, young);
+  // The sim's persistent `Female` marker wins when the caller has it (a woman re-professioned into a
+  // trade keeps her name); the jobType inference remains the fallback for callers without a snapshot.
+  const sex = female === undefined ? settlerSex(jobType, young) : female ? 'female' : 'male';
   const firstNames = pool[sex];
   const fatherNames = pool.male; // a surname is a patronymic of a (male) father's given name
   const first = firstNames[nameGridCell(entityId, firstNames.length, fatherNames.length).first] as string;

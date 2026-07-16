@@ -13,9 +13,8 @@ import type { SystemContext } from '../context.js';
  * The **housing capacity** a `tribe` currently has: the sum of the `homeSize` of its placed, fully
  * **built** `home` buildings. This is the sim's first consumer of the extracted `homeSize` param
  * (the original `logichousetype` `logichomesize` — the population a residence shelters: home level
- * 00 → 1, ... level 04 → 5). It is the ceiling the population grows into — the housing half of the
- * plan's `house leveling → population capacity → births→housing→births` loop, the number the
- * ReproductionSystem will gate births on (a tribe can only grow while it has room).
+ * 00 → 1, ... level 04 → 5). A tribe-level read view (the HUD's population/housing readout mirrors
+ * it); births themselves are gated per home by its family slots (`familiesOf`), not by this sum.
  *
  * Only a **built** residence counts (`built >= ONE`): a home still under construction shelters no
  * one yet (the slice places buildings already built, but the ConstructionSystem will start them at
@@ -62,9 +61,8 @@ export function homeNextTier(type: BuildingType, ctx: SystemContext): BuildingTy
 
 /**
  * The current **population** of a `tribe`: the number of its living {@link Settler}s. The other half
- * of the housing read model ({@link housingCapacity} is the ceiling): the ReproductionSystem gates a
- * birth on `population < housingCapacity`, and a future "population vs housing capacity" invariant
- * compares the two. Counts every settler regardless of job (idle settlers are still mouths to house).
+ * of the housing read model ({@link housingCapacity} is the ceiling the HUD readout compares it to).
+ * Counts every settler regardless of job (idle settlers are still mouths to house).
  *
  * Determinism: a pure count over `query(Settler)` (addition commutes — a count is order-independent,
  * so the store-order traversal is fine, like {@link workerPresentAt}'s any-match); no RNG/wall-clock.

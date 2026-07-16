@@ -97,6 +97,12 @@ export interface SettlerLayout {
   readonly assignIcon: Rect;
   /** The assign row's description column, right of the round button ("Przydziel miejsce pracy"). */
   readonly assignLabel: Rect;
+  /** The "przypisz dom" hit target under the assign row — same shape as {@link assignButton}. */
+  readonly homeButton: ButtonHit;
+  /** The small round assign-home button (the drawn control). Equals {@link homeButton}'s rect. */
+  readonly homeIcon: Rect;
+  /** The assign-home row's description column ("Przypisz dom"). */
+  readonly homeLabel: Rect;
   readonly gatherChoiceHits: readonly GatherChoiceHit[];
   /** The craft product toggles (exclusive with {@link gatherChoiceHits} — same grid slot). */
   readonly craftChoiceHits: readonly CraftChoiceHit[];
@@ -143,7 +149,9 @@ export function layoutSettler(
   const gatherTopGap = hasGather ? gatherRowGap : 0;
   // Larger separation before the assign row when gather buttons sit above it; the small default otherwise.
   const preAssignGap = hasGather ? gatherAssignSep : assignRowGap;
-  const workBodyH = WORK_ROWS * rowH + gatherTopGap + gatherBlockH + preAssignGap + assignIconSize;
+  // Two stacked control rows close the Praca body: assign-workplace, then assign-home below it.
+  const workBodyH =
+    WORK_ROWS * rowH + gatherTopGap + gatherBlockH + preAssignGap + 2 * assignIconSize + assignRowGap;
   const expBodyH = EXP_ROWS * rowH;
   const equipBodyH = model.equipmentRows.length * equipRowH;
 
@@ -227,6 +235,11 @@ export function layoutSettler(
     enabled: model.canAssignWorkplace,
     rect: assignIcon,
   };
+  // The assign-home row, directly below — the residential twin (same geometry, one row down).
+  const homeTop = assignTop + assignIconSize + assignRowGap;
+  const homeIcon: Rect = { x: work.body.x, y: homeTop, w: assignIconSize, h: assignIconSize };
+  const homeLabel: Rect = { x: assignLabel.x, y: homeTop, w: assignLabel.w, h: assignIconSize };
+  const homeButton: ButtonHit = { action: 'assign-home', enabled: model.canAssignHome, rect: homeIcon };
 
   const experience = next(expBodyH);
   const expRow: Rect = { x: experience.body.x, y: experience.body.y, w: experience.body.w, h: rowH };
@@ -265,6 +278,9 @@ export function layoutSettler(
     assignButton,
     assignIcon,
     assignLabel,
+    homeButton,
+    homeIcon,
+    homeLabel,
     gatherChoiceHits,
     craftChoiceHits,
     experience,

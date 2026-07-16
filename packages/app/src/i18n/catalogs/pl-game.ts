@@ -2,13 +2,15 @@ export const plGame = {
   hud: {
     changeProfession: 'Zmiana zawodu',
     build: 'Budowa',
-    assignHome: 'Przypisz dom',
+    assignHome: 'Przydziel dom',
     animal: 'Zwierzę',
     general: 'Ogólne',
     defence: 'Obrona',
     production: 'Produkcja',
     stock: 'Magazyn',
     workers: 'Pracownicy',
+    residents: 'Mieszkańcy',
+    families: 'Liczba Rodzin',
     work: 'Praca',
     experience: 'Doświadczenie',
     equipment: 'Ekwipunek',
@@ -28,6 +30,8 @@ export const plGame = {
     assignWorkplace: 'Przydziel miejsce pracy',
     assignWorkplaceHint:
       'Kliknij, a następnie wskaż budynek: zielone mają wolne miejsce dla tego osadnika, czerwone nie. LPM przydziela, PPM lub Esc anuluje.',
+    assignHomeHint:
+      'Kliknij, a następnie wskaż dom: zielone mają wolne miejsce dla tej rodziny, czerwone nie. LPM przydziela całą rodzinę, PPM lub Esc anuluje.',
     defenseStopped: 'Obrona zatrzymana',
     demolish: 'Zniszcz',
     signpost: 'Drogowskaz',
@@ -59,6 +63,7 @@ export const plGame = {
       idle: 'bezczynny',
     },
     playerTribe: 'Gracz #{player} · Plemię {tribe}{stance}',
+    age: 'Wiek: {years}',
     stance: ' · {stance}',
     health: 'Zdrowie',
     hunger: 'Głód',
@@ -106,19 +111,33 @@ export const plGame = {
     // of the English original "Erect Signpost" is used instead (named deviation).
     erectSignpost: 'Postaw drogowskaz',
     attack: 'Atak',
-    assign_house: 'Przypisz dom',
+    // The family action labels are the decoded originals (`content/gui/strings/pol.json` humanwindow
+    // 21/23/24/28), not invented phrasing.
+    assign_house: 'Przydziel dom',
     animal: 'Zwierzę',
     vehicle: 'Pojazd',
-    marry: 'Szukaj partnera',
+    marry: 'Ożeń',
+    make_son: 'Niech ma Chłopca',
+    make_daughter: 'Niech ma Dziewczynkę',
     pray: 'Modlitwa',
     talk: 'Rozmowa',
     sleep: 'Sen',
     eat: 'Jedzenie',
     bottom_last: 'Niedostępne',
-    house_a: 'Przypisanie domu',
-    house_b: 'Przypisanie domu',
-    house_c: 'Przypisanie domu',
-    house_d: 'Przypisanie domu',
+    house_a: 'Przydział domu',
+    house_b: 'Przydział domu',
+    house_c: 'Przydział domu',
+    house_d: 'Przydział domu',
+  },
+  // The non-trade life-stage roles (`jobtypes.ini` 1..6), keyed by the content job SLUG — the details
+  // panel resolves these before falling back to the raw content name (which is the untranslated slug).
+  lifeStage: {
+    baby_female: 'Niemowlę (dziewczynka)',
+    baby_male: 'Niemowlę (chłopiec)',
+    child_female: 'Dziewczynka',
+    child_male: 'Chłopiec',
+    woman: 'Kobieta',
+    civilist: 'Cywil',
   },
   admin: {
     toggle: '🛠 Admin / Debug',

@@ -20,6 +20,8 @@ import {
   EAT_ATOMIC,
   HAMMER_SEQ,
   HAMMER_TICKS_PER_FRAME,
+  KISS_ATOMIC,
+  KISSED_ATOMIC,
   PICKUP_SEQ,
   PRAY_ATOMIC,
   REAP_SEQ,
@@ -83,6 +85,12 @@ export interface CharacterSpec {
    */
   readonly attack?: string;
   /**
+   * Committed anchor calibration: px added to every body frame's draw `offsetY` — for a lib whose
+   * authored hotspots don't put the feet at the anchor. Measured against the other bodies' feet line
+   * (their sprite bottoms land ~4..9 px below the anchor).
+   */
+  readonly feetShiftY?: number;
+  /**
    * The combat-engaged gait bobseq names (`..._walk_agressive` / `..._wait_agressive`) — the readied
    * walk/stand a soldier plays while advancing on or squaring up to an enemy. Bound to
    * {@link import('@open-northland/render').SettlerStateBinding.engaged}; absent for looks with no aggressive
@@ -121,6 +129,9 @@ export const CHARACTER_SPECS = {
       [EAT_ATOMIC]: { seq: 'human_man_generic_eat' },
       [SLEEP_ATOMIC]: { seq: 'human_man_generic_sleep' },
       [PRAY_ATOMIC]: { seq: 'human_man_generic_pray' },
+      // The wedding kiss — the body's one kiss clip serves both the kiss and kissed roles.
+      [KISS_ATOMIC]: { seq: 'human_man_generic_kiss' },
+      [KISSED_ATOMIC]: { seq: 'human_man_generic_kiss' },
       [STORE_PICKUP_ATOMIC]: { seq: PICKUP_SEQ },
       [STORE_PILEUP_ATOMIC]: { seq: PICKUP_SEQ },
     },
@@ -143,6 +154,11 @@ export const CHARACTER_SPECS = {
       [CULTIVATE_ATOMIC]: WATER_SEQ,
       // The builder's hammer (action 39, 13 entries/dir) at half cadence — see HAMMER_TICKS_PER_FRAME.
       [BUILD_HOUSE_ATOMIC]: { seq: HAMMER_SEQ, ticksPerFrame: HAMMER_TICKS_PER_FRAME },
+      // The kiss plays directionally (the `[gfxanimatomic]` action-20/21 per-facing lists — the 60-frame
+      // strip is direction blocks, not a clean ×8), so the groom faces his bride instead of cycling the
+      // whole strip (the reported "spinning" kiss); the render faces him at her (TARGET_FACING).
+      [KISS_ATOMIC]: 'human_man_generic_kiss',
+      [KISSED_ATOMIC]: 'human_man_generic_kiss',
     },
   },
   scout: {
@@ -179,8 +195,17 @@ export const CHARACTER_SPECS = {
       [EAT_ATOMIC]: { seq: 'human_woman_generic_eat' },
       [SLEEP_ATOMIC]: { seq: 'human_woman_generic_sleep' },
       [PRAY_ATOMIC]: { seq: 'human_woman_generic_pray' },
+      // The wedding kiss — the body's one kiss clip serves both the kiss and kissed roles.
+      [KISS_ATOMIC]: { seq: 'human_woman_generic_kiss' },
+      [KISSED_ATOMIC]: { seq: 'human_woman_generic_kiss' },
       [STORE_PICKUP_ATOMIC]: { seq: 'human_woman_generic_pick_up' },
       [STORE_PILEUP_ATOMIC]: { seq: 'human_woman_generic_pick_up' },
+    },
+    // The directional kiss — the same action-20/21 per-facing lists as the man's (job 5 rows), so the
+    // bride faces her groom rather than cycling the whole strip.
+    dirListAtomics: {
+      [KISS_ATOMIC]: 'human_woman_generic_kiss',
+      [KISSED_ATOMIC]: 'human_woman_generic_kiss',
     },
   },
   boy: {
@@ -195,7 +220,13 @@ export const CHARACTER_SPECS = {
   },
   baby: {
     rosterId: 'baby',
+    // The crawl (104 frames = a clean ×8 13-frame cycle) — the baby's locomotion, so a wandering
+    // newborn crawls instead of gliding in its wait pose.
+    walkSeq: 'human_child_baby_generic_crouch',
     waitSeq: 'human_child_baby_generic_wait',
+    // The baby lib's authored hotspots float its sprite bottom 4..10 px ABOVE the anchor (every other
+    // body lands 4..9 px below) — the reported "hovering baby". +14 re-seats it on the ground.
+    feetShiftY: 14,
   },
   // Attack + aggressive-gait bindings are the viking (`logicdefines.inc` TRIBE_TYPE_HUMAN_VIKING = 1)
   // `[gfxanimatomic]` action-81 joins — transcribed, not guessed: short sword swings Sword_Attack_2,
