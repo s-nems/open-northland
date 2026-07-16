@@ -84,10 +84,10 @@ function centroid(
  * lower bound is deliberate: an RTS renders only what's on screen, so the min zoom bounds the visible tile
  * + bob count (and thus frame cost), not a whole-map fit — a mid-size decoded map must NOT fit on screen
  * whole (hands-on feedback + the measured zoomed-out allocation churn,
- * `docs/tickets/render/zoom-out-allocation-churn.md`). `0.25` (4× out) still frames a battle or a
+ * `docs/tickets/render/zoom-out-allocation-churn.md`). `0.35` (~3× out) still frames a battle or a
  * settlement cluster; lower it only alongside a zoom-out LOD (marker sprites + animation freeze).
  */
-export const MIN_ZOOM = 0.25;
+export const MIN_ZOOM = 0.35;
 export const MAX_ZOOM = 8;
 /** Per-wheel-notch zoom factor (one notch in multiplies, one out divides). */
 const WHEEL_ZOOM_STEP = 1.1;
