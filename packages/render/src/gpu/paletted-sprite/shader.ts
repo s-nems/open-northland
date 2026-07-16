@@ -50,10 +50,10 @@ uniform vec4 uSilhouette;   // .rgb: flat override colour, .w > 0.5: silhouette 
 // GUI transparent key — our floating-HUD deviation, not an original mechanism (the engine blitter has no
 // colour key; see source basis "Left tool panel"). The in-game GUI palettes (iconsleft/context/…) reserve
 // palette index 0 as a magenta sentinel (255,0,255) and a band of near-black entries (max channel ≲ 28/255)
-// as each element's background. The indexed atlases bake every written pixel opaque (the pipeline flattens
-// Double8Bit coverage for this LUT path — see packIndexedBobAtlas), so an element drawn straight would carry
-// an opaque dark rectangle over the world — which the original hid by rendering gameplay in a dedicated
-// area, but we render full-screen.
+// as each element's background. The indexed atlases bake every written pixel at its authored coverage
+// (graded alpha — see packIndexedBobAtlas), but a GUI element's background pixels are fully covered, so an
+// element drawn straight would carry an opaque dark rectangle over the world — which the original hid by
+// rendering gameplay in a dedicated area, but we render full-screen.
 //
 // The two classes are keyed independently (uColorKey.x = magenta, uColorKey.y = near-black band or round-disc
 // clip), because they are not both "background" for every element. Large panel/window elements (iconsleft) use
@@ -72,7 +72,7 @@ void main(void) {
   // textureLod(..., 0.0): sample the base level only. An index/LUT read must never hit a blended mip — an
   // averaged index would decode to the wrong palette entry. (Pixi v8 defaults to no mipmaps, but be explicit.)
   vec4 texel = textureLod(uTexture, vUV, 0.0);
-  if (texel.a < 0.5) discard; // transparent bob pixel
+  if (texel.a == 0.0) discard; // unwritten bob pixel
   // Recover the exact palette index (0..255) from the red channel, then read the player's LUT row.
   float index = floor(texel.r * 255.0 + 0.5);
   vec2 lutUV = vec2((index + 0.5) / uLutSize.x, (uPlacement.w + 0.5) / uLutSize.y);
@@ -103,7 +103,9 @@ void main(void) {
   if (uSilhouette.w > 0.5) {
     rgb = uSilhouette.rgb;
   }
-  finalColor = vec4(rgb, 1.0);
+  // Modulate by the texel's authored coverage (premultiplied — Pixi's normal blend expects it), so the
+  // graded indexed bake's feathered edges draw translucent instead of binary.
+  finalColor = vec4(rgb, 1.0) * texel.a;
 }`;
 
 /** A unit quad's index buffer (two triangles) — positions/UVs are rewritten per frame by the sprite's `setFrame`. */

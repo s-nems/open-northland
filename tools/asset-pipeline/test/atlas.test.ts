@@ -263,7 +263,7 @@ describe('expandBobFrameIndexed', () => {
 });
 
 describe('packIndexedBobAtlas', () => {
-  it('flattens Double8Bit coverage to opaque (the LUT shader draws binary alpha)', () => {
+  it('keeps Double8Bit coverage graded (the LUT shader modulates by alpha)', () => {
     // One type-4 bob, raw run of 2 [index, alpha] pairs with a graded alpha byte 0x40.
     const bmd = makeBmd([
       {
@@ -279,8 +279,8 @@ describe('packIndexedBobAtlas', () => {
       const o = (ATLAS_GUTTER * indexed.image.width + ATLAS_GUTTER + x) * 4;
       return [...indexed.image.rgba.subarray(o, o + 4)];
     };
-    // The RGB path would bake 0x40; the indexed path flattens every written pixel to 255.
-    expect(px(0)).toEqual([7, 0, 0, 255]);
+    // Same graded bake as the RGB path: the authored 0x40 coverage rides into the sheet's alpha.
+    expect(px(0)).toEqual([7, 0, 0, 0x40]);
     expect(px(1)).toEqual([8, 0, 0, 255]);
   });
 
