@@ -43,12 +43,23 @@ export function evictSettlersFromFootprint(world: World, ctx: SystemContext, bui
   }
   if (body.size === 0) return;
 
-  const standing = canonicalById(world.query(Settler, Position, Owner)).filter(
-    (e) => !isTravelling(world, e),
-  );
-  const evictees = standing.filter((e) => body.has(settlerNode(world, terrain, e)));
-  if (evictees.length === 0) return;
+  // One unsorted pass: every non-travelling owned settler (for the occupancy check) and, of those, the
+  // ones standing on the body (the evictees). The sort is deferred to the evictees alone — the common
+  // case (a finish with no stray on the plot) early-outs here before any sort, NodeBuckets, or overlay
+  // build, so a tick of many simultaneous finishes doesn't pay a full settler sort per building.
+  const standing: Entity[] = [];
+  const evicteesUnsorted: Entity[] = [];
+  for (const e of world.query(Settler, Position, Owner)) {
+    if (isTravelling(world, e)) continue;
+    standing.push(e);
+    if (body.has(settlerNode(world, terrain, e))) evicteesUnsorted.push(e);
+  }
+  if (evicteesUnsorted.length === 0) return;
+  // Only the evictees need canonical order — it fixes the deterministic Position-write + claim order.
+  const evictees = canonicalById(evicteesUnsorted);
 
+  // Occupancy is read only for `.at(x,y).length` (is a cell already stood on?), a membership count
+  // independent of input order — so the unsorted `standing` list is fine here (unlike NodeBuckets.nearest).
   const occupancy = new NodeBuckets(world, standing);
   const blocked = dynamicBlockedCells(world, ctx, terrain); // includes this building's own body
   const claimed = new Set<NodeId>();

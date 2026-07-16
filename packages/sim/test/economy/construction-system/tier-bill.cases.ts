@@ -21,9 +21,10 @@ import {
  * The FROM-SCRATCH construction bill of a home tier is CUMULATIVE — placing tier N directly costs
  * every chain stage 1..N (merged per good), never just tier N's own per-stage cost, so the direct
  * build is exactly as expensive (in materials, and — through the per-unit strike count — in builder
- * time) as building tier 1 and upgrading up. Source basis: observed original behavior (a
- * directly-placed higher home is never cheaper than the upgrade path). The chain fixture: L0 = 1
- * stone, L1 = 2 stone, L2 = 1 wood — so L2 from scratch bills 3 stone + 1 wood.
+ * time) as building tier 1 and upgrading up. Source basis: the per-tier costs are extracted; the merge
+ * is our design invariant — the original only upgrades homes, so pricing a direct tier-N placement at the
+ * tier-1-then-upgrade total keeps it from undercutting that path. The chain fixture: L0 = 1 stone,
+ * L1 = 2 stone, L2 = 1 wood — so L2 from scratch bills 3 stone + 1 wood.
  */
 describe('constructionSystem — cumulative tier bill (a from-scratch home site pays every stage)', () => {
   it('merges the whole chain into the bill: tier N site sums stages 1..N per good, sorted', () => {

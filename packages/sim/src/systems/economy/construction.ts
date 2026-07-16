@@ -52,8 +52,9 @@ import {
  *
  * Source basis: the site-then-build flow, the per-tier material cost (`construction`, graphics-table
  * `LogicConstructionGoods`), and the per-building max HP (`logichitpoints`) are extracted/faithful; a
- * directly-placed home tier paying its whole cumulative chain bill matches the observed original (building
- * tier N is never cheaper than upgrading to it — see `constructionBillOf`); the
+ * directly-placed home tier paying its whole cumulative chain bill is our design invariant (the original
+ * only upgrades homes, so direct tier-N placement is an OpenNorthland capability priced to the tier-1-then-
+ * upgrade total rather than let it undercut that path — see `constructionBillOf`); the
  * builder-driven pace (several hammer strikes per unit) and the consume-when-complete / upgrade-when-paid
  * behaviors are our design (the engine's build/upgrade loop has no oracle). Determinism: buildings are visited
  * in the Building store's insertion order, every decision reads content + the site's own components, and every
@@ -196,7 +197,7 @@ export function advanceConstructionLabor(world: World, ctx: SystemContext, site:
   const totalStrikes = constructionTotalUnits(world, ctx, site) * STRIKES_PER_UNIT;
   // At least 1 ULP per strike so even an (unrealistically) huge-cost building still finishes rather than
   // stalling on a quantum that truncated to zero: `trunc(ONE / totalStrikes)` floors to 0 once
-  // `totalStrikes > ONE`. Inert for real content (a 6-unit home's quantum is ~2730), so goldens hold.
+  // `totalStrikes > ONE`. Inert for real content (the 4-unit base home is 104 strikes → quantum ~630).
   const quantum = totalStrikes > 0 ? (Math.max(1, fx.div(ONE, fx.fromInt(totalStrikes))) as Fixed) : ONE;
   // Cap the swing at the delivered-material fraction: quantum truncation would otherwise park `labor` a
   // hair above `delivered`, and `built = min(labor, delivered)` would then jump when the next material

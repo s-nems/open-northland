@@ -10,10 +10,12 @@ export const VehicleType = z.strictObject({
   id: z.string(),
   name: z.string().optional(),
   /**
-   * `stockslots` — how many goods units the vehicle can haul at once: the carrier's carry capacity
-   * (handcart 15, oxcart 30, ship small 50, ship big 200; the catapult carries 0). The sim's
-   * `carrierCarryCapacity` (sim's `systems/progression.ts`) consumes this — a carrier hauls a batch up
-   * to the largest `stockSlots` among its tribe's unlocked vehicles, not a single unit. Defaults 0 (no
+   * `stockslots` — how many goods units the vehicle can haul at once: its hold capacity (handcart 15,
+   * oxcart 30, ship small 50, ship big 200; the catapult carries 0). A settler on foot always carries a
+   * single unit (`Settler.CARRY_CAPACITY`); this larger capacity belongs to the vehicle itself and is
+   * consumed today only by the ship-cargo readview (`maxShipCargo`/`shipVehicles`). Wiring a cart/vehicle
+   * as an entity with its own hold — so a hauler fetches and parks one — is the deferred vehicle-entity
+   * slice; it must model the vehicle's hold, never inflate a person's personal carry. Defaults 0 (no
    * record observed without it).
    */
   stockSlots: z.number().int().nonnegative().default(0),
