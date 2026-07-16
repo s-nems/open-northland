@@ -74,7 +74,8 @@ export function createSettler(world: World, content: ContentSet, rng: Rng, spec:
     fatigue: rollInitialNeed(rng),
     piety: rollInitialNeed(rng),
     enjoyment: rollInitialNeed(rng),
-    experience: new Map<number, number>(),
+    // Starting XP (a spawned veteran) or empty; the map hashes in sorted-key order either way.
+    experience: new Map<number, number>(spec.experience ?? []),
   });
   // Every settler carries a `Health` pool. The pool comes from the content — the settler's tribe HP
   // ({@link settlerHitpoints}), the human counterpart to an animal's `hitpointsAdult` — so every spawn on
