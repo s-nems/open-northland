@@ -8,7 +8,9 @@ import {
 } from '../../../../catalog/atomics.js';
 import {
   CLAY_DEPOSIT_UNITS,
+  CLAY_MINE_STRIKES_PER_UNIT,
   GOLD_DEPOSIT_UNITS,
+  HARD_MINE_STRIKES_PER_UNIT,
   IRON_DEPOSIT_UNITS,
   MINE_LEVELS,
   STONE_DEPOSIT_UNITS,
@@ -30,6 +32,7 @@ export interface GathererSpec {
   readonly nodes: number;
   readonly depositUnits?: number;
   readonly depositLevels?: number;
+  readonly strikesPerUnit?: number;
 }
 
 /** One row per gatherable good: its job, harvest atomic + clip, and how its nodes deplete. */
@@ -53,6 +56,7 @@ export const GATHERERS: readonly GathererSpec[] = [
     nodes: 1,
     depositUnits: STONE_DEPOSIT_UNITS,
     depositLevels: MINE_LEVELS,
+    strikesPerUnit: HARD_MINE_STRIKES_PER_UNIT,
   },
   {
     good: GOOD_MUD,
@@ -64,6 +68,7 @@ export const GATHERERS: readonly GathererSpec[] = [
     nodes: 1,
     depositUnits: CLAY_DEPOSIT_UNITS,
     depositLevels: MINE_LEVELS,
+    strikesPerUnit: CLAY_MINE_STRIKES_PER_UNIT,
   },
   {
     good: GOOD_IRON,
@@ -75,6 +80,7 @@ export const GATHERERS: readonly GathererSpec[] = [
     nodes: 1,
     depositUnits: IRON_DEPOSIT_UNITS,
     depositLevels: MINE_LEVELS,
+    strikesPerUnit: HARD_MINE_STRIKES_PER_UNIT,
   },
   {
     good: GOOD_GOLD,
@@ -86,6 +92,7 @@ export const GATHERERS: readonly GathererSpec[] = [
     nodes: 1,
     depositUnits: GOLD_DEPOSIT_UNITS,
     depositLevels: MINE_LEVELS,
+    strikesPerUnit: HARD_MINE_STRIKES_PER_UNIT,
   },
   {
     good: GOOD_MUSHROOM,

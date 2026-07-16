@@ -64,7 +64,7 @@ export interface PooledEntity {
    *  layer). Always present (not optional) so the pooled entity keeps a stable, monomorphic shape. */
   reveal: number | undefined;
   /** The entity's inter-tick motion track — the last two tick anchors plus the lerped drawn anchor
-   *  ({@link import('./motion.js').trackMotion}); 20 Hz sim steps draw as continuous frame-rate motion.
+   *  ({@link import('./motion.js').trackMotion}); 12 Hz sim steps draw as continuous frame-rate motion.
    *  `tick` −1 = fresh. */
   readonly motion: MotionTrack;
 }

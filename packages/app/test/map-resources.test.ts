@@ -1,5 +1,6 @@
 import { components, Simulation } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
+import { HARD_MINE_STRIKES_PER_UNIT } from '../src/catalog/mining.js';
 import type { ContentIr } from '../src/content/ir.js';
 import { harvestGoodByObjectName, mapResourceSpawns } from '../src/content/map-resources.js';
 import { sandboxContent } from '../src/game/sandbox/content/index.js';
@@ -103,6 +104,7 @@ describe('spawnMapResources — end-to-end over real sandbox content', () => {
     const mined = resources.filter((e) => sim.world.has(e, MineDeposit));
     expect(felled).toHaveLength(2); // the two trees chop down
     expect(mined).toHaveLength(1); // the rock is a finite deposit
+    expect(sim.world.get(mined[0] as number, MineDeposit).strikesPerUnit).toBe(HARD_MINE_STRIKES_PER_UNIT);
     // Every map-spawned node carries its placement's OWN gfx record as the render-variant tag (the
     // IR/app numbering — deliberately unrelated to the sim content's footprint records).
     expect(resources.map((e) => sim.world.get(e, Resource).gfxIndex).sort()).toEqual([10, 10, 20]);

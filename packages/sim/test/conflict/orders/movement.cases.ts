@@ -30,7 +30,7 @@ describe('moveUnit order', () => {
     const s = sim();
     const e = ownedWoodcutter(s, 0, 0);
     orderMove(s, e, 5, 0);
-    s.run(70); // 5 tiles at 12 ticks/tile ≈ 64 ticks to arrive; the civilian hold is zero
+    s.run(105); // 5 tiles at 18 ticks/tile plus ramp/brake; the civilian hold is zero
 
     const p = s.world.get(e, Position);
     expect([p.x, p.y]).toEqual([fx.fromInt(5), fx.fromInt(0)]); // arrived at the ordered spot

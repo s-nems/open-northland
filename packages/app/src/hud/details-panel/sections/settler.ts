@@ -31,10 +31,11 @@ export function drawSettler(
   model: SettlerPanelModel,
   ui: UiString,
   hoverAction: ButtonAction | null,
+  hoveredGatherGood: number | null | undefined,
   s: number,
 ): void {
   drawGeneralSection(chrome, layout, model, s);
-  drawWorkSection(chrome, layout, model, ui, hoverAction, s);
+  drawWorkSection(chrome, layout, model, ui, hoverAction, hoveredGatherGood, s);
   drawExperienceSection(chrome, layout, model, ui, s);
   drawEquipmentSection(chrome, layout, model, ui, s);
 }
@@ -96,6 +97,7 @@ function drawWorkSection(
   model: SettlerPanelModel,
   ui: UiString,
   hoverAction: ButtonAction | null,
+  hoveredGatherGood: number | null | undefined,
   s: number,
 ): void {
   chrome.window(layout.work.frame);
@@ -108,8 +110,20 @@ function drawWorkSection(
     chrome.textAt(model.work.place, place.x + keyW, place.y + ROW_TEXT_PAD * s, 'white');
   }
   if (product !== undefined) {
-    chrome.textAt(hud.product, product.x, product.y + ROW_TEXT_PAD * s, 'white');
+    chrome.textAt(
+      model.work.gatherChoices.length > 0 ? hud.gatherTarget : hud.product,
+      product.x,
+      product.y + ROW_TEXT_PAD * s,
+      'white',
+    );
     chrome.textAt(model.work.product, product.x + keyW, product.y + ROW_TEXT_PAD * s, 'white');
+  }
+  for (const choice of layout.gatherChoiceHits) {
+    chrome.button(
+      { rect: choice.rect, enabled: true },
+      choice.label,
+      choice.selected || choice.goodType === hoveredGatherGood,
+    );
   }
   // The "przydziel miejsce pracy" button — greyed for a jobless settler (nothing to place).
   chrome.button(layout.assignButton, hud.assignWorkplace, hoverAction === 'assign-workplace');

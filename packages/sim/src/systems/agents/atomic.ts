@@ -33,7 +33,7 @@ import {
 export { applyPendingStaggers, type PendingStagger, resolveCombatHit } from './effects-combat/index.js';
 
 /**
- * The idle breather a gatherer stands between work-swing bursts, in ticks (0.75 s at 20 ticks/s).
+ * The idle breather a gatherer stands between work-swing bursts, in ticks (1.25 s at 12 ticks/s).
  *
  * source-basis (observed): the original's collector swings a couple of times in a row, rests ~0.5–1 s, and
  * swings again, but the readable data carries no rest field — `atomicanimations.ini` lengths cover only the

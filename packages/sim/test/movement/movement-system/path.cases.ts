@@ -21,7 +21,7 @@ describe('movementSystem — path following', () => {
     expect(sim.world.get(e, PathFollow).index).toBe(1);
     expect(sim.world.get(e, PathFollow).speed).toBe(ACCEL_STEP);
     sim.step();
-    // Second tick: the ramp reaches 2·A = 3642 and the E/W step is bit-exact that speed.
+    // Second tick: the ramp reaches 2·A = 2428 and the E/W step is bit-exact that speed.
     expect(sim.world.get(e, Position).x).toBe(fx.add(ACCEL_STEP, ACCEL_STEP));
   });
 
@@ -48,7 +48,7 @@ describe('movementSystem — path following', () => {
     expect(sim.world.get(e, Position).x).toBe(fx.add(before, G));
   });
 
-  it('reaches a one-tile-away waypoint in 15 ticks: consume + ramp-up + cruise + brake ease-out', () => {
+  it('reaches a one-tile-away waypoint in 21 ticks: consume + ramp-up + cruise + brake ease-out', () => {
     expect(MOVE_SPEED_PER_TICK).toBe(fx.divCeil(ONE, fx.fromInt(WALK_TICKS_PER_CELL)));
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     // Start already on waypoint 0, so the run is purely wp0 -> wp1 (one tile east).
@@ -56,9 +56,8 @@ describe('movementSystem — path following', () => {
       { x: 0, y: 0 },
       { x: 1, y: 0 },
     ]);
-    // Model trace (G 5462, A 1821, brake = remaining/2 floored at 2731): consume; 3642, 5462,
-    // then cruise 5462×9 to 58262; brake 3637, 2731 to 64630; snap (906 left).
-    expect(ticksToArrive(sim, e)).toBe(15);
+    // The calibrated 18-tick cruise plus the initial consume, ramp and final brake takes 21 ticks.
+    expect(ticksToArrive(sim, e)).toBe(21);
     expect(pos(sim, e).x).toBeCloseTo(1, 6);
   });
 
@@ -93,8 +92,8 @@ describe('movementSystem — path following', () => {
       { x: 2, y: 0 },
       { x: 3, y: 0 },
     ]);
-    // 1 consume + 13 (first cell, ramping) + 12 (cruise cell) + 13 (last cell, braking) = 39.
-    expect(ticksToArrive(sim, e)).toBe(39);
+    // 1 consume + 19 (first cell, ramping) + 18 (cruise cell) + 19 (last cell, braking) = 57.
+    expect(ticksToArrive(sim, e)).toBe(57);
     expect(pos(sim, e).x).toBeCloseTo(3, 6);
   });
 
@@ -107,20 +106,18 @@ describe('movementSystem — path following', () => {
     sim.step(); // consume wp0 (already on it); no move toward (0,1) yet
     sim.step(); // first move toward (0,1) at 2·A
     const p1 = pos(sim, e);
-    // The leg's world length is ≈0.75 of a column (49143 ulp), so a 2·A = 3642 world-step advances
-    // the row coordinate by 3642/49143 ≈ 0.0741 — the grid delta scaled to the world metric. This is
+    // The leg's world length is ≈0.75 of a column (49143 ulp), so a 2·A = 2428 world-step advances
+    // the row coordinate by 2428/49143 ≈ 0.0494 — the grid delta scaled to the world metric. This is
     // what keeps the ON-SCREEN pace identical in every heading (51 px vs 68 px legs).
     expect(p1.x).toBeCloseTo(0, 9); // the grid delta is pure +row; the stagger lives in the render
-    expect(p1.y).toBeCloseTo(3642 / 49143, 3);
-    // Full leg: ramp 3642+5462(clamp), cruise 5462×6 (to rem ~7267 < 2·G), brake ~3633, 2731,
-    // snap — 11 moving ticks (vs 15 for the ⁴⁄₃-longer E/W cell trip: same world pace).
+    expect(p1.y).toBeCloseTo(2428 / 49143, 3);
     let moveTicks = 1; // the first move above
     while (sim.world.has(e, PathFollow)) {
       sim.step();
       moveTicks++;
       if (moveTicks > 50) throw new Error('leg never completed');
     }
-    expect(moveTicks).toBe(11);
+    expect(moveTicks).toBe(15);
     expect(pos(sim, e).y).toBeCloseTo(1, 6);
   });
 
@@ -157,9 +154,8 @@ describe('movementSystem — path following', () => {
 
   it('paces an off-lattice re-path leg by the world metric too (no lurch)', () => {
     // (0,0) -> (1,1) is NOT a lattice edge (a re-path can still aim anywhere): its world length is
-    // √(1.5² + 0.5588²) ≈ 1.6 columns (104905 ulp). Ramp 3642+5462, cruise 5462×16 (to rem ~8409
-    // < 2·G), brake ~4204, 2731, snap — 21 moving ticks. The point is the pace stays the same
-    // world-distance-per-tick as every other heading.
+    // √(1.5² + 0.5588²) ≈ 1.6 columns (104905 ulp). The point is the pace stays the same
+    // world-distance-per-tick as every other heading despite the calibrated slowdown.
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 4) });
     const e = followerAt(sim, 0, 0, [
       { x: 0, y: 0 },
@@ -172,7 +168,7 @@ describe('movementSystem — path following', () => {
       moveTicks++;
       if (moveTicks > 50) throw new Error('leg never completed');
     }
-    expect(moveTicks).toBe(21);
+    expect(moveTicks).toBe(31);
     expect(pos(sim, e).x).toBeCloseTo(1, 6);
     expect(pos(sim, e).y).toBeCloseTo(1, 6); // lands EXACTLY on the waypoint (the arrival snap)
   });

@@ -21,7 +21,7 @@ export const VOICE_COOLDOWN_MS = 4000;
 /**
  * Clamp on the per-frame `dtMs` the chatter emitter integrates. A backgrounded tab pauses RAF, so the
  * first frame after refocus carries a huge `elapsed` — without this the voice budget would jump by
- * dozens and fire a cluster at once. A quarter second ≈ the sim's ~5-step cap at 20 Hz.
+ * dozens and fire a cluster at once. A quarter second is about three sim ticks at 12 Hz.
  */
 export const MAX_CHATTER_DT_MS = 250;
 /** Prune the per-settler speak-time map past this size (entities die/spawn; ids are never reused). */

@@ -10,13 +10,20 @@ import {
   UnderConstruction,
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import type { TerrainGraph } from '../../../nav/terrain/index.js';
+import { nodeOfPosition } from '../../../nav/halfcell.js';
+import type { BlockOverlay, NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
+import { dynamicBlockOverlay } from '../../footprint/index.js';
 import { canonicalResources } from '../../resource-index.js';
 import { canonicalById } from '../../spatial.js';
-import { isCarrierJob } from '../../stores/index.js';
+import { isCarrierJob, isYardHeap, lowestStockedGood } from '../../stores/index.js';
 import { InteractionCellIndex } from './cell-index.js';
 import { SinkAvailability } from './stores/sinks.js';
+
+export interface YardTargets {
+  readonly blocked: BlockOverlay;
+  readonly occupied: ReadonlyMap<NodeId, { readonly good: number; readonly fill: number }>;
+}
 
 /** Canonically ordered target categories shared by every settler planned during one tick. */
 export interface TargetCandidates {
@@ -44,6 +51,8 @@ export interface TargetCandidates {
   readonly carrierSuppliedWorkplaces: ReadonlySet<Entity>;
   /** Position-independent store-capacity probes, memoized by good for this planner tick. */
   readonly sinks: SinkAvailability;
+  /** Shared dynamic blocks and ground-heap occupancy for every flag delivery planned this tick. */
+  readonly yard: YardTargets;
 }
 
 /** Snapshot the planner's canonical target categories once for the tick. */
@@ -61,6 +70,19 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
   }
 
   const stockpiles = canonicalById(world.query(Stockpile, Position));
+  const yardOccupied = new Map<NodeId, { good: number; fill: number }>();
+  for (const entity of stockpiles) {
+    if (!isYardHeap(world, entity)) continue;
+    const stock = world.get(entity, Stockpile);
+    const good = lowestStockedGood(stock);
+    if (good === null) continue;
+    const p = world.get(entity, Position);
+    const node = nodeOfPosition(p.x, p.y);
+    yardOccupied.set(terrain.nodeAtClamped(node.hx, node.hy), {
+      good,
+      fill: stock.amounts.get(good) ?? 0,
+    });
+  }
   const buildings = canonicalById(world.query(Building, Position));
   const constructionSites = canonicalById(world.query(UnderConstruction, Building, Position));
   return {
@@ -76,5 +98,6 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
     harvestAtomicByGood,
     carrierSuppliedWorkplaces,
     sinks: new SinkAvailability(stockpiles, world, ctx),
+    yard: { blocked: dynamicBlockOverlay(world, ctx, terrain), occupied: yardOccupied },
   };
 }

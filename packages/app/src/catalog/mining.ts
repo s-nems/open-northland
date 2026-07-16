@@ -23,14 +23,13 @@ export const CLAY_DEPOSIT_UNITS = 10;
 export const IRON_DEPOSIT_UNITS = 8;
 export const GOLD_DEPOSIT_UNITS = 6;
 
-/**
- * Work cycles (full authored strikes/digs) a collector lands to chip one unit off a mineral deposit —
- * observed like the deposit sizes: `atomicanimations.ini` pins only the single-swing cycle length
- * (stone 29 / clay 23 ticks), and one swing per unit read as instant. Six strikes ≈ 9–10 s of visible work
- * per unit at the faithful cycle lengths plus the inter-swing rests (sim `HARVEST_REST_TICKS` after every
- * 2nd strike). Sim counter: `MineDeposit.strikesPerUnit`.
- */
-export const MINE_STRIKES_PER_UNIT = 6;
+/** Full strikes needed for one hard-mineral unit. Observed original pacing is 20–25 s: eight 29-tick
+ * cycles plus three 15-tick rests take 277 ticks (about 23.1 s at 12 ticks/s). */
+export const HARD_MINE_STRIKES_PER_UNIT = 8;
+
+/** Full digs needed for one clay unit. Its shorter clip needs nine 23-tick cycles plus four rests,
+ * totaling 267 ticks (about 22.3 s at 12 ticks/s). */
+export const CLAY_MINE_STRIKES_PER_UNIT = 9;
 
 /**
  * The discrete visual fill states a mineral deposit steps down through as it empties — data, not observed:

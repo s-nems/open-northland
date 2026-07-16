@@ -186,7 +186,7 @@ describe('carrier — choosing what to haul', () => {
     sim.world.add(plankPile, Position, { x: fx.fromInt(4), y: fx.fromInt(0) });
     sim.world.add(plankPile, Stockpile, { amounts: new Map([[PLANK, 3]]) });
 
-    for (let i = 0; i < 300; i++) sim.step();
+    for (let i = 0; i < 450; i++) sim.step();
 
     expect(sim.world.get(wh, Stockpile).amounts.get(PLANK) ?? 0).toBe(3); // all the plank was hauled in
     expect(sim.world.get(woodPile, Stockpile).amounts.get(WOOD)).toBe(3); // the full good was left untouched

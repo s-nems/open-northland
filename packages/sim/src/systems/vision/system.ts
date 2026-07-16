@@ -9,8 +9,8 @@ import { FOG_STATE } from './state.js';
 
 /**
  * Ticks between visibility-mask rebuilds. The fog "scan pulse": positions move every tick but the masks refresh
- * on this cadence, so per-tick cost amortizes to (owned entities × vision area) / 5 writes. At 20 ticks/s that
- * is a 250 ms refresh — imperceptible against fog's soft edges. Our design (the original has no observable fog
+ * on this cadence, so per-tick cost amortizes to (owned entities × vision area) / 5 writes. At 12 ticks/s that
+ * is a ~417 ms refresh — imperceptible against fog's soft edges. Our design (the original has no observable fog
  * refresh rate), a deliberate cadence like combat's REPATH_CADENCE.
  */
 export const VISION_CADENCE_TICKS = 5;

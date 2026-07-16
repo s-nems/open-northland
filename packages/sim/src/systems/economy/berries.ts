@@ -9,7 +9,7 @@ import type { System } from '../context.js';
 
 /**
  * Ticks a bare {@link BerryBush} takes to regrow its fruit — the delay between a bush being foraged and becoming
- * ripe (forageable) again. At {@link TICKS_PER_SECOND} = 20 this is ~60 s of game time.
+ * ripe (forageable) again. At {@link TICKS_PER_SECOND} = 12 this is 100 s of game time.
  *
  * Named approximation: the original regrows a bush over the `landscapetypes.ini` growth trigger (`transition 7
  * …`, `bush naked → flowering → with fruits`) whose real period is not decoded, so this single duration stands

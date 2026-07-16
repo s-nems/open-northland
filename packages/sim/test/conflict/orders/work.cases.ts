@@ -12,8 +12,8 @@ import {
   WorkFlag,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { fx } from '../../../src/index.js';
-import { CARPENTER, orderMove, ownedWoodcutter, sim, VIKING, WOODCUTTER } from './support.js';
+import { fx, nodeOfPosition } from '../../../src/index.js';
+import { CARPENTER, orderMove, ownedWoodcutter, sim, VIKING, WOODCUTTER, woodAt } from './support.js';
 
 describe('setJob order', () => {
   it("changes an owned settler's profession and re-idles it (drops binding/action/order)", () => {
@@ -89,6 +89,37 @@ describe('setJob work-flag lifecycle', () => {
     s.step();
     expect(s.world.has(e, WorkFlag)).toBe(false); // binding dropped
     expect(s.world.isAlive(flag)).toBe(false); // marker destroyed — no owner-less flag left behind
+  });
+
+  it('auto-plants on the nearest free field when the gatherer stands on a resource', () => {
+    const s = sim();
+    const e = ownedWoodcutter(s, 2, 1);
+    s.enqueue({ kind: 'setJob', entity: e, jobType: CARPENTER });
+    s.step();
+    const resource = woodAt(s, 2, 1);
+
+    s.enqueue({ kind: 'setJob', entity: e, jobType: WOODCUTTER });
+    s.step();
+
+    const flag = s.world.get(e, WorkFlag).flag;
+    const flagPos = s.world.get(flag, Position);
+    const resourcePos = s.world.get(resource, Position);
+    expect(nodeOfPosition(flagPos.x, flagPos.y)).not.toEqual(nodeOfPosition(resourcePos.x, resourcePos.y));
+  });
+
+  it('clears a resource filter that the new gathering trade cannot harvest', () => {
+    const s = sim();
+    const e = ownedWoodcutter(s, 2, 1);
+    s.enqueue({ kind: 'setJob', entity: e, jobType: WOODCUTTER });
+    s.step();
+    s.enqueue({ kind: 'setGatherGood', entity: e, goodType: 1 });
+    s.step();
+    expect(s.world.get(e, WorkFlag).goodType).toBe(1);
+
+    s.enqueue({ kind: 'setJob', entity: e, jobType: 5 }); // miner: stone only
+    s.step();
+
+    expect(s.world.get(e, WorkFlag).goodType).toBeUndefined();
   });
 
   it('keeps the same flag when the profession stays a gathering trade', () => {

@@ -304,7 +304,7 @@ export class WorldRenderer {
    * growing layer set mints. `selection` is transient view state like the camera, never sim state.
    * `alpha` is the fixed-timestep interpolation fraction (the app loop's `FixedTimestep.advance`
    * return): the pool draws each entity `alpha` of the way from its previous tick anchor to its current
-   * one, so 20 Hz sim motion reads as continuous frame-rate motion; the default 1 draws raw tick
+   * one, so 12 Hz sim motion reads as continuous frame-rate motion; the default 1 draws raw tick
    * positions (the static `?shot` entry).
    */
   update(frame: WorldFrame): void {

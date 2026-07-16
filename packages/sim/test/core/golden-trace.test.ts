@@ -42,8 +42,7 @@ import { grassCellMap as grassMap } from '../fixtures/terrain.js';
  * the HQ and hauls finished planks there too → the carpenter runs its own supply→produce→deliver
  * loop, fetching the HQ's wood into the mill (the input-supply drive) and hauling planks back out.
  * 2 stumps are left where the trees stood; goods are conserved throughout, invariant-clean for the
- * whole 1000-tick tail (10 stored + 8 felled wood; 16 planks complete inside the window — see the
- * produced note).
+ * whole 1000-tick tail (10 stored + 8 felled wood; the produced count is pinned below).
  */
 
 const WOOD = 1;
@@ -124,90 +123,62 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
   // (deposit into a store), 22 = pickup (lift out of a store / off a trunk). Entity 5 = woodcutter, 6 =
   // its WORK FLAG (auto-planted at its feet when it spawns — a gatherer is never free; it carries no
   // atomics), 7 = carrier, 8 = carpenter (the mill's operator, self-servicing: it pickups the HQ's stored
-  // wood into the mill and hauls finished planks back out). If this moves, a settler-economy mechanic
-  // changed — name it in the commit. Last move: CARRIER-BY-ASSIGNMENT — hauling is now worked only by
-  // an employed carrier (the trade AND a binding; "bezrobotny to bezrobotny", nobody freelances), the
-  // HQ fixture gained its transport slot (the original HQ's `logicworker 24` shape) and the JobSystem's
-  // report-in pass posts the loose carrier there on tick 1. The posted carrier also PORTERS: it ferries
-  // the wood banked at the woodcutter's flag into the HQ (its bound store), so more wood reaches the
-  // carpenter's supply loop and two more planks land inside the run (16, was 14); the rebase onto
-  // main folded in its INTER-SWING REST (a breather tail every few harvest swings), so the woodcutter's
-  // chop bursts sit wider apart and the whole cadence downstream shifts with them. (Prior moves:
-  // PRODUCER FETCH-BEFORE-HAUL + WORK-INSIDE; SPAWN-TIME FLAG AUTO-PLANT; e452b766 — the half-cell
-  // navigation migration.)
+  // wood into the mill and hauls finished planks back out). This golden includes the user-observed
+  // movement calibration: every default settler now takes 18 rather than 12 ticks per cell.
   const GOLDEN_TRACE: readonly string[] = [
-    '20:8:22',
-    '31:5:24',
-    '40:8:23',
-    '49:5:24',
-    '52:5:24',
-    '56:5:22',
-    '72:7:22',
-    '80:8:22',
-    '88:5:23',
-    '100:8:23',
-    '116:7:23',
-    '120:5:22',
-    '140:8:22',
-    '152:5:23',
-    '160:7:22',
-    '160:8:23',
-    '199:5:24',
-    '200:8:22',
-    '204:7:23',
-    '217:5:24',
-    '220:5:24',
-    '220:8:23',
-    '224:5:22',
-    '260:8:22',
-    '268:5:23',
-    '272:7:22',
-    '280:8:23',
-    '312:5:22',
-    '320:8:22',
-    '340:7:23',
+    '26:8:22',
+    '43:5:24',
+    '52:8:23',
+    '61:5:24',
+    '64:5:24',
+    '68:5:22',
+    '90:7:22',
+    '98:8:22',
+    '112:5:23',
+    '124:8:23',
+    '152:7:23',
+    '156:5:22',
+    '170:8:22',
+    '196:8:23',
+    '200:5:23',
+    '214:7:22',
+    '242:8:22',
+    '265:5:24',
+    '268:8:23',
+    '276:7:23',
+    '283:5:24',
+    '286:5:24',
+    '290:5:22',
+    '314:8:22',
     '340:8:23',
-    '356:5:23',
-    '380:8:22',
-    '400:8:23',
-    '408:7:22',
-    '440:8:22',
-    '460:8:23',
-    '476:7:23',
-    '500:8:22',
-    '520:8:23',
-    '544:7:22',
-    '560:8:22',
-    '580:8:23',
-    '612:7:23',
-    '620:8:22',
-    '640:8:23',
-    '680:7:22',
-    '680:8:22',
+    '352:5:23',
+    '374:7:22',
+    '386:8:22',
+    '412:8:23',
+    '414:5:22',
+    '458:8:22',
+    '472:7:23',
+    '476:5:23',
+    '484:8:23',
+    '530:8:22',
+    '556:8:23',
+    '570:7:22',
+    '602:8:22',
+    '628:8:23',
+    '668:7:23',
+    '674:8:22',
     '700:8:23',
-    '740:8:22',
-    '748:7:23',
-    '760:8:23',
-    '768:7:22',
-    '788:7:23',
-    '800:8:22',
-    '808:7:22',
-    '820:8:23',
-    '828:7:23',
-    '848:7:22',
-    '860:8:22',
-    '868:7:23',
-    '880:8:23',
-    '888:7:22',
-    '908:7:23',
-    '920:8:22',
-    '928:7:22',
-    '940:8:23',
-    '948:7:23',
-    '968:7:22',
-    '980:8:22',
-    '988:7:23',
-    '1000:8:23',
+    '746:8:22',
+    '766:7:22',
+    '772:8:23',
+    '818:8:22',
+    '844:8:23',
+    '864:7:23',
+    '890:8:22',
+    '916:8:23',
+    '962:7:22',
+    '962:8:22',
+    '988:8:23',
   ];
 
   it('holds every core invariant on every tick', () => {
@@ -217,22 +188,15 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
 
   it('matches the golden final state hash', () => {
     const run = runSlice(SEED, TICKS);
-    // Intentional-change discipline: if this moves, a mechanic changed — name it in the commit.
-    // fe19b319 → d58a6716 (2026-07-12): CARRIER-BY-ASSIGNMENT (see the trace note) — the carrier now
-    // works as the HQ's posted transport (JobAssignment on tick 1) and ferries the flag-banked wood
-    // in, so the settled goods distribution differs (two more planks through, the flag pile drained) —
-    // combined with main's INTER-SWING REST timing folded in by the rebase.
-    expect(run.hash).toBe('d58a6716');
+    // Intentional movement calibration: 18 rather than 12 ticks per cell changes the 1000-tick state.
+    expect(run.hash).toBe('a84d0a80');
   });
 
   it('matches the golden atomic-action trace', () => {
     const run = runSlice(SEED, TICKS);
     expect(run.trace).toEqual(GOLDEN_TRACE);
-    // The carpenter self-supplies the mill from the HQ's stored wood, and the HQ-posted carrier now
-    // ferries the woodcutter's flag-banked wood into the HQ too (the porter rung of its assignment),
-    // so more of the 8 felled wood feeds the supply loop: the plank total settles at 16 inside the
-    // 1000-tick window (was 14 when the flag pile just sat there).
-    expect(run.produced).toBe(16);
+    // The slower journeys leave 13 completed planks inside this fixed 1000-tick observation window.
+    expect(run.produced).toBe(13);
   });
 
   it('is byte-identical across two same-seed runs (determinism)', () => {

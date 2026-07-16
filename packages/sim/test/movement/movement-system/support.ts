@@ -15,8 +15,8 @@ import { ACCEL_TICKS, MOVE_SPEED_PER_TICK } from '../../../src/systems/index.js'
  * The Velocity-only mode is covered by the determinism golden; here we pin the path-follow
  * behaviour, the gait ramp, and the precedence rule.
  *
- * Tick-count pins are derived from the model, not observed: gait G = divCeil(ONE/12) = 5462,
- * accel A = divCeil(G/3) = 1821 per tick, brake floor F = divCeil(G/2) = 2731, brake target =
+ * Tick-count pins are derived from the model: gait G = divCeil(ONE/18) = 3641,
+ * accel A = divCeil(G/3) = 1214 per tick, brake floor F = divCeil(G/2) = 1821, brake target =
  * remaining/2 on the final leg. An E/W step at cruise is bit-exact G (fused mulDiv), so a cruise
  * cell is exactly WALK_TICKS_PER_CELL ticks.
  */

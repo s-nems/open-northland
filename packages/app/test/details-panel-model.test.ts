@@ -7,6 +7,10 @@ import {
   BUILDING_JOINERY,
   BUILDING_MILL,
   GOOD_FLOUR,
+  GOOD_GOLD,
+  GOOD_IRON,
+  GOOD_MUD,
+  GOOD_MUSHROOM,
   GOOD_SHOES,
   GOOD_STONE,
   GOOD_WHEAT,
@@ -308,6 +312,38 @@ describe('selection details panel model', () => {
     expect(barTone(25)).toBe('warn'); // ≥25 stays orange
     expect(barTone(24)).toBe('critical');
     expect(barTone(0)).toBe('critical');
+  });
+
+  it('offers every collector resource plus all in the Praca section and reflects the selected filter', () => {
+    const snapshot: WorldSnapshot = {
+      tick: 0,
+      events: [],
+      entities: [
+        {
+          id: 1,
+          components: {
+            Settler: { tribe: 1, jobType: JOB_COLLECTOR },
+            WorkFlag: { flag: 2, radius: 24, goodType: GOOD_STONE },
+          },
+        },
+      ],
+    };
+    const model = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
+    if (model.kind !== 'settler') throw new Error('expected a settler model');
+
+    expect(model.work.gatherChoices.map((choice) => choice.goodType)).toEqual([
+      null,
+      GOOD_WOOD,
+      GOOD_STONE,
+      GOOD_MUD,
+      GOOD_IRON,
+      GOOD_GOLD,
+      GOOD_MUSHROOM,
+    ]);
+    expect(model.work.selectedGood).toBe(GOOD_STONE);
+    expect(model.work.product).toBe(
+      model.work.gatherChoices.find((choice) => choice.goodType === GOOD_STONE)?.label,
+    );
   });
 
   it('shows a farm as "Farma" with fields production and a single wheat stock row', () => {

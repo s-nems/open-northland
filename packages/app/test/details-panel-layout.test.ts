@@ -1,12 +1,44 @@
 import { ONE } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { BUILDING_FARM, BUILDING_HEADQUARTERS, BUILDING_HOME_00 } from '../src/game/sandbox/ids/index.js';
+import {
+  BUILDING_FARM,
+  BUILDING_HEADQUARTERS,
+  BUILDING_HOME_00,
+  GOOD_STONE,
+  JOB_COLLECTOR,
+} from '../src/game/sandbox/ids/index.js';
 import { buildUnitPanelModel, type StockRow, type UnitPanelModel } from '../src/hud/details-panel/index.js';
 import { layoutDetails, MAX_STOCK_ROWS, stockSlotRects } from '../src/hud/details-panel/layout/index.js';
 import { defaultStockTab } from '../src/hud/details-panel/panel.js';
 import { sandboxCtx } from './support/sandbox.js';
 
 describe('details panel layout', () => {
+  it('lays every gather filter as a clickable Praca button with the current good selected', () => {
+    const model = buildUnitPanelModel(
+      {
+        tick: 0,
+        events: [],
+        entities: [
+          {
+            id: 1,
+            components: {
+              Settler: { tribe: 1, jobType: JOB_COLLECTOR },
+              WorkFlag: { flag: 2, radius: 24, goodType: GOOD_STONE },
+            },
+          },
+        ],
+      },
+      new Set([1]),
+      sandboxCtx(),
+    );
+    const layout = layoutDetails(model, { width: 1600, height: 1200 }, 1);
+    if (layout?.kind !== 'settler') throw new Error('expected a settler layout');
+    expect(layout.gatherChoiceHits).toHaveLength(7);
+    expect(
+      layout.gatherChoiceHits.filter((choice) => choice.selected).map((choice) => choice.goodType),
+    ).toEqual([GOOD_STONE]);
+  });
+
   it('lays the stock grid as MAX_STOCK_ROWS×2 column-major cells inside the body (draw == hit geometry)', () => {
     const body = { x: 10, y: 100, w: 200, h: 132 };
     const slots = stockSlotRects(body, 1);

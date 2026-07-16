@@ -1,8 +1,8 @@
 import type { BuildingFootprint, ContentSet } from '@open-northland/data';
-import { Building, Position, Resource, ResourceFootprint } from '../../components/index.js';
-import type { World } from '../../ecs/world.js';
+import { Building, DeliveryFlag, Position, Resource, ResourceFootprint } from '../../components/index.js';
+import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
-import type { TerrainGraph } from '../../nav/terrain/index.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { ANCHOR_ONLY, buildingFootprintOf, nodeKey } from './geometry.js';
 
@@ -84,6 +84,79 @@ function collectPlacementBlockers(
     (channel === OBSTACLE ? obstacles : exclusions).add(nodeKey(x, y));
   });
   return { terrain, obstacles, exclusions };
+}
+
+/** Whether a work flag may occupy `node`: walkable ground outside every standing resource or building body.
+ * A building's door remains walkable for routing but is still part of its family body, so a flag cannot be
+ * planted inside a doorway; resource/building margin zones remain valid open ground. */
+function workFlagPlacementBlocks(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  ignoreFlag?: Entity,
+): ReadonlySet<NodeId> {
+  const blocked = new Set<NodeId>();
+  const add = (x: number, y: number): void => {
+    if (terrain.inBounds(x, y)) blocked.add(terrain.nodeAt(x, y));
+  };
+  for (const e of world.query(Resource, Position)) {
+    const p = world.get(e, Position);
+    const anchor = nodeOfPosition(p.x, p.y);
+    add(anchor.hx, anchor.hy);
+    const fp = world.tryGet(e, ResourceFootprint);
+    for (const c of fp?.walk ?? []) add(anchor.hx + c.dx, anchor.hy + c.dy);
+  }
+  for (const e of world.query(Building, Position)) {
+    const p = world.get(e, Position);
+    const anchor = nodeOfPosition(p.x, p.y);
+    const building = world.get(e, Building);
+    const fp = buildingFootprintOf(ctx.content, building.buildingType);
+    const body = fp?.familyBody.length ? fp.familyBody : ANCHOR_ONLY;
+    for (const c of body) add(anchor.hx + c.dx, anchor.hy + c.dy);
+  }
+  for (const e of world.query(DeliveryFlag, Position)) {
+    if (e === ignoreFlag) continue;
+    const p = world.get(e, Position);
+    const anchor = nodeOfPosition(p.x, p.y);
+    add(anchor.hx, anchor.hy);
+  }
+  return blocked;
+}
+
+export function canPlaceWorkFlag(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  node: NodeId,
+  ignoreFlag?: Entity,
+): boolean {
+  return terrain.isWalkable(node) && !workFlagPlacementBlocks(world, ctx, terrain, ignoreFlag).has(node);
+}
+
+/** The nearest legal work-flag node to `from`, by Manhattan distance then node id. Auto-created flags use
+ * this when a gatherer spawns or changes trade, because its feet may currently be inside a resource or
+ * building body. This is a one-shot command/spawn query, never per-tick planner work. */
+export function nearestWorkFlagPlacement(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  from: NodeId,
+): NodeId | null {
+  const origin = terrain.coordsOf(from);
+  const blocked = workFlagPlacementBlocks(world, ctx, terrain);
+  let best: NodeId | null = null;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (let node = 0; node < terrain.nodeCount; node++) {
+    const candidate = node as NodeId;
+    if (!terrain.isWalkable(candidate) || blocked.has(candidate)) continue;
+    const c = terrain.coordsOf(candidate);
+    const distance = Math.abs(c.x - origin.x) + Math.abs(c.y - origin.y);
+    if (distance < bestDistance || (distance === bestDistance && (best === null || candidate < best))) {
+      best = candidate;
+      bestDistance = distance;
+    }
+  }
+  return best;
 }
 
 /**

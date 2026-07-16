@@ -19,6 +19,8 @@ export {
 export { interactionNode, positionedInteractionCell, resourceWorkCell } from './interaction.js';
 export {
   canPlaceBuilding,
+  canPlaceWorkFlag,
+  nearestWorkFlagPlacement,
   type PlacementProbe,
   placementBlockerVersion,
   placementProbe,

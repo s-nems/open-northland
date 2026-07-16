@@ -26,6 +26,9 @@ const EXP_ROWS = 1;
 const ASSIGN_BUTTON_H = 18;
 /** Gap between the Praca text rows and the assign button. */
 const ASSIGN_BUTTON_GAP = 3;
+const GATHER_BUTTON_H = 16;
+const GATHER_BUTTON_GAP = 3;
+const GATHER_BUTTON_COLS = 2;
 /** One labeled equipment row (Buty/Narzędzia/…): a label column + a row of slot sockets. */
 export const EQUIP_ROW_H = 24;
 /** A round equipment-slot socket's square bounding box (design px). */
@@ -41,6 +44,13 @@ export const EQUIP_LABEL_W = 74;
 export interface EquipRowRect {
   readonly label: Rect;
   readonly slots: readonly Rect[];
+}
+
+export interface GatherChoiceHit {
+  readonly goodType: number | null;
+  readonly label: string;
+  readonly selected: boolean;
+  readonly rect: Rect;
 }
 
 /**
@@ -64,6 +74,7 @@ export interface SettlerLayout {
   readonly workRows: readonly Rect[];
   /** The "przydziel miejsce pracy" button under the Praca rows (its `enabled` tracks `canAssignWorkplace`). */
   readonly assignButton: ButtonHit;
+  readonly gatherChoiceHits: readonly GatherChoiceHit[];
   readonly experience: SectionRect;
   /** The Doświadczenie body's single text row. */
   readonly expRow: Rect;
@@ -89,7 +100,11 @@ export function layoutSettler(
   const generalBodyH = Math.round(SETTLER_PREVIEW * s);
   const assignButtonH = Math.round(ASSIGN_BUTTON_H * s);
   const assignButtonGap = Math.round(ASSIGN_BUTTON_GAP * s);
-  const workBodyH = WORK_ROWS * rowH + assignButtonGap + assignButtonH;
+  const gatherRows = Math.ceil(model.work.gatherChoices.length / GATHER_BUTTON_COLS);
+  const gatherButtonH = Math.round(GATHER_BUTTON_H * s);
+  const gatherButtonGap = Math.round(GATHER_BUTTON_GAP * s);
+  const gatherBodyH = gatherRows > 0 ? gatherRows * gatherButtonH + (gatherRows - 1) * gatherButtonGap : 0;
+  const workBodyH = WORK_ROWS * rowH + gatherBodyH + assignButtonGap + assignButtonH;
   const expBodyH = EXP_ROWS * rowH;
   const equipBodyH = model.equipmentRows.length * equipRowH;
 
@@ -133,12 +148,29 @@ export function layoutSettler(
     w: work.body.w,
     h: rowH,
   }));
+  const choiceGap = Math.round(GATHER_BUTTON_GAP * s);
+  const choiceW = Math.floor((work.body.w - choiceGap) / GATHER_BUTTON_COLS);
+  const choicesTop = work.body.y + WORK_ROWS * rowH;
+  const gatherChoiceHits: GatherChoiceHit[] = model.work.gatherChoices.map((choice, i) => {
+    const col = i % GATHER_BUTTON_COLS;
+    const row = Math.floor(i / GATHER_BUTTON_COLS);
+    return {
+      ...choice,
+      selected: choice.goodType === model.work.selectedGood,
+      rect: {
+        x: work.body.x + col * (choiceW + choiceGap),
+        y: choicesTop + row * (gatherButtonH + gatherButtonGap),
+        w: choiceW,
+        h: gatherButtonH,
+      },
+    };
+  });
   const assignButton: ButtonHit = {
     action: 'assign-workplace',
     enabled: model.canAssignWorkplace,
     rect: {
       x: work.body.x,
-      y: work.body.y + WORK_ROWS * rowH + assignButtonGap,
+      y: choicesTop + gatherBodyH + assignButtonGap,
       w: work.body.w,
       h: assignButtonH,
     },
@@ -179,6 +211,7 @@ export function layoutSettler(
     work,
     workRows,
     assignButton,
+    gatherChoiceHits,
     experience,
     expRow,
     equipment,

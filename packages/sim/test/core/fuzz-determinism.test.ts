@@ -155,7 +155,7 @@ function pick<T>(rng: Rng, options: readonly T[]): T {
 function nextCommand(rng: Rng): Command {
   const x = rng.int(NODE_W);
   const y = rng.int(NODE_H);
-  const roll = rng.int(20);
+  const roll = rng.int(21);
   switch (roll) {
     case 0:
       return {
@@ -322,6 +322,15 @@ function nextCommand(rng: Rng): Command {
         kind: 'assignBuilder',
         entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
         site: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+      };
+    case 19:
+      // A gatherer-filter order at a random id: valid wood, invalid/unsupported goods, and null (all),
+      // against live gatherers plus wrong-kind/unowned/dead targets. The command must hash and replay even
+      // when validation turns it into a no-op.
+      return {
+        kind: 'setGatherGood',
+        entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+        goodType: pick(rng, [null, RESOURCE_GOOD, 4, INVALID_TYPE]),
       };
     default:
       // A profession change at a random id: valid + unknown jobs, owned/unowned/dead targets.

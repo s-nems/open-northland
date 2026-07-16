@@ -1,8 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { CurrentAtomic, Felling, Position, Resource } from '../../../../src/components/index.js';
+import {
+  CurrentAtomic,
+  Felling,
+  Owner,
+  Position,
+  Resource,
+  WorkFlag,
+} from '../../../../src/components/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import { fx, Simulation } from '../../../../src/index.js';
-import { aiSystem } from '../../../../src/systems/index.js';
+import { aiSystem, setGatherGood } from '../../../../src/systems/index.js';
 import { testContent } from '../../../fixtures/content.js';
 import {
   bindToFlag,
@@ -32,6 +39,35 @@ describe('flag-bound gatherer — works only within its flag radius (req 3)', ()
     const atomic = sim.world.get(gatherer, CurrentAtomic);
     expect(atomic.atomicId).toBe(HARVEST_ATOMIC);
     expect(atomic.effect.kind === 'harvest' && atomic.effect.resource).toBe(tree);
+  });
+
+  it('harvests only the selected good, while all mode restores the ordinary nearest pick', () => {
+    const base = testContent();
+    const content = {
+      ...base,
+      jobs: base.jobs.map((job) =>
+        job.typeId === 1 ? { ...job, allowedAtomics: [...job.allowedAtomics, 25] } : job,
+      ),
+    };
+    const sim = new Simulation({ seed: 4, content, map: grassMap(8, 1) });
+    const gatherer = makeWoodcutter(sim, 2, 0);
+    sim.world.add(gatherer, Owner, { player: 0 });
+    bindToFlag(sim, gatherer, 2, 0, WIDE_RADIUS);
+    const wood = placeFellableTree(sim, 2, 0);
+    const stone = sim.world.create();
+    sim.world.add(stone, Position, { x: fx.fromInt(2), y: fx.fromInt(0) });
+    sim.world.add(stone, Resource, { goodType: 4, remaining: 2, harvestAtomic: 25 });
+
+    setGatherGood(sim.world, ctxOf(sim), { kind: 'setGatherGood', entity: gatherer, goodType: 4 });
+    expect(sim.world.get(gatherer, WorkFlag).goodType).toBe(4);
+    aiSystem(sim.world, ctxOf(sim));
+    const filtered = sim.world.get(gatherer, CurrentAtomic);
+    expect(filtered.effect.kind === 'harvest' && filtered.effect.resource).toBe(stone);
+
+    setGatherGood(sim.world, ctxOf(sim), { kind: 'setGatherGood', entity: gatherer, goodType: null });
+    aiSystem(sim.world, ctxOf(sim));
+    const all = sim.world.get(gatherer, CurrentAtomic);
+    expect(all.effect.kind === 'harvest' && all.effect.resource).toBe(wood);
   });
 
   it('ignores a tree beyond the radius and never fells it — it idles by the flag', () => {

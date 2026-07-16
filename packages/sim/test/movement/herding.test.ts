@@ -110,7 +110,7 @@ describe('herdingSystem — follow-the-leader cohesion', () => {
 
     const startPos = sim.world.get(follower, Position);
     const startHx = nodeOfPosition(startPos.x, startPos.y).hx;
-    // 10 half-column nodes = 5 columns at the 12-ticks-per-column walk ≈ 60 move ticks + plan/path latency.
+    // The follower need only enter the cohesion radius, not cover all 5 columns to the leader.
     for (let i = 0; i < 80; i++) sim.step(); // herding -> navigation -> pathfinding -> movement
     const endPos = sim.world.get(follower, Position);
     const endHx = nodeOfPosition(endPos.x, endPos.y).hx;

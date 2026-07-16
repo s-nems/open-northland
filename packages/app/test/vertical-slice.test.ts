@@ -98,8 +98,8 @@ describe('runSlice on a loaded map', () => {
     return {
       resolution: 'half-cell',
       width: 4,
-      height: 3,
-      typeIds: [5, 16, 22, 5, 5, 16, 22, 5, 5, 16, 22, 5],
+      height: 8,
+      typeIds: Array.from({ length: 32 }, (_, i) => [5, 16, 22, 5][i % 4] as number),
     };
   }
 
@@ -108,8 +108,8 @@ describe('runSlice on a loaded map', () => {
     // not fold those in, buildTerrainGraph would throw "landscape typeId N absent from content".
     const sim = runSlice(7, 30, gridMap());
     expect(sim.terrain?.width).toBe(4);
-    expect(sim.terrain?.height).toBe(3);
-    expect(sim.terrain?.nodeCount).toBe(12);
+    expect(sim.terrain?.height).toBe(8);
+    expect(sim.terrain?.nodeCount).toBe(32);
   });
 
   it('places the slice entities on the first walkable cells of the grid, not the strip', () => {
@@ -120,9 +120,8 @@ describe('runSlice on a loaded map', () => {
 
     // Seven positioned entities: HQ + sawmill (Building), woodcutter + carrier (Settler), two wood nodes
     // (Resource), and the woodcutter's WORK FLAG (a Position + DeliveryFlag, auto-planted at its feet on
-    // spawn — a gatherer is never free). On a 4×3 node grid whose every node is walkable, the first nodes
-    // are (0,0)..(1,1) — so at least one entity must sit below the synthetic strip's single row-0 node
-    // line (node row 1 = position y 0.5, so a strictly positive fixed-point y).
+    // spawn — a gatherer is never free). The grid leaves enough open ground beyond the building bodies for
+    // the flag's free-field placement; at least one entity must sit below the synthetic strip's row-0 line.
     const positioned = [...sim.world.query(Position)].map((e) => sim.world.get(e, Position));
     expect(positioned).toHaveLength(7);
     const onRealRows = positioned.some((p) => p.y > 0);

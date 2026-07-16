@@ -47,7 +47,7 @@ export function nearestHarvestableFor(
   terrain: TerrainGraph,
   here: NodeId,
   settler: { jobType: number; tribe: number; experience: ReadonlyMap<number, number> },
-  area?: { center: NodeId; radius: number },
+  area?: { center: NodeId; radius: number; goodType?: number },
 ): { entity: Entity; cell: NodeId; dist: number } | null {
   const allowed = jobAtomics(ctx, settler.jobType);
   // Dormancy gate: if the job's allowed atomics intersect no harvest atomic present on any standing resource,
@@ -89,6 +89,7 @@ export function nearestHarvestableFor(
   const best = nearestByCell(terrain, scanned, origin, (e) => {
     const res = world.tryGet(e, Resource);
     if (res === undefined || res.remaining <= 0) return null;
+    if (area?.goodType !== undefined && res.goodType !== area.goodType) return null;
     if (!world.has(e, Position)) return null;
     if (!allowed.has(res.harvestAtomic)) return null; // data-driven gate: job must permit this atomic
     // XP gate: this settler must have cleared the harvested good's `needforgood` thresholds.

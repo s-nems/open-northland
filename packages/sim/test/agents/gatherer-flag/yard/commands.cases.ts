@@ -1,18 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import {
+  Building,
   DeliveryFlag,
+  MoveGoal,
   Owner,
+  PathRequest,
   Position,
+  Resource,
   Settler,
   Stockpile,
   WorkFlag,
 } from '../../../../src/components/index.js';
 import type { Command } from '../../../../src/core/commands/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
-import { fx, Simulation } from '../../../../src/index.js';
-import { setWorkFlag } from '../../../../src/systems/index.js';
+import { fx, ONE, Simulation } from '../../../../src/index.js';
+import { setGatherGood, setWorkFlag } from '../../../../src/systems/index.js';
 import { testContent } from '../../../fixtures/content.js';
-import { ctxOf, grassMap, makeWoodcutter, VIKING } from '../support.js';
+import { ctxOf, grassMap, makeWoodcutter, riverMap, VIKING, WOOD } from '../support.js';
 
 describe('setWorkFlag command — place / move a gatherer flag (Ctrl+Right-Click)', () => {
   const PLAYER = 0;
@@ -56,6 +60,54 @@ describe('setWorkFlag command — place / move a gatherer flag (Ctrl+Right-Click
     expect(sim.world.get(g, WorkFlag).flag).toBe(flag); // same flag entity…
     expect(fx.toInt(sim.world.get(flag, Position).x)).toBe(11); // …moved to the new tile
     expect([...sim.world.query(DeliveryFlag)]).toHaveLength(1); // no second flag littered
+  });
+
+  it('rejects unwalkable terrain and occupied resource/building fields', () => {
+    const water = new Simulation({ seed: 1, content: testContent(), map: riverMap(20, 1, [12]) });
+    const waterGatherer = ownedGatherer(water, 0, 0);
+    setWorkFlag(water.world, ctxOf(water), cmd(waterGatherer, 6));
+    expect(water.world.has(waterGatherer, WorkFlag)).toBe(false);
+
+    const occupied = new Simulation({ seed: 2, content: testContent(), map: grassMap(40, 1) });
+    const gatherer = ownedGatherer(occupied, 0, 0);
+    const resource = occupied.world.create();
+    occupied.world.add(resource, Position, { x: fx.fromInt(6), y: fx.fromInt(0) });
+    occupied.world.add(resource, Resource, { goodType: WOOD, remaining: 1, harvestAtomic: 24 });
+    setWorkFlag(occupied.world, ctxOf(occupied), cmd(gatherer, 6));
+    expect(occupied.world.has(gatherer, WorkFlag)).toBe(false);
+
+    occupied.world.destroy(resource);
+    const building = occupied.world.create();
+    occupied.world.add(building, Position, { x: fx.fromInt(6), y: fx.fromInt(0) });
+    occupied.world.add(building, Building, { buildingType: 1, tribe: VIKING, built: ONE, level: 0 });
+    setWorkFlag(occupied.world, ctxOf(occupied), cmd(gatherer, 6));
+    expect(occupied.world.has(gatherer, WorkFlag)).toBe(false);
+  });
+
+  it('clears a stale failed route when the flag moves, so delivery replans', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(40, 1) });
+    const gatherer = ownedGatherer(sim, 0, 0);
+    setWorkFlag(sim.world, ctxOf(sim), cmd(gatherer, 5));
+    sim.world.add(gatherer, MoveGoal, { cell: 10 });
+    sim.world.add(gatherer, PathRequest, { start: 0, goal: 10, failed: true });
+
+    setWorkFlag(sim.world, ctxOf(sim), cmd(gatherer, 11));
+
+    expect(sim.world.has(gatherer, MoveGoal)).toBe(false);
+    expect(sim.world.has(gatherer, PathRequest)).toBe(false);
+  });
+
+  it('accepts only harvestable goods for the gatherer filter, with null meaning all', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(20, 1) });
+    const gatherer = ownedGatherer(sim, 0, 0);
+    setWorkFlag(sim.world, ctxOf(sim), cmd(gatherer, 5));
+
+    setGatherGood(sim.world, ctxOf(sim), { kind: 'setGatherGood', entity: gatherer, goodType: WOOD });
+    expect(sim.world.get(gatherer, WorkFlag).goodType).toBe(WOOD);
+    setGatherGood(sim.world, ctxOf(sim), { kind: 'setGatherGood', entity: gatherer, goodType: 4 });
+    expect(sim.world.get(gatherer, WorkFlag).goodType).toBe(WOOD); // stone atomic is not allowed by this job
+    setGatherGood(sim.world, ctxOf(sim), { kind: 'setGatherGood', entity: gatherer, goodType: null });
+    expect(sim.world.get(gatherer, WorkFlag).goodType).toBeUndefined();
   });
 
   it('skips an UNOWNED gatherer, a jobless settler, and a non-settler (only an owned gatherer gets a flag)', () => {
