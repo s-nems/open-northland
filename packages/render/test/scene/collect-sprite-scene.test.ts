@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { makeBrightnessField } from '../../src/data/brightness.js';
 import { collectSpriteScene } from '../../src/data/scene/index.js';
 import { ONE, tileToScreen } from '../../src/index.js';
-import { makeBrightnessField } from '../../src/data/brightness.js';
 import { entity, snapshotOf } from '../support/fixtures.js';
 
 /** Unit tests for {@link collectSpriteScene} — the single-pass draw list + pre-cull liveness set the
