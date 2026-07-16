@@ -1,10 +1,11 @@
-import { BuildingType, DEFAULT_RECIPE_TICKS } from '@open-northland/data';
+import { BuildingType, DEFAULT_RECIPE_TICKS, VehicleType } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   extractBuildings,
   extractGoods,
   fillBuildingRecipes,
   parseIniSections,
+  stripVehicleGoods,
 } from '../src/decoders/ini.js';
 import { GOODTYPES_INI, HOUSES_INI } from './fixtures/ini-sources.js';
 
@@ -180,5 +181,44 @@ describe('fillBuildingRecipes', () => {
     const [mint] = fillBuildingRecipes([building(13, 'mint', [27])], GOODS);
     expect(mint?.recipes[0]?.ticks).toBe(DEFAULT_RECIPE_TICKS);
     expect(DEFAULT_RECIPE_TICKS).toBe(180); // 15 s × the sim's 12 ticks/s
+  });
+});
+
+describe('stripVehicleGoods', () => {
+  const GOODS = extractGoods(parseIniSections(GOODTYPES_INI), { file: 'goodtypes.ini' });
+  const src = { file: 'houses.ini', block: 'logichousetype', layer: 'mod' as const };
+  // 'guildmark' (27) doubles as a vehicle here — the strip keys on the goodtype↔vehicletype slug
+  // identity, exactly how the real data links handcart/oxcart/ships/catapult.
+  const cartVehicle = VehicleType.parse({ typeId: 1, id: 'guildmark' });
+
+  it('drops a vehicle good from stock and produces, so the recipe join never materializes it', () => {
+    const workshop = BuildingType.parse({
+      typeId: 40,
+      id: 'wainwright',
+      kind: 'workplace',
+      produces: [27, 31],
+      stock: [
+        { goodType: 22, capacity: 10, initial: 0 },
+        { goodType: 27, capacity: 5, initial: 0 },
+      ],
+      source: src,
+    });
+    const [stripped] = stripVehicleGoods([workshop], GOODS, [cartVehicle]);
+    expect(stripped?.stock.map((s) => s.goodType)).toEqual([22]);
+    expect(stripped?.produces).toEqual([31]);
+    const [filled] = fillBuildingRecipes([stripped ?? workshop], GOODS);
+    expect(filled?.recipes.flatMap((r) => r.outputs.map((o) => o.goodType))).toEqual([31]);
+  });
+
+  it('leaves buildings untouched when no good shares a vehicle slug', () => {
+    const workshop = BuildingType.parse({
+      typeId: 41,
+      id: 'plain',
+      kind: 'workplace',
+      produces: [31],
+      source: src,
+    });
+    const [same] = stripVehicleGoods([workshop], GOODS, [VehicleType.parse({ typeId: 2, id: 'sled' })]);
+    expect(same).toBe(workshop); // identity preserved — nothing to strip
   });
 });

@@ -11,7 +11,7 @@ import {
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, ONE, Simulation } from '../../../src/index.js';
 import { productionSystem } from '../../../src/systems/index.js';
-import { setCraftGoods } from '../../../src/systems/orders/index.js';
+import { setCraftGoods, setJob } from '../../../src/systems/orders/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { CARPENTER, CYCLE_TICKS, ctxOf, spawnSettler, WOOD, WOODCUTTER } from './support.js';
 
@@ -20,6 +20,8 @@ import { CARPENTER, CYCLE_TICKS, ctxOf, spawnSettler, WOOD, WOODCUTTER } from '.
 const FORGE = 9;
 const PLANK = 2;
 const FOOD = 3;
+/** A good typeId the forge has no recipe for — the invalid/orphaned-pick cases. */
+const UNMADE = 99;
 
 function forge(sim: Simulation, wood: number): { forge: Entity; smith: Entity } {
   spawnSettler(sim, WOODCUTTER, 9, 9); // the tech enabler — plank is gated on a woodcutter existing
@@ -89,11 +91,29 @@ describe('productionSystem — per-product recipes and the craft selection', () 
   it('drops goods the workplace does not make; a selection with none left is ignored', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const { smith } = forge(sim, 4);
-    const UNMADE = 99;
     setCraftGoods(sim.world, ctxOf(sim), { kind: 'setCraftGoods', entity: smith, goods: [UNMADE] });
     expect(sim.world.has(smith, CraftSelection)).toBe(false); // recoverable bad input — no-op
     setCraftGoods(sim.world, ctxOf(sim), { kind: 'setCraftGoods', entity: smith, goods: [UNMADE, FOOD] });
     expect(sim.world.get(smith, CraftSelection).goods).toEqual([FOOD]); // invalid entry dropped
+  });
+
+  it('an employment change clears the pick (setJob routes through reidleAsJob)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const { smith } = forge(sim, 4);
+    setCraftGoods(sim.world, ctxOf(sim), { kind: 'setCraftGoods', entity: smith, goods: [FOOD] });
+    expect(sim.world.has(smith, CraftSelection)).toBe(true);
+    setJob(sim.world, ctxOf(sim), { kind: 'setJob', entity: smith, jobType: WOODCUTTER });
+    expect(sim.world.has(smith, CraftSelection)).toBe(false);
+  });
+
+  it('an orphaned pick (naming nothing this workplace makes) degrades to all-products, not a stall', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const { forge: f, smith } = forge(sim, 4);
+    // Stamp a pick for a good the forge has no recipe for — the state a content rebase could leave.
+    sim.world.add(smith, CraftSelection, { goods: [UNMADE], cursor: 0 });
+    runCycles(sim, 2);
+    const stock = sim.world.get(f, Stockpile).amounts;
+    expect((stock.get(PLANK) ?? 0) + (stock.get(FOOD) ?? 0)).toBeGreaterThan(0); // still producing
   });
 
   it('a blocked product is skipped, not a deadlock: the rotation crafts what it can', () => {

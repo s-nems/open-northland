@@ -161,7 +161,7 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       return;
     case 'setGatherGood':
       setGatherGood(world, ctx, command);
-      break;
+      return;
     case 'setCraftGoods':
       setCraftGoods(world, ctx, command);
       return;

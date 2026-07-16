@@ -1,6 +1,6 @@
 import { CARRY_CAPACITY, Owner, Resting } from '../../../../components/index.js';
 import type { Entity } from '../../../../ecs/world.js';
-import { isWorkplaceOperator, recipeOf } from '../../../stores/index.js';
+import { isWorkplaceOperator, mergedRecipeOf } from '../../../stores/index.js';
 import { atOrWalk, startPickup } from '../../actions.js';
 import { loiterCell, type SpacingState } from '../../destack.js';
 import type { PlannerContext } from '../../planner-context.js';
@@ -25,7 +25,7 @@ export function planProducer(
 ): void {
   const { world, ctx, terrain, entity, here, targets } = plan;
   const worker = plan;
-  const recipe = recipeOf(world, ctx, workplace);
+  const recipe = mergedRecipeOf(world, ctx, workplace);
   if (recipe === undefined) return;
 
   const claimed = seatClaims.get(workplace) ?? 0;
@@ -56,7 +56,7 @@ export function planProducer(
 export function planWorkshopSupplier(plan: PlannerContext, workplace: Entity, spacing: SpacingState): void {
   const { world, ctx, terrain, entity, here, targets } = plan;
   const worker = plan;
-  const recipe = recipeOf(world, ctx, workplace);
+  const recipe = mergedRecipeOf(world, ctx, workplace);
   if (recipe === undefined) return;
 
   const restockToCapacity = true;
@@ -119,7 +119,7 @@ function loiterByDoor(
 function haulWorkplaceOutput(
   plan: PlannerContext,
   workplace: Entity,
-  recipe: NonNullable<ReturnType<typeof recipeOf>>,
+  recipe: NonNullable<ReturnType<typeof mergedRecipeOf>>,
 ): boolean {
   const { world, ctx, terrain, entity, here, targets } = plan;
   const worker = plan;

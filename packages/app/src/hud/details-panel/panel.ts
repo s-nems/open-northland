@@ -368,14 +368,14 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
 
   /** The hovered choice round button's good name ("Wszystko" for the gather-all choice), or null —
    *  the icon buttons carry no drawn label, so the tooltip is what names them (gather or craft; the
-   *  two blocks never coexist). */
+   *  two blocks never coexist). A craft button also spells out the click semantics (plain = pick one,
+   *  Ctrl/Cmd = toggle) — there is no other affordance for the modifier. */
   const gatherChoiceHint = (x: number, y: number): string | null => {
     if (layout?.kind !== 'settler') return null;
-    return (
-      layout.gatherChoiceHits.find((hit) => contains(hit.rect, x, y))?.label ??
-      layout.craftChoiceHits.find((hit) => contains(hit.rect, x, y))?.label ??
-      null
-    );
+    const gather = layout.gatherChoiceHits.find((hit) => contains(hit.rect, x, y))?.label;
+    if (gather !== undefined) return gather;
+    const craft = layout.craftChoiceHits.find((hit) => contains(hit.rect, x, y))?.label;
+    return craft !== undefined ? `${craft}\n${messages().hud.craftToggleHint}` : null;
   };
 
   /** The hovered Produkcja row's recipe card ("Krótki Miecz:" then one "- Żelazo ×2" line per input),

@@ -28,6 +28,21 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
     for (const id of CORE_GOOD_IDS) expect(ids, `core good '${id}' missing`).toContain(id);
   });
 
+  it('no building stocks or produces a vehicle good (stripVehicleGoods holds on real data)', async () => {
+    // Vehicles are yard-built, not stockpiled wares (docs/tickets/features/vehicle-yard-construction.md);
+    // the strip keys on the goodtype↔vehicletype slug identity, so a slug drift would silently bring
+    // handcarts back as loaves of bread — this pins the regenerated IR.
+    const { real } = await loadContentUnderTest();
+    const vehicleIds = new Set(real.vehicles.map((v) => v.id));
+    expect(vehicleIds.size).toBeGreaterThan(0); // the real data ships carts/ships/catapult
+    const vehicleGoods = new Set(real.goods.filter((g) => vehicleIds.has(g.id)).map((g) => g.typeId));
+    for (const b of real.buildings) {
+      for (const s of b.stock)
+        expect(vehicleGoods, `${b.id} stocks a vehicle good`).not.toContain(s.goodType);
+      for (const p of b.produces) expect(vehicleGoods, `${b.id} produces a vehicle good`).not.toContain(p);
+    }
+  });
+
   it('every merged gathered good is calibrated or reported as a gap — never silently dead', async () => {
     const { merge } = await loadContentUnderTest();
     const reported = new Set(merge.unbalancedGoods);

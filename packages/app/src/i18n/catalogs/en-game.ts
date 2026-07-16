@@ -18,6 +18,7 @@ export const enGame = {
     gatherTarget: 'Gather',
     gatherAll: 'All',
     craftTarget: 'Craft',
+    craftToggleHint: 'Click picks one product; Ctrl/Cmd+click adds or removes it.',
     recipeNoInputs: 'no materials',
     stockAllTab: 'All',
     workFlag: 'Work flag',

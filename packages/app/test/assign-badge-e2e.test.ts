@@ -38,7 +38,14 @@ describe('assignWorker → door badge, over sandbox content', () => {
 
     const snap0 = sim.snapshot();
     const buildings = snap0.entities.filter((e) => isBuilding(e) && buildingTypeOf(e) === potteryType);
-    const building = buildings[buildings.length - 1]; // the extra pottery is the last-placed one
+    // The extra pottery is the easternmost one (EXTRA.x is far right of the village) — selected by
+    // position, not placement order, which the snapshot does not promise.
+    const posX = (e: (typeof buildings)[number]): number =>
+      num((e.components.Position as { x?: unknown } | undefined)?.x) ?? Number.NEGATIVE_INFINITY;
+    const building = buildings.reduce<(typeof buildings)[number] | undefined>(
+      (best, e) => (best === undefined || posX(e) > posX(best) ? e : best),
+      undefined,
+    );
     const settler = snap0.entities.findLast((e) => isSettler(e) && ownerPlayerOf(e) === HUMAN_PLAYER);
     if (building === undefined || settler === undefined)
       throw new Error('no assignable workshop / owned settler in the sandbox');

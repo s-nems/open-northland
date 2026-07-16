@@ -18,7 +18,7 @@ import { NodeBuckets } from '../spatial.js';
  * Cross-system: the AI plans against it (recognise a workplace, fetch any input some product needs,
  * haul any product out); the ProductionSystem runs the per-product recipes ({@link recipesByProductOf}).
  */
-export function recipeOf(world: World, ctx: SystemContext, building: Entity): Recipe | undefined {
+export function mergedRecipeOf(world: World, ctx: SystemContext, building: Entity): Recipe | undefined {
   const b = world.tryGet(building, Building);
   if (b === undefined) return undefined;
   return contentIndex(ctx.content).mergedRecipeByBuilding.get(b.buildingType);
@@ -47,7 +47,7 @@ export function recipesByProductOf(
  * producer kinds; a warehouse's is empty. It does not distinguish a farm by recipe absence: the sandbox
  * catalog's farm carries no recipe, but the asset pipeline synthesizes a recipe for every producing building
  * (`fillBuildingRecipes`), so "field producer" must be keyed on the good's `farming` block (`farmWorkGood`),
- * never on `recipeOf`.
+ * never on `mergedRecipeOf`.
  *
  * Cross-system: the AI carrier drive uses it to recognise a bound producing building whose finished output it
  * should haul to a warehouse (see `agents/economy/workshop/supply.ts`).

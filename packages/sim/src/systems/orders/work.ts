@@ -90,7 +90,10 @@ function reidleAsJob(world: World, ctx: SystemContext, e: Entity, jobType: numbe
   world.remove(e, Fleeing);
   stampDefaultStance(world, e, jobType);
   syncWorkFlagToJob(world, ctx, e, jobType); // a gatherer trade carries a work flag; other trades don't
-  world.remove(e, GatherSelection); // the employed-gatherer pick dies with the employment it was made under
+  // Both per-employment picks die with the employment they were made under — a new workplace offers a
+  // different product/store set, so a stale pick would silently mis-steer (or stall) the new post.
+  world.remove(e, GatherSelection);
+  world.remove(e, CraftSelection);
 }
 
 /**

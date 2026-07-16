@@ -251,7 +251,9 @@ export function settlerWork(
   const def = buildingDef(ctx, rawType);
   // A building-employed GATHERER (a harvest-capable trade, no flag) forages only what its workplace
   // stockpiles — its menu is the workplace-stored slice of its harvest vocabulary, its pick the sim's
-  // GatherSelection (absent = every stored good). It never gets the craft menu (it fetches, not forges).
+  // GatherSelection (absent = every stored good). The gather menu WINS over the craft menu for a job
+  // that is both harvest-capable and an operator slot (such a job runs the gather drive in the sim's
+  // planner ladder, never the craft loop), so the two menus can't coexist.
   const harvestable = harvestableGoodsFor(ctx, jobType);
   if (harvestable.length > 0) {
     const stored = new Set((def?.stock ?? []).map((slot) => slot.goodType));
