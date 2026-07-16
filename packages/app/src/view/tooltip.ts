@@ -35,10 +35,11 @@ export function createTooltip(): Tooltip {
     'color:#f0e0c0',
     'font:13px/1.4 system-ui,-apple-system,sans-serif',
     // Wrap long lines (a multi-input recipe) instead of running one endless row; width hugs the content
-    // up to the cap so short chips stay tight.
+    // up to the cap so short chips stay tight. pre-line keeps authored newlines (a recipe's per-input
+    // lines) while still wrapping an over-long single line.
     `max-width:${MAX_WIDTH}px`,
     'width:max-content',
-    'white-space:normal',
+    'white-space:pre-line',
     'border:1px solid rgba(200,170,110,0.5)',
     'box-shadow:0 1px 4px rgba(0,0,0,0.5)',
   ].join(';');
