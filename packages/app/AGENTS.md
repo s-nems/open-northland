@@ -13,6 +13,25 @@
 - **One-way flow:** app issues commands into the sim and reads `snapshot()` out; never reach into live
   component stores from render glue. Determinism is the sim's; the app just drives wall-clock → ticks.
 
+## Diagnostics toolbox (agents: debug with this, not ad-hoc prints)
+
+`src/diag/` is the diagnostics backbone — the logger, the crash capture, the report bundle, and the
+perf instrumentation live there:
+
+- **Logging:** `diag.warn('channel', msg, data?)` (never raw `console.*` in app src). Everything
+  lands in a bounded ring that ships in the diagnostics bundle — system menu → "Download diagnostics
+  report", auto-offered by the crash banner.
+- **The bundle is a full session repro:** rebuild the world its `entry`+`worldId` name, drop the
+  rebuilt sim's pending setup enqueues, then `stepReplaying(sim, game.commandLog, game.tick)` — the
+  exact procedure is pinned in `test/diag-bundle.test.ts`.
+- **`?debug=perf`** — per-system `performance.measure` slices (`sim/<system>`, `frame/*`). Headless
+  agents read them without a human DevTools session: drive the page (Playwright) and collect via
+  `new PerformanceObserver(...).observe({entryTypes: ['measure']})`.
+- **`?debug=trace`** — a bounded Trace Event ring (~30 s), exported from the system menu; opens in
+  Perfetto. Also attaches to the bundle.
+- **`?debug=diag`** — state hashes every 20 ticks (`HashTrace`) for divergence localization
+  (`localizeDivergence`). Note `?debug=` is single-valued: perf/trace/diag/geometry are exclusive.
+
 ## Package layout
 
 `src/` is grouped by concern (not flat) so each thing has ONE obvious home — add new code to the folder
