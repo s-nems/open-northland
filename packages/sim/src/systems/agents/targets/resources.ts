@@ -3,9 +3,9 @@ import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
+import type { SpatialGate } from '../../node-metric.js';
 import { settlerMeetsNeed } from '../../progression/index.js';
 import { resourceHarvestAtomics, resourcesNearNode } from '../../resource-index.js';
-import type { NodeBox } from '../../signposts/index.js';
 import { manhattan } from '../../spatial.js';
 import { lowestStockedGood } from '../../stores/index.js';
 import { nearestByCell } from './cell-index.js';
@@ -49,11 +49,11 @@ export function nearestHarvestableFor(
   here: NodeId,
   settler: { jobType: number; tribe: number; experience: ReadonlyMap<number, number> },
   area?: { center: NodeId; radius: number; goodType?: number },
-  cellGate?: (cell: NodeId) => boolean,
-  /** The confinement's scan bound ({@link NavigationLimit.bounds}): a roaming scan under a gate reads only
-   *  the resources near the allowed box instead of the full canonical list — every gate-passing work cell
-   *  provably lies inside the box (+ work-offset slack), so the winner is identical to the full scan. */
-  gateBounds?: NodeBox,
+  /** The settler's signpost confinement ({@link SpatialGate}): membership rejects out-of-area work cells,
+   *  and its bounds let a roaming scan read only the resources near the allowed box instead of the full
+   *  canonical list — every gate-passing work cell provably lies inside the box (+ work-offset slack), so
+   *  the winner is identical to the full scan. */
+  gate?: SpatialGate,
 ): { entity: Entity; cell: NodeId; dist: number } | null {
   const allowed = jobAtomics(ctx, settler.jobType);
   // Dormancy gate: if the job's allowed atomics intersect no harvest atomic present on any standing resource,
@@ -89,19 +89,22 @@ export function nearestHarvestableFor(
       terrain.coordsOf(origin).y,
       area.radius + contentIndex(ctx.content).maxResourceWorkOffset,
     );
-  } else if (gateBounds !== undefined) {
+  } else if (gate !== undefined) {
     // A confined roaming scan: the region box centred on the allowed area covers every anchor whose work
     // cell (≤ maxResourceWorkOffset off the anchor) could pass the gate — the same provable-superset
     // argument as the flag path, so the filter/rank loop below picks the identical winner at O(nearby).
-    const cx = Math.floor((gateBounds.minX + gateBounds.maxX) / 2);
-    const cy = Math.floor((gateBounds.minY + gateBounds.maxY) / 2);
-    const half = Math.max(
-      cx - gateBounds.minX,
-      gateBounds.maxX - cx,
-      cy - gateBounds.minY,
-      gateBounds.maxY - cy,
-    );
-    scanned = resourcesNearNode(world, cx, cy, half + contentIndex(ctx.content).maxResourceWorkOffset);
+    // Guarded: when the allowed box spans most of the map (a map-wide signpost network), the region query
+    // would collect nearly every resource AND re-sort it per gatherer per tick — the pre-sorted canonical
+    // list is then the cheaper identical superset, so keep it.
+    const b = gate.bounds;
+    const boxW = Math.min(b.maxX, terrain.width - 1) - Math.max(b.minX, 0) + 1;
+    const boxH = Math.min(b.maxY, terrain.height - 1) - Math.max(b.minY, 0) + 1;
+    if (boxW * boxH * 2 < terrain.width * terrain.height) {
+      const cx = Math.floor((b.minX + b.maxX) / 2);
+      const cy = Math.floor((b.minY + b.maxY) / 2);
+      const half = Math.max(cx - b.minX, b.maxX - cx, cy - b.minY, b.maxY - cy);
+      scanned = resourcesNearNode(world, cx, cy, half + contentIndex(ctx.content).maxResourceWorkOffset);
+    }
   }
   // Ranked from `origin` (the flag when bound, the settler when roaming); the interaction cell still resolves
   // from `here`, the settler's actual route start. Same filter/rank the shared loop applies to every scan.
@@ -123,7 +126,7 @@ export function nearestHarvestableFor(
     // are not yet walkable, so the two banks are genuinely separate components — a named limitation).
     if (terrain.componentOf(here) !== terrain.componentOf(cell)) return null;
     if (manhattan(terrain, origin, cell) > radius) return null; // outside the flag's work radius — leave it be
-    if (cellGate !== undefined && !cellGate(cell)) return null; // outside the settler's signpost area
+    if (gate !== undefined && !gate.allowsNode(cell)) return null; // outside the settler's signpost area
     return cell;
   });
   return best === null ? null : { entity: best.entity, cell: best.cell, dist: best.distance };
@@ -152,7 +155,7 @@ export function nearestCollectablePileFor(
   terrain: TerrainGraph,
   here: NodeId,
   jobType: number,
-  cellGate?: (cell: NodeId) => boolean,
+  gate?: SpatialGate,
 ): { pile: Entity; goodType: number; dist: number } | null {
   const allowed = jobAtomics(ctx, jobType);
   // `candidates` is the GroundDrop candidate list, so every entry already has GroundDrop+Stockpile+Position
@@ -163,7 +166,7 @@ export function nearestCollectablePileFor(
     const harvestAtomic = harvestAtomicByGood.get(good);
     if (harvestAtomic === undefined || !allowed.has(harvestAtomic)) return null; // not this job's trade
     const cell = interactionCell(world, ctx, terrain, e, here);
-    return cellGate === undefined || cellGate(cell) ? cell : null; // signpost confinement
+    return gate === undefined || gate.allowsNode(cell) ? cell : null; // signpost confinement
   });
   if (best === null) return null;
   const good = lowestStockedGood(world.get(best.entity, Stockpile)); // the winner's good (accept required one)
@@ -186,14 +189,14 @@ export function nearestOwnDropFor(
   terrain: TerrainGraph,
   here: NodeId,
   owner: Entity,
-  cellGate?: (cell: NodeId) => boolean,
+  gate?: SpatialGate,
 ): { pile: Entity; goodType: number; dist: number } | null {
   const best = nearestByCell(terrain, candidates, here, (e) => {
     const mark = world.tryGet(e, HarvestedBy);
     if (mark === undefined || mark.by !== owner) return null; // not this gatherer's own drop — leave it be
     if (lowestStockedGood(world.get(e, Stockpile)) === null) return null; // emptied (about to be reaped)
     const cell = interactionCell(world, ctx, terrain, e, here);
-    return cellGate === undefined || cellGate(cell) ? cell : null; // signpost confinement
+    return gate === undefined || gate.allowsNode(cell) ? cell : null; // signpost confinement
   });
   if (best === null) return null;
   const good = lowestStockedGood(world.get(best.entity, Stockpile)); // the winner's good (accept required one)

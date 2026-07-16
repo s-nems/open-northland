@@ -4,7 +4,7 @@ import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { bushesNearNode } from '../../berry-index.js';
 import type { SystemContext } from '../../context.js';
 import { BERRY_FORAGE_RADIUS } from '../../economy/berries.js';
-import type { NodeBox } from '../../signposts/index.js';
+import type { SpatialGate } from '../../node-metric.js';
 import { manhattan } from '../../spatial.js';
 import { isFood } from '../../stores/index.js';
 import type { TargetCandidates } from './candidates.js';
@@ -26,10 +26,9 @@ function nearestFoodStore(
   world: World,
   ctx: SystemContext,
   here: NodeId,
-  cellGate?: (cell: NodeId) => boolean,
-  gateBounds?: NodeBox,
+  gate?: SpatialGate,
 ): { store: Entity; goodType: number; dist: number; cell: NodeId } | null {
-  const winner = index.nearest(here, (e) => storedFoodGood(world, ctx, e) !== null, cellGate, gateBounds);
+  const winner = index.nearest(here, (e) => storedFoodGood(world, ctx, e) !== null, gate);
   if (winner === null) return null;
   const goodType = storedFoodGood(world, ctx, winner.entity);
   return goodType === null
@@ -76,7 +75,7 @@ function nearestRipeBush(
   ctx: SystemContext,
   terrain: TerrainGraph,
   here: NodeId,
-  cellGate?: (cell: NodeId) => boolean,
+  gate?: SpatialGate,
 ): { bush: Entity; dist: number; cell: NodeId } | null {
   const { x: hx, y: hy } = terrain.coordsOf(here);
   const candidates = bushesNearNode(world, hx, hy, BERRY_FORAGE_RADIUS + BUSH_INTERACTION_SLACK_NODES);
@@ -86,7 +85,7 @@ function nearestRipeBush(
     const cell = interactionCell(world, ctx, terrain, e, here);
     if (terrain.componentOf(here) !== terrain.componentOf(cell)) return null; // walled off — leave it be
     if (manhattan(terrain, here, cell) > BERRY_FORAGE_RADIUS) return null; // beyond forage reach (flat radius)
-    if (cellGate !== undefined && !cellGate(cell)) return null; // outside the settler's signpost area
+    if (gate !== undefined && !gate.allowsNode(cell)) return null; // outside the settler's signpost area
     return cell;
   });
   return best === null ? null : { bush: best.entity, dist: best.distance, cell: best.cell };
@@ -119,11 +118,10 @@ export function nearestFood(
   ctx: SystemContext,
   terrain: TerrainGraph,
   here: NodeId,
-  cellGate?: (cell: NodeId) => boolean,
-  gateBounds?: NodeBox,
+  gate?: SpatialGate,
 ): FoodTarget | null {
-  const store = nearestFoodStore(targets.stockpileCells, world, ctx, here, cellGate, gateBounds);
-  const bush = nearestRipeBush(world, ctx, terrain, here, cellGate);
+  const store = nearestFoodStore(targets.stockpileCells, world, ctx, here, gate);
+  const bush = nearestRipeBush(world, ctx, terrain, here, gate);
   if (bush !== null && (store === null || closer(bush.dist, bush.cell, store.dist, store.cell))) {
     return { kind: 'bush', bush: bush.bush };
   }

@@ -2,7 +2,7 @@ import { Stockpile, stockpileEntries } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
-import type { NodeBox } from '../../../signposts/index.js';
+import type { SpatialGate } from '../../../node-metric.js';
 import { recipeOf } from '../../../stores/index.js';
 import type { InteractionCellIndex } from '../cell-index.js';
 import type { SinkAvailability } from './sinks.js';
@@ -48,17 +48,11 @@ export function nearestWorkplaceOutput(
   ctx: SystemContext,
   here: NodeId,
   /** The carrier's signpost confinement — an out-of-area workplace is not one it fetches from. */
-  cellGate?: (cell: NodeId) => boolean,
-  gateBounds?: NodeBox,
+  gate?: SpatialGate,
 ): { workplace: Entity; goodType: number } | null {
   // The stockpile index holds every Stockpile+Position candidate; only workplaces with a deliverable output
   // pass `accept`, and the winner's good is re-derived by the same canonical rule below.
-  const winner = index.nearest(
-    here,
-    (e) => haulableOutputGood(world, ctx, sinks, e) !== null,
-    cellGate,
-    gateBounds,
-  );
+  const winner = index.nearest(here, (e) => haulableOutputGood(world, ctx, sinks, e) !== null, gate);
   if (winner === null) return null;
   const goodType = haulableOutputGood(world, ctx, sinks, winner.entity);
   return goodType === null ? null : { workplace: winner.entity, goodType };

@@ -1,3 +1,4 @@
+import { JOB_SCOUT } from '../game/sandbox/index.js';
 import {
   type ActionButton,
   type ActionGroup,
@@ -90,10 +91,6 @@ export const HUMAN_DEFAULT_MENU: readonly ActionGroup[] = [
   },
 ];
 
-/** The scout job id (`jobtypes.ini` type 27) — mirrors `catalog/professions.ts`; kept local so the pure
- *  hud layer needs no catalog import. */
-const SCOUT_JOB_TYPE = 27;
-
 /**
  * The scout's "Erect Signpost" button — the original's scout action ("Erect Signpost" gui string; it
  * replaces the civilian's alert/query pair in the top-right slots). Icon: frame 111 (`order_mine`,
@@ -125,5 +122,5 @@ export const SCOUT_MENU: readonly ActionGroup[] = HUMAN_DEFAULT_MENU.map((g) =>
 
 /** The action menu for a settler of `jobType` — the per-profession variant seam (data, not code). */
 export function menuForJob(jobType: number | null | undefined): readonly ActionGroup[] {
-  return jobType === SCOUT_JOB_TYPE ? SCOUT_MENU : HUMAN_DEFAULT_MENU;
+  return jobType === JOB_SCOUT ? SCOUT_MENU : HUMAN_DEFAULT_MENU;
 }

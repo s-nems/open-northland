@@ -194,8 +194,19 @@ export class Simulation {
    */
   signpostProbe(player: number): SignpostProbe | null {
     if (this.terrain === undefined) return null;
-    return signpostProbe(this.world, this.content, this.terrain, player);
+    // Memoized on the blocker version: the app asks per RAF frame while the erect cursor is armed, and a
+    // rebuild walks every Resource/Building into a fresh blocked set (O(world) — ~17k nodes on a decoded
+    // map). A pure read-path cache like the building placement grid: it feeds only the overlay/ghost,
+    // never a sim decision (`canPlaceSignpost` scans fresh), so it is not hashed or cache-verified.
+    const version = `${workFlagBlockerVersion(this.world)}:${player}`;
+    if (this.signpostProbeMemo?.version === version) return this.signpostProbeMemo.probe;
+    const probe = signpostProbe(this.world, this.content, this.terrain, player);
+    this.signpostProbeMemo = { version, probe };
+    return probe;
   }
+
+  /** See {@link signpostProbe} — one entry suffices (the app probes for the one human player). */
+  private signpostProbeMemo: { version: string; probe: SignpostProbe } | undefined;
 
   /**
    * The version of the signpost-probe inputs — {@link placementBlockerVersion} plus the work-flag

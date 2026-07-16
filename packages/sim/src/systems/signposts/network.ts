@@ -9,8 +9,8 @@ import {
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import { nodeBoxOfCircles, type SpatialGate, withinNodeRadius } from '../node-metric.js';
 import { isFighterJob, SCOUT_JOB } from '../readviews/index.js';
-import { type NodeBox, nodeBoxOfCircles, withinNodeRadius } from './geometry.js';
 
 /**
  * The per-player SIGNPOST NETWORK — which signposts exist, where, and which belong to one connected
@@ -132,25 +132,20 @@ function verifyNetwork(world: World): string[] {
 }
 
 /**
- * One settler's navigation confinement: the union of its LOCAL circle (radius
+ * One settler's navigation confinement — a {@link SpatialGate}: the union of its LOCAL circle (radius
  * {@link LOCAL_NAV_RADIUS_NODES} around where it stands) and the nav circles of every signpost group it
  * can reach — a group is reachable iff some member's circle intersects the settler's local circle. The
- * whole of the user-facing rule keys on {@link allowsNode}: a gatherer only harvests, a worker only
- * fetches, a builder only builds, and a move order only walks to an allowed node.
+ * whole of the user-facing rule keys on `allowsNode`: a gatherer only harvests, a worker only fetches, a
+ * builder only builds, and a move order only walks to an allowed node; `bounds` lets the searches shrink
+ * their scans to the confined area.
+ *
+ * Named approximation: the local circle travels WITH the settler (re-centred on every query), so
+ * repeated in-circle hops can walk a unit — and drift an autonomous worker — arbitrarily far outside the
+ * network, one local radius at a time. The original's anchor for "near where I am allowed to be" is not
+ * decoded; anchoring the circle to something stationary is the open follow-up
+ * (docs/tickets/sim/signpost-local-circle-anchor.md).
  */
-export interface NavigationLimit {
-  /** Whether `node` lies inside this settler's allowed area. */
-  allowsNode(node: NodeId): boolean;
-  /** A box provably containing every allowed node ({@link nodeBoxOfCircles}) — lets a search BOUND its
-   *  scan/ring expansion to the confined area; membership stays {@link allowsNode}'s call. */
-  readonly bounds: NodeBox;
-}
-
-/** `limit` as the optional cell-gate shape the target queries take (`InteractionCellIndex.nearest`,
- *  `nearestHarvestableFor`): undefined for an unlimited settler, else the allowsNode membership test. */
-export function cellGateOf(limit: NavigationLimit | null): ((cell: NodeId) => boolean) | undefined {
-  return limit === null ? undefined : (cell) => limit.allowsNode(cell);
-}
+export type NavigationLimit = SpatialGate;
 
 /**
  * The navigation limit confining settler `e`, or `null` when it is UNLIMITED: signpost navigation off

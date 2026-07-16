@@ -1,5 +1,4 @@
 import { JobAssignment } from '../../../components/index.js';
-import { cellGateOf } from '../../signposts/index.js';
 import { isCarrierJob } from '../../stores/index.js';
 import { walkPickupBatch } from '../actions.js';
 import type { PlannerContext } from '../planner-context.js';
@@ -41,7 +40,7 @@ export function planPorter(plan: PlannerContext): boolean {
     ctx,
     terrain,
     here,
-    cellGateOf(plan.limit),
+    plan.limit ?? undefined,
   );
   if (pile === null) return false;
   walkPickupBatch(plan, pile.pile, pile.goodType);
@@ -67,15 +66,7 @@ export function planCarrierHaul(plan: PlannerContext, anyHaulable: boolean): boo
   if (!isCarrierJob(ctx, settler.jobType)) return false; // hauling is the carrier trade's job alone
   if (!world.has(e, JobAssignment)) return false; // an unassigned carrier has no store to work for
   const haul = anyHaulable
-    ? nearestWorkplaceOutput(
-        targets.stockpileCells,
-        targets.sinks,
-        world,
-        ctx,
-        here,
-        cellGateOf(plan.limit),
-        plan.limit?.bounds,
-      )
+    ? nearestWorkplaceOutput(targets.stockpileCells, targets.sinks, world, ctx, here, plan.limit ?? undefined)
     : null;
   if (haul === null) return false;
   walkPickupBatch(plan, haul.workplace, haul.goodType);
