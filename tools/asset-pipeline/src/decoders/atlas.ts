@@ -89,8 +89,7 @@ export function expandBobFrame(frame: BobFrame, palette: Uint8Array): RgbaImage 
  * renderer, which reads each index through a per-player palette LUT (see `player-palette.ts`). The
  * alternative to {@link expandBobFrame} for the character bodies, whose clothing band is recoloured per
  * player at draw time. A written pixel carries its real index (index 0 is a valid colour for bobs) with
- * the frame's 0–255 coverage as alpha; an unwritten pixel is fully transparent. The indexed packer
- * ({@link packIndexedBobAtlas}) flattens coverage before this runs — see its doc for why.
+ * the frame's 0–255 coverage as alpha; an unwritten pixel is fully transparent.
  */
 export function expandBobFrameIndexed(frame: BobFrame): RgbaImage {
   const { width, height, pixels, mask } = frame;
@@ -230,13 +229,6 @@ export function packShadowBobAtlas(bmd: Bmd, maxWidth = DEFAULT_ATLAS_MAX_WIDTH)
   return packBobAtlasWith(bmd, expandBobFrameShadow, maxWidth);
 }
 
-/** Every written (`mask≠0`) pixel forced fully opaque — the binary-alpha flattener of the indexed path. */
-function flattenFrameAlpha(frame: BobFrame): BobFrame {
-  const mask = new Uint8Array(frame.mask.length);
-  for (let i = 0; i < mask.length; i++) mask[i] = frame.mask[i] !== 0 ? BOB_ALPHA_OPAQUE : 0;
-  return { ...frame, mask };
-}
-
 /**
  * Packs every bob into an indexed atlas (palette index in red, mask in alpha) instead of an RGB one —
  * the {@link expandBobFrameIndexed} twin of {@link packBobAtlas}, for the character bodies whose player
@@ -244,14 +236,12 @@ function flattenFrameAlpha(frame: BobFrame): BobFrame {
  * atlas of the same `.bmd` (same frame sizes → same shelf packing), so the two atlases share frame
  * geometry; only the pixel channels differ.
  *
- * Coverage is flattened here (every written pixel opaque): the indexed sheets' one consumer — the
- * `PalettedSprite` LUT shader — draws binary alpha (`texel.a < 0.5 → discard`, survivors opaque), so a
- * graded bake would erode the GUI chrome / goods icons / font glyphs whose type-4 bobs carry sub-128
- * alpha bytes (measured: 12.6% of ls_goods' visible pixels). A graded indexed path needs a shader
- * change plus its own human pixel pass — a deliberate follow-up, not this bake.
+ * Coverage bakes graded, like the RGB path: the `PalettedSprite` LUT shader modulates its output by the
+ * texel's alpha (nearest sampling keeps the index channel exact), so the type-4 bobs' authored feathered
+ * translucency (12.6% of ls_goods' visible pixels carry sub-128 alpha) survives into the drawn sprite.
  */
 export function packIndexedBobAtlas(bmd: Bmd, maxWidth = DEFAULT_ATLAS_MAX_WIDTH): BobAtlas {
-  return packBobAtlasWith(bmd, (frame) => expandBobFrameIndexed(flattenFrameAlpha(frame)), maxWidth);
+  return packBobAtlasWith(bmd, expandBobFrameIndexed, maxWidth);
 }
 
 /**
