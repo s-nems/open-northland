@@ -41,9 +41,11 @@ const FATIGUE_SLEEP_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4)); // 
 
 /**
  * Piety level (fixed-point, in [0, ONE]) at or above which a settler stops working to pray, mirroring
- * {@link HUNGER_EAT_THRESHOLD}/{@link FATIGUE_SLEEP_THRESHOLD} at ¾ of a full bar. APPROXIMATED (see
- * source basis): like the eat/sleep triggers, the original drives praying off the per-animation
- * devotion events with no single readable "pray at X" threshold; this constant is the slice's
+ * {@link HUNGER_EAT_THRESHOLD}/{@link FATIGUE_SLEEP_THRESHOLD} at ¾ of a full bar. Since piety no longer
+ * rises over time — it climbs only when a smith forges a weapon/armor good (`chargeMilitaryPiety`) — in
+ * practice only smiths reach this threshold; other trades keep their seeded starting piety and never pray.
+ * APPROXIMATED (see source basis): like the eat/sleep triggers, the original drives praying off the
+ * per-animation devotion events with no single readable "pray at X" threshold; this constant is the slice's
  * deterministic pray trigger until that vocabulary is decoded and calibration-by-observation lands.
  */
 const PIETY_PRAY_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4)); // ¾·ONE

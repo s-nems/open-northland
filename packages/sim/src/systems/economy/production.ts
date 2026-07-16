@@ -163,15 +163,8 @@ function consumeInputs(world: World, building: Entity, recipe: Recipe): void {
 }
 
 /**
- * Deposit the recipe's output goods into the workplace's stockpile on cycle completion and emit a
- * `goodProduced` event per output (render/audio cue). The room was reserved by {@link canStartCycle}
- * at cycle start (no input consumption or competing producer can have removed capacity since —
- * production is the only writer of a workplace's own outputs), so the outputs always fit; the
- * per-good capacity is not re-checked here.
- */
-/**
  * Charge each smith who finished forging this tick a fixed slice of piety — producing a weapon or piece of
- * armor is the ONLY thing that raises the piety deficit (NeedsSystem no longer raises piety over time; praying
+ * armor is the only thing that raises the piety deficit (NeedsSystem no longer raises piety over time; praying
  * at a temple clears it). Applied once per completed cycle whose recipe outputs a military good
  * ({@link import('../../core/content-index.js').ContentIndex.militaryGoods}), to the operators on station in
  * canonical order (a lone-smith workshop charges its one worker per sword). A non-military recipe (a mill, a
@@ -192,6 +185,13 @@ function chargeMilitaryPietyCost(
   for (const op of operators.slice(0, completed)) chargeMilitaryPiety(world, op);
 }
 
+/**
+ * Deposit the recipe's output goods into the workplace's stockpile on cycle completion and emit a
+ * `goodProduced` event per output (render/audio cue). The room was reserved by {@link canStartCycle}
+ * at cycle start (no input consumption or competing producer can have removed capacity since —
+ * production is the only writer of a workplace's own outputs), so the outputs always fit; the
+ * per-good capacity is not re-checked here.
+ */
 function depositOutputs(world: World, ctx: SystemContext, building: Entity, recipe: Recipe): void {
   const stock = world.get(building, Stockpile).amounts;
   for (const output of recipe.outputs) {
