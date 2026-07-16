@@ -4,6 +4,8 @@ import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import { startDrop } from '../agents/actions.js';
 import type { SystemContext } from '../context.js';
+import { interactionNode } from '../footprint/index.js';
+import type { NavigationLimit } from '../signposts/index.js';
 import { isFood } from '../stores/index.js';
 import { deliverHome, fetchFrom } from './children.js';
 import type { ExternalFoodIndex } from './food-search.js';
@@ -22,7 +24,9 @@ import { builtHomeType, storedFoodUnits } from './households.js';
  * the nearest external unit (the planner tick's shared {@link ExternalFoodIndex} — never another
  * family's larder). Returns true when it took the settler for this tick. A homeless woman, an unbuilt
  * home, a full larder, or a world with no reachable food outside homes leaves her to the planner's
- * remaining rungs.
+ * remaining rungs. `limit` is her signpost confinement (null = unlimited): a home outside her allowed
+ * area suspends the drive entirely, and a source outside it is invisible — the housewife searches only
+ * her local circle plus the guidepost network, like every other economy search.
  */
 export function planWomanHoard(
   world: World,
@@ -30,11 +34,16 @@ export function planWomanHoard(
   terrain: TerrainGraph | undefined,
   e: Entity,
   externalFood: ExternalFoodIndex,
+  limit: NavigationLimit | null,
 ): boolean {
   const home = world.tryGet(e, Residence)?.home;
   if (home === undefined) return false;
   const homeType = builtHomeType(world, ctx, home);
   if (homeType === undefined) return false;
+  if (limit !== null && terrain !== undefined) {
+    const inode = interactionNode(world, ctx, home);
+    if (inode !== null && !limit.allowsNode(terrain.nodeAtClamped(inode.x, inode.y))) return false;
+  }
   const capacity = homeType.stock.reduce(
     (sum, slot) => (isFood(ctx, slot.goodType) ? sum + slot.capacity : sum),
     0,
@@ -52,7 +61,7 @@ export function planWomanHoard(
     deliverHome(world, ctx, terrain, e, settler, home, hereNode);
     return true;
   }
-  const source = externalFood.nearest(hereNode);
+  const source = externalFood.nearest(hereNode, limit);
   if (source === null) return false; // nothing to hoard — fall through to idling
   fetchFrom(world, ctx, terrain, e, settler, source, hereNode);
   return true;

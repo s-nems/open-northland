@@ -7,8 +7,6 @@ import {
   Position,
   Resource,
   Settler,
-  SIGNPOST_SPACING_RADIUS_NODES,
-  Signpost,
 } from '../../src/components/index.js';
 import { fx } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';

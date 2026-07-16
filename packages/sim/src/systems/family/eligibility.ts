@@ -1,8 +1,10 @@
 import { Age, Female, Marriage, Position, Settler, Wedding } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
+import type { TerrainGraph } from '../../nav/terrain/index.js';
 import { isNonWorkingAge } from '../lifecycle/ageclass.js';
 import { isFighterJob, SCOUT_JOB } from '../readviews/stances.js';
+import type { NavigationLimit } from '../signposts/index.js';
 import { canonicalById } from '../spatial.js';
 
 // Who may marry, and how a partner is picked — the pure predicates behind the `marry` command and the
@@ -49,11 +51,18 @@ export function mayMarry(world: World, e: Entity): boolean {
 
 /**
  * The nearest eligible partner for `seeker`, or null when none exists (the marry order then auto-cancels).
- * Eligible: {@link mayMarry}, the seeker's tribe, the opposite sex, positioned. Nearest by half-cell
- * Manhattan distance from the seeker with the ascending-entity-id tie-break — a canonical pick over the
- * ascending-id candidate scan, so the winner never depends on store insertion order.
+ * Eligible: {@link mayMarry}, the seeker's tribe, the opposite sex, positioned — and, under signpost
+ * navigation (`limit` non-null with a `terrain`), standing inside the seeker's allowed area (local circle
+ * + reachable guidepost network), so a wedding never chases a match the seeker may not walk to. Nearest
+ * by half-cell Manhattan distance from the seeker with the ascending-entity-id tie-break — a canonical
+ * pick over the ascending-id candidate scan, so the winner never depends on store insertion order.
  */
-export function findPartnerFor(world: World, seeker: Entity): Entity | null {
+export function findPartnerFor(
+  world: World,
+  seeker: Entity,
+  terrain: TerrainGraph | undefined,
+  limit: NavigationLimit | null,
+): Entity | null {
   const seekerPos = world.tryGet(seeker, Position);
   if (seekerPos === undefined) return null;
   const from = nodeOfPosition(seekerPos.x, seekerPos.y);
@@ -66,6 +75,13 @@ export function findPartnerFor(world: World, seeker: Entity): Entity | null {
     if (world.has(e, Female) === seekerFemale) continue; // same sex — a couple is a woman and a man
     const p = world.get(e, Position);
     const node = nodeOfPosition(p.x, p.y);
+    if (
+      limit !== null &&
+      terrain !== undefined &&
+      !limit.allowsNode(terrain.nodeAtClamped(node.hx, node.hy))
+    ) {
+      continue; // beyond the seeker's signpost area — out of reach for the wedding walk
+    }
     const dist = Math.abs(node.hx - from.hx) + Math.abs(node.hy - from.hy);
     if (best === null || dist < best.dist) best = { entity: e, dist };
   }

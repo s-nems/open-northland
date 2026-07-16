@@ -2,7 +2,9 @@ import { Building, Position, Stockpile, stockpileEntries } from '../../component
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
+import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
+import type { SpatialGate } from '../node-metric.js';
 import { canonicalById, NodeBuckets } from '../spatial.js';
 import { isFood } from '../stores/index.js';
 
@@ -35,10 +37,19 @@ export class ExternalFoodIndex {
   constructor(
     private readonly world: World,
     private readonly ctx: SystemContext,
+    private readonly terrain: TerrainGraph | undefined,
   ) {}
 
-  /** The nearest external food source to `from`, or null when none exists anywhere. */
-  nearest(from: { hx: number; hy: number }): { store: Entity; goodType: number } | null {
+  /**
+   * The nearest external food source to `from`, or null when none exists anywhere. `gate` is the
+   * seeker's signpost confinement ({@link SpatialGate}, null when unlimited): a source whose own node
+   * lies outside the allowed area is invisible to her — the family searches obey the same "local
+   * circle plus the reachable guidepost network" rule every economy search does.
+   */
+  nearest(
+    from: { hx: number; hy: number },
+    gate: SpatialGate | null,
+  ): { store: Entity; goodType: number } | null {
     if (this.candidates === undefined || this.buckets === undefined) {
       this.candidates = canonicalById(this.world.query(Stockpile, Position)).filter(
         (e) => !this.isHome(e) && lowestStockedFood(this.world, this.ctx, e) !== null,
@@ -46,11 +57,20 @@ export class ExternalFoodIndex {
       this.buckets = new NodeBuckets(this.world, this.candidates);
     }
     if (this.candidates.length === 0) return null;
-    const hit = this.buckets.nearest(from.hx, from.hy, 0, RING_MAX_RADIUS, () => true);
-    const store = hit?.entity ?? this.linearNearest(from);
+    const accept = (e: Entity): boolean => this.inArea(e, gate);
+    const hit = this.buckets.nearest(from.hx, from.hy, 0, RING_MAX_RADIUS, accept);
+    const store = hit?.entity ?? this.linearNearest(from, accept);
     if (store === null) return null;
     const goodType = lowestStockedFood(this.world, this.ctx, store);
     return goodType === null ? null : { store, goodType };
+  }
+
+  /** Whether the store's own node lies inside the seeker's allowed area (no gate/terrain = everywhere). */
+  private inArea(e: Entity, gate: SpatialGate | null): boolean {
+    if (gate === null || this.terrain === undefined) return true;
+    const p = this.world.get(e, Position);
+    const node = nodeOfPosition(p.x, p.y);
+    return gate.allowsNode(this.terrain.nodeAtClamped(node.hx, node.hy));
   }
 
   /** Whether the stockpile is a home-kind building (its larder is its residents' alone). */
@@ -62,9 +82,10 @@ export class ExternalFoodIndex {
 
   /** The exact pre-index linear pick — strictly-nearer over the ascending-id candidates — covering
    *  sources beyond {@link RING_MAX_RADIUS} (anything within it would have won the ring). */
-  private linearNearest(from: { hx: number; hy: number }): Entity | null {
+  private linearNearest(from: { hx: number; hy: number }, accept: (e: Entity) => boolean): Entity | null {
     let best: { store: Entity; dist: number } | null = null;
     for (const e of this.candidates ?? []) {
+      if (!accept(e)) continue;
       const p = this.world.get(e, Position);
       const node = nodeOfPosition(p.x, p.y);
       const dist = Math.abs(node.hx - from.hx) + Math.abs(node.hy - from.hy);
