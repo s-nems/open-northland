@@ -229,6 +229,20 @@ export interface DrawItem {
    * (0) on a flat map with nothing in flight.
    */
   readonly lift?: number;
+  /**
+   * This item only survived the cull because it is the details-panel portrait's subject (off-screen,
+   * fogged, or a settler inside a building — cases the map normally drops). The pool keeps it reconciled
+   * and paletted so the portrait's second render can draw it, but hides it on the MAIN map (an off-screen
+   * settler is off-canvas anyway; an indoor one must not pop into view at its workplace door). Omitted
+   * (falsy) for a normally-drawn item.
+   */
+  readonly portraitOnly?: boolean;
+  /**
+   * Freeze this settler's animation clock to a fixed standing frame (the portrait subject while it is
+   * inside a building): a motionless pose rather than the breathing idle loop. Omitted (falsy) for a
+   * normally-animating item.
+   */
+  readonly frozen?: boolean;
 }
 
 /** The mutable twin of {@link DrawItem}, used only while one item is being assembled (the fields are
