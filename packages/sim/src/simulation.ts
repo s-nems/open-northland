@@ -146,8 +146,18 @@ export class Simulation {
     };
     const instrument = this.instrument;
     for (const { name, system } of SYSTEM_ORDER) {
-      if (instrument === null) system(this.world, ctx);
-      else instrument(name, () => system(this.world, ctx));
+      if (instrument === null) {
+        system(this.world, ctx);
+      } else {
+        // Enforce the hook contract (`run` exactly once): a skipping/double-running hook would
+        // silently diverge the live session from its own command-log replay.
+        let runs = 0;
+        instrument(name, () => {
+          runs++;
+          system(this.world, ctx);
+        });
+        if (runs !== 1) throw new Error(`instrument ran system '${name}' ${runs} times (must be exactly 1)`);
+      }
     }
   }
 

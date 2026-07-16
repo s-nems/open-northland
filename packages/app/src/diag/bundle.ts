@@ -12,6 +12,7 @@
  * first's, so the two never drift.
  */
 import type { LoggedCommand } from '@open-northland/sim';
+import { downloadJsonFile } from './download.js';
 import { type DiagEntry, type DiagLog, diag } from './log.js';
 import { currentDiagGameSession, type DiagGameSession } from './session.js';
 import { recordedTraceEvents, type TraceEvent } from './trace.js';
@@ -44,7 +45,7 @@ export interface DiagnosticsBundle {
   readonly trace?: readonly TraceEvent[];
 }
 
-/** Assemble the bundle from the log ring and the registered game session. Pure given its inputs. */
+/** Assemble the bundle from the log ring, the registered game session, and the trace recording. */
 export function buildDiagnosticsBundle(
   log: DiagLog = diag,
   session: DiagGameSession | null = currentDiagGameSession(),
@@ -84,34 +85,39 @@ function gameReport(session: DiagGameSession): DiagnosticsGameReport {
 }
 
 /**
- * Serialize defensively: log `data` is normalized at log time, but a caller can still hand the ring
- * something exotic — a crash-path serializer must not throw. BigInts become strings; a re-visited
- * object is cut as `"[circular]"` (this also cuts merely-shared references — acceptable losiness for
- * a diagnostics artifact, never for a save).
+ * Make one free-form log `data` value JSON-proof: BigInts become strings, a re-visited object is cut
+ * as `"[circular]"`, anything still unserializable becomes `"[unserializable]"`. Lossy on purpose —
+ * and applied ONLY to log data: the game report (the replay payload) and the trace are serializable
+ * by contract and must never be cut (a shared command sub-object stringified as `"[circular]"` would
+ * corrupt the repro).
  */
-export function serializeDiagnosticsBundle(bundle: DiagnosticsBundle): string {
+function jsonSafeData(data: unknown): unknown {
   const seen = new WeakSet<object>();
-  return JSON.stringify(
-    bundle,
-    (_key, value: unknown) => {
+  try {
+    const text = JSON.stringify(data, (_key, value: unknown) => {
       if (typeof value === 'bigint') return String(value);
       if (typeof value === 'object' && value !== null) {
         if (seen.has(value)) return '[circular]';
         seen.add(value);
       }
       return value;
-    },
-    2,
-  );
+    });
+    return text === undefined ? undefined : (JSON.parse(text) as unknown);
+  } catch {
+    return '[unserializable]';
+  }
+}
+
+/** Serialize for download: exact `game`/`trace` payloads, defensively-sanitized log `data`. */
+export function serializeDiagnosticsBundle(bundle: DiagnosticsBundle): string {
+  const log = bundle.log.map((e) => (e.data === undefined ? e : { ...e, data: jsonSafeData(e.data) }));
+  return JSON.stringify({ ...bundle, log }, null, 2);
 }
 
 /** Trigger a browser download of the bundle as a standalone `.json` report file. */
 export function downloadDiagnosticsBundle(bundle: DiagnosticsBundle = buildDiagnosticsBundle()): void {
-  const blob = new Blob([serializeDiagnosticsBundle(bundle)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = `opennorthland-diagnostics-${bundle.generatedAt.replaceAll(':', '-')}.json`;
-  anchor.click();
-  URL.revokeObjectURL(url);
+  downloadJsonFile(
+    `opennorthland-diagnostics-${bundle.generatedAt.replaceAll(':', '-')}.json`,
+    serializeDiagnosticsBundle(bundle),
+  );
 }

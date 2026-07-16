@@ -68,6 +68,36 @@ describe('diagnostics bundle', () => {
     expect(replayed.hashState()).toBe(game.hashes?.at(-1)?.hash);
   });
 
+  it('never cuts shared references inside the replay payload', () => {
+    const sim = createSceneSim(scene);
+    // The same command OBJECT enqueued twice — commands are held by reference in the log, so a
+    // naive whole-bundle cycle guard would stringify the second occurrence as "[circular]".
+    const shared = { kind: 'setNeedsEnabled', enabled: true } as const;
+    sim.enqueue(shared);
+    sim.step();
+    sim.enqueue(shared);
+    sim.step();
+    const log = new DiagLog({ consoleLevel: 'silent', now: () => 1 });
+    const bundle = buildDiagnosticsBundle(log, {
+      entry: 'scene',
+      worldId: scene.id,
+      seed: scene.seed,
+      sim,
+      hashTrace: null,
+    });
+    const parsed = JSON.parse(serializeDiagnosticsBundle(bundle)) as DiagnosticsBundle;
+    const needsCommands = parsed.game?.commandLog.filter((c) => c.command.kind === 'setNeedsEnabled');
+    expect(needsCommands?.length).toBeGreaterThanOrEqual(2);
+    // Log data stays defensively sanitized: a true cycle becomes "[circular]" instead of throwing.
+    const cyclic: { self?: unknown } = {};
+    cyclic.self = cyclic;
+    log.warn('content', 'cyclic payload', cyclic);
+    const reserialized = JSON.parse(
+      serializeDiagnosticsBundle(buildDiagnosticsBundle(log, null)),
+    ) as DiagnosticsBundle;
+    expect(reserialized.log[0]?.data).toEqual({ self: '[circular]' });
+  });
+
   it('degrades to a log-only bundle when no game session is registered', () => {
     const log = new DiagLog({ consoleLevel: 'silent', now: () => 1 });
     log.error('crash', 'boot failure');

@@ -23,6 +23,9 @@ export interface DiagGameSession {
  */
 export const HASH_TRACE_EVERY_TICKS = 20;
 
+/** The `?debug=` value that turns hash recording on (read at game start). */
+export const HASH_TRACE_DEBUG_FLAG = 'diag';
+
 let current: DiagGameSession | null = null;
 
 /** Register the running game (a playable entry calls this once its sim exists). */
@@ -47,5 +50,5 @@ export function recordDiagHash(sim: Simulation): void {
 
 /** Build the session's `HashTrace` when the `?debug=diag` flag asks for hash recording. */
 export function hashTraceFor(params: URLSearchParams): HashTrace | null {
-  return params.get('debug') === 'diag' ? new HashTrace() : null;
+  return params.get('debug') === HASH_TRACE_DEBUG_FLAG ? new HashTrace() : null;
 }

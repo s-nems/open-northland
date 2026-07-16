@@ -17,11 +17,20 @@ export function emitPerfMeasure(name: string, startMs: number, endMs: number): v
   performance.clearMeasures(name);
 }
 
-/** Hook the sim's per-system seam so every system invocation becomes a `sim/<name>` measure. */
-export function installSimPerfMarks(sim: Simulation): void {
+/** Hook the sim's per-system seam, timing every system invocation into `emit('sim/<name>', …)` —
+ *  shared by the marks below and the trace recording (trace.ts). */
+export function installSimInstrument(
+  sim: Simulation,
+  emit: (name: string, startMs: number, endMs: number) => void,
+): void {
   sim.setInstrument((name, run) => {
     const start = performance.now();
     run();
-    emitPerfMeasure(`sim/${name}`, start, performance.now());
+    emit(`sim/${name}`, start, performance.now());
   });
+}
+
+/** Hook the sim's per-system seam so every system invocation becomes a `sim/<name>` measure. */
+export function installSimPerfMarks(sim: Simulation): void {
+  installSimInstrument(sim, emitPerfMeasure);
 }

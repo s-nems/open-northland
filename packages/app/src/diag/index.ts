@@ -8,6 +8,7 @@ export {
   serializeDiagnosticsBundle,
 } from './bundle.js';
 export { installCrashCapture } from './crash.js';
+export { downloadJsonFile } from './download.js';
 export { logBootHeader } from './env-header.js';
 export {
   type ConsoleSink,
@@ -17,10 +18,16 @@ export {
   type DiagLogOptions,
   diag,
 } from './log.js';
-export { emitPerfMeasure, installSimPerfMarks, PERF_MARKS_DEBUG_FLAG } from './perf-marks.js';
+export {
+  emitPerfMeasure,
+  installSimInstrument,
+  installSimPerfMarks,
+  PERF_MARKS_DEBUG_FLAG,
+} from './perf-marks.js';
 export {
   currentDiagGameSession,
   type DiagGameSession,
+  HASH_TRACE_DEBUG_FLAG,
   HASH_TRACE_EVERY_TICKS,
   hashTraceFor,
   recordDiagHash,

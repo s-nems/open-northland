@@ -10,6 +10,8 @@
  * https://perfetto.dev/docs/getting-started/other-formats).
  */
 import type { Simulation } from '@open-northland/sim';
+import { downloadJsonFile } from './download.js';
+import { installSimInstrument } from './perf-marks.js';
 
 /** The `?debug=` value that turns trace recording on (read at game mount). */
 export const TRACE_DEBUG_FLAG = 'trace';
@@ -87,11 +89,7 @@ export function recordedTraceEvents(): TraceEvent[] | null {
 
 /** Hook the sim's per-system seam so every system invocation becomes a `sim/<name>` slice. */
 export function installSimTrace(sim: Simulation): void {
-  sim.setInstrument((name, run) => {
-    const start = performance.now();
-    run();
-    recordTraceEvent(`sim/${name}`, start, performance.now());
-  });
+  installSimInstrument(sim, recordTraceEvent);
 }
 
 /** Serialize the recording as a Perfetto/DevTools-loadable Trace Event JSON file body. */
@@ -103,11 +101,8 @@ export function traceFileJson(events: readonly TraceEvent[]): string {
 export function downloadTraceFile(): void {
   const events = recordedTraceEvents();
   if (events === null) return;
-  const blob = new Blob([traceFileJson(events)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = `opennorthland-trace-${new Date().toISOString().replaceAll(':', '-')}.json`;
-  anchor.click();
-  URL.revokeObjectURL(url);
+  downloadJsonFile(
+    `opennorthland-trace-${new Date().toISOString().replaceAll(':', '-')}.json`,
+    traceFileJson(events),
+  );
 }

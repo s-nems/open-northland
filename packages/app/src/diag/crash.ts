@@ -65,7 +65,7 @@ function showCrashBanner(text: string): void {
 
     const dismiss = document.createElement('button');
     dismiss.type = 'button';
-    dismiss.textContent = copy.closeMenu;
+    dismiss.textContent = copy.dismiss;
     dismiss.style.cssText = BANNER_BUTTON_STYLE;
     dismiss.addEventListener('click', () => {
       root.remove();
