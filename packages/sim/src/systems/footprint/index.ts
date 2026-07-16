@@ -24,6 +24,8 @@ export {
   type PlacementProbe,
   placementBlockerVersion,
   placementProbe,
+  workFlagBlockerVersion,
+  workFlagPlacementBlocks,
 } from './placement.js';
 // manhattan/nodeKey are published through systems/spatial.ts (their single public export
 // site — two star-export paths to one name would silently drop it from the systems barrel on a

@@ -6,4 +6,4 @@ export {
   type SignpostSite,
   signpostNetwork,
 } from './network.js';
-export { canPlaceSignpost, erectSignpost } from './placement.js';
+export { canPlaceSignpost, erectSignpost, type SignpostProbe, signpostProbe } from './placement.js';

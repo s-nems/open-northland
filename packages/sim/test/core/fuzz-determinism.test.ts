@@ -155,7 +155,7 @@ function pick<T>(rng: Rng, options: readonly T[]): T {
 function nextCommand(rng: Rng): Command {
   const x = rng.int(NODE_W);
   const y = rng.int(NODE_H);
-  const roll = rng.int(23);
+  const roll = rng.int(24);
   switch (roll) {
     case 0:
       return {
@@ -342,6 +342,10 @@ function nextCommand(rng: Rng): Command {
       // The signpost-navigation toggle: flips the SignpostRules singleton mid-stream, confining/freeing
       // every civilian's target scans + move orders — the rule must hash and replay like any state.
       return { kind: 'setSignpostNavigation', enabled: rng.int(2) === 0 };
+    case 23:
+      // A signpost tear-down at a random id: live signposts (destroyed — the network memo, blockers, and
+      // vision must all re-derive) and non-signpost / dead targets (skipped).
+      return { kind: 'demolishSignpost', signpost: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
     default:
       // A profession change at a random id: valid + unknown jobs, owned/unowned/dead targets.
       return {

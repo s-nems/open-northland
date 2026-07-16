@@ -133,6 +133,51 @@ describe('placeSignpost — the scout erects a guidepost', () => {
     expect(canPlaceSignpost(sim.world, ctxOf(sim), terrain, nearby, P0)).toBe(false);
     expect(canPlaceSignpost(sim.world, ctxOf(sim), terrain, nearby, 1)).toBe(true); // a rival may crowd it
   });
+
+  it('signpostProbe agrees with canPlaceSignpost node by node (the overlay seam)', () => {
+    const sim = freshSim();
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim');
+    const scout = makeUnit(sim, 4, 2, SCOUT);
+    sim.enqueue({ kind: 'placeSignpost', entity: scout, x: 8, y: 4 });
+    stepUntilSignpost(sim, 60);
+    const probe = sim.signpostProbe(P0);
+    if (probe === null) throw new Error('mapped sim has a probe');
+    // A band around the standing post: inside the spacing circle, on its cell, and beyond — the probe
+    // must answer exactly what the command gate would.
+    for (let y = 0; y < 8; y += 2) {
+      for (let x = 0; x < 48; x += 2) {
+        const expected = canPlaceSignpost(sim.world, ctxOf(sim), terrain, terrain.nodeAt(x, y), P0);
+        expect(probe.canPlace(x, y), `node (${x},${y})`).toBe(expected);
+      }
+    }
+    expect(probe.canPlace(-1, 0)).toBe(false); // off-map never places
+  });
+
+  it('demolishSignpost tears a post down (freeing its spacing circle); a non-signpost target is skipped', () => {
+    const sim = freshSim();
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim');
+    const scout = makeUnit(sim, 4, 2, SCOUT);
+    sim.enqueue({ kind: 'placeSignpost', entity: scout, x: 8, y: 4 });
+    stepUntilSignpost(sim, 60);
+    const post = signposts(sim)[0];
+    if (post === undefined) throw new Error('post erected');
+    const nearby = terrain.nodeAt(10, 4);
+    expect(canPlaceSignpost(sim.world, ctxOf(sim), terrain, nearby, P0)).toBe(false);
+
+    // Aiming at the scout is a skip, never a destroy — the kind gate.
+    sim.enqueue({ kind: 'demolishSignpost', signpost: scout });
+    sim.step();
+    expect(sim.world.has(scout, Settler)).toBe(true);
+    expect(signposts(sim).length).toBe(1);
+
+    sim.enqueue({ kind: 'demolishSignpost', signpost: post });
+    sim.step();
+    expect(signposts(sim).length).toBe(0);
+    // The spacing circle fell with the post — the spot is placeable again.
+    expect(canPlaceSignpost(sim.world, ctxOf(sim), terrain, nearby, P0)).toBe(true);
+  });
 });
 
 describe('signpostNetwork — connected groups', () => {

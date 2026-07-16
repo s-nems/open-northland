@@ -15,8 +15,10 @@ import {
   type PlacementProbe,
   placementBlockerVersion,
   placementProbe,
+  workFlagBlockerVersion,
 } from './systems/footprint/index.js';
 import { SYSTEM_ORDER } from './systems/schedule.js';
+import { type SignpostProbe, signpostProbe } from './systems/signposts/index.js';
 import { effectiveFogState, FogState } from './systems/vision/index.js';
 
 export interface SimOptions {
@@ -182,6 +184,25 @@ export class Simulation {
    */
   placementBlockerVersion(): string {
     return placementBlockerVersion(this.world);
+  }
+
+  /**
+   * An erectability test for one player's signposts — the read seam the signpost placement overlay
+   * probes per visible node, mirroring {@link placementProbe}. Reads the same rule the erect command
+   * gates on ({@link canPlaceSignpost}): open work-flag ground outside the player's spacing circles.
+   * Returns null for a mapless sim.
+   */
+  signpostProbe(player: number): SignpostProbe | null {
+    if (this.terrain === undefined) return null;
+    return signpostProbe(this.world, this.content, this.terrain, player);
+  }
+
+  /**
+   * The version of the signpost-probe inputs — {@link placementBlockerVersion} plus the work-flag
+   * generation (flags block signpost cells but not buildings). The signpost overlay's memo key.
+   */
+  signpostBlockerVersion(): string {
+    return workFlagBlockerVersion(this.world);
   }
 
   /**

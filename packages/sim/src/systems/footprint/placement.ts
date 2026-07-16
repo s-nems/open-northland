@@ -100,12 +100,14 @@ function collectPlacementBlockers(
   return { terrain, obstacles, exclusions };
 }
 
-/** Whether a work flag may occupy `node`: walkable ground outside every standing resource or building body.
- * A building's door remains walkable for routing but is still part of its family body, so a flag cannot be
- * planted inside a doorway; resource/building margin zones remain valid open ground. */
-function workFlagPlacementBlocks(
+/** The nodes a work flag may NOT occupy: every standing resource/building body cell plus the other
+ * markers' cells. A building's door remains walkable for routing but is still part of its family body,
+ * so a flag cannot be planted inside a doorway; resource/building margin zones remain valid open ground.
+ * Built fresh per call — one-shot command checks call it through {@link canPlaceWorkFlag}; a per-node
+ * band probe (the signpost overlay) builds it once and reuses the set. */
+export function workFlagPlacementBlocks(
   world: World,
-  ctx: SystemContext,
+  content: ContentSet,
   terrain: TerrainGraph,
   ignoreFlag?: Entity,
 ): ReadonlySet<NodeId> {
@@ -124,7 +126,7 @@ function workFlagPlacementBlocks(
     const p = world.get(e, Position);
     const anchor = nodeOfPosition(p.x, p.y);
     const building = world.get(e, Building);
-    const fp = buildingFootprintOf(ctx.content, building.buildingType);
+    const fp = buildingFootprintOf(content, building.buildingType);
     const body = fp?.familyBody.length ? fp.familyBody : ANCHOR_ONLY;
     for (const c of body) add(anchor.hx + c.dx, anchor.hy + c.dy);
   }
@@ -149,7 +151,9 @@ export function canPlaceWorkFlag(
   node: NodeId,
   ignoreFlag?: Entity,
 ): boolean {
-  return terrain.isWalkable(node) && !workFlagPlacementBlocks(world, ctx, terrain, ignoreFlag).has(node);
+  return (
+    terrain.isWalkable(node) && !workFlagPlacementBlocks(world, ctx.content, terrain, ignoreFlag).has(node)
+  );
 }
 
 /** The nearest legal work-flag node to `from`, by Manhattan distance then node id. Auto-created flags use
@@ -162,7 +166,7 @@ export function nearestWorkFlagPlacement(
   from: NodeId,
 ): NodeId | null {
   const origin = terrain.coordsOf(from);
-  const blocked = workFlagPlacementBlocks(world, ctx, terrain);
+  const blocked = workFlagPlacementBlocks(world, ctx.content, terrain);
   let best: NodeId | null = null;
   let bestDistance = Number.POSITIVE_INFINITY;
   for (let node = 0; node < terrain.nodeCount; node++) {
@@ -270,6 +274,15 @@ export interface PlacementProbe {
  */
 export function placementBlockerVersion(world: World): string {
   return `${world.componentGeneration(Building)}.${world.componentGeneration(Resource)}.${world.componentGeneration(ResourceFootprint)}.${world.componentGeneration(Signpost)}`;
+}
+
+/**
+ * The version of the WORK-FLAG blocker inputs — {@link placementBlockerVersion} plus the `DeliveryFlag`
+ * generation, since {@link workFlagPlacementBlocks} also blocks marker cells buildings ignore. The
+ * signpost placement overlay keys its memoized band probe on this.
+ */
+export function workFlagBlockerVersion(world: World): string {
+  return `${placementBlockerVersion(world)}.${world.componentGeneration(DeliveryFlag)}`;
 }
 
 /**
