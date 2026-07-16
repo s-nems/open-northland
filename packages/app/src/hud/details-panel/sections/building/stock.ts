@@ -5,7 +5,7 @@ import type { Rect } from '../../../geometry.js';
 import type { Chrome } from '../../chrome.js';
 import { type BuildingLayout, STOCK_PLATE_H, STOCK_ROW_H, stockSlotRects } from '../../layout/index.js';
 import type { BuildingPanelModel } from '../../model/index.js';
-import { ALL_STOCK_TAB, visibleStockRows } from '../../stock-tabs.js';
+import { visibleStockRows } from '../../stock-tabs.js';
 import { HOUSEWINDOW, STOCK_AMOUNT_INSET, STOCK_ICON_W, stockAmount } from './shared.js';
 
 /** The active stock tab's lime underline height in design px (kept ≥2 screen px so it reads at uiscale 1). */
@@ -68,15 +68,15 @@ export function drawStockSection(
 }
 
 /**
- * The original tab-plate glyph (frame 170–177) drawn on each tab, index = details tab (the leading
- * "Wszystkie" tab draws the procedural four-tone glyph instead — see {@link drawStockTabs}). The
- * category glyphs are reordered from the sheet's raw order so each gets the fitting one (identified by
- * eye: cutlery→food, house→building, hammer→tools, boots→crafted, weapon→military…). The glyph
- * semantics aren't decoded, so this pairing is a named approximation; the hover tooltip carries the
- * authoritative name either way.
+ * The original tab-plate glyph (frame 170–177) drawn on each tab, index = details tab. The category
+ * glyphs are reordered from the sheet's raw order so each gets the fitting one (identified by eye:
+ * cutlery→food, house→building, hammer→tools, boots→crafted, weapon→military…); the leading
+ * "Wszystkie" tab takes the set's remaining glyph so the whole strip is the one original art style.
+ * The glyph semantics aren't decoded, so this pairing is a named approximation; the hover tooltip
+ * carries the authoritative name either way.
  */
 const STOCK_TAB_GLYPH: readonly (number | undefined)[] = [
-  undefined, // 0 Wszystkie — the procedural glyphAll, not a sheet frame
+  GUI_FRAME.stock_tab_0 + 7, // 0 Wszystkie — the assorted-goods pile (reads as "everything")
   GUI_FRAME.stock_tab_0 + 2, // 1 Żywność — cutlery
   guiFrameIndex('resource_icon_water_drop'), // 2 Napoje — water drop (the tab set has no drink glyph)
   GUI_FRAME.stock_tab_0 + 4, // 3 Surowce — (unread)
@@ -84,11 +84,8 @@ const STOCK_TAB_GLYPH: readonly (number | undefined)[] = [
   GUI_FRAME.stock_tab_0 + 0, // 5 Narzędzia — hammer
   GUI_FRAME.stock_tab_0 + 5, // 6 Wyroby — boots
   GUI_FRAME.stock_tab_0 + 6, // 7 Wojsko — weapon
-  GUI_FRAME.stock_tab_0 + 7, // 8 Inne — (spare)
+  GUI_FRAME.stock_tab_0 + 3, // 8 Inne — the set's remaining glyph (shears)
 ];
-
-/** Inset (design px) of the "Wszystkie" tab's four-tone glyph inside its plate. */
-const ALL_TAB_GLYPH_PAD = 4;
 
 /**
  * The stock window's tabs — the "Wszystkie" (held goods, fullest first) tab then the eight categories —
@@ -104,11 +101,6 @@ function drawStockTabs(chrome: Chrome, rects: readonly Rect[], activeTab: number
     // The original cream line-art glyph, reordered onto the fitting category tab, over a wooden plate (active
     // brighter, inactive dimmed) instead of the flat grey recessed rectangle.
     chrome.tabButton(r, i === activeTab);
-    if (i === ALL_STOCK_TAB) {
-      const pad = Math.round(ALL_TAB_GLYPH_PAD * s);
-      chrome.glyphAll({ x: r.x + pad, y: r.y + pad, w: r.w - 2 * pad, h: r.h - 2 * pad });
-      return;
-    }
     const glyph = STOCK_TAB_GLYPH[i];
     if (glyph !== undefined) chrome.guiCentered(glyph, r, 'magenta', 'bg_invert');
   });

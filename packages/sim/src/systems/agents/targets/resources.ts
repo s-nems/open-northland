@@ -34,6 +34,8 @@ import { interactionCell, jobAtomics } from './workplaces.js';
  * roaming collector — measures from `here` with no radius. With `area` set, `candidates` is superseded by the
  * resource region index (`resourcesNearNode` — a provable superset of the in-radius nodes); pass the full
  * canonical resource list, never a pre-filtered one, or the two paths disagree on the winner.
+ * `goodFilter` restricts eligible goods to the given set (a building-employed gatherer foraging only what
+ * its workplace stores); omitted = every good the job may harvest.
  *
  * Known limitation (like the bridge case): the reachability gate below reads static components only. A
  * same-component node whose anchor and every work cell are enclosed by dynamic resource footprints (a sealed
@@ -48,6 +50,7 @@ export function nearestHarvestableFor(
   here: NodeId,
   settler: { jobType: number; tribe: number; experience: ReadonlyMap<number, number> },
   area?: { center: NodeId; radius: number; goodType?: number },
+  goodFilter?: ReadonlySet<number>,
 ): { entity: Entity; cell: NodeId; dist: number } | null {
   const allowed = jobAtomics(ctx, settler.jobType);
   // Dormancy gate: if the job's allowed atomics intersect no harvest atomic present on any standing resource,
@@ -90,6 +93,7 @@ export function nearestHarvestableFor(
     const res = world.tryGet(e, Resource);
     if (res === undefined || res.remaining <= 0) return null;
     if (area?.goodType !== undefined && res.goodType !== area.goodType) return null;
+    if (goodFilter !== undefined && !goodFilter.has(res.goodType)) return null; // not a good the caller forages for
     if (!world.has(e, Position)) return null;
     if (!allowed.has(res.harvestAtomic)) return null; // data-driven gate: job must permit this atomic
     // XP gate: this settler must have cleared the harvested good's `needforgood` thresholds.
@@ -132,6 +136,7 @@ export function nearestCollectablePileFor(
   terrain: TerrainGraph,
   here: NodeId,
   jobType: number,
+  goodFilter?: ReadonlySet<number>,
 ): { pile: Entity; goodType: number; dist: number } | null {
   const allowed = jobAtomics(ctx, jobType);
   // `candidates` is the GroundDrop candidate list, so every entry already has GroundDrop+Stockpile+Position
@@ -139,6 +144,7 @@ export function nearestCollectablePileFor(
   const best = nearestByCell(terrain, candidates, here, (e) => {
     const good = lowestStockedGood(world.get(e, Stockpile));
     if (good === null) return null; // an emptied drop (about to be reaped) — nothing to collect
+    if (goodFilter !== undefined && !goodFilter.has(good)) return null; // not a good the caller forages for
     const harvestAtomic = harvestAtomicByGood.get(good);
     if (harvestAtomic === undefined || !allowed.has(harvestAtomic)) return null; // not this job's trade
     return interactionCell(world, ctx, terrain, e, here);

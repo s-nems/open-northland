@@ -119,7 +119,15 @@ function drawWorkSection(
           ? hud.craftTarget
           : hud.product;
     chrome.textAt(key, product.x, product.y + ROW_TEXT_PAD * s, 'white');
-    chrome.textAt(model.work.product, product.x + keyW, product.y + ROW_TEXT_PAD * s, 'white');
+    // Shrink-to-fit so a two-product list can never spill past the panel's right edge.
+    chrome.textLeftMiddle(
+      model.work.product,
+      product.x + keyW,
+      product.y + product.h / 2,
+      'white',
+      'body',
+      product.w - keyW,
+    );
   }
   // Round choice buttons hugging the left edge — a gatherer's single-select goods or a craft worker's
   // multi-select products (never both) — each showing the good's icon (the generic pile for the

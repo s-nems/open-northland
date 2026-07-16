@@ -61,6 +61,10 @@ export const economyContent = {
     { typeId: 2, id: 'carpenter' },
     // The miner is permitted the stone harvest atomic (25) — it chips a `MineDeposit` deposit.
     { typeId: 5, id: 'miner', allowedAtomics: [25] },
+    // A two-trade collector (wood 24 + stone 25) — what the employed-gatherer store-filter tests use
+    // (the filter only shows on a job that could harvest MORE than its workplace stores). Nothing in
+    // the golden slice spawns it.
+    { typeId: 7, id: 'collector', allowedAtomics: [24, 25] },
     // The hunter (job 15 — `JOB_TYPE_HUMAN_HUNTER`) — the trade that strikes `catchable` prey.
     { typeId: 15, id: 'hunter' },
     // The farmer (the original's job 18) is permitted wheat's plant/cultivate/harvest atomics — the

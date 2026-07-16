@@ -31,4 +31,5 @@ export {
   recipeOf,
   recipesByProductOf,
   workerPresentAt,
+  workplaceStoredGoods,
 } from './workplace.js';

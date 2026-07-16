@@ -7,6 +7,7 @@ import {
   CurrentAtomic,
   Engagement,
   Fleeing,
+  GatherSelection,
   JobAssignment,
   ownerOf,
   PlayerOrder,
@@ -35,6 +36,7 @@ import {
 import { openWorkerJobFromList } from '../economy/jobs/index.js';
 import { canPlaceWorkFlag } from '../footprint/index.js';
 import { clearNavState } from '../spatial.js';
+import { workplaceStoredGoods } from '../stores/index.js';
 import { stampDefaultStance } from './combat.js';
 import { isOrderableSettler } from './guards.js';
 
@@ -88,6 +90,7 @@ function reidleAsJob(world: World, ctx: SystemContext, e: Entity, jobType: numbe
   world.remove(e, Fleeing);
   stampDefaultStance(world, e, jobType);
   syncWorkFlagToJob(world, ctx, e, jobType); // a gatherer trade carries a work flag; other trades don't
+  world.remove(e, GatherSelection); // the employed-gatherer pick dies with the employment it was made under
 }
 
 /**
@@ -227,8 +230,11 @@ export function setWorkFlag(
   clearNavState(world, e);
 }
 
-/** Set a flag-bound gatherer's resource filter. `null` means every map good its job may harvest. Invalid
- * goods and non-gatherers are ignored; changing the filter abandons a stale harvest route immediately. */
+/** Set a gatherer's resource filter. Flag-bound: {@link WorkFlag.goodType} (`null` = every map good
+ * its job may harvest). Flag-less but employed at a stocking building: {@link GatherSelection}, valid
+ * only for a good the workplace stores (`null` = every stored good). Invalid goods, non-gatherers and
+ * unemployed flag-less settlers are ignored; changing the filter abandons a stale harvest route
+ * immediately. */
 export function setGatherGood(
   world: World,
   ctx: SystemContext,
@@ -238,8 +244,6 @@ export function setGatherGood(
   if (!isOrderableSettler(world, e)) return;
   const settler = world.get(e, Settler);
   if (settler.jobType === null || !jobCanHarvest(ctx, settler.jobType)) return;
-  const flag = liveWorkFlag(world, e);
-  if (flag === undefined) return;
   const goodType = command.goodType;
   if (goodType !== null) {
     const good = contentIndex(ctx.content).goods.get(goodType);
@@ -247,10 +251,30 @@ export function setGatherGood(
     if (good === undefined || good.farming !== undefined || harvest === undefined) return;
     if (!jobAtomics(ctx, settler.jobType).has(harvest)) return;
   }
-  const binding = world.get(e, WorkFlag);
-  if (goodType === null) delete binding.goodType;
-  else binding.goodType = goodType;
-  world.touch(e);
+  const flag = liveWorkFlag(world, e);
+  if (flag !== undefined) {
+    const binding = world.get(e, WorkFlag);
+    if (goodType === null) delete binding.goodType;
+    else binding.goodType = goodType;
+    world.touch(e);
+  } else {
+    // The flag-less employed path: the pick lives in a GatherSelection and must be a good the bound
+    // workplace stockpiles (the "an employed gatherer forages only for its workplace" rule).
+    const workplace = world.tryGet(e, JobAssignment)?.workplace;
+    if (workplace === undefined || !world.isAlive(workplace)) return;
+    if (goodType === null) {
+      world.remove(e, GatherSelection); // back to every stored good
+    } else {
+      if (!(workplaceStoredGoods(world, ctx, workplace)?.has(goodType) ?? false)) return;
+      const selection = world.tryGet(e, GatherSelection);
+      if (selection === undefined) {
+        world.add(e, GatherSelection, { goodType });
+      } else {
+        selection.goodType = goodType;
+        world.touch(e);
+      }
+    }
+  }
   const atomic = world.tryGet(e, CurrentAtomic);
   if (atomic?.effect.kind === 'harvest') world.remove(e, CurrentAtomic);
   clearNavState(world, e);

@@ -6,6 +6,7 @@ import { interactionNode } from '../../footprint/index.js';
 import { canonicalById, NodeBuckets } from '../../spatial.js';
 import { buildingWorkerJobs, isCarrierJob, recipeOf } from '../../stores/index.js';
 import { farmWorkGood } from '../farming.js';
+import { jobCanHarvest, removeWorkFlag } from '../flags.js';
 import {
   buildStaffingTally,
   incrementStaffing,
@@ -62,7 +63,7 @@ export const jobSystem: System = (world, ctx) => {
       // Pass 1 — adopt a pre-employed, unbound settler standing on a workplace it staffs.
       const here = workplaceStaffedHereBy(buildingsByNode, world, ctx, e, settler.tribe, settler.jobType);
       if (here !== null) {
-        bind(world, staffing, e, here, settler.jobType);
+        bind(world, ctx, staffing, e, here, settler.jobType);
       } else if (isCarrierJob(ctx, settler.jobType)) {
         // Pass 1b — a loose carrier reports in: transport is worked only through an assignment (the planner's
         // haul rung requires a binding), so an unbound carrier takes the first open transport slot in canonical
@@ -79,7 +80,7 @@ export const jobSystem: System = (world, ctx) => {
           settler.experience,
           staffing,
         );
-        if (post !== null) bind(world, staffing, e, post, settler.jobType);
+        if (post !== null) bind(world, ctx, staffing, e, post, settler.jobType);
       }
       continue; // an employed settler is never re-assigned to another trade
     }
@@ -96,15 +97,24 @@ export const jobSystem: System = (world, ctx) => {
     );
     if (open !== null) {
       settler.jobType = open.jobType;
-      bind(world, staffing, e, open.building, open.jobType);
+      bind(world, ctx, staffing, e, open.building, open.jobType);
     }
   }
 };
 
 /** Stamp the binding and reflect it into the tick's staffing tally, so every later openness probe this tick
- *  counts it (the live-scan behavior the tally replaced). */
-function bind(world: World, staffing: StaffingTally, e: Entity, workplace: Entity, jobType: number): void {
+ *  counts it (the live-scan behavior the tally replaced). A gatherer bound to a building carries no work
+ *  flag (mirrors `assignWorker`): its harvest scope is the workplace's stored goods, not a flag yard. */
+function bind(
+  world: World,
+  ctx: SystemContext,
+  staffing: StaffingTally,
+  e: Entity,
+  workplace: Entity,
+  jobType: number,
+): void {
   world.add(e, JobAssignment, { workplace });
+  if (jobCanHarvest(ctx, jobType)) removeWorkFlag(world, e);
   incrementStaffing(staffing, workplace, jobType);
 }
 

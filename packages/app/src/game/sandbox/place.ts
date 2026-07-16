@@ -286,10 +286,24 @@ function placeResourceDirect(sim: Simulation, spec: ResourceNodeSpec, what: stri
  * (so the caller doesn't re-dispatch on the mode). Scenes author in whole tiles (`x`/`y`), so the tile is
  * converted to its anchor node before assembly — the same tile→node seam `spawnSandboxSettler` uses.
  * Throws on a good with no footprint (a scene-setup bug), unlike the runtime {@link resourceCommand}.
+ * `unitsScale` multiplies the node's yield (a testing scene sizing a deposit to outlast a long session);
+ * the visual shrink ladder scales with it (a deposit's `initial` is its starting `remaining`).
  */
-export function placeResourceNode(sim: Simulation, g: GathererSpec, x: number, y: number): void {
+export function placeResourceNode(
+  sim: Simulation,
+  g: GathererSpec,
+  x: number,
+  y: number,
+  opts: { readonly unitsScale?: number } = {},
+): void {
   const node = cellAnchorNode(x, y);
-  placeResourceDirect(sim, resourceSpecFor(g, node.hx, node.hy), `placeResourceNode(${g.id})`);
+  const spec = resourceSpecFor(g, node.hx, node.hy);
+  const scale = opts.unitsScale ?? 1;
+  placeResourceDirect(
+    sim,
+    scale === 1 ? spec : { ...spec, remaining: spec.remaining * scale },
+    `placeResourceNode(${g.id})`,
+  );
 }
 
 /**

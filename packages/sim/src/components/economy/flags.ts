@@ -26,6 +26,16 @@ import type { NodeId } from '../../nav/terrain/index.js';
 export const WorkFlag = defineComponent<{ flag: Entity; radius: number; goodType?: number }>('WorkFlag');
 
 /**
+ * A **building-employed gatherer's** single-good harvest pick — the flag-less sibling of
+ * {@link WorkFlag.goodType}. An employed gatherer (a {@link JobAssignment} at a stocking building, no
+ * flag) roams only for goods its workplace's stockpile stores; this narrows that set to one good (the
+ * `setGatherGood` command with no live flag). Absent = every stored good. Removed on any employment
+ * change (a new workplace stores a different set) and by the command's `null` reset — the
+ * separate-optional-component pattern, so unstamped settlers and existing goldens are byte-identical.
+ */
+export const GatherSelection = defineComponent<{ goodType: number }>('GatherSelection');
+
+/**
  * Marks a positioned entity as a **designated delivery flag** — a gatherer's collection point. A flag is a
  * pure MARKER: `Position + DeliveryFlag` and NOTHING else (no {@link Stockpile}), because it stores no
  * goods — the harvest a gatherer delivers piles on the GROUND around it as separate loose `Stockpile+Position`

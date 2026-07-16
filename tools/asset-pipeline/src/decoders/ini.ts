@@ -66,6 +66,7 @@ export {
 export {
   extractBuildings,
   fillBuildingRecipes,
+  stripVehicleGoods,
 } from './ini/types/buildings.js';
 export { extractGoods } from './ini/types/goods.js';
 export {
