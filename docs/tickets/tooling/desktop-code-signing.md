@@ -3,7 +3,7 @@
 **Area:** desktop/tooling · **Origin:** desktop-packaging research 2026-07-16 · **Priority:** P3
 **Needs user:** account sign-ups (SignPath application, optional Apple Developer Program) and the
 decision to spend $99/yr for macOS.
-**Blocked by:** docs/tickets/tooling/desktop-release-ci.md (signing hooks into the CI release build)
+Signing hooks into the existing CI installer build (`.github/workflows/desktop-build.yml`).
 
 Unsigned builds trip Windows SmartScreen ("Windows protected your PC") and macOS Gatekeeper
 (Sequoia removed the right-click-open bypass; users must go through System Settings → "Open

@@ -29,6 +29,8 @@ first-run installer that converts the user's owned game copy with the asset pipe
   `OPEN_NORTHLAND_DATA_DIR` to an empty dir to exercise the first-run installer.
 - `npm run desktop:dist` — electron-builder artifacts (`electron-builder.yml`): Windows NSIS +
   portable, macOS dmg, Linux AppImage; all unsigned (docs/tickets/tooling/desktop-code-signing.md).
+- CI installers: manually dispatch `.github/workflows/desktop-build.yml` — native per-OS builds
+  versioned `0.0.0-<short-sha>`, published as a public `build-<short-sha>` prerelease.
 - tsc typechecks only (`emitDeclarationOnly`); esbuild bundles the four runtime files into `dist/`
   (`scripts/bundle.mjs`) so electron-builder never packs workspace-symlinked node_modules.
 

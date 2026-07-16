@@ -9,11 +9,35 @@ permissions:
   contents: read
 
 jobs:
-  build-test:
+  # Platform-independent gates run once on the cheapest runner; only `test` needs the OS matrix.
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm run check:assets # reject original, decoded, or unreviewed binary assets (dependency-free)
+      - run: npm ci
+      - run: npm run check # biome lint + format check
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build # typecheck + production Vite bundle
+
+  test:
     # Three OSes on purpose: the sim promises byte-identical state across platforms (replays, future
     # lockstep MP), so the golden state-hash + determinism tests must run on every platform we claim
-    # to support. Checkouts stay byte-identical via .gitattributes (eol=lf), so the Biome format gate
-    # and golden hashes see the same bytes on Windows.
+    # to support. Checkouts stay byte-identical via .gitattributes (eol=lf), so golden hashes see the
+    # same bytes on Windows.
     strategy:
       # fail-fast would cancel the sibling OSes on first failure — destroying exactly the signal the
       # matrix exists for (is a golden mismatch platform-specific or universal?).
@@ -27,8 +51,6 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm run check:assets # reject original, decoded, or unreviewed binary assets
       - run: npm ci
-      - run: npm run check       # biome lint + format check
-      - run: npm run build        # typecheck + production Vite bundle
-      - run: npm test             # vitest: unit + integration + e2e + determinism hygiene
+      - run: npm run typecheck # workspace packages resolve each other via dist/, so tests need tsc output
+      - run: npm test # vitest: unit + integration + e2e + determinism hygiene
