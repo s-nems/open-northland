@@ -52,6 +52,10 @@ export interface ContentIndex {
   readonly commandJobs: ReadonlyMap<number, JobType>;
   /** Armor types by `typeId` (the armor-class id — see readviews/combat.ts). */
   readonly armor: ReadonlyMap<number, ArmorType>;
+  /** Good types that ARE a weapon or piece of armor — the `goodType` a {@link WeaponType}/{@link ArmorType}
+   *  resolves into (the forged military items). Used to charge a smith's piety per weapon/armor cycle
+   *  (ProductionSystem). The natural-weapon sentinel (`goodType` absent) contributes nothing. */
+  readonly militaryGoods: ReadonlySet<number>;
   /** Experience tracks by `typeId`. */
   readonly jobExperience: ReadonlyMap<number, HumanJobExperienceType>;
   /** Animal records by their `tribeType` (an animal's identity is its tribe). */
@@ -140,6 +144,7 @@ function buildIndex(content: ContentSet): ContentIndex {
     commandBuildings: byKeyLast(content.buildings, (b) => b.typeId),
     commandJobs: byKeyLast(content.jobs, (j) => j.typeId),
     armor: byKey(content.armor, (a) => a.typeId),
+    militaryGoods: militaryGoodTypes(content),
     jobExperience: byKey(content.jobExperience, (t) => t.typeId),
     animalsByTribe: byKey(content.animals, (a) => a.tribeType),
     atomicAnimationsByName: byKey(content.atomicAnimations, (a) => a.name),
@@ -188,6 +193,15 @@ function byPairKey<T>(
     if (!innerMap.has(i)) innerMap.set(i, item);
   }
   return map;
+}
+
+/** The set of good types backing a weapon or piece of armor (their `goodType`, when present) — the forged
+ *  military items (see {@link ContentIndex.militaryGoods}). */
+function militaryGoodTypes(content: ContentSet): ReadonlySet<number> {
+  const goods = new Set<number>();
+  for (const w of content.weapons) if (w.goodType !== undefined) goods.add(w.goodType);
+  for (const a of content.armor) if (a.goodType !== undefined) goods.add(a.goodType);
+  return goods;
 }
 
 /** {@link byKey} over an optional key — an item without the key is skipped (it could never match). */

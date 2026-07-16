@@ -8,12 +8,14 @@ import {
   Settler,
   Stockpile,
 } from '../../components/index.js';
+import { contentIndex } from '../../core/content-index.js';
 import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
+import { chargeMilitaryPiety } from '../lifecycle/needs.js';
 import { goodEnabled } from '../progression/index.js';
 import { NodeBuckets } from '../spatial.js';
-import { presentOperatorCount, recipeOf, stockCapacity } from '../stores/index.js';
+import { presentOperatorCount, presentOperators, recipeOf, stockCapacity } from '../stores/index.js';
 
 /**
  * ProductionSystem — one workplace turns input goods into output goods over time.
@@ -74,6 +76,7 @@ export const productionSystem: System = (world, ctx) => {
     const recipe = recipeOf(world, ctx, e);
     if (recipe !== undefined) {
       for (let i = 0; i < completed; i++) depositOutputs(world, ctx, e, recipe);
+      chargeMilitaryPietyCost(world, ctx, e, recipe, completed, operatorsByNode);
     }
     if (prod.cycles.length === 0) world.remove(e, Production);
   }
@@ -166,6 +169,29 @@ function consumeInputs(world: World, building: Entity, recipe: Recipe): void {
  * production is the only writer of a workplace's own outputs), so the outputs always fit; the
  * per-good capacity is not re-checked here.
  */
+/**
+ * Charge each smith who finished forging this tick a fixed slice of piety — producing a weapon or piece of
+ * armor is the ONLY thing that raises the piety deficit (NeedsSystem no longer raises piety over time; praying
+ * at a temple clears it). Applied once per completed cycle whose recipe outputs a military good
+ * ({@link import('../../core/content-index.js').ContentIndex.militaryGoods}), to the operators on station in
+ * canonical order (a lone-smith workshop charges its one worker per sword). A non-military recipe (a mill, a
+ * bakery) is a no-op. Source basis: design rule (user-specified).
+ */
+function chargeMilitaryPietyCost(
+  world: World,
+  ctx: SystemContext,
+  building: Entity,
+  recipe: Recipe,
+  completed: number,
+  operatorsByNode: NodeBuckets,
+): void {
+  const military = contentIndex(ctx.content).militaryGoods;
+  if (!recipe.outputs.some((o) => military.has(o.goodType))) return;
+  const operators = presentOperators(world, ctx, building, operatorsByNode);
+  // One charge per completed cycle, one operator each (canonical order); never more than were on station.
+  for (const op of operators.slice(0, completed)) chargeMilitaryPiety(world, op);
+}
+
 function depositOutputs(world: World, ctx: SystemContext, building: Entity, recipe: Recipe): void {
   const stock = world.get(building, Stockpile).amounts;
   for (const output of recipe.outputs) {

@@ -1,34 +1,64 @@
 import { Age, Health, needsEnabled, Settler } from '../../components/index.js';
 import { type Fixed, fx, ONE } from '../../core/fixed.js';
+import { TICKS_PER_SECOND } from '../../core/loop.js';
+import type { Rng } from '../../core/rng.js';
+import type { Entity, World } from '../../ecs/world.js';
 import type { System } from '../context.js';
+import { isFighterJob } from '../readviews/index.js';
 
 // Need rise rates, in fixed-point [0,ONE] units per tick.
 //
 // source-basis (approximated): the original drives needs through per-animation `atomicanimations.ini`
-// `event <at> <channel> <delta>` tuples — an activity drains a channel (e.g. `event 30 2 -100`) while a
-// satisfying animation restores it (`eat_slot_food`: `event 30 2 +4000`) — on a large integer scale where one
-// meal ≈ +4000. Channels: 1 = rest, 2 = hunger, 3 = leisure. That vocabulary is not yet decoded, so each need
-// instead rises at a constant per-tick rate: the "need grows over time, acting resets it" core, with the
-// event-driven per-activity rates as the faithful target. Each need is set half as fast as the previous, the
-// original's rough cadence.
+// `event <at> <channel> <delta>` tuples — an activity drains a channel while a satisfying animation restores it
+// — on a large integer scale not yet decoded. Hunger, fatigue, and enjoyment instead rise at a shared constant
+// rate calibrated to an observed 1× pace (user measurement): a bar loses 10% every 1min20s, so a full bar
+// drains in 800 s. Piety is the exception — it does not rise over time at all (see the header of
+// {@link needsSystem}).
 
-/** Fills an empty bar in 4096 ticks — several harvest/haul cycles between meals (the original's roughly
- * 40-activities-per-meal), short enough to exercise the eat path in a headless scenario. */
-export const HUNGER_RISE_PER_TICK: Fixed = fx.div(ONE, fx.fromInt(4096));
+/** Seconds a need bar takes to lose 10% at 1× (user's measured target); a full bar is ten such steps. */
+const SECONDS_PER_TEN_PERCENT_DRAIN = 80;
+const TEN_PERCENT_STEPS_PER_BAR = 10;
+const TICKS_TO_DRAIN_FULL_BAR = SECONDS_PER_TEN_PERCENT_DRAIN * TEN_PERCENT_STEPS_PER_BAR * TICKS_PER_SECOND;
 
-/** ≈ one sleep per two meals, so a settler eats more often than it sleeps. Restored by the `sleep`
- * animation (`viking_civilist_sleep` carries `event <at> 1 +4000`). */
-export const FATIGUE_RISE_PER_TICK: Fixed = fx.div(ONE, fx.fromInt(8192));
+/** Fills an empty bar in {@link TICKS_TO_DRAIN_FULL_BAR} ticks (10% per 1min20s at 1×). */
+export const HUNGER_RISE_PER_TICK: Fixed = fx.div(ONE, fx.fromInt(TICKS_TO_DRAIN_FULL_BAR));
 
-/** ≈ one prayer per two sleeps — a spiritual need is satisfied far less often than eating or resting. The
- * first target-bound need (praying happens *at a temple*, not in place); its channel id is undecoded. The
- * reset (`pray`, atomic 12) and the walk-to-temple drive are a later slice, so this is the rise half. */
-export const PIETY_RISE_PER_TICK: Fixed = fx.div(ONE, fx.fromInt(16384));
+/** Fatigue drains at the same rate as hunger (user rule). */
+export const FATIGUE_RISE_PER_TICK: Fixed = HUNGER_RISE_PER_TICK;
 
-/** ≈ one outing per two prayers — recreation is the least-pressing bar. Its channel-3 resets are wired
- * (AtomicSystem), but the drive is deferred: unlike pray, `enjoy` has no readable building satisfier in
- * `houses.ini` to walk to. */
-export const ENJOYMENT_RISE_PER_TICK: Fixed = fx.div(ONE, fx.fromInt(32768));
+/** Enjoyment (the social/company bar) drains at the same rate as hunger — but only for non-fighters; a
+ * soldier's/hero's company need is frozen (see {@link needsSystem}). Its channel-3 resets are wired
+ * (AtomicSystem), but the drive is deferred: `enjoy` has no readable building satisfier to walk to, so a
+ * civilian's bar sits pinned once spent (cosmetic — enjoyment carries no penalty, unlike hunger). */
+export const ENJOYMENT_RISE_PER_TICK: Fixed = HUNGER_RISE_PER_TICK;
+
+/** A settler starts each need at a seeded random deficit between 0 and this percent of a full bar, so a map
+ * opens with varied 50–100% satisfaction (the HUD shows `100 − deficit`) instead of everyone identically
+ * full. Source basis: design rule (user-specified); the original's per-settler starting needs are below the
+ * readable data. */
+export const NEED_INIT_MAX_DEFICIT_PERCENT = 50;
+
+/** One seeded starting need deficit in `[0, NEED_INIT_MAX_DEFICIT_PERCENT%]` of a full bar. Drawn from the
+ * injected {@link Rng} (the sim's only legal randomness) at spawn — deterministic for a given seed. */
+export function rollInitialNeed(rng: Rng): Fixed {
+  const percent = rng.int(NEED_INIT_MAX_DEFICIT_PERCENT + 1); // 0..50 percent of a full bar
+  return fx.div(fx.fromInt(percent), fx.fromInt(100));
+}
+
+/** How much piety a smith spends forging one weapon or piece of armor — the only thing that raises the piety
+ * deficit now that it no longer rises over time (praying at a temple clears it). Applied once per completed
+ * military-good production cycle to the worker on station (ProductionSystem). Source basis: design rule
+ * (user-specified — the gods frown on arms-making); the magnitude is approximated. */
+export const PIETY_PER_MILITARY_CYCLE: Fixed = fx.div(ONE, fx.fromInt(10)); // 10% of the bar per weapon/armor
+
+/** Add {@link PIETY_PER_MILITARY_CYCLE} to a settler's piety deficit, clamped at {@link ONE} — the smith's
+ * cost for forging one weapon/armor good. No-op if the entity is not (or no longer) a {@link Settler}. */
+export function chargeMilitaryPiety(world: World, settler: Entity): void {
+  if (!world.has(settler, Settler)) return;
+  const s = world.get(settler, Settler);
+  const risen = fx.add(s.piety, PIETY_PER_MILITARY_CYCLE);
+  s.piety = risen > ONE ? ONE : risen;
+}
 
 /**
  * Starvation cadence: a settler whose hunger is pinned at `ONE` takes a bite of damage every this-many
@@ -51,11 +81,14 @@ export const STARVATION_BITES_TO_DIE = 240;
 /**
  * NeedsSystem — the rise half of settler needs, plus starvation damage.
  *
- * Each tick every {@link Settler}'s `hunger`, `fatigue`, `piety`, and `enjoyment` rise by their rate above,
- * each clamped at `ONE` (a fully-spent settler stays pinned at the top of its bar until it acts — the
+ * Each tick every {@link Settler}'s `hunger` and `fatigue` rise by their rate above, and `enjoyment` too for
+ * every non-fighter (a soldier's/hero's company need is frozen — {@link isFighterJob}, user rule). Each is
+ * clamped at `ONE` (a fully-spent settler stays pinned at the top of its bar until it acts — the
  * `hungerInRange`/`fatigueInRange`/`pietyInRange`/`enjoymentInRange` invariants require the need ∈ [0, ONE]).
- * Every named non-food need has its atomic reset wired (sleep/pray/enjoy/make_love); only the eat, sleep, and
- * pray *drives* exist so far.
+ * `piety` does NOT rise here: it climbs only when the settler forges a weapon/armor good
+ * ({@link chargeMilitaryPiety}, driven by ProductionSystem) and resets at a temple (the `pray` drive). Every
+ * named non-food need has its atomic reset wired (sleep/pray/enjoy/make_love); only the eat, sleep, and pray
+ * *drives* exist so far.
  *
  * Starvation: a settler whose hunger is pinned at `ONE` loses hitpoints on the
  * {@link STARVATION_DAMAGE_INTERVAL_TICKS} beat until the eat drive feeds it or the pool empties (the
@@ -80,10 +113,12 @@ export const needsSystem: System = (world, ctx) => {
     settler.hunger = risenHunger > ONE ? ONE : risenHunger;
     const risenFatigue = fx.add(settler.fatigue, FATIGUE_RISE_PER_TICK);
     settler.fatigue = risenFatigue > ONE ? ONE : risenFatigue;
-    const risenPiety = fx.add(settler.piety, PIETY_RISE_PER_TICK);
-    settler.piety = risenPiety > ONE ? ONE : risenPiety;
-    const risenEnjoyment = fx.add(settler.enjoyment, ENJOYMENT_RISE_PER_TICK);
-    settler.enjoyment = risenEnjoyment > ONE ? ONE : risenEnjoyment;
+    // Enjoyment (company) rises only for non-fighters; a soldier's/hero's stays put. Piety never rises here
+    // (forging weapons/armor is its only source — chargeMilitaryPiety).
+    if (!isFighterJob(settler.jobType)) {
+      const risenEnjoyment = fx.add(settler.enjoyment, ENJOYMENT_RISE_PER_TICK);
+      settler.enjoyment = risenEnjoyment > ONE ? ONE : risenEnjoyment;
+    }
     // Only a settler that COULD have fed itself bleeds hitpoints (see the header for the exemptions).
     // The 0-HP reap (and its settlerDied event) is CleanupSystem's.
     if (

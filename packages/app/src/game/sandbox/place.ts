@@ -170,7 +170,7 @@ export function spawnIdleSettler(
   owner: number = HUMAN_PLAYER,
 ): Entity {
   const node = cellAnchorNode(x, y);
-  const e = systems.createSettler(sim.world, sim.content, {
+  const e = systems.createSettler(sim.world, sim.content, sim.rng, {
     jobType: JOB_IDLE,
     x: node.hx,
     y: node.hy,
@@ -313,7 +313,7 @@ export function spawnBoundGatherer(
   owner: number = HUMAN_PLAYER,
 ): Entity {
   const node = cellAnchorNode(x, y);
-  const e = systems.createSettler(sim.world, sim.content, {
+  const e = systems.createSettler(sim.world, sim.content, sim.rng, {
     jobType,
     x: node.hx,
     y: node.hy,

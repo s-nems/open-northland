@@ -15,10 +15,12 @@ import {
 import type { Command, SettlerEquipment, SettlerEquipmentSlot } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import { fx, ONE } from '../../../core/fixed.js';
+import type { Rng } from '../../../core/rng.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { positionOfNode } from '../../../nav/halfcell.js';
 import type { SystemContext } from '../../context.js';
 import { syncWorkFlagToJob } from '../../economy/flags.js';
+import { rollInitialNeed } from '../../lifecycle/needs.js';
 import { stampDefaultStance } from '../../orders/index.js';
 import { settlerHitpoints } from '../../readviews/index.js';
 
@@ -53,8 +55,12 @@ const IDLE_JOB_TYPE = 0;
  *
  * Stamp set and order are hash-significant — keep them stable. Each optional stamp follows the
  * separate-optional-component pattern: absent input leaves the component off and the golden hash untouched.
+ *
+ * Draws four values from `rng` (one per need) to seed the settler's starting needs at a random 50–100%
+ * satisfaction ({@link rollInitialNeed}); the draw order (hunger, fatigue, piety, enjoyment) is part of the
+ * deterministic RNG stream, so keep it stable.
  */
-export function createSettler(world: World, content: ContentSet, spec: SettlerSpec): Entity | null {
+export function createSettler(world: World, content: ContentSet, rng: Rng, spec: SettlerSpec): Entity | null {
   // The idle sentinel is valid on any content (even one whose job table starts at typeId 1); any other
   // id must be in the job table or it is bad input.
   if (spec.jobType !== IDLE_JOB_TYPE && !contentIndex(content).commandJobs.has(spec.jobType)) return null;
@@ -64,10 +70,10 @@ export function createSettler(world: World, content: ContentSet, spec: SettlerSp
   world.add(e, Settler, {
     tribe: spec.tribe,
     jobType: spec.jobType,
-    hunger: fx.fromInt(0),
-    fatigue: fx.fromInt(0),
-    piety: fx.fromInt(0),
-    enjoyment: fx.fromInt(0),
+    hunger: rollInitialNeed(rng),
+    fatigue: rollInitialNeed(rng),
+    piety: rollInitialNeed(rng),
+    enjoyment: rollInitialNeed(rng),
     experience: new Map<number, number>(),
   });
   // Every settler carries a `Health` pool. The pool comes from the content — the settler's tribe HP
@@ -121,7 +127,7 @@ export function spawnSettler(
   ctx: SystemContext,
   command: Extract<Command, { kind: 'spawnSettler' }>,
 ): void {
-  const e = createSettler(world, ctx.content, command);
+  const e = createSettler(world, ctx.content, ctx.rng, command);
   if (e === null) return;
   // A gatherer is never "free": bind it to a work flag planted at its feet the moment it is born (the
   // spawn-time twin of the profession-change auto-plant, `syncWorkFlagToJob`), so it only searches its flag's
