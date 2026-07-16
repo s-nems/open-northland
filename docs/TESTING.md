@@ -160,8 +160,10 @@ overlays, a field good that neither farms nor produces). Two explicit modes cove
 a local game copy so **CI never runs them** — they are an agent/developer gate, not a merge gate:
 
 - **`npm run test:content`** — the real-content suite (`packages/app/test/content/`): property
-  invariants over the generated `content/ir.json` + its `mergeRealContent` output, plus the
-  gathering cycle and same-seed determinism over the merged real content. Under plain `npm test`
+  invariants over the generated `content/ir.json` + its `mergeRealContent` output, cross-file
+  invariants between the decoded maps and the IR, the loader/catalog/roster/animation pins to the
+  real bytes, and the gathering + field-farming cycles (with same-seed determinism) over the merged
+  real content. Under plain `npm test`
   these files `runIf`-skip on a bare checkout; this mode hard-fails instead when `ir.json` is
   absent, so it can never pass vacuously. Assertions are properties (references resolve, balance is
   live-or-reported, a trade can harvest the core goods), never exact counts — the suite survives

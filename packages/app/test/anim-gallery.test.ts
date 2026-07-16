@@ -1,10 +1,7 @@
-import { existsSync, readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import type { AtlasFrame, SpriteAtlas, SpriteLayer } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
 import { findCharacter } from '../src/catalog/roster.js';
-import { BODY_IMAGELIB, type BobSeqRow } from '../src/content/ir.js';
+import type { BobSeqRow } from '../src/content/ir.js';
 import {
   buildAnimCells,
   buildColorCells,
@@ -29,11 +26,9 @@ function fakeLayer(frames: Iterable<[number, AtlasFrame]> = []): SpriteLayer {
 }
 
 /**
- * The animation gallery's data half. `prettyClipLabel` is pure (self-verifiable). The catalog of
- * animations the gallery plays is the extracted `content/ir.json` `bobSequences` for the viking civilian
- * body — pinned here so a pipeline change that drops the body's animations is caught, not discovered by a
- * blank gallery. `content/` is gitignored, so on a checkout without it the data half SKIPS (the same
- * "must still boot/test without decoded bytes" stance as the rest of the app).
+ * The animation gallery's pure half: label/param parsing and the cell builders over stub layers,
+ * self-verifiable on any checkout. The pin that the extracted `bobSequences` actually carry the
+ * animations the gallery showcases lives in the real-content suite (`test/content/anim-set.test.ts`).
  */
 
 describe('prettyClipLabel', () => {
@@ -262,50 +257,5 @@ describe('buildRosterCells', () => {
     expect(cells[0]?.label).toBe('Niemowlę');
     expect(cells[0]?.overlays).toEqual([]);
     expect(cells[0]?.clip.start).toBe(0); // the crouch (baby has no _walk)
-  });
-});
-
-interface IrSeq {
-  readonly name: string;
-  readonly start: number;
-  readonly length: number;
-}
-interface Ir {
-  readonly bobSequences?: readonly { imagelib: string; sequences?: IrSeq[] }[];
-}
-
-const IR_PATH = resolve(dirname(fileURLToPath(import.meta.url)), '../../../content/ir.json');
-function loadIr(): Ir | null {
-  if (!existsSync(IR_PATH)) return null;
-  try {
-    return JSON.parse(readFileSync(IR_PATH, 'utf8')) as Ir;
-  } catch {
-    return null;
-  }
-}
-const ir = loadIr();
-
-describe('viking civilian animation set (ir.json bobSequences)', () => {
-  it.runIf(ir !== null)(`${BODY_IMAGELIB} carries the animations the gallery showcases`, () => {
-    const set = (ir as Ir).bobSequences?.find((s) => s.imagelib === BODY_IMAGELIB);
-    expect(set, `${BODY_IMAGELIB} missing from ir.json bobSequences`).toBeDefined();
-    const seqs = set?.sequences ?? [];
-    const names = new Set(seqs.map((s) => s.name));
-    // Anchors across the categories the gallery/idle work depends on: idle-loop, locomotion, a fight,
-    // and a need action. If any of these vanish, the never-frozen idle or the "all animations" claim breaks.
-    for (const anchor of ['human_man_generic_wait', 'human_man_generic_walk', 'human_man_generic_eat']) {
-      expect(names.has(anchor), `expected sequence ${anchor}`).toBe(true);
-    }
-    expect(
-      seqs.some((s) => /Fight|punch|kick/i.test(s.name)),
-      'expected at least one unarmed fight sequence',
-    ).toBe(true);
-    // Every sequence is a real, non-empty frame range (start >= 0, length > 0) — the gallery indexes these.
-    for (const s of seqs) {
-      expect(s.start, s.name).toBeGreaterThanOrEqual(0);
-      expect(s.length, s.name).toBeGreaterThan(0);
-    }
-    // The full civilian set is large (~69) — a sanity floor so a truncated extract is caught.
-    expect(seqs.length).toBeGreaterThan(30);
   });
 });

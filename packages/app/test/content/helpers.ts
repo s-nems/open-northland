@@ -36,6 +36,19 @@ export interface RealContentUnderTest {
   readonly merge: RealContentMerge;
 }
 
+let rawIr: unknown;
+
+/**
+ * The raw parsed ir.json under test — for assertions over graphics lanes (`bobSequences`,
+ * `buildingBobs`, `landscapeGfx`) that the sim's `ContentSet` does not carry. Callers gate on
+ * {@link hasRealIr} and cast to a narrow local interface; a present-but-malformed IR throws loudly
+ * (this suite never skips over broken content). Memoized like {@link loadContentUnderTest}.
+ */
+export function rawIrUnderTest(): unknown {
+  rawIr ??= JSON.parse(readFileSync(irPath(), 'utf8'));
+  return rawIr;
+}
+
 let underTest: Promise<RealContentUnderTest> | null = null;
 
 /**
