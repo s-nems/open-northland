@@ -1,8 +1,7 @@
 import { indexById } from '@open-northland/data';
 import type { BuildingHighlightItem } from '@open-northland/render';
 import type { Entity } from '@open-northland/sim';
-import { assignmentPriorityFor } from '../../game/sandbox/index.js';
-import { buildingTypeOf, entityById, settlerJobType, workFlagOf } from '../../game/snapshot.js';
+import { workFlagOf } from '../../game/snapshot.js';
 import { mountUnitPanel, type UnitPanel } from '../../hud/details-panel/index.js';
 import { clientToScreen, screenScale } from '../camera.js';
 import { pickInRect, pickTopAt, screenToWorld } from '../picking.js';
@@ -161,18 +160,15 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     const building = pickTopAt(unitTargets.owned('building'), w.x, w.y);
     if (building === null) return; // clicked terrain / a unit — cancel
     const snapshot = opts.snapshot();
-    if (assignableJobForBuilding(snapshot, building, settlerId, buildingsByType) === null) return; // red — cancel
-    const bEnt = entityById(snapshot, building);
-    const type = bEnt !== undefined ? buildingTypeOf(bEnt) : undefined;
-    const slots = type !== undefined ? buildingsByType.get(type)?.workers : undefined;
-    const self = entityById(snapshot, settlerId);
-    const jobPriority = assignmentPriorityFor(self !== undefined ? settlerJobType(self) : undefined, slots);
-    if (jobPriority.length === 0) return;
+    // The button places the settler's CURRENT trade only (it never re-trades): bind exactly the building's
+    // matching slot, or cancel when the building doesn't offer it (a red building).
+    const job = assignableJobForBuilding(snapshot, building, settlerId, buildingsByType);
+    if (job === null) return; // red — cancel
     opts.enqueue({
       kind: 'assignWorker',
       entity: settlerId as Entity,
       building: building as Entity,
-      jobPriority,
+      jobPriority: [job],
     });
   };
 

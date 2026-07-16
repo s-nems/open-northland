@@ -1,54 +1,54 @@
 import { describe, expect, it } from 'vitest';
-import { JOB_CARRIER, JOB_COLLECTOR } from '../src/game/sandbox/ids/index.js';
-import { assignableJobAt } from '../src/view/unit-controls/assign-highlight.js';
+import { JOB_CARRIER, JOB_COLLECTOR, rebaseSlotJob } from '../src/game/sandbox/ids/index.js';
+import { currentTradeSlotAt } from '../src/view/unit-controls/assign-highlight.js';
 
 /**
- * The capacity-and-offer half of the assign-workplace highlight (the green/red verdict). The full sim
- * gate (tribe/owner/tech/XP) runs in `assignWorker`; this pure predicate decides what the wash shows —
- * a building with an open slot the settler's assignment priority would take is green.
+ * The "przydziel miejsce pracy" verdict — the button places the settler's CURRENT trade only, so a
+ * building is green iff it offers that exact trade (canonically) with a free slot. Matched by
+ * `canonicalJobType`, so a picker-assigned raw id lines up with the building's rebased slot id.
  */
 
+const COIN_MAKER = 14; // jobtypes.ini coin maker (a picker/raw id)
 const MILL_SLOTS = [
   { jobType: 19, count: 2 }, // miller
   { jobType: JOB_CARRIER, count: 1 },
 ];
+// A mint whose coin-maker slot is sandbox-rebased (14 -> 1014), the id space the browser/headless slots use.
+const MINT_SLOTS = [
+  { jobType: rebaseSlotJob(COIN_MAKER), count: 2 },
+  { jobType: JOB_CARRIER, count: 1 },
+];
 const WAREHOUSE_SLOTS = [
   { jobType: JOB_CARRIER, count: 3 },
-  { jobType: JOB_COLLECTOR, count: 3 },
-  { jobType: 15, count: 3 }, // hunter (a gatherer slot)
+  { jobType: rebaseSlotJob(JOB_COLLECTOR), count: 3 }, // a collector (gatherer) slot
 ];
 
-describe('assignableJobAt — the green/red verdict', () => {
-  it('greenlights a mill for a plain settler via its carrier slot when a seat is free', () => {
-    // No one bound yet: the default order (miller → carrier) finds the miller slot open first.
-    expect(assignableJobAt(undefined, MILL_SLOTS, undefined)).toBe(19);
+describe('currentTradeSlotAt — the current-trade green/red verdict', () => {
+  it('greens a mint for a coin-maker, matching the rebased slot to the raw current id', () => {
+    // The settler is a coin-maker (raw id 14); the mint slot is rebased (1014). They match canonically.
+    expect(currentTradeSlotAt(COIN_MAKER, MINT_SLOTS, undefined)).toBe(rebaseSlotJob(COIN_MAKER));
   });
 
-  it('reds out a building whose every offered slot is full', () => {
-    const full = new Map<number, number>([
-      [19, 2],
-      [JOB_CARRIER, 1],
-    ]);
-    expect(assignableJobAt(undefined, MILL_SLOTS, full)).toBeNull();
+  it('reds a mill for a coin-maker — the building does not offer that trade', () => {
+    expect(currentTradeSlotAt(COIN_MAKER, MILL_SLOTS, undefined)).toBeNull();
   });
 
-  it('falls through a full craft slot to the carrier fallback', () => {
-    const millerFull = new Map<number, number>([[19, 2]]);
-    expect(assignableJobAt(undefined, MILL_SLOTS, millerFull)).toBe(JOB_CARRIER);
+  it('reds a building whose matching slot is already full (no re-trade, no fallback)', () => {
+    const full = new Map<number, number>([[rebaseSlotJob(COIN_MAKER), 2]]);
+    expect(currentTradeSlotAt(COIN_MAKER, MINT_SLOTS, full)).toBeNull();
   });
 
-  it('offers a gatherer its own gatherer slot at a warehouse (its current trade)', () => {
-    // A hunter (a gatherer) prefers the warehouse's gatherer slots, its own hunter slot first.
-    expect(assignableJobAt(15, WAREHOUSE_SLOTS, undefined)).toBe(15);
+  it('greens a warehouse for a collector via its gatherer slot', () => {
+    expect(currentTradeSlotAt(JOB_COLLECTOR, WAREHOUSE_SLOTS, undefined)).toBe(rebaseSlotJob(JOB_COLLECTOR));
   });
 
-  it('never offers a plain settler a warehouse gatherer slot — only its carrier', () => {
-    // A jobless/plain settler is a carrier at a warehouse, never a gatherer (the default excludes them).
-    expect(assignableJobAt(undefined, WAREHOUSE_SLOTS, undefined)).toBe(JOB_CARRIER);
+  it('never falls back to the carrier — a miller on a mint stays red, not a hauler', () => {
+    // The button does not re-trade: a miller aimed at a mint (no miller slot) is red, never bound as carrier.
+    expect(currentTradeSlotAt(19, MINT_SLOTS, undefined)).toBeNull();
   });
 
-  it('reds out a building that employs nobody', () => {
-    expect(assignableJobAt(undefined, undefined, undefined)).toBeNull();
-    expect(assignableJobAt(undefined, [], undefined)).toBeNull();
+  it('reds an employed-nobody / jobless case', () => {
+    expect(currentTradeSlotAt(COIN_MAKER, undefined, undefined)).toBeNull();
+    expect(currentTradeSlotAt(undefined, MINT_SLOTS, undefined)).toBeNull();
   });
 });

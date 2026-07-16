@@ -11,8 +11,6 @@ import type { MapObjectSprite } from './map-objects/index.js';
 import { MapObjectLayer } from './map-objects/index.js';
 import {
   BadgeLayer,
-  type BuildingHighlightItem,
-  BuildingHighlightLayer,
   CombatEffectsLayer,
   type ConstructionPlotFrame,
   ConstructionPlotLayer,
@@ -35,6 +33,16 @@ import type { SpriteSheet } from './sprite-sheet.js';
 import { TerrainLayer } from './terrain/index.js';
 import type { TerrainTextureSet } from './terrain-textures.js';
 import { TextureCache } from './texture-cache.js';
+
+/** One candidate building's workplace-assignment verdict: its entity id and whether the selected settler
+ *  can be assigned there (green) or not (red). Fed to {@link WorldRenderer.setBuildingHighlight}. */
+export interface BuildingHighlightItem {
+  readonly id: number;
+  readonly ok: boolean;
+}
+
+/** Shared empty highlight so clearing the assign-mode tint allocates nothing. */
+const EMPTY_HIGHLIGHT: ReadonlyMap<number, boolean> = new Map();
 
 /** Shared empty selection so the common no-selection `update` allocates nothing. */
 const NO_SELECTION: ReadonlySet<number> = new Set();
@@ -132,9 +140,10 @@ export class WorldRenderer {
   private readonly badgeLayer = new BadgeLayer();
   /** The `?debug=geometry` footprint overlay (world-space, above the sprites — it annotates them). */
   private readonly geometryDebug = new GeometryDebugLayer();
-  /** The workplace-assignment highlight (world-space, above the sprites): candidate buildings washed
-   *  green/red while the player is choosing a workplace for the selected settler. See {@link setBuildingHighlight}. */
-  private readonly buildingHighlight = new BuildingHighlightLayer();
+  /** The workplace-assignment highlight: candidate building id → assignable (green) / not (red), while the
+   *  player is choosing a workplace for the selected settler. Applied as a soft tint on the building sprite
+   *  itself (not a cell wash), so the building reads "lekko zielony / lekko czerwony". See {@link setBuildingHighlight}. */
+  private highlight: ReadonlyMap<number, boolean> = new Map();
   private readonly hud = new HudLayer();
   /** The paused-game sepia wash (screen-space, over the world, under the HUD). See {@link setPaused}. */
   private readonly pauseWash = new Sprite(Texture.WHITE);
@@ -175,7 +184,6 @@ export class WorldRenderer {
     this.worldLayer.addChild(this.spriteLayer);
     this.worldLayer.addChild(this.effects.overlayContainer);
     this.worldLayer.addChild(this.badgeLayer.container);
-    this.worldLayer.addChild(this.buildingHighlight.container);
     this.worldLayer.addChild(this.geometryDebug.container);
     app.stage.addChild(this.worldLayer);
     // The pause wash sits above the world and below the HUD (stage order), so pausing browns the map
@@ -353,6 +361,7 @@ export class WorldRenderer {
       screenH: this.app.screen.height,
       elevation: this.elevation,
       alpha,
+      ...(this.highlight.size > 0 ? { highlight: this.highlight } : {}),
       ...(this.staticDrawnRefs !== undefined ? { staticRefs: this.staticDrawnRefs } : {}),
       ...(fogView !== null
         ? { fogVisible: (tx: number, ty: number) => fogTileVisible(fogView, tx, ty) }
@@ -465,13 +474,13 @@ export class WorldRenderer {
   }
 
   /**
-   * Set (or clear) the workplace-assignment highlight — the candidate buildings washed green (a slot the
+   * Set (or clear) the workplace-assignment highlight — the candidate buildings tinted green (a slot the
    * selected settler can take is open) or red (it cannot) while the player is picking a workplace. The app
-   * computes the verdict + footprint cells from the snapshot; this is a pure projection, rebuilt only when
-   * the set changes.
+   * computes the verdict from the snapshot; the tint rides the building sprite in the next
+   * {@link update} (see the sprite pool), so the whole building reads faintly green/red.
    */
   setBuildingHighlight(items: readonly BuildingHighlightItem[] | null): void {
-    this.buildingHighlight.set(items, this.elevation);
+    this.highlight = items === null ? EMPTY_HIGHLIGHT : new Map(items.map((i) => [i.id, i.ok]));
   }
 
   /** Tear down the whole retained graph + caches. Every sub-layer is destroyed explicitly (uniform
@@ -488,7 +497,6 @@ export class WorldRenderer {
     this.effects.destroy();
     this.badgeLayer.destroy();
     this.geometryDebug.destroy();
-    this.buildingHighlight.destroy();
     this.worldLayer.destroy({ children: true });
     this.pauseWash.destroy(); // the shared Texture.WHITE itself is left alone
     this.hud.destroy();

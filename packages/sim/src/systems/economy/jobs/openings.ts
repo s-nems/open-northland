@@ -114,11 +114,16 @@ export function openWorkerJobAt(
 /**
  * The open worker job at `building` chosen by the caller's ORDERED `jobPriority` preference rather than
  * canonical job order (the player-directed twin of {@link openWorkerJobAt}): the first job in the list
- * that the building actually offers AND that is open for this settler (same four openness gates). The
- * list is filtered to the building's real slots, so a job the building doesn't employ is skipped, and the
- * per-slot gate still runs on every entry — the priority only reorders/excludes candidates, it can never
- * open a slot the JobSystem would keep shut. Used by the `assignWorker` command so a right-click can
- * prefer a tradesman over a hauler (and never pick a gatherer) without bypassing legality.
+ * that the building actually offers AND has room for. The list is filtered to the building's real slots, so
+ * a job the building doesn't employ is skipped, and the same-tribe/same-owner + per-building capacity gates
+ * still run on every entry.
+ *
+ * Unlike the automatic scan, this path RELAXES the job-level tech gate (`jobEnablesJob`) and the XP
+ * threshold (`needforjob`): the player is explicitly staffing a building that already stands (the original's
+ * "put a settler in a built workshop and they take up its trade"), so a right-click on a mint makes a
+ * coin-maker even before the tribe has auto-unlocked that specialization — otherwise the craft slot is
+ * silently rejected and the settler falls back to the carrier slot (the reported "mennica → tragarz" bug).
+ * The building-level gate (`buildingEnabled`) still holds — you can only staff a building the tribe may run.
  */
 export function openWorkerJobFromList(
   world: World,
@@ -138,6 +143,8 @@ export function openWorkerJobFromList(
     owner,
     experience,
     jobPriority.filter((jobType) => offered.has(jobType)),
+    undefined,
+    /* playerDirected */ true,
   );
 }
 
@@ -157,6 +164,7 @@ function resolveOpenWorkerJob(
   experience: ReadonlyMap<number, number>,
   orderedJobs: readonly number[],
   staffing?: StaffingTally,
+  playerDirected = false,
 ): number | null {
   const b = world.tryGet(building, Building);
   if (b === undefined || b.tribe !== tribe) return null;
@@ -164,6 +172,10 @@ function resolveOpenWorkerJob(
   if (!buildingEnabled(world, ctx, tribe, b.buildingType)) return null; // not tech-enabled yet
   for (const jobType of orderedJobs) {
     if (!jobUnderstaffed(world, ctx, building, jobType, staffing)) continue;
+    // A player-directed assignment (a right-click / the assign-workplace button) staffs a built workshop
+    // with its own trade regardless of the job-level tech/XP gate — see openWorkerJobFromList. The automatic
+    // scan still enforces both, so the AI never self-unlocks a specialization.
+    if (playerDirected) return jobType;
     if (!jobEnabled(world, ctx, tribe, jobType)) continue; // tech gate (jobEnablesJob): job unlocked?
     if (!settlerMeetsNeed(ctx, tribe, 'job', jobType, experience)) continue; // XP gate (needforjob)
     return jobType;

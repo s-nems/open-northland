@@ -10,8 +10,11 @@ import { ctxOf } from '../fixtures/context.js';
 /**
  * The `assignWorker` command — the player-directed twin of the JobSystem's automatic assignment: bind
  * an OWNED settler to a SPECIFIC building as a worker (set its `jobType` to the building's open slot +
- * stamp its {@link JobAssignment} binding), through the same per-building openness gate the JobSystem
- * applies. So a hand assignment can never reach a state the economy wouldn't.
+ * stamp its {@link JobAssignment} binding). It applies the same-tribe / same-owner / per-building capacity
+ * gates the JobSystem does, but RELAXES the job-level tech (`jobEnablesJob`) + XP (`needforjob`) gates:
+ * the player explicitly staffs a built workshop with its own trade (a right-click on a mint makes a
+ * coin-maker), so a craft slot is never silently downgraded to the carrier fallback. The automatic scan
+ * still enforces both (see openings.ts).
  *
  * The shared fixture's sawmill (type 2) declares one carpenter slot; the HQ (type 1) declares three
  * woodcutter slots — mirrors job-system.test.ts.
