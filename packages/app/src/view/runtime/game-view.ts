@@ -3,6 +3,7 @@ import type { ElevationField, SceneTerrain, SpriteSheet, WorldRenderer } from '@
 import type { SimEvent, Simulation, WorldSnapshot } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import { pickerEntries } from '../../catalog/professions.js';
+import { installSimPerfMarks, PERF_MARKS_DEBUG_FLAG } from '../../diag/index.js';
 import { HUD_TRIBE, HUMAN_PLAYER } from '../../game/rules.js';
 import { workerRoleOf } from '../../game/sandbox/index.js';
 import { type MinimapHandle, mountMinimap } from '../../hud/minimap/index.js';
@@ -263,6 +264,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   // `sim.content.goods` names from the `?locale` language). Shared by the ground-pile tooltip below and the
   // admin spawn palette, so both read in the player's language; falls back to the good's id.
   const goodLabelByType = new Map<number, string>(sim.content.goods.map((g) => [g.typeId, g.name ?? g.id]));
+
+  // `?debug=perf` — per-system + per-phase User Timing marks for the DevTools Performance panel.
+  if (params.get('debug') === PERF_MARKS_DEBUG_FLAG) installSimPerfMarks(sim);
 
   // One shared building index drives door badges and the optional geometry overlay.
   const buildingDoors = indexById(sim.content.buildings);

@@ -17,6 +17,7 @@ export {
   type DiagLogOptions,
   diag,
 } from './log.js';
+export { emitPerfMeasure, installSimPerfMarks, PERF_MARKS_DEBUG_FLAG } from './perf-marks.js';
 export {
   currentDiagGameSession,
   type DiagGameSession,
