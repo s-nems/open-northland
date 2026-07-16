@@ -1,8 +1,9 @@
-import { mkdir, rm, symlink } from 'node:fs/promises';
+import { mkdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { assertOutStaysInCheckout, parseArgs, resolveArgs, resolveModRoot } from '../src/args.js';
+import { assertOutStaysInCheckout, parseArgs, resolveArgs } from '../src/args.js';
 import { CULTURESNATION_MOD } from '../src/probe.js';
+import { resolveModRoot } from '../src/roots.js';
 import { makeTempDir } from './support/game-tree.js';
 
 describe('parseArgs', () => {
@@ -72,6 +73,13 @@ describe('resolveModRoot', () => {
   it('rejects an explicit mod root without DataCnmd/', async () => {
     const modRoot = join(base, 'not-a-mod');
     await mkdir(modRoot, { recursive: true });
+    await expect(resolveModRoot(join(base, 'game'), modRoot)).rejects.toThrow(/DataCnmd/);
+  });
+
+  it('rejects a DataCnmd that is a file, not a directory', async () => {
+    const modRoot = join(base, 'file-mod');
+    await mkdir(modRoot, { recursive: true });
+    await writeFile(join(modRoot, CULTURESNATION_MOD), 'not a directory');
     await expect(resolveModRoot(join(base, 'game'), modRoot)).rejects.toThrow(/DataCnmd/);
   });
 

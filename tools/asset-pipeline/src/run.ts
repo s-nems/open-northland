@@ -1,8 +1,8 @@
 import { join } from 'node:path';
-import { type Args, resolveModRoot } from './args.js';
+import type { Args } from './args.js';
 import { clearPipelineManifest, PIPELINE_MANIFEST_NAME, writePipelineManifest } from './manifest.js';
 import type { PipelineProgress } from './progress.js';
-import type { SourceRoots } from './roots.js';
+import { resolveModRoot, type SourceRoots } from './roots.js';
 import { convertBmdTree, convertShadowBmdTree, resolveGraphicsBindings } from './stages/bmd/index.js';
 import { convertFontStage } from './stages/fonts.js';
 import { convertGoodsStage } from './stages/goods/index.js';

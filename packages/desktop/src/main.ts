@@ -47,13 +47,17 @@ const pipeline = new PipelineHost(join(here, 'pipeline-child.cjs'));
 
 /**
  * A usable mod root outside the game folder: the config's hand-picked folder (re-validated — the
- * user may have deleted it) first, then a mod downloaded into the data root's `mods/`.
+ * user may have deleted it, in which case the stale entry is dropped from the config) first, then
+ * a mod downloaded into the data root's `mods/`. Also the root the conversion uses — derived here,
+ * never taken from the renderer, so no renderer string ever reaches the filesystem.
  */
 async function availableModRoot(): Promise<string | undefined> {
-  const remembered = readConfig(configFile).modPath;
-  if (remembered !== undefined) {
-    const validated = await findModRootUnder(remembered);
+  const config = readConfig(configFile);
+  if (config.modPath !== undefined) {
+    const validated = await findModRootUnder(config.modPath);
     if (validated !== undefined) return validated;
+    const { modPath: _stale, ...rest } = config;
+    writeConfig(configFile, rest);
   }
   return discoverInstalledMod(modsDir);
 }
@@ -174,9 +178,11 @@ function wireIpc(win: BrowserWindow): void {
     const path = picked.filePaths[0];
     return picked.canceled || path === undefined ? null : candidateOf(path);
   });
+  let modDownload: AbortController | undefined;
   ipcMain.handle(IPC_CHANNELS.runPipeline, async (ev, gamePath: unknown) => {
     assertAppSender(ev);
     assertString(gamePath);
+    if (modDownload !== undefined) throw new Error('the mod is still downloading — wait for it to finish');
     const probe = await probeGameFolder(gamePath);
     if (!probe.hasArchives) throw new Error('no game archives (.lib) found under the selected folder');
     // A mod inside the game folder is auto-detected by the pipeline; otherwise pass the external
@@ -197,19 +203,27 @@ function wireIpc(win: BrowserWindow): void {
     assertAppSender(ev);
     return pipeline.stop();
   });
-  let modDownload: AbortController | undefined;
+  // The installer ticks per chunk/per extracted file (tens of thousands of events); forward at
+  // most one progress event per interval, like pipeline-child's item throttle, letting warnings
+  // and each phase's final tick through.
+  const MOD_EVENT_MIN_INTERVAL_MS = 100;
+  let lastModEventForward = 0;
+  const forwardModEvent = (event: ModEvent): void => {
+    const final =
+      event.kind === 'mod-warning' ||
+      (event.kind === 'mod-download' && event.total !== undefined && event.received >= event.total) ||
+      (event.kind === 'mod-extract' && event.done >= event.total);
+    const now = Date.now();
+    if (!final && now - lastModEventForward < MOD_EVENT_MIN_INTERVAL_MS) return;
+    lastModEventForward = now;
+    if (!win.isDestroyed()) win.webContents.send(IPC_CHANNELS.modEvent, event);
+  };
   ipcMain.handle(IPC_CHANNELS.downloadMod, async (ev) => {
     assertAppSender(ev);
     if (modDownload !== undefined) throw new Error('mod download already running');
     modDownload = new AbortController();
     try {
-      return await installCnMod(
-        modsDir,
-        (event: ModEvent) => {
-          if (!win.isDestroyed()) win.webContents.send(IPC_CHANNELS.modEvent, event);
-        },
-        { signal: modDownload.signal },
-      );
+      return await installCnMod(modsDir, forwardModEvent, { signal: modDownload.signal });
     } finally {
       modDownload = undefined;
     }

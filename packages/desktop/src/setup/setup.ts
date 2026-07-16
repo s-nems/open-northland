@@ -87,6 +87,7 @@ async function probeTyped(): Promise<void> {
     validPath = undefined;
     probeNote.textContent = '';
     installButton.disabled = true;
+    applyModAvailability(); // hides a mod panel left over from the previous candidate
     return;
   }
   const candidate = await window.desktop.probeGamePath(typed);
@@ -235,7 +236,12 @@ function wireModPanel(): void {
       externalModRoot = await window.desktop.downloadMod();
       applyModAvailability();
     } catch (err) {
-      note.textContent = `Downloading the mod failed: ${err instanceof Error ? err.message : String(err)} — ${MOD_FALLBACK_NOTE}`;
+      const message = err instanceof Error ? err.message : String(err);
+      // A user-initiated Cancel surfaces as an AbortError riding the IPC rejection — that is not a
+      // failure and gets no fallback lecture.
+      note.textContent = /abort/i.test(message)
+        ? 'Download cancelled.'
+        : `Downloading the mod failed: ${message} — ${MOD_FALLBACK_NOTE}`;
     } finally {
       progress.classList.add('hidden');
       el<HTMLButtonElement>('mod-download').disabled = false;

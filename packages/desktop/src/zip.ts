@@ -44,7 +44,9 @@ export async function readZipEntries(fh: FileHandle, fileSize: number): Promise<
   const tail = await readAt(fh, fileSize - span, span);
   let eocd = -1;
   for (let i = span - EOCD_MIN_SIZE; i >= 0; i--) {
-    if (tail.readUInt32LE(i) === EOCD_SIGNATURE) {
+    // A real EOCD's comment length must reach exactly the end of the file — this rejects a stray
+    // signature embedded in the comment (or in trailing garbage) that a plain scan would take.
+    if (tail.readUInt32LE(i) === EOCD_SIGNATURE && i + EOCD_MIN_SIZE + tail.readUInt16LE(i + 20) === span) {
       eocd = i;
       break;
     }
@@ -54,6 +56,9 @@ export async function readZipEntries(fh: FileHandle, fileSize: number): Promise<
   const cdSize = tail.readUInt32LE(eocd + 12);
   const cdOffset = tail.readUInt32LE(eocd + 16);
   if (count === 0xffff || cdOffset === 0xffffffff) throw new Error('zip: ZIP64 archives are not supported');
+  // Sizes/offsets are attacker-readable u32 fields; anything past the file itself is a lie and
+  // would otherwise drive a multi-GB Buffer.alloc before the first read fails.
+  if (cdOffset + cdSize > fileSize) throw new Error('zip: central directory lies outside the file');
 
   const cd = await readAt(fh, cdOffset, cdSize);
   const entries: ZipEntry[] = [];
@@ -79,8 +84,17 @@ export async function readZipEntries(fh: FileHandle, fileSize: number): Promise<
   return entries;
 }
 
-/** Reads and decompresses one entry's bytes (via its local header, whose extra field can differ from the central one). */
-export async function readZipEntryData(fh: FileHandle, entry: ZipEntry): Promise<Uint8Array> {
+/**
+ * Reads and decompresses one entry's bytes (via its local header, whose extra field can differ from
+ * the central one). `fileSize` bounds the claimed compressed size, and the central directory's
+ * uncompressed size caps the inflate output — a lying deflate member (zip bomb) fails instead of
+ * exhausting memory.
+ */
+export async function readZipEntryData(
+  fh: FileHandle,
+  entry: ZipEntry,
+  fileSize: number,
+): Promise<Uint8Array> {
   const local = await readAt(fh, entry.localHeaderOffset, 30);
   if (local.readUInt32LE(0) !== LOCAL_SIGNATURE) {
     throw new Error(`zip: corrupt local header for ${entry.name}`);
@@ -88,11 +102,16 @@ export async function readZipEntryData(fh: FileHandle, entry: ZipEntry): Promise
   const nameLength = local.readUInt16LE(26);
   const extraLength = local.readUInt16LE(28);
   const dataOffset = entry.localHeaderOffset + 30 + nameLength + extraLength;
+  if (dataOffset + entry.compressedSize > fileSize) {
+    throw new Error(`zip: entry ${entry.name} lies outside the file`);
+  }
   const compressed = await readAt(fh, dataOffset, entry.compressedSize);
   if (entry.method === METHOD_STORED) return compressed;
   if (entry.method === METHOD_DEFLATE) {
     return new Promise((resolvePromise, reject) => {
-      inflateRaw(compressed, (err, out) => (err ? reject(err) : resolvePromise(out)));
+      inflateRaw(compressed, { maxOutputLength: entry.size }, (err, out) =>
+        err ? reject(err) : resolvePromise(out),
+      );
     });
   }
   throw new Error(`zip: unsupported compression method ${entry.method} for ${entry.name}`);

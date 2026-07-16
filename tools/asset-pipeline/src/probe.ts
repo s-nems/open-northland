@@ -14,11 +14,12 @@ const PROBE_MAX_DEPTH = 4;
 export interface GameFolderProbe {
   /** At least one `.lib` archive within {@link PROBE_MAX_DEPTH} — the minimum the unpack stage needs. */
   readonly hasArchives: boolean;
-  /** Whether `DataCnmd/` (the culturesnation mod) is present, to pass as the pipeline's `--mod`. */
+  /** Whether `DataCnmd/` (the culturesnation mod, installed in place) is present — if not, the
+   * conversion needs an external mod root (`--mod-root`; see `resolveModRoot`). */
   readonly hasMod: boolean;
 }
 
-/** The `--mod` subdir the documented pipeline run uses when {@link GameFolderProbe.hasMod} is true. */
+/** The directory that marks a culturesnation mod root — inside the game folder or an unpacked copy. */
 export const CULTURESNATION_MOD = 'DataCnmd';
 
 /**
