@@ -42,11 +42,11 @@ export function buildMapsIndexEntries(mapsRoot: string): MapsIndexEntry[] {
             if (typeof meta.description === 'string') description = meta.description;
           } else {
             console.warn(
-              `[content-server] maps-index: ${id}.meta.json is not an object; serving the bare id`,
+              `[content-routes] maps-index: ${id}.meta.json is not an object; serving the bare id`,
             );
           }
         } catch (err) {
-          console.warn(`[content-server] maps-index: ${id}.meta.json unreadable: ${(err as Error).message}`);
+          console.warn(`[content-routes] maps-index: ${id}.meta.json unreadable: ${(err as Error).message}`);
         }
       }
       return {

@@ -1,13 +1,13 @@
 import { existsSync } from 'node:fs';
 import { extname, normalize, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { resolveContentRequest } from '@open-northland/content-server';
+import { resolveContentRequest } from '@open-northland/content-routes';
 import { net, protocol } from 'electron';
 
 /**
  * The `app://` scheme the shell serves the game from — the packaged equivalent of the Vite dev
  * server: `app://game/<path>` maps to the built web app's static files plus the shared content
- * routes (`@open-northland/content-server`) over the data root's `content/`, and `app://setup/…`
+ * routes (`@open-northland/content-routes`) over the data root's `content/`, and `app://setup/…`
  * serves the first-run installer page from the shell's own renderer files.
  */
 

@@ -6,7 +6,7 @@
     { "path": "packages/render" },
     { "path": "packages/audio" },
     { "path": "packages/app" },
-    { "path": "packages/content-server" },
+    { "path": "packages/content-routes" },
     { "path": "packages/desktop" },
     { "path": "tools/asset-pipeline" }
   ]
