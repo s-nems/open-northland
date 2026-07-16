@@ -147,6 +147,36 @@ describe('confinement gates the hauler pickups', () => {
     expect(sim.world.has(porter, MoveGoal)).toBe(true);
   });
 
+  it('a porter leaves an IN-area pile alone when every capable sink is out of area — no pickup→shed livelock', () => {
+    const sim = confinedSim();
+    // The porter's bound store takes only wheat (the granary), so the plank pile's only capable sink
+    // is the out-of-area store — the exact fetch/delivery disagreement that livelocked: the old pickup
+    // consulted the global sink table (plank IS storable somewhere), lifted the pile, found no in-area
+    // delivery target, shed it, and lifted it again. The deliverableGoodProbe must refuse the lift.
+    const GRANARY = 6;
+    const granary = buildingAt(sim, GRANARY, 2, 2);
+    sim.world.add(granary, Stockpile, { amounts: new Map() });
+    const porter = ownedSettler(sim, 2, 2, CARRIER);
+    sim.world.add(porter, JobAssignment, { workplace: granary });
+    pileAt(sim, IN_AREA, 2, PLANK, 3);
+    storeAt(sim, OUT_OF_AREA, 2, []); // the only plank-capable store — beyond the porter's area
+    for (let t = 0; t < 30; t++) {
+      sim.step();
+      expect(sim.world.has(porter, Carrying), `tick ${sim.tick}`).toBe(false);
+    }
+
+    // A pile its own store DOES take (wheat) is deliverable — the same porter goes and lifts that one.
+    const WHEAT = 6;
+    pileAt(sim, IN_AREA, 2, WHEAT, 3);
+    let lifted = false;
+    for (let t = 0; t < 200 && !lifted; t++) {
+      sim.step();
+      lifted =
+        sim.world.has(porter, Carrying) || sim.world.tryGet(porter, CurrentAtomic)?.effect.kind === 'pickup';
+    }
+    expect(lifted).toBe(true);
+  });
+
   it('a store carrier leaves an out-of-area workplace output but hauls an in-area one', () => {
     const sim = confinedSim();
     const hq = storeAt(sim, 2, 2, []); // the plank sink (its slot makes the output deliverable)

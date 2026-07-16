@@ -105,6 +105,9 @@ function reidleAsJob(world: World, ctx: SystemContext, e: Entity, jobType: numbe
   // Leaving the fighter trades disarms the settler: the arms are the soldier's role kit, and the render
   // draws the armed look from the equipped weapon good over the job — a kept weapon would freeze an
   // ex-soldier in the warrior skin. Both axes go: the Equipment display slots and the combat Weapon/Armor.
+  // Named approximation: the weapon/armor goods VANISH from the economy rather than dropping or returning
+  // to a store (the original's fate for a converted soldier's kit is unobserved) — recovering them is
+  // docs/tickets/sim/disarm-equipment-fate.md.
   if (!isFighterJob(jobType)) {
     world.remove(e, Weapon);
     world.remove(e, Armor);
@@ -192,6 +195,10 @@ export function assignWorker(
  * Recoverable bad input (skipped, still logged for faithful replay): a dead/stale/non-settler/neutral
  * issuer, a still-growing child, a dead or not-under-construction target, a wrong-tribe site, or a site
  * owned by another player (a player pins only its own foundations — two same-tribe players stay apart).
+ *
+ * Deliberately NO signpost-confinement gate (unlike `assignWorker`): a pinned site is how the player
+ * extends the network's frontier, and the builder drive treats the pinned site as a bound sink
+ * (routing case 3c) so the crew can raise it from outside the walkable-area rule.
  */
 export function assignBuilder(
   world: World,

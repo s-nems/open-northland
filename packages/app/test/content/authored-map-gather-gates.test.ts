@@ -1,4 +1,4 @@
-import { components, halfCellMapFromCells, systems } from '@open-northland/sim';
+import { components, type Entity, halfCellMapFromCells, systems } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { TERRAIN_OPEN } from '../../src/catalog/terrain.js';
 import { HUMAN_PLAYER } from '../../src/game/rules.js';
@@ -53,19 +53,22 @@ describe.runIf(hasRealIr())('authored decoded-map humans — gathering XP gates'
     // The authored spawn carries the mastery stamp that clears the iron/gold `needforgood` gates.
     const mastery = gatherMasteryExperienceFor(merge.content, VIKING);
     expect(mastery.length).toBeGreaterThan(0); // real content does gate gatherables
-    let collector = -1;
-    for (const e of sim.world.query(Settler)) collector = e as number;
-    const xp = sim.world.get(collector as never, Settler).experience;
+    const settlers = [...sim.world.query(Settler)];
+    expect(settlers.length).toBe(1); // the one authored human
+    const collector = settlers[0] as Entity;
+    const xp = sim.world.get(collector, Settler).experience;
     for (const [track, points] of mastery) {
       expect(xp.get(track) ?? 0).toBeGreaterThanOrEqual(points);
     }
 
     // End to end through the profession picker: convert away and back (experience survives setJob),
     // plant iron beside the unit, flag it there, and prove the deposit is actually mined.
-    sim.enqueue({ kind: 'setJob', entity: collector as never, jobType: JOB_CIVILIST });
+    sim.enqueue({ kind: 'setJob', entity: collector, jobType: JOB_CIVILIST });
     sim.step();
-    sim.enqueue({ kind: 'setJob', entity: collector as never, jobType: JOB_COLLECTOR });
+    expect(sim.world.get(collector, Settler).jobType).toBe(JOB_CIVILIST); // the conversion really applied
+    sim.enqueue({ kind: 'setJob', entity: collector, jobType: JOB_COLLECTOR });
     sim.step();
+    expect(sim.world.get(collector, Settler).jobType).toBe(JOB_COLLECTOR);
     const ironSpec = GATHERERS.find((g) => g.good === GOOD_IRON);
     expect(ironSpec).toBeDefined();
     if (ironSpec === undefined) return;
@@ -75,7 +78,7 @@ describe.runIf(hasRealIr())('authored decoded-map humans — gathering XP gates'
       resourceSpecFor(ironSpec, 24 * 2, 20 * 2),
     );
     expect(node).not.toBeNull();
-    sim.enqueue({ kind: 'setWorkFlag', entity: collector as never, x: 22 * 2, y: 22 * 2 });
+    sim.enqueue({ kind: 'setWorkFlag', entity: collector, x: 22 * 2, y: 22 * 2 });
 
     const before = node !== null ? sim.world.get(node, Resource).remaining : 0;
     sim.run(2500);
