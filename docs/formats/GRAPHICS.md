@@ -33,8 +33,11 @@ sequence of control bytes terminated by zero:
 - high bit set: skip `count` transparent pixels.
 
 Frame types select one-byte indexed pixels, mask pixels, or two-byte indexed values carrying alpha or
-construction-time thresholds. The decoder emits parallel pixel and opacity arrays, plus a time array
-when required. Palette application and atlas packing are separate stages.
+construction-time thresholds. A 1-bit mask frame (type 2 — the shadow silhouettes) is the exception:
+its raw runs carry no pixel bytes at all, the run itself being the coverage (pinned on the real shadow
+`.bmd`s, which only decode into coherent silhouettes this way). The decoder emits parallel pixel and
+opacity arrays, plus a time array when required. Palette application and atlas packing are separate
+stages.
 
 Synthetic tests cover container parsing, packed runs, empty lines, masks, time bytes, clipping, atlas
 placement, and round trips. Real visual validation compares decoded frames in the browser galleries.

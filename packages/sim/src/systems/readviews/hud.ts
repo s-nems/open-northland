@@ -109,7 +109,7 @@ export function goodsGraph(content: ContentSet): Map<number, GoodsGraphNode> {
     const outputs =
       building.produces.length > 0
         ? building.produces
-        : (building.recipe?.outputs.map((o) => o.goodType) ?? []);
+        : building.recipes.flatMap((r) => r.outputs.map((o) => o.goodType));
     for (const goodType of outputs) {
       const list = producers.get(goodType);
       if (list === undefined) producers.set(goodType, [building.typeId]);

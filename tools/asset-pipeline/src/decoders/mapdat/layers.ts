@@ -23,7 +23,7 @@
  * {@link unpackRle}/{@link packRle}. Decoding stops at exactly the declared unpacked byte length.
  */
 
-import { asciiBytes, LATIN1, viewOf } from '../byte-cursor.js';
+import { asciiBytes, decodeLatin1, viewOf } from '../byte-cursor.js';
 import type { MapDatChunk } from './container.js';
 
 export const MAP_LAYER_HEADER_SIZE = 0x15;
@@ -65,7 +65,7 @@ export interface MapLayerU16 {
 
 /** Reads "pck"/"kcp" or a codec id from the layer header as ASCII (Latin1 is exact for these). */
 function ascii(payload: Uint8Array, offset: number, length: number): string {
-  return LATIN1.decode(payload.subarray(offset, offset + length));
+  return decodeLatin1(payload.subarray(offset, offset + length));
 }
 
 /**

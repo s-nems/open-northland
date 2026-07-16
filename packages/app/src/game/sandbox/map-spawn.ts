@@ -6,6 +6,7 @@ import {
   mapResourceSpawns,
   simResourceObjectNames,
 } from '../../content/map-resources.js';
+import { diag } from '../../diag/index.js';
 import { GATHERERS, type GathererSpec } from './ids/index.js';
 import { resourceSpecFor } from './place.js';
 
@@ -82,7 +83,8 @@ export function spawnMapResources(
     // A latent collision hole: these placements were skipped from the static collision bake
     // (mapResourceObjectNames) on the promise of a dynamic footprint that never materialised (the
     // good has no footprint record in the sim content) — a drawn object settlers walk through.
-    console.warn(
+    diag.warn(
+      'content',
       `spawnMapResources: ${unspawnable} harvestable placements failed to spawn (no sim-content footprint) — they block nothing`,
     );
   }

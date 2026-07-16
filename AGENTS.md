@@ -82,6 +82,8 @@ npm run build
 npm test
 npm test -- scenario
 npm run test:watch
+npm run test:content
+npm run test:pipeline
 npm run check
 npm run check:fix
 npm run scan:structure
@@ -115,7 +117,11 @@ hygiene test rejects nondeterministic globals in `packages/sim`.
 
 1. Prove code at the lowest useful level: unit, integration, headless scenario, then app scene.
 2. Run the matching gates. For normal code, expect `npm test`, `npm run check`, and `npm run build`.
-3. Pipeline or schema changes need a real pipeline run against the owned game copy.
+3. Pipeline or schema changes need a real pipeline run against the owned game copy —
+   `npm run test:pipeline` is that gate as a command (fresh run into a throwaway dir, validated by
+   the real-content suite). Changes consuming real content (loaders, id joins, merge overlays) get
+   `npm run test:content` when local `content/` exists. Both are local-only; CI never runs them
+   (docs/TESTING.md "Real-content test modes").
 4. Golden hashes only move for intentional behavior changes. A moved golden during a refactor means
    behavior changed.
 5. Visual or audio correctness needs a human. Agents can check no crashes, data decisions, screenshots,

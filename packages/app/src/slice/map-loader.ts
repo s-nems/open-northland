@@ -1,4 +1,5 @@
 import { parseTerrainMap, type TerrainMapFile } from '@open-northland/data';
+import { diag } from '../diag/index.js';
 
 /**
  * The decoded-map fetch boundary: load a `content/maps/<id>.json` grid over the dev/shot vite
@@ -31,18 +32,24 @@ export async function loadTerrainMap(
 ): Promise<TerrainMapFile | null> {
   const safe = safeMapId(id);
   if (safe === null) {
-    console.warn(`loadTerrainMap: ignoring unsafe map id "${id}"`);
+    diag.warn('content', `loadTerrainMap: ignoring unsafe map id "${id}"`);
     return null;
   }
   try {
     const res = await fetchImpl(`/maps/${safe}.json`);
     if (!res.ok) {
-      console.warn(`loadTerrainMap: /maps/${safe}.json -> HTTP ${res.status} (falling back to the strip)`);
+      diag.warn(
+        'content',
+        `loadTerrainMap: /maps/${safe}.json -> HTTP ${res.status} (falling back to the strip)`,
+      );
       return null;
     }
     return parseTerrainMap(await res.json());
   } catch (err) {
-    console.warn(`loadTerrainMap: failed to load "${safe}" (${String(err)}); falling back to the strip`);
+    diag.warn(
+      'content',
+      `loadTerrainMap: failed to load "${safe}" (${String(err)}); falling back to the strip`,
+    );
     return null;
   }
 }

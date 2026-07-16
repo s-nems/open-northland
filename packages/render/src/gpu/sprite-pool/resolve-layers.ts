@@ -63,6 +63,27 @@ export interface ResolvedLayer {
    * overlay still draws and still pixel-hit-tests — it just doesn't move the box.
    */
   readonly boundsExempt?: boolean;
+  /**
+   * A cast-shadow layer ({@link shadowLayerFor}) — always also {@link boundsExempt}, and additionally
+   * excluded from the pixel hit test: clicking the darkened ground beside a caster must not select it
+   * (unlike the rotor overlay, which is a clickable part of the building).
+   */
+  readonly shadow?: true;
+}
+
+/**
+ * Resolve the cast-shadow layer a drawn bob prepends under itself: the same bob id looked up in the
+ * source layer's {@link SpriteLayer.shadow} twin (shadow bob sets parallel their body's ids — observed
+ * on the tree and house `_s.bmd`s). Null when the layer has no shadow twin or the twin holds no visible
+ * frame at that id (most bobs cast none — the data decides). `boundsExempt`: a shadow darkens the
+ * ground; it must not grow the caster's selection/picking box.
+ */
+function shadowLayerFor(layer: SpriteLayer, bobId: number, scale: number): ResolvedLayer | null {
+  const shadow = layer.shadow;
+  if (shadow === undefined) return null;
+  const frame = lookupFrame(shadow.atlas, bobId);
+  if (frame === null) return null;
+  return { source: shadow.source, frame, scale, boundsExempt: true, shadow: true };
 }
 
 /**
@@ -127,8 +148,7 @@ export function resolveLayers(
     const draw = resolveResourceDraw(sheet.bindings.resource, item);
     if (draw === null) return [];
     if (draw.layer !== undefined && sheet.families?.[draw.layer] !== undefined) {
-      const resolved = layeredLayerFor(sheet, 'resource', draw);
-      return resolved === null ? null : [resolved];
+      return layeredLayersWithShadow(sheet, 'resource', draw);
     }
     bobId = draw.bob;
   } else if (item.kind === 'stockpile') {
@@ -156,8 +176,11 @@ export function resolveLayers(
     const frame = lookupFrame(kindLayer.atlas, bobId);
     if (frame === null) return null;
     const scale = sheet.kindScales?.[item.kind] ?? 1;
-    const body = { source: kindLayer.source, frame, scale };
-    return buildingOverlay === null ? [body] : [body, buildingOverlay];
+    const shadow = shadowLayerFor(kindLayer, bobId, scale);
+    const layers: ResolvedLayer[] = shadow === null ? [] : [shadow];
+    layers.push({ source: kindLayer.source, frame, scale });
+    if (buildingOverlay !== null) layers.push(buildingOverlay);
+    return layers;
   }
 
   // Shared body atlas + overlay (head) layers, all indexed by the same resolved bob id.
@@ -224,9 +247,10 @@ function resolveBuildingLayers(sheet: SpriteSheet, item: DrawItem, tick: number)
   // unloaded one falls through to the default building layer (a deliberate difference from the
   // construction path, which drops the stage instead).
   if (draw.layer !== undefined && sheet.families?.[draw.layer] !== undefined) {
-    const resolved = layeredLayerFor(sheet, 'building', draw);
-    if (resolved === null) return { done: true, layers: null }; // a broken body never draws a floating overlay
-    return { done: true, layers: overlay === null ? [resolved] : [resolved, overlay] };
+    const layers = layeredLayersWithShadow(sheet, 'building', draw);
+    if (layers === null) return { done: true, layers: null }; // a broken body never draws a floating overlay
+    if (overlay !== null) layers.push(overlay);
+    return { done: true, layers };
   }
   return { done: false, bobId: draw.bob, overlay };
 }
@@ -235,19 +259,21 @@ function resolveBuildingLayers(sheet: SpriteSheet, item: DrawItem, tick: number)
  * Resolve a ground pile / delivery flag's layers. It has no shared `kindLayers` layer of its own, so it
  * draws only from a loaded named family (the `ls_goods` pile / `ls_temp` flag atlases). A bare or
  * unloaded-family ref draws the placeholder heap — never falls through to the body atlas (which would
- * blit a settler frame).
+ * blit a settler frame). Each layer prepends its cast shadow like every other kind (`ls_goods_s` holds
+ * a silhouette for every pile bob in the owned copy).
  */
 function resolveStockpileLayers(sheet: SpriteSheet, item: DrawItem): ResolvedLayer[] | null {
   const binding = sheet.bindings.stockpile;
   if (binding === undefined) return null;
   const draws = resolveStockpileLayerDraws(binding, item);
-  return compactResolvedStockpileLayers(
+  const stacks = compactResolvedStockpileLayers(
     draws.map((draw) =>
       draw.layer === undefined
         ? null // no family -> placeholder heap/flag, never a wrong atlas borrow
-        : layeredLayerFor(sheet, 'stockpile', draw),
+        : layeredLayersWithShadow(sheet, 'stockpile', draw),
     ),
   );
+  return stacks === null ? null : stacks.flat();
 }
 
 /**
@@ -273,43 +299,68 @@ function resolveDecorLayers(
   const draw = resolveResourceDraw(binding, item);
   if (draw === null) return []; // a data-pinned invisible level — draw nothing, not the placeholder
   if (draw.layer === undefined) return null; // no family → placeholder
-  const resolved = layeredLayerFor(sheet, kind, draw);
-  return resolved === null ? null : [resolved];
+  return layeredLayersWithShadow(sheet, kind, draw);
+}
+
+/**
+ * {@link layeredLayerFor} plus the body's cast shadow: `[shadow, body]` when the draw's source layer
+ * carries a {@link SpriteLayer.shadow} twin with a visible frame at the same bob id, else `[body]`;
+ * null exactly when {@link layeredLayerFor} is. The construction stack keeps {@link layeredLayerFor}
+ * directly — its stage shadows are a separate lane (the `shadowBobId` ticket).
+ */
+function layeredLayersWithShadow(
+  sheet: SpriteSheet,
+  kind: SpriteKind,
+  draw: BuildingDraw,
+): ResolvedLayer[] | null {
+  const layer = sourceLayerFor(sheet, kind, draw);
+  if (layer === undefined) return null;
+  const body = resolveFromLayer(layer, sheet, kind, draw);
+  if (body === null) return null;
+  const shadow = shadowLayerFor(layer, draw.bob, body.scale);
+  return shadow === null ? [body] : [shadow, body];
 }
 
 /**
  * Resolve one layered draw (a finished building body / construction stage, or a per-good resource /
  * stockpile object) to its atlas layer — the family / dedicated-kind-layer decision shared by every
- * layered kind. A `draw.layer` draws from that named {@link SpriteSheet.families} atlas (at its
- * `familyScales` entry, else the kind's `kindScales`, else native); a bare draw draws from the kind's
- * own {@link SpriteSheet.kindLayers} layer. Returns null for an unloaded family, a kind with no
- * dedicated layer, or a missing/empty frame (the caller skips or falls back to the placeholder).
+ * layered kind. Returns null for an unloaded family, a kind with no dedicated layer, or a
+ * missing/empty frame (the caller skips or falls back to the placeholder).
  */
 function layeredLayerFor(sheet: SpriteSheet, kind: SpriteKind, draw: BuildingDraw): ResolvedLayer | null {
-  if (draw.layer !== undefined) {
-    const family = sheet.families?.[draw.layer];
-    if (family === undefined) return null; // unloaded named family — no wrong-bob borrow
-    const frame = lookupFrame(family.atlas, draw.bob);
-    if (frame === null) return null;
-    const scale = sheet.familyScales?.[draw.layer] ?? sheet.kindScales?.[kind] ?? 1;
-    return {
-      source: family.source,
-      frame,
-      scale,
-      // The atlas's time sheet rides along so a construction stage from this family can reveal
-      // per-pixel; ignored (no reveal) on every other draw.
-      ...(family.times !== undefined ? { times: family.times } : {}),
-    };
-  }
-  const kindLayer = sheet.kindLayers?.[kind];
-  if (kindLayer === undefined) return null;
-  const frame = lookupFrame(kindLayer.atlas, draw.bob);
+  const layer = sourceLayerFor(sheet, kind, draw);
+  return layer === undefined ? null : resolveFromLayer(layer, sheet, kind, draw);
+}
+
+/**
+ * The source atlas layer a layered draw reads: a `draw.layer` names a {@link SpriteSheet.families}
+ * atlas, a bare draw uses the kind's own {@link SpriteSheet.kindLayers} layer. An unloaded named
+ * family is `undefined` — never a wrong-bob borrow from the kind layer (their id spaces differ).
+ */
+function sourceLayerFor(sheet: SpriteSheet, kind: SpriteKind, draw: BuildingDraw): SpriteLayer | undefined {
+  return draw.layer !== undefined ? sheet.families?.[draw.layer] : sheet.kindLayers?.[kind];
+}
+
+/** {@link layeredLayerFor}'s frame/scale step over an already-picked source layer: the draw's bob frame
+ *  at the family's `familyScales` entry, else the kind's `kindScales`, else native. The atlas's time
+ *  sheet rides along so a construction stage can reveal per-pixel; ignored on every other draw. */
+function resolveFromLayer(
+  layer: SpriteLayer,
+  sheet: SpriteSheet,
+  kind: SpriteKind,
+  draw: BuildingDraw,
+): ResolvedLayer | null {
+  const frame = lookupFrame(layer.atlas, draw.bob);
   if (frame === null) return null;
+  const scale =
+    (draw.layer !== undefined ? sheet.familyScales?.[draw.layer] : undefined) ??
+    sheet.kindScales?.[kind] ??
+    1;
   return {
-    source: kindLayer.source,
+    source: layer.source,
     frame,
-    scale: sheet.kindScales?.[kind] ?? 1,
-    ...(kindLayer.times !== undefined ? { times: kindLayer.times } : {}),
+    scale,
+    ...(layer.times !== undefined ? { times: layer.times } : {}),
   };
 }
 

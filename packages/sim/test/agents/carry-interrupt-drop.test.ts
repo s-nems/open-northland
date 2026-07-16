@@ -194,6 +194,26 @@ describe('a move order on a carrying settler — drop first, then walk', () => {
   });
 });
 
+describe('a carrying settler with nowhere to deliver — drop, do not stand holding it', () => {
+  it('sets the load down when no store or workplace can take it, instead of standing frozen forever', () => {
+    const sim = freshSim();
+    // An owned settler carrying wood with no JobAssignment and no store anywhere on the map: the planner's
+    // delivery target resolves to null every tick, so before this fix it stood holding the load indefinitely.
+    const e = carryingWoodcutter(sim, 3, 1, 1);
+
+    sim.step(); // the CARRYING planner rung runs first — with no sink it starts the drop
+
+    const atomic = sim.world.get(e, CurrentAtomic);
+    expect(atomic.effect.kind).toBe('drop');
+    expect(sim.world.has(e, Carrying)).toBe(true); // still on its back while the putdown plays
+
+    sim.run(30); // let the drop atomic complete
+    expect(sim.world.has(e, Carrying)).toBe(false); // load is on the ground, hands free
+    const totalWood = looseWoodPiles(sim).reduce((sum, p) => sum + p.wood, 0);
+    expect(totalWood).toBe(1);
+  });
+});
+
 describe('an enemy interrupting a carrying settler — drop, then flee', () => {
   it('sets the load down before it runs (drop atomic first, no Fleeing yet), then flees empty-handed', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(40, 1) });

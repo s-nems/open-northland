@@ -20,30 +20,36 @@ import { pathfindingSystem } from './movement/routing.js';
 import { playerOrderSystem, signpostOrderSystem } from './orders/index.js';
 import { visionSystem } from './vision/index.js';
 
+/** One schedule slot: the system plus its stable display name (perf marks, bench reports). */
+export interface ScheduledSystem {
+  readonly name: string;
+  readonly system: System;
+}
+
 /** Canonical per-tick execution order. Engine wiring, not part of the public systems namespace. */
-export const SYSTEM_ORDER: readonly System[] = [
-  commandSystem,
-  needsSystem,
-  jobSystem,
-  herdingSystem,
-  playerOrderSystem,
+export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
+  { name: 'command', system: commandSystem },
+  { name: 'needs', system: needsSystem },
+  { name: 'job', system: jobSystem },
+  { name: 'herding', system: herdingSystem },
+  { name: 'playerOrder', system: playerOrderSystem },
   // After playerOrderSystem retires the walk and before aiSystem could re-task the scout: an arrived
   // erect order starts its hammer swing this same tick.
-  signpostOrderSystem,
-  aiSystem,
-  pathfindingSystem,
-  movementSystem,
-  separationSystem,
-  atomicSystem,
-  productionSystem,
-  cropGrowthSystem,
-  berryGrowthSystem,
-  constructionSystem,
+  { name: 'signpostOrder', system: signpostOrderSystem },
+  { name: 'ai', system: aiSystem },
+  { name: 'pathfinding', system: pathfindingSystem },
+  { name: 'movement', system: movementSystem },
+  { name: 'separation', system: separationSystem },
+  { name: 'atomic', system: atomicSystem },
+  { name: 'production', system: productionSystem },
+  { name: 'cropGrowth', system: cropGrowthSystem },
+  { name: 'berryGrowth', system: berryGrowthSystem },
+  { name: 'construction', system: constructionSystem },
   // Vision rebuilds after movement and before combat, so a fresh fog mode is honoured this tick.
-  visionSystem,
-  combatSystem,
-  projectileSystem,
-  reproductionSystem,
-  growthSystem,
-  cleanupSystem,
+  { name: 'vision', system: visionSystem },
+  { name: 'combat', system: combatSystem },
+  { name: 'projectile', system: projectileSystem },
+  { name: 'reproduction', system: reproductionSystem },
+  { name: 'growth', system: growthSystem },
+  { name: 'cleanup', system: cleanupSystem },
 ];

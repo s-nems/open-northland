@@ -1,6 +1,7 @@
 import { buildSpriteScene } from '@open-northland/render';
 import { systems } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
+import { grassTerrain } from '../src/catalog/buildings.js';
 import { WOOD_YIELD_PER_NODE } from '../src/catalog/felling.js';
 import {
   CLAY_DEPOSIT_UNITS,
@@ -16,9 +17,12 @@ import {
   GOOD_MUSHROOM,
   GOOD_STONE,
   GOOD_WOOD,
+  placeFlag,
+  placeResourceNode,
+  spawnBoundGatherer,
 } from '../src/game/sandbox/index.js';
 import { createSceneSim } from '../src/scenes/index.js';
-import { sandboxScene } from '../src/scenes/sandbox.js';
+import type { SceneDefinition } from '../src/scenes/types.js';
 
 const GOODS = {
   wood: GOOD_WOOD,
@@ -31,9 +35,38 @@ const GOODS = {
 const WOOD_TREES = GATHERERS.find((gatherer) => gatherer.good === GOOD_WOOD)?.nodes ?? 0;
 const MUSHROOM_NODES = GATHERERS.find((gatherer) => gatherer.good === GOOD_MUSHROOM)?.nodes ?? 0;
 
-describe('gathering scene — render classification after all six gathering cycles', () => {
-  const sim = createSceneSim(sandboxScene);
-  sim.run(sandboxScene.runTicks);
+/** One gathering lane per good — worker, nodes, and its own drop-off flag on one row. The purpose-built
+ *  full-consumption fixture (the sandbox scene keeps its camps busy indefinitely, so it cannot witness
+ *  end states like "every node consumed"). */
+const LANE_Y0 = 4;
+const LANE_STEP = 2;
+const WORKER_X = 8;
+const NODE_X = 13;
+const FLAG_X = 18;
+/** Enough for the slowest lane to fully drain — clay (10 units × 6 strikes × 23-tick digs + rests)
+ *  empties around tick 5400 on this layout; 6000 leaves honest headroom. */
+const RUN_TICKS = 6000;
+
+const fixture: SceneDefinition = {
+  id: 'gathering-render-fixture',
+  seed: 41,
+  terrain: grassTerrain(30, 20),
+  runTicks: RUN_TICKS,
+  checks: [],
+  build: (sim) => {
+    GATHERERS.forEach((g, i) => {
+      const y = LANE_Y0 + i * LANE_STEP;
+      const flag = placeFlag(sim, FLAG_X, y);
+      for (let n = 0; n < g.nodes; n++) placeResourceNode(sim, g, NODE_X + n, y);
+      // The good filter pins each lane's gatherer to its own trade (neighbouring lanes overlap radii).
+      spawnBoundGatherer(sim, g.job, WORKER_X, y, flag, { goodType: g.good });
+    });
+  },
+};
+
+describe('gathering render classification after all six gathering cycles', () => {
+  const sim = createSceneSim(fixture);
+  sim.run(fixture.runTicks);
   const draws = buildSpriteScene(sim.snapshot());
 
   it('every source node is consumed by the end', () => {

@@ -141,4 +141,17 @@ export type UnitOrderCommand =
       readonly entity: Entity;
       readonly x: number;
       readonly y: number;
+    }
+  | {
+      /**
+       * Choose which of its workplace's products a craft worker makes — the crafting twin of
+       * `setGatherGood`. `goods` are product goodTypes of the settler's bound workplace's recipes;
+       * several selected alternate per started cycle (one short sword, one plate armor, …); empty
+       * restores the all-products mode. Recoverable bad input (skipped, still logged): a non-settler,
+       * a worker with no workplace, goods the workplace doesn't make (invalid entries are dropped,
+       * and a selection with none left is ignored).
+       */
+      readonly kind: 'setCraftGoods';
+      readonly entity: Entity;
+      readonly goods: readonly number[];
     };

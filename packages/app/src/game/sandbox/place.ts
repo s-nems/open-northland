@@ -12,7 +12,14 @@ import {
 import { resolveVikingBuilding } from '../../catalog/buildings.js';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../../catalog/felling.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../rules.js';
-import { GATHERERS, type GathererSpec, JOB_CARRIER, JOB_IDLE, weaponEquipmentFor } from './ids/index.js';
+import {
+  GATHERERS,
+  type GathererSpec,
+  JOB_CARRIER,
+  JOB_COLLECTOR,
+  JOB_IDLE,
+  weaponEquipmentFor,
+} from './ids/index.js';
 
 const { DeliveryFlag, Position, WorkFlag } = components;
 
@@ -46,7 +53,7 @@ export function placeSandboxBuilding(
   x: number,
   y: number,
   owner: number = HUMAN_PLAYER,
-  opts: { readonly underConstruction?: boolean } = {},
+  opts: { readonly underConstruction?: boolean; readonly fillStock?: boolean } = {},
 ): void {
   // Scenes author in whole tiles; the command seam speaks half-cell nodes.
   const node = cellAnchorNode(x, y);
@@ -60,6 +67,8 @@ export function placeSandboxBuilding(
     force: true,
     // A construction site starts as a grey foundation a builder raises (default: fully built).
     ...(opts.underConstruction ? { underConstruction: true } : {}),
+    // A pre-stocked fixture (a scene's full warehouse): every stock slot seeded to its capacity.
+    ...(opts.fillStock ? { fillStock: true } : {}),
   });
 }
 
@@ -110,6 +119,79 @@ export function spawnWorkersAtDoor(
   for (let i = 0; i < count; i++) {
     sim.enqueue({ kind: 'spawnSettler', jobType, x: door.hx, y: door.hy, tribe: PRIMARY_TRIBE, owner });
   }
+}
+
+/**
+ * The worker slots a scene can actually staff at `buildingType`, from the sim's loaded content: every slot
+ * of a producing building (a recipe workshop or a farm — the adopt pass binds a worker standing at its
+ * door), but only the carrier slots of a passive store (HQ/warehouse — never adopted, its haulers report in
+ * loose via the JobSystem's pass 1b). The skipped store slots (collector/fisher/hunter) would otherwise
+ * spawn employed-but-unbindable gatherers that roam the map.
+ */
+export function staffableCrewFor(
+  sim: Simulation,
+  buildingType: number,
+): readonly { jobType: number; count: number }[] {
+  const def = buildingDef(sim, buildingType);
+  if (def === undefined) return [];
+  const producing = def.recipes.length > 0 || def.produces.length > 0;
+  return def.workers.filter((slot) => producing || slot.jobType === JOB_CARRIER);
+}
+
+/**
+ * Staff a building to its full worker capacity: for every staffable slot ({@link staffableCrewFor}) spawn
+ * `count` settlers of the slot's job at the door, via the raw `spawnSettler` command (node-exact, like
+ * {@link spawnWorkersAtDoor}). Production workers are bound by the adopt pass on tick 1; carriers take the
+ * first open transport post in canonical building order (pass 1b), so with every placement staffed this way
+ * each carrier slot in the settlement fills even when an individual carrier posts to a neighbour.
+ */
+export function staffBuildingFully(
+  sim: Simulation,
+  buildingType: number,
+  x: number,
+  y: number,
+  owner: number = HUMAN_PLAYER,
+): void {
+  const door = buildingDoorNode(sim, buildingType, x, y);
+  const mastery = gatherMasteryExperience(sim);
+  for (const slot of staffableCrewFor(sim, buildingType)) {
+    for (let i = 0; i < slot.count; i++) {
+      sim.enqueue({
+        kind: 'spawnSettler',
+        jobType: slot.jobType,
+        x: door.hx,
+        y: door.hy,
+        tribe: PRIMARY_TRIBE,
+        owner,
+        // A collector spawns a veteran, so real content's `needforgood` gates (iron/gold behind
+        // clay/stone-digging XP) don't leave a pre-staffed crew unable to forage its wares.
+        ...(slot.jobType === JOB_COLLECTOR && mastery.length > 0 ? { experience: mastery } : {}),
+      });
+    }
+  }
+}
+
+/**
+ * The starting XP that clears every `needforgood` gate on the sandbox's gatherable goods for
+ * {@link PRIMARY_TRIBE}, as `[trackTypeId, points]` pairs. Each `need` requirement sums the XP across
+ * its named tracks, so granting its `amount` into its FIRST track satisfies it. Real extracted content
+ * gates iron/gold behind clay/stone-digging XP (`needforgood 6/7 10` over tracks 4+5) — a fresh
+ * collector pinned to an iron camp would never qualify and stands idle beside the deposit, so sandbox
+ * collectors spawn as veterans instead. Empty on the synthetic sandbox content (it declares no
+ * requirements), keeping the headless twin byte-identical.
+ */
+export function gatherMasteryExperience(sim: Simulation): ReadonlyArray<readonly [number, number]> {
+  const tribe = sim.content.tribes.find((t) => t.typeId === PRIMARY_TRIBE);
+  if (tribe === undefined) return [];
+  const gathered = new Set(GATHERERS.map((g) => g.good));
+  const byTrack = new Map<number, number>();
+  for (const req of tribe.jobRequirements) {
+    if (req.requirement !== 'need' || req.target !== 'good' || !gathered.has(req.targetId)) continue;
+    const track = req.experienceTypes[0];
+    if (track === undefined) continue;
+    byTrack.set(track, Math.max(byTrack.get(track) ?? 0, req.amount));
+  }
+  return [...byTrack].sort((a, b) => a[0] - b[0]);
 }
 
 /** A building's primary worker-slot jobType from the sim's loaded content — its first non-{@link JOB_CARRIER}
@@ -170,7 +252,7 @@ export function spawnIdleSettler(
   owner: number = HUMAN_PLAYER,
 ): Entity {
   const node = cellAnchorNode(x, y);
-  const e = systems.createSettler(sim.world, sim.content, {
+  const e = systems.createSettler(sim.world, sim.content, sim.rng, {
     jobType: JOB_IDLE,
     x: node.hx,
     y: node.hy,
@@ -238,10 +320,24 @@ function placeResourceDirect(sim: Simulation, spec: ResourceNodeSpec, what: stri
  * (so the caller doesn't re-dispatch on the mode). Scenes author in whole tiles (`x`/`y`), so the tile is
  * converted to its anchor node before assembly — the same tile→node seam `spawnSandboxSettler` uses.
  * Throws on a good with no footprint (a scene-setup bug), unlike the runtime {@link resourceCommand}.
+ * `unitsScale` multiplies the node's yield (a testing scene sizing a deposit to outlast a long session);
+ * the visual shrink ladder scales with it (a deposit's `initial` is its starting `remaining`).
  */
-export function placeResourceNode(sim: Simulation, g: GathererSpec, x: number, y: number): void {
+export function placeResourceNode(
+  sim: Simulation,
+  g: GathererSpec,
+  x: number,
+  y: number,
+  opts: { readonly unitsScale?: number } = {},
+): void {
   const node = cellAnchorNode(x, y);
-  placeResourceDirect(sim, resourceSpecFor(g, node.hx, node.hy), `placeResourceNode(${g.id})`);
+  const spec = resourceSpecFor(g, node.hx, node.hy);
+  const scale = opts.unitsScale ?? 1;
+  placeResourceDirect(
+    sim,
+    scale === 1 ? spec : { ...spec, remaining: spec.remaining * scale },
+    `placeResourceNode(${g.id})`,
+  );
 }
 
 /**
@@ -301,7 +397,9 @@ export function placeFlag(sim: Simulation, x: number, y: number): Entity {
  * `placeResourceNode` helper — rather than through the `spawnSettler` command, because its {@link WorkFlag}
  * has to reference the flag entity, and a command-spawned settler's id is not known until the command runs.
  * With the binding it harvests only within `radius` of the flag, carries only what it dug, and banks it at
- * the flag. Throws on an unknown job (a scene-setup bug, like {@link placeResourceNode}).
+ * the flag. An optional `goodType` pins the gatherer to one resource (the same filter the `setGatherGood`
+ * command sets), so neighbouring camps of different goods never poach each other's nodes. Throws on an
+ * unknown job (a scene-setup bug, like {@link placeResourceNode}).
  */
 export function spawnBoundGatherer(
   sim: Simulation,
@@ -309,18 +407,25 @@ export function spawnBoundGatherer(
   x: number,
   y: number,
   flag: Entity,
-  radius: number = GATHERER_WORK_RADIUS,
-  owner: number = HUMAN_PLAYER,
+  opts: { readonly radius?: number; readonly owner?: number; readonly goodType?: number } = {},
 ): Entity {
   const node = cellAnchorNode(x, y);
-  const e = systems.createSettler(sim.world, sim.content, {
+  const mastery = gatherMasteryExperience(sim);
+  const e = systems.createSettler(sim.world, sim.content, sim.rng, {
     jobType,
     x: node.hx,
     y: node.hy,
     tribe: PRIMARY_TRIBE,
-    owner,
+    owner: opts.owner ?? HUMAN_PLAYER,
+    // A camp gatherer spawns a veteran (see gatherMasteryExperience) — a fresh collector pinned to
+    // iron/gold would fail real content's `needforgood` gate forever and stand beside its deposit.
+    ...(mastery.length > 0 ? { experience: mastery } : {}),
   });
   if (e === null) throw new Error(`spawnBoundGatherer: unknown job ${jobType}`);
-  sim.world.add(e, WorkFlag, { flag, radius });
+  sim.world.add(e, WorkFlag, {
+    flag,
+    radius: opts.radius ?? GATHERER_WORK_RADIUS,
+    ...(opts.goodType !== undefined ? { goodType: opts.goodType } : {}),
+  });
   return e;
 }

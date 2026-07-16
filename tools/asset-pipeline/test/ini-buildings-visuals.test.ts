@@ -139,6 +139,7 @@ describe('extractBuildingBobs', () => {
         typeId: 2,
         level: 0,
         bmd: 'data/engine2d/bin/bobs/ls_houses_viking.bmd',
+        shadowBmd: 'data/engine2d/bin/bobs/ls_houses_viking_s.bmd',
         paletteName: 'house01',
         bobId: 1,
         editName: 'viking home',
@@ -149,6 +150,7 @@ describe('extractBuildingBobs', () => {
         typeId: 3,
         level: 1,
         bmd: 'data/engine2d/bin/bobs/ls_houses_viking.bmd',
+        shadowBmd: 'data/engine2d/bin/bobs/ls_houses_viking_s.bmd',
         paletteName: 'house01',
         bobId: 11,
         editName: 'viking home',
@@ -159,12 +161,19 @@ describe('extractBuildingBobs', () => {
         typeId: 6,
         level: 4,
         bmd: 'data/engine2d/bin/bobs/ls_houses_viking.bmd',
+        shadowBmd: 'data/engine2d/bin/bobs/ls_houses_viking_s.bmd',
         paletteName: 'house01',
         bobId: 41,
         editName: 'viking home',
         source: src,
       },
     ]);
+  });
+
+  it('omits shadowBmd when GfxBobLibs names no shadow lib (the well)', () => {
+    const well = extractBuildingBobs(parseIniSections(GFXHOUSE_BOBS_INI), src).filter((b) => b.typeId === 10);
+    expect(well.length).toBeGreaterThan(0);
+    for (const b of well) expect(b.shadowBmd).toBeUndefined();
   });
 
   it('emits one row per palette skin (the same bob recoloured into each `GfxPalette` value)', () => {

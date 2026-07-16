@@ -352,6 +352,9 @@ export class WorldRenderer {
     // they can't ride the worldLayer transform); the plain-sprite path ignores them. The elevation field
     // lets it lift each entity's drawn feet without disturbing its pre-lift depth key; `alpha` lerps
     // each entity between its last two tick anchors.
+    // The portrait's subject is force-drawn through the cull so its cutout survives off-screen / inside a
+    // building; setPortraitInset ran before this update, so the ref is this frame's.
+    const portraitRef = this.portrait.subjectRef();
     this.pool.reconcile({
       snapshot,
       viewport: vp,
@@ -367,6 +370,7 @@ export class WorldRenderer {
         ? { fogVisible: (tx: number, ty: number) => fogTileVisible(fogView, tx, ty) }
         : {}),
       ...(ghosts !== undefined && ghosts.length > 0 ? { ghosts } : {}),
+      ...(portraitRef !== null ? { portraitRef } : {}),
     });
     // Selection rings read the pool's just-computed per-entity bounds + drawn (lerped, lifted) anchors,
     // so a building's marker sizes to its actual sprite footprint and a moving unit's ring glides with

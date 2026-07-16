@@ -26,7 +26,10 @@ export {
   isCarrierJob,
   isTemple,
   isWorkplaceOperator,
+  mergedRecipeOf,
   presentOperatorCount,
-  recipeOf,
+  presentOperators,
+  recipesByProductOf,
   workerPresentAt,
+  workplaceStoredGoods,
 } from './workplace.js';

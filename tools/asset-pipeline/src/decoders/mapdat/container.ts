@@ -21,7 +21,7 @@
  * documented in `docs/formats/MAPDAT.md`.
  */
 
-import { LATIN1, viewOf } from '../byte-cursor.js';
+import { decodeLatin1, viewOf } from '../byte-cursor.js';
 
 /** "hoix" little-endian — the chunk marker every header opens with. */
 export const HOIX_MARKER = 0x78696f68;
@@ -71,7 +71,7 @@ function idToTag(id: number): string {
   const b1 = (id >>> 8) & 0xff;
   const b2 = (id >>> 16) & 0xff;
   const b3 = (id >>> 24) & 0xff;
-  return LATIN1.decode(Uint8Array.of(b3, b2, b1, b0));
+  return decodeLatin1(Uint8Array.of(b3, b2, b1, b0));
 }
 
 /** A 4-char ASCII tag ("lsiz") to its raw u32 id (the disk bytes are the tag reversed). */

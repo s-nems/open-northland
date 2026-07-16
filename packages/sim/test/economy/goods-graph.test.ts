@@ -56,16 +56,18 @@ function graphContent(): ContentSet {
       { typeId: 10, id: 'sawmill', kind: 'workplace', produces: [PLANK] },
       // mill: produces flour.
       { typeId: 11, id: 'mill', kind: 'workplace', produces: [FLOUR] },
-      // bakery: produces bread, declared via a materialized `recipe` (no `produces`) — the fallback.
+      // bakery: produces bread, declared via materialized `recipes` (no `produces`) — the fallback.
       {
         typeId: 12,
         id: 'bakery',
         kind: 'workplace',
-        recipe: {
-          inputs: [{ goodType: FLOUR, amount: 1 }],
-          outputs: [{ goodType: BREAD, amount: 1 }],
-          ticks: 20,
-        },
+        recipes: [
+          {
+            inputs: [{ goodType: FLOUR, amount: 1 }],
+            outputs: [{ goodType: BREAD, amount: 1 }],
+            ticks: 20,
+          },
+        ],
       },
       // bakery2: a SECOND bread producer, to prove producedBy lists every producer, sorted.
       { typeId: 13, id: 'bakery2', kind: 'workplace', produces: [BREAD] },

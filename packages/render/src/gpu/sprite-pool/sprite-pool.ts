@@ -89,6 +89,10 @@ export interface PoolFrame {
    *  map draws with a faint green/red tint on its sprite (the assign-mode "lekko zielony/czerwony" look);
    *  absent/empty = no tint. Transient view state like the selection, never sim state. */
   readonly highlight?: ReadonlyMap<number, boolean>;
+  /** The details-panel portrait's subject: force-drawn through the cull so its live cutout survives
+   *  off-screen / inside a building, but hidden on the main map (see {@link DrawItem.portraitOnly}).
+   *  Absent = no portrait open. */
+  readonly portraitRef?: number;
 }
 
 /** The faint tints an assign-mode candidate building draws with — a light green when the settler can be
@@ -115,6 +119,17 @@ export class SpritePool {
   private readonly attached = new Set<PooledEntity>();
   private frameId = 0;
   private drawn = 0;
+  /** The portrait subject kept hidden on the main map this frame (off-screen/indoor — {@link
+   *  DrawItem.portraitOnly}); the portrait's second render reveals it via {@link showPortraitSubject}.
+   *  Null when the subject draws normally or no portrait is open. */
+  private portraitHidden: PooledEntity | null = null;
+  /** Whether {@link portraitHidden} is inside a building (drawn frozen — {@link DrawItem.frozen}); the
+   *  portrait then renders it alone so its cutout drops the world backdrop and it doesn't read as standing
+   *  on top of the building. */
+  private portraitIndoor = false;
+  /** Sprite-layer children hidden during an indoor portrait's solo render, with their prior visibility so
+   *  {@link endPortraitSolo} restores exactly what {@link beginPortraitSolo} changed. */
+  private readonly portraitSolo: { child: { visible: boolean }; wasVisible: boolean }[] = [];
 
   /**
    * @param spriteLayer the renderer's shared, depth-sorted entity layer (also holds the tall map
@@ -147,8 +162,16 @@ export class SpritePool {
       staticRefs: frame.staticRefs,
       fogVisible: frame.fogVisible,
       ghosts: frame.ghosts,
+      ...(frame.portraitRef !== undefined ? { portraitRef: frame.portraitRef } : {}),
     });
     this.frameId++;
+    // Un-hide last frame's force-hidden portrait subject before re-deciding this frame's; the subject may
+    // have scrolled back on-screen (drawn normally) or the portrait may have closed.
+    if (this.portraitHidden !== null) {
+      this.portraitHidden.container.visible = true;
+      this.portraitHidden = null;
+    }
+    this.portraitIndoor = false;
     for (let i = 0; i < scene.items.length; i++) {
       const item = scene.items[i];
       if (item === undefined) continue;
@@ -178,6 +201,15 @@ export class SpritePool {
         this.attached.add(pe);
       }
       pe.lastSeen = this.frameId;
+      // A portrait-only subject (drawn solely for the panel cutout) is hidden on the main map: an
+      // off-screen one is off-canvas anyway, and an indoor one must not pop into view at its door. It
+      // stays reconciled/attached (so `anchorOf` + `placePalettedFor` still serve the portrait) — the
+      // portrait's second render reveals it, then hides it again before the main stage render.
+      if (item.portraitOnly === true) {
+        pe.container.visible = false;
+        this.portraitHidden = pe;
+        this.portraitIndoor = item.frozen === true;
+      }
     }
     this.drawn = scene.items.length;
 
@@ -255,6 +287,51 @@ export class SpritePool {
     }
   }
 
+  /** Reveal the portrait subject that is force-hidden on the main map (if any), so the portrait's second
+   *  render of the world can draw its cutout. Paired with {@link hidePortraitSubject}, which the caller
+   *  runs right after that render so the subject stays hidden on the main stage. No-op when the subject is
+   *  drawn normally or no portrait is open. */
+  showPortraitSubject(): void {
+    if (this.portraitHidden !== null) this.portraitHidden.container.visible = true;
+  }
+
+  /** Re-hide the portrait subject after its cutout render (see {@link showPortraitSubject}). */
+  hidePortraitSubject(): void {
+    if (this.portraitHidden !== null) this.portraitHidden.container.visible = false;
+  }
+
+  /** The pooled container of the force-hidden portrait subject (if any) — the portrait reads it to keep
+   *  its parent sprite layer visible while blanking the rest of the world for an indoor solo render. */
+  portraitSubjectContainer(): Container | null {
+    return this.portraitHidden?.container ?? null;
+  }
+
+  /** Whether the force-hidden portrait subject is inside a building, so its cutout should drop the world
+   *  backdrop (a frozen settler standing on its own, not on top of the building). */
+  portraitSubjectIsIndoor(): boolean {
+    return this.portraitIndoor;
+  }
+
+  /** Hide every sprite-layer child except the portrait subject, so its second render draws the subject
+   *  alone (no other units, no map objects behind it). {@link endPortraitSolo} restores them. Paired only
+   *  with an indoor portrait render; the world's other layers (terrain, fog…) are blanked by the caller. */
+  beginPortraitSolo(): void {
+    this.portraitSolo.length = 0; // start clean, so a skipped endPortraitSolo can't corrupt the restore
+    const subject = this.portraitHidden?.container;
+    if (subject === undefined) return;
+    for (const child of this.spriteLayer.children) {
+      if (child === subject) continue;
+      this.portraitSolo.push({ child, wasVisible: child.visible });
+      child.visible = false;
+    }
+  }
+
+  /** Restore the sprite-layer children {@link beginPortraitSolo} hid for the indoor portrait render. */
+  endPortraitSolo(): void {
+    for (const { child, wasVisible } of this.portraitSolo) child.visible = wasVisible;
+    this.portraitSolo.length = 0;
+  }
+
   /**
    * Destroy every pooled entity — including ones currently detached (culled off-screen), which a
    * scene-graph walk from the sprite layer can't reach because they were removed from it. Called on the
@@ -295,9 +372,10 @@ export class SpritePool {
         : item;
     // The moving-state walk cycle runs on the motion-scaled gait clock (feet track ground covered — a
     // body-pressed or braking walker's legs slow instead of jogging in place); everything else (idle loops,
-    // action clocks) stays on the free tick. A ghost binds at a frozen clock: an animating ghost (a mill's
-    // turning sails under the fog) would leak that the fogged building is still manned.
-    const animTick = item.ghost === true ? 0 : frame.tick;
+    // action clocks) stays on the free tick. A frozen clock (0) holds a still frame for two cases: a ghost
+    // (an animating mill's sails under the fog would leak that the building is still manned) and the
+    // portrait subject inside a building (a motionless standing pose, not the breathing idle loop).
+    const animTick = item.ghost === true || item.frozen === true ? 0 : frame.tick;
     const layers = resolveLayers(this.sheet, drawItem, animTick, Math.floor(pe.motion.gaitPhase));
     if (layers === null) {
       this.showPlaceholder(pe, item, frame);
@@ -371,6 +449,9 @@ export class SpritePool {
     for (let i = 0; i < layers.length; i++) {
       const layer = layers[i];
       if (layer === undefined) continue;
+      // Restamped per frame beside the sprite itself: the pixel hit test must skip a cast-shadow layer
+      // (clicking darkened ground beside a caster is not clicking the caster).
+      pe.shadowFlags[i] = layer.shadow === true;
       // Feet-anchored: the frame's authored draw offset, scaled about the anchor (the container origin).
       const ox = layer.frame.offsetX * layer.scale;
       const oy = layer.frame.offsetY * layer.scale;
@@ -460,7 +541,10 @@ export class SpritePool {
       if (ox + layer.frame.width * layer.scale > maxX) maxX = ox + layer.frame.width * layer.scale;
       if (boundsOy + boundsH > maxY) maxY = boundsOy + boundsH;
     }
-    // Hide any leftover sprites from a frame that needed more layers than this one.
+    // Hide any leftover sprites from a frame that needed more layers than this one, and drop their
+    // stale shadow flags with them (pixelHit skips hidden sprites, but the flag array must not
+    // outlive the layers it described).
+    pe.shadowFlags.length = layers.length;
     for (let i = layers.length; i < pe.sprites.length; i++) {
       const s = pe.sprites[i];
       if (s !== undefined) s.visible = false;

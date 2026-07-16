@@ -9,6 +9,7 @@ import { buildingFootprints, loadIr } from '../content/ir.js';
 import { loadRuntimeRealContent, logRealContentGaps } from '../content/real-content.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet/index.js';
 import { loadRealTerrain } from '../content/terrain.js';
+import { diag, hashTraceFor, setDiagGameSession } from '../diag/index.js';
 import { fogModeParam } from '../game/fog.js';
 import { createSceneSim, getScene, SCENES } from '../scenes/index.js';
 import { cameraFor, createCameraController } from '../view/camera.js';
@@ -47,6 +48,7 @@ export async function renderSceneMode(
     return;
   }
 
+  diag.info('boot', 'game start', { entry: 'scene', sceneId, seed: scene.seed });
   // Window-tracking, device-resolution backing store: resizing changes the visible field, never the scale.
   const app = await createWindowPixiApp(canvas);
   const terrainGrid = terrainMapToScene(scene.terrain);
@@ -70,6 +72,13 @@ export async function renderSceneMode(
     },
     realContent?.content,
   );
+  setDiagGameSession({
+    entry: 'scene',
+    worldId: sceneId,
+    seed: scene.seed,
+    sim,
+    hashTrace: hashTraceFor(params),
+  });
   // `?fog=off|reveal|recon` overrides the scene's own fog mode (enqueued after the scene's
   // setFogMode — FIFO, later write wins). A named divergence from the headless twin, like `?speed=`:
   // the human explicitly asked to watch the mechanic under a different fog rule.

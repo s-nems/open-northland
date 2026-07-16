@@ -155,7 +155,7 @@ function pick<T>(rng: Rng, options: readonly T[]): T {
 function nextCommand(rng: Rng): Command {
   const x = rng.int(NODE_W);
   const y = rng.int(NODE_H);
-  const roll = rng.int(24);
+  const roll = rng.int(25);
   switch (roll) {
     case 0:
       return {
@@ -168,6 +168,8 @@ function nextCommand(rng: Rng): Command {
         ...(rng.int(2) === 0 ? { owner: pick(rng, OWNERS) } : {}),
         // Occasionally an authored-import-style forced placement (skips the tech/collision gates).
         ...(rng.int(4) === 0 ? { force: true } : {}),
+        // Occasionally an authored pre-stocked placement (every stock slot seeded to capacity).
+        ...(rng.int(4) === 0 ? { fillStock: true } : {}),
       };
     case 1: {
       // Every third settler is a combatant (Health + armor + a specific weapon + a walk pace) so the
@@ -193,6 +195,9 @@ function nextCommand(rng: Rng): Command {
             }
           : {}),
         ...(rng.int(2) === 0 ? { owner: pick(rng, OWNERS) } : {}),
+        // Occasionally spawn a veteran (starting XP pairs) — the experience stamp must hash and
+        // replay identically.
+        ...(rng.int(4) === 0 ? { experience: [[rng.int(8), 1 + rng.int(200)]] as const } : {}),
       };
     }
     case 2:
@@ -331,6 +336,15 @@ function nextCommand(rng: Rng): Command {
         kind: 'setGatherGood',
         entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
         goodType: pick(rng, [null, RESOURCE_GOOD, 4, INVALID_TYPE]),
+      };
+    case 20:
+      // A craft-selection order at a random id: empty (all-products reset), single and multi-good picks,
+      // duplicates, and invalid goods — against bound craft workers plus unemployed/wrong-kind/dead
+      // targets. The command must hash and replay even when validation turns it into a no-op.
+      return {
+        kind: 'setCraftGoods',
+        entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+        goods: Array.from({ length: rng.int(3) }, () => pick(rng, [RESOURCE_GOOD, 4, 2, INVALID_TYPE])),
       };
     case 21:
       // A signpost order at a random id + tile: hits owned scouts (walk + hammer + a Signpost entity

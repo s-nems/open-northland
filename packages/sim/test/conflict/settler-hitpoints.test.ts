@@ -1,6 +1,7 @@
 import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { Health } from '../../src/components/index.js';
+import { Rng } from '../../src/core/rng.js';
 import { World } from '../../src/ecs/world.js';
 import { createSettler, DEFAULT_SETTLER_HITPOINTS } from '../../src/systems/conflict/spawn/index.js';
 import { settlerHitpoints } from '../../src/systems/readviews/index.js';
@@ -44,14 +45,14 @@ describe('settlerHitpoints — the tribe HP pool read at spawn', () => {
 describe('createSettler resolves spawn HP from content', () => {
   it('uses the tribe pool when it carries one', () => {
     const world = new World();
-    const e = createSettler(world, contentWithTribeHp(HUMAN_HP), spec(VIKING));
+    const e = createSettler(world, contentWithTribeHp(HUMAN_HP), new Rng(1), spec(VIKING));
     if (e === null) throw new Error('spawn failed');
     expect(world.get(e, Health)).toEqual({ hitpoints: HUMAN_HP, max: HUMAN_HP });
   });
 
   it('falls back to the default pool when the tribe carries none', () => {
     const world = new World();
-    const e = createSettler(world, testContent(), spec(VIKING));
+    const e = createSettler(world, testContent(), new Rng(1), spec(VIKING));
     if (e === null) throw new Error('spawn failed');
     expect(world.get(e, Health)).toEqual({
       hitpoints: DEFAULT_SETTLER_HITPOINTS,
@@ -61,7 +62,7 @@ describe('createSettler resolves spawn HP from content', () => {
 
   it('an explicit positive command override wins over the tribe pool', () => {
     const world = new World();
-    const e = createSettler(world, contentWithTribeHp(HUMAN_HP), spec(VIKING, 250));
+    const e = createSettler(world, contentWithTribeHp(HUMAN_HP), new Rng(1), spec(VIKING, 250));
     if (e === null) throw new Error('spawn failed');
     expect(world.get(e, Health)).toEqual({ hitpoints: 250, max: 250 });
   });

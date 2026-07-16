@@ -3,6 +3,13 @@ import type { ElevationField, SceneTerrain, SpriteSheet, WorldRenderer } from '@
 import type { SimEvent, Simulation, WorldSnapshot } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import { pickerEntries } from '../../catalog/professions.js';
+import {
+  installSimPerfMarks,
+  installSimTrace,
+  PERF_MARKS_DEBUG_FLAG,
+  startTraceRecording,
+  TRACE_DEBUG_FLAG,
+} from '../../diag/index.js';
 import { HUD_TRIBE, HUMAN_PLAYER } from '../../game/rules.js';
 import { workerRoleOf } from '../../game/sandbox/index.js';
 import { type MinimapHandle, mountMinimap } from '../../hud/minimap/index.js';
@@ -106,6 +113,15 @@ const PERF_STRIP_GAP = 8;
  */
 export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   const { app, canvas, params, renderer, sim, cameraCtl } = deps;
+
+  // `?debug=perf` (live DevTools User Timing marks) / `?debug=trace` (a bounded Trace Event
+  // recording, exportable from the system menu) — two consumers of the sim's per-system instrument
+  // seam. Started before the HUD mounts so the system menu sees an active recording.
+  if (params.get('debug') === PERF_MARKS_DEBUG_FLAG) installSimPerfMarks(sim);
+  if (params.get('debug') === TRACE_DEBUG_FLAG) {
+    startTraceRecording();
+    installSimTrace(sim);
+  }
 
   // `destroy` halts the loop and drops this session's overlays so a later game never runs a second loop
   // over the same stage; `quitToMenu` then navigates back. Full-page navigation is the v1 transition —

@@ -16,6 +16,7 @@ import {
   type TextureSource,
 } from '@open-northland/render';
 import { DOOR_SHIFTS } from '../catalog/building-tweaks.js';
+import { diag } from '../diag/index.js';
 import { fetchImageData, fetchJsonOrNull, loadTextureIfPresent } from './net.js';
 
 /**
@@ -62,6 +63,8 @@ export interface BuildingBobRow {
   readonly typeId: number;
   readonly level: number;
   readonly bmd: string;
+  /** The shadow bob set (`GfxBobLibs` second value) — its silhouettes parallel the body's bob ids. */
+  readonly shadowBmd?: string;
   readonly paletteName: string;
   readonly bobId: number;
   readonly editName?: string;
@@ -114,6 +117,8 @@ export interface LandscapeGfxRow {
   readonly editName?: string;
   readonly logicType: number;
   readonly bmd?: string;
+  /** The shadow bob set (`GfxBobLibs` second value) — its silhouettes parallel the body's bob ids. */
+  readonly shadowBmd?: string;
   readonly paletteName?: string;
   readonly frames?: readonly LandscapeGfxFramesRow[];
   /** `GfxStatic` — a still object (no per-frame playback). */
@@ -127,13 +132,21 @@ export interface LandscapeGfxRow {
 }
 
 /** The served `/bobs/` atlas stem (`<bmd-basename-minus-.bmd>.<palette>`, the pipeline's naming) for a
- *  landscape gfx record, or `undefined` when it names no body bob or palette (a pure-logic record with no
- *  drawable atlas). The one home for the `.bmd`→stem convention the gathering-ref and map-object joins share. */
-export function servedAtlasStem(record: LandscapeGfxRow): string | undefined {
+ *  landscape gfx / building bob record, or `undefined` when it names no body bob or palette (a pure-logic
+ *  record with no drawable atlas). The one home for the `.bmd`→stem convention the gathering-ref,
+ *  map-object and shadow joins share. */
+export function servedAtlasStem(record: Pick<LandscapeGfxRow, 'bmd' | 'paletteName'>): string | undefined {
   const bmd = record.bmd;
   if (bmd === undefined || bmd.trim() === '') return undefined;
   if (record.paletteName === undefined || record.paletteName.trim() === '') return undefined;
   return `${bmd.slice(bmd.lastIndexOf('/') + 1).replace(/\.bmd$/i, '')}.${record.paletteName}`;
+}
+
+/** The served `/bobs/` stem of a shadow `.bmd`'s atlas (`<shadow-basename-minus-.bmd>.shadow`, the
+ *  pipeline's palette-less shadow naming), or `undefined` for an absent/blank reference. */
+export function servedShadowStem(shadowBmd: string | undefined): string | undefined {
+  if (shadowBmd === undefined || shadowBmd.trim() === '') return undefined;
+  return `${shadowBmd.slice(shadowBmd.lastIndexOf('/') + 1).replace(/\.bmd$/i, '')}.shadow`;
 }
 
 /** One resolved gathering-pipeline stage (a landscape type + the `landscapeGfx` records that place it). */
@@ -212,8 +225,13 @@ export const BODY_IMAGELIB = 'cr_hum_body_00.bmd';
  * `<stem>.build.png` CPU-side — the per-pixel construction-reveal thresholds; an unreadable build
  * sheet just degrades that layer to the crop reveal. Throws {@link MissingAtlasError} when the decoded
  * files are missing.
+ *
+ * `shadowStem` names the layer's cast-shadow twin (the pipeline's `<shadow-bmd-stem>.shadow` atlas —
+ * see {@link servedShadowStem}); when given and present it loads as {@link SpriteLayer.shadow}. A
+ * missing shadow atlas degrades to a shadow-less layer (`content/` generated before the shadow stage),
+ * never fails the body.
  */
-export async function loadLayer(stem: string): Promise<SpriteLayer> {
+export async function loadLayer(stem: string, shadowStem?: string): Promise<SpriteLayer> {
   const res = await fetch(`/bobs/${stem}.atlas.json`);
   if (!res.ok) {
     throw new MissingAtlasError(
@@ -221,11 +239,22 @@ export async function loadLayer(stem: string): Promise<SpriteLayer> {
     );
   }
   const manifest = (await res.json()) as AtlasManifest;
-  const [source, times] = await Promise.all([
+  const [source, times, shadow] = await Promise.all([
     loadAtlasSource(`/bobs/${stem}.png`),
     manifest.build === true ? loadBuildTimeSheet(`/bobs/${stem}.build.png`) : Promise.resolve(undefined),
+    shadowStem === undefined
+      ? Promise.resolve(undefined)
+      : loadLayer(shadowStem).catch((err: unknown) => {
+          if (err instanceof MissingAtlasError) return undefined;
+          throw err;
+        }),
   ]);
-  return { atlas: atlasFromManifest(manifest), source, ...(times !== undefined ? { times } : {}) };
+  return {
+    atlas: atlasFromManifest(manifest),
+    source,
+    ...(times !== undefined ? { times } : {}),
+    ...(shadow !== undefined ? { shadow } : {}),
+  };
 }
 
 /** Fetch a build-time sheet PNG and keep its R channel (the 0–255 thresholds) CPU-side, or `undefined`
@@ -284,7 +313,7 @@ export function buildingFootprints(ir: ContentIr | null): Map<number, BuildingFo
     if (shift !== undefined && door === undefined) {
       // A committed correction with nothing to correct — a re-extraction dropped the door. Warn so the
       // review-signed shift isn't silently lost (the type still gets its verbatim footprint).
-      console.warn(`buildingFootprints: DOOR_SHIFTS['${b.id}'] has no extracted door to shift`);
+      diag.warn('content', `buildingFootprints: DOOR_SHIFTS['${b.id}'] has no extracted door to shift`);
     }
     out.set(
       b.typeId,

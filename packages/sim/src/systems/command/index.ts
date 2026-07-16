@@ -30,6 +30,7 @@ import {
   attackUnit,
   moveUnit,
   placeSignpost,
+  setCraftGoods,
   setGatherGood,
   setJob,
   setStance,
@@ -184,6 +185,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       }
       return;
     }
+    case 'setCraftGoods':
+      setCraftGoods(world, ctx, command);
+      return;
     case 'setNeedsEnabled': {
       // Set the WorldRules singleton (created lazily on first use, mutated thereafter) — the toggle is
       // simulated state, so it hashes/replays like any component. Idempotent re-sends just overwrite.

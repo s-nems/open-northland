@@ -5,7 +5,7 @@ import { fogGhostTint } from '../../data/fog.js';
 import { depthKey, screenToCell } from '../../data/iso.js';
 import { aabbIntersects, isVisible, type Viewport } from '../../data/viewport.js';
 import type { TextureCache } from '../texture-cache.js';
-import { type MapObjectSprite, objectFrameAt } from './map-object-sprite.js';
+import { type MapObjectSprite, objectFrameIndexAt } from './map-object-sprite.js';
 
 /**
  * The tall landscape objects (trees, stones — anything that occludes a settler): pooled sprites in the
@@ -16,11 +16,22 @@ import { type MapObjectSprite, objectFrameAt } from './map-object-sprite.js';
  * placements into the per-block groups this consumes.
  */
 
+/**
+ * How far below its caster's depth key a tall object's cast shadow sorts. The original blits a shadow
+ * immediately before its caster, so the shadow draws over sprites behind the caster but under the
+ * caster itself. Above `depthKey`'s max x-tiebreak contribution (~0.03) so the pair can't interleave,
+ * and below the pool's `SCREEN_PAINT_EPS` (0.25) kind-bias step so the shadow never drops behind a
+ * genuinely earlier sprite.
+ */
+const SHADOW_DEPTH_EPS = 0.125;
+
 /** One tall (non-decor) map object: its static draw data + a lazily-minted pooled sprite. */
 interface PooledObject {
   readonly obj: MapObjectSprite;
   /** Null until minted on first visibility. */
   sprite: Sprite | null;
+  /** The cast-shadow twin, minted with {@link sprite} only when the object carries shadow frames. */
+  shadowSprite: Sprite | null;
   attached: boolean;
   /** The sprite's undimmed tint (the baked-shading multiplier, or white) — computed at mint so the
    *  per-frame fog grading is a pick between two cached colours, never a recompute. */
@@ -92,6 +103,7 @@ export class TallObjectLayer {
         objects: block.map((obj) => ({
           obj,
           sprite: null,
+          shadowSprite: null,
           attached: false,
           baseTint: 0xffffff,
           ghostTint: 0xffffff,
@@ -119,6 +131,7 @@ export class TallObjectLayer {
       const po = block.objects[i] as PooledObject;
       if (this.detach(po)) block.attachedCount--;
       po.sprite?.destroy();
+      po.shadowSprite?.destroy();
       block.objects.splice(i, 1);
     }
     return true;
@@ -132,6 +145,7 @@ export class TallObjectLayer {
   private detach(po: PooledObject): boolean {
     if (!po.attached || po.sprite === null) return false;
     this.spriteLayer.removeChild(po.sprite);
+    if (po.shadowSprite !== null) this.spriteLayer.removeChild(po.shadowSprite);
     po.attached = false;
     return true;
   }
@@ -181,6 +195,13 @@ export class TallObjectLayer {
           // (see MapObjectSprite.brightness); the app omits the field for the full-bright kinds (trees).
           po.baseTint = obj.brightness !== undefined ? scaleColour(0xffffff, obj.brightness) : 0xffffff;
           po.ghostTint = fogGhostTint(po.baseTint);
+          if (obj.shadow !== undefined) {
+            // The cast shadow, sorted just under its caster (see SHADOW_DEPTH_EPS). Pre-baked black
+            // pixels — the fog/shading tints multiply to black anyway, so it never re-tints.
+            po.shadowSprite = new Sprite();
+            po.shadowSprite.scale.set(obj.scale);
+            po.shadowSprite.zIndex = depthKey(obj.x, obj.y) - SHADOW_DEPTH_EPS;
+          }
         }
         // Explored-but-unwatched ground dims the object to the ghost grading; re-assigned per frame
         // (a pick between two cached colours — Pixi's tint setter no-ops on an unchanged value).
@@ -194,7 +215,8 @@ export class TallObjectLayer {
           watched !== po.lastWatched ||
           (watched && animAdvanced && obj.frames.length > 1)
         ) {
-          const frame = objectFrameAt(obj, watched ? tick : 0);
+          const frameIndex = objectFrameIndexAt(obj, watched ? tick : 0);
+          const frame = obj.frames[frameIndex];
           if (frame === undefined) continue;
           po.sprite.texture = this.textures.get(obj.source, frame);
           // Draw at the lifted feet; the zIndex above kept the pre-lift `obj.y` so depth is by map row.
@@ -202,10 +224,26 @@ export class TallObjectLayer {
             obj.x + frame.offsetX * obj.scale,
             obj.y - (obj.lift ?? 0) + frame.offsetY * obj.scale,
           );
+          // The shadow binds the same pose index, so an animated loop's shadow follows the body; a
+          // pose with no silhouette (`undefined`) just hides it.
+          if (po.shadowSprite !== null && obj.shadow !== undefined) {
+            const shadowFrame = obj.shadow.frames[frameIndex];
+            if (shadowFrame === undefined) {
+              po.shadowSprite.visible = false;
+            } else {
+              po.shadowSprite.visible = true;
+              po.shadowSprite.texture = this.textures.get(obj.shadow.source, shadowFrame);
+              po.shadowSprite.position.set(
+                obj.x + shadowFrame.offsetX * obj.scale,
+                obj.y - (obj.lift ?? 0) + shadowFrame.offsetY * obj.scale,
+              );
+            }
+          }
         }
         po.lastWatched = watched;
         if (!po.attached) {
           this.spriteLayer.addChild(po.sprite);
+          if (po.shadowSprite !== null) this.spriteLayer.addChild(po.shadowSprite);
           po.attached = true;
           block.attachedCount++;
         }
@@ -217,7 +255,10 @@ export class TallObjectLayer {
   /** Free the tall-object sprites (a map change re-invalidates them). */
   destroy(): void {
     for (const block of this.blocks) {
-      for (const po of block.objects) po.sprite?.destroy();
+      for (const po of block.objects) {
+        po.sprite?.destroy();
+        po.shadowSprite?.destroy();
+      }
     }
     this.blocks = [];
     this.blockByObject.clear();
