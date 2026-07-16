@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, normalize, relative, sep } from 'node:path';
 import { decodeLib, type LibFile } from '../decoders/lib.js';
+import type { StageItemReporter } from '../progress.js';
 import { walkFiles } from '../walk.js';
 
 /**
@@ -39,7 +40,11 @@ export interface LibExtraction {
  * per-file boundary failure. The whole archive is read into memory; `decodeLib` returns zero-copy
  * payload views, so members are sliced from that single buffer rather than re-read.
  */
-export async function unpackLibTree(gameDir: string, outDir: string): Promise<LibExtraction[]> {
+export async function unpackLibTree(
+  gameDir: string,
+  outDir: string,
+  onItem?: StageItemReporter,
+): Promise<LibExtraction[]> {
   const done: LibExtraction[] = [];
   for await (const file of walkFiles(gameDir)) {
     if (!file.toLowerCase().endsWith('.lib')) continue;
@@ -68,6 +73,7 @@ export async function unpackLibTree(gameDir: string, outDir: string): Promise<Li
       await mkdir(dirname(outPath), { recursive: true });
       await writeFile(outPath, member.data);
       done.push({ archive, member: rel });
+      onItem?.(done.length);
     }
   }
   return done;

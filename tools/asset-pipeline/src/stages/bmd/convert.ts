@@ -9,6 +9,7 @@ import {
 import { decodeBmd } from '../../decoders/bmd/index.js';
 import { normalizeAssetPath, paletteAliasMap } from '../../decoders/ini.js';
 import { decodePcx } from '../../decoders/pcx.js';
+import type { StageItemReporter } from '../../progress.js';
 import { walkFiles } from '../../walk.js';
 import { writeAtlasBeside } from '../game-file.js';
 import type { GraphicsBindingSet } from './bindings.js';
@@ -95,12 +96,17 @@ function paletteSlug(name: string): string {
  * variant of a claimed `.bmd` must bake the same way. Required (no default) because an
  * accidentally-empty set silently ghosts every building.
  */
-export async function convertBmdTree(graphics: GraphicsBindingSet, outDir: string): Promise<BmdConversion[]> {
+export async function convertBmdTree(
+  graphics: GraphicsBindingSet,
+  outDir: string,
+  onItem?: StageItemReporter,
+): Promise<BmdConversion[]> {
   const { bindings, palettes, buildTimeBmds } = graphics;
   const done: BmdConversion[] = [];
   const paletteByName = paletteAliasMap(palettes);
   const tree = await indexOutTree(outDir);
-  for (const binding of bindings) {
+  for (const [processed, binding] of bindings.entries()) {
+    onItem?.(processed, bindings.length);
     const pcxRel = paletteByName.get(binding.paletteName);
     if (pcxRel === undefined) {
       console.warn(`[pipeline] skipped ${binding.bmd}: unknown palette "${binding.paletteName}"`);
