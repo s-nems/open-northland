@@ -92,7 +92,7 @@ describe('movementSystem — per-entity pace (MoveSpeed)', () => {
       { x: 0, y: 0 },
       { x: 1, y: 0 },
     ]);
-    // A slower walker: ONE/16 = 4096 ulp/tick gait (vs the default divCeil(ONE/12) = 5462).
+    // A faster override: ONE/16 = 4096 ulp/tick gait (vs the default divCeil(ONE/18) = 3641).
     sim.world.add(e, MoveSpeed, { perTick: fx.div(ONE, fx.fromInt(16)) });
     sim.step(); // consume wp0 (already on it), index -> 1; ramp is one accel-step (divCeil(4096/3) = 1366) warm
     sim.step(); // first move toward wp1 at 2·1366 = 2732 — the entity's OWN ramp, not the default's

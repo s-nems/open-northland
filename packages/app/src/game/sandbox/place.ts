@@ -11,7 +11,6 @@ import {
 } from '@open-northland/sim';
 import { resolveVikingBuilding } from '../../catalog/buildings.js';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../../catalog/felling.js';
-import { MINE_STRIKES_PER_UNIT } from '../../catalog/mining.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../rules.js';
 import { GATHERERS, type GathererSpec, JOB_CARRIER, JOB_IDLE, weaponEquipmentFor } from './ids/index.js';
 
@@ -209,13 +208,15 @@ export function resourceSpecFor(g: GathererSpec, x: number, y: number): Resource
     case 'mine': {
       const units = g.depositUnits ?? 0;
       if (units <= 0) throw new Error(`resourceSpecFor: '${g.id}' needs positive depositUnits`);
+      const strikesPerUnit = g.strikesPerUnit ?? 0;
+      if (strikesPerUnit <= 0) throw new Error(`resourceSpecFor: '${g.id}' needs positive strikesPerUnit`);
       return {
         good: g.good,
         x,
         y,
         remaining: units,
         harvestAtomic: g.atomic,
-        deposit: { levels: g.depositLevels ?? 0, strikesPerUnit: MINE_STRIKES_PER_UNIT },
+        deposit: { levels: g.depositLevels ?? 0, strikesPerUnit },
       };
     }
     case 'pick':

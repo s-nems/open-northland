@@ -95,7 +95,12 @@ export interface SettlerPanelModel {
    *  all as satisfaction levels — see {@link satisfactionBars}. */
   readonly bars: readonly PanelBar[];
   /** The Praca section: the workplace's name and the good it makes (or what the settler carries). */
-  readonly work: { readonly place: string; readonly product: string };
+  readonly work: {
+    readonly place: string;
+    readonly product: string;
+    readonly gatherChoices: readonly { readonly goodType: number | null; readonly label: string }[];
+    readonly selectedGood: number | null;
+  };
   /** The Doświadczenie section: the settler's highest recorded specialization, or null when it has none.
    *  See {@link highestExperience}. */
   readonly experience: { readonly label: string; readonly points: number } | null;
@@ -200,21 +205,58 @@ export function settlerWork(
   ctx: UnitPanelModelContext,
   snapshot: WorldSnapshot,
   comps: Comp,
-): { place: string; product: string } {
+): SettlerPanelModel['work'] {
   const carry = comps.Carrying as { goodType?: unknown; amount?: unknown } | undefined;
   const carried =
     carry === undefined
       ? undefined
       : `${goodLabel(ctx, num(carry.goodType) ?? -1)} ×${num(carry.amount) ?? 0}`;
+  const workFlag = comps.WorkFlag as { goodType?: unknown } | undefined;
+  if (workFlag !== undefined) {
+    const settler = comps.Settler as { jobType?: unknown } | undefined;
+    const jobType = num(settler?.jobType);
+    const job =
+      jobType === undefined ? undefined : ctx.jobs.find((candidate) => candidate.typeId === jobType);
+    const allowed = new Set(job?.allowedAtomics ?? []);
+    for (const atomic of job?.baseAtomics ?? []) allowed.add(atomic);
+    for (const atomic of job?.forbiddenAtomics ?? []) allowed.delete(atomic);
+    const selectedGood = num(workFlag.goodType) ?? null;
+    const gatherChoices = [
+      { goodType: null, label: messages().hud.gatherAll },
+      ...ctx.goods
+        .filter(
+          (good) =>
+            good.farming === undefined &&
+            good.atomics.harvest !== undefined &&
+            allowed.has(good.atomics.harvest),
+        )
+        .map((good) => ({ goodType: good.typeId, label: goodLabel(ctx, good.typeId) })),
+    ];
+    const product =
+      gatherChoices.find((choice) => choice.goodType === selectedGood)?.label ?? messages().hud.gatherAll;
+    return { place: messages().hud.workFlag, product, gatherChoices, selectedGood };
+  }
   const assignment = comps.JobAssignment as { workplace?: unknown } | undefined;
   const workplaceId = num(assignment?.workplace);
-  if (workplaceId === undefined) return { place: messages().hud.noWorkplace, product: carried ?? '-' };
+  if (workplaceId === undefined) {
+    return {
+      place: messages().hud.noWorkplace,
+      product: carried ?? '-',
+      gatherChoices: [],
+      selectedGood: null,
+    };
+  }
   const ent = entityById(snapshot, workplaceId);
   const rawType = num((ent?.components.Building as { buildingType?: unknown } | undefined)?.buildingType);
   const def = buildingDef(ctx, rawType);
   const outputs = recipeOutputs(def);
   const product = outputs[0] === undefined ? undefined : goodLabel(ctx, outputs[0].goodType);
-  return { place: buildingTitle(ctx, rawType), product: product ?? carried ?? '-' };
+  return {
+    place: buildingTitle(ctx, rawType),
+    product: product ?? carried ?? '-',
+    gatherChoices: [],
+    selectedGood: null,
+  };
 }
 
 /**

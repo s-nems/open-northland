@@ -2,15 +2,19 @@ import {
   Age,
   Carrying,
   CurrentAtomic,
+  DeliveryFlag,
   Engagement,
   Fleeing,
   Owner,
   ownerOf,
+  PathRequest,
   PlayerOrder,
   Position,
   Resting,
   Settler,
   Stance,
+  WorkFlag,
+  YardDeliveryRoute,
 } from '../../components/index.js';
 import type { World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
@@ -18,7 +22,7 @@ import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
 import { jobCanHarvest } from '../economy/flags.js';
 import { MILITARY_MODE } from '../readviews/index.js';
-import { canonicalById, isTravelling, NodeBuckets } from '../spatial.js';
+import { canonicalById, clearNavState, isTravelling, NodeBuckets } from '../spatial.js';
 import { collectInboundSupply, isCarrierJob, releaseSupplyRun } from '../stores/index.js';
 import { deStackIdle, type SpacingState } from './destack.js';
 import { planNeeds } from './drives-needs.js';
@@ -114,6 +118,30 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
   // entity-id, never store insertion history. Today Settler stores happen to insert in id order (settlers
   // are never re-added), but nothing enforces that; the sort pins the winner.
   for (const e of canonicalById(world.query(Settler, Position))) {
+    const routeLoad = world.tryGet(e, Carrying);
+    const failedRequest = world.tryGet(e, PathRequest);
+    const workFlag = world.tryGet(e, WorkFlag);
+    const yardRoute = world.tryGet(e, YardDeliveryRoute);
+    const validYardRoute =
+      yardRoute !== undefined &&
+      routeLoad !== undefined &&
+      routeLoad.amount > 0 &&
+      routeLoad.goodType === yardRoute.goodType &&
+      workFlag !== undefined &&
+      workFlag.flag === yardRoute.flag &&
+      world.has(yardRoute.flag, DeliveryFlag);
+    if (yardRoute !== undefined && !validYardRoute) world.remove(e, YardDeliveryRoute);
+    if (
+      validYardRoute &&
+      yardRoute !== undefined &&
+      !yardRoute.failed &&
+      failedRequest?.failed === true &&
+      failedRequest.goal === yardRoute.goal
+    ) {
+      yardRoute.failed = true;
+      world.touch(e);
+      clearNavState(world, e);
+    }
     // Busy: an atomic is running, or the settler is en route to a target. Leave it to play out (its
     // FarmTask claim, if any, stays live so colleagues keep avoiding its target).
     if (world.has(e, CurrentAtomic)) continue;
@@ -142,7 +170,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     const p = world.get(e, Position);
     const hereNode = nodeOfPosition(p.x, p.y);
     const here = terrain.nodeAtClamped(hereNode.hx, hereNode.hy);
-    const load = world.tryGet(e, Carrying);
+    const load = routeLoad;
 
     // NEEDS (highest priority): eat > sleep > pray. An unsatisfiable need falls through to work.
     if (planNeeds(world, ctx, terrain, e, settler, here, load, targets)) continue;

@@ -6,26 +6,25 @@ import type { System } from '../context.js';
 import { legHeading, stepTowardPoint, turnOntoNextLeg } from './stepping.js';
 
 /**
- * How many ticks a full walking gait spends crossing one E/W cell (one 68 px column). Pinned to the
- * one data anchor the original leaves readable: the human walk atomic is exactly **12 frames per
- * direction** (`mapmoveableanimations/animations.ini`) and the render advances a looping gait one
- * frame per sim tick — so at 12 ticks per cell one FULL walk cycle closes exactly as one cell
- * closes and the feet never skate. 0.6 s per cell at 20 Hz.
+ * How many ticks a full walking gait spends crossing one E/W cell (one 68 px column). User-observed
+ * calibration: a route taking 21 s in the original took 14 s here, so its duration is scaled by 1.5
+ * from 12 to 18 ticks per cell. The renderer stretches the authored 12-frame walk cycle over the same
+ * distance, slowing the feet with the body instead of letting them skate.
  */
-export const WALK_TICKS_PER_CELL = 12;
+export const WALK_TICKS_PER_CELL = 18;
 
 /**
  * How far an entity following a {@link PathFollow} advances per tick at FULL WALKING GAIT, in
  * WORLD-METRIC units (`nav/metric.ts`: one unit = one full 68 px cell width) — the cruise pace the
  * inertia ramp accelerates toward ({@link ACCEL_TICKS}). An E/W leg (one column) takes
- * {@link WALK_TICKS_PER_CELL} ticks and a row-crossing lattice leg (¾ the world length) takes nine —
+ * {@link WALK_TICKS_PER_CELL} ticks and a row-crossing lattice leg (¾ the world length) takes about 14 —
  * the on-screen pace is the same either way, by construction.
  *
  * source-basis (approximated): no readable human `movespeed` exists (`animaltypes.ini` and the
  * `logicwalkspeed` animation field are animal-only), so the magnitude hangs on the walk-cycle anchor above.
  *
- * Minted with `divCeil`, not `div`: trunc(ONE/12) leaves a 4-ulp remainder, so every cell leg would cost a
- * 13th, nearly-stationary snap tick — a visible per-cell hitch. Ceil makes a leg's last step slightly short
+ * Minted with `divCeil`, not `div`: trunc(ONE/18) leaves a 16-ulp remainder, so every cell leg would cost a
+ * 19th, nearly-stationary snap tick — a visible per-cell hitch. Ceil makes a leg's last step slightly short
  * instead, absorbed by the arrival snap so no drift accumulates across legs.
  */
 export const MOVE_SPEED_PER_TICK: Fixed = fx.divCeil(ONE, fx.fromInt(WALK_TICKS_PER_CELL));
@@ -40,7 +39,7 @@ export const MOVE_SPEED_PER_TICK: Fixed = fx.divCeil(ONE, fx.fromInt(WALK_TICKS_
  */
 
 /**
- * Ticks from rest to full gait (0.15 s at 20 Hz): the ramp accelerates by `divCeil(gait / ACCEL_TICKS)` per
+ * Ticks from rest to full gait (0.25 s at 12 Hz): the ramp accelerates by `divCeil(gait / ACCEL_TICKS)` per
  * tick (ceil keeps the step ≥ 1 ulp for any gait and makes the ramp exactly this many ticks). Also the
  * recovery rate after a corner sheds speed. Deliberately short — the inertia should read as body weight,
  * not sluggishness.

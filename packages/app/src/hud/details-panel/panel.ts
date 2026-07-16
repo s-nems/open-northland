@@ -64,6 +64,7 @@ export interface UnitPanelOptions extends UnitPanelModelContext {
    *  section's assign button. The view then highlights candidate buildings and binds the settler to the one
    *  the next left-click hits. Absent → the button is inert. */
   readonly onAssignWorkplace?: (settlerId: number) => void;
+  readonly onSetGatherGood: (entityId: number, goodType: number | null) => void;
   /** The loaded sprite sheet, so the workers field can draw its bound workers as animated on-map sprites.
    *  Absent (a bare checkout / headless test) → the field just stays empty. */
   readonly sheet?: SpriteSheet;
@@ -144,6 +145,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
   let lastModel: UnitPanelModel = { kind: 'empty' };
   let layout: DetailsLayout | null = null;
   let hoverAction: ButtonHit['action'] | null = null;
+  let hoveredGatherGood: number | null | undefined;
   /** The last known cursor position over the canvas (client coords), or null after it left — lets a
    *  rebuild refresh a still cursor's tooltip with live values (a held hover must not show a stale
    *  "80%" while the bar drains; user feedback 2026-07-11). */
@@ -198,7 +200,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     if (draw.kind === 'building' && model.kind === 'building') {
       drawBuilding(chrome, draw, model, uiString, hoverAction, activeStockTab, ss);
     } else if (draw.kind === 'settler' && model.kind === 'settler') {
-      drawSettler(chrome, draw, model, uiString, hoverAction, ss);
+      drawSettler(chrome, draw, model, uiString, hoverAction, hoveredGatherGood, ss);
     } else if (draw.kind === 'compact' && (model.kind === 'multi-settler' || model.kind === 'generic')) {
       drawCompact(chrome, draw, model, uiString, ss);
     }
@@ -252,6 +254,11 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     return i >= 0 ? i : null;
   };
 
+  const hitGatherChoice = (x: number, y: number): number | null | undefined => {
+    if (layout?.kind !== 'settler') return undefined;
+    return layout.gatherChoiceHits.find((hit) => contains(hit.rect, x, y))?.goodType;
+  };
+
   const claimsPointer = (clientX: number, clientY: number): boolean => {
     if (layout === null || lastModel.kind === 'empty') return false;
     const { x, y } = toCanvas(clientX, clientY);
@@ -266,6 +273,11 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     const worker = workerOverlay.hitTest(x, y);
     if (worker !== null) {
       opts.onSelectEntity?.(worker);
+      return true;
+    }
+    const gatherGood = hitGatherChoice(x, y);
+    if (gatherGood !== undefined && lastModel.kind === 'settler') {
+      opts.onSetGatherGood(lastModel.entityId, gatherGood);
       return true;
     }
     const tab = hitStockTab(x, y);
@@ -343,8 +355,10 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     updateTooltip(e.clientX, e.clientY);
     const { x, y } = toCanvas(e.clientX, e.clientY);
     const next = hitButton(x, y)?.action ?? null;
-    if (next === hoverAction) return;
+    const nextGatherGood = hitGatherChoice(x, y);
+    if (next === hoverAction && nextGatherGood === hoveredGatherGood) return;
     hoverAction = next;
+    hoveredGatherGood = nextGatherGood;
     if (lastModel.kind !== 'empty') rebuild(lastModel);
   };
 
@@ -352,6 +366,11 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
   const onMouseLeave = (): void => {
     lastPointer = null;
     opts.tooltip?.hide();
+    if (hoverAction !== null || hoveredGatherGood !== undefined) {
+      hoverAction = null;
+      hoveredGatherGood = undefined;
+      if (lastModel.kind !== 'empty') rebuild(lastModel);
+    }
   };
 
   canvas.addEventListener('mousemove', onMouseMove);

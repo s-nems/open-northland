@@ -54,7 +54,7 @@ deterministic and testable and lets us run it faster-than-realtime in tests (see
 
 ### Fixed timestep
 
-The sim runs at a fixed rate (default **20 ticks/s**). The app uses an accumulator: render as fast
+The sim runs at a fixed rate (default **12 ticks/s**). The app uses an accumulator: render as fast
 as the display allows, step the sim a whole number of ticks per frame, interpolate the remainder.
 See `packages/sim/src/core/loop.ts`. Determinism requires that a tick's outcome depends only on prior
 state + commands + RNG — never on wall-clock or frame rate.

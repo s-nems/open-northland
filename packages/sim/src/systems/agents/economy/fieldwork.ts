@@ -186,7 +186,10 @@ export function planGatherer(plan: PlannerContext): boolean {
  * so it never falls through to the porter / carrier / de-stack rungs. The delivery of a carried load to the
  * flag is the carrying rung's job ({@link deliveryTargetFor} routes a WorkFlag load to its flag).
  */
-function planFlagGatherer(plan: PlannerContext, flag: { flag: Entity; radius: number }): boolean {
+function planFlagGatherer(
+  plan: PlannerContext,
+  flag: { flag: Entity; radius: number; goodType?: number },
+): boolean {
   const { world, ctx, terrain, entity: e, here, targets } = plan;
   const settler = plan;
   const flagCell = interactionCell(world, ctx, terrain, flag.flag, here);
@@ -202,6 +205,7 @@ function planFlagGatherer(plan: PlannerContext, flag: { flag: Entity; radius: nu
   const node = nearestHarvestableFor(targets.resources, world, ctx, terrain, here, settler, {
     center: flagCell,
     radius: flag.radius,
+    ...(flag.goodType !== undefined ? { goodType: flag.goodType } : {}),
   });
   if (node !== null) {
     startHarvestFromNode(plan, node);

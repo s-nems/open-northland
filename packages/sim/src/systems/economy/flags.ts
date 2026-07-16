@@ -1,9 +1,16 @@
-import { DEFAULT_WORK_FLAG_RADIUS, DeliveryFlag, Position, WorkFlag } from '../../components/index.js';
+import {
+  DEFAULT_WORK_FLAG_RADIUS,
+  DeliveryFlag,
+  Position,
+  WorkFlag,
+  YardDeliveryRoute,
+} from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Fixed } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
+import { nearestWorkFlagPlacement } from '../footprint/index.js';
 
 /**
  * The gatherer work-flag lifecycle — create / relocate / destroy of a gatherer's drop-off flag, plus the "is
@@ -24,7 +31,10 @@ import type { SystemContext } from '../context.js';
  * carries no WorkFlag, or the referenced flag was destroyed (a stale binding). The one liveness test, shared by
  * the relocate branch of `setWorkFlag` and the keep-check of {@link syncWorkFlagToJob}.
  */
-export function liveWorkFlag(world: World, e: Entity): { flag: Entity; radius: number } | undefined {
+export function liveWorkFlag(
+  world: World,
+  e: Entity,
+): { flag: Entity; radius: number; goodType?: number } | undefined {
   const wf = world.tryGet(e, WorkFlag);
   return wf !== undefined && world.has(wf.flag, Position) ? wf : undefined;
 }
@@ -36,6 +46,7 @@ export function liveWorkFlag(world: World, e: Entity): { flag: Entity; radius: n
  * new one at the {@link DEFAULT_WORK_FLAG_RADIUS}.
  */
 export function bindFreshFlag(world: World, e: Entity, pos: { x: Fixed; y: Fixed }): void {
+  world.remove(e, YardDeliveryRoute);
   const flag = world.create();
   world.add(flag, Position, { x: pos.x, y: pos.y });
   world.add(flag, DeliveryFlag, {});
@@ -54,7 +65,24 @@ export function bindFreshFlag(world: World, e: Entity, pos: { x: Fixed; y: Fixed
  */
 export function syncWorkFlagToJob(world: World, ctx: SystemContext, e: Entity, jobType: number): void {
   if (jobCanHarvest(ctx, jobType)) {
-    if (liveWorkFlag(world, e) !== undefined) return; // already carries a live flag — keep it
+    const live = liveWorkFlag(world, e);
+    if (live !== undefined) {
+      const selected = live.goodType;
+      if (selected !== undefined) {
+        const good = contentIndex(ctx.content).goods.get(selected);
+        const harvest = good?.atomics.harvest;
+        if (
+          good === undefined ||
+          good.farming !== undefined ||
+          harvest === undefined ||
+          !contentIndex(ctx.content).atomicsByJob.get(jobType)?.has(harvest)
+        ) {
+          delete world.get(e, WorkFlag).goodType;
+          world.touch(e);
+        }
+      }
+      return; // already carries a live flag — keep it, with a filter valid for the new trade
+    }
     plantWorkFlagAtFeet(world, ctx, e); // becoming a gatherer with no live flag — plant one at its feet
   } else {
     removeWorkFlag(world, e); // leaving the gatherer trade — the flag has no gatherer, so it goes
@@ -62,17 +90,18 @@ export function syncWorkFlagToJob(world: World, ctx: SystemContext, e: Entity, j
 }
 
 /**
- * Plant a fresh work flag at the owned gatherer's current tile and bind it — the auto-plant a settler gets the
- * instant its profession becomes a gatherer. The flag snaps to the settler's half-cell node (so it lands on a
- * tile the player can then relocate), exactly as `setWorkFlag` snaps a clicked point. No-op when mapless or the
- * settler carries no Position.
+ * Plant a fresh work flag on the nearest legal field to the gatherer's current node. Spawn/profession changes
+ * can happen while the settler stands inside a resource or building body, so auto-placement applies the same
+ * free-field rule as the manual command. No-op when mapless, positionless, or no legal node exists.
  */
 function plantWorkFlagAtFeet(world: World, ctx: SystemContext, e: Entity): void {
   const terrain = ctx.terrain;
   if (terrain === undefined || !world.has(e, Position)) return; // mapless / positionless — no flag
   const p = world.get(e, Position);
   const n = nodeOfPosition(p.x, p.y);
-  const c = terrain.coordsOf(terrain.nodeAtClamped(n.hx, n.hy));
+  const node = nearestWorkFlagPlacement(world, ctx, terrain, terrain.nodeAtClamped(n.hx, n.hy));
+  if (node === null) return;
+  const c = terrain.coordsOf(node);
   bindFreshFlag(world, e, positionOfNode(c.x, c.y));
 }
 
@@ -87,6 +116,7 @@ export function removeWorkFlag(world: World, e: Entity): void {
   if (wf === undefined) return;
   if (world.isAlive(wf.flag)) world.destroy(wf.flag); // reap the marker; a dead id is already gone
   world.remove(e, WorkFlag);
+  world.remove(e, YardDeliveryRoute);
 }
 
 /**

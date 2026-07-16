@@ -6,7 +6,8 @@
  * This helper is pure timing bookkeeping — it holds no game state and uses no wall-clock itself;
  * the caller passes elapsed milliseconds (so tests can drive it with synthetic time).
  */
-export const TICKS_PER_SECOND = 20;
+/** User-requested fidelity approximation: the base game clock advances at 12 simulation ticks per second. */
+export const TICKS_PER_SECOND = 12;
 export const MS_PER_TICK = 1000 / TICKS_PER_SECOND;
 
 export class FixedTimestep {

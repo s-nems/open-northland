@@ -72,7 +72,7 @@ describe('flag-bound gatherer — carries only what it dug (req 2)', () => {
     placeFellableTree(sim, 1, 0); // its own work, in radius
     const loose = makeLooseTrunk(sim, 8, 0, TREE_WOOD_YIELD); // in radius, but not its own — must be ignored
 
-    const violations = runTicks(sim, 600);
+    const violations = runTicks(sim, 900);
 
     expect(groundHeapWood(sim)).toBe(TREE_WOOD_YIELD); // exactly its own tree's yield piled by the flag, no more
     expect(storeWood(sim, loose)).toBe(TREE_WOOD_YIELD); // the foreign pile is left in peace

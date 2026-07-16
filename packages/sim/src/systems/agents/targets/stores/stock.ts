@@ -12,11 +12,11 @@ import type { SystemContext } from '../../../context.js';
 import {
   buildingProduces,
   isYardHeap,
-  lowestStockedGood,
   MAX_GROUND_STACK,
   recipeOf,
   stockCapacity,
 } from '../../../stores/index.js';
+import type { YardTargets } from '../candidates.js';
 import type { InteractionCellIndex } from '../cell-index.js';
 
 // The AI planner's TARGET-SCAN layer: build the per-tick candidate lists and answer every "nearest X"
@@ -88,56 +88,54 @@ const GOODS_YARD_MAX_RADIUS = 32;
  * where its feet are (never teleporting to a distant tile) and heaps pack TILE-TO-TILE on the half-cell
  * lattice. Spirals out from the flag's node in Manhattan rings; a tile has room when it holds no heap, or a
  * heap of `good` below {@link MAX_GROUND_STACK} (a tile holding a DIFFERENT good, or a full one, is skipped),
- * and it must be walkable (a gatherer can't stand where it can't walk). Within the nearest ring with any free
- * node it returns the canonical (lowest-id) one; falls back to the flag's own node when the yard is saturated
- * within the bound (the load then simply waits — better than teleporting).
+ * and it must be walkable, outside dynamic building/resource blocks, and in the gatherer's static connected
+ * component. Within each ring candidates are ordered by node id. `after` resumes strictly after a failed
+ * route, so dynamically enclosed candidates are rejected one at a time through the ordinary budgeted
+ * pathfinder instead of freezing the gatherer or running an unbudgeted search here.
  *
- * Determinism: `occupied` is BUILT from the canonical candidate list and only `.get`-queried (never iterated
- * for a decision), and the ring pick is canonical. `candidates` is the per-tick stockpile list. Cost is
- * O(candidates) to index + a BOUNDED ring walk (up to {@link GOODS_YARD_MAX_RADIUS}², a constant, returning
- * at the first ring with a free node). This spirals out from the FLAG for a free TILE, a different shape
- * from the nearest-entity picks that share {@link InteractionCellIndex}, so it keeps its own ring here.
+ * Determinism: the tick-shared occupancy/block views are membership-only and each pick uses `(ring,nodeId)`.
+ * Cost is one bounded ring walk per active delivery; the O(stockpiles + buildings) views are built once for
+ * the whole planner tick in `collectTargets`.
  */
 export function nearestFreeYardNode(
-  candidates: readonly Entity[],
+  yard: YardTargets,
   world: World,
   terrain: TerrainGraph,
   flag: Entity,
   good: number,
-): NodeId {
+  here: NodeId,
+  after?: NodeId,
+): NodeId | null {
   const fp = world.get(flag, Position);
   const fn = nodeOfPosition(fp.x, fp.y);
   const flagNode = terrain.nodeAtClamped(fn.hx, fn.hy);
-  // Index each YARD heap (bare Stockpile+Position — not a building store, felled trunk, or the flag) by its
-  // node → the good it holds + how many. A tile is BLOCKED for `good` when it holds a different good or a
-  // full stack of `good`; an empty/absent heap leaves it free.
-  const occupied = new Map<NodeId, { good: number; fill: number }>();
-  for (const e of candidates) {
-    if (!isYardHeap(world, e)) continue;
-    const stock = world.get(e, Stockpile);
-    const pos = world.get(e, Position);
-    const g = lowestStockedGood(stock);
-    if (g === null) continue; // an empty heap leaves the tile free
-    const n = nodeOfPosition(pos.x, pos.y);
-    occupied.set(terrain.nodeAtClamped(n.hx, n.hy), { good: g, fill: stock.amounts.get(g) ?? 0 });
-  }
   const hasRoom = (node: NodeId): boolean => {
-    const o = occupied.get(node);
+    const o = yard.occupied.get(node);
     return o === undefined || (o.good === good && o.fill < MAX_GROUND_STACK);
   };
+  const component = terrain.componentOf(here);
+  const usable = (node: NodeId): boolean =>
+    terrain.isWalkable(node) &&
+    !yard.blocked.has(node) &&
+    terrain.componentOf(node) === component &&
+    hasRoom(node);
   const { x: cx, y: cy } = terrain.coordsOf(flagNode);
+  const afterRank = after === undefined ? null : terrain.coordsOf(after);
+  const afterRadius = afterRank === null ? -1 : Math.abs(afterRank.x - cx) + Math.abs(afterRank.y - cy);
   for (let r = 0; r <= GOODS_YARD_MAX_RADIUS; r++) {
     let best: NodeId | null = null;
     for (let dy = -r; dy <= r; dy++) {
       const dxMag = r - Math.abs(dy); // the Manhattan ring |dx| + |dy| = r
       for (const dx of dxMag === 0 ? [0] : [-dxMag, dxMag]) {
-        const node = terrain.nodeAtClamped(cx + dx, cy + dy);
-        if (terrain.isWalkable(node) && hasRoom(node) && (best === null || node < best)) best = node;
+        if (!terrain.inBounds(cx + dx, cy + dy)) continue;
+        const node = terrain.nodeAt(cx + dx, cy + dy);
+        if (r < afterRadius || (r === afterRadius && after !== undefined && node <= after)) continue;
+        if (usable(node) && (best === null || node < best)) best = node;
       }
     }
     if (best !== null) return best;
   }
-  return flagNode; // yard saturated within the bound — wait on the flag tile rather than teleport
+  return usable(here) ? here : null;
 }
 
 /**

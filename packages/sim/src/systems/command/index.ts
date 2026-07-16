@@ -26,6 +26,7 @@ import {
   assignWorker,
   attackUnit,
   moveUnit,
+  setGatherGood,
   setJob,
   setStance,
   setWorkFlag,
@@ -156,6 +157,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       return;
     case 'setWorkFlag':
       setWorkFlag(world, ctx, command);
+      return;
+    case 'setGatherGood':
+      setGatherGood(world, ctx, command);
       return;
     case 'setNeedsEnabled': {
       // Set the WorldRules singleton (created lazily on first use, mutated thereafter) — the toggle is

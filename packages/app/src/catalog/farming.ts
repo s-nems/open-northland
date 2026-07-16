@@ -16,7 +16,7 @@ import type { GoodFarming } from '@open-northland/data';
 export const WHEAT_GROWTH_STAGES = 5;
 
 /** Ticks a watered field takes per growth stage (an unwatered field does not grow at all — watering
- *  is the sim's growth gate). 500 ticks × 4 stage steps = 2000 ticks ≈ 100 s at 20 ticks/s from
+ *  is the sim's growth gate). 500 ticks × 4 stage steps = 2000 ticks ≈ 167 s at 12 ticks/s from
  *  watering to ripe (observed pacing, against the original's slow field turnaround). */
 export const WHEAT_TICKS_PER_STAGE = 500;
 

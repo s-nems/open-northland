@@ -83,7 +83,7 @@ describe('work division — two farmers never share a target', () => {
       const sim = new Simulation({ seed: 7, content: testContent(), map: grassMap(10, 10) });
       const farm = farmAt(sim, 5, 5);
       for (let i = 0; i < farmers; i++) farmerAt(sim, 5, 5, farm);
-      sim.run(300);
+      sim.run(450);
       return sim.world.get(farm, Stockpile).amounts.get(WHEAT) ?? 0;
     };
 
@@ -198,7 +198,7 @@ describe('store-full pause and overflow', () => {
     expect(sim.world.get(farmer, components.CurrentAtomic).atomicId).toBe(REAP_ATOMIC);
 
     // And the full loop routes the overflow into the granary (the farm's own slot stays full).
-    sim.run(200);
+    sim.run(300);
     expect(sim.world.get(granary, Stockpile).amounts.get(WHEAT) ?? 0).toBeGreaterThan(0);
     expect(sim.world.get(farm, Stockpile).amounts.get(WHEAT)).toBe(FARM_WHEAT_CAP);
   });

@@ -80,6 +80,8 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     onAssignWorkplace: (id) => {
       assignSettler = id;
     },
+    onSetGatherGood: (id, goodType) =>
+      opts.enqueue({ kind: 'setGatherGood', entity: id as Entity, goodType }),
     onSelectEntity: (id) => selectFromPanel(id),
     ...(opts.tooltip !== undefined ? { tooltip: opts.tooltip } : {}),
   });

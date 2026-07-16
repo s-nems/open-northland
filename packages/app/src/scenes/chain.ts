@@ -49,9 +49,9 @@ const BAKERS = 1;
 const WELL_CARRIERS = 1;
 
 /** Long enough for the serial chain to close: the farm's fields ripen (a sowing + one watering per stage,
- *  ~2000 ticks) and feed the mill, then flour and the well's water reach the bakery and bake — with margin
- *  for the walks between workshops and the crews splitting their time. */
-const RUN_TICKS = 6000;
+ *  ~2000 ticks) and feed the mill, then flour and water reach the bakery; 9000 includes margin for the
+ *  calibrated 18-tick-per-cell walks between workshops. */
+const RUN_TICKS = 9000;
 /** Frames the whole cluster; ≠ 1 so `cameraFor` centres on the settlers (a non-1 zoom). */
 const INITIAL_ZOOM = 0.7;
 

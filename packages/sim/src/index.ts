@@ -86,8 +86,8 @@ export { type ReplayOptions, replay } from './replay/replay.js';
 export { scrubWindow } from './replay/scrub-window.js';
 export { type FogView, type SimOptions, Simulation } from './simulation.js';
 export type { ConstructionPlot, PlacementProbe, ResourceNodeSpec } from './systems/footprint/index.js';
-// The walk cadence (ticks per visual cell at cruise) — public so the render's walk-cycle clock can
-// stay in exact step with the sim's gait instead of restating the number.
+// The walk cadence (ticks per visual cell at cruise), exposed so render can tune animation cadence
+// independently without restating the sim's travel time.
 export { WALK_TICKS_PER_CELL } from './systems/movement/movement.js';
 export * as systems from './systems/public.js';
 export { FOG_STATE } from './systems/vision/index.js';

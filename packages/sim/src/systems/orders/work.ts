@@ -13,6 +13,8 @@ import {
   SiteAssignment,
   sameSide,
   UnderConstruction,
+  WorkFlag,
+  YardDeliveryRoute,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
@@ -29,6 +31,7 @@ import {
   syncWorkFlagToJob,
 } from '../economy/flags.js';
 import { openWorkerJobFromList } from '../economy/jobs/index.js';
+import { canPlaceWorkFlag } from '../footprint/index.js';
 import { clearNavState } from '../spatial.js';
 import { stampDefaultStance } from './combat.js';
 import { isOrderableSettler } from './guards.js';
@@ -187,19 +190,58 @@ export function setWorkFlag(
   const jobType = world.get(e, Settler).jobType;
   if (jobType === null || !jobCanHarvest(ctx, jobType)) return; // only a gatherer carries a work flag
 
+  const live = liveWorkFlag(world, e);
   // Snap to a valid node (an off-map click lands on the nearest cell, like moveUnit) and take its tile Position.
   const c = terrain.coordsOf(terrain.nodeAtClamped(command.x, command.y));
+  const target = terrain.nodeAt(c.x, c.y);
+  if (!canPlaceWorkFlag(world, ctx, terrain, target, live?.flag)) return;
   const pos = positionOfNode(c.x, c.y);
 
-  const live = liveWorkFlag(world, e);
   if (live !== undefined) {
     // Relocate the existing flag — only the marker moves (Position mutated in place). The goods already
     // dropped are separate ground heaps pinned to their own tiles, so they stay put.
+    const atomic = world.tryGet(e, CurrentAtomic);
+    if (atomic?.effect.kind === 'pileup' && atomic.effect.store === live.flag) {
+      world.remove(e, CurrentAtomic);
+    }
     const p = world.get(live.flag, Position);
     p.x = pos.x;
     p.y = pos.y;
+    world.touch(live.flag);
+    world.remove(e, YardDeliveryRoute);
+    clearNavState(world, e);
     return;
   }
   // No live flag yet (fresh gatherer, or its flag was removed) — mint one here and bind / re-point.
   bindFreshFlag(world, e, pos);
+  clearNavState(world, e);
+}
+
+/** Set a flag-bound gatherer's resource filter. `null` means every map good its job may harvest. Invalid
+ * goods and non-gatherers are ignored; changing the filter abandons a stale harvest route immediately. */
+export function setGatherGood(
+  world: World,
+  ctx: SystemContext,
+  command: Extract<Command, { kind: 'setGatherGood' }>,
+): void {
+  const e = command.entity;
+  if (!isOrderableSettler(world, e)) return;
+  const settler = world.get(e, Settler);
+  if (settler.jobType === null || !jobCanHarvest(ctx, settler.jobType)) return;
+  const flag = liveWorkFlag(world, e);
+  if (flag === undefined) return;
+  const goodType = command.goodType;
+  if (goodType !== null) {
+    const good = contentIndex(ctx.content).goods.get(goodType);
+    const harvest = good?.atomics.harvest;
+    if (good === undefined || good.farming !== undefined || harvest === undefined) return;
+    if (!jobAtomics(ctx, settler.jobType).has(harvest)) return;
+  }
+  const binding = world.get(e, WorkFlag);
+  if (goodType === null) delete binding.goodType;
+  else binding.goodType = goodType;
+  world.touch(e);
+  const atomic = world.tryGet(e, CurrentAtomic);
+  if (atomic?.effect.kind === 'harvest') world.remove(e, CurrentAtomic);
+  clearNavState(world, e);
 }

@@ -57,6 +57,7 @@ export function mapLayout<T extends DetailsLayout>(layout: T, fn: (r: Rect) => R
       work: sec(layout.work),
       workRows: layout.workRows.map(fn),
       assignButton: { ...layout.assignButton, rect: fn(layout.assignButton.rect) },
+      gatherChoiceHits: layout.gatherChoiceHits.map((hit) => ({ ...hit, rect: fn(hit.rect) })),
       experience: sec(layout.experience),
       expRow: fn(layout.expRow),
       equipment: sec(layout.equipment),

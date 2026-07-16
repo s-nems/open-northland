@@ -110,13 +110,19 @@ export type UnitOrderCommand =
        * on the gatherer harvests only within that flag's radius, carries only what it dug, and banks its
        * harvest on the ground by the flag (see `planGatherer`).
        *
-       * Recoverable bad input (skipped, still logged for faithful replay): a dead/stale target, a non-settler,
-       * a neutral (unowned) entity, or a settler whose job cannot harvest (a soldier has no work flag).
-       * Carries no issuing-player yet. The app maps Ctrl+Right-Click with a gatherer selected to this. See
-       * `setWorkFlag`.
+       * Recoverable bad input (skipped, still logged for faithful replay): a blocked/unwalkable destination,
+       * a dead/stale target, a non-settler, a neutral entity, or a settler whose job cannot harvest. Carries
+       * no issuing-player yet. The app maps Ctrl+Right-Click with a gatherer selected to this. See `setWorkFlag`.
        */
       readonly kind: 'setWorkFlag';
       readonly entity: Entity;
       readonly x: number;
       readonly y: number;
+    }
+  | {
+      /** Choose which map good a flag-bound gatherer harvests. `null` restores the all-goods mode. The
+       * selected good must expose a non-farming harvest atomic allowed by the settler's current job. */
+      readonly kind: 'setGatherGood';
+      readonly entity: Entity;
+      readonly goodType: number | null;
     };

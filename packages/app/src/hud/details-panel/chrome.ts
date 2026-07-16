@@ -9,7 +9,6 @@ import type { Rect } from '../geometry.js';
 import type { DetailsPanelAssets } from './assets.js';
 import { createFrameBorderKit } from './frame-border.js';
 import { drawGauge, PRODUCTION_BAR_FILL, rampColor } from './gauge.js';
-import type { ButtonHit } from './layout/index.js';
 import { createTextKit, type FontVariant } from './text.js';
 
 /**
@@ -82,7 +81,7 @@ export interface Chrome {
   /** A translucent dark overlay over `r` — used to recede an inactive/greyed element (e.g. an unselected tab). */
   scrim(r: Rect, alpha: number): void;
   /** A general-section button (tiled button fill, hover/disabled states, centered label). */
-  button(hit: ButtonHit, label: string, hovered: boolean): void;
+  button(hit: { readonly rect: Rect; readonly enabled: boolean }, label: string, hovered: boolean): void;
   /** A category-tab plate: the tiled wooden button fill + light edge, brighter when `active` and dimmed
    *  otherwise — the frame a stock-tab's representative good icon is drawn onto (no label). */
   tabButton(r: Rect, active: boolean): void;
@@ -226,7 +225,11 @@ export function createChrome(
     g.rect(r.x, r.y, r.w, r.h).fill({ color: INNER_BOX_DARK, alpha });
   };
 
-  const button = (hit: ButtonHit, label: string, hovered: boolean): void => {
+  const button = (
+    hit: { readonly rect: Rect; readonly enabled: boolean },
+    label: string,
+    hovered: boolean,
+  ): void => {
     const r = hit.rect;
     const fill = hovered && hit.enabled ? bitmaps.buttonHilite : hit.enabled ? bitmaps.button : bitmaps.bg;
     const onBitmap = tile(fill, r);

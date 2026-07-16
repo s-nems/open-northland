@@ -271,12 +271,12 @@ export class SpritePool {
    * atlas layers ({@link bindLayers}) or show its placeholder geometry ({@link showPlaceholder}).
    */
   private updatePooled(pe: PooledEntity, item: DrawItem, frame: PoolFrame): void {
-    // Fixed-timestep interpolation over the lifted feet: the sim advances in 20 Hz ticks, so drawing raw
-    // snapshot anchors steps a walking bob ~8 px every third frame. Track the last two tick anchors of the
+    // Fixed-timestep interpolation over the lifted feet: the sim advances in 12 Hz ticks, so drawing raw
+    // snapshot anchors steps a walking bob ~4 px every fifth frame. Track the last two tick anchors of the
     // terrain-lifted feet (`item.y − lift`, riding the ground up a hill — the lift is bilinear along the
     // walk, so it lerps as smoothly as the motion) and draw at `prev + (curr − prev)·alpha`, the frame's
     // fractional progress into the current tick, so motion is continuous at any display rate, half a tick
-    // behind the sim (~25 ms). See {@link trackMotion} for the pure half. `item.lift` is 0 on a flat map.
+    // behind the sim (~42 ms). See {@link trackMotion} for the pure half. `item.lift` is 0 on a flat map.
     // Bounds/paletted origin below use the drawn anchor too, so the picker's hit box tracks the graphic.
     trackMotion(pe.motion, frame.tick, item.x, item.y - (item.lift ?? 0), frame.alpha);
     pe.container.position.set(pe.motion.drawX, pe.motion.drawY);

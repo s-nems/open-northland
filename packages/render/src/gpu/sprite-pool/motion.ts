@@ -1,11 +1,17 @@
 /**
- * Inter-tick motion interpolation for pooled sprites: 20 Hz sim steps draw as continuous frame-rate
+ * Inter-tick motion interpolation for pooled sprites: 12 Hz sim steps draw as continuous frame-rate
  * motion. Pure mutation of plain data + testable without a GPU — the interpolation decision split out
  * from the Pixi mutation, like {@link import('./reconcile.js').reconcileSprites}.
  */
 import { WALK_TICKS_PER_CELL } from '@open-northland/sim';
 import { TILE_HALF_W } from '../../data/iso.js';
 import { clamp01, lerp } from '../../data/math.js';
+
+/** Frames in one authored human walk cycle per facing (`mapmoveableanimations/animations.ini`). */
+const WALK_CYCLE_FRAMES = 12;
+/** User-tuned cadence: play the cycle in 17 ticks while the body still takes 18 ticks per cell. */
+const WALK_ANIMATION_TICKS_PER_CYCLE = 17;
+const WALK_ANIMATION_RATE = WALK_TICKS_PER_CELL / WALK_ANIMATION_TICKS_PER_CYCLE;
 
 /**
  * World-px jump between two consecutive tick anchors past which the motion track snaps instead of
@@ -15,18 +21,18 @@ import { clamp01, lerp } from '../../data/math.js';
 const SNAP_DISTANCE = 128;
 
 /**
- * World px a full walking gait covers per sim tick — one cell (`2·TILE_HALF_W`, read at call time:
- * the pitch is a live `?pitch=` knob) over the sim's {@link WALK_TICKS_PER_CELL}-tick walk cycle
- * (the sim's world metric makes every heading cover the same on-screen length per tick). The
- * denominator of {@link MotionTrack.gaitPhase}, which owns the cadence semantics.
+ * World px the feet cover per authored walk frame — one cell (`2·TILE_HALF_W`, read at call time:
+ * the pitch is a live `?pitch=` knob) over the 12-frame cycle. Dividing actual travel by this distance
+ * makes the frame clock follow the body's pace; {@link WALK_ANIMATION_RATE} adds the requested slight
+ * animation-only lead without changing movement distance.
  */
-function fullGaitPxPerTick(): number {
-  return (2 * TILE_HALF_W) / WALK_TICKS_PER_CELL;
+function walkFrameTravelPx(): number {
+  return (2 * TILE_HALF_W) / WALK_CYCLE_FRAMES;
 }
 
 /**
- * Cap on the gait-cycle rate in cycles-per-tick — covers the legit fast case (a data-paced animal
- * whose `movespeed` beats the universal 12-ticks-per-cell walk, e.g. movespeed 8 reads 1.5×) with
+ * Cap on the gait-clock rate in frames per tick — covers the legit fast case (a data-paced animal
+ * whose `movespeed` beats the universal 18-ticks-per-cell walk, e.g. movespeed 8 reads 2.25×) with
  * headroom, while a mistracked jump below the snap threshold can't spin the legs cartoonishly.
  * No run/sprint gait exists, so nothing legit approaches the cap.
  */
@@ -46,10 +52,10 @@ export interface MotionTrack {
   drawY: number;
   /**
    * The accumulated walk-cycle clock, in tick units: advanced per sim tick by the fraction of a full
-   * gait the anchor actually covered ({@link fullGaitPxPerTick}), so the walk animation's frame
+   * gait the anchor actually covered ({@link walkFrameTravelPx}), so the walk animation's frame
    * (`floor(gaitPhase)`, consumed by the pool's moving-state resolve) tracks ground covered, not wall
-   * ticks. At full cruise it advances exactly 1/tick — the authored feet-per-cell sync is untouched —
-   * and a body-pressed or braking walker's legs slow with it instead of jogging in place.
+   * ticks. At the calibrated full cruise it advances 12/17 of a frame per tick, playing one cycle in
+   * 17 ticks while the body crosses a cell in 18; a body-pressed or braking walker's legs slow with it too.
    */
   gaitPhase: number;
 }
@@ -74,7 +80,7 @@ export function trackMotion(m: MotionTrack, tick: number, x: number, y: number, 
   } else if (m.tick !== tick) {
     const dt = tick - m.tick;
     const dist = Math.hypot(x - m.x, y - m.y);
-    const rate = Math.min(MAX_GAIT_RATE, dist / (fullGaitPxPerTick() * dt));
+    const rate = Math.min(MAX_GAIT_RATE, (dist * WALK_ANIMATION_RATE) / (walkFrameTravelPx() * dt));
     m.gaitPhase += rate * dt;
     m.prevX = m.x;
     m.prevY = m.y;
