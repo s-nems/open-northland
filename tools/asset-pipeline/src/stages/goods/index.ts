@@ -1,10 +1,11 @@
 import { join } from 'node:path';
 import { decodeBmd } from '../../decoders/bmd/index.js';
+import type { SourceRoots } from '../../roots.js';
 import {
   BOBS_DIR,
   emitIndexedAndPreviewAtlas,
   identityPalette,
-  readGameFile,
+  readSourceFile,
   writeJsonFile,
   writeLutPng,
 } from '../game-file.js';
@@ -96,12 +97,12 @@ export interface GoodsStageSummary {
  * build the good→icon bindings, and write them under `outDir`. Warns-and-returns-empty if the atlas or good
  * tables are unreadable (a partial install still leaves the rest of the pipeline intact).
  */
-export async function convertGoodsStage(gameDir: string, outDir: string): Promise<GoodsStageSummary> {
+export async function convertGoodsStage(roots: SourceRoots, outDir: string): Promise<GoodsStageSummary> {
   let icons: Record<string, GoodIcon>;
   let names: Record<string, Record<string, string>>;
   try {
-    icons = await buildGoodIcons(gameDir);
-    names = await loadGoodNames(gameDir, await loadGoods(gameDir));
+    icons = await buildGoodIcons(roots);
+    names = await loadGoodNames(roots, await loadGoods(roots));
   } catch (err) {
     console.warn(`[pipeline] goods: skipped (good tables unreadable): ${(err as Error).message}`);
     icons = {};
@@ -110,7 +111,7 @@ export async function convertGoodsStage(gameDir: string, outDir: string): Promis
 
   // The name→.pcx alias graph (palettes.ini), so a palette editname resolves to its real file — the same
   // resolution the bmd stage uses, without which the aliased landscape palettes render white in the HUD.
-  const paletteAliases = await loadPaletteAliases(gameDir);
+  const paletteAliases = await loadPaletteAliases(roots);
 
   // The distinct recolor palettes the icons reference, in a deterministic (sorted) LUT row order. Include
   // the preview palette so the same LUT can colour the preview atlas if a consumer ever wants it.
@@ -120,7 +121,7 @@ export async function convertGoodsStage(gameDir: string, outDir: string): Promis
   const paletteByName = new Map<string, Uint8Array>();
   const ordered: Uint8Array[] = [];
   for (const name of paletteNames) {
-    let palette = await loadGoodsPalette(gameDir, name, paletteAliases);
+    let palette = await loadGoodsPalette(roots, name, paletteAliases);
     if (palette === undefined) {
       console.warn(`[pipeline] goods: palette "${name}" unavailable; using neutral row`);
       palette = identityPalette();
@@ -131,7 +132,7 @@ export async function convertGoodsStage(gameDir: string, outDir: string): Promis
 
   let frames = 0;
   try {
-    const bmd = decodeBmd(await readGameFile(gameDir, GOODS_BMD));
+    const bmd = decodeBmd(await readSourceFile(roots, GOODS_BMD));
     const emitted = await emitIndexedAndPreviewAtlas(
       outDir,
       GOODS_ATLAS_STEM,

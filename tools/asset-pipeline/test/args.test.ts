@@ -1,21 +1,26 @@
 import { mkdir, rm, symlink } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { assertOutStaysInCheckout, parseArgs, resolveArgs } from '../src/args.js';
+import { assertOutStaysInCheckout, parseArgs, resolveArgs, resolveModRoot } from '../src/args.js';
+import { CULTURESNATION_MOD } from '../src/probe.js';
 import { makeTempDir } from './support/game-tree.js';
 
 describe('parseArgs', () => {
-  it('reads --game/--mod/--out and defaults out to content', () => {
-    expect(parseArgs(['--game', 'g', '--mod', 'm', '--out', 'o'])).toEqual({
+  it('reads --game/--mod-root/--out and defaults out to content', () => {
+    expect(parseArgs(['--game', 'g', '--mod-root', 'm', '--out', 'o'])).toEqual({
       game: 'g',
-      mod: 'm',
+      modRoot: 'm',
       out: 'o',
     });
-    expect(parseArgs(['--game', 'g'])).toEqual({ game: 'g', mod: undefined, out: 'content' });
+    expect(parseArgs(['--game', 'g'])).toEqual({ game: 'g', modRoot: undefined, out: 'content' });
   });
 
   it('throws when --game is missing', () => {
-    expect(() => parseArgs(['--mod', 'm'])).toThrow(/--game/);
+    expect(() => parseArgs(['--mod-root', 'm'])).toThrow(/--game/);
+  });
+
+  it('rejects the retired --mod flag with the migration hint', () => {
+    expect(() => parseArgs(['--game', 'g', '--mod', 'DataCnmd'])).toThrow(/--mod-root/);
   });
 });
 
@@ -25,15 +30,15 @@ describe('resolveArgs', () => {
   // Expected values are resolved from the PARENT dir (not composed as resolve(baseDir, arg) like the
   // implementation), so they independently prove the `..` collapsed against baseDir. `resolve()` in
   // the expectations keeps the test platform-agnostic (Windows adds a drive letter + backslashes).
-  it('resolves relative game/out against baseDir; mod stays a bare subdir', () => {
+  it('resolves relative game/mod-root/out against baseDir', () => {
     expect(
       resolveArgs(
-        { game: '../Cultures 8th Wonder', mod: 'DataCnmd', out: 'content' },
+        { game: '../Cultures 8th Wonder', modRoot: '../mods/CnMod 1.3.1', out: 'content' },
         resolve('/home/u/open-northland'),
       ),
     ).toEqual({
       game: resolve('/home/u/Cultures 8th Wonder'),
-      mod: 'DataCnmd',
+      modRoot: resolve('/home/u/mods/CnMod 1.3.1'),
       out: resolve('/home/u/open-northland/content'),
     });
   });
@@ -41,11 +46,45 @@ describe('resolveArgs', () => {
   it('passes absolute game/out through unchanged', () => {
     const game = resolve('/abs/game');
     const out = resolve('/abs/out');
-    expect(resolveArgs({ game, mod: undefined, out }, resolve('/home/u/open-northland'))).toEqual({
+    expect(resolveArgs({ game, modRoot: undefined, out }, resolve('/home/u/open-northland'))).toEqual({
       game,
-      mod: undefined,
+      modRoot: undefined,
       out,
     });
+  });
+});
+
+describe('resolveModRoot', () => {
+  let base: string;
+  beforeEach(async () => {
+    base = (await makeTempDir('mod-root')).path;
+  });
+  afterEach(async () => {
+    await rm(base, { recursive: true, force: true });
+  });
+
+  it('accepts an explicit mod root that contains DataCnmd/', async () => {
+    const modRoot = join(base, 'CnMod 1.3.1');
+    await mkdir(join(modRoot, CULTURESNATION_MOD), { recursive: true });
+    await expect(resolveModRoot(join(base, 'game'), modRoot)).resolves.toBe(modRoot);
+  });
+
+  it('rejects an explicit mod root without DataCnmd/', async () => {
+    const modRoot = join(base, 'not-a-mod');
+    await mkdir(modRoot, { recursive: true });
+    await expect(resolveModRoot(join(base, 'game'), modRoot)).rejects.toThrow(/DataCnmd/);
+  });
+
+  it('auto-detects a mod installed inside the game folder', async () => {
+    const game = join(base, 'game');
+    await mkdir(join(game, CULTURESNATION_MOD), { recursive: true });
+    await expect(resolveModRoot(game, undefined)).resolves.toBe(game);
+  });
+
+  it('fails fast with the download pointer when no mod is found anywhere', async () => {
+    const game = join(base, 'game');
+    await mkdir(game, { recursive: true });
+    await expect(resolveModRoot(game, undefined)).rejects.toThrow(/culturesnation\.pl/);
   });
 });
 

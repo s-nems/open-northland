@@ -2,7 +2,8 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { decodePcx, expandToRgba } from '../../decoders/pcx.js';
 import { encodePng } from '../../decoders/png.js';
-import { readGameFile } from '../game-file.js';
+import type { SourceRoots } from '../../roots.js';
+import { readSourceFile } from '../game-file.js';
 
 /**
  * Window-fill bitmaps that the engine draws through an element palette instead of their embedded one.
@@ -73,7 +74,7 @@ export function liftPaletteShadows(palette: Uint8Array): Uint8Array {
  * runtime LUT) keeps the app side a plain tileable texture. Warns-and-skips per file like the other steps.
  */
 export async function convertWindowBitmaps(
-  gameDir: string,
+  roots: SourceRoots,
   outDir: string,
   paletteByName: ReadonlyMap<string, Uint8Array>,
 ): Promise<number> {
@@ -87,7 +88,7 @@ export async function convertWindowBitmaps(
     }
     if (softenShadows === true) paletteBytes = liftPaletteShadows(paletteBytes);
     try {
-      const image = decodePcx(await readGameFile(gameDir, join(bitmapsDir, `${bitmap}.pcx`)));
+      const image = decodePcx(await readSourceFile(roots, join(bitmapsDir, `${bitmap}.pcx`)));
       const png = encodePng(expandToRgba({ ...image, palette: paletteBytes }));
       await mkdir(join(outDir, bitmapsDir), { recursive: true });
       await writeFile(join(outDir, bitmapsDir, `${bitmap}.${palette}.png`), png);

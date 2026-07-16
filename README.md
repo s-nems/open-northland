@@ -58,13 +58,14 @@ typechecks every workspace and produces the browser bundle under `packages/app/d
 Run the asset pipeline against your own game installation:
 
 ```bash
-npm run pipeline -- --game "../Cultures 8th Wonder" --mod DataCnmd --out content
+npm run pipeline -- --game "../Cultures 8th Wonder" --out content
 npm run dev
 ```
 
-`--game` accepts an absolute or relative path. `--mod DataCnmd` enables the
-[CulturesNation](https://culturesnation.pl/) mod data when installed; the option may be omitted for a
-base-game installation. The generated `content/` directory is ignored by Git and must not be
+`--game` accepts an absolute or relative path. The free
+[CulturesNation](https://culturesnation.pl/) mod is required: installed inside the game folder
+(`DataCnmd/`) it is detected automatically, and a copy unpacked elsewhere is passed with
+`--mod-root <dir>`. The generated `content/` directory is ignored by Git and must not be
 committed.
 
 The development server opens on the main menu. Useful inspection entries include:

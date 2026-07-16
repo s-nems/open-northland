@@ -2,7 +2,10 @@
 /**
  * Asset pipeline CLI — offline conversion of an owned original game copy into the IR (content/).
  *
- *   npm run pipeline -- --game "../Cultures 8th Wonder" --mod DataCnmd --out content
+ *   npm run pipeline -- --game "../Cultures 8th Wonder" --out content
+ *
+ * The culturesnation mod is required: installed inside the game folder it is auto-detected;
+ * unpacked elsewhere, point `--mod-root` at it (see `resolveModRoot`).
  *
  * This is run by a human/agent, not shipped. It writes no copyrighted bytes into the repo source;
  * its output goes to the gitignored content/ folder. See docs/DATA-FORMAT.md and docs/SOURCES.md.

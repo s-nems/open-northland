@@ -5,6 +5,7 @@ import type { Bmd } from '../decoders/bmd/index.js';
 import { decodePcx } from '../decoders/pcx.js';
 import { buildPlayerLutImage } from '../decoders/player-palette.js';
 import { encodePng } from '../decoders/png.js';
+import { rootsInOrder, type SourceRoots } from '../roots.js';
 
 /**
  * Shared read/write helpers for the extraction stages (`bmd`, `goods`, `gui`, `fonts`, `pcx`,
@@ -21,27 +22,42 @@ export const BOBS_DIR = join('Data', 'engine2d', 'bin', 'bobs');
 export const TEXTURES_DIR = join('Data', 'engine2d', 'bin', 'textures');
 
 /**
- * Reads a loose game file, tolerating a differently-cased leaf filename (the shipped names are lower-case,
- * but a user's install could differ). Tries the exact path first, then a case-insensitive scan of the
- * parent directory for the basename — the directory components themselves must match case (they are
- * fixed-case in the shipped tree, so folding them too would be unused complexity). Throws if absent.
+ * Reads a loose source file overlay-first ({@link SourceRoots}), tolerating a differently-cased leaf
+ * filename per root (the shipped names are lower-case, but a user's install could differ): the exact
+ * path is tried first, then a case-insensitive scan of the parent directory for the basename — the
+ * directory components themselves must match case (they are fixed-case in the shipped tree, so
+ * folding them too would be unused complexity). Throws when absent in every root.
  */
-export async function readGameFile(gameDir: string, relPath: string): Promise<Uint8Array> {
+export async function readSourceFile(roots: SourceRoots, relPath: string): Promise<Uint8Array> {
+  const order = rootsInOrder(roots);
+  for (const root of order.slice(0, -1)) {
+    const bytes = await readLooseFile(root, relPath);
+    if (bytes !== undefined) return bytes;
+  }
+  const last = order[order.length - 1];
+  if (last === undefined) throw new Error(`${relPath} not found (no source roots)`);
+  const bytes = await readLooseFile(last, relPath);
+  if (bytes === undefined) throw new Error(`${relPath} not found under ${order.join(' or ')}`);
+  return bytes;
+}
+
+/** One root's leaf-case-tolerant read; undefined when the file is absent there. */
+async function readLooseFile(root: string, relPath: string): Promise<Uint8Array | undefined> {
   try {
-    return await readFile(join(gameDir, relPath));
+    return await readFile(join(root, relPath));
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
   }
-  const dir = join(gameDir, dirname(relPath));
+  const dir = join(root, dirname(relPath));
   const want = basename(relPath).toLowerCase();
   let names: string[];
   try {
     names = await readdir(dir);
   } catch {
-    throw new Error(`${relPath} not found under ${gameDir}`);
+    return undefined;
   }
   const match = names.find((n) => n.toLowerCase() === want);
-  if (match === undefined) throw new Error(`${relPath} not found under ${gameDir}`);
+  if (match === undefined) return undefined;
   return readFile(join(dir, match));
 }
 
@@ -91,7 +107,7 @@ export interface PaletteLutResult {
  * only in their carrier list, stem, and log wording.
  */
 export async function buildPaletteLut(
-  gameDir: string,
+  roots: SourceRoots,
   outDir: string,
   sources: readonly PaletteLutSource[],
   stem: string,
@@ -102,7 +118,7 @@ export async function buildPaletteLut(
   for (const src of sources) {
     let palette: Uint8Array | undefined;
     try {
-      palette = decodePcx(await readGameFile(gameDir, src.file)).palette;
+      palette = decodePcx(await readSourceFile(roots, src.file)).palette;
     } catch (err) {
       console.warn(
         `[pipeline] ${log.label}: ${log.noun} ${src.name} unreadable (${(err as Error).message}); using neutral row`,

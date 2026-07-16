@@ -47,7 +47,7 @@ describe('unpackLibTree', () => {
     await writeFile(join(game, 'DataX', 'Libs', 'data0001.lib'), lib);
     await writeFile(join(game, 'notes.txt'), 'ignore me'); // not a .lib
 
-    const done = await unpackLibTree(game, out);
+    const done = await unpackLibTree({ game, mod: undefined }, out);
 
     expect(done.map((e) => e.member).sort()).toEqual([join('data', 'logic', 'goodtypes.cif'), 'logo.pcx']);
     expect(done.every((e) => e.archive === join('DataX', 'Libs', 'data0001.lib'))).toBe(true);
@@ -66,7 +66,7 @@ describe('unpackLibTree', () => {
     await writeFile(join(game, 'a.lib'), lib);
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
-    const done = await unpackLibTree(game, out);
+    const done = await unpackLibTree({ game, mod: undefined }, out);
 
     expect(done.map((e) => e.member)).toEqual(['safe.bin']);
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/unsafe member ".*escape\.bin"/));
@@ -79,7 +79,7 @@ describe('unpackLibTree', () => {
     await writeFile(join(game, 'broken.lib'), Uint8Array.from([1, 0, 0])); // truncated header
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
-    const done = await unpackLibTree(game, out);
+    const done = await unpackLibTree({ game, mod: undefined }, out);
 
     expect(done.map((e) => e.member)).toEqual(['ok.bin']);
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/skipped archive broken\.lib:/));
@@ -87,6 +87,6 @@ describe('unpackLibTree', () => {
   });
 
   it('throws when the game dir does not exist (a real argument error, not per-file)', async () => {
-    await expect(unpackLibTree(join(game, 'nope'), out)).rejects.toThrow();
+    await expect(unpackLibTree({ game: join(game, 'nope'), mod: undefined }, out)).rejects.toThrow();
   });
 });

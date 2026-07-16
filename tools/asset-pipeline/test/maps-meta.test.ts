@@ -25,14 +25,14 @@ async function writeStrings(dir: string, lang: string, body: string): Promise<vo
 describe('resolveMapMeta', () => {
   it('returns undefined when the folder carries no string table', async () => {
     const dir = await mapFolder();
-    expect(await resolveMapMeta(dir, 'x/map.dat', undefined)).toBeUndefined();
+    expect(await resolveMapMeta([dir], 'x/map.dat', undefined)).toBeUndefined();
   });
 
   it('uses the observed default ids 0 (name) / 1 (description) with no header', async () => {
     const dir = await mapFolder();
     // Bare `string` lines take running ids from 0, so id 0 is the name, id 1 the description.
     await writeStrings(dir, 'pol', 'string "Green Valley"\nstring "A lush test map."');
-    expect(await resolveMapMeta(dir, 'x/map.dat', undefined)).toEqual({
+    expect(await resolveMapMeta([dir], 'x/map.dat', undefined)).toEqual({
       name: 'Green Valley',
       description: 'A lush test map.',
     });
@@ -42,7 +42,7 @@ describe('resolveMapMeta', () => {
     const dir = await mapFolder();
     await writeStrings(dir, 'pol', 'stringn 5 "Custom Name"\nstringn 6 "Custom Desc"');
     await writeFile(join(dir, 'misc.inc'), '[misc_mapname]\nmapnamestringid 5\nmapdescriptionstringid 6\n');
-    expect(await resolveMapMeta(dir, 'x/map.dat', undefined)).toEqual({
+    expect(await resolveMapMeta([dir], 'x/map.dat', undefined)).toEqual({
       name: 'Custom Name',
       description: 'Custom Desc',
     });
@@ -52,14 +52,17 @@ describe('resolveMapMeta', () => {
     const dir = await mapFolder();
     await writeStrings(dir, 'pol', 'string "Nazwa"\nstring "Opis"');
     await writeStrings(dir, 'eng', 'string "Name"\nstring "Description"');
-    expect(await resolveMapMeta(dir, 'x/map.dat', undefined)).toEqual({ name: 'Nazwa', description: 'Opis' });
+    expect(await resolveMapMeta([dir], 'x/map.dat', undefined)).toEqual({
+      name: 'Nazwa',
+      description: 'Opis',
+    });
   });
 
   it('falls back to the decoded map.cif header ids when no readable header ships', async () => {
     const dir = await mapFolder();
     await writeStrings(dir, 'pol', 'stringn 5 "Cif Name"\nstringn 6 "Cif Desc"');
     const cifSections = parseIniSections('[misc_mapname]\nmapnamestringid 5\nmapdescriptionstringid 6\n');
-    expect(await resolveMapMeta(dir, 'x/map.dat', cifSections)).toEqual({
+    expect(await resolveMapMeta([dir], 'x/map.dat', cifSections)).toEqual({
       name: 'Cif Name',
       description: 'Cif Desc',
     });
@@ -70,6 +73,6 @@ describe('resolveMapMeta', () => {
     // Only id 0/1 exist, but the header points name/description at 5/6 → neither resolves.
     await writeStrings(dir, 'pol', 'string "Only Name"\nstring "Only Desc"');
     await writeFile(join(dir, 'misc.inc'), '[misc_mapname]\nmapnamestringid 5\nmapdescriptionstringid 6\n');
-    expect(await resolveMapMeta(dir, 'x/map.dat', undefined)).toBeUndefined();
+    expect(await resolveMapMeta([dir], 'x/map.dat', undefined)).toBeUndefined();
   });
 });

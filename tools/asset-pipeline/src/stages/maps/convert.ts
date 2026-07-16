@@ -9,8 +9,8 @@ import {
   type RuleSection,
 } from '../../decoders/ini.js';
 import type { StageItemReporter } from '../../progress.js';
-import { collectFilesNamed } from '../../walk.js';
-import { findPathCaseInsensitive } from './case-path.js';
+import { collectSourceFilesNamed, rootsInOrder, type SourceRoots } from '../../roots.js';
+import { findPathCaseInsensitiveInDirs } from './case-path.js';
 import { mapIdFromPath } from './info.js';
 import { resolveMapMeta } from './meta.js';
 import { minimapToPng } from './minimap.js';
@@ -32,7 +32,7 @@ export interface MapDatConversion {
 }
 
 /**
- * Decodes every `map.dat` under `gameDir` into a per-cell landscape-typeId grid (the sim's
+ * Decodes every `map.dat` under the source roots (overlay-first union) into a per-cell landscape-typeId grid (the sim's
  * `TerrainMap` shape) and writes it to `<outDir>/maps/<id>.json` — closing the
  * `map.dat` → `lmltToTerrainMap` → `buildTerrainGraph` chain into the pipeline so the sim loads a real
  * map's grid instead of a synthetic scenario one. Each map's `id` comes from its containing folder
@@ -60,18 +60,18 @@ export interface MapDatConversion {
  * too matches the existing `map.cif` behavior.)
  */
 export async function convertMapDatTree(
-  gameDir: string,
+  roots: SourceRoots,
   outDir: string,
   onItem?: StageItemReporter,
 ): Promise<MapDatConversion[]> {
-  const found = await collectFilesNamed(gameDir, 'map.dat');
+  const found = await collectSourceFilesNamed(roots, 'map.dat');
   const done: MapDatConversion[] = [];
-  for (const [processed, rel] of found.entries()) {
+  for (const [processed, { rel, path }] of found.entries()) {
     onItem?.(processed, found.length);
     const id = mapIdFromPath(rel);
     let terrain: MapDatTerrainFile;
     try {
-      terrain = mapDatToTerrain(await readFile(join(gameDir, rel)));
+      terrain = mapDatToTerrain(await readFile(path));
     } catch (err) {
       console.warn(`[pipeline] skipped map.dat ${rel}: ${(err as Error).message}`);
       continue;
@@ -80,16 +80,22 @@ export async function convertMapDatTree(
     // map.dat carries only terrain + landscape lanes). Absent/undecodable cif → the terrain still
     // emits, just without the optional layer — the same per-layer degradation `ground`/`objects` get.
     // The decoded sections also feed the meta sidecar's `[misc_mapname]` fallback (resolveMapMeta),
-    // so the cif is decoded at most once per map.
-    const mapDir = join(gameDir, dirname(rel));
+    // so the cif is decoded at most once per map. Sibling files resolve overlay-first through the
+    // map folder's candidate dirs (an over-installed mod merges folder contents, so a two-root
+    // conversion must too).
+    const mapDirs = rootsInOrder(roots).map((root) => join(root, dirname(rel)));
     let cifSections: readonly RuleSection[] | undefined;
-    try {
-      const cifBytes = await readFile(join(mapDir, 'map.cif'));
-      cifSections = cifLinesToSections(decodeCifStringArray(cifBytes).lines);
-      const entities = extractStaticObjects(cifSections);
-      if (entities !== undefined) terrain = { ...terrain, entities };
-    } catch {
-      // no sibling map.cif (or undecodable) — entity layer skipped
+    for (const mapDir of mapDirs) {
+      try {
+        const cifBytes = await readFile(join(mapDir, 'map.cif'));
+        cifSections = cifLinesToSections(decodeCifStringArray(cifBytes).lines);
+        const entities = extractStaticObjects(cifSections);
+        if (entities !== undefined) terrain = { ...terrain, entities };
+        break;
+      } catch {
+        // no map.cif in this candidate dir (or undecodable) — try the next; absent everywhere,
+        // the entity layer is simply skipped
+      }
     }
     // Unpacked maps (the CnMod majority — 108 of 121 folders) ship no map.cif: their StaticObjects
     // live in a sibling plaintext `staticobjects.inc`, with the identical `[StaticObjects]` grammar
@@ -98,7 +104,7 @@ export async function convertMapDatTree(
     // settlers instead of appearing empty. Readable mod source is preferred over the encrypted cif
     // (golden rule #4); undecodable/malformed is logged and skipped like the cif path.
     if (terrain.entities === undefined) {
-      const incPath = await findPathCaseInsensitive(mapDir, ['staticobjects.inc']);
+      const incPath = await findPathCaseInsensitiveInDirs(mapDirs, ['staticobjects.inc']);
       if (incPath !== null) {
         try {
           const entities = extractStaticObjects(parseIniSections(decodeIni(await readFile(incPath))));
@@ -121,12 +127,12 @@ export async function convertMapDatTree(
     const pngPath = join(outDir, 'maps', `${id}.png`);
     await rm(metaPath, { force: true });
     await rm(pngPath, { force: true });
-    const metaFile = await resolveMapMeta(mapDir, rel, cifSections);
+    const metaFile = await resolveMapMeta(mapDirs, rel, cifSections);
     if (metaFile !== undefined) {
       await writeFile(metaPath, `${JSON.stringify(metaFile)}\n`);
     }
     let minimap = false;
-    const minimapPath = await findPathCaseInsensitive(mapDir, ['minimap', 'minimap.pcx']);
+    const minimapPath = await findPathCaseInsensitiveInDirs(mapDirs, ['minimap', 'minimap.pcx']);
     if (minimapPath !== null) {
       try {
         await writeFile(pngPath, minimapToPng(await readFile(minimapPath)));

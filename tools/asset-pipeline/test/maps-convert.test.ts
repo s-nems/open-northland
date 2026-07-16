@@ -41,7 +41,7 @@ describe('convertMapDatTree', () => {
   });
 
   it('writes maps/<id>.json for every map.dat, sorted by rel path, id from folder', async () => {
-    const done = await convertMapDatTree(game, out);
+    const done = await convertMapDatTree({ game, mod: undefined }, out);
     expect(done.map((d) => d.id)).toEqual(['forteca', 'tutorial_002']); // sorted by rel path
     expect(done.find((d) => d.id === 'tutorial_002')).toMatchObject({ width: 2, height: 1 });
 
@@ -56,7 +56,7 @@ describe('convertMapDatTree', () => {
   it('skips a malformed map.dat with a warning instead of aborting the batch', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     await writeFile(join(game, 'CnModMaps', 'forteca', 'map.dat'), Uint8Array.from([0, 1, 2, 3]));
-    const done = await convertMapDatTree(game, out);
+    const done = await convertMapDatTree({ game, mod: undefined }, out);
     expect(done.map((d) => d.id)).toEqual(['tutorial_002']); // the good one still converts
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/skipped map\.dat.*forteca/));
     warn.mockRestore();
@@ -66,7 +66,7 @@ describe('convertMapDatTree', () => {
   const rawBytes = (s: string): Uint8Array => Uint8Array.from(s, (c) => c.charCodeAt(0) & 0xff);
 
   it('emits no meta/minimap sidecars for a folder without text or minimap', async () => {
-    const done = await convertMapDatTree(game, out);
+    const done = await convertMapDatTree({ game, mod: undefined }, out);
     expect(done.find((d) => d.id === 'forteca')).toMatchObject({ meta: false, minimap: false });
     await expect(readFile(join(out, 'maps', 'forteca.meta.json'))).rejects.toThrow();
     await expect(readFile(join(out, 'maps', 'forteca.png'))).rejects.toThrow();
@@ -85,7 +85,7 @@ describe('convertMapDatTree', () => {
       join(dir, 'minimap', 'minimap.pcx'),
       encodePcx({ width: 2, height: 1, pixels: Uint8Array.from([1, 2]), palette: rampPalette() }),
     );
-    const done = await convertMapDatTree(game, out);
+    const done = await convertMapDatTree({ game, mod: undefined }, out);
     expect(done.find((d) => d.id === 'tutorial_002')).toMatchObject({ meta: true, minimap: true });
     const meta = JSON.parse(await readFile(join(out, 'maps', 'tutorial_002.meta.json'), 'utf8'));
     expect(meta).toEqual({ name: 'BŁĘKIT', description: 'Opis mapy' });
@@ -117,7 +117,7 @@ describe('convertMapDatTree', () => {
         rawBytes(`[text]\nstringn 99 "${name}"\nstringn 98 "Desc ${lang}"\n`),
       );
     }
-    await convertMapDatTree(game, out);
+    await convertMapDatTree({ game, mod: undefined }, out);
     const meta = JSON.parse(await readFile(join(out, 'maps', 'tutorial_002.meta.json'), 'utf8'));
     expect(meta).toEqual({ name: 'Samotnia', description: 'Desc pol' });
   });
@@ -134,7 +134,7 @@ describe('convertMapDatTree', () => {
         { level: 2, text: 'stringn 1 "Opis"' },
       ]),
     );
-    await convertMapDatTree(game, out);
+    await convertMapDatTree({ game, mod: undefined }, out);
     const meta = JSON.parse(await readFile(join(out, 'maps', 'tutorial_002.meta.json'), 'utf8'));
     expect(meta).toEqual({ name: 'Błękit', description: 'Opis' });
   });
@@ -150,7 +150,7 @@ describe('convertMapDatTree', () => {
         { level: 2, text: 'stringn 0 "Encrypted"' },
       ]),
     );
-    await convertMapDatTree(game, out);
+    await convertMapDatTree({ game, mod: undefined }, out);
     const meta = JSON.parse(await readFile(join(out, 'maps', 'tutorial_002.meta.json'), 'utf8'));
     expect(meta).toEqual({ name: 'Readable' });
   });
@@ -179,7 +179,7 @@ describe('convertMapDatTree', () => {
       join(dir, 'text', 'pol', 'strings.ini'),
       rawBytes('[text]\nstringn 0 "Zero"\nstringn 1 "Jeden"\nstringn 99 "Wlasciwa"\nstringn 98 "Opis99"\n'),
     );
-    await convertMapDatTree(game, out);
+    await convertMapDatTree({ game, mod: undefined }, out);
     const meta = JSON.parse(await readFile(join(out, 'maps', 'tutorial_002.meta.json'), 'utf8'));
     expect(meta).toEqual({ name: 'Wlasciwa', description: 'Opis99' });
   });
@@ -188,10 +188,10 @@ describe('convertMapDatTree', () => {
     const dir = join(game, 'CnModMaps', 'tutorial_002');
     await mkdir(join(dir, 'text', 'pol'), { recursive: true });
     await writeFile(join(dir, 'text', 'pol', 'strings.ini'), rawBytes('[text]\nstringn 0 "Nazwa"\n'));
-    await convertMapDatTree(game, out);
+    await convertMapDatTree({ game, mod: undefined }, out);
     await readFile(join(out, 'maps', 'tutorial_002.meta.json')); // emitted on the first run
     await rm(join(dir, 'text'), { recursive: true, force: true });
-    const done = await convertMapDatTree(game, out);
+    const done = await convertMapDatTree({ game, mod: undefined }, out);
     expect(done.find((d) => d.id === 'tutorial_002')).toMatchObject({ meta: false });
     await expect(readFile(join(out, 'maps', 'tutorial_002.meta.json'))).rejects.toThrow();
   });

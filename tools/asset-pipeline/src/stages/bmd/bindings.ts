@@ -16,6 +16,8 @@ import {
   parseIniSections,
   type RuleSection,
 } from '../../decoders/ini.js';
+import { CULTURESNATION_MOD } from '../../probe.js';
+import { resolveSourceFile, type SourceRoots } from '../../roots.js';
 
 /**
  * The graphics-binding resolution {@link resolveGraphicsBindings} produces and
@@ -107,7 +109,7 @@ export function jobBaseGraphicsToBindings(records: readonly JobBaseGraphicsBindi
  *    (per-job equipment skin) — the human body/head bob sets, `.cif`-only (no readable twin), decoded via
  *    {@link decodeCifStringArray} → {@link cifLinesToSections} into the same {@link RuleSection} model;
  *  - base `.../landscapes/landscapes.cif` `[GfxLandscape]` — the map's pre-placed landscape-object bobs;
- *  - with `--mod`, the mod's readable twins (golden rule #4): `types/humanstype/jobgraphics.ini`,
+ *  - the mod's readable twins under `DataCnmd/` (golden rule #4): `types/humanstype/jobgraphics.ini`,
  *    `types/vehiclestype/jobgraphics.ini` (broader per-tribe cart/ship recolours), and
  *    `budynki12/houses/houses.ini` `[GfxHouse]` building bindings ({@link extractBuildingGraphics}).
  *
@@ -121,13 +123,10 @@ export function jobBaseGraphicsToBindings(records: readonly JobBaseGraphicsBindi
  * records carry only a `graphicshumanrandompalette` runtime-tint name and no `gfxbobmanagerbody`, so there
  * is no bob set to atlas (carried-good sprites live in the human/vehicle sheets, tinted at runtime).
  */
-export async function resolveGraphicsBindings(
-  gameDir: string,
-  mod: string | undefined,
-): Promise<GraphicsBindingSet> {
+export async function resolveGraphicsBindings(roots: SourceRoots): Promise<GraphicsBindingSet> {
   const readIni = async (rel: string): Promise<RuleSection[] | undefined> => {
-    const path = join(gameDir, rel);
     try {
+      const path = (await resolveSourceFile(roots, rel)) ?? join(roots.game, rel);
       return parseIniSections(decodeIni(await readFile(path)));
     } catch {
       console.warn(`[pipeline] graphics binding source not found, skipping: ${rel}`);
@@ -135,8 +134,8 @@ export async function resolveGraphicsBindings(
     }
   };
   const readCif = async (rel: string): Promise<RuleSection[] | undefined> => {
-    const path = join(gameDir, rel);
     try {
+      const path = (await resolveSourceFile(roots, rel)) ?? join(roots.game, rel);
       return cifLinesToSections(decodeCifStringArray(await readFile(path)).lines);
     } catch {
       console.warn(`[pipeline] graphics binding source not found or corrupt, skipping: ${rel}`);
@@ -173,33 +172,31 @@ export async function resolveGraphicsBindings(
   // per-pixel construction reveal reads (PrintBob_UsingTimeMask semantics; the oracle has no call
   // sites, so the routing is inferred from the measurements). Keyed on the `.bmd` path alone so every
   // palette variant — including the [GfxLandscape] residence/wonder twins — bakes the same way.
-  // Caveat: [GfxHouse] is read only from the mod's houses.ini, so a mod-less run bakes house-family
-  // bmds per-pixel — acceptable while the documented run always passes --mod.
+  // Caveat: [GfxHouse] is read only from the mod's houses.ini, so a run whose mod lacks it bakes
+  // house-family bmds per-pixel — acceptable while the conversion requires the mod (resolveModRoot).
   const buildTimeBmds = new Set<string>();
-  if (mod !== undefined) {
-    const humanGraphics = await readIni(join(mod, 'types', 'humanstype', 'jobgraphics.ini'));
-    if (humanGraphics) {
-      bindings.push(...jobBaseGraphicsToBindings(extractJobBaseGraphics(humanGraphics)));
-      bindings.push(...jobBaseGraphicsToBindings(extractJobChangeGraphics(humanGraphics)));
-    }
-    // The mod ships a readable [jobgraphics] twin of the base vehicles .cif (golden rule #4):
-    // `types/vehiclestype/jobgraphics.ini` overlays the base cart/ship recolours, and the
-    // culturesnation mod carries the broader per-tribe set (22 records across tribes 1..4 vs the
-    // base .cif's 6 across tribes 1 & 4 only). The flat [jobgraphics] grammar is identical, so the
-    // same extractor applies; `convertBmdTree` keys atlases on (bmd, palette), so the base bindings'
-    // (bmd, palette) pairs — a strict subset of the mod's — emit the same atlas files either way,
-    // while the mod's extra tribe-2/3 rows carry the per-tribe logicvehicle cross-refs.
-    const vehicleGraphics = await readIni(join(mod, 'types', 'vehiclestype', 'jobgraphics.ini'));
-    if (vehicleGraphics) bindings.push(...extractGraphicsBindings(vehicleGraphics));
-    // The mod's readable [GfxHouse] graphics table (`budynki12/houses/houses.ini`): every settlement
-    // house bound to its `ls_houses_*.bmd` body + palette — the leg that turns the house bobs into
-    // atlases (the warehouse's `ls_houses_viking.house02` among them). Like the landscape leg, a house
-    // record commonly repeats one bob+palette across tribes/levels (the ~25 viking-home records all bind
-    // `ls_houses_viking` + `house01`/`house02`), so the records dedup on (bmd, palette).
-    const buildingGraphics = await readIni(join(mod, 'budynki12', 'houses', 'houses.ini'));
-    if (buildingGraphics) {
-      pushDeduped(bindings, extractBuildingGraphics(buildingGraphics), (b) => buildTimeBmds.add(b.bmd));
-    }
+  const humanGraphics = await readIni(join(CULTURESNATION_MOD, 'types', 'humanstype', 'jobgraphics.ini'));
+  if (humanGraphics) {
+    bindings.push(...jobBaseGraphicsToBindings(extractJobBaseGraphics(humanGraphics)));
+    bindings.push(...jobBaseGraphicsToBindings(extractJobChangeGraphics(humanGraphics)));
+  }
+  // The mod ships a readable [jobgraphics] twin of the base vehicles .cif (golden rule #4):
+  // `types/vehiclestype/jobgraphics.ini` overlays the base cart/ship recolours, and the
+  // culturesnation mod carries the broader per-tribe set (22 records across tribes 1..4 vs the
+  // base .cif's 6 across tribes 1 & 4 only). The flat [jobgraphics] grammar is identical, so the
+  // same extractor applies; `convertBmdTree` keys atlases on (bmd, palette), so the base bindings'
+  // (bmd, palette) pairs — a strict subset of the mod's — emit the same atlas files either way,
+  // while the mod's extra tribe-2/3 rows carry the per-tribe logicvehicle cross-refs.
+  const vehicleGraphics = await readIni(join(CULTURESNATION_MOD, 'types', 'vehiclestype', 'jobgraphics.ini'));
+  if (vehicleGraphics) bindings.push(...extractGraphicsBindings(vehicleGraphics));
+  // The mod's readable [GfxHouse] graphics table (`budynki12/houses/houses.ini`): every settlement
+  // house bound to its `ls_houses_*.bmd` body + palette — the leg that turns the house bobs into
+  // atlases (the warehouse's `ls_houses_viking.house02` among them). Like the landscape leg, a house
+  // record commonly repeats one bob+palette across tribes/levels (the ~25 viking-home records all bind
+  // `ls_houses_viking` + `house01`/`house02`), so the records dedup on (bmd, palette).
+  const buildingGraphics = await readIni(join(CULTURESNATION_MOD, 'budynki12', 'houses', 'houses.ini'));
+  if (buildingGraphics) {
+    pushDeduped(bindings, extractBuildingGraphics(buildingGraphics), (b) => buildTimeBmds.add(b.bmd));
   }
   // The scout's guidepost (the signpost object) is bound by the ENGINE, not by any data table —
   // "guidepost" appears in no decodable binding (landscapes.cif and palettes.ini both checked), only in

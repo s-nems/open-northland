@@ -9,6 +9,21 @@ import { join } from 'node:path';
  * pipeline portable. Among same-named entries differing only in case (never observed), the
  * lexicographically first wins, so a re-run is deterministic.
  */
+/**
+ * {@link findPathCaseInsensitive} over candidate directories in priority order (the map folder's
+ * overlay dir first, then the base game's) — the first directory that resolves the segments wins.
+ */
+export async function findPathCaseInsensitiveInDirs(
+  dirs: readonly string[],
+  segments: readonly string[],
+): Promise<string | null> {
+  for (const dir of dirs) {
+    const path = await findPathCaseInsensitive(dir, segments);
+    if (path !== null) return path;
+  }
+  return null;
+}
+
 export async function findPathCaseInsensitive(
   dir: string,
   segments: readonly string[],

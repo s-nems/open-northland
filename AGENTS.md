@@ -87,7 +87,7 @@ npm run test:pipeline
 npm run check
 npm run check:fix
 npm run scan:structure
-npm run pipeline -- --game "../Cultures 8th Wonder" --mod DataCnmd --out content
+npm run pipeline -- --game "../Cultures 8th Wonder" --out content
 npm run dev
 npm run desktop
 npm run desktop:dist

@@ -1,4 +1,5 @@
 import { join } from 'node:path';
+import type { SourceRoots } from '../../roots.js';
 import { buildPaletteLut, type PaletteLutResult } from '../game-file.js';
 
 /** The dir holding the 2×2 palette carriers the engine colours HUD elements with. */
@@ -8,7 +9,7 @@ const BUBBLES_PALETTE_FILE = join('Data', 'engine2d', 'bin', 'palettes', 'gui', 
 /** Filename stem of the emitted GUI palette LUT (a `/bobs/` PNG, loaded like the player-colour LUT). */
 export const GUI_PALETTE_LUT_STEM = 'gui-palettes-lut';
 
-/** One GUI colorization palette: its LUT-row name and the `.pcx` carrier it is read from (under `gameDir`). */
+/** One GUI colorization palette: its LUT-row name and the `.pcx` carrier it is read from (under `roots`). */
 interface GuiPaletteSource {
   readonly name: string;
   readonly file: string;
@@ -45,8 +46,8 @@ const GUI_PALETTES: readonly GuiPaletteSource[] = [
  * it under `BOBS_DIR`. A missing/palette-less carrier is warned and replaced with a neutral grayscale
  * row so the row order (the app's contract) stays fixed regardless of a partial install.
  */
-export function convertGuiPaletteLut(gameDir: string, outDir: string): Promise<PaletteLutResult> {
-  return buildPaletteLut(gameDir, outDir, GUI_PALETTES, GUI_PALETTE_LUT_STEM, {
+export function convertGuiPaletteLut(roots: SourceRoots, outDir: string): Promise<PaletteLutResult> {
+  return buildPaletteLut(roots, outDir, GUI_PALETTES, GUI_PALETTE_LUT_STEM, {
     label: 'gui',
     noun: 'palette',
   });

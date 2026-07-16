@@ -1,10 +1,10 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { basename, dirname, join, relative } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { decodePcx, expandToRgba } from '../decoders/pcx.js';
 import { encodePng } from '../decoders/png.js';
 import type { StageItemReporter } from '../progress.js';
-import { walkFiles } from '../walk.js';
-import { readGameFile, TEXTURES_DIR } from './game-file.js';
+import { collectSourceFiles, type SourceRoots } from '../roots.js';
+import { readSourceFile, TEXTURES_DIR } from './game-file.js';
 
 /** A transition overlay's two source pictures: the RGB texture + its separate alpha-mask `.pcx`. */
 export interface MaskedTexturePair {
@@ -40,12 +40,13 @@ export interface PcxConversion {
  * Sources resolve by basename under the real-cased {@link TEXTURES_DIR} — the IR's normalized
  * paths are lowercased, so joining them verbatim would miss on a case-sensitive filesystem; every
  * real `[transition]` record lives in that one directory, and a record pointing elsewhere degrades
- * to the warn-and-skip below. `gameDir` is tried first (loose files), then `outDir` (pictures the
- * lib unpack extracted). Pairs are deduped by texture path (several records share one page); a
- * missing/undecodable picture is logged and skipped like {@link convertPcxTree}'s per-file boundary.
+ * to the warn-and-skip below. The source `roots` are tried first (loose files, overlay-first), then
+ * `outDir` (pictures the lib unpack extracted). Pairs are deduped by texture path (several records
+ * share one page); a missing/undecodable picture is logged and skipped like {@link convertPcxTree}'s
+ * per-file boundary.
  */
 export async function composeMaskedTransitionPages(
-  gameDir: string,
+  roots: SourceRoots,
   outDir: string,
   pairs: readonly MaskedTexturePair[],
 ): Promise<PcxConversion[]> {
@@ -54,9 +55,9 @@ export async function composeMaskedTransitionPages(
   const readTexturePcx = async (normalizedPath: string): Promise<Uint8Array> => {
     const rel = join(TEXTURES_DIR, basename(normalizedPath));
     try {
-      return await readGameFile(gameDir, rel);
+      return await readSourceFile(roots, rel);
     } catch {
-      return await readGameFile(outDir, rel);
+      return await readSourceFile({ game: outDir, mod: undefined }, rel);
     }
   };
   for (const pair of pairs) {
@@ -87,26 +88,25 @@ export async function composeMaskedTransitionPages(
 }
 
 /**
- * Converts every `.pcx` under `gameDir` to a `.png` under `outDir`, mirroring the relative path.
- * Returns the conversions performed (input/output relative paths). A picture that fails to read or
- * decode is logged and skipped — a batch pipeline must not abort on one malformed/palette-less image.
- * An output-write failure (and a missing/unreadable `gameDir`) propagates instead: that's an
- * environmental error, not a per-file boundary failure, and should fail loudly rather than be lost.
+ * Converts every `.pcx` under the source `roots` (overlay-first union) to a `.png` under `outDir`,
+ * mirroring the relative path. Returns the conversions performed (input/output relative paths). A
+ * picture that fails to read or decode is logged and skipped — a batch pipeline must not abort on one
+ * malformed/palette-less image. An output-write failure (and a missing/unreadable game root)
+ * propagates instead: that's an environmental error, not a per-file boundary failure, and should
+ * fail loudly rather than be lost.
  */
 export async function convertPcxTree(
-  gameDir: string,
+  roots: SourceRoots,
   outDir: string,
   onItem?: StageItemReporter,
 ): Promise<PcxConversion[]> {
   const done: PcxConversion[] = [];
-  for await (const file of walkFiles(gameDir)) {
-    if (!file.toLowerCase().endsWith('.pcx')) continue;
-    const input = relative(gameDir, file);
+  for (const { rel: input, path } of await collectSourceFiles(roots, (rel) => rel.endsWith('.pcx'))) {
     const output = input.replace(/\.pcx$/i, '.png');
     const outPath = join(outDir, output);
     let png: Uint8Array;
     try {
-      png = pcxToPng(await readFile(file));
+      png = pcxToPng(await readFile(path));
     } catch (err) {
       console.warn(`[pipeline] skipped ${input}: ${(err as Error).message}`);
       continue;

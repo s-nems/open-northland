@@ -1,7 +1,8 @@
 import { join } from 'node:path';
-import type { Args } from './args.js';
+import { type Args, resolveModRoot } from './args.js';
 import { clearPipelineManifest, PIPELINE_MANIFEST_NAME, writePipelineManifest } from './manifest.js';
 import type { PipelineProgress } from './progress.js';
+import type { SourceRoots } from './roots.js';
 import { convertBmdTree, convertShadowBmdTree, resolveGraphicsBindings } from './stages/bmd/index.js';
 import { convertFontStage } from './stages/fonts.js';
 import { convertGoodsStage } from './stages/goods/index.js';
@@ -22,7 +23,10 @@ import {
  * feeds a live UI (see `progress.ts`); the stage summary `console.log`s stay for the CLI transcript.
  */
 export async function runPipeline(args: Args, progress?: PipelineProgress): Promise<void> {
-  console.log(`[pipeline] game=${args.game} mod=${args.mod ?? '(none)'} out=${args.out}`);
+  // The culturesnation mod is required — fail fast with the download pointer before any stage
+  // writes, rather than deep in IR validation (see resolveModRoot).
+  const roots: SourceRoots = { game: args.game, mod: await resolveModRoot(args.game, args.modRoot) };
+  console.log(`[pipeline] game=${args.game} mod=${roots.mod} out=${args.out}`);
 
   // A rerun over existing output must not keep the previous completion stamp: interrupted, the
   // mixed old/new tree would otherwise still read as a completed conversion.
@@ -32,17 +36,17 @@ export async function runPipeline(args: Args, progress?: PipelineProgress): Prom
   // mod's readable .ini sources over base .cif; docs/SOURCES.md carries the full source → decoder map.
   // The unpack extracts loose copies of the embedded .pcx/.bmd/.cif into <out> (gitignored).
   progress?.stage?.('unpack');
-  const extracted = await unpackLibTree(args.game, args.out, progress?.item);
+  const extracted = await unpackLibTree(roots, args.out, progress?.item);
   console.log(`[pipeline] lib unpack: extracted ${extracted.length} member(s) into ${args.out}`);
 
-  // Convert .pcx -> .png from both trees: the original --game tree (loose pictures shipped as files)
+  // Convert .pcx -> .png from both trees: the source roots (loose pictures shipped as files)
   // mirrored into <out>, and the unpacked <out> tree itself (the .pcx the unpack stage just extracted
-  // from data0001.lib, converted in place to a .png sibling). The two roots are disjoint sources, so a
+  // from data0001.lib, converted in place to a .png sibling). The two walks are disjoint sources, so a
   // picture is converted exactly once per location it exists; <game>==<out> is not a supported invocation.
   progress?.stage?.('pictures');
-  const loosePictures = await convertPcxTree(args.game, args.out, progress?.item);
+  const loosePictures = await convertPcxTree(roots, args.out, progress?.item);
   const embeddedPictures = await convertPcxTree(
-    args.out,
+    { game: args.out, mod: undefined },
     args.out,
     progress?.item === undefined ? undefined : (done) => progress.item?.(loosePictures.length + done),
   );
@@ -56,7 +60,7 @@ export async function runPipeline(args: Args, progress?: PipelineProgress): Prom
   // manifest JSON. A binding names its palette by editname, which palettes.ini resolves to the .pcx whose
   // trailer colours the bobs; both the .bmd and .pcx are read from the just-unpacked <out> tree.
   progress?.stage?.('atlases');
-  const graphics = await resolveGraphicsBindings(args.game, args.mod);
+  const graphics = await resolveGraphicsBindings(roots);
   const atlases = await convertBmdTree(graphics, args.out, progress?.item);
   const { bindings, palettes } = graphics;
   // Atlases are named per (bmd, palette), so the log reports both the distinct atlas files and the
@@ -101,7 +105,7 @@ export async function runPipeline(args: Args, progress?: PipelineProgress): Prom
   // per language -> id->text JSON, and the mouse cursors -> PNG + verbatim .cur. All from loose files.
   // See stages/gui/ + docs/SOURCES.md "GUI".
   progress?.stage?.('gui');
-  const gui = await convertGuiStage(args.game, args.out);
+  const gui = await convertGuiStage(roots, args.out);
   console.log(
     `[pipeline] gui: ${gui.atlases} atlas(es) (${gui.frames} frames), ${gui.palettes}-palette LUT, ` +
       `${gui.strings.map((s) => `${s.lang}:${s.tables}t/${s.strings}s`).join(' ') || 'no strings'}, ` +
@@ -111,7 +115,7 @@ export async function runPipeline(args: Args, progress?: PipelineProgress): Prom
   // Fonts: the UI bitmap fonts (font08/10/12/fontdebug × default/latin/rus) -> an indexed glyph atlas +
   // preview + a 256×4 font-colour LUT + a per-font metrics JSON. See stages/fonts.ts + docs/SOURCES.md ".fnt".
   progress?.stage?.('fonts');
-  const fonts = await convertFontStage(args.game, args.out);
+  const fonts = await convertFontStage(roots, args.out);
   console.log(
     `[pipeline] fonts: ${fonts.fonts} font(s) (${fonts.glyphs} glyphs), ` +
       `${fonts.colors}-colour LUT into ${join(args.out, 'gui', 'fonts')}`,
@@ -120,14 +124,14 @@ export async function runPipeline(args: Args, progress?: PipelineProgress): Prom
   // Goods icons: the shared good-pile bob sheet -> an indexed atlas + preview + a goods palette LUT, plus
   // the good -> (pile frame, palette) bindings. Feeds the HUD's per-good resource icons. See stages/goods/.
   progress?.stage?.('goods');
-  const goods = await convertGoodsStage(args.game, args.out);
+  const goods = await convertGoodsStage(roots, args.out);
   console.log(
     `[pipeline] goods: ${goods.frames}-frame atlas, ${goods.palettes}-palette LUT, ` +
       `${goods.icons} good icon(s) into ${join(args.out, 'goods')}`,
   );
 
   progress?.stage?.('ir');
-  const ir = await writeIr(args);
+  const ir = await writeIr(roots, args.out);
   console.log(
     `[pipeline] ini -> ir: ${ir.goods.length} goods, ${ir.jobs.length} jobs, ${ir.jobExperience.length} job-xp tracks, ` +
       `${ir.buildings.length} buildings, ` +
@@ -147,7 +151,7 @@ export async function runPipeline(args: Args, progress?: PipelineProgress): Prom
       ? [{ texture: t.texture, textureAlpha: t.textureAlpha }]
       : [],
   );
-  const masked = await composeMaskedTransitionPages(args.game, args.out, maskedPairs);
+  const masked = await composeMaskedTransitionPages(roots, args.out, maskedPairs);
   console.log(
     `[pipeline] transitions: ${ir.gfxPatternTransitions.length} record(s) -> ` +
       `${masked.length} masked overlay page(s) into ${args.out}`,
@@ -157,7 +161,7 @@ export async function runPipeline(args: Args, progress?: PipelineProgress): Prom
   // per-cell typeId) into maps/<id>.json — the TerrainMap the sim's buildTerrainGraph consumes. Joins
   // onto the same-folder map.cif's MapInfo id.
   progress?.stage?.('maps');
-  const terrains = await convertMapDatTree(args.game, args.out, progress?.item);
+  const terrains = await convertMapDatTree(roots, args.out, progress?.item);
   const totalCells = terrains.reduce((sum, t) => sum + t.width * t.height, 0);
   const metas = terrains.filter((t) => t.meta).length;
   const minimaps = terrains.filter((t) => t.minimap).length;

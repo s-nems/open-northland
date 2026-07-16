@@ -41,6 +41,6 @@ observed original campaign behavior where a mission's goals are known (e.g. the 
 
 - Extraction unit test on a synthetic fixture covering the observed line grammar.
 - Real pipeline run against the owned game copy (`npm run pipeline -- --game "../Cultures 8th
-  Wonder" --mod DataCnmd --out content`); spot-check one known map's decoded triggers against its
+  Wonder" --out content`); spot-check one known map's decoded triggers against its
   in-game briefing/goals (human check).
 - `npm test`, `npm run check`, `npm run build`. No copyrighted decoded content committed.

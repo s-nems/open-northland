@@ -1,4 +1,5 @@
 import { join } from 'node:path';
+import type { SourceRoots } from '../../roots.js';
 import { writeJsonFile } from '../game-file.js';
 import { convertGuiAtlases, type GuiAtlasResult } from './atlases.js';
 import { convertCursors, type GuiCursorResult } from './cursors.js';
@@ -33,7 +34,7 @@ import { convertWindowBitmaps } from './window-bitmaps.js';
  *
  * Boundary failures are warned-and-skipped, never fatal (matching the other tree-walk stages): a missing
  * `.bmd`/palette/string table/cursor drops that one output rather than aborting the run. All sources are
- * loose files read straight from `gameDir` (the HUD ships unpacked; the culturesnation mod does not
+ * loose files read straight from `roots` (the HUD ships unpacked; the culturesnation mod does not
  * override it), so this stage does not depend on the `.lib` unpack. No copyrighted bytes enter the repo —
  * everything lands under the gitignored `content/`.
  */
@@ -67,12 +68,12 @@ export interface GuiStageSummary {
  * for the CLI log. Each sub-step is independently resilient (warn-and-skip), so a partial game install
  * still produces whatever it can.
  */
-export async function convertGuiStage(gameDir: string, outDir: string): Promise<GuiStageSummary> {
-  const palettes = await convertGuiPaletteLut(gameDir, outDir);
-  const atlases = await convertGuiAtlases(gameDir, outDir, palettes.byName);
-  await convertWindowBitmaps(gameDir, outDir, palettes.byName);
-  const strings = await convertGuiStrings(gameDir, outDir);
-  const cursors = await convertCursors(gameDir, outDir);
+export async function convertGuiStage(roots: SourceRoots, outDir: string): Promise<GuiStageSummary> {
+  const palettes = await convertGuiPaletteLut(roots, outDir);
+  const atlases = await convertGuiAtlases(roots, outDir, palettes.byName);
+  await convertWindowBitmaps(roots, outDir, palettes.byName);
+  const strings = await convertGuiStrings(roots, outDir);
+  const cursors = await convertCursors(roots, outDir);
 
   const manifest: GuiManifest = {
     atlases,
