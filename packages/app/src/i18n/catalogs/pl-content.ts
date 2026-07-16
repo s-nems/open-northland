@@ -146,7 +146,8 @@ export const plContent = {
   scene: {
     sandbox: {
       title: 'Otwarty sandbox',
-      summary: 'Rozbudowany plac zabaw z gospodarką, walką, budynkami, pracownikami i zasobami.',
+      summary:
+        'Mała osada produkcyjna: pełne załogi, zapełniony magazyn i obozy zbieraczy przy lasku, kamieniołomie i złożach.',
     },
     collision: {
       title: 'Kolizja jednostek',

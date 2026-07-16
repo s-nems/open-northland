@@ -1,8 +1,15 @@
 import { indexById } from '@open-northland/data';
 import type { Entity } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
+import { resolveVikingBuilding } from '../src/catalog/buildings.js';
 import { HUMAN_PLAYER } from '../src/game/rules.js';
-import { assignmentPriority, workerRoleOf } from '../src/game/sandbox/index.js';
+import {
+  assignmentPriority,
+  JOB_COLLECTOR,
+  placeSandboxBuilding,
+  spawnSandboxSettler,
+  workerRoleOf,
+} from '../src/game/sandbox/index.js';
 import { buildingTypeOf, isBuilding, isSettler, num, ownerPlayerOf } from '../src/game/snapshot.js';
 import { createSceneSim, getScene } from '../src/scenes/index.js';
 import { computeDoorBadges } from '../src/view/projections/index.js';
@@ -19,20 +26,20 @@ describe('assignWorker → door badge, over sandbox content', () => {
     const scene = getScene('sandbox');
     if (scene === undefined) throw new Error('sandbox scene missing');
     const sim = createSceneSim(scene);
+    // The village staffs every slot it can, so the gesture needs its own open workshop: an extra pottery
+    // on free ground plus a fresh collector beside it (the command re-jobs the settler on binding).
+    const EXTRA = { x: 80, y: 20 } as const;
+    placeSandboxBuilding(sim, 'work_pottery_00', EXTRA.x, EXTRA.y);
+    spawnSandboxSettler(sim, JOB_COLLECTOR, EXTRA.x - 3, EXTRA.y);
     sim.step();
 
     const doorTable = indexById(sim.content.buildings);
-    // Only a building the right-click gesture can actually staff — one whose slots yield a non-empty
-    // assignment priority (a craftsman or carrier slot; a gatherer-only building offers nothing).
-    const assignableTypes = new Set(
-      [...doorTable].filter(([, b]) => assignmentPriority(b.workers).length > 0).map(([typeId]) => typeId),
-    );
+    const potteryType = resolveVikingBuilding('work_pottery_00').typeId;
 
     const snap0 = sim.snapshot();
-    const building = snap0.entities.find(
-      (e) => isBuilding(e) && assignableTypes.has(buildingTypeOf(e) ?? -1),
-    );
-    const settler = snap0.entities.find((e) => isSettler(e) && ownerPlayerOf(e) === HUMAN_PLAYER);
+    const buildings = snap0.entities.filter((e) => isBuilding(e) && buildingTypeOf(e) === potteryType);
+    const building = buildings[buildings.length - 1]; // the extra pottery is the last-placed one
+    const settler = snap0.entities.findLast((e) => isSettler(e) && ownerPlayerOf(e) === HUMAN_PLAYER);
     if (building === undefined || settler === undefined)
       throw new Error('no assignable workshop / owned settler in the sandbox');
 
