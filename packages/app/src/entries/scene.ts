@@ -9,6 +9,7 @@ import { buildingFootprints, loadIr } from '../content/ir.js';
 import { loadRuntimeRealContent, logRealContentGaps } from '../content/real-content.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet/index.js';
 import { loadRealTerrain } from '../content/terrain.js';
+import { diag } from '../diag/index.js';
 import { fogModeParam } from '../game/fog.js';
 import { createSceneSim, getScene, SCENES } from '../scenes/index.js';
 import { cameraFor, createCameraController } from '../view/camera.js';
@@ -47,6 +48,7 @@ export async function renderSceneMode(
     return;
   }
 
+  diag.info('boot', 'game start', { entry: 'scene', sceneId, seed: scene.seed });
   // Window-tracking, device-resolution backing store: resizing changes the visible field, never the scale.
   const app = await createWindowPixiApp(canvas);
   const terrainGrid = terrainMapToScene(scene.terrain);

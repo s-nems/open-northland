@@ -6,6 +6,7 @@ import {
   type TerrainTextureSet,
   type TransitionPattern,
 } from '@open-northland/render';
+import { diag } from '../diag/index.js';
 import { type ContentIr, loadIr } from './ir.js';
 
 /**
@@ -124,7 +125,7 @@ export async function loadRealTerrain(ir?: ContentIr): Promise<TerrainTextureSet
       try {
         pages.set(key, await loadAtlasSource(`/textures/${key}.png`, 'linear'));
       } catch {
-        console.warn(`terrain: page ${key}.png failed to load; its triangles fall back`);
+        diag.warn('content', `terrain: page ${key}.png failed to load; its triangles fall back`);
       }
     }),
   );

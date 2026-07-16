@@ -4,6 +4,7 @@ import {
   SYNTHETIC_BINDINGS,
   syntheticAtlasFrames,
 } from '@open-northland/render';
+import { diag } from '../../diag/index.js';
 import { MissingAtlasError } from '../ir.js';
 import type { GoodRef } from '../settler-gfx/index.js';
 import { loadHumanSpriteSheet } from './human-sheet.js';
@@ -30,7 +31,11 @@ export async function resolveSpriteSheet(
     return await loadHumanSpriteSheet(goods);
   } catch (err) {
     if (!(err instanceof MissingAtlasError)) throw err;
-    console.warn('real atlas unavailable (is content/ populated?) — falling back to synthetic markers', err);
+    diag.warn(
+      'content',
+      'real atlas unavailable (is content/ populated?) — falling back to synthetic markers',
+      err,
+    );
     return syntheticSpriteSheet();
   }
 }
