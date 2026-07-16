@@ -3,6 +3,7 @@ import { extname, normalize, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { resolveContentRequest } from '@open-northland/content-routes';
 import { net, protocol } from 'electron';
+import { routePathOf } from './protocol-routing.js';
 
 /**
  * The `app://` scheme the shell serves the game from — the packaged equivalent of the Vite dev
@@ -46,9 +47,10 @@ function notFound(): Response {
   return new Response('not found', { status: 404 });
 }
 
-// Pixi's mangled `app://bobs/...` spelling (see the handler) is cross-origin to `app://game`, and a
-// worker's fetch enforces CORS even on a custom scheme — every response must say allow-any-origin.
-const CORS_HEADER = { 'access-control-allow-origin': '*' } as const;
+// Pixi's mangled `app://bobs/...` spelling (see `routePathOf`) is cross-origin to `app://game`, and
+// a worker's fetch enforces CORS even on a custom scheme. Only the game origin is approved — a page
+// on any other origin (there should never be one) gets no cross-origin read.
+const CORS_HEADER = { 'access-control-allow-origin': 'app://game' } as const;
 
 /** Serve `file` with an explicit content type; a HEAD probe gets headers only (the app's texture probes). */
 async function serveFile(file: string, contentType: string, method: string): Promise<Response> {
@@ -79,14 +81,9 @@ export interface AppProtocolRoots {
 export function handleAppProtocol(roots: AppProtocolRoots): void {
   protocol.handle(APP_SCHEME, async (request) => {
     const url = new URL(request.url);
-    const pathname = decodeURIComponent(url.pathname);
-    const root = url.host === 'setup' ? roots.setupRoot : roots.appRoot;
 
-    // Pixi's path resolver mis-joins root-relative asset URLs on a custom scheme: a worker-side
-    // `/bobs/<stem>.png` arrives as `app://bobs/<stem>.png` — the route segment lands in the HOST.
-    // Fold such hosts back into the pathname so both spellings hit the same route table.
-    const routePath =
-      url.host === 'game' ? pathname : url.host === 'setup' ? undefined : `/${url.host}${pathname}`;
+    // The shared resolver takes the raw pathname (it owns percent-decoding).
+    const routePath = routePathOf(url.host, url.pathname);
     if (routePath !== undefined) {
       const hit = resolveContentRequest(routePath, roots.contentRoot);
       if (hit !== undefined) {
@@ -99,6 +96,15 @@ export function handleAppProtocol(roots: AppProtocolRoots): void {
       }
     }
 
+    // Static files exist only on the two real page hosts; a folded host that missed the routes is a 404.
+    if (url.host !== 'game' && url.host !== 'setup') return notFound();
+    let pathname: string;
+    try {
+      pathname = decodeURIComponent(url.pathname);
+    } catch {
+      return notFound();
+    }
+    const root = url.host === 'setup' ? roots.setupRoot : roots.appRoot;
     const file = staticFileUnder(root, pathname);
     if (file === undefined) return notFound();
     const contentType = STATIC_TYPES[extname(file).toLowerCase()] ?? 'application/octet-stream';

@@ -6,7 +6,7 @@ import { join } from 'node:path';
  * browses. Shared by every host that serves `content/` over the app's routes; kept in its own
  * module so the scan is unit-testable against a fixture directory.
  *
- * It lists every VIEWABLE bob atlas: a palette-applied RGBA sheet (`<stem>.png` + `<stem>.atlas.json`)
+ * It lists every viewable bob atlas: a palette-applied RGBA sheet (`<stem>.png` + `<stem>.atlas.json`)
  * the pipeline already emits for the GUI, goods, and every landscape/house/object set. The `.indexed.*`
  * atlases are skipped — those carry the palette index in the red channel (for the runtime recolour), not
  * a human-viewable image. Each entry is split into a `base` set + `variant` (the palette) so the gallery

@@ -26,15 +26,24 @@ export const CULTURESNATION_MOD = 'DataCnmd';
  * wrong pick like the user's home directory must stay cheap); unreadable directories count as empty.
  */
 export async function probeGameFolder(dir: string): Promise<GameFolderProbe> {
-  let hasMod = false;
+  let top: Dirent[];
   try {
-    const top = await readdir(dir, { withFileTypes: true });
-    hasMod = top.some((e) => e.isDirectory() && e.name === CULTURESNATION_MOD);
+    top = await readdir(dir, { withFileTypes: true });
   } catch {
     return { hasArchives: false, hasMod: false };
   }
-  let level = [dir];
-  for (let depth = 0; depth < PROBE_MAX_DEPTH && level.length > 0; depth++) {
+  const hasMod = top.some((e) => e.isDirectory() && e.name === CULTURESNATION_MOD);
+  // Scan `entries` (children of `parent`) for a .lib, queueing subdirectories onto `next`.
+  const scan = (parent: string, entries: readonly Dirent[], next: string[]): boolean => {
+    for (const entry of entries) {
+      if (entry.isFile() && entry.name.toLowerCase().endsWith('.lib')) return true;
+      if (entry.isDirectory() && !entry.name.startsWith('.')) next.push(join(parent, entry.name));
+    }
+    return false;
+  };
+  let level: string[] = [];
+  if (scan(dir, top, level)) return { hasArchives: true, hasMod };
+  for (let depth = 1; depth < PROBE_MAX_DEPTH && level.length > 0; depth++) {
     const next: string[] = [];
     for (const current of level) {
       let entries: Dirent[];
@@ -43,12 +52,7 @@ export async function probeGameFolder(dir: string): Promise<GameFolderProbe> {
       } catch {
         continue;
       }
-      for (const entry of entries) {
-        if (entry.isFile() && entry.name.toLowerCase().endsWith('.lib')) {
-          return { hasArchives: true, hasMod };
-        }
-        if (entry.isDirectory() && !entry.name.startsWith('.')) next.push(join(current, entry.name));
-      }
+      if (scan(current, entries, next)) return { hasArchives: true, hasMod };
     }
     level = next;
   }

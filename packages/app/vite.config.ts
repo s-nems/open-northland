@@ -6,6 +6,8 @@ import { defineConfig, type Plugin } from 'vite';
 
 // Browser-first app shell. `npm run dev` serves this with HMR; the desktop shell (packages/desktop)
 // wraps the same build and serves the same routes over its app:// protocol.
+// This config imports @open-northland/content-routes' dist (gitignored), so the `dev`/`shot`
+// scripts run `tsc --build ../content-routes` first — a fresh checkout must not need a full build.
 
 const here = dirname(fileURLToPath(import.meta.url));
 // The decoded `content/` tree lives at the repo root (gitignored; generated from an owned game copy),

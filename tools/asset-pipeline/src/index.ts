@@ -10,10 +10,6 @@ export {
   writePipelineManifest,
 } from './manifest.js';
 export { CULTURESNATION_MOD, type GameFolderProbe, probeGameFolder } from './probe.js';
-export {
-  PIPELINE_STAGES,
-  type PipelineProgress,
-  type PipelineStageId,
-  type StageItemReporter,
-} from './progress.js';
+// Progress symbols live only on the import-free `./progress` subpath — re-exporting them here would
+// invite browser bundles to pull this barrel's node:fs graph.
 export { runPipeline } from './run.js';

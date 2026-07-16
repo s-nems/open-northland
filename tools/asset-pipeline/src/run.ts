@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import type { Args } from './args.js';
-import { PIPELINE_MANIFEST_NAME, writePipelineManifest } from './manifest.js';
+import { clearPipelineManifest, PIPELINE_MANIFEST_NAME, writePipelineManifest } from './manifest.js';
 import type { PipelineProgress } from './progress.js';
 import { convertBmdTree, convertShadowBmdTree, resolveGraphicsBindings } from './stages/bmd/index.js';
 import { convertFontStage } from './stages/fonts.js';
@@ -23,6 +23,10 @@ import {
  */
 export async function runPipeline(args: Args, progress?: PipelineProgress): Promise<void> {
   console.log(`[pipeline] game=${args.game} mod=${args.mod ?? '(none)'} out=${args.out}`);
+
+  // A rerun over existing output must not keep the previous completion stamp: interrupted, the
+  // mixed old/new tree would otherwise still read as a completed conversion.
+  await clearPipelineManifest(args.out);
 
   // Stages run in dependency order — unpack first, then the passes that read its output. Prefer the
   // mod's readable .ini sources over base .cif; docs/SOURCES.md carries the full source → decoder map.
@@ -163,7 +167,7 @@ export async function runPipeline(args: Args, progress?: PipelineProgress): Prom
       `into ${join(args.out, 'maps')}`,
   );
 
-  // Stamped LAST on purpose: its presence marks a conversion that ran to completion, and its
+  // Stamped last on purpose: its presence marks a conversion that ran to completion, and its
   // versions let an installed shell detect stale content (see manifest.ts).
   await writePipelineManifest(args.out);
   console.log(`[pipeline] stamped ${join(args.out, PIPELINE_MANIFEST_NAME)}`);

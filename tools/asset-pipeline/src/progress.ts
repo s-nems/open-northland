@@ -24,6 +24,8 @@ export type PipelineStageId = (typeof PIPELINE_STAGES)[number];
 /**
  * Per-item heartbeat within the current stage: `done` items so far; `total` when the stage knows its
  * item count up front (walk-as-you-go stages report `undefined` — a moving counter, not a fraction).
+ * Convention: known-total stages tick at item start (the final tick is `total - 1`), walk-as-you-go
+ * stages tick after each write (`1..N`) — consumers must not expect a closing `done === total` tick.
  */
 export type StageItemReporter = (done: number, total?: number) => void;
 

@@ -1,5 +1,5 @@
-import type { PipelineProgress } from '@open-northland/asset-pipeline';
 import { runPipeline } from '@open-northland/asset-pipeline';
+import type { PipelineProgress } from '@open-northland/asset-pipeline/progress';
 import type { PipelineEvent } from './ipc.js';
 
 /**
@@ -20,9 +20,10 @@ interface ParentPort {
 
 const port = (process as unknown as { parentPort?: ParentPort }).parentPort;
 if (port === undefined) throw new Error('pipeline-child must run as an Electron utilityProcess');
+const parent: ParentPort = port;
 
 function post(event: PipelineEvent): void {
-  port?.postMessage(event);
+  parent.postMessage(event);
 }
 
 const [gameDir, outDir, mod] = process.argv.slice(2);
@@ -45,12 +46,14 @@ const progress: PipelineProgress = {
   },
 };
 
+// No process.exit() after posting: postMessage is asynchronous and exiting on the same tick can
+// drop the terminal event (a finished conversion would then surface as a failure). The process
+// ends by draining naturally; the host kills it if it ever lingers.
 runPipeline({ game: gameDir, out: outDir, mod: mod === '' ? undefined : mod }, progress)
   .then(() => {
     post({ kind: 'done' });
-    process.exit(0);
   })
   .catch((err: unknown) => {
     post({ kind: 'error', message: err instanceof Error ? (err.stack ?? err.message) : String(err) });
-    process.exit(1);
+    process.exitCode = 1;
   });

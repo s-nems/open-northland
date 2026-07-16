@@ -1,10 +1,10 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { IR_VERSION } from '@open-northland/data';
 
 /**
- * The stamp `runPipeline` writes LAST into its output — both the completion marker (an interrupted
- * conversion never gets one) and the staleness signal an installed desktop shell compares against
+ * The stamp `runPipeline` writes as its final step — both the completion marker (an interrupted
+ * conversion never carries one) and the staleness signal an installed desktop shell compares against
  * its own bundled expectation to offer regeneration.
  */
 
@@ -31,6 +31,15 @@ export const CURRENT_MANIFEST: PipelineManifest = {
 
 export async function writePipelineManifest(outDir: string): Promise<void> {
   await writeFile(join(outDir, PIPELINE_MANIFEST_NAME), `${JSON.stringify(CURRENT_MANIFEST, null, 2)}\n`);
+}
+
+/**
+ * Drop a previous conversion's stamp. `runPipeline` calls this before its first stage so an
+ * interrupted rerun over existing content degrades to "regenerate" instead of keeping the old
+ * stamp and passing the mixed tree off as complete.
+ */
+export async function clearPipelineManifest(outDir: string): Promise<void> {
+  await rm(join(outDir, PIPELINE_MANIFEST_NAME), { force: true });
 }
 
 /** The stamp of a previous conversion under `outDir`; absent or malformed reads as `undefined`. */
