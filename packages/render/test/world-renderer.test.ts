@@ -249,4 +249,32 @@ describe('resolveLayers — cast shadows draw under the body from the atlas shad
       [70, false, false],
     ]);
   });
+
+  it('prepends the pile shadow on a stockpile heap (the `ls_goods_s` silhouettes)', () => {
+    const stockSheet: SpriteSheet = {
+      source,
+      atlas: { width: 0, height: 0, frames: new Map() },
+      bindings: {
+        settler: 1,
+        resource: 1,
+        building: 1,
+        // Wood heap at bob 70 (shadow twin has a silhouette there); the flag bob (85) casts none.
+        stockpile: {
+          byGood: { 5: [{ layer: 'goods', bob: 70 }] },
+          flag: { layer: 'goods', bob: 85 },
+          default: 0,
+        },
+      },
+      families: { goods: { source, atlas, shadow } },
+    };
+    const pile: DrawItem = { kind: 'stockpile', ref: 1, x: 0, y: 0, depth: 0, goodType: 5, fill: 1 };
+    const layers = resolveLayers(stockSheet, pile, 0) ?? [];
+    expect(layers.map((l) => [l.frame.x, l.source === shadowSource, l.boundsExempt ?? false])).toEqual([
+      [70, true, true],
+      [70, false, false],
+    ]);
+    const empty: DrawItem = { kind: 'stockpile', ref: 2, x: 0, y: 0, depth: 0 };
+    const flagLayers = resolveLayers(stockSheet, empty, 0) ?? [];
+    expect(flagLayers.map((l) => [l.frame.x, l.source === shadowSource])).toEqual([[85, false]]);
+  });
 });

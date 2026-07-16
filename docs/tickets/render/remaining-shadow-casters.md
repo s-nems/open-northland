@@ -16,12 +16,21 @@ ones). Settlers stay shadow-less by design (user decision). Not yet drawing:
   and the moving shadow follows for free via `shadowLayerFor`.
 - **Flat decor map objects** — `TallObjectLayer` draws map-object shadows; the decor batch
   (waves, grass, mine stains, signs) ignores `MapObjectSprite.shadow` (named approximation in
-  `map-object-sprite.ts`). Most decor `.bmd`s hold few/no shadow bobs (`ls_temp_s.bmd`: 7 of 35
-  slots), so first audit which decor records actually resolve a silhouette before batching shadows
-  into `decor-batch.ts`.
+  `map-object-sprite.ts`). Audit done (decoded owned-copy `_s.bmd` non-empty silhouette counts):
+  `ls_ground_s` 88/90, `ls_mushrooms_s` 12/12, `ls_meadows_s` 27/124 (the bush range, ids 97–123),
+  `ls_misc_s` only 4/134 — ground/mushroom/bush decor are real casters worth batching into
+  `decor-batch.ts`.
+
+Notes pinned by the shadow research (2026-07-16):
+
+- The original stacks overlapping shadows — `PrintBob_Shadow` → `ShadePixel16/32` is a per-blit
+  destination multiply with no "already shadowed" guard (OpenVikings `CBobManager.cs`). Do NOT add a
+  shared shadow-mask/single-darken pass; per-sprite alpha black is the faithful model.
+- The pipeline intentionally bakes `cr_hum_*_s` shadow atlases nothing loads (settlers are
+  shadow-less by user decision) — do not "fix" them into the loader; the animal/vehicle subset is
+  the part this ticket will consume.
 
 ## Verify
 
 - Animals/vehicles: shadow follows the walk cycle in `?scene=` with animals once bound; user's eyes.
-- Decor: an audit script over `landscapeGfx` decor rows × their `_s` atlases; only implement if any
-  real caster surfaces.
+- Decor: shadows under mushrooms/bushes/ground props on a real map; user's eyes.
