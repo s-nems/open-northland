@@ -4,7 +4,7 @@ import { SCENES } from '../scenes/index.js';
 import { generatedMapPreview } from './menu/map-preview.js';
 import { bindLocaleFlags, bindMenuSettings, targetSearch } from './menu/settings.js';
 
-const MENU_BACKDROP = new URL('./menu/assets/village.webp', import.meta.url).href;
+const MENU_BACKDROP = new URL('../../../../docs/images/settlement.webp', import.meta.url).href;
 const MENU_LOGO = new URL('./menu/assets/logo.webp', import.meta.url).href;
 
 export interface MapIndexEntry {
