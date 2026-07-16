@@ -77,8 +77,6 @@ export {
 } from './gpu/gallery/index.js';
 export type { MapObjectSprite } from './gpu/map-objects/index.js';
 export type {
-  BuildingHighlightCell,
-  BuildingHighlightItem,
   DoorBadge,
   GeometryDebugCell,
   GeometryDebugItem,
@@ -115,7 +113,12 @@ export type {
   TerrainTextureSet,
   TransitionPattern,
 } from './gpu/terrain-textures.js';
-export { SPRITE_CULL_MARGIN, type WorldFrame, WorldRenderer } from './gpu/world-renderer.js';
+export {
+  type BuildingHighlightItem,
+  SPRITE_CULL_MARGIN,
+  type WorldFrame,
+  WorldRenderer,
+} from './gpu/world-renderer.js';
 
 /*
  * The renderer is a pure consumer of sim state (see docs/ARCHITECTURE.md). It reads a snapshot

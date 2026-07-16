@@ -85,6 +85,25 @@ export interface PoolFrame {
   /** The viewer's remembered statics (`data/fog-ghosts.ts`) — drawn dimmed on explored ground in
    *  place of their fog-culled (or dead) entities. Absent = no fog or nothing remembered. */
   readonly ghosts?: readonly FogGhost[];
+  /** The workplace-assignment highlight: building id → assignable (green) / not (red). A building in this
+   *  map draws with a faint green/red tint on its sprite (the assign-mode "lekko zielony/czerwony" look);
+   *  absent/empty = no tint. Transient view state like the selection, never sim state. */
+  readonly highlight?: ReadonlyMap<number, boolean>;
+}
+
+/** The faint tints an assign-mode candidate building draws with — a light green when the settler can be
+ *  assigned there, a light red when not. Pale (near-white) so it reads as a wash over the building art
+ *  rather than repainting it. */
+const HIGHLIGHT_OK_TINT = 0x88ff88;
+const HIGHLIGHT_NO_TINT = 0xff8888;
+
+/** The tint a drawn entity takes this frame: the fog-ghost grey when ghosted, else the assign-mode
+ *  green/red when it is a highlighted candidate building, else none (white). */
+function entityTint(ref: number, ghost: boolean, highlight?: ReadonlyMap<number, boolean>): number {
+  if (ghost) return FOG_GHOST_TINT;
+  const ok = highlight?.get(ref);
+  if (ok === undefined) return 0xffffff;
+  return ok ? HIGHLIGHT_OK_TINT : HIGHLIGHT_NO_TINT;
 }
 
 export class SpritePool {
@@ -281,7 +300,7 @@ export class SpritePool {
     const animTick = item.ghost === true ? 0 : frame.tick;
     const layers = resolveLayers(this.sheet, drawItem, animTick, Math.floor(pe.motion.gaitPhase));
     if (layers === null) {
-      this.showPlaceholder(pe, item);
+      this.showPlaceholder(pe, item, frame);
       return;
     }
     if (pe.placeholder !== undefined) pe.placeholder.visible = false;
@@ -292,7 +311,7 @@ export class SpritePool {
    *  entity's bounds from the placeholder's fixed body box. Any atlas sprites are hidden. A projectile
    *  always draws this path (no decoded arrow bob exists): its arrow flies at body height and rotates
    *  to the item's flight heading each frame. */
-  private showPlaceholder(pe: PooledEntity, item: DrawItem): void {
+  private showPlaceholder(pe: PooledEntity, item: DrawItem, frame: PoolFrame): void {
     for (const s of pe.sprites) s.visible = false;
     if (pe.placeholder === undefined) {
       pe.placeholder = drawPlaceholder(new Graphics(), pe.kind);
@@ -300,8 +319,9 @@ export class SpritePool {
       pe.container.addChild(pe.placeholder);
     }
     pe.placeholder.visible = true;
-    // The ghost dim + no-hit-bounds contract holds on the placeholder path too (see bindLayers).
-    pe.placeholder.tint = item.ghost === true ? FOG_GHOST_TINT : 0xffffff;
+    // The ghost dim + no-hit-bounds contract holds on the placeholder path too (see bindLayers); a
+    // highlighted candidate building's placeholder takes the same green/red assign-mode tint.
+    pe.placeholder.tint = entityTint(item.ref, item.ghost === true, frame.highlight);
     // Rotation applies about the graphic's own origin (the shaft centre), so the flight-height offset
     // above is not rotated with it — the arrow stays level above its ground anchor and only aims.
     if (pe.kind === 'projectile') pe.placeholder.rotation = item.rotation ?? 0;
@@ -424,7 +444,7 @@ export class SpritePool {
           // A fog ghost dims to the explored-grey grading; assigned unconditionally so a sprite reused
           // across the live↔ghost transition always carries the right tint (tint is a cheap batch
           // attribute — ghosts are never paletted, statics don't take the mesh path).
-          spr.tint = item.ghost === true ? FOG_GHOST_TINT : 0xffffff;
+          spr.tint = entityTint(item.ref, item.ghost === true, frame.highlight);
           spr.visible = true;
         }
       }
