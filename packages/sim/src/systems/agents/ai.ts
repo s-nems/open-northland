@@ -146,7 +146,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
   // are never re-added), but nothing enforces that; the sort pins the winner.
   for (const e of canonicalById(world.query(Settler, Position))) {
     const routeLoad = world.tryGet(e, Carrying);
-    const failedRequest = world.tryGet(e, PathRequest);
+    const tickStartRequest = world.tryGet(e, PathRequest);
     const workFlag = world.tryGet(e, WorkFlag);
     const yardRoute = world.tryGet(e, YardDeliveryRoute);
     const validYardRoute =
@@ -162,8 +162,8 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
       validYardRoute &&
       yardRoute !== undefined &&
       !yardRoute.failed &&
-      failedRequest?.failed === true &&
-      failedRequest.goal === yardRoute.goal
+      tickStartRequest?.failed === true &&
+      tickStartRequest.goal === yardRoute.goal
     ) {
       yardRoute.failed = true;
       world.touch(e);
@@ -178,6 +178,8 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // and wedding systems read and clear the flag themselves); for everyone else the planner parks the
     // dead route (Stranded), then sheds it and re-plans — the pacing costs one path query per retry
     // instead of per tick when the target stays blocked, and a transient blockage heals on its own.
+    // A parked settler keeps its SupplyRun for the park window (released only at the re-plan below) —
+    // the errand may resume after a transient blockage, so the site keeps counting it as inbound.
     const request = world.tryGet(e, PathRequest); // fresh read — the yard block above may have cleared it
     if (request?.failed === true && !ownsFailedRoute(world, e)) {
       const stranded = world.tryGet(e, Stranded);
