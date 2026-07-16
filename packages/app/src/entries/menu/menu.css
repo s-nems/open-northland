@@ -48,14 +48,9 @@
 }
 
 .game-menu__brand {
-  color: #f4dfaa;
-  font-size: clamp(32px, 5vw, 58px);
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: 0.035em;
-  text-shadow:
-    0 3px 0 #3a210e,
-    0 0 24px rgba(0, 0, 0, 0.9);
+  height: clamp(72px, 11vh, 128px);
+  width: auto;
+  filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.85));
 }
 
 .game-menu__languages {
@@ -222,7 +217,7 @@
   }
 
   .game-menu__brand {
-    font-size: 31px;
+    height: 56px;
   }
 
   .game-menu__frame {

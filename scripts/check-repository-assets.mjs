@@ -18,8 +18,14 @@ const forbiddenGameExtensions = new Set([
 
 const reviewedBinaryAssets = new Set([
   'docs/images/settlement.webp',
+  'packages/app/public/favicon.png',
   'packages/app/public/fonts/tinos-latin-400.woff2',
   'packages/app/public/fonts/tinos-latinext-400.woff2',
+  // Original OpenNorthland branding (commissioned art, no original-game material): the menu
+  // backdrop + logo, and the emblem as favicon/app icon.
+  'packages/app/src/entries/menu/assets/logo.webp',
+  'packages/app/src/entries/menu/assets/village.webp',
+  'packages/desktop/build/icon.png',
 ]);
 
 const reviewRequiredExtensions = new Set([
