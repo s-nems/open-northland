@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist-types",
+    "rootDir": "./src",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["node"],
+    "emitDeclarationOnly": true
+  },
+  "include": ["src/**/*.ts"],
+  "references": [{ "path": "../content-server" }, { "path": "../../tools/asset-pipeline" }]
+}

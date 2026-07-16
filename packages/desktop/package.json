@@ -1,0 +1,25 @@
+{
+  "name": "@open-northland/desktop",
+  "version": "0.0.0",
+  "private": true,
+  "description": "OpenNorthland desktop shell - packages the web app with a first-run content installer",
+  "license": "GPL-3.0-or-later",
+  "author": "OpenNorthland contributors",
+  "main": "./dist/main.cjs",
+  "scripts": {
+    "build": "tsc --build && node scripts/bundle.mjs",
+    "start": "npm run build && electron .",
+    "dist": "npm run build && electron-builder --config electron-builder.yml",
+    "dist:win": "npm run build && electron-builder --config electron-builder.yml --win"
+  },
+  "dependencies": {
+    "@open-northland/asset-pipeline": "*",
+    "@open-northland/content-server": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "electron": "^43.1.1",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.1"
+  }
+}

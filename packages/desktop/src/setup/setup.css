@@ -1,0 +1,156 @@
+/* First-run installer chrome. Deliberately plain system styling — the original game's parchment
+ * look needs decoded assets, which do not exist yet at this point. */
+:root {
+  color-scheme: dark;
+  --bg: #1d1a15;
+  --card: #2a251d;
+  --text: #e8dfc9;
+  --muted: #a89f88;
+  --accent: #c98f3d;
+  --error: #d96b5b;
+  --ok: #8fb95e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: var(--bg);
+  color: var(--text);
+  font:
+    15px / 1.5 system-ui,
+    sans-serif;
+}
+
+.card {
+  width: min(640px, calc(100vw - 48px));
+  background: var(--card);
+  border: 1px solid #4a4131;
+  border-radius: 10px;
+  padding: 28px 32px;
+}
+
+h1 {
+  margin: 0 0 8px;
+  font-size: 26px;
+  letter-spacing: 0.04em;
+}
+
+.intro,
+.note,
+.legal {
+  color: var(--muted);
+}
+
+.legal {
+  font-size: 12px;
+  margin-bottom: 0;
+}
+
+code {
+  color: var(--text);
+}
+
+.hidden {
+  display: none;
+}
+
+.pick-row {
+  display: flex;
+  gap: 8px;
+}
+
+input[type="text"] {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #4a4131;
+  background: var(--bg);
+  color: var(--text);
+}
+
+button {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid #4a4131;
+  background: #3a3327;
+  color: var(--text);
+  cursor: pointer;
+}
+
+button:hover:enabled {
+  border-color: var(--accent);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+button.primary {
+  margin-top: 16px;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #201808;
+  font-weight: 600;
+}
+
+.detected button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bar {
+  height: 14px;
+  border-radius: 7px;
+  background: var(--bg);
+  border: 1px solid #4a4131;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--accent);
+  transition: width 0.2s ease-out;
+}
+
+.status-row {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+}
+
+.log {
+  height: 132px;
+  overflow: hidden;
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--bg);
+  border: 1px solid #4a4131;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.error {
+  color: var(--error);
+}
+
+.ok {
+  color: var(--ok);
+  font-weight: 600;
+}

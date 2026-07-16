@@ -3,7 +3,11 @@ node_modules/
 
 # Build output
 dist/
+dist-types/
 *.tsbuildinfo
+# electron-builder output + the shell's dev-run config (a dev data root is the repo root)
+packages/desktop/release/
+/desktop-config.json
 
 # Generated intermediate content — DERIVED FROM COPYRIGHTED GAME DATA.
 # Never commit. Each user generates this from their own owned copy via the asset pipeline.
