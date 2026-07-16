@@ -8,8 +8,8 @@ import {
   isSettler,
   num,
   ownerPlayerOf,
-  settlerJobType,
   type SnapshotEntity,
+  settlerJobType,
 } from '../../game/snapshot.js';
 
 /**
