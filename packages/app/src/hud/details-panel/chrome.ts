@@ -66,8 +66,16 @@ export interface Chrome {
    *  the box instead of overflowing it — the seam for long personalized names in the section headline. */
   textCentered(text: string, r: Rect, color: FontColorName, variant?: FontVariant, maxWidth?: number): void;
   /** Left-anchor a line of text at `x`, vertically centred on `centerY` — a left-aligned value that must
-   *  still sit on a field's centre line (the stock amount in its plate). */
-  textLeftMiddle(text: string, x: number, centerY: number, color: FontColorName, variant?: FontVariant): void;
+   *  still sit on a field's centre line (the stock amount in its plate). `maxWidth` shrinks an over-long
+   *  line to fit its column instead of overflowing (a production row's label before its bar). */
+  textLeftMiddle(
+    text: string,
+    x: number,
+    centerY: number,
+    color: FontColorName,
+    variant?: FontVariant,
+    maxWidth?: number,
+  ): void;
   /** Right-align a line of text's end at `rightX` (top at `y`). */
   textRight(text: string, rightX: number, y: number, color: FontColorName, variant?: FontVariant): void;
   /** Tile a `bg*.pcx` bitmap over `r`; false when the bitmap is missing (caller draws a flat fill). */
