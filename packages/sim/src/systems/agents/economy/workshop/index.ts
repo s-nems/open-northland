@@ -45,6 +45,7 @@ export function planProducer(
     recipe,
     false,
     cellGateOf(plan.limit),
+    plan.limit?.bounds,
   );
   if (source !== null) {
     atOrWalk(world, entity, here, interactionCell(world, ctx, terrain, source.store, here), () =>
@@ -79,6 +80,7 @@ export function planWorkshopSupplier(plan: PlannerContext, workplace: Entity, sp
     recipe,
     restockToCapacity,
     cellGateOf(plan.limit),
+    plan.limit?.bounds,
   );
   if (source !== null) {
     const batch = Math.min(source.amount, CARRY_CAPACITY);

@@ -3,6 +3,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { atomicDuration } from '../readviews/animations.js';
+import { cellGateOf, type NavigationLimit } from '../signposts/index.js';
 import { isFood } from '../stores/index.js';
 import {
   atOrWalk,
@@ -71,7 +72,12 @@ export function planNeeds(
   here: NodeId,
   load: { goodType: number; amount: number } | undefined,
   targets: TargetCandidates,
+  /** The settler's signpost confinement, or null when unlimited — a hungry/devout settler only seeks a
+   *  satisfier inside its allowed area (an unsatisfiable need falls through to work as ever). */
+  limit: NavigationLimit | null,
 ): boolean {
+  const gate = cellGateOf(limit);
+  const gateBounds = limit?.bounds;
   if (settler.hunger >= HUNGER_EAT_THRESHOLD) {
     if (load !== undefined && load.amount > 0 && isFood(ctx, load.goodType)) {
       // Carrying food: eat a unit on the spot (consumed from the carried load).
@@ -88,7 +94,7 @@ export function planNeeds(
     // Find the NEAREST food of any kind — a stocked/produced larder or a wild berry bush (the fallback
     // when no larder is near). The eat animation (id 10) is shared; only the completion EFFECT differs
     // (consume a stored unit vs forage a bush), so the walk-or-act tail is identical for both.
-    const food = nearestFood(targets, world, ctx, terrain, here);
+    const food = nearestFood(targets, world, ctx, terrain, here, gate, gateBounds);
     if (food !== null) {
       const target = food.kind === 'store' ? food.store : food.bush;
       const effect =
@@ -117,7 +123,7 @@ export function planNeeds(
   }
 
   if (settler.piety >= PIETY_PRAY_THRESHOLD) {
-    const temple = nearestTemple(targets.buildingCells, world, ctx, here);
+    const temple = nearestTemple(targets.buildingCells, world, ctx, here, gate, gateBounds);
     if (temple !== null) {
       atOrWalk(world, e, here, interactionCell(world, ctx, terrain, temple, here), () =>
         startAtomic(

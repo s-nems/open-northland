@@ -5,6 +5,7 @@ import type { Entity, World } from '../../../../ecs/world.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
 import { startableCycleCount } from '../../../economy/production.js';
+import type { NodeBox } from '../../../signposts/index.js';
 import { stockCapacity } from '../../../stores/index.js';
 import type { InteractionCellIndex } from '../../targets/index.js';
 import type { SinkAvailability } from '../../targets/stores/sinks.js';
@@ -68,6 +69,7 @@ export function nearestMissingInputSource(
   recipe: Recipe,
   restockToCapacity = false,
   cellGate?: (cell: NodeId) => boolean,
+  gateBounds?: NodeBox,
 ): { store: Entity; goodType: number; amount: number } | null {
   const stock = world.get(workplace, Stockpile).amounts;
   for (const input of recipe.inputs) {
@@ -81,6 +83,7 @@ export function nearestMissingInputSource(
       here,
       (e) => e !== workplace && (world.get(e, Stockpile).amounts.get(input.goodType) ?? 0) > 0,
       cellGate,
+      gateBounds,
     );
     if (winner !== null) return { store: winner.entity, goodType: input.goodType, amount: target - have };
   }

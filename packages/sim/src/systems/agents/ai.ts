@@ -173,8 +173,12 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     const here = terrain.nodeAtClamped(hereNode.hx, hereNode.hy);
     const load = routeLoad;
 
+    // The settler's signpost confinement (or null when unlimited) — computed once, shared by the needs
+    // drives here and the economy PlannerContext below.
+    const limit = navigationLimitFor(world, terrain, e);
+
     // NEEDS (highest priority): eat > sleep > pray. An unsatisfiable need falls through to work.
-    if (planNeeds(world, ctx, terrain, e, settler, here, load, targets)) continue;
+    if (planNeeds(world, ctx, terrain, e, settler, here, load, targets, limit)) continue;
 
     // Combat / hold gates — a unit that combat or the player currently owns skips economy planning. All
     // four sit below the needs drives on purpose (soft overrides — hunger/fatigue/piety still pull the
@@ -209,7 +213,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
       here,
       targets,
       inbound,
-      limit: navigationLimitFor(world, terrain, e),
+      limit,
     };
 
     // 1. CARRYING — deliver first (a settler must free its hands before any empty-handed work).

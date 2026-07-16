@@ -69,7 +69,11 @@ export const economyContent = {
     // The scout (job 27 — `JOB_TYPE_HUMAN_SCOUT`) is permitted only the build-guide atomic (43), the
     // signpost-erecting swing — mirrors the original's `allowatomic 43`.
     { typeId: 27, id: 'scout', allowedAtomics: [43] },
+    // NOTE: 36 predates the pinned soldier band (31..41, stances.ts) — a fixture carrier at 36 is
+    // fighter-classified (collision, stance, confinement exemption). Kept because the goldens hash it;
+    // 24 is the original's real carrier id (`logicworker 24`) — use it where fighter semantics matter.
     { typeId: 36, id: 'carrier' },
+    { typeId: 24, id: 'carrier' },
   ],
   buildings: [
     {

@@ -5,6 +5,7 @@ import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { settlerMeetsNeed } from '../../progression/index.js';
 import { resourceHarvestAtomics, resourcesNearNode } from '../../resource-index.js';
+import type { NodeBox } from '../../signposts/index.js';
 import { manhattan } from '../../spatial.js';
 import { lowestStockedGood } from '../../stores/index.js';
 import { nearestByCell } from './cell-index.js';
@@ -49,6 +50,10 @@ export function nearestHarvestableFor(
   settler: { jobType: number; tribe: number; experience: ReadonlyMap<number, number> },
   area?: { center: NodeId; radius: number; goodType?: number },
   cellGate?: (cell: NodeId) => boolean,
+  /** The confinement's scan bound ({@link NavigationLimit.bounds}): a roaming scan under a gate reads only
+   *  the resources near the allowed box instead of the full canonical list — every gate-passing work cell
+   *  provably lies inside the box (+ work-offset slack), so the winner is identical to the full scan. */
+  gateBounds?: NodeBox,
 ): { entity: Entity; cell: NodeId; dist: number } | null {
   const allowed = jobAtomics(ctx, settler.jobType);
   // Dormancy gate: if the job's allowed atomics intersect no harvest atomic present on any standing resource,
@@ -76,15 +81,28 @@ export function nearestHarvestableFor(
   // provably included (`resourcesNearNode`). Same filter/rank loop over an ascending-id superset ⇒ the
   // identical winner as the full scan, at O(nearby) instead of O(all resources) per gatherer per tick (a
   // decoded map holds ~17k standing nodes). A roaming (unbound) scan keeps the full canonical list.
-  const scanned =
-    area !== undefined
-      ? resourcesNearNode(
-          world,
-          terrain.coordsOf(origin).x,
-          terrain.coordsOf(origin).y,
-          area.radius + contentIndex(ctx.content).maxResourceWorkOffset,
-        )
-      : candidates;
+  let scanned = candidates;
+  if (area !== undefined) {
+    scanned = resourcesNearNode(
+      world,
+      terrain.coordsOf(origin).x,
+      terrain.coordsOf(origin).y,
+      area.radius + contentIndex(ctx.content).maxResourceWorkOffset,
+    );
+  } else if (gateBounds !== undefined) {
+    // A confined roaming scan: the region box centred on the allowed area covers every anchor whose work
+    // cell (≤ maxResourceWorkOffset off the anchor) could pass the gate — the same provable-superset
+    // argument as the flag path, so the filter/rank loop below picks the identical winner at O(nearby).
+    const cx = Math.floor((gateBounds.minX + gateBounds.maxX) / 2);
+    const cy = Math.floor((gateBounds.minY + gateBounds.maxY) / 2);
+    const half = Math.max(
+      cx - gateBounds.minX,
+      gateBounds.maxX - cx,
+      cy - gateBounds.minY,
+      gateBounds.maxY - cy,
+    );
+    scanned = resourcesNearNode(world, cx, cy, half + contentIndex(ctx.content).maxResourceWorkOffset);
+  }
   // Ranked from `origin` (the flag when bound, the settler when roaming); the interaction cell still resolves
   // from `here`, the settler's actual route start. Same filter/rank the shared loop applies to every scan.
   const best = nearestByCell(terrain, scanned, origin, (e) => {
@@ -168,12 +186,14 @@ export function nearestOwnDropFor(
   terrain: TerrainGraph,
   here: NodeId,
   owner: Entity,
+  cellGate?: (cell: NodeId) => boolean,
 ): { pile: Entity; goodType: number; dist: number } | null {
   const best = nearestByCell(terrain, candidates, here, (e) => {
     const mark = world.tryGet(e, HarvestedBy);
     if (mark === undefined || mark.by !== owner) return null; // not this gatherer's own drop — leave it be
     if (lowestStockedGood(world.get(e, Stockpile)) === null) return null; // emptied (about to be reaped)
-    return interactionCell(world, ctx, terrain, e, here);
+    const cell = interactionCell(world, ctx, terrain, e, here);
+    return cellGate === undefined || cellGate(cell) ? cell : null; // signpost confinement
   });
   if (best === null) return null;
   const good = lowestStockedGood(world.get(best.entity, Stockpile)); // the winner's good (accept required one)

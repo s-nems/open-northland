@@ -25,9 +25,9 @@ export const BERRY_REGROW_TICKS = 1200;
  * no nearby larder still reaches a berry patch, but bounded so a lone bush across the map doesn't drag a
  * starving settler on a suicidal march.
  *
- * Named approximation / known limitation: a flat radius is the interim rule until the planned signpost system
- * routes settlers to distant food; the original's actual food-search extent is not decoded. Store food is
- * sought unbounded (the eat drive's primary path); only the wild-bush fallback is capped here. Larger than
+ * Named approximation: the original's actual food-search extent is not decoded — this flat radius caps only
+ * the wild-bush fallback (store food rides the eat drive's primary path). With signpost navigation on, the
+ * settler's `NavigationLimit` additionally gates both paths to its allowed area. Larger than
  * {@link DEFAULT_WORK_FLAG_RADIUS} (24) because foraging ranges wider than a bound gatherer's yard.
  */
 export const BERRY_FORAGE_RADIUS = 64;
