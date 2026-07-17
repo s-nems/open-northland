@@ -3,10 +3,9 @@ import { loadLayer } from './ir.js';
 import { fetchImageData, fetchJsonOrNull, loadTextureIfPresent } from './net.js';
 
 /**
- * GUI (in-game HUD) content bindings — the loadable seam for the pipeline's `gui` stage outputs. It makes
- * the decoded GUI art/palettes/strings/cursors reachable for the HUD slice; no HUD is rendered yet. A
- * checkout without `content/` degrades gracefully: a missing manifest/strings return `null`, a missing
- * atlas throws `MissingAtlasError` via {@link loadLayer}.
+ * GUI (in-game HUD) content bindings — the loadable seam for the pipeline's `gui` stage outputs: the
+ * decoded GUI art, palettes, strings and cursors. A checkout without `content/` degrades gracefully: a
+ * missing manifest/strings return `null`, a missing atlas throws `MissingAtlasError` via {@link loadLayer}.
  *
  * Where each output lives (matching the pipeline stage + `vite.config.ts` routes):
  *  - **Atlases + palette LUT** ride the `/bobs/` route (they are bob atlases): the recolourable indexed
@@ -89,11 +88,10 @@ export function loadGuiPaletteLut(): Promise<TextureSource | undefined> {
 /**
  * The decoded level→colour ramp of the original `bar_hitpoints.pcx` palette, as 256 packed `0xRRGGBB`
  * entries: red `#ff0000` at index 0 (empty) → orange → yellow-green `#d4ff4b` at 255 (full), the decoded
- * evidence that a bar's colour follows its level. The exact original draw behavior is not established,
- * so the panel's reading (fill
- * colour = `ramp[level]`, one colour per bar) is a named approximation. Every stat gauge uses this ramp
- * (user decision 2026-07-11): the sibling `bar_standart` ramp stays green until ~15%, so a draining need
- * showed no colour change, while this one walks green→orange→red across the range.
+ * evidence that a bar's colour follows its level. The exact original draw behavior is not established, so
+ * the panel's reading (fill colour = `ramp[level]`, one colour per bar) is a named approximation. Every
+ * stat gauge uses this ramp rather than the sibling `bar_standart`, which stays green until ~15% and so
+ * showed no colour change on a draining need.
  */
 export type GuiBarRamp = readonly number[];
 

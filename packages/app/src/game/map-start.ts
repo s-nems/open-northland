@@ -12,12 +12,11 @@ import { isBuilding, isSettler, ownerPlayerOf, positionOf, type SnapshotEntity }
  *   3. any placed settler/building — a foreign-owned-only map (nothing is ours to prefer);
  *   4. the map centre — a plain imported map with no authored entities at all.
  *
- * Settlers are preferred over buildings before falling back because a scenario scatters its objective and
- * enemy buildings across the whole map (e.g. tutorial_003 places a farm cluster far from the player's HQ),
- * which would drag a buildings-only centroid off the actual start; the human player's own settlers cluster
- * at the start.
+ * Settlers rank above buildings because a scenario scatters objective and enemy buildings across the whole
+ * map (tutorial_003 places a farm cluster far from the player's HQ), dragging a buildings-only centroid off
+ * the actual start.
  *
- * NAMED APPROXIMATION (golden rule #5): the original authors an explicit start point —
+ * Named approximation (golden rule #5): the original authors an explicit start point —
  * `misc.inc` `[misc_startpositions]` `startposition <slot> <x> <y>`, slot 0 = the human — but only ~8 of
  * the 125 maps ship it (magiczny_las, and most single-player maps, comment the section out), so it is not
  * extracted. The HUMAN_PLAYER settler centroid stands in and matches it wherever it exists: on every
@@ -25,14 +24,13 @@ import { isBuilding, isSettler, ownerPlayerOf, positionOf, type SnapshotEntity }
  * (`sethuman <player> …`), so filtering to `HUMAN_PLAYER` (= `sethuman` player 0) leaves just the human's
  * own cluster, which sits on `startposition 0` (verified on Battle_for_the_Four_Hills et al). Extracting
  * `startposition 0` and preferring it would be a faithful refinement, but buys nothing over the centroid
- * on the current corpus. Source basis: authored `sethuman` placements (player 0 = the human player =
- * {@link HUMAN_PLAYER}).
+ * on the current corpus.
  *
  * Harvestable map resources carry no Settler/Building marker, so they never pull the focus. Positions are
  * fixed-point visual-tile coords — the same `fx.toFloat` the renderer divides by to project a bob (see
- * `render`'s `sprite-scene.ts`), so the focus lands on the drawn anchor. This is the map entry's
- * base-seeking framing, deliberately not unified with `view/camera.ts` `cameraFor`'s inspection-zoom
- * policy — the inputs differ (snapshot entities vs projected draw items).
+ * `render`'s `sprite-scene.ts`), so the focus lands on the drawn anchor. Deliberately not unified with
+ * `view/camera.ts` `cameraFor`'s inspection-zoom policy: the inputs differ (snapshot entities vs projected
+ * draw items).
  */
 export function mapStartFocus(
   snapshot: WorldSnapshot,

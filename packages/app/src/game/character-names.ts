@@ -4,8 +4,7 @@ import { FALLBACK_POOL, NAME_POOLS } from './character-names/pools.js';
 /**
  * Per-settler personal names, shown in the details panel in place of the generic "Ogólne" section title.
  * A name is a first name plus a patronymic surname — "Bjørn Ulfsson", "Astrid Sveinsdóttir" — over the
- * first-name × father-name cross product, and is family-ready: the surname resolves through one seam
- * ({@link characterName}'s `surnameFromEntityId`) for a future marriage/lineage system.
+ * first-name × father-name cross product.
  *
  * These names are cosmetic and derived, not sim state: a settler's name is a pure function of its tribe,
  * sex and stable entity id, so nothing here touches the deterministic sim or its golden hashes.
@@ -47,10 +46,10 @@ function coprimeMultiplier(m: number): number {
 }
 
 /**
- * Map a stable id onto an (first, root) cell of the `firstCount × rootCount` name grid. The coprime
- * scatter (above) makes this a bijection over the grid, so distinct ids give distinct name pairs up to the
- * full `firstCount × rootCount` before any repeat, while consecutive ids still land far apart. A degenerate
- * empty pool (`m === 0`) has no cell to pick, so return the zero cell instead of dividing by zero.
+ * Map a stable id onto a (first, root) cell of the `firstCount × rootCount` name grid. The coprime scatter
+ * makes this a bijection, so distinct ids give distinct name pairs up to the full grid before any repeat.
+ * A degenerate empty pool (`m === 0`) has no cell to pick, so return the zero cell instead of dividing by
+ * zero.
  */
 function nameGridCell(id: number, firstCount: number, rootCount: number): { first: number; root: number } {
   const m = firstCount * rootCount;
@@ -72,20 +71,17 @@ export function settlerSex(jobType: number | null | undefined, young: boolean): 
 }
 
 /**
- * The personal name shown for a settler — a faction- and sex-appropriate first name plus a surname
- * ("Bjørn Ulfsson", "Astrid Sveinsdóttir"), stable per entity and derived purely from ids (nothing here
- * touches sim state). Both parts come from a coprime grid permutation of the stable entity id, so distinct
- * settlers get distinct names up to the full first × father grid, and settlers spawned with clustered ids
- * still get well-spread names rather than a shared surname.
+ * The personal name shown for a settler: a faction- and sex-appropriate first name plus a surname, both
+ * picked from a {@link nameGridCell} permutation of the stable entity id.
  *
  * Family seam — `surnameFromEntityId`: with no sim marriage/lineage system yet, every settler carries their
  * own patronymic (a woman's ends `-sdóttir`, a man's `-sson`). When such a system exists, pass the husband's
  * (for a wife) or father's (for a child) entity id here: the settler then inherits that person's surname
  * verbatim — the male `-sson` patronymic of the same father-name — so a whole household shares one surname.
  *
- * Precondition: `surnameFromEntityId` must be a male entity (a husband/father). The inherited surname
- * equals that entity's own displayed surname only because both resolve on the male grid, which holds only
- * for a male owner — patronymic inheritance always flows from the father, so that is the correct contract.
+ * Precondition: `surnameFromEntityId` must be a male entity (a husband/father). The inherited surname equals
+ * that owner's own displayed surname only because both resolve on the male grid, which holds for a male
+ * owner alone.
  */
 export function characterName(
   tribe: number,
@@ -103,10 +99,8 @@ export function characterName(
   const fatherNames = pool.male; // a surname is a patronymic of a (male) father's given name
   const first = firstNames[nameGridCell(entityId, firstNames.length, fatherNames.length).first] as string;
 
-  // The surname: inherited from a husband/father when the family seam supplies one, else the settler's own.
-  // An inherited surname is always the male `-sson` form of that person's father-name; an own surname takes
-  // the settler's sex. The father-name is picked on the male grid so a man and every relative resolving to
-  // his id land on the same root.
+  // The father-name is picked on the male grid so a man and every relative resolving to his id land on the
+  // same root.
   const inherited = surnameFromEntityId !== undefined;
   const surnameOwnerId = surnameFromEntityId ?? entityId;
   const rootGridWidth = inherited ? fatherNames.length : firstNames.length;

@@ -1,9 +1,9 @@
 /**
- * The committed catalog of harvest atomic ids — the original's `atomicForHarvesting` for each raw good,
- * transcribed from the extracted data (the collector job runs one per good). These are the semantic action
- * ids the sim issues and the render/audio layers bind clips/SFX to, so they live in `catalog/` where both
- * the game content (`game/sandbox/`) and the binding reducers (`content/settler-gfx.ts`) can read them
- * without either owning the other's vocabulary. Each id binds to that good's own authored work clip
+ * The committed catalog of atomic action ids, transcribed from the extracted data — the harvest ids are the
+ * original's `atomicForHarvesting` per raw good (the collector job runs one per good). These are the semantic
+ * ids the sim issues and the render/audio layers bind clips/SFX to, so they live in `catalog/` where the game
+ * content (`game/sandbox/`) and the binding reducers (`content/settler-gfx.ts`) can both read them without
+ * either owning the other's vocabulary. Each harvest id binds to that good's own authored work clip
  * (stone/iron/gold → the shared mining strike, clay → shovel-dig, mushroom → pluck), not the shared woodcut
  * swing (source basis; see `content/settler-gfx.ts`).
  */
@@ -29,36 +29,27 @@ export const CULTIVATE_ATOMIC = 35;
  * The store-exchange pair every trade shares (`tribetypes.ini setatomic <job> 22/23
  * "viking_<class>_pickup"/"_pileup"`; the sim's `PICKUP/PILEUP_ATOMIC_ID`,
  * `packages/sim/src/systems/agents/actions.ts`): lift a load (22) and pile it into a store (23).
- * Shared vocabulary like the harvest ids — the sandbox content binds the clips, the settler binding
- * keys the body animations, and the render times the walk-into-the-store hide off the same pair —
- * so the ids live here, owned by neither consumer.
  */
 export const STORE_PICKUP_ATOMIC = 22;
 export const STORE_PILEUP_ATOMIC = 23;
 
 /**
  * The combat attack swing (`setatomic <job> 81 "..._attack"`; the sim's `ATTACK_ATOMIC_ID`,
- * `packages/sim/src/systems/conflict/weapons.ts`). Shared vocabulary like the harvest ids: the settler
- * binding uses it as a `byAtomic` key, and the sheet loader filters the `[gfxanimatomic]` table for this
- * action — so it lives here, owned by neither. Its animation is the directional `FrameListAnim` layout,
+ * `packages/sim/src/systems/conflict/weapons.ts`). Its animation is the directional `FrameListAnim` layout,
  * not a bobseq range (a melee pool is not `length / 8`); see `content/settler-gfx.ts`.
  */
 export const ATTACK_ATOMIC = 81;
 
 /**
- * The build-house swing (`setatomic <job> 39 "..._builder_build_house"`; the sim's `BUILD_HOUSE_ATOMIC_ID`,
- * `packages/sim/src/systems/agents/actions.ts`). Shared vocabulary like the harvest ids: the render binds it
- * to the builder's hammer clip (`byAtomic`) and the audio binds it to the hammer SFX per swing — so it lives
- * here, owned by neither. Transcribed from `tribetypes.ini` (`setatomic 7 39`); the viking swing animation
- * (`viking_builder_build_house`) is 15 frames long (`atomicanimations.ini`, extracted).
+ * The build-house swing (`tribetypes.ini setatomic 7 39 "viking_builder_build_house"`; the sim's
+ * `BUILD_HOUSE_ATOMIC_ID`, `packages/sim/src/systems/agents/actions.ts`). Its swing animation is 15 frames
+ * long (`atomicanimations.ini`, extracted).
  */
 export const BUILD_HOUSE_ATOMIC = 39;
 
 /**
- * The wedding pair (`logicdefines.inc` KISS 20 / KISSED 21, sim `systems/family/weddings.ts`). Shared
- * vocabulary like the harvest ids: the sandbox tribes bind the clips and the settler binding keys the
- * body animations off the same pair. Each body authors ONE kiss clip (`human_*_generic_kiss`), so both
- * roles bind the same sequence.
+ * The wedding pair (`logicdefines.inc` KISS 20 / KISSED 21, sim `systems/family/weddings.ts`). Each body
+ * authors one kiss clip (`human_*_generic_kiss`), so both roles bind the same sequence.
  */
 export const KISS_ATOMIC = 20;
 export const KISSED_ATOMIC = 21;

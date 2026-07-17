@@ -6,9 +6,8 @@
  * before it reaches the sim. The sim never navigates the detailed landscape types — always these five
  * classes.
  *
- * The ids sit in a reserved high band ({@link TERRAIN_CLASS_BASE}) disjoint from any content set's
- * detailed landscape typeIds; `content/real-content.ts` `mergeRealContent` injects
- * {@link NAV_LANDSCAPE_TYPES} so a real-content sim resolves them through its `landscape` table too.
+ * `content/real-content.ts` `mergeRealContent` injects {@link NAV_LANDSCAPE_TYPES} so a real-content sim
+ * resolves these classes through its `landscape` table too.
  */
 
 /** The base of the reserved class-id band. Above every real landscape typeId (`landscapetypes.ini`
@@ -52,12 +51,9 @@ export interface NavLandscapeType {
  * looked up by `typeId`.
  */
 export const NAV_LANDSCAPE_TYPES: readonly NavLandscapeType[] = [
-  // Grass is the one plantable class — the original's `biocanplanton` ground flag
-  // (trianglepatterntypes.cif) belongs to `land` alone, so grain fields land here and nowhere else.
   { typeId: TERRAIN_OPEN, id: 'grass', walkable: true, buildable: true, plantable: true },
   { typeId: TERRAIN_IMPASSABLE, id: 'water', walkable: false, buildable: false },
   { typeId: TERRAIN_BLOCKED, id: 'landscape_body', walkable: false, buildable: false },
   { typeId: TERRAIN_MARGIN, id: 'landscape_margin', walkable: true, buildable: false },
-  // Sand/beach/desert stone: open for walking and building, closed to the plough (no `biocanplanton`).
   { typeId: TERRAIN_BARREN, id: 'barren', walkable: true, buildable: true },
 ];
