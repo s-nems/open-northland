@@ -1,7 +1,7 @@
 import type { ContentSet } from '@open-northland/data';
 import type { LoggedCommand } from '../core/command-queue.js';
 import type { TerrainMap } from '../nav/terrain/index.js';
-import { Simulation } from '../simulation.js';
+import { type SimInputs, type Simulation, simFor } from '../simulation.js';
 
 /**
  * Deterministic replay — the headless core of the "time-travel / replay inspector" DX win.
@@ -43,21 +43,6 @@ export interface ReplayOptions {
 export type RunReplay = Omit<ReplayOptions, 'untilTick'>;
 
 /** What building a sim actually needs: the seeded content, plus a terrain map when the run has one. */
-export interface SimInputs {
-  readonly content: ContentSet;
-  readonly seed: number;
-  readonly map?: TerrainMap | undefined;
-}
-
-/**
- * Build the fresh `Simulation` a run starts from — the one place that knows `map` must be OMITTED
- * rather than set to `undefined` under `exactOptionalPropertyTypes` (tsconfig.base.json), since the
- * Simulation builds its terrain graph iff the key is present. Callers may pass `map: undefined`.
- */
-export function simFor({ content, seed, map }: SimInputs): Simulation {
-  return new Simulation({ seed, content, ...(map !== undefined ? { map } : {}) });
-}
-
 /**
  * Rebuild a `Simulation` to the state it held at the end of `untilTick` by replaying `log` from tick
  * 1. Each logged command is enqueued just before its recorded apply tick's `step()` so CommandSystem

@@ -21,6 +21,9 @@ import type { NodeId } from './types.js';
  * 4·HALF_ROW, and a diagonal-plus-backtrack substitute for one E step costs DIAGONAL_STEP +
  * 2·HALF_ROW > HALF_COLUMN. So on unit-cost terrain the heuristic equals the true open-terrain graph
  * distance (admissible and consistent); obstacles only raise the true cost, so A* stays optimal.
+ *
+ * The readable two-node form. A* itself calls {@link latticeDistanceTo}, which hoists the goal's
+ * coordinates out of the loop; this wrapper is what the metric's tests and diagnostics read.
  */
 export function nodeLatticeDistance(g: TerrainGraph, a: NodeId, b: NodeId): Fixed {
   return latticeDistanceTo(g, g.xOf(b), g.yOf(b), a);

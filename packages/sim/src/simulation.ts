@@ -1,5 +1,5 @@
 import type { ContentSet } from '@open-northland/data';
-import type { FogMode } from './components/index.js';
+import { type FogMode, fogMode, needsEnabled } from './components/index.js';
 import { CommandQueue } from './core/command-queue.js';
 import type { Command } from './core/commands/index.js';
 import { EventBuffer } from './core/events.js';
@@ -9,19 +9,15 @@ import { checkInvariants as _checkInvariants, type Invariant as _Invariant } fro
 import { takeSnapshot, type WorldSnapshot } from './inspect/snapshot.js';
 import { buildTerrainGraph, type TerrainGraph, type TerrainMap } from './nav/terrain/index.js';
 import { hashSimState } from './simulation/hash.js';
-import {
-  constructionSitePlots,
-  type FogView,
-  fogMode,
-  fogViewFor,
-  needsEnabled,
-  placementBlockerVersion,
-  placementProbeFor,
-  signpostProbeFor,
-  workFlagBlockerVersion,
-} from './simulation/read-seams.js';
+import { type FogView, fogViewFor, placementProbeFor, signpostProbeFor } from './simulation/read-seams.js';
 import type { SystemContext } from './systems/context.js';
-import type { ConstructionPlot, PlacementProbe } from './systems/footprint/index.js';
+import {
+  type ConstructionPlot,
+  constructionSitePlots,
+  type PlacementProbe,
+  placementBlockerVersion,
+  workFlagBlockerVersion,
+} from './systems/footprint/index.js';
 import { SYSTEM_ORDER } from './systems/schedule.js';
 import type { SignpostProbe } from './systems/signposts/index.js';
 import { FogState } from './systems/vision/index.js';
@@ -279,4 +275,20 @@ export class Simulation {
   hashState(): string {
     return hashSimState(this.world, this.currentTick, this.rng.getState(), this.fog);
   }
+}
+
+/** The inputs a fresh run starts from — what {@link simFor} needs to build a {@link Simulation}. */
+export interface SimInputs {
+  readonly content: ContentSet;
+  readonly seed: number;
+  readonly map?: TerrainMap | undefined;
+}
+
+/**
+ * Build the fresh {@link Simulation} a run starts from — the one place that knows `map` must be OMITTED
+ * rather than set to `undefined` under `exactOptionalPropertyTypes` (tsconfig.base.json), since the
+ * Simulation builds its terrain graph iff the key is present. Callers may pass `map: undefined`.
+ */
+export function simFor({ content, seed, map }: SimInputs): Simulation {
+  return new Simulation({ seed, content, ...(map !== undefined ? { map } : {}) });
 }

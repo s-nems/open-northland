@@ -1,5 +1,6 @@
 import type { WorldSnapshot } from '../inspect/snapshot.js';
-import { type RunReplay, simFor, stepReplaying } from './replay.js';
+import { simFor } from '../simulation.js';
+import { type RunReplay, stepReplaying } from './replay.js';
 
 /**
  * `scrubWindow` — the **single-run "free scrubbing"** composition of the time-travel / replay

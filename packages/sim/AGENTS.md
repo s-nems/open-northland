@@ -82,6 +82,8 @@ hygiene scan fails the build otherwise.
 - **`ecs/world.ts`** — the `World`: entities, queries, `canonicalEntities()`, `verifyCaches()`.
 - **`components/`** — the component keys (`defineComponent`; the entity→value stores live on the `World`):
   `settler.ts`, `movement.ts`, `combat.ts`, `equipment.ts`, `ownership.ts`, `rules.ts`, `economy/`.
+  `rules.ts` is the exception to "keys only": each world-rule singleton owns its own reader + writer
+  (`fogMode`/`setFogMode`, …), so a rule's read and write stay one edit apart.
 - **`systems/`** — the per-tick systems, grouped by concern: `agents/` (AI, the atomic planner,
   effects), `economy/` (jobs, production, construction, farming, berries, flags), `conflict/`,
   `lifecycle/`, `movement/`, `orders/`, `command/` (command application + placement), `vision/`,

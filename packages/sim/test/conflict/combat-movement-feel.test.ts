@@ -14,7 +14,7 @@ import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, fx, Simulation } from '../../src/index.js';
 import { nodeOfPosition, positionOfNode } from '../../src/nav/halfcell.js';
 import { moveUnit } from '../../src/systems/orders/index.js';
-import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
+import { MILITARY_MODE, type MilitaryMode } from '../../src/systems/readviews/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
@@ -51,7 +51,7 @@ function fighterAt(
   x: number,
   y: number,
   owner: number,
-  mode: number = MILITARY_MODE.ATTACK,
+  mode: MilitaryMode = MILITARY_MODE.ATTACK,
 ): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });

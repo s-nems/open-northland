@@ -26,9 +26,12 @@ export const MILITARY_MODE = {
   FLEE: 4,
 } as const;
 
+/** One of the five data-pinned {@link MILITARY_MODE} ids. */
+export type MilitaryMode = (typeof MILITARY_MODE)[keyof typeof MILITARY_MODE];
+
 /** Whether `mode` is one of the five data-pinned {@link MILITARY_MODE} ids — the validity gate the
  *  `setStance` command uses to reject a bad mode (a recoverable bad input, skipped-but-logged). */
-export function isMilitaryMode(mode: number): boolean {
+export function isMilitaryMode(mode: number): mode is MilitaryMode {
   return (
     mode === MILITARY_MODE.NONE ||
     mode === MILITARY_MODE.ATTACK ||
@@ -93,7 +96,7 @@ export function isFighterJob(jobType: number | null): boolean {
  * whole table is a calibration-pending default (source basis "Combat stance defaults"). A total function of the
  * integer job id (`HUNTER_JOB` pinned in `tribes/relations.ts`, imported to keep the single hunter-id source).
  */
-export function defaultStanceForJob(jobType: number | null): number {
+export function defaultStanceForJob(jobType: number | null): MilitaryMode {
   if (jobType === null) return MILITARY_MODE.FLEE; // a jobless settler / child is a civilian → flee
   if (isFighterJob(jobType)) return MILITARY_MODE.ATTACK; // soldiers + heroes engage on sight
   if (jobType === SCOUT_JOB) return MILITARY_MODE.IGNORE; // the scout explores, never picks fights

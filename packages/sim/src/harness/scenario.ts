@@ -1,8 +1,8 @@
 import type { ContentSet } from '@open-northland/data';
 import type { Command } from '../core/commands/index.js';
 import type { TerrainMap } from '../nav/terrain/index.js';
-import { simFor } from '../replay/replay.js';
-import type { Simulation } from '../simulation.js';
+
+import { type Simulation, simFor } from '../simulation.js';
 import { CORE_INVARIANTS, checkInvariants, type Invariant } from './invariants.js';
 
 /**

@@ -80,7 +80,6 @@ export class TerrainGraph {
    *  {@link steps}. See {@link componentOf}. */
   private readonly components: Int32Array;
   /** The fill target backing the allocating {@link steps}; its contents never outlive that call. */
-  private readonly stepScratch = new StepBuffer();
 
   constructor(width: number, height: number, typeIds: Int32Array, props: ReadonlyMap<number, NodeTypeProps>) {
     if (width <= 0 || height <= 0) throw new Error(`terrain dimensions must be positive: ${width}x${height}`);
@@ -231,12 +230,16 @@ export class TerrainGraph {
    * omitted, and a diagonal additionally needs at least one of its two midpoint flanks passable (both
    * blocked = a wall joint, not a gap). The emission order is pinned by the pathfinding goldens and
    * must not be reordered.
+   *
+   * The allocating form, kept for the tests and diagnostics that read an edge set as a value; every
+   * hot caller uses {@link stepsInto} instead.
    */
   steps(node: NodeId, blocked?: BlockOverlay): Step[] {
-    this.stepsInto(node, blocked, this.stepScratch);
+    const buf = new StepBuffer();
+    this.stepsInto(node, blocked, buf);
     const out: Step[] = [];
-    for (let i = 0; i < this.stepScratch.length; i++) {
-      const step = this.stepScratch.at(i);
+    for (let i = 0; i < buf.length; i++) {
+      const step = buf.at(i);
       out.push({ node: step.node, cost: step.cost });
     }
     return out;
