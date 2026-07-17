@@ -254,6 +254,7 @@ describe('footprint displacement — settlers never end up standing inside walls
           homeSize: 1,
           construction: [{ goodType: STONE, amount: 1 }],
           footprint: { blocked: [{ dx: 0, dy: 0 }] },
+          upgradeTarget: HOME_L,
         },
         {
           typeId: HOME_L,
@@ -274,8 +275,13 @@ describe('footprint displacement — settlers never end up standing inside walls
     const home = sim.world.create();
     sim.world.add(home, Position, positionOfNode(5, 5));
     sim.world.add(home, Building, { buildingType: HOME_S, tribe: VIKING, built: ONE, level: 0 });
-    sim.world.add(home, Stockpile, { amounts: new Map<number, number>([[STONE, 1]]) }); // next tier paid
+    sim.world.add(home, Stockpile, { amounts: new Map<number, number>() });
     const beside = settlerAtNode(sim, 6, 5, PLAYER); // legal today, enclosed by HOME_L's body
+    sim.enqueue({ kind: 'upgradeBuilding', building: home });
+    sim.step(); // opens the upgrade site (the small body doesn't reach (6,5) — the settler stays)
+    // Deliver the difference and hammer the site out by hand; the finish adopts the larger tier.
+    sim.world.get(home, Stockpile).amounts.set(STONE, 1);
+    sim.world.get(home, UnderConstruction).labor = ONE;
     constructionSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(home, Building).buildingType).toBe(HOME_L); // upgraded
     expect(nodeOf(sim, beside)).not.toEqual({ x: 6, y: 5 }); // and the settler stepped aside

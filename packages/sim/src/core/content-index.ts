@@ -23,6 +23,7 @@ import { constructionBills } from './content-index/construction.js';
 import {
   mergedRecipes,
   recipeProductTables,
+  stockSlotCapacityTables,
   storedGoodSets,
   workerJobSets,
 } from './content-index/production.js';
@@ -84,6 +85,13 @@ export interface ContentIndex {
    *  forage for. Absent for a type declaring no stock slots. */
   readonly storedGoodsByBuilding: ReadonlyMap<number, ReadonlySet<number>>;
   /**
+   * Per building type: `goodType → its stock slot capacity` (first-wins per good, matching `.find`
+   * over the slot list). The per-good ceiling `stockCapacity` reads — memoized because a warehouse
+   * declares a slot per catalog good (~50) and the planner's sink scans probe the ceiling thousands of
+   * times per tick; a linear `.find` there was a measured hot spot. Absent for a slot-less type.
+   */
+  readonly stockSlotCapacityByBuilding: ReadonlyMap<number, ReadonlyMap<number, number>>;
+  /**
    * Per producing building type: `product goodType → its recipe` (the recipe whose first output is
    * that good; first-wins on a duplicate product). The ProductionSystem's cycle-start/deposit lookup.
    */
@@ -129,14 +137,16 @@ export interface ContentIndex {
   readonly harvestJobs: ReadonlySet<number>;
   /**
    * Per building type: the FROM-SCRATCH construction bill — what a newly-placed site of this type must
-   * be delivered and hammer in. For a `home` tier this is the merged sum of every chain tier's own
-   * `construction` up to and including it (the chain is the consecutive `home` typeIds — see
-   * `homeNextTier`), so building tier N directly costs stages 1..N, exactly like building tier 1 and
-   * upgrading N−1 times. Source basis: the per-tier `construction` costs are extracted; the merge is our
-   * design invariant. The original never places a higher tier directly (homes start at tier 1 and level
-   * up), so direct placement is an OpenNorthland capability priced to match the original's tier-1-then-
-   * upgrade total rather than let it undercut that path. Every other type's bill is its own `construction`.
-   * Lines are merged per goodType and sorted ascending (canonical order for the picks that scan them).
+   * be delivered and hammer in. For a leveled type this is the merged sum of every chain tier's own
+   * `construction` up to and including it (the chain is the extracted `upgradeTarget` join, walked down
+   * from this tier to its base), so building tier N directly costs stages 1..N, exactly like building
+   * tier 1 and upgrading N−1 times. Source basis: the per-tier `construction` costs and the chain are
+   * extracted; the merge is our design invariant. The original never places a higher tier directly
+   * (chains start at their base and level up), so direct placement is an OpenNorthland capability priced
+   * to match the original's base-then-upgrade total rather than let it undercut that path. An unchained
+   * type's bill is its own `construction`. Lines are merged per goodType and sorted ascending (canonical
+   * order for the picks that scan them). The upgrade path itself never reads this — an upgrading site
+   * pays only the target tier's own cost (`constructionBillOf`).
    */
   readonly constructionBillByBuilding: ReadonlyMap<number, readonly GoodsLine[]>;
   /**
@@ -180,6 +190,7 @@ function buildIndex(content: ContentSet): ContentIndex {
     atomicAnimationsByName: byKey(content.atomicAnimations, (a) => a.name),
     workerJobsByBuilding: workerJobSets(content),
     storedGoodsByBuilding: storedGoodSets(content),
+    stockSlotCapacityByBuilding: stockSlotCapacityTables(content),
     recipeByProductByBuilding: recipeProductTables(content),
     mergedRecipeByBuilding: mergedRecipes(content),
     atomicBindingsByTribe: atomicBindingTables(content),

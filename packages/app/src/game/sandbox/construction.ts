@@ -14,8 +14,8 @@ import { BUILDING_HOME_00, GOOD_STONE, GOOD_WOOD } from './ids/index.js';
  * the bill is keyed by the original game's good ids, not yet unified into the sandbox good space (the
  * deferred global-content id unification). So the cost is approximated in sandbox goods — a wood+stone
  * parcel scaled by building class (a warehouse/hall costs more units → more builder strikes than a hut) —
- * and hitpoints is a per-class default. Homes keep their level chain, each tier a parcel up (the cost
- * doubles as the next tier's upgrade bill — {@link import('@open-northland/sim').homeNextTier}).
+ * and hitpoints is a per-class default. Leveled types keep their chains ({@link buildingUpgradeTarget}),
+ * each tier a parcel up (the tier's own cost doubles as its upgrade-difference bill).
  */
 function buildParcel(wood: number, stone: number): readonly { goodType: number; amount: number }[] {
   return [
@@ -61,4 +61,37 @@ export function buildingConstructionCost(b: VikingBuilding): readonly { goodType
 /** The max-HP pool for a catalog building's `kind`. */
 export function buildingHitpoints(kind: string): number {
   return BUILD_HITPOINTS_BY_KIND[kind] ?? DEFAULT_BUILD_HITPOINTS;
+}
+
+/**
+ * The catalog's upgrade chains: which typeIds carry an `upgradeTarget` (always the next typeId — every
+ * chained record's `LogicType` table is consecutive). Source basis: the extracted `[GfxHouse]`
+ * `upgrade === 1` construction-layer rows in real `ir.json` name exactly these viking typeIds as
+ * upgradable. A hand table, NOT a name-suffix derivation: `work_pottery_02` (typeId 22) is really the
+ * defence wall, so "same stem, next suffix" would chain the pottery into a wall.
+ */
+const UPGRADABLE_TYPE_IDS: readonly number[] = [
+  2,
+  3,
+  4,
+  5, // home_level_00..03 → the next home tier
+  7,
+  8, // stock_00..01 → the next warehouse tier
+  14, // bakery
+  18, // tailor
+  20, // pottery
+  23,
+  24,
+  25, // joinery levels
+  27, // armory
+  29, // mason's hut
+  31, // smithy
+  35, // druid's hut
+  40, // watchtower
+];
+const UPGRADE_TARGETS: ReadonlySet<number> = new Set(UPGRADABLE_TYPE_IDS);
+
+/** The next level a catalog building upgrades into, or undefined for a top level / unchained type. */
+export function buildingUpgradeTarget(typeId: number): number | undefined {
+  return UPGRADE_TARGETS.has(typeId) ? typeId + 1 : undefined;
 }

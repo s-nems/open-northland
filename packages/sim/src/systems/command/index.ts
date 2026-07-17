@@ -30,7 +30,7 @@ import {
 } from '../orders/index.js';
 import { buildingEnabled, tribeShipsUnlocked } from '../progression/index.js';
 import { debugFillStockpile, debugKill, debugSetNeeds } from './debug.js';
-import { placeBoat, placeBuilding } from './placement.js';
+import { placeBoat, placeBuilding, upgradeBuilding } from './placement.js';
 import { demolish, demolishSignpost, dropGood, placeResource } from './world-edit.js';
 
 /**
@@ -69,6 +69,9 @@ import { demolish, demolishSignpost, dropGood, placeResource } from './world-edi
  *    existing same-good pile on the tile up to `MAX_GROUND_STACK`. The "place this good on the ground" order
  *    behind the HUD goods tool + the admin spawn palette. Skipped (still logged) for an unknown good or a
  *    non-positive amount.
+ *  - `upgradeBuilding` — re-open a built building as a construction site rising into its type's
+ *    `upgradeTarget` level (see {@link upgradeBuilding}): inventory stashed, separate build hold, occupants
+ *    walk out with bindings kept. Skipped for a target that is not a built, chained, tech-unlocked building.
  *  - `demolish` — destroy a building entity (ids are never recycled), first unbinding every settler employed
  *    there (see {@link unbindWorkersOf}) so a worker isn't left latched to a dead workplace. Only an entity
  *    that actually is a building is destroyed: a demolish aimed at anything else (a settler, a resource, a
@@ -108,6 +111,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       return;
     case 'dropGood':
       dropGood(world, ctx, command);
+      return;
+    case 'upgradeBuilding':
+      upgradeBuilding(world, ctx, command);
       return;
     case 'demolish':
       demolish(world, command);

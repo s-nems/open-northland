@@ -21,9 +21,10 @@ import { TEST_MANIFEST } from '../../fixtures/content.js';
  * Unit + integration tests for the ConstructionSystem — a construction site (`UnderConstruction`) rises to
  * `built = min(builder-work, delivered-material)`, ramping its `Health` with it, and FINISHES (consumes
  * the cost, removes the marker, fills Health, emits `buildingFinished`) the tick its builder work is
- * complete AND every material is present. A free (empty-cost) type finishes at once. A built `home`
- * levels up as its next tier's materials arrive. WHO hammers/delivers is the AI planner (exercised in the
- * builder end-to-end block below); the unit tests drive `labor` by hand to isolate the system.
+ * complete AND every material is present. A free (empty-cost) type finishes at once. A built chained
+ * building re-opens as an upgrade site via the `upgradeBuilding` command and rises the same way at the
+ * target tier's own cost. WHO hammers/delivers is the AI planner (exercised in the builder end-to-end
+ * block below); the unit tests drive `labor` by hand to isolate the system.
  *
  * Content is built with `parseContentSet` (not the shared fixture) so the `construction` cost is explicit
  * and the golden slice — whose buildings carry no cost and are placed already-built — is untouched.
@@ -40,10 +41,10 @@ export const BUILDER = 7; // the builder trade (jobtypes.ini type 7); permitted 
 export const BUILD_HOUSE_ATOMIC = 39; // setatomic 7 39 "..._builder_build_house" (tribetypes.ini)
 export const HOUSE_MAX_HP = 100; // the HOUSE fixture's `hitpoints` — small so the ramp is exact-integer to read
 
-// The home level chain — consecutive typeIds, each a larger `home` with its own per-tier upgrade cost.
+// The home level chain — `upgradeTarget`-linked typeIds, each a larger `home` with its own per-tier cost.
 export const HOME_L0 = 2; // home level 00, homeSize 1, upgrades by paying L1's cost
 export const HOME_L1 = 3; // home level 01, homeSize 2, upgrades by paying L2's cost
-export const HOME_L2 = 4; // home level 02, homeSize 3 — top tier in this fixture (no typeId 5 home)
+export const HOME_L2 = 4; // home level 02, homeSize 3 — top tier in this fixture (no upgradeTarget)
 
 export function constructionContent(): ContentSet {
   return parseContentSet({
@@ -90,9 +91,10 @@ export function constructionContent(): ContentSet {
 }
 
 /**
- * A home level chain: three consecutive `home` typeIds of rising `homeSize`, each carrying the cost to
- * BUILD that tier. The level-up trigger pays the NEXT tier's cost: a level-0 home that accumulates
- * HOME_L1's cost upgrades to HOME_L1, etc. HOME_L2 is the top (no typeId-5 home), so it never upgrades.
+ * A home level chain: three `upgradeTarget`-linked `home` typeIds of rising `homeSize`, each carrying
+ * the cost to BUILD that tier. An upgrade (the `upgradeBuilding` command) pays the TARGET tier's own
+ * cost: upgrading a built L0 costs HOME_L1's 2 stone. HOME_L2 is the top (no `upgradeTarget`), so it
+ * never upgrades.
  */
 export function levelChainContent(): ContentSet {
   return parseContentSet({
@@ -111,6 +113,7 @@ export function levelChainContent(): ContentSet {
         kind: 'home',
         homeSize: 1,
         construction: [{ goodType: STONE, amount: 1 }],
+        upgradeTarget: HOME_L1,
       },
       {
         typeId: HOME_L1,
@@ -118,8 +121,9 @@ export function levelChainContent(): ContentSet {
         kind: 'home',
         homeSize: 2,
         construction: [{ goodType: STONE, amount: 2 }],
+        upgradeTarget: HOME_L2,
       },
-      // Top tier: bigger, and its own (irrelevant for upgrades — nothing upgrades INTO it past L2) cost.
+      // Top tier: bigger, and its own (relevant only to a direct from-scratch placement) cost.
       {
         typeId: HOME_L2,
         id: 'home_level_02',
@@ -222,6 +226,8 @@ export function loadedCarrierAt(
   return e;
 }
 
+/** The level chain plus the hauling + hammering trades — the delivery/e2e twin of
+ *  {@link levelChainContent} (an upgrade site needs a builder's swings, like any site). */
 export function levelChainWithCarrier(): ContentSet {
   return parseContentSet({
     manifest: TEST_MANIFEST,
@@ -233,6 +239,7 @@ export function levelChainWithCarrier(): ContentSet {
     jobs: [
       { typeId: 0, id: 'idle' },
       { typeId: CARRIER, id: 'carrier' },
+      { typeId: BUILDER, id: 'builder', allowedAtomics: [BUILD_HOUSE_ATOMIC] },
     ],
     landscape: [{ typeId: GRASS, id: 'grass', walkable: true, buildable: true }],
     buildings: [
@@ -242,6 +249,7 @@ export function levelChainWithCarrier(): ContentSet {
         kind: 'home',
         homeSize: 1,
         construction: [{ goodType: STONE, amount: 1 }],
+        upgradeTarget: HOME_L1,
       },
       {
         typeId: HOME_L1,
@@ -249,6 +257,7 @@ export function levelChainWithCarrier(): ContentSet {
         kind: 'home',
         homeSize: 2,
         construction: [{ goodType: STONE, amount: 2 }],
+        upgradeTarget: HOME_L2,
       },
       {
         typeId: HOME_L2,

@@ -54,6 +54,15 @@ export interface BuildingTypeBinding {
    */
   readonly constructionByType?: Readonly<Record<number, readonly ConstructionLayerRef[]>>;
   /**
+   * Upgrade-overlay layers per building typeId — the `[GfxHouse]` `GfxBobConstructionLayer`
+   * `upgrade === 1` rows, keyed by the tier BEING UPGRADED (the row's own size level; its bob is the
+   * next tier's finished body). An UPGRADING {@link import('../scene/index.js').DrawItem}
+   * (`upgradePct` present) keeps its finished old-tier body draw and reveals these layers over it
+   * ({@link import('./layered.js').resolveUpgradeDraws}) — the original's building-rises-on-the-old-one
+   * look. A type absent here shows only its old body until the upgrade completes.
+   */
+  readonly upgradeByType?: Readonly<Record<number, readonly ConstructionLayerRef[]>>;
+  /**
    * Animated state overlays per building typeId — the `[GfxHouse]` type-4 `GfxOverlay` table (the
    * mill's rotor: the body bob has no blades). A finished building whose type is here draws its
    * overlay above the body: the {@link BuildingOverlayRef.working} spin cycle while the building runs

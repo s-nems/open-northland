@@ -15,8 +15,8 @@ import {
  * `(bmd, palette)` must be the {@link defaultFamily} (a bare-id stage on the default building layer) or a
  * loaded named family (a layer-qualified stage); a row in an unloaded family is dropped (its frame-id space
  * differs — never borrow), and a typeId whose stages end up all dropped is omitted entirely (it keeps its
- * normal body draw rather than showing a partial stack). Only from-scratch rows are consumed
- * (`upgrade === false`; the 1-rows are the original's upgrade-overlay pass — source basis).
+ * normal body draw rather than showing a partial stack). This pass consumes the from-scratch rows
+ * (`upgrade === false`); {@link upgradeRefsByType} is the `upgrade === true` twin.
  *
  * A typeId's stages must all come from one source record at one size level — several records can carry the
  * same typeId (the HQ's `"viking headquarters"` vs its `"viking headquarters house"` variant; the pottery
@@ -34,7 +34,33 @@ export function constructionRefsByType(
   defaultFamily: { readonly bmdBasename: string; readonly paletteName: string },
   families: readonly BuildingFamily[],
 ): Record<number, ConstructionLayerRef[]> {
-  const byType = rowsByType(rows, tribeId, (r) => !r.upgrade);
+  return stageRefsByType(rows, tribeId, defaultFamily, families, (r) => !r.upgrade);
+}
+
+/**
+ * The upgrade-pass twin of {@link constructionRefsByType}: reduces the `upgrade === true` rows — each
+ * keyed by the tier being upgraded, its bob the NEXT tier's finished body — to the render's
+ * `upgradeByType` binding, under exactly the same family/one-source-record rules. An UPGRADING
+ * building draws its old finished body with these layers revealing over it.
+ */
+export function upgradeRefsByType(
+  rows: readonly ConstructionLayerRow[],
+  tribeId: number,
+  defaultFamily: { readonly bmdBasename: string; readonly paletteName: string },
+  families: readonly BuildingFamily[],
+): Record<number, ConstructionLayerRef[]> {
+  return stageRefsByType(rows, tribeId, defaultFamily, families, (r) => r.upgrade);
+}
+
+/** The shared reduction behind the from-scratch and upgrade passes — see {@link constructionRefsByType}. */
+function stageRefsByType(
+  rows: readonly ConstructionLayerRow[],
+  tribeId: number,
+  defaultFamily: { readonly bmdBasename: string; readonly paletteName: string },
+  families: readonly BuildingFamily[],
+  pass: (r: ConstructionLayerRow) => boolean,
+): Record<number, ConstructionLayerRef[]> {
+  const byType = rowsByType(rows, tribeId, pass);
   const out: Record<number, ConstructionLayerRef[]> = {};
   for (const [typeId, list] of byType) {
     const pool = preferredPalettePool(list, defaultFamily.paletteName);

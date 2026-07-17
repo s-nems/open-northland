@@ -92,6 +92,26 @@ export function consumeGoods(world: World, amounts: Map<number, number>, cost: r
 export const UnderConstruction = defineComponent<{ labor: Fixed }>('UnderConstruction');
 
 /**
+ * Marks a {@link Building} that is being **upgraded** into its type's `upgradeTarget` level. Rides
+ * BESIDE {@link UnderConstruction} (the upgrade command re-opens the building as a construction site:
+ * `built` drops to 0, suspending production/housing, and builders + carriers serve it through the same
+ * site machinery), and its presence switches the site's bill to the target tier's own `construction` —
+ * the level DIFFERENCE, not the cumulative from-scratch bill (`constructionBillOf`).
+ *
+ * `savedStock` is the building's pre-upgrade inventory, stashed so the emptied {@link Stockpile} can
+ * serve as the site's fresh construction hold (the original gives an upgrading building a separate
+ * build store) and merged back into the stockpile when the upgrade completes. Workers'
+ * {@link import('../settler.js').JobAssignment}s and residents' {@link import('../family.js').Residence}s
+ * are deliberately NOT cleared — occupants walk out for the build and return to the finished tier.
+ *
+ * source-basis: the become-a-site-again flow, the separate build store, the difference-only cost, and
+ * kept occupants are observed original behavior; the builder-driven pace is the same named
+ * approximation as from-scratch construction. Determinism: the stash is written/merged only in the
+ * CommandSystem/ConstructionSystem and hashes like any component Map (canonical sorted entries).
+ */
+export const Upgrading = defineComponent<{ savedStock: Map<number, number> }>('Upgrading');
+
+/**
  * A **placed vehicle hull** — the "boats as mobile stores" entity the historical plan phase-4 Sea/Northland
  * item names: a ship put on the map as a movable stockpile rather than a static building. `vehicleType`
  * cross-references the `VehicleType.typeId` (its `stockSlots` hold capacity, `cargoGoods`

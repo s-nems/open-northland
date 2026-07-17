@@ -1,4 +1,5 @@
-import { Building, type GoodsLine, holdsAll, Stockpile } from '../../components/index.js';
+import type { BuildingType } from '@open-northland/data';
+import { Building, type GoodsLine, holdsAll, Stockpile, Upgrading } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { type Fixed, fx, ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -9,15 +10,36 @@ import { type InboundSupplyTally, inboundSupplyOf } from './supply-tally.js';
 // and the next good a builder must fetch. Read by the ConstructionSystem, the builder drive, and the
 // store capacity math (a site advertises room for exactly its outstanding materials).
 
-/** The material cost of raising a building entity FROM SCRATCH — its type's from-scratch construction
- *  bill (for a home tier, the merged cost of every chain stage up to it — see
- *  {@link import('../../core/content-index.js').ContentIndex.constructionBillByBuilding}) — or an empty
- *  list when the entity is not a typed building (a bare fixture) or its type declares no cost (a free
- *  type). The shared read behind {@link deliveredConstructionFraction},
- *  {@link constructionMaterialsPresent}, {@link neededConstructionGoods}, and {@link constructionTotalUnits}. */
+/**
+ * The next level in `type`'s upgrade chain, or undefined for a top-level / unchained type. The chain is
+ * the extracted `upgradeTarget` join (the `[GfxHouse]` record's `LogicType` table — the typeId at the
+ * next `sizeIdx`), so it is data-driven across every leveled kind: homes, storages, workplaces, the
+ * tower, the wonder's stages. Undefined too when the target id is absent from content (malformed data).
+ */
+export function upgradeTierOf(type: BuildingType, ctx: SystemContext): BuildingType | undefined {
+  if (type.upgradeTarget === undefined) return undefined;
+  return contentIndex(ctx.content).buildings.get(type.upgradeTarget);
+}
+
+/**
+ * The material cost of raising a building entity: for a plain site its type's FROM-SCRATCH construction
+ * bill (for a leveled type, the merged cost of every chain stage up to it — see
+ * {@link import('../../core/content-index.js').ContentIndex.constructionBillByBuilding}); for an
+ * **upgrading** building ({@link Upgrading}) the target tier's OWN `construction` — the level
+ * difference, which the source encodes per tier. Empty when the entity is not a typed building (a bare
+ * fixture) or its type declares no cost (a free type). The shared read behind
+ * {@link deliveredConstructionFraction}, {@link constructionMaterialsPresent},
+ * {@link neededConstructionGoods}, {@link constructionTotalUnits}, and the site branch of
+ * {@link import('./capacity.js').stockCapacity}.
+ */
 export function constructionBillOf(world: World, ctx: SystemContext, site: Entity): readonly GoodsLine[] {
   const b = world.tryGet(site, Building);
   if (b === undefined) return EMPTY_CONSTRUCTION;
+  if (world.has(site, Upgrading)) {
+    const type = contentIndex(ctx.content).buildings.get(b.buildingType);
+    if (type === undefined) return EMPTY_CONSTRUCTION;
+    return upgradeTierOf(type, ctx)?.construction ?? EMPTY_CONSTRUCTION;
+  }
   return contentIndex(ctx.content).constructionBillByBuilding.get(b.buildingType) ?? EMPTY_CONSTRUCTION;
 }
 

@@ -9,10 +9,11 @@ import { ctxOf } from '../fixtures/context.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 /**
- * GAME-LEVEL (e2e) — the housing → upgrade loop under the real `Simulation.step()` schedule: a built
- * level-0 home accumulating its next-tier construction cost levels up, and the tribe's housing capacity
- * grows with it. (Births are no longer capacity-driven — they come from the family mechanics, proven in
- * test/family/ — so this covers the delivery→upgrade→capacity half of the old loop.)
+ * GAME-LEVEL (e2e) — the housing → upgrade loop under the real `Simulation.step()` schedule: the
+ * `upgradeBuilding` command re-opens a built level-0 home as an upgrade site, carriers deliver the
+ * level DIFFERENCE and a builder hammers it out, and the tribe's housing capacity grows with the
+ * finished tier. (Births are no longer capacity-driven — they come from the family mechanics, proven
+ * in test/family/ — so this covers the command→delivery→build→capacity half of the old loop.)
  *
  * Built with `parseContentSet` (not the shared fixture) so the home chain + per-tier `construction`
  * cost are explicit; the golden slice (no `home`-kind building) is untouched.
@@ -22,9 +23,10 @@ const VIKING = 1;
 const STONE = 1;
 const GRASS = 0;
 const CARRIER = 36; // a job with no harvest atomics — it only hauls a load it already carries
+const BUILDER = 7; // the builder trade (jobtypes.ini type 7); permitted to run the build-house atomic
+const BUILD_HOUSE_ATOMIC = 39; // setatomic 7 39 "..._builder_build_house" (tribetypes.ini)
 
-// The home level chain: two consecutive `home` typeIds. HOME_L0 (capacity 3) upgrades to HOME_L1
-// (capacity 5) by accumulating L1's construction cost (2 stone).
+// The home level chain: HOME_L0 (capacity 3) upgrades to HOME_L1 (capacity 5) at L1's own cost (2 stone).
 const HOME_L0 = 2;
 const HOME_L1 = 3;
 
@@ -38,6 +40,7 @@ function loopContent(): ContentSet {
     jobs: [
       { typeId: 0, id: 'idle' },
       { typeId: CARRIER, id: 'carrier' },
+      { typeId: BUILDER, id: 'builder', allowedAtomics: [BUILD_HOUSE_ATOMIC] },
     ],
     landscape: [{ typeId: GRASS, id: 'grass', walkable: true, buildable: true }],
     buildings: [
@@ -47,13 +50,14 @@ function loopContent(): ContentSet {
         kind: 'home',
         homeSize: 3,
         construction: [{ goodType: STONE, amount: 1 }],
+        upgradeTarget: HOME_L1,
       },
       {
         typeId: HOME_L1,
         id: 'home_level_01',
         kind: 'home',
         homeSize: 5,
-        // Upgrading INTO L1 costs 2 stone (the next-tier cost a built L0 must accumulate).
+        // Upgrading into L1 costs 2 stone (its own per-tier cost — the difference).
         construction: [{ goodType: STONE, amount: 2 }],
       },
     ],
@@ -66,6 +70,22 @@ function builtHomeAt(sim: Simulation, x: number, y: number): Entity {
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
   sim.world.add(e, Building, { buildingType: HOME_L0, tribe: VIKING, built: ONE, level: 0 });
   sim.world.add(e, Stockpile, { amounts: new Map<number, number>() });
+  return e;
+}
+
+/** A builder settler placed at a tile — the trade that hammers the upgrade site out. */
+function builderAt(sim: Simulation, x: number, y: number): Entity {
+  const e = sim.world.create();
+  sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
+  sim.world.add(e, Settler, {
+    tribe: VIKING,
+    jobType: BUILDER,
+    hunger: fx.fromInt(0),
+    fatigue: fx.fromInt(0),
+    piety: fx.fromInt(0),
+    enjoyment: fx.fromInt(0),
+    experience: new Map<number, number>(),
+  });
   return e;
 }
 
@@ -87,25 +107,27 @@ function loadedCarrierAt(sim: Simulation, x: number, y: number, goodType: number
 }
 
 describe('e2e: the housing → upgrade loop (full step schedule)', () => {
-  it('a level-0 home upgrades on delivered materials and its capacity grows', () => {
-    const sim = new Simulation({ seed: 2, content: loopContent(), map: grassMap(6, 1) });
+  it('the upgrade command turns a level-0 home into a served site and its capacity grows on completion', () => {
+    const sim = new Simulation({ seed: 2, content: loopContent(), map: grassMap(8, 1) });
     const home = builtHomeAt(sim, 3, 0); // L0: shelters 3
-    // Two carriers each holding one stone — together L1's 2-stone upgrade cost.
+    // Two carriers each holding one stone — together L1's 2-stone difference — and a builder to hammer.
     loadedCarrierAt(sim, 0, 0, STONE, 1);
     loadedCarrierAt(sim, 5, 0, STONE, 1);
+    builderAt(sim, 7, 0);
 
     expect(housingCapacity(sim.world, ctxOf(sim), VIKING)).toBe(3); // L0 capacity
+    sim.enqueue({ kind: 'upgradeBuilding', building: home });
+    sim.step();
+    expect(housingCapacity(sim.world, ctxOf(sim), VIKING)).toBe(0); // a site shelters no one
 
-    // Run the real schedule: carriers deliver the upgrade cost; the constructionSystem levels the home up.
+    // Run the real schedule: carriers deliver the difference, the builder hammers, the site finishes.
     let upgraded = false;
-    for (let i = 0; i < 200; i++) {
+    for (let i = 0; i < 600 && !upgraded; i++) {
       sim.step();
-      if (sim.world.get(home, Building).buildingType === HOME_L1) upgraded = true;
+      upgraded = sim.world.get(home, Building).buildingType === HOME_L1;
     }
 
-    // The home upgraded a tier on the delivered materials.
     expect(upgraded).toBe(true);
-    expect(sim.world.get(home, Building).buildingType).toBe(HOME_L1);
     expect(sim.world.get(home, Building).level).toBe(1);
     expect(housingCapacity(sim.world, ctxOf(sim), VIKING)).toBe(5); // L1 shelters 5 (was 3)
 
@@ -118,11 +140,13 @@ describe('e2e: the housing → upgrade loop (full step schedule)', () => {
 
   it('is deterministic — two same-seed loop runs reach the same final state hash', () => {
     const run = (): string => {
-      const sim = new Simulation({ seed: 9, content: loopContent(), map: grassMap(6, 1) });
-      builtHomeAt(sim, 3, 0);
+      const sim = new Simulation({ seed: 9, content: loopContent(), map: grassMap(8, 1) });
+      const home = builtHomeAt(sim, 3, 0);
       loadedCarrierAt(sim, 0, 0, STONE, 1);
       loadedCarrierAt(sim, 5, 0, STONE, 1);
-      for (let i = 0; i < 150; i++) sim.step();
+      builderAt(sim, 7, 0);
+      sim.enqueue({ kind: 'upgradeBuilding', building: home });
+      for (let i = 0; i < 250; i++) sim.step();
       return sim.hashState();
     };
     expect(run()).toBe(run());

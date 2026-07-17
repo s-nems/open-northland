@@ -1,7 +1,6 @@
-// The cross-system STORE/ECONOMY read-model: what a store can hold, what a workplace makes, who
-// staffs it, and the home level chain. A leaf module beside ./spatial.ts so every per-system file
-// imports these without creating cycles. Split by concern into this folder; import the barrel, not
-// the leaves.
+// The cross-system STORE/ECONOMY read-model: what a store can hold, what a workplace makes, and who
+// staffs it. A leaf module beside ./spatial.ts so every per-system file imports these without creating
+// cycles. Split by concern into this folder; import the barrel, not the leaves.
 export { isYardHeap, lowestStockedGood, MAX_GROUND_STACK, stockCapacity } from './capacity.js';
 export {
   constructionBillOf,
@@ -9,8 +8,8 @@ export {
   constructionTotalUnits,
   deliveredConstructionFraction,
   neededConstructionGoods,
+  upgradeTierOf,
 } from './construction.js';
-export { homeNextTier } from './housing.js';
 export {
   collectInboundSupply,
   type InboundSupplyTally,

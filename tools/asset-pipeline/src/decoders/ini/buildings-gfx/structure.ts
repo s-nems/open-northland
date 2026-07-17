@@ -99,6 +99,34 @@ export function extractHouseHitpoints(sections: readonly RuleSection[]): Map<num
 }
 
 /**
+ * Extracts each building type's upgrade target — the `typeId` of the next size level in the same
+ * `[GfxHouse]` record — from the record's `LogicType <sizeIdx> <typeId>` table: the type at `sizeIdx`
+ * upgrades into the type at `sizeIdx + 1`, and a chain's top level (no higher `sizeIdx`) has none.
+ * This is the real level-chain join (chains are not homes-only — storages, workplaces, a tower, and
+ * the wonder's stages all level), replacing any consecutive-typeId guessing downstream. Records are
+ * split per house ({@link splitGfxHouseRecords}) so a lumped multi-house section never chains across
+ * unrelated buildings; collisions resolve like {@link extractConstructionCosts}
+ * ({@link existingGfxHouseWins} — for the shared home typeIds the reference-tribe chain wins).
+ */
+export function extractUpgradeTargets(sections: readonly RuleSection[]): Map<number, number> {
+  const winner = new Map<number, { tribeType: number; sizeIdx: number; value: number }>();
+  for (const sec of sections) {
+    if (sec.name !== 'GfxHouse') continue;
+    for (const rec of splitGfxHouseRecords(sec)) {
+      const tribeType = getInt(rec, 'LogicTribeType') ?? Number.POSITIVE_INFINITY;
+      const typeByLevel = logicTypeByLevel(rec);
+      for (const [sizeIdx, typeId] of typeByLevel) {
+        const target = typeByLevel.get(sizeIdx + 1);
+        if (target === undefined || target === typeId) continue; // top level, or a degenerate self-link
+        if (existingGfxHouseWins(winner.get(typeId), tribeType, sizeIdx)) continue;
+        winner.set(typeId, { tribeType, sizeIdx, value: target });
+      }
+    }
+  }
+  return new Map([...winner].map(([typeId, { value }]) => [typeId, value]));
+}
+
+/**
  * Expands one footprint-area source line (`<x> <y> <run>` after any leading level index) into its
  * cells: `run` cells starting at `(x, y)`, extending along +x — the row encoding every
  * `Logic*BlockArea` key uses. Non-numeric / non-positive runs yield no cells (malformed line).

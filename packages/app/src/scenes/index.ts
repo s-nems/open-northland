@@ -8,6 +8,7 @@ import { goodsCatalogScene } from './goods-catalog.js';
 import { sandboxScene } from './sandbox/index.js';
 import { signpostsScene } from './signposts.js';
 import type { SceneDefinition } from './types.js';
+import { upgradeScene } from './upgrade.js';
 import { warehouseScene } from './warehouse.js';
 
 export { createSceneSim } from './runtime.js';
@@ -26,6 +27,7 @@ export const SCENES: readonly SceneDefinition[] = [
   berriesScene,
   chainScene,
   warehouseScene,
+  upgradeScene,
   signpostsScene,
   familyScene,
   childrenScene,

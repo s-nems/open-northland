@@ -1,4 +1,11 @@
-import { cellAnchorNode, type Simulation } from '@open-northland/sim';
+import {
+  cellAnchorNode,
+  components,
+  type Entity,
+  ONE,
+  positionOfNode,
+  type Simulation,
+} from '@open-northland/sim';
 import { resolveVikingBuilding } from '../../../catalog/buildings.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../rules.js';
 import { JOB_CARRIER, JOB_COLLECTOR } from '../ids/index.js';
@@ -32,6 +39,40 @@ export function placeSandboxBuilding(
     // A pre-stocked fixture (a scene's full warehouse): every stock slot seeded to its capacity.
     ...(opts.fillStock ? { fillStock: true } : {}),
   });
+}
+
+/**
+ * Place a viking building fully built DIRECTLY in the world (the sanctioned scene-setup exception, like
+ * the `place*` node helpers above) and return its entity — for a scene that must reference the building
+ * in a later command at build time (e.g. `upgradeBuilding`), where the command-seam placement's entity
+ * id is not yet known. Stamps the same shape `placeBuilding` does: anchor Position, a built
+ * {@link components.Building}, a Stockpile seeded from the type's `initial`s, a full Health pool when
+ * the type has one, and the owner. Scene setup only — never a mid-run path.
+ */
+export function placeBuiltSandboxBuilding(
+  sim: Simulation,
+  ref: number | string,
+  x: number,
+  y: number,
+  owner: number = HUMAN_PLAYER,
+): Entity {
+  const { Building, Health, Owner, Position, Stockpile } = components;
+  const typeId = resolveVikingBuilding(ref).typeId;
+  const def = buildingDef(sim, typeId);
+  const node = cellAnchorNode(x, y);
+  const e = sim.world.create();
+  sim.world.add(e, Position, positionOfNode(node.hx, node.hy));
+  sim.world.add(e, Building, { buildingType: typeId, tribe: PRIMARY_TRIBE, built: ONE, level: 0 });
+  const amounts = new Map<number, number>();
+  for (const slot of def?.stock ?? []) {
+    if (slot.initial > 0) amounts.set(slot.goodType, slot.initial);
+  }
+  sim.world.add(e, Stockpile, { amounts });
+  if (def?.hitpoints !== undefined) {
+    sim.world.add(e, Health, { hitpoints: def.hitpoints, max: def.hitpoints });
+  }
+  sim.world.add(e, Owner, { player: owner });
+  return e;
 }
 
 /** The content building def for `typeId` (the sim's own content set), or undefined. */

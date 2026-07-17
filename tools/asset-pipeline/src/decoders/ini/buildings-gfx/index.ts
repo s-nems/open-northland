@@ -7,6 +7,7 @@ export {
   extractBuildingFootprints,
   extractConstructionCosts,
   extractHouseHitpoints,
+  extractUpgradeTargets,
 } from './structure.js';
 export {
   extractBuildingBobs,

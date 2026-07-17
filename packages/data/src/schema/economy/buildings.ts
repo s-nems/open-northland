@@ -89,6 +89,13 @@ export const BuildingType = z.strictObject({
    */
   construction: z.array(GoodQuantity).default([]),
   /**
+   * The `typeId` this building upgrades into — the next size level of the same `[GfxHouse]` record
+   * (`LogicType <sizeIdx> <typeId>`: the typeId mapped at `sizeIdx + 1`), absent on a chain's top
+   * level and on single-level buildings. Level chains are not homes-only: the real data chains
+   * storages (7→8→9), several workplaces, a tower (40→41), and the wonder's stages (47→…→54).
+   */
+  upgradeTarget: TypeId.optional(),
+  /**
    * Max hitpoints — the building's full life pool, from the graphics table's `[GfxHouse]`
    * `logichitpoints` line (`DataCnmd/budynki12/houses/houses.ini`), overlaid by `typeId` exactly like
    * {@link construction}. A home's level chain resolves each tier's own value (typeIds 2..6 =

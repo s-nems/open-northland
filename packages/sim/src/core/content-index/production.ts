@@ -63,3 +63,22 @@ export function storedGoodSets(content: ContentSet): ReadonlyMap<number, Readonl
   }
   return map;
 }
+
+/** The per-type per-good stock-slot capacities
+ *  ({@link import('../content-index.js').ContentIndex.stockSlotCapacityByBuilding}) — first-wins per
+ *  typeId AND per good within a type (matching the `.find` scan it replaces); types with no stock
+ *  slots omitted. */
+export function stockSlotCapacityTables(
+  content: ContentSet,
+): ReadonlyMap<number, ReadonlyMap<number, number>> {
+  const map = new Map<number, ReadonlyMap<number, number>>();
+  for (const b of content.buildings) {
+    if (map.has(b.typeId) || b.stock.length === 0) continue;
+    const slots = new Map<number, number>();
+    for (const s of b.stock) {
+      if (!slots.has(s.goodType)) slots.set(s.goodType, s.capacity);
+    }
+    map.set(b.typeId, slots);
+  }
+  return map;
+}

@@ -5,28 +5,48 @@ import { byKey } from './by-key.js';
 /**
  * The per-type from-scratch construction bills
  * ({@link import('../content-index.js').ContentIndex.constructionBillByBuilding}). First-wins per typeId,
- * like the other tables (a home tier resolves each chain member through the first-wins `byKey` view, so the
+ * like the other tables (a leveled tier resolves each chain member through the first-wins views, so the
  * summed rows are the ones every other read sees).
  */
 export function constructionBills(content: ContentSet): ReadonlyMap<number, readonly GoodsLine[]> {
+  const prev = prevTierLinks(content.buildings);
   const buildings = byKey(content.buildings, (b) => b.typeId);
   const bills = new Map<number, readonly GoodsLine[]>();
   for (const b of content.buildings) {
-    if (!bills.has(b.typeId)) bills.set(b.typeId, billOf(buildings, b));
+    if (!bills.has(b.typeId)) bills.set(b.typeId, billOf(buildings, prev, b));
   }
   return bills;
 }
 
-/** One type's from-scratch bill over a typeId-keyed building view: a home's chain base is found by
- *  walking the consecutive `home` typeIds downward (the mirror of `homeNextTier`'s upward walk), and
- *  the tiers' costs are merged per goodType and sorted ascending; any other kind is its own cost. */
-function billOf(buildings: ReadonlyMap<number, BuildingType>, building: BuildingType): readonly GoodsLine[] {
-  if (building.kind !== 'home') return building.construction;
-  let base = building.typeId;
-  while (buildings.get(base - 1)?.kind === 'home') base -= 1;
+/** The reverse of the `upgradeTarget` chain links: target typeId → the tier that upgrades into it.
+ *  First-wins on a duplicate target (matching `byKey`), so a malformed double-link is deterministic. */
+function prevTierLinks(buildings: readonly BuildingType[]): ReadonlyMap<number, number> {
+  const prev = new Map<number, number>();
+  for (const b of buildings) {
+    if (b.upgradeTarget !== undefined && !prev.has(b.upgradeTarget)) prev.set(b.upgradeTarget, b.typeId);
+  }
+  return prev;
+}
+
+/** One type's from-scratch bill over the typeId-keyed building view + the reverse chain links: the
+ *  tier's chain is walked DOWN to its base via `prev` and every visited tier's own cost is merged per
+ *  goodType, sorted ascending; an unchained type is its own cost. The visited-set guards a malformed
+ *  content cycle (a→b→a) from hanging the walk. */
+function billOf(
+  buildings: ReadonlyMap<number, BuildingType>,
+  prev: ReadonlyMap<number, number>,
+  building: BuildingType,
+): readonly GoodsLine[] {
+  if (!prev.has(building.typeId)) return building.construction; // a chain base / unchained type
   const merged = new Map<number, number>();
-  for (let typeId = base; typeId <= building.typeId; typeId++) {
-    for (const line of buildings.get(typeId)?.construction ?? []) {
+  const visited = new Set<number>();
+  for (
+    let tier: BuildingType | undefined = building;
+    tier !== undefined && !visited.has(tier.typeId);
+    tier = prev.has(tier.typeId) ? buildings.get(prev.get(tier.typeId) as number) : undefined
+  ) {
+    visited.add(tier.typeId);
+    for (const line of tier.construction) {
       merged.set(line.goodType, (merged.get(line.goodType) ?? 0) + line.amount);
     }
   }
@@ -35,10 +55,14 @@ function billOf(buildings: ReadonlyMap<number, BuildingType>, building: Building
     .map(([goodType, amount]) => ({ goodType, amount }));
 }
 
-/** One typeId view per building list, keyed on the list's identity — a WeakMap so a dropped list frees its
- *  view with it. {@link constructionBillForType} is a per-frame path (the HUD's construction window asks
- *  every frame while a site is selected), and rebuilding an O(buildings) map per call was that frame cost. */
-const billViewCache = new WeakMap<readonly BuildingType[], ReadonlyMap<number, BuildingType>>();
+/** One typeId view + reverse-chain-link map per building list, keyed on the list's identity — a WeakMap
+ *  so a dropped list frees its views with it. {@link constructionBillForType} is a per-frame path (the
+ *  HUD's construction window asks every frame while a site is selected), and rebuilding the O(buildings)
+ *  maps per call was that frame cost. */
+const billViewCache = new WeakMap<
+  readonly BuildingType[],
+  { readonly byId: ReadonlyMap<number, BuildingType>; readonly prev: ReadonlyMap<number, number> }
+>();
 
 /**
  * The from-scratch construction bill of one `buildingType` over a plain building list — the pure
@@ -51,11 +75,11 @@ export function constructionBillForType(
   buildings: readonly BuildingType[],
   buildingType: number,
 ): readonly GoodsLine[] {
-  let byId = billViewCache.get(buildings);
-  if (byId === undefined) {
-    byId = byKey(buildings, (b) => b.typeId);
-    billViewCache.set(buildings, byId);
+  let views = billViewCache.get(buildings);
+  if (views === undefined) {
+    views = { byId: byKey(buildings, (b) => b.typeId), prev: prevTierLinks(buildings) };
+    billViewCache.set(buildings, views);
   }
-  const building = byId.get(buildingType);
-  return building === undefined ? [] : billOf(byId, building);
+  const building = views.byId.get(buildingType);
+  return building === undefined ? [] : billOf(views.byId, views.prev, building);
 }

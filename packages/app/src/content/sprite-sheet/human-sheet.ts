@@ -13,6 +13,7 @@ import {
   DEFAULT_BUILDING_FAMILY,
   HOUSE_ATLAS,
   TREE_ATLAS,
+  upgradeRefsByType,
   VIKING_TRIBE,
 } from '../building-gfx/index.js';
 import { loadGoodsIconManifest } from '../goods-gfx.js';
@@ -172,6 +173,14 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
     DEFAULT_BUILDING_FAMILY,
     BUILDING_FAMILIES,
   );
+  // The upgrade-overlay layers (the same records' `upgrade === 1` rows — the next tier's body drawn
+  // revealing over the still-standing old one), reduced under the same family rules.
+  const upgradeRefs = upgradeRefsByType(
+    ir?.constructionLayers ?? [],
+    VIKING_TRIBE,
+    DEFAULT_BUILDING_FAMILY,
+    BUILDING_FAMILIES,
+  );
   // The animated state overlays (the type-4 `GfxOverlay` rows — the mill's rotor over its bladeless
   // body), reduced under the same family rules. Empty when the IR predates the lane.
   const overlayRefs = buildingOverlayRefsByType(
@@ -262,6 +271,7 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
         trunkBinding,
         berryBushBinding,
         overlayRefs,
+        upgradeRefs,
       ),
       ...signpostBinding,
     },

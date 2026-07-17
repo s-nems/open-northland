@@ -28,6 +28,7 @@ export {
   extractConstructionCosts,
   extractConstructionLayers,
   extractHouseHitpoints,
+  extractUpgradeTargets,
 } from './ini/buildings-gfx/index.js';
 export type {
   RuleSection,

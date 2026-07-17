@@ -3,9 +3,11 @@ import {
   consumeGoods,
   type GoodsLine,
   Health,
-  holdsAll,
   Stockpile,
+  setStockAmount,
+  stockpileEntries,
   UnderConstruction,
+  Upgrading,
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { type Fixed, fx, ONE } from '../../core/fixed.js';
@@ -17,82 +19,54 @@ import {
   constructionMaterialsPresent,
   constructionTotalUnits,
   deliveredConstructionFraction,
-  homeNextTier,
+  upgradeTierOf,
 } from '../stores/index.js';
 
 /**
- * ConstructionSystem — raise a placed foundation into a finished building as builders work it, then level a
- * built `home` up as its next tier's materials arrive.
+ * ConstructionSystem — raise a placed foundation into a finished building as builders work it.
  *
  * A building placed `underConstruction` (via {@link placeBuilding}) enters at `built = 0` carrying an
  * {@link UnderConstruction} marker (its own {@link Stockpile} is the delivered-material hold) and — when its
  * type has a hitpoints pool — a {@link Health} pool that ramps up with the build. Each tick, for every
- * building:
+ * construction site, the visible `Building.built` is the lower of two independent gates — builder work
+ * ({@link UnderConstruction.labor}, advanced a swing at a time by the `construct` atomic) and delivered
+ * material ({@link deliveredConstructionFraction} — Σ delivered / Σ needed). So a site only rises as fast as
+ * both a builder hammers and material lands: deliver 3 of 10 units → build caps at 30% until more arrives;
+ * hammer nothing → build stays at the grey foundation however much material sits on it. Its `Health` ramps to
+ * `built · max` (floored at 1 so a foundation is never a 0-HP corpse the CleanupSystem would reap). The site
+ * finishes the tick its builder work is complete (`labor >= ONE`, or a free empty-cost type) and every
+ * material is present: the cost is consumed (spent into the structure — goods conserved), `built` flips to
+ * ONE, the marker is removed, `Health` fills to max, and `buildingFinished` fires. Surplus material beyond
+ * the cost stays in the hold.
  *
- *  - **A construction site (`UnderConstruction` present):** the visible `Building.built` is the lower of two
- *    independent gates — builder work ({@link UnderConstruction.labor}, advanced a swing at a time by the
- *    `construct` atomic) and delivered material ({@link deliveredConstructionFraction} — Σ delivered / Σ
- *    needed). So a site only rises as fast as both a builder hammers and material lands: deliver 3 of 10 units
- *    → build caps at 30% until more arrives; hammer nothing → build stays at the grey foundation however much
- *    material sits on it. Its `Health` ramps to `built · max` (floored at 1 so a foundation is never a 0-HP
- *    corpse the CleanupSystem would reap). The site finishes the tick its builder work is complete
- *    (`labor >= ONE`, or a free empty-cost type) and every material is present: the cost is consumed (spent
- *    into the structure — goods conserved), `built` flips to ONE, the marker is removed, `Health` fills to max,
- *    and `buildingFinished` fires. Surplus material beyond the cost stays in the hold.
- *  - **A built `home` (no marker, `kind === 'home'`):** if the next tier in the level chain exists
- *    ({@link homeNextTier}) and the home holds that tier's full cost, the materials are consumed and the home
- *    upgrades — `buildingType` becomes the next tier, `level` increments, its larger `homeSize` immediately
- *    raises `housingCapacity`. The top tier never upgrades; a non-home built building is finished forever.
+ * An **upgrade site** ({@link Upgrading} beside the marker — opened by the `upgradeBuilding` command, never
+ * spontaneously) runs the same rise, with three differences: its bill is the target tier's own
+ * `construction` (the level difference — {@link constructionBillOf}), its `Health` is NOT ramped (the old
+ * building still stands at its standing HP; ramping by `built` would drop a whole house to 1 HP — named
+ * approximation, the original's upgrade HP behavior is unobserved), and finishing additionally adopts the
+ * target tier (`buildingType`/`level`), merges the stashed pre-upgrade inventory back into the stockpile,
+ * lifts the `Health` pool to the new tier's max, and fires `buildingUpgraded` instead of `buildingFinished`.
  *
- * Who delivers the materials and who hammers is the AI planner: a construction site advertises its outstanding
- * materials as delivery demand ({@link import('../stores/index.js').stockCapacity}) so any carrier routes them
- * there, and the builder drive ({@link import('../agents/economy/index.js').planBuilder}) both hammers the site
- * and — when it runs dry — fetches a missing material itself. A built home that can still upgrade advertises
- * its next tier's cost the same way, so the upgrade materials accumulate with no upgrade-specific transport code.
+ * Who delivers the materials and who hammers is the AI planner: a construction site advertises its
+ * outstanding materials as delivery demand ({@link import('../stores/index.js').stockCapacity}) so any
+ * carrier routes them there, and the builder drive ({@link import('../agents/economy/index.js').planBuilder})
+ * both hammers the site and — when it runs dry — fetches a missing material itself.
  *
  * Source basis: the site-then-build flow, the per-tier material cost (`construction`, graphics-table
- * `LogicConstructionGoods`), and the per-building max HP (`logichitpoints`) are extracted/faithful; a
- * directly-placed home tier paying its whole cumulative chain bill is our design invariant (the original
- * only upgrades homes, so direct tier-N placement is an OpenNorthland capability priced to the tier-1-then-
- * upgrade total rather than let it undercut that path — see `constructionBillOf`); the
- * builder-driven pace (several hammer strikes per unit) and the consume-when-complete / upgrade-when-paid
- * behaviors are our design (the engine's build/upgrade loop has no oracle). Determinism: buildings are visited
- * in the Building store's insertion order, every decision reads content + the site's own components, and every
- * stockpile write goes through the canonical Map. A newly-upgraded home is not re-upgraded the same tick:
- * `world.query` yields each id once and the upgrade mutates in place (no add/remove), and even if revisited the
- * new tier's cost isn't present (just spent).
+ * `LogicConstructionGoods`), the level chain (`upgradeTarget`, the record's `LogicType` table), and the
+ * per-building max HP (`logichitpoints`) are extracted/faithful; the upgrade re-opening the building as a
+ * site with a separate build store and kept occupants is observed original behavior; the builder-driven pace
+ * (several hammer strikes per unit) and the consume-when-complete behavior are our design (the engine's
+ * build/upgrade loop has no oracle). A directly-placed higher tier paying its whole cumulative chain bill is
+ * our design invariant (the original only ever upgrades into higher tiers, so direct tier-N placement is an
+ * OpenNorthland capability priced to the tier-1-then-upgrade total — see `constructionBillOf`).
+ * Determinism: buildings are visited in the Building store's insertion order, every decision reads content +
+ * the site's own components, and every stockpile write goes through the canonical Map.
  */
 export const constructionSystem: System = (world, ctx) => {
   for (const e of world.query(Building, Stockpile)) {
-    const building = world.get(e, Building);
-    const type = contentIndex(ctx.content).buildings.get(building.buildingType);
-    if (type === undefined) continue; // unknown type — can't price the build (shouldn't happen)
-
-    if (world.has(e, UnderConstruction)) {
-      advanceSite(world, ctx, e, building);
-      continue;
-    }
-
-    // A building with no construction marker: only a built one is revisited (for a home upgrade). An unfinished
-    // building without the marker is inert — it never auto-builds and never upgrades (a guard against an
-    // un-migrated `built < ONE` fixture slipping into the upgrade path).
-    if (building.built < ONE) continue;
-
-    // A built `home` levels up once the next tier's materials are present; every other built building
-    // (and a maxed-out top-tier home) is finished forever.
-    const next = homeNextTier(type, ctx);
-    if (next === undefined) continue;
-    if (!materialsPresent(world, e, next.construction)) continue; // upgrade materials not yet present
-
-    consumeMaterials(world, e, next.construction);
-    building.buildingType = next.typeId; // adopt the larger tier — homeSize/housingCapacity grow
-    building.level += 1;
-    // The in-place type swap changes every buildingType-derived answer (stock slots, recipe, produces)
-    // — log the value write so version-keyed caches (porter dormancy) re-scan.
-    world.touchComponent(Building);
-    // The larger tier's footprint may enclose cells settlers were standing on — push them out.
-    evictSettlersFromFootprint(world, ctx, e);
-    ctx.events.emit({ kind: 'buildingUpgraded', entity: e, level: building.level });
+    if (!world.has(e, UnderConstruction)) continue; // built (or inert unmigrated fixture) — nothing to raise
+    advanceSite(world, ctx, e, world.get(e, Building), constructionBillOf(world, ctx, e));
   }
 };
 
@@ -100,48 +74,92 @@ export const constructionSystem: System = (world, ctx) => {
 type BuildingState = NonNullable<(typeof Building)['__value']>;
 
 /**
- * Advance one construction site this tick: reflect builder work + delivered material into `built` and
- * `Health`, and finish the build when both gates are complete. The bill spent into the structure on
- * completion is the site type's from-scratch construction cost (for a home tier, every chain stage's —
- * see {@link constructionBillOf}), the same bill the gates below are measured against.
+ * Advance one construction site this tick: reflect builder work + delivered material into `built` (and,
+ * for a from-scratch site, `Health`), and finish the build when both gates are complete. `cost` is the
+ * site's bill ({@link constructionBillOf} — cumulative from-scratch, or the upgrade difference), spent
+ * into the structure on completion.
  */
-function advanceSite(world: World, ctx: SystemContext, e: Entity, building: BuildingState): void {
+function advanceSite(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  building: BuildingState,
+  cost: ReadonlyArray<{ goodType: number; amount: number }>,
+): void {
   const labor = world.get(e, UnderConstruction).labor;
   // A free (empty-cost) type has nothing to install — its labor requirement is waived so it finishes at
   // once (the headquarters/wonder path). Otherwise the build is done only when fully hammered.
   const laborComplete = constructionTotalUnits(world, ctx, e) === 0 || labor >= ONE;
   if (laborComplete && constructionMaterialsPresent(world, ctx, e)) {
-    consumeMaterials(world, e, constructionBillOf(world, ctx, e)); // spend the cost in (surplus stays)
-    building.built = ONE; // built — production / housing now count it
-    world.remove(e, UnderConstruction); // a finished building is a plain Building again
-    setHealth(world, e, ONE); // full life
-    // A settler that strayed onto the plot during the build (a stale route, a spawn) must not be
-    // left standing inside the finished walls.
-    evictSettlersFromFootprint(world, ctx, e);
-    ctx.events.emit({ kind: 'buildingFinished', entity: e });
+    consumeMaterials(world, e, cost); // spend the cost into the structure (surplus stays)
+    finishSite(world, ctx, e, building);
     return;
   }
 
-  // Still rising: built is the lower of builder work and delivered material (the two gates).
+  // Still rising: built is the lower of builder work and delivered material (the two gates). An upgrade
+  // site keeps its standing Health while the new tier rises over it (see the system doc).
   const delivered = deliveredConstructionFraction(world, ctx, e);
   building.built = labor < delivered ? labor : delivered;
-  setHealth(world, e, building.built);
+  if (!world.has(e, Upgrading)) setHealth(world, e, building.built);
 }
 
 /**
- * Force a construction site straight to finished — the `debugCompleteConstruction` command's effect, kept here
- * so the "a site becomes a building" transition lives in one module (the debug path and the organic
- * {@link advanceSite} finish flip the same three bits the same way). Skips both gates: unlike the organic
- * finish it does not require delivered material or completed labor, and it does not consume the material cost
- * (a cheat leaves any delivered goods as harmless surplus rather than risk spending a cost that isn't there). A
- * `site` without an {@link UnderConstruction} marker is a no-op. Emits the same `buildingFinished` cue.
+ * Flip one construction site to finished — the shared tail of the organic {@link advanceSite} completion
+ * and the debug {@link forceFinishConstruction}, kept in one place so the "a site becomes a building"
+ * transition can't drift between the two. For an upgrade site it additionally adopts the target tier:
+ * `buildingType` becomes the target, `level` increments, the stashed pre-upgrade inventory merges back
+ * into the stockpile (goods conserved — the build hold's surplus and the old inventory coexist), the
+ * `Health` pool takes the new tier's max, and the footprint is re-evicted (the larger tier may enclose
+ * cells settlers stood on). Emits `buildingUpgraded` for an upgrade, `buildingFinished` otherwise.
+ */
+function finishSite(world: World, ctx: SystemContext, e: Entity, building: BuildingState): void {
+  const upgrading = world.tryGet(e, Upgrading);
+  if (upgrading !== undefined) {
+    const type = contentIndex(ctx.content).buildings.get(building.buildingType);
+    const target = type === undefined ? undefined : upgradeTierOf(type, ctx);
+    // The command validated the chain at start; content is immutable per sim, so target is present. The
+    // guard keeps a malformed-content world from crashing: the site then finishes as its old tier.
+    if (target !== undefined) {
+      building.buildingType = target.typeId;
+      building.level += 1;
+      // The in-place type swap changes every buildingType-derived answer (stock slots, recipe, produces)
+      // — log the value write so version-keyed caches (porter dormancy) re-scan.
+      world.touchComponent(Building);
+      const health = world.tryGet(e, Health);
+      if (health !== undefined && target.hitpoints !== undefined) health.max = target.hitpoints;
+    }
+    // Restore the stashed pre-upgrade inventory into the (now post-build) stockpile, canonical order.
+    const amounts = world.get(e, Stockpile).amounts;
+    for (const [goodType, amount] of stockpileEntries({ amounts: upgrading.savedStock })) {
+      setStockAmount(world, amounts, goodType, (amounts.get(goodType) ?? 0) + amount);
+    }
+    world.remove(e, Upgrading);
+  }
+  building.built = ONE; // built — production / housing now count it
+  world.remove(e, UnderConstruction); // a finished building is a plain Building again
+  setHealth(world, e, ONE); // full life (an upgrade fills the new tier's larger pool)
+  // A settler that strayed onto the plot during the build (a stale route, a spawn) must not be
+  // left standing inside the finished walls.
+  evictSettlersFromFootprint(world, ctx, e);
+  ctx.events.emit(
+    upgrading !== undefined
+      ? { kind: 'buildingUpgraded', entity: e, level: building.level }
+      : { kind: 'buildingFinished', entity: e },
+  );
+}
+
+/**
+ * Force a construction site straight to finished — the `debugCompleteConstruction` command's effect, kept
+ * here so the "a site becomes a building" transition lives in one module (the debug path and the organic
+ * {@link advanceSite} finish share {@link finishSite}). Skips both gates: unlike the organic finish it does
+ * not require delivered material or completed labor, and it does not consume the material cost (a cheat
+ * leaves any delivered goods as harmless surplus rather than risk spending a cost that isn't there). An
+ * upgrade site force-finishes into its target tier, stash restored, like the organic path. A `site` without
+ * an {@link UnderConstruction} marker is a no-op.
  */
 export function forceFinishConstruction(world: World, ctx: SystemContext, site: Entity): void {
   if (!world.has(site, UnderConstruction)) return; // not a site (built already, or wrong kind) — no-op
-  world.get(site, Building).built = ONE;
-  world.remove(site, UnderConstruction);
-  setHealth(world, site, ONE);
-  ctx.events.emit({ kind: 'buildingFinished', entity: site });
+  finishSite(world, ctx, site, world.get(site, Building));
 }
 
 /**
@@ -159,13 +177,8 @@ function setHealth(world: World, e: Entity, builtFraction: Fixed): void {
     builtFraction >= ONE ? health.max : Math.max(1, Math.trunc((builtFraction * health.max) / ONE));
 }
 
-/** Whether a stockpile holds every line of a material `cost` in full. */
-function materialsPresent(world: World, building: Entity, cost: readonly GoodsLine[]): boolean {
-  return holdsAll(world.get(building, Stockpile).amounts, cost);
-}
-
 /** Remove the `cost` materials from a building's stockpile (spent into the structure / upgrade). The
- *  caller has verified every material is present in full via {@link materialsPresent}. */
+ *  caller has verified every material is present in full via {@link constructionMaterialsPresent}. */
 function consumeMaterials(world: World, building: Entity, cost: readonly GoodsLine[]): void {
   consumeGoods(world, world.get(building, Stockpile).amounts, cost);
 }
@@ -174,7 +187,7 @@ function consumeMaterials(world: World, building: Entity, cost: readonly GoodsLi
  * Hammer strikes a builder sinks into each unit of construction material. A build swing is a small step —
  * `ONE / (units · this)` of the work, not a whole unit installed — so a builder visibly works a foundation up
  * over many strikes, and the total strikes to raise a building scale with its size through its material cost
- * (a bigger house costs more units → proportionally more swings, and a directly-placed higher home tier pays
+ * (a bigger house costs more units → proportionally more swings, and a directly-placed higher tier pays
  * its whole cumulative bill — see `constructionBillOf` — so it also builds proportionally slower). Our design
  * (the engine's build loop has no oracle), tuned to the observed original's pace: the real base home costs
  * 4 material units, so 4·this ≈ 100 strikes raise it and each hammer strike advances the build a little under

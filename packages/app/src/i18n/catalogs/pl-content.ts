@@ -173,6 +173,11 @@ export const plContent = {
       title: 'Logistyka magazynu',
       summary: 'Tragarze zbierają luźne towary, dopóki magazyn nie osiągnie pojemności.',
     },
+    upgrade: {
+      title: 'Building upgrades',
+      summary:
+        'A home re-opens as a construction site and rises a level for the difference cost; a second home awaits your Upgrade button.',
+    },
     signposts: {
       title: 'Drogowskazy',
       summary: 'Zwiadowca stawia drogowskaz; osadnicy pracują tylko w zasięgu połączonej sieci drogowskazów.',

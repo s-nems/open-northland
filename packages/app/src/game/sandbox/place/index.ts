@@ -16,6 +16,7 @@
 export {
   buildingDef,
   buildingDoorNode,
+  placeBuiltSandboxBuilding,
   placeSandboxBuilding,
   spawnWorkersAtDoor,
   staffableCrewFor,

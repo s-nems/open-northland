@@ -173,6 +173,11 @@ export const enContent = {
       title: 'Warehouse logistics',
       summary: 'Carriers collect loose goods until each warehouse capacity is reached.',
     },
+    upgrade: {
+      title: 'Building upgrades',
+      summary:
+        'A home re-opens as a construction site and rises a level for the difference cost; a second home awaits your Upgrade button.',
+    },
     signposts: {
       title: 'Signposts',
       summary: 'A scout erects a signpost; settlers work only within the connected guidepost network.',

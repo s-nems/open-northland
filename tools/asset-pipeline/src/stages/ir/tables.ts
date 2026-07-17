@@ -19,6 +19,7 @@ import {
   extractJobs,
   extractLandscape,
   extractTribes,
+  extractUpgradeTargets,
   extractVehicles,
   extractWeapons,
   parseIniSections,
@@ -58,6 +59,9 @@ export async function extractIniTables(sources: readonly IniSource[]) {
   // typeId -> max hitpoints, the graphics-table `logichitpoints` overlay onto the logic buildings —
   // the building's full life pool the ConstructionSystem ramps up as it rises (see `extractHouseHitpoints`).
   const hitpoints = new Map<number, number>();
+  // typeId -> the next size level's typeId in the same record — the real level-chain join
+  // (see `extractUpgradeTargets`).
+  const upgradeTargets = new Map<number, number>();
   // typeId -> ground footprint (collision body / build-exclusion zone / door), the second graphics-table
   // overlay onto the logic buildings (see `extractBuildingFootprints`).
   const footprints = new Map<number, BuildingFootprint>();
@@ -91,6 +95,9 @@ export async function extractIniTables(sources: readonly IniSource[]) {
     for (const [typeId, hp] of extractHouseHitpoints(sections)) {
       hitpoints.set(typeId, hp);
     }
+    for (const [typeId, target] of extractUpgradeTargets(sections)) {
+      upgradeTargets.set(typeId, target);
+    }
     for (const [typeId, footprint] of extractBuildingFootprints(sections)) {
       footprints.set(typeId, footprint);
     }
@@ -113,6 +120,7 @@ export async function extractIniTables(sources: readonly IniSource[]) {
     buildingBobs,
     constructionCosts,
     hitpoints,
+    upgradeTargets,
     footprints,
     constructionLayers,
     buildingOverlays,

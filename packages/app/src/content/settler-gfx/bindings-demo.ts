@@ -48,6 +48,7 @@ export function buildHumanBindings(
   trunkBinding?: ResourceTypeBinding,
   berryBushBinding?: ResourceTypeBinding,
   overlayByType?: Readonly<Record<number, BuildingOverlayRef>>,
+  upgradeByType?: Readonly<Record<number, readonly ConstructionLayerRef[]>>,
 ): SpriteBindings {
   const walk = directionalAnimFromSeq(seqByName, WALK_SEQ, {}, FALLBACK_WALK);
   // Idle is the wait animation played as one direction (its length isn't a clean ×8, so it isn't a
@@ -93,6 +94,9 @@ export function buildHumanBindings(
       ...(constructionByType !== undefined && Object.keys(constructionByType).length > 0
         ? { constructionByType }
         : {}),
+      // Upgrade-overlay layers per type (the `upgrade === 1` rows — the next tier's body revealing
+      // over the still-standing old one while a building upgrades). Absent/empty spreads to nothing.
+      ...(upgradeByType !== undefined && Object.keys(upgradeByType).length > 0 ? { upgradeByType } : {}),
       // Animated state overlays per type (the type-4 `GfxOverlay` join) — the mill's rotor drawn on
       // top of its bladeless body: still while idle, spinning while the mill produces. Absent/empty
       // when the IR predates the `buildingOverlays` lane (no overlay — the body draws as before).

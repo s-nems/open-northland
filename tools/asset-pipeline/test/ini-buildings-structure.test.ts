@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   extractBuildingFootprints,
   extractConstructionCosts,
+  extractUpgradeTargets,
   parseIniSections,
 } from '../src/decoders/ini.js';
 import { HOUSES_INI } from './fixtures/ini-sources.js';
@@ -88,6 +89,49 @@ LogicConstructionGoods 1 3
 
   it('returns an empty map for sources with no [GfxHouse] records (the logic-only tables)', () => {
     expect(extractConstructionCosts(parseIniSections(HOUSES_INI)).size).toBe(0);
+  });
+});
+
+describe('extractUpgradeTargets', () => {
+  it('chains each level to the next sizeIdx typeId within one record, top level unchained', () => {
+    const targets = extractUpgradeTargets(parseIniSections(GFXHOUSES_INI));
+    // home level 0 (typeId 2) upgrades into level 1 (typeId 3); level 1 is the record's top.
+    expect(targets.get(2)).toBe(3);
+    expect(targets.has(3)).toBe(false);
+    // single-level records (wall, headquarters) have no chain.
+    expect(targets.has(22)).toBe(false);
+    expect(targets.has(1)).toBe(false);
+  });
+
+  it('never chains across houses lumped into one [GfxHouse] section', () => {
+    // Two houses under ONE bracket, split only by EditName (the real saracen/egypt lumping): the
+    // first house's level 0 must NOT chain into the second house's LogicType table.
+    const lumped = `[GfxHouse]
+EditName "first hut"
+LogicTribeType 4
+LogicType 0 30
+EditName "second hut"
+LogicTribeType 4
+LogicType 1 31
+`;
+    expect(extractUpgradeTargets(parseIniSections(lumped)).size).toBe(0);
+  });
+
+  it('collapses a shared typeId to the lowest-tribeType record chain', () => {
+    // Tribe 4 chains typeId 2 into a different target (99); tribe 1 chains 2 -> 3. Tribe 1 must win
+    // even though tribe 4 is parsed first (the reference-tribe convention).
+    const otherChain = `[GfxHouse]
+EditName "saracen residence"
+LogicTribeType 4
+LogicType 0 2
+LogicType 1 99
+`;
+    const targets = extractUpgradeTargets(parseIniSections(`${otherChain}\n${GFXHOUSES_INI}`));
+    expect(targets.get(2)).toBe(3);
+  });
+
+  it('returns an empty map for sources with no [GfxHouse] records', () => {
+    expect(extractUpgradeTargets(parseIniSections(HOUSES_INI)).size).toBe(0);
   });
 });
 
