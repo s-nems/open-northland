@@ -53,8 +53,9 @@ const MAP_W = 96;
 const MAP_H = 96;
 const INITIAL_ZOOM = 0.5;
 /** Enough for the slowest first delivery — a mined unit (clay: 6 strikes × 23-tick digs + rests) dug,
- *  carried to its flag, and banked — with headroom for the walk from every camp's spawn. */
-const RUN_TICKS = 2400;
+ *  carried to its flag, and banked. Measured: every headless check passes by tick 825 (deterministic,
+ *  seed 41); 1200 keeps ~1.45× headroom. */
+const RUN_TICKS = 1200;
 
 function buildVillage(sim: Simulation): void {
   for (const b of VILLAGE) {
