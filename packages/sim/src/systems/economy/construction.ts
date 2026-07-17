@@ -165,6 +165,7 @@ function materialsPresent(world: World, building: Entity, cost: readonly GoodsLi
  *  caller has verified every material is present in full via {@link materialsPresent}. */
 function consumeMaterials(world: World, building: Entity, cost: readonly GoodsLine[]): void {
   consumeGoods(world.get(building, Stockpile).amounts, cost);
+  world.touchComponent(Stockpile);
 }
 
 /**

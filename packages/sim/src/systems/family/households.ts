@@ -137,6 +137,7 @@ export function consumeFoodUnits(world: World, ctx: SystemContext, house: Entity
     if (amount <= 0 || !isFood(ctx, goodType)) continue;
     const take = Math.min(amount, left);
     stock.amounts.set(goodType, amount - take);
+    world.touchComponent(Stockpile);
     left -= take;
   }
 }

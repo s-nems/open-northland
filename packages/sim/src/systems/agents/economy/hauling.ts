@@ -3,7 +3,8 @@ import { isCarrierJob } from '../../stores/index.js';
 import { walkPickupBatch } from '../actions.js';
 import type { PlannerContext } from '../planner-context.js';
 import { nearestWorkplaceOutput } from '../targets/index.js';
-import { boundProducerOutputToHaul, isPorterBoundToStore, nearestGroundPile } from './haul-targets.js';
+import { isPorterBoundToStore, porterPickupTarget } from './haul-targets.js';
+import { markPorterDormant, porterDormant, wakePorter } from './porter-dormancy.js';
 import { deliverableGoodProbe } from './routing.js';
 
 /**
@@ -23,23 +24,21 @@ import { deliverableGoodProbe } from './routing.js';
  */
 export function planPorter(plan: PlannerContext): boolean {
   const { world, ctx, entity: e } = plan;
-  const settler = plan;
   if (!isPorterBoundToStore(world, ctx, e)) return false;
-  // Every pickup consults the settler's own delivery routing (deliverableGoodProbe) before lifting, so
-  // fetch and delivery can never disagree — a disagreement is a pick-up→shed livelock.
-  const deliverable = deliverableGoodProbe(plan);
-  // Haul the bound producer's finished output OUT to a warehouse (a farm's wheat) — the load then routes
-  // to storage, never into another producer of the good (deliveryTargetFor case 3).
-  const haul = boundProducerOutputToHaul(deliverable, world, ctx, e, settler.jobType, settler.tribe);
-  if (haul !== null) {
-    walkPickupBatch(plan, haul.home, haul.goodType);
-    return true;
+  // Dormancy: a porter whose last scan found nothing skips the identical re-scan until an input it
+  // reads changes (see ./porter-dormancy.ts) — the confined-idle porter would otherwise re-walk the
+  // pile list and the store sinks every tick.
+  if (porterDormant(plan)) return false;
+  // The pickup decision (haul the bound producer's output out, else bring a deliverable pile in) lives
+  // in `porterPickupTarget`; every pickup consults the settler's own delivery routing before lifting,
+  // so fetch and delivery can never disagree — a disagreement is a pick-up→shed livelock.
+  const pick = porterPickupTarget(plan);
+  if (pick === null) {
+    markPorterDormant(plan);
+    return false;
   }
-  // Otherwise bring a loose ground pile IN to the bound store (the warehouse/HQ porter), confined to the
-  // porter's signpost area — an out-of-area pile is not one it knows about.
-  const pile = nearestGroundPile(plan, { deliverable });
-  if (pile === null) return false;
-  walkPickupBatch(plan, pile.pile, pile.goodType);
+  wakePorter(world, e);
+  walkPickupBatch(plan, pick.from, pick.goodType);
   return true;
 }
 

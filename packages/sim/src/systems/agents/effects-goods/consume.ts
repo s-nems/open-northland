@@ -22,6 +22,7 @@ export function consumeFood(world: World, settler: Entity, from: Entity | null, 
     const have = stock.amounts.get(goodType) ?? 0;
     if (have <= 0) return; // emptied since the planner chose it — eat anyway, but take nothing
     stock.amounts.set(goodType, have - 1);
+    world.touchComponent(Stockpile);
     return;
   }
   // No store: consume from the settler's own carried load.

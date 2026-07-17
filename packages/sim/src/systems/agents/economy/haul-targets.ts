@@ -4,6 +4,7 @@ import type { SystemContext } from '../../context.js';
 import { buildingProduces, lowestStockedGood } from '../../stores/index.js';
 import type { PlannerContext } from '../planner-context.js';
 import { interactionCell, nearestByCell } from '../targets/index.js';
+import { deliverableGoodProbe } from './routing.js';
 import { isFarmCarrierHaulOutRole, isStorageSink } from './store-policy.js';
 
 /**
@@ -87,6 +88,28 @@ export function boundProducerOutputToHaul(
     }
   }
   return null;
+}
+
+/**
+ * The porter rung's whole pickup decision, side-effect-free: haul the bound producer's output out
+ * ({@link boundProducerOutputToHaul}) or bring the nearest deliverable ground pile in
+ * ({@link nearestGroundPile}), in that priority order — or null when the porter has nothing to do.
+ * Split from `planPorter` (which acts on it) so the dormancy verifier can re-run the exact decision
+ * without mutating state (see ./porter-dormancy.ts).
+ */
+export function porterPickupTarget(plan: PlannerContext): { from: Entity; goodType: number } | null {
+  const deliverable = deliverableGoodProbe(plan);
+  const haul = boundProducerOutputToHaul(
+    deliverable,
+    plan.world,
+    plan.ctx,
+    plan.entity,
+    plan.jobType,
+    plan.tribe,
+  );
+  if (haul !== null) return { from: haul.home, goodType: haul.goodType };
+  const pile = nearestGroundPile(plan, { deliverable });
+  return pile === null ? null : { from: pile.pile, goodType: pile.goodType };
 }
 
 /**
