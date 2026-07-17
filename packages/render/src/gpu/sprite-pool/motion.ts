@@ -41,8 +41,8 @@ const MAX_GAIT_RATE = 2.5;
 /** An entity's inter-tick motion track: the current and previous tick anchors (world px), plus the
  *  drawn anchor the last {@link trackMotion} computed from them. */
 export interface MotionTrack {
-  /** The tick `x`/`y` belong to; −1 = untracked, so the next update snaps both anchors — either never
-   *  sighted, or absent from the draw list since (the pool resets it on re-entry, whose anchor is stale). */
+  /** The tick `x`/`y` belong to; −1 = untracked, so the next update snaps both anchors: never sighted, or
+   *  reset by the pool when the entity re-enters the draw list after an absence (its anchor is stale). */
   tick: number;
   x: number;
   y: number;

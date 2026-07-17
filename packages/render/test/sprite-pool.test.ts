@@ -136,10 +136,10 @@ function settler(id: number, col: number, row: number, extra: Record<string, unk
 }
 
 /**
- * The motion track across a GAP in the draw list. A pooled entity keeps its track while it is not drawn
- * (indoors, fogged, culled), so resuming the lerp from that stale anchor would glide it across the gap —
- * `trackMotion`'s own SNAP_DISTANCE only catches gaps wider than 128 px, which a worker stepping back out
- * of its own door is not. The pool must reset the track at re-entry instead.
+ * The motion track across a gap in the draw list. A pooled entity keeps its track while it is not drawn
+ * (indoors, fogged, culled), so resuming the lerp from that stale anchor would glide it in from wherever it
+ * vanished — `trackMotion`'s own SNAP_DISTANCE only catches gaps wider than 128 px. The pool must reset the
+ * track at re-entry instead, without disturbing the interpolation of anything drawn continuously.
  */
 describe('SpritePool — motion track across a gap in the draw list', () => {
   /** The anchor a ref was drawn at this frame, failing the test if it was not drawn at all. */
@@ -174,10 +174,31 @@ describe('SpritePool — motion track across a gap in the draw list', () => {
     });
     const emerged = anchorAt(pool, 1);
     // Guards the setup, not the fix: were this gap ever to exceed SNAP_DISTANCE, trackMotion would snap on
-    // its own and the assertion below would pass without a re-entry reset at all.
-    expect(Math.hypot(emerged.x - door.x, emerged.y - door.y)).toBeLessThan(SNAP_DISTANCE);
+    // its own and the assertion below would pass without a re-entry reset at all. Per-axis, like trackMotion.
+    expect(Math.max(Math.abs(emerged.x - door.x), Math.abs(emerged.y - door.y))).toBeLessThan(SNAP_DISTANCE);
     expect(emerged).not.toEqual(door); // it did move — the assertion below is not vacuous
     expect(emerged).toEqual(anchorAt(pool, 2)); // drawn where a freshly-sighted settler on this tile draws
+  });
+
+  it('interpolates a settler drawn on consecutive frames — the reset must not fire on every frame', () => {
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), undefined);
+
+    pool.reconcile({ ...poolFrame(snapshotOf([settler(1, 0, 0)]), FRAMES_ALL), tick: 0 });
+    const from = anchorAt(pool, 1);
+
+    // Drawn again the very next frame, one tile on. Settler 2 is first sighted here, so it snaps and marks
+    // the destination anchor.
+    pool.reconcile({
+      ...poolFrame(snapshotOf([settler(1, 0, 1), settler(2, 0, 1)]), FRAMES_ALL),
+      tick: 1,
+      alpha: 0.5,
+    });
+    const to = anchorAt(pool, 2);
+    // Half a tick behind the sim, as the fixed-timestep contract wants — NOT snapped onto `to`. Pins the
+    // other half of the predicate: were the `lastSeen` stamp ever hoisted above the reset, every entity
+    // would read as re-entering, snap every frame, and inter-tick interpolation would silently die.
+    expect(anchorAt(pool, 1)).toEqual({ x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 });
   });
 });
 
