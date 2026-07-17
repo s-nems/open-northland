@@ -1,6 +1,8 @@
 import { hasFieldFarmAtomics } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { NAV_LANDSCAPE_TYPES } from '../../src/catalog/terrain.js';
+import { WARRIOR_SPEC_BY_WEAPON_GOOD_SLUG } from '../../src/content/settler-gfx/index.js';
+import { WEAPON_GOOD_SLUG_BY_JOB } from '../../src/game/sandbox/ids/index.js';
 import { hasRealIr, loadContentUnderTest } from './helpers.js';
 
 /**
@@ -26,6 +28,19 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
     const { real } = await loadContentUnderTest();
     const ids = new Set(real.goods.map((g) => g.id));
     for (const id of CORE_GOOD_IDS) expect(ids, `core good '${id}' missing`).toContain(id);
+  });
+
+  it('every weapon-good slug the spawn/render tables key on exists in the real goods', async () => {
+    // `weaponEquipmentFor` makes an unresolvable slug a silent unarmed spawn and the render's
+    // equipped-weapon body join skips unknown slugs, so a pipeline slug rename (say, fixing the
+    // `sword_shord` typo) would quietly bring back the empty-Broń-socket bug — this fails it loudly.
+    const { real } = await loadContentUnderTest();
+    const ids = new Set(real.goods.map((g) => g.id));
+    const slugs = new Set([
+      ...Object.values(WEAPON_GOOD_SLUG_BY_JOB),
+      ...Object.keys(WARRIOR_SPEC_BY_WEAPON_GOOD_SLUG),
+    ]);
+    for (const slug of slugs) expect(ids, `weapon good slug '${slug}' missing`).toContain(slug);
   });
 
   it('no building stocks or produces a vehicle good (stripVehicleGoods holds on real data)', async () => {
