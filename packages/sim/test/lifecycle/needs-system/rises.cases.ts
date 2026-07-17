@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
+import * as components from '../../../src/components/index.js';
 import { Settler } from '../../../src/components/index.js';
 import { fx, ONE, Simulation } from '../../../src/index.js';
 import {
+  BABY_MALE,
+  CHILD_MALE,
   ENJOYMENT_RISE_PER_TICK,
   FATIGUE_RISE_PER_TICK,
+  GROWUP_TICKS,
   HUNGER_RISE_PER_TICK,
   needsSystem,
 } from '../../../src/systems/index.js';
@@ -58,6 +62,40 @@ describe('needsSystem — hunger rises over time', () => {
     expect(hunger).toBe(fx.mul(HUNGER_RISE_PER_TICK, fx.fromInt(100)));
     expect(hunger).toBeLessThan(ONE);
     expect(sim.checkInvariants()).toEqual([]);
+  });
+});
+
+describe('needsSystem — a cared-for baby accumulates nothing', () => {
+  it('freezes every need of an Age carrier in a baby stage (its family keeps it fed and rested)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const baby = settlerWithHunger(sim, fx.fromInt(0));
+    sim.world.get(baby, Settler).jobType = BABY_MALE;
+    sim.world.add(baby, components.Age, { ticks: 0 });
+
+    for (let i = 0; i < 100; i++) needsSystem(sim.world, ctxOf(sim));
+    const settler = sim.world.get(baby, Settler);
+    expect(settler.hunger).toBe(fx.fromInt(0));
+    expect(settler.fatigue).toBe(fx.fromInt(0));
+    expect(settler.enjoyment).toBe(fx.fromInt(0));
+  });
+
+  it('rises the needs of an Age carrier in a CHILD stage (weaned — it self-feeds from here)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const child = settlerWithHunger(sim, fx.fromInt(0));
+    sim.world.get(child, Settler).jobType = CHILD_MALE;
+    sim.world.add(child, components.Age, { ticks: GROWUP_TICKS });
+
+    needsSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(child, Settler).hunger).toBe(HUNGER_RISE_PER_TICK);
+  });
+
+  it('rises the needs of an ADULT fixture whose synthetic job id collides with a baby id (no Age)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const adult = settlerWithHunger(sim, fx.fromInt(0));
+    sim.world.get(adult, Settler).jobType = BABY_MALE; // an adult trade in some fixtures — no Age carried
+
+    needsSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(adult, Settler).hunger).toBe(HUNGER_RISE_PER_TICK);
   });
 });
 
