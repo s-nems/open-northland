@@ -1,8 +1,8 @@
 /**
  * A* pathfinding over the terrain half-cell adjacency graph.
  *
- * The pure search the PathfindingSystem drives. It walks {@link TerrainGraph.steps} (the canonical 8-direction
- * half-cell edge set: E,W then NE,SE,SW,NW then the vertical N,S), using {@link nodeLatticeDistance} as the
+ * The pure search the PathfindingSystem drives. It walks {@link TerrainGraph.stepsInto} (the canonical
+ * 8-direction half-cell edge set: E,W then NE,SE,SW,NW then the vertical N,S), using {@link latticeDistanceTo} as the
  * admissible heuristic and each step's own cost (its real world length: half-column ½, diagonal ≈ ¾, half-row ≈
  * 0.28) as the edge cost. The result is the lowest-cost node sequence from `start` to `goal`, inclusive of both,
  * or `null` when no walkable route exists — minimising true on-screen distance, so a route reads straight under
@@ -20,34 +20,13 @@
  * history, so lockstep-safe. No floats touch the search: all costs are {@link Fixed}. `start`/`goal` must be
  * walkable — an unwalkable endpoint yields `null` (no route), not a throw, since it is a recoverable query.
  *
- * Per-graph scratch: the per-node record/stamp arrays and the heap are reused across queries on the same graph
- * (a WeakMap keyed by the graph), so a query allocates records for its discovered nodes only — never an
- * O(mapArea) backing store per call. A slot is valid only when its generation stamp matches the current query,
- * so stale contents are never read; reuse is invisible to the result.
+ * A query's working storage is reused across queries on the same graph (`scratch.ts`), so a search allocates
+ * records for its discovered nodes only — never an O(mapArea) backing store per call.
  */
-import { type Fixed, fx } from '../core/fixed.js';
-import { siftDown, siftUp } from './pathfinding/heap.js';
-import { type BlockOverlay, type NodeId, nodeLatticeDistance, type TerrainGraph } from './terrain/index.js';
-
-/** A* per-node bookkeeping. `g` = best known cost from start; `f` = g + heuristic; `h` = heuristic. */
-interface NodeRecord {
-  readonly node: NodeId;
-  g: Fixed;
-  f: Fixed;
-  h: Fixed;
-  /** The node's deviation from the start→goal line (the visual-straightness tie-break) — a plain integer cross
-   *  product in half-cell units (only its ordering matters: each axis's true world scale is a constant factor
-   *  multiplying both cross terms alike), a pure function of the node + endpoints computed once at discovery,
-   *  never path-dependent. Exact integers well under 2^53 even on huge maps — no Fixed mul overflow. */
-  readonly dev: number;
-  /** Predecessor node on the best known path, or null for the start node. */
-  cameFrom: NodeId | null;
-  /** False once popped from the open set (closed) — a settled node is never re-expanded. */
-  open: boolean;
-  /** Position in the open heap while `open` — maintained by the sift ops so a relaxation can
-   *  decrease-key in place. Meaningless once closed. */
-  heapIdx: number;
-}
+import { fx } from '../../core/fixed.js';
+import { type BlockOverlay, latticeDistanceTo, type NodeId, type TerrainGraph } from '../terrain/index.js';
+import { siftDown, siftUp } from './heap.js';
+import { MAX_QUERY_GENERATION, type NodeRecord, scratchFor } from './scratch.js';
 
 /** The canonical open-set order: (f, h, dev, node id), all ascending — a total order (the id last), so the
  *  heap's minimum is unique and the pick is independent of the heap's internal layout. */
@@ -57,39 +36,6 @@ function betterRecord(a: NodeRecord, b: NodeRecord): boolean {
   if (a.dev !== b.dev) return a.dev < b.dev;
   return a.node < b.node;
 }
-
-/**
- * Reusable per-graph search storage. `records[node]`/`stamps[node]` are valid only when the stamp
- * equals the current query's generation — everything else is stale garbage from an earlier query
- * and is treated as undiscovered, so reuse can never leak state between queries.
- */
-interface SearchScratch {
-  readonly records: Array<NodeRecord | undefined>;
-  readonly stamps: Int32Array;
-  readonly heap: NodeRecord[];
-  /** Generation counter — incremented per query; wraps by refilling `stamps` (see below). */
-  query: number;
-}
-
-const scratchByGraph = new WeakMap<TerrainGraph, SearchScratch>();
-
-function scratchFor(graph: TerrainGraph): SearchScratch {
-  let scratch = scratchByGraph.get(graph);
-  if (scratch === undefined) {
-    scratch = {
-      records: new Array(graph.nodeCount),
-      stamps: new Int32Array(graph.nodeCount),
-      heap: [],
-      query: 0,
-    };
-    scratchByGraph.set(graph, scratch);
-  }
-  return scratch;
-}
-
-/** Stamps are Int32; on the (practically unreachable) wrap, clear them so no stale slot can
- *  collide with a reused generation value. */
-const MAX_QUERY_GENERATION = 2 ** 31 - 1;
 
 /**
  * A search's cost report, for callers that budget pathfinding work: `explored` is incremented once per node
@@ -184,7 +130,7 @@ function runSearch(
     scratch.query = 0;
   }
   scratch.query += 1;
-  const { records, stamps, heap, query } = scratch;
+  const { records, stamps, heap, steps, query } = scratch;
   heap.length = 0;
   const recordAt = (node: NodeId): NodeRecord | undefined =>
     stamps[node] === query ? records[node] : undefined;
@@ -195,17 +141,17 @@ function runSearch(
   // factor that multiplies both cross terms alike, so the ordering — all a tie-break needs — is unchanged,
   // while the magnitudes stay ≤ ~2·span², exact far past any map size). Unnormalised is fine: it only ever
   // compares against candidates of the same search, so the |Δline| factor cancels too.
-  const cs = graph.coordsOf(start);
-  const cg = graph.coordsOf(goal);
-  const lineHX = cg.x - cs.x;
-  const lineHY = cg.y - cs.y;
-  const deviation = (node: NodeId): number => {
-    const c = graph.coordsOf(node);
-    return Math.abs((c.x - cs.x) * lineHY - (c.y - cs.y) * lineHX);
-  };
+  const startX = graph.xOf(start);
+  const startY = graph.yOf(start);
+  const goalX = graph.xOf(goal);
+  const goalY = graph.yOf(goal);
+  const lineHX = goalX - startX;
+  const lineHY = goalY - startY;
+  const deviation = (node: NodeId): number =>
+    Math.abs((graph.xOf(node) - startX) * lineHY - (graph.yOf(node) - startY) * lineHX);
 
   // At the start node g is 0, so f === h; compute the heuristic once.
-  const startH = nodeLatticeDistance(graph, start, goal);
+  const startH = latticeDistanceTo(graph, goalX, goalY, start);
   const startRec: NodeRecord = {
     node: start,
     g: fx.fromInt(0),
@@ -242,11 +188,13 @@ function runSearch(
 
     // Lattice steps carry their own cost and already exclude blocked/unwalkable nodes, so the
     // search body just relaxes each.
-    for (const { node: next, cost } of graph.steps(current.node, blocked)) {
+    graph.stepsInto(current.node, blocked, steps);
+    for (let i = 0; i < steps.length; i++) {
+      const { node: next, cost } = steps.at(i);
       const tentativeG = fx.add(current.g, cost);
       const existing = recordAt(next);
       if (existing === undefined) {
-        const h = nodeLatticeDistance(graph, next, goal);
+        const h = latticeDistanceTo(graph, goalX, goalY, next);
         const rec: NodeRecord = {
           node: next,
           g: tentativeG,
