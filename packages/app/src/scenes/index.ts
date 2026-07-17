@@ -1,6 +1,7 @@
 import { battleScene } from './battle.js';
 import { berriesScene } from './berries.js';
 import { chainScene } from './chain.js';
+import { childrenScene } from './children.js';
 import { collisionScene } from './collision.js';
 import { familyScene } from './family.js';
 import { goodsCatalogScene } from './goods-catalog.js';
@@ -27,6 +28,7 @@ export const SCENES: readonly SceneDefinition[] = [
   warehouseScene,
   signpostsScene,
   familyScene,
+  childrenScene,
 ];
 
 /** Look up a scene by its `?scene=<id>` value, or `undefined` if no scene has that id. */

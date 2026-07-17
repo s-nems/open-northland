@@ -29,6 +29,7 @@ import { jobCanHarvest } from '../economy/flags.js';
 import { ExternalFoodIndex } from '../family/food-search.js';
 import { planWomanHoard } from '../family/hoard.js';
 import { planChildWander } from '../family/wander.js';
+import { isChild } from '../lifecycle/ageclass.js';
 import { MILITARY_MODE } from '../readviews/index.js';
 import { navigationLimitFor } from '../signposts/index.js';
 import { canonicalById, clearNavState, isTravelling, NodeBuckets } from '../spatial.js';
@@ -210,14 +211,26 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
 
     const settler = world.get(e, Settler);
     if (settler.jobType === null) continue; // an unemployed settler has no job atomics to run
-    // A baby/child is a non-working life stage: it runs no atomics and, faithful to the original (a baby
-    // is cared for, it doesn't self-feed), does not run the adult needs-drives — it just grows up
-    // (GrowthSystem) and potters around its home (planChildWander). Key on the Age component, not
-    // `isNonWorkingAge(jobType)`: Age is present ⟺ the settler is in a baby/child stage (the
-    // GrowthSystem invariant), and keying on it avoids a jobType-id collision — the golden slice's
-    // woodcutter is jobType 1, the same number as `baby_female`, but only a settler born young carries
-    // an Age.
+    // A baby/child is a non-working life stage: it never runs economy/combat work — it grows up
+    // (GrowthSystem) and potters around its home (planChildWander). A BABY is cared for and doesn't
+    // self-feed (the original binds it no eat animation); a CHILD runs the needs drives first — the
+    // original binds child_female/child_male eat (10) and sleep (8) animations (`setatomic 3/4` →
+    // `..._child_*_eat_slot_food`/`..._sleep`), so a hungry child seeks food like an adult instead of
+    // growing up starved. Key on the Age component, not `isNonWorkingAge(jobType)`: Age is present ⟺
+    // the settler is in a baby/child stage (the GrowthSystem invariant), and keying on it avoids a
+    // jobType-id collision — the golden slice's woodcutter is jobType 1, the same number as
+    // `baby_female`, but only a settler born young carries an Age.
     if (world.has(e, Age)) {
+      if (isChild(settler.jobType)) {
+        const p = world.get(e, Position);
+        const hereNode = nodeOfPosition(p.x, p.y);
+        const here = terrain.nodeAtClamped(hereNode.hx, hereNode.hy);
+        const limit = navigationLimitFor(world, terrain, e);
+        if (planNeeds(world, ctx, terrain, e, settler, here, routeLoad, targets, limit)) {
+          world.remove(e, Resting); // same stale-marker shed as the adult needs path below
+          continue;
+        }
+      }
       planChildWander(world, ctx, terrain, e, spacing);
       continue;
     }

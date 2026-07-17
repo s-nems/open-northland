@@ -10,8 +10,8 @@ import { navigationLimitFor } from '../signposts/index.js';
 /**
  * The child stroll — a growing settler (baby/child) with a home occasionally walks to a random spot
  * beside it instead of standing frozen at the door (user-requested feel; the original's children
- * likewise potter around the house). Runs from the planner's Age gate for an idle child, so it never
- * competes with a drive — a child has none.
+ * likewise potter around the house). Runs from the planner's Age gate for an idle young settler,
+ * below a child's eat/sleep drives — a hungry child feeds first and strolls when sated.
  */
 
 /** How far from the home anchor a stroll may aim (half-cell nodes — ~3 visual tiles). */

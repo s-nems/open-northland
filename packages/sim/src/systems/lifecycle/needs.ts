@@ -5,6 +5,7 @@ import type { Rng } from '../../core/rng.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System } from '../context.js';
 import { isFighterJob } from '../readviews/index.js';
+import { isBaby } from './ageclass.js';
 
 // Need rise rates, in fixed-point [0,ONE] units per tick.
 //
@@ -97,9 +98,11 @@ export const STARVATION_BITES_TO_DIE = 240;
  *  - ANIMALS (`jobType` null): no eat/graze mechanic yet;
  *  - JOBLESS settlers (also `jobType` null — e.g. a worker whose workplace was demolished): the eat drive
  *    lives in the job planner, which skips a jobless settler (`ai.ts` planNeeds);
- *  - BABIES/CHILDREN ({@link Age} carriers): the planner skips them too — a baby is cared for, it doesn't
- *    self-feed — and starving them would kill every newborn before its `GROWUP_TICKS` boundary, turning
- *    reproduction into a death loop.
+ *  - BABIES ({@link Age} carriers in a baby stage): a baby is cared for, it doesn't self-feed (the
+ *    original binds it no eat animation), and starving it would kill every newborn before its
+ *    `GROWUP_TICKS` boundary, turning reproduction into a death loop. A CHILD is NOT exempt — the
+ *    planner runs the eat drive for it (`ai.ts`), so like an adult it starves only when food is truly
+ *    absent.
  *
  * The whole system is gated by the {@link needsEnabled} world rule (the `setNeedsEnabled` command):
  * disabled, needs freeze where they are and starvation stops — the dev/admin lever scenes default to.
@@ -125,7 +128,7 @@ export const needsSystem: System = (world, ctx) => {
       starvationBeat &&
       settler.hunger === ONE &&
       settler.jobType !== null &&
-      !world.has(e, Age) &&
+      !(world.has(e, Age) && isBaby(settler.jobType)) &&
       world.has(e, Health)
     ) {
       const health = world.get(e, Health);

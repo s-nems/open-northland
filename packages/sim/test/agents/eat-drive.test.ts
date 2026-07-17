@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  Age,
   Building,
   Carrying,
   CurrentAtomic,
@@ -11,8 +12,17 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { type Fixed, fx, ONE, Simulation } from '../../src/index.js';
-import { aiSystem, atomicSystem, EAT_ANIMATION_REPEATS } from '../../src/systems/index.js';
+import {
+  aiSystem,
+  atomicSystem,
+  BABY_FEMALE,
+  CHILD_FEMALE,
+  CHILD_MALE,
+  EAT_ANIMATION_REPEATS,
+  GROWUP_TICKS,
+} from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
+import { settlerAt as fixtureSettlerAt } from '../fixtures/settler.js';
 import { cellOf, ctxOf, grassMap, justAbove, NEED_THRESHOLD, needsSettlerAt } from './needs/support.js';
 
 /**
@@ -201,5 +211,51 @@ describe('eat drive — closing the rise→eat→reset loop through the real sch
       return sim.hashState();
     };
     expect(run()).toBe(run());
+  });
+});
+
+describe('eat drive — age classes (a child self-feeds, a baby is cared for)', () => {
+  /** A born-young settler: the given age-class jobType plus the Age the GrowthSystem stamps at birth. */
+  function youngAt(sim: Simulation, x: number, y: number, jobType: number, ageTicks: number): Entity {
+    const e = fixtureSettlerAt(sim, {
+      jobType,
+      needs: { hunger: HUNGRY },
+      position: { x: fx.fromInt(x), y: fx.fromInt(y) },
+    });
+    sim.world.add(e, Age, { ticks: ageTicks });
+    return e;
+  }
+
+  it('a hungry child standing on a food store starts the eat atomic (the original binds child eat clips)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const child = youngAt(sim, 2, 0, CHILD_FEMALE, GROWUP_TICKS);
+    const store = storeAt(sim, 2, 0, 3);
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    const atomic = sim.world.get(child, CurrentAtomic);
+    expect(atomic.atomicId).toBe(EAT_ATOMIC);
+    expect(atomic.effect).toEqual({ kind: 'eat', goodType: FOOD, from: store });
+  });
+
+  it('a hungry child away from food walks to the nearest store like an adult', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    const child = youngAt(sim, 0, 0, CHILD_MALE, GROWUP_TICKS);
+    storeAt(sim, 3, 0, 2);
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(child, CurrentAtomic)).toBe(false);
+    expect(sim.world.get(child, MoveGoal).cell).toBe(cellOf(sim, 3, 0));
+  });
+
+  it('a hungry baby never seeks food — it is cared for, not self-feeding', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const baby = youngAt(sim, 2, 0, BABY_FEMALE, 0);
+    storeAt(sim, 2, 0, 3); // food right under it, still ignored
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(baby, CurrentAtomic)).toBe(false);
   });
 });

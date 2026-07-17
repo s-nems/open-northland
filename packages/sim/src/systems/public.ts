@@ -4,7 +4,7 @@ export { createSettler, DEFAULT_SETTLER_HITPOINTS } from './conflict/spawn/index
 export { BERRY_REGROW_TICKS, createBerryBush } from './economy/berries.js';
 export { isOnMission } from './family/eligibility.js';
 export { createResourceNode } from './footprint/resources.js';
-export { GROWUP_TICKS } from './lifecycle/ageclass.js';
+export { GROWUP_TICKS, isBaby, isChild } from './lifecycle/ageclass.js';
 export { withinNodeRadius } from './node-metric.js';
 export { MILITARY_MODE, SCOUT_JOB } from './readviews/stances.js';
 export {
