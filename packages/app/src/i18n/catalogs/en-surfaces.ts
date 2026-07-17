@@ -66,9 +66,8 @@ export const enSurfaces = {
       7: 'Egyptians',
     } as Readonly<Record<number, string>>,
   },
-  // One label per `view/boot-progress.ts` BootPhase, plus the card's title.
+  // One label per `view/boot-progress.ts` BootPhase — the card's only text (the logo is its title).
   loading: {
-    title: 'Loading',
     graphics: 'Starting the graphics…',
     map: 'Reading the map…',
     content: 'Loading game content…',

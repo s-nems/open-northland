@@ -1,12 +1,15 @@
 import { diag } from '../diag/log.js';
 import { messages } from '../i18n/index.js';
-import { el } from './overlay.js';
+import { BRAND_BACKDROP, BRAND_LOGO } from './brand-art.js';
 
 /**
  * The boot progress card the two playable entries (`?map=`, `?scene=`) show while they assemble a world.
  * Both spend seconds on content fetches, atlas builds and terrain meshing before their first frame; without
  * this the page is the body's bare `#1a1410` for that whole stretch. Plain DOM, like the crash banner
  * ({@link import('../diag/crash.js')}): it must be able to draw before Pixi exists and while Pixi is busy.
+ *
+ * Styled in `boot-progress.css` (linked from `index.html`) in the main menu's vocabulary, so leaving the
+ * menu does not change the art the player is looking at.
  *
  * The galleries and `?shot` deliberately do not mount it — `?shot` is the committed-PNG harness and
  * screenshots the `#game` element, which an overlay would occlude.
@@ -45,44 +48,6 @@ export function bootFraction(phases: readonly BootPhase[], phase: BootPhase): nu
   return index < 0 ? 0 : index / phases.length;
 }
 
-const OVERLAY_STYLE = [
-  'position:fixed',
-  'inset:0',
-  'display:flex',
-  'flex-direction:column',
-  'align-items:center',
-  'justify-content:center',
-  'gap:14px',
-  'background:radial-gradient(120% 80% at 50% 0%,#241b12 0%,#160f0a 70%)',
-  'color:#e8dcc8',
-  'font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace',
-  // Above the sound toggle (200), which mounts during the last step; below the crash banner (2200).
-  'z-index:1000',
-].join(';');
-
-const TITLE_STYLE = [
-  'font-weight:700',
-  'font-size:14px',
-  'letter-spacing:0.08em',
-  'text-transform:uppercase',
-  'opacity:0.7',
-].join(';');
-
-/** The bar's track and fill share the menu preview spinner's palette (`entries/menu/details.css`). */
-const TRACK_STYLE = [
-  'width:260px',
-  'height:6px',
-  'background:rgba(232,201,120,0.22)',
-  'border-radius:3px',
-  'overflow:hidden',
-].join(';');
-
-const BAR_STYLE = ['width:0%', 'height:100%', 'background:#e8c978', 'transition:width 180ms linear'].join(
-  ';',
-);
-
-const LABEL_STYLE = 'opacity:0.85';
-
 let overlay: HTMLElement | null = null;
 let removeFailureDismiss: (() => void) | null = null;
 
@@ -111,15 +76,26 @@ function installFailureDismiss(): () => void {
   };
 }
 
+/** Create an element with a class and optional children — the terse builder this card's small tree needs. */
+function node(className: string, ...children: readonly HTMLElement[]): HTMLDivElement {
+  const div = document.createElement('div');
+  div.className = className;
+  div.append(...children);
+  return div;
+}
+
 /** Mount the card for an entry's own ordered step list (the steps it actually runs, in the order it runs them). */
 export function mountBootProgress(phases: readonly BootPhase[]): BootProgress {
   dismissBootProgress();
-  const root = el('div', OVERLAY_STYLE);
-  const track = el('div', TRACK_STYLE);
-  const bar = el('div', BAR_STYLE);
-  const label = el('div', LABEL_STYLE);
-  track.append(bar);
-  root.append(el('div', TITLE_STYLE, messages().loading.title), track, label);
+  const bar = node('boot-card__bar');
+  const label = node('boot-card__label');
+  const logo = document.createElement('img');
+  logo.className = 'boot-card__brand';
+  logo.src = BRAND_LOGO;
+  logo.alt = 'Open Northland';
+  const root = node('boot-card', node('boot-card__frame', node('boot-card__track', bar)), label);
+  root.prepend(logo);
+  root.style.setProperty('--boot-backdrop', `url("${BRAND_BACKDROP}")`);
   document.body.append(root);
   overlay = root;
   removeFailureDismiss = installFailureDismiss();
