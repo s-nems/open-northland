@@ -1,4 +1,4 @@
-import type { Entity, Simulation } from '@open-northland/sim';
+import type { Entity, Fixed, Simulation } from '@open-northland/sim';
 import { cellAnchorNode, components, fx, systems } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../game/rules.js';
@@ -12,11 +12,12 @@ import type { SceneDefinition } from './types.js';
 
 /**
  * The children scene: prove the child eat drive — a hungry CHILD feeds itself like an adult (the
- * original binds child eat animations, `setatomic 3/4 10`), while a BABY is cared for and never
- * self-feeds. Three stations, each a hungry young settler beside its own ripe berry bush: the girl
- * and the boy walk over, play the child eat clip, and their hunger resets (their bushes go bare);
- * the baby ignores its bush and stays hungry (its bush stays ripe). The browser half is where a
- * human judges the pixels: the two child eat clips on the child bodies and the baby never feeding.
+ * original binds child eat animations, `setatomic 3/4 10`), while a BABY is cared for: its family
+ * keeps it sated (its needs never accumulate — NeedsSystem) and it never self-feeds. Three stations,
+ * each a young settler beside its own ripe berry bush: the hungry girl and boy walk over, play the
+ * child eat clip, and their hunger resets (their bushes go bare); the sated baby ignores its bush
+ * (it stays ripe). The browser half is where a human judges the pixels: the two child eat clips on
+ * the child bodies and the baby never feeding.
  */
 
 const MAP_W = 24;
@@ -37,8 +38,15 @@ const BUSH_FRUITS_GFX = 806;
 
 const { Age, BerryBush, Settler } = components;
 
-/** Spawn a hungry young settler (a born-life-stage jobType plus the Age marker) directly, pre-tick-0. */
-function spawnHungryYoung(sim: Simulation, jobType: number, x: number, y: number, ageTicks: number): Entity {
+/** Spawn a young settler (a born-life-stage jobType plus the Age marker) directly, pre-tick-0. */
+function spawnYoung(
+  sim: Simulation,
+  jobType: number,
+  x: number,
+  y: number,
+  ageTicks: number,
+  hunger: Fixed,
+): Entity {
   const node = cellAnchorNode(x, y);
   const e = systems.createSettler(sim.world, sim.content, sim.rng, {
     jobType,
@@ -49,7 +57,7 @@ function spawnHungryYoung(sim: Simulation, jobType: number, x: number, y: number
   });
   if (e === null) throw new Error('children scene: unknown age-class job');
   sim.world.add(e, Age, { ticks: ageTicks });
-  sim.world.get(e, Settler).hunger = HUNGRY;
+  sim.world.get(e, Settler).hunger = hunger;
   return e;
 }
 
@@ -60,9 +68,11 @@ function childAgeTicks(): number {
 
 function build(sim: Simulation): void {
   for (const station of [GIRL, BOY, BABY]) placeSandboxBerryBush(sim, station.x, ROW_Y, BUSH_FRUITS_GFX);
-  spawnHungryYoung(sim, JOB_CHILD_FEMALE, GIRL.x, GIRL.y, childAgeTicks());
-  spawnHungryYoung(sim, JOB_CHILD_MALE, BOY.x, BOY.y, childAgeTicks());
-  spawnHungryYoung(sim, JOB_BABY_MALE, BABY.x, BABY.y, 0);
+  spawnYoung(sim, JOB_CHILD_FEMALE, GIRL.x, GIRL.y, childAgeTicks(), HUNGRY);
+  spawnYoung(sim, JOB_CHILD_MALE, BOY.x, BOY.y, childAgeTicks(), HUNGRY);
+  // The baby spawns SATED — a cared-for baby's needs never accumulate (NeedsSystem skips it whole),
+  // so a hungry baby is an unreachable state; the vignette shows it ignoring food it doesn't need.
+  spawnYoung(sim, JOB_BABY_MALE, BABY.x, BABY.y, 0, fx.fromInt(0));
 }
 
 /** The scene's young settlers split by stage: `[girl, boy]` children and the lone baby. */
@@ -94,10 +104,10 @@ export const childrenScene: SceneDefinition = {
       },
     },
     {
-      label: 'the baby stayed HUNGRY — a cared-for baby never self-feeds',
+      label: 'the baby stayed SATED — cared for, its needs never accumulate and it never self-feeds',
       predicate: (sim) => {
         const { babies } = youngByStage(sim);
-        return babies.length === 1 && babies.every((e) => sim.world.get(e, Settler).hunger === HUNGRY);
+        return babies.length === 1 && babies.every((e) => sim.world.get(e, Settler).hunger === fx.fromInt(0));
       },
     },
     {

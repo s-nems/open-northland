@@ -91,18 +91,22 @@ export const STARVATION_BITES_TO_DIE = 240;
  * drive). Every named non-food need has its atomic reset wired (sleep/pray/enjoy/make_love); only the eat,
  * sleep, and pray *drives* exist so far.
  *
+ * A BABY ({@link Age} carrier in a baby stage) is skipped whole: it is cared for — its family keeps it
+ * fed and rested, so no need accumulates and it never starves (named approximation: the original's
+ * baby care is below the readable data, and a baby has no eat binding to act on a need anyway). It
+ * weans into childhood with its birth needs, and from there the child eat/sleep drives take over
+ * (`ai.ts`). Keyed on Age + stage like the planner's gate, so an adult fixture whose synthetic job id
+ * collides with a baby id still lives a full needs life.
+ *
  * Starvation: a settler whose hunger is pinned at `ONE` loses hitpoints on the
  * {@link STARVATION_DAMAGE_INTERVAL_TICKS} beat until the eat drive feeds it or the pool empties (the
  * CleanupSystem then reaps it like any other death). Exempt, because nothing can feed them today and
  * starving them would only depopulate the map — a named approximation each:
  *  - ANIMALS (`jobType` null): no eat/graze mechanic yet;
  *  - JOBLESS settlers (also `jobType` null — e.g. a worker whose workplace was demolished): the eat drive
- *    lives in the job planner, which skips a jobless settler (`ai.ts` planNeeds);
- *  - BABIES ({@link Age} carriers in a baby stage): a baby is cared for, it doesn't self-feed (the
- *    original binds it no eat animation), and starving it would kill every newborn before its
- *    `GROWUP_TICKS` boundary, turning reproduction into a death loop. A CHILD is NOT exempt — the
- *    planner runs the eat drive for it (`ai.ts`), so like an adult it starves only when food is truly
- *    absent.
+ *    lives in the job planner, which skips a jobless settler (`ai.ts` planNeeds).
+ * A CHILD is NOT exempt — the planner runs the eat drive for it, so like an adult it starves only when
+ * food is truly absent.
  *
  * The whole system is gated by the {@link needsEnabled} world rule (the `setNeedsEnabled` command):
  * disabled, needs freeze where they are and starvation stops — the dev/admin lever scenes default to.
@@ -112,6 +116,8 @@ export const needsSystem: System = (world, ctx) => {
   const starvationBeat = ctx.tick % STARVATION_DAMAGE_INTERVAL_TICKS === 0;
   for (const e of world.query(Settler)) {
     const settler = world.get(e, Settler);
+    // A cared-for baby accumulates nothing and never starves (see the header) — skipped whole.
+    if (world.has(e, Age) && isBaby(settler.jobType)) continue;
     const risenHunger = fx.add(settler.hunger, HUNGER_RISE_PER_TICK);
     settler.hunger = risenHunger > ONE ? ONE : risenHunger;
     const risenFatigue = fx.add(settler.fatigue, FATIGUE_RISE_PER_TICK);
@@ -122,15 +128,9 @@ export const needsSystem: System = (world, ctx) => {
       const risenEnjoyment = fx.add(settler.enjoyment, ENJOYMENT_RISE_PER_TICK);
       settler.enjoyment = risenEnjoyment > ONE ? ONE : risenEnjoyment;
     }
-    // Only a settler that COULD have fed itself bleeds hitpoints (see the header for the exemptions).
-    // The 0-HP reap (and its settlerDied event) is CleanupSystem's.
-    if (
-      starvationBeat &&
-      settler.hunger === ONE &&
-      settler.jobType !== null &&
-      !(world.has(e, Age) && isBaby(settler.jobType)) &&
-      world.has(e, Health)
-    ) {
+    // Only a settler that COULD have fed itself bleeds hitpoints (see the header for the exemptions;
+    // babies never reach here). The 0-HP reap (and its settlerDied event) is CleanupSystem's.
+    if (starvationBeat && settler.hunger === ONE && settler.jobType !== null && world.has(e, Health)) {
       const health = world.get(e, Health);
       const bite = Math.max(1, Math.trunc(health.max / STARVATION_BITES_TO_DIE));
       health.hitpoints = Math.max(0, health.hitpoints - bite);
