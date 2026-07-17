@@ -26,6 +26,7 @@ import { canonicalById, entityNode, isTravelling, NodeBuckets } from '../spatial
 import { chase, clearChase, disengage, type MeleeSlots, returnToAnchor } from './chase.js';
 import { engageSpec, resolveTarget, stanceMode } from './engagement.js';
 import { fleeDrive } from './flee.js';
+import { HostilePresence } from './presence.js';
 import { hostileAnimalNow, isValidTarget } from './targeting.js';
 import { attackerWeapon, startAttack, targetMaterial } from './weapons.js';
 
@@ -87,6 +88,9 @@ export const combatSystem: System = (world, ctx) => {
   // winner every run — and the per-tick spatial bucket for the ring-search enemy query.
   const combatants = canonicalById(world.query(Settler, Health, Position));
   const index = new NodeBuckets(world, combatants);
+  // The coarse presence grid — the owned seekers' "any enemy possibly in range?" early-out, so a
+  // standing army on a peaceful two-player map skips its per-fighter ring searches (golden rule 6).
+  const presence = new HostilePresence(world, combatants);
 
   // The tick's melee-slot state (see {@link approachCell}): `standing` is the standing-collider node set (built
   // lazily — a tick with no chaser pays nothing), `claimed` the approach cells already dealt out this tick.
@@ -94,7 +98,7 @@ export const combatSystem: System = (world, ctx) => {
   // per-tick derived state, never hashed.
   const slots: MeleeSlots = { claimed: new Set() };
   for (const e of combatants) {
-    engageCombatant(world, ctx, terrain, index, slots, e);
+    engageCombatant(world, ctx, terrain, index, presence, slots, e);
   }
 };
 
@@ -170,6 +174,7 @@ function engageCombatant(
   ctx: SystemContext,
   terrain: TerrainGraph,
   index: NodeBuckets,
+  presence: HostilePresence,
   slots: MeleeSlots,
   e: Entity,
 ): void {
@@ -214,7 +219,7 @@ function engageCombatant(
     // clears, `fleeDrive` drops `Fleeing` but not `Engagement`, benching the unit (aiSystem skips it) and
     // keeping combat awake forever. The `Fleeing` marker (not `Engagement`) is what holds a fleer off the economy.
     world.remove(e, Engagement);
-    fleeDrive(world, ctx, terrain, index, e, attacker);
+    fleeDrive(world, ctx, terrain, index, presence, e, attacker);
     return;
   }
 
@@ -252,7 +257,7 @@ function engageCombatant(
 
   const here = entityNode(world, terrain, e);
   const spec = engageSpec(world, ctx, terrain, e, owned, ordered, stance, attacker, weapon);
-  const found = resolveTarget(world, ctx, terrain, index, e, here, attacker, spec);
+  const found = resolveTarget(world, ctx, terrain, index, presence, e, here, attacker, spec);
   if (found === null) {
     // No target: a DEFEND unit walks back to its anchor (holding its post); everyone else disengages back
     // to the economy.

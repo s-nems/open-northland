@@ -5,6 +5,7 @@ import type { SystemContext } from '../context.js';
 import { defaultStanceForJob, HUNTER_JOB, MILITARY_MODE } from '../readviews/index.js';
 import { entityNode, manhattan, type NodeBuckets } from '../spatial.js';
 import { playerSeesEntity } from '../vision/index.js';
+import type { HostilePresence } from './presence.js';
 import { isHuntTarget, isValidTarget, SIGHT_RADIUS_NODES } from './targeting.js';
 
 // Target acquisition: which enemy an owned combatant may auto-engage this tick, resolved from its
@@ -73,6 +74,8 @@ export function engageSpec(
   const minDist = weapon.minRange;
   const sight = Math.max(weapon.maxRange, SIGHT_RADIUS_NODES);
 
+  const player = viewer?.player ?? null;
+
   if (owned && !ordered && stance === MILITARY_MODE.DEFEND) {
     const anchor = defendAnchor(world, terrain, e);
     const accept = (t: Entity): boolean =>
@@ -81,16 +84,23 @@ export function engageSpec(
       accept,
       minDist,
       searchRadius: DEFEND_RADIUS_NODES + DEFEND_LEASH_NODES,
+      player,
       defend: { anchorCell: anchor, leash: DEFEND_LEASH_NODES },
     };
   }
 
   if (owned && !ordered && stance === MILITARY_MODE.IGNORE && attacker.jobType === HUNTER_JOB) {
     const accept = (t: Entity): boolean => isHuntTarget(world, ctx, t, attacker.jobType) && seesTarget(t);
-    return { accept, minDist, searchRadius: sight, defend: null };
+    return { accept, minDist, searchRadius: sight, player, defend: null };
   }
 
-  return { accept: generalAccept, minDist, searchRadius: owned ? sight : weapon.maxRange, defend: null };
+  return {
+    accept: generalAccept,
+    minDist,
+    searchRadius: owned ? sight : weapon.maxRange,
+    player,
+    defend: null,
+  };
 }
 
 /** How a combatant acquires + reaches a target this tick, derived from its stance ({@link engageSpec}). */
@@ -101,6 +111,9 @@ export interface EngageSpec {
   readonly minDist: number;
   /** Far reach — how far the unit spots a target to swing at / advance on. */
   readonly searchRadius: number;
+  /** The seeker's player for the {@link HostilePresence} early-out; null for an unowned seeker
+   *  (whose valid targets can share its "unowned" presence class, so it never skips the search). */
+  readonly player: number | null;
   /** DEFEND leash: the chase never walks past `leash` of `anchorCell`; null for every non-DEFEND mode. */
   readonly defend: { readonly anchorCell: NodeId; readonly leash: number } | null;
 }
@@ -127,6 +140,7 @@ export function resolveTarget(
   ctx: SystemContext,
   terrain: TerrainGraph,
   index: NodeBuckets,
+  presence: HostilePresence,
   self: Entity,
   here: NodeId,
   attacker: { tribe: number; jobType: number | null },
@@ -142,6 +156,9 @@ export function resolveTarget(
     world.remove(self, AttackOrder); // target gone / no longer hostile — abandon the order, auto-engage
   }
   const { x, y } = terrain.coordsOf(here);
+  // Idle early-out (perf-only): when the coarse presence grid proves no not-mine combatant can be in
+  // the search band, the ring search would return null — skip it (the standing-army flat cost).
+  if (spec.player !== null && !presence.othersWithin(spec.player, x, y, spec.searchRadius)) return null;
   const found = index.nearest(x, y, spec.minDist, spec.searchRadius, spec.accept);
   return found === null ? null : { target: found.entity, dist: found.distance };
 }

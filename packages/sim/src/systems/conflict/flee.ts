@@ -13,6 +13,7 @@ import {
   redirectRoute,
 } from '../spatial.js';
 import { playerSeesEntity } from '../vision/index.js';
+import type { HostilePresence } from './presence.js';
 import { isValidTarget, SIGHT_RADIUS_NODES } from './targeting.js';
 
 // The FLEE drive — the civilian raid reaction (the FLEE stance's active behaviour): path away from the nearest
@@ -75,6 +76,7 @@ export function fleeDrive(
   ctx: SystemContext,
   terrain: TerrainGraph,
   index: NodeBuckets,
+  presence: HostilePresence,
   e: Entity,
   attacker: { tribe: number; jobType: number | null },
 ): void {
@@ -100,8 +102,13 @@ export function fleeDrive(
     isValidTarget(world, ctx, e, attacker, t) &&
     (viewer === undefined || playerSeesEntity(world, ctx.fog, viewer.player, t));
   // Near bound 0 (not the weapon-reach floor of 1): fear has no dead zone — a fleeing unit reacts to a
-  // hostile on its very tile too (entities share tiles freely), not just one a step away.
-  const threat = index.nearest(x, y, 0, SIGHT_RADIUS_NODES, accept);
+  // hostile on its very tile too (entities share tiles freely), not just one a step away. The coarse
+  // presence early-out (perf-only, conservative — see HostilePresence) spares every calm civilian on a
+  // peaceful two-player map its per-tick full-sight ring scan; only owned units carry the FLEE stance.
+  const threat =
+    viewer !== undefined && !presence.othersWithin(viewer.player, x, y, SIGHT_RADIUS_NODES)
+      ? null
+      : index.nearest(x, y, 0, SIGHT_RADIUS_NODES, accept);
   const fleeing = world.tryGet(e, Fleeing);
 
   if (threat === null) {
