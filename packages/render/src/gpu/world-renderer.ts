@@ -608,6 +608,10 @@ export class WorldRenderer {
     this.pauseWash.destroy(); // the shared Texture.WHITE itself is left alone
     this.hud.destroy();
     this.portrait.destroy();
+    // Hand the app-owned atlas pages back at the sampling they were lent at. A page left linear would
+    // be skipped by the next renderer's toggle (it only claims pages it finds nearest) and stay soft.
+    for (const source of this.linearPages) source.scaleMode = 'nearest';
+    this.linearPages.clear();
     this.textureCache.clear();
   }
 }

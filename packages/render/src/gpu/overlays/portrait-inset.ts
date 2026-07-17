@@ -169,8 +169,9 @@ export class PortraitInsetLayer {
       for (const child of this.worldLayer.children) if (child !== soloParent) child.visible = false;
       this.pool.beginPortraitSolo();
     }
-    // Restore every visibility toggle even if the render throws, so a failed cutout can't leave a real unit
-    // hidden on the main map or the pool's solo bookkeeping stale for the next frame.
+    // Restore the whole inset borrow — visibility toggles, the world transform and the mesh placement —
+    // even if the render throws, so a failed cutout can't leave a real unit hidden on the main map, the
+    // world locked at the inset camera, or the pool's solo bookkeeping stale for the next frame.
     try {
       this.app.renderer.render({ container: this.worldLayer, target: this.texture, clear: true });
     } finally {
@@ -179,10 +180,10 @@ export class PortraitInsetLayer {
         for (const { child, wasVisible } of worldSaved) child.visible = wasVisible;
       }
       this.pool.hidePortraitSubject();
+      this.worldLayer.scale.set(savedScale);
+      this.worldLayer.position.set(savedX, savedY);
+      this.pool.placePalettedFor(mainCamera, this.app.screen.width, this.app.screen.height, false);
     }
-    this.worldLayer.scale.set(savedScale);
-    this.worldLayer.position.set(savedX, savedY);
-    this.pool.placePalettedFor(mainCamera, this.app.screen.width, this.app.screen.height, false);
 
     this.sprite.position.set(f.rect.x, f.rect.y);
     this.sprite.width = w;

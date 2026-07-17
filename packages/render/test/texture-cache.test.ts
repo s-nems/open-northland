@@ -56,3 +56,24 @@ describe('TextureCache.revealed', () => {
     expect(new TextureCache().revealed(SOURCE, FRAME, TIMES, 100, 1)).toBeNull();
   });
 });
+
+describe('TextureCache.clear', () => {
+  it('destroys the cached textures, not just the map entries', () => {
+    // A Pixi Texture registers a `resize` listener on its source, so the app-owned atlas page keeps
+    // every cached texture alive until `destroy` unregisters it — dropping the Map entry leaks them.
+    const cache = new TextureCache();
+    const full = cache.get(SOURCE, FRAME);
+    const crop = cache.cropped(SOURCE, FRAME, 12);
+    cache.clear();
+    expect(full.destroyed).toBe(true);
+    expect(crop.destroyed).toBe(true);
+  });
+
+  it('leaves the shared atlas page alive — the renderer borrows it, the app owns it', () => {
+    const page = new TextureSource({ width: 64, height: 64 });
+    const cache = new TextureCache();
+    cache.get(page, FRAME);
+    cache.clear();
+    expect(page.destroyed).toBe(false);
+  });
+});
