@@ -329,12 +329,12 @@ export function runAuthoredSlice(
   goodNames?: ReadonlyMap<string, string>,
   contentOverride?: ContentSet,
 ): Simulation | null {
-  const { placements, skipped } = resolveAuthoredPlacements(entities, rows, map);
+  const { placements, skipped, droppedGoods } = resolveAuthoredPlacements(entities, rows, map);
   if (placements.length === 0) return null;
-  if (skipped > 0 || entities.animals.length > 0) {
+  if (skipped > 0 || droppedGoods > 0 || entities.animals.length > 0) {
     diag.warn(
       'content',
-      `runAuthoredSlice: placed ${placements.length}, skipped ${skipped} unresolvable/out-of-bounds, deferred ${entities.animals.length} animals`,
+      `runAuthoredSlice: placed ${placements.length}, skipped ${skipped} unresolvable/out-of-bounds, dropped ${droppedGoods} unresolvable authored goods, deferred ${entities.animals.length} animals`,
     );
   }
 

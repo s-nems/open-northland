@@ -18,6 +18,7 @@ export const SMITHY = 4; // tech-gated: viking `jobEnablesHouse 2 4` locks it be
 export const WOODCUTTER = 1;
 export const CARPENTER = 2; // the job that unlocks the SMITHY for the viking tribe
 export const WOOD = 1;
+export const PLANK = 2; // the sawmill recipe's output — an HQ stock slot whose `initial` is 0
 export const VIKING = 1;
 export const FRANK = 2; // a tribe absent from the fixture's tribe table — its tech-graph gates nothing
 

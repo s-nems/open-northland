@@ -27,7 +27,8 @@ export const TerrainEntities = z.strictObject({
         hx: z.number().int().nonnegative(),
         hy: z.number().int().nonnegative(),
         rot: z.number().int().nonnegative().optional(),
-        /** Authored starting stock — the `addgoods` runs after this `sethouse` (goodtype names verbatim). */
+        /** Authored starting stock — the `addgoods` runs after this `sethouse` (goodtype names verbatim;
+         *  the rare numeric variant stays a digit string, resolved by typeId at load). */
         goods: z.array(z.strictObject({ name: z.string(), count: z.number().int().positive() })).optional(),
       }),
     )

@@ -97,9 +97,11 @@ export function placeBuilding(
     }
   }
   if (!command.underConstruction) {
-    // Authored starting stock (a decoded map's `addgoods`) adds on top of the seeding above, applied
-    // verbatim — the original stocks a scenario house with exactly the authored amounts, so they are
-    // not clamped to slot capacity and not limited to the type's declared slots.
+    // Authored starting stock (a decoded map's `addgoods`) adds on top of the seeding above,
+    // unclamped (Walhalla authors 1000 iron into a 45-capacity barn) and not limited to the type's
+    // declared slots. Named approximation: additive-vs-replace is unobserved in the original; additive
+    // is the guess (the verb is "add goods"), and it diverges from replace only by a slot's extracted
+    // 1-unit `initial` where a map stocks a slot that seeds itself (e.g. the tutorials' bakery water).
     for (const g of command.initialGoods ?? []) {
       if (g.amount > 0) amounts.set(g.good, (amounts.get(g.good) ?? 0) + g.amount);
     }
