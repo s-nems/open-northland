@@ -1,8 +1,7 @@
 /**
- * `.bmd` bob RLE frame codec — turns a decoded {@link Bmd} container's packed-line stream into actual
- * frame pixels. Kept beside the container parse ({@link ./container}) the way `.pcx` keeps `expandToRgba`
- * separate from `decodePcx`: the container yields indexed pixels + an opacity mask; palette/atlas
- * concerns stay out (the bob's palette lives outside the `.bmd`).
+ * `.bmd` bob RLE frame codec — turns a decoded {@link Bmd} container's packed-line stream into frame
+ * pixels: indexed pixels + an opacity mask, with palette/atlas concerns left out (the bob's palette lives
+ * outside the `.bmd`), the way `.pcx` keeps `expandToRgba` separate from `decodePcx`.
  *
  * The packed-line layout was established through owned-file inspection and is pinned by synthetic
  * run, skip, mask, clipping, and round-trip tests.
@@ -28,8 +27,6 @@ const LINE_CONTROL_EMPTY = 0xffffffff;
  * One decoded bob frame: indexed pixels plus a parallel opacity mask. Index 0 is a real palette colour
  * here (transparency is per-pixel via the codec's skip runs, not a reserved index), so a renderer needs
  * {@link mask} to know which pixels were actually written; unwritten pixels keep `index 0`, `mask 0`.
- * Convert to RGBA by sampling a palette at each `mask≠0` pixel (the bob's palette lives outside the `.bmd`),
- * carrying the mask value as the pixel's alpha.
  */
 export interface BobFrame {
   /** Frame width in pixels (the bob's `area.width`). */
@@ -62,9 +59,7 @@ export interface BobFrame {
 export type SecondByteMode = 'alpha' | 'time';
 
 /**
- * Decodes one bob's packed-line RLE into an indexed-pixel frame + opacity mask. Pure: it reads only the
- * already-parsed {@link Bmd} blocks, so palette/atlas concerns stay out of the codec (mirrors how `.pcx`
- * yields indexed pixels and `expandToRgba` is a separate step).
+ * Decodes one bob's packed-line RLE into an indexed-pixel frame + opacity mask.
  *
  * Format: the bob's `area` gives the frame size; its scanlines are
  * `lineControl[bob.misc + line]` (`misc` is the bob's first-line
@@ -102,8 +97,7 @@ export function decodeBobFrame(bmd: Bmd, bobIndex: number, secondByte: SecondByt
     return { width, height, pixels, mask };
   }
 
-  // Per raw-run pixel: how many packed bytes it consumes and what the pair's second byte means — a
-  // TimeMask bob is always [value, timeByte]; a Double8Bit pair reads per `secondByte` (see SecondByteMode).
+  // Per raw-run pixel: how many packed bytes it consumes and what the pair's second byte means.
   const isMask = bob.type === BOB_TYPE_1BIT;
   const isPair = bob.type === BOB_TYPE_DOUBLE8BIT || bob.type === BOB_TYPE_TIMEMASK;
   const isAlpha = bob.type === BOB_TYPE_DOUBLE8BIT && secondByte === 'alpha';
@@ -114,9 +108,7 @@ export function decodeBobFrame(bmd: Bmd, bobIndex: number, secondByte: SecondByt
     time === undefined ? { width, height, pixels, mask } : { width, height, pixels, mask, time };
 
   for (let line = 0; line < height; line++) {
-    // The bob's scanlines occupy a contiguous block of the global line-control array starting at
-    // `bob.misc` — its first-line index, not `area.y` (area.x/area.y are the draw offset, often
-    // negative, applied only when blitting; see the `misc`/`area` field docs).
+    // `area.x`/`area.y` are the draw offset (often negative), applied only when blitting.
     const ctrlIndex = bob.misc + line;
     if (ctrlIndex < 0 || ctrlIndex >= bmd.lineControl.length) continue;
     const ctrl = bmd.lineControl[ctrlIndex] as number;
@@ -126,8 +118,7 @@ export function decodeBobFrame(bmd: Bmd, bobIndex: number, secondByte: SecondByt
     let pos = ctrl & PACKED_OFFSET_MASK;
     if (pos >= packed.length) continue;
 
-    // Column cursor in the bob's local frame space (0..width). `xMin` is the first non-transparent
-    // local column; runs advance from there. area.x is the draw offset, not subtracted here.
+    // Column cursor in the bob's local frame space (0..width); `xMin` is the row's first written column.
     let absX = xMin;
     const rowBase = line * width;
 
@@ -138,11 +129,9 @@ export function decodeBobFrame(bmd: Bmd, bobIndex: number, secondByte: SecondByt
       const isRaw = (b & 0x80) === 0;
 
       if (isRaw && isMask) {
-        // A 1-bit mask raw run carries no pixel bytes — the run itself is the coverage (draw `count`
-        // set pixels, then the next control byte follows immediately). Pinned by decoding real shadow
-        // `.bmd`s: this reading yields coherent solid silhouettes on every shadow lib, while a
-        // byte-per-pixel reading desyncs the stream into noise. Matches cultures2-wasm's `read_bmd`
-        // shadow-frame path.
+        // Pinned by decoding real shadow `.bmd`s: this byte-less reading yields coherent solid
+        // silhouettes on every shadow lib, while a byte-per-pixel reading desyncs the stream into
+        // noise. Matches cultures2-wasm's `read_bmd` shadow-frame path.
         for (let i = 0; i < count; i++) {
           const col = absX + i;
           if (col >= 0 && col < width) {

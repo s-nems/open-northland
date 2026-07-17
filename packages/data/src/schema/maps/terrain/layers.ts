@@ -12,9 +12,8 @@ export const CellLane = z.array(z.number().int().nonnegative());
  * final per-triangle {@link GfxPattern} choice (the editor bakes its pattern algorithm's output
  * into the save), referenced through the map's own `eapd` pattern-name dictionary. {@link patterns}
  * is that dictionary compacted to the names this map actually uses; {@link a}/{@link b} give each
- * cell's two triangles (A = top, B = bottom of the diamond) as indices into it. The renderer joins a
- * name onto the extracted {@link GfxPattern} table (`EditName` is the engine's own version-robust
- * join key) for the texture page + UV coords.
+ * cell's two triangles (A = top, B = bottom of the diamond) as indices into it. A name joins onto the
+ * extracted {@link GfxPattern} table (`EditName` is the engine's own version-robust join key).
  */
 export const TerrainGround = z.strictObject({
   /** The pattern `EditName`s this map uses (compacted from the map's `eapd` dictionary). */
@@ -32,8 +31,7 @@ export type TerrainGround = z.infer<typeof TerrainGround>;
  * A/B, `emt3`/`emt4` layer 2 (under layer 1) for A/B. A lane value `v < 255` selects transition
  * `⌊v/6⌋` from the map's `eatd` dictionary ({@link types}, kept verbatim so the positional join
  * survives) and pair variant `v % 6` of its six `GfxCoords` pairs; `255` = no overlay. A name
- * joins onto the extracted {@link GfxPatternTransition} table (`editName`), mirroring how
- * {@link TerrainGround} joins patterns.
+ * joins onto the extracted {@link GfxPatternTransition} table (`editName`).
  */
 export const TerrainTransitions = z.strictObject({
   /** The map's `eatd` transition-name dictionary, verbatim (lane `⌊v/6⌋` indexes it positionally). */
@@ -51,12 +49,10 @@ export type TerrainTransitions = z.infer<typeof TerrainTransitions>;
 
 /**
  * The placed landscape objects of a decoded map: the original's `emla` lane is a half-cell
- * (2·width × 2·height) grid of indices into the map's `eald` object-name dictionary — every tree,
- * stone, bush, mine decal and animated wave the map ships. {@link types} is that dictionary compacted
- * to the names actually placed; {@link placements} is the sparse flat list of `[hx, hy, typeIndex]`
- * triples (half-cell coordinates — divide by 2 for the cell, the remainder is the sub-cell corner),
- * row-major order. A name joins onto the {@link LandscapeGfx} table for the object's bob frames,
- * palette, animation flags and logic footprints.
+ * (2·width × 2·height) grid of indices into the map's `eald` object-name dictionary. {@link types} is
+ * that dictionary compacted to the names actually placed; {@link placements} is the sparse flat list of
+ * `[hx, hy, typeIndex]` triples (half-cell coordinates — divide by 2 for the cell, the remainder is the
+ * sub-cell corner), row-major order. A name joins onto the {@link LandscapeGfx} table.
  */
 export const TerrainObjects = z.strictObject({
   /** The `[GfxLandscape]` `EditName`s this map places (compacted from the map's `eald` dictionary). */

@@ -8,11 +8,9 @@ export type RgbColor = z.infer<typeof RgbColor>;
 /**
  * One `[trianglepatterntype]` from `Data/logic/trianglepatterntypes.cif` — the logic classification of
  * the terrain triangles (water / land / mountain / sand / beach / desertStone / moor / snow / plaster /
- * blocked): 10 records, `type` ids 1..10. The cross-reference target of a {@link GfxPattern}'s
- * {@link GfxPattern.logicType}: every visual ground tile is classified as one of these logic types, which
- * carries the walk/build/water semantics + a per-type debug colour. The boolean flags are absent-means-
- * false — the source omits a `0` flag entirely (e.g. the `water` record lists no `humancanwalkon`), so a
- * missing key is `false`, not unknown.
+ * blocked): 10 records, `type` ids 1..10. The cross-reference target of a {@link GfxPattern.logicType}.
+ * The boolean flags are absent-means-false — the source omits a `0` flag entirely (e.g. the `water`
+ * record lists no `humancanwalkon`), so a missing key is `false`, not unknown.
  */
 export const TrianglePatternType = z.strictObject({
   /** `type` — the logic-type id (1..10) a {@link GfxPattern.logicType} references. */
@@ -34,8 +32,8 @@ export const TrianglePatternType = z.strictObject({
   /** `moveresistance` — relative movement cost across this triangle (a path-cost / gait input). */
   moveResistance: z.number().int().nonnegative().default(0),
   /**
-   * `debugcolor` R G B — the flat per-type colour. The cheap legible terrain fallback: rendering a cell
-   * by its type's debug colour when the real `text_*` texture is deferred. `undefined` when absent.
+   * `debugcolor` R G B — the flat per-type colour, the fallback tint when the real `text_*` texture is
+   * unavailable. `undefined` when absent.
    */
   debugColor: RgbColor.optional(),
   source: Provenance.optional(),
@@ -63,7 +61,7 @@ export type GfxCoords = z.infer<typeof GfxCoords>;
  * so {@link id} is the 0-based index. The extractor keeps every record (skipping one would renumber the
  * rest), so the visual fields are optional rather than skip-on-missing and even a degenerate record still
  * occupies its slot. In the real data all 927 records are well-formed (name + texture + 6-int coords + a
- * `logicType` of 0..10, where `0` is the misc/border tiles that classify to no logic type).
+ * `logicType` of 0..10).
  */
 export const GfxPattern = z.strictObject({
   /** The 0-based position in the `GfxPattern` list — the engine's positional pattern id (no explicit field exists). */
@@ -121,8 +119,7 @@ export type GfxPatternTransition = z.infer<typeof GfxPatternTransition>;
  * `rock`/`stone` → `mountain`, everything else (incl. tree/bush/wood, whose ground is land) → `land` —
  * and binds the family to one representative {@link GfxPattern} (its `text_NNN` texture + the two
  * triangles' UVs). A deviation, not a 1:1 match (source basis): the original computes the per-cell
- * pattern from corner types + variant lanes, an oracle-blocked algorithm. The `debugColor` is the
- * flat-tint fallback when the texture is unavailable.
+ * pattern from corner types + variant lanes, an oracle-blocked algorithm.
  */
 export const TerrainPattern = z.strictObject({
   /** The {@link LandscapeType.typeId} (1-based) this ground binding applies to — the per-cell value in `content/maps`. */

@@ -1,16 +1,11 @@
 /**
  * Bob atlas packer — turns a decoded `.bmd` (CBobManager) bob set into one RGBA atlas image plus a
- * JSON-serializable manifest of per-bob frame rects + metadata. This is the second half of the
- * `.bmd` → "atlas PNG + anim JSON" pipeline stage: {@link import('./bmd/index.js').decodeBobFrame} yields a
- * bob's indexed pixels + opacity mask; this module colours them with a palette and shelf-packs every
- * frame into a single sheet so a renderer loads one texture and looks each sprite up by rect.
+ * JSON-serializable manifest of per-bob frame rects + metadata.
  *
  * A `.bmd` has no atlas/anim layout of its own — it is a flat array of bobs ({type, area, misc});
  * animation grouping lives outside it (the `.ini`/`tribetypes` `setatomic` bindings reference bob ids,
- * joined in a later stage). So the manifest is a per-bob frame table: each entry carries the bob's id
- * (`firstBobId + index`), its packed rect, the bob's source `area` (the draw anchor a renderer needs),
- * the raw bob `type`, and whether it produced any opaque pixels. Empty/zero-size bobs get a 0×0 rect so
- * a consumer can still index every bob id without a gap.
+ * joined in a later stage). So the manifest is a per-bob frame table, one entry per bob id; empty /
+ * zero-size bobs get a 0×0 rect so a consumer can still index every bob id without a gap.
  *
  * Packing is a deterministic top-left shelf/row packer (frames placed left→right into rows of a fixed
  * max width, wrapping when the row is full), with a 1px transparent gutter so bilinear sampling can't
@@ -71,14 +66,11 @@ export interface BobAtlas {
 /**
  * Colours one decoded {@link BobFrame} into straight RGBA using a 256-entry palette (768 RGB bytes,
  * `[R,G,B] × 256`, the shared currency from `pcx`/`palette`). Alpha is the frame's `mask` value: an
- * unwritten pixel is fully transparent (RGB 0 too); a written one carries its 0–255 coverage — 255 for
- * the single-byte bob types, the per-pixel alpha byte for Double8Bit decals (ferns, smoke, wave foam;
- * see `BOB_TYPE_DOUBLE8BIT`). Throws (with an `atlas:` prefix) if the palette isn't exactly 768 bytes —
- * a programmer error, since decoded palettes always are.
+ * unwritten pixel is fully transparent (RGB 0 too), a written one carries its 0–255 coverage. Throws
+ * (`atlas:` prefix) if the palette isn't exactly 768 bytes.
  */
 export function expandBobFrame(frame: BobFrame, palette: Uint8Array): RgbaImage {
   assertPaletteBytes(palette, 'atlas');
-  // Alpha is the frame's per-pixel coverage; an unwritten (coverage 0) pixel stays fully transparent.
   const { width, height, pixels, mask } = frame;
   return { width, height, rgba: paletteToRgba(pixels, palette, (i) => mask[i] ?? 0) };
 }
@@ -88,8 +80,7 @@ export function expandBobFrame(frame: BobFrame, palette: Uint8Array): RgbaImage 
  * channel, `mask` in alpha, green/blue left 0. No palette is applied — the colour is deferred to the
  * renderer, which reads each index through a per-player palette LUT (see `player-palette.ts`). The
  * alternative to {@link expandBobFrame} for the character bodies, whose clothing band is recoloured per
- * player at draw time. A written pixel carries its real index (index 0 is a valid colour for bobs) with
- * the frame's 0–255 coverage as alpha; an unwritten pixel is fully transparent.
+ * player at draw time.
  */
 export function expandBobFrameIndexed(frame: BobFrame): RgbaImage {
   const { width, height, pixels, mask } = frame;
@@ -156,13 +147,10 @@ export interface PackBobAtlasOptions {
 /**
  * Packs every bob of a decoded `.bmd` into one atlas, colouring frames with `palette`. The result's
  * `manifest.frames` has exactly `bmd.bobCount` entries, in bob-id order, so a consumer can address any
- * bob id. Empty / zero-size bobs occupy no atlas space (0×0 rect) but still get a manifest entry.
- *
- * `maxWidth` frames wider than the wrap width are still packed (their row is just wider). The atlas is
- * sized to the tightest bounding box of the placed frames (plus the gutter), or a 1×1 transparent pixel
- * when nothing has pixels (a valid PNG can't be 0×0). Throws (`atlas:` prefix) only on a malformed
- * palette via {@link expandBobFrame}; a structurally odd bob is tolerated by {@link decodeBobFrame}
- * upstream. The alpha bake mode is {@link AtlasAlphaMode}.
+ * bob id. Frames wider than `maxWidth` are still packed (their row is just wider); the atlas is sized to
+ * the tightest bounding box of the placed frames (plus the gutter), or a 1×1 transparent pixel when
+ * nothing has pixels (a valid PNG can't be 0×0). Throws (`atlas:` prefix) only on a malformed palette;
+ * a structurally odd bob is tolerated by {@link decodeBobFrame} upstream.
  */
 export function packBobAtlas(bmd: Bmd, palette: Uint8Array, options: PackBobAtlasOptions = {}): BobAtlas {
   const { maxWidth = DEFAULT_ATLAS_MAX_WIDTH, alpha = 'per-pixel' } = options;
@@ -217,18 +205,16 @@ function expandBobFrameShadow(frame: BobFrame): RgbaImage {
  * masks paralleling the body bob ids) into one atlas of pre-baked black-at-{@link SHADOW_ALPHA}
  * silhouettes, so the renderer draws a cast shadow as a plain batched sprite instead of a
  * blend-mode blit.
- * Placement/manifest semantics match {@link packBobAtlas}; no palette is involved.
  */
 export function packShadowBobAtlas(bmd: Bmd): BobAtlas {
   return packBobAtlasWith(bmd, expandBobFrameShadow, DEFAULT_ATLAS_MAX_WIDTH, 'per-pixel');
 }
 
 /**
- * Packs every bob into an indexed atlas (palette index in red, mask in alpha) instead of an RGB one —
- * the {@link expandBobFrameIndexed} twin of {@link packBobAtlas}, for the character bodies whose player
- * colour is applied at draw time via a palette LUT. Placement + manifest are byte-identical to the RGB
- * atlas of the same `.bmd` (same frame sizes → same shelf packing), so the two atlases share frame
- * geometry; only the pixel channels differ.
+ * Packs every bob into an indexed atlas (palette index in red, mask in alpha) — the
+ * {@link expandBobFrameIndexed} twin of {@link packBobAtlas}. Placement + manifest are byte-identical to
+ * the RGB atlas of the same `.bmd` (same frame sizes → same shelf packing), so the two atlases share
+ * frame geometry; only the pixel channels differ.
  *
  * Coverage bakes graded, like the RGB path: the `PalettedSprite` LUT shader modulates its output by the
  * texel's alpha (nearest sampling keeps the index channel exact), so the type-4 bobs' authored feathered
@@ -240,9 +226,8 @@ export function packIndexedBobAtlas(bmd: Bmd): BobAtlas {
 
 /**
  * Shared packing core: decode + expand every bob (via `expand`, which colours or index-encodes it),
- * shelf-pack the non-empty frames, and emit the sheet + manifest. Parameterising only the per-frame
- * expansion keeps the RGB ({@link packBobAtlas}) and indexed ({@link packIndexedBobAtlas}) atlases on one
- * packing/manifest path. `expand` is called only for frames with pixels, so it always receives a real frame.
+ * shelf-pack the non-empty frames, and emit the sheet + manifest. `expand` is called only for frames
+ * with pixels, so it always receives a real frame.
  * `'build-time'` decodes the pair's second byte as a threshold (every written pixel stays opaque in the
  * colour plane — including the byte-0 pixels an alpha decode would hole) and emits a second sheet at the
  * identical placement: one shelf pack, two planes.

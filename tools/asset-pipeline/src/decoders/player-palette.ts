@@ -8,12 +8,10 @@
  *
  * How the player colour is applied: the RandomPalette recipe (`randompalette.ini`, `player_00…09`) binds the
  * `Player NN` ramp — a 16-colour ramp at colour-range 1 of a `playerNN.pcx` ({@link PLAYER_RAMP_START}) — onto
- * the men's clothing patches: patch 10 (men's vest, indices 160–175) and patch 5 (80–95), which the recipe
- * mirrors from patch 10. Those target index runs are {@link PLAYER_COLOR_BANDS}; each receives the full
- * 16-colour ramp. So a per-player palette is the shared base body palette with those bands overwritten by that
- * player's ramp — {@link composePlayerPalette}. (Confirmed visually: the base `test_human_00`'s patch 10 is the
- * cyan default vest, and remapping it turns the civilian's vest the player colour.) Patch 15 (240–255, the
- * carried-good + women's-dress band) is deliberately excluded — see {@link PLAYER_COLOR_BANDS}.
+ * the men's clothing patches ({@link PLAYER_COLOR_BANDS}), so a per-player palette is the shared base body
+ * palette with those bands overwritten by that player's ramp ({@link composePlayerPalette}). Confirmed
+ * visually: the base `test_human_00`'s patch 10 is the cyan default vest, and remapping it turns the
+ * civilian's vest the player colour.
  *
  * The original ships 10 player colours; we generate 16 (up to 16 players) by hue-rotating a reference ramp
  * for the extra six — a conscious divergence, logged in source basis. Pure functions only (palette maths on

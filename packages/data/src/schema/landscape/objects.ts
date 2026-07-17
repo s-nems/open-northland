@@ -7,16 +7,15 @@ export const LandscapeType = z.strictObject({
   /** `name` — the raw display name (`"tree"`, `"stone_ore"`, `"cadaver_leather"`); {@link id} is its slug. */
   name: z.string().optional(),
   walkable: z.boolean().default(true),
-  /** The extractor keeps `true` (the source table carries no per-type build flag) and the sim's
-   *  placement rule reads it (`TerrainGraph.isBuildable`). Feeding extracted landscape rows straight
-   *  into a sim terrain would make water/rock buildable — real maps must go through the app's collision
-   *  resolve (semantic classes), never raw. */
+  /** The extractor keeps `true` — the source table carries no per-type build flag. Feeding extracted
+   *  landscape rows straight into a sim terrain would make water/rock buildable; real maps must go
+   *  through the app's collision resolve (semantic classes), never raw. */
   buildable: z.boolean().default(true),
   /**
-   * Whether crops may be sown on ground of this type (`TerrainGraph.isPlantable` — the farmer drive's
-   * field gate). Source basis: the original's `biocanplanton` flag on the ground classes
-   * (`trianglepatterntypes.cif` — only `land` carries it; sand/beach/desertstone/mountain/snow do not),
-   * resolved onto the sim's semantic terrain rows by the app's collision join. Defaults false —
+   * Whether crops may be sown on ground of this type. Source basis: the original's `biocanplanton`
+   * flag on the ground classes (`trianglepatterntypes.cif` — only `land` carries it;
+   * sand/beach/desertstone/mountain/snow do not), resolved onto the sim's semantic terrain rows by the
+   * app's collision join. Defaults false —
    * `landscapetypes.ini` (this table's source) has no such flag, so an extracted row never becomes
    * sowable by accident.
    */
@@ -40,7 +39,7 @@ export const LandscapeType = z.strictObject({
    * Raw `transition` tuples in file order, each a variable-length int list captured verbatim. These
    * drive the landscape lifecycle (tree→trunk, mine depletion) but their field semantics are not
    * decoded — do not read meaning into the positions. Most are 5 ints, a few `mine` types carry a 2-int
-   * form. Kept for a future lifecycle system. See docs/SOURCES.md.
+   * form. See docs/SOURCES.md.
    */
   transitions: z.array(z.array(z.number().int())).default([]),
   source: Provenance.optional(),
@@ -85,8 +84,7 @@ export type LandscapeGfxFrames = z.infer<typeof LandscapeGfxFrames>;
  * `content/maps/<id>.json` objects to this table.
  *
  * Like {@link GfxPattern} the record has no explicit id — {@link index} is the 0-based `.cif` position,
- * kept for every record so positions never renumber. The pure sim ignores the Gfx fields; the Logic
- * fields feed a future object-collision/harvest slice.
+ * kept for every record so positions never renumber.
  */
 export const LandscapeGfx = z.strictObject({
   /** The 0-based position in the `[GfxLandscape]` list (the engine's positional id). */
@@ -131,10 +129,8 @@ export type LandscapeGfx = z.infer<typeof LandscapeGfx>;
 
 /**
  * One stage of a resolved {@link GatheringPipeline}: a {@link LandscapeType} id plus the
- * {@link LandscapeGfx} records that place it. The `gfxIndices` are the {@link LandscapeGfx.index}
- * values whose `logicType` equals {@link landscapeType} — the join a later gathering system needs to
- * draw the tree/trunk/wood at a cell without re-scanning the 866-record gfx table. Empty when no gfx
- * record carries that logic type (a pure-logic landscape stage with no placeable object).
+ * {@link LandscapeGfx} records that place it. Empty when no gfx record carries that logic type (a
+ * pure-logic landscape stage with no placeable object).
  */
 export const GatheringStage = z.strictObject({
   /** The stage's {@link LandscapeType.typeId} (`landscapeToHarvest`/`Pickup`/`Store`). */
@@ -145,11 +141,10 @@ export const GatheringStage = z.strictObject({
 export type GatheringStage = z.infer<typeof GatheringStage>;
 
 /**
- * The resolved gathering pipeline for one raw good — the good→landscape→gfx join materialized once
- * at build time from {@link GoodType.gathering} + the {@link LandscapeType} + {@link LandscapeGfx}
- * tables, so a later gathering system reads the three stages (and their placeable gfx) directly
- * instead of re-deriving the join. One record per map-gathered good; produced/in-house goods have
- * none. A stage is absent when the source good omits that lane (honey has no {@link harvest}).
+ * The resolved gathering pipeline for one raw good — the good→landscape→gfx join materialized once at
+ * build time from {@link GoodType.gathering} + the {@link LandscapeType} + {@link LandscapeGfx} tables.
+ * One record per map-gathered good; produced/in-house goods have none. A stage is absent when the
+ * source good omits that lane (honey has no {@link harvest}).
  */
 export const GatheringPipeline = z.strictObject({
   /** The good this pipeline yields (`{@link GoodType.typeId}`). */

@@ -3,9 +3,10 @@ import { Provenance } from '../record.js';
 
 /**
  * The fields every `[GfxHouse]` render binding shares: the `(tribeId, typeId, level)` key, the body
- * `.bmd` + recolour palette that name its atlas, the `EditName` handle, and provenance. {@link BuildingBob},
- * {@link BuildingConstructionLayer} and {@link BuildingOverlay} each `.extend()` it with their own payload
- * (a bob id, a construction range, an animation frame list) — all keyed and atlas-resolved the same way.
+ * `.bmd` + recolour palette that name its atlas, the `EditName` handle, and provenance. Render-binding
+ * data the pure sim ignores; {@link BuildingBob}, {@link BuildingConstructionLayer} and
+ * {@link BuildingOverlay} each `.extend()` it with their own payload (a bob id, a construction range,
+ * an animation frame list) — all keyed and atlas-resolved the same way.
  */
 const BuildingBobBase = z.strictObject({
   /** The `LogicTribeType` the record applies to (viking 1, frank 2, …) — the same logic `typeId` recurs per tribe. */
@@ -28,15 +29,11 @@ const BuildingBobBase = z.strictObject({
 
 /**
  * One `[GfxHouse]` building-type → house-bob binding: which atlas bob a building of a given
- * `(tribeId, typeId)` draws, the data-pinned twin of the renderer's hand-transcribed per-type table.
- * Each `[GfxHouse]` record pairs a `LogicType <level> <typeId>` table with a `GfxBobId <level> <bobId>`
- * table by the level index (a home spans levels 0..4, five distinct typeIds at five rising bobs),
- * and names the body `.bmd` (`GfxBobLibs`) recoloured by one-or-more palette skins (`GfxPalette`); this
- * is one row of that join — a single `(tribeId, typeId, level)` resolved to its `(bmd, palette, bobId)`.
- * Render-binding data (like {@link BobSequenceSet}/{@link TerrainPattern}); the pure sim ignores it. The
- * render picks the row matching the atlas it loaded — `(bmd, palette)` — and draws `bobId` for the
- * building's `Building.buildingType` ({@link typeId}), so each type shows its own house bob from data
- * instead of a transcribed constant.
+ * `(tribeId, typeId)` draws. Each `[GfxHouse]` record pairs a `LogicType <level> <typeId>` table with a
+ * `GfxBobId <level> <bobId>` table by the level index (a home spans levels 0..4, five distinct typeIds
+ * at five rising bobs), and names the body `.bmd` (`GfxBobLibs`) recoloured by one-or-more palette
+ * skins (`GfxPalette`); this is one row of that join — a single `(tribeId, typeId, level)` resolved to
+ * its `(bmd, palette, bobId)`.
  */
 export const BuildingBob = BuildingBobBase.extend({
   /** The atlas bob id this `(typeId, level)` draws (the `GfxBobId` for the level). */
@@ -50,16 +47,12 @@ export type BuildingBob = z.infer<typeof BuildingBob>;
  * given build progress. A record lists several layers per size level with overlapping `[fromPct, toPct]`
  * ranges; at progress `p` (percent, 0..100) every layer whose range contains `p` draws, stacked in file
  * order (`stackIdx`) — the last-listed active layer (the finished body, whose range always ends at 100)
- * lands on top. At `p = 0` only the first stage (the grey foundation, range starting at 0) is visible; at
- * `p = 100` only the finished body (+ its shadow) remains.
+ * lands on top.
  *
  * `upgrade` (the source's second int, 0 or 1): the 1-rows reference the next size level's finished body
  * and are not part of this level's from-scratch construction — they belong to the original's
  * upgrade-in-progress overlay (semantics not fully decoded; source basis). The from-scratch construction
  * render uses only the `upgrade === false` rows.
- *
- * Render-binding data like {@link BuildingBob} (same `(tribeId, typeId)` keying, same `(bmd,
- * palette)` atlas resolution); the pure sim ignores it.
  */
 export const BuildingConstructionLayer = BuildingBobBase.extend({
   /** True for the source's `1` rows — the upgrade-overlay layers a from-scratch render skips. */
@@ -87,9 +80,7 @@ export type BuildingConstructionLayer = z.infer<typeof BuildingConstructionLayer
  * Only the type-`4` rows (the 2nd int) are extracted — the two-state animated overlays, whose field
  * shape is pinned by comparing every such row in the file (offsets observed `0 0`, step `1`
  * throughout). The type-`3` rows have a different, not-yet-decoded shape (6 fields, no frame list —
- * static decal offsets) and are skipped rather than guessed. Render-binding data like
- * {@link BuildingBob} (same `(tribeId, typeId)` keying, same `(bmd, palette)` atlas resolution); the
- * pure sim ignores it.
+ * static decal offsets) and are skipped rather than guessed.
  */
 export const BuildingOverlay = BuildingBobBase.extend({
   /** The overlay state (the 3rd int): `0` = idle (one still frame), `1` = working (the spin cycle). */
