@@ -6,7 +6,7 @@ import {
   type TerrainGraph,
   type TerrainMap,
 } from '../../src/index.js';
-import { POCKET_PROBE_MAX_EXPLORED } from '../../src/nav/pathfinding.js';
+import { POCKET_PROBE_MAX_EXPLORED } from '../../src/nav/pathfinding/index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**

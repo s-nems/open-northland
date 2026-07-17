@@ -4,7 +4,7 @@ import type { World } from '../../ecs/world.js';
 import { LayeredBlocks } from '../../nav/block-overlay.js';
 import { positionOfNode, positionXOfWorld } from '../../nav/halfcell.js';
 import { nearestUnblockedNode } from '../../nav/nearest.js';
-import { findPath, type SearchStats } from '../../nav/pathfinding.js';
+import { findPath, type SearchStats } from '../../nav/pathfinding/index.js';
 import type { BlockOverlay, NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
 import { dynamicBlockedCells } from '../footprint/index.js';

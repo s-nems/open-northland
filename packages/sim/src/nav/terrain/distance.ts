@@ -23,10 +23,16 @@ import type { NodeId } from './types.js';
  * distance (admissible and consistent); obstacles only raise the true cost, so A* stays optimal.
  */
 export function nodeLatticeDistance(g: TerrainGraph, a: NodeId, b: NodeId): Fixed {
-  const ca = g.coordsOf(a);
-  const cb = g.coordsOf(b);
-  const ax = Math.abs(cb.x - ca.x);
-  const ay = Math.abs(cb.y - ca.y);
+  return latticeDistanceTo(g, g.xOf(b), g.yOf(b), a);
+}
+
+/**
+ * {@link nodeLatticeDistance} with one endpoint already resolved to coordinates — the form A* calls
+ * per discovered node, since the goal's coordinates are a loop invariant of a search.
+ */
+export function latticeDistanceTo(g: TerrainGraph, bx: number, by: number, a: NodeId): Fixed {
+  const ax = Math.abs(bx - g.xOf(a));
+  const ay = Math.abs(by - g.yOf(a));
   if (2 * ax <= ay) {
     // Vertical dominates: every half-column crosses diagonally, the leftover rows are half-row steps.
     return fx.add(fx.mul(fx.fromInt(ax), DIAGONAL_STEP), fx.mul(fx.fromInt(ay - 2 * ax), HALF_ROW));

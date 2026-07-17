@@ -48,7 +48,7 @@ export {
   positionOfNode,
 } from './nav/halfcell.js';
 export { DIAGONAL_STEP, HALF_COLUMN, HALF_ROW, worldDistance } from './nav/metric.js';
-export { findPath, type SearchStats } from './nav/pathfinding.js';
+export { findPath, type SearchStats } from './nav/pathfinding/index.js';
 export {
   type BlockOverlay,
   buildTerrainGraph,
@@ -59,17 +59,20 @@ export {
   TerrainGraph,
   type TerrainMap,
 } from './nav/terrain/index.js';
-export {
-  type DivergenceReport,
-  localizeDivergence,
-  type RunReplay,
-} from './replay/localize-divergence.js';
+export { type DivergenceReport, localizeDivergence } from './replay/localize-divergence.js';
 export {
   type RebaseInputs,
   type RebaseResult,
   rebaseContent,
 } from './replay/rebase-content.js';
-export { type ReplayOptions, replay, stepReplaying } from './replay/replay.js';
+export {
+  type ReplayOptions,
+  type RunReplay,
+  replay,
+  type SimInputs,
+  simFor,
+  stepReplaying,
+} from './replay/replay.js';
 export { scrubWindow } from './replay/scrub-window.js';
 export { type FogView, type SimOptions, Simulation, type SystemInstrument } from './simulation.js';
 export type { ConstructionPlot, PlacementProbe, ResourceNodeSpec } from './systems/footprint/index.js';
