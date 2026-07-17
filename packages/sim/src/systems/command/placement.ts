@@ -96,6 +96,14 @@ export function placeBuilding(
       if (slot.initial > 0) amounts.set(slot.goodType, slot.initial);
     }
   }
+  if (!command.underConstruction) {
+    // Authored starting stock (a decoded map's `addgoods`) adds on top of the seeding above, applied
+    // verbatim — the original stocks a scenario house with exactly the authored amounts, so they are
+    // not clamped to slot capacity and not limited to the type's declared slots.
+    for (const g of command.initialGoods ?? []) {
+      if (g.amount > 0) amounts.set(g.good, (amounts.get(g.good) ?? 0) + g.amount);
+    }
+  }
   world.add(e, Stockpile, { amounts });
   // A building placed for a specific player carries an `Owner` — that player's to select/command. Omitted /
   // out-of-range leaves it neutral.

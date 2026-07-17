@@ -56,6 +56,40 @@ describe('CommandSystem — buildings and demolition', () => {
     expect(placed[0]).toMatchObject({ at: { x: anchor.hx, y: anchor.hy } }); // events echo node coords
   });
 
+  it('placeBuilding initialGoods (authored addgoods) add on top of the type-default seeding', () => {
+    const sim = fresh();
+    sim.enqueue({
+      kind: 'placeBuilding',
+      buildingType: HEADQUARTERS,
+      x: 3,
+      y: 4,
+      tribe: VIKING,
+      initialGoods: [
+        { good: WOOD, amount: 15 }, // on top of the slot's init 10
+        { good: 2, amount: 5 }, // a slot the defaults left empty
+      ],
+    });
+    sim.step();
+    const stock = sim.world.get(nthEntity(sim, 0), Stockpile).amounts;
+    expect(stock.get(WOOD)).toBe(25);
+    expect(stock.get(2)).toBe(5);
+  });
+
+  it('placeBuilding initialGoods are ignored for an under-construction site (empty hold)', () => {
+    const sim = fresh();
+    sim.enqueue({
+      kind: 'placeBuilding',
+      buildingType: HEADQUARTERS,
+      x: 3,
+      y: 4,
+      tribe: VIKING,
+      underConstruction: true,
+      initialGoods: [{ good: WOOD, amount: 15 }],
+    });
+    sim.step();
+    expect(sim.world.get(nthEntity(sim, 0), Stockpile).amounts.size).toBe(0);
+  });
+
   it('placeBuilding with a valid owner stamps an Owner on the building', () => {
     const sim = fresh();
     sim.enqueue({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 3, y: 4, tribe: VIKING, owner: 2 });

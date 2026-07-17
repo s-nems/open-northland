@@ -209,12 +209,25 @@ describe('authored placements (map.cif StaticObjects → sim commands)', () => {
     ],
     jobs: [{ typeId: 7, id: 'builder', name: 'builder' }],
     tribes: [{ typeId: 1, id: 'viking' }],
+    goods: [{ typeId: 4, id: 'wheat', name: 'wheat' }],
   };
 
   const entities = {
     buildings: [
       // Resolves: editName+level → typeId 30; half-cell (8,4) passes VERBATIM; 0-based player 0 stays 0.
-      { name: 'viking barracks', level: 0, player: 0, hx: 8, hy: 4, rot: 0 },
+      // Its addgoods stock joins by good name ('wheat' → 4); the unknown name is dropped, house kept.
+      {
+        name: 'viking barracks',
+        level: 0,
+        player: 0,
+        hx: 8,
+        hy: 4,
+        rot: 0,
+        goods: [
+          { name: 'wheat', count: 15 },
+          { name: 'mystery_good', count: 3 },
+        ],
+      },
       // An out-of-range player (≥ MAX_PLAYERS) leaves the building neutral: owner omitted.
       { name: 'viking barracks', level: 1, player: 99, hx: 0, hy: 0 },
       { name: 'unknown house', level: 0, player: 0, hx: 2, hy: 2 }, // no buildingBobs row → skipped
@@ -231,7 +244,7 @@ describe('authored placements (map.cif StaticObjects → sim commands)', () => {
   it('joins by name, passes half-cells verbatim, and stamps the 0-based players as owners', () => {
     const { placements, skipped } = resolveAuthoredPlacements(entities, rows, authoredMap());
     expect(placements).toEqual([
-      { kind: 'building', typeId: 30, tribe: 1, x: 8, y: 4, owner: 0 },
+      { kind: 'building', typeId: 30, tribe: 1, x: 8, y: 4, owner: 0, goods: [{ good: 4, amount: 15 }] },
       { kind: 'building', typeId: 31, tribe: 1, x: 0, y: 0 }, // no owner: player out of range
       { kind: 'human', jobType: 7, tribe: 1, x: 3, y: 5, owner: 0 },
     ]);
@@ -255,6 +268,11 @@ describe('authored placements (map.cif StaticObjects → sim commands)', () => {
         .sort();
     expect(cellsOf(Building)).toEqual(['0,0', '4,2']);
     expect(cellsOf(Settler)).toEqual(['1,2']);
+
+    // The authored addgoods stock landed in the placed building's stockpile (good typeId 4 = wheat).
+    const { Stockpile } = components;
+    const stocked = [...sim.world.query(Building)].map((e) => sim.world.get(e, Stockpile).amounts.get(4));
+    expect(stocked).toContain(15);
   });
 
   it('returns null when nothing resolves (caller falls back to the demo slice)', () => {

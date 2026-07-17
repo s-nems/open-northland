@@ -92,24 +92,37 @@ describe('extractMapInfo', () => {
 
 describe('extractStaticObjects', () => {
   // Mirrors a real map.cif `StaticObjects` section: sethouse and sethuman (both 0-based player,
-  // sethouse's fourth column is the constant 1 — see the extractor doc), setanimal, plus a stock
-  // verb (`addgoods`) the extractor deliberately skips. All coordinates are half-cells (the emla
-  // 2W×2H lattice).
+  // sethouse's fourth column is the constant 1 — see the extractor doc), setanimal, plus an
+  // `addgoods` run stocking the sethouse it follows (the real grammar — `addgoods "<good>" <count>`,
+  // e.g. SPECJALNA- FORTECA's HQs). All coordinates are half-cells (the emla 2W×2H lattice).
   const staticObjectsLines: CifLine[] = [
     { level: 1, text: 'StaticObjects' },
     { level: 2, text: 'sethouse 5 "viking headquarters house" 0 1 171 330 2' },
+    { level: 2, text: 'addgoods "wheat" 15' },
+    { level: 2, text: 'addgoods "wood" 10' },
     { level: 2, text: 'sethouse 2 "viking barracks" 1 1 164 364 0' },
     { level: 2, text: 'sethuman 0 "viking" "baby_female" 385 101 0 0' },
     { level: 2, text: 'sethuman 1 "viking" "soldier_bow_long" 120 44 0 0' },
     { level: 2, text: 'setanimal 6 "deer" "adult" 50 60 0 0' },
-    { level: 2, text: 'addgoods 1 "wood" 10 171 330' },
+    { level: 2, text: 'addgoods "meat" 5' }, // follows setanimal, not a house — dropped
   ];
 
   it('extracts sethouse/sethuman/setanimal rows verbatim (names + half-cells + original player bases)', () => {
     const out = extractStaticObjects(cifLinesToSections(staticObjectsLines));
     expect(out).toEqual({
       buildings: [
-        { name: 'viking headquarters house', level: 0, player: 5, hx: 171, hy: 330, rot: 2 },
+        {
+          name: 'viking headquarters house',
+          level: 0,
+          player: 5,
+          hx: 171,
+          hy: 330,
+          rot: 2,
+          goods: [
+            { name: 'wheat', count: 15 },
+            { name: 'wood', count: 10 },
+          ],
+        },
         { name: 'viking barracks', level: 1, player: 2, hx: 164, hy: 364, rot: 0 },
       ],
       humans: [
@@ -131,11 +144,37 @@ describe('extractStaticObjects', () => {
     expect(out?.humans).toEqual([{ tribe: 'viking', role: 'builder', player: 0, hx: 10, hy: 12 }]);
   });
 
+  it('does not attach addgoods across a skipped sethouse or a malformed/zero-count row', () => {
+    const lines: CifLine[] = [
+      { level: 1, text: 'StaticObjects' },
+      { level: 2, text: 'sethouse 0 "viking headquarters house" 0 1 10 10 0' },
+      { level: 2, text: 'sethouse 1 "viking barracks"' }, // truncated — skipped, retargets goods away
+      { level: 2, text: 'addgoods "wheat" 15' }, // its house was skipped — dropped
+      { level: 2, text: 'sethouse 2 "viking barn" 0 1 20 20 0' },
+      { level: 2, text: 'addgoods "wood"' }, // no count — skipped
+      { level: 2, text: 'addgoods "stone" 0' }, // zero count — skipped
+      { level: 2, text: 'addgoods "flour" 5' },
+    ];
+    const out = extractStaticObjects(cifLinesToSections(lines));
+    expect(out?.buildings).toEqual([
+      { name: 'viking headquarters house', level: 0, player: 0, hx: 10, hy: 10, rot: 0 },
+      {
+        name: 'viking barn',
+        level: 0,
+        player: 2,
+        hx: 20,
+        hy: 20,
+        rot: 0,
+        goods: [{ name: 'flour', count: 5 }],
+      },
+    ]);
+  });
+
   it('returns undefined when the section is absent or places nothing', () => {
     expect(extractStaticObjects(cifLinesToSections([{ level: 1, text: 'misc_maptype' }]))).toBeUndefined();
     const empty: CifLine[] = [
       { level: 1, text: 'StaticObjects' },
-      { level: 2, text: 'addgoods 1 "wood" 10 171 330' }, // only uncaptured verbs
+      { level: 2, text: 'addgoods "wood" 10' }, // stock with no preceding house places nothing
     ];
     expect(extractStaticObjects(cifLinesToSections(empty))).toBeUndefined();
   });
@@ -155,7 +194,20 @@ describe('extractStaticObjects', () => {
       'setproducedgood "wood"',
     ].join('\n');
     expect(extractStaticObjects(parseIniSections(inc))).toEqual({
-      buildings: [{ name: 'viking headquarters', level: 0, player: 0, hx: 81, hy: 78, rot: 1002 }],
+      buildings: [
+        {
+          name: 'viking headquarters',
+          level: 0,
+          player: 0,
+          hx: 81,
+          hy: 78,
+          rot: 1002,
+          goods: [
+            { name: 'food_simple', count: 75 },
+            { name: 'water', count: 10 },
+          ],
+        },
+      ],
       humans: [{ tribe: 'viking', role: 'soldier_sword_short', player: 6, hx: 397, hy: 182 }],
       animals: [{ species: 'cattle', hx: 68, hy: 77 }],
     });

@@ -6,9 +6,9 @@ import { z } from 'zod';
  * `EditName`, a `sethuman` role a `[jobtype]` name), and coordinates stay half-cells (the same
  * `2W × 2H` lattice {@link TerrainObjects} uses; `÷2` → cell). Resolution to sim typeIds happens at
  * load by name against the IR ({@link BuildingBob} `editName`+`level`, {@link JobType} `name`) — the
- * engine's own version-robust join, mirroring how {@link TerrainGround} joins patterns. The
- * `addgoods`/`setproducedgood`/`setguide` verbs (stock, production presets, scout guides) are not
- * captured yet — a tracked gap (source basis map-entity import).
+ * engine's own version-robust join, mirroring how {@link TerrainGround} joins patterns. A building's
+ * `goods` are its `addgoods` starting stock (good names verbatim, resolved to good typeIds at load).
+ * The `setproducedgood`/`setguide` verbs (production presets, scout guides) are not captured yet.
  */
 export const TerrainEntities = z.strictObject({
   /**
@@ -27,6 +27,8 @@ export const TerrainEntities = z.strictObject({
         hx: z.number().int().nonnegative(),
         hy: z.number().int().nonnegative(),
         rot: z.number().int().nonnegative().optional(),
+        /** Authored starting stock — the `addgoods` runs after this `sethouse` (goodtype names verbatim). */
+        goods: z.array(z.strictObject({ name: z.string(), count: z.number().int().positive() })).optional(),
       }),
     )
     .default([]),

@@ -79,6 +79,8 @@ export interface MapStaticObjects {
     hx: number;
     hy: number;
     rot?: number;
+    /** Authored starting stock (`addgoods` verbs following this `sethouse`): good names verbatim. */
+    goods?: { name: string; count: number }[];
   }[];
   humans: { tribe: string; role: string; player: number; hx: number; hy: number }[];
   animals: { species: string; hx: number; hy: number }[];
@@ -92,7 +94,13 @@ export interface MapStaticObjects {
  * sethouse  <player(0-based)> "<GfxHouse EditName>" <level> <1: constant, unknown> <hx> <hy> <rot>
  * sethuman  <player(0-based)> "<tribe>" "<jobtype role>" <hx> <hy> <a> <b>
  * setanimal <class> "<species>" "<age>" <hx> <hy> <a> <b>
+ * addgoods  "<goodtype name>" <count>
  * ```
+ *
+ * `addgoods` rows stock the entity placed by the immediately preceding placement verb (source basis:
+ * across the whole unpacked `staticobjects.inc` corpus every `addgoods` run directly follows a
+ * `sethouse` or `setvehicle` row). Runs after a captured `sethouse` land on that building's `goods`;
+ * runs after any other verb (e.g. `setvehicle`, not imported yet) are dropped.
  *
  * The `sethouse` player is the first column, 0-based like `sethuman`'s (source basis: across all 13
  * entity-bearing mod maps its per-value position centroids coincide with the matching `sethuman`
@@ -100,8 +108,8 @@ export interface MapStaticObjects {
  * tutorials — while the fourth column is the constant `1` on every one of the 415 rows, so it
  * cannot be a player id; the unpacked `staticobjects.inc` corpus corroborates, including rows
  * where that column is `0`). Names are kept verbatim (the
- * version-robust join key the loader resolves against the IR by name). The stock/production/
- * guide verbs (`addgoods`/`setproducedgood`/`setguide`) are not captured yet (source basis). A
+ * version-robust join key the loader resolves against the IR by name). The production/guide verbs
+ * (`setproducedgood`/`setguide`) are not captured yet. A
  * malformed row is skipped, not thrown — one bad line must not drop a whole map's placements.
  * Returns `undefined` when the map has no `StaticObjects` section or it places nothing.
  */
@@ -113,8 +121,19 @@ export function extractStaticObjects(sections: readonly RuleSection[]): MapStati
     return Number.isNaN(n) || n < 0 ? undefined : n;
   };
   const out: MapStaticObjects = { buildings: [], humans: [], animals: [] };
+  // The building the next `addgoods` run stocks — the last captured `sethouse`. Any other verb
+  // (including a skipped-as-malformed `sethouse`) retargets goods away from it.
+  let goodsTarget: MapStaticObjects['buildings'][number] | undefined;
   for (const p of sec.props) {
-    if (p.key === 'sethouse') {
+    if (p.key !== 'addgoods' && p.key !== 'sethouse') goodsTarget = undefined;
+    if (p.key === 'addgoods') {
+      const [name, countRaw] = p.values;
+      const count = int(countRaw);
+      if (goodsTarget === undefined || name === undefined || count === undefined || count === 0) continue;
+      goodsTarget.goods ??= [];
+      goodsTarget.goods.push({ name, count });
+    } else if (p.key === 'sethouse') {
+      goodsTarget = undefined; // a malformed row below must not leave the previous house targeted
       const [playerRaw, name, levelRaw, , hxRaw, hyRaw, rotRaw] = p.values;
       const level = int(levelRaw);
       const player = int(playerRaw);
@@ -129,7 +148,9 @@ export function extractStaticObjects(sections: readonly RuleSection[]): MapStati
         hy === undefined
       )
         continue;
-      out.buildings.push({ name, level, player, hx, hy, ...(rot !== undefined ? { rot } : {}) });
+      const building = { name, level, player, hx, hy, ...(rot !== undefined ? { rot } : {}) };
+      out.buildings.push(building);
+      goodsTarget = building;
     } else if (p.key === 'sethuman') {
       const [playerRaw, tribe, role, hxRaw, hyRaw] = p.values;
       const player = int(playerRaw);

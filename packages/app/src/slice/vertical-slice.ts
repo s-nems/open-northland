@@ -134,6 +134,7 @@ function enqueuePlacements(sim: Simulation, placements: readonly AuthoredPlaceme
         tribe: p.tribe,
         force: true,
         ...own,
+        ...(p.goods !== undefined ? { initialGoods: p.goods } : {}),
       });
     } else {
       // A warrior placement (scene author or imported-map `sethuman`) carries its class weapon in the
