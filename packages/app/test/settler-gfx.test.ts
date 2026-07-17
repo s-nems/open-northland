@@ -9,10 +9,10 @@ import {
   carryHeadAnims,
   characterBinding,
   directionalAnimFromSeq,
-  WARRIOR_SPEC_BY_WEAPON_GOOD,
+  WARRIOR_SPEC_BY_WEAPON_GOOD_SLUG,
   YOUNG_CHARACTER_BY_JOB,
 } from '../src/content/settler-gfx/index.js';
-import { WEAPON_GOOD_BY_JOB } from '../src/game/sandbox/ids/index.js';
+import { WEAPON_GOOD_SLUG_BY_JOB } from '../src/game/sandbox/ids/index.js';
 
 /**
  * The settler/character render bindings: the seq→frame-range math behind `?atlas=real` (the self-verifiable
@@ -380,15 +380,16 @@ describe('the job → character tables (the [jobbasegraphics] transcription)', (
   });
 
   it('arming a warrior draws the same body its job does (the three weapon tables agree)', () => {
-    // `pickByJob` prefers the equipped-weapon body (`WARRIOR_SPEC_BY_WEAPON_GOOD`) over the job body
-    // (`ADULT_CHARACTER_BY_JOB`), so for every soldier job that spawns with a weapon good
-    // (`WEAPON_GOOD_BY_JOB`), the armed look MUST equal the job's own look — otherwise arming a warrior
-    // would silently reskin it. This locks the composite the render relies on across all three tables.
-    for (const [jobStr, good] of Object.entries(WEAPON_GOOD_BY_JOB)) {
+    // `pickByJob` prefers the equipped-weapon body (`WARRIOR_SPEC_BY_WEAPON_GOOD_SLUG`) over the job
+    // body (`ADULT_CHARACTER_BY_JOB`), so for every soldier/hero job that spawns with a weapon good
+    // (`WEAPON_GOOD_SLUG_BY_JOB`), the armed look MUST equal the job's own look — otherwise arming a
+    // warrior would silently reskin it. This locks the composite the render relies on across all three
+    // tables.
+    for (const [jobStr, slug] of Object.entries(WEAPON_GOOD_SLUG_BY_JOB)) {
       const job = Number(jobStr);
-      const armed = WARRIOR_SPEC_BY_WEAPON_GOOD[good];
+      const armed = WARRIOR_SPEC_BY_WEAPON_GOOD_SLUG[slug];
       const byJob = ADULT_CHARACTER_BY_JOB[job];
-      expect(armed, `weapon good ${good} (job ${job})`).toBeDefined();
+      expect(armed, `weapon good ${slug} (job ${job})`).toBeDefined();
       expect(armed, `job ${job}: armed body must match its job body`).toBe(byJob);
     }
   });

@@ -41,7 +41,7 @@ export const GOOD_SHOES = 130;
 export const GOOD_TOOL_IRON = 132;
 export const GOOD_ARMOR_CHAIN = 135;
 // Weapon goods — the equippable side of the weapons. A settler carrying one in its `Equipment.weapon`
-// slot draws that weapon's warrior body (WARRIOR_SPEC_BY_WEAPON_GOOD).
+// slot draws that weapon's warrior body (WARRIOR_SPEC_BY_WEAPON_GOOD_SLUG, joined by good id-slug).
 export const GOOD_BOW_SHORT = 137;
 export const GOOD_BOW_LONG = 138;
 export const GOOD_SPEAR_WOODEN = 139;

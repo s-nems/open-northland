@@ -37,7 +37,7 @@ import {
   KISSED_ATOMIC,
   MUSHROOM_PLUCK_FRAMES,
   MUSHROOM_PLUCKS_PER_PICK,
-  WARRIOR_SPEC_BY_WEAPON_GOOD,
+  WARRIOR_SPEC_BY_WEAPON_GOOD_SLUG,
   YOUNG_CHARACTER_BY_JOB,
 } from '../settler-gfx/index.js';
 
@@ -216,10 +216,14 @@ export async function loadCharacters(
     if (char !== undefined) youngByJob[Number(job)] = char;
   }
   // The equipped-weapon look table: a warrior draws the body of the weapon in its Equipment.weapon slot.
+  // Joined slug → the RUNNING content's good typeId (sandbox 137–142 vs real 37–42), so the key matches
+  // whatever `Equipment.weapon.goodType` the sim actually stamps.
   const byWeaponGood: Record<number, SettlerCharacter> = {};
-  for (const [good, specId] of Object.entries(WARRIOR_SPEC_BY_WEAPON_GOOD)) {
+  for (const good of goods) {
+    const specId = WARRIOR_SPEC_BY_WEAPON_GOOD_SLUG[good.id];
+    if (specId === undefined) continue;
     const char = bySpec.get(specId);
-    if (char !== undefined) byWeaponGood[Number(good)] = char;
+    if (char !== undefined) byWeaponGood[good.typeId] = char;
   }
   return { byJob, youngByJob, byWeaponGood, default: fallback };
 }

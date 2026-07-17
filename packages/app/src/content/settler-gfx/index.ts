@@ -24,7 +24,7 @@ export {
   CHARACTER_SPECS,
   type CharacterSpec,
   type CharacterSpecId,
-  WARRIOR_SPEC_BY_WEAPON_GOOD,
+  WARRIOR_SPEC_BY_WEAPON_GOOD_SLUG,
   YOUNG_CHARACTER_BY_JOB,
 } from './character-specs.js';
 export { directionalAnimFromSeq, type GoodRef } from './seq-anim.js';

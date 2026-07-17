@@ -139,7 +139,7 @@ function enqueuePlacements(sim: Simulation, placements: readonly AuthoredPlaceme
     } else {
       // A warrior placement (scene author or imported-map `sethuman`) carries its class weapon in the
       // equipment slot, so an existing soldier's Broń row + drawn weapon match — like an admin spawn.
-      const equipment = weaponEquipmentFor(p.jobType);
+      const equipment = weaponEquipmentFor(p.jobType, sim.content.goods);
       // Every authored human spawns with the gather-mastery XP (the sandbox veteran rule applied to
       // decoded maps): real content's `needforgood` gates iron/gold behind clay/stone-digging XP, and a
       // map settler converted to a collector and pinned to an iron camp would otherwise never qualify.

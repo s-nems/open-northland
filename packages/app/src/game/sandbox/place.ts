@@ -232,7 +232,7 @@ export function spawnSandboxSettler(
   const node = cellAnchorNode(x, y);
   // A warrior with no explicit loadout still gets its class weapon in the equipment slot (so its Broń
   // row + drawn weapon match), derived from the job; an explicit `equipment` wins untouched.
-  const equipment = opts.equipment ?? weaponEquipmentFor(jobType);
+  const equipment = opts.equipment ?? weaponEquipmentFor(jobType, sim.content.goods);
   sim.enqueue({
     kind: 'spawnSettler',
     jobType,

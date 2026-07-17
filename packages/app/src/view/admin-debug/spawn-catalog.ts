@@ -48,6 +48,9 @@ export interface UnitSpawnOptions {
   readonly armorClass: number;
   readonly x: number;
   readonly y: number;
+  /** The running content's goods table — resolves the class weapon's good slug to the id space the
+   *  sim actually plays on (sandbox 137–142 vs real 37–42). */
+  readonly goods: readonly { readonly typeId: number; readonly id: string }[];
 }
 
 /**
@@ -60,7 +63,7 @@ export function unitSpawnCommand(preset: UnitPreset, opts: UnitSpawnOptions): Co
   // The class weapon also goes in the equipment slot (derived from the job, shared with the scene/map
   // spawns), which drives the drawn look + fills the Broń row. The bare-handed warrior gets none → empty
   // slot → unarmed body.
-  const equipment = weaponEquipmentFor(preset.jobType);
+  const equipment = weaponEquipmentFor(preset.jobType, opts.goods);
   return {
     kind: 'spawnSettler',
     jobType: preset.jobType,

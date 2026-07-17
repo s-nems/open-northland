@@ -340,7 +340,16 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
       deps.enqueue(goodDropCommand(armed.good, col, row));
       return;
     }
-    deps.enqueue(unitSpawnCommand(armed.preset, { player, hitpoints, armorClass, x: col, y: row }));
+    deps.enqueue(
+      unitSpawnCommand(armed.preset, {
+        player,
+        hitpoints,
+        armorClass,
+        x: col,
+        y: row,
+        goods: deps.goods.map((g) => ({ typeId: g.good, id: g.id })),
+      }),
+    );
   };
 
   /** An action arm applies to the entity under the cursor (a no-op click if none is there / no picker). */

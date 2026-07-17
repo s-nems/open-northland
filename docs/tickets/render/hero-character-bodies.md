@@ -12,9 +12,10 @@ own look.
 
 ## Scope
 
-- Find the heroes' body/head graphics in the original data (`[jobbasegraphics]` for
-  `logictribe` records beyond the plain viking set, or dedicated `cr_hum_*` atlases); document the
-  byte/ini evidence like the existing roster entries.
+- The bodies exist: `DataCnmd/types/humanstype/jobgraphics.ini` binds per-tribe `[jobbasegraphics]`
+  for logicjobs 42–47 (e.g. tribe 1 job 44 → `CR_Hum_Body_60`, job 45 → `CR_Hum_Body_64`, tribe 3
+  job 42 → `CR_Hum_Body_73`; tribe 1 job 46 hero_axe → the generic `CR_Hum_Body_00`). Extract those
+  atlases and document the evidence like the existing roster entries.
 - Extend the pipeline/roster (`packages/app/src/catalog/roster.ts`, `settler-gfx/character-specs.ts`)
   with the hero specs and swap the 42–47 borrow entries to them.
 - Decide whether a hero's `Equipment.weapon` should keep the class weapon good (panel Broń row) —
