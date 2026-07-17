@@ -81,3 +81,13 @@ export function nearestFreeNeighbour(
 
 /** The 1-cell footprint a footprint-less building presents to placement checks. */
 export const ANCHOR_ONLY: readonly FootprintCell[] = Object.freeze([{ dx: 0, dy: 0 }]);
+
+/** The cells of `buildingType` that a work flag may not occupy, anchor-relative: its family body (a
+ *  level-0 house reserves its top tier's space), or the bare anchor for a footprint-less type. One
+ *  definition so the rule that REFUSES a flag here (`eachBlockerCell`'s OBSTACLE channel) and the
+ *  push-out that CLEARS one from here (`evictWorkFlagsFromFootprint`) cannot drift apart — were they to,
+ *  a placement would leave a flag on ground the plant rule rejects. */
+export function buildingFlagBody(content: ContentSet, buildingType: number): readonly FootprintCell[] {
+  const fp = buildingFootprintOf(content, buildingType);
+  return fp?.familyBody.length ? fp.familyBody : ANCHOR_ONLY;
+}

@@ -19,11 +19,13 @@ costs 50 whole-map scans *plus* 50 whole-world blocker rebuilds in a single tick
 spiking tick time superlinearly in map size. `packages/sim/AGENTS.md` names ring search as the required
 lever for nearest-X.
 
-`evictWorkFlagsFromFootprint` (same file) is a second caller — once per flag a `placeBuilding` encloses —
-but it is not the reason to do this: it early-outs before the scan unless a flag really is on the new
-plot, which the sandbox acceptance scene never hits (measured 2026-07-17: zero calls over a full run).
-One scan per pushed-out flag is the same one-shot class as the employment path's, so fixing the scan fixes
-both; do not size the work around this caller.
+`evictWorkFlagsFromFootprint` (`economy/flags.ts`) is a second caller — once per flag a `placeBuilding`
+encloses — but it is not the reason to do this: it early-outs before the scan unless a flag really is on
+the new plot, which the sandbox acceptance scene never hits (measured 2026-07-17: zero calls over a full
+run). Its worst case is bounded by the plot's `familyBody` (one flag per node), and real bodies are not
+small — median 50 cells, max 388 (`content/ir.json`, 2026-07-17) — so a pathological placement onto a
+flag-covered plot could burst to ~50 whole-map scans in one command tick. Still the same one-shot class as
+the employment path, and fixed by the same ring search; do not size the work around this caller.
 
 `canPlaceWorkFlag` in the same file has the same shape: it rebuilds the entire blocked set to answer a
 question about one node.

@@ -9,7 +9,7 @@ import {
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
-import { ANCHOR_ONLY, buildingFootprintOf } from '../geometry.js';
+import { ANCHOR_ONLY, buildingFlagBody, buildingFootprintOf } from '../geometry.js';
 
 // The single definition of what a standing entity blocks, as (cell, channel) pairs. Every placement rule
 // in this folder — building (./building.ts) and work flag (./work-flag.ts), each in both its sparse and
@@ -73,7 +73,7 @@ export function eachBlockerCell(
     const p = world.get(e, Position);
     const { hx, hy } = nodeOfPosition(p.x, p.y);
     const fp = buildingFootprintOf(content, b.buildingType);
-    const body = fp?.familyBody.length ? fp.familyBody : ANCHOR_ONLY;
+    const body = buildingFlagBody(content, b.buildingType);
     const zone = fp?.reserved.length ? fp.reserved : ANCHOR_ONLY;
     for (const c of body) visit(hx + c.dx, hy + c.dy, OBSTACLE);
     for (const c of zone) visit(hx + c.dx, hy + c.dy, EXCLUSION);

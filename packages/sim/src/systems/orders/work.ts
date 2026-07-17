@@ -265,7 +265,7 @@ export function setWorkFlag(
   if (live !== undefined) {
     // Relocate the existing flag — only the marker moves, and its gatherer sheds the delivery/nav state
     // that cached the old position (see {@link relocateWorkFlag}).
-    relocateWorkFlag(world, live.flag, pos);
+    relocateWorkFlag(world, live.flag, pos, e);
     return;
   }
   // No live flag yet (fresh gatherer, or its flag was removed) — mint one here and bind / re-point.

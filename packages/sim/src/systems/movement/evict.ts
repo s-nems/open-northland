@@ -28,6 +28,10 @@ const FOOTPRINT_EVICT_SEARCH_CAP = 192;
  * fixtures stay byte-identical. Determinism: evictees are visited in canonical ascending-id order, the
  * ring search expands the graph's canonical neighbour order, and each claimed target is excluded from
  * later searches — no store-order pick anywhere.
+ *
+ * Settlers only. The work-flag twin is `evictWorkFlagsFromFootprint` (systems/economy/flags.ts, which owns
+ * the flag lifecycle): it evicts a wider set (the family body, not these walk-blocked cells) and reaches
+ * for a different rule, so the two stay separate rather than sharing a pass.
  */
 export function evictSettlersFromFootprint(world: World, ctx: SystemContext, building: Entity): void {
   const terrain = ctx.terrain;

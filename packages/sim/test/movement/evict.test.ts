@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   Building,
   CurrentAtomic,
+  DEFAULT_WORK_FLAG_RADIUS,
   DeliveryFlag,
   MoveGoal,
   Position,
@@ -26,6 +27,7 @@ import { TEST_MANIFEST } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 import {
+  HQ,
   HUT,
   HUT_FOOTPRINT,
   mappedSim,
@@ -43,7 +45,7 @@ import {
  * (`evictWorkFlagsFromFootprint`): the placement gates ignore flags, so a house may legally land on one.
  * The HUT fixture's body is (0,0)+(1,0) with the door at (-1,0); anchored at (5,5) the body nodes are
  * (5,5) and (6,5), the door (4,5). Its family body adds the growth cell (6,6) — reserved from level 0,
- * and walls to a flag though not to a walker.
+ * and walls to a flag though not to a walker, which is the flag/settler split these two suites pin.
  */
 
 const PLAYER = 0;
@@ -328,15 +330,44 @@ describe('footprint displacement — a work flag is never sealed inside a placed
     expect(nodeOf(sim, flag)).toEqual({ x: 10, y: 10 });
   });
 
-  it('fans two enclosed flags onto distinct cells — a flag never stacks on a flag', () => {
+  it('never pushes a flag onto a cell another flag already holds', () => {
+    // Derived, not hardcoded: run the push once to learn where a lone flag lands, then re-run with a
+    // bystander already sitting there. Two flags placed side by side would pass even against a stale
+    // blocker set (each has its own nearest cell), so the contested cell has to be the SAME one.
+    const lone = mappedSim();
+    const solo = flagAtNode(lone, ANCHOR.x, ANCHOR.y);
+    lone.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    lone.step();
+    const contested = nodeOf(lone, solo);
+
+    const sim = mappedSim();
+    const evicted = flagAtNode(sim, ANCHOR.x, ANCHOR.y);
+    const bystander = flagAtNode(sim, contested.x, contested.y); // legal ground, outside the body
+    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    sim.step();
+    expect(nodeOf(sim, bystander)).toEqual(contested); // the sitting flag never moves…
+    expect(nodeOf(sim, evicted)).not.toEqual(contested); // …and the evicted one goes around it
+    expect(FAMILY_BODY).not.toContainEqual(nodeOf(sim, evicted));
+  });
+
+  it('fans two enclosed flags onto distinct cells', () => {
     const sim = mappedSim();
     const onAnchor = flagAtNode(sim, ANCHOR.x, ANCHOR.y);
     const onWall = flagAtNode(sim, ANCHOR.x + 1, ANCHOR.y);
     sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
     sim.step();
-    // Each search re-reads the live blocker set, so the first evictee's new cell blocks the second's pick.
     expect(nodeOf(sim, onAnchor)).not.toEqual(nodeOf(sim, onWall));
     for (const f of [onAnchor, onWall]) expect(FAMILY_BODY).not.toContainEqual(nodeOf(sim, f));
+  });
+
+  it('evicts a flag from a footprint-less type, which blocks only its anchor', () => {
+    const sim = mappedSim();
+    const flag = flagAtNode(sim, ANCHOR.x, ANCHOR.y);
+    const beside = flagAtNode(sim, ANCHOR.x + 1, ANCHOR.y); // off HQ's anchor — no body to be inside
+    sim.enqueue({ kind: 'placeBuilding', buildingType: HQ, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    sim.step();
+    expect(nodeOf(sim, flag)).not.toEqual({ x: ANCHOR.x, y: ANCHOR.y });
+    expect(nodeOf(sim, beside)).toEqual({ x: ANCHOR.x + 1, y: ANCHOR.y });
   });
 
   it('sheds the gatherer delivery + nav state that cached the old flag position', () => {
@@ -345,7 +376,7 @@ describe('footprint displacement — a work flag is never sealed inside a placed
     const sim = mappedSim();
     const flag = flagAtNode(sim, ANCHOR.x, ANCHOR.y);
     const gatherer = settlerAtNode(sim, 10, 10, PLAYER);
-    sim.world.add(gatherer, WorkFlag, { flag, radius: 24 });
+    sim.world.add(gatherer, WorkFlag, { flag, radius: DEFAULT_WORK_FLAG_RADIUS });
     sim.world.add(gatherer, YardDeliveryRoute, {
       flag,
       goodType: 1,
