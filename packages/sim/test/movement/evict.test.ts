@@ -1,4 +1,4 @@
-import { IR_VERSION, parseContentSet } from '@open-northland/data';
+import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   Building,
@@ -13,6 +13,7 @@ import type { Entity } from '../../src/ecs/world.js';
 import { fx, nodeOfPosition, ONE, positionOfNode, Simulation } from '../../src/index.js';
 import { findPath } from '../../src/nav/pathfinding.js';
 import { constructionSystem, dynamicBlockOverlay } from '../../src/systems/index.js';
+import { TEST_MANIFEST } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 import {
@@ -225,7 +226,7 @@ describe('footprint displacement — settlers never end up standing inside walls
     const HOME_L = 21; // grows one node east
     const STONE = 1;
     const content = parseContentSet({
-      manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+      manifest: TEST_MANIFEST,
       goods: [
         { typeId: 0, id: 'none' },
         { typeId: STONE, id: 'stone' },

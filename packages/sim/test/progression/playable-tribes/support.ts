@@ -1,4 +1,5 @@
-import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
+import { type ContentSet, parseContentSet } from '@open-northland/data';
+import { TEST_MANIFEST } from '../../fixtures/content.js';
 
 /**
  * The playable-tribes read view — `playableTribes`/`isPlayableTribe` distinguish the controllable
@@ -13,7 +14,7 @@ import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/da
 // exercised. A civilization is signed by a `jobEnables` edge; an animal is pure atomic bindings.
 export function tribeContent(): ContentSet {
   return parseContentSet({
-    manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+    manifest: TEST_MANIFEST,
     goods: [
       { typeId: 0, id: 'none' },
       { typeId: 3, id: 'coin' }, // the good a frank's tech edge unlocks

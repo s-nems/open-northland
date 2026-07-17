@@ -1,8 +1,8 @@
 import type { Entity, World } from '../../../ecs/world.js';
+import type { SpatialGate } from '../../../nav/node-metric.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { interactionNode } from '../../footprint/index.js';
-import type { SpatialGate } from '../../node-metric.js';
 import { manhattan } from '../../spatial.js';
 import { closer } from './nearest.js';
 import { interactionCell } from './workplaces.js';

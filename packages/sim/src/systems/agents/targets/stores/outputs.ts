@@ -1,8 +1,8 @@
 import { Stockpile, stockpileEntries } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
+import type { SpatialGate } from '../../../../nav/node-metric.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
-import type { SpatialGate } from '../../../node-metric.js';
 import { mergedRecipeOf } from '../../../stores/index.js';
 import { type InteractionCellIndex, qualifiedGood } from '../cell-index.js';
 

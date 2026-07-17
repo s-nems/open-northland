@@ -2,10 +2,10 @@ import type { Recipe } from '@open-northland/data';
 import { Building, Production, Stockpile } from '../../../../components/index.js';
 import { ONE } from '../../../../core/fixed.js';
 import type { Entity, World } from '../../../../ecs/world.js';
+import type { SpatialGate } from '../../../../nav/node-metric.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
 import { startableCycleCount } from '../../../economy/production.js';
-import type { SpatialGate } from '../../../node-metric.js';
 import { recipesByProductOf, stockCapacity } from '../../../stores/index.js';
 import { type InteractionCellIndex, QUALIFIES } from '../../targets/index.js';
 

@@ -1,2 +1,2 @@
 /** Stable test import; fixture sections live under `fixtures/content/`. */
-export { testContent } from './content/index.js';
+export { TEST_MANIFEST, testContent } from './content/index.js';

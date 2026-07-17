@@ -1,4 +1,4 @@
-import { type ContentSet, IR_VERSION, parseContentSet, type WeaponType } from '@open-northland/data';
+import { type ContentSet, parseContentSet, type WeaponType } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   isRangedWeapon,
@@ -11,6 +11,7 @@ import {
   weaponsForJob,
   weaponWeightOf,
 } from '../../src/systems/index.js';
+import { TEST_MANIFEST } from '../fixtures/content.js';
 
 /** Resolve a weapon by its `id` from a content set (throws if absent — a test-fixture programmer error). */
 function weapon(content: ContentSet, id: string): WeaponType {
@@ -30,7 +31,7 @@ function weaponFixture(
   jobs?: readonly Record<string, unknown>[],
 ): ContentSet {
   return parseContentSet({
-    manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+    manifest: TEST_MANIFEST,
     goods: [{ typeId: 0, id: 'none' }],
     jobs: jobs ?? [{ typeId: 0, id: 'idle' }],
     buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
@@ -87,9 +88,15 @@ describe('isSiegeWeapon', () => {
     expect(isSiegeWeapon(weapon(content, 'wooden_spear'))).toBe(false);
   });
 
-  it('is a strict subset of ranged: every siege weapon is also ranged', () => {
+  it('is a strict subset of ranged: every siege weapon is also ranged, and one ranged weapon is not siege', () => {
     const content = weaponContent();
-    for (const w of siegeWeapons(content)) expect(isRangedWeapon(w)).toBe(true);
+    const siege = siegeWeapons(content);
+    // Pinned: a regression to an empty list would leave the loop below vacuously true.
+    expect(siege.map((w) => w.id)).toEqual(['catapult']);
+    for (const w of siege) expect(isRangedWeapon(w)).toBe(true);
+    // ...and strict: the fixture's short bow is ranged without being siege.
+    expect(isRangedWeapon(weapon(content, 'bow_short'))).toBe(true);
+    expect(isSiegeWeapon(weapon(content, 'bow_short'))).toBe(false);
   });
 });
 

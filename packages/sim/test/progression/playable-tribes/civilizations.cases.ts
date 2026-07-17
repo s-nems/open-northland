@@ -1,6 +1,7 @@
-import { IR_VERSION, parseContentSet } from '@open-northland/data';
+import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { isPlayableTribe, playableTribes } from '../../../src/systems/index.js';
+import { TEST_MANIFEST } from '../../fixtures/content.js';
 import { tribeContent } from './support.js';
 
 describe('playableTribes', () => {
@@ -17,7 +18,7 @@ describe('playableTribes', () => {
 
   it('is empty when no tribe carries a tech graph (e.g. an animals-only set)', () => {
     const content = parseContentSet({
-      manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+      manifest: TEST_MANIFEST,
       goods: [{ typeId: 0, id: 'none' }],
       jobs: [{ typeId: 0, id: 'idle' }],
       buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],

@@ -1,6 +1,7 @@
-import { type ContentSet, IR_VERSION, type JobType, parseContentSet } from '@open-northland/data';
+import { type ContentSet, type JobType, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { isSeaJob, seaJobs } from '../../src/systems/index.js';
+import { TEST_MANIFEST } from '../fixtures/content.js';
 
 /** Resolve a job by its `id` from a content set (throws if absent — a test-fixture programmer error). */
 function job(content: ContentSet, id: string): JobType {
@@ -23,7 +24,7 @@ function job(content: ContentSet, id: string): JobType {
  */
 function jobContent(): ContentSet {
   return parseContentSet({
-    manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+    manifest: TEST_MANIFEST,
     goods: [{ typeId: 0, id: 'none' }],
     jobs: [
       // trader_sea (typeId 26) declared first — a sea job. Proves the sort, not declaration order.
@@ -64,7 +65,7 @@ describe('seaJobs', () => {
 
   it('is empty when no job carries the `_sea` suffix (a land-only set)', () => {
     const content = parseContentSet({
-      manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+      manifest: TEST_MANIFEST,
       goods: [{ typeId: 0, id: 'none' }],
       jobs: [
         { typeId: 0, id: 'idle' },

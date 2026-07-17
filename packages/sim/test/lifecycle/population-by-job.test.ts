@@ -1,8 +1,9 @@
-import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { Settler } from '../../src/components/index.js';
 import { fx, Simulation } from '../../src/index.js';
 import { IDLE_JOB, tribePopulationByJob } from '../../src/systems/index.js';
+import { TEST_MANIFEST } from '../fixtures/content.js';
 
 /**
  * The jobs read model — `tribePopulationByJob` tallies a tribe's settlers by `jobType` (the third HUD
@@ -24,7 +25,7 @@ const CARPENTER = 11;
 
 function jobsContent(): ContentSet {
   return parseContentSet({
-    manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+    manifest: TEST_MANIFEST,
     goods: [{ typeId: 0, id: 'none' }],
     jobs: [
       { typeId: 0, id: 'idle' },

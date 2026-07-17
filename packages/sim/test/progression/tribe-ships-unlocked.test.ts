@@ -1,9 +1,10 @@
-import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, Simulation } from '../../src/index.js';
 import { tribeShipsUnlocked } from '../../src/systems/index.js';
+import { TEST_MANIFEST } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 
 /**
@@ -37,7 +38,7 @@ const VIKING_VEHICLES = [
  *  ship and the carts are never ships. `vehicles` carries the passengerSlots; `jobEnables` the unlock. */
 function shipContent(): ContentSet {
   return parseContentSet({
-    manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+    manifest: TEST_MANIFEST,
     goods: [{ typeId: 0, id: 'none' }],
     buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
     jobs: [
@@ -77,7 +78,7 @@ describe('tribeShipsUnlocked', () => {
     const sim = new Simulation({
       seed: 1,
       content: parseContentSet({
-        manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+        manifest: TEST_MANIFEST,
         goods: [{ typeId: 0, id: 'none' }],
         jobs: [{ typeId: 0, id: 'idle' }],
         buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
@@ -119,7 +120,7 @@ describe('tribeShipsUnlocked', () => {
     const sim = new Simulation({
       seed: 1,
       content: parseContentSet({
-        manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+        manifest: TEST_MANIFEST,
         goods: [{ typeId: 0, id: 'none' }],
         jobs: [{ typeId: 0, id: 'idle' }],
         buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],

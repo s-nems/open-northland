@@ -1,8 +1,8 @@
 import { Building, ownerOf, ownersCompatible } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
+import type { SpatialGate } from '../../../../nav/node-metric.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
-import type { SpatialGate } from '../../../node-metric.js';
 import { isTemple } from '../../../readviews/index.js';
 import { type InteractionCellIndex, QUALIFIES } from '../cell-index.js';
 

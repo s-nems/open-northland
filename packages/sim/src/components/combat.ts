@@ -3,8 +3,8 @@ import { defineComponent, type Entity } from '../ecs/world.js';
 import type { NodeId } from '../nav/terrain/index.js';
 
 /**
- * An entity's hitpoints, drained by resolved attack damage (clamped at 0 — a hit never heals) and by the
- * NeedsSystem's starvation bite, reaped by the CleanupSystem at 0 (`settlerDied`).
+ * An entity's hitpoints, drained by resolved attack damage (clamped at 0) and by the NeedsSystem's starvation
+ * bite; the CleanupSystem reaps at 0 (`settlerDied`).
  *
  * Whole integers, not fixed-point 0..ONE bars: the original's scale is large (`animaltypes.ini`
  * `hitpoints_adult` 200..20000) and net damage is the integer `combatDamage` join, so the pool stays exact
@@ -17,35 +17,28 @@ export const Health = defineComponent<{ hitpoints: number; max: number }>('Healt
  * A combatant's worn armor class — the `[armortype]` tier (`ArmorType.typeId`, 1..4 in base data) whose
  * materialType selects the attacker's damage column in the `weapontypes`×`armortypes` join
  * ({@link combatDamage}). The uniform `blockingValue 5` has an unknown engine role and is deliberately not
- * subtracted.
- *
- * Optional: no component, or a class with no `[armortype]` record (out-of-table 6/7, or a bad value),
- * resolves as armor class 0 — armor the data doesn't define mitigates nothing rather than crashing.
- * `armorClass` is a whole integer class id.
+ * subtracted. Optional: no component, or a class with no `[armortype]` record (out-of-table 6/7, or a bad
+ * value), resolves as armor class 0 — armor the data doesn't define mitigates nothing rather than crashing.
  */
 export const Armor = defineComponent<{ armorClass: number }>('Armor');
 
 /**
  * A combatant's wielded weapon, resolved against the settler's own tribe since a `typeId` like 2="fist"
  * recurs once per tribe. When present the CombatSystem uses this weapon's damage table and reach instead of
- * the default `(tribe, jobType)` first-match scan ({@link attackerWeapon}), picking one of the weapons its
- * class may wield rather than the scan's first hit.
+ * the default `(tribe, jobType)` first-match scan ({@link attackerWeapon}). Optional: without one a settler
+ * falls back to the scan; a `(tribe, weaponTypeId)` resolving to no record leaves the combatant unarmed for
+ * the tick, matching {@link Armor}'s out-of-table stance.
  *
- * Optional: without one a settler falls back to the scan; a `(tribe, weaponTypeId)` resolving to no record
- * leaves the combatant unarmed for the tick, matching {@link Armor}'s out-of-table stance. `weaponTypeId` is
- * a whole integer typeId.
- *
- * source-basis: the weapon's damage/reach are verbatim extracted `weapontypes` params; which settler holds
- * which weapon is caller-supplied (`spawnSettler{weaponTypeId}`) — the soldier-class→weapon loadout stays
- * oracle-blocked, so structure is faithful and loadout approximated.
+ * The weapon's damage/reach are verbatim extracted `weapontypes` params; which settler holds which weapon is
+ * caller-supplied (`spawnSettler{weaponTypeId}`) — the soldier-class→weapon loadout is approximated
+ * (oracle-blocked).
  */
 export const Weapon = defineComponent<{ weaponTypeId: number }>('Weapon');
 
 /**
  * A provoked-anger timer on an animal whose `animaltypes.ini` record sets `getangry` but not `aggressive`:
  * it starts no fights, but a hit on its {@link Health} stamps/refreshes `until = tick + angryGameTime`, and
- * while `tick < until` the CombatSystem treats it as aggressive. The CombatSystem removes the component when
- * the timer lapses.
+ * while `tick < until` the CombatSystem treats it as aggressive, removing the component when the timer lapses.
  *
  * Optional — an always-aggressive bear never needs one. `until` is a monotonic integer tick compared against
  * {@link SystemContext.tick}.

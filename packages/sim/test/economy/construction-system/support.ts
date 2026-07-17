@@ -4,7 +4,7 @@ import { grassNodeMap as grassMap } from '../../fixtures/terrain.js';
 
 export { grassMap };
 
-import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import {
   Building,
   Carrying,
@@ -15,6 +15,7 @@ import {
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, ONE, type SimEvent, type Simulation } from '../../../src/index.js';
+import { TEST_MANIFEST } from '../../fixtures/content.js';
 
 /**
  * Unit + integration tests for the ConstructionSystem — a construction site (`UnderConstruction`) rises to
@@ -46,7 +47,7 @@ export const HOME_L2 = 4; // home level 02, homeSize 3 — top tier in this fixt
 
 export function constructionContent(): ContentSet {
   return parseContentSet({
-    manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+    manifest: TEST_MANIFEST,
     goods: [
       { typeId: 0, id: 'none' },
       { typeId: STONE, id: 'stone' },
@@ -95,7 +96,7 @@ export function constructionContent(): ContentSet {
  */
 export function levelChainContent(): ContentSet {
   return parseContentSet({
-    manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+    manifest: TEST_MANIFEST,
     goods: [
       { typeId: 0, id: 'none' },
       { typeId: STONE, id: 'stone' },
@@ -223,7 +224,7 @@ export function loadedCarrierAt(
 
 export function levelChainWithCarrier(): ContentSet {
   return parseContentSet({
-    manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+    manifest: TEST_MANIFEST,
     goods: [
       { typeId: 0, id: 'none' },
       { typeId: STONE, id: 'stone' },

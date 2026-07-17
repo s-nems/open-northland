@@ -1,4 +1,4 @@
-import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   Building,
@@ -16,6 +16,7 @@ import {
 import { type Fixed, fx, ONE } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
+import { TEST_MANIFEST } from '../fixtures/content.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
@@ -39,7 +40,7 @@ const OUT_OF_AREA = 40;
 
 function familyContent(): ContentSet {
   return parseContentSet({
-    manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+    manifest: TEST_MANIFEST,
     goods: [
       { typeId: 0, id: 'none' },
       { typeId: FOOD, id: 'food_simple' },

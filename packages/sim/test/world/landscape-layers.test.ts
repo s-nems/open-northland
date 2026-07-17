@@ -1,4 +1,4 @@
-import { type ContentSet, IR_VERSION, type LandscapeType, parseContentSet } from '@open-northland/data';
+import { type ContentSet, type LandscapeType, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   isLandLayerType,
@@ -8,6 +8,7 @@ import {
   universalLayerLandscape,
   waterLayerLandscape,
 } from '../../src/systems/index.js';
+import { TEST_MANIFEST } from '../fixtures/content.js';
 
 /** Resolve a landscape type by its `id` (throws if absent — a test-fixture programmer error). */
 function land(content: ContentSet, id: string): LandscapeType {
@@ -30,7 +31,7 @@ function land(content: ContentSet, id: string): LandscapeType {
  */
 function landscapeContent(): ContentSet {
   return parseContentSet({
-    manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+    manifest: TEST_MANIFEST,
     goods: [{ typeId: 0, id: 'none' }],
     jobs: [{ typeId: 0, id: 'idle' }],
     buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
@@ -70,7 +71,7 @@ describe('waterLayerLandscape', () => {
 
   it('is empty when no type carries the water flag (a land-only set)', () => {
     const content = parseContentSet({
-      manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+      manifest: TEST_MANIFEST,
       goods: [{ typeId: 0, id: 'none' }],
       jobs: [{ typeId: 0, id: 'idle' }],
       buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],

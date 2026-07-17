@@ -1,5 +1,5 @@
 import type { ContentSet } from '@open-northland/data';
-import { FOG_MODE, type FogMode, fogMode, needsEnabled } from './components/index.js';
+import type { FogMode } from './components/index.js';
 import { CommandQueue } from './core/command-queue.js';
 import type { Command } from './core/commands/index.js';
 import { EventBuffer } from './core/events.js';
@@ -8,18 +8,25 @@ import { World } from './ecs/world.js';
 import { checkInvariants as _checkInvariants, type Invariant as _Invariant } from './harness/invariants.js';
 import { takeSnapshot, type WorldSnapshot } from './inspect/snapshot.js';
 import { buildTerrainGraph, type TerrainGraph, type TerrainMap } from './nav/terrain/index.js';
-import type { SystemContext } from './systems/context.js';
+import { hashSimState } from './simulation/hash.js';
 import {
-  type ConstructionPlot,
   constructionSitePlots,
-  type PlacementProbe,
+  type FogView,
+  fogMode,
+  fogViewFor,
+  needsEnabled,
   placementBlockerVersion,
-  placementProbe,
+  placementProbeFor,
+  signpostProbeFor,
   workFlagBlockerVersion,
-} from './systems/footprint/index.js';
+} from './simulation/read-seams.js';
+import type { SystemContext } from './systems/context.js';
+import type { ConstructionPlot, PlacementProbe } from './systems/footprint/index.js';
 import { SYSTEM_ORDER } from './systems/schedule.js';
-import { type SignpostProbe, signpostProbe } from './systems/signposts/index.js';
-import { effectiveFogState, FogState } from './systems/vision/index.js';
+import type { SignpostProbe } from './systems/signposts/index.js';
+import { FogState } from './systems/vision/index.js';
+
+export type { FogView } from './simulation/read-seams.js';
 
 export interface SimOptions {
   seed: number;
@@ -32,21 +39,6 @@ export interface SimOptions {
   map?: TerrainMap;
 }
 
-/**
- * The fog-of-war read view for one viewer player (see {@link Simulation.fogView}) — plain data + one
- * pure accessor, so render/minimap layers consume fog without touching the live {@link FogState}.
- */
-export interface FogView {
-  /** The active {@link import('./components/rules.js').FOG_MODE} (never OFF — OFF yields null). */
-  readonly mode: FogMode;
-  readonly cellsWide: number;
-  readonly cellsHigh: number;
-  /** Bumps only when the masks rebuilt — the render layers' re-composite key. */
-  readonly generation: number;
-  /** The viewer's EFFECTIVE `FOG_STATE` at a cell (RECON's known-terrain mapping applied). */
-  readonly stateAt: (cellX: number, cellY: number) => number;
-}
-
 /** Wraps one system invocation for timing (see {@link Simulation.setInstrument}) — observational only. */
 export type SystemInstrument = (name: string, run: () => void) => void;
 
@@ -57,7 +49,7 @@ export type SystemInstrument = (name: string, run: () => void) => void;
  * The read seams ({@link snapshot}, {@link placementProbe}, {@link constructionPlots},
  * {@link needsEnabled}, {@link fogMode}, {@link fogView}) are the sanctioned way the app and render
  * observe state instead of reaching into live component stores. None of them mutate, so none affect
- * determinism.
+ * determinism; their resolution logic lives in `simulation/read-seams.ts`.
  */
 export class Simulation {
   readonly world = new World();
@@ -70,17 +62,19 @@ export class Simulation {
    */
   readonly terrain?: TerrainGraph;
   /**
-   * The per-player fog-of-war masks (see systems/vision.ts), or undefined for a mapless sim. A
-   * MUTABLE world resource like the RNG (the VisionSystem rebuilds it on its cadence) — unlike the
-   * immutable terrain it IS simulated state (combat gates read it), so {@link hashState} mixes its
-   * raw bytes in after the components. Inert (empty, zero cost) while the fog mode is OFF.
+   * The per-player fog-of-war masks (see systems/vision), or undefined for a mapless sim. A MUTABLE
+   * world resource like the RNG (the VisionSystem rebuilds it on its cadence) — unlike the immutable
+   * terrain it IS simulated state (combat gates read it), so {@link hashState} mixes its bytes in after
+   * the components. Inert (empty, zero cost) while the fog mode is OFF.
    */
   readonly fog?: FogState;
   /** One-shot events produced during the current tick (drained by render/audio). */
   readonly events = new EventBuffer();
   /**
-   * The serializable command queue — the ONLY way state mutates. Enqueue via {@link enqueue}; the
-   * CommandSystem drains and applies it each tick (and logs it). A save is the command log.
+   * The serializable command queue — the only way state mutates ONCE TICKING. Enqueue via
+   * {@link enqueue}; the CommandSystem drains and applies it each tick (and logs it), so a save is the
+   * command log. The one carve-out is authored setup: scenes and fixtures assemble pre-tick-0 state
+   * through {@link world} directly, before the first {@link step}.
    */
   readonly commands = new CommandQueue();
   private currentTick = 0;
@@ -99,11 +93,7 @@ export class Simulation {
     this.content = opts.content;
     if (opts.map !== undefined) {
       this.terrain = buildTerrainGraph(opts.content, opts.map);
-      const fog = new FogState(this.terrain);
-      this.fog = fog;
-      // The may-hold-VISIBLE boxes are an incrementally-maintained cache (sim contract: register a
-      // verifier so the fuzz harness's `cachesCoherent` invariant tripwires a silent divergence).
-      this.world.registerCacheVerifier('fogVisibleBounds', () => fog.verifyVisibleBounds());
+      this.fog = new FogState(this.terrain, this.world);
     }
   }
 
@@ -123,9 +113,10 @@ export class Simulation {
   }
 
   /**
-   * Queue a serializable command — the only way to mutate sim state from outside. It is applied (and
-   * appended to the command log) by CommandSystem on the next `step()`. The UI, the AI, and a save
-   * loader all go through here; nothing else pokes the world directly.
+   * Queue a serializable command — the only way to mutate sim state from outside once the sim is
+   * ticking. It is applied (and appended to the command log) by CommandSystem on the next `step()`.
+   * The UI, the AI, and a save loader all go through here; only authored pre-tick-0 setup writes to
+   * {@link world} directly (see {@link commands}).
    */
   enqueue(command: Command): void {
     this.commands.enqueue(command);
@@ -200,8 +191,7 @@ export class Simulation {
    * caller shows no overlay.
    */
   placementProbe(buildingType: number): PlacementProbe | null {
-    if (this.terrain === undefined) return null;
-    return placementProbe(this.world, this.content, this.terrain, buildingType);
+    return placementProbeFor(this.world, this.content, this.terrain, buildingType);
   }
 
   /**
@@ -219,23 +209,12 @@ export class Simulation {
    * An erectability test for one player's signposts — the read seam the signpost placement overlay
    * probes per visible node, mirroring {@link placementProbe}. Reads the same rule the erect command
    * gates on ({@link canPlaceSignpost}): open work-flag ground outside the player's spacing circles.
-   * Returns null for a mapless sim.
+   * Memoized on {@link signpostBlockerVersion} like its building twin, since the app asks per RAF frame
+   * while the erect cursor is armed. Returns null for a mapless sim.
    */
   signpostProbe(player: number): SignpostProbe | null {
-    if (this.terrain === undefined) return null;
-    // Memoized on the blocker version: the app asks per RAF frame while the erect cursor is armed, and a
-    // rebuild walks every Resource/Building into a fresh blocked set (O(world) — ~17k nodes on a decoded
-    // map). A pure read-path cache like the building placement grid: it feeds only the overlay/ghost,
-    // never a sim decision (`canPlaceSignpost` scans fresh), so it is not hashed or cache-verified.
-    const version = `${workFlagBlockerVersion(this.world)}:${player}`;
-    if (this.signpostProbeMemo?.version === version) return this.signpostProbeMemo.probe;
-    const probe = signpostProbe(this.world, this.content, this.terrain, player);
-    this.signpostProbeMemo = { version, probe };
-    return probe;
+    return signpostProbeFor(this.world, this.content, this.terrain, player);
   }
-
-  /** See {@link signpostProbe} — one entry suffices (the app probes for the one human player). */
-  private signpostProbeMemo: { version: string; probe: SignpostProbe } | undefined;
 
   /**
    * The version of the signpost-probe inputs — {@link placementBlockerVersion} plus the work-flag
@@ -278,17 +257,7 @@ export class Simulation {
    * caller then draws no fog at all.
    */
   fogView(player: number): FogView | null {
-    const fog = this.fog;
-    if (fog === undefined) return null;
-    const mode = fogMode(this.world);
-    if (mode === FOG_MODE.OFF) return null;
-    return {
-      mode,
-      cellsWide: fog.cellsWide,
-      cellsHigh: fog.cellsHigh,
-      generation: fog.generation,
-      stateAt: (cellX: number, cellY: number) => effectiveFogState(fog, mode, player, cellX, cellY),
-    };
+    return fogViewFor(this.world, this.fog, player);
   }
 
   /** Run N ticks. */
@@ -303,72 +272,11 @@ export class Simulation {
 
   /**
    * A canonical hash of ALL simulation state for determinism golden tests: tick, RNG state, and
-   * every registered component on every alive entity, in canonical (ascending) order. If two runs
-   * from the same seed + inputs diverge in ANY hashed field, this changes — which is the point.
+   * every registered component on every alive entity, in canonical (ascending) order, then the fog
+   * masks. If two runs from the same seed + inputs diverge in ANY hashed field, this changes — which
+   * is the point.
    */
   hashState(): string {
-    let h = 2166136261 >>> 0; // FNV-1a
-    const mix = (n: number): void => {
-      h ^= n | 0;
-      h = Math.imul(h, 16777619) >>> 0;
-    };
-    // Length first, so a differing split of the same characters ('ab'+'c' vs 'a'+'bc') stays distinct;
-    // charCodeAt covers both halves of a surrogate pair.
-    const mixString = (s: string): void => {
-      mix(s.length);
-      for (let i = 0; i < s.length; i++) mix(s.charCodeAt(i));
-    };
-    const hashValue = (v: unknown): void => {
-      if (typeof v === 'number') {
-        // hash both halves so large fixed-point doubles are fully covered.
-        mix(v | 0);
-        mix(Math.trunc(v / 0x100000000));
-      } else if (typeof v === 'string') {
-        // String values carry real state (an AtomicEffect's `kind`, ChildOrder's `child`), so a run
-        // diverging only in one must move the hash.
-        mixString(v);
-      } else if (typeof v === 'boolean') {
-        mix(v ? 1 : 0);
-      } else if (v === null || v === undefined) {
-        mix(0x9e3779b9);
-      } else if (Array.isArray(v)) {
-        mix(v.length);
-        for (const item of v) hashValue(item);
-      } else if (v instanceof Map) {
-        for (const [k, val] of [...v.entries()].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))) {
-          hashValue(k);
-          hashValue(val);
-        }
-      } else if (typeof v === 'object') {
-        for (const k of Object.keys(v as object).sort()) {
-          mixString(k);
-          hashValue((v as Record<string, unknown>)[k]);
-        }
-      }
-    };
-
-    mix(this.currentTick);
-    mix(this.rng.getState());
-    const ids = this.world.canonicalEntities();
-    mix(ids.length);
-    for (const e of ids) {
-      mix(e);
-      for (const [name, val] of this.world.componentEntries(e)) {
-        mixString(name);
-        hashValue(val);
-      }
-    }
-    // The fog masks are simulated state living OUTSIDE the components (see systems/vision.ts) — mix
-    // their raw bytes in per player, ascending (the canonical mask order). A world that never enabled
-    // fog holds no masks, so every pre-fog hash is byte-identical.
-    if (this.fog !== undefined) {
-      for (const player of this.fog.playersWithMasks()) {
-        mix(player);
-        const mask = this.fog.tryMaskFor(player); // read-only: never allocate a mask while hashing
-        if (mask === undefined) continue; // unreachable — playersWithMasks lists only allocated masks
-        for (let i = 0; i < mask.length; i++) mix(mask[i] ?? 0);
-      }
-    }
-    return h.toString(16).padStart(8, '0');
+    return hashSimState(this.world, this.currentTick, this.rng.getState(), this.fog);
   }
 }
