@@ -120,7 +120,7 @@ function nearestRipeBush(
 /** A resolved food target for the eat drive: a store to eat a stocked/produced good FROM, or a wild
  *  {@link BerryBush} to forage. The union {@link nearestFood} returns so the drive dispatches the right
  *  atomic (`eat` vs `forage`). */
-export type FoodTarget =
+type FoodTarget =
   | { readonly kind: 'store'; readonly store: Entity; readonly goodType: number }
   | { readonly kind: 'bush'; readonly bush: Entity };
 

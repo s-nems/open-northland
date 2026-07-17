@@ -4,8 +4,7 @@ export * as components from './components/index.js';
 export { FOG_MODE } from './components/rules.js';
 export type { AtomicEffect } from './core/atomic-effect.js';
 export type { Brand } from './core/brand.js';
-export { assertNever } from './core/brand.js';
-export { CommandQueue, type LoggedCommand } from './core/command-queue.js';
+export type { LoggedCommand } from './core/command-queue.js';
 export type { Command, SettlerEquipment, SettlerEquipmentSlot } from './core/commands/index.js';
 export { constructionBillForType } from './core/content-index.js';
 export { EventBuffer, eventNode, type SimEvent, type SimEventKind } from './core/events.js';
@@ -13,23 +12,11 @@ export { type Fixed, fx, ONE } from './core/fixed.js';
 export { FixedTimestep, MS_PER_TICK, TICKS_PER_SECOND } from './core/loop.js';
 export { Rng } from './core/rng.js';
 export type { Component, Entity } from './ecs/world.js';
-export { defineComponent, World } from './ecs/world.js';
-export {
-  buildingSane,
-  CORE_INVARIANTS,
-  cachesCoherent,
-  checkInvariants,
-  enjoymentInRange,
-  fatigueInRange,
-  hungerInRange,
-  type Invariant,
-  pietyInRange,
-  stockNonNegative,
-} from './harness/invariants.js';
+export { World } from './ecs/world.js';
+export { CORE_INVARIANTS, checkInvariants, type Invariant } from './harness/invariants.js';
 export { type SeedAnimalsOptions, seedAnimalHerds } from './harness/populate.js';
 export {
   type RunOptions,
-  Scenario,
   type ScenarioOptions,
   type ScenarioResult,
   scenario,

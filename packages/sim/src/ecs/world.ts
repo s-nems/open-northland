@@ -221,11 +221,6 @@ export class World {
     }
   }
 
-  /** All registered components in registration order (for canonical hashing/snapshots). */
-  get components(): readonly Component<unknown>[] {
-    return this.registered;
-  }
-
   /**
    * Ascending-sorted alive entity ids — the canonical order for snapshots, golden hashes, and any
    * system that must *pick* an entity deterministically. Memoized per alive-set generation (see

@@ -13,54 +13,40 @@ import type { World } from '../ecs/world.js';
  */
 export type Invariant = (world: World) => string[];
 
-/** No stock amount is negative or above 2^31 (catches over/underflow in production/transport). */
-export const stockNonNegative: Invariant = (world) => {
+/** Stock ceiling past which an amount is an over/underflow artefact rather than a plausible pile. */
+const IMPLAUSIBLE_STOCK = 0x7fffffff;
+
+/**
+ * Home-level ceiling (`home level 00..04` — {@link Building}). Content owns the real bound: a home levels
+ * up only while `homeNextTier` yields another tier, so this tracks the base tier chain's length rather
+ * than enforcing it. Content adding a sixth tier must move this with it.
+ */
+const MAX_HOME_LEVEL = 4;
+
+/** The settler needs the NeedsSystem clamps into [0, ONE]; the invariant catches a leak past the clamp. */
+const CLAMPED_NEEDS = ['hunger', 'fatigue', 'piety', 'enjoyment'] as const;
+
+/** No stock amount is negative or implausibly large (catches over/underflow in production/transport). */
+const stockNonNegative: Invariant = (world) => {
   const out: string[] = [];
   for (const e of world.query(Stockpile)) {
     for (const [good, amount] of stockpileEntries(world.get(e, Stockpile))) {
       if (amount < 0) out.push(`entity ${e}: negative stock of good ${good} (${amount})`);
-      if (amount > 0x7fffffff) out.push(`entity ${e}: implausible stock of good ${good} (${amount})`);
+      if (amount > IMPLAUSIBLE_STOCK) out.push(`entity ${e}: implausible stock of good ${good} (${amount})`);
     }
   }
   return out;
 };
 
-/** Settler hunger stays within [0, ONE]. */
-export const hungerInRange: Invariant = (world) => {
+/** Every {@link CLAMPED_NEEDS} need stays within [0, ONE]. */
+const needsInRange: Invariant = (world) => {
   const out: string[] = [];
   for (const e of world.query(Settler)) {
-    const h = world.get(e, Settler).hunger;
-    if (h < 0 || h > ONE) out.push(`entity ${e}: hunger out of range (${h})`);
-  }
-  return out;
-};
-
-/** Settler fatigue stays within [0, ONE] (the NeedsSystem clamps the rise; this catches a leak). */
-export const fatigueInRange: Invariant = (world) => {
-  const out: string[] = [];
-  for (const e of world.query(Settler)) {
-    const f = world.get(e, Settler).fatigue;
-    if (f < 0 || f > ONE) out.push(`entity ${e}: fatigue out of range (${f})`);
-  }
-  return out;
-};
-
-/** Settler piety stays within [0, ONE] (the NeedsSystem clamps the rise; this catches a leak). */
-export const pietyInRange: Invariant = (world) => {
-  const out: string[] = [];
-  for (const e of world.query(Settler)) {
-    const p = world.get(e, Settler).piety;
-    if (p < 0 || p > ONE) out.push(`entity ${e}: piety out of range (${p})`);
-  }
-  return out;
-};
-
-/** Settler enjoyment stays within [0, ONE] (the NeedsSystem clamps the rise; this catches a leak). */
-export const enjoymentInRange: Invariant = (world) => {
-  const out: string[] = [];
-  for (const e of world.query(Settler)) {
-    const j = world.get(e, Settler).enjoyment;
-    if (j < 0 || j > ONE) out.push(`entity ${e}: enjoyment out of range (${j})`);
+    const s = world.get(e, Settler);
+    for (const need of CLAMPED_NEEDS) {
+      const v = s[need];
+      if (v < 0 || v > ONE) out.push(`entity ${e}: ${need} out of range (${v})`);
+    }
   }
   return out;
 };
@@ -73,25 +59,22 @@ export const enjoymentInRange: Invariant = (world) => {
  * caught at the tick it happens with a named cache, not later as an unexplained golden/hash
  * divergence.
  */
-export const cachesCoherent: Invariant = (world) => world.verifyCaches();
+const cachesCoherent: Invariant = (world) => world.verifyCaches();
 
 /** Building construction progress and level stay sane. */
-export const buildingSane: Invariant = (world) => {
+const buildingSane: Invariant = (world) => {
   const out: string[] = [];
   for (const e of world.query(Building)) {
     const b = world.get(e, Building);
     if (b.built < 0 || b.built > ONE) out.push(`entity ${e}: built out of range (${b.built})`);
-    if (b.level < 0 || b.level > 4) out.push(`entity ${e}: level out of range (${b.level})`);
+    if (b.level < 0 || b.level > MAX_HOME_LEVEL) out.push(`entity ${e}: level out of range (${b.level})`);
   }
   return out;
 };
 
 export const CORE_INVARIANTS: readonly Invariant[] = [
   stockNonNegative,
-  hungerInRange,
-  fatigueInRange,
-  pietyInRange,
-  enjoymentInRange,
+  needsInRange,
   buildingSane,
   cachesCoherent,
 ];

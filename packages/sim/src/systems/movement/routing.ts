@@ -26,7 +26,7 @@ import { turnOntoNextLeg } from './stepping.js';
  * lockstep-safe. The magnitude is a tick-time guard (~a few ms of search on a modern core), not data-pinned:
  * tune against profiles as maps and armies grow.
  */
-export const PATHFINDING_NODE_BUDGET_PER_TICK = 16384;
+const PATHFINDING_NODE_BUDGET_PER_TICK = 16384;
 
 /**
  * PathfindingSystem — drains pending {@link PathRequest}s and turns each into a followable path.

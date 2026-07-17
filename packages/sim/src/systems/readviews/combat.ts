@@ -105,7 +105,7 @@ export function armorMaterialForClass(content: ContentSet, armorClass: number): 
  * One row of the {@link combatDamage} view — a single weapon resolved against **one** armor material:
  * how much damage it lands on a target of that material.
  */
-export interface CombatDamageRow {
+interface CombatDamageRow {
   /** The target's armor **material tier** — the column the weapon's `damagevalue <material> <value>`
    *  table is indexed by ({@link ARMOR_MATERIAL}: 0 unarmored, 1 wool, 2 leather, 3 chain, 4 plate). */
   material: number;

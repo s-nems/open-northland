@@ -107,7 +107,7 @@ export function engageSpec(
 }
 
 /** How a combatant acquires + reaches a target this tick, derived from its stance ({@link engageSpec}). */
-export interface EngageSpec {
+interface EngageSpec {
   /** The ring-search per-candidate hostility/predation filter. */
   readonly accept: (t: Entity) => boolean;
   /** Near reach — the ring search ignores anything closer (a ranged weapon's dead zone). */

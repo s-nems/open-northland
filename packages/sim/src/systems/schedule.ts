@@ -21,7 +21,7 @@ import { playerOrderSystem, signpostOrderSystem } from './orders/index.js';
 import { visionSystem } from './vision/index.js';
 
 /** One schedule slot: the system plus its stable display name (perf marks, bench reports). */
-export interface ScheduledSystem {
+interface ScheduledSystem {
   readonly name: string;
   readonly system: System;
 }

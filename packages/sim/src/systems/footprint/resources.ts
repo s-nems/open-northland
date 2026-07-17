@@ -26,7 +26,7 @@ import {
  * node is removed, so `fullStateBlockAreaCells` (the fresh/full object's cells — also the app's
  * map-collision join) is the correct conservative consumer.
  */
-export function resourceFootprintFromLandscapeGfx(record: LandscapeGfx): ResourceFootprintData {
+function resourceFootprintFromLandscapeGfx(record: LandscapeGfx): ResourceFootprintData {
   return {
     walk: fullStateBlockAreaCells(record.walkBlockAreas),
     build: fullStateBlockAreaCells(record.buildBlockAreas),

@@ -96,7 +96,7 @@ export function animalBabyHitpoints(content: ContentSet, tribeType: number): num
  * The herd/spawn parameters (verbatim extracted `animaltypes.ini` params) a future animal-spawn/herding
  * slice needs to place a group of animals of `tribeType`, or null when the tribe has no animal record.
  */
-export interface HerdParams {
+interface HerdParams {
   /** `maximumgroupsize` — herd/pack size (0 = solitary / source-omitted). */
   readonly maxGroupSize: number;
   /** `searchforleader` — a member follows a herd leader vs roams solo. */
@@ -127,7 +127,7 @@ export function herdParams(content: ContentSet, tribeType: number): HerdParams |
  * The locomotion pace an animal of `tribeType` moves at, or null when the tribe has no animal record.
  * The IR's `runspeed` is not surfaced — no run/sprint gait is modeled; every unit moves at one pace.
  */
-export interface Locomotion {
+interface Locomotion {
   /** `movespeed` — the animal's one pace (0 = source-omitted, engine default). */
   readonly walkSpeed: number;
 }

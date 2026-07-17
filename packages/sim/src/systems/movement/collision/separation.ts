@@ -32,7 +32,7 @@ export { OBSTRUCTED_MAX_REROUTES, OBSTRUCTED_PROGRESS_FLOOR, OBSTRUCTED_REROUTE_
  * fleeing run pace: gait 1/6 + cap 1/30) per tick — always less than this radius, so it can never step from
  * outside a post's radius past the post's centre in one tick, and the full resolve returns it to the near side.
  */
-export const UNIT_SEPARATION_RADIUS: Fixed = fx.div(fx.fromInt(13), fx.fromInt(50));
+const UNIT_SEPARATION_RADIUS: Fixed = fx.div(fx.fromInt(13), fx.fromInt(50));
 
 /**
  * The per-tick cap on the soft mover-vs-mover push, deliberately below the arrival brake floor
@@ -42,7 +42,7 @@ export const UNIT_SEPARATION_RADIUS: Fixed = fx.div(fx.fromInt(13), fx.fromInt(5
  * launch can regress ~gait/15 for that single tick — the ramp outruns the cap from tick two.) Tuned to ⅖ of
  * the gait (just under the ½ floor).
  */
-export const SEPARATION_PUSH_CAP: Fixed = fx.div(fx.mul(MOVE_SPEED_PER_TICK, fx.fromInt(2)), fx.fromInt(5));
+const SEPARATION_PUSH_CAP: Fixed = fx.div(fx.mul(MOVE_SPEED_PER_TICK, fx.fromInt(2)), fx.fromInt(5));
 
 /**
  * Minimum heading alignment (unit-heading dot product — the cosine of the angle between two walks) for two

@@ -48,7 +48,6 @@ export {
 export {
   ARMOR_MATERIAL,
   armorMaterialForClass,
-  type CombatDamageRow,
   type CombatProfile,
   combatDamage,
   damageVsBuilding,
@@ -58,7 +57,6 @@ export {
   weaponKey,
 } from './combat.js';
 export {
-  type GoodsGraphNode,
   goodsGraph,
   IDLE_JOB,
   tribePopulationByJob,
@@ -82,7 +80,6 @@ export {
   animalHitpoints,
   animalRecord,
   cadaverYieldOf,
-  type HerdParams,
   HUNTER_JOB,
   herdParams,
   ignoresHousesAnimal,
@@ -92,7 +89,6 @@ export {
   isPlayableTribe,
   isProvokableAnimal,
   isWarrantableAnimal,
-  type Locomotion,
   locomotionOf,
   MEAT_GOOD,
   mayAttack,

@@ -28,7 +28,7 @@ export function incrementStaffing(tally: StaffingTally, workplace: Entity, jobTy
 /**
  * The first building (canonical order) with an open slot for the SPECIFIC job `jobType` — the
  * report-in scan for a pre-employed but unbound worker (today: the loose carrier, pass 1b). The same
- * per-slot openness gate as {@link openWorkerJobAt}, restricted to the one job the settler already
+ * per-slot openness gate as {@link openJobAt}, restricted to the one job the settler already
  * holds, or `null` when no building currently offers that job.
  */
 export function openPostFor(
@@ -87,40 +87,8 @@ export function openJobAt(
 }
 
 /**
- * The open worker job a `tribe` settler with the given accrued `experience` could take at ONE specific
- * `building`, or `null` if that building offers it none right now. A building offers a job when it is a
- * same-tribe, SAME-OWNER, tech-enabled workplace with a `workers` slot that is **understaffed at this building**,
- * whose job is tech-enabled, and whose `needforjob` XP threshold the settler clears (the four openness
- * conditions of {@link jobSystem}, per-building). The lowest job id among open slots wins
- * ({@link canonicalJobs}). This is the automatic {@link openJobAt} scan's per-building probe; the
- * player-directed `assignWorker` command resolves the same slots through {@link openWorkerJobFromList},
- * which keeps the tribe/owner/building + capacity gates but deliberately RELAXES the per-slot tech/XP gate
- * (see there), so the two paths are no longer identical — a hand assignment can bind a job the automatic
- * scan would refuse.
- */
-export function openWorkerJobAt(
-  world: World,
-  ctx: SystemContext,
-  building: Entity,
-  tribe: number,
-  owner: number | undefined,
-  experience: ReadonlyMap<number, number>,
-): number | null {
-  // The automatic economy scan takes the building's slots in canonical (lowest job id) order.
-  return resolveOpenWorkerJob(
-    world,
-    ctx,
-    building,
-    tribe,
-    owner,
-    experience,
-    canonicalJobs(buildingWorkerJobs(world, ctx, building)),
-  );
-}
-
-/**
  * The open worker job at `building` chosen by the caller's ORDERED `jobPriority` preference rather than
- * canonical job order (the player-directed twin of {@link openWorkerJobAt}): the first job in the list
+ * canonical job order (the player-directed twin of {@link openJobAt}): the first job in the list
  * that the building actually offers AND has room for. The list is filtered to the building's real slots, so
  * a job the building doesn't employ is skipped, and the same-tribe/same-owner + per-building capacity gates
  * still run on every entry.
@@ -161,7 +129,7 @@ export function openWorkerJobFromList(
 /**
  * Walk `orderedJobs` (already a subset of the building's slots) and return the first one open for a
  * `tribe` settler with the given `experience` — understaffed at this building, and (unless `playerDirected`)
- * tech-enabled + XP-cleared — or `null`. The shared core of {@link openWorkerJobAt} (canonical order) and
+ * tech-enabled + XP-cleared — or `null`. The shared core of {@link openJobAt} (canonical order) and
  * {@link openWorkerJobFromList} (priority order): both apply the same tribe/owner/building + capacity gates;
  * they differ in slot order AND in `playerDirected`, which the command path sets to skip the per-slot tech/XP
  * gate (see {@link openWorkerJobFromList} — the deliberate player-convenience deviation).
