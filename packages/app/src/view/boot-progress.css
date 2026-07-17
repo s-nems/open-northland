@@ -11,7 +11,7 @@
   display: grid;
   place-content: center;
   justify-items: center;
-  gap: clamp(20px, 4vh, 38px);
+  gap: clamp(14px, 2.4vh, 22px);
   padding: 24px;
   color: var(--boot-cream);
   font-family: Palatino, "Palatino Linotype", "Book Antiqua", Georgia, serif;
@@ -42,13 +42,6 @@
   pointer-events: none;
   content: "";
   background: repeating-linear-gradient(8deg, rgba(255, 235, 181, 0.018) 0 1px, transparent 1px 5px);
-}
-
-.boot-card__brand {
-  position: relative;
-  height: clamp(64px, 10vh, 120px);
-  width: auto;
-  filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.85));
 }
 
 /* The carved frame around the bar — the menu's language-switch panel, widened. */
