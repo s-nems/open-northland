@@ -142,9 +142,9 @@ export class TextureCache {
 
   /** Destroy every cached texture (called on renderer/gallery dispose). Dropping the map entry is not
    *  enough: a Pixi `Texture` registers a `resize` listener on its source, so the app-owned atlas page
-   *  keeps it alive until `destroy` unregisters it. The sub-rect views pass `destroySource: false` —
-   *  the shared page outlives the renderer; the reveal bakes own their canvas source, so they take it
-   *  with them. */
+   *  keeps it alive until `destroy` unregisters it. The sub-rect views destroy at Pixi's default
+   *  (`destroySource: false`), so the app-owned page outlives the renderer; the reveal bakes own their
+   *  canvas source, so they take it with them. */
   clear(): void {
     for (const tex of this.cache.values()) tex.destroy();
     this.cache.clear();
