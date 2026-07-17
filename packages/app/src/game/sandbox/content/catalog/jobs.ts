@@ -1,5 +1,6 @@
 import {
   BUILD_GUIDE_ATOMIC,
+  BUILD_HOUSE_ATOMIC,
   CULTIVATE_ATOMIC,
   PLANT_ATOMIC,
   WHEAT_HARVEST_ATOMIC,
@@ -7,7 +8,6 @@ import {
 import { PROFESSIONS } from '../../../../catalog/professions.js';
 import { messages, professionLabel } from '../../../../i18n/index.js';
 import {
-  BUILD_HOUSE_ATOMIC,
   EXTRACTED_GATHERER_TRADES,
   GATHERERS,
   JOB_ARCHER,

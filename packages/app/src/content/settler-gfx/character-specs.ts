@@ -6,6 +6,8 @@ import {
   GOLD_HARVEST_ATOMIC,
   HARVEST_ATOMIC,
   IRON_HARVEST_ATOMIC,
+  KISS_ATOMIC,
+  KISSED_ATOMIC,
   MUSHROOM_HARVEST_ATOMIC,
   PLANT_ATOMIC,
   STONE_HARVEST_ATOMIC,
@@ -13,6 +15,7 @@ import {
   STORE_PILEUP_ATOMIC,
   WHEAT_HARVEST_ATOMIC,
 } from '../../catalog/atomics.js';
+import { JOB_BABY_FEMALE, JOB_BABY_MALE, JOB_CHILD_FEMALE, JOB_CHILD_MALE } from '../../catalog/jobs.js';
 import { CIVILIST_JOB_HEADS, SCOUT_JOB_HEADS } from '../../catalog/roster.js';
 import {
   CHOP_PHASE_START,
@@ -20,8 +23,6 @@ import {
   EAT_ATOMIC,
   HAMMER_SEQ,
   HAMMER_TICKS_PER_FRAME,
-  KISS_ATOMIC,
-  KISSED_ATOMIC,
   PICKUP_SEQ,
   PRAY_ATOMIC,
   REAP_SEQ,
@@ -370,8 +371,8 @@ export const WARRIOR_SPEC_BY_WEAPON_GOOD_SLUG: Readonly<Record<string, Character
  * job id 1/2 can never draw a baby (the [dc3ef54] collision, disambiguated by the `Age` component).
  */
 export const YOUNG_CHARACTER_BY_JOB: Readonly<Record<number, CharacterSpecId>> = {
-  1: 'baby', // baby_female
-  2: 'baby', // baby_male
-  3: 'girl', // child_female
-  4: 'boy', // child_male
+  [JOB_BABY_FEMALE]: 'baby',
+  [JOB_BABY_MALE]: 'baby',
+  [JOB_CHILD_FEMALE]: 'girl',
+  [JOB_CHILD_MALE]: 'boy',
 };

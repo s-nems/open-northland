@@ -1,5 +1,6 @@
 import { indexAtlasFrames, type SpriteAtlas } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
+import { ATTACK_ATOMIC } from '../src/catalog/atomics.js';
 import { VIKING_CHARACTERS } from '../src/catalog/roster.js';
 import {
   ADULT_CHARACTER_BY_JOB,
@@ -289,7 +290,7 @@ describe('characterBinding', () => {
     const dirLists = new Map<string, readonly (readonly number[])[]>([
       ['spear_attack', [[0], [1], [2], [3], [4], [5], [6], [7]]],
     ]);
-    const swing = characterBinding(spec, seqs, [], dirLists)?.byAtomic?.[81];
+    const swing = characterBinding(spec, seqs, [], dirLists)?.byAtomic?.[ATTACK_ATOMIC];
     // Facing order is the strip-block compass (0 SW, 1 W, 2 NW, 3 NE, 4 E, 5 SE, 6 S, 7 N): the
     // east-facing swing (facing 4) must play the source dir-0 (E) list, and so on around the ring —
     // GFX_DIR_TO_BLOCK = [4,5,0,1,2,3,7,6], data-pinned by the 123 human-body [gfxanimatomic] records.

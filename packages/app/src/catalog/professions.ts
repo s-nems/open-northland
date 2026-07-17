@@ -1,5 +1,31 @@
-import { JOB_CARRIER, JOB_COLLECTOR, JOB_SOLDIER } from '../game/sandbox/ids/index.js';
 import { categoryLabel, type Locale, type Messages, professionLabel } from '../i18n/index.js';
+import {
+  JOB_ARMORER,
+  JOB_BAKER,
+  JOB_BREEDER,
+  JOB_BREWER,
+  JOB_BUILDER,
+  JOB_CARRIER,
+  JOB_COIN_MAKER,
+  JOB_COLLECTOR,
+  JOB_DRUID,
+  JOB_FARMER,
+  JOB_FISHER,
+  JOB_HERBALIST,
+  JOB_HUNTER,
+  JOB_JESTER,
+  JOB_JOINER,
+  JOB_MASON,
+  JOB_MILLER,
+  JOB_POTTER,
+  JOB_SCOUT,
+  JOB_SMITH,
+  JOB_SOLDIER,
+  JOB_TAILOR,
+  JOB_TRADER,
+  SOLDIER_JOB_MAX,
+  SOLDIER_JOB_MIN,
+} from './jobs.js';
 
 /**
  * The committed hand-authored profession roster — the complete set of jobs a player can assign a settler to,
@@ -38,36 +64,6 @@ export interface ProfessionDef {
   /** The `jobtypes.ini` record this row transcribes (the faithfulness anchor). */
   readonly source: string;
 }
-
-/**
- * Real `jobtypes.ini` ids for the production trades. Named (no bare numbers) so a reader sees the
- * transcription; grouped here as the trade id space. Baker/brewer/fisher/trader (20..22, 25) now sit at
- * their real ids too — the synthetic gatherer band that used to shadow them is gone.
- */
-const JOB_BUILDER = 7;
-const JOB_JOINER = 9;
-const JOB_ARMORER = 10;
-const JOB_POTTER = 11;
-const JOB_MASON = 12;
-const JOB_SMITH = 13;
-const JOB_COIN_MAKER = 14;
-const JOB_HUNTER = 15;
-const JOB_BREEDER = 16;
-const JOB_TAILOR = 17; // jobtypes.ini "sewer"
-const JOB_FARMER = 18;
-const JOB_MILLER = 19;
-const JOB_BAKER = 20;
-const JOB_BREWER = 21;
-const JOB_FISHER = 22;
-const JOB_TRADER = 25;
-const JOB_SCOUT = 27;
-const JOB_JESTER = 28;
-const JOB_HERBALIST = 29; // jobtypes.ini "herb & mush guy"
-const JOB_DRUID = 30;
-
-/** The `jobtypes.ini` soldier band (unarmed base + weapon classes) — every one reads as "Żołnierz". */
-const SOLDIER_JOB_MIN = 31;
-const SOLDIER_JOB_MAX = 41;
 
 /** True for any job in the `jobtypes.ini` soldier band (31..41) — all collapse to the one soldier label. */
 export function isSoldierJob(jobType: number): boolean {
@@ -134,8 +130,16 @@ export const PROFESSIONS: readonly ProfessionDef[] = [
   { key: 'soldier', jobType: JOB_SOLDIER, category: 'military', source: 'jobtypes.ini 31 "soldier_unarmed"' },
 ];
 
-/** The one soldier profession (the picker's single "Żołnierz" row / the whole soldier band's label). */
-const SOLDIER_PROFESSION = PROFESSIONS.find((p) => p.key === 'soldier') as ProfessionDef;
+/** The one soldier profession (the picker's single "Żołnierz" row / the whole soldier band's label).
+ *  Resolved at module load, so a roster edit that drops the row fails loudly here rather than mislabelling
+ *  every soldier at runtime. */
+const SOLDIER_PROFESSION = professionByKey('soldier');
+
+function professionByKey(key: ProfessionDef['key']): ProfessionDef {
+  const def = PROFESSIONS.find((p) => p.key === key);
+  if (def === undefined) throw new Error(`professions: no roster row keyed "${key}"`);
+  return def;
+}
 
 /**
  * The profession a job belongs to — for the details-panel label. Any soldier-band job (31..41) resolves to

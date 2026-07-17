@@ -20,19 +20,25 @@ import {
   JOB_CHILD_MALE,
   JOB_COLLECTOR,
 } from '../src/game/sandbox/ids/index.js';
+import { num } from '../src/game/snapshot.js';
 import {
   barTone,
   buildUnitPanelModel,
   HUMANWINDOW,
   type SettlerPanelModel,
+  type UnitPanelModelContext,
 } from '../src/hud/details-panel/index.js';
 import { createSceneSim } from '../src/scenes/index.js';
 import { sandboxScene } from '../src/scenes/sandbox.js';
 import { equipmentFixture } from './support/equipment.js';
-import { ctxOf, sandboxCtx } from './support/sandbox.js';
+import { buildingEntity, ctxOf, sandboxCtx, snapshotOf } from './support/sandbox.js';
 
-function num(v: unknown): number | undefined {
-  return typeof v === 'number' ? v : undefined;
+/** The equipment fixture's first-tick snapshot + its content context — the preamble both equipment
+ *  tests open with. */
+function equipmentWorld(): { snapshot: WorldSnapshot; ctx: UnitPanelModelContext } {
+  const sim = createSceneSim(equipmentFixture);
+  sim.step();
+  return { snapshot: sim.snapshot(), ctx: ctxOf(sim) };
 }
 
 describe('selection details panel model', () => {
@@ -66,15 +72,10 @@ describe('selection details panel model', () => {
   });
 
   it('shows a producing building stock, production progress, and assigned workers', () => {
-    const snapshot: WorldSnapshot = {
-      tick: 10,
-      events: [],
-      entities: [
-        {
-          id: 1,
+    const snapshot = snapshotOf(
+      [
+        buildingEntity(1, BUILDING_JOINERY, {
           components: {
-            Building: { buildingType: BUILDING_JOINERY, tribe: 1, built: ONE, level: 0 },
-            Owner: { player: 0 },
             Stockpile: { amounts: [[GOOD_WOOD, 3]] },
             // TWO in-flight plank batches at different progress — the plank row bars the front-runner.
             Production: {
@@ -84,7 +85,7 @@ describe('selection details panel model', () => {
               ],
             },
           },
-        },
+        }),
         {
           id: 2,
           components: {
@@ -102,7 +103,8 @@ describe('selection details panel model', () => {
           },
         },
       ],
-    };
+      10,
+    );
 
     const model = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
     expect(model.kind).toBe('building');
@@ -133,22 +135,19 @@ describe('selection details panel model', () => {
   });
 
   it('models a construction site: delivered/needed material rows + the health ramp', () => {
-    const snapshot: WorldSnapshot = {
-      tick: 1,
-      events: [],
-      entities: [
-        {
-          id: 1,
+    const snapshot = snapshotOf(
+      [
+        buildingEntity(1, BUILDING_FARM, {
+          built: ONE / 4,
           components: {
-            Building: { buildingType: BUILDING_FARM, tribe: 1, built: ONE / 4, level: 0 },
             UnderConstruction: { labor: ONE / 4 },
             Health: { hitpoints: 25, max: 100 },
-            Owner: { player: 0 },
             Stockpile: { amounts: [[GOOD_WOOD, 2]] }, // 2 of the farm's 3 wood delivered, no stone yet
           },
-        },
+        }),
       ],
-    };
+      1,
+    );
     const model = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
     expect(model.kind).toBe('building');
     if (model.kind !== 'building') return;
@@ -161,16 +160,7 @@ describe('selection details panel model', () => {
     ]);
     // A finished building carries no construction model (the marker is gone).
     const finished = buildUnitPanelModel(
-      {
-        tick: 1,
-        events: [],
-        entities: [
-          {
-            id: 1,
-            components: { Building: { buildingType: BUILDING_FARM, tribe: 1, built: ONE, level: 0 } },
-          },
-        ],
-      },
+      snapshotOf([buildingEntity(1, BUILDING_FARM)], 1),
       new Set([1]),
       sandboxCtx(),
     );
@@ -181,20 +171,14 @@ describe('selection details panel model', () => {
     // The mill declares wheat then flour; holding ONLY the second slot's good must not bubble it above
     // the first — a compact store's two rows swapping mid-work read as a glitch (user feedback
     // 2026-07-11). Held-first reordering is the big tabbed store's draw-time concern, not the model's.
-    const snapshot: WorldSnapshot = {
-      tick: 1,
-      events: [],
-      entities: [
-        {
-          id: 1,
-          components: {
-            Building: { buildingType: BUILDING_MILL, tribe: 1, built: ONE, level: 0 },
-            Owner: { player: 0 },
-            Stockpile: { amounts: [[GOOD_FLOUR, 3]] }, // flour held, wheat momentarily empty
-          },
-        },
+    const snapshot = snapshotOf(
+      [
+        buildingEntity(1, BUILDING_MILL, {
+          components: { Stockpile: { amounts: [[GOOD_FLOUR, 3]] } }, // flour held, wheat momentarily empty
+        }),
       ],
-    };
+      1,
+    );
     const model = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
     if (model.kind !== 'building') throw new Error('expected a building model');
     expect(model.stock.map((r) => [r.goodType, r.amount])).toEqual([
@@ -211,20 +195,10 @@ describe('selection details panel model', () => {
       ...ctx,
       goods: ctx.goods.map((g) => (g.typeId === GOOD_FLOUR ? { ...g, name: 'Mąka' } : g)),
     };
-    const snapshot: WorldSnapshot = {
-      tick: 1,
-      events: [],
-      entities: [
-        {
-          id: 1,
-          components: {
-            Building: { buildingType: BUILDING_MILL, tribe: 1, built: ONE, level: 0 },
-            Owner: { player: 0 },
-            Stockpile: { amounts: [] },
-          },
-        },
-      ],
-    };
+    const snapshot = snapshotOf(
+      [buildingEntity(1, BUILDING_MILL, { components: { Stockpile: { amounts: [] } } })],
+      1,
+    );
     const model = buildUnitPanelModel(snapshot, new Set([1]), named);
     if (model.kind !== 'building') throw new Error('expected a building model');
     expect(model.production?.kind).toBe('recipe');
@@ -238,21 +212,11 @@ describe('selection details panel model', () => {
     const sim = createSceneSim(sandboxScene);
     const druidSlot = sim.content.buildings.find((b) => b.typeId === DRUID_HUT)?.workers[0]; // Druid, declared first
     if (druidSlot === undefined) throw new Error('druid hut has no worker slots');
-    const snapshot: WorldSnapshot = {
-      tick: 0,
-      events: [],
-      entities: [
-        {
-          id: 1,
-          components: {
-            Building: { buildingType: DRUID_HUT, tribe: 1, built: ONE, level: 0 },
-            Owner: { player: 0 },
-          },
-        },
-        // One settler bound here as the Druid trade — that slot is filled, the carrier/gatherer slots empty.
-        { id: 2, components: { Settler: { jobType: druidSlot.jobType }, JobAssignment: { workplace: 1 } } },
-      ],
-    };
+    const snapshot = snapshotOf([
+      buildingEntity(1, DRUID_HUT),
+      // One settler bound here as the Druid trade — that slot is filled, the carrier/gatherer slots empty.
+      { id: 2, components: { Settler: { jobType: druidSlot.jobType }, JobAssignment: { workplace: 1 } } },
+    ]);
 
     const model = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
     expect(model.kind).toBe('building');
@@ -274,21 +238,17 @@ describe('selection details panel model', () => {
 
   it('shows the Ogólne bars in order with pinned labels, satisfaction levels and hover values', () => {
     // Needs are rising fixed-point DEFICITS; the bars must show the satisfaction LEVEL (100 − need).
-    const snapshot: WorldSnapshot = {
-      tick: 0,
-      events: [],
-      entities: [
-        {
-          id: 1,
-          components: {
-            Settler: { tribe: 1, hunger: ONE / 4, fatigue: ONE / 2, enjoyment: 0, piety: (ONE * 9) / 10 },
-            Health: { hitpoints: 300, max: 1000 },
-          },
+    const snapshot = snapshotOf([
+      {
+        id: 1,
+        components: {
+          Settler: { tribe: 1, hunger: ONE / 4, fatigue: ONE / 2, enjoyment: 0, piety: (ONE * 9) / 10 },
+          Health: { hitpoints: 300, max: 1000 },
         },
-        // The same needs without a Health component — the Zdrowie bar must be omitted, not zeroed.
-        { id: 2, components: { Settler: { tribe: 1, hunger: 0, fatigue: 0, enjoyment: 0, piety: 0 } } },
-      ],
-    };
+      },
+      // The same needs without a Health component — the Zdrowie bar must be omitted, not zeroed.
+      { id: 2, components: { Settler: { tribe: 1, hunger: 0, fatigue: 0, enjoyment: 0, piety: 0 } } },
+    ]);
 
     const model = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
     if (model.kind !== 'settler') throw new Error('expected a settler model');
@@ -354,19 +314,15 @@ describe('selection details panel model', () => {
   });
 
   it('offers every collector resource plus all in the Praca section and reflects the selected filter', () => {
-    const snapshot: WorldSnapshot = {
-      tick: 0,
-      events: [],
-      entities: [
-        {
-          id: 1,
-          components: {
-            Settler: { tribe: 1, jobType: JOB_COLLECTOR },
-            WorkFlag: { flag: 2, radius: 24, goodType: GOOD_STONE },
-          },
+    const snapshot = snapshotOf([
+      {
+        id: 1,
+        components: {
+          Settler: { tribe: 1, jobType: JOB_COLLECTOR },
+          WorkFlag: { flag: 2, radius: 24, goodType: GOOD_STONE },
         },
-      ],
-    };
+      },
+    ]);
     const model = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
     if (model.kind !== 'settler') throw new Error('expected a settler model');
 
@@ -390,24 +346,13 @@ describe('selection details panel model', () => {
       id,
       components: { Crop: { farm, stage, stages: 5 } },
     });
-    const snapshot: WorldSnapshot = {
-      tick: 0,
-      events: [],
-      entities: [
-        {
-          id: 1,
-          components: {
-            Building: { buildingType: BUILDING_FARM, tribe: 1, built: ONE, level: 0 },
-            Owner: { player: 0 },
-            Stockpile: { amounts: [[GOOD_WHEAT, 3]] },
-          },
-        },
-        field(2, 1, 1), // growing
-        field(3, 1, 4), // growing
-        field(4, 1, 5), // ripe
-        field(5, 99, 5), // another farm's field — never counted here
-      ],
-    };
+    const snapshot = snapshotOf([
+      buildingEntity(1, BUILDING_FARM, { components: { Stockpile: { amounts: [[GOOD_WHEAT, 3]] } } }),
+      field(2, 1, 1), // growing
+      field(3, 1, 4), // growing
+      field(4, 1, 5), // ripe
+      field(5, 99, 5), // another farm's field — never counted here
+    ]);
 
     const model = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
     expect(model.kind).toBe('building');
@@ -430,10 +375,7 @@ describe('selection details panel model', () => {
   });
 
   it('shows a settler equipment section with labeled rows, worn goods, use percentages and empty slots', () => {
-    const sim = createSceneSim(equipmentFixture);
-    sim.step();
-    const snapshot = sim.snapshot();
-    const ctx = ctxOf(sim);
+    const { snapshot, ctx } = equipmentWorld();
     const bootsGood = (e: (typeof snapshot.entities)[number]): number | undefined =>
       num((e.components.Equipment as { boots?: { goodType?: unknown } } | undefined)?.boots?.goodType);
     const hasWeaponSlot = (e: (typeof snapshot.entities)[number]): boolean =>
@@ -481,10 +423,7 @@ describe('selection details panel model', () => {
   });
 
   it('shows empty equipment rows for a settler with no Equipment component', () => {
-    const sim = createSceneSim(equipmentFixture);
-    sim.step();
-    const snapshot = sim.snapshot();
-    const ctx = ctxOf(sim);
+    const { snapshot, ctx } = equipmentWorld();
     const bare = snapshot.entities.find(
       (e) => e.components.Settler !== undefined && e.components.Equipment === undefined,
     );

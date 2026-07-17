@@ -285,24 +285,34 @@ export function loadPlayerLut(): Promise<TextureSource | undefined> {
   return loadTextureIfPresent('/bobs/player-lut.png');
 }
 
-/** The one in-flight/settled `ir.json` fetch — every domain shares it (see {@link loadIr}). */
-let contentIrPromise: Promise<ContentIr | null> | null = null;
+/** The one in-flight/settled `ir.json` fetch — every domain shares it (see {@link loadIrRaw}). */
+let contentIrPromise: Promise<unknown> | null = null;
 
 /**
- * Fetch + parse the served `content/ir.json` once per page — memoized, because the document is multi-MB
- * and the sprite, terrain, map-object and audio domains all read their lanes from it. Returns `null` when
- * it is absent or unparsable; unlike a missing atlas (which {@link loadLayer} throws on), a missing IR
- * degrades gracefully and each consumer falls back per-lane. Browser-only: the memo lives for the page's
- * lifetime (tests never call this).
+ * Fetch + parse the served `content/ir.json` document once per page — memoized, because it is multi-MB
+ * and both views of it (the graphics {@link loadIr} and the sim-side
+ * {@link import('./real-content.js').loadRealContent}) plus the terrain, map-object and audio domains all
+ * read their lanes from the same bytes. Returns `null` when absent or unreadable. Browser-only: the memo
+ * lives for the page's lifetime (tests never call this).
  */
-export function loadIr(): Promise<ContentIr | null> {
-  contentIrPromise ??= fetchJsonOrNull<ContentIr>('/ir.json').then((ir) => {
+export function loadIrRaw(): Promise<unknown> {
+  contentIrPromise ??= fetchJsonOrNull<unknown>('/ir.json').then((raw) => {
     // Memoize only success: a transient boot-time fetch failure must not pin every domain (terrain,
     // objects, sprites, audio) to the fallback for the page's lifetime — the next consumer retries.
-    if (ir === null) contentIrPromise = null;
-    return ir;
+    if (raw === null) contentIrPromise = null;
+    return raw;
   });
   return contentIrPromise;
+}
+
+/**
+ * The graphics/atlas view of the served IR ({@link loadIrRaw}), cast at the I/O boundary per
+ * {@link ContentIr}'s stance. Returns `null` when the document is absent; unlike a missing atlas (which
+ * {@link loadLayer} throws on), a missing IR degrades gracefully and each consumer falls back per-lane.
+ */
+export async function loadIr(): Promise<ContentIr | null> {
+  const raw = await loadIrRaw();
+  return raw === null ? null : (raw as ContentIr);
 }
 
 /**

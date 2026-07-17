@@ -1,5 +1,27 @@
+import {
+  JOB_ARCHER,
+  JOB_ARCHER_LONG,
+  JOB_ARMORER,
+  JOB_BAKER,
+  JOB_BREEDER,
+  JOB_BREWER,
+  JOB_CARRIER,
+  JOB_COIN_MAKER,
+  JOB_COLLECTOR,
+  JOB_DRUID,
+  JOB_FARMER,
+  JOB_FISHER,
+  JOB_HERBALIST,
+  JOB_HUNTER,
+  JOB_JOINER,
+  JOB_MASON,
+  JOB_MILLER,
+  JOB_POTTER,
+  JOB_SMITH,
+  JOB_TAILOR,
+} from '../../catalog/jobs.js';
 import { type Messages, professionLabel } from '../../i18n/index.js';
-import { JOB_CARRIER, rebaseSlotJob } from './ids/index.js';
+import { rebaseSlotJob } from './ids/index.js';
 
 /**
  * A building's worker slots with their job ids rebased ({@link rebaseSlotJob}), or undefined for a
@@ -17,22 +39,22 @@ export function workerSlotsFor(typeId: number): readonly { jobType: number; coun
  * word. Trades with no picker counterpart keep a slot-local name below.
  */
 const WORKER_SLOT_PROFESSION_KEYS: Readonly<Record<number, keyof Messages['profession']>> = {
-  9: 'joiner',
-  10: 'armorer',
-  11: 'potter',
-  12: 'mason',
-  13: 'smith',
-  14: 'coin_maker',
-  15: 'hunter',
-  16: 'breeder',
-  17: 'tailor', // jobtypes.ini "sewer"
-  18: 'farmer',
-  19: 'miller',
-  20: 'baker',
-  21: 'brewer',
-  22: 'fisher',
-  29: 'herbalist', // jobtypes.ini "herb & mush guy"
-  30: 'druid',
+  [JOB_JOINER]: 'joiner',
+  [JOB_ARMORER]: 'armorer',
+  [JOB_POTTER]: 'potter',
+  [JOB_MASON]: 'mason',
+  [JOB_SMITH]: 'smith',
+  [JOB_COIN_MAKER]: 'coin_maker',
+  [JOB_HUNTER]: 'hunter',
+  [JOB_BREEDER]: 'breeder',
+  [JOB_TAILOR]: 'tailor',
+  [JOB_FARMER]: 'farmer',
+  [JOB_MILLER]: 'miller',
+  [JOB_BAKER]: 'baker',
+  [JOB_BREWER]: 'brewer',
+  [JOB_FISHER]: 'fisher',
+  [JOB_HERBALIST]: 'herbalist',
+  [JOB_DRUID]: 'druid',
 };
 /**
  * Slot-local Polish names for the worker-slot trades with no picker profession: the generic `collector`
@@ -40,9 +62,9 @@ const WORKER_SLOT_PROFESSION_KEYS: Readonly<Record<number, keyof Messages['profe
  * (40/41) the one-soldier picker folds into "Żołnierz" but a tower slot still lists by weapon.
  */
 const WORKER_SLOT_LOCAL_KEYS: Readonly<Record<number, keyof Messages['profession']>> = {
-  8: 'collector',
-  40: 'archer_short',
-  41: 'archer_long',
+  [JOB_COLLECTOR]: 'collector',
+  [JOB_ARCHER]: 'archer_short',
+  [JOB_ARCHER_LONG]: 'archer_long',
 };
 /** The display name of an extracted worker-slot job, by its original id: the shared profession label
  *  where the trade has one (so it never drifts from the picker), else its slot-local name. The carrier
@@ -72,150 +94,150 @@ export const BUILDING_WORKER_SLOTS: Readonly<Record<number, readonly { jobType: 
   {
     1: [
       { jobType: JOB_CARRIER, count: 3 },
-      { jobType: 8, count: 3 },
-      { jobType: 22, count: 3 },
-      { jobType: 15, count: 3 },
+      { jobType: JOB_COLLECTOR, count: 3 },
+      { jobType: JOB_FISHER, count: 3 },
+      { jobType: JOB_HUNTER, count: 3 },
     ], // headquarters
     7: [
       { jobType: JOB_CARRIER, count: 3 },
-      { jobType: 8, count: 3 },
-      { jobType: 22, count: 3 },
-      { jobType: 15, count: 3 },
+      { jobType: JOB_COLLECTOR, count: 3 },
+      { jobType: JOB_FISHER, count: 3 },
+      { jobType: JOB_HUNTER, count: 3 },
     ], // stock_00
     8: [
       { jobType: JOB_CARRIER, count: 3 },
-      { jobType: 8, count: 3 },
-      { jobType: 22, count: 3 },
-      { jobType: 15, count: 3 },
+      { jobType: JOB_COLLECTOR, count: 3 },
+      { jobType: JOB_FISHER, count: 3 },
+      { jobType: JOB_HUNTER, count: 3 },
     ], // stock_01
     9: [
       { jobType: JOB_CARRIER, count: 3 },
-      { jobType: 8, count: 3 },
-      { jobType: 22, count: 3 },
-      { jobType: 15, count: 3 },
+      { jobType: JOB_COLLECTOR, count: 3 },
+      { jobType: JOB_FISHER, count: 3 },
+      { jobType: JOB_HUNTER, count: 3 },
     ], // stock_02
     10: [{ jobType: JOB_CARRIER, count: 1 }], // work_well_00
     11: [{ jobType: JOB_CARRIER, count: 1 }], // work_hive_00
     12: [
-      { jobType: 18, count: 4 },
+      { jobType: JOB_FARMER, count: 4 },
       { jobType: JOB_CARRIER, count: 1 },
     ], // work_farm_00
     13: [
-      { jobType: 19, count: 2 },
+      { jobType: JOB_MILLER, count: 2 },
       { jobType: JOB_CARRIER, count: 1 },
     ], // work_mill_00
     14: [
-      { jobType: 20, count: 1 },
+      { jobType: JOB_BAKER, count: 1 },
       { jobType: JOB_CARRIER, count: 1 },
     ], // work_bakery_00
     15: [
-      { jobType: 20, count: 2 },
+      { jobType: JOB_BAKER, count: 2 },
       { jobType: JOB_CARRIER, count: 1 },
     ], // work_bakery_01
     16: [
-      { jobType: 21, count: 2 },
+      { jobType: JOB_BREWER, count: 2 },
       { jobType: JOB_CARRIER, count: 1 },
     ], // work_brewery
     17: [
-      { jobType: 16, count: 2 },
+      { jobType: JOB_BREEDER, count: 2 },
       { jobType: JOB_CARRIER, count: 1 },
     ], // work_animal_farm
     18: [
-      { jobType: 17, count: 1 },
+      { jobType: JOB_TAILOR, count: 1 },
       { jobType: JOB_CARRIER, count: 1 },
     ], // work_sewery_00
     19: [
-      { jobType: 17, count: 2 },
+      { jobType: JOB_TAILOR, count: 2 },
       { jobType: JOB_CARRIER, count: 1 },
     ], // work_sewery_01
     20: [
-      { jobType: 11, count: 1 },
+      { jobType: JOB_POTTER, count: 1 },
       { jobType: JOB_CARRIER, count: 1 },
-      { jobType: 8, count: 1 },
+      { jobType: JOB_COLLECTOR, count: 1 },
     ], // work_pottery_00
     21: [
-      { jobType: 11, count: 2 },
+      { jobType: JOB_POTTER, count: 2 },
       { jobType: JOB_CARRIER, count: 1 },
-      { jobType: 8, count: 2 },
+      { jobType: JOB_COLLECTOR, count: 2 },
     ], // work_pottery_01
     23: [
-      { jobType: 9, count: 1 },
+      { jobType: JOB_JOINER, count: 1 },
       { jobType: JOB_CARRIER, count: 1 },
-      { jobType: 8, count: 1 },
+      { jobType: JOB_COLLECTOR, count: 1 },
     ], // work_joinery_00
     24: [
-      { jobType: 9, count: 2 },
+      { jobType: JOB_JOINER, count: 2 },
       { jobType: JOB_CARRIER, count: 1 },
-      { jobType: 8, count: 1 },
+      { jobType: JOB_COLLECTOR, count: 1 },
     ], // work_joinery_01
     25: [
-      { jobType: 9, count: 3 },
+      { jobType: JOB_JOINER, count: 3 },
       { jobType: JOB_CARRIER, count: 1 },
-      { jobType: 8, count: 1 },
+      { jobType: JOB_COLLECTOR, count: 1 },
     ], // work_joinery_02
     26: [
-      { jobType: 9, count: 3 },
+      { jobType: JOB_JOINER, count: 3 },
       { jobType: JOB_CARRIER, count: 1 },
-      { jobType: 8, count: 1 },
+      { jobType: JOB_COLLECTOR, count: 1 },
     ], // work_joinery_03
     27: [
-      { jobType: 10, count: 1 },
+      { jobType: JOB_ARMORER, count: 1 },
       { jobType: JOB_CARRIER, count: 1 },
-      { jobType: 8, count: 1 },
+      { jobType: JOB_COLLECTOR, count: 1 },
     ], // work_armory_00
     28: [
-      { jobType: 10, count: 2 },
+      { jobType: JOB_ARMORER, count: 2 },
       { jobType: JOB_CARRIER, count: 1 },
-      { jobType: 8, count: 2 },
+      { jobType: JOB_COLLECTOR, count: 2 },
     ], // work_armory_01
     29: [
-      { jobType: 12, count: 1 },
+      { jobType: JOB_MASON, count: 1 },
       { jobType: JOB_CARRIER, count: 1 },
-      { jobType: 8, count: 1 },
+      { jobType: JOB_COLLECTOR, count: 1 },
     ], // work_mason_hut_00
     30: [
-      { jobType: 12, count: 2 },
+      { jobType: JOB_MASON, count: 2 },
       { jobType: JOB_CARRIER, count: 1 },
-      { jobType: 8, count: 1 },
+      { jobType: JOB_COLLECTOR, count: 1 },
     ], // work_mason_hut_01
     31: [
-      { jobType: 13, count: 1 },
+      { jobType: JOB_SMITH, count: 1 },
       { jobType: JOB_CARRIER, count: 1 },
-      { jobType: 8, count: 2 },
+      { jobType: JOB_COLLECTOR, count: 2 },
     ], // work_smithy_00
     32: [
-      { jobType: 13, count: 2 },
+      { jobType: JOB_SMITH, count: 2 },
       { jobType: JOB_CARRIER, count: 1 },
-      { jobType: 8, count: 2 },
+      { jobType: JOB_COLLECTOR, count: 2 },
     ], // work_smithy_01
     33: [
-      { jobType: 14, count: 2 },
+      { jobType: JOB_COIN_MAKER, count: 2 },
       { jobType: JOB_CARRIER, count: 1 },
-      { jobType: 8, count: 2 },
+      { jobType: JOB_COLLECTOR, count: 2 },
     ], // work_coin_mint
     34: [
-      { jobType: 29, count: 3 },
+      { jobType: JOB_HERBALIST, count: 3 },
       { jobType: JOB_CARRIER, count: 1 },
     ], // work_herb_hut
     35: [
-      { jobType: 30, count: 1 },
+      { jobType: JOB_DRUID, count: 1 },
       { jobType: JOB_CARRIER, count: 1 },
-      { jobType: 8, count: 1 },
+      { jobType: JOB_COLLECTOR, count: 1 },
     ], // work_druid_00
     36: [
-      { jobType: 30, count: 2 },
+      { jobType: JOB_DRUID, count: 2 },
       { jobType: JOB_CARRIER, count: 1 },
-      { jobType: 8, count: 2 },
+      { jobType: JOB_COLLECTOR, count: 2 },
     ], // work_druid_01
     39: [{ jobType: JOB_CARRIER, count: 4 }], // barracks
     40: [
-      { jobType: 40, count: 3 },
-      { jobType: 41, count: 3 },
+      { jobType: JOB_ARCHER, count: 3 },
+      { jobType: JOB_ARCHER_LONG, count: 3 },
       { jobType: JOB_CARRIER, count: 3 },
     ], // tower_00
     41: [
-      { jobType: 40, count: 4 },
-      { jobType: 41, count: 4 },
+      { jobType: JOB_ARCHER, count: 4 },
+      { jobType: JOB_ARCHER_LONG, count: 4 },
       { jobType: JOB_CARRIER, count: 4 },
     ], // tower_01
   };

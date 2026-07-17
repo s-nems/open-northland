@@ -4,9 +4,19 @@ import { type BuildingLayout, type ButtonHit, layoutBuilding } from './building.
 import { layoutSettler, type SettlerLayout } from './settler.js';
 import { PANEL_W, panelRect, ROW_H, type SectionRect, sectionAt } from './shared.js';
 
-export * from './building.js';
-export * from './settler.js';
-export { ROW_H, type SectionRect } from './shared.js';
+export {
+  BAR_H,
+  type BuildingLayout,
+  type ButtonAction,
+  type ButtonHit,
+  MAX_STOCK_ROWS,
+  PREVIEW_INSET,
+  STOCK_PLATE_H,
+  STOCK_ROW_H,
+  stockSlotRects,
+} from './building.js';
+export { EQUIP_ROW_H, type SettlerLayout } from './settler.js';
+export { ROW_H, ROW_TEXT_PAD, type SectionRect } from './shared.js';
 
 /** The multi-select / generic views: one section window with a single hint row. */
 export interface CompactLayout {

@@ -1,5 +1,5 @@
-import { goodCategoryTab, stockTabLabels } from '../details-panel/stock-tabs.js';
 import { contains, type Rect } from '../geometry.js';
+import { goodCategoryTab, stockTabLabels } from '../good-categories.js';
 
 /**
  * The goods-palette model — the eight category tabs, filtering, layout and hit-test (pure, no Pixi/DOM).
@@ -8,7 +8,7 @@ import { contains, type Rect } from '../geometry.js';
  *
  * The tabs mirror the details-panel Magazyn's eight stock categories (via the shared {@link goodCategoryTab}
  * by string id), so a good sits under the same tab in the drop palette as in a warehouse. That category
- * mapping is a NAMED APPROXIMATION (not in the extracted data — see `details-panel/stock-tabs.ts`).
+ * mapping is a NAMED APPROXIMATION (not in the extracted data — see `hud/good-categories.ts`).
  *
  * The layout is parameterised by a screen origin + integer scale (design px), so the view draws from it and
  * the input layer hit-tests it without touching Pixi.

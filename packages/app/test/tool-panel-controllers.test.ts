@@ -118,7 +118,6 @@ describe('menu window controller', () => {
   // A category longer than the viewport (stub screen fits MAX_LIST_ROWS = 13), so the scroll path engages.
   const MANY: readonly MenuBuildingEntry[] = Array.from({ length: 20 }, (_, i) => ({
     typeId: 200 + i,
-    id: `b${i}`,
     label: `B${i}`,
     kind: 'workplace',
   }));

@@ -60,7 +60,7 @@ export interface GuiFrameMeta {
  * gfx id). Total over the sheet: exactly {@link GUI_ATLAS_FRAME_COUNT} entries, every one named (or
  * `unknown_NNN`), no duplicate names — enforced by `gui-atlas-map.test.ts`.
  */
-export const GUI_FRAMES: readonly GuiFrameMeta[] = [
+export const GUI_FRAMES = [
   /* 000 0x00 */ {
     name: 'knot_corner_bl',
     role: 'window_chrome',
@@ -1414,7 +1414,11 @@ export const GUI_FRAMES: readonly GuiFrameMeta[] = [
     source: 'montage',
     note: 'horizontal bar frame 96x18 — solid fill under bar_* palettes',
   },
-];
+] as const satisfies readonly GuiFrameMeta[];
+
+/** Every frame name the sheet carries — derived from {@link GUI_FRAMES}, so a typo'd reference fails to
+ *  compile instead of throwing at draw time. */
+export type GuiFrameName = (typeof GUI_FRAMES)[number]['name'];
 
 /**
  * Ergonomic named constants for the code-pinned frames app HUD code references, so it never hardcodes an
@@ -1471,10 +1475,10 @@ const FRAME_INDEX_BY_NAME: ReadonlyMap<string, number> = new Map(
 );
 
 /**
- * Frame index for a semantic name. Throws (programmer error) on an unknown name — callers use compile-time
- * constants ({@link GUI_FRAME}) or names verified against {@link GUI_FRAMES}, so a miss means a typo/stale ref.
+ * Frame index for a {@link GuiFrameName}. The name is checked at compile time; the runtime throw is the
+ * unreachable backstop for a caller that reached here with an unchecked string.
  */
-export function guiFrameIndex(name: string): number {
+export function guiFrameIndex(name: GuiFrameName): number {
   const i = FRAME_INDEX_BY_NAME.get(name);
   if (i === undefined) throw new Error(`gui-atlas-map: no frame named "${name}"`);
   return i;

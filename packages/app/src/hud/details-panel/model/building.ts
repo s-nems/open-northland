@@ -1,7 +1,7 @@
 import { constructionBillForType, type WorldSnapshot } from '@open-northland/sim';
 import { type entityById, isSettler, num } from '../../../game/snapshot.js';
 import { messages } from '../../../i18n/index.js';
-import { goodCategoryTab } from '../stock-tabs.js';
+import { goodCategoryTab } from '../../good-categories.js';
 import { pctRatio } from './bars.js';
 import {
   type BuildingDef,
@@ -46,7 +46,7 @@ export interface StockRow {
   readonly amount: number;
   /** The good's declared store ceiling (its `stock` slot capacity) — the row reads "7.0 / 25.0". */
   readonly capacity?: number;
-  /** The stock-window category tab (0–7) this good belongs to — see `stock-tabs.ts`. */
+  /** The stock-window category tab (0–7) this good belongs to — see `hud/good-categories.ts`. */
   readonly category: number;
 }
 
@@ -173,7 +173,7 @@ function liveAmounts(stockpile: unknown): Map<number, number> {
  *
  * Each row carries its `category` (the stock tab it belongs to, via {@link goodCategoryTab}); the render
  * filters the list to the active tab. The good→category mapping is a named approximation (not in the
- * extracted data — see `stock-tabs.ts`), so the tab assignment is provisional, not source-pinned.
+ * extracted data — see `hud/good-categories.ts`), so the tab assignment is provisional, not source-pinned.
  */
 export function stockRows(
   ctx: UnitPanelModelContext,

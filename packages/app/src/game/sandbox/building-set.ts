@@ -218,19 +218,25 @@ const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> 
 /** Per home tier: how many FAMILIES it houses (`houses.ini` `logichomesize` 1..5 — EXTRACTED; the
  *  sim's `familiesOf` grouping counts against it) and its private larder capacity per food good
  *  (`logicstock 16/17 <cap> 1` — EXTRACTED: 5/10/15/15/15). */
-const HOME_SIZE_BY_TIER = [1, 2, 3, 4, 5] as const;
-const HOME_FOOD_CAPACITY_BY_TIER = [5, 10, 15, 15, 15] as const;
+const HOME_TIERS = [
+  { homeSize: 1, foodCapacity: 5 },
+  { homeSize: 2, foodCapacity: 10 },
+  { homeSize: 3, foodCapacity: 15 },
+  { homeSize: 4, foodCapacity: 15 },
+  { homeSize: 5, foodCapacity: 15 },
+] as const;
 
 /** A home's residence data: its family capacity + the food-only larder its residents (and only its
  *  residents) eat from — the family mechanics' per-house gate. */
 function homeRow(b: VikingBuilding): Partial<SandboxBuildingRow> {
-  const tier = Math.max(0, Math.min(HOME_SIZE_BY_TIER.length - 1, b.typeId - BUILDING_HOME_00));
-  const capacity = HOME_FOOD_CAPACITY_BY_TIER[tier] as number;
+  const [smallestHome] = HOME_TIERS;
+  const index = Math.max(0, Math.min(HOME_TIERS.length - 1, b.typeId - BUILDING_HOME_00));
+  const tier = HOME_TIERS[index] ?? smallestHome;
   return {
-    homeSize: HOME_SIZE_BY_TIER[tier] as number,
+    homeSize: tier.homeSize,
     stock: [
-      { goodType: GOOD_FOOD_SIMPLE, capacity, initial: 0 },
-      { goodType: GOOD_FOOD_EXTRA, capacity, initial: 0 },
+      { goodType: GOOD_FOOD_SIMPLE, capacity: tier.foodCapacity, initial: 0 },
+      { goodType: GOOD_FOOD_EXTRA, capacity: tier.foodCapacity, initial: 0 },
     ],
   };
 }

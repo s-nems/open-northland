@@ -1,4 +1,5 @@
-import { VIKING } from '../catalog/buildings.js';
+import { JOB_BABY_FEMALE, JOB_CHILD_FEMALE, JOB_WOMAN } from '../catalog/jobs.js';
+import { FALLBACK_POOL, NAME_POOLS } from './character-names/pools.js';
 
 /**
  * Per-settler personal names, shown in the details panel in place of the generic "Ogólne" section title.
@@ -11,13 +12,6 @@ import { VIKING } from '../catalog/buildings.js';
  */
 
 export type Sex = 'male' | 'female';
-
-interface NamePool {
-  /** Male given names. Also the source of patronymic roots (a father's name is a male given name). */
-  readonly male: readonly string[];
-  /** Female given names. */
-  readonly female: readonly string[];
-}
 
 /** Patronymic endings appended to the father's given name: "Ulf" → "Ulfsson" / "Ulfsdóttir". */
 const PATRONYMIC_SUFFIX: Readonly<Record<Sex, string>> = {
@@ -66,15 +60,6 @@ function nameGridCell(id: number, firstCount: number, rootCount: number): { firs
 }
 
 /**
- * The sex/age `jobType` ids that carry a fixed body sex, transcribed from the same `jobtypes.ini`
- * semantics the render body-join uses (`content/settler-gfx.ts` `YOUNG_CHARACTER_BY_JOB` maps job 1
- * baby_female / 2 baby_male / 3 child_female / 4 child_male; the adult woman is job 5).
- */
-const BABY_FEMALE_JOB = 1;
-const GIRL_JOB = 3;
-const WOMAN_JOB = 5;
-
-/**
  * The sex of the body a settler draws, mirroring `content/settler-gfx.ts` so a name never contradicts the
  * on-screen character. Young settlers (those carrying an `Age` component) key the age-class jobs: the two
  * female child bodies (baby_female 1, girl 3) are female, the male ones (baby_male 2, boy 4) male. Adults
@@ -82,207 +67,9 @@ const WOMAN_JOB = 5;
  * one sex-neutral `baby` body, so a baby's sex only shows through its name, not its sprite.)
  */
 export function settlerSex(jobType: number | null | undefined, young: boolean): Sex {
-  if (young) return jobType === BABY_FEMALE_JOB || jobType === GIRL_JOB ? 'female' : 'male';
-  return jobType === WOMAN_JOB ? 'female' : 'male';
+  if (young) return jobType === JOB_BABY_FEMALE || jobType === JOB_CHILD_FEMALE ? 'female' : 'male';
+  return jobType === JOB_WOMAN ? 'female' : 'male';
 }
-
-/**
- * Hand-authored Old Norse given names, split by sex to match the drawn body. Drawn from common historical
- * Norse name lists; the original game carries none of these, so this is an independent approximation, not
- * extracted content.
- *
- * With the surname cross product (see {@link characterName}) these give 101 × 101 = 10 201 distinct male
- * full names and 72 × 101 = 7 272 female ones. The male pool is the larger because male settlers heavily
- * outnumber female ones, so more of them need distinct names; both counts sit far past any real settlement,
- * so a repeat is very rare.
- */
-const VIKING_NAMES: NamePool = {
-  male: [
-    'Ragnar',
-    'Bjørn',
-    'Leif',
-    'Sten',
-    'Ivar',
-    'Ulf',
-    'Harald',
-    'Sigurd',
-    'Knut',
-    'Torstein',
-    'Halfdan',
-    'Egil',
-    'Gunnar',
-    'Rollo',
-    'Sven',
-    'Arne',
-    'Vidar',
-    'Erik',
-    'Hakon',
-    'Frode',
-    'Orm',
-    'Toke',
-    'Vali',
-    'Asger',
-    'Grim',
-    'Kettil',
-    'Vagn',
-    'Hemming',
-    'Ottar',
-    'Rurik',
-    'Guthorm',
-    'Sigtrygg',
-    'Thorvald',
-    'Thorolf',
-    'Ospak',
-    'Hallstein',
-    'Ingolf',
-    'Floki',
-    'Ubbe',
-    'Hastein',
-    'Njal',
-    'Skarde',
-    'Gorm',
-    'Thrand',
-    'Onund',
-    'Steinar',
-    'Hallvard',
-    'Kolbein',
-    'Eystein',
-    'Ozur',
-    'Amund',
-    'Trygve',
-    'Snorri',
-    'Yngvar',
-    'Dag',
-    'Alrek',
-    'Hrolf',
-    'Sigmund',
-    'Bo',
-    'Refil',
-    'Eskil',
-    'Bergthor',
-    'Kolgrim',
-    'Thorgils',
-    'Audun',
-    'Birger',
-    'Brand',
-    'Eindride',
-    'Finn',
-    'Geir',
-    'Gisli',
-    'Grettir',
-    'Haki',
-    'Hallbjorn',
-    'Hauk',
-    'Ingimar',
-    'Jorund',
-    'Kari',
-    'Kjartan',
-    'Kveldulf',
-    'Magnus',
-    'Mord',
-    'Odd',
-    'Ofeig',
-    'Ragnvald',
-    'Roar',
-    'Sigvat',
-    'Skallagrim',
-    'Solmund',
-    'Starkad',
-    'Sumarlidi',
-    'Thorbjorn',
-    'Thorfinn',
-    'Thorgrim',
-    'Thorir',
-    'Thorkell',
-    'Torgeir',
-    'Ulfar',
-    'Vemund',
-    'Vestein',
-    'Yngvi',
-  ],
-  female: [
-    'Astrid',
-    'Freya',
-    'Sigrid',
-    'Ingrid',
-    'Helga',
-    'Gunnhild',
-    'Thyra',
-    'Solveig',
-    'Ragnhild',
-    'Bodil',
-    'Hilde',
-    'Yrsa',
-    'Signe',
-    'Gudrun',
-    'Liv',
-    'Randi',
-    'Tove',
-    'Estrid',
-    'Runa',
-    'Alfhild',
-    'Thora',
-    'Ragna',
-    'Ingeborg',
-    'Gyda',
-    'Aslaug',
-    'Bergljot',
-    'Dagny',
-    'Eir',
-    'Frida',
-    'Gerd',
-    'Groa',
-    'Halldis',
-    'Herdis',
-    'Hervor',
-    'Jofrid',
-    'Kelda',
-    'Ljufa',
-    'Nanna',
-    'Oddny',
-    'Ragnfrid',
-    'Saga',
-    'Sunniva',
-    'Svanhild',
-    'Thurid',
-    'Torhild',
-    'Ulfhild',
-    'Unn',
-    'Vigdis',
-    'Yngvild',
-    'Aud',
-    'Bera',
-    'Borghild',
-    'Disa',
-    'Eldrid',
-    'Gunnvor',
-    'Hallgerd',
-    'Idunn',
-    'Jorunn',
-    'Katla',
-    'Ljot',
-    'Ragnborg',
-    'Signy',
-    'Thordis',
-    'Vilborg',
-    'Asa',
-    'Bothild',
-    'Geirlaug',
-    'Holmfrid',
-    'Ingrun',
-    'Osk',
-    'Thorgunna',
-    'Yr',
-  ],
-};
-
-/** Name pools by tribe. Add a faction here to give its settlers faction-appropriate names. */
-const NAME_POOLS: Readonly<Record<number, NamePool>> = {
-  [VIKING]: VIKING_NAMES,
-};
-
-/** The pool used for a tribe that has no pool of its own yet — the only content tribe today is viking. */
-const FALLBACK_POOL = VIKING_NAMES;
 
 /**
  * The personal name shown for a settler — a faction- and sex-appropriate first name plus a surname
