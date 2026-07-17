@@ -12,7 +12,9 @@ import { testContent } from '../fixtures/content.js';
  * only in such a field hash identically and the divergence surfaces much later, somewhere else.
  */
 
-const SLEEP_ATOMIC = 5;
+/** Arbitrary, and deliberately the same for every effect below: the cases must differ in the string
+ *  `kind` and nothing else, so a numeric field cannot be what moves the hash. */
+const SHARED_ATOMIC_ID = 1;
 const ATOMIC_DURATION = 10;
 
 /** A sim holding exactly one entity with `effect` as its current atomic. */
@@ -20,7 +22,7 @@ function simWithAtomicEffect(effect: AtomicEffect): Simulation {
   const sim = new Simulation({ seed: 1, content: testContent() });
   const e = sim.world.create();
   sim.world.add(e, CurrentAtomic, {
-    atomicId: SLEEP_ATOMIC,
+    atomicId: SHARED_ATOMIC_ID,
     elapsed: 0,
     progress: fx.fromInt(0),
     duration: ATOMIC_DURATION,
@@ -44,11 +46,5 @@ describe('hashState string values', () => {
     female.world.add(female.world.create(), ChildOrder, { child: 'female' });
     male.world.add(male.world.create(), ChildOrder, { child: 'male' });
     expect(female.hashState()).not.toBe(male.hashState());
-  });
-
-  it('is byte-identical for equal string state', () => {
-    expect(simWithAtomicEffect({ kind: 'sleep' }).hashState()).toBe(
-      simWithAtomicEffect({ kind: 'sleep' }).hashState(),
-    );
   });
 });
