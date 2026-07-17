@@ -54,7 +54,7 @@ export function resolveAuthoredPlacements(
   entities: NonNullable<TerrainMapFile['entities']>,
   rows: AuthoredJoinRows,
   map: TerrainMap,
-): { placements: AuthoredPlacement[]; skipped: number } {
+): { placements: AuthoredPlacement[]; skipped: number; droppedGoods: number } {
   const bobByNameLevel = new Map<string, { typeId: number; tribeId: number }>();
   for (const b of rows.buildingBobs ?? []) {
     if (b.editName === undefined || b.typeId === undefined) continue;
@@ -73,27 +73,42 @@ export function resolveAuthoredPlacements(
       tribeByName.set(t.id, t.typeId);
   }
   const goodByName = new Map<string, number>();
+  const goodTypeIds = new Set<number>();
   for (const g of rows.goods ?? []) {
     const name = g.name ?? g.id;
     if (name !== undefined && g.typeId !== undefined && !goodByName.has(name)) goodByName.set(name, g.typeId);
+    if (g.typeId !== undefined) goodTypeIds.add(g.typeId);
   }
+  // A good is authored as a quoted name, or rarely as a bare goodtype typeId (`addgoods 49 1000`,
+  // Walhalla) — an all-digits "name" resolves by id when the IR carries that good.
+  const resolveGood = (name: string): number | undefined => {
+    const byName = goodByName.get(name);
+    if (byName !== undefined) return byName;
+    const asId = /^\d+$/.test(name) ? Number.parseInt(name, 10) : Number.NaN;
+    return goodTypeIds.has(asId) ? asId : undefined;
+  };
   // `map` is the sim's half-cell grid (2W×2H) — authored half-cells bound-check directly against it.
   const inBounds = (hx: number, hy: number): boolean =>
     hx >= 0 && hy >= 0 && hx < map.width && hy < map.height;
 
   const placements: AuthoredPlacement[] = [];
   let skipped = 0;
+  let droppedGoods = 0;
   for (const b of entities.buildings) {
     const hit = bobByNameLevel.get(`${b.name}\u0000${b.level}`);
     if (hit === undefined || !inBounds(b.hx, b.hy)) {
       skipped++;
       continue;
     }
-    // Authored `addgoods` stock, good names → good typeIds; an unresolvable name is dropped (the
-    // building still places — a missing good must not cost the map its house).
+    // Authored `addgoods` stock, good names → good typeIds; an unresolvable name is dropped and
+    // counted (the building still places — a missing good must not cost the map its house).
     const goods = (b.goods ?? []).flatMap((g) => {
-      const good = goodByName.get(g.name);
-      return good !== undefined ? [{ good, amount: g.count }] : [];
+      const good = resolveGood(g.name);
+      if (good === undefined) {
+        droppedGoods++;
+        return [];
+      }
+      return [{ good, amount: g.count }];
     });
     placements.push({
       kind: 'building',
@@ -121,5 +136,5 @@ export function resolveAuthoredPlacements(
       ...(components.isValidPlayer(h.player) ? { owner: h.player } : {}),
     });
   }
-  return { placements, skipped };
+  return { placements, skipped, droppedGoods };
 }

@@ -100,7 +100,9 @@ export interface MapStaticObjects {
  * `addgoods` rows stock the entity placed by the immediately preceding placement verb (source basis:
  * across the whole unpacked `staticobjects.inc` corpus every `addgoods` run directly follows a
  * `sethouse` or `setvehicle` row). Runs after a captured `sethouse` land on that building's `goods`;
- * runs after any other verb (e.g. `setvehicle`, not imported yet) are dropped.
+ * runs after any other verb (e.g. `setvehicle`, not imported yet) are dropped. The good is usually a
+ * quoted name; the rare unquoted numeric variant (`addgoods 49 1000`, Walhalla) is a goodtype typeId,
+ * kept verbatim as the digit string for the loader to resolve by id.
  *
  * The `sethouse` player is the first column, 0-based like `sethuman`'s (source basis: across all 13
  * entity-bearing mod maps its per-value position centroids coincide with the matching `sethuman`
@@ -125,7 +127,7 @@ export function extractStaticObjects(sections: readonly RuleSection[]): MapStati
   // (including a skipped-as-malformed `sethouse`) retargets goods away from it.
   let goodsTarget: MapStaticObjects['buildings'][number] | undefined;
   for (const p of sec.props) {
-    if (p.key !== 'addgoods' && p.key !== 'sethouse') goodsTarget = undefined;
+    if (p.key !== 'addgoods') goodsTarget = undefined;
     if (p.key === 'addgoods') {
       const [name, countRaw] = p.values;
       const count = int(countRaw);
@@ -133,7 +135,6 @@ export function extractStaticObjects(sections: readonly RuleSection[]): MapStati
       goodsTarget.goods ??= [];
       goodsTarget.goods.push({ name, count });
     } else if (p.key === 'sethouse') {
-      goodsTarget = undefined; // a malformed row below must not leave the previous house targeted
       const [playerRaw, name, levelRaw, , hxRaw, hyRaw, rotRaw] = p.values;
       const level = int(levelRaw);
       const player = int(playerRaw);

@@ -16,6 +16,7 @@ import {
   fresh,
   HEADQUARTERS,
   nthEntity,
+  PLANK,
   SAWMILL,
   SMITHY,
   VIKING,
@@ -66,13 +67,13 @@ describe('CommandSystem — buildings and demolition', () => {
       tribe: VIKING,
       initialGoods: [
         { good: WOOD, amount: 15 }, // on top of the slot's init 10
-        { good: 2, amount: 5 }, // a slot the defaults left empty
+        { good: PLANK, amount: 5 }, // a slot the defaults left empty
       ],
     });
     sim.step();
     const stock = sim.world.get(nthEntity(sim, 0), Stockpile).amounts;
     expect(stock.get(WOOD)).toBe(25);
-    expect(stock.get(2)).toBe(5);
+    expect(stock.get(PLANK)).toBe(5);
   });
 
   it('placeBuilding initialGoods are ignored for an under-construction site (empty hold)', () => {
