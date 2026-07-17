@@ -8,7 +8,6 @@ import {
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
-import { nearestUnblockedNode } from '../../nav/nearest.js';
 import type { BlockOverlay, NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import {
@@ -78,16 +77,75 @@ export function constructionWorkCells(
   const bodyCells = translatedCells(terrain, bodyOffsets, anchorCoords.hx, anchorCoords.hy);
   if (bodyCells.length === 0) bodyCells.push(anchor);
   const body = new Set(bodyCells);
+  const exterior = exteriorCellsAroundBody(terrain, bodyCells, body, blocked);
   const work = new Set<NodeId>();
   for (const cell of bodyCells) {
     for (const neighbour of terrain.walkableNeighbours(cell)) {
-      if (!body.has(neighbour) && !blocked.has(neighbour)) work.add(neighbour);
+      if (exterior.has(neighbour)) work.add(neighbour);
     }
   }
-  if (work.size > 0) return [...work].sort((a, b) => a - b);
+  return [...work].sort((a, b) => a - b);
+}
 
-  const fallback = nearestUnblockedNode(terrain, anchor, blocked);
-  return fallback === null ? [] : [fallback];
+/** Current extracted footprints need at most 5 bounding-margin cells per body cell (handcart/oxcart).
+ *  Eight leaves headroom while bounding malformed sparse synthetic footprints. */
+const MAX_EXTERIOR_SCAN_CELLS_PER_BODY_CELL = 8;
+
+/**
+ * Walkable cells connected to the outside of a body's one-node bounding margin. The bounded flood
+ * excludes enclosed footprint holes without scanning the map; dynamic blocks also cannot turn a sealed
+ * pocket into a work slot. A footprint outside the extracted shape budget yields no approximate slots.
+ */
+function exteriorCellsAroundBody(
+  terrain: TerrainGraph,
+  bodyCells: readonly NodeId[],
+  body: ReadonlySet<NodeId>,
+  blocked: BlockOverlay,
+): ReadonlySet<NodeId> {
+  let bodyMinX = terrain.width;
+  let bodyMaxX = 0;
+  let bodyMinY = terrain.height;
+  let bodyMaxY = 0;
+  for (const cell of bodyCells) {
+    const { x, y } = terrain.coordsOf(cell);
+    bodyMinX = Math.min(bodyMinX, x);
+    bodyMaxX = Math.max(bodyMaxX, x);
+    bodyMinY = Math.min(bodyMinY, y);
+    bodyMaxY = Math.max(bodyMaxY, y);
+  }
+  const minX = Math.max(0, bodyMinX - 1);
+  const maxX = Math.min(terrain.width - 1, bodyMaxX + 1);
+  const minY = Math.max(0, bodyMinY - 1);
+  const maxY = Math.min(terrain.height - 1, bodyMaxY + 1);
+  const scanArea = (maxX - minX + 1) * (maxY - minY + 1);
+  const scanBudget = Math.max(9, bodyCells.length * MAX_EXTERIOR_SCAN_CELLS_PER_BODY_CELL);
+  if (scanArea > scanBudget) return new Set();
+  const exterior = new Set<NodeId>();
+  const frontier: NodeId[] = [];
+  const seed = (x: number, y: number): void => {
+    const cell = terrain.nodeAt(x, y);
+    if (body.has(cell) || blocked.has(cell) || !terrain.isWalkable(cell) || exterior.has(cell)) return;
+    exterior.add(cell);
+    frontier.push(cell);
+  };
+
+  if (bodyMinY > 0) for (let x = minX; x <= maxX; x++) seed(x, minY);
+  if (bodyMaxY < terrain.height - 1) for (let x = minX; x <= maxX; x++) seed(x, maxY);
+  if (bodyMinX > 0) for (let y = minY; y <= maxY; y++) seed(minX, y);
+  if (bodyMaxX < terrain.width - 1) for (let y = minY; y <= maxY; y++) seed(maxX, y);
+
+  for (let index = 0; index < frontier.length; index++) {
+    const cell = frontier[index];
+    if (cell === undefined) break;
+    for (const neighbour of terrain.walkableNeighbours(cell)) {
+      const { x, y } = terrain.coordsOf(neighbour);
+      if (x < minX || x > maxX || y < minY || y > maxY) continue;
+      if (body.has(neighbour) || blocked.has(neighbour) || exterior.has(neighbour)) continue;
+      exterior.add(neighbour);
+      frontier.push(neighbour);
+    }
+  }
+  return exterior;
 }
 
 /** The construction work cell nearest `from`, tie-broken by node id. */

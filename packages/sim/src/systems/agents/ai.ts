@@ -320,7 +320,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
 
     // 2b. BUILD — a builder raises the nearest construction site of its tribe (hammer it, or fetch a
     // material it is short on); a non-builder passes through. `spacing` spreads a site's crew over
-    // its yard (see ./destack.ts claimWorkCell).
+    // its construction perimeter (see ./destack.ts claimWorkCell).
     if (planBuilder(plan, spacing)) continue;
 
     // 3. HARVEST / COLLECT — a gatherer chops the nearest FREE resource or collects the nearest trunk.

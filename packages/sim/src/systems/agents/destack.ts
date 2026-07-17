@@ -139,8 +139,8 @@ function nearestWorkCell(
 /**
  * Claim a stand cell BESIDE the shared `anchor` for a worker with nothing to do — the "bored by the door"
  * stand (user-directed behaviour: an off-duty worker loiters visibly next to its workplace door, not on
- * it). Same yard/claim machinery as {@link claimWorkCell} with one inversion: the anchor itself is never
- * returned — the door node stays free for working traffic, and a loitering operator never lands on the
+ * it). It shares the planner-tick occupancy and cell claims used by construction spacing, but keeps its
+ * own door-centred yard: the anchor itself is never returned, so a loitering operator never lands on the
  * node {@link presentOperatorCount} reads (standing ON the door would silently run the workshop). A worker
  * already alone on a non-anchor yard cell stays put (stable across re-plans); with no free yard cell it
  * simply stays where it is (`here`) — loitering is a stance, never a refusal that must relocate someone.

@@ -13,7 +13,9 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, halfCellMapFromCells, nodeOfPosition, positionOfNode, Simulation } from '../../src/index.js';
+import { constructionWorkCells, dynamicBlockedCells } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
+import { ctxOf } from '../fixtures/context.js';
 import { settlerAt as spawnSettler } from '../fixtures/settler.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
@@ -136,7 +138,12 @@ const WATER = 9; // walkable: false — the across-the-stream yard test's barrie
 
 /** Content with a builder trade and a home whose cost is 2× stone + 1× wood (12 hammer swings), with
  *  a walk-blocking footprint and a named door that construction work deliberately does not converge on. */
-function builderSiteContent(): ContentSet {
+function builderSiteContent(
+  blocked: readonly { readonly dx: number; readonly dy: number }[] | null = [
+    { dx: 0, dy: 0 },
+    { dx: 2, dy: 0 },
+  ],
+): ContentSet {
   return parseContentSet({
     manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
     goods: [
@@ -162,13 +169,7 @@ function builderSiteContent(): ContentSet {
           { goodType: STONE, amount: 2 },
           { goodType: WOOD, amount: 1 },
         ],
-        footprint: {
-          blocked: [
-            { dx: 0, dy: 0 },
-            { dx: 2, dy: 0 },
-          ],
-          door: { dx: 0, dy: 2 },
-        },
+        ...(blocked === null ? {} : { footprint: { blocked, door: { dx: 0, dy: 2 } } }),
       },
     ],
   });
@@ -249,6 +250,74 @@ describe('builder work slots (claimWorkCell)', () => {
 
     expect(westSwingX).toBeLessThan(12); // nearest legal side west of the body
     expect(eastSwingX).toBeGreaterThan(14); // nearest legal side east of the body
+  });
+
+  it('excludes an enclosed hole from a ring-shaped footprint while outside builders keep working', () => {
+    const ring = [-1, 0, 1].flatMap((dy) =>
+      [-1, 0, 1].filter((dx) => dx !== 0 || dy !== 0).map((dx) => ({ dx, dy })),
+    );
+    const s = new Simulation({ seed: 1, content: builderSiteContent(ring), map: grassMap(12, 6) });
+    const site = stockedSiteAt(s, 12, 6);
+    const trapped = builderAt(s, 12, 6); // the empty centre is surrounded by the footprint body
+    const west = builderAt(s, 6, 6);
+    const east = builderAt(s, 20, 6);
+    let trappedSwingTicks = 0;
+    let outsideSwingTicks = 0;
+
+    for (let t = 0; t < 400 && s.world.has(site, UnderConstruction); t++) {
+      s.step();
+      if (s.world.tryGet(trapped, CurrentAtomic)?.atomicId === BUILD_HOUSE_ATOMIC) trappedSwingTicks++;
+      for (const builder of [west, east]) {
+        if (s.world.tryGet(builder, CurrentAtomic)?.atomicId === BUILD_HOUSE_ATOMIC) outsideSwingTicks++;
+      }
+    }
+
+    expect(trappedSwingTicks).toBe(0); // the unreachable inner hole is not a legal work cell
+    expect(outsideSwingTicks).toBeGreaterThan(0);
+    expect(s.world.has(site, UnderConstruction)).toBe(false); // reachable exterior slots still complete the site
+  });
+
+  it('returns no interior fallback when every exterior cell around a multi-cell hole is unavailable', () => {
+    const ring = [-1, 0, 1].flatMap((dy) =>
+      [-2, -1, 0, 1, 2].filter((dx) => Math.abs(dx) === 2 || Math.abs(dy) === 1).map((dx) => ({ dx, dy })),
+    );
+    const width = 24;
+    const height = 12;
+    const typeIds = new Array<number>(width * height).fill(GRASS);
+    for (let y = 4; y <= 8; y++) {
+      for (let x = 9; x <= 15; x++) {
+        if (x === 9 || x === 15 || y === 4 || y === 8) typeIds[y * width + x] = WATER;
+      }
+    }
+    const s = new Simulation({
+      seed: 1,
+      content: builderSiteContent(ring),
+      map: { resolution: 'half-cell', width, height, typeIds },
+    });
+    const site = stockedSiteAt(s, 12, 6);
+    const terrain = s.terrain;
+    if (terrain === undefined) throw new Error('mapped builder sim expected');
+    const blocked = dynamicBlockedCells(s.world, ctxOf(s), terrain);
+
+    expect(constructionWorkCells(s.world, ctxOf(s), terrain, site, blocked)).toEqual([]);
+  });
+
+  it('keeps the anchor-only perimeter for a footprint-less site in the map interior', () => {
+    const s = new Simulation({ seed: 1, content: builderSiteContent(null), map: grassMap(12, 6) });
+    const site = stockedSiteAt(s, 12, 6);
+    const terrain = s.terrain;
+    if (terrain === undefined) throw new Error('mapped builder sim expected');
+    const blocked = dynamicBlockedCells(s.world, ctxOf(s), terrain);
+    const work = constructionWorkCells(s.world, ctxOf(s), terrain, site, blocked).map((cell) =>
+      terrain.coordsOf(cell),
+    );
+
+    expect(work).toEqual([
+      { x: 12, y: 5 },
+      { x: 11, y: 6 },
+      { x: 13, y: 6 },
+      { x: 12, y: 7 },
+    ]);
   });
 
   it('a builder across a stream — in raw radius but unreachable — walks around instead of hammering from afar', () => {
