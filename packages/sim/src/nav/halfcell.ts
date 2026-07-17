@@ -61,3 +61,14 @@ export function positionXOfWorld(wx: Fixed, y: Fixed): Fixed {
 export function cellAnchorNode(cx: number, cy: number): HalfCellNode {
   return { hx: 2 * cx + (cy & 1), hy: 2 * cy };
 }
+
+/**
+ * The visual tile whose CENTRE is node `(hx, hy)` — {@link cellAnchorNode}'s inverse, undoing the row's
+ * stagger parity. Exact only for a centre node (even `hy`, `hx` carrying the row's parity); a node
+ * between centres has no tile of its own, so callers that may probe one clamp per their own rule. Not
+ * the same question as which cell OWNS a node (its 2×2 block — the fog layer's `cellOfNode`).
+ */
+export function cellOfAnchorNode(hx: number, hy: number): { readonly cx: number; readonly cy: number } {
+  const cy = hy / 2;
+  return { cx: (hx - (cy & 1)) / 2, cy };
+}

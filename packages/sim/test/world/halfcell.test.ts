@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cellAnchorNode, fx, nodeOfPosition, ONE, positionOfNode } from '../../src/index.js';
+import { cellAnchorNode, cellOfAnchorNode, fx, nodeOfPosition, ONE, positionOfNode } from '../../src/index.js';
 
 /**
  * The half-cell ↔ Position conversion seam (`nav/halfcell.ts`) — the one place a fractional
@@ -15,6 +15,23 @@ describe('cellAnchorNode', () => {
     expect(cellAnchorNode(0, 0)).toEqual({ hx: 0, hy: 0 });
     expect(cellAnchorNode(3, 2)).toEqual({ hx: 6, hy: 4 }); // even row: no shift
     expect(cellAnchorNode(3, 5)).toEqual({ hx: 7, hy: 10 }); // odd row: half-cell right
+  });
+});
+
+describe('cellOfAnchorNode', () => {
+  it('inverts cellAnchorNode for both row parities', () => {
+    expect(cellOfAnchorNode(0, 0)).toEqual({ cx: 0, cy: 0 });
+    expect(cellOfAnchorNode(6, 4)).toEqual({ cx: 3, cy: 2 });
+    expect(cellOfAnchorNode(7, 10)).toEqual({ cx: 3, cy: 5 }); // odd row: parity undone
+  });
+
+  it('round-trips every cell in a block spanning both parities', () => {
+    for (let cy = 0; cy < 8; cy++) {
+      for (let cx = 0; cx < 8; cx++) {
+        const { hx, hy } = cellAnchorNode(cx, cy);
+        expect(cellOfAnchorNode(hx, hy)).toEqual({ cx, cy });
+      }
+    }
   });
 });
 
