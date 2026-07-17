@@ -16,15 +16,17 @@ export function drawItem(kind: DrawItem['kind'], fields: Partial<DrawItem> = {})
   return { kind, ref: 1, x: 0, y: 0, depth: 0, ...fields };
 }
 
-/** The optional {@link DrawItem} fields a settler sprite-resolver spec varies; each is spread only when
- *  present, since the resolvers distinguish an absent field from a falsy one. */
+/** The optional {@link DrawItem} fields a settler sprite-resolver spec varies. Each takes `| undefined`
+ *  so a caller can forward its own optional argument through (`exactOptionalPropertyTypes` rejects an
+ *  explicit `undefined` against a bare `?:`); an absent or `undefined` field is left off the item, since
+ *  the resolvers distinguish an absent field from a falsy one. */
 export interface SettlerItemFields {
-  readonly facing?: number;
-  readonly atomicId?: number;
-  readonly elapsed?: number;
-  readonly carrying?: boolean;
-  readonly carryGood?: number;
-  readonly engaged?: boolean;
+  readonly facing?: number | undefined;
+  readonly atomicId?: number | undefined;
+  readonly elapsed?: number | undefined;
+  readonly carrying?: boolean | undefined;
+  readonly carryGood?: number | undefined;
+  readonly engaged?: boolean | undefined;
 }
 
 /** A settler {@link DrawItem} in the given state (omitted entirely for the stateless back-compat case)
