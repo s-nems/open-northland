@@ -98,7 +98,7 @@ export class ExternalFoodIndex {
 }
 
 /** A store's lowest stocked edible goodType (canonical order), or null when it holds none. */
-export function lowestStockedFood(world: World, ctx: SystemContext, store: Entity): number | null {
+function lowestStockedFood(world: World, ctx: SystemContext, store: Entity): number | null {
   for (const [goodType, amount] of stockpileEntries(world.get(store, Stockpile))) {
     if (amount > 0 && isFood(ctx, goodType)) return goodType;
   }

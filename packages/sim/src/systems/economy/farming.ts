@@ -36,7 +36,7 @@ export interface FarmingSpec {
  * or any of the plant/cultivate/harvest atomics missing (the loop needs all three actions; wheat, the
  * one farmed good, carries them all in the readable data). A pure content read (memoized index).
  */
-export function farmingSpecFor(ctx: SystemContext, goodType: number): FarmingSpec | null {
+function farmingSpecFor(ctx: SystemContext, goodType: number): FarmingSpec | null {
   const good = contentIndex(ctx.content).goods.get(goodType);
   if (good?.farming === undefined) return null;
   const { plant, cultivate, harvest } = good.atomics;

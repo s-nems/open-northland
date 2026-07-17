@@ -67,7 +67,7 @@ export function tribeStocks(world: World, tribe: number): Map<number, number> {
  * (`GoodType.productionInputs`), and which building types make it (joined from each building type's
  * `produces`/`recipe.outputs`).
  */
-export interface GoodsGraphNode {
+interface GoodsGraphNode {
   /**
    * The good's tier in the graph: `'raw'` = harvested from the map (`classification.producedOnMap`, e.g.
    * wood/stone/wheat — no recipe), `'produced'` = made in a workplace (`classification.producedInHouse`,

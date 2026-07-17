@@ -28,7 +28,7 @@ export function builtHomeType(world: World, ctx: SystemContext, house: Entity): 
 }
 
 /** The settlers living in `house` (their {@link Residence} points at it), ascending entity id. */
-export function residentsOf(world: World, house: Entity): Entity[] {
+function residentsOf(world: World, house: Entity): Entity[] {
   const out: Entity[] = [];
   for (const e of canonicalById(world.query(Residence))) {
     if (world.get(e, Residence).home === house) out.push(e);

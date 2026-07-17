@@ -52,7 +52,7 @@ export const ACCEL_TICKS = 3;
  * halves per tick) that begins about a sixth of a cell out at the default gait — a soft touch-down
  * of a couple of ticks, not a long glide (feel-tuned alongside {@link ACCEL_TICKS}).
  */
-export const BRAKE_HORIZON_TICKS = 2;
+const BRAKE_HORIZON_TICKS = 2;
 
 /**
  * The brake floor: the ease-out never drops below `gait / ARRIVAL_SPEED_DIV`, so the arrival snap

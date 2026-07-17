@@ -41,7 +41,6 @@ export {
   createResourceNode,
   type ResourceNodeSpec,
   resourceFootprintForGood,
-  resourceFootprintFromLandscapeGfx,
   stampResourceFootprint,
   unstampResourceFootprint,
 } from './resources.js';

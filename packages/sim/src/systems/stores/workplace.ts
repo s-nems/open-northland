@@ -65,8 +65,8 @@ const EMPTY_PRODUCES: readonly number[] = [];
  * if the building has no Building/type or declares no workers (an unstaffed-by-design building — a
  * passive store, or any type without worker slots).
  *
- * Cross-system: the production worker-presence gate ({@link workerPresentAt}) uses it to recognise a
- * settler that may operate the workplace, and the AI planner uses it to recognise a settler standing
+ * Cross-system: the production worker-presence gate ({@link presentOperatorCount}) uses it to recognise
+ * a settler that may operate the workplace, and the AI planner uses it to recognise a settler standing
  * on a workplace it staffs (so the operator isn't re-planned away).
  */
 export function buildingWorkerJobs(world: World, ctx: SystemContext, building: Entity): ReadonlySet<number> {
@@ -237,15 +237,6 @@ export function presentOperators(
 }
 
 /**
- * Whether a workplace is staffed *right now* — at least one operator on station. This is the
- * production worker-presence model: a workplace only produces while its worker is present, like the
- * original (a sawmill with no operator makes no planks). The boolean face of
- * {@link presentOperatorCount}; see it for the operator/carrier split and the door-tile rule.
- */
-export function workerPresentAt(world: World, ctx: SystemContext, building: Entity): boolean {
-  return presentOperatorCount(world, ctx, building) > 0;
-}
-
 /**
  * Whether a building is a temple — the satisfier site for the piety need (where a settler runs the `pray`
  * atomic). The original's "work temple" (`logichousetype` `logictype 37`, the `HOUSE_TYPE_WORK_TEMPLE`

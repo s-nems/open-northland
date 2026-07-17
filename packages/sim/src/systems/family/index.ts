@@ -3,7 +3,7 @@ import { driveChildOrders } from './children.js';
 import { driveWeddings } from './weddings.js';
 
 export { findPartnerFor, isAdultSettler, isOnMission, mayMarry } from './eligibility.js';
-export { builtHomeType, familiesOf, familyOf, isMinor, residentsOf, storedFoodUnits } from './households.js';
+export { builtHomeType, familiesOf, familyOf, isMinor, storedFoodUnits } from './households.js';
 export { KISS_ATOMIC_ID, KISSED_ATOMIC_ID, startWedding } from './weddings.js';
 
 /**

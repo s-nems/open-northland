@@ -65,7 +65,7 @@ export function homeNextTier(type: BuildingType, ctx: SystemContext): BuildingTy
  * Counts every settler regardless of job (idle settlers are still mouths to house).
  *
  * Determinism: a pure count over `query(Settler)` (addition commutes — a count is order-independent,
- * so the store-order traversal is fine, like {@link workerPresentAt}'s any-match); no RNG/wall-clock.
+ * so the store-order traversal is fine, like {@link presentOperatorCount}'s any-match); no RNG/wall-clock.
  */
 export function tribePopulation(world: World, tribe: number): number {
   let count = 0;

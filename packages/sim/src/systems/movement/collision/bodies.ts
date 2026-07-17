@@ -37,7 +37,7 @@ import { isFighterJob } from '../../readviews/index.js';
  * brake floor) and is what keeps a busy street reading as individuals. Sized to cover a building's footprint
  * plus its door approaches (~4 columns). A feel-tuning constant with no original counterpart.
  */
-export const CALM_ZONE_RADIUS_NODES = 8;
+const CALM_ZONE_RADIUS_NODES = 8;
 
 /**
  * Whether `e` takes part in firm body collision: an owned fighter (see the module header — civilians and

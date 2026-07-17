@@ -1,14 +1,14 @@
 import type { Fixed } from '../../../../core/fixed.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 
-export interface MoverSnapshot {
+interface MoverSnapshot {
   x: Fixed;
   y: Fixed;
   hx: Fixed;
   hy: Fixed;
 }
 
-export interface SeparationScratch {
+interface SeparationScratch {
   readonly movers: Entity[];
   readonly posts: Entity[];
   readonly firmMovers: Set<Entity>;

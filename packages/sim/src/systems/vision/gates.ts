@@ -32,7 +32,7 @@ export function effectiveFogState(
  * everything is seen, so every pre-fog behaviour is byte-identical. In REVEAL mode VISIBLE is sticky
  * (explored ground stays fully visible — the original's behaviour), so the gate follows automatically.
  */
-export function playerSeesNode(fog: FogState | undefined, player: number, hx: number, hy: number): boolean {
+function playerSeesNode(fog: FogState | undefined, player: number, hx: number, hy: number): boolean {
   if (fog === undefined || fog.activeMode === FOG_MODE.OFF) return true;
   const { cx, cy } = cellOfNode(hx, hy);
   return fog.stateAt(player, cx, cy) === FOG_STATE.VISIBLE;

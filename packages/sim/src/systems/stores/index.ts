@@ -30,6 +30,5 @@ export {
   presentOperatorCount,
   presentOperators,
   recipesByProductOf,
-  workerPresentAt,
   workplaceStoredGoods,
 } from './workplace.js';

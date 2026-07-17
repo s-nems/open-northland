@@ -42,15 +42,10 @@ export interface ScenarioOptions {
   map?: TerrainMap;
 }
 
-export class Scenario {
+class Scenario {
   private readonly sim: Simulation;
 
-  /**
-   * @param content the validated content set.
-   * @param opts a numeric seed (back-compat) OR a {@link ScenarioOptions} object carrying `seed`/`map`.
-   */
-  constructor(content: ContentSet, opts: number | ScenarioOptions = {}) {
-    const { seed = 1, map } = typeof opts === 'number' ? { seed: opts, map: undefined } : opts;
+  constructor(content: ContentSet, { seed = 1, map }: ScenarioOptions = {}) {
     // Only attach `map` when present: under exactOptionalPropertyTypes an optional property must be
     // omitted rather than set to undefined (the Simulation builds the terrain graph iff `map` is set).
     this.sim = new Simulation({ seed, content, ...(map !== undefined ? { map } : {}) });
@@ -108,6 +103,6 @@ export class Scenario {
   }
 }
 
-export function scenario(content: ContentSet, opts: number | ScenarioOptions = {}): Scenario {
+export function scenario(content: ContentSet, opts: ScenarioOptions = {}): Scenario {
   return new Scenario(content, opts);
 }

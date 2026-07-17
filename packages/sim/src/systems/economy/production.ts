@@ -207,7 +207,7 @@ function beginCycle(world: World, building: Entity, recipe: Recipe, goodType: nu
  * Whether a workplace may begin another cycle of `recipe`'s product now — the start gate the
  * ProductionSystem applies (see {@link startableCycleCount} for the checks; this is its `> 0` view).
  */
-export function canStartCycle(world: World, ctx: SystemContext, building: Entity, recipe: Recipe): boolean {
+function canStartCycle(world: World, ctx: SystemContext, building: Entity, recipe: Recipe): boolean {
   return startableCycleCount(world, ctx, building, recipe) > 0;
 }
 
