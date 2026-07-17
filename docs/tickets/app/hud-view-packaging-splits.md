@@ -2,16 +2,24 @@
 
 **Area:** app · **Origin:** /ticket-scout structure sweep, 2026-07-14 · **Priority:** P3
 
-The remaining oversized `npm run scan:structure` hit in `packages/app` that mixes concerns and has
+An oversized `npm run scan:structure` hit in `packages/app` that mixes concerns and has
 a clean seam (a verbatim-move packaging split, no rewrite):
 
 ## Scope
 
-- `view/unit-controls/settler-actions.ts` (~355 lines) — `mountSettlerActions` mixes the pure
-  selection-centroid projection (`selectionCentre`), the profession-picker window lifecycle, and
-  the pointer/keyboard input controller. Promote to a `view/unit-controls/settler-actions/` feature
-  folder whose `index.ts` re-exports `mountSettlerActions` (single consumer: the sibling
-  `unit-controls/index.ts`); `selectionCentre` becomes separately unit-testable.
+- `view/unit-controls/action-ring/settler-actions.ts` (~444 lines) — `mountSettlerActions` mixes the
+  pure selection-centroid projection (`selectionCentre`), the profession-picker window lifecycle, and
+  the pointer/keyboard input controller. Split it within the existing `action-ring/` package (which
+  already holds `action-ring-visuals.ts` and `profession-picker.ts` behind an `index.ts` barrel);
+  `selectionCentre` becomes separately unit-testable.
+
+Path/size corrected 2026-07-17 (refactor/app-cleanup grouped the action ring into `action-ring/`; the
+file was ~355 lines when this was filed). Its "the remaining oversized hit" claim was also wrong then
+and is wrong now — `scan:structure` currently lists `details-panel/panel.ts` (557),
+`details-panel/model/settler.ts` (415), `details-panel/chrome.ts` (413), `view/camera.ts` (426) and
+`content/ir.ts` (418) alongside it, each tracked by its own ticket. `content/gui-atlas-map.ts` (1486)
+tops the list but is deliberately whole and is NOT a split target: its load-bearing invariant is
+array index === atlas frame index === original gfx id, which any split by role would destroy.
 
 The sibling `hud/details-panel/sections/building.ts` split (the other half of the original ticket)
 is done — the six section renderers now live under `sections/building/` with an `index.ts` barrel.

@@ -2,7 +2,7 @@
 
 **Area:** app · **Origin:** app refactor-cleanup pass, 2026-07-14 · **Priority:** P3
 
-`packages/app/src/content/ir.ts` (~371 lines) bundles three distinct concerns that its sibling
+`packages/app/src/content/ir.ts` (~418 lines) bundles three distinct concerns that its sibling
 content packages (`building-gfx/`, `resource-gfx/`, `settler-gfx/`, `sprite-sheet/`) already keep as
 feature folders behind an `index.ts` barrel:
 
@@ -10,7 +10,8 @@ feature folders behind an `index.ts` barrel:
    `LandscapeGfxRow`, `GatheringPipelineRow`, …) and the `servedAtlasStem` helper.
 2. **Atlas / texture byte-loading** — `loadLayer`, `loadBuildTimeSheet`, `loadPlayerLut`,
    `loadGalleryLayers`, `MissingAtlasError`.
-3. **The memoized IR document fetch + per-lane readers** — `loadIr`, `buildingFootprints`,
+3. **The memoized IR document fetch + per-lane readers** — `loadIrRaw` (the one memoized raw
+   `/ir.json` fetch every domain shares, incl. `real-content.ts`), `loadIr`, `buildingFootprints`,
    `sequencesFor`, `gfxAtomicFrameLists`, `loadBodyClips`.
 
 Deferred from the refactor-cleanup pass (kept out to bound that diff) — a standalone packaging move
