@@ -41,8 +41,9 @@ export const HOUSE_ATLAS = `ls_houses_viking.${HOUSE_PALETTE}`;
 export const HOUSE_BOB = 11;
 /**
  * Render scale for the building kind — native (1), like every other bob: the tile pitch (`iso.ts`) is
- * calibrated to the art, so the authored bob size is already correct against the terrain. Kept as a named
- * knob a human may nudge (source basis).
+ * calibrated to the art, so the authored bob size is already correct against the terrain. Decoded bob sizes
+ * differ a lot (well 63×88, home 299×340), so the uniform scale preserves their real relative proportions.
+ * Kept as a named knob a human may nudge (source basis).
  */
 export const BUILDING_SCALE = 1;
 

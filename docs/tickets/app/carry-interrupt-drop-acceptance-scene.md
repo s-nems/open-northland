@@ -32,7 +32,7 @@ headless test observe the same deterministic run. This was deferred to keep the 
      action in the browser; the headless `checks` assert the drop + the ground heap.)
 - Staging a `Carrying` load pre-tick-0 needs a direct entity handle (the `spawnSettler` command resolves
   during `step`, so `build(sim)` can't add `Carrying` to a command-spawned unit). Use the
-  `spawnIdleSettler`-style direct `systems.createSettler` path (see `game/sandbox/place.ts`) and add
+  `spawnIdleSettler`-style direct `systems.createSettler` path (see `game/sandbox/place/`) and add
   `Carrying` to the returned entity.
 - Headless `checks`: after `runTicks`, the carrier no longer carries, a loose ground heap of the good
   exists (goods conserved — `yardGood`/`countGroundPiles` in `scenes/sandbox-queries.ts`), and (for the

@@ -151,16 +151,21 @@ export function settlerTribeOf(e: SnapshotEntity): number | undefined {
 export function hasEligiblePartner(snapshot: WorldSnapshot, seeker: SnapshotEntity): boolean {
   const tribe = settlerTribeOf(seeker);
   const seekerFemale = isFemale(seeker);
-  // Index once: the scan resolves a spouse/child per candidate, and the worst case (no partner) visits
-  // every settler — a linear lookup each would make this per-frame check quadratic in the population.
-  const byId = new Map(snapshot.entities.map((e) => [e.id, e]));
+  // Built on the first candidate that actually carries a `Marriage`: only those resolve a spouse/child, so
+  // the common case (an unmarried first candidate) allocates nothing, while the worst case (no partner
+  // anywhere) still visits every settler with O(1) lookups instead of a quadratic scan.
+  let byId: Map<number, SnapshotEntity> | null = null;
+  const lookup = (id: number): SnapshotEntity | undefined => {
+    byId ??= new Map(snapshot.entities.map((e) => [e.id, e]));
+    return byId.get(id);
+  };
   return snapshot.entities.some(
     (e) =>
       e.id !== seeker.id &&
       isSettler(e) &&
       isAdult(e) &&
       isFemale(e) !== seekerFemale &&
-      !boundByMarriage(e, (id) => byId.get(id)) &&
+      !boundByMarriage(e, lookup) &&
       !isMarrying(e) &&
       positionOf(e) !== undefined &&
       settlerTribeOf(e) === tribe &&

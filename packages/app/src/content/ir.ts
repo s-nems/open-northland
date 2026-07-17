@@ -292,8 +292,8 @@ let contentIrPromise: Promise<unknown> | null = null;
  * Fetch + parse the served `content/ir.json` document once per page — memoized, because it is multi-MB
  * and both views of it (the graphics {@link loadIr} and the sim-side
  * {@link import('./real-content.js').loadRealContent}) plus the terrain, map-object and audio domains all
- * read their lanes from the same bytes. Returns `null` when absent or unreadable. Browser-only: the memo
- * lives for the page's lifetime (tests never call this).
+ * read their lanes from the same bytes. Returns `null` when absent or unreadable. The memo lives for the
+ * page's lifetime.
  */
 export function loadIrRaw(): Promise<unknown> {
   contentIrPromise ??= fetchJsonOrNull<unknown>('/ir.json').then((raw) => {

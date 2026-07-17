@@ -1,5 +1,5 @@
-import { JOB_BABY_FEMALE, JOB_CHILD_FEMALE, JOB_WOMAN } from '../catalog/jobs.js';
-import { FALLBACK_POOL, NAME_POOLS } from './character-names/pools.js';
+import { JOB_BABY_FEMALE, JOB_CHILD_FEMALE, JOB_WOMAN } from '../../catalog/jobs.js';
+import { FALLBACK_POOL, NAME_POOLS } from './pools.js';
 
 /**
  * Per-settler personal names, shown in the details panel in place of the generic "Ogólne" section title.
