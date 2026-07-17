@@ -1,4 +1,4 @@
-import { Carrying, Fleeing, Owner, PathRequest, Settler } from '../../components/index.js';
+import { Carrying, Fleeing, Owner, PathRequest, Settler, type SettlerIdentity } from '../../components/index.js';
 import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
@@ -73,7 +73,7 @@ export function fleeDrive(
   index: NodeBuckets,
   presence: HostilePresence,
   e: Entity,
-  attacker: { tribe: number; jobType: number | null },
+  attacker: SettlerIdentity,
 ): void {
   // A collapsing need overrides the flee whether or not a threat is in sight, and is checked first so it wins
   // over both the threat and the cool-down. Yield only on the transition (Fleeing still set): shed the marker +

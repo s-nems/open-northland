@@ -1,4 +1,5 @@
 import type { AtomicAnimation, ContentSet } from '@open-northland/data';
+import type { SettlerIdentity } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 
 // Pure, terminal read views for atomic animations — the canonical name→record resolver over
@@ -74,7 +75,7 @@ const DEFAULT_ATOMIC_DURATION = 4;
  */
 export function atomicDuration(
   content: ContentSet,
-  settler: { tribe: number; jobType: number | null },
+  settler: SettlerIdentity,
   atomicId: number,
 ): number {
   return atomicDurationForName(content, atomicAnimationName(content, settler, atomicId));
@@ -102,7 +103,7 @@ export function atomicDurationForName(content: ContentSet, animation: string | u
  */
 export function atomicAnimationName(
   content: ContentSet,
-  settler: { tribe: number; jobType: number | null },
+  settler: SettlerIdentity,
   atomicId: number,
 ): string | undefined {
   if (settler.jobType === null) return undefined;

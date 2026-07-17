@@ -1,5 +1,5 @@
 import type { ContentSet } from '@open-northland/data';
-import { FOG_MODE, fogMode, needsEnabled } from './components/index.js';
+import { FOG_MODE, type FogMode, fogMode, needsEnabled } from './components/index.js';
 import { CommandQueue } from './core/command-queue.js';
 import type { Command } from './core/commands/index.js';
 import { EventBuffer } from './core/events.js';
@@ -38,7 +38,7 @@ export interface SimOptions {
  */
 export interface FogView {
   /** The active {@link import('./components/rules.js').FOG_MODE} (never OFF — OFF yields null). */
-  readonly mode: number;
+  readonly mode: FogMode;
   readonly cellsWide: number;
   readonly cellsHigh: number;
   /** Bumps only when the masks rebuilt — the render layers' re-composite key. */
@@ -266,7 +266,7 @@ export class Simulation {
    * The active fog-of-war mode (the `FogRules` rule the `setFogMode` command sets; absent =
    * `FOG_MODE.OFF`). The app's admin fog switcher labels itself from this.
    */
-  fogMode(): number {
+  fogMode(): FogMode {
     return fogMode(this.world);
   }
 

@@ -4,6 +4,17 @@ import { defineComponent, type Entity } from '../ecs/world.js';
 import type { NodeId } from '../nav/terrain/index.js';
 
 /**
+ * The `(tribe, job)` pair that keys a settler's content lookups — its weapon and armor class, its
+ * allowed atomics, its animation set. A structural subset of {@link Settler}, so a `world.get(e,
+ * Settler)` value assigns straight to it; named because it is what a dozen cross-system signatures
+ * actually take, and an unnamed shape gets re-typed (and quietly widened) at each new one.
+ */
+export interface SettlerIdentity {
+  readonly tribe: number;
+  readonly jobType: number | null;
+}
+
+/**
  * A settler: an autonomous individual. In Cultures, settlers don't "do jobs" as monolithic logic —
  * they execute ATOMIC actions (see CurrentAtomic) chosen by a planner. `jobType` constrains which
  * atomics are allowed (jobtypes.allowatomic); `experience` keyed by specialization gates progression.

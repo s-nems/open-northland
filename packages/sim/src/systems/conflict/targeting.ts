@@ -1,4 +1,4 @@
-import { Anger, Health, Owner, Position, Settler } from '../../components/index.js';
+import { Anger, Health, Owner, Position, Settler, type SettlerIdentity } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { isAggressiveAnimal, isAnimalTribe, mayAttack, mayHunt } from '../readviews/index.js';
@@ -25,7 +25,7 @@ export function isValidTarget(
   world: World,
   ctx: SystemContext,
   self: Entity,
-  attacker: { tribe: number; jobType: number | null },
+  attacker: SettlerIdentity,
   t: Entity,
 ): boolean {
   if (t === self) return false;
