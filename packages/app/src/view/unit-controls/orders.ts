@@ -24,7 +24,8 @@ export interface UnitOrderDeps {
   readonly toWorld: (clientX: number, clientY: number) => { x: number; y: number };
   readonly enqueue: (command: Command) => void;
   readonly selectOwnSettler: (id: number) => void;
-  readonly openActions: () => void;
+  /** Bring up the settler action menu, pinned on the click's client point (the original stores the cursor). */
+  readonly openActions: (atClient: { readonly x: number; readonly y: number }) => void;
 }
 
 export interface UnitOrderController {
@@ -75,7 +76,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     const own = pickTopAt(ownSettlers, world.x, world.y);
     if (own !== null) {
       deps.selectOwnSettler(own);
-      deps.openActions();
+      deps.openActions({ x: event.clientX, y: event.clientY });
       return;
     }
     if (deps.selected.size === 0) return;

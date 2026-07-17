@@ -1,4 +1,4 @@
-import { type Camera, tileToScreen } from '@open-northland/render';
+import { type Camera, cameraScreenX, cameraScreenY, tileToScreen } from '@open-northland/render';
 import { ONE, systems, type WorldSnapshot } from '@open-northland/sim';
 import { type Application, Container, Graphics } from 'pixi.js';
 import type { PickerEntry } from '../../catalog/professions.js';
@@ -58,9 +58,8 @@ import { createProfessionPicker } from './profession-picker.js';
  * remaining buttons are inert placeholders. Three modes: `closed` → `menu` (the default arms) → `jobs`
  * (the list window over the hidden ring).
  *
- * It is toggled with Space (the info card stays always-on) and pinned to the world point the selected
- * settlers' centroid occupied when it opened — it holds that spot while they walk on, so the buttons stay
- * clickable at high game speeds, and only the camera moves it afterwards. The order buttons are drawn
+ * It is brought up by a right-click on the settler or by Space (the info card stays always-on), and holds
+ * the screen spot it opened on until it closes — see {@link anchor}. The order buttons are drawn
  * with the `'round'` colour key, so each reads as a round disc (no square backdrop). When the decoded GUI art
  * is absent (a checkout that hasn't run the pipeline) it degrades to flat `Graphics` discs at the exact same
  * geometry, staying visible and fully clickable — the tooltip (a DOM label) carries each button's meaning.
@@ -114,16 +113,19 @@ export interface SettlerActionsOptions {
 
 export interface SettlerActions {
   /**
-   * Per-frame: project the menu's pinned world anchor through the camera (and show/hide it), capturing that
-   * anchor from the selection's centroid on the first frame of an open session. Reads the settlers' positions
-   * from the frame's already-built snapshot; only runs a scan while the menu is open and a settler is
-   * selected, so a closed menu costs nothing.
+   * Per-frame: lay the menu out on its pinned anchor and show/hide it, rebuilding which buttons the
+   * selection's live state offers. Reads the settlers' positions from the frame's already-built snapshot;
+   * only runs a scan while the menu is open and a settler is selected, so a closed menu costs nothing.
    */
   update(camera: Camera, snapshot: WorldSnapshot, selection: ReadonlySet<number>): void;
   /** Toggle/step the menu (Space): closed→menu, jobs→menu (back out of the picker), menu→closed. */
   toggle(): void;
-  /** Open the default action menu (e.g. a right-click on the settler) — idempotent to the `menu` face. */
-  open(): void;
+  /**
+   * Open the default action menu — idempotent to the `menu` face. `atClient` is the client (CSS) point to
+   * pin the menu on: the right-click path passes the cursor (what the original stores at bring-up); omit it
+   * and the menu pins on the selection's centroid instead (the Space path, which has no cursor).
+   */
+  open(atClient?: { readonly x: number; readonly y: number }): void;
   isOpen(): boolean;
   /** Force-close (e.g. on a selection clear). */
   close(): void;
@@ -141,6 +143,10 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
   // The ring's effective scale: the shared uiscale, shrunk by the ring's own factor (see actionRingScale) —
   // the same value feeds the icon bake and layoutActionRing, so the drawn icon always fills its hit-rect.
   const scale = actionRingScale(opts.uiscale);
+
+  /** Client (CSS) point → canvas px — the space the layout and every hit-test work in. */
+  const toCanvas = (clientX: number, clientY: number): { x: number; y: number } =>
+    clientToScreen(canvas, app.renderer.resolution, clientX, clientY);
 
   const art = await loadGuiArt();
 
@@ -176,13 +182,13 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
   /** The settler ids a click's command applies to (the selected settlers, filtered in `update`). */
   let actionTargets: number[] = [];
   /**
-   * Where the menu is pinned: the selection's centroid in WORLD px, captured on the frame the menu opens
-   * and held for the rest of the open session (null = not anchored yet / closed). The buttons keep their
-   * world spot as the settler walks away, so a click target doesn't slide out from under the cursor at
-   * higher game speeds; the camera transform still runs every frame, so panning/zooming carries the menu
-   * with the ground it was opened over.
+   * Where the menu is pinned, in SCREEN (canvas) px — captured once when it opens and held for the rest of
+   * the open session (null = not anchored yet / closed), so neither the settler walking on nor a camera pan
+   * moves it. Source basis: the original stores the cursor at bring-up and rebuilds the menu box at those
+   * desktop coords, never reprojecting (`Selection_ActionButtons_BringUp` → `_selectionActionButtonsMouseX/Y`,
+   * consumed by the `SRectangle(x-0x74, y-0x74, 0xE8, 0xE8)` + `PlaceInside(desktop)` layout).
    */
-  let anchor: { x: number; y: number } | null = null;
+  let anchor: { readonly x: number; readonly y: number } | null = null;
 
   // --- The "Zmiana zawodu" profession picker window: a parchment DOM panel over the (hidden) ring ------
   // The serif UI face (shared with the details panel) — falls back to a serif stack until/if it resolves.
@@ -221,9 +227,20 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
   const closeMenu = (): void => {
     picker.hide();
     mode = 'closed';
-    anchor = null; // the next open re-pins on the selection's centroid at that moment
+    anchor = null; // "no anchor ⟺ no open session" — the one place `closed` is entered
     root.visible = false;
     hideTransient();
+  };
+
+  /**
+   * Open (or re-open) the default arms, pinned on `atClient` when the caller has a cursor to give — a
+   * re-open always re-pins, so right-clicking a settler the menu has drifted away from brings it back.
+   * Without a cursor the anchor stays null and {@link update} pins the centroid on the next frame.
+   */
+  const openMenu = (atClient?: { readonly x: number; readonly y: number }): void => {
+    closeJobWindow(); // a fresh open shows the default arms, never a stale list
+    mode = 'menu';
+    anchor = atClient === undefined ? null : toCanvas(atClient.x, atClient.y);
   };
 
   /** The selected settlers' centroid in WORLD px, or null when none is selected. */
@@ -313,13 +330,15 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
       visuals.hideAll();
       return;
     }
-    // Pin on the first frame of the open session; every later frame reuses that world point.
-    anchor ??= { x: centre.x, y: centre.y };
-    const cameraScale = camera.scale ?? 1;
+    // Space opens with no cursor to pin to, so the selection's centroid stands in — projected here, on the
+    // first frame of the session, and then frozen like any other anchor. (The right-click path pins the
+    // cursor itself, as the original does; Space is a project-added binding, so the centroid is a named
+    // approximation of an anchor the original never had to choose.)
+    anchor ??= { x: cameraScreenX(camera, centre.x), y: cameraScreenY(camera, centre.y) };
     layout = layoutActionRing(
       menuForSettler(menuStateFor(snapshot, centre.ids, centre.jobType)),
-      anchor.x * cameraScale + camera.offsetX,
-      anchor.y * cameraScale + camera.offsetY,
+      anchor.x,
+      anchor.y,
       scale,
       app.screen.width,
       app.screen.height,
@@ -329,9 +348,6 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
   };
 
   // --- Input (own listeners, mirroring the tool panel; registered before unit-controls' so a menu click wins) ---
-  const toCanvas = (clientX: number, clientY: number): { x: number; y: number } =>
-    clientToScreen(canvas, app.renderer.resolution, clientX, clientY);
-
   const claimsPointer = (clientX: number, clientY: number): boolean => {
     if (mode === 'closed' || !root.visible) return false;
     const { x, y } = toCanvas(clientX, clientY);
@@ -423,22 +439,11 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     update,
     toggle: (): void => {
       // Space steps back out: jobs→menu (leave the list), else closed→menu (open) / menu→closed.
-      if (mode === 'jobs') {
-        closeJobWindow();
-        return;
-      }
-      if (mode === 'menu') {
-        closeMenu();
-        return;
-      }
-      mode = 'menu'; // update() pins + reveals it next frame off the current selection's centroid.
-      anchor = null;
+      if (mode === 'jobs') closeJobWindow();
+      else if (mode === 'menu') closeMenu();
+      else openMenu(); // no cursor on the Space path: update() pins the centroid next frame
     },
-    open: (): void => {
-      closeJobWindow(); // a fresh open shows the default menu, never a stale list
-      mode = 'menu'; // update() reveals it next frame off the current selection's centroid.
-      anchor = null; // re-invoking on an already-open menu brings it back to the settler
-    },
+    open: openMenu,
     isOpen: (): boolean => mode !== 'closed',
     close: closeMenu,
     claimsPointer,
