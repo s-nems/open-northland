@@ -4,6 +4,7 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { standingFighterNodes } from '../movement/collision/index.js';
 import { clearNavState, entityNode, isTravelling, manhattan, redirectRoute } from '../spatial.js';
+import type { CombatantStance } from './engagement.js';
 
 // The walk-into-melee half of combat: advance an owned combatant on an out-of-reach enemy, deal each chaser a
 // distinct contact cell (the melee-slot rule that forms ranks, not a pile), respect the DEFEND leash, and drop
@@ -33,7 +34,7 @@ export const REPATH_CADENCE = 8;
  *  behaviour of the DEFEND mode. */
 export function returnToAnchor(world: World, e: Entity, here: NodeId, anchorCell: NodeId): void {
   world.remove(e, Engagement);
-  clearChase(world, e);
+  clearNavState(world, e);
   if (here !== anchorCell) world.add(e, MoveGoal, { cell: anchorCell });
 }
 
@@ -55,7 +56,7 @@ export function chase(
   here: NodeId,
   target: Entity,
   weapon: { minRange: number; maxRange: number },
-  ordered: boolean,
+  stance: CombatantStance,
   defend: { anchorCell: NodeId; leash: number } | null,
 ): void {
   const engagement = world.add(e, Engagement, {
@@ -65,8 +66,8 @@ export function chase(
   // A failed chase route (unreachable target): drop the dead nav state so we re-issue below. For an explicit
   // attack order an unreachable target ends the order.
   if (world.tryGet(e, PathRequest)?.failed) {
-    clearChase(world, e);
-    if (ordered) {
+    clearNavState(world, e);
+    if (stance.ordered) {
       world.remove(e, AttackOrder);
       world.remove(e, Engagement);
       return;
@@ -92,7 +93,7 @@ export function chase(
     // chaser this tick): stand fast as a second rank — a stationary body, not a walker grinding into the first
     // rank's backs — and re-ask at the chase cadence; the slot check admits it the moment a front-liner falls
     // or steps off. With the id-order slot deal above, this turns a converging mass into ranks, not a pile.
-    clearChase(world, e);
+    clearNavState(world, e);
     engagement.repathAt = ctx.tick + REPATH_CADENCE;
     return;
   }
@@ -171,12 +172,7 @@ function approachCell(
 export function disengage(world: World, e: Entity): void {
   if (world.has(e, Engagement)) {
     world.remove(e, Engagement);
-    clearChase(world, e);
+    clearNavState(world, e);
   }
   world.remove(e, AttackOrder);
-}
-
-/** Remove the nav state a chase drove (goal + in-flight route) so combat can re-aim or hand the unit back. */
-export function clearChase(world: World, e: Entity): void {
-  clearNavState(world, e);
 }

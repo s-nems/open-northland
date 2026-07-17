@@ -22,9 +22,9 @@ import {
   MILITARY_MODE,
   weaponDamageVsMaterial,
 } from '../readviews/index.js';
-import { canonicalById, entityNode, isTravelling, NodeBuckets } from '../spatial.js';
-import { chase, clearChase, disengage, type MeleeSlots, returnToAnchor } from './chase.js';
-import { engageSpec, resolveTarget, stanceMode } from './engagement.js';
+import { canonicalById, clearNavState, entityNode, isTravelling, NodeBuckets } from '../spatial.js';
+import { chase, disengage, type MeleeSlots, returnToAnchor } from './chase.js';
+import { type CombatantStance, engageSpec, resolveTarget, stanceMode } from './engagement.js';
 import { fleeDrive } from './flee.js';
 import { HostilePresence } from './presence.js';
 import { hostileAnimalNow, isValidTarget } from './targeting.js';
@@ -202,16 +202,18 @@ function engageCombatant(
     ordered = false;
   }
   // The unit's military stance drives its auto-behavior. Unowned combatants carry no Stance — modelled as
-  // `null`, they keep the legacy content-relation behaviour (swing an in-reach enemy, no advance/flee).
-  const stance = owned ? stanceMode(world, e, attacker.jobType) : null;
+  // a `null` mode, they keep the legacy content-relation behaviour (swing an in-reach enemy, no advance/flee).
+  // Derived once here and handed whole to engageSpec/chase, which only ever read the three together.
+  const mode = owned ? stanceMode(world, e, attacker.jobType) : null;
+  const stance: CombatantStance = { owned, ordered, mode };
 
   // FLEE — run from the nearest threat. Runs even while travelling (re-evaluated each tick to track a moving
   // threat and wind the cool-down down). An explicit attack order overrides the flee mode. A unit that has
   // stopped fleeing (stance changed, or an order took over) sheds the flee state + its run route.
-  const willFlee = stance === MILITARY_MODE.FLEE && !ordered;
+  const willFlee = mode === MILITARY_MODE.FLEE && !ordered;
   if (world.has(e, Fleeing) && !willFlee) {
     world.remove(e, Fleeing);
-    clearChase(world, e);
+    clearNavState(world, e);
   }
   if (willFlee) {
     // A fleeing unit is not attack-engaged: shed any Engagement left from a prior ATTACK/DEFEND chase (e.g.
@@ -227,7 +229,7 @@ function engageCombatant(
   // enemy; only an explicit attack order fights. A hunter is exempt: its catchable-prey predation is an economic
   // drive independent of the military mode, so it falls through to the engage path (with a predation-only target
   // filter, {@link engageSpec}).
-  if (stance === MILITARY_MODE.IGNORE && !ordered && attacker.jobType !== HUNTER_JOB) {
+  if (mode === MILITARY_MODE.IGNORE && !ordered && attacker.jobType !== HUNTER_JOB) {
     disengage(world, e);
     return;
   }
@@ -256,7 +258,7 @@ function engageCombatant(
   }
 
   const here = entityNode(world, terrain, e);
-  const spec = engageSpec(world, ctx, terrain, e, owned, ordered, stance, attacker, weapon);
+  const spec = engageSpec(world, ctx, terrain, e, stance, attacker, weapon);
   const found = resolveTarget(world, ctx, terrain, index, presence, e, here, attacker, spec);
   if (found === null) {
     // No target: a DEFEND unit walks back to its anchor (holding its post); everyone else disengages back
@@ -273,8 +275,8 @@ function engageCombatant(
     // half an edge short of a centre); starting the swing there froze it off any node centre and the wind-up
     // read as a glide/teleport. Gated, the walker finishes its (braked) last leg onto the slot's centre and
     // swings from a standstill; an unowned unit never travels into combat, so its swing-in-place behaviour is
-    // untouched. The clearChase is then just stale-goal hygiene for the owned arrival.
-    clearChase(world, e);
+    // untouched. Clearing the nav state is then just stale-goal hygiene for the owned arrival.
+    clearNavState(world, e);
     // The Engagement marker (economy-skip + chase throttle) is owned-only — an unowned combatant swings in place
     // with no advance drive, so stamping it there would give it a spurious economy-skip and perturb its hash (it
     // must stay byte-identical to the pre-engagement behaviour). During the swing the unit is mid-`CurrentAtomic`
@@ -294,5 +296,5 @@ function engageCombatant(
     disengage(world, e);
     return;
   }
-  chase(world, ctx, terrain, slots, e, here, target, weapon, ordered, spec.defend);
+  chase(world, ctx, terrain, slots, e, here, target, weapon, stance, spec.defend);
 }

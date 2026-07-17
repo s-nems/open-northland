@@ -51,11 +51,6 @@ const FLEE_REPATH_CADENCE = 6;
  */
 const NEED_COLLAPSE_THRESHOLD: Fixed = fx.div(fx.fromInt(19), fx.fromInt(20)); // 0.95·ONE
 
-/** The compass directions (the shared canonical ring — spatial.ts) a fleeing unit considers running toward —
- *  the best (farthest-from-threat, walkable) one is chosen, so an obstacle in the straight-away direction
- *  diverts the run deterministically rather than freezing it. The same tuple the herd-spawn scatter walks. */
-const FLEE_DIRECTIONS = COMPASS_DIRECTIONS;
-
 /**
  * The FLEE drive — run a unit away from the nearest threat (the civilian raid reaction). Reuses the combat
  * ring-search index (no new scan, the RTS-scale budget): the nearest hostile within {@link SIGHT_RADIUS_NODES} is the
@@ -162,7 +157,7 @@ function fleeDestination(terrain: TerrainGraph, here: NodeId, threatCell: NodeId
   const t = terrain.coordsOf(threatCell);
   let best: NodeId = here;
   let bestScore = Math.abs(h.x - t.x) + Math.abs(h.y - t.y); // a candidate must beat staying put
-  for (const [dx, dy] of FLEE_DIRECTIONS) {
+  for (const [dx, dy] of COMPASS_DIRECTIONS) {
     const x = h.x + dx * FLEE_STEP_NODES;
     const y = h.y + dy * FLEE_STEP_NODES;
     if (!terrain.inBounds(x, y)) continue;

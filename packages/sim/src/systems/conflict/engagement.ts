@@ -41,6 +41,21 @@ export function stanceMode(world: World, e: Entity, jobType: number | null): num
 }
 
 /**
+ * What a combatant acts under this tick — derived together in one place ({@link engageCombatant}) and passed
+ * whole to {@link engageSpec} and {@link chase}, so the three values that only ever travel together cannot be
+ * transposed at a call site.
+ */
+export interface CombatantStance {
+  /** Whether the unit has an {@link Owner} — an owned unit advances on a spotted enemy; an unowned one
+   *  (wildlife) swings in place, has no fog, and carries no {@link Stance}. */
+  readonly owned: boolean;
+  /** Whether an explicit {@link AttackOrder} is in flight — it overrides `mode`'s auto-behavior. */
+  readonly ordered: boolean;
+  /** The {@link MILITARY_MODE} the unit acts under ({@link stanceMode}), or null for an unowned combatant. */
+  readonly mode: number | null;
+}
+
+/**
  * How a combatant acquires a target this tick, resolved from its stance — the ring-search `accept` filter, the
  * near/far reach band (`minDist`/`searchRadius`), and (DEFEND only) the anchor leash the chase respects.
  *  - **DEFEND** (auto, not ordered) → accept only hostile targets within {@link DEFEND_RADIUS_NODES} of the
@@ -56,12 +71,11 @@ export function engageSpec(
   ctx: SystemContext,
   terrain: TerrainGraph,
   e: Entity,
-  owned: boolean,
-  ordered: boolean,
-  stance: number | null,
+  stance: CombatantStance,
   attacker: { tribe: number; jobType: number | null },
   weapon: { minRange: number; maxRange: number },
 ): EngageSpec {
+  const { owned, ordered } = stance;
   // Fog gate (full sim enforcement, user decision): an owned unit auto-acquires only targets its player
   // currently sees — an enemy in the fog is invisible to the drive. Composed into every auto-acquire accept
   // below; the explicit-AttackOrder path (resolveTarget's direct isValidTarget) stays ungated — an ordered
@@ -76,7 +90,7 @@ export function engageSpec(
 
   const player = viewer?.player ?? null;
 
-  if (owned && !ordered && stance === MILITARY_MODE.DEFEND) {
+  if (owned && !ordered && stance.mode === MILITARY_MODE.DEFEND) {
     const anchor = defendAnchor(world, terrain, e);
     const accept = (t: Entity): boolean =>
       generalAccept(t) && manhattan(terrain, anchor, entityNode(world, terrain, t)) <= DEFEND_RADIUS_NODES;
@@ -89,7 +103,7 @@ export function engageSpec(
     };
   }
 
-  if (owned && !ordered && stance === MILITARY_MODE.IGNORE && attacker.jobType === HUNTER_JOB) {
+  if (owned && !ordered && stance.mode === MILITARY_MODE.IGNORE && attacker.jobType === HUNTER_JOB) {
     const accept = (t: Entity): boolean => isHuntTarget(world, ctx, t, attacker.jobType) && seesTarget(t);
     // player: null — never presence-gate a hunter: isHuntTarget is owner-blind (own-player-owned prey
     // is valid), so the gate's "not mine" class is no superset of this filter. Hunters are a

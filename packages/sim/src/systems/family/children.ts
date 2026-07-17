@@ -26,17 +26,18 @@ import { fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
-import { atOrWalk, PILEUP_ATOMIC_ID, startAtomic, startDrop, startPickup } from '../agents/actions.js';
+import { atOrWalk, startDrop } from '../agents/actions.js';
 import { interactionCell } from '../agents/targets/index.js';
 import { DEFAULT_SETTLER_HITPOINTS } from '../conflict/spawn/index.js';
 import type { SystemContext } from '../context.js';
 import { BABY_FEMALE, BABY_MALE, CIVILIST_JOB, WOMAN_JOB } from '../lifecycle/ageclass.js';
 import { stampDefaultStance } from '../orders/index.js';
-import { atomicAnimationName, atomicDuration, atomicDurationForName } from '../readviews/animations.js';
+import { atomicAnimationName, atomicDurationForName } from '../readviews/animations.js';
 import { navigationLimitFor } from '../signposts/index.js';
 import { canonicalById, isTravelling } from '../spatial.js';
 import { isFood } from '../stores/index.js';
 import { isOnMission } from './eligibility.js';
+import { deliverHome, fetchFrom } from './food-haul.js';
 import { ExternalFoodIndex } from './food-search.js';
 import { builtHomeType, consumeFoodUnits, isMinor, setFoodReserve, storedFoodUnits } from './households.js';
 
@@ -297,53 +298,6 @@ function enterHome(
   const hereNode = nodeOfPosition(p.x, p.y);
   const here = terrain.nodeAtClamped(hereNode.hx, hereNode.hy);
   atOrWalk(world, e, here, interactionCell(world, ctx, terrain, home, here), enter);
-}
-
-/** Carry the held food unit home and pile it into the larder. */
-export function deliverHome(
-  world: World,
-  ctx: SystemContext,
-  terrain: TerrainGraph | undefined,
-  e: Entity,
-  settler: { tribe: number; jobType: number | null },
-  home: Entity,
-  hereNode: { hx: number; hy: number },
-): void {
-  const pileUp = (): void => {
-    startAtomic(
-      world,
-      e,
-      PILEUP_ATOMIC_ID,
-      { kind: 'pileup', store: home },
-      atomicDuration(ctx.content, settler, PILEUP_ATOMIC_ID),
-      home,
-    );
-  };
-  if (terrain === undefined) {
-    pileUp();
-    return;
-  }
-  const here = terrain.nodeAtClamped(hereNode.hx, hereNode.hy);
-  atOrWalk(world, e, here, interactionCell(world, ctx, terrain, home, here), pileUp);
-}
-
-/** Walk to the found food store and lift one unit. */
-export function fetchFrom(
-  world: World,
-  ctx: SystemContext,
-  terrain: TerrainGraph | undefined,
-  e: Entity,
-  settler: { tribe: number; jobType: number | null },
-  source: { store: Entity; goodType: number },
-  hereNode: { hx: number; hy: number },
-): void {
-  const lift = (): void => startPickup(world, ctx, e, settler, source.store, source.goodType, 1);
-  if (terrain === undefined) {
-    lift();
-    return;
-  }
-  const here = terrain.nodeAtClamped(hereNode.hx, hereNode.hy);
-  atOrWalk(world, e, here, interactionCell(world, ctx, terrain, source.store, here), lift);
 }
 
 /**
