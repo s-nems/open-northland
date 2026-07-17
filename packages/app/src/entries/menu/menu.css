@@ -112,9 +112,37 @@
   height: 100%;
   box-sizing: border-box;
   padding: 22px 18px 28px;
-  overflow-y: auto;
-  scrollbar-color: #9b6a33 #231208;
-  scrollbar-width: thin;
+  overflow-y: scroll;
+}
+
+/* The entry list must LOOK scrollable: macOS overlay scrollbars auto-hide, so the webkit path
+   draws a persistent themed scrollbar (its presence also opts Chrome out of overlay mode). */
+.game-menu__navigation-scroll::-webkit-scrollbar {
+  width: 12px;
+}
+
+.game-menu__navigation-scroll::-webkit-scrollbar-track {
+  border-left: 1px solid rgba(155, 106, 51, 0.4);
+  background: #1d0f06;
+}
+
+.game-menu__navigation-scroll::-webkit-scrollbar-thumb {
+  border: 2px solid #1d0f06;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #a97a3f, #7a4e22);
+}
+
+.game-menu__navigation-scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #c08f4c, #8d5c2a);
+}
+
+/* Firefox has no ::-webkit-scrollbar; keep its themed scrollbar via the standard properties
+   (Chrome ≥121 would prefer these over the webkit rules, hence the guard). */
+@supports (-moz-appearance: none) {
+  .game-menu__navigation-scroll {
+    scrollbar-color: #9b6a33 #231208;
+    scrollbar-width: auto;
+  }
 }
 
 .game-menu__group + .game-menu__group {

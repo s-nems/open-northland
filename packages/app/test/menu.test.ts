@@ -123,7 +123,7 @@ describe('roster state', () => {
     expect(rosterStartParams(state, players)).toEqual([['player', '0']]);
   });
 
-  it('encodes recolours and vacant-AI seats alongside the seat', () => {
+  it('encodes recolours and vacant-mode deviations alongside the seat', () => {
     let state = claimSeat(initialRosterState(players), 0);
     const recoloured = setSlotColor(state, 2, 3);
     expect(recoloured).not.toBeNull();
@@ -131,7 +131,7 @@ describe('roster state', () => {
     expect(rosterStartParams(state, players)).toEqual([
       ['player', '0'],
       ['colors', '2:3'],
-      ['vacantai', '1'],
+      ['vacant', '1:ai'],
     ]);
   });
 
@@ -141,10 +141,27 @@ describe('roster state', () => {
     expect(setSlotColor(state, 0, 7)).not.toBeNull(); // own colour, no-op accepted
   });
 
-  it('claiming a seat clears its vacant-AI toggle', () => {
+  it('does not encode the claimed seat or authored-default modes as vacant deviations', () => {
     let state = toggleVacantMode(initialRosterState(players), 1);
+    state = toggleVacantMode(state, 1); // back to the authored idle default
     state = claimSeat(state, 1);
     expect(rosterStartParams(state, players)).toEqual([['player', '1']]);
+  });
+
+  it('defaults a claimable authored-ai slot to AI and encodes only its toggle to idle', () => {
+    // A lobby-opened seat (Forteca/Mosty style): authored ai, playeroption offers human.
+    const lobby = [
+      { player: 0, type: 'human', tribeId: 1, colorId: 0, claimable: true, hidden: false },
+      { player: 1, type: 'ai', tribeId: 1, colorId: 1, claimable: true, hidden: false },
+      { player: 2, type: 'ai', tribeId: 1, colorId: 9, claimable: false, hidden: false },
+    ] as const;
+    let state = claimSeat(initialRosterState(lobby), 0);
+    expect(rosterStartParams(state, lobby)).toEqual([['player', '0']]); // AI default = no deviation
+    state = toggleVacantMode(state, 1);
+    expect(rosterStartParams(state, lobby)).toEqual([
+      ['player', '0'],
+      ['vacant', '1:idle'],
+    ]);
   });
 });
 
