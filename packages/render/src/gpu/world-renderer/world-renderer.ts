@@ -31,7 +31,7 @@ import {
   type BuildingHighlightItem,
   EMPTY_HIGHLIGHT,
   NO_BADGES,
-  NO_SELECTION,
+  NO_REFS,
   SPRITE_CULL_MARGIN,
   type WorldFrame,
   type WorldRendererOptions,
@@ -92,7 +92,7 @@ export class WorldRenderer {
   /** The workplace-assignment highlight: candidate building id → assignable (green) / not (red), while the
    *  player is choosing a workplace for the selected settler. Applied as a soft tint on the building sprite
    *  itself (not a cell wash), so the building reads "lekko zielony / lekko czerwony". See {@link setBuildingHighlight}. */
-  private highlight: ReadonlyMap<number, boolean> = new Map();
+  private highlight: ReadonlyMap<number, boolean> = EMPTY_HIGHLIGHT;
   private readonly hud = new HudLayer();
   /** The screen-space quads between the world and the HUD (pause wash, post-fx vignette) + the zoom
    *  sampling toggle. See {@link WorldChrome}. */
@@ -271,8 +271,9 @@ export class WorldRenderer {
   /**
    * Draw one frame: apply the camera, cull the terrain, advance the map objects, reconcile the sprite
    * pool to the (culled, depth-sorted) list, draw the selection rings, repaint the HUD, and render once.
-   * No allocation in the steady state — the sub-layers update in place; only a first-seen entity or a
-   * growing layer set mints. `selection` is transient view state like the camera, never sim state.
+   * Steady-state allocation is O(visible), not O(entities) — the sub-layers update in place, and what
+   * this method mints per frame is the handful of option objects and closures it passes down.
+   * `selection` is transient view state like the camera, never sim state.
    * `alpha` is the fixed-timestep interpolation fraction (the app loop's `FixedTimestep.advance`
    * return): the pool draws each entity `alpha` of the way from its previous tick anchor to its current
    * one, so 12 Hz sim motion reads as continuous frame-rate motion; the default 1 draws raw tick
@@ -283,10 +284,10 @@ export class WorldRenderer {
       snapshot,
       tick = 0,
       hud,
-      selection = NO_SELECTION,
+      selection = NO_REFS,
       alpha = 1,
       doorBadges = NO_BADGES,
-      flagged = NO_SELECTION,
+      flagged = NO_REFS,
     } = frame;
     // View smoothing: pin the pan to whole device pixels (kills nearest-sampling shimmer-crawl) and
     // linear-minify the world atlases when zoomed out (the chrome's sampling toggle). The deterministic
@@ -323,11 +324,8 @@ export class WorldRenderer {
     } else {
       ghosts = this.fogGhosts.update(snapshot, fogView, this.staticDrawnRefs);
     }
-    this.mapObjects.update(
-      vp,
-      tick,
-      fogView === null ? undefined : (cellX, cellY) => fogView.stateAt(cellX, cellY),
-    );
+    // `stateAt` is a bound arrow-function property on the view, so passing it detached is safe.
+    this.mapObjects.update(vp, tick, fogView === null ? undefined : fogView.stateAt);
     // The pool needs the camera + canvas size to place team-colour PalettedSprite meshes (screen-space,
     // they can't ride the worldLayer transform); the plain-sprite path ignores them. The elevation field
     // lets it lift each entity's drawn feet without disturbing its pre-lift depth key; `alpha` lerps

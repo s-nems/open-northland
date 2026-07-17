@@ -133,7 +133,8 @@ export class TallObjectLayer {
     this.blockByObject.delete(obj);
     const i = block.objects.findIndex((po) => po.obj === obj);
     if (i >= 0) {
-      const po = block.objects[i] as PooledObject;
+      const po = block.objects[i];
+      if (po === undefined) return true;
       if (this.detach(po)) block.attachedCount--;
       po.sprite?.destroy();
       po.shadowSprite?.destroy();

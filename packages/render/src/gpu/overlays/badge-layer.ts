@@ -118,7 +118,7 @@ export class BadgeLayer {
 
       let stack = this.stacks.get(badge.id);
       // Off-screen: retain the pooled stack (hidden) so it isn't retired, but skip the reposition/rebuild.
-      // Marking an id whose stack doesn't exist yet is harmless — retire only walks the stacks map.
+      // An id whose stack doesn't exist yet is deliberately not marked drawn (see {@link retainOffscreen}).
       if (viewport !== undefined && !isVisible(viewport, p.x, p.y)) {
         retainOffscreen(stack?.node, badge.id, this.drawn);
         continue;

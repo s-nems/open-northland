@@ -6,8 +6,8 @@ import { isDrawableResource, readable2dContext } from './drawable-resource.js';
 /**
  * Threshold quantisation step for the per-pixel reveal bakes ({@link TextureCache.revealed}): the eased
  * reveal walks 0–255 thresholds in steps of this size, so one construction pass bakes at most 256/step
- * textures per frame (and the cache keeps only the freshest {@link REVEAL_BAKES_PER_FRAME}). Step 4
- * ≈ 1.6% build progress per re-bake — finer than the sim's per-swing `built` increments, so the
+ * textures over its lifetime (and the cache keeps only the freshest
+ * {@link REVEAL_BAKES_PER_ATLAS_FRAME} of them per atlas frame). Step 4 ≈ 1.6% build progress per re-bake — finer than the sim's per-swing `built` increments, so the
  * quantisation is invisible against the original's own 0–255 scale.
  */
 const REVEAL_QUANT = 4;
@@ -18,7 +18,7 @@ const REVEAL_QUANT = 4;
  * not coming back; its texture + canvas are destroyed. Real pixel copies (unlike the free sub-rect
  * views of {@link TextureCache.cropped}), hence the tight cap.
  */
-const REVEAL_BAKES_PER_FRAME = 4;
+const REVEAL_BAKES_PER_ATLAS_FRAME = 4;
 
 /** One baked reveal texture + the pool frame it was last bound on (the eviction guard). */
 interface RevealBake {
@@ -98,8 +98,8 @@ export class TextureCache {
    * `<= threshold` — the per-pixel construction reveal, where a pixel appears once progress reaches
    * its time-mask byte. Unlike
    * {@link cropped}'s free sub-rect views this is a real canvas bake, so thresholds are quantised
-   * ({@link REVEAL_QUANT}) and only the freshest {@link REVEAL_BAKES_PER_FRAME} bakes per frame are
-   * kept — `frameStamp` (the pool's frame counter) guards a bake bound earlier this frame from
+   * ({@link REVEAL_QUANT}) and only the freshest {@link REVEAL_BAKES_PER_ATLAS_FRAME} bakes per atlas
+   * frame are kept — `frameStamp` (the pool's frame counter) guards a bake bound earlier this frame from
    * eviction, since destroying it would break another site's sprite mid-frame. Threshold 255 returns
    * the plain full frame; `null` (pixels not CPU-readable) sends the caller to the crop fallback.
    */
@@ -129,9 +129,9 @@ export class TextureCache {
       stamp: frameStamp,
     };
     byThreshold.set(q, bake);
-    if (byThreshold.size > REVEAL_BAKES_PER_FRAME) {
+    if (byThreshold.size > REVEAL_BAKES_PER_ATLAS_FRAME) {
       for (const [key, old] of byThreshold) {
-        if (byThreshold.size <= REVEAL_BAKES_PER_FRAME) break;
+        if (byThreshold.size <= REVEAL_BAKES_PER_ATLAS_FRAME) break;
         if (old.stamp >= frameStamp) continue; // bound this frame — a live sprite may hold it
         old.texture.destroy(true);
         byThreshold.delete(key);

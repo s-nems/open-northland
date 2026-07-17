@@ -67,7 +67,7 @@ interface GalleryCell {
   /** This cell's layers in draw order (index 0 = body, rest = overlays) — its own, not gallery-shared. */
   readonly layers: readonly SpriteLayer[];
   /** One sprite per layer, in the same order — plain {@link Sprite}s, or {@link PalettedSprite}s in paletted mode. */
-  readonly sprites: (Sprite | PalettedSprite)[];
+  readonly sprites: readonly (Sprite | PalettedSprite)[];
   /** The player-colour row this cell draws (paletted mode only); 0 otherwise. */
   readonly player: number;
 }

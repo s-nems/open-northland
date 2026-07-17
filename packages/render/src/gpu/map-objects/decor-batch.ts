@@ -166,8 +166,7 @@ export function buildDecorChunk(block: readonly MapObjectSprite[]): DecorChunk {
     if (group.still.length > 0) {
       const batch = buildQuadBatch(group.still, source);
       container.addChild(batch.mesh);
-      for (let q = 0; q < group.still.length; q++) {
-        const obj = group.still[q] as MapObjectSprite;
+      for (const [q, obj] of group.still.entries()) {
         quads.set(obj, {
           positions: batch.positions,
           geometry: batch.geometry,
@@ -188,8 +187,7 @@ export function buildDecorChunk(block: readonly MapObjectSprite[]): DecorChunk {
         pageH: source.height,
       };
       animated.push(animBatch);
-      for (let q = 0; q < group.moving.length; q++) {
-        const obj = group.moving[q] as MapObjectSprite;
+      for (const [q, obj] of group.moving.entries()) {
         quads.set(obj, {
           positions: batch.positions,
           geometry: batch.geometry,

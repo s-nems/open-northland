@@ -63,7 +63,7 @@ export interface GalleryCellBox {
 }
 
 /** Lay `count` cells out row-major into `columns` columns of {@link CELL_W}×{@link CELL_H}. */
-export function galleryCellLayout(count: number, columns: number): GalleryCellBox[] {
+export function galleryCellLayout(count: number, columns: number): readonly GalleryCellBox[] {
   const cols = Math.max(1, Math.floor(columns));
   const out: GalleryCellBox[] = [];
   for (let index = 0; index < count; index++) {

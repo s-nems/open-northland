@@ -8,7 +8,8 @@ import type { AtlasFrame, SettlerStateBinding, SpriteAtlas, SpriteBindings } fro
  * reproducible harness cannot bind them. It stands in a few flat coloured marker frames — one per
  * drawable {@link import('../data/sprites/index.js').SpriteKind} — drawn procedurally into a canvas, so a
  * human can eyeball that the textured branch projects and depth-sorts correctly (frames land at their
- * feet anchor, occlude back-to-front). Real atlases bind through the same {@link SpriteSheet} shape.
+ * feet anchor, occlude back-to-front). Real atlases bind through the same
+ * {@link import('./sprite-sheet.js').SpriteSheet} shape.
  *
  * The split mirrors `sprites.ts`: the frame geometry ({@link syntheticAtlasFrames}) is pure data,
  * unit-testable without a screen; drawing it into a GPU {@link TextureSource}
@@ -26,7 +27,8 @@ export const SYNTHETIC_ATLAS_HEIGHT = 96;
 /**
  * The bob ids the synthetic bindings reference. Arbitrary small integers — a synthetic atlas has no
  * `.bmd` `firstBobId`, so these only have to agree between {@link syntheticAtlasFrames} and
- * {@link SYNTHETIC_BINDINGS}. The settler gets three bobs (one per {@link SpriteState}) so the
+ * {@link SYNTHETIC_BINDINGS}. The settler gets three bobs (one per
+ * {@link import('../data/scene/index.js').SpriteState}) so the
  * per-state binding path is exercised by the `?atlas` shot.
  */
 const SETTLER_IDLE_BOB = 1;
@@ -114,7 +116,7 @@ export function syntheticAtlasFrames(): SpriteAtlas {
 
 /**
  * Draw the synthetic frames into an offscreen canvas and wrap it as a Pixi {@link TextureSource} ready
- * to bind as a {@link SpriteSheet.source}. Each frame is a flat filled rect at its atlas rect; the
+ * to bind as a {@link import('./sprite-sheet.js').SpriteSheet.source}. Each frame is a flat filled rect at its atlas rect; the
  * sheet is otherwise transparent. `nearest` scaling keeps the markers crisp and cuts cross-machine
  * sampling variance, like the renderer's antialias-off.
  *
