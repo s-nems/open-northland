@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { AiPlayer, aiPlayerEntity, isAiPlayer } from '../../src/components/index.js';
+import { CommandQueue } from '../../src/core/command-queue.js';
 import { World } from '../../src/ecs/world.js';
-import { CommandQueue, EventBuffer, Rng, replay, Simulation, stepReplaying } from '../../src/index.js';
+import { EventBuffer, Rng, replay, Simulation, stepReplaying } from '../../src/index.js';
 import {
   AI_DECISION_INTERVAL_TICKS,
   type AiPlayerModule,

@@ -3,8 +3,9 @@ import { resolve } from 'node:path';
 import { components } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { buildCollisionTerrain } from '../../src/content/collision.js';
-import { buildingFootprints } from '../../src/content/ir.js';
+import { buildingFootprints, type ContentIr } from '../../src/content/ir.js';
 import { mapResourceObjectNames } from '../../src/game/sandbox/index.js';
+import type { AuthoredJoinRows } from '../../src/slice/authored-placements.js';
 import { runAuthoredSlice } from '../../src/slice/vertical-slice.js';
 import { contentDir, hasRealIr, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
 
@@ -32,7 +33,8 @@ describe.runIf(hasRealIr() && existsSync(mapPath()))('strategic AI on a decoded 
   it('an AI-flagged seat opens its build order from the authored headquarters', async () => {
     const { merge } = await loadContentUnderTest();
     const map = JSON.parse(readFileSync(mapPath(), 'utf8'));
-    const ir = rawIrUnderTest() as Parameters<typeof buildCollisionTerrain>[1];
+    // The raw fetched-IR document, exactly what the browser flow hands these consumers.
+    const ir = rawIrUnderTest() as ContentIr & AuthoredJoinRows;
     const simMap = buildCollisionTerrain(map, ir, mapResourceObjectNames(ir));
     const sim = runAuthoredSlice(
       7,
