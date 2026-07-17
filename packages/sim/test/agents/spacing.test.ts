@@ -120,7 +120,7 @@ describe('idle-spacing (de-stack) drive', () => {
 });
 
 // ————————————————————————————————————————————————————————————————————————————————————————————————
-// Builder WORK SLOTS (claimWorkCell): a crew on one construction site spreads over the site's yard
+// Builder WORK SLOTS (claimWorkCell): a crew on one construction site spreads over its perimeter
 // instead of stacking on its one interaction cell. Body collision can never provide this — civilians
 // are deliberate pass-through and the SeparationSystem displaces only WALKING movers — so the planner
 // hands each builder a distinct stand cell (see systems/agents/destack.ts).
@@ -135,7 +135,7 @@ const BUILD_HOUSE_ATOMIC = 39; // setatomic 7 39 "..._builder_build_house" (trib
 const WATER = 9; // walkable: false — the across-the-stream yard test's barrier
 
 /** Content with a builder trade and a home whose cost is 2× stone + 1× wood (12 hammer swings), with
- *  a walk-blocking footprint and a named door — the interaction cell every builder converges on. */
+ *  a walk-blocking footprint and a named door that construction work deliberately does not converge on. */
 function builderSiteContent(): ContentSet {
   return parseContentSet({
     manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
@@ -229,12 +229,32 @@ describe('builder work slots (claimWorkCell)', () => {
     expect(finishedAt).not.toBeNull(); // spreading the crew never stalls the build
   });
 
+  it('approaches the construction perimeter from either side instead of converging on the door', () => {
+    const s = builderSim();
+    stockedSiteAt(s, 12, 6);
+    const west = builderAt(s, 6, 6);
+    const east = builderAt(s, 20, 6);
+    let westSwingX: number | null = null;
+    let eastSwingX: number | null = null;
+
+    for (let t = 0; t < 200 && (westSwingX === null || eastSwingX === null); t++) {
+      s.step();
+      if (s.world.tryGet(west, CurrentAtomic)?.atomicId === BUILD_HOUSE_ATOMIC) {
+        westSwingX = tileOf(s, west).x;
+      }
+      if (s.world.tryGet(east, CurrentAtomic)?.atomicId === BUILD_HOUSE_ATOMIC) {
+        eastSwingX = tileOf(s, east).x;
+      }
+    }
+
+    expect(westSwingX).toBeLessThan(12); // nearest legal side west of the body
+    expect(eastSwingX).toBeGreaterThan(14); // nearest legal side east of the body
+  });
+
   it('a builder across a stream — in raw radius but unreachable — walks around instead of hammering from afar', () => {
-    // Water cells (7, 1..4) → node columns 14–15, rows 2–9: a stream between the yard and the
-    // builder, with open banks at node rows 0–1 and 10–11. The builder starts at (16,6) — Manhattan
-    // 4 from the door (12,6) but NOT yard-reachable within 4 steps — so a raw-distance stay-put
-    // rule would let it swing across the water forever; the yard-REGION rule must route it around
-    // the stream and only let it hammer from a real yard cell.
+    // Water cells (7, 1..4) → node columns 14–15, rows 2–9: the footprint touches the stream, whose
+    // only legal perimeter cells lie on the west bank. The builder starts east at (16,6), so it must
+    // walk around an open end instead of treating raw proximity across water as permission to swing.
     const ids = new Array<number>(12 * 6).fill(GRASS);
     for (let cy = 1; cy <= 4; cy++) ids[cy * 12 + 7] = WATER;
     const s = new Simulation({
@@ -246,39 +266,36 @@ describe('builder work slots (claimWorkCell)', () => {
     const builder = builderAt(s, 16, 6); // east of the stream
 
     let swungAcrossTheStream = 0;
-    let swungInYard = 0;
+    let swungOnPerimeter = 0;
     for (let t = 0; t < 500; t++) {
       s.step();
       if (s.world.tryGet(builder, CurrentAtomic)?.atomicId !== BUILD_HOUSE_ATOMIC) continue;
       if (tileOf(s, builder).x >= 14) swungAcrossTheStream++;
-      else swungInYard++;
+      else swungOnPerimeter++;
     }
     expect(swungAcrossTheStream).toBe(0); // never hammers the site from across the water
-    expect(swungInYard).toBeGreaterThan(0); // walked around the stream and worked from the yard
+    expect(swungOnPerimeter).toBeGreaterThan(0); // walked around the stream and worked from the perimeter
   });
 
-  it('keeps UNOWNED builders on the shared interaction cell (the Owner gate — fixtures unchanged)', () => {
+  it('keeps unowned builders on legal perimeter cells too', () => {
     const s = builderSim();
     stockedSiteAt(s, 12, 6);
     const a = builderAt(s, 6, 6, null);
     const b = builderAt(s, 6, 7, null);
 
-    // The pre-slot shared-anchor behavior must survive for unowned fixtures: both hammer from
-    // exactly the door node (12,6)+(0,2) — stacked swings and all.
-    let stackedSwingTicks = 0;
+    const swingCells = new Set<string>();
     for (let t = 0; t < 120; t++) {
       s.step();
-      if (
-        s.world.tryGet(a, CurrentAtomic)?.atomicId === BUILD_HOUSE_ATOMIC &&
-        s.world.tryGet(b, CurrentAtomic)?.atomicId === BUILD_HOUSE_ATOMIC &&
-        tileOf(s, a).x === tileOf(s, b).x &&
-        tileOf(s, a).y === tileOf(s, b).y
-      ) {
-        stackedSwingTicks++;
+      for (const builder of [a, b]) {
+        if (s.world.tryGet(builder, CurrentAtomic)?.atomicId !== BUILD_HOUSE_ATOMIC) continue;
+        const cell = tileOf(s, builder);
+        swingCells.add(`${cell.x},${cell.y}`);
       }
     }
-    expect(stackedSwingTicks).toBeGreaterThan(0); // no spread applied — the Owner gate is real
-    expect(tileOf(s, a)).toEqual({ x: 12, y: 8 });
-    expect(tileOf(s, b)).toEqual({ x: 12, y: 8 });
+    expect(swingCells.size).toBeGreaterThan(0);
+    expect(swingCells.has('12,8')).toBe(false); // the finished building's door is not a build position
+    for (const cell of swingCells) {
+      expect(['12,5', '13,6', '12,7', '11,6', '14,5', '15,6', '14,7']).toContain(cell);
+    }
   });
 });

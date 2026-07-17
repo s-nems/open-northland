@@ -5,9 +5,9 @@
 // (the walk-block overlay), the AI planner + JobSystem + ProductionSystem (door-cell interaction),
 // never importing any system.
 //
-// A building TYPE without a footprint (synthetic test content; the one real graphics-less type)
-// keeps the pre-footprint behavior everywhere: it places without collision checks, blocks no cell,
-// and is interacted with on its anchor tile.
+// A completed building TYPE without a footprint (synthetic test content; the one real graphics-less type)
+// keeps the pre-footprint behavior: it places without collision checks, blocks no cell, and is interacted
+// with on its anchor tile. While under construction, every type instead uses its legal work perimeter.
 
 export {
   buildingBlockedCells,
@@ -16,7 +16,13 @@ export {
   dynamicBlockedCells,
   dynamicBlockOverlay,
 } from './blocked.js';
-export { interactionNode, positionedInteractionCell, resourceWorkCell } from './interaction.js';
+export {
+  constructionWorkCell,
+  constructionWorkCells,
+  interactionNode,
+  positionedInteractionCell,
+  resourceWorkCell,
+} from './interaction.js';
 export {
   canPlaceBuilding,
   canPlaceWorkFlag,

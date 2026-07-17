@@ -8,9 +8,16 @@ import {
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
-import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import { nearestUnblockedNode } from '../../nav/nearest.js';
+import type { BlockOverlay, NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { buildingFootprintOf, nearestCell, nearestFreeNeighbour, translatedCells } from './geometry.js';
+import {
+  ANCHOR_ONLY,
+  buildingFootprintOf,
+  nearestCell,
+  nearestFreeNeighbour,
+  translatedCells,
+} from './geometry.js';
 import { resourceBlockedCells } from './resource-blocked-cache.js';
 import { resourceAtTile } from './resource-tile-cache.js';
 
@@ -45,6 +52,54 @@ export function interactionNode(
   const at = { x: ax + door.dx, y: ay + door.dy };
   if (ctx.terrain !== undefined && !ctx.terrain.inBounds(at.x, at.y)) return { x: ax, y: ay };
   return at;
+}
+
+/**
+ * Walkable, dynamically unblocked nodes immediately outside a construction site's current body. Until
+ * `LogicConstructionWorkArea` is extracted, the footprint perimeter is the named approximation: it lets
+ * settlers approach any free side instead of treating the finished building's door as the build position.
+ */
+export function constructionWorkCells(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  site: Entity,
+  blocked: BlockOverlay,
+): readonly NodeId[] {
+  const building = world.tryGet(site, Building);
+  const position = world.tryGet(site, Position);
+  if (building === undefined || position === undefined) return [];
+
+  const anchorCoords = nodeOfPosition(position.x, position.y);
+  const anchor = terrain.nodeAtClamped(anchorCoords.hx, anchorCoords.hy);
+  const footprint = buildingFootprintOf(ctx.content, building.buildingType);
+  const bodyOffsets =
+    footprint !== undefined && footprint.blocked.length > 0 ? footprint.blocked : ANCHOR_ONLY;
+  const bodyCells = translatedCells(terrain, bodyOffsets, anchorCoords.hx, anchorCoords.hy);
+  if (bodyCells.length === 0) bodyCells.push(anchor);
+  const body = new Set(bodyCells);
+  const work = new Set<NodeId>();
+  for (const cell of bodyCells) {
+    for (const neighbour of terrain.walkableNeighbours(cell)) {
+      if (!body.has(neighbour) && !blocked.has(neighbour)) work.add(neighbour);
+    }
+  }
+  if (work.size > 0) return [...work].sort((a, b) => a - b);
+
+  const fallback = nearestUnblockedNode(terrain, anchor, blocked);
+  return fallback === null ? [] : [fallback];
+}
+
+/** The construction work cell nearest `from`, tie-broken by node id. */
+export function constructionWorkCell(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  site: Entity,
+  blocked: BlockOverlay,
+  from?: NodeId,
+): NodeId | null {
+  return nearestCell(terrain, constructionWorkCells(world, ctx, terrain, site, blocked), from);
 }
 
 function stockedGoodAt(world: World, entity: Entity): number | null {

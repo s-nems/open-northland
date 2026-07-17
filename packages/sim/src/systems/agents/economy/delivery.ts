@@ -8,6 +8,7 @@ import {
   YardDeliveryRoute,
 } from '../../../components/index.js';
 import { farmWorkGood } from '../../economy/farming.js';
+import { constructionWorkCell } from '../../footprint/index.js';
 import { atomicDuration } from '../../readviews/animations.js';
 import { stampSupplyRun } from '../../stores/index.js';
 import { atOrWalk, PILEUP_ATOMIC_ID, startAtomic, startDrop } from '../actions.js';
@@ -87,7 +88,9 @@ export function planDelivery(plan: PlannerContext, load: { goodType: number; amo
           sameYard?.goal,
           plan.limit ?? undefined,
         )
-    : interactionCell(world, ctx, terrain, store, here);
+    : world.has(store, UnderConstruction)
+      ? constructionWorkCell(world, ctx, terrain, store, targets.yard.blocked, here)
+      : interactionCell(world, ctx, terrain, store, here);
   if (cell === null) return;
   if (world.has(store, DeliveryFlag)) {
     world.add(entity, YardDeliveryRoute, { flag: store, goodType: load.goodType, goal: cell, failed: false });

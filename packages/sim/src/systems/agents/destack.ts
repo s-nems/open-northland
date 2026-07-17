@@ -2,28 +2,28 @@ import { MoveGoal, Owner } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { dynamicBlockedCells } from '../footprint/index.js';
+import { constructionWorkCells, dynamicBlockedCells } from '../footprint/index.js';
 import type { NodeBuckets } from '../spatial.js';
 
 // The spacing drives — the two consumers of the planner-tick occupancy state:
 //  - idle spacing ({@link deStackIdle}): the last resort for a unit with nothing to do — step off a tile
 //    shared with another resting unit so an idle crowd spreads out instead of stacking;
-//  - work slots ({@link claimWorkCell}): a worker whose drive converges many units on one anchor cell
-//    (builders hammering a construction site) claims a distinct stand cell in the anchor's yard instead. Body
-//    collision can't do this: civilians are deliberate pass-through (see movement/collision/bodies.ts), and
+//  - work slots ({@link claimWorkCell}): builders converging on one construction site claim distinct
+//    perimeter cells. Body collision can't do this: civilians are deliberate pass-through, and
 //    the SeparationSystem displaces only walking movers — two units standing on one node are never pushed apart.
 
 /**
  * The planner-tick spacing state, built once per tick from the tick-start positions (stable across the
  * planner loop's own mutations — deliberately not updated as units are re-tasked): `occupancy` buckets the
  * owned resting units by tile, `claimed` stops two spacing consumers choosing the same free cell,
- * `blockedCells` lazily memoises the building walk-block overlay, and `yards` memoises each work anchor's
- * yard region ({@link claimWorkCell}) so one site's crew shares one derivation.
+ * `blockedCells` lazily memoises the building walk-block overlay, `constructionCells` memoises each site's
+ * work perimeter, and `yards` memoises completed-workplace loiter regions.
  */
 export interface SpacingState {
   readonly occupancy: NodeBuckets;
   readonly claimed: Set<NodeId>;
   blockedCells?: ReadonlySet<NodeId>;
+  constructionCells?: Map<Entity, readonly NodeId[]>;
   yards?: Map<NodeId, ReadonlySet<NodeId>>;
 }
 
@@ -70,31 +70,15 @@ export function deStackIdle(
 }
 
 /**
- * The 4-connected step radius of a work anchor's yard — how far from a construction site's interaction cell
- * a builder may stand and still be working the site (4 half-cell steps ≈ two visual tiles). A placeholder
- * approximation: the original's readable mod data pins per-building stand cells (`[GfxHouse]
- * LogicConstructionWorkArea <sizeIdx> <dx> <dy> <run>` rows in `houses.ini`), but the pipeline does not
- * extract that key yet, so the yard is a uniform door-anchored region until it does (tracked in
- * docs/tickets/pipeline/construction-work-areas.md).
+ * The 4-connected radius of a completed workplace's loiter yard (4 half-cell steps ≈ two visual tiles).
+ * This is a presentation tuning value, not extracted data.
  */
-export const WORK_YARD_RADIUS_NODES = 4;
+const WORKPLACE_YARD_RADIUS_NODES = 4;
 
 /**
- * Claim a distinct stand cell for a worker whose drive targets the shared `anchor` cell (a construction
- * site's interaction cell): the anchor itself when free, else the nearest free yard cell — so parallel
- * workers spread over the yard instead of stacking on one node. The yard is the connected region of
- * walkable, unblocked nodes within {@link WORK_YARD_RADIUS_NODES} 4-connected steps of the anchor —
- * reachability, not raw distance, so a cell across a stream or inside a footprint is never a work slot.
- * Rules, in order:
- *
- *  - Unowned settlers keep the exact-anchor behavior (the same Owner gate as {@link deStackIdle}).
- *  - A worker already standing alone on a yard cell stays put, so a hammering builder never hops cells
- *    between swings (any claimed cell is a yard cell, so the choice is stable across re-plans). Alone — not
- *    the {@link deStackIdle} keeper rule — because a worker mid-swing does not re-plan: a keeper arriving on a
- *    node where a fellow already swings would start a second swing on top of it and stack for a whole swing's
- *    length, while stepping aside costs the arriver a few walk ticks.
- *  - Otherwise the nearest free yard cell is claimed (the yard set iterates in ring order). A full (or empty)
- *    yard falls back to the anchor — the pre-slot stacking, never a refusal to work.
+ * Claim the nearest free perimeter cell for a construction worker. A worker already alone on a legal cell
+ * stays there between swings; otherwise `(distance, node id)` chooses deterministically, and a full perimeter
+ * falls back to stacking on its nearest legal cell rather than aiming inside the building body.
  */
 export function claimWorkCell(
   world: World,
@@ -102,32 +86,54 @@ export function claimWorkCell(
   terrain: TerrainGraph,
   e: Entity,
   here: NodeId,
-  anchor: NodeId,
+  site: Entity,
   spacing: SpacingState,
-): NodeId {
-  if (!world.has(e, Owner)) return anchor; // unowned fixtures keep the shared-anchor behavior
+): NodeId | null {
   spacing.blockedCells ??= dynamicBlockedCells(world, ctx, terrain);
-  spacing.yards ??= new Map();
-  let yard = spacing.yards.get(anchor);
-  if (yard === undefined) {
-    yard = yardCells(terrain, anchor, spacing.blockedCells);
-    spacing.yards.set(anchor, yard);
+  spacing.constructionCells ??= new Map();
+  let cells = spacing.constructionCells.get(site);
+  if (cells === undefined) {
+    cells = constructionWorkCells(world, ctx, terrain, site, spacing.blockedCells);
+    spacing.constructionCells.set(site, cells);
   }
-  if (yard.has(here)) {
+  if (cells.length === 0) return null;
+  if (!world.has(e, Owner)) return nearestWorkCell(terrain, cells, here);
+  if (cells.includes(here)) {
     const hereXY = terrain.coordsOf(here);
     const bucket = spacing.occupancy.at(hereXY.x, hereXY.y);
-    // A planned owned settler is always in its own node's bucket (it is resting by the planner's
-    // gates), so `claimed` needs no entry: the occupancy already keeps others off this cell.
     if (bucket.length === 0 || (bucket.length === 1 && bucket[0] === e)) return here;
   }
-  for (const cell of yard) {
-    if (spacing.claimed.has(cell)) continue;
+  const free = nearestWorkCell(terrain, cells, here, (cell) => {
+    if (spacing.claimed.has(cell)) return false;
     const { x, y } = terrain.coordsOf(cell);
-    if (spacing.occupancy.at(x, y).length > 0) continue;
-    spacing.claimed.add(cell);
-    return cell;
+    return spacing.occupancy.at(x, y).length === 0;
+  });
+  if (free !== null) {
+    spacing.claimed.add(free);
+    return free;
   }
-  return anchor; // yard full (or none walkable) — fall back to the shared anchor
+  return nearestWorkCell(terrain, cells, here);
+}
+
+function nearestWorkCell(
+  terrain: TerrainGraph,
+  cells: readonly NodeId[],
+  from: NodeId,
+  accept: (cell: NodeId) => boolean = () => true,
+): NodeId | null {
+  const origin = terrain.coordsOf(from);
+  let best: NodeId | null = null;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (const cell of cells) {
+    if (!accept(cell)) continue;
+    const candidate = terrain.coordsOf(cell);
+    const distance = Math.abs(candidate.x - origin.x) + Math.abs(candidate.y - origin.y);
+    if (distance < bestDistance || (distance === bestDistance && (best === null || cell < best))) {
+      best = cell;
+      bestDistance = distance;
+    }
+  }
+  return best;
 }
 
 /**
@@ -173,8 +179,8 @@ export function loiterCell(
 }
 
 /**
- * A work anchor's yard: every walkable, unblocked node reachable from `anchor` within
- * {@link WORK_YARD_RADIUS_NODES} 4-connected steps, in canonical ring order (anchor first when it
+ * A workplace anchor's loiter yard: every walkable, unblocked node reachable from `anchor` within
+ * {@link WORKPLACE_YARD_RADIUS_NODES} 4-connected steps, in canonical ring order (anchor first when it
  * qualifies — Set insertion order is the claim priority). Blocked cells are neither entered nor
  * traversed, mirroring the pathfinder, so the yard never spans a wall or a stream the walk
  * couldn't cross. Bounded: ≤ ~2·R² nodes visited.
@@ -184,7 +190,7 @@ function yardCells(terrain: TerrainGraph, anchor: NodeId, blocked: ReadonlySet<N
   if (terrain.isWalkable(anchor) && !blocked.has(anchor)) yard.add(anchor);
   const seen = new Set<NodeId>([anchor]);
   let frontier: NodeId[] = [anchor];
-  for (let depth = 0; depth < WORK_YARD_RADIUS_NODES; depth++) {
+  for (let depth = 0; depth < WORKPLACE_YARD_RADIUS_NODES; depth++) {
     const next: NodeId[] = [];
     for (const cell of frontier) {
       for (const n of terrain.walkableNeighbours(cell)) {
