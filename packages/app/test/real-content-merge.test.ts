@@ -1,7 +1,7 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { flatTileColour } from '@open-northland/render';
 import { buildTerrainGraph, halfCellMapFromCells } from '@open-northland/sim';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { FARMING_BALANCE_BY_ID } from '../src/catalog/farming.js';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../src/catalog/felling.js';
 import { MINE_LEVELS, STONE_DEPOSIT_UNITS } from '../src/catalog/mining.js';
@@ -15,6 +15,7 @@ import {
 } from '../src/catalog/terrain.js';
 import { HUMAN_HITPOINTS } from '../src/catalog/units.js';
 import { loadRuntimeRealContent, logRealContentGaps, mergeRealContent } from '../src/content/real-content.js';
+import { diag } from '../src/diag/log.js';
 import { sandboxContent } from '../src/game/sandbox/index.js';
 
 /**
@@ -195,10 +196,9 @@ describe('loadRuntimeRealContent', () => {
 });
 
 describe('logRealContentGaps', () => {
-  afterEach(() => vi.restoreAllMocks());
-
   it('logs one line when there are gaps, and is silent otherwise', () => {
-    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+    // Asserted on the logger's own ring, not its console echo (the app suite silences that echo).
+    const before = diag.entries().length;
     const content = sandboxContent();
     logRealContentGaps({
       content,
@@ -206,14 +206,14 @@ describe('logRealContentGaps', () => {
       unfarmedFieldGoods: ['herb'],
       uncatalogedBuildings: ['wonder'],
     });
-    expect(info).toHaveBeenCalledOnce();
-    const line = String(info.mock.calls[0]?.[0] ?? '');
+    const logged = diag.entries().slice(before);
+    expect(logged).toHaveLength(1);
+    const line = logged[0]?.message ?? '';
     expect(line).toContain('testberry'); // names the uncalibrated gathered good
     expect(line).toContain('herb'); // names the unfarmed field good
     expect(line).toContain('wonder'); // names the uncataloged building
-    info.mockClear();
     logRealContentGaps({ content, unbalancedGoods: [], unfarmedFieldGoods: [], uncatalogedBuildings: [] });
-    expect(info).not.toHaveBeenCalled();
+    expect(diag.entries()).toHaveLength(before + 1);
   });
 });
 

@@ -2,7 +2,7 @@ import { type EntitySnapshot, ONE, type Simulation, type WorldSnapshot } from '@
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../src/game/rules.js';
 import type { UnitPanelModelContext } from '../../src/hud/details-panel/index.js';
 import { createSceneSim } from '../../src/scenes/index.js';
-import { sandboxScene } from '../../src/scenes/sandbox.js';
+import { sandboxScene } from '../../src/scenes/sandbox/index.js';
 
 /** The details-panel model context `{ buildings, goods, jobs }` a sim's content provides — the content half
  *  every `buildUnitPanelModel` assertion runs against. */

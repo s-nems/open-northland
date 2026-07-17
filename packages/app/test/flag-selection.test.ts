@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { HUMAN_PLAYER } from '../src/game/rules.js';
 import { gathererByFlag, ownerPlayerOf, workFlagOf } from '../src/game/snapshot.js';
 import { createSceneSim } from '../src/scenes/index.js';
-import { sandboxScene } from '../src/scenes/sandbox.js';
+import { sandboxScene } from '../src/scenes/sandbox/index.js';
 
 /**
  * A gatherer's drop-off FLAG is a pure marker with no back-reference to its gatherer, so a click on a

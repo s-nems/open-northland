@@ -5,7 +5,7 @@ import { childrenScene } from './children.js';
 import { collisionScene } from './collision.js';
 import { familyScene } from './family.js';
 import { goodsCatalogScene } from './goods-catalog.js';
-import { sandboxScene } from './sandbox.js';
+import { sandboxScene } from './sandbox/index.js';
 import { signpostsScene } from './signposts.js';
 import type { SceneDefinition } from './types.js';
 import { warehouseScene } from './warehouse.js';

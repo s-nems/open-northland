@@ -87,7 +87,9 @@ that matches its role instead of piling another method onto a growing file:
   bitmap path (`bitmap-text.ts`) stays available for anything that must be the exact original face. The
   hud layer never imports `view/` — view glue (e.g. `backingScale`) is injected via options.
 - **`view/`** — browser-view helpers, grouped by concern:
-  - **`runtime/`** — the in-game loop: `game-view.ts` (the SHARED runtime — the one-time HUD mount),
+  - **`runtime/`** — the in-game loop: `world-bootstrap.ts` (the shared boot seams both playable entries
+    assemble their world from: `loadWorldContent`, `createWorldRenderer`, `applyFogOverride`,
+    `terrainColourOption`), `game-view.ts` (the SHARED runtime — the one-time HUD mount),
     `frame-loop.ts` (the per-frame fixed-timestep RAF loop both playable entries run on, over an explicit
     `FrameLoopDeps` context), `game-presentation.ts` (one-time game/HUD presentation mount),
     `raf-loop.ts`, `pointer-tracker.ts`.
@@ -112,7 +114,8 @@ that matches its role instead of piling another method onto a growing file:
   `runAuthoredSlice` over the global `game/` content), `map-loader.ts` (the decoded-map fetch),
   `authored-placements.ts` (the pure authored-entity join).
 - **`scenes/`** — the acceptance-scene system (see below) + `sandbox-queries.ts` (the scene-check world
-  queries).
+  queries). The main inspection scene is the `sandbox/` package: `placements.ts` (the authored village/camp
+  tables) + `checks.ts` (its check-support queries) + `index.ts` (the builders + `sandboxScene`).
 
 Outside `src/`: **`bench/`** — the sim's per-system benchmark (`npm run bench:sim`; docs/TESTING.md).
 Node-only and on-demand, like `test/`: it is outside the tsconfig build, and nothing but its own
@@ -180,7 +183,8 @@ a reproducible default so the committed build + the `npm run shot` PNG never dep
   aid for centring a bridge, coastline, or another decoded feature.
   Normal map and scene play always attempts to load decoded sprites, terrain textures, and landscape
   objects at the calibrated projection; a checkout without them degrades to hand-authored markers and flat
-  ground. Renderer opt-outs are not player settings. Gallery-specific controls remain scoped to their
+  ground. Renderer opt-outs are not player settings: `?postfx=off` skips the renderer's post-processing
+  pass over both playable entries (`view/runtime/world-bootstrap.ts`). Gallery-specific controls remain scoped to their
   entries (`?anim&zoom=`, `?icons&atlas=`, and the deterministic `?shot` verification flags).
   `?map=<id>` is a real-content human-validation entry, NOT a `SceneDefinition`; its headless counterpart
   cannot depend on copyrighted map data.

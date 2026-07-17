@@ -29,7 +29,7 @@ import {
   type UnitPanelModelContext,
 } from '../src/hud/details-panel/index.js';
 import { createSceneSim } from '../src/scenes/index.js';
-import { sandboxScene } from '../src/scenes/sandbox.js';
+import { sandboxScene } from '../src/scenes/sandbox/index.js';
 import { equipmentFixture } from './support/equipment.js';
 import { buildingEntity, ctxOf, sandboxCtx, snapshotOf } from './support/sandbox.js';
 

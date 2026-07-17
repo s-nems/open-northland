@@ -2,7 +2,7 @@ import { components } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { GOOD_GOLD, GOOD_IRON } from '../../src/game/sandbox/index.js';
 import { createSceneSim } from '../../src/scenes/runtime.js';
-import { sandboxScene } from '../../src/scenes/sandbox.js';
+import { sandboxScene } from '../../src/scenes/sandbox/index.js';
 import { hasRealIr, loadContentUnderTest } from './helpers.js';
 
 const { Resource } = components;
