@@ -70,7 +70,7 @@ export interface PooledEntity {
   reveal: number | undefined;
   /** The entity's inter-tick motion track — the last two tick anchors plus the lerped drawn anchor
    *  ({@link import('./motion.js').trackMotion}); 12 Hz sim steps draw as continuous frame-rate motion.
-   *  `tick` −1 = fresh. */
+   *  `tick` −1 = untracked (see {@link MotionTrack.tick}). */
   readonly motion: MotionTrack;
 }
 
