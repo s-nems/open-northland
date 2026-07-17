@@ -18,7 +18,7 @@ const WALK_ANIMATION_RATE = WALK_TICKS_PER_CELL / WALK_ANIMATION_TICKS_PER_CYCLE
  * lerping — a spawn/teleport, not a walk. The fastest legit case is a multi-tick catch-up frame of a
  * running unit (≈ 5 ticks × 17 px); real teleports jump hundreds of px, so the band between is safe.
  */
-const SNAP_DISTANCE = 128;
+export const SNAP_DISTANCE = 128;
 
 /**
  * World px the feet cover per authored walk frame — one cell (`2·TILE_HALF_W`, read at call time:
@@ -41,7 +41,8 @@ const MAX_GAIT_RATE = 2.5;
 /** An entity's inter-tick motion track: the current and previous tick anchors (world px), plus the
  *  drawn anchor the last {@link trackMotion} computed from them. */
 export interface MotionTrack {
-  /** The tick `x`/`y` belong to; −1 = never tracked (the next update snaps both anchors). */
+  /** The tick `x`/`y` belong to; −1 = untracked, so the next update snaps both anchors — either never
+   *  sighted, or absent from the draw list since (the pool resets it on re-entry, whose anchor is stale). */
   tick: number;
   x: number;
   y: number;

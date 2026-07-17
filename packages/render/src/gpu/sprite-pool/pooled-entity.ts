@@ -52,6 +52,8 @@ export interface PooledEntity {
   readonly paletted: boolean;
   placeholder?: Graphics;
   attached: boolean;
+  /** The `frameId` this entity was last drawn on; −1 = never drawn. The reconcile detaches entities whose
+   *  stamp is not the current frame, and snaps the motion track of one whose stamp skipped a frame. */
   lastSeen: number;
   /** This entity's world-space sprite AABB, restamped in place each frame it's drawn (no per-frame alloc). */
   readonly bounds: MutableBounds;
@@ -81,7 +83,7 @@ export function createPooled(kind: SpriteKind, paletted: boolean): PooledEntity 
     shadowFlags: [],
     paletted,
     attached: false,
-    lastSeen: 0,
+    lastSeen: -1,
     bounds: { minX: 0, minY: 0, maxX: 0, maxY: 0 },
     boundsFrame: -1,
     reveal: undefined,

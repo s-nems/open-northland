@@ -53,3 +53,28 @@ describe('motion gait phase', () => {
     expect(m.gaitPhase).toBeLessThanOrEqual(2.5);
   });
 });
+
+/**
+ * The track's INTERPOLATION decision. A multi-tick gap is not on its own a reason to snap: a
+ * continuously-drawn walker legitimately crosses several ticks in one frame (fixed-timestep catch-up,
+ * ×2/×3 game speed at low fps). Only a first sighting snaps — which is the seam the pool reuses to
+ * resume a track that sat out frames (see the sprite-pool re-entry test).
+ */
+describe('motion interpolation', () => {
+  it('glides across a multi-tick catch-up frame rather than jumping to the new anchor', () => {
+    const m = fresh();
+    trackMotion(m, 0, 0, 0, 1);
+    trackMotion(m, 1, 10, 0, 1);
+    trackMotion(m, 3, 30, 0, 0.5); // two ticks caught up in one frame, drawn halfway through it
+    expect(m.drawX).toBe(20); // lerp(10, 30, 0.5) — interpolation is exactly what a catch-up frame needs
+  });
+
+  it('snaps to the new anchor when the track is reset to first-sighting', () => {
+    const m = fresh();
+    trackMotion(m, 0, 0, 0, 1);
+    trackMotion(m, 1, 10, 0, 1);
+    m.tick = -1; // what the pool's re-entry reset does to a track that sat out frames
+    trackMotion(m, 8, 40, 0, 0.5); // a sub-SNAP_DISTANCE offset that would otherwise lerp from 10
+    expect(m.drawX).toBe(40);
+  });
+});
