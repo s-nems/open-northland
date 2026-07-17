@@ -1,6 +1,6 @@
 import type { DesktopApi, DesktopState, GameFolderCandidate } from '../ipc.js';
 import { el } from './dom.js';
-import { renderModEvent, wireModPanel } from './mod-panel.js';
+import { createModPanel } from './mod-panel.js';
 import { createPipelineProgress } from './pipeline-progress.js';
 
 /**
@@ -30,6 +30,10 @@ function showPhase(name: keyof typeof phases): void {
 }
 
 const progress = createPipelineProgress(showPhase);
+const modPanel = createModPanel((root) => {
+  externalModRoot = root;
+  applyModAvailability();
+});
 
 let validPath: string | undefined;
 let candidateHasMod = false;
@@ -38,9 +42,8 @@ let externalModRoot: string | undefined;
 
 /** Re-word the probe note + install/mod-panel visibility for the current game/mod availability. */
 function applyModAvailability(): void {
-  const modPanel = el('mod-panel');
   if (validPath === undefined) {
-    modPanel.classList.add('hidden');
+    modPanel.setVisible(false);
     return;
   }
   if (candidateHasMod) {
@@ -51,7 +54,7 @@ function applyModAvailability(): void {
     probeNote.textContent = 'Game found — but the CulturesNation mod is missing.';
   }
   const modReady = candidateHasMod || externalModRoot !== undefined;
-  modPanel.classList.toggle('hidden', modReady);
+  modPanel.setVisible(!modReady);
   installButton.disabled = !modReady;
 }
 
@@ -128,11 +131,7 @@ async function boot(): Promise<void> {
     applyCandidate(await window.desktop.probeGamePath(state.gamePath));
   }
   window.desktop.onPipelineEvent((event) => progress.handleEvent(event));
-  window.desktop.onModEvent(renderModEvent);
-  wireModPanel((root) => {
-    externalModRoot = root;
-    applyModAvailability();
-  });
+  window.desktop.onModEvent((event) => modPanel.handleEvent(event));
 
   const detected = await window.desktop.detectGameFolders();
   if (detected.length > 0) {

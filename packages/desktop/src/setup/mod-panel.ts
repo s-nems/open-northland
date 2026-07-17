@@ -15,8 +15,14 @@ const MOD_FALLBACK_NOTE =
   'You can download the mod yourself from culturesnation.pl (news page → CnMod), unpack the zip, ' +
   'and point "I already have it…" at the unpacked folder.';
 
-/** Render one download/extract progress event from the installer. */
-export function renderModEvent(event: ModEvent): void {
+export interface ModPanelView {
+  /** Render one download/extract progress event from the installer. */
+  handleEvent(event: ModEvent): void;
+  /** Show the step only while a mod is still needed. */
+  setVisible(visible: boolean): void;
+}
+
+function renderModEvent(event: ModEvent): void {
   const fill = el('mod-bar-fill');
   switch (event.kind) {
     case 'mod-download': {
@@ -48,7 +54,8 @@ export function renderModEvent(event: ModEvent): void {
 }
 
 /** Wire the panel's buttons; `onModRoot` fires with the mod root each time one becomes available. */
-export function wireModPanel(onModRoot: (root: string) => void): void {
+export function createModPanel(onModRoot: (root: string) => void): ModPanelView {
+  const panel = el('mod-panel');
   const progress = el('mod-progress');
   const note = el('mod-note');
   el('mod-download').addEventListener('click', async () => {
@@ -80,4 +87,11 @@ export function wireModPanel(onModRoot: (root: string) => void): void {
       note.textContent = `${err instanceof Error ? err.message : String(err)} — ${MOD_FALLBACK_NOTE}`;
     }
   });
+
+  return {
+    handleEvent: renderModEvent,
+    setVisible(visible: boolean): void {
+      panel.classList.toggle('hidden', !visible);
+    },
+  };
 }

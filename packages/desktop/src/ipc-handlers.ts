@@ -8,7 +8,7 @@ import type { GameFolderCandidate, ModEvent, PipelineEvent } from './ipc.js';
 import { IPC_CHANNELS } from './ipc.js';
 import { findModRootUnder, installCnMod } from './mod-install.js';
 import type { PipelineHost } from './pipeline-host.js';
-import { GAME_URL } from './protocol.js';
+import { APP_ORIGIN_PREFIX, GAME_URL } from './protocol.js';
 import type { ShellPaths, ShellState } from './shell-state.js';
 
 /**
@@ -26,7 +26,7 @@ export interface IpcDeps {
 
 /** Every invoke must come from one of the shell's own app:// pages; a foreign frame gets nothing. */
 function assertAppSender(event: Electron.IpcMainInvokeEvent): void {
-  if (!(event.senderFrame?.url ?? '').startsWith('app://')) {
+  if (!(event.senderFrame?.url ?? '').startsWith(APP_ORIGIN_PREFIX)) {
     throw new Error('IPC from an untrusted frame');
   }
 }

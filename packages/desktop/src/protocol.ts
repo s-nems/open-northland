@@ -13,8 +13,10 @@ import { routePathOf } from './protocol-routing.js';
  */
 
 const APP_SCHEME = 'app';
-export const GAME_URL = 'app://game/index.html';
-export const SETUP_URL = 'app://setup/setup.html';
+/** Every page the shell serves sits under this prefix; the IPC and navigation guards gate on it. */
+export const APP_ORIGIN_PREFIX = `${APP_SCHEME}://`;
+export const GAME_URL = `${APP_ORIGIN_PREFIX}game/index.html`;
+export const SETUP_URL = `${APP_ORIGIN_PREFIX}setup/setup.html`;
 
 const STATIC_TYPES: Readonly<Record<string, string>> = {
   '.html': 'text/html; charset=utf-8',

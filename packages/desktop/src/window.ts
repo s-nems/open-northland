@@ -1,6 +1,6 @@
 import { BrowserWindow, dialog, Menu, shell } from 'electron';
 import type { ContentStatus } from './content-state.js';
-import { GAME_URL, SETUP_URL } from './protocol.js';
+import { APP_ORIGIN_PREFIX, GAME_URL, SETUP_URL } from './protocol.js';
 
 /**
  * The shell's single window and its native menu. The menu owns the shell-level actions (reinstall
@@ -14,8 +14,6 @@ export function createWindow(initial: ContentStatus, preloadScript: string): Bro
     width: 1440,
     height: 900,
     backgroundColor: '#1d1a15',
-    // The menu bar stays visible on Windows/Linux: it is the only home of the reinstall-content
-    // and open-data-folder actions, and a bar hidden behind Alt is undiscoverable.
     webPreferences: {
       preload: preloadScript,
       // Electron 43 defaults, pinned so a future option edit can't silently regress them.
@@ -27,7 +25,7 @@ export function createWindow(initial: ContentStatus, preloadScript: string): Bro
   // The window renders only the shell's own app:// pages — no popups, no navigation elsewhere.
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   win.webContents.on('will-navigate', (event, target) => {
-    if (!target.startsWith('app://')) event.preventDefault();
+    if (!target.startsWith(APP_ORIGIN_PREFIX)) event.preventDefault();
   });
   void win.loadURL(initial === 'ready' ? GAME_URL : SETUP_URL);
   return win;
@@ -49,6 +47,11 @@ async function openSetupPage(win: BrowserWindow): Promise<void> {
   await win.loadURL(SETUP_URL);
 }
 
+/**
+ * The native menu owns the shell-level actions the in-game UI must not know about. It is never
+ * auto-hidden on Windows/Linux: it is the only home of the reinstall-content and open-data-folder
+ * actions, and a bar hidden behind Alt is undiscoverable.
+ */
 export function buildAppMenu(win: BrowserWindow, dataRootPath: string): void {
   const gameSubmenu: Electron.MenuItemConstructorOptions[] = [
     // The setup page reads the current content status and offers Regenerate / Play accordingly.
