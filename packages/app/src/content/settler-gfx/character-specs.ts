@@ -337,7 +337,7 @@ export const ADULT_CHARACTER_BY_JOB: Readonly<Record<number, CharacterSpecId>> =
 };
 
 /**
- * Equipped weapon good id-SLUG → warrior character spec — the "a warrior is one profession; the weapon
+ * Equipped weapon good id-slug → warrior character spec — the "a warrior is one profession; the weapon
  * in hand decides the look" join. A settler carrying one of these in its `Equipment.weapon` slot draws
  * that weapon's warrior body regardless of its jobType; a bare warrior (no weapon good) falls through to
  * {@link ADULT_CHARACTER_BY_JOB} (the unarmed body for `soldier_unarmed`). Keyed by the good's id slug

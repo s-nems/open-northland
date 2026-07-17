@@ -17,6 +17,7 @@ import {
   WEAPON_SHORT_BOW,
   WEAPON_SPEAR,
   WEAPON_SWORD,
+  type WeaponGoodLookup,
   weaponEquipmentFor,
 } from '../../game/sandbox/ids/index.js';
 
@@ -49,8 +50,8 @@ export interface UnitSpawnOptions {
   readonly x: number;
   readonly y: number;
   /** The running content's goods table — resolves the class weapon's good slug to the id space the
-   *  sim actually plays on (sandbox 137–142 vs real 37–42). */
-  readonly goods: readonly { readonly typeId: number; readonly id: string }[];
+   *  sim actually plays on ({@link WeaponGoodLookup}). */
+  readonly goods: WeaponGoodLookup;
 }
 
 /**

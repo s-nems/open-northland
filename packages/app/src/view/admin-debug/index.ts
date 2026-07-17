@@ -105,6 +105,8 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
   const { canvas } = deps;
   const copy = messages().admin;
   const goodNames = messages().goods;
+  // The goods table in the weapon-lookup seam shape, mapped once (GoodEntry names the typeId `good`).
+  const spawnGoods = deps.goods.map((g) => ({ typeId: g.good, id: g.id }));
   const targetNoun: Record<DebugTargetKind, string> = {
     settler: copy.targetSettler,
     building: copy.targetBuilding,
@@ -341,14 +343,7 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
       return;
     }
     deps.enqueue(
-      unitSpawnCommand(armed.preset, {
-        player,
-        hitpoints,
-        armorClass,
-        x: col,
-        y: row,
-        goods: deps.goods.map((g) => ({ typeId: g.good, id: g.id })),
-      }),
+      unitSpawnCommand(armed.preset, { player, hitpoints, armorClass, x: col, y: row, goods: spawnGoods }),
     );
   };
 

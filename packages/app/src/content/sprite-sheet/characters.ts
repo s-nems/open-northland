@@ -216,7 +216,7 @@ export async function loadCharacters(
     if (char !== undefined) youngByJob[Number(job)] = char;
   }
   // The equipped-weapon look table: a warrior draws the body of the weapon in its Equipment.weapon slot.
-  // Joined slug → the RUNNING content's good typeId (sandbox 137–142 vs real 37–42), so the key matches
+  // Joined slug → the running content's good typeId (sandbox 137–142 vs real 37–42), so the key matches
   // whatever `Equipment.weapon.goodType` the sim actually stamps.
   const byWeaponGood: Record<number, SettlerCharacter> = {};
   for (const good of goods) {

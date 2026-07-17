@@ -204,7 +204,7 @@ describe('weaponEquipmentFor — the one job→equipment-weapon map every spawn 
     expect(eq(JOB_ARCHER_LONG)).toEqual({ weapon: { goodType: GOOD_BOW_LONG } });
   });
 
-  it('resolves the good against the RUNNING content — real goodtypes.ini ids, not the sandbox +100', () => {
+  it('resolves the good against the running content — real goodtypes.ini ids, not the sandbox +100', () => {
     // On a decoded map the sim plays on the merged real content whose weapon goods keep the
     // goodtypes.ini ids (37–42); the slug join must land there, or the panel's Broń row shows an
     // unknown good (the empty-socket bug this pins).
@@ -227,7 +227,7 @@ describe('weaponEquipmentFor — the one job→equipment-weapon map every spawn 
     expect(eq(JOB_HERO_SABER)).toEqual({ weapon: { goodType: GOOD_SWORD_LONG } });
     expect(eq(JOB_HEROINE_BOW)).toEqual({ weapon: { goodType: GOOD_BOW_LONG } });
     expect(eq(JOB_HERO_UNARMED)).toBeUndefined();
-    // The axe jobs have NO weapons.ini record (the sim can't arm them) — an equipment sword would
+    // The axe jobs have no weapons.ini record (the sim can't arm them) — an equipment sword would
     // claim a weapon the unit doesn't swing, so they get none.
     expect(eq(JOB_SOLDIER_AXE_BIG)).toBeUndefined();
   });
