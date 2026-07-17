@@ -1,7 +1,7 @@
 import { parseTerrainMap } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { MoveGoal, Position } from '../../src/components/index.js';
-import { fx, Simulation, scenario } from '../../src/index.js';
+import { cellAnchorNode, fx, halfCellMapFromCells, Simulation, scenario } from '../../src/index.js';
 import type { TerrainMap } from '../../src/nav/terrain/index.js';
 import { testContent } from '../fixtures/content.js';
 
@@ -19,7 +19,7 @@ const GRASS = 0; // fixture landscape typeId 0 — walkable
 const WATER = 1; // fixture landscape typeId 1 — not walkable
 
 function asTerrainMap(map: ReturnType<typeof parseTerrainMap>): TerrainMap {
-  return { ...map, resolution: 'half-cell' };
+  return halfCellMapFromCells(map);
 }
 
 /**
@@ -129,10 +129,10 @@ describe('a loaded map drives the sim in place of the synthetic grass grid', () 
   it('feeds a parsed content/maps grid through scenario({ map }) into a real terrain graph', () => {
     const map = parseTerrainMap(JSON.parse(mapFileJson()));
     const sim = scenario(testContent(), { seed: 7, map: asTerrainMap(map) }).run(0).sim;
-    // The graph was built from the loaded grid: 25 cells, the centre column blocked, the gap open.
-    expect(sim.terrain?.nodeCount).toBe(25);
-    expect(sim.terrain?.isWalkable(sim.terrain.nodeAt(2, 0))).toBe(false); // water wall
-    expect(sim.terrain?.isWalkable(sim.terrain.nodeAt(2, 4))).toBe(true); // the gap
+    // The 5×5 cell grid was converted at the loader→sim seam into the 10×10 half-cell lattice.
+    expect(sim.terrain?.nodeCount).toBe(100);
+    expect(sim.terrain?.isWalkable(sim.terrain.nodeAt(4, 0))).toBe(false); // water cell x=2 → nodes x=4..5
+    expect(sim.terrain?.isWalkable(sim.terrain.nodeAt(4, 8))).toBe(true); // gap at cell (2,4)
   });
 
   it('a settler navigates the loaded map (detours around the water wall) deterministically', () => {
@@ -141,7 +141,8 @@ describe('a loaded map drives the sim in place of the synthetic grass grid', () 
       const sim = new Simulation({ seed: 7, content: testContent(), map: asTerrainMap(map) });
       // A lone mover at (0,0) given only a MoveGoal to (4,0): the navigation planner must issue a
       // PathRequest, A* must route around the water wall through the y=4 gap, MovementSystem walks it.
-      const goal = sim.terrain?.nodeAt(4, 0) ?? 0;
+      const target = cellAnchorNode(4, 0);
+      const goal = sim.terrain?.nodeAt(target.hx, target.hy) ?? 0;
       const e = sim.world.create();
       sim.world.add(e, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
       sim.world.add(e, MoveGoal, { cell: goal });

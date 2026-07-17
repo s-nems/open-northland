@@ -117,8 +117,8 @@ describe('rebaseContent', () => {
   });
 
   it('rebasing the CHANGED content back to the ORIGINAL content restores the original state', () => {
-    // Round-trip: a rebase is a pure function of (content, seed, map, log), so re-rebasing the same
-    // log onto the original content lands exactly the original state — the hot-reload is reversible.
+    // Round-trip: the changed rebase must actually produce a distinct state and carry the command log;
+    // replaying that history under the original content then restores the original state.
     const schedule = new Map<number, Command[]>([
       [1, [{ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 5, y: 0, tribe: VIKING }]],
       [2, [{ kind: 'spawnSettler', jobType: WOODCUTTER, x: 1, y: 0, tribe: VIKING }]],
@@ -127,16 +127,24 @@ describe('rebaseContent', () => {
     const { log, hashes } = recordRun(7, 80, schedule, grassMap(6, 1));
     const originalFinal = hashes[hashes.length - 1];
 
-    rebaseContent(
+    const changed = rebaseContent(
       rawContent((c) => {
-        const sawmill = c.buildings.find((b) => b.id === 'sawmill');
-        const recipe = sawmill?.recipes[0];
-        if (recipe !== undefined) recipe.ticks = 10;
+        const hq = c.buildings.find((b) => b.id === 'headquarters');
+        const woodSlot = hq?.stock.find((s) => s.goodType === 1);
+        if (woodSlot !== undefined) woodSlot.initial = 42;
       }),
       { seed: 7, map: grassMap(6, 1), log, untilTick: 80 },
     );
+    expect(changed.kind).toBe('ok');
+    if (changed.kind !== 'ok') return;
+    expect(changed.sim.hashState()).not.toBe(originalFinal);
 
-    const back = rebaseContent(rawContent(), { seed: 7, map: grassMap(6, 1), log, untilTick: 80 });
+    const back = rebaseContent(rawContent(), {
+      seed: 7,
+      map: grassMap(6, 1),
+      log: changed.sim.commands.log,
+      untilTick: 80,
+    });
     expect(back.kind).toBe('ok');
     if (back.kind !== 'ok') return;
     expect(back.sim.hashState()).toBe(originalFinal);

@@ -9,5 +9,5 @@
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "types": ["node"]
   },
-  "include": ["packages/*/test/**/*.ts", "tools/*/test/**/*.ts"]
+  "include": ["packages/*/test/**/*", "tools/*/test/**/*"]
 }
