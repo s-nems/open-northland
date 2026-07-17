@@ -128,10 +128,9 @@ export function nodeRefFrom(record: LandscapeGfxRow): GatheringNodeRef | undefin
  */
 function firstBobsByStateAscending(record: LandscapeGfxRow): readonly number[] | undefined {
   const byState = [...(record.frames ?? [])]
-    .filter((f) => f.bobIds[0] !== undefined)
-    .sort((a, b) => a.state - b.state);
-  if (byState.length === 0) return undefined;
-  return byState.map((f) => f.bobIds[0] as number);
+    .sort((a, b) => a.state - b.state)
+    .flatMap((f) => (f.bobIds[0] !== undefined ? [f.bobIds[0]] : []));
+  return byState.length === 0 ? undefined : byState;
 }
 
 /**
@@ -158,6 +157,15 @@ export function pileFillBobs(record: LandscapeGfxRow): readonly number[] | undef
  */
 export function nodeLevelBobs(record: LandscapeGfxRow): readonly number[] | undefined {
   return firstBobsByStateAscending(record);
+}
+
+/** A landscape gfx record → its {@link GatheringNodeLevelsRef} (served atlas stem + the per-state bob
+ *  ladder), or `undefined` when it names no drawable atlas/frames. The levels twin of
+ *  {@link nodeRefFrom}, shared by the node, per-variant, trunk and pile resolutions. Pure. */
+export function levelsRefFrom(record: LandscapeGfxRow): GatheringNodeLevelsRef | undefined {
+  const stem = servedAtlasStem(record);
+  const bobs = nodeLevelBobs(record);
+  return stem !== undefined && bobs !== undefined ? { stem, bobs } : undefined;
 }
 
 /** Pick the representative (lowest-index) placeable gfx record of a pipeline stage, or `undefined`. */
@@ -202,36 +210,27 @@ export function resolveGatheringRefs(
     const p = byGoodId.get(good.id);
     if (p === undefined) continue;
     const nodeRecord = representativeRecord(p.harvest ?? p.pickup, byIndex);
-    if (nodeRecord !== undefined) {
-      const stem = servedAtlasStem(nodeRecord);
-      const bobs = nodeLevelBobs(nodeRecord); // empty→full fill states — a mined deposit shrinks through them
-      if (stem !== undefined && bobs !== undefined) nodesByGood[good.typeId] = { stem, bobs };
-    }
+    // The ref's bobs are the empty→full fill states — a mined deposit shrinks through them.
+    const nodeRef = nodeRecord !== undefined ? levelsRefFrom(nodeRecord) : undefined;
+    if (nodeRef !== undefined) nodesByGood[good.typeId] = nodeRef;
     // Every harvest-stage variant of the good ("yew 01" … "cedar 02"), keyed by its gfx record index —
     // the table a decoded-map node's own `gfxIndex` picks its exact original species/decal from.
     for (const idx of (p.harvest ?? p.pickup)?.gfxIndices ?? []) {
       const record = byIndex.get(idx);
       if (record === undefined) continue;
-      const stem = servedAtlasStem(record);
-      const bobs = nodeLevelBobs(record);
-      if (stem !== undefined && bobs !== undefined) nodesByGfxIndex[idx] = { stem, bobs };
+      const ref = levelsRefFrom(record);
+      if (ref !== undefined) nodesByGfxIndex[idx] = ref;
     }
     // The freshly-dropped trunk (the `landscapeToPickup` stage), drawn by a loose GroundDrop before it is
     // carried off — the record's whole fewest→most state ladder, indexed by the drop's unit count (the
     // original picks the state whose number equals the remaining valency). Only bind it for a good that
     // actually has a distinct pickup stage; a good without one (harvest === pickup) falls back to the pile.
     const trunkRecord = representativeRecord(p.pickup, byIndex);
-    if (trunkRecord !== undefined) {
-      const stem = servedAtlasStem(trunkRecord);
-      const bobs = nodeLevelBobs(trunkRecord);
-      if (stem !== undefined && bobs !== undefined) trunksByGood[good.typeId] = { stem, bobs };
-    }
+    const trunkRef = trunkRecord !== undefined ? levelsRefFrom(trunkRecord) : undefined;
+    if (trunkRef !== undefined) trunksByGood[good.typeId] = trunkRef;
     const pileRecord = representativeRecord(p.store, byIndex);
-    if (pileRecord !== undefined) {
-      const stem = servedAtlasStem(pileRecord);
-      const fillBobs = pileFillBobs(pileRecord);
-      if (stem !== undefined && fillBobs !== undefined) pilesByGood[good.typeId] = { stem, fillBobs };
-    }
+    const pileRef = pileRecord !== undefined ? levelsRefFrom(pileRecord) : undefined;
+    if (pileRef !== undefined) pilesByGood[good.typeId] = { stem: pileRef.stem, fillBobs: pileRef.bobs };
   }
 
   // The synthetic `plank` (the joinery slice's output — no gathering pipeline, no `ls_goods` art of its own)

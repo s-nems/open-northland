@@ -31,8 +31,6 @@ export { directionalAnimFromSeq, type GoodRef } from './seq-anim.js';
 export {
   HAMMER_TICKS_PER_FRAME,
   HARVEST_TICKS,
-  KISS_ATOMIC,
-  KISSED_ATOMIC,
   MUSHROOM_PLUCK_FRAMES,
   MUSHROOM_PLUCKS_PER_PICK,
 } from './sequences.js';

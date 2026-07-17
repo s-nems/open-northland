@@ -14,7 +14,7 @@ import type { TextRun } from './text-run.js';
  */
 
 /** Default text size in design px (scaled by uiscale). Matches the details panel's body size. */
-export const UI_TEXT_PX = 11;
+const UI_TEXT_PX = 11;
 /**
  * Build a retained {@link TextRun} in the vector UI font at `basePx * scale`. Placement positions the run's
  * visible cap-top at `(x, y)` (the `resWidth`/`resHeight` args are ignored — a stage-space `Text` needs no

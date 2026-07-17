@@ -1,9 +1,8 @@
 import type { UiString } from '../../../../content/gui-gfx.js';
 import { messages } from '../../../../i18n/index.js';
 import type { Chrome } from '../../chrome.js';
-import type { BuildingLayout } from '../../layout/index.js';
+import { type BuildingLayout, ROW_TEXT_PAD } from '../../layout/index.js';
 import type { BuildingPanelModel } from '../../model/index.js';
-import { ROW_TEXT_PAD } from '../shared.js';
 import { HOUSEWINDOW } from './shared.js';
 
 /** Defence window: the original's single status line. */

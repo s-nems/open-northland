@@ -3,9 +3,8 @@ import type { UiString } from '../../../content/gui-gfx.js';
 import { messages } from '../../../i18n/index.js';
 import type { Rect } from '../../geometry.js';
 import type { Chrome } from '../chrome.js';
-import { type ButtonAction, EQUIP_ROW_H, ROW_H, type SettlerLayout } from '../layout/index.js';
+import { type ButtonAction, EQUIP_ROW_H, ROW_H, ROW_TEXT_PAD, type SettlerLayout } from '../layout/index.js';
 import { HUMANWINDOW, type SettlerPanelModel } from '../model/index.js';
-import { ROW_TEXT_PAD } from './shared.js';
 
 /** Key column width of a key/value row. */
 const KV_KEY_W = 82;

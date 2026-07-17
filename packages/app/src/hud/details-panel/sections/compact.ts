@@ -1,9 +1,8 @@
 import type { UiString } from '../../../content/gui-gfx.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import type { Chrome } from '../chrome.js';
-import type { CompactLayout } from '../layout/index.js';
+import { type CompactLayout, ROW_TEXT_PAD } from '../layout/index.js';
 import type { GenericSelectionPanelModel, MultiSettlerPanelModel } from '../model/index.js';
-import { ROW_TEXT_PAD } from './shared.js';
 
 /** `humanlistwindow` 2: 'Liczba poddanych na liście: %d'. */
 const HUMANLIST_COUNT = 2;

@@ -28,8 +28,6 @@ export interface GoodsDropDeps {
  */
 export interface GoodsDropController {
   isActive(): boolean;
-  /** The good currently held for dropping, or null when not in drop mode. */
-  activeGood(): number | null;
   enter(goodType: number): void;
   cancel(): void;
   /** Route a left-click while dropping: an in-bounds tile drops a pile and keeps the mode; off-map is inert
@@ -53,7 +51,6 @@ export function createGoodsDropController(deps: GoodsDropDeps): GoodsDropControl
 
   return {
     isActive: () => goodType !== null,
-    activeGood: () => goodType,
     enter: (type): void => {
       goodType = type;
       const label = deps.labelByGood.get(type) ?? `#${type}`;

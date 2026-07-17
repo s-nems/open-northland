@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { STOCK_TAB_COUNT } from '../src/content/gui-atlas-map.js';
-import { goodCategoryTab, stockTabLabels, stockTabRects } from '../src/hud/details-panel/stock-tabs.js';
+import { stockTabRects } from '../src/hud/details-panel/stock-tabs.js';
+import { goodCategoryTab, stockTabLabels } from '../src/hud/good-categories.js';
 
 describe('stock category tabs', () => {
   it('maps known goods to their category tab and unknown goods to the misc tab', () => {

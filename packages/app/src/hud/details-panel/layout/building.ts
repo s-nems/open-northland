@@ -10,7 +10,7 @@ type BuildingModel = Extract<UnitPanelModel, { kind: 'building' }>;
 /** A stock cell row (icon + amount plate) — ≈22 px in the original. */
 export const STOCK_ROW_H = 22;
 /** The stock section's category-tab strip (the row of eight 32×18 tab plates). */
-export const STOCK_TAB_H = 18;
+const STOCK_TAB_H = 18;
 /** Gap under the tab strip before the first stock row. */
 const STOCK_TAB_GAP = 4;
 const BUTTON_H = 16;
@@ -21,7 +21,7 @@ const PREVIEW_H = 183;
 /** The building-name line at the top of the right column. */
 const NAME_H = 14;
 /** The yellow-green selected strip under the name (≈5 px in the original). */
-export const UNDERLINE_H = 5;
+const UNDERLINE_H = 5;
 /**
  * Buttons start this far below the general body's top — the original puts the name, its underline, and a
  * capacity line ("Pojemność: 100", not yet extracted) above them; the offset reserves that room.
@@ -39,9 +39,9 @@ export const STOCK_PLATE_H = 11;
  */
 export const MAX_STOCK_ROWS = 6;
 /** Worker rows the fixed-height workers body always reserves (the original's bottom window ≈4 rows). */
-export const MAX_WORKER_ROWS = 4;
+const MAX_WORKER_ROWS = 4;
 /** Horizontal gap between the stock window's two columns (a window pad). */
-export const STOCK_COL_GAP = WIN_PAD;
+const STOCK_COL_GAP = WIN_PAD;
 
 export type ButtonAction = 'demolish' | 'center' | 'workers' | 'help' | 'assign-workplace' | 'assign-home';
 

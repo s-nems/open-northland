@@ -2,17 +2,18 @@ import type { JobEnables } from '@open-northland/data';
 import {
   ATTACK_ATOMIC,
   BUILD_GUIDE_ATOMIC,
+  BUILD_HOUSE_ATOMIC,
   CULTIVATE_ATOMIC,
+  KISS_ATOMIC,
+  KISSED_ATOMIC,
   PLANT_ATOMIC,
   STORE_PICKUP_ATOMIC,
   STORE_PILEUP_ATOMIC,
   WHEAT_HARVEST_ATOMIC,
 } from '../../../../catalog/atomics.js';
 import { HUMAN_HITPOINTS } from '../../../../catalog/units.js';
-import { KISS_ATOMIC, KISSED_ATOMIC } from '../../../../content/settler-gfx/index.js';
 import { PRIMARY_TRIBE } from '../../../rules.js';
 import {
-  BUILD_HOUSE_ATOMIC,
   GATHERERS,
   JOB_ARCHER,
   JOB_ARCHER_LONG,

@@ -16,7 +16,7 @@ export const WIN_TITLE_H = 16;
 export const WIN_LINE_H = 12;
 
 /** Parchment window fill/border. */
-export const WINDOW_FILL = 0x241d12;
+const WINDOW_FILL = 0x241d12;
 export const WINDOW_BORDER = 0x6b5836;
 /** Warmer wood fill used when the decoded `bg` bitmap is absent — closer to the in-game window than the
  *  near-black {@link WINDOW_FILL}, so the flat-Graphics fallback still reads as wood. */

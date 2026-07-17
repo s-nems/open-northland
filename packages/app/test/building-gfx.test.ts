@@ -7,6 +7,7 @@ import {
   DEFAULT_BUILDING_FAMILY,
   OVERLAY_TICKS_PER_FRAME,
 } from '../src/content/building-gfx/index.js';
+import type { BuildingBobRow } from '../src/content/ir.js';
 
 /**
  * The building render bindings: the `[GfxHouse]` LogicType→GfxBobId join (buildingBobRefsByType), the
@@ -18,108 +19,50 @@ import {
 /** The default building atlas family (the shared kindLayers.building layer) shared by every reducer test. */
 const DEFAULT_FAMILY = { bmdBasename: 'ls_houses_viking.bmd', paletteName: 'house01' };
 
-describe('buildingBobRefsByType', () => {
-  // The named families this rung loads (only viking4/house01). A canonical row in the default family →
-  // a bare bob id; in a loaded named family → a { layer, bob } ref; in any other (.bmd, palette) →
-  // dropped (the constant backs it).
-  const FAMILIES = [
-    { bmdBasename: 'ls_houses_viking4.bmd', paletteName: 'house01', layer: 'ls_houses_viking4.house01' },
-  ];
+/** The `.bmd` of the default family — a row's home unless it overrides it with another family's. */
+const DEFAULT_BMD = 'data/x/ls_houses_viking.bmd';
 
+/**
+ * One `buildingBobs` row: the (typeId, bobId) pair a case varies, over the default viking/house01 family.
+ * A case that turns on another field (a family's `.bmd`, a recolour `paletteName`, a growth `level`, the
+ * canonical `editName`, another `tribeId`) overrides just that one.
+ */
+function bobRow(typeId: number, bobId: number, over: Partial<BuildingBobRow> = {}): BuildingBobRow {
+  return { tribeId: 1, typeId, level: 0, bmd: DEFAULT_BMD, paletteName: 'house01', bobId, ...over };
+}
+
+/** The named families the reducer rungs load (only viking4/house01). A canonical row in the default family
+ *  → a bare bob id; in a loaded named family → a { layer, bob } ref; in any other (.bmd, palette) →
+ *  dropped (the constant backs it). */
+const FAMILIES = [
+  { bmdBasename: 'ls_houses_viking4.bmd', paletteName: 'house01', layer: 'ls_houses_viking4.house01' },
+];
+
+const VIKING2_BMD = 'data/x/ls_houses_viking2.bmd';
+const VIKING4_BMD = 'data/x/ls_houses_viking4.bmd';
+
+describe('buildingBobRefsByType', () => {
   // A slice of the real content/ir.json buildingBobs lane (extractBuildingBobs over houses.ini): the
   // viking home growth chain is distinct typeIds 2..6 (one bob each), the well carries a duplicate
   // (lumped) row, the HQ (typeId 1) lives in the viking4 family with two editName variants, a viking2
   // row is in an UNLOADED family, and a frank row is another tribe.
   const rows = [
-    { tribeId: 1, typeId: 2, level: 0, bmd: 'data/x/ls_houses_viking.bmd', paletteName: 'house01', bobId: 1 },
-    {
-      tribeId: 1,
-      typeId: 6,
-      level: 4,
-      bmd: 'data/x/ls_houses_viking.bmd',
-      paletteName: 'house01',
-      bobId: 41,
-    },
-    {
-      tribeId: 1,
-      typeId: 10,
-      level: 0,
-      bmd: 'data/x/ls_houses_viking.bmd',
-      paletteName: 'house01',
-      bobId: 131,
-    },
-    {
-      tribeId: 1,
-      typeId: 10,
-      level: 0,
-      bmd: 'data/x/ls_houses_viking.bmd',
-      paletteName: 'house01',
-      bobId: 131,
-    },
+    bobRow(2, 1),
+    bobRow(6, 41, { level: 4 }),
+    bobRow(10, 131),
+    bobRow(10, 131),
     // hive + bakery — the other transcribed-constant default-family types, to pin byte-identity across all 5.
-    {
-      tribeId: 1,
-      typeId: 11,
-      level: 0,
-      bmd: 'data/x/ls_houses_viking.bmd',
-      paletteName: 'house01',
-      bobId: 91,
-    },
-    {
-      tribeId: 1,
-      typeId: 15,
-      level: 1,
-      bmd: 'data/x/ls_houses_viking.bmd',
-      paletteName: 'house01',
-      bobId: 105,
-    },
+    bobRow(11, 91),
+    bobRow(15, 105, { level: 1 }),
     // HQ (typeId 1) — viking4/house01, two editName variants; "viking headquarters" (bob 34) is canonical.
-    {
-      tribeId: 1,
-      typeId: 1,
-      level: 0,
-      bmd: 'data/x/ls_houses_viking4.bmd',
-      paletteName: 'house01',
-      bobId: 34,
-      editName: 'viking headquarters',
-    },
-    {
-      tribeId: 1,
-      typeId: 1,
-      level: 0,
-      bmd: 'data/x/ls_houses_viking4.bmd',
-      paletteName: 'house01',
-      bobId: 44,
-      editName: 'viking headquarters house',
-    },
+    bobRow(1, 34, { bmd: VIKING4_BMD, editName: 'viking headquarters' }),
+    bobRow(1, 44, { bmd: VIKING4_BMD, editName: 'viking headquarters house' }),
     // also in viking4/house02 — excluded by palette preference
-    {
-      tribeId: 1,
-      typeId: 1,
-      level: 0,
-      bmd: 'data/x/ls_houses_viking4.bmd',
-      paletteName: 'house02',
-      bobId: 34,
-      editName: 'viking headquarters',
-    },
+    bobRow(1, 34, { bmd: VIKING4_BMD, paletteName: 'house02', editName: 'viking headquarters' }),
     // viking2 family is NOT loaded this rung — dropped (the constant/default backs typeId 20)
-    {
-      tribeId: 1,
-      typeId: 20,
-      level: 0,
-      bmd: 'data/x/ls_houses_viking2.bmd',
-      paletteName: 'house01',
-      bobId: 10,
-    },
+    bobRow(20, 10, { bmd: VIKING2_BMD }),
     // a frank house (other tribe) — filtered out
-    {
-      tribeId: 2,
-      typeId: 6,
-      level: 4,
-      bmd: 'data/x/ls_houses_frank.bmd',
-      paletteName: 'house01',
-      bobId: 888,
-    },
+    bobRow(6, 888, { tribeId: 2, level: 4, bmd: 'data/x/ls_houses_frank.bmd' }),
   ];
 
   it('emits bare ids for the default family and a layer-qualified ref for a loaded named family (HQ)', () => {
@@ -156,24 +99,8 @@ describe('buildingBobRefsByType', () => {
     // Synthetic: the canonical "viking headquarters" carries the HIGHER bob — editName must win, proving
     // the pick is the named building and not just the lowest-bob tiebreak.
     const flipped = [
-      {
-        tribeId: 1,
-        typeId: 1,
-        level: 0,
-        bmd: 'x/ls_houses_viking4.bmd',
-        paletteName: 'house01',
-        bobId: 7,
-        editName: 'viking headquarters house',
-      },
-      {
-        tribeId: 1,
-        typeId: 1,
-        level: 0,
-        bmd: 'x/ls_houses_viking4.bmd',
-        paletteName: 'house01',
-        bobId: 9,
-        editName: 'viking headquarters',
-      },
+      bobRow(1, 7, { bmd: VIKING4_BMD, editName: 'viking headquarters house' }),
+      bobRow(1, 9, { bmd: VIKING4_BMD, editName: 'viking headquarters' }),
     ];
     expect(buildingBobRefsByType(flipped, 1, DEFAULT_FAMILY, FAMILIES)[1]).toEqual({
       layer: 'ls_houses_viking4.house01',
@@ -182,47 +109,23 @@ describe('buildingBobRefsByType', () => {
   });
 
   it('prefers the default palette when a typeId spans recolour skins', () => {
-    const skins = [
-      { tribeId: 1, typeId: 12, level: 0, bmd: 'x/ls_houses_viking.bmd', paletteName: 'house02', bobId: 999 },
-      { tribeId: 1, typeId: 12, level: 0, bmd: 'x/ls_houses_viking.bmd', paletteName: 'house01', bobId: 60 },
-    ];
+    const skins = [bobRow(12, 999, { paletteName: 'house02' }), bobRow(12, 60)];
     expect(buildingBobRefsByType(skins, 1, DEFAULT_FAMILY, FAMILIES)).toEqual({ 12: 60 });
   });
 
   it('picks the highest level then the lowest bobId, insertion-order-independent', () => {
-    const multi = [
-      { tribeId: 1, typeId: 6, level: 2, bmd: 'x/ls_houses_viking.bmd', paletteName: 'house01', bobId: 21 },
-      { tribeId: 1, typeId: 6, level: 4, bmd: 'x/ls_houses_viking.bmd', paletteName: 'house01', bobId: 41 },
-      { tribeId: 1, typeId: 6, level: 0, bmd: 'x/ls_houses_viking.bmd', paletteName: 'house01', bobId: 1 },
-    ];
+    const multi = [bobRow(6, 21, { level: 2 }), bobRow(6, 41, { level: 4 }), bobRow(6, 1, { level: 0 })];
     expect(buildingBobRefsByType(multi, 1, DEFAULT_FAMILY, FAMILIES)).toEqual({ 6: 41 });
-    const tie = [
-      { tribeId: 1, typeId: 7, level: 1, bmd: 'x/ls_houses_viking.bmd', paletteName: 'house01', bobId: 70 },
-      { tribeId: 1, typeId: 7, level: 1, bmd: 'x/ls_houses_viking.bmd', paletteName: 'house01', bobId: 50 },
-    ];
+    const tie = [bobRow(7, 70, { level: 1 }), bobRow(7, 50, { level: 1 })];
     expect(buildingBobRefsByType(tie, 1, DEFAULT_FAMILY, FAMILIES)).toEqual({ 7: 50 });
     expect(buildingBobRefsByType([...tie].reverse(), 1, DEFAULT_FAMILY, FAMILIES)).toEqual({ 7: 50 });
   });
 
   it('anchors the bmd match to a path separator (no basename-concat false positive)', () => {
     const tricky = [
-      {
-        tribeId: 1,
-        typeId: 1,
-        level: 0,
-        bmd: 'data/x/ls_houses_viking.bmd',
-        paletteName: 'house01',
-        bobId: 5,
-      },
+      bobRow(1, 5),
       // ends with the default basename string but NOT after a `/` — must NOT match the default family.
-      {
-        tribeId: 1,
-        typeId: 2,
-        level: 0,
-        bmd: 'data/x/evil_ls_houses_viking.bmd',
-        paletteName: 'house01',
-        bobId: 9,
-      },
+      bobRow(2, 9, { bmd: 'data/x/evil_ls_houses_viking.bmd' }),
     ];
     expect(buildingBobRefsByType(tricky, 1, DEFAULT_FAMILY, FAMILIES)).toEqual({ 1: 5 });
   });
@@ -242,58 +145,15 @@ describe('buildingBobRefsByType', () => {
     // 1). The (bmd, palette) PAIR is what each family entry matches on: the miller and house02 both share
     // ls_houses_viking.bmd with the default but recolour it `housemiller01` / `house02`.
     const real = [
-      { tribeId: 1, typeId: 6, level: 4, bmd: 'x/ls_houses_viking.bmd', paletteName: 'house01', bobId: 41 }, // home → default
-      {
-        tribeId: 1,
-        typeId: 13,
-        level: 0,
-        bmd: 'x/ls_houses_viking.bmd',
-        paletteName: 'housemiller01',
-        bobId: 70,
-      }, // mill
-      {
-        tribeId: 1,
-        typeId: 31,
-        level: 0,
-        bmd: 'x/ls_houses_viking2.bmd',
-        paletteName: 'house01',
-        bobId: 150,
-      }, // smithy
-      { tribeId: 1, typeId: 27, level: 0, bmd: 'x/ls_houses_viking3.bmd', paletteName: 'house01', bobId: 50 }, // armory
-      {
-        tribeId: 1,
-        typeId: 1,
-        level: 0,
-        bmd: 'x/ls_houses_viking4.bmd',
-        paletteName: 'house01',
-        bobId: 34,
-        editName: 'viking headquarters',
-      }, // HQ
-      {
-        tribeId: 1,
-        typeId: 37,
-        level: 0,
-        bmd: 'x/ls_houses_viking4.bmd',
-        paletteName: 'housedruid01',
-        bobId: 39,
-      }, // temple
-      { tribeId: 1, typeId: 7, level: 0, bmd: 'x/ls_houses_viking.bmd', paletteName: 'house02', bobId: 53 }, // stock — house02 on ls_houses_viking.bmd
-      {
-        tribeId: 1,
-        typeId: 16,
-        level: 0,
-        bmd: 'x/ls_houses_viking2.bmd',
-        paletteName: 'house02',
-        bobId: 220,
-      }, // brewery — house02 on ls_houses_viking2.bmd
-      {
-        tribeId: 1,
-        typeId: 33,
-        level: 0,
-        bmd: 'x/ls_houses_viking2.bmd',
-        paletteName: 'house02',
-        bobId: 170,
-      }, // coin mint — house02 on ls_houses_viking2.bmd
+      bobRow(6, 41, { level: 4 }), // home → default
+      bobRow(13, 70, { paletteName: 'housemiller01' }), // mill
+      bobRow(31, 150, { bmd: VIKING2_BMD }), // smithy
+      bobRow(27, 50, { bmd: 'data/x/ls_houses_viking3.bmd' }), // armory
+      bobRow(1, 34, { bmd: VIKING4_BMD, editName: 'viking headquarters' }), // HQ
+      bobRow(37, 39, { bmd: VIKING4_BMD, paletteName: 'housedruid01' }), // temple
+      bobRow(7, 53, { paletteName: 'house02' }), // stock — house02 on ls_houses_viking.bmd
+      bobRow(16, 220, { bmd: VIKING2_BMD, paletteName: 'house02' }), // brewery — house02 on ls_houses_viking2.bmd
+      bobRow(33, 170, { bmd: VIKING2_BMD, paletteName: 'house02' }), // coin mint — house02 on ls_houses_viking2.bmd
     ];
 
     it('routes each viking type to its own loaded family layer (the rung is render-only, data already there)', () => {
@@ -325,9 +185,6 @@ describe('buildingBobRefsByType', () => {
 });
 
 describe('constructionRefsByType', () => {
-  const FAMILIES = [
-    { bmdBasename: 'ls_houses_viking4.bmd', paletteName: 'house01', layer: 'ls_houses_viking4.house01' },
-  ];
   const row = (over: Record<string, unknown>) => ({
     tribeId: 1,
     typeId: 2,
@@ -405,7 +262,8 @@ describe('constructionRefsByType', () => {
 
 describe('buildingOverlayRefsByType — the type-4 GfxOverlay join (the mill rotor)', () => {
   const MILLER_LAYER = 'ls_houses_viking.housemiller01';
-  const FAMILIES = [
+  // The mill's own recolour family — not the shared viking4 FAMILIES the other rungs load.
+  const MILLER_FAMILIES = [
     { bmdBasename: 'ls_houses_viking.bmd', paletteName: 'housemiller01', layer: MILLER_LAYER },
   ];
   const row = (over: Record<string, unknown>) => ({
@@ -427,7 +285,7 @@ describe('buildingOverlayRefsByType — the type-4 GfxOverlay join (the mill rot
   const millRows = [row({}), row({ state: 1, frames: SPIN })];
 
   it('joins the idle + working state rows of one type into a layer-qualified overlay ref', () => {
-    expect(buildingOverlayRefsByType(millRows, 1, DEFAULT_FAMILY, FAMILIES)).toEqual({
+    expect(buildingOverlayRefsByType(millRows, 1, DEFAULT_FAMILY, MILLER_FAMILIES)).toEqual({
       13: { layer: MILLER_LAYER, idle: 76, working: SPIN, ticksPerFrame: OVERLAY_TICKS_PER_FRAME },
     });
   });
@@ -444,7 +302,7 @@ describe('buildingOverlayRefsByType — the type-4 GfxOverlay join (the mill rot
       row({ typeId: 20, bmd: 'data/x/ls_houses_viking9.bmd' }), // unloaded family → dropped
       row({ level: 1, frames: [111] }), // a higher size level — the level-0 group wins
     ];
-    const out = buildingOverlayRefsByType(rows, 1, DEFAULT_FAMILY, FAMILIES);
+    const out = buildingOverlayRefsByType(rows, 1, DEFAULT_FAMILY, MILLER_FAMILIES);
     expect(Object.keys(out)).toEqual(['13']);
     expect(out[13]?.idle).toBe(76);
   });

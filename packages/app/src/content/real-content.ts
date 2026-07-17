@@ -5,6 +5,7 @@ import { GATHERING_BALANCE_BY_ID } from '../catalog/gathering.js';
 import { NAV_LANDSCAPE_TYPES } from '../catalog/terrain.js';
 import { HUMAN_HITPOINTS } from '../catalog/units.js';
 import { diag } from '../diag/index.js';
+import { loadIrRaw } from './ir.js';
 import { fetchJsonOrNull } from './net.js';
 
 /** The one in-flight/settled parse of the served IR into a `ContentSet` — memoized like {@link loadRealContent}. */
@@ -18,19 +19,25 @@ let contentSetPromise: Promise<ContentSet | null> | null = null;
  *
  * Returns `null` when `content/` is absent, so a bare checkout still boots; a present-but-malformed IR
  * throws via `parseContentSet` so a genuine schema or cross-reference break surfaces loudly instead of
- * degrading to silence. `fetchImpl` defaults to the global `fetch`; the default path is memoized (the
- * multi-MB IR parses once per page), while an injected transport runs uncached so callers stay
- * independent.
+ * degrading to silence. `fetchImpl` defaults to the global `fetch`; the default path reads the shared
+ * {@link loadIrRaw} document (so the multi-MB IR is fetched and JSON-parsed once per page, not once per
+ * view) and memoizes its own `ContentSet` parse, while an injected transport fetches and runs uncached so
+ * callers stay independent.
  */
 export function loadRealContent(fetchImpl: typeof fetch = fetch): Promise<ContentSet | null> {
   if (fetchImpl !== fetch) return fetchContentSet(fetchImpl);
-  contentSetPromise ??= fetchContentSet(fetch).then((set) => {
+  contentSetPromise ??= parseSharedIr().then((set) => {
     // Memoize only success: a transient boot-time fetch failure must not pin the loader to null for
     // the page's lifetime — the next consumer retries (mirrors loadIr).
     if (set === null) contentSetPromise = null;
     return set;
   });
   return contentSetPromise;
+}
+
+async function parseSharedIr(): Promise<ContentSet | null> {
+  const raw = await loadIrRaw();
+  return raw === null ? null : parseContentSet(raw);
 }
 
 async function fetchContentSet(fetchImpl: typeof fetch): Promise<ContentSet | null> {

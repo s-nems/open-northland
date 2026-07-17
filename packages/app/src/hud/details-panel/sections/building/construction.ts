@@ -1,8 +1,7 @@
 import type { Rect } from '../../../geometry.js';
 import type { Chrome } from '../../chrome.js';
-import { BAR_H, type BuildingLayout, STOCK_PLATE_H, STOCK_ROW_H } from '../../layout/index.js';
+import { BAR_H, type BuildingLayout, ROW_TEXT_PAD, STOCK_PLATE_H, STOCK_ROW_H } from '../../layout/index.js';
 import type { BuildingPanelModel } from '../../model/index.js';
-import { ROW_TEXT_PAD } from '../shared.js';
 import { STOCK_AMOUNT_INSET, STOCK_ICON_W, stockAmount } from './shared.js';
 
 /** Where the construction gauge starts (design px) — a narrow label column that fits the "100%" text. */

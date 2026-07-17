@@ -1,9 +1,8 @@
 import type { UiString } from '../../../../content/gui-gfx.js';
 import { messages } from '../../../../i18n/index.js';
 import type { Chrome } from '../../chrome.js';
-import type { BuildingLayout } from '../../layout/index.js';
+import { type BuildingLayout, ROW_TEXT_PAD } from '../../layout/index.js';
 import type { BuildingPanelModel } from '../../model/index.js';
-import { ROW_TEXT_PAD } from '../shared.js';
 import { HOUSEWINDOW } from './shared.js';
 
 /** Workers window: a compact per-trade limits strip ("Kowal 1/3 · Tragarz 1/1"), leaving the field below

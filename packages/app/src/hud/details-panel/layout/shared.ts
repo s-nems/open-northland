@@ -15,7 +15,7 @@ import type { Rect } from '../../geometry.js';
 /** Panel width measured off the 1024×768 original (≈322 px, right edge 6 px off the screen). */
 export const PANEL_W = 322;
 /** Gap between the panel and the screen's right/bottom edge. */
-export const PANEL_MARGIN = 6;
+const PANEL_MARGIN = 6;
 /**
  * Vertical gap between two section windows. The original stacks them flush (adjacent rope borders touch,
  * no parchment seam between), so this is 0; a positive value would show a thin background strip between
@@ -28,6 +28,9 @@ const TITLE_H = 18;
 const BODY_PAD_Y = 5;
 /** A plain text row (key/value lines, worker rows). */
 export const ROW_H = 15;
+/** Top padding that vertically centers a font-10 line in a {@link ROW_H} row — the one drawing metric
+ *  every details-panel section (building, settler, compact) shares. */
+export const ROW_TEXT_PAD = 2;
 
 /** One section window: its whole frame, the headline strip, and the padded body below it. */
 export interface SectionRect {

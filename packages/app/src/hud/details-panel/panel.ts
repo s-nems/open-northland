@@ -143,6 +143,8 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
   };
 
   let selectedIds: ReadonlySet<number> = new Set();
+  /** Bumped by every rebuild: the model + layout the worker overlay reads change only there. */
+  let panelEpoch = 0;
   let lastModelKey = '';
   let lastStructureKey = '';
   let lastRebuildAt = Number.NEGATIVE_INFINITY;
@@ -169,6 +171,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
   };
 
   const rebuild = (model: UnitPanelModel): void => {
+    panelEpoch++;
     baked?.dispose();
     baked = null;
     root.destroy({ children: true });
@@ -224,11 +227,27 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     if (lastPointer !== null) updateTooltip(lastPointer.clientX, lastPointer.clientY);
   };
 
-  const updateModel = (snapshot: WorldSnapshot, force = false): void => {
+  /**
+   * The model derived for one sim tick, with its value key. `buildUnitPanelModel` is a pure function of the
+   * snapshot + selection, but `tick()` runs every RAF frame (~3 per 20 Hz sim tick) and the build is an
+   * O(entities) pass — so it runs once per tick and the frames in between reuse it (golden rule 6). A new
+   * selection re-derives through `force`; the wall-clock rebuild gate below still runs every frame, so a
+   * rebuild the 4 Hz limit deferred still fires on a later frame of the same tick.
+   */
+  let derived: { tick: number; model: UnitPanelModel; json: string } | null = null;
+
+  const modelFor = (snapshot: WorldSnapshot, force: boolean): { model: UnitPanelModel; json: string } => {
+    if (!force && derived !== null && derived.tick === snapshot.tick) return derived;
     const model = buildUnitPanelModel(snapshot, selectedIds, ctx);
+    derived = { tick: snapshot.tick, model, json: JSON.stringify(model) };
+    return derived;
+  };
+
+  const updateModel = (snapshot: WorldSnapshot, force = false): void => {
+    const { model, json } = modelFor(snapshot, force);
     // A whole-model value key (plus the screen size, so a resize re-anchors the panel): the panel is
     // small, so stringify-compare beats hand-written dirty flags.
-    const key = `${JSON.stringify(model)}|${app.screen.width}x${app.screen.height}`;
+    const key = `${json}|${app.screen.width}x${app.screen.height}`;
     if (!force && key === lastModelKey) return;
     // What is selected changed → rebuild now; only live values drifted → rebuild at most 4 Hz.
     const structureKey =
@@ -484,9 +503,19 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     };
   };
 
+  /** Everything the drawn worker sprites derive from: their animation clock (`snapshot.tick` — see
+   *  `worker-sprites.ts`, they advance on the sim tick, not wall-clock), the screen size (each sprite
+   *  self-places in screen px), and the model + layout a rebuild replaces. */
+  let lastWorkersKey = '';
+
   /** Redraw the animated worker sprites into the (live) Pracownicy field, or clear them when the current
-   *  selection isn't a building. The field is the workers body minus the top row the limits strip occupies. */
+   *  selection isn't a building. The field is the workers body minus the top row the limits strip occupies.
+   *  Skipped while its inputs hold: it would redraw identical sprites over an O(entities) worker scan, and
+   *  it is called every RAF frame. */
   const refreshWorkers = (snapshot: WorldSnapshot): void => {
+    const key = `${snapshot.tick}|${app.screen.width}x${app.screen.height}|${panelEpoch}`;
+    if (key === lastWorkersKey) return;
+    lastWorkersKey = key;
     if (lastModel.kind !== 'building' || layout?.kind !== 'building') {
       workerOverlay.update(snapshot, null, null);
       return;

@@ -1,7 +1,7 @@
 import { type Application, type Container, Graphics } from 'pixi.js';
 import { type GuiArt, type GuiSprite, makeGuiSprite } from '../../content/gui-art.js';
 import { guiFrameIndex } from '../../content/gui-atlas-map.js';
-import type { ActionButton, ActionRingLayout } from '../../hud/action-ring-layout.js';
+import type { ActionButton, ActionIconFrame, ActionRingLayout } from '../../hud/action-ring-layout.js';
 import { type BakedIcon, bakeRoundIcon, placeBakedIcon } from '../../hud/icon-texture.js';
 
 /** Flat-fallback disc colours (only when the decoded GUI art is absent) — a wooden button + rim. */
@@ -52,7 +52,7 @@ export function createActionRingVisuals(deps: ActionRingVisualsDeps): ActionRing
   // 'round' key: hard-clip outside the inscribed disc so the button reads as a round wooden disc (the
   // original has no square behind it), keeping the engraved glyph. The hard clip aliases unless
   // supersampled, so every icon goes through `bakeRoundIcon` below. See PalettedSprite.colorKey / GuiColorKey.
-  const iconSprite = (frameName: string): GuiSprite | null =>
+  const iconSprite = (frameName: ActionIconFrame): GuiSprite | null =>
     art === null
       ? null
       : makeGuiSprite(art, guiFrameIndex(frameName), { defaultPalette: 'context', colorKey: 'round' });

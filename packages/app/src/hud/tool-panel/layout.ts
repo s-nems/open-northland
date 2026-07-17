@@ -39,7 +39,7 @@ export interface DesignRect {
 }
 
 /** The left strip background element — `CBaseToolGfxElement _toolBackground`, gfx 0x33, rect (0,10,50,433). */
-export const TOOL_PANEL_STRIP_GFX = 0x33;
+const TOOL_PANEL_STRIP_GFX = 0x33;
 export const TOOL_PANEL_STRIP: DesignRect = { x: 0, y: 10, w: 0x32, h: 0x1b1 };
 
 /** One tool button: its stable id, its design-space rect, its atlas gfx id, and its `main`-table tooltip id. */

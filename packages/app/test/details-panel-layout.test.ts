@@ -1,4 +1,4 @@
-import { ONE } from '@open-northland/sim';
+import { type EntitySnapshot, ONE } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import {
   BUILDING_FARM,
@@ -8,9 +8,16 @@ import {
   JOB_COLLECTOR,
 } from '../src/game/sandbox/ids/index.js';
 import { buildUnitPanelModel, type StockRow, type UnitPanelModel } from '../src/hud/details-panel/index.js';
-import { layoutDetails, MAX_STOCK_ROWS, stockSlotRects } from '../src/hud/details-panel/layout/index.js';
+import {
+  type DetailsLayout,
+  layoutDetails,
+  MAX_STOCK_ROWS,
+  mapLayout,
+  stockSlotRects,
+} from '../src/hud/details-panel/layout/index.js';
 import { ALL_STOCK_TAB, visibleStockRows } from '../src/hud/details-panel/stock-tabs.js';
-import { sandboxCtx } from './support/sandbox.js';
+import type { Rect } from '../src/hud/geometry.js';
+import { buildingEntity, sandboxCtx, snapshotOf } from './support/sandbox.js';
 
 /** The watchtower (`tower_00`, catalog typeId 40) — a store-less building (declares no stock slots). */
 const BUILDING_TOWER = 40;
@@ -149,5 +156,73 @@ describe('details panel layout', () => {
     expect(site.stockTabHits).toHaveLength(0);
     // The workers window STAYS — it shows the live building crew during construction.
     expect(site.workers).not.toBeNull();
+  });
+
+  /** The rect every mapped field must have become — no real layout rect can carry these coords. */
+  const SENTINEL: Rect = { x: -1, y: -1, w: -1, h: -1 };
+
+  const isRect = (v: object): v is Rect =>
+    ['x', 'y', 'w', 'h'].every((k) => typeof (v as Record<string, unknown>)[k] === 'number');
+
+  /** Every rect reachable in a layout, with the field path that led to it (so a miss names itself). */
+  function collectRects(node: unknown, path: string, out: Array<{ path: string; rect: Rect }>): void {
+    if (node === null || typeof node !== 'object') return;
+    if (isRect(node)) {
+      out.push({ path, rect: node });
+      return;
+    }
+    if (Array.isArray(node)) {
+      node.forEach((v, i) => {
+        collectRects(v, `${path}[${i}]`, out);
+      });
+      return;
+    }
+    for (const [key, v] of Object.entries(node)) collectRects(v, `${path}.${key}`, out);
+  }
+
+  it('mapLayout transforms EVERY rect in a layout (an unmapped new field fails here)', () => {
+    const screen = { width: 1600, height: 1200 };
+    const modelOf = (entity: EntitySnapshot): UnitPanelModel =>
+      buildUnitPanelModel(snapshotOf([entity]), new Set([entity.id]), sandboxCtx());
+    // The HQ (tabbed store + buttons), a farm site (the Construction branch) and a gatherer settler —
+    // between them every optional section a layout can carry is present.
+    const layouts: ReadonlyArray<DetailsLayout | null> = [
+      layoutDetails(modelOf(buildingEntity(1, BUILDING_HEADQUARTERS)), screen, 1),
+      layoutDetails(
+        modelOf(
+          buildingEntity(1, BUILDING_FARM, {
+            built: 0,
+            components: { UnderConstruction: { labor: 0 }, Stockpile: { amounts: [] } },
+          }),
+        ),
+        screen,
+        1,
+      ),
+      layoutDetails(
+        modelOf({
+          id: 1,
+          components: {
+            Settler: { tribe: 1, jobType: JOB_COLLECTOR },
+            WorkFlag: { flag: 2, radius: 24, goodType: GOOD_STONE },
+          },
+        }),
+        screen,
+        1,
+      ),
+    ];
+
+    for (const layout of layouts) {
+      if (layout === null) throw new Error('expected a layout');
+      const found: Array<{ path: string; rect: Rect }> = [];
+      collectRects(
+        mapLayout(layout, () => SENTINEL),
+        layout.kind,
+        found,
+      );
+      expect(found.length).toBeGreaterThan(0); // the walk must actually reach rects
+      const untransformed = found.filter(({ rect }) => rect.x !== SENTINEL.x || rect.w !== SENTINEL.w);
+      // A rect `mapLayout` misses passes through at hit-space coords onto a texture re-origined to (0,0).
+      expect(untransformed.map(({ path }) => path)).toEqual([]);
+    }
   });
 });

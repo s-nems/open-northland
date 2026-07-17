@@ -1,3 +1,4 @@
+import type { GuiFrameName } from '../content/gui-atlas-map.js';
 import { contains, type Rect } from './geometry.js';
 
 /**
@@ -12,8 +13,9 @@ import { contains, type Rect } from './geometry.js';
  * `hud/tool-panel/layout.ts`).
  */
 
-/** The GUI-atlas frame name (see `content/gui-atlas-map.ts`) a button draws; the view resolves it to an index. */
-export type ActionIconFrame = string;
+/** The GUI-atlas frame name a button draws; the view resolves it to an index. Narrowed to the sheet's own
+ *  names, so a typo'd icon fails to compile rather than throwing when the ring first draws. */
+export type ActionIconFrame = GuiFrameName;
 
 /** One contextual action a menu button issues — a discriminated union so the view maps it to behaviour. */
 export type ActionButton =
@@ -88,15 +90,15 @@ export interface ActionRingLayout {
 // --- Geometry in project design pixels, before UI scaling -----------------------------------------------
 
 /** Button square edge (`SRectangle(x-0x10, y-0x10, 0x20, 0x20)`). */
-export const ACTION_BUTTON_PX = 0x20;
+const ACTION_BUTTON_PX = 0x20;
 /** Step between adjacent buttons in a group. */
-export const ACTION_STEP_PX = 0x20;
+const ACTION_STEP_PX = 0x20;
 /** Arm offset from centre for the four cardinal groups. */
 export const ACTION_ARM_PX = 100;
 /** The fifth group's inner-left column offset (`centerX - 0x44`). */
-export const ACTION_INNER_ARM_PX = 0x44;
+const ACTION_INNER_ARM_PX = 0x44;
 /** First/last-in-group corner nudge. */
-export const ACTION_EDGE_NUDGE_PX = 5;
+const ACTION_EDGE_NUDGE_PX = 5;
 
 /**
  * The action menu draws smaller than the shared HUD uiscale: at the 1.4× default the full-size ring

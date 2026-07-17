@@ -101,10 +101,16 @@ export function isMarrying(e: SnapshotEntity): boolean {
  * until the next wedding overwrites it — a destroyed spouse is simply absent from the snapshot).
  */
 export function isBoundByMarriage(snapshot: WorldSnapshot, e: SnapshotEntity): boolean {
+  return boundByMarriage(e, (id) => entityById(snapshot, id));
+}
+
+/** {@link isBoundByMarriage} over an arbitrary id→entity lookup, so a caller resolving many settlers
+ *  ({@link hasEligiblePartner}) can index the snapshot once instead of re-scanning it per spouse. */
+function boundByMarriage(e: SnapshotEntity, lookup: (id: number) => SnapshotEntity | undefined): boolean {
   const marriage = marriageOf(e);
   if (marriage === undefined) return false;
-  if (entityById(snapshot, marriage.spouse) !== undefined) return true;
-  const child = marriage.child !== null ? entityById(snapshot, marriage.child) : undefined;
+  if (lookup(marriage.spouse) !== undefined) return true;
+  const child = marriage.child !== null ? lookup(marriage.child) : undefined;
   return child !== undefined && !isAdult(child);
 }
 
@@ -126,13 +132,16 @@ export function settlerTribeOf(e: SnapshotEntity): number | undefined {
 export function hasEligiblePartner(snapshot: WorldSnapshot, seeker: SnapshotEntity): boolean {
   const tribe = settlerTribeOf(seeker);
   const seekerFemale = isFemale(seeker);
+  // Index once: the scan resolves a spouse/child per candidate, and the worst case (no partner) visits
+  // every settler — a linear lookup each would make this per-frame check quadratic in the population.
+  const byId = new Map(snapshot.entities.map((e) => [e.id, e]));
   return snapshot.entities.some(
     (e) =>
       e.id !== seeker.id &&
       isSettler(e) &&
       isAdult(e) &&
       isFemale(e) !== seekerFemale &&
-      !isBoundByMarriage(snapshot, e) &&
+      !boundByMarriage(e, (id) => byId.get(id)) &&
       !isMarrying(e) &&
       positionOf(e) !== undefined &&
       settlerTribeOf(e) === tribe &&
