@@ -26,6 +26,7 @@ import {
 } from '../game/sandbox/index.js';
 import { loadMapScript, loadTerrainMap } from '../slice/map-loader.js';
 import { runAuthoredSlice, runBareMap, runSlice, sliceTerrain } from '../slice/vertical-slice.js';
+import { type BootPhase, mountBootProgress } from '../view/boot-progress.js';
 import { cameraCenteredOnTile, createCameraController } from '../view/camera.js';
 import { startGameView } from '../view/runtime/game-view.js';
 
@@ -46,6 +47,19 @@ import { startGameView } from '../view/runtime/game-view.js';
 /** The slice sim's deterministic seed. */
 const SLICE_SEED = 7;
 
+/** The boot steps this entry runs, in order — the loading card's step list. */
+const MAP_BOOT_PHASES = [
+  'graphics',
+  'map',
+  'content',
+  'sprites',
+  'terrain',
+  'objects',
+  'world',
+  'minimap',
+  'hud',
+] as const satisfies readonly BootPhase[];
+
 /**
  * Parse `?center=x,y` (integer tile coords) into a camera centred on that tile (via
  * {@link cameraCenteredOnTile}), or `null` for an absent/malformed value so the caller falls back to the
@@ -62,7 +76,12 @@ function centerTile(raw: string | null, width: number, height: number): Camera |
 }
 
 export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchParams): Promise<void> {
+  // A real decoded map spends seconds on content fetches, atlas builds, terrain meshing and object
+  // placement before its first frame; the card covers that stretch and comes off once the world is drawn.
+  const boot = mountBootProgress(MAP_BOOT_PHASES);
+  await boot.begin('graphics');
   const app = await createWindowPixiApp(canvas);
+  await boot.begin('map');
   const mapId = params.get('map');
   const loaded = mapId !== null ? await loadTerrainMap(mapId) : null;
   // The player session the menu's roster panel carried over: the controlled seat (`?player=`) and
@@ -88,10 +107,14 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // sprite sheet so the goods icon atlas is built from the real goods when served (null on a bare
   // checkout → the sandbox goods below). Its gaps (uncalibrated gathered goods, uncataloged buildings)
   // are logged once.
+  await boot.begin('content');
   const goodNames = await loadGoodNameMap(goodLocaleParam(params));
   const realContent = await loadRuntimeRealContent(goodNames);
   if (realContent !== null) logRealContentGaps(realContent);
+  await boot.begin('sprites');
   const sheet = await resolveSpriteSheet(realContent?.content.goods ?? sandboxGoods());
+  // The IR indexes the terrain set, so it is the first half of the terrain step.
+  await boot.begin('terrain');
   const ir = await loadIr();
   if (ir === null) diag.warn('content', 'content/ir.json unavailable, placeholder graphics fallback');
   let terrain: Awaited<ReturnType<typeof loadRealTerrain>> | undefined;
@@ -121,6 +144,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // The catch keeps a partial content/ (e.g. a missing atlas PNG) a degradation, not an app crash.
   // Harvestables draw here too: a virgin node is a built-once static quad (zero per-frame cost — a far
   // zoom-out shows thousands at once), handed to the live sim pool the first time it is worked (below).
+  await boot.begin('objects');
   let staticObjects: Awaited<ReturnType<typeof loadMapObjects>> | undefined;
   if (loaded?.objects !== undefined && ir !== null) {
     try {
@@ -137,6 +161,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // owned by the human player so they can be selected + ordered.
   // Extracted building footprints from the served IR give buildings real collision, so `placeBuilding`
   // is blocked where a house doesn't fit and the build overlay greys those tiles (empty without content/).
+  await boot.begin('world');
   const footprints = buildingFootprints(ir);
   // The sim navigates + validates placement against the collision grid — the map's raw landscape lane
   // resolved into the semantic walk/build classes from the real ground + object data (water, trees,
@@ -269,11 +294,13 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // ground lanes point at (the shipped `minimap.pcx` is the map-selection card — sometimes a painted
   // scene, e.g. magiczny las — so the in-game minimap is rendered from map data, like the original's
   // dynamic overview window). Null without lanes/textures → the typeId raster fallback.
+  await boot.begin('minimap');
   const minimapCells = await loadMinimapCellColours(terrainGrid, terrain);
 
   // The shared in-game runtime (view/runtime/game-view.ts): the standard HUD mounts — tool panel, unit
   // controls, perf overlay, positional sound — and the one fixed-timestep RAF loop, identical to the
   // `?scene=` entry's.
+  await boot.begin('hud');
   await startGameView({
     app,
     canvas,
@@ -293,4 +320,5 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     // First-touch handover: a worked resource leaves the static layer and the pool draws it on.
     ...(releaseWorkedResources !== undefined ? { onEvents: releaseWorkedResources } : {}),
   });
+  await boot.finish();
 }

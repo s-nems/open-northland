@@ -102,7 +102,9 @@ that matches its role instead of piling another method onto a growing file:
   - Shared leaves: `camera.ts` (pure pan/zoom math + the DOM controller), `picking.ts` (screen↔world
     hit-testing math), `params.ts` (URL-param parsing), `overlay.ts` (shared panel + full-page chrome —
     `el`/`navButton`/`pageSection`/styles), `game-tool-panel.ts`, `perf-overlay.ts`, `system-menu.ts`,
-    `tooltip.ts`, `ground-pile-tooltip.ts`, `placement-overlay.ts`, `scene-overlay.ts`.
+    `tooltip.ts`, `ground-pile-tooltip.ts`, `placement-overlay.ts`, `scene-overlay.ts`,
+    `boot-progress.ts` (the loading card the two playable entries show while they assemble a world —
+    each reports its own ordered step list; the galleries and `?shot` do not mount it).
 - **`slice/`** — the demo scenario the live + shot entries share: `vertical-slice.ts` (`runSlice` /
   `runAuthoredSlice` over the global `game/` content), `map-loader.ts` (the decoded-map fetch),
   `authored-placements.ts` (the pure authored-entity join).

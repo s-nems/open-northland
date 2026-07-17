@@ -66,6 +66,19 @@ export const enSurfaces = {
       7: 'Egyptians',
     } as Readonly<Record<number, string>>,
   },
+  // One label per `view/boot-progress.ts` BootPhase, plus the card's title.
+  loading: {
+    title: 'Loading',
+    graphics: 'Starting the graphics…',
+    map: 'Reading the map…',
+    content: 'Loading game content…',
+    sprites: 'Building sprite atlases…',
+    terrain: 'Loading the terrain…',
+    objects: 'Placing landscape objects…',
+    world: 'Building the world…',
+    minimap: 'Drawing the minimap…',
+    hud: 'Preparing the interface…',
+  },
   common: {
     backToMenu: 'Back to menu',
     soundOn: '🔊 Sound on',
