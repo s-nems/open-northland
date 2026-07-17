@@ -140,10 +140,17 @@ export class TextureCache {
     return bake.texture;
   }
 
-  /** Drop every cached texture (called on renderer/gallery dispose). The reveal bakes own their canvas
-   *  sources (unlike the sub-rect views), so they are destroyed, not just dropped. */
+  /** Destroy every cached texture (called on renderer/gallery dispose). Dropping the map entry is not
+   *  enough: a Pixi `Texture` registers a `resize` listener on its source, so the app-owned atlas page
+   *  keeps it alive until `destroy` unregisters it. The sub-rect views pass `destroySource: false` —
+   *  the shared page outlives the renderer; the reveal bakes own their canvas source, so they take it
+   *  with them. */
   clear(): void {
+    for (const tex of this.cache.values()) tex.destroy();
     this.cache.clear();
+    for (const byTop of this.cropCache.values()) {
+      for (const tex of byTop.values()) tex.destroy();
+    }
     this.cropCache.clear();
     this.pages.clear();
     for (const byThreshold of this.revealCache.values()) {
