@@ -82,6 +82,9 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     pointer: pointerAt,
   } = loop;
   const { app, renderer, sim, cameraCtl } = deps;
+  // The controlled player (the menu's roster seat; slot 0 for scenes) — fog, ghost ownership and the
+  // death-stinger filter below all read it.
+  const localPlayer = deps.localPlayer ?? HUMAN_PLAYER;
 
   const timestep = new FixedTimestep();
   // `?debug=perf`: emit the frame phases as User Timing measures (the per-system slices come from
@@ -135,7 +138,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     // The human player's fog-of-war view for this frame (null = fog off — every layer reverts to the
     // pre-fog behaviour). One read shared by the renderer (wash + sprite/tree cull), the minimap mask
     // and the presentation event filter below, so no consumer can disagree about a cell.
-    const fogView = sim.fogView(HUMAN_PLAYER);
+    const fogView = sim.fogView(localPlayer);
     fogGates.setFrame(fogView); // refresh the stable predicates' slot before anything below consults them
     renderer.updateFog(fogView);
     // Presentation events only (blood/bones + positional audio): an event at ground the player does
@@ -188,7 +191,12 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     if (hovered !== null && placeType !== null && canPlaceAt(placeType, hovered.col, hovered.row)) {
       ghost = { kind: 'building', col: hovered.col, row: hovered.row, buildingType: placeType };
     } else if (hovered !== null && signpostFrame !== null && canPlaceSignpostAt(hovered.col, hovered.row)) {
-      ghost = { kind: 'signpost', col: hovered.col, row: hovered.row, player: HUMAN_PLAYER };
+      ghost = {
+        kind: 'signpost',
+        col: hovered.col,
+        row: hovered.row,
+        player: deps.playerColourOf?.(localPlayer) ?? localPlayer,
+      };
     }
     renderer.updatePlacementGhost(ghost);
     // Tick the unit controls (details panel + action ring) before the renderer's update: a panel rebuild
@@ -252,7 +260,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
         canvasH: app.screen.height,
         terrain: deps.terrainGrid,
         dtMs: elapsed,
-        localPlayer: HUMAN_PLAYER, // the death stinger rings only for our own units, not enemies/wildlife
+        localPlayer, // the death stinger rings only for our own units, not enemies/wildlife
         // Voice chatter reads on-screen settlers straight off the snapshot, so it needs its own fog
         // gate — a hidden enemy must not natter from empty black (positional SFX are already covered
         // by the presentEvents filter above).

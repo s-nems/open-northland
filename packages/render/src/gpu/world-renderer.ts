@@ -60,6 +60,12 @@ export interface WorldRendererOptions {
    * enables it (`?postfx=off` disables it live).
    */
   readonly postFx?: boolean | undefined;
+  /**
+   * Owner slot → team-colour slot, when a map's roster recolours players away from the slot-id
+   * default (see {@link import('../data/scene/sprite-scene.js').SpriteSceneOptions.playerColourOf}).
+   * Absent = identity.
+   */
+  readonly playerColourOf?: ((player: number) => number) | undefined;
 }
 
 /** Shared empty highlight so clearing the assign-mode tint allocates nothing. */
@@ -192,7 +198,7 @@ export class WorldRenderer {
     this.viewSmoothing = opts?.viewSmoothing === true;
     this.spriteLayer.sortableChildren = true;
     this.mapObjects = new MapObjectLayer(this.spriteLayer, this.textureCache);
-    this.pool = new SpritePool(this.spriteLayer, this.textureCache, opts?.sheet);
+    this.pool = new SpritePool(this.spriteLayer, this.textureCache, opts?.sheet, opts?.playerColourOf);
     this.portrait = new PortraitInsetLayer(app, this.worldLayer, this.pool);
     this.fog = new FogLayer();
     this.placementOverlay = new PlacementOverlayLayer(app.renderer);

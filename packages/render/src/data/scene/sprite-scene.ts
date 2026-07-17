@@ -78,6 +78,12 @@ export interface SpriteSceneOptions {
    * motionless standing pose). Absent = no portrait open.
    */
   readonly portraitRef?: number | undefined;
+  /**
+   * Owner slot → team-colour slot, when a map's roster recolours players away from the slot-id
+   * default. Applied to every emitted {@link DrawItem.player} (settler LUT rows, the signpost's
+   * per-colour baked atlas). Absent = identity (player id is the colour slot).
+   */
+  readonly playerColourOf?: ((player: number) => number) | undefined;
 }
 
 /**
@@ -117,8 +123,17 @@ export function buildSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOptio
  * cull drops live items elsewhere.
  */
 export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOptions = {}): SpriteScene {
-  const { viewport, elevation, brightness, staticRefs, fogVisible, ghosts, keepIndoorSettlers, portraitRef } =
-    opts;
+  const {
+    viewport,
+    elevation,
+    brightness,
+    staticRefs,
+    fogVisible,
+    ghosts,
+    keepIndoorSettlers,
+    portraitRef,
+    playerColourOf,
+  } = opts;
   const shadeField = brightness?.shaded === true ? brightness : undefined;
   const items: MutableDrawItem[] = [];
   const liveRefs = new Set<number>();
@@ -259,8 +274,11 @@ export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOpt
           state: 'idle',
           boardIndex: bucket,
         };
-        // The board's lettering is the team colour — it reads the same owner LUT row as its post.
-        if (postPlayer !== undefined) board.player = postPlayer;
+        // The board's lettering is the team colour — it reads the same owner LUT row as its post
+        // (colour-mapped below like the main item, since boards bypass the shared push site).
+        if (postPlayer !== undefined) {
+          board.player = playerColourOf === undefined ? postPlayer : playerColourOf(postPlayer);
+        }
         if (lift !== 0) board.lift = lift;
         items.push(board);
       }
@@ -289,6 +307,10 @@ export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOpt
     // cutout but hidden on the main map; an indoor one also freezes to a motionless standing pose.
     if (isPortrait && (offscreen || fogged || indoorSettler)) item.portraitOnly = true;
     if (isPortrait && indoorSettler) item.frozen = true;
+    // Owner slot → team-colour slot (a map roster's colour choice); identity when unmapped.
+    if (playerColourOf !== undefined && item.player !== undefined) {
+      item.player = playerColourOf(item.player);
+    }
     items.push(item);
   }
   if (ghosts !== undefined) pushGhostItems(items, liveRefs, ghosts, viewport, elevation);

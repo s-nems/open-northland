@@ -7,9 +7,9 @@ import { findProp, getInt, makeSource, type RuleSection, type SourceRef } from '
 /**
  * Reduces one decoded `map.cif`'s logic header sections into a validated {@link MapInfo}. The map's
  * `CStringArray` opens with a `logiccontrol` section (`mapsize <w> <h>`, `mapguid <16 bytes>`) plus
- * `misc_maptype`/`misc_mapname` metadata sections; this pulls those declarative scalars and leaves the
- * map's scripting payload (`MissionData`/`StaticObjects`/`playerdata`) untouched — that is the
- * campaign/trigger layer, not this metadata slice (see {@link MapInfo}). `id` is supplied by
+ * `misc_maptype`/`misc_mapname` metadata sections; this pulls those declarative scalars only —
+ * `StaticObjects` is {@link extractStaticObjects}'s slice, and `playerdata`/`playermisc`/
+ * `MissionData` are `extractMapScript`'s (`./map-script.ts`). `id` is supplied by
  * the caller (the map folder name), since the header carries no human-readable map id.
  *
  * Throws when the required `logiccontrol` `mapsize`/`mapguid` are absent or malformed — a `map.cif`

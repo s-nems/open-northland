@@ -102,6 +102,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     goods: opts.content.goods,
     jobs: opts.content.jobs,
     ...(opts.sheet !== undefined ? { sheet: opts.sheet } : {}),
+    ...(opts.playerColourOf !== undefined ? { playerColourOf: opts.playerColourOf } : {}),
     onDemolish: (id) => opts.enqueue({ kind: 'demolish', building: id as Entity }),
     onDemolishSignpost: (id) => opts.enqueue({ kind: 'demolishSignpost', signpost: id as Entity }),
     onAssignWorkplace: armWorkplacePick,

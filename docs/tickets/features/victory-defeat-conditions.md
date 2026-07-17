@@ -15,10 +15,13 @@ Two halves, only one blocked:
 - **Hardcoded skirmish win/lose — executable now, this ticket.** E.g. a player is defeated when
   they have lost all settlers (or all settlers + all buildings — pick one and name the
   approximation); the last surviving player wins. Deterministic, evaluated in the sim.
-- **Authored campaign goals** fed from decoded mission triggers.
-  Blocked by: docs/tickets/pipeline/missiondata-extraction.md — do NOT build it here; leave a
-  clearly named seam (an objectives evaluator the trigger interpreter can later feed) and file the
-  follow-up ticket.
+- **Authored campaign goals** fed from decoded mission triggers. The extraction lane now exists:
+  each map's triggers are decoded losslessly into `content/maps/<id>.script.json` (`MapScript` in
+  `packages/data/src/schema/maps/script.ts` — `missions[]` with typed headers and raw
+  `goal`/`result` opcode+args; loaded app-side by `slice/map-loader.ts` `loadMapScript`).
+  Interpretation of the opcode vocabulary (28 observed result shapes, 14 goal shapes) is still this
+  ticket's later half — do NOT build it in the skirmish slice; leave a clearly named seam (an
+  objectives evaluator the trigger interpreter can later feed) and file the follow-up ticket.
 
 ## Scope
 

@@ -165,10 +165,11 @@ export async function runPipeline(args: Args, progress?: PipelineProgress): Prom
   const totalCells = terrains.reduce((sum, t) => sum + t.width * t.height, 0);
   const metas = terrains.filter((t) => t.meta).length;
   const minimaps = terrains.filter((t) => t.minimap).length;
+  const scripts = terrains.filter((t) => t.script).length;
   console.log(
     `[pipeline] map.dat -> terrain: ${terrains.length} map grid(s) ` +
-      `(${totalCells} cells total, ${metas} name/description sidecar(s), ${minimaps} minimap(s)) ` +
-      `into ${join(args.out, 'maps')}`,
+      `(${totalCells} cells total, ${metas} name/description sidecar(s), ${minimaps} minimap(s), ` +
+      `${scripts} script sidecar(s)) into ${join(args.out, 'maps')}`,
   );
 
   // Stamped last on purpose: its presence marks a conversion that ran to completion, and its

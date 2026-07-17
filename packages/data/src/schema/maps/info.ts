@@ -8,9 +8,10 @@ import { Provenance } from '../record.js';
  * captured here is the map's identity and metadata, which every map carries consistently:
  * dimensions, a stable GUID, its type/campaign slot, and the string-table ids of its name/description.
  *
- * The map's scripting payload — `MissionData` goals/results, `StaticObjects` pre-placed houses/goods,
- * `playerdata`/`AIData` — is deliberately not extracted here: it is the campaign/trigger layer,
- * a far larger vocabulary than this metadata slice. See docs/SOURCES.md.
+ * The map's scripting payload is captured by its own per-map slices, not here: `StaticObjects` by
+ * {@link TerrainEntities} (in the terrain artifact) and `playerdata`/`playermisc`/`MissionData` by
+ * {@link MapScript} (the `maps/<id>.script.json` sidecar). `AIData` stays unextracted. See
+ * docs/SOURCES.md.
  */
 export const MapInfo = z.strictObject({
   /** Stable slug id (from the map folder name, lower-cased) — the cross-reference key. */

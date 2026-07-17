@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { parseTerrainMap, type TerrainMapFile } from '@open-northland/data';
+import { MapScript, parseTerrainMap, type TerrainMapFile } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { contentDir, hasRealIr, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
 
@@ -19,10 +19,11 @@ function mapsDir(): string {
   return resolve(contentDir(), 'maps');
 }
 
-/** Decoded map files (`.meta.json` sidecars carry menu text, not terrain — excluded). */
+/** Decoded map files (`.meta.json`/`.script.json` sidecars carry menu text and the player/mission
+ *  script, not terrain — excluded). */
 function mapFiles(): string[] {
   return readdirSync(mapsDir())
-    .filter((f) => f.endsWith('.json') && !f.endsWith('.meta.json'))
+    .filter((f) => f.endsWith('.json') && !f.endsWith('.meta.json') && !f.endsWith('.script.json'))
     .sort();
 }
 
@@ -58,6 +59,21 @@ describe.runIf(hasRealIr() && existsSync(resolve(contentDir(), 'maps')))('decode
     },
     MAP_PARSE_TIMEOUT_MS,
   );
+
+  it('every script sidecar passes the MapScript schema and most maps carry a Human slot', () => {
+    const files = readdirSync(mapsDir())
+      .filter((f) => f.endsWith('.script.json'))
+      .sort();
+    // The corpus ships playerdata on ~115 of the 125 maps; a run emitting none means the script
+    // stage silently broke, not that the sources lost their rosters.
+    expect(files.length).toBeGreaterThan(50);
+    let withHumanSeat = 0;
+    for (const f of files) {
+      const script = MapScript.parse(JSON.parse(readFileSync(resolve(mapsDir(), f), 'utf8')));
+      if (script.players.some((p) => p.type === 'human')) withHumanSeat++;
+    }
+    expect(withHumanSeat).toBeGreaterThan(50);
+  });
 
   it(
     'every placed landscape object name on every map resolves in the IR landscapeGfx table',

@@ -64,6 +64,169 @@
   background: #0f0c08;
 }
 
+/* A map with a decoded player roster trades preview height for the slot list below it. */
+.game-menu__details.has-players .game-menu__preview-frame {
+  min-height: 130px;
+  max-height: clamp(150px, 26vh, 260px);
+}
+
+.game-menu__players {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 10px 14px 12px;
+  color: #3f2915;
+  border: 2px groove rgba(102, 64, 25, 0.62);
+  background: rgba(255, 242, 201, 0.28);
+}
+
+.game-menu__players[hidden] {
+  display: none;
+}
+
+.game-menu__players legend {
+  padding: 0 7px;
+  color: #4b2d12;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.game-menu__players-hint {
+  margin: 0;
+  color: #50361c;
+  font-size: 12px;
+}
+
+.game-menu__player-list {
+  display: grid;
+  gap: 4px;
+}
+
+.game-menu__player {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 5px 8px;
+  border: 1px solid rgba(95, 58, 22, 0.35);
+  border-radius: 2px;
+  background: rgba(255, 246, 214, 0.35);
+}
+
+.game-menu__player.is-human {
+  cursor: pointer;
+}
+
+.game-menu__player.is-human:hover {
+  background: rgba(255, 240, 177, 0.6);
+}
+
+.game-menu__player.is-taken {
+  border-color: #6d4a1d;
+  background: rgba(214, 236, 168, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(83, 102, 45, 0.55);
+}
+
+.game-menu__player-swatch {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 2px ridge #70451f;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.game-menu__player-swatch.is-option {
+  width: 20px;
+  height: 20px;
+}
+
+.game-menu__player-swatch.is-option:disabled {
+  cursor: not-allowed;
+  opacity: 0.32;
+}
+
+.game-menu__player-swatch.is-option.is-current {
+  outline: 2px solid #4b2d12;
+  outline-offset: 1px;
+}
+
+.game-menu__player-label {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.game-menu__player-name {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.game-menu__player-detail {
+  color: #50361c;
+  font-size: 11px;
+}
+
+.game-menu__player-seat {
+  flex: 0 0 auto;
+  color: #3c5220;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.game-menu__player:not(.is-taken) .game-menu__player-seat {
+  color: #6d5533;
+}
+
+.game-menu__player-vacant,
+.game-menu__player-badge {
+  flex: 0 0 auto;
+  min-width: 78px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.game-menu__player-vacant {
+  color: #f0d9a1;
+  border: 2px outset #70461f;
+  border-radius: 2px;
+  cursor: pointer;
+  background: #4a3017;
+}
+
+.game-menu__player-vacant:hover {
+  background: #5d3e1f;
+}
+
+.game-menu__player-badge {
+  color: #6d5533;
+  border: 1px solid rgba(95, 58, 22, 0.3);
+  border-radius: 2px;
+  background: rgba(95, 58, 22, 0.08);
+}
+
+.game-menu__player-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 6px 8px;
+  border: 1px dashed rgba(95, 58, 22, 0.45);
+  background: rgba(255, 246, 214, 0.5);
+}
+
+.game-menu__start:disabled {
+  cursor: not-allowed;
+  filter: saturate(0.35) brightness(0.75);
+}
+
 .game-menu__kind {
   position: absolute;
   right: 0;

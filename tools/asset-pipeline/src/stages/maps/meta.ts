@@ -96,7 +96,7 @@ async function resolveMapNameStringIds(
  * Returns undefined when no language yields strings — the caller then emits no meta sidecar (the menu
  * card degrades).
  */
-async function loadMapStringTable(
+export async function loadMapStringTable(
   mapDirs: readonly string[],
   rel: string,
 ): Promise<Record<number, string> | undefined> {
@@ -126,14 +126,16 @@ async function loadMapStringTable(
  * looked up in the folder's string table ({@link loadMapStringTable}). Returns undefined when neither a
  * name nor a description resolves (no text, or the table lacks the header's ids) — the caller then emits
  * no sidecar. `cifSections` is the already-decoded sibling `map.cif` (or undefined), passed in so the
- * cif is decoded once per map, by the caller that also needs its entity layer.
+ * cif is decoded once per map, by the caller that also needs its entity layer. A caller that also
+ * needs the string table (the script sidecar's player names) passes its one load via `strings`.
  */
 export async function resolveMapMeta(
   mapDirs: readonly string[],
   rel: string,
   cifSections: readonly RuleSection[] | undefined,
+  strings?: Record<number, string>,
 ): Promise<MapMetaFile | undefined> {
-  const strings = await loadMapStringTable(mapDirs, rel);
+  strings ??= await loadMapStringTable(mapDirs, rel);
   if (strings === undefined) return undefined;
   const { nameStringId, descriptionStringId } = await resolveMapNameStringIds(mapDirs, rel, cifSections);
   const name = strings[nameStringId];

@@ -24,6 +24,9 @@ export interface UnitControlsOptions {
   readonly professions: readonly PickerEntry[];
   readonly content: ContentSet;
   readonly sheet?: SpriteSheet;
+  /** Owner slot → team-colour slot for the details panel's worker sprites (a map roster's colour
+   *  choices); absent = identity. */
+  readonly playerColourOf?: (player: number) => number;
   readonly enqueue: (command: Command) => void;
   readonly boundsOf?: (ref: number) => EntityBounds | undefined;
   readonly pixelHitOf?: (ref: number, wx: number, wy: number) => boolean | undefined;

@@ -52,4 +52,46 @@ describe('buildMapsIndexEntries', () => {
     expect(warn).toHaveBeenCalledTimes(2); // the null + unparsable sidecars; wrong types are dropped silently
     warn.mockRestore();
   });
+
+  it('joins the script sidecar roster and never lists .script.json as a map of its own', async () => {
+    await writeFile(join(mapsRoot, 'arena.json'), '{}');
+    await writeFile(
+      join(mapsRoot, 'arena.script.json'),
+      JSON.stringify({
+        players: [
+          { player: 0, type: 'human', tribeId: 1, colorId: 7, name: 'Ragnar' },
+          { player: 1, type: 'ai', tribeId: 4, colorId: 9 },
+        ],
+        missions: [{ goals: [], results: [], other: [] }],
+      }),
+    );
+    await writeFile(join(mapsRoot, 'lonely.script.json'), '{"players":[]}');
+    expect(buildMapsIndexEntries(mapsRoot)).toEqual([
+      {
+        id: 'arena',
+        minimap: false,
+        players: [
+          { player: 0, type: 'human', tribeId: 1, colorId: 7, name: 'Ragnar' },
+          { player: 1, type: 'ai', tribeId: 4, colorId: 9 },
+        ],
+      },
+    ]);
+  });
+
+  it('degrades a malformed script sidecar to a roster-less entry', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    await writeFile(join(mapsRoot, 'bad.json'), '{}');
+    await writeFile(join(mapsRoot, 'bad.script.json'), '{not json');
+    await writeFile(join(mapsRoot, 'typ.json'), '{}');
+    await writeFile(
+      join(mapsRoot, 'typ.script.json'),
+      '{"players":[{"player":-1,"type":"human","tribeId":1,"colorId":0},{"player":0,"type":"robot","tribeId":1,"colorId":0}]}',
+    );
+    expect(buildMapsIndexEntries(mapsRoot)).toEqual([
+      { id: 'bad', minimap: false },
+      { id: 'typ', minimap: false },
+    ]);
+    expect(warn).toHaveBeenCalledTimes(1); // only the unparsable one warns; invalid rows drop silently
+    warn.mockRestore();
+  });
 });

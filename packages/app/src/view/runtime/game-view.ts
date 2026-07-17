@@ -80,6 +80,14 @@ export interface GameViewDeps {
   readonly mapSize: { readonly width: number; readonly height: number };
   /** The map's terrain-height field so clicks on lifted hills resolve to the tile drawn there. */
   readonly elevation?: ElevationField;
+  /** The player the person controls — the map roster seat picked in the menu (`?player=N`).
+   *  Default {@link HUMAN_PLAYER}: scenes and roster-less maps play slot 0, as before. Drives the
+   *  fog perspective, unit selection/orders, placement ownership and the HUD's economy view. */
+  readonly localPlayer?: number;
+  /** Owner slot → team-colour slot (the map roster's colour choices) for player-coloured HUD bits
+   *  (minimap dots, the details panel's worker sprites). The renderer's own sprites take the same
+   *  mapping via {@link WorldRendererOptions.playerColourOf} at construction. Default identity. */
+  readonly playerColourOf?: (player: number) => number;
   /** Extra per-frame hook after the standard updates. */
   readonly onFrame?: (snapshot: WorldSnapshot) => void;
   /**
@@ -113,6 +121,8 @@ const PERF_STRIP_GAP = 8;
  */
 export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   const { app, canvas, params, renderer, sim, cameraCtl } = deps;
+  // The controlled player — every "our units / our fog / our economy" read below goes through it.
+  const localPlayer = deps.localPlayer ?? HUMAN_PLAYER;
 
   // `?debug=perf` (live DevTools User Timing marks) / `?debug=trace` (a bounded Trace Event
   // recording, exportable from the system menu) — two consumers of the sim's per-system instrument
@@ -186,7 +196,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   // The signpost twin of canPlaceAt, for the erect-mode cursor ghost (same fog stance; a mapless sim
   // has no probe and shows no ghost — the erect command would be a no-op there anyway).
   const canPlaceSignpostAt = (col: number, row: number): boolean =>
-    fogGates.seesNode(col, row) && (sim.signpostProbe(HUMAN_PLAYER)?.canPlace(col, row) ?? false);
+    fogGates.seesNode(col, row) && (sim.signpostProbe(localPlayer)?.canPlace(col, row) ?? false);
 
   // The minimap handle, assigned right after the tool panel mounts (the panel must mount first — stage
   // order is draw order, and the minimap window draws over the strip's lower buttons on a short
@@ -206,7 +216,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     goods: menuGoodsFromContent(sim.content),
     lang,
     tribe: HUD_TRIBE,
-    owner: HUMAN_PLAYER,
+    owner: localPlayer,
     onSpeed: (spec, cause) => applyGameSpeed(control, spec, cause),
     deferToOverlay: (clientX, clientY) => minimap?.claimsPointer(clientX, clientY) ?? false,
     onSystemMenu: () => systemMenu.toggle(),
@@ -228,6 +238,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     terrain: deps.terrainGrid,
     cellColours: deps.minimapCellColours,
     colourOf: deps.terrainColour,
+    ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
     uiscale,
     camera: () => cameraCtl.camera(),
     onJump: (wx, wy) => {
@@ -263,11 +274,12 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     snapshot: () => sim.snapshot(),
     mapSize: deps.mapSize,
     ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
-    humanPlayer: HUMAN_PLAYER,
+    humanPlayer: localPlayer,
     lang,
     professions: pickerEntries(),
     content: sim.content,
     ...(deps.sheet !== undefined ? { sheet: deps.sheet } : {}),
+    ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
     enqueue: (command) => sim.enqueue(command),
     boundsOf: (ref) => renderer.entityBounds(ref), // exact sprite-box picking against the real sprite
     pixelHitOf: (ref, wx, wy) => renderer.entityPixelHit(ref, wx, wy), // buildings: solid pixels only
@@ -358,8 +370,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
 
   // The memoized build-mode band probe (see makeOverlayFrameSource) — one instance per view — and its
   // erect-signpost twin (shown while the scout's placement click is pending).
-  const overlayFrame = makeOverlayFrameSource(sim, deps.mapSize);
-  const signpostOverlayFrame = makeSignpostOverlaySource(sim, deps.mapSize);
+  const overlayFrame = makeOverlayFrameSource(sim, deps.mapSize, localPlayer);
+  const signpostOverlayFrame = makeSignpostOverlaySource(sim, deps.mapSize, localPlayer);
   // Per-frame O(entities) projections memoized by snapshot identity: a frame that did not step reuses
   // its HUD read-view and fog-filtered door badges instead of re-scanning every entity.
   const { hudFor, doorBadgesFor } = createSnapshotProjections(buildingDoors, workerRoleOf, fogGates);
