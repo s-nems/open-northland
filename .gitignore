@@ -63,6 +63,8 @@ map.dat
 # Root-anchored on purpose: committed documentation images live under docs/images/ and stay tracked.
 .playwright-mcp/
 /*.png
+# `npm run shot` writes its verification PNG beside the app package (--out defaults to cwd).
+/packages/app/shot.png
 
 
 # Logs
