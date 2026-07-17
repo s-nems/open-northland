@@ -1,11 +1,12 @@
-import type { EntitySnapshot, WorldSnapshot } from '@open-northland/sim';
+import type { WorldSnapshot } from '@open-northland/sim';
 import { Container } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
-import { type Camera, ONE, tileToScreen, type Viewport } from '../../src/data/projection/index.js';
+import { type Camera, tileToScreen, type Viewport } from '../../src/data/projection/index.js';
 import type { ElevationField } from '../../src/data/terrain/index.js';
 import { type PoolFrame, SpritePool } from '../../src/gpu/sprite-pool/index.js';
 import { SNAP_DISTANCE } from '../../src/gpu/sprite-pool/motion.js';
 import { TextureCache } from '../../src/gpu/texture-cache.js';
+import { entity, snapshotOf } from '../support/fixtures.js';
 
 /**
  * The retained pool's SCREEN-bounded reconcile: per-frame work must track what's on screen, not the whole
@@ -22,12 +23,8 @@ const FLAT: ElevationField = { maxLift: 0, liftAt: () => 0, liftAtNode: () => 0 
 const CAMERA: Camera = { offsetX: 0, offsetY: 0 };
 
 /** A minimal drawable building at a tile — `Building` + `Position` is all the scene collector classifies. */
-function building(id: number, col: number, row: number): EntitySnapshot {
-  return { id, components: { Building: {}, Position: { x: col * ONE, y: row * ONE } } };
-}
-
-function snapshotOf(entities: readonly EntitySnapshot[]): WorldSnapshot {
-  return { tick: 0, entities, events: [] };
+function building(id: number, col: number, row: number): ReturnType<typeof entity> {
+  return entity(id, col, row, { Building: {} });
 }
 
 function poolFrame(snapshot: WorldSnapshot, viewport: Viewport): PoolFrame {
@@ -130,8 +127,13 @@ describe('SpritePool — reconcile scans track the screen, not the pool', () => 
 });
 
 /** A drawable settler at a tile — `Settler` + `Position` is all the scene collector needs. */
-function settler(id: number, col: number, row: number, extra: Record<string, unknown> = {}): EntitySnapshot {
-  return { id, components: { Settler: { tribe: 0 }, Position: { x: col * ONE, y: row * ONE }, ...extra } };
+function settler(
+  id: number,
+  col: number,
+  row: number,
+  extra: Record<string, unknown> = {},
+): ReturnType<typeof entity> {
+  return entity(id, col, row, { Settler: { tribe: 0 }, ...extra });
 }
 
 /**

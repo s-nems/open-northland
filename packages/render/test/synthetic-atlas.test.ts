@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import type { SpriteState } from '../src/data/scene/index.js';
 import { resolveSpriteFrame } from '../src/data/sprites/index.js';
 import { SYNTHETIC_ATLAS_HEIGHT, SYNTHETIC_ATLAS_WIDTH } from '../src/gpu/synthetic-atlas.js';
 import { type DrawItem, SYNTHETIC_BINDINGS, syntheticAtlasFrames } from '../src/index.js';
+import { drawItem } from './support/fixtures.js';
 
 /**
  * Unit tests for the PURE half of the free synthetic atlas — its frame geometry + bindings. This is
@@ -11,18 +11,13 @@ import { type DrawItem, SYNTHETIC_BINDINGS, syntheticAtlasFrames } from '../src/
  * pixel half (drawing the canvas) stays deferred to a human eye (see synthetic-atlas.ts).
  */
 
-/** Hand-build a minimal drawable item of a given kind (+ optional state) the resolver reads. */
-function item(kind: DrawItem['kind'], state?: SpriteState): DrawItem {
-  return { kind, ref: 1, x: 0, y: 0, depth: 0, ...(state !== undefined ? { state } : {}) };
-}
-
 /** The settler's three per-state markers + the building/resource frames — every frame the atlas draws. */
 const ALL_ITEMS: readonly DrawItem[] = [
-  item('settler', 'idle'),
-  item('settler', 'moving'),
-  item('settler', 'acting'),
-  item('building'),
-  item('resource'),
+  drawItem('settler', { state: 'idle' }),
+  drawItem('settler', { state: 'moving' }),
+  drawItem('settler', { state: 'acting' }),
+  drawItem('building'),
+  drawItem('resource'),
 ];
 
 describe('syntheticAtlasFrames', () => {
@@ -55,9 +50,9 @@ describe('syntheticAtlasFrames', () => {
 
   it('binds each settler state to a DISTINCT frame (the richer per-state path is real)', () => {
     const atlas = syntheticAtlasFrames();
-    const idle = resolveSpriteFrame(item('settler', 'idle'), SYNTHETIC_BINDINGS, atlas);
-    const moving = resolveSpriteFrame(item('settler', 'moving'), SYNTHETIC_BINDINGS, atlas);
-    const acting = resolveSpriteFrame(item('settler', 'acting'), SYNTHETIC_BINDINGS, atlas);
+    const idle = resolveSpriteFrame(drawItem('settler', { state: 'idle' }), SYNTHETIC_BINDINGS, atlas);
+    const moving = resolveSpriteFrame(drawItem('settler', { state: 'moving' }), SYNTHETIC_BINDINGS, atlas);
+    const acting = resolveSpriteFrame(drawItem('settler', { state: 'acting' }), SYNTHETIC_BINDINGS, atlas);
     // Three distinct atlas rects — a walking settler doesn't draw the idle frame.
     const keys = [idle, moving, acting].map((f) => `${f?.x},${f?.y}`);
     expect(new Set(keys).size).toBe(3);

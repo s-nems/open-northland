@@ -11,7 +11,7 @@ import { snapshotOf } from './support/fixtures.js';
  *
  * A `WorldSnapshot` is plain data (no class instances; a `Stockpile` Map is already a sorted [k,v]
  * array), so we hand-build one here rather than spinning up a Simulation — this stays a render-package
- * unit, mirroring scene.test.ts.
+ * unit, mirroring scene/build-scene.test.ts.
  */
 
 /** A snapshot settler entity: tribe + jobType (null = idle adult). */

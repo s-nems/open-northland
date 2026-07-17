@@ -1,11 +1,10 @@
 import { FOG_STATE } from '@open-northland/sim';
 import { Container, Texture } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
-import { FOG_GHOST_TINT } from '../src/data/fog/index.js';
-import type { Viewport } from '../src/data/projection/index.js';
-import type { AtlasFrame } from '../src/data/sprites/index.js';
-import { MapObjectLayer, type MapObjectSprite } from '../src/gpu/map-objects/index.js';
-import { TextureCache } from '../src/gpu/texture-cache.js';
+import { FOG_GHOST_TINT } from '../../src/data/fog/index.js';
+import { MapObjectLayer, type MapObjectSprite } from '../../src/gpu/map-objects/index.js';
+import { TextureCache } from '../../src/gpu/texture-cache.js';
+import { decorUVs, FRAME_0, FRAME_1, type TallSprite, tallSprites, WIDE } from './support.js';
 
 /**
  * The tall map-object FOG gate ({@link MapObjectLayer.update}'s `fogStateOfCell`): a virgin
@@ -14,11 +13,6 @@ import { TextureCache } from '../src/gpu/texture-cache.js';
  * memory; swaying trees under the fog would read as watched ground). Headless like the removal
  * tests — display objects construct without a GL context.
  */
-
-const FRAME_0: AtlasFrame = { x: 0, y: 0, width: 8, height: 8, offsetX: 0, offsetY: 0 };
-const FRAME_1: AtlasFrame = { x: 8, y: 0, width: 8, height: 8, offsetX: 0, offsetY: 0 };
-
-const WIDE: Viewport = { minX: -1000, minY: -1000, maxX: 1000, maxY: 1000 };
 
 /** A two-frame TALL object (an animated tree) anchored at the origin — cell (0, 0). */
 function swayingTree(): MapObjectSprite {
@@ -34,9 +28,8 @@ function swayingTree(): MapObjectSprite {
 }
 
 /** The one attached tall sprite, or undefined while hidden. */
-function tallSprite(spriteLayer: Container): { tint: number; frameX: number } | undefined {
-  const spr = spriteLayer.children[0] as { tint: number; texture: Texture } | undefined;
-  return spr === undefined ? undefined : { tint: spr.tint, frameX: spr.texture.frame.x };
+function tallSprite(spriteLayer: Container): TallSprite | undefined {
+  return tallSprites(spriteLayer)[0];
 }
 
 /** A two-frame animated DECOR object (a wave / swaying bush) anchored at the origin — cell (0, 0). */
@@ -50,14 +43,6 @@ function wavingBush(): MapObjectSprite {
     decor: true,
     phase: 0,
   };
-}
-
-/** The animated decor batch's UV buffer — the frame pick is observable as the quad's atlas UVs. */
-function decorUVs(layer: MapObjectLayer): Float32Array {
-  const mesh = layer.decorContainer.children[0]?.children[0] as { geometry?: { uvs: Float32Array } };
-  const uvs = mesh?.geometry?.uvs;
-  if (uvs === undefined) throw new Error('expected one decor batch mesh');
-  return uvs;
 }
 
 describe('MapObjectLayer fog gate (tall objects)', () => {

@@ -1,9 +1,9 @@
 import { Container, Texture } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
-import type { Viewport } from '../src/data/projection/index.js';
-import type { AtlasFrame } from '../src/data/sprites/index.js';
-import { MapObjectLayer, type MapObjectSprite } from '../src/gpu/map-objects/index.js';
-import { TextureCache } from '../src/gpu/texture-cache.js';
+import type { AtlasFrame } from '../../src/data/sprites/index.js';
+import { MapObjectLayer, type MapObjectSprite } from '../../src/gpu/map-objects/index.js';
+import { TextureCache } from '../../src/gpu/texture-cache.js';
+import { decorPositions, FRAME_0, FRAME_1, WIDE } from './support.js';
 
 /**
  * The static-layer REMOVAL seam of the `?map=` static→dynamic resource handover
@@ -14,33 +14,27 @@ import { TextureCache } from '../src/gpu/texture-cache.js';
  * test relies on the same), so the buffer states are pinnable without a GL context.
  */
 
-const FRAME: AtlasFrame = { x: 0, y: 0, width: 8, height: 8, offsetX: 0, offsetY: 0 };
-const FRAME_B: AtlasFrame = { x: 8, y: 0, width: 8, height: 8, offsetX: 0, offsetY: 0 };
-
-/** A viewport that frames everything the tests place (world coords are single-digit px). */
-const WIDE: Viewport = { minX: -1000, minY: -1000, maxX: 1000, maxY: 1000 };
-
 function decorObject(x: number, frames: readonly AtlasFrame[]): MapObjectSprite {
   return { x, y: 0, source: Texture.WHITE.source, frames, scale: 1, decor: true, phase: 0 };
 }
 
 function tallObject(x: number): MapObjectSprite {
-  return { x, y: 0, source: Texture.WHITE.source, frames: [FRAME], scale: 1, decor: false, phase: 0 };
-}
-
-/** The decor container's single mesh position buffer (one batch: same source, same still/moving split). */
-function decorPositions(layer: MapObjectLayer): Float32Array {
-  const mesh = layer.decorContainer.children[0]?.children[0] as { geometry?: { positions: Float32Array } };
-  const positions = mesh?.geometry?.positions;
-  if (positions === undefined) throw new Error('expected one decor batch mesh');
-  return positions;
+  return {
+    x,
+    y: 0,
+    source: Texture.WHITE.source,
+    frames: [FRAME_0],
+    scale: 1,
+    decor: false,
+    phase: 0,
+  };
 }
 
 describe('MapObjectLayer.remove (the handover seam)', () => {
   it('zeroes a STILL decor quad in place and leaves its batch siblings intact', () => {
     const layer = new MapObjectLayer(new Container(), new TextureCache());
-    const removed = decorObject(0, [FRAME]);
-    const kept = decorObject(100, [FRAME]);
+    const removed = decorObject(0, [FRAME_0]);
+    const kept = decorObject(100, [FRAME_0]);
     layer.set([removed, kept]);
     layer.remove(removed);
     const positions = decorPositions(layer);
@@ -51,8 +45,8 @@ describe('MapObjectLayer.remove (the handover seam)', () => {
 
   it('keeps an ANIMATED decor quad zeroed across play-head rewrites', () => {
     const layer = new MapObjectLayer(new Container(), new TextureCache());
-    const removed = decorObject(0, [FRAME, FRAME_B]); // 2 frames → an animated batch member
-    const kept = decorObject(100, [FRAME, FRAME_B]);
+    const removed = decorObject(0, [FRAME_0, FRAME_1]); // 2 frames → an animated batch member
+    const kept = decorObject(100, [FRAME_0, FRAME_1]);
     layer.set([removed, kept]);
     layer.remove(removed);
     // Advance the animation clock twice — the rewrite loop must SKIP the removed (nulled) slot.
@@ -60,7 +54,7 @@ describe('MapObjectLayer.remove (the handover seam)', () => {
     layer.update(WIDE, 2);
     const positions = decorPositions(layer);
     expect([...positions.slice(0, 8)]).toEqual([0, 0, 0, 0, 0, 0, 0, 0]); // never restored
-    expect(positions[8]).toBe(100 + FRAME.offsetX); // the kept quad keeps being rewritten normally
+    expect(positions[8]).toBe(100 + FRAME_0.offsetX); // the kept quad keeps being rewritten normally
   });
 
   it('detaches a TALL object sprite and never re-mints it on later updates', () => {

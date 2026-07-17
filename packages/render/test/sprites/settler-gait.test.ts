@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { SpriteState } from '../../src/data/scene/index.js';
 import { type ByJobTable, pickByJob, resolveSpriteBobId } from '../../src/data/sprites/index.js';
 import type { DirectionalAnim, DrawItem, SettlerStateBinding, SpriteBindings } from '../../src/index.js';
-import { drawItem } from '../support/fixtures.js';
+import { settlerItem } from '../support/fixtures.js';
 
 /**
  * Unit tests for the settler GAIT OVERRIDES and per-job pick — the engaged (aggressive) and carrying
@@ -10,13 +10,6 @@ import { drawItem } from '../support/fixtures.js';
  */
 
 describe('resolveSpriteBobId — engaged (aggressive) gait override', () => {
-  function settler(state: SpriteState, engaged: boolean, facing = 0): DrawItem {
-    return drawItem('settler', {
-      state,
-      facing,
-      ...(engaged ? { engaged: true } : {}),
-    });
-  }
   const WALK: DirectionalAnim = { start: 1000, dirs: 8, stride: 12 };
   const STAND: DirectionalAnim = { start: 1000, dirs: 8, stride: 12, frames: 1 };
   const AGGR_WALK: DirectionalAnim = { start: 2000, dirs: 8, stride: 12 };
@@ -29,13 +22,15 @@ describe('resolveSpriteBobId — engaged (aggressive) gait override', () => {
   const bindings: SpriteBindings = { settler: ANIM, building: 20, resource: 30 };
 
   it('engaged moving plays the aggressive walk instead of the relaxed one', () => {
-    expect(resolveSpriteBobId(settler('moving', true), bindings, 3)).toBe(2000 + 3); // AGGR_WALK
-    expect(resolveSpriteBobId(settler('moving', false), bindings, 3)).toBe(1000 + 3); // relaxed WALK
+    expect(resolveSpriteBobId(settlerItem('moving', { facing: 0, engaged: true }), bindings, 3)).toBe(
+      2000 + 3,
+    ); // AGGR_WALK
+    expect(resolveSpriteBobId(settlerItem('moving', { facing: 0 }), bindings, 3)).toBe(1000 + 3); // relaxed WALK
   });
 
   it('engaged idle plays the aggressive ready stance (facing-locked strip)', () => {
-    expect(resolveSpriteBobId(settler('idle', true), bindings, 5)).toBe(3000 + 5); // AGGR_WAIT (dirs 1)
-    expect(resolveSpriteBobId(settler('idle', false), bindings, 5)).toBe(1000); // STAND (frames:1)
+    expect(resolveSpriteBobId(settlerItem('idle', { facing: 0, engaged: true }), bindings, 5)).toBe(3000 + 5); // AGGR_WAIT (dirs 1)
+    expect(resolveSpriteBobId(settlerItem('idle', { facing: 0 }), bindings, 5)).toBe(1000); // STAND (frames:1)
   });
 
   it('falls back to the relaxed gait when an engaged slot is unbound', () => {
@@ -44,24 +39,11 @@ describe('resolveSpriteBobId — engaged (aggressive) gait override', () => {
       building: 0,
       resource: 0,
     };
-    expect(resolveSpriteBobId(settler('idle', true), partial, 5)).toBe(1000); // falls back to STAND
+    expect(resolveSpriteBobId(settlerItem('idle', { facing: 0, engaged: true }), partial, 5)).toBe(1000); // falls back to STAND
   });
 });
 
 describe('resolveSpriteBobId — carrying (loaded-gait) override', () => {
-  /** A settler draw item, with the optional `carrying` haul flag the loaded gait keys off. */
-  function settler(
-    state: SpriteState,
-    opts: { facing?: number; atomicId?: number; elapsed?: number; carrying?: boolean } = {},
-  ): DrawItem {
-    return drawItem('settler', {
-      state,
-      ...(opts.facing !== undefined ? { facing: opts.facing } : {}),
-      ...(opts.atomicId !== undefined ? { atomicId: opts.atomicId } : {}),
-      ...(opts.elapsed !== undefined ? { elapsed: opts.elapsed } : {}),
-      ...(opts.carrying ? { carrying: true } : {}),
-    });
-  }
   const WALK: DirectionalAnim = { start: 1988, dirs: 8, stride: 12 };
   const STAND: DirectionalAnim = { start: 1988, dirs: 8, stride: 12, frames: 1 };
   const CHOP: DirectionalAnim = { start: 5106, dirs: 8, stride: 15, phaseStart: 9 };
@@ -78,15 +60,15 @@ describe('resolveSpriteBobId — carrying (loaded-gait) override', () => {
   const bindings: SpriteBindings = { settler: ANIM, building: 20, resource: 30 };
 
   it('a carrying settler walks the loaded cycle (WALK_WOOD), not the empty walk', () => {
-    expect(resolveSpriteBobId(settler('moving', { facing: 3, carrying: true }), bindings, 5)).toBe(
+    expect(resolveSpriteBobId(settlerItem('moving', { facing: 3, carrying: true }), bindings, 5)).toBe(
       4580 + 3 * 12 + 5,
     );
     // Without the haul flag the SAME item walks the empty cycle (no carry override applied).
-    expect(resolveSpriteBobId(settler('moving', { facing: 3 }), bindings, 5)).toBe(1988 + 3 * 12 + 5);
+    expect(resolveSpriteBobId(settlerItem('moving', { facing: 3 }), bindings, 5)).toBe(1988 + 3 * 12 + 5);
   });
 
   it('a carrying settler stands the loaded pose when idle (STAND_WOOD, frames:1 ignores tick)', () => {
-    expect(resolveSpriteBobId(settler('idle', { facing: 2, carrying: true }), bindings, 99)).toBe(
+    expect(resolveSpriteBobId(settlerItem('idle', { facing: 2, carrying: true }), bindings, 99)).toBe(
       4580 + 2 * 12,
     );
   });
@@ -96,7 +78,7 @@ describe('resolveSpriteBobId — carrying (loaded-gait) override', () => {
     // (STAND_WOOD) so the settler keeps its load on screen until the wood is actually placed.
     expect(
       resolveSpriteBobId(
-        settler('acting', { facing: 2, atomicId: 23, elapsed: 3, carrying: true }),
+        settlerItem('acting', { facing: 2, atomicId: 23, elapsed: 3, carrying: true }),
         bindings,
         0,
       ),
@@ -108,7 +90,7 @@ describe('resolveSpriteBobId — carrying (loaded-gait) override', () => {
     // must still play — carry only swaps the gait, never a bound action animation.
     expect(
       resolveSpriteBobId(
-        settler('acting', { facing: 4, atomicId: 24, elapsed: 1, carrying: true }),
+        settlerItem('acting', { facing: 4, atomicId: 24, elapsed: 1, carrying: true }),
         bindings,
         0,
       ),
@@ -124,10 +106,10 @@ describe('resolveSpriteBobId — carrying (loaded-gait) override', () => {
       building: 0,
       resource: 0,
     };
-    expect(resolveSpriteBobId(settler('moving', { facing: 1, carrying: true }), partial, 2)).toBe(
+    expect(resolveSpriteBobId(settlerItem('moving', { facing: 1, carrying: true }), partial, 2)).toBe(
       4580 + 1 * 12 + 2,
     );
-    expect(resolveSpriteBobId(settler('idle', { facing: 1, carrying: true }), partial, 2)).toBe(
+    expect(resolveSpriteBobId(settlerItem('idle', { facing: 1, carrying: true }), partial, 2)).toBe(
       1988 + 1 * 12,
     );
   });
@@ -136,12 +118,7 @@ describe('resolveSpriteBobId — carrying (loaded-gait) override', () => {
 describe('resolveSpriteBobId — per-good carry look (carrying.byGood)', () => {
   /** A hauling settler item carrying a specific good (or none — the generic loaded look). */
   function hauler(state: SpriteState, facing: number, carryGood?: number): DrawItem {
-    return drawItem('settler', {
-      state,
-      facing,
-      carrying: true,
-      ...(carryGood !== undefined ? { carryGood } : {}),
-    });
+    return settlerItem(state, { facing, carrying: true, carryGood });
   }
   const WALK: DirectionalAnim = { start: 1988, dirs: 8, stride: 12 };
   const WALK_WOOD: DirectionalAnim = { start: 4580, dirs: 8, stride: 12 };
