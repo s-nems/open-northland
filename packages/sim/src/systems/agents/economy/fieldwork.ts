@@ -58,8 +58,8 @@ import { deliveryTargetFor } from './routing.js';
  *     until a hauler delivers. A builder is committed to its site — it does not fall through to haul someone
  *     else's goods while a foundation of its own stands unraised.
  *
- * The hammer and wait stands go through {@link claimWorkCell}: a crew on one site spreads over the site's yard
- * instead of stacking on its one interaction cell — body collision can't do it (civilians are deliberate
+ * The hammer and wait stands go through {@link claimWorkCell}: a crew spreads over the site's legal perimeter
+ * instead of stacking on its finished-building interaction cell — body collision can't do it (civilians are deliberate
  * pass-through, and standing units are never displaced; see the destack module doc).
  *
  * Sits below the bound-producer loop and above gather/porter/carrier, so a builder builds before it ferries.
@@ -95,21 +95,23 @@ export function planBuilder(plan: PlannerContext, spacing: SpacingState): boolea
   if (assigned === undefined || assigned.site !== site || assigned.pinned !== (pinned !== null)) {
     world.add(e, SiteAssignment, { site, pinned: pinned !== null });
   }
-  const siteStand = (): NodeId =>
-    claimWorkCell(world, ctx, terrain, e, here, interactionCell(world, ctx, terrain, site, here), spacing);
+  const siteStand = (): NodeId | null => claimWorkCell(world, ctx, terrain, e, here, site, spacing);
 
   // a. Material on hand to install? Hammer only while builder work trails delivered material.
   if (world.get(site, UnderConstruction).labor < deliveredConstructionFraction(world, ctx, site)) {
-    atOrWalk(world, e, here, siteStand(), () =>
-      startAtomic(
-        world,
-        e,
-        BUILD_HOUSE_ATOMIC_ID,
-        { kind: 'construct', site },
-        atomicDuration(ctx.content, settler, BUILD_HOUSE_ATOMIC_ID),
-        site,
-      ),
-    );
+    const stand = siteStand();
+    if (stand !== null) {
+      atOrWalk(world, e, here, stand, () =>
+        startAtomic(
+          world,
+          e,
+          BUILD_HOUSE_ATOMIC_ID,
+          { kind: 'construct', site },
+          atomicDuration(ctx.content, settler, BUILD_HOUSE_ATOMIC_ID),
+          site,
+        ),
+      );
+    }
     return true;
   }
 
@@ -139,7 +141,8 @@ export function planBuilder(plan: PlannerContext, spacing: SpacingState): boolea
 
   // c. Can't hammer, nothing to fetch — hold at the site and wait for a delivery (empty callback: a
   // MoveGoal to the stand cell, or stay put if already there).
-  atOrWalk(world, e, here, siteStand(), () => {});
+  const stand = siteStand();
+  if (stand !== null) atOrWalk(world, e, here, stand, () => {});
   return true;
 }
 

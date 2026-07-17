@@ -255,9 +255,8 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
     // frontier grows) and routing treats the builder's own SiteAssignment as a bound sink (case 3c) —
     // so a builder pinned far outside its local circle still fetches from an in-area store and ROUTES
     // the load to the pinned site instead of shedding it on "no in-area sink" (the old livelock).
-    // Arrival is not asserted: the fixture HOUSE has no door and its footprint blocks its own anchor,
-    // so on a full-size map the door node is unwalkable — a fixture-only geometry (real buildings
-    // carry extracted doors; the decoded-map replay pins the end-to-end delivery).
+    // The fixture HOUSE has no door and blocks its anchor. Construction routing must therefore use a
+    // legal perimeter cell rather than inheriting the finished-building interaction point.
     const sim = new Simulation({ seed: 13, content: constructionContent(), map: grassMap(60, 8) });
     sim.enqueue({ kind: 'setSignpostNavigation', enabled: true });
     const SITE_TILE_X = 20; // node x 40 — far beyond the 24-node local circle around the builder
@@ -279,18 +278,20 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
     }
     expect(carrying).toBe(true);
 
-    // Phase 2: loaded, the delivery rung must keep aiming AT the pinned site (MoveGoal in the site's
-    // far map half) and never shed the load — a shed here is the fetch/delivery disagreement 3c closes.
+    // Phase 2: loaded, the delivery rung must reach the pinned site's perimeter and unload there.
     const MAP_NODES_WIDE = 60;
     const SITE_NODE_X = SITE_TILE_X * 2;
-    for (let t = 0; t < 100; t++) {
+    let delivered = false;
+    for (let t = 0; t < 1_000 && !delivered; t++) {
       sim.step();
-      expect(sim.world.has(builder, Carrying), `shed the load at tick ${sim.tick}`).toBe(true);
       const goal = sim.world.tryGet(builder, MoveGoal);
       if (goal !== undefined) {
         expect(goal.cell % MAP_NODES_WIDE).toBeGreaterThanOrEqual(SITE_NODE_X - 4);
       }
+      delivered = (sim.world.get(site, Stockpile).amounts.get(STONE) ?? 0) > 0;
     }
+    expect(delivered).toBe(true);
+    expect(sim.world.has(builder, Carrying)).toBe(false);
   });
 
   it("a builder raises only its OWN player's site — a same-tribe enemy foundation is left alone", () => {
