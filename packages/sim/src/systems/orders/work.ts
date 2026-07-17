@@ -14,7 +14,6 @@ import {
   JobAssignment,
   ownerOf,
   PlayerOrder,
-  Position,
   Settler,
   SiteAssignment,
   SupplyRun,
@@ -22,7 +21,6 @@ import {
   UnderConstruction,
   Weapon,
   WorkFlag,
-  YardDeliveryRoute,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
@@ -35,6 +33,7 @@ import {
   bindFreshFlag,
   jobCanHarvest,
   liveWorkFlag,
+  relocateWorkFlag,
   removeWorkFlag,
   syncWorkFlagToJob,
 } from '../economy/flags.js';
@@ -264,18 +263,9 @@ export function setWorkFlag(
   const pos = positionOfNode(c.x, c.y);
 
   if (live !== undefined) {
-    // Relocate the existing flag — only the marker moves (Position mutated in place). The goods already
-    // dropped are separate ground heaps pinned to their own tiles, so they stay put.
-    const atomic = world.tryGet(e, CurrentAtomic);
-    if (atomic?.effect.kind === 'pileup' && atomic.effect.store === live.flag) {
-      world.remove(e, CurrentAtomic);
-    }
-    const p = world.get(live.flag, Position);
-    p.x = pos.x;
-    p.y = pos.y;
-    world.touch(live.flag);
-    world.remove(e, YardDeliveryRoute);
-    clearNavState(world, e);
+    // Relocate the existing flag — only the marker moves, and its gatherer sheds the delivery/nav state
+    // that cached the old position (see {@link relocateWorkFlag}).
+    relocateWorkFlag(world, live.flag, pos);
     return;
   }
   // No live flag yet (fresh gatherer, or its flag was removed) — mint one here and bind / re-point.

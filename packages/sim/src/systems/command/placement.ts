@@ -15,6 +15,7 @@ import { fx, ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { positionOfNode } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
+import { evictWorkFlagsFromFootprint } from '../economy/flags.js';
 import { canPlaceBuilding } from '../footprint/index.js';
 import { evictSettlersFromFootprint } from '../movement/evict.js';
 import { buildingEnabled, tribeShipsUnlocked } from '../progression/index.js';
@@ -110,8 +111,11 @@ export function placeBuilding(
   // A building placed for a specific player carries an `Owner` — that player's to select/command. Omitted /
   // out-of-range leaves it neutral.
   stampOwner(world, e, command.owner);
-  // The plot is impassable from this tick — settlers standing on it step aside instead of being walled in.
+  // The plot is impassable from this tick — settlers standing on it step aside instead of being walled in,
+  // and a work flag already planted there is pushed to the nearest legal field (the placement gates ignore
+  // flags, so a house may legally land on one).
   evictSettlersFromFootprint(world, ctx, e);
+  evictWorkFlagsFromFootprint(world, ctx, e);
   ctx.events.emit({ kind: 'buildingPlaced', entity: e, at: { hx: command.x, hy: command.y } });
 }
 

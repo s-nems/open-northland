@@ -2,17 +2,26 @@ import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   Building,
+  CurrentAtomic,
+  DeliveryFlag,
   MoveGoal,
   Position,
   Settler,
   Stockpile,
   stampOwner,
   UnderConstruction,
+  WorkFlag,
+  YardDeliveryRoute,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, nodeOfPosition, ONE, positionOfNode, Simulation } from '../../src/index.js';
 import { findPath } from '../../src/nav/pathfinding/index.js';
-import { constructionSystem, dynamicBlockOverlay } from '../../src/systems/index.js';
+import {
+  canPlaceWorkFlag,
+  constructionSystem,
+  dynamicBlockOverlay,
+  evictWorkFlagsFromFootprint,
+} from '../../src/systems/index.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
@@ -26,13 +35,15 @@ import {
 } from '../footprint/building-placement/support.js';
 
 /**
- * Displacement — a settler never ends up standing inside walls, from either side. Building-first
- * (`evictSettlersFromFootprint`): the moment a plot becomes impassable (a placement onto occupied
- * ground, a construction finish, a home tier upgrade growing the walls), settlers standing inside are
- * pushed to the nearest free cell. Settler-first (`evictSettlerFromBlockedSpawn`): a settler spawned
- * onto an already-standing body is pushed out, which is the case an authored map load hits.
+ * Displacement — nothing a house lands on ends up sealed inside its walls. Settlers, from either side:
+ * building-first (`evictSettlersFromFootprint`), the moment a plot becomes impassable (a placement onto
+ * occupied ground, a construction finish, a home tier upgrade growing the walls), settlers standing inside
+ * are pushed to the nearest free cell; settler-first (`evictSettlerFromBlockedSpawn`), a settler spawned
+ * onto an already-standing body is pushed out, which is the case an authored map load hits. And work flags
+ * (`evictWorkFlagsFromFootprint`): the placement gates ignore flags, so a house may legally land on one.
  * The HUT fixture's body is (0,0)+(1,0) with the door at (-1,0); anchored at (5,5) the body nodes are
- * (5,5) and (6,5), the door (4,5).
+ * (5,5) and (6,5), the door (4,5). Its family body adds the growth cell (6,6) — reserved from level 0,
+ * and walls to a flag though not to a walker.
  */
 
 const PLAYER = 0;
@@ -266,5 +277,102 @@ describe('footprint displacement — settlers never end up standing inside walls
     constructionSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(home, Building).buildingType).toBe(HOME_L); // upgraded
     expect(nodeOf(sim, beside)).not.toEqual({ x: 6, y: 5 }); // and the settler stepped aside
+  });
+});
+
+/** A bare flag marker at a node — a gatherer-less `Position + DeliveryFlag`, which is all the geometry
+ *  half of the push-out reads. */
+function flagAtNode(sim: Simulation, x: number, y: number): Entity {
+  const e = sim.world.create();
+  sim.world.add(e, Position, positionOfNode(x, y));
+  sim.world.add(e, DeliveryFlag, {});
+  return e;
+}
+
+/** The HUT's family body anchored at ANCHOR: the level-0 walls plus the growth cell a level-0 house
+ *  already reserves. Wider than BODY (the walk-block set) — flag legality is family-body-wide. */
+const FAMILY_BODY = HUT_FOOTPRINT.familyBody.map((c) => ({ x: ANCHOR.x + c.dx, y: ANCHOR.y + c.dy }));
+
+describe('footprint displacement — a work flag is never sealed inside a placed house', () => {
+  it('a house placed onto a flag pushes it to a legal field it could be re-planted on', () => {
+    const sim = mappedSim();
+    const flag = flagAtNode(sim, ANCHOR.x, ANCHOR.y); // on the anchor, under the walls-to-be
+    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    sim.step();
+    const at = nodeOf(sim, flag);
+    expect(FAMILY_BODY).not.toContainEqual(at); // off the body…
+    const terrain = terrainOf(sim);
+    // …and onto ground the plant rule actually accepts — the invariant the push exists to restore.
+    // Ignoring the flag itself, exactly as `setWorkFlag` does: a marker occupies its own cell.
+    expect(canPlaceWorkFlag(sim.world, ctxOf(sim), terrain, terrain.nodeAt(at.x, at.y), flag)).toBe(true);
+  });
+
+  it('evicts a flag on a growth cell the level-0 walls do not yet cover', () => {
+    // (6,6) is in familyBody but NOT in `blocked` — the settler twin's walk-block set would leave it.
+    // A flag there is still illegal ground (`workFlagPlacementBlocks` is family-body-wide), so it moves.
+    const sim = mappedSim();
+    const growth = { x: ANCHOR.x + 1, y: ANCHOR.y + 1 };
+    expect(BODY).not.toContainEqual(growth); // the fixture proves itself: not walk-blocked…
+    expect(FAMILY_BODY).toContainEqual(growth); // …but inside the family body
+    const flag = flagAtNode(sim, growth.x, growth.y);
+    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    sim.step();
+    expect(nodeOf(sim, flag)).not.toEqual(growth);
+  });
+
+  it('leaves a flag on open ground beside the plot alone', () => {
+    const sim = mappedSim();
+    const flag = flagAtNode(sim, 10, 10);
+    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    sim.step();
+    expect(nodeOf(sim, flag)).toEqual({ x: 10, y: 10 });
+  });
+
+  it('fans two enclosed flags onto distinct cells — a flag never stacks on a flag', () => {
+    const sim = mappedSim();
+    const onAnchor = flagAtNode(sim, ANCHOR.x, ANCHOR.y);
+    const onWall = flagAtNode(sim, ANCHOR.x + 1, ANCHOR.y);
+    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    sim.step();
+    // Each search re-reads the live blocker set, so the first evictee's new cell blocks the second's pick.
+    expect(nodeOf(sim, onAnchor)).not.toEqual(nodeOf(sim, onWall));
+    for (const f of [onAnchor, onWall]) expect(FAMILY_BODY).not.toContainEqual(nodeOf(sim, f));
+  });
+
+  it('sheds the gatherer delivery + nav state that cached the old flag position', () => {
+    // Called directly: a full step would re-plan the gatherer in the same tick, hiding whether the
+    // eviction itself cleared the stale state.
+    const sim = mappedSim();
+    const flag = flagAtNode(sim, ANCHOR.x, ANCHOR.y);
+    const gatherer = settlerAtNode(sim, 10, 10, PLAYER);
+    sim.world.add(gatherer, WorkFlag, { flag, radius: 24 });
+    sim.world.add(gatherer, YardDeliveryRoute, {
+      flag,
+      goodType: 1,
+      goal: terrainOf(sim).nodeAt(ANCHOR.x, ANCHOR.y), // the yard node beside the OLD position
+      failed: false,
+    });
+    sim.world.add(gatherer, CurrentAtomic, {
+      atomicId: 0,
+      elapsed: 0,
+      progress: fx.fromInt(0),
+      duration: 10,
+      effect: { kind: 'pileup', store: flag },
+      targetEntity: flag,
+      targetTile: null,
+    });
+    sim.world.add(gatherer, MoveGoal, { cell: terrainOf(sim).nodeAt(ANCHOR.x, ANCHOR.y) });
+
+    const house = sim.world.create();
+    sim.world.add(house, Position, positionOfNode(ANCHOR.x, ANCHOR.y));
+    sim.world.add(house, Building, { buildingType: HUT, tribe: VIKING, built: ONE, level: 0 });
+    evictWorkFlagsFromFootprint(sim.world, ctxOf(sim), house);
+
+    expect(FAMILY_BODY).not.toContainEqual(nodeOf(sim, flag)); // the marker moved…
+    expect(sim.world.get(gatherer, WorkFlag).flag).toBe(flag); // …the binding survives (same entity)…
+    // …and every cache of the old position is gone, so the gatherer re-plans against the new one.
+    expect(sim.world.has(gatherer, YardDeliveryRoute)).toBe(false);
+    expect(sim.world.has(gatherer, CurrentAtomic)).toBe(false); // the in-flight pileup into this flag
+    expect(sim.world.has(gatherer, MoveGoal)).toBe(false);
   });
 });
