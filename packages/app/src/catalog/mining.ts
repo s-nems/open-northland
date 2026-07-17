@@ -34,7 +34,7 @@ export const CLAY_MINE_STRIKES_PER_UNIT = 9;
 /**
  * The discrete visual fill states a mineral deposit steps down through as it empties — data, not observed:
  * the mine's `[GfxLandscape]` record's own state count (`frames.length`/`maxValency`), which the render
- * reads directly (`resource-gfx.ts` `nodeLevelBobs`). It is per-good in the data: the `ls_ground`
+ * reads directly (`resource-gfx.ts` `firstBobsByStateAscending`). It is per-good in the data: the `ls_ground`
  * clay/iron/gold mines carry 5 fill states (`state 5` full → `state 1` dregs), stone's rocks carry 4 (some
  * variants 5), mushroom 1. The sim buckets `remaining/depositSize` into `MINE_LEVELS` uniformly; the render
  * rescales that ladder onto each drawn record's own state count (`resolveResourceDraw` via

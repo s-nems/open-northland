@@ -2,6 +2,7 @@ import { buildSpriteScene, type EntityBounds } from '@open-northland/render';
 import type { WorldSnapshot } from '@open-northland/sim';
 import { gathererByFlag, ownerPlayerOf } from '../../game/snapshot.js';
 import type { Pickable } from '../picking.js';
+import { memoBySnapshot } from '../projections/index.js';
 
 /** What the pickable target sets need from the unit-controls options (a subset threaded through). */
 export interface UnitTargetsDeps {
@@ -35,22 +36,26 @@ export interface UnitTargets {
  * snapshot + the injected render hit-test helpers), so they live apart from the selection/order logic.
  */
 export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
+  // The unculled sprite scene + the id→owner map, both memoized by snapshot identity: one gesture runs
+  // several builders (a click-release chains owned → flags → signposts), and `sim.snapshot()` is itself
+  // memoized per tick — so the O(entities) project+sort and the owner map are built once, not per builder.
+  const sceneFor = memoBySnapshot((snap) => buildSpriteScene(snap));
   /** Map each entity id → the player that owns it (absent for a neutral/unowned entity), from a snapshot. */
-  const ownersOf = (snap: WorldSnapshot): Map<number, number> => {
+  const ownersOf = memoBySnapshot((snap: WorldSnapshot) => {
     const ownerOf = new Map<number, number>();
     for (const e of snap.entities) {
       const player = ownerPlayerOf(e);
       if (player !== undefined) ownerOf.set(e.id, player);
     }
     return ownerOf;
-  };
+  });
 
   return {
     owned(kind?: 'settler' | 'building'): Pickable[] {
       const snap = deps.snapshot();
       const ownerOf = ownersOf(snap);
       const out: Pickable[] = [];
-      for (const it of buildSpriteScene(snap)) {
+      for (const it of sceneFor(snap)) {
         if (it.kind !== 'settler' && it.kind !== 'building') continue;
         if (kind !== undefined && it.kind !== kind) continue;
         if (ownerOf.get(it.ref) !== deps.humanPlayer) continue;
@@ -88,7 +93,7 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
       const gathererOf = gathererByFlag(snap, deps.humanPlayer); // flag-id → owning gatherer-id (not a player id)
       if (gathererOf.size === 0) return [];
       const out: Pickable[] = [];
-      for (const it of buildSpriteScene(snap)) {
+      for (const it of sceneFor(snap)) {
         if (it.isFlag !== true) continue;
         const gatherer = gathererOf.get(it.ref);
         if (gatherer === undefined) continue; // an unbound / non-human flag — not a selection proxy
@@ -101,7 +106,7 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
       const snap = deps.snapshot();
       const ownerOf = ownersOf(snap);
       const out: Pickable[] = [];
-      for (const it of buildSpriteScene(snap)) {
+      for (const it of sceneFor(snap)) {
         // Only the post itself — its direction boards ride synthetic negative refs (see sprite-scene.ts).
         if (it.kind !== 'signpost' || it.ref <= 0) continue;
         if (ownerOf.get(it.ref) !== deps.humanPlayer) continue;

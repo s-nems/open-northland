@@ -2,6 +2,7 @@ import type { BuildingHighlightItem } from '@open-northland/render';
 import { ONE, type WorldSnapshot } from '@open-northland/sim';
 import {
   buildingTypeOf,
+  builtFractionOf,
   entityById,
   familiesByHome,
   type HomeFamily,
@@ -9,10 +10,9 @@ import {
   isBuilding,
   isSettler,
   marriageOf,
-  num,
   ownerPlayerOf,
   type SnapshotEntity,
-} from '../../game/snapshot.js';
+} from '../../../game/snapshot.js';
 
 /**
  * The "przypisz dom" (assign a home) highlight — the pure snapshot projection behind the action-ring
@@ -50,7 +50,7 @@ export function familyIdsOf(snapshot: WorldSnapshot, settlerId: number): number[
 /** True when the building is a completed residence (`built` at ONE and a `home`-kind type). */
 function isBuiltHome(e: SnapshotEntity, housesByType: ReadonlyMap<number, HouseInfo>): boolean {
   if (!isBuilding(e) || e.components.UnderConstruction !== undefined) return false;
-  const built = num((e.components.Building as { built?: unknown } | undefined)?.built);
+  const built = builtFractionOf(e);
   if (built === undefined || built < ONE) return false;
   const typeId = buildingTypeOf(e);
   return typeId !== undefined && housesByType.get(typeId)?.kind === 'home';

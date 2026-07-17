@@ -10,7 +10,7 @@ import {
 } from '../../diag/index.js';
 import { HUMAN_PLAYER } from '../../game/rules.js';
 import type { MinimapHandle } from '../../hud/minimap/index.js';
-import type { GameToolPanelHandle } from '../game-tool-panel.js';
+import type { GameToolPanelHandle, LoopSpeedControl } from '../game-tool-panel.js';
 import type { GroundPileTooltip } from '../ground-pile-tooltip.js';
 import type { PerfOverlayHandle } from '../perf-overlay.js';
 import type { makeOverlayFrameSource, makeSignpostOverlaySource } from '../placement-overlay.js';
@@ -28,7 +28,7 @@ import { type RafLoop, startRafLoop } from './raf-loop.js';
 export interface FrameLoopDeps {
   readonly deps: GameViewDeps;
   /** The live playback control the tool panel's speed button + the `P` pause key drive. */
-  readonly control: { paused: boolean; speed: number };
+  readonly control: LoopSpeedControl;
   readonly fogGates: FogGates;
   readonly toolPanel: GameToolPanelHandle;
   readonly minimap: MinimapHandle;

@@ -55,11 +55,30 @@ export function buildingTypeOf(e: SnapshotEntity): number | undefined {
   return num(b?.buildingType);
 }
 
+/** The building's tribe (`Building.tribe`), or undefined if it isn't one / carries none. */
+export function buildingTribeOf(e: SnapshotEntity): number | undefined {
+  const b = e.components.Building as { tribe?: unknown } | undefined;
+  return num(b?.tribe);
+}
+
+/** The building's construction progress (`Building.built`, fixed-point — `ONE` is finished), or
+ *  undefined if it isn't a building / carries none. */
+export function builtFractionOf(e: SnapshotEntity): number | undefined {
+  const b = e.components.Building as { built?: unknown } | undefined;
+  return num(b?.built);
+}
+
 /** The settler's current trade (`Settler.jobType`), or undefined for a jobless/idle settler (jobType
  *  `null`) or a non-settler. Drives the right-click "keep the current trade" assignment preference. */
 export function settlerJobType(e: SnapshotEntity): number | undefined {
   const s = e.components.Settler as { jobType?: unknown } | undefined;
   return num(s?.jobType);
+}
+
+/** The building a settler is employed at (`JobAssignment.workplace`), or undefined when unbound. */
+export function workplaceOf(e: SnapshotEntity): number | undefined {
+  const a = e.components.JobAssignment as { workplace?: unknown } | undefined;
+  return num(a?.workplace);
 }
 
 /** The drop-off flag entity a gatherer carries (its `WorkFlag.flag`), or undefined for a non-gatherer. */

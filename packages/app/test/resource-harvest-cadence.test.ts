@@ -4,7 +4,7 @@ import { grassTerrain } from '../src/catalog/buildings.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../src/game/rules.js';
 import { sandboxContent } from '../src/game/sandbox/content/index.js';
 import { GOOD_MUD, GOOD_STONE, GOOD_WOOD, JOB_COLLECTOR } from '../src/game/sandbox/ids/index.js';
-import { resourceCommand } from '../src/game/sandbox/place.js';
+import { resourceCommand } from '../src/game/sandbox/place/index.js';
 
 const MIN_HARVEST_TICKS = 20 * TICKS_PER_SECOND;
 const MAX_HARVEST_TICKS = 25 * TICKS_PER_SECOND;

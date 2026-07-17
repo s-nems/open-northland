@@ -8,10 +8,10 @@
  * `sethouse`/landscape records. Do not copy the direct-store pattern into render glue or a mid-run path
  * (packages/app/AGENTS.md, one-way flow) — use {@link resourceCommand} there instead.
  *
- * Split by concern: buildings + their staffing ({@link import('./place/buildings.js')}), settler spawns
- * ({@link import('./place/settlers.js')}), resource nodes / bushes / drops / gathering camps
- * ({@link import('./place/resources.js')}), and the gather-mastery XP derivation
- * ({@link import('./place/mastery.js')}, also read by the decoded-map entry).
+ * Split by concern: buildings + their staffing ({@link import('./buildings.js')}), settler spawns
+ * ({@link import('./settlers.js')}), resource nodes / bushes / drops / gathering camps
+ * ({@link import('./resources.js')}), and the gather-mastery XP derivation
+ * ({@link import('./mastery.js')}, also read by the decoded-map entry).
  */
 export {
   buildingDef,
@@ -20,8 +20,8 @@ export {
   spawnWorkersAtDoor,
   staffableCrewFor,
   staffBuildingFully,
-} from './place/buildings.js';
-export { gatherMasteryExperience, gatherMasteryExperienceFor } from './place/mastery.js';
+} from './buildings.js';
+export { gatherMasteryExperience, gatherMasteryExperienceFor } from './mastery.js';
 export {
   BUSH_FRUITS_GFX,
   dropSandboxGood,
@@ -32,5 +32,5 @@ export {
   resourceCommand,
   resourceSpecFor,
   spawnBoundGatherer,
-} from './place/resources.js';
-export { spawnIdleSettler, spawnSandboxSettler } from './place/settlers.js';
+} from './resources.js';
+export { spawnIdleSettler, spawnSandboxSettler } from './settlers.js';

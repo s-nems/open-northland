@@ -9,7 +9,7 @@ import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../src/game/rules.js';
 import { sandboxContent } from '../src/game/sandbox/content/index.js';
 import { GOOD_WOOD, JOB_COLLECTOR } from '../src/game/sandbox/ids/index.js';
 import { mapResourceObjectNames } from '../src/game/sandbox/map-spawn.js';
-import { GATHERER_WORK_RADIUS } from '../src/game/sandbox/place.js';
+import { GATHERER_WORK_RADIUS } from '../src/game/sandbox/place/index.js';
 
 /**
  * The REAL-map gathering cycle end-to-end over the ACTUAL map content (`sandboxContent` — the exact

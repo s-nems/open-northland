@@ -97,12 +97,8 @@ const ARROW_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']);
 const MAX_PAN_STEP_MS = 100;
 /** CSS px from a canvas edge within which the pointer edge-scrolls (the RTS screen-edge pan). */
 export const EDGE_SCROLL_MARGIN = 24;
-/**
- * The interactive camera's speed knobs — internal tuning today, the seam a future in-game options
- * screen drives (the controller reads its mutable {@link CameraController.tuning} live each frame,
- * so an options slider can adjust these without re-installing listeners). Eye-tuned defaults in
- * {@link DEFAULT_CAMERA_TUNING}.
- */
+/** The interactive camera's speed knobs, read each frame by the controller. Eye-tuned defaults in
+ *  {@link DEFAULT_CAMERA_TUNING}. */
 export interface CameraTuning {
   /** Screen px/s the camera pans while an arrow key is held. */
   arrowPanSpeed: number;
@@ -192,8 +188,6 @@ export function zoomCameraAt(cam: Camera, factor: number, cursorX: number, curso
 export interface CameraController {
   /** The current {@link Camera} to hand the renderer's `update`. */
   camera(): Camera;
-  /** The live speed knobs ({@link CameraTuning}) — mutate fields to retune; read each frame. */
-  readonly tuning: CameraTuning;
   /** Apply held-arrow-key panning for a wall-clock delta in ms — call once per frame. */
   update(dtMs: number): void;
   /**
@@ -276,7 +270,7 @@ export function createCameraController(
   resolution: number,
 ): CameraController {
   let cam: Camera = initial;
-  const tuning: CameraTuning = { ...DEFAULT_CAMERA_TUNING };
+  const tuning: CameraTuning = DEFAULT_CAMERA_TUNING;
   const held = new Set<string>();
   let dragging = false;
   let lastX = 0;
@@ -362,7 +356,6 @@ export function createCameraController(
 
   return {
     camera: () => cam,
-    tuning,
     jumpTo: (next) => {
       cam = next;
       // The jump replaces the frame outright, so the wheel glide retargets to the new scale (a minimap

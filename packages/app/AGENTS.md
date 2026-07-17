@@ -66,7 +66,7 @@ that matches its role instead of piling another method onto a growing file:
   `work-animations.ts` (non-combat work-animation timings), `landscape.ts` (terrain/resource landscape
   derivation), `building-set.ts` (building store/recipe set), `worker-slots.ts` (the extracted
   worker/carrier slot table + its trade names) and `construction.ts` (the build-cost + hitpoint tables),
-  `place.ts` (the place/spawn helpers), `index.ts` (the barrel). Scenes and the vertical slice consume
+  `place/` (the place/spawn helpers), `index.ts` (the barrel). Scenes and the vertical slice consume
   this; they do NOT define their own content.
 - **`hud/`** — the in-game HUD: `geometry.ts` (the shared `Rect`/`contains`), `chrome.ts`
   (parchment window chrome + highlight theme), `ui-text.ts` (the shared vector-serif `makeUiTextRun`
@@ -92,8 +92,10 @@ that matches its role instead of piling another method onto a growing file:
     `FrameLoopDeps` context), `game-presentation.ts` (one-time game/HUD presentation mount),
     `raf-loop.ts`, `pointer-tracker.ts`.
   - **`unit-controls/`** — the RTS select-and-command feature: `index.ts` (input controller) +
-    `orders.ts`/`marquee.ts`/`types.ts`, plus `settler-actions.ts` (the action-ring menu),
-    `action-ring-visuals.ts`, `profession-picker.ts`, `unit-targets.ts`, `formation.ts`.
+    `orders.ts`/`marquee.ts`/`types.ts`/`unit-targets.ts`/`formation.ts`, plus the `action-ring/`
+    package (`settler-actions.ts` menu state + input, `action-ring-visuals.ts`, `profession-picker.ts`)
+    and the `highlights/` package (the pick-mode building washes: `assign-highlight.ts` +
+    `house-highlight.ts`).
   - **`projections/`** — pure snapshot → render/HUD projections (`index.ts` barrel):
     `snapshot-projections.ts` (identity-memoized HUD projections), `door-badges.ts`,
     `building-points.ts`, `geometry-debug-items.ts`, `fog-gates.ts`, `hud-labels.ts`. The selection

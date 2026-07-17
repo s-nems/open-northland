@@ -11,9 +11,9 @@ import {
   buildTrunkBinding,
   DEFAULT_RESOURCE_STEM,
   FLAG_EDIT_NAME,
+  firstBobsByStateAscending,
   gatheringAtlasStems,
   nodeBob,
-  pileFillBobs,
   resolveGatheringRefs,
 } from '../src/content/resource-gfx/index.js';
 import type { GoodRef } from '../src/content/settler-gfx/index.js';
@@ -61,7 +61,7 @@ const WOOD_PILE: LandscapeGfxRow = {
   logicType: 7,
   bmd: `${B}/ls_goods.bmd`,
   paletteName: 'goods_wood',
-  // Deliberately file-order DESCENDING by state — pileFillBobs must sort fewest→most.
+  // Deliberately file-order DESCENDING by state — firstBobsByStateAscending must sort fewest→most.
   frames: [
     { state: 5, bobIds: [4] },
     { state: 4, bobIds: [3] },
@@ -115,7 +115,7 @@ const GOODS: readonly GoodRef[] = [
   { typeId: 2, id: 'stone' },
 ];
 
-describe('servedAtlasStem / nodeBob / pileFillBobs', () => {
+describe('servedAtlasStem / nodeBob / firstBobsByStateAscending', () => {
   it('derives the served atlas stem (<bmd-stem>.<palette>) from a record', () => {
     expect(servedAtlasStem(WOOD_NODE)).toBe('ls_trees.tree_yew01');
     expect(servedAtlasStem(STONE_NODE)).toBe('ls_ground.rock03');
@@ -140,8 +140,8 @@ describe('servedAtlasStem / nodeBob / pileFillBobs', () => {
   });
 
   it('orders pile fill bobs fewest→most units regardless of file order', () => {
-    expect(pileFillBobs(WOOD_PILE)).toEqual([0, 1, 2, 3, 4]); // state 1..5 → bob 0..4
-    expect(pileFillBobs(STONE_PILE)).toEqual([15, 16]);
+    expect(firstBobsByStateAscending(WOOD_PILE)).toEqual([0, 1, 2, 3, 4]); // state 1..5 → bob 0..4
+    expect(firstBobsByStateAscending(STONE_PILE)).toEqual([15, 16]);
   });
 });
 

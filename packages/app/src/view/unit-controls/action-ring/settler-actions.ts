@@ -1,10 +1,10 @@
 import { type Camera, cameraScreenX, cameraScreenY, tileToScreen } from '@open-northland/render';
 import { ONE, systems, type WorldSnapshot } from '@open-northland/sim';
 import { type Application, Container, Graphics } from 'pixi.js';
-import type { PickerEntry } from '../../catalog/professions.js';
-import { loadGuiArt } from '../../content/gui-art.js';
-import { loadUiFont } from '../../content/ui-font.js';
-import { JOB_SCOUT } from '../../game/sandbox/index.js';
+import type { PickerEntry } from '../../../catalog/professions.js';
+import { loadGuiArt } from '../../../content/gui-art.js';
+import { loadUiFont } from '../../../content/ui-font.js';
+import { JOB_SCOUT } from '../../../game/sandbox/index.js';
 import {
   childOrderOf,
   entityById,
@@ -17,29 +17,29 @@ import {
   marriageOf,
   positionOf,
   settlerJobType,
-} from '../../game/snapshot.js';
+} from '../../../game/snapshot.js';
 import {
   type ActionButton,
   type ActionRingLayout,
   actionRingScale,
   hitTestActionRing,
   layoutActionRing,
-} from '../../hud/action-ring-layout.js';
+} from '../../../hud/action-ring-layout.js';
 import {
   ALL_MENU_BUTTONS,
   DEFAULT_MENU_STATE,
   menuForSettler,
   type SettlerMenuState,
-} from '../../hud/action-ring-menu.js';
-import { type Messages, messages } from '../../i18n/index.js';
-import { clientToScreen } from '../camera.js';
-import { el } from '../overlay.js';
+} from '../../../hud/action-ring-menu.js';
+import { type Messages, messages } from '../../../i18n/index.js';
+import { clientToScreen } from '../../camera.js';
+import { el } from '../../overlay.js';
 import { createActionRingVisuals } from './action-ring-visuals.js';
 import { createProfessionPicker } from './profession-picker.js';
 
 /**
  * The settler action menu — the contextual command buttons that fan out around the selected settler(s), in
- * original GUI art. It is the Pixi + input glue over the pure {@link import('../hud/action-ring-layout.js')}
+ * original GUI art. It is the Pixi + input glue over the pure {@link import('../../hud/action-ring-layout.js')}
  * geometry (the twin split of `hud/tool-panel*`): the layout module transcribes the original's radial arm
  * footprint and assigns each command a best-guess order-icon; this module draws those icons as
  * {@link PalettedSprite}s over the indexed `ls_gui_window` atlas (the round wooden order buttons, `context`
@@ -126,7 +126,6 @@ export interface SettlerActions {
    * and the menu pins on the selection's centroid instead (the Space path, which has no cursor).
    */
   open(atClient?: { readonly x: number; readonly y: number }): void;
-  isOpen(): boolean;
   /** Force-close (e.g. on a selection clear). */
   close(): void;
   /** True when a client point is over a visible menu button — the input router asks before world picking. */
@@ -444,7 +443,6 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
       else openMenu(); // no cursor on the Space path: update() pins the centroid next frame
     },
     open: openMenu,
-    isOpen: (): boolean => mode !== 'closed',
     close: closeMenu,
     claimsPointer,
     dispose: (): void => {

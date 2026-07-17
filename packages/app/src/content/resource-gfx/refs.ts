@@ -98,7 +98,7 @@ export interface GatheringRefs {
  * The representative full-grown bob of a node record: its highest-state frame list's first bob. States
  * count up with growth/valency (a tree's `s3` is the full tree, `s1` a sapling; a mine's `s5` is the full
  * deposit), so the top state is the fresh, undepleted node — the frame a static/full node draws (a felled
- * trunk, a flag, a stump; the shrink-by-level pick for a live mined deposit is {@link nodeLevelBobs}).
+ * trunk, a flag, a stump; the shrink-by-level pick for a live mined deposit is {@link firstBobsByStateAscending}).
  * `undefined` when the record has no frames. Pure.
  */
 export function nodeBob(record: LandscapeGfxRow): number | undefined {
@@ -122,41 +122,22 @@ export function nodeRefFrom(record: LandscapeGfxRow): GatheringNodeRef | undefin
 
 /**
  * The first bob of each of a record's frame states, ordered by ascending state (`state 1` → index 0). The
- * shared basis for both a pile's fewest→most heap frames and a mine deposit's empty→full level frames — a
- * higher state is always more (more units in a pile, a fuller deposit), so a `fill`/`level` (1-based,
- * highest = most) indexes `[value - 1]`. `undefined` when the record has no frames. Pure.
- */
-function firstBobsByStateAscending(record: LandscapeGfxRow): readonly number[] | undefined {
-  const byState = [...(record.frames ?? [])]
-    .sort((a, b) => a.state - b.state)
-    .flatMap((f) => (f.bobIds[0] !== undefined ? [f.bobIds[0]] : []));
-  return byState.length === 0 ? undefined : byState;
-}
-
-/**
- * The per-fill heap bobs of a pile record, ordered fewest→most units: state `1`'s first bob, then `2`,
- * … up to the record's max state (`ls_goods` piles carry 5 fill states). The
- * {@link StockpileBinding.byGood} table indexes these by a pile's fill amount, so the heap grows with its
- * contents. `undefined` when the record has no frames. Pure.
- */
-export function pileFillBobs(record: LandscapeGfxRow): readonly number[] | undefined {
-  return firstBobsByStateAscending(record);
-}
-
-/**
- * The per-level node bobs of a resource record, ordered empty→full: `state 1`'s first bob (the dregs),
- * then `2`, … up to the record's full state (the `ls_ground` clay/iron/gold mines carry 5 fill states).
- * The {@link ResourceTypeBinding.byGood} table indexes these by a mined deposit's shrink-by-level fill, so
- * the drawn mine shrinks as it empties. A non-mined node (a tree/mushroom — one state) yields a one-frame
- * list, drawn at any level. `undefined` when the record has no frames. Pure.
+ * one ladder behind both a pile's fewest→most heap frames and a mined deposit's empty→full level frames —
+ * a higher state is always more (more units in a pile, a fuller deposit), so a `fill`/`level` (1-based,
+ * highest = most) indexes `[value - 1]`. The `ls_goods` piles and the `ls_ground` clay/iron/gold mines
+ * carry 5 states; a non-mined node (a tree/mushroom) has one, drawn at any level. `undefined` when the
+ * record has no frames. Pure.
  *
  * Named approximation: each state contributes only its first bob, drawn as a still — the original loops
  * the state's whole frame list (e.g. "wheat mine 01" carries 16 frames per growth state,
  * `loopAnimation true`), so a growing field that sways in the original stands still here until the
  * resource lane learns to tick through a state's frames.
  */
-export function nodeLevelBobs(record: LandscapeGfxRow): readonly number[] | undefined {
-  return firstBobsByStateAscending(record);
+export function firstBobsByStateAscending(record: LandscapeGfxRow): readonly number[] | undefined {
+  const byState = [...(record.frames ?? [])]
+    .sort((a, b) => a.state - b.state)
+    .flatMap((f) => (f.bobIds[0] !== undefined ? [f.bobIds[0]] : []));
+  return byState.length === 0 ? undefined : byState;
 }
 
 /** A landscape gfx record → its {@link GatheringNodeLevelsRef} (served atlas stem + the per-state bob
@@ -164,7 +145,7 @@ export function nodeLevelBobs(record: LandscapeGfxRow): readonly number[] | unde
  *  {@link nodeRefFrom}, shared by the node, per-variant, trunk and pile resolutions. Pure. */
 export function levelsRefFrom(record: LandscapeGfxRow): GatheringNodeLevelsRef | undefined {
   const stem = servedAtlasStem(record);
-  const bobs = nodeLevelBobs(record);
+  const bobs = firstBobsByStateAscending(record);
   return stem !== undefined && bobs !== undefined ? { stem, bobs } : undefined;
 }
 

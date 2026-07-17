@@ -8,7 +8,7 @@ import {
   assignableJobForBuilding,
   computeAssignHighlight,
   currentTradeSlotAt,
-} from '../src/view/unit-controls/assign-highlight.js';
+} from '../src/view/unit-controls/highlights/index.js';
 
 /**
  * The "przydziel miejsce pracy" verdict — the button places the settler's CURRENT trade only, so a

@@ -6,11 +6,21 @@ import { type BuildingDoorInfo, computeDoorBadges } from './door-badges.js';
 import type { FogGates } from './fog-gates.js';
 import { hudLabels } from './hud-labels.js';
 
-/** Memoize a snapshot projection while the simulation returns the same immutable snapshot instance. */
-function memoBySnapshot<T>(build: (snapshot: WorldSnapshot) => T): (snapshot: WorldSnapshot) => T {
-  let memo: { snapshot: WorldSnapshot; value: T } | null = null;
+/**
+ * Memoize a snapshot projection while the simulation returns the same immutable snapshot instance — so an
+ * O(entities) read runs once per tick, not once per RAF frame. `versionOf` additionally keys the memo on
+ * caller state outside the snapshot (a counter bumped on change); omit it for a projection of the
+ * snapshot alone.
+ */
+export function memoBySnapshot<T>(
+  build: (snapshot: WorldSnapshot) => T,
+  versionOf?: () => number,
+): (snapshot: WorldSnapshot) => T {
+  let memo: { snapshot: WorldSnapshot; version: number; value: T } | null = null;
   return (snapshot) => {
-    if (memo === null || memo.snapshot !== snapshot) memo = { snapshot, value: build(snapshot) };
+    const version = versionOf?.() ?? 0;
+    if (memo === null || memo.snapshot !== snapshot || memo.version !== version)
+      memo = { snapshot, version, value: build(snapshot) };
     return memo.value;
   };
 }

@@ -1,7 +1,7 @@
-import type { PickerEntry } from '../../catalog/professions.js';
-import type { UiFont } from '../../content/ui-font.js';
-import { uiLabel } from '../../i18n/index.js';
-import { el } from '../overlay.js';
+import type { PickerEntry } from '../../../catalog/professions.js';
+import type { UiFont } from '../../../content/ui-font.js';
+import { uiLabel } from '../../../i18n/index.js';
+import { el } from '../../overlay.js';
 
 /**
  * The "Zmiana zawodu" profession picker: a DOM window approximating the original's parchment/rope
