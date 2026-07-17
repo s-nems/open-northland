@@ -1,9 +1,15 @@
 import { describe, expect, it } from 'vitest';
 // `isVisible` and `aabbIntersects` are off the main barrel (the latter is published to `@open-northland/audio`
 // through the `./data` entry only); the unit test reaches their module directly.
-import { aabbIntersects, isVisible } from '../src/data/viewport.js';
-import type { Camera } from '../src/index.js';
-import { cameraViewport, TILE_HALF_H, TILE_HALF_W, tileToScreen, visibleTileRange } from '../src/index.js';
+import { aabbIntersects, isVisible } from '../src/data/projection/index.js';
+import {
+  type Camera,
+  cameraViewport,
+  TILE_HALF_H,
+  TILE_HALF_W,
+  tileToScreen,
+  visibleTileRange,
+} from '../src/index.js';
 
 /**
  * Unit tests for the pure viewport-culling math — the "what's on screen" half of scaling to big maps,

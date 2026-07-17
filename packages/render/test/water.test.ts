@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SceneGround } from '../src/data/scene/index.js';
-import { cellNode } from '../src/data/terrain.js';
-import { makeWaveField, NO_WAVE } from '../src/data/water.js';
+import { cellNode, makeWaveField, NO_WAVE } from '../src/data/terrain/index.js';
 
 /** A width×height ground layer where `waterCells` (row-major indices) draw a water pattern on both
  *  triangles and everything else draws grass. */

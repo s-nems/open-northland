@@ -1,5 +1,5 @@
-import { ONE, tileToScreen } from '../../iso.js';
-import { readPosition } from './component-access.js';
+import { ONE, tileToScreen } from '../../projection/index.js';
+import { readPosition } from '../../snapshot/index.js';
 
 /**
  * The settler facing geometry: turning a live heading (or a target tile) into one of the 8 direction

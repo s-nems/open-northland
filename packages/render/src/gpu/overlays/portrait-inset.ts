@@ -1,5 +1,5 @@
 import { type Application, type Container, RenderTexture, Sprite } from 'pixi.js';
-import type { Camera } from '../../data/iso.js';
+import type { Camera } from '../../data/projection/index.js';
 import type { SpritePool } from '../sprite-pool/index.js';
 
 /**

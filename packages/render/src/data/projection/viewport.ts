@@ -1,10 +1,10 @@
+import { clamp } from '../math.js';
 import { type Camera, TILE_HALF_H, TILE_HALF_W } from './iso.js';
-import { clamp } from './math.js';
 
 /**
  * The pure viewport-culling math — the "what is on screen" half of drawing a large world, kept out of
  * the GPU so it is unit-testable without a screen. The retained
- * {@link import('../gpu/world-renderer.js').WorldRenderer} calls these to skip entities/terrain outside
+ * {@link import('../../gpu/world-renderer.js').WorldRenderer} calls these to skip entities/terrain outside
  * the camera, so a 256×256 map only pays for the tiles a player can see; when fully zoomed out
  * (everything visible) they simply pass everything through and the renderer leans on GPU batching instead.
  *

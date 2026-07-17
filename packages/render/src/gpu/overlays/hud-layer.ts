@@ -1,5 +1,5 @@
 import { Container, Graphics, Text } from 'pixi.js';
-import type { HudPlacement } from '../../data/hud.js';
+import type { HudPlacement } from '../../data/hud/index.js';
 
 /**
  * The retained HUD overlay — a pinned panel (not under the camera), repainted from a placed

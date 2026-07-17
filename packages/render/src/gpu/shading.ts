@@ -1,5 +1,5 @@
 import { GlProgram, Shader, type TextureSource, UniformGroup } from 'pixi.js';
-import { BRIGHTNESS_NEUTRAL } from '../data/brightness.js';
+import { BRIGHTNESS_NEUTRAL } from '../data/terrain/index.js';
 
 /**
  * The custom mesh shaders for the brightness-shaded ground and decor — the stock textured-mesh draw

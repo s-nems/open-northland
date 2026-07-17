@@ -6,7 +6,7 @@
  * headlessly like the rest of `render`'s data layer.
  */
 
-import { lerp } from './math.js';
+import { lerp } from '../math.js';
 
 /** A bilinear sample of a per-cell lane at a continuous cell coordinate (raw lane units). */
 type CellSampler = (col: number, row: number) => number;

@@ -1,6 +1,6 @@
+import { halfCellToScreen, TILE_HALF_H } from '../projection/index.js';
 import { makeCellSampler } from './cell-field.js';
-import { halfCellToScreen, TILE_HALF_H } from './iso.js';
-import { nodeCell } from './terrain.js';
+import { nodeCell } from './tessellation.js';
 
 /**
  * The terrain-elevation seam: a pure, immutable height field with a single bilinear sampler every

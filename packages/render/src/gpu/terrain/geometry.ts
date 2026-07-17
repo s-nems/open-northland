@@ -1,9 +1,7 @@
 import { type BufferImageSource, Container } from 'pixi.js';
-import type { ElevationField } from '../../data/elevation.js';
-import { halfCellToScreen, TILE_HALF_H, TILE_HALF_W } from '../../data/iso.js';
+import { halfCellToScreen, TILE_HALF_H, TILE_HALF_W } from '../../data/projection/index.js';
 import type { SceneTerrain } from '../../data/scene/index.js';
-import { type NodeXY, nodeLift } from '../../data/terrain.js';
-import type { NodeWaveFn } from '../../data/water.js';
+import { type ElevationField, type NodeWaveFn, type NodeXY, nodeLift } from '../../data/terrain/index.js';
 import type { WaveUniforms } from '../shading.js';
 import type { TerrainChild } from './chunk-batcher.js';
 

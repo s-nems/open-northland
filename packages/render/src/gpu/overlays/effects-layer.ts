@@ -9,10 +9,10 @@ import {
   effectKey,
   foldCombatEffects,
   frac,
-} from '../../data/effects.js';
-import { type ElevationField, projectNode } from '../../data/elevation.js';
+} from '../../data/effects/index.js';
+import { isVisible, type Viewport } from '../../data/projection/index.js';
 import type { AtlasFrame } from '../../data/sprites/index.js';
-import { isVisible, type Viewport } from '../../data/viewport.js';
+import { type ElevationField, projectNode } from '../../data/terrain/index.js';
 import type { TextureCache } from '../texture-cache.js';
 import { retainOffscreen, retireUndrawn } from './retained-pool.js';
 

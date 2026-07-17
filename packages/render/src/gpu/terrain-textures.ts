@@ -1,5 +1,5 @@
 import type { TextureSource } from 'pixi.js';
-import type { CellTexture } from '../data/terrain.js';
+import type { CellTexture } from '../data/terrain/index.js';
 
 /**
  * The plain-data textured-terrain GPU inputs (the GPU twin of the pure `data/terrain.ts` geometry): the

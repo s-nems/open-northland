@@ -3,7 +3,7 @@
  * mainly holds and how many units.
  */
 
-import { isStockpileAmount } from '../../stockpile.js';
+import { isStockpileAmount } from '../../snapshot/index.js';
 
 /**
  * What a bare {@link import('@open-northland/sim').Stockpile} draw item represents: the good its ground pile

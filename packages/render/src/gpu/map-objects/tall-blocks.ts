@@ -1,9 +1,14 @@
 import { FOG_STATE } from '@open-northland/sim';
 import { type Container, Sprite } from 'pixi.js';
-import { scaleColour } from '../../data/brightness.js';
-import { fogGhostTint } from '../../data/fog.js';
-import { depthKey, screenToCell } from '../../data/iso.js';
-import { aabbIntersects, isVisible, type Viewport } from '../../data/viewport.js';
+import { fogGhostTint } from '../../data/fog/index.js';
+import {
+  aabbIntersects,
+  depthKey,
+  isVisible,
+  screenToCell,
+  type Viewport,
+} from '../../data/projection/index.js';
+import { scaleColour } from '../../data/terrain/index.js';
 import type { TextureCache } from '../texture-cache.js';
 import { type MapObjectSprite, objectFrameIndexAt } from './map-object-sprite.js';
 

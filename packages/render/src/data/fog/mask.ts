@@ -1,6 +1,6 @@
 import { FOG_STATE, type FogView } from '@open-northland/sim';
-import { scaleColour } from './brightness.js';
-import { rowStagger } from './iso.js';
+import { rowStagger } from '../projection/index.js';
+import { scaleColour } from '../terrain/index.js';
 
 /**
  * Render-side fog-of-war helpers — the thin data layer between the sim's {@link FogView} (per-cell

@@ -1,6 +1,5 @@
-import type { WorldSnapshot } from '@open-northland/sim';
-import { ONE, systems } from '@open-northland/sim';
-import { tileToScreen } from '../iso.js';
+import { ONE, systems, type WorldSnapshot } from '@open-northland/sim';
+import { tileToScreen } from '../projection/index.js';
 import { readPosition } from './snapshot-readers/index.js';
 
 /**

@@ -1,7 +1,7 @@
+import { TILE_HALF_H, TILE_HALF_W } from '../projection/index.js';
 import { BRIGHTNESS_NEUTRAL } from './brightness.js';
 import { clampedCellAt } from './cell-field.js';
 import { elevationLiftPerUnit } from './elevation.js';
-import { TILE_HALF_H, TILE_HALF_W } from './iso.js';
 
 /**
  * Slope hillshading computed from the map's elevation lane — an OpenNorthland visual enhancement, not

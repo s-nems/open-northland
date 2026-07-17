@@ -1,8 +1,8 @@
 /**
  * The snapshot `Stockpile.amounts` decode — the one defensive read of a plain-cloned stockpile's
  * `[goodType, amount]` pairs, shared by the scene's per-pile good pick
- * ({@link import('./scene/snapshot-readers/stockpile-readers.js').readStockpile}) and the HUD's tribe-wide
- * stock sum ({@link import('./hud.js').buildHud}). Concern-neutral: neither `scene/` nor `hud` owns it —
+ * ({@link import('../scene/snapshot-readers/stockpile-readers.js').readStockpile}) and the HUD's tribe-wide
+ * stock sum ({@link import('../hud/index.js').buildHud}). Concern-neutral: neither `scene/` nor `hud` owns it —
  * both sit above it under `data/`.
  */
 

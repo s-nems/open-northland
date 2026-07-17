@@ -1,8 +1,8 @@
 import { FOG_MODE, FOG_STATE, type FogView, type WorldSnapshot } from '@open-northland/sim';
-import { fogCellOfTile } from './fog.js';
-import { ONE } from './iso.js';
-import type { DrawKind } from './scene/draw-item.js';
-import { assignStaticFields, classify, readPosition } from './scene/snapshot-readers/index.js';
+import { ONE } from '../projection/index.js';
+import type { DrawKind } from '../scene/draw-item.js';
+import { assignStaticFields, classify, readPosition } from '../scene/snapshot-readers/index.js';
+import { fogCellOfTile } from './mask.js';
 
 /**
  * Fog ghosts — the viewer player's remembered statics: a building, resource node or stump, once seen,

@@ -1,4 +1,4 @@
-import { type PositionValue, readNumFieldOrNull } from './component-access.js';
+import { type PositionValue, readNumFieldOrNull } from '../../snapshot/index.js';
 
 /**
  * The in-flight projectile component reads — the target a shot homes on and the point it was loosed from.

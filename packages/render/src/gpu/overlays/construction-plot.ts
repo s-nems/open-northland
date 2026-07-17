@@ -1,6 +1,6 @@
 import { Container, Graphics } from 'pixi.js';
-import { type ElevationField, terrainLiftAt } from '../../data/elevation.js';
-import { halfCellToScreen } from '../../data/iso.js';
+import { halfCellToScreen } from '../../data/projection/index.js';
+import { type ElevationField, terrainLiftAt } from '../../data/terrain/index.js';
 import { hashCells } from './cell-signature.js';
 
 /**

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { depthKey } from '../src/data/iso.js';
+import { depthKey } from '../src/data/projection/index.js';
 import { PlacementGhostLayer } from '../src/gpu/overlays/placement-ghost.js';
 import { overlayBounds } from '../src/gpu/overlays/placement-overlay.js';
 import { TextureCache } from '../src/gpu/texture-cache.js';

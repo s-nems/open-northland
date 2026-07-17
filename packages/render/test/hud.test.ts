@@ -1,6 +1,6 @@
 import type { WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { IDLE_JOB } from '../src/data/hud.js';
+import { IDLE_JOB } from '../src/data/hud/index.js';
 import { buildHud, type HudModel, layoutHud, placeHud } from '../src/index.js';
 import { snapshotOf } from './support/fixtures.js';
 

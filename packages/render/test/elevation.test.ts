@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { elevationLiftPerUnit } from '../src/data/elevation.js';
-import { cellNode } from '../src/data/terrain.js';
+import { cellNode, elevationLiftPerUnit } from '../src/data/terrain/index.js';
 import { buildSpriteScene, makeElevationField, TILE_HALF_H, tileToScreen } from '../src/index.js';
 import { entity, snapshotOf } from './support/fixtures.js';
 

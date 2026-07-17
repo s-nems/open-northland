@@ -1,6 +1,6 @@
 import type { WorldSnapshot } from '@open-northland/sim';
-import type { ElevationField } from '../elevation.js';
-import { tileToScreen } from '../iso.js';
+import { tileToScreen } from '../projection/index.js';
+import type { ElevationField } from '../terrain/index.js';
 import type { DrawItem } from './draw-item.js';
 import { collectSpriteScene } from './sprite-scene.js';
 
@@ -54,7 +54,7 @@ export interface SceneTerrain {
   readonly transitions?: SceneTransitions;
   /**
    * The decoded map's per-cell `lmhe` terrain height (row-major, length `width*height`, 0..~250), when
-   * present. The renderer builds an {@link import('../elevation.js').ElevationField} from it to lift the
+   * present. The renderer builds an {@link import('../terrain/index.js').ElevationField} from it to lift the
    * ground mesh + every projected item; absent → flat (no lift). Render-only data — the sim never reads it.
    */
   readonly elevation?: readonly number[];
@@ -63,7 +63,7 @@ export interface SceneTerrain {
    * neutral), when present. The ground mesh consumes it per fragment (luminance × value/127 sampled
    * from an R8 lane texture — slope light/shadow plus the fade-to-black map border); absent →
    * unshaded. Landscape objects shade separately at their anchor cell via an app-built
-   * {@link import('../brightness.js').BrightnessField} (trees exempt — the measured split; see
+   * {@link import('../terrain/index.js').BrightnessField} (trees exempt — the measured split; see
    * `data/brightness.ts`); buildings/settlers are unmeasured and unshaded. Render-only data — the
    * sim never reads it.
    */

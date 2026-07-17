@@ -230,7 +230,7 @@ export interface DrawItem {
   readonly rotation?: number;
   /**
    * Whether this item is a fog ghost — a remembered static drawn from the viewer's
-   * {@link import('../fog-ghosts.js').FogGhostStore} memory on explored ground, not a live entity. The pool
+   * {@link import('../fog/index.js').FogGhostStore} memory on explored ground, not a live entity. The pool
    * dims it ({@link import('../fog.js').FOG_GHOST_TINT}) and stamps no hit bounds (clicking scenery intel
    * must not select a fogged, possibly dead, entity). Omitted (falsy) for live-drawn items.
    */

@@ -1,8 +1,12 @@
 import { type Container, Mesh, Texture } from 'pixi.js';
-import { type BrightnessField, scaleColour } from '../../data/brightness.js';
-import type { ElevationField } from '../../data/elevation.js';
 import type { SceneTerrain } from '../../data/scene/index.js';
-import { triangleANodes, triangleBNodes } from '../../data/terrain.js';
+import {
+  type BrightnessField,
+  type ElevationField,
+  scaleColour,
+  triangleANodes,
+  triangleBNodes,
+} from '../../data/terrain/index.js';
 import { emptyBatch, meshGeometry, type TerrainBatch } from './chunk-batcher.js';
 import { buildChunks, flatTileColour, liftFn, positions, type TerrainChunk } from './geometry.js';
 

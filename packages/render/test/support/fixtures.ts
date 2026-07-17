@@ -1,5 +1,5 @@
 import type { WorldSnapshot } from '@open-northland/sim';
-import { ONE } from '../../src/data/iso.js';
+import { ONE } from '../../src/data/projection/index.js';
 import type { DrawItem } from '../../src/index.js';
 
 /**
