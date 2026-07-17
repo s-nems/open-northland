@@ -88,11 +88,15 @@ export interface MapStaticObjects {
     player: number;
     hx: number;
     hy: number;
-    /** The gatherer's authored resource pick (`setproducedgood`): a good name verbatim. */
+    /** The human's authored produced good (`setproducedgood`): a good name verbatim. */
     producedGood?: string;
   }[];
   animals: { species: string; hx: number; hy: number }[];
 }
+
+/** The verbs that place an entity — each one ends the previous placement's block of modifiers. Includes
+ *  `setvehicle`, which places a vehicle this decoder does not import yet but which still ends a block. */
+const PLACEMENT_VERBS = new Set(['sethouse', 'sethuman', 'setanimal', 'setvehicle']);
 
 /**
  * Extracts a map's `[StaticObjects]` authored placements — the pre-placed houses, humans and animals a
@@ -121,18 +125,17 @@ export interface MapStaticObjects {
  * where that column is `0`). Names are kept verbatim (the
  * version-robust join key the loader resolves against the IR by name).
  *
- * `setproducedgood` is a gatherer's authored resource pick, landing on the enclosing `sethuman` — the
+ * `setproducedgood` is a human's authored produced good, landing on the enclosing `sethuman` — the
  * original scopes the choice to the settler, not to its hut (its own UI names the window
- * `CSelectedSingleHumanChangeProducedGood`). Source basis: across the unpacked `staticobjects.inc`
- * corpus all 634 rows sit inside a `sethuman` block and none follows a `sethouse`, though intervening
- * modifiers (`setexpierence`, `attachtohouse`) may separate the two — so it binds to the last
- * `sethuman`, which only another placement verb retargets. The `setguide` verb is not captured yet. A
- * malformed row is skipped, not thrown — one bad line must not drop a whole map's placements.
+ * `CSelectedSingleHumanChangeProducedGood`, in the same per-human family as ChangeJob/ChangeName).
+ * Source basis: counting by verb, all 720 rows of the unpacked `staticobjects.inc` corpus sit inside a
+ * `sethuman` block and none follows a `sethouse`; only `setexpierence` (7) and `attachtohouse` (23)
+ * ever separate the two — so it binds to the last `sethuman`, which only a placement verb retargets.
+ * The good is not only a gatherer's resource: workshop trades author their product the same way
+ * (`baker` → `bread`), and one row authors two picks (last wins). The `setguide` verb is not captured
+ * yet. A malformed row is skipped, not thrown — one bad line must not drop a whole map's placements.
  * Returns `undefined` when the map has no `StaticObjects` section or it places nothing.
  */
-/** The verbs that place an entity — each one ends the previous placement's block of modifiers. */
-const PLACEMENT_VERBS = new Set(['sethouse', 'sethuman', 'setanimal']);
-
 export function extractStaticObjects(sections: readonly RuleSection[]): MapStaticObjects | undefined {
   const sec = sections.find((s) => s.name === 'StaticObjects');
   if (sec === undefined) return undefined;

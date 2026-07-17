@@ -172,6 +172,14 @@ export function spawnSettler(
  * `setproducedgood`), so an imported wood collector stays a wood collector instead of starting on the
  * gather-everything default. Bad input is skipped, leaving that default: no pick, a trade with no flag
  * (`syncWorkFlagToJob` planted none), or a good the trade cannot harvest.
+ *
+ * Named approximation: only a flag-harvestable pick lands, which is 573 of the decoded corpus's 819.
+ * The original authors the verb for every trade, but the picks it drops have no home in this model and
+ * no behavior to change — a workshop product (`baker` → `bread`) and a `fisher` → `fish` carry no work
+ * flag at all; a `farmer` → `wheat` is bound to its farm by the farming rule ({@link jobCanHarvest});
+ * and a `hunter` → `prey` names the resource, not a good, so the hunter falls back to every good it can
+ * harvest — `leather` + `meat`, which is what hunting prey yields anyway. Per-settler workshop product
+ * selection is tracked in docs/tickets/sim/authored-workshop-product-picks.md.
  */
 function stampGatherGood(
   world: World,

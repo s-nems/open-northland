@@ -279,13 +279,18 @@ describe('authored placements (map.cif StaticObjects → sim commands)', () => {
       ],
       animals: [],
     };
-    const { placements, skipped, droppedGoods } = resolveAuthoredPlacements(gatherers, rows, authoredMap());
+    const { placements, skipped, droppedGoods, droppedPicks } = resolveAuthoredPlacements(
+      gatherers,
+      rows,
+      authoredMap(),
+    );
     expect(placements.map((p) => (p.kind === 'human' ? p.gatherGood : -1))).toEqual([
       4,
       undefined,
       undefined,
     ]);
-    expect(droppedGoods).toBe(1); // mystery_good
+    expect(droppedPicks).toBe(1); // mystery_good — counted apart from a building's addgoods stock
+    expect(droppedGoods).toBe(0);
     expect(skipped).toBe(0);
   });
 

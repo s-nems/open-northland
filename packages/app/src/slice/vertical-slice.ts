@@ -330,12 +330,12 @@ export function runAuthoredSlice(
   goodNames?: ReadonlyMap<string, string>,
   contentOverride?: ContentSet,
 ): Simulation | null {
-  const { placements, skipped, droppedGoods } = resolveAuthoredPlacements(entities, rows, map);
+  const { placements, skipped, droppedGoods, droppedPicks } = resolveAuthoredPlacements(entities, rows, map);
   if (placements.length === 0) return null;
-  if (skipped > 0 || droppedGoods > 0 || entities.animals.length > 0) {
+  if (skipped > 0 || droppedGoods > 0 || droppedPicks > 0 || entities.animals.length > 0) {
     diag.warn(
       'content',
-      `runAuthoredSlice: placed ${placements.length}, skipped ${skipped} unresolvable/out-of-bounds, dropped ${droppedGoods} unresolvable authored goods, deferred ${entities.animals.length} animals`,
+      `runAuthoredSlice: placed ${placements.length}, skipped ${skipped} unresolvable/out-of-bounds, dropped ${droppedGoods} unresolvable authored building goods and ${droppedPicks} unresolvable produced-good picks, deferred ${entities.animals.length} animals`,
     );
   }
 

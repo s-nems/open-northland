@@ -150,7 +150,7 @@ describe("spawnSettler gatherGood — a decoded map's authored setproducedgood",
   const CARPENTER = 2; // a non-gathering trade: syncWorkFlagToJob plants it no flag
   const STONE = 4; // a fixture good whose harvest atomic (25) the woodcutter is NOT granted
 
-  /** The nth canonical (ascending-id) entity — a spawn command returns no id. */
+  /** The first canonical (ascending-id) entity — a spawn command returns no id. */
   const spawned = (sim: Simulation): Entity => {
     const e = sim.world.canonicalEntities()[0];
     if (e === undefined) throw new Error('nothing spawned');
