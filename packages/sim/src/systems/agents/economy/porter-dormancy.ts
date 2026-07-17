@@ -27,11 +27,11 @@ import { porterPickupTarget } from './haul-targets.js';
 
 /**
  * Dormancy for the porter rung: a porter whose pickup scan came up empty skips the re-scan until
- * something the scan reads could have changed. The elided scan is PROVABLY null — the gate compares
+ * something the scan reads could have changed. The elided scan is provably null — the gate compares
  * every input the scan depends on (via the version below plus the per-settler fields), so behavior is
  * byte-identical to always re-scanning; only the provably-empty work is skipped (the AGENTS.md
  * scaling contract). Without it, every confined idle porter re-walks the pile list and the store
- * sinks per tick (docs/tickets/sim/confined-idle-worker-dormancy.md).
+ * sinks per tick — measured 84% of the sandbox settlement's late-run tick cost.
  */
 
 /** What a dormant porter's failed scan saw — re-scan only when some field differs. */
@@ -51,8 +51,10 @@ interface DormantEntry {
 
 interface PorterDormancy {
   readonly entries: Map<Entity, DormantEntry>;
-  /** The latest planner deps, refreshed on every mark — the coherence verifier rebuilds contexts with
-   *  them (they are per-Simulation stable; only derived checking reads them, never a sim decision). */
+  /** The latest planner deps, refreshed on every mark, read only by the coherence verifier. `ctx` is
+   *  rebuilt each tick, so the stored one may be stale by the time the verifier runs — safe only
+   *  because the pickup-scan path consults `ctx`'s stable content/terrain reads and never `ctx.tick`
+   *  or the RNG (a future such read would silently verify a different question). */
   ctx: SystemContext;
   terrain: TerrainGraph;
 }
@@ -69,6 +71,7 @@ const dormancyByWorld = new WeakMap<World, PorterDormancy>();
 function porterScanVersion(world: World): number {
   return (
     world.componentValueGeneration(Stockpile) +
+    world.componentValueGeneration(Building) + // the home upgrade swaps buildingType in place
     world.componentGeneration(Stockpile) +
     world.componentGeneration(Building) +
     world.componentGeneration(UnderConstruction) +
@@ -134,8 +137,8 @@ export function wakePorter(world: World, entity: Entity): void {
 }
 
 /** The `cachesCoherent` re-derivation: every entry the gate would still honour must describe a scan
- *  that REALLY still returns null — a live porter with a non-null pick behind a matching entry means
- *  a scan input changed without moving {@link porterScanVersion}. */
+ *  that really does still return null — a live porter with a non-null pick behind a matching entry
+ *  means a scan input changed without moving {@link porterScanVersion}. */
 function verifyDormancy(world: World): string[] {
   const record = dormancyByWorld.get(world);
   if (record === undefined) return [];
@@ -146,8 +149,13 @@ function verifyDormancy(world: World): string[] {
     const settler = world.tryGet(entity, Settler);
     const p = world.tryGet(entity, Position);
     const binding = world.tryGet(entity, JobAssignment);
-    if (settler === undefined || settler.jobType === null || p === undefined || binding === undefined)
+    if (settler === undefined || settler.jobType === null || p === undefined || binding === undefined) {
+      // A dead/unbound porter's entry is never consulted again (ids are never reused) — prune it here
+      // so the memo doesn't grow with every porter that died dormant. Cache-internal; no sim decision
+      // can observe the deletion, so invariant-checked and unchecked runs stay byte-identical.
+      record.entries.delete(entity);
       continue;
+    }
     const hereNode = nodeOfPosition(p.x, p.y);
     if (shared === null) {
       shared = { targets: collectTargets(world, ctx, terrain), inbound: collectInboundSupply(world) };

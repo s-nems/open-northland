@@ -1,5 +1,5 @@
 import type { Fixed } from '../../core/fixed.js';
-import { defineComponent } from '../../ecs/world.js';
+import { defineComponent, type World } from '../../ecs/world.js';
 
 /** A building instance placed in the world. */
 export const Building = defineComponent<{
@@ -36,12 +36,30 @@ export function holdsAll(amounts: Map<number, number> | undefined, cost: readonl
   return true;
 }
 
-/** Subtract every line of `cost` from `amounts` IN PLACE. The caller must have verified {@link holdsAll}
- *  first, so no count goes negative; a good that hits zero is left as a 0 entry — the canonical Map
- *  tolerates it, and the stockpile is never iterated for a decision, so a stale 0 is harmless. */
-export function consumeGoods(amounts: Map<number, number>, cost: readonly GoodsLine[]): void {
+/**
+ * Write one good's amount into a live stockpile's Map and log the value write
+ * (`world.touchComponent(Stockpile)`), so value-generation consumers (the porter dormancy gate) never
+ * miss a wake. Every in-place system write to an already-added {@link Stockpile} goes through here —
+ * a bare `amounts.set` is the seam's one footgun (only creation-time writes before `world.add` may
+ * stay raw; the add itself logs those).
+ */
+export function setStockAmount(
+  world: World,
+  amounts: Map<number, number>,
+  goodType: number,
+  amount: number,
+): void {
+  amounts.set(goodType, amount);
+  world.touchComponent(Stockpile);
+}
+
+/** Subtract every line of `cost` from `amounts` IN PLACE (via {@link setStockAmount}, so the value
+ *  write is logged). The caller must have verified {@link holdsAll} first, so no count goes negative;
+ *  a good that hits zero is left as a 0 entry — the canonical Map tolerates it, and the stockpile is
+ *  never iterated for a decision, so a stale 0 is harmless. */
+export function consumeGoods(world: World, amounts: Map<number, number>, cost: readonly GoodsLine[]): void {
   for (const line of cost) {
-    amounts.set(line.goodType, (amounts.get(line.goodType) ?? 0) - line.amount);
+    setStockAmount(world, amounts, line.goodType, (amounts.get(line.goodType) ?? 0) - line.amount);
   }
 }
 

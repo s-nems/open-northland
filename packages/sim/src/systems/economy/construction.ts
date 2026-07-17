@@ -87,6 +87,9 @@ export const constructionSystem: System = (world, ctx) => {
     consumeMaterials(world, e, next.construction);
     building.buildingType = next.typeId; // adopt the larger tier — homeSize/housingCapacity grow
     building.level += 1;
+    // The in-place type swap changes every buildingType-derived answer (stock slots, recipe, produces)
+    // — log the value write so version-keyed caches (porter dormancy) re-scan.
+    world.touchComponent(Building);
     // The larger tier's footprint may enclose cells settlers were standing on — push them out.
     evictSettlersFromFootprint(world, ctx, e);
     ctx.events.emit({ kind: 'buildingUpgraded', entity: e, level: building.level });
@@ -164,8 +167,7 @@ function materialsPresent(world: World, building: Entity, cost: readonly GoodsLi
 /** Remove the `cost` materials from a building's stockpile (spent into the structure / upgrade). The
  *  caller has verified every material is present in full via {@link materialsPresent}. */
 function consumeMaterials(world: World, building: Entity, cost: readonly GoodsLine[]): void {
-  consumeGoods(world.get(building, Stockpile).amounts, cost);
-  world.touchComponent(Stockpile);
+  consumeGoods(world, world.get(building, Stockpile).amounts, cost);
 }
 
 /**

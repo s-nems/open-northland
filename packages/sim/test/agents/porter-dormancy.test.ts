@@ -86,14 +86,16 @@ describe('porter dormancy', () => {
     idlePasses(sim); // undeliverable everywhere — the porter goes dormant
     expect(sim.world.has(porter, MoveGoal)).toBe(false);
 
-    // The elision is real: a bare in-place write (no touchComponent) is invisible to the dormant
-    // porter — which is also the seam's contract: every system stock write must pair the two.
+    // The elision is real: a bare Map write (bypassing setStockAmount, the seam every system stock
+    // write goes through) is invisible to the dormant porter — and the coherence verifier catches
+    // exactly this incoherence, so a future unlogged write cannot slip past invariant-checked runs.
     sim.world.get(hq, Stockpile).amounts.set(PLANK, 0);
     aiSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(porter, MoveGoal)).toBe(false);
+    expect(sim.world.verifyCaches().some((m) => m.includes('porter'))).toBe(true);
 
-    // Logged the way every system writes stock in place (mutate + touchComponent — the value
-    // generation the dormancy version tracks), the freed sink wakes the porter.
+    // Logged through the seam (the value generation the dormancy version tracks), the freed sink
+    // wakes the porter.
     sim.world.touchComponent(Stockpile);
     aiSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(porter, MoveGoal)).toBe(true);

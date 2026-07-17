@@ -8,12 +8,12 @@ import { createSceneSim, SCENES } from '../src/scenes/index.js';
  * (`?scene=<id>`) view is for the HUMAN to judge the pixels (see docs/SCENES.md). Each `createSceneSim`
  * builds an independent sim (its own component stores), so the cases are isolated regardless of order.
  */
-/** A full-scene sim run is seconds-long (the heaviest, sandbox, measures ~9s wall / ~5s CPU per run
- *  at 1200 ticks — see docs/tickets/sim/confined-idle-worker-dormancy.md for the perf follow-up), so
- *  the sim-running cases carry their own budget instead of Vitest's 5s default. The budget is a
- *  hang-guard, not a benchmark: it is sized ~13× the heaviest measured run because on a machine
- *  shared by several agent sessions a full parallel suite has been observed to stretch wall time to
- *  >6× CPU time. The determinism case runs each scene twice, so it gets twice the budget. */
+/** A full-scene sim run is seconds-long (the heaviest, sandbox, measures ~2s per run at 1200 ticks,
+ *  post porter-dormancy), so the sim-running cases carry their own budget instead of Vitest's 5s
+ *  default. The budget is a hang-guard, not a benchmark: it is sized far above the measured runs
+ *  because on a machine shared by several agent sessions a full parallel suite has been observed to
+ *  stretch wall time to >6× CPU time. The determinism case runs each scene twice, so it gets twice
+ *  the budget. */
 const SCENE_RUN_TIMEOUT_MS = 120_000;
 const DETERMINISM_TIMEOUT_MS = 2 * SCENE_RUN_TIMEOUT_MS;
 
