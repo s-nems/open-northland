@@ -46,7 +46,7 @@ export { SIGHT_RADIUS_NODES } from './targeting.js';
  *
  *  1. Dormancy gate ({@link combatPossible}) — one cheap pass decides whether any hostile pair (or any
  *     lingering combat state to clean up) exists. If not, the system does no further work: a map of peaceful
- *     settlers, or an all-one-player field, costs nothing (golden rule 7).
+ *     settlers, or an all-one-player field, costs nothing (the RTS-scale budget).
  *  2. Spatial index — all combatants are bucketed by tile once ({@link NodeBuckets}), so a seeker's
  *     "nearest enemy" query is a bounded grid ring search ({@link NodeBuckets.nearest}) instead of an
  *     O(entities) full scan per seeker. The search finishes the whole minimum-distance band and picks

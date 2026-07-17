@@ -38,7 +38,7 @@ const FLEE_STEP_NODES = 12;
 /**
  * FLEE stance — how many ticks a fleeing unit holds its current route before re-aiming away from the (moving)
  * threat. The flee twin of {@link REPATH_CADENCE}: a per-tick re-path of every fleer would be the RTS-scale
- * regression golden rule 7 forbids; between re-aims the unit walks its last route. Our design (source basis
+ * regression the budget rule forbids; between re-aims the unit walks its last route. Our design (source basis
  * "Combat flee").
  */
 const FLEE_REPATH_CADENCE = 6;
@@ -58,7 +58,7 @@ const FLEE_DIRECTIONS = COMPASS_DIRECTIONS;
 
 /**
  * The FLEE drive — run a unit away from the nearest threat (the civilian raid reaction). Reuses the combat
- * ring-search index (no new scan, golden rule 7): the nearest hostile within {@link SIGHT_RADIUS_NODES} is the
+ * ring-search index (no new scan, the RTS-scale budget): the nearest hostile within {@link SIGHT_RADIUS_NODES} is the
  * threat. Then, in order:
  *  - **no threat in sight** → wind the cool-down down: start it on the first clear tick, and after
  *    {@link FLEE_COOLDOWN_TICKS} clear with none, shed {@link Fleeing} + the flee route so the economy re-tasks
