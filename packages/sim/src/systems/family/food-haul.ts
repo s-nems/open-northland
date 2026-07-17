@@ -1,3 +1,4 @@
+import type { SettlerIdentity } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import { atOrWalk, PILEUP_ATOMIC_ID, startAtomic, startPickup } from '../agents/actions.js';
@@ -15,7 +16,7 @@ export function deliverHome(
   ctx: SystemContext,
   terrain: TerrainGraph | undefined,
   e: Entity,
-  settler: { tribe: number; jobType: number | null },
+  settler: SettlerIdentity,
   home: Entity,
   hereNode: { hx: number; hy: number },
 ): void {
@@ -43,7 +44,7 @@ export function fetchFrom(
   ctx: SystemContext,
   terrain: TerrainGraph | undefined,
   e: Entity,
-  settler: { tribe: number; jobType: number | null },
+  settler: SettlerIdentity,
   source: { store: Entity; goodType: number },
   hereNode: { hx: number; hy: number },
 ): void {

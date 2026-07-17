@@ -1,4 +1,11 @@
-import { CARRY_CAPACITY, Carrying, CurrentAtomic, MoveGoal, Settler } from '../../components/index.js';
+import {
+  CARRY_CAPACITY,
+  Carrying,
+  CurrentAtomic,
+  MoveGoal,
+  Settler,
+  type SettlerIdentity,
+} from '../../components/index.js';
 import type { AtomicEffect } from '../../core/atomic-effect.js';
 import { fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -36,7 +43,7 @@ export const EAT_ANIMATION_REPEATS = 8;
  * {@link EAT_ANIMATION_REPEATS} times. Shared by every eat site (a store meal, a carried-load bite, a wild-bush
  * forage) so they all take the same visible beat — the one place the meal length is decided.
  */
-export function eatDuration(ctx: SystemContext, settler: { tribe: number; jobType: number | null }): number {
+export function eatDuration(ctx: SystemContext, settler: SettlerIdentity): number {
   return atomicDuration(ctx.content, settler, EAT_ATOMIC_ID) * EAT_ANIMATION_REPEATS;
 }
 
@@ -150,7 +157,7 @@ export function startPickup(
   world: World,
   ctx: SystemContext,
   e: Entity,
-  settler: { tribe: number; jobType: number | null },
+  settler: SettlerIdentity,
   from: Entity,
   goodType: number,
   amount: number,

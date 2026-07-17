@@ -1,3 +1,4 @@
+import type { SettlerIdentity } from '../../components/index.js';
 import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
@@ -83,7 +84,7 @@ export function planNeeds(
   ctx: SystemContext,
   terrain: TerrainGraph,
   e: Entity,
-  settler: { tribe: number; jobType: number | null; hunger: Fixed; fatigue: Fixed; piety: Fixed },
+  settler: SettlerIdentity & { hunger: Fixed; fatigue: Fixed; piety: Fixed },
   here: NodeId,
   load: { goodType: number; amount: number } | undefined,
   targets: TargetCandidates,

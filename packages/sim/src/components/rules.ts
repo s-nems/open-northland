@@ -64,9 +64,13 @@ export const FOG_MODE = {
   RECON: 2,
 } as const;
 
+/** A fog mode id — one of {@link FOG_MODE}'s values, so a stray `7` cannot reach the VisionSystem.
+ *  {@link isFogMode} is the runtime gate that narrows an incoming command payload to it. */
+export type FogMode = (typeof FOG_MODE)[keyof typeof FOG_MODE];
+
 /** Whether `mode` is one of the three {@link FOG_MODE} ids — the `setFogMode` validity gate (a bad
  *  mode is a recoverable bad input, skipped-but-logged like a bad `setStance` mode). */
-export function isFogMode(mode: number): boolean {
+export function isFogMode(mode: number): mode is FogMode {
   return mode === FOG_MODE.OFF || mode === FOG_MODE.REVEAL || mode === FOG_MODE.RECON;
 }
 
@@ -79,7 +83,7 @@ export function isFogMode(mode: number): boolean {
  * pathological to clone per snapshot); they are still covered by `hashState`, which mixes the raw mask bytes in
  * after the components.
  */
-export const FogRules = defineComponent<{ mode: number }>('FogRules');
+export const FogRules = defineComponent<{ mode: FogMode }>('FogRules');
 
 /** The fog-rules singleton's entity, or null when the mode was never set. Canonical: lowest id wins
  *  (the command handler only ever creates one — the {@link worldRulesEntity} convention). */
@@ -89,7 +93,7 @@ export function fogRulesEntity(world: World): Entity | null {
 
 /** The active fog mode — the {@link FogRules} value, defaulting to {@link FOG_MODE.OFF} when the
  *  singleton is absent (a world that never set a mode has no fog, exactly as before the feature). */
-export function fogMode(world: World): number {
+export function fogMode(world: World): FogMode {
   const e = fogRulesEntity(world);
   return e === null ? FOG_MODE.OFF : world.get(e, FogRules).mode;
 }

@@ -1,4 +1,4 @@
-import { AttackOrder, Owner, Stance } from '../../components/index.js';
+import { AttackOrder, Owner, type SettlerIdentity, Stance } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
@@ -72,7 +72,7 @@ export function engageSpec(
   terrain: TerrainGraph,
   e: Entity,
   stance: CombatantStance,
-  attacker: { tribe: number; jobType: number | null },
+  attacker: SettlerIdentity,
   weapon: { minRange: number; maxRange: number },
 ): EngageSpec {
   const { owned, ordered } = stance;
@@ -161,7 +161,7 @@ export function resolveTarget(
   presence: HostilePresence,
   self: Entity,
   here: NodeId,
-  attacker: { tribe: number; jobType: number | null },
+  attacker: SettlerIdentity,
   spec: EngageSpec,
 ): { target: Entity; dist: number } | null {
   if (world.has(self, AttackOrder)) {

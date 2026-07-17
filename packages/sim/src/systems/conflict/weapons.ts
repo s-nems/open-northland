@@ -1,5 +1,5 @@
 import type { WeaponType } from '@open-northland/data';
-import { Armor, CurrentAtomic } from '../../components/index.js';
+import { Armor, CurrentAtomic, type SettlerIdentity } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -100,7 +100,7 @@ export function targetMaterial(world: World, ctx: SystemContext, target: Entity)
 export function startAttack(
   world: World,
   ctx: SystemContext,
-  attacker: { tribe: number; jobType: number | null },
+  attacker: SettlerIdentity,
   e: Entity,
   target: Entity,
   damage: number,
