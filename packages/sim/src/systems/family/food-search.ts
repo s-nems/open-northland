@@ -6,7 +6,7 @@ import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import type { SpatialGate } from '../node-metric.js';
 import { canonicalById, NodeBuckets } from '../spatial.js';
-import { isFood } from '../stores/index.js';
+import { isFood } from '../readviews/index.js';
 
 /**
  * The greatest Manhattan ring radius (half-cell nodes) {@link ExternalFoodIndex.nearest} expands to

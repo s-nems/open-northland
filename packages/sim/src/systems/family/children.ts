@@ -35,7 +35,7 @@ import { stampDefaultStance } from '../orders/index.js';
 import { atomicAnimationName, atomicDurationForName } from '../readviews/animations.js';
 import { navigationLimitFor } from '../signposts/index.js';
 import { canonicalById, isTravelling } from '../spatial.js';
-import { isFood } from '../stores/index.js';
+import { isFood } from '../readviews/index.js';
 import { isOnMission } from './eligibility.js';
 import { deliverHome, fetchFrom } from './food-haul.js';
 import { ExternalFoodIndex } from './food-search.js';

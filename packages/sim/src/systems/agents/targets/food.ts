@@ -8,7 +8,7 @@ import { BERRY_FORAGE_RADIUS } from '../../economy/berries.js';
 import { reservedFoodUnits, storedFoodUnits } from '../../family/households.js';
 import type { SpatialGate } from '../../node-metric.js';
 import { manhattan } from '../../spatial.js';
-import { isFood } from '../../stores/index.js';
+import { isFood } from '../../readviews/index.js';
 import type { TargetCandidates } from './candidates.js';
 import { type InteractionCellIndex, nearestByCell, qualifiedGood } from './cell-index.js';
 import { closer } from './nearest.js';

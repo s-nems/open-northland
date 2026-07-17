@@ -4,7 +4,7 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { atomicDuration } from '../readviews/animations.js';
 import type { NavigationLimit } from '../signposts/index.js';
-import { isFood } from '../stores/index.js';
+import { isFood } from '../readviews/index.js';
 import {
   atOrWalk,
   EAT_ATOMIC_ID,
