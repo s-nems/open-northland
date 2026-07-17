@@ -16,7 +16,7 @@ describe('buildPaletteLutImage', () => {
     // Row 0 = palette a, row 1 = palette b; alpha always opaque.
     const px = (x: number, y: number): number[] => {
       const o = (y * 256 + x) * 4;
-      return [img.rgba[o], img.rgba[o + 1], img.rgba[o + 2], img.rgba[o + 3]];
+      return Array.from(img.rgba.slice(o, o + 4));
     };
     expect(px(0, 0)).toEqual([1, 2, 3, 255]);
     expect(px(255, 0)).toEqual([1, 2, 3, 255]);

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { CifLine } from '../src/decoders/cif.js';
 import {
   cifLinesToSections,
   extractGoods,
