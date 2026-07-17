@@ -111,7 +111,7 @@ export function assignProjectileArc(
 }
 
 /**
- * Append the viewer's remembered statics (`data/fog-ghosts.ts`, pre-filtered to explored ground) to the
+ * Append the viewer's remembered statics (`data/fog/ghosts.ts`, pre-filtered to explored ground) to the
  * draw list: each projects with the same anchor/lift/depth formula as a live static (so a ghost occludes
  * correctly against live sprites at the fog boundary) but is tagged {@link DrawItem.ghost} for the pool's
  * grey tint. Every ghost ref joins `liveRefs` — a ghost of a dead entity keeps its pooled sprite alive as

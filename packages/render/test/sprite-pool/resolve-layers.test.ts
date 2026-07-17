@@ -1,6 +1,5 @@
 import type { TextureSource } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
-import { compactResolvedStockpileLayers } from '../../src/gpu/sprite-pool/resolve-layers.js';
 import { type DrawItem, resolveLayers, type SpriteAtlas, type SpriteSheet } from '../../src/index.js';
 
 /**
@@ -19,14 +18,6 @@ const frame = (
   n,
   { x: n, y: 0, width: 10, height: 10, offsetX: 0, offsetY: 0 },
 ];
-
-describe('compactResolvedStockpileLayers', () => {
-  it('requires the primary heap before drawing optional flag overlays', () => {
-    expect(compactResolvedStockpileLayers<string>([null, 'flag'])).toBeNull();
-    expect(compactResolvedStockpileLayers<string>(['heap', null])).toEqual(['heap']);
-    expect(compactResolvedStockpileLayers<string>(['heap', 'flag'])).toEqual(['heap', 'flag']);
-  });
-});
 
 describe('resolveLayers — the animated building overlay is bounds-exempt', () => {
   // A minimal mill sheet: the `miller` family atlas carries the bladeless body (bob 70), the still

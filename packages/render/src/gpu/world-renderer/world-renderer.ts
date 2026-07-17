@@ -178,7 +178,7 @@ export class WorldRenderer {
     // bakes the lift now; the sprite pool + the cull pad read it each frame in {@link update}. The
     // composed shading lane (`embr` + hillshade) shades the ground inside {@link TerrainLayer.set};
     // landscape objects get their own anchor-cell multiplier upstream in the app loader (trees exempt —
-    // the measured split, `data/brightness.ts`), and entity sprites read the same composed field at
+    // the measured split, `data/terrain/brightness.ts`), and entity sprites read the same composed field at
     // their feet through the pool (`DrawItem.shade`).
     this.elevation = makeElevationField(terrain.elevation, terrain.width, terrain.height);
     this.terrain.set(terrain, textures, this.elevation);

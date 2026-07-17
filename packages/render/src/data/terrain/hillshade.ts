@@ -5,7 +5,7 @@ import { elevationLiftPerUnit } from './elevation.js';
 
 /**
  * Slope hillshading computed from the map's elevation lane — an OpenNorthland visual enhancement, not
- * an original mechanism (the original's slope light is pre-baked into `embr`; `data/brightness.ts`).
+ * an original mechanism (the original's slope light is pre-baked into `embr`; `data/terrain/brightness.ts`).
  * A fixed north-west light (matching the direction the baked shadow art implies) shades each cell by
  * its elevation gradient, and the result composes with the shading lane two ways:
  *

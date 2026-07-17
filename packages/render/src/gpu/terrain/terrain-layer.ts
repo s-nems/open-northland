@@ -21,7 +21,7 @@ import { padLaneRows } from './lane-texture.js';
 /**
  * The retained terrain layer — the static ground, meshed once per map and drawn per visible block.
  *
- * The mesh is the original's tessellation (`data/terrain.ts`): vertices are cell-centre nodes and each
+ * The mesh is the original's tessellation (`data/terrain/tessellation.ts`): vertices are cell-centre nodes and each
  * cell contributes two triangles spanning between neighbouring centres (△ A down to the SW/SE-below
  * cells, ▽ B across to the E cell), so per-triangle pattern picks and transition overlays blend across
  * cells instead of along per-cell diamond seams. Per-node elevation lift (`elevation/16` half-row-steps,
@@ -71,7 +71,7 @@ export class TerrainLayer {
     this.destroy();
     // One source for the shading: both the CPU field (fallback/flat tints) and the R8 lane texture
     // are built here from the composed lane — the decoded `embr` bake accented (or replaced, on maps
-    // without it) by elevation hillshade (`data/hillshade.ts`) — so no caller can hand the mesh and
+    // without it) by elevation hillshade (`data/terrain/hillshade.ts`) — so no caller can hand the mesh and
     // the fallbacks disagreeing inputs (the elevation field stays injected — the renderer retains it
     // per frame).
     const shadingLane = composeShadingLane(

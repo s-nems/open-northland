@@ -3,7 +3,7 @@
 **Area:** render (real-content test) · **Origin:** shadow perf review, 2026-07-16 · **Priority:** P4
 
 Sprite culling tests only the entity's anchor point against the viewport grown by
-`SPRITE_CULL_MARGIN = 512` (`packages/render/src/gpu/world-renderer.ts`); a frame whose pixels reach
+`SPRITE_CULL_MARGIN = 512` (`packages/render/src/gpu/world-renderer/frame.ts`); a frame whose pixels reach
 farther than the margin from its anchor pops at the screen edge. Measured over every baked manifest
 (bodies and shadow twins, 2026-07-16): everything is under the margin (worst 444 px, the `ls_caves`
 sets) except the wonder atlases — `ls_wonders3` reaches **651 px** (bob 0) and `ls_wonders2`

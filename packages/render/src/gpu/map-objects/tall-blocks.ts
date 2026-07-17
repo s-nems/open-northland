@@ -41,7 +41,7 @@ interface PooledObject {
   /** The sprite's undimmed tint (the baked-shading multiplier, or white) — computed at mint so the
    *  per-frame fog grading is a pick between two cached colours, never a recompute. */
   baseTint: number;
-  /** {@link import('../../data/fog.js').fogGhostTint} of {@link baseTint} — the explored-ground dim. */
+  /** {@link import('../../data/fog/mask.js').fogGhostTint} of {@link baseTint} — the explored-ground dim. */
   ghostTint: number;
   /** Whether the last bound frame was picked on the live clock (visible ground) or the frozen one
    *  (a ghosted, explored-only object) — a state flip rebinds once even mid-animation-tick. */

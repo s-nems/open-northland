@@ -7,7 +7,7 @@
  * Pad a row-major per-cell byte lane so each row is a multiple of `alignment` texels, replicating the
  * last column into the padding. WebGL uploads with the default UNPACK_ALIGNMENT of 4 (Pixi never
  * lowers it), so an unpadded odd-width R8 grid would shear row by row; the replica columns keep the
- * right-edge clamp semantics identical to the CPU sampler (`data/cell-field.ts` `makeCellSampler`).
+ * right-edge clamp semantics identical to the CPU sampler (`data/terrain/cell-field.ts` `makeCellSampler`).
  * Pure — exported so the shear regression stays headlessly testable.
  */
 export function padLaneRows(

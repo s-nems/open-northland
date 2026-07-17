@@ -17,7 +17,7 @@ Resolved on the visual-polish branch (evidence pinned there):
   sits mostly under LAND patterns on river maps (`blekiny_nurt`: 2035/2036 band-7 cells), and even
   bands are nearly absent in the per-cell collapse (a possible node-parity effect of sampling centre
   nodes) — so the band semantics are unconfirmed and NOTHING consumes the lane yet. The render's
-  wave field keys off ground-pattern names instead (`packages/render/src/data/water.ts`). Any foam
+  wave field keys off ground-pattern names instead (`packages/render/src/data/terrain/water.ts`). Any foam
   work below must first re-establish what the bands mean (probe the half-cell lane directly, not the
   per-cell collapse).
 - Water surface now animates: per-node wave amplitudes + tick-driven vertex bob and brightness

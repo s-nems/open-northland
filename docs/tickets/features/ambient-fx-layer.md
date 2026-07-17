@@ -9,7 +9,7 @@ animations as waves/fire/smoke (`packages/app/src/content/ir.ts` `GfxLoopAnimati
 emitter draws them.
 
 Task (a player-visible slice): a deterministic ambient-effects layer following the existing
-combat-effects pattern (`packages/render/src/data/effects.ts` — pure, seeded, tick-decayed, capped,
+combat-effects pattern (`packages/render/src/data/effects/` — pure, seeded, tick-decayed, capped,
 viewport-culled):
 
 - chimney smoke over buildings mid production cycle (the snapshot's `working` flag the mill rotor

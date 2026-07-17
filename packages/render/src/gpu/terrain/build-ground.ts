@@ -27,7 +27,7 @@ import {
 
 /**
  * The textured terrain emitters: one batched {@link import('pixi.js').Mesh} per texture page per draw
- * layer (the GPU twin of the pure `data/terrain.ts` geometry), built once per map. A decoded map carrying
+ * layer (the GPU twin of the pure `data/terrain/tessellation.ts` geometry), built once per map. A decoded map carrying
  * its 1:1 `ground` lanes (and a texture set exposing the pattern join) takes {@link buildGround}; the
  * approximated per-typeId path ({@link buildTextured}) stays for synthetic grids. The flat placeholder is
  * the twin file {@link import('./build-flat.js')}.
@@ -120,7 +120,7 @@ export function buildTextured(
 /**
  * The 1:1 per-triangle ground: each cell's two triangles draw the exact {@link GroundPattern} the
  * decoded map baked into its `empa`/`empb` lanes (A = △ down-left, B = ▽ to the east — see
- * `data/terrain.ts`), plus the `emt1..emt4` transition overlays as translucent RGBA triangles on
+ * `data/terrain/tessellation.ts`), plus the `emt1..emt4` transition overlays as translucent RGBA triangles on
  * the two overlay layers, all batched per texture page per layer per block. The per-map pattern
  * and transition names are resolved through {@link TerrainTextureSet.groundFor} /
  * {@link TerrainTextureSet.transitionFor} once into index-aligned tables; a triangle whose

@@ -19,10 +19,10 @@ import { collectSpriteScene } from './sprite-scene.js';
 export interface SceneGround {
   readonly patterns: readonly string[];
   /** Row-major per-cell index into {@link patterns} for triangle A (△ from the cell's centre node
-   *  down to the SW/SE-below centres — `../terrain.js` `triangleANodes`). */
+   *  down to the SW/SE-below centres — `../terrain/tessellation.js` `triangleANodes`). */
   readonly a: readonly number[];
   /** Row-major per-cell index into {@link patterns} for triangle B (▽ across to the E centre —
-   *  `../terrain.js` `triangleBNodes`). */
+   *  `../terrain/tessellation.js` `triangleBNodes`). */
   readonly b: readonly number[];
 }
 
@@ -31,7 +31,7 @@ export interface SceneGround {
  * `content/maps/<id>.json`): the map's `eatd` name dictionary verbatim plus the four `emt1..emt4`
  * per-cell u8 lanes — `a1`/`b1` are layer 1 (topmost) for triangles A/B, `a2`/`b2` layer 2. A lane
  * value `v < 255` selects transition `⌊v/6⌋` from {@link types} and pair variant `v % 6`
- * (`../terrain.js` `transitionRef`); the renderer joins a name through
+ * (`../terrain/transitions.js` `transitionRef`); the renderer joins a name through
  * {@link import('../../gpu/terrain-textures.js').TerrainTextureSet.transitionFor}.
  */
 export interface SceneTransitions {
@@ -64,7 +64,7 @@ export interface SceneTerrain {
    * from an R8 lane texture — slope light/shadow plus the fade-to-black map border); absent →
    * unshaded. Landscape objects shade separately at their anchor cell via an app-built
    * {@link import('../terrain/index.js').BrightnessField} (trees exempt — the measured split; see
-   * `data/brightness.ts`); buildings/settlers are unmeasured and unshaded. Render-only data — the
+   * `data/terrain/brightness.ts`); buildings/settlers are unmeasured and unshaded. Render-only data — the
    * sim never reads it.
    */
   readonly brightness?: readonly number[];
@@ -127,7 +127,7 @@ export function terrainMapToScene(map: {
  * raster, so static map objects interleave correctly), while this oracle's sprite key is row-major
  * `(tileY, tileX)` — the two orders differ for items more than a row apart on one screen band. The
  * terrain-projection duplication with the GPU terrain layer is deliberate: both share the
- * `terrain.ts` helpers, so they can't silently diverge.
+ * `terrain/tessellation.ts` helpers, so they can't silently diverge.
  */
 export function buildScene(
   snapshot: WorldSnapshot,

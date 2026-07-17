@@ -58,11 +58,11 @@ export interface SpriteSceneOptions {
   /** Entities the retained static map-object layer draws instead (a decoded map's virgin resource nodes) —
    *  skipped entirely: no draw item, not in {@link SpriteScene.liveRefs}. */
   readonly staticRefs?: ReadonlySet<number> | undefined;
-  /** The fog-of-war cull (`data/fog.ts` over the viewer's `FogView`); absent = no fog. An entity whose tile
+  /** The fog-of-war cull (`data/fog/mask.ts` over the viewer's `FogView`); absent = no fog. An entity whose tile
    *  it rejects is treated like a viewport-culled one — no draw item, but kept live so its pooled sprite
    *  survives until the fog lifts. */
   readonly fogVisible?: ((tileX: number, tileY: number) => boolean) | undefined;
-  /** The viewer's remembered statics (`data/fog-ghosts.ts`, pre-filtered to explored ground by the store),
+  /** The viewer's remembered statics (`data/fog/ghosts.ts`, pre-filtered to explored ground by the store),
    *  drawn dimmed on explored ground. Each projects like a live static (same anchor, lift and depth formula,
    *  so it occludes correctly against live sprites at the fog boundary) and joins {@link SpriteScene.liveRefs},
    *  keeping a dead entity's pooled sprite alive for as long as the memory draws. A ref never yields two

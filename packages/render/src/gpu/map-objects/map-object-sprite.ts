@@ -30,7 +30,7 @@ export interface MapObjectSprite {
   readonly lift?: number;
   /**
    * The baked `embr` luminance multiplier at this object's anchor cell (1 = neutral; the measured
-   * curve in `data/brightness.ts`). The original shades landscape-object pixels with the ground's
+   * curve in `data/terrain/brightness.ts`). The original shades landscape-object pixels with the ground's
    * baked plane — pinned on the corpus for mine decals, stones and grass (masked opaque-pixel ratio
    * tracks embr from ×0.58 to ×1.58) — except trees, which draw full-bright even on embr=0 border
    * cells; the app loader omits the field for those (and on unshaded maps). Decor batches apply it

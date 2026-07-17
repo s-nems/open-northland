@@ -3,7 +3,7 @@ import { BRIGHTNESS_NEUTRAL } from '../data/terrain/index.js';
 
 /**
  * The custom mesh shaders for the brightness-shaded ground and decor — the stock textured-mesh draw
- * plus the baked `embr` multiplier (`data/brightness.ts`). Needed because Pixi's built-in mesh shader
+ * plus the baked `embr` multiplier (`data/terrain/brightness.ts`). Needed because Pixi's built-in mesh shader
  * has no per-vertex/per-fragment shading lane, and a per-mesh `tint` cannot vary across a chunk —
  * while the lane both darkens (slope shadow, the border fade to 0) and brightens (values > 127, up to
  * ≈2×; the measured curve), so the multiplier must ride unclamped and the framebuffer write clamps.
@@ -11,7 +11,7 @@ import { BRIGHTNESS_NEUTRAL } from '../data/terrain/index.js';
  * Two variants share one idea, two sampling grains:
  *  - **field** ({@link makeShadedTerrainShader}) — the ground mesh samples the whole lane per
  *    fragment from an R8 texture at each vertex's own cell-centre coordinate
- *    (`data/terrain.ts` {@link import('../data/terrain.js').nodeLaneUV}, interpolated across the
+ *    (`data/terrain/tessellation.ts` {@link import('../data/terrain/tessellation.js').nodeLaneUV}, interpolated across the
  *    triangle). The texture's own bilinear between those texel centres reproduces the original's
  *    smooth per-pixel banding (the map-border fade, the rock hill) instead of a per-vertex zigzag
  *    along triangle edges.
@@ -37,7 +37,7 @@ const matrixBlock = `
 `;
 
 // Water-surface animation constants (an OpenNorthland enhancement — the original's water is static
-// geometry; `data/water.ts`). Time is measured in sim ticks (tick + alpha), so a `?shot` frame at a
+// geometry; `data/terrain/water.ts`). Time is measured in sim ticks (tick + alpha), so a `?shot` frame at a
 // fixed tick is byte-reproducible. Tuned by eye.
 /** Peak vertical bob (world px) at full wave amplitude. */
 const WAVE_AMPLITUDE_PX = 1.75;
@@ -68,7 +68,7 @@ const FIELD_VERTEX = `#version 300 es
   void main(void) {
     float phase = (aPosition.x + aPosition.y) * ${WAVE_PHASE_PER_PX.toFixed(8)};
     vec2 pos = aPosition;
-    // Water swell: bob the vertex by its wave amplitude (0 on land and along the coast, data/water.ts).
+    // Water swell: bob the vertex by its wave amplitude (0 on land and along the coast, data/terrain/water.ts).
     pos.y -= aWave * uWave.y * ${WAVE_AMPLITUDE_PX.toFixed(4)}
       * sin(uWave.x * ${WAVE_RADIANS_PER_TICK.toFixed(8)} + phase);
     mat3 mvp = uProjectionMatrix * uWorldTransformMatrix * uTransformMatrix;

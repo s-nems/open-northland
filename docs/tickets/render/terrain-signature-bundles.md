@@ -9,10 +9,10 @@ signature" cleanup. Deferred from the render pass as its own coherent change.
 ## Scope
 
 - **`GridDims { width, height }`** — the `(width, height)` pair is threaded through
-  `data/terrain.ts` `nodeLift(liftAt, hx, hy, width, height)` and
-  `nodeLaneUV(hx, hy, width, height, paddedWidth)`, and `data/cell-field.ts`
-  `makeCellSampler(values, width, height)`, `data/elevation.ts`
-  `makeElevationField(elevation, width, height)`, `data/brightness.ts`
+  `data/terrain/tessellation.ts` `nodeLift(liftAt, hx, hy, width, height)` and
+  `nodeLaneUV(hx, hy, width, height, paddedWidth)`, and `data/terrain/cell-field.ts`
+  `makeCellSampler(values, width, height)`, `data/terrain/elevation.ts`
+  `makeElevationField(elevation, width, height)`, `data/terrain/brightness.ts`
   `makeBrightnessField(..., width, height)`. Introduce a `GridDims` type and thread
   it through the call chain. (The `(pageW, pageH)` pair in `triangleUVs`/`rectTriangleUVs`
   is a smaller instance of the same shape — fold it in or leave it, reviewer's call.)

@@ -28,7 +28,7 @@ export interface TerrainBatch {
    */
   readonly brightnessUVs: number[];
   /**
-   * Per-vertex water-wave amplitude (1 per position pair, `data/water.ts`) — pushed in lockstep with
+   * Per-vertex water-wave amplitude (1 per position pair, `data/terrain/water.ts`) — pushed in lockstep with
    * {@link brightnessUVs} (the shaded ground program declares both attributes; a land map pushes
    * zeros). Empty exactly when {@link brightnessUVs} is.
    */
