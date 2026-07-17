@@ -30,16 +30,21 @@ export function bmdToAtlas(
   return packBobAtlas(decodeBmd(bmdBytes), palette, { alpha });
 }
 
+/** Normalized asset reference → its real (mixed-case) path under `outDir`. See {@link indexOutTree}. */
+export type OutTreeIndex = ReadonlyMap<string, string>;
+
 /**
  * Builds a case-insensitive index of the unpacked tree: `normalizeAssetPath(rel)` -> the real on-disk
  * relative path (native separators). The binding extractors lower-case + forward-slash their `.bmd`/
  * `.pcx` references, but the unpacked `.lib` members keep the archive's original (mixed) case, so a
  * direct `join(out, ref)` would miss on a case-sensitive filesystem. This map bridges the two: look a
- * normalized reference up to get the real path under `outDir`. Built once per run and shared by every
- * binding. Keys via the same `normalizeAssetPath` the extractors use (forward slashes, lower-case), so
- * the two sides can never drift.
+ * normalized reference up to get the real path under `outDir`. Keys via the same `normalizeAssetPath` the
+ * extractors use (forward slashes, lower-case), so the two sides can never drift.
+ *
+ * Built once after the unpack stages and threaded into every consumer: the tree holds ~10k files, and the
+ * atlas stages only ever look up source `.bmd`/`.pcx` members, never the `.png`/`.atlas.json` they write.
  */
-export async function indexOutTree(outDir: string): Promise<Map<string, string>> {
+export async function indexOutTree(outDir: string): Promise<OutTreeIndex> {
   const index = new Map<string, string>();
   for await (const file of walkFiles(outDir)) {
     const rel = relative(outDir, file);
@@ -99,12 +104,12 @@ function paletteSlug(name: string): string {
 export async function convertBmdTree(
   graphics: GraphicsBindingSet,
   outDir: string,
+  tree: OutTreeIndex,
   onItem?: StageItemReporter,
 ): Promise<BmdConversion[]> {
   const { bindings, palettes, buildTimeBmds } = graphics;
   const done: BmdConversion[] = [];
   const paletteByName = paletteAliasMap(palettes);
-  const tree = await indexOutTree(outDir);
   for (const [processed, binding] of bindings.entries()) {
     onItem?.(processed, bindings.length);
     const pcxRel = paletteByName.get(binding.paletteName);
@@ -164,8 +169,11 @@ const SHADOW_ATLAS_SUFFIX = 'shadow';
  * atlas per shadow `.bmd` — recolours share it (a shadow has no palette). Boundary failures
  * warn-and-skip per file, like every tree-walk stage.
  */
-export async function convertShadowBmdTree(graphics: GraphicsBindingSet, outDir: string): Promise<string[]> {
-  const tree = await indexOutTree(outDir);
+export async function convertShadowBmdTree(
+  graphics: GraphicsBindingSet,
+  outDir: string,
+  tree: OutTreeIndex,
+): Promise<string[]> {
   const seen = new Set<string>();
   const done: string[] = [];
   for (const binding of graphics.bindings) {

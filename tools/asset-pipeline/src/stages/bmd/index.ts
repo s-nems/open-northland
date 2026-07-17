@@ -8,5 +8,12 @@
  * `GraphicsBindingSet` (erased at build — no runtime cross-import).
  */
 
-export * from './bindings.js';
-export * from './convert.js';
+export { type GraphicsBindingSet, jobBaseGraphicsToBindings, resolveGraphicsBindings } from './bindings.js';
+export {
+  type BmdConversion,
+  bmdToAtlas,
+  convertBmdTree,
+  convertShadowBmdTree,
+  indexOutTree,
+  type OutTreeIndex,
+} from './convert.js';

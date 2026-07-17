@@ -18,7 +18,7 @@ export function validateCrossReferences(set: ContentSet): void {
     ...checkLandscapeGfx(set, ids),
     ...checkGoodLandscape(set, ids),
     ...checkGatheringPipeline(set, ids),
-    ...checkTerrainPatterns(set, ids),
+    ...checkTerrainPatterns(set),
     ...checkJobExperience(set, ids),
   ];
 
@@ -228,7 +228,7 @@ function checkGatheringPipeline(
 
 // A terrainPatterns row's representative pick must exist in the full pattern table when that
 // table is carried.
-function checkTerrainPatterns(set: ContentSet, _ids: IdSets): string[] {
+function checkTerrainPatterns(set: ContentSet): string[] {
   if (set.gfxPatterns.length === 0) return [];
   const errors: string[] = [];
   const patternIds = new Set(set.gfxPatterns.map((p) => p.id));

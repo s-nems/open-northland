@@ -90,6 +90,11 @@ export function decodeFnt(bytes: Uint8Array): Font {
     );
   }
   const bmd = decodeBmd(bytes.subarray(FONT_PREFIX_BYTES));
+  // A font's glyph container starts at bob 0, which is what makes char `FONT_FIRST_CHAR + i` addressable
+  // as `glyphs[c - firstChar]` ({@link fontMetrics}). A non-zero origin would silently shift every glyph.
+  if (bmd.firstBobId !== 0) {
+    throw new Error(`fnt: glyph container must start at bob 0, got ${bmd.firstBobId}`);
+  }
 
   return { version, value08, value0C, bmd };
 }

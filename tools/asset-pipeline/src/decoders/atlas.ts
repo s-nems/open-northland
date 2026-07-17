@@ -29,7 +29,7 @@ import { assertPaletteBytes, paletteToRgba, type RgbaImage } from './image.js';
 export const ATLAS_GUTTER = 1;
 
 /** Default atlas width the shelf packer wraps at; frames wider than this still fit (they get their own row). */
-export const DEFAULT_ATLAS_MAX_WIDTH = 1024;
+const DEFAULT_ATLAS_MAX_WIDTH = 1024;
 
 /** One frame's placement + metadata in the atlas. JSON-serializable (plain numbers/booleans only). */
 export interface AtlasFrame {
@@ -166,13 +166,7 @@ export interface PackBobAtlasOptions {
  */
 export function packBobAtlas(bmd: Bmd, palette: Uint8Array, options: PackBobAtlasOptions = {}): BobAtlas {
   const { maxWidth = DEFAULT_ATLAS_MAX_WIDTH, alpha = 'per-pixel' } = options;
-  const expand = (frame: BobFrame): RgbaImage => expandBobFrame(frame, palette);
-  // 'build-time' decodes the pair's second byte as a threshold ('time' mode: every written pixel is
-  // opaque in the colour plane — including the byte-0 pixels an alpha decode would hole) and packs the
-  // thresholds into the same-placement time sheet.
-  return alpha === 'build-time'
-    ? packBobAtlasWith(bmd, expand, maxWidth, expandBobFrameTime)
-    : packBobAtlasWith(bmd, expand, maxWidth);
+  return packBobAtlasWith(bmd, (frame) => expandBobFrame(frame, palette), maxWidth, alpha);
 }
 
 /**
@@ -225,8 +219,8 @@ function expandBobFrameShadow(frame: BobFrame): RgbaImage {
  * blend-mode blit.
  * Placement/manifest semantics match {@link packBobAtlas}; no palette is involved.
  */
-export function packShadowBobAtlas(bmd: Bmd, maxWidth = DEFAULT_ATLAS_MAX_WIDTH): BobAtlas {
-  return packBobAtlasWith(bmd, expandBobFrameShadow, maxWidth);
+export function packShadowBobAtlas(bmd: Bmd): BobAtlas {
+  return packBobAtlasWith(bmd, expandBobFrameShadow, DEFAULT_ATLAS_MAX_WIDTH, 'per-pixel');
 }
 
 /**
@@ -240,8 +234,8 @@ export function packShadowBobAtlas(bmd: Bmd, maxWidth = DEFAULT_ATLAS_MAX_WIDTH)
  * texel's alpha (nearest sampling keeps the index channel exact), so the type-4 bobs' authored feathered
  * translucency (12.6% of ls_goods' visible pixels carry sub-128 alpha) survives into the drawn sprite.
  */
-export function packIndexedBobAtlas(bmd: Bmd, maxWidth = DEFAULT_ATLAS_MAX_WIDTH): BobAtlas {
-  return packBobAtlasWith(bmd, expandBobFrameIndexed, maxWidth);
+export function packIndexedBobAtlas(bmd: Bmd): BobAtlas {
+  return packBobAtlasWith(bmd, expandBobFrameIndexed, DEFAULT_ATLAS_MAX_WIDTH, 'per-pixel');
 }
 
 /**
@@ -249,21 +243,24 @@ export function packIndexedBobAtlas(bmd: Bmd, maxWidth = DEFAULT_ATLAS_MAX_WIDTH
  * shelf-pack the non-empty frames, and emit the sheet + manifest. Parameterising only the per-frame
  * expansion keeps the RGB ({@link packBobAtlas}) and indexed ({@link packIndexedBobAtlas}) atlases on one
  * packing/manifest path. `expand` is called only for frames with pixels, so it always receives a real frame.
- * `expandTime` (the `'build-time'` bake) switches the decode to `'time'` and emits a second sheet with the
- * identical placement — one shelf pack, two planes.
+ * `'build-time'` decodes the pair's second byte as a threshold (every written pixel stays opaque in the
+ * colour plane — including the byte-0 pixels an alpha decode would hole) and emits a second sheet at the
+ * identical placement: one shelf pack, two planes.
  */
 function packBobAtlasWith(
   bmd: Bmd,
   expand: (frame: BobFrame) => RgbaImage,
-  maxWidth = DEFAULT_ATLAS_MAX_WIDTH,
-  expandTime?: (frame: BobFrame) => RgbaImage,
+  maxWidth: number,
+  alpha: AtlasAlphaMode,
 ): BobAtlas {
+  const buildTime = alpha === 'build-time';
+
   // 1. Decode + expand every bob; record which produced pixels.
   const prepared: PreparedFrame[] = [];
   for (let i = 0; i < bmd.bobCount; i++) {
     const bob = bmd.bobs[i];
     if (bob === undefined) continue;
-    const frame = decodeBobFrame(bmd, i, expandTime === undefined ? 'alpha' : 'time');
+    const frame = decodeBobFrame(bmd, i, buildTime ? 'time' : 'alpha');
     const hasPixels = frame.width > 0 && frame.height > 0;
     let opaque = false;
     if (hasPixels) {
@@ -282,7 +279,7 @@ function packBobAtlasWith(
       width: frame.width,
       height: frame.height,
       image: hasPixels ? expand(frame) : undefined,
-      timeImage: hasPixels && expandTime !== undefined ? expandTime(frame) : undefined,
+      timeImage: hasPixels && buildTime ? expandBobFrameTime(frame) : undefined,
       opaque,
     });
   }
@@ -314,8 +311,9 @@ function packBobAtlasWith(
   const width = Math.max(1, atlasWidth);
   const height = Math.max(1, atlasHeight);
   const image: RgbaImage = { width, height, rgba: new Uint8Array(width * height * 4) };
-  const timeImage: RgbaImage | undefined =
-    expandTime === undefined ? undefined : { width, height, rgba: new Uint8Array(width * height * 4) };
+  const timeImage: RgbaImage | undefined = buildTime
+    ? { width, height, rgba: new Uint8Array(width * height * 4) }
+    : undefined;
 
   const frames: AtlasFrame[] = [];
   for (let i = 0; i < prepared.length; i++) {

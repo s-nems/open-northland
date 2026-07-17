@@ -28,7 +28,7 @@ import type { MapDatChunk } from './container.js';
 
 export const MAP_LAYER_HEADER_SIZE = 0x15;
 /** "pck" as it appears on disk ("kcp", reversed like the chunk tags), at inner offset +0x05. */
-export const MAP_LAYER_MARKER = 'kcp';
+const MAP_LAYER_MARKER = 'kcp';
 /** The 8-bit-per-cell codec id at inner offset +0x08. */
 export const MAP_LAYER_CODEC_X8 = 'X8el';
 /** The 6-bit codec id (entity-ownership layers); recognized but not unpacked here. */

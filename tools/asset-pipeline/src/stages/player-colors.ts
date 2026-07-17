@@ -2,16 +2,12 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { packBobAtlas, packIndexedBobAtlas } from '../decoders/atlas.js';
 import { decodeBmd } from '../decoders/bmd/index.js';
+import { buildPaletteLutImage } from '../decoders/image.js';
 import { type BmdPaletteBinding, normalizeAssetPath } from '../decoders/ini.js';
 import { decodePcx } from '../decoders/pcx.js';
-import {
-  buildPlayerLutImage,
-  composePlayerPalette,
-  PLAYER_COLORS,
-  synthesizePlayerSource,
-} from '../decoders/player-palette.js';
+import { composePlayerPalette, PLAYER_COLORS, synthesizePlayerSource } from '../decoders/player-palette.js';
 import { encodePng } from '../decoders/png.js';
-import { indexOutTree } from './bmd/index.js';
+import type { OutTreeIndex } from './bmd/index.js';
 import { BOBS_DIR, writeAtlasBeside } from './game-file.js';
 
 /**
@@ -75,8 +71,10 @@ export interface PlayerColorLutResult {
  * required for any player colour to exist. The colours' names/ids live in code (`PLAYER_COLORS`, mirrored
  * app-side for the gallery labels) and the LUT row order is that slot order, so no sidecar descriptor is needed.
  */
-export async function convertPlayerColorLut(outDir: string): Promise<PlayerColorLutResult> {
-  const tree = await indexOutTree(outDir);
+export async function convertPlayerColorLut(
+  outDir: string,
+  tree: OutTreeIndex,
+): Promise<PlayerColorLutResult> {
   const base = await readCreaturePalette(outDir, tree, BASE_PALETTE_PCX);
   const reference = await readCreaturePalette(outDir, tree, SYNTHETIC_REFERENCE_PCX);
   const palettes: Uint8Array[] = [];
@@ -89,7 +87,7 @@ export async function convertPlayerColorLut(outDir: string): Promise<PlayerColor
   }
   await mkdir(join(outDir, BOBS_DIR), { recursive: true }); // bobs dir may not exist if no atlas landed there
   const pngRel = join(BOBS_DIR, 'player-lut.png');
-  await writeFile(join(outDir, pngRel), encodePng(buildPlayerLutImage(palettes)));
+  await writeFile(join(outDir, pngRel), encodePng(buildPaletteLutImage(palettes)));
   return { png: pngRel, colors: palettes.length };
 }
 
@@ -100,8 +98,7 @@ export async function convertPlayerColorLut(outDir: string): Promise<PlayerColor
  * graded edge alpha survives only the RGB bake; the atlases are tiny (19 small bobs), so 16 of them
  * cost nothing next to one house sheet. Returns the emitted per-player atlas count.
  */
-export async function convertGuidepostPlayerAtlases(outDir: string): Promise<number> {
-  const tree = await indexOutTree(outDir);
+export async function convertGuidepostPlayerAtlases(outDir: string, tree: OutTreeIndex): Promise<number> {
   const onDisk = tree.get(normalizeAssetPath(GUIDEPOST_BMD));
   if (onDisk === undefined) throw new Error('guidepost atlases: ls_guidepost.bmd not found under out');
   const bmd = decodeBmd(await readFile(join(outDir, onDisk)));
@@ -130,8 +127,8 @@ export async function convertGuidepostPlayerAtlases(outDir: string): Promise<num
 export async function convertIndexedCharacterAtlases(
   bindings: readonly BmdPaletteBinding[],
   outDir: string,
+  tree: OutTreeIndex,
 ): Promise<string[]> {
-  const tree = await indexOutTree(outDir);
   const characterBmds = new Set<string>();
   for (const b of bindings) {
     if (CHARACTER_BMD_RE.test(b.bmd) && /\.bmd$/i.test(b.bmd)) characterBmds.add(b.bmd);

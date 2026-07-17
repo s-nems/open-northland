@@ -126,7 +126,8 @@ export function jobBaseGraphicsToBindings(records: readonly JobBaseGraphicsBindi
 export async function resolveGraphicsBindings(roots: SourceRoots): Promise<GraphicsBindingSet> {
   const readIni = async (rel: string): Promise<RuleSection[] | undefined> => {
     try {
-      const path = (await resolveSourceFile(roots, rel)) ?? join(roots.game, rel);
+      const path = await resolveSourceFile(roots, rel);
+      if (path === undefined) throw new Error('unresolved');
       return parseIniSections(decodeIni(await readFile(path)));
     } catch {
       console.warn(`[pipeline] graphics binding source not found, skipping: ${rel}`);
@@ -135,7 +136,8 @@ export async function resolveGraphicsBindings(roots: SourceRoots): Promise<Graph
   };
   const readCif = async (rel: string): Promise<RuleSection[] | undefined> => {
     try {
-      const path = (await resolveSourceFile(roots, rel)) ?? join(roots.game, rel);
+      const path = await resolveSourceFile(roots, rel);
+      if (path === undefined) throw new Error('unresolved');
       return cifLinesToSections(decodeCifStringArray(await readFile(path)).lines);
     } catch {
       console.warn(`[pipeline] graphics binding source not found or corrupt, skipping: ${rel}`);

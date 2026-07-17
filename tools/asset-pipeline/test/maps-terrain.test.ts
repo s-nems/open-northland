@@ -2,7 +2,7 @@ import { parseTerrainMap } from '@open-northland/data';
 import { describe, expect, it, vi } from 'vitest';
 import { encodeMapDat, encodeMapSize, packMapLayer, packX6elLayer } from '../src/decoders/mapdat/index.js';
 import { mapDatToTerrain } from '../src/stages/maps/index.js';
-import { buildMapDat } from './fixtures/mapdat.js';
+import { buildMapDat, encodeStringList } from './fixtures/mapdat.js';
 
 describe('mapDatToTerrain', () => {
   it('decodes a synthetic map.dat into the per-cell TerrainMap (dominant half-cell per cell)', () => {
@@ -40,17 +40,6 @@ describe('mapDatToTerrain', () => {
     expect(() => mapDatToTerrain(Uint8Array.from([1, 2, 3, 4]))).toThrow(/mapdat/);
   });
 
-  /** Encodes a name-dictionary payload: [u32 count] then per entry [u8 len][bytes][0x00]. */
-  const stringList = (names: string[]): Uint8Array => {
-    const bytes: number[] = [names.length & 0xff, (names.length >>> 8) & 0xff, 0, 0];
-    for (const n of names) {
-      bytes.push(n.length);
-      for (let i = 0; i < n.length; i++) bytes.push(n.charCodeAt(i) & 0xff);
-      bytes.push(0);
-    }
-    return Uint8Array.from(bytes);
-  };
-
   it('emits the ground layer from empa/empb + the eapd name dictionary, compacted to used names', () => {
     // 2×1 grid. The eapd dictionary has 4 names; the lanes only use ids 1 and 3, so the emitted
     // pattern list is compacted to those two (ascending), and the lanes remap onto it.
@@ -62,7 +51,7 @@ describe('mapDatToTerrain', () => {
       {
         tag: 'eapd',
         version: 1,
-        payload: stringList(['border', 'meadow 01', 'water 01', 'block meadow 00 01 00']),
+        payload: encodeStringList(['border', 'meadow 01', 'water 01', 'block meadow 00 01 00']),
       },
     ]);
     const terrain = mapDatToTerrain(bytes);
@@ -83,7 +72,7 @@ describe('mapDatToTerrain', () => {
       { tag: 'emt2', version: 1, payload: packMapLayer(Uint8Array.from([7, 255])) },
       { tag: 'emt3', version: 1, payload: packMapLayer(Uint8Array.from([255, 11])) },
       { tag: 'emt4', version: 1, payload: packMapLayer(Uint8Array.from([255, 255])) },
-      { tag: 'eatd', version: 1, payload: stringList(['meadow 1', 'meadow 2']) },
+      { tag: 'eatd', version: 1, payload: encodeStringList(['meadow 1', 'meadow 2']) },
     ]);
     const terrain = mapDatToTerrain(bytes);
     expect(terrain.transitions).toEqual({
@@ -95,32 +84,12 @@ describe('mapDatToTerrain', () => {
     });
   });
 
-  it('degrades an out-of-dictionary transition value to a grid without the layer (warn, keep the grid)', () => {
-    // Value 12 → transition index 2, but the dictionary has 2 entries — a corrupt lane drops only
-    // the optional transitions layer, never the nav grid.
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    const bytes = encodeMapDat([
-      { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 1, height: 1 }) },
-      { tag: 'lmlt', version: 1, payload: packMapLayer(Uint8Array.from([0, 0, 0, 0])) },
-      { tag: 'emt1', version: 1, payload: packMapLayer(Uint8Array.from([12])) },
-      { tag: 'emt2', version: 1, payload: packMapLayer(Uint8Array.from([255])) },
-      { tag: 'emt3', version: 1, payload: packMapLayer(Uint8Array.from([255])) },
-      { tag: 'emt4', version: 1, payload: packMapLayer(Uint8Array.from([255])) },
-      { tag: 'eatd', version: 1, payload: stringList(['meadow 1', 'meadow 2']) },
-    ]);
-    const terrain = mapDatToTerrain(bytes);
-    expect(terrain.typeIds).toEqual([1]); // the nav grid survives
-    expect(terrain.transitions).toBeUndefined();
-    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/transition lanes unreadable.*outside/));
-    warn.mockRestore();
-  });
-
   it('omits the transitions layer when any of the five chunks is missing (older/foreign saves)', () => {
     const bytes = encodeMapDat([
       { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 1, height: 1 }) },
       { tag: 'lmlt', version: 1, payload: packMapLayer(Uint8Array.from([0, 0, 0, 0])) },
       { tag: 'emt1', version: 1, payload: packMapLayer(Uint8Array.from([255])) },
-      { tag: 'eatd', version: 1, payload: stringList(['meadow 1']) },
+      { tag: 'eatd', version: 1, payload: encodeStringList(['meadow 1']) },
     ]);
     expect(mapDatToTerrain(bytes).transitions).toBeUndefined();
   });
@@ -157,7 +126,7 @@ describe('mapDatToTerrain', () => {
       { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 1, height: 1 }) },
       { tag: 'lmlt', version: 1, payload: packMapLayer(Uint8Array.from([0, 4, 0, 0])) },
       { tag: 'emla', version: 1, payload: packX6elLayer(Uint16Array.from([0xffff, 2, 0, 0xffff])) },
-      { tag: 'eald', version: 1, payload: stringList(['stones 02 grey', 'unused', 'palm 03']) },
+      { tag: 'eald', version: 1, payload: encodeStringList(['stones 02 grey', 'unused', 'palm 03']) },
     ]);
     const terrain = mapDatToTerrain(bytes);
     expect(terrain.objects).toEqual({
@@ -181,7 +150,7 @@ describe('mapDatToTerrain', () => {
       { tag: 'lmlt', version: 1, payload: packMapLayer(Uint8Array.from([0, 4, 0, 0])) },
       { tag: 'emla', version: 1, payload: packX6elLayer(Uint16Array.from([0xffff, 2, 0, 0xffff])) },
       { tag: 'lmlv', version: 1, payload: packMapLayer(Uint8Array.from([0, 3, 100, 0])) },
-      { tag: 'eald', version: 1, payload: stringList(['stones 02 grey', 'unused', 'palm 03']) },
+      { tag: 'eald', version: 1, payload: encodeStringList(['stones 02 grey', 'unused', 'palm 03']) },
     ]);
     const terrain = mapDatToTerrain(bytes);
     expect(terrain.objects?.placements).toEqual([1, 0, 1, 0, 1, 0]);
@@ -200,22 +169,6 @@ describe('mapDatToTerrain', () => {
     expect(terrain.elevation).toEqual([12, 234]);
   });
 
-  it('degrades a wrong-sized lmhe lane to a grid-only artifact (warn, keep the nav grid)', () => {
-    // The lmhe lane carries the half-cell count (4) instead of the per-cell count (1) — a dims
-    // mismatch drops only the optional elevation layer, never the nav grid.
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    const bytes = encodeMapDat([
-      { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 1, height: 1 }) },
-      { tag: 'lmlt', version: 1, payload: packMapLayer(Uint8Array.from([0, 0, 0, 0])) },
-      { tag: 'lmhe', version: 1, payload: packMapLayer(Uint8Array.from([5, 5, 5, 5])) },
-    ]);
-    const terrain = mapDatToTerrain(bytes);
-    expect(terrain.typeIds).toEqual([1]); // the nav grid survives
-    expect(terrain.elevation).toBeUndefined();
-    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/elevation lane unreadable.*expected 1/));
-    warn.mockRestore();
-  });
-
   it('collapses the half-cell lmms lane to each cell centre node in the shore layer', () => {
     // lmms is HALF-CELL resolution (2W×2H, unlike per-cell lmhe/embr). A 1×2 grid's lane is a 2×4
     // node grid; each cell keeps its CENTRE node `(2x + (y&1), 2y)` — row 0 reads node index 0,
@@ -227,22 +180,6 @@ describe('mapDatToTerrain', () => {
     ]);
     const terrain = mapDatToTerrain(bytes);
     expect(terrain.shore).toEqual([4, 3]);
-  });
-
-  it('degrades a wrong-sized lmms lane to a grid-only artifact (warn, keep the nav grid)', () => {
-    // A per-cell-sized (1) lane instead of the half-cell count (4): the optional shore layer drops,
-    // the nav grid survives — the same degrade contract as lmhe/embr.
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    const bytes = encodeMapDat([
-      { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 1, height: 1 }) },
-      { tag: 'lmlt', version: 1, payload: packMapLayer(new Uint8Array(4)) },
-      { tag: 'lmms', version: 1, payload: packMapLayer(Uint8Array.from([7])) },
-    ]);
-    const terrain = mapDatToTerrain(bytes);
-    expect(terrain.typeIds).toEqual([1]); // the nav grid survives
-    expect(terrain.shore).toBeUndefined();
-    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/shore lane unreadable.*expected 4/));
-    warn.mockRestore();
   });
 
   it('emits the per-cell brightness lane from embr (baked shading, carried verbatim)', () => {
@@ -258,20 +195,6 @@ describe('mapDatToTerrain', () => {
     expect(terrain.brightness).toEqual([0, 200]);
   });
 
-  it('degrades a wrong-sized embr lane to a grid-only artifact (warn, keep the nav grid)', () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    const bytes = encodeMapDat([
-      { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 1, height: 1 }) },
-      { tag: 'lmlt', version: 1, payload: packMapLayer(Uint8Array.from([0, 0, 0, 0])) },
-      { tag: 'embr', version: 1, payload: packMapLayer(Uint8Array.from([5, 5, 5, 5])) },
-    ]);
-    const terrain = mapDatToTerrain(bytes);
-    expect(terrain.typeIds).toEqual([1]); // the nav grid survives
-    expect(terrain.brightness).toBeUndefined();
-    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/brightness lane unreadable.*expected 1/));
-    warn.mockRestore();
-  });
-
   it('omits ground/objects/elevation/brightness when the map lacks the lanes (an lmlt-only save)', () => {
     const terrain = mapDatToTerrain(buildMapDat(1, 1, [2, 2, 2, 2]));
     expect(terrain.ground).toBeUndefined();
@@ -280,21 +203,94 @@ describe('mapDatToTerrain', () => {
     expect(terrain.brightness).toBeUndefined();
   });
 
-  it('degrades a corrupt render lane to a grid-only artifact (warn, keep the nav grid)', () => {
-    // The empa lane indexes outside its dictionary — the whole map used to be skipped for this,
-    // dropping a nav grid that decoded fine; now only the optional render layer is dropped.
+  /**
+   * Every optional layer degrades the same way: a corrupt or wrong-sized lane drops only that layer
+   * and warns, and the nav grid always survives (the whole map used to be skipped for this). The
+   * per-case chunk lists stay verbatim — each pins its own byte-level evidence, notably the
+   * half-cell (`lmms`) vs per-cell (`lmhe`/`embr`) lane sizing.
+   */
+  const DEGRADE_CASES: readonly {
+    readonly lane: string;
+    readonly why: string;
+    readonly chunks: Parameters<typeof encodeMapDat>[0];
+    readonly layer: 'transitions' | 'elevation' | 'shore' | 'brightness' | 'ground';
+    readonly warns: RegExp;
+  }[] = [
+    {
+      lane: 'emt1',
+      why: 'value 12 → transition index 2, but the dictionary has 2 entries',
+      chunks: [
+        { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 1, height: 1 }) },
+        { tag: 'lmlt', version: 1, payload: packMapLayer(Uint8Array.from([0, 0, 0, 0])) },
+        { tag: 'emt1', version: 1, payload: packMapLayer(Uint8Array.from([12])) },
+        { tag: 'emt2', version: 1, payload: packMapLayer(Uint8Array.from([255])) },
+        { tag: 'emt3', version: 1, payload: packMapLayer(Uint8Array.from([255])) },
+        { tag: 'emt4', version: 1, payload: packMapLayer(Uint8Array.from([255])) },
+        { tag: 'eatd', version: 1, payload: encodeStringList(['meadow 1', 'meadow 2']) },
+      ],
+      layer: 'transitions',
+      warns: /transition lanes unreadable.*outside/,
+    },
+    {
+      lane: 'lmhe',
+      why: 'carries the half-cell count (4) instead of the per-cell count (1)',
+      chunks: [
+        { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 1, height: 1 }) },
+        { tag: 'lmlt', version: 1, payload: packMapLayer(Uint8Array.from([0, 0, 0, 0])) },
+        { tag: 'lmhe', version: 1, payload: packMapLayer(Uint8Array.from([5, 5, 5, 5])) },
+      ],
+      layer: 'elevation',
+      warns: /elevation lane unreadable.*expected 1/,
+    },
+    {
+      lane: 'lmms',
+      why: 'carries the per-cell count (1) instead of the half-cell count (4)',
+      chunks: [
+        { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 1, height: 1 }) },
+        { tag: 'lmlt', version: 1, payload: packMapLayer(new Uint8Array(4)) },
+        { tag: 'lmms', version: 1, payload: packMapLayer(Uint8Array.from([7])) },
+      ],
+      layer: 'shore',
+      warns: /shore lane unreadable.*expected 4/,
+    },
+    {
+      lane: 'embr',
+      why: 'carries the half-cell count (4) instead of the per-cell count (1)',
+      chunks: [
+        { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 1, height: 1 }) },
+        { tag: 'lmlt', version: 1, payload: packMapLayer(Uint8Array.from([0, 0, 0, 0])) },
+        { tag: 'embr', version: 1, payload: packMapLayer(Uint8Array.from([5, 5, 5, 5])) },
+      ],
+      layer: 'brightness',
+      warns: /brightness lane unreadable.*expected 1/,
+    },
+    {
+      lane: 'empa',
+      why: 'indexes outside its eapd dictionary',
+      chunks: [
+        { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 1, height: 1 }) },
+        { tag: 'lmlt', version: 1, payload: packMapLayer(Uint8Array.from([0, 0, 0, 0])) },
+        { tag: 'empa', version: 1, payload: packX6elLayer(Uint16Array.from([7])) },
+        { tag: 'empb', version: 1, payload: packX6elLayer(Uint16Array.from([0])) },
+        { tag: 'eapd', version: 1, payload: encodeStringList(['border']) },
+      ],
+      layer: 'ground',
+      warns: /ground lanes unreadable.*eapd dictionary/,
+    },
+  ];
+
+  it.each(
+    DEGRADE_CASES,
+  )('degrades a $lane lane that $why to a grid-only artifact (warn, keep the nav grid)', ({
+    chunks,
+    layer,
+    warns,
+  }) => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    const bytes = encodeMapDat([
-      { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 1, height: 1 }) },
-      { tag: 'lmlt', version: 1, payload: packMapLayer(Uint8Array.from([0, 0, 0, 0])) },
-      { tag: 'empa', version: 1, payload: packX6elLayer(Uint16Array.from([7])) },
-      { tag: 'empb', version: 1, payload: packX6elLayer(Uint16Array.from([0])) },
-      { tag: 'eapd', version: 1, payload: stringList(['border']) },
-    ]);
-    const terrain = mapDatToTerrain(bytes);
+    const terrain = mapDatToTerrain(encodeMapDat(chunks));
     expect(terrain.typeIds).toEqual([1]); // the nav grid survives
-    expect(terrain.ground).toBeUndefined();
-    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/ground lanes unreadable.*eapd dictionary/));
+    expect(terrain[layer]).toBeUndefined();
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(warns));
     warn.mockRestore();
   });
 });

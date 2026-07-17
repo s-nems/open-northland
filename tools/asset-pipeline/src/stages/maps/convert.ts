@@ -11,7 +11,7 @@ import {
 } from '../../decoders/ini.js';
 import type { StageItemReporter } from '../../progress.js';
 import { collectSourceFilesNamed, rootsInOrder, type SourceRoots } from '../../roots.js';
-import { findPathCaseInsensitiveInDirs } from './case-path.js';
+import { findPathCaseInsensitive, findPathCaseInsensitiveInDirs } from './case-path.js';
 import { mapIdFromPath } from './info.js';
 import { loadMapStringTable, resolveMapMeta } from './meta.js';
 import { minimapToPng } from './minimap.js';
@@ -91,8 +91,12 @@ export async function convertMapDatTree(
     const mapDirs = rootsInOrder(roots).map((root) => join(root, dirname(rel)));
     let cifSections: readonly RuleSection[] | undefined;
     for (const mapDir of mapDirs) {
+      // Case-insensitively, like every sibling read here: the map folders mix casing freely, which a
+      // case-sensitive filesystem would otherwise turn into a silently missing entity layer.
+      const cifPath = await findPathCaseInsensitive(mapDir, ['map.cif']);
+      if (cifPath === null) continue;
       try {
-        const cifBytes = await readFile(join(mapDir, 'map.cif'));
+        const cifBytes = await readFile(cifPath);
         cifSections = cifLinesToSections(decodeCifStringArray(cifBytes).lines);
         const entities = extractStaticObjects(cifSections);
         if (entities !== undefined) terrain = { ...terrain, entities };

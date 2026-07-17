@@ -1,4 +1,3 @@
-export * from './cross-references.js';
 export * from './footprint.js';
 export * from './lookup.js';
 export * from './schema/index.js';

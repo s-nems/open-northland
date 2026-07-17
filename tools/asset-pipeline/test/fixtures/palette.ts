@@ -13,3 +13,14 @@ export const rampPalette = (): Uint8Array => {
   }
   return p;
 };
+
+/** A 768-byte palette with every entry set to one RGB triple. */
+export const solidPalette = (r: number, g: number, b: number): Uint8Array => {
+  const p = new Uint8Array(768);
+  for (let i = 0; i < 256; i++) {
+    p[i * 3] = r;
+    p[i * 3 + 1] = g;
+    p[i * 3 + 2] = b;
+  }
+  return p;
+};

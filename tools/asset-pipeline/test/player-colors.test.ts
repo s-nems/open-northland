@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { encodePcx } from '../src/decoders/pcx.js';
 import { PLAYER_COLORS } from '../src/decoders/player-palette.js';
 import { decodePng } from '../src/decoders/png.js';
+import { indexOutTree } from '../src/stages/bmd/index.js';
 import { convertPlayerColorLut } from '../src/stages/player-colors.js';
 import { BOBS_DIR, makeTempDir } from './support/game-tree.js';
 
@@ -57,7 +58,7 @@ describe('convertPlayerColorLut', () => {
 
   it('composes one LUT row per player colour into a 256×N PNG', async () => {
     const outDir = await outTreeWithSources();
-    const result = await convertPlayerColorLut(outDir);
+    const result = await convertPlayerColorLut(outDir, await indexOutTree(outDir));
 
     expect(result.colors).toBe(PLAYER_COLORS.length);
     expect(result.png).toBe(join(BOBS_DIR, 'player-lut.png'));
@@ -70,6 +71,8 @@ describe('convertPlayerColorLut', () => {
   it('throws when the base creature palette is absent from the out tree', async () => {
     const { path: outDir, cleanup } = await makeTempDir('player-lut-empty');
     tempCleanups.push(cleanup);
-    await expect(convertPlayerColorLut(outDir)).rejects.toThrow(/test_human_00\.pcx not found/);
+    await expect(convertPlayerColorLut(outDir, await indexOutTree(outDir))).rejects.toThrow(
+      /test_human_00\.pcx not found/,
+    );
   });
 });

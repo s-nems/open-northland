@@ -65,6 +65,42 @@ interface DecodedMap {
  * outside the dictionary (a corrupt lane — {@link mapDatToTerrain} catches per layer and emits the
  * grid without it).
  */
+/** A compacted dictionary: the used names in ascending source-id order + the old-id → new-index remap. */
+interface CompactedDictionary {
+  readonly names: string[];
+  readonly indexById: ReadonlyMap<number, number>;
+}
+
+/**
+ * Compacts a lane's dictionary: collect the ids the lanes actually use, order them ascending, and
+ * remap them onto a dense list of names. Ascending source-id order is load-bearing — it is the
+ * emitted layer's join key onto the extracted tables, so a re-run stays byte-identical. `skip` is the
+ * lane's empty sentinel, if it has one. Throws (`mapdat:` prefix) on an id outside `names`.
+ */
+function compactDictionary(
+  lanes: readonly Iterable<number>[],
+  names: readonly string[],
+  what: { readonly lane: string; readonly noun: string; readonly dict: string; readonly skip?: number },
+): CompactedDictionary {
+  const used = new Set<number>();
+  for (const lane of lanes) {
+    for (const v of lane) if (v !== what.skip) used.add(v);
+  }
+  const indexById = new Map<number, number>();
+  const compacted: string[] = [];
+  for (const id of [...used].sort((x, y) => x - y)) {
+    const name = names[id];
+    if (name === undefined) {
+      throw new Error(
+        `mapdat: ${what.lane} ${what.noun} id ${id} outside the ${names.length}-entry ${what.dict} dictionary`,
+      );
+    }
+    indexById.set(id, compacted.length);
+    compacted.push(name);
+  }
+  return { names: compacted, indexById };
+}
+
 function groundFromMapDat({ map, size }: DecodedMap): MapDatTerrainFile['ground'] {
   const empa = findChunk(map, 'empa');
   const empb = findChunk(map, 'empb');
@@ -77,26 +113,16 @@ function groundFromMapDat({ map, size }: DecodedMap): MapDatTerrainFile['ground'
   if (laneA.length !== cells || laneB.length !== cells) {
     throw new Error(`mapdat: empa/empb lanes have ${laneA.length}/${laneB.length} cells, expected ${cells}`);
   }
-  // Compact: collect the used dictionary ids (ascending), remap the lanes onto the compact list.
-  const used = new Set<number>();
-  for (const v of laneA) used.add(v);
-  for (const v of laneB) used.add(v);
-  const usedIds = [...used].sort((x, y) => x - y);
-  const compactIndex = new Map<number, number>();
-  const patterns: string[] = [];
-  for (const id of usedIds) {
-    const name = names[id];
-    if (name === undefined) {
-      throw new Error(`mapdat: empa/empb pattern id ${id} outside the ${names.length}-entry eapd dictionary`);
-    }
-    compactIndex.set(id, patterns.length);
-    patterns.push(name);
-  }
+  const { names: patterns, indexById } = compactDictionary([laneA, laneB], names, {
+    lane: 'empa/empb',
+    noun: 'pattern',
+    dict: 'eapd',
+  });
   const a = new Array<number>(cells);
   const b = new Array<number>(cells);
   for (let i = 0; i < cells; i++) {
-    a[i] = compactIndex.get(laneA[i] as number) as number;
-    b[i] = compactIndex.get(laneB[i] as number) as number;
+    a[i] = indexById.get(laneA[i] as number) as number;
+    b[i] = indexById.get(laneB[i] as number) as number;
   }
   return { patterns, a, b };
 }
@@ -170,19 +196,12 @@ function objectsFromMapDat({ map, size }: DecodedMap): MapDatTerrainFile['object
   if (stateLane !== undefined && stateLane.length !== lane.length) {
     throw new Error(`mapdat: lmlv lane has ${stateLane.length} half-cells, expected ${lane.length}`);
   }
-  const used = new Set<number>();
-  for (const v of lane) if (v !== EMLA_EMPTY) used.add(v);
-  const usedIds = [...used].sort((x, y) => x - y);
-  const compactIndex = new Map<number, number>();
-  const types: string[] = [];
-  for (const id of usedIds) {
-    const name = names[id];
-    if (name === undefined) {
-      throw new Error(`mapdat: emla object id ${id} outside the ${names.length}-entry eald dictionary`);
-    }
-    compactIndex.set(id, types.length);
-    types.push(name);
-  }
+  const { names: types, indexById } = compactDictionary([lane], names, {
+    lane: 'emla',
+    noun: 'object',
+    dict: 'eald',
+    skip: EMLA_EMPTY,
+  });
   const placements: number[] = [];
   const levels: number[] = [];
   for (let hy = 0; hy < hh; hy++) {
@@ -190,7 +209,7 @@ function objectsFromMapDat({ map, size }: DecodedMap): MapDatTerrainFile['object
       const i = hy * hw + hx;
       const v = lane[i] as number;
       if (v === EMLA_EMPTY) continue;
-      placements.push(hx, hy, compactIndex.get(v) as number);
+      placements.push(hx, hy, indexById.get(v) as number);
       if (stateLane !== undefined) levels.push(stateLane[i] as number);
     }
   }

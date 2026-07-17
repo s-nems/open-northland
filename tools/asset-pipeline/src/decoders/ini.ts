@@ -36,6 +36,7 @@ export type {
 export {
   cifLinesToSections,
   decodeIni,
+  makeSource,
   normalizeAssetPath,
   parseIniSections,
 } from './ini/grammar.js';
@@ -52,11 +53,7 @@ export {
   extractStringTable,
   latin1ToCp1250,
 } from './ini/string-tables.js';
-export {
-  buildTerrainPatterns,
-  extractPatterns,
-  extractPatternTransitions,
-} from './ini/terrain.js';
+export { extractPatterns, extractPatternTransitions } from './ini/terrain.js';
 export {
   extractAnimals,
   extractArmor,
@@ -64,11 +61,7 @@ export {
   extractVehicles,
   extractWeapons,
 } from './ini/types/actors.js';
-export {
-  extractBuildings,
-  fillBuildingRecipes,
-  stripVehicleGoods,
-} from './ini/types/buildings.js';
+export { extractBuildings } from './ini/types/buildings.js';
 export { extractGoods } from './ini/types/goods.js';
 export {
   extractJobExperience,
@@ -76,7 +69,6 @@ export {
   extractTribes,
 } from './ini/types/jobs.js';
 export {
-  buildGatheringPipeline,
   extractLandscape,
   extractLandscapeGfx,
   extractTrianglePatternTypes,

@@ -1,4 +1,5 @@
-import { HOME_KIND, type VikingBuilding } from '../../catalog/buildings.js';
+import { BUILDING_KIND } from '@open-northland/data';
+import type { VikingBuilding } from '../../catalog/buildings.js';
 import { BUILDING_HOME_00, GOOD_STONE, GOOD_WOOD } from './ids/index.js';
 
 /**
@@ -50,7 +51,7 @@ const DEFAULT_BUILD_HITPOINTS = 40000;
 
 /** The build-material cost for a catalog building: its home-tier parcel for a home, else its class cost. */
 export function buildingConstructionCost(b: VikingBuilding): readonly { goodType: number; amount: number }[] {
-  if (b.kind === HOME_KIND) {
+  if (b.kind === BUILDING_KIND.home) {
     const level = b.typeId - BUILDING_HOME_00;
     const clamped = Math.min(Math.max(level, 0), HOME_BUILD_COST_BY_LEVEL.length - 1);
     return HOME_BUILD_COST_BY_LEVEL[clamped] ?? DEFAULT_BUILD_COST;

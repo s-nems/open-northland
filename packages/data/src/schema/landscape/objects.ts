@@ -95,8 +95,8 @@ export const LandscapeGfx = z.strictObject({
   editName: z.string().optional(),
   /** `EditGroups` — editor grouping tags, kept verbatim. */
   editGroups: z.array(z.string()).default([]),
-  /** `LogicType` — the {@link LandscapeType.typeId} this object counts as (tree=4, rock=15, …); 0/absent = pure decor. */
-  logicType: TypeId.default(0),
+  /** `LogicType` — the {@link LandscapeType.typeId} this object counts as (tree=4, rock=15, …); {@link LOGIC_TYPE_NONE}/absent = pure decor. */
+  logicType: TypeId.default(LOGIC_TYPE_NONE),
   /** `LogicMaximumValency` — the object's harvest/cluster capacity (tree=3, …). */
   maxValency: z.number().int().nonnegative().optional(),
   /** `LogicIsWorkable` — whether a settler can work (harvest) this object. */
