@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  type AuthoredJoinRows,
-  resolveAuthoredPlacements,
-} from '../src/slice/authored-placements.js';
+import { type AuthoredJoinRows, resolveAuthoredPlacements } from '../src/slice/authored-placements.js';
 import { AUTHORED_ENTITIES, AUTHORED_ROWS } from './support/authored-entities.js';
 import { authoredMap } from './support/slice-maps.js';
 
