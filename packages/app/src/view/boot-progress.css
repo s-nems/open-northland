@@ -1,0 +1,128 @@
+/* The boot card (view/boot-progress.ts). Deliberately the main menu's vocabulary — same backdrop, serif,
+   carved-wood frame and gold — so menu → loading → game reads as one screen rather than three. The menu
+   navigates by full page load, so the backdrop is already in the HTTP cache when this card draws. */
+
+.boot-card {
+  --boot-cream: #ead8aa;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  box-sizing: border-box;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: clamp(20px, 4vh, 38px);
+  padding: 24px;
+  color: var(--boot-cream);
+  font-family: Palatino, "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  /* Two scrims over the art, both heavier than the menu's — the menu only had to stay behind opaque
+     panels, whereas here the card sits directly on the art. The pool darkens the centre so the logo and
+     label keep their contrast against whatever the backdrop happens to show; the vignette drops the
+     edges so the art reads as atmosphere and never pulls the eye off the bar. */
+  background:
+    radial-gradient(
+      ellipse 55% 40% at center,
+      rgba(4, 3, 2, 0.86) 0%,
+      rgba(4, 3, 2, 0.45) 65%,
+      transparent 100%
+    ),
+    radial-gradient(
+      ellipse at center,
+      rgba(7, 5, 3, 0.4) 0%,
+      rgba(5, 3, 2, 0.72) 55%,
+      rgba(2, 1, 1, 0.95) 100%
+    ),
+    var(--boot-backdrop) center 48% / cover;
+}
+
+/* The menu's loom weave, so the art keeps the same woven-cloth texture the player just left. */
+.boot-card::before {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+  background: repeating-linear-gradient(8deg, rgba(255, 235, 181, 0.018) 0 1px, transparent 1px 5px);
+}
+
+.boot-card__brand {
+  position: relative;
+  height: clamp(64px, 10vh, 120px);
+  width: auto;
+  filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.85));
+}
+
+/* The carved frame around the bar — the menu's language-switch panel, widened. */
+.boot-card__frame {
+  position: relative;
+  box-sizing: border-box;
+  width: min(440px, 80vw);
+  padding: 6px;
+  border: 3px ridge #805326;
+  border-radius: 4px;
+  background: linear-gradient(#3b2413, #201208);
+  box-shadow:
+    inset 0 0 0 1px #b17a39,
+    0 8px 22px rgba(0, 0, 0, 0.65);
+}
+
+.boot-card__track {
+  position: relative;
+  height: 15px;
+  overflow: hidden;
+  border: 1px solid #160b05;
+  border-radius: 2px;
+  background: linear-gradient(#180e05, #2a1a0c);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.85);
+}
+
+/* The fill is the menu's selected-entry gradient, so "done" reads in the same gold as "chosen". */
+.boot-card__bar {
+  position: relative;
+  width: 0;
+  height: 100%;
+  overflow: hidden;
+  background: linear-gradient(#f0d88f, #d0a24f 52%, #a8702c);
+  box-shadow:
+    inset 0 1px #fff3c7,
+    0 0 10px rgba(221, 170, 76, 0.5);
+  transition: width 240ms ease-out;
+}
+
+/* A slow sheen across the filled span. The bar holds still through the long steps (a step is one
+   discrete jump), so without a live element the card reads as frozen rather than working. */
+.boot-card__bar::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background: linear-gradient(100deg, transparent 25%, rgba(255, 248, 220, 0.45) 50%, transparent 75%);
+  animation: boot-card-sheen 1.8s linear infinite;
+}
+
+@keyframes boot-card-sheen {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.boot-card__label {
+  position: relative;
+  min-height: 1.4em;
+  color: #e8c978;
+  font-size: clamp(14px, 1.6vh, 17px);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-shadow: 0 2px #160b05;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boot-card__bar {
+    transition: none;
+  }
+
+  .boot-card__bar::after {
+    animation: none;
+  }
+}

@@ -67,7 +67,6 @@ export const plSurfaces = {
     } as Readonly<Record<number, string>>,
   },
   loading: {
-    title: 'Wczytywanie',
     graphics: 'Uruchamianie grafiki…',
     map: 'Wczytywanie mapy…',
     content: 'Wczytywanie zawartości gry…',
