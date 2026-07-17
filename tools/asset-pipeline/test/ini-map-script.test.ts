@@ -125,4 +125,52 @@ player 3 #PLAYER_TYPE_NONE #TRIBE_TYPE_HUMAN_FRANK #PLAYER_COLOR_ID_RED
   it('returns undefined when no script section yields anything', () => {
     expect(extractMapScript(parseIniSections('[logiccontrol]\nmapsize 10 10\n'), SRC)).toBeUndefined();
   });
+
+  it('types the [multiplayer] lobby table in the plaintext macro skin', () => {
+    // Mirrors Magiczny_Las player.inc: per-slot options, a hidden scripted slot, and the corpus's
+    // hand-wrapped continuation quirk (a bare #PLAYER_TYPE_NONE line) staying lossless in other.
+    const text = `
+[playerdata]
+player 0 #PLAYER_TYPE_HUMAN #TRIBE_TYPE_HUMAN_VIKING #PLAYER_COLOR_ID_BLUE
+
+[multiplayer]
+playeroption 0 #PLAYER_TYPE_HUMAN #PLAYER_TYPE_AI #PLAYER_TYPE_NONE
+playeroption 1 #PLAYER_TYPE_HUMAN #PLAYER_TYPE_AI
+#PLAYER_TYPE_NONE
+playeroption 2 #PLAYER_TYPE_AI
+playerhideinmenu 2
+playerfixcolors 1
+`;
+    const script = extractMapScript(parseIniSections(text), SRC);
+    expect(script?.multiplayer).toEqual({
+      slotOptions: [
+        { player: 0, allowed: ['human', 'ai', 'none'] },
+        { player: 1, allowed: ['human', 'ai'] },
+        { player: 2, allowed: ['ai'] },
+      ],
+      hiddenSlots: [2],
+      fixedColors: true,
+      other: [{ key: '#PLAYER_TYPE_NONE', values: [] }],
+    });
+  });
+
+  it('types the [multiplayer] table in the packed numeric skin (a lobby-openable ai slot)', () => {
+    // Mirrors the packed SPECJALNA- MOSTY NA RZECE map.cif: playerdata authors one human slot, but
+    // playeroption offers human (1) on an ai slot too — the lobby's seat-eligibility table.
+    const lines: CifLine[] = [
+      { level: 1, text: 'playerdata' },
+      { level: 2, text: 'player 0 1 1 0' },
+      { level: 2, text: 'player 1 2 1 1' },
+      { level: 1, text: 'multiplayer' },
+      { level: 2, text: 'playeroption 0 1 2 0' },
+      { level: 2, text: 'playeroption 1 1 2 0' },
+    ];
+    const script = extractMapScript(cifLinesToSections(lines), { file: 'x/map.cif' });
+    expect(script?.multiplayer?.slotOptions).toEqual([
+      { player: 0, allowed: ['human', 'ai', 'none'] },
+      { player: 1, allowed: ['human', 'ai', 'none'] },
+    ]);
+    expect(script?.multiplayer?.hiddenSlots).toEqual([]);
+    expect(script?.multiplayer?.fixedColors).toBeUndefined();
+  });
 });

@@ -5,10 +5,15 @@ import { decodeIni, extractMapScript, parseIniSections, type RuleSection } from 
 import { findPathCaseInsensitiveInDirs } from './case-path.js';
 
 /**
- * The plaintext script twins an unpacked map folder ships: `player.inc` carries
- * `[playerdata]`/`[playermisc]`, `mission.inc` the repeated `[MissionData]` triggers.
+ * The plaintext script files an unpacked map folder ships: `player.inc` usually carries
+ * `[playerdata]`/`[playermisc]`/`[multiplayer]`, `mission.inc` the repeated `[MissionData]`
+ * triggers, and `misc.inc` sometimes hosts all three player sections instead (9 corpus maps author
+ * `[playerdata]` there and 7 the `[multiplayer]` table). `map.ini` normally only `#include`s the
+ * others (unknown sections are ignored), but one corpus map (`oasis_o_plenty`) authors its whole
+ * script inline there. No corpus map authors the same section in two of these files, so
+ * concatenating them is safe (and slot rows dedupe first-wins regardless).
  */
-const SCRIPT_INC_FILES = ['player.inc', 'mission.inc'] as const;
+const SCRIPT_INC_FILES = ['player.inc', 'mission.inc', 'misc.inc', 'map.ini'] as const;
 
 /**
  * Resolves one map folder's {@link MapScript} — the player roster, diplomacy and mission triggers

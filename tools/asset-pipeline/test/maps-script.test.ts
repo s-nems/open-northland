@@ -56,6 +56,20 @@ describe('resolveMapScript', () => {
     ).toBeUndefined();
   });
 
+  it('reads player sections authored in misc.inc or inline in map.ini (9 + 1 corpus maps)', async () => {
+    await writeFile(
+      join(dir, 'misc.inc'),
+      '[playerdata]\nplayer 0 #PLAYER_TYPE_HUMAN #TRIBE_TYPE_HUMAN_VIKING #PLAYER_COLOR_ID_BLUE\n' +
+        '[multiplayer]\nplayeroption 0 #PLAYER_TYPE_HUMAN #PLAYER_TYPE_NONE\n',
+    );
+    await writeFile(join(dir, 'map.ini'), '[MissionData]\ndebuginfo "Inline"\ngoal "True"\n');
+    const script = await resolveMapScript([dir], 'x/map.dat', undefined, undefined);
+    expect(script?.players).toEqual([{ player: 0, type: 'human', tribeId: 1, colorId: 0 }]);
+    expect(script?.multiplayer?.slotOptions).toEqual([{ player: 0, allowed: ['human', 'none'] }]);
+    expect(script?.missions).toHaveLength(1);
+    expect(script?.source?.file).toBe('x/misc.inc+map.ini');
+  });
+
   it('prefers already-decoded map.cif sections over the plaintext twins', async () => {
     await writeFile(
       join(dir, 'player.inc'),

@@ -43,7 +43,7 @@ export const plSurfaces = {
       tool: 'Narzędzie',
     },
     playersTitle: 'Gracze',
-    playersHint: 'Zajmij miejsce: kliknij wolny slot Człowiek, aby nim zagrać.',
+    playersHint: 'Zajmij miejsce: kliknij wolne miejsce, aby nim zagrać.',
     playerSlotLabel: 'Gracz {n}',
     playerTypeHuman: 'Człowiek',
     playerTypeAi: 'AI',
@@ -54,6 +54,7 @@ export const plSurfaces = {
     vacantToggleTitle:
       'Co robi wolne miejsce Człowieka po starcie gry: Bezczynny nic nie robi, AI zagra automatycznie (jeszcze niezaimplementowane).',
     teamColour: 'Kolor drużyny',
+    teamColourLocked: 'ta mapa ma stałe kolory',
     startNeedsSeat: 'Najpierw zajmij miejsce',
     tribeNames: {
       1: 'Wikingowie',
