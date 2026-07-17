@@ -174,16 +174,16 @@ export function foldCombatEffects(
     if (ev.kind === 'combatHit' || ev.kind === 'projectileHit') {
       next.push({
         kind: 'blood',
-        hx: ev.at.x,
-        hy: ev.at.y,
+        hx: ev.at.hx,
+        hy: ev.at.hy,
         spawnTick: tick,
         seed: seedFrom(ev.target, tick),
       });
     } else if (ev.kind === 'settlerDied' && ev.at !== undefined) {
       next.push({
         kind: 'bones',
-        hx: ev.at.x,
-        hy: ev.at.y,
+        hx: ev.at.hx,
+        hy: ev.at.hy,
         spawnTick: tick,
         seed: seedFrom(ev.entity, tick),
       });

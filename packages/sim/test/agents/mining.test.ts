@@ -171,7 +171,7 @@ describe('mining — chipping a deposit', () => {
       kind: 'resourceDepleted',
       node: deposit,
       goodType: STONE,
-      at: { x: depositNode.hx, y: depositNode.hy },
+      at: { hx: depositNode.hx, hy: depositNode.hy },
     });
   });
 

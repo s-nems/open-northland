@@ -91,7 +91,7 @@ function direct(events: readonly SimEvent[], opts: { terrain?: AudioTerrain; loc
 describe('directAudio one-shots', () => {
   it('fires a positioned action SFX for an on-screen building placement', () => {
     // `at` is a half-cell node: cell (5,5) anchors at node (11,10) — the same screen point as tile (5,5).
-    const frame = direct([{ kind: 'buildingPlaced', entity: entity(7), at: { x: 11, y: 10 } }]);
+    const frame = direct([{ kind: 'buildingPlaced', entity: entity(7), at: { hx: 11, hy: 10 } }]);
     expect(frame.oneShots).toHaveLength(1);
     const shot = frame.oneShots[0];
     expect(shot?.files).toEqual(['static/hammer01.wav']);
@@ -128,7 +128,7 @@ describe('directAudio one-shots', () => {
   });
 
   it('stays silent for an off-screen emitter', () => {
-    const frame = direct([{ kind: 'buildingPlaced', entity: entity(7), at: { x: 200, y: 200 } }]);
+    const frame = direct([{ kind: 'buildingPlaced', entity: entity(7), at: { hx: 200, hy: 200 } }]);
     expect(frame.oneShots).toHaveLength(0);
   });
 
@@ -144,7 +144,7 @@ describe('directAudio one-shots', () => {
 
 describe('directAudio combat SFX', () => {
   // Half-cell node (11,10) projects to the centred tile (5,5), so the emitter is on-screen and centred.
-  const at = { x: 11, y: 10 };
+  const at = { hx: 11, hy: 10 };
 
   it('fires the weapon-specific melee impact for a combatHit', () => {
     const sword = direct([

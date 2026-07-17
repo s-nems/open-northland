@@ -54,7 +54,7 @@ describe('CommandSystem — buildings and demolition', () => {
     expect([pos.x, pos.y]).toEqual([3 * 65536, 4 * 65536]);
     const placed = sim.events.current().filter((ev) => ev.kind === 'buildingPlaced');
     expect(placed).toHaveLength(1);
-    expect(placed[0]).toMatchObject({ at: { x: anchor.hx, y: anchor.hy } }); // events echo node coords
+    expect(placed[0]).toMatchObject({ at: { hx: anchor.hx, hy: anchor.hy } }); // events echo node coords
   });
 
   it('placeBuilding initialGoods (authored addgoods) add on top of the type-default seeding', () => {

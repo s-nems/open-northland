@@ -112,7 +112,7 @@ export function placeBuilding(
   stampOwner(world, e, command.owner);
   // The plot is impassable from this tick — settlers standing on it step aside instead of being walled in.
   evictSettlersFromFootprint(world, ctx, e);
-  ctx.events.emit({ kind: 'buildingPlaced', entity: e, at: { x: command.x, y: command.y } });
+  ctx.events.emit({ kind: 'buildingPlaced', entity: e, at: { hx: command.x, hy: command.y } });
 }
 
 /**
@@ -150,5 +150,5 @@ export function placeBoat(
   // A hull arrives empty — filled by hauling cargo to it, not pre-seeded. Its hold capacity is the ship type's
   // `stockSlots` (read off the VehicleType, like `largestShipCapacity`).
   world.add(e, Stockpile, { amounts: new Map<number, number>() });
-  ctx.events.emit({ kind: 'boatPlaced', entity: e, at: { x: command.x, y: command.y } });
+  ctx.events.emit({ kind: 'boatPlaced', entity: e, at: { hx: command.x, hy: command.y } });
 }

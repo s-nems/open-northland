@@ -151,7 +151,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
         ? frameEvents
         : frameEvents.filter((ev) => {
             if (!('at' in ev)) return true;
-            const { cx, cy } = systems.cellOfNode(ev.at.x, ev.at.y);
+            const { cx, cy } = systems.cellOfNode(ev.at.hx, ev.at.hy);
             return fogView.stateAt(cx, cy) === FOG_STATE.VISIBLE;
           });
     // The tribe HUD read-view (an O(entities) scan) for the tool panel's statistics window — shown only

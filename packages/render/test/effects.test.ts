@@ -22,7 +22,7 @@ import { cameraViewport, makeElevationField } from '../src/index.js';
  * layer's node bookkeeping is agent-checkable too.
  */
 
-const at = (x: number, y: number) => ({ x, y });
+const at = (hx: number, hy: number) => ({ hx, hy });
 const asEntity = (id: number): Entity => id as Entity;
 const combatHit = (target: number, weaponMainType?: number): SimEvent => ({
   kind: 'combatHit',

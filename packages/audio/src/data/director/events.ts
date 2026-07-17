@@ -1,4 +1,4 @@
-import type { SimEvent, WorldSnapshot } from '@open-northland/sim';
+import { eventNode, type SimEvent, type WorldSnapshot } from '@open-northland/sim';
 import { groupFiles } from '../bank.js';
 import { computeSpatial, computeSpatialAtNode, type Spatial } from '../spatial.js';
 import type { DirectorInput, EventSound, OneShot, SoundBindings } from '../types.js';
@@ -15,33 +15,21 @@ export const JINGLE_GAIN = 0.9;
 /** Base gain of a spatial action SFX, multiplied by its spatial (distance) attenuation. */
 export const SFX_GAIN = 0.8;
 
-/** The entity whose position locates a spatial event (or undefined for `at`-carrying events). */
+/**
+ * The entity whose position locates a spatial event, or `undefined` when the event carries its own node
+ * ({@link eventNode}) — a felled/depleted node's emitter is already destroyed by the snapshot, so only the
+ * node locates it. `goodProduced` names its emitter `building`; the rest that lack both stay unlocated.
+ */
 function eventEntity(ev: SimEvent): number | undefined {
-  // `at`-carrying events locate by their explicit half-cell node, not an entity (resourceFelled/
-  // resourceDepleted fire as a node comes down / is spent — position is that node, the entity
-  // already gone; a projectile launch/impact fires at the shot's node).
-  if (isAtLocatedEvent(ev)) return undefined;
+  if (eventNode(ev) !== null) return undefined;
   if (ev.kind === 'goodProduced') return ev.building as number;
-  return ev.entity as number;
-}
-
-/** Events that locate by an explicit `at` half-cell node rather than by an emitter entity. */
-function isAtLocatedEvent(ev: SimEvent): ev is Extract<SimEvent, { at: { x: number; y: number } }> {
-  return (
-    ev.kind === 'buildingPlaced' ||
-    ev.kind === 'boatPlaced' ||
-    ev.kind === 'resourceFelled' ||
-    ev.kind === 'resourceDepleted' ||
-    ev.kind === 'projectileLaunched' ||
-    ev.kind === 'projectileHit' ||
-    ev.kind === 'combatHit' ||
-    ev.kind === 'combatSwing'
-  );
+  return 'entity' in ev ? (ev.entity as number) : undefined;
 }
 
 /** A stable per-emitter key so the engine can debounce a burst of identical events. */
 function eventKey(ev: SimEvent): string {
-  if (isAtLocatedEvent(ev)) return `${ev.kind}:${ev.at.x},${ev.at.y}`;
+  const node = eventNode(ev);
+  if (node !== null) return `${ev.kind}:${node.hx},${node.hy}`;
   return `${ev.kind}:${eventEntity(ev) ?? '?'}`;
 }
 
@@ -116,8 +104,9 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
     }
     const files = groupFiles(index, sound.group);
     if (files === undefined) continue;
-    if (isAtLocatedEvent(ev)) {
-      pending.push({ ev, files, node: { hx: ev.at.x, hy: ev.at.y }, entity: undefined });
+    const node = eventNode(ev);
+    if (node !== null) {
+      pending.push({ ev, files, node, entity: undefined });
     } else {
       const id = eventEntity(ev);
       if (id === undefined) continue;
