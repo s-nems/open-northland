@@ -261,6 +261,10 @@ function nextCommand(rng: Rng): Command {
         // Occasionally spawn a veteran (starting XP pairs) — the experience stamp must hash and
         // replay identically.
         ...(rng.int(4) === 0 ? { experience: [[rng.int(8), 1 + rng.int(200)]] as const } : {}),
+        // Occasionally an authored gatherer resource pick (a decoded map's `setproducedgood`): the
+        // harvestable wood good — a stamp only the gatherer trades in JOB_TYPES take — or an unknown
+        // good the handler must reject. Both branches must hash and replay identically.
+        ...(rng.int(4) === 0 ? { gatherGood: rng.int(2) === 0 ? RESOURCE_GOOD : INVALID_TYPE } : {}),
       };
     }
     case 2:

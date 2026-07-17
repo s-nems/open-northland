@@ -144,6 +144,19 @@ export function evictWorkFlagsFromFootprint(world: World, ctx: SystemContext, bu
 }
 
 /**
+ * Whether `jobType` may harvest `goodType` — the one validity test behind every gatherer resource pick
+ * (`setGatherGood`, the spawn-time pick, and the profession-change revalidation below). The good must
+ * have a harvest atomic the trade is granted; a field-farmed good (wheat) is never flag-harvested
+ * ({@link jobCanHarvest}).
+ */
+export function jobCanHarvestGood(ctx: SystemContext, jobType: number, goodType: number): boolean {
+  const good = contentIndex(ctx.content).goods.get(goodType);
+  const harvest = good?.atomics.harvest;
+  if (good === undefined || good.farming !== undefined || harvest === undefined) return false;
+  return contentIndex(ctx.content).atomicsByJob.get(jobType)?.has(harvest) ?? false;
+}
+
+/**
  * Sync a settler's work flag to its (new) `jobType` — the flag half of a profession change, run inside
  * `reidleAsJob` so every employment order (`setJob`, `assignWorker`) applies it identically. A job that can
  * harvest is a gatherer: it keeps a live flag, or gets a fresh one planted at its feet
@@ -155,18 +168,9 @@ export function syncWorkFlagToJob(world: World, ctx: SystemContext, e: Entity, j
     const live = liveWorkFlag(world, e);
     if (live !== undefined) {
       const selected = live.goodType;
-      if (selected !== undefined) {
-        const good = contentIndex(ctx.content).goods.get(selected);
-        const harvest = good?.atomics.harvest;
-        if (
-          good === undefined ||
-          good.farming !== undefined ||
-          harvest === undefined ||
-          !contentIndex(ctx.content).atomicsByJob.get(jobType)?.has(harvest)
-        ) {
-          delete world.get(e, WorkFlag).goodType;
-          world.touch(e);
-        }
+      if (selected !== undefined && !jobCanHarvestGood(ctx, jobType, selected)) {
+        delete world.get(e, WorkFlag).goodType;
+        world.touch(e);
       }
       return; // already carries a live flag — keep it, with a filter valid for the new trade
     }

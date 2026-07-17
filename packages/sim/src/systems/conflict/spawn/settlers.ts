@@ -14,6 +14,7 @@ import {
   Settler,
   stampOwner,
   Weapon,
+  WorkFlag,
 } from '../../../components/index.js';
 import type { Command, SettlerEquipment, SettlerEquipmentSlot } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
@@ -22,7 +23,7 @@ import type { Rng } from '../../../core/rng.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { positionOfNode } from '../../../nav/halfcell.js';
 import type { SystemContext } from '../../context.js';
-import { syncWorkFlagToJob } from '../../economy/flags.js';
+import { jobCanHarvestGood, syncWorkFlagToJob } from '../../economy/flags.js';
 import { isFemaleJobId } from '../../family/eligibility.js';
 import { spawnAgeTicks } from '../../lifecycle/ageclass.js';
 import { rollInitialNeed } from '../../lifecycle/needs.js';
@@ -162,7 +163,28 @@ export function spawnSettler(
   // building-assigned gatherer delivering to its building) is tracked in
   // docs/tickets/sim/building-assigned-gatherers.md.
   syncWorkFlagToJob(world, ctx, e, command.jobType);
+  stampGatherGood(world, ctx, e, command);
   ctx.events.emit({ kind: 'settlerBorn', entity: e });
+}
+
+/**
+ * Narrow a freshly spawned gatherer's work flag to its authored `gatherGood` (a decoded map's
+ * `setproducedgood`), so an imported wood collector stays a wood collector instead of starting on the
+ * gather-everything default. Bad input is skipped, leaving that default: no pick, a trade with no flag
+ * (`syncWorkFlagToJob` planted none), or a good the trade cannot harvest.
+ */
+function stampGatherGood(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  command: Extract<Command, { kind: 'spawnSettler' }>,
+): void {
+  const goodType = command.gatherGood;
+  if (goodType === undefined) return;
+  const flag = world.tryGet(e, WorkFlag);
+  if (flag === undefined || !jobCanHarvestGood(ctx, command.jobType, goodType)) return;
+  flag.goodType = goodType;
+  world.touch(e);
 }
 
 /** One command equipment slot → the component's {@link EquipmentSlot} (or null for an empty slot). The raw

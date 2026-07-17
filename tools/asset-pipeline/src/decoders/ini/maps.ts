@@ -82,7 +82,15 @@ export interface MapStaticObjects {
     /** Authored starting stock (`addgoods` verbs following this `sethouse`): good names verbatim. */
     goods?: { name: string; count: number }[];
   }[];
-  humans: { tribe: string; role: string; player: number; hx: number; hy: number }[];
+  humans: {
+    tribe: string;
+    role: string;
+    player: number;
+    hx: number;
+    hy: number;
+    /** The gatherer's authored resource pick (`setproducedgood`): a good name verbatim. */
+    producedGood?: string;
+  }[];
   animals: { species: string; hx: number; hy: number }[];
 }
 
@@ -95,6 +103,7 @@ export interface MapStaticObjects {
  * sethuman  <player(0-based)> "<tribe>" "<jobtype role>" <hx> <hy> <a> <b>
  * setanimal <class> "<species>" "<age>" <hx> <hy> <a> <b>
  * addgoods  "<goodtype name>" <count>
+ * setproducedgood "<goodtype name>"
  * ```
  *
  * `addgoods` rows stock the entity placed by the immediately preceding placement verb (source basis:
@@ -110,11 +119,20 @@ export interface MapStaticObjects {
  * tutorials — while the fourth column is the constant `1` on every one of the 415 rows, so it
  * cannot be a player id; the unpacked `staticobjects.inc` corpus corroborates, including rows
  * where that column is `0`). Names are kept verbatim (the
- * version-robust join key the loader resolves against the IR by name). The production/guide verbs
- * (`setproducedgood`/`setguide`) are not captured yet. A
+ * version-robust join key the loader resolves against the IR by name).
+ *
+ * `setproducedgood` is a gatherer's authored resource pick, landing on the enclosing `sethuman` — the
+ * original scopes the choice to the settler, not to its hut (its own UI names the window
+ * `CSelectedSingleHumanChangeProducedGood`). Source basis: across the unpacked `staticobjects.inc`
+ * corpus all 634 rows sit inside a `sethuman` block and none follows a `sethouse`, though intervening
+ * modifiers (`setexpierence`, `attachtohouse`) may separate the two — so it binds to the last
+ * `sethuman`, which only another placement verb retargets. The `setguide` verb is not captured yet. A
  * malformed row is skipped, not thrown — one bad line must not drop a whole map's placements.
  * Returns `undefined` when the map has no `StaticObjects` section or it places nothing.
  */
+/** The verbs that place an entity — each one ends the previous placement's block of modifiers. */
+const PLACEMENT_VERBS = new Set(['sethouse', 'sethuman', 'setanimal']);
+
 export function extractStaticObjects(sections: readonly RuleSection[]): MapStaticObjects | undefined {
   const sec = sections.find((s) => s.name === 'StaticObjects');
   if (sec === undefined) return undefined;
@@ -126,9 +144,17 @@ export function extractStaticObjects(sections: readonly RuleSection[]): MapStati
   // The building the next `addgoods` run stocks — the last captured `sethouse`. Any other verb
   // (including a skipped-as-malformed `sethouse`) retargets goods away from it.
   let goodsTarget: MapStaticObjects['buildings'][number] | undefined;
+  // The human the next `setproducedgood` picks for — the last captured `sethuman`. Unlike `goodsTarget`
+  // it survives the uncaptured in-block modifiers, so only a placement verb (including a
+  // skipped-as-malformed `sethuman`) retargets it.
+  let producedGoodTarget: MapStaticObjects['humans'][number] | undefined;
   for (const p of sec.props) {
     if (p.key !== 'addgoods') goodsTarget = undefined;
-    if (p.key === 'addgoods') {
+    if (PLACEMENT_VERBS.has(p.key)) producedGoodTarget = undefined;
+    if (p.key === 'setproducedgood') {
+      const [name] = p.values;
+      if (producedGoodTarget !== undefined && name !== undefined) producedGoodTarget.producedGood = name;
+    } else if (p.key === 'addgoods') {
       const [name, countRaw] = p.values;
       const count = int(countRaw);
       if (goodsTarget === undefined || name === undefined || count === undefined || count === 0) continue;
@@ -165,7 +191,9 @@ export function extractStaticObjects(sections: readonly RuleSection[]): MapStati
         hy === undefined
       )
         continue;
-      out.humans.push({ tribe, role, player, hx, hy });
+      const human = { tribe, role, player, hx, hy };
+      out.humans.push(human);
+      producedGoodTarget = human;
     } else if (p.key === 'setanimal') {
       const [, species, , hxRaw, hyRaw] = p.values;
       const hx = int(hxRaw);

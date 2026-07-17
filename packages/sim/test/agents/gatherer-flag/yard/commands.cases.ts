@@ -16,7 +16,7 @@ import type { Entity } from '../../../../src/ecs/world.js';
 import { fx, ONE, Simulation } from '../../../../src/index.js';
 import { setGatherGood, setWorkFlag } from '../../../../src/systems/index.js';
 import { testContent } from '../../../fixtures/content.js';
-import { ctxOf, grassMap, makeWoodcutter, riverMap, VIKING, WOOD } from '../support.js';
+import { ctxOf, grassMap, makeWoodcutter, riverMap, VIKING, WOOD, WOODCUTTER } from '../support.js';
 
 describe('setWorkFlag command — place / move a gatherer flag (Ctrl+Right-Click)', () => {
   const PLAYER = 0;
@@ -143,5 +143,52 @@ describe('setWorkFlag command — place / move a gatherer flag (Ctrl+Right-Click
     sim.step();
     expect(sim.world.has(g, WorkFlag)).toBe(true);
     expect(fx.toInt(sim.world.get(sim.world.get(g, WorkFlag).flag, Position).x)).toBe(6);
+  });
+});
+
+describe("spawnSettler gatherGood — a decoded map's authored setproducedgood", () => {
+  const CARPENTER = 2; // a non-gathering trade: syncWorkFlagToJob plants it no flag
+  const STONE = 4; // a fixture good whose harvest atomic (25) the woodcutter is NOT granted
+
+  /** The nth canonical (ascending-id) entity — a spawn command returns no id. */
+  const spawned = (sim: Simulation): Entity => {
+    const e = sim.world.canonicalEntities()[0];
+    if (e === undefined) throw new Error('nothing spawned');
+    return e;
+  };
+
+  function spawn(sim: Simulation, jobType: number, gatherGood?: number): Entity {
+    sim.enqueue({
+      kind: 'spawnSettler',
+      jobType,
+      x: 2,
+      y: 0,
+      tribe: VIKING,
+      ...(gatherGood !== undefined ? { gatherGood } : {}),
+    });
+    sim.step();
+    return spawned(sim);
+  }
+
+  it('narrows the auto-planted work flag to the authored good (an imported wood collector stays one)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(40, 1) });
+    const g = spawn(sim, WOODCUTTER, WOOD);
+    expect(sim.world.get(g, WorkFlag).goodType).toBe(WOOD);
+  });
+
+  it('leaves the gather-everything default when the map authors no pick', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(40, 1) });
+    const g = spawn(sim, WOODCUTTER);
+    expect(sim.world.get(g, WorkFlag).goodType).toBeUndefined();
+  });
+
+  it('ignores a good the trade cannot harvest, and a trade with no flag at all', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(40, 1) });
+    const g = spawn(sim, WOODCUTTER, STONE);
+    expect(sim.world.get(g, WorkFlag).goodType).toBeUndefined(); // bad pick ⇒ gathers everything
+
+    const other = new Simulation({ seed: 1, content: testContent(), map: grassMap(40, 1) });
+    const c = spawn(other, CARPENTER, WOOD);
+    expect(other.world.has(c, WorkFlag)).toBe(false); // no flag to narrow — no crash, no stamp
   });
 });

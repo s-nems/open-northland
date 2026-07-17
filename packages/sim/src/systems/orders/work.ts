@@ -32,6 +32,7 @@ import type { SystemContext } from '../context.js';
 import {
   bindFreshFlag,
   jobCanHarvest,
+  jobCanHarvestGood,
   liveWorkFlag,
   relocateWorkFlag,
   removeWorkFlag,
@@ -288,12 +289,7 @@ export function setGatherGood(
   const settler = world.get(e, Settler);
   if (settler.jobType === null || !jobCanHarvest(ctx, settler.jobType)) return;
   const goodType = command.goodType;
-  if (goodType !== null) {
-    const good = contentIndex(ctx.content).goods.get(goodType);
-    const harvest = good?.atomics.harvest;
-    if (good === undefined || good.farming !== undefined || harvest === undefined) return;
-    if (!jobAtomics(ctx, settler.jobType).has(harvest)) return;
-  }
+  if (goodType !== null && !jobCanHarvestGood(ctx, settler.jobType, goodType)) return;
   const flag = liveWorkFlag(world, e);
   if (flag !== undefined) {
     const binding = world.get(e, WorkFlag);
