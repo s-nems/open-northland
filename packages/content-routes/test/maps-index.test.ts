@@ -1,8 +1,8 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildMapsIndexEntries } from '../src/maps-index.js';
+import { makeTempDir, type TempDir } from './support/temp-dir.js';
 
 /**
  * The `/maps-index` join (`src/maps-index.ts`): grids + optional sidecars → menu
@@ -10,15 +10,15 @@ import { buildMapsIndexEntries } from '../src/maps-index.js';
  * `JSON.parse('null')` trap, which parses successfully) degrades its own entry, never the list.
  */
 describe('buildMapsIndexEntries', () => {
+  let tmp: TempDir;
   let mapsRoot: string;
 
   beforeEach(async () => {
-    mapsRoot = await mkdtemp(join(tmpdir(), 'opennorthland-maps-index-'));
+    tmp = await makeTempDir('maps-index');
+    mapsRoot = tmp.path;
   });
 
-  afterEach(async () => {
-    await rm(mapsRoot, { recursive: true, force: true });
-  });
+  afterEach(() => tmp.cleanup());
 
   it('joins each grid with its meta strings and minimap flag, sorted by id', async () => {
     await writeFile(join(mapsRoot, 'b_map.json'), '{}');
