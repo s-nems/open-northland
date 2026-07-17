@@ -85,7 +85,7 @@ describe('placeBoat', () => {
 
     const placed = sim.events.current().filter((ev) => ev.kind === 'boatPlaced');
     expect(placed).toHaveLength(1);
-    expect(placed[0]).toMatchObject({ at: { x: anchor.hx, y: anchor.hy } }); // events echo node coords
+    expect(placed[0]).toMatchObject({ at: { hx: anchor.hx, hy: anchor.hy } }); // events echo node coords
   });
 
   it('gates a tech-locked ship: skipped (still logged) until its enabling job exists', () => {

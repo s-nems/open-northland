@@ -71,7 +71,7 @@ const baseInput = { snapshot, camera, canvasW: CANVAS_W, canvasH: CANVAS_H };
 describe('SoundDriver', () => {
   it('does no decision work while inaudible (no gesture yet), then plays after resume', async () => {
     const { driver, ctx, fetched } = makeDriver();
-    const events: readonly SimEvent[] = [{ kind: 'buildingPlaced', entity: 7 as Entity, at: { x: 5, y: 5 } }];
+    const events: readonly SimEvent[] = [{ kind: 'buildingPlaced', entity: 7 as Entity, at: { hx: 5, hy: 5 } }];
     driver.update({ ...baseInput, events });
     await flush();
     expect(fetched).toHaveLength(0); // dropped before the director even ran

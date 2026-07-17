@@ -1,5 +1,5 @@
 import type { Entity } from '../ecs/world.js';
-import { nodeOfPosition } from '../nav/halfcell.js';
+import { type HalfCellNode, nodeOfPosition } from '../nav/halfcell.js';
 import type { Fixed } from './fixed.js';
 
 /**
@@ -9,10 +9,11 @@ import type { Fixed } from './fixed.js';
  * on the snapshot — never delivered via callbacks (a callback could mutate sim state and break
  * determinism). This is the decoupling seam that keeps render a pure consumer.
  *
- * COORDINATES: every positioned event's `at` is a HALF-CELL NODE `(hx, hy)` — the sim's one grid
- * vocabulary, the same space command payloads use (`core/commands.ts`, `nav/halfcell.ts`).
- * Emitters mint it via {@link eventAt} (or pass a command's node through verbatim); consumers
- * project it through the node lattice (render's `halfCellToScreen`), never as a tile coordinate.
+ * COORDINATES: every positioned event's `at` is a {@link HalfCellNode} — the sim's one grid vocabulary,
+ * the same space command payloads use (`core/commands.ts`, `nav/halfcell.ts`). Emitters mint it via
+ * {@link eventAt} (or pass a command's node through verbatim); consumers project it through the node
+ * lattice (render's `halfCellToScreen`), never as a tile coordinate, and ask {@link eventNode} whether an
+ * event carries one rather than keeping their own list of `at`-carrying kinds.
  *
  * Deterministic: the buffer is cleared at the start of each tick and sealed at the end, so the
  * event list for tick N is a pure function of the sim — reproducible, replayable, hashable.
@@ -21,12 +22,12 @@ export type SimEvent =
   | {
       readonly kind: 'buildingPlaced';
       readonly entity: Entity;
-      readonly at: { readonly x: number; readonly y: number };
+      readonly at: HalfCellNode;
     }
   | {
       readonly kind: 'boatPlaced';
       readonly entity: Entity;
-      readonly at: { readonly x: number; readonly y: number };
+      readonly at: HalfCellNode;
     }
   | { readonly kind: 'buildingFinished'; readonly entity: Entity }
   | { readonly kind: 'buildingUpgraded'; readonly entity: Entity; readonly level: number }
@@ -41,7 +42,7 @@ export type SimEvent =
       readonly kind: 'settlersMarried';
       readonly a: Entity;
       readonly b: Entity;
-      readonly at: { readonly x: number; readonly y: number };
+      readonly at: HalfCellNode;
     }
   | {
       /**
@@ -57,7 +58,7 @@ export type SimEvent =
       readonly entity: Entity;
       readonly cause: string;
       readonly player: number | null;
-      readonly at?: { readonly x: number; readonly y: number };
+      readonly at?: HalfCellNode;
     }
   | { readonly kind: 'atomicCompleted'; readonly entity: Entity; readonly atomicId: number }
   | {
@@ -88,7 +89,7 @@ export type SimEvent =
       readonly attacker: Entity;
       readonly target: Entity;
       readonly weaponMainType?: number;
-      readonly at: { readonly x: number; readonly y: number };
+      readonly at: HalfCellNode;
     }
   | {
       /**
@@ -100,7 +101,7 @@ export type SimEvent =
        */
       readonly kind: 'combatSwing';
       readonly attacker: Entity;
-      readonly at: { readonly x: number; readonly y: number };
+      readonly at: HalfCellNode;
     }
   | {
       readonly kind: 'goodProduced';
@@ -123,7 +124,7 @@ export type SimEvent =
       readonly stump: Entity;
       readonly goodType: number;
       readonly amount: number;
-      readonly at: { readonly x: number; readonly y: number };
+      readonly at: HalfCellNode;
     }
   | {
       /**
@@ -138,7 +139,7 @@ export type SimEvent =
       readonly shooter: Entity;
       readonly target: Entity;
       readonly munitionType: number;
-      readonly at: { readonly x: number; readonly y: number };
+      readonly at: HalfCellNode;
     }
   | {
       /**
@@ -153,7 +154,7 @@ export type SimEvent =
       readonly shooter: Entity;
       readonly target: Entity;
       readonly munitionType: number;
-      readonly at: { readonly x: number; readonly y: number };
+      readonly at: HalfCellNode;
     }
   | {
       /**
@@ -167,7 +168,7 @@ export type SimEvent =
       readonly kind: 'resourceDepleted';
       readonly node: Entity;
       readonly goodType: number;
-      readonly at: { readonly x: number; readonly y: number };
+      readonly at: HalfCellNode;
     }
   | {
       /**
@@ -181,7 +182,7 @@ export type SimEvent =
       readonly kind: 'resourceMined';
       readonly node: Entity;
       readonly goodType: number;
-      readonly at: { readonly x: number; readonly y: number };
+      readonly at: HalfCellNode;
     }
   | {
       /**
@@ -194,16 +195,25 @@ export type SimEvent =
        */
       readonly kind: 'berryForaged';
       readonly bush: Entity;
-      readonly at: { readonly x: number; readonly y: number };
+      readonly at: HalfCellNode;
     };
 
 export type SimEventKind = SimEvent['kind'];
 
-/** Mint a positioned event's `at` from a fixed-point Position: the HALF-CELL NODE the position
+/** Mint a positioned event's `at` from a fixed-point Position: the half-cell node the position
  *  truncates to — the one coordinate space every `at` carries (see the header note). */
-export function eventAt(x: Fixed, y: Fixed): { readonly x: number; readonly y: number } {
-  const n = nodeOfPosition(x, y);
-  return { x: n.hx, y: n.hy };
+export function eventAt(x: Fixed, y: Fixed): HalfCellNode {
+  return nodeOfPosition(x, y);
+}
+
+/**
+ * The half-cell node an event locates at, or `null` for one that locates by its emitter entity instead.
+ * Derived from the event itself, so a new positioned variant needs no consumer edit: a hand-kept list of
+ * `at`-carrying kinds drifts silently, since a structural cast hides the missing variant from the compiler.
+ * Total over the union — `settlerDied` carries `at` only when the reaped unit had a Position.
+ */
+export function eventNode(ev: SimEvent): HalfCellNode | null {
+  return 'at' in ev && ev.at !== undefined ? ev.at : null;
 }
 
 /** A simple deterministic per-tick event buffer. Cleared each tick, read-only via `current`. */
