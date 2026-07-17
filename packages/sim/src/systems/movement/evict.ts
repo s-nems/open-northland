@@ -8,10 +8,11 @@ import { buildingFootprintOf, translatedCells } from '../footprint/geometry.js';
 import { dynamicBlockedCells, dynamicBlockOverlay } from '../footprint/index.js';
 import { canonicalById, isTravelling, NodeBuckets } from '../spatial.js';
 
-/** Max nodes the displacement ring search visits before giving up — a plot boxed in on a pathological
- *  map leaves its occupants in place rather than searching the whole world (same cap stance as the
- *  spacing drives' SPACING_SEARCH_CAP). */
-const EVICT_SEARCH_CAP = 192;
+/** Max nodes {@link evictSettlersFromFootprint}'s ring search visits before giving up — a plot boxed in
+ *  on a pathological map leaves its occupants in place rather than searching the whole world (same cap
+ *  stance as the spacing drives' SPACING_SEARCH_CAP). Scoped in the name because the spawn push below
+ *  takes `nearestUnblockedNode`'s own default instead. */
+const FOOTPRINT_EVICT_SEARCH_CAP = 192;
 
 /**
  * Push every settler standing inside `building`'s walk-blocked footprint out onto the nearest free
@@ -84,27 +85,28 @@ export function evictSettlersFromFootprint(world: World, ctx: SystemContext, bui
 }
 
 /**
- * Push a settler that spawned on walk-blocked ground out onto the nearest node it can stand on — the
- * spawn-time twin of {@link evictSettlersFromFootprint}. That pass is building-first and so cannot cover
- * a map load, which is settler-first: the authored import enqueues every `placeBuilding` before any
- * `spawnSettler`, so each building evicts nobody (no settler exists yet) and the settlers then land
- * inside the finished bodies. Authored maps do this constantly — a `sethuman` half-cell sits inside a
- * `sethouse` walk-block on 64 of the 122 entity-bearing decoded maps (1041 of 35279 humans) — and each
- * one is wedged for the whole game unpushed, for the no-route-out reason the twin above describes.
+ * Push a settler that spawned on walk-blocked ground off it — the spawn-time twin of
+ * {@link evictSettlersFromFootprint}, which is building-first and so cannot cover a map load: that is
+ * settler-first, since the authored import enqueues every `placeBuilding` before any `spawnSettler`, so
+ * a building evicts nobody (no settler exists yet) and the humans land inside the finished bodies.
+ * Authored maps do it on 64 of the 122 entity-bearing decoded maps (1041 of 35279 humans).
  *
- * An instant Position move like the eviction, and it may cross blocked cells but never unwalkable
- * terrain ({@link nearestUnblockedNode} traverses blocks over walkable neighbours), so a settler is
- * pushed to the far side of its house, never across water. The default search cap is ample: the deepest
- * real blocked spawn reaches free ground in 21 visited nodes (p50 2), measured over the decoded maps.
+ * Only 50 of those 1041 are actually stuck: `findPath` exempts a blocked START, so a settler on a body
+ * cell walks off as soon as one step is passable, and only a fully enclosed one never can. The other 991
+ * are pushed anyway — the rule here is the twin's, that a settler never STANDS inside a wall. Both counts
+ * are measured over the decoded maps, as is the deepest push (21 visited nodes, p50 2) — comfortably
+ * inside `nearestUnblockedNode`'s default cap, so this takes it rather than naming its own.
  *
- * Two deliberate divergences from the twin. No Owner gate: that gate keeps unowned scenario fixtures
- * byte-identical under a placement, but a settler spawned inside a wall is broken whoever owns it (and
- * an authored human whose `player` column is out of range spawns unowned). No occupancy check: two
- * settlers landing on one node is the `deStackIdle` drive's job, and asking here would cost a settler
- * scan per spawn.
+ * An instant Position move like the twin, and it crosses blocked cells but never unwalkable terrain — yet
+ * unlike the twin it crosses OTHER buildings' bodies too ({@link nearestUnblockedNode} traverses every
+ * block; `nearestFreeCellOutside` crosses only the evicting one), so in a dense village a settler can
+ * land past a neighbouring house, though never across water. Two further divergences: no Owner gate (a
+ * settler inside a wall is broken whoever owns it), and no occupancy check — an owned stack is
+ * `deStackIdle`'s job, but that drive is Owner-gated too, so an unowned push can leave a stack nothing
+ * clears (the gap docs/tickets/sim/evict-animals-and-unowned-from-footprints.md already tracks).
  *
- * Approximated: the original authors these humans too, but its handling of them is unobserved, so this
- * applies the displacement rule the original does show when a building lands on someone.
+ * Approximated: the original authors these humans too, but whether it leaves them standing on a body is
+ * unobserved — this applies the displacement rule it does show when a building lands on someone.
  */
 export function evictSettlerFromBlockedSpawn(world: World, ctx: SystemContext, settler: Entity): void {
   const terrain = ctx.terrain;
@@ -112,7 +114,10 @@ export function evictSettlerFromBlockedSpawn(world: World, ctx: SystemContext, s
   const p = world.tryGet(settler, Position);
   if (p === undefined) return;
   const n = nodeOfPosition(p.x, p.y);
-  const from = terrain.nodeAtClamped(n.hx, n.hy);
+  // An off-map spawn stays where it is: only a hand-written command makes one (authored placements are
+  // bounds-checked), and clamping would judge standability from a border node the settler is not on.
+  if (!terrain.inBounds(n.hx, n.hy)) return;
+  const from = terrain.nodeAt(n.hx, n.hy);
   const blocked = dynamicBlockOverlay(world, ctx, terrain);
   if (terrain.isWalkable(from) && !blocked.has(from)) return; // standable — the common case, no push
   const free = nearestUnblockedNode(terrain, from, blocked);
@@ -148,7 +153,7 @@ function nearestFreeCellOutside(
   const seen = new Set<NodeId>([from]);
   let frontier: NodeId[] = [from];
   let visited = 0;
-  while (frontier.length > 0 && visited < EVICT_SEARCH_CAP) {
+  while (frontier.length > 0 && visited < FOOTPRINT_EVICT_SEARCH_CAP) {
     const next: NodeId[] = [];
     for (const cell of frontier) {
       for (const n of terrain.walkableNeighbours(cell)) {
