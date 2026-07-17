@@ -2,8 +2,8 @@
 
 **Area:** app (view/game-session) · **Origin:** game-shell-new-game execution, 2026-07-14 · **Priority:** P2
 
-`startGameView` now returns a `GameSession` (`packages/app/src/view/game-view.ts`) whose `destroy()`
-stops the frame loop (`view/raf-loop.ts` stop handle) and removes the system-menu overlay. Quit-to-menu
+`startGameView` now returns a `GameSession` (`packages/app/src/view/runtime/game-view.ts`) whose `destroy()`
+stops the frame loop (`view/runtime/raf-loop.ts` stop handle) and removes the system-menu overlay. Quit-to-menu
 (`options` tool-panel button → `view/system-menu.ts` → `quitToMenu`) then does a **full-page
 navigation** to the menu, so the browser unloads the DOM/Pixi/listeners `destroy()` does not yet cover.
 That is the sanctioned v1 transition. A future load-game / restart / quit-*without-reload* needs

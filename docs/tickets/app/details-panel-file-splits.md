@@ -4,10 +4,10 @@
 
 Review of the sandbox-village branch flagged three growth points in `packages/app/src/hud/details-panel/`:
 
-- `panel.ts` (~500 lines) mixes the controller with a coherent extractable concern: the cursor-tooltip
+- `panel.ts` (~557 lines) mixes the controller with a coherent extractable concern: the cursor-tooltip
   probes (`hitStockGood`, `hitBarValue`, `gatherChoiceHint`, `productionRowHint`, `assignButtonHint`,
   `updateTooltip`).
-- `model/settler.ts` (~400 lines) grew past the ~300-line split guideline (work model, gather/craft
+- `model/settler.ts` (~415 lines) grew past the ~300-line split guideline (work model, gather/craft
   choice builders, equipment, experience, status in one file).
 - `chrome.ts` duplicates `text.ts`'s `textLeftMiddle` signature + doc verbatim (`Chrome` re-declares
   the `TextKit` methods); the branch had to update both in lockstep — evidence the duplication costs.
