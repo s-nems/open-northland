@@ -182,8 +182,8 @@ export const plContent = {
       summary: 'Para bierze ślub z pocałunkiem; żona znosi jedzenie do domu i rodzi dziecko.',
     },
     children: {
-      title: 'Children feed themselves',
-      summary: 'Hungry children walk to wild bushes and eat; the cared-for baby never self-feeds.',
+      title: 'Dzieci jedzą same',
+      summary: 'Głodne dzieci podchodzą do dzikich krzaków i jedzą; niemowlę pod opieką samo się nie karmi.',
     },
   },
 } as const;
