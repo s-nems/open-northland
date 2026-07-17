@@ -15,6 +15,12 @@ need a handful of ids:
   The scene is already narrowed to the workers (see the comment at `:103`), so the
   cost is small, but it is still two full passes over the narrowed set where one
   would do.
+- `view/ground-pile-tooltip.ts:67-91` (`pileTargets`) — viewport-culled, but its memo
+  key includes `cam.offsetX/offsetY/scale`, so during any pan, edge-scroll, or zoom
+  glide it misses every frame and re-runs a full `buildSpriteScene` (O(entities)
+  classify + visible project/sort) on top of the identical projection the renderer
+  just did in `pool.reconcile`. The comment's "while the tick and camera hold still"
+  premise rarely holds in an RTS. Found in the 2026-07-17 bug-hunt review.
 
 `render/AGENTS.md` names the O(entities) cull as a known seam; these are the APP-side
 consumers of it. `unit-targets` is the load-bearing one (a full-snapshot project+sort
@@ -30,7 +36,10 @@ For `unit-targets`: reuse the renderer's already-built per-frame scene / bounds 
 of re-projecting the whole snapshot per lookup, or pass the camera viewport so the scan
 is culled. For `worker-sprites`: fold the two passes into one `collectSpriteScene` call
 that keeps indoor settlers and filters, rather than two `buildSpriteScene` calls. Keep
-the resolved ids/positions identical.
+the resolved ids/positions identical. For `ground-pile-tooltip`: same cure as
+`unit-targets` — reuse the renderer's already-built frame data (`boundsOf`/`pixelHit`,
+or the reconciled item list) instead of a second projection, rather than tuning the
+memo key.
 
 ## Verify
 
