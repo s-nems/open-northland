@@ -10,7 +10,9 @@ import {
   Position,
   Settler,
 } from '../../../src/components/index.js';
+import type { Entity } from '../../../src/ecs/world.js';
 import { fx, Simulation } from '../../../src/index.js';
+import type { TerrainMap } from '../../../src/nav/terrain/index.js';
 import { combatSystem, SIGHT_RADIUS_NODES } from '../../../src/systems/index.js';
 import { attackUnit } from '../../../src/systems/orders/index.js';
 import { testContent } from '../../fixtures/content.js';

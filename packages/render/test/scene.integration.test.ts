@@ -25,7 +25,7 @@ const HARVEST_ATOMIC = 24;
 const { Position, Resource } = components;
 
 function grassMap(width: number, height: number): TerrainMap {
-  return { width, height, typeIds: new Array(width * height).fill(GRASS) };
+  return { resolution: 'half-cell', width, height, typeIds: new Array(width * height).fill(GRASS) };
 }
 
 describe('buildScene over a real Simulation snapshot', () => {

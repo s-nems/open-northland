@@ -259,6 +259,7 @@ describe('movementSystem — invoked directly (unit, no sim)', () => {
       rng: sim.rng,
       tick: 0,
       events: sim.events,
+      commands: sim.commands,
     });
     expect(pos(sim, e)).toEqual({ x: 2, y: 3 });
   });

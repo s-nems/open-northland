@@ -123,8 +123,8 @@ describe('servedAtlasStem / nodeBob / pileFillBobs', () => {
   });
 
   it('returns undefined for a record naming no bmd or palette', () => {
-    expect(servedAtlasStem({ index: 1, logicType: 0 })).toBeUndefined();
-    expect(servedAtlasStem({ index: 1, logicType: 0, bmd: `${B}/x.bmd` })).toBeUndefined();
+    expect(servedAtlasStem({})).toBeUndefined();
+    expect(servedAtlasStem({ bmd: `${B}/x.bmd` })).toBeUndefined();
   });
 
   it('derives the palette-less served shadow stem (<shadow-basename>.shadow); blanks stay undefined', () => {

@@ -28,6 +28,7 @@ describe('shadowStemsByAtlasStem — the body-stem → shadow-stem join', () => 
         {
           tribeId: 1,
           typeId: 13,
+          level: 0,
           bobId: 70,
           bmd: `${B}/ls_houses_viking.bmd`,
           paletteName: 'house01',

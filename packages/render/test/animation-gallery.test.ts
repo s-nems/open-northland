@@ -21,6 +21,12 @@ const clip = (over: Partial<GalleryClip> & { start: number; length: number }): G
   ...over,
 });
 
+function nth<T>(values: readonly T[], index: number): T {
+  const value = values[index];
+  if (value === undefined) throw new Error(`missing item ${index}`);
+  return value;
+}
+
 describe('galleryCellLayout', () => {
   it('places cells row-major into the given column count', () => {
     const boxes = galleryCellLayout(5, 2);
@@ -31,10 +37,10 @@ describe('galleryCellLayout', () => {
 
   it('advances x by a constant per column and y by a constant per row', () => {
     const boxes = galleryCellLayout(4, 2);
-    expect(boxes[1].x - boxes[0].x).toBeGreaterThan(0);
-    expect(boxes[2].y - boxes[0].y).toBeGreaterThan(0);
-    expect(boxes[2].x).toBe(boxes[0].x); // same column shares x
-    expect(boxes[0].y).toBe(boxes[1].y); // same row shares y
+    expect(nth(boxes, 1).x - nth(boxes, 0).x).toBeGreaterThan(0);
+    expect(nth(boxes, 2).y - nth(boxes, 0).y).toBeGreaterThan(0);
+    expect(nth(boxes, 2).x).toBe(nth(boxes, 0).x); // same column shares x
+    expect(nth(boxes, 0).y).toBe(nth(boxes, 1).y); // same row shares y
   });
 
   it('treats a non-positive column count as a single column', () => {
@@ -72,11 +78,11 @@ describe('galleryBobId — 8-directional clip', () => {
 
   it('full mode advances directions in COMPASS order, one full sub-cycle each', () => {
     // Step 0 → compass slot 0 (N = block 7), frame 0.
-    expect(galleryBobId(walk, 'full', 0)).toBe(walk.start + COMPASS_TO_BLOCK[0] * 12);
+    expect(galleryBobId(walk, 'full', 0)).toBe(walk.start + nth(COMPASS_TO_BLOCK, 0) * 12);
     // After a full stride (12 steps) → compass slot 1 (NE = block 3), frame 0.
-    expect(galleryBobId(walk, 'full', 12)).toBe(walk.start + COMPASS_TO_BLOCK[1] * 12);
+    expect(galleryBobId(walk, 'full', 12)).toBe(walk.start + nth(COMPASS_TO_BLOCK, 1) * 12);
     // Mid sub-cycle keeps the same block, advancing the frame.
-    expect(galleryBobId(walk, 'full', 5)).toBe(walk.start + COMPASS_TO_BLOCK[0] * 12 + 5);
+    expect(galleryBobId(walk, 'full', 5)).toBe(walk.start + nth(COMPASS_TO_BLOCK, 0) * 12 + 5);
     // Wraps after all 8 directions (8×12 = 96 steps) back to slot 0.
     expect(galleryBobId(walk, 'full', 96)).toBe(galleryBobId(walk, 'full', 0));
   });

@@ -71,7 +71,7 @@ describe('TallObjectLayer cast shadows', () => {
   it('mints no shadow sprite for an object without a shadow twin', () => {
     const spriteLayer = new Container();
     const layer = new MapObjectLayer(spriteLayer, new TextureCache());
-    const bare: MapObjectSprite = { ...shadowedTree(), shadow: undefined };
+    const { shadow: _shadow, ...bare } = shadowedTree();
     layer.set([bare]);
 
     layer.update(WIDE, 0);

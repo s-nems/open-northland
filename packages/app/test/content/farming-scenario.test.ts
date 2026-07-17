@@ -1,5 +1,13 @@
 import type { BuildingType, ContentSet, GoodType, JobType, TribeType } from '@open-northland/data';
-import { checkInvariants, components, fx, halfCellMapFromCells, ONE, Simulation } from '@open-northland/sim';
+import {
+  checkInvariants,
+  components,
+  type Entity,
+  fx,
+  halfCellMapFromCells,
+  ONE,
+  Simulation,
+} from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { TERRAIN_OPEN } from '../../src/catalog/terrain.js';
 import { hasRealIr, loadContentUnderTest } from './helpers.js';
@@ -62,7 +70,7 @@ function resolveActors(content: ContentSet): {
 }
 
 /** Build the scenario: a completed farm with one bound farmer at the map centre (the sim e2e's shape). */
-function buildScenario(content: ContentSet): { sim: Simulation; farmEntity: number } {
+function buildScenario(content: ContentSet): { sim: Simulation; farmEntity: Entity } {
   const { farmer, farm, tribe } = resolveActors(content);
   const sim = new Simulation({ seed: SEED, content, map: grassMap(MAP_CELLS) });
   const farmEntity = sim.world.create();

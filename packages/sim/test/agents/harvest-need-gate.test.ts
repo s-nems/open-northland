@@ -32,7 +32,9 @@ const HARVEST_ATOMIC = 24;
  */
 function woodGatedContent(): ReturnType<typeof testContent> {
   const content = testContent();
-  content.tribes[0].jobRequirements.push({
+  const tribe = content.tribes[0];
+  if (tribe === undefined) throw new Error('fixture has no tribe');
+  tribe.jobRequirements.push({
     requirement: 'need',
     target: 'good',
     targetId: WOOD,
@@ -76,6 +78,7 @@ describe('AISystem harvest planner — needforgood XP-threshold gate', () => {
       rng: sim.rng,
       tick: sim.tick,
       events: sim.events,
+      commands: sim.commands,
       ...(sim.terrain !== undefined ? { terrain: sim.terrain } : {}),
     });
 
@@ -94,6 +97,7 @@ describe('AISystem harvest planner — needforgood XP-threshold gate', () => {
       rng: sim.rng,
       tick: sim.tick,
       events: sim.events,
+      commands: sim.commands,
       ...(sim.terrain !== undefined ? { terrain: sim.terrain } : {}),
     });
 
@@ -112,6 +116,7 @@ describe('AISystem harvest planner — needforgood XP-threshold gate', () => {
       rng: sim.rng,
       tick: sim.tick,
       events: sim.events,
+      commands: sim.commands,
       ...(sim.terrain !== undefined ? { terrain: sim.terrain } : {}),
     });
 

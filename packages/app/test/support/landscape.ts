@@ -22,7 +22,7 @@ export function landscapeRow(
     logicType,
     bmd: `${B}/${bmd}.bmd`,
     paletteName: palette,
-    frames,
+    ...(frames !== undefined ? { frames } : {}),
     ...(editName !== undefined ? { editName } : {}),
   };
 }

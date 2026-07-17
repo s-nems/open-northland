@@ -1,7 +1,7 @@
 import type { GfxPattern, SoundBank, TerrainPattern } from '@open-northland/data';
 import type { Camera } from '@open-northland/render/data';
 import { ONE, tileToScreen } from '@open-northland/render/data';
-import type { SimEvent, WorldSnapshot } from '@open-northland/sim';
+import type { Entity, SimEvent, WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import {
   type AudioTerrain,
@@ -51,6 +51,7 @@ const bindings = defaultBindings({ chopAtomicId: CHOP_ATOMIC, buildAtomicId: BUI
 
 const CANVAS_W = 800;
 const CANVAS_H = 600;
+const entity = (id: number): Entity => id as Entity;
 // Centre the camera on tile (5,5) — computed through the live projection so the fixture stays
 // valid whatever the calibrated pitch/model is (a hand-baked offset broke on every recalibration).
 const centre = tileToScreen(5, 5);
@@ -90,7 +91,7 @@ function direct(events: readonly SimEvent[], opts: { terrain?: AudioTerrain; loc
 describe('directAudio one-shots', () => {
   it('fires a positioned action SFX for an on-screen building placement', () => {
     // `at` is a half-cell node: cell (5,5) anchors at node (11,10) — the same screen point as tile (5,5).
-    const frame = direct([{ kind: 'buildingPlaced', entity: 7, at: { x: 11, y: 10 } }]);
+    const frame = direct([{ kind: 'buildingPlaced', entity: entity(7), at: { x: 11, y: 10 } }]);
     expect(frame.oneShots).toHaveLength(1);
     const shot = frame.oneShots[0];
     expect(shot?.files).toEqual(['static/hammer01.wav']);
@@ -100,7 +101,7 @@ describe('directAudio one-shots', () => {
   });
 
   it('fires a non-spatial jingle for a building finishing', () => {
-    const frame = direct([{ kind: 'buildingFinished', entity: 7 }]);
+    const frame = direct([{ kind: 'buildingFinished', entity: entity(7) }]);
     expect(frame.oneShots).toHaveLength(1);
     expect(frame.oneShots[0]?.files).toEqual(['jingles/jingles_housebuilt.wav']);
     expect(frame.oneShots[0]?.gain).toBeCloseTo(JINGLE_GAIN, 5);
@@ -109,7 +110,7 @@ describe('directAudio one-shots', () => {
   });
 
   it('positions a chop SFX at the working settler via the atomic binding', () => {
-    const frame = direct([{ kind: 'atomicCompleted', entity: 3, atomicId: CHOP_ATOMIC }]);
+    const frame = direct([{ kind: 'atomicCompleted', entity: entity(3), atomicId: CHOP_ATOMIC }]);
     expect(frame.oneShots).toHaveLength(1);
     expect(frame.oneShots[0]?.files).toEqual(['static/axe01.wav']);
     expect(frame.oneShots[0]?.key).toBe('atomicCompleted:3');
@@ -117,25 +118,25 @@ describe('directAudio one-shots', () => {
 
   it('knocks the hammer on the MID-swing atomicSound cue, not at completion', () => {
     // The builder's hammer sounds on `atomicSound` (its PLAY_SOUND_FX frame), located at the builder.
-    const struck = direct([{ kind: 'atomicSound', entity: 3, atomicId: BUILD_ATOMIC }]);
+    const struck = direct([{ kind: 'atomicSound', entity: entity(3), atomicId: BUILD_ATOMIC }]);
     expect(struck.oneShots).toHaveLength(1);
     expect(struck.oneShots[0]?.files).toEqual(['static/hammer01.wav']);
     expect(struck.oneShots[0]?.key).toBe('atomicSound:3');
     // The swing's completion event carries no hammer (it moved to the strike cue) — no double knock.
-    const done = direct([{ kind: 'atomicCompleted', entity: 3, atomicId: BUILD_ATOMIC }]);
+    const done = direct([{ kind: 'atomicCompleted', entity: entity(3), atomicId: BUILD_ATOMIC }]);
     expect(done.oneShots).toHaveLength(0);
   });
 
   it('stays silent for an off-screen emitter', () => {
-    const frame = direct([{ kind: 'buildingPlaced', entity: 7, at: { x: 200, y: 200 } }]);
+    const frame = direct([{ kind: 'buildingPlaced', entity: entity(7), at: { x: 200, y: 200 } }]);
     expect(frame.oneShots).toHaveLength(0);
   });
 
   it('ignores events with no binding and bindings with no bank group', () => {
     const frame = direct([
-      { kind: 'buildingUpgraded', entity: 7, level: 2 }, // no binding
-      { kind: 'goodProduced', building: 7, goodType: 2, amount: 1 }, // bound to a group absent from the fixture bank
-      { kind: 'atomicCompleted', entity: 3, atomicId: 999 }, // no atomic binding
+      { kind: 'buildingUpgraded', entity: entity(7), level: 2 }, // no binding
+      { kind: 'goodProduced', building: entity(7), goodType: 2, amount: 1 }, // bound to a group absent from the fixture bank
+      { kind: 'atomicCompleted', entity: entity(3), atomicId: 999 }, // no atomic binding
     ]);
     expect(frame.oneShots).toHaveLength(0);
   });
@@ -146,28 +147,48 @@ describe('directAudio combat SFX', () => {
   const at = { x: 11, y: 10 };
 
   it('fires the weapon-specific melee impact for a combatHit', () => {
-    const sword = direct([{ kind: 'combatHit', attacker: 3, target: 4, weaponMainType: 3, at }]);
+    const sword = direct([
+      { kind: 'combatHit', attacker: entity(3), target: entity(4), weaponMainType: 3, at },
+    ]);
     expect(sword.oneShots[0]?.files).toEqual(['static/swordhit01.wav']);
     expect(sword.oneShots[0]?.key).toBe('combatHit:11,10');
-    const spear = direct([{ kind: 'combatHit', attacker: 3, target: 4, weaponMainType: 2, at }]);
+    const spear = direct([
+      { kind: 'combatHit', attacker: entity(3), target: entity(4), weaponMainType: 2, at },
+    ]);
     expect(spear.oneShots[0]?.files).toEqual(['static/spearhit01.wav']);
   });
 
   it('falls back to the generic melee thunk when the weapon class has no entry / is absent', () => {
     // An axe (5) has no dedicated group → the byEvent.combatHit sword-hit fallback; likewise no weaponMainType.
-    const axe = direct([{ kind: 'combatHit', attacker: 3, target: 4, weaponMainType: 5, at }]);
+    const axe = direct([
+      { kind: 'combatHit', attacker: entity(3), target: entity(4), weaponMainType: 5, at },
+    ]);
     expect(axe.oneShots[0]?.files).toEqual(['static/swordhit01.wav']);
-    const bare = direct([{ kind: 'combatHit', attacker: 3, target: 4, at }]);
+    const bare = direct([{ kind: 'combatHit', attacker: entity(3), target: entity(4), at }]);
     expect(bare.oneShots[0]?.files).toEqual(['static/swordhit01.wav']);
   });
 
   it('fires the bow twang on launch and the arrow thunk on hit', () => {
     const loose = direct([
-      { kind: 'projectileLaunched', projectile: 9, shooter: 3, target: 4, munitionType: 1, at },
+      {
+        kind: 'projectileLaunched',
+        projectile: entity(9),
+        shooter: entity(3),
+        target: entity(4),
+        munitionType: 1,
+        at,
+      },
     ]);
     expect(loose.oneShots[0]?.files).toEqual(['static/bow01.wav']);
     const hit = direct([
-      { kind: 'projectileHit', projectile: 9, shooter: 3, target: 4, munitionType: 1, at },
+      {
+        kind: 'projectileHit',
+        projectile: entity(9),
+        shooter: entity(3),
+        target: entity(4),
+        munitionType: 1,
+        at,
+      },
     ]);
     expect(hit.oneShots[0]?.files).toEqual(['static/arrowhit01.wav']);
   });
@@ -178,7 +199,7 @@ describe('directAudio death stinger owner filter', () => {
   const ENEMY = 1;
 
   it('rings the death jingle only for the local player’s own unit', () => {
-    const mine = direct([{ kind: 'settlerDied', entity: 3, cause: 'damage', player: LOCAL }], {
+    const mine = direct([{ kind: 'settlerDied', entity: entity(3), cause: 'damage', player: LOCAL }], {
       localPlayer: LOCAL,
     });
     expect(mine.oneShots).toHaveLength(1);
@@ -186,18 +207,18 @@ describe('directAudio death stinger owner filter', () => {
   });
 
   it('stays silent for an enemy or wild-animal (null-owned) death', () => {
-    const enemy = direct([{ kind: 'settlerDied', entity: 4, cause: 'damage', player: ENEMY }], {
+    const enemy = direct([{ kind: 'settlerDied', entity: entity(4), cause: 'damage', player: ENEMY }], {
       localPlayer: LOCAL,
     });
     expect(enemy.oneShots).toHaveLength(0);
-    const beast = direct([{ kind: 'settlerDied', entity: 5, cause: 'damage', player: null }], {
+    const beast = direct([{ kind: 'settlerDied', entity: entity(5), cause: 'damage', player: null }], {
       localPlayer: LOCAL,
     });
     expect(beast.oneShots).toHaveLength(0);
   });
 
   it('stays silent when no local player is configured', () => {
-    const noLocal = direct([{ kind: 'settlerDied', entity: 3, cause: 'damage', player: LOCAL }]);
+    const noLocal = direct([{ kind: 'settlerDied', entity: entity(3), cause: 'damage', player: LOCAL }]);
     expect(noLocal.oneShots).toHaveLength(0);
   });
 });

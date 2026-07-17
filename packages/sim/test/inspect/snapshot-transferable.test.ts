@@ -61,10 +61,12 @@ describe('snapshot is transferable (Web-Worker boundary)', () => {
     expect(cloned.entities).not.toBe(snap.entities);
     // Mutating the copy must not reach back into the original snapshot's nested data.
     const firstEntity = cloned.entities[0];
-    if (firstEntity === undefined) throw new Error('expected at least one entity');
-    expect(firstEntity).not.toBe(snap.entities[0]);
+    const originalEntity = snap.entities[0];
+    if (firstEntity === undefined || originalEntity === undefined)
+      throw new Error('expected at least one entity');
+    expect(firstEntity).not.toBe(originalEntity);
     (firstEntity.components as Record<string, unknown>).__injected = 'worker-side mutation';
-    expect('__injected' in snap.entities[0].components).toBe(false);
+    expect('__injected' in originalEntity.components).toBe(false);
   });
 
   it("a building's Stockpile Map survived as a plain sorted [k,v] array (clone-safe form)", () => {

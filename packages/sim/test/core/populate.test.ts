@@ -100,7 +100,12 @@ describe('seedAnimalHerds (map populator)', () => {
 
   it('seeds nothing on a map with no walkable cells', () => {
     const content = testContent();
-    const allWater = { resolution: 'half-cell', width: 3, height: 1, typeIds: [WATER, WATER, WATER] };
+    const allWater = {
+      resolution: 'half-cell' as const,
+      width: 3,
+      height: 1,
+      typeIds: [WATER, WATER, WATER],
+    };
     expect(seedAnimalHerds(content, allWater)).toHaveLength(0);
   });
 

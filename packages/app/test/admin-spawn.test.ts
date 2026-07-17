@@ -173,7 +173,9 @@ describe('admin spawn command mapping', () => {
     expect(cmd?.kind).toBe('placeResource');
     if (cmd?.kind !== 'placeResource') throw new Error('expected placeResource');
     expect(cmd.remaining).toBe(STONE_DEPOSIT_UNITS);
-    expect(cmd.deposit?.strikesPerUnit).toBe(HARD_MINE_STRIKES_PER_UNIT);
+    expect(cmd.deposit !== undefined && 'strikesPerUnit' in cmd.deposit && cmd.deposit.strikesPerUnit).toBe(
+      HARD_MINE_STRIKES_PER_UNIT,
+    );
     expect(cmd.felling).toBeUndefined();
   });
 
@@ -181,7 +183,9 @@ describe('admin spawn command mapping', () => {
     const cmd = resourceCommand(GOOD_MUD, 1, 1);
     expect(cmd?.kind).toBe('placeResource');
     if (cmd?.kind !== 'placeResource') throw new Error('expected placeResource');
-    expect(cmd.deposit?.strikesPerUnit).toBe(CLAY_MINE_STRIKES_PER_UNIT);
+    expect(cmd.deposit !== undefined && 'strikesPerUnit' in cmd.deposit && cmd.deposit.strikesPerUnit).toBe(
+      CLAY_MINE_STRIKES_PER_UNIT,
+    );
   });
 
   it('an unknown good is not spawnable (null command)', () => {

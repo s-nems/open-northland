@@ -41,8 +41,8 @@ function stubContext(): { ctx: PanelContext; made: string[] } {
 }
 
 const BUILDINGS: readonly MenuBuildingEntry[] = [
-  { typeId: 1, id: 'headquarters', label: 'Headquarters', kind: 'storage' },
-  { typeId: 23, id: 'work_joinery_00', label: 'Joinery', kind: 'workplace' },
+  { typeId: 1, label: 'Headquarters', kind: 'storage' },
+  { typeId: 23, label: 'Joinery', kind: 'workplace' },
 ];
 
 /** The centre of a rect (for synthetic clicks). */

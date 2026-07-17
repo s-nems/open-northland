@@ -12,7 +12,8 @@
   "scripts": {
     "build": "npm run typecheck && npm run build --workspace @open-northland/app",
     "clean": "tsc --build --clean",
-    "typecheck": "tsc --build",
+    "typecheck": "npm run typecheck:test",
+    "typecheck:test": "tsc --build && tsc --project tsconfig.tests.json",
     "test": "npm run typecheck && vitest run",
     "test:watch": "npm run typecheck && vitest",
     "test:content": "node scripts/test-content.mjs",

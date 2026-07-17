@@ -110,7 +110,7 @@ describe('atomicSystem — effects', () => {
       enjoyment: fx.fromInt(0),
       experience: new Map(),
     });
-    startAtomic(sim, settler, { kind: 'eat', goodType: WOOD }, 1);
+    startAtomic(sim, settler, { kind: 'eat', goodType: WOOD, from: null }, 1);
     atomicSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(settler, Settler).hunger).toBe(0);
   });

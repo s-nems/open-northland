@@ -50,6 +50,11 @@ const ROWS = [0, 10, 20];
 const BUILDINGS = ROWS.map((row, i) => building(i + 1, 0, row));
 const POS = ROWS.map((row) => tileToScreen(0, row));
 const MARGIN = 50; // < half the row-group gap, so a one-row box excludes its neighbours
+function nth<T>(values: readonly T[], index: number): T {
+  const value = values[index];
+  if (value === undefined) throw new Error(`missing item ${index}`);
+  return value;
+}
 const FRAMES_ALL: Viewport = {
   minX: Math.min(...POS.map((p) => p.x)) - MARGIN,
   maxX: Math.max(...POS.map((p) => p.x)) + MARGIN,
@@ -57,10 +62,10 @@ const FRAMES_ALL: Viewport = {
   maxY: Math.max(...POS.map((p) => p.y)) + MARGIN,
 };
 const FRAMES_FIRST: Viewport = {
-  minX: POS[0].x - MARGIN,
-  maxX: POS[0].x + MARGIN,
-  minY: POS[0].y - MARGIN,
-  maxY: POS[0].y + MARGIN,
+  minX: nth(POS, 0).x - MARGIN,
+  maxX: nth(POS, 0).x + MARGIN,
+  minY: nth(POS, 0).y - MARGIN,
+  maxY: nth(POS, 0).y + MARGIN,
 };
 
 describe('SpritePool — reconcile scans track the screen, not the pool', () => {
@@ -100,7 +105,7 @@ describe('SpritePool — reconcile scans track the screen, not the pool', () => 
 
     // Building 2 leaves the snapshot (died) while still framed. The next frame is not a reap frame, so it
     // detaches at once (invisible) but its display object is not yet freed — the deferred-reap contract.
-    const survivors = snapshotOf([BUILDINGS[0], BUILDINGS[2]]);
+    const survivors = snapshotOf([nth(BUILDINGS, 0), nth(BUILDINGS, 2)]);
     pool.reconcile(poolFrame(survivors, FRAMES_ALL)); // frame 2 — not a reap multiple
     expect(layer.children.length).toBe(2); // detached the same frame it died
     expect(pool.stats().pooled).toBe(3); // still pooled — reap runs on an interval, not every frame

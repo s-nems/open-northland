@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CurrentAtomic, Health, Position } from '../../src/components/index.js';
 import { eventAt } from '../../src/core/events.js';
+import type { Entity } from '../../src/ecs/world.js';
 import { fx, Simulation } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 import { grassCellMap } from '../fixtures/terrain.js';
@@ -15,8 +16,8 @@ import { grassCellMap } from '../fixtures/terrain.js';
 /** A 1-tick melee attack atomic (id 81) — AtomicSystem lands the blow the first tick. */
 function attack(
   sim: Simulation,
-  attacker: number,
-  target: number,
+  attacker: Entity,
+  target: Entity,
   damage: number,
   weaponMainType?: number,
 ): void {

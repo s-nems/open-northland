@@ -68,10 +68,12 @@ describe('sandbox jobEnablesHouse gate — the warehouse employment catch-22', (
     for (const e of idlers) expect(sim.world.get(e, Settler).jobType).toBeNull();
 
     // The explicit player command hits the same gate — a gated building offers no open job.
-    sim.enqueue({ kind: 'assignWorker', entity: idlers[0], building: store, jobPriority: [JOB_CARRIER] });
+    const idle = idlers[0];
+    if (idle === undefined) throw new Error('missing idle settler');
+    sim.enqueue({ kind: 'assignWorker', entity: idle, building: store, jobPriority: [JOB_CARRIER] });
     sim.run(2);
-    expect(sim.world.get(idlers[0], Settler).jobType).toBeNull();
-    expect(sim.world.has(idlers[0], JobAssignment)).toBe(false);
+    expect(sim.world.get(idle, Settler).jobType).toBeNull();
+    expect(sim.world.has(idle, JobAssignment)).toBe(false);
   });
 
   it('with a collector alive, the warehouse unlocks and its carriers are employed', () => {

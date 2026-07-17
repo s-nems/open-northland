@@ -1,4 +1,4 @@
-import type { SimEvent } from '@open-northland/sim';
+import type { Entity, SimEvent } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import {
   BLOOD_LIFETIME_TICKS,
@@ -23,25 +23,26 @@ import { cameraViewport, makeElevationField } from '../src/index.js';
  */
 
 const at = (x: number, y: number) => ({ x, y });
+const asEntity = (id: number): Entity => id as Entity;
 const combatHit = (target: number, weaponMainType?: number): SimEvent => ({
   kind: 'combatHit',
-  attacker: 1,
-  target,
+  attacker: asEntity(1),
+  target: asEntity(target),
   at: at(4, 6),
   ...(weaponMainType !== undefined ? { weaponMainType } : {}),
 });
 const projectileHit = (target: number): SimEvent => ({
   kind: 'projectileHit',
-  projectile: 9,
-  shooter: 1,
-  target,
+  projectile: asEntity(9),
+  shooter: asEntity(1),
+  target: asEntity(target),
   munitionType: 1,
   at: at(4, 6),
 });
 const died = (entity: number, withPos = true): SimEvent =>
   withPos
-    ? { kind: 'settlerDied', entity, cause: 'damage', player: 0, at: at(8, 10) }
-    : { kind: 'settlerDied', entity, cause: 'damage', player: 0 };
+    ? { kind: 'settlerDied', entity: asEntity(entity), cause: 'damage', player: 0, at: at(8, 10) }
+    : { kind: 'settlerDied', entity: asEntity(entity), cause: 'damage', player: 0 };
 
 describe('foldCombatEffects', () => {
   it('spawns a blood mark for a melee or ranged hit, and a bones mark for a positioned death', () => {
@@ -57,7 +58,7 @@ describe('foldCombatEffects', () => {
     // A whiffed swing resolves nothing in the sim, so no combatHit reaches here — nothing to fold.
     expect(foldCombatEffects([], [], 5)).toEqual([]);
     // Non-combat events don't spawn marks either.
-    const out = foldCombatEffects([], [{ kind: 'settlerBorn', entity: 1 }], 5);
+    const out = foldCombatEffects([], [{ kind: 'settlerBorn', entity: asEntity(1) }], 5);
     expect(out).toEqual([]);
   });
 

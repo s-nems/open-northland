@@ -53,7 +53,7 @@ describe('PlacementGhostLayer', () => {
     expect(layer.container.visible).toBe(false);
 
     // Ghost col/row are HALF-CELL node coords, projected through halfCellToScreen.
-    layer.set({ col: 5, row: 8, buildingType: 2 }, FLAT);
+    layer.set({ kind: 'building', col: 5, row: 8, buildingType: 2 }, FLAT);
     expect(layer.container.visible).toBe(true);
     const p = halfCellToScreen(5, 8);
     expect(layer.container.position.x).toBeCloseTo(p.x, 3);
@@ -73,7 +73,7 @@ describe('PlacementGhostLayer', () => {
     const field = makeElevationField(elev, W, H);
 
     const layer = makeLayer();
-    layer.set({ col: 2, row: 16, buildingType: 2 }, field);
+    layer.set({ kind: 'building', col: 2, row: 16, buildingType: 2 }, field);
     const p = halfCellToScreen(2, 16);
     // The lift samples cell space at (col/2, row/2) = the hill cell (1, 8).
     expect(p.y - layer.container.position.y).toBeCloseTo(field.liftAt(1, 8), 3);
