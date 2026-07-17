@@ -54,6 +54,18 @@ describe('Simulation.snapshot() per-tick memo', () => {
     expect(b).not.toBe(a);
     expect(b.entities).toHaveLength(2);
   });
+
+  it('rebuilds after a bare create() with no components added', () => {
+    const sim = newSim();
+    bareResource(sim, 5);
+    const a = sim.snapshot();
+    // A snapshot emits one entry per alive id, so a component-less entity still changes it — `create`
+    // must bump the version on its own rather than relying on a following `add`.
+    sim.world.create();
+    const b = sim.snapshot();
+    expect(b).not.toBe(a);
+    expect(b.entities).toHaveLength(2);
+  });
 });
 
 describe('takeSnapshot scenery clone cache', () => {
