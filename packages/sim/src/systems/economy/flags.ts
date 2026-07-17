@@ -150,10 +150,11 @@ export function evictWorkFlagsFromFootprint(world: World, ctx: SystemContext, bu
  * ({@link jobCanHarvest}).
  */
 export function jobCanHarvestGood(ctx: SystemContext, jobType: number, goodType: number): boolean {
-  const good = contentIndex(ctx.content).goods.get(goodType);
+  const index = contentIndex(ctx.content);
+  const good = index.goods.get(goodType);
   const harvest = good?.atomics.harvest;
-  if (good === undefined || good.farming !== undefined || harvest === undefined) return false;
-  return contentIndex(ctx.content).atomicsByJob.get(jobType)?.has(harvest) ?? false;
+  if (harvest === undefined || good?.farming !== undefined) return false;
+  return index.atomicsByJob.get(jobType)?.has(harvest) ?? false;
 }
 
 /**

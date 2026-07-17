@@ -59,7 +59,8 @@ export type AuthoredPlacement =
       x: number;
       y: number;
       owner?: number;
-      /** The gatherer's authored resource pick (`setproducedgood`), resolved to a good typeId. */
+      /** The authored produced good (`setproducedgood`), resolved to a good typeId. Only a
+       *  flag-harvestable pick reaches a gatherer's flag; the sim drops the rest (`stampGatherGood`). */
       gatherGood?: number;
     };
 
@@ -67,7 +68,7 @@ export type AuthoredPlacement =
  * Resolve a map's authored `entities` (names + half-cells, verbatim from `map.cif` `StaticObjects`) into
  * sim placements. Joins are by name against the IR rows (a building's `EditName`+`level` → `buildingBobs`
  * typeId+tribe and its `addgoods` names → `goods` typeIds; a human's `role` → `jobs` typeId, its `tribe`
- * string → `tribes` typeId, its gatherer `producedGood` name → a `goods` typeId), and the two player
+ * string → `tribes` typeId, its `producedGood` name → a `goods` typeId), and the two player
  * columns land on 0-based sim owners verbatim (both `sethouse` and `sethuman` are 0-based — schema notes).
  * Half-cells pass through verbatim — the sim's grid is the `2W×2H` lattice the records address, so an
  * authored building keeps its exact anchor. Unresolvable or out-of-bounds records are dropped and counted;
@@ -77,7 +78,7 @@ export function resolveAuthoredPlacements(
   entities: NonNullable<TerrainMapFile['entities']>,
   rows: AuthoredJoinRows,
   map: TerrainMap,
-): { placements: AuthoredPlacement[]; skipped: number; droppedGoods: number } {
+): { placements: AuthoredPlacement[]; skipped: number; droppedGoods: number; droppedPicks: number } {
   const bobByNameLevel = new Map<string, { typeId: number; tribeId: number }>();
   for (const b of rows.buildingBobs ?? []) {
     if (b.editName === undefined || b.typeId === undefined) continue;
@@ -120,6 +121,7 @@ export function resolveAuthoredPlacements(
   const placements: AuthoredPlacement[] = [];
   let skipped = 0;
   let droppedGoods = 0;
+  let droppedPicks = 0;
   for (const b of entities.buildings) {
     const hit = bobByNameLevel.get(`${b.name}\u0000${b.level}`);
     if (hit === undefined || !inBounds(b.hx, b.hy)) {
@@ -153,10 +155,11 @@ export function resolveAuthoredPlacements(
       skipped++;
       continue;
     }
-    // The gatherer's authored resource pick. An unresolvable name is dropped and counted — the settler
-    // still spawns, on the gather-everything default, exactly as a map with no pick at all.
+    // The human's authored produced good. An unresolvable name is dropped and counted separately from a
+    // building's `addgoods` stock (they fail for unrelated reasons) — the settler still spawns, on the
+    // gather-everything default, exactly as a map with no pick at all.
     const gatherGood = h.producedGood !== undefined ? resolveGood(h.producedGood) : undefined;
-    if (h.producedGood !== undefined && gatherGood === undefined) droppedGoods++;
+    if (h.producedGood !== undefined && gatherGood === undefined) droppedPicks++;
     placements.push({
       kind: 'human',
       jobType,
@@ -167,5 +170,5 @@ export function resolveAuthoredPlacements(
       ...(gatherGood !== undefined ? { gatherGood } : {}),
     });
   }
-  return { placements, skipped, droppedGoods };
+  return { placements, skipped, droppedGoods, droppedPicks };
 }
