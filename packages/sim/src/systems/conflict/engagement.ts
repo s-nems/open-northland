@@ -91,7 +91,10 @@ export function engageSpec(
 
   if (owned && !ordered && stance === MILITARY_MODE.IGNORE && attacker.jobType === HUNTER_JOB) {
     const accept = (t: Entity): boolean => isHuntTarget(world, ctx, t, attacker.jobType) && seesTarget(t);
-    return { accept, minDist, searchRadius: sight, player, defend: null };
+    // player: null — never presence-gate a hunter: isHuntTarget is owner-blind (own-player-owned prey
+    // is valid), so the gate's "not mine" class is no superset of this filter. Hunters are a
+    // handful per map; the ungated scan costs nothing at scale.
+    return { accept, minDist, searchRadius: sight, player: null, defend: null };
   }
 
   return {
@@ -111,8 +114,9 @@ export interface EngageSpec {
   readonly minDist: number;
   /** Far reach — how far the unit spots a target to swing at / advance on. */
   readonly searchRadius: number;
-  /** The seeker's player for the {@link HostilePresence} early-out; null for an unowned seeker
-   *  (whose valid targets can share its "unowned" presence class, so it never skips the search). */
+  /** The seeker's player for the {@link HostilePresence} early-out; null when the seeker must never
+   *  skip the search — an unowned one (its valid targets can share its "unowned" presence class) or
+   *  an IGNORE hunter (its owner-blind prey filter admits the seeker's own player's animals). */
   readonly player: number | null;
   /** DEFEND leash: the chase never walks past `leash` of `anchorCell`; null for every non-DEFEND mode. */
   readonly defend: { readonly anchorCell: NodeId; readonly leash: number } | null;

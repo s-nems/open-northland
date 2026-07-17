@@ -3,7 +3,8 @@
 **Area:** sim · **Origin:** combat-idle-scan-cost execution, 2026-07-17 · **Priority:** P3
 (perf — no behavior change; canonical winners must stay byte-identical)
 
-The HostilePresence early-out (`systems/conflict/presence.ts`, commit on perf/combat-idle-scan)
+The HostilePresence early-out (`systems/conflict/presence.ts`, commit "perf: Skip idle combat ring
+scans via a coarse hostile-presence grid")
 removed the per-fighter ring searches on peaceful two-player maps (synthetic 239-combatant bench:
 ~10.8 ms → ~0.44 ms per combat tick). The residual cost is the awake-tick setup that still runs
 every tick whenever `combatPossible` passes (any two-player map): the `combatPossible` scan itself
@@ -19,6 +20,9 @@ Candidates (profile before picking):
 - Hoist the per-fighter `engageSpec` closure allocations out of the calm path (the early-out fires
   inside `resolveTarget`, after the spec object is built).
 - Memoize or cheapen the `combatPossible` classification reads.
+- While in there: `engageCombatant` is at 7 positional params over three parallel per-tick
+  structures — a small per-tick bundle (`{terrain, index, presence, slots}`) would tighten the
+  signatures (review note from the presence-gate change).
 
 Keep winners canonical and goldens byte-identical — this is elide-provably-empty-work only.
 

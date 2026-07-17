@@ -17,13 +17,15 @@ interface PresenceCell {
 
 /**
  * A per-tick coarse count grid over the combatants — the CombatSystem's idle early-out (golden
- * rule 6): an owned seeker asks "could ANY combatant I don't own be within my search radius?" in
+ * rule 6): an owned seeker asks "could any combatant I don't own be within my search radius?" in
  * O(coarse cells) before paying the full ring search. Perf-only and conservative — the query
- * over-approximates (Chebyshev box ⊇ Manhattan diamond, coarse-cell granularity, and
- * "not mine" ⊇ every accept filter's hostility relation), so a `false` proves the ring search
- * would find nothing and skipping it cannot change a winner. Unowned seekers never consult it
- * (their valid targets can share their own "unowned" class). Rebuilt each combat tick from the
- * same combatant list as the ring-search index; derived state, never hashed.
+ * over-approximates (Chebyshev box ⊇ Manhattan diamond, coarse-cell granularity, and "not mine"
+ * ⊇ every gated accept filter, because those all route hostility through the owner-first
+ * `mayTarget` relation), so a `false` proves the ring search would find nothing and skipping it
+ * cannot change a winner. Seekers whose filter breaks that superset are ungated via a null
+ * `EngageSpec.player`: unowned ones (valid targets can share the "unowned" class) and IGNORE
+ * hunters (owner-blind prey filter). Rebuilt each combat tick from the same combatant list as
+ * the ring-search index; derived state, never hashed.
  */
 export class HostilePresence {
   /** Coarse column → row → counts; nested numeric maps keep negative/off-map nodes collision-free. */

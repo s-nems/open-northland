@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { Engagement, Fleeing, MoveGoal } from '../../src/components/index.js';
+import { CurrentAtomic, Engagement, Fleeing, MoveGoal, Owner } from '../../src/components/index.js';
 import { Simulation } from '../../src/index.js';
 import { combatSystem, SIGHT_RADIUS_NODES } from '../../src/systems/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { testContent } from '../fixtures/content.js';
 import { grassCellMap } from '../fixtures/terrain.js';
+import { BEAR, COW, fighterAtNode, HUNTER } from './combat-system/support.js';
 import { combatantAtNode, ctxOf, P0, P1 } from './stances/support.js';
 
 /**
@@ -49,6 +50,29 @@ describe('combat presence gate — conservative boundaries', () => {
     combatSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(fighter, Engagement)).toBe(true);
+  });
+
+  it('engages an unowned aggressive animal exactly at the sight radius (unowned counts as other)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: bigMap() });
+    const fighter = combatantAtNode(sim, 40, 40, P0, MILITARY_MODE.ATTACK);
+    fighterAtNode(sim, 40 + SIGHT_RADIUS_NODES, 40, BEAR, null); // unowned wildlife — no Owner
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(fighter, Engagement)).toBe(true);
+  });
+
+  it('an owned hunter still hunts prey owned by its OWN player (the gate never covers hunters)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: bigMap() });
+    // Hunters default to IGNORE with the prey-predation exemption; test_spear band is [3, 17].
+    const hunter = combatantAtNode(sim, 40, 40, P0, MILITARY_MODE.IGNORE, { jobType: HUNTER });
+    const cow = fighterAtNode(sim, 46, 40, COW, null); // catchable prey 6 nodes off, in the band
+    sim.world.add(cow, Owner, { player: P0 }); // penned livestock: prey owned by the hunter's player
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    // isHuntTarget is owner-blind, so same-player prey is valid — the presence gate must not skip it.
+    expect(sim.world.get(hunter, CurrentAtomic).effect).toMatchObject({ kind: 'attack', target: cow });
   });
 
   it('a civilian flees a threat exactly at the sight radius, and ignores one past it', () => {
