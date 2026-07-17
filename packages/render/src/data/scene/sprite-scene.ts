@@ -86,7 +86,7 @@ export interface SpriteSceneOptions {
 
 /**
  * The depth-sorted sprite draw list alone (no terrain) — the per-frame half the retained
- * {@link import('../../gpu/world-renderer.js').WorldRenderer} consumes. Terrain is static and built once
+ * {@link import('../../gpu/world-renderer/index.js').WorldRenderer} consumes. Terrain is static and built once
  * (`setTerrain`), so only moving/animated entities flow through here. Pass a `viewport` to cull to what
  * the camera frames (an item is kept iff its screen anchor is inside the already margin-inflated box);
  * culling changes which items are emitted, never their relative order, so the retained pool and

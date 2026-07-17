@@ -2,7 +2,7 @@ import { Application, Assets, type Texture, type TextureSource } from 'pixi.js';
 
 /**
  * The one-time Pixi GPU boot ({@link createPixiApp}, {@link createWindowPixiApp},
- * {@link loadAtlasSource}); per-frame drawing lives in {@link import('./world-renderer.js').WorldRenderer}.
+ * {@link loadAtlasSource}); per-frame drawing lives in {@link import('./world-renderer/index.js').WorldRenderer}.
  * Floats everywhere are fine: this is `render`, never read back into the deterministic sim.
  */
 

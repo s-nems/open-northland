@@ -7,7 +7,7 @@ import type { HudPlacement } from '../../data/hud/index.js';
  * where) are the pure `hud.ts` half; this is only the pixel repaint + the tunable style
  * (colour/font/opacity).
  *
- * Retained like every other layer ({@link import('./world-renderer.js').WorldRenderer} calls
+ * Retained like every other layer ({@link import('../world-renderer/index.js').WorldRenderer} calls
  * {@link draw} every frame): the panel {@link Graphics} and a {@link Text} pool persist across frames,
  * and a row's `.text` is only reassigned when the string actually changed — a Pixi `Text` re-rasterizes
  * its glyphs on every text/style write, so repainting every row per frame would be canvas rasterization +

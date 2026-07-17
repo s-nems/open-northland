@@ -11,11 +11,12 @@ import {
   NO_WAVE,
 } from '../../data/terrain/index.js';
 import { destroyMeshChildren } from '../mesh-teardown.js';
-import { makeWaveUniforms, padLaneRows, WAVE_TIME_PERIOD_TICKS, type WaveUniforms } from '../shading.js';
+import { makeWaveUniforms, WAVE_TIME_PERIOD_TICKS, type WaveUniforms } from '../shading.js';
 import type { TerrainTextureSet } from '../terrain-textures.js';
 import { buildFlat } from './build-flat.js';
 import { buildTextured } from './build-ground.js';
 import type { LaneShading, TerrainChunk } from './geometry.js';
+import { padLaneRows } from './lane-texture.js';
 
 /**
  * The retained terrain layer — the static ground, meshed once per map and drawn per visible block.

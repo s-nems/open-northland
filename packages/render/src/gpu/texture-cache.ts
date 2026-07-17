@@ -39,7 +39,7 @@ interface RevealBake {
 export class TextureCache {
   private readonly cache = new Map<AtlasFrame, Texture>();
   /** Every distinct atlas page a texture was minted from — the world-sampling toggle
-   *  ({@link import('./world-renderer.js').WorldRenderer}) flips these between nearest/linear. */
+   *  ({@link import('./world-renderer/index.js').WorldRenderer}) flips these between nearest/linear. */
   private readonly pages = new Set<TextureSource>();
   /** Bottom-cropped views of a frame, keyed by how many top pixels are hidden — the reveal path
    *  ({@link cropped}). Nested so the primary frame→texture cache above stays a clean 1:1. */

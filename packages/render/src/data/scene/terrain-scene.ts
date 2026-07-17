@@ -120,7 +120,7 @@ export function terrainMapToScene(map: {
  *
  * Pure: a function of the snapshot + grid only, so the screenshot harness gets a reproducible frame.
  *
- * The live render path is {@link import('../../gpu/world-renderer.js').WorldRenderer}, which projects
+ * The live render path is {@link import('../../gpu/world-renderer/index.js').WorldRenderer}, which projects
  * terrain itself and consumes {@link import('./sprite-scene.js').buildSpriteScene} (sprites only);
  * `buildScene` is the headless oracle for the projection + depth-ordering it must match. Known
  * divergence: the renderer's painter key is the feet-anchor screen y (∝ row under the staggered

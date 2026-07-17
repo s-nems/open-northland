@@ -91,7 +91,7 @@ export function nodeLift(
  * centre (`(coord + 0.5) / size`), clamped into the grid, so the per-fragment bilinear blends each
  * triangle's shading between its three cell-centre samples — the engine model (one lighting value
  * per node, interpolated across the triangle). `paddedWidth` is the lane texture's alignment-padded
- * width (`shading.ts` `padLaneRows`); the clamp uses the unpadded grid.
+ * width (`gpu/terrain/lane-texture.ts` `padLaneRows`); the clamp uses the unpadded grid.
  */
 export function nodeLaneUV(
   hx: number,

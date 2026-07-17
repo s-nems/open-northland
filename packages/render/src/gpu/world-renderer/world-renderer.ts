@@ -1,21 +1,19 @@
-import type { FogView, SimEvent, WorldSnapshot } from '@open-northland/sim';
-import { type Application, Container, Sprite, Texture, type TextureSource } from 'pixi.js';
-import { type FogGhost, FogGhostStore, fogTileVisible } from '../data/fog/index.js';
-import { type Camera, cameraViewport, snapCameraToDevicePixels } from '../data/projection/index.js';
-import type { SceneTerrain } from '../data/scene/index.js';
-import type { AtlasFrame } from '../data/sprites/index.js';
-import { type BrightnessField, type ElevationField, makeElevationField } from '../data/terrain/index.js';
-import { MapObjectLayer, type MapObjectSprite } from './map-objects/index.js';
+import type { FogView, SimEvent } from '@open-northland/sim';
+import { type Application, Container, type TextureSource } from 'pixi.js';
+import { type FogGhost, FogGhostStore, fogTileVisible } from '../../data/fog/index.js';
+import { cameraViewport, snapCameraToDevicePixels } from '../../data/projection/index.js';
+import type { SceneTerrain } from '../../data/scene/index.js';
+import type { AtlasFrame } from '../../data/sprites/index.js';
+import { type BrightnessField, type ElevationField, makeElevationField } from '../../data/terrain/index.js';
+import { MapObjectLayer, type MapObjectSprite } from '../map-objects/index.js';
 import {
   BadgeLayer,
   CombatEffectsLayer,
   type ConstructionPlotFrame,
   ConstructionPlotLayer,
-  type DoorBadge,
   FogLayer,
   type GeometryDebugItem,
   GeometryDebugLayer,
-  type HudFrame,
   HudLayer,
   type PlacementGhost,
   PlacementGhostLayer,
@@ -24,77 +22,21 @@ import {
   type PortraitInsetFrame,
   PortraitInsetLayer,
   SelectionLayer,
-} from './overlays/index.js';
-import { makeVignetteSprite } from './post-fx.js';
-import { type EntityBounds, SpritePool } from './sprite-pool/index.js';
-import type { SpriteSheet } from './sprite-sheet.js';
-import { TerrainLayer } from './terrain/index.js';
-import type { TerrainTextureSet } from './terrain-textures.js';
-import { TextureCache } from './texture-cache.js';
-
-/** One candidate building's workplace-assignment verdict: its entity id and whether the selected settler
- *  can be assigned there (green) or not (red). Fed to {@link WorldRenderer.setBuildingHighlight}. */
-export interface BuildingHighlightItem {
-  readonly id: number;
-  readonly ok: boolean;
-}
-
-/** Construction options of a {@link WorldRenderer}. */
-export interface WorldRendererOptions {
-  /** The loaded bob atlas + bindings; `undefined` draws placeholder geometry for every entity. */
-  readonly sheet?: SpriteSheet | undefined;
-  /**
-   * Interactive view smoothing: snap the camera pan to whole device pixels (nearest-sampled art
-   * shimmer-crawls on fractional-pixel pans) and switch the world atlases to linear minification while
-   * zoomed out below 1 (nearest minification sparkles). For the live entries only — the deterministic
-   * `?shot` capture must stay byte-stable, so it never enables this.
-   */
-  readonly viewSmoothing?: boolean | undefined;
-  /**
-   * The world post pass (`gpu/post-fx.ts`): a warm-graded vignette multiply over the world, under the
-   * HUD. An OpenNorthland enhancement for the live entries; the deterministic `?shot` capture never
-   * enables it (`?postfx=off` disables it live).
-   */
-  readonly postFx?: boolean | undefined;
-  /**
-   * Owner slot → team-colour slot, when a map's roster recolours players away from the slot-id
-   * default (see {@link import('../data/scene/sprite-scene.js').SpriteSceneOptions.playerColourOf}).
-   * Absent = identity.
-   */
-  readonly playerColourOf?: ((player: number) => number) | undefined;
-}
-
-/** Shared empty highlight so clearing the assign-mode tint allocates nothing. */
-const EMPTY_HIGHLIGHT: ReadonlyMap<number, boolean> = new Map();
-
-/** Shared empty selection so the common no-selection `update` allocates nothing. */
-const NO_SELECTION: ReadonlySet<number> = new Set();
-const NO_BADGES: readonly DoorBadge[] = [];
-
-/**
- * The per-frame inputs of {@link WorldRenderer.update}, named rather than positional so the
- * same-typed `selection`/`flagged` sets cannot be swapped silently. Mirrors the
- * {@link import('./sprite-pool/index.js').SpritePool}'s `PoolFrame`: only `snapshot` + `camera` are
- * required, everything else falls back to its transient-view default.
- */
-export interface WorldFrame {
-  readonly snapshot: WorldSnapshot;
-  /** The world layer's own transform (screen = world*scale + offset). */
-  readonly camera: Camera;
-  /** The integer sim tick the snapshot is at — the animation clock for gaits/rotors/decor (default 0). */
-  readonly tick?: number | undefined;
-  /** The HUD text frame to repaint, or absent to leave the HUD unchanged. */
-  readonly hud?: HudFrame | undefined;
-  /** The app's currently-selected entity ids, projected to feet rings (default none). Transient view state. */
-  readonly selection?: ReadonlySet<number> | undefined;
-  /** The fixed-timestep interpolation fraction (the loop's `FixedTimestep.advance` return): each entity
-   *  draws `alpha` of the way from its previous tick anchor to its current one (default 1 = raw tick). */
-  readonly alpha?: number | undefined;
-  /** Per-building door-badge tallies to stack over each door (default none). */
-  readonly doorBadges?: readonly DoorBadge[] | undefined;
-  /** The work-flagged gatherer ids whose feet rings read as flagged (default none). */
-  readonly flagged?: ReadonlySet<number> | undefined;
-}
+} from '../overlays/index.js';
+import { type EntityBounds, SpritePool } from '../sprite-pool/index.js';
+import { TerrainLayer } from '../terrain/index.js';
+import type { TerrainTextureSet } from '../terrain-textures.js';
+import { TextureCache } from '../texture-cache.js';
+import {
+  type BuildingHighlightItem,
+  EMPTY_HIGHLIGHT,
+  NO_BADGES,
+  NO_SELECTION,
+  SPRITE_CULL_MARGIN,
+  type WorldFrame,
+  type WorldRendererOptions,
+} from './frame.js';
+import { WorldChrome } from './world-chrome.js';
 
 /**
  * The retained-mode world renderer — a thin orchestrator over the sub-layers it composes. It owns a
@@ -113,22 +55,6 @@ export interface WorldFrame {
  * list (`buildSpriteScene`), the frame selection (`resolveSpriteBobId`/`resolveBuildingDraw`), and the
  * cull math (`viewport.ts`).
  */
-
-/**
- * World-space slack (px) the sprite cull box is grown by on every side, so a tall sprite whose feet are
- * just off-screen but whose body pokes into view still draws (culling is by the feet anchor). Covers the
- * tallest scaled building or map object; still small next to a real map (≈8 tiles), so culling bites.
- */
-export const SPRITE_CULL_MARGIN = 512;
-
-/**
- * The paused-game wash: one screen-sized multiply quad over the world, not the HUD. The original's
- * observed pause treatment is a neutral 50% darken; this warmer brown is an intentional visual
- * deviation. It costs one extra draw call while paused, but it sits at the
- * world→HUD boundary, which flushes anyway.
- */
-const PAUSE_WASH_TINT = 0xc9a87c;
-
 export class WorldRenderer {
   private readonly app: Application;
   /** Camera transform lives here; terrain + decor + sprites are its children so one transform pans/zooms all. */
@@ -168,8 +94,9 @@ export class WorldRenderer {
    *  itself (not a cell wash), so the building reads "lekko zielony / lekko czerwony". See {@link setBuildingHighlight}. */
   private highlight: ReadonlyMap<number, boolean> = new Map();
   private readonly hud = new HudLayer();
-  /** The paused-game sepia wash (screen-space, over the world, under the HUD). See {@link setPaused}. */
-  private readonly pauseWash = new Sprite(Texture.WHITE);
+  /** The screen-space quads between the world and the HUD (pause wash, post-fx vignette) + the zoom
+   *  sampling toggle. See {@link WorldChrome}. */
+  private readonly chrome: WorldChrome;
   /** The current map's terrain-height field — lifts the ground mesh + every projected item, and its
    *  `maxLift` is the cull pad. Flat (zero lift) until {@link setTerrain} loads a map carrying `elevation`. */
   private elevation: ElevationField = makeElevationField(undefined, 0, 0);
@@ -185,11 +112,6 @@ export class WorldRenderer {
   private readonly viewSmoothing: boolean;
   /** Session owner→colour-slot mapping ({@link WorldRendererOptions.playerColourOf}); identity when unset. */
   private readonly playerColourOf: ((player: number) => number) | undefined;
-  /** The post-pass vignette sprite ({@link WorldRendererOptions.postFx}); null when off/unavailable. */
-  private readonly vignette: Sprite | null;
-  /** Atlas pages currently flipped to linear minification by {@link applyWorldSampling} — exactly the
-   *  set to restore to nearest when the camera zooms back in. */
-  private readonly linearPages = new Set<TextureSource>();
 
   constructor(app: Application, opts?: WorldRendererOptions) {
     this.app = app;
@@ -224,16 +146,11 @@ export class WorldRenderer {
     this.worldLayer.addChild(this.badgeLayer.container);
     this.worldLayer.addChild(this.geometryDebug.container);
     app.stage.addChild(this.worldLayer);
-    // The post-pass vignette sits directly over the world and under the pause wash + HUD, so the grade
-    // colours the map but never the chrome. One multiply draw; absent entirely when postFx is off.
-    this.vignette = opts?.postFx === true ? makeVignetteSprite() : null;
-    if (this.vignette !== null) app.stage.addChild(this.vignette);
-    // The pause wash sits above the world and below the HUD (stage order), so pausing browns the map
-    // but never the always-on HUD or the tool panel (both are later stage children).
-    this.pauseWash.tint = PAUSE_WASH_TINT;
-    this.pauseWash.blendMode = 'multiply';
-    this.pauseWash.visible = false;
-    app.stage.addChild(this.pauseWash);
+    // Stage z-order: world → vignette → pause wash → HUD. The chrome mounts its two quads here, between
+    // the world layer above and the HUD below, so the grade and the pause tint colour the map and never
+    // the chrome.
+    this.chrome = new WorldChrome(this.textureCache, opts?.postFx === true);
+    this.chrome.attach(app.stage);
     // The HUD is pinned (not under the camera), so it's a direct child of the stage.
     app.stage.addChild(this.hud.container);
     // The portrait observation window sits over everything (it fills the details panel's box hole); the
@@ -243,32 +160,7 @@ export class WorldRenderer {
 
   /** Show/hide the paused-game wash — the app's loop control drives this alongside the sim pause. */
   setPaused(paused: boolean): void {
-    this.pauseWash.visible = paused;
-  }
-
-  /**
-   * Match the SPRITE atlases' minification to the zoom: below scale 1 nearest sampling drops texels and
-   * the zoomed-out bobs sparkle while panning, so the texture-cache pages (RGB bob + shadow atlases —
-   * never the indexed character sheets, which don't pass through the cache) flip to linear; at scale ≥ 1
-   * exactly the flipped set restores to nearest, keeping magnified pixel art crisp. The terrain pages
-   * are untouched — they load linear at every zoom (the original samples them bilinearly). O(new pages)
-   * per frame — already-flipped pages are skipped via {@link linearPages}. Known limit: the portrait
-   * inset re-renders the world magnified in the same frame, so while zoomed out its cutout samples the
-   * flipped pages linear (slightly soft) — accepted; a per-render flip would touch every page twice a
-   * frame.
-   */
-  private applyWorldSampling(scale: number): void {
-    if (scale < 1) {
-      for (const source of this.textureCache.pageSources()) {
-        if (this.linearPages.has(source)) continue;
-        if (source.scaleMode !== 'nearest') continue; // a page someone loaded linear stays theirs
-        source.scaleMode = 'linear';
-        this.linearPages.add(source);
-      }
-    } else if (this.linearPages.size > 0) {
-      for (const source of this.linearPages) source.scaleMode = 'nearest';
-      this.linearPages.clear();
-    }
+    this.chrome.setPaused(paused);
   }
 
   /**
@@ -397,12 +289,12 @@ export class WorldRenderer {
       flagged = NO_SELECTION,
     } = frame;
     // View smoothing: pin the pan to whole device pixels (kills nearest-sampling shimmer-crawl) and
-    // linear-minify the world atlases when zoomed out (below). The deterministic `?shot` renderer is
-    // constructed without it, so its bytes never move.
+    // linear-minify the world atlases when zoomed out (the chrome's sampling toggle). The deterministic
+    // `?shot` renderer is constructed without it, so its bytes never move.
     const camera = this.viewSmoothing
       ? snapCameraToDevicePixels(frame.camera, this.app.renderer.resolution)
       : frame.camera;
-    if (this.viewSmoothing) this.applyWorldSampling(camera.scale ?? 1);
+    if (this.viewSmoothing) this.chrome.applyWorldSampling(camera.scale ?? 1);
     this.worldLayer.scale.set(camera.scale ?? 1);
     this.worldLayer.position.set(camera.offsetX, camera.offsetY);
     // Cull to the framed viewport (grown to cover tall sprites). Elevation lifts ground + sprites up by
@@ -484,14 +376,7 @@ export class WorldRenderer {
     // door node, this layer stacks one placeholder square per worker (craftsman / carrier / gatherer,
     // colour-coded) above the door. Culled to the sprite viewport, so the cost tracks the screen.
     this.badgeLayer.draw(doorBadges, this.elevation, vp);
-    if (this.pauseWash.visible) {
-      this.pauseWash.width = this.app.screen.width;
-      this.pauseWash.height = this.app.screen.height;
-    }
-    if (this.vignette !== null) {
-      this.vignette.width = this.app.screen.width;
-      this.vignette.height = this.app.screen.height;
-    }
+    this.chrome.resize(this.app.screen.width, this.app.screen.height);
     this.hud.draw(hud);
     // The portrait inset is a second render of the world (re-aimed at the selected unit) into the panel's
     // box texture — must run after the pool reconcile above (so it uses this frame's positions) and before
@@ -600,14 +485,9 @@ export class WorldRenderer {
     this.badgeLayer.destroy();
     this.geometryDebug.destroy();
     this.worldLayer.destroy({ children: true });
-    this.vignette?.destroy(true); // owns its baked gradient texture
-    this.pauseWash.destroy(); // the shared Texture.WHITE itself is left alone
     this.hud.destroy();
     this.portrait.destroy();
-    // Hand the app-owned atlas pages back at the sampling they were lent at. A page left linear would
-    // be skipped by the next renderer's toggle (it only claims pages it finds nearest) and stay soft.
-    for (const source of this.linearPages) source.scaleMode = 'nearest';
-    this.linearPages.clear();
+    this.chrome.destroy(); // its quads + the borrowed atlas pages' sampling
     this.textureCache.clear();
   }
 }
