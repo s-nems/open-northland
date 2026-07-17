@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildAlphaMask, maskSolidAt, SOLID_ALPHA_MIN } from '../src/gpu/sprite-pool/alpha-mask.js';
+import { buildAlphaMask, maskSolidAt, SOLID_ALPHA_MIN } from '../../src/gpu/sprite-pool/alpha-mask.js';
 
 /**
  * The pure half of pixel-accurate picking: RGBA → 1-bit solid mask and its sampling. The canvas-backed
