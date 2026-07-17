@@ -1,20 +1,19 @@
-import {
-  buildSpriteScene,
-  createWindowPixiApp,
-  terrainMapToScene,
-  WorldRenderer,
-} from '@open-northland/render';
-import { goodLocaleParam, loadGoodNameMap } from '../content/good-names.js';
+import type { WorldRenderer } from '@open-northland/render';
+import { buildSpriteScene, createWindowPixiApp, terrainMapToScene } from '@open-northland/render';
 import { buildingFootprints, loadIr } from '../content/ir.js';
-import { loadRuntimeRealContent, logRealContentGaps } from '../content/real-content.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet/index.js';
 import { loadRealTerrain } from '../content/terrain.js';
 import { diag, hashTraceFor, setDiagGameSession } from '../diag/index.js';
-import { fogModeParam } from '../game/fog.js';
 import { createSceneSim, getScene, SCENES } from '../scenes/index.js';
 import { type BootPhase, mountBootProgress } from '../view/boot-progress.js';
 import { cameraFor, createCameraController } from '../view/camera.js';
 import { startGameView } from '../view/runtime/game-view.js';
+import {
+  applyFogOverride,
+  createWorldRenderer,
+  loadLocalizedRealContent,
+  terrainColourOption,
+} from '../view/runtime/world-bootstrap.js';
 import { mountUnknownSceneOverlay } from '../view/scene-overlay.js';
 
 declare global {
@@ -68,18 +67,14 @@ export async function renderSceneMode(
   const app = await createWindowPixiApp(canvas);
   const terrainGrid = terrainMapToScene(scene.terrain);
   await boot.begin('content');
-  // Localized good names follow the app-wide `?lang=` value so the HUD reads from one language setting.
-  // Authored names keep a bare checkout localized.
-  const goodNames = await loadGoodNameMap(goodLocaleParam(params));
-  // Real extracted building footprints (like the `?map=` entry): browser scenes collide/door/place
-  // exactly like the live map view instead of the hand-authored class squares. Empty on a bare checkout
-  // (no ir.json) — the approximations then stand, and the headless twin never loads them at all.
+  // The shared decoded content: localized good names and the merged real content the browser scene runs
+  // on when it is served (real footprints/recipes), so it collides/doors/places exactly like the live map
+  // view instead of the hand-authored class squares. A bare checkout falls back to sandbox content and
+  // the authored approximations; the headless twin never loads either, so copyrighted content stays out
+  // of tests.
+  const { goodNames, realContent } = await loadLocalizedRealContent(params);
+  // Real extracted building footprints (like the `?map=` entry); empty on a bare checkout.
   const footprints = buildingFootprints(await loadIr());
-  // Run the browser scene on the merged real content when it is served (localized good names, real
-  // footprints/recipes); a bare checkout falls back to sandbox content, and the headless twin never
-  // loads it — so copyrighted content stays out of tests. Its gaps are logged once.
-  const realContent = await loadRuntimeRealContent(goodNames);
-  if (realContent !== null) logRealContentGaps(realContent);
   await boot.begin('world');
   const sim = createSceneSim(
     scene,
@@ -96,11 +91,9 @@ export async function renderSceneMode(
     sim,
     hashTrace: hashTraceFor(params),
   });
-  // `?fog=off|reveal|recon` overrides the scene's own fog mode (enqueued after the scene's
-  // setFogMode — FIFO, later write wins). A named divergence from the headless twin, like `?speed=`:
-  // the human explicitly asked to watch the mechanic under a different fog rule.
-  const fogOverride = fogModeParam(params);
-  if (fogOverride !== null) sim.enqueue({ kind: 'setFogMode', mode: fogOverride });
+  // `?fog=off|reveal|recon` overrides the scene's own fog mode — a named divergence from the headless
+  // twin, like `?speed=`: the human explicitly asked to watch the mechanic under a different fog rule.
+  applyFogOverride(sim, params);
   await boot.begin('sprites');
   // Goods are global sandbox content, not scene-local data.
   const sheet = await resolveSpriteSheet(sim.content.goods);
@@ -108,13 +101,7 @@ export async function renderSceneMode(
   await boot.begin('terrain');
   const terrain = await loadRealTerrain();
 
-  // Retained renderer: mesh the terrain once, then reuse a pooled sprite graph each frame (no per-frame
-  // object churn), so a big scene renders + deep-zoom-outs without exhausting the GPU.
-  const renderer = new WorldRenderer(app, {
-    sheet,
-    viewSmoothing: true,
-    postFx: params.get('postfx') !== 'off',
-  });
+  const renderer = createWorldRenderer(app, params, sheet);
   renderer.setTerrain(terrainGrid, terrain);
 
   // Interactive camera over the scene: the scene supplies its starting frame, then the human pans and
@@ -143,8 +130,7 @@ export async function renderSceneMode(
     sim,
     cameraCtl,
     terrainGrid,
-    // Minimap ground colours from the real terrain set's per-type debug colours (absent → flat tints).
-    ...(terrain !== undefined ? { terrainColour: (t: number) => terrain.cellFor(t)?.fallbackColour } : {}),
+    ...terrainColourOption(terrain),
     mapSize: { width: scene.terrain.width, height: scene.terrain.height },
   });
   await boot.finish();

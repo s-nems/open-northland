@@ -3,19 +3,15 @@ import {
   createWindowPixiApp,
   type MapObjectSprite,
   makeElevationField,
-  WorldRenderer,
 } from '@open-northland/render';
 import { halfCellMapFromCells, type SimEvent } from '@open-northland/sim';
 import { buildCollisionTerrain } from '../content/collision.js';
-import { goodLocaleParam, loadGoodNameMap } from '../content/good-names.js';
 import { buildingFootprints, loadIr } from '../content/ir.js';
 import { loadMinimapCellColours } from '../content/minimap-ground.js';
 import { loadMapObjects } from '../content/objects.js';
-import { loadRuntimeRealContent, logRealContentGaps } from '../content/real-content.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet/index.js';
 import { loadRealTerrain } from '../content/terrain.js';
 import { diag, hashTraceFor, setDiagGameSession } from '../diag/index.js';
-import { fogModeParam } from '../game/fog.js';
 import { mapStartFocus } from '../game/map-start.js';
 import { colorOverridesParam, localPlayerParam, playerColourMap } from '../game/player-session.js';
 import {
@@ -29,6 +25,12 @@ import { runAuthoredSlice, runBareMap, runSlice, sliceTerrain } from '../slice/v
 import { type BootPhase, mountBootProgress } from '../view/boot-progress.js';
 import { cameraCenteredOnTile, createCameraController } from '../view/camera.js';
 import { startGameView } from '../view/runtime/game-view.js';
+import {
+  applyFogOverride,
+  createWorldRenderer,
+  loadLocalizedRealContent,
+  terrainColourOption,
+} from '../view/runtime/world-bootstrap.js';
 
 /**
  * The decoded-map viewer entry (`?map=<id>`): draws an actual decoded `content/maps/<id>.json` grid — the
@@ -103,14 +105,11 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // builds its own from the terrain grid for the ground mesh + entity lift; this shared instance lifts
   // the map objects at load and drives elevation-aware picking (worldToTile) below.
   const elevation = makeElevationField(loaded?.elevation, loaded?.width ?? 0, loaded?.height ?? 0);
-  // The app-wide `?lang=` good-name map + the merged real content it localizes — loaded before the
-  // sprite sheet so the goods icon atlas is built from the real goods when served (null on a bare
-  // checkout → the sandbox goods below). Its gaps (uncalibrated gathered goods, uncataloged buildings)
-  // are logged once.
+  // The shared decoded content: the `?lang=` good-name map and the merged real content it localizes
+  // (null on a bare checkout → the sandbox goods below). Its gaps are logged once.
   await boot.begin('content');
-  const goodNames = await loadGoodNameMap(goodLocaleParam(params));
-  const realContent = await loadRuntimeRealContent(goodNames);
-  if (realContent !== null) logRealContentGaps(realContent);
+  const { goodNames, realContent } = await loadLocalizedRealContent(params);
+  // The goods icon atlas is built from the real goods when they are served.
   await boot.begin('sprites');
   const sheet = await resolveSpriteSheet(realContent?.content.goods ?? sandboxGoods());
   // The IR indexes the terrain set, so it is the first half of the terrain step.
@@ -125,14 +124,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
       diag.warn('content', `real terrain unavailable, flat tint fallback: ${String(err)}`);
     }
   }
-  // Retained renderer: mesh the terrain once, reuse a pooled sprite graph each frame (no per-frame
-  // object churn) so large maps + deep zoom-out stay within the GPU budget.
-  const renderer = new WorldRenderer(app, {
-    sheet,
-    viewSmoothing: true,
-    postFx: params.get('postfx') !== 'off',
-    playerColourOf,
-  });
+  const renderer = createWorldRenderer(app, params, sheet, playerColourOf);
   renderer.setTerrain(terrainGrid, terrain);
   // The composed shading field the ground mesh just drew with (`embr` accented by elevation hillshade)
   // — the ONE instance that also shades the placed landscape objects below (mines/stones/grass track
@@ -214,8 +206,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   });
 
   // `?fog=off|reveal|recon` selects the map's fog rule (direct URLs without the flag remain revealed).
-  const fogOverride = fogModeParam(params);
-  if (fogOverride !== null) sim.enqueue({ kind: 'setFogMode', mode: fogOverride });
+  applyFogOverride(sim, params);
 
   // Spawn the map's own trees/ore/stone as real harvestable `Resource` sim nodes, so a gatherer can
   // actually work them, not just see render-only decor.
@@ -312,8 +303,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     terrainGrid,
     localPlayer,
     playerColourOf,
-    // Minimap ground colours from the real terrain set's per-type debug colours (absent → flat tints).
-    ...(terrain !== undefined ? { terrainColour: (t: number) => terrain.cellFor(t)?.fallbackColour } : {}),
+    ...terrainColourOption(terrain),
     ...(minimapCells !== null ? { minimapCellColours: minimapCells } : {}),
     mapSize: { width: terrainGrid.width, height: terrainGrid.height },
     elevation, // a placement/order click on a lifted hill resolves to the tile drawn there
