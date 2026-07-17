@@ -52,7 +52,9 @@ function settler(sim: Simulation, owner: number | null = HUMAN): Entity {
 // The sawmill offers only CARPENTER; the priority list carries it (plus the HQ's woodcutter, which the
 // sawmill doesn't offer — proving the building-doesn't-offer entry is skipped, not bound).
 const WOODCUTTER = 1;
-const assign = (entity: Entity, building: Entity): Command => ({
+type AssignWorkerCommand = Extract<Command, { readonly kind: 'assignWorker' }>;
+
+const assign = (entity: Entity, building: Entity): AssignWorkerCommand => ({
   kind: 'assignWorker',
   entity,
   building,

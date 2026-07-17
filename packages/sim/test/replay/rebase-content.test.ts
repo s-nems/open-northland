@@ -130,7 +130,8 @@ describe('rebaseContent', () => {
     rebaseContent(
       rawContent((c) => {
         const sawmill = c.buildings.find((b) => b.id === 'sawmill');
-        if (sawmill?.recipe) sawmill.recipe.ticks = 10;
+        const recipe = sawmill?.recipes[0];
+        if (recipe !== undefined) recipe.ticks = 10;
       }),
       { seed: 7, map: grassMap(6, 1), log, untilTick: 80 },
     );
@@ -160,7 +161,8 @@ describe('rebaseContent', () => {
     const first = rebaseContent(
       rawContent((c) => {
         const sawmill = c.buildings.find((b) => b.id === 'sawmill');
-        if (sawmill?.recipe) sawmill.recipe.ticks = 11;
+        const recipe = sawmill?.recipes[0];
+        if (recipe !== undefined) recipe.ticks = 11;
       }),
       { seed: 7, map: grassMap(6, 1), log, untilTick: 60 },
     );

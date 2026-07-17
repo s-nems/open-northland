@@ -32,11 +32,14 @@ describe('two squads exchange blows at the data cadence (extended headless scena
     const sim = new Simulation({ seed: 3, content: combatCadenceContent(), map: grass(4, 1) });
     const { vikings, saxons } = seedSquads(sim);
     for (let i = 0; i < 60; i++) sim.step();
+    const viking = vikings[0];
+    const saxon = saxons[0];
+    if (viking === undefined || saxon === undefined) throw new Error('missing seeded fighter');
 
     // Both sides took damage (a mutual exchange), and the plate-armored saxons took the spear's anti-plate
     // column (2090/hit) while the unarmored vikings took the full 3800.
-    expect(sim.world.get(saxons[0], Health).hitpoints).toBeLessThan(20_000);
-    expect(sim.world.get(vikings[0], Health).hitpoints).toBeLessThan(20_000);
+    expect(sim.world.get(saxon, Health).hitpoints).toBeLessThan(20_000);
+    expect(sim.world.get(viking, Health).hitpoints).toBeLessThan(20_000);
     // A surviving spearman accrued SPEAR fight XP (the needfor-gate bucket) and tired from swinging.
     const anyViking = vikings.find((v) => sim.world.isAlive(v) && sim.world.has(v, Settler));
     if (anyViking !== undefined) {

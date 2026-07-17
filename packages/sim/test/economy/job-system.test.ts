@@ -151,7 +151,9 @@ describe('JobSystem — idle settlers take open workplace jobs', () => {
     // Gate the carpenter job itself behind a woodcutter being present: `jobEnablesJob 1 2` (a
     // woodcutter unlocks the carpenter trade). The sawmill is house-ungated, so only this `job` edge
     // can hold the assignment back.
-    sim.content.tribes[0].jobEnables.push({ jobType: WOODCUTTER, kind: 'job', targetId: CARPENTER });
+    const tribe = sim.content.tribes[0];
+    if (tribe === undefined) throw new Error('fixture has no tribe');
+    tribe.jobEnables.push({ jobType: WOODCUTTER, kind: 'job', targetId: CARPENTER });
     placeBuilding(sim, SAWMILL, 5, 5);
     const idle = settler(sim, null);
 
@@ -162,7 +164,9 @@ describe('JobSystem — idle settlers take open workplace jobs', () => {
 
   it('assigns a jobEnablesJob-gated job once a settler of its enabling job exists', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    sim.content.tribes[0].jobEnables.push({ jobType: WOODCUTTER, kind: 'job', targetId: CARPENTER });
+    const tribe = sim.content.tribes[0];
+    if (tribe === undefined) throw new Error('fixture has no tribe');
+    tribe.jobEnables.push({ jobType: WOODCUTTER, kind: 'job', targetId: CARPENTER });
     placeBuilding(sim, SAWMILL, 5, 5);
     settler(sim, WOODCUTTER); // an enabling-job settler is now alive in the tribe
     const idle = settler(sim, null);
@@ -175,7 +179,9 @@ describe('JobSystem — idle settlers take open workplace jobs', () => {
   it('gates assignment on the settler clearing the job needforjob XP threshold', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     // Producing a carpenter requires 30 XP in the wood track (typeId 1) before taking the job.
-    sim.content.tribes[0].jobRequirements.push({
+    const tribe = sim.content.tribes[0];
+    if (tribe === undefined) throw new Error('fixture has no tribe');
+    tribe.jobRequirements.push({
       requirement: 'need',
       target: 'job',
       targetId: CARPENTER,

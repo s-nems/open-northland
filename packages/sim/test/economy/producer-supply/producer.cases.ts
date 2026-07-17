@@ -89,7 +89,7 @@ describe('producer self-service — fetching a missing recipe input', () => {
   it('stays on the station while a cycle is already running (does not wander off to fetch)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     const mill = buildingAt(sim, SAWMILL, 3, 0);
-    sim.world.add(mill, Production, { cycles: [{ elapsed: 2, duration: 20 }] }); // a cycle in flight
+    sim.world.add(mill, Production, { cycles: [{ goodType: PLANK, elapsed: 2, duration: 20 }] }); // a cycle in flight
     buildingAt(sim, HEADQUARTERS, 5, 0, [[WOOD, 3]]); // wood is available elsewhere…
     const smith = settlerAt(sim, 3, 0, CARPENTER, mill);
 
@@ -104,7 +104,7 @@ describe('producer self-service — fetching a missing recipe input', () => {
   it('works INSIDE the station while a cycle runs (the render-hiding Resting marker)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     const mill = buildingAt(sim, SAWMILL, 3, 0);
-    sim.world.add(mill, Production, { cycles: [{ elapsed: 2, duration: 20 }] });
+    sim.world.add(mill, Production, { cycles: [{ goodType: PLANK, elapsed: 2, duration: 20 }] });
     const smith = settlerAt(sim, 3, 0, CARPENTER, mill);
 
     aiSystem(sim.world, ctxOf(sim));
@@ -236,7 +236,7 @@ describe('producer work seats — one stay-inside seat per batch', () => {
     // idling inside until its colleague finishes, it walks out for the next wood (the "drugi młynarz
     // czeka w środku aż pierwszy skończy" bug).
     const mill = buildingAt(sim, TWIN_MILL, 0, 0);
-    sim.world.add(mill, Production, { cycles: [{ elapsed: 2, duration: 20 }] });
+    sim.world.add(mill, Production, { cycles: [{ goodType: PLANK, elapsed: 2, duration: 20 }] });
     buildingAt(sim, HEADQUARTERS, 3, 0, [[WOOD, 5]]);
     const first = settlerAt(sim, 0, 0, CARPENTER, mill);
     const second = settlerAt(sim, 0, 0, CARPENTER, mill);
@@ -265,7 +265,7 @@ describe('producer work seats — one stay-inside seat per batch', () => {
     // One seat (the running batch), no wood ANYWHERE, planks banked in the mill and a sink for them:
     // the surplus operator's next-best work is the output run.
     const mill = buildingAt(sim, TWIN_MILL, 0, 0, [[PLANK, 3]]);
-    sim.world.add(mill, Production, { cycles: [{ elapsed: 2, duration: 20 }] });
+    sim.world.add(mill, Production, { cycles: [{ goodType: PLANK, elapsed: 2, duration: 20 }] });
     buildingAt(sim, HEADQUARTERS, 3, 0);
     const first = settlerAt(sim, 0, 0, CARPENTER, mill);
     const second = settlerAt(sim, 0, 0, CARPENTER, mill);

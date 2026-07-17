@@ -220,7 +220,13 @@ describe('gui stage', () => {
  * fidelity (does the wood match the original) stays a human visual call per plan step 3.
  */
 describe('liftPaletteShadows', () => {
-  const lumaOf = (p: Uint8Array, i: number): number => (p[i * 3] + p[i * 3 + 1] + p[i * 3 + 2]) / 3;
+  const lumaOf = (p: Uint8Array, i: number): number => {
+    const r = p[i * 3];
+    const g = p[i * 3 + 1];
+    const b = p[i * 3 + 2];
+    if (r === undefined || g === undefined || b === undefined) throw new Error(`missing palette entry ${i}`);
+    return (r + g + b) / 3;
+  };
 
   it('lifts pure black to the near-black floor and leaves bright entries untouched', () => {
     const p = new Uint8Array(768); // entry 0 = black; entry 1 = a bright entry above the floor

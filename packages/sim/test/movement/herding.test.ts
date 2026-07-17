@@ -79,7 +79,7 @@ describe('herdingSystem — follow-the-leader cohesion', () => {
       elapsed: 0,
       progress: fx.fromInt(0),
       duration: 4,
-      effect: null,
+      effect: { kind: 'idle' },
       targetEntity: null,
       targetTile: null,
     });

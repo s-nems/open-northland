@@ -94,7 +94,10 @@ describe('atomicSystem — repeating swings at the animation cadence', () => {
     expect(hitTicks.length).toBeGreaterThanOrEqual(2);
     // Consecutive blows land exactly one swing (27 ticks) apart — the cadence is the animation length,
     // no invented cooldown.
-    expect(hitTicks[1] - hitTicks[0]).toBe(27);
+    const firstHit = hitTicks[0];
+    const secondHit = hitTicks[1];
+    if (firstHit === undefined || secondHit === undefined) throw new Error('expected two hits');
+    expect(secondHit - firstHit).toBe(27);
     // Each blow took a full spear-vs-unarmored column (3800) off the pool.
     expect(1_000_000 - sim.world.get(target, Health).hitpoints).toBe(3800 * hitTicks.length);
   });

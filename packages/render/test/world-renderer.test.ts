@@ -45,7 +45,16 @@ describe('compactResolvedStockpileLayers', () => {
 });
 
 describe('trackMotion — the inter-tick interpolation decision', () => {
-  const fresh = (): MotionTrack => ({ tick: -1, x: 0, y: 0, prevX: 0, prevY: 0, drawX: 0, drawY: 0 });
+  const fresh = (): MotionTrack => ({
+    tick: -1,
+    x: 0,
+    y: 0,
+    prevX: 0,
+    prevY: 0,
+    drawX: 0,
+    drawY: 0,
+    gaitPhase: 0,
+  });
   /** Run one trackMotion update and read back the stamped drawn anchor. */
   const drawnAt = (
     m: MotionTrack,

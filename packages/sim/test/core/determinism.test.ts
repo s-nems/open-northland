@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Position, Velocity } from '../../src/components/index.js';
 import { World } from '../../src/ecs/world.js';
-import { EventBuffer, fx, Rng } from '../../src/index.js';
+import { CommandQueue, EventBuffer, fx, Rng } from '../../src/index.js';
 import type { SystemContext } from '../../src/systems/index.js';
 import { movementSystem } from '../../src/systems/index.js';
 
@@ -13,7 +13,13 @@ import { movementSystem } from '../../src/systems/index.js';
 
 function ctx(seed: number, tick: number): SystemContext {
   // content is unused by movementSystem; cast a minimal stub for the slice test.
-  return { content: {} as never, rng: new Rng(seed), tick, events: new EventBuffer() };
+  return {
+    content: {} as never,
+    rng: new Rng(seed),
+    tick,
+    events: new EventBuffer(),
+    commands: new CommandQueue(),
+  };
 }
 
 function buildWorld(): World {

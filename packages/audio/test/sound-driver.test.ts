@@ -1,5 +1,5 @@
 import { type Camera, tileToScreen } from '@open-northland/render/data';
-import { ONE, type WorldSnapshot } from '@open-northland/sim';
+import { type Entity, ONE, type SimEvent, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import type { SoundIndex } from '../src/index.js';
 import { defaultBindings, MAX_CHATTER_DT_MS, SoundDriver } from '../src/index.js';
@@ -71,7 +71,7 @@ const baseInput = { snapshot, camera, canvasW: CANVAS_W, canvasH: CANVAS_H };
 describe('SoundDriver', () => {
   it('does no decision work while inaudible (no gesture yet), then plays after resume', async () => {
     const { driver, ctx, fetched } = makeDriver();
-    const events = [{ kind: 'buildingPlaced', entity: 7, at: { x: 5, y: 5 } } as const];
+    const events: readonly SimEvent[] = [{ kind: 'buildingPlaced', entity: 7 as Entity, at: { x: 5, y: 5 } }];
     driver.update({ ...baseInput, events });
     await flush();
     expect(fetched).toHaveLength(0); // dropped before the director even ran

@@ -7,6 +7,7 @@ import {
   TERRAIN_MARGIN,
   TERRAIN_OPEN,
 } from '../src/catalog/terrain.js';
+import type { CollisionIrView } from '../src/content/collision.js';
 import { buildCollisionTerrain } from '../src/content/collision.js';
 
 /**
@@ -78,7 +79,7 @@ const IR = {
       ],
     },
   ],
-};
+} satisfies CollisionIrView;
 
 describe('buildCollisionTerrain', () => {
   // The join returns the sim's HALF-CELL grid (2W×2H nodes); `at` indexes NODE coordinates.

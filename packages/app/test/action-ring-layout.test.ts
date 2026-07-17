@@ -32,7 +32,7 @@ const centre = (p: PlacedActionButton): { x: number; y: number } => ({
   y: p.rect.y + p.rect.h / 2,
 });
 /** An inert placeholder button (the default menu is mostly these). */
-const ph = (id: string): ActionButton => ({ kind: 'placeholder', id, icon: 'order_build', label: id });
+const ph = (id: string): ActionButton => ({ kind: 'placeholder', id, icon: 'order_build' });
 
 describe('action-ring-layout — arm footprint (transcribed from BuildHumanActionButtons)', () => {
   it('places a group as a horizontal row centred under the settler (bottom arm), in reading order', () => {

@@ -6,7 +6,7 @@ import {
   createGeometryDebugOverlay,
   type GeometryBuildingInfo,
 } from '../src/view/projections/index.js';
-import { building, snapshotOf } from './support/snapshot.js';
+import { building, type Ent, snapshotOf } from './support/snapshot.js';
 
 /**
  * The `?debug=geometry` projection — pure snapshot → overlay items, and the building-set fingerprint

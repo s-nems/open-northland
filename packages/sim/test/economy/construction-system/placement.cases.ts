@@ -17,6 +17,7 @@ describe('placeBuilding underConstruction (CommandSystem)', () => {
     });
     sim.step(); // commandSystem places the under-construction site
     const e = [...sim.world.query(Building)][0];
+    if (e === undefined) throw new Error('building was not placed');
     expect(sim.world.get(e, Building).built).toBe(fx.fromInt(0)); // under construction
     expect(sim.world.has(e, UnderConstruction)).toBe(true); // the builder-work marker
     expect(sim.world.get(e, Stockpile).amounts.size).toBe(0); // empty hold — accumulates deliveries
@@ -42,6 +43,7 @@ describe('placeBuilding underConstruction (CommandSystem)', () => {
     sim.enqueue({ kind: 'placeBuilding', buildingType: HOUSE, x: 0, y: 0, tribe: VIKING }); // no flag
     sim.step();
     const e = [...sim.world.query(Building)][0];
+    if (e === undefined) throw new Error('building was not placed');
     expect(sim.world.get(e, Building).built).toBe(ONE); // immediately built — the slice path
     expect(sim.world.has(e, UnderConstruction)).toBe(false); // not a site
     expect(sim.world.has(e, Health)).toBe(false); // a plain built placement carries no life pool (golden path)

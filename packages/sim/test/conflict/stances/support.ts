@@ -8,6 +8,7 @@ import { Health, Owner, Position, Settler, Stance } from '../../../src/component
 import { type Fixed, fx } from '../../../src/core/fixed.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { cellAnchorNode, positionOfNode, type Simulation } from '../../../src/index.js';
+import type { NodeId } from '../../../src/nav/terrain/index.js';
 
 /**
  * The four **military stances** (`MILITARY_MODE`) as a per-unit auto-engagement mode, plus the civilian
@@ -81,7 +82,7 @@ export function combatantAtPosition(
 
 /** The nav node id of visual cell (x,y)'s ANCHOR node — where a unit minted at integer cell coords
  *  stands on the half-cell lattice. */
-export function cell(sim: Simulation, x: number, y: number): number {
+export function cell(sim: Simulation, x: number, y: number): NodeId {
   const t = sim.terrain;
   if (t === undefined) throw new Error('no terrain');
   const n = cellAnchorNode(x, y);

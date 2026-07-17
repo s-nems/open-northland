@@ -87,7 +87,10 @@ describe('buildHumanBindings', () => {
     const anim = typeof idle === 'number' ? undefined : idle.idle;
     expect(anim).toEqual({ start: 1931, dirs: 1, stride: 57 });
     // Not a `frames: 1` hold — the effective cycle (frames ?? stride) is the whole strip, so it animates.
-    const cycle = typeof anim === 'number' || anim === undefined ? 0 : (anim.frames ?? anim.stride);
+    const cycle =
+      typeof anim === 'number' || anim === undefined || !('stride' in anim)
+        ? 0
+        : (anim.frames ?? anim.stride);
     expect(cycle).toBe(57);
   });
 

@@ -19,15 +19,16 @@ function weapon(content: ContentSet, id: string): WeaponType {
   return found;
 }
 
-type ContentInput = Parameters<typeof parseContentSet>[0];
-
 /**
  * The shared scaffold every classification test needs — the standard manifest/goods/buildings plus a
  * single `idle` job — leaving each test to supply only its `weapons` rows (and, for the soldier-class
  * views, its own `jobs`). Omitting `weapons` reproduces the bare scaffold, so the "defaults weapons to
  * []" tests still exercise parseContentSet's omitted-key default rather than an explicit `[]`.
  */
-function weaponFixture(weapons?: ContentInput['weapons'], jobs?: ContentInput['jobs']): ContentSet {
+function weaponFixture(
+  weapons?: readonly Record<string, unknown>[],
+  jobs?: readonly Record<string, unknown>[],
+): ContentSet {
   return parseContentSet({
     manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
     goods: [{ typeId: 0, id: 'none' }],

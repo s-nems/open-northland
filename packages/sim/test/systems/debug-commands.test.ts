@@ -7,6 +7,7 @@ import {
   Stockpile,
   UnderConstruction,
 } from '../../src/components/index.js';
+import type { Fixed } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, ONE, Simulation } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
@@ -59,7 +60,7 @@ function healthOnlyEntity(sim: Simulation, hitpoints: number): Entity {
 }
 
 /** A settler carrying its four needs pre-set to `level` (a Fixed), so a debug-set is a visible change. */
-function settlerWithNeeds(sim: Simulation, level: number): Entity {
+function settlerWithNeeds(sim: Simulation, level: Fixed): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(3), y: fx.fromInt(3) });
   sim.world.add(e, Settler, {
