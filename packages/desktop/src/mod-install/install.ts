@@ -3,11 +3,18 @@ import { basename, join } from 'node:path';
 import { CULTURESNATION_MOD } from '@open-northland/asset-pipeline';
 import type { ModEvent } from '../ipc.js';
 import { findModRootUnder } from './discover.js';
-import { downloadCnModZip, type ModDownloadOptions } from './download.js';
+import { CNMOD_KNOWN_SHA256, downloadCnModZip, type ModDownloadOptions } from './download.js';
 import { extractModZip } from './extract.js';
 
-/** SHA-256 of the known-good `CnMod 1.3.1.zip`; a mismatch means a new (unverified) mod version. */
-const CNMOD_KNOWN_SHA256 = '847e974a4a56960e081fb313d655a85b6256cd2e6cb9430d4974ff1826170ad9';
+/** The archive is downloaded here and removed once installed. */
+const DOWNLOAD_ZIP_NAME = 'cnmod-download.zip';
+
+/** The extraction staging dir. Dot-prefixed so `discoverInstalledMod` skips a half-written mod
+ *  left by an interrupted install. */
+const STAGING_DIR_NAME = '.installing';
+
+/** Folder name for a mod root the archive did not wrap in its own `CnMod <version>/` dir. */
+const UNWRAPPED_MOD_DIR_NAME = 'CnMod';
 
 /**
  * The full install: download the archive into `modsDir`, verify it against the pinned hash (a
@@ -21,8 +28,8 @@ export async function installCnMod(
   options?: ModDownloadOptions,
 ): Promise<string> {
   await mkdir(modsDir, { recursive: true });
-  const zipPath = join(modsDir, 'cnmod-download.zip');
-  const stagingDir = join(modsDir, '.installing');
+  const zipPath = join(modsDir, DOWNLOAD_ZIP_NAME);
+  const stagingDir = join(modsDir, STAGING_DIR_NAME);
   try {
     const sha256 = await downloadCnModZip(zipPath, onEvent, options);
     if (sha256 !== CNMOD_KNOWN_SHA256) {
@@ -39,7 +46,7 @@ export async function installCnMod(
     if (root === undefined) {
       throw new Error(`mod install: no ${CULTURESNATION_MOD}/ found inside the downloaded archive`);
     }
-    const finalName = root === stagingDir ? 'CnMod' : basename(root);
+    const finalName = root === stagingDir ? UNWRAPPED_MOD_DIR_NAME : basename(root);
     const finalPath = join(modsDir, finalName);
     await rm(finalPath, { recursive: true, force: true });
     await rename(root, finalPath);

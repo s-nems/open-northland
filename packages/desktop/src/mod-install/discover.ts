@@ -2,7 +2,8 @@ import { readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { CULTURESNATION_MOD } from '@open-northland/asset-pipeline';
 
-/** Finds an unpacked mod root under a folder the user picked, or under the data root's `mods/`. */
+/** Finds an unpacked mod root: under one folder the user picked, or by sweeping the data root's
+ *  `mods/` for the newest install. */
 
 /**
  * Locates a mod root (a directory that contains `DataCnmd/`) at `dir` itself or one level below —
@@ -43,8 +44,8 @@ export async function discoverInstalledMod(modsDir: string): Promise<string | un
   let children: string[];
   try {
     children = (await readdir(modsDir, { withFileTypes: true }))
-      // Dot-dirs are never installed mods — `.installing/` in particular is the extraction staging
-      // area, whose half-written DataCnmd/ must not be discovered after an interrupted install.
+      // Dot-dirs are never installed mods — `install.ts`'s STAGING_DIR_NAME in particular, whose
+      // half-written DataCnmd/ must not be discovered after an interrupted install.
       .filter((e) => e.isDirectory() && !e.name.startsWith('.'))
       .map((e) => e.name);
   } catch {
