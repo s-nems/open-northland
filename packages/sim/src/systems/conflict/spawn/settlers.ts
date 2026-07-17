@@ -1,5 +1,6 @@
 import type { ContentSet } from '@open-northland/data';
 import {
+  Age,
   Armor,
   Equipment,
   type EquipmentSlot,
@@ -23,6 +24,7 @@ import { positionOfNode } from '../../../nav/halfcell.js';
 import type { SystemContext } from '../../context.js';
 import { syncWorkFlagToJob } from '../../economy/flags.js';
 import { isFemaleJobId } from '../../family/eligibility.js';
+import { spawnAgeTicks } from '../../lifecycle/ageclass.js';
 import { rollInitialNeed } from '../../lifecycle/needs.js';
 import { stampDefaultStance } from '../../orders/index.js';
 import { settlerHitpoints } from '../../readviews/index.js';
@@ -84,8 +86,16 @@ export function createSettler(world: World, content: ContentSet, rng: Rng, spec:
   // job slugs (`baby_female`/`child_female`/`woman`) stamp it at creation; every other spawn is male.
   // Matched by the job's `id` slug, not its numeric id (a fixture's adult trade may reuse a low id).
   // Births stamp it from the parents' `makeChild` choice instead (systems/family/children.ts).
-  if (isFemaleJobId(contentIndex(content).commandJobs.get(spec.jobType)?.id)) {
+  const jobId = contentIndex(content).commandJobs.get(spec.jobType)?.id;
+  if (isFemaleJobId(jobId)) {
     world.add(e, Female, FEMALE);
+  }
+  // A settler spawned directly into a baby/child job (an authored map's `sethuman` children) carries an
+  // `Age` at its stage's starting tick, exactly like a born baby: `Age` is what makes the renderer pick
+  // the young body and the GrowthSystem mature it into an adult. Slug-matched, like `Female` above.
+  const ageTicks = spawnAgeTicks(jobId);
+  if (ageTicks !== null) {
+    world.add(e, Age, { ticks: ageTicks });
   }
   // Every settler carries a `Health` pool. The pool comes from the content — the settler's tribe HP
   // ({@link settlerHitpoints}), the human counterpart to an animal's `hitpointsAdult` — so every spawn on

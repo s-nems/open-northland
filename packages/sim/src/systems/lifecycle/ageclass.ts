@@ -75,6 +75,25 @@ export function isNonWorkingAge(jobType: number | null): boolean {
  */
 export const GROWUP_TICKS = 8192;
 
+/**
+ * The `Age.ticks` a settler spawned directly into an age-class job starts with, or null for an adult
+ * slug (no `Age` stamped). Matched by job `id` slug, not numeric id, for the same fixture-collision
+ * reason as `isFemaleJobId`. A child starts at {@link GROWUP_TICKS} — the start of its stage — so the
+ * GrowthSystem neither demotes it back to a baby nor shortens its remaining childhood.
+ */
+export function spawnAgeTicks(jobId: string | undefined): number | null {
+  switch (jobId) {
+    case 'baby_female':
+    case 'baby_male':
+      return 0;
+    case 'child_female':
+    case 'child_male':
+      return GROWUP_TICKS;
+    default:
+      return null;
+  }
+}
+
 /** Whether an age-class id is a male stage — the bit preserved across the growth transition (a `baby_male`
  * grows into a `child_male`, never a `child_female`). */
 function isMaleStage(jobType: number | null): boolean {
