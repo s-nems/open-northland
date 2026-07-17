@@ -9,6 +9,7 @@ import { type Fixed, fx } from '../../../src/core/fixed.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { cellAnchorNode, positionOfNode, type Simulation } from '../../../src/index.js';
 import type { NodeId } from '../../../src/nav/terrain/index.js';
+import type { MilitaryMode } from '../../../src/systems/readviews/index.js';
 
 /**
  * The four **military stances** (`MILITARY_MODE`) as a per-unit auto-engagement mode, plus the civilian
@@ -37,7 +38,7 @@ export function combatant(
   x: number,
   y: number,
   owner: number,
-  mode: number,
+  mode: MilitaryMode,
   opts: { hitpoints?: number; jobType?: number } = {},
 ): Entity {
   return combatantAtPosition(sim, { x: fx.fromInt(x), y: fx.fromInt(y) }, owner, mode, opts);
@@ -50,7 +51,7 @@ export function combatantAtNode(
   hx: number,
   hy: number,
   owner: number,
-  mode: number,
+  mode: MilitaryMode,
   opts: { hitpoints?: number; jobType?: number } = {},
 ): Entity {
   return combatantAtPosition(sim, positionOfNode(hx, hy), owner, mode, opts);
@@ -60,7 +61,7 @@ export function combatantAtPosition(
   sim: Simulation,
   position: { x: Fixed; y: Fixed },
   owner: number,
-  mode: number,
+  mode: MilitaryMode,
   opts: { hitpoints?: number; jobType?: number } = {},
 ): Entity {
   const e = sim.world.create();

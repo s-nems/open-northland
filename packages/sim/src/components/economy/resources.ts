@@ -132,8 +132,9 @@ export const HarvestedBy = defineComponent<{ by: Entity }>('HarvestedBy');
  * timed by `ripeAtTick` (see systems/economy/berries.ts).
  *
  * `ripe` is whether the bush currently holds fruit. `ripeAtTick` is the absolute tick the BerryGrowthSystem
- * flips a bare bush back to ripe; unused (0) while ripe. `gfxIndex` is the render-variant tag (see
- * {@link Resource.gfxIndex}).
+ * flips a bare bush back to ripe (absolute, not a countdown: an exact integer compare, so the snapshot
+ * scenery cache only re-clones a bush when it is foraged or regrows); unused (0) while ripe. `gfxIndex` is
+ * the render-variant tag (see {@link Resource.gfxIndex}).
  */
 export const BerryBush = defineComponent<{
   ripe: boolean;

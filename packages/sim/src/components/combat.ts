@@ -1,6 +1,7 @@
 import type { Fixed } from '../core/fixed.js';
 import { defineComponent, type Entity } from '../ecs/world.js';
 import type { NodeId } from '../nav/terrain/index.js';
+import type { MilitaryMode } from '../systems/readviews/stances.js';
 
 /**
  * An entity's hitpoints, drained by resolved attack damage (clamped at 0) and by the NeedsSystem's starvation
@@ -68,7 +69,7 @@ export const Engagement = defineComponent<{ repathAt: number }>('Engagement');
  * {@link import('../systems/readviews/stances.js').defaultStanceForJob}), so unowned combatants keep their
  * content-relation behavior.
  */
-export const Stance = defineComponent<{ mode: number; anchorCell: NodeId | null }>('Stance');
+export const Stance = defineComponent<{ mode: MilitaryMode; anchorCell: NodeId | null }>('Stance');
 
 /**
  * A {@link Stance} `FLEE` combatant's active run-away state — distinct from the persistent mode: a FLEE unit

@@ -4,6 +4,7 @@ import {
   Engagement,
   Fleeing,
   FOG_MODE,
+  type FogMode,
   fogMode,
   Health,
   Owner,
@@ -15,7 +16,7 @@ import { fx } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, Simulation } from '../../src/index.js';
 import { SIGHT_RADIUS_NODES } from '../../src/systems/conflict/targeting.js';
-import { MILITARY_MODE, SCOUT_JOB } from '../../src/systems/readviews/index.js';
+import { MILITARY_MODE, type MilitaryMode, SCOUT_JOB } from '../../src/systems/readviews/index.js';
 import {
   BUILDING_VISION_NODES,
   CIVILIAN_VISION_NODES,
@@ -42,7 +43,7 @@ const WOODCUTTER = 1; // fixture job 1 — carries test_axe (band [1,2]); a civi
 const P0 = 0;
 const P1 = 1;
 
-function simOn(mode: number, w = 24, h = 8): Simulation {
+function simOn(mode: FogMode, w = 24, h = 8): Simulation {
   const sim = new Simulation({ seed: 7, content: testContent(), map: grassMap(w, h) });
   sim.enqueue({ kind: 'setFogMode', mode });
   return sim;
@@ -54,7 +55,7 @@ function unit(
   x: number,
   y: number,
   owner: number,
-  opts: { jobType?: number | null; mode?: number } = {},
+  opts: { jobType?: number | null; mode?: MilitaryMode } = {},
 ): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
@@ -129,7 +130,9 @@ describe('fog modes — update rules over the per-player mask', () => {
   });
 
   it('skips an invalid mode (recoverable bad input, still logged)', () => {
-    const sim = simOn(9);
+    // Cast past FogMode on purpose: the point is what the command does with an id the union forbids,
+    // which is exactly what a replayed/hand-built command stream can carry.
+    const sim = simOn(9 as FogMode);
     sim.run(1);
     expect(fogMode(sim.world)).toBe(FOG_MODE.OFF);
     expect(sim.commands.log).toHaveLength(1); // logged for faithful replay

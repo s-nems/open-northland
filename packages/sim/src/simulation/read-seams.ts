@@ -13,13 +13,6 @@ import { type PlacementProbe, placementProbe } from '../systems/footprint/index.
 import { type SignpostProbe, signpostProbe } from '../systems/signposts/index.js';
 import { effectiveFogState, type FogState } from '../systems/vision/index.js';
 
-export { fogMode, needsEnabled } from '../components/index.js';
-export {
-  constructionSitePlots,
-  placementBlockerVersion,
-  workFlagBlockerVersion,
-} from '../systems/footprint/index.js';
-
 /**
  * The fog-of-war read view for one viewer player (see {@link import('../simulation.js').Simulation.fogView})
  * — plain data + one pure accessor, so render/minimap layers consume fog without touching the live

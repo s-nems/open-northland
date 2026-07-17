@@ -2,7 +2,7 @@ import { AttackOrder, Owner, type SettlerIdentity, Stance } from '../../componen
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { defaultStanceForJob, HUNTER_JOB, MILITARY_MODE } from '../readviews/index.js';
+import { defaultStanceForJob, HUNTER_JOB, MILITARY_MODE, type MilitaryMode } from '../readviews/index.js';
 import { entityNode, manhattan, type NodeBuckets } from '../spatial.js';
 import { playerSeesEntity } from '../vision/index.js';
 import type { HostilePresence } from './presence.js';
@@ -34,7 +34,7 @@ export const DEFEND_LEASH_NODES = 12;
  * is normalized to the passive {@link MILITARY_MODE.IGNORE} so a stray value never becomes an accidental
  * aggressor.
  */
-export function stanceMode(world: World, e: Entity, jobType: number | null): number {
+export function stanceMode(world: World, e: Entity, jobType: number | null): MilitaryMode {
   const s = world.tryGet(e, Stance);
   const mode = s === undefined ? defaultStanceForJob(jobType) : s.mode;
   return mode === MILITARY_MODE.NONE ? MILITARY_MODE.IGNORE : mode;
@@ -52,7 +52,7 @@ export interface CombatantStance {
   /** Whether an explicit {@link AttackOrder} is in flight — it overrides `mode`'s auto-behavior. */
   readonly ordered: boolean;
   /** The {@link MILITARY_MODE} the unit acts under ({@link stanceMode}), or null for an unowned combatant. */
-  readonly mode: number | null;
+  readonly mode: MilitaryMode | null;
 }
 
 /**

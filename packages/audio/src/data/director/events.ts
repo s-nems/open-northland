@@ -1,4 +1,4 @@
-import { eventNode, type SimEvent, type WorldSnapshot } from '@open-northland/sim';
+import { eventNode, type HalfCellNode, type SimEvent, type WorldSnapshot } from '@open-northland/sim';
 import { groupFiles } from '../bank.js';
 import { computeSpatial, computeSpatialAtNode, type Spatial } from '../spatial.js';
 import type { DirectorInput, EventSound, OneShot, SoundBindings } from '../types.js';
@@ -16,12 +16,11 @@ export const JINGLE_GAIN = 0.9;
 export const SFX_GAIN = 0.8;
 
 /**
- * The entity whose position locates a spatial event, or `undefined` when the event carries its own node
- * ({@link eventNode}) — a felled/depleted node's emitter is already destroyed by the snapshot, so only the
- * node locates it. `goodProduced` names its emitter `building`; the rest that lack both stay unlocated.
+ * The entity that names a spatial event's emitter, or `undefined` when it names none. Only asked of an
+ * event with no node of its own — deciding that is the caller's job ({@link eventNode}). `goodProduced`
+ * names its emitter `building`; the rest use `entity`.
  */
 function eventEntity(ev: SimEvent): number | undefined {
-  if (eventNode(ev) !== null) return undefined;
   if (ev.kind === 'goodProduced') return ev.building as number;
   return 'entity' in ev ? (ev.entity as number) : undefined;
 }
@@ -69,7 +68,7 @@ interface PendingSpatial {
   /** The explicit `at` half-cell node, or null when the position must come from `entity`'s
    *  snapshot Position (a fractional tile). The two spaces project through different renderer
    *  mappings — see {@link computeSpatialAtNode} vs {@link computeSpatial}. */
-  readonly node: { readonly hx: number; readonly hy: number } | null;
+  readonly node: HalfCellNode | null;
   readonly entity: number | undefined;
 }
 
