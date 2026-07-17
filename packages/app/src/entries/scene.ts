@@ -12,6 +12,7 @@ import { loadRealTerrain } from '../content/terrain.js';
 import { diag, hashTraceFor, setDiagGameSession } from '../diag/index.js';
 import { fogModeParam } from '../game/fog.js';
 import { createSceneSim, getScene, SCENES } from '../scenes/index.js';
+import { type BootPhase, mountBootProgress } from '../view/boot-progress.js';
 import { cameraFor, createCameraController } from '../view/camera.js';
 import { startGameView } from '../view/runtime/game-view.js';
 import { mountUnknownSceneOverlay } from '../view/scene-overlay.js';
@@ -34,6 +35,16 @@ declare global {
  * hand-authored fallbacks for a bare checkout. The sim is the exact one the headless acceptance test runs.
  */
 
+/** The boot steps this entry runs, in order — the loading card's step list. */
+const SCENE_BOOT_PHASES = [
+  'graphics',
+  'content',
+  'sprites',
+  'terrain',
+  'world',
+  'hud',
+] as const satisfies readonly BootPhase[];
+
 export async function renderSceneMode(
   canvas: HTMLCanvasElement,
   sceneId: string,
@@ -49,9 +60,14 @@ export async function renderSceneMode(
   }
 
   diag.info('boot', 'game start', { entry: 'scene', sceneId, seed: scene.seed });
+  // Content fetches, atlas builds and terrain meshing run for seconds before the first frame; the card
+  // covers that stretch and comes off once the world is drawn.
+  const boot = mountBootProgress(SCENE_BOOT_PHASES);
+  await boot.begin('graphics');
   // Window-tracking, device-resolution backing store: resizing changes the visible field, never the scale.
   const app = await createWindowPixiApp(canvas);
   const terrainGrid = terrainMapToScene(scene.terrain);
+  await boot.begin('content');
   // Localized good names follow the app-wide `?lang=` value so the HUD reads from one language setting.
   // Authored names keep a bare checkout localized.
   const goodNames = await loadGoodNameMap(goodLocaleParam(params));
@@ -84,9 +100,12 @@ export async function renderSceneMode(
   // the human explicitly asked to watch the mechanic under a different fog rule.
   const fogOverride = fogModeParam(params);
   if (fogOverride !== null) sim.enqueue({ kind: 'setFogMode', mode: fogOverride });
+  await boot.begin('sprites');
   // Goods are global sandbox content, not scene-local data.
   const sheet = await resolveSpriteSheet(sim.content.goods);
+  await boot.begin('terrain');
   const terrain = await loadRealTerrain();
+  await boot.begin('world');
 
   // Retained renderer: mesh the terrain once, then reuse a pooled sprite graph each frame (no per-frame
   // object churn), so a big scene renders + deep-zoom-outs without exhausting the GPU.
@@ -113,6 +132,7 @@ export async function renderSceneMode(
   // The shared in-game runtime (view/runtime/game-view.ts): the standard HUD mounts — tool panel, unit
   // controls, perf overlay, positional sound — and the one fixed-timestep RAF loop, identical to the
   // `?map=` entry's.
+  await boot.begin('hud');
   await startGameView({
     app,
     canvas,
@@ -126,6 +146,7 @@ export async function renderSceneMode(
     ...(terrain !== undefined ? { terrainColour: (t: number) => terrain.cellFor(t)?.fallbackColour } : {}),
     mapSize: { width: scene.terrain.width, height: scene.terrain.height },
   });
+  await boot.finish();
 
   // Dev/debug seam: the live instances, reachable from the browser console (`__opennorthland.sim` …) so a
   // human or an automated probe can inspect the running scene without rebuilding it. Read-only: a

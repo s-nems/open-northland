@@ -66,6 +66,18 @@ export const plSurfaces = {
       7: 'Egipcjanie',
     } as Readonly<Record<number, string>>,
   },
+  loading: {
+    title: 'Wczytywanie',
+    graphics: 'Uruchamianie grafiki…',
+    map: 'Wczytywanie mapy…',
+    content: 'Wczytywanie zawartości gry…',
+    sprites: 'Składanie atlasów grafik…',
+    terrain: 'Wczytywanie terenu…',
+    objects: 'Rozstawianie obiektów krajobrazu…',
+    world: 'Budowanie świata…',
+    minimap: 'Rysowanie minimapy…',
+    hud: 'Przygotowywanie interfejsu…',
+  },
   common: {
     backToMenu: 'Wróć do menu',
     soundOn: '🔊 Dźwięk włączony',
