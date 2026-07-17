@@ -218,19 +218,3 @@ export function resolveSignpostDraw(
   const board = b.boards[Math.min(b.boards.length - 1, Math.max(0, item.boardIndex))];
   return board === undefined ? null : unwrapBobRef(board);
 }
-
-/**
- * Resolve the ordered layer refs for a stockpile-kind draw item — a single graphic each. A filled loose
- * pile draws its per-fill heap; a delivery flag ({@link DrawItem.isFlag}) — a marker that holds no goods —
- * and an empty pile both draw the flag marker. The flag never buries under its own goods because its heaps
- * are separate entities the scene depth-sorts a hair behind it (a flag and its heaps are the same
- * `stockpile` kind, split by {@link import('../scene/draw-item.js').FLAG_PAINT_STEP}), not layers of one
- * draw.
- */
-export function resolveStockpileLayerDraws(
-  binding: number | StockpileBinding,
-  item: DrawItem,
-): BuildingDraw[] {
-  if (typeof binding === 'number') return [{ bob: binding }];
-  return [resolveStockpileDraw(binding, item)];
-}

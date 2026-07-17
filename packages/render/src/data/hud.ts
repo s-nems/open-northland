@@ -1,4 +1,5 @@
 import type { WorldSnapshot } from '@open-northland/sim';
+import { systems } from '@open-northland/sim';
 import { readStockpileAmounts } from './stockpile.js';
 
 /**
@@ -11,12 +12,9 @@ import { readStockpileAmounts } from './stockpile.js';
  * boundary, and counts/sums are order-independent, so the values match the sim views by construction.
  */
 
-/**
- * The HUD job-key for an idle, job-seeking adult (`Settler.jobType === null`). `-1` sits outside the
- * `0..` `JobType.typeId` space (`0` is the valid `none` id), so it can never collide with a real
- * job's count — the same sentinel the sim's `tribePopulationByJob` view uses.
- */
-export const IDLE_JOB = -1;
+/** The HUD job-key for an idle, job-seeking adult — the sim's own sentinel, re-exported so a consumer
+ *  reading {@link JobCount.jobType} can name it without importing sim. */
+export const IDLE_JOB = systems.IDLE_JOB;
 
 /** A single per-job tally row of the HUD: a `jobType` id (or {@link IDLE_JOB}) and its head-count. */
 export interface JobCount {

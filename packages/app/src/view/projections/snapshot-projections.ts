@@ -1,4 +1,4 @@
-import { buildHud, fogTileVisible, layoutHud, ONE } from '@open-northland/render';
+import { buildHud, fogTileVisible, type HudLayout, layoutHud, ONE } from '@open-northland/render';
 import type { WorldSnapshot } from '@open-northland/sim';
 import { HUD_TRIBE } from '../../game/rules.js';
 import type { WorkerRole } from '../../game/sandbox/index.js';
@@ -21,7 +21,7 @@ export function createSnapshotProjections(
   roleOf: (jobType: number) => WorkerRole,
   fogGates: FogGates,
 ): {
-  readonly hudFor: (snapshot: WorldSnapshot) => ReturnType<typeof layoutHud>;
+  readonly hudFor: (snapshot: WorldSnapshot) => HudLayout;
   readonly doorBadgesFor: (snapshot: WorldSnapshot) => ReturnType<typeof computeDoorBadges>;
 } {
   return {

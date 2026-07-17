@@ -3,15 +3,14 @@
  * culling, with no GPU/canvas dependency. It exists so a non-render consumer (e.g. `@open-northland/audio`,
  * which spatialises sound by the same camera projection the renderer draws with) can import this
  * math without pulling the main `../index.js` barrel, which re-exports the Pixi `WorldRenderer` and so
- * drags Pixi into the importer's module graph. The main barrel keeps re-exporting these too (for
- * render's own consumers); this is a narrower, dependency-light entry point onto the same modules.
+ * drags Pixi into the importer's module graph.
+ *
+ * Every export is spelled out. This is a public package entry (`@open-northland/render/data`), so an
+ * `export *` would publish whatever its modules happen to add — including the projection internals the
+ * main barrel deliberately withholds, and `isVisible`, which stays render-only.
  */
 
-export * from './elevation.js';
-export * from './iso.js';
-// Explicit (not `export *`) so the internal-only `isVisible` predicate stays off the public surface —
-// it mirrors the main barrel's viewport block. The rest are the Pixi-free cull math `@open-northland/audio`
-// spatialises sound with.
+export { type Camera, halfCellToScreen, ONE, tileToScreen } from './iso.js';
 export {
   aabbIntersects,
   type Box,

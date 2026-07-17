@@ -16,7 +16,7 @@ import {
   resolveSettlerBobId,
   resolveSignpostDraw,
   resolveSpriteBobId,
-  resolveStockpileLayerDraws,
+  resolveStockpileDraw,
   type SpriteKind,
 } from '../../data/sprites/index.js';
 import type { SettlerCharacterSet, SpriteLayer, SpriteSheet } from '../sprite-sheet.js';
@@ -265,14 +265,13 @@ function resolveBuildingLayers(sheet: SpriteSheet, item: DrawItem, tick: number)
 function resolveStockpileLayers(sheet: SpriteSheet, item: DrawItem): ResolvedLayer[] | null {
   const binding = sheet.bindings.stockpile;
   if (binding === undefined) return null;
-  const draws = resolveStockpileLayerDraws(binding, item);
-  const stacks = compactResolvedStockpileLayers(
-    draws.map((draw) =>
-      draw.layer === undefined
-        ? null // no family -> placeholder heap/flag, never a wrong atlas borrow
-        : layeredLayersWithShadow(sheet, 'stockpile', draw),
-    ),
-  );
+  // A stockpile draws a single graphic — its heap or its delivery flag; piles never stack layers.
+  const draw = resolveStockpileDraw(binding, item);
+  const stacks = compactResolvedStockpileLayers([
+    draw.layer === undefined
+      ? null // no family -> placeholder heap/flag, never a wrong atlas borrow
+      : layeredLayersWithShadow(sheet, 'stockpile', draw),
+  ]);
   return stacks === null ? null : stacks.flat();
 }
 

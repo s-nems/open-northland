@@ -30,7 +30,6 @@ export {
   resolveResourceDraw,
   resolveSignpostDraw,
   resolveStockpileDraw,
-  resolveStockpileLayerDraws,
 } from './layered.js';
 export type {
   BuildingBobRef,

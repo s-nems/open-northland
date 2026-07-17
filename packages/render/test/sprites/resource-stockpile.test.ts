@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  resolveSpriteBobId,
-  resolveStockpileDraw,
-  resolveStockpileLayerDraws,
-} from '../../src/data/sprites/index.js';
+import { resolveSpriteBobId, resolveStockpileDraw } from '../../src/data/sprites/index.js';
 import { type DrawItem, resolveResourceDraw } from '../../src/index.js';
 import { drawItem } from '../support/fixtures.js';
 
@@ -148,23 +144,20 @@ describe('resolveStockpileDraw — per-good ground piles + delivery flag', () =>
   });
 
   it('draws a filled loose pile as its heap ALONE — no flag planted through the goods', () => {
-    expect(resolveStockpileLayerDraws(binding, pile(5, 3))).toEqual([
-      { bob: 2, layer: 'ls_goods.goods_wood' },
-    ]);
+    expect(resolveStockpileDraw(binding, pile(5, 3))).toEqual({ bob: 2, layer: 'ls_goods.goods_wood' });
   });
 
   it('draws an EMPTY pile as the flag marker alone (a designated collection point with nothing in it)', () => {
-    expect(resolveStockpileLayerDraws(binding, pile())).toEqual([
-      { bob: 33, layer: 'ls_temp.human_player01' },
-    ]);
+    expect(resolveStockpileDraw(binding, pile())).toEqual({ bob: 33, layer: 'ls_temp.human_player01' });
   });
 
   it('draws a delivery flag as the flag marker alone (it holds no goods — its heaps are separate entities)', () => {
     // A flag is a pure marker (no goodType): it resolves to the flag graphic. The goods it collects are
     // SEPARATE loose piles the scene depth-sorts a hair behind it (FLAG_PAINT_STEP), never layers of one draw.
-    expect(resolveStockpileLayerDraws(binding, { ...pile(), isFlag: true })).toEqual([
-      { bob: 33, layer: 'ls_temp.human_player01' },
-    ]);
+    expect(resolveStockpileDraw(binding, { ...pile(), isFlag: true })).toEqual({
+      bob: 33,
+      layer: 'ls_temp.human_player01',
+    });
   });
 });
 

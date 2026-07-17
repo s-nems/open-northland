@@ -7,6 +7,7 @@ export { BERRY_REGROW_TICKS, createBerryBush } from './economy/berries.js';
 export { isOnMission } from './family/eligibility.js';
 export { createResourceNode } from './footprint/resources.js';
 export { GROWUP_TICKS, isBaby, isChild } from './lifecycle/ageclass.js';
+export { IDLE_JOB } from './readviews/hud.js';
 export { MILITARY_MODE, SCOUT_JOB } from './readviews/stances.js';
 export {
   canPlaceSignpost,

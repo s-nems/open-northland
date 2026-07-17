@@ -16,18 +16,7 @@ export {
   placeHud,
   type StockCount,
 } from './data/hud.js';
-export {
-  CALIBRATED_HALF_H,
-  CALIBRATED_HALF_W,
-  type Camera,
-  halfCellToScreen,
-  ONE,
-  setTilePitch,
-  snapCameraToDevicePixels,
-  TILE_HALF_H,
-  TILE_HALF_W,
-  tileToScreen,
-} from './data/iso.js';
+export { type Camera, halfCellToScreen, ONE, TILE_HALF_H, TILE_HALF_W, tileToScreen } from './data/iso.js';
 export {
   buildScene,
   buildSpriteScene,
@@ -60,14 +49,7 @@ export {
   type StockpileBinding,
 } from './data/sprites/index.js';
 export { type CellTexture, patternSrcRect } from './data/terrain.js';
-export {
-  aabbIntersects,
-  type Box,
-  cameraViewport,
-  type TileRange,
-  type Viewport,
-  visibleTileRange,
-} from './data/viewport.js';
+export { cameraViewport, type TileRange, type Viewport, visibleTileRange } from './data/viewport.js';
 export {
   AnimationGallery,
   clipDirs,

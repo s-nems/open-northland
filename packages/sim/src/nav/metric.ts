@@ -35,7 +35,7 @@ export const HALF_ROW: Fixed = fx.div(fx.fromInt(19), fx.fromInt(68));
 /**
  * The vertical world extent of ONE ROW STEP, in column units: the measured 38 px row step over the
  * 68 px column step (source basis "projection" — 19/34 exactly). The render's
- * `CALIBRATED_HALF_H / (2·CALIBRATED_HALF_W)` is the same ratio in pixels; keep the two in step.
+ * `TILE_HALF_H / (2·TILE_HALF_W)` is the same ratio in pixels; keep the two in step.
  */
 export const ROW_STEP: Fixed = fx.div(fx.fromInt(19), fx.fromInt(34));
 

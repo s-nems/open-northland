@@ -38,7 +38,7 @@ export type SpriteState = 'idle' | 'moving' | 'acting';
  * Read it through {@link paintOrderBias} (never combined with {@link FLAG_PAINT_STEP} by hand). `tile`
  * is 0 (tiles carry their own sub-zero depth band).
  */
-export const SPRITE_PAINT_ORDER: Readonly<Record<DrawKind, number>> = {
+const SPRITE_PAINT_ORDER: Readonly<Record<DrawKind, number>> = {
   tile: 0,
   resource: 0,
   berrybush: 0, // a bush sits behind the settler foraging it, like a resource node
@@ -59,7 +59,7 @@ export const SPRITE_PAINT_ORDER: Readonly<Record<DrawKind, number>> = {
  * just past a co-located heap; `2 + 0.5` sits below `settler`'s `3`, so a worker on the tile still draws
  * in front.
  */
-export const FLAG_PAINT_STEP = 0.5;
+const FLAG_PAINT_STEP = 0.5;
 
 /**
  * The same-feet-anchor paint bias of a draw item — the kind's {@link SPRITE_PAINT_ORDER} plus the extra
