@@ -7,7 +7,7 @@ import type { SystemContext } from '../context.js';
 import { interactionNode } from '../footprint/index.js';
 import type { NavigationLimit } from '../signposts/index.js';
 import { isFood } from '../stores/index.js';
-import { deliverHome, fetchFrom } from './children.js';
+import { deliverHome, fetchFrom } from './food-haul.js';
 import type { ExternalFoodIndex } from './food-search.js';
 import { builtHomeType, storedFoodUnits } from './households.js';
 

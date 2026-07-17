@@ -38,6 +38,14 @@ export function needsEnabled(world: World): boolean {
   return e === null ? true : world.get(e, WorldRules).needsEnabled;
 }
 
+/** Set the {@link WorldRules} singleton, creating it on first use and mutating it thereafter — the
+ *  `setNeedsEnabled` command's whole body. Idempotent re-sends just overwrite. */
+export function setNeedsEnabled(world: World, enabled: boolean): void {
+  const rules = worldRulesEntity(world);
+  if (rules === null) world.add(world.create(), WorldRules, { needsEnabled: enabled });
+  else world.get(rules, WorldRules).needsEnabled = enabled;
+}
+
 /**
  * The fog-of-war modes the `setFogMode` command selects between. Our design (no readable fog source — the
  * original's exploration behaviour is observed, the grey layer is a deliberate modern addition):
@@ -86,6 +94,16 @@ export function fogMode(world: World): number {
   return e === null ? FOG_MODE.OFF : world.get(e, FogRules).mode;
 }
 
+/** Set the {@link FogRules} singleton (the {@link setNeedsEnabled} pattern) — the `setFogMode` command's
+ *  whole body. A mode outside the three {@link FOG_MODE} ids is skipped. The VisionSystem sees the new mode
+ *  the same tick (it runs after commandSystem) and rebuilds the masks off-cadence. */
+export function setFogMode(world: World, mode: number): void {
+  if (!isFogMode(mode)) return;
+  const rules = fogRulesEntity(world);
+  if (rules === null) world.add(world.create(), FogRules, { mode });
+  else world.get(rules, FogRules).mode = mode;
+}
+
 /**
  * The signpost-navigation rules singleton — whether civilian settlers are confined to the signpost
  * work-area network (`systems/signposts/`). A separate singleton beside {@link WorldRules}/{@link FogRules}
@@ -105,4 +123,12 @@ export function signpostRulesEntity(world: World): Entity | null {
 export function signpostNavigationEnabled(world: World): boolean {
   const e = signpostRulesEntity(world);
   return e === null ? false : world.get(e, SignpostRules).navigationEnabled;
+}
+
+/** Set the {@link SignpostRules} singleton (the {@link setNeedsEnabled} pattern) — the
+ *  `setSignpostNavigation` command's whole body. */
+export function setSignpostNavigation(world: World, enabled: boolean): void {
+  const rules = signpostRulesEntity(world);
+  if (rules === null) world.add(world.create(), SignpostRules, { navigationEnabled: enabled });
+  else world.get(rules, SignpostRules).navigationEnabled = enabled;
 }

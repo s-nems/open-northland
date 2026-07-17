@@ -100,9 +100,9 @@ function herdMemberOffset(i: number, range: number): { dx: number; dy: number } 
   // The shared 8-compass-direction ring (spatial.ts), in its fixed canonical order. Ring `r`
   // (1-based) places up to 8 members at radius `min(r, range)`; member index within the ring picks
   // the direction.
-  const DIRS = COMPASS_DIRECTIONS;
-  const ring = Math.floor((i - 1) / DIRS.length) + 1; // 1, 2, 3, … as the rings fill
-  const dir = DIRS[(i - 1) % DIRS.length] as readonly [number, number];
+  const ring = Math.floor((i - 1) / COMPASS_DIRECTIONS.length) + 1; // 1, 2, 3, … as the rings fill
+  const dir = COMPASS_DIRECTIONS[(i - 1) % COMPASS_DIRECTIONS.length];
+  if (dir === undefined) return { dx: 0, dy: 0 }; // unreachable: a modulo index is always in range
   const radius = Math.min(ring, range); // never past the birth-point range
   return { dx: dir[0] * radius, dy: dir[1] * radius };
 }

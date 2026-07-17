@@ -1,29 +1,10 @@
-import {
-  Building,
-  FogRules,
-  fogRulesEntity,
-  Health,
-  isFogMode,
-  Settler,
-  Signpost,
-  SignpostRules,
-  Stockpile,
-  signpostRulesEntity,
-  Vehicle,
-  WorldRules,
-  worldRulesEntity,
-} from '../../components/index.js';
+import { setFogMode, setNeedsEnabled, setSignpostNavigation } from '../../components/index.js';
 import { assertNever } from '../../core/brand.js';
 import type { Command } from '../../core/commands/index.js';
-import { contentIndex } from '../../core/content-index.js';
-import { type Fixed, fx, ONE } from '../../core/fixed.js';
 import type { World } from '../../ecs/world.js';
-import { positionOfNode } from '../../nav/halfcell.js';
-import { dropOrStackGood } from '../agents/effects-goods/index.js';
 import { spawnAnimalHerd, spawnSettler } from '../conflict/spawn/index.js';
 import type { System, SystemContext } from '../context.js';
 import { forceFinishConstruction } from '../economy/construction.js';
-import { createResourceNode } from '../footprint/index.js';
 import {
   assignBuilder,
   assignHouse,
@@ -40,8 +21,10 @@ import {
   setWorkFlag,
 } from '../orders/index.js';
 import { buildingEnabled, tribeShipsUnlocked } from '../progression/index.js';
+import { debugFillStockpile, debugKill, debugSetNeeds } from './debug.js';
+import { placeBoat, placeBuilding } from './placement.js';
+import { demolish, demolishSignpost, dropGood, placeResource } from './world-edit.js';
 
-import { placeBoat, placeBuilding, unbindWorkersOf } from './placement.js';
 /**
  * CommandSystem — the only way sim state mutates from the outside. It runs first each tick, drains the
  * per-sim {@link CommandQueue} (`ctx.commands`), and applies each command in enqueue order, appending it to
@@ -113,42 +96,16 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       placeBoat(world, ctx, command);
       return;
     case 'placeResource':
-      // Build a standing resource node through the shared assembly. A `good` with no footprint record
-      // is bad input — createResourceNode returns null (world untouched); the command is skipped (still
-      // logged for faithful replay), the same stance as an unknown building/job id.
-      createResourceNode(world, ctx.content, {
-        good: command.good,
-        x: command.x,
-        y: command.y,
-        remaining: command.remaining,
-        harvestAtomic: command.harvestAtomic,
-        ...(command.felling !== undefined ? { felling: command.felling } : {}),
-        ...(command.deposit !== undefined ? { deposit: command.deposit } : {}),
-      });
+      placeResource(world, ctx, command);
       return;
-    case 'dropGood': {
-      // Drop a loose good pile, stacking onto an existing pile of the same good on the tile (capped at
-      // MAX_GROUND_STACK) so repeated one-unit clicks pile up rather than littering entities. An `amount <= 0`
-      // or a good absent from the catalog is bad input — an id-neutral skip (still logged for faithful replay).
-      if (command.amount <= 0) return;
-      if (!contentIndex(ctx.content).goods.has(command.good)) return;
-      const pos = positionOfNode(command.x, command.y);
-      dropOrStackGood(world, pos.x, pos.y, command.good, command.amount);
+    case 'dropGood':
+      dropGood(world, ctx, command);
       return;
-    }
     case 'demolish':
-      // Validate the target kind at execution, not just liveness: in lockstep any peer can send any command
-      // (and a queued command's target can change between issue and apply), so a demolish aimed at a
-      // non-building entity — a settler, a resource node, a boat — must be a skip, never a destroy.
-      if (world.has(command.building, Building)) {
-        unbindWorkersOf(world, command.building);
-        world.destroy(command.building);
-      }
+      demolish(world, command);
       return;
     case 'demolishSignpost':
-      // Same kind-at-execution rule as `demolish`: only a live Signpost falls. Destroying it moves the
-      // Signpost generation, so the network memo, placement blockers, and vision all pick it up.
-      if (world.has(command.signpost, Signpost)) world.destroy(command.signpost);
+      demolishSignpost(world, command);
       return;
     case 'moveUnit':
       moveUnit(world, ctx, command);
@@ -177,17 +134,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
     case 'placeSignpost':
       placeSignpost(world, ctx, command);
       return;
-    case 'setSignpostNavigation': {
-      // Set the SignpostRules singleton (the WorldRules pattern: created lazily, mutated thereafter) —
-      // the confinement toggle changes settler decisions, so it hashes/replays like any component.
-      const signpostRules = signpostRulesEntity(world);
-      if (signpostRules === null) {
-        world.add(world.create(), SignpostRules, { navigationEnabled: command.enabled });
-      } else {
-        world.get(signpostRules, SignpostRules).navigationEnabled = command.enabled;
-      }
+    case 'setSignpostNavigation':
+      setSignpostNavigation(world, command.enabled);
       return;
-    }
     case 'setCraftGoods':
       setCraftGoods(world, ctx, command);
       return;
@@ -200,69 +149,25 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
     case 'makeChild':
       makeChild(world, ctx, command);
       return;
-    case 'setNeedsEnabled': {
-      // Set the WorldRules singleton (created lazily on first use, mutated thereafter) — the toggle is
-      // simulated state, so it hashes/replays like any component. Idempotent re-sends just overwrite.
-      const rules = worldRulesEntity(world);
-      if (rules === null) world.add(world.create(), WorldRules, { needsEnabled: command.enabled });
-      else world.get(rules, WorldRules).needsEnabled = command.enabled;
+    case 'setNeedsEnabled':
+      setNeedsEnabled(world, command.enabled);
       return;
-    }
-    case 'setFogMode': {
-      // Set the FogRules singleton (the WorldRules pattern: created lazily, mutated thereafter) — the fog mode
-      // is simulated state (combat gates on visibility), so it hashes/replays like any component. The
-      // VisionSystem sees the new mode this tick (it runs after commandSystem) and rebuilds the masks
-      // off-cadence. A mode outside the three FOG_MODE ids is skipped (still logged for faithful replay).
-      if (!isFogMode(command.mode)) return;
-      const fogRules = fogRulesEntity(world);
-      if (fogRules === null) world.add(world.create(), FogRules, { mode: command.mode });
-      else world.get(fogRules, FogRules).mode = command.mode;
+    case 'setFogMode':
+      setFogMode(world, command.mode);
       return;
-    }
-    case 'debugKill': {
-      // Only a unit (a settler — animals are settlers too) is killable. Gate on Settler so a building that
-      // carries a Health pool while under construction can't be drained-and-reaped here: that would destroy
-      // the building through CleanupSystem, bypassing demolish's worker-unbind seam and emitting a settlerDied
-      // cue for a non-settler. Then drain the pool to 0 and let CleanupSystem reap it next tick (the real
-      // death path + event), rather than a silent destroy. A non-settler / already-reaped target is a no-op.
-      if (!world.has(command.target, Settler)) return;
-      const health = world.tryGet(command.target, Health);
-      if (health !== undefined) health.hitpoints = 0;
+    case 'debugKill':
+      debugKill(world, command);
       return;
-    }
-    case 'debugSetNeeds': {
-      // Set the needs the panel names to whole-percent levels (0 sated … 100 maxed). A non-settler
-      // target is a no-op. Percent → 0..ONE need Fixed with a single truncation (fx.mulDiv).
-      const settler = world.tryGet(command.target, Settler);
-      if (settler === undefined) return;
-      if (command.hunger !== undefined) settler.hunger = needFixedFromPct(command.hunger);
-      if (command.fatigue !== undefined) settler.fatigue = needFixedFromPct(command.fatigue);
-      if (command.piety !== undefined) settler.piety = needFixedFromPct(command.piety);
-      if (command.enjoyment !== undefined) settler.enjoyment = needFixedFromPct(command.enjoyment);
+    case 'debugSetNeeds':
+      debugSetNeeds(world, command);
       return;
-    }
-    case 'debugFillStockpile': {
-      // Set every good the building type declares a stock slot for to that slot's capacity (its "100%"). A
-      // non-building target, one without a Stockpile, or an unknown type is a no-op.
-      const building = world.tryGet(command.target, Building);
-      if (building === undefined || !world.has(command.target, Stockpile)) return;
-      const type = contentIndex(ctx.content).commandBuildings.get(building.buildingType);
-      if (type === undefined) return;
-      const stock = world.get(command.target, Stockpile).amounts;
-      for (const slot of type.stock) stock.set(slot.goodType, slot.capacity);
+    case 'debugFillStockpile':
+      debugFillStockpile(world, ctx, command);
       return;
-    }
     case 'debugCompleteConstruction':
       forceFinishConstruction(world, ctx, command.target);
       return;
     default:
       assertNever(command);
   }
-}
-
-/** A whole-percent need level (`0..100`, clamped) as the `0..ONE` need `Fixed` — a single truncation
- *  (`ONE · pct / 100`) so 0 → sated and 100 → maxed exactly, the debug-needs command's one conversion. */
-function needFixedFromPct(pct: number): Fixed {
-  const clamped = pct < 0 ? 0 : pct > 100 ? 100 : Math.trunc(pct);
-  return fx.mulDiv(ONE, fx.fromInt(clamped), fx.fromInt(100));
 }
