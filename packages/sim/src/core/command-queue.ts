@@ -37,14 +37,22 @@ export class CommandQueue {
 
   /**
    * Take and clear the pending commands. Returns them in enqueue order; CommandSystem (the one
-   * per-tick caller) records each applied command via {@link record}. The other sanctioned caller is
-   * replay reconstruction: a rebuilt world discards its duplicate setup enqueues before a log replay
-   * supplies every command verbatim (see `stepReplaying`).
+   * per-tick caller) records each applied command via {@link record}.
    */
   drain(): readonly Command[] {
     const out = this.pending;
     this.pending = [];
     return out;
+  }
+
+  /**
+   * Throw away the pending commands without applying them — replay reconstruction's seam (see
+   * `stepReplaying`): a replaying sim's own systems (the AI player) re-emit their commands live, but
+   * the log already carries the applied copies verbatim, so the re-emissions must be discarded or
+   * every sim-emitted command would double-apply.
+   */
+  discardPending(): void {
+    this.pending = [];
   }
 
   /** Append an applied command to the log (CommandSystem-only, after it applies the command). */

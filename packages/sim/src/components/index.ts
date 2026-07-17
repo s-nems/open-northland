@@ -7,6 +7,7 @@
  * runtime first-`add()` sequence (see ecs/world.ts), not module-load order.
  */
 
+export * from './ai-player.js';
 export * from './combat.js';
 export * from './economy/index.js';
 export * from './equipment.js';

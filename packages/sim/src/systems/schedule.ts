@@ -1,5 +1,6 @@
 import { aiSystem } from './agents/ai.js';
 import { atomicSystem } from './agents/atomic.js';
+import { aiPlayerSystem } from './ai-player/index.js';
 import { commandSystem } from './command/index.js';
 import { combatSystem } from './conflict/combat.js';
 import { projectileSystem } from './conflict/projectile.js';
@@ -53,4 +54,7 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   { name: 'projectile', system: projectileSystem },
   { name: 'growth', system: growthSystem },
   { name: 'cleanup', system: cleanupSystem },
+  // The strategic AI player runs last, after cleanup, so its decisions read the settled world of this
+  // tick (no reaped-this-tick targets); its enqueued commands apply on next tick's command pass.
+  { name: 'aiPlayer', system: aiPlayerSystem },
 ];

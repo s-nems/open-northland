@@ -1,4 +1,5 @@
 import type { DebugCommand, RulesCommand } from './administration.js';
+import type { AiPlayerCommand } from './ai-player.js';
 import type { PlacementCommand } from './placement.js';
 import type { SpawnCommand } from './spawn.js';
 import type { UnitOrderCommand } from './unit-orders.js';
@@ -17,4 +18,10 @@ export type { SettlerEquipment, SettlerEquipmentSlot } from './spawn.js';
  * every handler's `switch` to acknowledge it (via assertNever), which is the modern guard against
  * the original's "magic number opcode" fragility.
  */
-export type Command = PlacementCommand | SpawnCommand | UnitOrderCommand | RulesCommand | DebugCommand;
+export type Command =
+  | PlacementCommand
+  | SpawnCommand
+  | UnitOrderCommand
+  | RulesCommand
+  | AiPlayerCommand
+  | DebugCommand;

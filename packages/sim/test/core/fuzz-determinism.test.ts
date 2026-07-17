@@ -182,8 +182,21 @@ function pick<T>(rng: Rng, options: readonly T[]): T {
 function nextCommand(rng: Rng): Command {
   const x = rng.int(NODE_W);
   const y = rng.int(NODE_H);
-  const roll = rng.int(31);
+  const roll = rng.int(32);
   switch (roll) {
+    case 31:
+      // An AI-seat flip: valid players (the AiPlayer carrier created/updated/destroyed — the
+      // AiPlayerSystem then runs its cadence over the seat) + an out-of-range one (skipped, still
+      // logged). Sometimes with a partial module override — the full-record fill must hash and
+      // replay identically.
+      return {
+        kind: 'setPlayerAi',
+        player: pick(rng, OWNERS),
+        enabled: rng.int(2) === 0,
+        ...(rng.int(3) === 0
+          ? { modules: { military: rng.int(2) === 0, houseBuild: rng.int(2) === 0 } }
+          : {}),
+      };
     case 24:
       // A marry order at a random id: live adults, children, already-married, unowned/dead targets.
       return { kind: 'marry', entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
