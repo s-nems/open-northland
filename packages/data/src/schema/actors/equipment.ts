@@ -6,9 +6,7 @@ import { ClassId, Provenance, TypeId } from '../record.js';
  * original's equippable goods are `goodtypes.ini` ids 30–55 (confirmed by each tribe's `allowequip`
  * list in `tribetypes.ini`, and the manual's Equipment section: "You can equip your Vikings with
  * shoes, tools, mead, potions and amulets" + soldiers additionally with weapons and armour). Weapons
- * and armour are soldier-only; shoes/tools/consumables anyone. This is the slot category; the sim's
- * `Equipment` component groups worn goods by it. Lives here beside the {@link WeaponType}/{@link ArmorType}
- * equipment types (a good's {@link import('../economy/goods.js').GoodType.equip} references it).
+ * and armour are soldier-only; shoes/tools/consumables anyone.
  */
 export const EQUIP_CATEGORIES = ['boots', 'tool', 'weapon', 'armor', 'misc'] as const;
 export const EquipCategory = z.enum(EQUIP_CATEGORIES);
@@ -16,17 +14,17 @@ export type EquipCategory = z.infer<typeof EquipCategory>;
 
 /**
  * A good's equipment classification — present only on the equippable goods (the original's ids 30–55).
- * `category` names the slot kind; `wears` marks whether the item is used up in use. The wear split is
- * source-pinned to the manual: potions, shoes and tools are "slowly used up" ("Partly used items
- * (potions, shoes, ...) you drop are lost"), while "unused items such as weapons, armour and amulets
- * can be used again" (amulets: "their power is never diminished"). The per-use consumption magnitude
- * is engine-hardcoded (no numeric field exists in any readable `.ini` — verified), so no rate lives
- * here; a wearing item just carries a "degree of use" the UI shows as a percentage.
+ * The wear split is source-pinned to the manual: potions, shoes and tools are "slowly used up"
+ * ("Partly used items (potions, shoes, ...) you drop are lost"), while "unused items such as weapons,
+ * armour and amulets can be used again" (amulets: "their power is never diminished"). The per-use
+ * consumption magnitude is engine-hardcoded (no numeric field exists in any readable `.ini` —
+ * verified), so no rate lives here; a wearing item just carries a "degree of use" the UI shows as a
+ * percentage.
  */
 export const EquipClass = z.strictObject({
   category: EquipCategory,
   /** True when the item is consumed with use (potions/shoes/tools); false for permanent gear
-   *  (weapons/armour/amulets). Source basis: manual Equipment section (see {@link EquipClass}). */
+   *  (weapons/armour/amulets). */
   wears: z.boolean().default(false),
 });
 export type EquipClass = z.infer<typeof EquipClass>;
@@ -34,7 +32,7 @@ export type EquipClass = z.infer<typeof EquipClass>;
 export const WeaponType = z.strictObject({
   /** The weapon's `type` id. Unlike the other type tables this is not globally unique — a weapon is
    *  keyed by `(tribeType, typeId)` in the original `weapontypes`, so the same `typeId` (e.g. 2 =
-   *  "fist") recurs once per tribe. Resolve a weapon with both ids, not `typeId` alone. */
+   *  "fist") recurs once per tribe. */
   typeId: TypeId,
   id: z.string(),
   name: z.string().optional(),
@@ -42,8 +40,7 @@ export const WeaponType = z.strictObject({
   tribeType: TypeId.optional(),
   /**
    * `mainType` — the coarse weapon class (1..7 in the base data: fist/club/sword/axe/spear/bow/…), the
-   * weapon-side twin of {@link ArmorType.mainType}. A class enum, not a cross-ref into another table —
-   * the soldier-class→weapon-class binding the deferred combat-roster slice joins on. */
+   * weapon-side twin of {@link ArmorType.mainType}. A class enum, not a cross-ref into another table. */
   mainType: ClassId.optional(),
   /** `weight` — the encumbrance the weapon adds (0..2 in the base data), the weapon-side twin of
    *  {@link ArmorType.weight}. */
@@ -53,25 +50,22 @@ export const WeaponType = z.strictObject({
    * the base data): 1 = bow ammo / arrow, 2 = catapult projectile. Like {@link mainType} it is a class
    * enum, not a cross-ref into another table (`munitiontype` appears in no other `.ini`, and 1/2 are not
    * good ids — good 1 is "water", good 2 is "mud"), captured as a plain id with no cross-ref check.
-   * Absent on melee weapons (→ `undefined`), so it is the data-pinned "is this weapon ranged" marker the
-   * deferred ranged-attack drive reads. */
+   * Absent on melee weapons (→ `undefined`) — the data-pinned "is this weapon ranged" marker. */
   munitionType: ClassId.optional(),
   /**
    * `speed` — a ranged weapon's projectile travel speed (short/long bow `8`, house bow `7`, catapult `3`
    * in the base data — a bow's arrow flies faster than a catapult's rock). Carried only by the rows that
    * also carry a {@link munitionType} (bows + catapults); absent on every melee weapon (→ `undefined`).
-   * A plain non-negative magnitude (not a cross-ref — `speed` appears in no other table). The unit is
-   * unreadable (tiles/tick? — the source carries no scale), so the ranged-combat drive maps it onto a
-   * per-tick step via a named calibration constant (source basis "Combat ranged projectiles"); the
-   * extracted value itself is faithful. */
+   * A plain non-negative magnitude (not a cross-ref — `speed` appears in no other table). The extracted
+   * value is faithful but its unit is unreadable (tiles/tick? — the source carries no scale), so a
+   * consumer must map it onto a per-tick step via a named calibration constant. */
   speed: z.number().int().nonnegative().optional(),
   /**
    * `damagetype` — the damage class a weapon deals (a siege/area marker in the base data: only the
    * catapults carry it, value `2`). Like {@link mainType} and {@link munitionType} it is a class enum,
    * not a cross-ref into another table (`damagetype` appears in no other `.ini`, and `2` is not a good
    * id — good 2 is "mud"), captured as a plain id with no cross-ref check. Absent on every non-catapult
-   * weapon (→ `undefined`), so it marks the siege/AoE damage class the deferred combat-resolution drive
-   * reads. */
+   * weapon (→ `undefined`). */
   damageType: ClassId.optional(),
   minRange: z.number().int().nonnegative().default(1),
   maxRange: z.number().int().nonnegative().default(1),
@@ -88,8 +82,7 @@ export const WeaponType = z.strictObject({
    * twin of {@link ArmorType.goodType}; resolves into the good table. Source `goodtype 0` is the
    * natural-weapon sentinel (a fist/claw — no craftable good backs it) and is captured as `undefined`,
    * as armor class 0 / weapon `damage["0"]` mean "unarmored" — good ids start at 1, so a literal 0 would
-   * dangle. The join that ties a forged weapon-good back to its combat stats (a smithy's `sword_short`
-   * good is the short-sword weapon).
+   * dangle.
    */
   goodType: TypeId.optional(),
   source: Provenance.optional(),

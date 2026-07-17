@@ -4,8 +4,8 @@ import { z } from 'zod';
  * One `SFX "<path>" <n…>` line: the wav to play plus the record's trailing integer parameters,
  * kept verbatim. Their meaning is positional and section-specific — {@link SoundStaticGroup} carries
  * one volume int (0–100); {@link SoundAmbient} carries a `(volume, probability, …)` triple driving
- * the sparse one-shot birds. We keep the raw list rather than naming each slot: the format is only
- * partially reversed, and today's audio layer reads only `file` (gains come from named constants).
+ * the sparse one-shot birds. The raw list is kept rather than naming each slot: the format is only
+ * partially reversed.
  */
 export const SoundSfx = z.strictObject({
   /** Wav path relative to `data/engine2d/bin/sounds`, forward-slashed + lower-cased (e.g. `ambient/water3.wav`); joins onto the served `/sounds/<file>` route. */
@@ -18,8 +18,7 @@ export type SoundSfx = z.infer<typeof SoundSfx>;
 /**
  * A `SoundFXStatic` group from `soundfx.cif`: a named bag of interchangeable wavs (the engine picks
  * one at play time) optionally bound to a numeric `LogicSoundType` the original triggers off an
- * animation/job/combat frame. Every group is extracted though this slice wires only a hand-picked
- * subset, so later slices needn't re-run the decoder.
+ * animation/job/combat frame.
  */
 export const SoundStaticGroup = z.strictObject({
   /** `Name` — the group's join key (e.g. `"Gui_Click"`, `"Bear Sounds"`, `"Viking male ok 13"`). */
@@ -34,9 +33,8 @@ export type SoundStaticGroup = z.infer<typeof SoundStaticGroup>;
 /**
  * A `SoundFXAmbient` group: a looping/sparse bed tied to terrain the camera frames. It names the
  * terrain `PatternGroup`s (meadow/water/desert/…) and/or landscape `LandscapeGroup`s (tree families)
- * it plays over; the audio layer runs it while any of those are on screen. A single-wav ambient
- * (water, meadow) loops; a multi-wav ambient (the 17 forest birds) plays sparsely by the per-`SFX`
- * probability params.
+ * it plays over. A single-wav ambient (water, meadow) loops; a multi-wav ambient (the 17 forest
+ * birds) plays sparsely by the per-`SFX` probability params.
  */
 export const SoundAmbient = z.strictObject({
   /** `Name` — the ambient's handle (e.g. `"Water See"`, `"All Trees"`). */
@@ -53,7 +51,7 @@ export type SoundAmbient = z.infer<typeof SoundAmbient>;
 /**
  * A `SoundFXJingle` group: a non-positional life-event stinger (birth, death, house built, marriage,
  * mission won/lost, …) bound to a numeric `MusicType`. Jingles play at full volume with no pan — they
- * are UI feedback, not world sound — so the audio layer treats them distinctly from spatial SFX.
+ * are UI feedback, not world sound.
  */
 export const SoundJingle = z.strictObject({
   /** `Name` — the jingle handle (e.g. `"Birth"`, `"House Built"`). */
@@ -66,10 +64,10 @@ export const SoundJingle = z.strictObject({
 export type SoundJingle = z.infer<typeof SoundJingle>;
 
 /**
- * The decoded `soundfx.cif` sound bank — the data half of audio. Render-binding data the pure sim
- * ignores entirely (like {@link LandscapeGfx}); the browser audio layer joins its groups onto sim
- * events + on-screen terrain to decide what plays. Empty on a checkout whose pipeline hasn't been run
- * against a game copy (`soundfx.cif` absent), so the app degrades to silence, never a crash.
+ * The decoded `soundfx.cif` sound bank — render-binding data the pure sim ignores; the browser audio
+ * layer joins its groups onto sim events + on-screen terrain to decide what plays. Empty on a checkout
+ * whose pipeline hasn't been run against a game copy (`soundfx.cif` absent), so the app degrades to
+ * silence, never a crash.
  */
 export const SoundBank = z.strictObject({
   staticGroups: z.array(SoundStaticGroup).default([]),

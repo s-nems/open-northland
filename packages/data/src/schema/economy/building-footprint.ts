@@ -14,10 +14,10 @@ export type FootprintCell = z.infer<typeof FootprintCell>;
  * readable `DataCnmd/budynki12/houses/houses.ini`) — the collision/placement model the original
  * carries per house. All cells are half-cell offsets from the building's anchor node, each
  * source line `<x> <y> <run>` expanding to `run` half-cells starting at `(x, y)` and extending
- * along +x (the `2W×2H` lattice every map lane addresses).
+ * along +x.
  *
  *  - `blocked` — `LogicWalkBlockArea <sizeIdx> <x> <y> <run>` for this type's size level: the cells
- *    the standing building makes unwalkable (its physical body — settlers cannot path through them).
+ *    the standing building makes unwalkable (its physical body).
  *  - `familyBody` — the union of `blocked` across all the record's size levels: the largest body the
  *    building can grow to through its upgrade chain (a level-0 hut's future max-level walls).
  *  - `reserved` — `familyBody` ∪ the record's `LogicBuildBlockArea` cells (which the source defines

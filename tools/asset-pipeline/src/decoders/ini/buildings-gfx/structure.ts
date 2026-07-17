@@ -23,8 +23,6 @@ function collectGfxHouseWinner<T>(
   key: string,
   readValue: (values: readonly string[]) => T | undefined,
 ): Map<number, T> {
-  // typeId -> the winning record, ranked by (tribeType asc, sizeIdx asc) so the choice is independent
-  // of file/parse order (see the collision notes on the public extractors).
   const winner = new Map<number, { tribeType: number; sizeIdx: number; value: T }>();
   for (const sec of sections) {
     if (sec.name !== 'GfxHouse') continue;
@@ -64,15 +62,13 @@ function collectGfxHouseWinner<T>(
  * is omitted — that building has no construction cost. Returns an empty map if the file carries no
  * `[GfxHouse]` records (e.g. the logic-only sources every other extractor reads).
  *
- * Two collisions resolve deterministically ({@link existingGfxHouseWins}): cross-tribe, the lowest
- * `LogicTribeType` wins; within a record a `typeId` mapped at several `sizeIdx` keeps the lowest
- * `sizeIdx` cost (the base build stage). Both collapses are approximations, source basis.
+ * Within a record, a `typeId` mapped at several `sizeIdx` keeps the lowest `sizeIdx` cost (the base
+ * build stage). Both collapses are approximations, source basis.
  */
 export function extractConstructionCosts(
   sections: readonly RuleSection[],
 ): Map<number, { goodType: number; amount: number }[]> {
-  // The goods list is a flat id array after the leading sizeIdx; a repeat encodes quantity, so
-  // `tallyIds` folds it to (goodType, amount). Always a value (an empty list is a valid zero cost).
+  // Never rejects a line: an empty goods list is a valid zero cost.
   return collectGfxHouseWinner(sections, 'LogicConstructionGoods', (values) => {
     const ids = values
       .slice(1)
@@ -89,15 +85,12 @@ export function extractConstructionCosts(
  * size level, joined to a `typeId` through the record's `LogicType <sizeIdx> <typeId>` table
  * ({@link logicTypeByLevel}) — so a home's level chain (typeIds 2..6) resolves each tier's own HP
  * (30000 / 40000 / 60000 / 70000 / 80000), a wall 100000, a small workplace ~25000. Collisions resolve
- * like the construction cost ({@link existingGfxHouseWins}). A level with a `LogicType` but no
- * `logichitpoints` is absent — that type carries no HP. Returns an empty map for a source with no
- * `[GfxHouse]` records.
- *
- * Source basis: the readable `logichitpoints` param (`houses.ini` `[GfxHouse]`) — faithful per-tier HP;
- * the single-value collapse across (tribe, sizeIdx) is the same approximation the cost overlay records.
+ * like the construction cost ({@link existingGfxHouseWins}), and the single-value collapse across
+ * (tribe, sizeIdx) is the same approximation. A level with a `LogicType` but no `logichitpoints` is
+ * absent — that type carries no HP.
  */
 export function extractHouseHitpoints(sections: readonly RuleSection[]): Map<number, number> {
-  // `logichitpoints <sizeIdx> <value>` — reject a non-positive/malformed HP so it never wins a typeId.
+  // Reject a non-positive/malformed HP so it never wins a typeId.
   return collectGfxHouseWinner(sections, 'logichitpoints', (values) => {
     const hitpoints = Number.parseInt(values[1] ?? '', 10);
     return Number.isNaN(hitpoints) || hitpoints <= 0 ? undefined : hitpoints;
@@ -142,10 +135,9 @@ function canonicalCells(cells: Iterable<FootprintCell>): FootprintCell[] {
  * — have walk-block cells the build area does not cover). Cells are canonically ordered (ascending
  * y, then x) and de-duplicated so the IR is byte-stable.
  *
- * Collisions resolve exactly like {@link extractConstructionCosts} ({@link existingGfxHouseWins}):
- * cross-tribe the lowest `LogicTribeType` wins (footprints genuinely differ per tribe skin; source
- * basis); within a record the lowest `sizeIdx` wins for a typeId mapped at several sizes. Returns an
- * empty map for sources with no `[GfxHouse]` records.
+ * Collisions resolve exactly like {@link extractConstructionCosts} ({@link existingGfxHouseWins});
+ * footprints genuinely differ per tribe skin, so the cross-tribe collapse is an approximation (source
+ * basis). Returns an empty map for sources with no `[GfxHouse]` records.
  */
 export function extractBuildingFootprints(sections: readonly RuleSection[]): Map<number, BuildingFootprint> {
   const winner = new Map<number, { tribeType: number; sizeIdx: number; footprint: BuildingFootprint }>();
@@ -156,13 +148,11 @@ export function extractBuildingFootprints(sections: readonly RuleSection[]): Map
       const typeByLevel = logicTypeByLevel(rec);
       if (typeByLevel.size === 0) continue;
 
-      // The record-wide (level-independent) build-exclusion zone.
       const buildZone: FootprintCell[] = [];
       for (const p of findProps(rec, 'LogicBuildBlockArea')) {
         const [x, y, run] = p.values.map((v) => Number.parseInt(v, 10));
         buildZone.push(...expandAreaRun(x ?? Number.NaN, y ?? Number.NaN, run ?? Number.NaN));
       }
-      // Per-level walk-block bodies + door points.
       const blockedByLevel = new Map<number, FootprintCell[]>();
       for (const p of findProps(rec, 'LogicWalkBlockArea')) {
         const [sizeIdx, x, y, run] = p.values.map((v) => Number.parseInt(v, 10));

@@ -37,10 +37,7 @@ export const VOID_TYPE_ID = 1;
 /**
  * Reduces a cell's four half-cell values to a single representative: the dominant (most
  * frequent) value, ties broken by the lowest (canonical + deterministic — never depends on
- * half-cell order). On a uniform cell (all four equal, the common case) it returns that value; on a
- * mixed cell it returns whichever value covers most of the cell.
- *
- * Pure helper for {@link lmltToTerrainMap}; exported for direct unit testing of the reduction rule.
+ * half-cell order). Exported for direct unit testing of the reduction rule.
  */
 export function reduceHalfCellsToCell(c0: number, c1: number, c2: number, c3: number): number {
   const values = [c0, c1, c2, c3];
@@ -49,8 +46,7 @@ export function reduceHalfCellsToCell(c0: number, c1: number, c2: number, c3: nu
   for (const candidate of values) {
     let count = 0;
     for (const other of values) if (other === candidate) count++;
-    // Strictly-greater keeps the first (lowest-index) winner; the lowest-value tie-break is applied
-    // explicitly so the result never depends on which half-cell happened to come first.
+    // The lowest-value tie-break is explicit so the result never depends on half-cell order.
     if (count > bestCount || (count === bestCount && candidate < best)) {
       best = candidate;
       bestCount = count;
@@ -71,14 +67,13 @@ export interface MapDatTerrainMap {
  * Collapses an unpacked `lmlt` layer (the `2W × 2H` half-cell landscape-object lane) plus the `lsiz`
  * dimensions into a single per-cell landscape-typeId grid — the plain `{ width, height, typeIds }`
  * shape the sim's `buildTerrainGraph` (`packages/sim/src/terrain.ts`) consumes as a `TerrainMap`.
- * Each cell's type is the {@link reduceHalfCellsToCell} dominant of its 2×2 half-cell block; raw
- * values are the IR typeId directly ({@link LMLT_EMPTY} = no object → {@link VOID_TYPE_ID}). Returns
- * a plain value (not a sim type) so the build tool never imports from `sim`; the sim validates the
- * typeIds against its IR table.
+ * Each cell's type is the {@link reduceHalfCellsToCell} dominant of its 2×2 half-cell block
+ * ({@link LMLT_EMPTY} = no object → {@link VOID_TYPE_ID}). Returns a plain value (not a sim type) so the
+ * build tool never imports from `sim`; the sim validates the typeIds against its IR table.
  *
  * Approximated: the original half-cell→cell reduction has not been established. Dominant-value is a
- * deterministic choice for a bulk-terrain nav grid; refine it if observed behavior establishes a different rule. Walkability
- * itself is resolved downstream from the IR `LandscapeType` flags, not here.
+ * deterministic choice for a bulk-terrain nav grid; refine it if observed behavior establishes a
+ * different rule. Walkability itself is resolved downstream from the IR `LandscapeType` flags, not here.
  *
  * Throws if the layer length isn't exactly `width × height × 4` (a wrong layer / dims mismatch).
  */

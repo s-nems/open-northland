@@ -17,13 +17,13 @@ export const WorkerSlot = z.strictObject({
 export type WorkerSlot = z.infer<typeof WorkerSlot>;
 
 /**
- * Game ticks for one production cycle: uniform 15 s at 1× speed (× the sim's 12 ticks/s). A design
- * decision replacing the extracted per-animation cycle lengths — every craft paces identically so
- * production chains are comparable at a glance (named approximation of the original's per-good pacing).
+ * Game ticks for one production cycle: uniform 15 s at 1× speed (× the sim's 12 ticks/s). A named
+ * approximation of the original's per-good pacing, replacing the extracted per-animation cycle lengths
+ * so every craft paces identically and production chains are comparable at a glance.
  */
 export const DEFAULT_RECIPE_TICKS = 180;
 
-/** A recipe: a workplace turns inputs into ONE product over time (one recipe per producible good). */
+/** A recipe: a workplace turns inputs into one product over time (one recipe per producible good). */
 export const Recipe = z.strictObject({
   inputs: z.array(GoodQuantity).default([]),
   outputs: z.array(GoodQuantity).default([]),
@@ -65,17 +65,16 @@ export const BuildingType = z.strictObject({
   /**
    * Good type ids this workplace can produce (`logichousetype` `logicproduction`), in file order.
    * The output side only: the original house table names what a workplace makes, not the input
-   * goods. The pipeline's `fillBuildingRecipes` joins each output good through that good's
-   * `goodtypes.productionInputGoods` (→ {@link GoodType.productionInputs}) to materialize `recipes`.
+   * goods — the pipeline joins those in through each good's `goodtypes.productionInputGoods`
+   * (→ {@link GoodType.productionInputs}) to materialize {@link recipes}.
    */
   produces: z.array(TypeId).default([]),
   /**
-   * The production recipes — ONE per producible good, filled by the pipeline's output-side join
+   * The production recipes — one per producible good, filled by the pipeline's output-side join
    * (`fillBuildingRecipes`) for a workplace with a non-empty `produces`; empty on a non-producing
    * building. Each recipe's `inputs` come from that produced good's `productionInputs` and its
-   * `outputs` is that single good (amount = its `produces` multiplicity), in `produces` file order —
-   * so a multi-product workshop (a smithy) crafts its goods one at a time, per worker choice, not
-   * all at once. Field-farmed goods form no recipe (they are grown, not made).
+   * `outputs` is that single good (amount = its `produces` multiplicity), in `produces` file order.
+   * Field-farmed goods form no recipe (they are grown, not made).
    */
   recipes: z.array(Recipe).default([]),
   /**
@@ -87,18 +86,15 @@ export const BuildingType = z.strictObject({
    * headquarters/wonder buildings (no construction cost) and for any type the graphics table omits.
    * For a home's level chain (`home level 00..04`) each level is a distinct `typeId` carrying its own
    * upgrade cost, so a leveled `home` building resolves the cost of its tier here (not cumulative).
-   * The input data the future ConstructionSystem (place → deliver materials → build) consumes.
    */
   construction: z.array(GoodQuantity).default([]),
   /**
    * Max hitpoints — the building's full life pool, from the graphics table's `[GfxHouse]`
    * `logichitpoints` line (`DataCnmd/budynki12/houses/houses.ini`), overlaid by `typeId` exactly like
    * {@link construction}. A home's level chain resolves each tier's own value (typeIds 2..6 =
-   * 30000/40000/60000/70000/80000); walls are 100000, small workplaces ~25000–40000. During
-   * construction the sim ramps a {@link import('@open-northland/sim')} `Health` pool up to this max as the
-   * building rises (a foundation is near-0, a finished building is full). Absent when the graphics
-   * table has no record for the type (and on synthetic test content) — a type with no HP simply
-   * carries no life pool. source basis: the readable `logichitpoints` param.
+   * 30000/40000/60000/70000/80000); walls are 100000, small workplaces ~25000–40000. Absent when the
+   * graphics table has no record for the type (and on synthetic test content) — a type with no HP
+   * simply carries no life pool.
    */
   hitpoints: z.number().int().positive().optional(),
   /**
