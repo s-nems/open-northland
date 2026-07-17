@@ -21,14 +21,12 @@ const WALK_ANIMATION_RATE = WALK_TICKS_PER_CELL / WALK_ANIMATION_TICKS_PER_CYCLE
 export const SNAP_DISTANCE = 128;
 
 /**
- * World px the feet cover per authored walk frame — one cell (`2·TILE_HALF_W`, read at call time:
- * the pitch is a live `?pitch=` knob) over the 12-frame cycle. Dividing actual travel by this distance
- * makes the frame clock follow the body's pace; {@link WALK_ANIMATION_RATE} adds the requested slight
- * animation-only lead without changing movement distance.
+ * World px the feet cover per authored walk frame — one cell (`2·TILE_HALF_W`) over the 12-frame cycle.
+ * Dividing actual travel by this distance makes the frame clock follow the body's pace;
+ * {@link WALK_ANIMATION_RATE} adds the requested slight animation-only lead without changing movement
+ * distance.
  */
-function walkFrameTravelPx(): number {
-  return (2 * TILE_HALF_W) / WALK_CYCLE_FRAMES;
-}
+const WALK_FRAME_TRAVEL_PX = (2 * TILE_HALF_W) / WALK_CYCLE_FRAMES;
 
 /**
  * Cap on the gait-clock rate in frames per tick — covers the legit fast case (a data-paced animal
@@ -53,7 +51,7 @@ export interface MotionTrack {
   drawY: number;
   /**
    * The accumulated walk-cycle clock, in tick units: advanced per sim tick by the fraction of a full
-   * gait the anchor actually covered ({@link walkFrameTravelPx}), so the walk animation's frame
+   * gait the anchor actually covered ({@link WALK_FRAME_TRAVEL_PX}), so the walk animation's frame
    * (`floor(gaitPhase)`, consumed by the pool's moving-state resolve) tracks ground covered, not wall
    * ticks. At the calibrated full cruise it advances 12/17 of a frame per tick, playing one cycle in
    * 17 ticks while the body crosses a cell in 18; a body-pressed or braking walker's legs slow with it too.
@@ -81,7 +79,7 @@ export function trackMotion(m: MotionTrack, tick: number, x: number, y: number, 
   } else if (m.tick !== tick) {
     const dt = tick - m.tick;
     const dist = Math.hypot(x - m.x, y - m.y);
-    const rate = Math.min(MAX_GAIT_RATE, (dist * WALK_ANIMATION_RATE) / (walkFrameTravelPx() * dt));
+    const rate = Math.min(MAX_GAIT_RATE, (dist * WALK_ANIMATION_RATE) / (WALK_FRAME_TRAVEL_PX * dt));
     m.gaitPhase += rate * dt;
     m.prevX = m.x;
     m.prevY = m.y;

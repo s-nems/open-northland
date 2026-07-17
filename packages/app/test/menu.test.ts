@@ -243,7 +243,7 @@ describe('roster state', () => {
 describe('targetSearch', () => {
   it('carries only player-facing game settings into the selected entry', () => {
     const current = new URLSearchParams(
-      'lang=eng&uiscale=1.75&speed=6&fog=recon&debug=geometry&zoom=2&sound=off&atlas=none&terrain=off&objects=off&pitch=44&pitchy=50',
+      'lang=eng&uiscale=1.75&speed=6&fog=recon&debug=geometry&zoom=2&sound=off&atlas=none&terrain=off&objects=off&nosuchparam=1',
     );
 
     expect(targetSearch('?scene=sandbox', current)).toBe(

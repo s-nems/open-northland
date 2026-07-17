@@ -114,8 +114,7 @@ export class GeometryDebugLayer {
 
 /**
  * Path one node's diamond: half the lattice pitch as half-extents (nodes sit `TILE_HALF_W` apart in x
- * and `TILE_HALF_H/2` in y), so neighbouring cells' diamonds interlock without overlapping. Read per
- * call (not module consts) so the `?pitch=` live override reaches the overlay too.
+ * and `TILE_HALF_H/2` in y), so neighbouring cells' diamonds interlock without overlapping.
  */
 function diamond(g: Graphics, p: { x: number; y: number }): Graphics {
   const rx = TILE_HALF_W / 2;
