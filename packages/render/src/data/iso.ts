@@ -11,39 +11,18 @@ import { ONE as SIM_ONE } from '@open-northland/sim';
 export const ONE: number = SIM_ONE;
 
 /**
- * The original engine's cell pitch in native pixels: cell width 68.0 px, row step 38.0 px (±0.1),
- * measured from the running game (source basis "projection", 2026-07, which records the full method).
- * At this pitch the pattern-page texture triangles (~64 px) rasterize ~1:1 onto the cell diamond.
- * The elevation lift derives from this row step and is owned by {@link import('./elevation.js')}.
- */
-export const CALIBRATED_HALF_W = 34;
-export const CALIBRATED_HALF_H = 38;
-
-/**
- * Projection constants (source basis "projection"): `TILE_HALF_W` is half the cell width, so a column
- * step right is `2·TILE_HALF_W` px; `TILE_HALF_H` is one row step down, and also half the cell diamond's
- * height (rows interlock at half-diamond spacing). This is the master scale the whole world hangs off:
- * every ground triangle, every feet-anchored bob (drawn at its native pixel size — see the render
- * AGENTS.md) and the camera derive from it.
+ * The original engine's cell pitch in native pixels, measured from the running game (source basis
+ * "projection", 2026-07, which records the full method): `TILE_HALF_W` is half the 68.0 px cell width,
+ * so a column step right is `2·TILE_HALF_W`; `TILE_HALF_H` is the 38.0 px row step (±0.1), and also half
+ * the cell diamond's height (rows interlock at half-diamond spacing). At this pitch the pattern-page
+ * texture triangles (~64 px) rasterize ~1:1 onto the cell diamond.
  *
- * Defaults to the measured original pitch {@link CALIBRATED_HALF_W}×{@link CALIBRATED_HALF_H}, and stays
- * live-tunable for verification: the live entry sets it from `?pitch=<fullCellWidth>` (+ optional
- * `?pitchy=<cellDiamondHeight>`) via {@link setTilePitch}, keeping the measured ratio when only `?pitch`
- * is given.
+ * This is the master scale the whole world hangs off: every ground triangle, every feet-anchored bob
+ * (drawn at its native pixel size — see the render AGENTS.md) and the camera derive from it. The
+ * elevation lift derives from the row step and is owned by {@link import('./elevation.js')}.
  */
-export let TILE_HALF_W = CALIBRATED_HALF_W;
-export let TILE_HALF_H = CALIBRATED_HALF_H;
-
-/**
- * Override the tile pitch (the {@link TILE_HALF_W}/{@link TILE_HALF_H} half-extents) at runtime — the live
- * calibration knob behind `?pitch=`. Reassigns the module bindings, which every consumer reads live (ES
- * module live bindings), so it must be called before the scene/renderer is built. Render-only; the sim
- * never reads these.
- */
-export function setTilePitch(halfW: number, halfH: number): void {
-  TILE_HALF_W = halfW;
-  TILE_HALF_H = halfH;
-}
+export const TILE_HALF_W = 34;
+export const TILE_HALF_H = 38;
 
 /**
  * Tile (col,row) → screen offset (before camera): the original's raster-with-stagger projection (source

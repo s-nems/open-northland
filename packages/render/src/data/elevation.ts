@@ -25,9 +25,7 @@ const ELEVATION_UNITS_PER_HALF_ROW_STEP = 16;
 
 /**
  * World px of upward lift per elevation unit — `TILE_HALF_H/2` px per half-row-step ÷ the engine's
- * 16 units per step. Reads the live row step ({@link TILE_HALF_H} is `?pitchy`-tunable), so it must
- * be read at field-build time, after `setTilePitch`. A positive value is subtracted from a projected
- * `y` (screen up is −y).
+ * 16 units per step. A positive value is subtracted from a projected `y` (screen up is −y).
  */
 export function elevationLiftPerUnit(): number {
   return TILE_HALF_H / 2 / ELEVATION_UNITS_PER_HALF_ROW_STEP;

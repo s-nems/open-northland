@@ -1,4 +1,4 @@
-import type { layoutHud, PlacementGhost } from '@open-northland/render';
+import type { HudLayout, PlacementGhost } from '@open-northland/render';
 import { FixedTimestep, FOG_STATE, type SimEvent, systems, type WorldSnapshot } from '@open-northland/sim';
 import type { createSoundDriver } from '../../content/audio.js';
 import {
@@ -39,7 +39,7 @@ export interface FrameLoopDeps {
   /** The erect-signpost band probe — shown while unit-controls' signpost placement mode is active. */
   readonly signpostOverlayFrame: ReturnType<typeof makeSignpostOverlaySource>;
   /** The tribe HUD read-view, memoized by snapshot identity (rebuilt per tick, not per RAF). */
-  readonly hudFor: (snap: WorldSnapshot) => ReturnType<typeof layoutHud>;
+  readonly hudFor: (snap: WorldSnapshot) => HudLayout;
   /** The door-badge projection, memoized + fog-filtered, by snapshot identity. */
   readonly doorBadgesFor: (snap: WorldSnapshot) => ReturnType<typeof computeDoorBadges>;
   /** The one live placement rule the click gate and the cursor ghost share. */
