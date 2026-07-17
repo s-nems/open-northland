@@ -19,6 +19,7 @@ import { trackMotion } from './motion.js';
 import { anchorOf, boundsOf, pixelHit } from './pick.js';
 import { drawPlaceholder, PROJECTILE_FLIGHT_HEIGHT, placeholderBody } from './placeholder.js';
 import { createPooled, type EntityBounds, type PooledEntity } from './pooled-entity.js';
+import { PortraitSubject } from './portrait-subject.js';
 import { reconcileSprites } from './reconcile.js';
 import { type ResolvedLayer, resolveLayers } from './resolve-layers.js';
 
@@ -61,7 +62,7 @@ const POOL_REAP_INTERVAL_FRAMES = 30;
 
 /**
  * Everything one {@link SpritePool.reconcile} pass needs beyond the pool's own state — built once per
- * frame by the {@link import('../world-renderer.js').WorldRenderer} (one small object per frame, not per
+ * frame by the {@link import('../world-renderer/index.js').WorldRenderer} (one small object per frame, not per
  * entity).
  */
 export interface PoolFrame {
@@ -126,17 +127,9 @@ export class SpritePool {
   private readonly attached = new Set<PooledEntity>();
   private frameId = 0;
   private drawn = 0;
-  /** The portrait subject kept hidden on the main map this frame (off-screen/indoor — {@link
-   *  DrawItem.portraitOnly}); the portrait's second render reveals it via {@link showPortraitSubject}.
-   *  Null when the subject draws normally or no portrait is open. */
-  private portraitHidden: PooledEntity | null = null;
-  /** Whether {@link portraitHidden} is inside a building (drawn frozen — {@link DrawItem.frozen}); the
-   *  portrait then renders it alone so its cutout drops the world backdrop and it doesn't read as standing
-   *  on top of the building. */
-  private portraitIndoor = false;
-  /** Sprite-layer children hidden during an indoor portrait's solo render, with their prior visibility so
-   *  {@link endPortraitSolo} restores exactly what {@link beginPortraitSolo} changed. */
-  private readonly portraitSolo: { child: { visible: boolean }; wasVisible: boolean }[] = [];
+  /** The details-panel portrait's force-hide/solo bookkeeping — everything the pool holds for the
+   *  {@link import('../overlays/portrait-inset.js').PortraitInsetLayer} collaborator alone. */
+  private readonly portrait: PortraitSubject;
 
   /**
    * @param spriteLayer the renderer's shared, depth-sorted entity layer (also holds the tall map
@@ -150,7 +143,9 @@ export class SpritePool {
     private readonly sheet: SpriteSheet | undefined,
     /** Owner slot → team-colour slot for every built scene (a map roster's colour choice); absent = identity. */
     private readonly playerColourOf?: (player: number) => number,
-  ) {}
+  ) {
+    this.portrait = new PortraitSubject(spriteLayer);
+  }
 
   /**
    * Reconcile the pool to one frame: get-or-create a display object per drawn (culled, depth-sorted)
@@ -176,13 +171,7 @@ export class SpritePool {
       ...(this.playerColourOf !== undefined ? { playerColourOf: this.playerColourOf } : {}),
     });
     this.frameId++;
-    // Un-hide last frame's force-hidden portrait subject before re-deciding this frame's; the subject may
-    // have scrolled back on-screen (drawn normally) or the portrait may have closed.
-    if (this.portraitHidden !== null) {
-      this.portraitHidden.container.visible = true;
-      this.portraitHidden = null;
-    }
-    this.portraitIndoor = false;
+    this.portrait.release();
     for (let i = 0; i < scene.items.length; i++) {
       const item = scene.items[i];
       if (item === undefined) continue;
@@ -220,15 +209,10 @@ export class SpritePool {
         this.attached.add(pe);
       }
       pe.lastSeen = this.frameId;
-      // A portrait-only subject (drawn solely for the panel cutout) is hidden on the main map: an
-      // off-screen one is off-canvas anyway, and an indoor one must not pop into view at its door. It
-      // stays reconciled/attached (so `anchorOf` + `placePalettedFor` still serve the portrait) — the
-      // portrait's second render reveals it, then hides it again before the main stage render.
-      if (item.portraitOnly === true) {
-        pe.container.visible = false;
-        this.portraitHidden = pe;
-        this.portraitIndoor = item.frozen === true;
-      }
+      // A portrait-only subject (drawn solely for the panel cutout) is hidden on the main map. It stays
+      // reconciled/attached (so `anchorOf` + `placePalettedFor` still serve the portrait) — the portrait's
+      // second render reveals it, then hides it again before the main stage render.
+      if (item.portraitOnly === true) this.portrait.capture(pe, item.frozen === true);
     }
     this.drawn = scene.items.length;
 
@@ -306,49 +290,34 @@ export class SpritePool {
     }
   }
 
-  /** Reveal the portrait subject that is force-hidden on the main map (if any), so the portrait's second
-   *  render of the world can draw its cutout. Paired with {@link hidePortraitSubject}, which the caller
-   *  runs right after that render so the subject stays hidden on the main stage. No-op when the subject is
-   *  drawn normally or no portrait is open. */
+  /** See {@link PortraitSubject.show}. */
   showPortraitSubject(): void {
-    if (this.portraitHidden !== null) this.portraitHidden.container.visible = true;
+    this.portrait.show();
   }
 
-  /** Re-hide the portrait subject after its cutout render (see {@link showPortraitSubject}). */
+  /** See {@link PortraitSubject.hide}. */
   hidePortraitSubject(): void {
-    if (this.portraitHidden !== null) this.portraitHidden.container.visible = false;
+    this.portrait.hide();
   }
 
-  /** The pooled container of the force-hidden portrait subject (if any) — the portrait reads it to keep
-   *  its parent sprite layer visible while blanking the rest of the world for an indoor solo render. */
+  /** See {@link PortraitSubject.container}. */
   portraitSubjectContainer(): Container | null {
-    return this.portraitHidden?.container ?? null;
+    return this.portrait.container();
   }
 
-  /** Whether the force-hidden portrait subject is inside a building, so its cutout should drop the world
-   *  backdrop (a frozen settler standing on its own, not on top of the building). */
+  /** See {@link PortraitSubject.isIndoor}. */
   portraitSubjectIsIndoor(): boolean {
-    return this.portraitIndoor;
+    return this.portrait.isIndoor();
   }
 
-  /** Hide every sprite-layer child except the portrait subject, so its second render draws the subject
-   *  alone (no other units, no map objects behind it). {@link endPortraitSolo} restores them. Paired only
-   *  with an indoor portrait render; the world's other layers (terrain, fog…) are blanked by the caller. */
+  /** See {@link PortraitSubject.beginSolo}. */
   beginPortraitSolo(): void {
-    this.portraitSolo.length = 0; // start clean, so a skipped endPortraitSolo can't corrupt the restore
-    const subject = this.portraitHidden?.container;
-    if (subject === undefined) return;
-    for (const child of this.spriteLayer.children) {
-      if (child === subject) continue;
-      this.portraitSolo.push({ child, wasVisible: child.visible });
-      child.visible = false;
-    }
+    this.portrait.beginSolo();
   }
 
-  /** Restore the sprite-layer children {@link beginPortraitSolo} hid for the indoor portrait render. */
+  /** See {@link PortraitSubject.endSolo}. */
   endPortraitSolo(): void {
-    for (const { child, wasVisible } of this.portraitSolo) child.visible = wasVisible;
-    this.portraitSolo.length = 0;
+    this.portrait.endSolo();
   }
 
   /**

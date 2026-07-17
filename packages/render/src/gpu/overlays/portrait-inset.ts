@@ -1,6 +1,6 @@
 import { type Application, type Container, RenderTexture, Sprite } from 'pixi.js';
 import type { Camera } from '../../data/projection/index.js';
-import type { SpritePool } from '../sprite-pool/index.js';
+import { restoreStash, type SpritePool, type StashedVisibility, stashHidden } from '../sprite-pool/index.js';
 
 /**
  * The details-panel portrait "observation window": a live cutout of the world centred on the selected
@@ -37,7 +37,7 @@ const SETTLER_FEET_FRACTION = 0.84;
 /**
  * Renders the {@link PortraitInsetFrame} cutout: a second render of the shared {@link Container}
  * `worldLayer` (re-aimed at the selected entity), run by the {@link
- * import('./world-renderer.js').WorldRenderer} just before its main stage render. The inset {@link Sprite}
+ * import('../world-renderer/index.js').WorldRenderer} just before its main stage render. The inset {@link Sprite}
  * is a stage child raised over the (later-mounted, frequently-rebuilt) details panel each frame it shows.
  * Null/hidden when nothing is selected.
  */
@@ -163,10 +163,9 @@ export class PortraitInsetLayer {
     const subjectContainer = this.pool.portraitSubjectContainer();
     const soloParent =
       this.pool.portraitSubjectIsIndoor() && subjectContainer !== null ? subjectContainer.parent : null;
-    let worldSaved: { child: { visible: boolean }; wasVisible: boolean }[] | null = null;
+    let worldSaved: StashedVisibility[] | null = null;
     if (soloParent !== null) {
-      worldSaved = this.worldLayer.children.map((child) => ({ child, wasVisible: child.visible }));
-      for (const child of this.worldLayer.children) if (child !== soloParent) child.visible = false;
+      worldSaved = stashHidden(this.worldLayer.children, soloParent);
       this.pool.beginPortraitSolo();
     }
     // Restore the whole inset borrow — visibility toggles, the world transform and the mesh placement —
@@ -177,7 +176,7 @@ export class PortraitInsetLayer {
     } finally {
       if (worldSaved !== null) {
         this.pool.endPortraitSolo();
-        for (const { child, wasVisible } of worldSaved) child.visible = wasVisible;
+        restoreStash(worldSaved);
       }
       this.pool.hidePortraitSubject();
       this.worldLayer.scale.set(savedScale);

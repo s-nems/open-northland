@@ -75,7 +75,7 @@ interface GalleryCell {
 /**
  * A retained Pixi view of the whole gallery: the grid is built once (containers, sprites, labels), and
  * {@link update} only swaps each cell's frame texture and applies the camera — no per-frame allocation,
- * the same retained discipline as {@link import('../world-renderer.js').WorldRenderer}.
+ * the same retained discipline as {@link import('../world-renderer/index.js').WorldRenderer}.
  */
 export class AnimationGallery {
   private readonly app: Application;

@@ -117,7 +117,7 @@ export {
   type WorldFrame,
   WorldRenderer,
   type WorldRendererOptions,
-} from './gpu/world-renderer.js';
+} from './gpu/world-renderer/index.js';
 
 /*
  * The renderer is a pure consumer of sim state (see docs/ARCHITECTURE.md). It reads a snapshot
