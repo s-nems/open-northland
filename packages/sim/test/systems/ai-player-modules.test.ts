@@ -12,9 +12,11 @@ import {
   Signpost,
   UnderConstruction,
 } from '../../src/components/index.js';
+import { CommandQueue } from '../../src/core/command-queue.js';
 import type { Command } from '../../src/core/commands/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { CommandQueue, EventBuffer, Rng, replay, Simulation } from '../../src/index.js';
+import { EventBuffer, Rng, replay, Simulation } from '../../src/index.js';
+import { withinNodeRadius } from '../../src/nav/node-metric.js';
 import {
   buildOrderModule,
   DEFAULT_BUILD_ORDER,
@@ -23,7 +25,6 @@ import {
   workforceModule,
 } from '../../src/systems/ai-player/index.js';
 import type { SystemContext } from '../../src/systems/index.js';
-import { withinNodeRadius } from '../../src/systems/node-metric.js';
 import { aiContent } from '../fixtures/ai-content.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 
@@ -130,7 +131,7 @@ describe('workforce module (collectResources)', () => {
 
     const commands = [...workforceModule.run(sim.world, ctxOf(sim), SEAT)];
     const farm = entityOfBuilding(sim, FARM_TYPE);
-    const staffing = commands.filter((c) => c.kind === 'assignWorker' && c.building === farm);
+    const staffing = commands.filter((c) => c.kind === 'assignWorker').filter((c) => c.building === farm);
     // One farmer despite 4 farmer slots (WORKERS_PER_TRADE), and never the farm's carrier slot.
     expect(staffing.map((c) => c.jobPriority)).toEqual([[FARMER]]);
   });

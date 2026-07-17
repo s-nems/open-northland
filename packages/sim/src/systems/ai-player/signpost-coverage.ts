@@ -6,8 +6,8 @@ import {
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
 import type { World } from '../../ecs/world.js';
+import { withinNodeRadius } from '../../nav/node-metric.js';
 import type { SystemContext } from '../context.js';
-import { withinNodeRadius } from '../node-metric.js';
 import { SCOUT_JOB } from '../readviews/stances.js';
 import { signpostNetwork, signpostProbe } from '../signposts/index.js';
 import type { AiPlayerModule } from './index.js';
