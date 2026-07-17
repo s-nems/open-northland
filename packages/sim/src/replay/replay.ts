@@ -1,7 +1,7 @@
 import type { ContentSet } from '@open-northland/data';
 import type { LoggedCommand } from '../core/command-queue.js';
 import type { TerrainMap } from '../nav/terrain/index.js';
-import { type SimInputs, type Simulation, simFor } from '../simulation.js';
+import { type Simulation, simFor } from '../simulation.js';
 
 /**
  * Deterministic replay — the headless core of the "time-travel / replay inspector" DX win.
@@ -42,7 +42,6 @@ export interface ReplayOptions {
 /** One run's replay inputs, without a tick target — the shape a composition supplies its own tick to. */
 export type RunReplay = Omit<ReplayOptions, 'untilTick'>;
 
-/** What building a sim actually needs: the seeded content, plus a terrain map when the run has one. */
 /**
  * Rebuild a `Simulation` to the state it held at the end of `untilTick` by replaying `log` from tick
  * 1. Each logged command is enqueued just before its recorded apply tick's `step()` so CommandSystem
