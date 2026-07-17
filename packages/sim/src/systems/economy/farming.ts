@@ -2,9 +2,8 @@ import type { GoodFarming } from '@open-northland/data';
 import { Building, Crop, Position, Resource } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { positionOfNode } from '../../nav/halfcell.js';
+import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import type { System, SystemContext } from '../context.js';
-import { resourcesNearNode } from '../resource-index.js';
 import { stockpilesAtNode } from '../stockpile-index.js';
 
 // Field farming — the content resolution, growth system and atomic-effect appliers behind the farm's
@@ -70,15 +69,25 @@ export function farmWorkGood(world: World, ctx: SystemContext, workplace: Entity
 }
 
 /** Whether any standing entity already occupies the half-cell node `(hx, hy)` for sowing purposes — a
- *  resource/field, or a stockpile (a building store, a loose heap, a dropped sheaf). Read through the two
- *  spatial indexes rather than the planner's tick-start `sowScan`: this is the completion-time re-check, so it
- *  must see a field or heap that landed on the node *since* the planner chose it. A membership test (boolean,
- *  no pick), so the indexes' superset answers need no canonical ordering. Deliberately does NOT re-check the
- *  walk-block overlay the planner filtered (a building raised during the sow-walk): rebuilding the overlay per
- *  swing would cost a full footprint scan, and a crop under a fresh wall is self-limiting — it stays reapable
- *  from a neighbouring node. */
+ *  resource/field, or a stockpile (a building store, a loose heap, a dropped sheaf). Reads live state, not the
+ *  planner's tick-start `sowScan`: this is the completion-time re-check, so it must see a field or heap that
+ *  landed on the node *since* the planner chose it. A membership test (boolean, no pick), so the stockpile
+ *  index's superset answer needs no canonical ordering. Deliberately does NOT re-check the walk-block overlay
+ *  the planner filtered (a building raised during the sow-walk): rebuilding the overlay per swing would cost a
+ *  full footprint scan, and a crop under a fresh wall is self-limiting — it stays reapable from a neighbouring
+ *  node.
+ *
+ *  The resource half still scans its store: the region index (`resourcesNearNode`) rebuilds wholesale on the
+ *  Resource generation, and a sow PLANTS a Resource, so reading it here costs a full ~17k rebuild per swing —
+ *  measured ~2.6x slower than this early-exiting scan. Routing it through an index needs that memo to maintain
+ *  incrementally first (docs/tickets/sim/incremental-spatial-index-memos.md). */
 function sowNodeOccupied(world: World, hx: number, hy: number): boolean {
-  return resourcesNearNode(world, hx, hy, 0).length > 0 || stockpilesAtNode(world, hx, hy).length > 0;
+  if (stockpilesAtNode(world, hx, hy).length > 0) return true; // O(1) — take the cheap half first
+  for (const e of world.query(Resource, Position)) {
+    const n = nodeOfPosition(world.get(e, Position).x, world.get(e, Position).y);
+    if (n.hx === hx && n.hy === hy) return true;
+  }
+  return false;
 }
 
 /**

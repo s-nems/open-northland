@@ -83,7 +83,7 @@ never add `performance.now` to `src` (the hygiene scan fails the build).
   `lifecycle/`, `movement/`, `orders/`, `command/` (command application + placement), `vision/`,
   `footprint/`, `progression/`, `readviews/` (pure content-derived rule tables), `stores/`; plus
   `spatial.ts` (`NodeBuckets` + candidate lists), `schedule.ts` (`SYSTEM_ORDER`), `context.ts`, and
-  the resource/berry indexes.
+  the resource/berry/stockpile indexes.
 - **`nav/`** — pathfinding and the half-cell lattice: `halfcell.ts` (the ONE cell↔node conversion
   seam), `terrain/` graphs, `nearest.ts`, `metric.ts`, `block-overlay.ts`.
 - **`replay/`** — command-stream replay + divergence debugging (`localize-divergence.ts`,
