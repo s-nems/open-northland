@@ -27,40 +27,42 @@ export interface MapPlayerSlot {
   readonly hidden: boolean;
 }
 
-/** What a free Human seat does once the game starts (future auto-player control). */
+/** What a free claimable seat does once the game starts (future auto-player control). */
 export type VacantMode = 'idle' | 'ai';
+
+/** A slot's authored vacant default: an `ai` slot auto-plays, a `human` one idles. */
+export function authoredVacantMode(slot: MapPlayerSlot): VacantMode {
+  return slot.type === 'ai' ? 'ai' : 'idle';
+}
 
 /** The person's choices over one map's roster. */
 export interface RosterState {
-  /** The claimed Human slot id, or null while no seat is taken (Start stays gated). */
+  /** The claimed slot id, or null while no seat is taken (Start stays gated). */
   readonly seat: number | null;
   /** Current colour per slot id (initialised from the map's authored colours). */
   readonly colors: ReadonlyMap<number, number>;
-  /** Unclaimed Human slots toggled to auto-play; every other free Human seat idles. */
-  readonly vacantAi: ReadonlySet<number>;
+  /** Per-slot vacant mode, initialised from the authored type ({@link authoredVacantMode}). */
+  readonly vacantModes: ReadonlyMap<number, VacantMode>;
 }
 
 export function initialRosterState(players: readonly MapPlayerSlot[]): RosterState {
   return {
     seat: null,
     colors: new Map(players.map((p) => [p.player, p.colorId])),
-    vacantAi: new Set<number>(),
+    vacantModes: new Map(players.map((p) => [p.player, authoredVacantMode(p)])),
   };
 }
 
-/** Claims a Human seat (a re-claim moves the seat); the taken slot stops being a vacant-AI one. */
+/** Claims a seat (a re-claim moves it); the vacated slot keeps its remembered vacant mode. */
 export function claimSeat(state: RosterState, slot: number): RosterState {
-  const vacantAi = new Set(state.vacantAi);
-  vacantAi.delete(slot);
-  return { ...state, seat: slot, vacantAi };
+  return { ...state, seat: slot };
 }
 
-/** Flips one unclaimed Human slot between Idle and AI. */
+/** Flips one unclaimed claimable slot between Idle and AI. */
 export function toggleVacantMode(state: RosterState, slot: number): RosterState {
-  const vacantAi = new Set(state.vacantAi);
-  if (vacantAi.has(slot)) vacantAi.delete(slot);
-  else vacantAi.add(slot);
-  return { ...state, vacantAi };
+  const vacantModes = new Map(state.vacantModes);
+  vacantModes.set(slot, vacantModes.get(slot) === 'ai' ? 'idle' : 'ai');
+  return { ...state, vacantModes };
 }
 
 /** The slot currently wearing `colorId`, or undefined when the colour is free. */
@@ -84,8 +86,9 @@ export function setSlotColor(state: RosterState, slot: number, colorId: number):
 /**
  * The start-URL params encoding the person's roster choices: `player=<seat>`,
  * `colors=<slot>:<colorId>,…` (only slots recoloured away from the map's authored colour) and
- * `vacantai=<slot>,…` (only free Human seats toggled to AI). Empty until a seat is claimed —
- * the menu gates Start on it.
+ * `vacant=<slot>:<idle|ai>,…` (only unclaimed claimable seats toggled away from their authored
+ * default — the future auto-player control; no consumer reads it yet). Empty until a seat is
+ * claimed — the menu gates Start on it.
  */
 export function rosterStartParams(
   state: RosterState,
@@ -97,8 +100,16 @@ export function rosterStartParams(
     .filter((p) => state.colors.get(p.player) !== undefined && state.colors.get(p.player) !== p.colorId)
     .map((p) => `${p.player}:${state.colors.get(p.player)}`);
   if (recoloured.length > 0) params.push(['colors', recoloured.join(',')]);
-  const vacant = [...state.vacantAi].sort((a, b) => a - b);
-  if (vacant.length > 0) params.push(['vacantai', vacant.join(',')]);
+  const vacant = players
+    .filter(
+      (p) =>
+        p.claimable &&
+        !p.hidden &&
+        p.player !== state.seat &&
+        (state.vacantModes.get(p.player) ?? authoredVacantMode(p)) !== authoredVacantMode(p),
+    )
+    .map((p) => `${p.player}:${state.vacantModes.get(p.player)}`);
+  if (vacant.length > 0) params.push(['vacant', vacant.join(',')]);
   return params;
 }
 
@@ -184,9 +195,9 @@ export function mountPlayersPanel(panel: HTMLElement, list: HTMLElement, onChang
 
     row.append(swatch, label);
 
-    // A claimable seat invites the person to sit; what an UNCLAIMED slot then does follows its
-    // authored type — a `human` slot gets the Idle/AI toggle, an `ai` slot stays script-driven
-    // (the AI badge), even when the lobby table made it claimable.
+    // A claimable seat invites the person to sit and carries the same Idle/AI toggle while free
+    // (its default follows the authored type — the lobby treats open seats interchangeably).
+    // A non-claimable slot is script-driven and only wears the AI badge.
     if (slot.claimable) {
       const seat = document.createElement('span');
       seat.className = 'game-menu__player-seat';
@@ -195,25 +206,24 @@ export function mountPlayersPanel(panel: HTMLElement, list: HTMLElement, onChang
       row.addEventListener('click', () => {
         if (state().seat !== slot.player) update(claimSeat(state(), slot.player));
       });
-    }
-    if (!isSeat) {
-      if (slot.type === 'human') {
+      if (!isSeat) {
         const vacant = document.createElement('button');
         vacant.type = 'button';
         vacant.className = 'game-menu__player-vacant';
-        vacant.textContent = s.vacantAi.has(slot.player) ? copy.vacantAi : copy.vacantIdle;
+        const mode = s.vacantModes.get(slot.player) ?? authoredVacantMode(slot);
+        vacant.textContent = mode === 'ai' ? copy.vacantAi : copy.vacantIdle;
         vacant.title = copy.vacantToggleTitle;
         vacant.addEventListener('click', (ev) => {
           ev.stopPropagation();
           update(toggleVacantMode(state(), slot.player));
         });
         row.append(vacant);
-      } else {
-        const badge = document.createElement('span');
-        badge.className = 'game-menu__player-badge';
-        badge.textContent = copy.playerTypeAi;
-        row.append(badge);
       }
+    } else {
+      const badge = document.createElement('span');
+      badge.className = 'game-menu__player-badge';
+      badge.textContent = copy.playerTypeAi;
+      row.append(badge);
     }
     return row;
   };

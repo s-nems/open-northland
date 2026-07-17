@@ -17,7 +17,7 @@ approximation** is expected. What can pin the design:
   enemy observably does (does it expand? rebuild? raid on a timer? escalate?). If no observation
   session is feasible, say so and design from genre convention, named as such.
 - Decoded map data: the `playerdata` roster/diplomacy and `MissionData` triggers are now decoded
-  per map into `content/maps/<id>.script.json` (`MapScript` schema; `?vacantai=` from the menu's
+  per map into `content/maps/<id>.script.json` (`MapScript` schema; `?vacant=` from the menu's
   roster panel already names which free Human seats should auto-play — see
   docs/tickets/features/vacant-seat-ai-player.md). The `[aidata]` sections (the `AI_MainTask_*` /
   `AI_SetCondition_*` program — 102 maps carry `AI_Disable`, 809 `AI_MainTask_Defend` lines) are
