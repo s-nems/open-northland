@@ -1,6 +1,6 @@
 import { diag } from '../diag/log.js';
 import { messages } from '../i18n/index.js';
-import { BRAND_BACKDROP, BRAND_LOGO } from './brand-art.js';
+import { BRAND_BACKDROP } from './brand-art.js';
 
 /**
  * The boot progress card the two playable entries (`?map=`, `?scene=`) show while they assemble a world.
@@ -89,12 +89,7 @@ export function mountBootProgress(phases: readonly BootPhase[]): BootProgress {
   dismissBootProgress();
   const bar = node('boot-card__bar');
   const label = node('boot-card__label');
-  const logo = document.createElement('img');
-  logo.className = 'boot-card__brand';
-  logo.src = BRAND_LOGO;
-  logo.alt = 'Open Northland';
   const root = node('boot-card', node('boot-card__frame', node('boot-card__track', bar)), label);
-  root.prepend(logo);
   root.style.setProperty('--boot-backdrop', `url("${BRAND_BACKDROP}")`);
   document.body.append(root);
   overlay = root;

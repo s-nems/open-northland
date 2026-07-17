@@ -1,10 +1,12 @@
 import { fetchJsonOrNull } from '../content/net.js';
 import { messages } from '../i18n/index.js';
 import { SCENES } from '../scenes/index.js';
-import { BRAND_BACKDROP, BRAND_LOGO } from '../view/brand-art.js';
+import { BRAND_BACKDROP } from '../view/brand-art.js';
 import { generatedMapPreview } from './menu/map-preview.js';
 import { type MapPlayerSlot, mountPlayersPanel, type PlayersPanel } from './menu/players/index.js';
 import { bindLocaleFlags, bindMenuSettings, targetSearch } from './menu/settings.js';
+
+const MENU_LOGO = new URL('./menu/assets/logo.webp', import.meta.url).href;
 
 export interface MapIndexEntry {
   readonly id: string;
@@ -178,7 +180,7 @@ export async function renderMenu(canvas: HTMLCanvasElement, params: URLSearchPar
   const copy = messages().menu;
   const root = templateRoot();
   root.style.setProperty('--menu-backdrop', `url("${BRAND_BACKDROP}")`);
-  imageIn(root, '[data-menu-logo]').src = BRAND_LOGO;
+  imageIn(root, '[data-menu-logo]').src = MENU_LOGO;
   translatedShell(root);
   bindMenuSettings(root, params);
   bindLocaleFlags(htmlIn(root, '[data-menu-languages]'));
