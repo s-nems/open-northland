@@ -58,8 +58,9 @@ import { createProfessionPicker } from './profession-picker.js';
  * remaining buttons are inert placeholders. Three modes: `closed` → `menu` (the default arms) → `jobs`
  * (the list window over the hidden ring).
  *
- * It is toggled with Space (the info card stays always-on) and anchored on the selected settlers'
- * on-screen centroid, re-placed every frame as the camera pans / the units move. The order buttons are drawn
+ * It is toggled with Space (the info card stays always-on) and pinned to the world point the selected
+ * settlers' centroid occupied when it opened — it holds that spot while they walk on, so the buttons stay
+ * clickable at high game speeds, and only the camera moves it afterwards. The order buttons are drawn
  * with the `'round'` colour key, so each reads as a round disc (no square backdrop). When the decoded GUI art
  * is absent (a checkout that hasn't run the pipeline) it degrades to flat `Graphics` discs at the exact same
  * geometry, staying visible and fully clickable — the tooltip (a DOM label) carries each button's meaning.
@@ -113,9 +114,10 @@ export interface SettlerActionsOptions {
 
 export interface SettlerActions {
   /**
-   * Per-frame: re-place the menu on the current selection's on-screen centroid (and show/hide it). Reads the
-   * settlers' positions from the frame's already-built snapshot; only runs a scan while the menu is open and
-   * a settler is selected, so a closed menu costs nothing.
+   * Per-frame: project the menu's pinned world anchor through the camera (and show/hide it), capturing that
+   * anchor from the selection's centroid on the first frame of an open session. Reads the settlers' positions
+   * from the frame's already-built snapshot; only runs a scan while the menu is open and a settler is
+   * selected, so a closed menu costs nothing.
    */
   update(camera: Camera, snapshot: WorldSnapshot, selection: ReadonlySet<number>): void;
   /** Toggle/step the menu (Space): closed→menu, jobs→menu (back out of the picker), menu→closed. */
@@ -173,6 +175,14 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
   let layout: ActionRingLayout = EMPTY_LAYOUT;
   /** The settler ids a click's command applies to (the selected settlers, filtered in `update`). */
   let actionTargets: number[] = [];
+  /**
+   * Where the menu is pinned: the selection's centroid in WORLD px, captured on the frame the menu opens
+   * and held for the rest of the open session (null = not anchored yet / closed). The buttons keep their
+   * world spot as the settler walks away, so a click target doesn't slide out from under the cursor at
+   * higher game speeds; the camera transform still runs every frame, so panning/zooming carries the menu
+   * with the ground it was opened over.
+   */
+  let anchor: { x: number; y: number } | null = null;
 
   // --- The "Zmiana zawodu" profession picker window: a parchment DOM panel over the (hidden) ring ------
   // The serif UI face (shared with the details panel) — falls back to a serif stack until/if it resolves.
@@ -211,13 +221,13 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
   const closeMenu = (): void => {
     picker.hide();
     mode = 'closed';
+    anchor = null; // the next open re-pins on the selection's centroid at that moment
     root.visible = false;
     hideTransient();
   };
 
-  /** The selected settlers' on-screen centroid (canvas px), or null when none is selected. */
+  /** The selected settlers' centroid in WORLD px, or null when none is selected. */
   const selectionCentre = (
-    camera: Camera,
     snapshot: WorldSnapshot,
     selection: ReadonlySet<number>,
   ): { x: number; y: number; ids: number[]; jobType: number | undefined } | null => {
@@ -240,13 +250,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
       ids.push(e.id);
     }
     if (ids.length === 0) return null;
-    const cameraScale = camera.scale ?? 1;
-    return {
-      x: (wx / ids.length) * cameraScale + camera.offsetX,
-      y: (wy / ids.length) * cameraScale + camera.offsetY,
-      ids,
-      jobType: mixed ? undefined : jobType,
-    };
+    return { x: wx / ids.length, y: wy / ids.length, ids, jobType: mixed ? undefined : jobType };
   };
 
   /**
@@ -290,12 +294,13 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
   };
 
   const update = (camera: Camera, snapshot: WorldSnapshot, selection: ReadonlySet<number>): void => {
-    const centre = mode === 'closed' ? null : selectionCentre(camera, snapshot, selection);
+    const centre = mode === 'closed' ? null : selectionCentre(snapshot, selection);
     if (centre === null) {
       // Nothing selected (or menu closed): hide the ring, and close the list if it was open (it has no anchor).
       root.visible = false;
       layout = EMPTY_LAYOUT;
       actionTargets = [];
+      anchor = null;
       visuals.hideAll();
       if (mode === 'jobs') closeJobWindow();
       return;
@@ -308,10 +313,13 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
       visuals.hideAll();
       return;
     }
+    // Pin on the first frame of the open session; every later frame reuses that world point.
+    anchor ??= { x: centre.x, y: centre.y };
+    const cameraScale = camera.scale ?? 1;
     layout = layoutActionRing(
       menuForSettler(menuStateFor(snapshot, centre.ids, centre.jobType)),
-      centre.x,
-      centre.y,
+      anchor.x * cameraScale + camera.offsetX,
+      anchor.y * cameraScale + camera.offsetY,
       scale,
       app.screen.width,
       app.screen.height,
@@ -419,15 +427,17 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
         closeJobWindow();
         return;
       }
-      mode = mode === 'closed' ? 'menu' : 'closed';
-      if (mode === 'closed') {
-        root.visible = false;
-        hideTransient();
+      if (mode === 'menu') {
+        closeMenu();
+        return;
       }
+      mode = 'menu'; // update() pins + reveals it next frame off the current selection's centroid.
+      anchor = null;
     },
     open: (): void => {
       closeJobWindow(); // a fresh open shows the default menu, never a stale list
       mode = 'menu'; // update() reveals it next frame off the current selection's centroid.
+      anchor = null; // re-invoking on an already-open menu brings it back to the settler
     },
     isOpen: (): boolean => mode !== 'closed',
     close: closeMenu,
