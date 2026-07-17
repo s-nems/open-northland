@@ -1,8 +1,6 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
-import type { LoggedCommand } from '../core/command-queue.js';
-import type { TerrainMap } from '../nav/terrain/index.js';
 import type { Simulation } from '../simulation.js';
-import { replay } from './replay.js';
+import { type ReplayOptions, replay } from './replay.js';
 
 /**
  * Content hot-reload — the headless, self-verifiable half of the "Content hot-reload" DX win.
@@ -36,21 +34,13 @@ import { replay } from './replay.js';
  * side by side. On an `error` result NOTHING is rebuilt: the bad content never reached a `Simulation`,
  * so the original sim is untouched and the caller keeps using it.
  */
-export interface RebaseInputs {
-  /** The seed the running sim was constructed with — replay must reuse it or state diverges. */
-  readonly seed: number;
-  /** The terrain map the running sim used, if any — replay must rebuild the SAME graph. */
-  readonly map?: TerrainMap;
-  /** The running sim's command log (`Simulation.commands.log`) — the history to carry forward. */
-  readonly log: readonly LoggedCommand[];
-  /**
-   * Reconstruct as of the END of this tick (inclusive). Pass the running sim's `tick` to land the
-   * rebased run at the SAME tick the live sim is on (so the rebase is invisible but for the new
-   * rules). Defaults, like {@link replay}, to the last logged tick. A negative target is a caller
-   * bug and throws (via `replay`).
-   */
-  readonly untilTick?: number;
-}
+
+/**
+ * The running sim's reconstruction inputs — {@link ReplayOptions} minus the content, which a rebase
+ * replaces. Pass the running sim's `tick` as `untilTick` to land the rebased run at the SAME tick the
+ * live sim is on (so the rebase is invisible but for the new rules).
+ */
+export type RebaseInputs = Omit<ReplayOptions, 'content'>;
 
 /**
  * The outcome of a content hot-reload. Bad content is an EXPECTED boundary failure (a designer can
@@ -87,12 +77,6 @@ export function rebaseContent(rawContent: unknown, inputs: RebaseInputs): Rebase
 
   // Content is valid → rebuild the run on it in a fresh Simulation, so an invalid reload above never
   // perturbs the original sim.
-  const sim = replay({
-    content,
-    seed: inputs.seed,
-    ...(inputs.map !== undefined ? { map: inputs.map } : {}),
-    log: inputs.log,
-    ...(inputs.untilTick !== undefined ? { untilTick: inputs.untilTick } : {}),
-  });
+  const sim = replay({ ...inputs, content });
   return { kind: 'ok', sim, content };
 }

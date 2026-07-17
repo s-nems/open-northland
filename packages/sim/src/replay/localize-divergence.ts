@@ -1,7 +1,7 @@
 import type { HashTrace } from '../inspect/hashtrace.js';
 import type { WorldSnapshot } from '../inspect/snapshot.js';
 import { diffSnapshots, type SnapshotDiff } from '../inspect/snapshot-diff.js';
-import { type ReplayOptions, replay } from './replay.js';
+import { type RunReplay, replay } from './replay.js';
 
 /**
  * `localizeDivergence` — the headless composition that wires the four replay-inspector primitives
@@ -23,9 +23,6 @@ import { type ReplayOptions, replay } from './replay.js';
  * Purity note: this is as "pure" as `replay()` — it reads only plain inputs (logs, traces) and returns
  * plain data. It never touches a clock, the DOM, or I/O; it is render-agnostic.
  */
-
-/** One run's replay inputs (no `untilTick` — this composition supplies the divergence tick). */
-export type RunReplay = Omit<ReplayOptions, 'untilTick'>;
 
 /** The localized split: where the two runs' hashes first diverged, and the state delta there. */
 export interface DivergenceReport {

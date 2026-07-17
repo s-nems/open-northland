@@ -1,7 +1,8 @@
 import type { ContentSet } from '@open-northland/data';
 import type { Command } from '../core/commands/index.js';
 import type { TerrainMap } from '../nav/terrain/index.js';
-import { Simulation } from '../simulation.js';
+import { simFor } from '../replay/replay.js';
+import type { Simulation } from '../simulation.js';
 import { CORE_INVARIANTS, checkInvariants, type Invariant } from './invariants.js';
 
 /**
@@ -18,9 +19,10 @@ import { CORE_INVARIANTS, checkInvariants, type Invariant } from './invariants.j
  *   r.assertOk();
  */
 export interface ScenarioResult {
-  sim: Simulation;
-  failures: string[];
-  invariantViolations: string[];
+  readonly sim: Simulation;
+  readonly failures: readonly string[];
+  readonly invariantViolations: readonly string[];
+  /** Chainable, and safe to destructure — the methods close over the run, not over `this`. */
   expect(label: string, predicate: (sim: Simulation) => boolean): ScenarioResult;
   /** Throws with all collected failures (for use inside a test's it()). */
   assertOk(): void;
@@ -46,9 +48,7 @@ class Scenario {
   private readonly sim: Simulation;
 
   constructor(content: ContentSet, { seed = 1, map }: ScenarioOptions = {}) {
-    // Only attach `map` when present: under exactOptionalPropertyTypes an optional property must be
-    // omitted rather than set to undefined (the Simulation builds the terrain graph iff `map` is set).
-    this.sim = new Simulation({ seed, content, ...(map !== undefined ? { map } : {}) });
+    this.sim = simFor({ content, seed, map });
   }
 
   /**
@@ -78,14 +78,15 @@ class Scenario {
     }
 
     const failures: string[] = [...invariantViolations];
+    const sim = this.sim;
     const result: ScenarioResult = {
-      sim: this.sim,
+      sim,
       failures,
       invariantViolations,
       expect(label, predicate) {
         let ok = false;
         try {
-          ok = predicate(this.sim);
+          ok = predicate(sim);
         } catch (err) {
           failures.push(`expectation "${label}" threw: ${String(err)}`);
           return result;
