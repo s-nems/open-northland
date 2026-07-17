@@ -26,6 +26,7 @@ import { syncWorkFlagToJob } from '../../economy/flags.js';
 import { isFemaleJobId } from '../../family/eligibility.js';
 import { spawnAgeTicks } from '../../lifecycle/ageclass.js';
 import { rollInitialNeed } from '../../lifecycle/needs.js';
+import { evictSettlerFromBlockedSpawn } from '../../movement/evict.js';
 import { stampDefaultStance } from '../../orders/index.js';
 import { settlerHitpoints } from '../../readviews/index.js';
 
@@ -150,6 +151,10 @@ export function spawnSettler(
 ): void {
   const e = createSettler(world, ctx.content, ctx.rng, command);
   if (e === null) return;
+  // A commanded spawn takes its (x,y) on trust, and authored maps routinely name a cell inside a house
+  // body — push such a settler out before anything reads its position, so the work flag below plants at
+  // its real feet and render/audio see the final spot.
+  evictSettlerFromBlockedSpawn(world, ctx, e);
   // A gatherer is never "free": bind it to a work flag planted at its feet the moment it is born (the
   // spawn-time twin of the profession-change auto-plant, `syncWorkFlagToJob`), so it only searches its flag's
   // radius, not the whole map. A non-gathering trade gets no flag. Source basis: a design rule (user-specified),

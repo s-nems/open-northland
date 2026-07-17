@@ -1,10 +1,11 @@
 import { Building, Owner, Position, Settler } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
+import { nearestUnblockedNode } from '../../nav/nearest.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { buildingFootprintOf, translatedCells } from '../footprint/geometry.js';
-import { dynamicBlockedCells } from '../footprint/index.js';
+import { dynamicBlockedCells, dynamicBlockOverlay } from '../footprint/index.js';
 import { canonicalById, isTravelling, NodeBuckets } from '../spatial.js';
 
 /** Max nodes the displacement ring search visits before giving up — a plot boxed in on a pathological
@@ -80,6 +81,46 @@ export function evictSettlersFromFootprint(world: World, ctx: SystemContext, bui
     pos.x = centre.x;
     pos.y = centre.y;
   }
+}
+
+/**
+ * Push a settler that spawned on walk-blocked ground out onto the nearest node it can stand on — the
+ * spawn-time twin of {@link evictSettlersFromFootprint}. That pass is building-first and so cannot cover
+ * a map load, which is settler-first: the authored import enqueues every `placeBuilding` before any
+ * `spawnSettler`, so each building evicts nobody (no settler exists yet) and the settlers then land
+ * inside the finished bodies. Authored maps do this constantly — a `sethuman` half-cell sits inside a
+ * `sethouse` walk-block on 64 of the 122 entity-bearing decoded maps (1041 of 35279 humans) — and each
+ * one is wedged for the whole game unpushed, for the no-route-out reason the twin above describes.
+ *
+ * An instant Position move like the eviction, and it may cross blocked cells but never unwalkable
+ * terrain ({@link nearestUnblockedNode} traverses blocks over walkable neighbours), so a settler is
+ * pushed to the far side of its house, never across water. The default search cap is ample: the deepest
+ * real blocked spawn reaches free ground in 21 visited nodes (p50 2), measured over the decoded maps.
+ *
+ * Two deliberate divergences from the twin. No Owner gate: that gate keeps unowned scenario fixtures
+ * byte-identical under a placement, but a settler spawned inside a wall is broken whoever owns it (and
+ * an authored human whose `player` column is out of range spawns unowned). No occupancy check: two
+ * settlers landing on one node is the `deStackIdle` drive's job, and asking here would cost a settler
+ * scan per spawn.
+ *
+ * Approximated: the original authors these humans too, but its handling of them is unobserved, so this
+ * applies the displacement rule the original does show when a building lands on someone.
+ */
+export function evictSettlerFromBlockedSpawn(world: World, ctx: SystemContext, settler: Entity): void {
+  const terrain = ctx.terrain;
+  if (terrain === undefined) return; // mapless sim: no cells to stand on
+  const p = world.tryGet(settler, Position);
+  if (p === undefined) return;
+  const n = nodeOfPosition(p.x, p.y);
+  const from = terrain.nodeAtClamped(n.hx, n.hy);
+  const blocked = dynamicBlockOverlay(world, ctx, terrain);
+  if (terrain.isWalkable(from) && !blocked.has(from)) return; // standable — the common case, no push
+  const free = nearestUnblockedNode(terrain, from, blocked);
+  if (free === null) return; // boxed in — nowhere free to stand; the settler stays put
+  const c = terrain.coordsOf(free);
+  const centre = positionOfNode(c.x, c.y);
+  p.x = centre.x;
+  p.y = centre.y;
 }
 
 /** The half-cell node a settler stands on (its Position snapped to the lattice). */
