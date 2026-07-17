@@ -179,9 +179,11 @@ function expandBobFrameTime(frame: BobFrame): RgbaImage {
 
 /**
  * The baked alpha of a shadow-atlas pixel. The exact high-colour blend of the original's shadow blit
- * is not pinned (OpenVikings simplifies it); cultures2-gl — the reimplementation whose output was
- * matched against the running original — bakes shadow pixels as `rgba(0,0,0,0x50)` (cultures2-wasm
- * `read_bmd`), so this adopts that observed parity value. A named approximation; one knob to retune.
+ * is not pinned (OpenVikings simplifies it); cultures2-wasm — the reimplementation whose output was
+ * matched against the running original — bakes a shadow frame's pixels as `rgba(0,0,0,0x50)`
+ * (`src/bmd.rs`, `frame_type == 2`), so this adopts that observed parity value. Note its older
+ * cultures2-gl TypeScript path disagrees, baking `0x80` (`src/cultures/bmd.ts`). A named
+ * approximation; one knob to retune.
  */
 export const SHADOW_ALPHA = 0x50;
 

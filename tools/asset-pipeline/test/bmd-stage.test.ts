@@ -156,7 +156,7 @@ describe('convertBmdTree', () => {
       join('Data', 'Bobs', 'Body.bear01.png'),
       join('Data', 'Bobs', 'Body.wolf01.png'),
     ]);
-    // Each atlas was coloured through its OWN binding's palette, not one shared pick: same geometry,
+    // Each atlas was coloured through its own binding's palette, not one shared pick: same geometry,
     // so any pixel difference is the palette, and the wolf's every colour is its solid-red carrier.
     const sheetPixel = async (png: string): Promise<number[]> => {
       const stem = png.replace(/\.png$/, '');

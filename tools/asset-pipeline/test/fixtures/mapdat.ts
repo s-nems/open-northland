@@ -1,8 +1,9 @@
 import { encodeMapDat, encodeMapSize, packMapLayer } from '../../src/decoders/mapdat/index.js';
+import { le32 } from '../support/bytes.js';
 
 /** Encodes a name-dictionary payload: `[u32 count]` then per entry `[u8 len][bytes][0x00]`. */
 export function encodeStringList(names: readonly string[]): Uint8Array {
-  const bytes: number[] = [names.length & 0xff, (names.length >>> 8) & 0xff, 0, 0];
+  const bytes: number[] = [...le32(names.length)];
   for (const n of names) {
     bytes.push(n.length);
     for (let i = 0; i < n.length; i++) bytes.push(n.charCodeAt(i) & 0xff);

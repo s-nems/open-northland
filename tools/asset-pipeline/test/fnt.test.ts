@@ -96,6 +96,19 @@ describe('decodeFnt / encodeFnt', () => {
 
     expect(() => decodeFnt(new Uint8Array(8))).toThrow(/too short/);
   });
+
+  it('throws on a glyph container that does not start at bob 0', () => {
+    // fontMetrics reports `firstChar: FONT_FIRST_CHAR` while deriving each glyph's char from
+    // `firstBobId + i`, so its `glyphs[c - firstChar]` contract only holds at a zero origin — a
+    // non-zero one would silently shift every glyph rather than fail. Every shipped .fnt starts at 0.
+    const shifted = encodeFnt({
+      version: 0,
+      value08: 0,
+      value0C: 0,
+      bmd: { ...sampleBmd(), firstBobId: 10 },
+    });
+    expect(() => decodeFnt(shifted)).toThrow(/must start at bob 0, got 10/);
+  });
 });
 
 describe('fontMetrics', () => {

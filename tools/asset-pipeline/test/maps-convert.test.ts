@@ -122,6 +122,29 @@ describe('convertMapDatTree', () => {
     expect(meta).toEqual({ name: 'Samotnia', description: 'Desc pol' });
   });
 
+  it('resolves the map cif case-insensitively (a mixed-case Map.CIF still yields its header)', async () => {
+    // The map folders mix casing freely, so the cif read resolves by directory listing like every
+    // sibling read here. This bites only on a case-sensitive filesystem (Linux CI): on a
+    // case-insensitive one the plain `join(dir, 'map.cif')` would find `Map.CIF` anyway.
+    const dir = join(game, 'CnModMaps', 'tutorial_002');
+    await writeFile(
+      join(dir, 'Map.CIF'),
+      buildStringCif([
+        { level: 1, text: 'misc_mapname' },
+        { level: 2, text: 'mapnamestringid 99' },
+        { level: 2, text: 'mapdescriptionstringid 98' },
+      ]),
+    );
+    await mkdir(join(dir, 'text', 'pol'), { recursive: true });
+    await writeFile(
+      join(dir, 'text', 'pol', 'strings.ini'),
+      rawBytes('[text]\nstringn 99 "Samotnia"\nstringn 98 "Opis"\n'),
+    );
+    await convertMapDatTree({ game, mod: undefined }, out);
+    const meta = JSON.parse(await readFile(join(out, 'maps', 'tutorial_002.meta.json'), 'utf8'));
+    expect(meta).toEqual({ name: 'Samotnia', description: 'Opis' });
+  });
+
   it('falls back to the encrypted strings.cif when no strings.ini exists (re-decoded to CP1250)', async () => {
     const dir = join(game, 'CnModMaps', 'tutorial_002');
     await mkdir(join(dir, 'text', 'pol'), { recursive: true });

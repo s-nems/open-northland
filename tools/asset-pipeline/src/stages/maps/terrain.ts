@@ -55,16 +55,6 @@ interface DecodedMap {
   readonly size: MapDatSize;
 }
 
-/**
- * Decodes the `empa`/`empb` per-cell ground-pattern lanes + the `eapd` pattern-name dictionary into
- * the emitted `ground` layer: each cell's two triangles as indices into a compacted per-map
- * pattern-name list (only the names the map actually uses, in ascending dictionary order — a
- * deterministic remap). The u16 lane values index `eapd` positionally; the emitted layer carries the
- * names (the engine's version-robust join key onto the extracted `GfxPattern` table). Returns
- * undefined when the map lacks any of the three chunks (older/foreign saves); throws on an index
- * outside the dictionary (a corrupt lane — {@link mapDatToTerrain} catches per layer and emits the
- * grid without it).
- */
 /** A compacted dictionary: the used names in ascending source-id order + the old-id → new-index remap. */
 interface CompactedDictionary {
   readonly names: string[];
@@ -101,6 +91,16 @@ function compactDictionary(
   return { names: compacted, indexById };
 }
 
+/**
+ * Decodes the `empa`/`empb` per-cell ground-pattern lanes + the `eapd` pattern-name dictionary into
+ * the emitted `ground` layer: each cell's two triangles as indices into a compacted per-map
+ * pattern-name list (only the names the map actually uses, in ascending dictionary order — a
+ * deterministic remap). The u16 lane values index `eapd` positionally; the emitted layer carries the
+ * names (the engine's version-robust join key onto the extracted `GfxPattern` table). Returns
+ * undefined when the map lacks any of the three chunks (older/foreign saves); throws on an index
+ * outside the dictionary (a corrupt lane — {@link mapDatToTerrain} catches per layer and emits the
+ * grid without it).
+ */
 function groundFromMapDat({ map, size }: DecodedMap): MapDatTerrainFile['ground'] {
   const empa = findChunk(map, 'empa');
   const empb = findChunk(map, 'empb');
