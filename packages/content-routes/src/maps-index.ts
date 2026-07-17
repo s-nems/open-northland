@@ -98,26 +98,45 @@ function playerSlotOf(raw: unknown, multiplayer: ScriptMultiplayer): MapsIndexPl
   };
 }
 
-/** Reads `<id>.script.json`'s roster (+ colour locking), or undefined when absent/malformed
- *  (warned, never thrown). */
+/** Parses `<id><suffix>`, or undefined when absent or unreadable (warned, never thrown). */
+function readSidecar(mapsRoot: string, id: string, suffix: string): unknown {
+  const file = join(mapsRoot, `${id}${suffix}`);
+  if (!existsSync(file)) return undefined;
+  try {
+    return JSON.parse(readFileSync(file, 'utf8'));
+  } catch (err) {
+    console.warn(`[content-routes] maps-index: ${id}${suffix} unreadable: ${(err as Error).message}`);
+    return undefined;
+  }
+}
+
+/** Reads `<id>.meta.json`'s display strings; a wrong-typed field is dropped silently. */
+function metaOf(mapsRoot: string, id: string): { name?: string; description?: string } {
+  const parsed = readSidecar(mapsRoot, id, '.meta.json');
+  if (parsed === undefined) return {};
+  if (typeof parsed !== 'object' || parsed === null) {
+    console.warn(`[content-routes] maps-index: ${id}.meta.json is not an object; serving the bare id`);
+    return {};
+  }
+  const meta = parsed as Record<string, unknown>;
+  return {
+    ...(typeof meta.name === 'string' ? { name: meta.name } : {}),
+    ...(typeof meta.description === 'string' ? { description: meta.description } : {}),
+  };
+}
+
+/** Reads `<id>.script.json`'s roster (+ colour locking), or undefined when absent/malformed. */
 function playersOf(
   mapsRoot: string,
   id: string,
 ): { readonly slots: readonly MapsIndexPlayerSlot[]; readonly fixedColors: boolean } | undefined {
-  const scriptPath = join(mapsRoot, `${id}.script.json`);
-  if (!existsSync(scriptPath)) return undefined;
-  try {
-    const parsed: unknown = JSON.parse(readFileSync(scriptPath, 'utf8'));
-    if (typeof parsed !== 'object' || parsed === null) return undefined;
-    const { players, multiplayer } = parsed as Record<string, unknown>;
-    if (!Array.isArray(players)) return undefined;
-    const mp = multiplayerOf(multiplayer);
-    const slots = players.map((p) => playerSlotOf(p, mp)).filter((s) => s !== undefined);
-    return slots.length > 0 ? { slots, fixedColors: mp.fixedColors } : undefined;
-  } catch (err) {
-    console.warn(`[content-routes] maps-index: ${id}.script.json unreadable: ${(err as Error).message}`);
-    return undefined;
-  }
+  const parsed = readSidecar(mapsRoot, id, '.script.json');
+  if (typeof parsed !== 'object' || parsed === null) return undefined;
+  const { players, multiplayer } = parsed as Record<string, unknown>;
+  if (!Array.isArray(players)) return undefined;
+  const mp = multiplayerOf(multiplayer);
+  const slots = players.map((p) => playerSlotOf(p, mp)).filter((s) => s !== undefined);
+  return slots.length > 0 ? { slots, fixedColors: mp.fixedColors } : undefined;
 }
 
 /**
@@ -134,30 +153,10 @@ export function buildMapsIndexEntries(mapsRoot: string): MapsIndexEntry[] {
     .map((f) => f.slice(0, -'.json'.length))
     .sort()
     .map((id) => {
-      let name: string | undefined;
-      let description: string | undefined;
-      const metaPath = join(mapsRoot, `${id}.meta.json`);
-      if (existsSync(metaPath)) {
-        try {
-          const parsed: unknown = JSON.parse(readFileSync(metaPath, 'utf8'));
-          if (typeof parsed === 'object' && parsed !== null) {
-            const meta = parsed as Record<string, unknown>;
-            if (typeof meta.name === 'string') name = meta.name;
-            if (typeof meta.description === 'string') description = meta.description;
-          } else {
-            console.warn(
-              `[content-routes] maps-index: ${id}.meta.json is not an object; serving the bare id`,
-            );
-          }
-        } catch (err) {
-          console.warn(`[content-routes] maps-index: ${id}.meta.json unreadable: ${(err as Error).message}`);
-        }
-      }
       const players = playersOf(mapsRoot, id);
       return {
         id,
-        ...(name !== undefined ? { name } : {}),
-        ...(description !== undefined ? { description } : {}),
+        ...metaOf(mapsRoot, id),
         minimap: existsSync(join(mapsRoot, `${id}.png`)),
         ...(players !== undefined ? { players: players.slots } : {}),
         ...(players?.fixedColors ? { fixedColors: true } : {}),

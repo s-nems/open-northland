@@ -4,7 +4,7 @@ import { CURRENT_MANIFEST, readPipelineManifest } from '@open-northland/asset-pi
 import { readConfig, writeConfig } from './config.js';
 import { type ContentStatus, classifyContent } from './content-state.js';
 import type { DesktopState } from './ipc.js';
-import { discoverInstalledMod, findModRootUnder } from './mod-install.js';
+import { discoverInstalledMod, findModRootUnder } from './mod-install/index.js';
 import type { DataRoot } from './paths.js';
 
 /**

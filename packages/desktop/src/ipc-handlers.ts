@@ -6,7 +6,7 @@ import { detectGameFolders } from './detect.js';
 import { createEventThrottle } from './event-throttle.js';
 import type { GameFolderCandidate, ModEvent, PipelineEvent } from './ipc.js';
 import { IPC_CHANNELS } from './ipc.js';
-import { findModRootUnder, installCnMod } from './mod-install.js';
+import { findModRootUnder, installCnMod } from './mod-install/index.js';
 import type { PipelineHost } from './pipeline-host.js';
 import { APP_ORIGIN_PREFIX, GAME_URL } from './protocol.js';
 import type { ShellPaths, ShellState } from './shell-state.js';

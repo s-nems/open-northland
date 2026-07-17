@@ -49,7 +49,7 @@ export type PipelineEvent =
   | { readonly kind: 'done' }
   | { readonly kind: 'error'; readonly message: string };
 
-/** Mod download/extract progress streamed to the setup renderer (see `mod-install.ts`). */
+/** Mod download/extract progress streamed to the setup renderer (see `mod-install/`). */
 export type ModEvent =
   | { readonly kind: 'mod-download'; readonly received: number; readonly total?: number }
   | { readonly kind: 'mod-extract'; readonly done: number; readonly total: number }

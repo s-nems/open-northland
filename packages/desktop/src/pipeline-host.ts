@@ -16,10 +16,6 @@ export class PipelineHost {
 
   constructor(private readonly childScript: string) {}
 
-  get running(): boolean {
-    return this.child !== undefined;
-  }
-
   /** Fork the conversion of `gameDir` into `outDir` (`modRoot` = a mod unpacked outside the game
    * folder; undefined auto-detects it inside); every event lands in `sink` (ending in done/error). */
   start(

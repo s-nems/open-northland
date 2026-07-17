@@ -18,7 +18,7 @@ first-run installer that converts the user's owned game copy with the asset pipe
   Electron `userData`. The pipeline writes `<dataRoot>/content`; `desktop-config.json` sits beside it.
 - **The culturesnation mod is required and never touches the game folder.** A game install without
   `DataCnmd/` gets the wizard's mod step: auto-download from culturesnation.pl into
-  `<dataRoot>/mods/` (`src/mod-install.ts` — the Drive hop chain, pinned-hash warning, own zip
+  `<dataRoot>/mods/` (`src/mod-install/` — the Drive hop chain, pinned-hash warning, own zip
   reader in `src/zip.ts`) or a hand-picked unpacked copy (remembered as `modPath` in the config);
   either way the pipeline child gets it as `--mod-root`.
 - **Content staleness is stamp-compared, never guessed** (`src/content-state.ts`): the pipeline

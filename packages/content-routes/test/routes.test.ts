@@ -1,8 +1,8 @@
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { resolveContentRequest } from '../src/routes.js';
+import { makeTempDir, type TempDir } from './support/temp-dir.js';
 
 /**
  * The shared content-route resolver (`src/routes.ts`) both hosts (Vite dev middleware, desktop
@@ -11,15 +11,15 @@ import { resolveContentRequest } from '../src/routes.js';
  * host's 404 fall-through) instead of throwing.
  */
 describe('resolveContentRequest', () => {
+  let tmp: TempDir;
   let contentRoot: string;
 
   beforeEach(async () => {
-    contentRoot = await mkdtemp(join(tmpdir(), 'opennorthland-content-routes-'));
+    tmp = await makeTempDir('content-routes');
+    contentRoot = tmp.path;
   });
 
-  afterEach(async () => {
-    await rm(contentRoot, { recursive: true, force: true });
-  });
+  afterEach(() => tmp.cleanup());
 
   async function put(rel: string, body = 'x'): Promise<string> {
     const file = join(contentRoot, rel);

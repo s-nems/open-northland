@@ -1,8 +1,8 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildBobsIndexEntries } from '../src/bobs-index.js';
+import { makeTempDir, type TempDir } from './support/temp-dir.js';
 
 /**
  * The `/bobs-index` scan (`src/bobs-index.ts`): the list the `?icons` gallery browses.
@@ -10,15 +10,15 @@ import { buildBobsIndexEntries } from '../src/bobs-index.js';
  * an `.indexed` sheet) are listed, split into base + palette variant, sorted by (base, variant).
  */
 describe('buildBobsIndexEntries', () => {
+  let tmp: TempDir;
   let bobsRoot: string;
 
   beforeEach(async () => {
-    bobsRoot = await mkdtemp(join(tmpdir(), 'opennorthland-bobs-index-'));
+    tmp = await makeTempDir('bobs-index');
+    bobsRoot = tmp.path;
   });
 
-  afterEach(async () => {
-    await rm(bobsRoot, { recursive: true, force: true });
-  });
+  afterEach(() => tmp.cleanup());
 
   const atlas = (stem: string): Promise<void> =>
     writeFile(join(bobsRoot, `${stem}.atlas.json`), '{"width":1,"height":1,"frames":[]}');
