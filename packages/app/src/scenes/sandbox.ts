@@ -189,10 +189,9 @@ const CAMPS: readonly GatherCamp[] = [
 ];
 
 /** A wild berry patch beside the mushroom grove — forage decor (needs are off by default), drawn with the
- *  real fruited-bush art (the same `[GfxLandscape]` variant the berries scene pins). */
+ *  real fruited-bush art (`placeSandboxBerryBush`'s default `BUSH_FRUITS_GFX` variant). */
 const BERRY_PATCH = { x: 60, y: 52 } as const;
 const BERRY_BUSHES = 6;
-const BUSH_FRUITS_GFX = 806;
 
 const GATHERER_BY_GOOD: ReadonlyMap<number, GathererSpec> = new Map(GATHERERS.map((g) => [g.good, g]));
 
@@ -231,7 +230,7 @@ function buildResourceBase(sim: Simulation): void {
     }
   }
   for (let i = 0; i < BERRY_BUSHES; i++) {
-    placeSandboxBerryBush(sim, BERRY_PATCH.x + i * 2, BERRY_PATCH.y + (i % 2), BUSH_FRUITS_GFX);
+    placeSandboxBerryBush(sim, BERRY_PATCH.x + i * 2, BERRY_PATCH.y + (i % 2));
   }
 }
 

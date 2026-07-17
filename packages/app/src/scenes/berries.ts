@@ -15,8 +15,8 @@ import type { SceneDefinition } from './types.js';
  * red-berry bush, the eat animation, the bush going bare the instant it's foraged, and the berries
  * growing back.
  *
- * The bushes carry a real fruited-bush render-variant index ({@link BUSH_FRUITS_GFX}) so the browser draws
- * the original "bush 01 fruits"/"bush 01 empty" art through the berry-bush binding; inert headlessly.
+ * The bushes draw the shared fruited-bush art (`placeSandboxBerryBush`'s default `BUSH_FRUITS_GFX`
+ * variant) through the berry-bush binding; inert headlessly.
  */
 
 const MAP_W = 30;
@@ -41,11 +41,6 @@ const RUN_TICKS = 1500;
 const INITIAL_ZOOM = 1.2;
 /** Clearly over the ¾·ONE eat threshold — these settlers seek food before anything else. */
 const HUNGRY = fx.div(fx.fromInt(9), fx.fromInt(10));
-/**
- * The `[GfxLandscape]` record index of "bush 01 fruits" (source: decoded `landscapes.cif`, logicType 11 =
- * `bush with fruits`).
- */
-const BUSH_FRUITS_GFX = 806;
 
 const { BerryBush, Settler } = components;
 
@@ -69,11 +64,11 @@ function build(sim: Simulation): void {
   // is its own (the forage pick is nearest-food) and every station forages exactly once.
   for (let i = 0; i < STATIONS; i++) {
     const bx = FIRST_STATION_X + i * STATION_GAP;
-    placeSandboxBerryBush(sim, bx, ROW_Y, BUSH_FRUITS_GFX);
+    placeSandboxBerryBush(sim, bx, ROW_Y);
     spawnHungryForager(sim, bx, ROW_Y - 1);
   }
   // A lone bush that starts bare and regrows on its own (no forager), proving the growth loop.
-  const bare = placeSandboxBerryBush(sim, LONE_BARE_BUSH.x, LONE_BARE_BUSH.y, BUSH_FRUITS_GFX);
+  const bare = placeSandboxBerryBush(sim, LONE_BARE_BUSH.x, LONE_BARE_BUSH.y);
   const b = sim.world.get(bare, BerryBush);
   b.ripe = false;
   b.ripeAtTick = LONE_BARE_BUSH.ripeAtTick;

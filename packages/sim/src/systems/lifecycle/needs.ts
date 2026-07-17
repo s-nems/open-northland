@@ -93,10 +93,12 @@ export const STARVATION_BITES_TO_DIE = 240;
  *
  * A BABY ({@link Age} carrier in a baby stage) is skipped whole: it is cared for — its family keeps it
  * fed and rested, so no need accumulates and it never starves (named approximation: the original's
- * baby care is below the readable data, and a baby has no eat binding to act on a need anyway). It
- * weans into childhood with its birth needs, and from there the child eat/sleep drives take over
- * (`ai.ts`). Keyed on Age + stage like the planner's gate, so an adult fixture whose synthetic job id
- * collides with a baby id still lives a full needs life.
+ * baby care is below the readable data, and a baby has no eat binding to act on hunger). The data DOES
+ * bind a baby sleep animation with rest events (`setatomic 1/2 8 "viking_baby_*_sleep"`); it is
+ * deliberately unwired — the family-care freeze covers rest too. A baby weans into childhood with its
+ * birth needs, and from there the child eat/sleep drives take over (`ai.ts`). Keyed on Age + stage like
+ * the planner's gate, so an adult fixture whose synthetic job id collides with a baby id still lives a
+ * full needs life.
  *
  * Starvation: a settler whose hunger is pinned at `ONE` loses hitpoints on the
  * {@link STARVATION_DAMAGE_INTERVAL_TICKS} beat until the eat drive feeds it or the pool empties (the

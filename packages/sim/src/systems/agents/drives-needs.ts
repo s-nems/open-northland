@@ -52,6 +52,19 @@ const FATIGUE_SLEEP_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4)); // 
 const PIETY_PRAY_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4)); // ¾·ONE
 
 /**
+ * Whether any needs-ladder rung would fire for these need levels — the cheap pre-gate a caller uses to
+ * skip {@link planNeeds}'s target/limit setup for a sated settler (the ladder re-checks each threshold,
+ * so gating on this elides only provably-null work and can never change a pick).
+ */
+export function anyNeedPressing(needs: { hunger: Fixed; fatigue: Fixed; piety: Fixed }): boolean {
+  return (
+    needs.hunger >= HUNGER_EAT_THRESHOLD ||
+    needs.fatigue >= FATIGUE_SLEEP_THRESHOLD ||
+    needs.piety >= PIETY_PRAY_THRESHOLD
+  );
+}
+
+/**
  * Run the needs ladder for one idle settler. Returns `true` when a drive acted (started an atomic or
  * set a walk goal — the settler is spoken for this tick), `false` when every need is either below its
  * threshold or unsatisfiable (no food anywhere, no temple) — the caller then falls through to combat

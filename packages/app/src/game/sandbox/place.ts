@@ -350,21 +350,27 @@ export function placeResourceNode(
   );
 }
 
+/** The `[GfxLandscape]` record index of "bush 01 fruits" (decoded `landscapes.cif`, logicType 11 =
+ *  `bush with fruits`) — the default fruited-bush look every berry scene shares. */
+export const BUSH_FRUITS_GFX = 806;
+
 /**
  * Place a wild berry bush directly (scene setup, pre-tick-0) and return it — the bush twin of
  * {@link placeResourceNode}. Scenes author in whole tiles (`x`/`y`); the tile is converted to its anchor
- * node before assembly. `gfxIndex` is the render-variant tag (a real fruited-bush `[GfxLandscape]` index,
- * so the browser scene draws real bush art through the {@link buildBerryBushBinding} join); it is inert in
- * the headless test (no render). The bush spawns ripe — a caller wanting a bare/regrowing bush mutates the
- * returned entity's {@link components.BerryBush} directly (still pre-tick-0 authored state).
+ * node before assembly. `gfxIndex` is the render-variant tag (a real `[GfxLandscape]` index, defaulting to
+ * {@link BUSH_FRUITS_GFX}, so the browser scene draws real bush art through the
+ * {@link buildBerryBushBinding} join); it is inert in the headless test (no render). The bush spawns ripe —
+ * a caller wanting a bare/regrowing bush mutates the returned entity's {@link components.BerryBush}
+ * directly (still pre-tick-0 authored state).
  */
-export function placeSandboxBerryBush(sim: Simulation, x: number, y: number, gfxIndex?: number): Entity {
+export function placeSandboxBerryBush(
+  sim: Simulation,
+  x: number,
+  y: number,
+  gfxIndex: number = BUSH_FRUITS_GFX,
+): Entity {
   const node = cellAnchorNode(x, y);
-  return systems.createBerryBush(sim.world, {
-    x: node.hx,
-    y: node.hy,
-    ...(gfxIndex !== undefined ? { gfxIndex } : {}),
-  });
+  return systems.createBerryBush(sim.world, { x: node.hx, y: node.hy, gfxIndex });
 }
 
 /**
