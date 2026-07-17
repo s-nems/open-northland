@@ -22,7 +22,7 @@ import { deliverableGoodProbe } from './routing.js';
  * does both, hauling-out first.
  */
 export function planPorter(plan: PlannerContext): boolean {
-  const { world, ctx, terrain, entity: e, here, targets } = plan;
+  const { world, ctx, entity: e } = plan;
   const settler = plan;
   if (!isPorterBoundToStore(world, ctx, e)) return false;
   // Every pickup consults the settler's own delivery routing (deliverableGoodProbe) before lifting, so
@@ -37,15 +37,7 @@ export function planPorter(plan: PlannerContext): boolean {
   }
   // Otherwise bring a loose ground pile IN to the bound store (the warehouse/HQ porter), confined to the
   // porter's signpost area — an out-of-area pile is not one it knows about.
-  const pile = nearestGroundPile(
-    targets.stockpiles,
-    deliverable,
-    world,
-    ctx,
-    terrain,
-    here,
-    plan.limit ?? undefined,
-  );
+  const pile = nearestGroundPile(plan, { deliverable });
   if (pile === null) return false;
   walkPickupBatch(plan, pile.pile, pile.goodType);
   return true;

@@ -22,7 +22,12 @@ import {
   stockCapacity,
 } from '../../stores/index.js';
 import type { PlannerContext } from '../planner-context.js';
-import { boundWorkplaceTarget, type InteractionCellIndex, nearestStoreFor } from '../targets/index.js';
+import {
+  boundWorkplaceTarget,
+  type InteractionCellIndex,
+  nearestStoreFor,
+  QUALIFIES,
+} from '../targets/index.js';
 import { hasRoom, isFarmCarrierHaulOutRole, isStorageSink } from './store-policy.js';
 
 /**
@@ -156,8 +161,11 @@ function nearestConstructionSiteNeeding(
   gate?: SpatialGate,
 ): Entity | null {
   return (
-    index.nearest(here, (e) => constructionSiteNeeds(world, ctx, e, tribe, owner, goodType, inbound), gate)
-      ?.entity ?? null
+    index.nearest(
+      here,
+      (e) => (constructionSiteNeeds(world, ctx, e, tribe, owner, goodType, inbound) ? QUALIFIES : null),
+      gate,
+    )?.entity ?? null
   );
 }
 

@@ -10,7 +10,7 @@ import type { SpatialGate } from '../../node-metric.js';
 import { manhattan } from '../../spatial.js';
 import { isFood } from '../../stores/index.js';
 import type { TargetCandidates } from './candidates.js';
-import { type InteractionCellIndex, nearestByCell } from './cell-index.js';
+import { type InteractionCellIndex, nearestByCell, qualifiedGood } from './cell-index.js';
 import { closer } from './nearest.js';
 import { interactionCell } from './workplaces.js';
 
@@ -32,12 +32,10 @@ function nearestFoodStore(
   gate?: SpatialGate,
 ): { store: Entity; goodType: number; dist: number; cell: NodeId } | null {
   const home = world.tryGet(eater, Residence)?.home ?? null;
-  const winner = index.nearest(here, (e) => edibleFoodGoodFor(world, ctx, e, home) !== null, gate);
-  if (winner === null) return null;
-  const goodType = edibleFoodGoodFor(world, ctx, winner.entity, home);
-  return goodType === null
+  const winner = index.nearest(here, (e) => qualifiedGood(edibleFoodGoodFor(world, ctx, e, home)), gate);
+  return winner === null
     ? null
-    : { store: winner.entity, goodType, dist: winner.distance, cell: winner.cell };
+    : { store: winner.entity, goodType: winner.payload, dist: winner.distance, cell: winner.cell };
 }
 
 /**
@@ -112,7 +110,7 @@ function nearestRipeBush(
     if (terrain.componentOf(here) !== terrain.componentOf(cell)) return null; // walled off — leave it be
     if (manhattan(terrain, here, cell) > BERRY_FORAGE_RADIUS) return null; // beyond forage reach (flat radius)
     if (gate !== undefined && !gate.allowsNode(cell)) return null; // outside the settler's signpost area
-    return cell;
+    return { cell, payload: null };
   });
   return best === null ? null : { bush: best.entity, dist: best.distance, cell: best.cell };
 }

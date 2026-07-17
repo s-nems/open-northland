@@ -1,9 +1,8 @@
 import { Building, JobAssignment, Position, Stockpile } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
-import type { SpatialGate } from '../../node-metric.js';
 import { buildingProduces, lowestStockedGood } from '../../stores/index.js';
+import type { PlannerContext } from '../planner-context.js';
 import { interactionCell, nearestByCell } from '../targets/index.js';
 import { isFarmCarrierHaulOutRole, isStorageSink } from './store-policy.js';
 
@@ -23,27 +22,23 @@ import { isFarmCarrierHaulOutRole, isStorageSink } from './store-policy.js';
  * {@link nearestWorkplaceOutput} applies to workplace output).
  */
 export function nearestGroundPile(
-  candidates: readonly Entity[],
-  deliverable: (goodType: number) => boolean,
-  world: World,
-  ctx: SystemContext,
-  terrain: TerrainGraph,
-  here: NodeId,
-  /** The porter's signpost confinement — an out-of-area pile is not one it fetches. */
-  gate?: SpatialGate,
+  plan: PlannerContext,
+  opts: { readonly deliverable: (goodType: number) => boolean },
 ): { pile: Entity; goodType: number } | null {
-  const best = nearestByCell(terrain, candidates, here, (e) => {
+  const { world, ctx, terrain, here, targets } = plan;
+  const { deliverable } = opts;
+  const gate = plan.limit ?? undefined; // the porter's confinement — an out-of-area pile is not one it fetches
+  const best = nearestByCell(terrain, targets.stockpiles, here, (e) => {
     if (world.has(e, Building)) return null; // a building store isn't a loose ground pile
     if (!world.has(e, Stockpile) || !world.has(e, Position)) return null;
     const good = lowestStockedGood(world.get(e, Stockpile));
     if (good === null) return null; // an empty pile is nothing to collect
     if (!deliverable(good)) return null; // no sink this porter can reach — leave it, try another good
     const cell = interactionCell(world, ctx, terrain, e, here);
-    return gate === undefined || gate.allowsNode(cell) ? cell : null;
+    if (gate !== undefined && !gate.allowsNode(cell)) return null;
+    return { cell, payload: good };
   });
-  if (best === null) return null;
-  const good = lowestStockedGood(world.get(best.entity, Stockpile)); // the winner's good (accept required one)
-  return good === null ? null : { pile: best.entity, goodType: good };
+  return best === null ? null : { pile: best.entity, goodType: best.payload };
 }
 
 /**

@@ -7,7 +7,7 @@ import type { SystemContext } from '../../../context.js';
 import { startableCycleCount } from '../../../economy/production.js';
 import type { SpatialGate } from '../../../node-metric.js';
 import { recipesByProductOf, stockCapacity } from '../../../stores/index.js';
-import type { InteractionCellIndex } from '../../targets/index.js';
+import { type InteractionCellIndex, QUALIFIES } from '../../targets/index.js';
 
 // The AI planner's SUPPLY layer: the scans behind a *producer worker running its own supply→produce→
 // deliver loop* — the "kowal fetches the goods a sword needs, forges it, and carries it back" behavior.
@@ -87,7 +87,8 @@ export function nearestMissingInputSource(
     // `gate` is the fetcher's signpost confinement — an out-of-area store is not a known source.
     const winner = index.nearest(
       here,
-      (e) => e !== workplace && (world.get(e, Stockpile).amounts.get(input.goodType) ?? 0) > 0,
+      (e) =>
+        e !== workplace && (world.get(e, Stockpile).amounts.get(input.goodType) ?? 0) > 0 ? QUALIFIES : null,
       gate,
     );
     if (winner !== null) return { store: winner.entity, goodType: input.goodType, amount: target - have };

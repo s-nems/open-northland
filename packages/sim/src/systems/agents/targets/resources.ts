@@ -1,19 +1,18 @@
 import { HarvestedBy, Position, Resource, Stockpile } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
-import type { Entity, World } from '../../../ecs/world.js';
-import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
-import type { SystemContext } from '../../context.js';
-import type { SpatialGate } from '../../node-metric.js';
+import type { Entity } from '../../../ecs/world.js';
+import type { NodeId } from '../../../nav/terrain/index.js';
 import { settlerMeetsNeed } from '../../progression/index.js';
 import { resourceHarvestAtomics, resourcesNearNode } from '../../resource-index.js';
 import { manhattan } from '../../spatial.js';
 import { lowestStockedGood } from '../../stores/index.js';
+import type { PlannerContext } from '../planner-context.js';
 import { nearestByCell } from './cell-index.js';
 import { interactionCell, jobAtomics } from './workplaces.js';
 
 /**
- * The nearest harvestable {@link Resource} the given settler is allowed to harvest, by fixed-point Manhattan
- * distance from `here`, with ascending-cell-id as the deterministic tie-break. A resource is eligible only if
+ * The nearest harvestable {@link Resource} `plan`'s settler is allowed to harvest, by fixed-point Manhattan
+ * distance from where it stands, with ascending-cell-id as the deterministic tie-break. A resource is eligible only if
  * it has units remaining, is reachable (same static component as the settler — see the `componentOf` gate
  * below), and its harvest passes both data-driven gates:
  *
@@ -32,9 +31,8 @@ import { interactionCell, jobAtomics } from './workplaces.js';
  * `opts.area` bounds the scan to a gatherer's flag work-area ({@link WorkFlag}): only nodes whose work cell is
  * within `radius` (integer node-distance) of `center` qualify, and the winner is the one nearest the flag (so
  * a bound gatherer works outward from its flag, not wherever it stands). Omitted — the default for an unbound
- * roaming collector — measures from `here` with no radius. With `area` set, `candidates` is superseded by the
- * resource region index (`resourcesNearNode` — a provable superset of the in-radius nodes); pass the full
- * canonical resource list, never a pre-filtered one, or the two paths disagree on the winner.
+ * roaming collector — measures from the settler with no radius. With `area` set, the canonical candidate list
+ * is superseded by the resource region index (`resourcesNearNode` — a provable superset of the in-radius nodes).
  * `opts.goodFilter` restricts eligible goods to the given set (a building-employed gatherer foraging only
  * what its workplace stores); omitted = every good the job may harvest.
  *
@@ -44,26 +42,24 @@ import { interactionCell, jobAtomics } from './workplaces.js';
  * reachability is a follow-up (`docs/tickets/sim/dynamic-route-reachability.md`).
  */
 export function nearestHarvestableFor(
-  candidates: readonly Entity[],
-  world: World,
-  ctx: SystemContext,
-  terrain: TerrainGraph,
-  here: NodeId,
-  settler: { jobType: number; tribe: number; experience: ReadonlyMap<number, number> },
+  plan: PlannerContext,
   opts: {
     readonly area?: { center: NodeId; radius: number; goodType?: number };
     readonly goodFilter?: ReadonlySet<number>;
     /** Resource nodes already claimed this tick (a colleague's live harvest or an earlier pick) —
      *  skipped, so one node is dug by one settler at a time (see economy/harvest-claims.ts). */
     readonly exclude?: ReadonlySet<Entity>;
-    /** The settler's signpost confinement ({@link SpatialGate}): membership rejects out-of-area work
-     *  cells, and its bounds let a roaming scan read only the resources near the allowed box instead of
-     *  the full canonical list — every gate-passing work cell provably lies inside the box (+ work-offset
-     *  slack), so the winner is identical to the full scan. */
-    readonly gate?: SpatialGate;
   } = {},
 ): { entity: Entity; cell: NodeId; dist: number } | null {
-  const { area, goodFilter, gate, exclude } = opts;
+  const { world, ctx, terrain, here, targets } = plan;
+  const settler = plan;
+  const candidates = targets.resources;
+  const { area, goodFilter, exclude } = opts;
+  // The settler's signpost confinement ({@link SpatialGate}): membership rejects out-of-area work cells,
+  // and its bounds let a roaming scan read only the resources near the allowed box instead of the full
+  // canonical list — every gate-passing work cell provably lies inside the box (+ work-offset slack), so
+  // the winner is identical to the full scan.
+  const gate = plan.limit ?? undefined;
   const allowed = jobAtomics(ctx, settler.jobType);
   // Dormancy gate: if the job's allowed atomics intersect no harvest atomic present on any standing resource,
   // every candidate fails the `allowed.has` check below — the whole scan is provably null. Skip it in
@@ -138,7 +134,7 @@ export function nearestHarvestableFor(
     if (terrain.componentOf(here) !== terrain.componentOf(cell)) return null;
     if (manhattan(terrain, origin, cell) > radius) return null; // outside the flag's work radius — leave it be
     if (gate !== undefined && !gate.allowsNode(cell)) return null; // outside the settler's signpost area
-    return cell;
+    return { cell, payload: null };
   });
   return best === null ? null : { entity: best.entity, cell: best.cell, dist: best.distance };
 }
@@ -159,36 +155,31 @@ export function nearestHarvestableFor(
  * harvesting).
  */
 export function nearestCollectablePileFor(
-  candidates: readonly Entity[],
-  harvestAtomicByGood: ReadonlyMap<number, number>,
-  world: World,
-  ctx: SystemContext,
-  terrain: TerrainGraph,
-  here: NodeId,
-  jobType: number,
-  goodFilter?: ReadonlySet<number>,
-  gate?: SpatialGate,
+  plan: PlannerContext,
+  opts: { readonly goodFilter?: ReadonlySet<number> } = {},
 ): { pile: Entity; goodType: number; dist: number } | null {
-  const allowed = jobAtomics(ctx, jobType);
-  // `candidates` is the GroundDrop candidate list, so every entry already has GroundDrop+Stockpile+Position
-  // (built by collectTargets) — no per-pile marker re-check, and the scan is O(drops), ~0 when none exist.
-  const best = nearestByCell(terrain, candidates, here, (e) => {
+  const { world, ctx, terrain, here, targets } = plan;
+  const { goodFilter } = opts;
+  const gate = plan.limit ?? undefined; // signpost confinement
+  const allowed = jobAtomics(ctx, plan.jobType);
+  // The GroundDrop candidate list: every entry already has GroundDrop+Stockpile+Position (built by
+  // collectTargets) — no per-pile marker re-check, and the scan is O(drops), ~0 when none exist.
+  const best = nearestByCell(terrain, targets.groundDrops, here, (e) => {
     const good = lowestStockedGood(world.get(e, Stockpile));
     if (good === null) return null; // an emptied drop (about to be reaped) — nothing to collect
     if (goodFilter !== undefined && !goodFilter.has(good)) return null; // not a good the caller forages for
-    const harvestAtomic = harvestAtomicByGood.get(good);
+    const harvestAtomic = targets.harvestAtomicByGood.get(good);
     if (harvestAtomic === undefined || !allowed.has(harvestAtomic)) return null; // not this job's trade
     const cell = interactionCell(world, ctx, terrain, e, here);
-    return gate === undefined || gate.allowsNode(cell) ? cell : null; // signpost confinement
+    if (gate !== undefined && !gate.allowsNode(cell)) return null;
+    return { cell, payload: good };
   });
-  if (best === null) return null;
-  const good = lowestStockedGood(world.get(best.entity, Stockpile)); // the winner's good (accept required one)
-  return good === null ? null : { pile: best.entity, goodType: good, dist: best.distance };
+  return best === null ? null : { pile: best.entity, goodType: best.payload, dist: best.distance };
 }
 
 /**
  * The nearest ground drop this gatherer harvested into being — a {@link GroundDrop} whose {@link HarvestedBy}
- * owner is `owner` — with its Manhattan distance from `here`, or null if it holds none. The flag-bound
+ * mark names `plan.entity` — with its Manhattan distance, or null if it holds none. The flag-bound
  * gatherer's collect drive: it reclaims the trunk/ore it felled or mined and delivers it to its flag, and —
  * unlike {@link nearestCollectablePileFor}'s trade-wide scan — it ignores every pile it did not make (another
  * gatherer's trunk, a player-dropped heap), the "carry only what you dug" rule. Nearest by Manhattan +
@@ -196,22 +187,18 @@ export function nearestCollectablePileFor(
  * empties and is reaped, so it drops out of the scan naturally.
  */
 export function nearestOwnDropFor(
-  candidates: readonly Entity[],
-  world: World,
-  ctx: SystemContext,
-  terrain: TerrainGraph,
-  here: NodeId,
-  owner: Entity,
-  gate?: SpatialGate,
+  plan: PlannerContext,
 ): { pile: Entity; goodType: number; dist: number } | null {
-  const best = nearestByCell(terrain, candidates, here, (e) => {
+  const { world, ctx, terrain, here, targets, entity: gatherer } = plan;
+  const gate = plan.limit ?? undefined; // signpost confinement
+  const best = nearestByCell(terrain, targets.groundDrops, here, (e) => {
     const mark = world.tryGet(e, HarvestedBy);
-    if (mark === undefined || mark.by !== owner) return null; // not this gatherer's own drop — leave it be
-    if (lowestStockedGood(world.get(e, Stockpile)) === null) return null; // emptied (about to be reaped)
+    if (mark === undefined || mark.by !== gatherer) return null; // not this gatherer's own drop — leave it be
+    const good = lowestStockedGood(world.get(e, Stockpile));
+    if (good === null) return null; // emptied (about to be reaped)
     const cell = interactionCell(world, ctx, terrain, e, here);
-    return gate === undefined || gate.allowsNode(cell) ? cell : null; // signpost confinement
+    if (gate !== undefined && !gate.allowsNode(cell)) return null;
+    return { cell, payload: good };
   });
-  if (best === null) return null;
-  const good = lowestStockedGood(world.get(best.entity, Stockpile)); // the winner's good (accept required one)
-  return good === null ? null : { pile: best.entity, goodType: good, dist: best.distance };
+  return best === null ? null : { pile: best.entity, goodType: best.payload, dist: best.distance };
 }

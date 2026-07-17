@@ -18,7 +18,7 @@ import {
   stockCapacity,
 } from '../../../stores/index.js';
 import type { YardTargets } from '../candidates.js';
-import type { InteractionCellIndex } from '../cell-index.js';
+import { type InteractionCellIndex, QUALIFIES } from '../cell-index.js';
 
 // The AI planner's TARGET-SCAN layer: build the per-tick candidate lists and answer every "nearest X"
 // / "may this settler staff that workplace" query the atomic planner asks. Split out of ai.ts (which
@@ -54,7 +54,11 @@ export function nearestStoreFor(
   gate?: SpatialGate,
 ): Entity | null {
   return (
-    index.nearest(here, (e) => canStoreGood(world, ctx, e, goodType, excludeProducers), gate)?.entity ?? null
+    index.nearest(
+      here,
+      (e) => (canStoreGood(world, ctx, e, goodType, excludeProducers) ? QUALIFIES : null),
+      gate,
+    )?.entity ?? null
   );
 }
 
@@ -171,7 +175,9 @@ export function nearestStoreHolding(
       here,
       (e) =>
         !world.has(e, UnderConstruction) && // a site is a sink, never a source to strip
-        (world.get(e, Stockpile).amounts.get(goodType) ?? 0) > 0,
+        (world.get(e, Stockpile).amounts.get(goodType) ?? 0) > 0
+          ? QUALIFIES
+          : null,
       gate,
     )?.entity ?? null
   );

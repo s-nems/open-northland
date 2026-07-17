@@ -1,15 +1,21 @@
 import {
   Building,
+  Carrying,
   DeliveryFlag,
   JobAssignment,
+  PathRequest,
   Position,
   Resting,
   UnderConstruction,
+  WorkFlag,
   YardDeliveryRoute,
 } from '../../../components/index.js';
+import type { Entity, World } from '../../../ecs/world.js';
+import type { NodeId } from '../../../nav/terrain/index.js';
 import { farmWorkGood } from '../../economy/farming.js';
 import { constructionWorkCell } from '../../footprint/index.js';
 import { atomicDuration } from '../../readviews/animations.js';
+import { clearNavState } from '../../spatial.js';
 import { stampSupplyRun } from '../../stores/index.js';
 import { atOrWalk, PILEUP_ATOMIC_ID, startAtomic, startDrop } from '../actions.js';
 import { dropCarryAtOwnTile } from '../effects-goods/index.js';
@@ -17,6 +23,41 @@ import type { PlannerContext } from '../planner-context.js';
 import { interactionCell, nearestFreeYardNode } from '../targets/index.js';
 import { isPorterBoundToStore } from './haul-targets.js';
 import { deliveryTargetFor } from './routing.js';
+
+/**
+ * Reconcile the yard route {@link planDelivery} stamped on `e` against the settler's live state, before the
+ * planner re-runs its ladder. The validity invariant of a stamped {@link YardDeliveryRoute} — the settler
+ * still carries the routed good, is still bound to that flag, and the flag still stands — is enforced here
+ * rather than at the read, so a route that outlived any of the three is dropped and the drive re-picks a
+ * yard tile from scratch.
+ *
+ * A still-valid route whose walk failed this tick is marked `failed` instead: the drive then resumes the
+ * yard ring search strictly AFTER the proven-unreachable tile (`sameYard.goal`), rejecting dynamically
+ * enclosed candidates one at a time. Clearing the nav state here is what lets the drive re-issue the walk.
+ */
+export function reconcileYardRoute(world: World, e: Entity): void {
+  const route = world.tryGet(e, YardDeliveryRoute);
+  if (route === undefined) return;
+  const load = world.tryGet(e, Carrying);
+  const workFlag = world.tryGet(e, WorkFlag);
+  const valid =
+    load !== undefined &&
+    load.amount > 0 &&
+    load.goodType === route.goodType &&
+    workFlag !== undefined &&
+    workFlag.flag === route.flag &&
+    world.has(route.flag, DeliveryFlag);
+  if (!valid) {
+    world.remove(e, YardDeliveryRoute);
+    return;
+  }
+  const request = world.tryGet(e, PathRequest);
+  if (!route.failed && request?.failed === true && request.goal === route.goal) {
+    route.failed = true;
+    world.touch(e);
+    clearNavState(world, e);
+  }
+}
 
 /** Deposit a carried load, or hold/drop it deterministically when no eligible sink exists. */
 export function planDelivery(plan: PlannerContext, load: { goodType: number; amount: number }): void {
@@ -67,32 +108,41 @@ export function planDelivery(plan: PlannerContext, load: { goodType: number; amo
   if (world.has(store, UnderConstruction)) {
     stampSupplyRun(world, entity, inbound, { site: store, goodType: load.goodType, amount: load.amount });
   }
+  // Only a flag delivery carries a yard route; a route naming a different flag or good than the sink just
+  // chosen is spent, so shed it (the flag branch re-stamps a fresh one below).
+  const toFlag = world.has(store, DeliveryFlag);
   const priorYard = world.tryGet(entity, YardDeliveryRoute);
-  if (!world.has(store, DeliveryFlag)) world.remove(entity, YardDeliveryRoute);
   const sameYard =
     priorYard !== undefined && priorYard.flag === store && priorYard.goodType === load.goodType
       ? priorYard
       : undefined;
   if (priorYard !== undefined && sameYard === undefined) world.remove(entity, YardDeliveryRoute);
-  const cell = world.has(store, DeliveryFlag)
-    ? sameYard !== undefined && !sameYard.failed
-      ? sameYard.goal
-      : // A flag is a marker, not a stock sink: resume after a proven failed yard candidate, or start nearest.
-        nearestFreeYardNode(
-          targets.yard,
-          world,
-          terrain,
-          store,
-          load.goodType,
-          here,
-          sameYard?.goal,
-          plan.limit ?? undefined,
-        )
-    : world.has(store, UnderConstruction)
-      ? constructionWorkCell(world, ctx, terrain, store, targets.yard.blocked, here)
-      : interactionCell(world, ctx, terrain, store, here);
+
+  // Where the settler stands to deposit — one branch per sink shape.
+  let cell: NodeId | null;
+  if (toFlag) {
+    // A flag is a marker, not a stock sink: hold an unproven yard tile, else resume strictly after a proven
+    // failed candidate (or start nearest when there is none).
+    cell =
+      sameYard !== undefined && !sameYard.failed
+        ? sameYard.goal
+        : nearestFreeYardNode(
+            targets.yard,
+            world,
+            terrain,
+            store,
+            load.goodType,
+            here,
+            sameYard?.goal,
+            plan.limit ?? undefined,
+          );
+  } else if (world.has(store, UnderConstruction)) {
+    cell = constructionWorkCell(world, ctx, terrain, store, targets.yard.blocked, here);
+  } else {
+    cell = interactionCell(world, ctx, terrain, store, here);
+  }
   if (cell === null) return;
-  if (world.has(store, DeliveryFlag)) {
+  if (toFlag) {
     world.add(entity, YardDeliveryRoute, { flag: store, goodType: load.goodType, goal: cell, failed: false });
   }
   atOrWalk(world, entity, here, cell, () => {

@@ -7,6 +7,7 @@ import type { FarmingSpec } from '../../economy/farming.js';
 import { dynamicBlockedCells } from '../../footprint/index.js';
 import { manhattan } from '../../spatial.js';
 import { lowestStockedGood } from '../../stores/index.js';
+import type { PlannerContext } from '../planner-context.js';
 import { interactionCell, nearestByCell, type TargetCandidates } from '../targets/index.js';
 import type { FarmClaims, SowScan } from './claims.js';
 
@@ -18,15 +19,11 @@ import type { FarmClaims, SowScan } from './claims.js';
  * colleague already claimed is skipped too. Returns the pile entity or null.
  */
 export function nearestFarmSheaf(
-  world: World,
-  ctx: SystemContext,
-  terrain: TerrainGraph,
-  targets: TargetCandidates,
-  anchor: NodeId,
-  here: NodeId,
-  spec: FarmingSpec,
-  claims: FarmClaims,
+  plan: PlannerContext,
+  opts: { readonly anchor: NodeId; readonly spec: FarmingSpec; readonly claims: FarmClaims },
 ): Entity | null {
+  const { world, ctx, terrain, here, targets } = plan;
+  const { anchor, spec, claims } = opts;
   // Ranked from the farmer (`here`); the field-radius gate measures from the farm `anchor` instead, so a
   // farmer never chases a sheaf across the map (a separate origin the shared loop leaves inside `resolve`).
   return (
@@ -44,7 +41,7 @@ export function nearestFarmSheaf(
       const cell = interactionCell(world, ctx, terrain, e, here);
       if (claims.nodes.has(cell)) return null; // a colleague is already carrying this one off
       if (manhattan(terrain, anchor, cell) > spec.farming.fieldRadius) return null; // beyond the farm's fields
-      return cell;
+      return { cell, payload: null };
     })?.entity ?? null
   );
 }
@@ -87,14 +84,11 @@ function sowJitter(bx: number, by: number): { dx: number; dy: number } {
  * rebuild the world index every tick.
  */
 export function nextSowNode(
-  world: World,
-  ctx: SystemContext,
-  terrain: TerrainGraph,
-  targets: TargetCandidates,
-  anchor: NodeId,
-  spec: FarmingSpec,
-  claims: FarmClaims,
+  plan: PlannerContext,
+  opts: { readonly anchor: NodeId; readonly spec: FarmingSpec; readonly claims: FarmClaims },
 ): NodeId | null {
+  const { world, ctx, terrain, targets } = plan;
+  const { anchor, spec, claims } = opts;
   claims.sowScan ??= buildSowScan(world, ctx, terrain, targets);
   const { blocked, occupied } = claims.sowScan;
 
