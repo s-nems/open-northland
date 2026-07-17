@@ -1,4 +1,4 @@
-import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   ARMOR_MATERIAL,
@@ -9,6 +9,7 @@ import {
   weaponDamageVsMaterial,
   weaponKey,
 } from '../../src/systems/index.js';
+import { TEST_MANIFEST } from '../fixtures/content.js';
 
 /**
  * The combat damage read model — `combatDamage` selects the weapon's `damagevalue[material]` **column**
@@ -26,7 +27,7 @@ const DAGGER = 8; // a weapon that lists only some materials — an absent colum
 
 function combatContent(): ContentSet {
   return parseContentSet({
-    manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+    manifest: TEST_MANIFEST,
     goods: [
       { typeId: 0, id: 'none' },
       { typeId: 33, id: 'woolen', classification: { producedInHouse: true } },
@@ -177,7 +178,7 @@ describe('combatDamage', () => {
 
   it('with no armor records, resolves every weapon against the unarmored material only', () => {
     const noArmor = parseContentSet({
-      manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+      manifest: TEST_MANIFEST,
       goods: [{ typeId: 0, id: 'none' }],
       jobs: [{ typeId: 0, id: 'idle' }],
       buildings: [],
@@ -192,7 +193,7 @@ describe('combatDamage', () => {
 
   it('is empty for content with no weapons', () => {
     const noWeapons = parseContentSet({
-      manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+      manifest: TEST_MANIFEST,
       goods: [{ typeId: 0, id: 'none' }],
       jobs: [{ typeId: 0, id: 'idle' }],
       buildings: [],

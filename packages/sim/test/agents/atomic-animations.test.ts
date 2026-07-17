@@ -1,4 +1,4 @@
-import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   ATOMIC_EVENT_CHANNEL,
@@ -8,6 +8,7 @@ import {
   atomicStartDirection,
   isInterruptibleAtomic,
 } from '../../src/systems/index.js';
+import { TEST_MANIFEST } from '../fixtures/content.js';
 
 /**
  * The atomic-animation read views — `atomicAnimationByName` (the canonical name→record resolver the
@@ -28,7 +29,7 @@ import {
  */
 function animationContent(): ContentSet {
   return parseContentSet({
-    manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+    manifest: TEST_MANIFEST,
     goods: [{ typeId: 0, id: 'none' }],
     jobs: [{ typeId: 0, id: 'idle' }],
     buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],

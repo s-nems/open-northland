@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { Simulation, scenario } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
+import { grassNodeMap } from '../fixtures/terrain.js';
+
+const WOODCUTTER = 1;
+const VIKING = 1;
 
 /**
  * INTEGRATION + GAME-LEVEL (e2e) examples. These run the whole deterministic sim headless via the
@@ -27,14 +31,28 @@ describe('integration: deterministic over many ticks', () => {
     expect(a.hashState()).toBe(b.hashState());
   });
 
-  it('a different seed is allowed to diverge (sanity: RNG is actually wired)', () => {
-    const content = testContent();
-    const a = new Simulation({ seed: 1, content });
-    const b = new Simulation({ seed: 2, content });
-    a.run(50);
-    b.run(50);
-    // The deterministic RNG stream is seed-specific even when both runs remain internally valid.
-    expect(a.rng.getState()).not.toBe(b.rng.getState());
+  it('the seed reaches component state, not just the hashed RNG word', () => {
+    // A settler's starting needs are rolled off the RNG (`NEED_INIT_MAX_DEFICIT_PERCENT`), so spawning
+    // one is what makes a run consume the stream at all — a bare sim never draws, and `hashState` mixes
+    // the RNG word in, so comparing seeds without a draw only ever compares the seeds themselves.
+    const runWithSeed = (seed: number): Simulation => {
+      const sim = new Simulation({ seed, content: testContent(), map: grassNodeMap(5, 1) });
+      sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING });
+      sim.run(50);
+      return sim;
+    };
+    const a = runWithSeed(1);
+    const b = runWithSeed(2);
+
+    expect(a.rng.getState()).not.toBe(1); // the stream advanced: the sim really drew from it
+    const needsOf = (sim: Simulation) => {
+      const settler = sim.snapshot().entities.find((e) => e.components.Settler !== undefined);
+      return settler?.components.Settler as { hunger: number; fatigue: number } | undefined;
+    };
+    const [na, nb] = [needsOf(a), needsOf(b)];
+    expect(na).toBeDefined();
+    expect(nb).toBeDefined();
+    expect([na?.hunger, na?.fatigue]).not.toEqual([nb?.hunger, nb?.fatigue]);
   });
 });
 

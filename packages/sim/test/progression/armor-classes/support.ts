@@ -1,4 +1,5 @@
-import { type ArmorType, type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
+import { type ArmorType, type ContentSet, parseContentSet } from '@open-northland/data';
+import { TEST_MANIFEST } from '../../fixtures/content.js';
 
 /** Resolve an armor record by its `id` (throws if absent — a test-fixture programmer error). */
 export function armor(content: ContentSet, id: string): ArmorType {
@@ -9,7 +10,7 @@ export function armor(content: ContentSet, id: string): ArmorType {
 
 /** The minimal non-armor scaffolding `parseContentSet` requires (goods/jobs/buildings). */
 export const SCAFFOLD = {
-  manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+  manifest: TEST_MANIFEST,
   goods: [{ typeId: 0, id: 'none' }],
   jobs: [{ typeId: 0, id: 'idle' }],
   buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' as const }],

@@ -4,8 +4,8 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { atomicDuration } from '../readviews/animations.js';
-import type { NavigationLimit } from '../signposts/index.js';
 import { isFood } from '../readviews/index.js';
+import type { NavigationLimit } from '../signposts/index.js';
 import {
   atOrWalk,
   EAT_ATOMIC_ID,

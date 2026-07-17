@@ -1,4 +1,5 @@
 import { FOG_MODE } from '../../components/index.js';
+import type { World } from '../../ecs/world.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 
 /** The tri-state visibility values one mask byte holds. Order matters: a HIGHER state shows more, so
@@ -42,10 +43,14 @@ export class FogState {
   /** Tick of the last rebuild, -1 before the first — the cadence anchor. */
   lastRebuildTick = -1;
 
-  constructor(terrain: TerrainGraph) {
+  constructor(terrain: TerrainGraph, world: World) {
     // The terrain graph is the 2W×2H half-cell lattice; cells quarter it (ceil for odd safety).
     this.cellsWide = Math.max(1, Math.ceil(terrain.width / 2));
     this.cellsHigh = Math.max(1, Math.ceil(terrain.height / 2));
+    // The may-hold-VISIBLE boxes are an incrementally-maintained cache, so this registers its verifier
+    // on construction (the sim contract: the fuzz harness's `cachesCoherent` invariant tripwires a
+    // silent divergence) — self-registration, like every other derived cache in the sim.
+    world.registerCacheVerifier('fogVisibleBounds', () => this.verifyVisibleBounds());
   }
 
   /** The mask for `player`, allocated (all UNEXPLORED) on first use. */
@@ -130,6 +135,21 @@ export class FogState {
       }
     }
     return violations;
+  }
+
+  /**
+   * Mix this state's canonical bytes into a hash — per player ASCENDING, the player id then its raw mask
+   * bytes. The masks are simulated state living outside the components, so `Simulation.hashState` calls
+   * this after the components; a world that never enabled fog holds no masks and contributes nothing, so
+   * every pre-fog hash is byte-identical. Read-only: never allocates a mask.
+   */
+  hashInto(mix: (n: number) => void): void {
+    for (const player of this.playersWithMasks()) {
+      mix(player);
+      const mask = this.masks.get(player);
+      if (mask === undefined) continue; // unreachable — playersWithMasks lists only allocated masks
+      for (let i = 0; i < mask.length; i++) mix(mask[i] ?? 0);
+    }
   }
 
   /** The RAW {@link FOG_STATE} of a cell for `player` (out-of-grid / maskless = UNEXPLORED). RECON's

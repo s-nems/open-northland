@@ -1,4 +1,4 @@
-import { type ContentSet, IR_VERSION, parseContentSet, type VehicleType } from '@open-northland/data';
+import { type ContentSet, parseContentSet, type VehicleType } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   isShipVehicle,
@@ -8,6 +8,7 @@ import {
   vehicleMayCarry,
   vehicleSizeOf,
 } from '../../src/systems/index.js';
+import { TEST_MANIFEST } from '../fixtures/content.js';
 
 /** Resolve a vehicle by its `id` from a content set (throws if absent — a test-fixture programmer error). */
 function vehicle(content: ContentSet, id: string): VehicleType {
@@ -31,7 +32,7 @@ function vehicle(content: ContentSet, id: string): VehicleType {
  */
 function vehicleContent(): ContentSet {
   return parseContentSet({
-    manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+    manifest: TEST_MANIFEST,
     goods: [{ typeId: 0, id: 'none' }],
     jobs: [{ typeId: 0, id: 'idle' }],
     buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
@@ -90,7 +91,7 @@ describe('shipVehicles', () => {
 
   it('is empty when no vehicle carries passengers (a carts-only set)', () => {
     const content = parseContentSet({
-      manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+      manifest: TEST_MANIFEST,
       goods: [{ typeId: 0, id: 'none' }],
       jobs: [{ typeId: 0, id: 'idle' }],
       buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
@@ -101,7 +102,7 @@ describe('shipVehicles', () => {
 
   it('is empty for content with no vehicles at all (parseContentSet defaults vehicles to [])', () => {
     const content = parseContentSet({
-      manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+      manifest: TEST_MANIFEST,
       goods: [{ typeId: 0, id: 'none' }],
       jobs: [{ typeId: 0, id: 'idle' }],
       buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
@@ -124,7 +125,7 @@ describe('largestShipCapacity', () => {
 
   it('is 0 when no ship exists (a carts-only set, or no vehicles at all)', () => {
     const cartsOnly = parseContentSet({
-      manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+      manifest: TEST_MANIFEST,
       goods: [{ typeId: 0, id: 'none' }],
       jobs: [{ typeId: 0, id: 'idle' }],
       buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
@@ -179,7 +180,7 @@ describe('vehicleSizeOf', () => {
     // A minimal vehicle that omits logicSize: the schema default (0, the cart footprint) applies, so the
     // accessor returns a number, not undefined — the weight-field shape, not the class-enum shape.
     const content = parseContentSet({
-      manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+      manifest: TEST_MANIFEST,
       goods: [{ typeId: 0, id: 'none' }],
       jobs: [{ typeId: 0, id: 'idle' }],
       buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],

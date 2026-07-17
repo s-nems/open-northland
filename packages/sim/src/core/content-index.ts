@@ -4,10 +4,10 @@ import {
   type AtomicAnimation,
   type BuildingType,
   type ContentSet,
-  fullStateBlockAreaCells,
   type GatheringPipeline,
   type GoodType,
   type HumanJobExperienceType,
+  indexById,
   type JobType,
   type LandscapeGfx,
   type Recipe,
@@ -16,13 +16,27 @@ import {
   type WeaponType,
 } from '@open-northland/data';
 import type { GoodsLine } from '../components/economy/infrastructure.js';
+import { atomicBindingTables, harvestCapableJobs, jobAtomicSets } from './content-index/atomics.js';
+import { byKey, byOptionalKey, byPairKey } from './content-index/by-key.js';
+import { militaryGoodTypes } from './content-index/combat.js';
+import { constructionBills } from './content-index/construction.js';
+import {
+  mergedRecipes,
+  recipeProductTables,
+  storedGoodSets,
+  workerJobSets,
+} from './content-index/production.js';
+import { maxWorkCellOffset } from './content-index/terrain.js';
+
+export { constructionBillForType } from './content-index/construction.js';
 
 /**
  * O(1) lookup maps over a {@link ContentSet}'s arrays, keyed the way per-tick code queries them.
  * Replaces the `ctx.content.buildings.find((b) => b.typeId === …)` linear scans that ran
  * per-entity-per-tick in hot systems (the "content-index" item of the scaling doctrine in
  * packages/sim/AGENTS.md). Pure derived data over immutable content — never hashed, never mutated —
- * so it is determinism-neutral by construction.
+ * so it is determinism-neutral by construction. The per-domain table builders live beside this file in
+ * `content-index/`.
  *
  * Every table reproduces the duplicate-key semantics of the exact scan it replaced — mostly first-wins
  * (`byKey`: a duplicate key keeps the first array entry, what a `.find` returned); the two deliberate
@@ -157,8 +171,8 @@ function buildIndex(content: ContentSet): ContentIndex {
     jobs: byKey(content.jobs, (j) => j.typeId),
     tribes: byKey(content.tribes, (t) => t.typeId),
     vehicles: byKey(content.vehicles, (v) => v.typeId),
-    commandBuildings: byKeyLast(content.buildings, (b) => b.typeId),
-    commandJobs: byKeyLast(content.jobs, (j) => j.typeId),
+    commandBuildings: indexById(content.buildings),
+    commandJobs: indexById(content.jobs),
     armor: byKey(content.armor, (a) => a.typeId),
     militaryGoods: militaryGoodTypes(content),
     jobExperience: byKey(content.jobExperience, (t) => t.typeId),
@@ -189,254 +203,4 @@ function buildIndex(content: ContentSet): ContentIndex {
     ),
     firstWeaponByTribe: byOptionalKey(content.weapons, (w) => w.tribeType),
   };
-}
-
-/** Map `items` by a two-level key, first-wins per pair — the first source-order record a compound
- *  `.find((x) => a(x) === … && b(x) === …)` scan returned. An item whose key half is undefined is
- *  skipped (it could never match a numeric comparison). */
-function byPairKey<T>(
-  items: readonly T[],
-  outer: (item: T) => number | undefined,
-  inner: (item: T) => number | undefined,
-): ReadonlyMap<number, ReadonlyMap<number, T>> {
-  const map = new Map<number, Map<number, T>>();
-  for (const item of items) {
-    const o = outer(item);
-    const i = inner(item);
-    if (o === undefined || i === undefined) continue;
-    let innerMap = map.get(o);
-    if (innerMap === undefined) {
-      innerMap = new Map<number, T>();
-      map.set(o, innerMap);
-    }
-    if (!innerMap.has(i)) innerMap.set(i, item);
-  }
-  return map;
-}
-
-/** The set of good types backing a weapon or piece of armor (their `goodType`, when present) — the forged
- *  military items (see {@link ContentIndex.militaryGoods}). */
-function militaryGoodTypes(content: ContentSet): ReadonlySet<number> {
-  const goods = new Set<number>();
-  for (const w of content.weapons) if (w.goodType !== undefined) goods.add(w.goodType);
-  for (const a of content.armor) if (a.goodType !== undefined) goods.add(a.goodType);
-  return goods;
-}
-
-/** {@link byKey} over an optional key — an item without the key is skipped (it could never match). */
-function byOptionalKey<T>(items: readonly T[], key: (item: T) => number | undefined): ReadonlyMap<number, T> {
-  const map = new Map<number, T>();
-  for (const item of items) {
-    const k = key(item);
-    if (k === undefined || map.has(k)) continue;
-    map.set(k, item);
-  }
-  return map;
-}
-
-/** The per-job allowed-atomic sets (first-wins per typeId, like every other table). */
-function jobAtomicSets(content: ContentSet): ReadonlyMap<number, ReadonlySet<number>> {
-  const map = new Map<number, ReadonlySet<number>>();
-  for (const job of content.jobs) {
-    if (map.has(job.typeId)) continue;
-    const set = new Set<number>(job.allowedAtomics);
-    for (const a of job.baseAtomics) set.add(a);
-    for (const a of job.forbiddenAtomics) set.delete(a);
-    map.set(job.typeId, set);
-  }
-  return map;
-}
-
-/** The flag-gathering trades ({@link ContentIndex.harvestJobs}): a job whose grants (`allowedAtomics`
- *  minus `forbiddenAtomics`) include some non-farmed good's harvest atomic. `baseAtomics` are excluded —
- *  a tribe-wide default equal to a good's harvest atomic (real soldier `baseAtomics=[31]` == herb's
- *  harvest) must not classify the job as a gatherer. First-wins per typeId, like the other tables. */
-function harvestCapableJobs(content: ContentSet): ReadonlySet<number> {
-  const harvestAtomics = new Set<number>();
-  for (const g of content.goods) {
-    if (g.farming !== undefined) continue; // field-farmed — its harvester is a bound farmer, not a flag gatherer
-    if (g.atomics.harvest !== undefined) harvestAtomics.add(g.atomics.harvest);
-  }
-  const seen = new Set<number>();
-  const jobs = new Set<number>();
-  for (const job of content.jobs) {
-    if (seen.has(job.typeId)) continue;
-    seen.add(job.typeId);
-    const forbidden = new Set(job.forbiddenAtomics);
-    for (const a of job.allowedAtomics) {
-      if (!forbidden.has(a) && harvestAtomics.has(a)) {
-        jobs.add(job.typeId);
-        break;
-      }
-    }
-  }
-  return jobs;
-}
-
-/** The per-tribe `setatomic` binding tables (first-wins per tribe typeId; last-wins per binding —
- *  see {@link ContentIndex.atomicBindingsByTribe}). */
-function atomicBindingTables(
-  content: ContentSet,
-): ReadonlyMap<number, ReadonlyMap<number, ReadonlyMap<number, string>>> {
-  const byTribe = new Map<number, Map<number, Map<number, string>>>();
-  for (const tribe of content.tribes) {
-    if (byTribe.has(tribe.typeId)) continue;
-    const byJob = new Map<number, Map<number, string>>();
-    for (const b of tribe.atomicBindings) {
-      let byAtomic = byJob.get(b.jobType);
-      if (byAtomic === undefined) {
-        byAtomic = new Map<number, string>();
-        byJob.set(b.jobType, byAtomic);
-      }
-      byAtomic.set(b.atomicId, b.animation); // last-wins: a later binding overwrites
-    }
-    byTribe.set(tribe.typeId, byJob);
-  }
-  return byTribe;
-}
-
-/** The per-building-type `product → recipe` tables ({@link ContentIndex.recipeByProductByBuilding}) —
- *  first-wins per typeId like the other tables; a recipe's product key is its first output's goodType
- *  (per-product recipes carry exactly one output), first-wins on a duplicate product. Types without
- *  recipes are absent. */
-function recipeProductTables(content: ContentSet): ReadonlyMap<number, ReadonlyMap<number, Recipe>> {
-  const map = new Map<number, ReadonlyMap<number, Recipe>>();
-  for (const b of content.buildings) {
-    if (map.has(b.typeId) || b.recipes.length === 0) continue;
-    const byProduct = new Map<number, Recipe>();
-    for (const recipe of b.recipes) {
-      const product = recipe.outputs[0]?.goodType;
-      if (product !== undefined && !byProduct.has(product)) byProduct.set(product, recipe);
-    }
-    map.set(b.typeId, byProduct);
-  }
-  return map;
-}
-
-/** The per-building-type union recipes ({@link ContentIndex.mergedRecipeByBuilding}): inputs summed per
- *  goodType and outputs merged per goodType across the type's per-product recipes, both ascending —
- *  the single-recipe view the supply AI plans against. First-wins per typeId; `ticks` is the max over
- *  the merged recipes (the union view never times a cycle, but the field is required). */
-function mergedRecipes(content: ContentSet): ReadonlyMap<number, Recipe> {
-  const map = new Map<number, Recipe>();
-  for (const b of content.buildings) {
-    if (map.has(b.typeId) || b.recipes.length === 0) continue;
-    const inputs = new Map<number, number>();
-    const outputs = new Map<number, number>();
-    let ticks = 1;
-    for (const recipe of b.recipes) {
-      for (const io of recipe.inputs) inputs.set(io.goodType, (inputs.get(io.goodType) ?? 0) + io.amount);
-      for (const io of recipe.outputs) outputs.set(io.goodType, (outputs.get(io.goodType) ?? 0) + io.amount);
-      if (recipe.ticks > ticks) ticks = recipe.ticks;
-    }
-    const lines = (m: Map<number, number>) =>
-      [...m].sort(([a], [c]) => a - c).map(([goodType, amount]) => ({ goodType, amount }));
-    map.set(b.typeId, { inputs: lines(inputs), outputs: lines(outputs), ticks });
-  }
-  return map;
-}
-
-/** The per-building-type worker-job sets — first-wins per typeId unconditionally (a first record with zero
- *  workers claims the key with an empty set, exactly as the `.find` it replaced resolved the first record and
- *  read its empty `workers`), so a later duplicate can never shadow it. */
-function workerJobSets(content: ContentSet): ReadonlyMap<number, ReadonlySet<number>> {
-  const map = new Map<number, ReadonlySet<number>>();
-  for (const b of content.buildings) {
-    if (map.has(b.typeId)) continue;
-    map.set(b.typeId, new Set(b.workers.map((w) => w.jobType)));
-  }
-  return map;
-}
-
-/** The per-type stored-good sets ({@link ContentIndex.storedGoodsByBuilding}); first-wins per typeId,
- *  types with no stock slots omitted (an employed gatherer there stays unrestricted). */
-function storedGoodSets(content: ContentSet): ReadonlyMap<number, ReadonlySet<number>> {
-  const map = new Map<number, ReadonlySet<number>>();
-  for (const b of content.buildings) {
-    if (map.has(b.typeId) || b.stock.length === 0) continue;
-    map.set(b.typeId, new Set(b.stock.map((s) => s.goodType)));
-  }
-  return map;
-}
-
-/**
- * The per-type from-scratch construction bills ({@link ContentIndex.constructionBillByBuilding}).
- * First-wins per typeId, like the other tables (a home tier resolves each chain member through the
- * first-wins `byKey` view, so the summed rows are the ones every other read sees).
- */
-function constructionBills(content: ContentSet): ReadonlyMap<number, readonly GoodsLine[]> {
-  const buildings = byKey(content.buildings, (b) => b.typeId);
-  const bills = new Map<number, readonly GoodsLine[]>();
-  for (const b of content.buildings) {
-    if (!bills.has(b.typeId)) bills.set(b.typeId, billOf(buildings, b));
-  }
-  return bills;
-}
-
-/** One type's from-scratch bill over a typeId-keyed building view: a home's chain base is found by
- *  walking the consecutive `home` typeIds downward (the mirror of `homeNextTier`'s upward walk), and
- *  the tiers' costs are merged per goodType and sorted ascending; any other kind is its own cost. */
-function billOf(buildings: ReadonlyMap<number, BuildingType>, building: BuildingType): readonly GoodsLine[] {
-  if (building.kind !== 'home') return building.construction;
-  let base = building.typeId;
-  while (buildings.get(base - 1)?.kind === 'home') base -= 1;
-  const merged = new Map<number, number>();
-  for (let typeId = base; typeId <= building.typeId; typeId++) {
-    for (const line of buildings.get(typeId)?.construction ?? []) {
-      merged.set(line.goodType, (merged.get(line.goodType) ?? 0) + line.amount);
-    }
-  }
-  return [...merged.entries()]
-    .sort((x, y) => x[0] - y[0])
-    .map(([goodType, amount]) => ({ goodType, amount }));
-}
-
-/**
- * The from-scratch construction bill of one `buildingType` over a plain building list — the pure
- * content-level accessor for a consumer holding building defs but no `ContentSet` (the HUD's
- * construction window shows the same delivered/needed rows the sim demands). Empty for an unknown
- * type. The same math as {@link ContentIndex.constructionBillByBuilding}; sim systems read that
- * memoized table instead.
- */
-export function constructionBillForType(
-  buildings: readonly BuildingType[],
-  buildingType: number,
-): readonly GoodsLine[] {
-  const byId = byKey(buildings, (b) => b.typeId);
-  const building = byId.get(buildingType);
-  return building === undefined ? [] : billOf(byId, building);
-}
-
-/** Map `items` by `key`, first-wins — a duplicate key keeps the first entry, matching `.find`. */
-function byKey<K, T>(items: readonly T[], key: (item: T) => K): ReadonlyMap<K, T> {
-  const map = new Map<K, T>();
-  for (const item of items) {
-    const k = key(item);
-    if (!map.has(k)) map.set(k, item);
-  }
-  return map;
-}
-
-/** Map `items` by `key`, last-wins — the duplicate semantics of `@open-northland/data`'s `indexById`.
- *  Kept separate from the hot read-view tables above, whose replaced `.find` scans are first-wins. */
-function byKeyLast<K, T>(items: readonly T[], key: (item: T) => K): ReadonlyMap<K, T> {
-  const map = new Map<K, T>();
-  for (const item of items) map.set(key(item), item);
-  return map;
-}
-
-/**
- * The largest |dx|+|dy| any `landscapeGfx` work-area cell sits from its record's anchor (the full-state
- * reading `resourceWorkCell` places collectors by), floored at 3 — see
- * {@link ContentIndex.maxResourceWorkOffset} for the fallback-coverage argument.
- */
-function maxWorkCellOffset(content: ContentSet): number {
-  let max = 3;
-  for (const record of content.landscapeGfx) {
-    for (const cell of fullStateBlockAreaCells(record.workAreas)) {
-      const offset = Math.abs(cell.dx) + Math.abs(cell.dy);
-      if (offset > max) max = offset;
-    }
-  }
-  return max;
 }

@@ -2,11 +2,11 @@ import { Building, Position, Stockpile, stockpileEntries } from '../../component
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
+import type { SpatialGate } from '../../nav/node-metric.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import type { SpatialGate } from '../node-metric.js';
-import { canonicalById, NodeBuckets } from '../spatial.js';
 import { isFood } from '../readviews/index.js';
+import { canonicalById, NodeBuckets } from '../spatial.js';
 
 /**
  * The greatest Manhattan ring radius (half-cell nodes) {@link ExternalFoodIndex.nearest} expands to

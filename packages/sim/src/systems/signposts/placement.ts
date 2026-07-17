@@ -8,10 +8,10 @@ import {
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { positionOfNode } from '../../nav/halfcell.js';
+import { withinNodeRadius } from '../../nav/node-metric.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { canPlaceWorkFlag, workFlagPlacementBlocks } from '../footprint/index.js';
-import { withinNodeRadius } from '../node-metric.js';
+import { canPlaceWorkFlag, workFlagBlockerVersion, workFlagPlacementBlocks } from '../footprint/index.js';
 import { signpostNetwork } from './network.js';
 
 /**
@@ -51,9 +51,25 @@ export interface SignpostProbe {
 }
 
 /**
+ * Per-world memo of the last built probe, keyed by the {@link workFlagBlockerVersion} and player it was
+ * built for. The app asks per RAF frame while the erect cursor is armed, and a rebuild walks every
+ * Resource/Building into a fresh blocked set (O(world) — ~17k nodes on a decoded map). One entry
+ * suffices: the app probes for the one human player. A pure read-path cache like the building placement
+ * grid — it feeds only the overlay/ghost, never a sim decision (`canPlaceSignpost` scans fresh), so it is
+ * not hashed and needs no `verifyCaches` registration.
+ */
+interface ProbeMemo {
+  version: string;
+  content: ContentSet;
+  terrain: TerrainGraph;
+  probe: SignpostProbe;
+}
+const probeMemo = new WeakMap<World, ProbeMemo>();
+
+/**
  * Build a {@link SignpostProbe} for `player`. Mirrors `placementProbe`: the world's blocked set is
- * collected once (O(world)), then each `canPlace` is O(player's posts). The overlay memoizes the whole
- * band result on `workFlagBlockerVersion`, so this rebuilds only when a blocker appears or disappears.
+ * collected once (O(world)), then each `canPlace` is O(player's posts), and the whole probe is memoized
+ * on the blocker version so it rebuilds only when a blocker appears or disappears.
  */
 export function signpostProbe(
   world: World,
@@ -61,9 +77,19 @@ export function signpostProbe(
   terrain: TerrainGraph,
   player: number,
 ): SignpostProbe {
+  const version = `${workFlagBlockerVersion(world)}:${player}`;
+  const cached = probeMemo.get(world);
+  if (
+    cached !== undefined &&
+    cached.version === version &&
+    cached.content === content &&
+    cached.terrain === terrain
+  ) {
+    return cached.probe;
+  }
   const blocked = workFlagPlacementBlocks(world, content, terrain);
   const posts = signpostNetwork(world).get(player) ?? [];
-  return {
+  const probe: SignpostProbe = {
     canPlace: (x, y) => {
       if (!terrain.inBounds(x, y)) return false;
       const node = terrain.nodeAt(x, y);
@@ -74,6 +100,8 @@ export function signpostProbe(
       return true;
     },
   };
+  probeMemo.set(world, { version, content, terrain, probe });
+  return probe;
 }
 
 /**

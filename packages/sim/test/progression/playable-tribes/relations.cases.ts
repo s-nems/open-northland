@@ -1,6 +1,7 @@
-import { IR_VERSION, parseContentSet } from '@open-northland/data';
+import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { HUNTER_JOB, mayAttack, mayHunt } from '../../../src/systems/index.js';
+import { TEST_MANIFEST } from '../../fixtures/content.js';
 import { tribeContent } from './support.js';
 
 describe('mayAttack (the combat hostility relation)', () => {
@@ -45,7 +46,7 @@ describe('mayAttack (the combat hostility relation)', () => {
 
   it('exempts a cannotBeAttacked animal from a civilization, while it can still attack', () => {
     const content = parseContentSet({
-      manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+      manifest: TEST_MANIFEST,
       goods: [{ typeId: 0, id: 'none' }],
       jobs: [{ typeId: 0, id: 'idle' }],
       buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
@@ -73,7 +74,7 @@ describe('mayHunt (the hunter predation relation)', () => {
 
   it('still exempts a cannotBeAttacked animal even if (somehow) catchable', () => {
     const content = parseContentSet({
-      manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+      manifest: TEST_MANIFEST,
       goods: [{ typeId: 0, id: 'none' }],
       jobs: [{ typeId: 0, id: 'idle' }],
       buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],

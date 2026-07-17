@@ -73,11 +73,12 @@ hygiene scan fails the build otherwise.
 
 `src/`, for a cold agent — each concern has ONE home:
 
-- **`simulation.ts`** + **`index.ts`** — the `Simulation` façade (step loop, `hashState()`,
-  `snapshot()`) and the public barrel.
+- **`simulation.ts`** + **`simulation/`** + **`index.ts`** — the `Simulation` façade (step loop,
+  `snapshot()` memo) with its read seams and `hashState()` body beside it, and the public barrel.
 - **`core/`** — deterministic primitives: `fixed.ts` (the `fx` fixed-point kit), `rng.ts` (seeded RNG),
-  `commands.ts` + `command-queue.ts`, `events.ts` (typed `SimEvent`s), `loop.ts`,
-  `content-index.ts` (memoized O(1) content lookups), `atomic-effect.ts`, `brand.ts`.
+  `commands.ts` + `command-queue.ts`, `events.ts` (typed `SimEvent`s + `eventNode`), `loop.ts`,
+  `content-index.ts` + `content-index/` (memoized O(1) content lookups, one file per domain),
+  `atomic-effect.ts`, `brand.ts`.
 - **`ecs/world.ts`** — the `World`: entities, queries, `canonicalEntities()`, `verifyCaches()`.
 - **`components/`** — the component keys (`defineComponent`; the entity→value stores live on the `World`):
   `settler.ts`, `movement.ts`, `combat.ts`, `equipment.ts`, `ownership.ts`, `rules.ts`, `economy/`.
@@ -85,12 +86,14 @@ hygiene scan fails the build otherwise.
   effects), `economy/` (jobs, production, construction, farming, berries, flags), `conflict/`,
   `lifecycle/`, `movement/`, `orders/`, `command/` (command application + placement), `vision/`,
   `footprint/`, `progression/`, `readviews/` (pure content-derived rule tables), `stores/`; plus
-  `spatial.ts` (`NodeBuckets` + candidate lists), `schedule.ts` (`SYSTEM_ORDER`), `context.ts`, and
-  the resource/berry/stockpile indexes.
-- **`nav/`** — pathfinding and the half-cell lattice: `halfcell.ts` (the ONE cell↔node conversion
-  seam), `terrain/` graphs, `nearest.ts`, `metric.ts`, `block-overlay.ts`.
+  `spatial.ts` (`NodeBuckets` + candidate lists — feed it a `canonicalById` list), `schedule.ts`
+  (`SYSTEM_ORDER`), `context.ts`, and the resource/berry/stockpile indexes.
+- **`nav/`** — pathfinding and the half-cell lattice: `halfcell.ts` (the ONE cell↔node conversion seam,
+  both directions), `pathfinding/` (A* + its heap/scratch), `terrain/` graphs, `nearest.ts`,
+  `metric.ts` + `node-metric.ts` (the measured 68×38 pitch in `Fixed` column units and integer px
+  respectively), `block-overlay.ts`.
 - **`replay/`** — command-stream replay + divergence debugging (`localize-divergence.ts`,
   `scrub-window.ts`, `rebase-content.ts`).
 - **`inspect/`** — state introspection: `snapshot.ts` (plain `WorldSnapshot`), `snapshot-diff.ts`,
-  `hashtrace.ts` (per-tick hash ring buffer), `entity-dump.ts`.
+  `hashtrace.ts` (a capped per-tick hash list), `entity-dump.ts`.
 - **`harness/`** — test/scenario helpers: `invariants.ts`, `scenario.ts`, `populate.ts`.

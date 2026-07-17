@@ -1,14 +1,14 @@
 import { BerryBush, Building, Residence, Stockpile, stockpileEntries } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
+import type { SpatialGate } from '../../../nav/node-metric.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { bushesNearNode } from '../../berry-index.js';
 import type { SystemContext } from '../../context.js';
 import { BERRY_FORAGE_RADIUS } from '../../economy/berries.js';
 import { reservedFoodUnits, storedFoodUnits } from '../../family/households.js';
-import type { SpatialGate } from '../../node-metric.js';
-import { manhattan } from '../../spatial.js';
 import { isFood } from '../../readviews/index.js';
+import { manhattan } from '../../spatial.js';
 import type { TargetCandidates } from './candidates.js';
 import { type InteractionCellIndex, nearestByCell, qualifiedGood } from './cell-index.js';
 import { closer } from './nearest.js';

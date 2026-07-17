@@ -1,4 +1,4 @@
-import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { CurrentAtomic, Health, Position, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
@@ -11,32 +11,21 @@ import {
   type TerrainMap,
 } from '../../src/index.js';
 import { isPlayableTribe, mayAttack } from '../../src/systems/index.js';
+import { TEST_MANIFEST } from '../fixtures/content.js';
 
 /**
- * **Two-playable-civilization combat scenario**
- * "N data-defined tribes" item names as its remaining "Next:" ("seed a real **multi-civilization**
- * scenario exercising two playable tribes' asymmetric bindings end-to-end — the asymmetry is in the
- * data; a scenario proves the sim runs it").
+ * Two fully-defined playable civilizations fighting through the real `Simulation.step()` schedule,
+ * each resolving its own asymmetric weapon + attack-animation binding — the integration
+ * `playable-tribes.test.ts` (pure `mayAttack` predicate) and `combat-system.test.ts` (one tribe, direct
+ * `combatSystem()` call) leave uncovered.
  *
- * What this proves that no existing test does. The `mayAttack` civ-vs-civ relation is unit-tested as a
- * pure predicate (playable-tribes.test.ts), and combat-system.test.ts runs a viking against an enemy
- * of tribe id **2** — but in the shared fixture tribe 2 carries NO record (the "unknown tribe treated
- * as a civilization" path), and that test pokes `combatSystem()` directly. Neither exercises **two
- * fully-defined, playable civilizations** (each carrying a `jobEnables` tech graph so `isPlayableTribe`
- * is true) fighting each other **through the real `Simulation.step()` schedule**, each resolving its
- * **own** asymmetric weapon + attack-animation binding. This wires the already-landed pieces
- * (`playableTribes`/`mayAttack`/`combatSystem`/`atomicSystem`/`cleanupSystem`) into ONE integrated run
- * over `step()`, the thing no unit test covers.
+ * The asymmetry is entirely in the data, never a hardcoded "two": the tribes differ only in their
+ * per-tribe rows (each its own `jobEnables` edge, `weapontypes` damage/reach, and `setatomic 81 ->
+ * attack animation` whose `length` is its swing duration), and the sim resolves every per-tribe rule off
+ * `settler.tribe`. An N-tribe set is the same shape with more rows.
  *
- * The **asymmetry is entirely in the data** — never a hardcoded "two": the two tribes differ only in
- * their per-tribe rows (each its own `jobEnables` edge, its own `weapontypes` damage/reach, its own
- * `setatomic 81 -> attack animation` whose `length` is its swing duration). The sim resolves every
- * per-tribe rule off `settler.tribe`, so a viking fights with the viking mace and a saxon with the
- * saxon sword purely because the content says so. A real N-tribe set is the same shape with more rows.
- *
- * Like populated-map-combat.test.ts, a civ becomes a *combatant* only once it carries a `Health` pool
- * (settler-side Health stamping — soldiers/armor — is a separate future slice), so combatants are
- * placed directly; the scenario verifies the integration of the landed pieces, not a new mechanic.
+ * Combatants are placed directly: a civ becomes a combatant only once it carries a `Health` pool, and
+ * settler-side Health stamping is a separate slice (as in populated-map-combat.test.ts).
  */
 
 const VIKING = 1;
@@ -52,7 +41,7 @@ const SOLDIER = 1; // job 1 — each tribe binds its attack weapon + atomic 81 t
  */
 function twoCivContent(): ContentSet {
   return parseContentSet({
-    manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+    manifest: TEST_MANIFEST,
     goods: [
       { typeId: 0, id: 'none' },
       { typeId: 3, id: 'coin' }, // the good the saxon tech edge unlocks

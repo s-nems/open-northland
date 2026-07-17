@@ -1,5 +1,6 @@
-import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { WEAPON_MAIN_TYPE } from '../../../src/systems/index.js';
+import { TEST_MANIFEST } from '../../fixtures/content.js';
 
 /**
  * Combat cadence + hit-frame + stagger + need-drain + fight-XP — the "make a melee exchange run at the
@@ -134,7 +135,7 @@ export function combatCadenceContent(): ContentSet {
   ];
 
   return parseContentSet({
-    manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+    manifest: TEST_MANIFEST,
     goods: [
       { typeId: 0, id: 'none' },
       { typeId: 35, id: 'chain', classification: { producedInHouse: true } },

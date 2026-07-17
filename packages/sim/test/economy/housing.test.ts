@@ -1,8 +1,9 @@
-import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { Building, Settler } from '../../src/components/index.js';
 import { fx, ONE, Simulation } from '../../src/index.js';
 import { housingCapacity, tribePopulation } from '../../src/systems/index.js';
+import { TEST_MANIFEST } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 
 /**
@@ -21,7 +22,7 @@ const OTHER_TRIBE = 2;
 // by parseContentSet; the rest default.
 function housingContent(): ContentSet {
   return parseContentSet({
-    manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+    manifest: TEST_MANIFEST,
     goods: [{ typeId: 0, id: 'none' }],
     jobs: [{ typeId: 0, id: 'idle' }],
     buildings: [

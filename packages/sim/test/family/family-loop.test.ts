@@ -1,4 +1,4 @@
-import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   Age,
@@ -22,6 +22,7 @@ import {
   KISSED_ATOMIC_ID,
   mayMarry,
 } from '../../src/systems/index.js';
+import { TEST_MANIFEST } from '../fixtures/content.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 /**
@@ -46,7 +47,7 @@ const GRASS = 0;
 
 function familyContent(): ContentSet {
   return parseContentSet({
-    manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+    manifest: TEST_MANIFEST,
     goods: [
       { typeId: 0, id: 'none' },
       { typeId: FOOD, id: 'food_simple' },
@@ -170,7 +171,7 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     expect(sim.world.get(man(), Marriage).child).toBe(baby);
     expect(sim.world.get(baby, Settler).jobType).toBe(BABY_FEMALE); // the ordered sex
     expect(sim.world.has(baby, Female)).toBe(true);
-    expect(sim.world.get(baby, Age).ticks).toBeGreaterThanOrEqual(0);
+    expect(sim.world.get(baby, Age).ticks).toBe(1); // stamped 0 at birth, aged one tick since
     expect(sim.world.get(baby, Residence).home).toBe(home()); // part of the household
     // The order completed and cleaned up: no standing order, no hearts, no reserve, the fund consumed.
     expect(sim.world.has(woman(), ChildOrder)).toBe(false);

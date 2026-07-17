@@ -1,9 +1,10 @@
-import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { Building, GroundDrop, Position, Stockpile } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, Simulation } from '../../src/index.js';
 import { MAX_GROUND_STACK } from '../../src/systems/stores/index.js';
+import { TEST_MANIFEST } from '../fixtures/content.js';
 
 /**
  * `dropGood` — the "place this good on the ground" order. It drops a loose good pile as a bare
@@ -21,7 +22,7 @@ const PIXELS_PER_TILE = 65536; // ONE — the fixed-point tile unit a Position u
 
 function dropContent(): ContentSet {
   return parseContentSet({
-    manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+    manifest: TEST_MANIFEST,
     goods: [
       { typeId: 0, id: 'none' },
       { typeId: WOOD, id: 'wood' },

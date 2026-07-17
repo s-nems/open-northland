@@ -1,4 +1,4 @@
-import { IR_VERSION, parseContentSet } from '@open-northland/data';
+import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   animalBabyHitpoints,
@@ -13,6 +13,7 @@ import {
   isWarrantableAnimal,
   locomotionOf,
 } from '../../../src/systems/index.js';
+import { TEST_MANIFEST } from '../../fixtures/content.js';
 import { tribeContent } from './support.js';
 
 describe('isAnimalTribe', () => {
@@ -66,7 +67,7 @@ describe('isAggressiveAnimal / animalCannotBeAttacked / animalHitpoints (animalt
 
   it('animalCannotBeAttacked exempts a decorative-fauna animal (cannotbeattacked)', () => {
     const content = parseContentSet({
-      manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+      manifest: TEST_MANIFEST,
       goods: [{ typeId: 0, id: 'none' }],
       jobs: [{ typeId: 0, id: 'idle' }],
       buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
@@ -140,7 +141,7 @@ describe('herdParams (the animal herd/spawn read view)', () => {
     // A minimal animal record (only the required id+tribeType): the schema fills the herd params with
     // their source-omitted defaults, and the read view passes them through verbatim — no inference.
     const content = parseContentSet({
-      manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+      manifest: TEST_MANIFEST,
       goods: [{ typeId: 0, id: 'none' }],
       jobs: [{ typeId: 0, id: 'idle' }],
       buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],

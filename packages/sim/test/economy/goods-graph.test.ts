@@ -1,6 +1,7 @@
-import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { goodsGraph } from '../../src/systems/index.js';
+import { TEST_MANIFEST } from '../fixtures/content.js';
 
 /**
  * The goods-graph read model — `goodsGraph` surfaces the recipe-DAG IR (`GoodType.classification`
@@ -22,7 +23,7 @@ const WATER = 6; // raw + input good
 // productionInputs are the goods-graph IR; the buildings' produces/recipe are the output side.
 function graphContent(): ContentSet {
   return parseContentSet({
-    manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+    manifest: TEST_MANIFEST,
     goods: [
       { typeId: NONE, id: 'none' }, // unclassified — neither flag
       { typeId: WOOD, id: 'wood', classification: { producedOnMap: true } },
@@ -132,7 +133,7 @@ describe('goodsGraph', () => {
 
   it('is empty for content with no goods', () => {
     const empty = parseContentSet({
-      manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+      manifest: TEST_MANIFEST,
       goods: [],
       jobs: [{ typeId: 0, id: 'idle' }],
       buildings: [],

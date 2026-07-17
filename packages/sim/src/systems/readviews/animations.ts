@@ -73,11 +73,7 @@ const DEFAULT_ATOMIC_DURATION = 4;
  * timing must not hang or zero-out the atomic. Shared by the AI planner and combat's attack swing, so both
  * resolve durations identically.
  */
-export function atomicDuration(
-  content: ContentSet,
-  settler: SettlerIdentity,
-  atomicId: number,
-): number {
+export function atomicDuration(content: ContentSet, settler: SettlerIdentity, atomicId: number): number {
   return atomicDurationForName(content, atomicAnimationName(content, settler, atomicId));
 }
 

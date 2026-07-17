@@ -14,6 +14,7 @@ import {
 import { fx } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, Simulation } from '../../src/index.js';
+import { SIGHT_RADIUS_NODES } from '../../src/systems/conflict/targeting.js';
 import { MILITARY_MODE, SCOUT_JOB } from '../../src/systems/readviews/index.js';
 import {
   BUILDING_VISION_NODES,
@@ -201,7 +202,9 @@ describe('fog gates — combat auto-acquire and flee react only to SEEN enemies'
     const t = cellAnchorNode(ENEMY.x, ENEMY.y);
     const manhattan = Math.abs(a.hx - t.hx) + Math.abs(a.hy - t.hy);
     expect(manhattan).toBe(14);
-    expect(manhattan).toBeLessThanOrEqual(16); // SIGHT_RADIUS_NODES
+    // Against the real constant, not a copy of its value: retuning sight must fail this precondition
+    // rather than leave the sibling tests' geometry silently false.
+    expect(manhattan).toBeLessThanOrEqual(SIGHT_RADIUS_NODES);
     expect((ENEMY.x - ATTACKER.x) * 68).toBeGreaterThan(CIVILIAN_VISION_NODES * 34);
   });
 

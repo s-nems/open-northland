@@ -1,8 +1,9 @@
-import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { Building, Stockpile } from '../../src/components/index.js';
 import { ONE, Simulation } from '../../src/index.js';
 import { tribeStocks } from '../../src/systems/index.js';
+import { TEST_MANIFEST } from '../fixtures/content.js';
 
 /**
  * The stocks read model — `tribeStocks` sums each good a tribe holds across all its stores (any
@@ -22,7 +23,7 @@ const STONE = 7;
 // state (Building.tribe + Stockpile.amounts), not content, so the building types here are nominal.
 function stocksContent(): ContentSet {
   return parseContentSet({
-    manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+    manifest: TEST_MANIFEST,
     goods: [
       { typeId: 0, id: 'none' },
       { typeId: PLANK, id: 'plank' },

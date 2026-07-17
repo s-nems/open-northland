@@ -1,4 +1,11 @@
-import { Carrying, Fleeing, Owner, PathRequest, Settler, type SettlerIdentity } from '../../components/index.js';
+import {
+  Carrying,
+  Fleeing,
+  Owner,
+  PathRequest,
+  Settler,
+  type SettlerIdentity,
+} from '../../components/index.js';
 import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
