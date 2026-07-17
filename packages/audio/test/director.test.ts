@@ -248,9 +248,10 @@ describe('directAudio death stinger owner filter', () => {
   // The jingle keys by death node, not by the reaped entity (see eventKey) — so a pile-up at one node
   // debounces to a single stinger. Without an `at` it falls back to the entity key.
   it('keys the death jingle by node when the reaped unit had a position', () => {
-    const located = direct([
-      { kind: 'settlerDied', entity: entity(3), cause: 'damage', player: LOCAL, at: { hx: 11, hy: 10 } },
-    ], { localPlayer: LOCAL });
+    const located = direct(
+      [{ kind: 'settlerDied', entity: entity(3), cause: 'damage', player: LOCAL, at: { hx: 11, hy: 10 } }],
+      { localPlayer: LOCAL },
+    );
     expect(located.oneShots[0]?.key).toBe('settlerDied:11,10');
 
     const unlocated = direct([{ kind: 'settlerDied', entity: entity(3), cause: 'damage', player: LOCAL }], {
