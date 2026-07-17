@@ -1,12 +1,12 @@
 import type { EntitySnapshot, WorldSnapshot } from '@open-northland/sim';
 import { Container } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
-import type { ElevationField } from '../src/data/elevation.js';
-import { type Camera, ONE, tileToScreen } from '../src/data/iso.js';
-import type { Viewport } from '../src/data/viewport.js';
-import { type PoolFrame, SpritePool } from '../src/gpu/sprite-pool/index.js';
-import { SNAP_DISTANCE } from '../src/gpu/sprite-pool/motion.js';
-import { TextureCache } from '../src/gpu/texture-cache.js';
+import type { ElevationField } from '../../src/data/elevation.js';
+import { type Camera, ONE, tileToScreen } from '../../src/data/iso.js';
+import type { Viewport } from '../../src/data/viewport.js';
+import { type PoolFrame, SpritePool } from '../../src/gpu/sprite-pool/index.js';
+import { SNAP_DISTANCE } from '../../src/gpu/sprite-pool/motion.js';
+import { TextureCache } from '../../src/gpu/texture-cache.js';
 
 /**
  * The retained pool's SCREEN-bounded reconcile: per-frame work must track what's on screen, not the whole
