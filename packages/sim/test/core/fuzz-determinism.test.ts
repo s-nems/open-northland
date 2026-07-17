@@ -231,6 +231,8 @@ function nextCommand(rng: Rng): Command {
         ...(rng.int(4) === 0 ? { force: true } : {}),
         // Occasionally an authored pre-stocked placement (every stock slot seeded to capacity).
         ...(rng.int(4) === 0 ? { fillStock: true } : {}),
+        // Occasionally an authored starting stock (a decoded map's `addgoods` import).
+        ...(rng.int(4) === 0 ? { initialGoods: [{ good: MEAD_GOOD, amount: rng.int(20) + 1 }] } : {}),
       };
     case 1: {
       // Every third settler is a combatant (Health + armor + a specific weapon + a walk pace) so the

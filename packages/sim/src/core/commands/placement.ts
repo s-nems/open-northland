@@ -30,6 +30,10 @@ export type PlacementCommand =
        *  `debugFillStockpile`) — for authored fixtures like a scene's pre-stocked warehouse. Ignored for an
        *  `underConstruction` site (its hold accumulates delivered materials instead). */
       readonly fillStock?: boolean;
+      /** Authored starting stock (a decoded map's `addgoods` runs after this house's `sethouse`): each
+       *  entry adds `amount` × `good` on top of whatever the default/`fillStock` seeding put in the
+       *  stockpile. Ignored for an `underConstruction` site, like `fillStock`. */
+      readonly initialGoods?: readonly { readonly good: number; readonly amount: number }[];
     }
   | {
       /**

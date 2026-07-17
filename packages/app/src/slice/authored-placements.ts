@@ -23,17 +23,28 @@ export interface AuthoredJoinRows {
   readonly buildings?: readonly { typeId?: number; id?: string; kind?: string }[];
   readonly jobs?: readonly { typeId?: number; id?: string; name?: string }[];
   readonly tribes?: readonly { typeId?: number; id?: string }[];
+  readonly goods?: readonly { typeId?: number; name?: string; id?: string }[];
 }
 
 /** One resolved authored placement, ready to enqueue (what {@link resolveAuthoredPlacements} returns). */
 export type AuthoredPlacement =
-  | { kind: 'building'; typeId: number; tribe: number; x: number; y: number; owner?: number }
+  | {
+      kind: 'building';
+      typeId: number;
+      tribe: number;
+      x: number;
+      y: number;
+      owner?: number;
+      /** Authored starting stock (`addgoods`), good names resolved to good typeIds. */
+      goods?: { good: number; amount: number }[];
+    }
   | { kind: 'human'; jobType: number; tribe: number; x: number; y: number; owner?: number };
 
 /**
  * Resolve a map's authored `entities` (names + half-cells, verbatim from `map.cif` `StaticObjects`) into
  * sim placements. Joins are by name against the IR rows (a building's `EditName`+`level` → `buildingBobs`
- * typeId+tribe; a human's `role` → `jobs` typeId, its `tribe` string → `tribes` typeId), and the two player
+ * typeId+tribe and its `addgoods` names → `goods` typeIds; a human's `role` → `jobs` typeId, its `tribe`
+ * string → `tribes` typeId), and the two player
  * columns land on 0-based sim owners verbatim (both `sethouse` and `sethuman` are 0-based — schema notes).
  * Half-cells pass through verbatim — the sim's grid is the `2W×2H` lattice the records address, so an
  * authored building keeps its exact anchor. Unresolvable or out-of-bounds records are dropped and counted;
@@ -61,6 +72,11 @@ export function resolveAuthoredPlacements(
     if (t.id !== undefined && t.typeId !== undefined && !tribeByName.has(t.id))
       tribeByName.set(t.id, t.typeId);
   }
+  const goodByName = new Map<string, number>();
+  for (const g of rows.goods ?? []) {
+    const name = g.name ?? g.id;
+    if (name !== undefined && g.typeId !== undefined && !goodByName.has(name)) goodByName.set(name, g.typeId);
+  }
   // `map` is the sim's half-cell grid (2W×2H) — authored half-cells bound-check directly against it.
   const inBounds = (hx: number, hy: number): boolean =>
     hx >= 0 && hy >= 0 && hx < map.width && hy < map.height;
@@ -73,6 +89,12 @@ export function resolveAuthoredPlacements(
       skipped++;
       continue;
     }
+    // Authored `addgoods` stock, good names → good typeIds; an unresolvable name is dropped (the
+    // building still places — a missing good must not cost the map its house).
+    const goods = (b.goods ?? []).flatMap((g) => {
+      const good = goodByName.get(g.name);
+      return good !== undefined ? [{ good, amount: g.count }] : [];
+    });
     placements.push({
       kind: 'building',
       typeId: hit.typeId,
@@ -80,6 +102,7 @@ export function resolveAuthoredPlacements(
       x: b.hx,
       y: b.hy,
       ...(components.isValidPlayer(b.player) ? { owner: b.player } : {}),
+      ...(goods.length > 0 ? { goods } : {}),
     });
   }
   for (const h of entities.humans) {
