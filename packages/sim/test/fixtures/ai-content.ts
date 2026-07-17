@@ -92,6 +92,39 @@ export function aiContent(): ContentSet {
     landscape: [
       { typeId: 0, id: 'grass', walkable: true, buildable: true, plantable: true },
       { typeId: 1, id: 'water', walkable: false, buildable: false },
+      // The harvest-stage landscape classes behind the placeable resource nodes below (original
+      // logic-type band: tree 4, rock 15; 16 is a free slot for the clay pit).
+      { typeId: 4, id: 'tree', walkable: false, buildable: false },
+      { typeId: 15, id: 'rock', walkable: false, buildable: false },
+      { typeId: 16, id: 'mud_pit', walkable: false, buildable: false },
+    ],
+    // One single-cell placeable object per collected good — the minimum `createResourceNode` needs
+    // to stamp a footprint, so tests can drop resource nodes with the `placeResource` command.
+    landscapeGfx: [
+      { index: 1, logicType: 4, walkBlockAreas: [[0, 0, 0, 0]], buildBlockAreas: [[0, 0, 0, 0]] },
+      { index: 2, logicType: 15, walkBlockAreas: [[0, 0, 0, 0]], buildBlockAreas: [[0, 0, 0, 0]] },
+      { index: 3, logicType: 16, walkBlockAreas: [[0, 0, 0, 0]], buildBlockAreas: [[0, 0, 0, 0]] },
+    ],
+    gatheringPipeline: [
+      {
+        goodType: 1,
+        goodId: 'wood',
+        harvestAtomic: 24,
+        bioLandscape: true,
+        harvest: { landscapeType: 4, gfxIndices: [1] },
+      },
+      {
+        goodType: 2,
+        goodId: 'mud',
+        harvestAtomic: 32,
+        harvest: { landscapeType: 16, gfxIndices: [3] },
+      },
+      {
+        goodType: 4,
+        goodId: 'stone',
+        harvestAtomic: 25,
+        harvest: { landscapeType: 15, gfxIndices: [2] },
+      },
     ],
   });
 }

@@ -1,16 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
   Building,
-  GatherSelection,
   JobAssignment,
   Marriage,
   Owner,
   Position,
+  Resource,
   Settler,
   SIGNPOST_NAV_RADIUS_NODES,
   SIGNPOST_SPACING_RADIUS_NODES,
   Signpost,
   UnderConstruction,
+  WorkFlag,
 } from '../../src/components/index.js';
 import { CommandQueue } from '../../src/core/command-queue.js';
 import type { Command } from '../../src/core/commands/index.js';
@@ -20,7 +21,11 @@ import { withinNodeRadius } from '../../src/nav/node-metric.js';
 import {
   buildOrderModule,
   DEFAULT_BUILD_ORDER,
+  FLAG_MAX_DISTANCE_NODES,
+  FLAG_MIN_DISTANCE_NODES,
   populationModule,
+  SIGNPOST_RING_OFFSETS,
+  SIGNPOST_TARGET_TOLERANCE_NODES,
   signpostCoverageModule,
   workforceModule,
 } from '../../src/systems/ai-player/index.js';
@@ -29,10 +34,11 @@ import { aiContent } from '../fixtures/ai-content.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 
 /**
- * The strategic AI modules (user plan, 2026-07-17): the workforce allocator, the opening build
- * order, signpost coverage, and population planning. Module runs are pure — each test inspects the
- * returned command list against a hand-built world, then the integration suite proves the full
- * registry stays deterministic and replayable.
+ * The strategic AI modules (user plan, 2026-07-17): the workforce allocator (builder reset +
+ * resource-side flag collectors + scout lifecycle), the opening build order, the HQ signpost ring,
+ * and population planning. Module runs are pure — each test inspects the returned command list
+ * against a hand-built world, then the integration suite proves the full registry stays
+ * deterministic and replayable.
  */
 
 const VIKING = 1;
@@ -49,9 +55,19 @@ const FARM_TYPE = 5;
 const WOOD = 1;
 const MUD = 2;
 const STONE = 4;
+const WOOD_HARVEST = 24;
+const STONE_HARVEST = 25;
+const MUD_HARVEST = 32;
 
 const HQ_X = 30;
 const HQ_Y = 16;
+
+/** Fixture resource spots, apart from each other and the HQ so flags and placements never collide. */
+const RESOURCE_SPOTS = {
+  mud: { x: 8, y: 8, good: MUD, harvest: MUD_HARVEST },
+  stone: { x: 48, y: 8, good: STONE, harvest: STONE_HARVEST },
+  wood: { x: 48, y: 24, good: WOOD, harvest: WOOD_HARVEST },
+} as const;
 
 function aiSim(seed = 1): Simulation {
   return new Simulation({ seed, content: aiContent(), map: grassNodeMap(64, 32) });
@@ -68,13 +84,26 @@ function ctxOf(sim: Simulation, tick = 0): SystemContext {
   };
 }
 
-function placeHq(sim: Simulation): void {
-  sim.enqueue({ kind: 'placeBuilding', buildingType: HQ_TYPE, x: HQ_X, y: HQ_Y, tribe: VIKING, owner: SEAT });
+function placeHq(sim: Simulation, x = HQ_X, y = HQ_Y): void {
+  sim.enqueue({ kind: 'placeBuilding', buildingType: HQ_TYPE, x, y, tribe: VIKING, owner: SEAT });
 }
 
 function spawnMen(sim: Simulation, count: number, jobType = CIVILIST): void {
   for (let i = 0; i < count; i++) {
     sim.enqueue({ kind: 'spawnSettler', jobType, x: 4 + 2 * i, y: 4, tribe: VIKING, owner: SEAT });
+  }
+}
+
+function placeResources(sim: Simulation, spots = Object.values(RESOURCE_SPOTS)): void {
+  for (const spot of spots) {
+    sim.enqueue({
+      kind: 'placeResource',
+      good: spot.good,
+      x: spot.x,
+      y: spot.y,
+      remaining: 5,
+      harvestAtomic: spot.harvest,
+    });
   }
 }
 
@@ -85,47 +114,97 @@ function entityOfBuilding(sim: Simulation, buildingType: number): Entity {
   throw new Error(`setup: building ${buildingType} missing`);
 }
 
+function plantPostAtHq(sim: Simulation): void {
+  const post = sim.world.create();
+  sim.world.add(post, Position, sim.world.get(entityOfBuilding(sim, HQ_TYPE), Position));
+  sim.world.add(post, Owner, { player: SEAT });
+  sim.world.add(post, Signpost, {
+    navRadius: SIGNPOST_NAV_RADIUS_NODES,
+    spacingRadius: SIGNPOST_SPACING_RADIUS_NODES,
+  });
+}
+
 describe('workforce module (collectResources)', () => {
-  it('hires the HQ gatherer trio, one scout, and turns the remaining civilians into builders', () => {
+  it('hires flag collectors beside their resources, one scout, and resets the rest to builders', () => {
     const sim = aiSim();
     placeHq(sim);
+    placeResources(sim);
     spawnMen(sim, 6);
     sim.step();
 
     const commands = [...workforceModule.run(sim.world, ctxOf(sim), SEAT)];
-    const assigns = commands.filter((c) => c.kind === 'assignWorker');
-    const selections = commands.filter((c) => c.kind === 'setGatherGood');
     const jobs = commands.filter((c) => c.kind === 'setJob');
-    // 3 collectors into the HQ's harvest slot (never the carrier slot)...
-    expect(assigns).toHaveLength(3);
-    for (const a of assigns) expect(a.jobPriority).toEqual([COLLECTOR]);
-    // ...each pinned to its own good, in the plan's clay → stone → wood order,
+    const flags = commands.filter((c) => c.kind === 'setWorkFlag');
+    const selections = commands.filter((c) => c.kind === 'setGatherGood');
+    // Three collectors in the plan's clay → stone → wood order, then the scout, then the two
+    // leftover civilians become builders (the total reset).
+    expect(jobs.map((j) => j.jobType)).toEqual([COLLECTOR, COLLECTOR, COLLECTOR, SCOUT, BUILDER, BUILDER]);
     expect(selections.map((s) => s.goodType)).toEqual([MUD, STONE, WOOD]);
-    // ...one scout, and the two leftover civilians become builders.
-    expect(jobs.map((j) => j.jobType)).toEqual([SCOUT, BUILDER, BUILDER]);
+    // Each flag stands 2–3 tiles (4–6 nodes) from its good's resource — never on top of it.
+    const spots = [RESOURCE_SPOTS.mud, RESOURCE_SPOTS.stone, RESOURCE_SPOTS.wood];
+    expect(flags).toHaveLength(3);
+    for (const [i, f] of flags.entries()) {
+      const spot = spots[i];
+      if (spot === undefined) throw new Error('unreachable: three spots for three flags');
+      const dist = Math.abs(f.x - spot.x) + Math.abs(f.y - spot.y);
+      expect(dist).toBeGreaterThanOrEqual(FLAG_MIN_DISTANCE_NODES);
+      expect(dist).toBeLessThanOrEqual(FLAG_MAX_DISTANCE_NODES);
+    }
     // Distinct settlers throughout — the allocator never claims one person twice.
-    const claimed = [...assigns, ...jobs].map((c) => c.entity);
+    const claimed = jobs.map((c) => c.entity);
     expect(new Set(claimed).size).toBe(claimed.length);
 
     // Applying the decision settles the seat: the next decision has nothing left to do.
     for (const c of commands) sim.enqueue(c);
     sim.step();
     expect([...workforceModule.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
-    const hq = entityOfBuilding(sim, HQ_TYPE);
-    const bound = [...sim.world.query(Settler, JobAssignment)].filter(
-      (e) => sim.world.get(e, JobAssignment).workplace === hq,
-    );
+    const bound = [...sim.world.query(Settler, WorkFlag)];
     expect(bound).toHaveLength(3);
-    expect(bound.map((e) => sim.world.get(e, GatherSelection).goodType).sort((a, b) => a - b)).toEqual(
+    expect(bound.map((e) => sim.world.get(e, WorkFlag).goodType).sort((a, b) => (a ?? 0) - (b ?? 0))).toEqual(
       [WOOD, MUD, STONE].sort((a, b) => a - b),
     );
+  });
+
+  it('moves a collector flag when its patch runs dry, and retires the collector when the map is', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    placeResources(sim, [RESOURCE_SPOTS.wood]);
+    spawnMen(sim, 1);
+    sim.step();
+    for (const c of workforceModule.run(sim.world, ctxOf(sim), SEAT)) sim.enqueue(c);
+    sim.step();
+
+    // Drain the standing node and offer a fresh one across the map — outside the flag's circle.
+    const FAR = { x: 8, y: 24 };
+    for (const e of sim.world.query(Resource)) sim.world.get(e, Resource).remaining = 0;
+    sim.enqueue({
+      kind: 'placeResource',
+      good: WOOD,
+      x: FAR.x,
+      y: FAR.y,
+      remaining: 5,
+      harvestAtomic: WOOD_HARVEST,
+    });
+    sim.step();
+    const move = [...workforceModule.run(sim.world, ctxOf(sim), SEAT)];
+    const flag = move.find((c) => c.kind === 'setWorkFlag');
+    if (flag === undefined) throw new Error('expected the flag to move to the fresh resource');
+    const dist = Math.abs(flag.x - FAR.x) + Math.abs(flag.y - FAR.y);
+    expect(dist).toBeGreaterThanOrEqual(FLAG_MIN_DISTANCE_NODES);
+    expect(dist).toBeLessThanOrEqual(FLAG_MAX_DISTANCE_NODES);
+
+    // With every wood node gone the collector rejoins the builder pool.
+    for (const e of sim.world.query(Resource)) sim.world.get(e, Resource).remaining = 0;
+    const retire = [...workforceModule.run(sim.world, ctxOf(sim), SEAT)];
+    const collector = [...sim.world.query(Settler, WorkFlag)][0];
+    expect(retire).toEqual([{ kind: 'setJob', entity: collector, jobType: BUILDER }]);
   });
 
   it('staffs a built workplace with one worker per operator trade, thinning the builder pool', () => {
     const sim = aiSim();
     placeHq(sim);
     sim.enqueue({ kind: 'placeBuilding', buildingType: FARM_TYPE, x: 40, y: 16, tribe: VIKING, owner: SEAT });
-    // Six builders: the gatherer trio and the scout claim four, staffing draws from the rest.
+    // No resources on this map: no collectors are wanted, staffing draws straight from the builders.
     spawnMen(sim, 6, BUILDER);
     sim.step();
 
@@ -134,6 +213,17 @@ describe('workforce module (collectResources)', () => {
     const staffing = commands.filter((c) => c.kind === 'assignWorker').filter((c) => c.building === farm);
     // One farmer despite 4 farmer slots (WORKERS_PER_TRADE), and never the farm's carrier slot.
     expect(staffing.map((c) => c.jobPriority)).toEqual([[FARMER]]);
+  });
+
+  it('turns an idle scout back into a builder once the signpost ring is done', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    sim.enqueue({ kind: 'spawnSettler', jobType: SCOUT, x: 10, y: 10, tribe: VIKING, owner: SEAT });
+    sim.step();
+    plantPostAtHq(sim); // the centre target is satisfied; every ring target falls off this small map
+    const commands = [...workforceModule.run(sim.world, ctxOf(sim), SEAT)];
+    const scout = [...sim.world.query(Settler)].find((e) => sim.world.get(e, Settler).jobType === SCOUT);
+    expect(commands).toEqual([{ kind: 'setJob', entity: scout, jobType: BUILDER }]);
   });
 
   it('idles a seat without a built headquarters (user rule: no HQ → no AI)', () => {
@@ -219,7 +309,7 @@ describe('build-order module (houseBuild)', () => {
 });
 
 describe('signpost-coverage module (guideBuild)', () => {
-  it('sends the scout to cover the first uncovered building, and rests when all are covered', () => {
+  it('starts the ring at the HQ, then rests when no ring target fits this small map', () => {
     const sim = aiSim();
     placeHq(sim);
     sim.enqueue({ kind: 'spawnSettler', jobType: SCOUT, x: 10, y: 10, tribe: VIKING, owner: SEAT });
@@ -229,18 +319,36 @@ describe('signpost-coverage module (guideBuild)', () => {
     expect(commands).toHaveLength(1);
     const order = commands[0];
     if (order?.kind !== 'placeSignpost') throw new Error('expected a placeSignpost order');
-    // The chosen spot still covers the HQ from its nav circle.
-    expect(withinNodeRadius(order.x, order.y, HQ_X, HQ_Y, SIGNPOST_NAV_RADIUS_NODES)).toBe(true);
+    // The first post lands beside the HQ (the ring's centre target).
+    expect(withinNodeRadius(order.x, order.y, HQ_X, HQ_Y, SIGNPOST_TARGET_TOLERANCE_NODES)).toBe(true);
 
-    // With a post standing over the HQ the module rests.
-    const post = sim.world.create();
-    sim.world.add(post, Position, sim.world.get(entityOfBuilding(sim, HQ_TYPE), Position));
-    sim.world.add(post, Owner, { player: SEAT });
-    sim.world.add(post, Signpost, {
-      navRadius: SIGNPOST_NAV_RADIUS_NODES,
-      spacingRadius: SIGNPOST_SPACING_RADIUS_NODES,
-    });
+    // With the centre post standing, every remaining ring target falls off the 64×32 map — done.
+    plantPostAtHq(sim);
     expect([...signpostCoverageModule.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
+  });
+
+  it('walks the ring outward on a map that fits it', () => {
+    const CENTER = { x: 128, y: 128 };
+    const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(256, 256) });
+    placeHq(sim, CENTER.x, CENTER.y);
+    sim.enqueue({ kind: 'spawnSettler', jobType: SCOUT, x: 100, y: 100, tribe: VIKING, owner: SEAT });
+    sim.step();
+    plantPostAtHq(sim);
+
+    const commands = [...signpostCoverageModule.run(sim.world, ctxOf(sim), SEAT)];
+    const order = commands[0];
+    if (order?.kind !== 'placeSignpost') throw new Error('expected a ring placement');
+    const target = SIGNPOST_RING_OFFSETS[1];
+    if (target === undefined) throw new Error('unreachable: the ring has eight offsets');
+    expect(
+      withinNodeRadius(
+        order.x,
+        order.y,
+        CENTER.x + target.dx,
+        CENTER.y + target.dy,
+        SIGNPOST_TARGET_TOLERANCE_NODES,
+      ),
+    ).toBe(true);
   });
 
   it('does nothing without a scout', () => {
@@ -307,6 +415,7 @@ describe('the full strategic registry — determinism and replay', () => {
   function liveRun(): Simulation {
     const sim = aiSim(11);
     placeHq(sim);
+    placeResources(sim);
     spawnMen(sim, 5);
     sim.enqueue({ kind: 'spawnSettler', jobType: WOMAN, x: 20, y: 8, tribe: VIKING, owner: SEAT });
     sim.enqueue({ kind: 'setPlayerAi', player: SEAT, enabled: true });
@@ -319,6 +428,7 @@ describe('the full strategic registry — determinism and replay', () => {
     const kinds = new Set(live.commands.log.map((c) => c.command.kind));
     expect(kinds.has('placeBuilding')).toBe(true); // the opening farm went through the queue
     expect(kinds.has('setJob')).toBe(true); // and so did the workforce decisions
+    expect(kinds.has('setWorkFlag')).toBe(true); // the collectors flag their resources
   });
 
   it('carries the opening list to completion unattended (stocked HQ + eight men is enough)', () => {
@@ -332,8 +442,9 @@ describe('the full strategic registry — determinism and replay', () => {
       owner: SEAT,
       fillStock: true,
     });
-    // Eight men: the gatherer trio and the scout claim four, four builders remain to raise the list.
-    // Fewer than five would starve the builder pool — the allocation priority is the user's plan.
+    placeResources(sim);
+    // Eight men: the collector trio and the scout claim four, four builders remain to raise the
+    // list — the allocation priority is the user's plan.
     spawnMen(sim, 8);
     sim.enqueue({ kind: 'setPlayerAi', player: SEAT, enabled: true });
     sim.run(3000);

@@ -28,7 +28,9 @@ flag-covered plot could burst to ~50 whole-map scans in one command tick. Still 
 the employment path, and fixed by the same ring search; do not size the work around this caller.
 
 `canPlaceWorkFlag` in the same file has the same shape: it rebuilds the entire blocked set to answer a
-question about one node.
+question about one node. The strategic AI's collector flag placement
+(`systems/ai-player/workforce.ts` `flagSpotNear`) is a further blocker-rebuild caller — bounded to a
+few calls per AI decision, but it would ride the same memoization for free.
 
 ## Why this wasn't done in the refactor pass
 
