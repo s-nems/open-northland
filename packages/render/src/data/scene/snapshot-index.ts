@@ -19,6 +19,10 @@ import { readActingAtomic, readBuiltPct, readPosition } from './snapshot-readers
  */
 const ATTACK_ATOMIC_ID = 81;
 
+/** The builder hammer action (`setatomic 7 39`), whose extracted `[gfxanimatomic]` row carries eight
+ *  directional frame lists. */
+const BUILD_HOUSE_ATOMIC_ID = 39;
+
 /** The per-good harvest atomic ids (`goodtypes.ini` `atomicForHarvesting`), transcribed by hand like
  *  {@link ATTACK_ATOMIC_ID} — the shared numeric contract, named so no bare id carries the meaning. */
 const HARVEST_ATOMIC_IDS = {
@@ -36,8 +40,8 @@ const HARVEST_ATOMIC_IDS = {
 const KISS_ATOMIC_IDS = [20, 21] as const;
 
 /**
- * Every atomic whose runner faces its target while the swing plays: the combat attack, the per-good
- * harvest actions ({@link HARVEST_ATOMIC_IDS}), and the wedding kiss pair ({@link KISS_ATOMIC_IDS}).
+ * Every atomic whose runner faces its target while the swing plays: construction, combat attack, the
+ * per-good harvest actions ({@link HARVEST_ATOMIC_IDS}), and the wedding kiss pair ({@link KISS_ATOMIC_IDS}).
  * A harvester, like an attacker, has stopped walking (no walk heading), so without a target-derived
  * facing it kept its last walk heading (or the default SE) and swung its axe/pick into empty air beside
  * the node it works — a woodcutter standing east of a tree chopped further east. Facing the node it
@@ -45,6 +49,7 @@ const KISS_ATOMIC_IDS = [20, 21] as const;
  * subset); the kissing couple likewise turn toward each other.
  */
 export const TARGET_FACING_ATOMIC_IDS: ReadonlySet<number> = new Set([
+  BUILD_HOUSE_ATOMIC_ID,
   ATTACK_ATOMIC_ID,
   ...Object.values(HARVEST_ATOMIC_IDS),
   ...KISS_ATOMIC_IDS,

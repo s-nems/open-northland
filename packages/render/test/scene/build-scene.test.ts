@@ -245,6 +245,19 @@ describe('buildScene', () => {
     expect(scene.find((d) => d.kind === 'settler' && d.ref === 1)?.facing).toBe(4); // faces E, into the tree
   });
 
+  it('a builder (atomic 39) faces the construction site from either side', () => {
+    // The builder stands EAST of the site and must face WEST (block 1), even though its stale path still
+    // points east. Action 39 has authored per-direction hammer lists, so the facing selects real frames.
+    const builder = entity(1, 2, 1, {
+      Settler: { tribe: 0 },
+      CurrentAtomic: { atomicId: 39, elapsed: 3, targetEntity: 2, targetTile: null },
+      PathFollow: { waypoints: [{ x: 3 * ONE, y: 1 * ONE }], index: 0 },
+    });
+    const site = entity(2, 1, 1, { Building: { buildingType: 1, built: 0 } });
+    const scene = buildScene(snapshotOf([builder, site]), FLAT_3x2);
+    expect(scene.find((d) => d.kind === 'settler' && d.ref === 1)?.facing).toBe(1); // W, into the site
+  });
+
   it('a NON-target atomic (a deposit) keeps its movement facing — target facing stays scoped', () => {
     // atomic 23 (pileup) is neither the attack nor a harvest action, so no target lookup applies.
     const depositor = entity(1, 1, 1, {
