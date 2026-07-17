@@ -191,8 +191,9 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
     // Intentional mechanic changes baked into this hash: the needs retune (seeded random starting
     // needs, retuned drains, piety only from forging) AND per-product production (cycles carry their
     // product `goodType` and pace at the uniform 180-tick design cycle instead of the extracted
-    // per-animation lengths).
-    expect(run.hash).toBe('53f618b5');
+    // per-animation lengths). The hash also covers string state now (`hashState()` used to skip
+    // string values entirely) — that moved the value without moving the trace below.
+    expect(run.hash).toBe('337c7ab3');
   });
 
   it('matches the golden atomic-action trace', () => {

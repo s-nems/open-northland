@@ -311,11 +311,21 @@ export class Simulation {
       h ^= n | 0;
       h = Math.imul(h, 16777619) >>> 0;
     };
+    // Length first, so a differing split of the same characters ('ab'+'c' vs 'a'+'bc') stays distinct;
+    // charCodeAt covers both halves of a surrogate pair.
+    const mixString = (s: string): void => {
+      mix(s.length);
+      for (let i = 0; i < s.length; i++) mix(s.charCodeAt(i));
+    };
     const hashValue = (v: unknown): void => {
       if (typeof v === 'number') {
         // hash both halves so large fixed-point doubles are fully covered.
         mix(v | 0);
         mix(Math.trunc(v / 0x100000000));
+      } else if (typeof v === 'string') {
+        // String values carry real state (an AtomicEffect's `kind`, ChildOrder's `child`), so a run
+        // diverging only in one must move the hash.
+        mixString(v);
       } else if (typeof v === 'boolean') {
         mix(v ? 1 : 0);
       } else if (v === null || v === undefined) {
@@ -330,7 +340,7 @@ export class Simulation {
         }
       } else if (typeof v === 'object') {
         for (const k of Object.keys(v as object).sort()) {
-          for (const ch of k) mix(ch.charCodeAt(0));
+          mixString(k);
           hashValue((v as Record<string, unknown>)[k]);
         }
       }
@@ -343,7 +353,7 @@ export class Simulation {
     for (const e of ids) {
       mix(e);
       for (const [name, val] of this.world.componentEntries(e)) {
-        for (const ch of name) mix(ch.charCodeAt(0));
+        mixString(name);
         hashValue(val);
       }
     }
