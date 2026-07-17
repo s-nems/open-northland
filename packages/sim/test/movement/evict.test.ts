@@ -11,16 +11,26 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, nodeOfPosition, ONE, positionOfNode, Simulation } from '../../src/index.js';
-import { constructionSystem } from '../../src/systems/index.js';
+import { constructionSystem, dynamicBlockOverlay } from '../../src/systems/index.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
-import { HUT, HUT_FOOTPRINT, mappedSim, terrainOf, VIKING } from '../footprint/building-placement/support.js';
+import {
+  HUT,
+  HUT_FOOTPRINT,
+  mappedSim,
+  terrainOf,
+  VIKING,
+  WOODCUTTER,
+} from '../footprint/building-placement/support.js';
 
 /**
- * Footprint eviction — the moment a plot becomes impassable (a placement onto occupied ground, a
- * construction finish, a home tier upgrade growing the walls), settlers standing inside are displaced
- * to the nearest free cell instead of being walled in. The HUT fixture's body is (0,0)+(1,0) with the
- * door at (-1,0); anchored at (5,5) the body nodes are (5,5) and (6,5), the door (4,5).
+ * Displacement — a settler never ends up standing inside walls, from either side. Building-first
+ * (`evictSettlersFromFootprint`): the moment a plot becomes impassable (a placement onto occupied
+ * ground, a construction finish, a home tier upgrade growing the walls), settlers standing inside are
+ * pushed to the nearest free cell. Settler-first (`evictSettlerFromBlockedSpawn`): a settler spawned
+ * onto an already-standing body is pushed out, which is the case an authored map load hits.
+ * The HUT fixture's body is (0,0)+(1,0) with the door at (-1,0); anchored at (5,5) the body nodes are
+ * (5,5) and (6,5), the door (4,5).
  */
 
 const PLAYER = 0;
@@ -57,7 +67,24 @@ function onBody(sim: Simulation, e: Entity): boolean {
   return BODY.some((c) => c.x === n.x && c.y === n.y);
 }
 
-describe('evictSettlersFromFootprint — settlers never end up standing inside walls', () => {
+/** The one settler a spawn test created — throws when absent, so a dropped command fails loudly rather
+ *  than passing vacuously. */
+function spawnedSettler(sim: Simulation): Entity {
+  const all = [...sim.world.query(Settler)];
+  if (all.length !== 1) throw new Error(`expected exactly one spawned settler, got ${all.length}`);
+  return all[0] as Entity;
+}
+
+/** Can the settler stand — and therefore leave — where it ended up? Walkable ground, clear of every
+ *  building/resource walk-block, which is exactly what the pathfinder demands of a route's mid-cells. */
+function standable(sim: Simulation, e: Entity): boolean {
+  const terrain = terrainOf(sim);
+  const n = nodeOf(sim, e);
+  const node = terrain.nodeAt(n.x, n.y);
+  return terrain.isWalkable(node) && !dynamicBlockOverlay(sim.world, ctxOf(sim), terrain).has(node);
+}
+
+describe('footprint displacement — settlers never end up standing inside walls', () => {
   it('placing a building onto standing settlers pushes them off every body cell', () => {
     const sim = mappedSim();
     const onAnchor = settlerAtNode(sim, 5, 5, PLAYER);
@@ -103,6 +130,45 @@ describe('evictSettlersFromFootprint — settlers never end up standing inside w
     constructionSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(site, Building).built).toBe(ONE); // finished this tick
     expect(onBody(sim, stray)).toBe(false); // and the stray was pushed outside the walls
+  });
+
+  it('a settler spawned inside a standing house body is pushed outside it', () => {
+    const sim = mappedSim();
+    // The authored map-load order: every `placeBuilding` enqueues BEFORE any `spawnSettler`, so the
+    // building's own eviction pass runs while the settler does not yet exist — the spawn push is what
+    // covers this. Both land in one tick, exactly as `enqueuePlacements` sends them.
+    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, tribe: VIKING, x: 6, y: 5, owner: PLAYER });
+    sim.step();
+    const walled = spawnedSettler(sim);
+    expect(onBody(sim, walled)).toBe(false);
+    // The point of the push: the settler stands somewhere it can actually walk out of.
+    expect(standable(sim, walled)).toBe(true);
+  });
+
+  it('a settler spawned on free ground keeps its authored cell', () => {
+    const sim = mappedSim();
+    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, tribe: VIKING, x: 10, y: 10, owner: PLAYER });
+    sim.step();
+    expect(nodeOf(sim, spawnedSettler(sim))).toEqual({ x: 10, y: 10 });
+  });
+
+  it('a settler spawned on the door cell stays — the door is a passable stand, not a wall', () => {
+    const sim = mappedSim();
+    const door = HUT_FOOTPRINT.door;
+    const at = { x: ANCHOR.x + door.dx, y: ANCHOR.y + door.dy };
+    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    sim.enqueue({
+      kind: 'spawnSettler',
+      jobType: WOODCUTTER,
+      tribe: VIKING,
+      x: at.x,
+      y: at.y,
+      owner: PLAYER,
+    });
+    sim.step();
+    expect(nodeOf(sim, spawnedSettler(sim))).toEqual(at);
   });
 
   it('a home tier upgrade evicts settlers from the cells the larger footprint encloses', () => {
