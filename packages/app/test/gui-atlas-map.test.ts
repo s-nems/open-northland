@@ -1,9 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { GUI_ATLAS_FRAME_COUNT, GUI_FRAME, GUI_FRAMES, guiFrameIndex } from '../src/content/gui-atlas-map.js';
+import {
+  GUI_ATLAS_FRAME_COUNT,
+  GUI_FRAME,
+  GUI_FRAMES,
+  type GuiFrameMeta,
+  type GuiFrameName,
+  guiFrameIndex,
+} from '../src/content/gui-atlas-map.js';
 import { GUI_PALETTES } from '../src/content/gui-gfx.js';
 
 const UNKNOWN_NAME = /^unknown_(\d{3})$/;
 const VALID_PALETTES = new Set<string>(GUI_PALETTES);
+/** The table at its declared shape: `GUI_FRAMES` is `as const`, so a row that authors no `states`
+ *  has no such property to read — these assertions are about the interface, not one row's literal. */
+const FRAMES: readonly GuiFrameMeta[] = GUI_FRAMES;
 
 describe('gui-atlas-map', () => {
   it('is total over the atlas: one entry per frame, matching the sheet frame count', () => {
@@ -46,8 +56,8 @@ describe('gui-atlas-map', () => {
   });
 
   it('references only existing frame names from every state list', () => {
-    const names = new Set(GUI_FRAMES.map((f) => f.name));
-    for (const frame of GUI_FRAMES) {
+    const names = new Set<string>(FRAMES.map((f) => f.name));
+    for (const frame of FRAMES) {
       for (const state of frame.states ?? []) {
         expect(names.has(state)).toBe(true);
       }
@@ -57,12 +67,14 @@ describe('gui-atlas-map', () => {
   it('keeps the GUI_FRAME named constants in lock-step with the catalog', () => {
     for (const [name, index] of Object.entries(GUI_FRAME)) {
       expect(GUI_FRAMES[index]?.name).toBe(name);
-      expect(guiFrameIndex(name)).toBe(index);
+      expect(guiFrameIndex(name as GuiFrameName)).toBe(index);
     }
   });
 
   it('resolves a name to its index and throws on an unknown name', () => {
     expect(guiFrameIndex('overview_toggle_button')).toBe(145);
-    expect(() => guiFrameIndex('does_not_exist')).toThrow(/no frame named/);
+    // The runtime backstop for a caller that reached here with an unchecked string — the cast is
+    // what such a caller looks like, since a typed one cannot compile.
+    expect(() => guiFrameIndex('does_not_exist' as GuiFrameName)).toThrow(/no frame named/);
   });
 });
