@@ -58,9 +58,9 @@ import { deliveryTargetFor } from './routing.js';
  *     until a hauler delivers. A builder is committed to its site — it does not fall through to haul someone
  *     else's goods while a foundation of its own stands unraised.
  *
- * The hammer and wait stands go through {@link claimWorkCell}: a crew spreads over the site's legal perimeter
- * instead of stacking on its finished-building interaction cell — body collision can't do it (civilians are deliberate
- * pass-through, and standing units are never displaced; see the destack module doc).
+ * The hammer and wait stands go through {@link claimWorkCell}: a crew spreads over the site's legal
+ * perimeter instead of stacking on its finished-building interaction cell — body collision can't do it
+ * (civilians are deliberate pass-through, and standing units are never displaced; see the destack module doc).
  *
  * Sits below the bound-producer loop and above gather/porter/carrier, so a builder builds before it ferries.
  * `jobType` is non-null here.
