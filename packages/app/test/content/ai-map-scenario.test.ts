@@ -4,12 +4,12 @@ import { components } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { buildCollisionTerrain } from '../../src/content/collision.js';
 import { buildingFootprints, type ContentIr } from '../../src/content/ir.js';
-import { mapResourceObjectNames } from '../../src/game/sandbox/index.js';
+import { mapResourceObjectNames, spawnMapResources } from '../../src/game/sandbox/index.js';
 import type { AuthoredJoinRows } from '../../src/slice/authored-placements.js';
 import { runAuthoredSlice } from '../../src/slice/vertical-slice.js';
 import { contentDir, hasRealIr, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
 
-const { Building, GatherSelection, JobAssignment, Owner, UnderConstruction, isAiPlayer } = components;
+const { Building, Owner, Settler, UnderConstruction, WorkFlag, isAiPlayer } = components;
 
 /** The decoded map under test — a free-play start where every seat opens with an authored, stocked
  *  viking headquarters (the fortress-map convention the AI keys on). */
@@ -30,7 +30,10 @@ function mapPath(): string {
  * synthetic sim fixtures cannot (real building/good ids, authored owners, real footprints).
  */
 describe.runIf(hasRealIr() && existsSync(mapPath()))('strategic AI on a decoded map', () => {
-  it('an AI-flagged seat opens its build order from the authored headquarters', async () => {
+  // A heavy real-content run: ~17k spawned resource nodes + 120 ticks with AI decisions.
+  it('an AI-flagged seat opens its build order from the authored headquarters', {
+    timeout: 60_000,
+  }, async () => {
     const { merge } = await loadContentUnderTest();
     const map = JSON.parse(readFileSync(mapPath(), 'utf8'));
     // The raw fetched-IR document, exactly what the browser flow hands these consumers.
@@ -49,6 +52,9 @@ describe.runIf(hasRealIr() && existsSync(mapPath()))('strategic AI on a decoded 
     expect(sim).not.toBeNull();
     if (sim === null) return;
     sim.enqueue({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true });
+    // The map's own trees/stone/clay as harvestable Resource nodes — the `?map=` entry does the
+    // same spawn, and the collectors flag themselves beside these.
+    spawnMapResources(sim, map.objects, ir);
     sim.run(RUN_TICKS);
 
     expect(isAiPlayer(sim.world, AI_SEAT)).toBe(true);
@@ -63,11 +69,17 @@ describe.runIf(hasRealIr() && existsSync(mapPath()))('strategic AI on a decoded 
     expect(hq).not.toBeNull(); // the authored headquarters resolved and stayed built
     expect(sites).toBeGreaterThanOrEqual(1);
     expect(sites).toBeLessThanOrEqual(2);
-    // The workforce allocator bound its HQ gatherers with per-good selections.
-    let selections = 0;
-    for (const e of sim.world.query(JobAssignment, GatherSelection)) {
-      if (sim.world.get(e, JobAssignment).workplace === hq) selections++;
+    // The workforce allocator flagged collectors beside real resources: each owned flag-bound
+    // gatherer is pinned to one collected good. How many of the three goods get a collector depends
+    // on what the map actually holds, but a forest map guarantees at least the wood one.
+    const pinned: number[] = [];
+    for (const e of sim.world.query(Settler, WorkFlag)) {
+      if (sim.world.tryGet(e, Owner)?.player !== AI_SEAT) continue;
+      const goodType = sim.world.get(e, WorkFlag).goodType;
+      if (goodType !== undefined) pinned.push(goodType);
     }
-    expect(selections).toBe(3);
+    expect(pinned.length).toBeGreaterThanOrEqual(1);
+    expect(pinned.length).toBeLessThanOrEqual(3);
+    expect(new Set(pinned).size).toBe(pinned.length); // one collector per good, never two
   });
 });

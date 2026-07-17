@@ -3,10 +3,11 @@
 **Area:** sim · **Origin:** enemy-AI design close-out 2026-07-17; narrowed after the strategic
 modules landed (workforce / build order / signpost coverage / population) · **Priority:** P2
 
-The signpost-coverage half of the original HomeExpansion idea is DONE: the GuideBuild module keeps
-every owned building inside a post's nav circle (`systems/ai-player/signpost-coverage.ts`). What
-remains is the pressure-triggered half (genre lesson from Petra: expansion triggers on game-state
-conditions, not timers):
+The signpost-coverage half of the original HomeExpansion idea is DONE: the GuideBuild module tiles
+one large covered disc around the HQ — a centre post plus an eight-post ring
+(`systems/ai-player/signpost-coverage.ts`, user plan 2026-07-17). What remains is the
+pressure-triggered half (genre lesson from Petra: expansion triggers on game-state conditions, not
+timers):
 
 1. The build-order executor stalls silently when no legal spot exists within
    `BUILD_SEARCH_MAX_RADIUS_NODES` of the HQ (`systems/ai-player/build-order.ts` — the
