@@ -6,6 +6,7 @@ import {
   Marriage,
   Residence,
   Stockpile,
+  setStockAmount,
   stockpileEntries,
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
@@ -136,8 +137,7 @@ export function consumeFoodUnits(world: World, ctx: SystemContext, house: Entity
     if (left <= 0) break;
     if (amount <= 0 || !isFood(ctx, goodType)) continue;
     const take = Math.min(amount, left);
-    stock.amounts.set(goodType, amount - take);
-    world.touchComponent(Stockpile);
+    setStockAmount(world, stock.amounts, goodType, amount - take);
     left -= take;
   }
 }

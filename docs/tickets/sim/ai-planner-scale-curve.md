@@ -47,10 +47,12 @@ warning that this curve moves with unrelated agent fixes, so always re-measure t
 
 ## Not a duplicate of the known planner tickets (but they overlap — re-measure both)
 
-- `sim/confined-idle-worker-dormancy.md` (P2) is the *late-run, confined, idle* rescan cost (~0.7 ms →
-  ~12 ms by ticks 2000–2300). This curve is early-window with crews busy, and its 1-settlement figure
-  (0.635 ms) **independently reproduces that ticket's ~0.7 ms early-run baseline** — a useful
-  cross-check that both measurements are sound. Fixing dormancy may or may not move this curve.
+- The *late-run, confined, idle* rescan cost (~0.7 ms → ~12 ms by ticks 2000–2300) was FIXED on
+  2026-07-17 by the porter dormancy gate (`systems/agents/economy/porter-dormancy.ts`; 1-settlement
+  2400-tick median 8.94 → 0.674 ms). This curve is early-window with crews busy, and its 1-settlement
+  figure (0.635 ms) independently reproduced the pre-fix ~0.7 ms early-run baseline. Re-measure the
+  curve on top of the gate before investigating — busy crews don't go dormant, so the superlinear
+  early-window growth may stand unchanged.
 - `sim/lazy-target-cell-indexes.md` (P3) and `sim/incremental-spatial-index-memos.md` (P2) both touch
   the index machinery the planner reads through; either could be the mechanism here.
 

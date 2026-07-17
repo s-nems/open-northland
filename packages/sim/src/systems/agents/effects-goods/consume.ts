@@ -1,4 +1,4 @@
-import { BerryBush, Carrying, Position, Stockpile } from '../../../components/index.js';
+import { BerryBush, Carrying, Position, Stockpile, setStockAmount } from '../../../components/index.js';
 import { eventAt } from '../../../core/events.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
@@ -21,8 +21,7 @@ export function consumeFood(world: World, settler: Entity, from: Entity | null, 
     if (stock === undefined) return; // source gone — nothing to consume
     const have = stock.amounts.get(goodType) ?? 0;
     if (have <= 0) return; // emptied since the planner chose it — eat anyway, but take nothing
-    stock.amounts.set(goodType, have - 1);
-    world.touchComponent(Stockpile);
+    setStockAmount(world, stock.amounts, goodType, have - 1);
     return;
   }
   // No store: consume from the settler's own carried load.

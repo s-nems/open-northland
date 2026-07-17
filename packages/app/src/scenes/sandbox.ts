@@ -53,8 +53,7 @@ export const SANDBOX_SETTLEMENT_PITCH = Math.max(MAP_W, MAP_H);
 const INITIAL_ZOOM = 0.5;
 /** Enough for the slowest first delivery — a mined unit (clay: 6 strikes × 23-tick digs + rests) dug,
  *  carried to its flag, and banked. Measured: every headless check passes by tick 825 (deterministic,
- *  seed 41); 1200 keeps ~1.45× headroom while skipping the late-run regime where confined idle workers
- *  make ticks ~10× dearer (docs/tickets/sim/confined-idle-worker-dormancy.md). */
+ *  seed 41); 1200 keeps ~1.45× headroom. */
 const RUN_TICKS = 1200;
 
 /**
