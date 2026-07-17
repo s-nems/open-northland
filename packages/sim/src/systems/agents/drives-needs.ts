@@ -108,7 +108,7 @@ export function planNeeds(
       return true;
     }
     // Hungry but no food anywhere reachable: fall through to normal work (the needs loop keeps
-    // hunger clamped at ONE; a later slice handles starvation when food is truly absent).
+    // hunger clamped at ONE, and the NeedsSystem's starvation bite drains the pool until food appears).
   }
 
   if (settler.fatigue >= FATIGUE_SLEEP_THRESHOLD) {

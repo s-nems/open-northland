@@ -212,11 +212,21 @@ export const CHARACTER_SPECS = {
     rosterId: 'boy',
     walkSeq: 'human_child_boy_generic_walk',
     waitSeq: 'human_child_boy_generic_wait',
+    // The child bodies author their own meal/nap clips (`[bobseq]` `human_child_*_generic_eat`/`_sleep`);
+    // the sim runs the eat/sleep drives for children, so bind them or a feeding child holds its wait pose.
+    atomics: {
+      [EAT_ATOMIC]: { seq: 'human_child_boy_generic_eat' },
+      [SLEEP_ATOMIC]: { seq: 'human_child_boy_generic_sleep' },
+    },
   },
   girl: {
     rosterId: 'girl',
     walkSeq: 'human_child_girl_generic_walk',
     waitSeq: 'human_child_girl_generic_wait_1',
+    atomics: {
+      [EAT_ATOMIC]: { seq: 'human_child_girl_generic_eat' },
+      [SLEEP_ATOMIC]: { seq: 'human_child_girl_generic_sleep' },
+    },
   },
   baby: {
     rosterId: 'baby',

@@ -11,8 +11,9 @@
  * ids 1–4 are the non-working life stages, so a birth (`family/children.ts`) creates a baby rather
  * than an instantly-employable adult, and the JobSystem leaves a baby/child unemployed.
  *
- * The AI planner skips an {@link Age}-bearing settler, so a baby/child does not run the adult needs-drives
- * (eat/sleep/pray) — the original's "a baby is cared for, it doesn't self-feed". It keys on the `Age`
+ * The AI planner keeps an {@link Age}-bearing settler out of all economy/combat work; a BABY also skips the
+ * needs-drives (the original's "a baby is cared for, it doesn't self-feed"), while a CHILD runs the eat/sleep
+ * drives (the original binds child eat/sleep animations — see `ai.ts`). The planner keys on the `Age`
  * component rather than {@link isNonWorkingAge} to dodge a jobType-id collision: a synthetic fixture's adult
  * job id can equal a real age-class id, but only a born-young settler carries `Age`. `isNonWorkingAge` stays
  * the structural id→stage predicate the JobSystem uses.
