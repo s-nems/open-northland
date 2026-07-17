@@ -12,7 +12,8 @@ const META: Parameters<typeof summarize>[2] = {
     settlements: 2,
     fightersPerSide: 100,
     mapCells: { width: 192, height: 140 },
-    settlers: 340,
+    settlersAtStart: 340,
+    settlersAtEnd: 340,
     buildings: 82,
   },
   ticks: { warmup: 10, measured: 4 },
@@ -103,5 +104,13 @@ describe('formatReport', () => {
     expect(text).toContain('abc123');
     expect(text).toContain('tick total: median 2.250 ms');
     expect(text).toMatch(/ai\s+1\.500\s+1\.500\s+100\.0%/);
+  });
+
+  it('reports a population that moved across the window as a range, not a single number', () => {
+    // A fighter run thins out as the battle resolves; the reader must see that the medians span two
+    // populations rather than trust a single headline count.
+    const drifted = { ...META, world: { ...META.world, settlersAtEnd: 210 } };
+    const text = formatReport(summarize(new Map([['ai', [1]]]), [1], drifted));
+    expect(text).toContain('340→210 settlers');
   });
 });

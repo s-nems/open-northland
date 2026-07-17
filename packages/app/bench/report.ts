@@ -19,12 +19,15 @@ export interface BenchReport {
     readonly settlements: number;
     readonly fightersPerSide: number;
     readonly mapCells: { readonly width: number; readonly height: number };
-    /** Live settlers at the START of the measured window (the armies take casualties as it runs). */
-    readonly settlers: number;
+    /** Live settlers at the start / end of the measured window. They differ once fighters are on (the
+     *  battle resolves as the window runs) — a gap here means the medians span two populations. */
+    readonly settlersAtStart: number;
+    readonly settlersAtEnd: number;
     readonly buildings: number;
   };
   readonly ticks: { readonly warmup: number; readonly measured: number };
-  /** Wall cost of a whole `step()` — the budget the per-system rows break down. */
+  /** Wall cost of a whole instrumented `step()`. The per-system rows do not sum to it: the residual is
+   *  scheduling plus the harness's own two `performance.now` calls per system. */
   readonly tickMs: { readonly medianMs: number; readonly p95Ms: number };
   /** Per-system rows, heaviest median first. */
   readonly systems: readonly SystemStat[];
@@ -38,11 +41,10 @@ export interface BenchReport {
  * Returns 0 for an empty sample.
  */
 export function percentile(samples: readonly number[], p: number): number {
-  if (samples.length === 0) return 0;
   const sorted = [...samples].sort((a, b) => a - b);
   const rank = Math.ceil((p / 100) * sorted.length);
   const index = Math.min(sorted.length - 1, Math.max(0, rank - 1));
-  return sorted[index] as number;
+  return sorted[index] ?? 0; // empty sample -> 0
 }
 
 /** Fold the raw samples into the report. `perSystem` holds one sample per system per measured tick;
@@ -57,18 +59,16 @@ export function summarize(
     readonly stateHash: string;
   },
 ): BenchReport {
-  const medians = new Map<string, number>();
-  for (const [name, samples] of perSystem) medians.set(name, percentile(samples, 50));
-  const medianTotal = [...medians.values()].reduce((a, b) => a + b, 0);
+  const rows = [...perSystem].map(([name, samples]) => ({
+    name,
+    medianMs: percentile(samples, 50),
+    p95Ms: percentile(samples, 95),
+  }));
+  const medianTotal = rows.reduce((sum, r) => sum + r.medianMs, 0);
 
-  const systems: SystemStat[] = [...perSystem.keys()]
-    .map((name) => ({
-      name,
-      medianMs: medians.get(name) as number,
-      p95Ms: percentile(perSystem.get(name) as readonly number[], 95),
-      // A zero total (an empty window) would make every share NaN — report 0 instead.
-      sharePct: medianTotal === 0 ? 0 : ((medians.get(name) as number) / medianTotal) * 100,
-    }))
+  const systems: SystemStat[] = rows
+    // A zero total (an empty window) would make every share NaN — report 0 instead.
+    .map((r) => ({ ...r, sharePct: medianTotal === 0 ? 0 : (r.medianMs / medianTotal) * 100 }))
     // Codepoint order, not localeCompare: ICU collation varies by environment (AGENTS.md).
     .sort((a, b) => b.medianMs - a.medianMs || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 
@@ -88,9 +88,14 @@ function ms(value: number): string {
 /** The human-readable table (stdout). The machine-readable twin is the {@link BenchReport} itself. */
 export function formatReport(report: BenchReport): string {
   const { world, ticks, tickMs } = report;
+  // A population that moved across the window is reported as a range: the medians then span two worlds.
+  const settlers =
+    world.settlersAtEnd === world.settlersAtStart
+      ? `${world.settlersAtStart}`
+      : `${world.settlersAtStart}→${world.settlersAtEnd}`;
   const lines = [
     `sim benchmark — ${world.settlements} settlement(s) + ${world.fightersPerSide}v${world.fightersPerSide} fighters`,
-    `world: ${world.mapCells.width}x${world.mapCells.height} cells, ${world.settlers} settlers, ${world.buildings} buildings`,
+    `world: ${world.mapCells.width}x${world.mapCells.height} cells, ${settlers} settlers, ${world.buildings} buildings`,
     `ticks: ${ticks.warmup} warmup + ${ticks.measured} measured   state hash: ${report.stateHash}`,
     `tick total: median ${ms(tickMs.medianMs)} ms   p95 ${ms(tickMs.p95Ms)} ms`,
     '',

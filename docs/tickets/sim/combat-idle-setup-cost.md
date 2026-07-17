@@ -29,5 +29,5 @@ Keep winners canonical and goldens byte-identical — this is elide-provably-emp
 ## Verify
 
 `npm test` (goldens unmoved), `npm run check`, `npm run build`; a before/after per-tick bench on a
-fighter-heavy peaceful world (throwaway script or the harness from
-docs/tickets/sim/perf-benchmark-harness.md).
+fighter-heavy world (`ON_BENCH_FIGHTERS=200 npm run bench:sim` — note a fighter run is
+non-stationary, so compare like-for-like windows).

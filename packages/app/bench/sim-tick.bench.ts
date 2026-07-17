@@ -1,21 +1,17 @@
 import { writeFileSync } from 'node:fs';
-import { components } from '@open-northland/sim';
+import { type Component, components, type Simulation } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { installSimInstrument } from '../src/diag/perf-marks.js';
 import { type BenchReport, formatReport, summarize } from './report.js';
 import { type BenchWorldOptions, benchWorld } from './world.js';
 
 /**
- * The sim's per-system benchmark — `npm run bench:sim` (AGENTS.md golden rule 6, "per-tick sim cost
- * scales with active work, never entities²", as a number instead of a feeling).
+ * The sim's per-system benchmark — `npm run bench:sim`. It measures what golden rule 6 (AGENTS.md)
+ * asserts and no test can: that per-tick cost scales with active work, not entities².
  *
- * It runs the deterministic {@link benchWorld} headless, times every system invocation through the sim's
- * own instrumentation seam (`Simulation.setInstrument`, reused via the app's {@link installSimInstrument}
- * — so `performance.now` stays out of `packages/sim/src`, which its hygiene scan enforces), and reports
- * median/p95 ms per system plus the whole-tick cost.
- *
- * It is a tool, not a test: `*.bench.ts` never matches the repo's default vitest include, so `npm test`
- * and CI never collect it. `bench/vitest.config.ts` is what makes it runnable.
+ * It runs the deterministic {@link benchWorld} headless, times every system invocation through
+ * `Simulation.setInstrument` (the sim's own seam — the timer lives here, in the app layer, so
+ * `performance.now` stays out of `packages/sim/src`), and reports median/p95 ms per system plus the
+ * whole-tick cost. See docs/TESTING.md for how it fits the pyramid and how it is kept out of `npm test`.
  *
  * Knobs (env, all optional): `ON_BENCH_SETTLEMENTS`, `ON_BENCH_FIGHTERS`, `ON_BENCH_TICKS`,
  * `ON_BENCH_WARMUP`, `ON_BENCH_JSON=<path>` (write the machine-readable report).
@@ -23,44 +19,49 @@ import { type BenchWorldOptions, benchWorld } from './world.js';
 
 const { Building, Settler } = components;
 
-/** Defaults: 4 settlements (~290 working settlers) + 400 fighters ≈ 690 units on a 196x236 map — RTS
- *  scale in a window that still finishes in under a minute on a laptop. Turn them up for a scaling curve. */
+/** Defaults: 4 settlements (~290 working settlers, 164 buildings) on a 196x196 map — RTS scale in a
+ *  window that finishes in well under a minute. Turn `ON_BENCH_SETTLEMENTS` up for a scaling curve. */
 const DEFAULT_SETTLEMENTS = 4;
-const DEFAULT_FIGHTERS_PER_SIDE = 200;
+/**
+ * No fighters by default: a battle resolves inside the window (65% casualties by tick 300), so a
+ * fighter run's medians blend a crowded regime with a thinned one and drift with combat balance rather
+ * than with sim cost. The default is the stationary economy world; `ON_BENCH_FIGHTERS=200` opts into
+ * combat profiling, and the report's start/end populations show what the window did.
+ */
+const DEFAULT_FIGHTERS_PER_SIDE = 0;
 const DEFAULT_MEASURED_TICKS = 300;
 /** Warmup ticks, excluded from the samples: the settlement's first ticks are atypical (the JobSystem's
  *  adopt pass binds every crew, routes are cold) and JIT tiering has not settled. */
 const DEFAULT_WARMUP_TICKS = 60;
-/** Ticks the determinism check replays. Short by design — it proves the world is reproducible, which the
- *  first diverging tick already shows; the full measured window would only double the bench's wall time. */
-const DETERMINISM_TICKS = 40;
+/** Ticks the determinism check replays — long enough to reach the steady economy (and, when fighters
+ *  are on, the first deaths at ~tick 50, so the check covers combat rather than the approach). */
+const DETERMINISM_TICKS = 200;
 
 /** The bench builds and runs whole worlds — far past vitest's 5 s default. */
 const BENCH_TIMEOUT_MS = 30 * 60_000;
-const DETERMINISM_TIMEOUT_MS = 5 * 60_000;
+const DETERMINISM_TIMEOUT_MS = 10 * 60_000;
 
-/** A positive integer env knob, or `fallback` when unset/blank. Throws on a malformed value rather than
- *  silently benchmarking a different world than the caller asked for. */
-function intEnv(name: string, fallback: number): number {
-  const raw = process.env[name];
+/** An integer env knob of at least `min`, or `fallback` when unset/blank. Throws on a malformed or
+ *  out-of-range value rather than silently benchmarking a different world than the caller asked for. */
+function intEnv(name: string, fallback: number, min: number): number {
+  // Trim first: `Number(' ')` is 0, so a blank-but-not-empty value would pass validation as zero.
+  const raw = process.env[name]?.trim();
   if (raw === undefined || raw === '') return fallback;
   const value = Number(raw);
-  if (!Number.isInteger(value) || value < 0)
-    throw new Error(`${name} must be a non-negative integer, got '${raw}'`);
+  if (!Number.isInteger(value) || value < min) {
+    throw new Error(`${name} must be an integer >= ${min}, got '${raw}'`);
+  }
   return value;
 }
 
 function worldOptions(): BenchWorldOptions {
   return {
-    settlements: Math.max(1, intEnv('ON_BENCH_SETTLEMENTS', DEFAULT_SETTLEMENTS)),
-    fightersPerSide: intEnv('ON_BENCH_FIGHTERS', DEFAULT_FIGHTERS_PER_SIDE),
+    settlements: intEnv('ON_BENCH_SETTLEMENTS', DEFAULT_SETTLEMENTS, 1),
+    fightersPerSide: intEnv('ON_BENCH_FIGHTERS', DEFAULT_FIGHTERS_PER_SIDE, 0),
   };
 }
 
-function count(
-  sim: ReturnType<typeof benchWorld>['sim'],
-  component: Parameters<typeof sim.world.query>[0],
-): number {
+function count(sim: Simulation, component: Component<unknown>): number {
   let n = 0;
   for (const _ of sim.world.query(component)) n++;
   return n;
@@ -72,30 +73,22 @@ function measure(options: BenchWorldOptions, warmup: number, measured: number): 
 
   const perSystem = new Map<string, number[]>();
   let sampling = false;
-  installSimInstrument(sim, (name, startMs, endMs) => {
+  sim.setInstrument((name, run) => {
+    // Timed tight around `run`; the bookkeeping below lands outside the interval.
+    const start = performance.now();
+    run();
+    const elapsed = performance.now() - start;
     if (!sampling) return;
-    // `installSimInstrument` prefixes the schedule's system name with `sim/` for the DevTools timeline;
-    // the report's rows are the bare SYSTEM_ORDER names.
-    const key = name.startsWith('sim/') ? name.slice('sim/'.length) : name;
-    let samples = perSystem.get(key);
+    let samples = perSystem.get(name);
     if (samples === undefined) {
       samples = [];
-      perSystem.set(key, samples);
+      perSystem.set(name, samples);
     }
-    samples.push(endMs - startMs);
+    samples.push(elapsed);
   });
 
   for (let i = 0; i < warmup; i++) sim.step();
-
-  // Counted at the start of the measured window, so the reported world is the one actually profiled:
-  // the armies take casualties as the window runs, so an end-of-run count would understate it.
-  const world = {
-    settlements: options.settlements,
-    fightersPerSide: options.fightersPerSide,
-    mapCells: { width: terrain.width, height: terrain.height },
-    settlers: count(sim, Settler),
-    buildings: count(sim, Building),
-  };
+  const settlersAtStart = count(sim, Settler);
 
   sampling = true;
   const tickSamples: number[] = [];
@@ -106,7 +99,14 @@ function measure(options: BenchWorldOptions, warmup: number, measured: number): 
   }
 
   return summarize(perSystem, tickSamples, {
-    world,
+    world: {
+      settlements: options.settlements,
+      fightersPerSide: options.fightersPerSide,
+      mapCells: { width: terrain.width, height: terrain.height },
+      settlersAtStart,
+      settlersAtEnd: count(sim, Settler),
+      buildings: count(sim, Building),
+    },
     ticks: { warmup, measured },
     stateHash: sim.hashState(),
   });
@@ -117,12 +117,12 @@ describe('sim per-system benchmark', () => {
     const options = worldOptions();
     const report = measure(
       options,
-      intEnv('ON_BENCH_WARMUP', DEFAULT_WARMUP_TICKS),
-      Math.max(1, intEnv('ON_BENCH_TICKS', DEFAULT_MEASURED_TICKS)),
+      intEnv('ON_BENCH_WARMUP', DEFAULT_WARMUP_TICKS, 0),
+      intEnv('ON_BENCH_TICKS', DEFAULT_MEASURED_TICKS, 1),
     );
 
     console.log(`\n${formatReport(report)}\n`);
-    const jsonPath = process.env.ON_BENCH_JSON;
+    const jsonPath = process.env.ON_BENCH_JSON?.trim();
     if (jsonPath !== undefined && jsonPath !== '') {
       writeFileSync(jsonPath, `${JSON.stringify(report, null, 2)}\n`);
       console.log(`report written to ${jsonPath}\n`);
@@ -130,18 +130,19 @@ describe('sim per-system benchmark', () => {
 
     // The run must have profiled a real world — a silently empty one would report a table of zeros.
     expect(report.systems.length).toBeGreaterThan(0);
-    expect(report.world.settlers).toBeGreaterThan(0);
+    expect(report.world.settlersAtStart).toBeGreaterThan(0);
   });
 
   it('measures a deterministic world: two runs of the same options hash identically', {
     timeout: DETERMINISM_TIMEOUT_MS,
   }, () => {
     const options = worldOptions();
-    const hashes = [0, 1].map(() => {
-      const { sim } = benchWorld(options);
-      sim.run(DETERMINISM_TICKS);
-      return sim.hashState();
-    });
-    expect(hashes[0]).toBe(hashes[1]);
+    const first = benchWorld(options).sim;
+    const second = benchWorld(options).sim;
+    first.run(DETERMINISM_TICKS);
+    second.run(DETERMINISM_TICKS);
+    // Guard against a vacuous pass: two undefineds would also be `toBe`-equal.
+    expect(first.hashState()).toEqual(expect.any(String));
+    expect(first.hashState()).toBe(second.hashState());
   });
 });

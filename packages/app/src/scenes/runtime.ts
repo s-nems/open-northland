@@ -2,14 +2,14 @@ import type { ContentSet } from '@open-northland/data';
 import { halfCellMapFromCells, Simulation } from '@open-northland/sim';
 import { FOG_MODE_BY_NAME } from '../game/fog.js';
 import { type SandboxContentExtras, sandboxContent } from '../game/sandbox/index.js';
-import type { SceneDefinition } from './types.js';
+import type { SceneWorld } from './types.js';
 
 /**
- * Build a fresh, deterministic {@link Simulation} for a scene at tick 0 over the scene content + scene
- * terrain, then run `scene.build`. Each sim owns its component stores, so the headless test that builds
- * many scene sims in one process needs no reset ritual. The headless test advances it and asserts; the app
- * renders it live — same inputs, byte-identical run, so the test's proof and the human's view are the same
- * world, with two named exceptions.
+ * Build a fresh, deterministic {@link Simulation} for a {@link SceneWorld} at tick 0 over the scene
+ * content + scene terrain, then run `scene.build`. Each sim owns its component stores, so the headless
+ * test that builds many scene sims in one process needs no reset ritual. The headless test advances it and
+ * asserts; the app renders it live — same inputs, byte-identical run, so the test's proof and the human's
+ * view are the same world, with two named exceptions.
  *
  * `content` (the browser real-content path) overrides the default clean-room sandbox content — the headless
  * twin never passes it, so copyrighted `content/` never enters tests. `extras` (used only when building the
@@ -19,7 +19,7 @@ import type { SceneDefinition } from './types.js';
  * placement-sensitive scene must keep its placements legal under both geometries (and under real content).
  */
 export function createSceneSim(
-  scene: SceneDefinition,
+  scene: SceneWorld,
   extras?: SandboxContentExtras,
   content?: ContentSet,
 ): Simulation {
