@@ -1,6 +1,8 @@
 import { Building, GroundDrop, Position, Stockpile, Vehicle } from '../../../components/index.js';
 import type { Fixed } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
+import { nodeOfPosition } from '../../../nav/halfcell.js';
+import { stockpilesAtNode } from '../../stockpile-index.js';
 import { isYardHeap, lowestStockedGood, MAX_GROUND_STACK } from '../../stores/index.js';
 
 // Loose ground piles: create a haulable drop, hand-stack a placed pile, stack a carried load onto a
@@ -34,18 +36,18 @@ export function dropGroundPile(world: World, x: Fixed, y: Fixed, goodType: numbe
  * source nor a building delivery sink), so placed goods stay put and visibly pile up — distinct from
  * {@link dropGroundPile}'s haulable felled-trunk shape.
  *
- * Determinism: the pile to stack onto is the first match in canonical id order ({@link World.canonicalEntities}),
- * a which-entity-wins pick that must be canonical. Only a pile holding this good (or nothing) is merged — a heap
- * of a different good on the same tile is left alone, so no good is ever overwritten. Returns the stacked/created
- * pile.
+ * Determinism: the pile to stack onto is the first match in ascending id order over the tile's stockpiles
+ * ({@link stockpilesAtNode}), a which-entity-wins pick that must be canonical. Only a pile holding this good (or
+ * nothing) is merged — a heap of a different good on the same tile is left alone, so no good is ever
+ * overwritten. Returns the stacked/created pile.
  */
 export function dropOrStackGood(world: World, x: Fixed, y: Fixed, goodType: number, amount: number): Entity {
-  for (const e of world.canonicalEntities()) {
+  const at = nodeOfPosition(x, y);
+  for (const e of stockpilesAtNode(world, at.hx, at.hy)) {
     if (world.has(e, GroundDrop) || world.has(e, Building)) continue; // a trunk / a building store — not ours
-    const stock = world.tryGet(e, Stockpile);
-    const pos = world.tryGet(e, Position);
-    if (stock === undefined || pos === undefined) continue;
-    if (pos.x !== x || pos.y !== y) continue; // a different tile
+    const stock = world.get(e, Stockpile); // indexed on (Stockpile, Position) — both are present
+    const pos = world.get(e, Position);
+    if (pos.x !== x || pos.y !== y) continue; // the same node, a different exact Position
     const have = stock.amounts.get(goodType) ?? 0;
     if (have <= 0 && stock.amounts.size > 0) continue; // holds a different good — never overwrite it
     stock.amounts.set(goodType, Math.min(MAX_GROUND_STACK, have + amount));
@@ -65,19 +67,19 @@ export function dropOrStackGood(world: World, x: Fixed, y: Fixed, goodType: numb
  * {@link GroundDrop}/{@link Building}/{@link DeliveryFlag} marker — the yard tile a gatherer stacks onto,
  * distinct from an uncollected trunk, a building store, and the flag marker itself (all excluded).
  *
- * Determinism: the heap to stack onto is the first match in canonical id order
- * ({@link World.canonicalEntities}), a which-entity-wins pick that must be canonical. The felled-trunk-free
- * twin of {@link dropOrStackGood} — the difference is the overflow policy: this reports the placed count so the
- * caller can carry the remainder to the next tile, where `dropOrStackGood` (a hand-placed pile) silently drops
- * it.
+ * Determinism: the heap to stack onto is the first match in ascending id order over the tile's stockpiles
+ * ({@link stockpilesAtNode}), a which-entity-wins pick that must be canonical. The felled-trunk-free twin of
+ * {@link dropOrStackGood} — the difference is the overflow policy: this reports the placed count so the caller
+ * can carry the remainder to the next tile, where `dropOrStackGood` (a hand-placed pile) silently drops it.
  */
 export function stackOntoTile(world: World, x: Fixed, y: Fixed, good: number, want: number): number {
   if (want <= 0) return 0;
-  for (const e of world.canonicalEntities()) {
+  const at = nodeOfPosition(x, y);
+  for (const e of stockpilesAtNode(world, at.hx, at.hy)) {
     if (!isYardHeap(world, e)) continue;
     const stock = world.get(e, Stockpile);
     const pos = world.get(e, Position);
-    if (pos.x !== x || pos.y !== y) continue; // a different tile
+    if (pos.x !== x || pos.y !== y) continue; // the same node, a different exact Position
     // Skip a tile occupied by a different good; a heap of our good (even one drained to 0 by a porter and not
     // yet reaped) is stackable — testing the stocked good, not `size`, is what keeps a re-fill from livelocking
     // against a stale zero entry.
