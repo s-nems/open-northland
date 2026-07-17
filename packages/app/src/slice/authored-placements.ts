@@ -52,13 +52,22 @@ export type AuthoredPlacement =
       /** Authored starting stock (`addgoods`), good names resolved to good typeIds. */
       goods?: { good: number; amount: number }[];
     }
-  | { kind: 'human'; jobType: number; tribe: number; x: number; y: number; owner?: number };
+  | {
+      kind: 'human';
+      jobType: number;
+      tribe: number;
+      x: number;
+      y: number;
+      owner?: number;
+      /** The gatherer's authored resource pick (`setproducedgood`), resolved to a good typeId. */
+      gatherGood?: number;
+    };
 
 /**
  * Resolve a map's authored `entities` (names + half-cells, verbatim from `map.cif` `StaticObjects`) into
  * sim placements. Joins are by name against the IR rows (a building's `EditName`+`level` → `buildingBobs`
  * typeId+tribe and its `addgoods` names → `goods` typeIds; a human's `role` → `jobs` typeId, its `tribe`
- * string → `tribes` typeId), and the two player
+ * string → `tribes` typeId, its gatherer `producedGood` name → a `goods` typeId), and the two player
  * columns land on 0-based sim owners verbatim (both `sethouse` and `sethuman` are 0-based — schema notes).
  * Half-cells pass through verbatim — the sim's grid is the `2W×2H` lattice the records address, so an
  * authored building keeps its exact anchor. Unresolvable or out-of-bounds records are dropped and counted;
@@ -144,6 +153,10 @@ export function resolveAuthoredPlacements(
       skipped++;
       continue;
     }
+    // The gatherer's authored resource pick. An unresolvable name is dropped and counted — the settler
+    // still spawns, on the gather-everything default, exactly as a map with no pick at all.
+    const gatherGood = h.producedGood !== undefined ? resolveGood(h.producedGood) : undefined;
+    if (h.producedGood !== undefined && gatherGood === undefined) droppedGoods++;
     placements.push({
       kind: 'human',
       jobType,
@@ -151,6 +164,7 @@ export function resolveAuthoredPlacements(
       x: h.hx,
       y: h.hy,
       ...(components.isValidPlayer(h.player) ? { owner: h.player } : {}),
+      ...(gatherGood !== undefined ? { gatherGood } : {}),
     });
   }
   return { placements, skipped, droppedGoods };

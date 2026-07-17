@@ -8,7 +8,7 @@ import { z } from 'zod';
  * load by name against the IR ({@link BuildingBob} `editName`+`level`, {@link JobType} `name`) — the
  * engine's own version-robust join, mirroring how {@link TerrainGround} joins patterns. A building's
  * `goods` are its `addgoods` starting stock (good names verbatim, resolved to good typeIds at load).
- * The `setproducedgood`/`setguide` verbs (production presets, scout guides) are not captured yet.
+ * The `setguide` verb (scout guides) is not captured yet.
  */
 export const TerrainEntities = z.strictObject({
   /**
@@ -42,6 +42,10 @@ export const TerrainEntities = z.strictObject({
         player: z.number().int().nonnegative(),
         hx: z.number().int().nonnegative(),
         hy: z.number().int().nonnegative(),
+        /** A gatherer's authored resource pick — the `setproducedgood` in this settler's `sethuman`
+         *  block (goodtype name verbatim, resolved to a good typeId at load). Absent = gather every
+         *  good the trade may harvest. */
+        producedGood: z.string().optional(),
       }),
     )
     .default([]),

@@ -77,6 +77,10 @@ export type SpawnCommand =
       /** Starting specialization XP as `[trackTypeId, points]` pairs — a scene spawning a veteran (e.g. a
        *  sandbox miner already past a good's `needforgood` gate). Omit for a fresh settler (empty XP). */
       readonly experience?: ReadonlyArray<readonly [number, number]>;
+      /** A gatherer's starting resource pick, narrowing its auto-planted work flag to one good (a decoded
+       *  map's `setproducedgood`). Omit — the default — to gather every good the trade may harvest.
+       *  Ignored for a non-gathering trade, or a good that trade cannot harvest. */
+      readonly gatherGood?: number;
     }
   | {
       /**

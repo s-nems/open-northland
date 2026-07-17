@@ -158,6 +158,7 @@ function enqueuePlacements(sim: Simulation, placements: readonly AuthoredPlaceme
         ...own,
         ...(equipment !== undefined ? { equipment } : {}),
         ...(mastery.length > 0 ? { experience: mastery } : {}),
+        ...(p.gatherGood !== undefined ? { gatherGood: p.gatherGood } : {}),
       });
     }
   }

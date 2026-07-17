@@ -133,6 +133,40 @@ describe('extractStaticObjects', () => {
     });
   });
 
+  // The real `setproducedgood` shapes (source basis: the unpacked `staticobjects.inc` corpus) — the verb
+  // directly after its `sethuman`, and separated from it by the in-block modifiers the decoder drops.
+  it('attaches setproducedgood to its sethuman, across intervening in-block modifiers', () => {
+    const lines: CifLine[] = [
+      { level: 1, text: 'StaticObjects' },
+      { level: 2, text: 'sethuman 2 "byzantine" "collector" 220 206 0 0' },
+      { level: 2, text: 'setproducedgood "wood"' },
+      { level: 2, text: 'sethuman 0 "saracen" "fisher" 359 366 0 0' },
+      { level: 2, text: 'setexpierence 4 13' },
+      { level: 2, text: 'attachtohouse 359 358 2' },
+      { level: 2, text: 'setproducedgood "fish"' },
+      { level: 2, text: 'sethuman 1 "viking" "collector" 12 14 0 0' }, // no pick — gathers everything
+    ];
+    expect(extractStaticObjects(cifLinesToSections(lines))?.humans).toEqual([
+      { tribe: 'byzantine', role: 'collector', player: 2, hx: 220, hy: 206, producedGood: 'wood' },
+      { tribe: 'saracen', role: 'fisher', player: 0, hx: 359, hy: 366, producedGood: 'fish' },
+      { tribe: 'viking', role: 'collector', player: 1, hx: 12, hy: 14 },
+    ]);
+  });
+
+  it('does not attach setproducedgood across a placement verb or a skipped sethuman', () => {
+    const lines: CifLine[] = [
+      { level: 1, text: 'StaticObjects' },
+      { level: 2, text: 'sethuman 0 "viking" "collector" 10 12 0 0' },
+      { level: 2, text: 'setanimal 6 "deer" "adult" 50 60 0 0' }, // a new placement ends the block
+      { level: 2, text: 'setproducedgood "wood"' }, // no human to pick for — dropped
+      { level: 2, text: 'sethuman 1 "viking" "collector"' }, // truncated — skipped, retargets the pick away
+      { level: 2, text: 'setproducedgood "stone"' }, // its human was skipped — dropped
+    ];
+    expect(extractStaticObjects(cifLinesToSections(lines))?.humans).toEqual([
+      { tribe: 'viking', role: 'collector', player: 0, hx: 10, hy: 12 },
+    ]);
+  });
+
   it('skips a malformed row without dropping the rest', () => {
     const withBad: CifLine[] = [
       { level: 1, text: 'StaticObjects' },

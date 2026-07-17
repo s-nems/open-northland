@@ -268,6 +268,27 @@ describe('authored placements (map.cif StaticObjects → sim commands)', () => {
     expect(skipped).toBe(3);
   });
 
+  it("resolves a gatherer's authored setproducedgood, dropping an unknown pick without its settler", () => {
+    const gatherers = {
+      buildings: [],
+      humans: [
+        { tribe: 'viking', role: 'builder', player: 0, hx: 3, hy: 5, producedGood: 'wheat' },
+        // An unresolvable pick costs the pick, not the settler: it spawns gathering everything.
+        { tribe: 'viking', role: 'builder', player: 0, hx: 5, hy: 5, producedGood: 'mystery_good' },
+        { tribe: 'viking', role: 'builder', player: 0, hx: 7, hy: 5 },
+      ],
+      animals: [],
+    };
+    const { placements, skipped, droppedGoods } = resolveAuthoredPlacements(gatherers, rows, authoredMap());
+    expect(placements.map((p) => (p.kind === 'human' ? p.gatherGood : -1))).toEqual([
+      4,
+      undefined,
+      undefined,
+    ]);
+    expect(droppedGoods).toBe(1); // mystery_good
+    expect(skipped).toBe(0);
+  });
+
   it('resolves the freehand role spellings the decoded maps really author via the normalized key', () => {
     // `Child_Male`-style casing, `coin maker`-style spacing and `hero_axe_???` suffixes all mean the
     // `jobtypes.ini` slug; an exact-string join dropped them (observed across content/maps/*.json).
