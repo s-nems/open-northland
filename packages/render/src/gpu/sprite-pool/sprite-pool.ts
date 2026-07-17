@@ -1,14 +1,17 @@
 import type { WorldSnapshot } from '@open-northland/sim';
 import { type Container, Graphics, Sprite } from 'pixi.js';
-import { type BrightnessField, scaleColour } from '../../data/brightness.js';
-import type { ElevationField } from '../../data/elevation.js';
-import { FOG_GHOST_TINT } from '../../data/fog.js';
-import type { FogGhost } from '../../data/fog-ghosts.js';
-import { type Camera, cameraScreenX, cameraScreenY, depthKey } from '../../data/iso.js';
+import { FOG_GHOST_TINT, type FogGhost } from '../../data/fog/index.js';
 import { lerp } from '../../data/math.js';
+import {
+  type Camera,
+  cameraScreenX,
+  cameraScreenY,
+  depthKey,
+  type Viewport,
+} from '../../data/projection/index.js';
 import { collectSpriteScene, type DrawItem, paintOrderBias } from '../../data/scene/index.js';
 import { buildTimeThreshold, type SpriteKind } from '../../data/sprites/index.js';
-import type { Viewport } from '../../data/viewport.js';
+import { type BrightnessField, type ElevationField, scaleColour } from '../../data/terrain/index.js';
 import { PalettedSprite } from '../paletted-sprite/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';

@@ -1,8 +1,8 @@
 import type { Container, TextureSource } from 'pixi.js';
-import type { BrightnessField } from '../../data/brightness.js';
-import type { ElevationField } from '../../data/elevation.js';
 import type { SceneTerrain } from '../../data/scene/index.js';
 import {
+  type BrightnessField,
+  type ElevationField,
   type NodeXY,
   nodeLaneUV,
   rectTriangleUVs,
@@ -11,7 +11,7 @@ import {
   triangleANodes,
   triangleBNodes,
   triangleUVs,
-} from '../../data/terrain.js';
+} from '../../data/terrain/index.js';
 import type { GroundPattern, TerrainTextureSet } from '../terrain-textures.js';
 import { ChunkBatcher, type TerrainBatch, type TerrainLayerKind } from './chunk-batcher.js';
 import {

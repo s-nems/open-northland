@@ -1,5 +1,5 @@
 import { Graphics, Mesh, MeshGeometry, type Shader, Texture, type TextureSource } from 'pixi.js';
-import { scaleColour } from '../../data/brightness.js';
+import { scaleColour } from '../../data/terrain/index.js';
 import { makeShadedTerrainShader, type WaveUniforms } from '../shading.js';
 
 /** A chunk's display child: a per-page mesh (stock or brightness-shaded shader) or the fallback trace. */

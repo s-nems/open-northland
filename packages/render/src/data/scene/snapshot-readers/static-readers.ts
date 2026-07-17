@@ -1,6 +1,6 @@
-import { ONE } from '../../iso.js';
 import { clamp } from '../../math.js';
-import { readNumField } from './component-access.js';
+import { ONE } from '../../projection/index.js';
+import { readNumField } from '../../snapshot/index.js';
 
 /**
  * Per-static-object component reads — the draw fields a building, resource node, stump or berry bush
@@ -160,7 +160,7 @@ export function readBerryBushGfxIndex(components: Readonly<Record<string, unknow
 }
 
 /** The static per-kind draw fields a building / resource / stump carries — the subset shared by
- *  {@link import('../draw-item.js').DrawItem} and {@link import('../../fog-ghosts.js').FogGhost}. */
+ *  {@link import('../draw-item.js').DrawItem} and {@link import('../../fog/index.js').FogGhost}. */
 export interface StaticDrawFields {
   typeId?: number;
   builtPct?: number;

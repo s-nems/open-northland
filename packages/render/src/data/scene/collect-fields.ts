@@ -1,7 +1,6 @@
-import { type ElevationField, terrainLiftAt } from '../elevation.js';
-import type { FogGhost } from '../fog-ghosts.js';
-import { ONE, tileToScreen } from '../iso.js';
-import { isVisible, type Viewport } from '../viewport.js';
+import type { FogGhost } from '../fog/index.js';
+import { isVisible, ONE, tileToScreen, type Viewport } from '../projection/index.js';
+import { type ElevationField, terrainLiftAt } from '../terrain/index.js';
 import { type DrawKind, type MutableDrawItem, paintOrderBias } from './draw-item.js';
 import { projectileArc } from './projectile-arc.js';
 import {

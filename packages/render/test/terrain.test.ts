@@ -11,7 +11,7 @@ import {
   triangleANodes,
   triangleBNodes,
   triangleUVs,
-} from '../src/data/terrain.js';
+} from '../src/data/terrain/index.js';
 import { halfCellToScreen, TILE_HALF_H, TILE_HALF_W, tileToScreen } from '../src/index.js';
 
 /**

@@ -1,9 +1,7 @@
 import type { WorldSnapshot } from '@open-northland/sim';
-import type { BrightnessField } from '../brightness.js';
-import { type ElevationField, terrainLiftAt } from '../elevation.js';
-import type { FogGhost } from '../fog-ghosts.js';
-import { ONE, tileToScreen } from '../iso.js';
-import { isVisible, type Viewport } from '../viewport.js';
+import type { FogGhost } from '../fog/index.js';
+import { isVisible, ONE, tileToScreen, type Viewport } from '../projection/index.js';
+import { type BrightnessField, type ElevationField, terrainLiftAt } from '../terrain/index.js';
 import { assignProjectileArc, assignSettlerFields, pushGhostItems, spriteDepth } from './collect-fields.js';
 import type { DrawItem, MutableDrawItem, SpriteState } from './draw-item.js';
 import { SIGNPOST_BOARD_FRAMES, signpostBoardsOf } from './signpost-boards.js';
@@ -54,7 +52,7 @@ export interface SpriteSceneOptions {
   readonly viewport?: Viewport | undefined;
   /** The map's terrain-height field; absent/flat = no lift. */
   readonly elevation?: ElevationField | undefined;
-  /** The composed terrain-shading field ({@link import('../brightness.js')} + hillshade); absent or
+  /** The composed terrain-shading field ({@link import('../terrain/index.js')} + hillshade); absent or
    *  unshaded = no entity shading. Sampled at each item's feet into {@link DrawItem.shade}. */
   readonly brightness?: BrightnessField | undefined;
   /** Entities the retained static map-object layer draws instead (skipped entirely). */

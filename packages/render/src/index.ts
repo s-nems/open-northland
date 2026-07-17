@@ -1,7 +1,5 @@
 export type { TextureSource } from 'pixi.js';
-export type { BrightnessField } from './data/brightness.js';
-export { type ElevationField, makeElevationField } from './data/elevation.js';
-export { FOG_EXPLORED_ALPHA, FOG_UNEXPLORED_ALPHA, fogTileVisible } from './data/fog.js';
+export { FOG_EXPLORED_ALPHA, FOG_UNEXPLORED_ALPHA, fogTileVisible } from './data/fog/index.js';
 export {
   buildHud,
   type HudCorner,
@@ -15,8 +13,19 @@ export {
   layoutHud,
   placeHud,
   type StockCount,
-} from './data/hud.js';
-export { type Camera, halfCellToScreen, ONE, TILE_HALF_H, TILE_HALF_W, tileToScreen } from './data/iso.js';
+} from './data/hud/index.js';
+export {
+  type Camera,
+  cameraViewport,
+  halfCellToScreen,
+  ONE,
+  TILE_HALF_H,
+  TILE_HALF_W,
+  type TileRange,
+  tileToScreen,
+  type Viewport,
+  visibleTileRange,
+} from './data/projection/index.js';
 export {
   buildScene,
   buildSpriteScene,
@@ -48,8 +57,13 @@ export {
   type SpriteFrameRef,
   type StockpileBinding,
 } from './data/sprites/index.js';
-export { type CellTexture, patternSrcRect } from './data/terrain.js';
-export { cameraViewport, type TileRange, type Viewport, visibleTileRange } from './data/viewport.js';
+export {
+  type BrightnessField,
+  type CellTexture,
+  type ElevationField,
+  makeElevationField,
+  patternSrcRect,
+} from './data/terrain/index.js';
 export {
   AnimationGallery,
   clipDirs,

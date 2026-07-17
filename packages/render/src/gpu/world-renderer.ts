@@ -1,15 +1,11 @@
 import type { FogView, SimEvent, WorldSnapshot } from '@open-northland/sim';
 import { type Application, Container, Sprite, Texture, type TextureSource } from 'pixi.js';
-import type { BrightnessField } from '../data/brightness.js';
-import { type ElevationField, makeElevationField } from '../data/elevation.js';
-import { fogTileVisible } from '../data/fog.js';
-import { type FogGhost, FogGhostStore } from '../data/fog-ghosts.js';
-import { type Camera, snapCameraToDevicePixels } from '../data/iso.js';
+import { type FogGhost, FogGhostStore, fogTileVisible } from '../data/fog/index.js';
+import { type Camera, cameraViewport, snapCameraToDevicePixels } from '../data/projection/index.js';
 import type { SceneTerrain } from '../data/scene/index.js';
 import type { AtlasFrame } from '../data/sprites/index.js';
-import { cameraViewport } from '../data/viewport.js';
-import type { MapObjectSprite } from './map-objects/index.js';
-import { MapObjectLayer } from './map-objects/index.js';
+import { type BrightnessField, type ElevationField, makeElevationField } from '../data/terrain/index.js';
+import { MapObjectLayer, type MapObjectSprite } from './map-objects/index.js';
 import {
   BadgeLayer,
   CombatEffectsLayer,

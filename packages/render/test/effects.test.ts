@@ -10,7 +10,7 @@ import {
   effectKey,
   foldCombatEffects,
   MAX_ACTIVE_EFFECTS,
-} from '../src/data/effects.js';
+} from '../src/data/effects/index.js';
 import { CombatEffectsLayer } from '../src/gpu/overlays/effects-layer.js';
 import { cameraViewport, makeElevationField } from '../src/index.js';
 

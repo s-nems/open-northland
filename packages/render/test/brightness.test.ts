@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BRIGHTNESS_NEUTRAL, makeBrightnessField, scaleColour } from '../src/data/brightness.js';
+import { BRIGHTNESS_NEUTRAL, makeBrightnessField, scaleColour } from '../src/data/terrain/index.js';
 import { padLaneRows } from '../src/gpu/shading.js';
 
 /**

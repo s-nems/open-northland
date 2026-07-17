@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { snapCameraToDevicePixels } from '../src/data/iso.js';
+import { snapCameraToDevicePixels } from '../src/data/projection/index.js';
 
 describe('snapCameraToDevicePixels', () => {
   it('rounds pan offsets to whole device pixels at resolution 1', () => {

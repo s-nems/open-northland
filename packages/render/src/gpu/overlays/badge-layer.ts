@@ -1,7 +1,6 @@
 import { Container, Graphics } from 'pixi.js';
-import { type ElevationField, terrainLiftAt } from '../../data/elevation.js';
-import { ONE, tileToScreen } from '../../data/iso.js';
-import { isVisible, type Viewport } from '../../data/viewport.js';
+import { isVisible, ONE, tileToScreen, type Viewport } from '../../data/projection/index.js';
+import { type ElevationField, terrainLiftAt } from '../../data/terrain/index.js';
 import { retainOffscreen, retireUndrawn } from './retained-pool.js';
 
 /**

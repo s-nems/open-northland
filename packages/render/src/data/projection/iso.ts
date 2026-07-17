@@ -2,7 +2,7 @@ import { ONE as SIM_ONE } from '@open-northland/sim';
 
 /**
  * Isometric projection + the camera transform — the dependency-light math the rest of `render` builds
- * on. It lives in its own module rather than the {@link import('../index.js')} barrel so the pure
+ * on. It lives in its own module rather than the {@link import('../../index.js')} barrel so the pure
  * scene/terrain/viewport modules and the GPU renderer can import it without the barrel↔module cycle,
  * which forces a TDZ workaround. No Pixi, no canvas, no sim state read back: plain projection.
  */
@@ -19,7 +19,7 @@ export const ONE: number = SIM_ONE;
  *
  * This is the master scale the whole world hangs off: every ground triangle, every feet-anchored bob
  * (drawn at its native pixel size — see the render AGENTS.md) and the camera derive from it. The
- * elevation lift derives from the row step and is owned by {@link import('./elevation.js')}.
+ * elevation lift derives from the row step and is owned by {@link import('../terrain/index.js')}.
  */
 export const TILE_HALF_W = 34;
 export const TILE_HALF_H = 38;
@@ -45,7 +45,7 @@ export function tileToScreen(col: number, row: number): { x: number; y: number }
 /**
  * The parity stagger of a (fractional) row, as a triangle wave: 0 at even rows, 1 at odd, linear
  * between (robust to negative rows). One cell of sideways shift per row down, interpolated so a walking
- * entity slides along the original's mesh-edge diagonal. The fog cell mapper (`fog.ts`) shares it (halved
+ * entity slides along the original's mesh-edge diagonal. The fog cell mapper (`fog/mask.ts`) shares it (halved
  * for its half-cell step) so a unit resolves to the same cell the sim's vision mask stamped.
  */
 export function rowStagger(row: number): number {
@@ -82,7 +82,7 @@ export function screenToCell(x: number, y: number): { col: number; row: number }
 /**
  * The flat `[x, y, …]` point list of a node diamond centred at `(cx, cy)` with half-extents `(hw, hh)`,
  * wound top → right → bottom → left — the shape a single half-cell node fills on the lattice. The
- * world-space per-cell wash ({@link import('../gpu/overlays/placement-overlay.js').PlacementOverlayLayer})
+ * world-space per-cell wash ({@link import('../../gpu/overlays/placement-overlay.js').PlacementOverlayLayer})
  * feeds it straight to `Graphics.poly` with its own padded + resolution-scaled `(hw, hh)`.
  */
 export function nodeDiamondPoly(cx: number, cy: number, hw: number, hh: number): number[] {
@@ -124,7 +124,7 @@ export function snapCameraToDevicePixels(camera: Camera, resolution: number): Ca
 
 /**
  * Apply the camera to one world axis — `screen = world·scale + offset` — for the case that needs it
- * explicitly: the team-colour {@link import('../gpu/paletted-sprite/index.js').PalettedSprite} meshes
+ * explicitly: the team-colour {@link import('../../gpu/paletted-sprite/index.js').PalettedSprite} meshes
  * self-place in screen space (a custom-shader mesh can't ride the camera-transformed layer), so they
  * mirror the transform plain sprites inherit from the scene graph. Split X/Y (not a `{x,y}` return) so
  * the per-frame paletted path allocates nothing.

@@ -1,5 +1,5 @@
 import { type Application, Container, Graphics, Sprite, Text, type TextureSource } from 'pixi.js';
-import { type Camera, cameraScreenX, cameraScreenY } from '../../data/iso.js';
+import { type Camera, cameraScreenX, cameraScreenY } from '../../data/projection/index.js';
 import { lookupFrame } from '../../data/sprites/index.js';
 import { PalettedSprite } from '../paletted-sprite/index.js';
 import type { SpriteLayer } from '../sprite-sheet.js';

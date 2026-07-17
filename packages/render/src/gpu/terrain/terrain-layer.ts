@@ -1,10 +1,15 @@
 import { BufferImageSource, Container } from 'pixi.js';
-import { type BrightnessField, makeBrightnessField } from '../../data/brightness.js';
-import { type ElevationField, makeElevationField } from '../../data/elevation.js';
-import { composeShadingLane } from '../../data/hillshade.js';
+import { aabbIntersects, type Viewport } from '../../data/projection/index.js';
 import type { SceneTerrain } from '../../data/scene/index.js';
-import { aabbIntersects, type Viewport } from '../../data/viewport.js';
-import { makeWaveField, NO_WAVE } from '../../data/water.js';
+import {
+  type BrightnessField,
+  composeShadingLane,
+  type ElevationField,
+  makeBrightnessField,
+  makeElevationField,
+  makeWaveField,
+  NO_WAVE,
+} from '../../data/terrain/index.js';
 import { destroyMeshChildren } from '../mesh-teardown.js';
 import { makeWaveUniforms, padLaneRows, WAVE_TIME_PERIOD_TICKS, type WaveUniforms } from '../shading.js';
 import type { TerrainTextureSet } from '../terrain-textures.js';

@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BRIGHTNESS_NEUTRAL } from '../src/data/brightness.js';
-import { composeShadingLane } from '../src/data/hillshade.js';
+import { BRIGHTNESS_NEUTRAL, composeShadingLane } from '../src/data/terrain/index.js';
 
 /** A 3×3 ramp rising left → right: its surface faces west (the normal tilts −x, toward the NW
  *  light), so it shades brighter than flat; the gradient is purely +x, so rows are identical. */

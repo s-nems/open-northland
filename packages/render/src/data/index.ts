@@ -10,12 +10,15 @@
  * main barrel deliberately withholds, and `isVisible`, which stays render-only.
  */
 
-export { type Camera, halfCellToScreen, ONE, tileToScreen } from './iso.js';
 export {
   aabbIntersects,
   type Box,
+  type Camera,
   cameraViewport,
+  halfCellToScreen,
+  ONE,
   type TileRange,
+  tileToScreen,
   type Viewport,
   visibleTileRange,
-} from './viewport.js';
+} from './projection/index.js';

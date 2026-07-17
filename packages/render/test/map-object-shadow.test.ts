@@ -1,7 +1,7 @@
 import { Container, Texture } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
+import type { Viewport } from '../src/data/projection/index.js';
 import type { AtlasFrame } from '../src/data/sprites/index.js';
-import type { Viewport } from '../src/data/viewport.js';
 import { MapObjectLayer, type MapObjectSprite } from '../src/gpu/map-objects/index.js';
 import { TextureCache } from '../src/gpu/texture-cache.js';
 

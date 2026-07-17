@@ -1,5 +1,5 @@
+import { readNumField, readNumFieldOrNull } from '../../snapshot/index.js';
 import type { SpriteState } from '../draw-item.js';
-import { readNumField, readNumFieldOrNull } from './component-access.js';
 
 /**
  * Per-settler (unit) component reads: coarse state, cargo, the atomic it runs, its job/weapon/owner.

@@ -1,6 +1,6 @@
 import { FOG_MODE, FOG_STATE, type FogMode, type FogView } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { FogGhostStore } from '../src/data/fog-ghosts.js';
+import { FogGhostStore } from '../src/data/fog/index.js';
 import { collectSpriteScene } from '../src/data/scene/index.js';
 import { ONE, tileToScreen } from '../src/index.js';
 import { entity, snapshotOf } from './support/fixtures.js';

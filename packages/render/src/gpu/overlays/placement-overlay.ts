@@ -1,6 +1,6 @@
 import { Container, Graphics, type Renderer, RenderTexture, Sprite } from 'pixi.js';
-import { type ElevationField, projectNode } from '../../data/elevation.js';
-import { halfCellToScreen, nodeDiamondPoly, TILE_HALF_H, TILE_HALF_W } from '../../data/iso.js';
+import { halfCellToScreen, nodeDiamondPoly, TILE_HALF_H, TILE_HALF_W } from '../../data/projection/index.js';
+import { type ElevationField, projectNode } from '../../data/terrain/index.js';
 import { hashCells } from './cell-signature.js';
 
 /**

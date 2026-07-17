@@ -1,6 +1,6 @@
 import { Text } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
-import type { HudPlacement } from '../src/data/hud.js';
+import type { HudPlacement } from '../src/data/hud/index.js';
 import { DEFAULT_HUD_STYLE, HudLayer, type HudStyle } from '../src/gpu/overlays/hud-layer.js';
 
 /**

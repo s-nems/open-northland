@@ -1,6 +1,6 @@
+import type { SceneGround } from '../scene/index.js';
 import { clampedCellAt } from './cell-field.js';
-import type { SceneGround } from './scene/index.js';
-import { nodeCell } from './terrain.js';
+import { nodeCell } from './tessellation.js';
 
 /**
  * The water-surface wave field — an OpenNorthland visual enhancement (the original's water is a

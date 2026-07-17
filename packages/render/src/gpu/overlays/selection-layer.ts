@@ -1,7 +1,7 @@
 import type { WorldSnapshot } from '@open-northland/sim';
 import { Container, Graphics } from 'pixi.js';
-import { type ElevationField, terrainLiftAt } from '../../data/elevation.js';
-import { ONE, TILE_HALF_H, TILE_HALF_W, tileToScreen } from '../../data/iso.js';
+import { ONE, TILE_HALF_H, TILE_HALF_W, tileToScreen } from '../../data/projection/index.js';
+import { type ElevationField, terrainLiftAt } from '../../data/terrain/index.js';
 import type { EntityBounds } from '../sprite-pool/index.js';
 import { retireUndrawn } from './retained-pool.js';
 
