@@ -4,7 +4,7 @@ import { nodeOfPosition } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import type { FarmingSpec } from '../../economy/farming.js';
-import { dynamicBlockedCells } from '../../footprint/index.js';
+import { dynamicBlockOverlay } from '../../footprint/index.js';
 import { manhattan } from '../../spatial.js';
 import { lowestStockedGood } from '../../stores/index.js';
 import type { PlannerContext } from '../planner-context.js';
@@ -135,5 +135,5 @@ function buildSowScan(
   };
   for (const e of targets.resources) occupy(e);
   for (const e of targets.stockpiles) occupy(e);
-  return { blocked: dynamicBlockedCells(world, ctx, terrain), occupied };
+  return { blocked: dynamicBlockOverlay(world, ctx, terrain), occupied };
 }

@@ -1,6 +1,7 @@
 # Replace `nearestWorkFlagPlacement`'s whole-map scan with a ring search
 
-**Area:** sim · **Origin:** sim refactor-cleanup (deferred), 2026-07-17 · **Priority:** P2
+**Area:** sim · **Origin:** sim refactor-cleanup (deferred), 2026-07-17; narrowed 2026-07-17 after
+the blocker-set memoization landed · **Priority:** P2
 (perf — no behavior change; the canonical winner must stay byte-identical)
 
 ## Context
@@ -9,37 +10,29 @@
 "where is the nearest free node for this work flag?" with a linear scan of **every node on the map**:
 
 ```ts
-const blocked = workFlagPlacementBlocks(world, ctx.content, terrain); // full Resource/Building/DeliveryFlag/Signpost walk
-for (let node = 0; node < terrain.nodeCount; node++) { … }            // ~1M nodes on a 512²-cell map
+for (let node = 0; node < terrain.nodeCount; node++) { … }  // ~1M nodes on a 512²-cell map
 ```
 
 Its hot caller chain is `economy/flags.ts` → `syncWorkFlagToJob` → `reidleAsJob` → `setJob`/`assignWorker`
-(`orders/work.ts`) — i.e. **once per employment command**. A box-selected 50-settler `setJob` therefore
-costs 50 whole-map scans *plus* 50 whole-world blocker rebuilds in a single tick, a routine player action
-spiking tick time superlinearly in map size. `packages/sim/AGENTS.md` names ring search as the required
-lever for nearest-X.
+(`orders/work.ts`) — i.e. **once per employment command that hires a gatherer**. A box-selected
+50-gatherer `setJob` costs 50 whole-map node scans in a single tick; measured on magiczny_las
+(2026-07-17), the strategic AI's opening collector hires spent ~130 ms in one command tick mostly here.
+`packages/sim/AGENTS.md` names ring search as the required lever for nearest-X.
 
-`evictWorkFlagsFromFootprint` (`economy/flags.ts`) is a second caller — once per flag a `placeBuilding`
-encloses — but it is not the reason to do this: it early-outs before the scan unless a flag really is on
-the new plot, which the sandbox acceptance scene never hits (measured 2026-07-17: zero calls over a full
-run). Its worst case is bounded by the plot's `familyBody` (one flag per node), and real bodies are not
-small — median 50 cells, max 388 (`content/ir.json`, 2026-07-17) — so a pathological placement onto a
-flag-covered plot could burst to ~50 whole-map scans in one command tick. Still the same one-shot class as
-the employment path, and fixed by the same ring search; do not size the work around this caller.
-
-`canPlaceWorkFlag` in the same file has the same shape: it rebuilds the entire blocked set to answer a
-question about one node. The strategic AI's collector flag placement
-(`systems/ai-player/workforce.ts` `flagSpotNear`) is a further blocker-rebuild caller — bounded to a
-few calls per AI decision, but it would ride the same memoization for free.
+The blocker-set half of the original ticket is DONE: `workFlagPlacementBlocks` is now a layered view —
+a standing layer (resources/buildings/signposts) memoized on `placementBlockerVersion` plus a fresh
+tiny `DeliveryFlag` marker set — so only the node loop itself remains expensive.
+`evictWorkFlagsFromFootprint` (`economy/flags.ts`) is a second caller, bounded by the enclosed-flag
+count; the same ring search fixes it.
 
 ## Why this wasn't done in the refactor pass
 
-The fix is an expanding Manhattan-ring walk from the origin. That walk is **already hand-inlined in three
-places**, which is exactly what [`manhattan-ring-enumeration-helper.md`](./manhattan-ring-enumeration-helper.md)
-and [`ring-iteration-iterator.md`](./ring-iteration-iterator.md) exist to fix — so writing a fourth copy
-here would deepen the duplication those tickets track. `nav/nearest.ts`'s `nearestUnblockedNode` is not a
-drop-in either: it is a BFS over walkable adjacency, whereas this rule ranks by pure Manhattan distance
-and ignores connectivity.
+The fix is an expanding Manhattan-ring walk from the origin. That walk is **already hand-inlined in
+several places**, which is exactly what [`manhattan-ring-enumeration-helper.md`](./manhattan-ring-enumeration-helper.md)
+and [`ring-iteration-iterator.md`](./ring-iteration-iterator.md) exist to fix — writing another copy
+here would deepen the duplication those tickets track. `nav/nearest.ts`'s `nearestUnblockedNode` is not
+a drop-in either: it is a BFS over walkable adjacency, whereas this rule ranks by pure Manhattan
+distance and ignores connectivity.
 
 Do the ring-enumerator extraction first, then land this on top of it.
 
@@ -50,13 +43,6 @@ Do the ring-enumerator extraction first, then land this on top of it.
   documented fallback past the cap.
 - Preserve the tie-break exactly: `(distance, then lowest node id)`. Within a ring, enumerate in
   ascending node id so the first hit *is* the canonical winner — goldens must not move.
-- Memoize `canPlaceWorkFlag`'s blocked set per `workFlagBlockerVersion` (the pattern
-  `memoizedPlacementGrid` already establishes for the building rule) — **but not before**
-  [`work-flag-move-stales-signpost-probe.md`](./work-flag-move-stales-signpost-probe.md) lands.
-  `workFlagBlockerVersion` does not move when a flag MOVES (it keys on `componentGeneration(DeliveryFlag)`,
-  which only sees add/remove), and unlike the signpost overlay's read-path memo, `canPlaceWorkFlag` is a
-  command gate: memoizing it on that key today would make `setWorkFlag` accept or reject against a stale
-  blocked set — a real sim decision, so a state-hash divergence rather than a cosmetic lie.
 
 ## Done when
 

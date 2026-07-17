@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   CurrentAtomic,
+  DeliveryFlag,
   ErectSignpostOrder,
   FOG_MODE,
   Owner,
@@ -12,7 +13,8 @@ import {
 } from '../../src/components/index.js';
 import { fx } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { Simulation } from '../../src/index.js';
+import { positionOfNode, Simulation } from '../../src/index.js';
+import { relocateWorkFlag } from '../../src/systems/economy/flags.js';
 import { BUILD_GUIDE_ATOMIC_ID, canPlaceSignpost, signpostNetwork } from '../../src/systems/index.js';
 import { FOG_STATE } from '../../src/systems/vision/index.js';
 import { testContent } from '../fixtures/content.js';
@@ -178,6 +180,27 @@ describe('placeSignpost — the scout erects a guidepost', () => {
     expect(signposts(sim).length).toBe(0);
     // The spacing circle fell with the post — the spot is placeable again.
     expect(canPlaceSignpost(sim.world, ctxOf(sim), terrain, nearby, P0)).toBe(true);
+  });
+});
+
+describe('signpostProbe invalidation — a work-flag MOVE is seen without any add/remove', () => {
+  it('after relocateWorkFlag the probe blocks the new cell and frees the old one', () => {
+    const sim = freshSim();
+    const flag = sim.world.create();
+    sim.world.add(flag, Position, positionOfNode(8, 4));
+    sim.world.add(flag, DeliveryFlag, {});
+    const before = sim.signpostProbe(P0);
+    if (before === null) throw new Error('mapped sim has a probe');
+    expect(before.canPlace(8, 4)).toBe(false);
+    expect(before.canPlace(20, 4)).toBe(true);
+
+    // The single relocate seam both movers (setWorkFlag, the placement push-out) share: an in-place
+    // Position write, no component add/remove — exactly what componentGeneration cannot see.
+    relocateWorkFlag(sim.world, flag, positionOfNode(20, 4));
+    const after = sim.signpostProbe(P0);
+    if (after === null) throw new Error('mapped sim has a probe');
+    expect(after.canPlace(8, 4)).toBe(true);
+    expect(after.canPlace(20, 4)).toBe(false);
   });
 });
 

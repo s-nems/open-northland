@@ -2,10 +2,10 @@ import { Building, Owner, Position, Settler } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import { nearestUnblockedNode } from '../../nav/nearest.js';
-import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import type { BlockOverlay, NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { buildingFootprintOf, translatedCells } from '../footprint/geometry.js';
-import { dynamicBlockedCells, dynamicBlockOverlay } from '../footprint/index.js';
+import { dynamicBlockOverlay } from '../footprint/index.js';
 import { canonicalById, isTravelling, NodeBuckets } from '../spatial.js';
 
 /** Max nodes {@link evictSettlersFromFootprint}'s ring search visits before giving up — a plot boxed in
@@ -67,7 +67,7 @@ export function evictSettlersFromFootprint(world: World, ctx: SystemContext, bui
   // Occupancy is read only for `.at(x,y).length` (is a cell already stood on?), a membership count
   // independent of input order — so the unsorted `standing` list is fine here (unlike NodeBuckets.nearest).
   const occupancy = new NodeBuckets(world, standing);
-  const blocked = dynamicBlockedCells(world, ctx, terrain); // includes this building's own body
+  const blocked = dynamicBlockOverlay(world, ctx, terrain); // includes this building's own body
   const claimed = new Set<NodeId>();
   for (const e of evictees) {
     const free = nearestFreeCellOutside(
@@ -150,7 +150,7 @@ function nearestFreeCellOutside(
   terrain: TerrainGraph,
   from: NodeId,
   body: ReadonlySet<NodeId>,
-  blocked: ReadonlySet<NodeId>,
+  blocked: BlockOverlay,
   occupancy: NodeBuckets,
   claimed: ReadonlySet<NodeId>,
 ): NodeId | null {
