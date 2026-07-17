@@ -1,6 +1,7 @@
 # Make the vacant-seat Idle/AI toggle drive a real auto-player
 
 **Area:** sim + app · **Origin:** map player-roster work 2026-07-17 · **Priority:** P3
+**Blocked by:** docs/tickets/sim/ai-player-scaffold.md
 
 The map-select roster panel (menu) lets the person toggle every UNCLAIMED claimable slot between
 "Idle" and "AI" (defaulting to the authored `playerdata` type), and only deviations from that
@@ -11,7 +12,7 @@ the seat's authored units stand around under settler micro-AI.
 
 ## Scope
 
-1. When the strategic AI player exists (design: docs/tickets/features/enemy-ai-opponent.md), a
+1. When the strategic AI player exists (docs/tickets/sim/ai-player-scaffold.md), a
    slot resolving to `ai` (authored type, overridden by its `?vacant=` entry) gets an AI brain
    exactly like a map-authored `ai`-type slot; an `idle` slot gets none (today's behavior).
 2. Parse `?vacant=` in the `?map=` entry next to `?player=`/`?colors=`
@@ -19,7 +20,7 @@ the seat's authored units stand around under settler micro-AI.
    the flag reaches the sim as setup data/commands, never as app-side per-tick reads.
 3. Menu already gates Start on a claimed seat; no menu work expected here.
 
-Blocked by the enemy-AI design ticket producing an attachable AI player. Do not build the brain
+Blocked by the AI-player scaffold producing an attachable AI player. Do not build the brain
 here — this ticket is only the seat-level attach of an existing one.
 
 ## Verify
