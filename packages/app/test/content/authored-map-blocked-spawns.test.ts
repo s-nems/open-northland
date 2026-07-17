@@ -71,7 +71,7 @@ describe.runIf(hasRealIr())('authored decoded-map humans — spawns inside house
       animals: [],
     };
     const rows = {
-      buildingBobs: ir.buildingBobs,
+      ...(ir.buildingBobs !== undefined ? { buildingBobs: ir.buildingBobs } : {}),
       buildings: merge.content.buildings.map((b) => ({ typeId: b.typeId, id: b.id, kind: b.kind })),
       jobs: merge.content.jobs.map((j) => ({ typeId: j.typeId, id: j.id, name: j.id })),
       tribes: merge.content.tribes.map((t) => ({ typeId: t.typeId, id: t.id })),
