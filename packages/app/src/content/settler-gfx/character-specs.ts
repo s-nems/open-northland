@@ -307,6 +307,8 @@ export const CHARACTER_SPEC_ENTRIES = Object.entries(CHARACTER_SPECS) as readonl
  * family: woman 5 → the woman body; the soldier jobs 31..41 → the armoured `cr_hum_body_05`, each
  * weapon class animating its weapon's walk (the axe jobs 38/39 borrow the closest two-hander, the
  * broadsword — the body authors no axe set; the sabers 36/37 borrow the sword/broadsword one-handers).
+ * The named heroes 42..47 borrow their weapon class's warrior body the same way — a named
+ * approximation until their own bodies are extracted (docs/tickets/render/hero-character-bodies.md).
  * Every unmapped job (all civilian trades — they share the generic man body in the original) falls to
  * the `civilian` default.
  */
@@ -324,6 +326,12 @@ export const ADULT_CHARACTER_BY_JOB: Readonly<Record<number, CharacterSpecId>> =
   39: 'warrior-broadsword', // soldier_axe_big
   40: 'warrior-shortbow', // soldier_bow_short
   41: 'warrior-longbow', // soldier_bow_long
+  42: 'warrior', // hero_unarmed
+  43: 'warrior-spear', // hero_spear_siegfried
+  44: 'warrior-sword', // hero_sword_bjarni
+  45: 'warrior-sword', // hero_saber_hatschi (saber borrows the one-hander, like job 36)
+  46: 'warrior-broadsword', // hero_axe (no authored axe set — closest two-hander, like jobs 38/39)
+  47: 'warrior-longbow', // heroine_bow_xena
 };
 
 /**

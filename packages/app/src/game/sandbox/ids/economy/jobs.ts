@@ -27,11 +27,24 @@ export const JOB_SOLDIER_UNARMED = 31; // soldier_unarmed — the fists warrior 
 // weapon (a later step) specializes it into a spear/sword/bow class. Same job as {@link JOB_SOLDIER_UNARMED},
 // named for the picker.
 export const JOB_SOLDIER = JOB_SOLDIER_UNARMED;
+export const JOB_SOLDIER_SPEAR_WOODEN = 32; // soldier_spear_wooden
 export const JOB_SOLDIER_SPEAR = 33; // soldier_spear_iron
 export const JOB_SOLDIER_SWORD = 34; // soldier_sword_short
 export const JOB_SOLDIER_BROADSWORD = 35; // soldier_sword_long
+export const JOB_SOLDIER_SABER_SHORT = 36; // soldier_saber_short
+export const JOB_SOLDIER_SABER_LONG = 37; // soldier_saber_long
+export const JOB_SOLDIER_AXE_SMALL = 38; // soldier_axe_small
+export const JOB_SOLDIER_AXE_BIG = 39; // soldier_axe_big
 export const JOB_ARCHER = 40; // soldier_bow_short
 export const JOB_ARCHER_LONG = 41; // soldier_bow_long
+// The named heroes (`jobtypes.ini` types 42..47) — mission-map elites the decoded `sethuman` records
+// place; they have no extracted bodies yet, so the render borrows their weapon class's warrior body.
+export const JOB_HERO_UNARMED = 42; // hero_unarmed
+export const JOB_HERO_SPEAR = 43; // hero_spear_siegfried
+export const JOB_HERO_SWORD = 44; // hero_sword_bjarni
+export const JOB_HERO_SABER = 45; // hero_saber_hatschi
+export const JOB_HERO_AXE = 46; // hero_axe
+export const JOB_HEROINE_BOW = 47; // heroine_bow_xena
 
 /**
  * Base offset the extracted building worker-slot job ids are lifted by so they clear the sandbox's own

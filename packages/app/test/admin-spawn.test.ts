@@ -12,6 +12,7 @@ import {
   GOOD_BOW_SHORT,
   GOOD_MUD,
   GOOD_SPEAR_IRON,
+  GOOD_SPEAR_WOODEN,
   GOOD_STONE,
   GOOD_SWORD_LONG,
   GOOD_SWORD_SHORT,
@@ -20,8 +21,14 @@ import {
   JOB_ARCHER_LONG,
   JOB_COLLECTOR,
   JOB_IDLE,
+  JOB_HERO_SWORD,
+  JOB_HERO_UNARMED,
+  JOB_HEROINE_BOW,
+  JOB_SOLDIER_AXE_BIG,
   JOB_SOLDIER_BROADSWORD,
+  JOB_SOLDIER_SABER_LONG,
   JOB_SOLDIER_SPEAR,
+  JOB_SOLDIER_SPEAR_WOODEN,
   JOB_SOLDIER_SWORD,
   JOB_SOLDIER_UNARMED,
   WEAPON_FISTS,
@@ -162,11 +169,22 @@ describe('weaponEquipmentFor — the one job→equipment-weapon map every spawn 
   it('each soldier class carries its matching weapon good (so its Broń row + drawn weapon match)', () => {
     // The seam the scene placer, the imported-map spawn AND the admin palette all derive from, so a
     // pre-placed warrior fills the same equipment weapon slot a freshly-spawned one does.
+    expect(weaponEquipmentFor(JOB_SOLDIER_SPEAR_WOODEN)).toEqual({
+      weapon: { goodType: GOOD_SPEAR_WOODEN },
+    });
     expect(weaponEquipmentFor(JOB_SOLDIER_SPEAR)).toEqual({ weapon: { goodType: GOOD_SPEAR_IRON } });
     expect(weaponEquipmentFor(JOB_SOLDIER_SWORD)).toEqual({ weapon: { goodType: GOOD_SWORD_SHORT } });
     expect(weaponEquipmentFor(JOB_SOLDIER_BROADSWORD)).toEqual({ weapon: { goodType: GOOD_SWORD_LONG } });
     expect(weaponEquipmentFor(JOB_ARCHER)).toEqual({ weapon: { goodType: GOOD_BOW_SHORT } });
     expect(weaponEquipmentFor(JOB_ARCHER_LONG)).toEqual({ weapon: { goodType: GOOD_BOW_LONG } });
+  });
+
+  it('sabers/axes/heroes carry the good matching the warrior body they borrow (no saber/axe goods exist)', () => {
+    expect(weaponEquipmentFor(JOB_SOLDIER_SABER_LONG)).toEqual({ weapon: { goodType: GOOD_SWORD_LONG } });
+    expect(weaponEquipmentFor(JOB_SOLDIER_AXE_BIG)).toEqual({ weapon: { goodType: GOOD_SWORD_LONG } });
+    expect(weaponEquipmentFor(JOB_HERO_SWORD)).toEqual({ weapon: { goodType: GOOD_SWORD_SHORT } });
+    expect(weaponEquipmentFor(JOB_HEROINE_BOW)).toEqual({ weapon: { goodType: GOOD_BOW_LONG } });
+    expect(weaponEquipmentFor(JOB_HERO_UNARMED)).toBeUndefined();
   });
 
   it('the bare-handed warrior and a civilian get no equipment weapon (empty slot → their own body)', () => {

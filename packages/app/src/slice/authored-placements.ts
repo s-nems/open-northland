@@ -26,6 +26,20 @@ export interface AuthoredJoinRows {
   readonly goods?: readonly { typeId?: number; name?: string; id?: string }[];
 }
 
+/**
+ * Canonicalize a `sethuman` role name for the job join: lowercase, punctuation/space runs to `_`,
+ * edge underscores trimmed. Decoded maps author the same jobtype in freehand variants —
+ * `Child_Male`, `SOLDIER_UNARMED`, `hero_sword_BJARNI`, `coin maker`, `herb & mush guy`,
+ * `hero_axe_???` — that all mean the `jobtypes.ini` slug (`child_male`, `coin_maker`, `hero_axe`, …);
+ * an exact-string join drops them (observed across the decoded `content/maps/*.json`).
+ */
+function normalizeRoleKey(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
 /** One resolved authored placement, ready to enqueue (what {@link resolveAuthoredPlacements} returns). */
 export type AuthoredPlacement =
   | {
@@ -65,7 +79,10 @@ export function resolveAuthoredPlacements(
   const jobByName = new Map<string, number>();
   for (const j of rows.jobs ?? []) {
     const name = j.name ?? j.id;
-    if (name !== undefined && j.typeId !== undefined && !jobByName.has(name)) jobByName.set(name, j.typeId);
+    if (name !== undefined && j.typeId !== undefined) {
+      const key = normalizeRoleKey(name);
+      if (!jobByName.has(key)) jobByName.set(key, j.typeId);
+    }
   }
   const tribeByName = new Map<string, number>();
   for (const t of rows.tribes ?? []) {
@@ -121,7 +138,7 @@ export function resolveAuthoredPlacements(
     });
   }
   for (const h of entities.humans) {
-    const jobType = jobByName.get(h.role);
+    const jobType = jobByName.get(normalizeRoleKey(h.role));
     const tribe = tribeByName.get(h.tribe);
     if (jobType === undefined || tribe === undefined || !inBounds(h.hx, h.hy)) {
       skipped++;
