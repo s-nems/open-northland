@@ -20,6 +20,9 @@ own look.
   with the hero specs and swap the 42–47 borrow entries to them.
 - Decide whether a hero's `Equipment.weapon` should keep the class weapon good (panel Broń row) —
   today it carries the borrowed body's good so look and equipment agree.
+- Related gap: the axe soldiers 38/39 draw the borrowed broadsword body but are sim-unarmed (no
+  `weapons.ini` record) and carry no equipment — no map places them and the admin palette has no axe
+  preset, but resolve the look-vs-capability mismatch before adding one.
 
 ## Verify
 
