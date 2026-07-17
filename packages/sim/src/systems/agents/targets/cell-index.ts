@@ -26,11 +26,42 @@ const NEAREST_RING_MAX_RADIUS = 48;
  */
 const RING_MIN_BUCKETS = 64;
 
-/** A candidate's interaction cell plus the distance a scan measured to it. */
-export interface NearestByCell {
+/**
+ * A candidate's interaction cell, the distance a scan measured to it, and the `payload` the scan's
+ * qualification derived on the way (the good the winning pile stocks). Carrying it through means the caller
+ * never re-derives what already qualified the winner — the two could silently disagree (a returned good the
+ * accept never approved).
+ */
+export interface NearestByCell<P = null> {
   readonly entity: Entity;
   readonly cell: NodeId;
   readonly distance: number;
+  readonly payload: P;
+}
+
+/**
+ * A qualifying candidate, as an {@link InteractionCellIndex.nearest} `accept` reports it: the value the
+ * qualification derived, carried through to the winner. Scans that derive nothing qualify with
+ * `payload: null`. Wrapping the verdict (rather than returning a bare value) keeps the reject case the one
+ * unambiguous `null` — a bare `false` would otherwise read as a qualified candidate.
+ */
+export interface Qualified<P> {
+  readonly payload: P;
+}
+
+/** The {@link Qualified} verdict of a scan that derives nothing — "this candidate passes, with no value to
+ *  carry". Shared, so a plain accept allocates nothing per candidate. */
+export const QUALIFIES: Qualified<null> = { payload: null };
+
+/** A {@link Qualified} wrapper for the "derive the good, or reject" accepts — `null` in stays a reject. */
+export function qualifiedGood(goodType: number | null): Qualified<number> | null {
+  return goodType === null ? null : { payload: goodType };
+}
+
+/** What a {@link nearestByCell} `resolve` returns for a qualifying candidate: the interaction cell to rank it
+ *  by, plus whatever the qualification derived. */
+export interface CellMatch<P> extends Qualified<P> {
+  readonly cell: NodeId;
 }
 
 /** Every candidate sharing one seeker-independent interaction cell, in ascending entity-id order. */
@@ -103,17 +134,25 @@ export class InteractionCellIndex {
   }
 
   /**
-   * The nearest candidate to `here` that passes `accept`, by the shared `(distance, cell-id, entity-id)`
-   * order, or null when none passes. Falls back to a full linear scan when no bucketed candidate lies
-   * within the ring bound (identical result). `accept` must be side-effect-free — a ring miss re-runs it
-   * on the fallback scan, so it may be evaluated more than once per candidate. `gate` (the settler's
-   * confinement, a {@link SpatialGate}) rejects whole interaction CELLS before any entity is consulted —
-   * a gated cell's bucket is skipped in O(1), and the linear fallback applies the same gate, so both
-   * paths agree on the winner — and BOUNDS the sweep: every gate-passing cell provably lies inside
-   * `gate.bounds`, so the ring sweep stops at the box's reach, and a sweep that covered that whole reach
-   * PROVES no bucketed candidate passes, eliding the full linear fallback.
+   * The nearest candidate to `here` that `accept` qualifies, by the shared `(distance, cell-id, entity-id)`
+   * order, or null when none does. `accept` returns a {@link Qualified} carrying whatever the qualification
+   * derived — handed on as the winner's {@link NearestByCell.payload} so the caller never re-derives it —
+   * or null to reject.
+   *
+   * Falls back to a full linear scan when no bucketed candidate lies within the ring bound (identical
+   * result). `accept` must be side-effect-free — a ring miss re-runs it on the fallback scan, so it may be
+   * evaluated more than once per candidate. `gate` (the settler's confinement, a {@link SpatialGate})
+   * rejects whole interaction CELLS before any entity is consulted — a gated cell's bucket is skipped in
+   * O(1), and the linear fallback applies the same gate, so both paths agree on the winner — and BOUNDS the
+   * sweep: every gate-passing cell provably lies inside `gate.bounds`, so the ring sweep stops at the box's
+   * reach, and a sweep that covered that whole reach PROVES no bucketed candidate passes, eliding the full
+   * linear fallback.
    */
-  nearest(here: NodeId, accept: (e: Entity) => boolean, gate?: SpatialGate): NearestByCell | null {
+  nearest<P>(
+    here: NodeId,
+    accept: (e: Entity) => Qualified<P> | null,
+    gate?: SpatialGate,
+  ): NearestByCell<P> | null {
     // A sparse index skips the ring for the exact linear reference scan ({@link RING_MIN_BUCKETS}):
     // a ring MISS costs the whole O(maxRadius²) diamond however few buckets exist, and confined
     // searches miss constantly.
@@ -135,11 +174,11 @@ export class InteractionCellIndex {
    *  when the search is confined — so a sparse/empty index or a small confined area rings no wider.
    *  `exhaustive` reports whether the sweep covered that whole reach (a null `best` is then a proof, not a
    *  cap). */
-  private ringNearest(
+  private ringNearest<P>(
     here: NodeId,
-    accept: (e: Entity) => boolean,
+    accept: (e: Entity) => Qualified<P> | null,
     gate?: SpatialGate,
-  ): { best: NearestByCell | null; exhaustive: boolean } {
+  ): { best: NearestByCell<P> | null; exhaustive: boolean } {
     if (this.maxX < this.minX) return { best: null, exhaustive: true }; // no bucketed candidates at all
     const { x: hx, y: hy } = this.terrain.coordsOf(here);
     let reach = Math.max(hx - this.minX, this.maxX - hx) + Math.max(hy - this.minY, this.maxY - hy);
@@ -151,7 +190,7 @@ export class InteractionCellIndex {
     const maxRadius = Math.min(NEAREST_RING_MAX_RADIUS, reach);
     const exhaustive = reach <= NEAREST_RING_MAX_RADIUS;
     for (let d = 0; d <= maxRadius; d++) {
-      let best: NearestByCell | null = null;
+      let best: NearestByCell<P> | null = null;
       // Ring d = every node at Manhattan distance exactly d; the two rows dy = ±(d - |dx|) trace the diamond.
       for (let dx = -d; dx <= d; dx++) {
         const rem = d - Math.abs(dx);
@@ -166,20 +205,21 @@ export class InteractionCellIndex {
   /** Fold node `(x,y)`'s bucket into the running ring `best`. Distinct nodes carry distinct cell ids, so a
    *  lower cell wins outright; the entity-id tie-break only decides within one bucket, where the ascending
    *  order makes the first accepted entity the lowest id. */
-  private pickInRing(
+  private pickInRing<P>(
     x: number,
     y: number,
     distance: number,
-    accept: (e: Entity) => boolean,
+    accept: (e: Entity) => Qualified<P> | null,
     gate: SpatialGate | undefined,
-    best: NearestByCell | null,
-  ): NearestByCell | null {
+    best: NearestByCell<P> | null,
+  ): NearestByCell<P> | null {
     const bucket = this.byX.get(x)?.get(y);
     if (bucket === undefined) return best;
     if (best !== null && bucket.cell >= best.cell) return best; // can't beat a lower cell at the same distance
     if (gate !== undefined && !gate.allowsNode(bucket.cell)) return best; // the whole cell is out of bounds
     for (const e of bucket.entities) {
-      if (accept(e)) return { entity: e, cell: bucket.cell, distance };
+      const hit = accept(e);
+      if (hit !== null) return { entity: e, cell: bucket.cell, distance, payload: hit.payload };
     }
     return best;
   }
@@ -187,16 +227,17 @@ export class InteractionCellIndex {
   /** The `closer` winner over `list`, measuring each candidate's `interactionCell` from `here` — the exact
    *  linear scan the ring accelerates, used for the seeker-dependent tail and the out-of-range fallback.
    *  Shares the standalone {@link nearestByCell} loop (ranked from `here`), so the tie-break lives in one place. */
-  private linearNearest(
+  private linearNearest<P>(
     list: readonly Entity[],
     here: NodeId,
-    accept: (e: Entity) => boolean,
+    accept: (e: Entity) => Qualified<P> | null,
     gate?: SpatialGate,
-  ): NearestByCell | null {
+  ): NearestByCell<P> | null {
     return nearestByCell(this.terrain, list, here, (e) => {
-      if (!accept(e)) return null;
+      const hit = accept(e);
+      if (hit === null) return null;
       const cell = this.staticCell.get(e) ?? interactionCell(this.world, this.ctx, this.terrain, e, here);
-      return gate === undefined || gate.allowsNode(cell) ? cell : null;
+      return gate === undefined || gate.allowsNode(cell) ? { cell, payload: hit.payload } : null;
     });
   }
 }
@@ -209,21 +250,22 @@ export class InteractionCellIndex {
  * the ranking origin: usually the seeker, but a flag centre when a bound gatherer works outward from its flag
  * (so the interaction cell may resolve from a different node than the one it is ranked by).
  */
-export function nearestByCell(
+export function nearestByCell<P = null>(
   terrain: TerrainGraph,
   list: readonly Entity[],
   rank: NodeId,
-  resolve: (entity: Entity) => NodeId | null,
-): NearestByCell | null {
-  let best: NearestByCell | null = null;
+  resolve: (entity: Entity) => CellMatch<P> | null,
+): NearestByCell<P> | null {
+  let best: NearestByCell<P> | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
   let bestCell = Number.POSITIVE_INFINITY;
   for (const entity of list) {
-    const cell = resolve(entity);
-    if (cell === null) continue;
+    const match = resolve(entity);
+    if (match === null) continue;
+    const { cell, payload } = match;
     const distance = manhattan(terrain, rank, cell);
     if (closer(distance, cell, bestDist, bestCell)) {
-      best = { entity, cell, distance };
+      best = { entity, cell, distance, payload };
       bestDist = distance;
       bestCell = cell;
     }
@@ -233,7 +275,7 @@ export function nearestByCell(
 
 /** The lower of two winners by `(distance, cell-id, entity-id)` — the same total order the linear scans
  *  produce, so merging the bucketed and seeker-dependent winners can never pick a different candidate. */
-function combine(a: NearestByCell | null, b: NearestByCell | null): NearestByCell | null {
+function combine<P>(a: NearestByCell<P> | null, b: NearestByCell<P> | null): NearestByCell<P> | null {
   if (a === null) return b;
   if (b === null) return a;
   if (b.distance !== a.distance) return b.distance < a.distance ? b : a;

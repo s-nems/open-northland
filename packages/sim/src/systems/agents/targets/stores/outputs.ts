@@ -4,7 +4,7 @@ import type { NodeId } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
 import type { SpatialGate } from '../../../node-metric.js';
 import { mergedRecipeOf } from '../../../stores/index.js';
-import type { InteractionCellIndex } from '../cell-index.js';
+import { type InteractionCellIndex, qualifiedGood } from '../cell-index.js';
 
 /**
  * Whether ANY workplace holds a haulable output this tick — a producing {@link Building} ({@link mergedRecipeOf}
@@ -50,11 +50,13 @@ export function nearestWorkplaceOutput(
   gate?: SpatialGate,
 ): { workplace: Entity; goodType: number } | null {
   // The stockpile index holds every Stockpile+Position candidate; only workplaces with a deliverable output
-  // pass `accept`, and the winner's good is re-derived by the same canonical rule below.
-  const winner = index.nearest(here, (e) => haulableOutputGood(world, ctx, deliverable, e) !== null, gate);
-  if (winner === null) return null;
-  const goodType = haulableOutputGood(world, ctx, deliverable, winner.entity);
-  return goodType === null ? null : { workplace: winner.entity, goodType };
+  // qualify, and the good that qualified the winner is the good it hauls.
+  const winner = index.nearest(
+    here,
+    (e) => qualifiedGood(haulableOutputGood(world, ctx, deliverable, e)),
+    gate,
+  );
+  return winner === null ? null : { workplace: winner.entity, goodType: winner.payload };
 }
 
 /** The lowest-goodType output a workplace currently stocks (>0), that its recipe produces and the seeking

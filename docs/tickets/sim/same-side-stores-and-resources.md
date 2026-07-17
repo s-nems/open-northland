@@ -11,7 +11,7 @@ settler could still:
   `deliveryTargetFor` rungs 3/5, `packages/sim/src/systems/agents/economy/routing.ts`;
   `nearestStoreFor`/`nearestStoreHolding` in `targets/stores/stock.ts`),
 - fetch construction material or a recipe input from another player's store
-  (`nearestStoreHolding`, the builder self-supply in `fieldwork.ts` and the workshop supplier),
+  (`nearestStoreHolding`, the builder self-supply in `economy/builder.ts` and the workshop supplier),
 - gather from / haul another player's dropped piles or resource nodes (the gatherer/porter rungs).
 
 The user's rule is "all logic" — a settler works only its own side. The reported cases (build,

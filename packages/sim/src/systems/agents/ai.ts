@@ -1,27 +1,20 @@
 import {
   Age,
   Carrying,
-  CurrentAtomic,
-  DeliveryFlag,
   Engagement,
   FamilyDuty,
   Female,
   Fleeing,
   Owner,
   ownerOf,
-  PathRequest,
   PlayerOrder,
   Position,
   Resting,
   Settler,
   Stance,
-  Stranded,
   Wedding,
-  WorkFlag,
-  YardDeliveryRoute,
 } from '../../components/index.js';
-import { TICKS_PER_SECOND } from '../../core/loop.js';
-import type { Entity, World } from '../../ecs/world.js';
+import type { World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
@@ -32,8 +25,8 @@ import { planChildWander } from '../family/wander.js';
 import { isChild } from '../lifecycle/ageclass.js';
 import { MILITARY_MODE } from '../readviews/index.js';
 import { navigationLimitFor } from '../signposts/index.js';
-import { canonicalById, clearNavState, isTravelling, NodeBuckets } from '../spatial.js';
-import { collectInboundSupply, isCarrierJob, releaseSupplyRun } from '../stores/index.js';
+import { canonicalById, isTravelling, NodeBuckets } from '../spatial.js';
+import { collectInboundSupply, isCarrierJob } from '../stores/index.js';
 import { deStackIdle, type SpacingState } from './destack.js';
 import { anyNeedPressing, planNeeds } from './drives-needs.js';
 import { collectHarvestClaims } from './economy/harvest-claims.js';
@@ -47,9 +40,10 @@ import {
   planWorkshopSupplier,
   type WorkSeatClaims,
 } from './economy/index.js';
-import { collectFarmClaims, planFarmer, releaseFarmTask } from './farming/index.js';
+import { collectFarmClaims, planFarmer } from './farming/index.js';
 import { navigationPlanner } from './navigation.js';
 import type { PlannerContext } from './planner-context.js';
+import { releaseStaleIntent } from './replan.js';
 import { boundWorkplaceTarget, collectTargets, hasHaulableOutput } from './targets/index.js';
 
 /**
@@ -72,21 +66,6 @@ export const aiSystem: System = (world, ctx) => {
   atomicPlanner(world, ctx, ctx.terrain);
   navigationPlanner(world, ctx.terrain);
 };
-
-/** How long a stranded walker parks before shedding its failed route and re-planning — long enough that
- *  a permanently blocked target costs one path query per episode, short enough that a transient blockage
- *  (a footprint stamped mid-walk, a crowd) heals within seconds. Our recovery pacing (the original's
- *  retry cadence is not readable). */
-const STRANDED_RETRY_TICKS = 4 * TICKS_PER_SECOND;
-
-/** Whether a drive that runs its own failed-route protocol owns `e`'s walk: the player-order, chase,
- *  flee, and wedding systems each read the `failed` flag and clear/cancel it themselves — the planner's
- *  stranded recovery must not eat their signal. */
-function ownsFailedRoute(world: World, e: Entity): boolean {
-  return (
-    world.has(e, PlayerOrder) || world.has(e, Engagement) || world.has(e, Fleeing) || world.has(e, Wedding)
-  );
-}
 
 /**
  * The atomic-utility planner: pick the next atomic for each idle settler by running the drive
@@ -150,64 +129,9 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
   // entity-id, never store insertion history. Today Settler stores happen to insert in id order (settlers
   // are never re-added), but nothing enforces that; the sort pins the winner.
   for (const e of canonicalById(world.query(Settler, Position))) {
-    const routeLoad = world.tryGet(e, Carrying);
-    const tickStartRequest = world.tryGet(e, PathRequest);
-    const workFlag = world.tryGet(e, WorkFlag);
-    const yardRoute = world.tryGet(e, YardDeliveryRoute);
-    const validYardRoute =
-      yardRoute !== undefined &&
-      routeLoad !== undefined &&
-      routeLoad.amount > 0 &&
-      routeLoad.goodType === yardRoute.goodType &&
-      workFlag !== undefined &&
-      workFlag.flag === yardRoute.flag &&
-      world.has(yardRoute.flag, DeliveryFlag);
-    if (yardRoute !== undefined && !validYardRoute) world.remove(e, YardDeliveryRoute);
-    if (
-      validYardRoute &&
-      yardRoute !== undefined &&
-      !yardRoute.failed &&
-      tickStartRequest?.failed === true &&
-      tickStartRequest.goal === yardRoute.goal
-    ) {
-      yardRoute.failed = true;
-      world.touch(e);
-      clearNavState(world, e);
-    }
-    // Busy: an atomic is running, or the settler is en route to a target. Leave it to play out (its
-    // FarmTask claim, if any, stays live so colleagues keep avoiding its target).
-    if (world.has(e, CurrentAtomic)) continue;
-    // A FAILED route is not travel — nothing on the nav side retries it (navigationPlanner skips any
-    // entity with a live request; routing skips failed ones), so a settler left in that state stands
-    // forever. Drives with their own failure protocol keep the signal (the player-order, flee, chase,
-    // and wedding systems read and clear the flag themselves); for everyone else the planner parks the
-    // dead route (Stranded), then sheds it and re-plans — the pacing costs one path query per retry
-    // instead of per tick when the target stays blocked, and a transient blockage heals on its own.
-    // A parked settler keeps its SupplyRun for the park window (released only at the re-plan below) —
-    // the errand may resume after a transient blockage, so the site keeps counting it as inbound.
-    const request = world.tryGet(e, PathRequest); // fresh read — the yard block above may have cleared it
-    if (request?.failed === true && !ownsFailedRoute(world, e)) {
-      const stranded = world.tryGet(e, Stranded);
-      if (stranded === undefined) {
-        world.add(e, Stranded, { retryAt: ctx.tick + STRANDED_RETRY_TICKS });
-        continue;
-      }
-      if (ctx.tick < stranded.retryAt) continue;
-      clearNavState(world, e); // sheds Stranded with the route — fall through and re-plan this tick
-    } else if (isTravelling(world, e)) {
-      continue;
-    }
-    // Replanning from here: the settler's previous farm intent is spent/stale — release its claim so
-    // it never blocks ITSELF from re-choosing (planFarmer re-stamps a fresh task if it takes over).
-    releaseFarmTask(world, e, farmClaims);
-    // Likewise its rest-inside marker: the drive re-stamps it within this same tick if there is still
-    // nothing to do (so the render never sees a gap), and it stays off the moment real work appears.
-    // A settler on family duty keeps it — the FamilySystem owns its waiting-inside-the-home marker.
-    if (!world.has(e, FamilyDuty)) world.remove(e, Resting);
-    // And its supply errand (SupplyRun): the fetch/delivery rungs re-stamp it below while the errand
-    // lasts; a settler re-planning has, by definition, finished or abandoned the previous leg. Releasing
-    // through the tally keeps the inbound count in lockstep with the store.
-    releaseSupplyRun(world, e, inbound);
+    // Busy (an atomic running, a live route, a parked failed one) — leave it to play out; else the settler
+    // is re-planning, and every intent the previous one left is shed first (see ./replan.ts).
+    if (!releaseStaleIntent(world, ctx, e, farmClaims, inbound)) continue;
 
     const settler = world.get(e, Settler);
     if (settler.jobType === null) continue; // an unemployed settler has no job atomics to run
@@ -229,7 +153,8 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
         const hereNode = nodeOfPosition(p.x, p.y);
         const here = terrain.nodeAtClamped(hereNode.hx, hereNode.hy);
         const limit = navigationLimitFor(world, terrain, e);
-        if (planNeeds(world, ctx, terrain, e, settler, here, routeLoad, targets, limit)) continue;
+        const load = world.tryGet(e, Carrying);
+        if (planNeeds(world, ctx, terrain, e, settler, here, load, targets, limit)) continue;
       }
       planChildWander(world, ctx, terrain, e, spacing);
       continue;
@@ -238,7 +163,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     const p = world.get(e, Position);
     const hereNode = nodeOfPosition(p.x, p.y);
     const here = terrain.nodeAtClamped(hereNode.hx, hereNode.hy);
-    const load = routeLoad;
+    const load = world.tryGet(e, Carrying);
 
     // The settler's signpost confinement (or null when unlimited) — computed once, shared by the needs
     // drives here and the economy PlannerContext below.

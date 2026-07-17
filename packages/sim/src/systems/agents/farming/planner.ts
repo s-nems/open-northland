@@ -142,8 +142,8 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
     world.add(e, FarmTask, { farm, node, sow });
   };
 
-  // One pass over this farm's fields: count them (the max-fields gate) and pick the nearest unclaimed ripe one
-  // (to reap) + unwatered growing one (to water). Canonical list + (dist, cell) tie-break.
+  // One pass over this farm's own fields: count them (the max-fields gate) and pick the nearest unclaimed
+  // ripe one (to reap) + unwatered growing one (to water). Canonical list + (dist, cell) tie-break.
   let fields = 0;
   let ripe: Entity | null = null;
   let ripeCell = 0 as NodeId;
@@ -151,9 +151,8 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
   let thirsty: Entity | null = null;
   let thirstyCell = 0 as NodeId;
   let thirstyDist = Number.POSITIVE_INFINITY;
-  for (const c of targets.crops) {
+  for (const c of targets.cropsByFarm.get(farm) ?? []) {
     const crop = world.get(c, Crop);
-    if (crop.farm !== farm) continue; // another farm's field — never worked from here
     fields++;
     const cell = interactionCell(world, ctx, terrain, c, here);
     if (claims.nodes.has(cell)) continue; // a colleague is already on this field
@@ -197,7 +196,7 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
 
   // b. Carry a sheaf home — the delivery rung then routes the load into the farm's own store (or, with
   // the farm full, overflows it to the nearest warehouse that still has room).
-  const sheaf = nearestFarmSheaf(world, ctx, terrain, targets, anchor, here, spec, claims);
+  const sheaf = nearestFarmSheaf(plan, { anchor, spec, claims });
   if (sheaf !== null && cropSinkExists()) {
     const cell = interactionCell(world, ctx, terrain, sheaf, here);
     take(cell, false);
@@ -215,7 +214,7 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
     spec.farming.fieldsBase +
     spec.farming.fieldsPerFarmer * fieldCrewOf(world, ctx, claims, farm, spec.plantAtomic);
   if (fields + (claims.byFarm.get(farm) ?? 0) < fieldCap) {
-    const node = nextSowNode(world, ctx, terrain, targets, anchor, spec, claims);
+    const node = nextSowNode(plan, { anchor, spec, claims });
     if (node !== null) {
       take(node, true);
       const at = terrain.coordsOf(node);

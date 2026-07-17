@@ -20,33 +20,16 @@ import {
   resolveAttackHit,
 } from './effects-combat/index.js';
 import {
+  beginRestTail,
   consumeFood,
   continuesHarvest,
   dropCarriedLoad,
+  endRestTail,
   forageBerry,
   harvestFromNode,
   pickupFromStore,
   pileupIntoStore,
-  restAfterHarvest,
 } from './effects-goods/index.js';
-
-// Re-exported so the projectile system (and the systems barrel) keep their single import site for
-// the shared combat-hit contract after the effects split.
-export { applyPendingStaggers, type PendingStagger, resolveCombatHit } from './effects-combat/index.js';
-
-/**
- * The idle breather a gatherer stands between work-swing bursts, in ticks (1.25 s at 12 ticks/s).
- *
- * source-basis (observed): the original's collector swings a couple of times in a row, rests ~0.5–1 s, and
- * swings again, but the readable data carries no rest field — `atomicanimations.ini` lengths cover only the
- * swing itself (its trailing idle pad is ~4 frames, far shorter). Applied after every
- * {@link import('./effects-goods/index.js').HARVEST_SWINGS_PER_REST}-th completed harvest swing of a job
- * still in progress ({@link import('./effects-goods/index.js').restAfterHarvest}), never after the final
- * swing (felled/depleted/plucked — the settler moves straight on to carrying). The rest is the same atomic
- * extended (`restTail`), not a second one, so the render keeps the swing's binding and stands its ready
- * stance instead of snapping to a different animation.
- */
-export const HARVEST_REST_TICKS = 15;
 
 /**
  * AtomicSystem — the executor half of the settler planner: advance the {@link CurrentAtomic} a
@@ -119,10 +102,9 @@ export const atomicSystem: System = (world, ctx) => {
     // continuously acting, so the render never flicks through an idle pose between swings.
     if (atomic.restTail === true) {
       if (atomic.effect.kind === 'harvest' && continuesHarvest(world, atomic.effect.resource)) {
-        delete atomic.restTail; // the tail is over — restore the pre-rest component shape exactly
+        endRestTail(atomic); // back to the swing's own length and pre-rest component shape
         atomic.elapsed = 0;
         atomic.progress = fx.fromInt(0);
-        atomic.duration -= HARVEST_REST_TICKS; // back to the swing's own animation length
         continue;
       }
       world.remove(e, CurrentAtomic);
@@ -138,17 +120,13 @@ export const atomicSystem: System = (world, ctx) => {
     if (atomic.effect.kind === 'attack') paySwingNeedCost(world, ctx, e, atomic.atomicId);
     ctx.events.emit({ kind: 'atomicCompleted', entity: e, atomicId: atomic.atomicId });
     // A multi-swing harvest job never releases the settler between swings, since the one-tick planner gap
-    // draws an idle-pose flick mid-work: every HARVEST_SWINGS_PER_REST-th swing extends the same atomic
-    // into the breather tail (the render holds the ready pose — the observed burst rhythm), any other
-    // still-in-progress swing re-arms immediately, and only the swing that fells / chips a unit loose /
-    // depletes hands the settler back to the planner (it routes the pickup/carry). Mutating in place
-    // (never remove+add) keeps this iteration-safe.
+    // draws an idle-pose flick mid-work: a swing on the burst boundary holds the same atomic open as the
+    // breather tail (`beginRestTail` — the render holds the ready pose), any other still-in-progress swing
+    // re-arms immediately, and only the swing that fells / chips a unit loose / depletes hands the settler
+    // back to the planner (it routes the pickup/carry). Mutating in place (never remove+add) keeps this
+    // iteration-safe.
     if (atomic.effect.kind === 'harvest') {
-      if (HARVEST_REST_TICKS > 0 && restAfterHarvest(world, atomic.effect.resource)) {
-        atomic.duration += HARVEST_REST_TICKS;
-        atomic.restTail = true;
-        continue;
-      }
+      if (beginRestTail(world, atomic, atomic.effect.resource)) continue;
       if (continuesHarvest(world, atomic.effect.resource)) {
         atomic.elapsed = 0;
         atomic.progress = fx.fromInt(0);

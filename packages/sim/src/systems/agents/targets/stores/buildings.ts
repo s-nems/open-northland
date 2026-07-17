@@ -4,7 +4,7 @@ import type { NodeId } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
 import type { SpatialGate } from '../../../node-metric.js';
 import { isTemple } from '../../../stores/index.js';
-import type { InteractionCellIndex } from '../cell-index.js';
+import { type InteractionCellIndex, QUALIFIES } from '../cell-index.js';
 
 /**
  * The nearest {@link isTemple temple} a devout settler should walk to in order to pray, by Manhattan
@@ -21,7 +21,7 @@ export function nearestTemple(
   gate?: SpatialGate,
 ): Entity | null {
   // buildingCells holds only Building + Position candidates, so only the temple filter remains.
-  return index.nearest(here, (e) => isTemple(world, ctx, e), gate)?.entity ?? null;
+  return index.nearest(here, (e) => (isTemple(world, ctx, e) ? QUALIFIES : null), gate)?.entity ?? null;
 }
 
 /**
@@ -45,7 +45,10 @@ export function nearestConstructionSite(
   return (
     index.nearest(
       here,
-      (e) => world.get(e, Building).tribe === tribe && ownersCompatible(owner, ownerOf(world, e)),
+      (e) =>
+        world.get(e, Building).tribe === tribe && ownersCompatible(owner, ownerOf(world, e))
+          ? QUALIFIES
+          : null,
       gate,
     )?.entity ?? null
   );

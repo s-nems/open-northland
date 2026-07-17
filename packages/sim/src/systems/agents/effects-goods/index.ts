@@ -5,6 +5,6 @@
 
 export { addCarry, dropCarriedLoad, dropCarryAtOwnTile } from './carry.js';
 export { consumeFood, forageBerry } from './consume.js';
-export { continuesHarvest, harvestFromNode, restAfterHarvest } from './harvest.js';
+export { beginRestTail, continuesHarvest, endRestTail, harvestFromNode } from './harvest.js';
 export { dropOrStackGood } from './piles.js';
 export { pickupFromStore, pileupIntoStore } from './transfer.js';

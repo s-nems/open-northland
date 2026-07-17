@@ -43,8 +43,9 @@ export interface TargetCandidates {
   readonly constructionSiteCells: InteractionCellIndex;
   /** Felled trunks and dropped-good piles, kept separate from persistent stores. */
   readonly groundDrops: readonly Entity[];
-  /** Sown fields used by the farming planner. */
-  readonly crops: readonly Entity[];
+  /** Sown fields grouped by the {@link Crop.farm} that owns them, each list ascending-id — so a farmer
+   *  reads only its own farm's fields instead of filtering the settlement's whole crop list per tick. */
+  readonly cropsByFarm: ReadonlyMap<Entity, readonly Entity[]>;
   /** Good type to its content-authored harvesting atomic. */
   readonly harvestAtomicByGood: ReadonlyMap<number, number>;
   /** Workplaces with a carrier bound to their transport slot. */
@@ -85,6 +86,15 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
   }
   const buildings = canonicalById(world.query(Building, Position));
   const constructionSites = canonicalById(world.query(UnderConstruction, Building, Position));
+  // Grouped from the canonical list, so each farm's fields stay ascending-id and the farmer's
+  // (distance, cell-id) tie-break picks the same field it did over the whole-world scan.
+  const cropsByFarm = new Map<Entity, Entity[]>();
+  for (const crop of canonicalById(world.query(Crop, Position))) {
+    const farm = world.get(crop, Crop).farm;
+    const fields = cropsByFarm.get(farm);
+    if (fields === undefined) cropsByFarm.set(farm, [crop]);
+    else fields.push(crop);
+  }
   return {
     resources: canonicalResources(world),
     stockpiles,
@@ -94,7 +104,7 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
     constructionSites,
     constructionSiteCells: new InteractionCellIndex(world, ctx, terrain, constructionSites),
     groundDrops: canonicalById(world.query(GroundDrop, Stockpile, Position)),
-    crops: canonicalById(world.query(Crop, Position)),
+    cropsByFarm,
     harvestAtomicByGood,
     carrierSuppliedWorkplaces,
     sinks: new SinkAvailability(stockpiles, world, ctx),
