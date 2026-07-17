@@ -1,7 +1,8 @@
 import { HarvestedBy, Position, Resource, Stockpile } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity } from '../../../ecs/world.js';
-import type { NodeId } from '../../../nav/terrain/index.js';
+import type { BlockOverlay, NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
+import { dynamicBlockOverlay } from '../../footprint/index.js';
 import { settlerMeetsNeed } from '../../progression/index.js';
 import { resourceHarvestAtomics, resourcesNearNode } from '../../resource-index.js';
 import { manhattan } from '../../spatial.js';
@@ -140,6 +141,27 @@ export function nearestHarvestableFor(
 }
 
 /**
+ * Whether walking to `cell` to pick a pile up is provably doomed: the goal is unwalkable, dynamically
+ * blocked (`findPath` rejects a blocked GOAL — only the start is exempt), or in another static
+ * component. In a dense resource field a dug-out node's drop can sit under neighbouring walk bodies;
+ * targeting it anyway strands the settler in a park→re-pick→fail loop, so the pile scans below skip it
+ * until the field opens up. Standing on the cell already (`here`) needs no walk, so it is never doomed.
+ */
+function unreachablePickupCell(
+  terrain: TerrainGraph,
+  blocked: BlockOverlay,
+  here: NodeId,
+  cell: NodeId,
+): boolean {
+  if (cell === here) return false;
+  return (
+    !terrain.isWalkable(cell) ||
+    blocked.has(cell) ||
+    terrain.componentOf(here) !== terrain.componentOf(cell)
+  );
+}
+
+/**
  * The nearest collectable ground drop a felling collector should carry off — a bare {@link GroundDrop} trunk
  * pile (a felled tree's dropped wood) whose good this settler's job may harvest — with its Manhattan distance,
  * or null if none is in reach. Scoped two ways so it stays the collector's own-trade loop, not a general
@@ -162,6 +184,7 @@ export function nearestCollectablePileFor(
   const { goodFilter } = opts;
   const gate = plan.limit ?? undefined; // signpost confinement
   const allowed = jobAtomics(ctx, plan.jobType);
+  const blocked = dynamicBlockOverlay(world, ctx, terrain);
   // The GroundDrop candidate list: every entry already has GroundDrop+Stockpile+Position (built by
   // collectTargets) — no per-pile marker re-check, and the scan is O(drops), ~0 when none exist.
   const best = nearestByCell(terrain, targets.groundDrops, here, (e) => {
@@ -171,6 +194,7 @@ export function nearestCollectablePileFor(
     const harvestAtomic = targets.harvestAtomicByGood.get(good);
     if (harvestAtomic === undefined || !allowed.has(harvestAtomic)) return null; // not this job's trade
     const cell = interactionCell(world, ctx, terrain, e, here);
+    if (unreachablePickupCell(terrain, blocked, here, cell)) return null; // the walk there would fail — leave the pile for later
     if (gate !== undefined && !gate.allowsNode(cell)) return null;
     return { cell, payload: good };
   });
@@ -191,12 +215,14 @@ export function nearestOwnDropFor(
 ): { pile: Entity; goodType: number; dist: number } | null {
   const { world, ctx, terrain, here, targets, entity: gatherer } = plan;
   const gate = plan.limit ?? undefined; // signpost confinement
+  const blocked = dynamicBlockOverlay(world, ctx, terrain);
   const best = nearestByCell(terrain, targets.groundDrops, here, (e) => {
     const mark = world.tryGet(e, HarvestedBy);
     if (mark === undefined || mark.by !== gatherer) return null; // not this gatherer's own drop — leave it be
     const good = lowestStockedGood(world.get(e, Stockpile));
     if (good === null) return null; // emptied (about to be reaped)
     const cell = interactionCell(world, ctx, terrain, e, here);
+    if (unreachablePickupCell(terrain, blocked, here, cell)) return null; // the walk there would fail — leave the pile for later
     if (gate !== undefined && !gate.allowsNode(cell)) return null;
     return { cell, payload: good };
   });
