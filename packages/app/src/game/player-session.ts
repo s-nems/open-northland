@@ -9,9 +9,9 @@ const { isValidPlayer } = components;
  * controls (`?player=N`) and each slot's team colour (`?colors=<slot>:<colorId>,…` overrides over
  * the map script's authored colours). Pure param parsing + colour-map building, unit-tested; the
  * map entry feeds the result into the renderer (LUT rows), the minimap (dot swatches) and the
- * shared game view (fog/controls/HUD perspective). `?vacant=<slot>:<idle|ai>,…` (unclaimed
- * claimable seats toggled away from their authored default) is menu-authored but has no consumer
- * yet — the future AI player reads it (docs/tickets/features/vacant-seat-ai-player.md).
+ * shared game view (fog/controls/HUD perspective). The roster's AI toggles ride separately as
+ * `?ai=<seat>,…` (`aiSeatsParam` in view/params.ts), consumed by the map entry's `setPlayerAi`
+ * wiring.
  */
 
 /** `?player=observer` — the menu's observer pseudo-seat ({@link OBSERVER_SEAT} in the roster state):

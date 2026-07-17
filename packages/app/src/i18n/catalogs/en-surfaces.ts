@@ -55,7 +55,7 @@ export const enSurfaces = {
     vacantIdle: 'Idle',
     vacantAi: 'AI',
     vacantToggleTitle:
-      'What a free Human seat does once the game starts: Idle does nothing, AI will play automatically (not implemented yet).',
+      'What a free seat does once the game starts: Idle does nothing, AI will play automatically.',
     teamColour: 'Team colour',
     teamColourLocked: 'this map fixes its colours',
     startNeedsSeat: 'Take a seat first',

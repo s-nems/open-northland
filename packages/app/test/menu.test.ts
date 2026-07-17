@@ -162,17 +162,18 @@ describe('roster state', () => {
     expect(rosterStartParams(state, players)).toEqual([['player', '0']]);
   });
 
-  it('encodes the observer pseudo-seat and keeps every slot eligible for vacant deviations', () => {
+  it('encodes the observer pseudo-seat and keeps every slot eligible for the AI toggle', () => {
     let state = claimSeat(initialRosterState(players), OBSERVER_SEAT);
     expect(rosterStartParams(state, players)).toEqual([['player', 'observer']]);
     state = toggleVacantMode(state, 0); // no seat is the observer's own — slot 0 still encodes
+    state = toggleVacantMode(state, 1); // the all-AI watch rig: every seat toggled to AI
     expect(rosterStartParams(state, players)).toEqual([
       ['player', 'observer'],
-      ['vacant', '0:ai'],
+      ['ai', '0,1'],
     ]);
   });
 
-  it('encodes recolours and vacant-mode deviations alongside the seat', () => {
+  it('encodes recolours and AI-toggled seats alongside the seat', () => {
     let state = claimSeat(initialRosterState(players), 0);
     const recoloured = setSlotColor(state, 2, 3);
     expect(recoloured).not.toBeNull();
@@ -180,7 +181,7 @@ describe('roster state', () => {
     expect(rosterStartParams(state, players)).toEqual([
       ['player', '0'],
       ['colors', '2:3'],
-      ['vacant', '1:ai'],
+      ['ai', '1'],
     ]);
   });
 
@@ -190,30 +191,31 @@ describe('roster state', () => {
     expect(setSlotColor(state, 0, 7)).not.toBeNull(); // own colour, no-op accepted
   });
 
-  it('does not encode the claimed seat or authored-default modes as vacant deviations', () => {
+  it('does not list the claimed seat or idle-defaulted seats as AI', () => {
     let state = toggleVacantMode(initialRosterState(players), 1);
     state = toggleVacantMode(state, 1); // back to the authored idle default
     state = claimSeat(state, 1);
     expect(rosterStartParams(state, players)).toEqual([['player', '1']]);
   });
 
-  it('defaults a claimable authored-ai slot to AI and encodes only its toggle to idle', () => {
-    // A lobby-opened seat (Forteca/Mosty style): authored ai, playeroption offers human.
+  it('defaults a claimable authored-ai slot to AI and drops it when toggled to idle', () => {
+    // A lobby-opened seat (Forteca/Mosty style): authored ai, playeroption offers human. The
+    // non-claimable slot 2 stays script-driven — the strategic AI never attaches to it.
     const lobby = [
       { player: 0, type: 'human', tribeId: 1, colorId: 0, claimable: true, hidden: false, aiAllowed: true },
       { player: 1, type: 'ai', tribeId: 1, colorId: 1, claimable: true, hidden: false, aiAllowed: true },
       { player: 2, type: 'ai', tribeId: 1, colorId: 9, claimable: false, hidden: false, aiAllowed: true },
     ] as const;
     let state = claimSeat(initialRosterState(lobby), 0);
-    expect(rosterStartParams(state, lobby)).toEqual([['player', '0']]); // AI default = no deviation
-    state = toggleVacantMode(state, 1);
     expect(rosterStartParams(state, lobby)).toEqual([
       ['player', '0'],
-      ['vacant', '1:idle'],
+      ['ai', '1'], // the authored-ai default plays without touching the toggle
     ]);
+    state = toggleVacantMode(state, 1);
+    expect(rosterStartParams(state, lobby)).toEqual([['player', '0']]);
   });
 
-  it('treats a Human/Closed-only seat as idle with no vacant deviations', () => {
+  it('never lists a Human/Closed-only seat as AI', () => {
     // playeroption without #PLAYER_TYPE_AI (e.g. Zgielk2 slot 0): no AI offer, so the authored
     // default is idle even on an authored-ai slot, and its mode never reaches the start URL.
     const lobby = [
