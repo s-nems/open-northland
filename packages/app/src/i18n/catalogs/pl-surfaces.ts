@@ -55,7 +55,7 @@ export const plSurfaces = {
     vacantIdle: 'Bezczynny',
     vacantAi: 'AI',
     vacantToggleTitle:
-      'Co robi wolne miejsce Człowieka po starcie gry: Bezczynny nic nie robi, AI zagra automatycznie (jeszcze niezaimplementowane).',
+      'Co robi wolne miejsce po starcie gry: Bezczynny nic nie robi, AI zagra automatycznie.',
     teamColour: 'Kolor drużyny',
     teamColourLocked: 'ta mapa ma stałe kolory',
     startNeedsSeat: 'Najpierw zajmij miejsce',

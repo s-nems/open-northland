@@ -214,8 +214,9 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // `?fog=off|reveal|recon` selects the map's fog rule (direct URLs without the flag remain revealed).
   applyFogOverride(sim, params);
 
-  // `?ai=<seat>[,…]` flags seats for the strategic AI player — the watch-the-AI-play verification
-  // hook (see aiSeatsParam; a seat without a built headquarters stays inert by the AI's own rule).
+  // `?ai=<seat>[,…]` flags seats for the strategic AI player — emitted by the menu roster's AI
+  // toggles, or hand-written as the watch-the-AI-play verification hook (see aiSeatsParam; a seat
+  // without a built headquarters stays inert by the AI's own rule).
   for (const seat of aiSeatsParam(params)) {
     sim.enqueue({ kind: 'setPlayerAi', player: seat, enabled: true });
   }

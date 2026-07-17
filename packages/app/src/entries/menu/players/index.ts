@@ -1,5 +1,6 @@
 export { mountPlayersPanel, type PlayersPanel } from './panel.js';
 export {
+  aiSeats,
   authoredVacantMode,
   claimSeat,
   hasClaimableSeat,

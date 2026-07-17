@@ -23,7 +23,7 @@ export interface MapPlayerSlot {
   readonly aiAllowed: boolean;
 }
 
-/** What a free claimable seat does once the game starts (future auto-player control). */
+/** What a free claimable seat does once the game starts: nothing, or the strategic AI plays it. */
 export type VacantMode = 'idle' | 'ai';
 
 /** The observer pseudo-seat: watch the match without controlling a slot (`?player=observer`). */
@@ -95,11 +95,28 @@ export function setSlotColor(state: RosterState, slot: number, colorId: number):
 }
 
 /**
+ * The vacant seats the strategic AI will play: claimable, AI-eligible, listed slots the person left
+ * free whose effective mode (the toggle's, else the authored default) is `ai`.
+ */
+export function aiSeats(state: RosterState, players: readonly MapPlayerSlot[]): number[] {
+  return players
+    .filter(
+      (p) =>
+        p.claimable &&
+        p.aiAllowed &&
+        !p.hidden &&
+        p.player !== state.seat &&
+        (state.vacantModes.get(p.player) ?? authoredVacantMode(p)) === 'ai',
+    )
+    .map((p) => p.player);
+}
+
+/**
  * The start-URL params encoding the person's roster choices: `player=<seat>` (a slot id, or
  * `observer` for the spectator session),
  * `colors=<slot>:<colorId>,…` (only slots recoloured away from the map's authored colour) and
- * `vacant=<slot>:<idle|ai>,…` (only unclaimed claimable seats toggled away from their authored
- * default — the future auto-player control; no consumer reads it yet). Empty until a seat is
+ * `ai=<slot>,…` — the full {@link aiSeats} list (not just deviations: the `?map=` entry consumes it
+ * directly via `aiSeatsParam`, with no roster knowledge of its own). Empty until a seat is
  * claimed — the menu gates Start on it.
  */
 export function rosterStartParams(
@@ -112,16 +129,7 @@ export function rosterStartParams(
     .filter((p) => state.colors.get(p.player) !== undefined && state.colors.get(p.player) !== p.colorId)
     .map((p) => `${p.player}:${state.colors.get(p.player)}`);
   if (recoloured.length > 0) params.push(['colors', recoloured.join(',')]);
-  const vacant = players
-    .filter(
-      (p) =>
-        p.claimable &&
-        p.aiAllowed &&
-        !p.hidden &&
-        p.player !== state.seat &&
-        (state.vacantModes.get(p.player) ?? authoredVacantMode(p)) !== authoredVacantMode(p),
-    )
-    .map((p) => `${p.player}:${state.vacantModes.get(p.player)}`);
-  if (vacant.length > 0) params.push(['vacant', vacant.join(',')]);
+  const ai = aiSeats(state, players);
+  if (ai.length > 0) params.push(['ai', ai.join(',')]);
   return params;
 }
