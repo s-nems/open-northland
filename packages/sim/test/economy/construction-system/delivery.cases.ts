@@ -5,7 +5,6 @@ import {
   MoveGoal,
   Owner,
   Position,
-  Settler,
   SiteAssignment,
   Stockpile,
   SupplyRun,
@@ -23,7 +22,6 @@ import {
   HEADQUARTERS,
   HOME_L0,
   HOME_L1,
-  HOME_L2,
   HOUSE,
   levelChainWithCarrier,
   loadedCarrierAt,
@@ -368,50 +366,58 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
 });
 
 /**
- * Home level-up: a BUILT `home` that accumulates the NEXT tier's `construction` cost in its own
- * stockpile consumes those materials and upgrades — its `buildingType` becomes the next tier's typeId
- * and `level` increments, so its larger `homeSize` immediately raises `housingCapacity`. The level
- * chain is the consecutive `home` typeIds; the top tier (no next typeId) never upgrades.
+ * Upgrade-site delivery: a built home re-opened by the `upgradeBuilding` command is a construction
+ * site again, so the SAME carrier + builder machinery serves it — at the target tier's own cost (the
+ * level difference). A built home never attracts upgrade materials on its own: demand starts with the
+ * command, never before it.
  */
-describe('constructionSystem — upgrade-material DELIVERY dispatch (carrier path)', () => {
-  it('end-to-end: carriers haul the next tier cost to a built home, which then levels up', () => {
+describe('constructionSystem — upgrade-site DELIVERY dispatch (carrier path)', () => {
+  it('end-to-end: the command opens the site, carriers haul the difference, a builder hammers it up', () => {
     const sim = new Simulation({ seed: 2, content: levelChainWithCarrier(), map: grassMap(6, 1) });
-    const home = builtHomeAt(sim, HOME_L0, 0, 3, 0); // L0 (homeSize 1) — L1 needs 2 stone
+    const home = builtHomeAt(sim, HOME_L0, 0, 3, 0); // L0 (homeSize 1) — the L1 difference is 2 stone
     loadedCarrierAt(sim, 0, 0, STONE, 1);
     loadedCarrierAt(sim, 1, 0, STONE, 1);
+    builderAt(sim, 5, 0);
+    sim.enqueue({ kind: 'upgradeBuilding', building: home });
 
     let upgraded = false;
-    for (let i = 0; i < 120 && !upgraded; i++) {
+    // 2 units × STRIKES_PER_UNIT swings (several ticks each) on top of the delivery walks.
+    for (let i = 0; i < 600 && !upgraded; i++) {
       sim.step();
       upgraded = sim.world.get(home, Building).buildingType === HOME_L1;
     }
-    expect(upgraded).toBe(true); // the delivered upgrade materials triggered the level-up
+    expect(upgraded).toBe(true); // delivered difference + builder work completed the upgrade
     expect(sim.world.get(home, Building).level).toBe(1);
+    expect(sim.world.get(home, Building).built).toBe(ONE);
     expect(housingCapacity(sim.world, ctxOf(sim), VIKING)).toBe(2); // L1 shelters 2 (was 1)
     expect(sim.world.get(home, Stockpile).amounts.get(STONE) ?? 0).toBe(0); // spent into the upgrade
-    for (const e of sim.world.query(Settler)) expect(sim.world.has(e, Carrying)).toBe(false); // both unloaded
+    for (const e of sim.world.query(Carrying)) {
+      expect(sim.world.get(e, Carrying).goodType).not.toBe(STONE); // no upgrade material in flight
+    }
   });
 
-  it('a TOP-TIER home does not attract upgrade materials — an orphaned carrier sets its load down', () => {
-    // HOME_L2 is the top of the chain (no typeId-5 home), so `stockCapacity` advertises no upgrade demand
-    // (and the home has no stock slots) — the carrier finds no valid sink and never delivers its stone.
-    // Being unbound (no workplace to wait in), it sets the stone down rather than stand holding it forever.
+  it('a built home attracts NO upgrade materials before the command — the carrier sets its load down', () => {
+    // Upgrade demand starts with the command: an untouched built L0 advertises no stone room (its type
+    // has no stock slots), so the carrier finds no sink and sets the stone down rather than stand
+    // holding it forever.
     const sim = new Simulation({ seed: 3, content: levelChainWithCarrier(), map: grassMap(6, 1) });
-    const home = builtHomeAt(sim, HOME_L2, 2, 3, 0);
+    const home = builtHomeAt(sim, HOME_L0, 0, 3, 0);
     const carrier = loadedCarrierAt(sim, 0, 0, STONE, 1);
     for (let i = 0; i < 60; i++) sim.step();
-    expect(sim.world.get(home, Stockpile).amounts.get(STONE) ?? 0).toBe(0); // nothing delivered to the home
+    expect(sim.world.get(home, Stockpile).amounts.get(STONE) ?? 0).toBe(0); // nothing delivered
     expect(sim.world.has(carrier, Carrying)).toBe(false); // no sink → set the load on the ground
-    expect(sim.world.get(home, Building).buildingType).toBe(HOME_L2); // unchanged
+    expect(sim.world.get(home, Building).buildingType).toBe(HOME_L0); // unchanged
   });
 
   it('is deterministic — two same-seed upgrade-delivery runs reach the same state hash', () => {
     const run = (): string => {
       const sim = new Simulation({ seed: 9, content: levelChainWithCarrier(), map: grassMap(6, 1) });
-      builtHomeAt(sim, HOME_L0, 0, 3, 0);
+      const home = builtHomeAt(sim, HOME_L0, 0, 3, 0);
       loadedCarrierAt(sim, 0, 0, STONE, 1);
       loadedCarrierAt(sim, 1, 0, STONE, 1);
-      for (let i = 0; i < 80; i++) sim.step();
+      builderAt(sim, 5, 0);
+      sim.enqueue({ kind: 'upgradeBuilding', building: home });
+      for (let i = 0; i < 200; i++) sim.step();
       return sim.hashState();
     };
     expect(run()).toBe(run());

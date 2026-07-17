@@ -1,4 +1,3 @@
-import type { BuildingType } from '@open-northland/data';
 import {
   Building,
   DeliveryFlag,
@@ -13,7 +12,7 @@ import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { vehicleMayCarry } from '../readviews/vehicles.js';
-import { homeNextTier } from './housing.js';
+import { constructionBillOf } from './construction.js';
 
 // What a store can hold: per-good stockpile capacity across the store kinds (construction site, built
 // building, boat hull, loose ground heap) plus the ground-heap predicates the gathering economy shares.
@@ -37,16 +36,15 @@ export const MAX_GROUND_STACK = 5;
  * subtract what's on hand (`nearestStoreFor`'s `have >= capacity` full-check, `pileup`'s `capacity - have`).
  *
  * - An **under-construction building** (a {@link Building} still at `built < ONE`): the per-good ceiling is
- *   that good's line in the type's from-scratch construction bill (for a home tier, the merged cost of
- *   every chain stage up to it); any other good gets 0 (refused). So a site
- *   advertises room for exactly its outstanding materials — the carrier path hauls the `construction` goods
- *   in and the ConstructionSystem consumes them and flips `built`. An unbuilt building never produces
- *   (`productionSystem` gates on `built >= ONE`), so its stockpile can't be raided to feed a recipe.
+ *   that good's line in the site's construction bill ({@link constructionBillOf} — the from-scratch
+ *   cumulative bill, or for an upgrading building the target tier's own cost); any other good gets 0
+ *   (refused). So a site advertises room for exactly its outstanding materials — the carrier path hauls
+ *   the `construction` goods in and the ConstructionSystem consumes them and flips `built`. An unbuilt
+ *   building never produces (`productionSystem` gates on `built >= ONE`), so its stockpile can't be
+ *   raided to feed a recipe.
  * - A built **building** store: from its building type's stock slots — a good with no declared slot gets 0.
- *   An upgradable built `home` ({@link homeNextTier}) also advertises room for its next tier's `construction`
- *   materials: the ceiling is the larger of the stock-slot capacity and the next tier's cost-line `amount`,
- *   so the same carrier path accumulates upgrade materials at a still-upgradable home; `constructionSystem`
- *   consumes them and levels it up. A top-tier home reverts to its plain stock-slot capacity.
+ *   (Upgrade materials are never pre-hoarded at a built building: an upgrade starts by command, turning
+ *   the building back into a site that then advertises the difference bill through the branch above.)
  * - A **boat hull** ({@link Vehicle} carrying a `Stockpile`): gated by the ship's `cargoGoods` allow-list — a
  *   good the hold may carry ({@link vehicleMayCarry}) gets the whole `stockSlots` capacity, one it may not
  *   gets 0. The `stockSlots` total is applied as a per-good upper bound (the whole-hold-shared-across-goods
@@ -64,7 +62,16 @@ export function stockCapacity(world: World, ctx: SystemContext, store: Entity, g
   if (building !== undefined) {
     const type = contentIndex(ctx.content).buildings.get(building.buildingType);
     if (type === undefined) return 0;
-    return buildingStockCapacity(ctx, type, building.built, goodType);
+    if (building.built < ONE) {
+      // Construction site: the per-good ceiling is that good's line in the site's bill (cumulative
+      // from-scratch, or the upgrade difference — constructionBillOf resolves which); a non-material
+      // good gets 0 — refused.
+      const line = constructionBillOf(world, ctx, store).find((c) => c.goodType === goodType);
+      return line?.amount ?? 0;
+    }
+    // Built building: its per-good stock-slot ceiling (the memoized slot table — the planner's sink
+    // scans probe this thousands of times per tick) — a good with no declared slot gets 0.
+    return contentIndex(ctx.content).stockSlotCapacityByBuilding.get(type.typeId)?.get(goodType) ?? 0;
   }
   const hull = world.tryGet(store, Vehicle);
   if (hull !== undefined) {
@@ -83,34 +90,6 @@ export function stockCapacity(world: World, ctx: SystemContext, store: Entity, g
     return MAX_GROUND_STACK;
   }
   return UNCAPPED_CAPACITY;
-}
-
-/** The building branch of {@link stockCapacity}, pure over content + the `built` progress — the
- *  construction-site / stock-slot / home-upgrade capacity math, unit-testable without a world. */
-function buildingStockCapacity(
-  ctx: SystemContext,
-  type: BuildingType,
-  built: number,
-  goodType: number,
-): number {
-  if (built < ONE) {
-    // Construction site: the per-good ceiling is the type's from-scratch construction bill for that
-    // material (for a home tier, the whole chain's merged cost — the site must be delivered every
-    // stage's materials); a non-material good gets 0 — refused.
-    const bill = contentIndex(ctx.content).constructionBillByBuilding.get(type.typeId) ?? [];
-    const line = bill.find((c) => c.goodType === goodType);
-    return line?.amount ?? 0;
-  }
-  // Built building: its normal per-good stock-slot ceiling…
-  const slot = type.stock.find((s) => s.goodType === goodType);
-  const slotCapacity = slot?.capacity ?? 0;
-  // …plus, for a built `home` that can still level up, room for the next tier's construction materials. Take
-  // the larger of the two ceilings (a good can be both a stocked good and an upgrade material); a top-tier
-  // home has no next tier and keeps only its stock-slot capacity.
-  const next = homeNextTier(type, ctx);
-  if (next === undefined) return slotCapacity;
-  const upgradeLine = next.construction.find((c) => c.goodType === goodType);
-  return Math.max(slotCapacity, upgradeLine?.amount ?? 0);
 }
 
 /** The lowest-id good a stockpile holds ≥1 unit of, or null if it is empty. Canonical (ascending

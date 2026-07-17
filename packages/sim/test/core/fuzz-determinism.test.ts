@@ -49,6 +49,10 @@ const FOOTPRINTED_TYPE = 5;
  *  FREE in the fixture (9; 1–8 are taken): `contentIndex.buildings` is first-wins, so a shadowed id
  *  would place as this type but resolve to the fixture's entry in every system. */
 const HOME_TYPE = 9;
+/** The fuzz home's upgrade target (`HOME_TYPE.upgradeTarget`), so `upgradeBuilding` rolls reach the
+ *  ACCEPT path: the home re-opens as an upgrade site (stash + separate hold + difference bill) and can
+ *  organically finish when the fuzzed stream happens to deliver its wood and hammer it. Id 10 is free. */
+const HOME_TIER2_TYPE = 10;
 /** The fixture's `food_simple` good — what the fuzz home's larder stocks and the preamble drops. */
 const FOOD_GOOD = 3;
 /** Building types: HQ / sawmill / temple / tech-gated smithy / footprinted hut / home / unknown. */
@@ -81,6 +85,16 @@ function fuzzContent() {
         homeSize: 2,
         // A stocked larder is what arms the birth path.
         stock: [{ goodType: FOOD_GOOD, capacity: 5 }],
+        upgradeTarget: HOME_TIER2_TYPE,
+      },
+      {
+        typeId: HOME_TIER2_TYPE,
+        id: 'fuzz_home_tier2',
+        kind: 'home',
+        homeSize: 3,
+        stock: [{ goodType: FOOD_GOOD, capacity: 5 }],
+        // The upgrade difference bill: 1 wood — deliverable by the fuzzed carriers/drops.
+        construction: [{ goodType: RESOURCE_GOOD, amount: 1 }],
       },
       {
         typeId: FOOTPRINTED_TYPE,
@@ -440,6 +454,12 @@ function nextCommand(rng: Rng): Command {
       // A signpost tear-down at a random id: live signposts (destroyed — the network memo, blockers, and
       // vision must all re-derive) and non-signpost / dead targets (skipped).
       return { kind: 'demolishSignpost', signpost: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
+    case 30:
+      // An upgrade order at a random id: built chained homes (re-opened as an upgrade site — stash,
+      // separate hold, difference bill), plus unbuilt sites / top-tier or unchained types / non-building
+      // / dead ids (skipped). Exercises the upgradeBuilding accept + skip paths, the Upgrading stash in
+      // hashState, and the upgrade-finish flip when the stream feeds the site.
+      return { kind: 'upgradeBuilding', building: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
     default:
       // A profession change at a random id: valid + unknown jobs, owned/unowned/dead targets.
       return {

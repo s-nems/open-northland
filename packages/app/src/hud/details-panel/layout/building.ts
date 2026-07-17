@@ -43,7 +43,14 @@ const MAX_WORKER_ROWS = 4;
 /** Horizontal gap between the stock window's two columns (a window pad). */
 const STOCK_COL_GAP = WIN_PAD;
 
-export type ButtonAction = 'demolish' | 'center' | 'workers' | 'help' | 'assign-workplace' | 'assign-home';
+export type ButtonAction =
+  | 'upgrade'
+  | 'demolish'
+  | 'center'
+  | 'workers'
+  | 'help'
+  | 'assign-workplace'
+  | 'assign-home';
 
 export interface ButtonHit {
   readonly action: ButtonAction;
@@ -129,13 +136,18 @@ export function stockSlotRects(body: Rect, s: number, rowsPerColumn: number = MA
  */
 const COMPACT_STOCK_MAX = 16;
 
-/** Which buttons the building's general section offers; only demolish is wired on this slice. */
-const BUILDING_BUTTONS: ReadonlyArray<{ action: ButtonAction; enabled: boolean }> = [
-  { action: 'demolish', enabled: true },
-  { action: 'center', enabled: false },
-  { action: 'workers', enabled: false },
-  { action: 'help', enabled: false },
-];
+/** Which buttons the building's general section offers; upgrade + demolish are wired. Upgrade sits
+ *  ABOVE demolish, matching the original's button order (housewindow 110 before 114), and appears
+ *  only for an upgradable building (built, with a next level to rise into). */
+function buildingButtons(model: BuildingModel): ReadonlyArray<{ action: ButtonAction; enabled: boolean }> {
+  return [
+    ...(model.upgradable ? [{ action: 'upgrade', enabled: true } as const] : []),
+    { action: 'demolish', enabled: true },
+    { action: 'center', enabled: false },
+    { action: 'workers', enabled: false },
+    { action: 'help', enabled: false },
+  ];
+}
 
 export function layoutBuilding(
   model: BuildingModel,
@@ -207,7 +219,7 @@ export function layoutBuilding(
     w: columnW,
     h: Math.round(UNDERLINE_H * s),
   };
-  const buttons: ButtonHit[] = BUILDING_BUTTONS.map((b, i) => ({
+  const buttons: ButtonHit[] = buildingButtons(model).map((b, i) => ({
     action: b.action,
     enabled: b.enabled,
     rect: {

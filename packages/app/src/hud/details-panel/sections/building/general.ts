@@ -9,6 +9,7 @@ import { HOUSEWINDOW } from './shared.js';
 
 // The building's own action buttons (assign-workplace is a settler-panel action, never drawn here).
 const BUTTON_STRING: Readonly<Partial<Record<ButtonAction, number>>> = {
+  upgrade: HOUSEWINDOW.upgrade,
   demolish: HOUSEWINDOW.demolish,
   center: HOUSEWINDOW.center,
   workers: HOUSEWINDOW.workersButton,
@@ -17,6 +18,7 @@ const BUTTON_STRING: Readonly<Partial<Record<ButtonAction, number>>> = {
 
 function buttonFallback(action: ButtonAction): string {
   const hud = messages().hud;
+  if (action === 'upgrade') return hud.upgrade;
   if (action === 'demolish') return hud.demolish;
   if (action === 'center') return hud.center;
   if (action === 'workers') return hud.workers;

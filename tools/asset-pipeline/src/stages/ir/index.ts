@@ -43,6 +43,7 @@ export async function buildIr(roots: SourceRoots): Promise<ContentSet> {
     buildingBobs,
     constructionCosts,
     hitpoints,
+    upgradeTargets,
     footprints,
     constructionLayers,
     buildingOverlays,
@@ -82,10 +83,12 @@ export async function buildIr(roots: SourceRoots): Promise<ContentSet> {
     ambient: [],
     jingles: [],
   });
-  // Overlay the graphics-table cost/hitpoints/footprint onto the logic buildings (joined by `typeId`).
+  // Overlay the graphics-table cost/hitpoints/upgrade-chain/footprint onto the logic buildings
+  // (joined by `typeId`).
   const buildingsWithCosts = applyBuildingGraphicsOverlays(buildings, {
     constructionCosts,
     hitpoints,
+    upgradeTargets,
     footprints,
   });
   // Vehicles are not goods (they are built on a yard, not crafted into a stockpile) — strip them from

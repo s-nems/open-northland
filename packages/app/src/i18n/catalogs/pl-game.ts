@@ -33,6 +33,8 @@ export const plGame = {
     assignHomeHint:
       'Kliknij, a następnie wskaż dom: zielone mają wolne miejsce dla tej rodziny, czerwone nie. LPM przydziela całą rodzinę, PPM lub Esc anuluje.',
     defenseStopped: 'Obrona zatrzymana',
+    // New string kept in English — the i18n pass owns the Polish catalog (see memory: english-ui-strings).
+    upgrade: 'Upgrade',
     demolish: 'Zniszcz',
     signpost: 'Drogowskaz',
     demolishSignpost: 'Wyburz ten drogowskaz',

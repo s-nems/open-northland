@@ -60,6 +60,8 @@ export interface UnitPanelOptions extends UnitPanelModelContext {
   /** Client→canvas coordinate mapping, injected like the tool panel's (the hud layer stays view-free). */
   readonly backingScale: (canvas: HTMLCanvasElement) => { sx: number; sy: number; rect: DOMRect };
   readonly onDemolish: (entityId: number) => void;
+  /** Begin upgrading the selected building into its next level — the Upgrade button (housewindow 110). */
+  readonly onUpgrade: (entityId: number) => void;
   /** Tear down the selected signpost — invoked by the signpost panel's one button. */
   readonly onDemolishSignpost: (entityId: number) => void;
   /** Enter "assign a workplace" mode for the selected settler — invoked when the player clicks the Praca
@@ -364,7 +366,9 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
       return true;
     }
     const hit = hitButton(x, y);
-    if (hit?.action === 'demolish' && hit.enabled && lastModel.kind === 'building') {
+    if (hit?.action === 'upgrade' && hit.enabled && lastModel.kind === 'building') {
+      opts.onUpgrade(lastModel.entityId);
+    } else if (hit?.action === 'demolish' && hit.enabled && lastModel.kind === 'building') {
       opts.onDemolish(lastModel.entityId);
     } else if (hit?.action === 'demolish' && hit.enabled && lastModel.kind === 'signpost') {
       opts.onDemolishSignpost(lastModel.entityId);

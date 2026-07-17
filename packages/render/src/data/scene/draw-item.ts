@@ -213,6 +213,15 @@ export interface DrawItem {
    */
   readonly builtPct?: number;
   /**
+   * For a building being UPGRADED into its next level (`Upgrading` beside the site marker): upgrade
+   * progress as a whole percent (0..99, floored `Building.built`). Distinct from {@link builtPct} —
+   * an upgrading building keeps its finished old-tier body draw, and the upgrade-overlay binding
+   * ({@link import('../sprites/index.js').BuildingTypeBinding.upgradeByType} — the `[GfxHouse]`
+   * `upgrade === 1` rows: the next tier's body) reveals over it at this progress. Omitted for a
+   * finished building, a from-scratch site, and non-building kinds.
+   */
+  readonly upgradePct?: number;
+  /**
    * For a finished building: whether it is mid production cycle (`Production` present) — the key an
    * animated state overlay switches on ({@link import('../sprites/index.js').BuildingTypeBinding.overlayByType},
    * the mill's spinning rotor). A named approximation of the original's overlay state 1: `Production`

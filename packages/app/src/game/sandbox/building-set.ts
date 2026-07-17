@@ -2,7 +2,7 @@ import { type BuildingFootprint, DEFAULT_RECIPE_TICKS } from '@open-northland/da
 import { VIKING_BUILDINGS, type VikingBuilding } from '../../catalog/buildings.js';
 import { approximateFootprint } from '../../catalog/footprints.js';
 import { STORABLE_EXTENDED_GOODS } from '../../catalog/goods.js';
-import { buildingConstructionCost, buildingHitpoints } from './construction.js';
+import { buildingConstructionCost, buildingHitpoints, buildingUpgradeTarget } from './construction.js';
 import type { SandboxContentExtras } from './content/types.js';
 import {
   BUILDING_BAKERY,
@@ -126,6 +126,9 @@ export interface SandboxBuildingRow {
   produces?: readonly number[];
   workers?: readonly { jobType: number; count: number }[];
   footprint?: BuildingFootprint;
+  /** The next level's typeId in this building's upgrade chain (the `upgradeTarget` join); absent on a
+   *  chain's top level and unchained buildings. */
+  upgradeTarget?: number;
 }
 
 /**
@@ -243,12 +246,14 @@ function homeRow(b: VikingBuilding): Partial<SandboxBuildingRow> {
 
 function buildingRow(b: VikingBuilding): SandboxBuildingRow {
   const slots = workerSlotsFor(b.typeId);
+  const upgradeTarget = buildingUpgradeTarget(b.typeId);
   return {
     typeId: b.typeId,
     id: b.id,
     kind: b.kind,
     construction: buildingConstructionCost(b), // a deliverable bill so it raises as a construction site
     hitpoints: buildingHitpoints(b.kind), // the Health pool the ramp fills as it rises
+    ...(upgradeTarget !== undefined ? { upgradeTarget } : {}), // the level chain (the Upgrade button)
     ...(slots !== undefined ? { workers: slots } : {}),
     ...(b.kind === 'home' ? homeRow(b) : {}),
     ...BUILDING_OVERRIDES[b.typeId], // an override's `workers` (the joinery's demo) wins over the default

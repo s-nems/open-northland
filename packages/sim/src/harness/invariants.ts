@@ -17,9 +17,9 @@ export type Invariant = (world: World) => string[];
 const IMPLAUSIBLE_STOCK = 0x7fffffff;
 
 /**
- * Home-level ceiling (`home level 00..04` — {@link Building}). Content owns the real bound: a home levels
- * up only while `homeNextTier` yields another tier, so this tracks the base tier chain's length rather
- * than enforcing it. Content adding a sixth tier must move this with it.
+ * Home-level ceiling (`home level 00..04` — {@link Building}). Content owns the real bound: a building
+ * upgrades only while its type's `upgradeTarget` chain continues, so this tracks the home chain's length
+ * rather than enforcing it. Content adding a sixth tier must move this with it.
  */
 const MAX_HOME_LEVEL = 4;
 

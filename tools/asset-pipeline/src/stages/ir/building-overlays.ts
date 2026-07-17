@@ -11,6 +11,8 @@ export interface BuildingGraphicsOverlays {
   readonly constructionCosts: ReadonlyMap<number, { goodType: number; amount: number }[]>;
   /** typeId → max hitpoints (the full life pool the ConstructionSystem ramps up as the building rises). */
   readonly hitpoints: ReadonlyMap<number, number>;
+  /** typeId → the next size level's typeId in the same record (the level-chain join). */
+  readonly upgradeTargets: ReadonlyMap<number, number>;
   /** typeId → ground footprint (collision body / build-exclusion zone / door). */
   readonly footprints: ReadonlyMap<number, BuildingFootprint>;
 }
@@ -28,11 +30,13 @@ export function applyBuildingGraphicsOverlays(
   return buildings.map((b) => {
     const cost = overlays.constructionCosts.get(b.typeId);
     const hp = overlays.hitpoints.get(b.typeId);
+    const upgradeTarget = overlays.upgradeTargets.get(b.typeId);
     const footprint = overlays.footprints.get(b.typeId);
     return {
       ...b,
       ...(cost ? { construction: cost } : {}),
       ...(hp !== undefined ? { hitpoints: hp } : {}),
+      ...(upgradeTarget !== undefined ? { upgradeTarget } : {}),
       ...(footprint ? { footprint } : {}),
     };
   });

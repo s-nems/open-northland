@@ -142,6 +142,10 @@ export interface BuildingPanelModel {
   /** Non-null while the building is a construction site — the panel then swaps its production/stock/
    *  workers windows for the one Construction window (those sections mean nothing before completion). */
   readonly construction: ConstructionModel | null;
+  /** Whether the general section offers the Upgrade button (housewindow 110): a BUILT building whose
+   *  type has an `upgradeTarget` level to rise into. False while it is a site (a running upgrade's
+   *  cancel button — housewindow 112 — is a deferred slice). */
+  readonly upgradable: boolean;
 }
 
 /** The current holdings of a building's {@link Stockpile}, as a goodType→amount map. */
@@ -197,12 +201,11 @@ export function stockRows(
 }
 
 /**
- * The Construction-window model of a site: one row per line of the type's FROM-SCRATCH construction bill
- * ({@link constructionBillForType} — a home tier's whole cumulative chain cost, exactly what the sim
- * demands before the site finishes) with how much of it the site's hold already has (the same Stockpile
- * the finished building will store into — the sim keeps one hold, so the panel is what separates
- * "materials for the build" from "the store"), plus the health ramp. Null for a finished building (no
- * `UnderConstruction` marker).
+ * The Construction-window model of a site: one row per line of the site's bill — the type's
+ * FROM-SCRATCH cumulative bill ({@link constructionBillForType}), or for an UPGRADING building
+ * (`Upgrading` beside the marker) the target tier's own cost (the level difference — exactly what the
+ * sim demands, mirroring `constructionBillOf`) — with how much of it the site's hold already has, plus
+ * the health ramp. Null for a finished building (no `UnderConstruction` marker).
  */
 export function constructionModel(
   ctx: UnitPanelModelContext,
@@ -214,7 +217,17 @@ export function constructionModel(
   const health = ent.components.Health as { hitpoints?: unknown; max?: unknown } | undefined;
   const hitpoints = num(health?.hitpoints);
   const max = num(health?.max);
-  const bill = def === undefined ? [] : constructionBillForType(ctx.buildings, def.typeId);
+  const upgrading = ent.components.Upgrading !== undefined;
+  const target =
+    upgrading && def?.upgradeTarget !== undefined
+      ? ctx.buildings.find((b) => b.typeId === def.upgradeTarget)
+      : undefined;
+  const bill =
+    def === undefined
+      ? []
+      : upgrading
+        ? (target?.construction ?? [])
+        : constructionBillForType(ctx.buildings, def.typeId);
   const rows = bill.map((line) => {
     const goodId = goodDef(ctx, line.goodType)?.id;
     return {

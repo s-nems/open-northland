@@ -7,6 +7,7 @@ import {
   Stockpile,
   stampOwner,
   UnderConstruction,
+  Upgrading,
   Vehicle,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
@@ -19,6 +20,7 @@ import { evictWorkFlagsFromFootprint } from '../economy/flags.js';
 import { canPlaceBuilding } from '../footprint/index.js';
 import { evictSettlersFromFootprint } from '../movement/evict.js';
 import { buildingEnabled, tribeShipsUnlocked } from '../progression/index.js';
+import { upgradeTierOf } from '../stores/index.js';
 
 /**
  * Release every settler bound to `building` ({@link JobAssignment}) before it is destroyed: drop the binding
@@ -117,6 +119,47 @@ export function placeBuilding(
   evictSettlersFromFootprint(world, ctx, e);
   evictWorkFlagsFromFootprint(world, ctx, e);
   ctx.events.emit({ kind: 'buildingPlaced', entity: e, at: { hx: command.x, hy: command.y } });
+}
+
+/**
+ * Begin upgrading a built building into its type's `upgradeTarget` level — the `upgradeBuilding`
+ * command's effect. The building re-opens as a construction site: its inventory is stashed into the
+ * {@link Upgrading} marker and the emptied {@link Stockpile} becomes the site's separate build hold,
+ * `built` drops to 0 (suspending production/housing — the same gates a from-scratch site sits behind),
+ * an {@link UnderConstruction} marker starts the builder-work clock, and settlers standing on the
+ * footprint are pushed out. Deliberately NOT cleared: {@link JobAssignment}s and residences — the
+ * occupants leave the building but keep their bindings and return when the upgrade completes
+ * (source basis: observed original behavior).
+ *
+ * Skip conditions (recoverable bad input, still logged): a dead / non-building target, one still under
+ * construction (or already upgrading), a type with no `upgradeTarget` (top level / unchained), a target
+ * absent from content, or a target the tribe has not tech-unlocked ({@link buildingEnabled} — the same
+ * gate as direct placement, so the upgrade path can't unlock what placement forbids; our design
+ * invariant, the original's upgrade gating is unobserved).
+ */
+export function upgradeBuilding(
+  world: World,
+  ctx: SystemContext,
+  command: Extract<Command, { kind: 'upgradeBuilding' }>,
+): void {
+  const building = world.tryGet(command.building, Building);
+  if (building === undefined || building.built < ONE) return; // not a built building
+  if (world.has(command.building, UnderConstruction)) return; // already a site
+  const type = contentIndex(ctx.content).buildings.get(building.buildingType);
+  const target = type === undefined ? undefined : upgradeTierOf(type, ctx);
+  if (target === undefined) return; // top level / unchained / malformed content
+  if (!buildingEnabled(world, ctx, building.tribe, target.typeId)) return; // target not tech-unlocked
+
+  const stock = world.tryGet(command.building, Stockpile);
+  world.add(command.building, Upgrading, { savedStock: stock?.amounts ?? new Map<number, number>() });
+  if (stock !== undefined) {
+    stock.amounts = new Map<number, number>();
+    world.touchComponent(Stockpile); // an in-place empty — log it so the porter dormancy gate re-scans
+  }
+  building.built = fx.fromInt(0);
+  world.add(command.building, UnderConstruction, { labor: fx.fromInt(0) });
+  // The plot is a building site again — settlers standing on it step out (bindings kept, see above).
+  evictSettlersFromFootprint(world, ctx, command.building);
 }
 
 /**

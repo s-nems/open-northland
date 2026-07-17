@@ -95,6 +95,20 @@ export type PlacementCommand =
       readonly y: number;
       readonly amount: number;
     }
+  | {
+      /**
+       * Begin upgrading a built building into its type's `upgradeTarget` level (the "Upgrade" button).
+       * The building re-opens as a construction site: `built` drops to 0 (production/housing suspend and
+       * occupants walk out — their job/residence bindings are kept), its inventory is stashed so the
+       * emptied stockpile becomes a separate build hold, and carriers + builders raise it through the
+       * normal site machinery at the target tier's own `construction` cost (the level difference).
+       * Completion adopts the target tier and restores the stash. Skipped (still logged) for a dead /
+       * non-building / still-unbuilt / already-a-site target, a top-level or unchained type, or a
+       * target the tribe has not tech-unlocked (the same `buildingEnabled` gate as direct placement).
+       */
+      readonly kind: 'upgradeBuilding';
+      readonly building: Entity;
+    }
   | { readonly kind: 'demolish'; readonly building: Entity }
   /** Tear down a standing signpost (the original's "Tear down this signpost" — miscwindow 273). Instant
    *  and free like erecting; skipped for a non-signpost target. */

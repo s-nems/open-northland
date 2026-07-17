@@ -19,11 +19,31 @@ function readBuildingType(components: Readonly<Record<string, unknown>>): number
 
 /**
  * An under-construction building's progress as a whole percent (0..99), or `undefined` for a finished
- * building (`built >= ONE`) or a missing/malformed component. The sim's `Building.built` is a fixed-point
- * fraction of ONE; the floor keeps a nearly-done site below 100 so the construction stages stay up until
- * the finish tick flips the draw to the completed body.
+ * building (`built >= ONE`), an UPGRADING one (its progress reads as {@link readUpgradePct} instead —
+ * the old-tier body must keep drawing under the upgrade overlay, not the from-scratch stages), or a
+ * missing/malformed component. The sim's `Building.built` is a fixed-point fraction of ONE; the floor
+ * keeps a nearly-done site below 100 so the construction stages stay up until the finish tick flips
+ * the draw to the completed body.
  */
 export function readBuiltPct(components: Readonly<Record<string, unknown>>): number | undefined {
+  if ('Upgrading' in components) return undefined; // an upgrade site — see readUpgradePct
+  return risingPct(components);
+}
+
+/**
+ * An UPGRADING building's progress as a whole percent (0..99), or `undefined` when the building is not
+ * mid-upgrade (no `Upgrading` component, or already finished). The same floored `Building.built` read
+ * as {@link readBuiltPct}; the two are mutually exclusive by construction, so a building draw is either
+ * a from-scratch stage stack, an old-body-plus-upgrade-overlay, or the plain finished body.
+ */
+export function readUpgradePct(components: Readonly<Record<string, unknown>>): number | undefined {
+  if (!('Upgrading' in components)) return undefined;
+  return risingPct(components);
+}
+
+/** The shared floored `Building.built` → 0..99 percent read behind {@link readBuiltPct} /
+ *  {@link readUpgradePct}; `undefined` for a finished building or a malformed component. */
+function risingPct(components: Readonly<Record<string, unknown>>): number | undefined {
   const b = components.Building as { built?: unknown } | undefined;
   if (b === undefined || typeof b.built !== 'number' || !Number.isFinite(b.built) || b.built >= ONE) {
     return undefined; // finished (or malformed — NaN would poison every range test downstream)
@@ -162,6 +182,7 @@ export function readBerryBushGfxIndex(components: Readonly<Record<string, unknow
 export interface StaticDrawFields {
   typeId?: number;
   builtPct?: number;
+  upgradePct?: number;
   goodType?: number;
   level?: number;
   gfxIndex?: number;
@@ -186,6 +207,8 @@ export function assignStaticFields(
       if (typeId !== undefined) target.typeId = typeId;
       const builtPct = readBuiltPct(components);
       if (builtPct !== undefined) target.builtPct = builtPct;
+      const upgradePct = readUpgradePct(components);
+      if (upgradePct !== undefined) target.upgradePct = upgradePct;
       return;
     }
     case 'resource': {

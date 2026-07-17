@@ -96,6 +96,34 @@ export function resolveConstructionDraws(
 }
 
 /**
+ * Resolve the upgrade-overlay draws an UPGRADING building shows on top of its (still-drawn) old-tier
+ * finished body, or `null` when none apply: not upgrading (no {@link DrawItem.upgradePct}), no
+ * upgrade layers bound for the type, or no layer window containing the progress. The layers are the
+ * type's `upgrade === 1` rows (the next tier's body — the real data binds one `[0..100]` row per
+ * chained tier), revealed across their window like a construction stage. Unlike
+ * {@link resolveConstructionDraws} there is no lowest-stage fallback: outside every window the old
+ * body alone is the correct draw, never a placeholder stage. Source basis: the rows are extracted;
+ * the old-body-plus-revealing-overlay composition is a named approximation (the original's exact
+ * upgrade-pass compositing is not decoded — `BuildingConstructionLayer.upgrade`).
+ */
+export function resolveUpgradeDraws(
+  binding: number | BuildingTypeBinding,
+  item: DrawItem,
+): ConstructionDraw[] | null {
+  if (typeof binding === 'number' || item.upgradePct === undefined || item.typeId === undefined) return null;
+  const layers = binding.upgradeByType?.[item.typeId];
+  if (layers === undefined || layers.length === 0) return null;
+  const pct = item.upgradePct;
+  const active = layers.filter((l) => pct >= l.fromPct && pct <= l.toPct);
+  if (active.length === 0) return null;
+  return active.map((l) =>
+    l.layer === undefined
+      ? { bob: l.bob, fromPct: l.fromPct, toPct: l.toPct }
+      : { bob: l.bob, layer: l.layer, fromPct: l.fromPct, toPct: l.toPct },
+  );
+}
+
+/**
  * Map build progress (0..1 — `builtPct/100`, or the pool's eased display value) into a construction
  * stage's `[fromPct, toPct]` window as the 0–255 TimeMask threshold — the `time` argument of the
  * original's observed time-mask rule (a pixel draws once its `timeByte <= time`). The linear
@@ -114,8 +142,8 @@ export function buildTimeThreshold(progress: number, fromPct: number, toPct: num
  * Resolve a finished building's animated state overlay — the extra sprite drawn on top of the body
  * (the `[GfxHouse]` type-4 `GfxOverlay` join: the mill's rotor) — or `null` when none applies: a
  * plain-number binding, a type with no {@link BuildingTypeBinding.overlayByType} entry, or an
- * under-construction item (`builtPct` present — the original lists overlays only for the finished
- * body). A {@link DrawItem.working} building loops the `working` spin cycle on the free `tick`
+ * under-construction / upgrading item (`builtPct`/`upgradePct` present — the original lists overlays
+ * only for the finished body). A {@link DrawItem.working} building loops the `working` spin cycle on the free `tick`
  * clock, one frame per {@link import('./bindings.js').BuildingOverlayRef.ticksPerFrame} ticks;
  * otherwise the `idle` frame draws. A state whose frames are absent draws no overlay at all (never a
  * borrowed frame).
@@ -126,6 +154,7 @@ export function resolveBuildingOverlayDraw(
   tick: number,
 ): BuildingDraw | null {
   if (typeof binding === 'number' || item.typeId === undefined || item.builtPct !== undefined) return null;
+  if (item.upgradePct !== undefined) return null; // an upgrading body draws no state overlay either
   const overlay = binding.overlayByType?.[item.typeId];
   if (overlay === undefined) return null;
   const spin = item.working === true ? overlay.working : undefined;
