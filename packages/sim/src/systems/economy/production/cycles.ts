@@ -87,6 +87,7 @@ export function anyCycleStartable(
  *  completion compare can read it plainly (validated content is already `ticks >= 1`). */
 export function beginCycle(world: World, building: Entity, recipe: Recipe, goodType: number): void {
   consumeGoods(world.get(building, Stockpile).amounts, recipe.inputs);
+  world.touchComponent(Stockpile);
   const cycle: ProductionCycle = { elapsed: 0, duration: Math.max(1, recipe.ticks), goodType };
   const prod = world.tryGet(building, Production);
   if (prod === undefined) world.add(building, Production, { cycles: [cycle] });

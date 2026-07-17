@@ -45,6 +45,9 @@ export class World {
   private readonly registered: Array<Component<unknown>> = [];
   /** Per-component mutation generation, used by derived caches that depend on a component store. */
   private readonly componentGenerations = new Map<Component<unknown>, number>();
+  /** Per-component in-place value-write generation (see {@link touchComponent}) — separate from the
+   *  membership generations above so spatial indexes keyed on add/remove stay unaffected. */
+  private readonly componentValueGenerations = new Map<Component<unknown>, number>();
   /**
    * Optional cache verifiers registered by derived-cache owners. They run under `verifyCaches()` so a
    * stale cache is caught by the normal invariant path instead of surfacing as a distant golden drift.
@@ -139,6 +142,22 @@ export class World {
    */
   touch(entity: Entity): void {
     this.logTouched(entity);
+  }
+
+  /**
+   * Log an in-place value write in `component`'s store: bumps the component's VALUE generation
+   * ({@link componentValueGeneration}) so value-sensitive derived caches invalidate. A separate channel
+   * from {@link componentGeneration} (membership: add/remove only), so membership-keyed spatial indexes
+   * don't rebuild on every value write. Does not log the entity for the snapshot clone cache — a write
+   * that must also reach the snapshot pairs this with {@link touch}.
+   */
+  touchComponent(component: Component<unknown>): void {
+    this.componentValueGenerations.set(component, (this.componentValueGenerations.get(component) ?? 0) + 1);
+  }
+
+  /** The in-place value-write generation for one component store (see {@link touchComponent}). */
+  componentValueGeneration(component: Component<unknown>): number {
+    return this.componentValueGenerations.get(component) ?? 0;
   }
 
   /**

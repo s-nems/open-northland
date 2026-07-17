@@ -33,6 +33,7 @@ export function pickupFromStore(
   const moved = Math.min(amount, have);
   if (moved <= 0) return; // source emptied since the planner chose it — nothing to carry
   stock.amounts.set(goodType, have - moved);
+  world.touchComponent(Stockpile);
   addCarry(world, settler, goodType, moved);
   reapEmptyLoosePile(world, from); // a fully-collected trunk / yard heap vanishes (a warehouse/hull stays)
 }
@@ -63,5 +64,6 @@ export function pileupIntoStore(world: World, ctx: SystemContext, settler: Entit
   if (moved <= 0) return; // store full for this good — keep carrying
 
   stock.amounts.set(load.goodType, have + moved);
+  world.touchComponent(Stockpile);
   shrinkCarry(world, settler, load, moved); // fully unloaded ⇒ Carrying removed
 }
