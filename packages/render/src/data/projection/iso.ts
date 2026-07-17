@@ -4,7 +4,7 @@ import { ONE as SIM_ONE } from '@open-northland/sim';
  * Isometric projection + the camera transform — the dependency-light math the rest of `render` builds
  * on. It lives in its own module rather than the {@link import('../../index.js')} barrel so the pure
  * scene/terrain/viewport modules and the GPU renderer can import it without the barrel↔module cycle,
- * which forces a TDZ workaround. No Pixi, no canvas, no sim state read back: plain projection.
+ * which forces a TDZ workaround.
  */
 
 /** Fixed-point scale (one whole tile), re-exported so the scene layer reads snapshot positions. */
@@ -15,11 +15,8 @@ export const ONE: number = SIM_ONE;
  * "projection", 2026-07, which records the full method): `TILE_HALF_W` is half the 68.0 px cell width,
  * so a column step right is `2·TILE_HALF_W`; `TILE_HALF_H` is the 38.0 px row step (±0.1), and also half
  * the cell diamond's height (rows interlock at half-diamond spacing). At this pitch the pattern-page
- * texture triangles (~64 px) rasterize ~1:1 onto the cell diamond.
- *
- * This is the master scale the whole world hangs off: every ground triangle, every feet-anchored bob
- * (drawn at its native pixel size — see the render AGENTS.md) and the camera derive from it. The
- * elevation lift derives from the row step and is owned by {@link import('../terrain/index.js')}.
+ * texture triangles (~64 px) rasterize ~1:1 onto the cell diamond. The elevation lift derives from the
+ * row step and is owned by {@link import('../terrain/index.js')}.
  */
 export const TILE_HALF_W = 34;
 export const TILE_HALF_H = 38;
@@ -44,9 +41,8 @@ export function tileToScreen(col: number, row: number): { x: number; y: number }
 
 /**
  * The parity stagger of a (fractional) row, as a triangle wave: 0 at even rows, 1 at odd, linear
- * between (robust to negative rows). One cell of sideways shift per row down, interpolated so a walking
- * entity slides along the original's mesh-edge diagonal. The fog cell mapper (`fog/mask.ts`) shares it (halved
- * for its half-cell step) so a unit resolves to the same cell the sim's vision mask stamped.
+ * between (robust to negative rows). The fog cell mapper (`fog/mask.ts`) shares it (halved for its
+ * half-cell step) so a unit resolves to the same cell the sim's vision mask stamped.
  */
 export function rowStagger(row: number): number {
   const cycle = ((row % 2) + 2) % 2;

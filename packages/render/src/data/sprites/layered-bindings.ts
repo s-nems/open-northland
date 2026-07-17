@@ -16,21 +16,17 @@
 export type LayeredBobRef = number | { readonly layer: string; readonly bob: number };
 
 /**
- * A building type's bob reference. A plain bob id draws from the default building atlas layer (the
- * shared `ls_houses_viking.house01`, {@link import('../../gpu/sprite-sheet.js').SpriteSheet.kindLayers}'s
- * `building` entry); a layer-qualified `{ layer, bob }` names the family atlas the bob comes from — the
- * multi-`.bmd` case where a building type lives in its own `.bmd`/palette (e.g. the viking HQ in
- * `ls_houses_viking4.bmd`). A `layer` keys into {@link import('../../gpu/sprite-sheet.js').SpriteSheet.families};
- * the GPU blits the `bob` from that family's own source, frame-id space, and per-family scale.
+ * A building type's bob reference — a {@link LayeredBobRef} whose default layer is the shared
+ * `ls_houses_viking.house01` and whose named families are the multi-`.bmd` case, where a building type
+ * lives in its own `.bmd`/palette (e.g. the viking HQ in `ls_houses_viking4.bmd`) and is blitted at that
+ * family's own frame-id space and per-family scale.
  */
 export type BuildingBobRef = LayeredBobRef;
 
 /**
- * A resolved building draw ({@link import('./layered.js').resolveBuildingDraw}'s output): which `bob`
- * id, and optionally which named atlas-layer family it draws from. `layer === undefined` means the
- * default building layer ({@link import('../../gpu/sprite-sheet.js').SpriteSheet.kindLayers}'s `building`); a
- * `layer` names a {@link import('../../gpu/sprite-sheet.js').SpriteSheet.families} entry whose own
- * atlas/source the `bob` indexes.
+ * A resolved building draw ({@link import('./layered.js').resolveBuildingDraw}'s output): which `bob` id,
+ * and which named atlas-layer family it draws from — `layer === undefined` means the default building
+ * layer, as on every {@link LayeredBobRef}.
  */
 export interface BuildingDraw {
   readonly bob: number;
@@ -73,9 +69,8 @@ export interface BuildingTypeBinding {
  * sprite drawn on top of the finished body, such as the mill's rotor. `idle` is the standing-still
  * frame (source state 0); `working` the spin-cycle frame list (source state 1), looped one frame every
  * {@link ticksPerFrame} sim ticks on the free tick clock while the building is producing. Either state
- * may be absent (that state then draws no overlay). Bobs resolve in the named
- * {@link import('../../gpu/sprite-sheet.js').SpriteSheet.families} atlas `layer`, or the default
- * building layer when absent, as with every {@link BuildingBobRef}.
+ * may be absent (that state then draws no overlay). Bobs resolve against `layer` as on every
+ * {@link LayeredBobRef}.
  */
 export interface BuildingOverlayRef {
   readonly layer?: string;
@@ -107,8 +102,6 @@ export interface ConstructionLayerRef {
  * indexes them by the node's {@link import('../scene/index.js').DrawItem.level}, clamped, so a mined
  * deposit visibly shrinks. A node with no level (a tree/mushroom/full deposit) draws the full (last)
  * frame. A good absent from {@link byGood} falls back to {@link default} (the representative yew tree).
- * A bare-number ref draws from the shared resource atlas layer (`ls_trees.tree_yew01`); a
- * layer-qualified `{ layer, bob }` ref draws from a per-`.bmd` family atlas (`ls_ground`/`ls_mushrooms`).
  */
 export interface ResourceTypeBinding {
   /** Per-`goodType` node frames ordered empty→full — the good→`landscapeToHarvest`-record→per-state-bob
@@ -131,16 +124,6 @@ export interface ResourceTypeBinding {
 }
 
 /**
- * A ground pile / delivery flag's binding — the {@link ResourceTypeBinding} twin for a bare
- * `Stockpile+Position`. A held pile draws its good's `[GfxLandscape]` `landscapeToStore` heap
- * (`ls_goods.<good>`) at a per-fill frame; an empty pile (a designated collection point) draws the
- * {@link flag} sprite (`ls_temp` player sign). {@link byGood} maps a pile's dominant `goodType`
- * ({@link import('../scene/index.js').DrawItem.goodType}) to its heap frames ordered fewest→most units;
- * {@link import('./layered.js').resolveStockpileDraw} indexes them by the pile's
- * {@link import('../scene/index.js').DrawItem.fill} amount (clamped), so the heap visibly grows.
- * A good with no bound frames falls back to {@link default}.
- */
-/**
  * A signpost's draw binding: the standing post plus the direction-board frames in angular order (the
  * decoded `ls_guidepost.bmd`: bob 0 the post, bobs 1..18 the board in ~20° steps around the post-top
  * nail point — each frame's own offsets carry the pivot, so a board draws at the post's feet anchor).
@@ -160,6 +143,13 @@ export interface SignpostBinding {
   readonly byPlayer?: readonly (SignpostBinding | undefined)[];
 }
 
+/**
+ * A ground pile / delivery flag's binding — the {@link ResourceTypeBinding} twin for a bare
+ * `Stockpile+Position`. A held pile draws its good's `[GfxLandscape]` `landscapeToStore` heap
+ * (`ls_goods.<good>`) at a per-fill frame, indexed by the pile's
+ * {@link import('../scene/index.js').DrawItem.fill} amount (clamped, so the heap visibly grows); an empty
+ * pile (a designated collection point) draws the {@link flag} sprite (`ls_temp` player sign).
+ */
 export interface StockpileBinding {
   /** Per-`goodType` ground-pile heap frames, ordered fewest→most units (the `landscapeToStore` join). */
   readonly byGood: Readonly<Record<number, readonly LayeredBobRef[]>>;

@@ -19,12 +19,8 @@ import type {
  * back into the deterministic sim.
  */
 
-/**
- * One drawable atlas layer: a GPU {@link TextureSource} paired with its {@link SpriteAtlas} frame
- * geometry. Overlay layers ({@link SpriteSheet.overlays}) share the body's resolved bob id, so a
- * settler's head bob (same id, a separate `cr_hum_head` atlas) draws on top of the body bob — the
- * original composes a human from layered body + head bob sets, not one sprite.
- */
+/** One drawable atlas layer: a GPU {@link TextureSource} paired with its {@link SpriteAtlas} frame
+ *  geometry (the original composes a human from layered body + head bob sets, not one sprite). */
 export interface SpriteLayer {
   readonly source: TextureSource;
   readonly atlas: SpriteAtlas;
@@ -39,8 +35,7 @@ export interface SpriteLayer {
    * The layer's cast-shadow twin (the decoded shadow `.bmd` atlas — pre-baked translucent-black
    * silhouettes whose frame ids parallel this layer's bob ids), when the content names one and it
    * loaded. A drawn bob prepends its same-id shadow frame under the body; absent, the bob casts
-   * none. Character atlases never carry one (settlers draw shadow-less by design). Only the texture
-   * and frame geometry are meaningful — a shadow has no `times`/`shadow` of its own.
+   * none. Character atlases never carry one (settlers draw shadow-less by design).
    */
   readonly shadow?: Pick<SpriteLayer, 'source' | 'atlas'>;
 }
@@ -98,13 +93,11 @@ export interface SpriteSheet {
   readonly bindings: SpriteBindings;
   readonly overlays?: readonly SpriteLayer[];
   /**
-   * Per-kind dedicated atlas layers. The base `source`/`atlas` (+ `overlays`) is the human body+head
-   * set, whose bob-id space is the human bobs. A `resource` (a tree from `ls_trees.bmd`) or a `building`
-   * (its own house `.bmd`) has a different decoded atlas with its own frame-id space, so it cannot share
-   * that id space. When a kind has an entry here, its resolved bob id ({@link SpriteBindings}) is blitted
-   * from this layer's own `source`+`atlas` instead of the shared body atlas — one feet-anchored sprite,
-   * no head overlay. A kind with no entry falls back to the shared body+overlays path (the settler), and
-   * an unresolved/empty frame falls back to placeholder geometry.
+   * Per-kind dedicated atlas layers. The base `source`/`atlas` (+ `overlays`) is the human body+head set,
+   * so a `resource` (a tree from `ls_trees.bmd`) or a `building` (its own house `.bmd`) cannot share its
+   * bob-id space. A kind listed here is blitted from this layer's own `source`+`atlas` — one feet-anchored
+   * sprite, no head overlay; a kind with no entry falls back to the shared body+overlays path (the
+   * settler), and an unresolved/empty frame to placeholder geometry.
    */
   readonly kindLayers?: Partial<Record<SpriteKind, SpriteLayer>>;
   /**
@@ -120,11 +113,9 @@ export interface SpriteSheet {
    * Named building-family atlas layers — the multi-`.bmd` building case. A viking settlement draws its
    * buildings from many `.bmd`s × palettes (`ls_houses_viking`, `ls_houses_viking4`, …), each a separate
    * decoded atlas with its own frame-id space, so the single {@link kindLayers}.`building` layer can't
-   * address them all. A {@link import('../data/sprites/index.js').BuildingTypeBinding} entry may be
-   * layer-qualified (`{ layer, bob }`); when it names a `layer` present here, the GPU blits its `bob` from
-   * that family's own `source`+`atlas` (one feet-anchored sprite) instead of {@link kindLayers}.`building`.
-   * A plain-number / unqualified building binding (and every non-`building` kind) ignores this map and
-   * uses the {@link kindLayers} path.
+   * address them all. A layer-qualified {@link import('../data/sprites/index.js').BuildingTypeBinding}
+   * entry naming a `layer` present here is blitted from that family's own `source`+`atlas`; every other
+   * binding (and every non-`building` kind) uses the {@link kindLayers} path.
    */
   readonly families?: Readonly<Record<string, SpriteLayer>>;
   /**

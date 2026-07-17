@@ -25,12 +25,10 @@ import { type ResolvedLayer, resolveLayers } from './resolve-layers.js';
 
 /**
  * The retained per-entity sprite pool: one display object per drawable entity, keyed by its monotonic,
- * never-reused entity id and reused across frames — the steady state mints nothing, only the container
- * position, the sprites' textures/offsets, and their visibility change. Per-frame heap allocation is
- * O(visible) — {@link import('./resolve-layers.js').resolveLayers} builds a small layer array per drawn
- * entity — bounded by the screen, never the map (the render contract). Each frame the pool is reconciled
- * to the culled, depth-sorted draw list: an entity that scrolled off-screen stays pooled (it may scroll
- * back), one that left the snapshot (died) is destroyed.
+ * never-reused entity id and reused across frames — the steady state mints nothing. Each frame the pool
+ * is reconciled to the culled, depth-sorted draw list: an entity that scrolled off-screen stays pooled
+ * (it may scroll back), one that left the snapshot (died) is destroyed. Per-frame heap allocation is
+ * O(visible), bounded by the screen and never the map (the render contract).
  */
 
 /**
@@ -150,12 +148,9 @@ export class SpritePool {
   /**
    * Reconcile the pool to one frame: get-or-create a display object per drawn (culled, depth-sorted)
    * entity, update it in place, order it by its feet-anchor {@link depthKey}, detach entities not drawn
-   * this frame (culled or gone), and reap the ones that left the snapshot (died). No allocation in the
-   * steady state — only a first-seen entity or a growing layer set mints a new object.
-   *
-   * The get-or-create and detach passes are O(visible) — they iterate this frame's draw list and the
-   * {@link attached} set. Only the death reap must diff the whole pool against the live set, so it runs
-   * on an interval ({@link POOL_REAP_INTERVAL_FRAMES}), off the hot path.
+   * this frame (culled or gone), and reap the ones that left the snapshot (died). Only the death reap
+   * must diff the whole pool against the live set, so it runs on an interval
+   * ({@link POOL_REAP_INTERVAL_FRAMES}); every other pass is O(visible).
    */
   reconcile(frame: PoolFrame): void {
     // One pass over the snapshot yields both the culled draw list and the pre-cull liveness set the
@@ -196,10 +191,8 @@ export class SpritePool {
       // objects use, so a settler and the tree it walks behind sort into one painter order. This
       // deliberately diverges from the headless `buildScene` oracle's row-major (tileY, tileX) list order:
       // the feet-anchor screen y (∝ row under the staggered raster) is the iso-correct occlusion key once
-      // static objects interleave with entities. The per-kind bias (see SPRITE_PAINT_ORDER /
-      // FLAG_PAINT_STEP) is a sub-pixel epsilon, so it only breaks ties at a shared feet anchor, never
-      // reordering sprites a real row apart. Depth reads the drawn (lerped) anchor restored to its pre-lift
-      // y (`+ item.lift`), so occlusion still sorts by map row while the sprite itself rides the hill.
+      // static objects interleave with entities. Depth reads the drawn (lerped) anchor restored to its
+      // pre-lift y (`+ item.lift`), so occlusion still sorts by map row while the sprite rides the hill.
       pe.container.zIndex =
         depthKey(pe.motion.drawX, pe.motion.drawY + (item.lift ?? 0)) +
         paintOrderBias(item.kind, item.isFlag === true) * SCREEN_PAINT_EPS;
@@ -216,10 +209,9 @@ export class SpritePool {
     }
     this.drawn = scene.items.length;
 
-    // Detach entities not drawn this frame (culled or gone). Iterating the attached set (the entities on
-    // the layer, O(visible)) instead of the whole pool keeps this scan bounded by the screen. Deleting the
-    // current entry mid-iteration is well-defined for a Set. After this pass `attached` is exactly this
-    // frame's drawn entities.
+    // Detach entities not drawn this frame (culled or gone); iterating `attached` instead of the whole
+    // pool keeps this scan bounded by the screen. Deleting the current entry mid-iteration is well-defined
+    // for a Set.
     for (const pe of this.attached) {
       if (pe.lastSeen === this.frameId) continue; // still drawn this frame — keep attached
       this.spriteLayer.removeChild(pe.container);
@@ -228,10 +220,8 @@ export class SpritePool {
     }
 
     // Reap entities that left the snapshot (died), freeing their display objects — a merely culled one
-    // stays pooled to scroll back. A death already detached above (invisible), so destroying it only
-    // reclaims memory; this whole-pool diff against the live set therefore runs on an interval, the one
-    // remaining pool-sized scan kept off the per-frame path. `reconcileSprites` is the pure, tested
-    // decision (a pooled ref absent from the pre-cull live set has died).
+    // stays pooled to scroll back. Interval-gated; see POOL_REAP_INTERVAL_FRAMES. `reconcileSprites` is
+    // the pure, tested decision (a pooled ref absent from the pre-cull live set has died).
     if (this.frameId % POOL_REAP_INTERVAL_FRAMES === 0) {
       for (const ref of reconcileSprites(scene.liveRefs, this.pool.keys()).toDestroy) {
         const pe = this.pool.get(ref);
@@ -272,8 +262,7 @@ export class SpritePool {
    * `worldLayer` transform, but the team-colour meshes self-place in screen space, so they must be re-placed
    * for the inset camera before that render and restored to the main camera after. Mirrors {@link bindLayers}'
    * placement exactly (same drawn anchor + art scale). `flipY` renders the mesh upright into a bottom-up
-   * render texture (true for the inset, false to restore the on-screen render). Iterates the attached
-   * (drawn) set, O(visible), placing only its paletted meshes; only runs while a portrait is open.
+   * render texture (true for the inset, false to restore the on-screen render).
    */
   placePalettedFor(camera: Camera, resWidth: number, resHeight: number, flipY: boolean): void {
     const camScale = camera.scale ?? 1;
@@ -331,10 +320,8 @@ export class SpritePool {
     this.attached.clear();
   }
 
-  /**
-   * Update one pooled entity for this frame: move its container to the feet anchor, then either bind its
-   * atlas layers ({@link bindLayers}) or show its placeholder geometry ({@link showPlaceholder}).
-   */
+  /** Update one pooled entity for this frame: place it at its interpolated feet anchor, then bind its
+   *  atlas layers ({@link bindLayers}) or fall back to placeholder geometry ({@link showPlaceholder}). */
   private updatePooled(pe: PooledEntity, item: DrawItem, frame: PoolFrame): void {
     // Fixed-timestep interpolation over the lifted feet: the sim advances in 12 Hz ticks, so drawing raw
     // snapshot anchors steps a walking bob ~4 px every fifth frame. Track the last two tick anchors of the
@@ -554,8 +541,7 @@ export class SpritePool {
   /** Whether an entity of `kind` draws team-coloured {@link PalettedSprite} meshes: a settler, with both the
    *  player-colour LUT ({@link SpriteSheet.palette}) and the indexed {@link SpriteSheet.characters} loaded
    *  (real graphics + the pipeline's colour stage). Fixed for the pool's life — the sheet never changes — so
-   *  a pooled entity's sprite class is decided once at creation. Without the LUT this is false everywhere and
-   *  every entity draws plain {@link Sprite}s. */
+   *  a pooled entity's sprite class is decided once at creation. */
   private isPaletted(kind: SpriteKind): boolean {
     return kind === 'settler' && this.sheet?.palette !== undefined && this.sheet.characters !== undefined;
   }

@@ -82,9 +82,6 @@ export type SpriteFrameRef = number | DirectionalAnim | FrameListAnim;
  * fall back to `idle` when absent, and an `acting` settler can bind a specific atomic id via
  * {@link SettlerStateBinding.byAtomic} (so chop vs carry pick different frames), with `acting` as the
  * generic-action fallback when an atomic isn't listed.
- *
- * Each slot is a {@link SpriteFrameRef}: a plain bob id (one still frame for every facing/tick) or a
- * {@link DirectionalAnim} (a per-facing, per-tick animated sequence).
  */
 export interface SettlerStateBinding {
   /** Required base frame — used when no more-specific state frame is bound. */
