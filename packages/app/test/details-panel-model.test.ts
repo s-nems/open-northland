@@ -16,6 +16,8 @@ import {
   GOOD_STONE,
   GOOD_WHEAT,
   GOOD_WOOD,
+  JOB_BABY_MALE,
+  JOB_CHILD_MALE,
   JOB_COLLECTOR,
 } from '../src/game/sandbox/ids/index.js';
 import {
@@ -304,6 +306,42 @@ describe('selection details panel model', () => {
     const bare = buildUnitPanelModel(snapshot, new Set([2]), sandboxCtx());
     if (bare.kind !== 'settler') throw new Error('expected a settler model');
     expect(bare.bars.map((b) => b.label)).toEqual(['Głód', 'Sen', 'Towarzystwo', 'Religia']);
+  });
+
+  it('hides the need bars for a cared-for baby (only Zdrowie), keeps them for a child', () => {
+    const snapshot: WorldSnapshot = {
+      tick: 0,
+      events: [],
+      entities: [
+        {
+          id: 1,
+          components: {
+            Settler: { tribe: 1, jobType: JOB_BABY_MALE, hunger: 0, fatigue: 0, enjoyment: 0, piety: 0 },
+            Age: { ticks: 0 },
+            Health: { hitpoints: 300, max: 300 },
+          },
+        },
+        {
+          id: 2,
+          components: {
+            Settler: { tribe: 1, jobType: JOB_CHILD_MALE, hunger: 0, fatigue: 0, enjoyment: 0, piety: 0 },
+            Age: { ticks: 9000 },
+            Health: { hitpoints: 300, max: 300 },
+          },
+        },
+      ],
+    };
+
+    // A baby's needs never accumulate (the NeedsSystem skips it whole), so its bars would always read
+    // 100% — the panel hides them and shows only the real Health pool.
+    const baby = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
+    if (baby.kind !== 'settler') throw new Error('expected a settler model');
+    expect(baby.bars.map((b) => b.label)).toEqual(['Zdrowie']);
+
+    // A child self-feeds/rests, so its needs are live state — the full bar set stays.
+    const child = buildUnitPanelModel(snapshot, new Set([2]), sandboxCtx());
+    if (child.kind !== 'settler') throw new Error('expected a settler model');
+    expect(child.bars.map((b) => b.label)).toEqual(['Zdrowie', 'Głód', 'Sen', 'Towarzystwo', 'Religia']);
   });
 
   it('bands a bar level into green/orange/red tones at the named thresholds', () => {
