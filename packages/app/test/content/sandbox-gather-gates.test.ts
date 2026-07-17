@@ -33,5 +33,7 @@ describe.runIf(hasRealIr())('sandbox scene on real content — gathering XP gate
     sim.run(3600); // 5 min of game time at 1× — several dig cycles per camp
     expect(remaining(sim, GOOD_IRON)).toBeLessThan(iron);
     expect(remaining(sim, GOOD_GOLD)).toBeLessThan(gold);
-  }, 120000);
+    // A 3600-tick real-content run is tens of seconds alone; the budget is a hang-guard sized for a
+    // CPU-contended full parallel run (observed timing out at 120s under multi-session machine load).
+  }, 300_000);
 });

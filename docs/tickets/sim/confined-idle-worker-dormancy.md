@@ -19,11 +19,8 @@ the failed search key. Constraints: byte-identical behavior for goldens where do
 non-empty scan; the `cachesCoherent` invariant must cover any new incremental cache; canonical
 winners unchanged.
 
-Verify with the sandbox scene timing (`packages/app` scene determinism test ran ~40 s under
-confinement; target is back under ~15 s) and a fresh per-system profile over `dist/`.
-
-The test budget now actually trips, so this is a red-build risk, not just slowness (observed
-2026-07-17 from an unrelated render branch): a determinism case blew its `DETERMINISM_TIMEOUT_MS`
-(120 s, `scenes.test.ts`) on a **cold**-cache `npm test`, while the same file alone, warm, passed in
-91.6 s. CI runs cold, and a timeout there reads as a determinism regression — a false signal on the
-golden rule 1 gate. Raising the budget is the wrong cure while the per-tick cost is the known cause.
+Verify with the per-system benchmark (`npm run bench:sim`, `ON_BENCH_SETTLEMENTS=1
+ON_BENCH_TICKS=2400`): measured 2026-07-17, the `ai` system is 97.9% of the tick (8.7 ms median,
+11.0 ms p95) and per-100-tick cost grows ~10× between tick ~1000 and ~2400. The sandbox *scene* no
+longer reaches that regime (its run was cut to 1200 ticks once its checks were measured to pass by
+tick 825), so the scene test is no longer the witness — the bench window above is.

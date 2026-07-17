@@ -12,8 +12,10 @@ import { contentDir, hasRealIr, loadContentUnderTest, rawIrUnderTest } from './h
  * at first open in the browser. Skips without generated content (see `helpers.ts`).
  */
 
-/** Zod over ~125 maps (~5.5M cells) takes seconds; whichever test parses first pays it once. */
-const MAP_PARSE_TIMEOUT_MS = 60_000;
+/** Zod over ~125 maps (~5.5M cells) takes seconds; whichever test parses first pays it once. Sized
+ *  as a hang-guard with room for a CPU-contended full parallel run (observed timing out at 60s under
+ *  multi-session machine load), not as a benchmark. */
+const MAP_PARSE_TIMEOUT_MS = 180_000;
 
 function mapsDir(): string {
   return resolve(contentDir(), 'maps');
