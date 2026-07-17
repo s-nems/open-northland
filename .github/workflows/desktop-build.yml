@@ -76,11 +76,23 @@ jobs:
           if gh release view "$tag" --json tagName --jq .tagName >/dev/null 2>&1; then
             gh release upload "$tag" installers/* --clobber
           else
+            # Quoted heredoc + sed keeps the markdown literal (backticks, fences) with only the
+            # sha substituted.
+            sed "s/@SHA@/$sha/" > notes.md <<'EOF'
+          Unsigned development build of commit @SHA@ — code signing is tracked in docs/tickets/tooling/desktop-code-signing.md.
+
+          - **Windows:** SmartScreen warns about an unknown publisher; choose "More info" → "Run anyway".
+          - **macOS:** Gatekeeper refuses to open the unsigned app — on Apple Silicon as a misleading "damaged, move to Trash" dialog. The app is fine; after copying OpenNorthland.app to Applications, clear the download quarantine flag and launch again:
+
+            ```sh
+            xattr -cr /Applications/OpenNorthland.app
+            ```
+          EOF
             gh release create "$tag" installers/* \
               --prerelease \
               --target "$sha" \
               --title "Dev build $short" \
-              --notes "Unsigned development build of commit $sha. Windows SmartScreen and macOS Gatekeeper will warn about an unknown publisher (docs/tickets/tooling/desktop-code-signing.md)."
+              --notes-file notes.md
           fi
           url="$(gh release view "$tag" --json url --jq .url)"
           echo "Download page: $url" >> "$GITHUB_STEP_SUMMARY"
