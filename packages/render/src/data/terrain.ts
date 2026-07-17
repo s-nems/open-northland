@@ -18,6 +18,7 @@
  * the tile square's (TL, BR, BL) and maps onto A's [apex, SE, SW]; `coordsB` lists (TL, TR, BR)
  * and maps onto B's [left, E, SE] — both in point order, divided by the page size verbatim.
  */
+import { cellAnchorNode, cellOfAnchorNode } from '@open-northland/sim';
 
 /** A source sub-rectangle in texture pixels — the pattern's tile region within its `text_NNN` page. */
 export interface SrcRect {
@@ -44,13 +45,11 @@ export interface CellTexture {
 /** A half-cell node address `[hx, hy]` — the sim lattice's integer coordinates (`nav/halfcell.ts`). */
 export type NodeXY = readonly [number, number];
 
-/**
- * Cell `(col, row)`'s centre node: `(2·col + (row&1), 2·row)` — the staggered raster's lattice
- * address. Must stay the same formula as the sim's `nav/halfcell.ts` `cellAnchorNode`, or mesh
- * vertices drift off nav anchors.
- */
+/** Cell `(col, row)`'s centre node, in this module's tuple shape — the sim owns the formula, so mesh
+ *  vertices cannot drift off nav anchors. */
 export function cellNode(col: number, row: number): NodeXY {
-  return [2 * col + (row & 1), 2 * row];
+  const { hx, hy } = cellAnchorNode(col, row);
+  return [hx, hy];
 }
 
 /**
@@ -83,13 +82,12 @@ export function triangleBNodes(col: number, row: number): readonly [NodeXY, Node
 
 /**
  * The cell whose centre a triangle-vertex node is: the inverse of {@link cellNode}. Every node the
- * two triangle builders emit sits on a cell centre (even `hy`, `hx` sharing the row's parity), so
- * the division is exact. May land outside the grid for a border cell's triangles (e.g. the last
- * row's SE node); callers clamp per their lane's rule.
+ * two triangle builders emit sits on a cell centre, so the division is exact. May land outside the
+ * grid for a border cell's triangles (e.g. the last row's SE node); callers clamp per their lane's rule.
  */
 export function nodeCell(hx: number, hy: number): readonly [number, number] {
-  const row = hy / 2;
-  return [(hx - (row & 1)) / 2, row];
+  const { cx, cy } = cellOfAnchorNode(hx, hy);
+  return [cx, cy];
 }
 
 /**

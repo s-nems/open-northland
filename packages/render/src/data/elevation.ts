@@ -1,5 +1,6 @@
 import { makeCellSampler } from './cell-field.js';
 import { halfCellToScreen, TILE_HALF_H } from './iso.js';
+import { nodeCell } from './terrain.js';
 
 /**
  * The terrain-elevation seam: a pure, immutable height field with a single bilinear sampler every
@@ -124,10 +125,11 @@ export function makeElevationField(
     liftAt: (col: number, row: number): number => sample(col, row) * liftPerUnit,
     liftAtNode: (hx: number, hy: number): number => {
       const row = hy / 2;
+      // A centre node samples its own cell (matching the mesh vertex); one between centres has no cell
+      // of its own, so it samples the unstaggered column.
       if (Number.isInteger(row)) {
-        // The staggered lattice puts cell centres at hx = 2·col + (row&1); undo the parity so a
-        // centre node samples its own cell (matching the mesh vertex).
-        return sample((hx - (row & 1)) / 2, row) * liftPerUnit;
+        const [col] = nodeCell(hx, hy);
+        return sample(col, row) * liftPerUnit;
       }
       return sample(hx / 2, row) * liftPerUnit;
     },

@@ -55,6 +55,7 @@ export {
 } from './inspect/snapshot-diff.js';
 export {
   cellAnchorNode,
+  cellOfAnchorNode,
   type HalfCellNode,
   nodeOfPosition,
   positionOfNode,
