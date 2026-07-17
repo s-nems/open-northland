@@ -90,8 +90,8 @@ export function loadGuiPaletteLut(): Promise<TextureSource | undefined> {
  * entries: red `#ff0000` at index 0 (empty) → orange → yellow-green `#d4ff4b` at 255 (full), the decoded
  * evidence that a bar's colour follows its level. The exact original draw behavior is not established, so
  * the panel's reading (fill colour = `ramp[level]`, one colour per bar) is a named approximation. Every
- * stat gauge uses this ramp rather than the sibling `bar_standart`, which stays green until ~15% and so
- * showed no colour change on a draining need.
+ * stat gauge uses this ramp (user decision 2026-07-11) rather than the sibling `bar_standart`, which stays
+ * green until ~15% and so showed no colour change on a draining need.
  */
 export type GuiBarRamp = readonly number[];
 

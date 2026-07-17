@@ -1,6 +1,6 @@
 import { systems, type WorldSnapshot } from '@open-northland/sim';
 import { vikingBuildingByTypeId } from '../../../catalog/buildings.js';
-import { characterName } from '../../../game/character-names.js';
+import { characterName } from '../../../game/character-names/index.js';
 import { PRIMARY_TRIBE } from '../../../game/rules.js';
 import { JOB_IDLE } from '../../../game/sandbox/ids/index.js';
 import {

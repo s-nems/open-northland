@@ -101,13 +101,13 @@ export const EDGE_SCROLL_MARGIN = 24;
  *  {@link DEFAULT_CAMERA_TUNING}. */
 export interface CameraTuning {
   /** Screen px/s the camera pans while an arrow key is held. */
-  arrowPanSpeed: number;
+  readonly arrowPanSpeed: number;
   /** Edge-scroll speed (screen px/s) at the deepest point of the margin; ramps linearly from 0. */
-  edgeScrollSpeed: number;
+  readonly edgeScrollSpeed: number;
   /** Wheel-zoom glide speed in log-zoom units per second — LINEAR: the scale travels toward its
    *  target at this constant perceptual rate (each ×e of zoom takes `1/rate` seconds), so a long
    *  glide never lurches fast then crawls the tail like an exponential ease. */
-  zoomGlideRate: number;
+  readonly zoomGlideRate: number;
 }
 
 /** The default camera speeds ({@link CameraTuning}). The zoom rate is tuned so one wheel notch

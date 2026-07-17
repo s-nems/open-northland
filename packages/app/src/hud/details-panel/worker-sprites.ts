@@ -84,7 +84,8 @@ export class WorkerSpriteOverlay {
 
   /**
    * Redraw the workers of `buildingId` into `field` (screen px). A null building / field, or no sprite
-   * sheet, clears the overlay. Called every frame from the panel's `tick` so the animation advances.
+   * sheet, clears the overlay. Called from the panel's `tick`, which skips it while its inputs hold — the
+   * animation clock is `snapshot.tick`, so it advances once per sim tick.
    * `opts.siteCrew` selects the live build crew instead of the bound workers; `opts.groups` (a home's
    * residents, one id list per family) overrides the bound-worker scan entirely — the field then draws
    * each family as a close cluster with a breather gap before the next.

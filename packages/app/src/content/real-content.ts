@@ -109,7 +109,7 @@ function withGatheringBalance(good: GoodType): GoodType {
  * and {@link withGatheringBalance} (the felling/mining tuning). The farming and gathering tables are the
  * same ones the sandbox reads, so a mechanic runs at one pace on either content base.
  *
- * Today's felling still runs through the sandbox `GATHERERS` placement path (`game/sandbox/place.ts`,
+ * Today's felling still runs through the sandbox `GATHERERS` placement path (`game/sandbox/place/`,
  * re-keyed to real ids) reading the same balance table, proven by `test/map-gatherer-cycle.test.ts`;
  * completing the ContentSet keeps it self-consistent and ready for a content-driven resource-spawn system.
  * Gathered goods with no clean-room balance, field goods with no clean-room `farming` block, and buildings

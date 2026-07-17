@@ -233,13 +233,17 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
    * O(entities) pass — so it runs once per tick and the frames in between reuse it (golden rule 6). A new
    * selection re-derives through `force`; the wall-clock rebuild gate below still runs every frame, so a
    * rebuild the 4 Hz limit deferred still fires on a later frame of the same tick.
+   *
+   * Keyed on snapshot IDENTITY, not `snapshot.tick`: the sim memoizes `snapshot()` on tick + world
+   * mutation version, so a same-tick world mutation hands out a new object under an unchanged tick — and
+   * while paused the tick never advances to heal a stale model.
    */
-  let derived: { tick: number; model: UnitPanelModel; json: string } | null = null;
+  let derived: { snapshot: WorldSnapshot; model: UnitPanelModel; json: string } | null = null;
 
   const modelFor = (snapshot: WorldSnapshot, force: boolean): { model: UnitPanelModel; json: string } => {
-    if (!force && derived !== null && derived.tick === snapshot.tick) return derived;
+    if (!force && derived !== null && derived.snapshot === snapshot) return derived;
     const model = buildUnitPanelModel(snapshot, selectedIds, ctx);
-    derived = { tick: snapshot.tick, model, json: JSON.stringify(model) };
+    derived = { snapshot, model, json: JSON.stringify(model) };
     return derived;
   };
 

@@ -7,6 +7,17 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
  * Each test re-imports the modules under `vi.resetModules()` so the module-level memo starts fresh.
  */
 
+/**
+ * Transform the modules under test once, here, outside any test body: `content/ir.ts` pulls in
+ * `@open-northland/render` (the whole Pixi graph), and a cold Vite transform of it costs seconds that
+ * would otherwise be charged to the first test's timeout. `vi.resetModules()` then only re-instantiates
+ * an already-transformed graph.
+ */
+await Promise.all([import('../src/content/ir.js'), import('../src/content/real-content.js')]);
+
+/** Generous: even primed, a cold-cache run pays a real (multi-second) transform for this graph. */
+const IR_LOADER_TIMEOUT_MS = 30_000;
+
 /** The smallest document `parseContentSet` accepts — every other lane defaults to empty. */
 const MINIMAL_IR = {
   manifest: { version: 1, generatedFrom: { game: 'test' } },
@@ -37,7 +48,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('the shared ir.json fetch', () => {
+describe('the shared ir.json fetch', { timeout: IR_LOADER_TIMEOUT_MS }, () => {
   it('fetches /ir.json once when both the graphics and the sim view load it', async () => {
     const { impl, urls } = countingFetch(() => new Response(JSON.stringify(MINIMAL_IR)));
     vi.stubGlobal('fetch', impl);

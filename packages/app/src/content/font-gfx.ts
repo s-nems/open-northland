@@ -19,7 +19,8 @@ import { fetchJsonOrNull, loadTextureIfPresent } from './net.js';
 /**
  * The font colour LUT row order (row index = colour). Mirrors `FONT_COLORS` in
  * `tools/asset-pipeline/src/stages/fonts.ts` — keep the two in lock-step (append, never reorder), since the
- * pipeline bakes this order into the LUT rows and the renderer selects a row by index.
+ * pipeline bakes this order into the LUT rows and the renderer selects a row by index. The manifest also
+ * carries the names, so a consumer can cross-check `fontColorRow` against `manifest.colorLut.names`.
  */
 const FONT_COLORS = ['white', 'dark', 'dimmed', 'red'] as const;
 

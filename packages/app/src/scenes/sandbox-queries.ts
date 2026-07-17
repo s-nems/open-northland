@@ -6,7 +6,7 @@ const { Building, GroundDrop, Health, Owner, Position, Settler, Stockpile } = co
 /**
  * Read-only world queries the sandbox scene's machine checks assert on. These read a scene-owned sim
  * after its headless run (never live render glue), so the direct `sim.world` reads are the sanctioned
- * check-side counterpart of the command-side placement helpers (`game/sandbox/place.ts`). They live
+ * check-side counterpart of the command-side placement helpers (`game/sandbox/place/`). They live
  * beside the scenes so `game/` carries content + rules, not test predicates.
  */
 

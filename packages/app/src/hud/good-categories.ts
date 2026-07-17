@@ -74,7 +74,6 @@ const CATEGORY_BY_GOOD: Readonly<Record<string, number>> = {
   armor_chain: 6,
   armor_plate: 6,
   // 7 — Inne (currency, potions, amulets, animals, vehicles, special) falls through DEFAULT_TAB
-  coin: 7,
 };
 
 /** The stock tab a good belongs to, by its string id (misc/"Inne" tab when unknown). */

@@ -65,7 +65,9 @@ export const FALLBACK_WALK: DirectionalAnim = { start: 1988, dirs: DIRS, stride:
 export const CHOP_PHASE_START = 9;
 /** Frames per facing in the woodcut swing (verified 5106/120 = 15 across the 8 dirs). Wood's duration in
  *  {@link HARVEST_TICKS} (30 — the `atomicanimations.ini` length, an independent pin) is exactly two full
- *  swings of this stride, so the chop clip never cuts off mid-swing. */
+ *  swings of this stride, so the chop clip never cuts off mid-swing. The render clock is `elapsed - 1` and
+ *  the completion tick removes the atomic before its frame draws, so one clean swing needs
+ *  `CHOP_STRIDE + 1` sim ticks — a shorter duration replays only the windup. */
 const CHOP_STRIDE = 15;
 export const FALLBACK_CHOP: DirectionalAnim = {
   start: 5106,

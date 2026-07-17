@@ -2,7 +2,7 @@
  * Mining calibration — the one global source for mineral-deposit sizes and level counts, so a mined good's
  * unit count and shrink-level count are not re-picked per scene (`./felling.ts` is the felling half).
  *
- * Deposit sizes are a named approximation, demonstrative pending calibration against the original: the
+ * Deposit sizes are observed (source basis "Mineral deposits"), demonstrative pending calibration: the
  * readable data has no established harvestable-unit-count field (`landscapetypes.ini` `maximumValency` is a
  * per-cell valency, constant across a good's stages — e.g. mud_mine = mud_ore = mud = 6). {@link MINE_LEVELS}
  * is gfx data instead.

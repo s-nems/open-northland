@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vitest/config';
 
 /**
  * Two projects for one reason: the app's tests boot with the app-wide `diag` logger's console echo
@@ -19,7 +19,8 @@ export default defineConfig({
         test: {
           name: 'core',
           include: ['{packages,tools}/*/test/**/*.test.ts'],
-          exclude: ['**/node_modules/**', 'packages/app/**'],
+          // Spread the defaults: an explicit `exclude` REPLACES them, which would drop `**/dist/**`.
+          exclude: [...configDefaults.exclude, 'packages/app/**'],
         },
       },
     ],

@@ -8,7 +8,7 @@ import {
   JOB_CIVILIST,
   JOB_WOMAN,
 } from '../src/catalog/jobs.js';
-import { characterName, settlerSex } from '../src/game/character-names.js';
+import { characterName, settlerSex } from '../src/game/character-names/index.js';
 
 const UNKNOWN_TRIBE = 999;
 

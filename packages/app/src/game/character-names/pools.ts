@@ -1,8 +1,8 @@
 import { VIKING } from '../../catalog/buildings.js';
 
 /**
- * The per-tribe personal-name pools {@link import('../character-names.js').characterName} draws from. Data
- * only — the grid math that turns an entity id into a name stays in `game/character-names.ts`.
+ * The per-tribe personal-name pools {@link import('./index.js').characterName} draws from. Data only —
+ * the grid math that turns an entity id into a name stays in `character-names/index.ts`.
  */
 
 /** A tribe's given names, split by the sex of the body a settler draws. */
@@ -18,10 +18,10 @@ export interface NamePool {
  * Norse name lists; the original game carries none of these, so this is an independent approximation, not
  * extracted content.
  *
- * With the surname cross product (see {@link characterName}) these give 101 × 101 = 10 201 distinct male
- * full names and 72 × 101 = 7 272 female ones. The male pool is the larger because male settlers heavily
- * outnumber female ones, so more of them need distinct names; both counts sit far past any real settlement,
- * so a repeat is very rare.
+ * With the surname cross product (see {@link import('./index.js').characterName}) these give
+ * 101 × 101 = 10 201 distinct male full names and 72 × 101 = 7 272 female ones. The male pool is the
+ * larger because male settlers heavily outnumber female ones, so more of them need distinct names; both
+ * counts sit far past any real settlement, so a repeat is very rare.
  */
 const VIKING_NAMES: NamePool = {
   male: [
