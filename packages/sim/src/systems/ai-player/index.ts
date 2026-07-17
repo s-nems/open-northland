@@ -2,6 +2,16 @@ import { type AiModuleId, AiPlayer } from '../../components/ai-player.js';
 import type { Command } from '../../core/commands/index.js';
 import type { World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
+import { buildOrderModule, DEFAULT_BUILD_ORDER } from './build-order.js';
+import { populationModule } from './population.js';
+import { signpostCoverageModule } from './signpost-coverage.js';
+import { workforceModule } from './workforce.js';
+
+export * from './build-order.js';
+export * from './population.js';
+export * from './shared.js';
+export * from './signpost-coverage.js';
+export * from './workforce.js';
 
 /**
  * AiPlayerSystem — the STRATEGIC per-player brain (build order, workforce, expansion, military),
@@ -28,10 +38,16 @@ export interface AiPlayerModule {
 }
 
 /**
- * The strategic modules, in fixed run order. Ships empty — the build-order / workforce / expansion /
- * military follow-up tickets register theirs here (a per-seat `AiPlayer.modules` flag gates each).
+ * The strategic modules, in fixed run order: the workforce allocator first (it is the one module
+ * that claims settlers, so no later module races it for a person), then building placement, signpost
+ * coverage, and population planning. A per-seat `AiPlayer.modules` flag gates each.
  */
-export const AI_PLAYER_MODULES: readonly AiPlayerModule[] = [];
+export const AI_PLAYER_MODULES: readonly AiPlayerModule[] = [
+  workforceModule,
+  buildOrderModule(DEFAULT_BUILD_ORDER),
+  signpostCoverageModule,
+  populationModule,
+];
 
 /**
  * One tick of the strategic AI over `modules` — the system body, parameterized so tests can drive it

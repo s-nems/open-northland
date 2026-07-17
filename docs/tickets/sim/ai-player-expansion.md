@@ -1,26 +1,25 @@
-# Expand the AI player's territory when space or resources run short
+# Let the AI player expand past its home ring when placement stalls
 
-**Area:** sim · **Origin:** enemy-AI design close-out 2026-07-17 · **Priority:** P2
-**Blocked by:** docs/tickets/sim/ai-player-scaffold.md
+**Area:** sim · **Origin:** enemy-AI design close-out 2026-07-17; narrowed after the strategic
+modules landed (workforce / build order / signpost coverage / population) · **Priority:** P2
 
-The HomeExpansion module of the HAI-style AI player (pinned by the original's
-`HAI_DisableHomeExpansion` toggle and the scripted layer's `AI_MainTask_BuildMilestone` verb —
-expansion in Cultures is a first-class AI concern; internals a named genre-convention
-approximation). Genre lesson (Petra's explicit design change from its predecessor): expansion
-triggers on game-state conditions — no buildable space for the next planned building, a needed
-deposit outside territory — not on timers.
+The signpost-coverage half of the original HomeExpansion idea is DONE: the GuideBuild module keeps
+every owned building inside a post's nav circle (`systems/ai-player/signpost-coverage.ts`). What
+remains is the pressure-triggered half (genre lesson from Petra: expansion triggers on game-state
+conditions, not timers):
 
-## Scope
-
-1. A module on the scaffold's seam that detects expansion pressure for the AI seat: build-order or
-   workforce goals blocked by missing space/resources inside current territory.
-2. Resolve it with the player's own tool: `placeSignpost` toward the blocked goal (nearest useful
-   direction — deposit, open ground), reusing existing signpost placement validity checks.
-3. Condition thresholds are named constants (or content data), no magic numbers; candidate search
-   bounded around the territory border, not the whole map.
+1. The build-order executor stalls silently when no legal spot exists within
+   `BUILD_SEARCH_MAX_RADIUS_NODES` of the HQ (`systems/ai-player/build-order.ts` — the
+   `spot === null` branch). Detect that pressure and resolve it with the player's own tool:
+   `placeSignpost` toward open buildable ground (or a needed deposit outside the current area), then
+   let the executor place near the new post — which needs the placement anchor to generalize from
+   "the HQ" to "the HQ or a frontier post".
+2. Condition thresholds stay named constants; candidate search bounded around the current
+   building/post ring, never the whole map.
 
 ## Verify
 
-- Headless scenario: an AI seat whose next build target has no in-territory space places a signpost
-  and subsequently completes the build; same seed twice → identical hashes.
+- Headless scenario: a seat whose HQ neighbourhood is deliberately walled in (water/resources)
+  places a signpost toward open ground and subsequently completes the blocked build; same seed
+  twice → identical hashes.
 - `npm test`, `npm run check`, `npm run build`.
