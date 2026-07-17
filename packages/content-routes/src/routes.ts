@@ -6,11 +6,9 @@ import { buildMapsIndexEntries } from './maps-index.js';
 /**
  * The single table of app-facing `content/` routes, shared by every host that serves the pipeline's
  * output (the Vite dev middleware in `packages/app/vite.config.ts` and the desktop shell's `app://`
- * handler). The contract both hosts get: they pass the raw URL pathname and percent-decoding happens
- * here, a malformed sequence is a miss rather than a throw, the resolved file must stay under its
- * route's root, only a route's listed extensions are served, and anything unmatched or absent is
- * `undefined` so the host falls through to its own 404 — a data dir without `content/` must degrade,
- * never crash.
+ * handler). Hosts pass the raw URL pathname — percent-decoding happens here — and get `undefined`
+ * for anything unmatched, absent, or malformed, so a data dir without `content/` degrades to the
+ * host's own 404 rather than crashing.
  */
 
 /** A static file hit: stream `path` with `contentType`. */
@@ -51,9 +49,8 @@ interface FileRoute {
   readonly extensions: readonly ServedExtension[];
 }
 
-// Routes mirror the pipeline's output layout: decoded maps + menu sidecars, bob atlases, ground
-// textures, sounds, the GUI strings/cursors, the GUI bitmap fills, and the goods manifest.
-// `/bobs` allows `.atlas.json` (not bare `.json`) so only atlas manifests are reachable there.
+// Routes mirror the pipeline's output layout. `/bobs` allows `.atlas.json` (not bare `.json`) so
+// only atlas manifests are reachable there.
 const FILE_ROUTES: readonly FileRoute[] = [
   { prefix: '/maps/', root: MAPS_ROOT, extensions: ['.json', '.png'] },
   { prefix: '/bobs/', root: BOBS_ROOT, extensions: ['.png', '.atlas.json'] },
@@ -71,8 +68,7 @@ interface IndexRoute {
   readonly build: (root: string) => unknown;
 }
 
-// The computed menu/gallery payloads. An absent root is a miss rather than an empty list, so a host
-// without that part of the pipeline's output 404s and the app can tell "not converted" from "none".
+// An absent root is a miss rather than an empty list, so the app can tell "not converted" from "none".
 const INDEX_ROUTES: readonly IndexRoute[] = [
   { pathname: '/maps-index', root: MAPS_ROOT, build: buildMapsIndexEntries },
   { pathname: '/bobs-index', root: BOBS_ROOT, build: buildBobsIndexEntries },

@@ -5,9 +5,9 @@ import { buildBobsIndexEntries } from '../src/bobs-index.js';
 import { makeTempDir, type TempDir } from './support/temp-dir.js';
 
 /**
- * The `/bobs-index` scan (`src/bobs-index.ts`): the list the `?icons` gallery browses.
- * Invariants: only VIEWABLE RGBA atlases (a `<stem>.atlas.json` WITH a matching `<stem>.png`, and NOT
- * an `.indexed` sheet) are listed, split into base + palette variant, sorted by (base, variant).
+ * The `/bobs-index` scan (`src/bobs-index.ts`): the list the `?icons` gallery browses. Invariants:
+ * only viewable atlases (a `<stem>.atlas.json` with a matching `<stem>.png`, and not an `.indexed`
+ * sheet) are listed, split into base + palette variant, sorted by (base, variant).
  */
 describe('buildBobsIndexEntries', () => {
   let tmp: TempDir;

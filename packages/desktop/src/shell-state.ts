@@ -8,10 +8,9 @@ import { discoverInstalledMod, findModRootUnder } from './mod-install/index.js';
 import type { DataRoot } from './paths.js';
 
 /**
- * What the shell knows about its own data root — the mod it can convert with, how the installed
- * content compares to this build, and the snapshot the setup renderer opens on. Resolved from disk
- * on every call rather than cached: the wizard installs a mod and regenerates content while the
- * process lives, so a cached answer would go stale mid-session.
+ * What the shell knows about its own data root. Resolved from disk on every call rather than cached:
+ * the wizard installs a mod and regenerates content while the process lives, so a cached answer
+ * would go stale mid-session.
  */
 
 /** The data root's writable locations, resolved once at startup (see `paths.ts`). */

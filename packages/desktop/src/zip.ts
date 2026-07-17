@@ -5,8 +5,7 @@ import { inflateRaw } from 'node:zlib';
  * Minimal ZIP reader for the mod-download flow (PKWARE APPNOTE 4.5 layout: end-of-central-directory
  * record → central directory → per-entry local headers). Supports the two compression methods real
  * archives use (0 = stored, 8 = deflate); ZIP64 archives are rejected — the CnMod zip is ~600 MB
- * with ~46k entries, well inside the classic limits. Kept dependency-free like the pipeline's other
- * binary decoders.
+ * with ~46k entries, well inside the classic limits.
  */
 
 const EOCD_SIGNATURE = 0x06054b50;
