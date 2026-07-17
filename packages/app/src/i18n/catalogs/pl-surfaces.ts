@@ -49,6 +49,9 @@ export const plSurfaces = {
     playerTypeAi: 'AI',
     seatTake: 'Usiądź tutaj',
     seatTaken: 'Grasz tutaj',
+    observerName: 'Obserwator',
+    observerDetail: 'Oglądaj rozgrywkę — każdą jednostkę i budynek można podejrzeć',
+    observerTaken: 'Obserwujesz',
     vacantIdle: 'Bezczynny',
     vacantAi: 'AI',
     vacantToggleTitle:

@@ -14,6 +14,13 @@ const { isValidPlayer } = components;
  * yet — the future AI player reads it (docs/tickets/features/vacant-seat-ai-player.md).
  */
 
+/** `?player=observer` — the menu's observer pseudo-seat ({@link OBSERVER_SEAT} in the roster state):
+ *  a spectator session with no fog view and every player's entities pickable. The seat-number reads
+ *  ({@link localPlayerParam}) fall back to {@link HUMAN_PLAYER} for placement/HUD ownership. */
+export function observerParam(params: URLSearchParams): boolean {
+  return params.get('player') === 'observer';
+}
+
 /** The controlled seat: `?player=N` when it names a valid player slot, else {@link HUMAN_PLAYER}. */
 export function localPlayerParam(params: URLSearchParams): number {
   const raw = params.get('player');

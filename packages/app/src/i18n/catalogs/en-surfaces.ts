@@ -49,6 +49,9 @@ export const enSurfaces = {
     playerTypeAi: 'AI',
     seatTake: 'Sit here',
     seatTaken: 'You play here',
+    observerName: 'Observer',
+    observerDetail: 'Watch the match — every unit and building can be inspected',
+    observerTaken: 'You observe',
     vacantIdle: 'Idle',
     vacantAi: 'AI',
     vacantToggleTitle:

@@ -10,6 +10,9 @@ export interface UnitTargetsDeps {
   readonly snapshot: () => WorldSnapshot;
   /** The human player whose units are selectable/orderable. */
   readonly humanPlayer: number;
+  /** The observer session: every owner counts as "ours", so any player's entities are pickable
+   *  (and none reads as an enemy — a spectator has no side to attack for). */
+  readonly observer: boolean;
   /** The renderer's exact per-entity sprite bounds (world px), or undefined for the kind box. */
   readonly boundsOf: ((ref: number) => EntityBounds | undefined) | undefined;
   /** Pixel-accurate refinement of {@link boundsOf} for building targets, or undefined to keep the box. */
@@ -50,6 +53,10 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
     return ownerOf;
   });
 
+  /** Whether an entity with this owner belongs to the pickable "ours" set. */
+  const pickableOwner = (owner: number | undefined): boolean =>
+    owner !== undefined && (deps.observer || owner === deps.humanPlayer);
+
   return {
     owned(kind?: 'settler' | 'building'): Pickable[] {
       const snap = deps.snapshot();
@@ -58,7 +65,7 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
       for (const it of sceneFor(snap)) {
         if (it.kind !== 'settler' && it.kind !== 'building') continue;
         if (kind !== undefined && it.kind !== kind) continue;
-        if (ownerOf.get(it.ref) !== deps.humanPlayer) continue;
+        if (!pickableOwner(ownerOf.get(it.ref))) continue;
         const pixelHitOf = deps.pixelHitOf;
         out.push({
           ref: it.ref,
@@ -82,7 +89,7 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
       for (const it of buildSpriteScene(snap, { fogVisible: deps.fogVisible })) {
         if (it.kind !== 'settler') continue; // only a unit is an attack target
         const owner = ownerOf.get(it.ref);
-        if (owner === undefined || owner === deps.humanPlayer) continue; // neutral or own — not an enemy
+        if (owner === undefined || pickableOwner(owner)) continue; // neutral or "ours" — not an enemy
         out.push({ ref: it.ref, x: it.x, y: it.y, kind: it.kind, box: deps.boundsOf?.(it.ref) });
       }
       return out;
@@ -90,7 +97,8 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
 
     flags(): Pickable[] {
       const snap = deps.snapshot();
-      const gathererOf = gathererByFlag(snap, deps.humanPlayer); // flag-id → owning gatherer-id (not a player id)
+      // flag-id → owning gatherer-id (not a player id); an observer picks every player's flags
+      const gathererOf = gathererByFlag(snap, deps.observer ? 'any' : deps.humanPlayer);
       if (gathererOf.size === 0) return [];
       const out: Pickable[] = [];
       for (const it of sceneFor(snap)) {
@@ -109,7 +117,7 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
       for (const it of sceneFor(snap)) {
         // Only the post itself — its direction boards ride synthetic negative refs (see sprite-scene.ts).
         if (it.kind !== 'signpost' || it.ref <= 0) continue;
-        if (ownerOf.get(it.ref) !== deps.humanPlayer) continue;
+        if (!pickableOwner(ownerOf.get(it.ref))) continue;
         out.push({ ref: it.ref, x: it.x, y: it.y, kind: it.kind, box: deps.boundsOf?.(it.ref) });
       }
       return out;

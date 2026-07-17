@@ -136,6 +136,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   const unitTargets = createUnitTargets({
     snapshot: opts.snapshot,
     humanPlayer: opts.humanPlayer,
+    observer: opts.observer === true,
     boundsOf: opts.boundsOf,
     pixelHitOf: opts.pixelHitOf,
     fogVisible: opts.fogVisible,

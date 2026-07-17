@@ -13,7 +13,12 @@ import { resolveSpriteSheet } from '../content/sprite-sheet/index.js';
 import { loadRealTerrain } from '../content/terrain.js';
 import { diag, hashTraceFor, setDiagGameSession } from '../diag/index.js';
 import { mapStartFocus } from '../game/map-start.js';
-import { colorOverridesParam, localPlayerParam, playerColourMap } from '../game/player-session.js';
+import {
+  colorOverridesParam,
+  localPlayerParam,
+  observerParam,
+  playerColourMap,
+} from '../game/player-session.js';
 import {
   mapResourceObjectNames,
   sandboxGoods,
@@ -309,6 +314,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     cameraCtl,
     terrainGrid,
     localPlayer,
+    observer: observerParam(params),
     playerColourOf,
     ...terrainColourOption(terrain),
     ...(minimapCells !== null ? { minimapCellColours: minimapCells } : {}),

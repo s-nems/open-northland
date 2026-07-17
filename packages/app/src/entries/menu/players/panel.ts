@@ -7,6 +7,7 @@ import {
   hasClaimableSeat,
   initialRosterState,
   type MapPlayerSlot,
+  OBSERVER_SEAT,
   type RosterState,
   rosterStartParams,
   setSlotColor,
@@ -182,6 +183,42 @@ export function mountPlayersPanel(panel: HTMLElement, list: HTMLElement, onChang
     return strip;
   };
 
+  // The observer pseudo-seat: watch the match without controlling a slot — every unit and building
+  // becomes inspectable in-game. Satisfies the Start gate like a real seat.
+  const observerRow = (): HTMLElement => {
+    const copy = messages().menu;
+    const isSeat = state().seat === OBSERVER_SEAT;
+    const row = document.createElement('div');
+    row.className = 'game-menu__player is-claimable';
+    row.classList.toggle('is-taken', isSeat);
+
+    const label = document.createElement('div');
+    label.className = 'game-menu__player-label';
+    const name = document.createElement('span');
+    name.className = 'game-menu__player-name';
+    name.textContent = copy.observerName;
+    const detail = document.createElement('span');
+    detail.className = 'game-menu__player-detail';
+    detail.textContent = copy.observerDetail;
+    label.append(name, detail);
+    row.append(label);
+
+    const seat = document.createElement('button');
+    seat.type = 'button';
+    seat.className = 'game-menu__player-seat';
+    seat.textContent = isSeat ? copy.observerTaken : copy.seatTake;
+    seat.disabled = isSeat;
+    seat.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      if (state().seat !== OBSERVER_SEAT) update(claimSeat(state(), OBSERVER_SEAT));
+    });
+    row.append(seat);
+    row.addEventListener('click', () => {
+      if (state().seat !== OBSERVER_SEAT) update(claimSeat(state(), OBSERVER_SEAT));
+    });
+    return row;
+  };
+
   const render = (): void => {
     list.replaceChildren();
     if (shown === null) return;
@@ -190,6 +227,7 @@ export function mountPlayersPanel(panel: HTMLElement, list: HTMLElement, onChang
       list.append(slotRow(slot));
       if (pickerSlot === slot.player) list.append(pickerStrip(slot));
     }
+    list.append(observerRow());
   };
 
   return {

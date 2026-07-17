@@ -75,6 +75,10 @@ export interface GameViewDeps {
    *  Default {@link HUMAN_PLAYER}: scenes and roster-less maps play slot 0, as before. Drives the
    *  fog perspective, unit selection/orders, placement ownership and the HUD's economy view. */
   readonly localPlayer?: number;
+  /** The observer session (`?player=observer`): no fog view, and every player's units, buildings,
+   *  flags and signposts are pickable as if owned — a spectator inspecting a running match (e.g. the
+   *  strategic AI). {@link localPlayer} keeps driving placement ownership and the HUD economy view. */
+  readonly observer?: boolean;
   /** Owner slot → team-colour slot (the map roster's colour choices) for player-coloured HUD bits
    *  (minimap dots, the details panel's worker sprites). The renderer's own sprites take the same
    *  mapping via {@link WorldRendererOptions.playerColourOf} at construction. Default identity. */
@@ -257,6 +261,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     mapSize: deps.mapSize,
     ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
     humanPlayer: localPlayer,
+    observer: deps.observer === true,
     lang,
     professions: pickerEntries(),
     content: sim.content,

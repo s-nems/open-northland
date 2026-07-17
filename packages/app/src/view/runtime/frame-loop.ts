@@ -137,8 +137,9 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     const snapMs = performance.now() - snap0;
     // The human player's fog-of-war view for this frame (null = fog off — every layer reverts to the
     // pre-fog behaviour). One read shared by the renderer (wash + sprite/tree cull), the minimap mask
-    // and the presentation event filter below, so no consumer can disagree about a cell.
-    const fogView = sim.fogView(localPlayer);
+    // and the presentation event filter below, so no consumer can disagree about a cell. An observer
+    // session sees everything: a view-only null, the sim's fog state untouched.
+    const fogView = deps.observer === true ? null : sim.fogView(localPlayer);
     fogGates.setFrame(fogView); // refresh the stable predicates' slot before anything below consults them
     renderer.updateFog(fogView);
     // Presentation events only (blood/bones + positional audio): an event at ground the player does

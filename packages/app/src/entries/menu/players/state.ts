@@ -26,6 +26,12 @@ export interface MapPlayerSlot {
 /** What a free claimable seat does once the game starts (future auto-player control). */
 export type VacantMode = 'idle' | 'ai';
 
+/** The observer pseudo-seat: watch the match without controlling a slot (`?player=observer`). */
+export const OBSERVER_SEAT = 'observer';
+
+/** A claimed session: a roster slot id, or the {@link OBSERVER_SEAT} spectator pseudo-seat. */
+export type SeatChoice = number | typeof OBSERVER_SEAT;
+
 /** A slot's authored vacant default: an `ai` slot auto-plays (when the lobby allows AI at all),
  *  a `human` one idles. */
 export function authoredVacantMode(slot: MapPlayerSlot): VacantMode {
@@ -40,8 +46,9 @@ export function hasClaimableSeat(players: readonly MapPlayerSlot[]): boolean {
 
 /** The person's choices over one map's roster. */
 export interface RosterState {
-  /** The claimed slot id, or null while no seat is taken (Start stays gated). */
-  readonly seat: number | null;
+  /** The claimed seat (a slot id or the observer pseudo-seat), or null while none is taken
+   *  (Start stays gated). */
+  readonly seat: SeatChoice | null;
   /** Current colour per slot id (initialised from the map's authored colours). */
   readonly colors: ReadonlyMap<number, number>;
   /** Per-slot vacant mode, initialised from the authored type ({@link authoredVacantMode}). */
@@ -57,7 +64,7 @@ export function initialRosterState(players: readonly MapPlayerSlot[]): RosterSta
 }
 
 /** Claims a seat (a re-claim moves it); the vacated slot keeps its remembered vacant mode. */
-export function claimSeat(state: RosterState, slot: number): RosterState {
+export function claimSeat(state: RosterState, slot: SeatChoice): RosterState {
   return { ...state, seat: slot };
 }
 
@@ -88,7 +95,8 @@ export function setSlotColor(state: RosterState, slot: number, colorId: number):
 }
 
 /**
- * The start-URL params encoding the person's roster choices: `player=<seat>`,
+ * The start-URL params encoding the person's roster choices: `player=<seat>` (a slot id, or
+ * `observer` for the spectator session),
  * `colors=<slot>:<colorId>,…` (only slots recoloured away from the map's authored colour) and
  * `vacant=<slot>:<idle|ai>,…` (only unclaimed claimable seats toggled away from their authored
  * default — the future auto-player control; no consumer reads it yet). Empty until a seat is

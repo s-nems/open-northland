@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { colorOverridesParam, localPlayerParam, playerColourMap } from '../src/game/player-session.js';
+import {
+  colorOverridesParam,
+  localPlayerParam,
+  observerParam,
+  playerColourMap,
+} from '../src/game/player-session.js';
 
 /**
  * The `?map=` player-session params (menu roster → game): the controlled seat, the `?colors=`
@@ -12,6 +17,13 @@ describe('localPlayerParam', () => {
     expect(localPlayerParam(new URLSearchParams('player=abc'))).toBe(0);
     expect(localPlayerParam(new URLSearchParams('player=-1'))).toBe(0);
     expect(localPlayerParam(new URLSearchParams('player=99'))).toBe(0); // beyond MAX_PLAYERS
+  });
+
+  it('reads player=observer as the observer session, seat reads falling back to slot 0', () => {
+    expect(observerParam(new URLSearchParams('player=observer'))).toBe(true);
+    expect(observerParam(new URLSearchParams('player=2'))).toBe(false);
+    expect(observerParam(new URLSearchParams(''))).toBe(false);
+    expect(localPlayerParam(new URLSearchParams('player=observer'))).toBe(0);
   });
 });
 

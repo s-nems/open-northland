@@ -287,15 +287,16 @@ export function familiesByHome(snapshot: WorldSnapshot): Map<number, HomeFamily[
 }
 
 /**
- * Map each gatherer's drop-off flag entity → its owning gatherer, for the human `player` only — the
- * inverse of the gatherer→flag {@link workFlagOf} edge (a flag stores no back-reference, so resolving
+ * Map each gatherer's drop-off flag entity → its owning gatherer, for the human `player` only
+ * (`'any'` — the observer session — keeps every player's gatherers) — the inverse of the
+ * gatherer→flag {@link workFlagOf} edge (a flag stores no back-reference, so resolving
  * "which gatherer owns this flag" needs this scan). Lets a click on a flag resolve to the gatherer to
  * select. A gatherer binds to exactly one flag, so the map is 1:1.
  */
-export function gathererByFlag(snapshot: WorldSnapshot, player: number): Map<number, number> {
+export function gathererByFlag(snapshot: WorldSnapshot, player: number | 'any'): Map<number, number> {
   const out = new Map<number, number>();
   for (const e of snapshot.entities) {
-    if (ownerPlayerOf(e) !== player) continue;
+    if (player !== 'any' && ownerPlayerOf(e) !== player) continue;
     const flag = workFlagOf(e);
     if (flag !== undefined) out.set(flag, e.id);
   }
