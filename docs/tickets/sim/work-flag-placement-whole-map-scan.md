@@ -13,11 +13,17 @@ const blocked = workFlagPlacementBlocks(world, ctx.content, terrain); // full Re
 for (let node = 0; node < terrain.nodeCount; node++) { … }            // ~1M nodes on a 512²-cell map
 ```
 
-Its caller chain is `economy/flags.ts` → `syncWorkFlagToJob` → `reidleAsJob` → `setJob`/`assignWorker`
+Its hot caller chain is `economy/flags.ts` → `syncWorkFlagToJob` → `reidleAsJob` → `setJob`/`assignWorker`
 (`orders/work.ts`) — i.e. **once per employment command**. A box-selected 50-settler `setJob` therefore
 costs 50 whole-map scans *plus* 50 whole-world blocker rebuilds in a single tick, a routine player action
 spiking tick time superlinearly in map size. `packages/sim/AGENTS.md` names ring search as the required
 lever for nearest-X.
+
+`evictWorkFlagsFromFootprint` (same file) is a second caller — once per flag a `placeBuilding` encloses —
+but it is not the reason to do this: it early-outs before the scan unless a flag really is on the new
+plot, which the sandbox acceptance scene never hits (measured 2026-07-17: zero calls over a full run).
+One scan per pushed-out flag is the same one-shot class as the employment path's, so fixing the scan fixes
+both; do not size the work around this caller.
 
 `canPlaceWorkFlag` in the same file has the same shape: it rebuilds the entire blocked set to answer a
 question about one node.
@@ -41,7 +47,12 @@ Do the ring-enumerator extraction first, then land this on top of it.
 - Preserve the tie-break exactly: `(distance, then lowest node id)`. Within a ring, enumerate in
   ascending node id so the first hit *is* the canonical winner — goldens must not move.
 - Memoize `canPlaceWorkFlag`'s blocked set per `workFlagBlockerVersion` (the pattern
-  `memoizedPlacementGrid` already establishes for the building rule).
+  `memoizedPlacementGrid` already establishes for the building rule) — **but not before**
+  [`work-flag-move-stales-signpost-probe.md`](./work-flag-move-stales-signpost-probe.md) lands.
+  `workFlagBlockerVersion` does not move when a flag MOVES (it keys on `componentGeneration(DeliveryFlag)`,
+  which only sees add/remove), and unlike the signpost overlay's read-path memo, `canPlaceWorkFlag` is a
+  command gate: memoizing it on that key today would make `setWorkFlag` accept or reject against a stale
+  blocked set — a real sim decision, so a state-hash divergence rather than a cosmetic lie.
 
 ## Done when
 
