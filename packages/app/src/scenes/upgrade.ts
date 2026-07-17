@@ -7,6 +7,7 @@ import {
   BUILDING_HOME_00,
   buildingDef,
   JOB_BUILDER,
+  JOB_COLLECTOR,
   placeBuiltSandboxBuilding,
   placeSandboxBuilding,
   spawnSandboxSettler,
@@ -34,6 +35,10 @@ const UPGRADED_HOME = { x: 14, y: 6 } as const;
 /** A second home left untouched, so the human exercises the Upgrade button on it in the browser. */
 const BUTTON_HOME = { x: 20, y: 11 } as const;
 const BUILDER = { x: 12, y: 7 } as const;
+/** An idle collector (no resources on the grass to gather): the real viking tech graph gates the home
+ *  tiers on the collector's presence (`jobEnablesHouse 8`), so without one the browser run — which
+ *  plays this scene on real content — would skip the `upgradeBuilding` command at the tech gate. */
+const COLLECTOR = { x: 7, y: 9 } as const;
 /** The L0→L1 difference is the sandbox L1 parcel (4 wood + 3 stone = 7 units): the lone builder
  *  alternates one HQ fetch trip and ~26 hammer strikes per unit (~1k ticks a unit observed), so the
  *  budget leaves slack past the measured full run. */
@@ -51,6 +56,7 @@ function build(sim: Simulation): void {
   const home = placeBuiltSandboxBuilding(sim, BUILDING_HOME_00, UPGRADED_HOME.x, UPGRADED_HOME.y);
   placeSandboxBuilding(sim, BUILDING_HOME_00, BUTTON_HOME.x, BUTTON_HOME.y, HUMAN_PLAYER);
   spawnSandboxSettler(sim, JOB_BUILDER, BUILDER.x, BUILDER.y, HUMAN_PLAYER);
+  spawnSandboxSettler(sim, JOB_COLLECTOR, COLLECTOR.x, COLLECTOR.y, HUMAN_PLAYER);
   sim.enqueue({ kind: 'upgradeBuilding', building: home });
 }
 
