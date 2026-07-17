@@ -104,7 +104,8 @@ that matches its role instead of piling another method onto a growing file:
     `el`/`navButton`/`pageSection`/styles), `game-tool-panel.ts`, `perf-overlay.ts`, `system-menu.ts`,
     `tooltip.ts`, `ground-pile-tooltip.ts`, `placement-overlay.ts`, `scene-overlay.ts`,
     `boot-progress.ts` (the loading card the two playable entries show while they assemble a world —
-    each reports its own ordered step list; the galleries and `?shot` do not mount it).
+    each reports its own ordered step list; the galleries and `?shot` do not mount it),
+    `brand-art.ts` (the backdrop the menu and the boot card share).
 - **`slice/`** — the demo scenario the live + shot entries share: `vertical-slice.ts` (`runSlice` /
   `runAuthoredSlice` over the global `game/` content), `map-loader.ts` (the decoded-map fetch),
   `authored-placements.ts` (the pure authored-entity join).

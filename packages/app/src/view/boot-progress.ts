@@ -3,16 +3,11 @@ import { messages } from '../i18n/index.js';
 import { BRAND_BACKDROP } from './brand-art.js';
 
 /**
- * The boot progress card the two playable entries (`?map=`, `?scene=`) show while they assemble a world.
- * Both spend seconds on content fetches, atlas builds and terrain meshing before their first frame; without
- * this the page is the body's bare `#1a1410` for that whole stretch. Plain DOM, like the crash banner
- * ({@link import('../diag/crash.js')}): it must be able to draw before Pixi exists and while Pixi is busy.
+ * The boot progress card the two playable entries (`?map=`, `?scene=`) show while they assemble a world,
+ * which takes seconds of content fetches, atlas builds and terrain meshing before the first frame. Plain
+ * DOM (styled in `boot-progress.css`), so it can draw before Pixi exists and while Pixi is busy.
  *
- * Styled in `boot-progress.css` (linked from `index.html`) in the main menu's vocabulary, so leaving the
- * menu does not change the art the player is looking at.
- *
- * The galleries and `?shot` deliberately do not mount it — `?shot` is the committed-PNG harness and
- * screenshots the `#game` element, which an overlay would occlude.
+ * Each entry passes the steps it actually runs, in order; `main.ts` dismisses the card if boot throws.
  */
 
 /** The ordered boot steps a playable entry can report. Each is one label and one step of the bar. */
@@ -45,35 +40,39 @@ export interface BootProgress {
  */
 export function bootFraction(phases: readonly BootPhase[], phase: BootPhase): number {
   const index = phases.indexOf(phase);
-  return index < 0 ? 0 : index / phases.length;
+  if (index < 0) {
+    // Nothing breaks, but the bar rewinds to empty mid-boot, which is otherwise a silent mystery.
+    diag.warn('boot', 'phase outside the entry step list', { phase, phases });
+    return 0;
+  }
+  return index / phases.length;
 }
 
 let overlay: HTMLElement | null = null;
-let removeFailureDismiss: (() => void) | null = null;
+
+/** Cap on a paint yield, so a tab hidden after the frame was requested cannot stall the boot. */
+const PAINT_TIMEOUT_MS = 250;
 
 /**
  * Resolve once the browser has painted what was just written. Boot steps run long synchronous stretches
  * (terrain meshing, resource spawning) that block the frame, so without this yield a step's label would
  * only reach the screen after that step had already finished.
+ *
+ * Boot must never *depend* on this resolving: a hidden tab fires no rAF, and waiting for one there would
+ * stall the load until the player came back — so a hidden tab (which has nothing to paint anyway) skips
+ * the yield, and a tab hidden mid-yield falls through on the timeout.
  */
 function nextPaint(): Promise<void> {
+  if (document.hidden) return Promise.resolve();
   return new Promise((resolve) => {
-    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+    let timer = 0;
+    const done = (): void => {
+      clearTimeout(timer);
+      resolve();
+    };
+    timer = window.setTimeout(done, PAINT_TIMEOUT_MS);
+    requestAnimationFrame(() => requestAnimationFrame(done));
   });
-}
-
-/**
- * Drop the card if boot dies, so a crash banner is never covered by a stale "loading" screen. Listens for
- * the same two events the crash capture does, rather than coupling `diag/` to `view/`.
- */
-function installFailureDismiss(): () => void {
-  const onFailure = (): void => dismissBootProgress();
-  window.addEventListener('error', onFailure);
-  window.addEventListener('unhandledrejection', onFailure);
-  return () => {
-    window.removeEventListener('error', onFailure);
-    window.removeEventListener('unhandledrejection', onFailure);
-  };
 }
 
 /** Create an element with a class and optional children — the terse builder this card's small tree needs. */
@@ -91,9 +90,12 @@ export function mountBootProgress(phases: readonly BootPhase[]): BootProgress {
   const label = node('boot-card__label');
   const root = node('boot-card', node('boot-card__frame', node('boot-card__track', bar)), label);
   root.style.setProperty('--boot-backdrop', `url("${BRAND_BACKDROP}")`);
+  // The card's whole purpose is to say what is happening, which a screen reader must hear too
+  // (`diag/crash.ts` marks its banner the same way).
+  root.setAttribute('role', 'status');
+  label.setAttribute('aria-live', 'polite');
   document.body.append(root);
   overlay = root;
-  removeFailureDismiss = installFailureDismiss();
   return {
     async begin(phase: BootPhase): Promise<void> {
       label.textContent = messages().loading[phase];
@@ -103,8 +105,7 @@ export function mountBootProgress(phases: readonly BootPhase[]): BootProgress {
       await nextPaint();
     },
     async finish(): Promise<void> {
-      bar.style.width = '100%';
-      // Pixi renders on RAF, so waiting a frame guarantees the world is drawn before the card comes off.
+      // Pixi renders on rAF, so waiting a frame guarantees the world is drawn before the card comes off.
       await nextPaint();
       dismissBootProgress();
     },
@@ -115,6 +116,4 @@ export function mountBootProgress(phases: readonly BootPhase[]): BootProgress {
 export function dismissBootProgress(): void {
   overlay?.remove();
   overlay = null;
-  removeFailureDismiss?.();
-  removeFailureDismiss = null;
 }

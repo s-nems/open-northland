@@ -48,7 +48,7 @@ import { startGameView } from '../view/runtime/game-view.js';
 const SLICE_SEED = 7;
 
 /** The boot steps this entry runs, in order — the loading card's step list. */
-const MAP_BOOT_PHASES = [
+export const MAP_BOOT_PHASES = [
   'graphics',
   'map',
   'content',

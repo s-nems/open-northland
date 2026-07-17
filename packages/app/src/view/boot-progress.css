@@ -15,10 +15,9 @@
   padding: 24px;
   color: var(--boot-cream);
   font-family: Palatino, "Palatino Linotype", "Book Antiqua", Georgia, serif;
-  /* Two scrims over the art, both heavier than the menu's — the menu only had to stay behind opaque
-     panels, whereas here the card sits directly on the art. The pool darkens the centre so the logo and
-     label keep their contrast against whatever the backdrop happens to show; the vignette drops the
-     edges so the art reads as atmosphere and never pulls the eye off the bar. */
+  /* Two scrims: a centre pool so the bar and label keep their contrast against whatever the backdrop
+     happens to show, and a vignette dropping the edges. Both heavier than the menu's, which only had to
+     stay behind opaque panels. */
   background:
     radial-gradient(
       ellipse 55% 40% at center,
@@ -68,27 +67,26 @@
   box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.85);
 }
 
+/* A slow sheen along the whole track, drawn over the fill (::after is the track's last child). It rides
+   the track rather than the fill so it is alive during the first step too, when the fill still has no
+   width. The fill only moves in discrete jumps, so without it the card reads as frozen between steps. */
+.boot-card__track::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background: linear-gradient(100deg, transparent 25%, rgba(255, 248, 220, 0.4) 50%, transparent 75%);
+  animation: boot-card-sheen 1.8s linear infinite;
+}
+
 /* The fill is the menu's selected-entry gradient, so "done" reads in the same gold as "chosen". */
 .boot-card__bar {
-  position: relative;
   width: 0;
   height: 100%;
-  overflow: hidden;
   background: linear-gradient(#f0d88f, #d0a24f 52%, #a8702c);
   box-shadow:
     inset 0 1px #fff3c7,
     0 0 10px rgba(221, 170, 76, 0.5);
   transition: width 240ms ease-out;
-}
-
-/* A slow sheen across the filled span. The bar holds still through the long steps (a step is one
-   discrete jump), so without a live element the card reads as frozen rather than working. */
-.boot-card__bar::after {
-  position: absolute;
-  inset: 0;
-  content: "";
-  background: linear-gradient(100deg, transparent 25%, rgba(255, 248, 220, 0.45) 50%, transparent 75%);
-  animation: boot-card-sheen 1.8s linear infinite;
 }
 
 @keyframes boot-card-sheen {
@@ -115,7 +113,7 @@
     transition: none;
   }
 
-  .boot-card__bar::after {
+  .boot-card__track::after {
     animation: none;
   }
 }

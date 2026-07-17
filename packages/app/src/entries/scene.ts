@@ -36,12 +36,12 @@ declare global {
  */
 
 /** The boot steps this entry runs, in order — the loading card's step list. */
-const SCENE_BOOT_PHASES = [
+export const SCENE_BOOT_PHASES = [
   'graphics',
   'content',
+  'world',
   'sprites',
   'terrain',
-  'world',
   'hud',
 ] as const satisfies readonly BootPhase[];
 
@@ -80,6 +80,7 @@ export async function renderSceneMode(
   // loads it — so copyrighted content stays out of tests. Its gaps are logged once.
   const realContent = await loadRuntimeRealContent(goodNames);
   if (realContent !== null) logRealContentGaps(realContent);
+  await boot.begin('world');
   const sim = createSceneSim(
     scene,
     {
@@ -103,9 +104,9 @@ export async function renderSceneMode(
   await boot.begin('sprites');
   // Goods are global sandbox content, not scene-local data.
   const sheet = await resolveSpriteSheet(sim.content.goods);
+  // The meshing below is the rest of this step, as in the `?map=` entry.
   await boot.begin('terrain');
   const terrain = await loadRealTerrain();
-  await boot.begin('world');
 
   // Retained renderer: mesh the terrain once, then reuse a pooled sprite graph each frame (no per-frame
   // object churn), so a big scene renders + deep-zoom-outs without exhausting the GPU.
