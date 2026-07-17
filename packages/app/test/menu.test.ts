@@ -3,6 +3,7 @@ import {
   claimSeat,
   hasClaimableSeat,
   initialRosterState,
+  OBSERVER_SEAT,
   rosterStartParams,
   setSlotColor,
   toggleVacantMode,
@@ -159,6 +160,16 @@ describe('roster state', () => {
     expect(rosterStartParams(state, players)).toEqual([]);
     state = claimSeat(state, 0);
     expect(rosterStartParams(state, players)).toEqual([['player', '0']]);
+  });
+
+  it('encodes the observer pseudo-seat and keeps every slot eligible for vacant deviations', () => {
+    let state = claimSeat(initialRosterState(players), OBSERVER_SEAT);
+    expect(rosterStartParams(state, players)).toEqual([['player', 'observer']]);
+    state = toggleVacantMode(state, 0); // no seat is the observer's own — slot 0 still encodes
+    expect(rosterStartParams(state, players)).toEqual([
+      ['player', 'observer'],
+      ['vacant', '0:ai'],
+    ]);
   });
 
   it('encodes recolours and vacant-mode deviations alongside the seat', () => {

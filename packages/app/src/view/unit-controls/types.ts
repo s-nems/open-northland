@@ -20,6 +20,9 @@ export interface UnitControlsOptions {
   readonly mapSize: { readonly width: number; readonly height: number };
   readonly elevation?: ElevationField;
   readonly humanPlayer: number;
+  /** The observer session: every player's entities are pickable as if owned (attack targeting is
+   *  moot — with no side to fight for, no unit reads as an enemy). Default false. */
+  readonly observer?: boolean;
   readonly lang: string;
   readonly professions: readonly PickerEntry[];
   readonly content: ContentSet;
