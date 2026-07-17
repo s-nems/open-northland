@@ -42,6 +42,9 @@ const FOOD = 3;
 const VIKING = 1;
 const HEADQUARTERS = 1;
 const EAT_ATOMIC = 10;
+// The sleep slot (`setatomic <job> 8`) — the age-class cases prove a tired child reaches the ladder's
+// sleep rung too.
+const SLEEP_ATOMIC = 8;
 // Just over the ¾·ONE eat threshold — a settler this hungry seeks food before any work.
 const HUNGRY: Fixed = justAbove(NEED_THRESHOLD);
 // Comfortably below the threshold — a fed settler ignores the eat drive and works as normal.
@@ -215,11 +218,19 @@ describe('eat drive — closing the rise→eat→reset loop through the real sch
 });
 
 describe('eat drive — age classes (a child self-feeds, a baby is cared for)', () => {
-  /** A born-young settler: the given age-class jobType plus the Age the GrowthSystem stamps at birth. */
-  function youngAt(sim: Simulation, x: number, y: number, jobType: number, ageTicks: number): Entity {
+  /** A born-young settler: the given age-class jobType plus the Age the GrowthSystem stamps at birth.
+   *  Hungry unless other needs are passed. */
+  function youngAt(
+    sim: Simulation,
+    x: number,
+    y: number,
+    jobType: number,
+    ageTicks: number,
+    needs: { hunger?: Fixed; fatigue?: Fixed } = { hunger: HUNGRY },
+  ): Entity {
     const e = fixtureSettlerAt(sim, {
       jobType,
-      needs: { hunger: HUNGRY },
+      needs,
       position: { x: fx.fromInt(x), y: fx.fromInt(y) },
     });
     sim.world.add(e, Age, { ticks: ageTicks });
@@ -257,5 +268,15 @@ describe('eat drive — age classes (a child self-feeds, a baby is cared for)', 
     aiSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(baby, CurrentAtomic)).toBe(false);
+  });
+
+  it('a tired (not hungry) child starts the sleep atomic in place (the original binds child sleep clips)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const child = youngAt(sim, 2, 0, CHILD_MALE, GROWUP_TICKS, { fatigue: HUNGRY });
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(child, MoveGoal)).toBe(false); // sleep is in place — no walk
+    expect(sim.world.get(child, CurrentAtomic).atomicId).toBe(SLEEP_ATOMIC);
   });
 });

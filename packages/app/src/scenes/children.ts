@@ -14,10 +14,11 @@ import type { SceneDefinition } from './types.js';
  * The children scene: prove the child eat drive — a hungry CHILD feeds itself like an adult (the
  * original binds child eat animations, `setatomic 3/4 10`), while a BABY is cared for: its family
  * keeps it sated (its needs never accumulate — NeedsSystem) and it never self-feeds. Three stations,
- * each a young settler beside its own ripe berry bush: the hungry girl and boy walk over, play the
- * child eat clip, and their hunger resets (their bushes go bare); the sated baby ignores its bush
- * (it stays ripe). The browser half is where a human judges the pixels: the two child eat clips on
- * the child bodies and the baby never feeding.
+ * each a hungry young settler beside its own ripe berry bush: the girl and boy walk over, play the
+ * child eat clip, and their hunger resets (their bushes go bare); the baby — authored hungry, a state
+ * real play can't reach, exactly so the planner's baby gate is checkable — ignores its bush (it stays
+ * ripe). The browser half is where a human judges the pixels: the two child eat clips on the child
+ * bodies and the baby never feeding.
  */
 
 const MAP_W = 24;
@@ -33,8 +34,8 @@ const HUNGRY = fx.div(fx.fromInt(9), fx.fromInt(10));
  *  ({@link systems.BERRY_REGROW_TICKS} = 1200), so the two foraged bushes are still bare at check time. */
 const RUN_TICKS = 600;
 const INITIAL_ZOOM = 1.2;
-/** The `[GfxLandscape]` record index of "bush 01 fruits" (decoded `landscapes.cif`, logicType 11). */
-const BUSH_FRUITS_GFX = 806;
+/** An Age tick count squarely inside the child stage (past baby, well short of adulthood). */
+const CHILD_AGE_TICKS = systems.GROWUP_TICKS + 100;
 
 const { Age, BerryBush, Settler } = components;
 
@@ -61,18 +62,15 @@ function spawnYoung(
   return e;
 }
 
-/** An Age tick count squarely inside the child stage (past baby, well short of adulthood). */
-function childAgeTicks(): number {
-  return systems.GROWUP_TICKS + 100;
-}
-
 function build(sim: Simulation): void {
-  for (const station of [GIRL, BOY, BABY]) placeSandboxBerryBush(sim, station.x, ROW_Y, BUSH_FRUITS_GFX);
-  spawnYoung(sim, JOB_CHILD_FEMALE, GIRL.x, GIRL.y, childAgeTicks(), HUNGRY);
-  spawnYoung(sim, JOB_CHILD_MALE, BOY.x, BOY.y, childAgeTicks(), HUNGRY);
-  // The baby spawns SATED — a cared-for baby's needs never accumulate (NeedsSystem skips it whole),
-  // so a hungry baby is an unreachable state; the vignette shows it ignoring food it doesn't need.
-  spawnYoung(sim, JOB_BABY_MALE, BABY.x, BABY.y, 0, fx.fromInt(0));
+  // None of the young get a Residence, so the child stroll never fires — they stand when not feeding
+  // (the stroll is the family scene's vignette; this one isolates the feed-or-not contrast).
+  for (const station of [GIRL, BOY, BABY]) placeSandboxBerryBush(sim, station.x, ROW_Y);
+  spawnYoung(sim, JOB_CHILD_FEMALE, GIRL.x, GIRL.y, CHILD_AGE_TICKS, HUNGRY);
+  spawnYoung(sim, JOB_CHILD_MALE, BOY.x, BOY.y, CHILD_AGE_TICKS, HUNGRY);
+  // The baby is AUTHORED hungry — unreachable in real play (a cared-for baby's needs are frozen,
+  // NeedsSystem) — so the no-self-feed gate is observable: it sits beside ripe food and never eats.
+  spawnYoung(sim, JOB_BABY_MALE, BABY.x, BABY.y, 0, HUNGRY);
 }
 
 /** The scene's young settlers split by stage: `[girl, boy]` children and the lone baby. */
@@ -104,10 +102,10 @@ export const childrenScene: SceneDefinition = {
       },
     },
     {
-      label: 'the baby stayed SATED — cared for, its needs never accumulate and it never self-feeds',
+      label: 'the hungry baby never self-fed — its authored hunger never reset (cared for, no eat drive)',
       predicate: (sim) => {
         const { babies } = youngByStage(sim);
-        return babies.length === 1 && babies.every((e) => sim.world.get(e, Settler).hunger === fx.fromInt(0));
+        return babies.length === 1 && babies.every((e) => sim.world.get(e, Settler).hunger === HUNGRY);
       },
     },
     {
