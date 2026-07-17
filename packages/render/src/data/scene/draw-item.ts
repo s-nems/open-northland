@@ -229,7 +229,7 @@ export interface DrawItem {
   /**
    * Whether this item is a fog ghost — a remembered static drawn from the viewer's
    * {@link import('../fog/index.js').FogGhostStore} memory on explored ground, not a live entity. The pool
-   * dims it ({@link import('../fog.js').FOG_GHOST_TINT}) and stamps no hit bounds (clicking scenery intel
+   * dims it ({@link import('../fog/mask.js').FOG_GHOST_TINT}) and stamps no hit bounds (clicking scenery intel
    * must not select a fogged, possibly dead, entity). Omitted (falsy) for live-drawn items.
    */
   readonly ghost?: boolean;
@@ -241,12 +241,12 @@ export interface DrawItem {
    */
   readonly lift?: number;
   /**
-   * The composed terrain-shading multiplier at this item's feet (1 = neutral; `data/brightness.ts` +
+   * The composed terrain-shading multiplier at this item's feet (1 = neutral; `data/terrain/brightness.ts` +
    * hillshade), so an entity sits in the same light as the ground it stands on — an OpenNorthland
    * enhancement (the original leaves buildings/settlers unshaded; the corpus base sits near neutral so
    * the deviation is small on real maps). Omitted on an unshaded map, for fog ghosts (already dimmed),
    * for resource nodes (trees draw full-bright in the original — the measured canopy split in
-   * `data/brightness.ts`; kept for the whole kind so the static→pool handover can't jump) and for
+   * `data/terrain/brightness.ts`; kept for the whole kind so the static→pool handover can't jump) and for
    * projectiles (airborne). Plain sprites apply it as a tint (clamps at ×1); paletted settlers
    * multiply in-shader (can brighten).
    */

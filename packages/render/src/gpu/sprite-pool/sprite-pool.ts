@@ -85,10 +85,10 @@ export interface PoolFrame {
   /** Entities the retained static map-object layer draws instead (a decoded map's virgin resource
    *  nodes) — skipped by the scene build, so the pool never touches them. */
   readonly staticRefs?: ReadonlySet<number>;
-  /** The fog-of-war cull (`data/fog.ts`): entities on tiles this rejects stay pooled but undrawn.
+  /** The fog-of-war cull (`data/fog/mask.ts`): entities on tiles this rejects stay pooled but undrawn.
    *  Absent = no fog (every pre-fog view). */
   readonly fogVisible?: (tileX: number, tileY: number) => boolean;
-  /** The viewer's remembered statics (`data/fog-ghosts.ts`) — drawn dimmed on explored ground in
+  /** The viewer's remembered statics (`data/fog/ghosts.ts`) — drawn dimmed on explored ground in
    *  place of their fog-culled (or dead) entities. Absent = no fog or nothing remembered. */
   readonly ghosts?: readonly FogGhost[];
   /** The workplace-assignment highlight: building id → assignable (green) / not (red). A building in this

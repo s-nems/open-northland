@@ -1,4 +1,5 @@
 import type { Container } from 'pixi.js';
+import { restoreStash, type StashedVisibility, stashHidden } from '../visibility.js';
 import type { PooledEntity } from './pooled-entity.js';
 
 /**
@@ -7,37 +8,6 @@ import type { PooledEntity } from './pooled-entity.js';
  * world: which pooled entity is force-hidden on the main map this frame, whether it is indoors, and the
  * solo pass that blanks its sprite-layer siblings for that render.
  */
-
-/** One child's visibility remembered across a temporary hide, so the restore puts back exactly what the
- *  hide changed rather than making everything visible. */
-export interface StashedVisibility {
-  readonly child: { visible: boolean };
-  readonly wasVisible: boolean;
-}
-
-/**
- * Hide every child but `except`, recording each hidden child's prior visibility for {@link restoreStash}.
- * `into` lets a per-frame caller reuse a retained array (cleared up front, so a skipped restore can't
- * corrupt the next one); omitting it mints a fresh stash per call.
- */
-export function stashHidden(
-  children: readonly { visible: boolean }[],
-  except: { visible: boolean },
-  into: StashedVisibility[] = [],
-): StashedVisibility[] {
-  into.length = 0;
-  for (const child of children) {
-    if (child === except) continue;
-    into.push({ child, wasVisible: child.visible });
-    child.visible = false;
-  }
-  return into;
-}
-
-/** Restore exactly the visibilities {@link stashHidden} changed. */
-export function restoreStash(stash: readonly StashedVisibility[]): void {
-  for (const { child, wasVisible } of stash) child.visible = wasVisible;
-}
 
 export class PortraitSubject {
   /** The portrait subject kept hidden on the main map this frame (off-screen/indoor — {@link

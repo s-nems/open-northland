@@ -86,23 +86,6 @@ function shadowLayerFor(layer: SpriteLayer, bobId: number, scale: number): Resol
 }
 
 /**
- * Compact a resolved stockpile layer stack. The first draw is required: for an empty delivery marker it is
- * the flag, and for a filled marker it is the heap. Later layers are optional overlays, so a missing flag
- * can degrade to a heap, but a missing heap must fall back to placeholder instead of rendering a full pile
- * as a bare flag.
- */
-export function compactResolvedStockpileLayers<T>(layers: readonly (T | null)[]): T[] | null {
-  const primary = layers[0];
-  if (primary === undefined || primary === null) return null;
-  const out: T[] = [primary];
-  for (let i = 1; i < layers.length; i++) {
-    const layer = layers[i];
-    if (layer !== undefined && layer !== null) out.push(layer);
-  }
-  return out;
-}
-
-/**
  * Resolve the ordered atlas layers an entity draws, or `null` to draw the placeholder — the family →
  * kind-layer → shared-body decision. A loaded family/kind layer with a missing or empty frame returns
  * `null` rather than borrowing a frame from another layer, since their id spaces differ.
@@ -263,12 +246,8 @@ function resolveStockpileLayers(sheet: SpriteSheet, item: DrawItem): ResolvedLay
   if (binding === undefined) return null;
   // A stockpile draws a single graphic — its heap or its delivery flag; piles never stack layers.
   const draw = resolveStockpileDraw(binding, item);
-  const stacks = compactResolvedStockpileLayers([
-    draw.layer === undefined
-      ? null // no family -> placeholder heap/flag, never a wrong atlas borrow
-      : layeredLayersWithShadow(sheet, 'stockpile', draw),
-  ]);
-  return stacks === null ? null : stacks.flat();
+  if (draw.layer === undefined) return null; // no family -> placeholder heap/flag, never a wrong atlas borrow
+  return layeredLayersWithShadow(sheet, 'stockpile', draw);
 }
 
 /**

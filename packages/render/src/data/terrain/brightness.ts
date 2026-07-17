@@ -6,7 +6,7 @@ import { makeCellSampler } from './cell-field.js';
  * pre-baked shading plane — slope light/shadow over the hills plus the fade-to-black map border (the
  * outermost 2–3 rows/columns hold 0) — so carrying it verbatim reproduces both looks without
  * inventing a lighting model. The ground mesh samples it per fragment from an R8 texture at
- * canonical-cell-coordinate UVs (`gpu/terrain/shaded-mesh.ts`); this module's bilinear field is the
+ * canonical-cell-coordinate UVs (`gpu/shading.ts`); this module's bilinear field is the
  * CPU-side sampler for everything else (the flat fallback, the map-object anchors, tests).
  * Render-only: the sim never reads brightness.
  *
@@ -22,7 +22,7 @@ import { makeCellSampler } from './cell-field.js';
  * even anchored on embr=0 border cells (flat regression over 118 canopies) — the app's object loader
  * applies the anchor-cell multiplier to everything but the tree logic types (`content/objects.ts`).
  * Buildings/settlers are unmeasured in the original (the corpus base sits near neutral); OpenNorthland
- * shades them at their feet anchor anyway ({@link import('./scene/draw-item.js').DrawItem.shade}) — a
+ * shades them at their feet anchor anyway ({@link import('../scene/draw-item.js').DrawItem.shade}) — a
  * named enhancement, so entities sit in the ground's light instead of floating over it.
  */
 

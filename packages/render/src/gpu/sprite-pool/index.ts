@@ -11,11 +11,6 @@
  */
 export { type MotionTrack, trackMotion } from './motion.js';
 export type { EntityBounds } from './pooled-entity.js';
-export {
-  restoreStash,
-  type StashedVisibility,
-  stashHidden,
-} from './portrait-subject.js';
 export { reconcileSprites } from './reconcile.js';
 export { type ResolvedLayer, resolveLayers } from './resolve-layers.js';
 export { type PoolFrame, SpritePool } from './sprite-pool.js';

@@ -54,7 +54,7 @@ export const NO_LIFT: NodeLiftFn = () => 0;
 
 /** The map's shading + water inputs the mesh emitters thread to {@link pushTriangle}: the R8 lane
  *  texture (undefined → unshaded), its padded width (the brightness-lane `u` denominator), the
- *  per-node wave amplitude field (`data/water.ts`; NO_WAVE on land maps), and the map's ONE shared
+ *  per-node wave amplitude field (`data/terrain/water.ts`; NO_WAVE on land maps), and the map's ONE shared
  *  water-animation uniform group every shaded mesh binds. */
 export interface LaneShading {
   readonly brightnessTex: BufferImageSource | undefined;
@@ -64,7 +64,7 @@ export interface LaneShading {
 }
 
 /** The per-node lift for this map: 0 everywhere on a flat field, else the node's own cell's lift with
- *  the map-border ring clamped to 0 (`data/terrain.ts` `nodeLift`). */
+ *  the map-border ring clamped to 0 (`data/terrain/tessellation.ts` `nodeLift`). */
 export function liftFn(terrain: SceneTerrain, elevation: ElevationField): NodeLiftFn {
   if (elevation.maxLift <= 0) return NO_LIFT;
   return (hx, hy) => nodeLift(elevation.liftAt, hx, hy, terrain.width, terrain.height);

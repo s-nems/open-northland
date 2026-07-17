@@ -2,7 +2,7 @@ import type { TextureSource } from 'pixi.js';
 import type { CellTexture } from '../data/terrain/index.js';
 
 /**
- * The plain-data textured-terrain GPU inputs (the GPU twin of the pure `data/terrain.ts` geometry): the
+ * The plain-data textured-terrain GPU inputs (the GPU twin of the pure `data/terrain/tessellation.ts` geometry): the
  * decoded ground-texture pages + the typeId/name → UV lookups {@link import('./terrain/index.js')}
  * samples. Pure data; the atlas-page loading that produces the {@link TextureSource}s lives in
  * {@link import('./pixi-app.js')}, the settler-sheet twin in {@link import('./sprite-sheet.js')}.
@@ -48,7 +48,7 @@ export interface GroundPattern {
 /**
  * One resolved ground-transition overlay: its composed RGBA page (RGB texture + alpha mask — the
  * pipeline's `<stem>.masked.png`) + the six pair variants' 6-int UV pixel tuples per triangle
- * (a map lane's `value % 6` picks the pair, `data/terrain.ts` `transitionRef`).
+ * (a map lane's `value % 6` picks the pair, `data/terrain/transitions.ts` `transitionRef`).
  */
 export interface TransitionPattern {
   readonly pageKey: string;

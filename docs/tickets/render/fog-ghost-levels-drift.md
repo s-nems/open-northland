@@ -9,7 +9,7 @@ the same node carries `level` but NOT `levels`:
 
 - `data/scene/snapshot-readers/static-readers.ts` `assignStaticFields` (the shared
   reader) deliberately omits `levels` — the live build adds it separately in
-  `data/scene/sprite-scene.ts`, and `data/fog-ghosts.ts` `FogGhost` has no `levels`
+  `data/scene/sprite-scene.ts`, and `data/fog/ghosts.ts` `FogGhost` has no `levels`
   field at all.
 
 So a ghosted, partly-mined deposit on explored ground can render at the wrong visual

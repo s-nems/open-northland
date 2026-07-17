@@ -44,7 +44,7 @@ interface BonesGfx {
  * Cost tracks the screen (golden rule 7): the live list is bounded by `MAX_ACTIVE_EFFECTS` and the
  * per-frame work skips any mark culled off-screen (its pooled node hidden, not repositioned). Blood is a
  * named procedural approximation — droplets that spray from the wound and fall to the feet each frame
- * ({@link bloodDroplet}, in `data/effects.ts`); bones draw the real decoded cadaver sprite when supplied.
+ * ({@link bloodDroplet}, in `data/effects/blood.ts`); bones draw the real decoded cadaver sprite when supplied.
  * The decay, projection, droplet motion, and event fold are the real behaviour.
  */
 

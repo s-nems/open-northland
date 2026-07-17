@@ -24,7 +24,7 @@ versus the sim's. Near the radius sum, `withinNodeRadius` returns a different an
 network (`sim/src/systems/signposts/network.ts`), so a board can be drawn for a link that does not
 exist, or omitted for one that does.
 
-The tell that this is a slip and not a convention: `data/fog.ts` `fogCellOfTile` does the same
+The tell that this is a slip and not a convention: `data/fog/mask.ts` `fogCellOfTile` does the same
 Position→lattice conversion and applies the stagger correctly. render has two answers to one question.
 
 Not covered by [signpost-visual-calibration](../app/signpost-visual-calibration.md) (that is the

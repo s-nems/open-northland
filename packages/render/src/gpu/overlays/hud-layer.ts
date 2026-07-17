@@ -3,8 +3,8 @@ import type { HudPlacement } from '../../data/hud/index.js';
 
 /**
  * The retained HUD overlay — a pinned panel (not under the camera), repainted from a placed
- * {@link import('../data/hud.js').HudPlacement}. The load-bearing decisions (which number, laid out
- * where) are the pure `hud.ts` half; this is only the pixel repaint + the tunable style
+ * {@link import('../../data/hud/place.js').HudPlacement}. The load-bearing decisions (which number, laid out
+ * where) are the pure `data/hud/` half; this is only the pixel repaint + the tunable style
  * (colour/font/opacity).
  *
  * Retained like every other layer ({@link import('../world-renderer/index.js').WorldRenderer} calls

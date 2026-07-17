@@ -1,6 +1,7 @@
 import { type Application, type Container, RenderTexture, Sprite } from 'pixi.js';
 import type { Camera } from '../../data/projection/index.js';
-import { restoreStash, type SpritePool, type StashedVisibility, stashHidden } from '../sprite-pool/index.js';
+import type { SpritePool } from '../sprite-pool/index.js';
+import { restoreStash, type StashedVisibility, stashHidden } from '../visibility.js';
 
 /**
  * The details-panel portrait "observation window": a live cutout of the world centred on the selected
