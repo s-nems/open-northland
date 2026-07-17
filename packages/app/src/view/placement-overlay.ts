@@ -31,8 +31,10 @@ const OVERLAY_BAND_MARGIN = 2;
 export function makeOverlayFrameSource(
   sim: Simulation,
   mapSize: { readonly width: number; readonly height: number },
+  // The viewing player whose fog gates the overlay (the menu's roster pick; default for scenes).
+  player: number = HUMAN_PLAYER,
 ): (buildingType: number, camera: Camera, screenW: number, screenH: number) => PlacementOverlayFrame | null {
-  const band = makeBandProber(sim, mapSize);
+  const band = makeBandProber(sim, mapSize, player);
   return (buildingType, camera, screenW, screenH) =>
     band(
       `b${buildingType}:${sim.placementBlockerVersion()}`,
@@ -52,16 +54,11 @@ export function makeOverlayFrameSource(
 export function makeSignpostOverlaySource(
   sim: Simulation,
   mapSize: { readonly width: number; readonly height: number },
+  player: number = HUMAN_PLAYER,
 ): (camera: Camera, screenW: number, screenH: number) => PlacementOverlayFrame | null {
-  const band = makeBandProber(sim, mapSize);
+  const band = makeBandProber(sim, mapSize, player);
   return (camera, screenW, screenH) =>
-    band(
-      `s:${sim.signpostBlockerVersion()}`,
-      () => sim.signpostProbe(HUMAN_PLAYER),
-      camera,
-      screenW,
-      screenH,
-    );
+    band(`s:${sim.signpostBlockerVersion()}`, () => sim.signpostProbe(player), camera, screenW, screenH);
 }
 
 /** A per-node placement test with a `canPlace(col,row)` face — what both overlay probes resolve to. */
@@ -74,6 +71,7 @@ interface NodeProbe {
 function makeBandProber(
   sim: Simulation,
   mapSize: { readonly width: number; readonly height: number },
+  player: number,
 ): (
   probeKey: string,
   probeOf: () => NodeProbe | null,
@@ -92,7 +90,7 @@ function makeBandProber(
     );
     // The node band covering the visible cells.
     const range = nodeBandOfCells(cells);
-    const fog = sim.fogView(HUMAN_PLAYER);
+    const fog = sim.fogView(player);
     const fogKey = fog === null ? 'off' : `${fog.mode}:${fog.generation}`;
     const nextKey = `${probeKey}:${fogKey}:${range.minCol},${range.maxCol},${range.minRow},${range.maxRow}`;
     // Nothing that moves the blocked set changed (same probe inputs, same fog, same camera band):

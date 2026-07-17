@@ -40,8 +40,9 @@ export function mapIdFromPath(mapCifRelPath: string): string {
  * folder ({@link mapIdFromPath}). A `.cif` that fails to read or decode (not a map, missing
  * `mapsize`/`mapguid`, corrupt container) is logged and skipped — a batch over many maps must not
  * abort on one bad file, matching the other tree-walk stages. Only the declarative header metadata is
- * extracted; the binary tile grid and the `MissionData`/`StaticObjects` scripting are out of scope
- * here (see {@link extractMapInfo}).
+ * extracted here; the binary tile grid, the `StaticObjects` placements and the
+ * `playerdata`/`MissionData` script land in per-map artifacts via `convertMapDatTree` (see
+ * {@link extractMapInfo}).
  */
 export async function decodeMapTree(roots: SourceRoots): Promise<MapInfo[]> {
   const found = await collectSourceFilesNamed(roots, 'map.cif');

@@ -1,4 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import {
+  claimSeat,
+  initialRosterState,
+  rosterStartParams,
+  setSlotColor,
+  toggleVacantMode,
+} from '../src/entries/menu/players.js';
 import { MENU_FOG_MODES, MENU_SPEEDS, targetSearch } from '../src/entries/menu/settings.js';
 import { parseMapsIndex } from '../src/entries/menu.js';
 
@@ -36,6 +43,73 @@ describe('parseMapsIndex', () => {
     expect(parseMapsIndex(undefined)).toEqual([]);
     expect(parseMapsIndex({ maps: [] })).toEqual([]);
     expect(parseMapsIndex('nope')).toEqual([]);
+  });
+
+  it('narrows the player roster and drops wrong-typed slots', () => {
+    expect(
+      parseMapsIndex([
+        {
+          id: 'arena',
+          minimap: false,
+          players: [
+            { player: 0, type: 'human', tribeId: 1, colorId: 7, name: 'Ragnar' },
+            { player: 1, type: 'ai', tribeId: 4, colorId: 9 },
+            { player: 2, type: 'robot', tribeId: 1, colorId: 0 },
+            { player: -1, type: 'human', tribeId: 1, colorId: 0 },
+          ],
+        },
+        { id: 'bare', minimap: false, players: 'nope' },
+      ]),
+    ).toEqual([
+      {
+        id: 'arena',
+        minimap: false,
+        players: [
+          { player: 0, type: 'human', tribeId: 1, colorId: 7, name: 'Ragnar' },
+          { player: 1, type: 'ai', tribeId: 4, colorId: 9 },
+        ],
+      },
+      { id: 'bare', minimap: false },
+    ]);
+  });
+});
+
+describe('roster state', () => {
+  const players = [
+    { player: 0, type: 'human', tribeId: 1, colorId: 7 },
+    { player: 1, type: 'human', tribeId: 2, colorId: 4 },
+    { player: 2, type: 'ai', tribeId: 4, colorId: 9 },
+  ] as const;
+
+  it('gates start params on a claimed seat and encodes only deviations', () => {
+    let state = initialRosterState(players);
+    expect(rosterStartParams(state, players)).toEqual([]);
+    state = claimSeat(state, 0);
+    expect(rosterStartParams(state, players)).toEqual([['player', '0']]);
+  });
+
+  it('encodes recolours and vacant-AI seats alongside the seat', () => {
+    let state = claimSeat(initialRosterState(players), 0);
+    const recoloured = setSlotColor(state, 2, 3);
+    expect(recoloured).not.toBeNull();
+    state = toggleVacantMode(recoloured ?? state, 1);
+    expect(rosterStartParams(state, players)).toEqual([
+      ['player', '0'],
+      ['colors', '2:3'],
+      ['vacantai', '1'],
+    ]);
+  });
+
+  it('rejects a colour another slot wears and accepts re-picking your own', () => {
+    const state = initialRosterState(players);
+    expect(setSlotColor(state, 0, 4)).toBeNull(); // slot 1 wears green
+    expect(setSlotColor(state, 0, 7)).not.toBeNull(); // own colour, no-op accepted
+  });
+
+  it('claiming a seat clears its vacant-AI toggle', () => {
+    let state = toggleVacantMode(initialRosterState(players), 1);
+    state = claimSeat(state, 1);
+    expect(rosterStartParams(state, players)).toEqual([['player', '1']]);
   });
 });
 

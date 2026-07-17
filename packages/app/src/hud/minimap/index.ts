@@ -77,6 +77,9 @@ export interface MinimapOptions {
   /** typeId → ground colour (the real terrain set's per-type debug colours); misses fall back to the
    *  render flat tints. The last resort under {@link MinimapOptions.cellColours}. */
   readonly colourOf?: ((typeId: number) => number | undefined) | undefined;
+  /** Owner slot → team-colour slot for the unit/building dots (a map roster's colour choices);
+   *  absent = identity (the app-wide default: player id is the swatch slot). */
+  readonly playerColourOf?: ((player: number) => number) | undefined;
   /** The HUD scale (`?uiscale=`, clamped ≥1) — sizes the framed window with the rest of the HUD. */
   readonly uiscale: number;
   /** The live camera (for the view rectangle). */
@@ -281,7 +284,9 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
       const mx = layout.map.x - layout.panel.x + (s.x - bounds.minX) * layout.scale;
       const my = layout.map.y - layout.panel.y + (s.y - bounds.minY) * layout.scale;
       const half = settler ? SETTLER_DOT_PX / 2 : BUILDING_DOT_PX / 2;
-      const colour = PLAYER_SWATCH_COLORS[player % PLAYER_SWATCH_COLORS.length] ?? UNKNOWN_PLAYER_DOT_COLOUR;
+      const colourSlot = opts.playerColourOf?.(player) ?? player;
+      const colour =
+        PLAYER_SWATCH_COLORS[colourSlot % PLAYER_SWATCH_COLORS.length] ?? UNKNOWN_PLAYER_DOT_COLOUR;
       dots.rect(mx - half, my - half, half * 2, half * 2).fill(colour);
     }
   };

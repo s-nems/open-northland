@@ -145,6 +145,8 @@ export class SpritePool {
     private readonly spriteLayer: Container,
     private readonly textures: TextureCache,
     private readonly sheet: SpriteSheet | undefined,
+    /** Owner slot → team-colour slot for every built scene (a map roster's colour choice); absent = identity. */
+    private readonly playerColourOf?: (player: number) => number,
   ) {}
 
   /**
@@ -168,6 +170,7 @@ export class SpritePool {
       fogVisible: frame.fogVisible,
       ghosts: frame.ghosts,
       ...(frame.portraitRef !== undefined ? { portraitRef: frame.portraitRef } : {}),
+      ...(this.playerColourOf !== undefined ? { playerColourOf: this.playerColourOf } : {}),
     });
     this.frameId++;
     // Un-hide last frame's force-hidden portrait subject before re-deciding this frame's; the subject may

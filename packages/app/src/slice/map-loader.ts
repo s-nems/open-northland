@@ -1,4 +1,4 @@
-import { parseTerrainMap, type TerrainMapFile } from '@open-northland/data';
+import { MapScript, parseTerrainMap, type TerrainMapFile } from '@open-northland/data';
 import { diag } from '../diag/index.js';
 
 /**
@@ -50,6 +50,25 @@ export async function loadTerrainMap(
       'content',
       `loadTerrainMap: failed to load "${safe}" (${String(err)}); falling back to the strip`,
     );
+    return null;
+  }
+}
+
+/**
+ * Load a decoded map's script sidecar (`content/maps/<id>.script.json`, served at
+ * `/maps/<id>.script.json`) — the player roster, diplomacy and mission triggers. Returns null
+ * without noise on a 404 (a map without playerdata, or `content/` absent — normal absence), and
+ * null with a warning on a malformed file, so the entry degrades to the roster-less defaults.
+ */
+export async function loadMapScript(id: string, fetchImpl: typeof fetch = fetch): Promise<MapScript | null> {
+  const safe = safeMapId(id);
+  if (safe === null) return null;
+  try {
+    const res = await fetchImpl(`/maps/${safe}.script.json`);
+    if (!res.ok) return null;
+    return MapScript.parse(await res.json());
+  } catch (err) {
+    diag.warn('content', `loadMapScript: malformed /maps/${safe}.script.json (${String(err)})`);
     return null;
   }
 }

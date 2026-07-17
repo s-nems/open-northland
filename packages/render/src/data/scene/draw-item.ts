@@ -192,8 +192,11 @@ export interface DrawItem {
    */
   readonly weaponGood?: number;
   /**
-   * For a settler: the owning `Owner.player` slot, so the `PalettedSprite` reads its clothing-band
-   * indices through that player's row of the `256×N` colour LUT. Omitted for an unowned settler
+   * For a settler/signpost: the team-colour slot — the `PalettedSprite` reads its clothing-band
+   * indices through this row of the `256×N` colour LUT (and a signpost picks its per-colour baked
+   * atlas by it). By default this is the owning `Owner.player` slot; a scene built with
+   * {@link import('./sprite-scene.js').SpriteSceneOptions.playerColourOf} carries the mapped colour
+   * (a map roster's per-player colour choice) instead. Omitted for an unowned settler
    * (wildlife / neutral fixture), which draws the base palette (LUT row 0).
    */
   readonly player?: number;

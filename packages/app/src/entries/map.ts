@@ -17,14 +17,14 @@ import { loadRealTerrain } from '../content/terrain.js';
 import { diag, hashTraceFor, setDiagGameSession } from '../diag/index.js';
 import { fogModeParam } from '../game/fog.js';
 import { mapStartFocus } from '../game/map-start.js';
-import { HUMAN_PLAYER } from '../game/rules.js';
+import { colorOverridesParam, localPlayerParam, playerColourMap } from '../game/player-session.js';
 import {
   mapResourceObjectNames,
   sandboxGoods,
   spawnMapBerryBushes,
   spawnMapResources,
 } from '../game/sandbox/index.js';
-import { loadTerrainMap } from '../slice/map-loader.js';
+import { loadMapScript, loadTerrainMap } from '../slice/map-loader.js';
 import { runAuthoredSlice, runBareMap, runSlice, sliceTerrain } from '../slice/vertical-slice.js';
 import { cameraCenteredOnTile, createCameraController } from '../view/camera.js';
 import { startGameView } from '../view/runtime/game-view.js';
@@ -65,7 +65,20 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   const app = await createWindowPixiApp(canvas);
   const mapId = params.get('map');
   const loaded = mapId !== null ? await loadTerrainMap(mapId) : null;
-  diag.info('boot', 'game start', { entry: 'map', mapId, decodedMap: loaded !== null, seed: SLICE_SEED });
+  // The player session the menu's roster panel carried over: the controlled seat (`?player=`) and
+  // each slot's team colour — the map script's authored colours under the menu's `?colors=`
+  // overrides. A roster-less map keeps the defaults (seat 0, colour = slot id).
+  const script = mapId !== null ? await loadMapScript(mapId) : null;
+  const localPlayer = localPlayerParam(params);
+  const playerColourOf = playerColourMap(script, colorOverridesParam(params));
+  diag.info('boot', 'game start', {
+    entry: 'map',
+    mapId,
+    decodedMap: loaded !== null,
+    seed: SLICE_SEED,
+    localPlayer,
+    rosterPlayers: script?.players.length ?? 0,
+  });
   const terrainGrid = sliceTerrain(loaded ?? undefined);
   // The decoded map's terrain-height field (flat when the map carries no `lmhe` lane). The renderer
   // builds its own from the terrain grid for the ground mesh + entity lift; this shared instance lifts
@@ -95,6 +108,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     sheet,
     viewSmoothing: true,
     postFx: params.get('postfx') !== 'off',
+    playerColourOf,
   });
   renderer.setTerrain(terrainGrid, terrain);
   // The composed shading field the ground mesh just drew with (`embr` accented by elevation hillshade)
@@ -162,7 +176,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     authoredSim ??
     (simMap !== null
       ? runBareMap(SLICE_SEED, simMap, footprints, goodNames, realContent?.content)
-      : runSlice(SLICE_SEED, 1, undefined, HUMAN_PLAYER, footprints, goodNames, realContent?.content));
+      : runSlice(SLICE_SEED, 1, undefined, localPlayer, footprints, goodNames, realContent?.content));
   setDiagGameSession({
     entry: 'map',
     worldId: mapId,
@@ -242,7 +256,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // wheel). The HUD is drawn outside the camera layer below, so it stays pinned while the world moves.
   // `?center=x,y` overrides the start frame to centre a given tile (a decoded map's feature — a bridge or
   // coastline the start framing would never land on), degrading to the start framing when malformed.
-  const focus = mapStartFocus(sim.snapshot(), terrainGrid.width, terrainGrid.height);
+  const focus = mapStartFocus(sim.snapshot(), terrainGrid.width, terrainGrid.height, localPlayer);
   const initialCamera =
     centerTile(params.get('center'), app.screen.width, app.screen.height) ??
     cameraCenteredOnTile(focus.x, focus.y, 1, app.screen.width, app.screen.height);
@@ -266,6 +280,8 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     sim,
     cameraCtl,
     terrainGrid,
+    localPlayer,
+    playerColourOf,
     // Minimap ground colours from the real terrain set's per-type debug colours (absent → flat tints).
     ...(terrain !== undefined ? { terrainColour: (t: number) => terrain.cellFor(t)?.fallbackColour } : {}),
     ...(minimapCells !== null ? { minimapCellColours: minimapCells } : {}),

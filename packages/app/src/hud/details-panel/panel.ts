@@ -76,6 +76,9 @@ export interface UnitPanelOptions extends UnitPanelModelContext {
   /** The loaded sprite sheet, so the workers field can draw its bound workers as animated on-map sprites.
    *  Absent (a bare checkout / headless test) → the field just stays empty. */
   readonly sheet?: SpriteSheet;
+  /** Owner slot → team-colour slot for the worker sprites (a map roster's colour choices); absent =
+   *  identity, matching the world renderer's default. */
+  readonly playerColourOf?: (player: number) => number;
   /** Select this entity — invoked when the player clicks a worker sprite in the Pracownicy field, so it
    *  selects that settler (dropping the building), exactly like clicking the worker on the map. */
   readonly onSelectEntity?: (entityId: number) => void;
@@ -131,7 +134,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
   let baked: SupersampledTexture | null = null;
   // The animated worker sprites drawn live over the baked panel's Pracownicy field (one z above it), so
   // they advance every frame while the panel itself re-bakes at most 4 Hz.
-  const workerOverlay = new WorkerSpriteOverlay(app, opts.sheet, PANEL_Z + 1);
+  const workerOverlay = new WorkerSpriteOverlay(app, opts.sheet, PANEL_Z + 1, opts.playerColourOf);
 
   const ctx: UnitPanelModelContext = {
     buildings: opts.buildings,

@@ -12,8 +12,9 @@ import type { StageItemReporter } from '../../progress.js';
 import { collectSourceFilesNamed, rootsInOrder, type SourceRoots } from '../../roots.js';
 import { findPathCaseInsensitiveInDirs } from './case-path.js';
 import { mapIdFromPath } from './info.js';
-import { resolveMapMeta } from './meta.js';
+import { loadMapStringTable, resolveMapMeta } from './meta.js';
 import { minimapToPng } from './minimap.js';
+import { resolveMapScript } from './script.js';
 import { type MapDatTerrainFile, mapDatToTerrain } from './terrain.js';
 
 /** One emitted map terrain artifact: its slug id + the relative `maps/<id>.json` path under `outDir`. */
@@ -29,6 +30,8 @@ export interface MapDatConversion {
   readonly meta: boolean;
   /** Whether a `maps/<id>.png` minimap was emitted (the folder carried `minimap/minimap.pcx`). */
   readonly minimap: boolean;
+  /** Whether a `maps/<id>.script.json` sidecar was emitted (the map carried playerdata/missions). */
+  readonly script: boolean;
 }
 
 /**
@@ -39,12 +42,13 @@ export interface MapDatConversion {
  * ({@link mapIdFromPath}), so the artifact joins onto the same-folder `map.cif`'s `MapInfo` `id`.
  * Maps are visited in a stable (path-sorted) order so a re-run is reproducible.
  *
- * Beside each grid, two optional menu-facing sidecars are emitted when the map folder carries them:
- * `maps/<id>.meta.json` (the display name/description — {@link resolveMapMeta}) and `maps/<id>.png`
- * (the shipped minimap decoded to a cropped transparent-filler PNG — {@link minimapToPng}). Both are
- * deleted before the conditional emit, so a re-run over a source that lost its text/minimap cannot
- * leave a stale sidecar joined onto a fresh grid. The dev server's `/maps-index` route joins them onto
- * the map list for the main menu's cards.
+ * Beside each grid, three optional sidecars are emitted when the map folder carries them:
+ * `maps/<id>.meta.json` (the display name/description — {@link resolveMapMeta}), `maps/<id>.png`
+ * (the shipped minimap decoded to a cropped transparent-filler PNG — {@link minimapToPng}), and
+ * `maps/<id>.script.json` (the validated player roster/diplomacy/mission script —
+ * {@link resolveMapScript}). Each is deleted before the conditional emit, so a re-run over a source
+ * that lost its text/minimap/script cannot leave a stale sidecar joined onto a fresh grid. The dev
+ * server's `/maps-index` route joins them onto the map list for the main menu's cards.
  *
  * A `map.dat` that fails to read or decode (not a container, missing `lsiz`/`lmlt`, an `X6el`-only
  * grid, a dims/length mismatch, corrupt RLE) is logged and skipped — a batch over many maps must not
@@ -121,15 +125,30 @@ export async function convertMapDatTree(
     // them one-per-line would blow the artifact up ~8×.
     await writeFile(outPath, `${JSON.stringify(terrain)}\n`);
 
-    // Menu-facing sidecars, both optional (the menu card degrades per missing piece). Clear any
-    // previous run's sidecars first so a source that lost its text/minimap doesn't keep stale ones.
+    // Menu-facing sidecars, all optional (the menu card degrades per missing piece). Clear any
+    // previous run's sidecars first so a source that lost its text/minimap/script doesn't keep stale
+    // ones. The string table is loaded once and feeds both the meta strings and the script's slot names.
     const metaPath = join(outDir, 'maps', `${id}.meta.json`);
     const pngPath = join(outDir, 'maps', `${id}.png`);
+    const scriptPath = join(outDir, 'maps', `${id}.script.json`);
     await rm(metaPath, { force: true });
     await rm(pngPath, { force: true });
-    const metaFile = await resolveMapMeta(mapDirs, rel, cifSections);
+    await rm(scriptPath, { force: true });
+    const strings = await loadMapStringTable(mapDirs, rel);
+    const metaFile = await resolveMapMeta(mapDirs, rel, cifSections, strings);
     if (metaFile !== undefined) {
       await writeFile(metaPath, `${JSON.stringify(metaFile)}\n`);
+    }
+    let scriptFile: Awaited<ReturnType<typeof resolveMapScript>>;
+    try {
+      scriptFile = await resolveMapScript(mapDirs, rel, cifSections, strings);
+    } catch (err) {
+      // A schema-invalid script (unexpected codes in one authored map) degrades that map to no
+      // roster rather than aborting the batch; an output-write failure below still propagates.
+      console.warn(`[pipeline] map ${rel}: script undecodable: ${(err as Error).message}`);
+    }
+    if (scriptFile !== undefined) {
+      await writeFile(scriptPath, `${JSON.stringify(scriptFile)}\n`);
     }
     let minimap = false;
     const minimapPath = await findPathCaseInsensitiveInDirs(mapDirs, ['minimap', 'minimap.pcx']);
@@ -148,6 +167,7 @@ export async function convertMapDatTree(
       output,
       meta: metaFile !== undefined,
       minimap,
+      script: scriptFile !== undefined,
     });
   }
   return done;

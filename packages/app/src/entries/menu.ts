@@ -2,6 +2,7 @@ import { fetchJsonOrNull } from '../content/net.js';
 import { messages } from '../i18n/index.js';
 import { SCENES } from '../scenes/index.js';
 import { generatedMapPreview } from './menu/map-preview.js';
+import { type MapPlayerSlot, mountPlayersPanel, type PlayersPanel } from './menu/players.js';
 import { bindLocaleFlags, bindMenuSettings, targetSearch } from './menu/settings.js';
 
 const MENU_BACKDROP = new URL('../../../../docs/images/settlement.webp', import.meta.url).href;
@@ -12,6 +13,8 @@ export interface MapIndexEntry {
   readonly name?: string;
   readonly description?: string;
   readonly minimap: boolean;
+  /** The map's player roster from its script sidecar (absent when the map ships no playerdata). */
+  readonly players?: readonly MapPlayerSlot[];
 }
 
 type EntryKind = 'scene' | 'map' | 'tool';
@@ -23,6 +26,17 @@ interface MenuEntry {
   readonly summary: string;
   readonly search: string;
   readonly preview?: string;
+  readonly players?: readonly MapPlayerSlot[];
+}
+
+/** Narrows one `/maps-index` roster row, mirroring the emit-side shape (wrong-typed rows drop). */
+function parsePlayerSlot(raw: unknown): MapPlayerSlot | undefined {
+  if (typeof raw !== 'object' || raw === null) return undefined;
+  const { player, type, tribeId, colorId, name } = raw as Record<string, unknown>;
+  if (typeof player !== 'number' || !Number.isInteger(player) || player < 0) return undefined;
+  if (type !== 'human' && type !== 'ai') return undefined;
+  if (typeof tribeId !== 'number' || typeof colorId !== 'number') return undefined;
+  return { player, type, tribeId, colorId, ...(typeof name === 'string' ? { name } : {}) };
 }
 
 export function parseMapsIndex(data: unknown): readonly MapIndexEntry[] {
@@ -30,13 +44,15 @@ export function parseMapsIndex(data: unknown): readonly MapIndexEntry[] {
   const entries: MapIndexEntry[] = [];
   for (const item of data) {
     if (typeof item !== 'object' || item === null) continue;
-    const { id, name, description, minimap } = item as Record<string, unknown>;
+    const { id, name, description, minimap, players } = item as Record<string, unknown>;
     if (typeof id !== 'string' || id === '') continue;
+    const slots = Array.isArray(players) ? players.map(parsePlayerSlot).filter((s) => s !== undefined) : [];
     entries.push({
       id,
       ...(typeof name === 'string' ? { name } : {}),
       ...(typeof description === 'string' ? { description } : {}),
       minimap: minimap === true,
+      ...(slots.length > 0 ? { players: slots } : {}),
     });
   }
   return entries;
@@ -156,6 +172,7 @@ export async function renderMenu(canvas: HTMLCanvasElement, params: URLSearchPar
     map: htmlIn(root, '[data-menu-list="maps"]'),
     tool: htmlIn(root, '[data-menu-list="tools"]'),
   };
+  const details = htmlIn(root, '.game-menu__details');
   const previewFrame = htmlIn(root, '.game-menu__preview-frame');
   const preview = imageIn(root, '[data-menu-preview]');
   const kind = htmlIn(root, '[data-menu-kind]');
@@ -166,6 +183,18 @@ export async function renderMenu(canvas: HTMLCanvasElement, params: URLSearchPar
   let activeButton: HTMLButtonElement | null = null;
   let selected: MenuEntry | null = null;
   let previewGeneration = 0;
+  // Start stays gated until the person takes a Human seat on a map that ships a roster; the panel
+  // reports the gate through `seatClaimed` on every roster change.
+  const gateStart = (): void => {
+    const gated = !players.seatClaimed;
+    start.disabled = gated;
+    start.title = gated ? copy.startNeedsSeat : '';
+  };
+  const players: PlayersPanel = mountPlayersPanel(
+    htmlIn(root, '[data-menu-players]'),
+    htmlIn(root, '[data-menu-player-list]'),
+    gateStart,
+  );
 
   const generatePreview = (entry: MenuEntry, generation: number): void => {
     preview.hidden = true;
@@ -216,6 +245,14 @@ export async function renderMenu(canvas: HTMLCanvasElement, params: URLSearchPar
     summary.textContent = entry.summary;
     settings.hidden = entry.kind === 'tool';
     start.textContent = entry.kind === 'tool' ? copy.open : copy.start;
+    // A map with a decoded roster shows the player panel and shrinks the preview to make room
+    // (`has-players` — see details.css); everything else keeps the full-height preview.
+    if (entry.kind === 'map' && entry.players !== undefined) {
+      players.show(entry.id, entry.players);
+    } else {
+      players.hide();
+    }
+    details.classList.toggle('has-players', entry.kind === 'map' && entry.players !== undefined);
     showPreview(entry);
   };
 
@@ -228,7 +265,11 @@ export async function renderMenu(canvas: HTMLCanvasElement, params: URLSearchPar
     preview.hidden = true;
   });
   start.addEventListener('click', () => {
-    if (selected !== null) window.location.search = targetSearch(selected.search);
+    if (selected === null || start.disabled) return;
+    // The roster choices ride along as URL params (seat, recolours, vacant-seat modes).
+    const search = new URLSearchParams(selected.search);
+    for (const [key, value] of players.startParams()) search.set(key, value);
+    window.location.search = targetSearch(`?${search.toString()}`);
   });
 
   const appendEntries = (entries: readonly MenuEntry[]): void => {
@@ -258,6 +299,7 @@ export async function renderMenu(canvas: HTMLCanvasElement, params: URLSearchPar
       summary: map.description ?? copy.mapFallbackSummary,
       search: `?map=${encodeURIComponent(map.id)}`,
       ...(map.minimap ? { preview: `/maps/${encodeURIComponent(map.id)}.png` } : {}),
+      ...(map.players !== undefined ? { players: map.players } : {}),
     })),
   );
 }

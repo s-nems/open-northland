@@ -39,6 +39,7 @@ export {
   normalizeAssetPath,
   parseIniSections,
 } from './ini/grammar.js';
+export { extractMapScript } from './ini/map-script.js';
 export type { MapStaticObjects } from './ini/maps.js';
 export {
   extractMapInfo,

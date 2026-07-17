@@ -38,6 +38,8 @@ export function mapStartFocus(
   snapshot: WorldSnapshot,
   mapWidth: number,
   mapHeight: number,
+  // The controlled seat — the menu's roster pick; scenes and roster-less maps keep the default.
+  localPlayer: number = HUMAN_PLAYER,
 ): { x: number; y: number } {
   const centroidOf = (keep: (e: SnapshotEntity) => boolean): { x: number; y: number } | null => {
     let sumX = 0;
@@ -54,8 +56,8 @@ export function mapStartFocus(
     return count > 0 ? { x: sumX / count, y: sumY / count } : null;
   };
   return (
-    centroidOf((e) => isSettler(e) && ownerPlayerOf(e) === HUMAN_PLAYER) ??
-    centroidOf((e) => isBuilding(e) && ownerPlayerOf(e) === HUMAN_PLAYER) ??
+    centroidOf((e) => isSettler(e) && ownerPlayerOf(e) === localPlayer) ??
+    centroidOf((e) => isBuilding(e) && ownerPlayerOf(e) === localPlayer) ??
     centroidOf((e) => isSettler(e) || isBuilding(e)) ?? { x: mapWidth / 2, y: mapHeight / 2 }
   );
 }

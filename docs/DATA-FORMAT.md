@@ -26,7 +26,11 @@ content/
 │   ├── <name>.atlas.json   # frames: {id, x,y,w,h, anchorX,anchorY}
 │   └── <name>.anim.json    # animations: {name, fps, frames[], loop}
 ├── palettes/<name>.json    # decoded palettes / remap tables
-├── maps/<name>.json        # terrain grid + initial entity placements
+├── maps/
+│   ├── <name>.json         # terrain grid + initial entity placements
+│   ├── <name>.meta.json    # menu display name/description (optional sidecar)
+│   ├── <name>.png          # decoded minimap thumbnail (optional sidecar)
+│   └── <name>.script.json  # MapScript: player roster + diplomacy + mission triggers (optional sidecar)
 └── text/<locale>.json      # UI + content strings (pol/eng/ger/rus)
 ```
 

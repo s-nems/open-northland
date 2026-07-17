@@ -74,6 +74,8 @@ export class WorkerSpriteOverlay {
     private readonly app: Application,
     private readonly sheet: SpriteSheet | undefined,
     zIndex: number,
+    /** Owner slot → team-colour slot (a map roster's colour choices), matching the map's own sprites. */
+    private readonly playerColourOf?: (player: number) => number,
   ) {
     this.container.zIndex = zIndex;
     this.container.visible = false;
@@ -128,8 +130,10 @@ export class WorkerSpriteOverlay {
     const active = new Map<number, DrawItem>();
     const withIndoor = new Map<number, DrawItem>();
     const workerScene: WorldSnapshot = { ...snapshot, entities: workerEntities };
-    for (const it of buildSpriteScene(workerScene)) if (it.kind === 'settler') active.set(it.ref, it);
-    for (const it of buildSpriteScene(workerScene, { keepIndoorSettlers: true }))
+    const sceneOpts = { playerColourOf: this.playerColourOf };
+    for (const it of buildSpriteScene(workerScene, sceneOpts))
+      if (it.kind === 'settler') active.set(it.ref, it);
+    for (const it of buildSpriteScene(workerScene, { ...sceneOpts, keepIndoorSettlers: true }))
       if (it.kind === 'settler') withIndoor.set(it.ref, it);
 
     const inner: Rect = {
