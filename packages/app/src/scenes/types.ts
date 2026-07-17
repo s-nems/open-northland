@@ -37,18 +37,15 @@ export interface SceneWorld {
  *  - **Browser (`npm run dev` → `?scene=<id>`)** — the same sim rendered for human inspection.
  *
  * Because the sim is deterministic, the two consumers observe the same run (same seed + global rules +
- * scene setup): what the headless test proves is exactly what the human watches. Adding a scene to the
- * registry automatically adds its headless test and its `?scene=` link.
+ * scene setup). Adding a scene to the registry automatically adds its headless test and its `?scene=` link.
  */
 export interface SceneDefinition extends SceneWorld {
   /** URL-safe id: the `?scene=<id>` value and the test's `describe()` name. */
   readonly id: string;
   /** Ticks the headless acceptance test advances before checking {@link checks}. */
   readonly runTicks: number;
-  /**
-   * Starting camera zoom for the browser view (default 1). A scene that spreads many entities sets this
-   * below 1 so the whole setup fits before the player adjusts the camera with the mouse wheel.
-   */
+  /** Starting camera zoom for the browser view (default 1). A scene that spreads many entities sets this
+   *  below 1 so the whole setup fits on screen. */
   readonly initialZoom?: number;
   /** Machine assertions the headless test enforces (the mechanic must hold). */
   readonly checks: readonly SceneCheck[];

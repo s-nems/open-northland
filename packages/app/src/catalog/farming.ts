@@ -5,14 +5,14 @@ import type { GoodFarming } from '@open-northland/data';
  * loop's numbers: every scene/content set that farms wheat builds its `farming` block from these
  * constants so the pace can't drift per scene.
  *
- * Source split (see the sim's `GoodFarming` schema): {@link WHEAT_GROWTH_STAGES} is DATA — the
- * `landscapetypes.ini` `wheat (growing)` lane's `maximumValency 5`, matching the field gfx's 5 growth
- * frames. Everything else is OBSERVED calibration, pending tuning against the original — the readable
- * data carries no growth timing, field radius, field count, or per-field yield (the closest readable
- * number is `humanjobexperiencetypes.ini` "farmer wheat" `baserepeatcounter 2`, semantics unpinned).
+ * Source split (see the sim's `GoodFarming` schema): {@link WHEAT_GROWTH_STAGES} is extracted data,
+ * everything else observed calibration pending tuning against the original — the readable data carries no
+ * growth timing, field radius, field count, or per-field yield (the closest readable number is
+ * `humanjobexperiencetypes.ini` "farmer wheat" `baserepeatcounter 2`, semantics unpinned).
  */
 
-/** Growth stages a sown field passes through before it is ripe (DATA: `maximumValency 5`). */
+/** Growth stages a sown field passes through before it is ripe (the `landscapetypes.ini` `wheat (growing)`
+ *  lane's `maximumValency 5`, matching the field gfx's 5 growth frames). */
 export const WHEAT_GROWTH_STAGES = 5;
 
 /** Ticks a watered field takes per growth stage (an unwatered field does not grow at all — watering
@@ -34,12 +34,11 @@ export const FARM_FIELDS_BASE = 2;
 /** The per-farmer slope of the field cap (see {@link FARM_FIELDS_BASE}). */
 export const FARM_FIELDS_PER_FARMER = 4;
 
-/** The clean-room field-farming `farming` block per farmed good, keyed by its stable string id — the ONE
- *  source both the sandbox goods builder (`game/sandbox/content/catalog/goods.ts`) and the real-content
- *  overlay (`content/real-content.ts` `mergeRealContent`) read, so wheat farms at the same pace on either
- *  content base. Real ir.json extracts wheat's plant/cultivate/harvest atomics and its `producedOnMap`
- *  flag but not this growth timing (no readable growth constants), so the overlay pins it here — the last
- *  piece the sim's field loop needs, once the pipeline has (correctly) declined to give the farm a recipe. */
+/** The clean-room field-farming `farming` block per farmed good, keyed by its stable string id — read by both
+ *  the sandbox goods builder (`game/sandbox/content/catalog/goods.ts`) and the real-content overlay
+ *  (`content/real-content.ts` `mergeRealContent`), so wheat farms at the same pace on either content base.
+ *  Real ir.json extracts wheat's plant/cultivate/harvest atomics and its `producedOnMap` flag, but not this
+ *  growth timing, so the overlay pins it here. */
 export const FARMING_BALANCE_BY_ID: Readonly<Record<string, GoodFarming>> = {
   wheat: {
     stages: WHEAT_GROWTH_STAGES,

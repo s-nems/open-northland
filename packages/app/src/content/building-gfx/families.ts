@@ -5,7 +5,7 @@ import type { BuildingBobRow } from '../ir.js';
  * The building atlas families + the shared per-type reduction helpers: the tree/house atlas constants the
  * sheet loader binds, the seven loaded viking families, and the canonical-row picking every building
  * binding reducer shares. The base per-type bob binding ({@link buildingBobRefsByType}) lives here;
- * `./overlays.ts` / `./construction.ts` reuse these helpers. The pure reducers are unit-tested.
+ * `./overlays.ts` / `./construction.ts` reuse these helpers.
  */
 
 /**
@@ -33,10 +33,9 @@ const HOUSE_PALETTE = 'house01';
  * the tree it lives in its own frame-id space (135 bobs), so it binds as a per-kind
  * {@link import('@open-northland/render').SpriteSheet.kindLayers} layer, not the shared body atlas.
  * {@link HOUSE_BOB} 11 is the "viking home" record's first finished growth stage (213×198 anchored at its
- * base), drawn at native size ({@link BUILDING_SCALE} = 1) like every other bob — a taste constant to swap
- * to a bigger growth stage (source basis "Building bob"). It is now only the render-side
- * `BuildingTypeBinding.default` fallback for a type with no `buildingBobs` row; real viking types bind
- * their own bob through {@link BUILDING_FAMILIES}.
+ * base) — a taste constant to swap to a bigger growth stage (source basis "Building bob"), serving only as
+ * the render-side `BuildingTypeBinding.default` fallback for a type with no `buildingBobs` row; real viking
+ * types bind their own bob through {@link BUILDING_FAMILIES}.
  */
 export const HOUSE_ATLAS = `ls_houses_viking.${HOUSE_PALETTE}`;
 export const HOUSE_BOB = 11;
@@ -54,8 +53,7 @@ export const BUILDING_SCALE = 1;
  * Keyed by building `typeId` (the `[GfxHouse]` `LogicType`) → its `GfxBobId`, transcribed from the mod's
  * `budynki12/houses/houses.ini` `[GfxHouse]` records (`LogicTribeType 1`, `house01`). The extracted table
  * reproduces these five exactly and additionally recovers the home (typeIds 2..6) + bakery (14/15)
- * growth-stage typeIds this constant drops. Native bob sizes differ a lot (well 63×88, home 299×340), so
- * the uniform {@link BUILDING_SCALE} preserves their real relative proportions.
+ * growth-stage typeIds this constant drops.
  */
 export const VIKING_HOUSE01_BOBS: Readonly<Record<number, number>> = {
   6: 41, // viking home
@@ -107,14 +105,10 @@ export interface BuildingFamily {
  * The named building-family atlases loaded beside the default one — each a separate decoded
  * `ls_houses_*.bmd` × palette PNG with its own frame-id space, registered in
  * {@link import('@open-northland/render').SpriteSheet.families} under `layer` (= the served atlas stem). A
- * canonical row in one binds a layer-qualified `{ layer, bob }` ref; the {@link buildingBobRefsByType}
- * reducer drops a row whose family is not in this list (it falls back to {@link VIKING_HOUSE01_BOBS}/the
- * default house), so a family must be both listed here and loaded in
+ * family must be both listed here and loaded in
  * {@link import('../sprite-sheet/index.js').loadHumanSpriteSheet} for its types to draw their real bob.
- *
- * All seven viking families load so every viking building draws its own bob. `bmdBasename` may repeat
- * across entries (miller / house02 / the default all live in `ls_houses_viking.bmd`); the
- * `(bmdBasename, paletteName)` pair disambiguates the family.
+ * `bmdBasename` may repeat across entries (miller / house02 / the default all live in
+ * `ls_houses_viking.bmd`), so the `(bmdBasename, paletteName)` pair is what disambiguates a family.
  */
 export const BUILDING_FAMILIES: readonly BuildingFamily[] = [
   { bmdBasename: 'ls_houses_viking4.bmd', paletteName: HOUSE_PALETTE, layer: VIKING4_HOUSE01 },
@@ -226,15 +220,13 @@ export function familyLayerFor(
 
 /**
  * Reduce the decoded `buildingBobs` join to the render's per-type bob binding for one tribe across the
- * loaded atlas families. For each `(tribeId, typeId)` it picks the canonical row
- * ({@link pickCanonicalBuildingRow}) and emits a {@link BuildingBobRef}: a bare bob id when the row's
- * `(bmd, palette)` is the {@link defaultFamily} (the shared `ls_houses_viking.house01` layer), or a
- * layer-qualified `{ layer, bob }` when it's a loaded named {@link families} atlas (e.g. the HQ in
- * `ls_houses_viking4.house01`). A canonical row whose family is neither the default nor a loaded named
- * family is dropped — {@link VIKING_HOUSE01_BOBS} / the render-side `BuildingTypeBinding.default` backs it,
- * so an unloaded family degrades to the representative house instead of borrowing a wrong bob from the
- * default layer. `bmd` is matched on its trailing basename so a sibling can't be a false positive. Returns
- * `{}` when nothing matches. Pure + exported so the join→binding reduction is unit-tested.
+ * loaded atlas families: for each `(tribeId, typeId)` it picks the canonical row
+ * ({@link pickCanonicalBuildingRow}) and emits a {@link BuildingBobRef} — a bare bob id from the
+ * {@link defaultFamily}'s shared `ls_houses_viking.house01` layer, or a layer-qualified `{ layer, bob }`
+ * from a loaded named {@link families} atlas (e.g. the HQ in `ls_houses_viking4.house01`). A row whose
+ * family is neither is dropped ({@link familyLayerFor}), degrading that typeId to
+ * {@link VIKING_HOUSE01_BOBS} / the render-side `BuildingTypeBinding.default`. Returns `{}` when nothing
+ * matches.
  */
 export function buildingBobRefsByType(
   rows: readonly BuildingBobRow[],
