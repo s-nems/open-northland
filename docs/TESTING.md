@@ -180,6 +180,29 @@ a local game copy so **CI never runs them** — they are an agent/developer gate
 Run `test:content` when a change touches real-content consumers (loaders, id joins, merge overlays,
 content-driven UI tables); run `test:pipeline` when it touches the pipeline or the content schema.
 
+## The sim benchmark (manual, local — `bench:sim`)
+
+The suite proves *behavior*; golden rule 6 ("per-tick sim cost scales with active work, never
+entities²") is about *cost*, and a test cannot assert it portably — wall-times vary by machine. **`npm
+run bench:sim`** is the measuring tool: it runs an RTS-scale headless world (N copies of the sandbox
+scene's authored settlement tiled across one grass map, plus two armies — all synthetic content, built
+by the acceptance scenes' own builders) and reports median/p95 ms **per system**, plus whole-tick cost
+and each system's share.
+
+Timing lives outside the sim: the bench injects its timer through `Simulation.setInstrument` (the
+per-system seam the app's `?debug=perf` marks also use), so `performance.now` never enters
+`packages/sim/src`, which the hygiene test enforces. `packages/app/bench/*.bench.ts` never matches
+vitest's default `include`, so `npm test` and CI never collect the bench; `packages/app/bench/vitest.config.ts`
+is what makes it runnable.
+
+Knobs (env): `ON_BENCH_SETTLEMENTS` / `ON_BENCH_FIGHTERS` size the world (turn them up across runs for
+a scaling curve — a system whose cost grows faster than the population is the O(n²) this exists to
+catch), `ON_BENCH_WARMUP` / `ON_BENCH_TICKS` size the window, `ON_BENCH_JSON=<path>` writes the
+machine-readable report. Needs stay off, so the population is stable across the window and the
+needs/eat/sleep drives are under-measured. There is deliberately **no pass/fail threshold** — absolute
+ms are machine-dependent; a human reads the table, and the bench's own check only proves the measured
+world is deterministic (two runs, one hash).
+
 ## The agent's checklist (also in AGENTS.md)
 
 1. Write/extend the test at the **lowest level** that proves the change (unit > integration > e2e).

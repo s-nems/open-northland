@@ -203,21 +203,21 @@ const GATHERER_BY_GOOD: ReadonlyMap<number, GathererSpec> = new Map(GATHERERS.ma
  */
 const MINE_DEPOSIT_SCALE = 100;
 
-function buildVillage(sim: Simulation): void {
+function buildVillage(sim: Simulation, ox: number, oy: number): void {
   for (const b of VILLAGE) {
-    placeSandboxBuilding(sim, b.id, b.x, b.y, HUMAN_PLAYER, {
+    placeSandboxBuilding(sim, b.id, ox + b.x, oy + b.y, HUMAN_PLAYER, {
       fillStock: WAREHOUSE_IDS.has(b.id),
     });
-    staffBuildingFully(sim, resolveVikingBuilding(b.id).typeId, b.x, b.y);
+    staffBuildingFully(sim, resolveVikingBuilding(b.id).typeId, ox + b.x, oy + b.y);
   }
 }
 
-function buildResourceBase(sim: Simulation): void {
+function buildResourceBase(sim: Simulation, ox: number, oy: number): void {
   for (const camp of CAMPS) {
     const g = GATHERER_BY_GOOD.get(camp.good);
     if (g === undefined) throw new Error(`sandbox camp: no gatherer trade for good ${camp.good}`);
     for (const { dx, dy } of camp.nodes) {
-      placeResourceNode(sim, g, camp.center.x + dx, camp.center.y + dy, {
+      placeResourceNode(sim, g, ox + camp.center.x + dx, oy + camp.center.y + dy, {
         unitsScale: g.mode === 'mine' ? MINE_DEPOSIT_SCALE : 1,
       });
     }
@@ -225,18 +225,33 @@ function buildResourceBase(sim: Simulation): void {
     // gatherer), planted in a short row on the camp's village side; each gatherer works only this camp
     // (radius + good filter) and banks its harvest at its own flag (see spawnBoundGatherer).
     for (let i = 0; i < camp.gatherers; i++) {
-      const flag = placeFlag(sim, camp.flag.x + i, camp.flag.y);
-      spawnBoundGatherer(sim, g.job, camp.flag.x + i, camp.flag.y + 1, flag, { goodType: camp.good });
+      const flag = placeFlag(sim, ox + camp.flag.x + i, oy + camp.flag.y);
+      spawnBoundGatherer(sim, g.job, ox + camp.flag.x + i, oy + camp.flag.y + 1, flag, {
+        goodType: camp.good,
+      });
     }
   }
   for (let i = 0; i < BERRY_BUSHES; i++) {
-    placeSandboxBerryBush(sim, BERRY_PATCH.x + i * 2, BERRY_PATCH.y + (i % 2));
+    placeSandboxBerryBush(sim, ox + BERRY_PATCH.x + i * 2, oy + BERRY_PATCH.y + (i % 2));
   }
 }
 
+/**
+ * The authored settlement — village + gathering camps — placed with its top-left tile at (`ox`,`oy`).
+ * The scene builds one at the origin; the sim benchmark tiles several across a bigger grass map
+ * ({@link SANDBOX_SETTLEMENT_SPAN}) to reach RTS-scale population off this one authored layout.
+ */
+export function buildSandboxSettlement(sim: Simulation, ox = 0, oy = 0): void {
+  buildVillage(sim, ox, oy);
+  buildResourceBase(sim, ox, oy);
+}
+
+/** The tile span the authored settlement occupies — the pitch a caller tiling it must keep so the
+ *  camps and their flag radii stay inside their own copy. */
+export const SANDBOX_SETTLEMENT_SPAN = MAP_W;
+
 function build(sim: Simulation): void {
-  buildVillage(sim);
-  buildResourceBase(sim);
+  buildSandboxSettlement(sim);
 }
 
 /** The distinct building typeIds the village places (homes repeat one type). */

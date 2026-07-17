@@ -63,8 +63,11 @@ never `entities²`. Don't write per-unit whole-world scans — consume the exist
 `NodeBuckets`/`NodeBuckets.nearest` ring search (`systems/spatial.ts` — new nearest-X code uses this,
 not another scan), `core/content-index.ts` for content lookups, and dormancy gates that elide only
 provably-empty work. Any optimization must keep canonical winners (ascending-id / `(distance, id)`
-picks) so goldens stay byte-identical. Profile per-system with a throwaway node script over `dist/` —
-never add `performance.now` to `src` (the hygiene scan fails the build).
+picks) so goldens stay byte-identical. Profile per-system with `npm run bench:sim` (median/p95 ms per
+system over an RTS-scale headless world; `ON_BENCH_SETTLEMENTS`/`ON_BENCH_FIGHTERS` turn the population
+up for a scaling curve, `ON_BENCH_JSON` writes the machine-readable report) — never add
+`performance.now` to `src`: the timer belongs in the caller, behind `Simulation.setInstrument`, and the
+hygiene scan fails the build otherwise.
 
 ## Layout
 

@@ -16,6 +16,7 @@
     "typecheck:test": "tsc --build && tsc --project tsconfig.tests.json",
     "test": "npm run typecheck && vitest run",
     "test:watch": "npm run typecheck && vitest",
+    "bench:sim": "vitest run --config packages/app/bench/vitest.config.ts",
     "test:content": "node scripts/test-content.mjs",
     "test:pipeline": "node scripts/test-pipeline.mjs",
     "lint": "biome lint .",
