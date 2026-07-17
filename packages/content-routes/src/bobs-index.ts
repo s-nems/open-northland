@@ -3,14 +3,12 @@ import { join } from 'node:path';
 
 /**
  * Node-side builder for the `/bobs-index` payload — the list the in-app icon gallery (`?icons`)
- * browses. Shared by every host that serves `content/` over the app's routes; kept in its own
- * module so the scan is unit-testable against a fixture directory.
- *
- * It lists every viewable bob atlas: a palette-applied RGBA sheet (`<stem>.png` + `<stem>.atlas.json`)
- * the pipeline already emits for the GUI, goods, and every landscape/house/object set. The `.indexed.*`
- * atlases are skipped — those carry the palette index in the red channel (for the runtime recolour), not
- * a human-viewable image. Each entry is split into a `base` set + `variant` (the palette) so the gallery
- * can group the 300-plus sheets (e.g. `ls_trees.tree_cypress01` → base `ls_trees`, variant `tree_cypress01`).
+ * browses. It lists the viewable bob atlases: palette-applied RGBA sheets (`<stem>.png` +
+ * `<stem>.atlas.json`) the pipeline emits for the GUI, goods, and every landscape/house/object set.
+ * The `.indexed.*` atlases carry a palette index in the red channel for the runtime recolour instead
+ * of a viewable image, so they are skipped. Each entry splits into a `base` set + palette `variant`
+ * so the gallery can group the 300-plus sheets (`ls_trees.tree_cypress01` → `ls_trees` +
+ * `tree_cypress01`).
  */
 
 /** One `/bobs-index` entry: a viewable atlas stem and its base-set / palette-variant split. */
@@ -24,9 +22,9 @@ export interface BobsIndexEntry {
 }
 
 /**
- * Build one entry per viewable RGBA atlas under `bobsRoot`, sorted by (base, variant). An atlas is
- * viewable when it has both `<stem>.png` and `<stem>.atlas.json` and the stem does NOT end in `.indexed`.
- * `bobsRoot` must exist (the caller guards); a missing `content/` yields the route falling through.
+ * Build one entry per viewable RGBA atlas under `bobsRoot`, sorted by (base, variant): both
+ * `<stem>.png` and `<stem>.atlas.json` present, and the stem not ending in `.indexed`. `bobsRoot`
+ * must exist — the caller guards.
  */
 export function buildBobsIndexEntries(bobsRoot: string): BobsIndexEntry[] {
   const stems = readdirSync(bobsRoot)

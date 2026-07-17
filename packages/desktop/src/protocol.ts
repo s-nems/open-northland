@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { extname, normalize, resolve, sep } from 'node:path';
+import { extname, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { resolveContentRequest } from '@open-northland/content-routes';
 import { net, protocol } from 'electron';
@@ -12,7 +12,7 @@ import { routePathOf } from './protocol-routing.js';
  * serves the first-run installer page from the shell's own renderer files.
  */
 
-export const APP_SCHEME = 'app';
+const APP_SCHEME = 'app';
 export const GAME_URL = 'app://game/index.html';
 export const SETUP_URL = 'app://setup/setup.html';
 
@@ -36,8 +36,7 @@ export function registerAppScheme(): void {
   protocol.registerSchemesAsPrivileged([
     {
       scheme: APP_SCHEME,
-      // corsEnabled lets a fetch cross app:// hosts at all (Pixi's mangled app://bobs spelling is
-      // cross-origin to app://game); the CORS_HEADER below then approves it.
+      // corsEnabled lets a fetch cross app:// hosts at all; CORS_HEADER below decides which may.
       privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true },
     },
   ]);
@@ -63,7 +62,8 @@ async function serveFile(file: string, contentType: string, method: string): Pro
 /** Resolve a static file under `root` with traversal rejected; `undefined` falls through to 404. */
 function staticFileUnder(root: string, pathname: string): string | undefined {
   const rel = pathname.replace(/^\/+/, '');
-  const file = normalize(resolve(root, rel === '' ? 'index.html' : rel));
+  // `resolve` already collapses `..`, so the containment check below sees the real target.
+  const file = resolve(root, rel === '' ? 'index.html' : rel);
   if (!file.startsWith(root + sep) || !existsSync(file)) return undefined;
   return file;
 }

@@ -15,6 +15,9 @@ const LOCAL_SIGNATURE = 0x04034b50;
 /** EOCD fixed part is 22 bytes; the trailing archive comment can be up to 64 KiB. */
 const EOCD_MIN_SIZE = 22;
 const EOCD_SEARCH_SPAN = EOCD_MIN_SIZE + 0xffff;
+/** Fixed parts of the two per-entry headers; the name/extra/comment fields follow each. */
+const CENTRAL_HEADER_SIZE = 46;
+const LOCAL_HEADER_SIZE = 30;
 /** General-purpose flag bit 11: the entry name is UTF-8 (otherwise CP437; decoded as latin1 —
  * byte-preserving and unambiguous for path handling). */
 const UTF8_NAME_FLAG = 1 << 11;
@@ -64,7 +67,7 @@ export async function readZipEntries(fh: FileHandle, fileSize: number): Promise<
   const entries: ZipEntry[] = [];
   let at = 0;
   for (let i = 0; i < count; i++) {
-    if (at + 46 > cd.length || cd.readUInt32LE(at) !== CENTRAL_SIGNATURE) {
+    if (at + CENTRAL_HEADER_SIZE > cd.length || cd.readUInt32LE(at) !== CENTRAL_SIGNATURE) {
       throw new Error(`zip: corrupt central directory at entry ${i}`);
     }
     const flags = cd.readUInt16LE(at + 8);
@@ -76,10 +79,10 @@ export async function readZipEntries(fh: FileHandle, fileSize: number): Promise<
     const commentLength = cd.readUInt16LE(at + 32);
     const localHeaderOffset = cd.readUInt32LE(at + 42);
     const name = cd
-      .subarray(at + 46, at + 46 + nameLength)
+      .subarray(at + CENTRAL_HEADER_SIZE, at + CENTRAL_HEADER_SIZE + nameLength)
       .toString((flags & UTF8_NAME_FLAG) !== 0 ? 'utf8' : 'latin1');
     entries.push({ name, method, compressedSize, size, localHeaderOffset });
-    at += 46 + nameLength + extraLength + commentLength;
+    at += CENTRAL_HEADER_SIZE + nameLength + extraLength + commentLength;
   }
   return entries;
 }
@@ -95,13 +98,13 @@ export async function readZipEntryData(
   entry: ZipEntry,
   fileSize: number,
 ): Promise<Uint8Array> {
-  const local = await readAt(fh, entry.localHeaderOffset, 30);
+  const local = await readAt(fh, entry.localHeaderOffset, LOCAL_HEADER_SIZE);
   if (local.readUInt32LE(0) !== LOCAL_SIGNATURE) {
     throw new Error(`zip: corrupt local header for ${entry.name}`);
   }
   const nameLength = local.readUInt16LE(26);
   const extraLength = local.readUInt16LE(28);
-  const dataOffset = entry.localHeaderOffset + 30 + nameLength + extraLength;
+  const dataOffset = entry.localHeaderOffset + LOCAL_HEADER_SIZE + nameLength + extraLength;
   if (dataOffset + entry.compressedSize > fileSize) {
     throw new Error(`zip: entry ${entry.name} lies outside the file`);
   }
