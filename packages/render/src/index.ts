@@ -16,6 +16,8 @@ export {
 } from './data/hud/index.js';
 export {
   type Camera,
+  cameraScreenX,
+  cameraScreenY,
   cameraViewport,
   halfCellToScreen,
   ONE,

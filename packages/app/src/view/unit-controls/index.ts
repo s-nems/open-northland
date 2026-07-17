@@ -187,7 +187,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     toWorld,
     enqueue: opts.enqueue,
     selectOwnSettler: (id) => setSelection([id], false),
-    openActions: () => actions.open(),
+    openActions: (atClient) => actions.open(atClient),
   });
 
   /** Resolve a world click while in "przydziel miejsce pracy" mode: bind the settler to the building under
