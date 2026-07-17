@@ -8,10 +8,10 @@ import { defineComponent, type Entity } from '../ecs/world.js';
  */
 
 /**
- * Marks a female settler. Present ⟺ female; a settler without one is male. Stamped at creation from the
- * sex-tagged age-class/woman job ids (`baby_female`/`child_female`/`woman`) or the parents' `makeChild`
- * choice, and never removed — a profession change must not change a settler's sex, so the marker outlives
- * `jobType` (which is where the original encodes sex, losing it on adult trades).
+ * Marks a female settler — present ⟺ female, absent ⟺ male. Stamped at creation from the sex-tagged
+ * age-class/woman job ids (`baby_female`/`child_female`/`woman`) or the parents' `makeChild` choice, and never
+ * removed, so the marker outlives `jobType` — which is where the original encodes sex, losing it on adult
+ * trades.
  */
 export const Female = defineComponent<{ readonly female: true }>('Female');
 
@@ -20,20 +20,20 @@ export const FEMALE = { female: true } as const;
 
 /**
  * A married settler: `spouse` is its partner for life (both partners carry the mirrored component; a
- * spouse's death removes it — see the CleanupSystem's widowing — EXCEPT while the couple's child still
+ * spouse's death removes it — see the CleanupSystem's widowing — except while the couple's child still
  * grows: the widowed parent keeps it as the carrier of the parent-child edge, and `mayMarry` treats
  * that dead-spouse marriage as dissolved once the child is grown). `child` is the couple's one child
  * while it is still growing up — the couple may conceive again only once the child reaches adulthood
  * (its `Age` component is gone) or dies; entity ids are never recycled, so a stale `child` id stays a
- * safe liveness probe. Set on both partners together at birth.
+ * safe liveness probe.
  */
 export const Marriage = defineComponent<{ spouse: Entity; child: Entity | null }>('Marriage');
 
 /**
  * A wedding in progress: the pair walks together, kisses (atomics 20/21), then both get a {@link Marriage}.
  * Both partners carry the mirrored component; the FamilySystem drives the pair from the lower entity id.
- * `kissing` flips when the kiss atomics start, so completion is "kissing and both atomics done". Cancelled
- * (both sides removed) when a partner dies or the walk fails.
+ * `kissing` flips when the kiss atomics start, so completion is "kissing and both atomics done"; a partner
+ * dying or the walk failing cancels both sides.
  */
 export const Wedding = defineComponent<{ partner: Entity; kissing: boolean }>('Wedding');
 
@@ -45,14 +45,13 @@ export const Residence = defineComponent<{ home: Entity }>('Residence');
  * A married woman's standing "make a son/daughter" order (the player picks the sex — the one readable
  * sex-determination seam, so no RNG is needed at birth). It persists until the birth succeeds; other orders
  * interrupt but never cancel it. The FamilySystem drives its stages: stock the home with
- * {@link CHILD_FOOD_UNITS} food, wait inside for the husband, make love (hearts over the home), give birth.
+ * {@link CHILD_FOOD_UNITS} food, wait inside for the husband, make love, give birth.
  */
 export const ChildOrder = defineComponent<{ child: 'female' | 'male' }>('ChildOrder');
 
 /**
  * Per-tick marker: the FamilySystem is driving this settler (a wedding walk, the food haul, waiting at
- * home), so the AI planner's economy drives leave it alone — the family analogue of {@link PlayerOrder}.
- * Stamped and removed by the FamilySystem each tick; presence also preserves the settler's `Resting`
+ * home), so the AI planner's economy drives leave it alone. Presence also preserves the settler's `Resting`
  * marker across planner passes (the planner otherwise strips it on every replan).
  */
 export const FamilyDuty = defineComponent<{ readonly duty: true }>('FamilyDuty');
@@ -73,8 +72,7 @@ export const FoodReserve = defineComponent<{ amount: number }>('FoodReserve');
  * over the house (the original's `HOUSE_ACTION_OVERLAY_TYPE_MAKE_LOVE = 2` house overlay + the
  * `PARTICEL_EFFECT_HOUSE_BASE_POINT` events in the make_love animations, `logicdefines.inc`). `wife`
  * names the session's owning couple (a home may house several order-holding couples — they take turns;
- * only the owner's order advances or cancels the session). The FamilySystem advances `elapsed`; at
- * `duration` the baby is born and the component is removed.
+ * only the owner's order advances or cancels the session). At `elapsed >= duration` the baby is born.
  */
 export const MakingLove = defineComponent<{ wife: Entity; elapsed: number; duration: number }>('MakingLove');
 

@@ -5,9 +5,8 @@ import type { NodeId } from '../nav/terrain/index.js';
 
 /**
  * The `(tribe, job)` pair that keys a settler's content lookups — its weapon and armor class, its
- * allowed atomics, its animation set. A structural subset of {@link Settler}, so a `world.get(e,
- * Settler)` value assigns straight to it; named because it is what a dozen cross-system signatures
- * actually take, and an unnamed shape gets re-typed (and quietly widened) at each new one.
+ * allowed atomics, its animation set. A structural subset of {@link Settler}, so a `world.get(e, Settler)`
+ * value assigns straight to it.
  */
 export interface SettlerIdentity {
   readonly tribe: number;
@@ -15,9 +14,9 @@ export interface SettlerIdentity {
 }
 
 /**
- * A settler: an autonomous individual. In Cultures, settlers don't "do jobs" as monolithic logic —
- * they execute ATOMIC actions (see CurrentAtomic) chosen by a planner. `jobType` constrains which
- * atomics are allowed (jobtypes.allowatomic); `experience` keyed by specialization gates progression.
+ * A settler: an autonomous individual. Settlers don't "do jobs" as monolithic logic — they execute atomic
+ * actions ({@link CurrentAtomic}) chosen by a planner; `jobType` constrains which atomics are allowed
+ * (`jobtypes.allowatomic`), and `experience` keyed by specialization gates progression.
  */
 export const Settler = defineComponent<{
   tribe: number;
@@ -31,10 +30,9 @@ export const Settler = defineComponent<{
    */
   fatigue: Fixed;
   /**
-   * 0..ONE piety — the first target-bound non-food need (satisfied by walking to a site, unlike eat at a
-   * store or sleep in place). Rises over time like {@link hunger}. The original satisfies it with the `pray`
-   * atomic (id 12, `setatomic 6 12 "..._pray"`) at a temple; the need→satisfier→building lookup is a later
-   * slice, so this field is the rise half only. `enjoy` (17) / `make_love` (78) follow the same shape.
+   * 0..ONE piety — a target-bound need, satisfied by walking to a site rather than in place. Rises over time
+   * like {@link hunger}. The original satisfies it with the `pray` atomic (id 12, `setatomic 6 12 "..._pray"`)
+   * at a temple; the need→satisfier→building lookup is a later slice, so this field is the rise half only.
    */
   piety: Fixed;
   /**
@@ -43,9 +41,9 @@ export const Settler = defineComponent<{
    * and `make_love` (id 78, civilist + woman jobs, `event <at> 3 +800`) — `make_love` is not a separate need,
    * it resets this same field. (Channels: 1 = rest, 2 = hunger, 3 = leisure.)
    *
-   * Only the rise and the two resets are pinned: neither atomic has a readable building satisfier — the only
-   * no-recipe/no-worker/no-stock houses in `houses.ini` are the temple and a decorative wall — so the drive
-   * is deferred pending a content building→need binding.
+   * The drive is deferred pending a content building→need binding: neither atomic has a readable building
+   * satisfier — the only no-recipe/no-worker/no-stock houses in `houses.ini` are the temple and a decorative
+   * wall.
    */
   enjoyment: Fixed;
   /** specialization id -> experience points (humanjobexperiencetypes). */
@@ -56,18 +54,15 @@ export const Settler = defineComponent<{
  * The atomic micro-action a settler is currently executing (the unit of behavior in Cultures, e.g.
  * pickup=22, harvest=24, eat=10, attack=81). The planner (AISystem) sets this; the AtomicSystem
  * advances `progress` from 0 to ONE over `duration` ticks, and on completion applies the typed
- * {@link AtomicEffect} (the state mutation), emits an `atomicCompleted` event, and removes the
- * component — the planner sees an entity with no CurrentAtomic as ready for its next atomic.
+ * {@link AtomicEffect}, emits an `atomicCompleted` event, and removes the component — the planner sees an
+ * entity with no CurrentAtomic as ready for its next atomic.
  *
  * `atomicId` keeps the numeric content cross-reference (the join key onto a tribe's `setatomic` animation);
- * `effect` is the typed action the executor applies, so the apply switch is exhaustive and golden traces stay
- * human-readable. `duration` is the animation length in ticks (`AtomicAnimation.length`, supplied by the
- * planner) — at least 1, so a zero-length animation still completes in exactly one tick.
- * `targetEntity`/`targetTile` are the action's object (the resource to harvest, the store to pile up at).
- *
- * Timing is driven by the integer `elapsed` tick counter, not by accumulating a fixed-point step: `ONE /
- * duration` truncates, so a fractional step summed `duration` times would never reach ONE and the atomic
- * would hang.
+ * `effect` is the typed action the executor applies. `duration` is the animation length in ticks
+ * (`AtomicAnimation.length`, supplied by the planner) — at least 1, so a zero-length animation still
+ * completes in exactly one tick. `targetEntity`/`targetTile` are the action's object. Timing runs off the
+ * integer `elapsed`, never an accumulated fixed-point step: `ONE / duration` truncates, so a summed fraction
+ * would never reach ONE and the atomic would hang.
  */
 export const CurrentAtomic = defineComponent<{
   atomicId: number;
@@ -91,19 +86,18 @@ export const CurrentAtomic = defineComponent<{
 /** A settler carrying goods (carriers physically haul; goods never teleport to a global bank). */
 export const Carrying = defineComponent<{ goodType: number; amount: number }>('Carrying');
 
-/** The most units a settler PICKS UP in one lift — one, globally: a person carries a single good unit
- *  at a time (source basis: observed original behavior; no on-foot batch exists anywhere in the game).
- *  Every pickup batch caps here; hauling more takes more trips. A real cart/vehicle slice would model
- *  the vehicle as an entity with its own hold, never as a bigger personal carry. */
+/** The most units a settler picks up in one lift — one, globally: a person carries a single good unit at a
+ *  time (observed original behavior; no on-foot batch exists anywhere in the game). Hauling more takes more
+ *  trips; a cart/vehicle slice would model the vehicle's own hold, never a bigger personal carry. */
 export const CARRY_CAPACITY = 1;
 
 /**
  * A builder's construction-site crew membership: the site this settler is raising. Stamped by the builder
  * drive whenever it engages a site (hammer / fetch / wait), so membership survives waiting for material, a
- * player detour, or a meal, and the workers window lists the crew stably instead of flickering with each
- * atomic. `pinned` marks a player-made assignment (the `assignBuilder` right-click, faithful to the
- * original's "put a builder on a foundation"): a pinned site wins over the nearest-site pick while it still
- * stands. Cleared when the settler stops being a builder, no site remains, or the pinned site finishes.
+ * player detour, or a meal. `pinned` marks a player-made assignment (the `assignBuilder` right-click,
+ * faithful to the original's "put a builder on a foundation"): a pinned site wins over the nearest-site pick
+ * while it still stands. Cleared when the settler stops being a builder, no site remains, or the pinned site
+ * finishes.
  */
 export const SiteAssignment = defineComponent<{ site: Entity; pinned: boolean }>('SiteAssignment');
 
@@ -112,20 +106,18 @@ export const SiteAssignment = defineComponent<{ site: Entity; pinned: boolean }>
  * `site`. Stamped when the builder drive commits a fetch or the delivery drive routes a load to a site,
  * cleared at the top of the settler's own next planning (the rungs re-stamp it while the errand lasts), so it
  * persists through the walk/pickup/haul and dies with the errand. Later-planned settlers subtract these from
- * a site's outstanding need (the planner's inbound-supply tally, {@link import('../systems/stores/supply-tally.js').InboundSupplyTally}),
- * so two builders don't race to fetch the same last unit and a crew spreads over different materials.
+ * a site's outstanding need ({@link import('../systems/stores/supply-tally.js').InboundSupplyTally}), so two
+ * builders don't race to fetch the same last unit and a crew spreads over different materials.
  */
 export const SupplyRun = defineComponent<{ site: Entity; goodType: number; amount: number }>('SupplyRun');
 
 /**
- * A worker→workplace binding: the specific {@link Building} a settler is employed at, and the source of truth
- * for "which mill is mine" — the walk-to-workplace drive heads for this building and the staffs-here pin
- * latches the settler only on it, so two same-type workplaces staff independently. The JobSystem assigns it
- * when it employs an idle settler, picking a concrete understaffed building rather than just a job type.
- *
- * Optional, so an unemployed settler simply has none. A settler standing on a workplace it staffs but lacking
- * a binding (e.g. spawned pre-employed) is adopted by the JobSystem — bound to the building under its feet —
- * so the binding stays authoritative without a behavior change.
+ * A worker→workplace binding: the specific {@link Building} a settler is employed at — the walk-to-workplace
+ * drive heads for this building and the staffs-here pin latches the settler only on it, so two same-type
+ * workplaces staff independently. The JobSystem assigns it when it employs an idle settler, picking a concrete
+ * understaffed building rather than just a job type. Optional, so an unemployed settler simply has none; a
+ * settler standing on a workplace it staffs but lacking a binding (e.g. spawned pre-employed) is adopted by
+ * the JobSystem — bound to the building under its feet — so the binding stays authoritative.
  */
 export const JobAssignment = defineComponent<{ workplace: Entity }>('JobAssignment');
 
@@ -143,13 +135,12 @@ export const Age = defineComponent<{ ticks: number }>('Age');
  * {@link import('../systems/orders/index.js').moveUnit}. While present the AISystem's ECONOMY branch and the
  * combat auto-drives leave the unit alone (the reposition is authoritative), but its NEEDS drives still fire.
  * The {@link import('../systems/orders/index.js').playerOrderSystem} removes it the tick the unit arrives (or
- * the route fails / a need takes over) — there is no post-arrival hold, so a unit resumes autonomy on
- * arrival; DEFEND's stance anchor is the "hold position" tool.
+ * the route fails / a need takes over) — there is no post-arrival hold; DEFEND's stance anchor is the "hold
+ * position" tool.
  *
  * `pendingGoal` holds a move order issued to a settler that was still carrying a load: it can't walk with its
- * hands full, so `moveUnit` starts the drop atomic and parks the destination node here. The
+ * hands full, so `moveUnit` starts the drop atomic and parks the destination node here, and the
  * {@link import('../systems/orders/index.js').playerOrderSystem} launches the walk (sets the {@link MoveGoal})
- * the tick the drop finishes, then clears the field — from then on it is an ordinary en-route order. Absent on
- * a move order issued to an empty-handed settler (the walk begins immediately).
+ * the tick the drop finishes, then clears the field. Absent on a move order issued to an empty-handed settler.
  */
 export const PlayerOrder = defineComponent<{ pendingGoal?: NodeId }>('PlayerOrder');
