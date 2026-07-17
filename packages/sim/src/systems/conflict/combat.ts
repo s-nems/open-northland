@@ -39,14 +39,12 @@ export { SIGHT_RADIUS_NODES } from './targeting.js';
 /**
  * CombatSystem — the combat loop's decision stage: for each combatant, pick who to fight and either swing at
  * an enemy in reach or advance on one spotted but out of reach. The AtomicSystem's `attack` effect lands the
- * hit and the CleanupSystem reaps the felled.
- *
- * A combatant is a {@link Settler} carrying a {@link Health} pool; a non-combat settler carries none, so the
- * system is inert on them. Each tick:
+ * hit and the CleanupSystem reaps the felled. A combatant is a {@link Settler} carrying a {@link Health}
+ * pool, so the system is inert on non-combat settlers. Each tick:
  *
  *  1. Dormancy gate ({@link combatPossible}) — one cheap pass decides whether any hostile pair (or any
- *     lingering combat state to clean up) exists. If not, the system does no further work: a map of peaceful
- *     settlers, or an all-one-player field, costs nothing (the RTS-scale budget).
+ *     lingering combat state to clean up) exists; if not, a map of peaceful settlers, or an all-one-player
+ *     field, costs nothing (the RTS-scale budget).
  *  2. Spatial index — all combatants are bucketed by tile once ({@link NodeBuckets}), so a seeker's
  *     "nearest enemy" query is a bounded grid ring search ({@link NodeBuckets.nearest}) instead of an
  *     O(entities) full scan per seeker. The search finishes the whole minimum-distance band and picks
@@ -60,42 +58,36 @@ export { SIGHT_RADIUS_NODES } from './targeting.js';
  *     Unowned combatants carry no Stance and swing in place.
  *
  * Two hostility axes compose into the {@link mayTarget} relation:
- *  - Owner (player) hostility — two owned combatants of different players are enemies; same player are
- *    friendly, so a player's mixed-tribe army never fights itself. This is the axis battle scenes key on
- *    (viking-vs-viking told apart by player). Binary: no diplomacy/alliances.
+ *  - Owner (player) hostility — two owned combatants of different players are enemies, same player friendly,
+ *    so a player's mixed-tribe army never fights itself. Binary: no diplomacy/alliances.
  *  - Tribe hostility + predation + provoked anger ({@link mayAttack}/{@link mayHunt}/{@link Anger}) — the
- *    content relations for any pair where at least one side is unowned (wildlife, economy fixtures, the
- *    golden path): civ-vs-civ by tribe, civ⇄aggressive-animal, hunter→catchable-prey, and a struck
- *    `getAngry` animal fighting back.
+ *    content relations for any pair where at least one side is unowned: civ-vs-civ by tribe,
+ *    civ⇄aggressive-animal, hunter→catchable-prey, and a struck `getAngry` animal fighting back.
  *
  * Two reach radii: the weapon's extracted `[minRange, maxRange]` band is where a swing lands, while the
  * approximated {@link SIGHT_RADIUS_NODES} is how far an owned combatant spots an enemy to advance on. An
- * unowned combatant has no advance drive (its search radius is just `maxRange`) — it swings an in-range
- * enemy and otherwise does nothing.
+ * unowned combatant has no advance drive (its search radius is just `maxRange`).
  */
 export const combatSystem: System = (world, ctx) => {
   if (ctx.terrain === undefined) return; // mapless sim: no cells to measure reach over
   const terrain = ctx.terrain;
 
-  // Dormancy gate first, over the raw (unsorted) combatant query: it is order-independent (Set membership
-  // + a boolean any-match), so an idle standing army pays only an O(combatants) scan, not the O(c log c)
-  // canonical sort, on a tick with no fight. No possible hostile pair and no combat state to resolve ⇒ skip
-  // all combat work.
+  // The dormancy gate runs over the raw (unsorted) query: it is order-independent (Set membership + a
+  // boolean any-match), so an idle standing army pays only an O(combatants) scan, not the O(c log c)
+  // canonical sort, on a tick with no fight.
   if (!combatPossible(world, ctx, world.query(Settler, Health, Position))) return;
 
-  // A fight (or cleanup) is possible: now build the canonical (ascending-id) combatant list — the scan order
-  // and the ring-search index are both built from it, so a distance/first-match tie-break lands on the same
-  // winner every run — and the per-tick spatial bucket for the ring-search enemy query.
+  // The scan order and the ring-search index are both built from the canonical (ascending-id) list, so a
+  // distance/first-match tie-break lands on the same winner every run.
   const combatants = canonicalById(world.query(Settler, Health, Position));
   const index = new NodeBuckets(world, combatants);
   // The coarse presence grid — the owned seekers' "any enemy possibly in range?" early-out, so a
   // standing army on a peaceful two-player map skips its per-fighter ring searches (golden rule 6).
   const presence = new HostilePresence(world, combatants);
 
-  // The tick's melee-slot state (see {@link approachCell}): `standing` is the standing-collider node set (built
-  // lazily — a tick with no chaser pays nothing), `claimed` the approach cells already dealt out this tick.
-  // Chasers are served in the canonical combatant order, so slot assignment is deterministic; the sets are
-  // per-tick derived state, never hashed.
+  // The tick's melee-slot state (see {@link approachCell}); `standing` is built lazily, so a tick with no
+  // chaser pays nothing. Chasers are served in the canonical combatant order, so slot assignment is
+  // deterministic; the sets are per-tick derived state, never hashed.
   const slots: MeleeSlots = { claimed: new Set() };
   for (const e of combatants) {
     engageCombatant(world, ctx, terrain, index, presence, slots, e);
@@ -113,8 +105,7 @@ export const combatSystem: System = (world, ctx) => {
  *  - a **hunter** and a **catchable** animal are both present (a possible hunt).
  *
  * Conservative — it may pass on a tick where the two hostile sides are out of range (combat then simply finds
- * no target), but it never skips a tick where a fight or a cleanup is due. This is the lever that makes a
- * peaceful map, or an all-one-player field, cost ~0 (no per-seeker scan runs at all).
+ * no target), but it never skips a tick where a fight or a cleanup is due.
  */
 function combatPossible(world: World, ctx: SystemContext, combatants: Iterable<Entity>): boolean {
   const owners = new Set<number>();
@@ -124,9 +115,8 @@ function combatPossible(world: World, ctx: SystemContext, combatants: Iterable<E
   let hasHunter = false;
   let hasCatchable = false;
   for (const e of combatants) {
-    // Lingering combat state must always be resolved (disengage / reap / clear the order / wind a flee
-    // cool-down down), independent of whether a live enemy remains — so its presence alone keeps the
-    // system awake this tick.
+    // Lingering combat state must be resolved (disengage / reap / clear the order / wind a flee cool-down
+    // down) even with no live enemy left, so its presence alone keeps the system awake this tick.
     if (world.has(e, Engagement) || world.has(e, AttackOrder) || world.has(e, Anger) || world.has(e, Fleeing))
       return true;
     const s = world.get(e, Settler);
@@ -150,7 +140,7 @@ function combatPossible(world: World, ctx: SystemContext, combatants: Iterable<E
 
 /**
  * Resolve and act on one combatant's engagement this tick — stance-gated for owned units: pick a target and
- * swing / chase / defend / flee / disengage per its {@link Stance} military mode. The gates:
+ * swing / chase / defend / flee / disengage per its {@link Stance} military mode. The gates, in order:
  *  - **busy** (a {@link CurrentAtomic} running) or **dead** (`hitpoints <= 0`) → leave it (a mid-swing unit
  *    plays out; a felled-but-unreaped one gets no swing from beyond the grave);
  *  - **live player move order** (a {@link PlayerOrder}, not an {@link AttackOrder}) → it suppresses all
@@ -167,7 +157,7 @@ function combatPossible(world: World, ctx: SystemContext, combatants: Iterable<E
  *  - else resolve a target under the stance's {@link engageSpec} (ATTACK: sight; DEFEND: anchor radius;
  *    IGNORE-hunter: prey) and swing (in reach) / chase (owned, leashed for DEFEND) / return-to-anchor
  *    (DEFEND, none) / disengage (none).
- * Unowned combatants carry no Stance and keep the legacy content-relation behaviour (swing-in-place).
+ * Unowned combatants carry no Stance and keep the content-relation behaviour (swing-in-place).
  */
 function engageCombatant(
   world: World,
@@ -184,51 +174,40 @@ function engageCombatant(
   const owned = world.has(e, Owner);
   let ordered = world.has(e, AttackOrder);
   const attacker = world.get(e, Settler);
-  // A live player move order (a {@link PlayerOrder}, and not an explicit {@link AttackOrder}) is the human's
-  // authoritative "go there" command: en route it suppresses all auto-behavior — engage and flee — so the
-  // reposition is carried out (ordering units past an enemy line routes around it, never into a fight). The
-  // order dies on arrival ({@link playerOrderSystem}), so the unit's own stance resumes there — a DEFEND guard
-  // fights around its relocated anchor, a passive unit stands. `moveUnit` clears any prior
-  // Engagement/AttackOrder/Fleeing, so an ordered unit starts its walk cleanly; an explicit AttackOrder is the
-  // opposite intent (fight that one) and always engages.
+  // The move-order gate (see the ladder above); `moveUnit` clears any prior Engagement/AttackOrder/Fleeing,
+  // so an ordered unit starts its walk cleanly.
   if (world.has(e, PlayerOrder) && !ordered) return;
-  // An explicit attack order that has outlived its target (dead / no longer a valid hostile) is dropped here,
-  // before the stance dispatch, so the unit re-decides by its stance this tick — an IGNORE scout goes back to
-  // ignoring, a FLEE civilian to fleeing, a DEFEND guard to its post — instead of the order's now-stale
-  // general-hostility spec falling through to a one-tick ATTACK-style re-acquire regardless of stance. An
-  // ATTACK unit still re-acquires the nearest enemy the same tick (its own stance path does).
+  // An explicit attack order that has outlived its target (dead / no longer a valid hostile) is dropped
+  // before the stance dispatch, so the unit re-decides by its stance this tick instead of the order's stale
+  // general-hostility spec falling through to a one-tick ATTACK-style re-acquire regardless of stance.
   if (ordered && !isValidTarget(world, ctx, e, attacker, world.get(e, AttackOrder).target)) {
     world.remove(e, AttackOrder);
     ordered = false;
   }
-  // The unit's military stance drives its auto-behavior. Unowned combatants carry no Stance — modelled as
-  // a `null` mode, they keep the legacy content-relation behaviour (swing an in-reach enemy, no advance/flee).
-  // Derived once here and handed whole to engageSpec/chase, which only ever read the three together.
+  // An unowned combatant carries no Stance — modelled as a `null` mode. Derived once here and handed whole
+  // to engageSpec/chase, which only ever read the three together.
   const mode = owned ? stanceMode(world, e, attacker.jobType) : null;
   const stance: CombatantStance = { owned, ordered, mode };
 
-  // FLEE — run from the nearest threat. Runs even while travelling (re-evaluated each tick to track a moving
-  // threat and wind the cool-down down). An explicit attack order overrides the flee mode. A unit that has
-  // stopped fleeing (stance changed, or an order took over) sheds the flee state + its run route.
+  // A unit that has stopped fleeing (stance changed, or an order took over) sheds the flee state + its run
+  // route.
   const willFlee = mode === MILITARY_MODE.FLEE && !ordered;
   if (world.has(e, Fleeing) && !willFlee) {
     world.remove(e, Fleeing);
     clearNavState(world, e);
   }
   if (willFlee) {
-    // A fleeing unit is not attack-engaged: shed any Engagement left from a prior ATTACK/DEFEND chase (e.g.
-    // `setStance(FLEE)` issued mid-chase). Without this the stale marker outlives the flee — once the threat
-    // clears, `fleeDrive` drops `Fleeing` but not `Engagement`, benching the unit (aiSystem skips it) and
-    // keeping combat awake forever. The `Fleeing` marker (not `Engagement`) is what holds a fleer off the economy.
+    // A fleeing unit is not attack-engaged: shed any Engagement left from a prior ATTACK/DEFEND chase. A
+    // stale marker would outlive the flee — `fleeDrive` drops `Fleeing` but not `Engagement` — benching the
+    // unit (aiSystem skips it) and keeping combat awake forever.
     world.remove(e, Engagement);
     fleeDrive(world, ctx, terrain, index, presence, e, attacker);
     return;
   }
 
-  // IGNORE (and the passive NONE, normalized to IGNORE by {@link stanceMode}) — never auto-engage a hostile
-  // enemy; only an explicit attack order fights. A hunter is exempt: its catchable-prey predation is an economic
-  // drive independent of the military mode, so it falls through to the engage path (with a predation-only target
-  // filter, {@link engageSpec}).
+  // The passive NONE is normalized to IGNORE by {@link stanceMode}. A hunter is exempt: its catchable-prey
+  // predation is an economic drive independent of the military mode, so it falls through to the engage path
+  // (with a predation-only target filter, {@link engageSpec}).
   if (mode === MILITARY_MODE.IGNORE && !ordered && attacker.jobType !== HUNTER_JOB) {
     disengage(world, e);
     return;
@@ -237,12 +216,11 @@ function engageCombatant(
   const engaged = world.has(e, Engagement);
   const travelling = isTravelling(world, e);
   // A travelling unit that is not yet fighting is walking under another drive (an economy walk, or a DEFEND
-  // unit heading back to its anchor) — don't yank it into combat. An engaged/ordered unit is re-checked
-  // even while moving.
+  // unit heading back to its anchor) — don't yank it into combat.
   if (travelling && !engaged && !ordered) return;
 
-  // An unowned passive animal drives no attack (and a lapsed anger timer is reaped here); an owned unit
-  // is always an aggressor. `hostileAnimalNow` is only consulted for the unowned-animal case.
+  // An unowned passive animal drives no attack (and a lapsed anger timer is reaped here); an owned unit is
+  // always an aggressor.
   if (!owned && !ordered && isAnimalTribe(ctx.content, attacker.tribe)) {
     if (!hostileAnimalNow(world, ctx, e, attacker.tribe)) {
       disengage(world, e);
@@ -270,28 +248,23 @@ function engageCombatant(
 
   const { target, dist } = found;
   if (dist >= weapon.minRange && dist <= weapon.maxRange && !travelling) {
-    // In the reach band and standing: swing. The standstill gate matters for the feel of the swing — node
-    // positions truncate to the lattice (`nodeOfPosition`), so a walker can read as in-band mid-stride (up to
-    // half an edge short of a centre); starting the swing there froze it off any node centre and the wind-up
-    // read as a glide/teleport. Gated, the walker finishes its (braked) last leg onto the slot's centre and
-    // swings from a standstill; an unowned unit never travels into combat, so its swing-in-place behaviour is
-    // untouched. Clearing the nav state is then just stale-goal hygiene for the owned arrival.
+    // In the reach band and standing: swing. The standstill gate: node positions truncate to the lattice
+    // (`nodeOfPosition`), so a walker can read as in-band mid-stride (up to half an edge short of a centre)
+    // and swinging there would freeze it off any node centre, reading as a glide. Gated, the walker finishes
+    // its braked last leg onto the slot's centre first; clearing the nav state is then stale-goal hygiene.
     clearNavState(world, e);
-    // The Engagement marker (economy-skip + chase throttle) is owned-only — an unowned combatant swings in place
-    // with no advance drive, so stamping it there would give it a spurious economy-skip and perturb its hash (it
-    // must stay byte-identical to the pre-engagement behaviour). During the swing the unit is mid-`CurrentAtomic`
-    // anyway, which already gates it off the economy; the marker only matters in the idle tick between swings,
-    // where it keeps an owned unit engaged instead of re-tasked.
+    // The Engagement marker (economy-skip + chase throttle) is owned-only: an unowned combatant swings in
+    // place with no advance drive, so stamping it there would give it a spurious economy-skip and perturb
+    // its hash. It only matters in the idle tick between swings (mid-swing, `CurrentAtomic` already gates
+    // the unit off the economy), where it keeps an owned unit engaged instead of re-tasked.
     if (owned) world.add(e, Engagement, { repathAt: world.tryGet(e, Engagement)?.repathAt ?? ctx.tick });
     const damage = weaponDamageVsMaterial(weapon.weapon, targetMaterial(world, ctx, target));
     startAttack(world, ctx, attacker, e, target, damage, weapon.weapon);
     return;
   }
 
-  // Beyond reach. Only an owned combatant advances (the player's army walks into melee); an unowned one simply
-  // has no target this tick (the resolveTarget search radius was capped at maxRange for it, so this branch is
-  // unreachable for unowned — kept explicit for the owned chase). A DEFEND chase is leashed to the anchor
-  // (`spec.defend`), so it never pursues far.
+  // Beyond reach: only an owned combatant advances. An unowned one's resolveTarget radius was capped at
+  // maxRange, so its branch here is unreachable — kept explicit rather than assumed away.
   if (!owned) {
     disengage(world, e);
     return;

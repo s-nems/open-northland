@@ -4,9 +4,8 @@ import { defineComponent, type Entity } from '../../ecs/world.js';
  * A harvestable resource node placed in the world (a tree, ore vein, berry bush). It yields its `goodType`
  * when a settler runs the good's harvest atomic on its cell; `remaining` is the units left — each completed
  * harvest decrements it, so a finite node empties and the planner's `remaining <= 0` gate skips it.
- * `harvestAtomic` is the numeric atomic id to run (the good's `atomicForHarvesting`), kept so the planner
- * picks the atomic from content rather than hardcoding one. The resource occupies the nav node under its
- * {@link Position} (via `nodeAtClamped`).
+ * `harvestAtomic` is the numeric atomic id to run (the good's `atomicForHarvesting`). The resource occupies
+ * the nav node under its {@link Position} (via `nodeAtClamped`).
  */
 export const Resource = defineComponent<{
   goodType: number;
@@ -30,12 +29,11 @@ export interface ResourceFootprintCell {
  * Data-driven collision/work footprint for a standing {@link Resource} node, copied from its
  * harvest-stage `[GfxLandscape]` record (`LogicWalkBlockArea`, `LogicBuildBlockArea`, `LogicWorkArea`).
  * `walk` cells enter the dynamic pathfinding overlay, `build` cells reserve the no-building ring, and `work`
- * cells are where a collector stands to run the harvest atomic.
+ * cells are where a collector stands to run the harvest atomic. Separate from {@link Resource} so fixtures
+ * that place a bare resource keep the pre-footprint same-tile behavior.
  *
- * Separate from {@link Resource} so fixtures that place a bare resource keep the pre-footprint same-tile
- * behavior, while real/imported nodes and acceptance scenes stamp this from content. The original footprint
- * rows are valency-state keyed; the resolver stamps the highest state (the fresh/full node) so collision is
- * static until the node is removed.
+ * The original footprint rows are valency-state keyed; the resolver stamps the highest state (the fresh/full
+ * node) so collision is static until the node is removed.
  */
 export interface ResourceFootprintData {
   readonly walk: readonly ResourceFootprintCell[];
@@ -56,8 +54,8 @@ export const ResourceFootprint = defineComponent<ResourceFootprintData>('Resourc
  * `chopsLeft` counts the chops still needed: each completed harvest atomic decrements it, yielding nothing
  * onto the settler's back, and the node falls at 0 — the standing node is destroyed and its whole
  * `Resource.remaining` yield drops at its cell as a bare {@link Stockpile} trunk pile (a {@link GroundDrop}).
- * A {@link MineDeposit} node instead drops one unit per swing; a node with neither marker is the trivial
- * direct pickup (a mushroom: one swing onto the back).
+ * A {@link MineDeposit} node instead drops one unit per swing; a node with neither marker is the direct
+ * pickup (a mushroom: one swing onto the back).
  */
 export const Felling = defineComponent<{ chopsLeft: number }>('Felling');
 
@@ -67,23 +65,21 @@ export const Felling = defineComponent<{ chopsLeft: number }>('Felling');
  * `landscapeToPickup` "ore" stage, unlike a mushroom whose harvest is its pickup; `bioLandscape 0` in the
  * data). Stamped by the placement code from the good's `gathering.depositSize`/`depositLevels`. Each chipped
  * unit drains one off `Resource.remaining` and drops at the node's cell as a bare {@link Stockpile} ore pile
- * (a {@link GroundDrop}); the node is removed when `remaining` hits 0, so a deposit empties over its whole
- * `initial` size rather than falling once.
+ * (a {@link GroundDrop}); the node is removed when `remaining` hits 0.
  *
  * `initial` is the deposit's size at spawn — the denominator for the render's shrink-by-level pick (a level is
  * `remaining/initial` bucketed into `levels` visual states, the `[GfxLandscape]` mine record's fill frames).
  * `levels` is that state count (observed = the ls_ground mine gfx's 5 fill states).
  *
  * `strikesPerUnit`/`strikes` make a unit take several work cycles: each completed harvest atomic advances
- * `strikes`, and only the strike reaching `strikesPerUnit` chips the unit off and resets the counter.
- * Observed calibration like {@link Felling.chopsLeft} — the readable data has no per-unit strike count
- * (`atomicanimations.ini` carries only the single-swing cycle length). A node stamped without the field
- * behaves as 1 strike per unit.
+ * `strikes`, and only the strike reaching `strikesPerUnit` chips the unit off and resets the counter. The
+ * count is an observed calibration — the readable data has none (`atomicanimations.ini` carries only the
+ * single-swing cycle length). A node stamped without the field behaves as 1 strike per unit.
  */
 export const MineDeposit = defineComponent<{
   initial: number;
   levels: number;
-  /** Work cycles per chipped unit (≥1; OBSERVED — see the component doc). */
+  /** Work cycles per chipped unit (≥1; observed calibration — see the component doc). */
   strikesPerUnit?: number;
   /** Progress toward the next unit (0..strikesPerUnit-1), reset on each chipped unit. */
   strikes?: number;
@@ -113,9 +109,8 @@ export const GroundDrop = defineComponent<{ goodType: number }>('GroundDrop');
  * harvester is a flag-bound gatherer (carries a {@link WorkFlag}), it is what makes a gatherer carry off only
  * what it dug itself: the collect drive reclaims a drop only when `by` is its own entity, so a loose pile it
  * did not make (another settler's trunk, a player-dropped heap, a map-seeded pile) is left in peace. Entity
- * ids are monotonic and never reused, so a dead owner's id can never re-alias a live settler.
- *
- * A drop made by a flagless collector carries none, hashing and collecting exactly as before.
+ * ids are monotonic and never reused, so a dead owner's id can never re-alias a live settler. A drop made by
+ * a flagless collector carries none.
  */
 export const HarvestedBy = defineComponent<{ by: Entity }>('HarvestedBy');
 
@@ -123,7 +118,7 @@ export const HarvestedBy = defineComponent<{ by: Entity }>('HarvestedBy');
  * A wild berry bush — a natural food source anyone can graze, distinct from the job-gated {@link Resource}
  * gathering economy: a hungry settler forages a ripe bush directly (the `forage` atomic), no job or tool
  * needed, and the bush regrows over time. Deliberately not a {@link Resource}: it carries no harvest atomic
- * and never enters a gatherer's harvest scans, so bushes stay out of the wood/stone/ore economy.
+ * and never enters a gatherer's harvest scans.
  *
  * source-basis: the original's `landscapetypes.ini` bush cycle — `bush with fruits` (type 11) on the PICK
  * trigger (`transition 3 <bush naked> 2 0 18`) yields good 18 `fruit` and becomes `bush naked` (type 9),
@@ -137,9 +132,8 @@ export const HarvestedBy = defineComponent<{ by: Entity }>('HarvestedBy');
  * timed by `ripeAtTick` (see systems/economy/berries.ts).
  *
  * `ripe` is whether the bush currently holds fruit. `ripeAtTick` is the absolute tick the BerryGrowthSystem
- * flips a bare bush back to ripe (an exact integer compare, so the snapshot scenery cache only re-clones a
- * bush when it is foraged or regrows); unused (0) while ripe. `gfxIndex` is the opaque render-variant tag
- * ({@link Resource.gfxIndex}'s twin) the render keys its bush species off; the sim never reads it.
+ * flips a bare bush back to ripe; unused (0) while ripe. `gfxIndex` is the render-variant tag (see
+ * {@link Resource.gfxIndex}).
  */
 export const BerryBush = defineComponent<{
   ripe: boolean;

@@ -57,9 +57,8 @@ import { boundWorkplaceTarget, collectTargets, hasHaulableOutput } from './targe
  *     request-less entity into a PathRequest; PathfindingSystem routes it, MovementSystem walks it,
  *     and the goal is removed on arrival.
  *
- * The split mirrors the original: the atomic vocabulary is the soul of the behavior, and navigation
- * is just how a settler physically reaches an atomic's target. The atomic planner runs first so a
- * freshly-set goal is picked up by the navigation pass in the same tick (no one-tick stall).
+ * The atomic planner runs first so a freshly-set goal is picked up by the navigation pass in the same
+ * tick (no one-tick stall).
  */
 export const aiSystem: System = (world, ctx) => {
   if (ctx.terrain === undefined) return; // mapless sim: no cells to navigate over
@@ -85,26 +84,23 @@ export const aiSystem: System = (world, ctx) => {
  * distance+cell tie-break, so the choice never depends on store insertion history.
  */
 function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph): void {
-  // Build each target category once per tick (ascending entity-id, canonical), so a scan is
-  // O(candidates) rather than every idle settler re-scanning and re-sorting the whole world per
-  // `nearest*` call (`canonicalEntities()` allocates and sorts all entities — O(settlers · entities ·
-  // log n) per tick). The ascending-id order matches a full scan, so the distance+id tie-break picks the
-  // identical winner and the goldens hold.
+  // Build each target category once per tick (ascending entity-id, canonical), so a scan is O(candidates)
+  // rather than every idle settler re-scanning and re-sorting the whole world per `nearest*` call
+  // (`canonicalEntities()` sorts all entities — O(settlers · entities · log n) per tick). The ascending-id
+  // order matches a full scan, so the distance+id tie-break picks the identical winner.
   const targets = collectTargets(world, ctx, terrain);
-  // Dormancy gate: the carrier fallback (`nearestWorkplaceOutput`) is a full stockpile scan per settler.
-  // If nothing is haulable anywhere this tick, every settler's scan returns null — so decide it once and
-  // let idle settlers skip the scan (identical outcome, no per-settler work). This is what keeps an idle
-  // crowd at ~0 cost.
+  // Dormancy gate: the carrier fallback (`nearestWorkplaceOutput`) is a full stockpile scan per settler. If
+  // nothing is haulable anywhere this tick every settler's scan returns null, so decide it once and let idle
+  // settlers skip the scan (identical outcome, no per-settler work).
   const anyHaulable = hasHaulableOutput(world, ctx, targets.stockpiles);
   // One shared external-food index for every housewife's hoard rung this tick (it self-builds on the
   // first woman who actually needs a source, so a woman-less or fully-stocked tick pays nothing).
   const externalFood = new ExternalFoodIndex(world, ctx, terrain);
-  // Spacing occupancy — shared by both spacing consumers (the idle de-stack rung and the builder work
-  // slots, see ./destack.ts): owned settlers currently stationary (not travelling — distinct from the
-  // waiting-inside `Resting` marker) bucketed by integer tile, in ascending-id order. Gated on Owner so it
-  // only ever moves player-owned units; the unowned golden/economy fixtures build an empty bucket set, so
-  // their planner output is byte-identical. Built once from the tick-start positions, stable across the
-  // loop's own mutations.
+  // Spacing occupancy — shared by the idle de-stack rung and the builder work slots (./destack.ts): owned
+  // settlers currently stationary (not travelling — distinct from the waiting-inside `Resting` marker)
+  // bucketed by integer tile, in ascending-id order, built once from the tick-start positions so it is
+  // stable across the loop's own mutations. Gated on Owner, so the unowned golden/economy fixtures build an
+  // empty bucket set and their planner output stays byte-identical.
   const stationaryOwned = canonicalById(world.query(Settler, Position, Owner)).filter(
     (e) => !isTravelling(world, e),
   );
@@ -171,10 +167,9 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
 
     // NEEDS (highest priority): eat > sleep > pray. An unsatisfiable need falls through to work.
     if (planNeeds(world, ctx, terrain, e, settler, here, load, targets, limit)) {
-      // A needs drive pulled the settler away: shed a lingering waiting-inside marker (preserved
-      // above for family duty) so the walk to food/temple is visible (the render hides a Resting
-      // settler) and the family stages stop reading a foraging parent as "inside". The needs drives
-      // never stamp Resting themselves (sleep is in place), so this only clears a stale marker.
+      // A needs drive pulled the settler away: shed a lingering waiting-inside marker so the walk to
+      // food/temple is visible (the render hides a Resting settler) and the family stages stop reading a
+      // foraging parent as "inside". The needs drives never stamp Resting themselves (sleep is in place).
       world.remove(e, Resting);
       continue;
     }
@@ -184,14 +179,12 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // unit away, faithful to the autonomous-settler model):
     //  - Engagement: fighting/advancing — the CombatSystem owns its movement (the chase) and its atomic
     //    (the swing); it clears the marker when the fight ends.
-    //  - Fleeing: running from danger (the FLEE stance's active drive) — matters while it stands (boxed
-    //    in, or in the flee cool-down); while running it carries a MoveGoal and was skipped above.
-    //    combatSystem sheds the marker when the threat is gone; a collapsing need overrides the flee
-    //    inside combatSystem, so this never traps a starving unit.
+    //  - Fleeing: running from danger (the FLEE stance's active drive) — matters while it stands (boxed in,
+    //    or in the flee cool-down); while running it carries a MoveGoal and was skipped above.
     //  - DEFEND stance: a guard holds its post against the economy (the CombatSystem walks it back when
     //    displaced); owned-only, so unowned/golden fixtures are untouched.
-    //  - PlayerOrder: a unit still walking out the player's move order. playerOrderSystem removes the
-    //    order on arrival, and the economy re-tasks it the same tick.
+    //  - PlayerOrder: a unit still walking out the player's move order; playerOrderSystem removes the order
+    //    on arrival, and the economy re-tasks it the same tick.
     if (world.has(e, Engagement)) continue;
     if (world.has(e, Fleeing)) continue;
     const stance = world.tryGet(e, Stance);
@@ -237,13 +230,12 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // `logicproduction`) farms its fields instead of standing at the station minting the good.
     if (planFarmer(plan, farmClaims)) continue;
 
-    // 2a. PRODUCER / WORKSHOP SUPPLIER — a worker bound to a recipe workshop. A CARRIER bound there
-    // ferries (top up inputs, carry outputs out — it never operates the craft); a craftsman claims a
-    // work seat and produces, fetches a missing input itself when starved (even beside a carrier),
-    // and leaves the output run to its carrier when one is bound.
-    // A gatherer bound to a recipe workshop (a collector employed to feed a smith its ore) is NOT its
-    // operator — it runs the gather drive below and banks its harvest into the building. Excluded here so
-    // boundWorkplaceTarget doesn't route it into the producer/supplier craft loop.
+    // 2a. PRODUCER / WORKSHOP SUPPLIER — a worker bound to a recipe workshop. A carrier bound there ferries
+    // (top up inputs, carry outputs out — it never operates the craft); a craftsman claims a work seat and
+    // produces, fetches a missing input itself when starved (even beside a carrier), and leaves the output
+    // run to its carrier when one is bound. A gatherer bound to a recipe workshop (a collector employed to
+    // feed a smith its ore) is not its operator — it runs the gather drive below and banks its harvest into
+    // the building, so it is excluded here rather than routed into the craft loop.
     const workplace = jobCanHarvest(ctx, plan.jobType)
       ? null
       : boundWorkplaceTarget(world, ctx, e, plan.jobType, plan.tribe);
