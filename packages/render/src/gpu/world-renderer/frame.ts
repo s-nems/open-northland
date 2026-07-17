@@ -43,8 +43,8 @@ export interface WorldRendererOptions {
 /** Shared empty highlight so clearing the assign-mode tint allocates nothing. */
 export const EMPTY_HIGHLIGHT: ReadonlyMap<number, boolean> = new Map();
 
-/** Shared empty selection so the common no-selection `update` allocates nothing. */
-export const NO_SELECTION: ReadonlySet<number> = new Set();
+/** Shared empty ref set so the common no-selection / no-flagged `update` allocates nothing. */
+export const NO_REFS: ReadonlySet<number> = new Set();
 export const NO_BADGES: readonly DoorBadge[] = [];
 
 /**

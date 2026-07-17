@@ -76,8 +76,9 @@ export class WorldChrome {
    * the zoomed-out bobs sparkle while panning, so the texture-cache pages (RGB bob + shadow atlases —
    * never the indexed character sheets, which don't pass through the cache) flip to linear; at scale ≥ 1
    * exactly the flipped set restores to nearest, keeping magnified pixel art crisp. The terrain pages
-   * are untouched — they load linear at every zoom (the original samples them bilinearly). O(new pages)
-   * per frame — already-flipped pages are skipped via {@link linearPages}. Known limit: the portrait
+   * are untouched — they load linear at every zoom (the original samples them bilinearly). Walks every
+   * cached page each frame while zoomed out ({@link linearPages} skips the write, not the visit) — a
+   * handful of atlases, so the scan is free. Known limit: the portrait
    * inset re-renders the world magnified in the same frame, so while zoomed out its cutout samples the
    * flipped pages linear (slightly soft) — accepted; a per-render flip would touch every page twice a
    * frame.
