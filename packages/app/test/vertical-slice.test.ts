@@ -268,6 +268,31 @@ describe('authored placements (map.cif StaticObjects → sim commands)', () => {
     expect(skipped).toBe(3);
   });
 
+  it('resolves the freehand role spellings the decoded maps really author via the normalized key', () => {
+    // `Child_Male`-style casing, `coin maker`-style spacing and `hero_axe_???` suffixes all mean the
+    // `jobtypes.ini` slug; an exact-string join dropped them (observed across content/maps/*.json).
+    const freehandRows: AuthoredJoinRows = {
+      ...rows,
+      jobs: [
+        { typeId: 7, id: 'builder', name: 'builder' },
+        { typeId: 14, id: 'coin_maker', name: 'coin_maker' },
+        { typeId: 46, id: 'hero_axe', name: 'hero_axe' },
+      ],
+    };
+    const freehandHumans = {
+      buildings: [],
+      humans: [
+        { tribe: 'viking', role: 'BUILDER', player: 0, hx: 3, hy: 5 },
+        { tribe: 'viking', role: 'coin maker', player: 0, hx: 5, hy: 5 },
+        { tribe: 'viking', role: 'hero_axe_???', player: 0, hx: 7, hy: 5 },
+      ],
+      animals: [],
+    };
+    const { placements, skipped } = resolveAuthoredPlacements(freehandHumans, freehandRows, authoredMap());
+    expect(placements.map((p) => (p.kind === 'human' ? p.jobType : -1))).toEqual([7, 14, 46]);
+    expect(skipped).toBe(0);
+  });
+
   it('runAuthoredSlice places the resolved buildings + settlers at their authored nodes', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {}); // skipped-rows warning is expected here
     const { Position, Building, Settler } = components;
