@@ -68,11 +68,16 @@ describe.runIf(hasRealIr() && existsSync(resolve(contentDir(), 'maps')))('decode
     // stage silently broke, not that the sources lost their rosters.
     expect(files.length).toBeGreaterThan(50);
     let withHumanSeat = 0;
+    let withMultiplayerTable = 0;
     for (const f of files) {
       const script = MapScript.parse(JSON.parse(readFileSync(resolve(mapsDir(), f), 'utf8')));
       if (script.players.some((p) => p.type === 'human')) withHumanSeat++;
+      if (script.multiplayer !== undefined) withMultiplayerTable++;
     }
     expect(withHumanSeat).toBeGreaterThan(50);
+    // ~45 corpus maps author a [multiplayer] lobby table (player.inc/misc.inc/map.ini/map.cif);
+    // zero means the section reader silently broke.
+    expect(withMultiplayerTable).toBeGreaterThan(30);
   });
 
   it(

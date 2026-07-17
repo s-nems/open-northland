@@ -54,6 +54,28 @@ export const MapScriptLine = z.strictObject({
 export type MapScriptLine = z.infer<typeof MapScriptLine>;
 
 /**
+ * One `[multiplayer]` `playeroption <slot> <type…>` row — which player types the multiplayer lobby
+ * offers for the slot (`PLAYER_TYPE_*`: human seatable, ai, none = closed). This is the original's
+ * seat-eligibility table: a slot authored `ai` in `playerdata` is still human-seatable when its
+ * options include `human` (e.g. the packed multiplayer specials).
+ */
+export const MapMultiplayerSlot = z.strictObject({
+  player: z.number().int().nonnegative(),
+  allowed: z.array(z.enum(['human', 'ai', 'none'])),
+});
+export type MapMultiplayerSlot = z.infer<typeof MapMultiplayerSlot>;
+
+/** The `[multiplayer]` section: per-slot lobby options, `playerhideinmenu` slots the lobby never
+ *  lists, and `playerfixcolors` locking the authored colours. Unknown lines stay lossless in `other`. */
+export const MapMultiplayer = z.strictObject({
+  slotOptions: z.array(MapMultiplayerSlot).default([]),
+  hiddenSlots: z.array(z.number().int().nonnegative()).default([]),
+  fixedColors: z.boolean().optional(),
+  other: z.array(MapScriptLine).default([]),
+});
+export type MapMultiplayer = z.infer<typeof MapMultiplayer>;
+
+/**
  * One `MissionData` trigger (maps repeat the section, one per trigger). The scalar header keys are
  * typed; each `goal`/`result` keeps its quoted opcode + raw args verbatim (28 observed result arg
  * shapes — interpretation is a consumer concern). Lines outside that grammar land in `other`.
@@ -78,6 +100,8 @@ export type MapMission = z.infer<typeof MapMission>;
 export const MapScript = z.strictObject({
   players: z.array(MapPlayerSlot).default([]),
   diplomacy: z.array(MapDiplomacy).default([]),
+  /** The `[multiplayer]` lobby table, when the map ships one (the multiplayer-capable minority). */
+  multiplayer: MapMultiplayer.optional(),
   misc: z.array(MapScriptLine).default([]),
   missions: z.array(MapMission).default([]),
   source: Provenance.optional(),

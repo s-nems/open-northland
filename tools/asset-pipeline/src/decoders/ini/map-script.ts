@@ -1,6 +1,6 @@
 /**
- * Map scripting reducer: `playerdata`/`playermisc`/`MissionData` sections → a validated
- * {@link MapScript}. Shared by both source skins — the plaintext `player.inc`/`mission.inc` pair
+ * Map scripting reducer: `playerdata`/`playermisc`/`multiplayer`/`MissionData` sections → a
+ * validated {@link MapScript}. Shared by both source skins — the plaintext `player.inc`/`mission.inc` pair
  * (macro tokens like `#PLAYER_TYPE_HUMAN`) and the packed `map.cif` (the same lines with the macros
  * already resolved to numbers) — so the token→code resolution accepts both forms.
  */
@@ -39,8 +39,14 @@ const MACRO_CODES: Readonly<Record<string, number>> = {
   DIPLOMACY_STATE_ENEMY: 3,
 };
 
+const PLAYER_TYPE_NONE = 0;
 const PLAYER_TYPE_HUMAN = 1;
 const PLAYER_TYPE_AI = 2;
+const PLAYER_TYPE_NAMES: Readonly<Record<number, 'human' | 'ai' | 'none'>> = {
+  [PLAYER_TYPE_NONE]: 'none',
+  [PLAYER_TYPE_HUMAN]: 'human',
+  [PLAYER_TYPE_AI]: 'ai',
+};
 const DIPLOMACY_NAMES: Readonly<Record<number, 'friend' | 'neutral' | 'enemy'>> = {
   1: 'friend',
   2: 'neutral',
@@ -91,6 +97,42 @@ function diplomacyRow(p: RuleProp): MapScript['diplomacy'][number] | undefined {
   return { from, to, state };
 }
 
+/**
+ * One `[multiplayer]` section folded into the accumulator (kept mutable so a map splitting the
+ * section across inc files still merges into one table). `playeroption <slot> <type…>` rows keep
+ * their first occurrence per slot; `playerhideinmenu` collects slot ids; `playerfixcolors <0|1>`
+ * locks the authored colours. Anything else stays lossless in `other` — including the corpus's two
+ * hand-wrapped `playeroption` continuation lines (a bare `#PLAYER_TYPE_NONE` on its own line),
+ * which the original's keyed line parser would not attach either.
+ */
+function multiplayerSection(sec: RuleSection, out: NonNullable<MapScript['multiplayer']>): void {
+  for (const p of sec.props) {
+    if (p.key === 'playeroption') {
+      const player = int(p.values[0]);
+      const allowed = p.values
+        .slice(1)
+        .map((token) => PLAYER_TYPE_NAMES[code(token) ?? -1])
+        .filter((t): t is NonNullable<typeof t> => t !== undefined);
+      if (player !== undefined && player >= 0 && allowed.length > 0) {
+        if (!out.slotOptions.some((s) => s.player === player)) {
+          out.slotOptions.push({ player, allowed: [...new Set(allowed)] });
+        }
+        continue;
+      }
+    } else if (p.key === 'playerhideinmenu') {
+      const slots = p.values.map(int).filter((n): n is number => n !== undefined && n >= 0);
+      if (slots.length > 0) {
+        for (const slot of slots) if (!out.hiddenSlots.includes(slot)) out.hiddenSlots.push(slot);
+        continue;
+      }
+    } else if (p.key === 'playerfixcolors') {
+      out.fixedColors = int(p.values[0]) !== 0;
+      continue;
+    }
+    out.other.push(asLine(p));
+  }
+}
+
 /** One repeated `MissionData` section → a trigger: typed header scalars, lossless goal/result lines. */
 function mission(sec: RuleSection): MapScript['missions'][number] {
   const out: MapScript['missions'][number] = { goals: [], results: [], other: [] };
@@ -131,7 +173,8 @@ function mission(sec: RuleSection): MapScript['missions'][number] {
 /**
  * Reduces a map's decoded sections into its validated {@link MapScript}: the `playerdata` roster +
  * diplomacy (typed; a malformed row falls into `misc` rather than aborting the map), every
- * `playermisc` line and unrecognized `playerdata` line kept lossless in `misc`, and one
+ * `playermisc` line and unrecognized `playerdata` line kept lossless in `misc`, the `[multiplayer]`
+ * lobby table when present, and one
  * {@link MapMission} per repeated `MissionData` section in authored order. Section names match
  * case-insensitively (the packed skin spells `MissionData`, the corpus also carries `[AIData]`
  * vs `[aidata]`). A duplicate `player` slot keeps its first row (matching the first-prop-wins
@@ -145,6 +188,7 @@ export function extractMapScript(sections: readonly RuleSection[], src: SourceRe
   const diplomacy: NonNullable<MapScript['diplomacy']> = [];
   const misc: NonNullable<MapScript['misc']> = [];
   const missions: NonNullable<MapScript['missions']> = [];
+  let multiplayer: NonNullable<MapScript['multiplayer']> | undefined;
   for (const sec of sections) {
     const name = sec.name.toLowerCase();
     if (name === 'playerdata') {
@@ -167,14 +211,20 @@ export function extractMapScript(sections: readonly RuleSection[], src: SourceRe
       }
     } else if (name === 'playermisc') {
       for (const p of sec.props) misc.push(asLine(p));
+    } else if (name === 'multiplayer') {
+      multiplayer ??= { slotOptions: [], hiddenSlots: [], other: [] };
+      multiplayerSection(sec, multiplayer);
     } else if (name === 'missiondata') {
       missions.push(mission(sec));
     }
   }
-  if (players.length + diplomacy.length + misc.length + missions.length === 0) return undefined;
+  if (players.length + diplomacy.length + misc.length + missions.length === 0 && multiplayer === undefined) {
+    return undefined;
+  }
   return MapScript.parse({
     players,
     diplomacy,
+    multiplayer,
     misc,
     missions,
     source: makeSource(src, 'playerdata'),

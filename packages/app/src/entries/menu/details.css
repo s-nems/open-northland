@@ -2,7 +2,10 @@
   min-height: 0;
   box-sizing: border-box;
   display: grid;
-  grid-template-rows: minmax(190px, 1fr) auto auto auto;
+  /* The description row is max-content: with the panel overflowing (long map descriptions + the
+     player roster), an `auto` row deflates to the description's min-height and the text spills
+     under its divider into the roster. */
+  grid-template-rows: minmax(190px, 1fr) max-content auto auto;
   gap: 14px;
   padding: clamp(18px, 3vw, 30px);
   overflow-y: auto;
@@ -112,11 +115,11 @@
   background: rgba(255, 246, 214, 0.35);
 }
 
-.game-menu__player.is-human {
+.game-menu__player.is-claimable {
   cursor: pointer;
 }
 
-.game-menu__player.is-human:hover {
+.game-menu__player.is-claimable:hover {
   background: rgba(255, 240, 177, 0.6);
 }
 
@@ -134,6 +137,11 @@
   border: 2px ridge #70451f;
   border-radius: 2px;
   cursor: pointer;
+}
+
+/* A colour-locked map (`playerfixcolors`) keeps the swatch as a legend, not a picker. */
+.game-menu__player-swatch:disabled {
+  cursor: default;
 }
 
 .game-menu__player-swatch.is-option {

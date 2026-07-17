@@ -43,7 +43,7 @@ export const enSurfaces = {
       tool: 'Tool',
     },
     playersTitle: 'Players',
-    playersHint: 'Take a seat: click a free Human slot to play it.',
+    playersHint: 'Take a seat: click a free slot to play it.',
     playerSlotLabel: 'Player {n}',
     playerTypeHuman: 'Human',
     playerTypeAi: 'AI',
@@ -54,6 +54,7 @@ export const enSurfaces = {
     vacantToggleTitle:
       'What a free Human seat does once the game starts: Idle does nothing, AI will play automatically (not implemented yet).',
     teamColour: 'Team colour',
+    teamColourLocked: 'this map fixes its colours',
     startNeedsSeat: 'Take a seat first',
     tribeNames: {
       1: 'Vikings',

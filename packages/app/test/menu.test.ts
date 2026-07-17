@@ -65,20 +65,55 @@ describe('parseMapsIndex', () => {
         id: 'arena',
         minimap: false,
         players: [
-          { player: 0, type: 'human', tribeId: 1, colorId: 7, name: 'Ragnar' },
-          { player: 1, type: 'ai', tribeId: 4, colorId: 9 },
+          // Without lobby fields, claimable follows the authored type (an older sidecar shape).
+          {
+            player: 0,
+            type: 'human',
+            tribeId: 1,
+            colorId: 7,
+            name: 'Ragnar',
+            claimable: true,
+            hidden: false,
+          },
+          { player: 1, type: 'ai', tribeId: 4, colorId: 9, claimable: false, hidden: false },
         ],
       },
       { id: 'bare', minimap: false },
+    ]);
+  });
+
+  it('carries the lobby fields: claimable/hidden slots and colour locking', () => {
+    expect(
+      parseMapsIndex([
+        {
+          id: 'bridges',
+          minimap: true,
+          fixedColors: true,
+          players: [
+            { player: 0, type: 'ai', tribeId: 1, colorId: 1, claimable: true, hidden: false },
+            { player: 1, type: 'ai', tribeId: 1, colorId: 9, claimable: false, hidden: true },
+          ],
+        },
+      ]),
+    ).toEqual([
+      {
+        id: 'bridges',
+        minimap: true,
+        fixedColors: true,
+        players: [
+          { player: 0, type: 'ai', tribeId: 1, colorId: 1, claimable: true, hidden: false },
+          { player: 1, type: 'ai', tribeId: 1, colorId: 9, claimable: false, hidden: true },
+        ],
+      },
     ]);
   });
 });
 
 describe('roster state', () => {
   const players = [
-    { player: 0, type: 'human', tribeId: 1, colorId: 7 },
-    { player: 1, type: 'human', tribeId: 2, colorId: 4 },
-    { player: 2, type: 'ai', tribeId: 4, colorId: 9 },
+    { player: 0, type: 'human', tribeId: 1, colorId: 7, claimable: true, hidden: false },
+    { player: 1, type: 'human', tribeId: 2, colorId: 4, claimable: true, hidden: false },
+    { player: 2, type: 'ai', tribeId: 4, colorId: 9, claimable: false, hidden: false },
   ] as const;
 
   it('gates start params on a claimed seat and encodes only deviations', () => {

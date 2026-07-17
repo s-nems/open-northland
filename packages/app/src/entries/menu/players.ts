@@ -4,19 +4,27 @@ import { formatMessage, messages } from '../../i18n/index.js';
 
 /**
  * The map-select player roster panel: one row per map player slot (from the map's decoded
- * `playerdata` roster served in `/maps-index`), where the person takes a seat on a Human slot,
- * recolours slots (unique colours), and pre-sets what an unclaimed Human seat will do (Idle/AI —
- * a forward-looking control, carried in the start URL for the future auto-player). The pure state
+ * `playerdata` roster + `[multiplayer]` lobby table served in `/maps-index`), where the person
+ * takes a claimable seat, recolours slots (unique colours, unless the map fixes them), and
+ * pre-sets what an unclaimed Human seat will do (Idle/AI — a forward-looking control, carried in
+ * the start URL for the future auto-player). Lobby-hidden slots are not listed. The pure state
  * helpers are exported for headless tests; `mountPlayersPanel` is the DOM half.
  */
 
-/** One map player slot as `/maps-index` serves it (the script sidecar's roster). */
+/** One map player slot as `/maps-index` serves it (the script sidecar's roster + lobby table). */
 export interface MapPlayerSlot {
   readonly player: number;
+  /** The authored `playerdata` type — what the slot does when nobody sits on it. */
   readonly type: 'human' | 'ai';
   readonly tribeId: number;
   readonly colorId: number;
   readonly name?: string;
+  /** Whether a person may take this seat (authored `human`, or the map's `[multiplayer]`
+   *  `playeroption` row offers `human` — the original lobby's seat-eligibility table). */
+  readonly claimable: boolean;
+  /** `[multiplayer]` `playerhideinmenu` — never listed (but still in the game and wearing its
+   *  authored colour, so its colour stays reserved in the picker). */
+  readonly hidden: boolean;
 }
 
 /** What a free Human seat does once the game starts (future auto-player control). */
@@ -96,7 +104,7 @@ export function rosterStartParams(
 
 /** The panel handle the menu drives: show a map's roster, hide for non-maps, read the gating. */
 export interface PlayersPanel {
-  show(mapId: string, players: readonly MapPlayerSlot[]): void;
+  show(mapId: string, players: readonly MapPlayerSlot[], fixedColors?: boolean): void;
   hide(): void;
   /** False while a roster is shown and no seat is claimed — the menu disables Start on it. */
   readonly seatClaimed: boolean;
@@ -114,7 +122,7 @@ const SWATCH_HEX = (colorId: number): string =>
  */
 export function mountPlayersPanel(panel: HTMLElement, list: HTMLElement, onChange: () => void): PlayersPanel {
   const states = new Map<string, RosterState>();
-  let shown: { mapId: string; players: readonly MapPlayerSlot[] } | null = null;
+  let shown: { mapId: string; players: readonly MapPlayerSlot[]; fixedColors: boolean } | null = null;
   /** The slot whose colour picker strip is open, or null. */
   let pickerSlot: number | null = null;
 
@@ -140,7 +148,7 @@ export function mountPlayersPanel(panel: HTMLElement, list: HTMLElement, onChang
     const isSeat = s.seat === slot.player;
     const row = document.createElement('div');
     row.className = 'game-menu__player';
-    row.classList.toggle('is-human', slot.type === 'human');
+    row.classList.toggle('is-claimable', slot.claimable);
     row.classList.toggle('is-taken', isSeat);
     row.dataset.slot = String(slot.player);
 
@@ -150,8 +158,12 @@ export function mountPlayersPanel(panel: HTMLElement, list: HTMLElement, onChang
     const colorId = s.colors.get(slot.player) ?? slot.colorId;
     swatch.style.background = SWATCH_HEX(colorId);
     const colourName = messages().animation.playerColors[colorId] ?? String(colorId);
-    swatch.title = `${copy.teamColour}: ${colourName}`;
-    swatch.setAttribute('aria-label', `${copy.teamColour}: ${colourName}`);
+    const fixed = shown?.fixedColors === true;
+    swatch.title = fixed
+      ? `${copy.teamColour}: ${colourName} — ${copy.teamColourLocked}`
+      : `${copy.teamColour}: ${colourName}`;
+    swatch.setAttribute('aria-label', swatch.title);
+    swatch.disabled = fixed;
     swatch.setAttribute('aria-expanded', String(pickerSlot === slot.player));
     swatch.addEventListener('click', (ev) => {
       ev.stopPropagation();
@@ -172,12 +184,20 @@ export function mountPlayersPanel(panel: HTMLElement, list: HTMLElement, onChang
 
     row.append(swatch, label);
 
-    if (slot.type === 'human') {
+    // A claimable seat invites the person to sit; what an UNCLAIMED slot then does follows its
+    // authored type — a `human` slot gets the Idle/AI toggle, an `ai` slot stays script-driven
+    // (the AI badge), even when the lobby table made it claimable.
+    if (slot.claimable) {
       const seat = document.createElement('span');
       seat.className = 'game-menu__player-seat';
       seat.textContent = isSeat ? copy.seatTaken : copy.seatTake;
       row.append(seat);
-      if (!isSeat) {
+      row.addEventListener('click', () => {
+        if (state().seat !== slot.player) update(claimSeat(state(), slot.player));
+      });
+    }
+    if (!isSeat) {
+      if (slot.type === 'human') {
         const vacant = document.createElement('button');
         vacant.type = 'button';
         vacant.className = 'game-menu__player-vacant';
@@ -188,15 +208,12 @@ export function mountPlayersPanel(panel: HTMLElement, list: HTMLElement, onChang
           update(toggleVacantMode(state(), slot.player));
         });
         row.append(vacant);
+      } else {
+        const badge = document.createElement('span');
+        badge.className = 'game-menu__player-badge';
+        badge.textContent = copy.playerTypeAi;
+        row.append(badge);
       }
-      row.addEventListener('click', () => {
-        if (state().seat !== slot.player) update(claimSeat(state(), slot.player));
-      });
-    } else {
-      const badge = document.createElement('span');
-      badge.className = 'game-menu__player-badge';
-      badge.textContent = copy.playerTypeAi;
-      row.append(badge);
     }
     return row;
   };
@@ -232,14 +249,15 @@ export function mountPlayersPanel(panel: HTMLElement, list: HTMLElement, onChang
     list.replaceChildren();
     if (shown === null) return;
     for (const slot of shown.players) {
+      if (slot.hidden) continue;
       list.append(slotRow(slot));
       if (pickerSlot === slot.player) list.append(pickerStrip(slot));
     }
   };
 
   return {
-    show(mapId, players) {
-      shown = { mapId, players };
+    show(mapId, players, fixedColors = false) {
+      shown = { mapId, players, fixedColors };
       pickerSlot = null;
       panel.hidden = false;
       render();
