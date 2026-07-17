@@ -39,6 +39,25 @@ export interface ReplayOptions {
   readonly untilTick?: number;
 }
 
+/** One run's replay inputs, without a tick target — the shape a composition supplies its own tick to. */
+export type RunReplay = Omit<ReplayOptions, 'untilTick'>;
+
+/** What building a sim actually needs: the seeded content, plus a terrain map when the run has one. */
+export interface SimInputs {
+  readonly content: ContentSet;
+  readonly seed: number;
+  readonly map?: TerrainMap | undefined;
+}
+
+/**
+ * Build the fresh `Simulation` a run starts from — the one place that knows `map` must be OMITTED
+ * rather than set to `undefined` under `exactOptionalPropertyTypes` (tsconfig.base.json), since the
+ * Simulation builds its terrain graph iff the key is present. Callers may pass `map: undefined`.
+ */
+export function simFor({ content, seed, map }: SimInputs): Simulation {
+  return new Simulation({ seed, content, ...(map !== undefined ? { map } : {}) });
+}
+
 /**
  * Rebuild a `Simulation` to the state it held at the end of `untilTick` by replaying `log` from tick
  * 1. Each logged command is enqueued just before its recorded apply tick's `step()` so CommandSystem
@@ -51,14 +70,14 @@ export interface ReplayOptions {
  * content. An out-of-range-high target is fine: the sim just keeps stepping deterministically.
  */
 export function replay(opts: ReplayOptions): Simulation {
-  const { content, seed, map, log } = opts;
+  const { log } = opts;
   const lastLoggedTick = log.length === 0 ? 0 : (log[log.length - 1] as LoggedCommand).tick;
   const untilTick = opts.untilTick ?? lastLoggedTick;
   if (untilTick < 0) {
     throw new Error(`replay untilTick ${untilTick} is negative: a tick target must be >= 0`);
   }
 
-  const sim = new Simulation({ seed, content, ...(map !== undefined ? { map } : {}) });
+  const sim = simFor(opts);
   stepReplaying(sim, log, untilTick);
   return sim;
 }

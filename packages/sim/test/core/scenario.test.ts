@@ -40,7 +40,7 @@ describe('integration: deterministic over many ticks', () => {
 
 describe('e2e game-level: scenario harness', () => {
   it('core invariants hold every tick of a 1000-tick run', () => {
-    const result = scenario(testContent(), 42).run(1000, { checkInvariantsEachTick: true });
+    const result = scenario(testContent(), { seed: 42 }).run(1000, { checkInvariantsEachTick: true });
     expect(result.invariantViolations).toEqual([]);
     result.assertOk();
   });
@@ -50,5 +50,12 @@ describe('e2e game-level: scenario harness', () => {
       .run(10)
       .expect('impossible: 5 < 0', () => 5 < 0);
     expect(result.failures).toContain('expectation failed: impossible: 5 < 0');
+  });
+
+  it('scenario.expect works when destructured off the result (closes over the run, not `this`)', () => {
+    const result = scenario(testContent()).run(2);
+    const { expect: expectOn } = result;
+    expectOn('sim reached tick 2', (sim) => sim.tick === 2);
+    result.assertOk();
   });
 });

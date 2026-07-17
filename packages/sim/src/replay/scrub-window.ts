@@ -1,7 +1,5 @@
 import type { WorldSnapshot } from '../inspect/snapshot.js';
-import { Simulation } from '../simulation.js';
-import type { RunReplay } from './localize-divergence.js';
-import { stepReplaying } from './replay.js';
+import { type RunReplay, simFor, stepReplaying } from './replay.js';
 
 /**
  * `scrubWindow` — the **single-run "free scrubbing"** composition of the time-travel / replay
@@ -55,14 +53,13 @@ export function scrubWindow(run: RunReplay, fromTick: number, toTick: number): W
   const start = Math.max(1, fromTick);
   if (toTick < start) return [];
 
-  const { content, seed, map, log } = run;
-  const sim = new Simulation({ seed, content, ...(map !== undefined ? { map } : {}) });
+  const sim = simFor(run);
 
   // One forward pass from tick 1 to toTick (the shared replay stepper), capturing a plain snapshot
   // whenever the running tick lands inside the window. A WorldSnapshot is a plain value, so each
   // captured tick survives the sim continuing to mutate the stores.
   const snapshots: WorldSnapshot[] = [];
-  stepReplaying(sim, log, toTick, (tick) => {
+  stepReplaying(sim, run.log, toTick, (tick) => {
     if (tick >= start) snapshots.push(sim.snapshot());
   });
   return snapshots;
