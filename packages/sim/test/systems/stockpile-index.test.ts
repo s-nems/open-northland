@@ -64,7 +64,7 @@ describe('stockpilesAtNode (the per-drop tile lookup index)', () => {
     p.x = moved.x;
     p.y = moved.y;
     expect(sim.world.verifyCaches()).toEqual([
-      `stockpileNodeIndex lost stockpile ${heap} at node (20,20) — a positioned stockpile moved in place`,
+      'stockpileNodeIndex bucket (20,20) diverges from a fresh rebuild — a positioned stockpile moved in place',
     ]);
   });
 
