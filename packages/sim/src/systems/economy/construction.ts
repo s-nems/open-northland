@@ -69,7 +69,7 @@ export const constructionSystem: System = (world, ctx) => {
     if (type === undefined) continue; // unknown type — can't price the build (shouldn't happen)
 
     if (world.has(e, UnderConstruction)) {
-      advanceSite(world, ctx, e, building, constructionBillOf(world, ctx, e));
+      advanceSite(world, ctx, e, building);
       continue;
     }
 
@@ -93,25 +93,22 @@ export const constructionSystem: System = (world, ctx) => {
   }
 };
 
+/** The {@link Building} component's value — what `world.get(e, Building)` hands back. */
+type BuildingState = NonNullable<(typeof Building)['__value']>;
+
 /**
  * Advance one construction site this tick: reflect builder work + delivered material into `built` and
- * `Health`, and finish the build when both gates are complete. `cost` is the site type's from-scratch
- * construction bill (for a home tier, every chain stage's cost — see `constructionBillOf`), spent into
- * the structure on completion.
+ * `Health`, and finish the build when both gates are complete. The bill spent into the structure on
+ * completion is the site type's from-scratch construction cost (for a home tier, every chain stage's —
+ * see {@link constructionBillOf}), the same bill the gates below are measured against.
  */
-function advanceSite(
-  world: World,
-  ctx: SystemContext,
-  e: Entity,
-  building: { built: Fixed },
-  cost: ReadonlyArray<{ goodType: number; amount: number }>,
-): void {
+function advanceSite(world: World, ctx: SystemContext, e: Entity, building: BuildingState): void {
   const labor = world.get(e, UnderConstruction).labor;
   // A free (empty-cost) type has nothing to install — its labor requirement is waived so it finishes at
   // once (the headquarters/wonder path). Otherwise the build is done only when fully hammered.
   const laborComplete = constructionTotalUnits(world, ctx, e) === 0 || labor >= ONE;
   if (laborComplete && constructionMaterialsPresent(world, ctx, e)) {
-    consumeMaterials(world, e, cost); // spend the cost into the structure (surplus stays)
+    consumeMaterials(world, e, constructionBillOf(world, ctx, e)); // spend the cost in (surplus stays)
     building.built = ONE; // built — production / housing now count it
     world.remove(e, UnderConstruction); // a finished building is a plain Building again
     setHealth(world, e, ONE); // full life
