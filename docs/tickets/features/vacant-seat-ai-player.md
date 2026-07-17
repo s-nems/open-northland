@@ -26,3 +26,9 @@ here — this ticket is only the seat-level attach of an existing one.
 
 - Headless: a sim started with an ai-resolved slot issues AI commands for it; an idle slot issues none.
 - `npm test`, `npm run check`, `npm run build`.
+
+## Named scope gap
+
+The original lobby's third seat state — Closed (`PLAYER_TYPE_NONE`, the slot removed from the
+game) — has no roster-panel control; vacant seats are only Idle/AI. Closing a seat is a sim-setup
+concern (don't spawn the slot's authored units) and belongs with this ticket's wiring.

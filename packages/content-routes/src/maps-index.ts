@@ -23,6 +23,9 @@ export interface MapsIndexPlayerSlot {
   readonly claimable: boolean;
   /** `[multiplayer]` `playerhideinmenu` — the original lobby never lists this slot. */
   readonly hidden: boolean;
+  /** Whether the seat may auto-play when vacant: its `playeroption` row offers `ai`, or the map
+   *  ships no row for it (45 corpus rows are Human/Closed-only — no AI offer). */
+  readonly aiAllowed: boolean;
 }
 
 /** One `/maps-index` entry: a decoded map's stem id + the pipeline's optional menu sidecars. */
@@ -42,12 +45,15 @@ export interface MapsIndexEntry {
 interface ScriptMultiplayer {
   /** Slots whose `playeroption` row offers `human`. */
   readonly humanOptionSlots: ReadonlySet<number>;
+  /** Slots whose `playeroption` row does NOT offer `ai` (Human/Closed-only seats). */
+  readonly aiDeniedSlots: ReadonlySet<number>;
   readonly hiddenSlots: ReadonlySet<number>;
   readonly fixedColors: boolean;
 }
 
 const NO_MULTIPLAYER: ScriptMultiplayer = {
   humanOptionSlots: new Set(),
+  aiDeniedSlots: new Set(),
   hiddenSlots: new Set(),
   fixedColors: false,
 };
@@ -56,19 +62,20 @@ function multiplayerOf(raw: unknown): ScriptMultiplayer {
   if (typeof raw !== 'object' || raw === null) return NO_MULTIPLAYER;
   const { slotOptions, hiddenSlots, fixedColors } = raw as Record<string, unknown>;
   const humanOptionSlots = new Set<number>();
+  const aiDeniedSlots = new Set<number>();
   if (Array.isArray(slotOptions)) {
     for (const opt of slotOptions) {
       if (typeof opt !== 'object' || opt === null) continue;
       const { player, allowed } = opt as Record<string, unknown>;
-      if (typeof player === 'number' && Array.isArray(allowed) && allowed.includes('human')) {
-        humanOptionSlots.add(player);
-      }
+      if (typeof player !== 'number' || !Array.isArray(allowed)) continue;
+      if (allowed.includes('human')) humanOptionSlots.add(player);
+      if (!allowed.includes('ai')) aiDeniedSlots.add(player);
     }
   }
   const hidden = new Set<number>(
     Array.isArray(hiddenSlots) ? hiddenSlots.filter((s): s is number => typeof s === 'number') : [],
   );
-  return { humanOptionSlots, hiddenSlots: hidden, fixedColors: fixedColors === true };
+  return { humanOptionSlots, aiDeniedSlots, hiddenSlots: hidden, fixedColors: fixedColors === true };
 }
 
 /** Structurally validates one roster row off a parsed script sidecar (no schema dep here — the
@@ -87,6 +94,7 @@ function playerSlotOf(raw: unknown, multiplayer: ScriptMultiplayer): MapsIndexPl
     ...(typeof name === 'string' ? { name } : {}),
     claimable: type === 'human' || multiplayer.humanOptionSlots.has(player),
     hidden: multiplayer.hiddenSlots.has(player),
+    aiAllowed: !multiplayer.aiDeniedSlots.has(player),
   };
 }
 

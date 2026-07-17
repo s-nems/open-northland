@@ -10,8 +10,11 @@ import { findPathCaseInsensitiveInDirs } from './case-path.js';
  * triggers, and `misc.inc` sometimes hosts all three player sections instead (9 corpus maps author
  * `[playerdata]` there and 7 the `[multiplayer]` table). `map.ini` normally only `#include`s the
  * others (unknown sections are ignored), but one corpus map (`oasis_o_plenty`) authors its whole
- * script inline there. No corpus map authors the same section in two of these files, so
- * concatenating them is safe (and slot rows dedupe first-wins regardless).
+ * script inline there. Three corpus maps (Wody_Nilu, KROL_PRZELECZY, WYSPA LUPIEZCOW) author
+ * `[multiplayer]` in BOTH player.inc and misc.inc with differing `playeroption` rows; this list's
+ * order matches their `map.ini` include order, and keeping the first row per slot is the named
+ * approximation (which duplicate the original engine keeps is unpinned). Every other section is
+ * single-homed, and `player` slot rows dedupe first-wins regardless.
  */
 const SCRIPT_INC_FILES = ['player.inc', 'mission.inc', 'misc.inc', 'map.ini'] as const;
 

@@ -4,7 +4,7 @@
  * (macro tokens like `#PLAYER_TYPE_HUMAN`) and the packed `map.cif` (the same lines with the macros
  * already resolved to numbers) — so the token→code resolution accepts both forms.
  */
-import { MapScript, type MapScriptLine } from '@open-northland/data';
+import { MAP_PLAYER_COLOR_COUNT, MapScript, type MapScriptLine } from '@open-northland/data';
 import { makeSource, type RuleProp, type RuleSection, type SourceRef } from './grammar.js';
 
 /**
@@ -71,16 +71,17 @@ function asLine(p: RuleProp): MapScriptLine {
   return { key: p.key, values: [...p.values] };
 }
 
-/** `player <slot> <type> <tribe> <colorId>` → a roster row, or undefined when malformed. */
+/** `player <slot> <type> <tribe> <colorId>` → a roster row, or undefined when malformed. The range
+ *  checks mirror the {@link MapScript} schema so an out-of-range row degrades to `misc` per-row
+ *  instead of failing the whole map's sidecar at the final parse. */
 function playerRow(p: RuleProp): MapScript['players'][number] | undefined {
   const [slotRaw, typeRaw, tribeRaw, colorRaw] = p.values;
   const player = int(slotRaw);
   const type = code(typeRaw);
   const tribeId = code(tribeRaw);
   const colorId = code(colorRaw);
-  if (player === undefined || player < 0 || tribeId === undefined || colorId === undefined) {
-    return undefined;
-  }
+  if (player === undefined || player < 0 || tribeId === undefined || tribeId < 1) return undefined;
+  if (colorId === undefined || colorId < 0 || colorId >= MAP_PLAYER_COLOR_COUNT) return undefined;
   if (type !== PLAYER_TYPE_HUMAN && type !== PLAYER_TYPE_AI) return undefined;
   return { player, type: type === PLAYER_TYPE_HUMAN ? 'human' : 'ai', tribeId, colorId };
 }
@@ -126,6 +127,7 @@ function multiplayerSection(sec: RuleSection, out: NonNullable<MapScript['multip
         continue;
       }
     } else if (p.key === 'playerfixcolors') {
+      // Presence implies locked: a bare or unparsable value reads as `1` (the corpus only authors `1`).
       out.fixedColors = int(p.values[0]) !== 0;
       continue;
     }
@@ -227,6 +229,15 @@ export function extractMapScript(sections: readonly RuleSection[], src: SourceRe
     multiplayer,
     misc,
     missions,
-    source: makeSource(src, 'playerdata'),
+    // Provenance names the section the payload actually came from (a missions-only script is not
+    // a `playerdata` decode).
+    source: makeSource(
+      src,
+      players.length + diplomacy.length + misc.length > 0
+        ? 'playerdata'
+        : missions.length > 0
+          ? 'MissionData'
+          : 'multiplayer',
+    ),
   });
 }

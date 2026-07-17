@@ -1,4 +1,4 @@
-import type { MapScript } from '@open-northland/data';
+import { MAP_PLAYER_COLOR_COUNT, type MapScript } from '@open-northland/data';
 import { components } from '@open-northland/sim';
 import { HUMAN_PLAYER } from './rules.js';
 
@@ -22,7 +22,9 @@ export function localPlayerParam(params: URLSearchParams): number {
   return isValidPlayer(n) ? n : HUMAN_PLAYER;
 }
 
-/** Parses `?colors=<slot>:<colorId>,…` into slot → colour overrides (malformed pairs drop). */
+/** Parses `?colors=<slot>:<colorId>,…` into slot → colour overrides (malformed pairs drop).
+ *  Colours are bounded to the roster's id space: an out-of-range id would render differently per
+ *  consumer (the sprite LUT clamps, the minimap wraps, the signpost atlas misses). */
 export function colorOverridesParam(params: URLSearchParams): ReadonlyMap<number, number> {
   const out = new Map<number, number>();
   const raw = params.get('colors');
@@ -31,7 +33,9 @@ export function colorOverridesParam(params: URLSearchParams): ReadonlyMap<number
     const [slotRaw, colorRaw] = pair.split(':');
     const slot = Number.parseInt(slotRaw ?? '', 10);
     const color = Number.parseInt(colorRaw ?? '', 10);
-    if (isValidPlayer(slot) && Number.isInteger(color) && color >= 0) out.set(slot, color);
+    if (isValidPlayer(slot) && Number.isInteger(color) && color >= 0 && color < MAP_PLAYER_COLOR_COUNT) {
+      out.set(slot, color);
+    }
   }
   return out;
 }
