@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { Position, Velocity } from '../../src/components/index.js';
+import { CommandQueue } from '../../src/core/command-queue.js';
 import { World } from '../../src/ecs/world.js';
-import { CommandQueue, EventBuffer, fx, Rng } from '../../src/index.js';
+import { EventBuffer, fx, Rng } from '../../src/index.js';
 import type { SystemContext } from '../../src/systems/index.js';
 import { movementSystem } from '../../src/systems/index.js';
 

@@ -1,4 +1,4 @@
-import { FOG_MODE, FOG_STATE, type FogView } from '@open-northland/sim';
+import { FOG_MODE, FOG_STATE, type FogMode, type FogView } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { FogGhostStore } from '../src/data/fog-ghosts.js';
 import { collectSpriteScene } from '../src/data/scene/index.js';
@@ -15,7 +15,7 @@ import { entity, snapshotOf } from './support/fixtures.js';
 function viewOf(
   states: ReadonlyMap<string, number>,
   generation: number,
-  mode: number = FOG_MODE.REVEAL,
+  mode: FogMode = FOG_MODE.REVEAL,
 ): FogView {
   return {
     mode,
