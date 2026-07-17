@@ -49,3 +49,20 @@ export function intParam(params: URLSearchParams, name: string, fallback: number
   const n = Number.parseInt(raw, 10);
   return Number.isInteger(n) && n >= min ? n : fallback;
 }
+
+/**
+ * Parse `?ai=<seat>[,<seat>...]` — the seats to hand to the strategic AI player (`setPlayerAi`) when a
+ * map starts. A verification-oriented hook for watching the AI play on a real map; the durable
+ * flag-vacant-seats flow is docs/tickets/features/vacant-seat-ai-player.md. Malformed entries are
+ * dropped; an absent param means no AI seats.
+ */
+export function aiSeatsParam(params: URLSearchParams): number[] {
+  const raw = params.get('ai');
+  if (raw === null) return [];
+  const seats: number[] = [];
+  for (const part of raw.split(',')) {
+    const n = Number.parseInt(part, 10);
+    if (Number.isInteger(n) && n >= 0 && !seats.includes(n)) seats.push(n);
+  }
+  return seats;
+}

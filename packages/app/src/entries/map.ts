@@ -24,6 +24,7 @@ import { loadMapScript, loadTerrainMap } from '../slice/map-loader.js';
 import { runAuthoredSlice, runBareMap, runSlice, sliceTerrain } from '../slice/vertical-slice.js';
 import { type BootPhase, mountBootProgress } from '../view/boot-progress.js';
 import { cameraCenteredOnTile, createCameraController } from '../view/camera.js';
+import { aiSeatsParam } from '../view/params.js';
 import { startGameView } from '../view/runtime/game-view.js';
 import {
   applyFogOverride,
@@ -207,6 +208,12 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
 
   // `?fog=off|reveal|recon` selects the map's fog rule (direct URLs without the flag remain revealed).
   applyFogOverride(sim, params);
+
+  // `?ai=<seat>[,…]` flags seats for the strategic AI player — the watch-the-AI-play verification
+  // hook (see aiSeatsParam; a seat without a built headquarters stays inert by the AI's own rule).
+  for (const seat of aiSeatsParam(params)) {
+    sim.enqueue({ kind: 'setPlayerAi', player: seat, enabled: true });
+  }
 
   // Spawn the map's own trees/ore/stone as real harvestable `Resource` sim nodes, so a gatherer can
   // actually work them, not just see render-only decor.
