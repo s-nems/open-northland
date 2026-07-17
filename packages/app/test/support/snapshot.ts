@@ -40,3 +40,8 @@ export function settler(id: number, jobType: number, workplace: number | null): 
     },
   };
 }
+
+/** An adult settler living in home building `home` (a `Residence`) — one household dot on that home. */
+export function resident(id: number, jobType: number, home: number): Ent {
+  return { id, components: { Settler: { jobType }, Residence: { home } } };
+}
