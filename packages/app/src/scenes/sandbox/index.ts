@@ -51,27 +51,33 @@ const { Owner, Settler } = components;
 
 const MAP_W = 96;
 const MAP_H = 96;
+/**
+ * The pitch a caller tiling {@link buildSandboxSettlement} must keep between copies: the scene map's
+ * extent, not the settlement's own (the authored content reaches ~(72,68), so a tile carries slack).
+ * Both axes take this one value, so a tiling stays square even if the scene map stops being.
+ */
+export const SANDBOX_SETTLEMENT_PITCH = Math.max(MAP_W, MAP_H);
 const INITIAL_ZOOM = 0.5;
 /** Enough for the slowest first delivery — a mined unit (clay: 6 strikes × 23-tick digs + rests) dug,
  *  carried to its flag, and banked. Measured: every headless check passes by tick 825 (deterministic,
  *  seed 41); 1200 keeps ~1.45× headroom. */
 const RUN_TICKS = 1200;
 
-function buildVillage(sim: Simulation): void {
+function buildVillage(sim: Simulation, ox: number, oy: number): void {
   for (const b of VILLAGE) {
-    placeSandboxBuilding(sim, b.id, b.x, b.y, HUMAN_PLAYER, {
+    placeSandboxBuilding(sim, b.id, ox + b.x, oy + b.y, HUMAN_PLAYER, {
       fillStock: WAREHOUSE_IDS.has(b.id),
     });
-    staffBuildingFully(sim, resolveVikingBuilding(b.id).typeId, b.x, b.y);
+    staffBuildingFully(sim, resolveVikingBuilding(b.id).typeId, ox + b.x, oy + b.y);
   }
 }
 
-function buildResourceBase(sim: Simulation): void {
+function buildResourceBase(sim: Simulation, ox: number, oy: number): void {
   for (const camp of CAMPS) {
     const g = GATHERER_BY_GOOD.get(camp.good);
     if (g === undefined) throw new Error(`sandbox camp: no gatherer trade for good ${camp.good}`);
     for (const { dx, dy } of camp.nodes) {
-      placeResourceNode(sim, g, camp.center.x + dx, camp.center.y + dy, {
+      placeResourceNode(sim, g, ox + camp.center.x + dx, oy + camp.center.y + dy, {
         unitsScale: g.mode === 'mine' ? MINE_DEPOSIT_SCALE : 1,
       });
     }
@@ -79,18 +85,29 @@ function buildResourceBase(sim: Simulation): void {
     // gatherer), planted in a short row on the camp's village side; each gatherer works only this camp
     // (radius + good filter) and banks its harvest at its own flag (see spawnBoundGatherer).
     for (let i = 0; i < camp.gatherers; i++) {
-      const flag = placeFlag(sim, camp.flag.x + i, camp.flag.y);
-      spawnBoundGatherer(sim, g.job, camp.flag.x + i, camp.flag.y + 1, flag, { goodType: camp.good });
+      const flag = placeFlag(sim, ox + camp.flag.x + i, oy + camp.flag.y);
+      spawnBoundGatherer(sim, g.job, ox + camp.flag.x + i, oy + camp.flag.y + 1, flag, {
+        goodType: camp.good,
+      });
     }
   }
   for (let i = 0; i < BERRY_BUSHES; i++) {
-    placeSandboxBerryBush(sim, BERRY_PATCH.x + i * 2, BERRY_PATCH.y + (i % 2), BUSH_FRUITS_GFX);
+    placeSandboxBerryBush(sim, ox + BERRY_PATCH.x + i * 2, oy + BERRY_PATCH.y + (i % 2), BUSH_FRUITS_GFX);
   }
 }
 
+/**
+ * The authored settlement — village + gathering camps — placed with its top-left tile at (`ox`,`oy`).
+ * The scene builds one at the origin; the sim benchmark tiles several ({@link SANDBOX_SETTLEMENT_PITCH}
+ * apart) to reach RTS-scale population off this one authored layout. ~72 settlers, 41 buildings.
+ */
+export function buildSandboxSettlement(sim: Simulation, ox = 0, oy = 0): void {
+  buildVillage(sim, ox, oy);
+  buildResourceBase(sim, ox, oy);
+}
+
 function build(sim: Simulation): void {
-  buildVillage(sim);
-  buildResourceBase(sim);
+  buildSandboxSettlement(sim);
 }
 
 export const sandboxScene: SceneDefinition = {

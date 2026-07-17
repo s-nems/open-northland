@@ -13,7 +13,7 @@ import {
   WEAPON_SWORD,
 } from '../src/game/sandbox/index.js';
 import { createSceneSim } from '../src/scenes/runtime.js';
-import { buildSandboxSettlement, SANDBOX_SETTLEMENT_PITCH } from '../src/scenes/sandbox.js';
+import { buildSandboxSettlement, SANDBOX_SETTLEMENT_PITCH } from '../src/scenes/sandbox/index.js';
 import type { SceneWorld } from '../src/scenes/types.js';
 
 /**
