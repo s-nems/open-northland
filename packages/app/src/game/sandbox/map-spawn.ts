@@ -8,13 +8,13 @@ import {
 } from '../../content/map-resources.js';
 import { diag } from '../../diag/index.js';
 import { GATHERERS, type GathererSpec } from './ids/index.js';
-import { resourceSpecFor } from './place.js';
+import { resourceSpecFor } from './place/index.js';
 
 /**
  * Spawn the harvestable resources a decoded map's placed objects define as real sim entities — the
  * `?map=` entry's join from the static object layer (trees/ore/stone/bushes drawn once) to live
  * `Resource`/`BerryBush` nodes a settler can work. Distinct from the scene-setup helpers in
- * {@link import('./place.js')}: those author a hand-placed world, these read a real map's objects. Both
+ * {@link import('./place/index.js')}: those author a hand-placed world, these read a real map's objects. Both
  * assemble nodes directly (the sanctioned pre-tick-0 `sim.world` exception) and share
  * {@link resourceSpecFor} for the gatherer-good → node-spec resolution.
  */
@@ -48,7 +48,7 @@ export interface MapResourceSpawnResult {
  * Spawn every harvestable resource node a decoded map's placed objects define (trees → wood, ore outcrops →
  * iron/gold, clay/stone → mud/stone) as real `Resource` sim nodes — the same component set the admin
  * `placeResource` builds (Position + Resource + footprint + Felling|MineDeposit), assembled directly here as
- * scene setup pre-tick-0 (the sanctioned exception, like {@link import('./place.js').placeResourceNode}). This
+ * scene setup pre-tick-0 (the sanctioned exception, like {@link import('./place/index.js').placeResourceNode}). This
  * is what makes a map's own trees hoverable + gatherable.
  *
  * The nodes are created in the map's native placement order, so ids are minted deterministically. Yields

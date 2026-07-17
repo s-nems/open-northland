@@ -8,8 +8,9 @@ import {
   isBuilding,
   isMakingLove,
   isSettler,
-  num,
   positionOf,
+  settlerJobType,
+  workplaceOf,
 } from '../../game/snapshot.js';
 import { type DoorFootprint, workerIconNode } from './building-points.js';
 
@@ -46,11 +47,9 @@ export function computeDoorBadges(
   const households = familiesByHome(snapshot);
   for (const e of snapshot.entities) {
     if (!isSettler(e)) continue;
-    const assignment = e.components.JobAssignment as { workplace?: unknown } | undefined;
-    const workplace = num(assignment?.workplace);
+    const workplace = workplaceOf(e);
     if (workplace === undefined) continue; // an unemployed / unbound settler shows no building badge
-    const settler = e.components.Settler as { jobType?: unknown } | undefined;
-    const jobType = num(settler?.jobType);
+    const jobType = settlerJobType(e);
     if (jobType === undefined) continue; // a bound settler with no job (shouldn't happen) — nothing to draw
     const bucket = tally.get(workplace) ?? { craftsmen: 0, carriers: 0, gatherers: 0 };
     const role = roleOf(jobType);

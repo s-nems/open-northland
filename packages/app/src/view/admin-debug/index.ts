@@ -1,7 +1,7 @@
 import type { Command, Entity } from '@open-northland/sim';
 import { HUMAN_HITPOINTS } from '../../catalog/units.js';
 import { HUMAN_PLAYER } from '../../game/rules.js';
-import { resourceCommand } from '../../game/sandbox/place.js';
+import { resourceCommand } from '../../game/sandbox/place/index.js';
 import { formatMessage, type Messages, messages, professionLabel } from '../../i18n/index.js';
 import { BUTTON_STYLE, el } from '../overlay.js';
 import { DEBUG_ACTIONS, type DebugAction, type DebugTargetKind } from './actions-catalog.js';

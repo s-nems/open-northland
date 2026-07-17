@@ -37,7 +37,7 @@ import {
   weaponEquipmentFor,
 } from '../src/game/sandbox/ids/index.js';
 import { sandboxContent } from '../src/game/sandbox/index.js';
-import { resourceCommand } from '../src/game/sandbox/place.js';
+import { resourceCommand } from '../src/game/sandbox/place/index.js';
 import {
   ADMIN_DROP_AMOUNT,
   CIVILIAN_PRESETS,

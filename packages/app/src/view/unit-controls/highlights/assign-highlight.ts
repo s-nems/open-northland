@@ -1,16 +1,18 @@
 import type { BuildingHighlightItem } from '@open-northland/render';
 import type { WorldSnapshot } from '@open-northland/sim';
-import { canonicalJobType } from '../../game/sandbox/ids/index.js';
+import { canonicalJobType } from '../../../game/sandbox/ids/index.js';
 import {
+  buildingTribeOf,
   buildingTypeOf,
   entityById,
   isBuilding,
   isSettler,
-  num,
   ownerPlayerOf,
   type SnapshotEntity,
   settlerJobType,
-} from '../../game/snapshot.js';
+  settlerTribeOf,
+  workplaceOf,
+} from '../../../game/snapshot.js';
 
 /**
  * The "przydziel miejsce pracy" (assign a workplace) highlight — the pure snapshot projection behind the
@@ -39,23 +41,13 @@ function buildStaffing(snapshot: WorldSnapshot): Staffing {
   for (const e of snapshot.entities) {
     if (!isSettler(e)) continue;
     const jobType = settlerJobType(e);
-    const workplace = num((e.components.JobAssignment as { workplace?: unknown } | undefined)?.workplace);
+    const workplace = workplaceOf(e);
     if (jobType === undefined || workplace === undefined) continue;
     const byJob = staffing.get(workplace) ?? new Map<number, number>();
     byJob.set(jobType, (byJob.get(jobType) ?? 0) + 1);
     staffing.set(workplace, byJob);
   }
   return staffing;
-}
-
-/** The building's tribe (`Building.tribe`), or undefined. */
-function buildingTribe(e: { readonly components: Record<string, unknown> }): number | undefined {
-  return num((e.components.Building as { tribe?: unknown } | undefined)?.tribe);
-}
-
-/** The settler's tribe (`Settler.tribe`), or undefined. */
-function settlerTribe(e: { readonly components: Record<string, unknown> }): number | undefined {
-  return num((e.components.Settler as { tribe?: unknown } | undefined)?.tribe);
 }
 
 /**
@@ -72,7 +64,7 @@ function candidateSlots(
 ): readonly { readonly jobType: number; readonly count: number }[] | null {
   if (!isBuilding(building)) return null;
   if (ownerPlayerOf(building) !== ownerPlayerOf(settler)) return null; // only the settler's own buildings
-  if (buildingTribe(building) !== settlerTribe(settler)) return null;
+  if (buildingTribeOf(building) !== settlerTribeOf(settler)) return null;
   if (building.components.UnderConstruction !== undefined) return null; // a site takes builders, not workers
   const typeId = buildingTypeOf(building);
   const slots = typeId !== undefined ? buildingsByType.get(typeId)?.workers : undefined;

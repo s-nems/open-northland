@@ -15,8 +15,6 @@ import { workerRoleOf } from '../../game/sandbox/index.js';
 import { type MinimapHandle, mountMinimap } from '../../hud/minimap/index.js';
 import { buildToolPanelLayout, DEFAULT_UI_SCALE } from '../../hud/tool-panel/layout.js';
 import { currentLocale } from '../../i18n/index.js';
-import { createAdminEntityPicker } from '../admin-debug/entity-picker.js';
-import { mountAdminDebug } from '../admin-debug/index.js';
 import type { CameraController } from '../camera.js';
 import { cameraCenteredOnWorld, clientToScreen as clientToScreenPx } from '../camera.js';
 import {
@@ -29,16 +27,14 @@ import { createGroundPileTooltip } from '../ground-pile-tooltip.js';
 import { floatParam, menuSearch } from '../params.js';
 import { mountPerfOverlay } from '../perf-overlay.js';
 import { makeOverlayFrameSource, makeSignpostOverlaySource } from '../placement-overlay.js';
-import {
-  createFogGates,
-  createGeometryDebugOverlay,
-  createSnapshotProjections,
-} from '../projections/index.js';
+import { createFogGates, createSnapshotProjections } from '../projections/index.js';
 import { createSystemMenu } from '../system-menu.js';
 import { createTooltip } from '../tooltip.js';
 import { createUnitControls } from '../unit-controls/index.js';
+import { mountDebugOverlays } from './debug-mounts.js';
 import { startFrameLoop } from './frame-loop.js';
 import { mountGamePresentation } from './game-presentation.js';
+import { createPlacementGates } from './placement-gates.js';
 import { trackCanvasPointer } from './pointer-tracker.js';
 import type { RafLoop } from './raf-loop.js';
 
@@ -48,11 +44,6 @@ import type { RafLoop } from './raf-loop.js';
  * fixed-timestep RAF loop. The entries only assemble their world (terrain, sim, renderer, starting
  * camera) and hand it here — so the loop, the input wiring and the flag semantics (`?speed`, `?sound`,
  * `?uiscale`) cannot drift between the map view and the acceptance scenes.
- *
- * Per-frame order matters and is pinned here: sim steps (collecting every step's events for audio) →
- * camera glide → one snapshot + one `buildHud` scan feeding the tool panel's stats window → tool-panel
- * re-place before the renderer's render (screen-space meshes carry the canvas resolution) → the retained
- * `renderer.update` → unit-controls tick reusing the same snapshot → sound → perf readout.
  */
 export interface GameViewDeps {
   readonly app: Application;
@@ -183,26 +174,17 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   // `fogGates.setFrame` each frame (see projections/fog-gates.ts).
   const fogGates = createFogGates();
 
-  // The original left tool panel — the standard game HUD. Its game-speed button drives `control`, the
-  // building menu enqueues `placeBuilding` on a map click, and it claims its own clicks so the HUD
-  // never falls through to world picking.
-  // The one live placement rule the click gate and the cursor ghost share (they must never drift — the
-  // ghost previews exactly what a click will do); a mapless sim (no probe) places freely, matching the
-  // command gate's stance. Under fog, ground the player does not currently see rejects the anchor — our
-  // modern gate (genre convention: no founding into the fog), applied app-side only: the sim command
-  // stays ungated so admin/scenario spawns bypass the UI rule.
-  const canPlaceAt = (typeId: number, col: number, row: number): boolean =>
-    fogGates.seesNode(col, row) && (sim.placementProbe(typeId)?.canPlace(col, row) ?? true);
-  // The signpost twin of canPlaceAt, for the erect-mode cursor ghost (same fog stance; a mapless sim
-  // has no probe and shows no ghost — the erect command would be a no-op there anyway).
-  const canPlaceSignpostAt = (col: number, row: number): boolean =>
-    fogGates.seesNode(col, row) && (sim.signpostProbe(localPlayer)?.canPlace(col, row) ?? false);
+  // The live placement rules the tool panel's click gate and the frame loop's cursor ghosts share.
+  const { canPlaceAt, canPlaceSignpostAt } = createPlacementGates(sim, fogGates, localPlayer);
 
   // The minimap handle, assigned right after the tool panel mounts (the panel must mount first — stage
   // order is draw order, and the minimap window draws over the strip's lower buttons on a short
   // screen). The panel's overlay-defer reads it lazily: clicks only happen long after both mounts.
   let minimap: MinimapHandle | undefined;
 
+  // The original left tool panel — the standard game HUD. Its game-speed button drives `control`, the
+  // building menu enqueues `placeBuilding` on a map click, and it claims its own clicks so the HUD
+  // never falls through to world picking.
   const toolPanel = await mountGameToolPanel({
     app,
     canvas,
@@ -299,54 +281,22 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
 
   // One shared building index drives door badges and the optional geometry overlay.
   const buildingDoors = indexById(sim.content.buildings);
-  const geometryDebug = createGeometryDebugOverlay({
-    enabled: params.get('debug') === 'geometry',
-    buildingsByType: buildingDoors,
-    setItems: (items) => renderer.setGeometryDebug(items),
-  });
 
-  // The admin/debug spawn palette (a hidden panel behind a top toggle button): click-to-spawn any unit
-  // or resource for any player through the sim command seam, for hands-on combat/economy testing. Its
-  // spawn clicks resolve tiles + defer to the same composed HUD claim the unit controls use (tool-panel
-  // strip/windows plus the settler action ring), and it runs before the RTS controls (a window-capture
-  // press) so arming never also selects a unit.
-  mountAdminDebug({
+  // The developer overlays: the `?debug=geometry` diagram (ticked by the frame loop) + the admin spawn
+  // palette. Mounted after the unit controls — an admin spawn click defers to their composed HUD claim.
+  const geometryDebug = mountDebugOverlays({
+    app,
     canvas,
-    enqueue: (command) => sim.enqueue(command),
+    params,
+    sim,
+    renderer,
+    cameraCtl,
+    ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
+    buildingsByType: buildingDoors,
+    clientToScreen,
     clientToTile: (x, y) => toolPanel.clientToTile(x, y),
-    // Pick the top entity of a kind under a client point for the action tools (kill/needs/fill/finish).
-    // A screen-bounded pass — buildSpriteScene is culled to the camera viewport (golden rule 6), pinned to
-    // solid pixels for buildings like the RTS controls — but over all owners (an enemy is killable),
-    // rebuilt per click (rare) rather than cached like the per-frame hover set.
-    pickEntity: createAdminEntityPicker({
-      app,
-      sim,
-      renderer,
-      camera: cameraCtl,
-      toScreen: clientToScreen,
-      ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
-    }),
     claimPointer: (x, y) => controls.claimsPointer(x, y),
     goodLabel: (typeId) => goodLabelByType.get(typeId),
-    // The droppable-goods palette is the running content's own goods (sandbox on a bare checkout, the real
-    // extracted goods on a scene/map) — the one source, so every listed good actually drops.
-    goods: sim.content.goods.map((g) => ({ good: g.typeId, id: g.id })),
-    // The needs-toggle button's live state (scenes boot it off, maps on) — read through the sim's
-    // sanctioned read accessor (the placementProbe pattern), never the live component stores.
-    needsEnabled: () => sim.needsEnabled(),
-    fogMode: () => sim.fogMode(),
-    geometryEnabled: geometryDebug.enabled,
-    setGeometryEnabled: (enabled) => {
-      geometryDebug.setEnabled(enabled);
-      if (enabled) params.set('debug', 'geometry');
-      else params.delete('debug');
-      const search = params.toString();
-      window.history.replaceState(
-        null,
-        '',
-        `${window.location.pathname}${search === '' ? '' : `?${search}`}`,
-      );
-    },
   });
 
   // Name-on-hover: a cursor tooltip naming the loose good pile (with its count) under the pointer. A
