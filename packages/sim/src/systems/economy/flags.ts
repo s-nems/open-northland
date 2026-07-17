@@ -1,4 +1,6 @@
 import {
+  Building,
+  CurrentAtomic,
   DEFAULT_WORK_FLAG_RADIUS,
   DeliveryFlag,
   Position,
@@ -9,8 +11,11 @@ import { contentIndex } from '../../core/content-index.js';
 import type { Fixed } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
+import { ANCHOR_ONLY, buildingFootprintOf, translatedCells } from '../footprint/geometry.js';
 import { nearestWorkFlagPlacement } from '../footprint/index.js';
+import { canonicalById, clearNavState } from '../spatial.js';
 
 /**
  * The gatherer work-flag lifecycle — create / relocate / destroy of a gatherer's drop-off flag, plus the "is
@@ -54,6 +59,85 @@ export function bindFreshFlag(world: World, e: Entity, pos: { x: Fixed; y: Fixed
   if (wf !== undefined)
     wf.flag = flag; // stale binding — re-point it, keeping the gatherer's radius
   else world.add(e, WorkFlag, { flag, radius: DEFAULT_WORK_FLAG_RADIUS });
+}
+
+/**
+ * Move an existing flag marker to `pos` and re-plan its gatherer — the one relocate path, shared by the
+ * player's `setWorkFlag` (Ctrl+Right-Click) and the placement push-out ({@link evictWorkFlagsFromFootprint}).
+ * Only the marker moves: the goods already dropped are separate ground heaps pinned to their own tiles.
+ *
+ * The gatherer's delivery state caches the OLD position and must go with it — {@link YardDeliveryRoute}'s
+ * `goal` is a sticky destination node `planDelivery` reuses verbatim, an in-flight `pileup` into this flag
+ * drops the load at the settler's own feet (beside the abandoned marker), and the live nav goal aims at the
+ * old yard cell. Dropping all three re-plans the gatherer against the new position on the next tick.
+ *
+ * The owner is resolved by scan rather than passed in: eviction is not gatherer-initiated, and a flag is
+ * bound by exactly one {@link WorkFlag} ({@link bindFreshFlag} mints one per gatherer). Each match mutates
+ * only its own state, so store order is permitted — no chosen-entity pick here.
+ */
+export function relocateWorkFlag(world: World, flag: Entity, pos: { x: Fixed; y: Fixed }): void {
+  const p = world.get(flag, Position);
+  p.x = pos.x;
+  p.y = pos.y;
+  world.touch(flag);
+  for (const e of world.query(WorkFlag)) {
+    if (world.get(e, WorkFlag).flag !== flag) continue;
+    const atomic = world.tryGet(e, CurrentAtomic);
+    if (atomic?.effect.kind === 'pileup' && atomic.effect.store === flag) world.remove(e, CurrentAtomic);
+    world.remove(e, YardDeliveryRoute);
+    clearNavState(world, e);
+  }
+}
+
+/**
+ * Push every work flag standing inside `building`'s family body out to the nearest legal field — the flag
+ * twin of `evictSettlersFromFootprint`, run when a `placeBuilding` lands on ground a gatherer had already
+ * flagged. {@link nearestWorkFlagPlacement}'s blocker set refuses to PLANT a flag on a building's body, so
+ * without this the reverse order (flag first, house second) leaves one sealed inside the walls.
+ *
+ * The body is the FAMILY body, not the walk-blocked `blocked` set the settler twin uses: flag legality is
+ * family-body-wide (`workFlagPlacementBlocks`), which spares no door and covers the growth cells a level-0
+ * house already reserves. Evicting exactly that set leaves no flag on ground `canPlaceWorkFlag` now refuses.
+ *
+ * Only `placeBuilding` needs this, unlike the settler twin's three callers: `familyBody` is family-constant
+ * (the extracted union of every tier's `blocked`), so a construction finish and a home tier upgrade enclose
+ * no cell that was not already flag-blocked the moment the {@link Building} appeared.
+ *
+ * Determinism: flags relocate in canonical ascending-id order, and each search re-reads the live blocker set
+ * — so an earlier evictee's new cell already blocks the next one's pick, with no claimed-set to thread. A
+ * flag with no legal field anywhere stays put (the settler twin's boxed-in stance).
+ */
+export function evictWorkFlagsFromFootprint(world: World, ctx: SystemContext, building: Entity): void {
+  const terrain = ctx.terrain;
+  if (terrain === undefined) return; // mapless sim: no cells to plant a flag on
+  const b = world.tryGet(building, Building);
+  const p = world.tryGet(building, Position);
+  if (b === undefined || p === undefined) return;
+  const fp = buildingFootprintOf(ctx.content, b.buildingType);
+  // A footprint-less type (synthetic content) blocks only its anchor for flags — mirror that fallback here.
+  const cells = fp?.familyBody.length ? fp.familyBody : ANCHOR_ONLY;
+  const anchor = nodeOfPosition(p.x, p.y);
+  const body = new Set<NodeId>(translatedCells(terrain, cells, anchor.hx, anchor.hy));
+  if (body.size === 0) return;
+
+  // The common case — no flag on the plot — early-outs before any nearest-field scan below.
+  const enclosed = [...world.query(DeliveryFlag, Position)].filter((e) =>
+    body.has(flagNode(world, terrain, e)),
+  );
+  if (enclosed.length === 0) return;
+  for (const flag of canonicalById(enclosed)) {
+    const node = nearestWorkFlagPlacement(world, ctx, terrain, flagNode(world, terrain, flag));
+    if (node === null) continue; // no legal field anywhere — the flag stays
+    const c = terrain.coordsOf(node);
+    relocateWorkFlag(world, flag, positionOfNode(c.x, c.y));
+  }
+}
+
+/** The half-cell node a flag marker stands on (its Position snapped to the lattice). */
+function flagNode(world: World, terrain: TerrainGraph, e: Entity): NodeId {
+  const p = world.get(e, Position);
+  const n = nodeOfPosition(p.x, p.y);
+  return terrain.nodeAtClamped(n.hx, n.hy);
 }
 
 /**
