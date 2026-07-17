@@ -3,7 +3,12 @@ import type { Args } from './args.js';
 import { clearPipelineManifest, PIPELINE_MANIFEST_NAME, writePipelineManifest } from './manifest.js';
 import type { PipelineProgress } from './progress.js';
 import { resolveModRoot, type SourceRoots } from './roots.js';
-import { convertBmdTree, convertShadowBmdTree, resolveGraphicsBindings } from './stages/bmd/index.js';
+import {
+  convertBmdTree,
+  convertShadowBmdTree,
+  indexOutTree,
+  resolveGraphicsBindings,
+} from './stages/bmd/index.js';
 import { convertFontStage } from './stages/fonts.js';
 import { convertGoodsStage } from './stages/goods/index.js';
 import { convertGuiStage } from './stages/gui/index.js';
@@ -61,7 +66,10 @@ export async function runPipeline(args: Args, progress?: PipelineProgress): Prom
   // trailer colours the bobs; both the .bmd and .pcx are read from the just-unpacked <out> tree.
   progress?.stage?.('atlases');
   const graphics = await resolveGraphicsBindings(roots);
-  const atlases = await convertBmdTree(graphics, args.out, progress?.item);
+  // One index of the unpacked tree for every atlas stage below: they only ever look up source .bmd/.pcx
+  // members, which the unpack stages above have all written by now.
+  const outTree = await indexOutTree(args.out);
+  const atlases = await convertBmdTree(graphics, args.out, outTree, progress?.item);
   const { bindings, palettes } = graphics;
   // Atlases are named per (bmd, palette), so the log reports both the distinct atlas files and the
   // distinct body .bmd geometries behind them — the gap is the per-creature recolour fan-out.
@@ -75,7 +83,7 @@ export async function runPipeline(args: Args, progress?: PipelineProgress): Prom
 
   // Shadow bob sets (the `GfxBobLibs`/`shadowlib` second value): each converts once into a palette-less
   // black translucent-silhouette atlas the renderer draws under its caster (bob ids parallel the body's).
-  const shadowAtlases = await convertShadowBmdTree(graphics, args.out);
+  const shadowAtlases = await convertShadowBmdTree(graphics, args.out, outTree);
   console.log(
     `[pipeline] shadow bmd -> atlas: ${shadowAtlases.length} shadow atlas file(s) into ${args.out}`,
   );
@@ -84,14 +92,14 @@ export async function runPipeline(args: Args, progress?: PipelineProgress): Prom
   // plus one 256×16 player-colour LUT, so one atlas serves all 16 players (the renderer reads each index
   // through the player's LUT row). See stages/player-colors.ts + packages/render's palette-LUT shader.
   progress?.stage?.('player-colors');
-  const indexed = await convertIndexedCharacterAtlases(bindings, args.out);
-  const lut = await convertPlayerColorLut(args.out).catch((err: unknown) => {
+  const indexed = await convertIndexedCharacterAtlases(bindings, args.out, outTree);
+  const lut = await convertPlayerColorLut(args.out, outTree).catch((err: unknown) => {
     console.warn(`[pipeline] player-colour LUT skipped: ${(err as Error).message}`);
     return undefined;
   });
   // Per-player baked guidepost atlases (full player palettes; baked, not indexed, so the guidepost's
   // graded edge alpha survives — see stages/player-colors.ts convertGuidepostPlayerAtlases).
-  const guideAtlases = await convertGuidepostPlayerAtlases(args.out).catch((err: unknown) => {
+  const guideAtlases = await convertGuidepostPlayerAtlases(args.out, outTree).catch((err: unknown) => {
     console.warn(`[pipeline] guidepost player atlases skipped: ${(err as Error).message}`);
     return 0;
   });

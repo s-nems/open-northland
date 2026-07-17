@@ -1,16 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { decodeStringListChunk, type MapDatChunk } from '../src/decoders/mapdat/index.js';
+import { encodeStringList } from './fixtures/mapdat.js';
 
 describe('decodeStringListChunk', () => {
-  /** Builds a raw string-list chunk payload: [u32 count] then per entry [u8 len][bytes][0x00]. */
+  /** Wraps an {@link encodeStringList} payload in the chunk envelope the decoder takes. */
   const listChunk = (names: string[]): MapDatChunk => {
-    const bytes: number[] = [names.length & 0xff, (names.length >>> 8) & 0xff, 0, 0];
-    for (const n of names) {
-      bytes.push(n.length);
-      for (let i = 0; i < n.length; i++) bytes.push(n.charCodeAt(i) & 0xff);
-      bytes.push(0);
-    }
-    const payload = Uint8Array.from(bytes);
+    const payload = encodeStringList(names);
     return {
       tag: 'eapd',
       id: 0,

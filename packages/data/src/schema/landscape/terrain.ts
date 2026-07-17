@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { Provenance, TypeId } from '../record.js';
+import { LOGIC_TYPE_NONE } from './objects.js';
 
 export const RgbColor = z.tuple([z.number().int(), z.number().int(), z.number().int()]);
 export type RgbColor = z.infer<typeof RgbColor>;
@@ -71,8 +72,8 @@ export const GfxPattern = z.strictObject({
   editName: z.string().optional(),
   /** `EditGroups` — the editor grouping tags (e.g. `"meadow all"`, `"meadow green"`), kept verbatim; a record may list several. */
   editGroups: z.array(z.string()).default([]),
-  /** `LogicType` — the {@link TrianglePatternType.type} this tile classifies as; `0` for the misc/border tiles with no logic type. */
-  logicType: TypeId.default(0),
+  /** `LogicType` — the {@link TrianglePatternType.type} this tile classifies as; {@link LOGIC_TYPE_NONE} for the misc/border tiles with no logic type. */
+  logicType: TypeId.default(LOGIC_TYPE_NONE),
   /** `GfxTexture` — the normalized `data/.../text_NNN.pcx` ground-texture path (the pcx stage decodes it to a `text_NNN.png`). */
   texture: z.string().optional(),
   /** `GfxCoordsA` — the first triangle's 3 corner UVs into {@link texture}. */

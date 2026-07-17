@@ -8,8 +8,9 @@ import { type CursorImageInput, decodeCursor, encodeCursor } from '../src/decode
  * 32×32 image; the synthetic single-depth fixtures exercise the same directory + DIB path.
  */
 
-/** A 256-entry RGB palette where index i → (i, (2i)&0xff, (3i)&0xff) — distinct per index, easy to assert. */
-const rampPalette = (): Uint8Array => {
+/** A 256-entry RGB palette where index i → (i, (2i)&0xff, (3i)&0xff) — distinct per index, easy to assert.
+ *  Deliberately not the shared `rampPalette` fixture: this formula makes the expected triples readable. */
+const multiplesPalette = (): Uint8Array => {
   const p = new Uint8Array(768);
   for (let i = 0; i < 256; i++) {
     p[i * 3] = i & 0xff;
@@ -25,7 +26,7 @@ const image = (over: Partial<CursorImageInput>): CursorImageInput => ({
   hotspotX: 1,
   hotspotY: 1,
   pixels: Uint8Array.from([1, 2, 3, 4]),
-  palette: rampPalette(),
+  palette: multiplesPalette(),
   ...over,
 });
 

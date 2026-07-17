@@ -21,12 +21,12 @@
  * in the pipeline stage.
  */
 
-import { assertPaletteBytes, PALETTE_ENTRIES, PALETTE_RGB_BYTES, type RgbaImage } from './image.js';
+import { assertPaletteBytes, PALETTE_RGB_BYTES } from './image.js';
 
 /** First index of the source `Player NN` ramp inside a `playerNN.pcx` (colour-range 1 = indices 16–31). */
 export const PLAYER_RAMP_START = 16;
 /** Length of the player ramp (a 16-colour `[GfxPalette16]` ramp). */
-export const PLAYER_RAMP_LENGTH = 16;
+const PLAYER_RAMP_LENGTH = 16;
 
 /**
  * The body-palette index runs that receive a player's colour ramp. These are the patches the original's
@@ -185,32 +185,4 @@ export function synthesizePlayerSource(reference: Uint8Array, hueDeg: number): U
     out[o + 2] = b;
   }
   return out;
-}
-
-/**
- * Stack `palettes` (each a 256-colour 768-byte RGB triple set, one per player) into a
- * `256 × palettes.length` RGBA LUT image: pixel `(x, y)` = palette `y`'s colour at index `x`, alpha 255
- * (sprite transparency comes from the indexed atlas mask, never the LUT). The renderer uploads this as a
- * nearest-sampled texture and reads `LUT[index, playerRow]` per pixel. Throws (`player-palette:` prefix)
- * on a wrong-sized palette or an empty list.
- */
-export function buildPlayerLutImage(palettes: readonly Uint8Array[]): RgbaImage {
-  if (palettes.length === 0) throw new Error('player-palette: need at least one palette for the LUT');
-  const width = PALETTE_ENTRIES;
-  const height = palettes.length;
-  const rgba = new Uint8Array(width * height * 4);
-  for (let y = 0; y < height; y++) {
-    const pal = palettes[y];
-    if (pal === undefined) continue;
-    assertPalette(pal, `palette row ${y}`);
-    for (let x = 0; x < width; x++) {
-      const src = x * 3;
-      const dst = (y * width + x) * 4;
-      rgba[dst] = pal[src] ?? 0;
-      rgba[dst + 1] = pal[src + 1] ?? 0;
-      rgba[dst + 2] = pal[src + 2] ?? 0;
-      rgba[dst + 3] = 0xff;
-    }
-  }
-  return { width, height, rgba };
 }

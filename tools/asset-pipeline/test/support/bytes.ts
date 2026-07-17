@@ -8,3 +8,10 @@ export const le32 = (v: number): number[] => [
   (v >>> 16) & 0xff,
   (v >>> 24) & 0xff,
 ];
+
+/** A {@link le32} appender bound to one byte array under construction, for hand-built container headers. */
+export const u32Into =
+  (out: number[]) =>
+  (v: number): void => {
+    out.push(...le32(v));
+  };

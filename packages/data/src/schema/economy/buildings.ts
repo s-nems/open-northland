@@ -32,14 +32,30 @@ export const Recipe = z.strictObject({
 });
 export type Recipe = z.infer<typeof Recipe>;
 
+/**
+ * The coarse building classes, mapped from the original `logichousetype` `logicmaintype`:
+ * `storage` (HQ + stocks), `home` (residences), `workplace` (production), `training`
+ * (barracks/school), `tower` (defence), `vehicle` (buildable carts/ships), `wonder`.
+ * The specific building (headquarters vs a stock, which workplace) is carried by `id`.
+ */
+export const BUILDING_KIND = {
+  storage: 'storage',
+  home: 'home',
+  workplace: 'workplace',
+  training: 'training',
+  tower: 'tower',
+  vehicle: 'vehicle',
+  wonder: 'wonder',
+} as const;
+export type BuildingKind = (typeof BUILDING_KIND)[keyof typeof BUILDING_KIND];
+
 export const BuildingType = z.strictObject({
   typeId: TypeId,
   id: z.string(), // e.g. "headquarters"
   /**
-   * Coarse building class, mapped from the original `logichousetype` `logicmaintype`:
-   * `storage` (HQ + stocks), `home` (residences), `workplace` (production), `training`
-   * (barracks/school), `tower` (defence), `vehicle` (buildable carts/ships), `wonder`.
-   * The specific building (headquarters vs a stock, which workplace) is carried by `id`.
+   * Coarse building class — one of {@link BUILDING_KIND}. Stays `z.string()` rather than an enum
+   * because the extractor emits a `maintype_<n>` fallback for an unrecognized `logicmaintype`, so an
+   * unknown class degrades one record instead of failing the whole set.
    */
   kind: z.string(),
   /** Population capacity tier from `logichomesize` — present only on `home` buildings (else 0). */

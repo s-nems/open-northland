@@ -101,8 +101,9 @@ export async function convertGoodsStage(roots: SourceRoots, outDir: string): Pro
   let icons: Record<string, GoodIcon>;
   let names: Record<string, Record<string, string>>;
   try {
-    icons = await buildGoodIcons(roots);
-    names = await loadGoodNames(roots, await loadGoods(roots));
+    const goods = await loadGoods(roots);
+    icons = await buildGoodIcons(roots, goods);
+    names = await loadGoodNames(roots, goods);
   } catch (err) {
     console.warn(`[pipeline] goods: skipped (good tables unreadable): ${(err as Error).message}`);
     icons = {};

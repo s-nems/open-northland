@@ -29,6 +29,22 @@ export function assertPaletteBytes(palette: Uint8Array, prefix: string, what = '
   }
 }
 
+/**
+ * Writes the 256-entry `[B, G, R, 0]` colour table both the `CPalette` storable body and the cursor DIB
+ * carry, converting from a 768-byte RGB-triple palette into `out` at `offset` (1024 bytes). The pad byte
+ * is zeroed, matching the engine's on-disk form. Callers validate the palette length before calling.
+ */
+export function writeBgraTable(out: Uint8Array, offset: number, rgb: Uint8Array): void {
+  for (let i = 0; i < PALETTE_ENTRIES; i++) {
+    const src = i * 3;
+    const dst = offset + i * 4;
+    out[dst] = rgb[src + 2] ?? 0; // B
+    out[dst + 1] = rgb[src + 1] ?? 0; // G
+    out[dst + 2] = rgb[src] ?? 0; // R
+    out[dst + 3] = 0; // pad
+  }
+}
+
 /** A pixel buffer in straight (non-premultiplied) RGBA, 8 bits/channel, row-major top→bottom. */
 export interface RgbaImage {
   readonly width: number;
@@ -61,4 +77,31 @@ export function paletteToRgba(
     rgba[o + 3] = a;
   }
   return rgba;
+}
+
+/**
+ * Stack `palettes` (each a 768-byte RGB triple set) into a `256 × palettes.length` RGBA LUT image:
+ * pixel `(x, y)` = palette `y`'s colour at index `x`, alpha 255 (sprite transparency comes from the
+ * indexed atlas mask, never the LUT). The renderer uploads this as a nearest-sampled texture and reads
+ * `LUT[index, row]` per pixel. Throws (`palette-lut:` prefix) on a wrong-sized palette or an empty list.
+ */
+export function buildPaletteLutImage(palettes: readonly Uint8Array[]): RgbaImage {
+  if (palettes.length === 0) throw new Error('palette-lut: need at least one palette for the LUT');
+  const width = PALETTE_ENTRIES;
+  const height = palettes.length;
+  const rgba = new Uint8Array(width * height * 4);
+  for (let y = 0; y < height; y++) {
+    const pal = palettes[y];
+    if (pal === undefined) continue;
+    assertPaletteBytes(pal, 'palette-lut', `palette row ${y}`);
+    for (let x = 0; x < width; x++) {
+      const src = x * 3;
+      const dst = (y * width + x) * 4;
+      rgba[dst] = pal[src] ?? 0;
+      rgba[dst + 1] = pal[src + 1] ?? 0;
+      rgba[dst + 2] = pal[src + 2] ?? 0;
+      rgba[dst + 3] = 0xff;
+    }
+  }
+  return { width, height, rgba };
 }

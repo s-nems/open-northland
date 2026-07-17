@@ -2,8 +2,8 @@ import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
 import { type BobAtlas, packBobAtlas, packIndexedBobAtlas } from '../decoders/atlas.js';
 import type { Bmd } from '../decoders/bmd/index.js';
+import { buildPaletteLutImage } from '../decoders/image.js';
 import { decodePcx } from '../decoders/pcx.js';
-import { buildPlayerLutImage } from '../decoders/player-palette.js';
 import { encodePng } from '../decoders/png.js';
 import { rootsInOrder, type SourceRoots } from '../roots.js';
 
@@ -139,7 +139,7 @@ export async function writeLutPng(
   orderedPalettes: readonly Uint8Array[],
 ): Promise<void> {
   await mkdir(join(outDir, BOBS_DIR), { recursive: true });
-  await writeFile(join(outDir, BOBS_DIR, `${stem}.png`), encodePng(buildPlayerLutImage(orderedPalettes)));
+  await writeFile(join(outDir, BOBS_DIR, `${stem}.png`), encodePng(buildPaletteLutImage(orderedPalettes)));
 }
 
 /** Writes a packed bob atlas's `<stem>.png` + `<stem>.atlas.json` under {@link BOBS_DIR} (the `/bobs/` convention). */

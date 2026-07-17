@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { decodeCifStringArray, decryptMode1, encryptMode1, StorableId } from '../src/decoders/cif.js';
 import { decodeCifStringTable } from '../src/decoders/ini.js';
+import { u32Into } from './support/bytes.js';
 
 /**
  * `.cif` container decoder tests. No copyrighted fixtures are committed: we synthesize a
@@ -40,9 +41,7 @@ function buildCif(lines: ReadonlyArray<{ level: number; text: string }>): Uint8A
   encryptMode1(encPool);
 
   const out: number[] = [];
-  const pushU32 = (v: number): void => {
-    out.push(v & 0xff, (v >>> 8) & 0xff, (v >>> 16) & 0xff, (v >>> 24) & 0xff);
-  };
+  const pushU32 = u32Into(out);
   const pushCMemory = (data: Uint8Array): void => {
     pushU32(StorableId.CMemory);
     pushU32(0); // version
@@ -126,8 +125,7 @@ describe('decodeCifStringArray', () => {
     encryptMode1(encPool);
 
     const out: number[] = [];
-    const pushU32 = (v: number): void =>
-      void out.push(v & 0xff, (v >>> 8) & 0xff, (v >>> 16) & 0xff, (v >>> 24) & 0xff);
+    const pushU32 = u32Into(out);
     const pushCMemory = (data: Uint8Array): void => {
       pushU32(StorableId.CMemory);
       pushU32(0);
@@ -152,8 +150,7 @@ describe('decodeCifStringArray', () => {
 
   it('returns no lines when hasStringPool is 0', () => {
     const out: number[] = [];
-    const pushU32 = (v: number): void =>
-      void out.push(v & 0xff, (v >>> 8) & 0xff, (v >>> 16) & 0xff, (v >>> 24) & 0xff);
+    const pushU32 = u32Into(out);
     pushU32(StorableId.CStringArray);
     pushU32(0);
     pushU32(0); // forceSequentialIds

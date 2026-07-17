@@ -18,8 +18,8 @@ import { fetchImageData, fetchJsonOrNull, loadTextureIfPresent } from './net.js'
 
 /**
  * The GUI palette LUT row order (row index = palette). Kept in lock-step with `GUI_PALETTES` in
- * `tools/asset-pipeline/src/stages/gui.ts` (append, never reorder): the pipeline bakes this order into the
- * LUT rows and the renderer selects a row by index.
+ * `tools/asset-pipeline/src/stages/gui/palette-lut.ts` (append, never reorder): the pipeline bakes this
+ * order into the LUT rows and the renderer selects a row by index.
  */
 export const GUI_PALETTES = [
   'iconsleft',

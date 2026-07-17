@@ -39,11 +39,11 @@ import { convertWindowBitmaps } from './window-bitmaps.js';
  * everything lands under the gitignored `content/`.
  */
 
-export * from './atlases.js';
-export * from './cursors.js';
-export * from './palette-lut.js';
-export * from './strings.js';
-export * from './window-bitmaps.js';
+export { convertGuiAtlases, type GuiAtlasResult } from './atlases.js';
+export { convertCursors, type GuiCursorResult } from './cursors.js';
+export { convertGuiPaletteLut, GUI_PALETTE_LUT_STEM } from './palette-lut.js';
+export { convertGuiStrings, type GuiStringsResult, STRING_TABLES } from './strings.js';
+export { BODY_SHADOW_MIN_LUMA, convertWindowBitmaps, liftPaletteShadows } from './window-bitmaps.js';
 
 /** The top-level `content/gui/manifest.json` — the app's single entry point to discover every GUI output. */
 export interface GuiManifest {

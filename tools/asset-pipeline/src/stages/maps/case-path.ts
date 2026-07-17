@@ -2,14 +2,6 @@ import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
 /**
- * Resolves `segments` under `dir`, matching each path segment case-insensitively, and returns the
- * on-disk path or null when any segment is absent. The map folders mix casing freely (`text/`,
- * `Text/`, `TEXT/`, `Pol/`, `Strings.ini`, `Minimap/` all ship), which a case-insensitive macOS/Windows
- * filesystem hides but a case-sensitive Linux one does not — resolving via directory listing keeps the
- * pipeline portable. Among same-named entries differing only in case (never observed), the
- * lexicographically first wins, so a re-run is deterministic.
- */
-/**
  * {@link findPathCaseInsensitive} over candidate directories in priority order (the map folder's
  * overlay dir first, then the base game's) — the first directory that resolves the segments wins.
  */
@@ -24,6 +16,14 @@ export async function findPathCaseInsensitiveInDirs(
   return null;
 }
 
+/**
+ * Resolves `segments` under `dir`, matching each path segment case-insensitively, and returns the
+ * on-disk path or null when any segment is absent. The map folders mix casing freely (`text/`,
+ * `Text/`, `TEXT/`, `Pol/`, `Strings.ini`, `Minimap/` all ship), which a case-insensitive macOS/Windows
+ * filesystem hides but a case-sensitive Linux one does not — resolving via directory listing keeps the
+ * pipeline portable. Among same-named entries differing only in case (never observed), the
+ * lexicographically first wins, so a re-run is deterministic.
+ */
 export async function findPathCaseInsensitive(
   dir: string,
   segments: readonly string[],

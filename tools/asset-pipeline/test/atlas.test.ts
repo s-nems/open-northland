@@ -27,8 +27,9 @@ import { packLineControl } from './fixtures/bmd.js';
  * empty bobs still get an id-addressable (0×0) entry.
  */
 
-/** A 256-entry RGB palette where index `i` maps to `(i, i+1, i+2)` mod 256 — distinct, easy to assert. */
-const rampPalette = (): Uint8Array => {
+/** A 256-entry RGB palette where index `i` maps to `(i, i+1, i+2)` mod 256 — distinct, easy to assert.
+ *  Deliberately not the shared `rampPalette` fixture: this formula makes the expected triples readable. */
+const sequentialPalette = (): Uint8Array => {
   const p = new Uint8Array(768);
   for (let i = 0; i < 256; i++) {
     p[i * 3] = i & 0xff;
@@ -117,7 +118,7 @@ describe('expandBobFrame', () => {
       pixels: Uint8Array.from([5, 9]),
       mask: Uint8Array.from([255, 0]),
     };
-    const rgba = expandBobFrame(frame, rampPalette()).rgba;
+    const rgba = expandBobFrame(frame, sequentialPalette()).rgba;
     // Pixel 0 (index 5) -> (5,6,7,255); pixel 1 masked off -> (0,0,0,0).
     expect([...rgba]).toEqual([5, 6, 7, 255, 0, 0, 0, 0]);
   });
@@ -129,7 +130,7 @@ describe('expandBobFrame', () => {
       pixels: Uint8Array.from([5]),
       mask: Uint8Array.from([0x80]),
     };
-    expect([...expandBobFrame(frame, rampPalette()).rgba]).toEqual([5, 6, 7, 0x80]);
+    expect([...expandBobFrame(frame, sequentialPalette()).rgba]).toEqual([5, 6, 7, 0x80]);
   });
 
   it('treats index 0 as a real colour when its mask is set', () => {
@@ -139,7 +140,7 @@ describe('expandBobFrame', () => {
       pixels: Uint8Array.from([0]),
       mask: Uint8Array.from([255]),
     };
-    const rgba = expandBobFrame(frame, rampPalette()).rgba;
+    const rgba = expandBobFrame(frame, sequentialPalette()).rgba;
     expect([...rgba]).toEqual([0, 1, 2, 255]);
   });
 
@@ -165,7 +166,7 @@ describe('packBobAtlas', () => {
         areaY: 4,
       },
     ]);
-    const { image, manifest } = packBobAtlas(bmd, rampPalette());
+    const { image, manifest } = packBobAtlas(bmd, sequentialPalette());
 
     const f = frameOf(manifest, 10);
     expect(f.rect).toEqual({ x: ATLAS_GUTTER, y: ATLAS_GUTTER, width: 2, height: 1 });
@@ -189,7 +190,7 @@ describe('packBobAtlas', () => {
     const b = { type: BOB_TYPE_8BIT, width: 3, height: 1, packed: [0x03, 4, 5, 6, 0x00], lines: [0] };
     const bmd = makeBmd([a, b]);
     // maxWidth = 5: first frame at x=1 spans cols 1..3 (next cursor 5); second (+gutter+3) overflows -> wraps.
-    const { manifest } = packBobAtlas(bmd, rampPalette(), { maxWidth: 5 });
+    const { manifest } = packBobAtlas(bmd, sequentialPalette(), { maxWidth: 5 });
 
     const f0 = frameOf(manifest, 10);
     const f1 = frameOf(manifest, 11);
@@ -203,7 +204,7 @@ describe('packBobAtlas', () => {
       { type: BOB_TYPE_8BIT, width: 1, height: 1, packed: [0x01, 42, 0x00], lines: [0] },
       { type: BOB_TYPE_EMPTY, width: 0, height: 0, lines: [] },
     ]);
-    const { manifest } = packBobAtlas(bmd, rampPalette());
+    const { manifest } = packBobAtlas(bmd, sequentialPalette());
     expect(manifest.frames).toHaveLength(2);
     const empty = frameOf(manifest, 11);
     expect(empty.rect).toEqual({ x: 0, y: 0, width: 0, height: 0 });
@@ -214,14 +215,14 @@ describe('packBobAtlas', () => {
   it('flags an all-transparent (skip-only) bob as not opaque', () => {
     // A bob whose only run is a skip of 2 (high bit set): no pixels written -> opaque false, 0x0 atlas rect.
     const bmd = makeBmd([{ type: BOB_TYPE_8BIT, width: 2, height: 1, packed: [0x82, 0x00], lines: [0] }]);
-    const { manifest } = packBobAtlas(bmd, rampPalette());
+    const { manifest } = packBobAtlas(bmd, sequentialPalette());
     const f = frameOf(manifest, 10);
     expect(f.opaque).toBe(false);
   });
 
   it('produces a valid 1x1 atlas when no bob has pixels', () => {
     const bmd = makeBmd([{ type: BOB_TYPE_EMPTY, width: 0, height: 0, lines: [] }]);
-    const { image, manifest } = packBobAtlas(bmd, rampPalette());
+    const { image, manifest } = packBobAtlas(bmd, sequentialPalette());
     expect(image.width).toBe(1);
     expect(image.height).toBe(1);
     expect(manifest.frames).toHaveLength(1);
@@ -237,7 +238,7 @@ describe('packBobAtlas', () => {
         lines: [0, 6],
       },
     ]);
-    const { image, manifest } = packBobAtlas(bmd, rampPalette());
+    const { image, manifest } = packBobAtlas(bmd, sequentialPalette());
     expect(manifest.width).toBe(image.width);
     expect(manifest.height).toBe(image.height);
   });
@@ -296,7 +297,7 @@ describe('packIndexedBobAtlas', () => {
         areaY: 4,
       },
     ]);
-    const rgb = packBobAtlas(bmd, rampPalette());
+    const rgb = packBobAtlas(bmd, sequentialPalette());
     const indexed = packIndexedBobAtlas(bmd);
     // Same shelf packing → identical manifest geometry.
     expect(indexed.manifest).toEqual(rgb.manifest);

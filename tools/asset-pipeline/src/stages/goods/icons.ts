@@ -113,14 +113,17 @@ export function resolveGoodIcons(
   return icons;
 }
 
-/** Read `goodtypes.ini` + `landscapes.cif` and resolve the good→icon bindings ({@link resolveGoodIcons}). */
-export async function buildGoodIcons(roots: SourceRoots): Promise<Record<string, GoodIcon>> {
+/** Read `landscapes.cif` and resolve `goods`' icon bindings against it ({@link resolveGoodIcons}). */
+export async function buildGoodIcons(
+  roots: SourceRoots,
+  goods: readonly GoodLike[],
+): Promise<Record<string, GoodIcon>> {
   const { lines } = decodeCifStringArray(await readSourceFile(roots, LANDSCAPES_CIF));
   const landscapeGfx = extractLandscapeGfx(cifLinesToSections(lines), {
     file: LANDSCAPES_CIF,
     layer: 'base',
   });
-  return resolveGoodIcons(await loadGoods(roots), landscapeGfx);
+  return resolveGoodIcons(goods, landscapeGfx);
 }
 
 /** Parse `goodtypes.ini` into the goods list (the id/typeId/landscapeType the icon + name joins key off). */

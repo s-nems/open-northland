@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { decodePalette, encodePalette } from '../src/decoders/palette.js';
 import { expandToRgba } from '../src/decoders/pcx.js';
+import { rampPalette as rampRgb } from './fixtures/palette.js';
 
 /**
  * Standalone `CPalette` (id 0x3F6) decoder tests. No copyrighted fixtures: we synthesize palettes in
@@ -8,17 +9,6 @@ import { expandToRgba } from '../src/decoders/pcx.js';
  * version. A couple of cases hand-build bytes to pin the storable header and the on-disk `[B,G,R,_]`
  * order, and one feeds the result into `expandToRgba` to prove the shape matches the `.pcx` palette.
  */
-
-/** A 768-byte RGB-triple palette where entry i is (i, 255-i, (i*7) & 0xff). */
-const rampRgb = (): Uint8Array => {
-  const p = new Uint8Array(768);
-  for (let i = 0; i < 256; i++) {
-    p[i * 3] = i;
-    p[i * 3 + 1] = 255 - i;
-    p[i * 3 + 2] = (i * 7) & 0xff;
-  }
-  return p;
-};
 
 describe('decodePalette', () => {
   it('round-trips RGB triples and the version word', () => {

@@ -1,5 +1,16 @@
 import { encodeMapDat, encodeMapSize, packMapLayer } from '../../src/decoders/mapdat/index.js';
 
+/** Encodes a name-dictionary payload: `[u32 count]` then per entry `[u8 len][bytes][0x00]`. */
+export function encodeStringList(names: readonly string[]): Uint8Array {
+  const bytes: number[] = [names.length & 0xff, (names.length >>> 8) & 0xff, 0, 0];
+  for (const n of names) {
+    bytes.push(n.length);
+    for (let i = 0; i < n.length; i++) bytes.push(n.charCodeAt(i) & 0xff);
+    bytes.push(0);
+  }
+  return Uint8Array.from(bytes);
+}
+
 /**
  * Builds a synthetic `map.dat`: an `lsiz` dims chunk + an `lmlt` landscape-object layer (a row-major
  * `2W × 2H` half-cell grid, RLE-packed via the faithful `packMapLayer`). `halfCells` is the raw lane

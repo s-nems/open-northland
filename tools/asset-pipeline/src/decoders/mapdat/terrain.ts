@@ -26,7 +26,7 @@ export const HALF_CELLS_PER_CELL = 4;
  * (+1-shifted 0-based indices) mapped every object one row off (tree → tree_falling) — see
  * source basis.
  */
-export const LMLT_EMPTY = 0;
+const LMLT_EMPTY = 0;
 
 /**
  * The IR `LandscapeType.typeId` an empty half-cell reduces to: `void` (typeId 1) — the "nothing

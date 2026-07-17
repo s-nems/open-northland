@@ -15,7 +15,7 @@
 
 import { viewOf } from './byte-cursor.js';
 import { StorableId } from './cif.js';
-import { assertPaletteBytes, PALETTE_RGB_BYTES } from './image.js';
+import { assertPaletteBytes, PALETTE_RGB_BYTES, writeBgraTable } from './image.js';
 
 const STORABLE_HEADER_BYTES = 8; // [u32 id][u32 version]
 const ENTRY_COUNT = 256;
@@ -93,15 +93,7 @@ export function encodePalette(input: PaletteInput): Uint8Array {
   view.setUint32(0, StorableId.CPalette, true);
   view.setUint32(4, version, true);
 
-  let dst = STORABLE_HEADER_BYTES;
-  for (let i = 0; i < ENTRY_COUNT; i++) {
-    const o = i * 3;
-    out[dst] = rgb[o + 2] as number; // B
-    out[dst + 1] = rgb[o + 1] as number; // G
-    out[dst + 2] = rgb[o] as number; // R
-    out[dst + 3] = 0; // pad
-    dst += BYTES_PER_ENTRY;
-  }
+  writeBgraTable(out, STORABLE_HEADER_BYTES, rgb);
 
   return out;
 }

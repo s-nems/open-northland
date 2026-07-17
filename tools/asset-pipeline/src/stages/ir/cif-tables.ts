@@ -5,9 +5,7 @@ import { resolveSourceFile, type SourceRoots } from '../../roots.js';
 
 /**
  * Decodes a `.cif`-only table (no readable `.ini` twin — `pattern.cif`, `trianglepatterntypes.cif`)
- * into the shared {@link RuleSection} model, or `null` if the file is absent. Mirrors the
- * graceful-skip stance of {@link import('./sources.js').resolveIniSources}: a partial install still
- * produces an IR from whatever is present rather than aborting the batch.
+ * into the shared {@link RuleSection} model, or `null` if the file is absent.
  */
 async function loadCifSections(path: string | undefined): Promise<RuleSection[] | null> {
   if (path === undefined) return null;
@@ -18,9 +16,11 @@ async function loadCifSections(path: string | undefined): Promise<RuleSection[] 
 /**
  * Loads a `.cif`-only table at `relFile` (no readable `.ini` twin — overlay-first, since the CnMod
  * zip ships patched copies of several base `.cif` tables) and runs `extract` over its sections,
- * returning `fallback` when the file is absent/undecodable (a partial install degrades per-table, not
- * fatally). Collapses the five identical load→guard→extract triples buildIr does for the pattern,
- * triangle, transition, landscape, and sound tables.
+ * returning `fallback` when the file is absent. Collapses the five identical load→guard→extract
+ * triples buildIr does for the pattern, triangle, transition, landscape, and sound tables.
+ *
+ * An absent table degrades to `fallback`; a *present but undecodable* one throws and aborts the run
+ * (see docs/tickets/pipeline/cif-table-decode-degrade.md).
  */
 export async function loadCifTable<T>(
   roots: SourceRoots,

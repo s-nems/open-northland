@@ -27,7 +27,7 @@
  */
 
 import { viewOf } from './byte-cursor.js';
-import { assertPaletteBytes, type RgbaImage } from './image.js';
+import { assertPaletteBytes, type RgbaImage, writeBgraTable } from './image.js';
 
 /** ICONDIR / ICONDIRENTRY sizes and the cursor resource type. */
 const ICONDIR_BYTES = 6;
@@ -267,15 +267,7 @@ function encodeDib8(img: CursorImageInput): Uint8Array {
   view.setUint16(14, 8, true); // biBitCount
   view.setUint32(32, 256, true); // biClrUsed
 
-  // Colour table: 256 BGRA quads from the RGB palette.
-  for (let i = 0; i < 256; i++) {
-    const s = i * 3;
-    const d = DIB_HEADER_BYTES + i * 4;
-    out[d] = palette[s + 2] ?? 0; // B
-    out[d + 1] = palette[s + 1] ?? 0; // G
-    out[d + 2] = palette[s] ?? 0; // R
-    out[d + 3] = 0;
-  }
+  writeBgraTable(out, DIB_HEADER_BYTES, palette);
 
   const xorStart = DIB_HEADER_BYTES + paletteBytes;
   const andStart = xorStart + xorRowBytes * height;

@@ -16,6 +16,7 @@ import {
   PACKED_X_SHIFT,
 } from '../src/decoders/bmd/index.js';
 import { packLineControl } from './fixtures/bmd.js';
+import { u32Into } from './support/bytes.js';
 
 /**
  * `.bmd` (CBobManager, id 0x3F4) container decoder tests. No copyrighted fixtures: we synthesize bob
@@ -118,9 +119,7 @@ describe('decodeBmd / encodeBmd', () => {
 
   it('decodes a hand-built 24-byte record from the bob-data CMemory', () => {
     const w: number[] = [];
-    const push32 = (n: number) => {
-      w.push(n & 0xff, (n >>> 8) & 0xff, (n >>> 16) & 0xff, (n >>> 24) & 0xff);
-    };
+    const push32 = u32Into(w);
     // header: id, ver, firstBobId=0, bobCount=1, packedUsed=0, lineCtrlCount=0, 3 counters
     push32(0x3f4);
     push32(0);
@@ -161,9 +160,7 @@ describe('decodeBmd / encodeBmd', () => {
     // Hand-build a bob set whose packed-line CMemory is allocated larger than the logical used-bytes
     // (the original allocator can leave slack). The decoder must return only `usedBytes` of it.
     const w: number[] = [];
-    const push32 = (n: number) => {
-      w.push(n & 0xff, (n >>> 8) & 0xff, (n >>> 16) & 0xff, (n >>> 24) & 0xff);
-    };
+    const push32 = u32Into(w);
     push32(0x3f4); // id
     push32(0); // version
     push32(0); // firstBobId
@@ -200,9 +197,7 @@ describe('decodeBmd / encodeBmd', () => {
 
   it('throws when a CMemory block is too short for the declared record count', () => {
     const w: number[] = [];
-    const push32 = (n: number) => {
-      w.push(n & 0xff, (n >>> 8) & 0xff, (n >>> 16) & 0xff, (n >>> 24) & 0xff);
-    };
+    const push32 = u32Into(w);
     push32(0x3f4);
     push32(0);
     push32(0);
