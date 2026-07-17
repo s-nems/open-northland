@@ -1,9 +1,10 @@
 # P3 — Stable mirror (or hash registry) for the CulturesNation mod download
 
 The desktop setup wizard downloads the CnMod archive via
-`packages/desktop/src/mod-install.ts`: culturesnation.pl's `serwerdownload.php` link 302-redirects
-to a Google Drive file page, and the module then plays Drive's large-file confirm-form dance
-(verified live 2026-07-16; `CnMod 1.3.1.zip`, 594 MB, sha256 pinned in `CNMOD_KNOWN_SHA256`).
+`packages/desktop/src/mod-install/download.ts`: culturesnation.pl's `serwerdownload.php` link
+302-redirects to a Google Drive file page, and the module then plays Drive's large-file confirm-form
+dance (verified live 2026-07-16; `CnMod 1.3.1.zip`, 594 MB, sha256 pinned in `CNMOD_KNOWN_SHA256`,
+`src/mod-install/install.ts`).
 
 Two fragilities are accepted for now (user decision, 2026-07-16: ship the Drive flow, revisit when
 it breaks):
@@ -24,5 +25,5 @@ available):
 3. Replace the single pinned hash with a small known-versions table (version → sha256) so a mod
    update means adding a row, not editing a constant buried in the downloader.
 
-Verify: unit tests in `packages/desktop/test/mod-install.test.ts` keep passing; one live download
+Verify: unit tests in `packages/desktop/test/mod-install/` keep passing; one live download
 against the new source yields a hash from the table.
