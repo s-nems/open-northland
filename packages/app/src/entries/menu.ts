@@ -2,7 +2,7 @@ import { fetchJsonOrNull } from '../content/net.js';
 import { messages } from '../i18n/index.js';
 import { SCENES } from '../scenes/index.js';
 import { generatedMapPreview } from './menu/map-preview.js';
-import { type MapPlayerSlot, mountPlayersPanel, type PlayersPanel } from './menu/players.js';
+import { type MapPlayerSlot, mountPlayersPanel, type PlayersPanel } from './menu/players/index.js';
 import { bindLocaleFlags, bindMenuSettings, targetSearch } from './menu/settings.js';
 
 const MENU_BACKDROP = new URL('../../../../docs/images/settlement.webp', import.meta.url).href;
@@ -33,10 +33,14 @@ interface MenuEntry {
 }
 
 /** Narrows one `/maps-index` roster row, mirroring the emit-side shape (wrong-typed rows drop).
- *  `claimable`/`hidden` default off the authored type for a sidecar predating the lobby fields. */
+ *  The lobby fields default to the no-`[multiplayer]`-table reading (claimable follows the
+ *  authored type, nothing hidden, AI allowed) for a sidecar predating them. */
 function parsePlayerSlot(raw: unknown): MapPlayerSlot | undefined {
   if (typeof raw !== 'object' || raw === null) return undefined;
-  const { player, type, tribeId, colorId, name, claimable, hidden } = raw as Record<string, unknown>;
+  const { player, type, tribeId, colorId, name, claimable, hidden, aiAllowed } = raw as Record<
+    string,
+    unknown
+  >;
   if (typeof player !== 'number' || !Number.isInteger(player) || player < 0) return undefined;
   if (type !== 'human' && type !== 'ai') return undefined;
   if (typeof tribeId !== 'number' || typeof colorId !== 'number') return undefined;
@@ -48,6 +52,7 @@ function parsePlayerSlot(raw: unknown): MapPlayerSlot | undefined {
     ...(typeof name === 'string' ? { name } : {}),
     claimable: typeof claimable === 'boolean' ? claimable : type === 'human',
     hidden: hidden === true,
+    aiAllowed: aiAllowed !== false,
   };
 }
 

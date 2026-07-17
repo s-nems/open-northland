@@ -16,8 +16,10 @@ describe('localPlayerParam', () => {
 });
 
 describe('colorOverridesParam', () => {
-  it('parses slot:colorId pairs and drops malformed ones', () => {
-    const overrides = colorOverridesParam(new URLSearchParams('colors=0:7,2:3,x:1,4:-2'));
+  it('parses slot:colorId pairs and drops malformed or out-of-range ones', () => {
+    // 4:-2 and 5:99 drop: an out-of-range colour would render differently per consumer (the
+    // sprite LUT clamps, the minimap wraps, the signpost atlas misses).
+    const overrides = colorOverridesParam(new URLSearchParams('colors=0:7,2:3,x:1,4:-2,5:99'));
     expect([...overrides.entries()]).toEqual([
       [0, 7],
       [2, 3],

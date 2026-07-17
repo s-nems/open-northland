@@ -191,12 +191,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     if (hovered !== null && placeType !== null && canPlaceAt(placeType, hovered.col, hovered.row)) {
       ghost = { kind: 'building', col: hovered.col, row: hovered.row, buildingType: placeType };
     } else if (hovered !== null && signpostFrame !== null && canPlaceSignpostAt(hovered.col, hovered.row)) {
-      ghost = {
-        kind: 'signpost',
-        col: hovered.col,
-        row: hovered.row,
-        player: deps.playerColourOf?.(localPlayer) ?? localPlayer,
-      };
+      // Owner slot, not a colour: the renderer applies the session colour mapping (updatePlacementGhost).
+      ghost = { kind: 'signpost', col: hovered.col, row: hovered.row, player: localPlayer };
     }
     renderer.updatePlacementGhost(ghost);
     // Tick the unit controls (details panel + action ring) before the renderer's update: a panel rebuild

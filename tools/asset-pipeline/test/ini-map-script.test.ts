@@ -108,13 +108,18 @@ player 0 #PLAYER_TYPE_HUMAN #TRIBE_TYPE_HUMAN_VIKING #PLAYER_COLOR_ID_BLUE
 player 0 #PLAYER_TYPE_AI #TRIBE_TYPE_HUMAN_FRANK #PLAYER_COLOR_ID_RED
 player X #PLAYER_TYPE_AI #TRIBE_TYPE_HUMAN_FRANK #PLAYER_COLOR_ID_RED
 player 3 #PLAYER_TYPE_NONE #TRIBE_TYPE_HUMAN_FRANK #PLAYER_COLOR_ID_RED
+player 4 #PLAYER_TYPE_AI 0 #PLAYER_COLOR_ID_RED
+player 5 #PLAYER_TYPE_AI #TRIBE_TYPE_HUMAN_FRANK 99
 ......................................................................
 `;
     const script = extractMapScript(parseIniSections(text), SRC);
     expect(script?.players).toEqual([{ player: 0, type: 'human', tribeId: 1, colorId: 0 }]);
-    // The duplicate, the unparsable row, the PLAYER_TYPE_NONE row and the decoration line all stay
-    // lossless in misc instead of vanishing.
+    // The duplicate, the unparsable row, the PLAYER_TYPE_NONE row, the out-of-range tribe/colour
+    // rows (which would otherwise fail the whole map at the final schema parse) and the decoration
+    // line all stay lossless in misc instead of vanishing.
     expect(script?.misc.map((l) => l.key)).toEqual([
+      'player',
+      'player',
       'player',
       'player',
       'player',

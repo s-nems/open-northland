@@ -179,13 +179,23 @@
   font-size: 11px;
 }
 
+/* A real button (keyboard-takable seat) drawn as the row's inline text affordance. */
 .game-menu__player-seat {
   flex: 0 0 auto;
+  padding: 0;
   color: #3c5220;
+  border: 0;
+  cursor: pointer;
   font-size: 12px;
   font-weight: 700;
+  font-family: inherit;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  background: none;
+}
+
+.game-menu__player-seat:disabled {
+  cursor: default;
 }
 
 .game-menu__player:not(.is-taken) .game-menu__player-seat {

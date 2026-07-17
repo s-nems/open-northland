@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   claimSeat,
+  hasClaimableSeat,
   initialRosterState,
   rosterStartParams,
   setSlotColor,
   toggleVacantMode,
-} from '../src/entries/menu/players.js';
+  wornByAnother,
+} from '../src/entries/menu/players/index.js';
 import { MENU_FOG_MODES, MENU_SPEEDS, targetSearch } from '../src/entries/menu/settings.js';
 import { parseMapsIndex } from '../src/entries/menu.js';
 
@@ -74,8 +76,9 @@ describe('parseMapsIndex', () => {
             name: 'Ragnar',
             claimable: true,
             hidden: false,
+            aiAllowed: true,
           },
-          { player: 1, type: 'ai', tribeId: 4, colorId: 9, claimable: false, hidden: false },
+          { player: 1, type: 'ai', tribeId: 4, colorId: 9, claimable: false, hidden: false, aiAllowed: true },
         ],
       },
       { id: 'bare', minimap: false },
@@ -90,8 +93,34 @@ describe('parseMapsIndex', () => {
           minimap: true,
           fixedColors: true,
           players: [
-            { player: 0, type: 'ai', tribeId: 1, colorId: 1, claimable: true, hidden: false },
-            { player: 1, type: 'ai', tribeId: 1, colorId: 9, claimable: false, hidden: true },
+            {
+              player: 0,
+              type: 'ai',
+              tribeId: 1,
+              colorId: 1,
+              claimable: true,
+              hidden: false,
+              aiAllowed: true,
+            },
+            {
+              player: 1,
+              type: 'ai',
+              tribeId: 1,
+              colorId: 9,
+              claimable: false,
+              hidden: true,
+              aiAllowed: true,
+            },
+            // A Human/Closed-only playeroption row (45 corpus rows offer no AI).
+            {
+              player: 2,
+              type: 'human',
+              tribeId: 1,
+              colorId: 2,
+              claimable: true,
+              hidden: false,
+              aiAllowed: false,
+            },
           ],
         },
       ]),
@@ -101,8 +130,17 @@ describe('parseMapsIndex', () => {
         minimap: true,
         fixedColors: true,
         players: [
-          { player: 0, type: 'ai', tribeId: 1, colorId: 1, claimable: true, hidden: false },
-          { player: 1, type: 'ai', tribeId: 1, colorId: 9, claimable: false, hidden: true },
+          { player: 0, type: 'ai', tribeId: 1, colorId: 1, claimable: true, hidden: false, aiAllowed: true },
+          { player: 1, type: 'ai', tribeId: 1, colorId: 9, claimable: false, hidden: true, aiAllowed: true },
+          {
+            player: 2,
+            type: 'human',
+            tribeId: 1,
+            colorId: 2,
+            claimable: true,
+            hidden: false,
+            aiAllowed: false,
+          },
         ],
       },
     ]);
@@ -111,9 +149,9 @@ describe('parseMapsIndex', () => {
 
 describe('roster state', () => {
   const players = [
-    { player: 0, type: 'human', tribeId: 1, colorId: 7, claimable: true, hidden: false },
-    { player: 1, type: 'human', tribeId: 2, colorId: 4, claimable: true, hidden: false },
-    { player: 2, type: 'ai', tribeId: 4, colorId: 9, claimable: false, hidden: false },
+    { player: 0, type: 'human', tribeId: 1, colorId: 7, claimable: true, hidden: false, aiAllowed: true },
+    { player: 1, type: 'human', tribeId: 2, colorId: 4, claimable: true, hidden: false, aiAllowed: true },
+    { player: 2, type: 'ai', tribeId: 4, colorId: 9, claimable: false, hidden: false, aiAllowed: true },
   ] as const;
 
   it('gates start params on a claimed seat and encodes only deviations', () => {
@@ -151,9 +189,9 @@ describe('roster state', () => {
   it('defaults a claimable authored-ai slot to AI and encodes only its toggle to idle', () => {
     // A lobby-opened seat (Forteca/Mosty style): authored ai, playeroption offers human.
     const lobby = [
-      { player: 0, type: 'human', tribeId: 1, colorId: 0, claimable: true, hidden: false },
-      { player: 1, type: 'ai', tribeId: 1, colorId: 1, claimable: true, hidden: false },
-      { player: 2, type: 'ai', tribeId: 1, colorId: 9, claimable: false, hidden: false },
+      { player: 0, type: 'human', tribeId: 1, colorId: 0, claimable: true, hidden: false, aiAllowed: true },
+      { player: 1, type: 'ai', tribeId: 1, colorId: 1, claimable: true, hidden: false, aiAllowed: true },
+      { player: 2, type: 'ai', tribeId: 1, colorId: 9, claimable: false, hidden: false, aiAllowed: true },
     ] as const;
     let state = claimSeat(initialRosterState(lobby), 0);
     expect(rosterStartParams(state, lobby)).toEqual([['player', '0']]); // AI default = no deviation
@@ -162,6 +200,43 @@ describe('roster state', () => {
       ['player', '0'],
       ['vacant', '1:idle'],
     ]);
+  });
+
+  it('treats a Human/Closed-only seat as idle with no vacant deviations', () => {
+    // playeroption without #PLAYER_TYPE_AI (e.g. Zgielk2 slot 0): no AI offer, so the authored
+    // default is idle even on an authored-ai slot, and its mode never reaches the start URL.
+    const lobby = [
+      { player: 0, type: 'human', tribeId: 1, colorId: 0, claimable: true, hidden: false, aiAllowed: true },
+      { player: 1, type: 'ai', tribeId: 1, colorId: 1, claimable: true, hidden: false, aiAllowed: false },
+    ] as const;
+    let state = claimSeat(initialRosterState(lobby), 0);
+    expect(rosterStartParams(state, lobby)).toEqual([['player', '0']]);
+    state = toggleVacantMode(state, 1); // UI never offers this; the encoding must still not leak it
+    expect(rosterStartParams(state, lobby)).toEqual([['player', '0']]);
+  });
+
+  it('keeps authored duplicate colours pickable for their own slot and blocks new duplicates', () => {
+    // Real rosters duplicate colours freely (tutorial maps are all-blue; multiplayer_104 wears
+    // black three times) — "worn" must always be relative to the asking slot.
+    const dupes = [
+      { player: 0, type: 'human', tribeId: 1, colorId: 0, claimable: true, hidden: false, aiAllowed: true },
+      { player: 1, type: 'human', tribeId: 1, colorId: 0, claimable: true, hidden: false, aiAllowed: true },
+      { player: 2, type: 'human', tribeId: 1, colorId: 4, claimable: true, hidden: false, aiAllowed: true },
+    ] as const;
+    const state = initialRosterState(dupes);
+    expect(wornByAnother(state, 1, 0)).toBe(true); // slot 0 also wears blue…
+    expect(setSlotColor(state, 1, 0)).not.toBeNull(); // …but re-picking your own blue is a no-op accept
+    expect(setSlotColor(state, 2, 0)).toBeNull(); // a third slot cannot newly join the duplicate
+    expect(setSlotColor(state, 1, 3)).not.toBeNull(); // moving off the duplicate is free
+  });
+
+  it('does not gate Start when a roster offers no claimable seat', () => {
+    const allAi = [
+      { player: 0, type: 'ai', tribeId: 1, colorId: 0, claimable: false, hidden: false, aiAllowed: true },
+    ] as const;
+    expect(hasClaimableSeat(allAi)).toBe(false);
+    expect(hasClaimableSeat([{ ...allAi[0], claimable: true, hidden: true }])).toBe(false);
+    expect(hasClaimableSeat([{ ...allAi[0], claimable: true }])).toBe(true);
   });
 });
 

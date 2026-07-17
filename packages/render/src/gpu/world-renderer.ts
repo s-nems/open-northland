@@ -187,6 +187,8 @@ export class WorldRenderer {
 
   /** Interactive view smoothing ({@link WorldRendererOptions.viewSmoothing}). */
   private readonly viewSmoothing: boolean;
+  /** Session owner→colour-slot mapping ({@link WorldRendererOptions.playerColourOf}); identity when unset. */
+  private readonly playerColourOf: ((player: number) => number) | undefined;
   /** The post-pass vignette sprite ({@link WorldRendererOptions.postFx}); null when off/unavailable. */
   private readonly vignette: Sprite | null;
   /** Atlas pages currently flipped to linear minification by {@link applyWorldSampling} — exactly the
@@ -196,6 +198,7 @@ export class WorldRenderer {
   constructor(app: Application, opts?: WorldRendererOptions) {
     this.app = app;
     this.viewSmoothing = opts?.viewSmoothing === true;
+    this.playerColourOf = opts?.playerColourOf;
     this.spriteLayer.sortableChildren = true;
     this.mapObjects = new MapObjectLayer(this.spriteLayer, this.textureCache);
     this.pool = new SpritePool(this.spriteLayer, this.textureCache, opts?.sheet, opts?.playerColourOf);
@@ -534,10 +537,15 @@ export class WorldRenderer {
    * Set (or clear) the build-placement cursor ghost — the held building's translucent sprite at the
    * hovered tile. The app passes `null` when not in build mode, when the cursor is off the map/HUD, or
    * when the hovered anchor is rejected by the placement probe (the original hides the house cursor
-   * over blocked ground).
+   * over blocked ground). A signpost ghost's `player` is the OWNER slot; the session colour mapping
+   * is applied here, at the same boundary pooled sprites get it.
    */
   updatePlacementGhost(ghost: PlacementGhost | null): void {
-    this.placementGhost.set(ghost, this.elevation);
+    const mapped =
+      ghost !== null && ghost.kind === 'signpost' && this.playerColourOf !== undefined
+        ? { ...ghost, player: this.playerColourOf(ghost.player) }
+        : ghost;
+    this.placementGhost.set(mapped, this.elevation);
   }
 
   /** Entities drawn last frame + sprites currently pooled — for the perf overlay's on-screen readout. */

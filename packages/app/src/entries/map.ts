@@ -176,7 +176,10 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     authoredSim ??
     (simMap !== null
       ? runBareMap(SLICE_SEED, simMap, footprints, goodNames, realContent?.content)
-      : runSlice(SLICE_SEED, 1, undefined, localPlayer, footprints, goodNames, realContent?.content));
+      : // Roster-less fallback (no decodable map): the synthetic slice is OWNED by the session seat,
+        // so ?player= changes initial sim state here — deterministic per URL, and the menu never
+        // emits ?player without a rostered map. Real maps take ownership from map data instead.
+        runSlice(SLICE_SEED, 1, undefined, localPlayer, footprints, goodNames, realContent?.content));
   setDiagGameSession({
     entry: 'map',
     worldId: mapId,

@@ -1,5 +1,6 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+import type { MapScript } from '@open-northland/data';
 import { decodeCifStringArray } from '../../decoders/cif.js';
 import {
   cifLinesToSections,
@@ -139,7 +140,7 @@ export async function convertMapDatTree(
     if (metaFile !== undefined) {
       await writeFile(metaPath, `${JSON.stringify(metaFile)}\n`);
     }
-    let scriptFile: Awaited<ReturnType<typeof resolveMapScript>>;
+    let scriptFile: MapScript | undefined;
     try {
       scriptFile = await resolveMapScript(mapDirs, rel, cifSections, strings);
     } catch (err) {

@@ -1,129 +1,38 @@
 import { MAP_PLAYER_COLOR_COUNT } from '@open-northland/data';
-import { PLAYER_SWATCH_COLORS } from '../../catalog/roster.js';
-import { formatMessage, messages } from '../../i18n/index.js';
+import { PLAYER_SWATCH_COLORS } from '../../../catalog/roster.js';
+import { formatMessage, messages } from '../../../i18n/index.js';
+import {
+  authoredVacantMode,
+  claimSeat,
+  hasClaimableSeat,
+  initialRosterState,
+  type MapPlayerSlot,
+  type RosterState,
+  rosterStartParams,
+  setSlotColor,
+  toggleVacantMode,
+  wornByAnother,
+} from './state.js';
 
 /**
- * The map-select player roster panel: one row per map player slot (from the map's decoded
- * `playerdata` roster + `[multiplayer]` lobby table served in `/maps-index`), where the person
- * takes a claimable seat, recolours slots (unique colours, unless the map fixes them), and
- * pre-sets what an unclaimed Human seat will do (Idle/AI — a forward-looking control, carried in
- * the start URL for the future auto-player). Lobby-hidden slots are not listed. The pure state
- * helpers are exported for headless tests; `mountPlayersPanel` is the DOM half.
+ * The map-select player roster panel (DOM half over `state.ts`): one row per listed map player
+ * slot, where the person takes a claimable seat, recolours slots (unique picks, unless the map
+ * fixes its colours), and pre-sets what an unclaimed claimable seat will do (Idle/AI — shown only
+ * where the lobby offers AI). Lobby-hidden slots are not listed.
  */
-
-/** One map player slot as `/maps-index` serves it (the script sidecar's roster + lobby table). */
-export interface MapPlayerSlot {
-  readonly player: number;
-  /** The authored `playerdata` type — what the slot does when nobody sits on it. */
-  readonly type: 'human' | 'ai';
-  readonly tribeId: number;
-  readonly colorId: number;
-  readonly name?: string;
-  /** Whether a person may take this seat (authored `human`, or the map's `[multiplayer]`
-   *  `playeroption` row offers `human` — the original lobby's seat-eligibility table). */
-  readonly claimable: boolean;
-  /** `[multiplayer]` `playerhideinmenu` — never listed (but still in the game and wearing its
-   *  authored colour, so its colour stays reserved in the picker). */
-  readonly hidden: boolean;
-}
-
-/** What a free claimable seat does once the game starts (future auto-player control). */
-export type VacantMode = 'idle' | 'ai';
-
-/** A slot's authored vacant default: an `ai` slot auto-plays, a `human` one idles. */
-export function authoredVacantMode(slot: MapPlayerSlot): VacantMode {
-  return slot.type === 'ai' ? 'ai' : 'idle';
-}
-
-/** The person's choices over one map's roster. */
-export interface RosterState {
-  /** The claimed slot id, or null while no seat is taken (Start stays gated). */
-  readonly seat: number | null;
-  /** Current colour per slot id (initialised from the map's authored colours). */
-  readonly colors: ReadonlyMap<number, number>;
-  /** Per-slot vacant mode, initialised from the authored type ({@link authoredVacantMode}). */
-  readonly vacantModes: ReadonlyMap<number, VacantMode>;
-}
-
-export function initialRosterState(players: readonly MapPlayerSlot[]): RosterState {
-  return {
-    seat: null,
-    colors: new Map(players.map((p) => [p.player, p.colorId])),
-    vacantModes: new Map(players.map((p) => [p.player, authoredVacantMode(p)])),
-  };
-}
-
-/** Claims a seat (a re-claim moves it); the vacated slot keeps its remembered vacant mode. */
-export function claimSeat(state: RosterState, slot: number): RosterState {
-  return { ...state, seat: slot };
-}
-
-/** Flips one unclaimed claimable slot between Idle and AI. */
-export function toggleVacantMode(state: RosterState, slot: number): RosterState {
-  const vacantModes = new Map(state.vacantModes);
-  vacantModes.set(slot, vacantModes.get(slot) === 'ai' ? 'idle' : 'ai');
-  return { ...state, vacantModes };
-}
-
-/** The slot currently wearing `colorId`, or undefined when the colour is free. */
-export function slotWearing(state: RosterState, colorId: number): number | undefined {
-  for (const [slot, c] of state.colors) if (c === colorId) return slot;
-  return undefined;
-}
-
-/**
- * Recolours one slot. Colours are unique: picking a colour another slot wears is rejected (null) —
- * except re-picking the slot's own colour, a no-op accepted for idempotent UI.
- */
-export function setSlotColor(state: RosterState, slot: number, colorId: number): RosterState | null {
-  const wearer = slotWearing(state, colorId);
-  if (wearer !== undefined && wearer !== slot) return null;
-  const colors = new Map(state.colors);
-  colors.set(slot, colorId);
-  return { ...state, colors };
-}
-
-/**
- * The start-URL params encoding the person's roster choices: `player=<seat>`,
- * `colors=<slot>:<colorId>,…` (only slots recoloured away from the map's authored colour) and
- * `vacant=<slot>:<idle|ai>,…` (only unclaimed claimable seats toggled away from their authored
- * default — the future auto-player control; no consumer reads it yet). Empty until a seat is
- * claimed — the menu gates Start on it.
- */
-export function rosterStartParams(
-  state: RosterState,
-  players: readonly MapPlayerSlot[],
-): readonly (readonly [string, string])[] {
-  if (state.seat === null) return [];
-  const params: (readonly [string, string])[] = [['player', String(state.seat)]];
-  const recoloured = players
-    .filter((p) => state.colors.get(p.player) !== undefined && state.colors.get(p.player) !== p.colorId)
-    .map((p) => `${p.player}:${state.colors.get(p.player)}`);
-  if (recoloured.length > 0) params.push(['colors', recoloured.join(',')]);
-  const vacant = players
-    .filter(
-      (p) =>
-        p.claimable &&
-        !p.hidden &&
-        p.player !== state.seat &&
-        (state.vacantModes.get(p.player) ?? authoredVacantMode(p)) !== authoredVacantMode(p),
-    )
-    .map((p) => `${p.player}:${state.vacantModes.get(p.player)}`);
-  if (vacant.length > 0) params.push(['vacant', vacant.join(',')]);
-  return params;
-}
 
 /** The panel handle the menu drives: show a map's roster, hide for non-maps, read the gating. */
 export interface PlayersPanel {
   show(mapId: string, players: readonly MapPlayerSlot[], fixedColors?: boolean): void;
   hide(): void;
-  /** False while a roster is shown and no seat is claimed — the menu disables Start on it. */
+  /** False while a shown roster offers a seat and none is claimed — the menu disables Start on it.
+   *  A roster with no claimable seat (an all-AI mod map) never gates. */
   readonly seatClaimed: boolean;
   /** The current roster's start params ({@link rosterStartParams}); empty when hidden. */
   startParams(): readonly (readonly [string, string])[];
 }
 
-const SWATCH_HEX = (colorId: number): string =>
+const swatchHex = (colorId: number): string =>
   `#${(PLAYER_SWATCH_COLORS[colorId] ?? 0).toString(16).padStart(6, '0')}`;
 
 /**
@@ -153,6 +62,16 @@ export function mountPlayersPanel(panel: HTMLElement, list: HTMLElement, onChang
     onChange();
   };
 
+  // Document-level: the click that opened the picker usually leaves focus outside the panel, so a
+  // panel-scoped listener would never hear the Escape. The menu page owns the document, and the
+  // guard makes it a no-op while no picker is open.
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape' && pickerSlot !== null) {
+      pickerSlot = null;
+      render();
+    }
+  });
+
   const slotRow = (slot: MapPlayerSlot): HTMLElement => {
     const copy = messages().menu;
     const s = state();
@@ -167,7 +86,7 @@ export function mountPlayersPanel(panel: HTMLElement, list: HTMLElement, onChang
     swatch.type = 'button';
     swatch.className = 'game-menu__player-swatch';
     const colorId = s.colors.get(slot.player) ?? slot.colorId;
-    swatch.style.background = SWATCH_HEX(colorId);
+    swatch.style.background = swatchHex(colorId);
     const colourName = messages().animation.playerColors[colorId] ?? String(colorId);
     const fixed = shown?.fixedColors === true;
     swatch.title = fixed
@@ -195,18 +114,24 @@ export function mountPlayersPanel(panel: HTMLElement, list: HTMLElement, onChang
 
     row.append(swatch, label);
 
-    // A claimable seat invites the person to sit and carries the same Idle/AI toggle while free
-    // (its default follows the authored type — the lobby treats open seats interchangeably).
-    // A non-claimable slot is script-driven and only wears the AI badge.
+    // A claimable seat invites the person to sit (a real button, so the keyboard can take it; the
+    // whole row stays clickable too) and carries the Idle/AI toggle while free wherever the lobby
+    // offers AI. A non-claimable slot is script-driven and only wears the AI badge.
     if (slot.claimable) {
-      const seat = document.createElement('span');
+      const seat = document.createElement('button');
+      seat.type = 'button';
       seat.className = 'game-menu__player-seat';
       seat.textContent = isSeat ? copy.seatTaken : copy.seatTake;
+      seat.disabled = isSeat;
+      seat.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        if (state().seat !== slot.player) update(claimSeat(state(), slot.player));
+      });
       row.append(seat);
       row.addEventListener('click', () => {
         if (state().seat !== slot.player) update(claimSeat(state(), slot.player));
       });
-      if (!isSeat) {
+      if (!isSeat && slot.aiAllowed) {
         const vacant = document.createElement('button');
         vacant.type = 'button';
         vacant.className = 'game-menu__player-vacant';
@@ -231,18 +156,20 @@ export function mountPlayersPanel(panel: HTMLElement, list: HTMLElement, onChang
   const pickerStrip = (slot: MapPlayerSlot): HTMLElement => {
     const copy = messages().menu;
     const s = state();
+    const own = s.colors.get(slot.player);
     const strip = document.createElement('div');
     strip.className = 'game-menu__player-picker';
     for (let colorId = 0; colorId < MAP_PLAYER_COLOR_COUNT; colorId++) {
-      const wearer = slotWearing(s, colorId);
       const option = document.createElement('button');
       option.type = 'button';
       option.className = 'game-menu__player-swatch is-option';
-      option.style.background = SWATCH_HEX(colorId);
+      option.style.background = swatchHex(colorId);
       const colourName = messages().animation.playerColors[colorId] ?? String(colorId);
       option.title = `${copy.teamColour}: ${colourName}`;
-      option.disabled = wearer !== undefined && wearer !== slot.player;
-      option.classList.toggle('is-current', wearer === slot.player);
+      // The slot's own colour stays enabled and outlined even when an authored duplicate also
+      // wears it; only colours OTHER slots wear are blocked.
+      option.disabled = colorId !== own && wornByAnother(s, slot.player, colorId);
+      option.classList.toggle('is-current', colorId === own);
       option.addEventListener('click', (ev) => {
         ev.stopPropagation();
         const next = setSlotColor(state(), slot.player, colorId);
@@ -281,7 +208,7 @@ export function mountPlayersPanel(panel: HTMLElement, list: HTMLElement, onChang
       onChange();
     },
     get seatClaimed() {
-      return shown === null || state().seat !== null;
+      return shown === null || !hasClaimableSeat(shown.players) || state().seat !== null;
     },
     startParams() {
       return shown === null ? [] : rosterStartParams(state(), shown.players);
