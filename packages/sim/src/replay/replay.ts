@@ -85,6 +85,10 @@ export function stepReplaying(
 ): void {
   let cursor = 0;
   for (let nextTick = 1; nextTick <= untilTick; nextTick++) {
+    // Discard what the replaying sim's own systems enqueued during the previous step (the AI player
+    // re-emits its decisions live): the log already carries their applied copies verbatim, so leaving
+    // the re-emissions pending would double-apply every sim-emitted command.
+    sim.commands.discardPending();
     while (cursor < log.length && (log[cursor] as LoggedCommand).tick <= nextTick) {
       sim.enqueue((log[cursor] as LoggedCommand).command);
       cursor++;

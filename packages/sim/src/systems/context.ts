@@ -20,8 +20,8 @@ export interface SystemContext {
   readonly events: EventBuffer;
   /**
    * The serializable command queue — the single mutation seam. CommandSystem drains and applies it;
-   * other systems never touch it. Exposed on the context so CommandSystem (a plain System function)
-   * can reach the per-sim queue the same way it reaches the world.
+   * the AiPlayerSystem enqueues its decisions into it (applied next tick, logged like player input);
+   * no other system touches it.
    */
   readonly commands: CommandQueue;
   /**
