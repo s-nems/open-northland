@@ -1,12 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-/**
- * Node-side builder for the `/maps-index` payload — the decoded-maps list the app menu renders.
- * Shared by every host that serves `content/` over the app's routes (the Vite dev middleware and
- * the desktop shell's protocol handler); kept in its own module so the join logic is unit-testable
- * against a fixture directory.
- */
+/** Node-side builder for the `/maps-index` payload — the decoded-maps list the app menu renders. */
 
 /** One `/maps-index` entry: a decoded map's stem id + the pipeline's optional menu sidecars. */
 export interface MapsIndexEntry {
@@ -18,11 +13,11 @@ export interface MapsIndexEntry {
 }
 
 /**
- * Builds one entry per `content/maps/<id>.json` grid (sorted; the `.meta.json` sidecars are NOT maps
- * and are filtered out), each joined with its `<id>.meta.json` display strings and an `<id>.png`
- * existence flag. Per-entry tolerant: a missing sidecar is normal; a malformed one (unreadable,
- * non-object like `null`, wrong-typed fields) degrades that entry to its bare id with a warning —
- * one bad sidecar must never 500 the whole list. `mapsRoot` must exist (the caller guards).
+ * One entry per `content/maps/<id>.json` grid, sorted, with the `.meta.json` sidecars filtered out;
+ * each is joined with its `<id>.meta.json` display strings and an `<id>.png` existence flag. A
+ * missing sidecar is normal, and a malformed one (unreadable, non-object, wrong-typed fields)
+ * degrades that entry to its bare id with a warning so one bad file cannot fail the whole list.
+ * `mapsRoot` must exist — the caller guards.
  */
 export function buildMapsIndexEntries(mapsRoot: string): MapsIndexEntry[] {
   return readdirSync(mapsRoot)

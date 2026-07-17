@@ -1,5 +1,6 @@
 import { runPipeline } from '@open-northland/asset-pipeline';
 import type { PipelineProgress } from '@open-northland/asset-pipeline/progress';
+import { createEventThrottle } from './event-throttle.js';
 import type { PipelineEvent } from './ipc.js';
 
 /**
@@ -9,9 +10,6 @@ import type { PipelineEvent } from './ipc.js';
  * parent as {@link PipelineEvent}s; the pipeline's own console logs ride the piped stdio and are
  * forwarded by the host as `log` events.
  */
-
-/** Minimum ms between forwarded item events — the unpack stage ticks thousands of times per second. */
-const ITEM_POST_INTERVAL_MS = 100;
 
 /** The slice of Electron's `utilityProcess` parent port the child uses (typed locally so the child
  * stays a plain Node program — it must not import the `electron` module). */
@@ -33,16 +31,15 @@ if (gameDir === undefined || outDir === undefined) {
   process.exit(2);
 }
 
-let lastItemPost = 0;
+const itemThrottle = createEventThrottle();
 const progress: PipelineProgress = {
   stage(stage) {
-    lastItemPost = 0;
+    itemThrottle.reset();
     post({ kind: 'stage', stage });
   },
   item(done, total) {
-    const now = Date.now();
-    if (now - lastItemPost < ITEM_POST_INTERVAL_MS && !(total !== undefined && done >= total - 1)) return;
-    lastItemPost = now;
+    const lastOfStage = total !== undefined && done >= total - 1;
+    if (!itemThrottle.shouldEmit(lastOfStage)) return;
     post(total === undefined ? { kind: 'item', done } : { kind: 'item', done, total });
   },
 };

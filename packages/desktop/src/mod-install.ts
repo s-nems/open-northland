@@ -18,11 +18,10 @@ import { readZipEntries, readZipEntryData } from './zip.js';
  */
 
 /** culturesnation.pl's stable download entry — redirects to the current mod archive. */
-export const CNMOD_DOWNLOAD_URL =
-  'https://culturesnation.pl/serwerdownload.php?cat_id=8&file_id=344&limit=35688644';
+const CNMOD_DOWNLOAD_URL = 'https://culturesnation.pl/serwerdownload.php?cat_id=8&file_id=344&limit=35688644';
 
 /** SHA-256 of the known-good `CnMod 1.3.1.zip`; a mismatch means a new (unverified) mod version. */
-export const CNMOD_KNOWN_SHA256 = '847e974a4a56960e081fb313d655a85b6256cd2e6cb9430d4974ff1826170ad9';
+const CNMOD_KNOWN_SHA256 = '847e974a4a56960e081fb313d655a85b6256cd2e6cb9430d4974ff1826170ad9';
 
 /** The largest Drive interstitial page the downloader will buffer — a hop that answers with more
  * HTML than this is not the confirm form (the real one is ~2 KB). */
@@ -168,7 +167,7 @@ export function zipMemberRelPath(name: string): string | undefined {
 
 /** Extracts every file member of `zipPath` under `destDir`; returns the number of files written.
  * An aborted `signal` stops between entries (the wizard's Cancel stays live while unpacking). */
-export async function extractModZip(
+async function extractModZip(
   zipPath: string,
   destDir: string,
   onEvent: (event: ModEvent) => void,
