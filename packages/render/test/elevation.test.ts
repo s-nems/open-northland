@@ -91,8 +91,6 @@ describe('makeElevationField.liftAtNode — parity-aware on cell rows', () => {
   });
 });
 
-/** Hand-build a snapshot entity with a Position (Fixed = whole tiles) + a marker component. */
-
 describe('elevation lift on sprites — draw up, but sort by PRE-LIFT row', () => {
   // A tall hill on the near cell (col 1, row 8); everything else at sea level. Only that cell is 200, so
   // its bilinear lift is exactly 200×LIFT.

@@ -1,11 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { buildScene, type SceneTerrain } from '../../src/index.js';
-import { entity, snapshotOf } from '../support/fixtures.js';
+import { buildScene } from '../../src/index.js';
+import { entity, FLAT_3x2, snapshotOf } from '../support/fixtures.js';
 
 /** Unit tests for {@link buildScene}'s gathering-economy classification — resource nodes, ground drops,
  *  and stockpile piles/flags resolve to the right draw kind + fields. */
-
-const FLAT_3x2: SceneTerrain = { width: 3, height: 2, typeIds: [1, 1, 2, 2, 1, 1] };
 
 describe('buildScene — resource + stockpile (gathering economy) classification', () => {
   it("carries a resource node's goodType (the per-good node join key)", () => {
