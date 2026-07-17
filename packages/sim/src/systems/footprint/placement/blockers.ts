@@ -1,13 +1,6 @@
 import type { ContentSet } from '@open-northland/data';
-import {
-  Building,
-  DeliveryFlag,
-  Position,
-  Resource,
-  ResourceFootprint,
-  Signpost,
-} from '../../../components/index.js';
-import type { Entity, World } from '../../../ecs/world.js';
+import { Building, Position, Resource, ResourceFootprint, Signpost } from '../../../components/index.js';
+import type { World } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
 import { ANCHOR_ONLY, buildingFlagBody, buildingFootprintOf } from '../geometry.js';
 
@@ -27,34 +20,25 @@ import { ANCHOR_ONLY, buildingFlagBody, buildingFootprintOf } from '../geometry.
  *  - **RESOURCE_ANCHOR** — a footprinted resource's own cell, which its walk body need not cover. Blocks a
  *    work flag only; a footprint-less resource contributes OBSTACLE instead (the pre-footprint same-tile
  *    rule), which already covers its anchor for both rules.
- *  - **MARKER** — a delivery flag's cell. Blocks another marker, never a building.
+ * Delivery-flag markers are NOT a channel here: they are the one blocker that moves, so the work-flag
+ * rule layers them fresh per query (work-flag.ts) over this scan's memoized result.
  */
 const OBSTACLE = 0;
 const EXCLUSION = 1;
 const RESOURCE_ANCHOR = 2;
-const MARKER = 3;
-type BlockerChannel = typeof OBSTACLE | typeof EXCLUSION | typeof RESOURCE_ANCHOR | typeof MARKER;
+type BlockerChannel = typeof OBSTACLE | typeof EXCLUSION | typeof RESOURCE_ANCHOR;
 
-export { type BlockerChannel, EXCLUSION, MARKER, OBSTACLE, RESOURCE_ANCHOR };
-
-/** Opt-in for the {@link MARKER} channel. Only the work-flag rule consumes markers, so a scan that
- *  ignores the channel must not pay for the delivery-flag store walk; `ignoreFlag` is the flag being
- *  re-placed (it may not block itself). */
-export interface MarkerScan {
-  readonly ignoreFlag: Entity | undefined;
-}
+export { type BlockerChannel, EXCLUSION, OBSTACLE, RESOURCE_ANCHOR };
 
 /**
- * Enumerate every (cell, channel) the world's standing resources, buildings, signposts and — when
- * `markers` is given — delivery flags contribute. Consumers filter by channel; a cell may be visited on
- * more than one channel, and every consumer takes set unions / mask writes (membership, no pick), so
- * store-iteration order cannot change any later answer.
+ * Enumerate every (cell, channel) the world's standing resources, buildings and signposts contribute.
+ * Consumers filter by channel; a cell may be visited on more than one channel, and every consumer takes
+ * set unions / mask writes (membership, no pick), so store-iteration order cannot change any later answer.
  */
 export function eachBlockerCell(
   world: World,
   content: ContentSet,
   visit: (x: number, y: number, channel: BlockerChannel) => void,
-  markers?: MarkerScan,
 ): void {
   for (const e of world.query(Resource, Position)) {
     const p = world.get(e, Position);
@@ -78,14 +62,6 @@ export function eachBlockerCell(
     for (const c of body) visit(hx + c.dx, hy + c.dy, OBSTACLE);
     for (const c of zone) visit(hx + c.dx, hy + c.dy, EXCLUSION);
   }
-  if (markers !== undefined) {
-    for (const e of world.query(DeliveryFlag, Position)) {
-      if (e === markers.ignoreFlag) continue;
-      const p = world.get(e, Position);
-      const { hx, hy } = nodeOfPosition(p.x, p.y);
-      visit(hx, hy, MARKER);
-    }
-  }
   // A signpost blocks building placement on its cell (never movement — it enters no walk overlay): its
   // anchor is an OBSTACLE, so no building's reserved zone may cover it (observed original behaviour).
   for (const e of world.query(Signpost, Position)) {
@@ -96,9 +72,8 @@ export function eachBlockerCell(
 }
 
 /**
- * A per-world version of the placement-blocker INPUTS — the component stores {@link eachBlockerCell} reads
- * for every channel but {@link MARKER}: whether each `Building`, `Resource`, `ResourceFootprint` and
- * `Signpost` exists. Their generations bump only on add/remove ({@link World.componentGeneration}), so this
+ * A per-world version of the placement-blocker INPUTS — the component stores {@link eachBlockerCell} reads:
+ * whether each `Building`, `Resource`, `ResourceFootprint` and `Signpost` exists. Their generations bump only on add/remove ({@link World.componentGeneration}), so this
  * moves precisely when those cells can change — NOT every tick — and the building overlay reuses its last
  * result until it does. The work-flag rule adds the `DeliveryFlag` generation on top
  * ({@link workFlagBlockerVersion}). Exactness rests on three standing invariants (all hold today):

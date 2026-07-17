@@ -24,6 +24,7 @@ export {
   resourceWorkCell,
 } from './interaction.js';
 export {
+  bumpWorkFlagMove,
   canPlaceBuilding,
   canPlaceWorkFlag,
   nearestWorkFlagPlacement,

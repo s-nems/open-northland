@@ -6,6 +6,7 @@
 export { placementBlockerVersion } from './blockers.js';
 export { canPlaceBuilding, type PlacementProbe, placementProbe } from './building.js';
 export {
+  bumpWorkFlagMove,
   canPlaceWorkFlag,
   nearestWorkFlagPlacement,
   workFlagBlockerVersion,

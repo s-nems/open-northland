@@ -14,7 +14,7 @@ import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import type { NodeId } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { buildingFlagBody, translatedCells } from '../footprint/geometry.js';
-import { nearestWorkFlagPlacement } from '../footprint/index.js';
+import { bumpWorkFlagMove, nearestWorkFlagPlacement } from '../footprint/index.js';
 import { canonicalById, clearNavState, entityNode } from '../spatial.js';
 
 /**
@@ -84,6 +84,7 @@ export function relocateWorkFlag(
   p.x = pos.x;
   p.y = pos.y;
   world.touch(flag);
+  bumpWorkFlagMove(world); // a move no generation sees — invalidate the blocker version by hand
   // Each match mutates only its own state, so the scan's store order is permitted — no chosen-entity pick.
   for (const e of gatherer !== undefined ? [gatherer] : world.query(WorkFlag)) {
     if (world.tryGet(e, WorkFlag)?.flag !== flag) continue;
