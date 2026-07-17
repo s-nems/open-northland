@@ -66,9 +66,9 @@ export class World {
    * Purely a read-path aid: never consulted by a sim decision, so it cannot affect determinism.
    */
   private readonly touched = new Set<Entity>();
-  /** Monotonic counter of all entity mutations (add/remove/destroy/touch) — the snapshot memo's freshness
-   *  key. Unlike "is the touched log empty" it cannot be falsified by another consumer draining the log
-   *  between two same-tick snapshots. */
+  /** Monotonic counter of all entity mutations (create/add/remove/destroy/touch) — the snapshot memo's
+   *  freshness key. Unlike "is the touched log empty" it cannot be falsified by another consumer draining
+   *  the log between two same-tick snapshots. */
   private mutations = 0;
   /** Set when the touched log overflowed and was dropped wholesale (a snapshot-less soak run) —
    *  the next {@link drainTouched} reports it so the consumer discards its whole cache. */
@@ -81,6 +81,9 @@ export class World {
     const id = this.nextId++ as Entity;
     this.alive.add(id);
     this.canonicalCache = null;
+    // A snapshot emits one entry per alive id, so a bare `create()` with no components still changes the
+    // snapshot — it must bump the version or the per-tick memo serves a view missing the new entity.
+    this.logTouched(id);
     return id;
   }
 
@@ -139,9 +142,10 @@ export class World {
   }
 
   /**
-   * Monotonic version of all entity mutations (every `add`/`remove`/`destroy`/`touch`) — the "may the
-   * previous snapshot be reused?" key (`Simulation.snapshot`'s per-tick memo). A counter, not the touched
-   * log's emptiness: any consumer may drain the log without falsifying another consumer's staleness probe.
+   * Monotonic version of all entity mutations (every `create`/`add`/`remove`/`destroy`/`touch`) — the "may
+   * the previous snapshot be reused?" key (`Simulation.snapshot`'s per-tick memo). A counter, not the
+   * touched log's emptiness: any consumer may drain the log without falsifying another consumer's staleness
+   * probe.
    */
   get mutationVersion(): number {
     return this.mutations;
