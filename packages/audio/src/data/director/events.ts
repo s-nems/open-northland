@@ -26,7 +26,13 @@ function eventEntity(ev: SimEvent): number | undefined {
   return 'entity' in ev ? (ev.entity as number) : undefined;
 }
 
-/** A stable per-emitter key so the engine can debounce a burst of identical events. */
+/**
+ * A stable per-emitter key so the engine can debounce a burst of identical events. A positioned event keys
+ * on its node, so two emitters at one spot collapse and two spots stay distinct; everything else keys on its
+ * emitter entity. This keys `settlerDied` (a jingle carrying an optional `at`) by death node rather than by
+ * the reaped entity — deliberate: the debounce should dedup "deaths here", and the reaped id is never
+ * repeated anyway, so an entity key could never collapse a simultaneous pile-up.
+ */
 function eventKey(ev: SimEvent): string {
   const node = eventNode(ev);
   if (node !== null) return `${ev.kind}:${node.hx},${node.hy}`;

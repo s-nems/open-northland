@@ -10,6 +10,7 @@ import {
   directAudio,
   JINGLE_GAIN,
   onScreenSettlers,
+  type SoundBindings,
 } from '../src/index.js';
 
 /**
@@ -74,7 +75,10 @@ function snapshotAt(events: readonly SimEvent[] = []): WorldSnapshot {
   };
 }
 
-function direct(events: readonly SimEvent[], opts: { terrain?: AudioTerrain; localPlayer?: number } = {}) {
+function direct(
+  events: readonly SimEvent[],
+  opts: { terrain?: AudioTerrain; localPlayer?: number; bindings?: SoundBindings } = {},
+) {
   return directAudio({
     events,
     snapshot: snapshotAt(events),
@@ -82,7 +86,7 @@ function direct(events: readonly SimEvent[], opts: { terrain?: AudioTerrain; loc
     canvasW: CANVAS_W,
     canvasH: CANVAS_H,
     index,
-    bindings,
+    bindings: opts.bindings ?? bindings,
     ...(opts.terrain !== undefined ? { terrain: opts.terrain } : {}),
     ...(opts.localPlayer !== undefined ? { localPlayer: opts.localPlayer } : {}),
   });
@@ -194,6 +198,25 @@ describe('directAudio combat SFX', () => {
   });
 });
 
+describe('directAudio spatial location is derived, not enumerated', () => {
+  // The regression this guards: location used to be a hand-kept list of event kinds, and `resourceMined`
+  // was missing from it — so binding it a sound would have located it by an `ev.entity` it does not carry
+  // (it carries `node`), and it would have been silently silent. Nothing about it is in that list now; the
+  // node comes off the event itself, so a newly-bound positioned kind works with no consumer edit.
+  it('spatialises a positioned kind that no consumer enumerates', () => {
+    const withMined: SoundBindings = {
+      ...bindings,
+      byEvent: { ...bindings.byEvent, resourceMined: { kind: 'spatial', group: 'Woodcutter Axe' } },
+    };
+    const frame = direct([{ kind: 'resourceMined', node: entity(3), goodType: 1, at: { hx: 11, hy: 10 } }], {
+      bindings: withMined,
+    });
+    expect(frame.oneShots).toHaveLength(1);
+    expect(frame.oneShots[0]?.files).toEqual(['static/axe01.wav']);
+    expect(frame.oneShots[0]?.key).toBe('resourceMined:11,10');
+  });
+});
+
 describe('directAudio death stinger owner filter', () => {
   const LOCAL = 0;
   const ENEMY = 1;
@@ -220,6 +243,20 @@ describe('directAudio death stinger owner filter', () => {
   it('stays silent when no local player is configured', () => {
     const noLocal = direct([{ kind: 'settlerDied', entity: entity(3), cause: 'damage', player: LOCAL }]);
     expect(noLocal.oneShots).toHaveLength(0);
+  });
+
+  // The jingle keys by death node, not by the reaped entity (see eventKey) — so a pile-up at one node
+  // debounces to a single stinger. Without an `at` it falls back to the entity key.
+  it('keys the death jingle by node when the reaped unit had a position', () => {
+    const located = direct([
+      { kind: 'settlerDied', entity: entity(3), cause: 'damage', player: LOCAL, at: { hx: 11, hy: 10 } },
+    ], { localPlayer: LOCAL });
+    expect(located.oneShots[0]?.key).toBe('settlerDied:11,10');
+
+    const unlocated = direct([{ kind: 'settlerDied', entity: entity(3), cause: 'damage', player: LOCAL }], {
+      localPlayer: LOCAL,
+    });
+    expect(unlocated.oneShots[0]?.key).toBe('settlerDied:3');
   });
 });
 
