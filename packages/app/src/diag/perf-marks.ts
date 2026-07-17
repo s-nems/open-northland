@@ -2,8 +2,7 @@
  * Per-system + per-phase User Timing marks (`?debug=perf`) — the local-dev profiling path. Chrome
  * DevTools' Performance panel shows `performance.measure` entries in its Timings track with zero
  * further UI, so one recording shows the whole frame anatomy: `frame/*` phases with `sim/<system>`
- * slices inside. Same instrumentation seam the bench harness injects its own timer through
- * (docs/tickets/sim/perf-benchmark-harness.md).
+ * slices inside. Same instrumentation seam the sim benchmark (`npm run bench:sim`) times through.
  */
 import type { Simulation } from '@open-northland/sim';
 

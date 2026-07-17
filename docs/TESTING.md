@@ -195,13 +195,19 @@ per-system seam the app's `?debug=perf` marks also use), so `performance.now` ne
 vitest's default `include`, so `npm test` and CI never collect the bench; `packages/app/bench/vitest.config.ts`
 is what makes it runnable.
 
-Knobs (env): `ON_BENCH_SETTLEMENTS` / `ON_BENCH_FIGHTERS` size the world (turn them up across runs for
-a scaling curve — a system whose cost grows faster than the population is the O(n²) this exists to
-catch), `ON_BENCH_WARMUP` / `ON_BENCH_TICKS` size the window, `ON_BENCH_JSON=<path>` writes the
-machine-readable report. Needs stay off, so the population is stable across the window and the
-needs/eat/sleep drives are under-measured. There is deliberately **no pass/fail threshold** — absolute
-ms are machine-dependent; a human reads the table, and the bench's own check only proves the measured
-world is deterministic (two runs, one hash).
+Knobs (env): `ON_BENCH_SETTLEMENTS` sizes the economy (turn it up across runs for a scaling curve — a
+system whose cost grows faster than the population is the O(n²) this exists to catch),
+`ON_BENCH_WARMUP` / `ON_BENCH_TICKS` size the window, `ON_BENCH_JSON=<path>` writes the machine-readable
+report.
+
+The default world is **economy-only and stationary** — needs are off and no fighters spawn, so the
+population holds still and two runs are comparable. `ON_BENCH_FIGHTERS=200` adds mirrored armies for
+combat profiling, but a battle *resolves* inside the window (~65% casualties by tick 300), so those
+medians describe the window rather than a steady state; the report prints the start→end population so
+the drift is visible. Needs being off also means the needs/eat/sleep drives are not measured.
+
+There is deliberately **no pass/fail threshold** — absolute ms are machine-dependent; a human reads the
+table, and the bench's own check only proves the measured world is deterministic (two runs, one hash).
 
 ## The agent's checklist (also in AGENTS.md)
 

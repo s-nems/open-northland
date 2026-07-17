@@ -44,6 +44,12 @@ const { Building, JobAssignment, Owner, Resource, Settler, Stockpile } = compone
 
 const MAP_W = 96;
 const MAP_H = 96;
+/**
+ * The pitch a caller tiling {@link buildSandboxSettlement} must keep between copies: the scene map's
+ * extent, not the settlement's own (the authored content reaches ~(72,68), so a tile carries slack).
+ * Both axes take this one value, so a tiling stays square even if the scene map stops being.
+ */
+export const SANDBOX_SETTLEMENT_PITCH = Math.max(MAP_W, MAP_H);
 const INITIAL_ZOOM = 0.5;
 /** Enough for the slowest first delivery — a mined unit (clay: 6 strikes × 23-tick digs + rests) dug,
  *  carried to its flag, and banked — with headroom for the walk from every camp's spawn. */
@@ -238,17 +244,13 @@ function buildResourceBase(sim: Simulation, ox: number, oy: number): void {
 
 /**
  * The authored settlement — village + gathering camps — placed with its top-left tile at (`ox`,`oy`).
- * The scene builds one at the origin; the sim benchmark tiles several across a bigger grass map
- * ({@link SANDBOX_SETTLEMENT_SPAN}) to reach RTS-scale population off this one authored layout.
+ * The scene builds one at the origin; the sim benchmark tiles several ({@link SANDBOX_SETTLEMENT_PITCH}
+ * apart) to reach RTS-scale population off this one authored layout. ~72 settlers, 41 buildings.
  */
 export function buildSandboxSettlement(sim: Simulation, ox = 0, oy = 0): void {
   buildVillage(sim, ox, oy);
   buildResourceBase(sim, ox, oy);
 }
-
-/** The tile span the authored settlement occupies — the pitch a caller tiling it must keep so the
- *  camps and their flag radii stay inside their own copy. */
-export const SANDBOX_SETTLEMENT_SPAN = MAP_W;
 
 function build(sim: Simulation): void {
   buildSandboxSettlement(sim);

@@ -109,6 +109,11 @@ that matches its role instead of piling another method onto a growing file:
 - **`scenes/`** — the acceptance-scene system (see below) + `sandbox-queries.ts` (the scene-check world
   queries).
 
+Outside `src/`: **`bench/`** — the sim's per-system benchmark (`npm run bench:sim`; docs/TESTING.md).
+Node-only and on-demand, like `test/`: it is outside the tsconfig build, and nothing but its own
+`vitest.config.ts` collects it. Its world is built from the acceptance scenes' builders — extend those
+rather than growing a second world-builder here.
+
 ## URL-flag entries
 
 The app dispatches on `window.location.search` (see `main.ts`, a thin router into `entries/`). **With no

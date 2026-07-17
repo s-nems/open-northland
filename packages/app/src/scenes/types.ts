@@ -8,6 +8,28 @@ export interface SceneCheck {
 }
 
 /**
+ * A deterministic world setup: everything {@link createSceneSim} needs to build a sim, and nothing
+ * else. Split out of {@link SceneDefinition} for the second caller that wants a world without
+ * acceptance metadata (the sim benchmark's tiled world, `packages/app/bench/`).
+ */
+export interface SceneWorld {
+  /** Seed for the deterministic RNG. */
+  readonly seed: number;
+  /** Terrain grid authored in cells — the renderer projects it as-is; `createSceneSim` upsamples it
+   *  to the sim's half-cell lattice. The global content/rules are not scene-owned. */
+  readonly terrain: CellTerrainMap;
+  /** Populate the fresh sim (enqueue commands, create resource nodes). Runs once before any tick. */
+  readonly build: (sim: Simulation) => void;
+  /** Opt back into the needs mechanic (hunger/fatigue/piety/enjoyment rise + starvation). Worlds
+   *  default to needs off (an inspection unit must not starve mid-run — see `createSceneSim`);
+   *  a scene that exercises needs/starvation sets this true. */
+  readonly needs?: boolean;
+  /** The fog-of-war mode (`setFogMode` enqueued at build; see `game/fog.ts`). Omit for no fog (the
+   *  sim default); the browser `?fog=` flag overrides either way. */
+  readonly fog?: FogModeName;
+}
+
+/**
  * An **acceptance scene**: one deterministic world setup that powers two consumers.
  *
  *  - **Headless (vitest)** — `createSceneSim(scene).run(runTicks)`, then assert every {@link checks}.
@@ -18,23 +40,9 @@ export interface SceneCheck {
  * scene setup): what the headless test proves is exactly what the human watches. Adding a scene to the
  * registry automatically adds its headless test and its `?scene=` link.
  */
-export interface SceneDefinition {
+export interface SceneDefinition extends SceneWorld {
   /** URL-safe id: the `?scene=<id>` value and the test's `describe()` name. */
   readonly id: string;
-  /** Seed for the deterministic RNG. */
-  readonly seed: number;
-  /** Terrain grid authored in cells — the renderer projects it as-is; `createSceneSim` upsamples it
-   *  to the sim's half-cell lattice. The global content/rules are not scene-owned. */
-  readonly terrain: CellTerrainMap;
-  /** Populate the fresh sim (enqueue commands, create resource nodes). Runs once before any tick. */
-  readonly build: (sim: Simulation) => void;
-  /** Opt back into the needs mechanic (hunger/fatigue/piety/enjoyment rise + starvation). Scenes
-   *  default to needs off (an inspection unit must not starve mid-run — see `createSceneSim`);
-   *  a scene that exercises needs/starvation sets this true. */
-  readonly needs?: boolean;
-  /** The scene's fog-of-war mode (`setFogMode` enqueued at build; see `game/fog.ts`). Omit for no
-   *  fog (the sim default); the browser `?fog=` flag overrides either way. */
-  readonly fog?: FogModeName;
   /** Ticks the headless acceptance test advances before checking {@link checks}. */
   readonly runTicks: number;
   /**
