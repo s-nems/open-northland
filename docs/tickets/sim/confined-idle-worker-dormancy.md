@@ -21,3 +21,9 @@ winners unchanged.
 
 Verify with the sandbox scene timing (`packages/app` scene determinism test ran ~40 s under
 confinement; target is back under ~15 s) and a fresh per-system profile over `dist/`.
+
+The test budget now actually trips, so this is a red-build risk, not just slowness (observed
+2026-07-17 from an unrelated render branch): a determinism case blew its `DETERMINISM_TIMEOUT_MS`
+(120 s, `scenes.test.ts`) on a **cold**-cache `npm test`, while the same file alone, warm, passed in
+91.6 s. CI runs cold, and a timeout there reads as a determinism regression — a false signal on the
+golden rule 1 gate. Raising the budget is the wrong cure while the per-tick cost is the known cause.

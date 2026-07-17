@@ -5,6 +5,7 @@ import type { ElevationField } from '../src/data/elevation.js';
 import { type Camera, ONE, tileToScreen } from '../src/data/iso.js';
 import type { Viewport } from '../src/data/viewport.js';
 import { type PoolFrame, SpritePool } from '../src/gpu/sprite-pool/index.js';
+import { SNAP_DISTANCE } from '../src/gpu/sprite-pool/motion.js';
 import { TextureCache } from '../src/gpu/texture-cache.js';
 
 /**
@@ -133,6 +134,52 @@ describe('SpritePool — reconcile scans track the screen, not the pool', () => 
 function settler(id: number, col: number, row: number, extra: Record<string, unknown> = {}): EntitySnapshot {
   return { id, components: { Settler: { tribe: 0 }, Position: { x: col * ONE, y: row * ONE }, ...extra } };
 }
+
+/**
+ * The motion track across a GAP in the draw list. A pooled entity keeps its track while it is not drawn
+ * (indoors, fogged, culled), so resuming the lerp from that stale anchor would glide it across the gap —
+ * `trackMotion`'s own SNAP_DISTANCE only catches gaps wider than 128 px, which a worker stepping back out
+ * of its own door is not. The pool must reset the track at re-entry instead.
+ */
+describe('SpritePool — motion track across a gap in the draw list', () => {
+  /** The anchor a ref was drawn at this frame, failing the test if it was not drawn at all. */
+  function anchorAt(pool: SpritePool, ref: number): { x: number; y: number } {
+    const anchor = pool.anchorOf(ref);
+    if (anchor === undefined) throw new Error(`entity ${ref} was not drawn this frame`);
+    return anchor;
+  }
+
+  it('snaps a settler re-entering the draw set instead of gliding from its stale anchor', () => {
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), undefined);
+    const inside = { Resting: { at: 99 } }; // the workplace marker — live and pooled, but not drawn
+
+    // Frame 1: at its workplace door, first sighting — snaps, so this IS the door anchor.
+    pool.reconcile({ ...poolFrame(snapshotOf([settler(1, 0, 0)]), FRAMES_ALL), tick: 0 });
+    const door = anchorAt(pool, 1);
+
+    // Frames 2-4: inside, working. Not drawn, but pooled — the track goes stale where it stood.
+    for (let tick = 1; tick <= 3; tick++) {
+      pool.reconcile({ ...poolFrame(snapshotOf([settler(1, 0, 0, inside)]), FRAMES_ALL), tick });
+      expect(pool.anchorOf(1)).toBeUndefined();
+    }
+    expect(pool.stats().pooled).toBe(1); // kept across the gap (a re-mint would snap for the wrong reason)
+
+    // Frame 5: back out, one tile on — near enough that SNAP_DISTANCE cannot be what saves it. Settler 2 is
+    // the oracle: first sighted here this frame, so it snaps, and its anchor IS this tile's anchor.
+    pool.reconcile({
+      ...poolFrame(snapshotOf([settler(1, 0, 1), settler(2, 0, 1)]), FRAMES_ALL),
+      tick: 4,
+      alpha: 0.5, // mid-tick: a track resumed from the door would draw halfway back toward it
+    });
+    const emerged = anchorAt(pool, 1);
+    // Guards the setup, not the fix: were this gap ever to exceed SNAP_DISTANCE, trackMotion would snap on
+    // its own and the assertion below would pass without a re-entry reset at all.
+    expect(Math.hypot(emerged.x - door.x, emerged.y - door.y)).toBeLessThan(SNAP_DISTANCE);
+    expect(emerged).not.toEqual(door); // it did move — the assertion below is not vacuous
+    expect(emerged).toEqual(anchorAt(pool, 2)); // drawn where a freshly-sighted settler on this tile draws
+  });
+});
 
 describe('SpritePool — details-panel portrait subject visibility', () => {
   it('force-draws an off-screen subject but hides it on the main map; show/hide toggles it', () => {
