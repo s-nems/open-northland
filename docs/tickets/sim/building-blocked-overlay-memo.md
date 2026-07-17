@@ -17,8 +17,14 @@ Measured (2026-07-17, this branch): an authored map load is one command burst, s
 the rebuild per human. On the worst real map's shape — 236 buildings + 784 humans, all humans on house
 anchors, real content and real footprints — the burst tick costs ~110–170 ms with the push versus ~17 ms
 without; essentially all of the delta is the repeated overlay build, not the ring search (only ~3% of
-real authored humans are actually blocked, and the deepest ring search is 21 nodes). One-time on a
-loading screen today, but it scales as humans × buildings, so a larger map pays proportionally more.
+real authored humans are blocked at all, and the deepest ring search is 21 nodes). One-time on a loading
+screen today, but it scales as humans × buildings, so a larger map pays proportionally more.
+
+Worth knowing before optimizing this away by narrowing the caller instead: of the 1041 authored humans
+standing on a body, only ~50 are genuinely wedged (`findPath` exempts a blocked START, so the rest can
+already step off). The push still runs for all of them deliberately — it enforces the twin's rule that a
+settler never *stands* inside a wall — so the fix is to make the overlay cheap, not to push fewer
+settlers.
 
 ## Scope
 
@@ -35,7 +41,13 @@ That is exactly why `placementBlockerVersion` can key the placement grid safely 
 comment records that `familyBody`/`reserved` are level-chain-constant, so an in-place level-up leaves
 *those* sets unchanged. `blocked` does not have that property. So the version must also move on a
 `buildingType` swap — e.g. bump a dedicated counter at the upgrade seam, or fold the level/type sum in.
-Verify the choice against every in-place `Building` write, not just the upgrade path.
+Verify the choice against every in-place `Building` write, not just the upgrade path. There are only two:
+the `buildingType` swap above, and the `built` progress flip — the latter is inert here, because the
+walk-block applies from the placement tick (`blocked.ts`), so `built` never changes the cell set.
+
+Also note the tempting cheap fix is wrong: the per-tick `blockedCells ??=` memo pattern used by
+`systems/agents/destack.ts` and `systems/movement/routing.ts` cannot be reused in the command path, since
+a `placeBuilding` later in the same tick's queue would leave it stale for a following `spawnSettler`.
 
 Register the cache in `World.verifyCaches()` via `world.registerCacheVerifier` (re-derive and compare,
 like `verifyResourceBlockedCache`) so the `cachesCoherent` invariant catches staleness, per

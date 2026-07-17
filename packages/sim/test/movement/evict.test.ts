@@ -11,6 +11,7 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, nodeOfPosition, ONE, positionOfNode, Simulation } from '../../src/index.js';
+import { findPath } from '../../src/nav/pathfinding.js';
 import { constructionSystem, dynamicBlockOverlay } from '../../src/systems/index.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
@@ -71,8 +72,11 @@ function onBody(sim: Simulation, e: Entity): boolean {
  *  than passing vacuously. */
 function spawnedSettler(sim: Simulation): Entity {
   const all = [...sim.world.query(Settler)];
-  if (all.length !== 1) throw new Error(`expected exactly one spawned settler, got ${all.length}`);
-  return all[0] as Entity;
+  const [only] = all;
+  if (all.length !== 1 || only === undefined) {
+    throw new Error(`expected exactly one spawned settler, got ${all.length}`);
+  }
+  return only;
 }
 
 /** Can the settler stand — and therefore leave — where it ended up? Walkable ground, clear of every
@@ -144,6 +148,51 @@ describe('footprint displacement — settlers never end up standing inside walls
     expect(onBody(sim, walled)).toBe(false);
     // The point of the push: the settler stands somewhere it can actually walk out of.
     expect(standable(sim, walled)).toBe(true);
+  });
+
+  it('frees a fully enclosed spawn — the only case that is genuinely stuck', () => {
+    // `findPath` exempts a blocked START, so standing on a body cell is not itself a wedge: a settler
+    // walks off as soon as ONE step is passable. Only a cell whose every `steps()` edge is blocked has
+    // no way out — 50 of the 1041 real blocked spawns. KEEP's body is exactly that: the anchor plus its
+    // eight lattice steps (E/W, the four diagonals, N/S), so a settler on the anchor is truly walled in.
+    const KEEP = 30;
+    const SOLID = [
+      { dx: 0, dy: 0 },
+      { dx: 1, dy: 0 },
+      { dx: -1, dy: 0 }, // E, W
+      { dx: 0, dy: -1 },
+      { dx: 0, dy: 1 }, // N, S
+      { dx: 1, dy: -2 },
+      { dx: 1, dy: 2 },
+      { dx: -1, dy: 2 },
+      { dx: -1, dy: -2 }, // NE, SE, SW, NW
+    ];
+    const content = parseContentSet({
+      manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+      goods: [{ typeId: 0, id: 'none' }],
+      jobs: [{ typeId: 0, id: 'idle' }],
+      landscape: [{ typeId: 0, id: 'grass', walkable: true, buildable: true }],
+      buildings: [{ typeId: KEEP, id: 'keep', kind: 'workplace', footprint: { blocked: SOLID } }],
+    });
+    const sim = new Simulation({ seed: 1, content, map: grassNodeMap(16, 16) });
+    const keep = sim.world.create();
+    sim.world.add(keep, Position, positionOfNode(8, 8));
+    sim.world.add(keep, Building, { buildingType: KEEP, tribe: VIKING, built: ONE, level: 0 });
+
+    const terrain = terrainOf(sim);
+    const walled = terrain.nodeAt(8, 8);
+    const away = terrain.nodeAt(2, 2);
+    const blocks = dynamicBlockOverlay(sim.world, ctxOf(sim), terrain);
+    // The fixture proves itself: the authored cell really has no route out before the push.
+    expect(findPath(terrain, walled, away, blocks)).toBeNull();
+
+    sim.enqueue({ kind: 'spawnSettler', jobType: 0, tribe: VIKING, x: 8, y: 8, owner: PLAYER });
+    sim.step();
+    const freed = spawnedSettler(sim);
+    const at = nodeOf(sim, freed);
+    expect(at).not.toEqual({ x: 8, y: 8 }); // pushed off the walled anchor…
+    // …and it can now actually walk away, which is the whole point.
+    expect(findPath(terrain, terrain.nodeAt(at.x, at.y), away, blocks)).not.toBeNull();
   });
 
   it('a settler spawned on free ground keeps its authored cell', () => {

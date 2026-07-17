@@ -1,4 +1,4 @@
-import { components, type Entity, halfCellMapFromCells, nodeOfPosition } from '@open-northland/sim';
+import { components, halfCellMapFromCells, nodeOfPosition } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { TERRAIN_OPEN } from '../../src/catalog/terrain.js';
 import { HUMAN_PLAYER } from '../../src/game/rules.js';
@@ -7,8 +7,8 @@ import { hasRealIr, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
 
 const { Settler } = components;
 
-/** A real viking `sethouse` name whose type carries a walk-block body (`work_well_00`, typeId 10) — the
- *  join key a decoded map authors, resolved here exactly as `resolveAuthoredPlacements` does it. */
+/** A real viking `sethouse` name whose type carries a walk-block body (`work_well_00`) — the join key a
+ *  decoded map authors, resolved by name here exactly as `resolveAuthoredPlacements` does it. */
 const WELL_EDIT_NAME = 'viking well';
 const WELL_LEVEL = 0;
 const MAP_CELLS = 40;
@@ -37,19 +37,16 @@ function grassMap(cells: number) {
 }
 
 /**
- * Authored maps really do place humans inside houses: a `sethuman` half-cell falls inside a `sethouse`
- * walk-block on 64 of the 122 entity-bearing decoded maps (1041 of 35279 humans, measured over
- * `content/maps/*.json` against the real `[GfxHouse]` footprints). The map load cannot fix this from the
- * building side — `enqueuePlacements` sends every `placeBuilding` before any `spawnSettler`, so a
- * building's own eviction pass runs while its future occupant does not exist yet — so `spawnSettler`
- * pushes such a settler out itself (`evictSettlerFromBlockedSpawn`). Without it the settler is walled in
- * for the whole game: `findPath` exempts only the START node, so no route out of a body ever resolves.
+ * Authored maps really do place humans inside houses, and `spawnSettler` pushes them off the body itself
+ * (`evictSettlerFromBlockedSpawn`, whose doc carries the rule and the measured corpus counts) — the
+ * building-side eviction cannot, because `enqueuePlacements` sends every `placeBuilding` before any
+ * `spawnSettler`, so a building's pass runs while its future occupant does not exist yet.
  *
- * This is the real-content twin of the synthetic `sim/test/movement/evict.test.ts` cases — same rule,
- * but over the real join, the real extracted footprint, and the real enqueue order.
+ * This is the real-content twin of the synthetic `sim/test/movement/evict.test.ts` cases: same rule, but
+ * over the real name join, the real extracted `[GfxHouse]` footprint, and the real enqueue order.
  */
 describe.runIf(hasRealIr())('authored decoded-map humans — spawns inside house bodies', () => {
-  it('a human authored onto a house body cell is pushed out onto ground it can leave', async () => {
+  it('a human authored onto a house body cell is pushed off it', async () => {
     const { merge } = await loadContentUnderTest();
     const ir = rawIrUnderTest() as IrRows;
 
@@ -94,14 +91,17 @@ describe.runIf(hasRealIr())('authored decoded-map humans — spawns inside house
     if (sim === null) return;
 
     const settlers = [...sim.world.query(Settler)];
-    expect(settlers.length).toBe(1); // the one authored human — a dropped join would pass vacuously
-    const p = sim.world.get(settlers[0] as Entity, components.Position);
+    const [human] = settlers;
+    // Exactly one authored human — a dropped join would leave zero and pass every assertion vacuously.
+    expect(settlers.length).toBe(1);
+    if (human === undefined) throw new Error('the authored human did not resolve');
+    const p = sim.world.get(human, components.Position);
     const at = nodeOfPosition(p.x, p.y);
 
     // The well's walk-block body, in world half-cells — the door stays a passable stand, exactly as
     // `buildingBlockedCells` carves it out.
     const body = new Set(blocked.map((c) => `${ANCHOR.hx + c.dx},${ANCHOR.hy + c.dy}`));
-    if (door) body.delete(`${ANCHOR.hx + door.dx},${ANCHOR.hy + door.dy}`);
+    if (door !== undefined) body.delete(`${ANCHOR.hx + door.dx},${ANCHOR.hy + door.dy}`);
     expect(body.has(`${at.hx},${at.hy}`)).toBe(false); // pushed off the walls…
     expect(at.hx === ANCHOR.hx && at.hy === ANCHOR.hy).toBe(false); // …and really moved off its anchor
   }, 120000);
