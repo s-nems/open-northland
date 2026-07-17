@@ -2,6 +2,9 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+// Deliberately mirrors packages/desktop/test/support/temp-dir.ts: each package owns its test
+// support, which is cheaper than a shared workspace package for fifteen lines.
+
 /** A disposable OS temp directory; `cleanup()` removes it recursively (call from `afterEach`). */
 export interface TempDir {
   readonly path: string;

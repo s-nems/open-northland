@@ -111,7 +111,7 @@ describe('parseMapsIndex', () => {
               hidden: true,
               aiAllowed: true,
             },
-            // A Human/Closed-only playeroption row (45 corpus rows offer no AI).
+            // A Human/Closed-only playeroption row (47 corpus rows offer no AI).
             {
               player: 2,
               type: 'human',

@@ -23,7 +23,7 @@ export interface MapsIndexPlayerSlot {
   /** `[multiplayer]` `playerhideinmenu` — the original lobby never lists this slot. */
   readonly hidden: boolean;
   /** Whether the seat may auto-play when vacant: its `playeroption` row offers `ai`, or the map
-   *  ships no row for it (45 corpus rows are Human/Closed-only — no AI offer). */
+   *  ships no row for it (47 corpus rows are Human/Closed-only — no AI offer). */
   readonly aiAllowed: boolean;
 }
 
@@ -110,7 +110,7 @@ function readSidecar(mapsRoot: string, id: string, suffix: string): unknown {
 }
 
 /** Reads `<id>.meta.json`'s display strings; a wrong-typed field is dropped silently. */
-function metaOf(mapsRoot: string, id: string): { name?: string; description?: string } {
+function metaOf(mapsRoot: string, id: string): { readonly name?: string; readonly description?: string } {
   const parsed = readSidecar(mapsRoot, id, '.meta.json');
   if (parsed === undefined) return {};
   if (typeof parsed !== 'object' || parsed === null) {
@@ -150,10 +150,12 @@ export function buildMapsIndexEntries(mapsRoot: string): MapsIndexEntry[] {
     .map((f) => f.slice(0, -'.json'.length))
     .sort()
     .map((id) => {
+      // Read in sidecar order (meta, then script) so a map with two bad sidecars warns in that order.
+      const meta = metaOf(mapsRoot, id);
       const players = playersOf(mapsRoot, id);
       return {
         id,
-        ...metaOf(mapsRoot, id),
+        ...meta,
         minimap: existsSync(join(mapsRoot, `${id}.png`)),
         ...(players !== undefined ? { players: players.slots } : {}),
         ...(players?.fixedColors ? { fixedColors: true } : {}),

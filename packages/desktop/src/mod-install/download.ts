@@ -14,6 +14,10 @@ import type { ModEvent } from '../ipc.js';
 /** culturesnation.pl's stable download entry — redirects to the current mod archive. */
 const CNMOD_DOWNLOAD_URL = 'https://culturesnation.pl/serwerdownload.php?cat_id=8&file_id=344&limit=35688644';
 
+/** SHA-256 of the known-good `CnMod 1.3.1.zip` the URL above resolved to; a mismatch means a new
+ *  (unverified) mod version. Kept beside the URL: a mod release bumps both together. */
+export const CNMOD_KNOWN_SHA256 = '847e974a4a56960e081fb313d655a85b6256cd2e6cb9430d4974ff1826170ad9';
+
 /** The largest Drive interstitial page the downloader will buffer — a hop that answers with more
  * HTML than this is not the confirm form (the real one is ~2 KB). */
 const MAX_INTERSTITIAL_BYTES = 1 << 20;
