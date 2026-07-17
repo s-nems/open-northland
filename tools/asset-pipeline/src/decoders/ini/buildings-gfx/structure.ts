@@ -63,7 +63,8 @@ function collectGfxHouseWinner<T>(
  * `[GfxHouse]` records (e.g. the logic-only sources every other extractor reads).
  *
  * Within a record, a `typeId` mapped at several `sizeIdx` keeps the lowest `sizeIdx` cost (the base
- * build stage). Both collapses are approximations, source basis.
+ * build stage) — an approximation, source basis. The cross-tribe collapse is
+ * {@link existingGfxHouseWins}.
  */
 export function extractConstructionCosts(
   sections: readonly RuleSection[],

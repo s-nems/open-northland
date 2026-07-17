@@ -7,7 +7,7 @@ import {
 } from '@open-northland/data';
 
 /**
- * TEMPORARILY strips the vehicle goods (handcart/oxcart/ships/catapult) from every building's `stock`
+ * Temporarily strips the vehicle goods (handcart/oxcart/ships/catapult) from every building's `stock`
  * slots and `produces` list, so no workshop stores or crafts a vehicle as a ware. A vehicle good is a
  * `[goodtype]` whose id slug matches a `[logicvehicletype]`'s (the two tables share the debugname slugs).
  * Vehicles are not goods — the original builds them physically on a yard beside the workshop; restoring
@@ -38,7 +38,7 @@ export function stripVehicleGoods(
  * directly. Cross-table, so it runs after `extractGoods`/`extractBuildings`, before `parseContentSet`.
  *
  * Returns new building records (the input array is left untouched). For each building with a non-empty
- * `produces`, ONE recipe per distinct produced good, in `produces` file order (the order the original
+ * `produces`, one recipe per distinct produced good, in `produces` file order (the order the original
  * declares products; the HUD mirrors it):
  *   - `outputs` = that single good; amount = its `logicproduction` multiplicity (a repeated id sums;
  *     the table carries no per-good quantity, so uniform 1 is the faithful default). A field-farmed

@@ -41,15 +41,11 @@ const GUIDEPOST_BMD = 'data/engine2d/bin/bobs/ls_guidepost.bmd';
 
 /**
  * Read a `creatures/<file>.pcx` 768-byte trailer palette from the unpacked tree, resolved case-insensitively
- * via `tree` ({@link indexOutTree}) — the archive members keep their original (unpredictable) case, so a direct
+ * via `tree` ({@link OutTreeIndex}) — the archive members keep their original (unpredictable) case, so a direct
  * `join` would miss on a case-sensitive filesystem (Linux CI), exactly why the bmd stage resolves the same way.
  * Throws if the file is absent from `<out>` or has no palette trailer.
  */
-async function readCreaturePalette(
-  outDir: string,
-  tree: ReadonlyMap<string, string>,
-  file: string,
-): Promise<Uint8Array> {
+async function readCreaturePalette(outDir: string, tree: OutTreeIndex, file: string): Promise<Uint8Array> {
   const key = normalizeAssetPath(join(CREATURES_DIR, file));
   const onDisk = tree.get(key);
   if (onDisk === undefined) throw new Error(`player-colors: ${file} not found under out`);
@@ -121,7 +117,7 @@ export async function convertGuidepostPlayerAtlases(outDir: string, tree: OutTre
 /**
  * Emit an indexed atlas (`<bmd>.indexed.png` + `<bmd>.indexed.atlas.json`) for every human character `.bmd`
  * referenced by `bindings` (deduped — many bindings share one body). The `.bmd`s are read from the unpacked
- * `<out>` tree, resolved case-insensitively via {@link indexOutTree}. A missing/malformed `.bmd` is
+ * `<out>` tree, resolved case-insensitively via {@link OutTreeIndex}. A missing/malformed `.bmd` is
  * warned-and-skipped. Returns the emitted PNG paths (relative to `<out>`).
  */
 export async function convertIndexedCharacterAtlases(
