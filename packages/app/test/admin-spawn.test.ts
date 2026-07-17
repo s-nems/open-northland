@@ -20,10 +20,11 @@ import {
   JOB_ARCHER,
   JOB_ARCHER_LONG,
   JOB_COLLECTOR,
-  JOB_IDLE,
+  JOB_HERO_SABER,
   JOB_HERO_SWORD,
   JOB_HERO_UNARMED,
   JOB_HEROINE_BOW,
+  JOB_IDLE,
   JOB_SOLDIER_AXE_BIG,
   JOB_SOLDIER_BROADSWORD,
   JOB_SOLDIER_SABER_LONG,
@@ -56,10 +57,19 @@ import {
 describe('admin spawn command mapping', () => {
   const sword = WARRIOR_PRESETS.find((p) => p.id === 'sword');
   const civilian = CIVILIAN_PRESETS.find((p) => p.id === 'civilian');
+  // The running content's goods table the palette resolves weapon-good slugs against.
+  const sandboxGoods = sandboxContent(grassTerrain(4, 4)).goods;
 
   it('a warrior spawns with its class weapon (combat + equipment slot), chosen owner, HP and armor', () => {
     if (sword === undefined) throw new Error('missing sword preset');
-    const cmd = unitSpawnCommand(sword, { player: 1, hitpoints: 250, armorClass: 2, x: 7, y: 9 });
+    const cmd = unitSpawnCommand(sword, {
+      player: 1,
+      hitpoints: 250,
+      armorClass: 2,
+      x: 7,
+      y: 9,
+      goods: sandboxGoods,
+    });
     expect(cmd).toEqual({
       kind: 'spawnSettler',
       jobType: JOB_SOLDIER_SWORD,
@@ -78,7 +88,14 @@ describe('admin spawn command mapping', () => {
   it('the bare-handed warrior spawns as job soldier_unarmed wielding fists', () => {
     const unarmed = WARRIOR_PRESETS.find((p) => p.id === 'unarmed');
     if (unarmed === undefined) throw new Error('missing unarmed preset');
-    const cmd = unitSpawnCommand(unarmed, { player: 0, hitpoints: 300, armorClass: 0, x: 4, y: 6 });
+    const cmd = unitSpawnCommand(unarmed, {
+      player: 0,
+      hitpoints: 300,
+      armorClass: 0,
+      x: 4,
+      y: 6,
+      goods: sandboxGoods,
+    });
     expect(cmd).toEqual({
       kind: 'spawnSettler',
       jobType: JOB_SOLDIER_UNARMED,
@@ -93,7 +110,14 @@ describe('admin spawn command mapping', () => {
 
   it('a civilian carries no weapon, and non-positive HP/armor are omitted (non-combatant)', () => {
     if (civilian === undefined) throw new Error('missing civilian preset');
-    const cmd = unitSpawnCommand(civilian, { player: HUMAN_PLAYER, hitpoints: 0, armorClass: 0, x: 2, y: 3 });
+    const cmd = unitSpawnCommand(civilian, {
+      player: HUMAN_PLAYER,
+      hitpoints: 0,
+      armorClass: 0,
+      x: 2,
+      y: 3,
+      goods: sandboxGoods,
+    });
     expect(cmd).toEqual({
       kind: 'spawnSettler',
       jobType: JOB_IDLE,
@@ -166,30 +190,52 @@ describe('admin spawn command mapping', () => {
 });
 
 describe('weaponEquipmentFor — the one job→equipment-weapon map every spawn path shares', () => {
+  const sandboxGoods = sandboxContent(grassTerrain(4, 4)).goods;
+
   it('each soldier class carries its matching weapon good (so its Broń row + drawn weapon match)', () => {
     // The seam the scene placer, the imported-map spawn AND the admin palette all derive from, so a
     // pre-placed warrior fills the same equipment weapon slot a freshly-spawned one does.
-    expect(weaponEquipmentFor(JOB_SOLDIER_SPEAR_WOODEN)).toEqual({
-      weapon: { goodType: GOOD_SPEAR_WOODEN },
-    });
-    expect(weaponEquipmentFor(JOB_SOLDIER_SPEAR)).toEqual({ weapon: { goodType: GOOD_SPEAR_IRON } });
-    expect(weaponEquipmentFor(JOB_SOLDIER_SWORD)).toEqual({ weapon: { goodType: GOOD_SWORD_SHORT } });
-    expect(weaponEquipmentFor(JOB_SOLDIER_BROADSWORD)).toEqual({ weapon: { goodType: GOOD_SWORD_LONG } });
-    expect(weaponEquipmentFor(JOB_ARCHER)).toEqual({ weapon: { goodType: GOOD_BOW_SHORT } });
-    expect(weaponEquipmentFor(JOB_ARCHER_LONG)).toEqual({ weapon: { goodType: GOOD_BOW_LONG } });
+    const eq = (jobType: number) => weaponEquipmentFor(jobType, sandboxGoods);
+    expect(eq(JOB_SOLDIER_SPEAR_WOODEN)).toEqual({ weapon: { goodType: GOOD_SPEAR_WOODEN } });
+    expect(eq(JOB_SOLDIER_SPEAR)).toEqual({ weapon: { goodType: GOOD_SPEAR_IRON } });
+    expect(eq(JOB_SOLDIER_SWORD)).toEqual({ weapon: { goodType: GOOD_SWORD_SHORT } });
+    expect(eq(JOB_SOLDIER_BROADSWORD)).toEqual({ weapon: { goodType: GOOD_SWORD_LONG } });
+    expect(eq(JOB_ARCHER)).toEqual({ weapon: { goodType: GOOD_BOW_SHORT } });
+    expect(eq(JOB_ARCHER_LONG)).toEqual({ weapon: { goodType: GOOD_BOW_LONG } });
   });
 
-  it('sabers/axes/heroes carry the good matching the warrior body they borrow (no saber/axe goods exist)', () => {
-    expect(weaponEquipmentFor(JOB_SOLDIER_SABER_LONG)).toEqual({ weapon: { goodType: GOOD_SWORD_LONG } });
-    expect(weaponEquipmentFor(JOB_SOLDIER_AXE_BIG)).toEqual({ weapon: { goodType: GOOD_SWORD_LONG } });
-    expect(weaponEquipmentFor(JOB_HERO_SWORD)).toEqual({ weapon: { goodType: GOOD_SWORD_SHORT } });
-    expect(weaponEquipmentFor(JOB_HEROINE_BOW)).toEqual({ weapon: { goodType: GOOD_BOW_LONG } });
-    expect(weaponEquipmentFor(JOB_HERO_UNARMED)).toBeUndefined();
+  it('resolves the good against the RUNNING content — real goodtypes.ini ids, not the sandbox +100', () => {
+    // On a decoded map the sim plays on the merged real content whose weapon goods keep the
+    // goodtypes.ini ids (37–42); the slug join must land there, or the panel's Broń row shows an
+    // unknown good (the empty-socket bug this pins).
+    const realGoods = [
+      { typeId: 38, id: 'bow_long' },
+      { typeId: 42, id: 'sword_long' },
+    ];
+    expect(weaponEquipmentFor(JOB_SOLDIER_BROADSWORD, realGoods)).toEqual({ weapon: { goodType: 42 } });
+    expect(weaponEquipmentFor(JOB_ARCHER_LONG, realGoods)).toEqual({ weapon: { goodType: 38 } });
+    // A content without the slug (a minimal fixture) spawns the soldier without an equipment weapon.
+    expect(weaponEquipmentFor(JOB_SOLDIER_SWORD, realGoods)).toBeUndefined();
+  });
+
+  it('sabers/heroes carry the good matching the warrior body they borrow; axes stay unarmed', () => {
+    const eq = (jobType: number) => weaponEquipmentFor(jobType, sandboxGoods);
+    // No saber goods exist in goodtypes.ini — a saber carries the sword good whose body it borrows.
+    expect(eq(JOB_SOLDIER_SABER_LONG)).toEqual({ weapon: { goodType: GOOD_SWORD_LONG } });
+    // Heroes borrow per their baseatomics soldier class (jobtypes.ini): 44→34 (short sword), 45→35.
+    expect(eq(JOB_HERO_SWORD)).toEqual({ weapon: { goodType: GOOD_SWORD_SHORT } });
+    expect(eq(JOB_HERO_SABER)).toEqual({ weapon: { goodType: GOOD_SWORD_LONG } });
+    expect(eq(JOB_HEROINE_BOW)).toEqual({ weapon: { goodType: GOOD_BOW_LONG } });
+    expect(eq(JOB_HERO_UNARMED)).toBeUndefined();
+    // The axe jobs have NO weapons.ini record (the sim can't arm them) — an equipment sword would
+    // claim a weapon the unit doesn't swing, so they get none.
+    expect(eq(JOB_SOLDIER_AXE_BIG)).toBeUndefined();
   });
 
   it('the bare-handed warrior and a civilian get no equipment weapon (empty slot → their own body)', () => {
-    expect(weaponEquipmentFor(JOB_SOLDIER_UNARMED)).toBeUndefined();
-    expect(weaponEquipmentFor(JOB_COLLECTOR)).toBeUndefined();
-    expect(weaponEquipmentFor(JOB_IDLE)).toBeUndefined();
+    const eq = (jobType: number) => weaponEquipmentFor(jobType, sandboxGoods);
+    expect(eq(JOB_SOLDIER_UNARMED)).toBeUndefined();
+    expect(eq(JOB_COLLECTOR)).toBeUndefined();
+    expect(eq(JOB_IDLE)).toBeUndefined();
   });
 });

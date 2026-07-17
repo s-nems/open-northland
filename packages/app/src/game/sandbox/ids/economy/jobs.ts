@@ -38,7 +38,8 @@ export const JOB_SOLDIER_AXE_BIG = 39; // soldier_axe_big
 export const JOB_ARCHER = 40; // soldier_bow_short
 export const JOB_ARCHER_LONG = 41; // soldier_bow_long
 // The named heroes (`jobtypes.ini` types 42..47) — mission-map elites the decoded `sethuman` records
-// place; they have no extracted bodies yet, so the render borrows their weapon class's warrior body.
+// place. Their own bodies exist in `jobgraphics.ini` but aren't extracted yet, so the render borrows
+// the warrior body of each hero's `baseatomics` soldier class (docs/tickets/render/hero-character-bodies.md).
 export const JOB_HERO_UNARMED = 42; // hero_unarmed
 export const JOB_HERO_SPEAR = 43; // hero_spear_siegfried
 export const JOB_HERO_SWORD = 44; // hero_sword_bjarni

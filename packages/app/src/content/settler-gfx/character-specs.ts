@@ -307,8 +307,10 @@ export const CHARACTER_SPEC_ENTRIES = Object.entries(CHARACTER_SPECS) as readonl
  * family: woman 5 → the woman body; the soldier jobs 31..41 → the armoured `cr_hum_body_05`, each
  * weapon class animating its weapon's walk (the axe jobs 38/39 borrow the closest two-hander, the
  * broadsword — the body authors no axe set; the sabers 36/37 borrow the sword/broadsword one-handers).
- * The named heroes 42..47 borrow their weapon class's warrior body the same way — a named
- * approximation until their own bodies are extracted (docs/tickets/render/hero-character-bodies.md).
+ * The named heroes 42..47 borrow the warrior body of their `baseatomics` soldier class
+ * (`jobtypes.ini`: 42→31, 43→33, 44→34, 45→35, 46→39, 47→41) until their own bodies
+ * (`jobgraphics.ini` binds e.g. `CR_Hum_Body_60`/`_64` for jobs 44/45) are extracted —
+ * docs/tickets/render/hero-character-bodies.md.
  * Every unmapped job (all civilian trades — they share the generic man body in the original) falls to
  * the `civilian` default.
  */
@@ -326,30 +328,30 @@ export const ADULT_CHARACTER_BY_JOB: Readonly<Record<number, CharacterSpecId>> =
   39: 'warrior-broadsword', // soldier_axe_big
   40: 'warrior-shortbow', // soldier_bow_short
   41: 'warrior-longbow', // soldier_bow_long
-  42: 'warrior', // hero_unarmed
-  43: 'warrior-spear', // hero_spear_siegfried
-  44: 'warrior-sword', // hero_sword_bjarni
-  45: 'warrior-sword', // hero_saber_hatschi (saber borrows the one-hander, like job 36)
-  46: 'warrior-broadsword', // hero_axe (no authored axe set — closest two-hander, like jobs 38/39)
-  47: 'warrior-longbow', // heroine_bow_xena
+  42: 'warrior', // hero_unarmed (baseatomics 31)
+  43: 'warrior-spear', // hero_spear_siegfried (baseatomics 33)
+  44: 'warrior-sword', // hero_sword_bjarni (baseatomics 34)
+  45: 'warrior-broadsword', // hero_saber_hatschi (baseatomics 35 — the two-hander class)
+  46: 'warrior-broadsword', // hero_axe (baseatomics 39; no authored axe set — closest two-hander)
+  47: 'warrior-longbow', // heroine_bow_xena (baseatomics 41)
 };
 
 /**
- * Equipped weapon good → warrior character spec — the "a warrior is one profession; the weapon in hand
- * decides the look" join. A settler carrying one of these in its `Equipment.weapon` slot draws that
- * weapon's warrior body regardless of its jobType; a bare warrior (no weapon good) falls through to
- * {@link ADULT_CHARACTER_BY_JOB} (the unarmed body for `soldier_unarmed`). Each weapon class maps to the
- * same body variant its soldier job does (bows → the bow bodies, the two spears → the spear body, the long
- * sword → the two-handed broadsword body). Keys are the sandbox-scoped good ids (`goodtypes.ini` weapon
- * ids 37–42, carried by the global catalog at +100 → 137–142) so they match the `Equipment.weapon.goodType`.
+ * Equipped weapon good id-SLUG → warrior character spec — the "a warrior is one profession; the weapon
+ * in hand decides the look" join. A settler carrying one of these in its `Equipment.weapon` slot draws
+ * that weapon's warrior body regardless of its jobType; a bare warrior (no weapon good) falls through to
+ * {@link ADULT_CHARACTER_BY_JOB} (the unarmed body for `soldier_unarmed`). Keyed by the good's id slug
+ * (`goodtypes.ini` names, `sword_shord` typo verbatim) because the numeric ids differ per content —
+ * sandbox carries the weapon goods at +100 (137–142), real content at 37–42; the sheet loader joins
+ * slug → the running content's typeId (`sprite-sheet/characters.ts`).
  */
-export const WARRIOR_SPEC_BY_WEAPON_GOOD: Readonly<Record<number, CharacterSpecId>> = {
-  137: 'warrior-shortbow', // short bow
-  138: 'warrior-longbow', // long bow
-  139: 'warrior-spear', // wooden spear
-  140: 'warrior-spear', // iron spear
-  141: 'warrior-sword', // short sword
-  142: 'warrior-broadsword', // long sword (the two-hander)
+export const WARRIOR_SPEC_BY_WEAPON_GOOD_SLUG: Readonly<Record<string, CharacterSpecId>> = {
+  bow_short: 'warrior-shortbow',
+  bow_long: 'warrior-longbow',
+  spear_wooden: 'warrior-spear',
+  spear_iron: 'warrior-spear',
+  sword_shord: 'warrior-sword',
+  sword_long: 'warrior-broadsword', // the two-hander
 };
 
 /**
