@@ -26,6 +26,33 @@ export function incrementStaffing(tally: StaffingTally, workplace: Entity, jobTy
 }
 
 /**
+ * How an openness probe resolves a slot — the two employment paths, which differ in where the bound-settler
+ * headcount comes from and whether the per-slot tech/XP gate applies:
+ *  - `automatic`: the JobSystem's own scan, counting against the tick's {@link StaffingTally} and enforcing
+ *    every gate.
+ *  - `playerDirected`: a hand assignment (the `assignWorker` command), counting live (it resolves outside a
+ *    jobSystem tick, with no tally in hand) and RELAXING the tech/XP gate — see {@link openWorkerJobFromList}.
+ */
+export type OpeningsMode =
+  | { readonly kind: 'automatic'; readonly staffing: StaffingTally }
+  | { readonly kind: 'playerDirected' };
+
+/** The settler-side context every openness probe reads: who is asking, on whose behalf, with what accrued
+ *  experience, under which {@link OpeningsMode}. One object because these always travel together. */
+export interface OpeningsQuery {
+  readonly world: World;
+  readonly ctx: SystemContext;
+  readonly tribe: number;
+  /** The issuing player, or undefined for a neutral settler — another player's workplace never employs it. */
+  readonly owner: number | undefined;
+  readonly experience: ReadonlyMap<number, number>;
+  readonly mode: OpeningsMode;
+  /** The settler's signpost confinement over a candidate building — an out-of-area workplace never employs
+   *  it (see the jobSystem's area gate). Omitted when the settler is unlimited. */
+  readonly withinArea?: ((building: Entity) => boolean) | undefined;
+}
+
+/**
  * The first building (canonical order) with an open slot for the SPECIFIC job `jobType` — the
  * report-in scan for a pre-employed but unbound worker (today: the loose carrier, pass 1b). The same
  * per-slot openness gate as {@link openJobAt}, restricted to the one job the settler already
@@ -33,54 +60,29 @@ export function incrementStaffing(tally: StaffingTally, workplace: Entity, jobTy
  */
 export function openPostFor(
   buildings: readonly Entity[],
-  world: World,
-  ctx: SystemContext,
-  tribe: number,
-  owner: number | undefined,
+  query: OpeningsQuery,
   jobType: number,
-  experience: ReadonlyMap<number, number>,
-  staffing: StaffingTally,
-  /** The settler's signpost confinement over a candidate building — an out-of-area workplace never
-   *  employs it (see the jobSystem's area gate). Omitted when the settler is unlimited. */
-  withinArea?: (building: Entity) => boolean,
 ): Entity | null {
   for (const b of buildings) {
-    if (withinArea !== undefined && !withinArea(b)) continue;
-    if (resolveOpenWorkerJob(world, ctx, b, tribe, owner, experience, [jobType], staffing) !== null) {
-      return b;
-    }
+    if (query.withinArea !== undefined && !query.withinArea(b)) continue;
+    if (resolveOpenWorkerJob(query, b, [jobType]) !== null) return b;
   }
   return null;
 }
 
 /**
- * The first workplace (canonical order) that is open for a `tribe` settler with the given accrued
- * `experience`, together with the job it offers — see {@link jobSystem} for the four openness
- * conditions — or `null` if no workplace currently offers it a job.
+ * The first workplace (canonical order) that is open for the querying settler, together with the job it
+ * offers — see {@link jobSystem} for the four openness conditions — or `null` if no workplace currently
+ * offers it a job.
  */
 export function openJobAt(
   buildings: readonly Entity[],
-  world: World,
-  ctx: SystemContext,
-  tribe: number,
-  owner: number | undefined,
-  experience: ReadonlyMap<number, number>,
-  staffing: StaffingTally,
-  /** The settler's signpost confinement over a candidate building — see {@link openPostFor}. */
-  withinArea?: (building: Entity) => boolean,
+  query: OpeningsQuery,
 ): { building: Entity; jobType: number } | null {
+  const { world, ctx } = query;
   for (const b of buildings) {
-    if (withinArea !== undefined && !withinArea(b)) continue;
-    const jobType = resolveOpenWorkerJob(
-      world,
-      ctx,
-      b,
-      tribe,
-      owner,
-      experience,
-      canonicalJobs(buildingWorkerJobs(world, ctx, b)),
-      staffing,
-    );
+    if (query.withinArea !== undefined && !query.withinArea(b)) continue;
+    const jobType = resolveOpenWorkerJob(query, b, canonicalJobs(buildingWorkerJobs(world, ctx, b)));
     if (jobType !== null) return { building: b, jobType }; // first open, qualified building wins
   }
   return null;
@@ -104,59 +106,44 @@ export function openJobAt(
  * the AI never self-unlocks a specialization — only the player can.
  */
 export function openWorkerJobFromList(
-  world: World,
-  ctx: SystemContext,
+  query: OpeningsQuery,
   building: Entity,
-  tribe: number,
-  owner: number | undefined,
-  experience: ReadonlyMap<number, number>,
   jobPriority: readonly number[],
 ): number | null {
-  const offered = buildingWorkerJobs(world, ctx, building);
+  const offered = buildingWorkerJobs(query.world, query.ctx, building);
   return resolveOpenWorkerJob(
-    world,
-    ctx,
+    query,
     building,
-    tribe,
-    owner,
-    experience,
     jobPriority.filter((jobType) => offered.has(jobType)),
-    undefined,
-    /* playerDirected */ true,
   );
 }
 
 /**
- * Walk `orderedJobs` (already a subset of the building's slots) and return the first one open for a
- * `tribe` settler with the given `experience` — understaffed at this building, and (unless `playerDirected`)
- * tech-enabled + XP-cleared — or `null`. The shared core of {@link openJobAt} (canonical order) and
+ * Walk `orderedJobs` (already a subset of the building's slots) and return the first one open for the
+ * querying settler — understaffed at this building, and (unless the mode is `playerDirected`) tech-enabled +
+ * XP-cleared — or `null`. The shared core of {@link openJobAt} (canonical order) and
  * {@link openWorkerJobFromList} (priority order): both apply the same tribe/owner/building + capacity gates;
- * they differ in slot order AND in `playerDirected`, which the command path sets to skip the per-slot tech/XP
+ * they differ in slot order AND in {@link OpeningsMode}, whose `playerDirected` arm skips the per-slot tech/XP
  * gate (see {@link openWorkerJobFromList} — the deliberate player-convenience deviation).
  */
 function resolveOpenWorkerJob(
-  world: World,
-  ctx: SystemContext,
+  query: OpeningsQuery,
   building: Entity,
-  tribe: number,
-  owner: number | undefined,
-  experience: ReadonlyMap<number, number>,
   orderedJobs: readonly number[],
-  staffing?: StaffingTally,
-  playerDirected = false,
 ): number | null {
+  const { world, ctx, tribe, mode } = query;
   const b = world.tryGet(building, Building);
   if (b === undefined || b.tribe !== tribe) return null;
-  if (!ownersCompatible(owner, ownerOf(world, building))) return null; // another player's workplace (sameSide doc)
+  if (!ownersCompatible(query.owner, ownerOf(world, building))) return null; // another player's workplace (sameSide doc)
   if (!buildingEnabled(world, ctx, tribe, b.buildingType)) return null; // not tech-enabled yet
   for (const jobType of orderedJobs) {
-    if (!jobUnderstaffed(world, ctx, building, jobType, staffing)) continue;
+    if (!jobUnderstaffed(query, building, jobType)) continue;
     // A player-directed assignment (a right-click / the assign-workplace button) staffs a built workshop
     // with its own trade regardless of the job-level tech/XP gate — see openWorkerJobFromList. The automatic
     // scan still enforces both, so the AI never self-unlocks a specialization.
-    if (playerDirected) return jobType;
+    if (mode.kind === 'playerDirected') return jobType;
     if (!jobEnabled(world, ctx, tribe, jobType)) continue; // tech gate (jobEnablesJob): job unlocked?
-    if (!settlerMeetsNeed(ctx, tribe, 'job', jobType, experience)) continue; // XP gate (needforjob)
+    if (!settlerMeetsNeed(ctx, tribe, 'job', jobType, query.experience)) continue; // XP gate (needforjob)
     return jobType;
   }
   return null;
@@ -171,24 +158,25 @@ function resolveOpenWorkerJob(
  * Determinism: a count of bound settlers (addition commutes), so iterating `query` insertion order is
  * fine — it's not a *pick*, just a sum (AGENTS.md: only a chosen-entity scan needs canonical order).
  */
-function jobUnderstaffed(
-  world: World,
-  ctx: SystemContext,
-  building: Entity,
-  jobType: number,
-  staffing?: StaffingTally,
-): boolean {
+function jobUnderstaffed(query: OpeningsQuery, building: Entity, jobType: number): boolean {
+  const { world, ctx } = query;
   const b = world.get(building, Building);
   const type = contentIndex(ctx.content).buildings.get(b.buildingType);
   const slot = type?.workers.find((w) => w.jobType === jobType);
   if (slot === undefined) return false; // not a worker job here
-  // With the jobSystem's per-tick tally the count is O(1); the live scan remains for the one-shot
-  // command path (`assignWorker` resolves openness outside a jobSystem tick, no tally in hand).
-  const held =
-    staffing !== undefined
-      ? (staffing.get(building)?.get(jobType) ?? 0)
-      : liveHeldCount(world, building, jobType);
-  return held < slot.count;
+  return heldCount(query, building, jobType) < slot.count;
+}
+
+/** The bound-settler headcount for one (building, jobType), from whichever source the {@link OpeningsMode}
+ *  carries: the jobSystem's per-tick tally (O(1)) or the command path's live scan. */
+function heldCount(query: OpeningsQuery, building: Entity, jobType: number): number {
+  const { mode } = query;
+  switch (mode.kind) {
+    case 'automatic':
+      return mode.staffing.get(building)?.get(jobType) ?? 0;
+    case 'playerDirected':
+      return liveHeldCount(query.world, building, jobType);
+  }
 }
 
 /** The tally-less bound-settler count for one (building, jobType) — the command-path fallback. */

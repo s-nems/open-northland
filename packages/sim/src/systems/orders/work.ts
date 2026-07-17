@@ -162,12 +162,15 @@ export function assignWorker(
 
   const settler = world.get(e, Settler);
   const jobType = openWorkerJobFromList(
-    world,
-    ctx,
+    {
+      world,
+      ctx,
+      tribe: settler.tribe,
+      owner: ownerOf(world, e),
+      experience: settler.experience,
+      mode: { kind: 'playerDirected' },
+    },
     b,
-    settler.tribe,
-    ownerOf(world, e),
-    settler.experience,
     command.jobPriority,
   );
   if (jobType === null) return; // full / wrong tribe / other player / not a workplace / gated — no-op

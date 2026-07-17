@@ -1,6 +1,9 @@
 import type { ContentSet, ProductionInput } from '@open-northland/data';
 import { Building, Settler, Stockpile, stockpileEntries } from '../../components/index.js';
+import { contentIndex } from '../../core/content-index.js';
+import { ONE } from '../../core/fixed.js';
 import type { World } from '../../ecs/world.js';
+import type { SystemContext } from '../context.js';
 
 // Pure, terminal read views for the HUD — derived projections of world state or `content` that the HUD, the
 // renderer, and tests consume but no sim system mutates or feeds back into a decision. See ./index.ts for how
@@ -9,6 +12,45 @@ import type { World } from '../../ecs/world.js';
 // The world-state views below return `Map`s whose *values* are order-independent tallies (addition commutes,
 // so store-traversal order can't change a total) but whose *iteration* order is insertion order; a consumer
 // needing a stable display order sorts the keys itself.
+
+/**
+ * The **housing capacity** a `tribe` currently has: the sum of the `homeSize` of its placed, fully **built**
+ * `home` buildings — the extracted `logichousetype` `logichomesize` param (the population a residence
+ * shelters: home level 00 → 1, ... level 04 → 5). The ceiling half of the HUD's population/housing readout;
+ * births themselves are gated per home by its family slots (`familiesOf`), not by this sum.
+ *
+ * Only a **built** residence counts (`built >= ONE`) — a home still under construction shelters no one yet.
+ * A `home`-kind building type with no `homeSize` (none in the real data, but the schema defaults it to 0)
+ * contributes nothing, as does a building whose type is absent from content.
+ *
+ * source-basis: the per-home capacity is the extracted `homeSize` param — faithful by construction; what the
+ * capacity *gates* (births) is a later mechanic.
+ */
+export function housingCapacity(world: World, ctx: SystemContext, tribe: number): number {
+  let capacity = 0;
+  for (const e of world.query(Building)) {
+    const b = world.get(e, Building);
+    if (b.tribe !== tribe || b.built < ONE) continue; // wrong tribe, or not yet built — shelters no one
+    const type = contentIndex(ctx.content).buildings.get(b.buildingType);
+    if (type === undefined || type.kind !== 'home') continue; // not a residence
+    capacity += type.homeSize;
+  }
+  return capacity;
+}
+
+/**
+ * The current **population** of a `tribe`: the number of its living {@link Settler}s — the count half of the
+ * HUD readout {@link housingCapacity} is the ceiling for. Counts every settler regardless of job (idle
+ * settlers are still mouths to house); {@link tribePopulationByJob} is the same population broken out by
+ * trade.
+ */
+export function tribePopulation(world: World, tribe: number): number {
+  let count = 0;
+  for (const e of world.query(Settler)) {
+    if (world.get(e, Settler).tribe === tribe) count++;
+  }
+  return count;
+}
 
 /**
  * The per-job-type head-count of a `tribe`'s settlers, keyed by each living {@link Settler}'s current

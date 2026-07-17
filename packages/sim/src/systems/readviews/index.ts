@@ -8,7 +8,9 @@
 //    not mechanics: each is a pure function of content, memoizable and testable in isolation.
 //
 // Split by concern into sibling modules:
-//  - ./hud.ts      — the HUD/goods-graph projections over world state + content.
+//  - ./hud.ts      — the HUD/goods-graph/housing/population projections over world state + content.
+//  - ./buildings.ts — the data-defined temple (pray-need satisfier) classification.
+//  - ./food.ts     — the data-defined edible-good (eat-slot) classification.
 //  - ./combat.ts   — the static weapon-vs-armor damage lookup table.
 //  - ./classes/    — the data-defined weapon/armor class taxonomy (predicates + accessors + groupings).
 //  - ./tribes/     — the data-defined civ-vs-animal split + `animaltypes.ini` behaviour + `mayAttack`.
@@ -29,6 +31,7 @@ export {
   atomicStartDirection,
   isInterruptibleAtomic,
 } from './animations.js';
+export { isTemple } from './buildings.js';
 export {
   armorByClass,
   armorByMaterial,
@@ -56,9 +59,12 @@ export {
   weaponDamageVsMaterial,
   weaponKey,
 } from './combat.js';
+export { isFood } from './food.js';
 export {
   goodsGraph,
+  housingCapacity,
   IDLE_JOB,
+  tribePopulation,
   tribePopulationByJob,
   tribeStocks,
 } from './hud.js';

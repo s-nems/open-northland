@@ -20,6 +20,7 @@ import { jobCanHarvest, removeWorkFlag } from '../flags.js';
 import {
   buildStaffingTally,
   incrementStaffing,
+  type OpeningsQuery,
   openJobAt,
   openPostFor,
   type StaffingTally,
@@ -82,6 +83,15 @@ export const jobSystem: System = (world, ctx) => {
             if (inode === null) return true; // no resolvable cell — leave the openness gates to decide
             return limit.allowsNode(terrain.nodeAtClamped(inode.x, inode.y));
           };
+    const query: OpeningsQuery = {
+      world,
+      ctx,
+      tribe: settler.tribe,
+      owner: ownerOf(world, e),
+      experience: settler.experience,
+      mode: { kind: 'automatic', staffing },
+      withinArea,
+    };
 
     if (settler.jobType !== null) {
       // Pass 1 — adopt a pre-employed, unbound settler standing on a workplace it staffs.
@@ -94,33 +104,14 @@ export const jobSystem: System = (world, ctx) => {
         // building order. First-in-canonical-order is a named approximation — the original's posting rule isn't
         // decoded, and nearest-post would need the spatial seam and can move goldens. Same openness gate as
         // every other assignment; no open slot means it stays loose and idle until one appears.
-        const post = openPostFor(
-          buildings,
-          world,
-          ctx,
-          settler.tribe,
-          ownerOf(world, e),
-          settler.jobType,
-          settler.experience,
-          staffing,
-          withinArea,
-        );
+        const post = openPostFor(buildings, query, settler.jobType);
         if (post !== null) bind(world, ctx, staffing, e, post, settler.jobType);
       }
       continue; // an employed settler is never re-assigned to another trade
     }
 
     // Pass 2 — assign + bind an idle settler to a concrete open workplace.
-    const open = openJobAt(
-      buildings,
-      world,
-      ctx,
-      settler.tribe,
-      ownerOf(world, e),
-      settler.experience,
-      staffing,
-      withinArea,
-    );
+    const open = openJobAt(buildings, query);
     if (open !== null) {
       settler.jobType = open.jobType;
       bind(world, ctx, staffing, e, open.building, open.jobType);
