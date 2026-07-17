@@ -75,8 +75,9 @@ from the fuzz seed. New command variants belong in its generator the same commit
 All levels run under `npm test` (vitest). For the inner loop:
 - **One file/suite:** `npm test -- scenario` (a name-substring filter) — e.g. `npm test -- hygiene`
   for just the determinism scan, `npm test -- determinism` for the unit goldens.
-- **Watch mode:** `npm run test:watch` re-runs on save while you iterate on one system.
-- **Typecheck only:** `npm run typecheck` (it's `tsc --build`, identical to `npm run build`).
+- **Watch mode:** `npm run test:watch` typechecks once, then re-runs Vitest on save while you iterate.
+- **Typecheck only:** `npm run typecheck` builds and checks workspace sources plus every test/support
+  source without emitting test artifacts. `npm run build` adds the production Vite bundle.
 
 **Debug a failing invariant.** Integration/scenario invariants assert *after every tick*, so a
 failure names the **exact tick** it broke (`… at tick N`). Re-run that one scenario, narrow to that

@@ -52,5 +52,4 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run typecheck # workspace packages resolve each other via dist/, so tests need tsc output
-      - run: npm test # vitest: unit + integration + e2e + determinism hygiene
+      - run: npm test # builds/typechecks workspace + test sources, then runs Vitest
