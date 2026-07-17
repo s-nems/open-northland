@@ -75,8 +75,7 @@ export interface ResolvedLayer {
  * Resolve the cast-shadow layer a drawn bob prepends under itself: the same bob id looked up in the
  * source layer's {@link SpriteLayer.shadow} twin (shadow bob sets parallel their body's ids — observed
  * on the tree and house `_s.bmd`s). Null when the layer has no shadow twin or the twin holds no visible
- * frame at that id (most bobs cast none — the data decides). `boundsExempt`: a shadow darkens the
- * ground; it must not grow the caster's selection/picking box.
+ * frame at that id (most bobs cast none — the data decides).
  */
 function shadowLayerFor(layer: SpriteLayer, bobId: number, scale: number): ResolvedLayer | null {
   const shadow = layer.shadow;
@@ -104,10 +103,9 @@ export function compactResolvedStockpileLayers<T>(layers: readonly (T | null)[])
 }
 
 /**
- * Resolve the ordered atlas layers an entity draws, or `null` to draw the placeholder.
- * Faithfully reproduces the family → kind-layer → shared-body decision (an unloaded named family falls
- * through to the default building layer; a loaded family/kind layer with a missing/empty frame returns
- * `null` → placeholder, since its id space differs).
+ * Resolve the ordered atlas layers an entity draws, or `null` to draw the placeholder — the family →
+ * kind-layer → shared-body decision. A loaded family/kind layer with a missing or empty frame returns
+ * `null` rather than borrowing a frame from another layer, since their id spaces differ.
  */
 export function resolveLayers(
   sheet: SpriteSheet | undefined,
@@ -211,8 +209,7 @@ type BuildingBranch =
  * family/default-layer decision ({@link layeredLayerFor}).
  */
 function resolveBuildingLayers(sheet: SpriteSheet, item: DrawItem, tick: number): BuildingBranch {
-  // An under-construction building draws its construction-stage stack when the binding carries the
-  // layers; a stage whose frame is missing/empty is skipped; if none resolves, fall through to the body.
+  // A stage whose frame is missing/empty is skipped; if no stage resolves, fall through to the body.
   const stack = resolveConstructionDraws(sheet.bindings.building, item);
   if (stack !== null && typeof sheet.bindings.building !== 'number') {
     // Each active stage reveals as the build progresses (the pool eases the displayed value between
@@ -257,10 +254,9 @@ function resolveBuildingLayers(sheet: SpriteSheet, item: DrawItem, tick: number)
 
 /**
  * Resolve a ground pile / delivery flag's layers. It has no shared `kindLayers` layer of its own, so it
- * draws only from a loaded named family (the `ls_goods` pile / `ls_temp` flag atlases). A bare or
- * unloaded-family ref draws the placeholder heap — never falls through to the body atlas (which would
- * blit a settler frame). Each layer prepends its cast shadow like every other kind (`ls_goods_s` holds
- * a silhouette for every pile bob in the owned copy).
+ * draws only from a loaded named family (the `ls_goods` pile / `ls_temp` flag atlases); a bare or
+ * unloaded-family ref draws the placeholder heap. Each layer prepends its cast shadow like every other
+ * kind (`ls_goods_s` holds a silhouette for every pile bob in the owned copy).
  */
 function resolveStockpileLayers(sheet: SpriteSheet, item: DrawItem): ResolvedLayer[] | null {
   const binding = sheet.bindings.stockpile;
@@ -278,10 +274,9 @@ function resolveStockpileLayers(sheet: SpriteSheet, item: DrawItem): ResolvedLay
 /**
  * Resolve a decor entity's layers — a stump (`ls_trees_dead` debris), a freshly-felled trunk on the
  * ground (`landscapeToPickup` LOG) or a wild berry bush (the `ls_trees` bush frames). Like the stockpile
- * they have no shared `kindLayers` layer, so each draws its frame only from a loaded named family, reusing
- * the per-good resource resolver. A bare or unloaded-family ref draws the placeholder — never a wrong-bob
- * borrow from the body atlas. Same rule, different binding key (the DrawKind names the entity, the binding
- * key names the graphic: grounddrop → `trunk`, berrybush → `berrybush`).
+ * they have no shared `kindLayers` layer, so each draws only from a loaded named family (else the
+ * placeholder), reusing the per-good resource resolver. The DrawKind names the entity, the binding key
+ * names the graphic: grounddrop → `trunk`, berrybush → `berrybush`.
  */
 function resolveDecorLayers(
   sheet: SpriteSheet,

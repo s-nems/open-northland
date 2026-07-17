@@ -50,10 +50,6 @@ import { WorldChrome } from './world-chrome.js';
  * entities share one depth-sorted `spriteLayer` so they interleave in a single painter order. Per frame
  * the *drawn* work is O(visible) with near-zero allocation; the cull itself is still an O(entities)
  * visibility pass (a spatial index making the query O(visible) is a future seam, see `AGENTS.md`).
- *
- * Pixels need a human. The data decisions it consumes are unit-tested upstream: the depth-sorted draw
- * list (`buildSpriteScene`), the frame selection (`resolveSpriteBobId`/`resolveBuildingDraw`), and the
- * cull math (`viewport.ts`).
  */
 export class WorldRenderer {
   private readonly app: Application;
@@ -139,7 +135,6 @@ export class WorldRenderer {
     this.worldLayer.addChild(this.constructionPlots.container);
     this.worldLayer.addChild(this.placementOverlay.container);
     this.worldLayer.addChild(this.selectionLayer.container);
-    // Two containers straddling the sprite layer, one effects layer: bones below, blood above.
     this.worldLayer.addChild(this.effects.groundContainer);
     this.worldLayer.addChild(this.spriteLayer);
     this.worldLayer.addChild(this.effects.overlayContainer);
@@ -271,8 +266,6 @@ export class WorldRenderer {
   /**
    * Draw one frame: apply the camera, cull the terrain, advance the map objects, reconcile the sprite
    * pool to the (culled, depth-sorted) list, draw the selection rings, repaint the HUD, and render once.
-   * Steady-state allocation is O(visible), not O(entities) — the sub-layers update in place, and what
-   * this method mints per frame is the handful of option objects and closures it passes down.
    * `selection` is transient view state like the camera, never sim state.
    * `alpha` is the fixed-timestep interpolation fraction (the app loop's `FixedTimestep.advance`
    * return): the pool draws each entity `alpha` of the way from its previous tick anchor to its current
@@ -326,12 +319,9 @@ export class WorldRenderer {
     }
     // `stateAt` is a bound arrow-function property on the view, so passing it detached is safe.
     this.mapObjects.update(vp, tick, fogView === null ? undefined : fogView.stateAt);
-    // The pool needs the camera + canvas size to place team-colour PalettedSprite meshes (screen-space,
-    // they can't ride the worldLayer transform); the plain-sprite path ignores them. The elevation field
-    // lets it lift each entity's drawn feet without disturbing its pre-lift depth key; `alpha` lerps
-    // each entity between its last two tick anchors.
-    // The portrait's subject is force-drawn through the cull so its cutout survives off-screen / inside a
-    // building; setPortraitInset ran before this update, so the ref is this frame's.
+    // Each field is documented on PoolFrame. The portrait's subject is force-drawn through the cull so
+    // its cutout survives off-screen / inside a building; setPortraitInset ran before this update, so the
+    // ref is this frame's.
     const portraitRef = this.portrait.subjectRef();
     this.pool.reconcile({
       snapshot,
@@ -370,9 +360,8 @@ export class WorldRenderer {
     // Fed interpolated render time (`tick + alpha`) so the blood-fall animation and fades are smooth at any
     // frame rate; the fold's decay membership uses the integer sim tick from `ingest`, so this stays render-only.
     this.effects.draw(this.elevation, vp, tick + alpha);
-    // Door badges float over the buildings: the app tallies each building's bound workers + projects its
-    // door node, this layer stacks one placeholder square per worker (craftsman / carrier / gatherer,
-    // colour-coded) above the door. Culled to the sprite viewport, so the cost tracks the screen.
+    // Door badges: the app tallies each building's bound workers and projects its door node; this layer
+    // stacks them. Culled to the sprite viewport, so the cost tracks the screen.
     this.badgeLayer.draw(doorBadges, this.elevation, vp);
     this.chrome.resize(this.app.screen.width, this.app.screen.height);
     this.hud.draw(hud);

@@ -63,11 +63,9 @@ const FLAG_PAINT_STEP = 0.5;
 
 /**
  * The same-feet-anchor paint bias of a draw item — the kind's {@link SPRITE_PAINT_ORDER} plus the extra
- * {@link FLAG_PAINT_STEP} for a delivery flag — as a unitless order value. Both the headless oracle
- * ({@link import('./sprite-scene.js')}) and the live painter
- * ({@link import('../../gpu/sprite-pool/sprite-pool.js')}) multiply it by their own sub-cell epsilon
- * (`PAINT_ORDER_EPS` / `SCREEN_PAINT_EPS`), so the tiebreak can't drift between the two depth keys (a
- * drift would sort occlusion differently on screen than in the oracle).
+ * {@link FLAG_PAINT_STEP} for a delivery flag — as a unitless order value. Both the headless oracle and
+ * the live painter multiply it by their own sub-cell epsilon, so the tiebreak can't drift between the
+ * two depth keys.
  */
 export function paintOrderBias(kind: DrawKind, isFlag = false): number {
   return SPRITE_PAINT_ORDER[kind] + (isFlag ? FLAG_PAINT_STEP : 0);

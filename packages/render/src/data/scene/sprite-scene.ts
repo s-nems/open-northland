@@ -55,11 +55,18 @@ export interface SpriteSceneOptions {
   /** The composed terrain-shading field ({@link import('../terrain/index.js')} + hillshade); absent or
    *  unshaded = no entity shading. Sampled at each item's feet into {@link DrawItem.shade}. */
   readonly brightness?: BrightnessField | undefined;
-  /** Entities the retained static map-object layer draws instead (skipped entirely). */
+  /** Entities the retained static map-object layer draws instead (a decoded map's virgin resource nodes) —
+   *  skipped entirely: no draw item, not in {@link SpriteScene.liveRefs}. */
   readonly staticRefs?: ReadonlySet<number> | undefined;
-  /** The fog-of-war cull (`data/fog.ts` over the viewer's `FogView`); absent = no fog. */
+  /** The fog-of-war cull (`data/fog.ts` over the viewer's `FogView`); absent = no fog. An entity whose tile
+   *  it rejects is treated like a viewport-culled one — no draw item, but kept live so its pooled sprite
+   *  survives until the fog lifts. */
   readonly fogVisible?: ((tileX: number, tileY: number) => boolean) | undefined;
-  /** The viewer's remembered statics (`data/fog-ghosts.ts`), drawn dimmed on explored ground. */
+  /** The viewer's remembered statics (`data/fog-ghosts.ts`, pre-filtered to explored ground by the store),
+   *  drawn dimmed on explored ground. Each projects like a live static (same anchor, lift and depth formula,
+   *  so it occludes correctly against live sprites at the fog boundary) and joins {@link SpriteScene.liveRefs},
+   *  keeping a dead entity's pooled sprite alive for as long as the memory draws. A ref never yields two
+   *  items: the store deletes records on visible ground, and the fog cull drops live items elsewhere. */
   readonly ghosts?: readonly FogGhost[] | undefined;
   /**
    * Keep settlers that are inside a building — mid-exchange in a completed store, or waiting in their
@@ -87,10 +94,8 @@ export interface SpriteSceneOptions {
 /**
  * The depth-sorted sprite draw list alone (no terrain) — the per-frame half the retained
  * {@link import('../../gpu/world-renderer/index.js').WorldRenderer} consumes. Terrain is static and built once
- * (`setTerrain`), so only moving/animated entities flow through here. Pass a `viewport` to cull to what
- * the camera frames (an item is kept iff its screen anchor is inside the already margin-inflated box);
- * culling changes which items are emitted, never their relative order, so the retained pool and
- * depth-sort stay correct. Absent a viewport, every sprite is emitted.
+ * (`setTerrain`), so only moving/animated entities flow through here. An item is kept iff its screen anchor
+ * is inside the already margin-inflated `viewport` box.
  */
 export function buildSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOptions = {}): DrawItem[] {
   return collectSpriteScene(snapshot, opts).items;
@@ -103,22 +108,8 @@ export function buildSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOptio
  * twice per frame. Each drawable entity is projected to its feet anchor and tagged with the render-side
  * reads (state/facing/carrying/atomic/buildingType) a per-kind binding needs; the per-kind reads run only
  * for items that survive the cull. Sorted by feet anchor `(y, x)` then entity id — a total, stable order,
- * so culling only removes items without reshuffling the survivors.
- *
- * `staticRefs` names entities the retained static map-object layer draws instead (a decoded map's virgin
- * resource nodes): skipped entirely — no draw item, not in the liveness set — so the pool runs no
- * per-frame work for scenery that has its own built-once quad.
- *
- * `fogVisible` is the fog-of-war cull (`data/fog.ts` over the viewer's `FogView`): an entity whose tile
- * it rejects is treated like a viewport-culled one — kept in the liveness set so its pooled sprite
- * survives until the fog lifts, but emitting no draw item.
- *
- * `ghosts` are the viewer's remembered statics (`data/fog-ghosts.ts`, pre-filtered to explored ground by
- * the store): each projects like a live static (same anchor, lift and depth formula, so a ghost occludes
- * correctly against live sprites at the fog boundary) but is tagged {@link DrawItem.ghost} for the pool's
- * grey tint. Ghost refs join the liveness set, keeping a dead entity's pooled sprite alive for as long as
- * the memory draws. A ref never yields two items: the store deletes records on visible ground, and the fog
- * cull drops live items elsewhere.
+ * so culling only removes items without reshuffling the survivors. Each option is documented on
+ * {@link SpriteSceneOptions}.
  */
 export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOptions = {}): SpriteScene {
   const {
@@ -162,11 +153,9 @@ export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOpt
         continue;
       }
     }
-    // A delivery flag is a `stockpile`-kind marker that must paint just above a co-located goods heap of
-    // the same kind (both resolve to the same feet anchor). Read here so it folds into the depth key.
+    // Read here, not in the stockpile branch below, so it folds into the depth key.
     const isFlag = 'DeliveryFlag' in components;
     liveRefs.add(entity.id);
-    // Fixed (scaled int) -> float tile coordinate. Render-only; never re-enters the sim.
     const tileX = pos.x / ONE;
     const tileY = pos.y / ONE;
     const screen = tileToScreen(tileX, tileY);
@@ -211,10 +200,8 @@ export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOpt
       ref: entity.id,
       x: drawX,
       y: drawY,
-      // Feet-anchor depth: lower (greater y), then further-right (greater x), then a per-kind sub-cell
-      // bias (a settler in front of the node it stands on, a flag in front of its ground drops — plus a
-      // half-step so a flag out-sorts a co-located heap of its own kind), then id. A total order, so the
-      // sort is deterministic regardless of snapshot iteration order.
+      // Feet-anchor depth: lower (greater y), then further-right (greater x), then the per-kind paint
+      // bias, then id. A total order, so the sort is deterministic regardless of snapshot iteration order.
       depth: spriteDepth(tileX, tileY, kind, isFlag),
       state,
     };
@@ -312,8 +299,7 @@ export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOpt
     items.push(item);
   }
   if (ghosts !== undefined) pushGhostItems(items, liveRefs, ghosts, viewport, elevation);
-  // Stable, total order: sprites by (y, x, id). The entity-id tie-break makes two sprites on the exact
-  // same tile order deterministically.
+  // Stable, total order: (y, x) via `depth`, then the entity-id tie-break for two sprites on one tile.
   items.sort((a, b) => a.depth - b.depth || a.ref - b.ref);
   return { items, liveRefs };
 }

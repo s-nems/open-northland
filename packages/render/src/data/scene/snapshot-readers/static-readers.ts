@@ -4,9 +4,7 @@ import { readNumField } from '../../snapshot/index.js';
 
 /**
  * Per-static-object component reads — the draw fields a building, resource node, stump or berry bush
- * carries (type, build progress, good, fill level, render variant), plus {@link assignStaticFields}, the
- * single place the "which components a static reads for its draw" decision lives so the live scene build
- * and the fog-ghost capture can't drift. Pure, total decoders of plain snapshot data.
+ * carries (type, build progress, good, fill level, render variant), plus {@link assignStaticFields}.
  */
 
 /**
