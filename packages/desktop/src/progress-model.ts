@@ -10,8 +10,7 @@ import { PIPELINE_STAGES } from '@open-northland/asset-pipeline/progress';
  * the bar, never gate completion, so drift on other installs is cosmetic.
  */
 
-// Roughly the stage's seconds in the reference run (167 s total): atlases and pictures dominate;
-// everything from gui onward fits in the final seconds.
+// Roughly the stage's seconds in the reference run (167 s total).
 const STAGE_WEIGHTS: Readonly<Record<PipelineStageId, number>> = {
   unpack: 10,
   pictures: 55,

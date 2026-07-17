@@ -3,9 +3,8 @@ import { join } from 'node:path';
 /**
  * Where the desktop shell keeps its writable state — the pipeline's `content/` output (~1.2 GB on
  * the real game) and `desktop-config.json`. Following the OpenRA/OpenTTD convention the app dir
- * stays read-only and data lives per-user, with a marker-dir portable mode: a `portable-data/`
- * directory next to the executable wins over the per-user dir, so a zip/portable install keeps
- * everything in its own folder.
+ * stays read-only and data lives per-user, with a `portable-data/` marker dir beside the executable
+ * overriding that for a self-contained install.
  */
 
 /** The marker directory next to the executable that switches the shell to portable mode. */

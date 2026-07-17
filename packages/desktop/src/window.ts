@@ -48,9 +48,8 @@ async function openSetupPage(win: BrowserWindow): Promise<void> {
 }
 
 /**
- * The native menu owns the shell-level actions the in-game UI must not know about. It is never
- * auto-hidden on Windows/Linux: it is the only home of the reinstall-content and open-data-folder
- * actions, and a bar hidden behind Alt is undiscoverable.
+ * Never auto-hidden on Windows/Linux: this bar is the only home of the reinstall-content and
+ * open-data-folder actions, and one hidden behind Alt is undiscoverable.
  */
 export function buildAppMenu(win: BrowserWindow, dataRootPath: string): void {
   const gameSubmenu: Electron.MenuItemConstructorOptions[] = [

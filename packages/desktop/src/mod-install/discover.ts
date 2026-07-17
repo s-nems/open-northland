@@ -2,7 +2,7 @@ import { readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { CULTURESNATION_MOD } from '@open-northland/asset-pipeline';
 
-/** Finds an unpacked mod root — a directory holding `DataCnmd/` — under a picked or installed folder. */
+/** Finds an unpacked mod root under a folder the user picked, or under the data root's `mods/`. */
 
 /**
  * Locates a mod root (a directory that contains `DataCnmd/`) at `dir` itself or one level below —

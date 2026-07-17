@@ -16,9 +16,8 @@ export interface MapsIndexPlayerSlot {
   /** The slot's authored display name, when the map ships one. */
   readonly name?: string;
   /**
-   * Whether a person may take this seat: the authored type is `human`, or the map's
-   * `[multiplayer]` `playeroption` row offers `human` for the slot (the original lobby's
-   * seat-eligibility table — how the packed multiplayer specials open their authored-`ai` slots).
+   * Whether a person may take this seat: the authored type is `human`, or the map's `[multiplayer]`
+   * `playeroption` row offers `human` for the slot (the original lobby's seat-eligibility table).
    */
   readonly claimable: boolean;
   /** `[multiplayer]` `playerhideinmenu` — the original lobby never lists this slot. */
@@ -78,8 +77,8 @@ function multiplayerOf(raw: unknown): ScriptMultiplayer {
   return { humanOptionSlots, aiDeniedSlots, hiddenSlots: hidden, fixedColors: fixedColors === true };
 }
 
-/** Structurally validates one roster row off a parsed script sidecar (no schema dep here — the
- *  sidecar was zod-validated at pipeline emit; this guards the menu against a hand-edited file). */
+/** Structurally validates one roster row off a parsed script sidecar. No schema dep: the sidecar was
+ *  zod-validated at pipeline emit, so this only guards the menu against a hand-edited file. */
 function playerSlotOf(raw: unknown, multiplayer: ScriptMultiplayer): MapsIndexPlayerSlot | undefined {
   if (typeof raw !== 'object' || raw === null) return undefined;
   const { player, type, tribeId, colorId, name } = raw as Record<string, unknown>;
@@ -140,12 +139,10 @@ function playersOf(
 }
 
 /**
- * Builds one entry per `content/maps/<id>.json` grid (sorted; the `.meta.json`/`.script.json`
- * sidecars are NOT maps and are filtered out), each joined with its `<id>.meta.json` display
- * strings, an `<id>.png` existence flag, and its `<id>.script.json` player roster. Per-entry
- * tolerant: a missing sidecar is normal; a malformed one (unreadable, non-object like `null`,
- * wrong-typed fields) degrades that entry with a warning — one bad sidecar must never 500 the
- * whole list. `mapsRoot` must exist (the caller guards).
+ * Builds one entry per `content/maps/<id>.json` grid, sorted, joined with its optional sidecars —
+ * the `.meta.json`/`.script.json` ones are not maps of their own and are filtered out. Tolerance is
+ * per entry: one malformed sidecar degrades its own entry, never the list. `mapsRoot` must exist
+ * (the caller guards).
  */
 export function buildMapsIndexEntries(mapsRoot: string): MapsIndexEntry[] {
   return readdirSync(mapsRoot)

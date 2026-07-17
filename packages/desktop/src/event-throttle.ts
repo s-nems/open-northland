@@ -1,8 +1,7 @@
 /**
  * Rate-limits the shell's progress streams, which tick far faster than a bar can use: the pipeline's
  * unpack stage reports thousands of items per second and the mod installer ticks per downloaded
- * chunk. Callers forward at most one event per interval, marking the ones that must never be
- * dropped — a phase's last tick, or a warning — so the UI still lands on a truthful final state.
+ * chunk.
  */
 
 /** Minimum ms between forwarded progress events; ~one UI frame's worth, well under human notice. */
