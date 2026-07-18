@@ -1,4 +1,13 @@
-import { Health, Marriage, Owner, Position, Settler, Wedding } from '../../components/index.js';
+import {
+  Female,
+  Health,
+  Marriage,
+  Owner,
+  Position,
+  Residence,
+  Settler,
+  Wedding,
+} from '../../components/index.js';
 import { eventAt } from '../../core/events.js';
 import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -60,16 +69,24 @@ function reap(world: World, ctx: SystemContext, e: Entity): void {
   });
   removeWorkFlag(world, e); // a flag-bound gatherer's flag has no owner once it's gone — reap it too
   // Death dissolves the union: the surviving spouse is widowed (free to remarry — "for life" ends at a
-  // death), and a partner mid-wedding is released from the ceremony. EXCEPT a widowed parent whose
-  // child still grows: its Marriage is the only carrier of the parent-child edge (familyOf/assignHouse
+  // death), and a partner mid-wedding is released from the ceremony. The exception is a widowed parent
+  // whose child still grows: its Marriage is the only carrier of the parent-child edge (familyOf/assignHouse
   // move the child with the survivor, the child's surname resolves through it), so it stays until the
   // child grows up — `mayMarry` treats a dead-spouse marriage with no growing child as dissolved, and
   // the next wedding simply overwrites the stale component.
   const marriage = world.tryGet(e, Marriage);
   if (marriage !== undefined && world.isAlive(marriage.spouse)) {
+    const spouse = marriage.spouse;
     const child = marriage.child;
     const raising = child !== null && world.isAlive(child) && isMinor(world, child);
-    if (!raising) world.remove(marriage.spouse, Marriage);
+    if (!raising) {
+      world.remove(spouse, Marriage);
+      // A widower left with no growing child also vacates his home so a fresh family can move in:
+      // homes anchor on women (the AI refills a free family slot with a married woman), and the man
+      // rejoins the marriage pool to be housed into a wife's home. A widow keeps her home and refills
+      // it by remarrying, so only a male survivor is evicted (user-specified design, 2026-07-18).
+      if (!world.has(spouse, Female)) world.remove(spouse, Residence);
+    }
   }
   const wedding = world.tryGet(e, Wedding);
   if (wedding !== undefined && world.isAlive(wedding.partner)) world.remove(wedding.partner, Wedding);

@@ -253,6 +253,60 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     expect(mayMarry(sim.world, woman())).toBe(true);
   });
 
+  it("a widower's home slot frees when his wife dies (a lone man is evicted)", () => {
+    const { sim, woman, man, home } = familySim(31);
+    sim.enqueue({ kind: 'marry', entity: woman() });
+    runUntil(sim, () => sim.world.has(man(), Marriage), 400, 'wedding');
+    sim.enqueue({ kind: 'assignHouse', entity: woman(), house: home() });
+    sim.step();
+    expect(sim.world.get(man(), Residence).home).toBe(home()); // both housed as one family
+    expect(familiesOf(sim.world, home())).toHaveLength(1);
+
+    sim.enqueue({ kind: 'debugKill', target: woman() });
+    runUntil(sim, () => !sim.world.isAlive(woman()), 5, 'death');
+    // Wife dead, no growing child: the lone man is widowed AND evicted, so the home slot is free for
+    // a new family (familiesOf empty — assignHouse now finds a slot).
+    expect(sim.world.has(man(), Marriage)).toBe(false);
+    expect(sim.world.has(man(), Residence)).toBe(false);
+    expect(familiesOf(sim.world, home())).toHaveLength(0);
+  });
+
+  it('a widower still raising a child keeps his home slot (the carve-out)', () => {
+    const { sim, woman, man, home } = familySim(37);
+    sim.enqueue({ kind: 'marry', entity: woman() });
+    runUntil(sim, () => sim.world.has(woman(), Marriage), 400, 'wedding');
+    sim.enqueue({ kind: 'assignHouse', entity: woman(), house: home() });
+    sim.step();
+    sim.enqueue({ kind: 'makeChild', entity: woman(), child: 'male' });
+    runUntil(sim, () => sim.world.get(woman(), Marriage).child !== null, 4000, 'birth');
+    const child = sim.world.get(woman(), Marriage).child as Entity;
+
+    sim.enqueue({ kind: 'debugKill', target: woman() });
+    runUntil(sim, () => !sim.world.isAlive(woman()), 5, 'death');
+    // Widowed mid-raising: the man keeps the Marriage (parent-child edge) and his home — the family
+    // lives on as one household until the child grows up, so the slot stays occupied.
+    expect(sim.world.has(man(), Marriage)).toBe(true);
+    expect(sim.world.get(man(), Residence).home).toBe(home());
+    expect(familyOf(sim.world, man())).toEqual([man(), child]);
+    expect(familiesOf(sim.world, home())).toHaveLength(1);
+  });
+
+  it('a widow keeps her home when her husband dies (homes anchor on women)', () => {
+    const { sim, woman, man, home } = familySim(41);
+    sim.enqueue({ kind: 'marry', entity: woman() });
+    runUntil(sim, () => sim.world.has(woman(), Marriage), 400, 'wedding');
+    sim.enqueue({ kind: 'assignHouse', entity: woman(), house: home() });
+    sim.step();
+
+    sim.enqueue({ kind: 'debugKill', target: man() });
+    runUntil(sim, () => !sim.world.isAlive(man()), 5, 'death');
+    // The surviving woman is widowed (free to remarry) but NOT evicted: she keeps her slot, and a new
+    // husband joins her home on remarriage.
+    expect(sim.world.has(woman(), Marriage)).toBe(false);
+    expect(sim.world.get(woman(), Residence).home).toBe(home());
+    expect(familiesOf(sim.world, home())).toHaveLength(1);
+  });
+
   it('home food feeds only residents (and never the reserved child fund)', () => {
     const sim = new Simulation({ seed: 11, content: familyContent(), map: grassMap(28, 4) });
     sim.enqueue({ kind: 'placeBuilding', buildingType: HOME, x: 10, y: 0, tribe: VIKING });
