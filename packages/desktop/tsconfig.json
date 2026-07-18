@@ -8,5 +8,5 @@
     "emitDeclarationOnly": true
   },
   "include": ["src/**/*.ts"],
-  "references": [{ "path": "../content-routes" }, { "path": "../../tools/asset-pipeline" }]
+  "references": [{ "path": "../content-resolver" }, { "path": "../../tools/asset-pipeline" }]
 }

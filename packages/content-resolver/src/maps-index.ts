@@ -104,7 +104,7 @@ function readSidecar(mapsRoot: string, id: string, suffix: string): unknown {
   try {
     return JSON.parse(readFileSync(file, 'utf8'));
   } catch (err) {
-    console.warn(`[content-routes] maps-index: ${id}${suffix} unreadable: ${(err as Error).message}`);
+    console.warn(`[content-resolver] maps-index: ${id}${suffix} unreadable: ${(err as Error).message}`);
     return undefined;
   }
 }
@@ -114,7 +114,7 @@ function metaOf(mapsRoot: string, id: string): { readonly name?: string; readonl
   const parsed = readSidecar(mapsRoot, id, '.meta.json');
   if (parsed === undefined) return {};
   if (typeof parsed !== 'object' || parsed === null) {
-    console.warn(`[content-routes] maps-index: ${id}.meta.json is not an object; serving the bare id`);
+    console.warn(`[content-resolver] maps-index: ${id}.meta.json is not an object; serving the bare id`);
     return {};
   }
   const meta = parsed as Record<string, unknown>;

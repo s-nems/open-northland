@@ -92,11 +92,11 @@ state + commands + RNG — never on wall-clock or frame rate.
   sink (`src/web/`, engine under `src/web/engine/`).
 - **`app`** — the shell. Owns the main loop, translates input into sim commands, draws menus/HUD,
   wires save/load. The only package that depends on everything.
-- **`content-routes`** — the one table mapping the app's content URLs (`/maps`, `/bobs`, `/ir.json`,
+- **`content-resolver`** — the one table mapping the app's content URLs (`/maps`, `/bobs`, `/ir.json`,
   the `/maps-index` + `/bobs-index` payloads, …) onto the generated `content/` tree, with traversal
   and extension guards. Node-side, consumed by the Vite dev middleware and the desktop shell so the
   two hosts cannot drift.
-- **`desktop`** — the Electron shell for players: serves the built `app` + `content-routes` over its
+- **`desktop`** — the Electron shell for players: serves the built `app` + `content-resolver` over its
   `app://` protocol, and on first run converts the user's owned game copy with the asset pipeline
   (forked as a `utilityProcess`) into a per-user data root. electron-builder packages it as Windows
   NSIS/portable, macOS dmg, Linux AppImage. See `packages/desktop/AGENTS.md`.
