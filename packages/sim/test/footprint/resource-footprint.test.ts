@@ -176,6 +176,44 @@ describe('resource footprints', () => {
     expect(sim.world.get(worker, CurrentAtomic).targetEntity).toBe(tree);
   });
 
+  it('skips a clay deposit buried under a building and heads for a reachable one instead', () => {
+    // A house may legally land on a footprint-empty clay/mud deposit (its build zone is empty), burying it.
+    // Its only work cell is its own walkable anchor, now walled in — a blocked goal findPath rejects. The pick
+    // must skip it so the digger works a reachable deposit rather than stranding forever on the buried one.
+    const sim = mappedSim(grassMap(10, 3));
+    const terrain = terrainOf(sim);
+    const digger = placeSettler(sim, CLAY_DIGGER, 0, 1);
+    const buried = placeResource(sim, CLAY, CLAY_ATOMIC, 2, 1); // nearer, but about to be walled under a house
+    placeResource(sim, CLAY, CLAY_ATOMIC, 6, 1); // farther, open ground
+    sim.enqueue({ kind: 'placeBuilding', buildingType: TEST_HUT, x: 2, y: 1, tribe: VIKING, force: true });
+    sim.step();
+    expect(sim.world.isAlive(buried)).toBe(true); // a deposit is a resource, not decor — it survives under the house
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    // The digger walks to the reachable deposit's anchor (6,1), NOT the buried one's (2,1): the buried pick is
+    // skipped, so it never latches onto the impossible route.
+    expect(sim.world.get(digger, MoveGoal).cell).toBe(terrain.nodeAt(6, 1));
+  });
+
+  it('leaves a lone buried clay deposit un-mined without stranding the digger', () => {
+    // With no reachable alternative the pick simply returns nothing — the digger never latches onto a route it
+    // can't complete, and the buried deposit survives full (faithful: clay stays under the house). Without the
+    // gate the digger would hold a MoveGoal to the buried anchor (2,1) every tick, forever.
+    const sim = mappedSim(grassMap(6, 3));
+    const terrain = terrainOf(sim);
+    const digger = placeSettler(sim, CLAY_DIGGER, 0, 1);
+    const buried = placeResource(sim, CLAY, CLAY_ATOMIC, 2, 1);
+    sim.enqueue({ kind: 'placeBuilding', buildingType: TEST_HUT, x: 2, y: 1, tribe: VIKING, force: true });
+    sim.step();
+
+    sim.run(80);
+
+    expect(sim.world.has(digger, CurrentAtomic)).toBe(false); // never harvests the buried deposit
+    expect(sim.world.tryGet(digger, MoveGoal)?.cell).not.toBe(terrain.nodeAt(2, 1)); // not stranded on the buried anchor
+    expect(sim.world.get(buried, Resource).remaining).toBe(3); // untouched under the house
+  });
+
   it('sends a unit ORDERED onto a resource to the nearest reachable node instead of stalling it', () => {
     // The reported bug: accidentally right-clicking a tree left the unit standing still, because the
     // resource walk body makes its anchor an unreachable goal (findPath rejects an occupied goal).
