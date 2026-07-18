@@ -32,6 +32,16 @@ export function defineComponent<T>(name: string): Component<T> {
   return { name };
 }
 
+/**
+ * The membership ops recorded for one journaled component store: entry `i` of `entities` is the entity
+ * whose add/remove/destroy bumped the store generation to `base + i + 1`. An incremental index replays
+ * the span since its own generation instead of rebuilding (see {@link World.membershipDeltasSince}).
+ */
+interface MembershipJournal {
+  base: number;
+  entities: Entity[];
+}
+
 export class World {
   private nextId = 1;
   private readonly alive = new Set<Entity>();
@@ -48,6 +58,13 @@ export class World {
   /** Per-component in-place value-write generation (see {@link touchComponent}) — separate from the
    *  membership generations above so spatial indexes keyed on add/remove stay unaffected. */
   private readonly componentValueGenerations = new Map<Component<unknown>, number>();
+  /** Membership journals for the components an incremental index opted into (see {@link journalMembership});
+   *  untracked components pay nothing. */
+  private readonly membershipJournals = new Map<Component<unknown>, MembershipJournal>();
+  /** Journal length past which the oldest span is dropped (`base` advances): a consumer further behind
+   *  rebuilds from scratch instead of replaying — the incremental-index fallback bound. Generous versus
+   *  real churn (an index catches up within the same dispatch loop, typically a handful of ops behind). */
+  private static readonly MEMBERSHIP_JOURNAL_LIMIT = 1024;
   /**
    * Optional cache verifiers registered by derived-cache owners. They run under `verifyCaches()` so a
    * stale cache is caught by the normal invariant path instead of surfacing as a distant golden drift.
@@ -92,7 +109,7 @@ export class World {
 
   destroy(entity: Entity): void {
     for (const c of this.registered) {
-      if (this.stores.get(c)?.delete(entity)) this.bumpComponentGeneration(c);
+      if (this.stores.get(c)?.delete(entity)) this.bumpComponentGeneration(c, entity);
     }
     this.alive.delete(entity);
     this.canonicalCache = null;
@@ -106,14 +123,14 @@ export class World {
   add<T>(entity: Entity, component: Component<T>, value: T): T {
     const store = this.storeFor(component);
     store.set(entity, value);
-    this.bumpComponentGeneration(component as Component<unknown>);
+    this.bumpComponentGeneration(component as Component<unknown>, entity);
     this.logTouched(entity);
     return value;
   }
 
   remove<T>(entity: Entity, component: Component<T>): void {
     if (this.storeOf(component)?.delete(entity)) {
-      this.bumpComponentGeneration(component as Component<unknown>);
+      this.bumpComponentGeneration(component as Component<unknown>, entity);
       this.logTouched(entity);
     }
   }
@@ -312,7 +329,41 @@ export class World {
     return this.alive.size;
   }
 
-  private bumpComponentGeneration(component: Component<unknown>): void {
+  private bumpComponentGeneration(component: Component<unknown>, entity: Entity): void {
     this.componentGenerations.set(component, (this.componentGenerations.get(component) ?? 0) + 1);
+    const journal = this.membershipJournals.get(component);
+    if (journal !== undefined) {
+      if (journal.entities.length >= World.MEMBERSHIP_JOURNAL_LIMIT) {
+        // Drop the whole retained span: consumers behind the new base fall back to a full rebuild.
+        journal.base += journal.entities.length;
+        journal.entities.length = 0;
+      }
+      journal.entities.push(entity);
+    }
+  }
+
+  /**
+   * Start journaling membership changes (add/remove/destroy) of `component`'s store so an incremental
+   * index can replay them via {@link membershipDeltasSince} instead of rebuilding on every generation
+   * bump. Idempotent; the journal starts at the current generation.
+   */
+  journalMembership(component: Component<unknown>): void {
+    if (!this.membershipJournals.has(component)) {
+      this.membershipJournals.set(component, { base: this.componentGeneration(component), entities: [] });
+    }
+  }
+
+  /**
+   * The entities whose `component` membership (or stored value, via a re-`add`) changed since generation
+   * `since`, in mutation order — or `null` when the journal cannot cover that span (never journaled, or
+   * `since` predates the retained window), in which case the caller must rebuild from the store. One
+   * entity may appear more than once; replay must be idempotent per entry.
+   */
+  membershipDeltasSince(component: Component<unknown>, since: number): readonly Entity[] | null {
+    const journal = this.membershipJournals.get(component);
+    if (journal === undefined || since < journal.base || since > journal.base + journal.entities.length) {
+      return null;
+    }
+    return journal.entities.slice(since - journal.base);
   }
 }

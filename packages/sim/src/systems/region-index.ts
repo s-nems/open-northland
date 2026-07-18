@@ -1,16 +1,15 @@
-import { Position } from '../components/index.js';
 import type { Component, Entity, World } from '../ecs/world.js';
-import { nodeOfPosition } from '../nav/halfcell.js';
-import { canonicalById } from './spatial.js';
+import { lowerBound } from './spatial.js';
+import { createSpatialMemo } from './spatial-memo.js';
 
 /**
  * The per-world region spatial index shared by the resource and berry-bush indexes — the golden-rule-6
  * lever that lets a radius-bounded scan (a flag-bound gatherer, a hungry forager) read only the standing
- * entities near a point instead of every one on a decoded map. Derived read-state, never hashed: rebuilt
- * wholesale whenever the indexed component's store generation moves (create/destroy — a standing entity
- * never moves or loses its Position without dying, the invariant the registered verifier re-checks), and
- * its `near` answers are provable supersets the caller's unchanged canonical filter/rank loop re-checks,
- * so no winner can differ from a full scan.
+ * entities near a point instead of every one on a decoded map. A {@link createSpatialMemo} rider: kept
+ * incrementally against the indexed component's store generation (a standing entity never moves or loses
+ * its Position without dying — the invariant the registered verifier re-checks), and its `near` answers
+ * are provable supersets the caller's unchanged canonical filter/rank loop re-checks, so no winner can
+ * differ from a full scan.
  */
 
 /** Region edge (half-cell nodes): 32×32 (≈16×16 cells) — a flag/forage-radius query touches a handful of
@@ -28,10 +27,13 @@ interface RegionMember {
   readonly hy: number;
 }
 
-interface RegionIndexState<Extra> {
-  generation: number;
-  list: readonly Entity[];
+interface RegionState<Extra> {
   byRegion: Map<number, RegionMember[]>;
+  /** Ascending-id canonical membership — the mutable master copy behind {@link RegionIndex.canonical}. */
+  list: Entity[];
+  /** The shared frozen view handed to consumers, minted lazily and dropped on every change — a consumer
+   *  holding one keeps an immutable snapshot (an in-place .sort() throws at the mutation site). */
+  frozen: readonly Entity[] | null;
   extra: Extra;
 }
 
@@ -44,6 +46,28 @@ export interface RegionIndexLabels {
   readonly singular: string;
 }
 
+/**
+ * The per-index derived extra, maintained incrementally beside the membership. `capture` runs at insert
+ * and must record everything `remove` needs — the entity may be destroyed by the time its removal replays.
+ * `diverges` is the verifier's extra leg (held versus freshly folded).
+ */
+export interface RegionExtraOps<Extra, Capture> {
+  empty(): Extra;
+  capture(world: World, e: Entity): Capture;
+  insert(extra: Extra, c: Capture): void;
+  remove(extra: Extra, c: Capture): void;
+  diverges(held: Extra, fresh: Extra): boolean;
+}
+
+/** The no-derived-extra ops for indexes that only need membership (the berry index). */
+export const NO_REGION_EXTRA: RegionExtraOps<undefined, undefined> = {
+  empty: () => undefined,
+  capture: () => undefined,
+  insert: () => {},
+  remove: () => {},
+  diverges: () => false,
+};
+
 /** A memoized region index over `(component, Position)` entities — see {@link createRegionIndex}. */
 export interface RegionIndex<Extra> {
   /** The memoized ascending-id list of every indexed entity — shared, read-only and frozen (a consumer's
@@ -53,7 +77,7 @@ export interface RegionIndex<Extra> {
    *  `(hx, hy)`, ascending-id — the caller's candidate superset (valid when `reach ≥ radius + the max
    *  anchor→interaction-cell offset`). Cost: O(regions touched + matches), not O(all indexed). */
   near(world: World, hx: number, hy: number, reach: number): Entity[];
-  /** The per-index derived extra, folded over the canonical list at build time and cached alongside. */
+  /** The per-index derived extra, maintained incrementally beside the membership. */
   extra(world: World): Extra;
 }
 
@@ -62,83 +86,95 @@ function regionKeyOf(hx: number, hy: number): number {
 }
 
 /**
- * Build a memoized region index over the entities carrying `component` and a {@link Position}, keyed and
- * invalidated on that component's store generation. `reduceExtra` folds the canonical list into a derived
- * value cached alongside (the resource index's distinct-harvest-atomics set; berries pass none).
+ * Build a memoized region index over the entities carrying `component` and a Position, maintained
+ * incrementally against that component's store generation (see {@link createSpatialMemo}).
  */
-export function createRegionIndex<Extra>(
+export function createRegionIndex<Extra, Capture>(
   component: Component<unknown>,
   labels: RegionIndexLabels,
-  reduceExtra: (world: World, list: readonly Entity[]) => Extra,
+  extraOps: RegionExtraOps<Extra, Capture>,
 ): RegionIndex<Extra> {
-  const cache = new WeakMap<World, RegionIndexState<Extra>>();
+  interface Member {
+    readonly hx: number;
+    readonly hy: number;
+    readonly capture: Capture;
+  }
 
-  const build = (world: World): RegionIndexState<Extra> => {
-    const list = canonicalById(world.query(component, Position));
-    const byRegion = new Map<number, RegionMember[]>();
-    for (const e of list) {
-      const p = world.get(e, Position);
-      const n = nodeOfPosition(p.x, p.y);
-      const key = regionKeyOf(n.hx, n.hy);
-      let bucket = byRegion.get(key);
+  const memo = createSpatialMemo<RegionState<Extra>, Member>(component, labels, {
+    empty: () => ({ byRegion: new Map(), list: [], frozen: null, extra: extraOps.empty() }),
+    member: (world, e, hx, hy) => ({ hx, hy, capture: extraOps.capture(world, e) }),
+    insert: (state, e, m) => {
+      state.frozen = null;
+      state.list.splice(
+        lowerBound(state.list, e, (id) => id),
+        0,
+        e,
+      );
+      const key = regionKeyOf(m.hx, m.hy);
+      let bucket = state.byRegion.get(key);
       if (bucket === undefined) {
         bucket = [];
-        byRegion.set(key, bucket);
+        state.byRegion.set(key, bucket);
       }
-      bucket.push({ e, hx: n.hx, hy: n.hy }); // canonical input order → each region list stays ascending-id
-    }
-    // Frozen like canonicalEntities' shared memo: an in-place .sort()/.reverse() by a consumer throws at
-    // the mutation site instead of silently corrupting every other consumer's canonical order.
-    return {
-      generation: world.componentGeneration(component),
-      list: Object.freeze(list),
-      byRegion,
-      extra: reduceExtra(world, list),
-    };
-  };
-
-  const verify = (world: World): string[] => {
-    const cached = cache.get(world);
-    if (cached === undefined || cached.generation !== world.componentGeneration(component)) return [];
-    const fresh = build(world);
-    if (fresh.list.length !== cached.list.length || fresh.list.some((e, i) => cached.list[i] !== e)) {
-      return [
-        `${labels.verifier} holds ${cached.list.length} ${labels.plural} but re-derived ${fresh.list.length} — a ${labels.component}/Position changed without a ${labels.component}-store generation bump`,
-      ];
-    }
-    for (const [key, bucket] of fresh.byRegion) {
-      const held = cached.byRegion.get(key);
-      if (
-        held === undefined ||
-        held.length !== bucket.length ||
-        bucket.some((m, i) => {
-          const h = held[i];
-          return h === undefined || h.e !== m.e || h.hx !== m.hx || h.hy !== m.hy;
-        })
-      ) {
+      bucket.splice(
+        lowerBound(bucket, e, (member) => member.e),
+        0,
+        { e, hx: m.hx, hy: m.hy },
+      );
+      extraOps.insert(state.extra, m.capture);
+    },
+    remove: (state, e, m) => {
+      state.frozen = null;
+      const li = lowerBound(state.list, e, (id) => id);
+      if (state.list[li] === e) state.list.splice(li, 1);
+      const key = regionKeyOf(m.hx, m.hy);
+      const bucket = state.byRegion.get(key);
+      if (bucket !== undefined) {
+        const bi = lowerBound(bucket, e, (member) => member.e);
+        if (bucket[bi]?.e === e) bucket.splice(bi, 1);
+        if (bucket.length === 0) state.byRegion.delete(key);
+      }
+      extraOps.remove(state.extra, m.capture);
+    },
+    diverges: (held, fresh) => {
+      if (held.list.length !== fresh.list.length || fresh.list.some((e, i) => held.list[i] !== e)) {
         return [
-          `${labels.verifier} region ${key} diverges from a fresh rebuild — a ${labels.singular} moved in place`,
+          `${labels.verifier} canonical list diverges from a fresh rebuild — an incremental splice missed`,
         ];
       }
-    }
-    return [];
-  };
-
-  const state = (world: World): RegionIndexState<Extra> => {
-    const generation = world.componentGeneration(component);
-    const cached = cache.get(world);
-    if (cached !== undefined && cached.generation === generation) return cached;
-    const fresh = build(world);
-    cache.set(world, fresh);
-    world.registerCacheVerifier(labels.verifier, () => verify(world));
-    return fresh;
-  };
+      for (const [key, bucket] of fresh.byRegion) {
+        const heldBucket = held.byRegion.get(key);
+        if (
+          heldBucket === undefined ||
+          heldBucket.length !== bucket.length ||
+          bucket.some((m, i) => {
+            const h = heldBucket[i];
+            return h === undefined || h.e !== m.e || h.hx !== m.hx || h.hy !== m.hy;
+          })
+        ) {
+          return [
+            `${labels.verifier} region ${key} diverges from a fresh rebuild — a ${labels.singular} moved in place`,
+          ];
+        }
+      }
+      if (extraOps.diverges(held.extra, fresh.extra)) {
+        return [
+          `${labels.verifier} derived extra diverges from a fresh rebuild — an incremental extra update missed`,
+        ];
+      }
+      return [];
+    },
+  });
 
   return {
-    canonical: (world) => state(world).list,
-    extra: (world) => state(world).extra,
+    canonical: (world) => {
+      const state = memo.read(world);
+      if (state.frozen === null) state.frozen = Object.freeze([...state.list]);
+      return state.frozen;
+    },
+    extra: (world) => memo.read(world).extra,
     near: (world, hx, hy, reach) => {
-      const index = state(world);
+      const index = memo.read(world);
       const minRx = Math.floor(Math.max(0, hx - reach) / REGION_NODES);
       const maxRx = Math.floor((hx + reach) / REGION_NODES);
       const minRy = Math.floor(Math.max(0, hy - reach) / REGION_NODES);

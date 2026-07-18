@@ -26,6 +26,23 @@ export function canonicalById(entities: Iterable<Entity>): Entity[] {
 /** The empty bucket returned for an unoccupied node — shared + frozen so a miss allocates nothing. */
 const NO_ENTITIES: readonly Entity[] = Object.freeze([]);
 
+/**
+ * The first index of ascending `arr` whose id (per `idOf`) is ≥ `id` (binary search) — the shared seam of
+ * the incremental indexes' sorted inserts and removals. Ids are monotonic, so an insert here is usually an
+ * append; the search only matters when an old id re-enters a bucket.
+ */
+export function lowerBound<T>(arr: readonly T[], id: number, idOf: (item: T) => number): number {
+  let lo = 0;
+  let hi = arr.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    const item = arr[mid];
+    if (item !== undefined && idOf(item) < id) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
+
 // nodeKey lives in footprint/geometry.ts (the leaf below this one, which needs it first);
 // re-exported here so consumers keep a single spatial import site.
 export { nodeKey };
@@ -81,6 +98,48 @@ export class NodeBuckets {
   /** The entities on node (x,y), in ascending-id order — empty (shared) when the node is unoccupied. */
   at(x: number, y: number): readonly Entity[] {
     return this.byX.get(x)?.get(y) ?? NO_ENTITIES;
+  }
+
+  /** Insert `e` into node (x,y)'s bucket keeping it ascending-id — the incremental-index maintenance seam
+   *  (the per-tick constructor path appends instead; it is fed a pre-sorted list). */
+  insert(e: Entity, x: number, y: number): void {
+    let column = this.byX.get(x);
+    if (column === undefined) {
+      column = new Map<number, Entity[]>();
+      this.byX.set(x, column);
+    }
+    let bucket = column.get(y);
+    if (bucket === undefined) {
+      bucket = [];
+      column.set(y, bucket);
+    }
+    bucket.splice(
+      lowerBound(bucket, e, (id) => id),
+      0,
+      e,
+    );
+  }
+
+  /** Remove `e` from node (x,y)'s bucket, dropping an emptied bucket/column so membership never leaks —
+   *  a no-op when `e` is not there (the verifier catches the inconsistency, not this seam). */
+  remove(e: Entity, x: number, y: number): void {
+    const column = this.byX.get(x);
+    const bucket = column?.get(y);
+    if (column === undefined || bucket === undefined) return;
+    const i = lowerBound(bucket, e, (id) => id);
+    if (bucket[i] !== e) return;
+    bucket.splice(i, 1);
+    if (bucket.length === 0) {
+      column.delete(y);
+      if (column.size === 0) this.byX.delete(x);
+    }
+  }
+
+  /** Every non-empty bucket with its node — the verifier's fresh-versus-held comparison walk. */
+  *buckets(): IterableIterator<{ x: number; y: number; entities: readonly Entity[] }> {
+    for (const [x, column] of this.byX) {
+      for (const [y, entities] of column) yield { x, y, entities };
+    }
   }
 
   /**

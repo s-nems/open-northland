@@ -55,6 +55,48 @@ describe('stockpilesAtNode (the per-drop tile lookup index)', () => {
     expect(sim.world.verifyCaches()).toEqual([]);
   });
 
+  it('stays exact through interleaved reads and creates/destroys (the incremental catch-up path)', () => {
+    const sim = newSim();
+    // Expected per-node membership tracked independently; every read must match it exactly.
+    const expected = new Map<number, Entity[]>();
+    const alive: Array<{ e: Entity; hx: number }> = [];
+    for (let i = 0; i < 30; i++) {
+      const hx = i % 5;
+      const e = heapAt(sim, hx, 3, WOOD, 1);
+      alive.push({ e, hx });
+      expected.set(hx, [...(expected.get(hx) ?? []), e]);
+      // Read between every mutation — the mid-dispatch interleave the wholesale rebuild degraded on.
+      expect(stockpilesAtNode(sim.world, hx, 3)).toEqual(expected.get(hx));
+      if (i % 3 === 2) {
+        const gone = alive.shift();
+        if (gone !== undefined) {
+          sim.world.destroy(gone.e);
+          expected.set(
+            gone.hx,
+            (expected.get(gone.hx) ?? []).filter((kept) => kept !== gone.e),
+          );
+          expect(stockpilesAtNode(sim.world, gone.hx, 3)).toEqual(expected.get(gone.hx));
+        }
+      }
+    }
+    for (let hx = 0; hx < 5; hx++) expect(stockpilesAtNode(sim.world, hx, 3)).toEqual(expected.get(hx));
+    expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
+  it('falls back to a full rebuild when the churn outruns the journal window', () => {
+    const sim = newSim();
+    const first = heapAt(sim, 1, 1, WOOD, 1);
+    expect(stockpilesAtNode(sim.world, 1, 1)).toEqual([first]); // build + start journaling
+    // Blow past the journal cap (1024 retained ops) without a read in between.
+    const bulk: Entity[] = [];
+    for (let i = 0; i < 1100; i++) bulk.push(heapAt(sim, 2, 2, WOOD, 1));
+    for (const e of bulk) sim.world.destroy(e);
+    const last = heapAt(sim, 1, 1, WOOD, 1);
+    expect(stockpilesAtNode(sim.world, 1, 1)).toEqual([first, last]);
+    expect(stockpilesAtNode(sim.world, 2, 2)).toEqual([]);
+    expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
   it('verifier reports a positioned stockpile that moved in place (the moving-hull tripwire)', () => {
     const sim = newSim();
     const heap = heapAt(sim, 6, 6, WOOD, 1);
