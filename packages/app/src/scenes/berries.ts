@@ -29,8 +29,10 @@ const STATIONS = 4;
 const FIRST_STATION_X = 5;
 /** A bush placed already bare (regrowing) to prove the growth loop runs without being foraged first. It
  *  blooms flowering at this absolute tick, then ripens one {@link systems.BERRY_STAGE_TICKS} later — both
- *  well inside the run. */
-const LONE_BARE_BUSH = { x: 27, y: 9, bloomAtTick: 300 } as const;
+ *  well inside the run. Sits between the middle stations (in the settler-centroid framing) and three rows
+ *  below the bush row, so a human watches its full bare → white-bloom → red-berry cycle unoccluded by any
+ *  forager; it starts bare (not ripe), so no station forager ever targets it. */
+const LONE_BARE_BUSH = { x: 14, y: 9, bloomAtTick: 300 } as const;
 /**
  * Long enough for the whole cycle to close: the foragers walk one tile + eat (~tens of ticks), then every
  * foraged bush regrows one {@link systems.BERRY_REGROW_TICKS} (1200) later — so the run must clear

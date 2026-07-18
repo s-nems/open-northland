@@ -317,6 +317,9 @@ describe('placement razes wild berry bushes in the reserved zone', () => {
     expect(sim.world.isAlive(inside)).toBe(false); // razed by the new building
     expect(sim.world.isAlive(outside)).toBe(true); // beyond the reserved zone — untouched
     expect(survivingBushes(sim)).toBe(1);
+    // The razing announces itself so render can drop the bush's static-decor quad — one event, the razed bush.
+    const razed = sim.events.current().filter((ev) => ev.kind === 'berryBushRazed');
+    expect(razed.map((ev) => ev.bush)).toEqual([inside]);
   });
 
   it('razes bushes even under a forced (map-authored) placement', () => {

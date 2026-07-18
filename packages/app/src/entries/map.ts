@@ -264,22 +264,25 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
           for (const ev of events) {
             // A resource first worked (felled/mined/depleted) or a bush first foraged leaves the retained
             // static layer; from then on the live pool draws it (a shrinking deposit, a bare/regrown bush).
-            const entity =
+            const worked =
               ev.kind === 'resourceFelled' || ev.kind === 'resourceMined' || ev.kind === 'resourceDepleted'
                 ? (ev.node as number)
                 : ev.kind === 'berryForaged'
                   ? (ev.bush as number)
                   : undefined;
+            // A razed bush is DESTROYED (a building landed on it), not handed to the pool — drop its static
+            // quad and leave NO fog ghost, since nothing remains to remember on explored ground.
+            const razed = ev.kind === 'berryBushRazed' ? (ev.bush as number) : undefined;
+            const entity = worked ?? razed;
             if (entity === undefined) continue;
             const sprite = held.get(entity);
             if (sprite === undefined) continue; // already handed over, or never static (admin spawn)
             held.delete(entity);
             refs.delete(entity);
             renderer.removeMapObject(sprite);
-            // The static quad was this node's fog ghost (a virgin object is its own last-seen state);
-            // adopt it into the ghost store so a node first worked under the fog keeps its remembered
-            // look on explored ground instead of vanishing with the handover.
-            renderer.adoptFogGhost(entity);
+            // The static quad was this node's fog ghost (a virgin object is its own last-seen state); a worked
+            // node adopts it so it keeps its remembered look on explored ground, but a razed bush is gone.
+            if (razed === undefined) renderer.adoptFogGhost(entity);
           }
         };
 
