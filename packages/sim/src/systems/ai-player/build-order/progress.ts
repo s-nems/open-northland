@@ -1,12 +1,19 @@
 import type { BuildingType } from '@open-northland/data';
-import { Building, Resource, UnderConstruction } from '../../../components/index.js';
+import { Building, UnderConstruction } from '../../../components/index.js';
 import { type ContentIndex, contentIndex } from '../../../core/content-index.js';
 import { ONE } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { liveWorkFlag } from '../../economy/flags.js';
-import { canonicalResources } from '../../resource-index.js';
-import { buildingTypeByContentId, goodTypeByContentId, ownedBuildings, ownedSettlers } from '../shared.js';
+import {
+  anchorNodeOf,
+  anyLiveResource,
+  buildingTypeByContentId,
+  goodTypeByContentId,
+  headquartersOf,
+  ownedBuildings,
+  ownedSettlers,
+} from '../shared.js';
 import type { BuildOrderEntry } from './entries.js';
 
 // ENTRY PROGRESS — the one shared reading of "is this build-order entry done", used by the
@@ -39,15 +46,6 @@ function tiersAtOrAbove(index: ContentIndex, target: BuildingType): Set<number> 
     step = step.upgradeTarget === undefined ? undefined : index.buildings.get(step.upgradeTarget);
   }
   return tiers;
-}
-
-/** Whether any not-yet-empty resource of `goodType` stands on the map. */
-function anyLiveResource(world: World, goodType: number): boolean {
-  for (const e of canonicalResources(world)) {
-    const r = world.get(e, Resource);
-    if (r.goodType === goodType && r.remaining > 0) return true;
-  }
-  return false;
 }
 
 /** The seat's build-order progress on one entry (see {@link EntryStatus}). `owned` is the seat's
@@ -90,7 +88,10 @@ export function entryStatus(
         if (liveWorkFlag(world, e)?.goodType === good.typeId) return 'satisfied';
       }
       // Nothing left to collect anywhere — treat as done so the list never stalls on a dry map.
-      return anyLiveResource(world, good.typeId) ? 'unmet' : 'skip';
+      // The seat's HQ seeds the expanding-box existence probe (collector goods gather around it).
+      const hq = headquartersOf(world, ctx, player);
+      const near = hq === null ? null : anchorNodeOf(world, hq);
+      return anyLiveResource(world, good.typeId, near) ? 'unmet' : 'skip';
     }
   }
 }
