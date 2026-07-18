@@ -16,6 +16,7 @@ import {
   atomicSystem,
   BERRY_FORAGE_RADIUS,
   BERRY_REGROW_TICKS,
+  BERRY_STAGE_TICKS,
   berryGrowthSystem,
 } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
@@ -42,11 +43,17 @@ function settlerAt(sim: Simulation, x: number, y: number, hunger: Fixed): Entity
   return needsSettlerAt(sim, x, y, { hunger });
 }
 
-/** A berry bush at (x,y), ripe by default (bare = regrowing, with `ripeAtTick` scheduled). */
-function bushAt(sim: Simulation, x: number, y: number, ripe = true, ripeAtTick = 0): Entity {
+/** A berry bush at (x,y), ripe by default (a bare/flowering bush regrows toward `nextStageAtTick`). */
+function bushAt(
+  sim: Simulation,
+  x: number,
+  y: number,
+  stage: 'bare' | 'flowering' | 'ripe' = 'ripe',
+  nextStageAtTick = 0,
+): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, BerryBush, { ripe, ripeAtTick });
+  sim.world.add(e, BerryBush, { stage, nextStageAtTick });
   return e;
 }
 
@@ -88,7 +95,7 @@ describe('forageDrive — the planner choosing to forage a wild bush', () => {
   it('ignores a BARE (regrowing) bush — only ripe bushes are food', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const settler = settlerAt(sim, 0, 0, HUNGRY);
-    bushAt(sim, 2, 0, false, BERRY_REGROW_TICKS); // bare, still regrowing
+    bushAt(sim, 2, 0, 'bare', BERRY_STAGE_TICKS); // bare, still regrowing
     // A wood node to work, so "no food" falls through to work rather than freezing.
     const tree = sim.world.create();
     sim.world.add(tree, Position, { x: fx.fromInt(3), y: fx.fromInt(0) });
@@ -144,7 +151,7 @@ describe('eat drive — picking the NEAREST food across stores and bushes', () =
 });
 
 describe('forage atomic + regrow (AtomicSystem, BerryGrowthSystem)', () => {
-  it('foraging a ripe bush zeroes hunger, flips it bare, and schedules regrow + a berryForaged event', () => {
+  it('foraging a ripe bush zeroes hunger, flips it bare, and schedules its bloom + a berryForaged event', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(3, 1) });
     const settler = settlerAt(sim, 0, 0, HUNGRY);
     const bush = bushAt(sim, 0, 0);
@@ -161,24 +168,30 @@ describe('forage atomic + regrow (AtomicSystem, BerryGrowthSystem)', () => {
     atomicSystem(sim.world, ctxOf(sim));
 
     const b = sim.world.get(bush, BerryBush);
-    expect(b.ripe).toBe(false); // one serving eaten
-    expect(b.ripeAtTick).toBe(sim.tick + BERRY_REGROW_TICKS); // regrow scheduled
+    expect(b.stage).toBe('bare'); // one serving eaten
+    expect(b.nextStageAtTick).toBe(sim.tick + BERRY_STAGE_TICKS); // first regrow step (bloom) scheduled
     expect(sim.world.get(settler, Settler).hunger).toBe(fx.fromInt(0)); // hunger reset
     expect(sim.world.has(settler, CurrentAtomic)).toBe(false); // atomic done
     expect(sim.events.current().some((e) => e.kind === 'berryForaged')).toBe(true);
   });
 
-  it('a bare bush regrows to ripe once its ripeAtTick passes', () => {
+  it('a bare bush blooms flowering at its next stage tick, then ripens one BERRY_STAGE_TICKS later', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(3, 1) });
-    const bush = bushAt(sim, 0, 0, false, 3); // regrows at tick 3
+    const bush = bushAt(sim, 0, 0, 'bare', 3); // blooms at tick 3
 
-    for (let i = 0; i < 2; i++) berryGrowthSystem(sim.world, ctxOf(sim)); // ticks 0,1 — still bare
-    expect(sim.world.get(bush, BerryBush).ripe).toBe(false);
+    for (let i = 0; i < 3; i++) berryGrowthSystem(sim.world, ctxOf(sim)); // ticks 0,1,2 — still bare
+    expect(sim.world.get(bush, BerryBush).stage).toBe('bare');
 
-    // Advance the sim clock past ripeAtTick and grow again.
-    for (let i = 0; i < 4; i++) sim.step();
-    expect(sim.world.get(bush, BerryBush).ripe).toBe(true);
-    expect(sim.world.get(bush, BerryBush).ripeAtTick).toBe(0); // schedule cleared
+    // Advance the sim clock past the bloom tick: bare → flowering, ripe still one step out.
+    while (sim.tick <= 3) sim.step();
+    const bloomed = sim.world.get(bush, BerryBush);
+    expect(bloomed.stage).toBe('flowering');
+    expect(bloomed.nextStageAtTick).toBe(3 + BERRY_STAGE_TICKS); // one more step to fruit, anchored on schedule
+
+    // Advance past that step: flowering → ripe, schedule cleared.
+    while (sim.tick <= 3 + BERRY_STAGE_TICKS) sim.step();
+    expect(sim.world.get(bush, BerryBush).stage).toBe('ripe');
+    expect(sim.world.get(bush, BerryBush).nextStageAtTick).toBe(0); // schedule cleared
   });
 });
 
@@ -194,7 +207,7 @@ describe('forage drive — closing the rise→forage→reset loop through the re
       sim.step();
       const h = sim.world.get(settler, Settler).hunger;
       if (h < fx.div(ONE, fx.fromInt(4))) ateAtLeastOnce = true;
-      if (!sim.world.get(bush, BerryBush).ripe) wentBare = true;
+      if (sim.world.get(bush, BerryBush).stage !== 'ripe') wentBare = true;
     }
 
     expect(ateAtLeastOnce).toBe(true); // the loop closed: hunger rose, the settler foraged, it reset

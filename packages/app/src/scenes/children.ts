@@ -114,7 +114,7 @@ export const childrenScene: SceneDefinition = {
         let bare = 0;
         let ripe = 0;
         for (const e of sim.world.query(BerryBush)) {
-          if (sim.world.get(e, BerryBush).ripe) ripe++;
+          if (sim.world.get(e, BerryBush).stage === 'ripe') ripe++;
           else bare++;
         }
         return bare === 2 && ripe === 1;

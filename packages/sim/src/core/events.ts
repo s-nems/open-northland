@@ -189,8 +189,8 @@ export type SimEvent =
        * A {@link import('../components/economy/index.js').BerryBush} was just FORAGED — its last ripe fruit
        * eaten this tick, so it flips ripe→bare and starts regrowing. The cue a consumer needs the moment a
        * virgin bush is first worked: the `?map=` view hands the bush from its retained static decor layer
-       * (drawn always-fruited) to the live sprite pool here, so from now on the drawn bush tracks its
-       * ripe/bare state (ripe again when the BerryGrowthSystem regrows it). Audio can hook a rustle/pick
+       * (drawn always-fruited) to the live sprite pool here, so from now on the drawn bush tracks its growth
+       * stage (bare → flowering → ripe as the BerryGrowthSystem regrows it). Audio can hook a rustle/pick
        * effect.
        */
       readonly kind: 'berryForaged';

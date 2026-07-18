@@ -2,7 +2,7 @@ import { BerryBush, Carrying, Position, Stockpile, setStockAmount } from '../../
 import { eventAt } from '../../../core/events.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
-import { BERRY_REGROW_TICKS } from '../../economy/berries.js';
+import { BERRY_STAGE_TICKS } from '../../economy/berries.js';
 import { shrinkCarry } from './carry.js';
 
 // The consume effects: eat a unit of food (from a store or the carried load) and forage a ripe berry
@@ -32,8 +32,9 @@ export function consumeFood(world: World, settler: Entity, from: Entity | null, 
 
 /**
  * Forage a RIPE {@link BerryBush} for a completed `forage` atomic: the bush's one serving is eaten, so it
- * flips ripe→bare and schedules its regrow ({@link BERRY_REGROW_TICKS} ticks out, the exact-integer
- * `ripeAtTick` the BerryGrowthSystem compares against), and a `berryForaged` event fires (the render's
+ * flips ripe→bare and schedules its first regrow step ({@link BERRY_STAGE_TICKS} ticks to bloom, the
+ * exact-integer `nextStageAtTick` the BerryGrowthSystem compares against), and a `berryForaged` event fires
+ * (the render's
  * static→live handover cue). A bush that is already bare (another forager beat this one to it since the
  * planner chose it) or gone is a no-op — nothing to give — but the AtomicSystem still zeroes hunger (the
  * bite was taken), the same raced-source stance as {@link consumeFood}'s emptied store. The bush entity
@@ -43,9 +44,9 @@ export function consumeFood(world: World, settler: Entity, from: Entity | null, 
  */
 export function forageBerry(world: World, ctx: SystemContext, bush: Entity): void {
   const b = world.tryGet(bush, BerryBush);
-  if (b === undefined || !b.ripe) return; // bare/gone since the planner chose it — nothing to eat
-  b.ripe = false;
-  b.ripeAtTick = ctx.tick + BERRY_REGROW_TICKS;
+  if (b === undefined || b.stage !== 'ripe') return; // bare/blooming/gone since the planner chose it — nothing to eat
+  b.stage = 'bare';
+  b.nextStageAtTick = ctx.tick + BERRY_STAGE_TICKS;
   world.touch(bush); // in-place write on a snapshot-cached scenery entity — log it (World.touch doc)
   const pos = world.get(bush, Position);
   ctx.events.emit({ kind: 'berryForaged', bush, at: eventAt(pos.x, pos.y) });

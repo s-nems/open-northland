@@ -125,19 +125,23 @@ export const HarvestedBy = defineComponent<{ by: Entity }>('HarvestedBy');
  * which regrows `naked → flowering (10) → with fruits (11)` on the periodic GROWTH trigger (`transition 7 …`).
  * The single `transition 3` sends `with fruits` straight to `naked`, so a bush holds exactly one serving.
  *
- * Named divergence: that pick transition produces good 18 `fruit` into the economy, but good 18 has no
- * extracted `gatheringPipeline`, so this model discards the good and feeds the eater directly — wild grazing,
- * not a gather-a-good step. The regrow duration and the two-step flowering stage are likewise approximated:
- * the trigger-7 period is not decoded, so this collapses naked→flowering→fruits into one ripe/bare state
- * timed by `ripeAtTick` (see systems/economy/berries.ts).
+ * The regrow is modelled as those three discrete `stage`s (`bare` = naked, `flowering`, `ripe` = with
+ * fruits) so the two source growth steps read on the map: a foraged bush is `bare`, blooms `flowering` at
+ * the midpoint of its regrow, then holds fruit again. Only a `ripe` bush is forageable.
  *
- * `ripe` is whether the bush currently holds fruit. `ripeAtTick` is the absolute tick the BerryGrowthSystem
- * flips a bare bush back to ripe (absolute, not a countdown: an exact integer compare, so the snapshot
- * scenery cache only re-clones a bush when it is foraged or regrows); unused (0) while ripe. `gfxIndex` is
- * the render-variant tag (see {@link Resource.gfxIndex}).
+ * Named divergence: the pick transition produces good 18 `fruit` into the economy, but good 18 has no
+ * extracted `gatheringPipeline`, so this model discards the good and feeds the eater directly — wild grazing,
+ * not a gather-a-good step. The regrow duration is approximated (the trigger-7 period is not decoded — see
+ * systems/economy/berries.ts); the two growth steps are equal halves, so `flowering` lands at exactly half.
+ *
+ * `stage` is the bush's current growth state. `nextStageAtTick` is the absolute tick the BerryGrowthSystem
+ * advances a regrowing bush to its next stage (absolute, not a countdown: an exact integer compare, so the
+ * snapshot scenery cache re-clones a bush only at its three transitions per cycle); unused (0) while `ripe`.
+ * `gfxIndex` is the render-variant tag (see {@link Resource.gfxIndex}).
  */
+export type BerryBushStage = 'bare' | 'flowering' | 'ripe';
 export const BerryBush = defineComponent<{
-  ripe: boolean;
-  ripeAtTick: number;
+  stage: BerryBushStage;
+  nextStageAtTick: number;
   gfxIndex?: number;
 }>('BerryBush');
