@@ -44,6 +44,7 @@ const WOMAN = 5;
 const CIVILIST = 6;
 const SOLDIER = 31;
 const HOME = 2;
+const WAREHOUSE = 7;
 const GRASS = 0;
 
 function familyContent(): ContentSet {
@@ -72,6 +73,8 @@ function familyContent(): ContentSet {
         homeSize: 3,
         stock: [{ goodType: FOOD, capacity: 5 }],
       },
+      // A non-home food store (the settlement HQ): its stock feeds anyone, unlike a home larder.
+      { typeId: WAREHOUSE, id: 'warehouse', kind: 'warehouse', stock: [{ goodType: FOOD, capacity: 99 }] },
     ],
   });
 }
@@ -267,6 +270,52 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     sim.enqueue({ kind: 'assignHouse', entity: stranger, house: home });
     runUntil(sim, () => (sim.world.get(home, Stockpile).amounts.get(FOOD) ?? 0) < 2, 200, 'resident meal');
     expect(sim.world.get(stranger, Settler).hunger).toBeLessThan(ONE);
+  });
+
+  it('a hungry wife feeds herself before waiting, then bears the child (no home↔store starvation loop)', () => {
+    // User report (AI player, 2026-07-18): a wife with the child fund stocked but no other reachable
+    // food starved in a loop — the child order dragged her home every tick while the eat drive dragged
+    // her to the distant store, so she reached neither and never conceived. She now eats first.
+    const sim = new Simulation({ seed: 4, content: familyContent(), map: grassMap(60, 4) });
+    sim.enqueue({ kind: 'placeBuilding', buildingType: HOME, x: 10, y: 0, tribe: VIKING });
+    sim.enqueue({ kind: 'spawnSettler', jobType: WOMAN, x: 10, y: 1, tribe: VIKING, owner: PLAYER });
+    sim.enqueue({ kind: 'spawnSettler', jobType: CIVILIST, x: 11, y: 1, tribe: VIKING, owner: PLAYER });
+    // The only food outside the home is a warehouse across the map — a long walk from the couple.
+    sim.enqueue({ kind: 'placeBuilding', buildingType: WAREHOUSE, x: 54, y: 2, tribe: VIKING });
+    sim.step();
+    const settlers = [...sim.world.query(Settler)].sort((a, b) => a - b);
+    const woman = settlers.find((e) => sim.world.get(e, Settler).jobType === WOMAN) as Entity;
+    const man = settlers.find((e) => sim.world.get(e, Settler).jobType === CIVILIST) as Entity;
+    const home = homeOf(sim);
+    const warehouse = [...sim.world.query(Building)].find(
+      (e) => sim.world.get(e, Building).buildingType === WAREHOUSE,
+    ) as Entity;
+
+    sim.world.add(woman, Marriage, { spouse: man, child: null });
+    sim.world.add(man, Marriage, { spouse: woman, child: null });
+    sim.enqueue({ kind: 'assignHouse', entity: woman, house: home });
+    sim.step();
+    sim.world.get(warehouse, Stockpile).amounts.set(FOOD, 50);
+    sim.world.get(home, Stockpile).amounts.set(FOOD, 3); // the child fund, already stocked and reserved
+    // Send her into the wait already hungry: without feeding first she loops home↔store and starves.
+    sim.enqueue({ kind: 'debugSetNeeds', target: woman, hunger: 80 });
+    sim.enqueue({ kind: 'makeChild', entity: woman, child: 'female' });
+    sim.step();
+
+    // Hunger only ever falls by eating, so a dip below the seeded 80% proves she reached the store.
+    let minHunger = sim.world.get(woman, Settler).hunger;
+    runUntil(
+      sim,
+      () => {
+        minHunger = Math.min(minHunger, sim.world.get(woman, Settler).hunger);
+        return sim.world.get(woman, Marriage).child !== null;
+      },
+      4000,
+      'hungry child-making',
+    );
+    expect(sim.world.isAlive(woman)).toBe(true); // fed herself instead of starving in the loop
+    expect(minHunger).toBeLessThan(ONE / 4); // she ate (hunger reset toward 0), not merely seeded < ONE
+    expect(sim.world.get(sim.world.get(woman, Marriage).child as Entity, Settler).jobType).toBe(BABY_FEMALE);
   });
 
   it('homeSize caps FAMILIES: singles fill the slots, the family past the last slot is refused', () => {

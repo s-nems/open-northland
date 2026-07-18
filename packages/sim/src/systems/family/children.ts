@@ -27,6 +27,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import { atOrWalk, startDrop } from '../agents/actions.js';
+import { anyNeedPressing } from '../agents/drives-needs.js';
 import { interactionCell } from '../agents/targets/index.js';
 import { DEFAULT_SETTLER_HITPOINTS } from '../conflict/spawn/index.js';
 import type { SystemContext } from '../context.js';
@@ -228,15 +229,9 @@ function driveOrder(
 
   if (food >= CHILD_FOOD_UNITS) {
     claim(world, woman, dutyNow);
-    if (!isInside(world, woman, home)) {
-      enterHome(world, ctx, terrain, woman, home);
-      return;
-    }
+    if (!ensureInside(world, ctx, terrain, woman, home)) return;
     claim(world, husband, dutyNow);
-    if (!isInside(world, husband, home)) {
-      enterHome(world, ctx, terrain, husband, home);
-      return;
-    }
+    if (!ensureInside(world, ctx, terrain, husband, home)) return;
     // Both inside — but another couple's session holds the home: wait in for our turn (the fund stays
     // reserved, so nobody eats it while we queue).
     if (love !== undefined) return;
@@ -272,6 +267,27 @@ function driveOrder(
   const source = externalFood.nearest(hereNode, limit);
   if (source === null) return; // no reachable food outside homes — she waits (the order stands)
   fetchFrom(world, ctx, terrain, woman, womanView, source, hereNode);
+}
+
+/**
+ * Bring `e` to rest inside `home`, or let a pressing need take it first — returns true only once it is
+ * inside with no need pulling it away (ready to make love). A hungry/tired/devout spouse feeds, sleeps,
+ * or prays first: the needs drive runs after this system and outranks the {@link FamilyDuty} fence, so
+ * re-driving `e` home each tick would fight that walk and it would never reach food — its reserved child
+ * fund is inedible to it, so it would starve mid-loop. `e` stays claimed; the needs drive sheds its
+ * {@link Resting}, and this walk resumes once the need clears.
+ */
+function ensureInside(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph | undefined,
+  e: Entity,
+  home: Entity,
+): boolean {
+  if (anyNeedPressing(world.get(e, Settler))) return false;
+  if (isInside(world, e, home)) return true;
+  enterHome(world, ctx, terrain, e, home);
+  return false;
 }
 
 /** Walk to the home's door and step inside ({@link Resting} — the render hides her, like a workshop
