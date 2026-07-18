@@ -4,7 +4,14 @@ import { grassCellMap as grassMap } from '../../fixtures/terrain.js';
 
 export { grassMap };
 
-import { Building, JobAssignment, Position, Settler, Stockpile } from '../../../src/components/index.js';
+import {
+  Building,
+  JobAssignment,
+  Position,
+  Settler,
+  Stockpile,
+  UnderConstruction,
+} from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { cellAnchorNode, fx, ONE, type Simulation } from '../../../src/index.js';
 
@@ -66,6 +73,23 @@ export function buildingAt(
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
   sim.world.add(e, Building, { buildingType, tribe: VIKING, built: ONE, level: 0 });
+  sim.world.add(e, Stockpile, { amounts: new Map(goods) });
+  return e;
+}
+
+/** A construction site: a placed foundation (`built` = 0, still `UnderConstruction`) whose stockpile
+ *  holds delivered build material — a delivery SINK, never a source a producer may fetch from. */
+export function siteAt(
+  sim: Simulation,
+  buildingType: number,
+  x: number,
+  y: number,
+  goods: Array<[number, number]> = [],
+): Entity {
+  const e = sim.world.create();
+  sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
+  sim.world.add(e, Building, { buildingType, tribe: VIKING, built: fx.fromInt(0), level: 0 });
+  sim.world.add(e, UnderConstruction, { labor: fx.fromInt(0) });
   sim.world.add(e, Stockpile, { amounts: new Map(goods) });
   return e;
 }

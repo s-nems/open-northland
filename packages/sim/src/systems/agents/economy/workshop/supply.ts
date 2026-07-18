@@ -1,5 +1,5 @@
 import type { Recipe } from '@open-northland/data';
-import { Building, Production, Stockpile } from '../../../../components/index.js';
+import { Building, Production, Stockpile, UnderConstruction } from '../../../../components/index.js';
 import { ONE } from '../../../../core/fixed.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SpatialGate } from '../../../../nav/node-metric.js';
@@ -83,12 +83,18 @@ export function nearestMissingInputSource(
     const target = restockToCapacity ? stockCapacity(world, ctx, workplace, input.goodType) : input.amount;
     if (have >= target) continue; // this input is already covered (for a cycle / to the slot's brim)
     // The stockpile index holds every Stockpile+Position candidate; source any store that isn't the
-    // workplace itself and holds the good (a warehouse, a flag pile, another workplace's output).
-    // `gate` is the fetcher's signpost confinement — an out-of-area store is not a known source.
+    // workplace itself and holds the good (a warehouse, a flag pile, another workplace's output). A
+    // construction site is excluded — its stock is delivered build material (a delivery sink), never a
+    // source to strip, or a producer would pull the wood off a half-built neighbour and stall its build
+    // (the same guard `nearestStoreHolding` applies). `gate` is the fetcher's signpost confinement.
     const winner = index.nearest(
       here,
       (e) =>
-        e !== workplace && (world.get(e, Stockpile).amounts.get(input.goodType) ?? 0) > 0 ? QUALIFIES : null,
+        e !== workplace &&
+        !world.has(e, UnderConstruction) &&
+        (world.get(e, Stockpile).amounts.get(input.goodType) ?? 0) > 0
+          ? QUALIFIES
+          : null,
       gate,
     );
     if (winner !== null) return { store: winner.entity, goodType: input.goodType, amount: target - have };
