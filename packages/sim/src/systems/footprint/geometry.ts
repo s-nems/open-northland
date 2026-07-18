@@ -14,6 +14,14 @@ export function nodeKey(x: number, y: number): string {
   return `${x},${y}`;
 }
 
+/** Whether two cell sets hold exactly the same nodes — the blocked-set memo verifiers' held-vs-fresh
+ *  compare (building/resource blocked caches, the work-flag blocked set). */
+export function sameCells(a: ReadonlySet<NodeId>, b: ReadonlySet<NodeId>): boolean {
+  if (a.size !== b.size) return false;
+  for (const cell of a) if (!b.has(cell)) return false;
+  return true;
+}
+
 /** Integer Manhattan distance between two nodes — the cheap reach/nearness heuristic the AI planner,
  *  combat range check, and herding leader-distance measure with (A* computes the real path cost).
  *  Defined here (the leaf module, for its nearest-cell picks) and re-exported by ./spatial.ts. */
@@ -21,6 +29,31 @@ export function manhattan(terrain: TerrainGraph, a: NodeId, b: NodeId): number {
   const ca = terrain.coordsOf(a);
   const cb = terrain.coordsOf(b);
   return Math.abs(ca.x - cb.x) + Math.abs(ca.y - cb.y);
+}
+
+/**
+ * Visit every offset at Manhattan distance exactly `radius` — for each `dy` in `[-radius, radius]` the
+ * one or two columns `dx = ±(radius − |dy|)` tracing the diamond; radius 0 visits `(0, 0)` alone. The
+ * shared ring-geometry step of every expanding Manhattan ring search (NodeBuckets.nearest, the
+ * interaction-cell index, the yard/spill searches, work-flag placement); each caller keeps its own
+ * bounds policy and per-node pick. Offsets come ascending `(dy, dx)` — ascending node id on the
+ * row-major grid — but every current pick is order-independent (a min-id or a sort), so the order is
+ * pinned for reading, not load-bearing.
+ */
+export function forEachRingOffset(radius: number, visit: (dx: number, dy: number) => void): void {
+  if (radius === 0) {
+    visit(0, 0); // special-cased so no offset is ever the negated zero `-radius` would mint
+    return;
+  }
+  for (let dy = -radius; dy <= radius; dy++) {
+    const dxMag = radius - Math.abs(dy);
+    if (dxMag === 0) {
+      visit(0, dy);
+    } else {
+      visit(-dxMag, dy);
+      visit(dxMag, dy);
+    }
+  }
 }
 
 /** The footprint of a building type, or undefined when the type is unknown or carries none. Keyed by

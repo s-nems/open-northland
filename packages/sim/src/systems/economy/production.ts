@@ -52,15 +52,23 @@ export { startableCycleCount } from './production/cycles.js';
 export const productionSystem: System = (world, ctx) => {
   // Settlers bucketed by their node once per tick, so each workplace's operator lookup is an O(1) door-node
   // probe instead of a full settler scan (jobSystem builds the mirror index over buildings for staffing).
-  // Canonical input order per the NodeBuckets contract — buckets must hold ascending ids.
-  const operatorsByNode = new NodeBuckets(world, canonicalById(world.query(Settler, Position)));
+  // Built lazily by the first operator lookup, so a tick with no workshop needing one — no workshop at
+  // all, or every one starved/blocked (anyCycleStartable gates before the lookup) — pays no settler scan
+  // or sort; deferring moves nothing, since the constructor reads only the Settler+Position query and
+  // each Position, neither of which the loops below mutate. Canonical input order per the NodeBuckets
+  // contract — buckets must hold ascending ids.
+  let operatorsByNode: NodeBuckets | undefined;
+  const operatorIndex = (): NodeBuckets => {
+    operatorsByNode ??= new NodeBuckets(world, canonicalById(world.query(Settler, Position)));
+    return operatorsByNode;
+  };
   // Advance running cycles first, then start new ones — so a cycle started this tick doesn't also
   // get advanced in the same tick (it begins counting next tick, like CurrentAtomic).
   for (const e of world.query(Production, Stockpile)) {
     // An in-flight cycle is not re-gated on the tech-graph (`jobEnablesGood`) — the unlock is a start-only
     // gate (see startableCycleCount), so a committed cycle finishes even if the enabling settler later dies.
     // The worker-presence gate does pause mid-cycle (operators physically away, not a tech unlock).
-    const staffing = presentOperators(world, ctx, e, operatorsByNode);
+    const staffing = presentOperators(world, ctx, e, operatorIndex());
     const operators = operatorCountOf(staffing);
     if (operators <= 0) continue; // every operator left — all cycles pause (elapsed held)
     const prod = world.get(e, Production);
@@ -93,7 +101,7 @@ export const productionSystem: System = (world, ctx) => {
     // door-node lookup + content reads) entirely. It elides only a provably-empty start loop.
     if (!anyCycleStartable(world, ctx, e, recipes)) continue;
     const running = world.tryGet(e, Production)?.cycles.length ?? 0;
-    const staffing = presentOperators(world, ctx, e, operatorsByNode);
+    const staffing = presentOperators(world, ctx, e, operatorIndex());
     if (staffing.kind === 'unstaffed') {
       // No worker slots: one anonymous batch, first startable product in content order.
       if (running < operatorCountOf(staffing)) startFirstStartable(world, ctx, e, recipes);

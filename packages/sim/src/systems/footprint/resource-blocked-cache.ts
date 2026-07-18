@@ -2,7 +2,7 @@ import { Position, ResourceFootprint } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
-import { translatedCells } from './geometry.js';
+import { sameCells, translatedCells } from './geometry.js';
 
 // The incrementally-maintained per-world cache of cells standing resource nodes make unwalkable, plus
 // its coherence verifier. Maintained by the resource stamp/unstamp paths (see ./resources.ts) so
@@ -96,12 +96,6 @@ function deriveResourceBlockedCache(world: World, terrain: TerrainGraph): Resour
 
 function deriveResourceBlockedCells(world: World, terrain: TerrainGraph): Set<NodeId> {
   return deriveResourceBlockedCache(world, terrain).cells;
-}
-
-function sameCells(a: ReadonlySet<NodeId>, b: ReadonlySet<NodeId>): boolean {
-  if (a.size !== b.size) return false;
-  for (const cell of a) if (!b.has(cell)) return false;
-  return true;
 }
 
 function verifyResourceBlockedCache(world: World, terrain: TerrainGraph): string[] {

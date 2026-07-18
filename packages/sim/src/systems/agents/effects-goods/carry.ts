@@ -2,6 +2,7 @@ import { Carrying, Position } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
+import { forEachRingOffset } from '../../spatial.js';
 import { stackOntoTile } from './piles.js';
 
 // A settler's carried load (single-slot {@link Carrying}): add to it, shrink it, or set it down on the
@@ -109,13 +110,10 @@ export function dropCarriedLoad(world: World, terrain: TerrainGraph | undefined,
   const { x: cx, y: cy } = terrain.coordsOf(origin);
   for (let r = 1; r <= DROP_SPILL_MAX_RADIUS && world.has(settler, Carrying); r++) {
     const ring: NodeId[] = [];
-    for (let dy = -r; dy <= r; dy++) {
-      const dxMag = r - Math.abs(dy); // the Manhattan ring |dx| + |dy| = r
-      for (const dx of dxMag === 0 ? [0] : [-dxMag, dxMag]) {
-        const node = terrain.nodeAtClamped(cx + dx, cy + dy);
-        if (node !== origin && terrain.isWalkable(node)) ring.push(node);
-      }
-    }
+    forEachRingOffset(r, (dx, dy) => {
+      const node = terrain.nodeAtClamped(cx + dx, cy + dy);
+      if (node !== origin && terrain.isWalkable(node)) ring.push(node);
+    });
     ring.sort((a, b) => a - b); // canonical (ascending NodeId) placement order
     for (const node of ring) {
       if (!world.has(settler, Carrying)) break; // load fully down

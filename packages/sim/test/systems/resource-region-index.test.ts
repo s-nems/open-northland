@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 import * as components from '../../src/components/index.js';
 import { Simulation } from '../../src/index.js';
 import { positionOfNode } from '../../src/nav/halfcell.js';
-import { canonicalResources, resourcesNearNode } from '../../src/systems/resource-index.js';
+import {
+  canonicalResources,
+  resourceHarvestAtomics,
+  resourcesNearNode,
+} from '../../src/systems/resource-index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**
@@ -50,6 +54,52 @@ describe('resourcesNearNode (the flag-bound scan index)', () => {
     expect(resourcesNearNode(sim.world, 10, 10, 3)).toEqual([a, b]);
     sim.world.destroy(a);
     expect(resourcesNearNode(sim.world, 10, 10, 3)).toEqual([b]);
+    expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
+  it('stays exact when reads interleave with plants and fells (the mid-dispatch pattern)', () => {
+    const sim = newSim();
+    // The atomic-dispatch interleave the ticket measured: sow (create) and fell (destroy) between
+    // reads of the same index — each read must cost a delta replay, never a wrong answer.
+    const standing: ReturnType<typeof nodeAt>[] = [];
+    for (let i = 0; i < 20; i++) {
+      const planted = nodeAt(sim, 10 + i, 10);
+      standing.push(planted);
+      expect(resourcesNearNode(sim.world, 10 + i, 10, 0)).toEqual([planted]);
+      if (i % 2 === 1) {
+        const felled = standing.shift();
+        if (felled !== undefined) {
+          sim.world.destroy(felled);
+          expect(canonicalResources(sim.world)).toEqual(standing);
+        }
+      }
+    }
+    expect(canonicalResources(sim.world)).toEqual(standing);
+    expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
+  it('keeps the canonical list ascending when a lower id re-enters the store', () => {
+    const sim = newSim();
+    const a = nodeAt(sim, 3, 3);
+    const b = nodeAt(sim, 4, 4);
+    expect(canonicalResources(sim.world)).toEqual([a, b]);
+    sim.world.remove(a, Resource); // the component leaves; the entity (and its Position) stay
+    expect(canonicalResources(sim.world)).toEqual([b]);
+    sim.world.add(a, Resource, { goodType: 1, remaining: 3, harvestAtomic: 24 });
+    expect(canonicalResources(sim.world)).toEqual([a, b]); // sorted re-entry, not an append
+    expect(resourcesNearNode(sim.world, 3, 3, 0)).toEqual([a]);
+    expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
+  it('drops a harvest atomic only when its LAST node goes (the refcounted dormancy set)', () => {
+    const sim = newSim();
+    const a = nodeAt(sim, 5, 5); // harvestAtomic 24
+    const b = nodeAt(sim, 6, 6); // harvestAtomic 24 — the same atomic twice
+    expect(resourceHarvestAtomics(sim.world).has(24)).toBe(true);
+    sim.world.destroy(a);
+    expect(resourceHarvestAtomics(sim.world).has(24)).toBe(true); // one node left
+    sim.world.destroy(b);
+    expect(resourceHarvestAtomics(sim.world).has(24)).toBe(false); // last one gone
     expect(sim.world.verifyCaches()).toEqual([]);
   });
 

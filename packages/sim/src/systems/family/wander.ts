@@ -4,7 +4,7 @@ import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SpacingState } from '../agents/destack.js';
 import type { SystemContext } from '../context.js';
-import { dynamicBlockOverlay } from '../footprint/index.js';
+import { dynamicBlockedCells } from '../footprint/index.js';
 import { navigationLimitFor } from '../signposts/index.js';
 
 /**
@@ -42,7 +42,7 @@ export function planChildWander(
   const anchor = nodeOfPosition(homePos.x, homePos.y);
   const dx = ctx.rng.int(2 * CHILD_WANDER_RADIUS_NODES + 1) - CHILD_WANDER_RADIUS_NODES;
   const dy = ctx.rng.int(2 * CHILD_WANDER_RADIUS_NODES + 1) - CHILD_WANDER_RADIUS_NODES;
-  spacing.blockedCells ??= dynamicBlockOverlay(world, ctx, terrain);
+  spacing.blockedCells ??= dynamicBlockedCells(world, ctx, terrain);
   const target = terrain.nodeAtClamped(anchor.hx + dx, anchor.hy + dy);
   if (!terrain.isWalkable(target) || spacing.blockedCells.has(target)) return;
   // Signpost confinement: a stroll spot outside the child's allowed area is skipped like a blocked one
