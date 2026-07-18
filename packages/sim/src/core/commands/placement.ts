@@ -109,6 +109,16 @@ export type PlacementCommand =
       readonly kind: 'upgradeBuilding';
       readonly building: Entity;
     }
+  | {
+      /**
+       * Abort an in-flight upgrade (the upgrade site's "Cancel" button): the stashed inventory returns
+       * to the stockpile and the building stands again at its previous level. Construction materials
+       * already delivered into the site hold are LOST — the price of changing one's mind (user
+       * decision 2026-07-18). Skipped (still logged) for a dead / non-building / not-upgrading target.
+       */
+      readonly kind: 'cancelUpgrade';
+      readonly building: Entity;
+    }
   | { readonly kind: 'demolish'; readonly building: Entity }
   /** Tear down a standing signpost (the original's "Tear down this signpost" — miscwindow 273). Instant
    *  and free like erecting; skipped for a non-signpost target. */

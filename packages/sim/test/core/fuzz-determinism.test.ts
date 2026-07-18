@@ -460,6 +460,12 @@ function nextCommand(rng: Rng): Command {
       // / dead ids (skipped). Exercises the upgradeBuilding accept + skip paths, the Upgrading stash in
       // hashState, and the upgrade-finish flip when the stream feeds the site.
       return { kind: 'upgradeBuilding', building: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
+    case 31:
+      // An upgrade abort at a random id: live upgrade sites (stash restored, site hold discarded,
+      // `built` back to ONE — the markers must come off in hashState), plus plain construction sites /
+      // built buildings / non-building / dead ids (skipped). Exercises the cancelUpgrade accept + skip
+      // paths against the upgradeBuilding rolls above.
+      return { kind: 'cancelUpgrade', building: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
     default:
       // A profession change at a random id: valid + unknown jobs, owned/unowned/dead targets.
       return {

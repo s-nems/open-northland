@@ -126,6 +126,45 @@ describe('constructionSystem — manual upgrade lifecycle', () => {
     expect(sim.world.get(e, Building).built).toBe(ONE);
   });
 
+  it('cancelUpgrade restores the previous level: stash back, site hold lost, markers off', () => {
+    const sim = new Simulation({ seed: 1, content: levelChainContent() });
+    const e = placeBuiltHome(sim, HOME_L0, 0, { [STONE]: 1 }); // household inventory to stash
+    sim.enqueue({ kind: 'upgradeBuilding', building: e });
+    sim.step();
+    sim.world.get(e, Stockpile).amounts.set(STONE, 1); // a partial delivery into the site hold
+    sim.enqueue({ kind: 'cancelUpgrade', building: e });
+    sim.step();
+
+    const b = sim.world.get(e, Building);
+    expect(b.buildingType).toBe(HOME_L0); // the previous level stands again…
+    expect(b.level).toBe(0);
+    expect(b.built).toBe(ONE);
+    expect(sim.world.has(e, UnderConstruction)).toBe(false); // …with both site markers off
+    expect(sim.world.has(e, Upgrading)).toBe(false);
+    // The stashed household stone came back; the delivered site stone is lost (user decision).
+    expect(sim.world.get(e, Stockpile).amounts.get(STONE)).toBe(1);
+    expect(housingCapacity(sim.world, ctxOf(sim), VIKING)).toBe(1); // L0 shelters again
+    expect(upgradedEvents(sim)).toEqual([]); // an abort upgrades nothing
+  });
+
+  it('cancelUpgrade skips a from-scratch site and a built building — recoverable no-ops', () => {
+    const sim = new Simulation({ seed: 1, content: levelChainContent() });
+    // A from-scratch construction site: no previous level to fall back to.
+    const site = sim.world.create();
+    sim.world.add(site, Building, { buildingType: HOME_L0, tribe: VIKING, built: fx.fromInt(0), level: 0 });
+    sim.world.add(site, Stockpile, { amounts: new Map<number, number>() });
+    sim.world.add(site, UnderConstruction, { labor: fx.fromInt(0) });
+    // A plain built home: nothing to abort.
+    const home = placeBuiltHome(sim, HOME_L0, 0, { [STONE]: 2 });
+    sim.enqueue({ kind: 'cancelUpgrade', building: site });
+    sim.enqueue({ kind: 'cancelUpgrade', building: home });
+    sim.step();
+
+    expect(sim.world.has(site, UnderConstruction)).toBe(true); // the site keeps rising
+    expect(sim.world.get(site, Building).built).toBe(0);
+    expect(sim.world.get(home, Stockpile).amounts.get(STONE)).toBe(2); // inventory untouched
+  });
+
   it('is deterministic — two same-seed upgrade runs reach the same state hash', () => {
     const run = (): string => {
       const sim = new Simulation({ seed: 5, content: levelChainContent() });

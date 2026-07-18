@@ -165,11 +165,12 @@ export function buildUnitPanelModel(
       defenseLabel: messages().hud.defenseStopped,
       production: productionModel(ctx, snapshot, def, ent),
       construction: constructionModel(ctx, def, ent),
-      // Built + a chained type = the Upgrade button (a running site shows no button — cancel is deferred).
+      // Built + a chained type = the Upgrade button; a running upgrade site offers Cancel instead.
       upgradable:
         def?.upgradeTarget !== undefined &&
         ent.components.UnderConstruction === undefined &&
         pct(num(b.built)) >= 100,
+      cancelable: ent.components.Upgrading !== undefined,
     };
   }
 

@@ -11,6 +11,7 @@ export const HOUSEWINDOW = {
   residents: 8, // 'Mieszkańcy'
   families: 52, // 'Liczba Rodzin'
   upgrade: 110, // 'Ulepszenie'
+  cancelUpgrade: 112, // 'Anuluj Ulepszanie'
   demolish: 114, // 'Zniszcz'
   center: 116, // 'Wycentruj'
   workersButton: 118, // 'Pracownicy'

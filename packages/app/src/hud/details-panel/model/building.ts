@@ -143,9 +143,11 @@ export interface BuildingPanelModel {
    *  workers windows for the one Construction window (those sections mean nothing before completion). */
   readonly construction: ConstructionModel | null;
   /** Whether the general section offers the Upgrade button (housewindow 110): a BUILT building whose
-   *  type has an `upgradeTarget` level to rise into. False while it is a site (a running upgrade's
-   *  cancel button — housewindow 112 — is a deferred slice). */
+   *  type has an `upgradeTarget` level to rise into. False while it is a site. */
   readonly upgradable: boolean;
+  /** Whether the general section offers the Cancel-upgrade button (housewindow 112): a running
+   *  upgrade site (`Upgrading`) — aborting restores the previous level, delivered materials lost. */
+  readonly cancelable: boolean;
 }
 
 /** The current holdings of a building's {@link Stockpile}, as a goodType→amount map. */
