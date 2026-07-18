@@ -20,8 +20,9 @@ import type { SceneDefinition } from './types.js';
 /**
  * The siege scene — a viking warband razes an enemy base. It signs off the "warriors attack enemy
  * buildings" slice: a soldier/archer with the ATTACK stance auto-acquires an enemy STRUCTURE (not just an
- * enemy unit), advances on its door, and drains its Health on the weapon's vs-building column until it is
- * razed. It also signs off the auto-focus priority — the warband smashes the HEADQUARTERS and defensive
+ * enemy unit), advances on the nearest wall face (so the attackers spread around the footprint rather than
+ * queueing at one door), and drains its Health on the weapon's vs-building column until it is razed. It also
+ * signs off the auto-focus priority — the warband smashes the HEADQUARTERS and defensive
  * TOWERS (on par with the enemy defenders) before it ever turns on the plain HOMES, which it razes only
  * once no high-value structure or defender remains (the user rule).
  *

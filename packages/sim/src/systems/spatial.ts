@@ -82,8 +82,16 @@ export class NodeBuckets {
     world: World,
     entities: Iterable<Entity>,
     nodeOf?: (e: Entity) => { x: number; y: number } | null,
+    nodesOf?: (e: Entity) => readonly { x: number; y: number }[] | null,
   ) {
     for (const e of entities) {
+      // `nodesOf` (multi-node) wins: combat buckets a building at EVERY wall cell, so a ring search finds
+      // it at the distance to its nearest face. Otherwise the single-node `nodeOf`/Position path.
+      if (nodesOf !== undefined) {
+        const nodes = nodesOf(e);
+        if (nodes !== null) for (const n of nodes) this.push(e, n.x, n.y);
+        continue;
+      }
       let node: { x: number; y: number } | null;
       if (nodeOf === undefined) {
         const p = world.tryGet(e, Position);
@@ -97,18 +105,24 @@ export class NodeBuckets {
         node = nodeOf(e);
       }
       if (node === null) continue;
-      let column = this.byX.get(node.x);
-      if (column === undefined) {
-        column = new Map<number, Entity[]>();
-        this.byX.set(node.x, column);
-      }
-      let bucket = column.get(node.y);
-      if (bucket === undefined) {
-        bucket = [];
-        column.set(node.y, bucket);
-      }
-      bucket.push(e);
+      this.push(e, node.x, node.y);
     }
+  }
+
+  /** Append `e` to node (x,y)'s bucket, minting the column/bucket on first use — the per-tick constructor's
+   *  shared insert (fed a pre-sorted list, so append keeps buckets ascending-id). */
+  private push(e: Entity, x: number, y: number): void {
+    let column = this.byX.get(x);
+    if (column === undefined) {
+      column = new Map<number, Entity[]>();
+      this.byX.set(x, column);
+    }
+    let bucket = column.get(y);
+    if (bucket === undefined) {
+      bucket = [];
+      column.set(y, bucket);
+    }
+    bucket.push(e);
   }
 
   /** The entities on node (x,y), in ascending-id order — empty (shared) when the node is unoccupied. */

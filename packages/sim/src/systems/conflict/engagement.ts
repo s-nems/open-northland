@@ -179,9 +179,12 @@ export function resolveTarget(
     const focus = world.get(self, AttackOrder).target;
     // An ordered target is chased regardless of sight, so measure its real distance (the ring search's
     // `searchRadius` cap does not apply); the swing/chase decision is on this distance. A building is
-    // measured at its door node (combatTargetNode), the same node the chase walks to.
+    // measured at its nearest wall cell (combatTargetNode), the same node the chase walks to.
     if (isValidTarget(world, ctx, self, attacker, focus)) {
-      return { target: focus, dist: manhattan(terrain, here, combatTargetNode(world, ctx, terrain, focus)) };
+      return {
+        target: focus,
+        dist: manhattan(terrain, here, combatTargetNode(world, ctx, terrain, here, focus)),
+      };
     }
     world.remove(self, AttackOrder); // target gone / no longer hostile — abandon the order, auto-engage
   }

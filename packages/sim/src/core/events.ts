@@ -110,12 +110,15 @@ export type SimEvent =
        * 4 saber / 5 axe — `WEAPON_MAIN_TYPE_*`, ranged classes never emit this) so the impact sound can be
        * weapon-specific, `undefined` when the weapon lists no class. A swing that struck air resolves
        * nothing and emits no `combatHit` — "miss = no blood" falls out of the hit-resolution guard. The
-       * ranged twin is {@link 'projectileHit'}, which render/audio treat the same way.
+       * ranged twin is {@link 'projectileHit'}, which render/audio treat the same way. `structure` marks a
+       * blow that landed on a building (a besieged wall) rather than a body, so render draws no blood — a
+       * wall doesn't bleed; the impact SFX still plays.
        */
       readonly kind: 'combatHit';
       readonly attacker: Entity;
       readonly target: Entity;
       readonly weaponMainType?: number;
+      readonly structure?: boolean;
       readonly at: HalfCellNode;
     }
   | {
@@ -174,13 +177,15 @@ export type SimEvent =
        * `projectile` (loosed by `shooter`, `munitionType` 1 arrow / 2 rock) reached `target` at `at` and
        * dealt its damage; the projectile entity is destroyed the same tick. Render/audio use it for the
        * impact cue (a thunk sound, a hit spark) — the ranged twin of an `atomicCompleted` melee swing. A
-       * projectile whose target died mid-flight expires silently (no hit event).
+       * projectile whose target died mid-flight expires silently (no hit event). `structure` marks a shot
+       * that struck a building rather than a body, so render draws no blood (the impact SFX still plays).
        */
       readonly kind: 'projectileHit';
       readonly projectile: Entity;
       readonly shooter: Entity;
       readonly target: Entity;
       readonly munitionType: number;
+      readonly structure?: boolean;
       readonly at: HalfCellNode;
     }
   | {

@@ -79,7 +79,8 @@ function seedFrom(sourceId: number, tick: number): number {
 /**
  * Fold this frame's sim events into the live mark list: drop expired marks, then append a blood splatter for each
  * landed blow (`combatHit` melee / `projectileHit` ranged) and a bone pile for each death carrying a position
- * (`settlerDied.at`). A miss emits no hit event, so it leaves no blood. The list is capped at
+ * (`settlerDied.at`). A miss emits no hit event, so it leaves no blood; a blow on a building (`structure`)
+ * emits the event for its impact SFX but draws no blood — a wall doesn't bleed. The list is capped at
  * {@link MAX_ACTIVE_EFFECTS} (oldest-first drop). Returns a new array; pure over its inputs.
  */
 export function foldCombatEffects(
@@ -90,6 +91,7 @@ export function foldCombatEffects(
   const next = active.filter((e) => tick - e.spawnTick < effectLifetime(e.kind));
   for (const ev of events) {
     if (ev.kind === 'combatHit' || ev.kind === 'projectileHit') {
+      if (ev.structure === true) continue; // a besieged wall doesn't bleed — impact SFX only, no blood
       next.push({
         kind: 'blood',
         hx: ev.at.hx,

@@ -24,20 +24,22 @@ import { cameraViewport, makeElevationField } from '../src/index.js';
 
 const at = (hx: number, hy: number) => ({ hx, hy });
 const asEntity = (id: number): Entity => id as Entity;
-const combatHit = (target: number, weaponMainType?: number): SimEvent => ({
+const combatHit = (target: number, weaponMainType?: number, structure?: boolean): SimEvent => ({
   kind: 'combatHit',
   attacker: asEntity(1),
   target: asEntity(target),
   at: at(4, 6),
   ...(weaponMainType !== undefined ? { weaponMainType } : {}),
+  ...(structure ? { structure } : {}),
 });
-const projectileHit = (target: number): SimEvent => ({
+const projectileHit = (target: number, structure?: boolean): SimEvent => ({
   kind: 'projectileHit',
   projectile: asEntity(9),
   shooter: asEntity(1),
   target: asEntity(target),
   munitionType: 1,
   at: at(4, 6),
+  ...(structure ? { structure } : {}),
 });
 const died = (entity: number, withPos = true): SimEvent =>
   withPos
@@ -52,6 +54,20 @@ describe('foldCombatEffects', () => {
     // Blood sits at the victim's node, bones at the death node.
     expect(out[0]).toMatchObject({ hx: 4, hy: 6 });
     expect(out[2]).toMatchObject({ hx: 8, hy: 10 });
+  });
+
+  it('leaves no blood for a blow on a building (structure) — a besieged wall does not bleed', () => {
+    const out = foldCombatEffects(
+      [],
+      [
+        combatHit(2, undefined, true),
+        projectileHit(3, true),
+        combatHit(4), // a unit hit in the same frame still bleeds
+      ],
+      7,
+    );
+    expect(out.map((e) => e.kind)).toEqual(['blood']);
+    expect(out[0]).toMatchObject({ seed: expect.any(Number) });
   });
 
   it('leaves no blood for a frame with no hit event (a miss is simply not an event)', () => {
