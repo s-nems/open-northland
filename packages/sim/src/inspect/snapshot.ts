@@ -107,20 +107,46 @@ export function takeSnapshot(world: World, tick: number, events: readonly SimEve
       cache.set(id, snap);
     }
   }
+  // SimEvents are plain (Map-free) data, so PlainOf<SimEvent> stays structurally a SimEvent and this
+  // single assertion holds. Adding a Map field to an event would lower it to a [k,v] array here and break
+  // this cast — the intended signal that a snapshot consumer can no longer read that field as a Map.
   return { tick, entities, events: events.map(clonePlain) as readonly SimEvent[] };
 }
 
-/** Deep-clone a value to plain data: Maps -> sorted [k,v] arrays, arrays/objects recursed, scalars as-is. */
-function clonePlain<T>(value: T): T {
+/**
+ * The plain shape {@link clonePlain} produces from `T`: every `Map<K, V>` becomes a sorted `[K, PlainOf<V>]`
+ * pair array (keys pass through, values recurse), arrays and objects recurse, scalars pass through. This
+ * mirrors the runtime transform, so a caller sees the real snapshot shape instead of a `T` the clone never
+ * actually returns.
+ */
+type PlainOf<T> = T extends null | undefined | string | number | boolean | bigint | symbol
+  ? T // scalars pass through — including branded primitives (`Entity` is a `number`), which stay numbers at runtime
+  : T extends Map<infer K, infer V>
+    ? [K, PlainOf<V>][]
+    : T extends readonly (infer E)[]
+      ? PlainOf<E>[]
+      : T extends object
+        ? { [K in keyof T]: PlainOf<T[K]> }
+        : T;
+
+/**
+ * Deep-clone a value to plain data: Maps -> sorted [k,v] arrays, arrays/objects recursed, scalars as-is.
+ * The public overload carries the honest {@link PlainOf} shape; the wider implementation signature lets the
+ * body build the plain value without casting away type safety (a conditional type can't be proven over the
+ * unresolved generic `T` inside the body).
+ */
+function clonePlain<T>(value: T): PlainOf<T>;
+function clonePlain(value: unknown): unknown {
   if (value === null || typeof value !== 'object') return value;
   if (value instanceof Map) {
     const entries = [...value.entries()].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
-    return entries.map(([k, v]) => [k, clonePlain(v)]) as unknown as T;
+    return entries.map(([k, v]) => [k, clonePlain(v)]);
   }
-  if (Array.isArray(value)) return value.map(clonePlain) as unknown as T;
+  if (Array.isArray(value)) return value.map((e) => clonePlain(e));
+  const record = value as Record<string, unknown>;
   const out: Record<string, unknown> = {};
-  for (const k of Object.keys(value as object).sort()) {
-    out[k] = clonePlain((value as Record<string, unknown>)[k]);
+  for (const k of Object.keys(record).sort()) {
+    out[k] = clonePlain(record[k]);
   }
-  return out as T;
+  return out;
 }
