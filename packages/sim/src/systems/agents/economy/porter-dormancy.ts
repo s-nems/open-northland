@@ -20,6 +20,7 @@ import { nodeOfPosition } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { navigationLimitFor } from '../../signposts/index.js';
+import { GossipCandidates } from '../../social/index.js';
 import { collectInboundSupply } from '../../stores/index.js';
 import type { PlannerContext } from '../planner-context.js';
 import { collectTargets } from '../targets/index.js';
@@ -173,6 +174,7 @@ function verifyDormancy(world: World): string[] {
       targets: shared.targets,
       inbound: shared.inbound,
       limit: navigationLimitFor(world, terrain, entity),
+      gossipCandidates: new GossipCandidates(world),
     };
     if (!sameEntry(entry, entryFor(plan))) continue; // the gate would re-scan — nothing elided
     if (porterPickupTarget(plan) !== null) {

@@ -1,4 +1,5 @@
 export {
+  CHAT_COOLDOWN_TICKS,
   GossipCandidates,
   gossipSystem,
   LISTEN_ATOMIC_ID,

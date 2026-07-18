@@ -1,5 +1,6 @@
 import { CARRY_CAPACITY, Owner, Resting } from '../../../../components/index.js';
 import type { Entity } from '../../../../ecs/world.js';
+import { planGossipIdle } from '../../../social/index.js';
 import { isWorkplaceOperator, mergedRecipeOf } from '../../../stores/index.js';
 import { atOrWalk, startPickup } from '../../actions.js';
 import { loiterCell, type SpacingState } from '../../destack.js';
@@ -108,6 +109,8 @@ function holdInsideWorkplace(plan: PlannerContext, workplace: Entity): void {
  *  (no seat, no input to fetch, no output to haul). Unlike {@link holdInsideWorkplace} it never stands on
  *  the door (so it neither runs the craft nor hides indoors) and never stamps {@link Resting}: the settler
  *  waits in the default standing pose next to its workplace, the user-directed "bored by the door" look.
+ *  Once in place it may strike up an idle chat with a nearby fellow idler (the bottom-rung gossip — bored
+ *  crews chatter at their doors; the Chat fence hands it back the moment real work reappears).
  *  Unowned economy/golden fixtures keep the original wait-inside behaviour (walk to the door, stamp
  *  {@link Resting}) so their state hashes stay byte-identical — the loiter spread is a player-facing polish,
  *  and only owned units carry the {@link Owner} the spacing machinery gates on. */
@@ -124,7 +127,10 @@ function loiterByDoor(
   }
   const door = interactionCell(world, ctx, terrain, workplace, here);
   const stand = loiterCell(world, ctx, terrain, entity, here, door, spacing);
-  atOrWalk(world, entity, here, stand, () => {});
+  atOrWalk(world, entity, here, stand, () => {
+    const { x, y } = terrain.coordsOf(here);
+    planGossipIdle(world, ctx.tick, entity, plan, x, y, plan.gossipCandidates);
+  });
 }
 
 function haulWorkplaceOutput(
