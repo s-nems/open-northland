@@ -17,13 +17,15 @@ import type { NodeBuckets } from '../spatial.js';
  * planner loop's own mutations — deliberately not updated as units are re-tasked): `occupancy` buckets the
  * owned resting units by tile, `claimed` stops two spacing consumers choosing the same free cell,
  * `blockedCells` lazily memoises the building walk-block overlay, `constructionCells` memoises each site's
- * work perimeter, and `yards` memoises completed-workplace loiter regions.
+ * work perimeter, `crewLeadBySite` memoises each site's lead (lowest-id) builder, and `yards` memoises
+ * completed-workplace loiter regions.
  */
 export interface SpacingState {
   readonly occupancy: NodeBuckets;
   readonly claimed: Set<NodeId>;
   blockedCells?: BlockOverlay;
   constructionCells?: Map<Entity, readonly NodeId[]>;
+  crewLeadBySite?: Map<Entity, Entity>;
   yards?: Map<NodeId, ReadonlySet<NodeId>>;
 }
 
