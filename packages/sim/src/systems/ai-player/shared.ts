@@ -17,6 +17,13 @@ import { canonicalById } from '../spatial.js';
 // strategic decisions (user rule: no HQ → the AI stays off).
 export { HEADQUARTERS_BUILDING_ID };
 
+/**
+ * Ticks between one seat's decision passes — 2 s at the 12 ticks/s base clock. A genre-convention
+ * approximation (Widelands/KaM/Petra re-evaluate strategy on seconds-scale timers, not per tick);
+ * per-tick cost scales with decisions, not ticks.
+ */
+export const AI_DECISION_INTERVAL_TICKS = 24;
+
 /** The building definition carrying the stable content id, or undefined when this content set lacks
  *  it — a module skips such an entry instead of failing, so partial content stays safe. */
 export function buildingTypeByContentId(content: ContentSet, id: string): BuildingType | undefined {
