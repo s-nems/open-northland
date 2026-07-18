@@ -8,8 +8,10 @@ import {
   initialRosterState,
   type MapPlayerSlot,
   OBSERVER_SEAT,
+  OVERSEER_SEAT,
   type RosterState,
   rosterStartParams,
+  type SeatChoice,
   setSlotColor,
   toggleVacantMode,
   wornByAnother,
@@ -183,39 +185,41 @@ export function mountPlayersPanel(panel: HTMLElement, list: HTMLElement, onChang
     return strip;
   };
 
-  // The observer pseudo-seat: watch the match without controlling a slot — every unit and building
-  // becomes inspectable in-game. Satisfies the Start gate like a real seat.
-  const observerRow = (): HTMLElement => {
+  // A spectator pseudo-seat row (observer or overseer): claims the seat without controlling a slot and
+  // satisfies the Start gate like a real seat. The read-only observer inspects; the overseer commands
+  // every seat — they share this row shape and differ only in their copy.
+  const spectatorRow = (seatChoice: SeatChoice, name: string, detail: string, taken: string): HTMLElement => {
     const copy = messages().menu;
-    const isSeat = state().seat === OBSERVER_SEAT;
+    const isSeat = state().seat === seatChoice;
+    const claim = (): void => {
+      if (state().seat !== seatChoice) update(claimSeat(state(), seatChoice));
+    };
     const row = document.createElement('div');
     row.className = 'game-menu__player is-claimable';
     row.classList.toggle('is-taken', isSeat);
 
     const label = document.createElement('div');
     label.className = 'game-menu__player-label';
-    const name = document.createElement('span');
-    name.className = 'game-menu__player-name';
-    name.textContent = copy.observerName;
-    const detail = document.createElement('span');
-    detail.className = 'game-menu__player-detail';
-    detail.textContent = copy.observerDetail;
-    label.append(name, detail);
+    const nameEl = document.createElement('span');
+    nameEl.className = 'game-menu__player-name';
+    nameEl.textContent = name;
+    const detailEl = document.createElement('span');
+    detailEl.className = 'game-menu__player-detail';
+    detailEl.textContent = detail;
+    label.append(nameEl, detailEl);
     row.append(label);
 
     const seat = document.createElement('button');
     seat.type = 'button';
     seat.className = 'game-menu__player-seat';
-    seat.textContent = isSeat ? copy.observerTaken : copy.seatTake;
+    seat.textContent = isSeat ? taken : copy.seatTake;
     seat.disabled = isSeat;
     seat.addEventListener('click', (ev) => {
       ev.stopPropagation();
-      if (state().seat !== OBSERVER_SEAT) update(claimSeat(state(), OBSERVER_SEAT));
+      claim();
     });
     row.append(seat);
-    row.addEventListener('click', () => {
-      if (state().seat !== OBSERVER_SEAT) update(claimSeat(state(), OBSERVER_SEAT));
-    });
+    row.addEventListener('click', claim);
     return row;
   };
 
@@ -227,7 +231,9 @@ export function mountPlayersPanel(panel: HTMLElement, list: HTMLElement, onChang
       list.append(slotRow(slot));
       if (pickerSlot === slot.player) list.append(pickerStrip(slot));
     }
-    list.append(observerRow());
+    const copy = messages().menu;
+    list.append(spectatorRow(OBSERVER_SEAT, copy.observerName, copy.observerDetail, copy.observerTaken));
+    list.append(spectatorRow(OVERSEER_SEAT, copy.overseerName, copy.overseerDetail, copy.overseerTaken));
   };
 
   return {

@@ -1,6 +1,6 @@
 import { indexById } from '@open-northland/data';
 import type { ElevationField, SceneTerrain, SpriteSheet, WorldRenderer } from '@open-northland/render';
-import type { SimEvent, Simulation, WorldSnapshot } from '@open-northland/sim';
+import type { Command, SimEvent, Simulation, WorldSnapshot } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import { pickerEntries } from '../../catalog/professions.js';
 import {
@@ -75,10 +75,15 @@ export interface GameViewDeps {
    *  Default {@link HUMAN_PLAYER}: scenes and roster-less maps play slot 0, as before. Drives the
    *  fog perspective, unit selection/orders, placement ownership and the HUD's economy view. */
   readonly localPlayer?: number;
-  /** The observer session (`?player=observer`): no fog view, and every player's units, buildings,
-   *  flags and signposts are pickable as if owned — a spectator inspecting a running match (e.g. the
-   *  strategic AI). {@link localPlayer} keeps driving placement ownership and the HUD economy view. */
+  /** The spectator session (`?player=observer` or `overseer`): no fog view, and every player's units,
+   *  buildings, flags and signposts are pickable as if owned — a spectator inspecting a running match
+   *  (e.g. the strategic AI). {@link localPlayer} keeps driving placement ownership and the HUD economy
+   *  view. */
   readonly observer?: boolean;
+  /** The read-only spectator (`?player=observer`): the interactive HUD's command seam is a no-op, so
+   *  selecting an AI's settler can inspect but never re-task it. False for a normal seat and for the
+   *  `overseer` god-mode, which both issue commands live. */
+  readonly readOnly?: boolean;
   /** Owner slot → team-colour slot (the map roster's colour choices) for player-coloured HUD bits
    *  (minimap dots, the details panel's worker sprites). The renderer's own sprites take the same
    *  mapping via {@link WorldRendererOptions.playerColourOf} at construction. Default identity. */
@@ -186,6 +191,13 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   // screen). The panel's overlay-defer reads it lazily: clicks only happen long after both mounts.
   let minimap: MinimapHandle | undefined;
 
+  // The one command seam the interactive HUD (tool panel + unit controls) issues through. A read-only
+  // spectator session drops every command here, so it can select and inspect any seat's entities but
+  // never re-task, demolish, or place anything; a normal seat and the overseer god-mode issue live.
+  // Sim-init commands (setPlayerAi, fog) bypass this by enqueuing on the sim directly at map start.
+  const issueCommand =
+    deps.readOnly === true ? (_command: Command) => {} : (command: Command) => sim.enqueue(command);
+
   // The original left tool panel — the standard game HUD. Its game-speed button drives `control`, the
   // building menu enqueues `placeBuilding` on a map click, and it claims its own clicks so the HUD
   // never falls through to world picking.
@@ -194,7 +206,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     canvas,
     uiscale,
     camera: () => cameraCtl.camera(),
-    enqueue: (command) => sim.enqueue(command),
+    enqueue: issueCommand,
     canPlaceAt,
     mapSize: deps.mapSize,
     ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
@@ -267,7 +279,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     content: sim.content,
     ...(deps.sheet !== undefined ? { sheet: deps.sheet } : {}),
     ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
-    enqueue: (command) => sim.enqueue(command),
+    enqueue: issueCommand,
     boundsOf: (ref) => renderer.entityBounds(ref), // exact sprite-box picking against the real sprite
     pixelHitOf: (ref, wx, wy) => renderer.entityPixelHit(ref, wx, wy), // buildings: solid pixels only
     fogVisible: fogGates.visibleTile, // enemy right-click targets are fog-culled like the drawn scene

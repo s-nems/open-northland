@@ -18,6 +18,7 @@ import {
   localPlayerParam,
   observerParam,
   playerColourMap,
+  readOnlyObserverParam,
 } from '../game/player-session.js';
 import {
   mapResourceObjectNames,
@@ -316,6 +317,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     terrainGrid,
     localPlayer,
     observer: observerParam(params),
+    readOnly: readOnlyObserverParam(params),
     playerColourOf,
     ...terrainColourOption(terrain),
     ...(minimapCells !== null ? { minimapCellColours: minimapCells } : {}),

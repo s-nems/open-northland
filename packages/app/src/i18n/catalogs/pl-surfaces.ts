@@ -50,8 +50,11 @@ export const plSurfaces = {
     seatTake: 'Usiądź tutaj',
     seatTaken: 'Grasz tutaj',
     observerName: 'Obserwator',
-    observerDetail: 'Oglądaj rozgrywkę — każdą jednostkę i budynek można podejrzeć',
+    observerDetail: 'Oglądaj rozgrywkę — podejrzyj każdą jednostkę i budynek, ale bez wydawania rozkazów',
     observerTaken: 'Obserwujesz',
+    overseerName: 'Nadzorca',
+    overseerDetail: 'Tryb boga (piaskownica) — oglądaj i steruj każdą stroną',
+    overseerTaken: 'Nadzorujesz',
     vacantIdle: 'Bezczynny',
     vacantAi: 'AI',
     vacantToggleTitle:
