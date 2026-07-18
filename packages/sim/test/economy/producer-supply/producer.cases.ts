@@ -26,6 +26,7 @@ import {
   pileAt,
   SAWMILL,
   settlerAt,
+  siteAt,
   TWIN_MILL,
   WOOD,
   WOODCUTTER,
@@ -57,6 +58,23 @@ describe('producer self-service — fetching a missing recipe input', () => {
     aiSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.get(smith, MoveGoal).cell).toBe(cell(sim, 3, 0));
+  });
+
+  it('never strips a neighbouring construction site of its delivered build material', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    // The ONLY wood nearby sits on a construction site as delivered build material. A producer short
+    // of wood must leave it alone — pulling it would drop the site's built fraction and force the
+    // builders to re-deliver (the observed "surowce znikają z placu budowy" bug). The site is a
+    // delivery sink, never a source, the same guard `nearestStoreHolding` applies to a builder's fetch.
+    const mill = buildingAt(sim, SAWMILL, 0, 0); // needs wood for its recipe
+    siteAt(sim, HEADQUARTERS, 3, 0, [[WOOD, 2]]); // a half-built store holding delivered wood
+    const smith = settlerAt(sim, 0, 0, CARPENTER, mill);
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    // No source to fetch from → the operator waits inside its mill, never walks to the site.
+    expect(sim.world.has(smith, CurrentAtomic)).toBe(false);
+    expect(sim.world.has(smith, MoveGoal)).toBe(false);
   });
 
   it('picks up exactly the shortfall when standing on the source store', () => {
