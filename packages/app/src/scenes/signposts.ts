@@ -18,10 +18,10 @@ import type { SceneDefinition } from './types.js';
 const MAP_W = 64;
 const MAP_H = 16;
 /** The scout and its commanded signpost spot (tiles). */
-const SCOUT = { x: 6, y: 8 } as const;
-/** One tile east of the scout — and just past CHAIN_A's 16-node spacing circle (a spot at tile 8 would
+const SCOUT = { x: 5, y: 8 } as const;
+/** One tile east of the scout — and just past CHAIN_A's 18-node spacing circle (a spot at tile 7 would
  *  sit exactly ON the circle and be rejected). */
-const ERECT_AT = { x: 7, y: 8 } as const;
+const ERECT_AT = { x: 6, y: 8 } as const;
 /** The pre-stamped chain (small circles so the scene fits disconnection on one screen) + a lone far
  *  post whose circle overlaps neither — the "two groups act separately" case. Radii are scene data. */
 const CHAIN_RADIUS_NODES = 12;
