@@ -63,9 +63,9 @@ export interface FrameLoopDeps {
  * Start the fixed-timestep RAF loop. Per-frame order matters and is pinned here: sim steps (collecting
  * every step's events for audio) → camera glide → one snapshot + one `buildHud` scan feeding the tool
  * panel's stats window → tool-panel re-place before the renderer's render (screen-space meshes carry the
- * canvas resolution) → unit-controls tick reusing the same snapshot (before the render, so a details-panel
- * rebuild never covers the portrait inset the render re-raises) → the retained `renderer.update` →
- * sound → perf readout. Returns the loop's stop handle: the game session halts it on quit so no second
+ * canvas resolution) → unit-controls tick reusing the same snapshot (before the render, so the baked
+ * details panel and the portrait inset painted over it show the same frame) → the retained
+ * `renderer.update` → sound → perf readout. Returns the loop's stop handle: the game session halts it on quit so no second
  * loop steps the stage once a new game starts (see game-view.ts).
  */
 export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
@@ -204,10 +204,9 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       ghost = { kind: 'signpost', col: hovered.col, row: hovered.row, player: localPlayer };
     }
     renderer.updatePlacementGhost(ghost);
-    // Tick the unit controls (details panel + action ring) before the renderer's update: a panel rebuild
-    // re-adds its root over the stage, and the portrait inset re-raises itself inside renderer.update —
-    // this order keeps the raise after the rebuild, so a rebuilding panel never covers the live portrait
-    // for a frame (the miniature flicker while a construction site's % ticks up).
+    // Tick the unit controls (details panel + action ring) before the renderer's update, so the panel a
+    // rebuild bakes and the portrait inset painted over it (a post-main-render screen pass inside
+    // renderer.update) both show this frame's state.
     controls.tick(snap); // reuse the frame's snapshot — don't rebuild a second one
     // Feed the details panel's live "observation window" — a world cutout centred on the selected entity,
     // rendered into the portrait box inside renderer.update (a second world render, before the main stage

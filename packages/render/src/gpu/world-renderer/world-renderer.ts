@@ -155,9 +155,8 @@ export class WorldRenderer {
     this.chrome.attach(app.stage);
     // The HUD is pinned (not under the camera), so it's a direct child of the stage.
     app.stage.addChild(this.hud.container);
-    // The portrait observation window sits over everything (it fills the details panel's box hole); the
-    // layer mounts its own stage-child sprite and re-raises it above the frequently-rebuilt panel each
-    // frame it shows — see {@link PortraitInsetLayer}.
+    // The portrait observation window sits over everything (it fills the details panel's box hole): a
+    // post-main-render screen pass, not a stage child — see {@link PortraitInsetLayer}.
   }
 
   /** Show/hide the paused-game wash — the app's loop control drives this alongside the sim pause. */
@@ -394,25 +393,24 @@ export class WorldRenderer {
     );
     this.chrome.resize(this.app.screen.width, this.app.screen.height);
     this.hud.draw(hud);
-    // The portrait inset is a second render of the world (re-aimed at the selected unit) into the panel's
-    // box texture — must run after the pool reconcile above (so it uses this frame's positions) and before
-    // the main stage render below (so the on-stage inset sprite shows this frame's cutout). It borrows the
-    // terrain cull to fill the cutout with the ground around the subject (restored after), and clears to the
-    // map's dominant ground colour so the region framed past the map edge blends in rather than leaving a hole.
+    this.app.render();
+    // The portrait inset is a second, viewport-framed screen render of the world (re-aimed at the
+    // selected unit) painted into the details panel's preview box — after the main render, so it
+    // overpaints the panel as the frame's last pass (portrait-inset.ts explains why it must not be a
+    // render-to-texture). It borrows the terrain cull to fill the cutout with the ground around the
+    // subject (restored after), flooring the off-map margin with the map's most-common ground tint
+    // (the minimap's typeId→colour, not exact) so it reads as more ground rather than a hole.
     this.portrait.draw(camera, {
       toInset: (cam, iw, ih) => this.terrain.cull(cameraViewport(cam, iw, ih, this.elevation.maxLift)),
       restore: () => this.terrain.cull(vp),
-      // The region a building framed at the map edge extends past has no terrain to draw; clear it to the
-      // map's most-common ground tint so it reads as more ground (the minimap's typeId→colour, not exact).
       backdrop: this.terrain.groundColour(),
     });
-    this.app.render();
   }
 
   /**
    * Set (or clear) the details-panel portrait "observation window". The app passes the box rect + entity
    * ref each frame, `null` when the selection has no portrait (multi-select, a building-less pick,
-   * nothing); the second render happens in {@link update}, just before the main stage render.
+   * nothing); the second render happens in {@link update}, right after the main stage render.
    */
   setPortraitInset(frame: PortraitInsetFrame | null): void {
     this.portrait.set(frame);
@@ -511,7 +509,6 @@ export class WorldRenderer {
     this.geometryDebug.destroy();
     this.worldLayer.destroy({ children: true });
     this.hud.destroy();
-    this.portrait.destroy();
     this.chrome.destroy(); // its quads + the borrowed atlas pages' sampling
     this.textureCache.clear();
   }
