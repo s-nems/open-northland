@@ -25,7 +25,7 @@ import { entityNode } from '../spatial.js';
 export const BERRY_REGROW_TICKS = 1200;
 
 /**
- * Ticks per growth STEP — half {@link BERRY_REGROW_TICKS}, since the source cycle takes two equal growth
+ * Ticks per growth step — half {@link BERRY_REGROW_TICKS}, since the source cycle takes two equal growth
  * triggers (`bush naked → flowering`, then `flowering → with fruits`). A foraged bush blooms `flowering` one
  * step after being eaten and ripens one step after that, so the bloom lands at exactly the regrow midpoint.
  */
@@ -107,7 +107,7 @@ export const berryGrowthSystem: System = (world, ctx) => {
  * placement so a new building razes the bushes it lands on (source basis: observed original behavior — a
  * placed building clears the landscape decoration in its reserved footprint; the reserved zone stands in for
  * the exact clear radius, the same `LogicBuildBlockArea` extent the placement gate keeps clear of other
- * construction). Bushes are walkable and are not a placement OBSTACLE, so unlike a resource node one can sit
+ * construction). Bushes are walkable and are not a placement obstacle, so unlike a resource node one can sit
  * under a building; without this it would be drawn straight through the walls.
  *
  * Golden-rule-6 bounded: the reserved zone is a handful of cells, so the scan reads only the bushes within its
