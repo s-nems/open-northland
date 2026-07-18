@@ -1,11 +1,10 @@
-import { BerryBush, Building, Position } from '../../components/index.js';
+import { BerryBush, Position } from '../../components/index.js';
 import { eventAt } from '../../core/events.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
+import { positionOfNode } from '../../nav/halfcell.js';
 import { bushesNearNode } from '../berry-index.js';
 import type { System, SystemContext } from '../context.js';
-import { reservedZoneOf } from '../footprint/geometry.js';
-import { entityNode } from '../spatial.js';
+import { decorInReservedZone } from './reserved-decor.js';
 
 // Berry bushes — wild forageable food. A ripe bush is eaten off directly by any hungry settler (the `forage`
 // drive, no job/tool), then regrows its one serving over time. See the {@link BerryBush} component for the
@@ -107,27 +106,11 @@ export const berryGrowthSystem: System = (world, ctx) => {
  * placed building clears the landscape decoration in its reserved footprint; the reserved zone stands in for
  * the exact clear radius, the same `LogicBuildBlockArea` extent the placement gate keeps clear of other
  * construction). Bushes are walkable and are not a placement obstacle, so unlike a resource node one can sit
- * under a building; without this it would be drawn straight through the walls.
- *
- * Golden-rule-6 bounded: the reserved zone is a handful of cells, so the scan reads only the bushes within its
- * Chebyshev reach ({@link bushesNearNode}, the region index) and keeps those whose node lies in the zone,
- * never every bush on the map. Collect-then-destroy — `world.destroy` mutates the store `bushesNearNode`
- * derives from — and the order is irrelevant (every matched bush is removed). A mapless sim (no terrain) or a
- * footprint-less type clears nothing.
+ * under a building; without this it would be drawn straight through the walls. Candidate resolution is the
+ * zone-bounded {@link decorInReservedZone}; this pass adds the bush's own removal policy.
  */
 export function destroyBerryBushesInReserved(world: World, ctx: SystemContext, building: Entity): void {
-  const terrain = ctx.terrain;
-  if (terrain === undefined) return; // mapless sim: no bushes to place under a building
-  const b = world.tryGet(building, Building);
-  const p = world.tryGet(building, Position);
-  if (b === undefined || p === undefined) return;
-  const anchor = nodeOfPosition(p.x, p.y);
-  const rz = reservedZoneOf(ctx.content, terrain, b.buildingType, anchor.hx, anchor.hy);
-  if (rz === undefined) return;
-  const doomed = bushesNearNode(world, anchor.hx, anchor.hy, rz.reach).filter((e) =>
-    rz.zone.has(entityNode(world, terrain, e)),
-  );
-  for (const e of doomed) {
+  for (const e of decorInReservedZone(world, ctx, building, bushesNearNode)) {
     // Announce the razing before the destroy (read the position first — it is gone afterwards) so render can
     // drop the bush's retained static-decor quad; a virgin map bush is drawn by the static layer, not the
     // pool, so its destruction leaves no snapshot entity for the pool cull to reap ({@link SimEvent} berryBushRazed).
