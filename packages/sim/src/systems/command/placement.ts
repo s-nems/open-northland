@@ -18,6 +18,7 @@ import { positionOfNode } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
 import { destroyBerryBushesInReserved } from '../economy/berries.js';
 import { evictWorkFlagsFromFootprint } from '../economy/flags.js';
+import { destroyStumpsInReserved } from '../economy/stumps.js';
 import { canPlaceBuilding } from '../footprint/index.js';
 import { evictSettlersFromFootprint } from '../movement/evict.js';
 import { buildingEnabled, tribeShipsUnlocked } from '../progression/index.js';
@@ -119,9 +120,10 @@ export function placeBuilding(
   // flags, so a house may legally land on one).
   evictSettlersFromFootprint(world, ctx, e);
   evictWorkFlagsFromFootprint(world, ctx, e);
-  // Bushes are walkable and not a placement obstacle, so the plot may cover wild berry bushes — raze them
-  // (the original clears landscape decoration in a building's reserved zone).
+  // Bushes and felled-tree stumps are walkable and not a placement obstacle, so the plot may cover them —
+  // raze both (the original clears landscape decoration in a building's reserved zone).
   destroyBerryBushesInReserved(world, ctx, e);
+  destroyStumpsInReserved(world, ctx, e);
   ctx.events.emit({ kind: 'buildingPlaced', entity: e, at: { hx: command.x, hy: command.y } });
 }
 
