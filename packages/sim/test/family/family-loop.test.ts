@@ -307,7 +307,8 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     runUntil(
       sim,
       () => {
-        minHunger = Math.min(minHunger, sim.world.get(woman, Settler).hunger);
+        const hunger = sim.world.get(woman, Settler).hunger;
+        if (hunger < minHunger) minHunger = hunger;
         return sim.world.get(woman, Marriage).child !== null;
       },
       4000,
