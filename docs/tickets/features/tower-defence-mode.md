@@ -1,9 +1,10 @@
 # Implement tower garrisons and defence mode
 
-**Area:** sim + app · **Origin:** combat plan reconciliation, 2026-07-12 · **Blocked by:**
-[building-combat-damage](building-combat-damage.md) · **Priority:** P2
+**Area:** sim + app · **Origin:** combat plan reconciliation, 2026-07-12 · **Priority:** P2
 
-No garrison fire, no defence-mode command exists (`core/commands.ts` has neither).
+No garrison fire, no defence-mode command exists (`core/commands.ts` has neither). Buildings can now
+BE attacked and razed (warriors target enemy structures — `systems/conflict/`), but no building fires
+back; this ticket is the return-fire half.
 
 **Source basis (extracted):** towers logictype 40/41, maintype 5 FIGHT, garrison `logicworker`
 3–4× short-bow job 40 + long-bow job 41 + carriers; `logicCanEnableDefenceMode 1` also on HQ

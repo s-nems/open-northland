@@ -25,7 +25,8 @@ export interface UnitTargetsDeps {
 export interface UnitTargets {
   /** Owned, pickable targets (settlers + buildings) with their world-px feet anchors. */
   owned(kind?: 'settler' | 'building'): Pickable[];
-  /** Enemy settlers — units owned by another player, fog-culled like the drawn scene. */
+  /** Enemy attack targets — settlers AND buildings owned by another player, fog-culled like the drawn
+   *  scene. A right-click on one issues an `attackUnit` order (the sim accepts a building target). */
   enemies(): Pickable[];
   /** The human's gatherers' drop-off flags, each mapped to its owning gatherer (a flag→unit proxy). */
   flags(): Pickable[];
@@ -85,12 +86,25 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
     enemies(): Pickable[] {
       const snap = deps.snapshot();
       const ownerOf = ownersOf(snap);
+      const pixelHitOf = deps.pixelHitOf;
       const out: Pickable[] = [];
       for (const it of buildSpriteScene(snap, { fogVisible: deps.fogVisible })) {
-        if (it.kind !== 'settler') continue; // only a unit is an attack target
+        // A unit OR a building is an attack target — a warrior can raze an enemy structure.
+        if (it.kind !== 'settler' && it.kind !== 'building') continue;
         const owner = ownerOf.get(it.ref);
         if (owner === undefined || pickableOwner(owner)) continue; // neutral or "ours" — not an enemy
-        out.push({ ref: it.ref, x: it.x, y: it.y, kind: it.kind, box: deps.boundsOf?.(it.ref) });
+        out.push({
+          ref: it.ref,
+          x: it.x,
+          y: it.y,
+          kind: it.kind,
+          box: deps.boundsOf?.(it.ref),
+          // A building refines to solid pixels (its sprite box overhangs the footprint); a settler keeps
+          // the box — the same split the owned() picker uses.
+          ...(it.kind === 'building' && pixelHitOf !== undefined
+            ? { pixelHit: (wx: number, wy: number) => pixelHitOf(it.ref, wx, wy) }
+            : {}),
+        });
       }
       return out;
     },

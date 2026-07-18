@@ -1,5 +1,5 @@
 import type { WeaponType } from '@open-northland/data';
-import { Armor, CurrentAtomic, type SettlerIdentity } from '../../components/index.js';
+import { Armor, Building, CurrentAtomic, type SettlerIdentity } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -81,11 +81,13 @@ function withReach(weapon: WeaponType): { minRange: number; maxRange: number; we
   return { minRange, maxRange, weapon };
 }
 
-/** The armor material tier a target wears — the column a weapon's `damagevalue[material]` selects. A
- *  target with an {@link Armor} tier resolves its `armorClass` to a material via
- *  {@link armorMaterialForClass}; one with no `Armor` (every animal, every bare settler) is unarmored,
- *  material 0. The `weaponDamageVsMaterial` join reads that column verbatim — no mitigation is subtracted. */
+/** The armor material tier a target presents — the column a weapon's `damagevalue[material]` selects. A
+ *  building presents the {@link ARMOR_MATERIAL.HOUSE} (vs-building) column, not a worn-armor tier. Otherwise
+ *  a target with an {@link Armor} tier resolves its `armorClass` to a material via {@link armorMaterialForClass};
+ *  one with no `Armor` (every animal, every bare settler) is unarmored, material 0. The `weaponDamageVsMaterial`
+ *  join reads that column verbatim — no mitigation is subtracted. */
 export function targetMaterial(world: World, ctx: SystemContext, target: Entity): number {
+  if (world.has(target, Building)) return ARMOR_MATERIAL.HOUSE; // vs-building damage column
   const armor = world.tryGet(target, Armor);
   if (armor === undefined) return ARMOR_MATERIAL.NONE; // bare target — the unarmored column
   return armorMaterialForClass(ctx.content, armor.armorClass);

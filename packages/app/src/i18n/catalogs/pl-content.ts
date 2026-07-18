@@ -157,6 +157,11 @@ export const plContent = {
       title: 'Bitwa masowa',
       summary: 'Dwie armie walczą na dużą skalę z użyciem czterech rodzajów broni.',
     },
+    // New strings kept in English — the i18n pass owns the Polish catalog (see memory: english-ui-strings).
+    siege: {
+      title: 'Siege',
+      summary: 'A warband razes an enemy base, smashing the HQ and towers before the plain homes.',
+    },
     'goods-catalog': {
       title: 'Katalog towarów',
       summary: 'Wszystkie towary i odpowiadające im miejsca w magazynie w jednej scenie.',

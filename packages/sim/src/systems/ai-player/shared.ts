@@ -5,14 +5,16 @@ import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { type HalfCellNode, nodeOfPosition } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
+import { HEADQUARTERS_BUILDING_ID } from '../readviews/index.js';
 import { canonicalById } from '../spatial.js';
 
 // Shared per-seat lookups the strategic modules recompute each decision (once per
 // AI_DECISION_INTERVAL_TICKS per seat, so plain canonical scans stay within the RTS budget).
 
-/** The stable content id of the start building every fortress-style map opens with. A seat with no
- *  built, owned headquarters gets no strategic decisions (user rule: no HQ → the AI stays off). */
-export const HEADQUARTERS_BUILDING_ID = 'headquarters';
+// The HQ content id lives with the building read views (a building content fact); re-exported here so
+// the AI barrel's consumers keep their import site. A seat with no built, owned headquarters gets no
+// strategic decisions (user rule: no HQ → the AI stays off).
+export { HEADQUARTERS_BUILDING_ID };
 
 /** The building definition carrying the stable content id, or undefined when this content set lacks
  *  it — a module skips such an entry instead of failing, so partial content stays safe. */

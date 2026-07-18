@@ -31,15 +31,31 @@ export class HostilePresence {
   /** Coarse column → row → counts; nested numeric maps keep negative/off-map nodes collision-free. */
   private readonly byCx = new Map<number, Map<number, PresenceCell>>();
 
-  constructor(world: World, combatants: Iterable<Entity>) {
+  constructor(
+    world: World,
+    combatants: Iterable<Entity>,
+    nodeOf?: (e: Entity) => { x: number; y: number } | null,
+  ) {
     for (const e of combatants) {
-      const p = world.tryGet(e, Position);
-      if (p === undefined) continue;
-      // Bucket by the same raw (unclamped) node as NodeBuckets, so the superset claim holds per entity.
-      const n = nodeOfPosition(p.x, p.y);
+      // Bucket by the SAME node as the ring-search index (the optional `nodeOf` — a building's door node),
+      // so the "not-mine within radius" superset claim holds per entity; default is the entity's own
+      // {@link Position} node. A resolver-null / Position-less entity is dropped, exactly like NodeBuckets.
+      let node: { x: number; y: number } | null;
+      if (nodeOf === undefined) {
+        const p = world.tryGet(e, Position);
+        if (p === undefined) {
+          node = null;
+        } else {
+          const n = nodeOfPosition(p.x, p.y);
+          node = { x: n.hx, y: n.hy };
+        }
+      } else {
+        node = nodeOf(e);
+      }
+      if (node === null) continue;
       const cell = this.cellAt(
-        Math.floor(n.hx / PRESENCE_CELL_NODES),
-        Math.floor(n.hy / PRESENCE_CELL_NODES),
+        Math.floor(node.x / PRESENCE_CELL_NODES),
+        Math.floor(node.y / PRESENCE_CELL_NODES),
       );
       cell.total++;
       const owner = world.tryGet(e, Owner);
