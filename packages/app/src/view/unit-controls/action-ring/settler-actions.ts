@@ -1,41 +1,23 @@
-import { type Camera, cameraScreenX, cameraScreenY, tileToScreen } from '@open-northland/render';
-import { ONE, systems, type WorldSnapshot } from '@open-northland/sim';
-import { type Application, Container, Graphics } from 'pixi.js';
-import type { PickerEntry } from '../../../catalog/professions.js';
+import { type Camera, cameraScreenX, cameraScreenY } from '@open-northland/render';
+import type { WorldSnapshot } from '@open-northland/sim';
+import { Container, Graphics } from 'pixi.js';
 import { loadGuiArt } from '../../../content/gui-art.js';
 import { loadUiFont } from '../../../content/ui-font.js';
-import { JOB_SCOUT } from '../../../game/sandbox/index.js';
-import {
-  childOrderOf,
-  entityById,
-  hasEligiblePartner,
-  isAdult,
-  isBoundByMarriage,
-  isFemale,
-  isMarrying,
-  isSettler,
-  marriageOf,
-  positionOf,
-  settlerJobType,
-} from '../../../game/snapshot.js';
 import {
   type ActionButton,
   type ActionRingLayout,
   actionRingScale,
-  hitTestActionRing,
   layoutActionRing,
 } from '../../../hud/action-ring-layout.js';
-import {
-  ALL_MENU_BUTTONS,
-  DEFAULT_MENU_STATE,
-  menuForSettler,
-  type SettlerMenuState,
-} from '../../../hud/action-ring-menu.js';
-import { type Messages, messages } from '../../../i18n/index.js';
+import { ALL_MENU_BUTTONS, menuForSettler } from '../../../hud/action-ring-menu.js';
 import { clientToScreen } from '../../camera/index.js';
 import { el } from '../../overlay.js';
 import { createActionRingVisuals } from './action-ring-visuals.js';
+import { createActionRingInput } from './input.js';
+import { menuStateFor } from './menu-state.js';
 import { createProfessionPicker } from './profession-picker.js';
+import { selectionCentre } from './selection-centre.js';
+import type { MenuMode, SettlerActions, SettlerActionsOptions } from './types.js';
 
 /**
  * The settler action menu — the contextual command buttons that fan out around the selected settler(s), in
@@ -63,6 +45,10 @@ import { createProfessionPicker } from './profession-picker.js';
  * with the `'round'` colour key, so each reads as a round disc (no square backdrop). When the decoded GUI art
  * is absent (a checkout that hasn't run the pipeline) it degrades to flat `Graphics` discs at the exact same
  * geometry, staying visible and fully clickable — the tooltip (a DOM label) carries each button's meaning.
+ *
+ * The pure pieces live beside this glue: the selection centroid projection ({@link selectionCentre}), the
+ * per-settler button derivation ({@link menuStateFor}), and the pointer/keyboard controller
+ * ({@link createActionRingInput}). This module owns the mode/anchor state machine that ties them together.
  */
 
 /** Draw the menu above the world (and the tool panel, which is on the far-left strip — they rarely overlap). */
@@ -70,10 +56,6 @@ const RING_Z = 1000;
 
 /** The "no ring" layout — menu closed or nothing selected (no buttons, zero bounds). */
 const EMPTY_LAYOUT: ActionRingLayout = { buttons: [], bounds: { x: 0, y: 0, w: 0, h: 0 } };
-
-/** Hover highlight over the button under the cursor. */
-const HOVER_TINT = 0xffffff;
-const HOVER_ALPHA = 0.28;
 
 const TOOLTIP_STYLE = [
   'position:fixed',
@@ -88,50 +70,6 @@ const TOOLTIP_STYLE = [
   'z-index:70',
   'display:none',
 ].join(';');
-
-/** Which face the menu is showing: nothing, the default arms, or the profession picker. */
-type MenuMode = 'closed' | 'menu' | 'jobs';
-
-export interface SettlerActionsOptions {
-  readonly app: Application;
-  readonly canvas: HTMLCanvasElement;
-  /** UI scale (from `?uiscale=`, shared with the tool panel); the menu geometry is multiplied by it. May be fractional. */
-  readonly uiscale: number;
-  /** The grouped profession menu the picker offers (group headers + one-click profession rows). */
-  readonly professions: readonly PickerEntry[];
-  /** Issue a `setJob` on every selected settler (the one-way command seam). */
-  readonly onSetJob: (ids: readonly number[], jobType: number) => void;
-  /** Arm the erect-signpost click-to-place mode for the selected scout(s) (the scout menu's button). */
-  readonly onErectSignpost: (ids: readonly number[]) => void;
-  /** Issue a `marry` order on the (single) selected settler. */
-  readonly onMarry: (id: number) => void;
-  /** Arm the click-a-house pick mode for the (single) selected settler. */
-  readonly onAssignHouse: (id: number) => void;
-  /** Issue a `makeChild` order of the chosen sex on the (single) selected woman. */
-  readonly onMakeChild: (id: number, sex: 'male' | 'female') => void;
-}
-
-export interface SettlerActions {
-  /**
-   * Per-frame: lay the menu out on its pinned anchor and show/hide it, rebuilding which buttons the
-   * selection's live state offers. Reads the settlers' positions from the frame's already-built snapshot;
-   * only runs a scan while the menu is open and a settler is selected, so a closed menu costs nothing.
-   */
-  update(camera: Camera, snapshot: WorldSnapshot, selection: ReadonlySet<number>): void;
-  /** Toggle/step the menu (Space): closed→menu, jobs→menu (back out of the picker), menu→closed. */
-  toggle(): void;
-  /**
-   * Open the default action menu — idempotent to the `menu` face. `atClient` is the client (CSS) point to
-   * pin the menu on: the right-click path passes the cursor (what the original stores at bring-up); omit it
-   * and the menu pins on the selection's centroid instead (the Space path, which has no cursor).
-   */
-  open(atClient?: { readonly x: number; readonly y: number }): void;
-  /** Force-close (e.g. on a selection clear). */
-  close(): void;
-  /** True when a client point is over a visible menu button — the input router asks before world picking. */
-  claimsPointer(clientX: number, clientY: number): boolean;
-  dispose(): void;
-}
 
 /**
  * Mount the settler action menu. Async because it loads the (optional) decoded GUI art; everything degrades
@@ -189,6 +127,12 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
    */
   let anchor: { readonly x: number; readonly y: number } | null = null;
 
+  /** Clear the hover highlight + tooltip (shared by the mode helpers and the input controller). */
+  const hideTransient = (): void => {
+    hoverG.clear();
+    tooltip.style.display = 'none';
+  };
+
   // --- The "Zmiana zawodu" profession picker window: a parchment DOM panel over the (hidden) ring ------
   // The serif UI face (shared with the details panel) — falls back to a serif stack until/if it resolves.
   const uiFont = await loadUiFont();
@@ -220,8 +164,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
   /**
    * Fully close the whole menu — the list and the ring, back to `closed`. The commit/teardown path (picking a
    * profession, or an external {@link SettlerActions.close}), as opposed to {@link closeJobWindow}'s "step back
-   * to the ring" used by Escape / the ✕ box / a backdrop click. (`hideTransient` is defined below; this only
-   * runs on user events after mount, so the forward reference is safe.)
+   * to the ring" used by Escape / the ✕ box / a backdrop click.
    */
   const closeMenu = (): void => {
     picker.hide();
@@ -240,73 +183,6 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     closeJobWindow(); // a fresh open shows the default arms, never a stale list
     mode = 'menu';
     anchor = atClient === undefined ? null : toCanvas(atClient.x, atClient.y);
-  };
-
-  /** The selected settlers' centroid in WORLD px, or null when none is selected. */
-  const selectionCentre = (
-    snapshot: WorldSnapshot,
-    selection: ReadonlySet<number>,
-  ): { x: number; y: number; ids: number[]; jobType: number | undefined } | null => {
-    let wx = 0;
-    let wy = 0;
-    const ids: number[] = [];
-    // The selection's common trade (undefined when mixed) — picks the per-profession menu variant.
-    let jobType: number | undefined;
-    let mixed = false;
-    for (const e of snapshot.entities) {
-      if (!selection.has(e.id) || !isSettler(e)) continue;
-      const pos = positionOf(e);
-      if (pos === undefined) continue;
-      const s = tileToScreen(pos.x / ONE, pos.y / ONE); // the drawn feet anchor (world px)
-      wx += s.x;
-      wy += s.y;
-      const job = settlerJobType(e);
-      if (ids.length === 0) jobType = job;
-      else if (job !== jobType) mixed = true;
-      ids.push(e.id);
-    }
-    if (ids.length === 0) return null;
-    return { x: wx / ids.length, y: wy / ids.length, ids, jobType: mixed ? undefined : jobType };
-  };
-
-  /**
-   * The menu state of the single selected settler — which per-state buttons (marry / assign home /
-   * make son+daughter) its ring shows. A multi-selection (or a missing entity) shows none: the family
-   * orders are per-settler, so they only surface when exactly one settler anchors the ring. The scout
-   * swap (erect-signpost replaces alert/query) keys on the selection's UNIFORM jobType, so a multi-scout
-   * selection keeps the button (the erect order takes several scouts).
-   */
-  const menuStateFor = (
-    snapshot: WorldSnapshot,
-    ids: readonly number[],
-    uniformJobType: number | undefined,
-  ): SettlerMenuState => {
-    const erectSignpost = uniformJobType === JOB_SCOUT;
-    if (ids.length !== 1 || ids[0] === undefined) return { ...DEFAULT_MENU_STATE, erectSignpost };
-    const e = entityById(snapshot, ids[0]);
-    if (e === undefined || !isSettler(e)) return { ...DEFAULT_MENU_STATE, erectSignpost };
-    // A single selected child shows no change-profession button (its stage is the GrowthSystem's) and
-    // no family buttons.
-    if (!isAdult(e)) return { ...DEFAULT_MENU_STATE, canChangeJob: false, erectSignpost };
-    const married = marriageOf(e);
-    const spouseAlive = married !== undefined && entityById(snapshot, married.spouse) !== undefined;
-    const onMission = systems.isOnMission(settlerJobType(e) ?? null);
-    // The one-child limit: a living, still-growing child blocks a fresh order (a grown or dead child
-    // frees it — the sim command re-validates either way; this only decides button visibility).
-    const child = married?.child ?? null;
-    const childEntity = child !== null ? entityById(snapshot, child) : undefined;
-    const raisingChild = childEntity !== undefined && !isAdult(childEntity);
-    return {
-      canChangeJob: !isFemale(e), // women keep the woman role for life (the sim guards setJob too)
-      // Marry only lights up when somebody eligible exists — otherwise the click would silently cancel.
-      // isBoundByMarriage mirrors the widowing rule: a widow is free again once her child grows up.
-      canMarry:
-        !isBoundByMarriage(snapshot, e) && !isMarrying(e) && !onMission && hasEligiblePartner(snapshot, e),
-      canAssignHouse: true,
-      // Ordering a child needs a LIVING spouse (a widow's stale marriage doesn't light the button).
-      canOrderChild: spouseAlive && isFemale(e) && !raisingChild && childOrderOf(e) === undefined,
-      erectSignpost,
-    };
   };
 
   const update = (camera: Camera, snapshot: WorldSnapshot, selection: ReadonlySet<number>): void => {
@@ -346,93 +222,27 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     root.visible = true;
   };
 
-  // --- Input (own listeners, mirroring the tool panel; registered before unit-controls' so a menu click wins) ---
-  const claimsPointer = (clientX: number, clientY: number): boolean => {
-    if (mode === 'closed' || !root.visible) return false;
-    const { x, y } = toCanvas(clientX, clientY);
-    // Claim only actual button squares — a click in the gap between buttons (over the unit itself) still
-    // reaches world picking, so the settler stays selectable/orderable through the open menu.
-    return hitTestActionRing(layout, x, y) !== null;
-  };
-
-  const onMouseDown = (e: MouseEvent): void => {
-    if (mode !== 'menu' || !root.visible || e.button !== 0) return;
-    const { x, y } = toCanvas(e.clientX, e.clientY);
-    const hit = hitTestActionRing(layout, x, y);
-    if (hit === null) return;
-    // A menu click is the menu's — stop it reaching world picking (we register before unit-controls). This
-    // consumes a placeholder click too, so an inert button never falls through to a move/attack order.
-    e.stopImmediatePropagation();
-    const single = actionTargets.length === 1 ? actionTargets[0] : undefined;
-    if (hit.kind === 'open-jobs') {
-      openJobWindow(); // swap the ring for the scrollable profession list window
-    } else if (hit.kind === 'erect-signpost') {
-      // Arm the click-to-place mode for the selected scout(s) and close the ring — the next world click
-      // places the signpost (the "Select place for signpost" flow of the original).
-      const targets = [...actionTargets];
-      closeMenu();
-      opts.onErectSignpost(targets);
-    } else if (hit.kind === 'marry' && single !== undefined) {
-      opts.onMarry(single);
-      closeMenu(); // the order is issued — nothing left to do in the menu
-    } else if (hit.kind === 'assign-house' && single !== undefined) {
-      opts.onAssignHouse(single);
-      closeMenu(); // hands off to the click-a-house pick mode
-    } else if (hit.kind === 'make-child' && single !== undefined) {
-      opts.onMakeChild(single, hit.sex);
-      closeMenu();
-    }
-    // kind 'placeholder' — consumed above, but its action is not yet implemented (inert on this slice).
-  };
-
-  const onMouseMove = (e: MouseEvent): void => {
-    if (mode === 'closed' || !root.visible) {
-      hoverG.clear();
-      tooltip.style.display = 'none';
-      return;
-    }
-    const { x, y } = toCanvas(e.clientX, e.clientY);
-    const hit = hitTestActionRing(layout, x, y);
-    hoverG.clear();
-    if (hit === null) {
-      tooltip.style.display = 'none';
-      return;
-    }
-    const placed = layout.buttons.find((p) => p.button === hit);
-    if (placed !== undefined) {
-      hoverG
-        .roundRect(placed.rect.x, placed.rect.y, placed.rect.w, placed.rect.h, Math.max(2, 3 * scale))
-        .fill({ color: HOVER_TINT, alpha: HOVER_ALPHA });
-    }
-    tooltip.textContent = messages().actionRing[hit.id as keyof Messages['actionRing']] ?? hit.id;
-    tooltip.style.left = `${e.clientX + 12}px`;
-    tooltip.style.top = `${e.clientY - 22}px`;
-    tooltip.style.display = 'block';
-  };
-
-  const hideTransient = (): void => {
-    hoverG.clear();
-    tooltip.style.display = 'none';
-  };
-
-  // These listeners register before unit-controls' (this controller is mounted first). The `mouseleave`
-  // clears a hover highlight/tooltip that would otherwise linger when the cursor leaves the canvas while
-  // still over a button (no further `mousemove` fires to clear it).
-  // Escape backs out of the open profession list (the twin of a backdrop click / Space). It must stop here:
-  // unit-controls also listens for Escape on `window` (to clear the selection), and we registered first — so
-  // without stopImmediatePropagation an Escape over the list would also deselect the unit and close the whole
-  // menu, when it should only step back to the ring with the unit still selected.
-  const onKeyDown = (e: KeyboardEvent): void => {
-    if (e.key === 'Escape' && mode === 'jobs') {
-      e.stopImmediatePropagation();
-      closeJobWindow();
-    }
-  };
-
-  canvas.addEventListener('mousedown', onMouseDown);
-  canvas.addEventListener('mousemove', onMouseMove);
-  canvas.addEventListener('mouseleave', hideTransient);
-  window.addEventListener('keydown', onKeyDown);
+  // The ring's own pointer + keyboard listeners (registered before unit-controls' so a menu click wins). The
+  // controller reads the live mode/layout/targets through these getters and drives the command + state seams.
+  const input = createActionRingInput({
+    canvas,
+    scale,
+    hoverG,
+    tooltip,
+    toCanvas,
+    getMode: () => mode,
+    isRingVisible: () => root.visible,
+    getLayout: () => layout,
+    getTargets: () => actionTargets,
+    hideTransient,
+    onErectSignpost: opts.onErectSignpost,
+    onMarry: opts.onMarry,
+    onAssignHouse: opts.onAssignHouse,
+    onMakeChild: opts.onMakeChild,
+    openJobWindow,
+    closeMenu,
+    closeJobWindow,
+  });
 
   return {
     update,
@@ -444,12 +254,9 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     },
     open: openMenu,
     close: closeMenu,
-    claimsPointer,
+    claimsPointer: input.claimsPointer,
     dispose: (): void => {
-      canvas.removeEventListener('mousedown', onMouseDown);
-      canvas.removeEventListener('mousemove', onMouseMove);
-      canvas.removeEventListener('mouseleave', hideTransient);
-      window.removeEventListener('keydown', onKeyDown);
+      input.dispose();
       tooltip.remove();
       picker.dispose();
       visuals.dispose(); // free each baked icon's off-screen texture
