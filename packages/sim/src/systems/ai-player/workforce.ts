@@ -259,6 +259,9 @@ function runWorkforce(world: World, ctx: SystemContext, player: number): readonl
     const slots = type.workers.filter(
       (w) => !isCarrierJob(ctx, w.jobType) && !index.harvestJobs.has(w.jobType),
     );
+    // A workplace with real operator slots staffs only those; one whose every slot is a
+    // carrier/gatherer trade has no operators to skip, so it still gets one worker per slot rather
+    // than being left empty.
     const operators = slots.length > 0 ? slots : type.workers;
     for (const slot of operators) {
       const held = tally.get(building)?.get(slot.jobType) ?? 0;
