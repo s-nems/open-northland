@@ -61,6 +61,23 @@ export interface SearchStats {
 export const POCKET_PROBE_MAX_EXPLORED = 128;
 
 /**
+ * The forward search's settle guard under a walk-block overlay: past this many settles with no verdict,
+ * {@link findPath} suspects a sealed goal whose pocket outgrew {@link POCKET_PROBE_MAX_EXPLORED} and runs
+ * the goal-side exhaust before letting the forward search flood the walker's whole region. Profiled
+ * trigger (magiczny_las, 6 AI seats): a goal sealed inside a 494-node overlay pocket cost ~123k settles
+ * (~240 ms) to refute per request — the exhaust refutes it at pocket size. Sized above routine long
+ * routes so the guard fires only on floods; a pure performance knob (the answer never changes).
+ */
+export const FLOOD_GUARD_MAX_EXPLORED = 4096;
+
+/**
+ * The goal-side exhaust's own settle cap — a sealed pocket larger than this falls back to the full
+ * forward flood (today's cost), so the exhaust can never LOSE to the flood by more than this bound
+ * when both sides are huge. Far above any profiled pocket, far under a map flood.
+ */
+export const GOAL_EXHAUST_MAX_EXPLORED = 32768;
+
+/**
  * Find the lowest-cost walkable path from `start` to `goal` on the half-cell graph, inclusive of
  * both endpoints. Returns `null` when no route exists or either endpoint is unwalkable.
  * `start === goal` yields the single-node path `[start]` (when walkable).
@@ -99,15 +116,30 @@ export function findPath(
   // as the probe's target): forward, the walker may leave its blocked node but never re-enter it — in reverse
   // that is precisely "the node may be entered as the final step and nothing else", so the two searches see the
   // same edge set and the probe's "unreachable" stays exact.
-  if (blocked !== undefined && blocked.size > 0) {
-    const probeBlocked: BlockOverlay = blocked.has(start)
-      ? { has: (n) => n !== start && blocked.has(n), size: blocked.size }
-      : blocked;
-    const probe = runSearch(graph, goal, start, probeBlocked, stats, POCKET_PROBE_MAX_EXPLORED);
-    if (probe === 'unreachable') return null;
+  if (blocked === undefined || blocked.size === 0) {
+    // No overlay: same static component ⇒ reachable, so the forward search can never flood on a refusal.
+    const result = runSearch(graph, start, goal, blocked, stats, Number.POSITIVE_INFINITY);
+    return typeof result === 'string' ? null : result;
   }
-  const result = runSearch(graph, start, goal, blocked, stats, Number.POSITIVE_INFINITY);
-  return typeof result === 'string' ? null : result;
+  const probeBlocked: BlockOverlay = blocked.has(start)
+    ? { has: (n) => n !== start && blocked.has(n), size: blocked.size }
+    : blocked;
+  const probe = runSearch(graph, goal, start, probeBlocked, stats, POCKET_PROBE_MAX_EXPLORED);
+  if (probe === 'unreachable') return null;
+  // Forward under the flood guard: everything but a flooding search resolves here, byte-identically to
+  // the unguarded search (the guard only ever aborts a search that has no verdict yet).
+  const first = runSearch(graph, start, goal, blocked, stats, FLOOD_GUARD_MAX_EXPLORED);
+  if (first !== 'aborted') return typeof first === 'string' ? null : first;
+  // Flooding with no verdict — a sealed goal whose pocket outgrew the probe cap floods the walker's
+  // whole region to prove "no route" (profiled ~123k settles against a 494-node pocket). Exhaust the
+  // goal's side first: it either exhausts its pocket (exact "no route", at pocket cost — the same
+  // symmetric-edge argument as the probe), reaches the start (reachable — rerun the forward search to
+  // completion; the reverse path's costs are asymmetric, so it cannot be reused), or outgrows its own
+  // cap and hands back to the full flood.
+  const exhaust = runSearch(graph, goal, start, probeBlocked, stats, GOAL_EXHAUST_MAX_EXPLORED);
+  if (exhaust === 'unreachable') return null;
+  const full = runSearch(graph, start, goal, blocked, stats, Number.POSITIVE_INFINITY);
+  return typeof full === 'string' ? null : full;
 }
 
 /**
