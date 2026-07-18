@@ -89,7 +89,8 @@ hygiene scan fails the build otherwise.
   `lifecycle/`, `movement/`, `orders/`, `command/` (command application + placement), `vision/`,
   `footprint/`, `progression/`, `readviews/` (pure content-derived rule tables), `stores/`; plus
   `spatial.ts` (`NodeBuckets` + candidate lists — feed it a `canonicalById` list), `schedule.ts`
-  (`SYSTEM_ORDER`), `context.ts`, and the resource/berry/stockpile indexes.
+  (`SYSTEM_ORDER`), `context.ts`, and the resource/berry/stockpile indexes riding the incremental
+  `spatial-memo.ts` scaffold (journal-replayed against the component store generation).
 - **`nav/`** — pathfinding and the half-cell lattice: `halfcell.ts` (the ONE cell↔node conversion seam,
   both directions), `pathfinding/` (A* + its heap/scratch), `terrain/` graphs, `nearest.ts`,
   `metric.ts` + `node-metric.ts` (the measured 68×38 pitch in `Fixed` column units and integer px

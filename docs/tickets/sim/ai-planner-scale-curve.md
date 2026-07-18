@@ -53,10 +53,13 @@ warning that this curve moves with unrelated agent fixes, so always re-measure t
   figure (0.635 ms) independently reproduced the pre-fix ~0.7 ms early-run baseline. Re-measure the
   curve on top of the gate before investigating — busy crews don't go dormant, so the superlinear
   early-window growth may stand unchanged.
-- `sim/lazy-target-cell-indexes.md` (P3) and `sim/incremental-spatial-index-memos.md` (P2) both touch
-  the index machinery the planner reads through; either could be the mechanism here.
+- `sim/lazy-target-cell-indexes.md` (P3) touches the index machinery the planner reads through and
+  could be the mechanism here. The other index candidate was FIXED on 2026-07-18: the spatial index
+  memos (region/stockpile/tile) are now maintained incrementally via the World membership journal
+  (`systems/spatial-memo.ts`) instead of rebuilding wholesale per generation bump — re-measure the
+  curve on top of that too.
 
-Grep these three before filing any new work — the fix may belong in one of them instead.
+Grep these before filing any new work — the fix may belong in one of them instead.
 
 ## Verify
 

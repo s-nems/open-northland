@@ -1,7 +1,7 @@
-import { Position, Stockpile } from '../components/index.js';
+import { Stockpile } from '../components/index.js';
 import type { Entity, World } from '../ecs/world.js';
-import { nodeOfPosition } from '../nav/halfcell.js';
-import { canonicalById, NodeBuckets } from './spatial.js';
+import { NodeBuckets } from './spatial.js';
+import { createSpatialMemo } from './spatial-memo.js';
 
 /**
  * The per-world STOCKPILE node index — every positioned {@link Stockpile} bucketed by its half-cell node, so
@@ -10,9 +10,10 @@ import { canonicalById, NodeBuckets } from './spatial.js';
  * test used to walk `canonicalEntities()`, ~17k on a decoded map, nearly all of them resource nodes carrying no
  * stock at all — the store this indexes holds only buildings, boat hulls and loose heaps.
  *
- * Derived read-state, never hashed: rebuilt wholesale whenever the Stockpile store generation moves
- * (create/destroy). Two invariants make that key sound, and the registered verifier re-derives the buckets and
- * fires if either stops holding — a future violation surfaces there instead of as a silent wrong pick:
+ * Derived read-state, never hashed: a {@link createSpatialMemo} rider, maintained incrementally against the
+ * Stockpile store generation (create/destroy). Two invariants make that key sound, and the registered verifier
+ * re-derives the buckets and fires if either stops holding — a future violation surfaces there instead of as a
+ * silent wrong pick:
  *
  * - A positioned stockpile never moves and never loses its Position without dying. True of a building, a heap,
  *   and today's boat hull (`command/placement.ts` places a hull as a static store; its movement is a deferred
@@ -22,84 +23,29 @@ import { canonicalById, NodeBuckets } from './spatial.js';
  *   bump nothing, stranding it out of the index. Every creation site adds Position first.
  */
 
-interface StockpileIndexState {
-  generation: number;
-  /** The indexed entities, ascending-id — kept beside the buckets so the verifier can re-derive membership. */
-  list: readonly Entity[];
-  buckets: NodeBuckets;
-}
-
-const cache = new WeakMap<World, StockpileIndexState>();
-
-function build(world: World): StockpileIndexState {
-  // canonicalById first: NodeBuckets preserves input order, and ascending-id buckets are what let a caller's
-  // first-match loop land on the same winner a full canonical scan picked.
-  const list = canonicalById(world.query(Stockpile, Position));
-  return {
-    generation: world.componentGeneration(Stockpile),
-    // Frozen like the region index's shared memo: an in-place .sort() by a future consumer throws at the
-    // mutation site instead of silently reordering the buckets every pick depends on.
-    list: Object.freeze(list),
-    buckets: new NodeBuckets(world, list),
-  };
-}
-
-/**
- * Re-derive membership and every node's bucket, reporting divergence from the live copy (empty = coherent).
- * Buckets are compared element-wise, not by membership: ascending-id bucket ORDER is what makes a caller's
- * first-match the canonical winner, so a reordered bucket is a wrong pick a `includes` check would wave through.
- */
-function verify(world: World): string[] {
-  const cached = cache.get(world);
-  if (cached === undefined || cached.generation !== world.componentGeneration(Stockpile)) return [];
-  const fresh = canonicalById(world.query(Stockpile, Position));
-  if (fresh.length !== cached.list.length) {
-    return [
-      `stockpileNodeIndex holds ${cached.list.length} stockpiles but re-derived ${fresh.length} — a Stockpile/Position changed without a Stockpile-store generation bump`,
-    ];
-  }
-  const diverged = fresh.findIndex((e, i) => cached.list[i] !== e);
-  if (diverged !== -1) {
-    return [
-      `stockpileNodeIndex holds stockpile ${cached.list[diverged]} at position ${diverged} but re-derived ${fresh[diverged]} — the indexed membership changed without a Stockpile-store generation bump`,
-    ];
-  }
-  for (const [key, bucket] of freshBuckets(world, fresh)) {
-    const held = cached.buckets.at(bucket.hx, bucket.hy);
-    if (held.length !== bucket.entities.length || bucket.entities.some((e, i) => held[i] !== e)) {
-      return [
-        `stockpileNodeIndex bucket ${key} diverges from a fresh rebuild — a positioned stockpile moved in place`,
-      ];
-    }
-  }
-  return [];
-}
-
-/** The nodes `list` buckets to right now, keyed for reporting — the verifier's fresh side. */
-function freshBuckets(
-  world: World,
-  list: readonly Entity[],
-): Map<string, { hx: number; hy: number; entities: Entity[] }> {
-  const out = new Map<string, { hx: number; hy: number; entities: Entity[] }>();
-  for (const e of list) {
-    const p = world.get(e, Position);
-    const n = nodeOfPosition(p.x, p.y);
-    const key = `(${n.hx},${n.hy})`;
-    const bucket = out.get(key) ?? { hx: n.hx, hy: n.hy, entities: [] };
-    bucket.entities.push(e); // `list` is ascending-id, so each bucket builds ascending too
-    out.set(key, bucket);
-  }
-  return out;
-}
-
-function state(world: World): StockpileIndexState {
-  const cached = cache.get(world);
-  if (cached !== undefined && cached.generation === world.componentGeneration(Stockpile)) return cached;
-  const fresh = build(world);
-  cache.set(world, fresh);
-  world.registerCacheVerifier('stockpileNodeIndex', () => verify(world));
-  return fresh;
-}
+const memo = createSpatialMemo<NodeBuckets, { hx: number; hy: number }>(
+  Stockpile,
+  { verifier: 'stockpileNodeIndex', plural: 'stockpiles', component: 'Stockpile' },
+  {
+    empty: (world) => new NodeBuckets(world, []),
+    member: (_world, _e, hx, hy) => ({ hx, hy }),
+    insert: (buckets, e, m) => buckets.insert(e, m.hx, m.hy),
+    remove: (buckets, e, m) => buckets.remove(e, m.hx, m.hy),
+    // Element-wise bucket compare, not membership: ascending-id bucket ORDER is what makes a caller's
+    // first-match the canonical winner, so a reordered bucket is a wrong pick `includes` would wave through.
+    diverges: (held, fresh) => {
+      for (const b of fresh.buckets()) {
+        const heldBucket = held.at(b.x, b.y);
+        if (heldBucket.length !== b.entities.length || b.entities.some((e, i) => heldBucket[i] !== e)) {
+          return [
+            `stockpileNodeIndex bucket (${b.x},${b.y}) diverges from a fresh rebuild — a positioned stockpile moved in place`,
+          ];
+        }
+      }
+      return [];
+    },
+  },
+);
 
 /**
  * Every positioned {@link Stockpile} whose Position snaps to half-cell node `(hx, hy)`, ascending-id — empty
@@ -108,5 +54,5 @@ function state(world: World): StockpileIndexState {
  * filters over this list picks the same entity a full canonical scan would.
  */
 export function stockpilesAtNode(world: World, hx: number, hy: number): readonly Entity[] {
-  return state(world).buckets.at(hx, hy);
+  return memo.read(world).at(hx, hy);
 }
