@@ -52,6 +52,24 @@ function risingPct(components: Readonly<Record<string, unknown>>): number | unde
 }
 
 /**
+ * A FINISHED building's remaining Health fraction (0..1), or `undefined` when it is undamaged, still
+ * under construction / upgrading (its pool ramps with the build — a site would read damaged forever), or
+ * carries no readable Health. Stamped onto the draw item as
+ * {@link import('../draw-item.js').DrawItem.hpFrac}, the damage-smoke overlay's drive — a pure function
+ * of the current pool, so an HP rise (repair, an upgrade refill) sheds the smoke by itself. Live-only,
+ * like `working` (a fog ghost is a memory, not a live health readout).
+ */
+export function readHpFraction(components: Readonly<Record<string, unknown>>): number | undefined {
+  if (risingPct(components) !== undefined) return undefined; // under construction / upgrading
+  const h = components.Health as { hitpoints?: unknown; max?: unknown } | undefined;
+  if (h === undefined || typeof h.hitpoints !== 'number' || typeof h.max !== 'number' || h.max <= 0) {
+    return undefined;
+  }
+  if (!Number.isFinite(h.hitpoints) || h.hitpoints >= h.max) return undefined; // undamaged
+  return clamp(h.hitpoints / h.max, 0, 1);
+}
+
+/**
  * Whether a building is mid production cycle — the sim `Production` component's presence (it exists
  * exactly while a cycle runs, `productionSystem`). Stamped onto the draw item as
  * {@link import('../draw-item.js').DrawItem.working}, the switch an animated state overlay flips on (the

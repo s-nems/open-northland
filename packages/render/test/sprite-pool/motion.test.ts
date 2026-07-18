@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { type MotionTrack, trackMotion } from '../../src/gpu/sprite-pool/motion.js';
+import {
+  isStalled,
+  type MotionTrack,
+  STALL_TICKS_TO_IDLE,
+  trackMotion,
+} from '../../src/gpu/sprite-pool/motion.js';
 
 /**
  * The inter-tick motion track: the drawn anchor (`prev` lerped toward `curr` by the frame alpha) and the
@@ -13,7 +18,7 @@ const WALK_TICKS_PER_CELL = 18;
 const FULL_GAIT_PX_PER_TICK = 68 / WALK_TICKS_PER_CELL;
 
 function fresh(): MotionTrack {
-  return { tick: -1, x: 0, y: 0, prevX: 0, prevY: 0, drawX: 0, drawY: 0, gaitPhase: 0 };
+  return { tick: -1, x: 0, y: 0, prevX: 0, prevY: 0, drawX: 0, drawY: 0, gaitPhase: 0, stillTicks: 0 };
 }
 
 /** Run one trackMotion update and read back the stamped drawn anchor. */
@@ -106,6 +111,30 @@ describe('motion gait phase', () => {
     trackMotion(m, 0, 0, 0, 1);
     trackMotion(m, 1, 100, 0, 1); // 100 px in one tick — under the snap threshold, far over any gait
     expect(m.gaitPhase).toBeLessThanOrEqual(2.5);
+  });
+});
+
+describe('stall detection — a moving state with no displacement must read idle, not frozen mid-stride', () => {
+  it('flags a track stalled after STALL_TICKS_TO_IDLE still ticks, and real travel clears it', () => {
+    const m = fresh();
+    trackMotion(m, 0, 0, 0, 1); // first sight
+    trackMotion(m, 1, FULL_GAIT_PX_PER_TICK, 0, 1); // one real step
+    for (let t = 2; t < 2 + STALL_TICKS_TO_IDLE; t++) {
+      expect(isStalled(m)).toBe(false); // not yet — a normal stop must not flicker to idle early
+      trackMotion(m, t, FULL_GAIT_PX_PER_TICK, 0, 1); // standing on the same anchor
+    }
+    expect(isStalled(m)).toBe(true); // held a leg in the air long enough — present the idle pose
+    trackMotion(m, 10, FULL_GAIT_PX_PER_TICK * 2, 0, 1); // walks again
+    expect(isStalled(m)).toBe(false);
+  });
+
+  it('does not count a snap/teleport as standing still', () => {
+    const m = fresh();
+    trackMotion(m, 0, 0, 0, 1);
+    for (let t = 1; t <= STALL_TICKS_TO_IDLE; t++) trackMotion(m, t, 0, 0, 1); // stalls in place
+    expect(isStalled(m)).toBe(true);
+    trackMotion(m, 6, 500, 0, 1); // teleport-sized jump — a fresh anchor, not more standing
+    expect(isStalled(m)).toBe(false);
   });
 });
 

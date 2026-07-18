@@ -119,6 +119,10 @@ describe('CommandSystem — buildings and demolition', () => {
     sim.step();
     expect(sim.world.isAlive(e)).toBe(false);
     expect(sim.world.entityCount).toBe(0);
+    // Announced with the same cue combat razing emits (typed so render can replay the collapse sprite).
+    const razed = sim.events.current().filter((ev) => ev.kind === 'buildingDestroyed');
+    expect(razed).toHaveLength(1);
+    expect(razed[0]).toMatchObject({ entity: e, buildingType: HEADQUARTERS });
   });
 
   it('demolish aimed at a non-building entity is skipped (never destroys a settler)', () => {

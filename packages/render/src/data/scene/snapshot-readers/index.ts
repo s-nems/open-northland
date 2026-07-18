@@ -26,6 +26,7 @@ export {
   readBerryBushGfxIndex,
   readBerryBushLevel,
   readBuiltPct,
+  readHpFraction,
   readProducing,
   readResourceLevelCount,
 } from './static-readers.js';

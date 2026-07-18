@@ -13,4 +13,4 @@ export { type MotionTrack, trackMotion } from './motion.js';
 export type { EntityBounds } from './pooled-entity.js';
 export { reconcileSprites } from './reconcile.js';
 export { type ResolvedLayer, resolveLayers } from './resolve-layers.js';
-export { type PoolFrame, SpritePool } from './sprite-pool.js';
+export { type PoolFrame, SCREEN_PAINT_EPS, SpritePool } from './sprite-pool.js';

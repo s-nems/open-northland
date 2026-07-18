@@ -13,6 +13,14 @@
 
 export { BLOOD_RISE, bloodDroplet, frac } from './blood.js';
 export {
+  type BuildingCollapse,
+  COLLAPSE_TICKS,
+  collapseKey,
+  collapseProgress,
+  foldBuildingCollapses,
+  MAX_ACTIVE_COLLAPSES,
+} from './collapse.js';
+export {
   BLOOD_LIFETIME_TICKS,
   BONES_LIFETIME_TICKS,
   type CombatEffect,
@@ -22,3 +30,14 @@ export {
   foldCombatEffects,
   MAX_ACTIVE_EFFECTS,
 } from './marks.js';
+export {
+  DAMAGE_SMOKE_STEP,
+  damageSmokeEmitters,
+  emitterSpot,
+  MAX_SMOKE_EMITTERS,
+  SMOKE_PUFF_PERIOD_TICKS,
+  SMOKE_PUFFS_PER_EMITTER,
+  SMOKE_RISE_PX,
+  type SmokePuffPose,
+  smokePuff,
+} from './smoke.js';

@@ -230,6 +230,14 @@ export interface DrawItem {
    */
   readonly working?: boolean;
   /**
+   * For a FINISHED building that has taken damage: its remaining Health fraction (0..1, exclusive of 1 —
+   * undamaged omits it). The damage-smoke overlay's drive: each fifth of the pool lost adds a smoke
+   * plume, and an HP rise sheds them (a pure function of the current pool —
+   * {@link import('../snapshot-readers/static-readers.js').readHpFraction}). Omitted for sites,
+   * upgrades, and non-building kinds.
+   */
+  readonly hpFrac?: number;
+  /**
    * For a projectile: flight heading in screen space (radians, 0 = screen-east, clockwise) — the pooled
    * arrow (authored pointing screen-east) rotates to it so the shaft points along the flight, tilted
    * along the drawn ballistic arc's tangent when the launch origin is readable. Omitted for other kinds.

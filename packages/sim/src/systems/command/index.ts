@@ -123,7 +123,7 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       cancelUpgrade(world, command);
       return;
     case 'demolish':
-      demolish(world, command);
+      demolish(world, ctx, command);
       return;
     case 'demolishSignpost':
       demolishSignpost(world, command);

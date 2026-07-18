@@ -88,6 +88,6 @@ export function createPooled(kind: SpriteKind, paletted: boolean): PooledEntity 
     bounds: { minX: 0, minY: 0, maxX: 0, maxY: 0 },
     boundsFrame: -1,
     reveal: undefined,
-    motion: { tick: -1, x: 0, y: 0, prevX: 0, prevY: 0, drawX: 0, drawY: 0, gaitPhase: 0 },
+    motion: { tick: -1, x: 0, y: 0, prevX: 0, prevY: 0, drawX: 0, drawY: 0, gaitPhase: 0, stillTicks: 0 },
   };
 }

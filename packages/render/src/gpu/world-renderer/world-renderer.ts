@@ -8,9 +8,11 @@ import { type BrightnessField, type ElevationField, makeElevationField } from '.
 import { MapObjectLayer, type MapObjectSprite } from '../map-objects/index.js';
 import {
   BadgeLayer,
+  CollapseLayer,
   CombatEffectsLayer,
   type ConstructionPlotFrame,
   ConstructionPlotLayer,
+  DamageSmokeLayer,
   FogLayer,
   type GeometryDebugItem,
   GeometryDebugLayer,
@@ -84,6 +86,12 @@ export class WorldRenderer {
   /** Transient combat ground marks — blood on hits, bones on deaths (world-space, below the sprites so a
    *  surviving fighter draws over what it stands on). Fed by {@link ingestCombatEffects}. */
   private readonly effects = new CombatEffectsLayer();
+  /** A razed/demolished building's sink-into-the-ground transient (nodes live inside the depth-sorted
+   *  sprite layer). Fed by {@link ingestCombatEffects} alongside the marks. */
+  private readonly collapses: CollapseLayer;
+  /** Smoke plumes over damaged buildings (world-space, above the sprites) — driven per frame from the
+   *  pool's culled damaged list, a pure function of each building's current HP fraction. */
+  private readonly damageSmoke = new DamageSmokeLayer();
   /** Stacked worker badges beside each staffed building's door (world-space, above the sprites). */
   private readonly badgeLayer = new BadgeLayer();
   /** Thought bubbles floating over a settler's head in a standing family state (world-space, above the
@@ -119,6 +127,7 @@ export class WorldRenderer {
     this.spriteLayer.sortableChildren = true;
     this.mapObjects = new MapObjectLayer(this.spriteLayer, this.textureCache);
     this.pool = new SpritePool(this.spriteLayer, this.textureCache, opts?.sheet, opts?.playerColourOf);
+    this.collapses = new CollapseLayer(this.spriteLayer, this.textureCache, opts?.sheet);
     this.portrait = new PortraitInsetLayer(app, this.worldLayer, this.pool);
     this.fog = new FogLayer();
     this.placementOverlay = new PlacementOverlayLayer(app.renderer);
@@ -141,6 +150,7 @@ export class WorldRenderer {
     this.worldLayer.addChild(this.effects.groundContainer);
     this.worldLayer.addChild(this.spriteLayer);
     this.worldLayer.addChild(this.effects.overlayContainer);
+    this.worldLayer.addChild(this.damageSmoke.container);
     this.worldLayer.addChild(this.badgeLayer.container);
     this.worldLayer.addChild(this.bubbleLayer.container);
     this.worldLayer.addChild(this.geometryDebug.container);
@@ -212,6 +222,7 @@ export class WorldRenderer {
    */
   ingestCombatEffects(events: readonly SimEvent[], tick: number): void {
     this.effects.ingest(events, tick);
+    this.collapses.ingest(events, tick);
   }
 
   /**
@@ -370,6 +381,12 @@ export class WorldRenderer {
     // Fed interpolated render time (`tick + alpha`) so the blood-fall animation and fades are smooth at any
     // frame rate; the fold's decay membership uses the integer sim tick from `ingest`, so this stays render-only.
     this.effects.draw(this.elevation, vp, tick + alpha);
+    // Collapsing buildings: crop/sink each razed body inside the depth-sorted sprite layer — same
+    // interpolated clock, so the sink glides between sim ticks.
+    this.collapses.draw(this.elevation, vp, tick + alpha);
+    // Damage smoke: plumes over the pool's culled damaged buildings, anchored to their fresh sprite
+    // bounds (computed by the reconcile above) — a pure function of each building's current HP.
+    this.damageSmoke.draw(this.pool.damagedBuildings(), (ref) => this.pool.boundsOf(ref), tick + alpha);
     // Door badges: the app tallies each building's bound workers and projects its door node; this layer
     // stacks them. Culled to the sprite viewport, so the cost tracks the screen.
     this.badgeLayer.draw(doorBadges, this.elevation, vp);
@@ -492,6 +509,8 @@ export class WorldRenderer {
     this.terrain.destroy(); // frees mesh geometry the layer.destroy below would otherwise orphan
     this.mapObjects.destroy();
     this.pool.destroy(); // destroys detached (culled) entities the scene-graph walk can't reach
+    this.collapses.destroy();
+    this.damageSmoke.destroy();
     this.fog.destroy();
     this.placementOverlay.destroy();
     this.constructionPlots.destroy();

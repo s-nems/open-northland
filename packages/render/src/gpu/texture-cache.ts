@@ -44,6 +44,9 @@ export class TextureCache {
   /** Bottom-cropped views of a frame, keyed by how many top pixels are hidden — the reveal path
    *  ({@link cropped}). Nested so the primary frame→texture cache above stays a clean 1:1. */
   private readonly cropCache = new Map<AtlasFrame, Map<number, Texture>>();
+  /** Top-kept views of a frame, keyed by how many BOTTOM pixels are hidden — the collapse path
+   *  ({@link croppedBottom}), the mirror of {@link cropCache}. */
+  private readonly bottomCropCache = new Map<AtlasFrame, Map<number, Texture>>();
   /** Per-pixel reveal bakes per frame, keyed by quantised threshold ({@link revealed}). */
   private readonly revealCache = new Map<AtlasFrame, Map<number, RevealBake>>();
 
@@ -88,6 +91,33 @@ export class TextureCache {
         frame: new Rectangle(frame.x, frame.y + top, frame.width, frame.height - top),
       });
       byTop.set(top, tex);
+      this.pages.add(source);
+    }
+    return tex;
+  }
+
+  /**
+   * A view of `frame` with its bottom `hiddenBottom` pixels cropped off — only the top
+   * `height − hiddenBottom` rows, the mirror of {@link cropped}, used for the building-collapse sink (the
+   * original's `PrintBob_UsingCollapseTimeMask`: rows removed bottom-up). The caller shifts the sprite
+   * DOWN by `hiddenBottom · scale` so the visible bottom edge stays pinned at the ground line while the
+   * top sinks. Same caching/bounds discipline as {@link cropped} (free sub-rect views, one per whole-pixel
+   * value, bounded by the frame height).
+   */
+  croppedBottom(source: TextureSource, frame: AtlasFrame, hiddenBottom: number): Texture {
+    const bottom = clamp(Math.round(hiddenBottom), 0, frame.height);
+    let byBottom = this.bottomCropCache.get(frame);
+    if (byBottom === undefined) {
+      byBottom = new Map();
+      this.bottomCropCache.set(frame, byBottom);
+    }
+    let tex = byBottom.get(bottom);
+    if (tex === undefined) {
+      tex = new Texture({
+        source,
+        frame: new Rectangle(frame.x, frame.y, frame.width, frame.height - bottom),
+      });
+      byBottom.set(bottom, tex);
       this.pages.add(source);
     }
     return tex;
@@ -152,6 +182,10 @@ export class TextureCache {
       for (const tex of byTop.values()) tex.destroy();
     }
     this.cropCache.clear();
+    for (const byBottom of this.bottomCropCache.values()) {
+      for (const tex of byBottom.values()) tex.destroy();
+    }
+    this.bottomCropCache.clear();
     this.pages.clear();
     for (const byThreshold of this.revealCache.values()) {
       for (const bake of byThreshold.values()) bake.texture.destroy(true);
