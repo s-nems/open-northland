@@ -1,4 +1,5 @@
 import { CARRY_CAPACITY, SiteAssignment, UnderConstruction } from '../../../components/index.js';
+import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId } from '../../../nav/terrain/index.js';
 import { atomicDuration } from '../../readviews/animations.js';
 import {
@@ -27,11 +28,17 @@ import {
  *
  *  a. **Hammer** — while the site has material on hand to install (its builder-work `labor` still trails the
  *     delivered-material fraction), walk to the site and run a `construct` swing (each swing installs one
- *     delivered unit — the ConstructionSystem reflects it into `built`/`Health`).
- *  b. **Self-supply** — the site has run dry (labor caught up to delivered material): fetch a still-needed
- *     construction good from a store that holds it — any available bill line, not in bill order, so one
- *     scarce material never blocks the others. The delivery drive then routes the load to the site (which
- *     advertises the demand), while an assigned hauler tops the same site up through the identical path.
+ *     delivered unit — the ConstructionSystem reflects it into `built`/`Health`). To overlap fetching with
+ *     hammering, only the site's LEAD (lowest-id) builder is pinned to the hammer here: every other crew
+ *     member first tries the self-supply rung (b) and hammers only if nothing is left to fetch. Each fetch
+ *     stamps a SupplyRun that shrinks the remaining need down the canonical crew order, so exactly as many
+ *     builders peel off to fetch as there are still-uncovered units (one short material → one fetcher, the
+ *     rest keep hammering) instead of the whole crew hammering to the cap and then stalling on one trip.
+ *  b. **Self-supply** — the site has run dry (labor caught up to delivered material), or this non-lead builder
+ *     is peeling off to pre-fetch: fetch a still-needed construction good from a store that holds it — any
+ *     available bill line, not in bill order, so one scarce material never blocks the others. The delivery
+ *     drive then routes the load to the site (which advertises the demand), while an assigned hauler tops the
+ *     same site up through the identical path.
  *  c. **Wait** — nothing to install and nothing to fetch (no source holds any needed good): hold at the site
  *     until a hauler delivers. A builder is committed to its site — it does not fall through to haul someone
  *     else's goods while a foundation of its own stands unraised.
@@ -74,9 +81,7 @@ export function planBuilder(plan: PlannerContext, spacing: SpacingState): boolea
     world.add(e, SiteAssignment, { site, pinned: pinned !== null });
   }
   const siteStand = (): NodeId | null => claimWorkCell(world, ctx, terrain, e, here, site, spacing);
-
-  // a. Material on hand to install? Hammer only while builder work trails delivered material.
-  if (world.get(site, UnderConstruction).labor < deliveredConstructionFraction(world, ctx, site)) {
+  const hammer = (): void => {
     const stand = siteStand();
     if (stand !== null) {
       atOrWalk(world, e, here, stand, () =>
@@ -90,16 +95,40 @@ export function planBuilder(plan: PlannerContext, spacing: SpacingState): boolea
         ),
       );
     }
+  };
+
+  // a. Material on hand to install (builder work still trails delivered material)? The lead builder hammers;
+  // any other crew member pre-fetches a still-missing material first so the deficit closes in parallel with
+  // the hammering, and hammers only if nothing is left to fetch.
+  if (world.get(site, UnderConstruction).labor < deliveredConstructionFraction(world, ctx, site)) {
+    const isLead = constructionSiteLead(world, spacing, site) === e;
+    if (!isLead && fetchNeededMaterial(plan, site)) return true;
+    hammer();
     return true;
   }
 
-  // b. Out of material — fetch a still-needed construction good from a store that holds it (the delivery
-  // drive routes the load back to the site next tick). Tries the least-covered material first but falls
-  // through the whole bill: the goods need not arrive in bill order, so a good with no source anywhere
-  // never blocks fetching the ones that are available (the site accumulates what it can and waits for
-  // the scarce good). One unit per trip (the global CARRY_CAPACITY). The needs already discount other
-  // settlers' live supply errands (SupplyRun), and this fetch stamps its own — so a crew spreads over
-  // the still-unclaimed materials instead of racing to the same unit.
+  // b. Out of material — fetch a still-needed construction good from a store that holds it.
+  if (fetchNeededMaterial(plan, site)) return true;
+
+  // c. Can't hammer, nothing to fetch — hold at the site and wait for a delivery (empty callback: a
+  // MoveGoal to the stand cell, or stay put if already there).
+  const stand = siteStand();
+  if (stand !== null) atOrWalk(world, e, here, stand, () => {});
+  return true;
+}
+
+/**
+ * Fetch one still-needed construction good for `site` from a store that holds it, routing the pickup so the
+ * delivery drive carries the load back to the site (which advertises the demand). Tries the least-covered
+ * material first but falls through the whole bill: the goods need not arrive in bill order, so a good with no
+ * source anywhere never blocks fetching the ones that are available (the site accumulates what it can and
+ * waits for the scarce good). One unit per trip (the global {@link CARRY_CAPACITY}). The needs already
+ * discount other settlers' live supply errands (SupplyRun), and this fetch stamps its own — so a crew spreads
+ * over the still-unclaimed materials instead of racing to the same unit. Returns whether a fetch was started.
+ */
+function fetchNeededMaterial(plan: PlannerContext, site: Entity): boolean {
+  const { world, ctx, terrain, entity: e, here, targets } = plan;
+  const settler = plan;
   for (const need of neededConstructionGoods(world, ctx, site, plan.inbound)) {
     const src = nearestStoreHolding(
       targets.stockpileCells,
@@ -116,10 +145,27 @@ export function planBuilder(plan: PlannerContext, spacing: SpacingState): boolea
     );
     return true;
   }
+  return false;
+}
 
-  // c. Can't hammer, nothing to fetch — hold at the site and wait for a delivery (empty callback: a
-  // MoveGoal to the stand cell, or stay put if already there).
-  const stand = siteStand();
-  if (stand !== null) atOrWalk(world, e, here, stand, () => {});
-  return true;
+/**
+ * The site's LEAD builder — the lowest-id settler currently assigned to `site` ({@link SiteAssignment}) — the
+ * one crew member kept on the hammer while others peel off to pre-fetch, so a manned site is never left with
+ * nobody hammering. Memoised once per planner tick into {@link SpacingState}: a single pass over the crew
+ * assignments captures the lead per site, a frozen snapshot every builder reads the same, so the pick is
+ * stable across the tick and history-independent. Falls back to the site itself when no lead is recorded
+ * (unreachable in practice — the caller has just stamped its own SiteAssignment).
+ */
+function constructionSiteLead(world: World, spacing: SpacingState, site: Entity): Entity {
+  let leads = spacing.crewLeadBySite;
+  if (leads === undefined) {
+    leads = new Map<Entity, Entity>();
+    for (const member of world.query(SiteAssignment)) {
+      const memberSite = world.get(member, SiteAssignment).site;
+      const lead = leads.get(memberSite);
+      if (lead === undefined || member < lead) leads.set(memberSite, member);
+    }
+    spacing.crewLeadBySite = leads;
+  }
+  return leads.get(site) ?? site;
 }

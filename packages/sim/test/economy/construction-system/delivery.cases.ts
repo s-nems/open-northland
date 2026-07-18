@@ -8,10 +8,11 @@ import {
   Settler,
   SiteAssignment,
   Stockpile,
+  SupplyRun,
   UnderConstruction,
 } from '../../../src/components/index.js';
 import { fx, ONE, Simulation } from '../../../src/index.js';
-import { housingCapacity } from '../../../src/systems/index.js';
+import { aiSystem, housingCapacity } from '../../../src/systems/index.js';
 
 import {
   builderAt,
@@ -215,6 +216,35 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
     expect(minWood).toBe(8); // only the 1 wood
     expect(sim.world.get(warehouse, Stockpile).amounts.get(STONE) ?? 0).toBe(7); // 9 − 2 spent
     expect(sim.world.get(warehouse, Stockpile).amounts.get(WOOD) ?? 0).toBe(8); // 9 − 1 spent
+  });
+
+  it('overlaps a fetch with the hammering: the lead builder hammers while exactly one peels off for the missing good', () => {
+    // A hammer-ready site (2 of its 2 stone already on hand) still short ONE wood, three builders on it,
+    // and a warehouse holding the wood. The whole crew COULD hammer the delivered stone up to the 2/3 cap,
+    // but that would stall on one late fetch trip. Instead only the lead (lowest-id) builder is pinned to
+    // the hammer; the other two try to fetch first, and the SupplyRun reservation lets exactly ONE claim
+    // the single missing wood — so the deficit closes in parallel with the hammering (the user's rule:
+    // "4 build, 1 goes for the last resource").
+    const sim = new Simulation({ seed: 21, content: constructionContent(), map: grassMap(12, 3) });
+    const site = siteAt(sim, HOUSE, 6, 1); // cost 2 stone + 1 wood
+    sim.world.get(site, Stockpile).amounts.set(STONE, 2); // stone fully on hand → hammerable, wood missing
+    const warehouse = sim.world.create();
+    sim.world.add(warehouse, Position, { x: fx.fromInt(0), y: fx.fromInt(1) });
+    sim.world.add(warehouse, Building, { buildingType: HEADQUARTERS, tribe: VIKING, built: ONE, level: 0 });
+    sim.world.add(warehouse, Stockpile, { amounts: new Map<number, number>([[WOOD, 3]]) });
+    const lead = builderAt(sim, 5, 1); // lowest id — the pinned hammerer
+    const second = builderAt(sim, 7, 1);
+    const third = builderAt(sim, 6, 2);
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    // Exactly one builder peeled off to fetch the wood, and it is not the lead.
+    const runners = [lead, second, third].filter((b) => sim.world.has(b, SupplyRun));
+    expect(runners).toHaveLength(1);
+    expect(sim.world.has(lead, SupplyRun)).toBe(false); // the lead stays on the hammer
+    for (const runner of runners) {
+      expect(sim.world.get(runner, SupplyRun)).toMatchObject({ site, goodType: WOOD });
+    }
   });
 
   it('assignBuilder pins a builder to the CHOSEN site over a nearer one; a non-builder is a no-op', () => {
