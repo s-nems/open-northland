@@ -37,7 +37,7 @@ import {
   WAREHOUSE_IDS,
 } from './placements.js';
 
-const { Owner, Settler } = components;
+const { Chat, Owner, Settler } = components;
 
 /**
  * The main sandbox scene: a compact, fully staffed viking settlement over a resource-gathering base — the
@@ -157,6 +157,13 @@ export const sandboxScene: SceneDefinition = {
     {
       label: 'some harvest reached the ground heaps or moved on into the stores',
       predicate: (sim) => CAMPS.some((camp) => yardGood(sim, camp.good) > 0),
+    },
+    {
+      label: 'bored crews chatter — some pair is mid-chat at the sampled tick (gossip runs needs-off)',
+      predicate: (sim) => {
+        for (const _ of sim.world.query(Chat)) return true;
+        return false;
+      },
     },
     {
       label: 'every settler belongs to the blue human player (no hostiles on the map)',

@@ -14,3 +14,12 @@ export const Chat = defineComponent<{
   talking: boolean;
   speaks: boolean;
 }>('Chat');
+
+/**
+ * A short post-chat breather stamped on both halves when a chat ends: until tick `until` the settler
+ * neither starts a chat nor may be pulled into one. Without it a freed settler standing beside an idle
+ * neighbour is re-grabbed in the very planner pass that freed it — its own work rungs never run (a farm
+ * crew could capture its farmer forever). The stamp is left to expire in place (overwritten by the next
+ * chat), never removed.
+ */
+export const ChatCooldown = defineComponent<{ until: number }>('ChatCooldown');

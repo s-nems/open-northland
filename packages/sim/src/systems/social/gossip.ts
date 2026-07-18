@@ -2,12 +2,12 @@ import {
   Age,
   Carrying,
   Chat,
+  ChatCooldown,
   CurrentAtomic,
   Engagement,
   FamilyDuty,
   Fleeing,
   MoveGoal,
-  needsEnabled,
   ownerOf,
   PathRequest,
   PlayerOrder,
@@ -63,13 +63,26 @@ const CHAT_SATISFIED_DEFICIT: Fixed = fx.div(ONE, fx.fromInt(10));
  *  neighbourhood ring search, not a map scan. */
 const CHAT_SEEK_RADIUS_NODES = 32;
 
-/** How far an idle settler looks for another idle settler to pass the time with — "somebody standing
- *  nearby", a much tighter ring than the seek radius (design rule). */
-const CHAT_IDLE_RADIUS_NODES = 8;
-
 /** Partner searches start at ring 1: a candidate stacked on the seeker's own node is skipped — the
  *  de-stack drive is about to step it aside, and a pair chatting from one node stands inside each other. */
 const CHAT_PARTNER_MIN_DIST_NODES = 1;
+
+/** The idle-chat search covers exactly the adjacent lattice nodes ({@link nodesAdjacent}: Chebyshev 1 —
+ *  Manhattan ring 2 reaches the diagonals, the accept filter drops the ring's non-adjacent (2,0) points).
+ *  An idle settler only chats with a NEIGHBOUR, in place; walking to company is the seek drive's move,
+ *  so idle chatter never perturbs a standing formation. */
+const CHAT_IDLE_MAX_RING = 2;
+
+/** How long (ticks) after a chat ends before either half chats again — the {@link ChatCooldown} breather
+ *  that lets the freed settlers' own work rungs reclaim them (design value, ~2 s of sim time). */
+export const CHAT_COOLDOWN_TICKS = 40;
+
+/** Whether `e` is still inside its post-chat breather at `tick`. Expired stamps just sit until the next
+ *  chat overwrites them — reading is pure, no removal. */
+function chatCooldownActive(world: World, tick: number, e: Entity): boolean {
+  const cd = world.tryGet(e, ChatCooldown);
+  return cd !== undefined && cd.until > tick;
+}
 
 /**
  * The original's social-event scale: +4000 channel units restore one full bar. Basis: the eat animation's
@@ -123,9 +136,11 @@ export class GossipCandidates {
 }
 
 /** Whether `e` may be pulled into a chat right now: not already claimed by a chat/wedding/family duty,
- *  not combat-held or player-ordered, not hidden inside a building, hands free, not mid-animation, and
- *  not needing food/sleep more than company (a pressing survival need would cancel the chat at once). */
-function mayJoinChat(world: World, e: Entity): boolean {
+ *  not combat-held or player-ordered, not hidden inside a building, hands free, not mid-animation, not
+ *  in its post-chat breather, and not needing food/sleep more than company (a pressing survival need
+ *  would cancel the chat at once). */
+function mayJoinChat(world: World, tick: number, e: Entity): boolean {
+  if (chatCooldownActive(world, tick, e)) return false;
   if (
     world.has(e, Chat) ||
     world.has(e, Wedding) ||
@@ -158,6 +173,7 @@ function startChat(world: World, seeker: Entity, partner: Entity): void {
  */
 export function planGossipSeek(
   world: World,
+  tick: number,
   e: Entity,
   settler: SettlerIdentity & { enjoyment: Fixed },
   hx: number,
@@ -166,15 +182,19 @@ export function planGossipSeek(
 ): boolean {
   if (settler.enjoyment < CHAT_SEEK_THRESHOLD) return false;
   if (settler.jobType === null || isFighterJob(settler.jobType)) return false;
+  if (chatCooldownActive(world, tick, e)) return false;
   // Owner-gated like deStackIdle: only player-owned settlers gossip, so unowned golden/economy fixtures
   // stay byte-identical; partners must share the owner (nobody chats up the enemy).
   const owner = ownerOf(world, e);
   if (owner === undefined) return false;
   const buckets = candidates.ensure();
   const idle = (cand: Entity): boolean =>
-    cand !== e && ownerOf(world, cand) === owner && mayJoinChat(world, cand) && !isTravelling(world, cand);
+    cand !== e &&
+    ownerOf(world, cand) === owner &&
+    mayJoinChat(world, tick, cand) &&
+    !isTravelling(world, cand);
   const grabbable = (cand: Entity): boolean =>
-    cand !== e && ownerOf(world, cand) === owner && mayJoinChat(world, cand);
+    cand !== e && ownerOf(world, cand) === owner && mayJoinChat(world, tick, cand);
   const found =
     buckets.nearest(hx, hy, CHAT_PARTNER_MIN_DIST_NODES, CHAT_SEEK_RADIUS_NODES, idle) ??
     buckets.nearest(hx, hy, CHAT_PARTNER_MIN_DIST_NODES, CHAT_SEEK_RADIUS_NODES, grabbable);
@@ -185,12 +205,14 @@ export function planGossipSeek(
 
 /**
  * The idle-settler chat rung, at the very bottom of the drive ladder: a settler with nothing at all to do
- * strikes up a chat with the nearest OTHER idle settler within {@link CHAT_IDLE_RADIUS_NODES} — even on a
+ * strikes up a chat with an idle settler ALREADY STANDING BESIDE it ({@link nodesAdjacent}) — even on a
  * full company bar, idle neighbours gossip because why not (the original's settlements visibly chatter;
- * design rule). Returns `true` when a chat was started.
+ * design rule). In place only: nobody walks for an idle chat, so standing formations stay put. Returns
+ * `true` when a chat was started.
  */
 export function planGossipIdle(
   world: World,
+  tick: number,
   e: Entity,
   settler: SettlerIdentity,
   hx: number,
@@ -198,29 +220,38 @@ export function planGossipIdle(
   candidates: GossipCandidates,
 ): boolean {
   if (settler.jobType === null || isFighterJob(settler.jobType)) return false;
+  if (chatCooldownActive(world, tick, e)) return false;
   // Owner-gated like the seek rung (and deStackIdle) — see planGossipSeek.
   const owner = ownerOf(world, e);
   if (owner === undefined) return false;
-  const idle = (cand: Entity): boolean =>
-    cand !== e && ownerOf(world, cand) === owner && mayJoinChat(world, cand) && !isTravelling(world, cand);
+  const here = { hx, hy };
+  const idleBeside = (cand: Entity): boolean => {
+    if (cand === e || ownerOf(world, cand) !== owner) return false;
+    if (!mayJoinChat(world, tick, cand) || isTravelling(world, cand)) return false;
+    const p = world.get(cand, Position);
+    return nodesAdjacent(nodeOfPosition(p.x, p.y), here);
+  };
   const found = candidates
     .ensure()
-    .nearest(hx, hy, CHAT_PARTNER_MIN_DIST_NODES, CHAT_IDLE_RADIUS_NODES, idle);
+    .nearest(hx, hy, CHAT_PARTNER_MIN_DIST_NODES, CHAT_IDLE_MAX_RING, idleBeside);
   if (found === null) return false;
   startChat(world, e, found.entity);
   return true;
 }
 
 /** Remove a chat from both halves, interrupting any talk/listen atomic in flight (the clips are
- *  `interruptable 1` in the data — a chat never holds a settler against a higher drive). */
-function endChat(world: World, e: Entity): void {
+ *  `interruptable 1` in the data — a chat never holds a settler against a higher drive), and stamp the
+ *  {@link ChatCooldown} breather on both so the freed settlers' own planner passes run before any re-chat. */
+function endChat(world: World, tick: number, e: Entity): void {
   const c = world.tryGet(e, Chat);
   if (c !== undefined && world.isAlive(c.partner)) {
     world.remove(c.partner, Chat);
     interruptChatAtomic(world, c.partner);
+    world.add(c.partner, ChatCooldown, { until: tick + CHAT_COOLDOWN_TICKS });
   }
   world.remove(e, Chat);
   interruptChatAtomic(world, e);
+  world.add(e, ChatCooldown, { until: tick + CHAT_COOLDOWN_TICKS });
 }
 
 function interruptChatAtomic(world: World, e: Entity): void {
@@ -287,24 +318,21 @@ function roundRefillUnits(ctx: SystemContext, s: SettlerIdentity, atomicId: numb
  * GossipSystem — drive every {@link Chat} pair one tick (walk to the partner, halt it, run the alternating
  * talk/listen rounds, pulse the company bars, end the chat once the seeker is satisfied). Runs with the
  * family pass's placement — after orders, before the AI planner — so its walks route the same tick and the
- * `Chat` fence is fresh when the planner reads it. Gated on the {@link needsEnabled} world rule like the
- * NeedsSystem: needs off cancels every chat (scenes default needs-off and stay chat-free).
+ * `Chat` fence is fresh when the planner reads it. Deliberately NOT gated on the {@link needsEnabled}
+ * world rule: idle chatter is social flavor, not a need mechanic (with needs off the bar just sits at 0
+ * and every round ends satisfied) — only the deficit-driven seek rung belongs to the needs system, and it
+ * self-gates on a threshold the bar can't reach with needs off.
  */
 export const gossipSystem: System = (world, ctx) => {
-  const enabled = needsEnabled(world);
   for (const e of canonicalById(world.query(Chat))) {
     const c = world.tryGet(e, Chat);
     if (c === undefined) continue; // cancelled earlier this pass from the partner's side
     const mirrored = world.isAlive(c.partner) ? world.tryGet(c.partner, Chat) : undefined;
     if (mirrored === undefined || mirrored.partner !== e) {
-      endChat(world, e);
+      endChat(world, ctx.tick, e);
       continue;
     }
     if (!c.seeker) continue; // the pair is driven once, from its seeker
-    if (!enabled) {
-      endChat(world, e);
-      continue;
-    }
     drivePair(world, ctx, ctx.terrain, e, c.partner);
   }
 };
@@ -321,11 +349,11 @@ function drivePair(
   const sa = world.tryGet(a, Settler);
   const sb = world.tryGet(b, Settler);
   if (sa === undefined || sb === undefined) {
-    endChat(world, a);
+    endChat(world, ctx.tick, a);
     return;
   }
   if (chatOutranked(world, a, sa) || chatOutranked(world, b, sb)) {
-    endChat(world, a);
+    endChat(world, ctx.tick, a);
     return;
   }
   if (ca.talking) {
@@ -333,7 +361,7 @@ function drivePair(
     // talking while the other's clip is gone means something stole the partner mid-round (an order, a
     // duty): nobody talks into the air, the chat is off.
     if (chatAtomicRunning(world, a) !== chatAtomicRunning(world, b)) {
-      endChat(world, a);
+      endChat(world, ctx.tick, a);
       return;
     }
     applyChatPulse(world, ctx, a, sa);
@@ -345,9 +373,11 @@ function drivePair(
       sa.enjoyment = fx.fromInt(0);
     if (roundRefillUnits(ctx, sb, cb.speaks ? TALK_ATOMIC_ID : LISTEN_ATOMIC_ID) === 0)
       sb.enjoyment = fx.fromInt(0);
-    if (sa.enjoyment < CHAT_SATISFIED_DEFICIT) {
-      // The seeker's need is met — the pair parts (the grabbed half returns to its errand).
-      endChat(world, a);
+    // The pair parts once the seeker's need is met — but never before the partner has had its own
+    // speaking turn (`!ca.speaks`: the just-finished round was the partner's), so every chat is at least
+    // one full exchange and a needs-off world doesn't freeze one half into a permanent listener.
+    if (!ca.speaks && sa.enjoyment < CHAT_SATISFIED_DEFICIT) {
+      endChat(world, ctx.tick, a);
       return;
     }
     ca.talking = false;
@@ -360,7 +390,7 @@ function drivePair(
   const pa = world.tryGet(a, Position);
   const pb = world.tryGet(b, Position);
   if (pa === undefined || pb === undefined) {
-    endChat(world, a);
+    endChat(world, ctx.tick, a);
     return;
   }
   const na = nodeOfPosition(pa.x, pa.y);
@@ -386,7 +416,7 @@ function drivePair(
   if (world.tryGet(a, PathRequest)?.failed === true || world.tryGet(b, PathRequest)?.failed === true) {
     clearNavState(world, a);
     clearNavState(world, b);
-    endChat(world, a);
+    endChat(world, ctx.tick, a);
     return;
   }
   if (terrain === undefined) return; // mapless fixture: no walking — the pair talks only if adjacent

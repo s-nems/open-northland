@@ -1,17 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import {
   Chat,
+  ChatCooldown,
   CurrentAtomic,
   MoveGoal,
   Owner,
   PlayerOrder,
   Position,
   Settler,
+  setNeedsEnabled,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { type Fixed, fx, ONE, Simulation } from '../../src/index.js';
 import { nodeOfPosition, nodesAdjacent } from '../../src/nav/halfcell.js';
-import { aiSystem, gossipSystem } from '../../src/systems/index.js';
+import { aiSystem, CHAT_COOLDOWN_TICKS, gossipSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf, grassMap, justAbove, NEED_THRESHOLD, needsSettlerAt, treeAt } from './needs/support.js';
 
@@ -72,11 +74,11 @@ describe('gossip initiation (planner rungs)', () => {
     expect(sim.world.has(worker, MoveGoal)).toBe(true);
   });
 
-  it('idle settlers with nothing to do pair up spontaneously', () => {
+  it('idle settlers standing beside each other pair up spontaneously', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
-    // No tree — nothing to do. Both mildly deprived, standing near each other.
+    // No tree — nothing to do. Both mildly deprived, on neighbouring lattice nodes.
     const a = gossiper(sim, 1, 0, MILD);
-    const b = gossiper(sim, 3, 0, MILD);
+    const b = gossiperBeside(sim, 1, 0, MILD);
 
     aiSystem(sim.world, ctxOf(sim));
 
@@ -84,15 +86,65 @@ describe('gossip initiation (planner rungs)', () => {
     expect(sim.world.get(b, Chat)).toMatchObject({ partner: a, seeker: false });
   });
 
+  it('idle chat is in-place only: a settler two cells away is no idle partner', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    const a = gossiper(sim, 1, 0, MILD);
+    const b = gossiper(sim, 3, 0, MILD);
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    // Mild deficit, nobody adjacent: no chat and no walking either — walking to company is the SEEK
+    // drive's move (over the threshold), never the idle rung's.
+    expect(sim.world.has(a, Chat)).toBe(false);
+    expect(sim.world.has(b, Chat)).toBe(false);
+    expect(sim.world.has(a, MoveGoal)).toBe(false);
+  });
+
   it('idle settlers chat even on a full company bar (no deficit required)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
     const a = gossiper(sim, 1, 0, fx.fromInt(0));
-    const b = gossiper(sim, 3, 0, fx.fromInt(0));
+    const b = gossiperBeside(sim, 1, 0, fx.fromInt(0));
 
     aiSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.get(a, Chat)).toMatchObject({ partner: b, seeker: true });
     expect(sim.world.get(b, Chat)).toMatchObject({ partner: a, seeker: false });
+  });
+
+  it('a finished chat leaves a cooldown: the pair rests, then chats again', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    const a = gossiper(sim, 1, 0, MILD);
+    const b = gossiperBeside(sim, 1, 0, MILD);
+
+    let ended = false;
+    for (let i = 0; i < 200 && !ended; i++) {
+      sim.step();
+      ended = sim.world.has(a, ChatCooldown) && !sim.world.has(a, Chat);
+    }
+    expect(ended).toBe(true); // the first chat ran its rounds and ended with the breather stamped
+    sim.step();
+    expect(sim.world.has(a, Chat)).toBe(false); // no instant re-grab — the planner pass stays free
+
+    let rechatted = false;
+    for (let i = 0; i < 2 * CHAT_COOLDOWN_TICKS && !rechatted; i++) {
+      sim.step();
+      rechatted = sim.world.has(a, Chat);
+    }
+    expect(rechatted).toBe(true); // the breather expired and the idle neighbours got back to gossip
+  });
+
+  it('idle chatter keeps running with needs disabled (social flavor, not a need mechanic)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    setNeedsEnabled(sim.world, false);
+    const a = gossiper(sim, 2, 0, fx.fromInt(0));
+    const b = gossiperBeside(sim, 2, 0, fx.fromInt(0));
+
+    aiSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(a, Chat)).toMatchObject({ partner: b, seeker: true });
+
+    gossipSystem(sim.world, ctxOf(sim)); // used to cancel every chat when needs were off
+    expect(sim.world.get(a, CurrentAtomic).atomicId).toBe(TALK);
+    expect(sim.world.get(b, CurrentAtomic).atomicId).toBe(LISTEN);
   });
 
   it('soldiers never gossip — neither seeking nor as a partner (forbidatomic 13/14/15)', () => {

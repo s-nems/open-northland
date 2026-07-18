@@ -7,7 +7,6 @@ import {
   Female,
   Fleeing,
   JobAssignment,
-  needsEnabled,
   Owner,
   ownerOf,
   PlayerOrder,
@@ -125,10 +124,8 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
   // Harvest claims: one digger per resource node at a time — nodes under a live harvest atomic plus the
   // picks made earlier this pass (see economy/harvest-claims.ts).
   const harvestClaims = collectHarvestClaims(world);
-  // Gossip: the lazy chat-candidate buckets (built only when a settler actually looks for a partner) and
-  // the needs gate — company rises only with needs on, so the chat rungs sleep with the mechanic.
+  // Gossip: the lazy chat-candidate buckets (built only when a settler actually looks for a partner).
   const gossipCandidates = new GossipCandidates(world);
-  const gossipReady = needsEnabled(world);
 
   // Canonical settler order: the per-tick claim maps (farmClaims, seatClaims) hand out targets/seats
   // first-come-first-served, so the visit order is a pick, not a mere sweep — it must be ascending
@@ -208,7 +205,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // the seek threshold) leaves its work to find a partner — above the economy rungs on purpose, the
     // "worker downs tools to socialize" beat (see ../social/gossip.ts).
     if (world.has(e, Chat)) continue;
-    if (gossipReady && planGossipSeek(world, e, settler, hereNode.hx, hereNode.hy, gossipCandidates)) {
+    if (planGossipSeek(world, ctx.tick, e, settler, hereNode.hx, hereNode.hy, gossipCandidates)) {
       continue;
     }
     // The housewife rung: a woman takes no trade — her work is stocking the family larder (hoarding,
@@ -231,6 +228,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
       targets,
       inbound,
       limit,
+      gossipCandidates,
     };
 
     // 1. CARRYING — deliver first (a settler must free its hands before any empty-handed work).
@@ -296,8 +294,8 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // above is genuinely idle: step off a shared tile first so an idle crowd spreads out (./destack.ts),
     // then chat with a nearby idle neighbour (../social/gossip.ts).
     if (!planCarrierHaul(plan, anyHaulable)) {
-      if (!deStackIdle(world, ctx, terrain, e, hereNode.hx, hereNode.hy, spacing) && gossipReady) {
-        planGossipIdle(world, e, settler, hereNode.hx, hereNode.hy, gossipCandidates);
+      if (!deStackIdle(world, ctx, terrain, e, hereNode.hx, hereNode.hy, spacing)) {
+        planGossipIdle(world, ctx.tick, e, settler, hereNode.hx, hereNode.hy, gossipCandidates);
       }
     }
   }

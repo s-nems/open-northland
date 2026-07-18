@@ -15,9 +15,11 @@ import {
   IRON_HARVEST_ATOMIC,
   KISS_ATOMIC,
   KISSED_ATOMIC,
+  LISTEN_ATOMIC,
   MUSHROOM_HARVEST_ATOMIC,
   PLANT_ATOMIC,
   STONE_HARVEST_ATOMIC,
+  TALK_ATOMIC,
   WHEAT_HARVEST_ATOMIC,
 } from '../../catalog/atomics.js';
 import { characterStem, characterStems, VIKING_CHARACTERS } from '../../catalog/roster.js';
@@ -115,10 +117,11 @@ export async function loadCharacters(
   // name — the layout each warrior/civilian spec's `attack` seq becomes a FrameListAnim from. Built once
   // (not per spec); a spec whose seq is absent just has no attack animation.
   const attackFrameLists = gfxAtomicFrameLists(ir, VIKING_ANIM_TRIBE, ATTACK_ATOMIC);
-  // The gathering + field-work + builder frame lists (the collector job-8 chop/dig/pluck, the farmer
-  // job-18 sow/water/reap, and the builder job-7 hammer `[gfxanimatomic]` records), keyed by atomic id —
-  // what each spec's `dirListAtomics` becomes FrameListAnims from. Built once; an IR without them just
-  // leaves those actions on their fallback clips.
+  // The per-direction frame lists for every dir-list action — gathering, field work, the builder hammer,
+  // the wedding kiss and the gossip talk/listen `[gfxanimatomic]` records — keyed by atomic id: what each
+  // spec's `dirListAtomics` becomes FrameListAnims from. An action missing here plays its plain `atomics`
+  // strip whole, cycling through the sheet's direction blocks (the "spinning" artifact). Built once; an
+  // IR without a record just leaves that action on its fallback clip.
   const actionFrameLists = new Map(
     [
       HARVEST_ATOMIC,
@@ -133,6 +136,8 @@ export async function loadCharacters(
       BUILD_HOUSE_ATOMIC,
       KISS_ATOMIC,
       KISSED_ATOMIC,
+      TALK_ATOMIC,
+      LISTEN_ATOMIC,
     ].map((action) => [action, gfxAtomicFrameLists(ir, VIKING_ANIM_TRIBE, action)] as const),
   );
   // One mushroom pick bends MUSHROOM_PLUCKS_PER_PICK times: repeat the authored one-shot pluck list

@@ -2,6 +2,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import type { NavigationLimit } from '../signposts/index.js';
+import type { GossipCandidates } from '../social/index.js';
 import type { InboundSupplyTally } from '../stores/index.js';
 import type { TargetCandidates } from './targets/index.js';
 
@@ -38,4 +39,7 @@ export interface PlannerContext extends PlannerWorker {
    *  satisfiers, delivery sinks); only a settler's BOUND targets (its own workplace/flag/storage binding)
    *  stay ungated, and a load with no in-area sink takes planDelivery's no-sink drop/rest branch. */
   readonly limit: NavigationLimit | null;
+  /** Tick-shared lazy chat-candidate buckets — lets a rung that parks a settler with nothing to do (the
+   *  workshop door loiter) offer it the same idle chat the truly-idle bottom rung runs. */
+  readonly gossipCandidates: GossipCandidates;
 }
