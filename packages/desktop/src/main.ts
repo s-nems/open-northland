@@ -1,6 +1,8 @@
 import { existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { app, type BrowserWindow } from 'electron';
+import { readConfig } from './config.js';
+import { currentLocale, resolveLocale, setActiveLocale } from './i18n/index.js';
 import { wireIpc } from './ipc-handlers.js';
 import { configFileOf, contentDirOf, DATA_DIR_ENV, modsDirOf, resolveDataRoot } from './paths.js';
 import { PipelineHost } from './pipeline-host.js';
@@ -50,9 +52,13 @@ if (app.requestSingleInstanceLock()) {
     mainWindow.focus();
   });
 
+  // The remembered choice wins; a first run follows the OS locale. Set before any window or menu so
+  // both the setup page and the native menu open already localized.
+  setActiveLocale(readConfig(paths.configFile).locale ?? resolveLocale(app.getLocale()));
+
   void app.whenReady().then(async () => {
     handleAppProtocol({ appRoot, setupRoot, contentRoot: paths.contentDir });
-    mainWindow = createWindow(await state.contentStatus(), join(here, 'preload.cjs'));
+    mainWindow = createWindow(await state.contentStatus(), join(here, 'preload.cjs'), currentLocale());
     buildAppMenu(mainWindow, dataRoot.path);
     wireIpc({ win: mainWindow, paths, state, pipeline });
   });

@@ -63,17 +63,3 @@ export function overallFraction(snapshot: ProgressSnapshot): number {
   const current = STAGE_WEIGHTS[snapshot.stage] * stageFraction(snapshot);
   return (completed + current) / TOTAL_WEIGHT;
 }
-
-/** Human labels for the installer's stage line. */
-export const STAGE_LABELS: Readonly<Record<PipelineStageId, string>> = {
-  unpack: 'Unpacking game archives',
-  pictures: 'Converting pictures',
-  atlases: 'Building sprite atlases',
-  'player-colors': 'Building player colours',
-  gui: 'Converting the interface art',
-  fonts: 'Converting fonts',
-  goods: 'Converting goods icons',
-  ir: 'Extracting game rules',
-  transitions: 'Composing terrain transitions',
-  maps: 'Decoding maps',
-};

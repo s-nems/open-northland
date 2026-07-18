@@ -20,6 +20,7 @@ const api: DesktopApi = {
     ipcRenderer.on(IPC_CHANNELS.modEvent, (_ev, event: ModEvent) => listener(event));
   },
   startGame: () => ipcRenderer.invoke(IPC_CHANNELS.startGame),
+  setLocale: (locale) => ipcRenderer.invoke(IPC_CHANNELS.setLocale, locale),
 };
 
 contextBridge.exposeInMainWorld('desktop', api);

@@ -68,6 +68,7 @@ describe('createShellState', () => {
       expect(state).toEqual({
         dataRoot: temp.path,
         portable: false,
+        locale: 'eng',
         contentStatus: 'missing',
       });
       expect('gamePath' in state).toBe(false);

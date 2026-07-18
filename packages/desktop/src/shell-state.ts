@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { CURRENT_MANIFEST, readPipelineManifest } from '@open-northland/asset-pipeline';
 import { readConfig, writeConfig } from './config.js';
 import { type ContentStatus, classifyContent } from './content-state.js';
+import { currentLocale } from './i18n/index.js';
 import type { DesktopState } from './ipc.js';
 import { discoverInstalledMod, findModRootUnder } from './mod-install/index.js';
 import type { DataRoot } from './paths.js';
@@ -59,6 +60,7 @@ export function createShellState(paths: ShellPaths): ShellState {
     return {
       dataRoot: paths.dataRoot.path,
       portable: paths.dataRoot.portable,
+      locale: currentLocale(),
       contentStatus: await contentStatus(),
       ...(remembered !== undefined ? { gamePath: remembered } : {}),
       ...(modRoot !== undefined ? { modRoot } : {}),
