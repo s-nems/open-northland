@@ -1,8 +1,12 @@
 # Decide whether a pushed-out work flag must land on REACHABLE ground
 
 **Area:** packages/sim · **Origin:** fix/evict-work-flag-from-footprint review battery, 2026-07-17 · **Priority:** P3
-**Blocked by:** docs/tickets/sim/work-flag-placement-whole-map-scan.md (do the ring search first — this is a
-rule decision to make while that code is open, not a second rewrite of the same function)
+
+The former blocker (the whole-map-scan ticket) landed 2026-07-18: `nearestWorkFlagPlacement` is now
+an expanding ring search preserving the Manhattan `(distance, lowest node id)` winner exactly, and
+its blocked set is memoized per blocker version. This ticket is the remaining RULE decision on top of
+that code; a reachable-first rule would replace the Manhattan rings with a BFS ring, so decide before
+any further rework of the function.
 
 `nearestWorkFlagPlacement` (packages/sim/src/systems/footprint/placement/work-flag.ts) ranks candidates by
 pure Manhattan distance, gated only on `terrain.isWalkable(candidate)` — it never checks that the winner is
