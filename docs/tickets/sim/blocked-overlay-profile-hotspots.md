@@ -10,12 +10,14 @@ and their per-tick cost is unmeasured in isolation.
 
 Investigate-first:
 
-- `dynamicBlockedCells` (`systems/footprint/blocked.ts`) is rebuilt independently by several
-  systems each tick — routing (`movement/routing.ts`), separation
-  (`movement/collision/separation.ts`), destack (`agents/destack.ts`), family wander
-  (`family/wander.ts`), farming targets (`agents/farming/targets.ts`) — each behind its own `??=`
-  per-call cache. Check whether one shared per-tick overlay (or an incrementally maintained one,
-  registered in `World.verifyCaches()`) removes the repeated rebuilds.
+- `dynamicBlockedCells` (`systems/footprint/blocked.ts`) is called independently by several systems
+  each tick — routing (`movement/routing.ts`), separation (`movement/collision/separation.ts`),
+  destack (`agents/destack.ts`), family wander (`family/wander.ts`), farming targets
+  (`agents/farming/targets.ts`) — each behind its own `??=` per-call cache. Since 2026-07-18 both
+  inputs are cached (`building-blocked-cache.ts` memo + the incremental resource cache), so each call
+  now pays only the UNION COPY into a fresh `Set`, not a Building-store rescan — re-profile before
+  cutting further; if the copy still shows, one shared per-tick union set (or switching the pure
+  membership consumers to `dynamicBlockOverlay`'s copy-free view) is the remaining lever.
 - `staggerShift` (`nav/metric.ts`) is a leaf of every position↔node conversion
   (`nodeOfPosition`), so its self-time may just be call volume — measure who the top callers are
   before optimizing anything.
