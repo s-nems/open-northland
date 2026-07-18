@@ -1,11 +1,11 @@
 # Unify the lib-extracted lowercase `data/` tree with the `Data/` content routes
 
-**Area:** pipeline + content-routes · **Origin:** bug-hunt review, 2026-07-17 · **Priority:** P2
+**Area:** pipeline + content-resolver · **Origin:** bug-hunt review, 2026-07-17 · **Priority:** P2
 
 All `data0001.lib` member names are lowercase `data\engine2d\bin\...` (verified in the real
 archive), and `libMemberRelPath` (`tools/asset-pipeline/src/stages/lib.ts:15-21`) preserves that
 casing when extracting. The content routes resolve exact-case under `Data/engine2d/bin/...` via
-plain `join` + `existsSync` (`packages/content-routes/src/routes.ts:55-57,93` — `/bobs/`,
+plain `join` + `existsSync` (`packages/content-resolver/src/routes.ts:55-57,93` — `/bobs/`,
 `/textures/`, `/sounds/`, and the bobs-index).
 
 On case-insensitive filesystems (macOS/Windows defaults) the two case-fold together and everything

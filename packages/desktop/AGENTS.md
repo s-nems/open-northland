@@ -8,7 +8,7 @@ first-run installer that converts the user's owned game copy with the asset pipe
 
 - **The web app stays shell-agnostic.** `packages/app` never imports desktop; the shell serves
   `packages/app/dist` byte-identical to the browser build and reuses the app's content routes via
-  `@open-northland/content-routes` (the single route table, shared with the Vite dev middleware).
+  `@open-northland/content-resolver` (the single route table, shared with the Vite dev middleware).
 - **The pipeline runs out of process.** The conversion is CPU-bound; it always runs as a
   `utilityProcess` fork of the bundled `pipeline-child.cjs`, never on the main-process event loop.
   Progress rides the pipeline's `PipelineProgress` seam (`@open-northland/asset-pipeline/progress`

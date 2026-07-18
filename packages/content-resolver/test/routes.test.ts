@@ -15,7 +15,7 @@ describe('resolveContentRequest', () => {
   let contentRoot: string;
 
   beforeEach(async () => {
-    tmp = await makeTempDir('content-routes');
+    tmp = await makeTempDir('content-resolver');
     contentRoot = tmp.path;
   });
 

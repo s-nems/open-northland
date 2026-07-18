@@ -1,8 +1,8 @@
 # P3 — A malformed `[multiplayer]` node silently serves a wrong roster, not an absent one
 
-**Area:** content-routes · **Origin:** content-routes + desktop cleanup review, 2026-07-17
+**Area:** content-resolver · **Origin:** content-resolver + desktop cleanup review, 2026-07-17
 
-`multiplayerOf` (`packages/content-routes/src/maps-index.ts`) returns `NO_MULTIPLAYER` for any
+`multiplayerOf` (`packages/content-resolver/src/maps-index.ts`) returns `NO_MULTIPLAYER` for any
 `multiplayer` node that is not an object, and `continue`s past any `slotOptions` row whose `player`
 is not a number or whose `allowed` is not an array. The roster is then still served — derived
 against an empty lobby table.
@@ -33,7 +33,7 @@ Pre-existing on `main`; left alone by the cleanup pass because fixing it changes
 - Decide and record whether a present-but-unparseable table should also drop the roster rather than
   serve it against an empty table. Dropping is the safer read of "never serve a wrong roster", but it
   is a player-visible change (the map loses its slot list), so it needs the user's call.
-- Extend `packages/content-routes/test/maps-index.test.ts`, which already covers the malformed-meta
+- Extend `packages/content-resolver/test/maps-index.test.ts`, which already covers the malformed-meta
   and malformed-script cases but not a malformed `multiplayer` node.
 
 ## Verify
