@@ -54,6 +54,61 @@ export interface MarkerScan {
   readonly ignoreFlag: Entity | undefined;
 }
 
+/** A blocker-cell consumer — see {@link eachBlockerCell} for the channel contract. */
+export type BlockerVisit = (x: number, y: number, channel: BlockerChannel) => void;
+
+/** One standing resource's (cell, channel) contributions — the per-entity slice of
+ *  {@link eachBlockerCell}, shared with the incremental work-flag memo so the two cannot drift.
+ *  A Position-less entity contributes nothing (the query-driven walk never sees it). */
+export function resourceBlockerCells(world: World, e: Entity, visit: BlockerVisit): void {
+  const p = world.tryGet(e, Position);
+  if (p === undefined) return;
+  const { hx, hy } = nodeOfPosition(p.x, p.y);
+  const fp = world.tryGet(e, ResourceFootprint);
+  if (fp === undefined) {
+    visit(hx, hy, OBSTACLE); // legacy anchor-only resource keeps the old same-tile rule
+    return;
+  }
+  visit(hx, hy, RESOURCE_ANCHOR);
+  for (const c of fp.walk) visit(hx + c.dx, hy + c.dy, OBSTACLE);
+  for (const c of fp.build) visit(hx + c.dx, hy + c.dy, EXCLUSION);
+}
+
+/** One standing building's (cell, channel) contributions (see {@link resourceBlockerCells}). */
+export function buildingBlockerCells(
+  world: World,
+  content: ContentSet,
+  e: Entity,
+  visit: BlockerVisit,
+): void {
+  const b = world.tryGet(e, Building);
+  const p = world.tryGet(e, Position);
+  if (b === undefined || p === undefined) return;
+  const { hx, hy } = nodeOfPosition(p.x, p.y);
+  const fp = buildingFootprintOf(content, b.buildingType);
+  const body = buildingFlagBody(content, b.buildingType);
+  const zone = fp?.reserved.length ? fp.reserved : ANCHOR_ONLY;
+  for (const c of body) visit(hx + c.dx, hy + c.dy, OBSTACLE);
+  for (const c of zone) visit(hx + c.dx, hy + c.dy, BUILDING_ZONE);
+}
+
+/** One signpost's contribution: its anchor is an OBSTACLE — no building's reserved zone and no
+ *  work flag may cover it (observed original behaviour). It never blocks movement (no walk overlay). */
+export function signpostBlockerCells(world: World, e: Entity, visit: BlockerVisit): void {
+  const p = world.tryGet(e, Position);
+  if (p === undefined) return;
+  const { hx, hy } = nodeOfPosition(p.x, p.y);
+  visit(hx, hy, OBSTACLE);
+}
+
+/** One delivery flag's contribution: its cell on the MARKER channel. */
+export function markerBlockerCells(world: World, e: Entity, visit: BlockerVisit): void {
+  const p = world.tryGet(e, Position);
+  if (p === undefined) return;
+  const { hx, hy } = nodeOfPosition(p.x, p.y);
+  visit(hx, hy, MARKER);
+}
+
 /**
  * Enumerate every (cell, channel) the world's standing resources, buildings, signposts and — when
  * `markers` is given — delivery flags contribute. Consumers filter by channel; a cell may be visited on
@@ -63,46 +118,18 @@ export interface MarkerScan {
 export function eachBlockerCell(
   world: World,
   content: ContentSet,
-  visit: (x: number, y: number, channel: BlockerChannel) => void,
+  visit: BlockerVisit,
   markers?: MarkerScan,
 ): void {
-  for (const e of world.query(Resource, Position)) {
-    const p = world.get(e, Position);
-    const { hx, hy } = nodeOfPosition(p.x, p.y);
-    const fp = world.tryGet(e, ResourceFootprint);
-    if (fp === undefined) {
-      visit(hx, hy, OBSTACLE); // legacy anchor-only resource keeps the old same-tile rule
-      continue;
-    }
-    visit(hx, hy, RESOURCE_ANCHOR);
-    for (const c of fp.walk) visit(hx + c.dx, hy + c.dy, OBSTACLE);
-    for (const c of fp.build) visit(hx + c.dx, hy + c.dy, EXCLUSION);
-  }
-  for (const e of world.query(Building, Position)) {
-    const b = world.get(e, Building);
-    const p = world.get(e, Position);
-    const { hx, hy } = nodeOfPosition(p.x, p.y);
-    const fp = buildingFootprintOf(content, b.buildingType);
-    const body = buildingFlagBody(content, b.buildingType);
-    const zone = fp?.reserved.length ? fp.reserved : ANCHOR_ONLY;
-    for (const c of body) visit(hx + c.dx, hy + c.dy, OBSTACLE);
-    for (const c of zone) visit(hx + c.dx, hy + c.dy, BUILDING_ZONE);
-  }
+  for (const e of world.query(Resource, Position)) resourceBlockerCells(world, e, visit);
+  for (const e of world.query(Building, Position)) buildingBlockerCells(world, content, e, visit);
   if (markers !== undefined) {
     for (const e of world.query(DeliveryFlag, Position)) {
       if (e === markers.ignoreFlag) continue;
-      const p = world.get(e, Position);
-      const { hx, hy } = nodeOfPosition(p.x, p.y);
-      visit(hx, hy, MARKER);
+      markerBlockerCells(world, e, visit);
     }
   }
-  // A signpost blocks building placement on its cell (never movement — it enters no walk overlay): its
-  // anchor is an OBSTACLE, so no building's reserved zone may cover it (observed original behaviour).
-  for (const e of world.query(Signpost, Position)) {
-    const p = world.get(e, Position);
-    const { hx, hy } = nodeOfPosition(p.x, p.y);
-    visit(hx, hy, OBSTACLE);
-  }
+  for (const e of world.query(Signpost, Position)) signpostBlockerCells(world, e, visit);
 }
 
 /**
@@ -121,9 +148,9 @@ export function eachBlockerCell(
  *     so a stored entity's cells are fixed;
  *   - a `ResourceFootprint` stamp/unstamp is always bundled in the same step with the `Resource` add/destroy
  *     that also moves this version — folding its generation in is belt-and-suspenders for any future path
- *     that decouples them. Completeness is load-bearing: the work-flag command gates consume a memo keyed
- *     on this version (`workFlagPlacementBlocks`), so a missed input would be a decision on a stale set,
- *     not just an overlay wash.
+ *     that decouples them. Completeness is load-bearing: the signpost placement probe memoizes on this
+ *     version (via `workFlagBlockerVersion`), so a missed input would be a decision on a stale set, not
+ *     just an overlay wash.
  * A string (not a packed number) so the monotonic counters compose with no overflow/aliasing reasoning.
  * Read-only + deterministic (a pure function of the mutation history); never hashed, never a sim decision.
  */
