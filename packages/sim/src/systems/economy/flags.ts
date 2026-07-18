@@ -14,7 +14,7 @@ import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import type { NodeId } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { buildingFlagBody, translatedCells } from '../footprint/geometry.js';
-import { nearestWorkFlagPlacement } from '../footprint/index.js';
+import { nearestWorkFlagPlacement, noteWorkFlagMove } from '../footprint/index.js';
 import { canonicalById, clearNavState, entityNode } from '../spatial.js';
 
 /**
@@ -84,6 +84,7 @@ export function relocateWorkFlag(
   p.x = pos.x;
   p.y = pos.y;
   world.touch(flag);
+  noteWorkFlagMove(world); // an in-place Position write — componentGeneration cannot see it
   // Each match mutates only its own state, so the scan's store order is permitted — no chosen-entity pick.
   for (const e of gatherer !== undefined ? [gatherer] : world.query(WorkFlag)) {
     if (world.tryGet(e, WorkFlag)?.flag !== flag) continue;

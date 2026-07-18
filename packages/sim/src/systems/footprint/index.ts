@@ -27,6 +27,7 @@ export {
   canPlaceBuilding,
   canPlaceWorkFlag,
   nearestWorkFlagPlacement,
+  noteWorkFlagMove,
   type PlacementProbe,
   placementBlockerVersion,
   placementProbe,

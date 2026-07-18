@@ -97,11 +97,22 @@ export function nearestWorkFlagPlacement(
   return best;
 }
 
+/** Per-world count of work-flag RELOCATIONS. `componentGeneration` sees only add/remove — a relocate
+ *  mutates the flag's `Position` in place, and a flag is the one blocker that moves — so the version
+ *  below counts moves explicitly. Bumped by the single relocate seam (`relocateWorkFlag`). */
+const flagMoves = new WeakMap<World, number>();
+
+/** Record one work-flag relocation, invalidating every {@link workFlagBlockerVersion}-keyed memo. */
+export function noteWorkFlagMove(world: World): void {
+  flagMoves.set(world, (flagMoves.get(world) ?? 0) + 1);
+}
+
 /**
  * The version of the WORK-FLAG blocker inputs — {@link placementBlockerVersion} plus the `DeliveryFlag`
- * generation, since this rule also consumes the marker channel the building rule ignores. The signpost
- * placement overlay keys its memoized band probe on this.
+ * generation, since this rule also consumes the marker channel the building rule ignores, plus the
+ * flag-MOVE count the generation cannot see. The signpost placement overlay keys its memoized band
+ * probe on this.
  */
 export function workFlagBlockerVersion(world: World): string {
-  return `${placementBlockerVersion(world)}.${world.componentGeneration(DeliveryFlag)}`;
+  return `${placementBlockerVersion(world)}.${world.componentGeneration(DeliveryFlag)}.${flagMoves.get(world) ?? 0}`;
 }

@@ -8,6 +8,7 @@ export { canPlaceBuilding, type PlacementProbe, placementProbe } from './buildin
 export {
   canPlaceWorkFlag,
   nearestWorkFlagPlacement,
+  noteWorkFlagMove,
   workFlagBlockerVersion,
   workFlagPlacementBlocks,
 } from './work-flag.js';
