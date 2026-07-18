@@ -28,7 +28,7 @@ import { chase, disengage, type MeleeSlots, returnToAnchor } from './chase.js';
 import { type CombatantStance, engageSpec, resolveTarget, stanceMode } from './engagement.js';
 import { fleeDrive } from './flee.js';
 import { HostilePresence } from './presence.js';
-import { combatTargetNode } from './target-node.js';
+import { type BuildingBodyNodeCache, buildingBodyNodes, combatTargetNode } from './target-node.js';
 import { hostileAnimalNow, isValidTarget } from './targeting.js';
 import { attackerWeapon, startAttack, targetMaterial } from './weapons.js';
 
@@ -83,28 +83,34 @@ export const combatSystem: System = (world, ctx) => {
   // the canonical (ascending-id) list, so a distance/first-match tie-break lands on the same winner.
   const combatants = canonicalById(world.query(Settler, Health, Position));
   // Attackable buildings JOIN the target index (never the seeker loop): a warrior can strike an enemy
-  // building, but a building never engages. Both index and presence bucket a building at its door node
-  // (combatTargetNode), the walkable cell a warrior reaches it from, so the reach math and the coarse
-  // early-out agree with the chase target. The merged list stays canonical so ring-search ties are stable.
+  // building, but a building never engages. Both index and presence bucket a building at its wall cells
+  // (buildingBodyNodes) — the faces a warrior reaches it from — so the reach math and the coarse early-out
+  // agree with the chase target. The merged list stays canonical so ring-search ties are stable.
   const buildingTargets = attackableBuildings(world);
   const targets = canonicalById([...combatants, ...buildingTargets]);
-  const nodeOf = (e: Entity): { x: number; y: number } | null => {
-    const n = combatTargetNode(world, ctx, terrain, e);
-    const { x, y } = terrain.coordsOf(n);
-    return { x, y };
+  // A building never moves within a tick, so its wall nodes are memoized once and shared by the index/
+  // presence build and every chaser's reach + chase resolution (combatTargetNode), instead of re-translating
+  // the footprint per lookup.
+  const bodyNodes: BuildingBodyNodeCache = new Map();
+  // A unit buckets at its own node; a building at EVERY wall cell (buildingBodyNodes), so a ring search
+  // finds it at the distance to its nearest face and a seeker near any side wakes to it — the siege spreads
+  // around the whole footprint instead of queueing at one door.
+  const nodesOf = (e: Entity): { x: number; y: number }[] => {
+    if (!world.has(e, Building)) return [terrain.coordsOf(entityNode(world, terrain, e))];
+    return buildingBodyNodes(world, ctx, terrain, e, bodyNodes).map((n) => terrain.coordsOf(n));
   };
-  const index = new NodeBuckets(world, targets, nodeOf);
+  const index = new NodeBuckets(world, targets, undefined, nodesOf);
   // The coarse presence grid — the owned seekers' "any enemy possibly in range?" early-out, so a
   // standing army on a peaceful two-player map skips its per-fighter ring searches (golden rule 6). It
   // spans buildings too, so a lone army near an undefended enemy base still wakes to raze it.
-  const presence = new HostilePresence(world, targets, nodeOf);
+  const presence = new HostilePresence(world, targets, undefined, nodesOf);
 
   // The tick's melee-slot state (see {@link approachCell}); `standing` is built lazily, so a tick with no
   // chaser pays nothing. Chasers are served in the canonical combatant order, so slot assignment is
   // deterministic; the sets are per-tick derived state, never hashed.
   const slots: MeleeSlots = { claimed: new Set() };
   for (const e of combatants) {
-    engageCombatant(world, ctx, terrain, index, presence, slots, e);
+    engageCombatant(world, ctx, terrain, index, presence, slots, bodyNodes, e);
   }
 };
 
@@ -199,6 +205,7 @@ function engageCombatant(
   index: NodeBuckets,
   presence: HostilePresence,
   slots: MeleeSlots,
+  bodyNodes: BuildingBodyNodeCache,
   e: Entity,
 ): void {
   if (world.has(e, CurrentAtomic)) return; // mid-swing / mid-need: play it out
@@ -302,8 +309,8 @@ function engageCombatant(
     disengage(world, e);
     return;
   }
-  // Advance on the target's combat node — its own node for a unit, its door node for a building — the same
-  // node resolveTarget measured the distance to, so the chase walks toward where the swing will land.
-  const targetNode = combatTargetNode(world, ctx, terrain, target);
+  // Advance on the target's combat node — its own node for a unit, its nearest wall cell for a building —
+  // the same node resolveTarget measured the distance to, so the chase walks toward where the swing lands.
+  const targetNode = combatTargetNode(world, ctx, terrain, here, target, bodyNodes);
   chase(world, ctx, terrain, slots, e, here, targetNode, weapon, stance, spec.defend);
 }

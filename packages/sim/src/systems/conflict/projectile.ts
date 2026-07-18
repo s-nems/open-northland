@@ -1,4 +1,4 @@
-import { Health, Position, Projectile } from '../../components/index.js';
+import { Building, Health, Position, Projectile } from '../../components/index.js';
 import { eventAt } from '../../core/events.js';
 import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -99,6 +99,7 @@ function advanceProjectile(
       target: proj.target,
       munitionType: proj.munitionType,
       at: eventAt(targetPos.x, targetPos.y),
+      ...(world.has(proj.target, Building) ? { structure: true } : {}),
     });
     world.destroy(p);
     return;
