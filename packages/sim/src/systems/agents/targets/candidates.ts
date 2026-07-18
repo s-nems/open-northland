@@ -31,15 +31,18 @@ export interface TargetCandidates {
   readonly resources: readonly Entity[];
   /** Stores / food stores / workplace outputs: entities with {@link Stockpile} + {@link Position}. */
   readonly stockpiles: readonly Entity[];
-  /** {@link stockpiles} as a ring index keyed by interaction cell, for the nearest-store picks. */
+  /** {@link stockpiles} as a ring index keyed by interaction cell, for the nearest-store picks.
+   *  Built lazily by the first accessor (see {@link collectTargets}). */
   readonly stockpileCells: InteractionCellIndex;
   /** Building-keyed targets (temples): entities with {@link Building} + {@link Position}. */
   readonly buildings: readonly Entity[];
-  /** {@link buildings} as a ring index keyed by interaction cell, for the nearest-temple pick. */
+  /** {@link buildings} as a ring index keyed by interaction cell, for the nearest-temple pick.
+   *  Built lazily by the first accessor (see {@link collectTargets}). */
   readonly buildingCells: InteractionCellIndex;
   /** Construction sites, kept separate so an idle world scans an empty list. */
   readonly constructionSites: readonly Entity[];
-  /** {@link constructionSites} as a ring index keyed by interaction cell, for the nearest-site picks. */
+  /** {@link constructionSites} as a ring index keyed by interaction cell, for the nearest-site picks.
+   *  Built lazily by the first accessor (see {@link collectTargets}). */
   readonly constructionSiteCells: InteractionCellIndex;
   /** Felled trunks and dropped-good piles, kept separate from persistent stores. */
   readonly groundDrops: readonly Entity[];
@@ -56,7 +59,14 @@ export interface TargetCandidates {
   readonly yard: YardTargets;
 }
 
-/** Snapshot the planner's canonical target categories once for the tick. */
+/** Snapshot the planner's canonical target categories once for the tick.
+ *
+ *  The three {@link InteractionCellIndex}es are lazy getters memoized for the tick (the
+ *  `FarmClaims.sowScan` shape), so a tick where no settler asks for a nearest store / temple / site
+ *  never constructs that index. Deferring the build cannot move a pick: each index is built from the
+ *  eager candidate list here, and its constructor reads only `Building` + `Position` + the content
+ *  footprint — none of which the planner pass mutates — so the first-access build is byte-identical
+ *  to a tick-start build. */
 export function collectTargets(world: World, ctx: SystemContext, terrain: TerrainGraph): TargetCandidates {
   const harvestAtomicByGood = new Map<number, number>();
   for (const good of ctx.content.goods) {
@@ -95,14 +105,26 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
     if (fields === undefined) cropsByFarm.set(farm, [crop]);
     else fields.push(crop);
   }
+  let stockpileCells: InteractionCellIndex | undefined;
+  let buildingCells: InteractionCellIndex | undefined;
+  let constructionSiteCells: InteractionCellIndex | undefined;
   return {
     resources: canonicalResources(world),
     stockpiles,
-    stockpileCells: new InteractionCellIndex(world, ctx, terrain, stockpiles),
+    get stockpileCells() {
+      stockpileCells ??= new InteractionCellIndex(world, ctx, terrain, stockpiles);
+      return stockpileCells;
+    },
     buildings,
-    buildingCells: new InteractionCellIndex(world, ctx, terrain, buildings),
+    get buildingCells() {
+      buildingCells ??= new InteractionCellIndex(world, ctx, terrain, buildings);
+      return buildingCells;
+    },
     constructionSites,
-    constructionSiteCells: new InteractionCellIndex(world, ctx, terrain, constructionSites),
+    get constructionSiteCells() {
+      constructionSiteCells ??= new InteractionCellIndex(world, ctx, terrain, constructionSites);
+      return constructionSiteCells;
+    },
     groundDrops: canonicalById(world.query(GroundDrop, Stockpile, Position)),
     cropsByFarm,
     harvestAtomicByGood,
