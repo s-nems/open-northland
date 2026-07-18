@@ -1,7 +1,7 @@
 import type { WorldSnapshot } from '@open-northland/sim';
 import type { FogGhost } from '../fog/index.js';
 import { isVisible, ONE, tileToScreen, type Viewport } from '../projection/index.js';
-import { type BrightnessField, type ElevationField, terrainLiftAt } from '../terrain/index.js';
+import { type ElevationField, terrainLiftAt } from '../terrain/index.js';
 import { assignProjectileArc, assignSettlerFields, pushGhostItems, spriteDepth } from './collect-fields.js';
 import type { DrawItem, MutableDrawItem, SpriteState } from './draw-item.js';
 import { SIGNPOST_BOARD_FRAMES, signpostBoardsOf } from './signpost-boards.js';
@@ -52,9 +52,6 @@ export interface SpriteSceneOptions {
   readonly viewport?: Viewport | undefined;
   /** The map's terrain-height field; absent/flat = no lift. */
   readonly elevation?: ElevationField | undefined;
-  /** The composed terrain-shading field ({@link import('../terrain/index.js')} + hillshade); absent or
-   *  unshaded = no entity shading. Sampled at each item's feet into {@link DrawItem.shade}. */
-  readonly brightness?: BrightnessField | undefined;
   /** Entities the retained static map-object layer draws instead (a decoded map's virgin resource nodes) —
    *  skipped entirely: no draw item, not in {@link SpriteScene.liveRefs}. */
   readonly staticRefs?: ReadonlySet<number> | undefined;
@@ -115,7 +112,6 @@ export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOpt
   const {
     viewport,
     elevation,
-    brightness,
     staticRefs,
     fogVisible,
     ghosts,
@@ -123,7 +119,6 @@ export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOpt
     portraitRef,
     playerColourOf,
   } = opts;
-  const shadeField = brightness?.shaded === true ? brightness : undefined;
   const items: MutableDrawItem[] = [];
   const liveRefs = new Set<number>();
   // Target positions for facing mid-swing actors and aiming projectiles: built once per snapshot and
@@ -282,12 +277,6 @@ export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOpt
     }
     const drawLift = lift + arcLift;
     if (drawLift !== 0) item.lift = drawLift;
-    // Feet-anchor terrain shading (see DrawItem.shade): resource nodes stay full-bright (the measured
-    // tree-canopy exemption, applied kind-wide so the static→pool handover can't jump) and projectiles
-    // are airborne; every other kind samples the same field the ground drew with.
-    if (shadeField !== undefined && kind !== 'resource' && kind !== 'projectile') {
-      item.shade = shadeField.brightnessAt(tileX, tileY);
-    }
     // The portrait subject that only survived a cull (off-screen/fogged/indoor) is drawn for the panel
     // cutout but hidden on the main map; an indoor one also freezes to a motionless standing pose.
     if (isPortrait && (offscreen || fogged || indoorSettler)) item.portraitOnly = true;

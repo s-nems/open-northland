@@ -11,7 +11,7 @@ import {
 } from '../../data/projection/index.js';
 import { collectSpriteScene, type DrawItem, paintOrderBias } from '../../data/scene/index.js';
 import { buildTimeThreshold, type SpriteKind } from '../../data/sprites/index.js';
-import { type BrightnessField, type ElevationField, scaleColour } from '../../data/terrain/index.js';
+import type { ElevationField } from '../../data/terrain/index.js';
 import { PalettedSprite } from '../paletted-sprite/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
@@ -72,9 +72,6 @@ export interface PoolFrame {
   readonly screenH: number;
   /** The map's terrain-height field; a flat field (maxLift 0) costs nothing. */
   readonly elevation: ElevationField;
-  /** The composed terrain-shading field the ground drew with — sampled at each entity's feet so a
-   *  sprite sits in the scene lighting ({@link DrawItem.shade}). Absent = no entity shading. */
-  readonly brightness?: BrightnessField;
   /** Fixed-timestep interpolation fraction [0,1]: draw each entity `alpha` of the way between its last
    *  two tick anchors. `1` draws raw tick positions (the static `?shot` entry). */
   readonly alpha: number;
@@ -154,7 +151,6 @@ export class SpritePool {
     const scene = collectSpriteScene(frame.snapshot, {
       viewport: frame.viewport,
       elevation: frame.elevation,
-      brightness: frame.brightness,
       staticRefs: frame.staticRefs,
       fogVisible: frame.fogVisible,
       ghosts: frame.ghosts,
@@ -492,8 +488,6 @@ export class SpritePool {
         spr.place(originX, originY, camScale * layer.scale, frame.screenW, frame.screenH);
         spr.artScale = layer.scale; // retained so {@link placePalettedFor} can re-place for the portrait inset
         spr.player = playerRow;
-        // Feet-anchor terrain shading (DrawItem.shade) — in-shader, so it can brighten past ×1 like the ground.
-        spr.brightness = item.shade ?? 1;
         spr.visible = true;
       } else {
         let spr = pe.sprites[i] as Sprite | undefined;
@@ -516,13 +510,8 @@ export class SpritePool {
           spr.scale.set(layer.scale);
           // A fog ghost dims to the explored-grey grading; assigned unconditionally so a sprite reused
           // across the live↔ghost transition always carries the right tint (tint is a cheap batch
-          // attribute — ghosts are never paletted, statics don't take the mesh path). The feet-anchor
-          // terrain shade (DrawItem.shade) rides the same tint — clamped at ×1, a batch tint cannot
-          // brighten (the named approximation shared with the tall map objects).
-          spr.tint = scaleColour(
-            entityTint(item.ref, item.ghost === true, frame.highlight),
-            Math.min(1, item.shade ?? 1),
-          );
+          // attribute — ghosts are never paletted, statics don't take the mesh path).
+          spr.tint = entityTint(item.ref, item.ghost === true, frame.highlight);
           spr.visible = true;
         }
       }
