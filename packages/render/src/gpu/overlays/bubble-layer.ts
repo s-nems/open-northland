@@ -8,9 +8,9 @@ import { retainOffscreen, retireUndrawn } from './retained-pool.js';
 
 /**
  * The settler-bubble layer — the decoded thought bubble (`ls_gui_bubbles`) floating over a settler's
- * head while it is in a standing family state: a woman with a make-child order in progress, or either
- * partner walking through their wedding. A client-side projection of the frozen snapshot (never sim
- * state): the app scans each settler's `ChildOrder` / `Wedding` component and hands over the
+ * head while it is in a standing family state (a make-child order, a wedding walk) or a pressing need
+ * (too hungry / too sleepy to keep working). A client-side projection of the frozen snapshot (never sim
+ * state): the app scans each settler's `ChildOrder` / `Wedding` / need components and hands over the
  * {@link SettlerBubble} list, and this layer draws one bubble sprite per settler above its head, panning/
  * zooming with the world (a child of the camera's `worldLayer`, above the sprites).
  *
@@ -26,9 +26,9 @@ import { retainOffscreen, retireUndrawn } from './retained-pool.js';
  * With no decoded art supplied (a checkout without `content/`) the layer draws nothing.
  */
 
-/** Which standing family state a bubble marks — the make-child order, or a wedding in progress. Each
- *  kind selects its own frame from the bubble sheet. */
-export type SettlerBubbleKind = 'child' | 'partner';
+/** Which standing state a bubble marks — the make-child order, a wedding in progress, or a pressing
+ *  hunger/sleep need. Each kind selects its own frame from the bubble sheet. */
+export type SettlerBubbleKind = 'child' | 'partner' | 'hungry' | 'sleepy';
 
 /** One settler's bubble: its entity id (the retained-pool key) and the snapshot `Position` (fixed-point
  *  units) the layer projects when the pool didn't draw the settler, plus the state it marks. */

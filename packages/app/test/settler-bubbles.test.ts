@@ -1,13 +1,14 @@
-import { fx } from '@open-northland/sim';
+import { fx, ONE, systems } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { computeSettlerBubbles } from '../src/view/projections/index.js';
 import { type Ent, snapshotOf } from './support/snapshot.js';
 
 /**
  * computeSettlerBubbles — the pure snapshot→bubble projection the render layer floats over a settler's
- * head. It reads the standing family state the sim drives: a woman's `ChildOrder` shows the `child`
+ * head. It reads the standing family state the sim drives (a woman's `ChildOrder` shows the `child`
  * bubble until the birth; a `Wedding` in progress shows the `partner` bubble on both partners until they
- * marry. The bubble anchors on the settler's own `Position`.
+ * marry) and the pressing needs (hunger/fatigue at the sim's satisfy thresholds show the `hungry`/`sleepy`
+ * bubble). The bubble anchors on the settler's own `Position`.
  */
 
 const WOMAN = 5; // any adult job id — the projection keys on the components, not the trade
@@ -51,5 +52,61 @@ describe('computeSettlerBubbles', () => {
     expect(computeSettlerBubbles(snap)).toEqual([
       { id: 2, x: fx.fromInt(5), y: fx.fromInt(5), kind: 'child' },
     ]);
+  });
+
+  it('floats hungry/sleepy bubbles at the sim thresholds, hunger first (the drive-ladder order)', () => {
+    const sated = fx.div(ONE, fx.fromInt(2)); // below the ¾·ONE triggers — no bubble
+    const snap = snapshotOf([
+      {
+        id: 1,
+        components: {
+          Settler: { jobType: MAN, hunger: systems.HUNGER_EAT_THRESHOLD, fatigue: sated },
+          Position: { x: fx.fromInt(1), y: fx.fromInt(1) },
+        },
+      },
+      {
+        id: 2,
+        components: {
+          Settler: { jobType: MAN, hunger: sated, fatigue: systems.FATIGUE_SLEEP_THRESHOLD },
+          Position: { x: fx.fromInt(2), y: fx.fromInt(1) },
+        },
+      },
+      {
+        // Both pressing: hunger wins, like the planner's eat-before-sleep rung order.
+        id: 3,
+        components: {
+          Settler: { jobType: MAN, hunger: ONE, fatigue: ONE },
+          Position: { x: fx.fromInt(3), y: fx.fromInt(1) },
+        },
+      },
+      {
+        id: 4,
+        components: {
+          Settler: { jobType: MAN, hunger: sated, fatigue: sated },
+          Position: { x: fx.fromInt(4), y: fx.fromInt(1) },
+        },
+      },
+    ]);
+
+    expect(computeSettlerBubbles(snap).map((b) => [b.id, b.kind])).toEqual([
+      [1, 'hungry'],
+      [2, 'sleepy'],
+      [3, 'hungry'],
+    ]);
+  });
+
+  it('a family bubble outranks a pressing need bubble', () => {
+    const snap = snapshotOf([
+      {
+        id: 1,
+        components: {
+          Settler: { jobType: WOMAN, hunger: ONE, fatigue: ONE },
+          Position: { x: fx.fromInt(1), y: fx.fromInt(1) },
+          Wedding: { partner: 2, kissing: false },
+        },
+      },
+    ]);
+
+    expect(computeSettlerBubbles(snap).map((b) => b.kind)).toEqual(['partner']);
   });
 });

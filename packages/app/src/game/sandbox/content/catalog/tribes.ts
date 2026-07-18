@@ -6,9 +6,11 @@ import {
   CULTIVATE_ATOMIC,
   KISS_ATOMIC,
   KISSED_ATOMIC,
+  LISTEN_ATOMIC,
   PLANT_ATOMIC,
   STORE_PICKUP_ATOMIC,
   STORE_PILEUP_ATOMIC,
+  TALK_ATOMIC,
   WHEAT_HARVEST_ATOMIC,
 } from '../../../../catalog/atomics.js';
 import { HUMAN_HITPOINTS } from '../../../../catalog/units.js';
@@ -30,11 +32,15 @@ import {
 import {
   BUILD_GUIDE_ANIMATION,
   BUILD_HOUSE_ANIMATION,
+  CIVILIST_LISTEN_ANIMATION,
+  CIVILIST_TALK_ANIMATION,
   FARMER_REAP_ANIMATION,
   FARMER_SOW_ANIMATION,
   FARMER_WATER_ANIMATION,
   STORE_PICKUP_ANIMATION,
   STORE_PILEUP_ANIMATION,
+  WOMAN_LISTEN_ANIMATION,
+  WOMAN_TALK_ANIMATION,
 } from '../../work-animations.js';
 import type { SandboxContentExtras } from '../types.js';
 import { SANDBOX_JOB_ENABLES } from './tech-graph.js';
@@ -76,6 +82,14 @@ export function buildSandboxTribes(
       { jobType: JOB_CIVILIST, atomicId: KISS_ATOMIC, animation: 'viking_civilist_kiss' },
       { jobType: JOB_CIVILIST, atomicId: KISSED_ATOMIC, animation: 'viking_civilist_kissed' },
       { jobType: JOB_CIVILIST, atomicId: MAKE_LOVE_ATOMIC, animation: 'viking_civilist_make_love' },
+      // The gossip pair: talk/listen (atomics 14/15) time the chat rounds and carry the channel-3
+      // refill pulses — bound for the woman/civilist jobs like the original's `setatomic 5/6 14/15`
+      // rows; every other trade resolves them through the sim's civilist fallback (the `baseatomics 6`
+      // inheritance, systems/social/gossip.ts).
+      { jobType: JOB_WOMAN, atomicId: TALK_ATOMIC, animation: WOMAN_TALK_ANIMATION },
+      { jobType: JOB_WOMAN, atomicId: LISTEN_ATOMIC, animation: WOMAN_LISTEN_ANIMATION },
+      { jobType: JOB_CIVILIST, atomicId: TALK_ATOMIC, animation: CIVILIST_TALK_ANIMATION },
+      { jobType: JOB_CIVILIST, atomicId: LISTEN_ATOMIC, animation: CIVILIST_LISTEN_ANIMATION },
       { jobType: JOB_SOLDIER_UNARMED, atomicId: ATTACK_ATOMIC, animation: 'viking_fist_attack' },
       { jobType: JOB_BUILDER, atomicId: BUILD_HOUSE_ATOMIC, animation: BUILD_HOUSE_ANIMATION },
       { jobType: JOB_SCOUT, atomicId: BUILD_GUIDE_ATOMIC, animation: BUILD_GUIDE_ANIMATION },

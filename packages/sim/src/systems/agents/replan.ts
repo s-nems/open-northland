@@ -1,4 +1,5 @@
 import {
+  Chat,
   CurrentAtomic,
   Engagement,
   FamilyDuty,
@@ -28,11 +29,15 @@ import { type FarmClaims, releaseFarmTask } from './farming/index.js';
 const STRANDED_RETRY_TICKS = 4 * TICKS_PER_SECOND;
 
 /** Whether a drive that runs its own failed-route protocol owns `e`'s walk: the player-order, chase,
- *  flee, and wedding systems each read the `failed` flag and clear/cancel it themselves — the planner's
- *  stranded recovery must not eat their signal. */
+ *  flee, wedding, and gossip systems each read the `failed` flag and clear/cancel it themselves — the
+ *  planner's stranded recovery must not eat their signal. */
 function ownsFailedRoute(world: World, e: Entity): boolean {
   return (
-    world.has(e, PlayerOrder) || world.has(e, Engagement) || world.has(e, Fleeing) || world.has(e, Wedding)
+    world.has(e, PlayerOrder) ||
+    world.has(e, Engagement) ||
+    world.has(e, Fleeing) ||
+    world.has(e, Wedding) ||
+    world.has(e, Chat)
   );
 }
 

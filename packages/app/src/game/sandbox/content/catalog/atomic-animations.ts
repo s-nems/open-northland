@@ -21,17 +21,46 @@ import {
   BUILD_HOUSE_ANIMATION,
   BUILD_HOUSE_STRIKE_FRAME,
   BUILD_HOUSE_SWING_LENGTH,
+  CHANGE_SOCIAL_EVENT_TYPE,
+  CIVILIST_LISTEN_ANIMATION,
+  CIVILIST_TALK_ANIMATION,
+  CIVILIST_TALK_LENGTH,
+  CIVILIST_TALK_PULSE_FRAMES,
   FARMER_REAP_ANIMATION,
   FARMER_REAP_LENGTH,
   FARMER_SOW_ANIMATION,
   FARMER_SOW_LENGTH,
   FARMER_WATER_ANIMATION,
   FARMER_WATER_LENGTH,
+  LISTEN_QUIET_PULSE_VALUE,
   PLAY_SOUND_FX_EVENT_TYPE,
   STORE_EXCHANGE_LENGTH,
   STORE_PICKUP_ANIMATION,
   STORE_PILEUP_ANIMATION,
+  TALK_PULSE_VALUE,
+  WOMAN_LISTEN_ANIMATION,
+  WOMAN_TALK_ANIMATION,
+  WOMAN_TALK_LENGTH,
+  WOMAN_TALK_PULSE_FRAMES,
 } from '../../work-animations.js';
+
+/** One talk/listen clip record: `length` ticks, restoring the company bar in channel-3 pulses of
+ *  `value` at `frames` (the extracted event rows, transcribed). */
+function chatClip(
+  name: string,
+  length: number,
+  frames: readonly number[],
+  value: number,
+): { id: string; name: string; length: number; interruptible: true; events: object[] } {
+  return {
+    id: name,
+    name,
+    length,
+    // `interruptable 1` in the source rows — a chat clip may be cut short by a higher drive.
+    interruptible: true,
+    events: frames.map((at) => ({ at, type: CHANGE_SOCIAL_EVENT_TYPE, value })),
+  };
+}
 
 /** Build the animation-duration/event catalog consumed by atomic bindings. */
 export function buildSandboxAtomicAnimations(): readonly object[] {
@@ -52,6 +81,13 @@ export function buildSandboxAtomicAnimations(): readonly object[] {
     { id: 'viking_civilist_kissed', name: 'viking_civilist_kissed', length: 50 },
     { id: 'viking_woman_make_love', name: 'viking_woman_make_love', length: 50 },
     { id: 'viking_civilist_make_love', name: 'viking_civilist_make_love', length: 200 },
+    // The gossip talk/listen clips — EXTRACTED lengths + channel-3 pulse rows (see work-animations.ts):
+    // the civilist pair restores +800 per pulse both talking and listening; the woman restores +800
+    // talking but only +100 listening (she recovers on her talking turn — the pair alternates roles).
+    chatClip(CIVILIST_TALK_ANIMATION, CIVILIST_TALK_LENGTH, CIVILIST_TALK_PULSE_FRAMES, TALK_PULSE_VALUE),
+    chatClip(CIVILIST_LISTEN_ANIMATION, CIVILIST_TALK_LENGTH, CIVILIST_TALK_PULSE_FRAMES, TALK_PULSE_VALUE),
+    chatClip(WOMAN_TALK_ANIMATION, WOMAN_TALK_LENGTH, WOMAN_TALK_PULSE_FRAMES, TALK_PULSE_VALUE),
+    chatClip(WOMAN_LISTEN_ANIMATION, WOMAN_TALK_LENGTH, WOMAN_TALK_PULSE_FRAMES, LISTEN_QUIET_PULSE_VALUE),
     {
       id: 'viking_fist_attack',
       name: 'viking_fist_attack',

@@ -7,12 +7,15 @@ const BUBBLE_ATLAS_STEM = 'ls_gui_bubbles.gui_bubbles';
 /**
  * The `ls_gui_bubbles` frame each bubble kind draws (the bob index the `?icons` gallery labels). Both
  * romance states show the heart thought-bubble (frame 2) — the sheet's love bubble; the two are told
- * apart by context (a lone woman at home vs. a walking pair). Source basis: the decoded bubble sheet
- * (`ls_gui_bubbles.bmd`); frame choice is the user's visual pick, one constant to change per kind.
+ * apart by context (a lone woman at home vs. a walking pair). The need bubbles are frame 0 (sleep) and
+ * frame 4 (hunger). Source basis: the decoded bubble sheet (`ls_gui_bubbles.bmd`); the frame→state map is
+ * observed original behavior (no readable ini names the frames), one constant to change per kind.
  */
 const BUBBLE_FRAME_ID: Readonly<Record<SettlerBubbleKind, number>> = {
   child: 2,
   partner: 2,
+  sleepy: 0,
+  hungry: 4,
 };
 
 /**
@@ -32,6 +35,10 @@ export async function loadSettlerBubbleGfx(): Promise<SettlerBubbleGfx | null> {
   }
   const child = layer.atlas.frames.get(BUBBLE_FRAME_ID.child);
   const partner = layer.atlas.frames.get(BUBBLE_FRAME_ID.partner);
-  if (child === undefined || partner === undefined) return null; // a stale atlas missing the frames
-  return { source: layer.source, frameByKind: { child, partner } };
+  const sleepy = layer.atlas.frames.get(BUBBLE_FRAME_ID.sleepy);
+  const hungry = layer.atlas.frames.get(BUBBLE_FRAME_ID.hungry);
+  if (child === undefined || partner === undefined || sleepy === undefined || hungry === undefined) {
+    return null; // a stale atlas missing the frames
+  }
+  return { source: layer.source, frameByKind: { child, partner, sleepy, hungry } };
 }

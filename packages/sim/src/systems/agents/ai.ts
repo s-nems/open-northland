@@ -1,11 +1,13 @@
 import {
   Age,
   Carrying,
+  Chat,
   Engagement,
   FamilyDuty,
   Female,
   Fleeing,
   JobAssignment,
+  needsEnabled,
   Owner,
   ownerOf,
   PlayerOrder,
@@ -27,6 +29,7 @@ import { planChildWander } from '../family/wander.js';
 import { isChild } from '../lifecycle/ageclass.js';
 import { MILITARY_MODE } from '../readviews/index.js';
 import { navigationLimitFor } from '../signposts/index.js';
+import { GossipCandidates, planGossipIdle, planGossipSeek } from '../social/index.js';
 import { canonicalById, isTravelling, NodeBuckets } from '../spatial.js';
 import { collectInboundSupply, isCarrierJob } from '../stores/index.js';
 import { deStackIdle, type SpacingState } from './destack.js';
@@ -73,8 +76,9 @@ export const aiSystem: System = (world, ctx) => {
  * ladder, in this fixed priority order (each drive returns `true` when it takes the settler for
  * this tick):
  *
- *   needs (eat > sleep > pray) → combat/hold gates → deliver a carried load → bound-farmer field loop →
- *   bound-producer loop → gather (chop/collect) → porter ferrying → store-carrier haul → idle de-stack.
+ *   needs (eat > sleep > pray) → combat/hold gates → family/gossip fences + the company (chat-seek) rung →
+ *   deliver a carried load → bound-farmer field loop → bound-producer loop → gather (chop/collect) →
+ *   porter ferrying → store-carrier haul → idle chat → idle de-stack.
  *
  * The order is part of the design (and of the goldens): needs sit above the combat/hold gates so a
  * starving combatant still feeds (a soft override), and the economy rungs go most-specific-first so
@@ -121,6 +125,10 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
   // Harvest claims: one digger per resource node at a time — nodes under a live harvest atomic plus the
   // picks made earlier this pass (see economy/harvest-claims.ts).
   const harvestClaims = collectHarvestClaims(world);
+  // Gossip: the lazy chat-candidate buckets (built only when a settler actually looks for a partner) and
+  // the needs gate — company rises only with needs on, so the chat rungs sleep with the mechanic.
+  const gossipCandidates = new GossipCandidates(world);
+  const gossipReady = needsEnabled(world);
 
   // Canonical settler order: the per-tick claim maps (farmClaims, seatClaims) hand out targets/seats
   // first-come-first-served, so the visit order is a pick, not a mere sweep — it must be ascending
@@ -196,6 +204,13 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // the FamilySystem drives a settler mid-wedding or on family duty; the economy leaves it alone.
     if (world.has(e, Wedding)) continue;
     if (world.has(e, FamilyDuty)) continue;
+    // Gossip fence + the company rung: a settler mid-chat is the GossipSystem's; a lonely one (deficit at
+    // the seek threshold) leaves its work to find a partner — above the economy rungs on purpose, the
+    // "worker downs tools to socialize" beat (see ../social/gossip.ts).
+    if (world.has(e, Chat)) continue;
+    if (gossipReady && planGossipSeek(world, e, settler, hereNode.hx, hereNode.hy, gossipCandidates)) {
+      continue;
+    }
     // The housewife rung: a woman takes no trade — her work is stocking the family larder (hoarding,
     // see planWomanHoard). Above the carry-delivery rung so food she lifted for the pantry goes HOME,
     // not to the nearest store.
@@ -278,9 +293,12 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
 
     // 5. STORE-CARRIER HAUL — an employed carrier (bound to a store's transport slot) ferries finished
     // workplace outputs to the stores. Hauling is a trade, not a default, so everyone else with nothing
-    // above is genuinely idle: de-stack off a shared tile so an idle crowd spreads out (./destack.ts).
+    // above is genuinely idle: chat with a nearby idle neighbour (../social/gossip.ts), else de-stack off
+    // a shared tile so an idle crowd spreads out (./destack.ts).
     if (!planCarrierHaul(plan, anyHaulable)) {
-      deStackIdle(world, ctx, terrain, e, hereNode.hx, hereNode.hy, spacing);
+      if (!gossipReady || !planGossipIdle(world, e, settler, hereNode.hx, hereNode.hy, gossipCandidates)) {
+        deStackIdle(world, ctx, terrain, e, hereNode.hx, hereNode.hy, spacing);
+      }
     }
   }
 }

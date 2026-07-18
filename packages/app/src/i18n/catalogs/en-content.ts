@@ -190,5 +190,10 @@ export const enContent = {
       title: 'Children feed themselves',
       summary: 'Hungry children walk to wild bushes and eat; the cared-for baby never self-feeds.',
     },
+    gossip: {
+      title: 'Gossip and need bubbles',
+      summary:
+        'Idle settlers pair up and chat to refill their company need — soldiers never join — while hungry and sleepy settlers show thought bubbles.',
+    },
   },
 } as const;

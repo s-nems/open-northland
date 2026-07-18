@@ -5,6 +5,7 @@ import { childrenScene } from './children.js';
 import { collisionScene } from './collision.js';
 import { familyScene } from './family.js';
 import { goodsCatalogScene } from './goods-catalog.js';
+import { gossipScene } from './gossip.js';
 import { sandboxScene } from './sandbox/index.js';
 import { signpostsScene } from './signposts.js';
 import type { SceneDefinition } from './types.js';
@@ -31,6 +32,7 @@ export const SCENES: readonly SceneDefinition[] = [
   signpostsScene,
   familyScene,
   childrenScene,
+  gossipScene,
 ];
 
 /** Look up a scene by its `?scene=<id>` value, or `undefined` if no scene has that id. */

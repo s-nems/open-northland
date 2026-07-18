@@ -39,9 +39,14 @@ const HARVEST_ATOMIC_IDS = {
  *  partner, and the pair must face each other for the kiss to read. Transcribed like {@link ATTACK_ATOMIC_ID}. */
 const KISS_ATOMIC_IDS = [20, 21] as const;
 
+/** The gossip talk/listen pair (`logicdefines.inc` TALK = 14 / LISTEN = 15) — like the kiss, each half's
+ *  atomic targets its partner and the pair turns to face each other for the chat to read. */
+const CHAT_ATOMIC_IDS = [14, 15] as const;
+
 /**
  * Every atomic whose runner faces its target while the swing plays: construction, combat attack, the
- * per-good harvest actions ({@link HARVEST_ATOMIC_IDS}), and the wedding kiss pair ({@link KISS_ATOMIC_IDS}).
+ * per-good harvest actions ({@link HARVEST_ATOMIC_IDS}), the wedding kiss pair ({@link KISS_ATOMIC_IDS}),
+ * and the gossip talk/listen pair ({@link CHAT_ATOMIC_IDS}).
  * A harvester, like an attacker, has stopped walking (no walk heading), so without a target-derived
  * facing it kept its last walk heading (or the default SE) and swung its axe/pick into empty air beside
  * the node it works — a woodcutter standing east of a tree chopped further east. Facing the node it
@@ -53,6 +58,7 @@ export const TARGET_FACING_ATOMIC_IDS: ReadonlySet<number> = new Set([
   ATTACK_ATOMIC_ID,
   ...Object.values(HARVEST_ATOMIC_IDS),
   ...KISS_ATOMIC_IDS,
+  ...CHAT_ATOMIC_IDS,
 ]);
 
 /** Per-snapshot memo of {@link enterableStoresOf}, keyed on snapshot identity — the module doc's

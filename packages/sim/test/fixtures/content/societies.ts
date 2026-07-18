@@ -30,6 +30,10 @@ export const societyContent = {
         { jobType: 18, atomicId: 29, animation: 'viking_reap' },
         { jobType: 18, atomicId: 34, animation: 'viking_sow' },
         { jobType: 18, atomicId: 35, animation: 'viking_water' },
+        // The gossip pair: talk (14) / listen (15), the original's `setatomic 5/6 14/15` slots — the
+        // GossipSystem resolves the round duration and the channel-3 refill pulses through these.
+        { jobType: 1, atomicId: 14, animation: 'viking_talk' },
+        { jobType: 1, atomicId: 15, animation: 'viking_listen' },
       ],
       // Tech-graph edges. (1) the carpenter (job 2) unlocks the smithy (house 4): the placement gate
       // (buildingEnabled) reads this — the smithy can only be placed once a carpenter settler exists.
@@ -171,6 +175,23 @@ export const societyContent = {
     { id: 'viking_eat', name: 'viking_eat', length: 5 },
     { id: 'viking_sleep', name: 'viking_sleep', length: 6 },
     { id: 'viking_pray', name: 'viking_pray', length: 7 },
+    // The talk/listen clips carry the original's channel-3 refill shape (five `event <at> 3 +800`
+    // pulses totalling the 4000-unit full bar — `viking_civilist_talk`), compressed to a short
+    // fixture length so gossip tests run in a handful of ticks.
+    {
+      id: 'viking_talk',
+      name: 'viking_talk',
+      length: 20,
+      interruptible: true,
+      events: [4, 8, 12, 16, 19].map((at) => ({ at, type: 3, value: 800 })),
+    },
+    {
+      id: 'viking_listen',
+      name: 'viking_listen',
+      length: 20,
+      interruptible: true,
+      events: [4, 8, 12, 16, 19].map((at) => ({ at, type: 3, value: 800 })),
+    },
     { id: 'viking_attack', name: 'viking_attack', length: 4 },
     { id: 'viking_hunter_attack', name: 'viking_hunter_attack', length: 4 },
     { id: 'wolf_attack', name: 'wolf_attack', length: 4 },
