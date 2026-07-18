@@ -33,9 +33,11 @@ export function boundWorkplaceTarget(
   const workplace = binding.workplace;
   const building = world.tryGet(workplace, Building);
   if (building === undefined || building.tribe !== tribe) return null;
-  // A trade needs its workhouse finished (readable source: `jobtypes.ini` `mustHaveFinishedWorkHouseFlag 1`,
-  // the same gate the farm twin applies) — in practice a running upgrade: its stashed stock reads as empty
-  // input slots, so an ungated producer would shuttle inputs store-to-store (the site refuses the drop).
+  // A trade needs its workhouse finished (readable source: `jobtypes.ini` `mustHaveFinishedWorkHouseFlag`,
+  // per-job data — 1 for every bound trade we model, and the 0 rows (hunter/scout/jester) never bind a
+  // workplace here; the same gate the farm twin applies) — in practice a running upgrade: its stashed stock
+  // reads as empty input slots, so an ungated producer would shuttle inputs store-to-store (the site
+  // refuses the drop).
   if (world.has(workplace, UnderConstruction)) return null;
   if (mergedRecipeOf(world, ctx, workplace) === undefined) return null;
   if (!buildingWorkerJobs(world, ctx, workplace).has(jobType)) return null;

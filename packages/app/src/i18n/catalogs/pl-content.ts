@@ -173,6 +173,7 @@ export const plContent = {
       title: 'Logistyka magazynu',
       summary: 'Tragarze zbierają luźne towary, dopóki magazyn nie osiągnie pojemności.',
     },
+    // New strings kept in English — the i18n pass owns the Polish catalog (see memory: english-ui-strings).
     upgrade: {
       title: 'Building upgrades',
       summary:

@@ -131,4 +131,53 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
       expect(landscapeIds, `nav class ${nav.typeId} missing after merge`).toContain(nav.typeId);
     }
   });
+
+  it('the upgradeTarget lane carries the known level chains and never chains a wonder', async () => {
+    // The whole upgrade mechanic hangs on this optional lane (`upgradeTierOf`, the HUD Upgrade button);
+    // a pipeline regression dropping it would fail no schema check and silently delete the feature.
+    // One pinned link per leveled kind (stable string ids), plus the wonders staying unchained (each
+    // record maps every size level to its own typeId — a self-link the extractor skips).
+    const { real } = await loadContentUnderTest();
+    const byId = new Map(real.buildings.map((b) => [b.id, b]));
+    const links = [
+      ['home_level_00', 'home_level_01'],
+      ['stock_00', 'stock_01'],
+      ['tower_00', 'tower_01'],
+    ] as const;
+    for (const [from, to] of links) {
+      const target = byId.get(to);
+      expect(target, `'${to}' missing from the real buildings`).toBeDefined();
+      expect(byId.get(from)?.upgradeTarget, `'${from}' → '${to}' chain link missing`).toBe(target?.typeId);
+    }
+    for (const b of real.buildings) {
+      if (b.id.startsWith('wonder')) expect(b.upgradeTarget, `'${b.id}' must not chain`).toBeUndefined();
+    }
+  });
+
+  it('every upgradeTarget link shares its familyBody and reserved footprint', async () => {
+    // The sim's placement-blocker memos key on Building MEMBERSHIP generations only, resting on the
+    // invariant that `familyBody`/`reserved` are identical across a type's whole level chain (an upgrade
+    // swaps `buildingType` in place — a value write the memo keys don't see). A chain link resolved from
+    // records with different family footprints would serve stale placement answers after an upgrade.
+    const { real } = await loadContentUnderTest();
+    const byTypeId = new Map(real.buildings.map((b) => [b.typeId, b]));
+    const cellKey = (cells: readonly { readonly dx: number; readonly dy: number }[] | undefined): string =>
+      JSON.stringify(
+        (cells ?? [])
+          .map((c): readonly [number, number] => [c.dx, c.dy])
+          .sort((a, b) => a[0] - b[0] || a[1] - b[1]),
+      );
+    for (const b of real.buildings) {
+      if (b.upgradeTarget === undefined) continue;
+      const target = byTypeId.get(b.upgradeTarget);
+      expect(target, `'${b.id}' upgradeTarget ${b.upgradeTarget} missing from content`).toBeDefined();
+      if (target === undefined) continue;
+      expect(cellKey(b.footprint?.familyBody), `'${b.id}' → '${target.id}' familyBody differs`).toBe(
+        cellKey(target.footprint?.familyBody),
+      );
+      expect(cellKey(b.footprint?.reserved), `'${b.id}' → '${target.id}' reserved differs`).toBe(
+        cellKey(target.footprint?.reserved),
+      );
+    }
+  });
 });

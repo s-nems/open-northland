@@ -66,7 +66,11 @@ import {
 export const constructionSystem: System = (world, ctx) => {
   for (const e of world.query(Building, Stockpile)) {
     if (!world.has(e, UnderConstruction)) continue; // built (or inert unmigrated fixture) — nothing to raise
-    advanceSite(world, ctx, e, world.get(e, Building), constructionBillOf(world, ctx, e));
+    const building = world.get(e, Building);
+    // A type absent from content has an empty bill and a zero labor total, which would read as
+    // "complete" and finish the site for free — a malformed-content site stays inert instead.
+    if (!contentIndex(ctx.content).buildings.has(building.buildingType)) continue;
+    advanceSite(world, ctx, e, building, constructionBillOf(world, ctx, e));
   }
 };
 
@@ -114,12 +118,15 @@ function advanceSite(
  */
 function finishSite(world: World, ctx: SystemContext, e: Entity, building: BuildingState): void {
   const upgrading = world.tryGet(e, Upgrading);
+  let adoptedTier = false;
   if (upgrading !== undefined) {
     const type = contentIndex(ctx.content).buildings.get(building.buildingType);
     const target = type === undefined ? undefined : upgradeTierOf(type, ctx);
     // The command validated the chain at start; content is immutable per sim, so target is present. The
-    // guard keeps a malformed-content world from crashing: the site then finishes as its old tier.
+    // guard keeps a malformed-content world from crashing: the site then finishes as its old tier
+    // (reported as a plain finish — no tier was adopted, so `buildingUpgraded` would lie).
     if (target !== undefined) {
+      adoptedTier = true;
       building.buildingType = target.typeId;
       building.level += 1;
       // The in-place type swap changes every buildingType-derived answer (stock slots, recipe, produces)
@@ -142,7 +149,7 @@ function finishSite(world: World, ctx: SystemContext, e: Entity, building: Build
   // left standing inside the finished walls.
   evictSettlersFromFootprint(world, ctx, e);
   ctx.events.emit(
-    upgrading !== undefined
+    adoptedTier
       ? { kind: 'buildingUpgraded', entity: e, level: building.level }
       : { kind: 'buildingFinished', entity: e },
   );

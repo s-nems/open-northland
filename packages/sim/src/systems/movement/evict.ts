@@ -2,10 +2,10 @@ import { Building, Owner, Position, Settler } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import { nearestUnblockedNode } from '../../nav/nearest.js';
-import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import type { BlockOverlay, NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { buildingFootprintOf, translatedCells } from '../footprint/geometry.js';
-import { buildingDoorNodes, dynamicBlockedCells, dynamicBlockOverlay } from '../footprint/index.js';
+import { buildingDoorNodes, dynamicBlockOverlay } from '../footprint/index.js';
 import { canonicalById, isTravelling, NodeBuckets } from '../spatial.js';
 
 /** Max nodes {@link evictSettlersFromFootprint}'s ring search visits before giving up — a plot boxed in
@@ -71,7 +71,9 @@ export function evictSettlersFromFootprint(world: World, ctx: SystemContext, bui
     else if (terrain.neighbours(at).some((n) => body.has(n))) nookCandidates.push(e);
   }
   if (evicteesUnsorted.length === 0 && nookCandidates.length === 0) return;
-  const blocked = dynamicBlockedCells(world, ctx, terrain); // includes this building's own body
+  // The membership VIEW, not the owning-set union: this runs on virtually every finish (the builder
+  // stands beside the plot, so nookCandidates is non-empty) and every read below is a `.has`.
+  const blocked = dynamicBlockOverlay(world, ctx, terrain); // includes this building's own body
   const doors = buildingDoorNodes(world, ctx, terrain);
   // A candidate is a sealed-nook evictee when its cell is itself standable — but not a door, the
   // designated stand the blocked-set carve-out spares — and every walkable orthogonal neighbour is
@@ -175,7 +177,7 @@ function nearestFreeCellOutside(
   terrain: TerrainGraph,
   from: NodeId,
   body: ReadonlySet<NodeId>,
-  blocked: ReadonlySet<NodeId>,
+  blocked: BlockOverlay,
   doors: ReadonlySet<NodeId>,
   occupancy: NodeBuckets,
   claimed: ReadonlySet<NodeId>,

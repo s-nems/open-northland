@@ -10,3 +10,7 @@ gallery's event list (`packages/app/src/entries/sound.ts`) with its i18n label r
 (`en-surfaces`/`pl-surfaces`, new strings in English). Source basis: whether the original plays the
 same or a distinct cue on an upgrade is unobserved — listen in the running original first if
 convenient; otherwise name the reuse as an approximation. Verify by ear via `?sounds` (human).
+
+While binding, note `cancelUpgrade` currently emits NO event (unlike every sibling state transition),
+so a cancel can never get a cue or renderer reaction — add an `upgradeCancelled` sim event in the same
+change if the cancel should be audible.

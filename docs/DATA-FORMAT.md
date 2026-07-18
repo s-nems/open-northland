@@ -113,7 +113,8 @@ headquarters/wonder. A home's level chain (typeIds 2..6) reads its tier's upgrad
 tribe; the per-tribe spread is a recorded source-basis deviation). `upgradeTarget` (optional) is the
 next level's typeId in the same `[GfxHouse]` record's `LogicType` table (`extractUpgradeTargets`) —
 the level-chain join the sim's manual upgrade follows; chains cover homes, warehouses, several
-workplaces, a tower, and the wonder's stages, and the field is absent on a chain's top level.
+workplaces, and a tower, and the field is absent on a chain's top level. The wonders are not
+chained: each record maps every size level to its own typeId (self-links are skipped).
 
 The sim consumes the IR; it never parses `.ini`. The mapping from raw fields to IR fields lives in
 the pipeline decoder for that type, and is documented inline there.

@@ -40,15 +40,14 @@ function billOf(
   if (!prev.has(building.typeId)) return building.construction; // a chain base / unchained type
   const merged = new Map<number, number>();
   const visited = new Set<number>();
-  for (
-    let tier: BuildingType | undefined = building;
-    tier !== undefined && !visited.has(tier.typeId);
-    tier = prev.has(tier.typeId) ? buildings.get(prev.get(tier.typeId) as number) : undefined
-  ) {
+  let tier: BuildingType | undefined = building;
+  while (tier !== undefined && !visited.has(tier.typeId)) {
     visited.add(tier.typeId);
     for (const line of tier.construction) {
       merged.set(line.goodType, (merged.get(line.goodType) ?? 0) + line.amount);
     }
+    const prevId = prev.get(tier.typeId);
+    tier = prevId === undefined ? undefined : buildings.get(prevId);
   }
   return [...merged.entries()]
     .sort((x, y) => x[0] - y[0])
