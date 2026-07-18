@@ -21,9 +21,9 @@ import { makeCellSampler } from './cell-field.js';
  * the lane (masked opaque-pixel ratio ×0.58 → ×1.58 across it), while tree canopies stay full-bright
  * even anchored on embr=0 border cells (flat regression over 118 canopies) — the app's object loader
  * applies the anchor-cell multiplier to everything but the tree logic types (`content/objects.ts`).
- * Buildings/settlers are unmeasured in the original (the corpus base sits near neutral); OpenNorthland
- * shades them at their feet anchor anyway ({@link import('../scene/draw-item.js').DrawItem.shade}) — a
- * named enhancement, so entities sit in the ground's light instead of floating over it.
+ * Buildings and settlers draw unshaded, as the original does: an earlier enhancement multiplied each
+ * sprite by its single feet-cell value, which blackened whole buildings standing on the baked
+ * slope-shadow (e.g. `boso_przez_swiat`), so it was dropped.
  */
 
 /**

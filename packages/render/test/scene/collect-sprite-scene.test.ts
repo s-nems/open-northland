@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { collectSpriteScene } from '../../src/data/scene/index.js';
-import { makeBrightnessField } from '../../src/data/terrain/index.js';
 import { ONE, tileToScreen } from '../../src/index.js';
 import { entity, snapshotOf } from '../support/fixtures.js';
 
@@ -163,29 +162,5 @@ describe('collectSpriteScene — the single-pass draw list + liveness set', () =
     expect(subject?.portraitOnly).toBe(true);
     expect(subject?.frozen).toBe(true);
     expect(subject?.state).toBe('idle'); // not a stale gait/swing
-  });
-
-  // DrawItem.shade — feet-anchor terrain shading (an OpenNorthland enhancement, data/brightness.ts).
-  // Resource nodes are exempt (the measured tree-canopy split, applied kind-wide so the static→pool
-  // handover can't jump); an unshaded map omits the field everywhere.
-  it('samples the shading field at each item feet, exempting resource nodes', () => {
-    const brightness = makeBrightnessField([254, 254, 254, 254], 2, 2); // uniform ≈2× multiplier
-    const scene = collectSpriteScene(
-      snapshotOf([
-        entity(1, 1, 1, { Settler: { tribe: 0 } }),
-        entity(2, 1, 1, { Resource: { goodType: 1 } }),
-      ]),
-      { brightness },
-    );
-    expect(scene.items.find((d) => d.ref === 1)?.shade).toBeCloseTo(2, 1);
-    expect(scene.items.find((d) => d.ref === 2)?.shade).toBeUndefined();
-  });
-
-  it('omits shade entirely when the map is unshaded', () => {
-    const neutral = makeBrightnessField(undefined, 0, 0);
-    const scene = collectSpriteScene(snapshotOf([entity(1, 1, 1, { Settler: { tribe: 0 } })]), {
-      brightness: neutral,
-    });
-    expect(scene.items[0]?.shade).toBeUndefined();
   });
 });

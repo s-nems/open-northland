@@ -250,17 +250,6 @@ export interface DrawItem {
    */
   readonly lift?: number;
   /**
-   * The composed terrain-shading multiplier at this item's feet (1 = neutral; `data/terrain/brightness.ts` +
-   * hillshade), so an entity sits in the same light as the ground it stands on — an OpenNorthland
-   * enhancement (the original leaves buildings/settlers unshaded; the corpus base sits near neutral so
-   * the deviation is small on real maps). Omitted on an unshaded map, for fog ghosts (already dimmed),
-   * for resource nodes (trees draw full-bright in the original — the measured canopy split in
-   * `data/terrain/brightness.ts`; kept for the whole kind so the static→pool handover can't jump) and for
-   * projectiles (airborne). Plain sprites apply it as a tint (clamps at ×1); paletted settlers
-   * multiply in-shader (can brighten).
-   */
-  readonly shade?: number;
-  /**
    * This item only survived the cull because it is the details-panel portrait's subject (off-screen,
    * fogged, or a settler inside a building — cases the map normally drops). The pool keeps it reconciled
    * and paletted so the portrait's second render can draw it, but hides it on the MAIN map (an off-screen

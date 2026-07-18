@@ -102,9 +102,6 @@ export class WorldRenderer {
   /** The current map's terrain-height field — lifts the ground mesh + every projected item, and its
    *  `maxLift` is the cull pad. Flat (zero lift) until {@link setTerrain} loads a map carrying `elevation`. */
   private elevation: ElevationField = makeElevationField(undefined, 0, 0);
-  /** The composed terrain-shading field the ground drew with ({@link TerrainLayer.brightnessField}) —
-   *  handed to the sprite pool so entities sit in the same light. Neutral until {@link setTerrain}. */
-  private brightness: BrightnessField | undefined;
   /** The details-panel portrait "observation window" — a live cutout of the world re-aimed at the selected
    *  entity, rendered into the panel's box each frame (its own second {@link worldLayer} render). See
    *  {@link PortraitInsetLayer}. */
@@ -184,12 +181,11 @@ export class WorldRenderer {
     // bakes the lift now; the sprite pool + the cull pad read it each frame in {@link update}. The
     // composed shading lane (`embr` + hillshade) shades the ground inside {@link TerrainLayer.set};
     // landscape objects get their own anchor-cell multiplier upstream in the app loader (trees exempt —
-    // the measured split, `data/terrain/brightness.ts`), and entity sprites read the same composed field at
-    // their feet through the pool (`DrawItem.shade`).
+    // the measured split, `data/terrain/brightness.ts`). Entity sprites (buildings/settlers) draw
+    // unshaded, as the original does — a single feet-cell multiplier blackened whole sprites over the
+    // baked slope-shadow, so that enhancement was dropped.
     this.elevation = makeElevationField(terrain.elevation, terrain.width, terrain.height);
     this.terrain.set(terrain, textures, this.elevation);
-    const field = this.terrain.brightnessField();
-    this.brightness = field.shaded ? field : undefined;
   }
 
   /**
@@ -348,7 +344,6 @@ export class WorldRenderer {
       screenH: this.app.screen.height,
       elevation: this.elevation,
       alpha,
-      ...(this.brightness !== undefined ? { brightness: this.brightness } : {}),
       ...(this.highlight.size > 0 ? { highlight: this.highlight } : {}),
       ...(this.staticDrawnRefs !== undefined ? { staticRefs: this.staticDrawnRefs } : {}),
       ...(fogView !== null
