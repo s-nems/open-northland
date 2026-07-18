@@ -171,9 +171,6 @@ export class PortraitInsetLayer {
     this.pool.placePalettedFor(insetCamera, w, h, true);
     this.worldLayer.scale.set(scale);
     this.worldLayer.position.set(insetCamera.offsetX, insetCamera.offsetY);
-    // Terrain chunk visibility is culled to the MAIN viewport; re-cull it to the inset frame so the
-    // ground around a subject at the screen edge fills the cutout instead of leaving transparent holes.
-    terrain?.toInset(insetCamera, w, h);
     // Reveal the subject if the pool force-hid it on the main map (off-screen / inside a building), draw
     // the cutout, then hide it again so the main stage render below still omits it.
     this.pool.showPortraitSubject();
@@ -192,6 +189,9 @@ export class PortraitInsetLayer {
     // even if the render throws, so a failed cutout can't leave a real unit hidden on the main map, the
     // world locked at the inset camera, or the pool's solo bookkeeping stale for the next frame.
     try {
+      // Terrain is chunk-culled to the MAIN viewport; re-cull it to the inset frame so the ground around a
+      // subject at the screen edge fills the cutout. Inside the try so its `restore()` below always pairs.
+      terrain?.toInset(insetCamera, w, h);
       this.app.renderer.render({
         container: this.worldLayer,
         target: this.texture,

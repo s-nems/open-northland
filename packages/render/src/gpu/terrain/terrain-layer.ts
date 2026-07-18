@@ -15,7 +15,12 @@ import { makeWaveUniforms, WAVE_TIME_PERIOD_TICKS, type WaveUniforms } from '../
 import type { TerrainTextureSet } from '../terrain-textures.js';
 import { buildFlat } from './build-flat.js';
 import { buildTextured } from './build-ground.js';
-import type { LaneShading, TerrainChunk } from './geometry.js';
+import {
+  DEFAULT_TILE_COLOUR,
+  dominantGroundColour,
+  type LaneShading,
+  type TerrainChunk,
+} from './geometry.js';
 import { padLaneRows } from './lane-texture.js';
 
 /**
@@ -46,6 +51,9 @@ export class TerrainLayer {
   readonly container = new Container();
   /** The meshed terrain blocks + their world-space AABBs, culled to the viewport each frame. */
   private chunks: TerrainChunk[] = [];
+  /** The flat tint of the map's most-common ground typeId (the minimap's typeId→colour table), set once
+   *  per map in {@link set}; the grass default until a map is loaded. See {@link groundColour}. */
+  private ground = DEFAULT_TILE_COLOUR;
   /** The composed shading lane as an R8 texture (per-fragment shading); undefined on an unshaded map. */
   private brightnessTex: BufferImageSource | undefined;
   /** The lane texture's padded width in texels (the `u` denominator; see {@link set}'s padding note). */
@@ -69,6 +77,7 @@ export class TerrainLayer {
    */
   set(terrain: SceneTerrain, textures?: TerrainTextureSet, elevation: ElevationField = FLAT_ELEVATION): void {
     this.destroy();
+    this.ground = dominantGroundColour(terrain.typeIds);
     // One source for the shading: both the CPU field (fallback/flat tints) and the R8 lane texture
     // are built here from the composed lane — the decoded `embr` bake accented (or replaced, on maps
     // without it) by elevation hillshade (`data/terrain/hillshade.ts`) — so no caller can hand the mesh and
@@ -116,6 +125,13 @@ export class TerrainLayer {
       textures !== undefined
         ? buildTextured(this.container, terrain, textures, elevation, brightness, lane)
         : buildFlat(this.container, terrain, elevation, brightness);
+  }
+
+  /** The flat tint of the map's most-common ground typeId (grass until a map is {@link set}) — the opaque
+   *  backdrop the details-panel portrait inset clears to, so a building framed past the map edge blends
+   *  into the map's dominant ground instead of leaving a transparent hole. */
+  groundColour(): number {
+    return this.ground;
   }
 
   /** The composed shading field the ground drew with — the one source sprite-anchor shading must share

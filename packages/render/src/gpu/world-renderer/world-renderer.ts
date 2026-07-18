@@ -22,11 +22,11 @@ import {
   type PortraitInsetFrame,
   PortraitInsetLayer,
   SelectionLayer,
-  type SettlerBubbleKind,
+  type SettlerBubbleGfx,
   SettlerBubbleLayer,
 } from '../overlays/index.js';
 import { type EntityBounds, SpritePool } from '../sprite-pool/index.js';
-import { DEFAULT_TILE_COLOUR, TerrainLayer } from '../terrain/index.js';
+import { TerrainLayer } from '../terrain/index.js';
 import type { TerrainTextureSet } from '../terrain-textures.js';
 import { TextureCache } from '../texture-cache.js';
 import {
@@ -239,16 +239,11 @@ export class WorldRenderer {
   }
 
   /**
-   * Provide (or clear) the decoded settler-bubble art (`ls_gui_bubbles`): the shared atlas `source` + the
-   * frame each {@link SettlerBubbleKind} draws, which the layer reads through the shared frame→texture
-   * cache. `null` (a checkout without `content/`) leaves the bubble layer drawing nothing.
+   * Provide (or clear) the decoded settler-bubble art ({@link SettlerBubbleGfx} — the `ls_gui_bubbles` page
+   * + the frame each kind draws), which the layer reads through the shared frame→texture cache. `null` (a
+   * checkout without `content/`) leaves the bubble layer drawing nothing.
    */
-  setSettlerBubbleGfx(
-    gfx: {
-      readonly source: TextureSource;
-      readonly frameByKind: Readonly<Record<SettlerBubbleKind, AtlasFrame>>;
-    } | null,
-  ): void {
+  setSettlerBubbleGfx(gfx: SettlerBubbleGfx | null): void {
     this.bubbleLayer.setGfx(gfx === null ? undefined : { ...gfx, textures: this.textureCache });
   }
 
@@ -403,13 +398,13 @@ export class WorldRenderer {
     // box texture — must run after the pool reconcile above (so it uses this frame's positions) and before
     // the main stage render below (so the on-stage inset sprite shows this frame's cutout). It borrows the
     // terrain cull to fill the cutout with the ground around the subject (restored after), and clears to the
-    // ground colour so the off-map region beyond the map edge blends as grass rather than a transparent hole.
+    // map's dominant ground colour so the region framed past the map edge blends in rather than leaving a hole.
     this.portrait.draw(camera, {
       toInset: (cam, iw, ih) => this.terrain.cull(cameraViewport(cam, iw, ih, this.elevation.maxLift)),
       restore: () => this.terrain.cull(vp),
-      // The off-map region above a building framed at the map edge has no terrain to draw; clear it to the
-      // ground base colour so it blends as grass (a named approximation of the map's dominant ground).
-      backdrop: DEFAULT_TILE_COLOUR,
+      // The region a building framed at the map edge extends past has no terrain to draw; clear it to the
+      // map's most-common ground tint so it reads as more ground (the minimap's typeId→colour, not exact).
+      backdrop: this.terrain.groundColour(),
     });
     this.app.render();
   }
