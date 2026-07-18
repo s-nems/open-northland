@@ -8,7 +8,7 @@ import type { GameSpeedChangeCause, GameSpeedStateSpec } from '../hud/tool-panel
 import type { MenuGoodEntry } from '../hud/tool-panel/goods-menu.js';
 import { mountToolPanel, type ToolPanelController } from '../hud/tool-panel/index.js';
 import { currentLocale } from '../i18n/index.js';
-import { clientToScreen, screenScale } from './camera.js';
+import { clientToScreen, screenScale } from './camera/index.js';
 import { nodeBounds, screenToWorld, worldToTile } from './picking.js';
 
 /**

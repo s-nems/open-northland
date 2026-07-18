@@ -2,7 +2,7 @@
 
 **Area:** app (view/camera) · **Origin:** review of fix/camera-startup-edge-drift, 2026-07-18 · **Priority:** P3
 
-`createCameraController` (`packages/app/src/view/camera.ts`) enables the RTS screen-edge pan only while
+`createCameraController` (`packages/app/src/view/camera/controller.ts`) enables the RTS screen-edge pan only while
 `pointerInside` is true, and `pointerInside` flips true **only** on a `mouseenter` boundary crossing
 (`onPointerEnter`); `onBlur` clears it. So if the player alt-tabs away and back with the cursor still
 resting over the canvas, no `mouseenter` fires on return, and a plain `mousemove` does not set

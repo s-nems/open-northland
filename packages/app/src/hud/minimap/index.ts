@@ -86,7 +86,7 @@ export interface MinimapOptions {
   readonly camera: () => Camera;
   /** Centre the camera on a world point (projected px, pre-camera) — the click-to-jump action. */
   readonly onJump: (worldX: number, worldY: number) => void;
-  /** Client (CSS px) → screen px, injected view glue (see `view/camera.ts` `screenScale`). */
+  /** Client (CSS px) → screen px, injected view glue (see `view/camera/screen-scale.ts` `screenScale`). */
   readonly toScreenPx: (clientX: number, clientY: number) => { x: number; y: number };
 }
 

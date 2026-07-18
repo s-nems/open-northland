@@ -3,7 +3,7 @@ import type { Simulation } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import { createAdminEntityPicker } from '../admin-debug/entity-picker.js';
 import { mountAdminDebug } from '../admin-debug/index.js';
-import type { CameraController } from '../camera.js';
+import type { CameraController } from '../camera/index.js';
 import {
   createGeometryDebugOverlay,
   type GeometryBuildingInfo,

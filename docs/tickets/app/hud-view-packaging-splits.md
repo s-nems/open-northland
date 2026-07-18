@@ -16,8 +16,9 @@ a clean seam (a verbatim-move packaging split, no rewrite):
 Path/size corrected 2026-07-17 (refactor/app-cleanup grouped the action ring into `action-ring/`; the
 file was ~355 lines when this was filed). Its "the remaining oversized hit" claim was also wrong then
 and is wrong now — `scan:structure` currently lists `details-panel/panel.ts` (557),
-`details-panel/model/settler.ts` (415), `details-panel/chrome.ts` (413), `view/camera.ts` (426) and
-`content/ir.ts` (418) alongside it, each tracked by its own ticket. `content/gui-atlas-map.ts` (1486)
+`details-panel/model/settler.ts` (415), `details-panel/chrome.ts` (413) and
+`content/ir.ts` (418) alongside it, each tracked by its own ticket (`view/camera.ts` was split by
+concern into the `view/camera/` package and no longer appears). `content/gui-atlas-map.ts` (1486)
 tops the list but is deliberately whole and is NOT a split target: its load-bearing invariant is
 array index === atlas frame index === original gfx id, which any split by role would destroy.
 

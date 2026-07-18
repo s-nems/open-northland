@@ -6,7 +6,7 @@ import { loadRealTerrain } from '../content/terrain.js';
 import { diag, hashTraceFor, setDiagGameSession } from '../diag/index.js';
 import { createSceneSim, getScene, SCENES } from '../scenes/index.js';
 import { type BootPhase, mountBootProgress } from '../view/boot-progress.js';
-import { cameraFor, createCameraController } from '../view/camera.js';
+import { cameraFor, createCameraController } from '../view/camera/index.js';
 import { startGameView } from '../view/runtime/game-view.js';
 import {
   applyFogOverride,
@@ -23,7 +23,7 @@ declare global {
       readonly sim: import('@open-northland/sim').Simulation;
       readonly renderer: WorldRenderer;
       readonly sheet: import('@open-northland/render').SpriteSheet | undefined;
-      readonly cameraCtl: import('../view/camera.js').CameraController;
+      readonly cameraCtl: import('../view/camera/index.js').CameraController;
     };
   }
 }

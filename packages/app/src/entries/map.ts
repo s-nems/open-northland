@@ -29,7 +29,7 @@ import {
 import { loadMapScript, loadTerrainMap } from '../slice/map-loader.js';
 import { runAuthoredSlice, runBareMap, runSlice, sliceTerrain } from '../slice/vertical-slice.js';
 import { type BootPhase, mountBootProgress } from '../view/boot-progress.js';
-import { cameraCenteredOnTile, createCameraController } from '../view/camera.js';
+import { cameraCenteredOnTile, createCameraController } from '../view/camera/index.js';
 import { aiSeatsParam } from '../view/params.js';
 import { startGameView } from '../view/runtime/game-view.js';
 import {
