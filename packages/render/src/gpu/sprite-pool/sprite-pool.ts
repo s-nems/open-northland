@@ -1,7 +1,7 @@
 import type { WorldSnapshot } from '@open-northland/sim';
 import { type Container, Graphics, Sprite } from 'pixi.js';
 import { FOG_GHOST_TINT, type FogGhost } from '../../data/fog/index.js';
-import { lerp } from '../../data/math.js';
+import { clamp, clamp01, lerp } from '../../data/math.js';
 import {
   type Camera,
   cameraScreenX,
@@ -42,13 +42,9 @@ const SCREEN_PAINT_EPS = 0.25;
  * Per-frame easing factor for the construction bottom-up reveal — the displayed reveal moves this fraction
  * of the remaining distance toward the layer's target each frame. Tuned so the rise glides across the
  * sim's per-swing `built` steps (~15 ticks / swing) without a catch-up snap; a newly-seen site initialises
- * to its target instead of easing up from zero (see {@link SpritePool.bindLayers}).
+ * to its target instead of easing up from zero (see {@link SpritePool.updatePooled}).
  */
 const CONSTRUCTION_REVEAL_EASE = 0.06;
-
-/** Whether a resolved layer carries a construction reveal fraction — module-scoped so the per-entity
- *  {@link SpritePool.bindLayers} scan for the stage stack's shared target allocates no predicate. */
-const layerHasReveal = (layer: ResolvedLayer): boolean => layer.reveal !== undefined;
 
 /**
  * How often (in reconciled frames) the pool is swept for entities that left the snapshot (died) so their
@@ -351,7 +347,26 @@ export class SpritePool {
     // (an animating mill's sails under the fog would leak that the building is still manned) and the
     // portrait subject inside a building (a motionless standing pose, not the breathing idle loop).
     const animTick = item.ghost === true || item.frozen === true ? 0 : frame.tick;
-    const layers = resolveLayers(this.sheet, drawItem, animTick, Math.floor(pe.motion.gaitPhase));
+    // Ease the displayed construction reveal toward the sim's target and select the active stage set from
+    // it — NOT from the raw sim `builtPct`. Both the stage windows (`[fromPct,toPct]`) and the per-pixel
+    // reveal must move together: selecting stages off the raw sim progress while revealing pixels off the
+    // lagging eased value drops a scaffold stage the moment `builtPct` clears its `toPct`, before its
+    // covering stage's eased reveal has risen over it — a fast build (x3, many builders) then flashes a gap
+    // where the covered part vanishes and grows back. A first-seen site initialises straight to its target
+    // (no grow-from-zero when a mid-build house scrolls in).
+    if (item.builtPct === undefined) {
+      pe.reveal = undefined;
+    } else {
+      const target = clamp01(item.builtPct / 100);
+      pe.reveal = pe.reveal === undefined ? target : lerp(pe.reveal, target, CONSTRUCTION_REVEAL_EASE);
+    }
+    // Stage selection reads the eased progress as a whole percent (windows are integer-percent); the pool
+    // still reveals pixels from the finer float `pe.reveal`.
+    const stageItem =
+      pe.reveal === undefined
+        ? drawItem
+        : { ...drawItem, builtPct: clamp(Math.round(pe.reveal * 100), 0, 99) };
+    const layers = resolveLayers(this.sheet, stageItem, animTick, Math.floor(pe.motion.gaitPhase));
     if (layers === null) {
       this.showPlaceholder(pe, item, frame);
       return;
@@ -410,16 +425,9 @@ export class SpritePool {
     let minY = Number.POSITIVE_INFINITY;
     let maxX = Number.NEGATIVE_INFINITY;
     let maxY = Number.NEGATIVE_INFINITY;
-    // Ease the displayed construction reveal toward the layers' target (they share one, keyed off the
-    // building's `builtPct`) so a rising building glides between the sim's per-swing steps. A first-seen
-    // site initialises straight to its target (no grow-from-zero when a mid-build house scrolls in).
-    const revealTarget = layers.find(layerHasReveal)?.reveal;
-    if (revealTarget === undefined) {
-      pe.reveal = undefined;
-    } else {
-      pe.reveal =
-        pe.reveal === undefined ? revealTarget : lerp(pe.reveal, revealTarget, CONSTRUCTION_REVEAL_EASE);
-    }
+    // The eased construction reveal that glides a rising building between the sim's per-swing steps —
+    // computed in {@link updatePooled} (before stage selection, so the active stages and the pixel reveal
+    // share it) and read straight through here.
     const displayReveal = pe.reveal;
     for (let i = 0; i < layers.length; i++) {
       const layer = layers[i];

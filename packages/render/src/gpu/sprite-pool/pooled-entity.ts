@@ -64,9 +64,10 @@ export interface PooledEntity {
    *  {@link import('./sprite-pool.js').SpritePool}). */
   lastFacing?: number;
   /** The displayed bottom-up reveal fraction (0..1) of an under-construction building, eased toward the
-   *  layer's target each frame so the rise glides between the sim's per-swing `built` steps. `undefined`
-   *  until the entity first draws a reveal layer, and reset to `undefined` once it finishes (no reveal
-   *  layer). Always present (not optional) so the pooled entity keeps a stable, monomorphic shape. */
+   *  sim's `built` each frame so the rise glides between the sparse per-swing steps. Drives BOTH which
+   *  construction stages draw and how far each reveals (see {@link import('./sprite-pool.js')}), so the two
+   *  never disagree. `undefined` until the entity first draws a reveal layer, and reset to `undefined` once
+   *  it finishes. Always present (not optional) so the pooled entity keeps a stable, monomorphic shape. */
   reveal: number | undefined;
   /** The entity's inter-tick motion track — the last two tick anchors plus the lerped drawn anchor
    *  ({@link import('./motion.js').trackMotion}); 12 Hz sim steps draw as continuous frame-rate motion.
