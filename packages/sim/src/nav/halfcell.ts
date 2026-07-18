@@ -72,3 +72,12 @@ export function cellOfAnchorNode(hx: number, hy: number): { readonly cx: number;
   const cy = hy / 2;
   return { cx: (hx - (cy & 1)) / 2, cy };
 }
+
+/**
+ * Whether two nodes are the same or neighbouring lattice points (Chebyshev ≤ 1) — the
+ * standing-together predicate for paired interactions (the wedding kiss, the gossip chat): the pair
+ * occupies adjacent half-cells with no free node between them (observed original behavior).
+ */
+export function nodesAdjacent(a: HalfCellNode, b: HalfCellNode): boolean {
+  return Math.abs(a.hx - b.hx) <= 1 && Math.abs(a.hy - b.hy) <= 1;
+}

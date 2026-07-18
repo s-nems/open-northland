@@ -293,11 +293,11 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
 
     // 5. STORE-CARRIER HAUL — an employed carrier (bound to a store's transport slot) ferries finished
     // workplace outputs to the stores. Hauling is a trade, not a default, so everyone else with nothing
-    // above is genuinely idle: chat with a nearby idle neighbour (../social/gossip.ts), else de-stack off
-    // a shared tile so an idle crowd spreads out (./destack.ts).
+    // above is genuinely idle: step off a shared tile first so an idle crowd spreads out (./destack.ts),
+    // then chat with a nearby idle neighbour (../social/gossip.ts).
     if (!planCarrierHaul(plan, anyHaulable)) {
-      if (!gossipReady || !planGossipIdle(world, e, settler, hereNode.hx, hereNode.hy, gossipCandidates)) {
-        deStackIdle(world, ctx, terrain, e, hereNode.hx, hereNode.hy, spacing);
+      if (!deStackIdle(world, ctx, terrain, e, hereNode.hx, hereNode.hy, spacing) && gossipReady) {
+        planGossipIdle(world, e, settler, hereNode.hx, hereNode.hy, gossipCandidates);
       }
     }
   }

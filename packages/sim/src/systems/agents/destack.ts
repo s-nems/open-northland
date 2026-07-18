@@ -42,7 +42,8 @@ const SPACING_SEARCH_CAP = 192;
  *
  * The sim half of the "no hard collision, but units won't come to rest on an occupied node" behaviour:
  * transit is never blocked (a walker passes through freely), only a unit that has arrived with nothing to do
- * relocates off a shared node.
+ * relocates off a shared node. Returns true when it sent the unit stepping aside — the caller's lower rung
+ * (the idle chat) yields to it, so a stacked crowd spreads out before striking up conversations.
  */
 export function deStackIdle(
   world: World,
@@ -52,23 +53,24 @@ export function deStackIdle(
   tileX: number,
   tileY: number,
   spacing: SpacingState,
-): void {
+): boolean {
   // Only player-owned units space out. An unowned settler isn't in the owned-only `occupancy`, so the keeper
   // test below (`bucket[0] === e`) could never recognise it as the keeper — without this guard an unowned unit
   // sharing a tile with ≥2 owned resting units would wrongly de-stack. Gating here keeps the unowned fixtures
   // byte-identical.
-  if (!world.has(e, Owner)) return;
+  if (!world.has(e, Owner)) return false;
   const bucket = spacing.occupancy.at(tileX, tileY);
-  if (bucket.length < 2 || bucket[0] === e) return; // alone on the tile, or the keeper — hold ground
+  if (bucket.length < 2 || bucket[0] === e) return false; // alone on the tile, or the keeper — hold ground
   // Build the building walk-block overlay once, only when a real de-stack is attempted. Excludes a target
   // under a standing building: routing A* would refuse a blocked goal, and a MoveGoal whose route can't
   // resolve would freeze the unit (nothing clears a failed non-player request), so we never aim at one.
   spacing.blockedCells ??= dynamicBlockedCells(world, ctx, terrain);
   const from = terrain.nodeAtClamped(tileX, tileY);
   const free = nearestFreeCell(terrain, from, spacing.occupancy, spacing.claimed, spacing.blockedCells);
-  if (free === null) return; // boxed in — nothing better than staying
+  if (free === null) return false; // boxed in — nothing better than staying
   spacing.claimed.add(free);
   world.add(e, MoveGoal, { cell: free });
+  return true;
 }
 
 /**

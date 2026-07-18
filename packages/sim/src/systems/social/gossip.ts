@@ -19,7 +19,7 @@ import {
 } from '../../components/index.js';
 import { type Fixed, fx, ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { nodeOfPosition } from '../../nav/halfcell.js';
+import { nodeOfPosition, nodesAdjacent } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import { startAtomic } from '../agents/actions.js';
 import { FATIGUE_SLEEP_THRESHOLD, HUNGER_EAT_THRESHOLD } from '../agents/drives-needs.js';
@@ -47,19 +47,15 @@ import { canonicalById, clearNavState, isTravelling, NodeBuckets } from '../spat
 export const TALK_ATOMIC_ID = 14;
 export const LISTEN_ATOMIC_ID = 15;
 
-/** How close (half-cell Manhattan nodes) the pair must stand to talk — one tile apart, like the wedding
- *  kiss's `KISS_RANGE_NODES` (observed original behavior; the exact engine range is not readable). */
-const CHAT_RANGE_NODES = 2;
-
 /** Company deficit at or above which a WORKING settler leaves its work to find a chat partner — ¾ of a
  *  full bar, mirroring the eat/sleep/pray triggers (`drives-needs.ts`; the same approximation basis). */
 const CHAT_SEEK_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4));
 
 /**
- * The chat hysteresis bound, 10% of a full bar (design rule): a chat ENDS once the seeker's deficit falls
- * below it (the last pulses land near 0, but the bar keeps rising a hair per tick mid-round, so an exact
- * `=== 0` test would never pass), and an IDLE settler only strikes up a new chat at or above it — so a
- * freshly-satisfied pair drifts apart for a while instead of re-chatting every tick.
+ * A chat ENDS once the seeker's deficit falls below this bound, 10% of a full bar (design rule: the last
+ * pulses land near 0, but the bar keeps rising a hair per tick mid-round, so an exact `=== 0` test would
+ * never pass). Ending the chat hands the pair back to the planner between rounds — work can reclaim them;
+ * a pair still idle simply strikes up the next chat.
  */
 const CHAT_SATISFIED_DEFICIT: Fixed = fx.div(ONE, fx.fromInt(10));
 
@@ -70,6 +66,10 @@ const CHAT_SEEK_RADIUS_NODES = 32;
 /** How far an idle settler looks for another idle settler to pass the time with — "somebody standing
  *  nearby", a much tighter ring than the seek radius (design rule). */
 const CHAT_IDLE_RADIUS_NODES = 8;
+
+/** Partner searches start at ring 1: a candidate stacked on the seeker's own node is skipped — the
+ *  de-stack drive is about to step it aside, and a pair chatting from one node stands inside each other. */
+const CHAT_PARTNER_MIN_DIST_NODES = 1;
 
 /**
  * The original's social-event scale: +4000 channel units restore one full bar. Basis: the eat animation's
@@ -176,8 +176,8 @@ export function planGossipSeek(
   const grabbable = (cand: Entity): boolean =>
     cand !== e && ownerOf(world, cand) === owner && mayJoinChat(world, cand);
   const found =
-    buckets.nearest(hx, hy, 0, CHAT_SEEK_RADIUS_NODES, idle) ??
-    buckets.nearest(hx, hy, 0, CHAT_SEEK_RADIUS_NODES, grabbable);
+    buckets.nearest(hx, hy, CHAT_PARTNER_MIN_DIST_NODES, CHAT_SEEK_RADIUS_NODES, idle) ??
+    buckets.nearest(hx, hy, CHAT_PARTNER_MIN_DIST_NODES, CHAT_SEEK_RADIUS_NODES, grabbable);
   if (found === null) return false;
   startChat(world, e, found.entity);
   return true;
@@ -185,26 +185,27 @@ export function planGossipSeek(
 
 /**
  * The idle-settler chat rung, at the very bottom of the drive ladder: a settler with nothing at all to do
- * and at least {@link CHAT_SATISFIED_DEFICIT} of company deficit strikes up a chat with the nearest OTHER
- * idle settler within {@link CHAT_IDLE_RADIUS_NODES} — idle neighbours gossip because why not (the
- * original's settlements visibly chatter; design rule). Returns `true` when a chat was started.
+ * strikes up a chat with the nearest OTHER idle settler within {@link CHAT_IDLE_RADIUS_NODES} — even on a
+ * full company bar, idle neighbours gossip because why not (the original's settlements visibly chatter;
+ * design rule). Returns `true` when a chat was started.
  */
 export function planGossipIdle(
   world: World,
   e: Entity,
-  settler: SettlerIdentity & { enjoyment: Fixed },
+  settler: SettlerIdentity,
   hx: number,
   hy: number,
   candidates: GossipCandidates,
 ): boolean {
-  if (settler.enjoyment < CHAT_SATISFIED_DEFICIT) return false;
   if (settler.jobType === null || isFighterJob(settler.jobType)) return false;
   // Owner-gated like the seek rung (and deStackIdle) — see planGossipSeek.
   const owner = ownerOf(world, e);
   if (owner === undefined) return false;
   const idle = (cand: Entity): boolean =>
     cand !== e && ownerOf(world, cand) === owner && mayJoinChat(world, cand) && !isTravelling(world, cand);
-  const found = candidates.ensure().nearest(hx, hy, 0, CHAT_IDLE_RADIUS_NODES, idle);
+  const found = candidates
+    .ensure()
+    .nearest(hx, hy, CHAT_PARTNER_MIN_DIST_NODES, CHAT_IDLE_RADIUS_NODES, idle);
   if (found === null) return false;
   startChat(world, e, found.entity);
   return true;
@@ -223,20 +224,27 @@ function endChat(world: World, e: Entity): void {
 }
 
 function interruptChatAtomic(world: World, e: Entity): void {
-  const atomic = world.tryGet(e, CurrentAtomic);
-  if (atomic !== undefined && (atomic.atomicId === TALK_ATOMIC_ID || atomic.atomicId === LISTEN_ATOMIC_ID)) {
-    world.remove(e, CurrentAtomic);
-  }
+  if (chatAtomicRunning(world, e)) world.remove(e, CurrentAtomic);
 }
 
-/** Whether a higher drive outranks this half's chat: a pressing survival need (the eat/sleep thresholds)
- *  or combat taking the settler (engaged, fleeing). Company never outranks survival. */
+/** Whether `e` is currently playing its half of a chat round (a talk or listen atomic in flight). */
+function chatAtomicRunning(world: World, e: Entity): boolean {
+  const atomic = world.tryGet(e, CurrentAtomic);
+  return atomic !== undefined && (atomic.atomicId === TALK_ATOMIC_ID || atomic.atomicId === LISTEN_ATOMIC_ID);
+}
+
+/** Whether a higher drive outranks this half's chat: a pressing survival need (the eat/sleep thresholds),
+ *  combat taking the settler (engaged, fleeing), a player order, or a family claim (a `marry` command or
+ *  duty landing mid-chat). Company outranks none of them — the chat ends and the partner is freed too. */
 function chatOutranked(world: World, e: Entity, s: { hunger: Fixed; fatigue: Fixed }): boolean {
   return (
     s.hunger >= HUNGER_EAT_THRESHOLD ||
     s.fatigue >= FATIGUE_SLEEP_THRESHOLD ||
     world.has(e, Engagement) ||
-    world.has(e, Fleeing)
+    world.has(e, Fleeing) ||
+    world.has(e, PlayerOrder) ||
+    world.has(e, Wedding) ||
+    world.has(e, FamilyDuty)
   );
 }
 
@@ -321,6 +329,13 @@ function drivePair(
     return;
   }
   if (ca.talking) {
+    // Both halves run on one shared clock, so a legitimate round ends on both at once — one half still
+    // talking while the other's clip is gone means something stole the partner mid-round (an order, a
+    // duty): nobody talks into the air, the chat is off.
+    if (chatAtomicRunning(world, a) !== chatAtomicRunning(world, b)) {
+      endChat(world, a);
+      return;
+    }
     applyChatPulse(world, ctx, a, sa);
     applyChatPulse(world, ctx, b, sb);
     if (world.has(a, CurrentAtomic) || world.has(b, CurrentAtomic)) return; // the round plays out
@@ -350,7 +365,7 @@ function drivePair(
   }
   const na = nodeOfPosition(pa.x, pa.y);
   const nb = nodeOfPosition(pb.x, pb.y);
-  if (Math.abs(na.hx - nb.hx) + Math.abs(na.hy - nb.hy) <= CHAT_RANGE_NODES) {
+  if (nodesAdjacent(na, nb)) {
     // Standing together: run one talk/listen round on a shared clock (the longer of the two bound clips,
     // the wedding-kiss precedent) — each atomic targets the partner, so the render faces them at each other.
     clearNavState(world, a);
