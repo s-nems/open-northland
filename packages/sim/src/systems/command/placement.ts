@@ -129,13 +129,18 @@ export function placeBuilding(
  * an {@link UnderConstruction} marker starts the builder-work clock, and settlers standing on the
  * footprint are pushed out. Deliberately NOT cleared: {@link JobAssignment}s and residences — the
  * occupants leave the building but keep their bindings and return when the upgrade completes
- * (source basis: observed original behavior).
+ * (source basis: observed original behavior). An in-flight {@link Production} cycle is also left to
+ * run out — operators pause it by stepping off the door, and a batch that still completes deposits
+ * into the (now build-hold) stockpile (goods-conserving; named approximation, the original's
+ * mid-upgrade batch behavior is unobserved).
  *
  * Skip conditions (recoverable bad input, still logged): a dead / non-building target, one still under
- * construction (or already upgrading), a type with no `upgradeTarget` (top level / unchained), a target
- * absent from content, or a target the tribe has not tech-unlocked ({@link buildingEnabled} — the same
- * gate as direct placement, so the upgrade path can't unlock what placement forbids; our design
- * invariant, the original's upgrade gating is unobserved).
+ * construction (or already upgrading), a stockpile-less building (a bare fixture — its {@link Stockpile}
+ * is the site's build hold, and the ConstructionSystem only advances `(Building, Stockpile)` sites), a
+ * type with no `upgradeTarget` (top level / unchained), a target absent from content, or a target the
+ * tribe has not tech-unlocked ({@link buildingEnabled} — the same gate as direct placement, so the
+ * upgrade path can't unlock what placement forbids; our design invariant, the original's upgrade gating
+ * is unobserved).
  */
 export function upgradeBuilding(
   world: World,
@@ -151,11 +156,10 @@ export function upgradeBuilding(
   if (!buildingEnabled(world, ctx, building.tribe, target.typeId)) return; // target not tech-unlocked
 
   const stock = world.tryGet(command.building, Stockpile);
-  world.add(command.building, Upgrading, { savedStock: stock?.amounts ?? new Map<number, number>() });
-  if (stock !== undefined) {
-    stock.amounts = new Map<number, number>();
-    world.touchComponent(Stockpile); // an in-place empty — log it so the porter dormancy gate re-scans
-  }
+  if (stock === undefined) return; // no build hold — the site could never advance (see the doc)
+  world.add(command.building, Upgrading, { savedStock: stock.amounts });
+  stock.amounts = new Map<number, number>();
+  world.touchComponent(Stockpile); // an in-place empty — log it so the porter dormancy gate re-scans
   building.built = fx.fromInt(0);
   world.add(command.building, UnderConstruction, { labor: fx.fromInt(0) });
   // The plot is a building site again — settlers standing on it step out (bindings kept, see above).

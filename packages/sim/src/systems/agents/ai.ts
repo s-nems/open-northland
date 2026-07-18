@@ -257,8 +257,10 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
 
     // A settler whose bound workplace is a construction site — a running upgrade — stands down instead
     // of running the remaining work rungs: its trade needs the finished workhouse (readable source:
-    // `jobtypes.ini` `mustHaveFinishedWorkHouseFlag 1` — the gate the farm/producer rungs above already
-    // apply per-rung), so an upgrading warehouse's porter or a workshop's bound gatherer/carrier waits
+    // `jobtypes.ini` `mustHaveFinishedWorkHouseFlag`, per-job data collapsed to a blanket here — every
+    // bound trade we model sets 1; the 0 rows (hunter/scout/jester) have no bound-workplace rung — the
+    // gate the farm/producer rungs above already apply per-rung), so an upgrading warehouse's porter or a
+    // workshop's bound gatherer/carrier waits
     // outside rather than ferrying for a sealed building. Sits below planBuilder (a builder bound to an
     // upgrading building must still build) and above the trade rungs; the binding survives, so work
     // resumes the tick the upgrade completes.

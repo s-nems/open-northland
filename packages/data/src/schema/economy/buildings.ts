@@ -92,7 +92,8 @@ export const BuildingType = z.strictObject({
    * The `typeId` this building upgrades into — the next size level of the same `[GfxHouse]` record
    * (`LogicType <sizeIdx> <typeId>`: the typeId mapped at `sizeIdx + 1`), absent on a chain's top
    * level and on single-level buildings. Level chains are not homes-only: the real data chains
-   * storages (7→8→9), several workplaces, a tower (40→41), and the wonder's stages (47→…→54).
+   * storages (7→8→9), several workplaces, and a tower (40→41). The wonders (47..54) are NOT chained —
+   * each record maps every size level to its own typeId, a self-link the extractor skips.
    */
   upgradeTarget: TypeId.optional(),
   /**

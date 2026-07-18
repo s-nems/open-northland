@@ -4,7 +4,9 @@ import type { SpritePool } from '../sprite-pool/index.js';
 import { restoreStash, type StashedVisibility, stashHidden } from '../visibility.js';
 
 /** Pixi's public {@link RenderOptions} omits `frame`, though the runtime honours it (the render-target
- *  system takes it as the viewport region, in the target's logical px) — typed here until it is exposed. */
+ *  system takes it as the viewport region, in the target's logical px) — typed here until it is exposed.
+ *  Undocumented API (verified on pixi.js 8.19): re-verify on any Pixi bump — if `frame` were dropped,
+ *  this pass would paint the re-aimed world over the WHOLE canvas instead of the preview box. */
 interface FramedRenderOptions extends RenderOptions {
   readonly frame: Rectangle;
 }

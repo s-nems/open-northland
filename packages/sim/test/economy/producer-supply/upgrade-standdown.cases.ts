@@ -29,8 +29,9 @@ import {
 
 /**
  * Workers of an UPGRADING building stand down (user requirement 2026-07-18: "pracownik budynku który
- * jest ulepszany powinien przestać pracować"). Source basis: readable original — `jobtypes.ini` workers
- * set `mustHaveFinishedWorkHouseFlag 1`, so a trade needs its finished workhouse. The upgrade turns the
+ * jest ulepszany powinien przestać pracować"). Source basis: readable original — `jobtypes.ini` gives
+ * every bound trade we model `mustHaveFinishedWorkHouseFlag 1` (its 0 rows — hunter/scout/jester — never
+ * bind a workplace), so a trade needs its finished workhouse. The upgrade turns the
  * building back into a construction site whose emptied stockpile is the construction hold, so an
  * ungated crew would read the stashed stock as starvation and shuttle goods, or strip the site's
  * delivered materials as "output".

@@ -127,11 +127,13 @@ export interface ReusableBaker {
  * a rebuild allocates no GPU texture — {@link bakeToSprite} would mint and destroy a panel-sized
  * texture per rebuild. The pair only reallocates when a bake outgrows the target (a rare structural
  * change). Single-slot: each bake reuses the one view, so callers keep at most one returned bake
- * alive at a time (the panel's rebuild cadence — dispose the old bake before the next).
+ * alive at a time — enforced: `bake` throws while the previous bake is undisposed (a second live
+ * handle would be silently retargeted, a corrupt-pixels class of bug).
  */
 export function createReusableBaker(renderer: Renderer): ReusableBaker {
   let target: RenderTexture | null = null;
   let view: Texture | null = null;
+  let outstanding = false;
   const ensure = (w: number, h: number): Texture => {
     if (target === null || view === null || target.width < w || target.height < h) {
       const grownW = Math.max(w, target?.width ?? 0);
@@ -150,6 +152,8 @@ export function createReusableBaker(renderer: Renderer): ReusableBaker {
   };
   return {
     bake(source, texW, texH, invScale): SupersampledTexture {
+      if (outstanding) throw new Error('ReusableBaker is single-slot: dispose the previous bake first');
+      outstanding = true;
       const bakeView = ensure(texW, texH);
       const redraw = (): void => {
         renderer.render({ container: source, target: bakeView, clear: true });
@@ -161,6 +165,7 @@ export function createReusableBaker(renderer: Renderer): ReusableBaker {
         display,
         redraw,
         dispose(): void {
+          outstanding = false;
           source.destroy({ children: true }); // the shared view + target stay with the baker
         },
       };

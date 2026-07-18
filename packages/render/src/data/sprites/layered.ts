@@ -88,19 +88,22 @@ export function resolveConstructionDraws(
     active.length > 0
       ? active
       : [layers.reduce((lo, l) => (l.fromPct < lo.fromPct ? l : lo), layers[0] as ConstructionLayerRef)];
-  return chosen.map((l) =>
-    l.layer === undefined
-      ? { bob: l.bob, fromPct: l.fromPct, toPct: l.toPct }
-      : { bob: l.bob, layer: l.layer, fromPct: l.fromPct, toPct: l.toPct },
-  );
+  return chosen.map(stageDraw);
+}
+
+/** A stage layer ref to its draw — the exactOptional `layer` split both stage resolvers share. */
+function stageDraw(l: ConstructionLayerRef): ConstructionDraw {
+  return l.layer === undefined
+    ? { bob: l.bob, fromPct: l.fromPct, toPct: l.toPct }
+    : { bob: l.bob, layer: l.layer, fromPct: l.fromPct, toPct: l.toPct };
 }
 
 /**
  * Resolve the upgrade-overlay draws an UPGRADING building shows on top of its (still-drawn) old-tier
  * finished body, or `null` when none apply: not upgrading (no {@link DrawItem.upgradePct}), no
  * upgrade layers bound for the type, or no layer window containing the progress. The layers are the
- * type's `upgrade === 1` rows (the next tier's body — the real data binds one `[0..100]` row per
- * chained tier), revealed across their window like a construction stage. Unlike
+ * type's `upgrade === 1` rows (the next tier's body — the real data binds one or two full-window
+ * `[0,100]` rows per chained tier), revealed across their window like a construction stage. Unlike
  * {@link resolveConstructionDraws} there is no lowest-stage fallback: outside every window the old
  * body alone is the correct draw, never a placeholder stage. Source basis: the rows are extracted;
  * the old-body-plus-revealing-overlay composition is a named approximation (the original's exact
@@ -116,11 +119,7 @@ export function resolveUpgradeDraws(
   const pct = item.upgradePct;
   const active = layers.filter((l) => pct >= l.fromPct && pct <= l.toPct);
   if (active.length === 0) return null;
-  return active.map((l) =>
-    l.layer === undefined
-      ? { bob: l.bob, fromPct: l.fromPct, toPct: l.toPct }
-      : { bob: l.bob, layer: l.layer, fromPct: l.fromPct, toPct: l.toPct },
-  );
+  return active.map(stageDraw);
 }
 
 /**

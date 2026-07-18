@@ -14,7 +14,8 @@ import { type InboundSupplyTally, inboundSupplyOf } from './supply-tally.js';
  * The next level in `type`'s upgrade chain, or undefined for a top-level / unchained type. The chain is
  * the extracted `upgradeTarget` join (the `[GfxHouse]` record's `LogicType` table — the typeId at the
  * next `sizeIdx`), so it is data-driven across every leveled kind: homes, storages, workplaces, the
- * tower, the wonder's stages. Undefined too when the target id is absent from content (malformed data).
+ * tower (the wonder is NOT chained — its record maps every size level to one typeId, a self-link the
+ * extractor skips). Undefined too when the target id is absent from content (malformed data).
  */
 export function upgradeTierOf(type: BuildingType, ctx: SystemContext): BuildingType | undefined {
   if (type.upgradeTarget === undefined) return undefined;

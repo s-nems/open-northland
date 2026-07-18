@@ -1,6 +1,26 @@
 import { BUILDING_KIND } from '@open-northland/data';
 import type { VikingBuilding } from '../../catalog/buildings.js';
-import { BUILDING_HOME_00, GOOD_STONE, GOOD_WOOD } from './ids/index.js';
+import {
+  BUILDING_ARMORY,
+  BUILDING_BAKERY,
+  BUILDING_DRUID_HUT,
+  BUILDING_HOME_00,
+  BUILDING_HOME_01,
+  BUILDING_HOME_02,
+  BUILDING_HOME_03,
+  BUILDING_JOINERY,
+  BUILDING_JOINERY_01,
+  BUILDING_JOINERY_02,
+  BUILDING_MASON_HUT,
+  BUILDING_POTTERY,
+  BUILDING_SMITHY,
+  BUILDING_TAILOR,
+  BUILDING_WAREHOUSE_00,
+  BUILDING_WAREHOUSE_01,
+  BUILDING_WATCHTOWER,
+  GOOD_STONE,
+  GOOD_WOOD,
+} from './ids/index.js';
 
 /**
  * Global construction data — every building is raised the original way: the player places a foundation
@@ -70,28 +90,27 @@ export function buildingHitpoints(kind: string): number {
  * upgradable. A hand table, NOT a name-suffix derivation: `work_pottery_02` (typeId 22) is really the
  * defence wall, so "same stem, next suffix" would chain the pottery into a wall.
  */
-const UPGRADABLE_TYPE_IDS: readonly number[] = [
-  2,
-  3,
-  4,
-  5, // home_level_00..03 → the next home tier
-  7,
-  8, // stock_00..01 → the next warehouse tier
-  14, // bakery
-  18, // tailor
-  20, // pottery
-  23,
-  24,
-  25, // joinery levels
-  27, // armory
-  29, // mason's hut
-  31, // smithy
-  35, // druid's hut
-  40, // watchtower
-];
-const UPGRADE_TARGETS: ReadonlySet<number> = new Set(UPGRADABLE_TYPE_IDS);
+const UPGRADABLE_TYPES: ReadonlySet<number> = new Set([
+  BUILDING_HOME_00,
+  BUILDING_HOME_01,
+  BUILDING_HOME_02,
+  BUILDING_HOME_03,
+  BUILDING_WAREHOUSE_00,
+  BUILDING_WAREHOUSE_01,
+  BUILDING_BAKERY,
+  BUILDING_TAILOR,
+  BUILDING_POTTERY,
+  BUILDING_JOINERY,
+  BUILDING_JOINERY_01,
+  BUILDING_JOINERY_02,
+  BUILDING_ARMORY,
+  BUILDING_MASON_HUT,
+  BUILDING_SMITHY,
+  BUILDING_DRUID_HUT,
+  BUILDING_WATCHTOWER,
+]);
 
 /** The next level a catalog building upgrades into, or undefined for a top level / unchained type. */
 export function buildingUpgradeTarget(typeId: number): number | undefined {
-  return UPGRADE_TARGETS.has(typeId) ? typeId + 1 : undefined;
+  return UPGRADABLE_TYPES.has(typeId) ? typeId + 1 : undefined;
 }
