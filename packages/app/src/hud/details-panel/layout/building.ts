@@ -51,7 +51,8 @@ export type ButtonAction =
   | 'workers'
   | 'help'
   | 'assign-workplace'
-  | 'assign-home';
+  | 'assign-home'
+  | 'unassign-home';
 
 export interface ButtonHit {
   readonly action: ButtonAction;

@@ -103,6 +103,12 @@ export interface SettlerLayout {
   readonly homeIcon: Rect;
   /** The assign-home row's description column ("Przypisz dom"). */
   readonly homeLabel: Rect;
+  /** The "usuń z domu" hit target under the assign-home row — same shape as {@link homeButton}. */
+  readonly unassignButton: ButtonHit;
+  /** The small round remove-from-home button (the drawn control). Equals {@link unassignButton}'s rect. */
+  readonly unassignIcon: Rect;
+  /** The remove-from-home row's description column ("Usuń z domu"). */
+  readonly unassignLabel: Rect;
   readonly gatherChoiceHits: readonly GatherChoiceHit[];
   /** The craft product toggles (exclusive with {@link gatherChoiceHits} — same grid slot). */
   readonly craftChoiceHits: readonly CraftChoiceHit[];
@@ -149,9 +155,9 @@ export function layoutSettler(
   const gatherTopGap = hasGather ? gatherRowGap : 0;
   // Larger separation before the assign row when gather buttons sit above it; the small default otherwise.
   const preAssignGap = hasGather ? gatherAssignSep : assignRowGap;
-  // Two stacked control rows close the Praca body: assign-workplace, then assign-home below it.
+  // Three stacked control rows close the Praca body: assign-workplace, assign-home, remove-from-home.
   const workBodyH =
-    WORK_ROWS * rowH + gatherTopGap + gatherBlockH + preAssignGap + 2 * assignIconSize + assignRowGap;
+    WORK_ROWS * rowH + gatherTopGap + gatherBlockH + preAssignGap + 3 * assignIconSize + 2 * assignRowGap;
   const expBodyH = EXP_ROWS * rowH;
   const equipBodyH = model.equipmentRows.length * equipRowH;
 
@@ -240,6 +246,15 @@ export function layoutSettler(
   const homeIcon: Rect = { x: work.body.x, y: homeTop, w: assignIconSize, h: assignIconSize };
   const homeLabel: Rect = { x: assignLabel.x, y: homeTop, w: assignLabel.w, h: assignIconSize };
   const homeButton: ButtonHit = { action: 'assign-home', enabled: model.canAssignHome, rect: homeIcon };
+  // The remove-from-home row below it — the inverse control, one more row down.
+  const unassignTop = homeTop + assignIconSize + assignRowGap;
+  const unassignIcon: Rect = { x: work.body.x, y: unassignTop, w: assignIconSize, h: assignIconSize };
+  const unassignLabel: Rect = { x: assignLabel.x, y: unassignTop, w: assignLabel.w, h: assignIconSize };
+  const unassignButton: ButtonHit = {
+    action: 'unassign-home',
+    enabled: model.canUnassignHome,
+    rect: unassignIcon,
+  };
 
   const experience = next(expBodyH);
   const expRow: Rect = { x: experience.body.x, y: experience.body.y, w: experience.body.w, h: rowH };
@@ -281,6 +296,9 @@ export function layoutSettler(
     homeButton,
     homeIcon,
     homeLabel,
+    unassignButton,
+    unassignIcon,
+    unassignLabel,
     gatherChoiceHits,
     craftChoiceHits,
     experience,

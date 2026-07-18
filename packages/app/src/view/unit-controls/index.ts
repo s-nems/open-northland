@@ -106,6 +106,9 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     onDemolishSignpost: (id) => opts.enqueue({ kind: 'demolishSignpost', signpost: id as Entity }),
     onAssignWorkplace: (id) => arm({ kind: 'workplace', settler: id }),
     onAssignHome: (id) => arm({ kind: 'home', settler: id }),
+    // Remove-from-home needs no target — it acts on the settler's current home, so it enqueues directly
+    // (no pick mode, unlike assign-home).
+    onUnassignHome: (id) => opts.enqueue({ kind: 'unassignHouse', entity: id as Entity }),
     onSetGatherGood: (id, goodType) =>
       opts.enqueue({ kind: 'setGatherGood', entity: id as Entity, goodType }),
     onSetCraftGoods: (id, goods) =>

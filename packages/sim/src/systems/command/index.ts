@@ -27,6 +27,7 @@ import {
   setJob,
   setStance,
   setWorkFlag,
+  unassignHouse,
 } from '../orders/index.js';
 import { buildingEnabled, tribeShipsUnlocked } from '../progression/index.js';
 import { debugFillStockpile, debugKill, debugSetNeeds } from './debug.js';
@@ -165,6 +166,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       return;
     case 'assignHouse':
       assignHouse(world, ctx, command);
+      return;
+    case 'unassignHouse':
+      unassignHouse(world, ctx, command);
       return;
     case 'makeChild':
       makeChild(world, ctx, command);

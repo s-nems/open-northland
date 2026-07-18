@@ -196,7 +196,7 @@ function pick<T>(rng: Rng, options: readonly T[]): T {
 function nextCommand(rng: Rng): Command {
   const x = rng.int(NODE_W);
   const y = rng.int(NODE_H);
-  const roll = rng.int(33);
+  const roll = rng.int(35);
   switch (roll) {
     case 31:
       // An AI-seat flip: valid players (the AiPlayer carrier created/updated/destroyed — the
@@ -228,6 +228,13 @@ function nextCommand(rng: Rng): Command {
         entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
         child: pick(rng, ['female', 'male'] as const),
       };
+    case 33:
+      // A house un-assignment at a random id: real housed families, unhoused adults, children,
+      // unowned/dead targets — mostly no-ops, all replayable.
+      return { kind: 'unassignHouse', entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
+    case 34:
+      // An AIMED house un-assignment — likely to hit a nucleus adult the stream's assignHouse rolls housed.
+      return { kind: 'unassignHouse', entity: (rng.int(NUCLEUS_ID_RANGE) + 1) as Entity };
     case 27:
       // An AIMED marry (see NUCLEUS_ID_RANGE) — likely to hit a live adult and actually start a wedding.
       return { kind: 'marry', entity: (rng.int(NUCLEUS_ID_RANGE) + 1) as Entity };
