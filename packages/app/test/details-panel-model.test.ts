@@ -176,6 +176,12 @@ describe('selection details panel model', () => {
     );
     expect(built.kind === 'building' && built.upgradable).toBe(true);
     expect(built.kind === 'building' && built.cancelable).toBe(false);
+    // The Upgrade button's hover tooltip lists the next tier's own bill (home level 1: wood 4, stone 3),
+    // not the from-scratch cumulative cost — the level difference the sim actually charges.
+    expect(built.kind === 'building' && built.upgradeCost).toEqual([
+      expect.objectContaining({ goodType: GOOD_WOOD, amount: 4 }),
+      expect.objectContaining({ goodType: GOOD_STONE, amount: 3 }),
+    ]);
 
     const upgrading = buildUnitPanelModel(
       snapshotOf(
@@ -196,6 +202,8 @@ describe('selection details panel model', () => {
     );
     expect(upgrading.kind === 'building' && upgrading.upgradable).toBe(false);
     expect(upgrading.kind === 'building' && upgrading.cancelable).toBe(true);
+    // No Upgrade button on a running upgrade site, so no cost preview to show.
+    expect(upgrading.kind === 'building' && upgrading.upgradeCost).toEqual([]);
   });
 
   it('keeps Magazyn rows in declared slot order while amounts change (Pszenica before Mąka, always)', () => {

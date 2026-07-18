@@ -21,6 +21,7 @@ import {
   constructionModel,
   productionModel,
   stockRows,
+  upgradeCostRows,
   workerSlotsFor,
 } from './building.js';
 import {
@@ -57,6 +58,7 @@ export type {
   HomeResidentsModel,
   ProductionModel,
   StockRow,
+  UpgradeCostRow,
   WorkerSlotRow,
 } from './building.js';
 export type { UnitPanelModelContext } from './context.js';
@@ -139,6 +141,12 @@ export function buildUnitPanelModel(
     const def = buildingDef(ctx, rawType);
     const catalog = rawType === undefined ? undefined : vikingBuildingByTypeId(rawType);
     const category = def?.kind ?? catalog?.kind ?? 'unknown';
+    // Built + a chained type = the Upgrade button; computed once so the button's presence and its
+    // cost-preview tooltip can never disagree.
+    const upgradable =
+      def?.upgradeTarget !== undefined &&
+      ent.components.UnderConstruction === undefined &&
+      pct(num(b.built)) >= 100;
     return {
       kind: 'building',
       entityId,
@@ -165,12 +173,10 @@ export function buildUnitPanelModel(
       defenseLabel: messages().hud.defenseStopped,
       production: productionModel(ctx, snapshot, def, ent),
       construction: constructionModel(ctx, def, ent),
-      // Built + a chained type = the Upgrade button; a running upgrade site offers Cancel instead.
-      upgradable:
-        def?.upgradeTarget !== undefined &&
-        ent.components.UnderConstruction === undefined &&
-        pct(num(b.built)) >= 100,
+      // A running upgrade site offers Cancel instead of Upgrade.
+      upgradable,
       cancelable: ent.components.Upgrading !== undefined,
+      upgradeCost: upgradable ? upgradeCostRows(ctx, def) : [],
     };
   }
 

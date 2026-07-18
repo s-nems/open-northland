@@ -30,6 +30,15 @@ export interface ConstructionRow {
   readonly needed: number;
 }
 
+/** One material line of the Upgrade button's cost preview — a required good and its quantity. Unlike
+ *  {@link ConstructionRow} there is no "delivered" half: this is the bill shown before the upgrade
+ *  starts (the hover tooltip), not a running site's progress. */
+export interface UpgradeCostRow {
+  readonly goodType: number;
+  readonly label: string;
+  readonly amount: number;
+}
+
 /** The Construction section's content — present only while the building carries `UnderConstruction`. */
 export interface ConstructionModel {
   /** The health ramp 0..100 (the sim raises `Health` in step with `built`), or null when the type
@@ -148,6 +157,10 @@ export interface BuildingPanelModel {
   /** Whether the general section offers the Cancel-upgrade button (housewindow 112): a running
    *  upgrade site (`Upgrading`) — aborting restores the previous level, delivered materials lost. */
   readonly cancelable: boolean;
+  /** The upgrade target tier's material cost — the level-difference bill the sim charges to raise this
+   *  building (its target's own `construction`, mirroring {@link constructionModel}'s upgrading branch).
+   *  Empty unless {@link upgradable}; surfaced by the Upgrade button's hover tooltip. */
+  readonly upgradeCost: readonly UpgradeCostRow[];
 }
 
 /** The current holdings of a building's {@link Stockpile}, as a goodType→amount map. */
@@ -244,6 +257,22 @@ export function constructionModel(
     hpPct: hitpoints !== undefined && max !== undefined && max > 0 ? pctRatio(hitpoints, max) : null,
     rows,
   };
+}
+
+/**
+ * The material bill to raise `def` one tier — its `upgradeTarget`'s own `construction` (the level
+ * difference the sim charges, the same cost {@link constructionModel} shows for a running upgrade site),
+ * as {goodType, label, amount} rows. Empty when the type has no upgrade target or the target declares
+ * no build cost.
+ */
+export function upgradeCostRows(ctx: UnitPanelModelContext, def: BuildingDef | undefined): UpgradeCostRow[] {
+  if (def?.upgradeTarget === undefined) return [];
+  const target = ctx.buildings.find((b) => b.typeId === def.upgradeTarget);
+  return (target?.construction ?? []).map((line) => ({
+    goodType: line.goodType,
+    label: goodLabel(ctx, line.goodType),
+    amount: line.amount,
+  }));
 }
 
 /** How many settlers are currently bound to `buildingId`, per job — the per-slot "filled" count. */
