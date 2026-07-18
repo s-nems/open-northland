@@ -26,6 +26,10 @@ reopens with no test failing.
   so an unhashable component fails loudly on the first hashed tick instead of hashing to nothing.
   Make sure the `Set`/`bigint` cases reach it rather than the silent object fallback.
 - Add a unit test that a component holding an unhashable shape throws.
+- The same latent gap sits in `clonePlain` (`packages/sim/src/inspect/snapshot.ts`): a `Set` reaches
+  the object branch and `Object.keys(set)` is `[]`, so a `Set`-valued component silently snapshots to
+  `{}` (its `PlainOf<T>` type is equally blind — `Set` hits the `extends object` mapped branch). Guard
+  it the same day: the day a `Set` component is added, both `hashState` and the snapshot need it.
 - Optional, same function, do it here only because it moves goldens once: the `Map` branch mixes no
   size, unlike the array branch's `mix(v.length)` framing. No collision has been demonstrated (every
   `hashValue` call mixes at least one word, and object keys are length-framed), so this is symmetry,
