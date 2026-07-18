@@ -107,7 +107,9 @@ that matches its role instead of piling another method onto a growing file:
     `raf-loop.ts`, `pointer-tracker.ts`.
   - **`unit-controls/`** — the RTS select-and-command feature: `index.ts` (input controller) +
     `orders.ts`/`marquee.ts`/`types.ts`/`unit-targets.ts`/`formation.ts`, plus the `action-ring/`
-    package (`settler-actions.ts` menu state + input, `action-ring-visuals.ts`, `profession-picker.ts`)
+    package (`settler-actions.ts` mount + mode/anchor state machine over its pure pieces
+    `selection-centre.ts`/`menu-state.ts`, the `input.ts` pointer/keyboard controller, `types.ts`,
+    `action-ring-visuals.ts`, `profession-picker.ts`)
     and the `highlights/` package (the pick-mode building washes: `assign-highlight.ts` +
     `house-highlight.ts`).
   - **`projections/`** — pure snapshot → render/HUD projections (`index.ts` barrel):
