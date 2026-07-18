@@ -11,13 +11,13 @@ import {
 import type { Entity } from '../../../../src/ecs/world.js';
 import { ONE, positionOfNode, Simulation } from '../../../../src/index.js';
 import { aiSystem, stampResourceFootprint } from '../../../../src/systems/index.js';
+import { grassCellMap } from '../../../fixtures/terrain.js';
 import {
   content,
   TEST_HUT,
   VIKING,
   WOOD,
   WOOD_ATOMIC,
-  WOODCUTTER,
 } from '../../../footprint/resource-footprint/content.js';
 import {
   ctxOf,
@@ -25,7 +25,6 @@ import {
   placeWoodcutter,
   terrainOf,
 } from '../../../footprint/resource-footprint/support.js';
-import { grassCellMap } from '../../../fixtures/terrain.js';
 
 /** A footprinted tree (walk-blocks its anchor; work cells left/right) at half-cell node (x,y). */
 function placeFootprintedTree(sim: Simulation, x: number, y: number): Entity {

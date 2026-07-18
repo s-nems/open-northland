@@ -155,9 +155,7 @@ function unreachablePickupCell(
 ): boolean {
   if (cell === here) return false;
   return (
-    !terrain.isWalkable(cell) ||
-    blocked.has(cell) ||
-    terrain.componentOf(here) !== terrain.componentOf(cell)
+    !terrain.isWalkable(cell) || blocked.has(cell) || terrain.componentOf(here) !== terrain.componentOf(cell)
   );
 }
 
