@@ -6,6 +6,6 @@
  * {@link import('./lane-texture.js')}; its per-chunk draw-call batcher
  * ({@link import('./chunk-batcher.js')}) is folder-internal.
  */
-export { DEFAULT_TILE_COLOUR, flatTileColour, TERRAIN_CHUNK_TILES } from './geometry.js';
+export { flatTileColour, TERRAIN_CHUNK_TILES } from './geometry.js';
 export { padLaneRows } from './lane-texture.js';
 export { TerrainLayer } from './terrain-layer.js';

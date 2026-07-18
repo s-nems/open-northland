@@ -28,13 +28,12 @@ export const DOOR_SHIFTS: ReadonlyMap<string, FootprintCell> = new Map([
 ]);
 
 /**
- * Where the door-marker stack anchors, as an offset from the (shifted) door node — the same anchor
- * the worker-icon badges and (for homes) the occupancy dots grow up from. The default — one node
- * right of the door, a half field — fits almost every workplace; the overrides come from gallery
- * review (the HQ's wide gangway wants the stack a node further out; the barracks' door wall runs
- * down-right, so the stack follows it). Homes push it a full field (two nodes) right so their
- * occupancy dots clear the wide house door graphic instead of sitting on it (user observation,
- * 2026-07-17).
+ * Where the worker-icon stack anchors, as an offset from the (shifted) door node — the anchor the
+ * worker-icon badges and (for homes) the occupancy dots grow up from. The default — one node right of
+ * the door, a half field — fits almost every workplace; the overrides come from gallery review (the
+ * HQ's wide gangway wants the stack a node further out; the barracks' door wall runs down-right, so the
+ * stack follows it). Homes push it a full field (two nodes) right so their occupancy dots clear the wide
+ * house door graphic instead of sitting on it (user observation, 2026-07-17).
  */
 export const DEFAULT_WORKER_ICON_OFFSET: FootprintCell = { dx: 1, dy: 0 };
 const HOME_OCCUPANCY_OFFSET: FootprintCell = { dx: 2, dy: 0 };

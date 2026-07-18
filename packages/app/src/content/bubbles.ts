@@ -1,15 +1,5 @@
-import type { AtlasFrame, SettlerBubbleKind, TextureSource } from '@open-northland/render';
+import type { SettlerBubbleGfx, SettlerBubbleKind } from '@open-northland/render';
 import { loadLayer, MissingAtlasError } from './ir.js';
-
-/**
- * Resolve the decoded settler-bubble art for the render bubble layer: the palette-baked `ls_gui_bubbles`
- * sheet (the GUI speech-bubble bob) and the frame each {@link SettlerBubbleKind} draws. Returns `null`
- * when the atlas is absent (a checkout without `content/`), so the renderer degrades to no bubbles.
- *
- * The RGBA preview stem (`ls_gui_bubbles.gui_bubbles`, baked through the sheet's own `gui_bubbles`
- * palette) is loaded, not the recolourable indexed sheet — a settler bubble is never team-coloured, so
- * it needs no LUT remap and draws as a plain sprite.
- */
 
 /** The served stem of the palette-baked bubble sheet (RGBA preview, not the indexed variant). */
 const BUBBLE_ATLAS_STEM = 'ls_gui_bubbles.gui_bubbles';
@@ -25,10 +15,14 @@ const BUBBLE_FRAME_ID: Readonly<Record<SettlerBubbleKind, number>> = {
   partner: 2,
 };
 
-export async function loadSettlerBubbleGfx(): Promise<{
-  source: TextureSource;
-  frameByKind: Record<SettlerBubbleKind, AtlasFrame>;
-} | null> {
+/**
+ * Resolve the decoded settler-bubble art for the render bubble layer: the palette-baked `ls_gui_bubbles`
+ * sheet and the frame each {@link SettlerBubbleKind} draws. The RGBA preview stem is loaded, not the
+ * recolourable indexed sheet — a settler bubble is never team-coloured, so it draws as a plain sprite.
+ * Returns `null` when the atlas is absent (a checkout without `content/`), so the renderer degrades to no
+ * bubbles.
+ */
+export async function loadSettlerBubbleGfx(): Promise<SettlerBubbleGfx | null> {
   let layer: Awaited<ReturnType<typeof loadLayer>>;
   try {
     layer = await loadLayer(BUBBLE_ATLAS_STEM);

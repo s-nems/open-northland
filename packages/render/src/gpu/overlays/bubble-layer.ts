@@ -39,11 +39,15 @@ export interface SettlerBubble {
   readonly kind: SettlerBubbleKind;
 }
 
-/** The decoded bubble art the app resolves: the shared `ls_gui_bubbles` atlas page + the frame each kind
- *  draws, with the layer's frame→texture cache. Unset → the layer draws nothing. */
-interface BubbleGfx {
+/** The decoded bubble art the app resolves and hands the renderer: the shared `ls_gui_bubbles` atlas page
+ *  + the frame each kind draws. */
+export interface SettlerBubbleGfx {
   readonly source: TextureSource;
   readonly frameByKind: Readonly<Record<SettlerBubbleKind, AtlasFrame>>;
+}
+
+/** {@link SettlerBubbleGfx} plus the layer's frame→texture cache. Unset → the layer draws nothing. */
+interface BubbleGfx extends SettlerBubbleGfx {
   readonly textures: TextureCache;
 }
 
