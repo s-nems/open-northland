@@ -128,7 +128,7 @@ export const separationSystem: System = (world, ctx) => {
   const isGhostMover = (e: Entity): boolean => {
     let ghost = ghostMemo.get(e);
     if (ghost === undefined) {
-      zones ??= calmZonesByPlayer(world, terrain, ctx.tick);
+      zones ??= calmZonesByPlayer(world, terrain);
       const p = world.get(e, Position);
       const n = nodeOfPosition(p.x, p.y);
       ghost =
