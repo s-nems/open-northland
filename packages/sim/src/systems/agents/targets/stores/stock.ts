@@ -10,6 +10,7 @@ import { nodeOfPosition } from '../../../../nav/halfcell.js';
 import type { SpatialGate } from '../../../../nav/node-metric.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
+import { forEachRingOffset } from '../../../spatial.js';
 import {
   buildingProduces,
   isYardHeap,
@@ -137,15 +138,12 @@ export function nearestFreeYardNode(
   const afterRadius = afterRank === null ? -1 : Math.abs(afterRank.x - cx) + Math.abs(afterRank.y - cy);
   for (let r = 0; r <= GOODS_YARD_MAX_RADIUS; r++) {
     let best: NodeId | null = null;
-    for (let dy = -r; dy <= r; dy++) {
-      const dxMag = r - Math.abs(dy); // the Manhattan ring |dx| + |dy| = r
-      for (const dx of dxMag === 0 ? [0] : [-dxMag, dxMag]) {
-        if (!terrain.inBounds(cx + dx, cy + dy)) continue;
-        const node = terrain.nodeAt(cx + dx, cy + dy);
-        if (r < afterRadius || (r === afterRadius && after !== undefined && node <= after)) continue;
-        if (usable(node) && (best === null || node < best)) best = node;
-      }
-    }
+    forEachRingOffset(r, (dx, dy) => {
+      if (!terrain.inBounds(cx + dx, cy + dy)) return;
+      const node = terrain.nodeAt(cx + dx, cy + dy);
+      if (r < afterRadius || (r === afterRadius && after !== undefined && node <= after)) return;
+      if (usable(node) && (best === null || node < best)) best = node;
+    });
     if (best !== null) return best;
   }
   return usable(here) ? here : null;
