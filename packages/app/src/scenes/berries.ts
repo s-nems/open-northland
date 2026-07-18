@@ -7,13 +7,13 @@ import type { SceneDefinition } from './types.js';
 
 /**
  * The berries scene: prove wild berry bushes are forageable natural food. Hungry settlers each forage the
- * nearest ripe bush — hunger resets, the bush goes bare, then regrows its fruit after
- * {@link systems.BERRY_REGROW_TICKS}. A separate bush placed already-bare regrows on its own, proving the
- * growth loop independent of foraging. There is deliberately no food store, so the only way a settler's
- * hunger can reset is by foraging a bush — the headless half asserts exactly that (every hungry settler
- * ends fed, every bush ends ripe again). The browser half is where a human judges the pixels: the
- * red-berry bush, the eat animation, the bush going bare the instant it's foraged, and the berries
- * growing back.
+ * nearest ripe bush — hunger resets, the bush goes bare, blooms flowering at the regrow midpoint, then holds
+ * fruit again after {@link systems.BERRY_REGROW_TICKS}. A separate bush placed already-bare regrows on its
+ * own, proving the growth loop independent of foraging. There is deliberately no food store, so the only way
+ * a settler's hunger can reset is by foraging a bush — the headless half asserts exactly that (every hungry
+ * settler ends fed, every bush ends ripe again). The browser half is where a human judges the pixels: the
+ * red-berry bush, the eat animation, the bush going bare the instant it's foraged, the white bloom at the
+ * midpoint, and the berries growing back.
  *
  * The bushes draw the shared fruited-bush art (`placeSandboxBerryBush`'s default `BUSH_FRUITS_GFX`
  * variant) through the berry-bush binding; inert headlessly.
@@ -28,8 +28,9 @@ const STATION_GAP = 6;
 const STATIONS = 4;
 const FIRST_STATION_X = 5;
 /** A bush placed already bare (regrowing) to prove the growth loop runs without being foraged first. It
- *  regrows at this absolute tick — well inside the run. */
-const LONE_BARE_BUSH = { x: 27, y: 9, ripeAtTick: 300 } as const;
+ *  blooms flowering at this absolute tick, then ripens one {@link systems.BERRY_STAGE_TICKS} later — both
+ *  well inside the run. */
+const LONE_BARE_BUSH = { x: 27, y: 9, bloomAtTick: 300 } as const;
 /**
  * Long enough for the whole cycle to close: the foragers walk one tile + eat (~tens of ticks), then every
  * foraged bush regrows one {@link systems.BERRY_REGROW_TICKS} (1200) later — so the run must clear
@@ -70,8 +71,8 @@ function build(sim: Simulation): void {
   // A lone bush that starts bare and regrows on its own (no forager), proving the growth loop.
   const bare = placeSandboxBerryBush(sim, LONE_BARE_BUSH.x, LONE_BARE_BUSH.y);
   const b = sim.world.get(bare, BerryBush);
-  b.ripe = false;
-  b.ripeAtTick = LONE_BARE_BUSH.ripeAtTick;
+  b.stage = 'bare';
+  b.nextStageAtTick = LONE_BARE_BUSH.bloomAtTick;
 }
 
 export const berriesScene: SceneDefinition = {
@@ -106,7 +107,7 @@ export const berriesScene: SceneDefinition = {
       label: 'every bush ended RIPE — foraged bushes and the lone bare bush all regrew',
       predicate: (sim) => {
         for (const e of sim.world.query(BerryBush)) {
-          if (!sim.world.get(e, BerryBush).ripe) return false;
+          if (sim.world.get(e, BerryBush).stage !== 'ripe') return false;
         }
         return true;
       },

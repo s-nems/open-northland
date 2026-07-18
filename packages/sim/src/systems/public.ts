@@ -3,7 +3,7 @@
 
 export { withinNodeRadius } from '../nav/node-metric.js';
 export { createSettler, DEFAULT_SETTLER_HITPOINTS } from './conflict/spawn/index.js';
-export { BERRY_REGROW_TICKS, createBerryBush } from './economy/berries.js';
+export { BERRY_REGROW_TICKS, BERRY_STAGE_TICKS, createBerryBush } from './economy/berries.js';
 export { isOnMission } from './family/eligibility.js';
 export { createResourceNode } from './footprint/resources.js';
 export { GROWUP_TICKS, isBaby, isChild } from './lifecycle/ageclass.js';

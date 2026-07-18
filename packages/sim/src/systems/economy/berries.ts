@@ -1,7 +1,11 @@
-import { BerryBush, Position } from '../../components/index.js';
+import { BerryBush, Building, Position } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { positionOfNode } from '../../nav/halfcell.js';
-import type { System } from '../context.js';
+import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
+import type { NodeId } from '../../nav/terrain/index.js';
+import { bushesNearNode } from '../berry-index.js';
+import type { System, SystemContext } from '../context.js';
+import { ANCHOR_ONLY, buildingFootprintOf, translatedCells } from '../footprint/geometry.js';
+import { entityNode } from '../spatial.js';
 
 // Berry bushes — wild forageable food. A ripe bush is eaten off directly by any hungry settler (the `forage`
 // drive, no job/tool), then regrows its one serving over time. See the {@link BerryBush} component for the
@@ -12,12 +16,19 @@ import type { System } from '../context.js';
  * ripe (forageable) again. At {@link TICKS_PER_SECOND} = 12 this is 100 s of game time.
  *
  * Named approximation: the original regrows a bush over the `landscapetypes.ini` growth trigger (`transition 7
- * …`, `bush naked → flowering → with fruits`) whose real period is not decoded, so this single duration stands
- * in for the whole two-step flowering cycle. Tunable balance, not a source-pinned value — long enough that a
+ * …`, `bush naked → flowering → with fruits`) whose real period is not decoded, so this whole-cycle duration
+ * stands in for the two-step flowering cycle. Tunable balance, not a source-pinned value — long enough that a
  * bush is a limited wild resource, short enough that a foraged patch recovers within a settler's hunger cadence
  * (~150 s to the eat threshold).
  */
 export const BERRY_REGROW_TICKS = 1200;
+
+/**
+ * Ticks per growth STEP — half {@link BERRY_REGROW_TICKS}, since the source cycle takes two equal growth
+ * triggers (`bush naked → flowering`, then `flowering → with fruits`). A foraged bush blooms `flowering` one
+ * step after being eaten and ripens one step after that, so the bloom lands at exactly the regrow midpoint.
+ */
+export const BERRY_STAGE_TICKS = BERRY_REGROW_TICKS / 2;
 
 /**
  * The largest Manhattan node-distance a hungry settler will look for a ripe {@link BerryBush} to forage (the
@@ -56,28 +67,68 @@ export function createBerryBush(world: World, spec: BerryBushSpec): Entity {
   const e = world.create();
   world.add(e, Position, positionOfNode(spec.x, spec.y));
   world.add(e, BerryBush, {
-    ripe: true,
-    ripeAtTick: 0,
+    stage: 'ripe',
+    nextStageAtTick: 0,
     ...(spec.gfxIndex !== undefined ? { gfxIndex: spec.gfxIndex } : {}),
   });
   return e;
 }
 
 /**
- * BerryGrowthSystem — regrow bare {@link BerryBush}es. Each tick, a bush past its `ripeAtTick` flips back to
- * ripe (forageable) and clears the schedule. The timing is the exact integer compare `tick >= ripeAtTick` (like
- * {@link CurrentAtomic}'s `elapsed >= duration`), not an accumulated fixed-point step — and because the schedule
- * is an absolute tick set once at forage time, a regrowing bush's component does not churn every tick: it
- * changes only twice per cycle (foraged, regrown), so the snapshot scenery cache re-clones a bush only at those
- * two moments. A ripe bush is skipped. The flip is `World.touch`ed so the snapshot cache re-reads it.
+ * BerryGrowthSystem — advance regrowing {@link BerryBush}es one stage at a time. Each tick, a bush past its
+ * `nextStageAtTick` steps `bare → flowering` (rescheduling one more {@link BERRY_STAGE_TICKS} out) or
+ * `flowering → ripe` (clearing the schedule). The timing is the exact integer compare `tick >= nextStageAtTick`
+ * (like {@link CurrentAtomic}'s `elapsed >= duration`), not an accumulated fixed-point step; the next stage is
+ * anchored on the scheduled tick (`+= BERRY_STAGE_TICKS`), not the current one, so a bloom always lands at the
+ * forage-anchored midpoint. Because the schedule is an absolute tick, a regrowing bush's component does not
+ * churn every tick: it changes only at its stage transitions (foraged, bloomed, ripened), so the snapshot
+ * scenery cache re-clones a bush only at those moments. A ripe bush is skipped. Each step is `World.touch`ed so
+ * the snapshot cache re-reads it.
  */
 export const berryGrowthSystem: System = (world, ctx) => {
   for (const e of world.query(BerryBush)) {
     const bush = world.get(e, BerryBush);
-    if (bush.ripe) continue; // already fruited — nothing to regrow
-    if (ctx.tick < bush.ripeAtTick) continue; // still regrowing
-    bush.ripe = true;
-    bush.ripeAtTick = 0; // freeze the schedule (display-stable; unused while ripe)
+    if (bush.stage === 'ripe') continue; // already fruited — nothing to regrow
+    if (ctx.tick < bush.nextStageAtTick) continue; // still growing toward the next stage
+    if (bush.stage === 'bare') {
+      bush.stage = 'flowering';
+      bush.nextStageAtTick += BERRY_STAGE_TICKS; // one more step to fruit, anchored on schedule
+    } else {
+      bush.stage = 'ripe';
+      bush.nextStageAtTick = 0; // freeze the schedule (display-stable; unused while ripe)
+    }
     world.touch(e); // in-place write on a snapshot-cached scenery entity — log it (World.touch doc)
   }
 };
+
+/**
+ * Clear every wild {@link BerryBush} standing inside `building`'s reserved build-exclusion zone — called at
+ * placement so a new building razes the bushes it lands on (source basis: observed original behavior — a
+ * placed building clears the landscape decoration in its reserved footprint; the reserved zone stands in for
+ * the exact clear radius, the same `LogicBuildBlockArea` extent the placement gate keeps clear of other
+ * construction). Bushes are walkable and are not a placement OBSTACLE, so unlike a resource node one can sit
+ * under a building; without this it would be drawn straight through the walls.
+ *
+ * Golden-rule-6 bounded: the reserved zone is a handful of cells, so the scan reads only the bushes within its
+ * Chebyshev reach ({@link bushesNearNode}, the region index) and keeps those whose node lies in the zone,
+ * never every bush on the map. Collect-then-destroy — `world.destroy` mutates the store `bushesNearNode`
+ * derives from — and the order is irrelevant (every matched bush is removed). A mapless sim (no terrain) or a
+ * footprint-less type clears nothing.
+ */
+export function destroyBerryBushesInReserved(world: World, ctx: SystemContext, building: Entity): void {
+  const terrain = ctx.terrain;
+  if (terrain === undefined) return; // mapless sim: no bushes to place under a building
+  const b = world.tryGet(building, Building);
+  const p = world.tryGet(building, Position);
+  if (b === undefined || p === undefined) return;
+  const cells = buildingFootprintOf(ctx.content, b.buildingType)?.reserved ?? ANCHOR_ONLY;
+  const anchor = nodeOfPosition(p.x, p.y);
+  const zone = new Set<NodeId>(translatedCells(terrain, cells, anchor.hx, anchor.hy));
+  if (zone.size === 0) return;
+  let reach = 0; // Chebyshev bound of the reserved cells → a provable superset the box query can't miss
+  for (const c of cells) reach = Math.max(reach, Math.abs(c.dx), Math.abs(c.dy));
+  const doomed = bushesNearNode(world, anchor.hx, anchor.hy, reach).filter((e) =>
+    zone.has(entityNode(world, terrain, e)),
+  );
+  for (const e of doomed) world.destroy(e);
+}

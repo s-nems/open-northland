@@ -155,16 +155,20 @@ function readStumpGood(components: Readonly<Record<string, unknown>>): number | 
   return readNumField(components, 'Stump', 'goodType');
 }
 
+/** The `BerryBush.stage` draw levels: 1 bare (foraged, regrowing), 2 flowering (blooming at the regrow
+ *  midpoint), 3 ripe (holds fruit) — the 1-based index into the per-bush three-frame
+ *  {@link import('../../sprites/index.js').ResourceTypeBinding.byGfxIndex} list (bare, flowering, ripe). */
+const BERRY_STAGE_LEVEL: Readonly<Record<string, number>> = { bare: 1, flowering: 2, ripe: 3 };
+
 /**
- * A berry bush's ripe/bare draw level ({@link import('../draw-item.js').DrawItem.level}): 2 when the bush
- * holds fruit (`BerryBush.ripe`), 1 when bare (foraged, regrowing). A per-bush
- * {@link import('../../sprites/index.js').ResourceTypeBinding.byGfxIndex} two-frame list (bare, ripe) indexes
- * by it. `undefined` for a malformed component (the binding then draws its default frame).
+ * A berry bush's growth draw level ({@link import('../draw-item.js').DrawItem.level}) from `BerryBush.stage`.
+ * A per-bush {@link import('../../sprites/index.js').ResourceTypeBinding.byGfxIndex} three-frame list (bare,
+ * flowering, ripe) indexes by it. `undefined` for a malformed component (the binding then draws its default).
  */
 export function readBerryBushLevel(components: Readonly<Record<string, unknown>>): number | undefined {
-  const b = components.BerryBush as { ripe?: unknown } | undefined;
-  if (b === undefined || typeof b.ripe !== 'boolean') return undefined;
-  return b.ripe ? 2 : 1;
+  const b = components.BerryBush as { stage?: unknown } | undefined;
+  if (b === undefined || typeof b.stage !== 'string') return undefined;
+  return BERRY_STAGE_LEVEL[b.stage];
 }
 
 /**

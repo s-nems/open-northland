@@ -105,7 +105,7 @@ function nearestRipeBush(
   const candidates = bushesNearNode(world, hx, hy, BERRY_FORAGE_RADIUS + BUSH_INTERACTION_SLACK_NODES);
   const best = nearestByCell(terrain, candidates, here, (e) => {
     const bush = world.tryGet(e, BerryBush);
-    if (bush === undefined || !bush.ripe) return null; // bare/regrowing — nothing to forage
+    if (bush === undefined || bush.stage !== 'ripe') return null; // bare/blooming — nothing to forage
     const cell = interactionCell(world, ctx, terrain, e, here);
     if (terrain.componentOf(here) !== terrain.componentOf(cell)) return null; // walled off — leave it be
     if (manhattan(terrain, here, cell) > BERRY_FORAGE_RADIUS) return null; // beyond forage reach (flat radius)

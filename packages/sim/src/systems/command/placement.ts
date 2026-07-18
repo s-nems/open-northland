@@ -16,6 +16,7 @@ import { fx, ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { positionOfNode } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
+import { destroyBerryBushesInReserved } from '../economy/berries.js';
 import { evictWorkFlagsFromFootprint } from '../economy/flags.js';
 import { canPlaceBuilding } from '../footprint/index.js';
 import { evictSettlersFromFootprint } from '../movement/evict.js';
@@ -118,6 +119,9 @@ export function placeBuilding(
   // flags, so a house may legally land on one).
   evictSettlersFromFootprint(world, ctx, e);
   evictWorkFlagsFromFootprint(world, ctx, e);
+  // Bushes are walkable and not a placement obstacle, so the plot may cover wild berry bushes — raze them
+  // (the original clears landscape decoration in a building's reserved zone).
+  destroyBerryBushesInReserved(world, ctx, e);
   ctx.events.emit({ kind: 'buildingPlaced', entity: e, at: { hx: command.x, hy: command.y } });
 }
 

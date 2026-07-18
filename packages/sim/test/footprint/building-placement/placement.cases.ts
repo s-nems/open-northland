@@ -1,8 +1,13 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { PathFollow, PathRequest, Position, Resource } from '../../../src/components/index.js';
+import { BerryBush, PathFollow, PathRequest, Position, Resource } from '../../../src/components/index.js';
 import { halfCellMapFromCells, nodeOfPosition, positionOfNode, Simulation } from '../../../src/index.js';
-import { buildingBlockedCells, canPlaceBuilding, placementProbe } from '../../../src/systems/index.js';
+import {
+  buildingBlockedCells,
+  canPlaceBuilding,
+  createBerryBush,
+  placementProbe,
+} from '../../../src/systems/index.js';
 
 import {
   buildingsPlaced,
@@ -290,10 +295,44 @@ describe('building walk-block — houses have collision', () => {
   });
 });
 
+describe('placement razes wild berry bushes in the reserved zone', () => {
+  /** The bushes left standing after a step, ascending-id (bushes carry no footprint, so only a placement
+   *  razes them). */
+  function survivingBushes(sim: Simulation): number {
+    return [...sim.world.query(BerryBush)].length;
+  }
+
+  it('destroys a bush inside the reserved zone and spares one outside it', () => {
+    const sim = mappedSim();
+    // HUT reserved ring at anchor (5,5) spans x∈[4..7] × y∈[4..7]. A bush at (6,6) sits inside it; a bush
+    // at (12,12) is well clear (a walkable bush is not a placement obstacle, so both land under/near a house).
+    const inside = createBerryBush(sim.world, { x: 6, y: 6 });
+    const outside = createBerryBush(sim.world, { x: 12, y: 12 });
+    expect(survivingBushes(sim)).toBe(2);
+
+    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING });
+    sim.step();
+
+    expect(buildingsPlaced(sim)).toBe(1);
+    expect(sim.world.isAlive(inside)).toBe(false); // razed by the new building
+    expect(sim.world.isAlive(outside)).toBe(true); // beyond the reserved zone — untouched
+    expect(survivingBushes(sim)).toBe(1);
+  });
+
+  it('razes bushes even under a forced (map-authored) placement', () => {
+    const sim = mappedSim();
+    const under = createBerryBush(sim.world, { x: 5, y: 5 }); // the anchor node itself
+    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING, force: true });
+    sim.step();
+    expect(sim.world.isAlive(under)).toBe(false);
+  });
+});
+
 describe('determinism', () => {
   it('two same-seed runs through placement + rejection + pathing hash identically', () => {
     const run = (): string => {
       const sim = mappedSim();
+      createBerryBush(sim.world, { x: 6, y: 6 }); // razed by the hut below — its removal must be deterministic
       sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING });
       sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 6, y: 5, tribe: VIKING }); // rejected
       sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 5, tribe: VIKING });
