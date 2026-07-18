@@ -16,7 +16,7 @@ import {
 import { CommandQueue } from '../../src/core/command-queue.js';
 import type { Command } from '../../src/core/commands/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { EventBuffer, Rng, replay, Simulation } from '../../src/index.js';
+import { EventBuffer, positionOfNode, Rng, replay, Simulation } from '../../src/index.js';
 import { withinNodeRadius } from '../../src/nav/node-metric.js';
 import {
   buildOrderModule,
@@ -24,9 +24,9 @@ import {
   FLAG_MAX_DISTANCE_NODES,
   FLAG_MIN_DISTANCE_NODES,
   populationModule,
-  SIGNPOST_RING_OFFSETS,
   SIGNPOST_TARGET_TOLERANCE_NODES,
   signpostCoverageModule,
+  signpostLatticeOffset,
   workforceModule,
 } from '../../src/systems/ai-player/index.js';
 import type { SystemContext } from '../../src/systems/index.js';
@@ -114,14 +114,18 @@ function entityOfBuilding(sim: Simulation, buildingType: number): Entity {
   throw new Error(`setup: building ${buildingType} missing`);
 }
 
-function plantPostAtHq(sim: Simulation): void {
+function plantPost(sim: Simulation, position: { x: number; y: number }): void {
   const post = sim.world.create();
-  sim.world.add(post, Position, sim.world.get(entityOfBuilding(sim, HQ_TYPE), Position));
+  sim.world.add(post, Position, position);
   sim.world.add(post, Owner, { player: SEAT });
   sim.world.add(post, Signpost, {
     navRadius: SIGNPOST_NAV_RADIUS_NODES,
     spacingRadius: SIGNPOST_SPACING_RADIUS_NODES,
   });
+}
+
+function plantPostAtHq(sim: Simulation): void {
+  plantPost(sim, sim.world.get(entityOfBuilding(sim, HQ_TYPE), Position));
 }
 
 describe('workforce module (collectResources)', () => {
@@ -215,10 +219,11 @@ describe('workforce module (collectResources)', () => {
     expect(staffing.map((c) => c.jobPriority)).toEqual([[FARMER]]);
   });
 
-  it('turns an idle scout back into a builder once the signpost ring is done', () => {
-    const sim = aiSim();
-    placeHq(sim);
-    sim.enqueue({ kind: 'spawnSettler', jobType: SCOUT, x: 10, y: 10, tribe: VIKING, owner: SEAT });
+  it('turns an idle scout back into a builder once the wanted lattice is done', () => {
+    // A map too small for any first-ring lattice target (±22 columns / ±34 rows off the HQ).
+    const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(20, 12) });
+    placeHq(sim, 10, 6);
+    sim.enqueue({ kind: 'spawnSettler', jobType: SCOUT, x: 4, y: 4, tribe: VIKING, owner: SEAT });
     sim.step();
     plantPostAtHq(sim); // the centre target is satisfied; every ring target falls off this small map
     const commands = [...workforceModule.run(sim.world, ctxOf(sim), SEAT)];
@@ -241,7 +246,7 @@ describe('build-order module (houseBuild)', () => {
     return [...module.run(sim.world, ctxOf(sim), SEAT)][0];
   }
 
-  it('executes the opening list in order near the HQ, capped at two open sites', () => {
+  it('executes the opening list in order near the HQ, one open site at a time', () => {
     const sim = aiSim();
     placeHq(sim);
     sim.step();
@@ -259,14 +264,7 @@ describe('build-order module (houseBuild)', () => {
     sim.enqueue(first);
     sim.step();
 
-    // The open farm site already counts toward its entry — the second placement is a home.
-    const second = nextPlacement(sim);
-    if (second?.kind !== 'placeBuilding') throw new Error('expected a second placement');
-    expect(second.buildingType).toBe(HOME_TYPE);
-    sim.enqueue(second);
-    sim.step();
-
-    // Two open sites — the executor stalls until one finishes.
+    // One open site — the executor stalls until it finishes.
     expect(nextPlacement(sim)).toBeUndefined();
     for (const e of [...sim.world.query(UnderConstruction)]) {
       sim.enqueue({ kind: 'debugCompleteConstruction', target: e });
@@ -275,7 +273,7 @@ describe('build-order module (houseBuild)', () => {
 
     // Homes fill to their count of three, then the entries absent from this content are skipped
     // and the module goes quiet.
-    for (const expected of [HOME_TYPE, HOME_TYPE]) {
+    for (const expected of [HOME_TYPE, HOME_TYPE, HOME_TYPE]) {
       const next = nextPlacement(sim);
       if (next?.kind !== 'placeBuilding') throw new Error('expected a home placement');
       expect(next.buildingType).toBe(expected);
@@ -309,7 +307,7 @@ describe('build-order module (houseBuild)', () => {
 });
 
 describe('signpost-coverage module (guideBuild)', () => {
-  it('starts the ring at the HQ, then rests when no ring target fits this small map', () => {
+  it('starts the lattice beside the HQ, then walks the six-post ring outward', () => {
     const sim = aiSim();
     placeHq(sim);
     sim.enqueue({ kind: 'spawnSettler', jobType: SCOUT, x: 10, y: 10, tribe: VIKING, owner: SEAT });
@@ -319,33 +317,60 @@ describe('signpost-coverage module (guideBuild)', () => {
     expect(commands).toHaveLength(1);
     const order = commands[0];
     if (order?.kind !== 'placeSignpost') throw new Error('expected a placeSignpost order');
-    // The first post lands beside the HQ (the ring's centre target).
+    // The first post lands beside the HQ (the lattice's centre target).
     expect(withinNodeRadius(order.x, order.y, HQ_X, HQ_Y, SIGNPOST_TARGET_TOLERANCE_NODES)).toBe(true);
 
-    // With the centre post standing, every remaining ring target falls off the 64×32 map — done.
+    // With the centre post standing, the next order walks the first ring (its east corner fits
+    // this map; the ±34-row targets fall off it and are skipped).
     plantPostAtHq(sim);
-    expect([...signpostCoverageModule.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
+    const next = [...signpostCoverageModule.run(sim.world, ctxOf(sim), SEAT)][0];
+    if (next?.kind !== 'placeSignpost') throw new Error('expected a first-ring placement');
+    const east = signpostLatticeOffset(1, 0);
+    expect(
+      withinNodeRadius(next.x, next.y, HQ_X + east.dx, HQ_Y + east.dy, SIGNPOST_TARGET_TOLERANCE_NODES),
+    ).toBe(true);
   });
 
-  it('walks the ring outward on a map that fits it', () => {
+  it('extends the lattice only where the settlement builds (the field grows with the buildings)', () => {
     const CENTER = { x: 128, y: 128 };
     const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(256, 256) });
     placeHq(sim, CENTER.x, CENTER.y);
     sim.enqueue({ kind: 'spawnSettler', jobType: SCOUT, x: 100, y: 100, tribe: VIKING, owner: SEAT });
     sim.step();
-    plantPostAtHq(sim);
+    // The centre and all six first-ring targets stand satisfied — the always-wanted lattice is done.
+    plantPost(sim, positionOfNode(CENTER.x, CENTER.y));
+    for (const [q, r] of [
+      [1, 0],
+      [0, 1],
+      [-1, 1],
+      [-1, 0],
+      [0, -1],
+      [1, -1],
+    ] as const) {
+      const o = signpostLatticeOffset(q, r);
+      plantPost(sim, positionOfNode(CENTER.x + o.dx, CENTER.y + o.dy));
+    }
+    expect([...signpostCoverageModule.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
 
-    const commands = [...signpostCoverageModule.run(sim.world, ctxOf(sim), SEAT)];
-    const order = commands[0];
-    if (order?.kind !== 'placeSignpost') throw new Error('expected a ring placement');
-    const target = SIGNPOST_RING_OFFSETS[1];
-    if (target === undefined) throw new Error('unreachable: the ring has eight offsets');
+    // A new building near the second ring's east corner makes exactly that outer target wanted.
+    const reach = signpostLatticeOffset(2, 0);
+    sim.enqueue({
+      kind: 'placeBuilding',
+      buildingType: HOME_TYPE,
+      x: CENTER.x + reach.dx - 2,
+      y: CENTER.y + reach.dy,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    sim.step();
+    const order = [...signpostCoverageModule.run(sim.world, ctxOf(sim), SEAT)][0];
+    if (order?.kind !== 'placeSignpost') throw new Error('expected an expansion placement');
     expect(
       withinNodeRadius(
         order.x,
         order.y,
-        CENTER.x + target.dx,
-        CENTER.y + target.dy,
+        CENTER.x + reach.dx,
+        CENTER.y + reach.dy,
         SIGNPOST_TARGET_TOLERANCE_NODES,
       ),
     ).toBe(true);
