@@ -261,6 +261,17 @@ describe('workforce module (collectResources)', () => {
     expect(staffing.map((c) => c.jobPriority)).toEqual([[BAKER], [CARRIER]]);
   });
 
+  it('leaves a carrier-only workplace (the well) unstaffed', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    sim.enqueue({ kind: 'placeBuilding', buildingType: WELL_TYPE, x: 40, y: 16, tribe: VIKING, owner: SEAT });
+    spawnMen(sim, 6, BUILDER);
+    sim.step();
+
+    const commands = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
+    expect(commands.filter((c) => c.kind === 'assignWorker')).toEqual([]);
+  });
+
   it('hires the iron collector only once the build order reaches its gated entry', () => {
     const sim = aiSim();
     placeHq(sim);
@@ -652,7 +663,11 @@ describe('the full strategic registry — determinism and replay', () => {
     expect(kinds.has('setWorkFlag')).toBe(true); // the collectors flag their resources
   });
 
-  it('carries the opening list to completion unattended (stocked HQ + fourteen men is enough)', () => {
+  // A 12000-tick run stays under a second alone but shares CPU with the whole suite — the explicit
+  // timeout keeps a loaded machine from flaking it.
+  it('carries the opening list to completion unattended (stocked HQ + fourteen men is enough)', {
+    timeout: 30_000,
+  }, () => {
     const sim = aiSim(21);
     sim.enqueue({
       kind: 'placeBuilding',
@@ -664,9 +679,9 @@ describe('the full strategic registry — determinism and replay', () => {
       fillStock: true,
     });
     placeResources(sim);
-    // Fourteen men: four collectors (iron once reached), the scout, and five staffing posts
-    // (farmer, miller, baker, the bakery carrier, the well's transport slot) still leave builders
-    // free to raise the list — the allocation priority is the user's plan.
+    // Fourteen men: four collectors (iron once reached), the scout, and four staffing posts
+    // (farmer, miller, baker, the bakery carrier — the well's transport slot stays empty) still
+    // leave builders free to raise the list — the allocation priority is the user's plan.
     spawnMen(sim, 14);
     sim.enqueue({ kind: 'setPlayerAi', player: SEAT, enabled: true });
     sim.run(12000);
