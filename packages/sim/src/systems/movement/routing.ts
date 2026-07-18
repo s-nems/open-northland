@@ -84,7 +84,7 @@ export function drainPathRequests(
     let view = combinedByPlayer.get(player);
     if (view === undefined) {
       const base = dynamicOnly();
-      units ??= unitWalkBlocks(world, terrain, ctx.tick);
+      units ??= unitWalkBlocks(world, terrain);
       const layers: Array<ReadonlySet<NodeId>> = [base, units.field];
       for (const [p, town] of units.townByPlayer) {
         if (p === player) continue; // a player's own town garrison never blocks its own routing

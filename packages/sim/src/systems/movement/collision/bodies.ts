@@ -71,27 +71,30 @@ export function isStanding(world: World, e: Entity): boolean {
 }
 
 /**
- * Per-(world, tick) memo of {@link calmZonesByPlayer}: the zones are consumed by both the routing tick (via
- * {@link unitWalkBlocks}) and the SeparationSystem in the same tick, and the inputs — buildings, their owners
- * and positions — cannot change between those two systems (only movement and separation run in between, and
- * they touch settlers alone), so one derivation serves both. Keyed by the World object (a WeakMap — two sims
- * in one test process can never share an entry) and guarded by the exact tick; re-derived each tick, so no
- * `World.verifyCaches` registration is owed.
+ * Per-world memo of {@link calmZonesByPlayer}, keyed on the generations of its only inputs: `Building`
+ * and `Owner` membership (positions are immutable once placed, and ownership never mutates in place —
+ * every change is an add/remove the generation sees). Buildings change on placement/completion/
+ * demolition, not per tick, so the ~145-node diamond fill per building runs on those events instead of
+ * every tick. Rebuild-on-version-bump (never incrementally patched), so no `World.verifyCaches`
+ * registration is owed.
  */
-const zonesMemo = new WeakMap<World, { tick: number; zones: Map<number, Set<NodeId>> }>();
+const zonesMemo = new WeakMap<World, { version: string; zones: Map<number, Set<NodeId>> }>();
+
+/** The generation key {@link zonesMemo} guards on — every input that can change a zone bumps it. */
+function zonesVersion(world: World): string {
+  return `${world.componentGeneration(Building)}.${world.componentGeneration(Owner)}`;
+}
 
 /**
  * Every player's calm-zone node set: a Manhattan diamond of {@link CALM_ZONE_RADIUS_NODES} around
- * each of its buildings' anchor nodes. Derived per tick (memoized — see {@link zonesMemo}),
- * membership-only (set unions — iteration order can't change any answer), never hashed.
+ * each of its buildings' anchor nodes. Derived on building/ownership change (memoized — see
+ * {@link zonesMemo}), membership-only (set unions — iteration order can't change any answer), never
+ * hashed.
  */
-export function calmZonesByPlayer(
-  world: World,
-  terrain: TerrainGraph,
-  tick: number,
-): Map<number, Set<NodeId>> {
+export function calmZonesByPlayer(world: World, terrain: TerrainGraph): Map<number, Set<NodeId>> {
+  const version = zonesVersion(world);
   const hit = zonesMemo.get(world);
-  if (hit !== undefined && hit.tick === tick) return hit.zones;
+  if (hit !== undefined && hit.version === version) return hit.zones;
   const zones = new Map<number, Set<NodeId>>();
   for (const b of world.query(Building, Position)) {
     const owner = world.tryGet(b, Owner);
@@ -110,7 +113,7 @@ export function calmZonesByPlayer(
       }
     }
   }
-  zonesMemo.set(world, { tick, zones });
+  zonesMemo.set(world, { version, zones });
   return zones;
 }
 
@@ -155,8 +158,8 @@ export function standingFighterNodes(world: World, terrain: TerrainGraph): Reado
   return nodes;
 }
 
-export function unitWalkBlocks(world: World, terrain: TerrainGraph, tick: number): UnitWalkBlocks {
-  const zones = calmZonesByPlayer(world, terrain, tick);
+export function unitWalkBlocks(world: World, terrain: TerrainGraph): UnitWalkBlocks {
+  const zones = calmZonesByPlayer(world, terrain);
   const field = new Set<NodeId>();
   const townByPlayer = new Map<number, Set<NodeId>>();
   eachStandingFighter(world, terrain, (_e, node, player) => {
