@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as components from '../../src/components/index.js';
-import type { Entity } from '../../src/ecs/world.js';
+import { type Entity, World } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
 import { positionOfNode } from '../../src/nav/halfcell.js';
 import { dropOrStackGood } from '../../src/systems/agents/effects-goods/index.js';
@@ -52,6 +52,51 @@ describe('stockpilesAtNode (the per-drop tile lookup index)', () => {
     expect(stockpilesAtNode(sim.world, 4, 4)).toEqual([a, b]); // generation moved → rebuilt
     sim.world.destroy(a);
     expect(stockpilesAtNode(sim.world, 4, 4)).toEqual([b]);
+    expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
+  it('stays exact through interleaved reads and creates/destroys (the incremental catch-up path)', () => {
+    const sim = newSim();
+    // Expected per-node membership tracked independently; every read must match it exactly.
+    const expected = new Map<number, Entity[]>();
+    const alive: Array<{ e: Entity; hx: number }> = [];
+    for (let i = 0; i < 30; i++) {
+      const hx = i % 5;
+      const e = heapAt(sim, hx, 3, WOOD, 1);
+      alive.push({ e, hx });
+      expected.set(hx, [...(expected.get(hx) ?? []), e]);
+      // Read between every mutation — the mid-dispatch interleave the wholesale rebuild degraded on.
+      expect(stockpilesAtNode(sim.world, hx, 3)).toEqual(expected.get(hx));
+      if (i % 3 === 2) {
+        const gone = alive.shift();
+        if (gone !== undefined) {
+          sim.world.destroy(gone.e);
+          expected.set(
+            gone.hx,
+            (expected.get(gone.hx) ?? []).filter((kept) => kept !== gone.e),
+          );
+          expect(stockpilesAtNode(sim.world, gone.hx, 3)).toEqual(expected.get(gone.hx));
+        }
+      }
+    }
+    for (let hx = 0; hx < 5; hx++) expect(stockpilesAtNode(sim.world, hx, 3)).toEqual(expected.get(hx));
+    expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
+  it('falls back to a full rebuild when the churn outruns the journal window', () => {
+    const sim = newSim();
+    const first = heapAt(sim, 1, 1, WOOD, 1);
+    expect(stockpilesAtNode(sim.world, 1, 1)).toEqual([first]); // build + start journaling
+    const caughtUp = sim.world.componentGeneration(Stockpile);
+    // Blow past the journal cap without a read in between.
+    const bulk: Entity[] = [];
+    for (let i = 0; i < World.MEMBERSHIP_JOURNAL_LIMIT + 100; i++) bulk.push(heapAt(sim, 2, 2, WOOD, 1));
+    for (const e of bulk) sim.world.destroy(e);
+    const last = heapAt(sim, 1, 1, WOOD, 1);
+    // The journal really overflowed — the index (caught up at `caughtUp`) must take the rebuild path.
+    expect(sim.world.membershipDeltasSince(Stockpile, caughtUp)).toBeNull();
+    expect(stockpilesAtNode(sim.world, 1, 1)).toEqual([first, last]);
+    expect(stockpilesAtNode(sim.world, 2, 2)).toEqual([]);
     expect(sim.world.verifyCaches()).toEqual([]);
   });
 

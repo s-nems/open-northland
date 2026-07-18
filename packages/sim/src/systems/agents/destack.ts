@@ -1,8 +1,8 @@
 import { MoveGoal, Owner } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import type { BlockOverlay, NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { constructionWorkCells, dynamicBlockOverlay } from '../footprint/index.js';
+import { constructionWorkCells, dynamicBlockedCells } from '../footprint/index.js';
 import type { NodeBuckets } from '../spatial.js';
 
 // The spacing drives — the two consumers of the planner-tick occupancy state:
@@ -23,7 +23,7 @@ import type { NodeBuckets } from '../spatial.js';
 export interface SpacingState {
   readonly occupancy: NodeBuckets;
   readonly claimed: Set<NodeId>;
-  blockedCells?: BlockOverlay;
+  blockedCells?: ReadonlySet<NodeId>;
   constructionCells?: Map<Entity, readonly NodeId[]>;
   crewLeadBySite?: Map<Entity, Entity>;
   yards?: Map<NodeId, ReadonlySet<NodeId>>;
@@ -63,7 +63,7 @@ export function deStackIdle(
   // Build the building walk-block overlay once, only when a real de-stack is attempted. Excludes a target
   // under a standing building: routing A* would refuse a blocked goal, and a MoveGoal whose route can't
   // resolve would freeze the unit (nothing clears a failed non-player request), so we never aim at one.
-  spacing.blockedCells ??= dynamicBlockOverlay(world, ctx, terrain);
+  spacing.blockedCells ??= dynamicBlockedCells(world, ctx, terrain);
   const from = terrain.nodeAtClamped(tileX, tileY);
   const free = nearestFreeCell(terrain, from, spacing.occupancy, spacing.claimed, spacing.blockedCells);
   if (free === null) return; // boxed in — nothing better than staying
@@ -91,7 +91,7 @@ export function claimWorkCell(
   site: Entity,
   spacing: SpacingState,
 ): NodeId | null {
-  spacing.blockedCells ??= dynamicBlockOverlay(world, ctx, terrain);
+  spacing.blockedCells ??= dynamicBlockedCells(world, ctx, terrain);
   spacing.constructionCells ??= new Map();
   let cells = spacing.constructionCells.get(site);
   if (cells === undefined) {
@@ -157,7 +157,7 @@ export function loiterCell(
   spacing: SpacingState,
 ): NodeId {
   if (!world.has(e, Owner)) return here; // unowned fixtures never relocate (the deStackIdle Owner gate)
-  spacing.blockedCells ??= dynamicBlockOverlay(world, ctx, terrain);
+  spacing.blockedCells ??= dynamicBlockedCells(world, ctx, terrain);
   spacing.yards ??= new Map();
   let yard = spacing.yards.get(anchor);
   if (yard === undefined) {
@@ -187,7 +187,7 @@ export function loiterCell(
  * traversed, mirroring the pathfinder, so the yard never spans a wall or a stream the walk
  * couldn't cross. Bounded: ≤ ~2·R² nodes visited.
  */
-function yardCells(terrain: TerrainGraph, anchor: NodeId, blocked: BlockOverlay): ReadonlySet<NodeId> {
+function yardCells(terrain: TerrainGraph, anchor: NodeId, blocked: ReadonlySet<NodeId>): ReadonlySet<NodeId> {
   const yard = new Set<NodeId>();
   if (terrain.isWalkable(anchor) && !blocked.has(anchor)) yard.add(anchor);
   const seen = new Set<NodeId>([anchor]);
@@ -220,7 +220,7 @@ function nearestFreeCell(
   from: NodeId,
   occupancy: NodeBuckets,
   claimed: ReadonlySet<NodeId>,
-  blocked: BlockOverlay,
+  blocked: ReadonlySet<NodeId>,
 ): NodeId | null {
   const seen = new Set<NodeId>([from]);
   let frontier: NodeId[] = [from];

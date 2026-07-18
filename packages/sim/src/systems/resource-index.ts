@@ -8,13 +8,35 @@ import { createRegionIndex } from './region-index.js';
  * only the standing nodes near its flag instead of every resource on a decoded map (~17k). See
  * {@link createRegionIndex} for the invalidation and superset guarantees.
  */
-const index = createRegionIndex(
+/** The distinct-harvest-atomics set, refcounted so a destroy drops an atomic only when its LAST node
+ *  goes — the incremental form of the old fold over the canonical list. */
+interface HarvestAtomics {
+  readonly counts: Map<number, number>;
+  readonly atomics: Set<number>;
+}
+
+const index = createRegionIndex<HarvestAtomics, number>(
   Resource,
   { verifier: 'resourceRegionIndex', plural: 'resources', component: 'Resource', singular: 'resource' },
-  (world, list): ReadonlySet<number> => {
-    const atomics = new Set<number>();
-    for (const e of list) atomics.add(world.get(e, Resource).harvestAtomic);
-    return atomics;
+  {
+    empty: () => ({ counts: new Map(), atomics: new Set() }),
+    capture: (world, e) => world.get(e, Resource).harvestAtomic,
+    insert: (extra, atomic) => {
+      extra.counts.set(atomic, (extra.counts.get(atomic) ?? 0) + 1);
+      extra.atomics.add(atomic);
+    },
+    remove: (extra, atomic) => {
+      const left = (extra.counts.get(atomic) ?? 0) - 1;
+      if (left <= 0) {
+        extra.counts.delete(atomic);
+        extra.atomics.delete(atomic);
+      } else {
+        extra.counts.set(atomic, left);
+      }
+    },
+    diverges: (held, fresh) =>
+      held.atomics.size !== fresh.atomics.size ||
+      [...fresh.atomics].some((atomic) => !held.atomics.has(atomic)),
   },
 );
 
@@ -32,7 +54,7 @@ export function canonicalResources(world: World): readonly Entity[] {
  * (`remaining <= 0`) still contributes its atomic — the gate only ever elides provably-null scans.
  */
 export function resourceHarvestAtomics(world: World): ReadonlySet<number> {
-  return index.extra(world);
+  return index.extra(world).atomics;
 }
 
 /** Every resource whose anchor node lies within the box `reach` nodes around `(hx, hy)`, ascending-id —

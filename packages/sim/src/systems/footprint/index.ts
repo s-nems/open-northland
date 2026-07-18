@@ -10,12 +10,12 @@
 // with on its anchor tile. While under construction, every type instead uses its legal work perimeter.
 
 export {
-  buildingBlockedCells,
   type ConstructionPlot,
   constructionSitePlots,
   dynamicBlockedCells,
   dynamicBlockOverlay,
 } from './blocked.js';
+export { buildingBlockedCells } from './building-blocked-cache.js';
 export {
   constructionWorkCell,
   constructionWorkCells,
@@ -24,10 +24,10 @@ export {
   resourceWorkCell,
 } from './interaction.js';
 export {
-  bumpWorkFlagMove,
   canPlaceBuilding,
   canPlaceWorkFlag,
   nearestWorkFlagPlacement,
+  noteWorkFlagMove,
   type PlacementProbe,
   placementBlockerVersion,
   placementProbe,

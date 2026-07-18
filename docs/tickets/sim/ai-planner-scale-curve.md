@@ -28,6 +28,17 @@ likely cause of the improvement — settlers stuck on blocked ground re-planned 
 That is a *hypothesis about a past measurement*, not a claim about current code; it matters only as a
 warning that this curve moves with unrelated agent fixes, so always re-measure the baseline.
 
+**Where the AI time goes (measured 2026-07-18, V8 profile of the 4-settlement + 200v200-fighter
+bench window, 300 ticks):** the nearest-X scans are ~49% of all sampled time — `nearestStoreFor`
+4.3 s, `nearestWorkplaceOutput` 1.6 s, `nearestMissingInputSource` 1.2 s of a 13.8 s window — and
+the `canStoreGood` accept alone is ~15%. The ring index is already in place, so the cost is scan
+COUNT × accept cost, not the walk. Candidate constant-factor lever: memoize the accept's
+per-(store, good) capacity answer for the planner tick (the `SinkAvailability` shape) so N settlers
+scanning the same stores stop re-deriving `mergedRecipeOf`/`stockCapacity` per probe — coordinate
+with `farm-crop-sink-gate.md` (P1), which is about to change `canStoreGood`'s semantics. The five
+per-tick `NodeBuckets` builds (combat, separation, ai spacing, production, job) total only ~3%
+inclusive — not the lever.
+
 ## Investigate first (do not assume a cause)
 
 1. **Disentangle population from map area.** The bench derives its map size from the settlement
@@ -53,10 +64,17 @@ warning that this curve moves with unrelated agent fixes, so always re-measure t
   figure (0.635 ms) independently reproduced the pre-fix ~0.7 ms early-run baseline. Re-measure the
   curve on top of the gate before investigating — busy crews don't go dormant, so the superlinear
   early-window growth may stand unchanged.
-- `sim/lazy-target-cell-indexes.md` (P3) and `sim/incremental-spatial-index-memos.md` (P2) both touch
-  the index machinery the planner reads through; either could be the mechanism here.
+- Both index candidates were FIXED on 2026-07-18: the spatial index memos (region/stockpile/tile)
+  are maintained incrementally via the World membership journal (`systems/spatial-memo.ts`), and the
+  planner's three `InteractionCellIndex`es build lazily on first access (`targets/candidates.ts`) —
+  re-measure the curve on top of both. The remaining measured cost is the scan-count × accept work
+  quantified above, not index construction. One residual term from the fix itself (review battery,
+  2026-07-18): `canonical()` re-copies and freezes the full member list on the first read after any
+  membership change (`region-index.ts`), so per-tick fell/sow churn pays an O(all resources) memcpy
+  per tick — within budget today; a mutable-master/shared-frozen double buffer removes it if the
+  re-measure shows it.
 
-Grep these three before filing any new work — the fix may belong in one of them instead.
+Grep these before filing any new work — the fix may belong in one of them instead.
 
 ## Verify
 

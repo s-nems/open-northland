@@ -3,9 +3,9 @@ import { type Fixed, fx, ZERO } from '../../../core/fixed.js';
 import type { Entity } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
 import { worldDistance } from '../../../nav/metric.js';
-import type { BlockOverlay, NodeId } from '../../../nav/terrain/index.js';
+import type { NodeId } from '../../../nav/terrain/index.js';
 import type { System } from '../../context.js';
-import { dynamicBlockOverlay } from '../../footprint/index.js';
+import { dynamicBlockedCells } from '../../footprint/index.js';
 import { canonicalById, NodeBuckets } from '../../spatial.js';
 import { MOVE_SPEED_PER_TICK } from '../movement.js';
 import { calmZonesByPlayer, hasBodyCollision, hasSoftCollision, isStanding } from './bodies.js';
@@ -128,7 +128,7 @@ export const separationSystem: System = (world, ctx) => {
   const isGhostMover = (e: Entity): boolean => {
     let ghost = ghostMemo.get(e);
     if (ghost === undefined) {
-      zones ??= calmZonesByPlayer(world, terrain, ctx.tick);
+      zones ??= calmZonesByPlayer(world, terrain);
       const p = world.get(e, Position);
       const n = nodeOfPosition(p.x, p.y);
       ghost =
@@ -138,13 +138,13 @@ export const separationSystem: System = (world, ctx) => {
     }
     return ghost;
   };
-  let blockedOverlay: BlockOverlay | undefined;
+  let blockedOverlay: ReadonlySet<NodeId> | undefined;
   const safeLanding = (x: Fixed, y: Fixed): boolean => {
     const n = nodeOfPosition(x, y);
     if (!terrain.inBounds(n.hx, n.hy)) return false;
     const node = terrain.nodeAt(n.hx, n.hy);
     if (!terrain.isWalkable(node)) return false;
-    blockedOverlay ??= dynamicBlockOverlay(world, ctx, terrain);
+    blockedOverlay ??= dynamicBlockedCells(world, ctx, terrain);
     return !blockedOverlay.has(node);
   };
 

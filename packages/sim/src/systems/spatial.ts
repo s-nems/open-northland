@@ -2,7 +2,7 @@ import { MoveGoal, PathFollow, PathRequest, Position, Stranded } from '../compon
 import type { Entity, World } from '../ecs/world.js';
 import { nodeOfPosition } from '../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../nav/terrain/index.js';
-import { manhattan, nodeKey } from './footprint/geometry.js';
+import { forEachRingOffset, manhattan, nodeKey } from './footprint/geometry.js';
 
 // The cross-system spatial primitives — canonical scan order, the per-tick node bucket + ring search, and
 // the node/distance helpers. A leaf module (only footprint/geometry.ts below it) so every per-system file
@@ -25,6 +25,39 @@ export function canonicalById(entities: Iterable<Entity>): Entity[] {
 
 /** The empty bucket returned for an unoccupied node — shared + frozen so a miss allocates nothing. */
 const NO_ENTITIES: readonly Entity[] = Object.freeze([]);
+
+/**
+ * The first index of ascending `arr` whose id (per `idOf`) is ≥ `id` (binary search) — the shared seam of
+ * the incremental indexes' sorted inserts and removals. Ids are monotonic, so an insert here is usually an
+ * append; the search only matters when an old id re-enters a bucket.
+ */
+export function lowerBound<T>(arr: readonly T[], id: number, idOf: (item: T) => number): number {
+  let lo = 0;
+  let hi = arr.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    const item = arr[mid];
+    if (item !== undefined && idOf(item) < id) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
+
+/** Splice `item` into ascending-id `arr` at its {@link lowerBound} slot — the incremental indexes'
+ *  shared sorted-insert step. */
+export function insertSortedById<T>(arr: T[], item: T, idOf: (item: T) => number): void {
+  arr.splice(lowerBound(arr, idOf(item), idOf), 0, item);
+}
+
+/** Remove the item with `id` from ascending-id `arr`; returns whether it was present, so the caller
+ *  can drop an emptied container — the incremental indexes' shared sorted-removal step. */
+export function removeSortedById<T>(arr: T[], id: number, idOf: (item: T) => number): boolean {
+  const i = lowerBound(arr, id, idOf);
+  const held = arr[i];
+  if (held === undefined || idOf(held) !== id) return false;
+  arr.splice(i, 1);
+  return true;
+}
 
 // nodeKey lives in footprint/geometry.ts (the leaf below this one, which needs it first);
 // re-exported here so consumers keep a single spatial import site.
@@ -83,6 +116,42 @@ export class NodeBuckets {
     return this.byX.get(x)?.get(y) ?? NO_ENTITIES;
   }
 
+  /** Insert `e` into node (x,y)'s bucket keeping it ascending-id — the incremental-index maintenance seam
+   *  (the per-tick constructor path appends instead; it is fed a pre-sorted list). */
+  insert(e: Entity, x: number, y: number): void {
+    let column = this.byX.get(x);
+    if (column === undefined) {
+      column = new Map<number, Entity[]>();
+      this.byX.set(x, column);
+    }
+    let bucket = column.get(y);
+    if (bucket === undefined) {
+      bucket = [];
+      column.set(y, bucket);
+    }
+    insertSortedById(bucket, e, (id) => id);
+  }
+
+  /** Remove `e` from node (x,y)'s bucket, dropping an emptied bucket/column so membership never leaks —
+   *  a no-op when `e` is not there (the verifier catches the inconsistency, not this seam). */
+  remove(e: Entity, x: number, y: number): void {
+    const column = this.byX.get(x);
+    const bucket = column?.get(y);
+    if (column === undefined || bucket === undefined) return;
+    if (!removeSortedById(bucket, e, (id) => id)) return;
+    if (bucket.length === 0) {
+      column.delete(y);
+      if (column.size === 0) this.byX.delete(x);
+    }
+  }
+
+  /** Every non-empty bucket with its node — the verifier's fresh-versus-held comparison walk. */
+  *buckets(): IterableIterator<{ x: number; y: number; entities: readonly Entity[] }> {
+    for (const [x, column] of this.byX) {
+      for (const [y, entities] of column) yield { x, y, entities };
+    }
+  }
+
   /**
    * The nearest bucketed entity to node `(fromX, fromY)` that satisfies `accept`, searched as expanding
    * Manhattan node-rings from `minDist` outward to `maxDist` — the grid ring search the scaling doctrine
@@ -111,14 +180,9 @@ export class NodeBuckets {
   ): { entity: Entity; distance: number } | null {
     for (let d = minDist; d <= maxDist; d++) {
       let best: Entity | null = null;
-      // Ring d = every node at Manhattan distance exactly d. For each column offset dx in [-d, d] the two
-      // rows dy = ±(d - |dx|) complete the diamond (a single row when the remainder is 0, at the ring's E/W
-      // tips).
-      for (let dx = -d; dx <= d; dx++) {
-        const rem = d - Math.abs(dx);
-        best = this.pickMinId(fromX + dx, fromY + rem, accept, best);
-        if (rem !== 0) best = this.pickMinId(fromX + dx, fromY - rem, accept, best);
-      }
+      forEachRingOffset(d, (dx, dy) => {
+        best = this.pickMinId(fromX + dx, fromY + dy, accept, best);
+      });
       if (best !== null) return { entity: best, distance: d };
     }
     return null;
@@ -168,9 +232,9 @@ export function entityNode(world: World, terrain: TerrainGraph, e: Entity): Node
   return terrain.nodeAtClamped(n.hx, n.hy);
 }
 
-// manhattan lives in footprint/geometry.ts (the leaf, which needs it for its nearest-node picks)
-// and is re-exported here with nodeKey so consumers keep the single spatial import site.
-export { manhattan };
+// manhattan and forEachRingOffset live in footprint/geometry.ts (the leaf, which needs them for its
+// nearest-node picks) and are re-exported here with nodeKey so consumers keep the single spatial import site.
+export { forEachRingOffset, manhattan };
 
 /**
  * The 8 compass step offsets (E, W, S, N, then the four diagonals) in the fixed canonical order the sim's
