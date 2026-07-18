@@ -1,7 +1,7 @@
 import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { Building, Position, Stockpile } from '../../src/components/index.js';
-import { ONE, positionOfNode, Simulation } from '../../src/index.js';
+import { Building, Position, Stockpile, UnderConstruction, Upgrading } from '../../src/components/index.js';
+import { fx, ONE, positionOfNode, Simulation } from '../../src/index.js';
 import { buildingBlockedCells, constructionSystem } from '../../src/systems/index.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
@@ -76,8 +76,9 @@ const HOME_S = 20; // 1-node body
 const HOME_L = 21; // grows one node east
 const STONE = 1;
 
-/** A built level-0 home with the next tier's materials already stocked — one `constructionSystem`
- *  run upgrades it in place (the evict suite's fixture shape). `growth` is the node only the larger
+/** A level-0 home re-opened as an UPGRADE SITE (the command-driven model: `UnderConstruction` +
+ *  `Upgrading` beside the Building) with the hammering done and the next tier's material delivered —
+ *  one `constructionSystem` run finishes the upgrade in place. `growth` is the node only the larger
  *  tier walls off. */
 function twoTierHome() {
   const content = parseContentSet({
@@ -95,6 +96,7 @@ function twoTierHome() {
         kind: 'home',
         homeSize: 1,
         construction: [{ goodType: STONE, amount: 1 }],
+        upgradeTarget: HOME_L,
         footprint: { blocked: [{ dx: 0, dy: 0 }] },
       },
       {
@@ -115,7 +117,10 @@ function twoTierHome() {
   const sim = new Simulation({ seed: 1, content, map: grassNodeMap(16, 16) });
   const home = sim.world.create();
   sim.world.add(home, Position, positionOfNode(5, 5));
-  sim.world.add(home, Building, { buildingType: HOME_S, tribe: VIKING, built: ONE, level: 0 });
+  sim.world.add(home, Building, { buildingType: HOME_S, tribe: VIKING, built: fx.fromInt(0), level: 0 });
+  // The live stockpile is the site's build hold, holding the target tier's delivered bill.
   sim.world.add(home, Stockpile, { amounts: new Map<number, number>([[STONE, 1]]) });
+  sim.world.add(home, UnderConstruction, { labor: ONE }); // hammering complete — only materials gate
+  sim.world.add(home, Upgrading, { savedStock: new Map<number, number>() });
   return { sim, home, growth: terrainOf(sim).nodeAt(6, 5) };
 }
