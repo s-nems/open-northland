@@ -1,6 +1,13 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { BerryBush, PathFollow, PathRequest, Position, Resource } from '../../../src/components/index.js';
+import {
+  BerryBush,
+  PathFollow,
+  PathRequest,
+  Position,
+  Resource,
+  Stump,
+} from '../../../src/components/index.js';
 import { halfCellMapFromCells, nodeOfPosition, positionOfNode, Simulation } from '../../../src/index.js';
 import {
   buildingBlockedCells,
@@ -325,6 +332,48 @@ describe('placement razes wild berry bushes in the reserved zone', () => {
   it('razes bushes even under a forced (map-authored) placement', () => {
     const sim = mappedSim();
     const under = createBerryBush(sim.world, { x: 5, y: 5 }); // the anchor node itself
+    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING, force: true });
+    sim.step();
+    expect(sim.world.isAlive(under)).toBe(false);
+  });
+});
+
+describe('placement razes felled-tree stumps in the reserved zone', () => {
+  const STUMP_WOOD = 1;
+  /** Place an inert felled-tree stump (a Position + Stump marker, as fellNode leaves behind) at a node. */
+  function placeStump(sim: Simulation, x: number, y: number) {
+    const e = sim.world.create();
+    sim.world.add(e, Position, positionOfNode(x, y));
+    sim.world.add(e, Stump, { goodType: STUMP_WOOD });
+    return e;
+  }
+  function survivingStumps(sim: Simulation): number {
+    return [...sim.world.query(Stump)].length;
+  }
+
+  it('destroys a stump inside the reserved zone and spares one outside it', () => {
+    const sim = mappedSim();
+    // HUT reserved ring at anchor (5,5) spans x∈[4..7] × y∈[4..7]. A stump at (6,6) sits inside it; one at
+    // (12,12) is well clear (a stump is inert non-blocking decor, so both land under/near a house).
+    const inside = placeStump(sim, 6, 6);
+    const outside = placeStump(sim, 12, 12);
+    expect(survivingStumps(sim)).toBe(2);
+
+    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING });
+    sim.step();
+
+    expect(buildingsPlaced(sim)).toBe(1);
+    expect(sim.world.isAlive(inside)).toBe(false); // razed by the new building
+    expect(sim.world.isAlive(outside)).toBe(true); // beyond the reserved zone — untouched
+    expect(survivingStumps(sim)).toBe(1);
+    // A stump is a live snapshot-drawn entity (never a static-decor quad), so razing it emits NO event — the
+    // sprite pool reaps its quad when it leaves the snapshot.
+    expect(sim.events.current().some((ev) => ev.kind === 'berryBushRazed')).toBe(false);
+  });
+
+  it('razes a stump even under a forced (map-authored) placement', () => {
+    const sim = mappedSim();
+    const under = placeStump(sim, 5, 5); // the anchor node itself
     sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING, force: true });
     sim.step();
     expect(sim.world.isAlive(under)).toBe(false);

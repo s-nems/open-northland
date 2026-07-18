@@ -124,3 +124,35 @@ export function buildingFlagBody(content: ContentSet, buildingType: number): rea
   const fp = buildingFootprintOf(content, buildingType);
   return fp?.familyBody.length ? fp.familyBody : ANCHOR_ONLY;
 }
+
+/** A building's reserved build-exclusion zone as {@link NodeId}s, plus the Chebyshev {@link ReservedZone.reach}
+ *  a region-index box query needs to cover it. See {@link reservedZoneOf}. */
+export interface ReservedZone {
+  readonly zone: ReadonlySet<NodeId>;
+  /** Chebyshev bound of the reserved cells — the box `reach` a region-index `near` query must span to be a
+   *  provable superset of the zone. */
+  readonly reach: number;
+}
+
+/**
+ * The reserved build-exclusion zone of a building placed with its anchor at half-cell `(anchorHx, anchorHy)`:
+ * its type's `reserved` footprint cells (or the bare anchor for a footprint-less type) translated onto the
+ * anchor as a {@link NodeId} set, plus the Chebyshev `reach` a region-index box query must span to cover it.
+ * The placement-time decor-razing passes (berry bushes, felled-tree stumps) share it so a placed building
+ * clears every landscape decoration it lands on from one zone definition. Undefined when the zone is empty
+ * (a fully off-grid anchor).
+ */
+export function reservedZoneOf(
+  content: ContentSet,
+  terrain: TerrainGraph,
+  buildingType: number,
+  anchorHx: number,
+  anchorHy: number,
+): ReservedZone | undefined {
+  const cells = buildingFootprintOf(content, buildingType)?.reserved ?? ANCHOR_ONLY;
+  const zone = new Set<NodeId>(translatedCells(terrain, cells, anchorHx, anchorHy));
+  if (zone.size === 0) return undefined;
+  let reach = 0; // Chebyshev bound of the reserved cells → a provable superset the box query can't miss
+  for (const c of cells) reach = Math.max(reach, Math.abs(c.dx), Math.abs(c.dy));
+  return { zone, reach };
+}

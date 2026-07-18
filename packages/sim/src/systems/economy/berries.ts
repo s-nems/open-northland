@@ -2,10 +2,9 @@ import { BerryBush, Building, Position } from '../../components/index.js';
 import { eventAt } from '../../core/events.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
-import type { NodeId } from '../../nav/terrain/index.js';
 import { bushesNearNode } from '../berry-index.js';
 import type { System, SystemContext } from '../context.js';
-import { ANCHOR_ONLY, buildingFootprintOf, translatedCells } from '../footprint/geometry.js';
+import { reservedZoneOf } from '../footprint/geometry.js';
 import { entityNode } from '../spatial.js';
 
 // Berry bushes — wild forageable food. A ripe bush is eaten off directly by any hungry settler (the `forage`
@@ -122,14 +121,11 @@ export function destroyBerryBushesInReserved(world: World, ctx: SystemContext, b
   const b = world.tryGet(building, Building);
   const p = world.tryGet(building, Position);
   if (b === undefined || p === undefined) return;
-  const cells = buildingFootprintOf(ctx.content, b.buildingType)?.reserved ?? ANCHOR_ONLY;
   const anchor = nodeOfPosition(p.x, p.y);
-  const zone = new Set<NodeId>(translatedCells(terrain, cells, anchor.hx, anchor.hy));
-  if (zone.size === 0) return;
-  let reach = 0; // Chebyshev bound of the reserved cells → a provable superset the box query can't miss
-  for (const c of cells) reach = Math.max(reach, Math.abs(c.dx), Math.abs(c.dy));
-  const doomed = bushesNearNode(world, anchor.hx, anchor.hy, reach).filter((e) =>
-    zone.has(entityNode(world, terrain, e)),
+  const rz = reservedZoneOf(ctx.content, terrain, b.buildingType, anchor.hx, anchor.hy);
+  if (rz === undefined) return;
+  const doomed = bushesNearNode(world, anchor.hx, anchor.hy, rz.reach).filter((e) =>
+    rz.zone.has(entityNode(world, terrain, e)),
   );
   for (const e of doomed) {
     // Announce the razing before the destroy (read the position first — it is gone afterwards) so render can
