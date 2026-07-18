@@ -3,6 +3,7 @@ import { DeliveryFlag } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
+import { forEachRingOffset } from '../geometry.js';
 import { EXCLUSION, eachBlockerCell, placementBlockerVersion } from './blockers.js';
 
 // WORK-FLAG PLACEMENT — where a work flag (and, through canPlaceWorkFlag, a signpost) may stand: the same
@@ -44,9 +45,19 @@ export function canPlaceWorkFlag(
   );
 }
 
+/**
+ * The greatest Manhattan ring radius {@link nearestWorkFlagPlacement} expands before falling back to
+ * the whole-map reference scan. The cap only bounds the cost of a hopeless neighbourhood — the
+ * fallback reproduces the exact linear winner past it — so it is a pure performance knob, not a
+ * decoded distance (named approximation; the `RING_MAX_RADIUS` convention).
+ */
+const PLACEMENT_RING_MAX_RADIUS = 48;
+
 /** The nearest legal work-flag node to `from`, by Manhattan distance then node id. Auto-created flags use
  * this when a gatherer spawns or changes trade, because its feet may currently be inside a resource or
- * building body. This is a one-shot command/spawn query, never per-tick planner work. */
+ * building body. This is a one-shot command/spawn query, never per-tick planner work — but it runs once
+ * per employment command, so a box-select `setJob` burst pays it per settler: expanding rings, never a
+ * whole-map scan, below the cap. */
 export function nearestWorkFlagPlacement(
   world: World,
   ctx: SystemContext,
@@ -55,6 +66,22 @@ export function nearestWorkFlagPlacement(
 ): NodeId | null {
   const origin = terrain.coordsOf(from);
   const blocked = workFlagPlacementBlocks(world, ctx.content, terrain);
+  // The first ring holding a legal node ends the search; its lowest node id is the same
+  // `(distance, node-id)` winner the reference scan below picks.
+  for (let r = 0; r <= PLACEMENT_RING_MAX_RADIUS; r++) {
+    let ringBest: NodeId | null = null;
+    forEachRingOffset(r, (dx, dy) => {
+      const x = origin.x + dx;
+      const y = origin.y + dy;
+      if (!terrain.inBounds(x, y)) return;
+      const node = terrain.nodeAt(x, y);
+      if (!terrain.isWalkable(node) || blocked.has(node)) return;
+      if (ringBest === null || node < ringBest) ringBest = node;
+    });
+    if (ringBest !== null) return ringBest;
+  }
+  // Nothing within the cap. The rings covered every node at distance ≤ cap, so only farther nodes can
+  // match — the whole-map reference scan finds the same winner the uncapped search would.
   let best: NodeId | null = null;
   let bestDistance = Number.POSITIVE_INFINITY;
   for (let node = 0; node < terrain.nodeCount; node++) {
