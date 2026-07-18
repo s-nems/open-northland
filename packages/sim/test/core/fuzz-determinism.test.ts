@@ -196,7 +196,7 @@ function pick<T>(rng: Rng, options: readonly T[]): T {
 function nextCommand(rng: Rng): Command {
   const x = rng.int(NODE_W);
   const y = rng.int(NODE_H);
-  const roll = rng.int(32);
+  const roll = rng.int(33);
   switch (roll) {
     case 31:
       // An AI-seat flip: valid players (the AiPlayer carrier created/updated/destroyed — the
@@ -460,7 +460,7 @@ function nextCommand(rng: Rng): Command {
       // / dead ids (skipped). Exercises the upgradeBuilding accept + skip paths, the Upgrading stash in
       // hashState, and the upgrade-finish flip when the stream feeds the site.
       return { kind: 'upgradeBuilding', building: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
-    case 31:
+    case 32:
       // An upgrade abort at a random id: live upgrade sites (stash restored, site hold discarded,
       // `built` back to ONE — the markers must come off in hashState), plus plain construction sites /
       // built buildings / non-building / dead ids (skipped). Exercises the cancelUpgrade accept + skip
