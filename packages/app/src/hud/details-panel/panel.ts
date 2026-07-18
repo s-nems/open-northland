@@ -1,5 +1,5 @@
 import {
-  bakeToSprite,
+  createReusableBaker,
   type PortraitInsetFrame,
   type SpriteSheet,
   type SupersampledTexture,
@@ -136,6 +136,10 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
   app.stage.addChild(root);
   /** The current rebuild's baked panel texture; disposed and replaced on the next rebuild. */
   let baked: SupersampledTexture | null = null;
+  // One shared bake target for every rebuild: a fresh render texture per rebuild would blank the
+  // portrait inset's world cutout for a frame — the preview blinking at every construction hammer
+  // hit (see createReusableBaker).
+  const baker = createReusableBaker(app.renderer);
   // The animated worker sprites drawn live over the baked panel's Pracownicy field (one z above it), so
   // they advance every frame while the panel itself re-bakes at most 4 Hz.
   const workerOverlay = new WorkerSpriteOverlay(app, opts.sheet, PANEL_Z + 1, opts.playerColourOf);
@@ -221,7 +225,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
 
     // Mixed source (Pixi-native fills/preview + flipY PalettedSprites), so it bakes upright — display
     // unflipped, anchored at the panel's screen top-left.
-    const texture = bakeToSprite(app.renderer, offscreen, texW, texH, scale / ss);
+    const texture = baker.bake(offscreen, texW, texH, scale / ss);
     texture.display.position.set(layout.panel.x, layout.panel.y);
     root.addChild(texture.display);
     baked = texture;
@@ -566,6 +570,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
       canvas.removeEventListener('mouseleave', onMouseLeave);
       opts.tooltip?.hide();
       baked?.dispose();
+      baker.dispose();
       root.destroy({ children: true });
     },
   };

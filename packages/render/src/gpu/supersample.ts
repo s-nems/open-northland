@@ -1,4 +1,4 @@
-import { type Container, type Renderer, RenderTexture, Sprite } from 'pixi.js';
+import { type Container, Rectangle, type Renderer, RenderTexture, Sprite, Texture } from 'pixi.js';
 import { clamp } from '../data/math.js';
 
 /**
@@ -109,4 +109,67 @@ export function bakeToSprite(
   invScale: number,
 ): SupersampledTexture {
   return bake(renderer, source, texW, texH, invScale, false);
+}
+
+/** A {@link bakeToSprite} twin that reuses one render target across bakes — see {@link createReusableBaker}. */
+export interface ReusableBaker {
+  /** Bake `source` like {@link bakeToSprite}; the returned handle's dispose frees the source + view but
+   *  never the shared target, which stays with the baker. */
+  bake(source: Container, texW: number, texH: number, invScale: number): SupersampledTexture;
+  /** Free the shared render target (call once, after every outstanding bake is disposed). */
+  dispose(): void;
+}
+
+/**
+ * A baker for a caller that re-bakes frequently (the details panel rebuilds up to 4 Hz while a value
+ * ticks): one grow-only {@link RenderTexture} plus one persistent `(0,0,texW,texH)` frame view of it,
+ * reused as the render target across bakes (the frame is mutated in place when the size changes), so
+ * a rebuild allocates no GPU texture — {@link bakeToSprite} would mint and destroy a panel-sized
+ * texture per rebuild. The pair only reallocates when a bake outgrows the target (a rare structural
+ * change). Single-slot: each bake reuses the one view, so callers keep at most one returned bake
+ * alive at a time (the panel's rebuild cadence — dispose the old bake before the next).
+ */
+export function createReusableBaker(renderer: Renderer): ReusableBaker {
+  let target: RenderTexture | null = null;
+  let view: Texture | null = null;
+  const ensure = (w: number, h: number): Texture => {
+    if (target === null || view === null || target.width < w || target.height < h) {
+      const grownW = Math.max(w, target?.width ?? 0);
+      const grownH = Math.max(h, target?.height ?? 0);
+      view?.destroy(false);
+      target?.destroy(true);
+      target = RenderTexture.create({ width: grownW, height: grownH, resolution: 1, antialias: false });
+      target.source.scaleMode = 'linear'; // linear so the fractional downscale to screen is smooth
+      view = new Texture({ source: target.source, frame: new Rectangle(0, 0, w, h) });
+    } else if (view.frame.width !== w || view.frame.height !== h) {
+      view.frame.width = w;
+      view.frame.height = h;
+      view.updateUvs();
+    }
+    return view;
+  };
+  return {
+    bake(source, texW, texH, invScale): SupersampledTexture {
+      const bakeView = ensure(texW, texH);
+      const redraw = (): void => {
+        renderer.render({ container: source, target: bakeView, clear: true });
+      };
+      redraw();
+      const display = new Sprite(bakeView);
+      display.scale.set(invScale);
+      return {
+        display,
+        redraw,
+        dispose(): void {
+          source.destroy({ children: true }); // the shared view + target stay with the baker
+        },
+      };
+    },
+    dispose(): void {
+      view?.destroy(false);
+      target?.destroy(true);
+      view = null;
+      target = null;
+    },
+  };
 }

@@ -102,7 +102,9 @@ export type {
 export {
   bakeToFlippedSprite,
   bakeToSprite,
+  createReusableBaker,
   oversampleFor,
+  type ReusableBaker,
   type SupersampledTexture,
 } from './gpu/supersample.js';
 export {
