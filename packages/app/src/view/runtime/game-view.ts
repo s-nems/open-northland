@@ -15,8 +15,8 @@ import { workerRoleOf } from '../../game/sandbox/index.js';
 import { type MinimapHandle, mountMinimap } from '../../hud/minimap/index.js';
 import { buildToolPanelLayout, DEFAULT_UI_SCALE } from '../../hud/tool-panel/layout.js';
 import { currentLocale } from '../../i18n/index.js';
-import type { CameraController } from '../camera.js';
-import { cameraCenteredOnWorld, clientToScreen as clientToScreenPx } from '../camera.js';
+import type { CameraController } from '../camera/index.js';
+import { cameraCenteredOnWorld, clientToScreen as clientToScreenPx } from '../camera/index.js';
 import {
   applyGameSpeed,
   menuEntriesFromContent,

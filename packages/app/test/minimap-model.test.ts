@@ -12,7 +12,7 @@ import {
   viewportRectOnMinimap,
   worldToMinimap,
 } from '../src/hud/minimap/model.js';
-import { cameraCenteredOnWorld } from '../src/view/camera.js';
+import { cameraCenteredOnWorld } from '../src/view/camera/index.js';
 
 const GRID_4 = { width: 4, height: 4, typeIds: Array.from({ length: 16 }, (_, i) => i % 4) };
 const FLAT = (typeId: number): number => [0xaa0000, 0x00bb00, 0x0000cc, 0xdddddd][typeId] ?? 0;

@@ -29,7 +29,7 @@ import { isBuilding, isSettler, ownerPlayerOf, positionOf, type SnapshotEntity }
  * Harvestable map resources carry no Settler/Building marker, so they never pull the focus. Positions are
  * fixed-point visual-tile coords — the same `fx.toFloat` the renderer divides by to project a bob (see
  * `render`'s `sprite-scene.ts`), so the focus lands on the drawn anchor. Deliberately not unified with
- * `view/camera.ts` `cameraFor`'s inspection-zoom policy: the inputs differ (snapshot entities vs projected
+ * `view/camera/frame.ts` `cameraFor`'s inspection-zoom policy: the inputs differ (snapshot entities vs projected
  * draw items).
  */
 export function mapStartFocus(

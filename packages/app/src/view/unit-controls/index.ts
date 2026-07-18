@@ -3,7 +3,7 @@ import type { BuildingHighlightItem } from '@open-northland/render';
 import type { Entity } from '@open-northland/sim';
 import { workFlagOf } from '../../game/snapshot.js';
 import { mountUnitPanel, type UnitPanel } from '../../hud/details-panel/index.js';
-import { clientToScreen, screenScale } from '../camera.js';
+import { clientToScreen, screenScale } from '../camera/index.js';
 import { clampTile, nodeBounds, pickInRect, pickTopAt, screenToWorld, worldToTile } from '../picking.js';
 import { memoBySnapshot } from '../projections/index.js';
 import { mountSettlerActions, type SettlerActions } from './action-ring/index.js';

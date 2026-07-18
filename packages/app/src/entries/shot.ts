@@ -12,7 +12,7 @@ import { loadRealTerrain } from '../content/terrain.js';
 import { HUD_TRIBE } from '../game/rules.js';
 import { loadTerrainMap } from '../slice/map-loader.js';
 import { runSlice, sliceTerrain } from '../slice/vertical-slice.js';
-import { cameraFor } from '../view/camera.js';
+import { cameraFor } from '../view/camera/index.js';
 import { floatParam, intParam } from '../view/params.js';
 import { hudLabels } from '../view/projections/index.js';
 

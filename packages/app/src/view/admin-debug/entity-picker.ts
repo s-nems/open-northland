@@ -7,7 +7,7 @@ import {
 } from '@open-northland/render';
 import type { Simulation } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
-import type { CameraController } from '../camera.js';
+import type { CameraController } from '../camera/index.js';
 import { type Pickable, pickTopAt, screenToWorld } from '../picking.js';
 import type { DebugTargetKind } from './actions-catalog.js';
 

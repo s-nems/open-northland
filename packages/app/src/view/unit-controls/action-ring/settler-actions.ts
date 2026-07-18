@@ -32,7 +32,7 @@ import {
   type SettlerMenuState,
 } from '../../../hud/action-ring-menu.js';
 import { type Messages, messages } from '../../../i18n/index.js';
-import { clientToScreen } from '../../camera.js';
+import { clientToScreen } from '../../camera/index.js';
 import { el } from '../../overlay.js';
 import { createActionRingVisuals } from './action-ring-visuals.js';
 import { createProfessionPicker } from './profession-picker.js';

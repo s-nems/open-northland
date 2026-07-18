@@ -11,7 +11,7 @@ import {
   screenScale,
   stepZoomToward,
   zoomCameraAt,
-} from '../src/view/camera.js';
+} from '../src/view/camera/index.js';
 
 /**
  * The headless half of the interactive camera: the pan/zoom *math* is pure, so it's unit-tested here

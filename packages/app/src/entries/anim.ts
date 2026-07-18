@@ -17,7 +17,7 @@ import {
 } from '../catalog/roster.js';
 import { loadBodyClips, loadGalleryLayers, loadPlayerLut, MissingAtlasError } from '../content/ir.js';
 import { formatMessage, messages } from '../i18n/index.js';
-import { createCameraController, MIN_ZOOM } from '../view/camera.js';
+import { createCameraController, MIN_ZOOM } from '../view/camera/index.js';
 import { mountMessage } from '../view/overlay.js';
 import { floatParam, intParam } from '../view/params.js';
 import {

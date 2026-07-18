@@ -26,7 +26,7 @@ test would then be possible.
   `// @vitest-environment jsdom` so the node-only suites (sim, pipeline) keep their current speed.
 - Prove `view/boot-progress.ts` first, as the module that prompted this: mount → `finish()` leaves
   `document.body` empty; `dismissBootProgress()` is idempotent; a remount drops the previous card.
-- A natural second target is `view/camera.ts`'s `createCameraController`: dispatch `mouseenter` then
+- A natural second target is `view/camera/controller.ts`'s `createCameraController`: dispatch `mouseenter` then
   step `update()` and assert no pan before the first `mousemove` (the fix/camera-startup-edge-drift
   regression), plus that edge-scroll resumes after a real move.
 - Note in `docs/TESTING.md` when a DOM test is the right tool versus a browser pass.

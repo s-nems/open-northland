@@ -58,8 +58,8 @@ export async function createPixiApp(
  * being nearest-upscaled by the browser. The nearest-sampled world pixel art is unaffected at integer
  * zooms (the same duplication moves from the browser's canvas upscale into GPU sampling). The DPR is
  * read once at boot — a mid-session monitor/zoom change keeps working, just at the boot density. Input
- * handlers read `app.renderer.resolution` to map client px → screen px (`view/camera.ts` `screenScale`
- * in the app).
+ * handlers read `app.renderer.resolution` to map client px → screen px (`view/camera/screen-scale.ts`
+ * `screenScale` in the app).
  */
 export async function createWindowPixiApp(canvas: HTMLCanvasElement): Promise<Application> {
   const app = new Application();

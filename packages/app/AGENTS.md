@@ -115,7 +115,9 @@ that matches its role instead of piling another method onto a growing file:
     `building-points.ts`, `geometry-debug-items.ts`, `fog-gates.ts`, `hud-labels.ts`. The selection
     details panel itself lives in `hud/details-panel/`.
   - **`admin-debug/`** — the `?debug=admin` entity picker + overlay.
-  - Shared leaves: `camera.ts` (pure pan/zoom math + the DOM controller), `picking.ts` (screen↔world
+  - Shared leaves: the `camera/` package (pure geometry split by concern behind an `index.ts` barrel:
+    `frame.ts` starting-frame builders, `pan-zoom.ts` reducers + bounds, `screen-scale.ts` CSS↔screen
+    mapping, `controller.ts` the DOM controller), `picking.ts` (screen↔world
     hit-testing math), `params.ts` (URL-param parsing), `overlay.ts` (shared panel + full-page chrome —
     `el`/`navButton`/`pageSection`/styles), `game-tool-panel.ts`, `perf-overlay.ts`, `system-menu.ts`,
     `tooltip.ts`, `ground-pile-tooltip.ts`, `placement-overlay.ts`, `scene-overlay.ts`,
