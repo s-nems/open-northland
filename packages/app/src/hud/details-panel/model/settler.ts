@@ -91,7 +91,7 @@ export interface SettlerPanelModel {
   /** Whether the "przypisz dom" button is active — any adult settler may be housed (the sim's
    *  `assignHouse` gates the rest); greyed for a growing child, whose family is housed via its parents. */
   readonly canAssignHome: boolean;
-  /** Whether the "usuń z domu" button is active — an adult who currently HAS a home (a `Residence`), so
+  /** Whether the "usuń z domu" button is active — an adult who currently has a home (a `Residence`), so
    *  its family can move out and free the slot; greyed otherwise (homeless, or a child moved by parents).
    *  The sim's `unassignHouse` gates the rest. */
   readonly canUnassignHome: boolean;
