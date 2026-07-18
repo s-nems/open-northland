@@ -4,6 +4,7 @@ import {
   hasClaimableSeat,
   initialRosterState,
   OBSERVER_SEAT,
+  OVERSEER_SEAT,
   rosterStartParams,
   setSlotColor,
   toggleVacantMode,
@@ -171,6 +172,11 @@ describe('roster state', () => {
       ['player', 'observer'],
       ['ai', '0,1'],
     ]);
+  });
+
+  it('encodes the overseer (god-mode) pseudo-seat like the observer', () => {
+    const state = claimSeat(initialRosterState(players), OVERSEER_SEAT);
+    expect(rosterStartParams(state, players)).toEqual([['player', 'overseer']]);
   });
 
   it('encodes recolours and AI-toggled seats alongside the seat', () => {

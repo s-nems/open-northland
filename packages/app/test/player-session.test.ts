@@ -4,6 +4,7 @@ import {
   localPlayerParam,
   observerParam,
   playerColourMap,
+  readOnlyObserverParam,
 } from '../src/game/player-session.js';
 
 /**
@@ -19,11 +20,20 @@ describe('localPlayerParam', () => {
     expect(localPlayerParam(new URLSearchParams('player=99'))).toBe(0); // beyond MAX_PLAYERS
   });
 
-  it('reads player=observer as the observer session, seat reads falling back to slot 0', () => {
+  it('reads observer and overseer as spectator sessions, seat reads falling back to slot 0', () => {
     expect(observerParam(new URLSearchParams('player=observer'))).toBe(true);
+    expect(observerParam(new URLSearchParams('player=overseer'))).toBe(true);
     expect(observerParam(new URLSearchParams('player=2'))).toBe(false);
     expect(observerParam(new URLSearchParams(''))).toBe(false);
     expect(localPlayerParam(new URLSearchParams('player=observer'))).toBe(0);
+    expect(localPlayerParam(new URLSearchParams('player=overseer'))).toBe(0);
+  });
+
+  it('marks only the observer read-only — the overseer god-mode keeps control', () => {
+    expect(readOnlyObserverParam(new URLSearchParams('player=observer'))).toBe(true);
+    expect(readOnlyObserverParam(new URLSearchParams('player=overseer'))).toBe(false);
+    expect(readOnlyObserverParam(new URLSearchParams('player=2'))).toBe(false);
+    expect(readOnlyObserverParam(new URLSearchParams(''))).toBe(false);
   });
 });
 

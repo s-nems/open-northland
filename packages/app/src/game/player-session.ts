@@ -14,11 +14,26 @@ const { isValidPlayer } = components;
  * wiring.
  */
 
-/** `?player=observer` — the menu's observer pseudo-seat ({@link OBSERVER_SEAT} in the roster state):
- *  a spectator session with no fog view and every player's entities pickable. The seat-number reads
- *  ({@link localPlayerParam}) fall back to {@link HUMAN_PLAYER} for placement/HUD ownership. */
+/** The two spectator pseudo-seats the menu offers in place of a slot: a read-only `observer` (watch
+ *  and inspect any entity, issue no commands) and an `overseer` god-mode (watch and command every
+ *  seat). Both drop fog and make every player's entities pickable; they differ only in whether the
+ *  HUD may issue commands (see {@link readOnlyObserverParam}). */
+const OBSERVER = 'observer';
+const OVERSEER = 'overseer';
+
+/** `?player=observer|overseer` — either spectator pseudo-seat (the roster's `OBSERVER_SEAT` /
+ *  `OVERSEER_SEAT`): a session with no fog view and every player's entities pickable. The seat-number
+ *  reads ({@link localPlayerParam}) fall back to {@link HUMAN_PLAYER} for placement/HUD ownership. */
 export function observerParam(params: URLSearchParams): boolean {
-  return params.get('player') === 'observer';
+  const player = params.get('player');
+  return player === OBSERVER || player === OVERSEER;
+}
+
+/** `?player=observer` — the read-only spectator: it selects and inspects any entity but issues no
+ *  commands (the game view no-ops its command seam). False for the `overseer` god-mode, which keeps
+ *  full control of every seat. */
+export function readOnlyObserverParam(params: URLSearchParams): boolean {
+  return params.get('player') === OBSERVER;
 }
 
 /** The controlled seat: `?player=N` when it names a valid player slot, else {@link HUMAN_PLAYER}. */

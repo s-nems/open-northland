@@ -26,11 +26,17 @@ export interface MapPlayerSlot {
 /** What a free claimable seat does once the game starts: nothing, or the strategic AI plays it. */
 export type VacantMode = 'idle' | 'ai';
 
-/** The observer pseudo-seat: watch the match without controlling a slot (`?player=observer`). */
+/** The read-only observer pseudo-seat: watch and inspect the match without controlling a slot or
+ *  issuing any command (`?player=observer`). */
 export const OBSERVER_SEAT = 'observer';
 
-/** A claimed session: a roster slot id, or the {@link OBSERVER_SEAT} spectator pseudo-seat. */
-export type SeatChoice = number | typeof OBSERVER_SEAT;
+/** The overseer (god-mode) pseudo-seat: watch every seat and command all of them (`?player=overseer`)
+ *  — the same whole-map view as the observer, but with live control, kept as a sandbox/debug session. */
+export const OVERSEER_SEAT = 'overseer';
+
+/** A claimed session: a roster slot id, or one of the spectator pseudo-seats
+ *  ({@link OBSERVER_SEAT} read-only, {@link OVERSEER_SEAT} god-mode). */
+export type SeatChoice = number | typeof OBSERVER_SEAT | typeof OVERSEER_SEAT;
 
 /** A slot's authored vacant default: an `ai` slot auto-plays (when the lobby allows AI at all),
  *  a `human` one idles. */
@@ -113,7 +119,7 @@ export function aiSeats(state: RosterState, players: readonly MapPlayerSlot[]): 
 
 /**
  * The start-URL params encoding the person's roster choices: `player=<seat>` (a slot id, or
- * `observer` for the spectator session),
+ * `observer`/`overseer` for a spectator session),
  * `colors=<slot>:<colorId>,…` (only slots recoloured away from the map's authored colour) and
  * `ai=<slot>,…` — the full {@link aiSeats} list (not just deviations: the `?map=` entry consumes it
  * directly via `aiSeatsParam`, with no roster knowledge of its own). Empty until a seat is

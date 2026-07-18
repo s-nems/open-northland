@@ -7,6 +7,7 @@ export {
   initialRosterState,
   type MapPlayerSlot,
   OBSERVER_SEAT,
+  OVERSEER_SEAT,
   type RosterState,
   rosterStartParams,
   type SeatChoice,

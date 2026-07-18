@@ -50,8 +50,11 @@ export const enSurfaces = {
     seatTake: 'Sit here',
     seatTaken: 'You play here',
     observerName: 'Observer',
-    observerDetail: 'Watch the match — every unit and building can be inspected',
+    observerDetail: 'Watch the match — inspect any unit or building, but issue no orders',
     observerTaken: 'You observe',
+    overseerName: 'Overseer',
+    overseerDetail: 'Sandbox god-mode — watch and command every seat',
+    overseerTaken: 'You oversee',
     vacantIdle: 'Idle',
     vacantAi: 'AI',
     vacantToggleTitle:
