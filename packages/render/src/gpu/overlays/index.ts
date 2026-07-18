@@ -23,7 +23,9 @@ export {
   type SettlerBubbleKind,
   SettlerBubbleLayer,
 } from './bubble-layer.js';
+export { CollapseLayer } from './collapse-layer.js';
 export { type ConstructionPlotFrame, ConstructionPlotLayer } from './construction-plot.js';
+export { DamageSmokeLayer } from './damage-smoke-layer.js';
 export { CombatEffectsLayer } from './effects-layer.js';
 export { FogLayer } from './fog-layer.js';
 export { type GeometryDebugCell, type GeometryDebugItem, GeometryDebugLayer } from './geometry-debug.js';

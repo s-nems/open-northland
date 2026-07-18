@@ -43,6 +43,34 @@ describe('TextureCache.cropped', () => {
   });
 });
 
+describe('TextureCache.croppedBottom', () => {
+  it('keeps only the top rows — crops hiddenBottom pixels off the BOTTOM of the frame (the collapse sink)', () => {
+    const cache = new TextureCache();
+    const tex = cache.croppedBottom(SOURCE, FRAME, 12);
+    // The visible region is the top (height − hiddenBottom) rows, anchored at the frame top; the caller
+    // shifts the sprite down by the same amount so the bottom edge stays pinned at the ground line.
+    expect(tex.frame.x).toBe(FRAME.x);
+    expect(tex.frame.y).toBe(FRAME.y);
+    expect(tex.frame.width).toBe(FRAME.width);
+    expect(tex.frame.height).toBe(FRAME.height - 12);
+  });
+
+  it('clamps into the frame, and caches per (frame, hiddenBottom) independently of cropped()', () => {
+    const cache = new TextureCache();
+    expect(cache.croppedBottom(SOURCE, FRAME, FRAME.height + 5).frame.height).toBe(0);
+    expect(cache.croppedBottom(SOURCE, FRAME, 12)).toBe(cache.croppedBottom(SOURCE, FRAME, 12));
+    // The same hidden count from the TOP is a different view — the two crop caches never alias.
+    expect(cache.croppedBottom(SOURCE, FRAME, 12)).not.toBe(cache.cropped(SOURCE, FRAME, 12));
+  });
+
+  it('is destroyed by clear() like every other cached view', () => {
+    const cache = new TextureCache();
+    const bottom = cache.croppedBottom(SOURCE, FRAME, 7);
+    cache.clear();
+    expect(bottom.destroyed).toBe(true);
+  });
+});
+
 describe('TextureCache.revealed', () => {
   const TIMES: BuildTimeSheet = { width: 64, height: 64, values: new Uint8Array(64 * 64) };
 

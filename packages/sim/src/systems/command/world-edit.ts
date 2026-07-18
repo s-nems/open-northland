@@ -1,6 +1,7 @@
-import { Building, Signpost } from '../../components/index.js';
+import { Building, Owner, Position, Signpost } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
+import { eventAt } from '../../core/events.js';
 import type { World } from '../../ecs/world.js';
 import { positionOfNode } from '../../nav/halfcell.js';
 import { dropOrStackGood } from '../agents/effects-goods/index.js';
@@ -47,13 +48,29 @@ export function dropGood(
 }
 
 /** Destroy a building entity (ids are never recycled), first unbinding every settler employed there (see
- *  {@link unbindWorkersOf}) so a worker isn't left latched to a dead workplace. In lockstep any peer can
- *  send any command (and a queued command's target can change between issue and apply), so a demolish aimed
- *  at a non-building entity — a settler, a resource node, a boat — must be a skip, never a destroy. */
-export function demolish(world: World, command: Extract<Command, { kind: 'demolish' }>): void {
+ *  {@link unbindWorkersOf}) so a worker isn't left latched to a dead workplace. Announces the same
+ *  `buildingDestroyed` cue combat razing emits, so render plays one collapse for both paths. In lockstep any
+ *  peer can send any command (and a queued command's target can change between issue and apply), so a
+ *  demolish aimed at a non-building entity — a settler, a resource node, a boat — must be a skip, never a
+ *  destroy. */
+export function demolish(
+  world: World,
+  ctx: SystemContext,
+  command: Extract<Command, { kind: 'demolish' }>,
+): void {
   if (!world.has(command.building, Building)) return;
-  unbindWorkersOf(world, command.building);
-  world.destroy(command.building);
+  const e = command.building;
+  const owner = world.tryGet(e, Owner);
+  const pos = world.tryGet(e, Position);
+  ctx.events.emit({
+    kind: 'buildingDestroyed',
+    entity: e,
+    player: owner?.player ?? null,
+    buildingType: world.get(e, Building).buildingType,
+    ...(pos !== undefined ? { at: eventAt(pos.x, pos.y) } : {}),
+  });
+  unbindWorkersOf(world, e);
+  world.destroy(e);
 }
 
 /** Destroy a signpost — the same kind-at-execution rule as {@link demolish}: only a live {@link Signpost}

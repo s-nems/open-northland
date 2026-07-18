@@ -14,6 +14,7 @@ import {
   readAtomicTargetEntity,
   readBerryBushGfxIndex,
   readBerryBushLevel,
+  readHpFraction,
   readOwnerPlayer,
   readPosition,
   readProducing,
@@ -212,6 +213,9 @@ export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOpt
       // Mid production cycle: the switch a type's animated state overlay flips on (the mill's rotor).
       // Live-only, since a fog ghost never animates.
       if (readProducing(components)) item.working = true;
+      // A damaged finished building's remaining HP fraction — the damage-smoke drive. Live-only too.
+      const hpFrac = readHpFraction(components);
+      if (hpFrac !== undefined) item.hpFrac = hpFrac;
     } else if (kind === 'resource') {
       // A resource node carries its `goodType` (per-good species/deposit), its shrink-by-`level` fill, and
       // its source-variant `gfxIndex` ("pine 02", not the representative "yew 01") — via the shared static

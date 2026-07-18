@@ -15,7 +15,7 @@ import type { ElevationField } from '../../data/terrain/index.js';
 import { PalettedSprite } from '../paletted-sprite/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
-import { trackMotion } from './motion.js';
+import { isStalled, trackMotion } from './motion.js';
 import { anchorOf, boundsOf, pixelHit } from './pick.js';
 import { drawPlaceholder, PROJECTILE_FLIGHT_HEIGHT, placeholderBody } from './placeholder.js';
 import { createPooled, type EntityBounds, type PooledEntity } from './pooled-entity.js';
@@ -36,7 +36,7 @@ import { type ResolvedLayer, resolveLayers } from './resolve-layers.js';
  * `depthKey` x-tiebreak's max contribution (so the kind order wins at a shared feet anchor) yet far below
  * one iso row's screen-y gap (so it never lifts a sprite past one a genuine row behind/ahead of it).
  */
-const SCREEN_PAINT_EPS = 0.25;
+export const SCREEN_PAINT_EPS = 0.25;
 
 /**
  * Per-frame easing factor for the construction bottom-up reveal — the displayed reveal moves this fraction
@@ -118,6 +118,9 @@ export class SpritePool {
   private readonly attached = new Set<PooledEntity>();
   private frameId = 0;
   private drawn = 0;
+  /** This frame's drawn (culled) damaged finished buildings — {@link DrawItem.hpFrac} carriers, rebuilt
+   *  each {@link reconcile} for the damage-smoke overlay ({@link damagedBuildings}). */
+  private readonly damaged: { ref: number; hpFrac: number }[] = [];
   /** The details-panel portrait's force-hide/solo bookkeeping — everything the pool holds for the
    *  {@link import('../overlays/portrait-inset.js').PortraitInsetLayer} collaborator alone. */
   private readonly portrait: PortraitSubject;
@@ -159,9 +162,15 @@ export class SpritePool {
     });
     this.frameId++;
     this.portrait.release();
+    this.damaged.length = 0;
     for (let i = 0; i < scene.items.length; i++) {
       const item = scene.items[i];
       if (item === undefined) continue;
+      // A live damaged building (never a fog ghost) joins the frame's smoke list — collected here, off
+      // the already-culled draw list, so the overlay's cost tracks the screen.
+      if (item.kind === 'building' && item.hpFrac !== undefined && item.ghost !== true) {
+        this.damaged.push({ ref: item.ref, hpFrac: item.hpFrac });
+      }
       // The sprite scene never emits terrain tiles (they draw in the terrain layer); asserting it here
       // narrows item.kind to SpriteKind for the rest of the loop instead of casting.
       if (item.kind === 'tile') continue;
@@ -223,6 +232,12 @@ export class SpritePool {
         }
       }
     }
+  }
+
+  /** This frame's drawn damaged finished buildings (ref + remaining HP fraction) — the damage-smoke
+   *  overlay's input, valid until the next {@link reconcile}. */
+  damagedBuildings(): readonly { ref: number; hpFrac: number }[] {
+    return this.damaged;
   }
 
   /** Entities drawn last frame + sprites currently pooled — for the perf overlay's on-screen readout. */
@@ -330,11 +345,15 @@ export class SpritePool {
     // smooths). Gating on `state === 'moving'` keeps the per-frame copy to that gap frame: an idle settler
     // also has no facing but must draw the default idle facing rather than allocate every frame.
     if (item.facing !== undefined) pe.lastFacing = item.facing;
-    const drawItem =
-      pe.kind === 'settler' &&
-      item.state === 'moving' &&
-      item.facing === undefined &&
-      pe.lastFacing !== undefined
+    // Stall guard: a sim state that reads `moving` while the anchor has sat still (an unserviced route, a
+    // stalled chase) presents the idle pose — never a walk cycle frozen mid-stride ({@link isStalled}).
+    const stalled = pe.kind === 'settler' && item.state === 'moving' && isStalled(pe.motion);
+    const drawItem = stalled
+      ? { ...item, state: 'idle' as const }
+      : pe.kind === 'settler' &&
+          item.state === 'moving' &&
+          item.facing === undefined &&
+          pe.lastFacing !== undefined
         ? { ...item, facing: pe.lastFacing }
         : item;
     // The moving-state walk cycle runs on the motion-scaled gait clock (feet track ground covered — a

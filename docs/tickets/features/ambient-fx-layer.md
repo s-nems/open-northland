@@ -13,7 +13,9 @@ combat-effects pattern (`packages/render/src/data/effects/` — pure, seeded, ti
 viewport-culled):
 
 - chimney smoke over buildings mid production cycle (the snapshot's `working` flag the mill rotor
-  already keys on), using the decoded `ls_smoke` frames;
+  already keys on), using the decoded `ls_smoke` frames; the damage-smoke overlay
+  (`packages/render/src/gpu/overlays/damage-smoke-layer.ts`) draws procedural puffs today and is the
+  second swap-in site for the same art;
 - fire/spark loops where records place them (campfires, braziers);
 - optional beyond-original ambience: occasional birds over forest, drifting leaves — seeded from the
   tick so `?shot` reproduces.

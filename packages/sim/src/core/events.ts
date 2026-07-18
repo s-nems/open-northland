@@ -62,16 +62,20 @@ export type SimEvent =
     }
   | {
       /**
-       * A building was razed this tick — its {@link import('../components/combat.js').Health} pool hit 0
-       * under attack and `cleanupSystem` removed it (the structure twin of {@link 'settlerDied'}). `player`
-       * is the building's {@link import('../components/ownership.js').Owner} slot, read before the destroy
-       * (`null` for an unowned structure), so audio can play the "you lost a building" cue for its owner
-       * only; `at` is the razed building's node, so render can leave rubble/dust there. Render also culls the
-       * vanished building from the snapshot diff on its own — this event is the one-shot cue, not the removal.
+       * A building came down this tick — razed in combat (its
+       * {@link import('../components/combat.js').Health} pool hit 0 and `cleanupSystem` removed it, the
+       * structure twin of {@link 'settlerDied'}) or demolished by its owner's command; both paths share the
+       * one cue so render plays the same collapse. `player` is the building's
+       * {@link import('../components/ownership.js').Owner} slot, read before the destroy (`null` for an
+       * unowned structure), so audio can play the "you lost a building" cue for its owner only; `at` is the
+       * building's node and `buildingType` its content type, so render can re-resolve the sprite for the
+       * collapse transient (the entity leaves the snapshot the same tick). Render also culls the vanished
+       * building from the snapshot diff on its own — this event is the one-shot cue, not the removal.
        */
       readonly kind: 'buildingDestroyed';
       readonly entity: Entity;
       readonly player: number | null;
+      readonly buildingType: number;
       readonly at?: HalfCellNode;
     }
   | { readonly kind: 'atomicCompleted'; readonly entity: Entity; readonly atomicId: number }

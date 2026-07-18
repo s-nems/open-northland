@@ -70,6 +70,7 @@ function reapBuilding(world: World, ctx: SystemContext, e: Entity): void {
     kind: 'buildingDestroyed',
     entity: e,
     player: owner?.player ?? null,
+    buildingType: world.get(e, Building).buildingType,
     ...(pos !== undefined ? { at: eventAt(pos.x, pos.y) } : {}),
   });
   unbindWorkersOf(world, e);

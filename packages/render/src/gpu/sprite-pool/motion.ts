@@ -36,6 +36,15 @@ const WALK_FRAME_TRAVEL_PX = (2 * TILE_HALF_W) / WALK_CYCLE_FRAMES;
  */
 const MAX_GAIT_RATE = 2.5;
 
+/** Ticks a `moving`-state track must sit still before the pool presents the idle pose instead of a frozen
+ *  mid-stride walk frame — a sim state that reads `moving` with no actual displacement (an unserviced
+ *  route, a stalled chase) must not hold a leg in the air. Four ticks (⅓ s) of true stillness clears the
+ *  slowest legit case (the brake floor still covers ~1.9 px/tick) without flickering a normal stop. */
+export const STALL_TICKS_TO_IDLE = 4;
+
+/** World px per tick below which a tick's travel counts as standing still (full gait ≈ 3.8 px/tick). */
+const STALL_EPSILON_PX = 0.5;
+
 /** An entity's inter-tick motion track: the current and previous tick anchors (world px), plus the
  *  drawn anchor the last {@link trackMotion} computed from them. */
 export interface MotionTrack {
@@ -57,6 +66,14 @@ export interface MotionTrack {
    * 17 ticks while the body crosses a cell in 18; a body-pressed or braking walker's legs slow with it too.
    */
   gaitPhase: number;
+  /** Consecutive ticks the anchor moved at most the stall epsilon — feeds {@link isStalled}. Reset by
+   *  real travel and by snaps (a teleport is not standing still). */
+  stillTicks: number;
+}
+
+/** Whether the track has sat still long enough that a `moving` sim state should present as idle. */
+export function isStalled(m: MotionTrack): boolean {
+  return m.stillTicks >= STALL_TICKS_TO_IDLE;
 }
 
 /**
@@ -76,11 +93,13 @@ export function trackMotion(m: MotionTrack, tick: number, x: number, y: number, 
     m.y = y;
     m.prevX = x;
     m.prevY = y;
+    m.stillTicks = 0;
   } else if (m.tick !== tick) {
     const dt = tick - m.tick;
     const dist = Math.hypot(x - m.x, y - m.y);
     const rate = Math.min(MAX_GAIT_RATE, (dist * WALK_ANIMATION_RATE) / (WALK_FRAME_TRAVEL_PX * dt));
     m.gaitPhase += rate * dt;
+    m.stillTicks = dist <= STALL_EPSILON_PX * dt ? m.stillTicks + dt : 0;
     m.prevX = m.x;
     m.prevY = m.y;
     m.x = x;

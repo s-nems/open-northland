@@ -311,6 +311,10 @@ function engageCombatant(
   }
   // Advance on the target's combat node — its own node for a unit, its nearest wall cell for a building —
   // the same node resolveTarget measured the distance to, so the chase walks toward where the swing lands.
+  // A building's full wall list rides along so a chaser whose nearest face is manned encircles to another.
   const targetNode = combatTargetNode(world, ctx, terrain, here, target, bodyNodes);
-  chase(world, ctx, terrain, slots, e, here, targetNode, weapon, stance, spec.defend);
+  const targetBody = world.has(target, Building)
+    ? buildingBodyNodes(world, ctx, terrain, target, bodyNodes)
+    : null;
+  chase(world, ctx, terrain, slots, e, here, targetNode, targetBody, weapon, stance, spec.defend);
 }
