@@ -168,7 +168,7 @@ const BERRY_STAGE_LEVEL: Readonly<Record<string, number>> = { bare: 1, flowering
 export function readBerryBushLevel(components: Readonly<Record<string, unknown>>): number | undefined {
   const b = components.BerryBush as { stage?: unknown } | undefined;
   if (b === undefined || typeof b.stage !== 'string') return undefined;
-  return BERRY_STAGE_LEVEL[b.stage];
+  return BERRY_STAGE_LEVEL[b.stage] ?? undefined; // an unknown stage string → default frame, not a bogus level
 }
 
 /**

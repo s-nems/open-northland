@@ -34,8 +34,7 @@ export function consumeFood(world: World, settler: Entity, from: Entity | null, 
  * Forage a RIPE {@link BerryBush} for a completed `forage` atomic: the bush's one serving is eaten, so it
  * flips ripe→bare and schedules its first regrow step ({@link BERRY_STAGE_TICKS} ticks to bloom, the
  * exact-integer `nextStageAtTick` the BerryGrowthSystem compares against), and a `berryForaged` event fires
- * (the render's
- * static→live handover cue). A bush that is already bare (another forager beat this one to it since the
+ * (the render static→live handover cue). A bush that is already bare (another forager beat this one to it since the
  * planner chose it) or gone is a no-op — nothing to give — but the AtomicSystem still zeroes hunger (the
  * bite was taken), the same raced-source stance as {@link consumeFood}'s emptied store. The bush entity
  * persists (it regrows in place, unlike a depleted {@link Resource} node that is destroyed). The in-place

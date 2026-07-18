@@ -270,8 +270,8 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
                 : ev.kind === 'berryForaged'
                   ? (ev.bush as number)
                   : undefined;
-            // A razed bush is DESTROYED (a building landed on it), not handed to the pool — drop its static
-            // quad and leave NO fog ghost, since nothing remains to remember on explored ground.
+            // A razed bush is destroyed (a building landed on it), not handed to the pool — drop its static
+            // quad and leave no fog ghost, since nothing remains to remember on explored ground.
             const razed = ev.kind === 'berryBushRazed' ? (ev.bush as number) : undefined;
             const entity = worked ?? razed;
             if (entity === undefined) continue;
