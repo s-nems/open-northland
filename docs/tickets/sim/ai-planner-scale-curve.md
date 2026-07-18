@@ -64,11 +64,11 @@ inclusive — not the lever.
   figure (0.635 ms) independently reproduced the pre-fix ~0.7 ms early-run baseline. Re-measure the
   curve on top of the gate before investigating — busy crews don't go dormant, so the superlinear
   early-window growth may stand unchanged.
-- `sim/lazy-target-cell-indexes.md` (P3) touches the index machinery the planner reads through and
-  could be the mechanism here. The other index candidate was FIXED on 2026-07-18: the spatial index
-  memos (region/stockpile/tile) are now maintained incrementally via the World membership journal
-  (`systems/spatial-memo.ts`) instead of rebuilding wholesale per generation bump — re-measure the
-  curve on top of that too.
+- Both index candidates were FIXED on 2026-07-18: the spatial index memos (region/stockpile/tile)
+  are maintained incrementally via the World membership journal (`systems/spatial-memo.ts`), and the
+  planner's three `InteractionCellIndex`es build lazily on first access (`targets/candidates.ts`) —
+  re-measure the curve on top of both. The remaining measured cost is the scan-count × accept work
+  quantified above, not index construction.
 
 Grep these before filing any new work — the fix may belong in one of them instead.
 
