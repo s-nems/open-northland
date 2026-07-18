@@ -343,6 +343,36 @@ describe('selection details panel model', () => {
     expect(child.bars.map((b) => b.label)).toEqual(['Zdrowie', 'Głód', 'Sen', 'Towarzystwo', 'Religia']);
   });
 
+  it('offers remove-from-home only to a housed adult (not the homeless, not a child)', () => {
+    const snapshot = snapshotOf([
+      // A housed adult: has a Residence, no Age — the remove button is live.
+      { id: 1, components: { Settler: { tribe: 1, jobType: JOB_COLLECTOR }, Residence: { home: 9 } } },
+      // A homeless adult: no Residence — nothing to remove.
+      { id: 2, components: { Settler: { tribe: 1, jobType: JOB_COLLECTOR } } },
+      // A housed child: it moves with its parents, never on its own.
+      {
+        id: 3,
+        components: {
+          Settler: { tribe: 1, jobType: JOB_CHILD_MALE, hunger: 0, fatigue: 0, enjoyment: 0, piety: 0 },
+          Age: { ticks: 9000 },
+          Residence: { home: 9 },
+        },
+      },
+    ]);
+
+    const housed = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
+    if (housed.kind !== 'settler') throw new Error('expected a settler model');
+    expect(housed.canUnassignHome).toBe(true);
+
+    const homeless = buildUnitPanelModel(snapshot, new Set([2]), sandboxCtx());
+    if (homeless.kind !== 'settler') throw new Error('expected a settler model');
+    expect(homeless.canUnassignHome).toBe(false);
+
+    const child = buildUnitPanelModel(snapshot, new Set([3]), sandboxCtx());
+    if (child.kind !== 'settler') throw new Error('expected a settler model');
+    expect(child.canUnassignHome).toBe(false);
+  });
+
   it('bands a bar level into green/orange/red tones at the named thresholds', () => {
     expect(barTone(100)).toBe('ok');
     expect(barTone(50)).toBe('ok'); // ≥50 stays green

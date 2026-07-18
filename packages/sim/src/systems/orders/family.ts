@@ -75,6 +75,23 @@ export function assignHouse(
 }
 
 /**
+ * The `unassignHouse` handler: drop the issuer's whole family (see {@link familyOf}) out of its home,
+ * freeing the family slot. The family-wide inverse of {@link assignHouse}: the same unit that moves in
+ * moves out. Skips: a non-adult/dead/neutral issuer (a child leaves with its parents), or an issuer
+ * that has no {@link Residence} (nothing to remove).
+ */
+export function unassignHouse(
+  world: World,
+  _ctx: SystemContext,
+  command: Extract<Command, { kind: 'unassignHouse' }>,
+): void {
+  const e = command.entity;
+  if (!isOrderableSettler(world, e) || !isAdultSettler(world, e)) return;
+  if (!world.has(e, Residence)) return; // already homeless — nothing to free
+  for (const member of familyOf(world, e)) world.remove(member, Residence);
+}
+
+/**
  * The `makeChild` handler: stamp (or re-sex) the woman's standing {@link ChildOrder}. The FamilySystem
  * drives its stages; the order persists until the birth. Skips: a dead/neutral/non-settler issuer, a
  * male, a child, an unmarried woman, or a couple whose previous child is still growing up.

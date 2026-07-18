@@ -73,6 +73,9 @@ export interface UnitPanelOptions extends UnitPanelModelContext {
   /** Enter "assign a home" mode for the selected settler — the residential twin of
    *  {@link onAssignWorkplace} (the view washes candidate homes green/red). Absent → the button is inert. */
   readonly onAssignHome?: (settlerId: number) => void;
+  /** Remove the selected settler's family from its home (the `unassignHouse` command) — the inverse of
+   *  {@link onAssignHome}. No pick mode: it acts on the current home immediately. Absent → button inert. */
+  readonly onUnassignHome?: (settlerId: number) => void;
   readonly onSetGatherGood: (entityId: number, goodType: number | null) => void;
   /** Replace a craft worker's product selection (the `setCraftGoods` command); `[]` = every product.
    *  The panel computes the toggled set from the clicked button + the model's effective selection. */
@@ -285,7 +288,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     layout?.kind === 'building'
       ? layout.buttons
       : layout?.kind === 'settler'
-        ? [layout.assignButton, layout.homeButton]
+        ? [layout.assignButton, layout.homeButton, layout.unassignButton]
         : layout?.kind === 'signpost'
           ? [layout.button]
           : [];
@@ -384,6 +387,8 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
       opts.onAssignWorkplace?.(lastModel.entityId);
     } else if (hit?.action === 'assign-home' && hit.enabled && lastModel.kind === 'settler') {
       opts.onAssignHome?.(lastModel.entityId);
+    } else if (hit?.action === 'unassign-home' && hit.enabled && lastModel.kind === 'settler') {
+      opts.onUnassignHome?.(lastModel.entityId);
     }
     return true;
   };
@@ -416,12 +421,13 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     return i < 0 ? null : (lastModel.bars[i]?.hover ?? null);
   };
 
-  /** The assign-workplace button's tooltip when the cursor is over it (settler layouts only) — the
-   *  "co robi ten guzik" hint the user asked for. */
+  /** The Praca control buttons' tooltips (assign-workplace / assign-home / remove-from-home) when the
+   *  cursor is over one (settler layouts only) — the "co robi ten guzik" hint the user asked for. */
   const assignButtonHint = (x: number, y: number): string | null => {
     if (layout?.kind !== 'settler') return null;
     if (contains(layout.assignButton.rect, x, y)) return messages().hud.assignWorkplaceHint;
     if (contains(layout.homeButton.rect, x, y)) return messages().hud.assignHomeHint;
+    if (contains(layout.unassignButton.rect, x, y)) return messages().hud.unassignHomeHint;
     return null;
   };
 

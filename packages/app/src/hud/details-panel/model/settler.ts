@@ -91,6 +91,10 @@ export interface SettlerPanelModel {
   /** Whether the "przypisz dom" button is active — any adult settler may be housed (the sim's
    *  `assignHouse` gates the rest); greyed for a growing child, whose family is housed via its parents. */
   readonly canAssignHome: boolean;
+  /** Whether the "usuń z domu" button is active — an adult who currently HAS a home (a `Residence`), so
+   *  its family can move out and free the slot; greyed otherwise (homeless, or a child moved by parents).
+   *  The sim's `unassignHouse` gates the rest. */
+  readonly canUnassignHome: boolean;
   /** Owner/tribe meta line under the name, with the military stance appended for a soldier. */
   readonly meta: string;
   /** A short live-state caption drawn in the portrait box — an honest stand-in for the original's

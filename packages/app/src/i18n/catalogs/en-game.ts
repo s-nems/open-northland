@@ -32,6 +32,9 @@ export const enGame = {
       'Click, then pick a building: green ones have an open slot for this settler, red ones do not. Left-click assigns, right-click or Esc cancels.',
     assignHomeHint:
       'Click, then pick a house: green ones have a free family slot, red ones do not. Left-click moves the whole family in, right-click or Esc cancels.',
+    unassignHome: 'Remove from home',
+    unassignHomeHint:
+      "Moves this settler's whole family out of its home, freeing the family slot. You can assign them a new home anytime.",
     defenseStopped: 'Defence stopped',
     upgrade: 'Upgrade',
     upgradeCostHint: 'Upgrade requires:',

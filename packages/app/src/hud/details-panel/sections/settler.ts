@@ -169,6 +169,17 @@ function drawWorkSection(
   );
   chrome.roundButton(layout.homeIcon, model.canAssignHome, hoverAction === 'assign-home');
   chrome.glyphHouse(layout.homeIcon, model.canAssignHome);
+  // The "usuń z domu" control below it — the inverse of assign-home. No decoded original string exists
+  // for it (the original had no such button), so the label is a pinned fallback, like the sim-state
+  // captions the model carries.
+  chrome.textLeftMiddle(
+    hud.unassignHome,
+    layout.unassignLabel.x,
+    layout.unassignLabel.y + layout.unassignLabel.h / 2,
+    model.canUnassignHome ? 'white' : 'dimmed',
+  );
+  chrome.roundButton(layout.unassignIcon, model.canUnassignHome, hoverAction === 'unassign-home');
+  chrome.glyphHouse(layout.unassignIcon, model.canUnassignHome);
 }
 
 /** Doświadczenie: the settler's highest recorded specialization (or "żadne" — the sim awards none yet). */

@@ -182,6 +182,18 @@ export type UnitOrderCommand =
     }
   | {
       /**
+       * Remove one owned adult settler's FAMILY (the settler, its spouse, their still-growing child)
+       * from its home: each member drops its {@link Residence}, freeing the family slot for another
+       * household. The family-wide inverse of `assignHouse` — the same unit moves out that moved in.
+       * Skipped for a dead/stale/non-settler/neutral issuer, a child (it leaves with its parents), or
+       * an unhoused issuer (nothing to remove). See `unassignHouse`. Source basis: user-specified design
+       * (the original has no readable "remove from home" primitive; this mirrors the housed-as-one family).
+       */
+      readonly kind: 'unassignHouse';
+      readonly entity: Entity;
+    }
+  | {
+      /**
        * Order one owned married woman to make a child of the chosen sex — a standing order (it persists
        * until the birth succeeds; other orders interrupt but never cancel it). The FamilySystem drives
        * its stages: she stocks the couple's home with food, waits inside for her husband, and the child

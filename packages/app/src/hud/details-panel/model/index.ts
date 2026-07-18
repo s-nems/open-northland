@@ -12,6 +12,7 @@ import {
   isSignpost,
   num,
   ownerPlayerOf,
+  residenceHomeOf,
   surnameSourceOf,
 } from '../../../game/snapshot.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
@@ -230,6 +231,9 @@ export function buildUnitPanelModel(
       canAssignWorkplace: num(s.jobType) !== undefined && num(s.jobType) !== JOB_IDLE && !isFemale(ent),
       // Any adult may pick a home; a growing child (`Age`) moves with its parents instead.
       canAssignHome: !young,
+      // Remove-from-home is offered only to an adult who currently HAS a home (a `Residence`): its
+      // family moves out and frees the slot. Homeless settlers and children have nothing to remove.
+      canUnassignHome: !young && residenceHomeOf(ent) !== undefined,
       meta: meta + ageSuffix,
       statusCaption: settlerStatus(comps),
       bars: satisfactionBars(comps),

@@ -400,6 +400,57 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     expect(sim.world.get(woman(), Residence).home).toBe(home());
   });
 
+  it('unassignHouse moves the whole family out and frees the slot (the inverse of assignHouse)', () => {
+    const { sim, woman, man, home } = familySim(29);
+    // Marry the pair directly (skip the wedding walk) and house them: one family in one slot.
+    sim.world.add(woman(), Marriage, { spouse: man(), child: null });
+    sim.world.add(man(), Marriage, { spouse: woman(), child: null });
+    sim.enqueue({ kind: 'assignHouse', entity: woman(), house: home() });
+    sim.step();
+    expect(sim.world.get(woman(), Residence).home).toBe(home());
+    expect(sim.world.get(man(), Residence).home).toBe(home());
+    expect(familiesOf(sim.world, home())).toHaveLength(1);
+
+    // One command on either spouse moves the whole household out — both lose Residence, the slot frees.
+    sim.enqueue({ kind: 'unassignHouse', entity: man() });
+    sim.step();
+    expect(sim.world.has(woman(), Residence)).toBe(false);
+    expect(sim.world.has(man(), Residence)).toBe(false);
+    expect(familiesOf(sim.world, home())).toHaveLength(0);
+
+    // The freed home takes a family again — assignHouse refills exactly what unassignHouse emptied.
+    sim.enqueue({ kind: 'assignHouse', entity: woman(), house: home() });
+    sim.step();
+    expect(sim.world.get(woman(), Residence).home).toBe(home());
+  });
+
+  it('unassignHouse skips an unhoused adult, a child issuer, and a dead id (recoverable no-ops)', () => {
+    const { sim, woman, man, home } = familySim(31);
+    // An unhoused adult: nothing to free, and no throw.
+    sim.enqueue({ kind: 'unassignHouse', entity: man() });
+    sim.step();
+    expect(sim.world.has(man(), Residence)).toBe(false);
+
+    // House the woman, then spawn a housed CHILD and aim the command at it: a minor leaves with its
+    // parents, never on its own, so the order is skipped and its Residence stays.
+    sim.enqueue({ kind: 'assignHouse', entity: woman(), house: home() });
+    sim.enqueue({ kind: 'spawnSettler', jobType: CIVILIST, x: 20, y: 0, tribe: VIKING, owner: PLAYER });
+    sim.step();
+    const minor = [...sim.world.query(Settler)]
+      .sort((a, b) => a - b)
+      .find((e) => e !== woman() && e !== man()) as Entity;
+    sim.world.add(minor, Age, { ticks: 0 }); // still growing up
+    sim.world.add(minor, Residence, { home: home() });
+    sim.enqueue({ kind: 'unassignHouse', entity: minor });
+    sim.step();
+    expect(sim.world.get(minor, Residence).home).toBe(home()); // the adult gate held
+
+    // A never-created id: unorderable issuer, skipped — the housed woman stays put.
+    sim.enqueue({ kind: 'unassignHouse', entity: 9999 as Entity });
+    sim.step();
+    expect(sim.world.get(woman(), Residence).home).toBe(home());
+  });
+
   it('two order-holding couples in one home take turns: both bear a child, neither cancels the other', () => {
     // Regression (user report 2026-07-16): MakingLove was keyed on the home with no owner, so the second
     // couple's order saw "hearts but MY spouses aren't inside" and cancelled the first couple's session
