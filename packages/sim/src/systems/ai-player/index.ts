@@ -2,12 +2,12 @@ import { type AiModuleId, AiPlayer } from '../../components/ai-player.js';
 import type { Command } from '../../core/commands/index.js';
 import type { World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
-import { buildOrderModule, DEFAULT_BUILD_ORDER } from './build-order.js';
+import { buildOrderModule, DEFAULT_BUILD_ORDER } from './build-order/index.js';
 import { populationModule } from './population.js';
 import { signpostCoverageModule } from './signpost-coverage.js';
 import { workforceModule } from './workforce.js';
 
-export * from './build-order.js';
+export * from './build-order/index.js';
 export * from './population.js';
 export * from './shared.js';
 export * from './signpost-coverage.js';
@@ -43,7 +43,7 @@ export interface AiPlayerModule {
  * coverage, and population planning. A per-seat `AiPlayer.modules` flag gates each.
  */
 export const AI_PLAYER_MODULES: readonly AiPlayerModule[] = [
-  workforceModule,
+  workforceModule(DEFAULT_BUILD_ORDER),
   buildOrderModule(DEFAULT_BUILD_ORDER),
   signpostCoverageModule,
   populationModule,

@@ -4,9 +4,11 @@ import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/da
  * A synthetic content set for the strategic AI-player tests, using the REAL stable content ids
  * (`headquarters`, `home_level_00`, `work_farm_00`, harvest-good slugs) so the default modules and
  * `DEFAULT_BUILD_ORDER` resolve against it unmodified; entries of the default order that are absent
- * here (pottery, mason, mill, bakery, well) exercise the skip-missing-content path. Numeric ids
- * follow the original's job/good bands where they exist (woman 5, civilist 6, builder 7, collector
- * 8, farmer 18, carrier 24, scout 27).
+ * here (pottery, mason, hive, brewery, animal farm, sewery, joinery, smithy) exercise the
+ * skip-missing-content path. The home chain (00→01→02) backs the upgrade entries, the
+ * mill/bakery/well trio backs the chain-affinity entries, and the iron good backs the gated
+ * collector entry. Numeric ids follow the original's job/good bands where they exist (woman 5,
+ * civilist 6, builder 7, collector 8, farmer 18, miller 19, baker 20, carrier 24, scout 27).
  */
 export function aiContent(): ContentSet {
   return parseContentSet({
@@ -31,6 +33,8 @@ export function aiContent(): ContentSet {
         atomics: { harvest: 25 },
         gathering: { bioLandscape: false, depositSize: 5, depositLevels: 5 },
       },
+      // Iron backs the build order's gated `collector` entry — same trivial pickup as clay.
+      { typeId: 5, id: 'iron', weight: 1, atomics: { harvest: 26 }, gathering: { bioLandscape: false } },
     ],
     jobs: [
       { typeId: 0, id: 'idle' },
@@ -42,9 +46,11 @@ export function aiContent(): ContentSet {
       { typeId: 6, id: 'civilist' },
       // The builder: the house-building atomic (39) is what `builderJobOf` resolves on.
       { typeId: 7, id: 'builder', allowedAtomics: [39] },
-      // The collector harvests all three collected goods (wood 24, stone 25, mud 32).
-      { typeId: 8, id: 'collector', allowedAtomics: [24, 25, 32] },
+      // The collector harvests all four collected goods (wood 24, stone 25, iron 26, mud 32).
+      { typeId: 8, id: 'collector', allowedAtomics: [24, 25, 26, 32] },
       { typeId: 18, id: 'farmer', allowedAtomics: [29] },
+      { typeId: 19, id: 'miller' },
+      { typeId: 20, id: 'baker' },
       { typeId: 24, id: 'carrier' },
       { typeId: 27, id: 'scout', allowedAtomics: [43] },
     ],
@@ -71,7 +77,26 @@ export function aiContent(): ContentSet {
         id: 'home_level_00',
         kind: 'home',
         homeSize: 2,
+        upgradeTarget: 3,
         // A real material bill keeps a placed site open (a zero-cost site completes instantly).
+        construction: [{ goodType: 1, amount: 2 }],
+        stock: [{ goodType: 3, capacity: 5, initial: 0 }],
+      },
+      {
+        typeId: 3,
+        id: 'home_level_01',
+        kind: 'home',
+        homeSize: 2,
+        upgradeTarget: 4,
+        construction: [{ goodType: 1, amount: 2 }],
+        stock: [{ goodType: 3, capacity: 5, initial: 0 }],
+      },
+      // Three family slots per top home: three upgraded homes make the plan's nine families.
+      {
+        typeId: 4,
+        id: 'home_level_02',
+        kind: 'home',
+        homeSize: 3,
         construction: [{ goodType: 1, amount: 2 }],
         stock: [{ goodType: 3, capacity: 5, initial: 0 }],
       },
@@ -88,15 +113,50 @@ export function aiContent(): ContentSet {
         construction: [{ goodType: 1, amount: 2 }],
         stock: [{ goodType: 3, capacity: 25, initial: 0 }],
       },
+      {
+        typeId: 6,
+        id: 'work_well_00',
+        kind: 'workplace',
+        workers: [{ jobType: 24, count: 1 }],
+        construction: [{ goodType: 1, amount: 2 }],
+        stock: [{ goodType: 3, capacity: 5, initial: 0 }],
+      },
+      {
+        typeId: 7,
+        id: 'work_mill_00',
+        kind: 'workplace',
+        workers: [
+          { jobType: 19, count: 2 },
+          { jobType: 24, count: 1 },
+        ],
+        construction: [{ goodType: 1, amount: 2 }],
+        stock: [{ goodType: 3, capacity: 5, initial: 0 }],
+      },
+      // A baker operator beside a carrier transport slot — the bakery is the plan's one
+      // carrier-staffed building, so staffing must fill BOTH.
+      {
+        typeId: 8,
+        id: 'work_bakery_00',
+        kind: 'workplace',
+        workers: [
+          { jobType: 20, count: 1 },
+          { jobType: 24, count: 1 },
+        ],
+        construction: [{ goodType: 1, amount: 2 }],
+        stock: [{ goodType: 3, capacity: 5, initial: 0 }],
+      },
     ],
     landscape: [
       { typeId: 0, id: 'grass', walkable: true, buildable: true, plantable: true },
       { typeId: 1, id: 'water', walkable: false, buildable: false },
+      // Buildable-but-barren ground for the farm's plantable rule (grass is the fixture default).
+      { typeId: 2, id: 'sand', walkable: true, buildable: true },
       // The harvest-stage landscape classes behind the placeable resource nodes below (original
-      // logic-type band: tree 4, rock 15; 16 is a free slot for the clay pit).
+      // logic-type band: tree 4, rock 15; 16/17 are free slots for the clay pit and iron rock).
       { typeId: 4, id: 'tree', walkable: false, buildable: false },
       { typeId: 15, id: 'rock', walkable: false, buildable: false },
       { typeId: 16, id: 'mud_pit', walkable: false, buildable: false },
+      { typeId: 17, id: 'iron_rock', walkable: false, buildable: false },
     ],
     // One single-cell placeable object per collected good — the minimum `createResourceNode` needs
     // to stamp a footprint, so tests can drop resource nodes with the `placeResource` command.
@@ -104,6 +164,7 @@ export function aiContent(): ContentSet {
       { index: 1, logicType: 4, walkBlockAreas: [[0, 0, 0, 0]], buildBlockAreas: [[0, 0, 0, 0]] },
       { index: 2, logicType: 15, walkBlockAreas: [[0, 0, 0, 0]], buildBlockAreas: [[0, 0, 0, 0]] },
       { index: 3, logicType: 16, walkBlockAreas: [[0, 0, 0, 0]], buildBlockAreas: [[0, 0, 0, 0]] },
+      { index: 4, logicType: 17, walkBlockAreas: [[0, 0, 0, 0]], buildBlockAreas: [[0, 0, 0, 0]] },
     ],
     gatheringPipeline: [
       {
@@ -124,6 +185,12 @@ export function aiContent(): ContentSet {
         goodId: 'stone',
         harvestAtomic: 25,
         harvest: { landscapeType: 15, gfxIndices: [2] },
+      },
+      {
+        goodType: 5,
+        goodId: 'iron',
+        harvestAtomic: 26,
+        harvest: { landscapeType: 17, gfxIndices: [4] },
       },
     ],
   });

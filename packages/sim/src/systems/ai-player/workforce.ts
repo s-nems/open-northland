@@ -23,14 +23,16 @@ import { isAdultSettler } from '../family/eligibility.js';
 import { workFlagPlacementBlocks } from '../footprint/index.js';
 import { isFighterJob } from '../readviews/index.js';
 import { SCOUT_JOB } from '../readviews/stances.js';
-import { canonicalResources, resourcesNearNode } from '../resource-index.js';
+import { resourcesNearNode } from '../resource-index.js';
 import { isCarrierJob } from '../stores/index.js';
+import { type BuildOrderEntry, collectorGoodsWanted } from './build-order/index.js';
 import type { AiPlayerModule } from './index.js';
 import {
   anchorNodeOf,
   firstRingNode,
   headquartersOf,
   isBuilt,
+  nearestLiveResource,
   ownedBuildings,
   ownedSettlers,
 } from './shared.js';
@@ -47,9 +49,17 @@ import { nextSignpostTarget } from './signpost-coverage.js';
  * because every target is recomputed from state, never remembered.
  */
 
-/** The goods the gatherers collect, by stable content id (user plan: clay, stone, wood). An id
- *  absent from the content set — or with no standing resource left on the map — is skipped. */
+/** The goods the gatherers collect from game start, by stable content id (user plan: clay, stone,
+ *  wood). An id absent from the content set — or with no standing resource left on the map — is
+ *  skipped. The build order adds its `collector` entries' goods (e.g. iron) once reached. */
 export const COLLECTED_GOOD_IDS: readonly string[] = ['mud', 'stone', 'wood'];
+
+/** Buildings staffed with a transport carrier on top of their operators, by stable content id
+ *  (user plan 2026-07-18: the bakery gets a carrier; the upgraded tier keeps it). */
+export const CARRIER_STAFFED_BUILDING_IDS: readonly string[] = ['work_bakery_00', 'work_bakery_01'];
+
+/** Carriers assigned per carrier-staffed building (the plan assigns one). */
+export const CARRIERS_PER_STAFFED_BUILDING = 1;
 
 /** Workers assigned per (workplace, trade): the user's opening plan staffs each workshop with one
  *  worker per trade (e.g. a single farmer), even when the building offers more slots. */
@@ -84,26 +94,6 @@ function harvestJobFor(ctx: SystemContext, harvestAtomic: number): number | null
   for (const job of index.harvestJobs) {
     if (!(index.atomicsByJob.get(job)?.has(harvestAtomic) ?? false)) continue;
     if (best === null || job < best) best = job;
-  }
-  return best;
-}
-
-/** The standing not-yet-empty resource of `goodType` nearest to `from` (Manhattan node distance,
- *  ties to the lower entity id), or null when the map holds none. A full canonical-resources scan —
- *  run only when a collector is hired or its patch runs dry, never per tick. */
-function nearestLiveResource(world: World, goodType: number, from: HalfCellNode): Entity | null {
-  let best: Entity | null = null;
-  let bestDist = Number.POSITIVE_INFINITY;
-  for (const e of canonicalResources(world)) {
-    const r = world.get(e, Resource);
-    if (r.goodType !== goodType || r.remaining <= 0) continue;
-    const node = anchorNodeOf(world, e);
-    if (node === null) continue;
-    const dist = Math.abs(node.hx - from.hx) + Math.abs(node.hy - from.hy);
-    if (dist < bestDist) {
-      best = e;
-      bestDist = dist;
-    }
   }
   return best;
 }
@@ -143,7 +133,12 @@ function flagSpotNear(
   );
 }
 
-function runWorkforce(world: World, ctx: SystemContext, player: number): readonly Command[] {
+function runWorkforce(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  order: readonly BuildOrderEntry[],
+): readonly Command[] {
   const hq = headquartersOf(world, ctx, player);
   if (hq === null) return [];
   const index = contentIndex(ctx.content);
@@ -151,9 +146,14 @@ function runWorkforce(world: World, ctx: SystemContext, player: number): readonl
   const builderJob = builderJobOf(ctx);
   const terrain = ctx.terrain;
 
-  // The wanted collector goods, in plan order, with each good's gatherer trade resolved.
+  // The wanted collector goods — the base set plus the build order's reached `collector` entries —
+  // in plan order, with each good's gatherer trade resolved.
+  const goodIds = [...COLLECTED_GOOD_IDS];
+  for (const goodId of collectorGoodsWanted(world, ctx, player, order)) {
+    if (!goodIds.includes(goodId)) goodIds.push(goodId);
+  }
   const wanted: { good: ContentSet['goods'][number]; harvestAtomic: number; job: number }[] = [];
-  for (const goodId of COLLECTED_GOOD_IDS) {
+  for (const goodId of goodIds) {
     const good = goodByContentId(ctx.content, goodId);
     const harvestAtomic = good?.atomics?.harvest;
     if (good === undefined || harvestAtomic === undefined) continue; // not in this content set
@@ -263,9 +263,16 @@ function runWorkforce(world: World, ctx: SystemContext, player: number): readonl
     // carrier/gatherer trade has no operators to skip, so it still gets one worker per slot rather
     // than being left empty.
     const operators = slots.length > 0 ? slots : type.workers;
-    for (const slot of operators) {
+    // The carrier-staffed exceptions (the bakery) fill one transport slot on top of the operators.
+    const carriers = CARRIER_STAFFED_BUILDING_IDS.includes(type.id)
+      ? type.workers.filter((w) => isCarrierJob(ctx, w.jobType))
+      : [];
+    for (const [slot, cap] of [
+      ...operators.map((s) => [s, WORKERS_PER_TRADE] as const),
+      ...carriers.map((s) => [s, CARRIERS_PER_STAFFED_BUILDING] as const),
+    ]) {
       const held = tally.get(building)?.get(slot.jobType) ?? 0;
-      const want = Math.min(slot.count, WORKERS_PER_TRADE);
+      const want = Math.min(slot.count, cap);
       for (let i = held; i < want; i++) {
         const spare = takeSpare();
         if (spare === null) return commands; // pool dry — the rest waits for grown sons
@@ -285,7 +292,11 @@ function runWorkforce(world: World, ctx: SystemContext, player: number): readonl
   return commands;
 }
 
-export const workforceModule: AiPlayerModule = {
-  id: 'collectResources',
-  run: runWorkforce,
-};
+/** A module allocating against `order`'s collector gating — parameterized like `buildOrderModule`,
+ *  so tests drive it with fixture orders. */
+export function workforceModule(order: readonly BuildOrderEntry[]): AiPlayerModule {
+  return {
+    id: 'collectResources',
+    run: (world, ctx, player) => runWorkforce(world, ctx, player, order),
+  };
+}
