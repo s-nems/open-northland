@@ -14,7 +14,12 @@ import type { GameToolPanelHandle, LoopSpeedControl } from '../game-tool-panel.j
 import type { GroundPileTooltip } from '../ground-pile-tooltip.js';
 import type { PerfOverlayHandle } from '../perf-overlay.js';
 import type { makeOverlayFrameSource, makeSignpostOverlaySource } from '../placement-overlay.js';
-import type { computeDoorBadges, FogGates, GeometryDebugOverlay } from '../projections/index.js';
+import type {
+  computeDoorBadges,
+  computeSettlerBubbles,
+  FogGates,
+  GeometryDebugOverlay,
+} from '../projections/index.js';
 import type { UnitControls } from '../unit-controls/index.js';
 import type { GameViewDeps } from './game-view.js';
 import { type RafLoop, startRafLoop } from './raf-loop.js';
@@ -42,6 +47,8 @@ export interface FrameLoopDeps {
   readonly hudFor: (snap: WorldSnapshot) => HudLayout;
   /** The door-badge projection, memoized + fog-filtered, by snapshot identity. */
   readonly doorBadgesFor: (snap: WorldSnapshot) => ReturnType<typeof computeDoorBadges>;
+  /** The settler-bubble projection (make-child / wedding), memoized + fog-filtered, by snapshot identity. */
+  readonly settlerBubblesFor: (snap: WorldSnapshot) => ReturnType<typeof computeSettlerBubbles>;
   /** The one live placement rule the click gate and the cursor ghost share. */
   readonly canPlaceAt: (typeId: number, col: number, row: number) => boolean;
   /** The erect-signpost twin of {@link canPlaceAt} — gates the signpost cursor ghost. */
@@ -75,6 +82,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     signpostOverlayFrame,
     hudFor,
     doorBadgesFor,
+    settlerBubblesFor,
     canPlaceAt,
     canPlaceSignpostAt,
     soundDriver,
@@ -232,6 +240,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     // selected gatherers' work-flag highlight, render once. `app.screen` tracks window resizes. No HUD frame
     // is passed — the debug tick lives in the top overlay and the population/jobs/stocks in the stats window.
     const doorBadges = doorBadgesFor(snap); // memoized per tick, not per RAF
+    const settlerBubbles = settlerBubblesFor(snap); // memoized per tick, not per RAF
     // Combat ground marks (blood on hits, bones on deaths) from this frame's seen events — ingested
     // before the renderer's update draws them, decaying against the sim tick so a pause/screenshot
     // reproduces. Fog-filtered: a fight in unexplored/grey ground leaves no visible marks.
@@ -243,6 +252,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       selection: controls.selectedIds(),
       alpha: renderAlpha,
       doorBadges,
+      settlerBubbles,
       flagged: controls.flaggedFlagIds(),
     });
     pileTooltip.update(snap); // name-on-hover for the good pile under the cursor (after controls: claim state is current)
