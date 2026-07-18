@@ -4,7 +4,7 @@ import type { World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { buildingFootprintOf, translatedCells } from './geometry.js';
+import { buildingFootprintOf, sameCells, translatedCells } from './geometry.js';
 
 // The memoized per-world cache of cells standing buildings make unwalkable, plus its coherence
 // verifier — the building twin of ./resource-blocked-cache.ts. A call burst (an authored map load's
@@ -49,12 +49,6 @@ function deriveBuildingBlockedCells(world: World, content: ContentSet, terrain: 
   }
   for (const cell of doors) blocked.delete(cell);
   return blocked;
-}
-
-function sameCells(a: ReadonlySet<NodeId>, b: ReadonlySet<NodeId>): boolean {
-  if (a.size !== b.size) return false;
-  for (const cell of a) if (!b.has(cell)) return false;
-  return true;
 }
 
 function verifyBuildingBlockedCache(world: World, content: ContentSet, terrain: TerrainGraph): string[] {

@@ -1,5 +1,5 @@
 import type { Component, Entity, World } from '../ecs/world.js';
-import { lowerBound } from './spatial.js';
+import { insertSortedById, removeSortedById } from './spatial.js';
 import { createSpatialMemo } from './spatial-memo.js';
 
 /**
@@ -105,33 +105,23 @@ export function createRegionIndex<Extra, Capture>(
     member: (world, e, hx, hy) => ({ hx, hy, capture: extraOps.capture(world, e) }),
     insert: (state, e, m) => {
       state.frozen = null;
-      state.list.splice(
-        lowerBound(state.list, e, (id) => id),
-        0,
-        e,
-      );
+      insertSortedById(state.list, e, (id) => id);
       const key = regionKeyOf(m.hx, m.hy);
       let bucket = state.byRegion.get(key);
       if (bucket === undefined) {
         bucket = [];
         state.byRegion.set(key, bucket);
       }
-      bucket.splice(
-        lowerBound(bucket, e, (member) => member.e),
-        0,
-        { e, hx: m.hx, hy: m.hy },
-      );
+      insertSortedById(bucket, { e, hx: m.hx, hy: m.hy }, (member) => member.e);
       extraOps.insert(state.extra, m.capture);
     },
     remove: (state, e, m) => {
       state.frozen = null;
-      const li = lowerBound(state.list, e, (id) => id);
-      if (state.list[li] === e) state.list.splice(li, 1);
+      removeSortedById(state.list, e, (id) => id);
       const key = regionKeyOf(m.hx, m.hy);
       const bucket = state.byRegion.get(key);
       if (bucket !== undefined) {
-        const bi = lowerBound(bucket, e, (member) => member.e);
-        if (bucket[bi]?.e === e) bucket.splice(bi, 1);
+        removeSortedById(bucket, e, (member) => member.e);
         if (bucket.length === 0) state.byRegion.delete(key);
       }
       extraOps.remove(state.extra, m.capture);

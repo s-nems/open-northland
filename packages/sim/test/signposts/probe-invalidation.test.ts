@@ -76,6 +76,8 @@ describe('signpostProbe invalidation on a work-flag move', () => {
   });
 
   it('reports the pushed-out flag at its new cell after a placeBuilding eviction', () => {
+    // End-to-end only: the placeBuilding itself bumps placementBlockerVersion, so this cannot isolate
+    // the flag-move counter — the relocate test above is the counter's regression pin.
     const sim = mappedSim();
     const g = ownedGatherer(sim, 12, 12);
     const ANCHOR = { x: 5, y: 5 };

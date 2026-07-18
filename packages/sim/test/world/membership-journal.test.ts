@@ -48,8 +48,8 @@ describe('World membership journal', () => {
     w.journalMembership(C);
     const before = w.componentGeneration(C);
     const e = w.create();
-    // Push past the retained window (1024): the journal resets its base instead of growing forever.
-    for (let i = 0; i < 1500; i++) w.add(e, C, { n: i });
+    // Push past the retained window: the journal resets its base instead of growing forever.
+    for (let i = 0; i < World.MEMBERSHIP_JOURNAL_LIMIT + 100; i++) w.add(e, C, { n: i });
     expect(w.membershipDeltasSince(C, before)).toBeNull();
     // A consumer inside the retained window still replays.
     const recent = w.componentGeneration(C);

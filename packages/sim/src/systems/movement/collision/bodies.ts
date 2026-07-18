@@ -71,30 +71,26 @@ export function isStanding(world: World, e: Entity): boolean {
 }
 
 /**
- * Per-world memo of {@link calmZonesByPlayer}, keyed on the generations of its only inputs: `Building`
- * and `Owner` membership (positions are immutable once placed, and ownership never mutates in place —
- * every change is an add/remove the generation sees). Buildings change on placement/completion/
- * demolition, not per tick, so the ~145-node diamond fill per building runs on those events instead of
- * every tick. Rebuild-on-version-bump (never incrementally patched), so no `World.verifyCaches`
- * registration is owed.
+ * Per-world memo of {@link calmZonesByPlayer}, keyed on the `Building` and `Owner` membership
+ * generations plus terrain identity. Positions are immutable once placed and ownership never mutates in
+ * place (every change is an add/remove the generation sees), so the key covers every input — as a
+ * conservative superset: `Owner` also rides every settler, so the version bumps on settler spawn/death
+ * churn too, not only on building placement/demolition. Rebuild-on-bump, so it cannot drift by a missed
+ * patch; the residual risk is the KEY missing an input, which is what the registered `verifyCaches`
+ * verifier trips on.
  */
-const zonesMemo = new WeakMap<World, { version: string; zones: Map<number, Set<NodeId>> }>();
+const zonesMemo = new WeakMap<
+  World,
+  { version: string; terrain: TerrainGraph; zones: Map<number, Set<NodeId>> }
+>();
 
 /** The generation key {@link zonesMemo} guards on — every input that can change a zone bumps it. */
 function zonesVersion(world: World): string {
   return `${world.componentGeneration(Building)}.${world.componentGeneration(Owner)}`;
 }
 
-/**
- * Every player's calm-zone node set: a Manhattan diamond of {@link CALM_ZONE_RADIUS_NODES} around
- * each of its buildings' anchor nodes. Derived on building/ownership change (memoized — see
- * {@link zonesMemo}), membership-only (set unions — iteration order can't change any answer), never
- * hashed.
- */
-export function calmZonesByPlayer(world: World, terrain: TerrainGraph): Map<number, Set<NodeId>> {
-  const version = zonesVersion(world);
-  const hit = zonesMemo.get(world);
-  if (hit !== undefined && hit.version === version) return hit.zones;
+/** One full derivation — the memo rebuild and the verifier's reference run through this single path. */
+function deriveCalmZones(world: World, terrain: TerrainGraph): Map<number, Set<NodeId>> {
   const zones = new Map<number, Set<NodeId>>();
   for (const b of world.query(Building, Position)) {
     const owner = world.tryGet(b, Owner);
@@ -113,7 +109,47 @@ export function calmZonesByPlayer(world: World, terrain: TerrainGraph): Map<numb
       }
     }
   }
-  zonesMemo.set(world, { version, zones });
+  return zones;
+}
+
+function sameZones(
+  a: ReadonlyMap<number, ReadonlySet<NodeId>>,
+  b: ReadonlyMap<number, ReadonlySet<NodeId>>,
+): boolean {
+  if (a.size !== b.size) return false;
+  for (const [player, zone] of a) {
+    const other = b.get(player);
+    if (other === undefined || other.size !== zone.size) return false;
+    for (const node of zone) if (!other.has(node)) return false;
+  }
+  return true;
+}
+
+/** The {@link zonesMemo} coherence verifier: while the key claims freshness, a re-derive must agree —
+ *  the tripwire for a zone input {@link zonesVersion} fails to see (`verifyCaches`). */
+function verifyZonesMemo(world: World, terrain: TerrainGraph): string[] {
+  const hit = zonesMemo.get(world);
+  if (hit === undefined || hit.terrain !== terrain) return [];
+  if (hit.version !== zonesVersion(world)) return []; // stale key — the next read rebuilds
+  if (sameZones(hit.zones, deriveCalmZones(world, terrain))) return [];
+  return [
+    'calmZonesByPlayer memo diverges from a fresh derive — a building or owner changed without a generation bump',
+  ];
+}
+
+/**
+ * Every player's calm-zone node set: a Manhattan diamond of {@link CALM_ZONE_RADIUS_NODES} around
+ * each of its buildings' anchor nodes. Derived on building/ownership change (memoized — see
+ * {@link zonesMemo}), membership-only (set unions — iteration order can't change any answer), never
+ * hashed.
+ */
+export function calmZonesByPlayer(world: World, terrain: TerrainGraph): Map<number, Set<NodeId>> {
+  const version = zonesVersion(world);
+  const hit = zonesMemo.get(world);
+  if (hit !== undefined && hit.version === version && hit.terrain === terrain) return hit.zones;
+  const zones = deriveCalmZones(world, terrain);
+  zonesMemo.set(world, { version, terrain, zones });
+  world.registerCacheVerifier('calmZonesByPlayer', () => verifyZonesMemo(world, terrain));
   return zones;
 }
 

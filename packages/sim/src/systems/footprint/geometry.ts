@@ -14,6 +14,14 @@ export function nodeKey(x: number, y: number): string {
   return `${x},${y}`;
 }
 
+/** Whether two cell sets hold exactly the same nodes — the blocked-set memo verifiers' held-vs-fresh
+ *  compare (building/resource blocked caches, the work-flag blocked set). */
+export function sameCells(a: ReadonlySet<NodeId>, b: ReadonlySet<NodeId>): boolean {
+  if (a.size !== b.size) return false;
+  for (const cell of a) if (!b.has(cell)) return false;
+  return true;
+}
+
 /** Integer Manhattan distance between two nodes — the cheap reach/nearness heuristic the AI planner,
  *  combat range check, and herding leader-distance measure with (A* computes the real path cost).
  *  Defined here (the leaf module, for its nearest-cell picks) and re-exported by ./spatial.ts. */

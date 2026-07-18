@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as components from '../../src/components/index.js';
-import type { Entity } from '../../src/ecs/world.js';
+import { type Entity, World } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
 import { positionOfNode } from '../../src/nav/halfcell.js';
 import { dropOrStackGood } from '../../src/systems/agents/effects-goods/index.js';
@@ -87,11 +87,14 @@ describe('stockpilesAtNode (the per-drop tile lookup index)', () => {
     const sim = newSim();
     const first = heapAt(sim, 1, 1, WOOD, 1);
     expect(stockpilesAtNode(sim.world, 1, 1)).toEqual([first]); // build + start journaling
-    // Blow past the journal cap (1024 retained ops) without a read in between.
+    const caughtUp = sim.world.componentGeneration(Stockpile);
+    // Blow past the journal cap without a read in between.
     const bulk: Entity[] = [];
-    for (let i = 0; i < 1100; i++) bulk.push(heapAt(sim, 2, 2, WOOD, 1));
+    for (let i = 0; i < World.MEMBERSHIP_JOURNAL_LIMIT + 100; i++) bulk.push(heapAt(sim, 2, 2, WOOD, 1));
     for (const e of bulk) sim.world.destroy(e);
     const last = heapAt(sim, 1, 1, WOOD, 1);
+    // The journal really overflowed — the index (caught up at `caughtUp`) must take the rebuild path.
+    expect(sim.world.membershipDeltasSince(Stockpile, caughtUp)).toBeNull();
     expect(stockpilesAtNode(sim.world, 1, 1)).toEqual([first, last]);
     expect(stockpilesAtNode(sim.world, 2, 2)).toEqual([]);
     expect(sim.world.verifyCaches()).toEqual([]);
