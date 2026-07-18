@@ -5,9 +5,10 @@
 A settler over the chat-seek threshold with no reachable partner re-runs its two ring searches
 (`planGossipSeek`, `systems/social/gossip.ts` — idle pass + grab pass, radius 32 nodes ≈ ~2k node
 probes each) every planner tick until a partner frees up, and the idle-chat rung re-rings its smaller
-radius the same way. Bounded and threshold-gated, but at RTS scale (hundreds of simultaneously lonely
-settlers in a soldier-heavy or partner-starved settlement) that is a few hundred thousand bucket
-probes per tick of provably-null work.
+radius the same way — for EVERY idle settler with no neighbour, since idle chat has no deficit gate.
+Bounded, but at RTS scale (hundreds of simultaneously lonely or idle settlers in a soldier-heavy or
+partner-starved settlement) that is a few hundred thousand bucket probes per tick of provably-null
+work.
 
 ## Scope
 

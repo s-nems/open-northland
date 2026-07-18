@@ -10,7 +10,7 @@ import {
 } from '../../components/index.js';
 import { eventAt } from '../../core/events.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { nodeOfPosition } from '../../nav/halfcell.js';
+import { nodeOfPosition, nodesAdjacent } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import { startAtomic } from '../agents/actions.js';
 import type { SystemContext } from '../context.js';
@@ -29,10 +29,6 @@ import { canonicalById, clearNavState, isTravelling } from '../spatial.js';
  *  `tribetypes.ini` (`setatomic 5 20 "..._woman_kiss"` / `setatomic 6 21 "..._civilist_kissed"`). */
 export const KISS_ATOMIC_ID = 20;
 export const KISSED_ATOMIC_ID = 21;
-
-/** How close (half-cell Manhattan nodes) the pair must stand to kiss — one tile apart, the "two settlers
- *  stand facing each other" beat (observed original behavior; the exact engine range is not readable). */
-const KISS_RANGE_NODES = 2;
 
 /** Stamp a {@link Wedding} on both halves of a freshly-matched pair (the `marry` command's accept path). */
 export function startWedding(world: World, seeker: Entity, partner: Entity): void {
@@ -113,7 +109,7 @@ function drivePair(
   }
   const na = nodeOfPosition(pa.x, pa.y);
   const nb = nodeOfPosition(pb.x, pb.y);
-  if (Math.abs(na.hx - nb.hx) + Math.abs(na.hy - nb.hy) <= KISS_RANGE_NODES) {
+  if (nodesAdjacent(na, nb)) {
     // Standing together: both play the paired kiss (one clock — the longer of the two bound clips — so
     // they finish together; an unbound job falls back to the short default, the woman's binding carries
     // the real 50-tick length).
