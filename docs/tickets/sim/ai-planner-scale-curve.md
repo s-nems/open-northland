@@ -68,7 +68,11 @@ inclusive — not the lever.
   are maintained incrementally via the World membership journal (`systems/spatial-memo.ts`), and the
   planner's three `InteractionCellIndex`es build lazily on first access (`targets/candidates.ts`) —
   re-measure the curve on top of both. The remaining measured cost is the scan-count × accept work
-  quantified above, not index construction.
+  quantified above, not index construction. One residual term from the fix itself (review battery,
+  2026-07-18): `canonical()` re-copies and freezes the full member list on the first read after any
+  membership change (`region-index.ts`), so per-tick fell/sow churn pays an O(all resources) memcpy
+  per tick — within budget today; a mutable-master/shared-frozen double buffer removes it if the
+  re-measure shows it.
 
 Grep these before filing any new work — the fix may belong in one of them instead.
 

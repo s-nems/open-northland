@@ -6,9 +6,9 @@ import { canonicalById } from './spatial.js';
 /**
  * The shared scaffold of the per-world generation-keyed spatial index memos (the region indexes, the
  * stockpile node buckets, the resource tile map). One state per `(memo, World)`, keyed on the indexed
- * component's store generation and caught up INCREMENTALLY by replaying the World's membership journal —
+ * component's store generation and caught up incrementally by replaying the World's membership journal —
  * so one sown field or felled tree costs O(changed entities), not a full rebuild of a ~17k-member index
- * mid-dispatch (the wholesale rebuild measurably LOST to the plain store scan it replaced when reads
+ * mid-dispatch (the wholesale rebuild measurably lost to the plain store scan it replaced when reads
  * interleave with creates). A full rebuild stays the fallback whenever the journal cannot cover the span.
  *
  * Derived read-state, never hashed. Correctness rests on the invariant every rider documents: an indexed

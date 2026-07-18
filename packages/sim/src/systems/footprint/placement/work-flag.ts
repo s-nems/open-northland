@@ -3,7 +3,7 @@ import { DeliveryFlag } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
-import { forEachRingOffset } from '../geometry.js';
+import { forEachRingOffset, sameCells } from '../geometry.js';
 import { EXCLUSION, eachBlockerCell, placementBlockerVersion } from './blockers.js';
 
 // WORK-FLAG PLACEMENT — where a work flag (and, through canPlaceWorkFlag, a signpost) may stand: the same
@@ -12,8 +12,9 @@ import { EXCLUSION, eachBlockerCell, placementBlockerVersion } from './blockers.
 /** Per-world memo of the no-`ignoreFlag` blocked set, keyed on {@link workFlagBlockerVersion} (plus
  *  content/terrain identity, like the signpost probe's memo). The memo feeds command gates and sim
  *  decisions — `canPlaceWorkFlag`, the auto-flag plant — so the version being complete is load-bearing:
- *  every store the scan reads bumps it, including the flag-MOVE counter. Rebuild-on-bump, never
- *  incrementally patched, so no `World.verifyCaches` registration is owed. */
+ *  every store the scan reads bumps it, including the flag-MOVE counter. Rebuild-on-bump, so it cannot
+ *  drift by a missed patch; the residual risk is the KEY missing an input (the class the move counter
+ *  plugs), which is what the registered `verifyCaches` verifier trips on. */
 interface BlocksMemo {
   readonly version: string;
   readonly content: ContentSet;
@@ -25,10 +26,11 @@ const blocksMemo = new WeakMap<World, BlocksMemo>();
 /** The nodes a work flag may NOT occupy: every standing resource/building body cell plus the other
  *  markers' cells — every {@link eachBlockerCell} channel except {@link EXCLUSION}, since a
  *  resource/building margin zone remains valid open ground for a flag. The common no-`ignoreFlag` set
- *  is memoized per {@link workFlagBlockerVersion} (see {@link blocksMemo}), so a command burst — a
- *  box-select `setJob` planting one auto-flag per settler — pays one store walk, not one per settler.
- *  The `ignoreFlag` variant (a flag re-placed over its own cell) would need its own key, so that rare
- *  one-shot path builds fresh. */
+ *  is memoized per {@link workFlagBlockerVersion} (see {@link blocksMemo}), so reads between two
+ *  blocker changes share one store walk. (A burst that itself PLANTS flags still rebuilds per plant —
+ *  each add must invalidate the memo so the next pick sees the flag just planted.) The `ignoreFlag`
+ *  variant (a flag re-placed over its own cell) would need its own key, so that rare one-shot path
+ *  builds fresh. */
 export function workFlagPlacementBlocks(
   world: World,
   content: ContentSet,
@@ -43,7 +45,21 @@ export function workFlagPlacementBlocks(
   }
   const blocked = buildBlocks(world, content, terrain, undefined);
   blocksMemo.set(world, { version, content, terrain, blocked });
+  world.registerCacheVerifier('workFlagPlacementBlocks', () => verifyBlocksMemo(world, content, terrain));
   return blocked;
+}
+
+/** The {@link blocksMemo} coherence verifier: while the key claims freshness, a re-derive must agree —
+ *  the tripwire for a blocker input {@link workFlagBlockerVersion} fails to see (`verifyCaches`). */
+function verifyBlocksMemo(world: World, content: ContentSet, terrain: TerrainGraph): string[] {
+  const hit = blocksMemo.get(world);
+  if (hit === undefined || hit.content !== content || hit.terrain !== terrain) return [];
+  if (hit.version !== workFlagBlockerVersion(world)) return []; // stale key — the next read rebuilds
+  const fresh = buildBlocks(world, content, terrain, undefined);
+  if (sameCells(hit.blocked, fresh)) return [];
+  return [
+    `workFlagPlacementBlocks memo holds ${hit.blocked.size} nodes but re-derived ${fresh.size} — a blocker changed without a workFlagBlockerVersion bump`,
+  ];
 }
 
 function buildBlocks(

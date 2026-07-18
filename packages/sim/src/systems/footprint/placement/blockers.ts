@@ -98,14 +98,17 @@ export function eachBlockerCell(
 /**
  * A per-world version of the placement-blocker INPUTS — the component stores {@link eachBlockerCell} reads
  * for every channel but {@link MARKER}: whether each `Building`, `Resource`, `ResourceFootprint` and
- * `Signpost` exists. Their generations bump only on add/remove ({@link World.componentGeneration}), so this
- * moves precisely when those cells can change — NOT every tick — and the building overlay reuses its last
- * result until it does. The work-flag rule adds the `DeliveryFlag` generation on top
- * ({@link workFlagBlockerVersion}). Exactness rests on three standing invariants (all hold today):
+ * `Signpost` exists, plus the `Building` VALUE generation — the scan reads `buildingType`, and the home
+ * tier upgrade swaps it in place under `touchComponent(Building)`, invisible to every membership
+ * generation. (Today that swap cannot change the cells — `familyBody`/`reserved` are level-chain unions,
+ * schema.ts — so the value term only buys a rebuild per upgrade; it is here so a future per-level
+ * footprint cannot silently serve a stale set.) Membership generations bump only on add/remove
+ * ({@link World.componentGeneration}), so this moves precisely when those cells can change — NOT every
+ * tick — and the building overlay reuses its last result until it does. The work-flag rule adds the
+ * `DeliveryFlag` generation on top ({@link workFlagBlockerVersion}). Exactness rests on two standing
+ * invariants (both hold today):
  *   - buildings and resources never MOVE once placed (only settlers/vehicles/projectiles mutate Position),
  *     so a stored entity's cells are fixed;
- *   - `familyBody`/`reserved` are the union across a type's whole level chain (the extractor stamps the
- *     same arrays on every level's typeId — schema.ts), so an in-place level-up leaves the set unchanged;
  *   - a `ResourceFootprint` stamp/unstamp is always bundled in the same step with the `Resource` add/destroy
  *     that also moves this version — folding its generation in is belt-and-suspenders for any future path
  *     that decouples them. Completeness is load-bearing: the work-flag command gates consume a memo keyed
@@ -115,5 +118,5 @@ export function eachBlockerCell(
  * Read-only + deterministic (a pure function of the mutation history); never hashed, never a sim decision.
  */
 export function placementBlockerVersion(world: World): string {
-  return `${world.componentGeneration(Building)}.${world.componentGeneration(Resource)}.${world.componentGeneration(ResourceFootprint)}.${world.componentGeneration(Signpost)}`;
+  return `${world.componentGeneration(Building)}.${world.componentValueGeneration(Building)}.${world.componentGeneration(Resource)}.${world.componentGeneration(ResourceFootprint)}.${world.componentGeneration(Signpost)}`;
 }

@@ -43,6 +43,22 @@ export function lowerBound<T>(arr: readonly T[], id: number, idOf: (item: T) => 
   return lo;
 }
 
+/** Splice `item` into ascending-id `arr` at its {@link lowerBound} slot — the incremental indexes'
+ *  shared sorted-insert step. */
+export function insertSortedById<T>(arr: T[], item: T, idOf: (item: T) => number): void {
+  arr.splice(lowerBound(arr, idOf(item), idOf), 0, item);
+}
+
+/** Remove the item with `id` from ascending-id `arr`; returns whether it was present, so the caller
+ *  can drop an emptied container — the incremental indexes' shared sorted-removal step. */
+export function removeSortedById<T>(arr: T[], id: number, idOf: (item: T) => number): boolean {
+  const i = lowerBound(arr, id, idOf);
+  const held = arr[i];
+  if (held === undefined || idOf(held) !== id) return false;
+  arr.splice(i, 1);
+  return true;
+}
+
 // nodeKey lives in footprint/geometry.ts (the leaf below this one, which needs it first);
 // re-exported here so consumers keep a single spatial import site.
 export { nodeKey };
@@ -113,11 +129,7 @@ export class NodeBuckets {
       bucket = [];
       column.set(y, bucket);
     }
-    bucket.splice(
-      lowerBound(bucket, e, (id) => id),
-      0,
-      e,
-    );
+    insertSortedById(bucket, e, (id) => id);
   }
 
   /** Remove `e` from node (x,y)'s bucket, dropping an emptied bucket/column so membership never leaks —
@@ -126,9 +138,7 @@ export class NodeBuckets {
     const column = this.byX.get(x);
     const bucket = column?.get(y);
     if (column === undefined || bucket === undefined) return;
-    const i = lowerBound(bucket, e, (id) => id);
-    if (bucket[i] !== e) return;
-    bucket.splice(i, 1);
+    if (!removeSortedById(bucket, e, (id) => id)) return;
     if (bucket.length === 0) {
       column.delete(y);
       if (column.size === 0) this.byX.delete(x);

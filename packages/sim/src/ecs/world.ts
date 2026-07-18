@@ -63,8 +63,9 @@ export class World {
   private readonly membershipJournals = new Map<Component<unknown>, MembershipJournal>();
   /** Journal length past which the oldest span is dropped (`base` advances): a consumer further behind
    *  rebuilds from scratch instead of replaying — the incremental-index fallback bound. Generous versus
-   *  real churn (an index catches up within the same dispatch loop, typically a handful of ops behind). */
-  private static readonly MEMBERSHIP_JOURNAL_LIMIT = 1024;
+   *  real churn (an index catches up within the same dispatch loop, typically a handful of ops behind).
+   *  Public so the fallback tests derive their churn counts from it instead of hardcoding the cap. */
+  static readonly MEMBERSHIP_JOURNAL_LIMIT = 1024;
   /**
    * Optional cache verifiers registered by derived-cache owners. They run under `verifyCaches()` so a
    * stale cache is caught by the normal invariant path instead of surfacing as a distant golden drift.

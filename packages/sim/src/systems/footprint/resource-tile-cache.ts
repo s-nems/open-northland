@@ -1,6 +1,6 @@
 import { Resource } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { lowerBound } from '../spatial.js';
+import { insertSortedById, removeSortedById } from '../spatial.js';
 import { createSpatialMemo } from '../spatial-memo.js';
 
 // The per-world "standing resource node at a half-cell tile" index, a spatial-memo rider maintained
@@ -40,19 +40,13 @@ const memo = createSpatialMemo<ResourceTileMap, { key: number; goodType: number 
         list = [];
         goods.set(m.goodType, list);
       }
-      list.splice(
-        lowerBound(list, e, (id) => id),
-        0,
-        e,
-      );
+      insertSortedById(list, e, (id) => id);
     },
     remove: (byTile, e, m) => {
       const goods = byTile.get(m.key);
       const list = goods?.get(m.goodType);
       if (goods === undefined || list === undefined) return;
-      const i = lowerBound(list, e, (id) => id);
-      if (list[i] !== e) return;
-      list.splice(i, 1);
+      if (!removeSortedById(list, e, (id) => id)) return;
       if (list.length === 0) {
         goods.delete(m.goodType);
         if (goods.size === 0) byTile.delete(m.key);
