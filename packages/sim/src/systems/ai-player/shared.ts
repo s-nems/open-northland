@@ -1,11 +1,12 @@
-import type { BuildingType, ContentSet } from '@open-northland/data';
-import { Building, Owner, ownerOf, Position, Settler } from '../../components/index.js';
+import type { BuildingType, ContentSet, GoodType } from '@open-northland/data';
+import { Building, Owner, ownerOf, Position, Resource, Settler } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { type HalfCellNode, nodeOfPosition } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
 import { HEADQUARTERS_BUILDING_ID } from '../readviews/index.js';
+import { canonicalResources } from '../resource-index.js';
 import { canonicalById } from '../spatial.js';
 
 // Shared per-seat lookups the strategic modules recompute each decision (once per
@@ -20,6 +21,32 @@ export { HEADQUARTERS_BUILDING_ID };
  *  it — a module skips such an entry instead of failing, so partial content stays safe. */
 export function buildingTypeByContentId(content: ContentSet, id: string): BuildingType | undefined {
   return content.buildings.find((b) => b.id === id);
+}
+
+/** The good definition carrying the stable content id, or undefined (same skip contract as
+ *  {@link buildingTypeByContentId}). */
+export function goodTypeByContentId(content: ContentSet, id: string): GoodType | undefined {
+  return content.goods.find((g) => g.id === id);
+}
+
+/** The standing not-yet-empty resource of `goodType` nearest to `from` (Manhattan node distance,
+ *  ties to the lower entity id), or null when the map holds none. A full canonical-resources scan —
+ *  run only inside a strategic decision, never per tick. */
+export function nearestLiveResource(world: World, goodType: number, from: HalfCellNode): Entity | null {
+  let best: Entity | null = null;
+  let bestDist = Number.POSITIVE_INFINITY;
+  for (const e of canonicalResources(world)) {
+    const r = world.get(e, Resource);
+    if (r.goodType !== goodType || r.remaining <= 0) continue;
+    const node = anchorNodeOf(world, e);
+    if (node === null) continue;
+    const dist = Math.abs(node.hx - from.hx) + Math.abs(node.hy - from.hy);
+    if (dist < bestDist) {
+      best = e;
+      bestDist = dist;
+    }
+  }
+  return best;
 }
 
 /** The seat's buildings (any construction state) in canonical ascending-id order. */
