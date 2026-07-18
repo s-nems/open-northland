@@ -2,7 +2,7 @@ import { HarvestedBy, Position, Resource, Stockpile } from '../../../components/
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity } from '../../../ecs/world.js';
 import type { BlockOverlay, NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
-import { dynamicBlockOverlay } from '../../footprint/index.js';
+import { buildingBlockedCells, dynamicBlockOverlay } from '../../footprint/index.js';
 import { settlerMeetsNeed } from '../../progression/index.js';
 import { resourceHarvestAtomics, resourcesNearNode } from '../../resource-index.js';
 import { manhattan } from '../../spatial.js';
@@ -37,10 +37,13 @@ import { interactionCell, jobAtomics } from './workplaces.js';
  * `opts.goodFilter` restricts eligible goods to the given set (a building-employed gatherer foraging only
  * what its workplace stores); omitted = every good the job may harvest.
  *
- * Known limitation (like the bridge case): the reachability gate below reads static components only. A
- * same-component node whose anchor and every work cell are enclosed by dynamic resource footprints (a sealed
- * pocket deep in a dense forest) can still win the pick and then fail its path. Route-level dynamic
- * reachability is a follow-up (`docs/tickets/sim/dynamic-route-reachability.md`).
+ * The reachability gate below rejects both a target in a different static component (the far bank of a river)
+ * and one whose resolved work cell is a dynamically blocked GOAL — buried under a building or a resource walk
+ * body — since `findPath` rejects a blocked goal. That covers a house placed over a footprint-empty clay/mud
+ * deposit: the deposit is left un-mined rather than stranding the gatherer on an impossible route. Known
+ * limitation: the check is per-GOAL, so a work cell that is itself clear yet ringed by blockers (a sealed
+ * pocket with no route in) can still win the pick and fail its path — route-level dynamic reachability is a
+ * follow-up (`docs/tickets/sim/dynamic-route-reachability.md`).
  */
 export function nearestHarvestableFor(
   plan: PlannerContext,
@@ -112,6 +115,12 @@ export function nearestHarvestableFor(
       scanned = resourcesNearNode(world, cx, cy, half + contentIndex(ctx.content).maxResourceWorkOffset);
     }
   }
+  // The memoized building walk-block set the reachability gate probes below — resolved once per scan (after
+  // the dormancy early-return, so a settler with no harvestable atomic never pays for it). Only the building
+  // layer is needed: `resourceWorkCell` already resolves a work cell clear of resource footprints, so a
+  // building placed over the deposit is the sole extra blocker the pick must still rule out. Reading the
+  // shared memo (not composing a `dynamicBlockOverlay` view) keeps this allocation-free per gatherer per tick.
+  const buildingBlocked = buildingBlockedCells(world, ctx, terrain);
   // Ranked from `origin` (the flag when bound, the settler when roaming); the interaction cell still resolves
   // from `here`, the settler's actual route start. Same filter/rank the shared loop applies to every scan.
   const best = nearestByCell(terrain, scanned, origin, (e) => {
@@ -133,6 +142,14 @@ export function nearestHarvestableFor(
     // array read (a build-time flood-fill). Measured from `here`, the settler's actual route start (bridges
     // are not yet walkable, so the two banks are genuinely separate components — a named limitation).
     if (terrain.componentOf(here) !== terrain.componentOf(cell)) return null;
+    // Dynamic reachability: the work cell may be statically fine yet buried under a building — a house placed
+    // over a footprint-empty deposit (clay/mud reserve no build-block, so one can legally land on them). A
+    // blocked GOAL is a route `findPath` rejects, so without this the gatherer latches onto the buried deposit
+    // and stalls in a park→re-pick loop forever. Skip it so the deposit is simply left un-mined (it survives
+    // under the house, faithful to the original). The settler's own cell is never blocked-for-itself, so a
+    // deposit it already stands on still qualifies. Route-level enclosure (a clear cell ringed by blockers) is
+    // still a follow-up (docs/tickets/sim/dynamic-route-reachability.md).
+    if (cell !== here && buildingBlocked.has(cell)) return null;
     if (manhattan(terrain, origin, cell) > radius) return null; // outside the flag's work radius — leave it be
     if (gate !== undefined && !gate.allowsNode(cell)) return null; // outside the settler's signpost area
     return { cell, payload: null };
