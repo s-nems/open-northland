@@ -55,6 +55,15 @@ export const KISS_ATOMIC = 20;
 export const KISSED_ATOMIC = 21;
 
 /**
+ * The gossip pair (`logicdefines.inc` TALK 14 / LISTEN 15, sim `systems/social/gossip.ts`). The man body
+ * authors one speak clip (`human_man_generic_speak` — the extracted `[gfxanimatomic]` binds it to both
+ * actions 14 and 15), the woman body one talk clip (`human_woman_generic_talk`), so on each body both
+ * roles bind the same sequence.
+ */
+export const TALK_ATOMIC = 14;
+export const LISTEN_ATOMIC = 15;
+
+/**
  * The scout's signpost-erecting swing (`jobtypes.ini` scout `allowatomic 43`; `logicdefines.inc`
  * `MAP_MOVEABLES_ATOMIC_ACTION_TYPE_BUILD_GUIDE 43`). The extracted `gfxAtomics` binds tribe 1 / job 27 /
  * action 43 to the shared hammer clip, so the render times it like the builder's swing.

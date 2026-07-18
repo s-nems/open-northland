@@ -19,6 +19,7 @@ import { herdingSystem } from './movement/herding.js';
 import { movementSystem } from './movement/movement.js';
 import { pathfindingSystem } from './movement/routing.js';
 import { playerOrderSystem, signpostOrderSystem } from './orders/index.js';
+import { gossipSystem } from './social/index.js';
 import { visionSystem } from './vision/index.js';
 
 /** One schedule slot: the system plus its stable display name (perf marks, bench reports). */
@@ -39,6 +40,9 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   { name: 'signpostOrder', system: signpostOrderSystem },
   // Family runs before ai so its walks route the same tick and its duty/wedding fences are fresh.
   { name: 'family', system: familySystem },
+  // Gossip drives the standing chat pairs with the same placement rationale as family: its walks route
+  // this tick and its Chat fence is fresh for the planner.
+  { name: 'gossip', system: gossipSystem },
   { name: 'ai', system: aiSystem },
   { name: 'pathfinding', system: pathfindingSystem },
   { name: 'movement', system: movementSystem },

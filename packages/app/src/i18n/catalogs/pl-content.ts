@@ -191,5 +191,10 @@ export const plContent = {
       title: 'Dzieci jedzą same',
       summary: 'Głodne dzieci podchodzą do dzikich krzaków i jedzą; niemowlę pod opieką samo się nie karmi.',
     },
+    gossip: {
+      title: 'Gossip and need bubbles',
+      summary:
+        'Idle settlers pair up and chat to refill their company need — soldiers never join — while hungry and sleepy settlers show thought bubbles.',
+    },
   },
 } as const;

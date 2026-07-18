@@ -14,6 +14,11 @@ on `atomicCompleted` (swing END) rather than their authored mid-swing frames:
   Generalize it to any atomic whose animation carries a PLAY_SOUND_FX event, so a single path serves
   every action SFX. Keep it cheap — the per-tick cost must stay O(active atomics) (the frame resolves
   through the memoized `contentIndex` maps).
+- The gossip talk/listen clips (atomics 14/15, `systems/social/gossip.ts`) carry SOCIALTALK voice cues
+  in the real IR (`viking_civilist_talk` `event 0 34 61`, `viking_woman_talk` `event 0 34 62`,
+  `logicdefines.inc` SOUND_FX_TYPE_SOCIALTALK_MALE/FEMALE 61/62) — wire them through the same
+  generalized path (+ a `byAtomicSound` mapping onto the sex-matched voice pools) so chatting pairs
+  audibly murmur, the original's settlement chatter.
 
 ## Scope
 

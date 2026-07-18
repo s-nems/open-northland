@@ -139,6 +139,17 @@ export function settlerTribeOf(e: SnapshotEntity): number | undefined {
   return num(settler?.tribe);
 }
 
+/** The settler's hunger/fatigue deficits (fixed-point 0..ONE, higher = worse), or undefined for a
+ *  non-settler — the need-bubble projection's read. The brand restore mirrors {@link positionOf}. */
+export function settlerNeedsOf(e: SnapshotEntity): { hunger: Fixed; fatigue: Fixed } | undefined {
+  const settler = e.components.Settler as { hunger?: unknown; fatigue?: unknown } | undefined;
+  const hunger = num(settler?.hunger);
+  const fatigue = num(settler?.fatigue);
+  return hunger !== undefined && fatigue !== undefined
+    ? { hunger: hunger as Fixed, fatigue: fatigue as Fixed }
+    : undefined;
+}
+
 /**
  * Whether any eligible marriage partner for `seeker` exists — the snapshot mirror of the sim's
  * `mayMarry` + `findPartnerFor` filters (same tribe, opposite sex, unmarried adult, not mid-wedding,

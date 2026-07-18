@@ -8,11 +8,13 @@ import {
   IRON_HARVEST_ATOMIC,
   KISS_ATOMIC,
   KISSED_ATOMIC,
+  LISTEN_ATOMIC,
   MUSHROOM_HARVEST_ATOMIC,
   PLANT_ATOMIC,
   STONE_HARVEST_ATOMIC,
   STORE_PICKUP_ATOMIC,
   STORE_PILEUP_ATOMIC,
+  TALK_ATOMIC,
   WHEAT_HARVEST_ATOMIC,
 } from '../../catalog/atomics.js';
 import { JOB_BABY_FEMALE, JOB_BABY_MALE, JOB_CHILD_FEMALE, JOB_CHILD_MALE } from '../../catalog/jobs.js';
@@ -133,6 +135,10 @@ export const CHARACTER_SPECS = {
       // The wedding kiss — the body's one kiss clip serves both the kiss and kissed roles.
       [KISS_ATOMIC]: { seq: 'human_man_generic_kiss' },
       [KISSED_ATOMIC]: { seq: 'human_man_generic_kiss' },
+      // The gossip chat — the body's one speak clip serves both the talk and listen roles (the
+      // `[gfxanimatomic]` job-6 rows bind it to both actions 14 and 15).
+      [TALK_ATOMIC]: { seq: 'human_man_generic_speak' },
+      [LISTEN_ATOMIC]: { seq: 'human_man_generic_speak' },
       [STORE_PICKUP_ATOMIC]: { seq: PICKUP_SEQ },
       [STORE_PILEUP_ATOMIC]: { seq: PICKUP_SEQ },
     },
@@ -160,6 +166,10 @@ export const CHARACTER_SPECS = {
       // whole strip (the reported "spinning" kiss); the render faces him at her (TARGET_FACING).
       [KISS_ATOMIC]: 'human_man_generic_kiss',
       [KISSED_ATOMIC]: 'human_man_generic_kiss',
+      // The chat plays directionally the same way (action-14/15 per-facing lists, 247 entries/dir), so
+      // the talker faces its partner (TARGET_FACING) instead of cycling the whole strip.
+      [TALK_ATOMIC]: 'human_man_generic_speak',
+      [LISTEN_ATOMIC]: 'human_man_generic_speak',
     },
   },
   scout: {
@@ -178,11 +188,17 @@ export const CHARACTER_SPECS = {
       [EAT_ATOMIC]: { seq: 'human_man_generic_eat' },
       [SLEEP_ATOMIC]: { seq: 'human_man_generic_sleep' },
       [PRAY_ATOMIC]: { seq: 'human_man_generic_pray' },
+      // The scout gossips like a civilian (jobtypes.ini: scout inherits the civilist atomic set,
+      // nothing forbidden) — the same generic man body plays the same speak clip.
+      [TALK_ATOMIC]: { seq: 'human_man_generic_speak' },
+      [LISTEN_ATOMIC]: { seq: 'human_man_generic_speak' },
       [STORE_PICKUP_ATOMIC]: { seq: PICKUP_SEQ },
       [STORE_PILEUP_ATOMIC]: { seq: PICKUP_SEQ },
     },
     dirListAtomics: {
       [BUILD_GUIDE_ATOMIC]: { seq: HAMMER_SEQ, ticksPerFrame: HAMMER_TICKS_PER_FRAME },
+      [TALK_ATOMIC]: 'human_man_generic_speak',
+      [LISTEN_ATOMIC]: 'human_man_generic_speak',
     },
   },
   woman: {
@@ -199,14 +215,19 @@ export const CHARACTER_SPECS = {
       // The wedding kiss — the body's one kiss clip serves both the kiss and kissed roles.
       [KISS_ATOMIC]: { seq: 'human_woman_generic_kiss' },
       [KISSED_ATOMIC]: { seq: 'human_woman_generic_kiss' },
+      // The gossip chat — the woman body's one talk clip serves both roles (job-5 action-14/15 rows).
+      [TALK_ATOMIC]: { seq: 'human_woman_generic_talk' },
+      [LISTEN_ATOMIC]: { seq: 'human_woman_generic_talk' },
       [STORE_PICKUP_ATOMIC]: { seq: 'human_woman_generic_pick_up' },
       [STORE_PILEUP_ATOMIC]: { seq: 'human_woman_generic_pick_up' },
     },
-    // The directional kiss — the same action-20/21 per-facing lists as the man's (job 5 rows), so the
-    // bride faces her groom rather than cycling the whole strip.
+    // The directional kiss and chat — the same per-facing list mechanism as the man's (job 5 rows), so
+    // the bride/talker faces her partner rather than cycling the whole strip.
     dirListAtomics: {
       [KISS_ATOMIC]: 'human_woman_generic_kiss',
       [KISSED_ATOMIC]: 'human_woman_generic_kiss',
+      [TALK_ATOMIC]: 'human_woman_generic_talk',
+      [LISTEN_ATOMIC]: 'human_woman_generic_talk',
     },
   },
   boy: {

@@ -2,6 +2,7 @@
 // stay package-private; scenes consume authored-setup constructors, read views, and shared constants.
 
 export { withinNodeRadius } from '../nav/node-metric.js';
+export { FATIGUE_SLEEP_THRESHOLD, HUNGER_EAT_THRESHOLD } from './agents/drives-needs.js';
 export { createSettler, DEFAULT_SETTLER_HITPOINTS } from './conflict/spawn/index.js';
 export { BERRY_REGROW_TICKS, BERRY_STAGE_TICKS, createBerryBush } from './economy/berries.js';
 export { isOnMission } from './family/eligibility.js';

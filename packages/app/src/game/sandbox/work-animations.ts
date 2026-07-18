@@ -48,3 +48,21 @@ export const FARMER_WATER_LENGTH = 29;
 export const STORE_PICKUP_ANIMATION = 'viking_pickup';
 export const STORE_PILEUP_ANIMATION = 'viking_pileup';
 export const STORE_EXCHANGE_LENGTH = 20;
+// The gossip talk/listen clocks — EXTRACTED from the mod's `atomicanimations12/atomicanimations.ini`:
+// civilist talk/listen 247, woman talk/listen 100. Each clip restores the company bar in five
+// channel-3 pulses (`event <at> 3 <delta>`) at the frames below; the talker's pulses are +800 each
+// (5×800 = the 4000-unit full bar), the woman's listen +100 each (her listening restores little —
+// she recovers on her talking turn; the civilist listen is +800 like his talk).
+export const CIVILIST_TALK_ANIMATION = 'viking_civilist_talk';
+export const CIVILIST_LISTEN_ANIMATION = 'viking_civilist_listen';
+export const CIVILIST_TALK_LENGTH = 247;
+export const CIVILIST_TALK_PULSE_FRAMES = [40, 80, 120, 150, 195] as const;
+export const WOMAN_TALK_ANIMATION = 'viking_woman_talk';
+export const WOMAN_LISTEN_ANIMATION = 'viking_woman_listen';
+export const WOMAN_TALK_LENGTH = 100;
+export const WOMAN_TALK_PULSE_FRAMES = [20, 40, 60, 80, 95] as const;
+// The `atomicanimations.ini` channel ids the pulses restore (`ATOMIC_ANIMATION_EVENT_TYPE_CHANGE_SOCIAL`,
+// logicdefines.inc l.722) and the two pulse magnitudes the extracted clips carry.
+export const CHANGE_SOCIAL_EVENT_TYPE = 3;
+export const TALK_PULSE_VALUE = 800;
+export const LISTEN_QUIET_PULSE_VALUE = 100;

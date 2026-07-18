@@ -27,9 +27,10 @@ import { interactionCell, nearestFood, nearestTemple, type TargetCandidates } fr
  * pins at ONE. APPROXIMATED (see source basis): the original drives eating off the per-animation
  * hunger events (`event 30 2 <delta>` against a ~10000-scale bar) with no single readable "go eat at
  * X" threshold; this constant is the slice's deterministic eat trigger until that vocabulary is
- * decoded and calibration-by-observation pins the real cadence.
+ * decoded and calibration-by-observation pins the real cadence. Exported for the app's need-bubble
+ * projection (the bubble shows exactly while the drive would fire) and the gossip cancel check.
  */
-const HUNGER_EAT_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4)); // ¾·ONE
+export const HUNGER_EAT_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4)); // ¾·ONE
 
 /**
  * Fatigue level (fixed-point, in [0, ONE]) at or above which a settler stops working to sleep. Set to
@@ -39,7 +40,7 @@ const HUNGER_EAT_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4)); // ¾�
  * with no single readable "sleep at X" threshold; this constant is the slice's deterministic sleep
  * trigger until that vocabulary is decoded and calibration-by-observation pins the real cadence.
  */
-const FATIGUE_SLEEP_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4)); // ¾·ONE
+export const FATIGUE_SLEEP_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4)); // ¾·ONE
 
 /**
  * Piety level (fixed-point, in [0, ONE]) at or above which a settler stops working to pray, mirroring
