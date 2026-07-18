@@ -1,6 +1,7 @@
 import { BrowserWindow, dialog, Menu, shell } from 'electron';
 import type { ContentStatus } from './content-state.js';
-import { APP_ORIGIN_PREFIX, GAME_URL, SETUP_URL } from './protocol.js';
+import { type Locale, messages } from './i18n/index.js';
+import { APP_ORIGIN_PREFIX, gameUrlForLocale, isGameUrl, SETUP_URL } from './protocol.js';
 
 /**
  * The shell's single window and its native menu. The menu owns the shell-level actions (reinstall
@@ -9,7 +10,7 @@ import { APP_ORIGIN_PREFIX, GAME_URL, SETUP_URL } from './protocol.js';
  */
 
 /** Open the window on the game when the content is ready, on the setup page otherwise. */
-export function createWindow(initial: ContentStatus, preloadScript: string): BrowserWindow {
+export function createWindow(initial: ContentStatus, preloadScript: string, locale: Locale): BrowserWindow {
   const win = new BrowserWindow({
     width: 1440,
     height: 900,
@@ -27,20 +28,21 @@ export function createWindow(initial: ContentStatus, preloadScript: string): Bro
   win.webContents.on('will-navigate', (event, target) => {
     if (!target.startsWith(APP_ORIGIN_PREFIX)) event.preventDefault();
   });
-  void win.loadURL(initial === 'ready' ? GAME_URL : SETUP_URL);
+  void win.loadURL(initial === 'ready' ? gameUrlForLocale(locale) : SETUP_URL);
   return win;
 }
 
 /** Swap to the setup page; a running game session (there is no saving yet) needs a confirmation. */
 async function openSetupPage(win: BrowserWindow): Promise<void> {
-  if (win.webContents.getURL() === GAME_URL) {
+  if (isGameUrl(win.webContents.getURL())) {
+    const dialogs = messages().dialogs;
     const choice = await dialog.showMessageBox(win, {
       type: 'question',
-      buttons: ['Leave game', 'Stay'],
+      buttons: [dialogs.leaveGame, dialogs.stay],
       defaultId: 1,
       cancelId: 1,
-      message: 'Leave the running game?',
-      detail: 'There is no saving yet — the current session will be lost.',
+      message: dialogs.leaveGameMessage,
+      detail: dialogs.leaveGameDetail,
     });
     if (choice.response !== 0) return;
   }
@@ -52,17 +54,18 @@ async function openSetupPage(win: BrowserWindow): Promise<void> {
  * the reinstall-content and open-data-folder actions, and one hidden behind Alt is undiscoverable.
  */
 export function buildAppMenu(win: BrowserWindow, dataRootPath: string): void {
+  const menu = messages().menu;
   const gameSubmenu: Electron.MenuItemConstructorOptions[] = [
     // The setup page reads the current content status and offers Regenerate / Play accordingly.
-    { label: 'Reinstall game content…', click: () => void openSetupPage(win) },
-    { label: 'Open data folder', click: () => void shell.openPath(dataRootPath) },
+    { label: menu.reinstall, click: () => void openSetupPage(win) },
+    { label: menu.openDataFolder, click: () => void shell.openPath(dataRootPath) },
     { type: 'separator' },
     process.platform === 'darwin' ? { role: 'close' } : { role: 'quit' },
   ];
   Menu.setApplicationMenu(
     Menu.buildFromTemplate([
       ...(process.platform === 'darwin' ? [{ role: 'appMenu' } as const] : []),
-      { label: 'Game', submenu: gameSubmenu },
+      { label: menu.game, submenu: gameSubmenu },
       { role: 'editMenu' },
       { role: 'viewMenu' },
     ]),

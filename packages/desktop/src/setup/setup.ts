@@ -1,3 +1,4 @@
+import { currentLocale, formatMessage, type Locale, messages, setActiveLocale } from '../i18n/index.js';
 import type { DesktopApi, DesktopState, GameFolderCandidate } from '../ipc.js';
 import { el } from './dom.js';
 import { createModPanel } from './mod-panel.js';
@@ -6,7 +7,8 @@ import { createPipelineProgress } from './pipeline-progress.js';
 /**
  * The first-run installer page. Phases: pick (path input + browse + auto-detected candidates) →
  * run (progress bar + stage line + log tail) → done | failed. All game-folder knowledge lives
- * behind `window.desktop` ({@link DesktopApi}); this file is DOM glue only.
+ * behind `window.desktop` ({@link DesktopApi}); this file is DOM glue only. Every user-facing string
+ * comes from the installer's i18n catalog, re-applied in {@link renderAll} when the language changes.
  */
 
 declare global {
@@ -32,30 +34,52 @@ function showPhase(name: keyof typeof phases): void {
 const progress = createPipelineProgress(showPhase);
 const modPanel = createModPanel((root) => {
   externalModRoot = root;
-  applyModAvailability();
+  refreshPick();
 });
 
 let validPath: string | undefined;
 let candidateHasMod = false;
 /** A mod root outside the game folder (downloaded into the data root, or hand-picked). */
 let externalModRoot: string | undefined;
+/** What the current probe found, so the note can be re-worded on a language switch. */
+type ProbeState = 'idle' | 'no-archives' | 'valid';
+let probeState: ProbeState = 'idle';
+/** Remembered so a language switch can re-derive the page without re-fetching state. */
+let dataRootPath = '';
+let contentStatus: DesktopState['contentStatus'] = 'missing';
+
+/** The active locale's probe note for the current find. */
+function renderProbe(): void {
+  const t = messages().setup;
+  switch (probeState) {
+    case 'idle':
+      probeNote.textContent = '';
+      return;
+    case 'no-archives':
+      probeNote.textContent = t.probe.noArchives;
+      return;
+    case 'valid':
+      probeNote.textContent = candidateHasMod
+        ? t.probe.withMod
+        : externalModRoot !== undefined
+          ? formatMessage(t.probe.externalMod, { path: externalModRoot })
+          : t.probe.noMod;
+      return;
+  }
+}
 
 /** Re-word the probe note + install/mod-panel visibility for the current game/mod availability. */
-function applyModAvailability(): void {
+function refreshPick(): void {
   if (validPath === undefined) {
+    installButton.disabled = true;
     modPanel.setVisible(false);
-    return;
-  }
-  if (candidateHasMod) {
-    probeNote.textContent = 'Game found (with the culturesnation mod).';
-  } else if (externalModRoot !== undefined) {
-    probeNote.textContent = `Game found. Using the CulturesNation mod from ${externalModRoot}.`;
   } else {
-    probeNote.textContent = 'Game found — but the CulturesNation mod is missing.';
+    probeState = 'valid';
+    const modReady = candidateHasMod || externalModRoot !== undefined;
+    modPanel.setVisible(!modReady);
+    installButton.disabled = !modReady;
   }
-  const modReady = candidateHasMod || externalModRoot !== undefined;
-  modPanel.setVisible(!modReady);
-  installButton.disabled = !modReady;
+  renderProbe();
 }
 
 /** `fillInput` is off when the probe echoes what the user is typing — never fight the caret. */
@@ -64,14 +88,11 @@ function applyCandidate(candidate: GameFolderCandidate, fillInput = true): void 
   if (candidate.probe.hasArchives) {
     validPath = candidate.path;
     candidateHasMod = candidate.probe.hasMod;
-    applyModAvailability();
   } else {
     validPath = undefined;
-    probeNote.textContent =
-      'No game archives (.lib) found there — pick the folder that contains Game.exe and DataX.';
-    installButton.disabled = true;
-    applyModAvailability();
+    probeState = 'no-archives';
   }
+  refreshPick();
 }
 
 let probeGeneration = 0;
@@ -81,9 +102,8 @@ async function probeTyped(): Promise<void> {
   const typed = pathInput.value.trim();
   if (typed === '') {
     validPath = undefined;
-    probeNote.textContent = '';
-    installButton.disabled = true;
-    applyModAvailability(); // hides a mod panel left over from the previous candidate
+    probeState = 'idle';
+    refreshPick();
     return;
   }
   const candidate = await window.desktop.probeGamePath(typed);
@@ -94,25 +114,24 @@ async function probeTyped(): Promise<void> {
 /** Word the pick phase for the content status: first install vs recommended vs required regeneration. */
 function applyContentStatus(status: DesktopState['contentStatus']): void {
   if (status === 'missing') return;
+  const t = messages().setup;
   const note = el('status-note');
   const playNow = el<HTMLButtonElement>('play-now');
   note.classList.remove('hidden');
-  el('install').textContent = 'Regenerate game content';
+  installButton.textContent = t.regenerate;
   switch (status) {
     case 'ready':
-      note.textContent = 'Game content is installed. Regenerate it here if you want a fresh conversion.';
+      note.textContent = t.status.ready;
       playNow.classList.remove('hidden');
       return;
     case 'stale-revision':
       // Also the face of an interrupted conversion (no stamp survives one), hence "incomplete".
-      note.textContent =
-        'Your game content is incomplete or was generated by an older version of Open Northland — regenerating it is recommended.';
-      playNow.textContent = 'Play anyway';
+      note.textContent = t.status.staleRevision;
+      playNow.textContent = t.playAnyway;
       playNow.classList.remove('hidden');
       return;
     case 'stale-schema':
-      note.textContent =
-        'Your game content was generated by an incompatible older version of Open Northland — it must be regenerated before playing.';
+      note.textContent = t.status.staleSchema;
       note.classList.add('blocking');
       return;
     default: {
@@ -122,11 +141,78 @@ function applyContentStatus(status: DesktopState['contentStatus']): void {
   }
 }
 
+/** The two flag buttons; each remembers its locale so {@link refreshLangSwitch} needs no id lookup. */
+const langButtons: { readonly locale: Locale; readonly button: HTMLButtonElement }[] = [];
+
+function buildLangSwitch(): void {
+  const root = el('lang-switch');
+  for (const { locale, flag } of [
+    { locale: 'pol', flag: '🇵🇱' },
+    { locale: 'eng', flag: '🇬🇧' },
+  ] as const) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'lang-button';
+    button.textContent = flag;
+    button.addEventListener('click', () => void applyLocale(locale));
+    root.append(button);
+    langButtons.push({ locale, button });
+  }
+}
+
+function refreshLangSwitch(): void {
+  const copy = messages().setup.language;
+  for (const { locale, button } of langButtons) {
+    const label = locale === 'pol' ? copy.polish : copy.english;
+    button.title = label;
+    button.setAttribute('aria-label', label);
+    button.setAttribute('aria-pressed', String(currentLocale() === locale));
+  }
+}
+
+async function applyLocale(locale: Locale): Promise<void> {
+  if (currentLocale() === locale) return;
+  await window.desktop.setLocale(locale); // persist + re-localize the native menu
+  setActiveLocale(locale);
+  renderAll();
+}
+
+/** Apply the active locale's fixed copy; the `*Html` entries are trusted markup, never user input. */
+function applyStaticLabels(): void {
+  const t = messages().setup;
+  document.title = t.title;
+  el('intro').innerHTML = t.introHtml;
+  pathInput.placeholder = t.pathPlaceholder;
+  el('browse').textContent = t.browse;
+  el('detected-label').textContent = t.detected;
+  installButton.textContent = t.install;
+  el<HTMLButtonElement>('play-now').textContent = t.play;
+  el('cancel').textContent = t.cancel;
+  el('done-ok').textContent = t.installed;
+  el('play').textContent = t.play;
+  el('retry').textContent = t.back;
+  el('legal').innerHTML = t.legalHtml;
+  el('data-root').textContent = dataRootPath; // legalHtml just recreated an empty #data-root
+}
+
+/** Re-render every locale-dependent string from the current active locale + remembered state. */
+function renderAll(): void {
+  applyStaticLabels();
+  modPanel.applyLabels();
+  progress.relabel(); // the run/failed phase's live stage or failure line owns its own text
+  refreshPick();
+  applyContentStatus(contentStatus);
+  refreshLangSwitch();
+}
+
 async function boot(): Promise<void> {
   const state = await window.desktop.getState();
-  el('data-root').textContent = state.dataRoot;
-  applyContentStatus(state.contentStatus);
+  setActiveLocale(state.locale);
+  dataRootPath = state.dataRoot;
+  contentStatus = state.contentStatus;
   externalModRoot = state.modRoot;
+  buildLangSwitch();
+  renderAll();
   if (state.gamePath !== undefined) {
     applyCandidate(await window.desktop.probeGamePath(state.gamePath));
   }

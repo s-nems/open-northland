@@ -3,78 +3,69 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Open Northland — first-run setup</title>
+    <title>Open Northland</title>
     <link rel="stylesheet" href="setup.css" />
   </head>
   <body>
+    <!-- All user-facing copy is filled from the i18n catalog by setup.ts; the markup carries ids only. -->
     <main class="card">
-      <h1>Open Northland</h1>
-      <p class="intro">
-        Open Northland is a free re-implementation of <em>Cultures — 8th Wonder of the World</em>. It
-        ships no game art or sounds: on this first run it converts the assets of your own copy of the
-        original game into its data folder. Select the folder your game is installed in (the one with
-        <code>Game.exe</code> and <code>DataX</code>) to begin.
-      </p>
+      <div class="header">
+        <h1>Open Northland</h1>
+        <div id="lang-switch" class="lang-switch"></div>
+      </div>
+      <p class="intro" id="intro"></p>
 
       <section id="pick" class="phase">
         <p id="status-note" class="note hidden"></p>
         <div class="pick-row">
-          <input id="game-path" type="text" placeholder="Path to your Cultures 8th Wonder folder…" spellcheck="false" />
-          <button id="browse" type="button">Browse…</button>
+          <input id="game-path" type="text" spellcheck="false" />
+          <button id="browse" type="button"></button>
         </div>
         <p id="probe-note" class="note"></p>
         <div id="mod-panel" class="mod-panel hidden">
-          <p class="note">
-            The free community mod <strong>CulturesNation</strong> is required to play, and your game
-            folder does not have it. Open Northland can download it for you (~600 MB, from
-            <code>culturesnation.pl</code>'s Google Drive link) into its data folder — your game
-            folder stays untouched.
-          </p>
+          <p class="note" id="mod-required-note"></p>
           <div class="actions">
-            <button id="mod-download" type="button" class="primary">Download the mod</button>
-            <button id="mod-pick" type="button">I already have it…</button>
+            <button id="mod-download" type="button" class="primary"></button>
+            <button id="mod-pick" type="button"></button>
           </div>
           <div id="mod-progress" class="hidden">
             <div class="bar"><div id="mod-bar-fill" class="bar-fill"></div></div>
             <p class="status-row"><span id="mod-stage"></span><span id="mod-count"></span></p>
-            <div class="actions"><button id="mod-cancel" type="button">Cancel</button></div>
+            <div class="actions"><button id="mod-cancel" type="button"></button></div>
           </div>
           <p id="mod-note" class="note"></p>
         </div>
         <div id="detected" class="detected hidden">
-          <p class="note">Found on this computer:</p>
+          <p class="note" id="detected-label"></p>
           <div id="detected-list"></div>
         </div>
         <div class="actions">
-          <button id="install" type="button" class="primary" disabled>Install game content</button>
-          <button id="play-now" type="button" class="hidden">Play</button>
+          <button id="install" type="button" class="primary" disabled></button>
+          <button id="play-now" type="button" class="hidden"></button>
         </div>
       </section>
 
       <section id="run" class="phase hidden">
         <div class="bar"><div id="bar-fill" class="bar-fill"></div></div>
-        <p class="status-row"><span id="stage-label">Preparing…</span><span id="item-count"></span></p>
+        <p class="status-row"><span id="stage-label"></span><span id="item-count"></span></p>
         <pre id="log-tail" class="log"></pre>
         <div class="actions">
-          <button id="cancel" type="button">Cancel</button>
+          <button id="cancel" type="button"></button>
         </div>
       </section>
 
       <section id="done" class="phase hidden">
-        <p class="ok">Game content installed.</p>
-        <button id="play" type="button" class="primary">Play</button>
+        <p class="ok" id="done-ok"></p>
+        <button id="play" type="button" class="primary"></button>
       </section>
 
       <section id="failed" class="phase hidden">
         <p class="error" id="error-message"></p>
         <pre id="error-log" class="log"></pre>
-        <button id="retry" type="button">Back</button>
+        <button id="retry" type="button"></button>
       </section>
 
-      <p class="legal">
-        Your original game files are only read, never modified. The converted data stays on this
-        computer in <code id="data-root"></code>.
-      </p>
+      <p class="legal" id="legal"></p>
     </main>
     <script src="setup.js"></script>
   </body>

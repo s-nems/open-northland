@@ -1,6 +1,7 @@
 import type { GameFolderProbe } from '@open-northland/asset-pipeline';
 import type { PipelineStageId } from '@open-northland/asset-pipeline/progress';
 import type { ContentStatus } from './content-state.js';
+import type { Locale } from './i18n/index.js';
 
 /**
  * The desktop shell's IPC vocabulary — one shared module so the main process, the preload bridge,
@@ -20,6 +21,7 @@ export const IPC_CHANNELS = {
   cancelModDownload: 'desktop:cancel-mod-download',
   pickModFolder: 'desktop:pick-mod-folder',
   modEvent: 'desktop:mod-event',
+  setLocale: 'desktop:set-locale',
 } as const;
 
 /** What the setup renderer needs to render its first screen. */
@@ -27,6 +29,8 @@ export interface DesktopState {
   /** Where `content/` + the config live: the portable dir, the per-user data dir, or the dev repo root. */
   readonly dataRoot: string;
   readonly portable: boolean;
+  /** The active installer language (persisted choice, else the detected OS locale). */
+  readonly locale: Locale;
   /** How the installed content compares to this shell's pipeline (see `content-state.ts`). */
   readonly contentStatus: ContentStatus;
   /** The game folder remembered from a previous run, to prefill the picker. */
@@ -78,4 +82,6 @@ export interface DesktopApi {
   onModEvent(listener: (event: ModEvent) => void): void;
   /** Swap the window from the setup page to the game. */
   startGame(): Promise<void>;
+  /** Persist the chosen installer language and re-localize the native menu; the renderer re-renders itself. */
+  setLocale(locale: Locale): Promise<void>;
 }

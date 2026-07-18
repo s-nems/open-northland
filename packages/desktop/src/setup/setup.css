@@ -35,10 +35,37 @@ body {
   padding: 28px 32px;
 }
 
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
 h1 {
-  margin: 0 0 8px;
+  margin: 0;
   font-size: 26px;
   letter-spacing: 0.04em;
+}
+
+.lang-switch {
+  display: flex;
+  gap: 4px;
+}
+
+.lang-button {
+  padding: 4px 8px;
+  font-size: 18px;
+  line-height: 1;
+  filter: grayscale(1);
+  opacity: 0.6;
+}
+
+.lang-button[aria-pressed="true"] {
+  filter: none;
+  opacity: 1;
+  border-color: var(--accent);
 }
 
 .intro,

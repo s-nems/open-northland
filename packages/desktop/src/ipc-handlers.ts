@@ -4,12 +4,21 @@ import { type BrowserWindow, dialog, ipcMain } from 'electron';
 import { readConfig, writeConfig } from './config.js';
 import { detectGameFolders } from './detect.js';
 import { createEventThrottle } from './event-throttle.js';
+import {
+  currentLocale,
+  formatMessage,
+  isLocale,
+  type Locale,
+  messages,
+  setActiveLocale,
+} from './i18n/index.js';
 import type { GameFolderCandidate, ModEvent, PipelineEvent } from './ipc.js';
 import { IPC_CHANNELS } from './ipc.js';
 import { findModRootUnder, installCnMod } from './mod-install/index.js';
 import type { PipelineHost } from './pipeline-host.js';
-import { APP_ORIGIN_PREFIX, GAME_URL } from './protocol.js';
+import { APP_ORIGIN_PREFIX, gameUrlForLocale } from './protocol.js';
 import type { ShellPaths, ShellState } from './shell-state.js';
+import { buildAppMenu } from './window.js';
 
 /**
  * The main-process end of every {@link IPC_CHANNELS} call: the setup renderer's only way to reach
@@ -36,6 +45,10 @@ function assertString(value: unknown): asserts value is string {
   if (typeof value !== 'string') throw new Error('expected a string argument');
 }
 
+function assertLocale(value: unknown): asserts value is Locale {
+  if (!isLocale(value)) throw new Error('expected a supported locale');
+}
+
 async function candidateOf(path: string): Promise<GameFolderCandidate> {
   return { path, probe: await probeGameFolder(path) };
 }
@@ -57,7 +70,7 @@ export function wireIpc({ win, paths, state, pipeline }: IpcDeps): void {
   ipcMain.handle(IPC_CHANNELS.pickGameFolder, async (ev) => {
     assertAppSender(ev);
     const picked = await dialog.showOpenDialog(win, {
-      title: 'Select your Cultures - 8th Wonder of the World folder',
+      title: messages().dialogs.pickGameTitle,
       properties: ['openDirectory'],
     });
     const path = picked.filePaths[0];
@@ -68,16 +81,14 @@ export function wireIpc({ win, paths, state, pipeline }: IpcDeps): void {
   ipcMain.handle(IPC_CHANNELS.runPipeline, async (ev, gamePath: unknown) => {
     assertAppSender(ev);
     assertString(gamePath);
-    if (modDownload !== undefined) throw new Error('the mod is still downloading — wait for it to finish');
+    if (modDownload !== undefined) throw new Error(messages().errors.modStillDownloading);
     const probe = await probeGameFolder(gamePath);
-    if (!probe.hasArchives) throw new Error('no game archives (.lib) found under the selected folder');
+    if (!probe.hasArchives) throw new Error(messages().errors.noArchives);
     // A mod inside the game folder is auto-detected by the pipeline; otherwise pass the external
     // mod root — the conversion is materially incomplete without the mod, so none anywhere is an error.
     const modRoot = probe.hasMod ? undefined : await state.availableModRoot();
     if (!probe.hasMod && modRoot === undefined) {
-      throw new Error(
-        'the culturesnation mod is required — download it below, or point the wizard at an unpacked copy',
-      );
+      throw new Error(messages().errors.modRequired);
     }
     pipeline.start(gamePath, paths.contentDir, modRoot, (event: PipelineEvent) => {
       if (!win.isDestroyed()) win.webContents.send(IPC_CHANNELS.pipelineEvent, event);
@@ -103,7 +114,7 @@ export function wireIpc({ win, paths, state, pipeline }: IpcDeps): void {
   };
   ipcMain.handle(IPC_CHANNELS.downloadMod, async (ev) => {
     assertAppSender(ev);
-    if (modDownload !== undefined) throw new Error('mod download already running');
+    if (modDownload !== undefined) throw new Error(messages().errors.modDownloadRunning);
     modDownload = new AbortController();
     try {
       return await installCnMod(paths.modsDir, forwardModEvent, { signal: modDownload.signal });
@@ -118,7 +129,7 @@ export function wireIpc({ win, paths, state, pipeline }: IpcDeps): void {
   ipcMain.handle(IPC_CHANNELS.pickModFolder, async (ev) => {
     assertAppSender(ev);
     const picked = await dialog.showOpenDialog(win, {
-      title: 'Select the unpacked CulturesNation mod folder',
+      title: messages().dialogs.pickModTitle,
       properties: ['openDirectory'],
     });
     const path = picked.filePaths[0];
@@ -126,9 +137,7 @@ export function wireIpc({ win, paths, state, pipeline }: IpcDeps): void {
     // Accept the mod root itself, its wrapping folder, or a directly-picked DataCnmd child.
     const root = (await findModRootUnder(path)) ?? (await findModRootUnder(dirname(path)));
     if (root === undefined) {
-      throw new Error(
-        `no DataCnmd/ found there — pick the unpacked mod folder (download it from ${CULTURESNATION_HOME_URL})`,
-      );
+      throw new Error(formatMessage(messages().errors.noDataCnmd, { url: CULTURESNATION_HOME_URL }));
     }
     writeConfig(paths.configFile, { ...readConfig(paths.configFile), modPath: root });
     return root;
@@ -138,8 +147,17 @@ export function wireIpc({ win, paths, state, pipeline }: IpcDeps): void {
     assertAppSender(ev);
     // Re-checked here, not only in the setup UI: incompatible content must never boot.
     if ((await state.contentStatus()) === 'stale-schema') {
-      throw new Error('content was generated for an incompatible schema — regenerate it first');
+      throw new Error(messages().errors.incompatibleSchema);
     }
-    await win.loadURL(GAME_URL);
+    await win.loadURL(gameUrlForLocale(currentLocale()));
+  });
+
+  ipcMain.handle(IPC_CHANNELS.setLocale, (ev, locale: unknown) => {
+    assertAppSender(ev);
+    assertLocale(locale);
+    setActiveLocale(locale);
+    writeConfig(paths.configFile, { ...readConfig(paths.configFile), locale });
+    // The native menu is already built; rebuild it so its labels follow the renderer's new language.
+    buildAppMenu(win, paths.dataRoot.path);
   });
 }

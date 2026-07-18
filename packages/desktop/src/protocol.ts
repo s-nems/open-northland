@@ -12,11 +12,26 @@ import { routePathOf } from './protocol-routing.js';
  * serves the first-run installer page from the shell's own renderer files.
  */
 
+import type { Locale } from './i18n/index.js';
+
 const APP_SCHEME = 'app';
 /** Every page the shell serves sits under this prefix; the IPC and navigation guards gate on it. */
 export const APP_ORIGIN_PREFIX = `${APP_SCHEME}://`;
 export const GAME_URL = `${APP_ORIGIN_PREFIX}game/index.html`;
 export const SETUP_URL = `${APP_ORIGIN_PREFIX}setup/setup.html`;
+
+/**
+ * The game URL carrying the installer's language into the web app via its `?lang=` seam (the game's
+ * `localeParam` accepts `eng`/`pol`), so a language picked in the wizard also greets the player.
+ */
+export function gameUrlForLocale(locale: Locale): string {
+  return `${GAME_URL}?lang=${locale}`;
+}
+
+/** Whether a loaded URL is the game page, tolerant of the `?lang=` query {@link gameUrlForLocale} adds. */
+export function isGameUrl(url: string): boolean {
+  return url === GAME_URL || url.startsWith(`${GAME_URL}?`);
+}
 
 const STATIC_TYPES: Readonly<Record<string, string>> = {
   '.html': 'text/html; charset=utf-8',

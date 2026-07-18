@@ -1,5 +1,6 @@
+import { formatMessage, localeTag, messages } from '../i18n/index.js';
 import type { PipelineEvent } from '../ipc.js';
-import { overallFraction, STAGE_LABELS } from '../progress-model.js';
+import { overallFraction } from '../progress-model.js';
 import { el } from './dom.js';
 
 /**
@@ -15,6 +16,8 @@ export interface PipelineProgressView {
   handleEvent(event: PipelineEvent): void;
   /** A fresh run must not show the previous attempt's bar position or log tail. */
   reset(): void;
+  /** Repaint the live stage line / failure headline in the active locale after a language switch. */
+  relabel(): void;
 }
 
 export function createPipelineProgress(showPhase: (name: 'done' | 'failed') => void): PipelineProgressView {
@@ -24,6 +27,8 @@ export function createPipelineProgress(showPhase: (name: 'done' | 'failed') => v
   const logTail = el('log-tail');
   const logLines: string[] = [];
   let currentStage: Extract<PipelineEvent, { kind: 'stage' }> | undefined;
+  /** True once a run failed, so a language switch repaints the failure headline, not a stage line. */
+  let errored = false;
 
   function pushLog(line: string): void {
     logLines.push(line);
@@ -36,7 +41,7 @@ export function createPipelineProgress(showPhase: (name: 'done' | 'failed') => v
       switch (event.kind) {
         case 'stage': {
           currentStage = event;
-          stageLabel.textContent = `${STAGE_LABELS[event.stage]}…`;
+          stageLabel.textContent = `${messages().setup.stages[event.stage]}…`;
           itemCount.textContent = '';
           barFill.style.width = `${overallFraction({ stage: event.stage, done: 0, total: undefined }) * 100}%`;
           return;
@@ -48,11 +53,12 @@ export function createPipelineProgress(showPhase: (name: 'done' | 'failed') => v
             done: event.done,
             total: event.total,
           });
+          const tag = localeTag();
           barFill.style.width = `${fraction * 100}%`;
           itemCount.textContent =
             event.total === undefined
-              ? `${event.done.toLocaleString('en')} files`
-              : `${event.done.toLocaleString('en')} / ${event.total.toLocaleString('en')}`;
+              ? formatMessage(messages().setup.run.files, { done: event.done.toLocaleString(tag) })
+              : `${event.done.toLocaleString(tag)} / ${event.total.toLocaleString(tag)}`;
           return;
         }
         case 'log': {
@@ -65,7 +71,8 @@ export function createPipelineProgress(showPhase: (name: 'done' | 'failed') => v
           return;
         }
         case 'error': {
-          el('error-message').textContent = 'Installing the game content failed.';
+          errored = true;
+          el('error-message').textContent = messages().setup.run.failed;
           el('error-log').textContent = [...logLines, event.message].join('\n');
           showPhase('failed');
           return;
@@ -82,7 +89,17 @@ export function createPipelineProgress(showPhase: (name: 'done' | 'failed') => v
       logTail.textContent = '';
       barFill.style.width = '0%';
       itemCount.textContent = '';
-      stageLabel.textContent = 'Starting…';
+      currentStage = undefined;
+      errored = false;
+      stageLabel.textContent = messages().setup.run.starting;
+    },
+
+    relabel(): void {
+      if (errored) {
+        el('error-message').textContent = messages().setup.run.failed;
+      } else if (currentStage !== undefined) {
+        stageLabel.textContent = `${messages().setup.stages[currentStage.stage]}…`;
+      }
     },
   };
 }
