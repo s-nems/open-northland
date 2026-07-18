@@ -35,6 +35,7 @@ export const plGame = {
     defenseStopped: 'Obrona zatrzymana',
     // New strings kept in English — the i18n pass owns the Polish catalog (see memory: english-ui-strings).
     upgrade: 'Upgrade',
+    upgradeCostHint: 'Upgrade requires:',
     cancelUpgrade: 'Cancel upgrade',
     demolish: 'Zniszcz',
     signpost: 'Drogowskaz',

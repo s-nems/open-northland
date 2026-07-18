@@ -437,6 +437,17 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     return craft !== undefined ? `${craft}\n${messages().hud.craftToggleHint}` : null;
   };
 
+  /** The Upgrade button's cost card when the cursor is over it ("Upgrade requires:" then one
+   *  "- Drewno ×5" line per required good), or null — what the user asked to see before committing to
+   *  the upgrade. Only building layouts carry the button, and only an upgradable building has a cost. */
+  const upgradeButtonHint = (x: number, y: number): string | null => {
+    if (layout?.kind !== 'building' || lastModel.kind !== 'building') return null;
+    const hit = layout.buttons.find((b) => contains(b.rect, x, y));
+    if (hit?.action !== 'upgrade' || lastModel.upgradeCost.length === 0) return null;
+    const lines = lastModel.upgradeCost.map((c) => `- ${c.label} ×${c.amount}`).join('\n');
+    return `${messages().hud.upgradeCostHint}\n${lines}`;
+  };
+
   /** The hovered Produkcja row's recipe card ("Krótki Miecz:" then one "- Żelazo ×2" line per input),
    *  or null. */
   const productionRowHint = (x: number, y: number): string | null => {
@@ -470,6 +481,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
       hitBarValue(x, y) ??
       gatherChoiceHint(x, y) ??
       productionRowHint(x, y) ??
+      upgradeButtonHint(x, y) ??
       assignButtonHint(x, y);
     if (text === null) opts.tooltip.hide();
     else opts.tooltip.show(clientX, clientY, text);
