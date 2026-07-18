@@ -1,7 +1,13 @@
-import { type Application, type Container, RenderTexture, Sprite } from 'pixi.js';
+import { type Application, type Container, Rectangle, type RenderOptions, Sprite, Texture } from 'pixi.js';
 import type { Camera } from '../../data/projection/index.js';
 import type { SpritePool } from '../sprite-pool/index.js';
 import { restoreStash, type StashedVisibility, stashHidden } from '../visibility.js';
+
+/** Pixi's public {@link RenderOptions} omits `frame`, though the runtime honours it (the render-target
+ *  system takes it as the viewport region, in the target's logical px) — typed here until it is exposed. */
+interface FramedRenderOptions extends RenderOptions {
+  readonly frame: Rectangle;
+}
 
 /**
  * The details-panel portrait "observation window": a live cutout of the world centred on the selected
@@ -27,7 +33,8 @@ export interface PortraitInsetFrame {
 export interface InsetTerrainCull {
   toInset(camera: Camera, w: number, h: number): void;
   restore(): void;
-  /** Opaque ground colour (`0xRRGGBB`) the cutout clears to, so the off-map region behind the framed
+  /** Opaque ground colour (`0xRRGGBB`) the cutout floors its off-map margin with (a quad under the
+   *  world — the screen pass cannot `clear` just its frame region), so the region behind the framed
    *  building blends as ground instead of showing through to the panel's static fallback bob. */
   readonly backdrop: number;
 }
@@ -51,19 +58,24 @@ const SETTLER_VIEW_HEIGHT = 58;
 const SETTLER_FEET_FRACTION = 0.84;
 
 /**
- * Renders the {@link PortraitInsetFrame} cutout: a second render of the shared {@link Container}
- * `worldLayer` (re-aimed at the selected entity), run by the {@link
- * import('../world-renderer/index.js').WorldRenderer} just before its main stage render. The inset {@link Sprite}
- * is a stage child raised over the (later-mounted, frequently-rebuilt) details panel each frame it shows.
- * Null/hidden when nothing is selected.
+ * Renders the {@link PortraitInsetFrame} cutout: a second, viewport-framed SCREEN render of the shared
+ * {@link Container} `worldLayer` (re-aimed at the selected entity) painted straight into the panel's
+ * preview box, run by the {@link import('../world-renderer/index.js').WorldRenderer} right after its
+ * main stage render — the box region was just drawn by the panel, and this pass overpaints it as the
+ * frame's last render. Deliberately NOT a render-to-texture: a `worldLayer`-as-root render into a
+ * texture goes blank on any frame another render-to-texture ran (Pixi 8.19, WebGL; mechanism unpinned
+ * — instruction-cache forcing, target reuse and render reordering were all tried), which blinked the
+ * preview on every details-panel re-bake — one per construction hammer hit. A screen-target pass has
+ * no such failure mode, and `clear: false` keeps the panel's own backdrop behind sparse cutouts (an
+ * indoor subject's solo render). No-op when nothing is selected.
  */
 export class PortraitInsetLayer {
   private frame: PortraitInsetFrame | null = null;
-  private texture: RenderTexture | null = null;
-  private readonly sprite = new Sprite();
+  /** The ground-coloured off-map floor quad, parented into the world only for the pass. */
+  private readonly backdrop = new Sprite(Texture.WHITE);
 
   /**
-   * @param app the shared Pixi app — its renderer draws the re-aimed cutout, and its stage holds the inset sprite.
+   * @param app the shared Pixi app — its renderer draws the re-aimed viewport pass.
    * @param worldLayer the renderer's camera-transformed world container, re-aimed then restored per drawn frame.
    * @param pool the sprite pool, for the selected entity's drawn anchor/bounds + re-placing its team-colour meshes.
    */
@@ -71,15 +83,12 @@ export class PortraitInsetLayer {
     private readonly app: Application,
     private readonly worldLayer: Container,
     private readonly pool: SpritePool,
-  ) {
-    this.sprite.visible = false;
-    app.stage.addChild(this.sprite);
-  }
+  ) {}
 
   /**
    * Set (or clear) the portrait frame — the app passes the box rect + entity ref each frame (null when the
    * selection has no portrait: multi-select, a building-less pick, nothing). The actual second render
-   * happens in {@link draw}, just before the main stage render.
+   * happens in {@link draw}, right after the main stage render.
    */
   set(frame: PortraitInsetFrame | null): void {
     this.frame = frame;
@@ -129,52 +138,38 @@ export class PortraitInsetLayer {
   }
 
   /**
-   * Render the portrait observation window: re-aim {@link worldLayer} onto the selected entity, render it to
-   * the inset texture, then restore the main camera (the main stage render draws with the restored transform).
-   * The framing ({@link framing}) is building-fit or settler-fixed; if the entity wasn't drawn this frame
-   * (off-screen/culled) the inset hides and the panel placeholder shows. `mainCamera` is the frame's main
-   * camera, restored after the re-aimed render so the paletted team-colour meshes return to their on-screen
-   * placement. `terrain` re-culls the ground to the inset frame for the render, then back to the main view.
-   * Must run after the pool reconcile (so it uses this frame's positions) and before the main stage render
-   * (so the on-stage inset sprite shows this frame's cutout).
+   * Paint the portrait observation window: re-aim {@link worldLayer} onto the selected entity, render it
+   * into the preview box's screen viewport (`frame` is in logical px — the render target scales it by its
+   * resolution), then restore the main-camera state. The framing ({@link framing}) is building-fit or
+   * settler-fixed; if the entity wasn't drawn this frame (off-screen/culled) nothing paints and the panel
+   * placeholder shows. `mainCamera` is the frame's main camera, restored after the re-aimed render so the
+   * paletted team-colour meshes return to their on-screen placement. `terrain` re-culls the ground to the
+   * inset frame for the pass (restored after) and supplies the ground colour the off-map margin is floored
+   * with. Must run after the pool reconcile (so it uses this frame's positions) and after the main stage
+   * render (this pass paints over the panel, so nothing may draw on top of it).
    */
   draw(mainCamera: Camera, terrain?: InsetTerrainCull): void {
     const f = this.frame;
-    if (f === null || f.rect.w < 1 || f.rect.h < 1) {
-      this.sprite.visible = false;
-      return;
-    }
+    if (f === null || f.rect.w < 1 || f.rect.h < 1) return;
     const w = Math.round(f.rect.w);
     const h = Math.round(f.rect.h);
     const framing = this.framing(f, w, h);
-    if (framing === null) {
-      this.sprite.visible = false;
-      return;
-    }
-    if (this.texture === null || this.texture.width !== w || this.texture.height !== h) {
-      this.texture?.destroy(true);
-      this.texture = RenderTexture.create({
-        width: w,
-        height: h,
-        resolution: this.app.renderer.resolution,
-      });
-      this.sprite.texture = this.texture;
-    }
+    if (framing === null) return;
     const { cx, cy, scale } = framing;
     const insetCamera: Camera = { offsetX: w / 2 - cx * scale, offsetY: h / 2 - cy * scale, scale };
     const savedScale = this.worldLayer.scale.x;
     const savedX = this.worldLayer.position.x;
     const savedY = this.worldLayer.position.y;
     // Plain sprites + terrain ride the worldLayer transform; the screen-space team-colour character meshes
-    // must be re-placed for the inset camera (they can't ride it) and flipped upright for the bottom-up
-    // render texture, then restored (main camera, no flip) after.
-    this.pool.placePalettedFor(insetCamera, w, h, true);
+    // must be re-placed for the inset camera (they can't ride it; no flip — this is a screen pass), then
+    // restored (main camera) after.
+    this.pool.placePalettedFor(insetCamera, w, h, false);
     this.worldLayer.scale.set(scale);
     this.worldLayer.position.set(insetCamera.offsetX, insetCamera.offsetY);
     // Reveal the subject if the pool force-hid it on the main map (off-screen / inside a building), draw
-    // the cutout, then hide it again so the main stage render below still omits it.
+    // the cutout, then hide it again so the next main stage render still omits it.
     this.pool.showPortraitSubject();
-    // An indoor subject (frozen, standing in its workplace) renders ALONE on the transparent cutout: blank
+    // An indoor subject (frozen, standing in its workplace) renders ALONE over the panel's backdrop: blank
     // every world layer but the one holding the subject, and let the pool hide the subject's sprite-layer
     // siblings — otherwise the building it stands in draws behind it and it reads as standing on the roof.
     const subjectContainer = this.pool.portraitSubjectContainer();
@@ -192,15 +187,25 @@ export class PortraitInsetLayer {
       // Terrain is chunk-culled to the MAIN viewport; re-cull it to the inset frame so the ground around a
       // subject at the screen edge fills the cutout. Inside the try so its `restore()` below always pairs.
       terrain?.toInset(insetCamera, w, h);
-      this.app.renderer.render({
+      // The region framed past the map edge has no terrain to draw; floor it with a ground-coloured quad
+      // under the world (the screen pass cannot `clear` just its frame region) so it reads as more ground
+      // instead of revealing the panel's static fallback bob. Skipped for an indoor solo, which
+      // deliberately keeps the panel's backdrop behind the lone subject.
+      if (terrain !== undefined && soloParent === null) {
+        this.backdrop.tint = terrain.backdrop;
+        this.backdrop.position.set(-insetCamera.offsetX / scale, -insetCamera.offsetY / scale);
+        this.backdrop.width = w / scale;
+        this.backdrop.height = h / scale;
+        this.worldLayer.addChildAt(this.backdrop, 0);
+      }
+      const pass: FramedRenderOptions = {
         container: this.worldLayer,
-        target: this.texture,
-        clear: true,
-        // Opaque ground backdrop so the region the cutout frames beyond the map edge (no terrain to draw
-        // there) reads as more ground instead of revealing the panel's static fallback bob behind it.
-        ...(terrain !== undefined ? { clearColor: terrain.backdrop } : {}),
-      });
+        clear: false, // the main render already painted this region (the panel's preview backdrop)
+        frame: new Rectangle(f.rect.x, f.rect.y, w, h),
+      };
+      this.app.renderer.render(pass);
     } finally {
+      this.backdrop.removeFromParent();
       if (worldSaved !== null) {
         this.pool.endPortraitSolo();
         restoreStash(worldSaved);
@@ -211,19 +216,5 @@ export class PortraitInsetLayer {
       this.pool.placePalettedFor(mainCamera, this.app.screen.width, this.app.screen.height, false);
       terrain?.restore();
     }
-
-    this.sprite.position.set(f.rect.x, f.rect.y);
-    this.sprite.width = w;
-    this.sprite.height = h;
-    this.sprite.visible = true;
-    // The details panel mounts after this renderer and re-adds its root to the stage top on every rebuild
-    // (≈4 Hz), so raise the inset above it every shown frame — otherwise the baked panel covers the cutout.
-    this.app.stage.addChild(this.sprite);
-  }
-
-  /** Free the inset sprite + its render texture. */
-  destroy(): void {
-    this.sprite.destroy();
-    this.texture?.destroy(true);
   }
 }
