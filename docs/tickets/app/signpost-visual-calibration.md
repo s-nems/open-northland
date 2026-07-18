@@ -22,8 +22,8 @@ Also observed-original deviations to weigh while in there (named in
 ground that is "lit up" (tutorial_001 briefing); we place with left-click and DIM blocked ground,
 matching our building-placement convention.
 
-Also worth checking there: the sim radii approximations (`SIGNPOST_NAV_RADIUS_NODES` 40 /
-`SIGNPOST_SPACING_RADIUS_NODES` 16 / `LOCAL_NAV_RADIUS_NODES` 24, `packages/sim/src/components/signpost.ts`)
+Also worth checking there: the sim radii approximations (`SIGNPOST_NAV_RADIUS_NODES` 24 /
+`SIGNPOST_SPACING_RADIUS_NODES` 18 / `LOCAL_NAV_RADIUS_NODES` 24, `packages/sim/src/components/signpost.ts`)
 against the original's observed circles — the values live only in the original executables.
 
 ## Verify

@@ -12,6 +12,7 @@ import {
   triangleBNodes,
   triangleUVs,
 } from '../src/data/terrain/index.js';
+import { DEFAULT_TILE_COLOUR, dominantGroundColour, flatTileColour } from '../src/gpu/terrain/geometry.js';
 import { halfCellToScreen, TILE_HALF_H, TILE_HALF_W, tileToScreen } from '../src/index.js';
 
 /**
@@ -235,5 +236,17 @@ describe('patternSrcRect', () => {
     // "sand 01" sat at y=128 in its page (coords [0,128,63,191,0,191] / [0,128,63,128,63,191]).
     const rect = patternSrcRect([0, 128, 63, 191, 0, 191], [0, 128, 63, 128, 63, 191]);
     expect(rect).toEqual({ x: 0, y: 128, w: 63, h: 63 });
+  });
+});
+
+describe('dominantGroundColour — the portrait inset off-map backdrop', () => {
+  it('picks the most-common typeId and maps it through the flat-colour table', () => {
+    // Mostly sand (typeId 4), a little grass (0) → the sand tint, not the grass default.
+    expect(dominantGroundColour([4, 4, 4, 0, 4])).toBe(flatTileColour(4));
+    expect(dominantGroundColour([0, 0, 3, 0])).toBe(flatTileColour(0));
+  });
+
+  it('falls back to the grass default for an empty grid', () => {
+    expect(dominantGroundColour([])).toBe(DEFAULT_TILE_COLOUR);
   });
 });

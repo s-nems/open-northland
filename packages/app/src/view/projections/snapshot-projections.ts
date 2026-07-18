@@ -5,6 +5,7 @@ import type { WorkerRole } from '../../game/sandbox/index.js';
 import { type BuildingDoorInfo, computeDoorBadges } from './door-badges.js';
 import type { FogGates } from './fog-gates.js';
 import { hudLabels } from './hud-labels.js';
+import { computeSettlerBubbles } from './settler-bubbles.js';
 
 /**
  * Memoize a snapshot projection while the simulation returns the same immutable snapshot instance — so an
@@ -33,6 +34,7 @@ export function createSnapshotProjections(
 ): {
   readonly hudFor: (snapshot: WorldSnapshot) => HudLayout;
   readonly doorBadgesFor: (snapshot: WorldSnapshot) => ReturnType<typeof computeDoorBadges>;
+  readonly settlerBubblesFor: (snapshot: WorldSnapshot) => ReturnType<typeof computeSettlerBubbles>;
 } {
   return {
     hudFor: memoBySnapshot((snapshot) => layoutHud(buildHud(snapshot, HUD_TRIBE), hudLabels())),
@@ -42,6 +44,11 @@ export function createSnapshotProjections(
       return fog === null
         ? badges
         : badges.filter((badge) => fogTileVisible(fog, badge.x / ONE, badge.y / ONE));
+    }),
+    settlerBubblesFor: memoBySnapshot((snapshot) => {
+      const bubbles = computeSettlerBubbles(snapshot);
+      const fog = fogGates.current();
+      return fog === null ? bubbles : bubbles.filter((b) => fogTileVisible(fog, b.x / ONE, b.y / ONE));
     }),
   };
 }

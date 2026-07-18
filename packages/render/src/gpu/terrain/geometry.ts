@@ -46,6 +46,26 @@ export function flatTileColour(typeId: number): number {
   return TILE_COLOURS[typeId % TILE_COLOURS.length] ?? DEFAULT_TILE_COLOUR;
 }
 
+/**
+ * The flat tint of the most-common landscape typeId in a grid (`0xRRGGBB`), via {@link flatTileColour}.
+ * The portrait inset clears to it so a building framed past the map edge blends into the map's dominant
+ * ground; an approximation of the textured ground, so it need not be exact. Empty grid → the grass default.
+ */
+export function dominantGroundColour(typeIds: readonly number[]): number {
+  const counts = new Map<number, number>();
+  let best: number | undefined;
+  let bestCount = 0;
+  for (const id of typeIds) {
+    const n = (counts.get(id) ?? 0) + 1;
+    counts.set(id, n);
+    if (n > bestCount) {
+      bestCount = n;
+      best = id;
+    }
+  }
+  return best === undefined ? DEFAULT_TILE_COLOUR : flatTileColour(best);
+}
+
 /** A node's upward lift in world px — 0 on a flat map, per-node elevation otherwise. */
 export type NodeLiftFn = (hx: number, hy: number) => number;
 

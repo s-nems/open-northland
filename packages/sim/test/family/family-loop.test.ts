@@ -17,6 +17,7 @@ import type { Entity } from '../../src/ecs/world.js';
 import { ONE, type SimEvent, Simulation } from '../../src/index.js';
 import {
   BABY_FEMALE,
+  familiesOf,
   familyOf,
   KISS_ATOMIC_ID,
   KISSED_ATOMIC_ID,
@@ -183,6 +184,26 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     sim.enqueue({ kind: 'makeChild', entity: woman(), child: 'male' });
     sim.step();
     expect(sim.world.has(woman(), ChildOrder)).toBe(false);
+  });
+
+  it('marrying after one spouse is already housed moves the other in (co-housed as one household)', () => {
+    // User report 2026-07-17: assigning a woman to a house while she is still single, then marrying
+    // her, left the husband unhoused — the home stayed a one-person household (door dot read single)
+    // and makeChild never saw the couple together. Marriage now co-houses the pair.
+    const { sim, woman, man, home } = familySim(23);
+    sim.enqueue({ kind: 'assignHouse', entity: woman(), house: home() });
+    sim.step();
+    expect(sim.world.get(woman(), Residence).home).toBe(home());
+    expect(sim.world.has(man(), Residence)).toBe(false); // the single man lives nowhere yet
+
+    sim.enqueue({ kind: 'marry', entity: woman() });
+    runUntil(sim, () => sim.world.has(woman(), Marriage) && sim.world.has(man(), Marriage), 400, 'wedding');
+
+    // On marriage the husband joins her home, and the two are one family (one homeSize slot).
+    expect(sim.world.get(man(), Residence).home).toBe(home());
+    const families = familiesOf(sim.world, home());
+    expect(families).toHaveLength(1);
+    expect(new Set(families[0])).toEqual(new Set([woman(), man()]));
   });
 
   it('marry auto-cancels when no eligible partner exists (a soldier is on a mission)', () => {

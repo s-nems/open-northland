@@ -86,6 +86,9 @@ export type {
   PlacementOverlayCell,
   PlacementOverlayFrame,
   PortraitInsetFrame,
+  SettlerBubble,
+  SettlerBubbleGfx,
+  SettlerBubbleKind,
 } from './gpu/overlays/index.js';
 export { type GuiColorKey, PalettedSprite } from './gpu/paletted-sprite/index.js';
 export { createPixiApp, createWindowPixiApp, loadAtlasSource } from './gpu/pixi-app.js';

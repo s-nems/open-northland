@@ -4,6 +4,7 @@ import {
   MoveGoal,
   PathRequest,
   Position,
+  Residence,
   Settler,
   Wedding,
 } from '../../components/index.js';
@@ -37,6 +38,24 @@ const KISS_RANGE_NODES = 2;
 export function startWedding(world: World, seeker: Entity, partner: Entity): void {
   world.add(seeker, Wedding, { partner, kissing: false });
   world.add(partner, Wedding, { partner: seeker, kissing: false });
+}
+
+/**
+ * Move a freshly-wed pair into one home. A married couple is a single household — one `homeSize`
+ * family slot (the `familiesOf` grouping unit) — so when just one spouse was housed the other joins
+ * that home free of charge, and two separately-housed singles consolidate into `a`'s home (the pair's
+ * lower id, canonical), freeing the other slot; neither can overflow a home the housed partner already
+ * occupied. Without this a settler married AFTER being assigned a house stays a one-person household —
+ * the door dot reads single and `makeChild` never finds the couple `together` (observed original
+ * behavior: a married couple cohabits).
+ */
+function coHouseNewlyweds(world: World, a: Entity, b: Entity): void {
+  const homeA = world.tryGet(a, Residence)?.home;
+  const homeB = world.tryGet(b, Residence)?.home;
+  if (homeA !== undefined && homeB === undefined) world.add(b, Residence, { home: homeA });
+  else if (homeB !== undefined && homeA === undefined) world.add(a, Residence, { home: homeB });
+  else if (homeA !== undefined && homeB !== undefined && homeA !== homeB)
+    world.add(b, Residence, { home: homeA });
 }
 
 /** Cancel `e`'s wedding on both sides (partner death, unreachable partner). No marriage results. */
@@ -80,6 +99,7 @@ function drivePair(
     world.remove(b, Wedding);
     world.add(a, Marriage, { spouse: b, child: null });
     world.add(b, Marriage, { spouse: a, child: null });
+    coHouseNewlyweds(world, a, b);
     const p = world.get(a, Position);
     ctx.events.emit({ kind: 'settlersMarried', a, b, at: eventAt(p.x, p.y) });
     return;

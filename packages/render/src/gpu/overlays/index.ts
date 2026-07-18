@@ -17,6 +17,12 @@
  * this barrel.
  */
 export { BadgeLayer, type DoorBadge, type HouseholdKind } from './badge-layer.js';
+export {
+  type SettlerBubble,
+  type SettlerBubbleGfx,
+  type SettlerBubbleKind,
+  SettlerBubbleLayer,
+} from './bubble-layer.js';
 export { type ConstructionPlotFrame, ConstructionPlotLayer } from './construction-plot.js';
 export { CombatEffectsLayer } from './effects-layer.js';
 export { FogLayer } from './fog-layer.js';

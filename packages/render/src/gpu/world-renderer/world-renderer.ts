@@ -22,6 +22,8 @@ import {
   type PortraitInsetFrame,
   PortraitInsetLayer,
   SelectionLayer,
+  type SettlerBubbleGfx,
+  SettlerBubbleLayer,
 } from '../overlays/index.js';
 import { type EntityBounds, SpritePool } from '../sprite-pool/index.js';
 import { TerrainLayer } from '../terrain/index.js';
@@ -31,6 +33,7 @@ import {
   type BuildingHighlightItem,
   EMPTY_HIGHLIGHT,
   NO_BADGES,
+  NO_BUBBLES,
   NO_REFS,
   SPRITE_CULL_MARGIN,
   type WorldFrame,
@@ -83,6 +86,9 @@ export class WorldRenderer {
   private readonly effects = new CombatEffectsLayer();
   /** Stacked worker badges beside each staffed building's door (world-space, above the sprites). */
   private readonly badgeLayer = new BadgeLayer();
+  /** Thought bubbles floating over a settler's head in a standing family state (world-space, above the
+   *  sprites). Fed the decoded art by {@link setSettlerBubbleGfx}. */
+  private readonly bubbleLayer = new SettlerBubbleLayer();
   /** The `?debug=geometry` footprint overlay (world-space, above the sprites — it annotates them). */
   private readonly geometryDebug = new GeometryDebugLayer();
   /** The workplace-assignment highlight: candidate building id → assignable (green) / not (red), while the
@@ -139,6 +145,7 @@ export class WorldRenderer {
     this.worldLayer.addChild(this.spriteLayer);
     this.worldLayer.addChild(this.effects.overlayContainer);
     this.worldLayer.addChild(this.badgeLayer.container);
+    this.worldLayer.addChild(this.bubbleLayer.container);
     this.worldLayer.addChild(this.geometryDebug.container);
     app.stage.addChild(this.worldLayer);
     // Stage z-order: world → vignette → pause wash → HUD. The chrome mounts its two quads here, between
@@ -232,6 +239,15 @@ export class WorldRenderer {
   }
 
   /**
+   * Provide (or clear) the decoded settler-bubble art ({@link SettlerBubbleGfx} — the `ls_gui_bubbles` page
+   * + the frame each kind draws), which the layer reads through the shared frame→texture cache. `null` (a
+   * checkout without `content/`) leaves the bubble layer drawing nothing.
+   */
+  setSettlerBubbleGfx(gfx: SettlerBubbleGfx | null): void {
+    this.bubbleLayer.setGfx(gfx === null ? undefined : { ...gfx, textures: this.textureCache });
+  }
+
+  /**
    * Remove one placed landscape object from the retained static layer — the handover seam: the moment a
    * virgin resource node is first worked (felled/mined/picked), its built-once static quad/sprite comes
    * out and the live sprite pool draws the entity from then on (shrinking levels, vanishing on destroy).
@@ -280,6 +296,7 @@ export class WorldRenderer {
       selection = NO_REFS,
       alpha = 1,
       doorBadges = NO_BADGES,
+      settlerBubbles = NO_BUBBLES,
       flagged = NO_REFS,
     } = frame;
     // View smoothing: pin the pan to whole device pixels (kills nearest-sampling shimmer-crawl) and
@@ -363,12 +380,32 @@ export class WorldRenderer {
     // Door badges: the app tallies each building's bound workers and projects its door node; this layer
     // stacks them. Culled to the sprite viewport, so the cost tracks the screen.
     this.badgeLayer.draw(doorBadges, this.elevation, vp);
+    // Settler bubbles: the app scans each settler's make-child / wedding state; this layer floats a
+    // decoded bubble over the head, riding the pool's just-computed lerped bounds so it glides with the
+    // interpolated bob (the selection ring's seams), and culls to the same sprite viewport.
+    this.bubbleLayer.draw(
+      {
+        bubbles: settlerBubbles,
+        boundsOf: (ref) => this.pool.boundsOf(ref),
+        anchorOf: (ref) => this.pool.anchorOf(ref),
+        elevation: this.elevation,
+      },
+      vp,
+    );
     this.chrome.resize(this.app.screen.width, this.app.screen.height);
     this.hud.draw(hud);
     // The portrait inset is a second render of the world (re-aimed at the selected unit) into the panel's
     // box texture — must run after the pool reconcile above (so it uses this frame's positions) and before
-    // the main stage render below (so the on-stage inset sprite shows this frame's cutout).
-    this.portrait.draw(camera);
+    // the main stage render below (so the on-stage inset sprite shows this frame's cutout). It borrows the
+    // terrain cull to fill the cutout with the ground around the subject (restored after), and clears to the
+    // map's dominant ground colour so the region framed past the map edge blends in rather than leaving a hole.
+    this.portrait.draw(camera, {
+      toInset: (cam, iw, ih) => this.terrain.cull(cameraViewport(cam, iw, ih, this.elevation.maxLift)),
+      restore: () => this.terrain.cull(vp),
+      // The region a building framed at the map edge extends past has no terrain to draw; clear it to the
+      // map's most-common ground tint so it reads as more ground (the minimap's typeId→colour, not exact).
+      backdrop: this.terrain.groundColour(),
+    });
     this.app.render();
   }
 
@@ -470,6 +507,7 @@ export class WorldRenderer {
     this.selectionLayer.destroy();
     this.effects.destroy();
     this.badgeLayer.destroy();
+    this.bubbleLayer.destroy();
     this.geometryDebug.destroy();
     this.worldLayer.destroy({ children: true });
     this.hud.destroy();
