@@ -28,6 +28,17 @@ likely cause of the improvement — settlers stuck on blocked ground re-planned 
 That is a *hypothesis about a past measurement*, not a claim about current code; it matters only as a
 warning that this curve moves with unrelated agent fixes, so always re-measure the baseline.
 
+**Where the AI time goes (measured 2026-07-18, V8 profile of the 4-settlement + 200v200-fighter
+bench window, 300 ticks):** the nearest-X scans are ~49% of all sampled time — `nearestStoreFor`
+4.3 s, `nearestWorkplaceOutput` 1.6 s, `nearestMissingInputSource` 1.2 s of a 13.8 s window — and
+the `canStoreGood` accept alone is ~15%. The ring index is already in place, so the cost is scan
+COUNT × accept cost, not the walk. Candidate constant-factor lever: memoize the accept's
+per-(store, good) capacity answer for the planner tick (the `SinkAvailability` shape) so N settlers
+scanning the same stores stop re-deriving `mergedRecipeOf`/`stockCapacity` per probe — coordinate
+with `farm-crop-sink-gate.md` (P1), which is about to change `canStoreGood`'s semantics. The five
+per-tick `NodeBuckets` builds (combat, separation, ai spacing, production, job) total only ~3%
+inclusive — not the lever.
+
 ## Investigate first (do not assume a cause)
 
 1. **Disentangle population from map area.** The bench derives its map size from the settlement
