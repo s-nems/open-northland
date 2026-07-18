@@ -63,3 +63,14 @@ export function enemyLivingSettlers(sim: Simulation): number {
   }
   return n;
 }
+
+/** Enemy (non-human) buildings still standing — a live {@link components.Building} carrying a Health
+ *  pool above 0. The siege-scene checks measure attrition and priority over this set. */
+export function enemyBuildings(sim: Simulation): Entity[] {
+  const out: Entity[] = [];
+  for (const e of sim.world.query(Building, Owner, Health)) {
+    if (sim.world.get(e, Owner).player !== HUMAN_PLAYER && sim.world.get(e, Health).hitpoints > 0)
+      out.push(e);
+  }
+  return out;
+}

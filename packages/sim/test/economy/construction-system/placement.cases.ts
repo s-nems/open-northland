@@ -46,6 +46,8 @@ describe('placeBuilding underConstruction (CommandSystem)', () => {
     if (e === undefined) throw new Error('building was not placed');
     expect(sim.world.get(e, Building).built).toBe(ONE); // immediately built — the slice path
     expect(sim.world.has(e, UnderConstruction)).toBe(false); // not a site
-    expect(sim.world.has(e, Health)).toBe(false); // a plain built placement carries no life pool (golden path)
+    // A built placement of a type WITH hitpoints now arrives at a FULL life pool, so it can be besieged
+    // (a type with no hitpoints still carries none). The under-construction path instead ramps from 1.
+    expect(sim.world.get(e, Health)).toEqual({ hitpoints: HOUSE_MAX_HP, max: HOUSE_MAX_HP });
   });
 });

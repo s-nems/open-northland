@@ -1,4 +1,5 @@
 import {
+  Building,
   Female,
   Health,
   Marriage,
@@ -11,6 +12,7 @@ import {
 import { eventAt } from '../../core/events.js';
 import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
+import { unbindWorkersOf } from '../command/placement.js';
 import type { System, SystemContext } from '../context.js';
 import { removeWorkFlag } from '../economy/flags.js';
 import { isMinor } from '../family/households.js';
@@ -49,8 +51,30 @@ export const cleanupSystem: System = (world, ctx) => {
     if (world.get(e, Health).hitpoints <= 0) dead.push(e);
   }
   dead.sort((a, b) => a - b);
-  for (const e of dead) reap(world, ctx, e);
+  for (const e of dead) {
+    // A drained building is razed through the demolish path (release its workers), not the settler-death
+    // path — it has no marriage/flag/starvation state and must not fire a `settlerDied` stinger.
+    if (world.has(e, Building)) reapBuilding(world, ctx, e);
+    else reap(world, ctx, e);
+  }
 };
+
+/** Raze a building drained to 0 hitpoints: release every settler bound to it (the same
+ *  {@link unbindWorkersOf} the `demolish` command runs, so a besieged workplace doesn't strand its
+ *  operators on a dead entity), announce it (`buildingDestroyed`, the render/audio cue), and remove it.
+ *  The event is emitted before the destroy so the entity's `Owner`/`Position` are still readable. */
+function reapBuilding(world: World, ctx: SystemContext, e: Entity): void {
+  const owner = world.tryGet(e, Owner);
+  const pos = world.tryGet(e, Position);
+  ctx.events.emit({
+    kind: 'buildingDestroyed',
+    entity: e,
+    player: owner?.player ?? null,
+    ...(pos !== undefined ? { at: eventAt(pos.x, pos.y) } : {}),
+  });
+  unbindWorkersOf(world, e);
+  world.destroy(e);
+}
 
 /** Announce a combatant's death (`settlerDied`, the render/audio cue) and remove it from the world. The event
  *  is emitted before the destroy so the entity id it carries is still that of a (just-)alive entity, and so its

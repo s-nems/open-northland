@@ -1,6 +1,7 @@
 import {
   Anger,
   AttackOrder,
+  Building,
   CurrentAtomic,
   Engagement,
   Fleeing,
@@ -27,6 +28,7 @@ import { chase, disengage, type MeleeSlots, returnToAnchor } from './chase.js';
 import { type CombatantStance, engageSpec, resolveTarget, stanceMode } from './engagement.js';
 import { fleeDrive } from './flee.js';
 import { HostilePresence } from './presence.js';
+import { combatTargetNode } from './target-node.js';
 import { hostileAnimalNow, isValidTarget } from './targeting.js';
 import { attackerWeapon, startAttack, targetMaterial } from './weapons.js';
 
@@ -77,13 +79,25 @@ export const combatSystem: System = (world, ctx) => {
   // canonical sort, on a tick with no fight.
   if (!combatPossible(world, ctx, world.query(Settler, Health, Position))) return;
 
-  // The scan order and the ring-search index are both built from the canonical (ascending-id) list, so a
-  // distance/first-match tie-break lands on the same winner every run.
+  // The seekers (who decide + swing) are settlers; the SCAN order and the ring-search index are built from
+  // the canonical (ascending-id) list, so a distance/first-match tie-break lands on the same winner.
   const combatants = canonicalById(world.query(Settler, Health, Position));
-  const index = new NodeBuckets(world, combatants);
+  // Attackable buildings JOIN the target index (never the seeker loop): a warrior can strike an enemy
+  // building, but a building never engages. Both index and presence bucket a building at its door node
+  // (combatTargetNode), the walkable cell a warrior reaches it from, so the reach math and the coarse
+  // early-out agree with the chase target. The merged list stays canonical so ring-search ties are stable.
+  const buildingTargets = attackableBuildings(world);
+  const targets = canonicalById([...combatants, ...buildingTargets]);
+  const nodeOf = (e: Entity): { x: number; y: number } | null => {
+    const n = combatTargetNode(world, ctx, terrain, e);
+    const { x, y } = terrain.coordsOf(n);
+    return { x, y };
+  };
+  const index = new NodeBuckets(world, targets, nodeOf);
   // The coarse presence grid — the owned seekers' "any enemy possibly in range?" early-out, so a
-  // standing army on a peaceful two-player map skips its per-fighter ring searches (golden rule 6).
-  const presence = new HostilePresence(world, combatants);
+  // standing army on a peaceful two-player map skips its per-fighter ring searches (golden rule 6). It
+  // spans buildings too, so a lone army near an undefended enemy base still wakes to raze it.
+  const presence = new HostilePresence(world, targets, nodeOf);
 
   // The tick's melee-slot state (see {@link approachCell}); `standing` is built lazily, so a tick with no
   // chaser pays nothing. Chasers are served in the canonical combatant order, so slot assignment is
@@ -93,6 +107,15 @@ export const combatSystem: System = (world, ctx) => {
     engageCombatant(world, ctx, terrain, index, presence, slots, e);
   }
 };
+
+/** The live enemy-attackable buildings this tick — a built or half-built structure carrying a Health pool
+ *  still above 0. They join the combat TARGET index (a warrior may strike them) but never the seeker loop
+ *  (a building never fights back — defensive fire is a separate, deferred feature). Canonical ascending-id. */
+function attackableBuildings(world: World): Entity[] {
+  return canonicalById(world.query(Building, Health, Position)).filter(
+    (e) => world.get(e, Health).hitpoints > 0,
+  );
+}
 
 /**
  * The dormancy gate: whether any combat work is possible this tick — a cheap single pass over the combatants.
@@ -135,6 +158,16 @@ function combatPossible(world: World, ctx: SystemContext, combatants: Iterable<E
   if (civTribes.size >= 2) return true; // two civilizations → civ-vs-civ (unowned scenarios)
   if (hasHostileAnimal && hasCiv) return true; // an aggressive animal near a civilization
   if (hasHunter && hasCatchable) return true; // a hunter and huntable prey
+  // A warrior sieging an enemy building is a fight even with no enemy UNIT present: an owned unit plus an
+  // attackable building of a different player wakes the system. Reached only when no unit-vs-unit / animal
+  // trigger fired above, and skipped entirely when no owned unit exists (buildings ≪ units — a cheap tail).
+  if (owners.size >= 1) {
+    for (const b of world.query(Building, Health, Position)) {
+      const owner = world.tryGet(b, Owner);
+      if (owner === undefined || world.get(b, Health).hitpoints <= 0) continue;
+      for (const u of owners) if (u !== owner.player) return true;
+    }
+  }
   return false;
 }
 
@@ -269,5 +302,8 @@ function engageCombatant(
     disengage(world, e);
     return;
   }
-  chase(world, ctx, terrain, slots, e, here, target, weapon, stance, spec.defend);
+  // Advance on the target's combat node — its own node for a unit, its door node for a building — the same
+  // node resolveTarget measured the distance to, so the chase walks toward where the swing will land.
+  const targetNode = combatTargetNode(world, ctx, terrain, target);
+  chase(world, ctx, terrain, slots, e, here, targetNode, weapon, stance, spec.defend);
 }

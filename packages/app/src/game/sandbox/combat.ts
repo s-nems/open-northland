@@ -59,6 +59,19 @@ const BROADSWORD_DAMAGE = 3800; // long_sword
 const BOW_DAMAGE = 500; // short_bow
 const LONG_BOW_DAMAGE = 700; // long_bow
 
+// vs-BUILDING damage — the weapon's HOUSE column (`weapons.ini` `damagevalue 7`,
+// {@link import('@open-northland/sim').ARMOR_MATERIAL} `HOUSE`), what a warrior does to a structure.
+// A NAMED SANDBOX APPROXIMATION (the real per-material columns live in the extracted IR, which the browser
+// loads): melee weapons chop a wall near their flesh rate, arrows barely scratch masonry. Sized so a
+// warband razes a home / watchtower / HQ (30k / 60k / 100k HP — `construction.ts`) in a watchable siege,
+// not instantly and not forever.
+const FIST_VS_BUILDING = 120;
+const SWORD_VS_BUILDING = 1000;
+const SPEAR_VS_BUILDING = 1400;
+const BROADSWORD_VS_BUILDING = 2000;
+const SHORT_BOW_VS_BUILDING = 140;
+const LONG_BOW_VS_BUILDING = 200;
+
 /** The equip classification (slot + wear) per good typeId, so `sandboxContent()` can merge it onto the
  *  global catalog good of the same typeId (an equippable good is declared once, in `EXTENDED_GOODS`). */
 export const EQUIP_CLASS_BY_TYPE: ReadonlyMap<number, { category: EquipCategory; wears: boolean }> = new Map(
@@ -78,7 +91,7 @@ export function sandboxWeapons() {
       jobType: JOB_SOLDIER_UNARMED,
       minRange: 1,
       maxRange: 1,
-      damage: { '0': FIST_DAMAGE },
+      damage: { '0': FIST_DAMAGE, '7': FIST_VS_BUILDING },
     },
     {
       typeId: WEAPON_SPEAR,
@@ -87,7 +100,7 @@ export function sandboxWeapons() {
       jobType: JOB_SOLDIER_SPEAR,
       minRange: 1,
       maxRange: 2, // a spear pokes one cell further than a sword (the original's long-melee band)
-      damage: { '0': SPEAR_DAMAGE },
+      damage: { '0': SPEAR_DAMAGE, '7': SPEAR_VS_BUILDING },
     },
     {
       typeId: WEAPON_SWORD,
@@ -96,7 +109,7 @@ export function sandboxWeapons() {
       jobType: JOB_SOLDIER_SWORD,
       minRange: 1,
       maxRange: 1,
-      damage: { '0': SWORD_DAMAGE },
+      damage: { '0': SWORD_DAMAGE, '7': SWORD_VS_BUILDING },
     },
     {
       typeId: WEAPON_BROADSWORD,
@@ -105,7 +118,7 @@ export function sandboxWeapons() {
       jobType: JOB_SOLDIER_BROADSWORD,
       minRange: 1,
       maxRange: 2, // the original's long sword reaches 1–2
-      damage: { '0': BROADSWORD_DAMAGE },
+      damage: { '0': BROADSWORD_DAMAGE, '7': BROADSWORD_VS_BUILDING },
     },
     {
       typeId: WEAPON_SHORT_BOW,
@@ -117,7 +130,7 @@ export function sandboxWeapons() {
       speed: BOW_SPEED,
       minRange: 3,
       maxRange: 15,
-      damage: { '0': BOW_DAMAGE },
+      damage: { '0': BOW_DAMAGE, '7': SHORT_BOW_VS_BUILDING },
     },
     {
       typeId: WEAPON_LONG_BOW,
@@ -129,7 +142,7 @@ export function sandboxWeapons() {
       speed: BOW_SPEED,
       minRange: 4,
       maxRange: 23,
-      damage: { '0': LONG_BOW_DAMAGE },
+      damage: { '0': LONG_BOW_DAMAGE, '7': LONG_BOW_VS_BUILDING },
     },
   ];
 }

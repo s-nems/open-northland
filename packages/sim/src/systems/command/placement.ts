@@ -110,6 +110,11 @@ export function placeBuilding(
     for (const g of command.initialGoods ?? []) {
       if (g.amount > 0) amounts.set(g.good, (amounts.get(g.good) ?? 0) + g.amount);
     }
+    // A placed-built building arrives at full life so it can be besieged (an under-construction site
+    // instead gets its ramping Health above). A type with no extracted `hitpoints` (synthetic content)
+    // carries no Health and cannot be attacked — the same rule the construction ramp already followed.
+    if (type.hitpoints !== undefined)
+      world.add(e, Health, { hitpoints: type.hitpoints, max: type.hitpoints });
   }
   world.add(e, Stockpile, { amounts });
   // A building placed for a specific player carries an `Owner` — that player's to select/command. Omitted /

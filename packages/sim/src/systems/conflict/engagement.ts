@@ -2,10 +2,17 @@ import { AttackOrder, Owner, type SettlerIdentity, Stance } from '../../componen
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { defaultStanceForJob, HUNTER_JOB, MILITARY_MODE, type MilitaryMode } from '../readviews/index.js';
+import {
+  defaultStanceForJob,
+  HUNTER_JOB,
+  isLowPriorityBuildingTarget,
+  MILITARY_MODE,
+  type MilitaryMode,
+} from '../readviews/index.js';
 import { entityNode, manhattan, type NodeBuckets } from '../spatial.js';
 import { playerSeesEntity } from '../vision/index.js';
 import type { HostilePresence } from './presence.js';
+import { combatTargetNode } from './target-node.js';
 import { isHuntTarget, isValidTarget, SIGHT_RADIUS_NODES } from './targeting.js';
 
 // Target acquisition: which enemy an owned combatant may auto-engage this tick, resolved from its
@@ -147,11 +154,15 @@ function defendAnchor(world: World, terrain: TerrainGraph, e: Entity): NodeId {
  * The enemy this combatant fights this tick (with its Manhattan distance from `here`, so the caller
  * needn't recompute it), or null:
  *  - under an explicit {@link AttackOrder} → that focused `target`, chased regardless of sight, as long as
- *    it is a live, hostile combatant; a target that has died / become an invalid target drops the order and
- *    falls through to auto-engagement (so the unit re-acquires a nearby enemy rather than going idle);
+ *    it is a live, hostile target; a target that has died / become invalid drops the order and falls
+ *    through to auto-engagement (so the unit re-acquires a nearby enemy rather than going idle);
  *  - otherwise → the nearest target the ring search finds within `[spec.minDist, spec.searchRadius]` that
- *    the stance's `spec.accept` filter admits (general hostility for ATTACK/unowned, anchor-bounded for
- *    DEFEND, catchable prey for an IGNORE hunter — see {@link engageSpec}).
+ *    the stance's `spec.accept` filter admits, in TWO priority tiers: a unit or a high-value building
+ *    (headquarters / defensive tower) always wins over a plain building — the low-priority `'other'`
+ *    building tier is searched only when the first pass finds nothing in sight (the autofocus priority:
+ *    HQ / towers / enemy units on par, other buildings only when none of those remain — user rule).
+ *    General hostility for ATTACK/unowned, anchor-bounded for DEFEND, catchable prey for an IGNORE hunter
+ *    (none of which admit a building) — see {@link engageSpec}.
  */
 export function resolveTarget(
   world: World,
@@ -167,16 +178,34 @@ export function resolveTarget(
   if (world.has(self, AttackOrder)) {
     const focus = world.get(self, AttackOrder).target;
     // An ordered target is chased regardless of sight, so measure its real distance (the ring search's
-    // `searchRadius` cap does not apply); the swing/chase decision is on this distance.
+    // `searchRadius` cap does not apply); the swing/chase decision is on this distance. A building is
+    // measured at its door node (combatTargetNode), the same node the chase walks to.
     if (isValidTarget(world, ctx, self, attacker, focus)) {
-      return { target: focus, dist: manhattan(terrain, here, entityNode(world, terrain, focus)) };
+      return { target: focus, dist: manhattan(terrain, here, combatTargetNode(world, ctx, terrain, focus)) };
     }
     world.remove(self, AttackOrder); // target gone / no longer hostile — abandon the order, auto-engage
   }
   const { x, y } = terrain.coordsOf(here);
-  // Idle early-out (perf-only): when the coarse presence grid proves no not-mine combatant can be in
-  // the search band, the ring search would return null — skip it (the standing-army flat cost).
+  // Idle early-out (perf-only): when the coarse presence grid proves no not-mine combatant/building can be
+  // in the search band, both ring searches would return null — skip them (the standing-army flat cost).
   if (spec.player !== null && !presence.othersWithin(spec.player, x, y, spec.searchRadius)) return null;
-  const found = index.nearest(x, y, spec.minDist, spec.searchRadius, spec.accept);
-  return found === null ? null : { target: found.entity, dist: found.distance };
+  // Tier 1: units + HQ + towers (everything the stance admits that is NOT a low-priority building). A
+  // nearer plain building never preempts a unit or high-value structure in sight.
+  const primary = index.nearest(
+    x,
+    y,
+    spec.minDist,
+    spec.searchRadius,
+    (t) => spec.accept(t) && !isLowPriorityBuildingTarget(world, ctx, t),
+  );
+  if (primary !== null) return { target: primary.entity, dist: primary.distance };
+  // Tier 2 (fallback): plain buildings, only when no tier-1 target was in sight.
+  const fallback = index.nearest(
+    x,
+    y,
+    spec.minDist,
+    spec.searchRadius,
+    (t) => spec.accept(t) && isLowPriorityBuildingTarget(world, ctx, t),
+  );
+  return fallback === null ? null : { target: fallback.entity, dist: fallback.distance };
 }

@@ -1,7 +1,37 @@
+import { BUILDING_KIND } from '@open-northland/data';
 import { Building } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
+
+/** The stable content id of the start building a fortress-style map opens with — the seat's
+ *  headquarters. Both the AI's per-seat HQ resolver and the combat siege-priority classifier
+ *  ({@link buildingCombatClass}) key on it. Lives here (the building read views) because it is a
+ *  building content fact, not an AI-only constant. */
+export const HEADQUARTERS_BUILDING_ID = 'headquarters';
+
+/** A building's siege-priority class: the {@link HEADQUARTERS_BUILDING_ID} headquarters and a
+ *  {@link BUILDING_KIND.tower} defensive tower are the high-value structures a warrior auto-targets
+ *  on par with an enemy unit; every other building is the low-priority `'other'` tier a warrior only
+ *  turns on once no unit, HQ, or tower remains in sight. An unknown type (synthetic content) reads as
+ *  `'other'`. */
+export type BuildingCombatClass = 'hq' | 'tower' | 'other';
+
+export function buildingCombatClass(ctx: SystemContext, buildingType: number): BuildingCombatClass {
+  const type = contentIndex(ctx.content).buildings.get(buildingType);
+  if (type === undefined) return 'other';
+  if (type.id === HEADQUARTERS_BUILDING_ID) return 'hq';
+  if (type.kind === BUILDING_KIND.tower) return 'tower';
+  return 'other';
+}
+
+/** Whether `t` is a low-priority (`'other'`) building — the autofocus fallback tier. A settler, an HQ,
+ *  or a tower is NOT low-priority; the two-pass target search prefers those and drops to this tier only
+ *  when none is in sight. A non-building entity is never low-priority. */
+export function isLowPriorityBuildingTarget(world: World, ctx: SystemContext, t: Entity): boolean {
+  const b = world.tryGet(t, Building);
+  return b !== undefined && buildingCombatClass(ctx, b.buildingType) === 'other';
+}
 
 /**
  * Whether a building is a temple — the satisfier site for the piety need (where a settler runs the `pray`

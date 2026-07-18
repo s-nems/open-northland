@@ -157,6 +157,10 @@ export const enContent = {
       title: 'Mass battle',
       summary: 'Two armies clash at scale with four weapon classes.',
     },
+    siege: {
+      title: 'Siege',
+      summary: 'A warband razes an enemy base, smashing the HQ and towers before the plain homes.',
+    },
     'goods-catalog': {
       title: 'Goods catalog',
       summary: 'Every storable good and its warehouse slot in one compact reference scene.',

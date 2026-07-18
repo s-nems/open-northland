@@ -1,4 +1,12 @@
-import { Anger, Health, Owner, Position, Settler, type SettlerIdentity } from '../../components/index.js';
+import {
+  Anger,
+  Building,
+  Health,
+  Owner,
+  Position,
+  Settler,
+  type SettlerIdentity,
+} from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { isAggressiveAnimal, isAnimalTribe, mayAttack, mayHunt } from '../readviews/index.js';
@@ -18,9 +26,12 @@ import { isAggressiveAnimal, isAnimalTribe, mayAttack, mayHunt } from '../readvi
  */
 export const SIGHT_RADIUS_NODES = 16;
 
-/** Whether `t` is a live combatant this attacker may swing at — a positioned, `Health`-bearing settler
- *  (not the attacker itself, `hitpoints > 0`) for which the {@link mayTarget} hostility relation holds.
- *  The shared predicate behind both the attack-order validity check and the ring-search filter. */
+/** Whether `t` is a live target this attacker may swing at — a positioned, `Health`-bearing enemy
+ *  settler OR an enemy building (not the attacker itself, `hitpoints > 0`) for which the {@link mayTarget}
+ *  hostility relation holds. The shared predicate behind both the attack-order validity check and the
+ *  ring-search filter. A building is a target only for an OWNED attacker (a player's warriors siege
+ *  structures; wildlife never does), keyed on the building's `tribe` so the same owner/tribe hostility as
+ *  a unit target decides. */
 export function isValidTarget(
   world: World,
   ctx: SystemContext,
@@ -29,10 +40,16 @@ export function isValidTarget(
   t: Entity,
 ): boolean {
   if (t === self) return false;
-  if (!world.has(t, Settler) || !world.has(t, Health) || !world.has(t, Position)) return false;
+  if (!world.has(t, Health) || !world.has(t, Position)) return false;
   if (world.get(t, Health).hitpoints <= 0) return false;
-  const targetTribe = world.get(t, Settler).tribe;
-  return mayTarget(world, ctx, self, attacker.tribe, attacker.jobType, t, targetTribe);
+  const building = world.tryGet(t, Building);
+  if (building !== undefined) {
+    // Only a player's own units besiege buildings — an animal (no Owner) never turns on a structure.
+    if (!world.has(self, Owner)) return false;
+    return mayTarget(world, ctx, self, attacker.tribe, attacker.jobType, t, building.tribe);
+  }
+  if (!world.has(t, Settler)) return false;
+  return mayTarget(world, ctx, self, attacker.tribe, attacker.jobType, t, world.get(t, Settler).tribe);
 }
 
 /** Whether `t` is catchable **prey** a hunter of `hunterJob` may strike — the predation-only target filter

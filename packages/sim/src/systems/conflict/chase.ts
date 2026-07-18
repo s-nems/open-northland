@@ -3,7 +3,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { standingFighterNodes } from '../movement/collision/index.js';
-import { clearNavState, entityNode, isTravelling, manhattan, redirectRoute } from '../spatial.js';
+import { clearNavState, isTravelling, manhattan, redirectRoute } from '../spatial.js';
 import type { CombatantStance } from './engagement.js';
 
 // The walk-into-melee half of combat: advance an owned combatant on an out-of-reach enemy, deal each chaser a
@@ -41,11 +41,13 @@ export function returnToAnchor(world: World, e: Entity, here: NodeId, anchorCell
 /**
  * Advance an owned combatant on `target` it can't yet reach — the walk-into-melee drive. It keeps an
  * {@link Engagement} marker (so the AISystem leaves the unit to combat) and re-issues a {@link MoveGoal} toward
- * an {@link approachCell} (a cell in the weapon's reach band of the target, closest to the unit — so a melee
+ * an {@link approachCell} (a cell in the weapon's reach band of `targetNode`, closest to the unit — so a melee
  * unit stops adjacent rather than walking onto the enemy) at most every {@link REPATH_CADENCE} ticks. Between
  * repaths it follows its live route; the swing check (distance-based) catches it the instant it steps into
  * reach. A dead route (an unreachable target) is dropped so it re-issues; an ordered unit whose route can't
- * resolve gives the order up (the "becomes unreachable" end of an attack order).
+ * resolve gives the order up (the "becomes unreachable" end of an attack order). `targetNode` is the caller's
+ * pre-resolved combat node for `target` (its own node for a unit, its door node for a building), so the chase
+ * closes on the same cell the reach check measured.
  */
 export function chase(
   world: World,
@@ -54,7 +56,7 @@ export function chase(
   slots: MeleeSlots,
   e: Entity,
   here: NodeId,
-  target: Entity,
+  targetNode: NodeId,
   weapon: { minRange: number; maxRange: number },
   stance: CombatantStance,
   defend: { anchorCell: NodeId; leash: number } | null,
@@ -77,17 +79,10 @@ export function chase(
   const travelling = isTravelling(world, e);
   if (travelling && ctx.tick < engagement.repathAt) return; // still closing on a live route — don't re-path
 
-  const dest = approachCell(
-    terrain,
-    here,
-    entityNode(world, terrain, target),
-    weapon.minRange,
-    weapon.maxRange,
-    (cell) => {
-      slots.standing ??= standingFighterNodes(world, terrain);
-      return slots.standing.has(cell) || slots.claimed.has(cell);
-    },
-  );
+  const dest = approachCell(terrain, here, targetNode, weapon.minRange, weapon.maxRange, (cell) => {
+    slots.standing ??= standingFighterNodes(world, terrain);
+    return slots.standing.has(cell) || slots.claimed.has(cell);
+  });
   if (dest === null) {
     // Every walkable cell of the target's reach band is a taken slot (a standing body, or dealt to an earlier
     // chaser this tick): stand fast as a second rank — a stationary body, not a walker grinding into the first

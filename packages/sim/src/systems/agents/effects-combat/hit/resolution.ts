@@ -2,6 +2,7 @@ import { Health, Position } from '../../../../components/index.js';
 import type { AtomicEffect } from '../../../../core/atomic-effect.js';
 import { eventAt } from '../../../../core/events.js';
 import type { Entity, World } from '../../../../ecs/world.js';
+import { combatTargetNode } from '../../../conflict/target-node.js';
 import type { SystemContext } from '../../../context.js';
 import { grantFightExperience } from '../../../progression/index.js';
 import { entityNode, manhattan } from '../../../spatial.js';
@@ -76,10 +77,12 @@ function meleeTargetOutOfReach(
   // too avoids `entityNode`'s `world.get` throwing on an attacker that lost its Position mid-swing.
   if (world.tryGet(attacker, Position) === undefined) return true; // attacker gone — nothing to strike from
   if (world.tryGet(effect.target, Position) === undefined) return true; // target gone — nothing to strike
+  // Measure to the target's combat node — the door node for a building — so the whiff band matches the
+  // door-based reach the swing engaged within (a wall between attacker and anchor never reads as in-reach).
   const dist = manhattan(
     terrain,
     entityNode(world, terrain, attacker),
-    entityNode(world, terrain, effect.target),
+    combatTargetNode(world, ctx, terrain, effect.target),
   );
   return dist > effect.maxRange;
 }

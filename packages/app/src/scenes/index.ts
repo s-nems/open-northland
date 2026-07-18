@@ -7,6 +7,7 @@ import { familyScene } from './family.js';
 import { goodsCatalogScene } from './goods-catalog.js';
 import { gossipScene } from './gossip.js';
 import { sandboxScene } from './sandbox/index.js';
+import { siegeScene } from './siege.js';
 import { signpostsScene } from './signposts.js';
 import type { SceneDefinition } from './types.js';
 import { upgradeScene } from './upgrade.js';
@@ -24,6 +25,7 @@ export const SCENES: readonly SceneDefinition[] = [
   sandboxScene,
   collisionScene,
   battleScene,
+  siegeScene,
   goodsCatalogScene,
   berriesScene,
   chainScene,

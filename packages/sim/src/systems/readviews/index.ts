@@ -31,7 +31,13 @@ export {
   atomicStartDirection,
   isInterruptibleAtomic,
 } from './animations.js';
-export { isTemple } from './buildings.js';
+export {
+  type BuildingCombatClass,
+  buildingCombatClass,
+  HEADQUARTERS_BUILDING_ID,
+  isLowPriorityBuildingTarget,
+  isTemple,
+} from './buildings.js';
 export {
   armorByClass,
   armorByMaterial,
