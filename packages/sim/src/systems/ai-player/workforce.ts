@@ -256,13 +256,12 @@ function runWorkforce(
     if (building === hq || !isBuilt(world, building)) continue;
     const type = index.buildings.get(world.get(building, Building).buildingType);
     if (type === undefined || type.kind !== 'workplace') continue;
-    const slots = type.workers.filter(
+    // Operators only — carrier and gatherer slots are never staffed by default, so a carrier-only
+    // workplace (the well, the hive) runs unstaffed (user rule 2026-07-18); the carrier-staffed
+    // exceptions below add their one transport slot back.
+    const operators = type.workers.filter(
       (w) => !isCarrierJob(ctx, w.jobType) && !index.harvestJobs.has(w.jobType),
     );
-    // A workplace with real operator slots staffs only those; one whose every slot is a
-    // carrier/gatherer trade has no operators to skip, so it still gets one worker per slot rather
-    // than being left empty.
-    const operators = slots.length > 0 ? slots : type.workers;
     // The carrier-staffed exceptions (the bakery) fill one transport slot on top of the operators.
     const carriers = CARRIER_STAFFED_BUILDING_IDS.includes(type.id)
       ? type.workers.filter((w) => isCarrierJob(ctx, w.jobType))
