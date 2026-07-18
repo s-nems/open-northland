@@ -26,7 +26,7 @@ import {
   SettlerBubbleLayer,
 } from '../overlays/index.js';
 import { type EntityBounds, SpritePool } from '../sprite-pool/index.js';
-import { TerrainLayer } from '../terrain/index.js';
+import { DEFAULT_TILE_COLOUR, TerrainLayer } from '../terrain/index.js';
 import type { TerrainTextureSet } from '../terrain-textures.js';
 import { TextureCache } from '../texture-cache.js';
 import {
@@ -401,8 +401,16 @@ export class WorldRenderer {
     this.hud.draw(hud);
     // The portrait inset is a second render of the world (re-aimed at the selected unit) into the panel's
     // box texture — must run after the pool reconcile above (so it uses this frame's positions) and before
-    // the main stage render below (so the on-stage inset sprite shows this frame's cutout).
-    this.portrait.draw(camera);
+    // the main stage render below (so the on-stage inset sprite shows this frame's cutout). It borrows the
+    // terrain cull to fill the cutout with the ground around the subject (restored after), and clears to the
+    // ground colour so the off-map region beyond the map edge blends as grass rather than a transparent hole.
+    this.portrait.draw(camera, {
+      toInset: (cam, iw, ih) => this.terrain.cull(cameraViewport(cam, iw, ih, this.elevation.maxLift)),
+      restore: () => this.terrain.cull(vp),
+      // The off-map region above a building framed at the map edge has no terrain to draw; clear it to the
+      // ground base colour so it blends as grass (a named approximation of the map's dominant ground).
+      backdrop: DEFAULT_TILE_COLOUR,
+    });
     this.app.render();
   }
 
