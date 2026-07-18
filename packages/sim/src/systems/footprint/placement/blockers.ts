@@ -108,8 +108,9 @@ export function eachBlockerCell(
  *     same arrays on every level's typeId — schema.ts), so an in-place level-up leaves the set unchanged;
  *   - a `ResourceFootprint` stamp/unstamp is always bundled in the same step with the `Resource` add/destroy
  *     that also moves this version — folding its generation in is belt-and-suspenders for any future path
- *     that decouples them (a miss would leave a stale overlay wash for a frame, never a placement decision:
- *     the command gate always re-scans fresh).
+ *     that decouples them. Completeness is load-bearing: the work-flag command gates consume a memo keyed
+ *     on this version (`workFlagPlacementBlocks`), so a missed input would be a decision on a stale set,
+ *     not just an overlay wash.
  * A string (not a packed number) so the monotonic counters compose with no overflow/aliasing reasoning.
  * Read-only + deterministic (a pure function of the mutation history); never hashed, never a sim decision.
  */

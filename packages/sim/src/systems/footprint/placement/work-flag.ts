@@ -9,16 +9,48 @@ import { EXCLUSION, eachBlockerCell, placementBlockerVersion } from './blockers.
 // WORK-FLAG PLACEMENT — where a work flag (and, through canPlaceWorkFlag, a signpost) may stand: the same
 // ./blockers.ts scan the building rule reads, minus the EXCLUSION channel and plus the markers.
 
+/** Per-world memo of the no-`ignoreFlag` blocked set, keyed on {@link workFlagBlockerVersion} (plus
+ *  content/terrain identity, like the signpost probe's memo). The memo feeds command gates and sim
+ *  decisions — `canPlaceWorkFlag`, the auto-flag plant — so the version being complete is load-bearing:
+ *  every store the scan reads bumps it, including the flag-MOVE counter. Rebuild-on-bump, never
+ *  incrementally patched, so no `World.verifyCaches` registration is owed. */
+interface BlocksMemo {
+  readonly version: string;
+  readonly content: ContentSet;
+  readonly terrain: TerrainGraph;
+  readonly blocked: ReadonlySet<NodeId>;
+}
+const blocksMemo = new WeakMap<World, BlocksMemo>();
+
 /** The nodes a work flag may NOT occupy: every standing resource/building body cell plus the other
  *  markers' cells — every {@link eachBlockerCell} channel except {@link EXCLUSION}, since a
- *  resource/building margin zone remains valid open ground for a flag. Built fresh per call — one-shot
- *  command checks call it through {@link canPlaceWorkFlag}; a per-node band probe (the signpost overlay)
- *  builds it once and reuses the set. */
+ *  resource/building margin zone remains valid open ground for a flag. The common no-`ignoreFlag` set
+ *  is memoized per {@link workFlagBlockerVersion} (see {@link blocksMemo}), so a command burst — a
+ *  box-select `setJob` planting one auto-flag per settler — pays one store walk, not one per settler.
+ *  The `ignoreFlag` variant (a flag re-placed over its own cell) would need its own key, so that rare
+ *  one-shot path builds fresh. */
 export function workFlagPlacementBlocks(
   world: World,
   content: ContentSet,
   terrain: TerrainGraph,
   ignoreFlag?: Entity,
+): ReadonlySet<NodeId> {
+  if (ignoreFlag !== undefined) return buildBlocks(world, content, terrain, ignoreFlag);
+  const version = workFlagBlockerVersion(world);
+  const hit = blocksMemo.get(world);
+  if (hit !== undefined && hit.version === version && hit.content === content && hit.terrain === terrain) {
+    return hit.blocked;
+  }
+  const blocked = buildBlocks(world, content, terrain, undefined);
+  blocksMemo.set(world, { version, content, terrain, blocked });
+  return blocked;
+}
+
+function buildBlocks(
+  world: World,
+  content: ContentSet,
+  terrain: TerrainGraph,
+  ignoreFlag: Entity | undefined,
 ): ReadonlySet<NodeId> {
   const blocked = new Set<NodeId>();
   eachBlockerCell(
