@@ -1,4 +1,5 @@
 import { BerryBush, Building, Position } from '../../components/index.js';
+import { eventAt } from '../../core/events.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import type { NodeId } from '../../nav/terrain/index.js';
@@ -130,5 +131,12 @@ export function destroyBerryBushesInReserved(world: World, ctx: SystemContext, b
   const doomed = bushesNearNode(world, anchor.hx, anchor.hy, reach).filter((e) =>
     zone.has(entityNode(world, terrain, e)),
   );
-  for (const e of doomed) world.destroy(e);
+  for (const e of doomed) {
+    // Announce the razing before the destroy (read the position first — it is gone afterwards) so render can
+    // drop the bush's retained static-decor quad; a virgin map bush is drawn by the static layer, not the
+    // pool, so its destruction leaves no snapshot entity for the pool cull to reap ({@link SimEvent} berryBushRazed).
+    const bp = world.tryGet(e, Position);
+    if (bp !== undefined) ctx.events.emit({ kind: 'berryBushRazed', bush: e, at: eventAt(bp.x, bp.y) });
+    world.destroy(e);
+  }
 }

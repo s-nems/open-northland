@@ -196,6 +196,18 @@ export type SimEvent =
       readonly kind: 'berryForaged';
       readonly bush: Entity;
       readonly at: HalfCellNode;
+    }
+  | {
+      /**
+       * A wild {@link import('../components/economy/index.js').BerryBush} was RAZED this tick — a building was
+       * placed over it and `destroyBerryBushesInReserved` removed it. Distinct from `berryForaged` (the bush
+       * survives, flips ripe→bare): the bush entity is gone by the snapshot. Render uses it to drop the bush's
+       * retained static-decor quad (a `?map=` virgin bush is drawn by the static layer, not the pool, so its
+       * destruction leaves no snapshot entity for the pool cull to reap); `at` is the razed bush's node.
+       */
+      readonly kind: 'berryBushRazed';
+      readonly bush: Entity;
+      readonly at: HalfCellNode;
     };
 
 export type SimEventKind = SimEvent['kind'];
