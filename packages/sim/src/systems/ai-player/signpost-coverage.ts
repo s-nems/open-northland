@@ -19,8 +19,9 @@ import { anchorNodeOf, firstRingNode, headquartersOf, ownedBuildings, ownedSettl
  */
 
 /** Distance between neighbouring lattice targets, in nodes on the world metric — "almost as close as
- *  posts may stand" (user rule): above the 16-node spacing block (and the planned 18), below the
- *  planned 24-node nav range, so neighbouring posts always chain into one network. */
+ *  posts may stand" (user rule): above the 18-node placement block (SIGNPOST_SPACING_RADIUS_NODES) and
+ *  below the 24-node nav range (SIGNPOST_NAV_RADIUS_NODES), so neighbouring posts clear each other's
+ *  spacing yet always chain into one network. */
 export const SIGNPOST_LATTICE_SPACING_NODES = 22;
 
 /** How far a post may stand from its lattice target and still satisfy it — also the legal-spot search
