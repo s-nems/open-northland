@@ -45,6 +45,7 @@ const STOCK_COL_GAP = WIN_PAD;
 
 export type ButtonAction =
   | 'upgrade'
+  | 'cancelUpgrade'
   | 'demolish'
   | 'center'
   | 'workers'
@@ -136,12 +137,14 @@ export function stockSlotRects(body: Rect, s: number, rowsPerColumn: number = MA
  */
 const COMPACT_STOCK_MAX = 16;
 
-/** Which buttons the building's general section offers; upgrade + demolish are wired. Upgrade sits
- *  ABOVE demolish, matching the original's button order (housewindow 110 before 114), and appears
- *  only for an upgradable building (built, with a next level to rise into). */
+/** Which buttons the building's general section offers; upgrade, cancel-upgrade + demolish are wired.
+ *  Both upgrade actions sit ABOVE demolish, matching the original's button order (housewindow
+ *  110/112 before 114): Upgrade for an upgradable building (built, with a next level to rise into),
+ *  Cancel-upgrade for a running upgrade site — never both at once. */
 function buildingButtons(model: BuildingModel): ReadonlyArray<{ action: ButtonAction; enabled: boolean }> {
   return [
     ...(model.upgradable ? [{ action: 'upgrade', enabled: true } as const] : []),
+    ...(model.cancelable ? [{ action: 'cancelUpgrade', enabled: true } as const] : []),
     { action: 'demolish', enabled: true },
     { action: 'center', enabled: false },
     { action: 'workers', enabled: false },

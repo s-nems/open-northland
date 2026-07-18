@@ -34,6 +34,7 @@ export const enGame = {
       'Click, then pick a house: green ones have a free family slot, red ones do not. Left-click moves the whole family in, right-click or Esc cancels.',
     defenseStopped: 'Defence stopped',
     upgrade: 'Upgrade',
+    cancelUpgrade: 'Cancel upgrade',
     demolish: 'Demolish',
     signpost: 'Signpost',
     demolishSignpost: 'Tear down this signpost',

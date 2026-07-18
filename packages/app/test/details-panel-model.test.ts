@@ -4,6 +4,7 @@ import { STOCK_TAB_COUNT } from '../src/content/gui-atlas-map.js';
 import {
   BUILDING_FARM,
   BUILDING_HEADQUARTERS,
+  BUILDING_HOME_00,
   BUILDING_JOINERY,
   BUILDING_MILL,
   GOOD_FLOUR,
@@ -165,6 +166,36 @@ describe('selection details panel model', () => {
       sandboxCtx(),
     );
     expect(finished.kind === 'building' && finished.construction).toBeNull();
+  });
+
+  it('offers Upgrade on a built chained home and Cancel on a running upgrade site — never both', () => {
+    const built = buildUnitPanelModel(
+      snapshotOf([buildingEntity(1, BUILDING_HOME_00)], 1),
+      new Set([1]),
+      sandboxCtx(),
+    );
+    expect(built.kind === 'building' && built.upgradable).toBe(true);
+    expect(built.kind === 'building' && built.cancelable).toBe(false);
+
+    const upgrading = buildUnitPanelModel(
+      snapshotOf(
+        [
+          buildingEntity(1, BUILDING_HOME_00, {
+            built: 0,
+            components: {
+              UnderConstruction: { labor: 0 },
+              Upgrading: { savedStock: [] },
+              Stockpile: { amounts: [] },
+            },
+          }),
+        ],
+        1,
+      ),
+      new Set([1]),
+      sandboxCtx(),
+    );
+    expect(upgrading.kind === 'building' && upgrading.upgradable).toBe(false);
+    expect(upgrading.kind === 'building' && upgrading.cancelable).toBe(true);
   });
 
   it('keeps Magazyn rows in declared slot order while amounts change (Pszenica before Mąka, always)', () => {

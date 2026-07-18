@@ -102,6 +102,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     ...(opts.playerColourOf !== undefined ? { playerColourOf: opts.playerColourOf } : {}),
     onDemolish: (id) => opts.enqueue({ kind: 'demolish', building: id as Entity }),
     onUpgrade: (id) => opts.enqueue({ kind: 'upgradeBuilding', building: id as Entity }),
+    onCancelUpgrade: (id) => opts.enqueue({ kind: 'cancelUpgrade', building: id as Entity }),
     onDemolishSignpost: (id) => opts.enqueue({ kind: 'demolishSignpost', signpost: id as Entity }),
     onAssignWorkplace: (id) => arm({ kind: 'workplace', settler: id }),
     onAssignHome: (id) => arm({ kind: 'home', settler: id }),

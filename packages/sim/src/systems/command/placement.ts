@@ -163,6 +163,32 @@ export function upgradeBuilding(
 }
 
 /**
+ * Abort an in-flight upgrade — the `cancelUpgrade` command's effect, {@link upgradeBuilding}'s inverse
+ * short of the materials: the stashed inventory returns to the {@link Stockpile} (whatever the site
+ * hold had accumulated is LOST — the price of changing one's mind, user decision 2026-07-18), `built`
+ * returns to ONE (only a built building can start an upgrade), and both site markers come off. The
+ * type, level, Health, and every binding never changed mid-upgrade, so nothing else needs restoring.
+ *
+ * Skip conditions (recoverable bad input, still logged): a dead / non-building target, or one not
+ * upgrading — a from-scratch construction site has no previous level to fall back to.
+ */
+export function cancelUpgrade(world: World, command: Extract<Command, { kind: 'cancelUpgrade' }>): void {
+  const building = world.tryGet(command.building, Building);
+  const upgrading = world.tryGet(command.building, Upgrading);
+  if (building === undefined || upgrading === undefined) return;
+  const stock = world.tryGet(command.building, Stockpile);
+  if (stock !== undefined) {
+    // The stash Map is exclusively the marker's; with the marker removed below, handing it back whole
+    // is safe. An in-place swap — log it so the porter dormancy gate re-scans.
+    stock.amounts = upgrading.savedStock;
+    world.touchComponent(Stockpile);
+  }
+  building.built = ONE;
+  world.remove(command.building, UnderConstruction);
+  world.remove(command.building, Upgrading);
+}
+
+/**
  * Place a boat hull — the boat analogue of {@link placeBuilding}: it creates a {@link Vehicle} hull at (x,y)
  * carrying an empty {@link Stockpile} (a ship is a movable stockpile, its capacity being the ship type's
  * `stockSlots`).
