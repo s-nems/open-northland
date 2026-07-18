@@ -2,11 +2,13 @@
 
 **Area:** sim · **Origin:** gathering-economy plan reconciliation, 2026-07-12 · **Priority:** P2
 
-The economy's reachability gate is now PART dynamic. `nearestHarvestableFor`
+The economy's reachability gate is now partly dynamic. `nearestHarvestableFor`
 (`packages/sim/src/systems/agents/targets/resources.ts`) rejects a resource whose resolved work cell is
-a blocked GOAL — buried under a building (the clay/mud-under-a-house case, since those deposits reserve
+a blocked goal — buried under a building (the clay/mud-under-a-house case, since those deposits reserve
 no build-block so a house can legally land on them). So a gatherer no longer strands on a resource walled
-under a building; the deposit is simply left un-mined. What REMAINS uncovered is route-level enclosure:
+under a building (the deposit's exact fate — un-mined vs side-mined — depends on real-content work-cell
+resolution, tracked separately in `clay-work-cell-real-content-resolution.md`). What remains uncovered here
+is route-level enclosure:
 a work cell that is itself clear yet has no path in because a ring of dynamic blockers (dense resource
 footprints, a building horseshoe) seals it — `findPath` accepts the goal but finds no route, so the pick
 still wins and the walk fails. Since the planner's stranded-route recovery (`systems/agents/ai.ts`,
@@ -17,7 +19,7 @@ target, not a freeze — plus errand-hogging: a parked fetcher keeps its SupplyR
 each park window, so a site behind a permanently enclosed source starves slowly while substitutes defer
 to the dead errand (the investigate-first step should measure this too). The pile/delivery drives
 (`nearestCollectablePileFor`, `nearestOwnDropFor`) already gate on the full dynamic overlay via
-`unreachablePickupCell`, so this ticket's remaining scope is the ROUTE-level (ringed-but-clear) case, not
+`unreachablePickupCell`, so this ticket's remaining scope is the route-level (ringed-but-clear) case, not
 the blocked-goal case.
 
 ## Scope

@@ -366,9 +366,14 @@ describe('placement razes felled-tree stumps in the reserved zone', () => {
     expect(sim.world.isAlive(inside)).toBe(false); // razed by the new building
     expect(sim.world.isAlive(outside)).toBe(true); // beyond the reserved zone — untouched
     expect(survivingStumps(sim)).toBe(1);
-    // A stump is a live snapshot-drawn entity (never a static-decor quad), so razing it emits NO event — the
-    // sprite pool reaps its quad when it leaves the snapshot.
-    expect(sim.events.current().some((ev) => ev.kind === 'berryBushRazed')).toBe(false);
+
+    // A stump is a live snapshot-drawn entity (never a static-decor quad), so razing it emits no event at all —
+    // the sprite pool reaps its quad when it leaves the snapshot. Proven against a stumpless control: the same
+    // placement with no stump present produces the identical event stream.
+    const control = mappedSim();
+    control.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING });
+    control.step();
+    expect(sim.events.current().map((ev) => ev.kind)).toEqual(control.events.current().map((ev) => ev.kind));
   });
 
   it('razes a stump even under a forced (map-authored) placement', () => {

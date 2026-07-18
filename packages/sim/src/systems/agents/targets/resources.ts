@@ -38,12 +38,18 @@ import { interactionCell, jobAtomics } from './workplaces.js';
  * what its workplace stores); omitted = every good the job may harvest.
  *
  * The reachability gate below rejects both a target in a different static component (the far bank of a river)
- * and one whose resolved work cell is a dynamically blocked GOAL — buried under a building or a resource walk
- * body — since `findPath` rejects a blocked goal. That covers a house placed over a footprint-empty clay/mud
- * deposit: the deposit is left un-mined rather than stranding the gatherer on an impossible route. Known
- * limitation: the check is per-GOAL, so a work cell that is itself clear yet ringed by blockers (a sealed
- * pocket with no route in) can still win the pick and fail its path — route-level dynamic reachability is a
- * follow-up (`docs/tickets/sim/dynamic-route-reachability.md`).
+ * and one whose resolved work cell is a dynamically blocked goal — buried under a building — since `findPath`
+ * rejects a blocked goal. This is what stops a gatherer stranding on a footprint-empty clay/mud deposit a
+ * house was legally placed over (those deposits reserve no build-block). What then happens to the deposit
+ * depends on how its work cell resolves ({@link resourceWorkCell}): when a work cell lands ON the buried
+ * anchor (the sandbox's anchor-inclusive clay areas) the deposit is skipped and left un-mined; a real
+ * extracted record whose full-state work areas sit beside the anchor resolves to an adjacent cell instead, so
+ * an edge-exposed deposit stays mineable from its open side. The strand is prevented either way; the
+ * un-mined-vs-side-mined split is a named approximation tracked in
+ * `docs/tickets/sim/clay-work-cell-real-content-resolution.md`. Separately, the check is per-goal, so a work
+ * cell that is itself clear yet ringed by blockers (a sealed pocket with no route in) can still win the pick
+ * and fail its path — route-level dynamic reachability is a follow-up
+ * (`docs/tickets/sim/dynamic-route-reachability.md`).
  */
 export function nearestHarvestableFor(
   plan: PlannerContext,
@@ -142,13 +148,9 @@ export function nearestHarvestableFor(
     // array read (a build-time flood-fill). Measured from `here`, the settler's actual route start (bridges
     // are not yet walkable, so the two banks are genuinely separate components — a named limitation).
     if (terrain.componentOf(here) !== terrain.componentOf(cell)) return null;
-    // Dynamic reachability: the work cell may be statically fine yet buried under a building — a house placed
-    // over a footprint-empty deposit (clay/mud reserve no build-block, so one can legally land on them). A
-    // blocked GOAL is a route `findPath` rejects, so without this the gatherer latches onto the buried deposit
-    // and stalls in a park→re-pick loop forever. Skip it so the deposit is simply left un-mined (it survives
-    // under the house, faithful to the original). The settler's own cell is never blocked-for-itself, so a
-    // deposit it already stands on still qualifies. Route-level enclosure (a clear cell ringed by blockers) is
-    // still a follow-up (docs/tickets/sim/dynamic-route-reachability.md).
+    // Dynamic reachability: a work cell buried under a building is a blocked goal `findPath` rejects, so skip
+    // it rather than latch on and stall (see the fn doc for the clay-under-a-house basis and follow-ups). The
+    // settler's own cell is never blocked-for-itself, so a deposit it already stands on still qualifies.
     if (cell !== here && buildingBlocked.has(cell)) return null;
     if (manhattan(terrain, origin, cell) > radius) return null; // outside the flag's work radius — leave it be
     if (gate !== undefined && !gate.allowsNode(cell)) return null; // outside the settler's signpost area
