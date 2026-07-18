@@ -86,7 +86,8 @@ export function nearestMissingInputSource(
     // workplace itself and holds the good (a warehouse, a flag pile, another workplace's output). A
     // construction site is excluded — its stock is delivered build material (a delivery sink), never a
     // source to strip, or a producer would pull the wood off a half-built neighbour and stall its build
-    // (the same guard `nearestStoreHolding` applies). `gate` is the fetcher's signpost confinement.
+    // (the same guard `nearestStoreHolding` applies). `gate` is the fetcher's signpost confinement —
+    // an out-of-area store is not a known source.
     const winner = index.nearest(
       here,
       (e) =>

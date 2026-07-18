@@ -1,4 +1,4 @@
-import { Stockpile, stockpileEntries } from '../../../../components/index.js';
+import { Stockpile, stockpileEntries, UnderConstruction } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SpatialGate } from '../../../../nav/node-metric.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
@@ -17,6 +17,7 @@ import { type InteractionCellIndex, qualifiedGood } from '../cell-index.js';
  */
 export function hasHaulableOutput(world: World, ctx: SystemContext, stockpiles: readonly Entity[]): boolean {
   for (const e of stockpiles) {
+    if (world.has(e, UnderConstruction)) continue; // a site's stock is construction material, not output
     const recipe = mergedRecipeOf(world, ctx, e);
     if (recipe === undefined) continue;
     const stock = world.get(e, Stockpile);
@@ -70,6 +71,10 @@ function haulableOutputGood(
   deliverable: (goodType: number) => boolean,
   entity: Entity,
 ): number | null {
+  // A construction site's stock is its delivered materials, never finished output — an upgrading
+  // stonecutter/sawmill would otherwise offer its own construction stone/wood as a "recipe output"
+  // and a carrier would strip the site.
+  if (world.has(entity, UnderConstruction)) return null;
   const recipe = mergedRecipeOf(world, ctx, entity);
   if (recipe === undefined) return null; // not a workplace — passive stores aren't hauled FROM
   for (const [goodType, amount] of stockpileEntries(world.get(entity, Stockpile))) {

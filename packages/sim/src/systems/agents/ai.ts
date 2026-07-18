@@ -5,6 +5,7 @@ import {
   FamilyDuty,
   Female,
   Fleeing,
+  JobAssignment,
   Owner,
   ownerOf,
   PlayerOrder,
@@ -12,6 +13,7 @@ import {
   Resting,
   Settler,
   Stance,
+  UnderConstruction,
   Wedding,
 } from '../../components/index.js';
 import type { World } from '../../ecs/world.js';
@@ -252,6 +254,19 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // material it is short on); a non-builder passes through. `spacing` spreads a site's crew over
     // its construction perimeter (see ./destack.ts claimWorkCell).
     if (planBuilder(plan, spacing)) continue;
+
+    // A settler whose bound workplace is a construction site — a running upgrade — stands down instead
+    // of running the remaining work rungs: its trade needs the finished workhouse (readable source:
+    // `jobtypes.ini` `mustHaveFinishedWorkHouseFlag 1` — the gate the farm/producer rungs above already
+    // apply per-rung), so an upgrading warehouse's porter or a workshop's bound gatherer/carrier waits
+    // outside rather than ferrying for a sealed building. Sits below planBuilder (a builder bound to an
+    // upgrading building must still build) and above the trade rungs; the binding survives, so work
+    // resumes the tick the upgrade completes.
+    const boundWorkplace = world.tryGet(e, JobAssignment)?.workplace;
+    if (boundWorkplace !== undefined && world.has(boundWorkplace, UnderConstruction)) {
+      deStackIdle(world, ctx, terrain, e, hereNode.hx, hereNode.hy, spacing);
+      continue;
+    }
 
     // 3. HARVEST / COLLECT — a gatherer chops the nearest FREE resource or collects the nearest trunk.
     if (planGatherer(plan, harvestClaims)) continue;
