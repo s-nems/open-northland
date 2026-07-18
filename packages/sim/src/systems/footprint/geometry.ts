@@ -23,6 +23,31 @@ export function manhattan(terrain: TerrainGraph, a: NodeId, b: NodeId): number {
   return Math.abs(ca.x - cb.x) + Math.abs(ca.y - cb.y);
 }
 
+/**
+ * Visit every offset at Manhattan distance exactly `radius` — for each `dy` in `[-radius, radius]` the
+ * one or two columns `dx = ±(radius − |dy|)` tracing the diamond; radius 0 visits `(0, 0)` alone. The
+ * shared ring-geometry step of every expanding Manhattan ring search (NodeBuckets.nearest, the
+ * interaction-cell index, the yard/spill searches, work-flag placement); each caller keeps its own
+ * bounds policy and per-node pick. Offsets come ascending `(dy, dx)` — ascending node id on the
+ * row-major grid — but every current pick is order-independent (a min-id or a sort), so the order is
+ * pinned for reading, not load-bearing.
+ */
+export function forEachRingOffset(radius: number, visit: (dx: number, dy: number) => void): void {
+  if (radius === 0) {
+    visit(0, 0); // special-cased so no offset is ever the negated zero `-radius` would mint
+    return;
+  }
+  for (let dy = -radius; dy <= radius; dy++) {
+    const dxMag = radius - Math.abs(dy);
+    if (dxMag === 0) {
+      visit(0, dy);
+    } else {
+      visit(-dxMag, dy);
+      visit(dxMag, dy);
+    }
+  }
+}
+
 /** The footprint of a building type, or undefined when the type is unknown or carries none. Keyed by
  *  content (not a full SystemContext) so the placement-overlay probe can resolve footprints without a tick. */
 export function buildingFootprintOf(

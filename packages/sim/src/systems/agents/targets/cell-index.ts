@@ -3,7 +3,7 @@ import type { SpatialGate } from '../../../nav/node-metric.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { interactionNode } from '../../footprint/index.js';
-import { manhattan } from '../../spatial.js';
+import { forEachRingOffset, manhattan } from '../../spatial.js';
 import { closer } from './nearest.js';
 import { interactionCell } from './workplaces.js';
 
@@ -191,12 +191,9 @@ export class InteractionCellIndex {
     const exhaustive = reach <= NEAREST_RING_MAX_RADIUS;
     for (let d = 0; d <= maxRadius; d++) {
       let best: NearestByCell<P> | null = null;
-      // Ring d = every node at Manhattan distance exactly d; the two rows dy = ±(d - |dx|) trace the diamond.
-      for (let dx = -d; dx <= d; dx++) {
-        const rem = d - Math.abs(dx);
-        best = this.pickInRing(hx + dx, hy + rem, d, accept, gate, best);
-        if (rem !== 0) best = this.pickInRing(hx + dx, hy - rem, d, accept, gate, best);
-      }
+      forEachRingOffset(d, (dx, dy) => {
+        best = this.pickInRing(hx + dx, hy + dy, d, accept, gate, best);
+      });
       if (best !== null) return { best, exhaustive };
     }
     return { best: null, exhaustive };

@@ -2,7 +2,7 @@ import { MoveGoal, PathFollow, PathRequest, Position, Stranded } from '../compon
 import type { Entity, World } from '../ecs/world.js';
 import { nodeOfPosition } from '../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../nav/terrain/index.js';
-import { manhattan, nodeKey } from './footprint/geometry.js';
+import { forEachRingOffset, manhattan, nodeKey } from './footprint/geometry.js';
 
 // The cross-system spatial primitives — canonical scan order, the per-tick node bucket + ring search, and
 // the node/distance helpers. A leaf module (only footprint/geometry.ts below it) so every per-system file
@@ -170,14 +170,9 @@ export class NodeBuckets {
   ): { entity: Entity; distance: number } | null {
     for (let d = minDist; d <= maxDist; d++) {
       let best: Entity | null = null;
-      // Ring d = every node at Manhattan distance exactly d. For each column offset dx in [-d, d] the two
-      // rows dy = ±(d - |dx|) complete the diamond (a single row when the remainder is 0, at the ring's E/W
-      // tips).
-      for (let dx = -d; dx <= d; dx++) {
-        const rem = d - Math.abs(dx);
-        best = this.pickMinId(fromX + dx, fromY + rem, accept, best);
-        if (rem !== 0) best = this.pickMinId(fromX + dx, fromY - rem, accept, best);
-      }
+      forEachRingOffset(d, (dx, dy) => {
+        best = this.pickMinId(fromX + dx, fromY + dy, accept, best);
+      });
       if (best !== null) return { entity: best, distance: d };
     }
     return null;
@@ -227,9 +222,9 @@ export function entityNode(world: World, terrain: TerrainGraph, e: Entity): Node
   return terrain.nodeAtClamped(n.hx, n.hy);
 }
 
-// manhattan lives in footprint/geometry.ts (the leaf, which needs it for its nearest-node picks)
-// and is re-exported here with nodeKey so consumers keep the single spatial import site.
-export { manhattan };
+// manhattan and forEachRingOffset live in footprint/geometry.ts (the leaf, which needs them for its
+// nearest-node picks) and are re-exported here with nodeKey so consumers keep the single spatial import site.
+export { forEachRingOffset, manhattan };
 
 /**
  * The 8 compass step offsets (E, W, S, N, then the four diagonals) in the fixed canonical order the sim's
