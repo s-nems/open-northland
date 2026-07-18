@@ -67,8 +67,7 @@ describe.runIf(hasRealIr() && existsSync(mapPath()))('strategic AI on a decoded 
       else if (sim.world.get(e, Building).buildingType === 1) hq = e;
     }
     expect(hq).not.toBeNull(); // the authored headquarters resolved and stayed built
-    expect(sites).toBeGreaterThanOrEqual(1);
-    expect(sites).toBeLessThanOrEqual(2);
+    expect(sites).toBe(1); // one site at a time (the concurrent-construction cap)
     // The workforce allocator flagged collectors beside real resources: each owned flag-bound
     // gatherer is pinned to one collected good. How many of the three goods get a collector depends
     // on what the map actually holds, but a forest map guarantees at least the wood one.

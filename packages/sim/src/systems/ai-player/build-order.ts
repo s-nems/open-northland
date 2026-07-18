@@ -42,8 +42,8 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
   { building: 'work_well_00', count: 1 },
 ];
 
-/** Concurrent construction sites per seat (user plan: 0–2 in progress, ideally 2). */
-export const MAX_ACTIVE_CONSTRUCTION_SITES = 2;
+/** Concurrent construction sites per seat (user rule, 2026-07-18: exactly one site at a time). */
+export const MAX_ACTIVE_CONSTRUCTION_SITES = 1;
 
 /** How far from the headquarters the placement ring search reaches, in half-cell nodes — a bounded
  *  neighbourhood scan, never the whole map. Beyond it the executor stalls (expansion's concern). */
