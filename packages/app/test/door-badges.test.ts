@@ -2,7 +2,7 @@ import { fx, nodeOfPosition, positionOfNode } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { workerIconOffset } from '../src/catalog/building-tweaks.js';
 import { type BuildingDoorInfo, computeDoorBadges } from '../src/view/projections/index.js';
-import { building, settler, snapshotOf } from './support/snapshot.js';
+import { building, resident, settler, snapshotOf } from './support/snapshot.js';
 
 /**
  * computeDoorBadges — the pure snapshot→door-badge projection the render layer draws. It reads the sim's
@@ -76,6 +76,22 @@ describe('computeDoorBadges', () => {
     const anchor = nodeOfPosition(fx.fromInt(4), fx.fromInt(4));
     // The literal committed override (two nodes right of the door), NOT read back through the table —
     // deleting the table entry must fail this test, not silently fall back to the default.
+    const iconPos = positionOfNode(anchor.hx + 0 + 2, anchor.hy + 2 + 0);
+    expect(badge?.x).toBe(iconPos.x);
+    expect(badge?.y).toBe(iconPos.y);
+  });
+
+  it('anchors a home’s occupancy dots a full field (two nodes) right of the door, clear of it', () => {
+    const types = new Map<number, BuildingDoorInfo>([
+      [7, { id: 'home_level_00', footprint: { door: { dx: 0, dy: 2 } } }],
+    ]);
+    const snap = snapshotOf([building(1, 7, 4, 4), resident(2, CRAFTSMAN, 1)]);
+
+    const badge = computeDoorBadges(snap, types, roleOf)[0];
+    expect(badge?.households).toEqual(['single']);
+    const anchor = nodeOfPosition(fx.fromInt(4), fx.fromInt(4));
+    // A home pushes the marker a full field (two half-cell nodes) right of the door so the dots clear
+    // the wide house door graphic — the literal committed offset, not read back through the table.
     const iconPos = positionOfNode(anchor.hx + 0 + 2, anchor.hy + 2 + 0);
     expect(badge?.x).toBe(iconPos.x);
     expect(badge?.y).toBe(iconPos.y);

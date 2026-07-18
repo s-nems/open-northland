@@ -17,6 +17,21 @@ export interface PortraitInsetFrame {
   readonly kind: 'settler' | 'building';
 }
 
+/**
+ * The terrain re-cull the inset borrows for its render: the ground is chunk-culled to the MAIN viewport,
+ * so the chunks around a subject that scrolled to a screen edge are hidden and the re-aimed cutout would
+ * leave transparent holes (through which the panel's static fallback bob shows as a duplicate). `toInset`
+ * makes the chunks the inset frame covers visible; `restore` puts back the main-view culling. The world
+ * renderer supplies both — the inset never needs the projection/pad math.
+ */
+export interface InsetTerrainCull {
+  toInset(camera: Camera, w: number, h: number): void;
+  restore(): void;
+  /** Opaque ground colour (`0xRRGGBB`) the cutout clears to, so the off-map region behind the framed
+   *  building blends as ground instead of showing through to the panel's static fallback bob. */
+  readonly backdrop: number;
+}
+
 /** A building's drawn bounds fill this fraction of the portrait box (the rest is surrounding-world margin). */
 const PORTRAIT_FILL = 0.72;
 /** Zoom-out floor — a huge building still can't shrink past this (keeps the cutout legible). */
@@ -119,10 +134,11 @@ export class PortraitInsetLayer {
    * The framing ({@link framing}) is building-fit or settler-fixed; if the entity wasn't drawn this frame
    * (off-screen/culled) the inset hides and the panel placeholder shows. `mainCamera` is the frame's main
    * camera, restored after the re-aimed render so the paletted team-colour meshes return to their on-screen
-   * placement. Must run after the pool reconcile (so it uses this frame's positions) and before the main
-   * stage render (so the on-stage inset sprite shows this frame's cutout).
+   * placement. `terrain` re-culls the ground to the inset frame for the render, then back to the main view.
+   * Must run after the pool reconcile (so it uses this frame's positions) and before the main stage render
+   * (so the on-stage inset sprite shows this frame's cutout).
    */
-  draw(mainCamera: Camera): void {
+  draw(mainCamera: Camera, terrain?: InsetTerrainCull): void {
     const f = this.frame;
     if (f === null || f.rect.w < 1 || f.rect.h < 1) {
       this.sprite.visible = false;
@@ -173,7 +189,17 @@ export class PortraitInsetLayer {
     // even if the render throws, so a failed cutout can't leave a real unit hidden on the main map, the
     // world locked at the inset camera, or the pool's solo bookkeeping stale for the next frame.
     try {
-      this.app.renderer.render({ container: this.worldLayer, target: this.texture, clear: true });
+      // Terrain is chunk-culled to the MAIN viewport; re-cull it to the inset frame so the ground around a
+      // subject at the screen edge fills the cutout. Inside the try so its `restore()` below always pairs.
+      terrain?.toInset(insetCamera, w, h);
+      this.app.renderer.render({
+        container: this.worldLayer,
+        target: this.texture,
+        clear: true,
+        // Opaque ground backdrop so the region the cutout frames beyond the map edge (no terrain to draw
+        // there) reads as more ground instead of revealing the panel's static fallback bob behind it.
+        ...(terrain !== undefined ? { clearColor: terrain.backdrop } : {}),
+      });
     } finally {
       if (worldSaved !== null) {
         this.pool.endPortraitSolo();
@@ -183,6 +209,7 @@ export class PortraitInsetLayer {
       this.worldLayer.scale.set(savedScale);
       this.worldLayer.position.set(savedX, savedY);
       this.pool.placePalettedFor(mainCamera, this.app.screen.width, this.app.screen.height, false);
+      terrain?.restore();
     }
 
     this.sprite.position.set(f.rect.x, f.rect.y);

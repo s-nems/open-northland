@@ -341,7 +341,11 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   const signpostOverlayFrame = makeSignpostOverlaySource(sim, deps.mapSize, localPlayer);
   // Per-frame O(entities) projections memoized by snapshot identity: a frame that did not step reuses
   // its HUD read-view and fog-filtered door badges instead of re-scanning every entity.
-  const { hudFor, doorBadgesFor } = createSnapshotProjections(buildingDoors, workerRoleOf, fogGates);
+  const { hudFor, doorBadgesFor, settlerBubblesFor } = createSnapshotProjections(
+    buildingDoors,
+    workerRoleOf,
+    fogGates,
+  );
 
   // Hand the assembled world + HUD subsystems to the steady-state RAF loop (frame-loop.ts). The
   // mount above owns construction; the loop owns the pinned per-frame order. The returned stop handle is
@@ -359,6 +363,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     signpostOverlayFrame,
     hudFor,
     doorBadgesFor,
+    settlerBubblesFor,
     canPlaceAt,
     canPlaceSignpostAt,
     soundDriver,

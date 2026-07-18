@@ -33,8 +33,8 @@ export const ErectSignpostOrder = defineComponent<{ goal: NodeId }>('ErectSignpo
  * landscapes.cif and logicdefines.inc checked), so these are user-tunable, calibrated against the
  * running original by eye.
  */
-export const SIGNPOST_NAV_RADIUS_NODES = 40;
-export const SIGNPOST_SPACING_RADIUS_NODES = 16;
+export const SIGNPOST_NAV_RADIUS_NODES = 24;
+export const SIGNPOST_SPACING_RADIUS_NODES = 18;
 
 /**
  * The civilian settler's own work reach (nodes, world metric) when signpost navigation is on: a settler

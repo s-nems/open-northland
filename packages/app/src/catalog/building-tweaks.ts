@@ -28,15 +28,23 @@ export const DOOR_SHIFTS: ReadonlyMap<string, FootprintCell> = new Map([
 ]);
 
 /**
- * Where the worker-icon stack anchors, as an offset from the (shifted) door node. The default — one
- * node right of the door — fits almost every building; the overrides come from the same gallery
- * review (the HQ's wide gangway wants the stack a node further out; the barracks' door wall runs
- * down-right, so the stack follows it).
+ * Where the worker-icon stack anchors, as an offset from the (shifted) door node — the anchor the
+ * worker-icon badges and (for homes) the occupancy dots grow up from. The default — one node right of
+ * the door, a half field — fits almost every workplace; the overrides come from gallery review (the
+ * HQ's wide gangway wants the stack a node further out; the barracks' door wall runs down-right, so the
+ * stack follows it). Homes push it a full field (two nodes) right so their occupancy dots clear the wide
+ * house door graphic instead of sitting on it (user observation, 2026-07-17).
  */
 export const DEFAULT_WORKER_ICON_OFFSET: FootprintCell = { dx: 1, dy: 0 };
+const HOME_OCCUPANCY_OFFSET: FootprintCell = { dx: 2, dy: 0 };
 const WORKER_ICON_OFFSETS: ReadonlyMap<string, FootprintCell> = new Map([
   ['headquarters', { dx: 2, dy: 0 }],
   ['barracks', { dx: 1, dy: 1 }],
+  ['home_level_00', HOME_OCCUPANCY_OFFSET],
+  ['home_level_01', HOME_OCCUPANCY_OFFSET],
+  ['home_level_02', HOME_OCCUPANCY_OFFSET],
+  ['home_level_03', HOME_OCCUPANCY_OFFSET],
+  ['home_level_04', HOME_OCCUPANCY_OFFSET],
 ]);
 
 /** The worker-icon offset for a building id (the default when the id has no override / is unknown). */

@@ -1,6 +1,6 @@
 import type { WorldSnapshot } from '@open-northland/sim';
 import type { Camera } from '../../data/projection/index.js';
-import type { DoorBadge, HudFrame } from '../overlays/index.js';
+import type { DoorBadge, HudFrame, SettlerBubble } from '../overlays/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 
 /**
@@ -46,6 +46,7 @@ export const EMPTY_HIGHLIGHT: ReadonlyMap<number, boolean> = new Map();
 /** Shared empty ref set so the common no-selection / no-flagged `update` allocates nothing. */
 export const NO_REFS: ReadonlySet<number> = new Set();
 export const NO_BADGES: readonly DoorBadge[] = [];
+export const NO_BUBBLES: readonly SettlerBubble[] = [];
 
 /**
  * The per-frame inputs of {@link import('./world-renderer.js').WorldRenderer.update}, named rather than
@@ -68,6 +69,8 @@ export interface WorldFrame {
   readonly alpha?: number | undefined;
   /** Per-building door-badge tallies to stack over each door (default none). */
   readonly doorBadges?: readonly DoorBadge[] | undefined;
+  /** Per-settler thought bubbles to float over a settler's head (make-child / wedding; default none). */
+  readonly settlerBubbles?: readonly SettlerBubble[] | undefined;
   /** The work-flagged gatherer ids whose feet rings read as flagged (default none). */
   readonly flagged?: ReadonlySet<number> | undefined;
 }
