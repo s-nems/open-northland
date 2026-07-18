@@ -21,9 +21,10 @@ import { makeCellSampler } from './cell-field.js';
  * the lane (masked opaque-pixel ratio ×0.58 → ×1.58 across it), while tree canopies stay full-bright
  * even anchored on embr=0 border cells (flat regression over 118 canopies) — the app's object loader
  * applies the anchor-cell multiplier to everything but the tree logic types (`content/objects.ts`).
- * Buildings and settlers draw unshaded, as the original does: an earlier enhancement multiplied each
- * sprite by its single feet-cell value, which blackened whole buildings standing on the baked
- * slope-shadow (e.g. `boso_przez_swiat`), so it was dropped.
+ * Buildings and settlers draw unshaded, as the original does: its normal bob-print core
+ * (`CBobManager.PrintBob_8BitCore`/`PrintBob_DoubleByteCore`) takes no brightness argument — only
+ * landscape objects fold shade into their alpha blit. An earlier per-entity feet-cell multiplier was
+ * dropped because one cell's value blackened whole footprints on baked slope-shadow.
  */
 
 /**

@@ -182,8 +182,7 @@ export class WorldRenderer {
     // composed shading lane (`embr` + hillshade) shades the ground inside {@link TerrainLayer.set};
     // landscape objects get their own anchor-cell multiplier upstream in the app loader (trees exempt —
     // the measured split, `data/terrain/brightness.ts`). Entity sprites (buildings/settlers) draw
-    // unshaded, as the original does — a single feet-cell multiplier blackened whole sprites over the
-    // baked slope-shadow, so that enhancement was dropped.
+    // unshaded, as the original does.
     this.elevation = makeElevationField(terrain.elevation, terrain.width, terrain.height);
     this.terrain.set(terrain, textures, this.elevation);
   }
