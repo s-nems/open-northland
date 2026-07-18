@@ -354,18 +354,25 @@ export class SpritePool {
     // covering stage's eased reveal has risen over it — a fast build (x3, many builders) then flashes a gap
     // where the covered part vanishes and grows back. A first-seen site initialises straight to its target
     // (no grow-from-zero when a mid-build house scrolls in).
-    if (item.builtPct === undefined) {
+    // An upgrade site rides the same eased value: its progress arrives as `upgradePct` (mutually
+    // exclusive with `builtPct` by construction — see readBuiltPct/readUpgradePct), and without it the
+    // next-tier overlay would draw full-frame the moment the upgrade starts.
+    const progressPct = item.builtPct ?? item.upgradePct;
+    if (progressPct === undefined) {
       pe.reveal = undefined;
     } else {
-      const target = clamp01(item.builtPct / 100);
+      const target = clamp01(progressPct / 100);
       pe.reveal = pe.reveal === undefined ? target : lerp(pe.reveal, target, CONSTRUCTION_REVEAL_EASE);
     }
     // Stage selection reads the eased progress as a whole percent (windows are integer-percent); the pool
-    // still reveals pixels from the finer float `pe.reveal`.
+    // still reveals pixels from the finer float `pe.reveal`. The eased percent writes back to whichever
+    // field carried the progress, so upgrade-overlay windows track it too.
     const stageItem =
       pe.reveal === undefined
         ? drawItem
-        : { ...drawItem, builtPct: clamp(Math.round(pe.reveal * 100), 0, 99) };
+        : item.builtPct !== undefined
+          ? { ...drawItem, builtPct: clamp(Math.round(pe.reveal * 100), 0, 99) }
+          : { ...drawItem, upgradePct: clamp(Math.round(pe.reveal * 100), 0, 99) };
     const layers = resolveLayers(this.sheet, stageItem, animTick, Math.floor(pe.motion.gaitPhase));
     if (layers === null) {
       this.showPlaceholder(pe, item, frame);

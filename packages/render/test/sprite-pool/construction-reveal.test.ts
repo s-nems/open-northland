@@ -34,7 +34,7 @@ const frame = (
 // A house-family sheet with a time sheet (per-pixel reveal path): a scaffold stage (bob 85) covering the
 // lower window and the finished body (bob 70) revealing across [20,100] — the overlapping-window shape the
 // real viking houses use, where the scaffold hands off to the body partway up.
-const atlas: SpriteAtlas = { width: 100, height: 10, frames: new Map([frame(70), frame(85)]) };
+const atlas: SpriteAtlas = { width: 100, height: 10, frames: new Map([frame(70), frame(85), frame(90)]) };
 const times = { width: 100, height: 10, values: new Uint8Array(100 * 10) };
 const SCAFFOLD_TO_PCT = 60;
 const sheet: SpriteSheet = {
@@ -52,6 +52,9 @@ const sheet: SpriteSheet = {
           { layer: 'houses', bob: 70, fromPct: 20, toPct: 100 },
         ],
       },
+      // The next tier's finished body (bob 90) revealing over the kept old-tier body across the whole
+      // upgrade — the one-or-two full-window rows the real data binds per chained tier.
+      upgradeByType: { 13: [{ layer: 'houses', bob: 90, fromPct: 0, toPct: 100 }] },
     },
   },
   families: { houses: { source, atlas, times } },
@@ -75,6 +78,14 @@ function site(pct: number): ReturnType<typeof entity> {
   return entity(1, 0, 0, {
     Building: { buildingType: 13, built: Math.round((pct * SIM_ONE) / 100) },
     UnderConstruction: {},
+  });
+}
+/** A type-13 UPGRADE site at `pct` percent rebuilt — the old-tier body plus the revealing next-tier overlay. */
+function upgradeSite(pct: number): ReturnType<typeof entity> {
+  return entity(1, 0, 0, {
+    Building: { buildingType: 13, built: Math.round((pct * SIM_ONE) / 100) },
+    UnderConstruction: {},
+    Upgrading: {},
   });
 }
 /** How many of the drawn entity's stage sprites are visible this frame. */
@@ -114,5 +125,22 @@ describe('SpritePool — construction stages track the eased reveal, not the raw
     const done = entity(1, 0, 0, { Building: { buildingType: 13, built: SIM_ONE } });
     pool.reconcile(poolFrame(snapshotOf([done])));
     expect(visibleStages(layer)).toBe(1);
+  });
+});
+
+describe('SpritePool — an upgrade site reveals the next tier from its upgradePct, not full-frame', () => {
+  it('hides the next-tier overlay at 0% (the fake source is not bakeable, so the crop fallback decides)', () => {
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), sheet);
+
+    // Upgrade just started: progress rides `upgradePct` (builtPct is deliberately undefined for an
+    // Upgrading building). The eased reveal must pick it up — without that the overlay draws its full
+    // frame and the next tier pops in instantly (the regression this test pins).
+    pool.reconcile(poolFrame(snapshotOf([upgradeSite(0)])));
+    expect(visibleStages(layer)).toBe(1); // the kept old-tier body alone
+
+    // Let the eased reveal climb toward a nearly-done upgrade — the overlay's cropped rise appears.
+    for (let f = 0; f < 60; f++) pool.reconcile(poolFrame(snapshotOf([upgradeSite(90)])));
+    expect(visibleStages(layer)).toBe(2); // old body + the risen next-tier overlay
   });
 });
