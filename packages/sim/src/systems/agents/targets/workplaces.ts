@@ -1,4 +1,4 @@
-import { Building, JobAssignment, Position, Resource } from '../../../components/index.js';
+import { Building, JobAssignment, Position, Resource, UnderConstruction } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
@@ -33,6 +33,10 @@ export function boundWorkplaceTarget(
   const workplace = binding.workplace;
   const building = world.tryGet(workplace, Building);
   if (building === undefined || building.tribe !== tribe) return null;
+  // A trade needs its workhouse finished (readable source: `jobtypes.ini` `mustHaveFinishedWorkHouseFlag 1`,
+  // the same gate the farm twin applies) — in practice a running upgrade: its stashed stock reads as empty
+  // input slots, so an ungated producer would shuttle inputs store-to-store (the site refuses the drop).
+  if (world.has(workplace, UnderConstruction)) return null;
   if (mergedRecipeOf(world, ctx, workplace) === undefined) return null;
   if (!buildingWorkerJobs(world, ctx, workplace).has(jobType)) return null;
   if (!buildingEnabled(world, ctx, tribe, building.buildingType)) return null;
