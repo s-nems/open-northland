@@ -288,6 +288,111 @@ describe('footprint displacement — settlers never end up standing inside walls
   });
 });
 
+/**
+ * The sealed-nook rule: a stamp that closes the last open orthogonal side of a still-walkable cell it
+ * touches displaces the settler resting there (the real repro: the upgrade scene's builder hammered from
+ * the one-node gap between the HQ and the home, and the finished tier-2 wall sealed it — he rested on
+ * under the HQ sprite for good). The fixture: HOME_S at (5,5) upgrades to HOME_L, whose body grows to
+ * (6,5); a U-shaped neighbour blocks (7,4), (8,5), (7,6), so the finish seals the nook at (7,5).
+ */
+describe('footprint displacement — a finish that seals a nook beside the body displaces its occupant', () => {
+  const HOME_S = 20;
+  const HOME_L = 21;
+  const U_WALLS = 22;
+  const U_WALLS_DOORED = 23; // same walls, door on its own anchor — the nook cell becomes a designated stand
+  const STONE = 1;
+  const NOOK = { x: 7, y: 5 };
+  const U_BODY = [
+    { dx: 0, dy: -1 },
+    { dx: 1, dy: 0 },
+    { dx: 0, dy: 1 },
+  ];
+
+  function nookContent() {
+    return parseContentSet({
+      manifest: TEST_MANIFEST,
+      goods: [
+        { typeId: 0, id: 'none' },
+        { typeId: STONE, id: 'stone' },
+      ],
+      jobs: [{ typeId: 0, id: 'idle' }],
+      landscape: [{ typeId: 0, id: 'grass', walkable: true, buildable: true }],
+      buildings: [
+        {
+          typeId: HOME_S,
+          id: 'home_level_00',
+          kind: 'home',
+          homeSize: 1,
+          construction: [{ goodType: STONE, amount: 1 }],
+          footprint: { blocked: [{ dx: 0, dy: 0 }] },
+          upgradeTarget: HOME_L,
+        },
+        {
+          typeId: HOME_L,
+          id: 'home_level_01',
+          kind: 'home',
+          homeSize: 2,
+          construction: [{ goodType: STONE, amount: 1 }],
+          footprint: {
+            blocked: [
+              { dx: 0, dy: 0 },
+              { dx: 1, dy: 0 },
+            ],
+          },
+        },
+        { typeId: U_WALLS, id: 'u_walls', kind: 'workplace', footprint: { blocked: U_BODY } },
+        {
+          typeId: U_WALLS_DOORED,
+          id: 'u_walls_doored',
+          kind: 'workplace',
+          footprint: { blocked: U_BODY, door: { dx: 0, dy: 0 } },
+        },
+      ],
+    });
+  }
+
+  /** A built HOME_S at (5,5), a U neighbour anchored ON the nook cell, then the upgrade hammered out. */
+  function sealNook(uType: number | null): Simulation {
+    const sim = new Simulation({ seed: 1, content: nookContent(), map: grassNodeMap(16, 16) });
+    const home = sim.world.create();
+    sim.world.add(home, Position, positionOfNode(5, 5));
+    sim.world.add(home, Building, { buildingType: HOME_S, tribe: VIKING, built: ONE, level: 0 });
+    sim.world.add(home, Stockpile, { amounts: new Map<number, number>() });
+    if (uType !== null) {
+      const walls = sim.world.create();
+      sim.world.add(walls, Position, positionOfNode(NOOK.x, NOOK.y));
+      sim.world.add(walls, Building, { buildingType: uType, tribe: VIKING, built: ONE, level: 0 });
+    }
+    sim.enqueue({ kind: 'upgradeBuilding', building: home });
+    sim.step();
+    sim.world.get(home, Stockpile).amounts.set(STONE, 1);
+    sim.world.get(home, UnderConstruction).labor = ONE;
+    return sim;
+  }
+
+  it('displaces the resting settler out of the sealed nook', () => {
+    const sim = sealNook(U_WALLS);
+    const wedged = settlerAtNode(sim, NOOK.x, NOOK.y, PLAYER);
+    constructionSystem(sim.world, ctxOf(sim));
+    expect(nodeOf(sim, wedged)).not.toEqual(NOOK); // pushed out…
+    expect(standable(sim, wedged)).toBe(true); // …onto ground it can stand on and leave
+  });
+
+  it('leaves a settler beside the body alone while any orthogonal side stays open', () => {
+    const sim = sealNook(null); // no U neighbour — (7,4), (8,5), (7,6) stay free
+    const beside = settlerAtNode(sim, NOOK.x, NOOK.y, PLAYER);
+    constructionSystem(sim.world, ctxOf(sim));
+    expect(nodeOf(sim, beside)).toEqual(NOOK);
+  });
+
+  it('spares a door cell even when the stamp seals it — a door is a designated stand', () => {
+    const sim = sealNook(U_WALLS_DOORED); // the nook cell is the U building's own door
+    const atDoor = settlerAtNode(sim, NOOK.x, NOOK.y, PLAYER);
+    constructionSystem(sim.world, ctxOf(sim));
+    expect(nodeOf(sim, atDoor)).toEqual(NOOK);
+  });
+});
+
 /** A bare flag marker at a node — a gatherer-less `Position + DeliveryFlag`, which is all the geometry
  *  half of the push-out reads. */
 function flagAtNode(sim: Simulation, x: number, y: number): Entity {

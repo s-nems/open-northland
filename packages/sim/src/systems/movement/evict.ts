@@ -5,7 +5,7 @@ import { nearestUnblockedNode } from '../../nav/nearest.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { buildingFootprintOf, translatedCells } from '../footprint/geometry.js';
-import { dynamicBlockedCells, dynamicBlockOverlay } from '../footprint/index.js';
+import { buildingDoorNodes, dynamicBlockedCells, dynamicBlockOverlay } from '../footprint/index.js';
 import { canonicalById, isTravelling, NodeBuckets } from '../spatial.js';
 
 /** Max nodes {@link evictSettlersFromFootprint}'s ring search visits before giving up — a plot boxed in
@@ -22,6 +22,12 @@ const FOOTPRINT_EVICT_SEARCH_CAP = 192;
  * enclosed interior cell has no walkable route out (the pathfinder exempts only the START node, never
  * a blocked mid-route cell), so a walk could never leave a multi-cell body. The building's door cell
  * is spared — it is the passable gate, exactly as `buildingBlockedCells` carves it out.
+ *
+ * Beyond the body itself, the stamp can also seal a NOOK: a still-walkable cell it touches whose every
+ * orthogonal neighbour is now walk-blocked (a builder's work cell wedged between this plot and a
+ * neighbouring body — the real HQ/home gap is one node wide). A settler resting there is displaced too:
+ * nothing re-tasks it off a cell that reads as "inside the buildings" on screen, and a fully sealed one
+ * could not even walk out.
  *
  * Only standing units move: a walker mid-transit passes through freely (transit is never blocked) and
  * its own route plays out. Owner-gated like the spacing drives (`deStackIdle`), so unowned scenario
@@ -50,15 +56,30 @@ export function evictSettlersFromFootprint(world: World, ctx: SystemContext, bui
   if (body.size === 0) return;
 
   // One unsorted pass: every non-travelling owned settler (for the occupancy check) and, of those, the
-  // ones standing on the body (the evictees). The sort is deferred to the evictees alone — the common
-  // case (a finish with no stray on the plot) early-outs here before any sort, NodeBuckets, or overlay
-  // build, so a tick of many simultaneous finishes doesn't pay a full settler sort per building.
+  // ones standing on the body (the evictees) plus the ones beside it (nook candidates). The sort is
+  // deferred to the evictees alone — the common case (a finish with nobody on or beside the plot)
+  // early-outs here before any sort, NodeBuckets, or overlay build, so a tick of many simultaneous
+  // finishes doesn't pay a full settler sort per building.
   const standing: Entity[] = [];
   const evicteesUnsorted: Entity[] = [];
+  const nookCandidates: Entity[] = [];
   for (const e of world.query(Settler, Position, Owner)) {
     if (isTravelling(world, e)) continue;
     standing.push(e);
-    if (body.has(settlerNode(world, terrain, e))) evicteesUnsorted.push(e);
+    const at = settlerNode(world, terrain, e);
+    if (body.has(at)) evicteesUnsorted.push(e);
+    else if (terrain.neighbours(at).some((n) => body.has(n))) nookCandidates.push(e);
+  }
+  if (evicteesUnsorted.length === 0 && nookCandidates.length === 0) return;
+  const blocked = dynamicBlockedCells(world, ctx, terrain); // includes this building's own body
+  const doors = buildingDoorNodes(world, ctx, terrain);
+  // A candidate is a sealed-nook evictee when its cell is itself standable — but not a door, the
+  // designated stand the blocked-set carve-out spares — and every walkable orthogonal neighbour is
+  // blocked: the stamp closed the last open side.
+  for (const e of nookCandidates) {
+    const at = settlerNode(world, terrain, e);
+    if (blocked.has(at) || doors.has(at)) continue;
+    if (terrain.walkableNeighbours(at).every((n) => blocked.has(n))) evicteesUnsorted.push(e);
   }
   if (evicteesUnsorted.length === 0) return;
   // Only the evictees need canonical order — it fixes the deterministic Position-write + claim order.
@@ -67,7 +88,6 @@ export function evictSettlersFromFootprint(world: World, ctx: SystemContext, bui
   // Occupancy is read only for `.at(x,y).length` (is a cell already stood on?), a membership count
   // independent of input order — so the unsorted `standing` list is fine here (unlike NodeBuckets.nearest).
   const occupancy = new NodeBuckets(world, standing);
-  const blocked = dynamicBlockedCells(world, ctx, terrain); // includes this building's own body
   const claimed = new Set<NodeId>();
   for (const e of evictees) {
     const free = nearestFreeCellOutside(
@@ -75,6 +95,7 @@ export function evictSettlersFromFootprint(world: World, ctx: SystemContext, bui
       settlerNode(world, terrain, e),
       body,
       blocked,
+      doors,
       occupancy,
       claimed,
     );
@@ -144,13 +165,18 @@ function settlerNode(world: World, terrain: TerrainGraph, e: Entity): NodeId {
  * evictee has claimed — a breadth-first ring search from `from` in the graph's canonical neighbour
  * order (first hit at minimum ring distance, history-independent). Unlike the spacing drives' search
  * it MAY traverse the evicting building's own `body` cells (the evictee is displaced across its plot,
- * not walked), but never any other blocked cell. Null when nothing free is reachable within the cap.
+ * not walked), but never any other blocked cell. A landing target must also be neither a `doors` cell
+ * (a designated stand, visually inside its building) nor itself a sealed nook — it keeps at least one
+ * unblocked orthogonal side, so the push never wedges the settler into the next gap over (the real
+ * HQ/home seam has two such one-node pockets in a row). Null when nothing free is reachable within
+ * the cap.
  */
 function nearestFreeCellOutside(
   terrain: TerrainGraph,
   from: NodeId,
   body: ReadonlySet<NodeId>,
   blocked: ReadonlySet<NodeId>,
+  doors: ReadonlySet<NodeId>,
   occupancy: NodeBuckets,
   claimed: ReadonlySet<NodeId>,
 ): NodeId | null {
@@ -165,7 +191,7 @@ function nearestFreeCellOutside(
         if (blocked.has(n) && !body.has(n)) continue; // another building/resource — neither target nor path
         seen.add(n);
         visited++;
-        if (!blocked.has(n)) {
+        if (!blocked.has(n) && !doors.has(n) && terrain.walkableNeighbours(n).some((m) => !blocked.has(m))) {
           const { x, y } = terrain.coordsOf(n);
           if (!claimed.has(n) && occupancy.at(x, y).length === 0) return n;
         }
