@@ -216,6 +216,20 @@ export function stockRows(
 }
 
 /**
+ * The upgrade target tier's own construction bill — the level-difference cost the sim charges to raise
+ * `def` one tier (`constructionBillOf`'s upgrading branch). Empty when the type has no upgrade target or
+ * the target declares no cost. Shared by the running-upgrade site's rows ({@link constructionModel}) and
+ * the pre-commit cost preview ({@link upgradeCostRows}) so the two can never disagree.
+ */
+function upgradeTargetBill(
+  ctx: UnitPanelModelContext,
+  def: BuildingDef | undefined,
+): readonly { readonly goodType: number; readonly amount: number }[] {
+  if (def?.upgradeTarget === undefined) return [];
+  return ctx.buildings.find((b) => b.typeId === def.upgradeTarget)?.construction ?? [];
+}
+
+/**
  * The Construction-window model of a site: one row per line of the site's bill — the type's
  * FROM-SCRATCH cumulative bill ({@link constructionBillForType}), or for an UPGRADING building
  * (`Upgrading` beside the marker) the target tier's own cost (the level difference — exactly what the
@@ -233,15 +247,11 @@ export function constructionModel(
   const hitpoints = num(health?.hitpoints);
   const max = num(health?.max);
   const upgrading = ent.components.Upgrading !== undefined;
-  const target =
-    upgrading && def?.upgradeTarget !== undefined
-      ? ctx.buildings.find((b) => b.typeId === def.upgradeTarget)
-      : undefined;
   const bill =
     def === undefined
       ? []
       : upgrading
-        ? (target?.construction ?? [])
+        ? upgradeTargetBill(ctx, def)
         : constructionBillForType(ctx.buildings, def.typeId);
   const rows = bill.map((line) => {
     const goodId = goodDef(ctx, line.goodType)?.id;
@@ -260,15 +270,12 @@ export function constructionModel(
 }
 
 /**
- * The material bill to raise `def` one tier — its `upgradeTarget`'s own `construction` (the level
- * difference the sim charges, the same cost {@link constructionModel} shows for a running upgrade site),
- * as {goodType, label, amount} rows. Empty when the type has no upgrade target or the target declares
- * no build cost.
+ * The Upgrade button's pre-commit cost rows — the {@link upgradeTargetBill} (the same level-difference
+ * bill {@link constructionModel} shows once the upgrade is running), as {goodType, label, amount} rows.
+ * Empty when the type has no upgrade target or the target declares no build cost.
  */
 export function upgradeCostRows(ctx: UnitPanelModelContext, def: BuildingDef | undefined): UpgradeCostRow[] {
-  if (def?.upgradeTarget === undefined) return [];
-  const target = ctx.buildings.find((b) => b.typeId === def.upgradeTarget);
-  return (target?.construction ?? []).map((line) => ({
+  return upgradeTargetBill(ctx, def).map((line) => ({
     goodType: line.goodType,
     label: goodLabel(ctx, line.goodType),
     amount: line.amount,
