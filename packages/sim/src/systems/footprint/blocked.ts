@@ -14,6 +14,23 @@ import { resourceBlockedCells } from './resource-blocked-cache.js';
 // (./resource-blocked-cache.ts), plus the ground plots of under-construction sites. DERIVED state —
 // never hashed, never stored.
 
+/**
+ * Every standing building's door node — the passable gates {@link buildingBlockedCells} carves out of
+ * the walk-block. A door is a designated stand (an operator runs its workshop from it), so displacement
+ * passes exempt it the same way the blocked-set carve-out does. Order-independent set union.
+ */
+export function buildingDoorNodes(world: World, ctx: SystemContext, terrain: TerrainGraph): Set<NodeId> {
+  const doors = new Set<NodeId>();
+  for (const e of world.query(Building, Position)) {
+    const door = buildingFootprintOf(ctx.content, world.get(e, Building).buildingType)?.door;
+    if (door === undefined) continue;
+    const p = world.get(e, Position);
+    const { hx: ax, hy: ay } = nodeOfPosition(p.x, p.y);
+    if (terrain.inBounds(ax + door.dx, ay + door.dy)) doors.add(terrain.nodeAt(ax + door.dx, ay + door.dy));
+  }
+  return doors;
+}
+
 /** One under-construction building's ground plot — the half-cell body cells it occupies, for the render's
  *  grey "construction site" decal. Cells are `(col,row)` on the `2W×2H` half-cell lattice (anchor +
  *  footprint offset), the same coords `halfCellToScreen` projects. */
