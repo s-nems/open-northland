@@ -6,8 +6,10 @@ import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/da
  * `DEFAULT_BUILD_ORDER` resolve against it unmodified; entries of the default order that are absent
  * here (pottery, mason, hive, brewery, animal farm, sewery, joinery, smithy) exercise the
  * skip-missing-content path. The home chain (00→01→02) backs the upgrade entries, the
- * mill/bakery/well trio backs the chain-affinity entries, and the iron good backs the gated
- * collector entry. Numeric ids follow the original's job/good bands where they exist (woman 5,
+ * mill/bakery/well trio backs the chain-affinity entries, the bakery chain (00→01) backs the
+ * upgrade tail and its two-baker cap, and the iron good — gated by the viking `needforgood` row
+ * over the collector XP tracks — backs the gated collector entry and its experience rule. Numeric
+ * ids follow the original's job/good bands where they exist (woman 5,
  * civilist 6, builder 7, collector 8, farmer 18, miller 19, baker 20, carrier 24, scout 27).
  */
 export function aiContent(): ContentSet {
@@ -138,12 +140,43 @@ export function aiContent(): ContentSet {
         typeId: 8,
         id: 'work_bakery_00',
         kind: 'workplace',
+        upgradeTarget: 9,
         workers: [
           { jobType: 20, count: 1 },
           { jobType: 24, count: 1 },
         ],
         construction: [{ goodType: 1, amount: 2 }],
         stock: [{ goodType: 3, capacity: 5, initial: 0 }],
+      },
+      // The upgraded bakery: two baker slots — the one building whose operator cap is raised to two
+      // (`OPERATORS_PER_TRADE_BY_BUILDING_ID`), still carrier-staffed.
+      {
+        typeId: 9,
+        id: 'work_bakery_01',
+        kind: 'workplace',
+        workers: [
+          { jobType: 20, count: 2 },
+          { jobType: 24, count: 1 },
+        ],
+        construction: [{ goodType: 1, amount: 2 }],
+        stock: [{ goodType: 3, capacity: 5, initial: 0 }],
+      },
+    ],
+    // The collector's per-good XP tracks (real track ids 4/5 back iron's `needforgood` below; the
+    // factors mirror the base data — one completed dig clears the threshold).
+    jobExperience: [
+      { typeId: 4, id: 'collector_mud', jobType: 8, goodType: 2, experienceFactor: 100 },
+      { typeId: 5, id: 'collector_stone', jobType: 8, goodType: 4, experienceFactor: 100 },
+    ],
+    // The viking requirement table's iron gate (base data: `needforgood iron 10` measured in the
+    // clay+stone collector tracks) — a fresh hire may not mine iron until it has dug clay or stone.
+    tribes: [
+      {
+        typeId: 1,
+        id: 'viking',
+        jobRequirements: [
+          { requirement: 'need', target: 'good', targetId: 5, amount: 10, experienceTypes: [4, 5] },
+        ],
       },
     ],
     landscape: [

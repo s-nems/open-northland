@@ -18,10 +18,12 @@ import { BUILD_SEARCH_MAX_RADIUS_NODES } from './entries.js';
 // closest-to-HQ pick exactly.
 
 /** One affinity anchor resolved to a node: the seat's first (lowest-id) owned building of the id,
- *  or the live resource of the good nearest the HQ. Unresolvable anchors are dropped. */
+ *  the live resource of the good nearest the HQ, or the map's centre node. Unresolvable anchors
+ *  are dropped. */
 function affinityNode(
   world: World,
   ctx: SystemContext,
+  terrain: TerrainGraph,
   owned: readonly Entity[],
   hq: HalfCellNode,
   affinity: NonNullable<Extract<BuildOrderEntry, { kind: 'place' }>['near']>[number],
@@ -42,6 +44,8 @@ function affinityNode(
       const resource = nearestLiveResource(world, good.typeId, hq);
       return resource === null ? null : anchorNodeOf(world, resource);
     }
+    case 'mapCentre':
+      return { hx: Math.floor(terrain.width / 2), hy: Math.floor(terrain.height / 2) };
   }
 }
 
@@ -51,13 +55,14 @@ function affinityNode(
 function searchCentre(
   world: World,
   ctx: SystemContext,
+  terrain: TerrainGraph,
   owned: readonly Entity[],
   hq: HalfCellNode,
   entry: Extract<BuildOrderEntry, { kind: 'place' }>,
 ): HalfCellNode {
   const anchors: HalfCellNode[] = [];
   for (const affinity of entry.near ?? []) {
-    const node = affinityNode(world, ctx, owned, hq, affinity);
+    const node = affinityNode(world, ctx, terrain, owned, hq, affinity);
     if (node !== null) anchors.push(node);
   }
   if (anchors.length === 0) return hq;
@@ -128,7 +133,7 @@ export function placementSpot(
     if (node !== null) occupied.add(`${node.hx},${node.hy}`);
   }
   const probe = placementProbe(world, ctx.content, terrain, type.typeId);
-  const centre = searchCentre(world, ctx, owned, hq, entry);
+  const centre = searchCentre(world, ctx, terrain, owned, hq, entry);
   return firstRingNode(centre.hx, centre.hy, 2 * BUILD_SEARCH_MAX_RADIUS_NODES, (x, y) => {
     if (!terrain.inBounds(x, y) || !terrain.isBuildable(terrain.nodeAt(x, y))) return false;
     if (Math.abs(x - hq.hx) + Math.abs(y - hq.hy) > BUILD_SEARCH_MAX_RADIUS_NODES) return false;

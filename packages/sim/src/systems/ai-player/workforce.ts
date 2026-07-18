@@ -21,6 +21,7 @@ import { liveWorkFlag } from '../economy/flags.js';
 import { buildStaffingTally } from '../economy/jobs/openings.js';
 import { isAdultSettler } from '../family/eligibility.js';
 import { workFlagPlacementBlocks } from '../footprint/index.js';
+import { settlerMeetsNeed } from '../progression/index.js';
 import { isFighterJob } from '../readviews/index.js';
 import { SCOUT_JOB } from '../readviews/stances.js';
 import { resourcesNearNode } from '../resource-index.js';
@@ -28,6 +29,7 @@ import { isCarrierJob } from '../stores/index.js';
 import { type BuildOrderEntry, collectorGoodsWanted } from './build-order/index.js';
 import type { AiPlayerModule } from './index.js';
 import {
+  AI_DECISION_INTERVAL_TICKS,
   anchorNodeOf,
   firstRingNode,
   headquartersOf,
@@ -64,6 +66,17 @@ export const CARRIERS_PER_STAFFED_BUILDING = 1;
 /** Workers assigned per (workplace, trade): the user's opening plan staffs each workshop with one
  *  worker per trade (e.g. a single farmer), even when the building offers more slots. */
 export const WORKERS_PER_TRADE = 1;
+
+/** Per-building overrides of {@link WORKERS_PER_TRADE}, by stable content id (user plan
+ *  2026-07-18: the upgraded bakery runs TWO bakers; upgraded pottery/mason keep one worker). */
+export const OPERATORS_PER_TRADE_BY_BUILDING_ID: Readonly<Record<string, number>> = {
+  work_bakery_01: 2,
+};
+
+/** Every how many of a seat's decisions the collector flags are re-aimed at the nearest live
+ *  resource — the infrequent "nudge the flags after the patch drifted" upkeep (user rule
+ *  2026-07-18). 30 decisions ≈ 60 s at the base clock. */
+export const FLAG_RELOCATE_EVERY_DECISIONS = 30;
 
 /** A collector's flag stands 2–3 tiles from its resource (user rule) — 4..6 half-cell nodes. */
 export const FLAG_MIN_DISTANCE_NODES = 4;
@@ -198,6 +211,27 @@ function runWorkforce(
     return spare;
   };
 
+  // Whether this settler's accrued XP clears the good's `needforgood` thresholds — the same gate
+  // the harvest pick applies (`nearestHarvestableFor`), so the allocator never posts a collector
+  // its own target scan would refuse (iron/gold demand clay/stone-track XP in the base data).
+  const meetsNeed = (e: Entity, goodType: number): boolean => {
+    const s = world.get(e, Settler);
+    return settlerMeetsNeed(ctx, s.tribe, 'good', goodType, s.experience);
+  };
+  // Whether ANY accrued-XP threshold gates the good for this tribe — a gated good needs a veteran,
+  // an ungated one accepts any fresh hire.
+  const needGated = (tribe: number, goodType: number): boolean => {
+    const tribeType = index.tribes.get(tribe);
+    if (tribeType === undefined) return false;
+    return tribeType.jobRequirements.some(
+      (r) => r.requirement === 'need' && r.target === 'good' && r.targetId === goodType,
+    );
+  };
+  // The infrequent flag upkeep (user rule 2026-07-18): on every FLAG_RELOCATE_EVERY_DECISIONS-th
+  // decision, a flag whose nearest live resource has drifted out of the 2–3-tile band is re-planted
+  // beside it — a live-but-receding patch otherwise keeps the flag parked at its original spot.
+  const relocateDue = Math.floor(ctx.tick / AI_DECISION_INTERVAL_TICKS) % FLAG_RELOCATE_EVERY_DECISIONS === 0;
+
   // 1. Collectors: one flag-bound gatherer per wanted good, its flag standing 2–3 tiles from the
   // nearest live resource; a dry patch moves the flag to the next resource, a good with no resource
   // left releases its collector back to the pool (user rules, 2026-07-17).
@@ -209,7 +243,19 @@ function runWorkforce(
         const flag = liveWorkFlag(world, holder);
         const flagNode = flag === undefined ? null : anchorNodeOf(world, flag.flag);
         if (flag === undefined || flagNode === null) continue; // vanished mid-decision — next pass rehires
-        if (patchAlive(world, w.good.typeId, flagNode, flag.radius)) continue;
+        if (patchAlive(world, w.good.typeId, flagNode, flag.radius)) {
+          if (!relocateDue) continue;
+          const near = nearestLiveResource(world, w.good.typeId, flagNode);
+          const nearNode = near === null ? null : anchorNodeOf(world, near);
+          if (nearNode === null) continue;
+          const drift = Math.abs(nearNode.hx - flagNode.hx) + Math.abs(nearNode.hy - flagNode.hy);
+          if (drift <= FLAG_MAX_DISTANCE_NODES) continue; // still in the band — leave the flag be
+          const spot = flagSpotNear(world, ctx, terrain, nearNode);
+          if (spot !== null && (spot.hx !== flagNode.hx || spot.hy !== flagNode.hy)) {
+            commands.push({ kind: 'setWorkFlag', entity: holder, x: spot.hx, y: spot.hy });
+          }
+          continue;
+        }
         const next = nearestLiveResource(world, w.good.typeId, flagNode);
         if (next === null) {
           // The map ran out of this good — the collector rejoins the builder pool.
@@ -227,11 +273,30 @@ function runWorkforce(
       const node = anchorNodeOf(world, resource);
       const spot = node === null ? null : flagSpotNear(world, ctx, terrain, node);
       if (spot === null) continue;
-      const spare = takeSpare();
-      if (spare === null) break; // pool dry — the rest waits for grown sons
-      commands.push({ kind: 'setJob', entity: spare, jobType: w.job });
-      commands.push({ kind: 'setWorkFlag', entity: spare, x: spot.hx, y: spot.hy });
-      commands.push({ kind: 'setGatherGood', entity: spare, goodType: w.good.typeId });
+      const spare = pool.find((e) => !used.has(e) && meetsNeed(e, w.good.typeId));
+      if (spare !== undefined) {
+        used.add(spare);
+        commands.push({ kind: 'setJob', entity: spare, jobType: w.job });
+        commands.push({ kind: 'setWorkFlag', entity: spare, x: spot.hx, y: spot.hy });
+        commands.push({ kind: 'setGatherGood', entity: spare, goodType: w.good.typeId });
+        continue;
+      }
+      // No qualified spare. For an XP-gated good, re-post a veteran collector of an ungated good
+      // (a clay/stone digger clears iron's threshold after one completed dig); its vacated good is
+      // rehired from the pool on a later decision — the plan-order loop self-heals.
+      for (const other of wanted) {
+        if (other === w) continue;
+        const veteran = collectorByGood.get(other.good.typeId);
+        if (veteran === undefined) continue;
+        const s = world.get(veteran, Settler);
+        if (needGated(s.tribe, other.good.typeId)) continue; // its own post needs a veteran too — keep it
+        if (!meetsNeed(veteran, w.good.typeId)) continue;
+        if (s.jobType !== w.job) commands.push({ kind: 'setJob', entity: veteran, jobType: w.job });
+        commands.push({ kind: 'setWorkFlag', entity: veteran, x: spot.hx, y: spot.hy });
+        commands.push({ kind: 'setGatherGood', entity: veteran, goodType: w.good.typeId });
+        collectorByGood.delete(other.good.typeId);
+        break;
+      }
     }
   }
 
@@ -266,8 +331,9 @@ function runWorkforce(
     const carriers = CARRIER_STAFFED_BUILDING_IDS.includes(type.id)
       ? type.workers.filter((w) => isCarrierJob(ctx, w.jobType))
       : [];
+    const operatorCap = OPERATORS_PER_TRADE_BY_BUILDING_ID[type.id] ?? WORKERS_PER_TRADE;
     for (const [slot, cap] of [
-      ...operators.map((s) => [s, WORKERS_PER_TRADE] as const),
+      ...operators.map((s) => [s, operatorCap] as const),
       ...carriers.map((s) => [s, CARRIERS_PER_STAFFED_BUILDING] as const),
     ]) {
       const held = tally.get(building)?.get(slot.jobType) ?? 0;

@@ -6,14 +6,17 @@
  */
 
 /** Where a placement should gravitate, on top of the always-on near-HQ rule: toward the seat's
- *  first building of a stable content id, or toward the nearest live resource of a good. */
+ *  first building of a stable content id, toward the nearest live resource of a good, or toward
+ *  the map's centre (the barracks rule — face the contested middle, not the town's back). */
 export type PlacementAffinity =
   | { readonly kind: 'building'; readonly id: string }
-  | { readonly kind: 'resource'; readonly good: string };
+  | { readonly kind: 'resource'; readonly good: string }
+  | { readonly kind: 'mapCentre' };
 
 export type BuildOrderEntry =
-  /** Place `count` buildings of the stable content id. A `home`-kind id counts every owned home
-   *  tier (an upgraded home must not trigger a replacement). `near` pulls the spot toward its
+  /** Place `count` buildings of the stable content id. Owned buildings at the placed tier OR any
+   *  tier above it on the `upgradeTarget` chain count (a `home`-kind id counts every home tier) —
+   *  an upgraded building must not trigger a replacement. `near` pulls the spot toward its
    *  anchors; `ground: 'plantable'` restricts the footprint to sowable ground (a hard rule — no
    *  legal spot stalls the list, user decision 2026-07-18). */
   | {
@@ -31,11 +34,15 @@ export type BuildOrderEntry =
   | { readonly kind: 'collector'; readonly good: string };
 
 /**
- * The opening list (source: the user's authored plan, 2026-07-17, extended 2026-07-18). The
- * affinities encode the plan's adjacency rules: the mason leans toward the stone deposit and the
- * pottery toward the clay pit (both still near the HQ), the farm→mill→bakery/well chain clusters,
- * the hive/brewery/animal-farm cluster hangs off the well, and each level-2 workshop is placed at
- * level 0 then upgraded in place. The iron collector is hired only when the list reaches it.
+ * The opening list (source: the user's authored plan, 2026-07-17, extended and revised
+ * 2026-07-18). The affinities encode the plan's adjacency rules: the mason leans toward the stone
+ * deposit and the pottery toward the clay pit (both still near the HQ), the farm→mill→bakery/well
+ * chain clusters, and the hive/brewery/animal-farm cluster hangs off the well. Level-2 workshops
+ * (sewery, joinery, smithy) are built at their level-2 tier DIRECTLY — no level-0 intermediate
+ * (user decision 2026-07-18). The iron collector is hired only when the list reaches it. The tail
+ * is material-ordered: the pottery/mason upgrades unlock tile and ornament, which the level-4/5
+ * home upgrades then consume; the barracks faces the map centre; the bakery upgrade comes last and
+ * gains a second baker (`OPERATORS_PER_TRADE_BY_BUILDING_ID`).
  */
 export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
   { kind: 'place', building: 'work_farm_00', count: 1, ground: 'plantable' },
@@ -75,16 +82,19 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
   },
   {
     kind: 'place',
-    building: 'work_sewery_00',
+    building: 'work_sewery_01',
     count: 1,
     near: [{ kind: 'building', id: 'work_animal_farm' }],
   },
-  { kind: 'upgrade', building: 'work_sewery_01', count: 1 },
-  { kind: 'place', building: 'work_joinery_00', count: 1, near: [{ kind: 'resource', good: 'wood' }] },
-  { kind: 'upgrade', building: 'work_joinery_01', count: 1 },
+  { kind: 'place', building: 'work_joinery_01', count: 1, near: [{ kind: 'resource', good: 'wood' }] },
   { kind: 'collector', good: 'iron' },
-  { kind: 'place', building: 'work_smithy_00', count: 1, near: [{ kind: 'resource', good: 'iron' }] },
-  { kind: 'upgrade', building: 'work_smithy_01', count: 1 },
+  { kind: 'place', building: 'work_smithy_01', count: 1, near: [{ kind: 'resource', good: 'iron' }] },
+  { kind: 'upgrade', building: 'work_pottery_01', count: 1 },
+  { kind: 'upgrade', building: 'work_mason_hut_01', count: 1 },
+  { kind: 'place', building: 'barracks', count: 1, near: [{ kind: 'mapCentre' }] },
+  { kind: 'upgrade', building: 'home_level_03', count: 3 },
+  { kind: 'upgrade', building: 'home_level_04', count: 3 },
+  { kind: 'upgrade', building: 'work_bakery_01', count: 1 },
 ];
 
 /** Concurrent construction sites per seat — upgrades included (user rule, 2026-07-18: exactly one

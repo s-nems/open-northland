@@ -61,6 +61,9 @@ const FARM_TYPE = 5;
 const WELL_TYPE = 6;
 const MILL_TYPE = 7;
 const BAKERY_TYPE = 8;
+const BAKERY_TOP_TYPE = 9;
+/** The stone-collector XP track (fixture = real track id 5) iron's `needforgood` measures. */
+const STONE_XP_TRACK = 5;
 const WOOD = 1;
 const MUD = 2;
 const STONE = 4;
@@ -278,6 +281,10 @@ describe('workforce module (collectResources)', () => {
     placeResources(sim, [RESOURCE_SPOTS.iron]);
     spawnMen(sim, 4);
     sim.step();
+    // One man has dug stone before — iron's `needforgood` XP gate demands an experienced digger.
+    const veteran = [...sim.world.query(Settler)].find((e) => sim.world.get(e, Settler).jobType === CIVILIST);
+    if (veteran === undefined) throw new Error('setup: no spawned man');
+    sim.world.get(veteran, Settler).experience.set(STONE_XP_TRACK, 100);
 
     // The gate: iron is listed after the farm entry, so an unmet farm keeps it unwanted.
     const gated = workforceModule([
@@ -287,11 +294,107 @@ describe('workforce module (collectResources)', () => {
     const before = [...gated.run(sim.world, ctxOf(sim), SEAT)];
     expect(before.filter((c) => c.kind === 'setGatherGood')).toEqual([]);
 
-    // A standing farm (any construction state counts) satisfies the entry — iron is now wanted.
+    // A standing farm (any construction state counts) satisfies the entry — iron is now wanted,
+    // and the hire lands on the one man whose XP clears the threshold.
     sim.enqueue({ kind: 'placeBuilding', buildingType: FARM_TYPE, x: 36, y: 16, tribe: VIKING, owner: SEAT });
     sim.step();
     const after = [...gated.run(sim.world, ctxOf(sim), SEAT)];
-    expect(after.filter((c) => c.kind === 'setGatherGood').map((c) => c.goodType)).toEqual([IRON]);
+    expect(after.filter((c) => c.kind === 'setGatherGood')).toEqual([
+      { kind: 'setGatherGood', entity: veteran, goodType: IRON },
+    ]);
+  });
+
+  it('gates the iron post on accrued XP: fresh spares wait, a veteran digger is re-posted', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    // Three men: the stone hire, the scout the allocator also calls up, and the spare who later
+    // backfills the vacated stone post.
+    placeResources(sim, [RESOURCE_SPOTS.stone, RESOURCE_SPOTS.iron]);
+    spawnMen(sim, 3);
+    sim.step();
+    const gated = workforceModule([{ kind: 'collector', good: 'iron' }]);
+
+    // Fresh men: stone hires (ungated); iron finds no qualified spare and no veteran — it waits.
+    const fresh = [...gated.run(sim.world, ctxOf(sim), SEAT)];
+    expect(fresh.filter((c) => c.kind === 'setGatherGood').map((c) => c.goodType)).toEqual([STONE]);
+    for (const c of fresh) sim.enqueue(c);
+    sim.step();
+
+    // The stone collector has dug (its stone-track XP stands): the next decision re-posts IT onto
+    // iron — the fresh spare still may not mine iron.
+    const collector = [...sim.world.query(Settler, WorkFlag)][0];
+    if (collector === undefined) throw new Error('setup: stone collector missing');
+    sim.world.get(collector, Settler).experience.set(STONE_XP_TRACK, 100);
+    const swap = [...gated.run(sim.world, ctxOf(sim), SEAT)];
+    expect(swap.filter((c) => c.kind === 'setGatherGood')).toEqual([
+      { kind: 'setGatherGood', entity: collector, goodType: IRON },
+    ]);
+    const flag = swap.find((c) => c.kind === 'setWorkFlag');
+    if (flag === undefined) throw new Error('expected the veteran flag beside the iron deposit');
+    const toIron = Math.abs(flag.x - RESOURCE_SPOTS.iron.x) + Math.abs(flag.y - RESOURCE_SPOTS.iron.y);
+    expect(toIron).toBeGreaterThanOrEqual(FLAG_MIN_DISTANCE_NODES);
+    expect(toIron).toBeLessThanOrEqual(FLAG_MAX_DISTANCE_NODES);
+    for (const c of swap) sim.enqueue(c);
+    sim.step();
+
+    // The vacated stone post is rehired from the pool on the following decision — self-healing.
+    const rehire = [...gated.run(sim.world, ctxOf(sim), SEAT)];
+    expect(rehire.filter((c) => c.kind === 'setGatherGood').map((c) => c.goodType)).toEqual([STONE]);
+  });
+
+  it('re-aims a live flag at its drifted patch on the periodic upkeep decision', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    placeResources(sim, [RESOURCE_SPOTS.wood]);
+    spawnMen(sim, 1);
+    sim.step();
+    for (const c of collectModule.run(sim.world, ctxOf(sim), SEAT)) sim.enqueue(c);
+    sim.step();
+
+    // Drain the original node; a survivor stands INSIDE the work circle but beyond the 2–3-tile
+    // band (wherever in that band the flag stood), so the patch never runs dry and only the
+    // periodic upkeep can move the flag.
+    const DRIFTED = { x: RESOURCE_SPOTS.wood.x + 14, y: RESOURCE_SPOTS.wood.y };
+    for (const e of sim.world.query(Resource)) sim.world.get(e, Resource).remaining = 0;
+    sim.enqueue({
+      kind: 'placeResource',
+      good: WOOD,
+      x: DRIFTED.x,
+      y: DRIFTED.y,
+      remaining: 5,
+      harvestAtomic: WOOD_HARVEST,
+    });
+    sim.step();
+
+    // An ordinary decision (the second of the run) leaves the live flag alone…
+    expect([...collectModule.run(sim.world, ctxOf(sim, 24), SEAT)]).toEqual([]);
+    // …the upkeep decision (every 30th — tick 720) re-plants it into the survivor's band.
+    const upkeep = [...collectModule.run(sim.world, ctxOf(sim, 720), SEAT)];
+    const moved = upkeep.find((c) => c.kind === 'setWorkFlag');
+    if (moved === undefined) throw new Error('expected the periodic flag re-aim');
+    const dist = Math.abs(moved.x - DRIFTED.x) + Math.abs(moved.y - DRIFTED.y);
+    expect(dist).toBeGreaterThanOrEqual(FLAG_MIN_DISTANCE_NODES);
+    expect(dist).toBeLessThanOrEqual(FLAG_MAX_DISTANCE_NODES);
+  });
+
+  it('staffs the upgraded bakery with two bakers plus the carrier (the per-building override)', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    sim.enqueue({
+      kind: 'placeBuilding',
+      buildingType: BAKERY_TOP_TYPE,
+      x: 40,
+      y: 16,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    spawnMen(sim, 6, BUILDER);
+    sim.step();
+
+    const commands = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
+    const bakery = entityOfBuilding(sim, BAKERY_TOP_TYPE);
+    const staffing = commands.filter((c) => c.kind === 'assignWorker').filter((c) => c.building === bakery);
+    expect(staffing.map((c) => c.jobPriority)).toEqual([[BAKER], [BAKER], [CARRIER]]);
   });
 
   it('turns an idle scout back into a builder once the wanted lattice is done', () => {
@@ -378,7 +481,8 @@ describe('build-order module (houseBuild)', () => {
     expect(homes).toEqual([HOME_TOP_TYPE, HOME_TOP_TYPE, HOME_TOP_TYPE]);
 
     // The gated iron-collector entry: the executor waits (the workforce module does the hiring);
-    // the later smithy entries are absent from this content, so a standing collector ends the list.
+    // the smithy/pottery/mason/barracks/home-tier tail is absent from this content, so a standing
+    // collector unblocks the one remaining fixture entry — the bakery upgrade — which ends the list.
     expect(nextPlacement(sim)).toBeUndefined();
     sim.enqueue({ kind: 'spawnSettler', jobType: COLLECTOR, x: 12, y: 24, tribe: VIKING, owner: SEAT });
     sim.step();
@@ -387,6 +491,10 @@ describe('build-order module (houseBuild)', () => {
     sim.enqueue({ kind: 'setWorkFlag', entity: settler, x: 14, y: 26 });
     sim.enqueue({ kind: 'setGatherGood', entity: settler, goodType: IRON });
     sim.step();
+    const upgrade = nextPlacement(sim);
+    if (upgrade?.kind !== 'upgradeBuilding') throw new Error('expected the bakery upgrade');
+    expect(sim.world.get(upgrade.building, Building).buildingType).toBe(BAKERY_TYPE);
+    applyAndFinish(sim, upgrade);
     expect(nextPlacement(sim)).toBeUndefined();
   });
 
@@ -414,6 +522,21 @@ describe('build-order module (houseBuild)', () => {
     sim.step();
     const upgradeOnly = buildOrderModule([{ kind: 'upgrade', building: 'home_level_02', count: 1 }]);
     expect([...upgradeOnly.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
+  });
+
+  it('counts an upgraded building for its place entry instead of building a duplicate', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    sim.step();
+    const placeOnly = buildOrderModule([{ kind: 'place', building: 'work_bakery_00', count: 1 }]);
+    const first = [...placeOnly.run(sim.world, ctxOf(sim), SEAT)][0];
+    if (first?.kind !== 'placeBuilding') throw new Error('expected the bakery placement');
+    applyAndFinish(sim, first);
+    const bakery = entityOfBuilding(sim, BAKERY_TYPE);
+    applyAndFinish(sim, { kind: 'upgradeBuilding', building: bakery });
+    // The building now stands at the upper tier — the level-0 place entry stays satisfied.
+    expect(sim.world.get(bakery, Building).buildingType).toBe(BAKERY_TOP_TYPE);
+    expect([...placeOnly.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
   });
 });
 
@@ -494,6 +617,23 @@ describe('build-order placement — affinity and ground rules', () => {
     ]);
     if (spot?.kind !== 'placeBuilding') throw new Error('expected an affinity placement');
     expect(Math.abs(spot.x - WELL_AT.x) + Math.abs(spot.y - WELL_AT.y)).toBeLessThanOrEqual(2);
+  });
+
+  it('pulls a mapCentre-affinity placement toward the middle of the map', () => {
+    const HQ_FAR = { x: 20, y: 20 };
+    const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(256, 256) });
+    placeHq(sim, HQ_FAR.x, HQ_FAR.y);
+    sim.step();
+    const spot = firstCommandOf(sim, [
+      { kind: 'place', building: 'work_well_00', count: 1, near: [{ kind: 'mapCentre' }] },
+    ]);
+    if (spot?.kind !== 'placeBuilding') throw new Error('expected a centre-pulled placement');
+    const toHq = Math.abs(spot.x - HQ_FAR.x) + Math.abs(spot.y - HQ_FAR.y);
+    expect(toHq).toBeLessThanOrEqual(BUILD_SEARCH_MAX_RADIUS_NODES); // never outside the band
+    expect(toHq).toBeGreaterThan(BUILD_SEARCH_MAX_RADIUS_NODES / 2); // pulled hard toward the middle
+    // The pull points at the map centre (128,128), east and south of this HQ.
+    expect(spot.x).toBeGreaterThan(HQ_FAR.x);
+    expect(spot.y).toBeGreaterThan(HQ_FAR.y);
   });
 
   it('clamps a far-off affinity centre back into the near-HQ band', () => {
@@ -679,31 +819,34 @@ describe('the full strategic registry — determinism and replay', () => {
       fillStock: true,
     });
     placeResources(sim);
-    // Fourteen men: four collectors (iron once reached), the scout, and four staffing posts
-    // (farmer, miller, baker, the bakery carrier — the well's transport slot stays empty) still
-    // leave builders free to raise the list — the allocation priority is the user's plan.
+    // Fourteen men: four collectors (iron staffed by re-posting a veteran digger once reached),
+    // the scout, and five staffing posts (farmer, miller, two bakers after the upgrade, the bakery
+    // carrier — the well's transport slot stays empty) still leave builders free to raise the
+    // list — the allocation priority is the user's plan.
     spawnMen(sim, 14);
     sim.enqueue({ kind: 'setPlayerAi', player: SEAT, enabled: true });
     sim.run(12000);
     const built = [...sim.world.query(Building)].filter(
       (e) => !sim.world.has(e, UnderConstruction) && sim.world.get(e, Building).buildingType !== HQ_TYPE,
     );
-    // The farm, the mill/bakery/well chain, and all three homes at the TOP tier stand finished
-    // (the fixture's whole placeable list, homes upgraded twice each).
+    // The farm, the mill/well chain, all three homes at the TOP tier, and the bakery upgraded to
+    // its second tier stand finished (the fixture's whole placeable list; the list's tail entries
+    // absent from this content are skipped).
     expect(built.map((e) => sim.world.get(e, Building).buildingType).sort((a, b) => a - b)).toEqual(
-      [HOME_TOP_TYPE, HOME_TOP_TYPE, HOME_TOP_TYPE, FARM_TYPE, WELL_TYPE, MILL_TYPE, BAKERY_TYPE].sort(
+      [HOME_TOP_TYPE, HOME_TOP_TYPE, HOME_TOP_TYPE, FARM_TYPE, WELL_TYPE, MILL_TYPE, BAKERY_TOP_TYPE].sort(
         (a, b) => a - b,
       ),
     );
-    // The farm got its farmer and the bakery its baker AND carrier, all from the builder pool.
+    // The farm got its farmer; the upgraded bakery runs TWO bakers AND its carrier — all drawn
+    // from the builder pool.
     const farm = entityOfBuilding(sim, FARM_TYPE);
-    const bakery = entityOfBuilding(sim, BAKERY_TYPE);
+    const bakery = entityOfBuilding(sim, BAKERY_TOP_TYPE);
     const posts = [...sim.world.query(Settler, JobAssignment)].map((e) => ({
       workplace: sim.world.get(e, JobAssignment).workplace,
       jobType: sim.world.get(e, Settler).jobType,
     }));
     expect(posts.some((p) => p.workplace === farm && p.jobType === FARMER)).toBe(true);
-    expect(posts.some((p) => p.workplace === bakery && p.jobType === BAKER)).toBe(true);
+    expect(posts.filter((p) => p.workplace === bakery && p.jobType === BAKER)).toHaveLength(2);
     expect(posts.some((p) => p.workplace === bakery && p.jobType === CARRIER)).toBe(true);
     // The gated iron collector was hired once the list reached its entry (the tiny fixture patch
     // is long harvested dry by now, so the proof is the logged hire, not a standing flag).

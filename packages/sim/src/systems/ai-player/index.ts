@@ -4,6 +4,7 @@ import type { World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
 import { buildOrderModule, DEFAULT_BUILD_ORDER } from './build-order/index.js';
 import { populationModule } from './population.js';
+import { AI_DECISION_INTERVAL_TICKS } from './shared.js';
 import { signpostCoverageModule } from './signpost-coverage.js';
 import { workforceModule } from './workforce.js';
 
@@ -22,13 +23,6 @@ export * from './workforce.js';
  * discards the re-emitted copies — see `stepReplaying`). Modules are pure functions of world state +
  * the seeded RNG, never wall-clock or app-side reads.
  */
-
-/**
- * Ticks between one seat's decision passes — 2 s at the 12 ticks/s base clock. A genre-convention
- * approximation (Widelands/KaM/Petra re-evaluate strategy on seconds-scale timers, not per tick);
- * per-tick cost scales with decisions, not ticks.
- */
-export const AI_DECISION_INTERVAL_TICKS = 24;
 
 /** One strategic concern of the AI player (see {@link AiModuleId} — the HAI toggle decomposition).
  *  `run` returns the commands the seat issues this decision; the system enqueues them. */

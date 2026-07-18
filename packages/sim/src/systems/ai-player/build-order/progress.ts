@@ -62,11 +62,14 @@ export function entryStatus(
     case 'place': {
       const type = buildingTypeByContentId(ctx.content, entry.building);
       if (type === undefined) return 'skip';
+      // The placed tier or anything above it on its chain counts — an upgraded workshop must not
+      // trigger a duplicate placement (a home entry counts every home tier, upgraded or not).
+      const counted = tiersAtOrAbove(index, type);
       let have = 0;
       for (const e of owned) {
         const ownedType = index.buildings.get(world.get(e, Building).buildingType);
         if (ownedType === undefined) continue;
-        const matches = type.kind === 'home' ? ownedType.kind === 'home' : ownedType.typeId === type.typeId;
+        const matches = type.kind === 'home' ? ownedType.kind === 'home' : counted.has(ownedType.typeId);
         if (matches) have++;
       }
       return have >= entry.count ? 'satisfied' : 'unmet';
