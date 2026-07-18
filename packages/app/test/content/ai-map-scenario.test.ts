@@ -38,6 +38,11 @@ describe.runIf(hasRealIr() && existsSync(mapPath()))('strategic AI on a decoded 
     const map = JSON.parse(readFileSync(mapPath(), 'utf8'));
     // The raw fetched-IR document, exactly what the browser flow hands these consumers.
     const ir = rawIrUnderTest() as ContentIr & AuthoredJoinRows;
+    // Resolve the headquarters typeId from the served IR by its stable id (the same 'headquarters'
+    // join the sim keys on) rather than inlining the decoded number, so the assertion still checks
+    // the HQ if the decoded typeId ever shifts.
+    const hqType = ir.buildings?.find((b) => b.id === 'headquarters')?.typeId;
+    expect(hqType).toBeDefined();
     const simMap = buildCollisionTerrain(map, ir, mapResourceObjectNames(ir));
     const sim = runAuthoredSlice(
       7,
@@ -64,7 +69,7 @@ describe.runIf(hasRealIr() && existsSync(mapPath()))('strategic AI on a decoded 
     for (const e of sim.world.query(Building, Owner)) {
       if (sim.world.get(e, Owner).player !== AI_SEAT) continue;
       if (sim.world.has(e, UnderConstruction)) sites++;
-      else if (sim.world.get(e, Building).buildingType === 1) hq = e;
+      else if (sim.world.get(e, Building).buildingType === hqType) hq = e;
     }
     expect(hq).not.toBeNull(); // the authored headquarters resolved and stayed built
     expect(sites).toBe(1); // one site at a time (the concurrent-construction cap)
