@@ -183,9 +183,10 @@ a reproducible default so the committed build + the `npm run shot` PNG never dep
   decoded sounds are **default-MUTED**: the driver is built but starts disabled, and the game is silent
   until the user clicks the bottom-centre **sound toggle** button — that click both unmutes and satisfies
   the browser autoplay gesture (clicking again re-mutes). The audio layer is positional action SFX +
-  terrain ambient (viewport-culled, attenuated, panned) + non-spatial life-event jingles + **sex/age-matched
-  settler voice chatter** (a settler sounds like the body it draws — `vikingVoiceClass` off
-  `Settler.jobType`+`Age`), driven by the same snapshot + events `render` reads. A checkout without
+  terrain ambient (viewport-culled, attenuated, panned) + non-spatial life-event jingles + **settler
+  chat voices** (the sim's `chatVoice` cue — a talk clip's authored voice frame names its
+  `logicSoundType` group, so voices come only from settlers actually chatting on screen), driven by
+  the same snapshot + events `render` reads. A checkout without
   `content/` (no sound bank) degrades to silence (no driver, no button). The current scene for hearing
   action→sound is `?scene=sandbox` (woodcutters and gatherers working on-screen).
 - `?sounds` — the sound **verification gallery** (`entries/sound.ts`), the audio twin of `?anim`: click ▶ to

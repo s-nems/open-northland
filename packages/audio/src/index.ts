@@ -9,21 +9,15 @@
 // constants (JINGLE_*, GROUP_*) are intentionally not re-exported: they are implementation detail of
 // `defaultBindings`, which is the surface a consumer overrides.
 export { buildSoundIndex, type SoundIndex } from './data/bank.js';
-export {
-  defaultBindings,
-  VIKING_VOICE_POOLS,
-  type VoiceClass,
-  vikingVoiceClass,
-} from './data/bindings.js';
+export { defaultBindings, VIKING_VOICE_POOLS, type VoiceClass } from './data/bindings.js';
 export {
   AMBIENT_FULL_COVERAGE,
   AMBIENT_MAX_GAIN,
   AMBIENT_MAX_SAMPLES,
+  CHAT_VOICE_GAIN,
   directAudio,
   JINGLE_GAIN,
   MAX_AMBIENT_BEDS,
-  type OnScreenSettler,
-  onScreenSettlers,
   SFX_GAIN,
 } from './data/director/index.js';
 export {
@@ -43,14 +37,6 @@ export type {
   OneShot,
   SoundBindings,
 } from './data/types.js';
-export {
-  ChatterEmitter,
-  type ChatterOptions,
-  MAX_CHATTER_DT_MS,
-  VOICE_COOLDOWN_MS,
-  VOICE_GAIN,
-  VOICE_RATE_PER_SEC,
-} from './web/chatter.js';
 export {
   AMBIENT_FADE_S,
   type AudioEngineOptions,

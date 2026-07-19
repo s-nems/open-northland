@@ -177,20 +177,28 @@ export const societyContent = {
     { id: 'viking_pray', name: 'viking_pray', length: 7 },
     // The talk/listen clips carry the original's channel-3 refill shape (five `event <at> 3 +800`
     // pulses totalling the 4000-unit full bar — `viking_civilist_talk`), compressed to a short
-    // fixture length so gossip tests run in a handful of ticks.
+    // fixture length so gossip tests run in a handful of ticks. They also carry the original's voice
+    // cues (`event <at> 34 61` — PLAY_SOUND_FX naming the SocialTalk `logicSoundType`): the talker's
+    // opening line at frame 0, the listener's response mid-clip.
     {
       id: 'viking_talk',
       name: 'viking_talk',
       length: 20,
       interruptible: true,
-      events: [4, 8, 12, 16, 19].map((at) => ({ at, type: 3, value: 800 })),
+      events: [
+        { at: 0, type: 34, value: 61 },
+        ...[4, 8, 12, 16, 19].map((at) => ({ at, type: 3, value: 800 })),
+      ],
     },
     {
       id: 'viking_listen',
       name: 'viking_listen',
       length: 20,
       interruptible: true,
-      events: [4, 8, 12, 16, 19].map((at) => ({ at, type: 3, value: 800 })),
+      events: [
+        { at: 10, type: 34, value: 61 },
+        ...[4, 8, 12, 16, 19].map((at) => ({ at, type: 3, value: 800 })),
+      ],
     },
     { id: 'viking_attack', name: 'viking_attack', length: 4 },
     { id: 'viking_hunter_attack', name: 'viking_hunter_attack', length: 4 },

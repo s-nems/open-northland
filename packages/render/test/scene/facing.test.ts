@@ -109,6 +109,25 @@ describe('buildScene — settler facing derivation', () => {
     expect(scene.find((d) => d.kind === 'settler' && d.ref === 1)?.facing).toBe(1); // W, into the site
   });
 
+  it('a chat pair on a vertical half-cell edge talks straight up/down (atomics 14/15 → S/N blocks)', () => {
+    // Talker at tile (1,1) = lattice node (3,2); listener one node straight BELOW at node (3,3), whose
+    // Position is tile (1.25, 1.5) (a half-row node's stagger-removed x — nav/halfcell.ts
+    // positionOfNode). The projected delta is dead vertical, so the pair plays the S and N direction
+    // blocks — the talk/listen sheets carry all 8 authored directions, up/down included.
+    const talker = entity(1, 1, 1, {
+      Settler: { tribe: 0 },
+      CurrentAtomic: { atomicId: 14, elapsed: 3, targetEntity: 2, targetTile: null },
+    });
+    const listener = entity(2, 1.25, 1.5, {
+      Settler: { tribe: 0 },
+      CurrentAtomic: { atomicId: 15, elapsed: 3, targetEntity: 1, targetTile: null },
+    });
+    const scene = buildScene(snapshotOf([talker, listener]), FLAT_3x2);
+    const settlers = scene.filter((d) => d.kind === 'settler');
+    expect(settlers.find((d) => d.ref === 1)?.facing).toBe(6); // S — talks straight down at the listener
+    expect(settlers.find((d) => d.ref === 2)?.facing).toBe(7); // N — listens straight up at the talker
+  });
+
   it('a NON-target atomic (a deposit) keeps its movement facing — target facing stays scoped', () => {
     // atomic 23 (pileup) is neither the attack nor a harvest action, so no target lookup applies.
     const depositor = entity(1, 1, 1, {

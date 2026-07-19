@@ -14,6 +14,8 @@ import { entityTile, type TilePoint } from './snapshot.js';
 export const JINGLE_GAIN = 0.9;
 /** Base gain of a spatial action SFX, multiplied by its spatial (distance) attenuation. */
 export const SFX_GAIN = 0.8;
+/** Base gain of a `chatVoice` settler line (below SFX so conversation sits under the action, not over it). */
+export const CHAT_VOICE_GAIN = 0.7;
 
 /**
  * The entity that names a spatial event's emitter, or `undefined` when it names none. Only asked of an
@@ -70,6 +72,11 @@ interface PendingSpatial {
    *  mappings — see {@link computeSpatialAtNode} vs {@link computeSpatial}. */
   readonly node: HalfCellNode | null;
   readonly entity: number | undefined;
+  /** Pre-attenuation gain: {@link SFX_GAIN} for action SFX, {@link CHAT_VOICE_GAIN} for a voice line. */
+  readonly baseGain: number;
+  /** Whether the viewer's fog gates this sound (a voice from fogged ground stays silent — action SFX
+   *  keep their existing fog-agnostic behaviour). */
+  readonly fogGated: boolean;
 }
 
 /**
@@ -90,13 +97,24 @@ function positionsFor(snapshot: WorldSnapshot, needed: ReadonlySet<number>): Map
 
 /** The one-shots to fire for this frame's events (jingles non-spatial; action SFX viewport-culled). */
 export function eventOneShots(input: DirectorInput): OneShot[] {
-  const { events, snapshot, camera, canvasW, canvasH, index, bindings, localPlayer } = input;
+  const { events, snapshot, camera, canvasW, canvasH, index, bindings, localPlayer, visibleTile } = input;
   const shots: OneShot[] = [];
   if (events.length === 0) return shots; // the common frame — no events, no snapshot work at all
   // Pass 1: resolve bindings, emit jingles, and collect the entity ids the spatial events need.
   const pending: PendingSpatial[] = [];
   const neededIds = new Set<number>();
   for (const ev of events) {
+    // A chat voice names its sound by the animation event's own `logicSoundType` id (data, not a
+    // binding — the clip already picked the sex-correct group), so it resolves before the binding map.
+    if (ev.kind === 'chatVoice') {
+      const files = index.groupsByLogicSoundType.get(ev.soundType);
+      if (files !== undefined && files.length > 0) {
+        const id = ev.entity as number;
+        neededIds.add(id);
+        pending.push({ ev, files, node: null, entity: id, baseGain: CHAT_VOICE_GAIN, fogGated: true });
+      }
+      continue;
+    }
     const sound = resolveBinding(ev, bindings);
     if (sound === undefined) continue;
     if (sound.kind === 'jingle') {
@@ -111,12 +129,12 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
     if (files === undefined) continue;
     const node = eventNode(ev);
     if (node !== null) {
-      pending.push({ ev, files, node, entity: undefined });
+      pending.push({ ev, files, node, entity: undefined, baseGain: SFX_GAIN, fogGated: false });
     } else {
       const id = eventEntity(ev);
       if (id === undefined) continue;
       neededIds.add(id);
-      pending.push({ ev, files, node: null, entity: id });
+      pending.push({ ev, files, node: null, entity: id, baseGain: SFX_GAIN, fogGated: false });
     }
   }
   // Pass 2: locate + spatialise the pending spatial events (off-screen or position-less → silent).
@@ -128,10 +146,11 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
     } else if (p.entity !== undefined) {
       const tile = positions?.get(p.entity) ?? null;
       if (tile === null) continue; // position-less emitter → silent
+      if (p.fogGated && visibleTile !== undefined && !visibleTile(tile.col, tile.row)) continue;
       spatial = computeSpatial(tile.col, tile.row, camera, canvasW, canvasH);
     }
     if (spatial === null) continue; // off screen → silent
-    shots.push({ files: p.files, gain: spatial.gain * SFX_GAIN, pan: spatial.pan, key: eventKey(p.ev) });
+    shots.push({ files: p.files, gain: spatial.gain * p.baseGain, pan: spatial.pan, key: eventKey(p.ev) });
   }
   return shots;
 }

@@ -9,8 +9,11 @@ import { buildSoundIndex } from '../src/index.js';
  */
 const bank: SoundBank = {
   staticGroups: [
-    { name: 'Hammer Wood', sfx: [{ file: 'static/hammer01.wav', params: [80] }] },
+    { name: 'Hammer Wood', logicSoundType: 1, sfx: [{ file: 'static/hammer01.wav', params: [80] }] },
     { name: '', sfx: [{ file: 'static/skip.wav', params: [] }] }, // nameless → skipped
+    // A duplicated logicSoundType: the first-listed group keeps the id (the bank's one known collision).
+    { name: 'SocialTalk Male', logicSoundType: 61, sfx: [{ file: 'voice/male_social.wav', params: [80] }] },
+    { name: 'SocialTalk Dup', logicSoundType: 61, sfx: [{ file: 'voice/dup.wav', params: [80] }] },
   ],
   ambient: [
     {
@@ -46,7 +49,12 @@ describe('buildSoundIndex', () => {
 
   it('indexes static groups by lower-cased name and skips nameless groups', () => {
     expect(index.groupsByName.get('hammer wood')).toEqual(['static/hammer01.wav']);
-    expect([...index.groupsByName.keys()]).toEqual(['hammer wood']);
+    expect([...index.groupsByName.keys()]).toEqual(['hammer wood', 'socialtalk male', 'socialtalk dup']);
+  });
+
+  it('indexes groups by logicSoundType, first-listed winning a duplicated id', () => {
+    expect(index.groupsByLogicSoundType.get(1)).toEqual(['static/hammer01.wav']);
+    expect(index.groupsByLogicSoundType.get(61)).toEqual(['voice/male_social.wav']);
   });
 
   it('indexes jingles by MusicType', () => {

@@ -8,6 +8,7 @@ import {
   JOB_SOLDIER_SPEAR,
   JOB_SOLDIER_SWORD,
 } from '../game/sandbox/index.js';
+import { createSceneSim } from './runtime.js';
 import type { SceneDefinition } from './types.js';
 
 /**
@@ -30,6 +31,9 @@ import type { SceneDefinition } from './types.js';
 
 const MAP_W = 30;
 const MAP_H = 20;
+
+/** Long enough for both squads' marches to settle (the surround ring is the slowest). */
+const RUN_TICKS = 700;
 
 /** The red line: one spear-man per consecutive node — radii touching, a closed wall. */
 const WALL_X = 30;
@@ -154,7 +158,7 @@ export const collisionScene: SceneDefinition = {
   seed: 11,
   terrain: grassTerrain(MAP_W, MAP_H),
   build,
-  runTicks: 700,
+  runTicks: RUN_TICKS,
   initialZoom: 0.8,
   checks: [
     {
@@ -167,8 +171,20 @@ export const collisionScene: SceneDefinition = {
       predicate: surroundFormedRing,
     },
     {
+      // The promise is the CROSSING: arrived carriers are idle civilians, and idle settlers now wander
+      // off to gossip, so the end tick can find one beside its colleague instead of on its goal node.
+      // When it does, a fresh run of the same scene is sampled every tick for the moment both carriers
+      // stood on their goals (the chain scene's fresh-run precedent).
       label: 'the carriers walked straight through the wall (civilian pass-through)',
-      predicate: carriersPassedThrough,
+      predicate: (sim) => {
+        if (carriersPassedThrough(sim)) return true;
+        const fresh = createSceneSim(collisionScene);
+        for (let i = 0; i < RUN_TICKS; i++) {
+          fresh.step();
+          if (carriersPassedThrough(fresh)) return true;
+        }
+        return false;
+      },
     },
   ],
 };
