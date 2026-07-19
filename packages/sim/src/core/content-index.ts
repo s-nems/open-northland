@@ -21,6 +21,7 @@ import { byKey, byOptionalKey, byPairKey } from './content-index/by-key.js';
 import { militaryGoodTypes } from './content-index/combat.js';
 import { constructionBills } from './content-index/construction.js';
 import {
+  inputlessProducerTypes,
   mergedRecipes,
   recipeProductTables,
   stockSlotCapacityTables,
@@ -103,6 +104,13 @@ export interface ContentIndex {
    * runs the per-product recipes. Absent for a non-producing type.
    */
   readonly mergedRecipeByBuilding: ReadonlyMap<number, Recipe>;
+  /**
+   * `goodType → building typeIds that produce it from an INPUT-LESS recipe` — the shared utilities a
+   * consumer self-serves against (the well for water, the hive for honey). The data-driven signal
+   * behind the self-service draw ({@link producesGoodWithoutInputs}); absent for a good no building
+   * mints from nothing.
+   */
+  readonly inputlessProducersByGood: ReadonlyMap<number, ReadonlySet<number>>;
   /** Weapons by `(tribeType, typeId)` — the worn-weapon override key; first-wins per pair, the
    *  first-in-source-order record the old `.find` scan returned. */
   readonly weaponsByTribeAndTypeId: ReadonlyMap<number, ReadonlyMap<number, WeaponType>>;
@@ -193,6 +201,7 @@ function buildIndex(content: ContentSet): ContentIndex {
     stockSlotCapacityByBuilding: stockSlotCapacityTables(content),
     recipeByProductByBuilding: recipeProductTables(content),
     mergedRecipeByBuilding: mergedRecipes(content),
+    inputlessProducersByGood: inputlessProducerTypes(content),
     atomicBindingsByTribe: atomicBindingTables(content),
     gatheringPipelinesByGood: byKey(content.gatheringPipeline, (p) => p.goodType),
     landscapeGfxByIndex: new Map(content.landscapeGfx.map((g) => [g.index, g])), // last-wins, as before

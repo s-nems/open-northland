@@ -23,6 +23,7 @@ import {
   beginRestTail,
   consumeFood,
   continuesHarvest,
+  drawUtilityGood,
   dropCarriedLoad,
   endRestTail,
   forageBerry,
@@ -179,6 +180,12 @@ function applyEffect(world: World, ctx: SystemContext, settler: Entity, effect: 
       return;
     case 'pickup':
       pickupFromStore(world, settler, effect.from, effect.goodType, effect.amount);
+      return;
+    case 'draw':
+      // A consumer cranked an input-less utility (the well, the hive) for one unit of its good, now on
+      // its back — the utility mints from no inputs, so the draw creates the unit (see the effect's
+      // conservation note). The delivery rung then carries it home to the consuming workplace.
+      drawUtilityGood(world, settler, effect.goodType);
       return;
     case 'pileup':
       pileupIntoStore(world, ctx, settler, effect.store);

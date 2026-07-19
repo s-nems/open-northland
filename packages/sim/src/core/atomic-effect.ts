@@ -19,6 +19,14 @@ export type AtomicEffect =
     }
   | { readonly kind: 'pileup'; readonly store: Entity }
   | { readonly kind: 'produce'; readonly recipeOutput: number }
+  /** A consumer worker draws one unit of `goodType` from an input-less shared utility (`utility` — a well
+   *  for water, a hive for honey): on completion one unit appears on its back
+   *  ({@link import('../systems/agents/effects-goods/index.js').drawUtilityGood}). The utility mints from no
+   *  inputs, so the draw creates the unit — the consumer-side twin of the ProductionSystem depositing an
+   *  input-less recipe's output when the utility is staffed (goods conserved up to that by-definition
+   *  creation). `utility` is an inspection record; a utility gone since the planner chose it still yields
+   *  (the extraction happened, like `eat`'s emptied store). */
+  | { readonly kind: 'draw'; readonly goodType: number; readonly utility: Entity }
   | {
       readonly kind: 'eat';
       readonly goodType: number;

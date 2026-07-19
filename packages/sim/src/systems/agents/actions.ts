@@ -173,6 +173,18 @@ export function startPickup(
 }
 
 /**
+ * Issue the `draw` atomic on `e` against a shared utility (a well, a hive): the worker acts at the utility's
+ * operate node for `ticks` — the utility recipe's own work time to extract one unit, not an animation length
+ * — then {@link import('./effects-goods/index.js').drawUtilityGood} sets one unit of `goodType` on its back.
+ * The gesture is the generic goods-handling animation ({@link PICKUP_ATOMIC_ID}, the same reuse
+ * {@link DROP_ATOMIC_ID} makes): the drawer's trade is not the utility's and there is no decoded crank
+ * animation, so a neutral bend-to-draw reads for any worker at either utility (named approximation).
+ */
+export function startDraw(world: World, e: Entity, goodType: number, utility: Entity, ticks: number): void {
+  startAtomic(world, e, PICKUP_ATOMIC_ID, { kind: 'draw', goodType, utility }, ticks, utility);
+}
+
+/**
  * Walk to a store/pile's interaction cell and lift ONE unit of `goodType` from it — the shared tail of
  * every haul rung (trunk collection, porter ferrying, the carrier fallback). The batch is the global
  * {@link CARRY_CAPACITY} (a settler carries a single good unit; hauling more takes more trips).
