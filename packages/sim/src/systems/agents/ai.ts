@@ -295,7 +295,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // then chat with a nearby idle neighbour (../social/gossip.ts).
     if (!planCarrierHaul(plan, anyHaulable)) {
       if (!deStackIdle(world, ctx, terrain, e, hereNode.hx, hereNode.hy, spacing)) {
-        planGossipIdle(world, ctx.tick, e, settler, hereNode.hx, hereNode.hy, gossipCandidates);
+        planGossipIdle(world, ctx, e, settler, hereNode.hx, hereNode.hy, gossipCandidates);
       }
     }
   }

@@ -2,9 +2,7 @@ import type { Camera } from '@open-northland/render/data';
 import type { SimEvent, WorldSnapshot } from '@open-northland/sim';
 import type { SoundIndex } from '../data/bank.js';
 import { directAudio } from '../data/director/index.js';
-import { onScreenSettlers } from '../data/director/settlers.js';
 import type { AudioTerrain, SoundBindings } from '../data/types.js';
-import { ChatterEmitter, type ChatterOptions } from './chatter.js';
 import { type AudioEngineOptions, WebAudioEngine } from './engine/index.js';
 
 /** One frame's world state, handed to {@link SoundDriver.update} once per rendered frame. */
@@ -17,30 +15,25 @@ export interface SoundFrameInput {
   readonly canvasH: number;
   /** The landscape grid, for the ambient layer; omit to skip ambient. */
   readonly terrain?: AudioTerrain;
-  /** Wall-clock ms since the last update, driving the time-based voice-chatter rate; omit → no chatter. */
-  readonly dtMs?: number;
   /** The local player slot — gates the death stinger to this player's own units; omit → it never rings. */
   readonly localPlayer?: number;
-  /** The viewer's fog-of-war visibility at a fractional tile — gates the voice-chatter candidates (a
-   *  settler hidden by the fog must not natter from empty black). Omit → no fog, everyone may speak. */
+  /** The viewer's fog-of-war visibility at a fractional tile — gates the settler chat voices (a
+   *  settler hidden by the fog must not natter from empty black). Omit → no fog, every chat is audible. */
   readonly visibleTile?: (col: number, row: number) => boolean;
 }
 
-/**
- * {@link SoundDriver} construction options — the engine's platform/tuning seams plus the chatter's
- * voice pools; the one `random` source feeds both units.
- */
-export interface SoundDriverOptions extends AudioEngineOptions, ChatterOptions {}
+/** {@link SoundDriver} construction options — the engine's platform/tuning seams. */
+export interface SoundDriverOptions extends AudioEngineOptions {}
 
 /**
  * The app-facing audio façade: per frame, turn the world state into playback. Every concern lives in its
- * own unit and this class only composes them — the pure decisions (which events sound, which beds loop,
- * who is on screen) in {@link directAudio} + {@link onScreenSettlers}, the stochastic voice chatter in
- * the {@link ChatterEmitter}, and the Web Audio playback in the {@link WebAudioEngine}.
+ * own unit and this class only composes them — the pure decisions (which events sound, which beds loop)
+ * in {@link directAudio}, and the Web Audio playback in the {@link WebAudioEngine}. Settler voices ride
+ * the same event path: the sim's `chatVoice` cue (a chat clip's authored voice frame) is just another
+ * spatialised one-shot, so voices come only from settlers actually talking on screen.
  */
 export class SoundDriver {
   private readonly engine: WebAudioEngine;
-  private readonly chatter: ChatterEmitter;
 
   constructor(
     private readonly index: SoundIndex,
@@ -48,7 +41,6 @@ export class SoundDriver {
     options: SoundDriverOptions = {},
   ) {
     this.engine = new WebAudioEngine(options);
-    this.chatter = new ChatterEmitter(index, options);
   }
 
   /** Start/resume audio — call from inside a user gesture (first click/key) to satisfy autoplay policy. */
@@ -69,10 +61,9 @@ export class SoundDriver {
   /** Decide + play one frame of audio from the current world state. */
   update(input: SoundFrameInput): void {
     // Suspended (no gesture yet) or muted: the engine would drop the frame unheard, so don't pay the
-    // director/chatter decision work at all. Chatter's clock freezing with it is correct — no voices
-    // are owed for inaudible time.
+    // director decision work at all.
     if (!this.engine.audible) return;
-    // `terrain` is spread in only when present — `exactOptionalPropertyTypes` forbids passing `undefined`.
+    // Optionals are spread in only when present — `exactOptionalPropertyTypes` forbids passing `undefined`.
     const frame = directAudio({
       events: input.events,
       snapshot: input.snapshot,
@@ -83,13 +74,8 @@ export class SoundDriver {
       bindings: this.bindings,
       ...(input.terrain !== undefined ? { terrain: input.terrain } : {}),
       ...(input.localPlayer !== undefined ? { localPlayer: input.localPlayer } : {}),
+      ...(input.visibleTile !== undefined ? { visibleTile: input.visibleTile } : {}),
     });
-    // Append the ambient settler-chatter voices; the settler scan is a thunk so a no-dt frame never pays it.
-    const voices = this.chatter.update(input.dtMs ?? 0, () =>
-      onScreenSettlers(input.snapshot, input.camera, input.canvasW, input.canvasH, input.visibleTile),
-    );
-    this.engine.apply(
-      voices.length === 0 ? frame : { oneShots: [...frame.oneShots, ...voices], ambient: frame.ambient },
-    );
+    this.engine.apply(frame);
   }
 }

@@ -6,10 +6,10 @@ import { describe, expect, it } from 'vitest';
 import {
   type AudioTerrain,
   buildSoundIndex,
+  CHAT_VOICE_GAIN,
   defaultBindings,
   directAudio,
   JINGLE_GAIN,
-  onScreenSettlers,
   type SoundBindings,
 } from '../src/index.js';
 
@@ -27,6 +27,13 @@ const bank: SoundBank = {
     { name: 'Weapon Spear Hit', sfx: [{ file: 'static/spearhit01.wav', params: [80] }] },
     { name: 'Weapon Bow Long', sfx: [{ file: 'static/bow01.wav', params: [80] }] },
     { name: 'Weapon Bow Hit', sfx: [{ file: 'static/arrowhit01.wav', params: [80] }] },
+    // The chat voice pair — resolved by logicSoundType id (the talk clip's authored voice cue).
+    { name: 'SocialTalk Male', logicSoundType: 61, sfx: [{ file: 'voice/male_social.wav', params: [80] }] },
+    {
+      name: 'SocialTalk Female',
+      logicSoundType: 62,
+      sfx: [{ file: 'voice/female_social.wav', params: [80] }],
+    },
   ],
   ambient: [
     {
@@ -77,7 +84,12 @@ function snapshotAt(events: readonly SimEvent[] = []): WorldSnapshot {
 
 function direct(
   events: readonly SimEvent[],
-  opts: { terrain?: AudioTerrain; localPlayer?: number; bindings?: SoundBindings } = {},
+  opts: {
+    terrain?: AudioTerrain;
+    localPlayer?: number;
+    bindings?: SoundBindings;
+    visibleTile?: (col: number, row: number) => boolean;
+  } = {},
 ) {
   return directAudio({
     events,
@@ -89,6 +101,7 @@ function direct(
     bindings: opts.bindings ?? bindings,
     ...(opts.terrain !== undefined ? { terrain: opts.terrain } : {}),
     ...(opts.localPlayer !== undefined ? { localPlayer: opts.localPlayer } : {}),
+    ...(opts.visibleTile !== undefined ? { visibleTile: opts.visibleTile } : {}),
   });
 }
 
@@ -297,40 +310,48 @@ describe('directAudio ambient', () => {
   });
 });
 
-describe('onScreenSettlers', () => {
-  it('returns only on-screen settlers, spatialised, with their sex/age classifiers', () => {
-    const snap: WorldSnapshot = {
-      tick: 1,
-      entities: [
-        { id: 3, components: { Position: { x: 5 * ONE, y: 5 * ONE }, Settler: { jobType: 0 } } }, // adult male
-        {
-          id: 5,
-          components: { Position: { x: 5 * ONE, y: 5 * ONE }, Settler: { jobType: 5 } }, // adult woman (job 5)
-        },
-        {
-          id: 6,
-          components: { Position: { x: 5 * ONE, y: 5 * ONE }, Settler: { jobType: 4 }, Age: { ticks: 10 } }, // child
-        },
-        { id: 4, components: { Position: { x: 100 * ONE, y: 100 * ONE }, Settler: {} } }, // far off screen
-        { id: 7, components: { Position: { x: 5 * ONE, y: 5 * ONE }, Building: {} } }, // not a settler
-      ],
-      events: [],
-    };
-    const found = onScreenSettlers(snap, camera, CANVAS_W, CANVAS_H);
-    expect(found.map((s) => s.entity)).toEqual([3, 5, 6]);
-    expect(found[0]?.gain).toBeGreaterThan(0);
-    expect(found[0]?.pan).toBeCloseTo(0, 5); // centred
-    // jobType is read off the snapshot; the Age component marks a young settler.
-    expect(found.map((s) => s.jobType)).toEqual([0, 5, 4]);
-    expect(found.map((s) => s.young)).toEqual([false, false, true]);
+describe('chatVoice one-shots', () => {
+  it('plays the voice group named by the cue soundType, positioned at the talker', () => {
+    const frame = direct([{ kind: 'chatVoice', entity: entity(3), soundType: 61 }]);
+    expect(frame.oneShots).toHaveLength(1);
+    const shot = frame.oneShots[0];
+    expect(shot?.files).toEqual(['voice/male_social.wav']);
+    expect(shot?.gain).toBeGreaterThan(0);
+    expect(shot?.gain).toBeLessThan(CHAT_VOICE_GAIN + 1e-9); // base voice gain × spatial attenuation
+    expect(shot?.pan).toBeCloseTo(0, 5); // centred talker
+    expect(shot?.key).toBe('chatVoice:3');
   });
 
-  it('returns nothing when the crowd is off screen', () => {
-    const snap: WorldSnapshot = {
+  it('resolves the female clip cue to the female group', () => {
+    const frame = direct([{ kind: 'chatVoice', entity: entity(3), soundType: 62 }]);
+    expect(frame.oneShots[0]?.files).toEqual(['voice/female_social.wav']);
+  });
+
+  it('stays silent for an unknown soundType and for an off-screen talker', () => {
+    expect(direct([{ kind: 'chatVoice', entity: entity(3), soundType: 999 }]).oneShots).toHaveLength(0);
+    const farSnap: WorldSnapshot = {
       tick: 1,
       entities: [{ id: 3, components: { Position: { x: 100 * ONE, y: 100 * ONE }, Settler: {} } }],
       events: [],
     };
-    expect(onScreenSettlers(snap, camera, CANVAS_W, CANVAS_H)).toHaveLength(0);
+    const frame = directAudio({
+      events: [{ kind: 'chatVoice', entity: entity(3), soundType: 61 }],
+      snapshot: farSnap,
+      camera,
+      canvasW: CANVAS_W,
+      canvasH: CANVAS_H,
+      index,
+      bindings,
+    });
+    expect(frame.oneShots).toHaveLength(0);
+  });
+
+  it('keeps a fogged talker silent while leaving action SFX fog-agnostic', () => {
+    const events: readonly SimEvent[] = [
+      { kind: 'chatVoice', entity: entity(3), soundType: 61 },
+      { kind: 'buildingPlaced', entity: entity(7), at: { hx: 11, hy: 10 } },
+    ];
+    const frame = direct(events, { visibleTile: () => false });
+    expect(frame.oneShots.map((s) => s.key)).toEqual(['buildingPlaced:11,10']);
   });
 });

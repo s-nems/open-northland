@@ -25,6 +25,7 @@ import { startAtomic } from '../agents/actions.js';
 import { FATIGUE_SLEEP_THRESHOLD, HUNGER_EAT_THRESHOLD } from '../agents/drives-needs.js';
 import type { System, SystemContext } from '../context.js';
 import {
+  ATOMIC_EVENT_TYPE_PLAY_SOUND_FX,
   atomicAnimationName,
   atomicDurationForName,
   atomicEventChannelDelta,
@@ -69,9 +70,18 @@ const CHAT_PARTNER_MIN_DIST_NODES = 1;
 
 /** The idle-chat search covers exactly the adjacent lattice nodes ({@link nodesAdjacent}: Chebyshev 1 —
  *  Manhattan ring 2 reaches the diagonals, the accept filter drops the ring's non-adjacent (2,0) points).
- *  An idle settler only chats with a NEIGHBOUR, in place; walking to company is the seek drive's move,
- *  so idle chatter never perturbs a standing formation. */
+ *  An idle settler chats with a NEIGHBOUR immediately and in place; walking to more distant company is
+ *  the paced wander below, so idle chatter never instantly perturbs a standing formation. */
 const CHAT_IDLE_MAX_RING = 2;
+
+/** How far (half-cell nodes, ~6 cells) an idle settler may wander to reach a distant idle partner once
+ *  its {@link CHAT_IDLE_WALK_MEAN_WAIT_TICKS} roll fires (design value — near enough to feel local). */
+const CHAT_IDLE_WALK_RADIUS_NODES = 12;
+
+/** Mean ticks an idle settler stands before deciding to wander to a distant partner — a per-tick `1/N`
+ *  seeded roll, so idlers mostly stay put and idle chatter never herds standing crowds into one heap
+ *  (design value, ~12 s of sim time; adjacent neighbours still chat at once with no roll). */
+const CHAT_IDLE_WALK_MEAN_WAIT_TICKS = 240;
 
 /** How long (ticks) after a chat ends before either half chats again — the {@link ChatCooldown} breather
  *  that lets the freed settlers' own work rungs reclaim them (design value, ~2 s of sim time). */
@@ -205,14 +215,16 @@ export function planGossipSeek(
 
 /**
  * The idle-settler chat rung, at the very bottom of the drive ladder: a settler with nothing at all to do
- * strikes up a chat with an idle settler ALREADY STANDING BESIDE it ({@link nodesAdjacent}) — even on a
- * full company bar, idle neighbours gossip because why not (the original's settlements visibly chatter;
- * design rule). In place only: nobody walks for an idle chat, so standing formations stay put. Returns
- * `true` when a chat was started.
+ * strikes up a chat with another idle settler — even on a full company bar, idle neighbours gossip because
+ * why not (the original's settlements visibly chatter; design rule). A partner ALREADY STANDING BESIDE it
+ * ({@link nodesAdjacent}) is chatted up at once, in place; a more distant idle partner (within
+ * {@link CHAT_IDLE_WALK_RADIUS_NODES}) is only wandered to after the {@link CHAT_IDLE_WALK_MEAN_WAIT_TICKS}
+ * roll fires, so idlers visibly stand around between chats instead of perpetually herding together.
+ * Returns `true` when a chat was started.
  */
 export function planGossipIdle(
   world: World,
-  tick: number,
+  ctx: SystemContext,
   e: Entity,
   settler: SettlerIdentity,
   hx: number,
@@ -220,22 +232,32 @@ export function planGossipIdle(
   candidates: GossipCandidates,
 ): boolean {
   if (settler.jobType === null || isFighterJob(settler.jobType)) return false;
-  if (chatCooldownActive(world, tick, e)) return false;
-  // Owner-gated like the seek rung (and deStackIdle) — see planGossipSeek.
+  if (chatCooldownActive(world, ctx.tick, e)) return false;
+  // Owner-gated like the seek rung (and deStackIdle) — see planGossipSeek. The gate sits before the
+  // wander roll below, so unowned golden fixtures consume no RNG and stay byte-identical.
   const owner = ownerOf(world, e);
   if (owner === undefined) return false;
   const here = { hx, hy };
+  const idle = (cand: Entity): boolean =>
+    cand !== e &&
+    ownerOf(world, cand) === owner &&
+    mayJoinChat(world, ctx.tick, cand) &&
+    !isTravelling(world, cand);
   const idleBeside = (cand: Entity): boolean => {
-    if (cand === e || ownerOf(world, cand) !== owner) return false;
-    if (!mayJoinChat(world, tick, cand) || isTravelling(world, cand)) return false;
+    if (!idle(cand)) return false;
     const p = world.get(cand, Position);
     return nodesAdjacent(nodeOfPosition(p.x, p.y), here);
   };
-  const found = candidates
-    .ensure()
-    .nearest(hx, hy, CHAT_PARTNER_MIN_DIST_NODES, CHAT_IDLE_MAX_RING, idleBeside);
-  if (found === null) return false;
-  startChat(world, e, found.entity);
+  const buckets = candidates.ensure();
+  const beside = buckets.nearest(hx, hy, CHAT_PARTNER_MIN_DIST_NODES, CHAT_IDLE_MAX_RING, idleBeside);
+  if (beside !== null) {
+    startChat(world, e, beside.entity);
+    return true;
+  }
+  if (ctx.rng.int(CHAT_IDLE_WALK_MEAN_WAIT_TICKS) !== 0) return false;
+  const distant = buckets.nearest(hx, hy, CHAT_PARTNER_MIN_DIST_NODES, CHAT_IDLE_WALK_RADIUS_NODES, idle);
+  if (distant === null) return false;
+  startChat(world, e, distant.entity);
   return true;
 }
 
@@ -280,12 +302,13 @@ function chatOutranked(world: World, e: Entity, s: { hunger: Fixed; fatigue: Fix
 }
 
 /**
- * Apply this tick's talk/listen animation pulses to `e`: every `event <elapsed> 3 <delta>` of the clip it
+ * Apply this tick's talk/listen animation frame to `e`: every `event <elapsed> 3 <delta>` of the clip it
  * is playing takes `delta/4000` off the company deficit ({@link SOCIAL_EVENT_UNITS_PER_BAR}) — the bar
  * visibly refills DURING the conversation, at the original's own event frames, instead of snapping at
- * completion. Clamped at 0.
+ * completion (clamped at 0) — and every `event <elapsed> 34 <id>` fires the clip's authored voice cue as
+ * a {@link SimEvent} `chatVoice` (the talker's opening line at frame 0, the listener's mid-clip response).
  */
-function applyChatPulse(
+function applyChatFrame(
   world: World,
   ctx: SystemContext,
   e: Entity,
@@ -300,7 +323,11 @@ function applyChatPulse(
   if (anim === undefined) return;
   let units = 0;
   for (const event of anim.events) {
-    if (event.type === ATOMIC_EVENT_CHANNEL.LEISURE && event.at === atomic.elapsed) units += event.value ?? 0;
+    if (event.at !== atomic.elapsed) continue;
+    if (event.type === ATOMIC_EVENT_CHANNEL.LEISURE) units += event.value ?? 0;
+    if (event.type === ATOMIC_EVENT_TYPE_PLAY_SOUND_FX && event.value !== undefined) {
+      ctx.events.emit({ kind: 'chatVoice', entity: e, soundType: event.value });
+    }
   }
   if (units <= 0) return;
   const delta = fx.div(fx.fromInt(units), fx.fromInt(SOCIAL_EVENT_UNITS_PER_BAR));
@@ -364,8 +391,8 @@ function drivePair(
       endChat(world, ctx.tick, a);
       return;
     }
-    applyChatPulse(world, ctx, a, sa);
-    applyChatPulse(world, ctx, b, sb);
+    applyChatFrame(world, ctx, a, sa);
+    applyChatFrame(world, ctx, b, sb);
     if (world.has(a, CurrentAtomic) || world.has(b, CurrentAtomic)) return; // the round plays out
     // Round complete. A half whose clip carries no readable channel-3 events restored nothing mid-round —
     // reset it whole at completion instead, the eat/sleep completion precedent.
@@ -407,6 +434,10 @@ function drivePair(
     const duration = Math.max(chatDuration(ctx, st, TALK_ATOMIC_ID), chatDuration(ctx, sl, LISTEN_ATOMIC_ID));
     startAtomic(world, talker, TALK_ATOMIC_ID, { kind: 'idle' }, duration, listener);
     startAtomic(world, listener, LISTEN_ATOMIC_ID, { kind: 'idle' }, duration, talker);
+    // Frame 0 plays now (the AtomicSystem's first step already advances `elapsed` to 1 before the next
+    // gossip pass), so the talk clip's authored frame-0 voice cue must fire here or never.
+    applyChatFrame(world, ctx, a, sa);
+    applyChatFrame(world, ctx, b, sb);
     ca.talking = true;
     cb.talking = true;
     return;

@@ -265,11 +265,10 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
         canvasW: app.screen.width,
         canvasH: app.screen.height,
         terrain: deps.terrainGrid,
-        dtMs: elapsed,
         localPlayer, // the death stinger rings only for our own units, not enemies/wildlife
-        // Voice chatter reads on-screen settlers straight off the snapshot, so it needs its own fog
-        // gate — a hidden enemy must not natter from empty black (positional SFX are already covered
-        // by the presentEvents filter above).
+        // Chat voices locate their emitter off the snapshot, so they need their own fog gate — a
+        // hidden enemy must not natter from empty black (positional SFX are already covered by the
+        // presentEvents filter above).
         visibleTile: fogGates.visibleTile,
       });
     }

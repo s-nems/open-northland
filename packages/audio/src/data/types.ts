@@ -107,4 +107,7 @@ export interface DirectorInput {
    * birth) is unaffected.
    */
   readonly localPlayer?: number;
+  /** The viewer's fog-of-war visibility at a fractional tile — gates a `chatVoice` (a settler hidden by
+   *  the fog must not natter from empty black). Omit → no fog, every on-screen chat is audible. */
+  readonly visibleTile?: (col: number, row: number) => boolean;
 }

@@ -8,6 +8,10 @@ import type { GfxPattern, SoundBank, TerrainPattern } from '@open-northland/data
 export interface SoundIndex {
   /** Lower-cased static-group name → its interchangeable wav files (the engine picks one per play). */
   readonly groupsByName: ReadonlyMap<string, readonly string[]>;
+  /** A static group's `logicSoundType` id → its wav files — the id space animation events reference
+   *  (`event <frame> 34 <id>`; the sim's `chatVoice` carries it as `soundType`). First-listed group
+   *  wins a duplicated id (one known collision: 44, tribe variants of the generic female voice). */
+  readonly groupsByLogicSoundType: ReadonlyMap<number, readonly string[]>;
   /** `MusicType` → the jingle's wav file(s). */
   readonly jinglesByMusicType: ReadonlyMap<number, readonly string[]>;
   /** Ambient bed name → the wav it loops (the bed's first `SFX`). */
@@ -46,12 +50,14 @@ export function buildSoundIndex(
   terrainPatterns: readonly TerrainPattern[],
 ): SoundIndex {
   const groupsByName = new Map<string, readonly string[]>();
+  const groupsByLogicSoundType = new Map<number, readonly string[]>();
   for (const g of sounds.staticGroups) {
     if (g.name.trim() === '') continue;
-    groupsByName.set(
-      g.name.toLowerCase(),
-      g.sfx.map((s) => s.file),
-    );
+    const files = g.sfx.map((s) => s.file);
+    groupsByName.set(g.name.toLowerCase(), files);
+    if (g.logicSoundType !== undefined && !groupsByLogicSoundType.has(g.logicSoundType)) {
+      groupsByLogicSoundType.set(g.logicSoundType, files);
+    }
   }
 
   const jinglesByMusicType = new Map<number, readonly string[]>();
@@ -91,5 +97,11 @@ export function buildSoundIndex(
     if (beds.size > 0) ambientByTerrainType.set(tp.typeId, [...beds]);
   }
 
-  return { groupsByName, jinglesByMusicType, ambientLoopByName, ambientByTerrainType };
+  return {
+    groupsByName,
+    groupsByLogicSoundType,
+    jinglesByMusicType,
+    ambientLoopByName,
+    ambientByTerrainType,
+  };
 }

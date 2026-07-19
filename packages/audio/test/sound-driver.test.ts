@@ -2,26 +2,24 @@ import { type Camera, tileToScreen } from '@open-northland/render/data';
 import { type Entity, ONE, type SimEvent, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import type { SoundIndex } from '../src/index.js';
-import { defaultBindings, MAX_CHATTER_DT_MS, SoundDriver } from '../src/index.js';
+import { defaultBindings, SoundDriver } from '../src/index.js';
 import { FakeContext, type FakeSource, flush } from './helpers/fake-audio.js';
 
 /**
  * The app-facing façade end to end through the fake platform seams: one `update()` turns world state
- * into actual (fake) playback — event one-shots, terrain ambient, settler chatter — and the whole
+ * into actual (fake) playback — event one-shots, terrain ambient, settler chat voices — and the whole
  * pipeline stays a free no-op while the engine is inaudible (no gesture yet / muted).
  */
+
+/** The SocialTalk pair's `logicSoundType` ids (`soundfx.cif`) — what a talk clip's voice cue names. */
+const SOCIALTALK_MALE = 61;
 
 const index: SoundIndex = {
   groupsByName: new Map([
     ['hammer wood', ['static/hammer01.wav']],
-    ['generic viking male', ['voice/male_generic.wav']],
-    ['talk viking male', ['voice/male_talk.wav']],
     ['socialtalk male', ['voice/male_social.wav']],
-    ['generic viking female', []],
-    ['talk viking female', []],
-    ['socialtalk female', []],
-    ['generic viking children', []],
   ]),
+  groupsByLogicSoundType: new Map([[SOCIALTALK_MALE, ['voice/male_social.wav']]]),
   jinglesByMusicType: new Map([[26, ['jingles/jingles_housebuilt.wav']]]),
   ambientLoopByName: new Map([['Meadow Green', 'ambient/meadow1.wav']]),
   ambientByTerrainType: new Map([[1, ['Meadow Green']]]),
@@ -98,21 +96,24 @@ describe('SoundDriver', () => {
     expect((ctx.sources[0] as FakeSource).loop).toBe(true); // the looping meadow bed
   });
 
-  it('merges chatter voices into the frame once the voice budget crosses a clip', async () => {
+  it('plays a chatVoice cue from an on-screen talker, resolved by its logicSoundType id', async () => {
     const { driver, fetched } = makeDriver();
     await driver.resume();
-    // Pump whole clamp-sized frames until one voice is owed (settler 3 is on screen at the centre).
-    for (let t = 0; t < 2000; t += MAX_CHATTER_DT_MS) {
-      driver.update({ ...baseInput, events: [], dtMs: MAX_CHATTER_DT_MS });
-    }
+    const events: readonly SimEvent[] = [
+      { kind: 'chatVoice', entity: 3 as Entity, soundType: SOCIALTALK_MALE },
+    ];
+    driver.update({ ...baseInput, events });
     await flush();
-    expect(fetched).toContain('/sounds/voice/male_generic.wav');
+    expect(fetched).toEqual(['/sounds/voice/male_social.wav']);
   });
 
-  it('emits no chatter without dtMs', async () => {
+  it('keeps a fogged talker silent (the visibleTile gate)', async () => {
     const { driver, fetched } = makeDriver();
     await driver.resume();
-    for (let i = 0; i < 20; i++) driver.update({ ...baseInput, events: [] });
+    const events: readonly SimEvent[] = [
+      { kind: 'chatVoice', entity: 3 as Entity, soundType: SOCIALTALK_MALE },
+    ];
+    driver.update({ ...baseInput, events, visibleTile: () => false });
     await flush();
     expect(fetched).toHaveLength(0);
   });

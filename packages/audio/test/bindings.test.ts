@@ -1,28 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { defaultBindings, VIKING_VOICE_POOLS, vikingVoiceClass } from '../src/index.js';
+import { defaultBindings, VIKING_VOICE_POOLS } from '../src/index.js';
 
 /**
- * The event→sound bindings + the settler voice classification: the "which sound answers which happening"
- * layer. `vikingVoiceClass` mirrors the render roster's job→body split (the `woman` job is female, an
- * `Age`-carrying settler is a child, everyone else male), so a settler sounds like the body it draws.
+ * The event→sound bindings: the "which sound answers which happening" layer, plus the voice-pool
+ * listing the `?sounds` gallery auditions (in play a voice resolves by `logicSoundType` id from the
+ * sim's `chatVoice` cue, not from these pools).
  */
-
-const WOMAN_JOB = 5; // the mod's viking woman job (jobtypes.ini) — the one adult female look/voice.
-
-describe('vikingVoiceClass', () => {
-  it('classifies an Age-carrying settler as a child regardless of job', () => {
-    expect(vikingVoiceClass(4, true)).toBe('child'); // child_male job, still young
-    expect(vikingVoiceClass(WOMAN_JOB, true)).toBe('child'); // young wins over the woman job
-    expect(vikingVoiceClass(null, true)).toBe('child');
-  });
-
-  it('classifies the adult woman job as female and every other adult as male', () => {
-    expect(vikingVoiceClass(WOMAN_JOB, false)).toBe('female');
-    expect(vikingVoiceClass(0, false)).toBe('male'); // idle civilian
-    expect(vikingVoiceClass(31, false)).toBe('male'); // a soldier
-    expect(vikingVoiceClass(null, false)).toBe('male'); // unemployed adult
-  });
-});
 
 describe('VIKING_VOICE_POOLS', () => {
   it('gives every voice class a non-empty, sex-appropriate pool', () => {

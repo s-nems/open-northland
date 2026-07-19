@@ -86,18 +86,37 @@ describe('gossip initiation (planner rungs)', () => {
     expect(sim.world.get(b, Chat)).toMatchObject({ partner: a, seeker: false });
   });
 
-  it('idle chat is in-place only: a settler two cells away is no idle partner', () => {
-    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
-    const a = gossiper(sim, 1, 0, MILD);
-    const b = gossiper(sim, 3, 0, MILD);
+  it('a distant idle pair pairs up only after the paced wander roll — never on the first pass', () => {
+    // Seed 5: the seeded stream's first 1/240 hit lands ~80 ticks in (an early-stream mulberry32
+    // artifact makes some tiny seeds fire on the very first draw — that would defeat the "stands
+    // around first" half of this test).
+    const sim = new Simulation({ seed: 5, content: testContent(), map: grassMap(8, 1) });
+    setNeedsEnabled(sim.world, false); // bars frozen at 0: the seek rung can't fire — only the wander can
+    const a = gossiper(sim, 1, 0, fx.fromInt(0));
+    const b = gossiper(sim, 3, 0, fx.fromInt(0));
 
     aiSystem(sim.world, ctxOf(sim));
 
-    // Mild deficit, nobody adjacent: no chat and no walking either — walking to company is the SEEK
-    // drive's move (over the threshold), never the idle rung's.
+    // Nobody adjacent: no instant pairing and no instant walk — the wander waits out its 1/N-per-tick
+    // roll, so idlers stand around instead of herding together the moment they spawn.
     expect(sim.world.has(a, Chat)).toBe(false);
     expect(sim.world.has(b, Chat)).toBe(false);
     expect(sim.world.has(a, MoveGoal)).toBe(false);
+
+    // Deterministically (seeded roll) one of them eventually wanders over and the pair talks from
+    // neighbouring lattice nodes — the bound covers many multiples of the mean wait.
+    let talked = false;
+    for (let i = 0; i < 3000 && !talked; i++) {
+      sim.step();
+      talked =
+        sim.world.tryGet(a, CurrentAtomic)?.atomicId === TALK ||
+        sim.world.tryGet(b, CurrentAtomic)?.atomicId === TALK;
+    }
+    expect(talked).toBe(true);
+    const pa = sim.world.get(a, Position);
+    const pb = sim.world.get(b, Position);
+    expect(nodesAdjacent(nodeOfPosition(pa.x, pa.y), nodeOfPosition(pb.x, pb.y))).toBe(true);
+    expect(sim.checkInvariants()).toEqual([]);
   });
 
   it('idle settlers chat even on a full company bar (no deficit required)', () => {
@@ -114,7 +133,7 @@ describe('gossip initiation (planner rungs)', () => {
   it('a finished chat leaves a cooldown: the pair rests, then chats again', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
     const a = gossiper(sim, 1, 0, MILD);
-    const b = gossiperBeside(sim, 1, 0, MILD);
+    gossiperBeside(sim, 1, 0, MILD); // the neighbour `a` chats with — asserted through `a`'s side only
 
     let ended = false;
     for (let i = 0; i < 200 && !ended; i++) {
@@ -187,6 +206,25 @@ describe('gossip chat rounds (GossipSystem)', () => {
     expect(listenAtomic.duration).toBe(20);
     expect(talkAtomic.targetEntity).toBe(b); // each half targets its partner (render faces them)
     expect(listenAtomic.targetEntity).toBe(a);
+  });
+
+  it('a round fires the clips’ authored voice cues as chatVoice events (talker frame 0, listener mid-clip)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    const a = gossiper(sim, 2, 0, LONELY);
+    const b = gossiperBeside(sim, 2, 0, fx.fromInt(0));
+
+    const voices: { entity: Entity; soundType: number }[] = [];
+    for (let i = 0; i < 30; i++) {
+      sim.step();
+      for (const ev of sim.snapshot().events) {
+        if (ev.kind === 'chatVoice') voices.push({ entity: ev.entity, soundType: ev.soundType });
+      }
+    }
+    // The fixture clips voice `logicSoundType` 61 (SocialTalk — societies.ts): the talker opens the
+    // round at frame 0 and the listener responds at frame 10, so ONE 20-tick round yields both halves.
+    expect(voices.length).toBeGreaterThanOrEqual(2);
+    expect(voices.every((v) => v.soundType === 61)).toBe(true);
+    expect(new Set(voices.map((v) => v.entity))).toEqual(new Set([a, b]));
   });
 
   it('the clip pulses refill both bars mid-round and a satisfied seeker goes back to work', () => {

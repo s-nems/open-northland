@@ -5,7 +5,9 @@
 A settler over the chat-seek threshold with no reachable partner re-runs its two ring searches
 (`planGossipSeek`, `systems/social/gossip.ts` — idle pass + grab pass, radius 32 nodes ≈ ~2k node
 probes each) every planner tick until a partner frees up. (The idle-chat rung is no longer the
-concern: it rings only the adjacent nodes — ring ≤ 2, ~12 probes — per idle settler per tick.)
+concern: per idle settler per tick it rings only the adjacent nodes — ring ≤ 2, ~12 probes — plus a
+radius-12 wander search already paced by its own 1/240 roll, the same pacing shape this ticket wants
+for seek.)
 Bounded, but at RTS scale (hundreds of simultaneously lonely settlers in a soldier-heavy or
 partner-starved settlement) that is a few hundred thousand bucket probes per tick of provably-null
 work.

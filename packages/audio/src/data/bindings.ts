@@ -50,31 +50,14 @@ const WEAPON_MAIN_TYPE_FIST = 1;
 const WEAPON_MAIN_TYPE_SPEAR = 2;
 const WEAPON_MAIN_TYPE_SWORD = 3;
 
-/** A settler's voice class — the axis the ambient chatter picks its pool by. */
+/** A settler's voice class — the axis the `?sounds` gallery groups the voice pools by. */
 export type VoiceClass = 'male' | 'female' | 'child';
 
 /**
- * The mod's viking `woman` job (`jobtypes.ini` id 5) — the one adult job with a female body/voice; every
- * other adult trade and the soldiers share the male body. Mirrors the render roster's
- * `ADULT_CHARACTER_BY_JOB` (packages/app `content/settler-gfx.ts`).
- */
-export const WOMAN_JOB = 5;
-
-/**
- * Classify a settler's voice: a settler still carrying an `Age` (baby/child) is a `child`; an adult
- * `woman` (job {@link WOMAN_JOB}) is `female`; every other adult is `male`.
- */
-export function vikingVoiceClass(jobType: number | null, young: boolean): VoiceClass {
-  if (young) return 'child';
-  if (jobType === WOMAN_JOB) return 'female';
-  return 'male';
-}
-
-/**
- * The viking voice pools the ambient settler-chatter layer draws from, keyed by sex/age — `SoundFXStatic`
- * group names from `soundfx.cif` (the mod's `humans/sounds.cif` binds these same groups per tribe/sex).
- * Viking-only for now — the demo world is single-tribe; other tribes' pools (`Talk Franks Male`,
- * `Generic Latin Female`, …) exist in the bank for when the sim carries tribe.
+ * The viking voice pools, keyed by sex/age — `SoundFXStatic` group names from `soundfx.cif` (the mod's
+ * `humans/sounds.cif` binds these same groups per tribe/sex). In play, a voice comes from the sim's
+ * `chatVoice` cue, which names its group by `logicSoundType` id straight from the talk clip's authored
+ * event (the SocialTalk pair 61/62); this table remains the gallery's audition listing of all the pools.
  */
 export const VIKING_VOICE_POOLS: Readonly<Record<VoiceClass, readonly string[]>> = {
   male: ['Generic Viking Male', 'Talk Viking Male', 'SocialTalk Male'],

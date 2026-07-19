@@ -76,6 +76,19 @@ export type SimEvent =
     }
   | {
       /**
+       * A chat half's talk/listen clip crossed its authored PLAY_SOUND_FX frame this tick — the voice cue
+       * the original fires from the conversation (`event <frame> 34 <id>` in `atomicanimations.ini`: the
+       * talker at frame 0, the listener's mid-clip response). `soundType` is that event's value — the sound
+       * bank's `logicSoundType` id of the voice group (`soundfx.cif` "SocialTalk Male" 61 / "SocialTalk
+       * Female" 62), sex-correct by construction because each body's clip names its own voice. Located by
+       * the emitter's snapshot position; audio spatialises + viewport-culls it like any action SFX.
+       */
+      readonly kind: 'chatVoice';
+      readonly entity: Entity;
+      readonly soundType: number;
+    }
+  | {
+      /**
        * A melee blow connected this tick — an in-place `attack` swing reached a live target and drained its
        * {@link import('../components/combat.js').Health} at the ATTACK-event frame. `at` is the victim's
        * node (where the wound is), so render draws its blood there and audio plays the weapon-impact SFX

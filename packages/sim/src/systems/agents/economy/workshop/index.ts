@@ -129,7 +129,7 @@ function loiterByDoor(
   const stand = loiterCell(world, ctx, terrain, entity, here, door, spacing);
   atOrWalk(world, entity, here, stand, () => {
     const { x, y } = terrain.coordsOf(here);
-    planGossipIdle(world, ctx.tick, entity, plan, x, y, plan.gossipCandidates);
+    planGossipIdle(world, ctx, entity, plan, x, y, plan.gossipCandidates);
   });
 }
 

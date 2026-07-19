@@ -1,7 +1,8 @@
 # packages/audio — the sound sink
 
 `@open-northland/audio` plays the decoded original sounds for what the player sees: positional action SFX,
-terrain ambient beds, non-spatial life-event jingles, and sex/age-matched settler voice chatter. It
+terrain ambient beds, non-spatial life-event jingles, and settler voices fired by the sim's `chatVoice`
+cues (a chat clip's authored voice frame — no free-floating background chatter). It
 consumes the SAME read-only `snapshot()` + one-shot `SimEvent`s that `render` reads and **never feeds
 anything back into the sim** — audio is a pure sink on the far side of the determinism boundary, so
 floats, wall-clock time and randomness are fine here (and banned in `sim`). The root
@@ -21,24 +22,24 @@ floats, wall-clock time and randomness are fine here (and banned in `sim`). The 
   `packages/data/src/schema/audio/`) reshaped ONCE at load into per-frame `Map` lookups, including the
   terrain `typeId` → ambient-bed join the raw bank can't express.
 - **`data/bindings.ts`** — the faithful event→sound map (which sim event triggers which decoded group),
-  bound by the names + `MusicType` ids decoded from `soundfx.cif`; plus the `VIKING_VOICE_POOLS` /
-  `vikingVoiceClass` sex/age voice classification. Bindings are DATA — a consumer overrides
-  `defaultBindings`, not code.
+  bound by the names + `MusicType` ids decoded from `soundfx.cif`; plus the `VIKING_VOICE_POOLS`
+  listing the `?sounds` gallery auditions. Bindings are DATA — a consumer overrides `defaultBindings`,
+  not code. A `chatVoice` bypasses the bindings: it names its group by `logicSoundType` id straight
+  from the talk clip's authored event.
 - **`data/spatial.ts`** — pure spatial math: project an emitter through the SAME projections the
   renderer draws with, then cull/attenuate/pan. The "only what's on screen makes sound" contract:
   off-viewport → `null` (silent).
 - **`data/director/`** — `directAudio`, the per-frame decision: `events.ts` (sim events → spatialised
-  one-shots + jingles), `ambient.ts` (visible-terrain coverage → the loudest few looping beds, strided
-  so a zoomed-out view stays bounded), `settlers.ts` (on-screen chatter candidates), `snapshot.ts` (the
-  ONE untyped-snapshot `Position` reader).
+  one-shots + jingles, chat voices included), `ambient.ts` (visible-terrain coverage → the loudest few
+  looping beds, strided so a zoomed-out view stays bounded), `snapshot.ts` (the ONE untyped-snapshot
+  `Position` reader).
 - **`web/sound-driver.ts`** — `SoundDriver`, the one app-facing façade: `update()` once per rendered
   frame with that frame's events + snapshot + camera (accumulate events across ALL sim steps in the
   frame, not just the last tick).
 - **`web/engine/`** — `WebAudioEngine` playback: `ambient-mixer.ts` (bed fade in/out/between gains —
   ramps ride the audio clock `ctx.currentTime`, never `Date.now`), `sample-cache.ts` (fetch+decode each
   wav once; failures memoised so a missing file never spams the network).
-- **`web/chatter.ts`** — the stochastic voice emitter: injected randomness picks who speaks; the pure
-  candidate list (`onScreenSettlers`) decides who COULD. `web/prune.ts` bounds the cooldown maps.
+- **`web/prune.ts`** — bounds the engine's timestamp-keyed cooldown maps.
 
 ## Invariants
 
