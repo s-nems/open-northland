@@ -4,10 +4,11 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { forEachRingOffset, sameCells } from '../geometry.js';
-import { EXCLUSION, eachBlockerCell, placementBlockerVersion } from './blockers.js';
+import { BUILDING_ZONE, EXCLUSION, eachBlockerCell, placementBlockerVersion } from './blockers.js';
 
 // WORK-FLAG PLACEMENT — where a work flag (and, through canPlaceWorkFlag, a signpost) may stand: the same
-// ./blockers.ts scan the building rule reads, minus the EXCLUSION channel and plus the markers.
+// ./blockers.ts scan the building rule reads, minus the margin channels (EXCLUSION + BUILDING_ZONE) and
+// plus the markers.
 
 /** Per-world memo of the no-`ignoreFlag` blocked set, keyed on {@link workFlagBlockerVersion} (plus
  *  content/terrain identity, like the signpost probe's memo). The memo feeds command gates and sim
@@ -24,8 +25,8 @@ interface BlocksMemo {
 const blocksMemo = new WeakMap<World, BlocksMemo>();
 
 /** The nodes a work flag may NOT occupy: every standing resource/building body cell plus the other
- *  markers' cells — every {@link eachBlockerCell} channel except {@link EXCLUSION}, since a
- *  resource/building margin zone remains valid open ground for a flag. The common no-`ignoreFlag` set
+ *  markers' cells — every {@link eachBlockerCell} channel except the margin zones ({@link EXCLUSION} and
+ *  {@link BUILDING_ZONE}), since a resource/building margin remains valid open ground for a flag. The common no-`ignoreFlag` set
  *  is memoized per {@link workFlagBlockerVersion} (see {@link blocksMemo}), so reads between two
  *  blocker changes share one store walk. (A burst that itself PLANTS flags still rebuilds per plant —
  *  each add must invalidate the memo so the next pick sees the flag just planted.) The `ignoreFlag`
@@ -73,7 +74,7 @@ function buildBlocks(
     world,
     content,
     (x, y, channel) => {
-      if (channel === EXCLUSION) return; // a margin zone is open ground for a flag
+      if (channel === EXCLUSION || channel === BUILDING_ZONE) return; // a margin zone is open ground for a flag
       if (terrain.inBounds(x, y)) blocked.add(terrain.nodeAt(x, y));
     },
     { ignoreFlag },

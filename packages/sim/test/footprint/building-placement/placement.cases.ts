@@ -40,17 +40,23 @@ describe('canPlaceBuilding — the free-placement collision rule', () => {
     expect(buildingsPlaced(sim)).toBe(1);
   });
 
-  it('rejects a placement whose walls would land in an existing building’s reserved zone', () => {
+  it('rejects a placement whose reserved zone would overlap an existing building’s reserved zone', () => {
     const sim = mappedSim();
     sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING });
     sim.step();
-    // Anchor (3,5): the new hut's body node (4,5) falls inside the first hut's reserved ring
-    // (x∈[4..7] × y∈[4..7]) — rejected even though the WALLS themselves wouldn't touch.
+    // First hut reserved ring: x∈[4..7] × y∈[4..7].
+    // Anchor (3,5): reserved x∈[2..5] overlaps it (its body node (4,5) is inside too) — rejected.
     sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 3, y: 5, tribe: VIKING });
     sim.step();
     expect(buildingsPlaced(sim)).toBe(1);
-    // The zones may OVERLAP as long as both bodies stay out of them: anchor (9,5) puts the new
-    // body at x∈[9..10], clear of the first's zone (≤7), while the two margin rings share nodes.
+    // Anchor (8,5): the new body (x∈[8..9]) clears the first zone, but its reserved ring (x∈[7..10])
+    // still touches that zone at x=7 — the zone-vs-zone rule rejects it. (The old body-vs-zone rule
+    // allowed this; it is exactly the tight packing the widened clearance removes.)
+    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 8, y: 5, tribe: VIKING });
+    sim.step();
+    expect(buildingsPlaced(sim)).toBe(1);
+    // Anchor (9,5): reserved x∈[8..11] finally clears the first ring (≤7) — accepted, a full pair of
+    // margins apart (the two reserved zones are disjoint).
     sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 9, y: 5, tribe: VIKING });
     sim.step();
     expect(buildingsPlaced(sim)).toBe(2);
