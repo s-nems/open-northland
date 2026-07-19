@@ -92,23 +92,22 @@ export const PathRequest = defineComponent<{ start: NodeId; goal: NodeId; failed
  */
 export const Stranded = defineComponent<{ retryAt: number }>('Stranded');
 
+/** One remembered route failure: the goal node, and the tick it stops being excluded. */
+export interface UnreachableGoal {
+  readonly cell: NodeId;
+  readonly until: number;
+}
+
 /**
- * The goals this settler's routes recently FAILED to reach, each live until its own tick — the memo that
- * stops a re-plan from choosing the same unreachable target it just gave up on. {@link Stranded} paces the
- * retry but says nothing about *what* failed, so without this the planner's deterministic nearest-first
- * target pick returns the identical doomed cell every retry and the settler idles beside reachable work
- * forever (observed: an AI clay collector parked from tick ~20k with 50 routable deposits inside its own
- * flag radius).
- *
- * A bounded FIFO, not a single cell: a settler whose nearest few targets are all walled off would otherwise
- * cycle between two of them, each eviction re-admitting the other. Entries expire on time rather than on
- * arrival so a transient blockage — a colleague standing in the only doorway — heals on its own.
- * The separate-optional-component pattern: a settler whose routes all succeed never carries it, so every
- * existing golden is byte-identical.
+ * The goals this settler's routes recently FAILED to reach — the memo that stops a re-plan from choosing
+ * the same unreachable target it just gave up on. {@link Stranded} paces the retry but says nothing about
+ * *what* failed, so without this the deterministic nearest-first pick returns the identical doomed cell
+ * every retry and the settler idles beside reachable work forever. A bounded FIFO rather than one cell so
+ * a settler ringed by several walled-off targets cannot cycle between them; see
+ * `systems/agents/unreachable-goals.ts` for the pacing and `docs/tickets/sim/dynamic-route-reachability.md`
+ * for what it does not cover. Optional, so a settler whose routes all succeed never carries it.
  */
-export const UnreachableGoals = defineComponent<{
-  entries: readonly { readonly cell: NodeId; readonly until: number }[];
-}>('UnreachableGoals');
+export const UnreachableGoals = defineComponent<{ entries: readonly UnreachableGoal[] }>('UnreachableGoals');
 
 /**
  * A walker's grind-window state among unit bodies — the SeparationSystem stamps it on a path-follower with

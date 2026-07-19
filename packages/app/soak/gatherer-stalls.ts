@@ -63,7 +63,7 @@ export interface GathererSoakReport {
 }
 
 /** Fraction of a stall's samples that must show `Stranded` for it to be classed a route stall. */
-const STRANDED_SHAPE_MAJORITY = 0.5;
+const STRANDED_SHAPE_MIN_FRACTION = 0.5;
 
 interface OpenRun {
   readonly entity: number;
@@ -87,13 +87,11 @@ export class StallTracker {
   private readonly open = new Map<number, OpenRun>();
   private readonly closed: GathererStall[] = [];
   private readonly seen = new Set<number>();
-  private lastTick = 0;
 
   /** @param stallTicks the unproductive span (in ticks) at or beyond which a run counts as a stall. */
   constructor(private readonly stallTicks: number) {}
 
   observe(tick: number, samples: Iterable<GathererSample>): void {
-    this.lastTick = tick;
     const present = new Set<number>();
     for (const s of samples) {
       present.add(s.entity);
@@ -158,10 +156,10 @@ export class StallTracker {
       jobType: run.jobType,
       goodType: run.goodType,
       fromTick: run.fromTick,
-      toTick: openAtEnd ? this.lastTick : run.toTick,
+      toTick: run.toTick, // always the run's last sample — `observe` advances it every tick it is present
       samples: run.samples,
       shape:
-        run.strandedSamples >= run.samples * STRANDED_SHAPE_MAJORITY
+        run.strandedSamples >= run.samples * STRANDED_SHAPE_MIN_FRACTION
           ? 'stranded'
           : run.flagged
             ? 'parkedAtFlag'

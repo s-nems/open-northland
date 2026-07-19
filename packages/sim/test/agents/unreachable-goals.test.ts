@@ -10,6 +10,7 @@ import {
 import type { Entity } from '../../src/ecs/world.js';
 import type { NodeId, Simulation } from '../../src/index.js';
 import {
+  isUnreachableGoal,
   noteUnreachableGoal,
   UNREACHABLE_GOAL_MEMO_SIZE,
   UNREACHABLE_GOAL_MEMO_TICKS,
@@ -26,7 +27,7 @@ import { ctxOf } from '../fixtures/context.js';
  * clay collector idle from tick ~20k with 50 routable deposits inside its own flag radius.
  */
 
-const cell = (id: number): NodeId => id as unknown as NodeId;
+const cell = (id: number): NodeId => id as NodeId;
 
 /** `ctxOf` reads the sim's live tick; the memo's expiry needs an arbitrary one. */
 function ctxAt(s: Simulation, tick: number): SystemContext {
@@ -39,7 +40,7 @@ describe('the failed-goal memo', () => {
     const e = ownedWoodcutter(s, 0, 0);
     noteUnreachableGoal(s.world, ctxAt(s, 0), e, cell(42));
 
-    expect(unreachableGoals(s.world, ctxAt(s, 0), e)?.has(cell(42))).toBe(true);
+    expect(isUnreachableGoal(unreachableGoals(s.world, ctxAt(s, 0), e), cell(42))).toBe(true);
     expect(unreachableGoals(s.world, ctxAt(s, UNREACHABLE_GOAL_MEMO_TICKS - 1), e)).not.toBeNull();
     expect(unreachableGoals(s.world, ctxAt(s, UNREACHABLE_GOAL_MEMO_TICKS), e)).toBeNull();
   });
@@ -52,8 +53,8 @@ describe('the failed-goal memo', () => {
     noteUnreachableGoal(s.world, ctx, e, cell(2));
 
     const memo = unreachableGoals(s.world, ctx, e);
-    expect(memo?.has(cell(1))).toBe(true);
-    expect(memo?.has(cell(2))).toBe(true);
+    expect(isUnreachableGoal(memo, cell(1))).toBe(true);
+    expect(isUnreachableGoal(memo, cell(2))).toBe(true);
   });
 
   it('caps the memo, evicting the least recent failure', () => {
@@ -63,9 +64,9 @@ describe('the failed-goal memo', () => {
     for (let i = 0; i <= UNREACHABLE_GOAL_MEMO_SIZE; i++) noteUnreachableGoal(s.world, ctx, e, cell(i));
 
     const memo = unreachableGoals(s.world, ctx, e);
-    expect(memo?.size).toBe(UNREACHABLE_GOAL_MEMO_SIZE);
-    expect(memo?.has(cell(0))).toBe(false); // the oldest went
-    expect(memo?.has(cell(UNREACHABLE_GOAL_MEMO_SIZE))).toBe(true); // the newest stayed
+    expect(memo).toHaveLength(UNREACHABLE_GOAL_MEMO_SIZE);
+    expect(isUnreachableGoal(memo, cell(0))).toBe(false); // the oldest went
+    expect(isUnreachableGoal(memo, cell(UNREACHABLE_GOAL_MEMO_SIZE))).toBe(true); // the newest stayed
   });
 
   it('refreshes a re-noted goal instead of storing it twice', () => {
@@ -76,7 +77,9 @@ describe('the failed-goal memo', () => {
 
     expect(s.world.get(e, UnreachableGoals).entries).toHaveLength(1);
     // Its deadline moved with the second failure, so it outlives the first note's window.
-    expect(unreachableGoals(s.world, ctxAt(s, UNREACHABLE_GOAL_MEMO_TICKS + 5), e)?.has(cell(7))).toBe(true);
+    expect(
+      isUnreachableGoal(unreachableGoals(s.world, ctxAt(s, UNREACHABLE_GOAL_MEMO_TICKS + 5), e), cell(7)),
+    ).toBe(true);
   });
 });
 
@@ -95,8 +98,9 @@ describe('the gatherer re-plan after a failed route', () => {
   it('moves on to the next tree instead of re-choosing the one it could not reach', () => {
     const s = sim();
     const e = ownedWoodcutter(s, 0, 0);
-    const near = woodAt(s, 3, 0);
-    const far = woodAt(s, 8, 0);
+    const UNTOUCHED = 5;
+    const near = woodAt(s, 3, 0, UNTOUCHED);
+    const far = woodAt(s, 8, 0, UNTOUCHED);
 
     // Let the planner make its own nearest-first pick, then fail exactly that route — the state
     // routing leaves behind when a goal turns out to be walled off by standing bodies.
@@ -106,7 +110,7 @@ describe('the gatherer re-plan after a failed route', () => {
 
     stepUntil(s, 400, () => harvestedResource(s, e) !== null);
     expect(harvestedResource(s, e)).toBe(far); // the reachable tree, not the doomed nearer one
-    expect(s.world.get(near, Resource).remaining).toBe(5); // the doomed tree was left standing
+    expect(s.world.get(near, Resource).remaining).toBe(UNTOUCHED); // the doomed tree was left standing
     expect(s.world.has(e, Stranded)).toBe(false);
   });
 

@@ -30,8 +30,13 @@ import {
 } from './content-index/production.js';
 import { maxWorkCellOffset } from './content-index/terrain.js';
 
-export { harvestCapableJobs } from './content-index/atomics.js';
 export { constructionBillForType } from './content-index/construction.js';
+
+/** The job types whose atomics can harvest a standing resource — the sim's own definition of a
+ *  gatherer trade, read through the memoized index rather than rebuilt per call. */
+export function harvestJobsOf(content: ContentSet): ReadonlySet<number> {
+  return contentIndex(content).harvestJobs;
+}
 
 /**
  * O(1) lookup maps over a {@link ContentSet}'s arrays, keyed the way per-tick code queries them.
