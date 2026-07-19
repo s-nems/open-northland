@@ -87,15 +87,17 @@ export function resolveConstructionDraws(
   const layers = binding.constructionByType?.[item.typeId];
   if (layers === undefined || layers.length === 0) return null;
   const pct = item.builtPct;
-  // Suffix-max of toPct in stacking order (index ascending = drawn on top): the effective end each layer
-  // stays drawn to, extended to cover every higher layer still revealing over it.
-  const effectiveTo: number[] = new Array(layers.length);
-  let maxTo = 0;
+  // Walk top-down (index descending = drawn-on-top first) tracking the max toPct seen so far — the
+  // cover end each lower layer stays drawn to. A layer is active while `pct` sits in [fromPct, coverTo],
+  // so a scaffold persists under a still-revealing body above it; `unshift` restores stacking order.
+  const active: ConstructionLayerRef[] = [];
+  let coverTo = 0;
   for (let i = layers.length - 1; i >= 0; i--) {
-    maxTo = Math.max(maxTo, (layers[i] as ConstructionLayerRef).toPct);
-    effectiveTo[i] = maxTo;
+    const l = layers[i];
+    if (l === undefined) continue;
+    coverTo = Math.max(coverTo, l.toPct);
+    if (pct >= l.fromPct && pct <= coverTo) active.unshift(l);
   }
-  const active = layers.filter((l, i) => pct >= l.fromPct && pct <= (effectiveTo[i] as number));
   const chosen =
     active.length > 0
       ? active

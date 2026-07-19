@@ -49,8 +49,8 @@ const BUILDERS = 8;
 const CARRIERS = 12;
 const CREW = { x: 15, y: 13 } as const;
 /** Headroom over the measured full-rise run — the shared crew raises all four foundations by ~tick
- *  4400 (deterministic, seed 7); 12000 keeps ~2.7× slack. */
-const RUN_TICKS = 12_000;
+ *  4400 (deterministic, seed 7); 8000 keeps ~1.8× slack. */
+const RUN_TICKS = 8_000;
 
 const { Building, UnderConstruction } = components;
 
