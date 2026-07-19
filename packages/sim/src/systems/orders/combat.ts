@@ -1,5 +1,6 @@
 import {
   AttackOrder,
+  Building,
   CurrentAtomic,
   Engagement,
   Fleeing,
@@ -76,6 +77,9 @@ export function setStance(
  * up front so the AISystem skips economy planning for the unit from the very next tick (before the
  * CombatSystem's own pass re-stamps it), avoiding a one-tick economy leak.
  *
+ * The target may be an enemy unit OR an enemy building (the siege order — a right-clicked structure):
+ * anything positioned and Health-bearing that is a settler or a building qualifies here.
+ *
  * Recoverable bad input (skipped, still logged for faithful replay): a mapless sim (no cells to fight
  * over); a dead/stale issuer, a non-settler, a NEUTRAL (unowned — wildlife isn't the player's to command)
  * or NON-combatant (no {@link Health}) issuer; a dead/stale/non-combatant target; or a self-target.
@@ -94,8 +98,8 @@ export function attackUnit(
   if (!world.has(e, Owner) || !world.has(e, Health)) return; // only an owned combatant may be ordered to fight
   const target = command.target;
   if (target === e) return; // a unit can't attack itself
-  if (!world.isAlive(target) || !world.has(target, Settler) || !world.has(target, Health)) return;
-  if (!world.has(target, Position)) return;
+  if (!world.isAlive(target) || !world.has(target, Health) || !world.has(target, Position)) return;
+  if (!world.has(target, Settler) && !world.has(target, Building)) return; // a unit or a besiegeable building
 
   // The order is authoritative — cancel the unit's current action + any in-flight route/hold so it obeys
   // now (a non-interruptible-atomic exception is a deferred refinement, as with moveUnit).

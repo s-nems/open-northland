@@ -8,7 +8,7 @@ import {
   Stockpile,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { cellAnchorNode } from '../../../src/index.js';
+import { cellAnchorNode, ONE } from '../../../src/index.js';
 
 import {
   CARPENTER,
@@ -122,7 +122,7 @@ describe('CommandSystem — buildings and demolition', () => {
     // Announced with the same cue combat razing emits (typed so render can replay the collapse sprite).
     const razed = sim.events.current().filter((ev) => ev.kind === 'buildingDestroyed');
     expect(razed).toHaveLength(1);
-    expect(razed[0]).toMatchObject({ entity: e, buildingType: HEADQUARTERS });
+    expect(razed[0]).toMatchObject({ entity: e, buildingType: HEADQUARTERS, built: ONE });
   });
 
   it('demolish aimed at a non-building entity is skipped (never destroys a settler)', () => {

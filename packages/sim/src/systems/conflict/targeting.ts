@@ -46,6 +46,10 @@ export function isValidTarget(
   if (building !== undefined) {
     // Only a player's own units besiege buildings — an animal (no Owner) never turns on a structure.
     if (!world.has(self, Owner)) return false;
+    // And only a player-owned building is a siege target: an ownerless structure (a scenario fixture)
+    // belongs to nobody, and admitting it would contradict the dormancy gate's owned-buildings-only tail
+    // (combat would only wake to it when something unrelated kept the system awake).
+    if (!world.has(t, Owner)) return false;
     return mayTarget(world, ctx, self, attacker.tribe, attacker.jobType, t, building.tribe);
   }
   if (!world.has(t, Settler)) return false;

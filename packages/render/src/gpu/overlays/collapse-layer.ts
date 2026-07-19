@@ -34,7 +34,7 @@ import { retainOffscreen, retireUndrawn } from './retained-pool.js';
  */
 export class CollapseLayer {
   /** One retained node per live collapse, keyed by {@link collapseKey}. */
-  private readonly nodes = new Map<string, Container>();
+  private readonly nodes = new Map<string, CollapseNode>();
   /** Reused per-frame scratch of keys drawn this frame. */
   private readonly seen = new Set<string>();
   private collapses: BuildingCollapse[] = [];
@@ -78,7 +78,7 @@ export class CollapseLayer {
       node.position.set(p.x, p.y);
       node.zIndex = depthKey(p.x, p.y) + paintOrderBias('building') * SCREEN_PAINT_EPS;
       this.sinkTo(node, collapseProgress(c, tick));
-      poseDust(node as CollapseNode, c.entity, age);
+      poseDust(node, c.entity, age);
       this.seen.add(key);
     }
     retireUndrawn(this.nodes, this.seen, (node) => node.destroy({ children: true }));
@@ -92,9 +92,18 @@ export class CollapseLayer {
   /** Mint a collapse node: the building body's resolved atlas layers (finished state, shadows skipped),
    *  each a child Sprite carrying its {@link ResolvedLayer} for the per-frame crop, topped with the
    *  ground-line dust cloud (drawn last, so it covers the sprites' crop edge). */
-  private makeNode(c: BuildingCollapse): Container | null {
-    // A minimal finished-building item: no builtPct/upgradePct, so the body (not a stage stack) resolves.
-    const item: DrawItem = { kind: 'building', ref: c.entity, x: 0, y: 0, depth: 0, typeId: c.typeId };
+  private makeNode(c: BuildingCollapse): CollapseNode | null {
+    // A minimal building item — `builtPct` rides along for an unfinished site, so its construction-stage
+    // body (not the finished one it never became) resolves and sinks.
+    const item: DrawItem = {
+      kind: 'building',
+      ref: c.entity,
+      x: 0,
+      y: 0,
+      depth: 0,
+      typeId: c.typeId,
+      ...(c.builtPct !== undefined ? { builtPct: c.builtPct } : {}),
+    };
     const layers = resolveLayers(this.sheet, item, 0);
     if (layers === null || layers.length === 0) return null;
     const node = new Container() as CollapseNode;

@@ -1,5 +1,6 @@
+import { BUILDING_KIND } from '@open-northland/data';
 import type { Entity, Simulation } from '@open-northland/sim';
-import { components } from '@open-northland/sim';
+import { components, systems } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
 import { ENEMY_PLAYER, HUMAN_PLAYER } from '../game/rules.js';
 import {
@@ -87,10 +88,12 @@ function build(sim: Simulation): void {
   }
 }
 
-/** Whether a live enemy building is one of the high-value structures (HQ or a defensive tower). */
+/** Whether a live enemy building is one of the high-value structures (HQ or a defensive tower) — the
+ *  same id/kind keys the sim's siege-priority policy (`readviews/buildings.ts` buildingCombatClass)
+ *  reads, so this acceptance check moves with the rule instead of silently testing a stale copy. */
 function isHighValue(sim: Simulation, e: Entity): boolean {
   const def = sim.content.buildings.find((b) => b.typeId === sim.world.get(e, Building).buildingType);
-  return def?.id === 'headquarters' || def?.kind === 'tower';
+  return def?.id === systems.HEADQUARTERS_BUILDING_ID || def?.kind === BUILDING_KIND.tower;
 }
 
 /** Mean remaining HP fraction (0..1) over `buildings`; 1 when the set is empty (nothing damaged). */

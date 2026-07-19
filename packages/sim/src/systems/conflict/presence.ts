@@ -1,6 +1,6 @@
-import { Owner, Position } from '../../components/index.js';
+import { Owner } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { nodeOfPosition } from '../../nav/halfcell.js';
+import { indexNodesFor } from '../spatial.js';
 
 /**
  * Coarse presence-cell edge (half-cell nodes). Sized so a sight/defend-radius query (≤ ~20 nodes)
@@ -38,12 +38,12 @@ export class HostilePresence {
     nodesOf?: (e: Entity) => readonly { x: number; y: number }[] | null,
   ) {
     for (const e of combatants) {
-      // Bucket by the SAME node(s) as the ring-search index, so the "not-mine within radius" superset claim
-      // holds per entity: `nodesOf` (a building's every wall cell) tallies the entity in each covered coarse
-      // cell, else the single `nodeOf`, else the entity's own {@link Position} node. A resolver-null /
-      // Position-less entity is dropped, exactly like NodeBuckets.
+      // Tally by the SHARED {@link indexNodesFor} ladder — the very resolution NodeBuckets buckets with —
+      // so the "not-mine within radius" superset claim holds per entity by construction: a building's
+      // every wall cell (which can span several coarse cells, waking a seeker near any face), else the
+      // single `nodeOf`, else the entity's own Position node; resolver-null / Position-less is dropped.
       const owner = world.tryGet(e, Owner);
-      for (const node of this.nodesFor(world, e, nodeOf, nodesOf)) {
+      for (const node of indexNodesFor(world, e, nodeOf, nodesOf)) {
         const cell = this.cellAt(
           Math.floor(node.x / PRESENCE_CELL_NODES),
           Math.floor(node.y / PRESENCE_CELL_NODES),
@@ -52,26 +52,6 @@ export class HostilePresence {
         if (owner !== undefined) cell.byPlayer.set(owner.player, (cell.byPlayer.get(owner.player) ?? 0) + 1);
       }
     }
-  }
-
-  /** The node(s) `e` is tallied at — `nodesOf` (multi-node) first, then `nodeOf`, then its Position node;
-   *  empty when the entity resolves to none (dropped from the grid). A building counted at every wall cell
-   *  can land in more than one coarse cell, so a seeker near any face wakes to it. */
-  private nodesFor(
-    world: World,
-    e: Entity,
-    nodeOf: ((e: Entity) => { x: number; y: number } | null) | undefined,
-    nodesOf: ((e: Entity) => readonly { x: number; y: number }[] | null) | undefined,
-  ): readonly { x: number; y: number }[] {
-    if (nodesOf !== undefined) return nodesOf(e) ?? [];
-    if (nodeOf !== undefined) {
-      const node = nodeOf(e);
-      return node === null ? [] : [node];
-    }
-    const p = world.tryGet(e, Position);
-    if (p === undefined) return [];
-    const n = nodeOfPosition(p.x, p.y);
-    return [{ x: n.hx, y: n.hy }];
   }
 
   /**

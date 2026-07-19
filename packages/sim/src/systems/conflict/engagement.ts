@@ -12,7 +12,7 @@ import {
 import { entityNode, manhattan, type NodeBuckets } from '../spatial.js';
 import { playerSeesEntity } from '../vision/index.js';
 import type { HostilePresence } from './presence.js';
-import { combatTargetNode } from './target-node.js';
+import { type BuildingBodyNodeCache, combatTargetNode } from './target-node.js';
 import { isHuntTarget, isValidTarget, SIGHT_RADIUS_NODES } from './targeting.js';
 
 // Target acquisition: which enemy an owned combatant may auto-engage this tick, resolved from its
@@ -161,8 +161,10 @@ function defendAnchor(world: World, terrain: TerrainGraph, e: Entity): NodeId {
  *    (headquarters / defensive tower) always wins over a plain building — the low-priority `'other'`
  *    building tier is searched only when the first pass finds nothing in sight (the autofocus priority:
  *    HQ / towers / enemy units on par, other buildings only when none of those remain — user rule).
- *    General hostility for ATTACK/unowned, anchor-bounded for DEFEND, catchable prey for an IGNORE hunter
- *    (none of which admit a building) — see {@link engageSpec}.
+ *    General hostility for ATTACK/unowned and anchor-bounded DEFEND both admit an enemy building (a
+ *    DEFEND guard autonomously batters a structure inside its radius — deliberate: a defensive post
+ *    contests enemy construction on its ground); only an IGNORE hunter's catchable-prey filter never
+ *    admits one — see {@link engageSpec}.
  */
 export function resolveTarget(
   world: World,
@@ -174,16 +176,19 @@ export function resolveTarget(
   here: NodeId,
   attacker: SettlerIdentity,
   spec: EngageSpec,
+  bodyNodes?: BuildingBodyNodeCache,
 ): { target: Entity; dist: number } | null {
   if (world.has(self, AttackOrder)) {
     const focus = world.get(self, AttackOrder).target;
     // An ordered target is chased regardless of sight, so measure its real distance (the ring search's
     // `searchRadius` cap does not apply); the swing/chase decision is on this distance. A building is
-    // measured at its nearest wall cell (combatTargetNode), the same node the chase walks to.
+    // measured at its nearest wall cell (combatTargetNode, through the tick's wall memo — N warriors
+    // ordered onto one building must not re-translate its footprint N times), the same node the chase
+    // walks to.
     if (isValidTarget(world, ctx, self, attacker, focus)) {
       return {
         target: focus,
-        dist: manhattan(terrain, here, combatTargetNode(world, ctx, terrain, here, focus)),
+        dist: manhattan(terrain, here, combatTargetNode(world, ctx, terrain, here, focus, bodyNodes)),
       };
     }
     world.remove(self, AttackOrder); // target gone / no longer hostile — abandon the order, auto-engage
