@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DAMAGE_SMOKE_STEP,
   damageSmokeEmitters,
+  EMITTER_WEDGE,
   emitterSpot,
   MAX_SMOKE_EMITTERS,
   SMOKE_PUFF_PERIOD_TICKS,
@@ -91,6 +92,18 @@ describe('smokePuff — deterministic rising, swelling, thinning loop', () => {
       for (const u of us) {
         expect(u - prev).toBeGreaterThan(0.05);
         prev = u;
+      }
+    }
+  });
+
+  it('pins every spot to the centered roof wedge, never in an empty bounds-box corner', () => {
+    // Off-center spots must sit at or below the wedge's roof line — a sprite narrows toward its top,
+    // so a high spot far from the center line would smoke from the air beside the roof.
+    for (const seed of [1, 42, 1337, 65535]) {
+      for (let e = 0; e < MAX_SMOKE_EMITTERS; e++) {
+        const { u, v } = emitterSpot(seed, e);
+        const centerOffset = Math.abs(u - 0.5) / EMITTER_WEDGE.halfSpread;
+        expect(v).toBeGreaterThanOrEqual(EMITTER_WEDGE.topV + EMITTER_WEDGE.slope * centerOffset - 1e-9);
       }
     }
   });

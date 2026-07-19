@@ -43,17 +43,25 @@ export function damageSmokeEmitters(hpFrac: number): number {
   return Math.min(MAX_SMOKE_EMITTERS, Math.floor(lost / DAMAGE_SMOKE_STEP + 1e-9));
 }
 
-/** Where emitter `i` of a building sits, as fractions of the sprite's bounds box: `u` across the width
- *  (kept off the edges), `v` down from the top into the roof band. Each emitter owns one horizontal
- *  band of the roof (seeded rotation per building, seeded jitter within the band), so every crossed
- *  damage step smokes from a visibly NEW spot — the plume count reads as a damage gauge. Stable across
- *  frames (no per-frame jitter). */
+/** The roof wedge emitter spots are pinned to, as bounds-box fractions: at most `halfSpread` from the
+ *  center line, starting `topV` below the sprite top, dropping `slope` per unit of center offset, with
+ *  up to `jitter` extra seeded depth. A named approximation of building silhouettes — sprites narrow
+ *  toward the top, so a spot high in a box CORNER would smoke from thin air beside the roof. */
+export const EMITTER_WEDGE = { halfSpread: 0.32, topV: 0.1, slope: 0.35, jitter: 0.08 } as const;
+
+/** Where emitter `i` of a building sits, as fractions of the sprite's bounds box: `u` across the width,
+ *  `v` down from the top. Spots lie on the centered {@link EMITTER_WEDGE} — the farther from the center
+ *  line, the lower — so a plume's source stays on the building's pixels. Each emitter owns one
+ *  horizontal band (seeded rotation per building, seeded jitter within it), so every crossed damage
+ *  step smokes from a visibly NEW spot — the plume count reads as a damage gauge. Stable across frames
+ *  (no per-frame jitter). */
 export function emitterSpot(seed: number, i: number): { u: number; v: number } {
   const band = (i + Math.floor(frac(seed, 97) * MAX_SMOKE_EMITTERS)) % MAX_SMOKE_EMITTERS;
-  const withinBand = (band + 0.2 + 0.6 * frac(seed, i * 2)) / MAX_SMOKE_EMITTERS;
+  // The spot's center offset in [-1, 1] — stratified by band, so spots never clump.
+  const c = ((band + 0.2 + 0.6 * frac(seed, i * 2)) / MAX_SMOKE_EMITTERS) * 2 - 1;
   return {
-    u: 0.12 + 0.76 * withinBand,
-    v: 0.05 + 0.3 * frac(seed, i * 2 + 1),
+    u: 0.5 + EMITTER_WEDGE.halfSpread * c,
+    v: EMITTER_WEDGE.topV + EMITTER_WEDGE.slope * Math.abs(c) + EMITTER_WEDGE.jitter * frac(seed, i * 2 + 1),
   };
 }
 
