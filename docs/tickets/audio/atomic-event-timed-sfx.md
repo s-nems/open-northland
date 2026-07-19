@@ -1,37 +1,42 @@
-# Time the remaining action SFX to their authored PLAY_SOUND_FX frames
+# Drive the remaining action SFX from their authored PLAY_SOUND_FX cues
 
-**Area:** audio (+ sim event emit) · **Origin:** construction-feedback round, 2026-07-14 · **Priority:** P2
+**Area:** audio (+ sim event emit) · **Origin:** construction-feedback round, 2026-07-14; updated
+needs-gossip merge, 2026-07-19 · **Priority:** P2
 
-The builder's hammer now sounds on its authored PLAY_SOUND_FX cue (`atomicSound` event, emitted at
-`ATOMIC_EVENT_TYPE_PLAY_SOUND_FX = 34`; audio's `byAtomicSound` map — see `fix: Sound the builder's
-hammer on its authored strike frame`). The mechanism is in place; the remaining action SFX still fire
-on `atomicCompleted` (swing END) rather than their authored mid-swing frames:
+The original keys nearly every action sound in the animation data itself: `event <frame> 34 <id>`
+(`ATOMIC_EVENT_TYPE_PLAY_SOUND_FX`), where `<id>` is a `SoundFXStatic` group's `logicSoundType`
+(verified: 1 = "Hammer Wood", 61/62 = the SocialTalk voice pair; ~50 distinct ids across the mod's
+clips). Two consumers of that data exist today:
 
-- The woodcutter chop / miner still sound on completion (`byAtomic`). Their animations carry their own
-  `event <at> 34` cues in the real IR — move them to `atomicSound` so the axe/pick land on the visual
-  strike, the same way the hammer does.
-- The `atomicSound` emission is currently gated to the `construct` effect in the AtomicSystem loop.
-  Generalize it to any atomic whose animation carries a PLAY_SOUND_FX event, so a single path serves
-  every action SFX. Keep it cheap — the per-tick cost must stay O(active atomics) (the frame resolves
-  through the memoized `contentIndex` maps).
-- The gossip talk/listen clips (atomics 14/15, `systems/social/gossip.ts`) carry SOCIALTALK voice cues
-  in the real IR (`viking_civilist_talk` `event 0 34 61`, `viking_woman_talk` `event 0 34 62`,
-  `logicdefines.inc` SOUND_FX_TYPE_SOCIALTALK_MALE/FEMALE 61/62) — wire them through the same
-  generalized path (+ a `byAtomicSound` mapping onto the sex-matched voice pools) so chatting pairs
-  audibly murmur, the original's settlement chatter.
+- The builder's hammer sounds on its cue frame via the `atomicSound` event + audio's hand-keyed
+  `byAtomicSound` map (id → group chosen in code, not from the event's value).
+- Gossip chat voices (`systems/social/gossip/`) ship the fully faithful shape: the sim emits
+  `chatVoice { soundType }` at the clip's cue frame and audio resolves the group through
+  `SoundIndex.groupsByLogicSoundType` — no hand binding.
+
+The remaining action SFX (woodcutter chop, miner pick, …) still fire on `atomicCompleted` (swing END)
+through hand `byAtomic` bindings, and the `atomicSound` emission is still gated to the `construct`
+effect and carries no sound id.
 
 ## Scope
 
-- Generalize the AtomicSystem's `atomicSound` emission beyond `construct` (any atomic with a
-  PLAY_SOUND_FX frame); confirm walks/idles/harvest without the cue add no measurable per-tick cost.
-- For each SFX moved to `atomicSound`, add its atomic id to audio's `byAtomicSound` and REMOVE it from
-  `byAtomic` (so it never double-fires at completion), mirroring the hammer.
+- Generalize the AtomicSystem's `atomicSound` emission: fire for ANY running atomic whose animation
+  carries a type-34 event at the current frame, carrying that event's `value` as `soundType` (the
+  `chatVoice` shape). Keep per-tick cost O(active atomics) (the frame resolves through the memoized
+  `contentIndex` maps).
+- Audio resolves `soundType` via `groupsByLogicSoundType` first; the `byAtomic`/`byAtomicSound` hand
+  bindings become the fallback for clips without a cue, and entries the data now covers are deleted
+  (so nothing double-fires at completion).
+- `chatVoice` then folds into the generalized event (one shape, one emitter) — keep its fog gate.
+- Mind repeats: a multi-swing harvest fires its cue once per swing — the engine's per-key debounce
+  should keep bursts sane (verify with the woodcutter loop).
 - Sandbox parity: the sandbox chop/mining animations (`atomic-animations.ts`) carry no events — add
   their transcribed `event <at> 34` (scaled by each clip's render cadence, like BUILD_HOUSE_STRIKE_FRAME)
   so `?scene=sandbox` sounds on-beat, not just real-map mode.
-- Keep completion-fired sounds for atomics with no authored PLAY_SOUND_FX event.
 
 ## Verify
 
-- Unit tests on the generalized event-offset emission (a cued atomic sounds mid-swing, an uncued one
-  stays silent mid-swing); human ear on `?scene=sandbox` (chop lands on the visual strike).
+- Unit: a fixture clip with `event <at> 34 <id>` fires the event at that frame with the id; audio
+  resolves it to the group and positions it at the emitter; an uncued clip stays silent mid-swing.
+- Human ear on `?scene=sandbox`: chop/hammer land on the visual strike, no doubled sounds from a
+  binding + cue firing together.

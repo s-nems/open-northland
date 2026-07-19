@@ -15,7 +15,7 @@ import {
   spawnSandboxSettler,
   spawnWorkersAtDoor,
 } from '../game/sandbox/index.js';
-import { createSceneSim } from './runtime.js';
+import { holdsSometimeDuring } from './runtime.js';
 import type { SceneDefinition } from './types.js';
 
 /**
@@ -108,18 +108,10 @@ export const chainScene: SceneDefinition = {
       label: 'the farm field-farms wheat (fields sown on the grass)',
       // The run's end tick can land in the harvest trough (every field just cut, the resow under way —
       // observed once the farmers also pause to gossip), so a bare end-tick sample is luck. When it is
-      // empty, a fresh run of the same scene gets a bounded resow window (the warehouse-check precedent
-      // for probing a state the end tick can miss).
-      predicate: (sim) => {
-        if (cropFields(sim) > 0) return true;
-        const fresh = createSceneSim(chainScene);
-        fresh.run(RUN_TICKS);
-        for (let i = 0; i < RESOW_WINDOW_TICKS; i++) {
-          fresh.step();
-          if (cropFields(fresh) > 0) return true;
-        }
-        return false;
-      },
+      // empty, a fresh run gets a bounded resow window past the scene's own length.
+      predicate: (sim) =>
+        cropFields(sim) > 0 ||
+        holdsSometimeDuring(chainScene, RUN_TICKS + RESOW_WINDOW_TICKS, (s) => cropFields(s) > 0),
     },
     {
       label: 'the mill ground flour from the harvested wheat',

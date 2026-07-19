@@ -155,10 +155,10 @@ export const gossipScene: SceneDefinition = {
     {
       label: 'the hungry settler foraged the bush and the sleepy one napped (both needs met)',
       predicate: (sim) => {
-        const threshold = fx.div(fx.fromInt(3), fx.fromInt(4));
         for (const e of sim.world.query(Settler)) {
           const s = sim.world.get(e, Settler);
-          if (s.hunger >= threshold || s.fatigue >= threshold) return false;
+          if (s.hunger >= systems.HUNGER_EAT_THRESHOLD || s.fatigue >= systems.FATIGUE_SLEEP_THRESHOLD)
+            return false;
         }
         return true;
       },

@@ -38,7 +38,7 @@ export const Settler = defineComponent<{
   /**
    * 0..ONE enjoyment — the social/company need. Rises over time like {@link hunger}. The original restores
    * channel 3 (leisure/social) through the talk/monologuize/listen atomics 14/13/15 plus `enjoy` (17) and
-   * `make_love` (78) — there is no building satisfier. The gossip drive (`systems/social/gossip.ts`) is the
+   * `make_love` (78) — there is no building satisfier. The gossip drive (`systems/social/gossip/`) is the
    * satisfying half: settlers pair up and the talk/listen animation pulses refill this bar.
    * (Channels: 1 = rest, 2 = hunger, 3 = leisure/social.)
    */

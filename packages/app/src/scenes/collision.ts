@@ -8,7 +8,7 @@ import {
   JOB_SOLDIER_SPEAR,
   JOB_SOLDIER_SWORD,
 } from '../game/sandbox/index.js';
-import { createSceneSim } from './runtime.js';
+import { holdsSometimeDuring } from './runtime.js';
 import type { SceneDefinition } from './types.js';
 
 /**
@@ -173,18 +173,10 @@ export const collisionScene: SceneDefinition = {
     {
       // The promise is the CROSSING: arrived carriers are idle civilians, and idle settlers now wander
       // off to gossip, so the end tick can find one beside its colleague instead of on its goal node.
-      // When it does, a fresh run of the same scene is sampled every tick for the moment both carriers
-      // stood on their goals (the chain scene's fresh-run precedent).
+      // When it does, a fresh run is sampled for the moment both carriers stood on their goals.
       label: 'the carriers walked straight through the wall (civilian pass-through)',
-      predicate: (sim) => {
-        if (carriersPassedThrough(sim)) return true;
-        const fresh = createSceneSim(collisionScene);
-        for (let i = 0; i < RUN_TICKS; i++) {
-          fresh.step();
-          if (carriersPassedThrough(fresh)) return true;
-        }
-        return false;
-      },
+      predicate: (sim) =>
+        carriersPassedThrough(sim) || holdsSometimeDuring(collisionScene, RUN_TICKS, carriersPassedThrough),
     },
   ],
 };

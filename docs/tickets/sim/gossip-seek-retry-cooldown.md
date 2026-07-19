@@ -3,7 +3,7 @@
 **Area:** sim · **Origin:** needs-gossip slice review, 2026-07-18 · **Priority:** P3
 
 A settler over the chat-seek threshold with no reachable partner re-runs its two ring searches
-(`planGossipSeek`, `systems/social/gossip.ts` — idle pass + grab pass, radius 32 nodes ≈ ~2k node
+(`planGossipSeek`, `systems/social/gossip/` — idle pass + grab pass, radius 32 nodes ≈ ~2k node
 probes each) every planner tick until a partner frees up. (The idle-chat rung is no longer the
 concern: per idle settler per tick it rings only the adjacent nodes — ring ≤ 2, ~12 probes — plus a
 radius-12 wander search already paced by its own 1/240 roll, the same pacing shape this ticket wants
@@ -14,6 +14,10 @@ work.
 
 ## Scope
 
+- Consider the data's own no-partner answer first: `monologuize` (atomic 13, bound in the same
+  `setatomic` families — 60 ticks, 3×800 channel-3 pulses, a settler talking to itself). Playing it on
+  a failed search would both pace the retry AND refill the bar the original's way; a plain cooldown is
+  the fallback if the clip's bindings don't resolve for the settler.
 - Add a retry cooldown for a FAILED partner search, mirroring the stranded-walk pacing
   (`replan.ts` `STRANDED_RETRY_TICKS`): a settler whose search found nobody skips the gossip rungs
   for a few seconds instead of re-ringing every tick. Component or per-settler tick stamp — keep it

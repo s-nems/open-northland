@@ -6,4 +6,4 @@ export {
   planGossipIdle,
   planGossipSeek,
   TALK_ATOMIC_ID,
-} from './gossip.js';
+} from './gossip/index.js';

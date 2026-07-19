@@ -203,9 +203,9 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     if (world.has(e, FamilyDuty)) continue;
     // Gossip fence + the company rung: a settler mid-chat is the GossipSystem's; a lonely one (deficit at
     // the seek threshold) leaves its work to find a partner — above the economy rungs on purpose, the
-    // "worker downs tools to socialize" beat (see ../social/gossip.ts).
+    // "worker downs tools to socialize" beat (see ../social/gossip/).
     if (world.has(e, Chat)) continue;
-    if (planGossipSeek(world, ctx.tick, e, settler, hereNode.hx, hereNode.hy, gossipCandidates)) {
+    if (planGossipSeek(world, ctx, e, settler, hereNode.hx, hereNode.hy, gossipCandidates)) {
       continue;
     }
     // The housewife rung: a woman takes no trade — her work is stocking the family larder (hoarding,
@@ -292,7 +292,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // 5. STORE-CARRIER HAUL — an employed carrier (bound to a store's transport slot) ferries finished
     // workplace outputs to the stores. Hauling is a trade, not a default, so everyone else with nothing
     // above is genuinely idle: step off a shared tile first so an idle crowd spreads out (./destack.ts),
-    // then chat with a nearby idle neighbour (../social/gossip.ts).
+    // then chat with a nearby idle neighbour (../social/gossip/).
     if (!planCarrierHaul(plan, anyHaulable)) {
       if (!deStackIdle(world, ctx, terrain, e, hereNode.hx, hereNode.hy, spacing)) {
         planGossipIdle(world, ctx, e, settler, hereNode.hx, hereNode.hy, gossipCandidates);
