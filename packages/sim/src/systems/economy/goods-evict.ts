@@ -3,14 +3,10 @@ import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import type { BlockOverlay, NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { buildingFootprintOf, translatedCells } from '../footprint/geometry.js';
-import { buildingDoorNodes, dynamicBlockOverlay } from '../footprint/index.js';
+import { buildingDoorNodes, dynamicBlockOverlay, walkBlockedBodyOf } from '../footprint/index.js';
+import { FOOTPRINT_EVICT_SEARCH_CAP } from '../movement/evict.js';
 import { canonicalById } from '../spatial.js';
 import { stockpilesAtNode } from '../stockpile-index.js';
-
-/** Max nodes one pile's landing search visits before leaving it in place — the same boxed-in stance
- *  (and cap value) as the settler eviction's FOOTPRINT_EVICT_SEARCH_CAP. */
-const GOODS_EVICT_SEARCH_CAP = 192;
 
 /**
  * Push every loose ground pile lying inside `building`'s walk-blocked footprint out onto the nearest
@@ -35,18 +31,8 @@ const GOODS_EVICT_SEARCH_CAP = 192;
 export function evictLooseGoodsFromFootprint(world: World, ctx: SystemContext, building: Entity): void {
   const terrain = ctx.terrain;
   if (terrain === undefined) return; // mapless sim: no cells to lie on
-  const b = world.tryGet(building, Building);
-  const p = world.tryGet(building, Position);
-  if (b === undefined || p === undefined) return;
-  const footprint = buildingFootprintOf(ctx.content, b.buildingType);
-  if (footprint === undefined || footprint.blocked.length === 0) return; // nothing impassable
-  const { hx: ax, hy: ay } = nodeOfPosition(p.x, p.y);
-  const body = new Set<NodeId>(translatedCells(terrain, footprint.blocked, ax, ay));
-  const door = footprint.door;
-  if (door !== undefined && terrain.inBounds(ax + door.dx, ay + door.dy)) {
-    body.delete(terrain.nodeAt(ax + door.dx, ay + door.dy)); // the door stays a reachable stand
-  }
-  if (body.size === 0) return;
+  const body = walkBlockedBodyOf(world, ctx, terrain, building);
+  if (body === null) return; // nothing impassable
 
   // Snapshot the buried piles before mutating — the landing loop below creates and destroys entities
   // in the very index this scan reads.
@@ -90,7 +76,7 @@ export function evictLooseGoodsFromFootprint(world: World, ctx: SystemContext, b
  * The nearest walkable node outside every walk-block where a displaced pile may lie: unblocked, not a
  * door cell (a designated stand), and holding no positioned stockpile yet — one pile per tile, so a
  * different-good heap is never buried under the landing. A breadth-first ring search from `from` in
- * the graph's canonical neighbour order that MAY traverse the evicting building's own `body` (the pile
+ * the graph's canonical neighbour order that may traverse the evicting building's own `body` (the pile
  * is displaced across its plot, not carried) but never any other blocked cell — the same shape as the
  * settler eviction's `nearestFreeCellOutside`, minus its settler-occupancy rules (a pile and a settler
  * share a tile freely). Null when nothing free lies within the cap.
@@ -106,7 +92,7 @@ function nearestPileLanding(
   const seen = new Set<NodeId>([from]);
   let frontier: NodeId[] = [from];
   let visited = 0;
-  while (frontier.length > 0 && visited < GOODS_EVICT_SEARCH_CAP) {
+  while (frontier.length > 0 && visited < FOOTPRINT_EVICT_SEARCH_CAP) {
     const next: NodeId[] = [];
     for (const cell of frontier) {
       for (const n of terrain.walkableNeighbours(cell)) {

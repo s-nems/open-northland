@@ -77,6 +77,10 @@ export interface RegionIndex<Extra> {
    *  `(hx, hy)`, ascending-id — the caller's candidate superset (valid when `reach ≥ radius + the max
    *  anchor→interaction-cell offset`). Cost: O(regions touched + matches), not O(all indexed). */
   near(world: World, hx: number, hy: number, reach: number): Entity[];
+  /** Whether any indexed entity inside the same box passes `test` — the existence-only twin of
+   *  {@link near}: no collection, no sort (order-independent for a pure "is there one?"), first hit
+   *  returns. For scans like "does any live resource of this good stand nearby". */
+  someNear(world: World, hx: number, hy: number, reach: number, test: (e: Entity) => boolean): boolean;
   /** The per-index derived extra, maintained incrementally beside the membership. */
   extra(world: World): Extra;
 }
@@ -183,6 +187,23 @@ export function createRegionIndex<Extra, Capture>(
       // ascending-id order the nearest-scan's first-wins tie-break depends on.
       out.sort((a, b) => a - b);
       return out;
+    },
+    someNear: (world, hx, hy, reach, test) => {
+      const index = memo.read(world);
+      const minRx = Math.floor(Math.max(0, hx - reach) / REGION_NODES);
+      const maxRx = Math.floor((hx + reach) / REGION_NODES);
+      const minRy = Math.floor(Math.max(0, hy - reach) / REGION_NODES);
+      const maxRy = Math.floor((hy + reach) / REGION_NODES);
+      for (let rx = minRx; rx <= maxRx; rx++) {
+        for (let ry = minRy; ry <= maxRy; ry++) {
+          const bucket = index.byRegion.get(rx * REGION_KEY_STRIDE + ry);
+          if (bucket === undefined) continue;
+          for (const m of bucket) {
+            if (Math.abs(m.hx - hx) <= reach && Math.abs(m.hy - hy) <= reach && test(m.e)) return true;
+          }
+        }
+      }
+      return false;
     },
   };
 }

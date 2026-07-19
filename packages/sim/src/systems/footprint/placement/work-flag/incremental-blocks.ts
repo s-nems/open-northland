@@ -6,11 +6,10 @@ import {
   Resource,
   ResourceFootprint,
   Signpost,
-} from '../../../components/index.js';
-import type { Component, Entity, World } from '../../../ecs/world.js';
-import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
-import type { SystemContext } from '../../context.js';
-import { forEachRingOffset, sameCells } from '../geometry.js';
+} from '../../../../components/index.js';
+import type { Component, Entity, World } from '../../../../ecs/world.js';
+import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
+import { sameCells } from '../../geometry.js';
 import {
   type BlockerVisit,
   BUILDING_ZONE,
@@ -18,14 +17,12 @@ import {
   EXCLUSION,
   eachBlockerCell,
   markerBlockerCells,
-  placementBlockerVersion,
   resourceBlockerCells,
   signpostBlockerCells,
-} from './blockers.js';
+} from '../blockers.js';
 
-// WORK-FLAG PLACEMENT — where a work flag (and, through canPlaceWorkFlag, a signpost) may stand: the same
-// ./blockers.ts scan the building rule reads, minus the margin channels (EXCLUSION + BUILDING_ZONE) and
-// plus the markers.
+// The incrementally-maintained work-flag blocked set — the refcounted per-world cache behind
+// ../work-flag's placement queries, with its journal replay, rebuild, and coherence verifier.
 
 /** One blocker's blocked nodes (in-bounds, every channel but the margin zones EXCLUSION/BUILDING_ZONE;
  *  duplicates kept so add and removal replay symmetrically). Captured at admit time — the entity may be
@@ -33,7 +30,7 @@ import {
 type BlockedCells = readonly NodeId[];
 
 /**
- * The per-world INCREMENTAL blocked-set state. The refcounted `counts`/`blocked` pair is maintained
+ * The per-world incremental blocked-set state. The refcounted `counts`/`blocked` pair is maintained
  * against the blocker stores' membership journals, so a burst that plants N flags/signposts costs
  * N × O(own footprint) instead of N × O(all blockers) — the rebuild-on-bump memo this replaces made
  * the AI's opening signpost wave quadratic (profiled 0.6–2.4 s single ticks). The memo feeds command
@@ -45,10 +42,12 @@ interface IncrementalBlocks {
   readonly terrain: TerrainGraph;
   /** Held membership generations of the three journal-replayed stores ({@link STATIC_SOURCES}). */
   readonly gens: Map<Component<unknown>, number>;
-  /** Guards for inputs the journals cannot cover — any change forces a full rebuild (all rare):
-   *  the in-place tier swap (`touchComponent(Building)`) and a footprint stamp decoupled from its
-   *  Resource membership change (outside the bundled-step invariant `placementBlockerVersion` documents). */
+  /** Held {@link ResourceFootprint} membership generation — journal-replayed like the static sources,
+   *  but its deltas resync through the Resource capturer (a footprint stamp/unstamp changes which cells
+   *  that resource blocks), so a stamp decoupled from its Resource membership change is still caught. */
   footprintGen: number;
+  /** Guard for the one input no journal covers: the in-place tier swap (`touchComponent(Building)`)
+   *  changes captured cells with no membership bump — any move forces a full rebuild (rare). */
   buildingValueGen: number;
   /** The marker layer's inputs; a bump re-diffs the whole DeliveryFlag store — O(flags), tiny. */
   flagGen: number;
@@ -80,12 +79,14 @@ function captureCells(terrain: TerrainGraph, run: (visit: BlockerVisit) => void)
   return cells;
 }
 
+const RESOURCE_SOURCE: StaticBlockerSource = {
+  component: Resource,
+  members: (s) => s.resourceCells,
+  capture: (world, _content, terrain, e) => captureCells(terrain, (v) => resourceBlockerCells(world, e, v)),
+};
+
 const STATIC_SOURCES: readonly StaticBlockerSource[] = [
-  {
-    component: Resource,
-    members: (s) => s.resourceCells,
-    capture: (world, _content, terrain, e) => captureCells(terrain, (v) => resourceBlockerCells(world, e, v)),
-  },
+  RESOURCE_SOURCE,
   {
     component: Building,
     members: (s) => s.buildingCells,
@@ -153,6 +154,7 @@ function rebuildState(world: World, content: ContentSet, terrain: TerrainGraph):
     world.journalMembership(source.component);
     gens.set(source.component, world.componentGeneration(source.component));
   }
+  world.journalMembership(ResourceFootprint);
   const state: IncrementalBlocks = {
     content,
     terrain,
@@ -179,10 +181,15 @@ function rebuildState(world: World, content: ContentSet, terrain: TerrainGraph):
  *  (a journal gap, or a change on an input the journals cannot cover — see {@link IncrementalBlocks}). */
 function catchUp(world: World, state: IncrementalBlocks): boolean {
   if (world.componentValueGeneration(Building) !== state.buildingValueGen) return false;
+  // A footprint stamp/unstamp changes which cells its resource blocks — replay its own journal
+  // through the Resource capturer, so even a stamp decoupled from a Resource add/destroy resyncs
+  // exactly the affected entity (resync is idempotent against the Resource replay below).
   const footprintGen = world.componentGeneration(ResourceFootprint);
-  const heldResourceGen = state.gens.get(Resource) ?? 0;
-  if (footprintGen !== state.footprintGen && world.componentGeneration(Resource) === heldResourceGen) {
-    return false;
+  if (footprintGen !== state.footprintGen) {
+    const deltas = world.membershipDeltasSince(ResourceFootprint, state.footprintGen);
+    if (deltas === null) return false;
+    for (const e of deltas) resyncEntity(world, state, RESOURCE_SOURCE, e);
+    state.footprintGen = footprintGen;
   }
   for (const source of STATIC_SOURCES) {
     const gen = world.componentGeneration(source.component);
@@ -193,7 +200,6 @@ function catchUp(world: World, state: IncrementalBlocks): boolean {
     for (const e of deltas) resyncEntity(world, state, source, e);
     state.gens.set(source.component, gen);
   }
-  state.footprintGen = footprintGen;
   const flagGen = world.componentGeneration(DeliveryFlag);
   const moves = flagMoves.get(world) ?? 0;
   if (flagGen !== state.flagGen || moves !== state.flagMoves) {
@@ -286,86 +292,17 @@ function buildBlocks(
   return blocked;
 }
 
-export function canPlaceWorkFlag(
-  world: World,
-  ctx: SystemContext,
-  terrain: TerrainGraph,
-  node: NodeId,
-  ignoreFlag?: Entity,
-): boolean {
-  return (
-    terrain.isWalkable(node) && !workFlagPlacementBlocks(world, ctx.content, terrain, ignoreFlag).has(node)
-  );
-}
-
-/**
- * The greatest Manhattan ring radius {@link nearestWorkFlagPlacement} expands before falling back to
- * the whole-map reference scan. The cap only bounds the cost of a hopeless neighbourhood — the
- * fallback reproduces the exact linear winner past it — so it is a pure performance knob, not a
- * decoded distance (named approximation; the `RING_MAX_RADIUS` convention).
- */
-const PLACEMENT_RING_MAX_RADIUS = 48;
-
-/** The nearest legal work-flag node to `from`, by Manhattan distance then node id. Auto-created flags use
- * this when a gatherer spawns or changes trade, because its feet may currently be inside a resource or
- * building body. This is a one-shot command/spawn query, never per-tick planner work — but it runs once
- * per employment command, so a box-select `setJob` burst pays it per settler: expanding rings, never a
- * whole-map scan, below the cap. */
-export function nearestWorkFlagPlacement(
-  world: World,
-  ctx: SystemContext,
-  terrain: TerrainGraph,
-  from: NodeId,
-): NodeId | null {
-  const origin = terrain.coordsOf(from);
-  const blocked = workFlagPlacementBlocks(world, ctx.content, terrain);
-  // The first ring holding a legal node ends the search; its lowest node id is the same
-  // `(distance, node-id)` winner the reference scan below picks.
-  for (let r = 0; r <= PLACEMENT_RING_MAX_RADIUS; r++) {
-    let ringBest: NodeId | null = null;
-    forEachRingOffset(r, (dx, dy) => {
-      const x = origin.x + dx;
-      const y = origin.y + dy;
-      if (!terrain.inBounds(x, y)) return;
-      const node = terrain.nodeAt(x, y);
-      if (!terrain.isWalkable(node) || blocked.has(node)) return;
-      if (ringBest === null || node < ringBest) ringBest = node;
-    });
-    if (ringBest !== null) return ringBest;
-  }
-  // Nothing within the cap. The rings covered every node at distance ≤ cap, so only farther nodes can
-  // match — the whole-map reference scan finds the same winner the uncapped search would.
-  let best: NodeId | null = null;
-  let bestDistance = Number.POSITIVE_INFINITY;
-  for (let node = 0; node < terrain.nodeCount; node++) {
-    const candidate = node as NodeId;
-    if (!terrain.isWalkable(candidate) || blocked.has(candidate)) continue;
-    const c = terrain.coordsOf(candidate);
-    const distance = Math.abs(c.x - origin.x) + Math.abs(c.y - origin.y);
-    if (distance < bestDistance || (distance === bestDistance && (best === null || candidate < best))) {
-      best = candidate;
-      bestDistance = distance;
-    }
-  }
-  return best;
-}
-
 /** Per-world count of work-flag RELOCATIONS. `componentGeneration` sees only add/remove — a relocate
  *  mutates the flag's `Position` in place, and a flag is the one blocker that moves — so the version
- *  below counts moves explicitly. Bumped by the single relocate seam (`relocateWorkFlag`). */
+ *  seam counts moves explicitly. Bumped by the single relocate seam (`relocateWorkFlag`). */
 const flagMoves = new WeakMap<World, number>();
 
-/** Record one work-flag relocation, invalidating every {@link workFlagBlockerVersion}-keyed memo. */
+/** Record one work-flag relocation, invalidating every `workFlagBlockerVersion`-keyed memo. */
 export function noteWorkFlagMove(world: World): void {
   flagMoves.set(world, (flagMoves.get(world) ?? 0) + 1);
 }
 
-/**
- * The version of the WORK-FLAG blocker inputs — {@link placementBlockerVersion} plus the `DeliveryFlag`
- * generation, since this rule also consumes the marker channel the building rule ignores, plus the
- * flag-MOVE count the generation cannot see. The signpost placement overlay keys its memoized band
- * probe on this.
- */
-export function workFlagBlockerVersion(world: World): string {
-  return `${placementBlockerVersion(world)}.${world.componentGeneration(DeliveryFlag)}.${flagMoves.get(world) ?? 0}`;
+/** The current work-flag relocation count — a `workFlagBlockerVersion` input the generation cannot see. */
+export function workFlagMoveCount(world: World): number {
+  return flagMoves.get(world) ?? 0;
 }

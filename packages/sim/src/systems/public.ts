@@ -3,6 +3,10 @@
 
 export { withinNodeRadius } from '../nav/node-metric.js';
 export { FATIGUE_SLEEP_THRESHOLD, HUNGER_EAT_THRESHOLD } from './agents/drives-needs.js';
+// The AI opening plan's content bindings — exported so the real-content suite can pin every id in
+// the plan against the served IR (an unknown id silently skips its entry in the sim).
+export { type BuildOrderEntry, DEFAULT_BUILD_ORDER } from './ai-player/build-order/index.js';
+export { CARRIER_STAFFED_BUILDING_IDS, OPERATORS_PER_TRADE_BY_BUILDING_ID } from './ai-player/workforce.js';
 export { createSettler, DEFAULT_SETTLER_HITPOINTS } from './conflict/spawn/index.js';
 export { BERRY_REGROW_TICKS, BERRY_STAGE_TICKS, createBerryBush } from './economy/berries.js';
 export { isOnMission } from './family/eligibility.js';

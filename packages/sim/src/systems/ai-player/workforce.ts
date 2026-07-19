@@ -68,7 +68,7 @@ export const CARRIERS_PER_STAFFED_BUILDING = 1;
 export const WORKERS_PER_TRADE = 1;
 
 /** Per-building overrides of {@link WORKERS_PER_TRADE}, by stable content id (user plan
- *  2026-07-18: the upgraded bakery runs TWO bakers; upgraded pottery/mason keep one worker). */
+ *  2026-07-18: the upgraded bakery runs two bakers; upgraded pottery/mason keep one worker). */
 export const OPERATORS_PER_TRADE_BY_BUILDING_ID: Readonly<Record<string, number>> = {
   work_bakery_01: 2,
 };
@@ -204,8 +204,8 @@ function runWorkforce(
     pool.push(e);
   }
   const used = new Set<Entity>();
-  const takeSpare = (): Entity | null => {
-    const spare = pool.find((e) => !used.has(e));
+  const takeSpare = (qualifies?: (e: Entity) => boolean): Entity | null => {
+    const spare = pool.find((e) => !used.has(e) && (qualifies === undefined || qualifies(e)));
     if (spare === undefined) return null;
     used.add(spare);
     return spare;
@@ -273,9 +273,8 @@ function runWorkforce(
       const node = anchorNodeOf(world, resource);
       const spot = node === null ? null : flagSpotNear(world, ctx, terrain, node);
       if (spot === null) continue;
-      const spare = pool.find((e) => !used.has(e) && meetsNeed(e, w.good.typeId));
-      if (spare !== undefined) {
-        used.add(spare);
+      const spare = takeSpare((e) => meetsNeed(e, w.good.typeId));
+      if (spare !== null) {
         commands.push({ kind: 'setJob', entity: spare, jobType: w.job });
         commands.push({ kind: 'setWorkFlag', entity: spare, x: spot.hx, y: spot.hy });
         commands.push({ kind: 'setGatherGood', entity: spare, goodType: w.good.typeId });
@@ -314,16 +313,21 @@ function runWorkforce(
     if (builderJob !== null) commands.push({ kind: 'setJob', entity: scout, jobType: builderJob });
   }
 
-  // 3. Staff built workplaces: one worker per operator trade (carriers and gatherer slots are not
-  // operators — operatorJobsOf's split; a carrier/gatherer-only building keeps its slots).
+  // 3. Staff built workplaces: one worker per operator trade — where "operator" here is a
+  // non-carrier, non-gatherer slot, deliberately narrower than operatorJobsOf's fallback (which
+  // makes a carrier-only building's lone carrier its operator): the AI leaves such buildings
+  // unstaffed except the listed carrier-staffed exceptions below.
   const tally = buildStaffingTally(world);
   for (const building of ownedBuildings(world, player)) {
     if (building === hq || !isBuilt(world, building)) continue;
     const type = index.buildings.get(world.get(building, Building).buildingType);
     if (type === undefined || type.kind !== 'workplace') continue;
     // Operators only — carrier and gatherer slots are never staffed by default, so a carrier-only
-    // workplace (the well, the hive) runs unstaffed (user rule 2026-07-18); the carrier-staffed
-    // exceptions below add their one transport slot back.
+    // workplace (the well, the hive) gets no permanent worker (user rule 2026-07-18). Those are
+    // shared utilities a consumer self-serves (a baker cranks the well for its own water); until
+    // that drive exists (docs/tickets/sim/utility-self-service-production.md) an unstaffed well
+    // produces nothing, so the AI's bakery water/honey chain waits on that ticket. The
+    // carrier-staffed exceptions below add their one transport slot back.
     const operators = type.workers.filter(
       (w) => !isCarrierJob(ctx, w.jobType) && !index.harvestJobs.has(w.jobType),
     );

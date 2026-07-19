@@ -1,12 +1,12 @@
 import type { ContentSet } from '@open-northland/data';
 import { Building, Position, UnderConstruction } from '../../components/index.js';
-import type { World } from '../../ecs/world.js';
+import type { Entity, World } from '../../ecs/world.js';
 import { LayeredBlocks } from '../../nav/block-overlay.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { BlockOverlay, NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { buildingBlockedCells } from './building-blocked-cache.js';
-import { ANCHOR_ONLY, buildingFootprintOf } from './geometry.js';
+import { ANCHOR_ONLY, buildingFootprintOf, translatedCells } from './geometry.js';
 import { resourceBlockedCells } from './resource-blocked-cache.js';
 
 // WALK-BLOCK overlays the routing/render consume: the union views over the memoized building
@@ -59,6 +59,35 @@ export function constructionSitePlots(world: World, content: ContentSet): Constr
     plots.push({ cells: body.map((c) => ({ col: hx + c.dx, row: hy + c.dy })) });
   }
   return plots;
+}
+
+/**
+ * One building's walk-blocked body — its footprint `blocked` cells translated onto the map, minus its
+ * door cell (the passable gate, exactly as {@link buildingBlockedCells} carves it out globally) — or
+ * null when the type blocks nothing (footprint-less synthetic content, or a body erased by the door
+ * carve-out). The shared stanza of the footprint displacement passes (`evictSettlersFromFootprint`,
+ * `evictLooseGoodsFromFootprint`), extracted so the door-carve invariant lives in one place; both
+ * consumers also share its traversal rule: a displacement search may cross this body's own cells but
+ * never any other blocked cell.
+ */
+export function walkBlockedBodyOf(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  building: Entity,
+): Set<NodeId> | null {
+  const b = world.tryGet(building, Building);
+  const p = world.tryGet(building, Position);
+  if (b === undefined || p === undefined) return null;
+  const footprint = buildingFootprintOf(ctx.content, b.buildingType);
+  if (footprint === undefined || footprint.blocked.length === 0) return null;
+  const { hx: ax, hy: ay } = nodeOfPosition(p.x, p.y);
+  const body = new Set<NodeId>(translatedCells(terrain, footprint.blocked, ax, ay));
+  const door = footprint.door;
+  if (door !== undefined && terrain.inBounds(ax + door.dx, ay + door.dy)) {
+    body.delete(terrain.nodeAt(ax + door.dx, ay + door.dy));
+  }
+  return body.size === 0 ? null : body;
 }
 
 /** Building walk-blocks plus the cached resource walk-block overlay, materialized as ONE union set —

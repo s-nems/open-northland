@@ -6,7 +6,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import { type HalfCellNode, nodeOfPosition } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
 import { HEADQUARTERS_BUILDING_ID } from '../readviews/index.js';
-import { canonicalResources, resourcesNearNode } from '../resource-index.js';
+import { anyResourceNear, canonicalResources, resourcesNearNode } from '../resource-index.js';
 import { canonicalById } from '../spatial.js';
 
 // Shared per-seat lookups the strategic modules recompute each decision (once per
@@ -118,9 +118,11 @@ export function nearestLiveResource(world: World, goodType: number, from: HalfCe
  */
 export function anyLiveResource(world: World, goodType: number, near: HalfCellNode | null): boolean {
   if (near !== null) {
+    // The existence-only index path: no collection, no sort, first hit returns — a map holding none of
+    // the good (the gated iron entry on an iron-less map) pays box probes, not repeated full sorts.
     for (let reach = RESOURCE_BOX_REACH_START; reach <= RESOURCE_BOX_REACH_MAX; reach *= 2) {
-      for (const e of resourcesNearNode(world, near.hx, near.hy, reach)) {
-        if (isLiveResource(world, e, goodType)) return true;
+      if (anyResourceNear(world, near.hx, near.hy, reach, (e) => isLiveResource(world, e, goodType))) {
+        return true;
       }
     }
   }
