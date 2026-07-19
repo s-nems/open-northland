@@ -37,6 +37,7 @@ export {
 export {
   DAMAGE_SMOKE_STEP,
   damageSmokeEmitters,
+  EMITTER_WEDGE,
   emitterSpot,
   MAX_SMOKE_EMITTERS,
   SMOKE_PUFF_PERIOD_TICKS,
