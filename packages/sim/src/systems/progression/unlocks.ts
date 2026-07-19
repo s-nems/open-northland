@@ -5,6 +5,11 @@ import type { World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { isShipVehicle } from '../readviews/vehicles.js';
 
+/** Kill-switch for the building tech-unlock gate ({@link buildingEnabled}). Off pending a rework tied to
+ *  the progression/experience system — see docs/tickets/sim/rework-building-unlock-gate.md. Annotated
+ *  `boolean` (not narrowed to the literal) so both branches of the gate stay live for the type checker. */
+const BUILDING_UNLOCK_GATE_ENABLED: boolean = false;
+
 /**
  * The gating half of progression — is a building of `buildingType` unlocked for `tribe` right now?
  *
@@ -12,6 +17,11 @@ import { isShipVehicle } from '../readviews/vehicles.js';
  * job is present in the tribe (`tribetypes` `jobEnablesHouse <jobType> <houseType>`) — a smithy gated on a
  * smith existing, a barracks on a soldier. The read side of the `jobEnables` edges `extractJobEnables`
  * produces; see {@link tribeUnlockEnabled} for the shared rule.
+ *
+ * DISABLED: while {@link BUILDING_UNLOCK_GATE_ENABLED} is false this always returns true, so buildings
+ * place, upgrade, staff, and get AI-targeted with no tech prerequisite — the whole `jobEnablesHouse`
+ * gate is off until the rework re-enables it (the ticket above). It stays a live call at every gate site
+ * so flipping the switch restores the behaviour with no code moves.
  */
 export function buildingEnabled(
   world: World,
@@ -19,6 +29,7 @@ export function buildingEnabled(
   tribe: number,
   buildingType: number,
 ): boolean {
+  if (!BUILDING_UNLOCK_GATE_ENABLED) return true;
   return tribeUnlockEnabled(world, ctx, tribe, 'house', buildingType);
 }
 

@@ -59,8 +59,9 @@ export function placeBuilding(
   // basis: observed original behavior — scenario maps open with houses free-placement would reject, e.g.
   // packed villages). A gated-out placement below is recoverable bad input: skipped, still logged for replay.
   if (command.force !== true) {
-    // Tech-graph gate: a house may be locked until a settler of an enabling job exists in the tribe
-    // (`jobEnablesHouse`).
+    // Tech-unlock gate: a house may be locked until a settler of an enabling job exists in the tribe
+    // (`jobEnablesHouse`). Currently a no-op — the gate is disabled feature-wide (see {@link buildingEnabled});
+    // the call stays so re-enabling the switch restores placement gating with no code move.
     if (!buildingEnabled(world, ctx, command.tribe, command.buildingType)) return;
 
     // Ground-collision gate — the original's free placement rule: the type's footprint must fit here (its

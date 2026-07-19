@@ -133,7 +133,9 @@ describe('JobSystem — idle settlers take open workplace jobs', () => {
     expect(sim.world.has(roamer, JobAssignment)).toBe(false);
   });
 
-  it('does not assign a job at a tech-gated workplace until its enabling job is present', () => {
+  // SKIPPED: the building tech-unlock gate (`buildingEnabled`/`jobEnablesHouse`) is disabled feature-wide
+  // — see docs/tickets/sim/rework-building-unlock-gate.md. Un-skip when the gate is re-enabled.
+  it.skip('does not assign a job at a tech-gated workplace until its enabling job is present', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     // Give the smithy (type 4) a worker slot so it COULD offer a job; it is gated by `jobEnablesHouse
     // 2 4` (needs a carpenter present). The injected slot is the only thing offering a woodcutter job.
