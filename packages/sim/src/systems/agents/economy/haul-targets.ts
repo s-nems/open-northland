@@ -1,9 +1,10 @@
 import { Building, JobAssignment, Position, Stockpile } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
+import { buildingBlockedCells } from '../../footprint/index.js';
 import { buildingProduces, lowestStockedGood } from '../../stores/index.js';
 import type { PlannerContext } from '../planner-context.js';
-import { interactionCell, nearestByCell } from '../targets/index.js';
+import { buriedUnderBuilding, interactionCell, nearestByCell } from '../targets/index.js';
 import { deliverableGoodProbe } from './routing.js';
 import { isFarmCarrierHaulOutRole, isStorageSink } from './store-policy.js';
 
@@ -20,7 +21,8 @@ import { isFarmCarrierHaulOutRole, isStorageSink } from './store-policy.js';
  * included): lifting it would just make the porter hold a load it can't deposit and shed it at its feet,
  * so instead it leaves that good on the ground and collects the next deliverable pile — "the store is
  * full of wood, so stop hauling wood and fetch something else" (the same gate
- * {@link nearestWorkplaceOutput} applies to workplace output).
+ * {@link nearestWorkplaceOutput} applies to workplace output). A pile buried under a building's walls is
+ * skipped too ({@link buriedUnderBuilding} — an unreachable stand would strand the porter).
  */
 export function nearestGroundPile(
   plan: PlannerContext,
@@ -29,12 +31,14 @@ export function nearestGroundPile(
   const { world, ctx, terrain, here, targets } = plan;
   const { deliverable } = opts;
   const gate = plan.limit ?? undefined; // the porter's confinement — an out-of-area pile is not one it fetches
+  const walls = buildingBlockedCells(world, ctx, terrain);
   const best = nearestByCell(terrain, targets.stockpiles, here, (e) => {
     if (world.has(e, Building)) return null; // a building store isn't a loose ground pile
     if (!world.has(e, Stockpile) || !world.has(e, Position)) return null;
     const good = lowestStockedGood(world.get(e, Stockpile));
     if (good === null) return null; // an empty pile is nothing to collect
     if (!deliverable(good)) return null; // no sink this porter can reach — leave it, try another good
+    if (buriedUnderBuilding(world, terrain, walls, e)) return null; // walled in — an unreachable stand
     const cell = interactionCell(world, ctx, terrain, e, here);
     if (gate !== undefined && !gate.allowsNode(cell)) return null;
     return { cell, payload: good };

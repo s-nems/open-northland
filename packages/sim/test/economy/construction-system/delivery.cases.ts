@@ -10,7 +10,7 @@ import {
   SupplyRun,
   UnderConstruction,
 } from '../../../src/components/index.js';
-import { fx, ONE, Simulation } from '../../../src/index.js';
+import { fx, ONE, positionOfNode, Simulation } from '../../../src/index.js';
 import { aiSystem, housingCapacity } from '../../../src/systems/index.js';
 
 import {
@@ -243,6 +243,44 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
     for (const runner of runners) {
       expect(sim.world.get(runner, SupplyRun)).toMatchObject({ site, goodType: WOOD });
     }
+  });
+
+  it('a builder fetch skips a pile buried under walls for the nearest reachable source', () => {
+    // A stone pile left INSIDE a standing house's walk-blocked body (the leftover the footprint goods
+    // eviction could not land, or hand-dropped state): geometrically the nearest source, but its stand
+    // is unreachable — committing to it would path-fail and strand the builder on a retry loop. The
+    // pick must skip it for the farther, reachable pile.
+    const sim = new Simulation({ seed: 9, content: constructionContent(), map: grassMap(32, 8) });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim expected');
+    // The site (needs 2 stone + 1 wood, nothing delivered → the fetch takes stone), in exact node
+    // coords like every entity here, so the wall/pile geometry below is byte-precise.
+    const site = sim.world.create();
+    sim.world.add(site, Position, positionOfNode(2, 2));
+    sim.world.add(site, Building, { buildingType: HOUSE, tribe: VIKING, built: fx.fromInt(0), level: 0 });
+    sim.world.add(site, UnderConstruction, { labor: fx.fromInt(0) });
+    sim.world.add(site, Stockpile, { amounts: new Map<number, number>() });
+    const house = sim.world.create(); // a built HOUSE: walls on nodes (10,4) and (12,4)
+    sim.world.add(house, Position, positionOfNode(10, 4));
+    sim.world.add(house, Building, { buildingType: HOUSE, tribe: VIKING, built: ONE, level: 0 });
+    const buried = sim.world.create(); // on the wall node — nearer to the builder than the free pile
+    sim.world.add(buried, Position, positionOfNode(10, 4));
+    sim.world.add(buried, Stockpile, { amounts: new Map<number, number>([[STONE, 1]]) });
+    const free = sim.world.create();
+    sim.world.add(free, Position, positionOfNode(20, 4));
+    sim.world.add(free, Stockpile, { amounts: new Map<number, number>([[STONE, 1]]) });
+    const builder = builderAt(sim, 0, 0);
+    const at = positionOfNode(6, 4);
+    const pos = sim.world.get(builder, Position);
+    pos.x = at.x;
+    pos.y = at.y;
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    // The fetch was stamped for the site's stone — and the walk goal is the REACHABLE pile's tile,
+    // not the nearer buried one.
+    expect(sim.world.get(builder, SupplyRun)).toMatchObject({ site, goodType: STONE });
+    expect(sim.world.get(builder, MoveGoal).cell).toBe(terrain.nodeAt(20, 4));
   });
 
   it('assignBuilder pins a builder to the CHOSEN site over a nearer one; a non-builder is a no-op', () => {

@@ -3,11 +3,12 @@ import { Building, Production, Stockpile, UnderConstruction } from '../../../../
 import { ONE } from '../../../../core/fixed.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SpatialGate } from '../../../../nav/node-metric.js';
-import type { NodeId } from '../../../../nav/terrain/index.js';
+import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
 import { startableCycleCount } from '../../../economy/production.js';
+import { buildingBlockedCells } from '../../../footprint/index.js';
 import { recipesByProductOf, stockCapacity } from '../../../stores/index.js';
-import { type InteractionCellIndex, QUALIFIES } from '../../targets/index.js';
+import { buriedUnderBuilding, type InteractionCellIndex, QUALIFIES } from '../../targets/index.js';
 
 // The AI planner's SUPPLY layer: the scans behind a *producer worker running its own supply→produce→
 // deliver loop* — the "kowal fetches the goods a sword needs, forges it, and carries it back" behavior.
@@ -71,6 +72,7 @@ export function nearestMissingInputSource(
   index: InteractionCellIndex,
   world: World,
   ctx: SystemContext,
+  terrain: TerrainGraph,
   here: NodeId,
   workplace: Entity,
   recipe: Recipe,
@@ -78,6 +80,7 @@ export function nearestMissingInputSource(
   gate?: SpatialGate,
 ): { store: Entity; goodType: number; amount: number } | null {
   const stock = world.get(workplace, Stockpile).amounts;
+  const walls = buildingBlockedCells(world, ctx, terrain);
   for (const input of recipe.inputs) {
     const have = stock.get(input.goodType) ?? 0;
     const target = restockToCapacity ? stockCapacity(world, ctx, workplace, input.goodType) : input.amount;
@@ -86,14 +89,16 @@ export function nearestMissingInputSource(
     // workplace itself and holds the good (a warehouse, a flag pile, another workplace's output). A
     // construction site is excluded — its stock is delivered build material (a delivery sink), never a
     // source to strip, or a producer would pull the wood off a half-built neighbour and stall its build
-    // (the same guard `nearestStoreHolding` applies). `gate` is the fetcher's signpost confinement —
-    // an out-of-area store is not a known source.
+    // — and so is a pile buried under a building's walls (`buriedUnderBuilding` — an unreachable stand
+    // would strand the fetcher; both guards shared with `nearestStoreHolding`). `gate` is the fetcher's
+    // signpost confinement — an out-of-area store is not a known source.
     const winner = index.nearest(
       here,
       (e) =>
         e !== workplace &&
         !world.has(e, UnderConstruction) &&
-        (world.get(e, Stockpile).amounts.get(input.goodType) ?? 0) > 0
+        (world.get(e, Stockpile).amounts.get(input.goodType) ?? 0) > 0 &&
+        !buriedUnderBuilding(world, terrain, walls, e)
           ? QUALIFIES
           : null,
       gate,

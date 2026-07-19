@@ -10,6 +10,7 @@ import { nodeOfPosition } from '../../../../nav/halfcell.js';
 import type { SpatialGate } from '../../../../nav/node-metric.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
+import { buildingBlockedCells } from '../../../footprint/index.js';
 import { forEachRingOffset } from '../../../spatial.js';
 import {
   buildingProduces,
@@ -150,30 +151,58 @@ export function nearestFreeYardNode(
 }
 
 /**
+ * Whether a loose pile lies on a cell standing buildings make unwalkable — an unreachable SOURCE no
+ * fetcher should commit to: its stand is inside the walls, so the walk path-fails, the settler strands,
+ * re-picks the same geometrically-nearest pile, and loops. The footprint goods eviction keeps this rare
+ * (a placement displaces the piles it covers), so the filter is the safety net for the leftovers (a
+ * boxed-in pile the eviction could not land). Scoped to building walls only: a trunk under a
+ * still-STANDING resource is legitimate — its interaction cell resolves to the resource's work cell —
+ * and a {@link Building} store is never buried by its own walls (its stand is the door). `walls` is the
+ * memoized {@link buildingBlockedCells} set, resolved once per scan by the callers.
+ */
+export function buriedUnderBuilding(
+  world: World,
+  terrain: TerrainGraph,
+  walls: ReadonlySet<NodeId>,
+  entity: Entity,
+): boolean {
+  if (world.has(entity, Building)) return false;
+  const p = world.get(entity, Position);
+  const n = nodeOfPosition(p.x, p.y);
+  return walls.has(terrain.nodeAtClamped(n.hx, n.hy));
+}
+
+/**
  * The nearest store (a {@link Stockpile} on a positioned entity) that HOLDS at least one unit of
  * `goodType` — a SOURCE to fetch from, by Manhattan distance from `here`, ascending-cell-id tie-break,
  * scanned in canonical entity-id order. A construction site is **excluded** (it is a delivery sink, not a
- * source — a builder never strips the material it just delivered), but a warehouse or a loose ground pile
- * that holds the good is fair game. Returns the source store or null if none holds the good. The counter
- * to {@link nearestStoreFor} (which finds a store that can TAKE a good); the builder drive uses it to fetch
- * a construction material its site is short on.
+ * source — a builder never strips the material it just delivered), and so is a loose pile buried under a
+ * building's walls ({@link buriedUnderBuilding} — an unreachable stand would strand the fetcher), but a
+ * warehouse or a reachable loose ground pile that holds the good is fair game. Returns the source store
+ * or null if none holds the good. The counter to {@link nearestStoreFor} (which finds a store that can
+ * TAKE a good); the builder drive uses it to fetch a construction material its site is short on.
  */
 export function nearestStoreHolding(
   index: InteractionCellIndex,
   world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
   here: NodeId,
   goodType: number,
   gate?: SpatialGate,
 ): Entity | null {
   // The stockpile index holds every Stockpile+Position candidate (construction sites among them), so the
-  // accept just excludes sites and stores that don't hold the good. `gate` is the fetcher's signpost
-  // confinement: a store standing outside its allowed area is not a source it knows the way to.
+  // accept just excludes sites, stores that don't hold the good, and buried piles. `gate` is the
+  // fetcher's signpost confinement: a store standing outside its allowed area is not a source it knows
+  // the way to.
+  const walls = buildingBlockedCells(world, ctx, terrain);
   return (
     index.nearest(
       here,
       (e) =>
         !world.has(e, UnderConstruction) && // a site is a sink, never a source to strip
-        (world.get(e, Stockpile).amounts.get(goodType) ?? 0) > 0
+        (world.get(e, Stockpile).amounts.get(goodType) ?? 0) > 0 &&
+        !buriedUnderBuilding(world, terrain, walls, e)
           ? QUALIFIES
           : null,
       gate,
