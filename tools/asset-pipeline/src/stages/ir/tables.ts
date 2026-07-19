@@ -13,6 +13,7 @@ import {
   extractConstructionCosts,
   extractConstructionLayers,
   extractGfxAnimAtomics,
+  extractGfxWalkAtomics,
   extractGoods,
   extractHouseHitpoints,
   extractJobExperience,
@@ -50,6 +51,7 @@ export async function extractIniTables(sources: readonly IniSource[]) {
   const vehicles = [];
   const bobSequences = [];
   const gfxAtomics = [];
+  const gfxWalkAtomics = [];
   // The `[GfxHouse]` building-type -> house-bob join (the data-pinned twin of the renderer's
   // transcribed per-type table) — render-binding data the sim ignores. See `extractBuildingBobs`.
   const buildingBobs = [];
@@ -86,6 +88,7 @@ export async function extractIniTables(sources: readonly IniSource[]) {
     vehicles.push(...extractVehicles(sections, src));
     bobSequences.push(...extractBobSequences(sections, src));
     gfxAtomics.push(...extractGfxAnimAtomics(sections, src));
+    gfxWalkAtomics.push(...extractGfxWalkAtomics(sections, src));
     buildingBobs.push(...extractBuildingBobs(sections, src));
     constructionLayers.push(...extractConstructionLayers(sections, src));
     buildingOverlays.push(...extractBuildingOverlays(sections, src));
@@ -117,6 +120,7 @@ export async function extractIniTables(sources: readonly IniSource[]) {
     vehicles,
     bobSequences,
     gfxAtomics,
+    gfxWalkAtomics,
     buildingBobs,
     constructionCosts,
     hitpoints,

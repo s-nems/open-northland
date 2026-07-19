@@ -61,7 +61,14 @@ export interface CharacterSpec {
    * never-crash floor.
    */
   readonly waitSeq?: string;
-  /** Prefix of this body's per-good carry cycles (`<prefix><good>`), when the body has any. */
+  /**
+   * The viking `logicjob` this look hauls as — the `[gfxwalkatomic]` join key that picks its loaded
+   * gait per good. Civilian trades share the civilist table (6): the source authors no per-trade
+   * carry records, and they all draw the same generic man body. Absent → no per-good carry look.
+   */
+  readonly logicJob?: number;
+  /** Prefix of this body's per-good carry cycles (`<prefix><good>`) — the floor for an IR with no
+   *  `[gfxwalkatomic]` lane, when the body has any. */
   readonly carryPrefix?: string;
   /** Atomic id → its action sequence on this body (the `setatomic` join, e.g. the woodcut swing). */
   readonly atomics?: Readonly<
@@ -109,6 +116,7 @@ export interface CharacterSpec {
 export const CHARACTER_SPECS = {
   civilian: {
     rosterId: 'civilian',
+    logicJob: 6,
     headBmds: CIVILIST_JOB_HEADS,
     walkSeq: 'human_man_generic_walk',
     waitSeq: 'human_man_generic_wait',
@@ -179,6 +187,7 @@ export const CHARACTER_SPECS = {
     // included, exactly like the builder's action 39.
     rosterId: 'civilian',
     headBmds: SCOUT_JOB_HEADS,
+    logicJob: 6,
     walkSeq: 'human_man_generic_walk',
     waitSeq: 'human_man_generic_wait',
     carryPrefix: 'human_man_generic_walk_',
@@ -203,6 +212,7 @@ export const CHARACTER_SPECS = {
   },
   woman: {
     rosterId: 'woman',
+    logicJob: 5,
     walkSeq: 'human_woman_generic_walk',
     waitSeq: 'human_woman_generic_wait',
     carryPrefix: 'human_woman_generic_walk_',
@@ -232,6 +242,7 @@ export const CHARACTER_SPECS = {
   },
   boy: {
     rosterId: 'boy',
+    logicJob: 4,
     walkSeq: 'human_child_boy_generic_walk',
     waitSeq: 'human_child_boy_generic_wait',
     // The child bodies author their own meal/nap clips (`[bobseq]` `human_child_*_generic_eat`/`_sleep`);
@@ -243,6 +254,7 @@ export const CHARACTER_SPECS = {
   },
   girl: {
     rosterId: 'girl',
+    logicJob: 3,
     walkSeq: 'human_child_girl_generic_walk',
     waitSeq: 'human_child_girl_generic_wait_1',
     atomics: {
@@ -252,6 +264,7 @@ export const CHARACTER_SPECS = {
   },
   baby: {
     rosterId: 'baby',
+    logicJob: 2,
     // The crawl (104 frames = a clean ×8 13-frame cycle) — the baby's locomotion, so a wandering
     // newborn crawls instead of gliding in its wait pose.
     walkSeq: 'human_child_baby_generic_crouch',
@@ -267,12 +280,14 @@ export const CHARACTER_SPECS = {
   // no `_agressive` gait, so 'warrior' omits `engaged` (it uses its relaxed walk/wait when engaged).
   warrior: {
     rosterId: 'warrior',
+    logicJob: 31,
     walkSeq: 'human_man_warrior_empty_walk',
     waitSeq: 'human_man_warrior_empty_wait',
     attack: 'human_man_warrior_empty_punch',
   },
   'warrior-spear': {
     rosterId: 'warrior',
+    logicJob: 32,
     walkSeq: 'human_man_Warrior_spear_walk',
     waitSeq: 'human_man_Warrior_spear_wait',
     attack: 'human_man_Warrior_spear_attack',
@@ -283,6 +298,7 @@ export const CHARACTER_SPECS = {
   },
   'warrior-sword': {
     rosterId: 'warrior',
+    logicJob: 34,
     walkSeq: 'human_man_Warrior_Sword_Walk',
     waitSeq: 'human_man_Warrior_Sword_Wait',
     attack: 'human_man_Warrior_Sword_Attack_2',
@@ -293,6 +309,7 @@ export const CHARACTER_SPECS = {
   },
   'warrior-broadsword': {
     rosterId: 'warrior',
+    logicJob: 35,
     walkSeq: 'human_man_Warrior_Broadsword_walk',
     waitSeq: 'human_man_Warrior_Broadsword_wait',
     attack: 'human_man_Warrior_Broadsword_attack',
@@ -303,6 +320,7 @@ export const CHARACTER_SPECS = {
   },
   'warrior-shortbow': {
     rosterId: 'warrior',
+    logicJob: 40,
     walkSeq: 'human_man_Warrior_Shortbow_walk',
     waitSeq: 'human_man_Warrior_Shortbow_wait',
     attack: 'human_man_Warrior_Shortbow_attack',
@@ -313,6 +331,7 @@ export const CHARACTER_SPECS = {
   },
   'warrior-longbow': {
     rosterId: 'warrior',
+    logicJob: 41,
     walkSeq: 'human_man_Warrior_Longbow_walk',
     waitSeq: 'human_man_Warrior_Longbow_wait',
     attack: 'human_man_Warrior_Longbow_attack',

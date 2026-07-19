@@ -26,6 +26,7 @@ import { characterStem, characterStems, VIKING_CHARACTERS } from '../../catalog/
 import { diag } from '../../diag/index.js';
 import {
   type ContentIr,
+  carryWalkSeqs,
   gfxAtomicFrameLists,
   loadGalleryLayers,
   MissingAtlasError,
@@ -177,6 +178,7 @@ export async function loadCharacters(
       spec,
       sequencesFor(ir, roster.imagelib),
       goods,
+      spec.logicJob !== undefined ? carryWalkSeqs(ir, VIKING_ANIM_TRIBE, spec.logicJob) : undefined,
       attackFrameLists,
       actionFrameLists,
     );

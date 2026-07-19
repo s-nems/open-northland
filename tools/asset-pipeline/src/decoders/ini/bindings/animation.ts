@@ -1,9 +1,10 @@
 /**
- * Animation frame bindings — the `[bobseq]` named frame ranges and the `[gfxanimatomic]` per-facing
- * atomic-action frame lists, both from `mapmoveableanimations/animations.ini`.
+ * Animation frame bindings from `mapmoveableanimations/animations.ini` — the `[bobseq]` named frame
+ * ranges, the `[gfxanimatomic]` per-facing atomic-action frame lists, and the `[gfxwalkatomic]`
+ * good → loaded-gait table.
  */
 
-import { BobSequenceSet, GfxAnimAtomic } from '@open-northland/data';
+import { BobSequenceSet, GfxAnimAtomic, GfxWalkAtomic } from '@open-northland/data';
 import {
   findProps,
   getInt,
@@ -127,6 +128,49 @@ export function extractGfxAnimAtomics(sections: readonly RuleSection[], src: Sou
         ...(headSeq !== undefined && headSeq.trim() !== '' ? { headSeq } : {}),
         dirFrames,
         source: makeSource(src, 'gfxanimatomic'),
+      }),
+    );
+  }
+  return out;
+}
+
+/**
+ * Extracts the `[gfxwalkatomic]` records from `mapmoveableanimations/animations.ini` into
+ * {@link GfxWalkAtomic} rows — the original's good → loaded-gait table, joining
+ * `(logictribe, logicjob, logicgoodtype)` to the `[bobseq]` a hauler plays while carrying that good.
+ * Without it the renderer has to guess a carry look by good name, which the source contradicts (honey
+ * binds `..._walk_potion`, wool `..._walk_flour`).
+ *
+ * A record missing its tribe/job/good or its body seq is skipped (never thrown) — one malformed record
+ * must not abort the batch. The record's `gfxwalkframelist`/`gfxturnframelist`/`logicwalkspeed` lines are
+ * not read; see {@link GfxWalkAtomic} for why.
+ */
+export function extractGfxWalkAtomics(sections: readonly RuleSection[], src: SourceRef): GfxWalkAtomic[] {
+  const out: GfxWalkAtomic[] = [];
+  for (const sec of sections) {
+    if (sec.name !== 'gfxwalkatomic') continue;
+    const tribe = getInt(sec, 'logictribe');
+    const job = getInt(sec, 'logicjob');
+    const goodType = getInt(sec, 'logicgoodtype');
+    const bodySeq = getStr(sec, 'gfxbobseqbody');
+    if (
+      tribe === undefined ||
+      job === undefined ||
+      goodType === undefined ||
+      bodySeq === undefined ||
+      bodySeq.trim() === ''
+    ) {
+      continue;
+    }
+    const headSeq = getStr(sec, 'gfxbobseqhead');
+    out.push(
+      GfxWalkAtomic.parse({
+        tribe,
+        job,
+        goodType,
+        bodySeq,
+        ...(headSeq !== undefined && headSeq.trim() !== '' ? { headSeq } : {}),
+        source: makeSource(src, 'gfxwalkatomic'),
       }),
     );
   }

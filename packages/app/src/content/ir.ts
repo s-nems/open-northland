@@ -57,6 +57,26 @@ export interface GfxAnimAtomicRow {
   readonly dirFrames: readonly (readonly number[])[];
 }
 
+/** `logicgoodtype 0` in the `[gfxwalkatomic]` table — the job's unloaded walk, not a carry look. */
+const UNLOADED_GOOD_TYPE = 0;
+
+/** One `[gfxwalkatomic]` row as it ships in `content/ir.json`'s `gfxWalkAtomics` — the original's
+ *  loaded-gait table: `(tribe, job, goodType)` → the `bodySeq` bobseq a hauler plays carrying that good.
+ *  See {@link carryWalkSeqs}. */
+export interface GfxWalkAtomicRow {
+  readonly tribe: number;
+  readonly job: number;
+  readonly goodType: number;
+  readonly bodySeq: string;
+  readonly headSeq?: string;
+}
+
+/** One good as it ships in `content/ir.json`'s `goods` — only the id join the graphics lanes need. */
+export interface IrGoodRow {
+  readonly typeId: number;
+  readonly id: string;
+}
+
 /** One `[GfxHouse]` `LogicType`→`GfxBobId` row as it ships in `content/ir.json`'s `buildingBobs`. */
 export interface BuildingBobRow {
   readonly tribeId: number;
@@ -184,6 +204,8 @@ export interface LandscapeTypeRow {
 export interface ContentIr {
   readonly bobSequences?: readonly { imagelib: string; sequences?: BobSeqRow[] }[];
   readonly gfxAtomics?: readonly GfxAnimAtomicRow[];
+  readonly gfxWalkAtomics?: readonly GfxWalkAtomicRow[];
+  readonly goods?: readonly IrGoodRow[];
   readonly buildingBobs?: readonly BuildingBobRow[];
   readonly constructionLayers?: readonly ConstructionLayerRow[];
   readonly buildingOverlays?: readonly BuildingOverlayRow[];
@@ -415,4 +437,28 @@ export async function loadGalleryLayers(
   );
   const [body, heads] = await Promise.all([bodyPromise, headsPromise]);
   return { body, heads };
+}
+
+/**
+ * The `[gfxwalkatomic]` loaded-gait table for one `(tribe, job)`, as **good id-slug → body bobseq name**
+ * — the original's own answer to "which cycle does a settler play hauling this good" (honey →
+ * `human_man_generic_walk_potion`). Keyed by slug, not the source's `logicgoodtype`, because the running
+ * content set's `typeId`s are content-relative (the sandbox's honey is not the decoded IR's honey) while
+ * slugs are stable; {@link import('./settler-gfx/index.js').carryAnimsByGood} does the slug → running
+ * `typeId` half.
+ *
+ * The unloaded walk (`logicgoodtype 0`) is dropped — that is the job's plain gait, not a carry look. A
+ * good with no record for this job is absent from the map, which is itself the source's answer: that job
+ * shows no load for it (a soldier binds its empty walk for every good, and a woman only hauls the nine
+ * goods her body authors).
+ */
+export function carryWalkSeqs(ir: ContentIr | null, tribe: number, job: number): Map<string, string> {
+  const slugByType = new Map((ir?.goods ?? []).map((g) => [g.typeId, g.id]));
+  const bySlug = new Map<string, string>();
+  for (const row of ir?.gfxWalkAtomics ?? []) {
+    if (row.tribe !== tribe || row.job !== job || row.goodType === UNLOADED_GOOD_TYPE) continue;
+    const slug = slugByType.get(row.goodType);
+    if (slug !== undefined && !bySlug.has(slug)) bySlug.set(slug, row.bodySeq);
+  }
+  return bySlug;
 }
