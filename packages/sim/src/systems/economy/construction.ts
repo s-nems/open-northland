@@ -21,6 +21,9 @@ import {
   deliveredConstructionFraction,
   upgradeTierOf,
 } from '../stores/index.js';
+import { destroyBerryBushesInReserved } from './berries.js';
+import { evictLooseGoodsFromFootprint } from './goods-evict.js';
+import { destroyStumpsInReserved } from './stumps.js';
 
 /**
  * ConstructionSystem — raise a placed foundation into a finished building as builders work it.
@@ -146,8 +149,15 @@ function finishSite(world: World, ctx: SystemContext, e: Entity, building: Build
   world.remove(e, UnderConstruction); // a finished building is a plain Building again
   setHealth(world, e, ONE); // full life (an upgrade fills the new tier's larger pool)
   // A settler that strayed onto the plot during the build (a stale route, a spawn) must not be
-  // left standing inside the finished walls.
+  // left standing inside the finished walls — nor a pile set down there mid-build, nor one an
+  // upgraded tier's larger footprint newly encloses. Bushes and stumps get the placement treatment
+  // too: the reserved zone is per TIER (unlike the family-constant flag body), so an upgraded tier
+  // can grow over decor the level-0 placement never covered. Work flags alone need no re-pass — flag
+  // legality is family-body-wide from the moment the Building appears (see evictWorkFlagsFromFootprint).
   evictSettlersFromFootprint(world, ctx, e);
+  evictLooseGoodsFromFootprint(world, ctx, e);
+  destroyBerryBushesInReserved(world, ctx, e);
+  destroyStumpsInReserved(world, ctx, e);
   ctx.events.emit(
     adoptedTier
       ? { kind: 'buildingUpgraded', entity: e, level: building.level }

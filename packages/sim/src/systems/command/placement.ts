@@ -18,6 +18,7 @@ import { positionOfNode } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
 import { destroyBerryBushesInReserved } from '../economy/berries.js';
 import { evictWorkFlagsFromFootprint } from '../economy/flags.js';
+import { evictLooseGoodsFromFootprint } from '../economy/goods-evict.js';
 import { destroyStumpsInReserved } from '../economy/stumps.js';
 import { canPlaceBuilding } from '../footprint/index.js';
 import { evictSettlersFromFootprint } from '../movement/evict.js';
@@ -122,10 +123,12 @@ export function placeBuilding(
   // out-of-range leaves it neutral.
   stampOwner(world, e, command.owner);
   // The plot is impassable from this tick — settlers standing on it step aside instead of being walled in,
-  // and a work flag already planted there is pushed to the nearest legal field (the placement gates ignore
-  // flags, so a house may legally land on one).
+  // a work flag already planted there is pushed to the nearest legal field, and loose goods piled there
+  // are displaced outside (the placement gates ignore flags and piles, so a house may legally land on
+  // either — building on a heap of felled wood loses nothing).
   evictSettlersFromFootprint(world, ctx, e);
   evictWorkFlagsFromFootprint(world, ctx, e);
+  evictLooseGoodsFromFootprint(world, ctx, e);
   // Bushes and felled-tree stumps are walkable and not a placement obstacle, so the plot may cover them —
   // raze both (the original clears landscape decoration in a building's reserved zone).
   destroyBerryBushesInReserved(world, ctx, e);

@@ -1,10 +1,12 @@
 import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
+  BerryBush,
   Building,
   CurrentAtomic,
   DEFAULT_WORK_FLAG_RADIUS,
   DeliveryFlag,
+  GroundDrop,
   MoveGoal,
   Position,
   Settler,
@@ -20,6 +22,7 @@ import { findPath } from '../../src/nav/pathfinding/index.js';
 import {
   canPlaceWorkFlag,
   constructionSystem,
+  createBerryBush,
   dynamicBlockOverlay,
   evictWorkFlagsFromFootprint,
 } from '../../src/systems/index.js';
@@ -516,5 +519,94 @@ describe('footprint displacement — a work flag is never sealed inside a placed
     expect(sim.world.has(gatherer, YardDeliveryRoute)).toBe(false);
     expect(sim.world.has(gatherer, CurrentAtomic)).toBe(false); // the in-flight pileup into this flag
     expect(sim.world.has(gatherer, MoveGoal)).toBe(false);
+  });
+});
+
+describe('footprint displacement — loose goods never end up buried under walls', () => {
+  const WOOD_GOOD = 1; // testContent wood
+  const STONE_GOOD = 4; // testContent stone
+
+  /** Every loose pile (a positioned Stockpile that is not a building store), ascending id. */
+  function loosePiles(sim: Simulation): Entity[] {
+    return [...sim.world.query(Stockpile, Position)]
+      .filter((e) => !sim.world.has(e, Building))
+      .sort((a, b) => a - b);
+  }
+
+  function pileAtNode(
+    sim: Simulation,
+    x: number,
+    y: number,
+    good: number,
+    amount: number,
+    trunk = false,
+  ): Entity {
+    const e = sim.world.create();
+    sim.world.add(e, Position, positionOfNode(x, y));
+    sim.world.add(e, Stockpile, { amounts: new Map([[good, amount]]) });
+    if (trunk) sim.world.add(e, GroundDrop, { goodType: good });
+    return e;
+  }
+
+  /** A hand-raised HUT site at the anchor (empty cost → finishes on the first construction tick). */
+  function handRaisedSite(sim: Simulation): Entity {
+    const site = sim.world.create();
+    sim.world.add(site, Position, positionOfNode(ANCHOR.x, ANCHOR.y));
+    sim.world.add(site, Building, { buildingType: HUT, tribe: VIKING, built: fx.fromInt(0), level: 0 });
+    sim.world.add(site, UnderConstruction, { labor: fx.fromInt(0) });
+    sim.world.add(site, Stockpile, { amounts: new Map<number, number>() });
+    return site;
+  }
+
+  it('placing a building onto piles displaces them outside the walls, goods conserved', () => {
+    const sim = mappedSim();
+    pileAtNode(sim, 5, 5, WOOD_GOOD, 3, true); // a felled trunk on the anchor
+    pileAtNode(sim, 6, 5, STONE_GOOD, 2); // a bare heap on the wall cell
+    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    sim.step();
+    const piles = loosePiles(sim);
+    expect(piles).toHaveLength(2);
+    for (const pile of piles) {
+      expect(onBody(sim, pile)).toBe(false); // off every wall cell…
+      expect(standable(sim, pile)).toBe(true); // …on ground a fetcher can stand on
+    }
+    // Goods conserved, the trunk marker carried over (a gatherer still reclaims its drop), and the two
+    // piles landed on DISTINCT cells (one pile per landing tile — no burying a good under another).
+    const trunk = piles.find((p) => sim.world.has(p, GroundDrop));
+    const heap = piles.find((p) => !sim.world.has(p, GroundDrop));
+    if (trunk === undefined || heap === undefined) throw new Error('expected a trunk and a heap');
+    expect(sim.world.get(trunk, Stockpile).amounts.get(WOOD_GOOD)).toBe(3);
+    expect(sim.world.get(trunk, GroundDrop).goodType).toBe(WOOD_GOOD);
+    expect(sim.world.get(heap, Stockpile).amounts.get(STONE_GOOD)).toBe(2);
+    expect(nodeOf(sim, trunk)).not.toEqual(nodeOf(sim, heap));
+  });
+
+  it('spares a heap on the door cell — the door stays a reachable stand', () => {
+    const sim = mappedSim();
+    const door = HUT_FOOTPRINT.door;
+    const heap = pileAtNode(sim, ANCHOR.x + door.dx, ANCHOR.y + door.dy, WOOD_GOOD, 2);
+    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    sim.step();
+    expect(nodeOf(sim, heap)).toEqual({ x: ANCHOR.x + door.dx, y: ANCHOR.y + door.dy });
+  });
+
+  it('a construction finish displaces a pile set down on the plot mid-build', () => {
+    const sim = mappedSim();
+    handRaisedSite(sim);
+    const pile = pileAtNode(sim, 6, 5, WOOD_GOOD, 1);
+    constructionSystem(sim.world, ctxOf(sim));
+    expect(sim.world.has(pile, Stockpile)).toBe(false); // displacement is destroy + create…
+    const [moved] = loosePiles(sim);
+    if (moved === undefined) throw new Error('expected the displaced pile');
+    expect(onBody(sim, moved)).toBe(false); // …and the successor lies outside the finished walls
+    expect(sim.world.get(moved, Stockpile).amounts.get(WOOD_GOOD)).toBe(1);
+  });
+
+  it('a finish razes decor standing in the reserved zone — the placement rule, re-applied when a tier can grow', () => {
+    const sim = mappedSim();
+    handRaisedSite(sim);
+    const bush = createBerryBush(sim.world, { x: 6, y: 6 }); // the growth cell — inside the reserved zone
+    constructionSystem(sim.world, ctxOf(sim));
+    expect(sim.world.tryGet(bush, BerryBush)).toBeUndefined();
   });
 });

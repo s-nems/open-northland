@@ -16,6 +16,7 @@ export * from './economy/berries.js';
 export * from './economy/construction.js';
 export * from './economy/farming.js';
 export * from './economy/flags.js';
+export * from './economy/goods-evict.js';
 export * from './economy/jobs/index.js';
 export * from './economy/production.js';
 export * from './family/index.js';

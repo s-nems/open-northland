@@ -133,6 +133,8 @@ function fetchNeededMaterial(plan: PlannerContext, site: Entity): boolean {
     const src = nearestStoreHolding(
       targets.stockpileCells,
       world,
+      ctx,
+      terrain,
       here,
       need.goodType,
       plan.limit ?? undefined,

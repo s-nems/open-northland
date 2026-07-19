@@ -4,6 +4,7 @@ export { nearestFood } from './food.js';
 export { closer } from './nearest.js';
 export { nearestCollectablePileFor, nearestHarvestableFor, nearestOwnDropFor } from './resources.js';
 export {
+  buriedUnderBuilding,
   hasHaulableOutput,
   nearestConstructionSite,
   nearestFreeYardNode,
