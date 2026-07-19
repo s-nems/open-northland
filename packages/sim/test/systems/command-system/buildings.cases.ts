@@ -158,7 +158,9 @@ describe('CommandSystem — buildings and demolition', () => {
     expect(sim.world.get(worker, Settler).jobType).toBeNull(); // back to idle for re-assignment
   });
 
-  it('gates a tech-locked building: skipped (still logged) until the enabling job exists', () => {
+  // SKIPPED: the building tech-unlock gate is disabled feature-wide — see
+  // docs/tickets/sim/rework-building-unlock-gate.md. Un-skip when the gate is re-enabled.
+  it.skip('gates a tech-locked building: skipped (still logged) until the enabling job exists', () => {
     const sim = fresh();
     // No carpenter yet — the SMITHY is locked behind `jobEnablesHouse 2 4`, so placement is skipped.
     sim.enqueue({ kind: 'placeBuilding', buildingType: SMITHY, x: 0, y: 0, tribe: VIKING });
@@ -177,7 +179,8 @@ describe('CommandSystem — buildings and demolition', () => {
     expect(sim.world.get(buildings[0] as Entity, Building).buildingType).toBe(SMITHY);
   });
 
-  it('does not gate the building for a different tribe whose carpenter is enabling', () => {
+  // SKIPPED: building tech-unlock gate disabled — see docs/tickets/sim/rework-building-unlock-gate.md.
+  it.skip('does not gate the building for a different tribe whose carpenter is enabling', () => {
     const sim = fresh();
     // A carpenter exists, but in a DIFFERENT tribe — the smithy stays gated for the viking tribe.
     sim.enqueue({ kind: 'spawnSettler', jobType: CARPENTER, x: 1, y: 0, tribe: FRANK });

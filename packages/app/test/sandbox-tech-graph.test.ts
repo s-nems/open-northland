@@ -53,7 +53,9 @@ function carriersEmployedBy(sim: Simulation, store: Entity): number {
   return bound;
 }
 
-describe('sandbox jobEnablesHouse gate — the warehouse employment catch-22', () => {
+// SKIPPED: the building tech-unlock gate (`buildingEnabled`/`jobEnablesHouse`) is disabled feature-wide
+// — see docs/tickets/sim/rework-building-unlock-gate.md. Un-skip when the gate is re-enabled.
+describe.skip('sandbox jobEnablesHouse gate — the warehouse employment catch-22', () => {
   it('with no enabler, the gated warehouse employs nobody and assignWorker is a no-op', () => {
     const sim = makeSim();
     placeSandboxBuilding(sim, BUILDING_WAREHOUSE_00, WAREHOUSE.x, WAREHOUSE.y, HUMAN_PLAYER);
