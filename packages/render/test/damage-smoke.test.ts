@@ -79,6 +79,21 @@ describe('smokePuff — deterministic rising, swelling, thinning loop', () => {
       expect(spot.v).toBeLessThanOrEqual(0.5); // the upper (roof) part of the sprite box
     }
   });
+
+  it("spreads each building's emitters across distinct roof bands, so every step reads as a new spot", () => {
+    // Stratified placement: emitters own disjoint horizontal bands, so the worst-case pair still has a
+    // visible gap — the plume count works as a damage gauge instead of clumping into one cloud.
+    for (const seed of [1, 42, 1337, 65535]) {
+      const us = Array.from({ length: MAX_SMOKE_EMITTERS }, (_, e) => emitterSpot(seed, e).u).sort(
+        (a, b) => a - b,
+      );
+      let prev = -1; // sentinel below the 0..1 range, so the first gap always passes
+      for (const u of us) {
+        expect(u - prev).toBeGreaterThan(0.05);
+        prev = u;
+      }
+    }
+  });
 });
 
 describe('DamageSmokeLayer', () => {

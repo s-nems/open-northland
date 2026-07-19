@@ -9,8 +9,9 @@ import {
 import type { EntityBounds } from '../sprite-pool/index.js';
 import { retireUndrawn } from './retained-pool.js';
 
-/** The soft grey a puff draws in — one flat circle per puff; density comes from the overlap. */
-const SMOKE_COLOUR = 0x8a8a8a;
+/** The pale ash-grey a puff draws in — one flat circle per puff; density comes from the overlap.
+ *  Light, not dark: the plumes rise over the dark roof palette, where a dark grey disappears. */
+const SMOKE_COLOUR = 0xc4c4c4;
 
 /**
  * The damage-smoke overlay — the more battered a building, the more smoke pours off it: one seeded

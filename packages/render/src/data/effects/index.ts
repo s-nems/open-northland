@@ -14,9 +14,13 @@
 export { BLOOD_RISE, bloodDroplet, frac } from './blood.js';
 export {
   type BuildingCollapse,
+  COLLAPSE_LIFETIME_TICKS,
   COLLAPSE_TICKS,
+  collapseDustPuff,
   collapseKey,
   collapseProgress,
+  DUST_PUFFS,
+  DUST_SETTLE_TICKS,
   foldBuildingCollapses,
   MAX_ACTIVE_COLLAPSES,
 } from './collapse.js';
