@@ -1,4 +1,10 @@
-import { Carrying, DeliveryFlag, Stockpile, setStockAmount } from '../../../components/index.js';
+import {
+  CARRY_CAPACITY,
+  Carrying,
+  DeliveryFlag,
+  Stockpile,
+  setStockAmount,
+} from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { stockCapacity } from '../../stores/index.js';
@@ -7,6 +13,15 @@ import { reapEmptyLoosePile } from './piles.js';
 
 // Store transfer: a settler picking a load up off a store/pile and depositing it into a store (or onto
 // its own tile at a delivery flag). Goods are conserved on both sides.
+
+/**
+ * Resolve one completed `draw`: mint one unit of `goodType` onto the drawing worker's back (the `draw`
+ * effect's conservation note covers why an input-less utility creates the unit). The worker reached here
+ * empty — the delivery rung runs first on a loaded settler — so {@link addCarry} never merges a foreign good.
+ */
+export function drawUtilityGood(world: World, settler: Entity, goodType: number): void {
+  addCarry(world, settler, goodType, CARRY_CAPACITY); // one unit per trip — more water/honey takes more trips
+}
 
 /**
  * Resolve one completed `pickup`: move up to `amount` of `goodType` from a source store's

@@ -1,4 +1,9 @@
 import type { ContentSet, Recipe } from '@open-northland/data';
+import { harvestCapableJobs } from './atomics.js';
+
+/** The content `id` slug of the transport (carrier) job — mirrors `isCarrierJob`'s slug test, in
+ *  content space (no World). A carrier/gatherer-only building has no operator trade. */
+const CARRIER_JOB_ID = 'carrier';
 
 /** The per-building-type `product → recipe` tables
  *  ({@link import('../content-index.js').ContentIndex.recipeByProductByBuilding}) — first-wins per typeId
@@ -37,6 +42,40 @@ export function mergedRecipes(content: ContentSet): ReadonlyMap<number, Recipe> 
     const lines = (m: Map<number, number>) =>
       [...m].sort(([a], [c]) => a - c).map(([goodType, amount]) => ({ goodType, amount }));
     map.set(b.typeId, { inputs: lines(inputs), outputs: lines(outputs), ticks });
+  }
+  return map;
+}
+
+/**
+ * `goodType → the building typeIds a consumer self-serves it from` — the shared UNSTAFFED utilities that
+ * mint a good from no inputs (the well drawing water, the hive drawing honey). A type qualifies only when
+ * it both (a) has a recipe producing the good with no inputs, and (b) is unstaffed-by-design: every worker
+ * slot is a carrier or gatherer, none an operator trade. Condition (b) excludes a STAFFED input-less
+ * producer — the animal farm's breeders mint meat from nothing, but that is real husbandry, not a public
+ * tap a stranger cranks. The signal is data ("an unstaffed input-less producer of the needed good"), never
+ * a hardcoded well/hive id. First-wins per typeId, matching the other tables.
+ */
+export function inputlessProducerTypes(content: ContentSet): ReadonlyMap<number, ReadonlySet<number>> {
+  const carrierJobs = new Set(content.jobs.filter((j) => j.id === CARRIER_JOB_ID).map((j) => j.typeId));
+  const harvestJobs = harvestCapableJobs(content);
+  const isOperatorSlot = (jobType: number): boolean => !carrierJobs.has(jobType) && !harvestJobs.has(jobType);
+  const map = new Map<number, Set<number>>();
+  const seen = new Set<number>();
+  for (const b of content.buildings) {
+    if (seen.has(b.typeId)) continue;
+    seen.add(b.typeId);
+    if (b.workers.some((w) => isOperatorSlot(w.jobType))) continue; // staffed — not a self-service tap
+    for (const recipe of b.recipes) {
+      if (recipe.inputs.length > 0) continue;
+      const product = recipe.outputs[0]?.goodType;
+      if (product === undefined) continue;
+      let types = map.get(product);
+      if (types === undefined) {
+        types = new Set<number>();
+        map.set(product, types);
+      }
+      types.add(b.typeId);
+    }
   }
   return map;
 }

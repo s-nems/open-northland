@@ -19,6 +19,7 @@ import {
   type InboundSupplyTally,
   inboundSupplyOf,
   mergedRecipeOf,
+  producesGoodWithoutInputs,
   stockCapacity,
 } from '../../stores/index.js';
 import type { PlannerContext } from '../planner-context.js';
@@ -110,8 +111,46 @@ export function deliveryTargetFor(plan: PlannerContext, goodType: number): Entit
   //    non-construction good to the default below.
   const site = nearestConstructionSiteNeeding(sites, world, ctx, here, tribe, owner, goodType, inbound, gate);
   if (site !== null) return site;
+  // 4b. A carrier bound to an input-less UTILITY (the well, the hive) hauling that utility's own output
+  //     feeds a nearby recipe CONSUMER of the good — the bakery's water, the brewery's honey — before
+  //     central storage, so the shared utility supplies the workshops that need the good first and banks
+  //     only the surplus later (user rule 2026-07-19). Falls through to the storage default when no
+  //     consumer has room. Gated to the utility carrier: an ordinary hauler keeps the plain store default.
+  if (home !== undefined && producesGoodWithoutInputs(world, ctx, home, goodType)) {
+    const consumer = nearestRecipeConsumer(stores, world, ctx, here, goodType, gate);
+    if (consumer !== null) return consumer;
+  }
   // 5. Otherwise the nearest capable store — the default (unbound haulers, the golden slice).
   return nearestStoreFor(stores, world, ctx, here, goodType, false, gate);
+}
+
+/**
+ * The nearest BUILT workplace whose recipe consumes `goodType` as an input and still has room for it — the
+ * delivery target a shared-utility carrier prefers over central storage (a posted well/hive porter feeding
+ * the bakery's water / brewery's honey first). Canonical Manhattan + ascending-cell-id pick over the
+ * stockpile cell index, gated to the carrier's signpost area. A site still under construction is skipped:
+ * it needs delivered build material, not a recipe input.
+ */
+function nearestRecipeConsumer(
+  index: InteractionCellIndex,
+  world: World,
+  ctx: SystemContext,
+  here: NodeId,
+  goodType: number,
+  gate?: SpatialGate,
+): Entity | null {
+  return (
+    index.nearest(
+      here,
+      (e) => {
+        if (world.has(e, UnderConstruction)) return null;
+        const recipe = mergedRecipeOf(world, ctx, e);
+        if (recipe === undefined || !recipe.inputs.some((i) => i.goodType === goodType)) return null;
+        return hasRoom(world, ctx, e, goodType) ? QUALIFIES : null;
+      },
+      gate,
+    )?.entity ?? null
+  );
 }
 
 /**

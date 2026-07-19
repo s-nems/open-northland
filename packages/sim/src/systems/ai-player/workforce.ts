@@ -324,9 +324,9 @@ function runWorkforce(
     if (type === undefined || type.kind !== 'workplace') continue;
     // Operators only — carrier and gatherer slots are never staffed by default, so a carrier-only
     // workplace (the well, the hive) gets no permanent worker (user rule 2026-07-18). Those are
-    // shared utilities a consumer self-serves (a baker cranks the well for its own water); until
-    // that drive exists (docs/tickets/sim/utility-self-service-production.md) an unstaffed well
-    // produces nothing, so the AI's bakery water/honey chain waits on that ticket. The
+    // shared utilities a consumer self-serves: a baker (or the bakery's carrier) cranks the well for
+    // its own water and carries it back (the draw fallback in agents/economy/workshop), so an
+    // unstaffed well still feeds the bakery water/honey chain — no permanent staffing needed. The
     // carrier-staffed exceptions below add their one transport slot back.
     const operators = type.workers.filter(
       (w) => !isCarrierJob(ctx, w.jobType) && !index.harvestJobs.has(w.jobType),

@@ -26,7 +26,9 @@ export {
   operatorCountOf,
   presentOperatorCount,
   presentOperators,
+  producesGoodWithoutInputs,
   recipesByProductOf,
+  typeProducesGoodWithoutInputs,
   type WorkplaceOperators,
   workplaceStoredGoods,
 } from './workplace.js';

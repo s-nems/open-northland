@@ -1,13 +1,18 @@
 import { CARRY_CAPACITY, Owner, Resting } from '../../../../components/index.js';
 import type { Entity } from '../../../../ecs/world.js';
 import { planGossipIdle } from '../../../social/index.js';
-import { isWorkplaceOperator, mergedRecipeOf } from '../../../stores/index.js';
-import { atOrWalk, startPickup } from '../../actions.js';
+import { isWorkplaceOperator, mergedRecipeOf, recipesByProductOf } from '../../../stores/index.js';
+import { atOrWalk, startDraw, startPickup } from '../../actions.js';
 import { loiterCell, type SpacingState } from '../../destack.js';
 import type { PlannerContext } from '../../planner-context.js';
 import { interactionCell } from '../../targets/index.js';
 import { deliverableGoodProbe } from '../routing.js';
-import { nearestMissingInputSource, workplaceOutputToHaul, workSeatCount } from './supply.js';
+import {
+  type MissingInputSource,
+  nearestMissingInputSource,
+  workplaceOutputToHaul,
+  workSeatCount,
+} from './supply.js';
 
 /** Work seats already claimed at each workplace during the canonical planner sweep. */
 export type WorkSeatClaims = Map<Entity, number>;
@@ -25,8 +30,7 @@ export function planProducer(
   carrierSupplied: boolean,
   spacing: SpacingState,
 ): void {
-  const { world, ctx, terrain, entity, here, targets } = plan;
-  const worker = plan;
+  const { world, ctx, terrain, here, targets } = plan;
   const recipe = mergedRecipeOf(world, ctx, workplace);
   if (recipe === undefined) return;
 
@@ -37,6 +41,9 @@ export function planProducer(
     return;
   }
 
+  // The nearest source of a missing input — a store that holds it (fetch) OR a shared utility that mints
+  // it (draw, e.g. cranking the well for water), whichever is closer. Restocks before shipping output
+  // (the existing fetch-before-haul approximation).
   const source = nearestMissingInputSource(
     targets.stockpileCells,
     world,
@@ -49,9 +56,7 @@ export function planProducer(
     plan.limit ?? undefined,
   );
   if (source !== null) {
-    atOrWalk(world, entity, here, interactionCell(world, ctx, terrain, source.store, here), () =>
-      startPickup(world, ctx, entity, worker, source.store, source.goodType, source.amount),
-    );
+    routeToInputSource(plan, source, false);
     return;
   }
 
@@ -66,11 +71,13 @@ export function planProducer(
  * output is removed so the operators do not starve; that priority is the existing named approximation.
  */
 export function planWorkshopSupplier(plan: PlannerContext, workplace: Entity, spacing: SpacingState): void {
-  const { world, ctx, terrain, entity, here, targets } = plan;
+  const { world, ctx, terrain, here, targets } = plan;
   const worker = plan;
   const recipe = mergedRecipeOf(world, ctx, workplace);
   if (recipe === undefined) return;
 
+  // The carrier tops the input slots toward CAPACITY, from the nearest source of each — a store (fetch)
+  // or a shared utility it cranks itself (draw), whichever is closer — before hauling output out.
   const restockToCapacity = true;
   const source = nearestMissingInputSource(
     targets.stockpileCells,
@@ -84,10 +91,7 @@ export function planWorkshopSupplier(plan: PlannerContext, workplace: Entity, sp
     plan.limit ?? undefined,
   );
   if (source !== null) {
-    const batch = Math.min(source.amount, CARRY_CAPACITY);
-    atOrWalk(world, entity, here, interactionCell(world, ctx, terrain, source.store, here), () =>
-      startPickup(world, ctx, entity, worker, source.store, source.goodType, batch),
-    );
+    routeToInputSource(plan, source, true);
     return;
   }
 
@@ -96,6 +100,33 @@ export function planWorkshopSupplier(plan: PlannerContext, workplace: Entity, sp
   // standing ON the door so the ProductionSystem's presence gate still fires — it is never "bored". A
   // carrier at a workshop run by other operators (a mill's miller) drives nothing, so it may loiter beside.
   loiterByDoor(plan, workplace, spacing, isWorkplaceOperator(world, ctx, workplace, worker.jobType));
+}
+
+/**
+ * Send the worker to a chosen input source ({@link nearestMissingInputSource}): FETCH lifts the good out of
+ * a store, DRAW cranks a shared utility in place for one unit. The loaded worker is then routed home by the
+ * delivery rung (a fetched/drawn input goes to its bound workshop). `capFetchToCarry` limits a fetch to one
+ * carry-load (the bound carrier's per-trip cap); a craftsman fetches the exact shortfall.
+ */
+function routeToInputSource(
+  plan: PlannerContext,
+  source: MissingInputSource,
+  capFetchToCarry: boolean,
+): void {
+  const { world, ctx, terrain, entity, here } = plan;
+  const worker = plan;
+  if (source.kind === 'fetch') {
+    const amount = capFetchToCarry ? Math.min(source.amount, CARRY_CAPACITY) : source.amount;
+    atOrWalk(world, entity, here, interactionCell(world, ctx, terrain, source.store, here), () =>
+      startPickup(world, ctx, entity, worker, source.store, source.goodType, amount),
+    );
+    return;
+  }
+  // A draw runs the utility recipe's own `ticks` (its work time to extract one unit).
+  const ticks = recipesByProductOf(world, ctx, source.utility)?.get(source.goodType)?.ticks ?? 1;
+  atOrWalk(world, entity, here, interactionCell(world, ctx, terrain, source.utility, here), () =>
+    startDraw(world, entity, source.goodType, source.utility, ticks),
+  );
 }
 
 /** Stand ON the workplace's door and step inside — an operator holding a work seat (it drives the

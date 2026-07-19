@@ -7,8 +7,8 @@ import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
 import { startableCycleCount } from '../../../economy/production.js';
 import { buildingBlockedCells } from '../../../footprint/index.js';
-import { recipesByProductOf, stockCapacity } from '../../../stores/index.js';
-import { buriedUnderBuilding, type InteractionCellIndex, QUALIFIES } from '../../targets/index.js';
+import { recipesByProductOf, stockCapacity, typeProducesGoodWithoutInputs } from '../../../stores/index.js';
+import { buriedUnderBuilding, type InteractionCellIndex } from '../../targets/index.js';
 
 // The AI planner's SUPPLY layer: the scans behind a *producer worker running its own supply→produce→
 // deliver loop* — the "kowal fetches the goods a sword needs, forges it, and carries it back" behavior.
@@ -50,24 +50,38 @@ export function workSeatCount(world: World, ctx: SystemContext, workplace: Entit
 }
 
 /**
- * The nearest store the producer should fetch a **missing recipe input** from, or null if every input is
- * already stocked at the workplace or no store holds a missing one. Walks the recipe inputs in their
- * (fixed content) order and returns the FIRST input the workplace is short of that some OTHER store
- * holds — the good, the amount still needed (so the fetch carries exactly the shortfall, "tylko te
- * wymagane"), and the nearest store holding it (Manhattan + ascending-cell-id tie-break, canonical scan).
+ * Where a producer worker should go for a **missing recipe input**, or null when every input is already
+ * stocked (or nothing reachable can supply one). Walks the recipe inputs in their (fixed content) order and,
+ * for the FIRST input the workplace is short of, returns the single NEAREST source of EITHER kind:
+ *  - `fetch`: a store that already holds the good — a warehouse, a flag pile, another workplace's output —
+ *    with the amount still needed (so the trip carries exactly the shortfall, "tylko te wymagane");
+ *  - `draw`: a built shared UTILITY that mints the good from no inputs (the well for water, the hive for
+ *    honey — {@link producesGoodWithoutInputs}, data-driven, no hardcoded id) — the worker cranks it in
+ *    place for one unit.
  *
- * `restockToCapacity` raises each input's target from the recipe amount (a craftsman fetching just
- * enough for the next cycle) to the workplace's declared input-slot CAPACITY — the bound CARRIER's
- * shape: it keeps the mill's wheat store topped up trip after trip so the millers never starve, and
- * only stops when the slot is full (observed original behaviour: the carrier stocks the workshop, the
- * craftsman crafts).
+ * Both kinds compete in ONE canonical scan (Manhattan + ascending-cell-id tie-break), so the CLOSER source
+ * wins: a bakery beside a well draws its water there instead of trekking to a distant HQ that also holds
+ * some, and vice versa (user rule 2026-07-19). A utility that happens to hold a produced unit qualifies as
+ * a `fetch` (picking the standing unit up beats re-cranking).
  *
- * The workplace itself is excluded as a source (a producer never pulls its own stock back out); any other
- * positioned {@link Stockpile} that holds the good is a valid source — a warehouse, a flag pile, or even
- * another workplace's output. This is what makes the golden slice untouched: there, the only store that
- * ever holds the sawmill's input (wood) IS the sawmill, so this returns null and the operator stays
- * pinned exactly as before — the fetch only fires once an input lives in a *separate* store.
+ * `restockToCapacity` raises each input's fetch target from the recipe amount (a craftsman fetching just
+ * enough for the next cycle) to the workplace's declared input-slot CAPACITY — the bound CARRIER's shape:
+ * it keeps the mill's wheat store topped up trip after trip (observed original behaviour). It does not
+ * affect a `draw`, which always yields one unit.
+ *
+ * The workplace itself is excluded as a source, a construction site is skipped (its stock is delivered build
+ * material, never a source to strip), and a pile buried under a building's walls is passed over (an
+ * unreachable stand would strand the fetcher). `gate` is the fetcher's signpost confinement. The golden
+ * slice is untouched: its only wood store IS the sawmill and nothing mints wood without inputs, so this
+ * returns null and the operator stays pinned exactly as before.
  */
+export type MissingInputSource =
+  | { readonly kind: 'fetch'; readonly store: Entity; readonly goodType: number; readonly amount: number }
+  | { readonly kind: 'draw'; readonly utility: Entity; readonly goodType: number };
+
+const FETCH: { readonly payload: 'fetch' } = { payload: 'fetch' };
+const DRAW: { readonly payload: 'draw' } = { payload: 'draw' };
+
 export function nearestMissingInputSource(
   index: InteractionCellIndex,
   world: World,
@@ -78,32 +92,39 @@ export function nearestMissingInputSource(
   recipe: Recipe,
   restockToCapacity = false,
   gate?: SpatialGate,
-): { store: Entity; goodType: number; amount: number } | null {
+): MissingInputSource | null {
   const stock = world.get(workplace, Stockpile).amounts;
   const walls = buildingBlockedCells(world, ctx, terrain);
   for (const input of recipe.inputs) {
     const have = stock.get(input.goodType) ?? 0;
     const target = restockToCapacity ? stockCapacity(world, ctx, workplace, input.goodType) : input.amount;
     if (have >= target) continue; // this input is already covered (for a cycle / to the slot's brim)
-    // The stockpile index holds every Stockpile+Position candidate; source any store that isn't the
-    // workplace itself and holds the good (a warehouse, a flag pile, another workplace's output). A
-    // construction site is excluded — its stock is delivered build material (a delivery sink), never a
-    // source to strip, or a producer would pull the wood off a half-built neighbour and stall its build
-    // — and so is a pile buried under a building's walls (`buriedUnderBuilding` — an unreachable stand
-    // would strand the fetcher; both guards shared with `nearestStoreHolding`). `gate` is the fetcher's
-    // signpost confinement — an out-of-area store is not a known source.
-    const winner = index.nearest(
+    const winner = index.nearest<'fetch' | 'draw'>(
       here,
-      (e) =>
-        e !== workplace &&
-        !world.has(e, UnderConstruction) &&
-        (world.get(e, Stockpile).amounts.get(input.goodType) ?? 0) > 0 &&
-        !buriedUnderBuilding(world, terrain, walls, e)
-          ? QUALIFIES
-          : null,
+      (e) => {
+        if (e === workplace || world.has(e, UnderConstruction)) return null; // never self, never a build site
+        // A store that HOLDS the good is a fetch (and beats a mint when it's the nearer of the two); a
+        // buried pile is skipped (an unreachable stand strands the fetcher — the `nearestStoreHolding` guard).
+        if ((world.get(e, Stockpile).amounts.get(input.goodType) ?? 0) > 0) {
+          return buriedUnderBuilding(world, terrain, walls, e) ? null : FETCH;
+        }
+        // Else a built utility that MINTS the good from no inputs is a draw (crank it in place for one unit).
+        const b = world.tryGet(e, Building);
+        if (
+          b !== undefined &&
+          b.built >= ONE &&
+          typeProducesGoodWithoutInputs(ctx, b.buildingType, input.goodType)
+        ) {
+          return DRAW;
+        }
+        return null;
+      },
       gate,
     );
-    if (winner !== null) return { store: winner.entity, goodType: input.goodType, amount: target - have };
+    if (winner === null) continue;
+    return winner.payload === 'draw'
+      ? { kind: 'draw', utility: winner.entity, goodType: input.goodType }
+      : { kind: 'fetch', store: winner.entity, goodType: input.goodType, amount: target - have };
   }
   return null;
 }

@@ -61,6 +61,36 @@ export function buildingProduces(world: World, ctx: SystemContext, building: Ent
 const EMPTY_PRODUCES: readonly number[] = [];
 
 /**
+ * Whether building type `buildingType` is an UNSTAFFED shared utility that mints `goodType` from no inputs —
+ * a well for water, a hive for honey — that a consumer can crank in place to draw the good. Data-driven via
+ * {@link import('../../core/content-index.js').ContentIndex.inputlessProducersByGood} (an unstaffed
+ * input-less producer of the good, never a hardcoded id); a staffed input-less producer does not qualify.
+ *
+ * Cross-system: the self-service input scan ({@link import('../agents/economy/workshop/supply.js').nearestMissingInputSource})
+ * lets a consumer draw the good here when this utility is the nearest source, and the utility-carrier
+ * delivery rung (routing.ts) uses it to feed the good to nearby consumers before central storage.
+ */
+export function typeProducesGoodWithoutInputs(
+  ctx: SystemContext,
+  buildingType: number,
+  goodType: number,
+): boolean {
+  return contentIndex(ctx.content).inputlessProducersByGood.get(goodType)?.has(buildingType) ?? false;
+}
+
+/** {@link typeProducesGoodWithoutInputs} for a building entity — resolves its type first (false if it has
+ *  no Building/type). The caller gates built/reachable. */
+export function producesGoodWithoutInputs(
+  world: World,
+  ctx: SystemContext,
+  building: Entity,
+  goodType: number,
+): boolean {
+  const b = world.tryGet(building, Building);
+  return b !== undefined && typeProducesGoodWithoutInputs(ctx, b.buildingType, goodType);
+}
+
+/**
  * The set of job types a building type's `workers` slots name (`logicworker <job> <count>`). Empty
  * if the building has no Building/type or declares no workers (an unstaffed-by-design building — a
  * passive store, or any type without worker slots).
