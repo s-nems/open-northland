@@ -56,7 +56,8 @@ function ownsFailedRoute(world: World, e: Entity): boolean {
  * Returns true once the settler is genuinely re-planning, having first released what the previous intent
  * held: its {@link YardDeliveryRoute} (reconciled against the live load/flag — see
  * {@link reconcileYardRoute}), its farm claim (so it never blocks ITSELF from re-choosing the field it was
- * walking to), its rest-inside marker, and its supply errand. Each is re-stamped by the drive that still
+ * walking to), its rest-inside marker, its supply errand, and its expired failed-goal memo
+ * ({@link pruneUnreachableGoals}, run before any drive reads it). Each is re-stamped by the drive that still
  * wants it within this same tick, so the render never sees a gap: a settler mid-park keeps its SupplyRun
  * (released only at the re-plan) because the errand may resume after a transient blockage, and a settler
  * on family duty keeps its {@link Resting} marker (the FamilySystem owns that one).
@@ -69,7 +70,7 @@ export function releaseStaleIntent(
   inbound: InboundSupplyTally,
 ): boolean {
   reconcileYardRoute(world, e);
-  pruneUnreachableGoals(world, ctx, e); // expire the failed-goal memo before any drive reads it
+  pruneUnreachableGoals(world, ctx, e);
   if (world.has(e, CurrentAtomic)) return false;
   // Fresh read — reconcileYardRoute may have cleared the request.
   const request = world.tryGet(e, PathRequest);

@@ -1,4 +1,10 @@
-import { HarvestedBy, Position, Resource, Stockpile } from '../../../components/index.js';
+import {
+  HarvestedBy,
+  Position,
+  Resource,
+  Stockpile,
+  type UnreachableGoal,
+} from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity } from '../../../ecs/world.js';
 import type { BlockOverlay, NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
@@ -8,7 +14,7 @@ import { resourceHarvestAtomics, resourcesNearNode } from '../../resource-index.
 import { manhattan } from '../../spatial.js';
 import { lowestStockedGood } from '../../stores/index.js';
 import type { PlannerContext } from '../planner-context.js';
-import { unreachableGoals } from '../unreachable-goals.js';
+import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
 import { nearestByCell } from './cell-index.js';
 import { interactionCell, jobAtomics } from './workplaces.js';
 
@@ -52,9 +58,11 @@ import { interactionCell, jobAtomics } from './workplaces.js';
  * and fail its path — route-level dynamic reachability is a follow-up
  * (`docs/tickets/sim/dynamic-route-reachability.md`). {@link unreachableGoals} blunts that case rather than
  * closing it: a goal this settler's route just failed on is skipped, so the pick falls through to the next
- * node instead of re-choosing the doomed one every retry. Where enclosed nodes outnumber routable ones and
- * sit nearer — measured on dense iron/stone fields — the bounded memo still cycles, which is what the
- * ticket's route-aware pick is for.
+ * node instead of re-choosing the doomed one every retry. Two limits keep that a blunting rather than a
+ * fix: where enclosed nodes outnumber routable ones and sit nearer — measured on dense iron/stone fields —
+ * the bounded memo cycles; and the memo keys the failed CELL, while a multi-work-cell deposit re-resolves
+ * against the settler's moved position, so the same deposit can win again through a neighbouring cell.
+ * Both are what the ticket's route-aware pick is for.
  */
 export function nearestHarvestableFor(
   plan: PlannerContext,
@@ -160,7 +168,9 @@ export function nearestHarvestableFor(
     // it rather than latch on and stall (see the fn doc for the clay-under-a-house basis and follow-ups). The
     // settler's own cell is never blocked-for-itself, so a deposit it already stands on still qualifies.
     if (cell !== here && buildingBlocked.has(cell)) return null;
-    if (unreachable?.has(cell) === true) return null; // this settler's route here just failed
+    // Same self-exemption: a deposit under the settler's own feet needs no walk, so a stale memo entry
+    // for that cell must not veto it.
+    if (cell !== here && isUnreachableGoal(unreachable, cell)) return null;
     if (manhattan(terrain, origin, cell) > radius) return null; // outside the flag's work radius — leave it be
     if (gate !== undefined && !gate.allowsNode(cell)) return null; // outside the settler's signpost area
     return { cell, payload: null };
@@ -175,20 +185,23 @@ export function nearestHarvestableFor(
  * targeting it anyway strands the settler in a park→re-pick→fail loop, so the pile scans below skip it
  * until the field opens up. Standing on the cell already (`here`) needs no walk, so it is never doomed.
  */
-function unreachablePickupCell(
-  terrain: TerrainGraph,
-  blocked: BlockOverlay,
-  memo: ReadonlySet<NodeId> | null,
-  here: NodeId,
-  cell: NodeId,
-): boolean {
+function unreachablePickupCell(gates: PickupGates, here: NodeId, cell: NodeId): boolean {
   if (cell === here) return false;
+  const { terrain, blocked, memo } = gates;
   return (
     !terrain.isWalkable(cell) ||
     blocked.has(cell) ||
-    memo?.has(cell) === true ||
+    isUnreachableGoal(memo, cell) ||
     terrain.componentOf(here) !== terrain.componentOf(cell)
   );
+}
+
+/** The three reachability layers {@link unreachablePickupCell} probes — bundled so the two call sites
+ *  name what they pass instead of ordering four lookalike positional arguments. */
+interface PickupGates {
+  readonly terrain: TerrainGraph;
+  readonly blocked: BlockOverlay;
+  readonly memo: readonly UnreachableGoal[] | null;
 }
 
 /**
@@ -215,7 +228,7 @@ export function nearestCollectablePileFor(
   const gate = plan.limit ?? undefined; // signpost confinement
   const allowed = jobAtomics(ctx, plan.jobType);
   const blocked = dynamicBlockOverlay(world, ctx, terrain);
-  const unreachable = unreachableGoals(world, ctx, plan.entity);
+  const gates: PickupGates = { terrain, blocked, memo: unreachableGoals(world, ctx, plan.entity) };
   // The GroundDrop candidate list: every entry already has GroundDrop+Stockpile+Position (built by
   // collectTargets) — no per-pile marker re-check, and the scan is O(drops), ~0 when none exist.
   const best = nearestByCell(terrain, targets.groundDrops, here, (e) => {
@@ -225,7 +238,7 @@ export function nearestCollectablePileFor(
     const harvestAtomic = targets.harvestAtomicByGood.get(good);
     if (harvestAtomic === undefined || !allowed.has(harvestAtomic)) return null; // not this job's trade
     const cell = interactionCell(world, ctx, terrain, e, here);
-    if (unreachablePickupCell(terrain, blocked, unreachable, here, cell)) return null; // the walk there would fail — leave the pile for later
+    if (unreachablePickupCell(gates, here, cell)) return null; // the walk there would fail — leave the pile for later
     if (gate !== undefined && !gate.allowsNode(cell)) return null;
     return { cell, payload: good };
   });
@@ -247,14 +260,14 @@ export function nearestOwnDropFor(
   const { world, ctx, terrain, here, targets, entity: gatherer } = plan;
   const gate = plan.limit ?? undefined; // signpost confinement
   const blocked = dynamicBlockOverlay(world, ctx, terrain);
-  const unreachable = unreachableGoals(world, ctx, gatherer);
+  const gates: PickupGates = { terrain, blocked, memo: unreachableGoals(world, ctx, gatherer) };
   const best = nearestByCell(terrain, targets.groundDrops, here, (e) => {
     const mark = world.tryGet(e, HarvestedBy);
     if (mark === undefined || mark.by !== gatherer) return null; // not this gatherer's own drop — leave it be
     const good = lowestStockedGood(world.get(e, Stockpile));
     if (good === null) return null; // emptied (about to be reaped)
     const cell = interactionCell(world, ctx, terrain, e, here);
-    if (unreachablePickupCell(terrain, blocked, unreachable, here, cell)) return null; // the walk there would fail — leave the pile for later
+    if (unreachablePickupCell(gates, here, cell)) return null; // the walk there would fail — leave the pile for later
     if (gate !== undefined && !gate.allowsNode(cell)) return null;
     return { cell, payload: good };
   });

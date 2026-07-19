@@ -2,15 +2,16 @@ import { existsSync } from 'node:fs';
 import {
   components,
   type Entity,
-  harvestCapableJobs,
+  FOG_MODE,
+  harvestJobsOf,
   nodeOfPosition,
   type Simulation,
   systems,
 } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { hasRealIr } from '../test/content/helpers.js';
+import { realMapPath, realMapWorld } from '../test/content/real-map-world.js';
 import { formatStallReport, type GathererSample, StallTracker } from './gatherer-stalls.js';
-import { soakMapPath, soakWorld } from './world.js';
 
 /**
  * The gatherer idle-loop soak — `npm run soak:gatherers`. It runs the browser session
@@ -65,7 +66,10 @@ function sampleGatherers(sim: Simulation, harvestJobs: ReadonlySet<number>): Gat
   for (const e of sim.world.query(Settler, Owner)) {
     const settler = sim.world.get(e, Settler);
     const flag = sim.world.tryGet(e, WorkFlag);
-    if (flag === undefined && (settler.jobType === null || !harvestJobs.has(settler.jobType))) continue;
+    // A work flag alone qualifies: the AI pins a collector to its flag before the job settles, and a
+    // flagged settler that no longer holds a harvest trade is itself a stall worth seeing.
+    const holdsGathererTrade = settler.jobType !== null && harvestJobs.has(settler.jobType);
+    if (flag === undefined && !holdsGathererTrade) continue;
     out.push({
       entity: e,
       player: sim.world.get(e, Owner).player,
@@ -120,14 +124,19 @@ function probeStall(sim: Simulation, gatherer: Entity, goodType: number): StallP
   return { flagRadius: flag.radius, inManhattan, inWorldCircle, nearestManhattan };
 }
 
-describe.runIf(hasRealIr() && existsSync(soakMapPath(mapId())))('gatherer idle-loop soak', () => {
+describe.runIf(hasRealIr() && existsSync(realMapPath(mapId())))('gatherer idle-loop soak', () => {
   it('reports every collector that stopped collecting', { timeout: SOAK_TIMEOUT_MS }, async () => {
     const ticks = intEnv('ON_SOAK_TICKS', DEFAULT_TICKS, 1);
     const sampleEveryTicks = intEnv('ON_SOAK_SAMPLE_EVERY', DEFAULT_SAMPLE_EVERY_TICKS, 1);
     const stallTicks = intEnv('ON_SOAK_STALL_TICKS', DEFAULT_STALL_TICKS, 1);
 
-    const sim = await soakWorld({ mapId: mapId(), aiSeats: AI_SEATS });
-    const harvestJobs = harvestCapableJobs(sim.content);
+    const { sim } = await realMapWorld({
+      mapId: mapId(),
+      aiSeats: AI_SEATS,
+      fog: FOG_MODE.REVEAL,
+      berryBushes: true,
+    });
+    const harvestJobs = harvestJobsOf(sim.content);
     expect(harvestJobs.size).toBeGreaterThan(0);
 
     const tracker = new StallTracker(stallTicks);

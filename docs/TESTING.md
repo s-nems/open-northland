@@ -215,7 +215,7 @@ The suite proves a mechanic over hundreds of ticks; some economy failures only a
 thousands, when the AI has built over its own ground and patches have thinned. **`npm run
 soak:gatherers`** is the long-run observer: it builds the headless twin of
 `?map=magiczny_las&player=overseer&ai=0,1,2,3,4,5&fog=reveal` (real merged content, the authored map,
-every seat under AI — `packages/app/soak/world.ts` reuses `entries/map.ts`'s own world-build chain),
+every seat under AI — `packages/app/test/content/real-map-world.ts` is the shared world-build chain, also used by the real-content scenario tests),
 runs 40k ticks, and reports every collector that stopped collecting: player, trade, good, the tick the
 stall began, and whether it ever recovered. A stall is a settler holding a gatherer trade that neither
 swings a harvest atomic nor carries a load for `ON_SOAK_STALL_TICKS`.
