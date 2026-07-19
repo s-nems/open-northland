@@ -102,8 +102,9 @@ export function openJobAt(
  * the original models a fresh 0-XP settler becoming a coiner as impossible. We override that on an explicit
  * hand assignment so a right-click / the assign-workplace button staffs a built workshop with its own trade
  * instead of silently downgrading to the carrier slot (the reported "mennica → tragarz" bug). The
- * building-level gate (`buildingEnabled`) is kept, and the automatic JobSystem still enforces both gates, so
- * the AI never self-unlocks a specialization — only the player can.
+ * building-level gate (`buildingEnabled`) also runs here and in the automatic JobSystem but is currently a
+ * feature-wide no-op (see it); the automatic path still enforces the job-level + XP gates, so the AI never
+ * self-unlocks a specialization — only the player can.
  */
 export function openWorkerJobFromList(
   query: OpeningsQuery,
@@ -135,7 +136,7 @@ function resolveOpenWorkerJob(
   const b = world.tryGet(building, Building);
   if (b === undefined || b.tribe !== tribe) return null;
   if (!ownersCompatible(query.owner, ownerOf(world, building))) return null; // another player's workplace (sameSide doc)
-  if (!buildingEnabled(world, ctx, tribe, b.buildingType)) return null; // not tech-enabled yet
+  if (!buildingEnabled(world, ctx, tribe, b.buildingType)) return null; // building-unlock gate (disabled — see buildingEnabled)
   for (const jobType of orderedJobs) {
     if (!jobUnderstaffed(query, building, jobType)) continue;
     // A player-directed assignment (a right-click / the assign-workplace button) staffs a built workshop

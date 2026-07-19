@@ -165,7 +165,7 @@ export function upgradeBuilding(
   const type = contentIndex(ctx.content).buildings.get(building.buildingType);
   const target = type === undefined ? undefined : upgradeTierOf(type, ctx);
   if (target === undefined) return; // top level / unchained / malformed content
-  if (!buildingEnabled(world, ctx, building.tribe, target.typeId)) return; // target not tech-unlocked
+  if (!buildingEnabled(world, ctx, building.tribe, target.typeId)) return; // building-unlock gate (disabled — see buildingEnabled)
 
   const stock = world.tryGet(command.building, Stockpile);
   if (stock === undefined) return; // no build hold — the site could never advance (see the doc)

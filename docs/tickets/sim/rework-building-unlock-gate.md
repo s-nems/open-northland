@@ -41,6 +41,11 @@ Design and re-enable the building-unlock progression as a coherent, player-legib
 3. Re-enable by setting `BUILDING_UNLOCK_GATE_ENABLED = true` (or removing the switch) once 1–2 hold.
 4. Un-skip the coupled tests (search for the ticket filename): `packages/app/test/sandbox-tech-graph.test.ts`
    and any sim tests parked in the same commit that disabled the gate.
+5. Sweep the comments/scenes that still describe the gate as active but were left untouched by the
+   disable (the central `buildingEnabled` doc and the hot gate sites were updated; these were not):
+   the JobSystem condition doc (`economy/jobs/system.ts`), the progression architecture note
+   (`progression/experience.ts`), and the acceptance scenes that place a now-unnecessary "tech enabler"
+   settler (`packages/app/src/scenes/upgrade.ts`, `scenes/chain.ts`, `scenes/warehouse.ts`).
 
 ## Verify
 

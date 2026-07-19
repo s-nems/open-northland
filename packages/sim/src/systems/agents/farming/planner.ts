@@ -87,7 +87,7 @@ function boundFarmTarget(
   if (spec === null) return null; // not a farm
   if (!jobAtomics(ctx, jobType).has(spec.plantAtomic)) return null; // not the field trade (a carrier)
   if (!buildingWorkerJobs(world, ctx, b).has(jobType)) return null; // doesn't employ this job
-  if (!buildingEnabled(world, ctx, tribe, building.buildingType)) return null; // not tech-enabled yet
+  if (!buildingEnabled(world, ctx, tribe, building.buildingType)) return null; // building-unlock gate (disabled — see buildingEnabled)
   if (!world.has(b, Position)) return null; // a position-less farm has no fields to ring
   return { farm: b, spec };
 }
