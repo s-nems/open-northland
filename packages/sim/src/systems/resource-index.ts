@@ -62,3 +62,15 @@ export function resourceHarvestAtomics(world: World): ReadonlySet<number> {
 export function resourcesNearNode(world: World, hx: number, hy: number, reach: number): Entity[] {
   return index.near(world, hx, hy, reach);
 }
+
+/** Whether any resource inside the same box passes `test` — the existence-only twin of
+ *  {@link resourcesNearNode}: no collection, no sort, first hit returns. */
+export function anyResourceNear(
+  world: World,
+  hx: number,
+  hy: number,
+  reach: number,
+  test: (e: Entity) => boolean,
+): boolean {
+  return index.someNear(world, hx, hy, reach, test);
+}

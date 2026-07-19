@@ -1,18 +1,17 @@
-import { Building, Owner, Position, Settler } from '../../components/index.js';
+import { Owner, Position, Settler } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import { nearestUnblockedNode } from '../../nav/nearest.js';
 import type { BlockOverlay, NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { buildingFootprintOf, translatedCells } from '../footprint/geometry.js';
-import { buildingDoorNodes, dynamicBlockOverlay } from '../footprint/index.js';
+import { buildingDoorNodes, dynamicBlockOverlay, walkBlockedBodyOf } from '../footprint/index.js';
 import { canonicalById, isTravelling, NodeBuckets } from '../spatial.js';
 
-/** Max nodes {@link evictSettlersFromFootprint}'s ring search visits before giving up — a plot boxed in
+/** Max nodes a footprint displacement's landing search visits before giving up — a plot boxed in
  *  on a pathological map leaves its occupants in place rather than searching the whole world (same cap
- *  stance as the spacing drives' SPACING_SEARCH_CAP). Scoped in the name because the spawn push below
- *  takes `nearestUnblockedNode`'s own default instead. */
-const FOOTPRINT_EVICT_SEARCH_CAP = 192;
+ *  stance as the spacing drives' SPACING_SEARCH_CAP). Shared with the goods twin
+ *  (`evictLooseGoodsFromFootprint`); the spawn push below takes `nearestUnblockedNode`'s own default. */
+export const FOOTPRINT_EVICT_SEARCH_CAP = 192;
 
 /**
  * Push every settler standing inside `building`'s walk-blocked footprint out onto the nearest free
@@ -42,18 +41,8 @@ const FOOTPRINT_EVICT_SEARCH_CAP = 192;
 export function evictSettlersFromFootprint(world: World, ctx: SystemContext, building: Entity): void {
   const terrain = ctx.terrain;
   if (terrain === undefined) return; // mapless sim: no cells to stand on
-  const b = world.tryGet(building, Building);
-  const p = world.tryGet(building, Position);
-  if (b === undefined || p === undefined) return;
-  const footprint = buildingFootprintOf(ctx.content, b.buildingType);
-  if (footprint === undefined || footprint.blocked.length === 0) return; // nothing impassable
-  const { hx: ax, hy: ay } = nodeOfPosition(p.x, p.y);
-  const body = new Set<NodeId>(translatedCells(terrain, footprint.blocked, ax, ay));
-  const door = footprint.door;
-  if (door !== undefined && terrain.inBounds(ax + door.dx, ay + door.dy)) {
-    body.delete(terrain.nodeAt(ax + door.dx, ay + door.dy)); // the door stays a passable stand
-  }
-  if (body.size === 0) return;
+  const body = walkBlockedBodyOf(world, ctx, terrain, building);
+  if (body === null) return; // nothing impassable
 
   // One unsorted pass: every non-travelling owned settler (for the occupancy check) and, of those, the
   // ones standing on the body (the evictees) plus the ones beside it (nook candidates). The sort is

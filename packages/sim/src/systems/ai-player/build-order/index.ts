@@ -10,7 +10,7 @@ import { placementSpot } from './placement.js';
 import { entryStatus, upgradeCandidate } from './progress.js';
 
 export * from './entries.js';
-export { collectorGoodsWanted, type EntryStatus, entryStatus } from './progress.js';
+export { collectorGoodsWanted } from './progress.js';
 
 /**
  * The HouseBuild module — the executor over the authored {@link BuildOrderEntry} list. It walks the

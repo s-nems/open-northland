@@ -15,6 +15,7 @@ export {
   constructionSitePlots,
   dynamicBlockedCells,
   dynamicBlockOverlay,
+  walkBlockedBodyOf,
 } from './blocked.js';
 export { buildingBlockedCells } from './building-blocked-cache.js';
 export {

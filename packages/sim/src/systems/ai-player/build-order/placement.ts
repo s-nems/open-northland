@@ -8,7 +8,7 @@ import type { SystemContext } from '../../context.js';
 import { buildingFootprintOf } from '../../footprint/geometry.js';
 import { placementProbe } from '../../footprint/index.js';
 import { anchorNodeOf, firstRingNode, goodTypeByContentId, nearestLiveResource } from '../shared.js';
-import type { BuildOrderEntry } from './entries.js';
+import type { BuildOrderEntry, PlacementAffinity } from './entries.js';
 import { BUILD_SEARCH_MAX_RADIUS_NODES } from './entries.js';
 
 // PLACEMENT SPOT SEARCH — where a build-order `place` entry lands: always inside the near-HQ
@@ -26,7 +26,7 @@ function affinityNode(
   terrain: TerrainGraph,
   owned: readonly Entity[],
   hq: HalfCellNode,
-  affinity: NonNullable<Extract<BuildOrderEntry, { kind: 'place' }>['near']>[number],
+  affinity: PlacementAffinity,
 ): HalfCellNode | null {
   switch (affinity.kind) {
     case 'building': {
@@ -135,8 +135,10 @@ export function placementSpot(
   const probe = placementProbe(world, ctx.content, terrain, type.typeId);
   const centre = searchCentre(world, ctx, terrain, owned, hq, entry);
   return firstRingNode(centre.hx, centre.hy, 2 * BUILD_SEARCH_MAX_RADIUS_NODES, (x, y) => {
-    if (!terrain.inBounds(x, y) || !terrain.isBuildable(terrain.nodeAt(x, y))) return false;
+    // The pure-arithmetic HQ-disc test first: an affinity-pulled centre puts up to half of every ring
+    // outside the disc, and a permanently stalled entry re-walks the whole fan every decision.
     if (Math.abs(x - hq.hx) + Math.abs(y - hq.hy) > BUILD_SEARCH_MAX_RADIUS_NODES) return false;
+    if (!terrain.inBounds(x, y) || !terrain.isBuildable(terrain.nodeAt(x, y))) return false;
     if (occupied.has(`${x},${y}`) || !groundAccepted(ctx, terrain, type, entry, x, y)) return false;
     return probe.canPlace(x, y);
   });

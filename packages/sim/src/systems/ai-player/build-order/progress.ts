@@ -26,7 +26,7 @@ export type EntryStatus = 'skip' | 'satisfied' | 'unmet';
 
 /** Whether `from` reaches `target` by walking `upgradeTarget` links upward (strictly below it). The
  *  visited guard bounds a malformed cyclic chain. */
-export function upgradesInto(index: ContentIndex, from: BuildingType, target: BuildingType): boolean {
+function upgradesInto(index: ContentIndex, from: BuildingType, target: BuildingType): boolean {
   const visited = new Set<number>();
   let step: BuildingType | undefined = from;
   while (step !== undefined && !visited.has(step.typeId)) {
@@ -118,10 +118,12 @@ export function upgradeCandidate(
 }
 
 /**
- * The collector goods the build order has REACHED, in list order — the workforce allocator hires a
+ * The collector goods the build order has reached, in list order — the workforce allocator hires a
  * flag gatherer for each (on top of its base goods). An entry is reached while every entry before it
- * is satisfied (or skipped); once reached it stays wanted (the hired collector keeps its post), and
- * a reached-but-unmet collector blocks the entries after it — the plan's sequencing.
+ * is satisfied (or skipped), and a reached-but-unmet collector blocks the entries after it — the
+ * plan's sequencing. Reached state is re-derived each decision, not persisted: if an earlier entry
+ * regresses (a razed home), a later collector drops out of the wanted set and its holder returns to
+ * the pool until the plan re-reaches the entry — self-healing, at the cost of a mid-career re-hire.
  */
 export function collectorGoodsWanted(
   world: World,

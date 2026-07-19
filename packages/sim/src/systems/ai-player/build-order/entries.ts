@@ -38,8 +38,11 @@ export type BuildOrderEntry =
  * 2026-07-18). The affinities encode the plan's adjacency rules: the mason leans toward the stone
  * deposit and the pottery toward the clay pit (both still near the HQ), the farm→mill→bakery/well
  * chain clusters, and the hive/brewery/animal-farm cluster hangs off the well. Level-2 workshops
- * (sewery, joinery, smithy) are built at their level-2 tier DIRECTLY — no level-0 intermediate
- * (user decision 2026-07-18). The iron collector is hired only when the list reaches it. The tail
+ * (sewery, joinery, smithy) are built directly at their level-2 tier with no level-0 intermediate
+ * (user decision 2026-07-18; source-backed — the extracted `jobEnablesHouse` rows enable the `_01`
+ * tiers as separately placeable house types, each charging its own non-cumulative construction
+ * bill, so the direct smithy_01 even skips the `_00` bill's iron unit). The iron collector is
+ * hired only when the list reaches it. The tail
  * is material-ordered: the pottery/mason upgrades unlock tile and ornament, which the level-4/5
  * home upgrades then consume; the barracks faces the map centre; the bakery upgrade comes last and
  * gains a second baker (`OPERATORS_PER_TRADE_BY_BUILDING_ID`).

@@ -72,7 +72,7 @@ export const FLOOD_GUARD_MAX_EXPLORED = 4096;
 
 /**
  * The goal-side exhaust's own settle cap — a sealed pocket larger than this falls back to the full
- * forward flood (today's cost), so the exhaust can never LOSE to the flood by more than this bound
+ * forward flood (today's cost), so the exhaust can never lose to the flood by more than this bound
  * when both sides are huge. Far above any profiled pocket, far under a map flood.
  */
 export const GOAL_EXHAUST_MAX_EXPLORED = 32768;
