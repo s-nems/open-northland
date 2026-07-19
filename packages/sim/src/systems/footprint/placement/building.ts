@@ -3,12 +3,16 @@ import type { World } from '../../../ecs/world.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { buildingFootprintOf, nodeKey } from '../geometry.js';
-import { EXCLUSION, eachBlockerCell, OBSTACLE, placementBlockerVersion } from './blockers.js';
+import { BUILDING_ZONE, EXCLUSION, eachBlockerCell, OBSTACLE, placementBlockerVersion } from './blockers.js';
 
 // BUILDING PLACEMENT — the can-this-building-go-here check: the original's FREE placement rule (collision +
-// a minimum distance encoded by the extracted footprint) evaluated over the OBSTACLE/EXCLUSION channels of
+// a minimum distance encoded by the extracted footprint) evaluated over the blocker channels of
 // ./blockers.ts, in a sparse string form for the one-shot command gate and a dense mask form for the
 // per-frame overlay probe, both stamped from ONE {@link eachBlockerCell} pass so they can never disagree.
+//
+// Two masks drive the rule: the RESERVED-zone blockers (OBSTACLE + other buildings' BUILDING_ZONE — cells a
+// candidate's reserved ring may not touch) and the BODY blockers (resource EXCLUSION — cells its walls may
+// not touch). The `obstacles`/`obstacle` sets below carry the former; `exclusions`/`exclusion` the latter.
 
 /**
  * The command-gate obstacle sets — one throwaway per {@link canPlaceBuilding} check (which probes a
@@ -31,7 +35,9 @@ function collectPlacementBlockers(
   const obstacles = new Set<string>();
   const exclusions = new Set<string>();
   eachBlockerCell(world, content, (x, y, channel) => {
-    if (channel === OBSTACLE) obstacles.add(nodeKey(x, y));
+    // A candidate's reserved ring is rejected by node/wall OBSTACLES and by other buildings' reserved
+    // zones (BUILDING_ZONE) alike — the zone-vs-zone spacing. Its body is rejected by resource EXCLUSION.
+    if (channel === OBSTACLE || channel === BUILDING_ZONE) obstacles.add(nodeKey(x, y));
     else if (channel === EXCLUSION) exclusions.add(nodeKey(x, y));
   });
   return { terrain, obstacles, exclusions };
@@ -46,18 +52,18 @@ function collectPlacementBlockers(
  *  1. every cell of the `reserved` zone (the build-exclusion area — the max-level body plus the
  *     source's margin ring) is on the map and on BUILDABLE terrain (the landscape row's `buildable`
  *     flag: water/rock/void may not touch the zone; a real map's tree/rock margin band is walkable
- *     ground that still rejects here), clear of resource walk-block bodies, and clear of every
- *     existing building's walls;
+ *     ground that still rejects here), clear of resource walk-block bodies, clear of every existing
+ *     building's walls, AND clear of every existing building's reserved zone (zone-vs-zone: two
+ *     buildings' reserved rings may not overlap, so each house keeps every other house a full pair of
+ *     margins away);
  *  2. the new building's `familyBody` (the largest body its level chain reaches — placing level 0
- *     reserves the top level's space) stays out of every resource build-zone and every existing
- *     building's reserved zone. The body-vs-zone test is symmetric, so each house keeps every other
- *     house's walls at least its own margin away — but two margins may overlap, so houses still pack
- *     closely (the original's "very free" placement).
+ *     reserves the top level's space) stays out of every resource build-zone.
  *
  * source-basis: the footprint cells and the body/zone split are the extracted
- * `LogicWalkBlockArea`/`LogicBuildBlockArea` data (faithful); the exact overlap rule (body-vs-zone
- * symmetric, zones may overlap) is approximated — our reading of those two areas, since the engine's check
- * has no oracle.
+ * `LogicWalkBlockArea`/`LogicBuildBlockArea` data (faithful). The zone-vs-zone reading of two reserved
+ * areas is a named gameplay approximation: the engine's check has no oracle, and the earlier body-vs-zone
+ * reading (zones allowed to overlap) let settlements pack about twice as densely as the observed original,
+ * so the reserved rings — the source's own "minimum distance from other houses" — are held disjoint instead.
  */
 function canPlaceAnchor(
   blockers: PlacementBlockers,
@@ -66,15 +72,16 @@ function canPlaceAnchor(
   y: number,
 ): boolean {
   const { terrain } = blockers;
-  // 1. The reserved zone must lie on the map, on buildable ground, and clear of node/wall OBSTACLES.
+  // 1. The reserved zone must lie on the map, on buildable ground, and clear of the reserved-zone
+  //    blockers: node/wall OBSTACLES and every other building's reserved zone (BUILDING_ZONE).
   for (const c of footprint.reserved) {
     const cx = x + c.dx;
     const cy = y + c.dy;
     if (!terrain.inBounds(cx, cy)) return false; // zone off the map edge
     if (!terrain.isBuildable(terrain.nodeAt(cx, cy))) return false; // blocking terrain too close
-    if (blockers.obstacles.has(nodeKey(cx, cy))) return false; // a resource body or a building's walls
+    if (blockers.obstacles.has(nodeKey(cx, cy))) return false; // a resource body, a wall, or another reserved zone
   }
-  // 2. My family body must stay clear of resource + building EXCLUSION zones (the symmetric margin).
+  // 2. My family body must stay clear of resource build-EXCLUSION zones.
   for (const c of footprint.familyBody) {
     if (blockers.exclusions.has(nodeKey(x + c.dx, y + c.dy))) return false;
   }
@@ -112,8 +119,9 @@ export interface PlacementProbe {
 
 /**
  * The overlay's DENSE obstacle representation: one byte per half-cell node (`terrain.width×height`,
- * row-major `y*width+x` — the same index `TerrainGraph.nodeAt` mints), `1` iff that node is an
- * OBSTACLE / EXCLUSION cell. Stamped from the same {@link eachBlockerCell} pass the command gate keys
+ * row-major `y*width+x` — the same index `TerrainGraph.nodeAt` mints), `1` iff that node is a
+ * reserved-zone blocker (OBSTACLE + BUILDING_ZONE) / a body blocker (EXCLUSION). Stamped from the same
+ * {@link eachBlockerCell} pass the command gate keys
  * as strings, but read back as an O(1) typed-array index in the hot loop instead of a `nodeKey`
  * string allocation + `Set<string>` probe — the difference that lets the overlay re-probe a whole
  * visible band (screen × footprint) without stalling a frame, even for a many-hundred-cell footprint.
@@ -132,15 +140,16 @@ function canPlaceOnGrid(grid: PlacementGrid, footprint: BuildingFootprint, x: nu
   const { terrain, obstacle, exclusion } = grid;
   const w = terrain.width;
   const h = terrain.height;
-  // 1. Reserved zone: on the map, on buildable ground, clear of OBSTACLE nodes.
+  // 1. Reserved zone: on the map, on buildable ground, clear of reserved-zone blockers (OBSTACLE nodes
+  //    and other buildings' reserved zones — both stamped into the obstacle mask).
   for (const c of footprint.reserved) {
     const cx = x + c.dx;
     const cy = y + c.dy;
     if (cx < 0 || cy < 0 || cx >= w || cy >= h) return false; // zone off the map edge
     if (!terrain.isBuildable(terrain.nodeAt(cx, cy))) return false; // blocking terrain too close
-    if (obstacle[cy * w + cx] === 1) return false; // a resource body or a building's walls
+    if (obstacle[cy * w + cx] === 1) return false; // a resource body, a wall, or another reserved zone
   }
-  // 2. Family body: clear of EXCLUSION zones. familyBody ⊆ reserved, so every cell here is already
+  // 2. Family body: clear of resource EXCLUSION zones. familyBody ⊆ reserved, so every cell here is already
   //    proven in-bounds by loop 1 — the guard only shields a hand-authored footprint that breaks that.
   for (const c of footprint.familyBody) {
     const cx = x + c.dx;
@@ -195,9 +204,10 @@ function memoizedPlacementGrid(world: World, content: ContentSet, terrain: Terra
   const w = terrain.width;
   const h = terrain.height;
   eachBlockerCell(world, content, (x, y, channel) => {
-    if (channel !== OBSTACLE && channel !== EXCLUSION) return;
+    if (channel !== OBSTACLE && channel !== EXCLUSION && channel !== BUILDING_ZONE) return;
     if (x < 0 || y < 0 || x >= w || y >= h) return; // off-map cells are never queried (see canPlaceOnGrid)
-    (channel === OBSTACLE ? grid.obstacle : grid.exclusion)[y * w + x] = 1;
+    // OBSTACLE and BUILDING_ZONE both reject a reserved zone → the obstacle mask; EXCLUSION rejects a body.
+    (channel === EXCLUSION ? grid.exclusion : grid.obstacle)[y * w + x] = 1;
   });
   gridMemo.set(world, { version, content, terrain, grid });
   return grid;

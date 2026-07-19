@@ -14,7 +14,8 @@ import { testContent } from '../../fixtures/content.js';
 /**
  * The building GROUND-FOOTPRINT mechanics — the original's free placement model:
  *  - a house places anywhere its footprint FITS (no grid fields): its reserved zone on walkable
- *    ground, clear of resource nodes, and body-vs-zone clear of every existing house;
+ *    ground, clear of resource nodes, and zone-vs-zone clear of every existing house (two reserved
+ *    rings may not overlap);
  *  - a standing house (from the grey foundation on) walk-blocks its body cells — paths route around;
  *  - a level-0 house reserves its whole family's space (the `reserved` zone is family-constant);
  *  - settlers interact with a footprinted house at its DOOR cell, not its anchor tile.

@@ -22,8 +22,12 @@ import { ANCHOR_ONLY, buildingFlagBody, buildingFootprintOf } from '../geometry.
  *  - **OBSTACLE** — resource WALK bodies, existing building FAMILY bodies, signpost cells. Rejects a
  *    building candidate's RESERVED zone (the "minimum distance from a node/wall") and any work flag. A
  *    building's door is part of its family body, so it stays walkable for routing but takes no flag.
- *  - **EXCLUSION** — resource BUILD zones + existing building RESERVED zones. Rejects a building
- *    candidate's FAMILY BODY; a margin zone is still valid open ground for a work flag.
+ *  - **EXCLUSION** — resource BUILD zones. Rejects a building candidate's FAMILY BODY (its walls may not
+ *    sit in a resource's build margin); still valid open ground for a work flag.
+ *  - **BUILDING_ZONE** — existing building RESERVED zones. Rejects a building candidate's RESERVED zone,
+ *    so two buildings' reserved rings may not overlap (the zone-vs-zone spacing — see
+ *    {@link import('./building.js') canPlaceAnchor}); still open ground for a work flag. Kept distinct
+ *    from OBSTACLE (which also blocks a flag) and from EXCLUSION (which rejects a body, not a zone).
  *  - **RESOURCE_ANCHOR** — a footprinted resource's own cell, which its walk body need not cover. Blocks a
  *    work flag only; a footprint-less resource contributes OBSTACLE instead (the pre-footprint same-tile
  *    rule), which already covers its anchor for both rules.
@@ -33,9 +37,15 @@ const OBSTACLE = 0;
 const EXCLUSION = 1;
 const RESOURCE_ANCHOR = 2;
 const MARKER = 3;
-type BlockerChannel = typeof OBSTACLE | typeof EXCLUSION | typeof RESOURCE_ANCHOR | typeof MARKER;
+const BUILDING_ZONE = 4;
+type BlockerChannel =
+  | typeof OBSTACLE
+  | typeof EXCLUSION
+  | typeof RESOURCE_ANCHOR
+  | typeof MARKER
+  | typeof BUILDING_ZONE;
 
-export { type BlockerChannel, EXCLUSION, MARKER, OBSTACLE, RESOURCE_ANCHOR };
+export { type BlockerChannel, BUILDING_ZONE, EXCLUSION, MARKER, OBSTACLE, RESOURCE_ANCHOR };
 
 /** Opt-in for the {@link MARKER} channel. Only the work-flag rule consumes markers, so a scan that
  *  ignores the channel must not pay for the delivery-flag store walk; `ignoreFlag` is the flag being
@@ -76,7 +86,7 @@ export function eachBlockerCell(
     const body = buildingFlagBody(content, b.buildingType);
     const zone = fp?.reserved.length ? fp.reserved : ANCHOR_ONLY;
     for (const c of body) visit(hx + c.dx, hy + c.dy, OBSTACLE);
-    for (const c of zone) visit(hx + c.dx, hy + c.dy, EXCLUSION);
+    for (const c of zone) visit(hx + c.dx, hy + c.dy, BUILDING_ZONE);
   }
   if (markers !== undefined) {
     for (const e of world.query(DeliveryFlag, Position)) {
