@@ -8,6 +8,7 @@ import { resourceHarvestAtomics, resourcesNearNode } from '../../resource-index.
 import { manhattan } from '../../spatial.js';
 import { lowestStockedGood } from '../../stores/index.js';
 import type { PlannerContext } from '../planner-context.js';
+import { unreachableGoals } from '../unreachable-goals.js';
 import { nearestByCell } from './cell-index.js';
 import { interactionCell, jobAtomics } from './workplaces.js';
 
@@ -49,7 +50,11 @@ import { interactionCell, jobAtomics } from './workplaces.js';
  * `docs/tickets/sim/clay-work-cell-real-content-resolution.md`. Separately, the check is per-goal, so a work
  * cell that is itself clear yet ringed by blockers (a sealed pocket with no route in) can still win the pick
  * and fail its path — route-level dynamic reachability is a follow-up
- * (`docs/tickets/sim/dynamic-route-reachability.md`).
+ * (`docs/tickets/sim/dynamic-route-reachability.md`). {@link unreachableGoals} blunts that case rather than
+ * closing it: a goal this settler's route just failed on is skipped, so the pick falls through to the next
+ * node instead of re-choosing the doomed one every retry. Where enclosed nodes outnumber routable ones and
+ * sit nearer — measured on dense iron/stone fields — the bounded memo still cycles, which is what the
+ * ticket's route-aware pick is for.
  */
 export function nearestHarvestableFor(
   plan: PlannerContext,
@@ -127,6 +132,9 @@ export function nearestHarvestableFor(
   // building placed over the deposit is the sole extra blocker the pick must still rule out. Reading the
   // shared memo (not composing a `dynamicBlockOverlay` view) keeps this allocation-free per gatherer per tick.
   const buildingBlocked = buildingBlockedCells(world, ctx, terrain);
+  // Cells this settler's own routes just failed to reach — skipped so the re-plan moves on to the next
+  // node instead of re-choosing the doomed one it parked on ({@link unreachableGoals}).
+  const unreachable = unreachableGoals(world, ctx, plan.entity);
   // Ranked from `origin` (the flag when bound, the settler when roaming); the interaction cell still resolves
   // from `here`, the settler's actual route start. Same filter/rank the shared loop applies to every scan.
   const best = nearestByCell(terrain, scanned, origin, (e) => {
@@ -152,6 +160,7 @@ export function nearestHarvestableFor(
     // it rather than latch on and stall (see the fn doc for the clay-under-a-house basis and follow-ups). The
     // settler's own cell is never blocked-for-itself, so a deposit it already stands on still qualifies.
     if (cell !== here && buildingBlocked.has(cell)) return null;
+    if (unreachable?.has(cell) === true) return null; // this settler's route here just failed
     if (manhattan(terrain, origin, cell) > radius) return null; // outside the flag's work radius — leave it be
     if (gate !== undefined && !gate.allowsNode(cell)) return null; // outside the settler's signpost area
     return { cell, payload: null };
@@ -169,12 +178,16 @@ export function nearestHarvestableFor(
 function unreachablePickupCell(
   terrain: TerrainGraph,
   blocked: BlockOverlay,
+  memo: ReadonlySet<NodeId> | null,
   here: NodeId,
   cell: NodeId,
 ): boolean {
   if (cell === here) return false;
   return (
-    !terrain.isWalkable(cell) || blocked.has(cell) || terrain.componentOf(here) !== terrain.componentOf(cell)
+    !terrain.isWalkable(cell) ||
+    blocked.has(cell) ||
+    memo?.has(cell) === true ||
+    terrain.componentOf(here) !== terrain.componentOf(cell)
   );
 }
 
@@ -202,6 +215,7 @@ export function nearestCollectablePileFor(
   const gate = plan.limit ?? undefined; // signpost confinement
   const allowed = jobAtomics(ctx, plan.jobType);
   const blocked = dynamicBlockOverlay(world, ctx, terrain);
+  const unreachable = unreachableGoals(world, ctx, plan.entity);
   // The GroundDrop candidate list: every entry already has GroundDrop+Stockpile+Position (built by
   // collectTargets) — no per-pile marker re-check, and the scan is O(drops), ~0 when none exist.
   const best = nearestByCell(terrain, targets.groundDrops, here, (e) => {
@@ -211,7 +225,7 @@ export function nearestCollectablePileFor(
     const harvestAtomic = targets.harvestAtomicByGood.get(good);
     if (harvestAtomic === undefined || !allowed.has(harvestAtomic)) return null; // not this job's trade
     const cell = interactionCell(world, ctx, terrain, e, here);
-    if (unreachablePickupCell(terrain, blocked, here, cell)) return null; // the walk there would fail — leave the pile for later
+    if (unreachablePickupCell(terrain, blocked, unreachable, here, cell)) return null; // the walk there would fail — leave the pile for later
     if (gate !== undefined && !gate.allowsNode(cell)) return null;
     return { cell, payload: good };
   });
@@ -233,13 +247,14 @@ export function nearestOwnDropFor(
   const { world, ctx, terrain, here, targets, entity: gatherer } = plan;
   const gate = plan.limit ?? undefined; // signpost confinement
   const blocked = dynamicBlockOverlay(world, ctx, terrain);
+  const unreachable = unreachableGoals(world, ctx, gatherer);
   const best = nearestByCell(terrain, targets.groundDrops, here, (e) => {
     const mark = world.tryGet(e, HarvestedBy);
     if (mark === undefined || mark.by !== gatherer) return null; // not this gatherer's own drop — leave it be
     const good = lowestStockedGood(world.get(e, Stockpile));
     if (good === null) return null; // emptied (about to be reaped)
     const cell = interactionCell(world, ctx, terrain, e, here);
-    if (unreachablePickupCell(terrain, blocked, here, cell)) return null; // the walk there would fail — leave the pile for later
+    if (unreachablePickupCell(terrain, blocked, unreachable, here, cell)) return null; // the walk there would fail — leave the pile for later
     if (gate !== undefined && !gate.allowsNode(cell)) return null;
     return { cell, payload: good };
   });

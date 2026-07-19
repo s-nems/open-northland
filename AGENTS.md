@@ -85,6 +85,7 @@ npm run test:watch
 npm run test:content
 npm run test:pipeline
 npm run bench:sim
+npm run soak:gatherers
 npm run check
 npm run check:fix
 npm run scan:structure

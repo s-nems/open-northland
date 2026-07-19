@@ -30,6 +30,7 @@ import {
 } from './content-index/production.js';
 import { maxWorkCellOffset } from './content-index/terrain.js';
 
+export { harvestCapableJobs } from './content-index/atomics.js';
 export { constructionBillForType } from './content-index/construction.js';
 
 /**

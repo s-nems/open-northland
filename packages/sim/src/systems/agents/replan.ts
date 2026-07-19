@@ -17,6 +17,7 @@ import { clearNavState, isTravelling } from '../spatial.js';
 import { type InboundSupplyTally, releaseSupplyRun } from '../stores/index.js';
 import { reconcileYardRoute } from './economy/index.js';
 import { type FarmClaims, releaseFarmTask } from './farming/index.js';
+import { noteUnreachableGoal, pruneUnreachableGoals } from './unreachable-goals.js';
 
 // The planner's per-settler prologue: decide whether a settler is idle enough to re-plan this tick and,
 // when it is, shed every intent a previous tick left on it — so the drive ladder in ./ai.ts sees a clean
@@ -68,6 +69,7 @@ export function releaseStaleIntent(
   inbound: InboundSupplyTally,
 ): boolean {
   reconcileYardRoute(world, e);
+  pruneUnreachableGoals(world, ctx, e); // expire the failed-goal memo before any drive reads it
   if (world.has(e, CurrentAtomic)) return false;
   // Fresh read — reconcileYardRoute may have cleared the request.
   const request = world.tryGet(e, PathRequest);
@@ -78,6 +80,10 @@ export function releaseStaleIntent(
       return false;
     }
     if (ctx.tick < stranded.retryAt) return false;
+    // Remember what failed BEFORE shedding the route: the re-plan below runs the same deterministic
+    // nearest-first target pick, so without the memo it re-chooses this very goal and the settler
+    // loops park→re-pick→fail forever beside reachable work (see {@link noteUnreachableGoal}).
+    noteUnreachableGoal(world, ctx, e, request.goal);
     clearNavState(world, e); // sheds Stranded with the route — fall through and re-plan this tick
   } else if (isTravelling(world, e)) {
     return false;
