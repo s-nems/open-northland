@@ -1,6 +1,7 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
+  AttackOrder,
   Building,
   Health,
   MoveGoal,
@@ -222,15 +223,20 @@ describe('warriors attack enemy buildings', () => {
     expect(sim.world.get(home, Health).hitpoints).toBe(sim.world.get(home, Health).max); // spared
   });
 
-  it('honours an explicit attack order on a building', () => {
-    const sim = new Simulation({ seed: 1, content: siegeContent(), map: grass(8, 1) });
+  it('honours an explicit attack order on a building beyond sight radius', () => {
+    const sim = new Simulation({ seed: 1, content: siegeContent(), map: grass(24, 1) });
     const soldier = warriorAt(sim, 0, 0, P1);
-    const home = buildingAt(sim, 4, 0, HOME, P2); // out of the way, ordered anyway
+    // Node distance 40 — far beyond SIGHT_RADIUS_NODES (16), so ATTACK-stance auto-engagement can never
+    // acquire it: only the order itself can drive this siege (the regression: attackUnit once rejected any
+    // non-Settler target, silently dropping the order, while an in-sight fixture let auto-engage mask it).
+    const home = buildingAt(sim, 20, 0, HOME, P2);
 
     sim.enqueue({ kind: 'attackUnit', entity: soldier, target: home });
-    // Enough ticks to walk across the map AND land the ~40 swings (× 4-tick swing) that raze a 1000-HP home.
-    for (let i = 0; i < 400 && sim.world.isAlive(home); i++) sim.step();
+    sim.step();
+    expect(sim.world.has(soldier, AttackOrder)).toBe(true); // the order is stamped, not dropped
 
+    // Enough ticks to walk across the map AND land the ~40 swings (× 4-tick swing) that raze a 1000-HP home.
+    for (let i = 0; i < 900 && sim.world.isAlive(home); i++) sim.step();
     expect(sim.world.isAlive(home)).toBe(false);
   });
 
@@ -357,5 +363,25 @@ describe('warriors attack enemy buildings', () => {
       expect(sim.world.has(s, PathFollow)).toBe(false);
       expect(sim.world.has(s, PathRequest)).toBe(false);
     }
+  });
+
+  it('deals no slot under a neighbouring body: an ordered siege routes around, never cancels', () => {
+    const sim = new Simulation({
+      seed: 1,
+      content: siegeContent({ meleeRange: { min: 1, max: 1 } }),
+      map: grass(8, 3),
+    });
+    const fort = buildingAt(sim, 4, 1, FORT, P2, 1_000_000);
+    buildingAt(sim, 3, 1, FORT, P1); // the attacker's own fort hugging the target's west face
+    const soldier = warriorAt(sim, 1, 1, P1);
+
+    sim.enqueue({ kind: 'attackUnit', entity: soldier, target: fort });
+    // The target's whole west contact band lies under the friendly fort's body — statically walkable
+    // grass, blocked only by the dynamic nav overlay, and routing denies a stand-in for such a goal.
+    // Dealing one of those cells would fail the route and silently cancel the attack order; the slot
+    // deal must skip them, so the soldier walks around to an open face and lands its swings.
+    const before = sim.world.get(fort, Health).hitpoints;
+    for (let i = 0; i < 300 && sim.world.get(fort, Health).hitpoints === before; i++) sim.step();
+    expect(sim.world.get(fort, Health).hitpoints).toBeLessThan(before);
   });
 });

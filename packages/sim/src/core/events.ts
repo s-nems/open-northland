@@ -76,6 +76,9 @@ export type SimEvent =
       readonly entity: Entity;
       readonly player: number | null;
       readonly buildingType: number;
+      /** Build progress at destruction as a fixed-point fraction of ONE (65536 = finished) — render
+       *  resolves an unfinished site's construction-stage body for the collapse, not the finished one. */
+      readonly built: number;
       readonly at?: HalfCellNode;
     }
   | { readonly kind: 'atomicCompleted'; readonly entity: Entity; readonly atomicId: number }

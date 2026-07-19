@@ -24,7 +24,7 @@ import {
   weaponDamageVsMaterial,
 } from '../readviews/index.js';
 import { canonicalById, clearNavState, entityNode, isTravelling, NodeBuckets } from '../spatial.js';
-import { chase, disengage, type MeleeSlots, returnToAnchor } from './chase.js';
+import { type ChaseTarget, chase, disengage, type MeleeSlots, returnToAnchor } from './chase.js';
 import { type CombatantStance, engageSpec, resolveTarget, stanceMode } from './engagement.js';
 import { fleeDrive } from './flee.js';
 import { HostilePresence } from './presence.js';
@@ -116,11 +116,14 @@ export const combatSystem: System = (world, ctx) => {
 
 /** The live enemy-attackable buildings this tick — a built or half-built structure carrying a Health pool
  *  still above 0. They join the combat TARGET index (a warrior may strike them) but never the seeker loop
- *  (a building never fights back — defensive fire is a separate, deferred feature). Canonical ascending-id. */
+ *  (a building never fights back — defensive fire is a separate, deferred feature). Query order — the
+ *  caller folds the list into its canonical merged sort. */
 function attackableBuildings(world: World): Entity[] {
-  return canonicalById(world.query(Building, Health, Position)).filter(
-    (e) => world.get(e, Health).hitpoints > 0,
-  );
+  const out: Entity[] = [];
+  for (const e of world.query(Building, Health, Position)) {
+    if (world.get(e, Health).hitpoints > 0) out.push(e);
+  }
+  return out;
 }
 
 /**
@@ -277,7 +280,7 @@ function engageCombatant(
 
   const here = entityNode(world, terrain, e);
   const spec = engageSpec(world, ctx, terrain, e, stance, attacker, weapon);
-  const found = resolveTarget(world, ctx, terrain, index, presence, e, here, attacker, spec);
+  const found = resolveTarget(world, ctx, terrain, index, presence, e, here, attacker, spec, bodyNodes);
   if (found === null) {
     // No target: a DEFEND unit walks back to its anchor (holding its post); everyone else disengages back
     // to the economy.
@@ -312,9 +315,10 @@ function engageCombatant(
   // Advance on the target's combat node — its own node for a unit, its nearest wall cell for a building —
   // the same node resolveTarget measured the distance to, so the chase walks toward where the swing lands.
   // A building's full wall list rides along so a chaser whose nearest face is manned encircles to another.
-  const targetNode = combatTargetNode(world, ctx, terrain, here, target, bodyNodes);
-  const targetBody = world.has(target, Building)
-    ? buildingBodyNodes(world, ctx, terrain, target, bodyNodes)
-    : null;
-  chase(world, ctx, terrain, slots, e, here, targetNode, targetBody, weapon, stance, spec.defend);
+  const chaseTarget: ChaseTarget = {
+    entity: target,
+    node: combatTargetNode(world, ctx, terrain, here, target, bodyNodes),
+    body: world.has(target, Building) ? buildingBodyNodes(world, ctx, terrain, target, bodyNodes) : null,
+  };
+  chase(world, ctx, terrain, slots, e, here, chaseTarget, weapon, stance, spec.defend);
 }

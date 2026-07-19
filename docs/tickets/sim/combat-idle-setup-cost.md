@@ -20,6 +20,13 @@ Candidates (profile before picking):
 - Hoist the per-fighter `engageSpec` closure allocations out of the calm path (the early-out fires
   inside `resolveTarget`, after the spec object is built).
 - Memoize or cheapen the `combatPossible` classification reads.
+- **Building-tail scan** (added by the attack-enemy-buildings review, 2026-07-19):
+  `combatPossible`'s tail (`systems/conflict/combat.ts` — the `owners.size >= 1` block) now walks
+  **every** `Health`-bearing building each tick it reaches, on any map with an owned unit and no
+  other combat trigger (a single-player base: all buildings own-owned → no early exit, the whole
+  building set scanned every peaceful tick). Bounded O(buildings) and correct, but a cached
+  distinct-building-owner count (rebuilt on building placement/destruction) would restore the flat
+  cost. Cheap today (buildings ≪ units); revisit if a big single-player base shows up in the bench.
 - While in there: `engageCombatant` is at 7 positional params over three parallel per-tick
   structures — a small per-tick bundle (`{terrain, index, presence, slots}`) would tighten the
   signatures (review note from the presence-gate change).

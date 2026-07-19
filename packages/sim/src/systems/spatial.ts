@@ -64,6 +64,31 @@ export function removeSortedById<T>(arr: T[], id: number, idOf: (item: T) => num
 export { nodeKey };
 
 /**
+ * The node(s) an entity is spatially indexed at — the ONE resolution ladder {@link NodeBuckets} and the
+ * coarse {@link import('./conflict/presence.js').HostilePresence} grid both use, so the "presence tallies
+ * an entity at the same node(s) the index buckets it at" superset invariant lives in a single function
+ * instead of drifting across two parallel copies: the multi-node `nodesOf` (a building at EVERY wall cell)
+ * wins, then the single-node `nodeOf`, then the entity's {@link Position} node; empty when the entity
+ * resolves to none (dropped from the grid).
+ */
+export function indexNodesFor(
+  world: World,
+  e: Entity,
+  nodeOf: ((e: Entity) => { x: number; y: number } | null) | undefined,
+  nodesOf: ((e: Entity) => readonly { x: number; y: number }[] | null) | undefined,
+): readonly { x: number; y: number }[] {
+  if (nodesOf !== undefined) return nodesOf(e) ?? [];
+  if (nodeOf !== undefined) {
+    const node = nodeOf(e);
+    return node === null ? [] : [node];
+  }
+  const p = world.tryGet(e, Position);
+  if (p === undefined) return [];
+  const n = nodeOfPosition(p.x, p.y);
+  return [{ x: n.hx, y: n.hy }];
+}
+
+/**
  * A per-tick spatial bucket: `entities` grouped by their integer node, each bucket preserving the input
  * order. Feed it a {@link canonicalById} list — the ring search's first-accepted-per-node shortcut
  * ({@link NodeBuckets.nearest}) is only canonical because buckets hold ascending ids; a raw `world.query`
@@ -85,27 +110,9 @@ export class NodeBuckets {
     nodesOf?: (e: Entity) => readonly { x: number; y: number }[] | null,
   ) {
     for (const e of entities) {
-      // `nodesOf` (multi-node) wins: combat buckets a building at EVERY wall cell, so a ring search finds
-      // it at the distance to its nearest face. Otherwise the single-node `nodeOf`/Position path.
-      if (nodesOf !== undefined) {
-        const nodes = nodesOf(e);
-        if (nodes !== null) for (const n of nodes) this.push(e, n.x, n.y);
-        continue;
-      }
-      let node: { x: number; y: number } | null;
-      if (nodeOf === undefined) {
-        const p = world.tryGet(e, Position);
-        if (p === undefined) {
-          node = null;
-        } else {
-          const n = nodeOfPosition(p.x, p.y);
-          node = { x: n.hx, y: n.hy };
-        }
-      } else {
-        node = nodeOf(e);
-      }
-      if (node === null) continue;
-      this.push(e, node.x, node.y);
+      // The shared {@link indexNodesFor} ladder — the same node(s) the coarse presence grid tallies, so
+      // the presence early-out stays a superset of what a ring search over these buckets can find.
+      for (const n of indexNodesFor(world, e, nodeOf, nodesOf)) this.push(e, n.x, n.y);
     }
   }
 

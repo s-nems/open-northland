@@ -47,27 +47,52 @@ const sheet: SpriteSheet = {
   families: { houses: { source, atlas } },
 };
 
+const SIM_ONE = 65536; // the sim fixed-point ONE (buildingDestroyed.built is a 0..ONE fraction)
 const razed = (entity: number, buildingType = 13, at: { hx: number; hy: number } = { hx: 4, hy: 6 }) =>
-  ({ kind: 'buildingDestroyed', entity, player: 2, buildingType, at }) as SimEvent;
+  ({ kind: 'buildingDestroyed', entity, player: 2, buildingType, built: SIM_ONE, at }) as SimEvent;
 
 describe('foldBuildingCollapses', () => {
   it('spawns a collapse per positioned buildingDestroyed and expires it once the dust settles', () => {
     const live = foldBuildingCollapses([], [razed(9)], 100);
     expect(live).toHaveLength(1);
-    expect(live[0]).toMatchObject({ entity: 9, typeId: 13, hx: 4, hy: 6, spawnTick: 100 });
-    expect(collapseProgress(live[0] as never, 100)).toBe(0);
-    expect(collapseProgress(live[0] as never, 100 + COLLAPSE_TICKS / 2)).toBeCloseTo(0.5);
-    expect(collapseProgress(live[0] as never, 100 + COLLAPSE_TICKS)).toBe(1);
+    const collapse = live[0];
+    if (collapse === undefined) throw new Error('expected one live collapse');
+    expect(collapse).toMatchObject({ entity: 9, typeId: 13, hx: 4, hy: 6, spawnTick: 100 });
+    expect(collapseProgress(collapse, 100)).toBe(0);
+    expect(collapseProgress(collapse, 100 + COLLAPSE_TICKS / 2)).toBeCloseTo(0.5);
+    expect(collapseProgress(collapse, 100 + COLLAPSE_TICKS)).toBe(1);
     // The sunk body's dust tail keeps the collapse alive for DUST_SETTLE_TICKS more.
     expect(foldBuildingCollapses(live, [], 100 + COLLAPSE_TICKS)).toHaveLength(1);
     expect(foldBuildingCollapses(live, [], 100 + COLLAPSE_LIFETIME_TICKS)).toHaveLength(0);
+  });
+
+  it('collapses an unfinished site as its construction stage, never the finished body', () => {
+    const halfBuilt = {
+      kind: 'buildingDestroyed',
+      entity: 9,
+      player: 2,
+      buildingType: 13,
+      built: SIM_ONE / 2,
+      at: { hx: 4, hy: 6 },
+    } as SimEvent;
+    const live = foldBuildingCollapses([], [halfBuilt], 0);
+    expect(live[0]?.builtPct).toBe(50); // the same whole-percent scale the live construction reveal uses
+    expect(foldBuildingCollapses([], [razed(9)], 0)[0]?.builtPct).toBeUndefined(); // finished → the body
   });
 
   it('drops an event with no position, and caps the live list oldest-first', () => {
     expect(
       foldBuildingCollapses(
         [],
-        [{ kind: 'buildingDestroyed', entity: 1, player: null, buildingType: 13 } as SimEvent],
+        [
+          {
+            kind: 'buildingDestroyed',
+            entity: 1,
+            player: null,
+            buildingType: 13,
+            built: SIM_ONE,
+          } as SimEvent,
+        ],
         0,
       ),
     ).toHaveLength(0);

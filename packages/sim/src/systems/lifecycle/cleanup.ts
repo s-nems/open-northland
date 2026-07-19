@@ -54,23 +54,29 @@ export const cleanupSystem: System = (world, ctx) => {
   for (const e of dead) {
     // A drained building is razed through the demolish path (release its workers), not the settler-death
     // path — it has no marriage/flag/starvation state and must not fire a `settlerDied` stinger.
-    if (world.has(e, Building)) reapBuilding(world, ctx, e);
+    if (world.has(e, Building)) razeBuilding(world, ctx, e);
     else reap(world, ctx, e);
   }
 };
 
-/** Raze a building drained to 0 hitpoints: release every settler bound to it (the same
- *  {@link unbindWorkersOf} the `demolish` command runs, so a besieged workplace doesn't strand its
- *  operators on a dead entity), announce it (`buildingDestroyed`, the render/audio cue), and remove it.
- *  The event is emitted before the destroy so the entity's `Owner`/`Position` are still readable. */
-function reapBuilding(world: World, ctx: SystemContext, e: Entity): void {
+/**
+ * Raze a building — the ONE teardown seam combat razing (a Health pool drained to 0) and the player's
+ * `demolish` command share: release every settler bound to it ({@link unbindWorkersOf}, so a besieged
+ * workplace doesn't strand its operators on a dead entity), announce it (`buildingDestroyed` — the
+ * render/audio collapse cue, carrying the type and build progress so an unfinished site collapses as
+ * scaffolding), and remove it. The event is emitted before the destroy so the entity's
+ * `Owner`/`Position`/`Building` are still readable.
+ */
+export function razeBuilding(world: World, ctx: SystemContext, e: Entity): void {
   const owner = world.tryGet(e, Owner);
   const pos = world.tryGet(e, Position);
+  const building = world.get(e, Building);
   ctx.events.emit({
     kind: 'buildingDestroyed',
     entity: e,
     player: owner?.player ?? null,
-    buildingType: world.get(e, Building).buildingType,
+    buildingType: building.buildingType,
+    built: building.built,
     ...(pos !== undefined ? { at: eventAt(pos.x, pos.y) } : {}),
   });
   unbindWorkersOf(world, e);

@@ -26,9 +26,9 @@ export class DamageSmokeLayer {
   /** World-space, added above the sprite layer — smoke floats over the roofs (like the blood overlay). */
   readonly container = new Container();
   /** One retained node per smoking building, keyed by entity ref. */
-  private readonly nodes = new Map<string, Container>();
-  /** Reused per-frame scratch of keys drawn this frame. */
-  private readonly seen = new Set<string>();
+  private readonly nodes = new Map<number, Container>();
+  /** Reused per-frame scratch of refs drawn this frame. */
+  private readonly seen = new Set<number>();
 
   /**
    * Reposition every plume for this frame. `damaged` is the pool's culled damaged-building list;
@@ -47,16 +47,15 @@ export class DamageSmokeLayer {
       if (emitters <= 0) continue;
       const bounds = boundsOf(ref);
       if (bounds === undefined) continue; // not drawn this frame (culled/hidden) — retire below
-      const key = String(ref);
-      let node = this.nodes.get(key);
+      let node = this.nodes.get(ref);
       if (node === undefined) {
         node = makeSmokeNode();
         this.container.addChild(node);
-        this.nodes.set(key, node);
+        this.nodes.set(ref, node);
       }
       node.visible = true;
       placePlumes(node, ref, emitters, bounds, tick);
-      this.seen.add(key);
+      this.seen.add(ref);
     }
     retireUndrawn(this.nodes, this.seen, (node) => node.destroy({ children: true }));
   }

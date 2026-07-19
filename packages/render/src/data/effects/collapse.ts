@@ -1,5 +1,6 @@
 import type { SimEvent } from '@open-northland/sim';
 import { clamp01 } from '../math.js';
+import { ONE } from '../projection/index.js';
 import { frac } from './blood.js';
 import type { SmokePuffPose } from './smoke.js';
 
@@ -22,6 +23,9 @@ export interface BuildingCollapse {
   /** The content building type (`buildingDestroyed.buildingType`) — re-resolves the body sprite, since
    *  the entity left the snapshot the tick it died. */
   readonly typeId: number;
+  /** Construction progress at destruction as a whole percent (0..99), undefined for a finished building —
+   *  an unfinished site collapses as its construction-stage body, not the complete one. */
+  readonly builtPct?: number;
   /** Half-cell node of the building's anchor (the event's `at`). */
   readonly hx: number;
   readonly hy: number;
@@ -108,9 +112,14 @@ export function foldBuildingCollapses(
   const next = active.filter((c) => tick - c.spawnTick < COLLAPSE_LIFETIME_TICKS);
   for (const ev of events) {
     if (ev.kind !== 'buildingDestroyed' || ev.at === undefined) continue;
+    // An unfinished site (built < ONE) collapses as its construction stage — the same whole-percent
+    // scale the live construction reveal uses — never as the finished body it never became.
+    const builtPct =
+      ev.built < ONE ? Math.min(99, Math.max(0, Math.floor((ev.built * 100) / ONE))) : undefined;
     next.push({
       entity: ev.entity,
       typeId: ev.buildingType,
+      ...(builtPct !== undefined ? { builtPct } : {}),
       hx: ev.at.hx,
       hy: ev.at.hy,
       spawnTick: tick,
