@@ -122,9 +122,38 @@ describe('resolveConstructionDraws — construction-stage stack for an under-con
       { bob: 103, fromPct: 10, toPct: 70 },
       { bob: 101, layer: 'viking4', fromPct: 20, toPct: 100 },
     ]);
+  });
+
+  it('keeps a scaffold past its own window while a higher-stack layer still reveals over it', () => {
+    // At 99% the two scaffolds (windows end at 50/70) are long past their own toPct, but the body above
+    // them (bob 101, [20,100]) is still revealing, so they stay drawn under it — the roof grows on the
+    // scaffold instead of the scaffold vanishing at 70%.
     expect(resolveConstructionDraws(binding, site(2, 99))).toEqual([
+      { bob: 102, fromPct: 0, toPct: 50 },
+      { bob: 103, fromPct: 10, toPct: 70 },
       { bob: 101, layer: 'viking4', fromPct: 20, toPct: 100 },
     ]);
+  });
+
+  it('retires a top-stack teardown overlay at its own window (nothing above covers it)', () => {
+    // The frank-well shape: a full-window body (bob 1, [0,100]) with a teardown overlay drawn ON TOP
+    // (bob 2, [0,30]). The overlay is the highest stack layer, so nothing will cover it — it must come
+    // down at its own 30% window, not linger to completion.
+    const well: BuildingTypeBinding = {
+      byType: {},
+      default: 11,
+      constructionByType: {
+        2: [
+          { bob: 1, fromPct: 0, toPct: 100 },
+          { bob: 2, fromPct: 0, toPct: 30 },
+        ],
+      },
+    };
+    expect(resolveConstructionDraws(well, site(2, 20))).toEqual([
+      { bob: 1, fromPct: 0, toPct: 100 },
+      { bob: 2, fromPct: 0, toPct: 30 },
+    ]);
+    expect(resolveConstructionDraws(well, site(2, 50))).toEqual([{ bob: 1, fromPct: 0, toPct: 100 }]);
   });
 
   it('returns null for a finished building, an unmapped type, and a table-less/plain binding', () => {

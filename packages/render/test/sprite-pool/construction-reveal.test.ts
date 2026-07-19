@@ -111,17 +111,19 @@ describe('SpritePool — construction stages track the eased reveal, not the raw
     expect(visibleStages(layer)).toBe(2);
   });
 
-  it('retires the scaffold once the eased reveal itself climbs past the window, and finishes to the body', () => {
+  it('keeps the scaffold under the revealing body past its own window, and it comes down at completion', () => {
     const layer = new Container();
     const pool = new SpritePool(layer, new TextureCache(), sheet);
     pool.reconcile(poolFrame(snapshotOf([site(55)])));
 
-    // Hold the sim at 75% and let the eased reveal climb; once it clears the scaffold's 60% window the
-    // scaffold retires and only the body stage remains — a smooth handoff, never a blink.
+    // Hold the sim past the scaffold's 60% window and let the eased reveal climb. The scaffold (bob 85)
+    // stays drawn under the body (bob 70) that covers it as it reveals — the body is stacked above it and
+    // its window runs to 100 — so the roof grows on the scaffold instead of the scaffold blinking out.
     for (let f = 0; f < 60; f++) pool.reconcile(poolFrame(snapshotOf([site(75)])));
-    expect(visibleStages(layer)).toBe(1);
+    expect(visibleStages(layer)).toBe(2);
 
-    // Completion (no UnderConstruction, built >= ONE) snaps to the finished body — still one sprite, drawn.
+    // Completion (no UnderConstruction, built >= ONE) snaps to the finished body — the scaffold comes down,
+    // leaving one sprite drawn.
     const done = entity(1, 0, 0, { Building: { buildingType: 13, built: SIM_ONE } });
     pool.reconcile(poolFrame(snapshotOf([done])));
     expect(visibleStages(layer)).toBe(1);

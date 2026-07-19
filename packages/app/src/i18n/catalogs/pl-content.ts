@@ -179,6 +179,11 @@ export const plContent = {
       summary: 'Tragarze zbierają luźne towary, dopóki magazyn nie osiągnie pojemności.',
     },
     // New strings kept in English — the i18n pass owns the Polish catalog (see memory: english-ui-strings).
+    construction: {
+      title: 'Raising buildings',
+      summary:
+        'Foundations rise the normal way — carriers haul wood and stone, builders hammer — while the scaffolding stays up until the roof grows over it and comes down at completion.',
+    },
     upgrade: {
       title: 'Building upgrades',
       summary:
