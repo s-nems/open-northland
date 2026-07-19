@@ -108,8 +108,8 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
     // binding — the clip already picked the sex-correct group), so it resolves before the binding map.
     if (ev.kind === 'chatVoice') {
       const files = index.groupsByLogicSoundType.get(ev.soundType);
-      if (files !== undefined && files.length > 0) {
-        const id = ev.entity as number;
+      const id = eventEntity(ev);
+      if (files !== undefined && files.length > 0 && id !== undefined) {
         neededIds.add(id);
         pending.push({ ev, files, node: null, entity: id, baseGain: CHAT_VOICE_GAIN, fogGated: true });
       }

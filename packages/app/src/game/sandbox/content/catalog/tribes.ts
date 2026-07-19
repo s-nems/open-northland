@@ -85,7 +85,7 @@ export function buildSandboxTribes(
       // The gossip pair: talk/listen (atomics 14/15) time the chat rounds and carry the channel-3
       // refill pulses — bound for the woman/civilist jobs like the original's `setatomic 5/6 14/15`
       // rows; every other trade resolves them through the sim's civilist fallback (the `baseatomics 6`
-      // inheritance, systems/social/gossip.ts).
+      // inheritance, systems/social/gossip/).
       { jobType: JOB_WOMAN, atomicId: TALK_ATOMIC, animation: WOMAN_TALK_ANIMATION },
       { jobType: JOB_WOMAN, atomicId: LISTEN_ATOMIC, animation: WOMAN_LISTEN_ANIMATION },
       { jobType: JOB_CIVILIST, atomicId: TALK_ATOMIC, animation: CIVILIST_TALK_ANIMATION },

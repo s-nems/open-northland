@@ -29,7 +29,7 @@ export const FATIGUE_RISE_PER_TICK: Fixed = HUNGER_RISE_PER_TICK;
 
 /** Enjoyment (the social/company bar) drains at the same rate as hunger — but only for non-fighters; a
  * soldier's/hero's company need is frozen (see {@link needsSystem}). Satisfied by the gossip drive
- * (`systems/social/gossip.ts`): settlers pair up and the talk/listen animation pulses refill the bar. */
+ * (`systems/social/gossip/`): settlers pair up and the talk/listen animation pulses refill the bar. */
 export const ENJOYMENT_RISE_PER_TICK: Fixed = HUNGER_RISE_PER_TICK;
 
 /** A settler starts each need at a seeded random deficit between 0 and this percent of a full bar, so a map

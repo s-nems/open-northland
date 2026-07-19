@@ -45,3 +45,24 @@ export function createSceneSim(
   }
   return sim;
 }
+
+/**
+ * Whether `predicate` holds at SOME tick of a fresh deterministic run of `scene`, sampled after every
+ * step up to `ticks`. The end-of-run world can legitimately miss a transient truth (a harvest trough
+ * between crop generations, an arrived civilian wandering off its goal node to gossip), so a check whose
+ * claim is "this state was reached" re-runs the same seed and watches for the moment instead of the
+ * final frame. Deterministic — the fresh run repeats the scene's own — but a full re-simulation: only
+ * the fallback path of a check should pay it, after the cheap end-tick sample fails.
+ */
+export function holdsSometimeDuring(
+  scene: SceneWorld,
+  ticks: number,
+  predicate: (sim: Simulation) => boolean,
+): boolean {
+  const fresh = createSceneSim(scene);
+  for (let i = 0; i < ticks; i++) {
+    fresh.step();
+    if (predicate(fresh)) return true;
+  }
+  return false;
+}

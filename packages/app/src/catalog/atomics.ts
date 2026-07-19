@@ -55,7 +55,7 @@ export const KISS_ATOMIC = 20;
 export const KISSED_ATOMIC = 21;
 
 /**
- * The gossip pair (`logicdefines.inc` TALK 14 / LISTEN 15, sim `systems/social/gossip.ts`). The man body
+ * The gossip pair (`logicdefines.inc` TALK 14 / LISTEN 15, sim `systems/social/gossip/`). The man body
  * authors one speak clip (`human_man_generic_speak` — the extracted `[gfxanimatomic]` binds it to both
  * actions 14 and 15), the woman body one talk clip (`human_woman_generic_talk`), so on each body both
  * roles bind the same sequence.

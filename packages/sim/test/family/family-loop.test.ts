@@ -4,10 +4,12 @@ import {
   Age,
   Building,
   ChildOrder,
+  CurrentAtomic,
   Female,
   FoodReserve,
   MakingLove,
   Marriage,
+  Position,
   Residence,
   Settler,
   Stockpile,
@@ -15,6 +17,7 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { ONE, type SimEvent, Simulation } from '../../src/index.js';
+import { nodeOfPosition, nodesAdjacent } from '../../src/nav/halfcell.js';
 import {
   BABY_FEMALE,
   familiesOf,
@@ -126,12 +129,26 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
 
     // ── Marry: the woman seeks; the pair walks together, kisses, and carries mirrored Marriages.
     sim.enqueue({ kind: 'marry', entity: woman() });
-    const weddingEvents = runUntil(
-      sim,
-      () => sim.world.has(woman(), Marriage) && sim.world.has(man(), Marriage),
-      400,
-      'wedding',
-    );
+    // The ceremony fires only from ADJACENT lattice nodes (nodesAdjacent, Chebyshev 1): catch it
+    // mid-kiss on this straight-row approach and pin the range — a pair one full cell apart along a
+    // row (2 nodes) must take the extra hop before kissing, never kiss across the gap.
+    const kissRunning = (e: Entity): boolean => {
+      const atomicId = sim.world.tryGet(e, CurrentAtomic)?.atomicId;
+      return atomicId === KISS_ATOMIC_ID || atomicId === KISSED_ATOMIC_ID;
+    };
+    const kissEvents = runUntil(sim, () => kissRunning(woman()) && kissRunning(man()), 400, 'kiss start');
+    const pw = sim.world.get(woman(), Position);
+    const pm = sim.world.get(man(), Position);
+    expect(nodesAdjacent(nodeOfPosition(pw.x, pw.y), nodeOfPosition(pm.x, pm.y))).toBe(true);
+    const weddingEvents = [
+      ...kissEvents,
+      ...runUntil(
+        sim,
+        () => sim.world.has(woman(), Marriage) && sim.world.has(man(), Marriage),
+        400,
+        'wedding',
+      ),
+    ];
     expect(weddingEvents.some((ev) => ev.kind === 'settlersMarried')).toBe(true);
     const kisses = weddingEvents.filter(
       (ev) =>
