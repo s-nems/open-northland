@@ -152,39 +152,53 @@ describe('carryAnimsByGood', () => {
     ['walk_stone', { name: 'walk_stone', start: 4100, length: 96 }],
     ['walk_grain', { name: 'walk_grain', start: 2852, length: 96 }],
     ['walk_iron_gold', { name: 'walk_iron_gold', start: 3044, length: 96 }],
+    ['walk_potion', { name: 'walk_potion', start: 7200, length: 96 }],
+    ['walk_flour', { name: 'walk_flour', start: 6100, length: 96 }],
     ['walk_odd', { name: 'walk_odd', start: 9000, length: 17 }], // not ×8 — must be skipped
   ]);
 
-  it('maps a good whose slug matches a carry sequence verbatim', () => {
-    const table = carryAnimsByGood(seqs, 'walk_', [{ typeId: 5, id: 'wood' }]);
+  /** The `[gfxwalkatomic]` answer for the civilist: honey rides the potion cycle, wool the flour sack. */
+  const carrySeqs = new Map([
+    ['wood', 'walk_wood'],
+    ['honey', 'walk_potion'],
+    ['wool', 'walk_flour'],
+    ['odd', 'walk_odd'],
+    ['ghost', 'walk_absent'], // named by the table, unauthored by this body
+  ]);
+
+  it('binds the cycle the walk table names for a good', () => {
+    const table = carryAnimsByGood(seqs, carrySeqs, [{ typeId: 5, id: 'wood' }]);
     expect(table[5]).toEqual({
       moving: { start: 4580, dirs: 8, stride: 12 },
       idle: { start: 4580, dirs: 8, stride: 12, frames: 1 },
     });
   });
 
-  it('maps aliased slugs (wheat→grain, iron/gold→iron_gold) onto their shared carry look', () => {
-    const table = carryAnimsByGood(seqs, 'walk_', [
-      { typeId: 4, id: 'wheat' },
-      { typeId: 6, id: 'iron' },
-      { typeId: 7, id: 'gold' },
+  it('binds a good onto a cycle its own name would never find (honey → the potion walk)', () => {
+    const table = carryAnimsByGood(seqs, carrySeqs, [
+      { typeId: 12, id: 'honey' },
+      { typeId: 10, id: 'wool' },
     ]);
-    expect(table[4]?.moving).toMatchObject({ start: 2852 });
-    expect(table[6]?.moving).toMatchObject({ start: 3044 });
-    expect(table[7]?.moving).toMatchObject({ start: 3044 }); // iron + gold share the ingot walk
+    expect(table[12]?.moving).toMatchObject({ start: 7200 });
+    expect(table[10]?.moving).toMatchObject({ start: 6100 });
   });
 
-  it('omits a good with no carry sequence (and a non-×8 strip) — the generic gait backs it', () => {
-    const table = carryAnimsByGood(seqs, 'walk_', [
-      { typeId: 10, id: 'wool' }, // no walk_wool authored
-      { typeId: 11, id: 'odd' }, // walk_odd exists but is not a clean ×8 strip
+  it('omits a good the table does not list — the source says that job shows no load', () => {
+    const table = carryAnimsByGood(seqs, carrySeqs, [{ typeId: 57, id: 'sheep' }]);
+    expect(table[57]).toBeUndefined();
+  });
+
+  it('omits a named cycle the body lacks or that is not a clean ×8 strip', () => {
+    const table = carryAnimsByGood(seqs, carrySeqs, [
+      { typeId: 90, id: 'ghost' },
+      { typeId: 11, id: 'odd' },
     ]);
-    expect(table[10]).toBeUndefined();
+    expect(table[90]).toBeUndefined();
     expect(table[11]).toBeUndefined();
   });
 
   it('keys the table on the CONTENT-relative good typeId (the demo wood(1) vs the real wood(5))', () => {
-    const demo = carryAnimsByGood(seqs, 'walk_', [{ typeId: 1, id: 'wood' }]);
+    const demo = carryAnimsByGood(seqs, carrySeqs, [{ typeId: 1, id: 'wood' }]);
     expect(Object.keys(demo)).toEqual(['1']);
   });
 });
@@ -272,7 +286,7 @@ describe('characterBinding', () => {
     // map. A PARTIAL multi-list table is still a <dir>-space table: dir 0 (E) lands on facing 4, dir 1
     // (SE) on facing 5, and the unauthored facings hold empty lists (frameOf pins the pool's first
     // frame there) — never an unremapped pass-through.
-    expect(characterBinding(spec, seqs, [], frameLists)?.byAtomic).toEqual({
+    expect(characterBinding(spec, seqs, [], undefined, frameLists)?.byAtomic).toEqual({
       81: {
         start: 2255,
         frameLists: [[], [], [], [], [79, 79, 80], [97, 97, 98], [], []],
@@ -290,7 +304,7 @@ describe('characterBinding', () => {
     const dirLists = new Map<string, readonly (readonly number[])[]>([
       ['spear_attack', [[0], [1], [2], [3], [4], [5], [6], [7]]],
     ]);
-    const swing = characterBinding(spec, seqs, [], dirLists)?.byAtomic?.[ATTACK_ATOMIC];
+    const swing = characterBinding(spec, seqs, [], undefined, dirLists)?.byAtomic?.[ATTACK_ATOMIC];
     // Facing order is the strip-block compass (0 SW, 1 W, 2 NW, 3 NE, 4 E, 5 SE, 6 S, 7 N): the
     // east-facing swing (facing 4) must play the source dir-0 (E) list, and so on around the ring —
     // GFX_DIR_TO_BLOCK = [4,5,0,1,2,3,7,6], data-pinned by the 123 human-body [gfxanimatomic] records.
@@ -327,32 +341,47 @@ describe('characterBinding', () => {
     });
   });
 
-  it('binds the per-good carry table + the wood generic fallback off the carryPrefix', () => {
-    const seqs = new Map([
-      ['w_wait', { name: 'w_wait', start: 10, length: 30 }],
-      ['w_walk', { name: 'w_walk', start: 100, length: 96 }],
-      ['w_walk_wood', { name: 'w_walk_wood', start: 200, length: 96 }],
-      ['w_walk_stone', { name: 'w_walk_stone', start: 300, length: 96 }],
-    ]);
-    const spec = {
-      rosterId: 'civilian',
-      walkSeq: 'w_walk',
-      waitSeq: 'w_wait',
-      carryPrefix: 'w_walk_',
-    } as const;
-    const binding = characterBinding(spec, seqs, [
-      { typeId: 3, id: 'stone' },
-      { typeId: 10, id: 'wool' }, // unmapped — backed by the generic wood gait
-    ]);
+  const CARRY_SEQS = new Map([
+    ['w_wait', { name: 'w_wait', start: 10, length: 30 }],
+    ['w_walk', { name: 'w_walk', start: 100, length: 96 }],
+    ['w_walk_wood', { name: 'w_walk_wood', start: 200, length: 96 }],
+    ['w_walk_stone', { name: 'w_walk_stone', start: 300, length: 96 }],
+  ]);
+  const CARRY_SPEC = {
+    rosterId: 'civilian',
+    walkSeq: 'w_walk',
+    waitSeq: 'w_wait',
+    carryPrefix: 'w_walk_',
+  } as const;
+  const CARRY_GOODS = [
+    { typeId: 3, id: 'stone' },
+    { typeId: 10, id: 'wool' },
+  ];
+
+  it('binds only what the walk table names — no generic gait to mask the goods it omits', () => {
+    // wool is absent from the table, so it must stay absent from the binding: a generic fallback here
+    // is what put a wood log in a honey-hauler's hands.
+    const binding = characterBinding(
+      CARRY_SPEC,
+      CARRY_SEQS,
+      CARRY_GOODS,
+      new Map([['stone', 'w_walk_stone']]),
+    );
     expect(binding?.carrying).toEqual({
-      moving: { start: 200, dirs: 8, stride: 12 },
-      idle: { start: 200, dirs: 8, stride: 12, frames: 1 },
       byGood: {
         3: {
           moving: { start: 300, dirs: 8, stride: 12 },
           idle: { start: 300, dirs: 8, stride: 12, frames: 1 },
         },
       },
+    });
+  });
+
+  it('falls back to the carryPrefix wood gait only when the IR carries no walk table', () => {
+    const binding = characterBinding(CARRY_SPEC, CARRY_SEQS, CARRY_GOODS);
+    expect(binding?.carrying).toEqual({
+      moving: { start: 200, dirs: 8, stride: 12 },
+      idle: { start: 200, dirs: 8, stride: 12, frames: 1 },
     });
   });
 

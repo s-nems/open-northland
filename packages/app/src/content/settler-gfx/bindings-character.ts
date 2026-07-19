@@ -13,43 +13,6 @@ import { eightDirAnim, type GoodRef, singleDirAnim } from './seq-anim.js';
 import { DIRS } from './sequences.js';
 
 /**
- * Good id-slug → carry-walk sequence suffix, where the slug itself isn't the suffix. The body bob sets
- * name their loaded gaits `<body>_walk_<suffix>` (walk_wood, walk_stone, walk_iron_gold, …); most real
- * IR good slugs match their suffix verbatim (wood/stone/mud/flour/bread/…), and this table maps the
- * rest onto the closest authored carry look (several goods share one: every potion → `potion`, iron and
- * gold share the `iron_gold` ingot walk). There is no readable good→carry-animation table in the mod
- * (the base binding is encrypted `.cif`), so this name join is an approximation — source basis
- * "Carry look per good". A slug in neither the sequences nor this table falls back to the character's
- * generic loaded gait (the wood log), then to its plain walk.
- */
-const CARRY_SEQ_SUFFIX: Readonly<Record<string, string>> = {
-  wheat: 'grain',
-  iron: 'iron_gold',
-  gold: 'iron_gold',
-  coin: 'iron_gold',
-  food_simple: 'food',
-  food_extra: 'food',
-  fruit: 'food',
-  sausage: 'meat',
-  tool_wooden: 'tools',
-  tool_iron: 'tools',
-  bow_short: 'shortbow',
-  bow_long: 'longbow',
-  spear_wooden: 'spear',
-  spear_iron: 'spear',
-  sword_shord: 'sword', // the real IR's slug (sic) for the short sword
-  sword_long: 'broadsword',
-  holy_oil: 'incense',
-  potion_food_small: 'potion',
-  potion_food_big: 'potion',
-  potion_stamina_small: 'potion',
-  potion_stamina_big: 'potion',
-  potion_heal_small: 'potion',
-  potion_heal_big: 'potion',
-  plank: 'wood', // the demo slice's sawn plank — hauled like the log it came from
-};
-
-/**
  * `gfxanimframelistdir <dir>` index → the render facing (the `CR_Hum_Body` strip-block order
  * `0 SW, 1 W, 2 NW, 3 NE, 4 E, 5 SE, 6 S, 7 N` — source basis "Settler facing"). The source's `<dir>`
  * space is the engine's movement-direction ring: the staggered-lattice hex neighbours clockwise from
@@ -79,21 +42,26 @@ function frameListsByFacing(dirLists: readonly (readonly number[])[]): readonly 
 }
 
 /**
- * Build the per-`goodType` loaded-gait table for one body: for each content good, resolve its carry
- * sequence `<prefix><suffix>` (suffix = the slug, via {@link CARRY_SEQ_SUFFIX} when aliased) and bind
- * `moving` to the full ×8 cycle + `idle` to its first-frame hold (the still loaded pose a depositor
- * stands in). A good whose sequence is missing (or not a clean ×8 strip) is simply omitted — the
- * generic carrying slots back it. Pure.
+ * Build the per-`goodType` loaded-gait table for one body from the original's `[gfxwalkatomic]` table
+ * ({@link import('../ir.js').carryWalkSeqs}, good slug → body bobseq for this job): bind `moving` to the
+ * named ×8 cycle and `idle` to its first-frame hold (the still loaded pose a depositor stands in). The
+ * result is keyed on the RUNNING content set's `typeId` — `carrySeqBySlug` is in the decoded IR's
+ * id-space, and the slug is what survives between the two (the sandbox's honey is not the IR's honey).
+ *
+ * A good with no record for this job is omitted, which is the source's own answer rather than a gap: it
+ * shows no load for that good (a soldier binds its empty walk for every good). A named sequence the body
+ * doesn't author, or one that isn't a clean ×8 strip, is likewise skipped. Pure.
  */
 export function carryAnimsByGood(
   seqByName: ReadonlyMap<string, BobSeqRow>,
-  prefix: string,
+  carrySeqBySlug: ReadonlyMap<string, string>,
   goods: readonly GoodRef[],
 ): NonNullable<CarryingBinding['byGood']> {
   const out: Record<number, { idle: SpriteFrameRef; moving: SpriteFrameRef }> = {};
   for (const good of goods) {
-    const suffix = CARRY_SEQ_SUFFIX[good.id] ?? good.id;
-    const moving = eightDirAnim(seqByName, prefix + suffix);
+    const seq = carrySeqBySlug.get(good.id);
+    if (seq === undefined) continue;
+    const moving = eightDirAnim(seqByName, seq);
     if (moving === undefined) continue;
     out[good.typeId] = { moving, idle: { ...moving, frames: 1 } };
   }
@@ -103,14 +71,17 @@ export function carryAnimsByGood(
 /**
  * Build one character's {@link SettlerStateBinding} from its spec + its body's decoded `[bobseq]` rows:
  * walk → `moving`, the wait (loop or walk-hold) → `idle`, the spec's atomics → `byAtomic`, and the
- * per-good carry table (+ the wood-log generic fallback) → `carrying`. Returns `null` when neither the
- * walk nor a loop wait resolves (an IR predating this body's sequences) — the character is then dropped
- * and its jobs fall back to the default look, never a bogus frame range. Pure.
+ * per-good carry table → `carrying`. Returns `null` when neither the walk nor a loop wait resolves (an
+ * IR predating this body's sequences) — the character is then dropped and its jobs fall back to the
+ * default look, never a bogus frame range. Pure.
  */
 export function characterBinding(
   spec: CharacterSpec,
   seqByName: ReadonlyMap<string, BobSeqRow>,
   goods: readonly GoodRef[],
+  /** The `[gfxwalkatomic]` loaded-gait table for this spec's job (good slug → body bobseq). Empty on an
+   *  IR without the lane, which falls the body back to its generic loaded gait. */
+  carrySeqBySlug?: ReadonlyMap<string, string>,
   attackFrameLists?: ReadonlyMap<string, readonly (readonly number[])[]>,
   /** Per-atomic `[gfxanimatomic]` frame-list tables (atomic id → seq name → per-`<dir>` lists) for the
    *  spec's {@link CharacterSpec.dirListAtomics} — the attack mechanism generalized (farmer clips). */
@@ -189,13 +160,17 @@ export function characterBinding(
         }
       : undefined;
 
-  // The generic loaded gait: the body's wood-log walk (the one carry look every body that hauls at all
-  // authors), backing any good without its own cycle. A body with no carry sequences (children, the
-  // soldiers) hauls invisibly on its plain walk — faithful enough: those never carry in the original.
-  const carryByGood =
-    spec.carryPrefix !== undefined ? carryAnimsByGood(seqByName, spec.carryPrefix, goods) : {};
+  // The loaded gait, from the original's own `[gfxwalkatomic]` table. When that table covers this job,
+  // it is complete: a good it omits genuinely draws no load, so no generic fallback is applied — one
+  // would put a wood log in the hands of every good the table leaves out. The `<prefix>wood` gait is the
+  // floor only for an IR without the lane, where the alternative is hauling nothing at all.
+  const carryByGood = carrySeqBySlug !== undefined ? carryAnimsByGood(seqByName, carrySeqBySlug, goods) : {};
   const genericCarry =
-    spec.carryPrefix !== undefined ? eightDirAnim(seqByName, `${spec.carryPrefix}wood`) : undefined;
+    carrySeqBySlug === undefined || carrySeqBySlug.size === 0
+      ? spec.carryPrefix !== undefined
+        ? eightDirAnim(seqByName, `${spec.carryPrefix}wood`)
+        : undefined
+      : undefined;
   const carrying =
     genericCarry !== undefined || Object.keys(carryByGood).length > 0
       ? {

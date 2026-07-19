@@ -10,6 +10,7 @@ import { HumanJobExperienceType, JobType } from '../economy/jobs.js';
 import { GfxAnimAtomic } from '../graphics/atomic-anims.js';
 import { BobSequenceSet } from '../graphics/bob-sequences.js';
 import { BuildingBob, BuildingConstructionLayer, BuildingOverlay } from '../graphics/building-bobs.js';
+import { GfxWalkAtomic } from '../graphics/walk-anims.js';
 import { GatheringPipeline, LandscapeGfx, LandscapeType } from '../landscape/objects.js';
 import {
   GfxPattern,
@@ -56,6 +57,8 @@ export const ContentSet = z.strictObject({
   bobSequences: z.array(BobSequenceSet).default([]),
   /** `[gfxanimatomic]` atomic-action → directional body-animation bindings (render-binding data). */
   gfxAtomics: z.array(GfxAnimAtomic).default([]),
+  /** `[gfxwalkatomic]` good → loaded-gait bindings — the original's own carry-look table. */
+  gfxWalkAtomics: z.array(GfxWalkAtomic).default([]),
   buildingBobs: z.array(BuildingBob).default([]),
   constructionLayers: z.array(BuildingConstructionLayer).default([]),
   /** `[GfxHouse]` `GfxOverlay` type-4 animated state overlays (the mill rotor — render-binding data). */

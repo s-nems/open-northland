@@ -13,6 +13,7 @@ export type {
 export {
   extractBobSequences,
   extractGfxAnimAtomics,
+  extractGfxWalkAtomics,
   extractGraphicsBindings,
   extractJobBaseGraphics,
   extractJobChangeGraphics,
