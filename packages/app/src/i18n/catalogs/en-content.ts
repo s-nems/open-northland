@@ -177,6 +177,11 @@ export const enContent = {
       title: 'Warehouse logistics',
       summary: 'Carriers collect loose goods until each warehouse capacity is reached.',
     },
+    construction: {
+      title: 'Raising buildings',
+      summary:
+        'Foundations rise the normal way — carriers haul wood and stone, builders hammer — while the scaffolding stays up until the roof grows over it and comes down at completion.',
+    },
     upgrade: {
       title: 'Building upgrades',
       summary:

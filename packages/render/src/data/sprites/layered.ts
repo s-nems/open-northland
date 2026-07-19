@@ -69,11 +69,15 @@ export interface ConstructionDraw extends BuildingDraw {
 /**
  * Resolve the stack of construction-stage draws an under-construction building shows, or `null` when the
  * normal body draw applies (no {@link DrawItem.builtPct}, or no construction layers bound for the type).
- * The result is every layer whose `[fromPct, toPct]` range contains the progress, in the table's stacking
- * order (the source's file order — the finished body is listed so it lands on top at high progress).
- * Ranges overlap by design, so mid-build shows several stacked stages. An empty active set (a gap in the
- * ranges) falls back to the lowest-`fromPct` layer — the earliest stage, not whatever is listed first —
- * so a site never draws as nothing.
+ * A layer is active from its `fromPct` on; it stays drawn past its own `toPct` until every higher-stack
+ * layer above it has also finished revealing — the max `toPct` of the layer and everything stacked over
+ * it. So a scaffold (e.g. the bakery's roof scaffold) persists under the roof body that covers it as that
+ * body reveals, instead of vanishing the instant its own window ends, while a top-stack layer with nothing
+ * above it (the frank well's teardown overlay) still retires at its own `toPct`. Layers are in the
+ * source's file order — the finished body last, so it lands on top at high progress. An empty active set
+ * (progress below every `fromPct`) falls back to the lowest-`fromPct` layer so a site never draws as
+ * nothing. Source basis: the `[fromPct, toPct]` windows are extracted; the persist-until-covered handoff
+ * is a named approximation of the original's scaffold teardown.
  */
 export function resolveConstructionDraws(
   binding: number | BuildingTypeBinding,
@@ -83,7 +87,15 @@ export function resolveConstructionDraws(
   const layers = binding.constructionByType?.[item.typeId];
   if (layers === undefined || layers.length === 0) return null;
   const pct = item.builtPct;
-  const active = layers.filter((l) => pct >= l.fromPct && pct <= l.toPct);
+  // Suffix-max of toPct in stacking order (index ascending = drawn on top): the effective end each layer
+  // stays drawn to, extended to cover every higher layer still revealing over it.
+  const effectiveTo: number[] = new Array(layers.length);
+  let maxTo = 0;
+  for (let i = layers.length - 1; i >= 0; i--) {
+    maxTo = Math.max(maxTo, (layers[i] as ConstructionLayerRef).toPct);
+    effectiveTo[i] = maxTo;
+  }
+  const active = layers.filter((l, i) => pct >= l.fromPct && pct <= (effectiveTo[i] as number));
   const chosen =
     active.length > 0
       ? active
