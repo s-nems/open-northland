@@ -1,9 +1,12 @@
 import type { SimEvent } from '@open-northland/sim';
-import { Container, Sprite } from 'pixi.js';
+import { Container, Graphics, Sprite } from 'pixi.js';
 import {
   type BuildingCollapse,
+  COLLAPSE_LIFETIME_TICKS,
+  collapseDustPuff,
   collapseKey,
   collapseProgress,
+  DUST_PUFFS,
   foldBuildingCollapses,
 } from '../../data/effects/index.js';
 import { depthKey, isVisible, type Viewport } from '../../data/projection/index.js';
@@ -21,10 +24,13 @@ import { retainOffscreen, retireUndrawn } from './retained-pool.js';
  * entity left the snapshot the same tick) and drawn for {@link import('../../data/effects/collapse.js')}'s
  * sink window with its graphic shifted DOWN while its lowest pixel rows are clipped at the ground line
  * ({@link TextureCache.croppedBottom} — the mirror of the construction rise; the original's
- * `PrintBob_UsingCollapseTimeMask`). Retained like the combat-effects layer: one node per collapse,
- * minted once, then only re-cropped/re-positioned/culled; nodes join the depth-sorted sprite layer so
- * fighters still occlude correctly around the falling body. Cast-shadow layers are skipped — a sinking
- * body's ground shadow would crop nonsensically, and the shadow vanishing at the first crack reads fine.
+ * `PrintBob_UsingCollapseTimeMask`). A dense dust cloud churns along the ground line the whole while —
+ * it hides the hard crop edge, so the body reads as sinking INTO the dust — and settles for a few ticks
+ * after the body is gone ({@link collapseDustPuff}). Retained like the combat-effects layer: one node
+ * per collapse, minted once, then only re-cropped/re-positioned/culled; nodes join the depth-sorted
+ * sprite layer so fighters still occlude correctly around the falling body. Cast-shadow layers are
+ * skipped — a sinking body's ground shadow would crop nonsensically, and the shadow vanishing at the
+ * first crack reads fine.
  */
 export class CollapseLayer {
   /** One retained node per live collapse, keyed by {@link collapseKey}. */
@@ -46,13 +52,14 @@ export class CollapseLayer {
     this.collapses = foldBuildingCollapses(this.collapses, events, tick);
   }
 
-  /** Advance every live collapse: crop/sink its sprites by the tick's progress, cull off-screen ones,
-   *  retire the finished. `tick` is interpolated render time so the sink is smooth at any frame rate. */
+  /** Advance every live collapse: crop/sink its sprites by the tick's progress, churn the ground dust,
+   *  cull off-screen ones, retire the settled. `tick` is interpolated render time so the sink is smooth
+   *  at any frame rate. */
   draw(elevation: ElevationField, viewport: Viewport, tick: number): void {
     this.seen.clear();
     for (const c of this.collapses) {
-      const progress = collapseProgress(c, tick);
-      if (progress >= 1) continue; // fully sunk — retired below
+      const age = tick - c.spawnTick;
+      if (age >= COLLAPSE_LIFETIME_TICKS) continue; // body sunk and dust settled — retired below
       const key = collapseKey(c);
       const p = projectNode(elevation, c.hx, c.hy);
       let node = this.nodes.get(key);
@@ -70,7 +77,8 @@ export class CollapseLayer {
       node.visible = true;
       node.position.set(p.x, p.y);
       node.zIndex = depthKey(p.x, p.y) + paintOrderBias('building') * SCREEN_PAINT_EPS;
-      this.sinkTo(node, progress);
+      this.sinkTo(node, collapseProgress(c, tick));
+      poseDust(node as CollapseNode, c.entity, age);
       this.seen.add(key);
     }
     retireUndrawn(this.nodes, this.seen, (node) => node.destroy({ children: true }));
@@ -82,13 +90,17 @@ export class CollapseLayer {
   }
 
   /** Mint a collapse node: the building body's resolved atlas layers (finished state, shadows skipped),
-   *  each a child Sprite carrying its {@link ResolvedLayer} for the per-frame crop. */
+   *  each a child Sprite carrying its {@link ResolvedLayer} for the per-frame crop, topped with the
+   *  ground-line dust cloud (drawn last, so it covers the sprites' crop edge). */
   private makeNode(c: BuildingCollapse): Container | null {
     // A minimal finished-building item: no builtPct/upgradePct, so the body (not a stage stack) resolves.
     const item: DrawItem = { kind: 'building', ref: c.entity, x: 0, y: 0, depth: 0, typeId: c.typeId };
     const layers = resolveLayers(this.sheet, item, 0);
     if (layers === null || layers.length === 0) return null;
-    const node = new Container();
+    const node = new Container() as CollapseNode;
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let baseY = -Infinity;
     for (const layer of layers) {
       if (layer.shadow === true) continue;
       const spr = new Sprite(this.textures.get(layer.source, layer.frame));
@@ -96,11 +108,22 @@ export class CollapseLayer {
       spr.scale.set(layer.scale);
       (spr as CollapseSprite).collapseLayer = layer;
       node.addChild(spr);
+      minX = Math.min(minX, layer.frame.offsetX * layer.scale);
+      maxX = Math.max(maxX, (layer.frame.offsetX + layer.frame.width) * layer.scale);
+      baseY = Math.max(baseY, (layer.frame.offsetY + layer.frame.height) * layer.scale);
     }
     if (node.children.length === 0) {
       node.destroy();
       return null;
     }
+    const dust = new Container();
+    for (let i = 0; i < DUST_PUFFS; i++) {
+      dust.addChild(new Graphics().circle(0, 0, 1).fill({ color: DUST_COLOUR }));
+    }
+    dust.position.set((minX + maxX) / 2, baseY);
+    node.addChild(dust);
+    node.dust = dust;
+    node.dustHalfWidth = (maxX - minX) / 2;
     return node;
   }
 
@@ -120,6 +143,30 @@ export class CollapseLayer {
       spr.position.set(layer.frame.offsetX * layer.scale, (layer.frame.offsetY + hiddenBottom) * layer.scale);
     }
   }
+}
+
+/** The warm grey of collapse dust — a shade off the damage smoke, so debris reads distinct from fire smoke. */
+const DUST_COLOUR = 0x9b9186;
+
+/** Pose the node's dust cloud for this frame: every puff churned by {@link collapseDustPuff} around the
+ *  cloud container sitting at the body's base-line center. */
+function poseDust(node: CollapseNode, seed: number, age: number): void {
+  const dust = node.dust;
+  if (dust === undefined) return;
+  const halfWidth = node.dustHalfWidth ?? 0;
+  for (let i = 0; i < dust.children.length; i++) {
+    const puff = dust.children[i] as Graphics;
+    const pose = collapseDustPuff(seed, i, age, halfWidth);
+    puff.position.set(pose.x, pose.y);
+    puff.scale.set(pose.radius);
+    puff.alpha = pose.alpha;
+  }
+}
+
+/** A collapse node with its dust-cloud container and the body's half-width riding along for the churn. */
+interface CollapseNode extends Container {
+  dust?: Container;
+  dustHalfWidth?: number;
 }
 
 /** A collapse node's child sprite with its resolved layer riding along for the per-frame crop. */

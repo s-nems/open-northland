@@ -2,8 +2,12 @@ import type { SimEvent } from '@open-northland/sim';
 import { Container, type Sprite, type TextureSource } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import {
+  COLLAPSE_LIFETIME_TICKS,
   COLLAPSE_TICKS,
+  collapseDustPuff,
   collapseProgress,
+  DUST_PUFFS,
+  DUST_SETTLE_TICKS,
   foldBuildingCollapses,
   MAX_ACTIVE_COLLAPSES,
 } from '../src/data/effects/index.js';
@@ -47,14 +51,16 @@ const razed = (entity: number, buildingType = 13, at: { hx: number; hy: number }
   ({ kind: 'buildingDestroyed', entity, player: 2, buildingType, at }) as SimEvent;
 
 describe('foldBuildingCollapses', () => {
-  it('spawns a collapse per positioned buildingDestroyed and expires it after COLLAPSE_TICKS', () => {
+  it('spawns a collapse per positioned buildingDestroyed and expires it once the dust settles', () => {
     const live = foldBuildingCollapses([], [razed(9)], 100);
     expect(live).toHaveLength(1);
     expect(live[0]).toMatchObject({ entity: 9, typeId: 13, hx: 4, hy: 6, spawnTick: 100 });
     expect(collapseProgress(live[0] as never, 100)).toBe(0);
     expect(collapseProgress(live[0] as never, 100 + COLLAPSE_TICKS / 2)).toBeCloseTo(0.5);
     expect(collapseProgress(live[0] as never, 100 + COLLAPSE_TICKS)).toBe(1);
-    expect(foldBuildingCollapses(live, [], 100 + COLLAPSE_TICKS)).toHaveLength(0);
+    // The sunk body's dust tail keeps the collapse alive for DUST_SETTLE_TICKS more.
+    expect(foldBuildingCollapses(live, [], 100 + COLLAPSE_TICKS)).toHaveLength(1);
+    expect(foldBuildingCollapses(live, [], 100 + COLLAPSE_LIFETIME_TICKS)).toHaveLength(0);
   });
 
   it('drops an event with no position, and caps the live list oldest-first', () => {
@@ -72,6 +78,41 @@ describe('foldBuildingCollapses', () => {
   });
 });
 
+describe('collapseDustPuff', () => {
+  it('is deterministic, billows in at the crash, and settles to nothing by the end of the tail', () => {
+    expect(collapseDustPuff(9, 3, 7, 20)).toEqual(collapseDustPuff(9, 3, 7, 20));
+    expect(collapseDustPuff(9, 3, 0, 20).alpha).toBeLessThanOrEqual(
+      // The cloud-wide envelope is still ramping at age 0 — never denser than mid-sink.
+      Math.max(...Array.from({ length: COLLAPSE_TICKS }, (_, a) => collapseDustPuff(9, 3, a, 20).alpha)),
+    );
+    for (let i = 0; i < DUST_PUFFS; i++) {
+      expect(collapseDustPuff(9, i, COLLAPSE_LIFETIME_TICKS, 20).alpha).toBe(0);
+    }
+  });
+
+  it('keeps every puff at or below the ground line, spread across the body base', () => {
+    const HALF_W = 20;
+    for (let i = 0; i < DUST_PUFFS; i++) {
+      for (let age = 0; age < COLLAPSE_LIFETIME_TICKS; age++) {
+        const pose = collapseDustPuff(9, i, age, HALF_W);
+        expect(pose.y).toBeLessThanOrEqual(0); // dust rolls low, it never plumes upward far
+        expect(Math.abs(pose.x)).toBeLessThanOrEqual(HALF_W * 2); // near the base, not across the map
+        expect(pose.radius).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('holds the cloud dense through the whole sink window before the settle fade', () => {
+    // At every tick of the sink at least one puff is well past its birth fade — no gap in the mask.
+    for (let age = DUST_SETTLE_TICKS / 2; age <= COLLAPSE_TICKS; age++) {
+      const best = Math.max(
+        ...Array.from({ length: DUST_PUFFS }, (_, i) => collapseDustPuff(9, i, age, 20).alpha),
+      );
+      expect(best).toBeGreaterThan(0.2);
+    }
+  });
+});
+
 describe('CollapseLayer', () => {
   it('mints one sinking node per razed building, crops it as it sinks, and retires it when done', () => {
     const spriteLayer = new Container();
@@ -85,15 +126,29 @@ describe('CollapseLayer', () => {
     expect(spr.texture.frame.height).toBe(BODY_H); // intact at progress 0
     expect(spr.position.y).toBe(-BODY_H); // the frame's own draw offset (feet-anchored)
 
+    // The dust cloud is minted last (drawn over the sprites' crop edge), centered on the body's base
+    // line, one unit circle per puff — churning from the first tick.
+    const dust = node.children[node.children.length - 1] as Container;
+    expect(dust.children).toHaveLength(DUST_PUFFS);
+    expect(dust.position.y).toBe(0); // the fixture frame's bottom edge (offsetY + height) is the ground
+
     // Halfway: the bottom half of the body is clipped and the remainder shifted down by the same rows,
     // so the visible bottom edge stays pinned at the ground line while the roof sinks.
     layer.draw(FLAT, VIEW_ALL, COLLAPSE_TICKS / 2);
     expect(spr.texture.frame.height).toBe(BODY_H / 2);
     expect(spr.position.y).toBe(-BODY_H + BODY_H / 2);
+    expect(dust.children.some((p) => p.alpha > 0)).toBe(true); // the cloud masks the cut
 
-    // Fully sunk (and folded out): the node is destroyed, the layer is empty again.
+    // Fully sunk: the body is hidden but the node stays — the dust settles over the empty plot.
     layer.ingest([], COLLAPSE_TICKS);
     layer.draw(FLAT, VIEW_ALL, COLLAPSE_TICKS);
+    expect(spriteLayer.children).toHaveLength(1);
+    expect(spr.visible).toBe(false);
+    expect(dust.children.some((p) => p.alpha > 0)).toBe(true);
+
+    // Settled (and folded out): the node is destroyed, the layer is empty again.
+    layer.ingest([], COLLAPSE_LIFETIME_TICKS);
+    layer.draw(FLAT, VIEW_ALL, COLLAPSE_LIFETIME_TICKS);
     expect(spriteLayer.children).toHaveLength(0);
   });
 
