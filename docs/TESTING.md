@@ -209,6 +209,26 @@ the drift is visible. Needs being off also means the needs/eat/sleep drives are 
 There is deliberately **no pass/fail threshold** — absolute ms are machine-dependent; a human reads the
 table, and the bench's own check only proves the measured world is deterministic (two runs, one hash).
 
+## The gatherer soak (manual, local — `soak:gatherers`)
+
+The suite proves a mechanic over hundreds of ticks; some economy failures only appear after tens of
+thousands, when the AI has built over its own ground and patches have thinned. **`npm run
+soak:gatherers`** is the long-run observer: it builds the headless twin of
+`?map=magiczny_las&player=overseer&ai=0,1,2,3,4,5&fog=reveal` (real merged content, the authored map,
+every seat under AI — `packages/app/soak/world.ts` reuses `entries/map.ts`'s own world-build chain),
+runs 40k ticks, and reports every collector that stopped collecting: player, trade, good, the tick the
+stall began, and whether it ever recovered. A stall is a settler holding a gatherer trade that neither
+swings a harvest atomic nor carries a load for `ON_SOAK_STALL_TICKS`.
+
+Like the bench it is a diagnostic, not a gate: it needs a real `content/` directory, takes minutes, and
+`packages/app/soak/*.soak.ts` matches no other vitest config — that is what keeps it out of `npm test`,
+CI, and `bench:sim`. Its only assertion is that it observed a non-empty world. The detector's pure half
+(`soak/gatherer-stalls.ts`) is unit-tested in the normal suite
+(`packages/app/test/gatherer-stalls.test.ts`), and a stall it finds gets its regression pinned at sim
+level — the soak reproduces, it does not guard.
+
+Knobs (env): `ON_SOAK_TICKS`, `ON_SOAK_MAP`, `ON_SOAK_SAMPLE_EVERY`, `ON_SOAK_STALL_TICKS`.
+
 ## The agent's checklist (also in AGENTS.md)
 
 1. Write/extend the test at the **lowest level** that proves the change (unit > integration > e2e).

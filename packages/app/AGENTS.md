@@ -133,10 +133,12 @@ that matches its role instead of piling another method onto a growing file:
   queries). The main inspection scene is the `sandbox/` package: `placements.ts` (the authored village/camp
   tables) + `checks.ts` (its check-support queries) + `index.ts` (the builders + `sandboxScene`).
 
-Outside `src/`: **`bench/`** — the sim's per-system benchmark (`npm run bench:sim`; docs/TESTING.md).
-Node-only and on-demand, like `test/`: it is outside the tsconfig build, and nothing but its own
-`vitest.config.ts` collects it. Its world is built from the acceptance scenes' builders — extend those
-rather than growing a second world-builder here.
+Outside `src/`: **`bench/`** — the sim's per-system benchmark (`npm run bench:sim`; docs/TESTING.md) —
+and **`soak/`** — the long-run gatherer idle-loop observer (`npm run soak:gatherers`), which builds the
+real `?map=` world through `entries/map.ts`'s own chain and reports collectors that stopped collecting.
+Both are node-only and on-demand, like `test/`: outside the tsconfig build, each collected by nothing but
+its own `vitest.config.ts` (`*.bench.ts` / `*.soak.ts`). The bench's world comes from the acceptance
+scenes' builders — extend those rather than growing a second world-builder there.
 
 ## URL-flag entries
 
