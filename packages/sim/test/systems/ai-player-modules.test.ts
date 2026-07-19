@@ -1,3 +1,4 @@
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   Building,
@@ -32,6 +33,7 @@ import {
   signpostLatticeOffset,
   workforceModule,
 } from '../../src/systems/ai-player/index.js';
+import { interactionNode } from '../../src/systems/footprint/interaction.js';
 import type { SystemContext } from '../../src/systems/index.js';
 import { aiContent } from '../fixtures/ai-content.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
@@ -146,6 +148,30 @@ function plantPost(sim: Simulation, position: { x: number; y: number }): void {
   sim.world.add(post, Signpost, {
     navRadius: SIGNPOST_NAV_RADIUS_NODES,
     spacingRadius: SIGNPOST_SPACING_RADIUS_NODES,
+  });
+}
+
+/** The fixture HQ is footprint-less; the door tests need one shaped like the extracted `[GfxHouse]`
+ *  records — a walled body with the door outside it, on the west side. */
+const HQ_DOOR = { dx: -1, dy: 0 };
+const HQ_FOOTPRINT = {
+  blocked: [
+    { dx: 0, dy: 0 },
+    { dx: 1, dy: 0 },
+  ],
+  familyBody: [
+    { dx: 0, dy: 0 },
+    { dx: 1, dy: 0 },
+  ],
+  reserved: [-1, 0, 1].flatMap((dy) => [-1, 0, 1, 2].map((dx) => ({ dx, dy }))),
+  door: HQ_DOOR,
+};
+
+function doorHqContent(): ContentSet {
+  const base = aiContent();
+  return parseContentSet({
+    ...base,
+    buildings: base.buildings.map((b) => (b.typeId === HQ_TYPE ? { ...b, footprint: HQ_FOOTPRINT } : b)),
   });
 }
 
@@ -676,6 +702,22 @@ describe('signpost-coverage module (guideBuild)', () => {
     expect(
       withinNodeRadius(next.x, next.y, HQ_X + east.dx, HQ_Y + east.dy, SIGNPOST_TARGET_TOLERANCE_NODES),
     ).toBe(true);
+  });
+
+  it('stands the centre post one cell west of a footprinted HQ door, never in the doorway', () => {
+    // A door is the one passable gate in the walk-block, so an unguarded legal-spot search settles
+    // exactly on it — the post then blocks where the HQ's settlers enter and leave.
+    const sim = new Simulation({ seed: 1, content: doorHqContent(), map: grassNodeMap(64, 32) });
+    placeHq(sim);
+    sim.enqueue({ kind: 'spawnSettler', jobType: SCOUT, x: 10, y: 10, tribe: VIKING, owner: SEAT });
+    sim.step();
+
+    const ctx = { ...ctxOf(sim), content: doorHqContent() };
+    const order = [...signpostCoverageModule.run(sim.world, ctx, SEAT)][0];
+    if (order?.kind !== 'placeSignpost') throw new Error('expected a placeSignpost order');
+    const doorway = interactionNode(sim.world, ctx, entityOfBuilding(sim, HQ_TYPE));
+    expect(doorway).toEqual({ x: HQ_X + HQ_DOOR.dx, y: HQ_Y + HQ_DOOR.dy });
+    expect({ x: order.x, y: order.y }).toEqual({ x: (doorway?.x ?? 0) - 2, y: doorway?.y });
   });
 
   it('extends the lattice only where the settlement builds (the field grows with the buildings)', () => {

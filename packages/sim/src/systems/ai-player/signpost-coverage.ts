@@ -4,6 +4,7 @@ import type { World } from '../../ecs/world.js';
 import type { HalfCellNode } from '../../nav/halfcell.js';
 import { withinNodeRadius } from '../../nav/node-metric.js';
 import type { SystemContext } from '../context.js';
+import { interactionNode } from '../footprint/interaction.js';
 import { SCOUT_JOB } from '../readviews/stances.js';
 import { signpostNetwork, signpostProbe } from '../signposts/index.js';
 import type { AiPlayerModule } from './index.js';
@@ -45,6 +46,11 @@ export function signpostLatticeOffset(q: number, r: number): { dx: number; dy: n
 /** The innermost hex ring — the centre post plus this ring are always wanted (the user's "one beside
  *  the HQ, then six around it"); outer rings need a building nearby. */
 const HQ_RING = 1;
+
+/** The centre post aims one cell WEST of the HQ door rather than at the HQ anchor, which sits inside
+ *  the blocked body and lets the legal-spot search settle on the doorway itself. One cell is two
+ *  nodes on the half-cell lattice (`nav/halfcell.ts`). */
+const CENTRE_DOOR_CLEARANCE_NODES = 2;
 
 /** Every ring-k target is at least k·19 world units from the centre (the mid-edge minimum
  *  k·22·√3/2 ≈ k·19.05, floored) — the divisor bounding how many rings a settlement extent needs. */
@@ -106,6 +112,7 @@ export function nextSignpostTarget(world: World, ctx: SystemContext, player: num
   if (hq === null) return null;
   const anchor = anchorNodeOf(world, hq);
   if (anchor === null) return null;
+  const door = interactionNode(world, ctx, hq);
   const posts = signpostNetwork(world).get(player) ?? [];
   // Any construction state: coverage should arrive with a site, not after it finishes.
   const buildings: HalfCellNode[] = [];
@@ -118,8 +125,11 @@ export function nextSignpostTarget(world: World, ctx: SystemContext, player: num
   for (let ring = 0; ring <= maxRing; ring++) {
     for (const { q, r } of latticeRing(ring)) {
       const offset = signpostLatticeOffset(q, r);
-      const tx = anchor.hx + offset.dx;
-      const ty = anchor.hy + offset.dy;
+      // Ring 0 rides the door, not the anchor, so the centre post ends up beside the entrance.
+      const centre =
+        ring === 0 && door !== null ? { hx: door.x - CENTRE_DOOR_CLEARANCE_NODES, hy: door.y } : anchor;
+      const tx = centre.hx + offset.dx;
+      const ty = centre.hy + offset.dy;
       const wanted =
         ring <= HQ_RING ||
         buildings.some((b) => withinNodeRadius(b.hx, b.hy, tx, ty, SIGNPOST_LATTICE_SPACING_NODES));
@@ -130,7 +140,13 @@ export function nextSignpostTarget(world: World, ctx: SystemContext, player: num
       if (satisfied) continue;
       if (probe === null) probe = signpostProbe(world, ctx.content, terrain, player);
       const p = probe;
-      const spot = firstRingNode(tx, ty, SIGNPOST_TARGET_TOLERANCE_NODES, (x, y) => p.canPlace(x, y));
+      // Never the doorway itself: a post there stands where the HQ's settlers enter and leave.
+      const spot = firstRingNode(
+        tx,
+        ty,
+        SIGNPOST_TARGET_TOLERANCE_NODES,
+        (x, y) => p.canPlace(x, y) && !(door !== null && x === door.x && y === door.y),
+      );
       if (spot !== null) return spot;
     }
   }
