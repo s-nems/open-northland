@@ -101,10 +101,6 @@ export type UnitPanelModel =
 /** The catalog id of the one storage building that also mounts a defence (the HQ's defence section). */
 const HEADQUARTERS_ID = 'headquarters';
 
-/** The "years" a settler reaching adulthood displays as — the meta line's Age ramp top (a display
- *  approximation; the sim's growth cadence is ticks, not a calendar). */
-const ADULT_AGE_YEARS = 16;
-
 export function buildUnitPanelModel(
   snapshot: WorldSnapshot,
   selected: ReadonlySet<number>,
@@ -202,13 +198,13 @@ export function buildUnitPanelModel(
     // Only a born-young (baby/child) settler carries `Age`; that flag, with the job, fixes the drawn body's
     // sex so the name matches the character (mirrors the render body-join in `content/settler-gfx.ts`).
     const young = comps.Age !== undefined;
-    // A child's age in "years" — its Age ticks mapped onto a 0..ADULT_AGE_YEARS ramp (adulthood at
-    // 2×GROWUP_TICKS ⇒ 16 "years"; a display approximation, the sim has no calendar). Appended to the meta.
+    // A child's age in years, read off the sim's measured tick↔year rate (adulthood at 12 years ends the
+    // Age component, so this only ever renders 0..11). Appended to the meta.
     const ageTicks = num((comps.Age as { ticks?: unknown } | undefined)?.ticks);
     const ageSuffix =
       young && ageTicks !== undefined
         ? ` · ${formatMessage(messages().hud.age, {
-            years: Math.floor((ageTicks / (2 * systems.GROWUP_TICKS)) * ADULT_AGE_YEARS),
+            years: Math.floor(ageTicks / systems.TICKS_PER_AGE_YEAR),
           })}`
         : '';
     return {

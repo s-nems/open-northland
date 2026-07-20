@@ -18,13 +18,15 @@
  * job id can equal a real age-class id, but only a born-young settler carries `Age`. `isNonWorkingAge` stays
  * the structural id→stage predicate the JobSystem uses.
  *
- * source-basis: the age-class ids are pinned to `logicdefines.inc` + `jobtypes.ini` (no interpretation). The
- * growth cadence ({@link GROWUP_TICKS}) is approximated — no readable "grows up after N ticks" key exists.
- * A settler grows up keeping the sex it was born with (the `makeChild` order picks it; baby_female →
- * child_female → woman; baby_male → child_male → civilist).
+ * source-basis: the age-class ids are pinned to `logicdefines.inc` + `jobtypes.ini` (no interpretation).
+ * The growth cadence is pinned to observation of the running original ({@link TICKS_PER_AGE_YEAR}); only
+ * the baby→child split inside it is approximated. A settler grows up keeping the sex it was born with
+ * (the `makeChild` order picks it; baby_female → child_female → woman; baby_male → child_male →
+ * civilist).
  */
 
 import { Age, Residence, Settler } from '../../components/index.js';
+import { TICKS_PER_SECOND } from '../../core/loop.js';
 import type { Entity } from '../../ecs/world.js';
 import type { System } from '../context.js';
 
@@ -64,17 +66,26 @@ export function isNonWorkingAge(jobType: number | null): boolean {
   return isBaby(jobType) || isChild(jobType);
 }
 
+/** The age a settler is grown at, and how long reaching it takes at ×1 speed — both measured on the
+ * running original (a settler born at age 0 is an adult at 12 years, after 4 minutes of ×1 play). No
+ * readable rule file carries either: there is no growth key in `jobtypes.ini`/`tribetypes.ini`/`houses.ini`. */
+const ADULT_AGE_YEARS = 12;
+const CHILDHOOD_SECONDS_AT_1X = 4 * 60;
+
+/** Sim ticks per year of a settler's age (240 — one year every 20 s at ×1), derived from the measured
+ * childhood above. The sim has no calendar otherwise; this is the one tick↔year fact, and the HUD's
+ * displayed age reads it rather than re-deriving a ramp. */
+export const TICKS_PER_AGE_YEAR = (CHILDHOOD_SECONDS_AT_1X * TICKS_PER_SECOND) / ADULT_AGE_YEARS;
+
 /**
  * How many ticks a settler spends in each non-working life stage: a baby grows into a child after
- * `GROWUP_TICKS`, a child into an adult after another (so it is employable at `2 * GROWUP_TICKS`).
+ * `GROWUP_TICKS`, a child into an adult after another (so it is employable at `2 * GROWUP_TICKS` — the
+ * measured 12 years / 4 minutes).
  *
- * source-basis (approximated): the original's growth cadence lives below the readable rule files — there is
- * no "grows up after N ticks" key in `jobtypes.ini`/`tribetypes.ini`/`houses.ini` — so this is an unpinned
- * constant in the {@link HUNGER_RISE_PER_TICK} mould, with the real per-stage duration as the
- * calibration-by-observation target. 8192 ticks per stage (≈ two full hunger fills) is long enough to read as
- * a childhood, short enough to exercise the maturation path headless.
+ * The childhood total is pinned to observation; the even split between baby and child is the
+ * approximation — the original's baby→child boundary has not been measured separately.
  */
-export const GROWUP_TICKS = 8192;
+export const GROWUP_TICKS = (ADULT_AGE_YEARS * TICKS_PER_AGE_YEAR) / 2;
 
 /**
  * The `Age.ticks` a settler spawned directly into an age-class job starts with, or null for an adult

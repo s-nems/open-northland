@@ -2,7 +2,7 @@ import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { Age, Position, Residence, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { fx, Simulation } from '../../src/index.js';
+import { fx, Simulation, TICKS_PER_SECOND } from '../../src/index.js';
 import {
   BABY_FEMALE,
   BABY_MALE,
@@ -12,6 +12,7 @@ import {
   GROWUP_TICKS,
   growthSystem,
   isNonWorkingAge,
+  TICKS_PER_AGE_YEAR,
   WOMAN_JOB,
 } from '../../src/systems/index.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
@@ -57,6 +58,14 @@ function run(sim: Simulation, n: number): void {
 }
 
 describe('GrowthSystem — non-working settlers mature into workers', () => {
+  // The measured cadence itself — every other case below is written in terms of GROWUP_TICKS, so only
+  // this one fails if the constant drifts off what was observed in the original.
+  it('a childhood lasts the observed 4 minutes of x1 play, and 12 age-years', () => {
+    const childhoodTicks = GROWUP_TICKS * 2;
+    expect(childhoodTicks / TICKS_PER_SECOND).toBe(4 * 60);
+    expect(childhoodTicks / TICKS_PER_AGE_YEAR).toBe(12);
+  });
+
   it('a baby becomes a child of the same sex after GROWUP_TICKS', () => {
     const sim = new Simulation({ seed: 1, content: growthContent() });
     const she = bornSettler(sim, BABY_FEMALE, 0);
