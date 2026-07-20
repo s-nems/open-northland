@@ -162,14 +162,16 @@ function nearestRecipeConsumer(
  * area sheds it at its feet and re-lifts it next tick). Memoized per planner call — a scan probes few
  * distinct goods, and the answer is position-stable for the one decision the caller makes this tick.
  *
- * Probes the good in its CARRIED form ({@link exportedGoodForm}) — a dish is routed as the edible it
- * becomes on the way out of the kitchen, since that is what the carrier will be holding. The memo keys
- * on that carried form, so two dishes sharing an edible answer from one routing walk.
+ * Pass `from` when the good would be lifted out of a known store: a dish leaving the house that produces
+ * it is routed as the edible it becomes ({@link exportedGoodForm}), since that is what the carrier will be
+ * holding. Without `from` — or from a ground pile, or a store that merely holds the good — the raw form is
+ * routed, so a hunter's meat heap still reaches the animal farm that stocks meat. The memo keys on the
+ * carried form, so two dishes sharing an edible answer from one routing walk.
  */
-export function deliverableGoodProbe(plan: PlannerContext): (goodType: number) => boolean {
+export function deliverableGoodProbe(plan: PlannerContext): (goodType: number, from?: Entity) => boolean {
   const memo = new Map<number, boolean>();
-  return (rawGoodType: number): boolean => {
-    const goodType = exportedGoodForm(plan.ctx, rawGoodType);
+  return (rawGoodType: number, from?: Entity): boolean => {
+    const goodType = carriedGoodForm(plan.world, plan.ctx, from, rawGoodType);
     // Tick-global cheap precondition first ({@link SinkAvailability}): when no store ANYWHERE could take
     // the good, the full routing walk below is skipped — this keeps a saturated settlement (every store
     // full, every idle hauler re-probing each tick) at ~zero probe cost. It deliberately ignores
@@ -232,4 +234,24 @@ function constructionSiteNeeds(
   if (!ownersCompatible(owner, ownerOf(world, e))) return false; // another player's site (same tribe isn't same side)
   const have = (world.get(e, Stockpile).amounts.get(goodType) ?? 0) + inboundSupplyOf(inbound, e, goodType);
   return have < stockCapacity(world, ctx, e, goodType); // room left for this material (and it's a cost good)
+}
+
+/**
+ * The form `goodType` takes on a settler's back when lifted out of `from` — a dish leaving the house that
+ * produces it becomes its edible ({@link exportedGoodForm}); everything else is carried as itself.
+ *
+ * The producer test is what keeps the conversion meaning "out of the kitchen". `meat` is a dish AND a
+ * map-harvested good with its own gathering pipeline: converting it wherever it was found would stop a
+ * porter routing a meat heap to `work_animal_farm`, the one store that stocks meat. Shared by the pickup
+ * rungs' routing probe and by `pickupFromStore`, so plan and effect never disagree about the load.
+ */
+export function carriedGoodForm(
+  world: World,
+  ctx: SystemContext,
+  from: Entity | null | undefined,
+  goodType: number,
+): number {
+  if (from === null || from === undefined) return goodType;
+  if (!buildingProduces(world, ctx, from).includes(goodType)) return goodType;
+  return exportedGoodForm(ctx, goodType);
 }

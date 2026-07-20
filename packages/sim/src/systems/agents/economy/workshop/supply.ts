@@ -139,7 +139,7 @@ export function nearestMissingInputSource(
  * hauling its output never steals a tick it should have spent producing.
  */
 export function workplaceOutputToHaul(
-  deliverable: (goodType: number) => boolean,
+  deliverable: (goodType: number, from?: Entity) => boolean,
   world: World,
   workplace: Entity,
   recipe: Recipe,
@@ -148,7 +148,7 @@ export function workplaceOutputToHaul(
   for (const output of recipe.outputs) {
     if ((stock.get(output.goodType) ?? 0) <= 0) continue; // nothing of this output on hand
     // Deliverable somewhere that isn't this workplace? (The routing itself excludes the producer.)
-    if (deliverable(output.goodType)) {
+    if (deliverable(output.goodType, workplace)) {
       return output.goodType;
     }
   }

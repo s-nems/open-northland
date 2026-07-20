@@ -43,7 +43,7 @@ export function hasHaulableOutput(world: World, ctx: SystemContext, stockpiles: 
  */
 export function nearestWorkplaceOutput(
   index: InteractionCellIndex,
-  deliverable: (goodType: number) => boolean,
+  deliverable: (goodType: number, from?: Entity) => boolean,
   world: World,
   ctx: SystemContext,
   here: NodeId,
@@ -68,7 +68,7 @@ export function nearestWorkplaceOutput(
 function haulableOutputGood(
   world: World,
   ctx: SystemContext,
-  deliverable: (goodType: number) => boolean,
+  deliverable: (goodType: number, from?: Entity) => boolean,
   entity: Entity,
 ): number | null {
   // A construction site's stock is its delivered materials, never finished output — an upgrading
@@ -80,7 +80,7 @@ function haulableOutputGood(
   for (const [goodType, amount] of stockpileEntries(world.get(entity, Stockpile))) {
     if (amount <= 0) continue;
     if (!recipe.outputs.some((o) => o.goodType === goodType)) continue; // only haul outputs
-    if (!deliverable(goodType)) continue; // no reachable sink — never pick a good it couldn't deliver
+    if (!deliverable(goodType, entity)) continue; // no reachable sink — never pick a good it couldn't deliver
     return goodType;
   }
   return null;

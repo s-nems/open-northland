@@ -249,8 +249,8 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
 
     // 2a. PRODUCER / WORKSHOP SUPPLIER — a worker bound to a recipe workshop. A carrier bound there ferries
     // (top up inputs, carry outputs out — it never operates the craft); a craftsman claims a work seat and
-    // produces, fetches a missing input itself when starved (even beside a carrier), and leaves the output
-    // run to its carrier when one is bound. A gatherer bound to a recipe workshop (a collector employed to
+    // produces, fetches a missing input itself when starved, and hauls the output out once it has no seat
+    // and nothing to fetch — carrier bound or not. A gatherer bound to a recipe workshop (a collector employed to
     // feed a smith its ore) is not its operator — it runs the gather drive below and banks its harvest into
     // the building, so it is excluded here rather than routed into the craft loop.
     const workplace = jobCanHarvest(ctx, plan.jobType)

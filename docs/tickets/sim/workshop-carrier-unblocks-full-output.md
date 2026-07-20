@@ -12,12 +12,15 @@ consume.
 fetch target is the input slot's full capacity rather than one cycle's worth. So a blocked workshop
 whose craftsmen are all seated or absent keeps topping input slots up while production stands still.
 
-This is the more source-faithful half, not the leftover. `Cultures 8th Wonder/Data/logic/jobtypes.ini`
-grants the pickup/pileup atomics (22/23) to the builder, collector, fisher and carrier trades — not to
-a baker — and `work_bakery_00` staffs a carrier slot (`jobType 24`) beside its baker. So the original
-most likely routes the unblocking trip through the bound carrier, and the craftsman doing it (the
-pre-existing self-service model) is the approximation. Fixing this side lets the craftsman promotion
-become the fallback it should be rather than the primary path.
+CORRECTION (2026-07-20): an earlier version of this ticket argued the carrier was the source-faithful
+actor because `jobtypes.ini` withholds the pickup/pileup atomics (22/23) from a baker. That is wrong.
+Every craft trade in `jobtypes.ini` carries `baseatomics 6` — the civilist block, which grants 22/23 —
+so jobtype 20 (baker) holds them exactly as jobtype 24 (carrier) does; the trades that re-list 22/23 are
+restating an inherited grant. A craftsman making its own run is therefore source-permitted, and
+`planProducer` now always does it (see docs/tickets/sim/workshop-carrier-plans-rarely.md).
+
+The work below is still worth doing: it is about the CARRIER's own trip order, not about who is allowed
+to carry. A carrier that restocks inputs while its workshop sits on a full shelf wastes the trip.
 
 ## Scope
 

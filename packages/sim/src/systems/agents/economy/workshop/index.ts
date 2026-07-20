@@ -23,11 +23,11 @@ export type WorkSeatClaims = Map<Entity, number>;
  * the workshop, fetch a missing input, haul an output out, then loiter by the door with nothing left to do.
  *
  * Source basis: that a workshop stops on a full product slot and resumes once a unit leaves is observed
- * original behavior. That the CRAFTSMAN makes the trip is the approximation — `jobtypes.ini` grants the
- * pickup/pileup atomics to the carrier trades, not to a baker, so the original likely leaves the run to
- * the workshop's bound carrier. The self-service model predates this rung; see
- * docs/tickets/sim/workshop-carrier-unblocks-full-output.md. Trip scheduling is not decoded either, so
- * fetch-before-haul for a workshop that is merely idle (rather than blocked) stays a named approximation.
+ * original behavior. A craftsman making its own trip is source-permitted — every craft trade in
+ * `jobtypes.ini` carries `baseatomics 6` (the civilist block), which grants the pickup/pileup atomics
+ * 22/23, so the baker holds them exactly as the carrier does. What is NOT decoded is trip scheduling —
+ * who goes first when both a craftsman and a bound carrier could make the run — so the rung order here
+ * (seat, then blocked shelf, then input, then output) stays a named approximation.
  */
 export function planProducer(
   plan: PlannerContext,
@@ -49,7 +49,7 @@ export function planProducer(
   // A full output slot is the one stall no fetch can clear, so shipping that good outranks the next input
   // trip and happens whether or not a carrier is bound to the workshop.
   const blocked = shelfBlockedOutput(world, ctx, workplace);
-  if (blocked !== null && deliverableGoodProbe(plan)(blocked)) {
+  if (blocked !== null && deliverableGoodProbe(plan)(blocked, workplace)) {
     startOutputHaul(plan, workplace, blocked);
     return;
   }
@@ -72,12 +72,9 @@ export function planProducer(
     return;
   }
 
-  // A craftsman with no seat and no input to fetch has nothing left to do here, so it carries its own
-  // output out even when the workshop staffs a carrier. Waiting for that carrier is what wedged a
-  // flour-starved bakery: the carrier plans for its workshop only now and then (it is the settlement's
-  // porter too), so a bakery whose shelf filled while the mill was dry drained at a handful of loaves per
-  // twenty thousand ticks and otherwise stood idle with a full shelf. The workshop's own carrier still
-  // does the same run from its own drive; this rung just stops the craftsman waiting on it.
+  // A craftsman with no seat and no input to fetch carries its own output out, even when the workshop
+  // staffs a carrier: that carrier is the settlement's porter too and reaches its own workshop only
+  // rarely (docs/tickets/sim/workshop-carrier-plans-rarely.md).
   if (haulWorkplaceOutput(plan, workplace, recipe)) return;
   // A surplus/idle craftsman: its seat is taken (or the workshop can't produce), so its door presence adds
   // no production — it may loiter beside the door rather than stand on it.

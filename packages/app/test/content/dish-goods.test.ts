@@ -1,16 +1,8 @@
+import { systems } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { hasRealIr, rawIrUnderTest } from './helpers.js';
 
-/** The six goods the sim converts on their way out of the house that cooks them, and the edible each
- *  becomes — the same table `packages/sim/src/systems/readviews/food.ts` applies. */
-const EDIBLE_FORM_BY_DISH: Readonly<Record<string, string>> = {
-  fruit: 'food_simple',
-  bread: 'food_simple',
-  candy: 'food_extra',
-  meat: 'food_simple',
-  fish: 'food_simple',
-  sausage: 'food_simple',
-};
+const { EDIBLE_FORM_BY_DISH } = systems;
 
 /** Buildings that must be able to hold the edible forms — the settlement's larders. */
 const LARDERS = ['headquarters', 'stock_00', 'stock_01', 'stock_02'];
@@ -23,6 +15,7 @@ interface IrBuilding {
   readonly id: string;
   readonly stock?: ReadonlyArray<{ readonly goodType: number; readonly capacity: number }>;
   readonly produces?: readonly number[];
+  readonly recipes?: ReadonlyArray<{ readonly inputs: ReadonlyArray<{ readonly goodType: number }> }>;
 }
 
 /**
@@ -45,14 +38,30 @@ describe.runIf(hasRealIr())('dish goods in the decoded content', () => {
     building.stock?.find((s) => s.goodType === goodType)?.capacity ?? 0;
 
   it('every dish and every edible form it maps to exists', () => {
-    for (const [dish, edible] of Object.entries(EDIBLE_FORM_BY_DISH)) {
+    for (const [dish, edible] of EDIBLE_FORM_BY_DISH) {
       expect(() => typeOf(dish)).not.toThrow();
       expect(() => typeOf(edible)).not.toThrow();
     }
   });
 
+  it('no recipe takes a dish as an input', () => {
+    // The conversion on pickup is unconditional, so a house that CONSUMED a dish would have its
+    // craftsman fetch bread and arrive holding food_simple — a fetch that can never be delivered.
+    // `goodtypes.ini` does name meat as sausage's production input, so this is not hypothetical; it is
+    // inert only because no house declares that recipe.
+    for (const dish of EDIBLE_FORM_BY_DISH.keys()) {
+      const goodType = typeOf(dish);
+      for (const building of ir.buildings) {
+        for (const recipe of building.recipes ?? []) {
+          const consumes = recipe.inputs.some((i) => i.goodType === goodType);
+          expect(consumes, `'${building.id}' consumes ${dish} as a recipe input`).toBe(false);
+        }
+      }
+    }
+  });
+
   it('a dish is stocked ONLY by the house that produces it', () => {
-    for (const dish of Object.keys(EDIBLE_FORM_BY_DISH)) {
+    for (const dish of EDIBLE_FORM_BY_DISH.keys()) {
       const goodType = typeOf(dish);
       // A slot for the dish is legitimate only in its own kitchen; a second holder anywhere would mean
       // the conversion on pickup strands a good that did have somewhere else to go.
@@ -66,7 +75,7 @@ describe.runIf(hasRealIr())('dish goods in the decoded content', () => {
   });
 
   it('the edible forms are stocked by the larders and produced by nobody', () => {
-    for (const edible of new Set(Object.values(EDIBLE_FORM_BY_DISH))) {
+    for (const edible of new Set(EDIBLE_FORM_BY_DISH.values())) {
       const goodType = typeOf(edible);
       for (const larder of LARDERS) {
         const building = ir.buildings.find((b) => b.id === larder);
