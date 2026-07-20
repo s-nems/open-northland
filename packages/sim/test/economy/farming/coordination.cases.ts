@@ -10,6 +10,7 @@ import {
   Crop,
   ctxOf,
   FARM_WHEAT_CAP,
+  FIELD_CAP,
   farmAt,
   farmerAt,
   fieldAt,
@@ -18,7 +19,6 @@ import {
   mapWithBarren,
   Position,
   REAP_ATOMIC,
-  SOLO_FIELD_CAP,
   STAGES,
   Stockpile,
   WHEAT,
@@ -167,7 +167,7 @@ describe('store-full pause and overflow', () => {
     expect(sim.world.tryGet(farmer, components.CurrentAtomic)).toBeUndefined();
     expect(sim.world.tryGet(farmer, components.MoveGoal)).toBeUndefined();
     expect(sim.world.has(farmer, components.Resting)).toBe(true);
-    expect([...sim.world.query(Crop)]).toHaveLength(SOLO_FIELD_CAP); // the fields stand ripe, unreaped
+    expect([...sim.world.query(Crop)]).toHaveLength(FIELD_CAP); // the fields stand ripe, unreaped
   });
 
   it('a farmer stuck with a load (every sink full) waits INSIDE the farm holding it, then deposits', () => {

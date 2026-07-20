@@ -27,9 +27,10 @@ const SEED = 7;
 const MAP_CELLS = 10;
 /** Farm anchor in CELL coords (the fixture e2e's centre-of-map placement). */
 const FARM_AT = { x: 5, y: 5 } as const;
-/** Wheat farms at 500 ticks/stage × 5 stages on the clean-room balance (`catalog/farming.ts`), plus
- *  sow/water walking — 4000 ticks is comfortably past one full watered cycle. */
-const FARM_TICKS = 4000;
+/** Wheat farms at ~500 ticks/stage × 5 stages on the clean-room balance (`catalog/farming.ts`). A lone
+ *  farmer ploughs the whole 24-field plot before it starts watering, so the first sheaf lands well past
+ *  one growth cycle; 8000 ticks clears that cold start with margin. */
+const FARM_TICKS = 8000;
 
 function grassMap(cells: number) {
   return halfCellMapFromCells({
@@ -109,7 +110,8 @@ describe.runIf(hasRealIr())('field-farming cycle over merged real content', () =
     }
     const banked = sim.world.get(farmEntity, Stockpile).amounts.get(wheat.typeId) ?? 0;
     expect(banked, 'no wheat ever reached the farm store — the field loop stalled').toBeGreaterThan(0);
-  });
+    // Past the 5 s default: {@link FARM_TICKS} steps, each re-checking every invariant over the world.
+  }, 60_000);
 
   it('is deterministic on real content: two same-seed farm runs end byte-identical', async () => {
     const { merge } = await loadContentUnderTest();

@@ -10,17 +10,16 @@ import {
   Crop,
   ctxOf,
   FARMER,
+  FIELD_CAP,
   farmAt,
   farmerAt,
   fieldAt,
   GroundDrop,
   grassMap,
-  PAIR_FIELD_CAP,
   PICKUP_ATOMIC,
   Position,
   REAP_ATOMIC,
   Settler,
-  SOLO_FIELD_CAP,
   SOW_ATOMIC,
   STAGES,
   Stockpile,
@@ -55,6 +54,29 @@ describe('planFarmer — the drive ladder', () => {
     const atomic = sim.world.get(farmer, components.CurrentAtomic);
     expect(atomic.atomicId).toBe(REAP_ATOMIC);
     expect(atomic.effect).toEqual({ kind: 'harvest', resource: field, goodType: WHEAT });
+  });
+
+  it("a field action lasts workRepeats strokes — the dial the farm's whole throughput rests on", () => {
+    // Two content sets differing ONLY in wheat's `workRepeats`; the reap of an identical ripe field
+    // underfoot must take exactly twice as long at 2 strokes as at 1.
+    const reapTicks = (workRepeats: number): number => {
+      const base = testContent();
+      const content = {
+        ...base,
+        goods: base.goods.map((g) =>
+          g.typeId === WHEAT && g.farming !== undefined
+            ? { ...g, farming: { ...g.farming, workRepeats } }
+            : g,
+        ),
+      };
+      const sim = new Simulation({ seed: 1, content, map: grassMap(8, 8) });
+      const farm = farmAt(sim, 4, 4);
+      fieldAt(sim, farm, 4, 4, { stage: STAGES }); // ripe, underfoot — reaps on the spot
+      const farmer = farmerAt(sim, 4, 4, farm);
+      aiSystem(sim.world, ctxOf(sim));
+      return sim.world.get(farmer, components.CurrentAtomic).duration;
+    };
+    expect(reapTicks(2)).toBe(reapTicks(1) * 2);
   });
 
   it('waters a thirsty field once the roster is at its cap (the can circles between sowings)', () => {
@@ -106,7 +128,7 @@ describe('planFarmer — the drive ladder', () => {
     expect(atomic.effect).toEqual({ kind: 'pileup', store: farm });
   });
 
-  it('never sows past the crew-scaled cap: one farmer works fieldsPerFarmer fields', () => {
+  it('never sows past the farm plot cap', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(10, 10) });
     farmAt(sim, 5, 5);
     farmerAt(sim, 5, 5); // unbound: adopted by the jobSystem's farm-adopt pass on tick 1
@@ -116,25 +138,28 @@ describe('planFarmer — the drive ladder', () => {
 
     const fields = [...sim.world.query(Crop)];
     expect(fields.length).toBeGreaterThan(0);
-    expect(fields.length).toBeLessThanOrEqual(SOLO_FIELD_CAP);
+    expect(fields.length).toBeLessThanOrEqual(FIELD_CAP);
   });
 
-  it('the field roster SCALES with the crew: a second farmer raises the sow cap sublinearly', () => {
-    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 12) });
-    const farm = farmAt(sim, 6, 6);
-    farmerAt(sim, 6, 6, farm);
-    farmerAt(sim, 6, 6, farm);
-    // Long enough for the pair to saturate the roster; per-stage watering keeps consuming their time,
-    // so track the PEAK standing-field count across the run.
-    let peak = 0;
-    for (let t = 0; t < 400; t++) {
-      sim.run(1);
-      let fields = 0;
-      for (const _e of sim.world.query(Crop)) fields++;
-      if (fields > peak) peak = fields;
-    }
-    expect(peak).toBeGreaterThan(SOLO_FIELD_CAP); // beyond a lone farmer's plot…
-    expect(peak).toBeLessThanOrEqual(PAIR_FIELD_CAP); // …never past the pair's (base counted ONCE)
+  it("the plot cap is the FARM's, not the crew's: a second farmer does not enlarge it", () => {
+    // Measured in the original: a farm holds the same ~24 plants whether one farmer or four work it —
+    // extra hands turn the plot over faster, they never widen it. Track the PEAK standing-field count,
+    // since per-stage watering keeps the roster churning below the cap.
+    const peakFields = (crew: number): number => {
+      const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 12) });
+      const farm = farmAt(sim, 6, 6);
+      for (let i = 0; i < crew; i++) farmerAt(sim, 6, 6, farm);
+      let peak = 0;
+      for (let t = 0; t < 400; t++) {
+        sim.run(1);
+        let fields = 0;
+        for (const _e of sim.world.query(Crop)) fields++;
+        if (fields > peak) peak = fields;
+      }
+      return peak;
+    };
+    expect(peakFields(1)).toBe(FIELD_CAP);
+    expect(peakFields(2)).toBe(FIELD_CAP);
   });
 
   it('a spawned farmer is farm-bound, NOT a flag gatherer (no auto work flag)', () => {

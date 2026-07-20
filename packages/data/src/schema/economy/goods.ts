@@ -110,19 +110,34 @@ export const GoodFarming = z.strictObject({
    * record's 5 growth frames).
    */
   stages: z.number().int().positive(),
-  /** Observed — ticks an unwatered field takes to advance one growth stage (no readable growth timing). */
+  /** Observed — NOMINAL ticks a watered field takes to advance one growth stage (no readable growth
+   *  timing); each field's own pace is drawn around it, see {@link growthSpreadPercent}. */
   ticksPerStage: z.number().int().positive(),
-  /** Observed — units a ripe field drops (as a ground sheaf) when reaped. The only related readable
-   *  number is `humanjobexperiencetypes.ini` "farmer wheat" `baserepeatcounter 2` (semantics unpinned). */
+  /** Observed — how far a single field's stage length may sit either side of {@link ticksPerStage}, as a
+   *  percentage. The pace is a hash of the field's node, so plants sown together still ripen apart, the
+   *  way the original's plots visibly stand at mixed heights. 0 makes every field grow at the nominal
+   *  rate, which puts a burst-sown plot in permanent lockstep — one mass harvest, then a bare field. */
+  growthSpreadPercent: z.number().int().nonnegative().max(99).default(0),
+  /** Observed — units a ripe field drops (as a ground sheaf) when reaped. */
   yieldPerField: z.number().int().positive(),
+  /**
+   * How many times a farmer replays a field atomic's animation per action — the farmer stands and
+   * scythes (or sows, or waters) a few strokes rather than one. Multiplies the plant/cultivate/harvest
+   * durations, and so sets the labor a single grain costs, which is what the farm's whole throughput
+   * rests on (see the `farming` module note).
+   *
+   * Data, not observed: `humanjobexperiencetypes.ini` type 46 "farmer wheat" (`job 18`, `good 4`)
+   * carries `baserepeatcounter 2`. The same key appears on "hunter general" (5) and "fisher general"
+   * (5) — the three gather trades — which reads as strokes-per-action. "base" implies experience scales
+   * it down; that half is NOT modelled here (see docs/tickets/sim/job-repeat-counter-extraction.md).
+   */
+  workRepeats: z.number().int().positive().default(1),
   /** Observed — how far from the farm's anchor its workers sow, in half-cell nodes (no radius in data). */
   fieldRadius: z.number().int().positive(),
-  /** Observed — the crew-independent part of a farm's field cap. Live cap is
-   *  `fieldsBase + fieldsPerFarmer × bound field-farmers`, so the plot grows sublinearly with the crew
-   *  (calibration: one farmer works 6 fields, a pair 10). Defaults to 0 (pure per-farmer scaling). */
-  fieldsBase: z.number().int().nonnegative().default(0),
-  /** Observed — the per-farmer slope of the field cap (see {@link fieldsBase}; no field-count in data). */
-  fieldsPerFarmer: z.number().int().positive(),
+  /** Observed — how many fields one farm keeps standing at once. A property of the FARM, not of its
+   *  crew: the original's plot holds the same number of plants whether one farmer or four work it
+   *  (measured in the running original; extra farmers raise throughput, not plot size). */
+  maxFields: z.number().int().positive(),
 });
 export type GoodFarming = z.infer<typeof GoodFarming>;
 
