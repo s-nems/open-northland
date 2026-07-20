@@ -31,20 +31,27 @@ const PLACEMENT_RING_MAX_RADIUS = 48;
 
 /** The nearest legal work-flag node to `from`, by Manhattan distance then node id. Auto-created flags use
  * this when a gatherer spawns or changes trade, because its feet may currently be inside a resource or
- * building body. This is a one-shot command/spawn query, never per-tick planner work — but it runs once
- * per employment command, so a box-select `setJob` burst pays it per settler: expanding rings, never a
- * whole-map scan, below the cap. */
+ * building body, and the player's `setWorkFlag` uses it to snap a click that landed on one. This is a
+ * one-shot command/spawn query, never per-tick planner work — but it runs once per employment command, so
+ * a box-select `setJob` burst pays it per settler: expanding rings, never a whole-map scan, below the cap.
+ *
+ * `opts.ignoreFlag` excludes one flag's own spacing from the blocked set, so relocating a flag can land
+ * back on ground its current marker reserves. `opts.maxRadius` bounds the search to that ring and returns
+ * null past it instead of falling back to the whole-map scan — what a player click wants (snap off the
+ * body under the cursor, never teleport the flag across the map). */
 export function nearestWorkFlagPlacement(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   from: NodeId,
+  opts: { readonly ignoreFlag?: Entity; readonly maxRadius?: number } = {},
 ): NodeId | null {
   const origin = terrain.coordsOf(from);
-  const blocked = workFlagPlacementBlocks(world, ctx.content, terrain);
+  const blocked = workFlagPlacementBlocks(world, ctx.content, terrain, opts.ignoreFlag);
+  const cap = opts.maxRadius ?? PLACEMENT_RING_MAX_RADIUS;
   // The first ring holding a legal node ends the search; its lowest node id is the same
   // `(distance, node-id)` winner the reference scan below picks.
-  for (let r = 0; r <= PLACEMENT_RING_MAX_RADIUS; r++) {
+  for (let r = 0; r <= cap; r++) {
     let ringBest: NodeId | null = null;
     forEachRingOffset(r, (dx, dy) => {
       const x = origin.x + dx;
@@ -56,6 +63,7 @@ export function nearestWorkFlagPlacement(
     });
     if (ringBest !== null) return ringBest;
   }
+  if (opts.maxRadius !== undefined) return null; // a bounded caller wants "nothing near", not a far spot
   // Nothing within the cap. The rings covered every node at distance ≤ cap, so only farther nodes can
   // match — the whole-map reference scan finds the same winner the uncapped search would.
   let best: NodeId | null = null;

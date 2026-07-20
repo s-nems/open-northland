@@ -62,26 +62,44 @@ describe('setWorkFlag command — place / move a gatherer flag (Ctrl+Right-Click
     expect([...sim.world.query(DeliveryFlag)]).toHaveLength(1); // no second flag littered
   });
 
-  it('rejects unwalkable terrain and occupied resource/building fields', () => {
-    const water = new Simulation({ seed: 1, content: testContent(), map: riverMap(20, 1, [12]) });
-    const waterGatherer = ownedGatherer(water, 0, 0);
-    setWorkFlag(water.world, ctxOf(water), cmd(waterGatherer, 6));
-    expect(water.world.has(waterGatherer, WorkFlag)).toBe(false);
+  it('SNAPS off an occupied resource/building field rather than dropping the order', () => {
+    // Clicking the patch to work means clicking the body that blocks its own cells — the click the
+    // player actually makes. Dropping it left the gatherer at its old flag with no feedback.
+    const sim = new Simulation({ seed: 2, content: testContent(), map: grassMap(40, 1) });
+    const gatherer = ownedGatherer(sim, 0, 0);
+    const resource = sim.world.create();
+    sim.world.add(resource, Position, { x: fx.fromInt(6), y: fx.fromInt(0) });
+    sim.world.add(resource, Resource, { goodType: WOOD, remaining: 1, harvestAtomic: 24 });
 
-    const occupied = new Simulation({ seed: 2, content: testContent(), map: grassMap(40, 1) });
-    const gatherer = ownedGatherer(occupied, 0, 0);
-    const resource = occupied.world.create();
-    occupied.world.add(resource, Position, { x: fx.fromInt(6), y: fx.fromInt(0) });
-    occupied.world.add(resource, Resource, { goodType: WOOD, remaining: 1, harvestAtomic: 24 });
-    setWorkFlag(occupied.world, ctxOf(occupied), cmd(gatherer, 6));
-    expect(occupied.world.has(gatherer, WorkFlag)).toBe(false);
+    setWorkFlag(sim.world, ctxOf(sim), cmd(gatherer, 6));
 
-    occupied.world.destroy(resource);
-    const building = occupied.world.create();
-    occupied.world.add(building, Position, { x: fx.fromInt(6), y: fx.fromInt(0) });
-    occupied.world.add(building, Building, { buildingType: 1, tribe: VIKING, built: ONE, level: 0 });
-    setWorkFlag(occupied.world, ctxOf(occupied), cmd(gatherer, 6));
-    expect(occupied.world.has(gatherer, WorkFlag)).toBe(false);
+    expect(sim.world.has(gatherer, WorkFlag)).toBe(true);
+    const onResource = fx.toInt(sim.world.get(sim.world.get(gatherer, WorkFlag).flag, Position).x);
+    expect(onResource).not.toBe(6); // never on the blocked cell itself…
+    expect(Math.abs(onResource - 6)).toBeLessThanOrEqual(3); // …but beside the patch it was aimed at
+
+    sim.world.destroy(resource);
+    const building = sim.world.create();
+    sim.world.add(building, Position, { x: fx.fromInt(12), y: fx.fromInt(0) });
+    sim.world.add(building, Building, { buildingType: 1, tribe: VIKING, built: ONE, level: 0 });
+
+    setWorkFlag(sim.world, ctxOf(sim), cmd(gatherer, 12));
+
+    const onBuilding = fx.toInt(sim.world.get(sim.world.get(gatherer, WorkFlag).flag, Position).x);
+    expect(onBuilding).not.toBe(12);
+    expect(Math.abs(onBuilding - 12)).toBeLessThanOrEqual(3);
+  });
+
+  it('rejects a click with no walkable node in snapping range (mid-lake)', () => {
+    // A water band wider than the snap radius: there is no nearby ground to mean, so the order stands
+    // rejected — the snap is a click tolerance, not a licence to relocate the yard anywhere.
+    const lake = [...Array(21).keys()].map((i) => i + 5); // half-cell columns 5..25
+    const water = new Simulation({ seed: 1, content: testContent(), map: riverMap(40, 1, lake) });
+    const gatherer = ownedGatherer(water, 0, 0);
+
+    setWorkFlag(water.world, ctxOf(water), cmd(gatherer, 7)); // node x=14, deep inside the band
+
+    expect(water.world.has(gatherer, WorkFlag)).toBe(false);
   });
 
   it('clears a stale failed route when the flag moves, so delivery replans', () => {
