@@ -35,7 +35,7 @@ const HUNGRY = fx.div(fx.fromInt(9), fx.fromInt(10));
 const RUN_TICKS = 600;
 const INITIAL_ZOOM = 1.2;
 /** An Age tick count squarely inside the child stage (past baby, well short of adulthood). */
-const CHILD_AGE_TICKS = systems.GROWUP_TICKS + 100;
+const CHILD_AGE_TICKS = systems.CHILD_TICKS + 100;
 
 const { Age, BerryBush, Settler } = components;
 

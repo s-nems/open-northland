@@ -66,9 +66,11 @@ export function isNonWorkingAge(jobType: number | null): boolean {
   return isBaby(jobType) || isChild(jobType);
 }
 
-/** The age a settler is grown at, and how long reaching it takes at ×1 speed — both measured on the
- * running original (a settler born at age 0 is an adult at 12 years, after 4 minutes of ×1 play). No
- * readable rule file carries either: there is no growth key in `jobtypes.ini`/`tribetypes.ini`/`houses.ini`. */
+/** The two life-stage ages, and how long the whole childhood takes at ×1 speed — all measured on the
+ * running original: a settler born at age 0 turns from a baby into a child at 4 years and is an adult at
+ * 12 years, with those 12 years running in 4 minutes of ×1 play. No readable rule file carries any of it:
+ * there is no growth key in `jobtypes.ini`/`tribetypes.ini`/`houses.ini`. */
+const CHILD_AGE_YEARS = 4;
 const ADULT_AGE_YEARS = 12;
 const CHILDHOOD_SECONDS_AT_1X = 4 * 60;
 
@@ -77,20 +79,17 @@ const CHILDHOOD_SECONDS_AT_1X = 4 * 60;
  * displayed age reads it rather than re-deriving a ramp. */
 export const TICKS_PER_AGE_YEAR = (CHILDHOOD_SECONDS_AT_1X * TICKS_PER_SECOND) / ADULT_AGE_YEARS;
 
-/**
- * How many ticks a settler spends in each non-working life stage: a baby grows into a child after
- * `GROWUP_TICKS`, a child into an adult after another (so it is employable at `2 * GROWUP_TICKS` — the
- * measured 12 years / 4 minutes).
- *
- * The childhood total is pinned to observation; the even split between baby and child is the
- * approximation — the original's baby→child boundary has not been measured separately.
- */
-export const GROWUP_TICKS = (ADULT_AGE_YEARS * TICKS_PER_AGE_YEAR) / 2;
+/** The age a baby becomes a child (4 years in, 960 ticks — a third of the way through childhood, not
+ * halfway; the two non-working stages are deliberately unequal). */
+export const CHILD_TICKS = CHILD_AGE_YEARS * TICKS_PER_AGE_YEAR;
+
+/** The age a child becomes an adult and stops carrying an {@link Age} at all (12 years, 2880 ticks). */
+export const ADULT_TICKS = ADULT_AGE_YEARS * TICKS_PER_AGE_YEAR;
 
 /**
  * The `Age.ticks` a settler spawned directly into an age-class job starts with, or null for an adult
  * slug (no `Age` stamped). Matched by job `id` slug, not numeric id, for the same fixture-collision
- * reason as `isFemaleJobId`. A child starts at {@link GROWUP_TICKS} — the start of its stage — so the
+ * reason as `isFemaleJobId`. A child starts at {@link CHILD_TICKS} — the start of its stage — so the
  * GrowthSystem neither demotes it back to a baby nor shortens its remaining childhood.
  */
 export function spawnAgeTicks(jobId: string | undefined): number | null {
@@ -100,7 +99,7 @@ export function spawnAgeTicks(jobId: string | undefined): number | null {
       return 0;
     case 'child_female':
     case 'child_male':
-      return GROWUP_TICKS;
+      return CHILD_TICKS;
     default:
       return null;
   }
@@ -114,7 +113,7 @@ function isMaleStage(jobType: number | null): boolean {
 
 /**
  * GrowthSystem — age each {@link Age}-bearing settler one tick and promote it through the non-working life
- * stages: baby → child after {@link GROWUP_TICKS}, child → adult-eligible after another.
+ * stages: baby → child at {@link CHILD_TICKS}, child → adult-eligible at {@link ADULT_TICKS}.
  *
  * Only a settler born young carries an {@link Age} (the FamilySystem's `birth` adds it at `ticks: 0`), so this is
  * a no-op for every settler spawned already-adult. On reaching adulthood (`jobType` cleared to `null`) the
@@ -129,7 +128,7 @@ export const growthSystem: System = (world) => {
     const age = world.get(e, Age);
     const settler = world.get(e, Settler);
     age.ticks += 1;
-    if (age.ticks >= GROWUP_TICKS * 2) {
+    if (age.ticks >= ADULT_TICKS) {
       // Grown to an adult — a boy becomes a civilian ({@link CIVILIST_JOB}), a girl the adult woman
       // role ({@link WOMAN_JOB}); neither is auto-employed, the player assigns work.
       settler.jobType = isMaleStage(settler.jobType) ? CIVILIST_JOB : WOMAN_JOB;
@@ -150,11 +149,11 @@ export const growthSystem: System = (world) => {
 
 /**
  * The age-class `jobType` a settler that has lived `ticks` (still short of adulthood) should currently be,
- * for the given sex: a baby for the first {@link GROWUP_TICKS}, a child thereafter. A pure function of the
+ * for the given sex: a baby for the first {@link CHILD_TICKS}, a child thereafter. A pure function of the
  * count + sex (not of how many times it ran), so re-evaluating it every tick is idempotent within a stage
  * and the promotion never double-fires.
  */
 function ageClassAt(ticks: number, male: boolean): number {
-  if (ticks < GROWUP_TICKS) return male ? BABY_MALE : BABY_FEMALE;
+  if (ticks < CHILD_TICKS) return male ? BABY_MALE : BABY_FEMALE;
   return male ? CHILD_MALE : CHILD_FEMALE;
 }

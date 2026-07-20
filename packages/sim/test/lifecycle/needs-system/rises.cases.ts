@@ -5,9 +5,9 @@ import { fx, ONE, Simulation } from '../../../src/index.js';
 import {
   BABY_MALE,
   CHILD_MALE,
+  CHILD_TICKS,
   ENJOYMENT_RISE_PER_TICK,
   FATIGUE_RISE_PER_TICK,
-  GROWUP_TICKS,
   HUNGER_RISE_PER_TICK,
   needsSystem,
 } from '../../../src/systems/index.js';
@@ -83,7 +83,7 @@ describe('needsSystem — a cared-for baby accumulates nothing', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const child = settlerWithHunger(sim, fx.fromInt(0));
     sim.world.get(child, Settler).jobType = CHILD_MALE;
-    sim.world.add(child, components.Age, { ticks: GROWUP_TICKS });
+    sim.world.add(child, components.Age, { ticks: CHILD_TICKS });
 
     needsSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(child, Settler).hunger).toBe(HUNGER_RISE_PER_TICK);
