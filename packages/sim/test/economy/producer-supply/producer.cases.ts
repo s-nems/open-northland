@@ -297,6 +297,114 @@ describe('producer work seats — one stay-inside seat per batch', () => {
   });
 });
 
+describe('producer unblocks its own full output slot', () => {
+  it('ships one unit out BEFORE fetching, when the full output slot is what stopped the workshop', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    // Plank slot at the brim (20/20) and no wood: both a fetch and an output run are available. The
+    // shelf is what blocks the mill — another wood trip would change nothing, since the arriving wood
+    // still could not be turned into a plank — so the output run wins and the mill can grind again.
+    const mill = buildingAt(sim, TWIN_MILL, 0, 0, [[PLANK, 20]]);
+    buildingAt(sim, HEADQUARTERS, 3, 0, [[WOOD, 5]]); // wood to fetch AND room for the plank
+    const smith = settlerAt(sim, 0, 0, CARPENTER, mill);
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(smith, MoveGoal)).toBe(false); // never walks off to the HQ for wood
+    const atomic = sim.world.get(smith, CurrentAtomic);
+    expect(atomic.atomicId).toBe(PICKUP_ATOMIC);
+    expect(atomic.effect).toEqual({ kind: 'pickup', goodType: PLANK, amount: 1, from: mill });
+  });
+
+  it('ships one unit out even when a carrier is bound (a blocked workshop never waits on transport)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    // The same blocked mill, with its bound carrier mid-errand at the far end of the strip. The
+    // craftsman does not stand inside waiting for it: production is stopped until a unit leaves.
+    const mill = buildingAt(sim, TWIN_MILL, 0, 0, [
+      [WOOD, 10],
+      [PLANK, 20],
+    ]);
+    buildingAt(sim, HEADQUARTERS, 3, 0);
+    settlerAt(sim, 5, 0, CARRIER, mill);
+    const smith = settlerAt(sim, 0, 0, CARPENTER, mill);
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(smith, Resting)).toBe(false);
+    expect(sim.world.get(smith, CurrentAtomic).effect).toMatchObject({
+      kind: 'pickup',
+      goodType: PLANK,
+      from: mill,
+    });
+  });
+
+  it('leaves an output run to the bound carrier while the shelf still has room', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    // One plank in a 20-slot: the mill is NOT blocked (it can start another cycle the moment it has
+    // wood), so the promotion above does not fire and the output run stays the carrier's job.
+    const mill = buildingAt(sim, TWIN_MILL, 0, 0, [
+      [WOOD, 10],
+      [PLANK, 1],
+    ]);
+    buildingAt(sim, HEADQUARTERS, 3, 0);
+    settlerAt(sim, 5, 0, CARRIER, mill);
+    const smith = settlerAt(sim, 0, 0, CARPENTER, mill);
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.tryGet(smith, Resting)).toEqual({ at: mill }); // holds a work seat, crafting
+  });
+
+  it('does not fire when the shelf is full but nothing anywhere can take the good', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    // Blocked mill, no sink for planks at all (no other store) — there is no unblocking trip to make,
+    // so the worker falls through to its ordinary idle behaviour instead of lifting a plank it would
+    // only shed at its feet (the pickup→shed livelock the delivery probe exists to prevent).
+    const mill = buildingAt(sim, TWIN_MILL, 0, 0, [
+      [WOOD, 10],
+      [PLANK, 20],
+    ]);
+    const smith = settlerAt(sim, 0, 0, CARPENTER, mill);
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(smith, CurrentAtomic)).toBe(false);
+    expect(sim.world.tryGet(smith, Resting)).toEqual({ at: mill });
+  });
+});
+
+describe('producer works ONLY its own workplace’s goods (its own building’s carrier)', () => {
+  it('collects a missing input off the GROUND, not just out of a warehouse', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    // The mill's wood lies in a loose heap on the ground rather than in a store. A craftsman that
+    // cannot craft is its own workplace's carrier, and that carrier brings inputs in from wherever they
+    // lie — the ground counts, so the mill is not starved by goods nobody banked.
+    const mill = buildingAt(sim, SAWMILL, 0, 0);
+    pileAt(sim, 2, 0, [[WOOD, 3]]);
+    const smith = settlerAt(sim, 0, 0, CARPENTER, mill);
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(smith, MoveGoal).cell).toBe(cell(sim, 2, 0)); // heads for the loose wood
+  });
+
+  it('leaves a loose pile of a good its recipe does not use well alone', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    // A heap of PLANKs (the mill's OUTPUT, not an input) beside an idle mill with a sink for them. The
+    // craftsman is not a general porter: it ferries its own workplace's goods and nobody else's, so a
+    // pile that is not its input and not out of its own store is somebody else's errand.
+    const mill = buildingAt(sim, SAWMILL, 0, 0);
+    buildingAt(sim, HEADQUARTERS, 5, 0); // a sink that would happily take the planks
+    pileAt(sim, 2, 0, [[PLANK, 3]]);
+    const smith = settlerAt(sim, 0, 0, CARPENTER, mill);
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(smith, MoveGoal)).toBe(false);
+    expect(sim.world.has(smith, CurrentAtomic)).toBe(false);
+    expect(sim.world.tryGet(smith, Resting)).toEqual({ at: mill }); // waits at its own door instead
+  });
+});
+
 describe('producer loiter — an idle owned worker waits BESIDE the door, not inside', () => {
   it('an owned operator with nothing to do loiters off the door (a MoveGoal beside it, no Resting)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });

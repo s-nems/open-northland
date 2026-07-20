@@ -5,7 +5,7 @@ import type { Entity, World } from '../../../../ecs/world.js';
 import type { SpatialGate } from '../../../../nav/node-metric.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
-import { startableCycleCount } from '../../../economy/production.js';
+import { outputRoomForCycles, startableCycleCount } from '../../../economy/production.js';
 import { buildingBlockedCells } from '../../../footprint/index.js';
 import { recipesByProductOf, stockCapacity, typeProducesGoodWithoutInputs } from '../../../stores/index.js';
 import { buriedUnderBuilding, type InteractionCellIndex } from '../../targets/index.js';
@@ -47,6 +47,25 @@ export function workSeatCount(world: World, ctx: SystemContext, workplace: Entit
     startable = Math.max(startable, startableCycleCount(world, ctx, workplace, recipe));
   }
   return running + startable;
+}
+
+/**
+ * Whether the workplace can start NO further cycle of ANY of its products because its output slots are at
+ * the brim — "idle because the shelf is full", as opposed to idle for want of inputs or of a work seat.
+ * A workshop in that state only restarts once a unit physically leaves it, so the planner promotes the
+ * output run above the next input trip and runs it even when a carrier is bound (the bakery whose bread
+ * slot is full stops baking until someone walks one loaf to a warehouse — observed original behaviour).
+ * An unbuilt or recipe-less building is never "blocked": it was not going to start a cycle anyway.
+ */
+export function outputSlotsFull(world: World, ctx: SystemContext, workplace: Entity): boolean {
+  const b = world.tryGet(workplace, Building);
+  if (b === undefined || b.built < ONE) return false;
+  const recipes = recipesByProductOf(world, ctx, workplace);
+  if (recipes === undefined || recipes.size === 0) return false;
+  for (const recipe of recipes.values()) {
+    if (outputRoomForCycles(world, ctx, workplace, recipe) > 0) return false;
+  }
+  return true;
 }
 
 /**
