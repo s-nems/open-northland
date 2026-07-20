@@ -36,41 +36,49 @@ const PLACEMENT_RING_MAX_RADIUS = 48;
  * a box-select `setJob` burst pays it per settler: expanding rings, never a whole-map scan, below the cap.
  *
  * `opts.ignoreFlag` excludes one flag's own spacing from the blocked set, so relocating a flag can land
- * back on ground its current marker reserves. `opts.maxRadius` bounds the search to that ring and returns
- * null past it instead of falling back to the whole-map scan — what a player click wants (snap off the
- * body under the cursor, never teleport the flag across the map). */
+ * back on ground its current marker reserves. `opts.accept` is an extra per-node gate the winner must also
+ * pass (the player order's signpost confinement). `opts.withinRadius` makes the search BOUNDED: it stops at
+ * that ring and returns null instead of falling back to the whole-map scan — what a player click wants
+ * (snap off the body under the cursor, never teleport the flag across the map). Note `from` itself is the
+ * `r = 0` candidate, so a caller need not pre-test it. */
 export function nearestWorkFlagPlacement(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   from: NodeId,
-  opts: { readonly ignoreFlag?: Entity; readonly maxRadius?: number } = {},
+  opts: {
+    readonly ignoreFlag?: Entity | undefined;
+    readonly accept?: ((node: NodeId) => boolean) | undefined;
+    readonly withinRadius?: number | undefined;
+  } = {},
 ): NodeId | null {
+  const { accept, withinRadius } = opts;
   const origin = terrain.coordsOf(from);
   const blocked = workFlagPlacementBlocks(world, ctx.content, terrain, opts.ignoreFlag);
-  const cap = opts.maxRadius ?? PLACEMENT_RING_MAX_RADIUS;
+  const legal = (node: NodeId): boolean =>
+    terrain.isWalkable(node) && !blocked.has(node) && (accept === undefined || accept(node));
   // The first ring holding a legal node ends the search; its lowest node id is the same
   // `(distance, node-id)` winner the reference scan below picks.
-  for (let r = 0; r <= cap; r++) {
+  for (let r = 0; r <= (withinRadius ?? PLACEMENT_RING_MAX_RADIUS); r++) {
     let ringBest: NodeId | null = null;
     forEachRingOffset(r, (dx, dy) => {
       const x = origin.x + dx;
       const y = origin.y + dy;
       if (!terrain.inBounds(x, y)) return;
       const node = terrain.nodeAt(x, y);
-      if (!terrain.isWalkable(node) || blocked.has(node)) return;
+      if (!legal(node)) return;
       if (ringBest === null || node < ringBest) ringBest = node;
     });
     if (ringBest !== null) return ringBest;
   }
-  if (opts.maxRadius !== undefined) return null; // a bounded caller wants "nothing near", not a far spot
+  if (withinRadius !== undefined) return null; // a bounded caller wants "nothing near", not a far spot
   // Nothing within the cap. The rings covered every node at distance ≤ cap, so only farther nodes can
   // match — the whole-map reference scan finds the same winner the uncapped search would.
   let best: NodeId | null = null;
   let bestDistance = Number.POSITIVE_INFINITY;
   for (let node = 0; node < terrain.nodeCount; node++) {
     const candidate = node as NodeId;
-    if (!terrain.isWalkable(candidate) || blocked.has(candidate)) continue;
+    if (!legal(candidate)) continue;
     const c = terrain.coordsOf(candidate);
     const distance = Math.abs(c.x - origin.x) + Math.abs(c.y - origin.y);
     if (distance < bestDistance || (distance === bestDistance && (best === null || candidate < best))) {
