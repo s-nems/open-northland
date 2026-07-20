@@ -1,4 +1,4 @@
-import { ErectSignpostOrder, PlayerOrder, Settler } from '../../components/index.js';
+import { CurrentAtomic, ErectSignpostOrder, PlayerOrder, Settler } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
 import type { World } from '../../ecs/world.js';
 import type { HalfCellNode } from '../../nav/halfcell.js';
@@ -156,6 +156,13 @@ export function nextSignpostTarget(world: World, ctx: SystemContext, player: num
 function runSignpostCoverage(world: World, ctx: SystemContext, player: number): readonly Command[] {
   const scout = ownedSettlers(world, player).find((e) => world.get(e, Settler).jobType === SCOUT_JOB);
   if (scout === undefined) return [];
+  // Busy — leave it be. CurrentAtomic has to be part of this test: `placeSignpost` routes through
+  // `moveUnit`, which cancels whatever action is running, and both order markers are shed the moment a
+  // need drive starts an atomic (movement.ts `playerOrderSystem`, signposts.ts `signpostOrderSystem`),
+  // so an eating scout looks order-free. Without this the module re-orders it every decision beat and
+  // any action longer than the beat — a meal, a sleep, even its own erect swing — is restarted forever
+  // instead of completing.
+  if (world.has(scout, CurrentAtomic)) return [];
   if (world.has(scout, ErectSignpostOrder) || world.has(scout, PlayerOrder)) return []; // busy
   const target = nextSignpostTarget(world, ctx, player);
   if (target === null) return []; // the wanted lattice is complete — the workforce module retires the scout

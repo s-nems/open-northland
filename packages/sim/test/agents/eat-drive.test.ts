@@ -4,6 +4,7 @@ import {
   Building,
   Carrying,
   CurrentAtomic,
+  FoodUnreachable,
   MoveGoal,
   Position,
   Resource,
@@ -19,7 +20,6 @@ import {
   CHILD_AGE_TICKS,
   CHILD_FEMALE,
   CHILD_MALE,
-  EAT_ANIMATION_REPEATS,
   EAT_HUNGER_RESTORE,
   HUNGER_RISE_PER_TICK,
 } from '../../src/systems/index.js';
@@ -78,9 +78,9 @@ describe('eatDrive — the planner choosing to eat', () => {
     expect(sim.world.has(settler, MoveGoal)).toBe(false);
     const atomic = sim.world.get(settler, CurrentAtomic);
     expect(atomic.atomicId).toBe(EAT_ATOMIC);
-    // The eat clip ("viking_eat", length 5) repeated EAT_ANIMATION_REPEATS times — a visible meal, not a
-    // quarter-second flicker (see actions.ts). 5 × 8 = 40 ticks.
-    expect(atomic.duration).toBe(5 * EAT_ANIMATION_REPEATS);
+    // The meal is the eat clip's own length ("viking_eat", 5) — the clip is a whole meal, so nothing
+    // repeats it (see actions.ts).
+    expect(atomic.duration).toBe(5);
     expect(atomic.effect).toEqual({ kind: 'eat', goodType: FOOD, from: store });
   });
 
@@ -136,6 +136,45 @@ describe('eatDrive — the planner choosing to eat', () => {
     aiSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.get(settler, MoveGoal).cell).toBe(cellOf(sim, 3, 0));
+  });
+});
+
+describe('the FoodUnreachable famine flag (what the HUD hunger bubble reads)', () => {
+  it('flags a hungry settler with no food in reach, and clears it the tick food appears', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const settler = settlerAt(sim, 0, 0, HUNGRY);
+
+    aiSystem(sim.world, ctxOf(sim));
+    expect(sim.world.has(settler, FoodUnreachable)).toBe(true);
+
+    storeAt(sim, 3, 0, 5); // a larder is stocked — the famine is over, though the settler is still hungry
+    aiSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(settler, FoodUnreachable)).toBe(false);
+    expect(sim.world.get(settler, Settler).hunger).toBe(HUNGRY); // still hungry, just no longer starving
+  });
+
+  it('never flags a settler below the eat threshold, however empty the map is', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const settler = settlerAt(sim, 0, 0, FED);
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(settler, FoodUnreachable)).toBe(false);
+  });
+
+  it('clears the flag when the settler eats what it carries', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const settler = settlerAt(sim, 0, 0, HUNGRY);
+
+    aiSystem(sim.world, ctxOf(sim));
+    expect(sim.world.has(settler, FoodUnreachable)).toBe(true);
+
+    sim.world.remove(settler, CurrentAtomic);
+    sim.world.add(settler, Carrying, { goodType: FOOD, amount: 1 });
+    aiSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(settler, FoodUnreachable)).toBe(false);
   });
 });
 

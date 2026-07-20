@@ -1,6 +1,7 @@
 import type { ContentSet } from '@open-northland/data';
 import {
   Building,
+  CurrentAtomic,
   ErectSignpostOrder,
   Female,
   JobAssignment,
@@ -309,7 +310,10 @@ function runWorkforce(
   }
   for (const [i, scout] of scouts.entries()) {
     if (scoutWanted && i === 0) continue; // the working scout — keep
-    if (world.has(scout, ErectSignpostOrder) || world.has(scout, PlayerOrder)) continue; // let it finish
+    // Let it finish: an order still in flight, or any action mid-swing — `setJob` cancels the running
+    // atomic, so retiring a scout mid-meal would throw the meal away (see signpost-coverage.ts).
+    if (world.has(scout, CurrentAtomic)) continue;
+    if (world.has(scout, ErectSignpostOrder) || world.has(scout, PlayerOrder)) continue;
     if (builderJob !== null) commands.push({ kind: 'setJob', entity: scout, jobType: builderJob });
   }
 

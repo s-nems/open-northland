@@ -24,15 +24,15 @@ export const Settler = defineComponent<{
   /** 0..ONE hunger; rises over time, NeedsSystem drives eating. */
   hunger: Fixed;
   /**
-   * 0..ONE fatigue; rises over time like {@link hunger}. The original satisfies it with the `sleep` atomic
-   * (id 8, bound for every job/tribe in `tribetypes` `setatomic <job> 8 "..._sleep"`); the rest drive is a
-   * later slice, so this field is the rise half only.
+   * 0..ONE fatigue; rises over time like {@link hunger}. Satisfied by the `sleep` atomic (id 8, bound for
+   * every job/tribe in `tribetypes` `setatomic <job> 8 "..._sleep"`), which the sleep drive runs on open
+   * ground away from the buildings.
    */
   fatigue: Fixed;
   /**
-   * 0..ONE piety — a target-bound need, satisfied by walking to a site rather than in place. Rises over time
-   * like {@link hunger}. The original satisfies it with the `pray` atomic (id 12, `setatomic 6 12 "..._pray"`)
-   * at a temple; the need→satisfier→building lookup is a later slice, so this field is the rise half only.
+   * 0..ONE piety — a target-bound need, satisfied by walking to a site rather than in place. Unlike
+   * {@link hunger} it does not rise over time: only forging a weapon or armor good raises it, and the
+   * `pray` atomic (id 12, `setatomic 6 12 "..._pray"`) at a temple clears it.
    */
   piety: Fixed;
   /**
@@ -46,6 +46,21 @@ export const Settler = defineComponent<{
   /** specialization id -> experience points (humanjobexperiencetypes). */
   experience: Map<number, number>;
 }>('Settler');
+
+/**
+ * Marks a settler whose eat drive went looking for food and found none in reach — a famine flag, not a
+ * "this settler is hungry" flag. Stamped and cleared by the eat rung (`systems/agents/drives-needs.ts`)
+ * each time it runs, so it stands exactly while the settler is over the eat threshold with nothing to
+ * eat: a stocked larder or a ripe bush within reach clears it the tick the drive picks one.
+ *
+ * This is what the HUD's hunger bubble reads. In the original the icon means the village is starving,
+ * not that someone is due a meal (observed original), and a settler crosses the eat threshold routinely
+ * — so keying the bubble on the bar itself would light up half the map.
+ */
+export const FoodUnreachable = defineComponent<{ readonly noFood: true }>('FoodUnreachable');
+
+/** The one {@link FoodUnreachable} component value — the marker carries no per-entity data. */
+export const NO_FOOD = { noFood: true } as const;
 
 /**
  * The atomic micro-action a settler is currently executing (the unit of behavior in Cultures, e.g.

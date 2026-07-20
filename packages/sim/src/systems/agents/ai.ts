@@ -48,6 +48,7 @@ import { collectFarmClaims, planFarmer } from './farming/index.js';
 import { navigationPlanner } from './navigation.js';
 import type { PlannerContext } from './planner-context.js';
 import { releaseStaleIntent } from './replan.js';
+import { isSleepingAtHome } from './sleep-at-home.js';
 import { boundWorkplaceTarget, collectTargets, hasHaulableOutput } from './targets/index.js';
 
 /**
@@ -176,8 +177,9 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     if (planNeeds(world, ctx, terrain, e, settler, here, load, targets, limit, spacing)) {
       // A needs drive pulled the settler away: shed a lingering waiting-inside marker so the walk to
       // food/temple/a bed is visible (the render hides a Resting settler) and the family stages stop
-      // reading a foraging parent as "inside". The needs drives never stamp Resting themselves.
-      world.remove(e, Resting);
+      // reading a foraging parent as "inside". The sleep rung is the one drive that stamps Resting
+      // itself — a settler that just got into its own bed keeps it (see isSleepingAtHome).
+      if (!isSleepingAtHome(world, e)) world.remove(e, Resting);
       continue;
     }
 

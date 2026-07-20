@@ -29,22 +29,16 @@ import { interactionCell } from './targets/index.js';
 export const EAT_ATOMIC_ID = 10;
 
 /**
- * How many times the short extracted eat clip (`viking_eat` ≈ 5 ticks) repeats to make one meal, so a settler
- * visibly pauses to eat instead of snapping straight back to work (a single-clip bite reads as a flicker).
+ * The duration (ticks) of one eat or forage atomic: the settler's own eat-animation length, straight from
+ * content (`viking_civilist_eat_slot_food` = 50 ticks ≈ 4 s). Shared by every eat site (a store meal, a
+ * carried-load bite, a wild-bush forage) so they all take the same visible beat.
  *
- * Named approximation: the original eats over several event-driven animation beats whose exact count isn't
- * decoded; this is a tunable stand-in. It scales the clip (not a flat tick count) so a tribe with a longer eat
- * clip still eats proportionally longer.
- */
-export const EAT_ANIMATION_REPEATS = 8;
-
-/**
- * The duration (ticks) of one eat or forage atomic: the settler's eat-clip length repeated
- * {@link EAT_ANIMATION_REPEATS} times. Shared by every eat site (a store meal, a carried-load bite, a wild-bush
- * forage) so they all take the same visible beat — the one place the meal length is decided.
+ * The clip is already a whole meal, not a single bite: the original's `[gfxanimatomic]` action-10 frame
+ * list raises the food (frames 0→7), chews on 8/9 for the middle, and lowers it (7→0), so nothing needs
+ * repeating on top of it.
  */
 export function eatDuration(ctx: SystemContext, settler: SettlerIdentity): number {
-  return atomicDuration(ctx.content, settler, EAT_ATOMIC_ID) * EAT_ANIMATION_REPEATS;
+  return atomicDuration(ctx.content, settler, EAT_ATOMIC_ID);
 }
 
 /**
