@@ -178,11 +178,10 @@ export const CHARACTER_SPECS = {
       // the talker faces its partner (TARGET_FACING) instead of cycling the whole strip.
       [TALK_ATOMIC]: 'human_man_generic_speak',
       [LISTEN_ATOMIC]: 'human_man_generic_speak',
-      // The meal and the nap carry their whole shape in the authored list, which is why they must not
-      // fall back to the raw strip: the action-8 list is 237 entries — frames 0→19 lying down, then ~197
-      // entries alternating 18/19 (breathing where it lies), then 19→0 getting up. The action-10 list is
-      // 30 — 0→7 raising the food, 8/9 chewing, 7→0 lowering. Cycling the 20-/17-frame strip instead
-      // replayed the lie-down and the get-up a dozen times per sleep.
+      // The meal and the nap carry their whole shape in the authored list, so neither may fall back to
+      // the raw strip: the action-8 list is 237 entries — frames 0→19 lying down, then ~197 entries
+      // alternating 18/19 (breathing where it lies), then 19→0 getting up. The action-10 list is 30 —
+      // 0→7 raising the food, 8/9 chewing, 7→0 lowering.
       [EAT_ATOMIC]: 'human_man_generic_eat',
       [SLEEP_ATOMIC]: 'human_man_generic_sleep',
     },

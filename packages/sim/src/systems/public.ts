@@ -3,6 +3,7 @@
 
 export { withinNodeRadius } from '../nav/node-metric.js';
 export {
+  FATIGUE_BUBBLE_THRESHOLD,
   FATIGUE_SLEEP_THRESHOLD,
   HUNGER_BUBBLE_THRESHOLD,
   HUNGER_EAT_THRESHOLD,
@@ -23,6 +24,13 @@ export {
   TICKS_PER_AGE_YEAR,
 } from './lifecycle/ageclass.js';
 export { EAT_HUNGER_RESTORE, SLEEP_FATIGUE_RESTORE } from './lifecycle/needs.js';
+// The need-atomic clip resolution (the civilist fallback + the at-home twin's name), exported so the
+// real-content suite can pin both joins against the served IR rather than a fixture.
+export {
+  atomicDurationForName,
+  needAtomicAnimationName,
+  needAtomicDuration,
+} from './readviews/animations.js';
 export { HEADQUARTERS_BUILDING_ID } from './readviews/buildings.js';
 export { IDLE_JOB } from './readviews/hud.js';
 export { MILITARY_MODE, SCOUT_JOB } from './readviews/stances.js';

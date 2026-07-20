@@ -3,7 +3,7 @@ import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { atomicDuration } from '../readviews/animations.js';
+import { needAtomicDuration } from '../readviews/animations.js';
 import { isFood } from '../readviews/index.js';
 import type { NavigationLimit } from '../signposts/index.js';
 import {
@@ -36,10 +36,10 @@ import { interactionCell, nearestFood, nearestTemple, type TargetCandidates } fr
 export const HUNGER_EAT_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4)); // ¾·ONE
 
 /**
- * Hunger level at or above which the HUD floats the hunger bubble — deliberately well ABOVE
- * {@link HUNGER_EAT_THRESHOLD}, so a settler that can feed itself eats long before it ever shows the
- * icon. Reaching this means the eat drive has been firing for ~160 s at 1× without finding food: the
- * bubble is a FAMINE cue about the settlement, not a "this settler is due a meal" cue.
+ * Hunger level at or above which the HUD floats the hunger bubble. It sits well above
+ * {@link HUNGER_EAT_THRESHOLD} so a settler that can feed itself eats long before showing the icon;
+ * reaching it means the eat drive has been firing for ~160 s at 1× without finding food. The bubble
+ * therefore reports a famine in the settlement, not one settler being due a meal.
  *
  * Source basis: observed original — the icon appears when settlers have trouble finding food, not on
  * every meal (user observation). The exact fraction is approximated; it is set by the gap it leaves
@@ -56,6 +56,15 @@ export const HUNGER_BUBBLE_THRESHOLD: Fixed = fx.div(fx.fromInt(95), fx.fromInt(
  * trigger until that vocabulary is decoded and calibration-by-observation pins the real cadence.
  */
 export const FATIGUE_SLEEP_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4)); // ¾·ONE
+
+/**
+ * Fatigue level at or above which the HUD floats the sleepy bubble, mirroring
+ * {@link HUNGER_BUBBLE_THRESHOLD}. Rest needs the gap even more than hunger does: fatigue crosses its
+ * ¾ trigger every ~160 s and the settler then walks to a bed and sleeps a 237-tick clip, so keying the
+ * icon on the drive trigger would leave a large share of the map permanently bubbling. Past this, the
+ * settler has been unable to bed down — boxed in, or confined away from any open ground.
+ */
+export const FATIGUE_BUBBLE_THRESHOLD: Fixed = fx.div(fx.fromInt(95), fx.fromInt(100));
 
 /**
  * Piety level (fixed-point, in [0, ONE]) at or above which a settler stops working to pray, mirroring
@@ -159,7 +168,7 @@ export function planNeeds(
         e,
         SLEEP_ATOMIC_ID,
         { kind: 'sleep' },
-        atomicDuration(ctx.content, settler, SLEEP_ATOMIC_ID),
+        needAtomicDuration(ctx.content, settler, SLEEP_ATOMIC_ID),
         e,
       ),
     );
@@ -175,7 +184,7 @@ export function planNeeds(
           e,
           PRAY_ATOMIC_ID,
           { kind: 'pray' },
-          atomicDuration(ctx.content, settler, PRAY_ATOMIC_ID),
+          needAtomicDuration(ctx.content, settler, PRAY_ATOMIC_ID),
           temple,
         ),
       );

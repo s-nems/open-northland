@@ -10,7 +10,9 @@ import {
   Settler,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { cellAnchorNode, type Fixed, fx, ONE, Simulation } from '../../src/index.js';
+import { cellAnchorNode, type Fixed, fx, type NodeId, ONE, Simulation } from '../../src/index.js';
+import { isSleepingAtHome } from '../../src/systems/agents/sleep-at-home.js';
+import { noteUnreachableGoal } from '../../src/systems/agents/unreachable-goals.js';
 import { aiSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf, grassMap, justAbove, NEED_THRESHOLD, needsSettlerAt } from './needs/support.js';
@@ -20,9 +22,10 @@ import { ctxOf, grassMap, justAbove, NEED_THRESHOLD, needsSettlerAt } from './ne
  * `Resting` marker), sleeps the short at-home clip, and steps back out rested. The homeless keep the
  * open-ground rule (`rest-spot.ts`).
  *
- * Source basis: the data pairs every outdoor sleep clip with an at-home twin — `viking_civilist_sleep`
- * (`length 237`) beside `viking_civilist_sleep_home` (`length 50`), both pulsing the rest channel twice
- * at `+4000`. The fixture mirrors that shape at fixture scale (6 outdoors, 2 at home).
+ * Source basis: each tribe authors ONE at-home clip, the civilist's — `viking_civilist_sleep_home`
+ * (`length 50`) against the outdoor `viking_civilist_sleep` (`length 237`), both pulsing the rest
+ * channel twice at `+4000`. The fixture mirrors that one pair at fixture scale (6 outdoors, 2 at home);
+ * the real-content suite pins the rule against the served IR (`test/content/need-atomic-clips.test.ts`).
  */
 
 const VIKING = 1;
@@ -60,7 +63,7 @@ function tiredAt(sim: Simulation, x: number, y: number): Entity {
   return needsSettlerAt(sim, x, y, { fatigue: TIRED });
 }
 
-function nodeAt(sim: Simulation, cx: number, cy: number): number | undefined {
+function nodeAt(sim: Simulation, cx: number, cy: number): NodeId | undefined {
   const anchor = cellAnchorNode(cx, cy);
   return sim.terrain?.nodeAt(anchor.hx, anchor.hy);
 }
@@ -121,16 +124,63 @@ describe('sleepAtHome — a housed settler goes to bed indoors', () => {
     expect(sim.world.get(settler, CurrentAtomic).duration).toBe(OUTDOOR_SLEEP_TICKS);
   });
 
+  it('gives up on a door its routes cannot reach, and beds down outside instead', () => {
+    const sim = simWithHomes();
+    const settler = tiredAt(sim, 1, 2);
+    const home = homeAt(sim, 5, 2);
+    sim.world.add(settler, Residence, { home });
+    const door = nodeAt(sim, 5, 2);
+    if (door === undefined) throw new Error('setup: the home has no door node');
+    // The walled-in case: the route to the door has already failed, so the memo holds it. Without the
+    // guard the rung re-picks the same door every re-plan and the settler never sleeps at all.
+    noteUnreachableGoal(sim.world, ctxOf(sim), settler, door);
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(settler, Resting)).toBe(false);
+    expect(sim.world.get(settler, CurrentAtomic).duration).toBe(OUTDOOR_SLEEP_TICKS);
+  });
+
+  it('does not treat a homeless settler asleep outdoors as being indoors', () => {
+    // A stale Resting marker (a FamilyDuty settler keeps one through a re-plan) plus the identical
+    // `sleep` atomic the open-ground rung starts must NOT read as sleeping at home — that would hide a
+    // settler asleep in a field behind a marker pointing at a workplace it waited in earlier.
+    const sim = simWithHomes();
+    const settler = tiredAt(sim, 3, 2);
+    const someWorkplace = homeAt(sim, 6, 4);
+    sim.world.add(settler, Resting, { at: someWorkplace }); // stale — this is not its home
+    sim.world.add(settler, CurrentAtomic, {
+      atomicId: 8,
+      elapsed: 0,
+      progress: fx.fromInt(0),
+      duration: OUTDOOR_SLEEP_TICKS,
+      effect: { kind: 'sleep' },
+      targetEntity: settler,
+      targetTile: null,
+    });
+
+    expect(isSleepingAtHome(sim.world, settler)).toBe(false);
+  });
+
   it('comes back out rested — the marker is shed once the sleep completes', () => {
     const sim = simWithHomes();
     const settler = tiredAt(sim, 3, 2);
     const home = homeAt(sim, 3, 2);
     sim.world.add(settler, Residence, { home });
 
-    // Long enough for the walk-in, the whole nap, and the re-plan that turfs it back out.
-    for (let i = 0; i < 40; i++) sim.step();
+    // Sample every tick: the settler must stay inside for the WHOLE nap and leave once. Asserting only
+    // the end state would pass just as happily on a settler flickering in and out of its own door.
+    const inside: boolean[] = [];
+    for (let i = 0; i < 40; i++) {
+      sim.step();
+      inside.push(sim.world.has(settler, Resting));
+    }
 
-    expect(sim.world.has(settler, Resting)).toBe(false); // stepped back outside
+    // One unbroken stay: false* then true* then false* — never a second entry.
+    const entries = inside.filter((v, i) => v && inside[i - 1] !== true).length;
+    expect(entries).toBe(1);
+    expect(inside.filter(Boolean).length).toBeGreaterThanOrEqual(HOME_SLEEP_TICKS);
+    expect(inside.at(-1)).toBe(false); // stepped back outside
     expect(sim.world.get(settler, Settler).fatigue).toBeLessThan(TIRED); // and slept it off
     expect(sim.checkInvariants()).toEqual([]);
   });

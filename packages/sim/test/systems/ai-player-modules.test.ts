@@ -799,6 +799,33 @@ describe('signpost-coverage module (guideBuild)', () => {
 
     expect([...signpostCoverageModule.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
   });
+
+  it('does not retire a scout mid-action — setJob would cancel the running atomic', () => {
+    // The retirement twin of the guard above, and the more destructive one: `setJob` cancels whatever
+    // the settler is doing, so retiring an eating scout throws the meal away.
+    const sim = aiSim();
+    placeHq(sim);
+    // No resources and one man: the lattice has no work left to want, so the scout is retirable.
+    sim.enqueue({ kind: 'spawnSettler', jobType: SCOUT, x: 10, y: 10, tribe: VIKING, owner: SEAT });
+    sim.step();
+    const scout = [...sim.world.query(Settler)].find((e) => sim.world.get(e, Settler).jobType === SCOUT);
+    if (scout === undefined) throw new Error('expected a spawned scout');
+
+    sim.world.add(scout, CurrentAtomic, {
+      atomicId: EAT_ATOMIC_ID,
+      elapsed: 0,
+      progress: fx.fromInt(0),
+      duration: 50,
+      effect: { kind: 'eat', goodType: 3, from: null },
+      targetEntity: scout,
+      targetTile: null,
+    });
+
+    const retires = [...collectModule.run(sim.world, ctxOf(sim), SEAT)].filter(
+      (c) => c.kind === 'setJob' && c.entity === scout,
+    );
+    expect(retires).toEqual([]);
+  });
 });
 
 describe('population module (homeExpansion)', () => {

@@ -17,3 +17,12 @@ already built per planner tick in `SpacingState` consumers, so memoise them on `
 rests a unit on a door/nook (if one moves, that is the intended behavior change — name it in the
 commit). Test like `evict.test.ts`'s nook cases: a stack beside a doored/U-walled fixture must fan
 out onto open cells only.
+
+**Update (2026-07-20, needs-pacing branch):** the rest-spot rung
+(`systems/agents/rest-spot.ts` `isOpenGround`) landed a third, independent version of the
+"require an unblocked neighbour" clearance — for choosing where a tired settler lies down. There are
+now three "where may a unit come to rest" rules in the tree: `evict.ts`, the two drives this ticket
+names, and rest-spot. Fold them onto one shared predicate as part of this work rather than adding a
+fourth; `rest-spot.ts` also traverses blocked nodes while refusing to land on them, which the others
+may or may not want. See the related dedup ticket
+[ring-search-duplicated-three-ways](ring-search-duplicated-three-ways.md).

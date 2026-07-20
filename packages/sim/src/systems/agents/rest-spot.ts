@@ -6,16 +6,19 @@ import type { NavigationLimit } from '../signposts/index.js';
 import type { SpacingState } from './destack.js';
 import { isUnreachableGoal, unreachableGoals } from './unreachable-goals.js';
 
-/**
- * Where a tired settler beds down. The original's settlers do not drop asleep on the spot they were
- * working — they step off the workplace doorstep into open ground and lie down there (observed
- * original), so the sleep drive is a walk-then-act rung like eating, not an in-place atomic.
- *
- * "Open ground" is read off the walk-block overlay: a rest spot is a node that is itself clear of
- * buildings and resources AND has no blocked neighbour, so a sleeper never ends up in a doorway, a nook
- * between two houses, or pressed against a tree. Approximated — the original's own bedding-down rule is
- * not in the readable data; this is the clearance that reproduces the observed "walks aside to rest".
- */
+// Where a tired settler beds down. The original's settlers do not drop asleep on the spot they were
+// working — they step off the workplace doorstep into open ground and lie down there (observed
+// original), so the sleep drive is a walk-then-act rung like eating, not an in-place atomic.
+//
+// "Open ground" is read off the walk-block overlay: a rest spot is a node that is itself clear of
+// buildings and resources AND has no blocked neighbour, so a sleeper never ends up in a doorway, a nook
+// between two houses, or pressed against a tree. Approximated — the original's own bedding-down rule is
+// not in the readable data; this is the clearance that reproduces the observed "walks aside to rest".
+//
+// Deliberately NOT gated on Owner, unlike the sibling spacing drives (`deStackIdle`, `loiterCell`,
+// which gate to keep unowned fixtures byte-identical): where a settler sleeps is a needs mechanic, not
+// spacing, and an unowned settler should not bed down by a different rule. Unowned settlers are simply
+// absent from the occupancy buckets, so they avoid owned sleepers without being avoided in turn.
 
 /**
  * Max nodes a rest-spot ring search visits before the settler simply sleeps where it stands. Matches the
