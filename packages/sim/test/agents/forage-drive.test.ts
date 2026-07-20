@@ -18,6 +18,8 @@ import {
   BERRY_REGROW_TICKS,
   BERRY_STAGE_TICKS,
   berryGrowthSystem,
+  EAT_HUNGER_RESTORE,
+  HUNGER_RISE_PER_TICK,
 } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { cellOf, ctxOf, grassMap, justAbove, NEED_THRESHOLD, needsSettlerAt } from './needs/support.js';
@@ -151,7 +153,7 @@ describe('eat drive — picking the NEAREST food across stores and bushes', () =
 });
 
 describe('forage atomic + regrow (AtomicSystem, BerryGrowthSystem)', () => {
-  it('foraging a ripe bush zeroes hunger, flips it bare, and schedules its bloom + a berryForaged event', () => {
+  it('foraging a ripe bush feeds the forager, flips it bare, and schedules its bloom + a berryForaged event', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(3, 1) });
     const settler = settlerAt(sim, 0, 0, HUNGRY);
     const bush = bushAt(sim, 0, 0);
@@ -170,7 +172,8 @@ describe('forage atomic + regrow (AtomicSystem, BerryGrowthSystem)', () => {
     const b = sim.world.get(bush, BerryBush);
     expect(b.stage).toBe('bare'); // one serving eaten
     expect(b.nextStageAtTick).toBe(sim.tick + BERRY_STAGE_TICKS); // first regrow step (bloom) scheduled
-    expect(sim.world.get(settler, Settler).hunger).toBe(fx.fromInt(0)); // hunger reset
+    // One berry is a partial meal, worth the same as a stored one (observed original).
+    expect(sim.world.get(settler, Settler).hunger).toBe(fx.sub(HUNGRY, EAT_HUNGER_RESTORE));
     expect(sim.world.has(settler, CurrentAtomic)).toBe(false); // atomic done
     expect(sim.events.current().some((e) => e.kind === 'berryForaged')).toBe(true);
   });
@@ -195,22 +198,28 @@ describe('forage atomic + regrow (AtomicSystem, BerryGrowthSystem)', () => {
   });
 });
 
-describe('forage drive — closing the rise→forage→reset loop through the real schedule', () => {
-  it('a settler beside a bush gets hungry, forages, its hunger resets, and the bush regrows', () => {
+describe('forage drive — closing the rise→forage→relief loop through the real schedule', () => {
+  it('a settler beside a bush gets hungry, forages, a meal comes off its bar, and the bush regrows', () => {
     const sim = new Simulation({ seed: 3, content: testContent(), map: grassMap(3, 1) });
     const settler = settlerAt(sim, 0, 0, NEED_THRESHOLD);
     const bush = bushAt(sim, 1, 0); // one tile over
 
-    let ateAtLeastOnce = false;
     let wentBare = false;
+    let peakHunger = sim.world.get(settler, Settler).hunger;
+    let troughHunger = peakHunger;
     for (let i = 0; i < 400; i++) {
       sim.step();
       const h = sim.world.get(settler, Settler).hunger;
-      if (h < fx.div(ONE, fx.fromInt(4))) ateAtLeastOnce = true;
+      if (h > peakHunger) peakHunger = h;
+      if (h < troughHunger) troughHunger = h;
       if (sim.world.get(bush, BerryBush).stage !== 'ripe') wentBare = true;
     }
 
-    expect(ateAtLeastOnce).toBe(true); // the loop closed: hunger rose, the settler foraged, it reset
+    // The loop closed: hunger rose, the settler foraged, and a berry's worth came off the bar (the
+    // tick's own rise may land alongside the meal).
+    const oneMealBelowPeak = fx.sub(peakHunger, fx.sub(EAT_HUNGER_RESTORE, HUNGER_RISE_PER_TICK));
+    expect(troughHunger).toBeLessThanOrEqual(oneMealBelowPeak);
+    expect(troughHunger).toBeGreaterThan(fx.fromInt(0)); // a berry is a partial refill, never a reset
     expect(wentBare).toBe(true); // the bush was actually eaten off (not conjured food)
     expect(sim.checkInvariants()).toEqual([]);
   });

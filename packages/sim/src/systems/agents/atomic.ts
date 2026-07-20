@@ -6,6 +6,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
 import { advanceConstructionLabor } from '../economy/construction.js';
 import { applySow, applyWater } from '../economy/farming.js';
+import { EAT_HUNGER_RESTORE, relieveNeed, SLEEP_FATIGUE_RESTORE } from '../lifecycle/needs.js';
 import { grantWorkExperience } from '../progression/index.js';
 import {
   ATOMIC_EVENT_TYPE_PLAY_SOUND_FX,
@@ -192,25 +193,29 @@ function applyEffect(world: World, ctx: SystemContext, settler: Entity, effect: 
       return;
     case 'eat':
       // Eating consumes one unit of food (from a store the eater stands on, or its own carried load)
-      // and clears hunger. Goods are conserved up to that consumption — the food is destroyed, never
+      // and takes EAT_HUNGER_RESTORE off hunger — one meal is a partial refill, so a settler comes back
+      // for another. Goods are conserved up to that consumption — the food is destroyed, never
       // conjured: if the source has nothing left (it emptied between the planner choosing it and the
-      // swing completing) no unit is removed, but hunger still resets (the bite was taken).
+      // swing completing) no unit is removed, but the meal still counts (the bite was taken).
       consumeFood(world, settler, effect.from, effect.goodType);
-      if (world.has(settler, Settler)) world.get(settler, Settler).hunger = fx.fromInt(0);
+      relieveHunger(world, settler);
       return;
     case 'forage':
       // Foraging a wild berry bush: eat its ripe fruit (the bush flips ripe→bare + schedules its regrow,
-      // and emits `berryForaged` for the render handover) and zero hunger — the wild-food twin of `eat`,
-      // but no stored/carried good is consumed and no job/tool is needed. A bush bare/gone since the
-      // planner chose it grants no food but still resets hunger (the bite was taken), like `eat`.
+      // and emits `berryForaged` for the render handover) — the wild-food twin of `eat`, worth the same
+      // EAT_HUNGER_RESTORE, but no stored/carried good is consumed and no job/tool is needed. A bush bare/
+      // gone since the planner chose it grants no food but still feeds the eater, like `eat`.
       forageBerry(world, ctx, effect.bush);
-      if (world.has(settler, Settler)) world.get(settler, Settler).hunger = fx.fromInt(0);
+      relieveHunger(world, settler);
       return;
-    case 'sleep':
-      // Resting clears fatigue (no goods consumed — sleeping is free, unlike eating). Pairs with the
-      // NeedsSystem's per-tick fatigue rise to close the rise→sleep→reset loop.
-      if (world.has(settler, Settler)) world.get(settler, Settler).fatigue = fx.fromInt(0);
+    case 'sleep': {
+      // Resting takes SLEEP_FATIGUE_RESTORE off fatigue (no goods consumed — sleeping is free, unlike
+      // eating). Like a meal it is a partial refill, so a settler run to the top of its bar beds down
+      // more than once; it pairs with the NeedsSystem's per-tick fatigue rise to close the loop.
+      const s = world.tryGet(settler, Settler);
+      if (s !== undefined) s.fatigue = relieveNeed(s.fatigue, SLEEP_FATIGUE_RESTORE);
       return;
+    }
     case 'pray':
       // Praying clears piety (no goods consumed — like sleeping, devotion is free). Pairs with the
       // NeedsSystem's per-tick piety rise to close the rise→pray→reset loop. The walk to a temple is
@@ -278,4 +283,11 @@ function applyEffect(world: World, ctx: SystemContext, settler: Entity, effect: 
     default:
       assertNever(effect); // a new AtomicEffect variant is a compile error until handled above
   }
+}
+
+/** Credit one meal to the eater's hunger bar ({@link EAT_HUNGER_RESTORE}) — shared by `eat` and `forage`,
+ *  which the original feeds identically. No-op on an entity that is no longer a {@link Settler}. */
+function relieveHunger(world: World, settler: Entity): void {
+  const s = world.tryGet(settler, Settler);
+  if (s !== undefined) s.hunger = relieveNeed(s.hunger, EAT_HUNGER_RESTORE);
 }

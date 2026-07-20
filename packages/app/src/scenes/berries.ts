@@ -7,10 +7,11 @@ import type { SceneDefinition } from './types.js';
 
 /**
  * The berries scene: prove wild berry bushes are forageable natural food. Hungry settlers each forage the
- * nearest ripe bush — hunger resets, the bush goes bare, blooms flowering at the regrow midpoint, then holds
+ * nearest ripe bush — a meal comes off the hunger bar, the bush goes bare, blooms flowering at the regrow
+ * midpoint, then holds
  * fruit again after {@link systems.BERRY_REGROW_TICKS}. A separate bush placed already-bare regrows on its
  * own, proving the growth loop independent of foraging. There is deliberately no food store, so the only way
- * a settler's hunger can reset is by foraging a bush — the headless half asserts exactly that (every hungry
+ * a settler's hunger can fall is by foraging a bush — the headless half asserts exactly that (every hungry
  * settler ends fed, every bush ends ripe again). The browser half is where a human judges the pixels: the
  * red-berry bush, the eat animation, the bush going bare the instant it's foraged, the white bloom at the
  * midpoint, and the berries growing back.
@@ -98,9 +99,13 @@ export const berriesScene: SceneDefinition = {
       predicate: (sim) => {
         let fed = 0;
         let total = 0;
+        // One berry is a partial meal, not a reset: with needs frozen in this scene the bar sits exactly
+        // one EAT_HUNGER_RESTORE below the authored HUNGRY — and below the eat threshold, so nobody
+        // goes back for seconds.
+        const afterOneBerry = fx.sub(HUNGRY, systems.EAT_HUNGER_RESTORE);
         for (const e of sim.world.query(Settler)) {
           total++;
-          if (sim.world.get(e, Settler).hunger === fx.fromInt(0)) fed++;
+          if (sim.world.get(e, Settler).hunger === afterOneBerry) fed++;
         }
         return total === STATIONS && fed === STATIONS;
       },

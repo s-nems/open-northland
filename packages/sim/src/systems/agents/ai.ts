@@ -157,7 +157,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
         const here = terrain.nodeAtClamped(hereNode.hx, hereNode.hy);
         const limit = navigationLimitFor(world, terrain, e);
         const load = world.tryGet(e, Carrying);
-        if (planNeeds(world, ctx, terrain, e, settler, here, load, targets, limit)) continue;
+        if (planNeeds(world, ctx, terrain, e, settler, here, load, targets, limit, spacing)) continue;
       }
       planChildWander(world, ctx, terrain, e, spacing);
       continue;
@@ -173,10 +173,10 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     const limit = navigationLimitFor(world, terrain, e);
 
     // NEEDS (highest priority): eat > sleep > pray. An unsatisfiable need falls through to work.
-    if (planNeeds(world, ctx, terrain, e, settler, here, load, targets, limit)) {
+    if (planNeeds(world, ctx, terrain, e, settler, here, load, targets, limit, spacing)) {
       // A needs drive pulled the settler away: shed a lingering waiting-inside marker so the walk to
-      // food/temple is visible (the render hides a Resting settler) and the family stages stop reading a
-      // foraging parent as "inside". The needs drives never stamp Resting themselves (sleep is in place).
+      // food/temple/a bed is visible (the render hides a Resting settler) and the family stages stop
+      // reading a foraging parent as "inside". The needs drives never stamp Resting themselves.
       world.remove(e, Resting);
       continue;
     }

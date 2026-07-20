@@ -20,6 +20,8 @@ import {
   CHILD_FEMALE,
   CHILD_MALE,
   EAT_ANIMATION_REPEATS,
+  EAT_HUNGER_RESTORE,
+  HUNGER_RISE_PER_TICK,
 } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { settlerAt as fixtureSettlerAt } from '../fixtures/settler.js';
@@ -137,8 +139,8 @@ describe('eatDrive — the planner choosing to eat', () => {
   });
 });
 
-describe('eat atomic — consuming food + resetting hunger (AtomicSystem)', () => {
-  it('consumes one unit from a store and zeroes hunger on completion', () => {
+describe('eat atomic — consuming food + relieving hunger (AtomicSystem)', () => {
+  it('consumes one unit from a store and takes one meal off hunger on completion', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(3, 1) });
     const settler = settlerAt(sim, 0, 0, HUNGRY);
     const store = storeAt(sim, 0, 0, 3);
@@ -155,7 +157,8 @@ describe('eat atomic — consuming food + resetting hunger (AtomicSystem)', () =
     atomicSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.get(store, Stockpile).amounts.get(FOOD)).toBe(2); // one unit eaten
-    expect(sim.world.get(settler, Settler).hunger).toBe(fx.fromInt(0)); // hunger reset
+    // One meal is a partial refill, not a reset — the eater is left hungry enough to come back.
+    expect(sim.world.get(settler, Settler).hunger).toBe(fx.sub(HUNGRY, EAT_HUNGER_RESTORE));
     expect(sim.world.has(settler, CurrentAtomic)).toBe(false); // atomic done
   });
 
@@ -176,29 +179,32 @@ describe('eat atomic — consuming food + resetting hunger (AtomicSystem)', () =
     atomicSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(settler, Carrying)).toBe(false); // last carried unit eaten
-    expect(sim.world.get(settler, Settler).hunger).toBe(fx.fromInt(0));
+    expect(sim.world.get(settler, Settler).hunger).toBe(fx.sub(HUNGRY, EAT_HUNGER_RESTORE));
   });
 });
 
-describe('eat drive — closing the rise→eat→reset loop through the real schedule', () => {
-  it('a settler beside a larder gets hungry, walks over, eats, and its hunger resets', () => {
+describe('eat drive — closing the rise→eat→relief loop through the real schedule', () => {
+  it('a settler beside a larder gets hungry, walks over, eats, and a meal comes off its bar', () => {
     const sim = new Simulation({ seed: 3, content: testContent(), map: grassMap(3, 1) });
     // Start the settler already near the threshold so it crosses within a short headless run.
     const settler = settlerAt(sim, 0, 0, NEED_THRESHOLD);
     const FOOD_START = 10;
     const larder = storeAt(sim, 1, 0, FOOD_START); // one tile over
 
-    let ateAtLeastOnce = false;
     let peakHunger = sim.world.get(settler, Settler).hunger;
+    let troughHunger = peakHunger;
     for (let i = 0; i < 400; i++) {
       sim.step();
       const h = sim.world.get(settler, Settler).hunger;
       if (h > peakHunger) peakHunger = h;
-      // A reset to (near) zero after having been hungry is the eat→reset signal.
-      if (h < fx.div(ONE, fx.fromInt(4))) ateAtLeastOnce = true;
+      if (h < troughHunger) troughHunger = h;
     }
 
-    expect(ateAtLeastOnce).toBe(true); // the loop closed: hunger rose, the settler ate, it reset
+    // The loop closed: hunger rose to the threshold, the settler ate, and a meal's worth came off the
+    // bar — allowing for the tick's own rise landing alongside the meal.
+    const oneMealBelowPeak = fx.sub(peakHunger, fx.sub(EAT_HUNGER_RESTORE, HUNGER_RISE_PER_TICK));
+    expect(troughHunger).toBeLessThanOrEqual(oneMealBelowPeak);
+    expect(troughHunger).toBeGreaterThan(fx.fromInt(0)); // a meal is a partial refill, never a reset
     expect(peakHunger).toBeLessThanOrEqual(ONE); // never breached the hungerInRange ceiling
     // Food was actually consumed from the larder (goods conserved — not conjured).
     expect(sim.world.get(larder, Stockpile).amounts.get(FOOD) ?? 0).toBeLessThan(FOOD_START);

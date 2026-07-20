@@ -16,12 +16,14 @@ import {
   Wedding,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { ONE, type SimEvent, Simulation } from '../../src/index.js';
+import { fx, ONE, type SimEvent, Simulation } from '../../src/index.js';
 import { nodeOfPosition, nodesAdjacent } from '../../src/nav/halfcell.js';
 import {
   BABY_FEMALE,
+  EAT_HUNGER_RESTORE,
   familiesOf,
   familyOf,
+  HUNGER_RISE_PER_TICK,
   KISS_ATOMIC_ID,
   KISSED_ATOMIC_ID,
   mayMarry,
@@ -373,20 +375,25 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     sim.enqueue({ kind: 'makeChild', entity: woman, child: 'female' });
     sim.step();
 
-    // Hunger only ever falls by eating, so a dip below the seeded 80% proves she reached the store.
+    // Hunger only ever falls by eating, so a meal-sized dip below its peak proves she reached the store.
     let minHunger = sim.world.get(woman, Settler).hunger;
+    let peakHunger = minHunger;
     runUntil(
       sim,
       () => {
         const hunger = sim.world.get(woman, Settler).hunger;
         if (hunger < minHunger) minHunger = hunger;
+        if (hunger > peakHunger) peakHunger = hunger;
         return sim.world.get(woman, Marriage).child !== null;
       },
       4000,
       'hungry child-making',
     );
     expect(sim.world.isAlive(woman)).toBe(true); // fed herself instead of starving in the loop
-    expect(minHunger).toBeLessThan(ONE / 4); // she ate (hunger reset toward 0), not merely seeded < ONE
+    // She ate at least one whole meal (the tick's own rise may land alongside it), not merely seeded < ONE.
+    expect(minHunger).toBeLessThanOrEqual(
+      fx.sub(peakHunger, fx.sub(EAT_HUNGER_RESTORE, HUNGER_RISE_PER_TICK)),
+    );
     expect(sim.world.get(sim.world.get(woman, Marriage).child as Entity, Settler).jobType).toBe(BABY_FEMALE);
   });
 

@@ -18,6 +18,7 @@ export {
   isChild,
   TICKS_PER_AGE_YEAR,
 } from './lifecycle/ageclass.js';
+export { EAT_HUNGER_RESTORE, SLEEP_FATIGUE_RESTORE } from './lifecycle/needs.js';
 export { HEADQUARTERS_BUILDING_ID } from './readviews/buildings.js';
 export { IDLE_JOB } from './readviews/hud.js';
 export { MILITARY_MODE, SCOUT_JOB } from './readviews/stances.js';
