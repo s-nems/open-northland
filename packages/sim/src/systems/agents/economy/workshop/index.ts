@@ -20,8 +20,7 @@ export type WorkSeatClaims = Map<Entity, number>;
 
 /**
  * Run the self-service producer loop: claim an available batch seat, ship the good whose full slot stopped
- * the workshop, fetch a missing input, haul an output when no carrier owns that run, then loiter by the
- * door with nothing left to do.
+ * the workshop, fetch a missing input, haul an output out, then loiter by the door with nothing left to do.
  *
  * Source basis: that a workshop stops on a full product slot and resumes once a unit leaves is observed
  * original behavior. That the CRAFTSMAN makes the trip is the approximation — `jobtypes.ini` grants the
@@ -34,7 +33,6 @@ export function planProducer(
   plan: PlannerContext,
   workplace: Entity,
   seatClaims: WorkSeatClaims,
-  carrierSupplied: boolean,
   spacing: SpacingState,
 ): void {
   const { world, ctx, terrain, here, targets } = plan;
@@ -74,7 +72,13 @@ export function planProducer(
     return;
   }
 
-  if (!carrierSupplied && haulWorkplaceOutput(plan, workplace, recipe)) return;
+  // A craftsman with no seat and no input to fetch has nothing left to do here, so it carries its own
+  // output out even when the workshop staffs a carrier. Waiting for that carrier is what wedged a
+  // flour-starved bakery: the carrier plans for its workshop only now and then (it is the settlement's
+  // porter too), so a bakery whose shelf filled while the mill was dry drained at a handful of loaves per
+  // twenty thousand ticks and otherwise stood idle with a full shelf. The workshop's own carrier still
+  // does the same run from its own drive; this rung just stops the craftsman waiting on it.
+  if (haulWorkplaceOutput(plan, workplace, recipe)) return;
   // A surplus/idle craftsman: its seat is taken (or the workshop can't produce), so its door presence adds
   // no production — it may loiter beside the door rather than stand on it.
   loiterByDoor(plan, workplace, spacing, false);
