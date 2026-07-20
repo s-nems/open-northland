@@ -2,10 +2,8 @@ import {
   Building,
   Crop,
   GroundDrop,
-  JobAssignment,
   Position,
   Resource,
-  Settler,
   Stockpile,
   UnderConstruction,
 } from '../../../components/index.js';
@@ -16,7 +14,7 @@ import type { SystemContext } from '../../context.js';
 import { dynamicBlockOverlay } from '../../footprint/index.js';
 import { canonicalResources } from '../../resource-index.js';
 import { canonicalById } from '../../spatial.js';
-import { isCarrierJob, isYardHeap, lowestStockedGood } from '../../stores/index.js';
+import { isYardHeap, lowestStockedGood } from '../../stores/index.js';
 import { InteractionCellIndex } from './cell-index.js';
 import { SinkAvailability } from './stores/sinks.js';
 
@@ -51,8 +49,6 @@ export interface TargetCandidates {
   readonly cropsByFarm: ReadonlyMap<Entity, readonly Entity[]>;
   /** Good type to its content-authored harvesting atomic. */
   readonly harvestAtomicByGood: ReadonlyMap<number, number>;
-  /** Workplaces with a carrier bound to their transport slot. */
-  readonly carrierSuppliedWorkplaces: ReadonlySet<Entity>;
   /** Position-independent store-capacity probes, memoized by good for this planner tick. */
   readonly sinks: SinkAvailability;
   /** Shared dynamic blocks and ground-heap occupancy for every flag delivery planned this tick. */
@@ -71,13 +67,6 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
   const harvestAtomicByGood = new Map<number, number>();
   for (const good of ctx.content.goods) {
     if (good.atomics.harvest !== undefined) harvestAtomicByGood.set(good.typeId, good.atomics.harvest);
-  }
-
-  const carrierSuppliedWorkplaces = new Set<Entity>();
-  for (const entity of world.query(Settler, JobAssignment)) {
-    const jobType = world.get(entity, Settler).jobType;
-    if (jobType === null || !isCarrierJob(ctx, jobType)) continue;
-    carrierSuppliedWorkplaces.add(world.get(entity, JobAssignment).workplace);
   }
 
   const stockpiles = canonicalById(world.query(Stockpile, Position));
@@ -128,7 +117,6 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
     groundDrops: canonicalById(world.query(GroundDrop, Stockpile, Position)),
     cropsByFarm,
     harvestAtomicByGood,
-    carrierSuppliedWorkplaces,
     sinks: new SinkAvailability(stockpiles, world, ctx),
     yard: { blocked: dynamicBlockOverlay(world, ctx, terrain), occupied: yardOccupied },
   };

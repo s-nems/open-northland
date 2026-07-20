@@ -216,11 +216,12 @@ describe('producer self-service — hauling the finished output', () => {
     expect(sim.world.get(smith, MoveGoal).cell).toBe(cell(sim, 3, 0));
   });
 
-  it('a craftsman leaves HAULING to its bound carrier (waits inside instead)', () => {
+  it('a craftsman with nothing else to do hauls even when a carrier is bound', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
-    // Nothing to fetch (no wood anywhere), a haulable plank, a sink for it — without a carrier the
-    // craftsman would carry the plank out (the test above this describe). With one bound, the output
-    // run is the carrier's job: the craftsman waits inside its workshop.
+    // Nothing to fetch (no wood anywhere), a haulable plank, a sink for it. The workshop staffs a
+    // carrier, but that carrier is the settlement's porter too and plans for its own workshop only
+    // now and then — a craftsman that waited for it left a full shelf standing for tens of thousands
+    // of ticks (the reported flour-starved bakery). With its own work exhausted, it makes the run.
     const mill = buildingAt(sim, TWIN_MILL, 0, 0, [[PLANK, 1]]);
     buildingAt(sim, HEADQUARTERS, 3, 0);
     settlerAt(sim, 5, 0, CARRIER, mill); // the bound carrier (elsewhere, mid-errand)
@@ -228,9 +229,10 @@ describe('producer self-service — hauling the finished output', () => {
 
     aiSystem(sim.world, ctxOf(sim));
 
-    expect(sim.world.has(smith, MoveGoal)).toBe(false);
-    expect(sim.world.has(smith, CurrentAtomic)).toBe(false);
-    expect(sim.world.tryGet(smith, Resting)).toEqual({ at: mill });
+    expect(sim.world.has(smith, Resting)).toBe(false); // no longer waits inside for the carrier
+    const atomic = sim.world.get(smith, CurrentAtomic);
+    expect(atomic.atomicId).toBe(PICKUP_ATOMIC);
+    expect(atomic.effect).toMatchObject({ kind: 'pickup', goodType: PLANK, from: mill });
   });
 
   it('never routes a hauled output onto a full or foreign-good ground heap (the per-tile cap)', () => {

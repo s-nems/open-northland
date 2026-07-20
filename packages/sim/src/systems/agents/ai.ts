@@ -260,7 +260,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
       if (isCarrierJob(ctx, plan.jobType)) {
         planWorkshopSupplier(plan, workplace, spacing);
       } else {
-        planProducer(plan, workplace, seatClaims, targets.carrierSuppliedWorkplaces.has(workplace), spacing);
+        planProducer(plan, workplace, seatClaims, spacing);
       }
       continue;
     }
