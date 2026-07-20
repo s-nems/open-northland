@@ -46,11 +46,11 @@ export const economyContent = {
       farming: {
         stages: 5,
         ticksPerStage: 10,
+        growthSpreadPercent: 40,
         yieldPerField: 1,
         fieldRadius: 8,
-        // Sublinear crew scaling — the live cap is `fieldsBase + fieldsPerFarmer × crew` (solo 6, pair 10).
-        fieldsBase: 2,
-        fieldsPerFarmer: 4,
+        // A flat per-farm plot — the cap does not move with crew size.
+        maxFields: 6,
       },
     },
     // A DISH (`readviews/food.ts`): stocked only in the kitchen that makes it, held by no store, eaten

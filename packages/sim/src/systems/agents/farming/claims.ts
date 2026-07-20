@@ -6,7 +6,6 @@ import type { NodeId } from '../../../nav/terrain/index.js';
 export interface FarmClaims {
   readonly nodes: Set<NodeId>;
   readonly byFarm: Map<Entity, number>;
-  readonly fieldCrew: Map<Entity, number>;
   sowScan?: SowScan;
 }
 
@@ -17,7 +16,7 @@ export interface SowScan {
 
 /** Seed claims from farmers whose field task is still in flight. */
 export function collectFarmClaims(world: World): FarmClaims {
-  const claims: FarmClaims = { nodes: new Set(), byFarm: new Map(), fieldCrew: new Map() };
+  const claims: FarmClaims = { nodes: new Set(), byFarm: new Map() };
   for (const entity of world.query(FarmTask)) {
     const task = world.get(entity, FarmTask);
     claims.nodes.add(task.node);

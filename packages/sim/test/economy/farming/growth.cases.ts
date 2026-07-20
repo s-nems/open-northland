@@ -94,6 +94,42 @@ describe('sow / water effects', () => {
     });
   });
 
+  it('sow spreads growth rate across nodes, so a burst-sown plot cannot ripen in lockstep', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 12) });
+    const farm = farmAt(sim, 0, 0);
+    const rates = new Set<number>();
+    for (let cx = 1; cx < 6; cx++) {
+      for (let cy = 1; cy < 6; cy++) {
+        const node = cellAnchorNode(cx, cy);
+        applySow(sim.world, ctxOf(sim), { farm, goodType: WHEAT, x: node.hx, y: node.hy });
+      }
+    }
+    for (const field of sim.world.query(Crop)) rates.add(sim.world.get(field, Crop).ticksPerStage);
+
+    // Several distinct paces among fields planted on the same tick — the de-synchroniser. Every pace
+    // stays a positive whole number of ticks near the content's nominal rate (never 0, never runaway).
+    expect(rates.size).toBeGreaterThan(2);
+    for (const rate of rates) {
+      expect(Number.isInteger(rate)).toBe(true);
+      expect(rate).toBeGreaterThan(0);
+      expect(rate).toBeLessThan(TICKS_PER_STAGE * 2);
+    }
+  });
+
+  it('the growth rate of a node is stable: the same node re-sown draws the same pace', () => {
+    const paceAt = (cx: number, cy: number): number => {
+      const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 12) });
+      const farm = farmAt(sim, 0, 0);
+      const node = cellAnchorNode(cx, cy);
+      applySow(sim.world, ctxOf(sim), { farm, goodType: WHEAT, x: node.hx, y: node.hy });
+      const field = [...sim.world.query(Crop)][0] as Entity;
+      return sim.world.get(field, Crop).ticksPerStage;
+    };
+    // A pure coordinate hash, not `world.rng` — so a replay re-sowing the same node re-draws the same
+    // pace and the run stays byte-identical.
+    expect(paceAt(3, 4)).toBe(paceAt(3, 4));
+  });
+
   it('sow plants nothing on a node taken since the planner chose it', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 4) });
     const farm = farmAt(sim, 0, 0);

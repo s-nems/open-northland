@@ -9,7 +9,7 @@ import type { NodeId } from '../../nav/terrain/index.js';
  * `sow` atomic effect from the good's content `farming` block; the CropGrowthSystem advances it and the
  * farmer drive (planFarmer) works it. The loop: sown at `stage` 1 with `Resource.remaining` **0** (a
  * growing field yields nothing — the remaining-0 gate is what keeps every generic harvest scan off an
- * unripe field), grows a stage each `ticksPerStage` ticks ONLY while `watered` — watering is the growth
+ * unripe field), grows a stage each {@link ticksPerStage} ticks ONLY while `watered` — watering is the growth
  * FUEL, and each stage step consumes it (a named approximation: the engine's watering semantics are
  * not decoded; see systems/economy/farming.ts),
  * and at the final stage (`stage === stages`) becomes ripe: `Resource.remaining` is set to `yieldUnits`,
@@ -32,7 +32,9 @@ export const Crop = defineComponent<{
   stages: number;
   /** Whole ticks accumulated toward the next stage (exact integer compare, like CurrentAtomic). */
   growth: number;
-  /** Ticks per growth stage (the content `farming.ticksPerStage`, snapshotted at sow). */
+  /** THIS field's ticks per growth stage, drawn at sow from the content's nominal rate and its
+   *  `growthSpreadPercent` band by a hash of the node — so fields planted together ripen apart
+   *  (systems/economy/farming.ts `stageTicksAt`). */
   ticksPerStage: number;
   /** Whether the field holds a live watering — the GROWTH FUEL: only a watered field grows, and each
    *  stage step consumes the watering (thirsty again until a farmer returns with the can — see

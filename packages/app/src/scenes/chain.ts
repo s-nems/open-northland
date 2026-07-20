@@ -49,13 +49,14 @@ const MILLERS = 2;
 const BAKERS = 1;
 const WELL_CARRIERS = 1;
 
-/** Long enough for the serial chain to close: the farm's fields ripen (a sowing + one watering per stage,
- *  ~2000 ticks) and feed the mill, then flour and water reach the bakery; 9000 includes margin for the
- *  calibrated 18-tick-per-cell walks between workshops. */
-const RUN_TICKS = 9000;
+/** Long enough for the serial chain to close: the farm ploughs its plot, its first fields ripen (a sowing
+ *  plus one watering per stage) and feed the mill, then flour and water reach the bakery; 12000 covers that
+ *  cold start plus margin for the calibrated 18-tick-per-cell walks between workshops. */
+const RUN_TICKS = 12000;
 
-/** Extra ticks the sown-fields check may step a fresh run past {@link RUN_TICKS}: one observed
- *  harvest-trough recovery (~800 ticks in the trace) with headroom. */
+/** Extra ticks the sown-fields check may step a fresh run past {@link RUN_TICKS}. The plot no longer empties
+ *  in a mass harvest (fields grow at spread paces — `catalog/farming.ts`), so this is slack, not a
+ *  trough-recovery budget. */
 const RESOW_WINDOW_TICKS = 1600;
 /** Frames the whole cluster; ≠ 1 so `cameraFor` centres on the settlers (a non-1 zoom). */
 const INITIAL_ZOOM = 0.7;

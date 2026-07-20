@@ -1,4 +1,5 @@
 import { Position, Stockpile } from '../../../components/index.js';
+import { coordHash } from '../../../core/coord-hash.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
@@ -54,17 +55,12 @@ const SHEAF_PREFILTER_SLACK = 2;
 /** Base sow-lattice pitch in half-cell nodes: one field per CELL before jitter, so fields sit about a
  *  tile apart — the original's packed-but-not-hex-stacked wheat spread (observed). */
 const FIELD_LATTICE_STEP = 2;
-/** 32-bit coordinate-mix constants for the per-field jitter hash (the golden-ratio / murmur3 mixers —
- *  any fixed odd constants serve; the hash only has to be deterministic and spatially uncorrelated). */
-const JITTER_HASH_X = 0x9e3779b1;
-const JITTER_HASH_Y = 0x85ebca6b;
 
-/** The deterministic 0/+1-node jitter of one base lattice point (each axis shifts by 0 or 1 node) —
- *  a pure coordinate hash (never `world.rng`: a field position must not consume the command-stream's
- *  RNG), so the same point always jitters the same way and the sowing pattern is byte-stable across
- *  runs and replays. */
+/** The deterministic 0/+1-node jitter of one base lattice point (each axis shifts by 0 or 1 node), from
+ *  the shared {@link coordHash} — so the same point always jitters the same way and the sowing pattern
+ *  is byte-stable across runs and replays. */
 function sowJitter(bx: number, by: number): { dx: number; dy: number } {
-  const h = (Math.imul(bx, JITTER_HASH_X) ^ Math.imul(by, JITTER_HASH_Y)) >>> 0;
+  const h = coordHash(bx, by);
   return { dx: h & 1, dy: (h >>> 1) & 1 };
 }
 

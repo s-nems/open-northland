@@ -6,7 +6,6 @@ import {
   JobAssignment,
   Position,
   Resting,
-  Settler,
   UnderConstruction,
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
@@ -32,32 +31,6 @@ import { closer, interactionCell, jobAtomics } from '../targets/index.js';
 
 import type { FarmClaims } from './claims.js';
 import { nearestFarmSheaf, nextSowNode } from './targets.js';
-
-/**
- * How many field-farmers are bound to `farm` — settlers whose {@link JobAssignment} points here and whose job
- * may run the crop's plant atomic (the same field-trade test as `boundFarmTarget`, so the farm's carrier slot
- * never inflates the cap). Memoized per tick in {@link FarmClaims.fieldCrew}; a commutative count over the
- * assignment query (no pick), so store-order iteration is fine.
- */
-function fieldCrewOf(
-  world: World,
-  ctx: SystemContext,
-  claims: FarmClaims,
-  farm: Entity,
-  plantAtomic: number,
-): number {
-  const cached = claims.fieldCrew.get(farm);
-  if (cached !== undefined) return cached;
-  let crew = 0;
-  for (const s of world.query(Settler, JobAssignment)) {
-    if (world.get(s, JobAssignment).workplace !== farm) continue;
-    const jobType = world.get(s, Settler).jobType;
-    if (jobType === null || !jobAtomics(ctx, jobType).has(plantAtomic)) continue;
-    crew++;
-  }
-  claims.fieldCrew.set(farm, crew);
-  return crew;
-}
 
 /**
  * The farm a bound settler should work as a field-farmer, with the farmed good's resolved spec — or null when
@@ -101,9 +74,9 @@ function boundFarmTarget(
  *  b. **Carry a sheaf home** — pick up a cut-wheat {@link import('../../components/index.js').GroundDrop} lying
  *     within the farm's field radius (the delivery rung then routes the load into the farm's own store — the
  *     bound storage sink).
- *  c. **Sow** a new field while the farm holds fewer than `fieldsBase + fieldsPerFarmer × bound field-farmers`
- *     (the roster scales sublinearly with the crew — the base is shared, only the slope is per head) — walk to
- *     the next free node of the jittered field lattice around the farm and run the plant atomic. Sowing beats
+ *  c. **Sow** a new field while the farm holds fewer than `maxFields` — a flat per-farm plot size, unchanged
+ *     by crew size (observed) — walk to the next free node of the jittered field lattice around the farm and
+ *     run the plant atomic. Sowing beats
  *     the can: with per-stage watering some field is almost always thirsty, so a water-first farmer would tend
  *     two seedlings forever and never expand the plot; a sown-but-dry field loses nothing by standing a moment.
  *  d. **Water** a thirsty field (the cultivate atomic) — every stage consumes one watering, so between sowings
@@ -134,6 +107,11 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
   const fp = world.get(farm, Position);
   const fn = nodeOfPosition(fp.x, fp.y);
   const anchor = terrain.nodeAtClamped(fn.hx, fn.hy);
+
+  /** How long one field action takes: the atomic's animation length replayed `workRepeats` times — the
+   *  farmer scythes/sows/waters several strokes per spot, not one (see the good's `workRepeats`). */
+  const swingTicks = (atomic: number): number =>
+    atomicDuration(ctx.content, settler, atomic) * spec.farming.workRepeats;
 
   /** Claim `node` for this settler's next action and record the in-flight intent (see FarmTask). */
   const take = (node: NodeId, sow: boolean): void => {
@@ -187,7 +165,7 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
         e,
         spec.harvestAtomic,
         { kind: 'harvest', resource: node, goodType: spec.goodType },
-        atomicDuration(ctx.content, settler, spec.harvestAtomic),
+        swingTicks(spec.harvestAtomic),
         node,
       ),
     );
@@ -206,14 +184,12 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
     return true;
   }
 
-  // c. Sow the next field while the farm is under its crew-scaled cap (in-flight sow-walks counted in;
-  // `fieldsBase + fieldsPerFarmer × bound field-farmers` — a bigger crew works a bigger plot). Before
-  // the can: with per-stage watering something is almost always thirsty, so a water-first farmer would
-  // never expand.
-  const fieldCap =
-    spec.farming.fieldsBase +
-    spec.farming.fieldsPerFarmer * fieldCrewOf(world, ctx, claims, farm, spec.plantAtomic);
-  if (fields + (claims.byFarm.get(farm) ?? 0) < fieldCap) {
+  // c. Sow the next field while the farm is under its plot cap (in-flight sow-walks counted in). The cap
+  // belongs to the FARM, not its crew — measured in the original, a farm holds the same ~24 plants whether
+  // one farmer or four work it; extra farmers make the plot turn over faster, they do not enlarge it.
+  // Before the can: with per-stage watering something is almost always thirsty, so a water-first farmer
+  // would never expand.
+  if (fields + (claims.byFarm.get(farm) ?? 0) < spec.farming.maxFields) {
     const node = nextSowNode(plan, { anchor, spec, claims });
     if (node !== null) {
       take(node, true);
@@ -224,7 +200,7 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
           e,
           spec.plantAtomic,
           { kind: 'sow', farm, goodType: spec.goodType, x: at.x, y: at.y },
-          atomicDuration(ctx.content, settler, spec.plantAtomic),
+          swingTicks(spec.plantAtomic),
           farm,
         ),
       );
@@ -243,7 +219,7 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
         e,
         spec.cultivateAtomic,
         { kind: 'water', crop },
-        atomicDuration(ctx.content, settler, spec.cultivateAtomic),
+        swingTicks(spec.cultivateAtomic),
         crop,
       ),
     );

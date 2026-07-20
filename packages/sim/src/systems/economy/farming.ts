@@ -1,6 +1,7 @@
 import type { GoodFarming } from '@open-northland/data';
 import { Building, Crop, Position, Resource } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
+import { coordHash } from '../../core/coord-hash.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { positionOfNode } from '../../nav/halfcell.js';
 import type { System, SystemContext } from '../context.js';
@@ -16,11 +17,37 @@ import { stockpilesAtNode } from '../stockpile-index.js';
 
 // Watering is the growth fuel: a field grows only while `watered`, and every stage step consumes its watering —
 // the field turns thirsty again and stands until a farmer comes back with the can. So a field needs one sowing
-// plus one watering per stage to ripen, and the farm's throughput is literally its farmers' labor (a lone
-// farmer cycles fewer fields than a full crew, no idle-while-it-grows dead time — user-directed). A named
-// approximation: the cultivate atomic exists in the readable data (id 35, the watering-can animation) but its
-// engine-side effect is not decoded. An untended field stands at its stage — it never ripens by itself and
-// deadlocks nothing (the farm works its other fields; any farmer can pick it back up later).
+// plus one watering per stage to ripen, which makes the farm's throughput its farmers' labor rather than a
+// wall-clock timer: the plot is a fixed size (`maxFields`), and a bigger crew pushes the same plot round faster.
+// That is what the original measures out as — ~10 grain per farmer per 10 minutes, straight up to the farm's
+// four slots, on a plot that stands at ~24 plants for every one of those crews. A named approximation: the
+// cultivate atomic exists in the readable data (id 35, the watering-can animation) but its engine-side effect
+// is not decoded. An untended field stands at its stage — it never ripens by itself and deadlocks nothing (the
+// farm works its other fields; any farmer can pick it back up later).
+
+/** Distinct growth paces a field can be sown into, spread evenly across the good's
+ *  `growthSpreadPercent` band. Enough to keep a plot of a couple of dozen fields visibly out of step;
+ *  finer bands buy nothing the player can see. */
+const GROWTH_BANDS = 8;
+
+/**
+ * The per-stage growth time of a field sown at half-cell node `(x, y)`: the good's nominal
+ * `ticksPerStage` shifted into one of {@link GROWTH_BANDS} paces spanning ±`growthSpreadPercent`. A pure
+ * coordinate hash, never `world.rng` ({@link coordHash}), so a field's pace is byte-stable across runs
+ * and replays. Clamped to at least one tick — a band must never make a field ripen instantly.
+ *
+ * This spread is what keeps the farm's output continuous. Without it every field of a burst-sown plot
+ * crosses every stage on the same tick, so the farm swings between a full plot of green and one mass
+ * harvest; the original visibly does neither (its plots stand at mixed heights and ripen a few at a
+ * time). Its per-plant timing is not decoded, so the spread is a named approximation of that look.
+ */
+function stageTicksAt(farming: GoodFarming, x: number, y: number): number {
+  const spread = farming.growthSpreadPercent;
+  if (spread === 0) return farming.ticksPerStage;
+  const band = coordHash(x, y) % GROWTH_BANDS;
+  const percent = -spread + Math.floor((2 * spread * band) / (GROWTH_BANDS - 1)); // -spread..+spread
+  return Math.max(1, Math.floor((farming.ticksPerStage * (100 + percent)) / 100));
+}
 
 /** A field-farmed good's resolved loop parameters: its content `farming` block + the three atomic ids
  *  the loop's actions run (`atomicForPlanting`/`atomicForCultivating`/`atomicForHarvesting`). */
@@ -112,7 +139,7 @@ export function applySow(
     stage: 1,
     stages: spec.farming.stages,
     growth: 0,
-    ticksPerStage: spec.farming.ticksPerStage,
+    ticksPerStage: stageTicksAt(spec.farming, effect.x, effect.y),
     watered: false,
     yieldUnits: spec.farming.yieldPerField,
   });

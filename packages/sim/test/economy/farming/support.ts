@@ -14,7 +14,7 @@ export const { Building, Carrying, Crop, GroundDrop, JobAssignment, Position, Re
 /**
  * FIELD FARMING (`systems/economy/farming.ts` + `agents/farming`): the farm's
  * sow→grow→water→reap→carry loop. Fixture: good 6 = wheat (atomics plant 34 / cultivate 35 / harvest 29
- * — the original's own ids; farming: 5 stages × 10 ticks, yield 1, radius 8, field cap 2 + 4/farmer),
+ * — the original's own ids; farming: 5 stages × 10 nominal ticks, yield 1, radius 8, 6 fields),
  * job 18 = farmer, building 5 = farm (4 farmer slots, wheat-only store cap 25, produces wheat, NO recipe).
  * Unit tests pin the growth/effect mechanics; planner passes pin each drive decision; the end-to-end
  * run proves wheat lands in the farm's own store, deterministically.
@@ -32,11 +32,8 @@ export const PICKUP_ATOMIC = 22;
 // The fixture's farming block (keep in sync with fixtures/content.ts).
 export const STAGES = 5;
 export const TICKS_PER_STAGE = 10;
-/** The fixture's field-cap formula: `fieldsBase + fieldsPerFarmer × bound field-farmers`. */
-export const FIELDS_BASE = 2;
-export const FIELDS_PER_FARMER = 4;
-export const SOLO_FIELD_CAP = FIELDS_BASE + FIELDS_PER_FARMER; // 6
-export const PAIR_FIELD_CAP = FIELDS_BASE + FIELDS_PER_FARMER * 2; // 10 — sublinear, not 2× the solo cap
+/** The fixture farm's plot size — flat, whatever the crew (keep in sync with fixtures/content.ts). */
+export const FIELD_CAP = 6;
 const BARREN = 2;
 const GRANARY = 6;
 /** The fixture farm's wheat-slot ceiling (`stock` capacity 25 — keep in sync with fixtures/content.ts). */
