@@ -45,7 +45,8 @@ function stageTicksAt(farming: GoodFarming, x: number, y: number): number {
   const spread = farming.growthSpreadPercent;
   if (spread === 0) return farming.ticksPerStage;
   const band = coordHash(x, y) % GROWTH_BANDS;
-  const percent = -spread + Math.floor((2 * spread * band) / (GROWTH_BANDS - 1)); // -spread..+spread
+  const steps = Math.max(1, GROWTH_BANDS - 1); // a single band is the nominal rate, not a divide by zero
+  const percent = -spread + Math.floor((2 * spread * band) / steps); // -spread..+spread
   return Math.max(1, Math.floor((farming.ticksPerStage * (100 + percent)) / 100));
 }
 

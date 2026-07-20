@@ -117,17 +117,21 @@ describe('sow / water effects', () => {
   });
 
   it('the growth rate of a node is stable: the same node re-sown draws the same pace', () => {
-    const paceAt = (cx: number, cy: number): number => {
-      const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 12) });
+    // Different SEEDS, and a differing number of prior RNG draws, so an implementation that drew the
+    // pace from `world.rng` would diverge here — the same-arguments-twice form would not catch it.
+    const paceAt = (cx: number, cy: number, seed: number, priorDraws: number): number => {
+      const sim = new Simulation({ seed, content: testContent(), map: grassMap(12, 12) });
       const farm = farmAt(sim, 0, 0);
+      const ctx = ctxOf(sim);
+      for (let i = 0; i < priorDraws; i++) ctx.rng.int(100);
       const node = cellAnchorNode(cx, cy);
-      applySow(sim.world, ctxOf(sim), { farm, goodType: WHEAT, x: node.hx, y: node.hy });
+      applySow(sim.world, ctx, { farm, goodType: WHEAT, x: node.hx, y: node.hy });
       const field = [...sim.world.query(Crop)][0] as Entity;
       return sim.world.get(field, Crop).ticksPerStage;
     };
     // A pure coordinate hash, not `world.rng` — so a replay re-sowing the same node re-draws the same
     // pace and the run stays byte-identical.
-    expect(paceAt(3, 4)).toBe(paceAt(3, 4));
+    expect(paceAt(3, 4, 1, 0)).toBe(paceAt(3, 4, 99, 7));
   });
 
   it('sow plants nothing on a node taken since the planner chose it', () => {
