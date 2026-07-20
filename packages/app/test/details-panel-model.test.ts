@@ -1,4 +1,4 @@
-import { ONE, type WorldSnapshot } from '@open-northland/sim';
+import { ONE, systems, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { STOCK_TAB_COUNT } from '../src/content/gui-atlas-map.js';
 import {
@@ -307,6 +307,41 @@ describe('selection details panel model', () => {
     expect(bare.bars.map((b) => b.label)).toEqual(['Głód', 'Sen', 'Towarzystwo', 'Religia']);
   });
 
+  it('shows a minor its age in years off the sim rate, and shows an adult none', () => {
+    const snapshot = snapshotOf([
+      // A four-year-old: exactly on the baby→child boundary, so the ramp must read a whole 4.
+      {
+        id: 1,
+        components: {
+          Settler: { tribe: 1, jobType: JOB_CHILD_MALE, hunger: 0, fatigue: 0, enjoyment: 0, piety: 0 },
+          Age: { ticks: systems.CHILD_AGE_TICKS },
+        },
+      },
+      // One tick short of adulthood — the oldest age the panel can ever render.
+      {
+        id: 2,
+        components: {
+          Settler: { tribe: 1, jobType: JOB_CHILD_MALE, hunger: 0, fatigue: 0, enjoyment: 0, piety: 0 },
+          Age: { ticks: systems.ADULT_AGE_TICKS - 1 },
+        },
+      },
+      // Grown: no Age component at all, so no age is shown.
+      { id: 3, components: { Settler: { tribe: 1, jobType: JOB_COLLECTOR } } },
+    ]);
+
+    const four = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
+    if (four.kind !== 'settler') throw new Error('expected a settler model');
+    expect(four.meta).toContain('Wiek: 4');
+
+    const eleven = buildUnitPanelModel(snapshot, new Set([2]), sandboxCtx());
+    if (eleven.kind !== 'settler') throw new Error('expected a settler model');
+    expect(eleven.meta).toContain('Wiek: 11');
+
+    const adult = buildUnitPanelModel(snapshot, new Set([3]), sandboxCtx());
+    if (adult.kind !== 'settler') throw new Error('expected a settler model');
+    expect(adult.meta).not.toContain('Wiek');
+  });
+
   it('hides the need bars for a cared-for baby (only Zdrowie), keeps them for a child', () => {
     const snapshot: WorldSnapshot = {
       tick: 0,
@@ -324,7 +359,7 @@ describe('selection details panel model', () => {
           id: 2,
           components: {
             Settler: { tribe: 1, jobType: JOB_CHILD_MALE, hunger: 0, fatigue: 0, enjoyment: 0, piety: 0 },
-            Age: { ticks: 9000 },
+            Age: { ticks: systems.CHILD_AGE_TICKS },
             Health: { hitpoints: 300, max: 300 },
           },
         },
@@ -354,7 +389,7 @@ describe('selection details panel model', () => {
         id: 3,
         components: {
           Settler: { tribe: 1, jobType: JOB_CHILD_MALE, hunger: 0, fatigue: 0, enjoyment: 0, piety: 0 },
-          Age: { ticks: 9000 },
+          Age: { ticks: systems.CHILD_AGE_TICKS },
           Residence: { home: 9 },
         },
       },

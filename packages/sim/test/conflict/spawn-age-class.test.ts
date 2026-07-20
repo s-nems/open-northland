@@ -5,7 +5,7 @@ import { Rng } from '../../src/core/rng.js';
 import { World } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
 import { createSettler } from '../../src/systems/conflict/spawn/index.js';
-import { ADULT_TICKS, CHILD_FEMALE, CHILD_TICKS, WOMAN_JOB } from '../../src/systems/index.js';
+import { ADULT_AGE_TICKS, CHILD_AGE_TICKS, CHILD_FEMALE, WOMAN_JOB } from '../../src/systems/index.js';
 
 /**
  * A settler spawned directly into a baby/child job — an authored map's `sethuman` children — carries an
@@ -56,7 +56,7 @@ describe('createSettler stamps Age on the baby/child job slugs', () => {
     expect(world.has(baby, Female)).toBe(false);
     // A child starts at the baby→child boundary, so growth neither demotes it to a baby nor
     // stretches its remaining childhood.
-    expect(world.get(child, Age)).toEqual({ ticks: CHILD_TICKS });
+    expect(world.get(child, Age)).toEqual({ ticks: CHILD_AGE_TICKS });
     expect(world.has(child, Female)).toBe(true);
   });
 
@@ -73,10 +73,10 @@ describe('createSettler stamps Age on the baby/child job slugs', () => {
     if (girl === null) throw new Error('spawn failed');
     expect(sim.world.get(girl, Settler).jobType).toBe(CHILD_FEMALE);
 
-    sim.run(ADULT_TICKS - CHILD_TICKS - 1); // one short of adulthood: still a child
+    sim.run(ADULT_AGE_TICKS - CHILD_AGE_TICKS - 1); // one short of adulthood: still a child
     expect(sim.world.get(girl, Settler).jobType).toBe(CHILD_FEMALE);
 
-    sim.run(1); // crosses ADULT_TICKS of lifetime: grown up
+    sim.run(1); // crosses ADULT_AGE_TICKS of lifetime: grown up
     expect(sim.world.get(girl, Settler).jobType).toBe(WOMAN_JOB);
     expect(sim.world.has(girl, Age)).toBe(false);
   });

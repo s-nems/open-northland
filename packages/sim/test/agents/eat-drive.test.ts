@@ -16,9 +16,9 @@ import {
   aiSystem,
   atomicSystem,
   BABY_FEMALE,
+  CHILD_AGE_TICKS,
   CHILD_FEMALE,
   CHILD_MALE,
-  CHILD_TICKS,
   EAT_ANIMATION_REPEATS,
 } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
@@ -239,7 +239,7 @@ describe('eat drive — age classes (a child self-feeds, a baby is cared for)', 
 
   it('a hungry child standing on a food store starts the eat atomic (the original binds child eat clips)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
-    const child = youngAt(sim, 2, 0, CHILD_FEMALE, CHILD_TICKS);
+    const child = youngAt(sim, 2, 0, CHILD_FEMALE, CHILD_AGE_TICKS);
     const store = storeAt(sim, 2, 0, 3);
 
     aiSystem(sim.world, ctxOf(sim));
@@ -251,7 +251,7 @@ describe('eat drive — age classes (a child self-feeds, a baby is cared for)', 
 
   it('a hungry child away from food walks to the nearest store like an adult', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
-    const child = youngAt(sim, 0, 0, CHILD_MALE, CHILD_TICKS);
+    const child = youngAt(sim, 0, 0, CHILD_MALE, CHILD_AGE_TICKS);
     storeAt(sim, 3, 0, 2);
 
     aiSystem(sim.world, ctxOf(sim));
@@ -272,7 +272,7 @@ describe('eat drive — age classes (a child self-feeds, a baby is cared for)', 
 
   it('a tired (not hungry) child starts the sleep atomic in place (the original binds child sleep clips)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
-    const child = youngAt(sim, 2, 0, CHILD_MALE, CHILD_TICKS, { fatigue: HUNGRY });
+    const child = youngAt(sim, 2, 0, CHILD_MALE, CHILD_AGE_TICKS, { fatigue: HUNGRY });
 
     aiSystem(sim.world, ctxOf(sim));
 

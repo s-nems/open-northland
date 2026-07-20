@@ -19,6 +19,10 @@ import type { SceneDefinition } from './types.js';
  * real play can't reach, exactly so the planner's baby gate is checkable — ignores its bush (it stays
  * ripe). The browser half is where a human judges the pixels: the two child eat clips on the child
  * bodies and the baby never feeding.
+ *
+ * The browser run is open-ended while growth keeps running, so the contrast is only on screen for the
+ * baby's first 80 s (`CHILD_AGE_TICKS` at ×1); after that he is a child and feeds himself, and by 4
+ * minutes all three have grown up. Judge it early.
  */
 
 const MAP_W = 24;
@@ -35,7 +39,7 @@ const HUNGRY = fx.div(fx.fromInt(9), fx.fromInt(10));
 const RUN_TICKS = 600;
 const INITIAL_ZOOM = 1.2;
 /** An Age tick count squarely inside the child stage (past baby, well short of adulthood). */
-const CHILD_AGE_TICKS = systems.CHILD_TICKS + 100;
+const CHILD_SPAWN_AGE_TICKS = systems.CHILD_AGE_TICKS + 100;
 
 const { Age, BerryBush, Settler } = components;
 
@@ -66,8 +70,8 @@ function build(sim: Simulation): void {
   // None of the young get a Residence, so the child stroll never fires — they stand when not feeding
   // (the stroll is the family scene's vignette; this one isolates the feed-or-not contrast).
   for (const station of [GIRL, BOY, BABY]) placeSandboxBerryBush(sim, station.x, ROW_Y);
-  spawnYoung(sim, JOB_CHILD_FEMALE, GIRL.x, GIRL.y, CHILD_AGE_TICKS, HUNGRY);
-  spawnYoung(sim, JOB_CHILD_MALE, BOY.x, BOY.y, CHILD_AGE_TICKS, HUNGRY);
+  spawnYoung(sim, JOB_CHILD_FEMALE, GIRL.x, GIRL.y, CHILD_SPAWN_AGE_TICKS, HUNGRY);
+  spawnYoung(sim, JOB_CHILD_MALE, BOY.x, BOY.y, CHILD_SPAWN_AGE_TICKS, HUNGRY);
   // The baby is AUTHORED hungry — unreachable in real play (a cared-for baby's needs are frozen,
   // NeedsSystem) — so the no-self-feed gate is observable: it sits beside ripe food and never eats.
   spawnYoung(sim, JOB_BABY_MALE, BABY.x, BABY.y, 0, HUNGRY);
