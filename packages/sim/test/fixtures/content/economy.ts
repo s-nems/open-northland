@@ -53,6 +53,10 @@ export const economyContent = {
         fieldsPerFarmer: 4,
       },
     },
+    // A DISH (`readviews/food.ts`): stocked only in the kitchen that makes it, held by no store, eaten
+    // by nobody — it becomes `food_simple` the moment a carrier lifts it out, exactly like the
+    // original's bread. Nothing in the golden slice produces it.
+    { typeId: 7, id: 'bread', weight: 1 },
   ],
   jobs: [
     { typeId: 0, id: 'idle' },
@@ -207,6 +211,24 @@ export const economyContent = {
         { inputs: [{ goodType: 1, amount: 1 }], outputs: [{ goodType: 2, amount: 1 }], ticks: 20 },
         { inputs: [{ goodType: 6, amount: 1 }], outputs: [{ goodType: 3, amount: 1 }], ticks: 20 },
       ],
+    },
+    {
+      // The KITCHEN (the real bakery's shape): it turns wood into `bread`, and its bread slot is the
+      // ONLY one in the whole fixture — no warehouse, HQ or workshop can hold a loaf, matching
+      // `houses.ini`, where a dish has a `logicstock` line solely in its own producing house. What the
+      // dish-export tests staff; nothing in the golden slice places it.
+      typeId: 21,
+      id: 'kitchen',
+      kind: 'workplace',
+      workers: [
+        { jobType: 2, count: 1 },
+        { jobType: 36, count: 1 },
+      ],
+      stock: [
+        { goodType: 1, capacity: 10, initial: 0 },
+        { goodType: 7, capacity: 5, initial: 0 },
+      ],
+      recipes: [{ inputs: [{ goodType: 1, amount: 1 }], outputs: [{ goodType: 7, amount: 1 }], ticks: 20 }],
     },
     {
       // A MULTI-PRODUCT workshop (the real smithy-2 shape, shrunk to fixture goods): ONE carpenter

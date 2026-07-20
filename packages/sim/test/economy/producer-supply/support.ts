@@ -28,6 +28,10 @@ import { cellAnchorNode, fx, ONE, type Simulation } from '../../../src/index.js'
 export const GRASS = 0;
 export const WOOD = 1;
 export const PLANK = 2;
+/** Fixture 3: the edible a dish becomes on its way out of the kitchen (`readviews/food.ts`). */
+export const FOOD_SIMPLE = 3;
+/** Fixture 7: a DISH — stocked only in the kitchen that bakes it, and held by no store as itself. */
+export const BREAD = 7;
 export const WHEAT = 6;
 export const WOODCUTTER = 1;
 export const CARPENTER = 2;
@@ -38,6 +42,8 @@ export const SAWMILL = 2;
 export const TWIN_MILL = 8;
 /** Fixture 20: TWO products off different inputs — wood→plank and wheat→food (the upgraded bakery shape). */
 export const BAKEHOUSE = 20;
+/** Fixture 21: wood → bread, and the only store in the fixture with a bread slot. */
+export const KITCHEN = 21;
 export const FARMER = 18; // the farm's field-worker job (plant atomic 34) — never hauls the farm's output out
 /** Fixture 5: the grain farm — produces wheat via its field `farming` block: a FIELD producer whose
  *  store other producers may also draw inputs from, but never a storage SINK for its own good. */
