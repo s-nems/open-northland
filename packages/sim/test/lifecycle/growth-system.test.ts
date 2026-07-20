@@ -4,12 +4,13 @@ import { Age, Position, Residence, Settler } from '../../src/components/index.js
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, Simulation, TICKS_PER_SECOND } from '../../src/index.js';
 import {
+  ADULT_TICKS,
   BABY_FEMALE,
   BABY_MALE,
   CHILD_FEMALE,
   CHILD_MALE,
+  CHILD_TICKS,
   CIVILIST_JOB,
-  GROWUP_TICKS,
   growthSystem,
   isNonWorkingAge,
   TICKS_PER_AGE_YEAR,
@@ -20,7 +21,7 @@ import { ctxOf } from '../fixtures/context.js';
 
 /**
  * GrowthSystem — a settler born young ({@link Age}-bearing) matures baby → child → adult over
- * {@link GROWUP_TICKS} per stage, sex preserved (a boy grows into a civilian, a girl into
+ * two measured stages ({@link CHILD_TICKS}, {@link ADULT_TICKS}), sex preserved (a boy grows into a civilian, a girl into
  * the adult woman role), losing its Age component and its childhood home once grown. Adults never carry an Age, so the system
  * is a no-op for them (the goldens stay untouched).
  */
@@ -58,31 +59,31 @@ function run(sim: Simulation, n: number): void {
 }
 
 describe('GrowthSystem — non-working settlers mature into workers', () => {
-  // The measured cadence itself — every other case below is written in terms of GROWUP_TICKS, so only
-  // this one fails if the constant drifts off what was observed in the original.
-  it('a childhood lasts the observed 4 minutes of x1 play, and 12 age-years', () => {
-    const childhoodTicks = GROWUP_TICKS * 2;
-    expect(childhoodTicks / TICKS_PER_SECOND).toBe(4 * 60);
-    expect(childhoodTicks / TICKS_PER_AGE_YEAR).toBe(12);
+  // The measured cadence itself — every other case below is written in terms of the stage constants, so
+  // only this one fails if they drift off what was observed in the original.
+  it('childhood runs the observed 4 minutes of x1 play: a child at 4 years, an adult at 12', () => {
+    expect(ADULT_TICKS / TICKS_PER_SECOND).toBe(4 * 60);
+    expect(ADULT_TICKS / TICKS_PER_AGE_YEAR).toBe(12);
+    expect(CHILD_TICKS / TICKS_PER_AGE_YEAR).toBe(4);
   });
 
-  it('a baby becomes a child of the same sex after GROWUP_TICKS', () => {
+  it('a baby becomes a child of the same sex at CHILD_TICKS', () => {
     const sim = new Simulation({ seed: 1, content: growthContent() });
     const she = bornSettler(sim, BABY_FEMALE, 0);
     const he = bornSettler(sim, BABY_MALE, 0);
 
-    run(sim, GROWUP_TICKS - 1); // one short of the boundary: still babies
+    run(sim, CHILD_TICKS - 1); // one short of the boundary: still babies
     expect(sim.world.get(she, Settler).jobType).toBe(BABY_FEMALE);
     expect(sim.world.get(he, Settler).jobType).toBe(BABY_MALE);
 
-    run(sim, 1); // crosses GROWUP_TICKS: baby → child, sex preserved
+    run(sim, 1); // crosses CHILD_TICKS: baby → child, sex preserved
     expect(sim.world.get(she, Settler).jobType).toBe(CHILD_FEMALE);
     expect(sim.world.get(he, Settler).jobType).toBe(CHILD_MALE);
     expect(sim.world.has(she, Age)).toBe(true); // a child is still a non-working age
     expect(isNonWorkingAge(sim.world.get(she, Settler).jobType)).toBe(true);
   });
 
-  it('a child grows up after the second stage, losing Age and its home — a boy a civilian, a girl a woman', () => {
+  it('a child grows up at ADULT_TICKS, losing Age and its home — a boy a civilian, a girl a woman', () => {
     const sim = new Simulation({ seed: 1, content: growthContent() });
     const she = bornSettler(sim, BABY_FEMALE, 0);
     const he = bornSettler(sim, BABY_MALE, 0);
@@ -90,12 +91,12 @@ describe('GrowthSystem — non-working settlers mature into workers', () => {
     sim.world.add(she, Residence, { home });
     sim.world.add(he, Residence, { home });
 
-    run(sim, GROWUP_TICKS * 2 - 1); // one short of adulthood: children
+    run(sim, ADULT_TICKS - 1); // one short of adulthood: children
     expect(sim.world.get(she, Settler).jobType).toBe(CHILD_FEMALE);
     expect(sim.world.has(she, Age)).toBe(true);
     expect(sim.world.has(she, Residence)).toBe(true); // a minor lives with its parents
 
-    run(sim, 1); // crosses 2*GROWUP_TICKS: child → adult
+    run(sim, 1); // crosses ADULT_TICKS: child → adult
     expect(sim.world.get(he, Settler).jobType).toBe(CIVILIST_JOB); // a grown boy is a civilian
     expect(sim.world.get(she, Settler).jobType).toBe(WOMAN_JOB); // the adult woman role
     expect(sim.world.has(she, Age)).toBe(false); // grown — no age bookkeeping
@@ -118,7 +119,7 @@ describe('GrowthSystem — non-working settlers mature into workers', () => {
       experience: new Map<number, number>(),
     });
 
-    run(sim, GROWUP_TICKS * 3);
+    run(sim, ADULT_TICKS * 2);
     expect(sim.world.get(adult, Settler).jobType).toBe(6); // unchanged
     expect(sim.world.has(adult, Age)).toBe(false);
   });
@@ -130,7 +131,7 @@ describe('GrowthSystem — non-working settlers mature into workers', () => {
       bornSettler(sim, BABY_MALE, 0);
       // Use the full step schedule (not just growthSystem) so the hash covers the real tick — but
       // mapless, so the AI/movement systems are inert and only growth advances state.
-      sim.run(GROWUP_TICKS * 2 + 5);
+      sim.run(ADULT_TICKS + 5);
       return sim.hashState();
     };
     expect(hashAfter()).toBe(hashAfter());

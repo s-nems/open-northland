@@ -2,7 +2,7 @@ import type { Entity, Simulation } from '@open-northland/sim';
 import { cellAnchorNode, components, systems } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../game/rules.js';
-import { JOB_BABY_FEMALE, JOB_CIVILIST, JOB_WOMAN, placeSandboxBuilding } from '../game/sandbox/index.js';
+import { JOB_CIVILIST, JOB_WOMAN, placeSandboxBuilding } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
 
 /**
@@ -151,14 +151,17 @@ export const familyScene: SceneDefinition = {
       },
     },
     {
-      label: 'a daughter was born into the household (Female baby, living in the home)',
+      label: 'a daughter was born into the household (a Female minor, living in the home)',
       predicate: (sim) => {
         for (const e of sim.world.query(Age, Settler)) {
-          if (sim.world.get(e, Settler).jobType !== JOB_BABY_FEMALE) return false;
+          // Born a girl and still a minor — baby or child, since the run outlasts the 4-year baby
+          // stage. Which of the two she is at the end is growth's business, not this scene's.
+          const { jobType } = sim.world.get(e, Settler);
+          if (!systems.isBaby(jobType) && !systems.isChild(jobType)) return false;
           if (!sim.world.has(e, Female)) return false;
           return sim.world.tryGet(e, Residence)?.home === HOME_ENTITY;
         }
-        return false; // no baby at all
+        return false; // no daughter at all
       },
     },
     {

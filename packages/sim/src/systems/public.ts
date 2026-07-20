@@ -11,7 +11,7 @@ export { createSettler, DEFAULT_SETTLER_HITPOINTS } from './conflict/spawn/index
 export { BERRY_REGROW_TICKS, BERRY_STAGE_TICKS, createBerryBush } from './economy/berries.js';
 export { isOnMission } from './family/eligibility.js';
 export { createResourceNode } from './footprint/resources.js';
-export { GROWUP_TICKS, isBaby, isChild, TICKS_PER_AGE_YEAR } from './lifecycle/ageclass.js';
+export { ADULT_TICKS, CHILD_TICKS, isBaby, isChild, TICKS_PER_AGE_YEAR } from './lifecycle/ageclass.js';
 export { HEADQUARTERS_BUILDING_ID } from './readviews/buildings.js';
 export { IDLE_JOB } from './readviews/hud.js';
 export { MILITARY_MODE, SCOUT_JOB } from './readviews/stances.js';

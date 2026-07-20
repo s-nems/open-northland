@@ -5,7 +5,8 @@
 A map-authored child (`sethuman` baby/child, spawned with `Age` by `createSettler`) has no
 `Residence`, and `planChildWander` (`packages/sim/src/systems/family/wander.ts`) only strolls a
 child around its **home** — a homeless child stands frozen at its spawn node until it grows up
-(~2×`GROWUP_TICKS`). Born children are unaffected (birth stamps `Residence`).
+(at `ADULT_TICKS`, ~2.7 min of ×1 play from a map spawn). Born children are unaffected (birth stamps
+`Residence`).
 
 Anchoring the stroll at the child's current position was tried and rejected in the discovering
 session: the anchor drifts with every stroll, turning the potter-around-home feel into an unbounded
