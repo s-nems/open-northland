@@ -2,6 +2,7 @@ import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   Building,
+  CurrentAtomic,
   JobAssignment,
   Marriage,
   Owner,
@@ -18,8 +19,9 @@ import { CommandQueue } from '../../src/core/command-queue.js';
 import type { Command } from '../../src/core/commands/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import type { TerrainMap } from '../../src/index.js';
-import { EventBuffer, positionOfNode, Rng, replay, Simulation } from '../../src/index.js';
+import { EventBuffer, fx, positionOfNode, Rng, replay, Simulation } from '../../src/index.js';
 import { withinNodeRadius } from '../../src/nav/node-metric.js';
+import { EAT_ATOMIC_ID } from '../../src/systems/agents/actions.js';
 import {
   BUILD_SEARCH_MAX_RADIUS_NODES,
   type BuildOrderEntry,
@@ -769,6 +771,32 @@ describe('signpost-coverage module (guideBuild)', () => {
     const sim = aiSim();
     placeHq(sim);
     sim.step();
+    expect([...signpostCoverageModule.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
+  });
+
+  it('leaves a scout mid-action alone, so a meal longer than the decision beat can finish', () => {
+    // The regression: both order markers are shed the moment a need drive starts an atomic, so an
+    // eating scout used to read as idle. The module then re-ordered it every 24-tick beat and
+    // `moveUnit` cancelled the half-eaten meal — the scout ate forever and never fed.
+    const sim = aiSim();
+    placeHq(sim);
+    sim.enqueue({ kind: 'spawnSettler', jobType: SCOUT, x: 10, y: 10, tribe: VIKING, owner: SEAT });
+    sim.step();
+    const scout = [...sim.world.query(Settler)].find((e) => sim.world.get(e, Settler).jobType === SCOUT);
+    if (scout === undefined) throw new Error('expected a spawned scout');
+    // Work remains, and with no atomic running the module does want to order it.
+    expect([...signpostCoverageModule.run(sim.world, ctxOf(sim), SEAT)]).toHaveLength(1);
+
+    sim.world.add(scout, CurrentAtomic, {
+      atomicId: EAT_ATOMIC_ID,
+      elapsed: 0,
+      progress: fx.fromInt(0),
+      duration: 50,
+      effect: { kind: 'eat', goodType: 3, from: null },
+      targetEntity: scout,
+      targetTile: null,
+    });
+
     expect([...signpostCoverageModule.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
   });
 });

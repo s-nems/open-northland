@@ -1,4 +1,4 @@
-import type { SettlerIdentity } from '../../components/index.js';
+import { FoodUnreachable, NO_FOOD, type SettlerIdentity } from '../../components/index.js';
 import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
@@ -16,6 +16,7 @@ import {
 } from './actions.js';
 import type { SpacingState } from './destack.js';
 import { restingCell } from './rest-spot.js';
+import { sleepAtHome } from './sleep-at-home.js';
 import { interactionCell, nearestFood, nearestTemple, type TargetCandidates } from './targets/index.js';
 
 // The NEEDS drives — the highest-priority rungs of the planner ladder (a starving operator leaves
@@ -77,10 +78,11 @@ export function anyNeedPressing(needs: { hunger: Fixed; fatigue: Fixed; piety: F
  *
  *  - **EAT** (highest): eat a carried edible on the spot, else walk to the NEAREST food of any kind
  *    ({@link nearestFood}) — a store holding food, or a ripe wild berry bush (the fallback) — and eat/
- *    forage it there.
- *  - **SLEEP** (below eat — a starving settler eats before it can rest): step off the workplace doorstep
- *    to open ground ({@link restingCell}) and sleep there (the housing/home sleep target is a later
- *    slice; see source basis).
+ *    forage it there. A settler over the threshold that this scan finds nothing for is flagged
+ *    {@link FoodUnreachable} — the famine state the HUD's hunger bubble draws.
+ *  - **SLEEP** (below eat — a starving settler eats before it can rest): go home to bed when the settler
+ *    has a house ({@link sleepAtHome}), else step off the workplace doorstep to open ground
+ *    ({@link restingCell}) and sleep there.
  *  - **PRAY** (below eat + sleep — survival outranks devotion): the first **target-bound** need —
  *    walk to the nearest temple and pray on it ({@link nearestTemple}).
  */
@@ -100,9 +102,12 @@ export function planNeeds(
   spacing: SpacingState,
 ): boolean {
   const gate = limit ?? undefined;
-  if (settler.hunger >= HUNGER_EAT_THRESHOLD) {
+  if (settler.hunger < HUNGER_EAT_THRESHOLD) {
+    setFoodUnreachable(world, e, false); // sated — whatever famine it was in is over
+  } else {
     if (load !== undefined && load.amount > 0 && isFood(ctx, load.goodType)) {
       // Carrying food: eat a unit on the spot (consumed from the carried load).
+      setFoodUnreachable(world, e, false);
       startAtomic(
         world,
         e,
@@ -117,6 +122,7 @@ export function planNeeds(
     // when no larder is near). The eat animation (id 10) is shared; only the completion EFFECT differs
     // (consume a stored unit vs forage a bush), so the walk-or-act tail is identical for both.
     const food = nearestFood(targets, world, ctx, terrain, here, e, gate);
+    setFoodUnreachable(world, e, food === null); // this scan is the famine test the HUD bubble reads
     if (food !== null) {
       const target = food.kind === 'store' ? food.store : food.bush;
       const effect =
@@ -133,8 +139,12 @@ export function planNeeds(
   }
 
   if (settler.fatigue >= FATIGUE_SLEEP_THRESHOLD) {
-    // Bed down in the open rather than where the settler happens to be standing — it steps off the
-    // workplace doorstep first (see {@link restingCell}); already out in the open, it sleeps on the spot.
+    // A settler with a house goes home to bed — the data gives that a clip of its own worth the same
+    // rest in a fifth of the time (see {@link sleepAtHome}).
+    if (sleepAtHome(world, ctx, terrain, e, settler, here, limit)) return true;
+    // Homeless (or the house is gone / still a site / out of area): bed down in the open rather than
+    // where the settler happens to be standing — it steps off the workplace doorstep first (see
+    // {@link restingCell}); already out in the open, it sleeps on the spot.
     atOrWalk(world, e, here, restingCell(world, ctx, terrain, e, here, spacing, limit), () =>
       startAtomic(
         world,
@@ -167,4 +177,12 @@ export function planNeeds(
   }
 
   return false;
+}
+
+/** Set or clear the settler's {@link FoodUnreachable} famine flag, writing only on a change so a settler
+ *  that is merely hungry does not churn the component store (and the snapshot) every tick. */
+function setFoodUnreachable(world: World, e: Entity, unreachable: boolean): void {
+  if (unreachable === world.has(e, FoodUnreachable)) return;
+  if (unreachable) world.add(e, FoodUnreachable, NO_FOOD);
+  else world.remove(e, FoodUnreachable);
 }

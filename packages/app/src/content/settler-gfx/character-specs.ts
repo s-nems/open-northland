@@ -178,6 +178,13 @@ export const CHARACTER_SPECS = {
       // the talker faces its partner (TARGET_FACING) instead of cycling the whole strip.
       [TALK_ATOMIC]: 'human_man_generic_speak',
       [LISTEN_ATOMIC]: 'human_man_generic_speak',
+      // The meal and the nap carry their whole shape in the authored list, which is why they must not
+      // fall back to the raw strip: the action-8 list is 237 entries — frames 0→19 lying down, then ~197
+      // entries alternating 18/19 (breathing where it lies), then 19→0 getting up. The action-10 list is
+      // 30 — 0→7 raising the food, 8/9 chewing, 7→0 lowering. Cycling the 20-/17-frame strip instead
+      // replayed the lie-down and the get-up a dozen times per sleep.
+      [EAT_ATOMIC]: 'human_man_generic_eat',
+      [SLEEP_ATOMIC]: 'human_man_generic_sleep',
     },
   },
   scout: {
@@ -208,6 +215,9 @@ export const CHARACTER_SPECS = {
       [BUILD_GUIDE_ATOMIC]: { seq: HAMMER_SEQ, ticksPerFrame: HAMMER_TICKS_PER_FRAME },
       [TALK_ATOMIC]: 'human_man_generic_speak',
       [LISTEN_ATOMIC]: 'human_man_generic_speak',
+      // The scout shares the generic man body, so it eats and sleeps off the same authored lists.
+      [EAT_ATOMIC]: 'human_man_generic_eat',
+      [SLEEP_ATOMIC]: 'human_man_generic_sleep',
     },
   },
   woman: {
@@ -238,6 +248,9 @@ export const CHARACTER_SPECS = {
       [KISSED_ATOMIC]: 'human_woman_generic_kiss',
       [TALK_ATOMIC]: 'human_woman_generic_talk',
       [LISTEN_ATOMIC]: 'human_woman_generic_talk',
+      // Her nap has an authored 64-entry list (shorter than the 100-tick atomic, so she holds the
+      // stance for the tail). No action-10 list exists for her body, so her meal keeps the strip.
+      [SLEEP_ATOMIC]: 'human_woman_generic_sleep',
     },
   },
   boy: {
@@ -251,6 +264,9 @@ export const CHARACTER_SPECS = {
       [EAT_ATOMIC]: { seq: 'human_child_boy_generic_eat' },
       [SLEEP_ATOMIC]: { seq: 'human_child_boy_generic_sleep' },
     },
+    // The nap plays off its authored action-8 list like the adults'; the child bodies author no
+    // action-10 list, so the meal keeps the plain strip.
+    dirListAtomics: { [SLEEP_ATOMIC]: 'human_child_boy_generic_sleep' },
   },
   girl: {
     rosterId: 'girl',
@@ -261,6 +277,7 @@ export const CHARACTER_SPECS = {
       [EAT_ATOMIC]: { seq: 'human_child_girl_generic_eat' },
       [SLEEP_ATOMIC]: { seq: 'human_child_girl_generic_sleep' },
     },
+    dirListAtomics: { [SLEEP_ATOMIC]: 'human_child_girl_generic_sleep' },
   },
   baby: {
     rosterId: 'baby',

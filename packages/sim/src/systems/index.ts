@@ -2,7 +2,7 @@ import type { System, SystemContext } from './context.js';
 
 // The meal-length knob (the eat/forage atomic duration): exposed so tests + tuning can reference the
 // repeat count without reaching into the internal action vocabulary wholesale.
-export { EAT_ANIMATION_REPEATS, eatDuration } from './agents/actions.js';
+export { eatDuration } from './agents/actions.js';
 export * from './agents/ai.js';
 export * from './agents/atomic.js';
 export * from './command/index.js';

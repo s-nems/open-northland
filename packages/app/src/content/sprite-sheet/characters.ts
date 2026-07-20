@@ -43,6 +43,7 @@ import {
   WARRIOR_SPEC_BY_WEAPON_GOOD_SLUG,
   YOUNG_CHARACTER_BY_JOB,
 } from '../settler-gfx/index.js';
+import { EAT_ATOMIC, SLEEP_ATOMIC } from '../settler-gfx/sequences.js';
 
 /**
  * The viking `[gfxanimatomic]` `logictribe` — `logicdefines.inc` `TRIBE_TYPE_HUMAN_VIKING = 1`. Not the
@@ -139,6 +140,8 @@ export async function loadCharacters(
       KISSED_ATOMIC,
       TALK_ATOMIC,
       LISTEN_ATOMIC,
+      EAT_ATOMIC,
+      SLEEP_ATOMIC,
     ].map((action) => [action, gfxAtomicFrameLists(ir, VIKING_ANIM_TRIBE, action)] as const),
   );
   // One mushroom pick bends MUSHROOM_PLUCKS_PER_PICK times: repeat the authored one-shot pluck list
