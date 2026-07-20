@@ -2,7 +2,6 @@ import type { SettlerBubble, SettlerBubbleKind } from '@open-northland/render';
 import { systems, type WorldSnapshot } from '@open-northland/sim';
 import {
   childOrderOf,
-  foodUnreachable,
   isMarrying,
   isSettler,
   positionOf,
@@ -16,10 +15,10 @@ import {
  * sim's FamilySystem drives, then the pressing needs:
  *  - a woman with a make-child order (`ChildOrder`) shows the `child` bubble until the birth completes;
  *  - either partner walking through a wedding (`Wedding`) shows the `partner` bubble until they marry;
- *  - a settler the sim flagged `FoodUnreachable` — over the eat threshold with no food in reach —
- *    shows the `hungry` bubble. It is a FAMINE cue, not a "due a meal" cue: settlers cross the
- *    eat threshold routinely, and in the original the icon means the village has run out (observed
- *    original), so the bar alone would light up half the map;
+ *  - a settler past the sim's `HUNGER_BUBBLE_THRESHOLD` shows the `hungry` bubble. That trigger sits
+ *    well above the eat threshold on purpose, so a settler that can feed itself eats long before the
+ *    icon appears: it is a FAMINE cue about the settlement, not a "due a meal" cue (observed
+ *    original). Keying it on the eat threshold instead lit up half the map;
  *  - a settler whose fatigue crossed the sim's sleep trigger shows the `sleepy` bubble until it rests.
  *    Hunger wins the tie, the drive-ladder order.
  *
@@ -45,9 +44,9 @@ export function computeSettlerBubbles(snapshot: WorldSnapshot): SettlerBubble[] 
 function bubbleKindOf(e: SnapshotEntity): SettlerBubbleKind | undefined {
   if (childOrderOf(e) !== undefined) return 'child';
   if (isMarrying(e)) return 'partner';
-  if (foodUnreachable(e)) return 'hungry';
   const needs = settlerNeedsOf(e);
   if (needs === undefined) return undefined;
+  if (needs.hunger >= systems.HUNGER_BUBBLE_THRESHOLD) return 'hungry';
   if (needs.fatigue >= systems.FATIGUE_SLEEP_THRESHOLD) return 'sleepy';
   return undefined;
 }

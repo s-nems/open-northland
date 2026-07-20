@@ -1,4 +1,4 @@
-import { FoodUnreachable, NO_FOOD, type SettlerIdentity } from '../../components/index.js';
+import type { SettlerIdentity } from '../../components/index.js';
 import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
@@ -31,10 +31,21 @@ import { interactionCell, nearestFood, nearestTemple, type TargetCandidates } fr
  * hunger events (`event 30 2 <delta>` in event units — the eat clip's one +4000 maps to a full bar,
  * the same 4000-unit scale gossip's SOCIAL_EVENT_UNITS_PER_BAR reads) with no single readable "go eat
  * at X" threshold; this constant is the slice's deterministic eat trigger until that vocabulary is
- * decoded and calibration-by-observation pins the real cadence. Exported for the app's need-bubble
- * projection (the bubble shows exactly while the drive would fire) and the gossip cancel check.
+ * decoded and calibration-by-observation pins the real cadence. Exported for the gossip cancel check.
  */
 export const HUNGER_EAT_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4)); // ¾·ONE
+
+/**
+ * Hunger level at or above which the HUD floats the hunger bubble — deliberately well ABOVE
+ * {@link HUNGER_EAT_THRESHOLD}, so a settler that can feed itself eats long before it ever shows the
+ * icon. Reaching this means the eat drive has been firing for ~160 s at 1× without finding food: the
+ * bubble is a FAMINE cue about the settlement, not a "this settler is due a meal" cue.
+ *
+ * Source basis: observed original — the icon appears when settlers have trouble finding food, not on
+ * every meal (user observation). The exact fraction is approximated; it is set by the gap it leaves
+ * above the eat trigger, not by a readable constant.
+ */
+export const HUNGER_BUBBLE_THRESHOLD: Fixed = fx.div(fx.fromInt(95), fx.fromInt(100));
 
 /**
  * Fatigue level (fixed-point, in [0, ONE]) at or above which a settler stops working to sleep. Set to
@@ -78,8 +89,8 @@ export function anyNeedPressing(needs: { hunger: Fixed; fatigue: Fixed; piety: F
  *
  *  - **EAT** (highest): eat a carried edible on the spot, else walk to the NEAREST food of any kind
  *    ({@link nearestFood}) — a store holding food, or a ripe wild berry bush (the fallback) — and eat/
- *    forage it there. A settler over the threshold that this scan finds nothing for is flagged
- *    {@link FoodUnreachable} — the famine state the HUD's hunger bubble draws.
+ *    forage it there. A settler that finds nothing keeps climbing to {@link HUNGER_BUBBLE_THRESHOLD},
+ *    which is where the HUD's famine icon comes in.
  *  - **SLEEP** (below eat — a starving settler eats before it can rest): go home to bed when the settler
  *    has a house ({@link sleepAtHome}), else step off the workplace doorstep to open ground
  *    ({@link restingCell}) and sleep there.
@@ -102,12 +113,9 @@ export function planNeeds(
   spacing: SpacingState,
 ): boolean {
   const gate = limit ?? undefined;
-  if (settler.hunger < HUNGER_EAT_THRESHOLD) {
-    setFoodUnreachable(world, e, false); // sated — whatever famine it was in is over
-  } else {
+  if (settler.hunger >= HUNGER_EAT_THRESHOLD) {
     if (load !== undefined && load.amount > 0 && isFood(ctx, load.goodType)) {
       // Carrying food: eat a unit on the spot (consumed from the carried load).
-      setFoodUnreachable(world, e, false);
       startAtomic(
         world,
         e,
@@ -122,7 +130,6 @@ export function planNeeds(
     // when no larder is near). The eat animation (id 10) is shared; only the completion EFFECT differs
     // (consume a stored unit vs forage a bush), so the walk-or-act tail is identical for both.
     const food = nearestFood(targets, world, ctx, terrain, here, e, gate);
-    setFoodUnreachable(world, e, food === null); // this scan is the famine test the HUD bubble reads
     if (food !== null) {
       const target = food.kind === 'store' ? food.store : food.bush;
       const effect =
@@ -136,6 +143,7 @@ export function planNeeds(
     }
     // Hungry but no food anywhere reachable: fall through to normal work (the needs loop keeps
     // hunger clamped at ONE, and the NeedsSystem's starvation bite drains the pool until food appears).
+    // The bar keeps climbing to HUNGER_BUBBLE_THRESHOLD, which is what raises the HUD's famine icon.
   }
 
   if (settler.fatigue >= FATIGUE_SLEEP_THRESHOLD) {
@@ -177,12 +185,4 @@ export function planNeeds(
   }
 
   return false;
-}
-
-/** Set or clear the settler's {@link FoodUnreachable} famine flag, writing only on a change so a settler
- *  that is merely hungry does not churn the component store (and the snapshot) every tick. */
-function setFoodUnreachable(world: World, e: Entity, unreachable: boolean): void {
-  if (unreachable === world.has(e, FoodUnreachable)) return;
-  if (unreachable) world.add(e, FoodUnreachable, NO_FOOD);
-  else world.remove(e, FoodUnreachable);
 }
