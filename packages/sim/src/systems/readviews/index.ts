@@ -10,7 +10,8 @@
 // Split by concern into sibling modules:
 //  - ./hud.ts      — the HUD/goods-graph/housing/population projections over world state + content.
 //  - ./buildings.ts — the data-defined temple (pray-need satisfier) classification.
-//  - ./food.ts     — the data-defined edible-good (eat-slot) classification.
+//  - ./food.ts     — the data-defined edible-good (eat-slot) classification and the dish→edible
+//                    conversion a good undergoes when it leaves the kitchen that made it.
 //  - ./combat.ts   — the static weapon-vs-armor damage lookup table.
 //  - ./classes/    — the data-defined weapon/armor class taxonomy (predicates + accessors + groupings).
 //  - ./tribes/     — the data-defined civ-vs-animal split + `animaltypes.ini` behaviour + `mayAttack`.
@@ -65,7 +66,7 @@ export {
   weaponDamageVsMaterial,
   weaponKey,
 } from './combat.js';
-export { isFood } from './food.js';
+export { exportedGoodForm, isFood } from './food.js';
 export {
   goodsGraph,
   housingCapacity,

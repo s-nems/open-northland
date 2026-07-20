@@ -180,7 +180,7 @@ function applyEffect(world: World, ctx: SystemContext, settler: Entity, effect: 
       grantWorkExperience(world, ctx, settler, effect.goodType);
       return;
     case 'pickup':
-      pickupFromStore(world, settler, effect.from, effect.goodType, effect.amount);
+      pickupFromStore(world, ctx, settler, effect.from, effect.goodType, effect.amount);
       return;
     case 'draw':
       // A consumer cranked an input-less utility (the well, the hive) for one unit of its good, now on

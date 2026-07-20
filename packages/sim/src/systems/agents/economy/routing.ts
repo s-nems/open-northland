@@ -14,6 +14,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { SpatialGate } from '../../../nav/node-metric.js';
 import type { NodeId } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
+import { exportedGoodForm } from '../../readviews/index.js';
 import {
   buildingProduces,
   type InboundSupplyTally,
@@ -160,10 +161,15 @@ function nearestRecipeConsumer(
  * can never disagree: a disagreement is a livelock (a porter lifting a pile whose only sink is out of its
  * area sheds it at its feet and re-lifts it next tick). Memoized per planner call — a scan probes few
  * distinct goods, and the answer is position-stable for the one decision the caller makes this tick.
+ *
+ * Probes the good in its CARRIED form ({@link exportedGoodForm}) — a dish is routed as the edible it
+ * becomes on the way out of the kitchen, since that is what the carrier will be holding. The memo keys
+ * on that carried form, so two dishes sharing an edible answer from one routing walk.
  */
 export function deliverableGoodProbe(plan: PlannerContext): (goodType: number) => boolean {
   const memo = new Map<number, boolean>();
-  return (goodType: number): boolean => {
+  return (rawGoodType: number): boolean => {
+    const goodType = exportedGoodForm(plan.ctx, rawGoodType);
     // Tick-global cheap precondition first ({@link SinkAvailability}): when no store ANYWHERE could take
     // the good, the full routing walk below is skipped — this keeps a saturated settlement (every store
     // full, every idle hauler re-probing each tick) at ~zero probe cost. It deliberately ignores

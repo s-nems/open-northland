@@ -7,6 +7,7 @@ import {
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
+import { exportedGoodForm } from '../../readviews/index.js';
 import { stockCapacity } from '../../stores/index.js';
 import { addCarry, dropCarryAtOwnTile, shrinkCarry } from './carry.js';
 import { reapEmptyLoosePile } from './piles.js';
@@ -25,21 +26,27 @@ export function drawUtilityGood(world: World, settler: Entity, goodType: number)
 
 /**
  * Resolve one completed `pickup`: move up to `amount` of `goodType` from a source store's
- * {@link Stockpile} onto the settler's back. Goods are conserved — the carrier gains exactly what
+ * {@link Stockpile} onto the settler's back. The AMOUNT is conserved — the carrier gains exactly what
  * the source loses, so a pickup never creates or destroys goods (carriers haul; nothing teleports).
+ * The good's IDENTITY is not: a dish lifted out of the kitchen that made it lands on the back as the
+ * edible it becomes ({@link exportedGoodForm}) — the bakery loses one bread, the carrier holds one
+ * `food_simple`. The planner probed routing through the same mapping before ordering the lift, so the
+ * delivery rung already agrees on what is being carried.
  * When `from` is null (a sourceless pickup) the goods simply appear carried; otherwise the available
  * amount caps the transfer (the source may have shrunk between the planner choosing it and the swing
  * completing — a competing system or another carrier). A source with nothing left to give is a no-op.
  */
 export function pickupFromStore(
   world: World,
+  ctx: SystemContext,
   settler: Entity,
   from: Entity | null,
   goodType: number,
   amount: number,
 ): void {
+  const carried = exportedGoodForm(ctx, goodType);
   if (from === null) {
-    addCarry(world, settler, goodType, amount);
+    addCarry(world, settler, carried, amount);
     return;
   }
   const stock = world.tryGet(from, Stockpile);
@@ -48,7 +55,7 @@ export function pickupFromStore(
   const moved = Math.min(amount, have);
   if (moved <= 0) return; // source emptied since the planner chose it — nothing to carry
   setStockAmount(world, stock.amounts, goodType, have - moved);
-  addCarry(world, settler, goodType, moved);
+  addCarry(world, settler, carried, moved);
   reapEmptyLoosePile(world, from); // a fully-collected trunk / yard heap vanishes (a warehouse/hull stays)
 }
 
