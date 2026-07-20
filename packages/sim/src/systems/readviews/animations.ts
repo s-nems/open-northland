@@ -1,6 +1,7 @@
 import type { AtomicAnimation, ContentSet } from '@open-northland/data';
 import type { SettlerIdentity } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
+import { CIVILIST_JOB } from '../lifecycle/ageclass.js';
 
 // Pure, terminal read views over `content.atomicAnimations`. See ./index.ts for why read views are
 // grouped here.
@@ -65,6 +66,35 @@ const DEFAULT_ATOMIC_DURATION = 4;
  */
 export function atomicDuration(content: ContentSet, settler: SettlerIdentity, atomicId: number): number {
   return atomicDurationForName(content, atomicAnimationName(content, settler, atomicId));
+}
+
+/**
+ * The animation a settler plays for a NEED atomic (eat, sleep), falling back to the tribe's CIVILIST
+ * clip when the settler's own trade binds none. Most working trades bind none: `setatomic` covers eat
+ * for jobs 3,4,5,6,31,34 and sleep for 1–6,31, so a builder, collector, farmer, carrier or scout has
+ * neither — yet each of them clearly eats and sleeps in the original. The generic-body clip is what it
+ * plays, which is also what the render already assumes (every civilian look draws through
+ * `logicJob: 6`). Without this the whole working population would resolve to
+ * {@link DEFAULT_ATOMIC_DURATION} and eat in a third of a second.
+ *
+ * Source basis: `tribetypes.ini` `setatomic` coverage (extracted, verified against generated `ir.json`);
+ * routing the gap to the civilist body is a named approximation, matching the render's own join.
+ */
+export function needAtomicDuration(content: ContentSet, settler: SettlerIdentity, atomicId: number): number {
+  return atomicDurationForName(content, needAtomicAnimationName(content, settler, atomicId));
+}
+
+/** The resolved need-atomic animation name behind {@link needAtomicDuration} — exposed so a caller that
+ *  derives a sibling clip by name (the at-home sleep twin) starts from the same fallback. */
+export function needAtomicAnimationName(
+  content: ContentSet,
+  settler: SettlerIdentity,
+  atomicId: number,
+): string | undefined {
+  return (
+    atomicAnimationName(content, settler, atomicId) ??
+    atomicAnimationName(content, { tribe: settler.tribe, jobType: CIVILIST_JOB }, atomicId)
+  );
 }
 
 /**

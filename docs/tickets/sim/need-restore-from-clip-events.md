@@ -39,3 +39,11 @@ first — by observation of the running original, since it is not in the data.
 - `npm test`; the eat/forage/sleep drive suites assert restore amounts directly and will need updating.
 - `?map=<id>` with needs on — **user judges the pacing** (how much of the day settlers spend feeding
   and resting).
+
+**The restore ratio is currently inverted (2026-07-20).** The readable clips give the civilist's sleep
+`+8000` on channel 1 (two `+4000` pulses) against the meal's `+4000` on channel 2 — sleep restores
+*twice* what a meal does. The sim has it the other way round: `SLEEP_FATIGUE_RESTORE` (20%) is half
+`EAT_HUNGER_RESTORE` (40%), so settlers nap about twice as often as they eat. Both constants are
+pinned by observation, and the per-channel reserve span this ticket is blocked on is exactly what
+would reconcile them — but the inversion is the sharpest evidence that the two channels do NOT share
+one span, so record it as the test any proposed span must pass.

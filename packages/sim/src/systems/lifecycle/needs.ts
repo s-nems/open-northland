@@ -62,9 +62,10 @@ export const EAT_HUNGER_RESTORE: Fixed = fx.div(fx.fromInt(40), fx.fromInt(100))
  * How much of the fatigue bar one sleep takes off: 20% — so rest is a repeated errand, not a one-shot
  * reset, and a settler that has run its bar to the top beds down more than once.
  *
- * Source basis: observed original (user measurement). The `..._sleep` clips pulse `event <at> 1 +4000`
- * on the CHANGE_CONDITION channel twice, but that channel's reserve span is not readable, so the bar
- * fraction is pinned by observation rather than derived from the event values (approximated).
+ * Source basis: observed original (user measurement). The civilist's `..._sleep` clip pulses
+ * `event <at> 1 +4000` on the CHANGE_CONDITION channel twice (other bodies differ — the soldier's pulses
+ * four times), but that channel's reserve span is not readable, so the bar fraction is pinned by
+ * observation rather than derived from the event values (approximated).
  */
 export const SLEEP_FATIGUE_RESTORE: Fixed = fx.div(fx.fromInt(20), fx.fromInt(100));
 

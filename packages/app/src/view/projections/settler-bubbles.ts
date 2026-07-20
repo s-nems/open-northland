@@ -16,11 +16,12 @@ import {
  *  - a woman with a make-child order (`ChildOrder`) shows the `child` bubble until the birth completes;
  *  - either partner walking through a wedding (`Wedding`) shows the `partner` bubble until they marry;
  *  - a settler past the sim's `HUNGER_BUBBLE_THRESHOLD` shows the `hungry` bubble. That trigger sits
- *    well above the eat threshold on purpose, so a settler that can feed itself eats long before the
- *    icon appears: it is a FAMINE cue about the settlement, not a "due a meal" cue (observed
- *    original). Keying it on the eat threshold instead lit up half the map;
- *  - a settler whose fatigue crossed the sim's sleep trigger shows the `sleepy` bubble until it rests.
- *    Hunger wins the tie, the drive-ladder order.
+ *    well above the eat threshold, so a settler that can feed itself eats long before the icon
+ *    appears: it reports a famine in the settlement, not one settler being due a meal (observed
+ *    original);
+ *  - `sleepy` works the same way off `FATIGUE_BUBBLE_THRESHOLD` — a settler that can lie down does so
+ *    long before the icon appears, so it marks one that cannot. Hunger wins the tie, the drive-ladder
+ *    order.
  *
  * Pure over the snapshot (unit-tested), called once per frame. The bubble anchors on the settler's own
  * `Position` — the render layer projects it with the same interpolated iso math as the settler bob, so
@@ -47,6 +48,6 @@ function bubbleKindOf(e: SnapshotEntity): SettlerBubbleKind | undefined {
   const needs = settlerNeedsOf(e);
   if (needs === undefined) return undefined;
   if (needs.hunger >= systems.HUNGER_BUBBLE_THRESHOLD) return 'hungry';
-  if (needs.fatigue >= systems.FATIGUE_SLEEP_THRESHOLD) return 'sleepy';
+  if (needs.fatigue >= systems.FATIGUE_BUBBLE_THRESHOLD) return 'sleepy';
   return undefined;
 }

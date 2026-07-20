@@ -11,7 +11,7 @@ import { fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { atomicDuration } from '../readviews/animations.js';
+import { atomicDuration, needAtomicDuration } from '../readviews/animations.js';
 import { clearNavState } from '../spatial.js';
 import type { PlannerContext } from './planner-context.js';
 import { interactionCell } from './targets/index.js';
@@ -35,15 +35,17 @@ export const EAT_ATOMIC_ID = 10;
  *
  * The clip is already a whole meal, not a single bite: the original's `[gfxanimatomic]` action-10 frame
  * list raises the food (frames 0→7), chews on 8/9 for the middle, and lowers it (7→0), so nothing needs
- * repeating on top of it.
+ * repeating on top of it. Resolved through {@link needAtomicDuration}, since most working trades bind no
+ * eat clip of their own and would otherwise fall to the 4-tick unresolved stub.
  */
 export function eatDuration(ctx: SystemContext, settler: SettlerIdentity): number {
-  return atomicDuration(ctx.content, settler, EAT_ATOMIC_ID);
+  return needAtomicDuration(ctx.content, settler, EAT_ATOMIC_ID);
 }
 
 /**
  * The atomic id a settler runs to sleep — id 8 is the sleep slot across every tribe's
- * `setatomic <job> 8 "..._sleep"` bindings, bound for every job, even babies (see source basis). The `sleep`
+ * `setatomic <job> 8 "..._sleep"` bindings. Those cover the age classes and the civilist/soldier only
+ * (jobs 1–6 and 31); a working trade resolves its clip through {@link needAtomicDuration}. The `sleep`
  * effect takes a sleep off the fatigue bar.
  */
 export const SLEEP_ATOMIC_ID = 8;
