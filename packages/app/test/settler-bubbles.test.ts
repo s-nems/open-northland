@@ -54,25 +54,24 @@ describe('computeSettlerBubbles', () => {
     ]);
   });
 
-  it('shows the hungry bubble only for a FAMINE flag, never for a merely hungry settler', () => {
+  it('shows no hungry bubble at the EAT threshold — a settler that far along just goes and eats', () => {
     const sated = fx.div(ONE, fx.fromInt(2)); // below the ¾·ONE sleep trigger — no sleepy bubble
     const snap = snapshotOf([
       {
-        // Pinned at the top of the hunger bar, but the sim found it food — it is walking to a meal,
-        // not starving, so no bubble. This is the case that used to light up half the map.
+        // Over the eat trigger, so the drive is already taking it to a meal. This is the case that
+        // used to light up half the map.
         id: 1,
         components: {
-          Settler: { jobType: MAN, hunger: ONE, fatigue: sated },
+          Settler: { jobType: MAN, hunger: systems.HUNGER_EAT_THRESHOLD, fatigue: sated },
           Position: { x: fx.fromInt(1), y: fx.fromInt(1) },
         },
       },
       {
-        // Same bar, but the eat drive's scan came back empty — the village has run out.
+        // Still climbing well past the eat trigger — it has been looking for food and not finding it.
         id: 2,
         components: {
-          Settler: { jobType: MAN, hunger: ONE, fatigue: sated },
+          Settler: { jobType: MAN, hunger: systems.HUNGER_BUBBLE_THRESHOLD, fatigue: sated },
           Position: { x: fx.fromInt(2), y: fx.fromInt(1) },
-          FoodUnreachable: { noFood: true },
         },
       },
     ]);
@@ -80,7 +79,11 @@ describe('computeSettlerBubbles', () => {
     expect(computeSettlerBubbles(snap).map((b) => [b.id, b.kind])).toEqual([[2, 'hungry']]);
   });
 
-  it('floats the sleepy bubble at the sim threshold, and famine outranks it (the drive-ladder order)', () => {
+  it('keeps the famine trigger above the eat trigger, so eating always comes first', () => {
+    expect(systems.HUNGER_BUBBLE_THRESHOLD).toBeGreaterThan(systems.HUNGER_EAT_THRESHOLD);
+  });
+
+  it('floats the sleepy bubble at the sim threshold, and hunger outranks it (the drive-ladder order)', () => {
     const sated = fx.div(ONE, fx.fromInt(2));
     const snap = snapshotOf([
       {
@@ -96,7 +99,6 @@ describe('computeSettlerBubbles', () => {
         components: {
           Settler: { jobType: MAN, hunger: ONE, fatigue: ONE },
           Position: { x: fx.fromInt(2), y: fx.fromInt(1) },
-          FoodUnreachable: { noFood: true },
         },
       },
       {
@@ -121,7 +123,6 @@ describe('computeSettlerBubbles', () => {
         components: {
           Settler: { jobType: WOMAN, hunger: ONE, fatigue: ONE },
           Position: { x: fx.fromInt(1), y: fx.fromInt(1) },
-          FoodUnreachable: { noFood: true },
           Wedding: { partner: 2, kissing: false },
         },
       },

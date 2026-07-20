@@ -48,21 +48,6 @@ export const Settler = defineComponent<{
 }>('Settler');
 
 /**
- * Marks a settler whose eat drive went looking for food and found none in reach — a famine flag, not a
- * "this settler is hungry" flag. Stamped and cleared by the eat rung (`systems/agents/drives-needs.ts`)
- * each time it runs, so it stands exactly while the settler is over the eat threshold with nothing to
- * eat: a stocked larder or a ripe bush within reach clears it the tick the drive picks one.
- *
- * This is what the HUD's hunger bubble reads. In the original the icon means the village is starving,
- * not that someone is due a meal (observed original), and a settler crosses the eat threshold routinely
- * — so keying the bubble on the bar itself would light up half the map.
- */
-export const FoodUnreachable = defineComponent<{ readonly noFood: true }>('FoodUnreachable');
-
-/** The one {@link FoodUnreachable} component value — the marker carries no per-entity data. */
-export const NO_FOOD = { noFood: true } as const;
-
-/**
  * The atomic micro-action a settler is currently executing (the unit of behavior in Cultures, e.g.
  * pickup=22, harvest=24, eat=10, attack=81). The planner (AISystem) sets this; the AtomicSystem
  * advances `progress` from 0 to ONE over `duration` ticks, and on completion applies the typed

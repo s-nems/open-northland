@@ -4,7 +4,6 @@ import {
   Building,
   Carrying,
   CurrentAtomic,
-  FoodUnreachable,
   MoveGoal,
   Position,
   Resource,
@@ -136,45 +135,6 @@ describe('eatDrive — the planner choosing to eat', () => {
     aiSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.get(settler, MoveGoal).cell).toBe(cellOf(sim, 3, 0));
-  });
-});
-
-describe('the FoodUnreachable famine flag (what the HUD hunger bubble reads)', () => {
-  it('flags a hungry settler with no food in reach, and clears it the tick food appears', () => {
-    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
-    const settler = settlerAt(sim, 0, 0, HUNGRY);
-
-    aiSystem(sim.world, ctxOf(sim));
-    expect(sim.world.has(settler, FoodUnreachable)).toBe(true);
-
-    storeAt(sim, 3, 0, 5); // a larder is stocked — the famine is over, though the settler is still hungry
-    aiSystem(sim.world, ctxOf(sim));
-
-    expect(sim.world.has(settler, FoodUnreachable)).toBe(false);
-    expect(sim.world.get(settler, Settler).hunger).toBe(HUNGRY); // still hungry, just no longer starving
-  });
-
-  it('never flags a settler below the eat threshold, however empty the map is', () => {
-    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
-    const settler = settlerAt(sim, 0, 0, FED);
-
-    aiSystem(sim.world, ctxOf(sim));
-
-    expect(sim.world.has(settler, FoodUnreachable)).toBe(false);
-  });
-
-  it('clears the flag when the settler eats what it carries', () => {
-    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
-    const settler = settlerAt(sim, 0, 0, HUNGRY);
-
-    aiSystem(sim.world, ctxOf(sim));
-    expect(sim.world.has(settler, FoodUnreachable)).toBe(true);
-
-    sim.world.remove(settler, CurrentAtomic);
-    sim.world.add(settler, Carrying, { goodType: FOOD, amount: 1 });
-    aiSystem(sim.world, ctxOf(sim));
-
-    expect(sim.world.has(settler, FoodUnreachable)).toBe(false);
   });
 });
 

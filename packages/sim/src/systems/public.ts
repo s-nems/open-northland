@@ -2,7 +2,11 @@
 // stay package-private; scenes consume authored-setup constructors, read views, and shared constants.
 
 export { withinNodeRadius } from '../nav/node-metric.js';
-export { FATIGUE_SLEEP_THRESHOLD, HUNGER_EAT_THRESHOLD } from './agents/drives-needs.js';
+export {
+  FATIGUE_SLEEP_THRESHOLD,
+  HUNGER_BUBBLE_THRESHOLD,
+  HUNGER_EAT_THRESHOLD,
+} from './agents/drives-needs.js';
 // The AI opening plan's content bindings — exported so the real-content suite can pin every id in
 // the plan against the served IR (an unknown id silently skips its entry in the sim).
 export { type BuildOrderEntry, DEFAULT_BUILD_ORDER } from './ai-player/build-order/index.js';

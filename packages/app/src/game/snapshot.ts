@@ -108,12 +108,6 @@ export function marriageOf(e: SnapshotEntity): { spouse: number; child: number |
   return { spouse, child: child ?? null };
 }
 
-/** True while the sim's eat drive can find the settler no food in reach — the famine flag behind the
- *  HUD's hunger bubble (the sim's `FoodUnreachable` marker), not "this settler is hungry". */
-export function foodUnreachable(e: SnapshotEntity): boolean {
-  return e.components.FoodUnreachable !== undefined;
-}
-
 /** True while the settler is mid-wedding (walking to / kissing its match). */
 export function isMarrying(e: SnapshotEntity): boolean {
   return e.components.Wedding !== undefined;
