@@ -31,7 +31,11 @@ distances the push actually travels, close this ticket instead of changing the r
 
 ## Scope
 
-Decide, and apply the decision to `nearestWorkFlagPlacement` so BOTH callers (auto-plant and push-out) agree:
+Decide, and apply the decision to `nearestWorkFlagPlacement` so ALL THREE callers agree — auto-plant,
+push-out, and (since fix/iron-pickup, 2026-07-20) the player's `setWorkFlag`, which snaps a click that
+landed on a resource/building body to the nearest legal node within 6. The player's caller raises the
+stakes least — it is bounded to 6 nodes and the click already named the neighbourhood — but a snap
+across a 3-node-wide river is exactly the failure above, now reachable by a normal Ctrl+Right-Click:
 
 - **Keep Manhattan** — simplest, matches the flag rule's existing tie-break `(distance, lowest node id)`, and
   the whole-map-scan ticket's ring search is already specified to preserve it exactly. Then say in the
