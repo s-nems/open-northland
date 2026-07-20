@@ -7,8 +7,8 @@ import {
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
-import { exportedGoodForm } from '../../readviews/index.js';
 import { stockCapacity } from '../../stores/index.js';
+import { carriedGoodForm } from '../economy/routing.js';
 import { addCarry, dropCarryAtOwnTile, shrinkCarry } from './carry.js';
 import { reapEmptyLoosePile } from './piles.js';
 
@@ -26,11 +26,12 @@ export function drawUtilityGood(world: World, settler: Entity, goodType: number)
 
 /**
  * Resolve one completed `pickup`: move up to `amount` of `goodType` from a source store's
- * {@link Stockpile} onto the settler's back. The AMOUNT is conserved — the carrier gains exactly what
+ * {@link Stockpile} onto the settler's back. The amount is conserved — the carrier gains exactly what
  * the source loses, so a pickup never creates or destroys goods (carriers haul; nothing teleports).
- * The good's IDENTITY is not: a dish lifted out of the kitchen that made it lands on the back as the
- * edible it becomes ({@link exportedGoodForm}) — the bakery loses one bread, the carrier holds one
- * `food_simple`. The planner probed routing through the same mapping before ordering the lift, so the
+ * The good's identity is not: a dish lifted out of the house that produces it lands on the back as the
+ * edible it becomes ({@link carriedGoodForm}) — the bakery loses one bread, the carrier holds one
+ * `food_simple`. Lifting the same good from anywhere else (a ground heap, a store merely holding it)
+ * keeps it raw. The planner probed routing through the same helper before ordering the lift, so the
  * delivery rung already agrees on what is being carried.
  * When `from` is null (a sourceless pickup) the goods simply appear carried; otherwise the available
  * amount caps the transfer (the source may have shrunk between the planner choosing it and the swing
@@ -44,7 +45,7 @@ export function pickupFromStore(
   goodType: number,
   amount: number,
 ): void {
-  const carried = exportedGoodForm(ctx, goodType);
+  const carried = carriedGoodForm(world, ctx, from, goodType);
   if (from === null) {
     addCarry(world, settler, carried, amount);
     return;

@@ -209,7 +209,7 @@ the drift is visible. Needs being off also means the needs/eat/sleep drives are 
 There is deliberately **no pass/fail threshold** — absolute ms are machine-dependent; a human reads the
 table, and the bench's own check only proves the measured world is deterministic (two runs, one hash).
 
-## The gatherer soak (manual, local — `soak:gatherers`)
+## The long-run soaks (manual, local — `soak:gatherers`, `soak:bakery`)
 
 The suite proves a mechanic over hundreds of ticks; some economy failures only appear after tens of
 thousands, when the AI has built over its own ground and patches have thinned. **`npm run
@@ -228,6 +228,15 @@ CI, and `bench:sim`. Its only assertion is that it observed a non-empty world. T
 level — the soak reproduces, it does not guard.
 
 Knobs (env): `ON_SOAK_TICKS`, `ON_SOAK_MAP`, `ON_SOAK_SAMPLE_EVERY`, `ON_SOAK_STALL_TICKS`.
+
+**`npm run soak:bakery`** is the same shape for the PRODUCER half: it reports, per settlement, how much
+of each dish good sits on a producer's shelf against how much banked as an edible. A dish parked at its
+shelf cap means a wedged workshop — nothing can be made until a unit leaves. Knob: `ON_SOAK_TICKS`.
+
+A caution both soaks share, learned the hard way: counters aggregated over a whole run mix the healthy
+early phase with the stalled end state, and reading them as if they described the failure moment
+produces confident wrong diagnoses. Trace the last few hundred ticks, or measure something binary
+("did this ever happen at all"), rather than interpreting run totals.
 
 ## The agent's checklist (also in AGENTS.md)
 

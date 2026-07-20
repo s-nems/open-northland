@@ -229,6 +229,9 @@ export const economyContent = {
         { goodType: 7, capacity: 5, initial: 0 },
       ],
       recipes: [{ inputs: [{ goodType: 1, amount: 1 }], outputs: [{ goodType: 7, amount: 1 }], ticks: 20 }],
+      // Declared like the real bakery (`work_bakery_00` carries `produces: [19]`): the dish conversion
+      // fires only for a good the store PRODUCES, so the fixture must state it.
+      produces: [7],
     },
     {
       // A MULTI-PRODUCT workshop (the real smithy-2 shape, shrunk to fixture goods): ONE carpenter

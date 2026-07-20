@@ -28,32 +28,37 @@ export function isFood(ctx: SystemContext, goodType: number): boolean {
 }
 
 /**
- * The dish goods, by good `id`, and the edible each becomes once it leaves the kitchen that made it.
+ * The dish goods, by good `id`, and the edible each becomes when carried out of the house producing it.
  *
- * source-basis: `goodtypes.ini` declares these six alongside `food_simple`/`food_extra`, but
- * `houses.ini` gives them a `logicstock` slot ONLY in their own producing house (bread and candy in
- * `work bakery 00`/`01`, meat in `work animal farm`) — no warehouse, home, barracks or workshop can
- * hold one, and no house recipe takes one as an input. (`goodtypes.ini` does list meat as sausage's
- * `productionInputGoods`, but no house declares that recipe, so nothing ever hauls a dish to a
- * consumer.) The stored forms are `food_simple` (16) and `food_extra` (17),
- * which every store carries (headquarters 150, stocks 45/70/120, every home level) yet no recipe or
- * `atomicForProduction` ever makes. So a dish only ever exists inside its kitchen, and becomes an
- * edible on the way out.
+ * source-basis, evidenced for THREE of the six: `houses.ini` gives bread a `logicstock` slot only in
+ * `work bakery 00`/`01`, candy only in `work bakery 01`, and meat only in `work animal farm` — no
+ * warehouse, home, barracks or workshop holds one, and no house recipe takes one as an input
+ * (`goodtypes.ini` does name meat as sausage's `productionInputGoods`, but no house declares that
+ * recipe). The stored forms `food_simple` (16) and `food_extra` (17) are slotted by every larder
+ * (headquarters 150, stocks 45/70/120, every home level; barracks and towers carry `food_simple` alone)
+ * yet no recipe or `atomicForProduction` makes either.
  *
- * The simple/extra split is pinned to the string table (`text/pol/strings/gameobjects/goods.ini`):
- * good 17 and good 20 share one display name ("Ciastko"/"Ciastka") while 16 is the generic term for
- * everything else, and the eat slots are named for the same pair (`..._eat_slot_food` = atomic 10,
- * `..._eat_slot_candy` = atomic 11). Candy is therefore the `food_extra` dish and the other five are
- * `food_simple`.
+ * fruit, fish and sausage have NO producer and NO slot anywhere in this content set, so their entries
+ * never fire — inference carried for a content set that might declare them. `fruit` is the shakiest:
+ * `goodtypes.ini` marks it `isProducedOnMapFlag 1`, a map-harvested good, so "leaves the kitchen" would
+ * not describe it. Anything lifted from a store that does not PRODUCE the good stays raw
+ * ({@link carriedGoodForm}), which is what keeps a meat heap routable to the animal farm.
+ *
+ * The simple/extra split is pinned for CANDY: good 17 and good 20 share one display name
+ * ("Ciastko"/"Ciastka") in `text/pol/strings/gameobjects/goods.ini`, the eat slots are named for the
+ * same pair (`..._eat_slot_food`, `..._eat_slot_candy`), and `atomicanimations.ini` gives the candy clip
+ * a second need payout the plain food clip lacks — the luxury food. The other five are `food_simple` by
+ * elimination, since no readable rule file states the split
+ * (docs/tickets/sim/dish-edible-split-evidence.md).
  */
-const EDIBLE_FORM_BY_DISH: Readonly<Record<string, string>> = {
-  fruit: 'food_simple',
-  bread: 'food_simple',
-  candy: 'food_extra',
-  meat: 'food_simple',
-  fish: 'food_simple',
-  sausage: 'food_simple',
-};
+export const EDIBLE_FORM_BY_DISH: ReadonlyMap<string, string> = new Map([
+  ['fruit', 'food_simple'],
+  ['bread', 'food_simple'],
+  ['candy', 'food_extra'],
+  ['meat', 'food_simple'],
+  ['fish', 'food_simple'],
+  ['sausage', 'food_simple'],
+]);
 
 /** Resolved `dish goodType → edible goodType` per content set. Pure derived data over immutable
  *  content, cached the way {@link contentIndex} caches its own maps. A dish whose edible form is
@@ -66,7 +71,8 @@ function edibleForms(content: ContentSet): ReadonlyMap<number, number> {
     const typeById = new Map(content.goods.map((g) => [g.id, g.typeId]));
     forms = new Map(
       content.goods.flatMap((dish) => {
-        const edible = typeById.get(EDIBLE_FORM_BY_DISH[dish.id] ?? '');
+        const edibleId = EDIBLE_FORM_BY_DISH.get(dish.id);
+        const edible = edibleId === undefined ? undefined : typeById.get(edibleId);
         return edible === undefined ? [] : [[dish.typeId, edible] as const];
       }),
     );
@@ -76,15 +82,17 @@ function edibleForms(content: ContentSet): ReadonlyMap<number, number> {
 }
 
 /**
- * The good a settler ends up carrying when it lifts one unit of `goodType` out of a store — a **dish**
- * ({@link EDIBLE_FORM_BY_DISH}) turns into its edible form, every other good is carried as itself.
+ * The edible a dish becomes, or `goodType` unchanged when it is not a dish
+ * ({@link EDIBLE_FORM_BY_DISH}).
  *
- * This is the one place the sim stops conserving good *identity*: the count is conserved (one unit out,
- * one unit on the back), but the bakery's bread leaves as `food_simple`. Without it a dish is a dead
+ * Applying it is where the sim stops conserving good *identity*: the count is conserved (one unit out,
+ * one unit on the back), but the bakery's bread leaves as `food_simple`. Without that a dish is a dead
  * end — `stockCapacity` is 0 for it in every store, so routing finds no sink, no carrier ever lifts it,
- * and the kitchen wedges at a full shelf with its workers idle. Callers pair up: the pickup rungs probe
- * routing through this mapping before lifting ({@link deliverableGoodProbe}), and `pickupFromStore`
- * applies it when the swing completes, so plan and effect agree on what is being carried.
+ * and the kitchen wedges at a full shelf with its workers idle.
+ *
+ * Scope: this resolves the mapping only. {@link carriedGoodForm} decides WHEN it applies — a lift out of
+ * the producing house — and a dish minted straight onto the back (a hunter's meat, `effects-goods/harvest.ts`)
+ * bypasses it entirely. See docs/tickets/sim/dish-conversion-at-carry-mint.md.
  */
 export function exportedGoodForm(ctx: SystemContext, goodType: number): number {
   return edibleForms(ctx.content).get(goodType) ?? goodType;
