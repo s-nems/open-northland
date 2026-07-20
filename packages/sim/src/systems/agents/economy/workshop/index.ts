@@ -1,5 +1,6 @@
 import { CARRY_CAPACITY, Owner, Resting } from '../../../../components/index.js';
 import type { Entity } from '../../../../ecs/world.js';
+import { shelfBlockedOutput } from '../../../economy/production.js';
 import { planGossipIdle } from '../../../social/index.js';
 import { isWorkplaceOperator, mergedRecipeOf, recipesByProductOf } from '../../../stores/index.js';
 import { atOrWalk, startDraw, startPickup } from '../../actions.js';
@@ -10,7 +11,6 @@ import { deliverableGoodProbe } from '../routing.js';
 import {
   type MissingInputSource,
   nearestMissingInputSource,
-  outputSlotsFull,
   workplaceOutputToHaul,
   workSeatCount,
 } from './supply.js';
@@ -19,13 +19,16 @@ import {
 export type WorkSeatClaims = Map<Entity, number>;
 
 /**
- * Run the self-service producer loop: claim an available batch seat, ship one output out when the full
- * output slot is what stopped the workshop, fetch a missing input, haul an output when no carrier owns
- * that run, then loiter by the door with genuinely nothing left to do. A craftsman that cannot craft acts
- * as its OWN workplace's carrier — it brings that workplace's inputs in and takes its outputs out, and
- * never touches goods belonging to anyone else. The ordering is observed original behavior; exact trip
- * scheduling is not decoded, so fetch-before-haul for a workshop that is merely idle (rather than
- * blocked) remains the existing named approximation.
+ * Run the self-service producer loop: claim an available batch seat, ship the good whose full slot stopped
+ * the workshop, fetch a missing input, haul an output when no carrier owns that run, then loiter by the
+ * door with nothing left to do.
+ *
+ * Source basis: that a workshop stops on a full product slot and resumes once a unit leaves is observed
+ * original behavior. That the CRAFTSMAN makes the trip is the approximation — `jobtypes.ini` grants the
+ * pickup/pileup atomics to the carrier trades, not to a baker, so the original likely leaves the run to
+ * the workshop's bound carrier. The self-service model predates this rung; see
+ * docs/tickets/sim/workshop-carrier-unblocks-full-output.md. Trip scheduling is not decoded either, so
+ * fetch-before-haul for a workshop that is merely idle (rather than blocked) stays a named approximation.
  */
 export function planProducer(
   plan: PlannerContext,
@@ -45,16 +48,11 @@ export function planProducer(
     return;
   }
 
-  // Which finished output this worker could ship, if any — probed once and reused by both haul rungs
-  // below (the probe closure is only ever invoked for a good the workplace actually stocks).
-  const output = workplaceOutputToHaul(deliverableGoodProbe(plan), world, workplace, recipe);
-
-  // Blocked on its own full shelf: carrying one unit to a store is the ONLY thing that restarts the
-  // workshop, so it outranks the next input trip and happens even when a carrier is bound — that carrier
-  // may be mid-errand across the map while the workshop stands still (the "piekarz stoi bezczynnie z
-  // pełnym magazynem" bug). A merely idle workshop keeps the old fetch-first order.
-  if (output !== null && outputSlotsFull(world, ctx, workplace)) {
-    startOutputHaul(plan, workplace, output);
+  // A full output slot is the one stall no fetch can clear, so shipping that good outranks the next input
+  // trip and happens whether or not a carrier is bound to the workshop.
+  const blocked = shelfBlockedOutput(world, ctx, workplace);
+  if (blocked !== null && deliverableGoodProbe(plan)(blocked)) {
+    startOutputHaul(plan, workplace, blocked);
     return;
   }
 
@@ -76,11 +74,7 @@ export function planProducer(
     return;
   }
 
-  if (output !== null && !carrierSupplied) {
-    startOutputHaul(plan, workplace, output);
-    return;
-  }
-
+  if (!carrierSupplied && haulWorkplaceOutput(plan, workplace, recipe)) return;
   // A surplus/idle craftsman: its seat is taken (or the workshop can't produce), so its door presence adds
   // no production — it may loiter beside the door rather than stand on it.
   loiterByDoor(plan, workplace, spacing, false);

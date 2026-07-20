@@ -36,6 +36,8 @@ export const HEADQUARTERS = 1;
 export const SAWMILL = 2;
 /** Fixture 7: 2 carpenter operator slots + a carrier slot, wood(cap 10) → plank(cap 20). */
 export const TWIN_MILL = 8;
+/** Fixture 20: TWO products off different inputs — wood→plank and wheat→food (the upgraded bakery shape). */
+export const BAKEHOUSE = 20;
 export const FARMER = 18; // the farm's field-worker job (plant atomic 34) — never hauls the farm's output out
 /** Fixture 5: the grain farm — produces wheat via its field `farming` block: a FIELD producer whose
  *  store other producers may also draw inputs from, but never a storage SINK for its own good. */

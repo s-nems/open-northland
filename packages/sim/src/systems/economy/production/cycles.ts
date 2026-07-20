@@ -7,10 +7,11 @@ import {
   Stockpile,
   setStockAmount,
 } from '../../../components/index.js';
+import { ONE } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { goodEnabled } from '../../progression/index.js';
-import { stockCapacity } from '../../stores/index.js';
+import { recipesByProductOf, stockCapacity } from '../../stores/index.js';
 
 // The production CYCLE model: the start gate (may another batch of this product begin?), the batch's birth,
 // and its output deposit at completion. The ProductionSystem loop (../production.ts) drives these; the
@@ -38,16 +39,31 @@ export function startableCycleCount(
   building: Entity,
   recipe: Recipe,
 ): number {
+  if (!recipeUnlocked(world, ctx, building, recipe)) return 0;
+  // Both halves are already >= 0, so the combined count needs no further clamp.
+  return Math.min(
+    inputStockForCycles(world, building, recipe),
+    outputRoomForCycles(world, ctx, building, recipe),
+  );
+}
+
+/** Whether every output of `recipe` is tech-unlocked for the building's tribe (the `jobEnablesGood` gate). */
+function recipeUnlocked(world: World, ctx: SystemContext, building: Entity, recipe: Recipe): boolean {
   const tribe = world.get(building, Building).tribe;
   for (const output of recipe.outputs) {
-    if (!goodEnabled(world, ctx, tribe, output.goodType)) return 0; // good not yet tech-unlocked
+    if (!goodEnabled(world, ctx, tribe, output.goodType)) return false;
   }
+  return true;
+}
+
+/** How many cycles of `recipe` the stocked INPUTS cover — the input half of {@link startableCycleCount}. */
+function inputStockForCycles(world: World, building: Entity, recipe: Recipe): number {
   const stock = world.get(building, Stockpile).amounts;
-  let startable = Number.POSITIVE_INFINITY;
+  let cycles = Number.POSITIVE_INFINITY;
   for (const input of recipe.inputs) {
-    startable = Math.min(startable, Math.floor((stock.get(input.goodType) ?? 0) / input.amount));
+    cycles = Math.min(cycles, Math.floor((stock.get(input.goodType) ?? 0) / input.amount));
   }
-  return Math.max(0, Math.min(startable, outputRoomForCycles(world, ctx, building, recipe)));
+  return cycles;
 }
 
 /**
@@ -77,6 +93,42 @@ export function outputRoomForCycles(
     room = Math.min(room, Math.floor((capacity - have) / output.amount) - inFlight);
   }
   return Math.max(0, room);
+}
+
+/**
+ * The stocked output good whose FULL SHELF is what stopped this workplace, or null when something else
+ * (or nothing) stopped it. A recipe is shelf-blocked when it is tech-unlocked and its inputs are on hand,
+ * yet {@link outputRoomForCycles} leaves no room for the batch — the one state that no amount of fetching
+ * can clear, because only a unit physically leaving frees the slot. A workplace that can still start ANY
+ * cycle is not blocked at all, which is what keeps a multi-product workshop honest: a bakery whose bread
+ * slot is full but which could still be making candy carries on making candy.
+ *
+ * Naming the good (rather than answering yes/no) matters for exactly that workshop: the unblocking trip
+ * has to carry the good whose slot is full, not whichever product happens to be stocked first. Recipe
+ * iteration follows the type's fixed content order ({@link recipesByProductOf}), so the pick is canonical.
+ */
+export function shelfBlockedOutput(world: World, ctx: SystemContext, building: Entity): number | null {
+  const b = world.tryGet(building, Building);
+  if (b === undefined || b.built < ONE) return null; // a construction site was never going to start a cycle
+  const recipes = recipesByProductOf(world, ctx, building);
+  if (recipes === undefined) return null;
+  const stock = world.get(building, Stockpile).amounts;
+  let blocked: number | null = null;
+  for (const recipe of recipes.values()) {
+    if (!recipeUnlocked(world, ctx, building, recipe)) continue; // locked: shipping a unit would not help
+    if (inputStockForCycles(world, building, recipe) < 1) continue; // starved: the fetch rung owns this one
+    if (outputRoomForCycles(world, ctx, building, recipe) > 0) return null; // still startable — not blocked
+    blocked ??= stockedOutput(stock, recipe);
+  }
+  return blocked;
+}
+
+/** The first output of `recipe` the workplace actually holds a unit of — what a haul could carry out. */
+function stockedOutput(stock: ReadonlyMap<number, number>, recipe: Recipe): number | null {
+  for (const output of recipe.outputs) {
+    if ((stock.get(output.goodType) ?? 0) > 0) return output.goodType;
+  }
+  return null;
 }
 
 /**
