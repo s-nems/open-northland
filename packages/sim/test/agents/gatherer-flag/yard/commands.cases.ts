@@ -13,7 +13,8 @@ import {
 } from '../../../../src/components/index.js';
 import type { Command } from '../../../../src/core/commands/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
-import { fx, ONE, Simulation } from '../../../../src/index.js';
+import { fx, nodeOfPosition, ONE, Simulation } from '../../../../src/index.js';
+import { positionOfNode } from '../../../../src/nav/halfcell.js';
 import { setGatherGood, setWorkFlag } from '../../../../src/systems/index.js';
 import { testContent } from '../../../fixtures/content.js';
 import { ctxOf, grassMap, makeWoodcutter, riverMap, VIKING, WOOD, WOODCUTTER } from '../support.js';
@@ -62,32 +63,42 @@ describe('setWorkFlag command — place / move a gatherer flag (Ctrl+Right-Click
     expect([...sim.world.query(DeliveryFlag)]).toHaveLength(1); // no second flag littered
   });
 
-  it('SNAPS off an occupied resource/building field rather than dropping the order', () => {
+  // The flag marker's node-x — the yard fixtures are a one-row map, so x alone identifies the node.
+  const flagNodeX = (sim: Simulation, gatherer: Entity): number =>
+    nodeOfPosition(
+      sim.world.get(sim.world.get(gatherer, WorkFlag).flag, Position).x,
+      sim.world.get(sim.world.get(gatherer, WorkFlag).flag, Position).y,
+    ).hx;
+
+  it('snaps to the node just outside an occupied resource body rather than dropping the order', () => {
     // Clicking the patch to work means clicking the body that blocks its own cells — the click the
-    // player actually makes. Dropping it left the gatherer at its old flag with no feedback.
+    // player actually makes. Dropping it left the gatherer at its old flag with no feedback. A real ore
+    // patch is a CLUSTER, so the body here is three nodes wide and the snap must clear all of it.
     const sim = new Simulation({ seed: 2, content: testContent(), map: grassMap(40, 1) });
     const gatherer = ownedGatherer(sim, 0, 0);
-    const resource = sim.world.create();
-    sim.world.add(resource, Position, { x: fx.fromInt(6), y: fx.fromInt(0) });
-    sim.world.add(resource, Resource, { goodType: WOOD, remaining: 1, harvestAtomic: 24 });
+    for (const hx of [11, 12, 13]) {
+      const ore = sim.world.create();
+      sim.world.add(ore, Position, { ...positionOfNode(hx, 0) });
+      sim.world.add(ore, Resource, { goodType: WOOD, remaining: 1, harvestAtomic: 24 });
+    }
 
-    setWorkFlag(sim.world, ctxOf(sim), cmd(gatherer, 6));
+    setWorkFlag(sim.world, ctxOf(sim), { kind: 'setWorkFlag', entity: gatherer, x: 12, y: 0 });
 
-    expect(sim.world.has(gatherer, WorkFlag)).toBe(true);
-    const onResource = fx.toInt(sim.world.get(sim.world.get(gatherer, WorkFlag).flag, Position).x);
-    expect(onResource).not.toBe(6); // never on the blocked cell itself…
-    expect(Math.abs(onResource - 6)).toBeLessThanOrEqual(3); // …but beside the patch it was aimed at
+    // The nearest legal node to the body's middle wins: 11/12/13 are blocked, so 10 and 14 tie at
+    // distance 2 and the lower node id breaks it.
+    expect(flagNodeX(sim, gatherer)).toBe(10);
+  });
 
-    sim.world.destroy(resource);
+  it('snaps off a building body too', () => {
+    const sim = new Simulation({ seed: 2, content: testContent(), map: grassMap(40, 1) });
+    const gatherer = ownedGatherer(sim, 0, 0);
     const building = sim.world.create();
-    sim.world.add(building, Position, { x: fx.fromInt(12), y: fx.fromInt(0) });
+    sim.world.add(building, Position, { ...positionOfNode(24, 0) });
     sim.world.add(building, Building, { buildingType: 1, tribe: VIKING, built: ONE, level: 0 });
 
-    setWorkFlag(sim.world, ctxOf(sim), cmd(gatherer, 12));
+    setWorkFlag(sim.world, ctxOf(sim), { kind: 'setWorkFlag', entity: gatherer, x: 24, y: 0 });
 
-    const onBuilding = fx.toInt(sim.world.get(sim.world.get(gatherer, WorkFlag).flag, Position).x);
-    expect(onBuilding).not.toBe(12);
-    expect(Math.abs(onBuilding - 12)).toBeLessThanOrEqual(3);
+    expect(flagNodeX(sim, gatherer)).toBe(23); // the adjacent node, lower id on the tie
   });
 
   it('rejects a click with no walkable node in snapping range (mid-lake)', () => {
@@ -97,7 +108,7 @@ describe('setWorkFlag command — place / move a gatherer flag (Ctrl+Right-Click
     const water = new Simulation({ seed: 1, content: testContent(), map: riverMap(40, 1, lake) });
     const gatherer = ownedGatherer(water, 0, 0);
 
-    setWorkFlag(water.world, ctxOf(water), cmd(gatherer, 7)); // node x=14, deep inside the band
+    setWorkFlag(water.world, ctxOf(water), { kind: 'setWorkFlag', entity: gatherer, x: 15, y: 0 });
 
     expect(water.world.has(gatherer, WorkFlag)).toBe(false);
   });

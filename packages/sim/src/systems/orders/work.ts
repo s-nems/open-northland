@@ -39,7 +39,7 @@ import {
   syncWorkFlagToJob,
 } from '../economy/flags.js';
 import { openWorkerJobFromList } from '../economy/jobs/index.js';
-import { canPlaceWorkFlag, interactionNode, nearestWorkFlagPlacement } from '../footprint/index.js';
+import { interactionNode, nearestWorkFlagPlacement } from '../footprint/index.js';
 import { isFighterJob } from '../readviews/index.js';
 import { navigationLimitFor } from '../signposts/index.js';
 import { clearNavState } from '../spatial.js';
@@ -231,8 +231,8 @@ export function assignBuilder(
  * How far {@link setWorkFlag} snaps a click that landed on a blocked node. Sized to clear the body under
  * the cursor — a resource cluster or a building — while keeping the flag where the player pointed: past
  * this the click is treated as "not workable ground" rather than silently relocating the gatherer's yard.
- * Named approximation (the original's click tolerance is not decoded); it matches the band the AI plants
- * its own flags in, `FLAG_MAX_DISTANCE_NODES`.
+ * Named approximation: the original's click tolerance is not decoded, and 3 tiles sits well inside
+ * {@link DEFAULT_WORK_FLAG_RADIUS}, so a snapped flag still covers the patch the player aimed at.
  */
 const WORK_FLAG_SNAP_MAX_RADIUS = 6;
 
@@ -245,17 +245,16 @@ const WORK_FLAG_SNAP_MAX_RADIUS = 6;
  * is created there and bound with the {@link DEFAULT_WORK_FLAG_RADIUS}. From then on the gatherer harvests only
  * within that flag's radius, carries only what it dug, and banks it there ({@link planGatherer}).
  *
- * The clicked node is SNAPPED to the nearest legal one within {@link WORK_FLAG_SNAP_MAX_RADIUS}
- * ({@link nearestWorkFlagPlacement}) — the player aims at the patch they want worked, and a resource body
- * blocks its own cells, so "work this iron mine" lands on the ore and would otherwise be dropped in silence,
- * leaving the collector at its old flag. The same snap already backs auto-created flags and the AI's flag
- * planting; this is the player order joining them.
+ * The clicked node is snapped to the nearest legal one within {@link WORK_FLAG_SNAP_MAX_RADIUS}
+ * ({@link nearestWorkFlagPlacement}): the player aims at the patch to work, and a resource body blocks its
+ * own cells, so "work this iron mine" lands on the ore itself. The snap carries the settler's signpost
+ * confinement, so it can only land on ground that settler may work — a narrow stream snaps to its bank.
  *
  * Recoverable bad input (skipped, still logged for faithful replay): a mapless sim; a dead/stale target, a
  * non-settler, a neutral (unowned) entity, a settler whose job cannot harvest — only a gatherer carries a
  * work flag, so Ctrl+Right-Click on a soldier is a no-op, never a stray flag — or a click with no legal node
- * in snapping range (deep water, a walled-in pocket). Carries no issuing-player yet; the per-player
- * authority check lands with lockstep.
+ * in snapping range (mid-lake, a walled-in pocket, wholly outside the settler's signpost area). Carries no
+ * issuing-player yet; the per-player authority check lands with lockstep.
  */
 export function setWorkFlag(
   world: World,
@@ -270,18 +269,18 @@ export function setWorkFlag(
   if (jobType === null || !jobCanHarvest(ctx, jobType)) return; // only a gatherer carries a work flag
 
   const live = liveWorkFlag(world, e);
-  // Clamp an off-map click onto the grid (like moveUnit), then snap off any body it landed on.
-  const clicked = terrain.nodeAtClamped(command.x, command.y);
-  const target = canPlaceWorkFlag(world, ctx, terrain, clicked, live?.flag)
-    ? clicked
-    : nearestWorkFlagPlacement(world, ctx, terrain, clicked, {
-        ...(live !== undefined ? { ignoreFlag: live.flag } : {}),
-        maxRadius: WORK_FLAG_SNAP_MAX_RADIUS,
-      });
-  if (target === null) return; // nothing legal in snapping range — the click was not on workable ground
-  // Signpost confinement: a gatherer can't be sent to work ground it doesn't know the way to.
+  // Signpost confinement: a gatherer can't be sent to work ground it doesn't know the way to. Folded into
+  // the snap rather than applied to its winner, so a click near the band edge snaps INWARD to allowed
+  // ground instead of being pushed out and then rejected.
   const limit = navigationLimitFor(world, terrain, e);
-  if (limit !== null && !limit.allowsNode(target)) return;
+  // Clamp an off-map click onto the grid (like moveUnit), then snap off any body it landed on. The clicked
+  // node is the search's own first candidate, so an unblocked click resolves to itself.
+  const target = nearestWorkFlagPlacement(world, ctx, terrain, terrain.nodeAtClamped(command.x, command.y), {
+    ignoreFlag: live?.flag,
+    ...(limit !== null ? { accept: (node) => limit.allowsNode(node) } : {}),
+    withinRadius: WORK_FLAG_SNAP_MAX_RADIUS,
+  });
+  if (target === null) return; // nothing legal in snapping range — the click was not on workable ground
   const c = terrain.coordsOf(target);
   const pos = positionOfNode(c.x, c.y);
 
