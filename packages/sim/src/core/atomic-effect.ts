@@ -35,12 +35,13 @@ export type AtomicEffect =
        *  the food (conserved up to that consumption). */
       readonly from: Entity | null;
     }
-  /** The settler sleeps to restore rest: zeroes its `fatigue` on completion (no goods consumed —
-   *  unlike `eat`, resting is free). The pairing reset for the NeedsSystem's fatigue rise. */
+  /** The settler sleeps to restore rest: takes `SLEEP_FATIGUE_RESTORE` off its `fatigue` on completion (no
+   *  goods consumed — unlike `eat`, resting is free). The partial-refill counterpart to the NeedsSystem's
+   *  fatigue rise; the settler beds down on open ground the sleep drive walked it to. */
   | { readonly kind: 'sleep' }
   /** The settler prays to restore devotion: zeroes its `piety` on completion (no goods consumed — like
-   *  `sleep`, praying is free). The pairing reset for the NeedsSystem's piety rise. Unlike `sleep` (in place)
-   *  this is the first target-bound need — the settler must stand on a temple to run it. */
+   *  `sleep`, praying is free). The pairing reset for the NeedsSystem's piety rise. Unlike `sleep` (any patch
+   *  of open ground) this need is building-bound — the settler must stand on a temple to run it. */
   | { readonly kind: 'pray' }
   /** The settler enjoys itself to restore leisure: zeroes its `enjoyment` on completion (no goods consumed —
    *  like `sleep`/`pray`). The pairing reset for the NeedsSystem's enjoyment rise (the `enjoy` atomic, id 17).

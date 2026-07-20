@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Building, Carrying, Health, Resource, Settler, Stockpile } from '../../../src/components/index.js';
 import { fx, ONE, Simulation } from '../../../src/index.js';
-import { atomicSystem } from '../../../src/systems/index.js';
+import { atomicSystem, EAT_HUNGER_RESTORE } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf, PLANK, SAWMILL, startAtomic, WOOD } from './support.js';
 
@@ -98,7 +98,7 @@ describe('atomicSystem — effects', () => {
     expect(sim.world.get(settler, Carrying).amount).toBe(5); // nothing moved
   });
 
-  it('eat clears the settler hunger', () => {
+  it('eat takes one meal off the settler hunger, not the whole bar', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const settler = sim.world.create();
     sim.world.add(settler, Settler, {
@@ -112,7 +112,7 @@ describe('atomicSystem — effects', () => {
     });
     startAtomic(sim, settler, { kind: 'eat', goodType: WOOD, from: null }, 1);
     atomicSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(settler, Settler).hunger).toBe(0);
+    expect(sim.world.get(settler, Settler).hunger).toBe(fx.sub(ONE, EAT_HUNGER_RESTORE));
   });
 
   it('enjoy clears the settler enjoyment (no goods consumed)', () => {

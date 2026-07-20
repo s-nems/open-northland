@@ -14,6 +14,8 @@ import {
   SLEEP_ATOMIC_ID,
   startAtomic,
 } from './actions.js';
+import type { SpacingState } from './destack.js';
+import { restingCell } from './rest-spot.js';
 import { interactionCell, nearestFood, nearestTemple, type TargetCandidates } from './targets/index.js';
 
 // The NEEDS drives — the highest-priority rungs of the planner ladder (a starving operator leaves
@@ -76,8 +78,9 @@ export function anyNeedPressing(needs: { hunger: Fixed; fatigue: Fixed; piety: F
  *  - **EAT** (highest): eat a carried edible on the spot, else walk to the NEAREST food of any kind
  *    ({@link nearestFood}) — a store holding food, or a ripe wild berry bush (the fallback) — and eat/
  *    forage it there.
- *  - **SLEEP** (below eat — a starving settler eats before it can rest): sleep IN PLACE (the
- *    housing/home sleep target is a later slice; see source basis).
+ *  - **SLEEP** (below eat — a starving settler eats before it can rest): step off the workplace doorstep
+ *    to open ground ({@link restingCell}) and sleep there (the housing/home sleep target is a later
+ *    slice; see source basis).
  *  - **PRAY** (below eat + sleep — survival outranks devotion): the first **target-bound** need —
  *    walk to the nearest temple and pray on it ({@link nearestTemple}).
  */
@@ -93,6 +96,8 @@ export function planNeeds(
   /** The settler's signpost confinement, or null when unlimited — a hungry/devout settler only seeks a
    *  satisfier inside its allowed area (an unsatisfiable need falls through to work as ever). */
   limit: NavigationLimit | null,
+  /** The planner-tick occupancy/claim state the sleep rung picks a bed out of ({@link restingCell}). */
+  spacing: SpacingState,
 ): boolean {
   const gate = limit ?? undefined;
   if (settler.hunger >= HUNGER_EAT_THRESHOLD) {
@@ -128,13 +133,17 @@ export function planNeeds(
   }
 
   if (settler.fatigue >= FATIGUE_SLEEP_THRESHOLD) {
-    startAtomic(
-      world,
-      e,
-      SLEEP_ATOMIC_ID,
-      { kind: 'sleep' },
-      atomicDuration(ctx.content, settler, SLEEP_ATOMIC_ID),
-      e,
+    // Bed down in the open rather than where the settler happens to be standing — it steps off the
+    // workplace doorstep first (see {@link restingCell}); already out in the open, it sleeps on the spot.
+    atOrWalk(world, e, here, restingCell(world, ctx, terrain, e, here, spacing, limit), () =>
+      startAtomic(
+        world,
+        e,
+        SLEEP_ATOMIC_ID,
+        { kind: 'sleep' },
+        atomicDuration(ctx.content, settler, SLEEP_ATOMIC_ID),
+        e,
+      ),
     );
     return true;
   }

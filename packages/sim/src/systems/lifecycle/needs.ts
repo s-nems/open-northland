@@ -45,6 +45,36 @@ export function rollInitialNeed(rng: Rng): Fixed {
   return fx.div(fx.fromInt(percent), fx.fromInt(100));
 }
 
+/**
+ * How much of the hunger bar one meal takes off: 40%, whatever was eaten — a foraged wild berry and a
+ * stored meal are worth the same (observed original). A settler therefore eats several times between
+ * spells of work instead of clearing the bar in one sitting.
+ *
+ * Source basis: the original's eat clips carry `event 30 2 +4000` on the CHANGE_ENERGY channel
+ * (`logicdefines.inc` `ATOMIC_ANIMATION_EVENT_TYPE_CHANGE_ENERGY = 2`) against the ~10000-unit reserve
+ * span {@link import('../agents/effects-combat/need-cost.js')} scales against, and observation of the
+ * running original puts one meal at 40% of the bar. The data's at-home and candy clips carry a larger
+ * `+6000`; a single flat restore per meal is the approximation until the per-clip vocabulary is wired.
+ */
+export const EAT_HUNGER_RESTORE: Fixed = fx.div(fx.fromInt(40), fx.fromInt(100));
+
+/**
+ * How much of the fatigue bar one sleep takes off: 20% — so rest is a repeated errand, not a one-shot
+ * reset, and a settler that has run its bar to the top beds down more than once.
+ *
+ * Source basis: observed original (user measurement). The `..._sleep` clips pulse `event <at> 1 +4000`
+ * on the CHANGE_CONDITION channel twice, but that channel's reserve span is not readable, so the bar
+ * fraction is pinned by observation rather than derived from the event values (approximated).
+ */
+export const SLEEP_FATIGUE_RESTORE: Fixed = fx.div(fx.fromInt(20), fx.fromInt(100));
+
+/** Take `amount` off a need bar, floored at zero — the shared "a satisfier partially relieves a need"
+ *  step behind {@link EAT_HUNGER_RESTORE} and {@link SLEEP_FATIGUE_RESTORE}. */
+export function relieveNeed(current: Fixed, amount: Fixed): Fixed {
+  const relieved = fx.sub(current, amount);
+  return relieved < 0 ? fx.fromInt(0) : relieved;
+}
+
 /** How much piety a smith spends forging one weapon or piece of armor — the only thing that raises the piety
  * deficit now that it no longer rises over time (praying at a temple clears it). Applied once per completed
  * military-good production cycle to the worker on station (ProductionSystem). Source basis: design rule

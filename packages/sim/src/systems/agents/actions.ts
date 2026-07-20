@@ -24,7 +24,7 @@ import { interactionCell } from './targets/index.js';
 /**
  * The atomic id a settler runs to eat — id 10 is the eat slot across every tribe's
  * `setatomic <job> 10 "..._eat_slot_food"` bindings (see source basis). The `eat` effect consumes one unit of
- * food and resets hunger.
+ * food and takes a meal off the hunger bar.
  */
 export const EAT_ATOMIC_ID = 10;
 
@@ -50,7 +50,7 @@ export function eatDuration(ctx: SystemContext, settler: SettlerIdentity): numbe
 /**
  * The atomic id a settler runs to sleep — id 8 is the sleep slot across every tribe's
  * `setatomic <job> 8 "..._sleep"` bindings, bound for every job, even babies (see source basis). The `sleep`
- * effect zeroes fatigue.
+ * effect takes a sleep off the fatigue bar.
  */
 export const SLEEP_ATOMIC_ID = 8;
 

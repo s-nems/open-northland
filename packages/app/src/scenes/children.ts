@@ -15,7 +15,7 @@ import type { SceneDefinition } from './types.js';
  * original binds child eat animations, `setatomic 3/4 10`), while a BABY is cared for: its family
  * keeps it sated (its needs never accumulate — NeedsSystem) and it never self-feeds. Three stations,
  * each a hungry young settler beside its own ripe berry bush: the girl and boy walk over, play the
- * child eat clip, and their hunger resets (their bushes go bare); the baby — authored hungry, a state
+ * child eat clip, and a meal comes off their hunger bar (their bushes go bare); the baby — authored hungry, a state
  * real play can't reach, exactly so the planner's baby gate is checkable — ignores its bush (it stays
  * ripe). The browser half is where a human judges the pixels: the two child eat clips on the child
  * bodies and the baby never feeding.
@@ -100,13 +100,16 @@ export const childrenScene: SceneDefinition = {
       label: 'both children ended FED — the eat drive ran for them (the only food was their bushes)',
       predicate: (sim) => {
         const { children } = youngByStage(sim);
+        // A berry is a partial meal: with needs frozen here the fed bar sits exactly one
+        // EAT_HUNGER_RESTORE below the authored HUNGRY.
+        const afterOneBerry = fx.sub(HUNGRY, systems.EAT_HUNGER_RESTORE);
         return (
-          children.length === 2 && children.every((e) => sim.world.get(e, Settler).hunger === fx.fromInt(0))
+          children.length === 2 && children.every((e) => sim.world.get(e, Settler).hunger === afterOneBerry)
         );
       },
     },
     {
-      label: 'the hungry baby never self-fed — its authored hunger never reset (cared for, no eat drive)',
+      label: 'the hungry baby never self-fed — its authored hunger never moved (cared for, no eat drive)',
       predicate: (sim) => {
         const { babies } = youngByStage(sim);
         return babies.length === 1 && babies.every((e) => sim.world.get(e, Settler).hunger === HUNGRY);
