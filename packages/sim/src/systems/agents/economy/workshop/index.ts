@@ -10,6 +10,7 @@ import { deliverableGoodProbe } from '../routing.js';
 import {
   type MissingInputSource,
   nearestMissingInputSource,
+  outputSlotsFull,
   workplaceOutputToHaul,
   workSeatCount,
 } from './supply.js';
@@ -18,10 +19,13 @@ import {
 export type WorkSeatClaims = Map<Entity, number>;
 
 /**
- * Run the self-service producer loop: claim an available batch seat, fetch a missing input, haul an
- * output when no carrier owns that run, then loiter by the door when there is genuinely nothing to do.
- * The ordering is observed original behavior; exact trip scheduling is not decoded, so fetch-before-haul
- * remains the existing named approximation.
+ * Run the self-service producer loop: claim an available batch seat, ship one output out when the full
+ * output slot is what stopped the workshop, fetch a missing input, haul an output when no carrier owns
+ * that run, then loiter by the door with genuinely nothing left to do. A craftsman that cannot craft acts
+ * as its OWN workplace's carrier — it brings that workplace's inputs in and takes its outputs out, and
+ * never touches goods belonging to anyone else. The ordering is observed original behavior; exact trip
+ * scheduling is not decoded, so fetch-before-haul for a workshop that is merely idle (rather than
+ * blocked) remains the existing named approximation.
  */
 export function planProducer(
   plan: PlannerContext,
@@ -41,9 +45,21 @@ export function planProducer(
     return;
   }
 
+  // Which finished output this worker could ship, if any — probed once and reused by both haul rungs
+  // below (the probe closure is only ever invoked for a good the workplace actually stocks).
+  const output = workplaceOutputToHaul(deliverableGoodProbe(plan), world, workplace, recipe);
+
+  // Blocked on its own full shelf: carrying one unit to a store is the ONLY thing that restarts the
+  // workshop, so it outranks the next input trip and happens even when a carrier is bound — that carrier
+  // may be mid-errand across the map while the workshop stands still (the "piekarz stoi bezczynnie z
+  // pełnym magazynem" bug). A merely idle workshop keeps the old fetch-first order.
+  if (output !== null && outputSlotsFull(world, ctx, workplace)) {
+    startOutputHaul(plan, workplace, output);
+    return;
+  }
+
   // The nearest source of a missing input — a store that holds it (fetch) OR a shared utility that mints
-  // it (draw, e.g. cranking the well for water), whichever is closer. Restocks before shipping output
-  // (the existing fetch-before-haul approximation).
+  // it (draw, e.g. cranking the well for water), whichever is closer.
   const source = nearestMissingInputSource(
     targets.stockpileCells,
     world,
@@ -60,7 +76,11 @@ export function planProducer(
     return;
   }
 
-  if (!carrierSupplied && haulWorkplaceOutput(plan, workplace, recipe)) return;
+  if (output !== null && !carrierSupplied) {
+    startOutputHaul(plan, workplace, output);
+    return;
+  }
+
   // A surplus/idle craftsman: its seat is taken (or the workshop can't produce), so its door presence adds
   // no production — it may loiter beside the door rather than stand on it.
   loiterByDoor(plan, workplace, spacing, false);
@@ -166,17 +186,22 @@ function loiterByDoor(
   });
 }
 
+/** Lift one carry-load of `output` out of the workplace; the delivery rung routes it to a store. */
+function startOutputHaul(plan: PlannerContext, workplace: Entity, output: number): void {
+  const { world, ctx, terrain, entity, here } = plan;
+  const worker = plan;
+  atOrWalk(world, entity, here, interactionCell(world, ctx, terrain, workplace, here), () =>
+    startPickup(world, ctx, entity, worker, workplace, output, CARRY_CAPACITY),
+  );
+}
+
 function haulWorkplaceOutput(
   plan: PlannerContext,
   workplace: Entity,
   recipe: NonNullable<ReturnType<typeof mergedRecipeOf>>,
 ): boolean {
-  const { world, ctx, terrain, entity, here } = plan;
-  const worker = plan;
-  const output = workplaceOutputToHaul(deliverableGoodProbe(plan), world, workplace, recipe);
+  const output = workplaceOutputToHaul(deliverableGoodProbe(plan), plan.world, workplace, recipe);
   if (output === null) return false;
-  atOrWalk(world, entity, here, interactionCell(world, ctx, terrain, workplace, here), () =>
-    startPickup(world, ctx, entity, worker, workplace, output, CARRY_CAPACITY),
-  );
+  startOutputHaul(plan, workplace, output);
   return true;
 }

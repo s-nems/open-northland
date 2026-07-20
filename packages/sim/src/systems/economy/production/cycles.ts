@@ -43,23 +43,40 @@ export function startableCycleCount(
     if (!goodEnabled(world, ctx, tribe, output.goodType)) return 0; // good not yet tech-unlocked
   }
   const stock = world.get(building, Stockpile).amounts;
+  let startable = Number.POSITIVE_INFINITY;
+  for (const input of recipe.inputs) {
+    startable = Math.min(startable, Math.floor((stock.get(input.goodType) ?? 0) / input.amount));
+  }
+  return Math.max(0, Math.min(startable, outputRoomForCycles(world, ctx, building, recipe)));
+}
+
+/**
+ * How many more cycles of `recipe`'s product the workplace has SHELF ROOM for — the output-capacity half
+ * of {@link startableCycleCount}, read without the input-stock and tech gates. Zero means the workshop is
+ * blocked on its own full output rather than starved of inputs, which is what lets the planner send the
+ * craftsman out with one unit instead of on another input trip ({@link outputSlotsFull}).
+ */
+export function outputRoomForCycles(
+  world: World,
+  ctx: SystemContext,
+  building: Entity,
+  recipe: Recipe,
+): number {
+  const stock = world.get(building, Stockpile).amounts;
   const product = recipe.outputs[0]?.goodType;
   const cycles = world.tryGet(building, Production)?.cycles;
   let inFlight = 0;
   if (cycles !== undefined && product !== undefined) {
     for (const c of cycles) if (c.goodType === product) inFlight++;
   }
-  let startable = Number.POSITIVE_INFINITY;
-  for (const input of recipe.inputs) {
-    startable = Math.min(startable, Math.floor((stock.get(input.goodType) ?? 0) / input.amount));
-  }
+  let room = Number.POSITIVE_INFINITY;
   for (const output of recipe.outputs) {
     const have = stock.get(output.goodType) ?? 0;
     const capacity = stockCapacity(world, ctx, building, output.goodType);
     // Room for each further batch AND every same-product batch already grinding (each deposits `amount`).
-    startable = Math.min(startable, Math.floor((capacity - have) / output.amount) - inFlight);
+    room = Math.min(room, Math.floor((capacity - have) / output.amount) - inFlight);
   }
-  return Math.max(0, startable);
+  return Math.max(0, room);
 }
 
 /**
