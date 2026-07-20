@@ -18,11 +18,10 @@
  * job id can equal a real age-class id, but only a born-young settler carries `Age`. `isNonWorkingAge` stays
  * the structural id→stage predicate the JobSystem uses.
  *
- * source-basis: the age-class ids are pinned to `logicdefines.inc` + `jobtypes.ini` (no interpretation).
- * The growth cadence is pinned to observation of the running original ({@link TICKS_PER_AGE_YEAR}); only
- * the baby→child split inside it is approximated. A settler grows up keeping the sex it was born with
- * (the `makeChild` order picks it; baby_female → child_female → woman; baby_male → child_male →
- * civilist).
+ * source-basis: the age-class ids are pinned to `logicdefines.inc` + `jobtypes.ini` (no interpretation);
+ * the growth cadence — both stage boundaries and the total — is observed on the running original
+ * ({@link TICKS_PER_AGE_YEAR}). A settler grows up keeping the sex it was born with (the `makeChild`
+ * order picks it; baby_female → child_female → woman; baby_male → child_male → civilist).
  */
 
 import { Age, Residence, Settler } from '../../components/index.js';
@@ -66,30 +65,33 @@ export function isNonWorkingAge(jobType: number | null): boolean {
   return isBaby(jobType) || isChild(jobType);
 }
 
-/** The two life-stage ages, and how long the whole childhood takes at ×1 speed — all measured on the
- * running original: a settler born at age 0 turns from a baby into a child at 4 years and is an adult at
- * 12 years, with those 12 years running in 4 minutes of ×1 play. No readable rule file carries any of it:
- * there is no growth key in `jobtypes.ini`/`tribetypes.ini`/`houses.ini`. */
+/**
+ * The growth cadence, observed on the running original: a settler born at age 0 turns from a baby into a
+ * child at 4 years and is an adult at 12, with those 12 years running in 4 minutes of ×1 play. No readable
+ * rule file carries any of it — there is no growth key in `jobtypes.ini`/`tribetypes.ini`/`houses.ini`.
+ *
+ * The years and the wall-clock are what was measured; the tick counts below additionally rest on the
+ * approximated `TICKS_PER_SECOND` (see `core/loop.ts`).
+ */
 const CHILD_AGE_YEARS = 4;
 const ADULT_AGE_YEARS = 12;
 const CHILDHOOD_SECONDS_AT_1X = 4 * 60;
 
-/** Sim ticks per year of a settler's age (240 — one year every 20 s at ×1), derived from the measured
- * childhood above. The sim has no calendar otherwise; this is the one tick↔year fact, and the HUD's
- * displayed age reads it rather than re-deriving a ramp. */
+/** Sim ticks per year of a settler's age — 240, one year every 20 s at ×1. The sim has no calendar
+ * otherwise; this is its one tick↔year fact. */
 export const TICKS_PER_AGE_YEAR = (CHILDHOOD_SECONDS_AT_1X * TICKS_PER_SECOND) / ADULT_AGE_YEARS;
 
-/** The age a baby becomes a child (4 years in, 960 ticks — a third of the way through childhood, not
- * halfway; the two non-working stages are deliberately unequal). */
-export const CHILD_TICKS = CHILD_AGE_YEARS * TICKS_PER_AGE_YEAR;
+/** The `Age.ticks` at which a baby becomes a child (4 years, 960 ticks) — an age on the `Age.ticks` axis,
+ * not a stage duration: the baby stage runs 960 ticks, the child stage the remaining 1920. */
+export const CHILD_AGE_TICKS = CHILD_AGE_YEARS * TICKS_PER_AGE_YEAR;
 
-/** The age a child becomes an adult and stops carrying an {@link Age} at all (12 years, 2880 ticks). */
-export const ADULT_TICKS = ADULT_AGE_YEARS * TICKS_PER_AGE_YEAR;
+/** The `Age.ticks` at which a child becomes an adult and stops carrying an {@link Age} (12 years, 2880). */
+export const ADULT_AGE_TICKS = ADULT_AGE_YEARS * TICKS_PER_AGE_YEAR;
 
 /**
  * The `Age.ticks` a settler spawned directly into an age-class job starts with, or null for an adult
  * slug (no `Age` stamped). Matched by job `id` slug, not numeric id, for the same fixture-collision
- * reason as `isFemaleJobId`. A child starts at {@link CHILD_TICKS} — the start of its stage — so the
+ * reason as `isFemaleJobId`. A child starts at {@link CHILD_AGE_TICKS} — the start of its stage — so the
  * GrowthSystem neither demotes it back to a baby nor shortens its remaining childhood.
  */
 export function spawnAgeTicks(jobId: string | undefined): number | null {
@@ -99,7 +101,7 @@ export function spawnAgeTicks(jobId: string | undefined): number | null {
       return 0;
     case 'child_female':
     case 'child_male':
-      return CHILD_TICKS;
+      return CHILD_AGE_TICKS;
     default:
       return null;
   }
@@ -113,7 +115,7 @@ function isMaleStage(jobType: number | null): boolean {
 
 /**
  * GrowthSystem — age each {@link Age}-bearing settler one tick and promote it through the non-working life
- * stages: baby → child at {@link CHILD_TICKS}, child → adult-eligible at {@link ADULT_TICKS}.
+ * stages: baby → child at {@link CHILD_AGE_TICKS}, child → adult-eligible at {@link ADULT_AGE_TICKS}.
  *
  * Only a settler born young carries an {@link Age} (the FamilySystem's `birth` adds it at `ticks: 0`), so this is
  * a no-op for every settler spawned already-adult. On reaching adulthood (`jobType` cleared to `null`) the
@@ -128,7 +130,7 @@ export const growthSystem: System = (world) => {
     const age = world.get(e, Age);
     const settler = world.get(e, Settler);
     age.ticks += 1;
-    if (age.ticks >= ADULT_TICKS) {
+    if (age.ticks >= ADULT_AGE_TICKS) {
       // Grown to an adult — a boy becomes a civilian ({@link CIVILIST_JOB}), a girl the adult woman
       // role ({@link WOMAN_JOB}); neither is auto-employed, the player assigns work.
       settler.jobType = isMaleStage(settler.jobType) ? CIVILIST_JOB : WOMAN_JOB;
@@ -149,11 +151,11 @@ export const growthSystem: System = (world) => {
 
 /**
  * The age-class `jobType` a settler that has lived `ticks` (still short of adulthood) should currently be,
- * for the given sex: a baby for the first {@link CHILD_TICKS}, a child thereafter. A pure function of the
+ * for the given sex: a baby for the first {@link CHILD_AGE_TICKS}, a child thereafter. A pure function of the
  * count + sex (not of how many times it ran), so re-evaluating it every tick is idempotent within a stage
  * and the promotion never double-fires.
  */
 function ageClassAt(ticks: number, male: boolean): number {
-  if (ticks < CHILD_TICKS) return male ? BABY_MALE : BABY_FEMALE;
+  if (ticks < CHILD_AGE_TICKS) return male ? BABY_MALE : BABY_FEMALE;
   return male ? CHILD_MALE : CHILD_FEMALE;
 }

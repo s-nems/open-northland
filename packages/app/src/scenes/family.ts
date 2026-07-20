@@ -151,13 +151,13 @@ export const familyScene: SceneDefinition = {
       },
     },
     {
-      label: 'a daughter was born into the household (a Female minor, living in the home)',
+      label: 'a daughter was born and grew to a child by the end of the run, living in the home',
       predicate: (sim) => {
         for (const e of sim.world.query(Age, Settler)) {
-          // Born a girl and still a minor — baby or child, since the run outlasts the 4-year baby
-          // stage. Which of the two she is at the end is growth's business, not this scene's.
-          const { jobType } = sim.world.get(e, Settler);
-          if (!systems.isBaby(jobType) && !systems.isChild(jobType)) return false;
+          // She is born around tick 1205 and the run ends at 2500, so she is deterministically past
+          // CHILD_AGE_TICKS (960) and short of ADULT_AGE_TICKS (2880) — asserting the child stage keeps
+          // this an integration check that growth actually fired.
+          if (!systems.isChild(sim.world.get(e, Settler).jobType)) return false;
           if (!sim.world.has(e, Female)) return false;
           return sim.world.tryGet(e, Residence)?.home === HOME_ENTITY;
         }

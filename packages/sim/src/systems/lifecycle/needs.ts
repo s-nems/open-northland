@@ -107,7 +107,9 @@ export const STARVATION_BITES_TO_DIE = 240;
  *  - JOBLESS settlers (also `jobType` null — e.g. a worker whose workplace was demolished): the eat drive
  *    lives in the job planner, which skips a jobless settler (`ai.ts` planNeeds).
  * A CHILD is NOT exempt — the planner runs the eat drive for it, so like an adult it starves only when
- * food is truly absent.
+ * food is truly absent. At the measured growth cadence this is a guard rather than a live mechanic: a
+ * child's 1920-tick stage fills at most 20% of a bar, so it graduates long before the ¾ eat threshold.
+ * Lengthening childhood or raising the rise rate makes it live again.
  *
  * The whole system is gated by the {@link needsEnabled} world rule (the `setNeedsEnabled` command):
  * disabled, needs freeze where they are and starvation stops — the dev/admin lever scenes default to.

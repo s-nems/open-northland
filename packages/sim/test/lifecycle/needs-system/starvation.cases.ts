@@ -5,8 +5,8 @@ import type { Entity } from '../../../src/ecs/world.js';
 import { fx, ONE, Simulation } from '../../../src/index.js';
 import {
   BABY_MALE,
+  CHILD_AGE_TICKS,
   CHILD_MALE,
-  CHILD_TICKS,
   STARVATION_BITES_TO_DIE,
   STARVATION_DAMAGE_INTERVAL_TICKS,
 } from '../../../src/systems/index.js';
@@ -65,7 +65,7 @@ describe('needsSystem — starvation (a pinned hunger drains hitpoints)', () => 
     const sim = new Simulation({ seed: 1, content: testContent() });
     // A baby's jobType is an age-class id (non-null), so Age + a baby stage marks it as cared-for;
     // the AI planner runs no needs-drives for it, so without this exemption every borne baby would die
-    // of hunger before its CHILD_TICKS boundary and reproduction would be a death loop. Age matters:
+    // of hunger before its CHILD_AGE_TICKS boundary and reproduction would be a death loop. Age matters:
     // an adult fixture whose synthetic job id collides with BABY_MALE must still starve.
     const e = starvingSettler(sim, 300);
     sim.world.get(e, Settler).jobType = BABY_MALE;
@@ -80,7 +80,7 @@ describe('needsSystem — starvation (a pinned hunger drains hitpoints)', () => 
     // starvation bite applies — only the baby stage keeps the cared-for exemption.
     const e = starvingSettler(sim, 300);
     sim.world.get(e, Settler).jobType = CHILD_MALE;
-    sim.world.add(e, components.Age, { ticks: CHILD_TICKS });
+    sim.world.add(e, components.Age, { ticks: CHILD_AGE_TICKS });
     for (let i = 0; i < STARVATION_DAMAGE_INTERVAL_TICKS * 2; i++) sim.step();
     expect(sim.world.get(e, Health).hitpoints).toBe(300 - 2);
   });
