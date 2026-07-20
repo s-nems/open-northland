@@ -183,6 +183,32 @@ export const economyContent = {
       recipes: [{ inputs: [{ goodType: 1, amount: 1 }], outputs: [{ goodType: 2, amount: 1 }], ticks: 20 }],
     },
     {
+      // A TWO-PRODUCT workshop off DIFFERENT inputs — the upgraded bakery's shape (`work_bakery_01`
+      // makes bread from flour and candy from honey). What the shelf-blocked promotion tests staff: with
+      // the plank slot full and no wheat, one product is blocked on its shelf while the other is merely
+      // starved, and only the blocked one's good is worth carrying out. Nothing in the golden places it.
+      // typeId 20, not 10: several suites APPEND their own building types to this fixture starting at
+      // 10 (building-placement's HUT, utility-self-service's WELL/HIVE/BAKERY/BREWERY), and a duplicate
+      // typeId silently shadows one of them in the content index.
+      typeId: 20,
+      id: 'bakehouse',
+      kind: 'workplace',
+      workers: [
+        { jobType: 2, count: 1 },
+        { jobType: 36, count: 1 },
+      ],
+      stock: [
+        { goodType: 1, capacity: 10, initial: 0 },
+        { goodType: 2, capacity: 20, initial: 0 },
+        { goodType: 3, capacity: 20, initial: 0 },
+        { goodType: 6, capacity: 10, initial: 0 },
+      ],
+      recipes: [
+        { inputs: [{ goodType: 1, amount: 1 }], outputs: [{ goodType: 2, amount: 1 }], ticks: 20 },
+        { inputs: [{ goodType: 6, amount: 1 }], outputs: [{ goodType: 3, amount: 1 }], ticks: 20 },
+      ],
+    },
+    {
       // A MULTI-PRODUCT workshop (the real smithy-2 shape, shrunk to fixture goods): ONE carpenter
       // operator and two per-product recipes off the same wood input — what the craft-selection /
       // product-rotation tests staff. Nothing in the golden slice places it.

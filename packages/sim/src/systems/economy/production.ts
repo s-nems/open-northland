@@ -7,7 +7,7 @@ import { anyCycleStartable, depositCycleOutput, startFirstStartable } from './pr
 import { chargeMilitaryPietyCost } from './production/piety.js';
 import { startCycleFor } from './production/rotation.js';
 
-export { outputRoomForCycles, startableCycleCount } from './production/cycles.js';
+export { shelfBlockedOutput, startableCycleCount } from './production/cycles.js';
 
 /**
  * ProductionSystem — one workplace turns input goods into output goods over time.
