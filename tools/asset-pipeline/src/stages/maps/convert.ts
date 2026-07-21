@@ -17,7 +17,7 @@ import { mapIdFromPath } from './info.js';
 import { loadMapStringTable, resolveMapMeta } from './meta.js';
 import { minimapToPng } from './minimap.js';
 import { resolveMapScript } from './script.js';
-import { type MapDatTerrainFile, mapDatToTerrain } from './terrain.js';
+import { type MapDatTerrainFile, mapDatToTerrain } from './terrain/index.js';
 
 /** One emitted map terrain artifact: its slug id + the relative `maps/<id>.json` path under `outDir`. */
 export interface MapDatConversion {
