@@ -1,28 +1,25 @@
-# Grow the roster seat mode to three states (Script/AI/Idle) and cover claimed/closed seats
+# Distinguish scripted, autonomous, idle, and closed map seats
 
-**Area:** sim + app · **Origin:** map player-roster work 2026-07-17, reshaped by user direction
-2026-07-17; narrowed 2026-07-17 after the two-state attach landed · **Priority:** P2
+**Area:** sim + app · **Priority:** P2
+**Blocked by:** [authored HAI toggles](../pipeline/aidata-hai-toggles.md)
 
-The two-state attach is DONE: the roster panel's Idle/AI toggle now feeds the strategic AI — the
-menu emits the full effective seat list as `?ai=<slot>,…` (`aiSeats` in
-`entries/menu/players/state.ts`; authored-`ai` claimable slots default onto the list), and the
-`?map=` entry enqueues `setPlayerAi` per listed seat. An observer pseudo-seat exists, so an all-AI
-watch game is startable (observer + every seat toggled to AI). What remains:
+The roster currently reduces every unclaimed seat to Idle or AI. That cannot represent the map's own
+HAI configuration, and `PLAYER_TYPE_NONE` seats still spawn their authored entities. Once HAI toggles
+are imported, the states have distinct behavior: Script follows the map's module flags, AI enables the
+full strategic player, Idle keeps the seat's entities without strategic commands, and Closed removes
+the seat from setup.
 
-1. **Third state — Script.** Extend `VacantMode` to `'script' | 'ai' | 'idle'` (cycle on click),
-   defaulting authored `ai` slots to `script`, not `ai`. Script means "as the map authored it":
-   today static garrisons under settler micro-AI; when the scripted `[AIData]` `AI_MainTask_*`
-   layer or authored HAI toggles are implemented, script is the mode that honors them. (Until that
-   layer exists, script and idle differ only in intent.)
-2. **Toggle on every non-hidden slot,** not only unclaimed claimable ones — a non-claimable
-   script slot set to `AI` is played by the strategic AI. Start gating: some seat claimed or the
-   observer taken (unchanged).
-3. **Closed seats.** The original lobby's `PLAYER_TYPE_NONE` — the slot removed from the game
-   (don't spawn its authored units). A sim-setup concern; needs its own toggle state or control.
-4. Localize any new labels in both catalogs.
+## Scope
+
+- Model Script/AI/Idle for every visible, unclaimed seat; default authored AI seats to Script.
+- Treat authored closed seats as non-participants and do not spawn their entities. They are not a
+  fourth player-selectable AI mode.
+- Round-trip the selection through the menu URL/setup input and localize the labels.
+- Keep claim and observer start gating unchanged.
 
 ## Verify
 
-- Menu: toggle cycles three states with correct authored defaults; URL round-trips; a script seat
-  issues no strategic-AI commands, an AI one does (headless).
+- Menu: the three states cycle with correct authored defaults and round-trip through setup.
+- Headless: Script applies the imported HAI flags, AI enables every available module, Idle issues no
+  strategic commands, and Closed spawns no owned entities.
 - `npm test`, `npm run check`, `npm run build`; browser pass over the menu + an AI-vs-AI start.

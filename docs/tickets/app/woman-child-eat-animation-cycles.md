@@ -1,6 +1,6 @@
-# The woman's and children's eat animation still cycles its strip
+# Render authored eat and sleep sequences for every settler body
 
-**Area:** app · **Origin:** needs-pacing worktree, 2026-07-20 · **Priority:** P3
+**Area:** app · **Priority:** P3
 
 Eat and sleep now draw through the original's `[gfxanimatomic]` per-tick frame lists
 (`content/settler-gfx/character-specs.ts` `dirListAtomics`), so an action plays its authored shape
@@ -24,6 +24,14 @@ are genuinely absent, the fallback needs to be a named approximation rather than
 
 **Source basis:** `gfxAtomics` in generated `ir.json`, extracted from the mod's `[gfxanimatomic]`
 records; the per-job atomic lengths from `atomicanimations.ini`.
+
+## Scope
+
+- Fix extraction if the missing woman/child lists exist in the readable source; otherwise use a
+  non-looping named fallback.
+- Bind the existing warrior eat/sleep lists to warrior bodies.
+- Preserve the current hold-last-frame behavior for short lists unless source evidence supports a
+  different timing rule.
 
 ## Verify
 

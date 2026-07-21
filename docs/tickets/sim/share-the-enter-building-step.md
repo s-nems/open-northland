@@ -1,6 +1,6 @@
 # Share the "walk to the door and step inside" step between the family and sleep rungs
 
-**Area:** sim · **Origin:** needs-pacing worktree review, 2026-07-20 · **Priority:** P3
+**Area:** sim · **Priority:** P3
 
 Two rungs now perform the identical three steps — resolve the building's `interactionCell`, `atOrWalk`
 to it, and stamp `Resting { at: building }` on arrival:

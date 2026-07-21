@@ -1,6 +1,6 @@
 # Share the content-index payload types instead of re-declaring them in the app
 
-**Area:** app / content-resolver · **Origin:** content-resolver + desktop cleanup, 2026-07-17 · **Priority:** P3
+**Area:** app / content-resolver · **Priority:** P3
 
 `packages/content-resolver` owns both the `/maps-index` + `/bobs-index` payload builders and their
 entry types (`MapsIndexEntry`, `BobsIndexEntry`), and exports the types from its barrel. The app

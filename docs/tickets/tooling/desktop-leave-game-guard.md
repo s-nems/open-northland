@@ -1,6 +1,6 @@
 # Make the leave-game confirmation only fire on an in-session URL
 
-**Area:** desktop · **Origin:** bug-hunt review, 2026-07-17 (updated 2026-07-18) · **Priority:** P2
+**Area:** desktop · **Priority:** P2
 
 `openSetupPage` (`packages/desktop/src/window.ts`) guards the "Leave the running game?" dialog with
 `isGameUrl(win.webContents.getURL())` (`packages/desktop/src/protocol.ts`), where `isGameUrl`

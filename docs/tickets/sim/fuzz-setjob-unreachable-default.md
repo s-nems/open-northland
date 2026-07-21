@@ -1,7 +1,6 @@
-# The fuzz generator's `setJob` variant is unreachable (the `default` arm never fires)
+# Make `setJob` reachable in fuzz command generation
 
-**Area:** sim (test tooling) · **Origin:** discovered while adding the `unassignHouse` fuzz variant,
-2026-07-18 · **Priority:** P3
+**Area:** sim (test tooling) · **Priority:** P3
 
 `test/core/fuzz-determinism.test.ts` picks a command with `const roll = rng.int(N)` and a `switch`
 whose `default:` arm returns a `setJob` command. But every value `0..N-1` is covered by an explicit

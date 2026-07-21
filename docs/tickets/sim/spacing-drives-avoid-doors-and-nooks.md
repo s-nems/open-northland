@@ -1,6 +1,6 @@
-# Spacing drives should not rest a unit on a door or in a sealed nook
+# Keep spacing drives off doors and sealed nooks
 
-**Area:** sim (movement/agents) · **Origin:** building-upgrades branch, 2026-07-18 · **Priority:** P3
+**Area:** sim (movement/agents) · **Priority:** P3
 
 The footprint eviction pass now refuses to LAND a displaced settler on a building's door node or on a
 sealed nook (a walkable cell whose every orthogonal neighbour is walk-blocked) — see
@@ -10,6 +10,8 @@ and `loiterCell`'s yard scan (`systems/agents/destack.ts`) accept any unblocked 
 de-stacked or loitering unit can come to rest on another building's door (visually inside the
 building; a stray body on the node `presentOperatorCount` reads) or wedged in a nook between bodies.
 
+## Scope
+
 Apply the same two target rules to both drives: exclude `buildingDoorNodes` (loiterCell already
 excludes only its OWN anchor) and require at least one unblocked orthogonal neighbour. Both sets are
 already built per planner tick in `SpacingState` consumers, so memoise them on `SpacingState` beside
@@ -18,11 +20,15 @@ rests a unit on a door/nook (if one moves, that is the intended behavior change 
 commit). Test like `evict.test.ts`'s nook cases: a stack beside a doored/U-walled fixture must fan
 out onto open cells only.
 
-**Update (2026-07-20, needs-pacing branch):** the rest-spot rung
-(`systems/agents/rest-spot.ts` `isOpenGround`) landed a third, independent version of the
+The rest-spot rung (`systems/agents/rest-spot.ts` `isOpenGround`) has a third version of the
 "require an unblocked neighbour" clearance — for choosing where a tired settler lies down. There are
 now three "where may a unit come to rest" rules in the tree: `evict.ts`, the two drives this ticket
 names, and rest-spot. Fold them onto one shared predicate as part of this work rather than adding a
 fourth; `rest-spot.ts` also traverses blocked nodes while refusing to land on them, which the others
 may or may not want. See the related dedup ticket
 [ring-search-duplicated-three-ways](ring-search-duplicated-three-ways.md).
+
+## Verify
+
+A stack beside a doored or U-walled fixture fans out onto open cells only; rest-spot, eviction, and
+spacing suites agree on legal landing cells. Run `npm test`, `npm run check`, and `npm run build`.

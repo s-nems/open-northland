@@ -1,6 +1,6 @@
-# The golden slice never crosses a need threshold, so needs changes move no golden
+# Cover need-drive thresholds in the integration golden
 
-**Area:** sim · **Origin:** needs-pacing worktree, 2026-07-20 · **Priority:** P2
+**Area:** sim · **Priority:** P3
 
 `test/core/golden-trace.test.ts` is the integration tripwire, and its header says the needs retune is
 "baked into this hash". It isn't, in the way that matters: **no settler in the slice ever reaches the
@@ -17,10 +17,6 @@ The arithmetic, from the slice's own constants:
 
 The needs *rise* is hashed (the bars are component state), but eating, foraging, sleeping, the
 rest-spot walk-aside and the sleep-at-home rung are all invisible to it.
-
-This was found the hard way: a branch that changed how much a meal and a sleep restore, deleted the
-eat-duration multiplier, made sleep a walk-then-act rung and added a sleep-at-home rung moved **zero
-goldens**. That reads as "safe refactor" and is really "not covered".
 
 ## Scope
 

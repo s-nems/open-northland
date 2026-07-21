@@ -1,6 +1,7 @@
-# Land the authored `setproducedgood` picks that have no home yet (workshop products, fish)
+# Apply authored `setproducedgood` picks to workshop craft selections
 
-**Area:** sim + app · **Origin:** review of the gatherer-pick import, 2026-07-17 · **Priority:** P3
+**Area:** sim + app · **Priority:** P3
+**Blocked by:** [authored house attachments](../pipeline/map-attachtohouse-import.md)
 
 `setproducedgood` is the original's per-human **produced good**, not only a gatherer's resource pick, and
 it is authored for workshop trades too. The import chain now lands it on `WorkFlag.goodType`
@@ -12,8 +13,8 @@ Measured breakdown of the 246 that do not land (re-measure before acting — cou
 
 - **~47 workshop products** (`baker` → `bread` ×11, `joiner` → `tool_wooden` ×8, `miller` → `flour` ×6,
   `potter` → `brick` ×6, `smith`, `mason`, `sewer`, `brewer`, `druid`, `armorer`). **The real gap.**
-- **86 `„gold”`** — a source typo, deferred separately in
-  `docs/tickets/pipeline/setproducedgood-typographic-quotes.md`. Not this ticket.
+- **86 `„gold”`** — a source typo covered by
+  [typographic-quoted values](../pipeline/setproducedgood-typographic-quotes.md). Not this ticket.
 - **62 `fisher` → `fish`** — `fish` carries no harvest atomic and `fisher` no harvest grant, so no work
   flag exists to narrow. Only actionable if fishing ever becomes flag work.
 - **38 `hunter` → `prey` / 13 `farmer` → `wheat`** — **no action needed, do not "fix" these.** `prey` is
@@ -25,8 +26,8 @@ Measured breakdown of the 246 that do not land (re-measure before acting — cou
 
 - `setCraftGoods` (`packages/sim/src/systems/orders/work.ts`) already models a per-settler product
   selection as `CraftSelection` — the natural home for `baker` → `bread`.
-- **Blocked by:** `docs/tickets/pipeline/map-attachtohouse-import.md`. `setCraftGoods` requires a bound
-  workplace (`JobAssignment`), which an imported settler only gets once `attachtohouse` imports. Both
+- `setCraftGoods` requires a bound workplace (`JobAssignment`), which an imported settler only gets
+  once `attachtohouse` imports. Both
   verbs sit in the same `sethuman` block, and employment changes REMOVE the selection — so attach first,
   pick second, or the pick is wiped.
 - Keep the `spawnSettler` seam honest: either a second field or one product-neutral field that routes to

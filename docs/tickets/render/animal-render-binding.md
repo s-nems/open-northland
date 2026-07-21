@@ -1,6 +1,6 @@
 # Bind the cr_ani animal atlases so animal entities have bodies
 
-**Area:** render + app content · **Origin:** map-visual-fidelity plan reconciliation, 2026-07-12 · **Priority:** P2
+**Area:** render + app content · **Priority:** P2
 
 The sim has a full herd system (`spawnAnimalHerd`, `seedAnimalHerds`, `HerdMember`, herding +
 combat aggression — animals ARE the settler entity/AI model), but a spawned animal has no art: no

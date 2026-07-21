@@ -1,6 +1,6 @@
 # Decompose the settler planner orchestration
 
-**Area:** sim · **Origin:** workflow readability audit, 2026-07-21 · **Priority:** P3
+**Area:** sim · **Priority:** P3
 
 `packages/sim/src/systems/agents/ai.ts` is 304 physical lines, with 133 full comment lines and a
 213-line `atomicPlanner` containing 26 conditionals and 21 `continue` sites. The function owns three

@@ -1,6 +1,6 @@
 # Resume edge-scroll after refocus when the cursor is already over the canvas
 
-**Area:** app (view/camera) · **Origin:** review of fix/camera-startup-edge-drift, 2026-07-18 · **Priority:** P3
+**Area:** app (view/camera) · **Priority:** P3
 
 `createCameraController` (`packages/app/src/view/camera/controller.ts`) enables the RTS screen-edge pan only while
 `pointerInside` is true, and `pointerInside` flips true **only** on a `mouseenter` boundary crossing
@@ -26,5 +26,4 @@ this). Low impact — the player can nudge the cursor off-canvas and back — bu
 - `npm test`, `npm run check`, `npm run build`.
 - Human browser pass (the DOM controller is human-gated): `npm run dev` → a scene, alt-tab away and back
   with the cursor left resting inside the canvas, move the mouse to an edge, and confirm edge-scroll
-  resumes without first leaving and re-entering the canvas. A jsdom regression test is the better proof
-  once `docs/tickets/app/dom-test-environment.md` lands.
+  resumes without first leaving and re-entering the canvas.

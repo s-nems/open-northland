@@ -1,6 +1,6 @@
 # Feed the decoded map diplomacy matrix into sim hostility
 
-**Area:** sim · **Origin:** map player-roster work 2026-07-17 · **Priority:** P2
+**Area:** sim · **Priority:** P2
 
 Combat hostility is binary on the owner axis: `packages/sim/src/systems/conflict/targeting.ts`
 treats any two different player-owned entities as hostile ("Both player-owned: the OWNER axis alone

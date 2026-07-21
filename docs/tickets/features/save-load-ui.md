@@ -10,8 +10,10 @@ browser and desktop builds currently expose no save or load action.
 
 - Add localized Save and Load actions to the in-game system menu.
 - Use file download/upload in the browser and the narrow desktop file-dialog bridge in Electron.
-- Pause while loading, replace the active game only after validation succeeds, and keep the current
-  session alive when a file is rejected.
+- Pause while loading, validate before touching the running game, then dispose every active
+  `GameSession` subsystem before installing the restored session. Teardown must cover the RAF loop,
+  DOM and canvas listeners, HUD/debug overlays, pointer tracking, and audio; a rejected file leaves
+  the current session alive.
 - Show clear errors for corrupt, incompatible, or wrong-content saves without exposing local paths.
 - Keep autosave, save slots, cloud sync, and migration between incompatible formats out of scope.
 

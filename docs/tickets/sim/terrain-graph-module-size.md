@@ -1,6 +1,6 @@
 # Split `nav/terrain/graph.ts` by concern
 
-**Area:** sim · **Origin:** sim refactor-cleanup (debt the pass itself created), 2026-07-17 · **Priority:** P3
+**Area:** sim · **Priority:** P3
 (refactor — no behavior change)
 
 ## Context
@@ -28,7 +28,7 @@ The module now mixes:
 - A split is a MOVE: bodies move verbatim; emission order and every `fx` operation stay identical.
 - Keep `steps`/`stepsInto` together — they are one rule with two allocation strategies.
 
-## Done when
+## Verify
 
 - No module in `nav/terrain/` is meaningfully over the budget, each file owns one terrain concern,
   and `npm test` is green with **zero golden movement** (a moved golden means the arithmetic changed).

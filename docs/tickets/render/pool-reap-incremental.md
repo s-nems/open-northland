@@ -1,6 +1,6 @@
 # Bound the pool death-reap to O(1) per frame (incremental sweep)
 
-**Area:** render · **Origin:** /worktree on [sprite-pool-per-frame-scans], 2026-07-14 · **Priority:** P3
+**Area:** render · **Priority:** P2
 
 The sprite-pool per-frame-scans work bounded the two hot scans — the detach pass and
 `placePalettedFor` — to O(visible) by iterating a new `attached` set (the entities on the layer)
@@ -33,6 +33,6 @@ Behavior-preserving apart from a bounded reap latency for invisible dead entitie
 
 ## Verify
 
-`npm run build`, `npm test` (sprite-pool suite — extend `test/sprite-pool.test.ts`'s reap case to
+`npm run build`, `npm test` (sprite-pool suite — extend `test/sprite-pool/pool.test.ts`'s reap case to
 assert the per-frame reap work is bounded, not O(pooled)), `npm run check`. Headless: `drawn ≪ pooled`
 and no crash after a long pan, same as the parent ticket.

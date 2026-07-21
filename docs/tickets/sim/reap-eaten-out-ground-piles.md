@@ -1,6 +1,6 @@
 # Reap a loose ground pile emptied by eating
 
-**Area:** sim · **Origin:** bug-hunt review, 2026-07-17 · **Priority:** P2
+**Area:** sim · **Priority:** P2
 
 `consumeFood` (`packages/sim/src/systems/agents/effects-goods/consume.ts:18-31`) decrements the
 source stockpile and returns. It is the only stock-draining path that never calls

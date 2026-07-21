@@ -1,26 +1,18 @@
 # Cover the goods-stage emit and `writeIr` orchestrators
 
-**Area:** pipeline tests · **Origin:** data+pipeline refactor review (deferred finding), 2026-07-13 · **Priority:** P3
+**Area:** pipeline tests · **Priority:** P3
 
 Two pipeline orchestrators have no direct test coverage. Their pure inner joins are tested, but the
 emit/assembly wrappers around them are only exercised by a full `npm run pipeline` run against the
 owned game copy (not by CI, which has no game assets):
 
-- `convertGoodsStage` (`tools/asset-pipeline/src/stages/goods.ts`) — only the pure joins
+- `convertGoodsStage` (`tools/asset-pipeline/src/stages/goods/index.ts`) — only the pure joins
   `resolveGoodIcons` / `resolveGoodNames` are unit-tested. The stage's atlas + palette-LUT + manifest
   emit (icon packing, the `paletteAliasMap` resolution, the good-icon LUT PNG, the manifest JSON) is
   untested.
-- `writeIr` (`tools/asset-pipeline/src/stages/ir.ts`) — `buildIr`'s extractors are covered via the
+- `writeIr` (`tools/asset-pipeline/src/stages/ir/index.ts`) — `buildIr`'s extractors are covered via the
   split `ir` spec, but the `writeIr` wrapper (build → `JSON.stringify` → write `<out>/ir.json`) has no
   test asserting it writes a parseable, `parseContentSet`-valid file.
-
-## Why deferred
-
-Filed out of the data+pipeline `/refactor-cleanup` test pass, which covered the three untested
-modules with pure-logic gaps (`maps/case-path`, `maps/meta`, `player-colors`). These two need a
-synthetic **game-tree** fixture (a directory of `.ini`/`.cif`/`.pcx` inputs) large enough to drive a
-whole stage end-to-end — a bigger fixture-building effort than the isolated-module tests, better done
-as its own focused session.
 
 ## Scope
 

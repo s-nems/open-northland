@@ -1,7 +1,6 @@
 # Fix the `[GfxHouse]` multi-record lumping in the cost/hitpoint/graphics extractors (defect)
 
-**Area:** pipeline · **Origin:** /ticket-scout marked-debt sweep, 2026-07-14 (the in-code "flagged
-follow-up" in `buildings-gfx/shared.ts`, never filed) · **Priority:** P2
+**Area:** pipeline · **Priority:** P1
 
 A `[GfxHouse]` bracket can hold many house records; reading it as one section staples every
 sub-house's props to a last-wins `LogicType`/`GfxBobId`, "dropping/mis-joining 63 of the 234

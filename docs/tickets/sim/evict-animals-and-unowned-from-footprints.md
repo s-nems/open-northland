@@ -20,8 +20,16 @@ Owned stacks resolve via the spacing drive next tick, but an unowned/animal co-o
 de-stack. When widening who gets evicted, also widen the occupancy filter so displaced units don't land
 on top of the very classes this ticket adds.
 
-Task: extend the eviction to herd animals and decide whether unowned settlers should keep the
-byte-identical stance or be displaced too. If they move, the affected goldens must be updated
-intentionally); widen the free-cell `occupancy` filter to match. Reuse the existing displacement search
-(`nearestFreeCellOutside`), keep canonical ascending-id order, and cover with a test beside
-`packages/sim/test/movement/evict.test.ts`.
+## Scope
+
+- Evict herd animals and settlers regardless of ownership when a new footprint covers their node.
+- Build destination occupancy from every physical unit, not only the entities eligible in the old
+  owner-filtered pass.
+- Reuse `nearestFreeCellOutside` and keep canonical ascending-id order. Name any intentional golden
+  change caused by moving a previously ignored neutral fixture.
+
+## Verify
+
+Cases beside `packages/sim/test/movement/evict.test.ts` cover an animal and neutral settler on the
+new footprint, plus an occupied destination that must be skipped. Run `npm test`, `npm run check`,
+and `npm run build`.

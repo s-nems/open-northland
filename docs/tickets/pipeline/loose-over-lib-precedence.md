@@ -1,6 +1,8 @@
 # Verify loose-file precedence over `.lib` copies and match it
 
-**Area:** pipeline · **Origin:** bug-hunt review, 2026-07-17 · **Priority:** P2
+**Area:** pipeline · **Priority:** P2
+**Needs user:** compare a known-different loose/archive asset in the running original.
+**Blocked by:** [shared source-path resolution](source-path-resolution.md)
 
 Loose files and `.lib` members collide in the owned installation, but the original engine's precedence
 has not been pinned by an allowed source. The pipeline currently lets archive data win in two places:
@@ -25,9 +27,8 @@ win before changing runtime output.
   it uses. If loose wins, make collisions resolve loose-first everywhere (PCX conversion order, BMD
   indexing, and any other stage joining both sources). If archive wins, pin the current order in a test
   and narrow this ticket to the missing loose-BMD input path if that path is still needed.
-- Mind case-folding: a collision is a case-insensitive path match, and the fix must not regress on
-  case-sensitive filesystems (see `docs/tickets/pipeline/lib-lowercase-data-tree.md` — related but
-  separate defect; fixing both together is reasonable if the seam is shared).
+- A collision is a case-insensitive path match; apply the observed layer order through the shared
+  resolver on every filesystem and every stage.
 - Pin the observed precedence in a synthetic collision test.
 
 ## Verify

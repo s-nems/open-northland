@@ -1,6 +1,7 @@
-# Wonder multi-stage construction visuals (same-typeId upgrade rows)
+# Render wonder construction in authored stages
 
-**Area:** features (render + sim) · **Origin:** building-upgrades branch, 2026-07-17 · **Priority:** P3
+**Area:** features (render + sim) · **Priority:** P3
+**Needs user:** observe whether wonder stages have separate material bills in the running original.
 
 The eight wonders are separate single buildings (typeIds 47..54, one `kind: 'wonder'` each — the
 lighthouse, the gardens, the colossus, …, the 8th wonder), NOT an upgrade chain: their `[GfxHouse]`
@@ -14,8 +15,18 @@ stages. Today OpenNorthland treats a wonder as a single-stage build: one from-sc
 `LogicConstructionGoods` collapse to the lowest sizeIdx's cost (`extractConstructionCosts`'s
 lowest-sizeIdx convention), so the higher stages' costs and art are unused.
 
-Investigate against the running original: how does a wonder build play out — one continuous site
-with staged art, or discrete player-visible stages with separate material bills? Then: extract the
-per-stage costs (keyed by (typeId, sizeIdx) rather than the flat collapse), advance the site through
-the stages in the sim, and wire the same-typeId upgrade rows into the staged render. Source basis to
-pin: `DataCnmd/budynki12/houses/houses.ini` wonder records + observation of the original.
+## Scope
+
+- Observe whether the stages form one continuous build or separate material bills.
+- Preserve construction costs and graphics by `(typeId, sizeIdx)` rather than collapsing them to the
+  lowest row.
+- Advance one building entity through the authored stages and draw the matching base/upgrade layers.
+  Do not model wonders as an ordinary `upgradeTarget` chain.
+
+Source basis: `DataCnmd/budynki12/houses/houses.ini` wonder records plus observation of the original.
+
+## Verify
+
+Synthetic pipeline and sim tests cover at least three same-type stages and their bills. Run
+`npm run test:pipeline`, `npm test`, `npm run check`, and `npm run build`; compare one wonder's full
+construction sequence with the original.

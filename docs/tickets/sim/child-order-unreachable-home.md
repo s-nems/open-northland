@@ -1,6 +1,6 @@
-# Child order stalls silently when a parent cannot reach the home
+# Release a child order whose parent cannot reach the home
 
-**Area:** sim (+ a small app surface) · **Origin:** stuck-workers debugging, 2026-07-16 · **Priority:** P3
+**Area:** sim · **Priority:** P3
 
 `driveChildOrders` (`packages/sim/src/systems/family/children.ts`) walks each parent home with
 `enterHome` → `atOrWalk`, but has no failed-route protocol of its own: when the walk fails (the door
@@ -11,13 +11,10 @@ larder fund reserved, indefinitely, and the player sees only a husband standing 
 
 ## Scope
 
-- Decide the deactivation rule: treat a repeatedly-unreachable home like the existing `!active`
-  preconditions (order persists, settlers released, wife steps out) — e.g. after N shed routes toward
-  the home, or by reusing the signpost `navigationLimitFor` check that already suspends the hoard
-  drive for an out-of-area home.
-- Surface it: the settler/home details panel should say the order is waiting on an unreachable home
-  (the `hoard-economy-readability` ticket already collects child-order status captions — extend it
-  rather than duplicating).
+- Treat a repeatedly unreachable home like the existing `!active` preconditions: keep the order,
+  release both settlers and the food reservation, and retry on a deterministic cooldown. Use a named
+  retry budget or the existing signpost navigation limit; either is an approximation and must be
+  recorded as such.
 
 ## Verify
 

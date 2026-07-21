@@ -1,8 +1,6 @@
-# Vehicles built physically on a yard (handcart, ox cart, ships, catapult)
+# Build vehicles physically on workshop yards
 
 **Area:** sim + app + pipeline · **Priority:** P2
-
-## Problem
 
 The extracted content lists the vehicle goods (`handcart`, `oxcart`, `ship_small`, `ship_big`,
 `catapult`) as ordinary workshop wares: joinery levels 2–3 `produces` them and their `logicstock`
@@ -19,7 +17,7 @@ The pipeline strips vehicle goods from every building's `stock` and `produces` b
 `[logicvehicletype]` id (the two tables share debugname slugs). So today no workshop crafts, stores,
 or lists a vehicle; the `vehicles` IR table and the goods records themselves are untouched.
 
-## Task
+## Scope
 
 Implement vehicle construction as its own mechanic and remove the temporary strip:
 
@@ -30,10 +28,12 @@ Implement vehicle construction as its own mechanic and remove the temporary stri
   stockpile entry; probe the original for how completion looks/behaves before pinning mechanics.
 - Remove `stripVehicleGoods` and regenerate `content/`.
 
-## Notes
+Sandbox content already marks these goods `storable: false`. Source basis for the remaining details:
+the readable `[logicvehicletype]`/vehicle-house fields and observation of a joinery producing a
+handcart. Name any unobserved yard-cell or worker-animation rule as an approximation.
 
-- Sandbox catalog already marks these goods `storable: false` (`packages/app/src/catalog/goods.ts`),
-  so the hand-authored sandbox stores never listed them; only the extracted content did.
-- Source basis to gather before implementing: observed original behavior of the joinery producing a
-  handcart (where it spawns, whether a worker assembles it on the yard), and the `.ini` fields on
-  `[logicvehicletype]` / vehicle-kind houses.
+## Verify
+
+Tests cover material consumption, deterministic free-yard selection, a blocked yard, and a finished
+vehicle entity that never enters ordinary stock. Run `npm run test:pipeline`, `npm test`, `npm run
+check`, and `npm run build`; compare one handcart build with the original.
