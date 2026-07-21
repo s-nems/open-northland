@@ -7,22 +7,16 @@ import {
   neededConstructionGoods,
   stampSupplyRun,
 } from '../../stores/index.js';
-import { atOrWalk, BUILD_HOUSE_ATOMIC_ID, startAtomic, startPickup } from '../actions.js';
+import { atOrWalk, BUILD_HOUSE_ATOMIC_ID, jobCanBuild, startAtomic, startPickup } from '../actions.js';
 import { claimWorkCell, type SpacingState } from '../destack.js';
 import type { PlannerContext } from '../planner-context.js';
-import {
-  interactionCell,
-  jobAtomics,
-  nearestConstructionSite,
-  nearestStoreHolding,
-} from '../targets/index.js';
+import { interactionCell, nearestConstructionSite, nearestStoreHolding } from '../targets/index.js';
 
 /**
  * 2b. BUILD — a builder raises a construction site of its tribe, faithful to the original's "settlers search
- * for a foundation, get put on it, and hammer it up carrying material" flow. A builder is any job the data
- * permits to run the build-house atomic ({@link BUILD_HOUSE_ATOMIC_ID}) — the data-driven "who constructs"
- * test, not a hardcoded jobType id — so a non-builder returns false at once and falls through to the
- * gather/porter/carrier rungs. The site is the player-pinned one when an `assignBuilder` right-click bound it
+ * for a foundation, get put on it, and hammer it up carrying material" flow. A non-builder trade
+ * ({@link jobCanBuild}) returns false at once and falls through to the gather/porter/carrier rungs.
+ * The site is the player-pinned one when an `assignBuilder` right-click bound it
  * (while it still stands), else the nearest; the pick is stamped as a persistent {@link SiteAssignment} (the
  * crew the site's workers window lists). In priority:
  *
@@ -53,7 +47,7 @@ import {
 export function planBuilder(plan: PlannerContext, spacing: SpacingState): boolean {
   const { world, ctx, terrain, entity: e, here, targets } = plan;
   const settler = plan;
-  if (!jobAtomics(ctx, settler.jobType).has(BUILD_HOUSE_ATOMIC_ID)) {
+  if (!jobCanBuild(ctx, settler.jobType)) {
     world.remove(e, SiteAssignment); // no longer the builder trade — any crew membership is stale
     return false; // not a builder
   }
