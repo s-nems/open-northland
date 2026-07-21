@@ -1,5 +1,5 @@
 import type { LayeredBobRef, ResourceTypeBinding } from '@open-northland/render';
-import type { ContentIr, LandscapeGfxRow } from '../ir.js';
+import type { ContentIr, LandscapeGfxRow } from '../ir/rows.js';
 import { BUSH_WITH_FRUITS_LOGIC_TYPE } from '../map-resources.js';
 import { type GatheringNodeRef, nodeRefFrom } from './refs.js';
 

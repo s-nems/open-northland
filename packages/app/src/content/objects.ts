@@ -7,14 +7,9 @@ import {
   type SpriteLayer,
 } from '@open-northland/render';
 import { diag } from '../diag/index.js';
-import {
-  type ContentIr,
-  type LandscapeGfxRow,
-  loadLayer,
-  MissingAtlasError,
-  servedAtlasStem,
-  servedShadowStem,
-} from './ir.js';
+import { servedAtlasStem, servedShadowStem } from './ir/joins.js';
+import { loadLayer, MissingAtlasError } from './ir/load.js';
+import type { ContentIr, LandscapeGfxRow } from './ir/rows.js';
 import { forEachPlacement } from './map-placements.js';
 
 /**

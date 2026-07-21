@@ -17,17 +17,9 @@ import {
   VIKING_TRIBE,
 } from '../building-gfx/index.js';
 import { loadGoodsIconManifest } from '../goods-gfx.js';
-import {
-  BODY_IMAGELIB,
-  type ContentIr,
-  loadIr,
-  loadLayer,
-  loadPlayerLut,
-  MissingAtlasError,
-  sequencesFor,
-  servedAtlasStem,
-  servedShadowStem,
-} from '../ir.js';
+import { sequencesFor, servedAtlasStem, servedShadowStem } from '../ir/joins.js';
+import { loadIr, loadLayer, loadPlayerLut, MissingAtlasError } from '../ir/load.js';
+import { BODY_IMAGELIB, type ContentIr } from '../ir/rows.js';
 import {
   berryBushAtlasStems,
   buildBerryBushBinding,
@@ -52,7 +44,7 @@ import { loadCharacters } from './characters.js';
  * {@link import('./resolve.js').syntheticSpriteSheet} when `content/` is absent, so tests + the
  * reproducible shot are unaffected. The pure bindings live in
  * {@link import('../settler-gfx/index.js')} / {@link import('../building-gfx/index.js')}; the byte loading
- * in {@link import('../ir.js')}; the per-job character join in {@link import('./characters.js')}.
+ * in {@link import('../ir/load.js')}; the per-job character join in {@link import('./characters.js')}.
  */
 
 /** The decoded human body + head atlases (`test_human_00` palette) served at `/bobs/<name>.*`. */

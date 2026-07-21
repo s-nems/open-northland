@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ContentIr } from '../src/content/ir.js';
+import type { ContentIr } from '../src/content/ir/rows.js';
 import { shadowStemsByAtlasStem } from '../src/content/sprite-sheet/human-sheet.js';
 
 /**

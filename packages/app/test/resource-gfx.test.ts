@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import {
-  type ContentIr,
-  type LandscapeGfxRow,
-  servedAtlasStem,
-  servedShadowStem,
-} from '../src/content/ir.js';
+import { servedAtlasStem, servedShadowStem } from '../src/content/ir/joins.js';
+import type { ContentIr, LandscapeGfxRow } from '../src/content/ir/rows.js';
 import {
   buildResourceBinding,
   buildStockpileBinding,

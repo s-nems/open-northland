@@ -24,14 +24,9 @@ import {
 } from '../../catalog/atomics.js';
 import { characterStem, characterStems, VIKING_CHARACTERS } from '../../catalog/roster.js';
 import { diag } from '../../diag/index.js';
-import {
-  type ContentIr,
-  carryWalkSeqs,
-  gfxAtomicFrameLists,
-  loadGalleryLayers,
-  MissingAtlasError,
-  sequencesFor,
-} from '../ir.js';
+import { carryWalkSeqs, gfxAtomicFrameLists, sequencesFor } from '../ir/joins.js';
+import { loadGalleryLayers, MissingAtlasError } from '../ir/load.js';
+import type { ContentIr } from '../ir/rows.js';
 import {
   ADULT_CHARACTER_BY_JOB,
   CHARACTER_SPEC_ENTRIES,

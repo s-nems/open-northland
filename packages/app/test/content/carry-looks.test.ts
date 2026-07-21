@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { BODY_IMAGELIB, type ContentIr, carryWalkSeqs, sequencesFor } from '../../src/content/ir.js';
+import { carryWalkSeqs, sequencesFor } from '../../src/content/ir/joins.js';
+import { BODY_IMAGELIB, type ContentIr } from '../../src/content/ir/rows.js';
 import { CHARACTER_SPECS, carryAnimsByGood } from '../../src/content/settler-gfx/index.js';
 import { hasRealIr, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
 

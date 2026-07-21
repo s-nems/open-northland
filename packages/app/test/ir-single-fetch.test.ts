@@ -1,19 +1,19 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 /**
- * The served `content/ir.json` is multi-MB and several domains read lanes out of it, so `content/ir.ts`
+ * The served `content/ir.json` is multi-MB and several domains read lanes out of it, so `content/ir/load.ts`
  * owns ONE memoized fetch + JSON parse per page (`loadIrRaw`) that both views derive from — the graphics
  * `loadIr` and the sim-side `loadRealContent`. This pins that: re-adding a second fetch fails here.
  * Each test re-imports the modules under `vi.resetModules()` so the module-level memo starts fresh.
  */
 
 /**
- * Transform the modules under test once, here, outside any test body: `content/ir.ts` pulls in
+ * Transform the modules under test once, here, outside any test body: `content/ir/load.ts` pulls in
  * `@open-northland/render` (the whole Pixi graph), and a cold Vite transform of it costs seconds that
  * would otherwise be charged to the first test's timeout. `vi.resetModules()` then only re-instantiates
  * an already-transformed graph.
  */
-await Promise.all([import('../src/content/ir.js'), import('../src/content/real-content.js')]);
+await Promise.all([import('../src/content/ir/load.js'), import('../src/content/real-content.js')]);
 
 /** Generous: even primed, a cold-cache run pays a real (multi-second) transform for this graph. */
 const IR_LOADER_TIMEOUT_MS = 30_000;
@@ -39,7 +39,7 @@ function countingFetch(body: () => Response): { impl: typeof fetch; urls: string
 /** Both loaders out of ONE fresh module graph, so they share the same `loadIrRaw` memo. */
 async function freshLoaders() {
   vi.resetModules();
-  const { loadIr } = await import('../src/content/ir.js');
+  const { loadIr } = await import('../src/content/ir/load.js');
   const { loadRealContent } = await import('../src/content/real-content.js');
   return { loadIr, loadRealContent };
 }

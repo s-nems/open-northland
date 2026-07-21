@@ -1,5 +1,5 @@
 import type { BuildingBobRef } from '@open-northland/render';
-import type { BuildingBobRow } from '../ir.js';
+import type { BuildingBobRow } from '../ir/rows.js';
 
 /**
  * The building atlas families + the shared per-type reduction helpers: the tree/house atlas constants the

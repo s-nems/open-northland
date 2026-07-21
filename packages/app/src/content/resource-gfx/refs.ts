@@ -1,8 +1,8 @@
 import type { LayeredBobRef } from '@open-northland/render';
 import { TREE_ATLAS } from '../building-gfx/index.js';
 import { GENERIC_GOOD_ICON, type GoodIconMap } from '../goods-gfx.js';
-import type { ContentIr, GatheringPipelineRow, GatheringStageRow, LandscapeGfxRow } from '../ir.js';
-import { servedAtlasStem } from '../ir.js';
+import { servedAtlasStem } from '../ir/joins.js';
+import type { ContentIr, GatheringPipelineRow, GatheringStageRow, LandscapeGfxRow } from '../ir/rows.js';
 import type { GoodRef } from '../settler-gfx/index.js';
 
 /**

@@ -2,7 +2,7 @@ import type { WorldRenderer } from '@open-northland/render';
 import { BUILD_HOUSE_ATOMIC, HARVEST_ATOMIC } from '../../catalog/atomics.js';
 import { createSoundDriver } from '../../content/audio.js';
 import { loadSettlerBubbleGfx } from '../../content/bubbles.js';
-import { loadIr } from '../../content/ir.js';
+import { loadIr } from '../../content/ir/load.js';
 import { loadCombatBones } from '../../content/objects.js';
 import { mountSoundToggle } from '../overlay.js';
 

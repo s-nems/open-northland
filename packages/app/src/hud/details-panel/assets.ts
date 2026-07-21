@@ -16,7 +16,7 @@ import {
   loadGuiBitmap,
   loadGuiStrings,
 } from '../../content/gui-gfx.js';
-import { loadIr, loadLayer, MissingAtlasError } from '../../content/ir.js';
+import { loadIr, loadLayer, MissingAtlasError } from '../../content/ir/load.js';
 import { loadUiFont, type UiFont } from '../../content/ui-font.js';
 
 /**

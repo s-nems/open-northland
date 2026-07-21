@@ -1,5 +1,5 @@
 import { flatTileColour, terrainMapToScene } from '@open-northland/render';
-import { loadIr } from '../../content/ir.js';
+import { loadIr } from '../../content/ir/load.js';
 import { cellColourResolver, loadMinimapCellColours } from '../../content/minimap-ground.js';
 import { buildGroundPatternIndex, buildTerrainDebugColourIndex } from '../../content/terrain.js';
 import { rasterizeTerrain, terrainWorldBounds } from '../../hud/minimap/model.js';

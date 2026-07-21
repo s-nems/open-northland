@@ -15,7 +15,7 @@ import {
   VIKING_CHARACTERS,
   type VikingCharacter,
 } from '../catalog/roster.js';
-import { loadBodyClips, loadGalleryLayers, loadPlayerLut, MissingAtlasError } from '../content/ir.js';
+import { loadBodyClips, loadGalleryLayers, loadPlayerLut, MissingAtlasError } from '../content/ir/load.js';
 import { formatMessage, messages } from '../i18n/index.js';
 import { createCameraController, MIN_ZOOM } from '../view/camera/index.js';
 import { mountMessage } from '../view/overlay.js';

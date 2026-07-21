@@ -1,6 +1,7 @@
 import type { WorldRenderer } from '@open-northland/render';
 import { buildSpriteScene, createWindowPixiApp, terrainMapToScene } from '@open-northland/render';
-import { buildingFootprints, loadIr } from '../content/ir.js';
+import { buildingFootprints } from '../content/ir/joins.js';
+import { loadIr } from '../content/ir/load.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet/index.js';
 import { loadRealTerrain } from '../content/terrain.js';
 import { diag, hashTraceFor, setDiagGameSession } from '../diag/index.js';

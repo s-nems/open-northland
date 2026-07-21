@@ -1,5 +1,5 @@
 import type { ResourceTypeBinding } from '@open-northland/render';
-import type { ContentIr } from '../ir.js';
+import type { ContentIr } from '../ir/rows.js';
 import { type GatheringNodeRef, nodeRefFrom } from './refs.js';
 
 /**

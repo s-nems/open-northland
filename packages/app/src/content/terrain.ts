@@ -7,7 +7,8 @@ import {
   type TransitionPattern,
 } from '@open-northland/render';
 import { diag } from '../diag/index.js';
-import { type ContentIr, loadIr } from './ir.js';
+import { loadIr } from './ir/load.js';
+import type { ContentIr } from './ir/rows.js';
 
 /**
  * The real-ground binding: draw the terrain from decoded `text_*.pcx` textures instead of the flat

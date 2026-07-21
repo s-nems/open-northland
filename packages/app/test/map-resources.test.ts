@@ -1,7 +1,7 @@
 import { components, Simulation } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { HARD_MINE_STRIKES_PER_UNIT } from '../src/catalog/mining.js';
-import type { ContentIr } from '../src/content/ir.js';
+import type { ContentIr } from '../src/content/ir/rows.js';
 import { harvestGoodByObjectName, mapResourceSpawns } from '../src/content/map-resources.js';
 import { sandboxContent } from '../src/game/sandbox/content/index.js';
 import { spawnMapResources } from '../src/game/sandbox/map-spawn.js';

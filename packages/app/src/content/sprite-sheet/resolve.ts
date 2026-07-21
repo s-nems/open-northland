@@ -5,7 +5,7 @@ import {
   syntheticAtlasFrames,
 } from '@open-northland/render';
 import { diag } from '../../diag/index.js';
-import { MissingAtlasError } from '../ir.js';
+import { MissingAtlasError } from '../ir/load.js';
 import type { GoodRef } from '../settler-gfx/index.js';
 import { loadHumanSpriteSheet } from './human-sheet.js';
 

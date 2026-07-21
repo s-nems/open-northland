@@ -7,7 +7,7 @@ import {
   DEFAULT_BUILDING_FAMILY,
   OVERLAY_TICKS_PER_FRAME,
 } from '../src/content/building-gfx/index.js';
-import type { BuildingBobRow } from '../src/content/ir.js';
+import type { BuildingBobRow } from '../src/content/ir/rows.js';
 
 /**
  * The building render bindings: the `[GfxHouse]` LogicType→GfxBobId join (buildingBobRefsByType), the

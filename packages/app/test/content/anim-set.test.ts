@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BODY_IMAGELIB } from '../../src/content/ir.js';
+import { BODY_IMAGELIB } from '../../src/content/ir/rows.js';
 import { hasRealIr, rawIrUnderTest } from './helpers.js';
 
 /**

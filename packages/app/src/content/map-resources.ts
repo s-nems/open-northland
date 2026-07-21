@@ -1,5 +1,5 @@
 import type { TerrainObjects } from '@open-northland/data';
-import type { ContentIr } from './ir.js';
+import type { ContentIr } from './ir/rows.js';
 import { forEachPlacement } from './map-placements.js';
 
 /**

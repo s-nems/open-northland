@@ -1,6 +1,6 @@
 import type { BuildingOverlayRef } from '@open-northland/render';
 import { diag } from '../../diag/index.js';
-import type { BuildingOverlayRow } from '../ir.js';
+import type { BuildingOverlayRow } from '../ir/rows.js';
 import { type BuildingFamily, familyLayerFor, preferredPalettePool, rowsByType } from './families.js';
 
 /** The source's overlay-state discriminators (`GfxOverlay <sizeIdx> 4 <state> …`). */

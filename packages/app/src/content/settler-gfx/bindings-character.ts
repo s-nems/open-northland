@@ -7,7 +7,7 @@ import type {
   SpriteFrameRef,
 } from '@open-northland/render';
 import { ATTACK_ATOMIC } from '../../catalog/atomics.js';
-import type { BobSeqRow } from '../ir.js';
+import type { BobSeqRow } from '../ir/rows.js';
 import type { CharacterSpec } from './character-specs.js';
 import { eightDirAnim, type GoodRef, singleDirAnim } from './seq-anim.js';
 import { DIRS } from './sequences.js';
@@ -43,7 +43,7 @@ function frameListsByFacing(dirLists: readonly (readonly number[])[]): readonly 
 
 /**
  * Build the per-`goodType` loaded-gait table for one body from the original's `[gfxwalkatomic]` table
- * ({@link import('../ir.js').carryWalkSeqs}, good slug → body bobseq for this job): bind `moving` to the
+ * ({@link import('../ir/joins.js').carryWalkSeqs}, good slug → body bobseq for this job): bind `moving` to the
  * named ×8 cycle and `idle` to its first-frame hold (the still loaded pose a depositor stands in). The
  * result is keyed on the RUNNING content set's `typeId` — `carrySeqBySlug` is in the decoded IR's
  * id-space, and the slug is what survives between the two (the sandbox's honey is not the IR's honey).

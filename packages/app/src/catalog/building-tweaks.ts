@@ -9,7 +9,7 @@ import type { FootprintCell } from '@open-northland/data';
  * user's visual sign-off with the admin geometry grid enabled in the sandbox (review of
  * 2026-07-10): every building was checked and only the ones below needed a nudge. They are a named
  * approximation (our render vs the authored data), not extraction fixes — applied at the one seam
- * where extracted footprints enter live content (`content/ir.ts` `buildingFootprints`), so the sim's
+ * where extracted footprints enter live content (`content/ir/joins.ts` `buildingFootprints`), so the sim's
  * walk-to-door target and the debug overlay can never disagree.
  */
 

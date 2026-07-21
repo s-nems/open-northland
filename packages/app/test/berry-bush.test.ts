@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ContentIr, LandscapeGfxRow } from '../src/content/ir.js';
+import type { ContentIr, LandscapeGfxRow } from '../src/content/ir/rows.js';
 import { BUSH_WITH_FRUITS_LOGIC_TYPE } from '../src/content/map-resources.js';
 import {
   type BerryBushRef,
