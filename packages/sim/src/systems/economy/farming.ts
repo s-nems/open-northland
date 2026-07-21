@@ -1,12 +1,16 @@
 import type { GoodFarming } from '@open-northland/data';
-import { Building, Crop, Position, Resource } from '../../components/index.js';
+import { Building, Crop, Position, Resource, type ResourceFootprintData } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { coordHash } from '../../core/coord-hash.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import type { System, SystemContext } from '../context.js';
 import { buildingFootprintOf, translatedCells } from '../footprint/geometry.js';
-import { buildingBlockedCells } from '../footprint/index.js';
+import {
+  buildingBlockedCells,
+  stampResourceFootprintData,
+  unstampResourceFootprint,
+} from '../footprint/index.js';
 import { resourcesNearNode } from '../resource-index.js';
 import { stockpilesAtNode } from '../stockpile-index.js';
 
@@ -112,6 +116,21 @@ function sowNodeOccupied(world: World, hx: number, hy: number): boolean {
 }
 
 /**
+ * A sown field's collision footprint: it blocks NOTHING and is worked from the node it stands on. The
+ * original's wheat landscape is walkable with no block areas (`landscapetypes.ini` wheat lanes,
+ * `allowedonland 1`), so settlers walk over a plot and a settlement builds straight over its own farmland —
+ * the plants under the new walls are cleared by {@link destroyFieldsUnderBuilding} instead of the field
+ * refusing the site. Declared here rather than resolved from a landscape record because a field is SOWN by
+ * the sim, not spawned from a map gfx index; an empty declaration is what makes it a non-obstacle, since an
+ * absent footprint means "undeclared" and placement then assumes a body.
+ */
+export const FIELD_FOOTPRINT: ResourceFootprintData = Object.freeze({
+  walk: [],
+  build: [],
+  work: [{ dx: 0, dy: 0 }],
+});
+
+/**
  * Apply a completed `sow` swing: plant a {@link Crop} field of `goodType` for `farm` at the half-cell
  * node `(x, y)`. The node may have been taken since the planner chose it (a competing farmer's field, a
  * fresh drop) — then the swing struck ploughed ground and plants nothing, the same raced-target no-op
@@ -141,6 +160,7 @@ export function applySow(
   const e = world.create();
   world.add(e, Position, positionOfNode(effect.x, effect.y));
   world.add(e, Resource, { goodType: effect.goodType, remaining: 0, harvestAtomic: spec.harvestAtomic });
+  stampResourceFootprintData(world, e, FIELD_FOOTPRINT);
   world.add(e, Crop, {
     goodType: effect.goodType,
     farm: effect.farm,
@@ -181,12 +201,11 @@ export function applyWater(world: World, crop: Entity): void {
  * plants with it. Called wherever a walk-block appears over ground a field already holds: placement and the
  * tier upgrade that grows a footprint (the placement twin of the bush/stump razing beside it).
  *
- * A field carries no {@link ResourceFootprint}, so `resourceWorkCell` resolves its work cell to its own
- * node; a wall over that node puts the field permanently out of reach, since `findPath` rejects a blocked
- * goal. Left standing it would hold one of the farm's `maxFields` slots forever. Placement normally rejects
- * a site overlapping a field (a footprint-less resource is a placement obstacle), so this covers the paths
- * that get past that gate: a `force` placement (scenes, map imports) and a tier upgrade, which never
- * re-validates its grown footprint.
+ * A field is worked from the node it stands on ({@link FIELD_FOOTPRINT}), so a wall over that node puts it
+ * permanently out of reach — `findPath` rejects a blocked goal — and left standing it would hold one of the
+ * farm's `maxFields` slots forever. A field never refuses a site (it declares no build area), so this runs
+ * on every path that raises walls: an ordinary placement, a `force` placement (scenes, map imports), and a
+ * tier upgrade, which never re-validates its grown footprint.
  *
  * Only cells the building actually makes UNWALKABLE clear a field — its door stays passable, and a field
  * merely inside the reserved margin is still walkable, reachable and worth reaping. That is the one
@@ -210,7 +229,9 @@ export function destroyFieldsUnderBuilding(world: World, ctx: SystemContext, bui
     if (!blocked.has(cell)) continue;
     const at = terrain.coordsOf(cell);
     for (const e of resourcesNearNode(world, at.x, at.y, 0)) {
-      if (world.has(e, Crop)) world.destroy(e);
+      if (!world.has(e, Crop)) continue;
+      unstampResourceFootprint(world, e); // through the incremental cache, never a full overlay rebuild
+      world.destroy(e);
     }
   }
 }

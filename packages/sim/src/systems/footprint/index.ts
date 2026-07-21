@@ -45,5 +45,6 @@ export {
   type ResourceNodeSpec,
   resourceFootprintForGood,
   stampResourceFootprint,
+  stampResourceFootprintData,
   unstampResourceFootprint,
 } from './resources.js';

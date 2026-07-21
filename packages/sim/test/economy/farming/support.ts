@@ -16,6 +16,7 @@ import {
   type Simulation,
   type TerrainMap,
 } from '../../../src/index.js';
+import { FIELD_FOOTPRINT, stampResourceFootprintData } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 
 export const { Building, Carrying, Crop, GroundDrop, JobAssignment, Position, Resource, Settler, Stockpile } =
@@ -92,6 +93,7 @@ export function fieldAt(
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
   sim.world.add(e, Resource, { goodType: WHEAT, remaining: ripe ? 1 : 0, harvestAtomic: REAP_ATOMIC });
+  stampResourceFootprintData(sim.world, e, FIELD_FOOTPRINT); // the shape applySow produces
   sim.world.add(e, Crop, {
     goodType: WHEAT,
     farm,
@@ -122,6 +124,7 @@ export function fieldAtNode(
     remaining: stage >= STAGES ? 1 : 0,
     harvestAtomic: REAP_ATOMIC,
   });
+  stampResourceFootprintData(sim.world, e, FIELD_FOOTPRINT); // the shape applySow produces
   sim.world.add(e, Crop, {
     goodType: WHEAT,
     farm,
@@ -189,9 +192,8 @@ export function wallsContent(): ContentSet {
   });
 }
 
-/** Raise a {@link wallsContent} blockhouse at tile (x, y). Placed with `force` so the ground-collision
- *  gate, which a standing field would otherwise fail, is the thing under test rather than the thing in
- *  the way. */
+/** Raise a {@link wallsContent} blockhouse at tile (x, y), skipping the ground-collision gate — these
+ *  cases are about what standing walls do to a plot, not about which sites the gate accepts. */
 export function blockhouseAt(sim: Simulation, x: number, y: number): void {
   const node = cellAnchorNode(x, y);
   sim.enqueue({
