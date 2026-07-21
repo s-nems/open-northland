@@ -22,6 +22,7 @@ const CARPENTER = 2; // the sawmill's worker job
 const WOODCUTTER = 1; // the HQ's worker job
 const CARRIER = 36; // the HQ's transport-slot job
 const WOOD_TRACK = 1; // the wood-specific humanjobexperiencetype typeId in the fixture
+const HQ = 1; // building type: 3 woodcutter slots + a transport slot
 const SAWMILL = 2; // building type
 const SMITHY = 4; // building type gated by `jobEnablesHouse 2 4` (needs a carpenter present)
 
@@ -121,6 +122,21 @@ describe('JobSystem — idle settlers take open workplace jobs', () => {
     jobSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(loose, JobAssignment)).toBe(false); // stays loose (and therefore idle)
+  });
+
+  it('offers a multi-slot workplace its LOWEST job id first, however its slots are declared', () => {
+    // Reversed before the Simulation, because the content index is memoized per ContentSet.
+    const content = testContent();
+    const hq = content.buildings.find((b) => b.typeId === HQ);
+    if (hq === undefined) throw new Error('fixture has no HQ');
+    hq.workers = [...hq.workers].reverse();
+    const sim = new Simulation({ seed: 1, content });
+    placeBuilding(sim, HQ, 5, 5);
+    const idle = settler(sim, null);
+
+    jobSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(idle, Settler).jobType).toBe(WOODCUTTER); // not CARRIER, the first-declared slot
   });
 
   it('never report-in binds a non-carrier trade (only adopt-on-station binds the pre-employed)', () => {

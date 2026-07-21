@@ -11,7 +11,7 @@ import {
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
 import type { System, SystemContext } from '../../context.js';
-import { interactionNode } from '../../footprint/index.js';
+import { type InteractionNode, interactionNode } from '../../footprint/index.js';
 import { navigationLimitFor } from '../../signposts/index.js';
 import { canonicalById, NodeBuckets } from '../../spatial.js';
 import { buildingWorkerJobs, isCarrierJob, mergedRecipeOf } from '../../stores/index.js';
@@ -62,14 +62,17 @@ export const jobSystem: System = (world, ctx) => {
   // count, so query order is free; each binding below increments it, so a later settler this tick sees the
   // earlier one's post like the live scan did (sequential consistency preserved).
   const staffing = buildStaffingTally(world);
-  // Buildings bucketed by their interaction node (the door node for a footprint type, the anchor node
-  // otherwise — {@link interactionNode}): "adopt" binds the workplace a settler is standing at, and the O(1)
-  // per-settler lookup replaces a full building scan.
-  const buildingsByNode = new NodeBuckets(world, buildings, (b) => interactionNode(world, ctx, b));
+  // Keyed over exactly `buildings`, and valid for the whole tick: nothing either pass mutates feeds
+  // {@link interactionNode} (Building, Position, the content footprint, terrain bounds).
+  const interactionNodes = new Map<Entity, InteractionNode | null>();
+  for (const b of buildings) interactionNodes.set(b, interactionNode(world, ctx, b));
+  const interactionNodeOf = (b: Entity): InteractionNode | null => interactionNodes.get(b) ?? null;
+  // Buildings bucketed by their interaction node: "adopt" binds the workplace a settler is standing at,
+  // and the O(1) per-settler lookup replaces a full building scan.
+  const buildingsByNode = new NodeBuckets(world, buildings, interactionNodeOf);
   const terrain = ctx.terrain;
-  for (const e of world.canonicalEntities()) {
-    const settler = world.tryGet(e, Settler);
-    if (settler === undefined || world.has(e, JobAssignment)) continue; // already bound: nothing to do
+  for (const e of canonicalById(unboundSettlers(world))) {
+    const settler = world.get(e, Settler);
 
     // The settler's signpost confinement over a candidate workplace: an out-of-area building never employs
     // it — employment would immediately send it walking beyond its allowed area. The adopt pass needs no
@@ -79,7 +82,7 @@ export const jobSystem: System = (world, ctx) => {
       limit === null || terrain === undefined
         ? undefined
         : (b: Entity): boolean => {
-            const inode = interactionNode(world, ctx, b);
+            const inode = interactionNodeOf(b);
             if (inode === null) return true; // no resolvable cell — leave the openness gates to decide
             return limit.allowsNode(terrain.nodeAtClamped(inode.x, inode.y));
           };
@@ -118,6 +121,16 @@ export const jobSystem: System = (world, ctx) => {
     }
   }
 };
+
+/** The settlers either pass can act on. Safe to snapshot ahead of the loop: a binding is only ever
+ *  stamped on the settler being visited, so no candidate here becomes bound by another's turn. */
+function unboundSettlers(world: World): Entity[] {
+  const unbound: Entity[] = [];
+  for (const e of world.query(Settler)) {
+    if (!world.has(e, JobAssignment)) unbound.push(e);
+  }
+  return unbound;
+}
 
 /** Stamp the binding and reflect it into the tick's staffing tally, so every later openness probe this tick
  *  counts it (the live-scan behavior the tally replaced). A gatherer bound to a building carries no work

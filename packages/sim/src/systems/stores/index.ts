@@ -20,6 +20,7 @@ export {
 export {
   buildingProduces,
   buildingWorkerJobs,
+  canonicalBuildingWorkerJobs,
   isCarrierJob,
   isWorkplaceOperator,
   mergedRecipeOf,

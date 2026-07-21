@@ -1,14 +1,19 @@
-# Fold the three copies of the ring-search BFS onto one predicate-driven helper
+# Fold the five copies of the ring-search BFS onto one predicate-driven helper
 
 **Area:** sim · **Priority:** P3
 
-Three functions now run structurally identical breadth-first ring searches over
+Five functions now run structurally identical breadth-first ring searches over
 `terrain.walkableNeighbours` — same `seen`/`frontier`/`visited` loop, same visit cap, same
 `spacing.claimed` + `occupancy.at(x, y)` accept test:
 
 - `nearestFreeCell` — `systems/agents/destack.ts`
 - `nearestFreeCellOutside` — `systems/movement/evict.ts`
 - `restingCell` — `systems/agents/rest-spot.ts` (the third caller, added on the needs-pacing branch)
+- `nearestPileLanding` — `systems/economy/goods-evict.ts`, a near-verbatim clone of
+  `nearestFreeCellOutside` in another domain; it even borrows `FOOTPRINT_EVICT_SEARCH_CAP` by
+  cross-domain import from `movement/evict.ts`
+- `nearestUnblockedNode` — `nav/nearest.ts`, which sits *below* `systems/`, so the shared helper's home
+  needs deciding before the extraction
 
 Everything that differs is a *predicate*: whether the search traverses blocked nodes, what makes a node
 acceptable to land on, whether a `NavigationLimit` gates it, and whether the failed-route memo is

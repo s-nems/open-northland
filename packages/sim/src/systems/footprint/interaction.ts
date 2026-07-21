@@ -23,6 +23,9 @@ import { resourceAtTile } from './resource-tile-cache.js';
 // INTERACTION — where a unit stands to use a building or resource: a building's door node, and the
 // walkable work cell adjacent to (or on) a resource/ground drop.
 
+/** An integer HALF-CELL NODE a unit stands on to interact with something — see {@link interactionNode}. */
+export type InteractionNode = { readonly x: number; readonly y: number };
+
 /**
  * The integer HALF-CELL NODE a settler must stand on to INTERACT with a building — its door node
  * (`anchor + footprint.door`, both half-cell offsets) when the type has one, else the anchor node
@@ -37,11 +40,7 @@ import { resourceAtTile } from './resource-tile-cache.js';
  * consumer stays consistent instead of a clamped walk goal disagreeing with the raw-node presence
  * checks. Returns null for an entity without a Building or Position.
  */
-export function interactionNode(
-  world: World,
-  ctx: SystemContext,
-  building: Entity,
-): { x: number; y: number } | null {
+export function interactionNode(world: World, ctx: SystemContext, building: Entity): InteractionNode | null {
   const b = world.tryGet(building, Building);
   const p = world.tryGet(building, Position);
   if (b === undefined || p === undefined) return null;
