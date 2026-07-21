@@ -6,3 +6,4 @@ export {
   type ContentJsonHit,
   resolveContentRequest,
 } from './routes.js';
+export { resolveFileUnderRoot } from './under-root.js';
