@@ -1,7 +1,6 @@
 # Extract LogicConstructionWorkArea and stand builders on the data's work cells
 
-**Area:** pipeline + sim (+ data schema) · **Origin:** gathering-economy plan reconciliation,
-2026-07-12 · **Priority:** P2
+**Area:** pipeline + sim (+ data schema) · **Priority:** P2
 
 Builder work slots use the walkable perimeter of the current building footprint as a placeholder:
 `constructionWorkCells` derives the candidate cells and `claimWorkCell` assigns the nearest free one.
@@ -26,8 +25,6 @@ original before trusting it.
 3. In `constructionWorkCells`: when the site's type carries a work area, use those cells
    (anchored, intersected with walkable); keep the footprint perimeter as fallback for types the
    table omits and synthetic test content.
-
-Split if it balloons: (a) pipeline+schema (no sim change), then (b) the sim consumer + golden move.
 
 ## Verify
 

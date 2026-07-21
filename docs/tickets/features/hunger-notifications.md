@@ -1,6 +1,6 @@
 # Surface hunger/starvation notifications from the decoded messages strings
 
-**Area:** app + render · **Origin:** original-ui plan reconciliation, 2026-07-12 · **Priority:** P2
+**Area:** app + render · **Priority:** P2
 
 Starvation kills ~2.5 min after the hunger bar pins with no map/HUD indication unless the settler
 is selected. The decoded `messages` string table ships (`content/gui/strings/pol.json` →
@@ -22,5 +22,4 @@ already exposed: `Settler.hunger`, `HUNGER_EAT_THRESHOLD` (¾ bar,
 ## Verify
 
 - Headless unit test of the threshold→message model.
-- Placement/legibility on the wood chrome — **user's eyes** (pairs with
-  [needs-scene](needs-scene.md)).
+- Placement and legibility on the wood chrome — **user's eyes**.

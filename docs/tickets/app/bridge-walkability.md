@@ -1,11 +1,10 @@
 # Make authored bridges walkable so river banks join into one nav component
 
-**Area:** app (+ sim nav input) · **Origin:** gathering-economy plan reconciliation, 2026-07-12 · **Priority:** P2
+**Area:** app (+ sim nav input) · **Priority:** P2
 
 On imported maps, authored bridge objects do not open a crossing: the app's object→collision pass
-only ADDS blocking (`packages/app/src/...collision.ts` — "objects only ADD blocking"), so the two
-banks stay separate nav components and gatherers/carriers never route across. Named as "a
-separate, larger gap" during the far-zoom gathering work.
+in `packages/app/src/content/collision.ts` can stamp object blocking but cannot clear the decoded
+water class, so the two banks stay separate nav components and gatherers/carriers never route across.
 
 ## Scope
 

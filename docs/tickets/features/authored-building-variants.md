@@ -1,6 +1,6 @@
 # Draw authored buildings with their authored EditName bob variant
 
-**Area:** app + render · **Origin:** map-visual-fidelity plan reconciliation, 2026-07-12 · **Priority:** P2
+**Area:** app + render · **Priority:** P2
 
 Authored placements collapse to `{typeId, tribe, x, y}` (`packages/app/src/slice/
 authored-placements.ts`) and every typeId draws its canonical bob
@@ -21,9 +21,6 @@ building bodies. No entityId→BuildingBobRef override channel exists.
   SpriteSheet-binding channel; the sprite pool consults it before the per-type binding.
 - Only override with refs whose `BUILDING_FAMILIES` family is loaded (count + report the rest).
 - No-entity/no-override path stays byte-identical; gfx never enters the sim.
-- Adjacent decoded-but-unconsumed field (noted 2026-07-14): authored buildings also carry `rot`
-  (`packages/data/src/schema/maps/entities.ts`) with no consumer — rotation→facing could ride this
-  same override channel; take it or explicitly defer it, either way name the decision.
 
 ## Verify
 

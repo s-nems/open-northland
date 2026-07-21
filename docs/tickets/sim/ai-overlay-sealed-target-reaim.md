@@ -1,6 +1,6 @@
 # Stop re-aiming settlers at overlay-sealed targets every AI decision
 
-**Area:** sim · **Origin:** pathfinding-spike diagnosis (`magiczny_las` + 6 AI seats, seed 7) 2026-07-18 · **Priority:** P3
+**Area:** sim · **Priority:** P2
 
 Profiled repro: settler e155 (seat 4, jobType 27, married, `Residence` home 35459) re-issues the same
 `(243,322)→(201,352)` path request every 24 ticks from ~tick 1853 to the run's end. The goal node is
@@ -8,7 +8,9 @@ statically walkable and same-component, but the dynamic walk-block overlay (reso
 building bodies) seals it inside a 494-free-node pocket — every request fails, and the settler never
 gets wherever it is trying to go.
 
-Two things to fix (the search COST is already fixed — `find-path.ts`'s flood guard refutes a sealed
+## Scope
+
+Two things remain (the search cost is already bounded — `find-path.ts`'s flood guard refutes a sealed
 goal at pocket cost):
 
 1. **The 24-tick cadence defeats the stranded pacing.** `replan.ts` parks a failed route for

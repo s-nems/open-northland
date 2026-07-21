@@ -1,48 +1,26 @@
-# Add a sim win/lose seam with an end-of-game surface
+# Add deterministic skirmish victory and defeat
 
-**Area:** sim + app · **Origin:** gap-analysis audit 2026-07-13 · **Priority:** P1
+**Area:** sim + app · **Priority:** P1
 
-There is no win/lose state or objective tracking anywhere: a grep for `victory|defeat|objective`
-across `packages/sim/src` and `packages/app/src` (2026-07-13) hits only scene assertion labels
-(`scenes/sandbox.ts`, `scenes/battle.ts`), an unrelated comment in `game/map-start.ts`, and a pun in
-`hud/tool-panel/stats-window.ts` — zero gameplay logic. A battle can wipe out every settler and the
-game just keeps ticking. Source basis: the minimal skirmish conditions below are a **named
-approximation** (AGENTS.md rule 5 — the original has no automatic sim oracle); the original's
-authored campaign goals live in `map.cif` `MissionData` and come later.
-
-Two halves, only one blocked:
-
-- **Hardcoded skirmish win/lose — executable now, this ticket.** E.g. a player is defeated when
-  they have lost all settlers (or all settlers + all buildings — pick one and name the
-  approximation); the last surviving player wins. Deterministic, evaluated in the sim.
-- **Authored campaign goals** fed from decoded mission triggers. The extraction lane now exists:
-  each map's triggers are decoded losslessly into `content/maps/<id>.script.json` (`MapScript` in
-  `packages/data/src/schema/maps/script.ts` — `missions[]` with typed headers and raw
-  `goal`/`result` opcode+args; loaded app-side by `slice/map-loader.ts` `loadMapScript`).
-  Interpretation of the opcode vocabulary (28 observed result shapes, 14 goal shapes) is still this
-  ticket's later half — do NOT build it in the skirmish slice; leave a clearly named seam (an
-  objectives evaluator the trigger interpreter can later feed) and file the follow-up ticket.
+The sim has no terminal game state. Eliminating every settler on one side leaves the match running
+indefinitely, commands remain accepted, and the app cannot show an outcome. Authored campaign goals
+are a separate mechanic; this ticket covers only a minimal skirmish rule and must name it as an
+approximation until original behavior is observed.
 
 ## Scope
 
-1. A sim-side end-of-game system (`packages/sim/src/systems/`): per-tick (or cheap event-driven)
-   defeat/victory evaluation over player-owned entities; result recorded in sim state and emitted as
-   a `SimEvent`. Per-tick cost must scale with players/active work, not entities squared (rule 6) —
-   prefer counting via existing stores/events over full-world scans.
-2. Terminal-state semantics: decide and document what a finished game does — sim keeps ticking but
-   rejects/ignores further gameplay commands, or halts; make it deterministic either way (the
-   command log + golden discipline applies).
-3. App-side: consume the event and show a simple end-of-game surface (a plain DOM overlay in the
-   style of the existing HUD windows is enough — "Victory"/"Defeat" + return to menu or dismiss).
-4. An acceptance scene under `packages/app/src/scenes/` where one side is wiped out and the
-   end-of-game state triggers, with a headless assertion, localized menu description, and browser pass.
+- Record a deterministic terminal result in sim state and emit it once when a participating player
+  loses the last entity required by the chosen skirmish rule. Evaluation must scale with players or
+  relevant entity changes, not entity pairs.
+- Define deterministic post-game command behavior.
+- Show the local player's result in the app and provide a way back to the menu.
+- Do not interpret `MissionData` goals or results in this ticket.
 
 ## Verify
 
-- Unit test: defeat fires exactly when the last qualifying entity dies; no false positives at
-  game start (player with zero entities on tick 0 on maps that spawn later — decide and test).
+- Unit test: defeat fires exactly once when the last qualifying entity dies, with no false positive
+  before a participating player has spawned.
 - Headless scenario: two-player fight to elimination emits victory/defeat events deterministically
   (same seed, same tick).
-- Acceptance scene in the browser: end-of-game overlay appears — **user's eyes**.
-- `npm test`, `npm run check`, `npm run build`; goldens move only if terminal-state semantics
-  intentionally change tick behavior (name it in the commit).
+- Browser pass: the end-of-game surface appears and returns to the menu.
+- `npm test`, `npm run check`, `npm run build`; name any intentional golden change.

@@ -1,6 +1,6 @@
 # Make an AI seat collect iron, gold and mushrooms
 
-**Area:** packages/sim · **Origin:** fix/iron-pickup diagnostic soak, 2026-07-20 · **Priority:** P2
+**Area:** packages/sim · **Priority:** P2
 
 Over 20 000 ticks of `?map=magiczny_las&ai=0,1,2,3,4,5` (six AI seats, the `realMapWorld` harness the
 gatherer soak uses), the standing-resource totals for iron (good 6), gold (7) and mushroom (14) did

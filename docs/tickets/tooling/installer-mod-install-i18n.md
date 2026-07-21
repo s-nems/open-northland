@@ -1,6 +1,6 @@
 # Localize the installer's mod-install / pipeline diagnostic strings
 
-**Area:** desktop · **Origin:** installer-i18n follow-up, 2026-07-18 · **Priority:** P3
+**Area:** desktop · **Priority:** P3
 
 The first-run installer's UI, native menu, dialogs, and IPC-handler errors are now localized
 (EN/PL) through `packages/desktop/src/i18n/`. Deliberately left in English as a named boundary: the

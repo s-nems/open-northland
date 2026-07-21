@@ -1,6 +1,6 @@
 # Extend the same-side rule to store delivery, store fetching, and resource gathering
 
-**Area:** sim (economy) · **Origin:** multiplayer ownership work, 2026-07-14 · **Priority:** P2
+**Area:** sim (economy) · **Priority:** P2
 
 The `sameSide` friend/foe rule (`components/ownership.ts`) is applied to the construction-site pick
 (`nearestConstructionSite`), the site-delivery routing (`nearestConstructionSiteNeeding`), and the
@@ -23,9 +23,8 @@ store-tribe-filter ticket, deleted 2026-07-14: same gap, pre-ownership vocabular
 - Thread `owner` (already on `PlannerContext`) into the store scans (`nearestStoreFor`,
   `nearestStoreHolding`) and the resource/pile scans, gating each candidate with `ownersCompatible`
   (buildings/piles carry an `Owner`; a neutral one stays usable by anyone, keeping goldens intact).
-- A ground pile dropped by a settler currently carries no `Owner` — decide whether loose piles are
-  neutral (anyone may haul) or inherit the dropper's owner; the original treats dropped goods as the
-  owner's. Name the choice.
+- Make a settler's dropped pile inherit its owner, matching the original's ownership rule. Explicitly
+  neutral drops remain usable by either side.
 - Sweep every economy nearest-X pick under `agents/targets/*` and `agents/economy/*`, not just the
   three cases above; prefer gating at the candidate-collection seam so all picks inherit it, over
   per-scan filters. Check per pick whether the `tribe` gate that `nearestConstructionSite` already

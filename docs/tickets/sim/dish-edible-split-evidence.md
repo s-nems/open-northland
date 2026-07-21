@@ -1,6 +1,6 @@
 # Pin the simple/extra split for the five non-candy dishes
 
-**Area:** packages/sim · **Origin:** fix/food-export-conversion, 2026-07-20 · **Priority:** P3
+**Area:** packages/sim · **Priority:** P3
 
 `EDIBLE_FORM_BY_DISH` (`systems/readviews/food.ts`) maps each dish good to the edible it becomes when a
 carrier lifts it out of the house that cooked it. The mapping's *existence* is well evidenced (a dish has

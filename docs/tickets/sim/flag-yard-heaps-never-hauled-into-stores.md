@@ -1,6 +1,6 @@
 # Get a gatherer's flag-yard heaps hauled into the settlement's stores
 
-**Area:** packages/sim · **Origin:** fix/iron-pickup diagnostic soak, 2026-07-20 · **Priority:** P2
+**Area:** packages/sim · **Priority:** P2
 
 Over 20 000 ticks of `?map=magiczny_las&ai=0,1,2,3,4,5` (the `realMapWorld` harness), loose ground
 heaps grew monotonically while building stores drained:

@@ -1,7 +1,6 @@
 # Populate the goods `equip` lane and bind icons for the iconless equippables
 
-**Area:** pipeline · **Origin:** original-ui plan reconciliation, 2026-07-12 (split from
-features/equipment-consumables, 2026-07-13) · **Priority:** P2
+**Area:** pipeline · **Priority:** P2
 
 The sim's equipment component axis exists, but the extractor does not populate `equip`
 (`packages/data/src/schema/economy/goods.ts`) on the real `ir.json`, and the potion/amulet goods

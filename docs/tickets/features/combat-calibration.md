@@ -1,11 +1,9 @@
 # Calibrate combat constants against the running original (interactive session)
 
-**Area:** sim (data swaps) · **Origin:** combat plan reconciliation, 2026-07-12 · **Priority:** P2
+**Area:** sim (data swaps) · **Priority:** P2
 **Needs user:** a live comparison with the running original, so this is not autonomously runnable.
-**Blocked by:** docs/tickets/features/barracks-recruitment.md
-**Blocked by:** docs/tickets/features/barracks-training.md
-**Blocked by:** docs/tickets/features/tower-defence-mode.md
-**Blocked by:** docs/tickets/features/combat-hp-bars.md
+**Blocked by:** [barracks recruitment](barracks-recruitment.md),
+[barracks training](barracks-training.md), and [tower defence](tower-defence-mode.md)
 
 Every approximated combat constant is greppable in code (`calibration`/`APPROXIMAT` across
 `components/combat.ts`, `core/commands.ts`, `systems/conflict/*`, `systems/progression/`). This
@@ -15,7 +13,7 @@ side by side and answers probes.
 **The unreadable set (why observation is the only source):** human base HP / stamina pool / sight
 radius; the XP→level curve and per-level bonuses; the exact role of `blockingValue`
 and hit-vs-miss; heal/potion/amulet magnitudes; building hit-points; projectile and blood sprites;
-defence-mode cadence; the HP-bar visibility rule.
+and defence-mode cadence.
 
 ## Scope
 

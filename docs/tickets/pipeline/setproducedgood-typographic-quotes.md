@@ -1,6 +1,6 @@
-# Decide the `„gold”` gather picks: does the original strip typographic quotes?
+# Observe and resolve typographic-quoted `setproducedgood` values
 
-**Area:** pipeline · **Origin:** discovered while importing `setproducedgood`, 2026-07-17 · **Priority:** P3
+**Area:** pipeline · **Priority:** P3
 
 **Needs user:** the deciding evidence is the running original (an agent cannot self-sign it).
 

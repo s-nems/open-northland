@@ -1,7 +1,7 @@
 # Place a map's authored setanimal records as visible animals
 
-**Area:** app · **Origin:** map-visual-fidelity plan reconciliation, 2026-07-12 · **Blocked by:**
-[animal-render-binding](../render/animal-render-binding.md) · **Priority:** P2
+**Area:** app · **Priority:** P2
+**Blocked by:** [animal render binding](../render/animal-render-binding.md)
 
 Imported maps show no animals at all: `resolveAuthoredPlacements` skips `entities.animals`
 (`packages/app/src/slice/authored-placements.ts` — `vertical-slice.ts` logs "deferred N animals"),

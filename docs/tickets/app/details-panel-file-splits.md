@@ -1,25 +1,20 @@
-# Split the details-panel hotspots and dedupe the text kits
+# Split the overgrown details-panel modules
 
 **Area:** app · **Priority:** P3
 
-## Problem
+`hud/details-panel/panel.ts` is about 595 lines, `chrome.ts` about 410, and both settler model files
+exceed the repository's rough 300-line boundary. The controller mixes lifecycle with hover probes;
+the model mixes work choices, equipment, experience, and status; `Chrome` also redeclares the text-kit
+surface. These are current responsibility boundaries, not a request to split by line count alone.
 
-Review of the sandbox-village branch flagged three growth points in `packages/app/src/hud/details-panel/`:
+## Scope
 
-- `panel.ts` (~557 lines) mixes the controller with a coherent extractable concern: the cursor-tooltip
-  probes (`hitStockGood`, `hitBarValue`, `gatherChoiceHint`, `productionRowHint`, `assignButtonHint`,
-  `updateTooltip`).
-- `model/settler.ts` (~415 lines) grew past the ~300-line split guideline (work model, gather/craft
-  choice builders, equipment, experience, status in one file).
-- `chrome.ts` duplicates `text.ts`'s `textLeftMiddle` signature + doc verbatim (`Chrome` re-declares
-  the `TextKit` methods). The branch had to update both in lockstep, which proves the duplication has
-  a maintenance cost.
+- Extract hover/hit hint decisions from `panel.ts` while keeping layout rectangles as their source.
+- Split settler model construction into work choices and personal state.
+- Compose or extend the existing `TextKit` instead of repeating its method signatures in `Chrome`.
+- Preserve the current details-panel public barrel and behavior.
 
-## Task
+## Verify
 
-- Extract the tooltip probes from `panel.ts` into a sibling module (e.g. `hover-hints.ts`) consumed by
-  the controller; keep draw/hit sources shared (`visibleStockRows`, layout rects) unchanged.
-- Split `model/settler.ts` by concern (work/choices vs equipment/experience/status) under `model/`.
-- Make `Chrome` extend/compose `TextKit` instead of re-declaring its method signatures.
-
-Pure refactor: no behavior change, goldens and panel tests must stay green as-is.
+`npm test`, `npm run check`, and `npm run build`; existing panel model, layout, and hover tests stay
+behavior-identical.

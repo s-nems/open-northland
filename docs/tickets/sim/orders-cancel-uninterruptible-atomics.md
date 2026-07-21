@@ -1,6 +1,6 @@
-# Player/AI orders should not cancel a non-interruptible atomic
+# Preserve non-interruptible atomics across player and AI orders
 
-**Area:** sim · **Origin:** needs-pacing worktree, 2026-07-20 · **Priority:** P2
+**Area:** sim · **Priority:** P2
 
 `moveUnit` (`systems/orders/movement.ts`) and `setJob` (`systems/orders/work.ts`) both call
 `world.remove(e, CurrentAtomic)` unconditionally. `movement.ts` already names this as a deferred
@@ -22,12 +22,9 @@ extracted (`AtomicAnimation.interruptible`), and `readviews/animations.ts` expos
 ## Scope
 
 - Honour `isInterruptibleAtomic` in `moveUnit` and `setJob`: a non-interruptible atomic runs to
-  completion and the order applies after it (or is refused), instead of being discarded mid-swing.
-- Decide and document what "applies after it" means — a deferred order, or a refusal the caller
-  retries. A deferred order needs somewhere to live; a refusal needs the AI modules to cope with a
-  command that no-ops. Prefer the simpler of the two and name the choice.
-- The player-facing half needs a cue when an order is refused rather than silently dropped
-  (cross-reference `docs/tickets/app/assign-builder-refusal-cue.md`).
+  completion instead of being discarded mid-swing.
+- Retain one pending gameplay order and apply it after completion; a newer order replaces an older
+  pending one. This latest-order-wins policy is a named approximation and must stay in hashed state.
 
 **Source basis:** `DataCnmd/atomicanimations12/atomicanimations.ini` `interruptable` rows, already
 decoded into the IR.

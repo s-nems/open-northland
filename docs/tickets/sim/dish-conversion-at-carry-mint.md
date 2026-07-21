@@ -1,6 +1,6 @@
 # Convert a dish at the carry-mint seam, not only at store pickup
 
-**Area:** packages/sim · **Origin:** fix/food-export-conversion review, 2026-07-20 · **Priority:** P3
+**Area:** packages/sim · **Priority:** P3
 
 `exportedGoodForm` (`systems/readviews/food.ts`) turns a dish into its edible form, and
 `pickupFromStore` applies it. That covers goods lifted out of a STORE, but not the two seams that mint a

@@ -1,6 +1,6 @@
 # Make the inline test `.ini`/CIF fixtures genuinely synthetic (open-source release blocker)
 
-**Area:** pipeline (test fixtures) · **Origin:** synthetic-ini-fixtures follow-up 2026-07-14 · **Priority:** P1
+**Area:** pipeline (test fixtures) · **Priority:** P1
 
 The shared `test/fixtures/ini-sources.ts` fixtures were rewritten to invented content (the
 `synthetic-ini-fixtures` ticket). But several **per-spec inline fixtures** — `.ini`/CIF snippets

@@ -1,6 +1,6 @@
 # Deduplicate the scene-local pre-tick-0 settler spawn helpers
 
-**Area:** app · **Origin:** child-hunger review battery, 2026-07-17 · **Priority:** P3
+**Area:** app · **Priority:** P3
 
 Four scenes carry a near-identical local helper wrapping `cellAnchorNode` + `systems.createSettler`
 + the null-throw: `family.ts` (`spawnAdult`), `berries.ts` (`spawnHungryForager`), `signposts.ts`,

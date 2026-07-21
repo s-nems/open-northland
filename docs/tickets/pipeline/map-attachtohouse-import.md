@@ -1,48 +1,23 @@
-# Import the map `attachtohouse` verb (a settler's authored home / workplace)
+# Import authored settler-to-house attachments
 
-**Area:** pipeline + app · **Origin:** discovered while importing `setproducedgood`, 2026-07-17 · **Priority:** P2
+**Area:** pipeline + app · **Priority:** P2
 
-A decoded map binds a settler to a building with `attachtohouse <hx> <hy> <slot>` inside its `sethuman`
-block, e.g.
-
-```
-sethuman 0 "saracen" "fisher" 359 366 0 0
-setproducedgood "fish"
-attachtohouse 359 358 2
-```
-
-The map decoder drops the verb (`extractStaticObjects`, `tools/asset-pipeline/src/decoders/ini/maps.ts`),
-so every imported settler starts homeless and unemployed even where the map authored its hut. The
-sibling pick verb `setproducedgood` now imports (see that commit for the whole chain to copy: decoder →
-`packages/data/src/schema/maps/entities.ts` → `packages/app/src/slice/authored-placements.ts` → a
-`spawnSettler` field).
-
-## Investigate first
-
-- **What the slot column means.** Observed shape across the unpacked `staticobjects.inc` corpus is
-  `<hx> <hy> <slot>` with slot 1 and 2 (read as home / workplace), and the coords name the target
-  house's anchor — **re-verify both against the corpus before coding**, do not trust this line.
-- Whether the target resolves by anchor half-cells against the `sethouse` rows of the same map (the
-  natural join), and what to do when it names no authored house.
+`staticobjects.inc` places `attachtohouse <hx> <hy> <slot>` inside `sethuman` blocks, but
+`extractStaticObjects` drops it. Imported settlers therefore lose authored homes and workplaces.
+Corpus inspection shows slot values 1 and 2; their meanings and target resolution still need to be
+pinned from the readable maps before implementation.
 
 ## Scope
 
-- Capture the verb onto the enclosing `sethuman` (the `producedGood` pattern: a placement verb ends the
-  block; the uncaptured modifiers must not retarget it).
-- Carry it through the schema + the authored-placement join, resolving the target to the placed
-  building entity.
-- Bind on spawn via the existing employment/housing commands (`assignWorker` / `assignHouse`) rather
-  than a new stamp, so the flag-less employed-gatherer path and its `GatherSelection` rules apply as
-  they do for a hand-assigned worker.
-- **Interaction with the gather pick:** an employed gatherer keeps its pick in `GatherSelection`, not
-  `WorkFlag.goodType`, and `assignWorker` drops the auto-planted flag — and job/employment changes REMOVE
-  `GatherSelection` (`packages/sim/src/systems/economy/jobs/system.ts`). So a settler carrying both verbs
-  must be attached FIRST and picked SECOND, or the pick is wiped. Cover this ordering in a test.
+- Verify the slot meanings and coordinate join across the owned mod corpus.
+- Capture the modifier on its enclosing human row and carry it through `TerrainEntities` and authored
+  placement loading.
+- Resolve the referenced placed building and apply housing/employment through existing sim commands.
+- When a human also has `setproducedgood`, attach first and restore the gather selection second so the
+  job change cannot erase it.
 
 ## Verify
 
-- `npm test`; decoder cases in `tools/asset-pipeline/test/ini-maps.test.ts` pinning the real grammar.
-- `npm run test:pipeline`, then a real-content test in `packages/app/test/content/` asserting an
-  authored settler binds to its authored house (the `authored-map-gather-good.test.ts` shape).
-- Browser pass on a map with `attachtohouse` rows: the settler shows its workplace/home in the details
-  panel.
+Use synthetic decoder cases for modifier scoping and both slot kinds, a real-content join test, and one
+browser map with an authored attachment. Run normal gates plus `npm run test:pipeline` and
+`npm run test:content`.

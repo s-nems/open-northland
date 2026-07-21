@@ -1,6 +1,6 @@
 # Derive the home-level invariant ceiling from content
 
-**Area:** sim · **Origin:** sim refactor-cleanup (deferred — needs a signature change), 2026-07-17 · **Priority:** P3
+**Area:** sim · **Priority:** P3
 
 ## Context
 
@@ -13,7 +13,7 @@ if (b.level < 0 || b.level > MAX_HOME_LEVEL) out.push(`entity ${e}: level out of
 ```
 
 But content owns that bound. `Building.level` is incremented by `constructionSystem` and limited **only**
-by `homeNextTier(type, ctx)` returning `undefined` — i.e. by the length of the `home_level_NN` tier chain
+by `upgradeTierOf(type, ctx)` returning `undefined` — i.e. by the length of the `home_level_NN` tier chain
 in the data. The `4` mirrors a comment on the `Building` component (`home level 00..04`), not any
 code-enforced cap.
 
@@ -23,17 +23,17 @@ on the content, not on a bug — golden rule 3 inverted (a system hardcoding a c
 
 The refactor pass named the constant and pointed it at the tier chain, which is as far as it could go
 without a behavior change: `Invariant` is `(world: World) => string[]` and has no `SystemContext`, so
-there is no way to reach `homeNextTier`'s content today.
+there is no way to reach `upgradeTierOf`'s content today.
 
 ## Scope
 
 - Widen `Invariant` to receive the content/`SystemContext` (e.g. `(world, ctx) => string[]`), or give the
   harness a content-aware invariant kind beside the world-only one.
-- Derive the ceiling by walking the `home` tier chain (the `homeNextTier` step) instead of hardcoding it.
+- Derive the ceiling by walking the `home` tier chain (`upgradeTierOf`) instead of hardcoding it.
 - Update `checkInvariants` / `CORE_INVARIANTS` / `Scenario.run`'s `checkInvariantsEachTick` and the fuzz
   harness accordingly.
 
-## Done when
+## Verify
 
 - A content set with an extra `home_level_05` tier passes `CORE_INVARIANTS` with a legitimately level-5 home.
 - `npm test` green, zero golden movement (invariants are reporting-only — they never feed `hashState`).

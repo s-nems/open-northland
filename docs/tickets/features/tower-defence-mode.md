@@ -1,6 +1,6 @@
 # Implement tower garrisons and defence mode
 
-**Area:** sim + app · **Origin:** combat plan reconciliation, 2026-07-12 · **Priority:** P2
+**Area:** sim + app · **Priority:** P2
 
 No garrison fire, no defence-mode command exists (`core/commands.ts` has neither). Buildings can now
 BE attacked and razed (warriors target enemy structures — `systems/conflict/`), but no building fires

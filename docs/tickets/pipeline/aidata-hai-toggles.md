@@ -1,6 +1,6 @@
 # Extract [AIData] HAI toggles from map data and honor them in the AI player
 
-**Area:** pipeline + sim · **Origin:** enemy-AI design close-out 2026-07-17 · **Priority:** P3
+**Area:** pipeline + sim · **Priority:** P3
 
 Original maps configure the autonomous AI per player in `map.ini` `[AIData]` (scenario maps via an
 `ai.inc` include, e.g. `CnModMaps/cn_2/ai.inc`): blanket `HAI_Disable <player>` plus per-module

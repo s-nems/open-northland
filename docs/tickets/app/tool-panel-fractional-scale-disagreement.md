@@ -1,7 +1,6 @@
 # Reconcile the build menu and goods palette's fractional UI scale
 
-**Area:** app (hud/tool-panel) · **Origin:** /refactor-cleanup on packages/app, 2026-07-17 ·
-**Priority:** P2
+**Area:** app (hud/tool-panel) · **Priority:** P3
 **Needs user:** which of the two is correct is a visual/fidelity call against the original — an agent
 cannot self-judge whether the original's windows scale fractionally or snap to integer steps.
 

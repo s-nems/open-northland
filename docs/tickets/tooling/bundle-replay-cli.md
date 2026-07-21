@@ -1,6 +1,6 @@
 # Add a CLI that replays a diagnostics bundle and reports state health
 
-**Area:** tooling + sim · **Origin:** diagnostics follow-up 2026-07-16 · **Priority:** P2
+**Area:** tooling + sim · **Priority:** P2
 
 A tester's diagnostics bundle (seed + command log + world id + hashes) is a full session repro, but
 the dev-side procedure currently lives only as a test pattern (`packages/app/test/diag-bundle.test.ts`:

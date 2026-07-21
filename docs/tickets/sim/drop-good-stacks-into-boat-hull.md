@@ -1,6 +1,6 @@
-# A dropGood on a boat hull's node stacks into the hold instead of the ground
+# Keep manual ground drops out of vehicle holds
 
-**Area:** sim (goods effects) · **Origin:** goods-drop spatial-index work, 2026-07-17 · **Priority:** P3
+**Area:** sim (goods effects) · **Priority:** P3
 
 `dropOrStackGood` (`packages/sim/src/systems/agents/effects-goods/piles.ts`) excludes a `GroundDrop`
 trunk and a `Building` store from its stack candidates, but not a `Vehicle`. A boat hull is
@@ -21,11 +21,9 @@ been an unnamed behavior change inside a perf refactor.
 
 ## Scope
 
-- Decide the intended rule and name it: almost certainly `dropOrStackGood` should skip a `Vehicle`
-  like its `stackOntoTile` twin does (a hand-dropped pile is ground clutter, not cargo), so the drop
-  starts a loose pile on the hull's node instead. The alternative — dropping onto a hull is a
-  deliberate load gesture — needs the hull's real `stockSlots` capacity and the cargo filter, which
-  is the deferred boat-loading slice, not this ticket.
+- Make `dropOrStackGood` skip a `Vehicle` like its `stackOntoTile` twin does, so a hand-dropped good
+  starts a loose pile on the hull's node. Deliberate cargo loading needs the vehicle's real
+  `stockSlots` capacity and cargo filter and is out of scope.
 - If the pick changes, a golden may legitimately move: name the mechanic in the commit.
 - Consider whether the two twins' candidate filters should converge on the single `isYardHeap`
   predicate rather than each spelling out its own marker exclusions — the drift is what let them

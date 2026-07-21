@@ -1,6 +1,6 @@
 # Run sim invariants on a cadence in diag mode and log violations
 
-**Area:** app · **Origin:** diagnostics follow-up 2026-07-16 · **Priority:** P3
+**Area:** app · **Priority:** P3
 
 `Simulation.checkInvariants()` (`packages/sim/src/harness/invariants.ts` — stock non-negativity,
 cache coherence, `CORE_INVARIANTS`) currently runs only in tests. At runtime, state corruption
@@ -15,8 +15,7 @@ bundle into "state went bad at tick N" evidence.
    slower named cadence if measured cost demands — `verifyCaches` re-derives every cache, so
    measure first on a big decoded map).
 2. Violations log to a `sim` channel at `error` level (tick + violation strings) — they land in the
-   console and every bundle. First violation may also raise the crash banner (it is a corruption,
-   not a crash — decide and name the behavior).
+   console and every bundle. Do not raise the crash banner: diagnostics mode remains observational.
 3. Strictly observational: read-only checks, no sim mutation, goldens untouched.
 
 ## Verify

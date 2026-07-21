@@ -1,6 +1,6 @@
 # Stop copying the whole work-flag blocked set per `ignoreFlag` query
 
-**Area:** packages/sim · **Origin:** fix/iron-pickup review battery, 2026-07-20 · **Priority:** P3
+**Area:** packages/sim · **Priority:** P3
 
 `workFlagPlacementBlocks(world, content, terrain, ignoreFlag)`
 (packages/sim/src/systems/footprint/placement/work-flag/incremental-blocks.ts) returns the shared live

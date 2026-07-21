@@ -1,6 +1,6 @@
 # Fold the three copies of the ring-search BFS onto one predicate-driven helper
 
-**Area:** sim · **Origin:** needs-pacing worktree review, 2026-07-20 · **Priority:** P3
+**Area:** sim · **Priority:** P3
 
 Three functions now run structurally identical breadth-first ring searches over
 `terrain.walkableNeighbours` — same `seen`/`frontier`/`visited` loop, same visit cap, same
@@ -12,7 +12,11 @@ Three functions now run structurally identical breadth-first ring searches over
 
 Everything that differs is a *predicate*: whether the search traverses blocked nodes, what makes a node
 acceptable to land on, whether a `NavigationLimit` gates it, and whether the failed-route memo is
-consulted. That is the shape of one helper — `ringSearch(terrain, from, cap, { traverse, accept })` in
+consulted.
+
+## Scope
+
+Extract one helper — `ringSearch(terrain, from, cap, { traverse, accept })` in
 `systems/spatial.ts` — with three call sites passing predicates. AGENTS.md deduplicates at the second
 real caller; this is the third.
 
@@ -25,7 +29,7 @@ Two smaller things to fold in while there:
   [spacing-drives-avoid-doors-and-nooks](spacing-drives-avoid-doors-and-nooks.md), which asks for the
   same "unblocked neighbour" clearance rest-spot already implements.
 
-**Constraint:** the winner must stay canonical. Each search picks the first acceptable node at minimum
+The winner must stay canonical. Each search picks the first acceptable node at minimum
 distance in `walkableNeighbours` order; any refactor that reorders expansion changes picks and moves
 goldens. Prove it by keeping the existing suites green with no golden movement — a moved golden here
 means the refactor changed behaviour.

@@ -1,6 +1,6 @@
-# Job openings should skip construction sites
+# Exclude construction sites from job openings
 
-**Area:** sim · **Origin:** building-upgrades merge review, 2026-07-18 · **Priority:** P3
+**Area:** sim · **Priority:** P3
 
 Neither the automatic jobSystem nor hand-assignment gates job openings on `UnderConstruction`
 (`systems/economy/jobs/openings.ts` — `openJobAt`/`openPostFor`), so a NEW idle settler can be bound
@@ -9,9 +9,14 @@ stand-down gate (`ai.ts`, below planBuilder) for the whole build instead of taki
 elsewhere. Not a deadlock — the binding resumes work the tick the site finishes — but a
 player-visible idle hire.
 
-Scope: skip site workplaces when opening jobs (both the automatic scan and the hand-assign path),
-and decide the fresh-construction case deliberately: gating fresh sites changes hiring TIMING for
-normal construction (workers today can pre-bind while the building rises), so check the goldens and
-name the chosen behavior. Source basis: whether the original pre-hires for an unfinished workhouse
-is unobserved — `jobtypes.ini` `mustHaveFinishedWorkHouseFlag 1` gates the WORK, not necessarily the
-hire; observe or name the approximation.
+## Scope
+
+Skip every `UnderConstruction` workplace in both automatic openings and hand assignment. This also
+disables pre-hiring for fresh sites; `jobtypes.ini` only proves that the work requires a finished
+building, so record the hiring timing as an approximation.
+
+## Verify
+
+A module test covers fresh construction and upgrades: neither accepts a worker until completion, and
+the idle settler can take another opening meanwhile. Run `npm test`, `npm run check`, and `npm run build`;
+name any intentional golden change.

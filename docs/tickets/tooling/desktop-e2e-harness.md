@@ -1,6 +1,6 @@
 # Commit a desktop end-to-end harness
 
-**Area:** desktop/tooling · **Origin:** desktop-packaging review 2026-07-16 · **Priority:** P3
+**Area:** desktop/tooling · **Priority:** P3
 
 The shell's wizard → pipeline → game-boot flow was verified with ad-hoc Playwright `_electron`
 sessions that lived in a scratchpad and are gone. Regressions in that flow (protocol routing, IPC,

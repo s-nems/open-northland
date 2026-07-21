@@ -1,6 +1,6 @@
 # Extend the failed-goal memo to the eat / store / site target picks
 
-**Area:** sim · **Origin:** gatherer idle-loop soak review, 2026-07-19 · **Priority:** P2
+**Area:** sim · **Priority:** P2
 
 `releaseStaleIntent` (`packages/sim/src/systems/agents/replan.ts`) stamps the failed-goal memo
 (`UnreachableGoals`) for **every** shed route, but only the resource scans read it
@@ -28,10 +28,8 @@ starving settler. Reproducing it is part of the work.
 
 - Read the memo in the picks above, starting with `nearestFood`/`nearestFoodStore`, and give
   `nearestFoodStore` the `componentOf` reachability gate its bush sibling already has.
-- Decide whether the memo stays drive-agnostic. It is keyed by cell alone, which is defensible (routing
-  failed to reach that node, whoever wanted it) but has a cost at `UNREACHABLE_GOAL_MEMO_SIZE` = 8: a
-  settler cycling through several failing delivery goals evicts its harvest exclusions and re-admits the
-  doomed harvest goal early. Either accept and document it, or tag entries with the drive kind.
+- Keep the memo drive-agnostic and cell-keyed: a failed route is evidence about that destination node,
+  regardless of which drive requested it. Preserve its existing expiry and bounded size.
 - Do not widen `UNREACHABLE_GOAL_MEMO_SIZE` as the answer — see
   `dynamic-route-reachability.md` for why the bound is not the lever.
 

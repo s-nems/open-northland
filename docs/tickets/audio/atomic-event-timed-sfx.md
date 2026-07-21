@@ -1,7 +1,6 @@
 # Drive the remaining action SFX from their authored PLAY_SOUND_FX cues
 
-**Area:** audio (+ sim event emit) · **Origin:** construction-feedback round, 2026-07-14; updated
-needs-gossip merge, 2026-07-19 · **Priority:** P2
+**Area:** audio (+ sim event emit) · **Priority:** P2
 
 The original keys nearly every action sound in the animation data itself: `event <frame> 34 <id>`
 (`ATOMIC_EVENT_TYPE_PLAY_SOUND_FX`), where `<id>` is a `SoundFXStatic` group's `logicSoundType`

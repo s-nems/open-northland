@@ -1,6 +1,6 @@
 # Fail loudly on unhashable value shapes in `hashState()`
 
-**Area:** sim · **Origin:** review of fix/hashstate-string-values, 2026-07-17 · **Priority:** P2
+**Area:** sim · **Priority:** P3
 
 `hashValue` (`packages/sim/src/simulation.ts`) dispatches on number, string, boolean,
 null/undefined, array, `Map`, then a `typeof v === 'object'` fallback that walks `Object.keys`. Value
@@ -12,13 +12,9 @@ closed:
 - `bigint` and `symbol` match no branch at all and fall through to a no-op.
 - Typed arrays happen to survive only because they expose index keys.
 
-**Not reachable today.** Every `defineComponent<…>` in `packages/sim/src/components/` resolves to
-number (incl. the `Fixed`/`Entity`/`NodeId` brands), boolean, null/undefined, array,
-`Map<number, number>` (`Settler.experience`, `Stockpile.amounts`), or plain nested objects. The
-package's many `Set`s are transient system scratch, and the fog `Uint8Array` masks are mixed
-explicitly outside `hashValue`. The bug arms itself the day someone adds a `Set`-valued (or
-bigint-valued) component: two diverging runs hash identically again and the determinism tripwire
-reopens with no test failing.
+Current components happen to use supported shapes, but neither the component API nor the snapshot
+types enforce that restriction. Adding a `Set`- or bigint-valued component would silently make both
+the determinism hash and diagnostic snapshot incomplete.
 
 ## Scope
 
@@ -30,13 +26,8 @@ reopens with no test failing.
   the object branch and `Object.keys(set)` is `[]`, so a `Set`-valued component silently snapshots to
   `{}` (its `PlainOf<T>` type is equally blind — `Set` hits the `extends object` mapped branch). Guard
   it the same day: the day a `Set` component is added, both `hashState` and the snapshot need it.
-- Optional, same function, do it here only because it moves goldens once: the `Map` branch mixes no
-  size, unlike the array branch's `mix(v.length)` framing. No collision has been demonstrated (every
-  `hashValue` call mixes at least one word, and object keys are length-framed), so this is symmetry,
-  not a known defect. `mix(v.size)` before the entry loop would move every golden containing a
-  `Stockpile`.
 
 ## Verify
 
-`npm test` (goldens move only if the optional `Map` size framing is taken — name it in the commit),
-`npm run check`, `npm run build`.
+`npm test`, `npm run check`, and `npm run build`; supported current state produces identical hashes
+and snapshots, so goldens do not move.

@@ -1,46 +1,18 @@
-# Fog ghost of a mined deposit loses its ladder denominator (`levels`)
+# Preserve deposit level counts in fog ghosts
 
-**Area:** render · **Origin:** /refactor-cleanup on packages/render, 2026-07-12 · **Priority:** P3
+**Area:** render · **Priority:** P2
 
-A live resource draw item carries both `level` (current fill) AND `levels` (the
-denominator), so the resolver can rescale the sim's ladder onto the bound record's
-own authored state count (stone rocks carry 4 states, ore mines 5). A fog GHOST of
-the same node carries `level` but NOT `levels`:
-
-- `data/scene/snapshot-readers/static-readers.ts` `assignStaticFields` (the shared
-  reader) deliberately omits `levels` — the live build adds it separately in
-  `data/scene/sprite-scene.ts`, and `data/fog/ghosts.ts` `FogGhost` has no `levels`
-  field at all.
-
-So a ghosted, partly-mined deposit on explored ground can render at the wrong visual
-level (the ladder rescale sees no denominator and uses the raw sim level against the
-record's state count). The render cleanup pass centralized the shared reads via
-`assignStaticFields` but preserved this gap as-is (fixing it is a behavior change,
-out of a behavior-preserving pass) — hence this ticket.
-
-Source basis: observed data-flow asymmetry between the live path and the ghost path;
-confirm against a real mined deposit under fog before/after.
+Live deposit draw items carry both `level` and `levels`, but the remembered `FogGhost` shape stores
+only the current level. When a multi-level deposit enters explored fog, frame selection falls back to
+the binding's default ladder length and can show a different depletion state than the last visible
+frame. This is snapshot-memory drift, not a new visual rule.
 
 ## Scope
 
-Decide whether a ghost SHOULD carry `levels` (almost certainly yes — a ghost is the
-last-seen state, and a mined deposit's last-seen level meant something out of a
-denominator). If so: add `levels` to `FogGhost`, capture it in `assignStaticFields`
-(or in the ghost capture alongside `level`), and consume it in the ghost
-re-projection in `sprite-scene.ts`. Watch the allocation note on `assignStaticFields`
-— it writes in place on the per-frame build path; keep that.
-
-Perf win that rides along (found 2026-07-14): today the live resource path computes
-the ladder **twice** per visible node per frame — `assignStaticFields` calls
-`readResourceLevel` → `readResourceLadder`, then `sprite-scene.ts` calls
-`readResourceLevelCount` → `readResourceLadder` again for the same node. If
-`assignStaticFields` captures both `level` AND `levels` from a single
-`readResourceLadder` call (the whole reason it returns `{level, levels}` together),
-the second read disappears. Fold this in while touching this code rather than filing
-it separately.
+Carry the total level count through ghost capture, update, and draw-item reconstruction. Keep old ghost
+records compatible if any serialized diagnostic fixture contains them; otherwise fail explicitly.
 
 ## Verify
 
-`npm run build`, `npm test` (fog-ghosts + scene suites — add a ghost-of-mined-deposit
-case asserting `levels` survives). Visual: `npm run shot` of a partly-mined deposit
-that has fallen under explored fog, before/after; human sign-off on the ghost frame.
+A render-data test observes a deposit with a non-default ladder, hides it, and asserts the ghost keeps
+the same frame. Run `npm test`, `npm run check`, and `npm run build`.
