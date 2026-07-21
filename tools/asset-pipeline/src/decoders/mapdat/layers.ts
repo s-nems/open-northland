@@ -31,7 +31,7 @@ export const MAP_LAYER_HEADER_SIZE = 0x15;
 const MAP_LAYER_MARKER = 'kcp';
 /** The 8-bit-per-cell codec id at inner offset +0x08. */
 export const MAP_LAYER_CODEC_X8 = 'X8el';
-/** The 6-bit codec id (entity-ownership layers); recognized but not unpacked here. */
+/** The codec id of the entity-ownership layers, unpacked as u16 cells by {@link unpackX6elLayer}. */
 export const MAP_LAYER_CODEC_X6 = 'X6el';
 /** The constant sub-format byte at inner offset +0x0C (observed 0x72 on every real layer). */
 export const MAP_LAYER_SUBFORMAT = 0x72;
