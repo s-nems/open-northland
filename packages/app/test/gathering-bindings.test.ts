@@ -1,6 +1,6 @@
 import { resolveResourceDraw, resolveStockpileDraw } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
-import type { ContentIr } from '../src/content/ir.js';
+import type { ContentIr } from '../src/content/ir/rows.js';
 import {
   buildResourceBinding,
   buildStockpileBinding,

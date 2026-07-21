@@ -8,7 +8,7 @@ import {
 import type { SoundBank } from '@open-northland/data';
 import { HARVEST_ATOMIC } from '../catalog/atomics.js';
 import { hasSoundContent } from '../content/audio.js';
-import { loadIr } from '../content/ir.js';
+import { loadIr } from '../content/ir/load.js';
 import { formatMessage, messages } from '../i18n/index.js';
 import { el, pageInnerStyle, pageRootStyle, pageSection } from '../view/overlay.js';
 

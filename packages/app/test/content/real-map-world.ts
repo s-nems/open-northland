@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { FOG_MODE, Simulation } from '@open-northland/sim';
 import { buildCollisionTerrain } from '../../src/content/collision.js';
-import { buildingFootprints, type ContentIr } from '../../src/content/ir.js';
+import { buildingFootprints } from '../../src/content/ir/joins.js';
+import type { ContentIr } from '../../src/content/ir/rows.js';
 import {
   mapResourceObjectNames,
   spawnMapBerryBushes,

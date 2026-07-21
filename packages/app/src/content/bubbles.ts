@@ -1,5 +1,5 @@
 import type { SettlerBubbleGfx, SettlerBubbleKind } from '@open-northland/render';
-import { loadLayer, MissingAtlasError } from './ir.js';
+import { loadLayer, MissingAtlasError } from './ir/load.js';
 
 /** The served stem of the palette-baked bubble sheet (RGBA preview, not the indexed variant). */
 const BUBBLE_ATLAS_STEM = 'ls_gui_bubbles.gui_bubbles';

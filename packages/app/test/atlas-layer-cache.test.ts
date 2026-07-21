@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 /**
  * The house and building-family atlases are loaded by both the world sprite sheet
  * (`content/sprite-sheet/human-sheet.ts`, with shadow twins) and the details panel's building previews
- * (`hud/details-panel/assets.ts`, without), so `content/ir.ts` caches the atlas BODY per stem and composes
+ * (`hud/details-panel/assets.ts`, without), so `content/ir/load.ts` caches the atlas BODY per stem and composes
  * the shadow on top — keying on `(stem, shadowStem)` would dedupe neither call site.
  *
  * Pixi's `Assets` already dedupes the `<stem>.png` upload by URL. What the cache removes is the manifest
@@ -32,7 +32,7 @@ vi.mock('@open-northland/render', async (importOriginal) => {
 });
 
 /**
- * `content/ir.ts` pulls in the whole Pixi graph, and under a full-suite run its cold Vite transform costs
+ * `content/ir/load.ts` pulls in the whole Pixi graph, and under a full-suite run its cold Vite transform costs
  * seconds that are charged to whichever test triggers it — well past the 5 s default. (Run this file
  * alone, against a warm cache, and the whole suite finishes in under 2 s.)
  */
@@ -76,7 +76,7 @@ function countingFetch(manifests: Readonly<Record<string, object>>): {
 async function freshLoader() {
   vi.resetModules();
   uploads.length = 0;
-  return await import('../src/content/ir.js');
+  return await import('../src/content/ir/load.js');
 }
 
 afterEach(() => {

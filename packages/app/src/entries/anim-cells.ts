@@ -8,7 +8,7 @@ import {
   type SpriteLayer,
 } from '@open-northland/render';
 import { characterLabel, headLabel, pickWalkRow, type VikingCharacter } from '../catalog/roster.js';
-import type { BobSeqRow } from '../content/ir.js';
+import type { BobSeqRow } from '../content/ir/rows.js';
 
 /**
  * The browser-free data half of the `?anim` gallery ({@link import('./anim.js')}): turn decoded `[bobseq]`

@@ -1,5 +1,5 @@
 import type { ConstructionLayerRef } from '@open-northland/render';
-import type { ConstructionLayerRow } from '../ir.js';
+import type { ConstructionLayerRow } from '../ir/rows.js';
 import {
   type BuildingFamily,
   CANONICAL_EDIT_NAME,

@@ -4,7 +4,7 @@ import {
   type SpriteLayer,
   type TextureSource,
 } from '@open-northland/render';
-import { loadLayer } from './ir.js';
+import { loadLayer } from './ir/load.js';
 import { fetchJsonOrNull, loadTextureIfPresent } from './net.js';
 
 /**

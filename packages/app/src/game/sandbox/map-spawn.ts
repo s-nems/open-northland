@@ -1,6 +1,6 @@
 import type { TerrainObjects } from '@open-northland/data';
 import { type Entity, type Simulation, systems } from '@open-northland/sim';
-import type { ContentIr } from '../../content/ir.js';
+import type { ContentIr } from '../../content/ir/rows.js';
 import {
   mapBerryBushSpawns,
   mapResourceSpawns,

@@ -9,7 +9,7 @@ import type {
 } from '@open-northland/render';
 import { HARVEST_ATOMIC } from '../../catalog/atomics.js';
 import { HOUSE_BOB, TREE_BOB, VIKING_HOUSE01_BOBS } from '../building-gfx/index.js';
-import type { BobSeqRow } from '../ir.js';
+import type { BobSeqRow } from '../ir/rows.js';
 import { directionalAnimFromSeq, singleDirAnim } from './seq-anim.js';
 import {
   CHOP_PHASE_START,

@@ -1,4 +1,4 @@
-import type { LandscapeGfxRow } from '../../src/content/ir.js';
+import type { LandscapeGfxRow } from '../../src/content/ir/rows.js';
 
 /** The normalized `/bobs/` prefix decoded asset paths carry in the `landscapeGfx` IR (the served-stem
  *  convention `<B>/<bmd>.bmd`). Shared by the gathering-binding and resource-gfx fixtures. */

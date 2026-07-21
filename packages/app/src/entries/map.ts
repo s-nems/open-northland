@@ -6,7 +6,8 @@ import {
 } from '@open-northland/render';
 import { halfCellMapFromCells, type SimEvent } from '@open-northland/sim';
 import { buildCollisionTerrain } from '../content/collision.js';
-import { buildingFootprints, loadIr } from '../content/ir.js';
+import { buildingFootprints } from '../content/ir/joins.js';
+import { loadIr } from '../content/ir/load.js';
 import { loadMinimapCellColours } from '../content/minimap-ground.js';
 import { loadMapObjects } from '../content/objects.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet/index.js';

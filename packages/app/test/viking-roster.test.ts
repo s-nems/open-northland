@@ -8,7 +8,7 @@ import {
   pickWalkRow,
   VIKING_CHARACTERS,
 } from '../src/catalog/roster.js';
-import type { BobSeqRow } from '../src/content/ir.js';
+import type { BobSeqRow } from '../src/content/ir/rows.js';
 
 /**
  * The viking roster's pure half — the shape/consistency of the `jobgraphics.ini` transcription,

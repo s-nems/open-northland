@@ -9,7 +9,7 @@ import { workerIconOffset } from '../../catalog/building-tweaks.js';
  *
  * Source basis: the door is the extracted `LogicDoorPoint` (the cell a settler stands on entering —
  * `footprint.door`, the same offset the sim's `interactionNode` walks to; the committed per-building
- * door corrections are already applied upstream in `content/ir.ts`). The worker-icon anchor has no
+ * door corrections are already applied upstream in `content/ir/joins.ts`). The worker-icon anchor has no
  * original counterpart — the original draws worker icons in the HUD, not at the building — so its
  * placement is our own approximation: one node right of the door by default, with per-building
  * overrides from the gallery review (`catalog/building-tweaks.ts`).

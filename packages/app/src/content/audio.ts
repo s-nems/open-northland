@@ -1,10 +1,10 @@
 import { buildSoundIndex, defaultBindings, SoundDriver } from '@open-northland/audio';
 import type { SoundBank } from '@open-northland/data';
-import type { ContentIr } from './ir.js';
+import type { ContentIr } from './ir/rows.js';
 
 /**
  * The audio content boundary: build the {@link SoundDriver} the live loop pumps from the decoded
- * sound bank in the shared IR ({@link import('./ir.js').loadIr}). Reads the gitignored `content/`
+ * sound bank in the shared IR ({@link import('./ir/load.js').loadIr}). Reads the gitignored `content/`
  * over the dev-server `/sounds` route and **degrades to silence** (returns `null`) when the content
  * is absent or predates the sound bank, so a checkout without `content/` still boots.
  */

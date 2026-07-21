@@ -1,7 +1,7 @@
 import type { AtlasFrame, SpriteAtlas, SpriteLayer } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
 import { findCharacter } from '../src/catalog/roster.js';
-import type { BobSeqRow } from '../src/content/ir.js';
+import type { BobSeqRow } from '../src/content/ir/rows.js';
 import {
   buildAnimCells,
   buildColorCells,

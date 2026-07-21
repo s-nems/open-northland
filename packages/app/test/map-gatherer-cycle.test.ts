@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../src/catalog/felling.js';
 import { TERRAIN_OPEN } from '../src/catalog/terrain.js';
 import { buildCollisionTerrain } from '../src/content/collision.js';
-import type { ContentIr } from '../src/content/ir.js';
+import type { ContentIr } from '../src/content/ir/rows.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../src/game/rules.js';
 import { sandboxContent } from '../src/game/sandbox/content/index.js';
 import { GOOD_WOOD, JOB_COLLECTOR } from '../src/game/sandbox/ids/index.js';

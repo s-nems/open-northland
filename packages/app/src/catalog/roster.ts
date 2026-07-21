@@ -1,5 +1,5 @@
 import { clipDirs, GALLERY_DIRS } from '@open-northland/render';
-import type { BobSeqRow } from '../content/ir.js';
+import type { BobSeqRow } from '../content/ir/rows.js';
 import { formatMessage, type Messages, messages } from '../i18n/index.js';
 
 /**

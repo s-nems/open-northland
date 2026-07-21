@@ -5,7 +5,7 @@ import { GATHERING_BALANCE_BY_ID } from '../catalog/gathering.js';
 import { NAV_LANDSCAPE_TYPES } from '../catalog/terrain.js';
 import { HUMAN_HITPOINTS } from '../catalog/units.js';
 import { diag } from '../diag/index.js';
-import { loadIrRaw } from './ir.js';
+import { loadIrRaw } from './ir/load.js';
 import { fetchJsonOrNull } from './net.js';
 
 /** The one in-flight/settled parse of the served IR into a `ContentSet` — memoized like {@link loadRealContent}. */
@@ -13,7 +13,7 @@ let contentSetPromise: Promise<ContentSet | null> | null = null;
 
 /**
  * Fetch + validate the served `content/ir.json` into the sim's `ContentSet` — the real-content
- * counterpart to {@link import('./ir.js').loadIr}, which returns the graphics/atlas view instead. The
+ * counterpart to {@link import('./ir/load.js').loadIr}, which returns the graphics/atlas view instead. The
  * pure sim never does I/O, so the validated set is minted here at the app boundary
  * (`packages/app/AGENTS.md`); wiring it into the sim is a later ticket.
  *

@@ -1,5 +1,5 @@
 import type { DirectionalAnim } from '@open-northland/render';
-import type { BobSeqRow } from '../ir.js';
+import type { BobSeqRow } from '../ir/rows.js';
 import { DIRS } from './sequences.js';
 
 /**
