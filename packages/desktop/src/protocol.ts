@@ -2,7 +2,7 @@ import { extname } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { resolveContentRequest, resolveFileUnderRoot } from '@open-northland/content-resolver';
 import { net, protocol } from 'electron';
-import { routePathOf } from './protocol-routing.js';
+import { APP_ORIGIN_PREFIX, APP_SCHEME, routePathOf } from './protocol-routing.js';
 
 /**
  * The `app://` scheme the shell serves the game from — the packaged equivalent of the Vite dev
@@ -13,9 +13,6 @@ import { routePathOf } from './protocol-routing.js';
 
 import type { Locale } from './i18n/index.js';
 
-const APP_SCHEME = 'app';
-/** Every page the shell serves sits under this prefix; the IPC and navigation guards gate on it. */
-export const APP_ORIGIN_PREFIX = `${APP_SCHEME}://`;
 export const GAME_URL = `${APP_ORIGIN_PREFIX}game/index.html`;
 export const SETUP_URL = `${APP_ORIGIN_PREFIX}setup/setup.html`;
 

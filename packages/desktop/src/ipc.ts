@@ -24,6 +24,14 @@ export const IPC_CHANNELS = {
   setLocale: 'desktop:set-locale',
 } as const;
 
+/** Channels the main process pushes to the renderer; every other channel is invoked and handled. */
+export const SEND_ONLY_CHANNELS = [IPC_CHANNELS.pipelineEvent, IPC_CHANNELS.modEvent] as const;
+
+export type IpcInvokeChannel = Exclude<
+  (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS],
+  (typeof SEND_ONLY_CHANNELS)[number]
+>;
+
 /** What the setup renderer needs to render its first screen. */
 export interface DesktopState {
   /** Where `content/` + the config live: the portable dir, the per-user data dir, or the dev repo root. */
