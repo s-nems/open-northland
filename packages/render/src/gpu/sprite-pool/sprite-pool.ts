@@ -1,7 +1,6 @@
 import type { WorldSnapshot } from '@open-northland/sim';
 import { type Container, Graphics, Sprite } from 'pixi.js';
 import { FOG_GHOST_TINT, type FogGhost } from '../../data/fog/index.js';
-import { clamp, clamp01, lerp } from '../../data/math.js';
 import {
   type Camera,
   cameraScreenX,
@@ -16,11 +15,12 @@ import { PalettedSprite } from '../paletted-sprite/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
 import { BoundsUnion, createLayerDrawBox, layerDrawBox } from './layer-box.js';
-import { isStalled, trackMotion } from './motion.js';
+import { trackMotion } from './motion.js';
 import { anchorOf, boundsOf, pixelHit } from './pick.js';
 import { drawPlaceholder, PROJECTILE_FLIGHT_HEIGHT, placeholderBounds } from './placeholder.js';
 import { createPooled, type EntityBounds, type PooledEntity } from './pooled-entity.js';
 import { PortraitSubject } from './portrait-subject.js';
+import { animationClock, easeReveal, revealedItem, walkPose } from './presentation.js';
 import { reconcileSprites } from './reconcile.js';
 import { type ResolvedLayer, resolveLayers } from './resolve-layers.js';
 
@@ -38,14 +38,6 @@ import { type ResolvedLayer, resolveLayers } from './resolve-layers.js';
  * one iso row's screen-y gap (so it never lifts a sprite past one a genuine row behind/ahead of it).
  */
 export const SCREEN_PAINT_EPS = 0.25;
-
-/**
- * Per-frame easing factor for the construction bottom-up reveal — the displayed reveal moves this fraction
- * of the remaining distance toward the layer's target each frame. Tuned so the rise glides across the
- * sim's per-swing `built` steps (~15 ticks / swing) without a catch-up snap; a newly-seen site initialises
- * to its target instead of easing up from zero (see {@link SpritePool.updatePooled}).
- */
-const CONSTRUCTION_REVEAL_EASE = 0.06;
 
 /**
  * How often (in reconciled frames) the pool is swept for entities that left the snapshot (died) so their
@@ -345,56 +337,18 @@ export class SpritePool {
     // Bounds/paletted origin below use the drawn anchor too, so the picker's hit box tracks the graphic.
     trackMotion(pe.motion, frame.tick, item.x, item.y - (item.lift ?? 0), frame.alpha);
     pe.container.position.set(pe.motion.drawX, pe.motion.drawY);
-    // Sticky facing: a moving settler that dropped its PathFollow for a tick (the repath gap — state stays
-    // `moving` via MoveGoal/PathRequest but there is no heading to read) reuses its last real heading so the
-    // walk doesn't flip to DEFAULT_FACING for a frame each tile (the pool half of what `readSpriteState`
-    // smooths). Gating on `state === 'moving'` keeps the per-frame copy to that gap frame: an idle settler
-    // also has no facing but must draw the default idle facing rather than allocate every frame.
     if (item.facing !== undefined) pe.lastFacing = item.facing;
-    // Stall guard: a sim state that reads `moving` while the anchor has sat still (an unserviced route, a
-    // stalled chase) presents the idle pose — never a walk cycle frozen mid-stride ({@link isStalled}).
-    const stalled = pe.kind === 'settler' && item.state === 'moving' && isStalled(pe.motion);
-    const drawItem = stalled
-      ? { ...item, state: 'idle' as const }
-      : pe.kind === 'settler' &&
-          item.state === 'moving' &&
-          item.facing === undefined &&
-          pe.lastFacing !== undefined
-        ? { ...item, facing: pe.lastFacing }
-        : item;
-    // The moving-state walk cycle runs on the motion-scaled gait clock (feet track ground covered — a
-    // body-pressed or braking walker's legs slow instead of jogging in place); everything else (idle loops,
-    // action clocks) stays on the free tick. A frozen clock (0) holds a still frame for two cases: a ghost
-    // (an animating mill's sails under the fog would leak that the building is still manned) and the
-    // portrait subject inside a building (a motionless standing pose, not the breathing idle loop).
-    const animTick = item.ghost === true || item.frozen === true ? 0 : frame.tick;
-    // Ease the displayed construction reveal toward the sim's target and select the active stage set from
-    // it — NOT from the raw sim `builtPct`. Both the stage windows (`[fromPct,toPct]`) and the per-pixel
-    // reveal must move together: selecting stages off the raw sim progress while revealing pixels off the
-    // lagging eased value drops a scaffold stage the moment `builtPct` clears its `toPct`, before its
-    // covering stage's eased reveal has risen over it — a fast build (x3, many builders) then flashes a gap
-    // where the covered part vanishes and grows back. A first-seen site initialises straight to its target
-    // (no grow-from-zero when a mid-build house scrolls in).
-    // An upgrade site rides the same eased value: its progress arrives as `upgradePct` (mutually
-    // exclusive with `builtPct` by construction — see readBuiltPct/readUpgradePct), and without it the
-    // next-tier overlay would draw full-frame the moment the upgrade starts.
-    const progressPct = item.builtPct ?? item.upgradePct;
-    if (progressPct === undefined) {
-      pe.reveal = undefined;
-    } else {
-      const target = clamp01(progressPct / 100);
-      pe.reveal = pe.reveal === undefined ? target : lerp(pe.reveal, target, CONSTRUCTION_REVEAL_EASE);
-    }
-    // Stage selection reads the eased progress as a whole percent (windows are integer-percent); the pool
-    // still reveals pixels from the finer float `pe.reveal`. The eased percent writes back to whichever
-    // field carried the progress, so upgrade-overlay windows track it too.
-    const stageItem =
-      pe.reveal === undefined
-        ? drawItem
-        : item.builtPct !== undefined
-          ? { ...drawItem, builtPct: clamp(Math.round(pe.reveal * 100), 0, 99) }
-          : { ...drawItem, upgradePct: clamp(Math.round(pe.reveal * 100), 0, 99) };
-    const layers = resolveLayers(this.sheet, stageItem, animTick, Math.floor(pe.motion.gaitPhase));
+    // An upgrade site rides the same eased reveal as a from-scratch one: its progress arrives as
+    // `upgradePct`, mutually exclusive with `builtPct` by construction (see readBuiltPct/readUpgradePct).
+    pe.reveal = easeReveal(pe.reveal, item.builtPct ?? item.upgradePct);
+    const layers = resolveLayers(
+      this.sheet,
+      revealedItem(walkPose(item, pe.kind, pe.motion, pe.lastFacing), pe.reveal),
+      animationClock(item, frame.tick),
+      // The walk cycle rides the motion-scaled gait phase, not the tick: a body-pressed or braking
+      // walker's legs slow with the ground actually covered instead of jogging in place.
+      Math.floor(pe.motion.gaitPhase),
+    );
     if (layers === null) {
       this.showPlaceholder(pe, item, frame);
       return;
@@ -450,9 +404,8 @@ export class SpritePool {
     // picker/selection ring reads one consistent box regardless of how the layer was drawn.
     const bounds = this.layerBounds;
     bounds.reset();
-    // The eased construction reveal that glides a rising building between the sim's per-swing steps —
-    // computed in {@link updatePooled} (before stage selection, so the active stages and the pixel reveal
-    // share it) and read straight through here.
+    // The eased reveal the active stages were selected from (see {@link easeReveal}), so the per-pixel
+    // reveal below cannot disagree with them.
     const displayReveal = pe.reveal;
     for (let i = 0; i < layers.length; i++) {
       const layer = layers[i];

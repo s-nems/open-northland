@@ -2,7 +2,7 @@
 
 **Area:** render · **Priority:** P3
 
-`gpu/sprite-pool/sprite-pool.ts` is about 575 lines. It owns both pool membership/lifecycle and the
+`gpu/sprite-pool/sprite-pool.ts` is about 527 lines. It owns both pool membership/lifecycle and the
 operation that mutates one entity's body, shadow, reveal, and texture layers. The existing folder
 already separates pure motion, picking, reconciliation, placeholder logic, and — since the box-arithmetic
 pass — the feet-local layer geometry and bounds union (`layer-box.ts`). `bindLayers` is down to about
