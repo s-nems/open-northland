@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 import { decodeBmd } from '../../decoders/bmd/index.js';
+import { errorMessage } from '../../errors.js';
 import type { SourceRoots } from '../../roots.js';
 import { BOBS_DIR, emitIndexedAndPreviewAtlas, readSourceFile } from '../game-file.js';
 
@@ -49,7 +50,7 @@ export async function convertGuiAtlases(
     try {
       bytes = await readSourceFile(roots, src.bmd);
     } catch (err) {
-      console.warn(`[pipeline] gui: skipped ${src.stem}: ${(err as Error).message}`);
+      console.warn(`[pipeline] gui: skipped ${src.stem}: ${errorMessage(err)}`);
       continue;
     }
     const preview = paletteByName.get(src.previewPalette);
@@ -73,7 +74,7 @@ export async function convertGuiAtlases(
         preview,
       ));
     } catch (err) {
-      console.warn(`[pipeline] gui: skipped ${src.stem}: ${(err as Error).message}`);
+      console.warn(`[pipeline] gui: skipped ${src.stem}: ${errorMessage(err)}`);
       continue;
     }
     done.push({

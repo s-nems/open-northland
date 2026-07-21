@@ -5,6 +5,7 @@ import type { Bmd } from '../decoders/bmd/index.js';
 import { buildPaletteLutImage } from '../decoders/image.js';
 import { decodePcx } from '../decoders/pcx.js';
 import { encodePng } from '../decoders/png.js';
+import { errorMessage } from '../errors.js';
 import { rootsInOrder, type SourceRoots } from '../roots.js';
 
 /**
@@ -117,7 +118,7 @@ export async function buildPaletteLut(
       palette = decodePcx(await readSourceFile(roots, src.file)).palette;
     } catch (err) {
       console.warn(
-        `[pipeline] ${log.label}: ${log.noun} ${src.name} unreadable (${(err as Error).message}); using neutral row`,
+        `[pipeline] ${log.label}: ${log.noun} ${src.name} unreadable (${errorMessage(err)}); using neutral row`,
       );
     }
     if (palette === undefined) palette = identityPalette();

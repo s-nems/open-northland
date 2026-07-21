@@ -9,6 +9,7 @@ import {
   parseIniSections,
   type RuleSection,
 } from '../../decoders/ini.js';
+import { errorMessage } from '../../errors.js';
 import type { StageItemReporter } from '../../progress.js';
 import { collectSourceFilesNamed, rootsInOrder, type SourceRoots } from '../../roots.js';
 import { findPathCaseInsensitive, findPathCaseInsensitiveInDirs } from './case-path.js';
@@ -78,7 +79,7 @@ export async function convertMapDatTree(
     try {
       terrain = mapDatToTerrain(await readFile(path));
     } catch (err) {
-      console.warn(`[pipeline] skipped map.dat ${rel}: ${(err as Error).message}`);
+      console.warn(`[pipeline] skipped map.dat ${rel}: ${errorMessage(err)}`);
       continue;
     }
     // The authored entity placements live in the sibling map.cif's `StaticObjects` section (the
@@ -119,7 +120,7 @@ export async function convertMapDatTree(
           const entities = extractStaticObjects(parseIniSections(decodeIni(await readFile(incPath))));
           if (entities !== undefined) terrain = { ...terrain, entities };
         } catch (err) {
-          console.warn(`[pipeline] map ${rel}: staticobjects.inc undecodable: ${(err as Error).message}`);
+          console.warn(`[pipeline] map ${rel}: staticobjects.inc undecodable: ${errorMessage(err)}`);
         }
       }
     }
@@ -150,7 +151,7 @@ export async function convertMapDatTree(
     } catch (err) {
       // A schema-invalid script (unexpected codes in one authored map) degrades that map to no
       // roster rather than aborting the batch; an output-write failure below still propagates.
-      console.warn(`[pipeline] map ${rel}: script undecodable: ${(err as Error).message}`);
+      console.warn(`[pipeline] map ${rel}: script undecodable: ${errorMessage(err)}`);
     }
     if (scriptFile !== undefined) {
       await writeFile(scriptPath, `${JSON.stringify(scriptFile)}\n`);
@@ -162,7 +163,7 @@ export async function convertMapDatTree(
         await writeFile(pngPath, minimapToPng(await readFile(minimapPath)));
         minimap = true;
       } catch (err) {
-        console.warn(`[pipeline] map ${rel}: minimap undecodable: ${(err as Error).message}`);
+        console.warn(`[pipeline] map ${rel}: minimap undecodable: ${errorMessage(err)}`);
       }
     }
     done.push({

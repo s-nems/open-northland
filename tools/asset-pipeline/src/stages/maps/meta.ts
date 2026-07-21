@@ -6,6 +6,7 @@ import {
   parseIniSections,
   type RuleSection,
 } from '../../decoders/ini.js';
+import { errorMessage } from '../../errors.js';
 import { findPathCaseInsensitiveInDirs } from './case-path.js';
 
 /**
@@ -76,7 +77,7 @@ async function resolveMapNameStringIds(
     try {
       consider(parseIniSections(decodeIni(await readFile(path))));
     } catch (err) {
-      console.warn(`[pipeline] map ${rel}: ${file} unreadable: ${(err as Error).message}`);
+      console.warn(`[pipeline] map ${rel}: ${file} unreadable: ${errorMessage(err)}`);
     }
   }
   if (cifSections !== undefined) consider(cifSections);
@@ -112,7 +113,7 @@ export async function loadMapStringTable(
             ? extractStringTable(parseIniSections(decodeIni(bytes)))
             : decodeCifStringTable(bytes);
       } catch (err) {
-        console.warn(`[pipeline] map ${rel}: text/${lang}/${form} undecodable: ${(err as Error).message}`);
+        console.warn(`[pipeline] map ${rel}: text/${lang}/${form} undecodable: ${errorMessage(err)}`);
         continue;
       }
       if (Object.keys(table).length > 0) return table;

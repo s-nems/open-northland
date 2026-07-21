@@ -12,6 +12,7 @@ import {
   unpackMapLayer,
   unpackX6elLayer,
 } from '../../decoders/mapdat/index.js';
+import { errorMessage } from '../../errors.js';
 
 /** The emitted `maps/<id>.json` shape: the sim grid + the optional 1:1 render layers. */
 export interface MapDatTerrainFile extends MapDatTerrainMap {
@@ -330,7 +331,7 @@ export function mapDatToTerrain(bytes: Uint8Array): MapDatTerrainFile {
       return build();
     } catch (err) {
       console.warn(
-        `[pipeline] map ${lanes} unreadable, emitting grid without that layer: ${(err as Error).message}`,
+        `[pipeline] map ${lanes} unreadable, emitting grid without that layer: ${errorMessage(err)}`,
       );
       return undefined;
     }

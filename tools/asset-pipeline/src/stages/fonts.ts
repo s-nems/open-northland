@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 import { decodeFnt, type FontMetrics, fontMetrics } from '../decoders/fnt.js';
+import { errorMessage } from '../errors.js';
 import type { SourceRoots } from '../roots.js';
 import {
   buildPaletteLut,
@@ -168,7 +169,7 @@ export async function convertFonts(
     try {
       bytes = await readSourceFile(roots, src.file);
     } catch (err) {
-      console.warn(`[pipeline] fonts: skipped ${src.key}: ${(err as Error).message}`);
+      console.warn(`[pipeline] fonts: skipped ${src.key}: ${errorMessage(err)}`);
       continue;
     }
     // decode + metrics + atlas emit share one warn-and-skip guard so a malformed-but-decodable font
@@ -187,7 +188,7 @@ export async function convertFonts(
         palette,
       ));
     } catch (err) {
-      console.warn(`[pipeline] fonts: skipped ${src.key}: ${(err as Error).message}`);
+      console.warn(`[pipeline] fonts: skipped ${src.key}: ${errorMessage(err)}`);
       continue;
     }
 

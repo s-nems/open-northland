@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 import { decodeCifStringTable } from '../../decoders/ini.js';
+import { errorMessage } from '../../errors.js';
 import type { SourceRoots } from '../../roots.js';
 import { readSourceFile, writeJsonFile } from '../game-file.js';
 import { GUI_CONTENT_DIR } from './paths.js';
@@ -52,7 +53,7 @@ export async function convertGuiStrings(
       try {
         byId = decodeCifStringTable(await readSourceFile(roots, rel));
       } catch (err) {
-        console.warn(`[pipeline] gui: skipped strings ${lang}/${table}: ${(err as Error).message}`);
+        console.warn(`[pipeline] gui: skipped strings ${lang}/${table}: ${errorMessage(err)}`);
         continue;
       }
       tables[table] = byId;

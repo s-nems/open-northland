@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
 import { decodePcx, expandToRgba } from '../decoders/pcx.js';
 import { encodePng } from '../decoders/png.js';
+import { errorMessage } from '../errors.js';
 import type { StageItemReporter } from '../progress.js';
 import { collectSourceFiles, type SourceRoots } from '../roots.js';
 import { readSourceFile, TEXTURES_DIR } from './game-file.js';
@@ -81,7 +82,7 @@ export async function composeMaskedTransitionPages(
       await writeFile(outPath, encodePng(colour));
       done.push({ input: pair.texture, output });
     } catch (err) {
-      console.warn(`[pipeline] skipped masked page ${pair.texture}: ${(err as Error).message}`);
+      console.warn(`[pipeline] skipped masked page ${pair.texture}: ${errorMessage(err)}`);
     }
   }
   return done;
@@ -108,7 +109,7 @@ export async function convertPcxTree(
     try {
       png = pcxToPng(await readFile(path));
     } catch (err) {
-      console.warn(`[pipeline] skipped ${input}: ${(err as Error).message}`);
+      console.warn(`[pipeline] skipped ${input}: ${errorMessage(err)}`);
       continue;
     }
     await mkdir(dirname(outPath), { recursive: true });

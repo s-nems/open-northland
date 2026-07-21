@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import { decodeIni, extractPaletteIndex, paletteAliasMap, parseIniSections } from '../../decoders/ini.js';
 import { decodePcx } from '../../decoders/pcx.js';
+import { errorMessage } from '../../errors.js';
 import type { SourceRoots } from '../../roots.js';
 import { readSourceFile } from '../game-file.js';
 
@@ -29,7 +30,7 @@ export async function loadPaletteAliases(roots: SourceRoots): Promise<PaletteAli
     const sections = parseIniSections(decodeIni(await readSourceFile(roots, PALETTES_INI)));
     return paletteAliasMap(extractPaletteIndex(sections));
   } catch (err) {
-    console.warn(`[pipeline] goods: palettes.ini unreadable (${(err as Error).message}); resolving by path`);
+    console.warn(`[pipeline] goods: palettes.ini unreadable (${errorMessage(err)}); resolving by path`);
     return new Map();
   }
 }

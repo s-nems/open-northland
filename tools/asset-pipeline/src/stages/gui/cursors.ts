@@ -2,6 +2,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { type DecodedCursor, decodeCursor } from '../../decoders/cur.js';
 import { encodePng } from '../../decoders/png.js';
+import { errorMessage } from '../../errors.js';
 import type { SourceRoots } from '../../roots.js';
 import { readSourceFile } from '../game-file.js';
 import { GUI_CONTENT_DIR } from './paths.js';
@@ -36,14 +37,14 @@ export async function convertCursors(roots: SourceRoots, outDir: string): Promis
     try {
       bytes = await readSourceFile(roots, rel);
     } catch (err) {
-      console.warn(`[pipeline] gui: skipped cursor ${name}: ${(err as Error).message}`);
+      console.warn(`[pipeline] gui: skipped cursor ${name}: ${errorMessage(err)}`);
       continue;
     }
     let cursor: DecodedCursor;
     try {
       cursor = decodeCursor(bytes);
     } catch (err) {
-      console.warn(`[pipeline] gui: skipped cursor ${name}: ${(err as Error).message}`);
+      console.warn(`[pipeline] gui: skipped cursor ${name}: ${errorMessage(err)}`);
       continue;
     }
     // Disk write uses a native path; the manifest records a forward-slash URL path relative to `/gui/`
