@@ -3,8 +3,10 @@ import { Building, Crop, Position, Resource } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { coordHash } from '../../core/coord-hash.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { positionOfNode } from '../../nav/halfcell.js';
+import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import type { System, SystemContext } from '../context.js';
+import { buildingFootprintOf, translatedCells } from '../footprint/geometry.js';
+import { buildingBlockedCells } from '../footprint/index.js';
 import { resourcesNearNode } from '../resource-index.js';
 import { stockpilesAtNode } from '../stockpile-index.js';
 
@@ -101,11 +103,9 @@ export function farmWorkGood(world: World, ctx: SystemContext, workplace: Entity
  *  resource/field, or a stockpile (a building store, a loose heap, a dropped sheaf). Reads live state, not the
  *  planner's tick-start `sowScan`: this is the completion-time re-check, so it must see a field or heap that
  *  landed on the node *since* the planner chose it. A membership test (boolean, no pick), so the stockpile
- *  index's superset answer needs no canonical ordering. Deliberately does NOT re-check the walk-block overlay
- *  the planner filtered (a building raised during the sow-walk): rebuilding the overlay per swing would cost a
- *  full footprint scan, and a crop under a fresh wall is self-limiting — it stays reapable from a neighbouring
- *  node. Both halves ride incrementally-maintained indexes, so the sow the swing just planted costs an O(1)
- *  index update, not a rebuild. */
+ *  index's superset answer needs no canonical ordering. Covers standing entities only; the walls half of the
+ *  same race is {@link applySow}'s separate block-set check. Both halves ride incrementally-maintained
+ *  indexes, so the sow the swing just planted costs an O(1) index update, not a rebuild. */
 function sowNodeOccupied(world: World, hx: number, hy: number): boolean {
   if (stockpilesAtNode(world, hx, hy).length > 0) return true;
   return resourcesNearNode(world, hx, hy, 0).length > 0; // reach 0 — exactly this node's anchors
@@ -131,6 +131,13 @@ export function applySow(
   if (ctx.terrain !== undefined && !ctx.terrain.isPlantable(ctx.terrain.nodeAtClamped(effect.x, effect.y)))
     return;
   if (sowNodeOccupied(world, effect.x, effect.y)) return; // node taken since the planner chose it
+  // Walled in since the planner chose it (a building placed during the sow-walk): a field there would be
+  // unreachable from birth, so the swing plants nothing rather than leaving one for the placement pass to
+  // clear. A membership test on the memoized block set, not a footprint rebuild.
+  if (ctx.terrain !== undefined) {
+    const node = ctx.terrain.nodeAtClamped(effect.x, effect.y);
+    if (buildingBlockedCells(world, ctx, ctx.terrain).has(node)) return;
+  }
   const e = world.create();
   world.add(e, Position, positionOfNode(effect.x, effect.y));
   world.add(e, Resource, { goodType: effect.goodType, remaining: 0, harvestAtomic: spec.harvestAtomic });
@@ -169,6 +176,45 @@ export function applyWater(world: World, crop: Entity): void {
  * the stage step is the exact integer compare `growth >= ticksPerStage` (never an accumulated fixed-point
  * fraction).
  */
+/**
+ * Destroy every field standing under `building`'s walls — the way raising a house over a plot takes the
+ * plants with it. Called wherever a walk-block appears over ground a field already holds: placement and the
+ * tier upgrade that grows a footprint (the placement twin of the bush/stump razing beside it).
+ *
+ * A field carries no {@link ResourceFootprint}, so `resourceWorkCell` resolves its work cell to its own
+ * node; a wall over that node puts the field permanently out of reach, since `findPath` rejects a blocked
+ * goal. Left standing it would hold one of the farm's `maxFields` slots forever. Placement normally rejects
+ * a site overlapping a field (a footprint-less resource is a placement obstacle), so this covers the paths
+ * that get past that gate: a `force` placement (scenes, map imports) and a tier upgrade, which never
+ * re-validates its grown footprint.
+ *
+ * Only cells the building actually makes UNWALKABLE clear a field — its door stays passable, and a field
+ * merely inside the reserved margin is still walkable, reachable and worth reaping. That is the one
+ * difference from the decor razing passes, which clear the whole reserved zone.
+ *
+ * Bounded by the footprint (golden rule 6): one reach-0 index probe per blocked cell, never a field scan.
+ */
+export function destroyFieldsUnderBuilding(world: World, ctx: SystemContext, building: Entity): void {
+  const terrain = ctx.terrain;
+  if (terrain === undefined) return; // mapless fixture — nothing can be raised over a field
+  const b = world.tryGet(building, Building);
+  const p = world.tryGet(building, Position);
+  if (b === undefined || p === undefined) return;
+  const footprint = buildingFootprintOf(ctx.content, b.buildingType);
+  if (footprint === undefined || footprint.blocked.length === 0) return; // blocks nothing — nothing to clear
+  const { hx, hy } = nodeOfPosition(p.x, p.y);
+  // Membership in the world's derived block set, not the raw footprint cells: it carves the door back out,
+  // so a field on the passable gate cell survives.
+  const blocked = buildingBlockedCells(world, ctx, terrain);
+  for (const cell of translatedCells(terrain, footprint.blocked, hx, hy)) {
+    if (!blocked.has(cell)) continue;
+    const at = terrain.coordsOf(cell);
+    for (const e of resourcesNearNode(world, at.x, at.y, 0)) {
+      if (world.has(e, Crop)) world.destroy(e);
+    }
+  }
+}
+
 export const cropGrowthSystem: System = (world) => {
   for (const e of world.query(Crop)) {
     const crop = world.get(e, Crop);

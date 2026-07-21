@@ -9,7 +9,13 @@ import { dynamicBlockedCells } from '../../footprint/index.js';
 import { manhattan } from '../../spatial.js';
 import { lowestStockedGood } from '../../stores/index.js';
 import type { PlannerContext } from '../planner-context.js';
-import { interactionCell, nearestByCell, type TargetCandidates } from '../targets/index.js';
+import {
+  interactionCell,
+  nearestByCell,
+  type TargetCandidates,
+  unreachableWorkCell,
+  type WorkCellGates,
+} from '../targets/index.js';
 import type { FarmClaims, SowScan } from './claims.js';
 
 /**
@@ -21,10 +27,15 @@ import type { FarmClaims, SowScan } from './claims.js';
  */
 export function nearestFarmSheaf(
   plan: PlannerContext,
-  opts: { readonly anchor: NodeId; readonly spec: FarmingSpec; readonly claims: FarmClaims },
+  opts: {
+    readonly anchor: NodeId;
+    readonly spec: FarmingSpec;
+    readonly claims: FarmClaims;
+    readonly gates: WorkCellGates;
+  },
 ): Entity | null {
   const { world, ctx, terrain, here, targets } = plan;
-  const { anchor, spec, claims } = opts;
+  const { anchor, spec, claims, gates } = opts;
   // Ranked from the farmer (`here`); the field-radius gate measures from the farm `anchor` instead, so a
   // farmer never chases a sheaf across the map (a separate origin the shared loop leaves inside `resolve`).
   return (
@@ -41,6 +52,7 @@ export function nearestFarmSheaf(
       if (manhattan(terrain, anchor, own) > spec.farming.fieldRadius + SHEAF_PREFILTER_SLACK) return null;
       const cell = interactionCell(world, ctx, terrain, e, here);
       if (claims.nodes.has(cell)) return null; // a colleague is already carrying this one off
+      if (unreachableWorkCell(gates, here, cell)) return null; // a sheaf cut under a fresh wall — unreachable
       if (manhattan(terrain, anchor, cell) > spec.farming.fieldRadius) return null; // beyond the farm's fields
       return { cell, payload: null };
     })?.entity ?? null
@@ -81,10 +93,15 @@ function sowJitter(bx: number, by: number): { dx: number; dy: number } {
  */
 export function nextSowNode(
   plan: PlannerContext,
-  opts: { readonly anchor: NodeId; readonly spec: FarmingSpec; readonly claims: FarmClaims },
+  opts: {
+    readonly anchor: NodeId;
+    readonly spec: FarmingSpec;
+    readonly claims: FarmClaims;
+    readonly gates: WorkCellGates;
+  },
 ): NodeId | null {
-  const { world, ctx, terrain, targets } = plan;
-  const { anchor, spec, claims } = opts;
+  const { world, ctx, terrain, here, targets } = plan;
+  const { anchor, spec, claims, gates } = opts;
   claims.sowScan ??= buildSowScan(world, ctx, terrain, targets);
   const { blocked, occupied } = claims.sowScan;
 
@@ -105,6 +122,10 @@ export function nextSowNode(
       if (!terrain.isWalkable(node) || blocked.has(node)) continue; // water/walls/standing bodies
       if (!terrain.isPlantable(node)) continue; // barren ground (sand/desert/snow) — grain needs grass
       if (occupied.has(node) || claims.nodes.has(node)) continue; // taken, or claimed by a colleague
+      // A free, plantable node the farmer cannot actually walk to — the far bank of a river the radius
+      // spans, or a pocket the surrounding walls seal off. The sow node IS the walk goal, so without this
+      // the farmer re-picks the same doomed spot every replan and its whole plot goes untended behind it.
+      if (unreachableWorkCell(gates, here, node)) continue;
       if (dist < bestDist || (dist === bestDist && (best === null || node < best))) {
         best = node;
         bestDist = dist;
