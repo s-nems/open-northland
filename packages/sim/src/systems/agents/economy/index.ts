@@ -5,7 +5,7 @@
 // planProducer always own their settler once entered (a loaded / bound settler never falls through), so their
 // result carries no information.
 
-export { planBuilder } from './builder.js';
+export { planBuilder, SiteLeads } from './builder.js';
 export { planDelivery, reconcileYardRoute } from './delivery.js';
 export { planGatherer } from './gatherer.js';
 export { planCarrierHaul, planPorter } from './hauling.js';

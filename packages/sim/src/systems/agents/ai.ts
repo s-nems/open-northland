@@ -7,7 +7,6 @@ import {
   Female,
   Fleeing,
   JobAssignment,
-  Owner,
   ownerOf,
   PlayerOrder,
   Position,
@@ -29,9 +28,9 @@ import { isChild } from '../lifecycle/ageclass.js';
 import { MILITARY_MODE } from '../readviews/index.js';
 import { navigationLimitFor } from '../signposts/index.js';
 import { GossipCandidates, planGossipIdle, planGossipSeek } from '../social/index.js';
-import { canonicalById, isTravelling, NodeBuckets } from '../spatial.js';
+import { canonicalById } from '../spatial.js';
 import { collectInboundSupply, isCarrierJob } from '../stores/index.js';
-import { deStackIdle, type SpacingState } from './destack.js';
+import { deStackIdle } from './destack.js';
 import { anyNeedPressing, planNeeds } from './drives-needs.js';
 import { collectHarvestClaims } from './economy/harvest-claims.js';
 import {
@@ -42,11 +41,13 @@ import {
   planPorter,
   planProducer,
   planWorkshopSupplier,
+  SiteLeads,
   type WorkSeatClaims,
 } from './economy/index.js';
 import { collectFarmClaims, planFarmer } from './farming/index.js';
 import { navigationPlanner } from './navigation.js';
 import type { PlannerContext } from './planner-context.js';
+import { PlannerSpacing } from './planner-spacing.js';
 import { releaseStaleIntent } from './replan.js';
 import { isSleepingAtHome } from './sleep-at-home.js';
 import { boundWorkplaceTarget, collectTargets, hasHaulableOutput } from './targets/index.js';
@@ -102,15 +103,8 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
   // One shared external-food index for every housewife's hoard rung this tick (it self-builds on the
   // first woman who actually needs a source, so a woman-less or fully-stocked tick pays nothing).
   const externalFood = new ExternalFoodIndex(world, ctx, terrain);
-  // Spacing occupancy — shared by the idle de-stack rung and the builder work slots (./destack.ts): owned
-  // settlers currently stationary (not travelling — distinct from the waiting-inside `Resting` marker)
-  // bucketed by integer tile, in ascending-id order, built once from the tick-start positions so it is
-  // stable across the loop's own mutations. Gated on Owner, so the unowned golden/economy fixtures build an
-  // empty bucket set and their planner output stays byte-identical.
-  const stationaryOwned = canonicalById(world.query(Settler, Position, Owner)).filter(
-    (e) => !isTravelling(world, e),
-  );
-  const spacing: SpacingState = { occupancy: new NodeBuckets(world, stationaryOwned), claimed: new Set() };
+  // Spacing state — shared by the idle de-stack rung, the builder work slots, and the loiter yards.
+  const spacing = PlannerSpacing.forTick(world, ctx, terrain);
   // Farm claims: every farmer still WALKING to or SWINGING at a field target (its live FarmTask) plus
   // the farmers planned earlier this tick reserve their nodes — so two farmers never shadow each other
   // to the same field/sheaf/sow spot, across ticks as well as within one (see `./farming`).
@@ -127,6 +121,8 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
   const harvestClaims = collectHarvestClaims(world);
   // Gossip: the lazy chat-candidate buckets (built only when a settler actually looks for a partner).
   const gossipCandidates = new GossipCandidates(world);
+  // Construction crew leads: lazy, so a tick with no site under construction pays nothing.
+  const siteLeads = new SiteLeads(world);
 
   // Canonical settler order: the per-tick claim maps (farmClaims, seatClaims) hand out targets/seats
   // first-come-first-served, so the visit order is a pick, not a mere sweep — it must be ascending
@@ -268,7 +264,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // 2b. BUILD — a builder raises the nearest construction site of its tribe (hammer it, or fetch a
     // material it is short on); a non-builder passes through. `spacing` spreads a site's crew over
     // its construction perimeter (see ./destack.ts claimWorkCell).
-    if (planBuilder(plan, spacing)) continue;
+    if (planBuilder(plan, spacing, siteLeads)) continue;
 
     // A settler whose bound workplace is a construction site — a running upgrade — stands down instead
     // of running the remaining work rungs: its trade needs the finished workhouse (readable source:
@@ -281,7 +277,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // resumes the tick the upgrade completes.
     const boundWorkplace = world.tryGet(e, JobAssignment)?.workplace;
     if (boundWorkplace !== undefined && world.has(boundWorkplace, UnderConstruction)) {
-      deStackIdle(world, ctx, terrain, e, hereNode.hx, hereNode.hy, spacing);
+      deStackIdle(world, terrain, e, hereNode.hx, hereNode.hy, spacing);
       continue;
     }
 
@@ -296,7 +292,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // above is genuinely idle: step off a shared tile first so an idle crowd spreads out (./destack.ts),
     // then chat with a nearby idle neighbour (../social/gossip/).
     if (!planCarrierHaul(plan, anyHaulable)) {
-      if (!deStackIdle(world, ctx, terrain, e, hereNode.hx, hereNode.hy, spacing)) {
+      if (!deStackIdle(world, terrain, e, hereNode.hx, hereNode.hy, spacing)) {
         planGossipIdle(world, ctx, e, settler, hereNode.hx, hereNode.hy, gossipCandidates);
       }
     }

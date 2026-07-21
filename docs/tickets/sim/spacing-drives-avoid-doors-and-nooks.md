@@ -14,8 +14,8 @@ building; a stray body on the node `presentOperatorCount` reads) or wedged in a 
 
 Apply the same two target rules to both drives: exclude `buildingDoorNodes` (loiterCell already
 excludes only its OWN anchor) and require at least one unblocked orthogonal neighbour. Both sets are
-already built per planner tick in `SpacingState` consumers, so memoise them on `SpacingState` beside
-`blockedCells`. Keep canonical search order; expect no golden movement unless a scenario actually
+already built per planner tick in `PlannerSpacing` consumers, so memoise them on `PlannerSpacing`
+beside its `blockedCells()` view. Keep canonical search order; expect no golden movement unless a scenario actually
 rests a unit on a door/nook (if one moves, that is the intended behavior change — name it in the
 commit). Test like `evict.test.ts`'s nook cases: a stack beside a doored/U-walled fixture must fan
 out onto open cells only.

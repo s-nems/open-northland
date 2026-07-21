@@ -14,7 +14,7 @@ import {
   SLEEP_ATOMIC_ID,
   startAtomic,
 } from './actions.js';
-import type { SpacingState } from './destack.js';
+import type { PlannerSpacing } from './planner-spacing.js';
 import { restingCell } from './rest-spot.js';
 import { sleepAtHome } from './sleep-at-home.js';
 import { interactionCell, nearestFood, nearestTemple, type TargetCandidates } from './targets/index.js';
@@ -119,7 +119,7 @@ export function planNeeds(
    *  satisfier inside its allowed area (an unsatisfiable need falls through to work as ever). */
   limit: NavigationLimit | null,
   /** The planner-tick occupancy/claim state the sleep rung picks a bed out of ({@link restingCell}). */
-  spacing: SpacingState,
+  spacing: PlannerSpacing,
 ): boolean {
   const gate = limit ?? undefined;
   if (settler.hunger >= HUNGER_EAT_THRESHOLD) {

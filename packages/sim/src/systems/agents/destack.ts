@@ -1,9 +1,7 @@
 import { MoveGoal, Owner } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
-import type { SystemContext } from '../context.js';
-import { constructionWorkCells, dynamicBlockedCells } from '../footprint/index.js';
-import type { NodeBuckets } from '../spatial.js';
+import type { PlannerSpacing } from './planner-spacing.js';
 
 // The spacing drives — the two consumers of the planner-tick occupancy state:
 //  - idle spacing ({@link deStackIdle}): the last resort for a unit with nothing to do — step off a tile
@@ -11,23 +9,6 @@ import type { NodeBuckets } from '../spatial.js';
 //  - work slots ({@link claimWorkCell}): builders converging on one construction site claim distinct
 //    perimeter cells. Body collision can't do this: civilians are deliberate pass-through, and
 //    the SeparationSystem displaces only walking movers — two units standing on one node are never pushed apart.
-
-/**
- * The planner-tick spacing state, built once per tick from the tick-start positions (stable across the
- * planner loop's own mutations — deliberately not updated as units are re-tasked): `occupancy` buckets the
- * owned resting units by tile, `claimed` stops two spacing consumers choosing the same free cell,
- * `blockedCells` lazily memoises the building walk-block overlay, `constructionCells` memoises each site's
- * work perimeter, `crewLeadBySite` memoises each site's lead (lowest-id) builder, and `yards` memoises
- * completed-workplace loiter regions.
- */
-export interface SpacingState {
-  readonly occupancy: NodeBuckets;
-  readonly claimed: Set<NodeId>;
-  blockedCells?: ReadonlySet<NodeId>;
-  constructionCells?: Map<Entity, readonly NodeId[]>;
-  crewLeadBySite?: Map<Entity, Entity>;
-  yards?: Map<NodeId, ReadonlySet<NodeId>>;
-}
 
 /** Max nodes a de-stack ring search visits before giving up — a boxed-in unit simply stays put.
  *  Quadrupled with the half-cell migration: nodes are 4× denser per world area, so this cap covers
@@ -47,12 +28,11 @@ const SPACING_SEARCH_CAP = 192;
  */
 export function deStackIdle(
   world: World,
-  ctx: SystemContext,
   terrain: TerrainGraph,
   e: Entity,
   tileX: number,
   tileY: number,
-  spacing: SpacingState,
+  spacing: PlannerSpacing,
 ): boolean {
   // Only player-owned units space out. An unowned settler isn't in the owned-only `occupancy`, so the keeper
   // test below (`bucket[0] === e`) could never recognise it as the keeper — without this guard an unowned unit
@@ -61,23 +41,15 @@ export function deStackIdle(
   if (!world.has(e, Owner)) return false;
   const bucket = spacing.occupancy.at(tileX, tileY);
   if (bucket.length < 2 || bucket[0] === e) return false; // alone on the tile, or the keeper — hold ground
-  // Build the building walk-block overlay once, only when a real de-stack is attempted. Excludes a target
-  // under a standing building: routing A* would refuse a blocked goal, and a MoveGoal whose route can't
-  // resolve would freeze the unit (nothing clears a failed non-player request), so we never aim at one.
-  spacing.blockedCells ??= dynamicBlockedCells(world, ctx, terrain);
+  // Never aim at a cell under a standing building: routing A* would refuse a blocked goal, and a MoveGoal
+  // whose route can't resolve would freeze the unit (nothing clears a failed non-player request).
   const from = terrain.nodeAtClamped(tileX, tileY);
-  const free = nearestFreeCell(terrain, from, spacing.occupancy, spacing.claimed, spacing.blockedCells);
+  const free = nearestFreeCell(terrain, from, spacing);
   if (free === null) return false; // boxed in — nothing better than staying
-  spacing.claimed.add(free);
+  spacing.claim(free);
   world.add(e, MoveGoal, { cell: free });
   return true;
 }
-
-/**
- * The 4-connected radius of a completed workplace's loiter yard (4 half-cell steps ≈ two visual tiles).
- * This is a presentation tuning value, not extracted data.
- */
-const WORKPLACE_YARD_RADIUS_NODES = 4;
 
 /**
  * Claim the nearest free perimeter cell for a construction worker. A worker already alone on a legal cell
@@ -86,20 +58,13 @@ const WORKPLACE_YARD_RADIUS_NODES = 4;
  */
 export function claimWorkCell(
   world: World,
-  ctx: SystemContext,
   terrain: TerrainGraph,
   e: Entity,
   here: NodeId,
   site: Entity,
-  spacing: SpacingState,
+  spacing: PlannerSpacing,
 ): NodeId | null {
-  spacing.blockedCells ??= dynamicBlockedCells(world, ctx, terrain);
-  spacing.constructionCells ??= new Map();
-  let cells = spacing.constructionCells.get(site);
-  if (cells === undefined) {
-    cells = constructionWorkCells(world, ctx, terrain, site, spacing.blockedCells);
-    spacing.constructionCells.set(site, cells);
-  }
+  const cells = spacing.workCells(site);
   if (cells.length === 0) return null;
   if (!world.has(e, Owner)) return nearestWorkCell(terrain, cells, here);
   if (cells.includes(here)) {
@@ -108,12 +73,12 @@ export function claimWorkCell(
     if (bucket.length === 0 || (bucket.length === 1 && bucket[0] === e)) return here;
   }
   const free = nearestWorkCell(terrain, cells, here, (cell) => {
-    if (spacing.claimed.has(cell)) return false;
+    if (spacing.isClaimed(cell)) return false;
     const { x, y } = terrain.coordsOf(cell);
     return spacing.occupancy.at(x, y).length === 0;
   });
   if (free !== null) {
-    spacing.claimed.add(free);
+    spacing.claim(free);
     return free;
   }
   return nearestWorkCell(terrain, cells, here);
@@ -151,21 +116,14 @@ function nearestWorkCell(
  */
 export function loiterCell(
   world: World,
-  ctx: SystemContext,
   terrain: TerrainGraph,
   e: Entity,
   here: NodeId,
   anchor: NodeId,
-  spacing: SpacingState,
+  spacing: PlannerSpacing,
 ): NodeId {
   if (!world.has(e, Owner)) return here; // unowned fixtures never relocate (the deStackIdle Owner gate)
-  spacing.blockedCells ??= dynamicBlockedCells(world, ctx, terrain);
-  spacing.yards ??= new Map();
-  let yard = spacing.yards.get(anchor);
-  if (yard === undefined) {
-    yard = yardCells(terrain, anchor, spacing.blockedCells);
-    spacing.yards.set(anchor, yard);
-  }
+  const yard = spacing.yard(anchor);
   if (here !== anchor && yard.has(here)) {
     const hereXY = terrain.coordsOf(here);
     const bucket = spacing.occupancy.at(hereXY.x, hereXY.y);
@@ -173,40 +131,13 @@ export function loiterCell(
   }
   for (const cell of yard) {
     if (cell === anchor) continue; // the door node stays free — loiterers stand beside it
-    if (spacing.claimed.has(cell)) continue;
+    if (spacing.isClaimed(cell)) continue;
     const { x, y } = terrain.coordsOf(cell);
     if (spacing.occupancy.at(x, y).length > 0) continue;
-    spacing.claimed.add(cell);
+    spacing.claim(cell);
     return cell;
   }
   return here; // no free yard cell — stay put rather than stack on the door
-}
-
-/**
- * A workplace anchor's loiter yard: every walkable, unblocked node reachable from `anchor` within
- * {@link WORKPLACE_YARD_RADIUS_NODES} 4-connected steps, in canonical ring order (anchor first when it
- * qualifies — Set insertion order is the claim priority). Blocked cells are neither entered nor
- * traversed, mirroring the pathfinder, so the yard never spans a wall or a stream the walk
- * couldn't cross. Bounded: ≤ ~2·R² nodes visited.
- */
-function yardCells(terrain: TerrainGraph, anchor: NodeId, blocked: ReadonlySet<NodeId>): ReadonlySet<NodeId> {
-  const yard = new Set<NodeId>();
-  if (terrain.isWalkable(anchor) && !blocked.has(anchor)) yard.add(anchor);
-  const seen = new Set<NodeId>([anchor]);
-  let frontier: NodeId[] = [anchor];
-  for (let depth = 0; depth < WORKPLACE_YARD_RADIUS_NODES; depth++) {
-    const next: NodeId[] = [];
-    for (const cell of frontier) {
-      for (const n of terrain.walkableNeighbours(cell)) {
-        if (seen.has(n) || blocked.has(n)) continue;
-        seen.add(n);
-        yard.add(n);
-        next.push(n);
-      }
-    }
-    frontier = next;
-  }
-  return yard;
 }
 
 /**
@@ -217,13 +148,8 @@ function yardCells(terrain: TerrainGraph, anchor: NodeId, blocked: ReadonlySet<N
  * reachable within the cap. Blocked cells are neither entered nor traversed, mirroring the pathfinder
  * that will carry the move out.
  */
-function nearestFreeCell(
-  terrain: TerrainGraph,
-  from: NodeId,
-  occupancy: NodeBuckets,
-  claimed: ReadonlySet<NodeId>,
-  blocked: ReadonlySet<NodeId>,
-): NodeId | null {
+function nearestFreeCell(terrain: TerrainGraph, from: NodeId, spacing: PlannerSpacing): NodeId | null {
+  const blocked = spacing.blockedCells();
   const seen = new Set<NodeId>([from]);
   let frontier: NodeId[] = [from];
   let visited = 0;
@@ -235,7 +161,7 @@ function nearestFreeCell(
         seen.add(n);
         visited++;
         const { x, y } = terrain.coordsOf(n);
-        if (!claimed.has(n) && occupancy.at(x, y).length === 0) return n;
+        if (!spacing.isClaimed(n) && spacing.occupancy.at(x, y).length === 0) return n;
         next.push(n);
       }
     }
