@@ -15,9 +15,10 @@ import type { ElevationField } from '../../data/terrain/index.js';
 import { PalettedSprite } from '../paletted-sprite/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
+import { BoundsUnion, createLayerDrawBox, layerDrawBox } from './layer-box.js';
 import { isStalled, trackMotion } from './motion.js';
 import { anchorOf, boundsOf, pixelHit } from './pick.js';
-import { drawPlaceholder, PROJECTILE_FLIGHT_HEIGHT, placeholderBody } from './placeholder.js';
+import { drawPlaceholder, PROJECTILE_FLIGHT_HEIGHT, placeholderBounds } from './placeholder.js';
 import { createPooled, type EntityBounds, type PooledEntity } from './pooled-entity.js';
 import { PortraitSubject } from './portrait-subject.js';
 import { reconcileSprites } from './reconcile.js';
@@ -124,6 +125,11 @@ export class SpritePool {
   /** The details-panel portrait's force-hide/solo bookkeeping — everything the pool holds for the
    *  {@link import('../overlays/portrait-inset.js').PortraitInsetLayer} collaborator alone. */
   private readonly portrait: PortraitSubject;
+  /** Scratch accumulator for the drawn layers' box union, reset per entity so the bounds pass allocates
+   *  nothing. Never read outside the {@link bindLayers} call that fills it. */
+  private readonly layerBounds = new BoundsUnion();
+  /** Scratch for the layer geometry of the sprite being bound — refilled per layer, never retained. */
+  private readonly drawBox = createLayerDrawBox();
 
   /**
    * @param spriteLayer the renderer's shared, depth-sorted entity layer (also holds the tall map
@@ -416,11 +422,10 @@ export class SpritePool {
     // above is not rotated with it — the arrow stays level above its ground anchor and only aims.
     if (pe.kind === 'projectile') pe.placeholder.rotation = item.rotation ?? 0;
     if (item.ghost === true) return;
-    const { bodyW, bodyH } = placeholderBody(pe.kind);
-    const halfW = Math.max(9, bodyW / 2);
+    const box = placeholderBounds(pe.kind);
     const drawX = pe.motion.drawX;
     const drawY = pe.motion.drawY;
-    this.stampBounds(pe, drawX - halfW, drawY - bodyH, drawX + halfW, drawY + 5);
+    this.stampBounds(pe, drawX + box.minX, drawY + box.minY, drawX + box.maxX, drawY + box.maxY);
   }
 
   /**
@@ -443,10 +448,8 @@ export class SpritePool {
     // Accumulate the union of the drawn layers' rects (feet-local) → the entity's exact sprite bounds, in
     // world-screen space (item.x + feet-local offsets) for a mesh or a plain sprite alike, so the
     // picker/selection ring reads one consistent box regardless of how the layer was drawn.
-    let minX = Number.POSITIVE_INFINITY;
-    let minY = Number.POSITIVE_INFINITY;
-    let maxX = Number.NEGATIVE_INFINITY;
-    let maxY = Number.NEGATIVE_INFINITY;
+    const bounds = this.layerBounds;
+    bounds.reset();
     // The eased construction reveal that glides a rising building between the sim's per-swing steps —
     // computed in {@link updatePooled} (before stage selection, so the active stages and the pixel reveal
     // share it) and read straight through here.
@@ -457,9 +460,6 @@ export class SpritePool {
       // Restamped per frame beside the sprite itself: the pixel hit test must skip a cast-shadow layer
       // (clicking darkened ground beside a caster is not clicking the caster).
       pe.shadowFlags[i] = layer.shadow === true;
-      // Feet-anchored: the frame's authored draw offset, scaled about the anchor (the container origin).
-      const ox = layer.frame.offsetX * layer.scale;
-      const oy = layer.frame.offsetY * layer.scale;
       // A reveal layer with time data draws per-pixel: each pixel appears in place once the eased
       // progress, mapped into the stage's own [fromPct,toPct] window, reaches its baked TimeMask
       // threshold (the original's PrintBob_UsingTimeMask construction blit). `null` — no time data or
@@ -478,15 +478,10 @@ export class SpritePool {
               this.frameId,
             )
           : null;
-      // The crop fallback draws only the layer's bottom `displayReveal` (cropped from the top, shifted
-      // down so its base stays put) — the building rising out of the ground.
-      const hiddenTop =
-        revealTexture === null && layer.reveal !== undefined && displayReveal !== undefined
-          ? Math.round((1 - displayReveal) * layer.frame.height)
-          : 0;
-      // The layer's drawn top/height in feet-local space — cropped for a crop-reveal layer, full otherwise.
-      const drawnOy = oy + hiddenTop * layer.scale;
-      const drawnH = (layer.frame.height - hiddenTop) * layer.scale;
+      // Feet-local placement + the crop-reveal geometry (see {@link layerDrawBox}).
+      const box = this.drawBox;
+      layerDrawBox(box, layer, displayReveal, revealTexture !== null);
+      const { ox, drawnOy, hiddenTop } = box;
       if (pe.paletted && this.sheet?.palette !== undefined) {
         const lut = this.sheet.palette;
         let spr = pe.sprites[i] as PalettedSprite | undefined; // pe.paletted ⇒ every layer is a PalettedSprite
@@ -537,14 +532,7 @@ export class SpritePool {
       // An animated state overlay (the mill's rotor) draws but never moves the entity's box — its spin
       // frames breathe in size/offset, and the box feeds the selection ring + portrait framing.
       if (layer.boundsExempt === true) continue;
-      // A reveal layer stamps its full frame rect (not just the risen part): a construction site is
-      // picked over the final building's whole box, so a barely-started foundation is still clickable.
-      const boundsOy = layer.reveal !== undefined ? oy : drawnOy;
-      const boundsH = layer.reveal !== undefined ? layer.frame.height * layer.scale : drawnH;
-      if (ox < minX) minX = ox;
-      if (boundsOy < minY) minY = boundsOy;
-      if (ox + layer.frame.width * layer.scale > maxX) maxX = ox + layer.frame.width * layer.scale;
-      if (boundsOy + boundsH > maxY) maxY = boundsOy + boundsH;
+      bounds.add(ox, box.oy, ox + box.width, box.oy + box.height);
     }
     // Hide any leftover sprites from a frame that needed more layers than this one, and drop their
     // stale shadow flags with them (pixelHit skips hidden sprites, but the flag array must not
@@ -556,8 +544,14 @@ export class SpritePool {
     }
     // A fog ghost stamps no bounds: it must not be pickable — the ref may be a dead entity, and
     // click-selecting a live one through the fog would leak its current state into the details panel.
-    if (minX <= maxX && item.ghost !== true) {
-      this.stampBounds(pe, drawX + minX, drawY + minY, drawX + maxX, drawY + maxY);
+    if (!bounds.isEmpty() && item.ghost !== true) {
+      this.stampBounds(
+        pe,
+        drawX + bounds.minX,
+        drawY + bounds.minY,
+        drawX + bounds.maxX,
+        drawY + bounds.maxY,
+      );
     }
   }
 

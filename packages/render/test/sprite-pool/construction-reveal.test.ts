@@ -130,6 +130,27 @@ describe('SpritePool — construction stages track the eased reveal, not the raw
   });
 });
 
+describe('SpritePool — a rising site is picked over the finished building’s whole box', () => {
+  it('stamps the same bounds at 0% as when nearly complete', () => {
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), sheet);
+
+    // Nothing revealed yet: the stage sprite draws no pixels at all (the crop hides its full height), but
+    // the site must still be clickable over the plot it will occupy.
+    pool.reconcile(poolFrame(snapshotOf([site(0)])));
+    const stamped = pool.boundsOf(1);
+    if (stamped === undefined) throw new Error('a drawn site must stamp bounds');
+    const atStart = { ...stamped }; // copied: the pool restamps this box in place each frame
+    expect(atStart.maxY - atStart.minY).toBeGreaterThan(0);
+
+    // Let the eased reveal climb to nearly done. Bounds come from each layer's *uncropped* frame rect, so
+    // the hit box must not have grown with the rise — stamping the cropped rect instead would collapse the
+    // box at 0% and swell it as the building rose, making a fresh foundation unclickable.
+    for (let f = 0; f < 60; f++) pool.reconcile(poolFrame(snapshotOf([site(90)])));
+    expect({ ...pool.boundsOf(1) }).toEqual(atStart);
+  });
+});
+
 describe('SpritePool — an upgrade site reveals the next tier from its upgradePct, not full-frame', () => {
   it('hides the next-tier overlay at 0% (the fake source is not bakeable, so the crop fallback decides)', () => {
     const layer = new Container();

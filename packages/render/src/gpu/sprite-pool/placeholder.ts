@@ -25,6 +25,12 @@ const ARROW_LENGTH = 22;
 const ARROW_HEAD = 5;
 const ARROW_STROKE = 2;
 
+/** Half-extents (world px) of the ground footprint diamond a box placeholder stands on. The drawn diamond
+ *  ({@link drawPlaceholder}) and the box the pool stamps for it ({@link placeholderBounds}) read the same
+ *  two numbers, so the hit box cannot drift from the graphic. */
+const FOOTPRINT_HALF_W = 9;
+const FOOTPRINT_HALF_H = 5;
+
 /** How high (world px) above its ground anchor the arrow flies — roughly a settler's torso, so a shot
  *  crosses between fighters instead of skimming their feet. A drawn-look choice, tunable by eye. */
 export const PROJECTILE_FLIGHT_HEIGHT = 14;
@@ -54,11 +60,37 @@ function drawArrow(g: Graphics): Graphics {
 }
 
 /** The feet-local body dimensions the placeholder marker is drawn at, by kind (see {@link drawPlaceholder}). */
-export function placeholderBody(kind: SpriteKind): { bodyW: number; bodyH: number } {
+function placeholderBody(kind: SpriteKind): { bodyW: number; bodyH: number } {
   if (kind === 'building') return { bodyW: 28, bodyH: 40 };
   if (kind === 'stockpile') return { bodyW: 20, bodyH: 12 }; // a low, wide heap/flag base
   if (kind === 'projectile') return { bodyW: ARROW_LENGTH, bodyH: ARROW_HEAD }; // the arrow's own extent
   return { bodyW: 14, bodyH: 24 };
+}
+
+export interface PlaceholderBounds {
+  readonly minX: number;
+  readonly minY: number;
+  readonly maxX: number;
+  readonly maxY: number;
+}
+
+/** Cached per kind: the pool asks every frame it draws a placeholder, and the box depends only on `kind`. */
+const boundsByKind = new Map<SpriteKind, PlaceholderBounds>();
+
+/**
+ * The feet-local box a placeholder marker occupies: its body box widened to at least the ground footprint
+ * diamond it stands on, and floored at the diamond's lower tip — so an unbound entity is clickable over
+ * the marker {@link drawPlaceholder} actually draws.
+ */
+export function placeholderBounds(kind: SpriteKind): PlaceholderBounds {
+  let box = boundsByKind.get(kind);
+  if (box === undefined) {
+    const { bodyW, bodyH } = placeholderBody(kind);
+    const halfW = Math.max(FOOTPRINT_HALF_W, bodyW / 2);
+    box = { minX: -halfW, minY: -bodyH, maxX: halfW, maxY: FOOTPRINT_HALF_H };
+    boundsByKind.set(kind, box);
+  }
+  return box;
 }
 
 /**
@@ -71,7 +103,12 @@ export function drawPlaceholder(g: Graphics, kind: SpriteKind): Graphics {
   if (kind === 'projectile') return drawArrow(g); // an arrow, not a box — rotated to its flight heading
   const colour = KIND_COLOURS[kind];
   const { bodyW, bodyH } = placeholderBody(kind);
-  g.moveTo(0, -5).lineTo(9, 0).lineTo(0, 5).lineTo(-9, 0).closePath().fill({ color: 0x000000, alpha: 0.3 });
+  g.moveTo(0, -FOOTPRINT_HALF_H)
+    .lineTo(FOOTPRINT_HALF_W, 0)
+    .lineTo(0, FOOTPRINT_HALF_H)
+    .lineTo(-FOOTPRINT_HALF_W, 0)
+    .closePath()
+    .fill({ color: 0x000000, alpha: 0.3 });
   g.rect(-bodyW / 2, -bodyH, bodyW, bodyH)
     .fill({ color: colour })
     .stroke({ color: 0x000000, width: 1, alpha: 0.5 });

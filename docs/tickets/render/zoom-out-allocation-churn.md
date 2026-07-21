@@ -24,6 +24,13 @@ sites that surfaced):
   instruction-set rebuilds scaling with visible mesh count.
 - `takeSnapshot`/`cloneEntity` (`packages/sim/src/inspect/snapshot.ts`) — the per-frame snapshot
   clone; verify it is not re-cloning unchanged stores.
+- The sprite pool's per-visible-entity garbage, which scales with the zoom-out exactly as the measured
+  churn does (read, not profiled — weigh it before acting): `updatePooled`
+  (`packages/render/src/gpu/sprite-pool/sprite-pool.ts`) spreads a fresh `DrawItem` for a stalled or
+  repathing settler and again for every construction/upgrade site each frame, and `resolveLayers`
+  (`resolve-layers.ts`) mints a fresh array plus a layer object per layer per entity per frame. The
+  class doc's "the steady state mints nothing" is therefore not true today — correct the claim or the
+  code. `layer-box.ts` shows the fill-a-caller-owned-scratch shape this would follow.
 
 ## Verify
 
