@@ -12,6 +12,7 @@ import {
 } from '../src/data/effects/index.js';
 import { readHpFraction } from '../src/data/scene/snapshot-readers/index.js';
 import { DamageSmokeLayer } from '../src/gpu/overlays/damage-smoke-layer.js';
+import type { DrawnGeometry } from '../src/gpu/sprite-pool/index.js';
 
 /**
  * Damage smoke is a pure function of a building's CURRENT HP fraction: each fifth of the pool lost adds a
@@ -111,27 +112,28 @@ describe('smokePuff — deterministic rising, swelling, thinning loop', () => {
 
 describe('DamageSmokeLayer', () => {
   const bounds = { minX: -20, minY: -60, maxX: 20, maxY: 0 };
+  const drawn: DrawnGeometry = { boundsOf: () => bounds, anchorOf: () => undefined };
 
   it('shows one plume per crossed damage step and sheds them when HP rises', () => {
     const layer = new DamageSmokeLayer();
-    layer.draw([{ ref: 5, hpFrac: 0.5 }], () => bounds, 0);
+    layer.draw([{ ref: 5, hpFrac: 0.5 }], drawn, 0);
     expect(layer.container.children).toHaveLength(1);
     const node = layer.container.children[0] as Container;
     const visiblePlumes = () => (node.children as Container[]).filter((c) => c.visible).length;
     expect(visiblePlumes()).toBe(2); // half the pool gone → two plumes
 
-    layer.draw([{ ref: 5, hpFrac: 0.1 }], () => bounds, 1);
+    layer.draw([{ ref: 5, hpFrac: 0.1 }], drawn, 1);
     expect(visiblePlumes()).toBe(MAX_SMOKE_EMITTERS); // battered → full smoke
 
-    layer.draw([{ ref: 5, hpFrac: 0.9 }], () => bounds, 2);
+    layer.draw([{ ref: 5, hpFrac: 0.9 }], drawn, 2);
     expect(layer.container.children).toHaveLength(0); // repaired above the first threshold — retired
   });
 
   it('retires the node when the building leaves the damaged list (razed or scrolled out)', () => {
     const layer = new DamageSmokeLayer();
-    layer.draw([{ ref: 5, hpFrac: 0.2 }], () => bounds, 0);
+    layer.draw([{ ref: 5, hpFrac: 0.2 }], drawn, 0);
     expect(layer.container.children).toHaveLength(1);
-    layer.draw([], () => bounds, 1);
+    layer.draw([], drawn, 1);
     expect(layer.container.children).toHaveLength(0);
   });
 });

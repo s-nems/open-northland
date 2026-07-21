@@ -11,6 +11,17 @@ import type { EntityBounds, PooledEntity } from './pooled-entity.js';
  */
 
 /**
+ * The geometry of the sprites the pool drew, as of its last
+ * {@link import('./sprite-pool.js').SpritePool.reconcile} — implemented by the pool itself. An overlay
+ * that rides the drawn (inter-tick lerped, terrain-lifted) sprites reads it, so it must draw after that
+ * reconcile and must not hold the answers past the frame.
+ */
+export interface DrawnGeometry {
+  readonly boundsOf: (ref: number) => EntityBounds | undefined;
+  readonly anchorOf: (ref: number) => { x: number; y: number } | undefined;
+}
+
+/**
  * The world-space bounding box of an entity's sprite as drawn last frame, or `undefined` if it wasn't
  * drawn (off-screen / not in the snapshot). The picker uses it for an exact "click the graphic" hit test
  * and the selection ring to size a building marker to its actual footprint — see {@link EntityBounds}.
