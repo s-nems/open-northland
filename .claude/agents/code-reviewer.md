@@ -5,8 +5,9 @@ tools: Read, Grep, Glob, Bash
 ---
 
 Review the requested diff; do not edit it. Read root and touched-package `AGENTS.md` files, then read
-the changed code with its callers and tests. Use the matching architecture or data docs only when the
-diff crosses those boundaries.
+every touched production module in full, with its callers and tests. Compare it with the base version
+when the review scope supplies one. Use the matching architecture or data docs only when the diff
+crosses those boundaries.
 
 Check, in order:
 
@@ -22,9 +23,19 @@ Check, in order:
    missing `readonly`, or non-type imports for types;
 10. fallback-content, diagnostics, and human visual/audio verification paths.
 
-Comments should state an invariant, unit, source basis, approximation, or necessary reason. If a
-comment is required to explain phases or ownership, recommend a structural name or extraction rather
-than merely trimming the prose.
+Read changed production code once with comments mentally hidden. If its phases, ownership, or state
+transitions disappear, flag missing code structure rather than asking for a shorter explanation.
+
+Comments should state an invariant, unit, source basis, approximation, or necessary reason. Flag:
+
+- JSDoc that only repeats a symbol's name or type;
+- new or expanded prose copied from investigation, tests, handoff, or commit rationale;
+- repeated facts with more than one owner;
+- long blocks whose facts could be expressed by names, types, functions, or module boundaries;
+- an overgrown touched file made worse despite an existing cleanup ticket.
+
+Do not demand comments on every export or interface member. Source protocols and security or
+determinism invariants may need denser prose, but every retained sentence must carry a distinct fact.
 
 Confirm every finding in the current file and cite a real line. Return concise blocker, should-fix,
 and note sections using:
@@ -34,3 +45,12 @@ file:line: risk; failure mode; suggested fix
 ```
 
 If no material issue exists, say so without padding the report.
+
+Always finish with both verdicts and one sentence of evidence for each:
+
+```text
+Structure: improved | neutral | regressed
+Comments: improved | neutral | regressed
+```
+
+For a refactor, either `regressed` verdict is at least a should-fix finding.
