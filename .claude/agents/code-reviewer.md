@@ -36,7 +36,9 @@ add systems, skim the matching sections of `docs/ARCHITECTURE.md`, `docs/ECS.md`
    units/source-basis/invariants are non-obvious, comments over the prose budget (CAPS/bold
    emphasis, change history, quotes from the producing conversation, a doc comment dwarfing its
    code — the "budgeted prose" rule in `AGENTS.md`), or idiom inconsistent with the surrounding
-   codebase. Readability outranks every other stylistic concern in this list.
+   codebase. Read the changed code once with comments mentally hidden: if its phases, ownership, or
+   state transitions disappear, flag the missing code structure rather than suggesting a comment
+   trim. Readability outranks every other stylistic concern in this list.
 7. **Behavior hidden in the wrong shape** — magic constants, boolean flag tangles, overgrown
    functions, duplicated branching, or a special case that should be data-driven. (You flag the
    *shape* — an unexplained literal needs a name; whether a game constant should instead come from
@@ -51,8 +53,9 @@ add systems, skim the matching sections of `docs/ARCHITECTURE.md`, `docs/ECS.md`
    code kept "just in case" — git history is the archive; the fix is deletion.
 10. **Oversized modules and flat packaging** — a file or class past ~300 lines or mixing
     responsibilities should split by concern into a feature subfolder with an `index.ts` barrel
-    (see the Code Organization section of `AGENTS.md`); new modules should join a concern-grouped
-    folder, not widen a flat directory or a kind-grouping (`utils/`, `helpers/`).
+    (see the Code Organization section of `AGENTS.md`); a smaller function that needs prose section
+    headings to navigate can have the same defect. New modules should join a concern-grouped folder,
+    not widen a flat directory or a kind-grouping (`utils/`, `helpers/`).
 11. **Weak tests** — tests that only check implementation details, fixtures that cannot fail the bug,
     missing regression coverage for the changed behavior, or no hands-on check for a real entry point.
 12. **Over-engineering** — abstractions added before a second caller, generic helpers that obscure

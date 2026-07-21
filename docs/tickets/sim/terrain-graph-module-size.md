@@ -30,5 +30,5 @@ The module now mixes:
 
 ## Done when
 
-- No module in `nav/terrain/` is meaningfully over the budget, `npm run scan:structure` agrees, and
-  `npm test` is green with **zero golden movement** (a moved golden means the arithmetic changed).
+- No module in `nav/terrain/` is meaningfully over the budget, each file owns one terrain concern,
+  and `npm test` is green with **zero golden movement** (a moved golden means the arithmetic changed).

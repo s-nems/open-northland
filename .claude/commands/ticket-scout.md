@@ -21,7 +21,9 @@ the whole repo at coarse granularity; with a scope, go deep in it.
 
 Spawn parallel subagents (one message), each on a different signal, scoped to the scope:
 
-- **Structure** — run `npm run scan:structure`; overgrown modules, flat directories, mixed concerns.
+- **Structure** — read the scoped modules and their callers; look for mixed responsibilities,
+  orchestration functions that need prose section headings, and flat directories whose files do not
+  form one cohesive feature.
 - **Marked debt** — grep for TODO / FIXME / placeholder / stub / "deferred" / "follow-up" /
   "APPROXIMAT" comments; each is a claim that work exists — verify it still does.
 - **Scaling** — per-tick sim or per-frame render code whose cost grows with the world instead of

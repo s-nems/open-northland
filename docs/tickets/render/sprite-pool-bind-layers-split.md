@@ -36,5 +36,5 @@ folder's shape stays coherent. Standalone it is churn.
 ## Verify
 
 `npm run build`, `npm test` (sprite-pool, reconcile, motion, scene suites — all under `test/sprite-pool/`),
-`npm run check`, `npm run scan:structure` (sprite-pool.ts should drop under ~300). Behaviour-preserving —
-no golden moves. Bodies move verbatim; any rename rides its own hunk.
+`npm run check`; re-read both resulting modules to confirm each owns one of the two responsibilities
+above. Behaviour-preserving — no golden moves. Bodies move verbatim; any rename rides its own hunk.

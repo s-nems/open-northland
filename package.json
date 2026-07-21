@@ -31,7 +31,6 @@
     "dev": "npm run dev --workspace @open-northland/app",
     "dev:ports": "scripts/dev-ports.sh",
     "dev:reset": "scripts/dev-reset.sh",
-    "scan:structure": "node scripts/structure-scan.mjs",
     "shot": "npm run shot --workspace @open-northland/app --",
     "pipeline": "npm run start --workspace @open-northland/asset-pipeline --"
   },
