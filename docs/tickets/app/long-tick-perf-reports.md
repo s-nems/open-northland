@@ -3,14 +3,12 @@
 **Area:** app · **Origin:** diagnostics follow-up 2026-07-16 · **Priority:** P2
 
 The perf paths so far are pull-only: DevTools marks and the trace ring need the right `?debug=`
-flag on *before* the problem. But the common tester report is "it stuttered" with no flag on — and
-the diagnostics bundle they download carries no perf evidence. OpenRA's answer is `PerfTickLogger`:
-any world tick over a threshold writes a per-trait ms breakdown to the ordinary `perf` log channel,
-so slow moments self-document in every log. Ours can do the same for near-free: the frame loop
+flag on *before* the problem. But the common tester report is "it stuttered" with no flag on, and
+the diagnostics bundle they download carries no perf evidence. Slow frames can instead write a
+rate-limited timing breakdown to the ordinary diagnostic ring. The frame loop
 already times sim/snapshot/draw every frame, and `Simulation.setInstrument` gives per-system ms.
 
-Source basis: none needed — self-consistency tooling (OpenRA's PerfTickLogger is the pattern, not
-a fidelity target).
+Source basis: self-consistency tooling, not a game-fidelity claim.
 
 ## Scope
 

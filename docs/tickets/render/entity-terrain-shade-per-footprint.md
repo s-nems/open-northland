@@ -1,15 +1,15 @@
 # Decide whether buildings/settlers should shade to terrain (and how)
 
-**Area:** render + human eyes · **Origin:** shadowed-buildings fix, 2026-07-18 · **Priority:** P4
+**Area:** render + human eyes · **Origin:** shadowed-buildings fix, 2026-07-18 · **Priority:** P3
 
 **Needs user:** requires an A/B judgement against the running original.
 
 The per-entity feet-anchor shading enhancement (`DrawItem.shade`) was removed because it multiplied a
 whole sprite by the brightness of the single cell under its feet, which blackened large building
 footprints standing on baked slope-shadow (e.g. `boso_przez_swiat`: 3 of 4 coin mints on `embr≈60` →
-×0.47, 16% of buildings below ×0.85). Buildings/settlers now draw unshaded — the source basis is the
-original's normal bob-print core (`CBobManager.PrintBob_8BitCore`/`PrintBob_DoubleByteCore`) taking no
-brightness argument, while only landscape objects fold shade into their alpha blit.
+×0.47, 16% of buildings below ×0.85). Buildings/settlers now draw unshaded. A local binary probe
+indicates that normal body drawing takes no brightness argument, while landscape objects use terrain
+shade in their alpha blend; direct observation is still required.
 
 Two things are still open and unmeasured:
 

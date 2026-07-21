@@ -7,7 +7,7 @@ import { readStockpileAmounts } from '../snapshot/index.js';
  * layer lays out as text + bars.
  *
  * It re-derives the aggregates of the sim's own read views (`tribeStocks`/`tribePopulation`/
- * `tribePopulationByJob`) from the frozen snapshot rather than calling them, because `render` must
+ * `tribePopulationByJob`) from the read-only snapshot rather than calling them, because `render` must
  * never read the live component stores (docs/ARCHITECTURE.md). The snapshot is taken at a tick
  * boundary, and counts/sums are order-independent, so the values match the sim views by construction.
  */

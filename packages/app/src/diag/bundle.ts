@@ -7,9 +7,8 @@
  * trip `test/diag-bundle.test.ts` pins). The rest (log ring, environment header, recorded hashes) is
  * context around that payload.
  *
- * The same shape is `{seed, contentVersion, map, commandLog}` territory as the future save format
- * (docs/tickets/features/save-load-game.md) — whichever lands a persisted format second reuses the
- * first's, so the two never drift.
+ * A future save format can reuse this identity and command metadata, but must also persist state for a
+ * practical load time (docs/tickets/features/save-load-game.md).
  */
 import type { LoggedCommand } from '@open-northland/sim';
 import { downloadJsonFile } from './download.js';

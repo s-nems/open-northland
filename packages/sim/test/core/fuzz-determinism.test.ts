@@ -14,26 +14,9 @@ import { testContent } from '../fixtures/content.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
- * COMMAND-STREAM FUZZ — the "desync hunter" the golden tests can't be. The goldens pin ONE curated
- * scenario; nondeterminism and command-validation bugs hide in the input space they never
- * construct. This suite drives the real `step()` schedule with SEEDED-RANDOM command streams —
- * including deliberately INVALID commands (unknown type ids, stale/wrong-kind entity targets,
- * tech-gated placements) — and asserts the three properties every stream must hold:
- *
- *  1. **run-twice determinism** — two live runs from the same seeds are byte-identical, checked at
- *     hash checkpoints through the run (not just the end, so a divergence names its window);
- *  2. **replay fidelity** — replaying the recorded command log reproduces the live run's final hash
- *     (the log really IS the save format, for arbitrary streams, skipped-bad-commands included);
- *  3. **invariants + cache coherence every tick** — no stream may drive the world into an invalid
- *     state, and every incrementally-maintained cache re-derives clean (`cachesCoherent`).
- *
- * Invalid commands are IN the stream on purpose: in lockstep any peer can send anything, and a
- * command's target can die between issue and apply — rejection must happen at EXECUTION time,
- * deterministically and identically on every peer, so the fuzzer exercises the skip paths as
- * first-class inputs.
- *
- * The generator is a pure function of its OWN Rng (never of world state): both live runs and the
- * replay see byte-identical streams by construction, and a failure reproduces from the fuzz seed.
+ * Seeded command-stream fuzz covers input combinations that curated goldens miss. It checks
+ * run-twice hashes, command replay, invariants, and cache coherence. Invalid commands are included so
+ * stale targets and rejected orders remain deterministic; generation depends only on its own RNG.
  */
 
 const VIKING = 1;

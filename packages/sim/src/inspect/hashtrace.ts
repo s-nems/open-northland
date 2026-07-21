@@ -17,7 +17,7 @@ import type { WorldSnapshot } from './snapshot.js';
  * The hash window is cheap (a tick number + an 8-char string per entry) so it can be large; the optional
  * snapshot window is heavy (a full cloned world per entry) so it has its own, smaller cap — recent snapshots
  * let the overlay dump an entity at a recent tick without a `replay()`, while older ticks fall back to
- * `replay()` from the (unbounded) command log, which remains the authoritative save/replay record.
+ * `replay()` from the command log.
  *
  * Eviction shifts the backing array, so a full trace costs O(hashCapacity) per record — fine for the
  * inspector's throttled, debug-gated recording, but this is not a ring buffer: don't put `record` on an

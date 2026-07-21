@@ -19,6 +19,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm run check:assets # reject original, decoded, or unreviewed binary assets (dependency-free)
+      - run: npm run check:docs # validate local links, commands, and ticket metadata (dependency-free)
       - run: npm ci
       - run: npm run check # biome lint + format check
 

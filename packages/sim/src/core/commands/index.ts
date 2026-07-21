@@ -7,8 +7,8 @@ import type { UnitOrderCommand } from './unit-orders.js';
 export type { SettlerEquipment, SettlerEquipmentSlot } from './spawn.js';
 
 /**
- * Player commands are the ONLY way sim state mutates (CommandSystem applies them). They must be
- * serializable (a save is a command log; lockstep MP exchanges them) and exhaustively handled.
+ * Commands are the serializable external inputs applied by CommandSystem. Systems perform the internal
+ * world updates. Commands remain serializable for replay diagnostics and possible future lockstep input.
  *
  * Every `(x, y)` payload is a HALF-CELL node address on the `2W×2H` navigation lattice
  * (`nav/halfcell.ts`) — the original's logic grid, the same space `map.cif` placements and footprint

@@ -1,4 +1,4 @@
-# Trim duplicated unit-order command contracts
+# Simplify duplicated unit-order command contracts
 
 **Area:** sim · **Origin:** workflow readability audit, 2026-07-21 · **Priority:** P3
 
@@ -12,8 +12,8 @@ caller-visible semantics that cannot be inferred from a variant's fields remain 
 
 ## Scope
 
-- Run the `/trim-comments` classification over `core/commands/unit-orders.ts` and the corresponding
-  handler docs in `systems/orders/` to identify duplicated facts.
+- Run `/refactor-cleanup packages/sim/src/core/commands/unit-orders.ts readability` and compare the
+  command contracts with the corresponding handler docs in `systems/orders/`.
 - Keep each command variant's intent, non-obvious payload meaning, source basis, and caller-visible
   persistence/cancellation semantics concise at the command boundary.
 - Delete handler walkthroughs, exhaustive guard lists already pinned by handler tests, repeated

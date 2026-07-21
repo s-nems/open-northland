@@ -1,180 +1,87 @@
 ---
-description: Execute a user-specified OpenNorthland task in an isolated git worktree, verify it, close its ticket, wait for approval, then review and fast-forward merge.
-argument-hint: <task or docs/tickets/<folder>/<name>.md>
+description: Execute one requested task in an isolated worktree, verify it, wait for approval, then fast-forward merge.
+argument-hint: <task or docs/tickets/<area>/<name>.md>
 ---
 
-You are running the **primary OpenNorthland workflow**. Work items live as tickets under `docs/tickets/`
-(one file = one task) and the user manually invokes `/worktree` for one task at a time. Execute the
-requested scope faithfully in an isolated git worktree, report for manual verification, and merge
-only after the user explicitly says to merge.
+# Worktree workflow
 
-The task from the invocation: **$ARGUMENTS**. If it is empty, ask for the task before doing anything.
+Execute `$ARGUMENTS` and nothing broader. If it is empty, ask for a task. Read `AGENTS.md` and the
+contracts for packages you touch.
 
-Hard rules:
-- Read `AGENTS.md` before editing. Load package-local `AGENTS.md` only for packages you touch.
-- The user's task/ticket is authoritative. Do not substitute your own next step or pull adjacent work.
-- Never edit the primary checkout until the final merge step. Derive its path from Git; do not
-  hardcode a machine-specific location.
-- Never merge without explicit user approval.
-- Before merge, close the executed ticket so progress survives across worktree sessions — and file
-  NEW tickets for real work you discovered but deferred.
+Never edit the primary checkout before merge. Never merge without explicit user approval.
 
-## 1. Create the Worktree
+## 1. Create the worktree
 
-- Find the shared repository and primary checkout without assuming where the user cloned it:
-  `git_common_dir=$(git rev-parse --path-format=absolute --git-common-dir)` and
-  `primary_root=$(dirname "$git_common_dir")`. Record these paths for the whole workflow.
-- Derive a short kebab-case slug. Branch name: `feat/<slug>` or the honest conventional type
-  (`fix/<slug>`, `refactor/<slug>`, `docs/<slug>`). Put the worktree beside the primary checkout:
-  `worktree_path="$(dirname "$primary_root")/$(basename "$primary_root")-$slug"`.
-- Create it from `main`, regardless of the primary checkout's current branch:
-  `git -C "$primary_root" worktree add "$worktree_path" -b "$branch" main`.
-- If the requested branch already has a linked worktree, verify it is for this task and reuse that
-  path. Never create a second worktree for the same branch or silently delete an existing one.
-- Switch this session into that path with the available worktree/session tool.
-- Provision gitignored local state if missing:
-  - `npm install`
-  - `npm run build` (workspace packages export `dist/`, so a fresh worktree needs one build before
-    its first test run)
-  - clone real generated content from the primary checkout when needed:
-    `cp -Rc "$primary_root/content/." "$worktree_path/content"`. Do not symlink `content/`; the
-    pipeline writes in place.
-  - copy `.claude/settings.local.json` from the primary checkout if the local Claude session needs it.
+Confirm the primary checkout has no operation in progress. Preserve any user changes there.
 
-## 2. Understand the Step
+Derive paths from Git:
 
-- If `$ARGUMENTS` names a ticket (`docs/tickets/<folder>/<name>.md`), open it and identify exactly
-  one task to execute.
-- Re-check factual claims against source files before coding. Tickets are research notes, not
-  ground truth.
-- For a code task, read the touched production files and their real callers before editing. Identify
-  their responsibility boundaries, whether comments are supplying missing structure, and whether
-  the requested change would extend an already mixed or overgrown module.
-- If the step is already done, impossible, or contradicted by code/source reality, stop at the
-  smallest safe point and report the deviation. The user decides the new scope.
+```bash
+git_common_dir=$(git rev-parse --path-format=absolute --git-common-dir)
+primary_root=$(dirname "$git_common_dir")
+```
 
-## 3. Do the Work
+Choose a short slug and an honest branch prefix such as `feat/`, `fix/`, `refactor/`, or `docs/`.
+Create a sibling worktree from current `main` and run `npm ci` inside it. If the branch or worktree
+already exists, inspect it before deciding whether this is a resume or a collision.
 
-- Keep edits scoped to the requested step.
-- Apply the touched-file ratchet from `AGENTS.md`: new behavior must not lengthen an already
-  overgrown orchestration function or add another narrative comment section. Extract a concern that
-  belongs to this task; file a bounded ticket for a wider structural repair that does not.
-- A comment may retain source basis, an invariant, a unit, an approximation, or why the obvious
-  implementation is wrong. If it merely labels a phase or explains the following branch, make the
-  code carry that fact through a domain name, function, type, or module boundary.
-- Mechanics and extracted data must name their source basis in the changed code, tests, ticket, or
-  commit message: extracted `.ini`/`.cif` data, byte-level evidence from owned files, a published
-  specification, or observation of the running original. If behavior is approximated, say what is
-  approximated and why.
-- Do not create new running ledgers for lessons, tech debt, fidelity, or roadmap state. Durable rules
-  belong in `AGENTS.md` or package-local `AGENTS.md`; planned future work is a ticket under
-  `docs/tickets/` (one self-contained task per file — see `docs/tickets/README.md`).
+## 2. Verify the task
 
-## 4. Verify
+If the task is a ticket, read it and confirm its claims against current code and allowed source
+evidence. Correct stale research in the ticket rather than implementing a false premise.
 
-Run the gates that match the change, and do not fake them:
-- Normal code path: `npm test`, `npm run check`, `npm run build`.
-- Real-content path: when the change consumes real content (loaders, id joins, merge overlays,
-  content-driven UI tables) and the worktree has `content/`, run `npm run test:content` — it
-  hard-fails without generated content instead of skipping (docs/TESTING.md "Real-content test modes").
-- Pipeline/data path: when extraction output or schema behavior changes, run `npm run test:pipeline`
-  (a fresh pipeline run against the owned game copy into a throwaway dir, validated by the
-  real-content suite). Refresh the checkout's content with
-  `npm run pipeline -- --game "../Cultures 8th Wonder" --out content` when the new
-  output should land in `content/`.
-- Player-visible or visual path: start the dev server from the worktree on a non-5173 port, use the
-  actual printed URL, exercise the relevant scene/page, and report the URL plus a short checklist for
-  the user. Visual and audio correctness require the user's sign-off.
-- Before surfacing anything visual, look at a screenshot yourself (`npm run shot`, or a headless
-  capture of the scene URL) and fix gross breakage — blank canvas, missing sprites, console errors.
-  The user's eyes are for fidelity and feel, never for catching a broken page.
+Inspect callers, tests, dependency direction, and existing patterns. State a short implementation
+plan and any required human verification. Do not pull adjacent ticket work into the branch.
 
-Before the first commit, run the readability gate over the working diff:
-- Read the changed production code with its comments mentally hidden. Its responsibilities and
-  control flow must still be clear from names, types, and boundaries.
-- Re-read every touched module in full, not only the diff. Confirm that the change did not add a
-  second responsibility, lengthen an already overgrown orchestration path, or use comments as phase
-  labels. If a wider repair is out of scope, leave the file no worse and file a bounded ticket.
-- For every code diff, run the `code-reviewer` lens now and triage its readability, shape, TypeScript,
-  and architecture findings before handoff. This is the narrow pre-handoff review; conditional
-  engine/gameplay/correctness lenses remain deferred until the user approves the result.
+## 3. Implement and test
 
-## 5. Commit
+Make the smallest complete change. Add the lowest useful regression test. Keep the worktree usable
+after each coherent patch.
 
-- Commit on the branch. Use Conventional Commits, imperative and capitalized, with no AI attribution.
-  Stage only this task's files.
-- Do **not** run the remaining review battery yet. The baseline code-quality lens ran before this
-  commit; the conditional engine/gameplay/correctness lenses run in step 8, after the user approves
-  the change and says to merge.
+Run focused tests while working, then the matching gates from `AGENTS.md` and `docs/TESTING.md`.
+Pipeline and real-content gates remain local-only requirements when their scope applies.
 
-## 6. Update the Tracker Before Handoff
+## 4. Review the diff
 
-Do this **in this branch before asking to merge**:
-- If the task came from a ticket: **delete the ticket file in the completing commit** (git history
-  is the archive — no done-markers, no moved files). If the task deviated or completed partially,
-  rewrite the ticket to exactly the remaining work instead of deleting it.
-- **File new tickets for deferred discoveries**: anything real found during the work or its review
-  that is deliberately NOT being done on this branch (an out-of-scope refactor, a perf seam, a
-  follow-up the reviewers flagged) becomes `docs/tickets/<folder>/<name>.md` — self-contained per
-  `docs/tickets/README.md`, committed on this branch. Deferred work named only in the final report
-  is work lost.
+Run the applicable lenses from `/audit` before handoff. Triage findings against the source and fix
+agreed blockers and should-fix items. Repeat focused verification after fixes.
 
-If no ticket file was involved, state that explicitly in the report. Do not invent one unless the
-user asked for it.
+For visual or audio work, prepare the exact scene, URL, screenshot, or listening path for the user.
+Do not self-approve pixels or sound.
 
-## 7. Stop and Report
+## 5. Close the tracker and commit
 
-Report and wait:
-- what was done against the requested task,
-- tests/build/pipeline/hands-on evidence,
-- visual/audio approval URL and checklist if relevant,
-- branch and worktree names,
-- the tracker update you committed (ticket closed / rewritten, new deferred tickets filed), or "no
-  ticket file involved".
+Before the completing commit:
 
-Stop here. If the user requests changes, continue in the same worktree. If the user says to merge,
-continue below — the review battery runs then, not before.
+- delete a finished ticket;
+- rewrite a partial ticket to only the remaining work;
+- file only verified, valuable deferred findings, after deduping.
 
-## 8. Review and Merge After Explicit Approval
+Re-read the full diff, run `git diff --check`, and commit with the repository's Conventional Commit
+style. The completing commit must include the final tracker state.
 
-First run the review battery, now that the user has approved the work:
-- Run it over `git diff main...HEAD`: spawn the applicable lenses **in parallel, one message**,
-  selected exactly as `.claude/commands/audit.md` step 2 defines them (engine / gameplay, plus a
-  general correctness pass only when no named lens covers the main risk). Pass each the exact range.
-- The `code-reviewer` baseline already ran before handoff. Re-run it only when the diff changed after
-  that review (user-requested fixes, conflict resolution, or rebase changes); a changed final diff
-  must never merge on a stale review. Select the other lenses by what the diff actually touches —
-  do **not** default to the full battery; each extra reviewer is a real token cost and produces noise
-  findings outside its lens. State which lenses you skipped and why.
-- Triage the findings yourself: re-read the cited code before accepting or dismissing a finding —
-  reviewers are wrong in both directions. Fix real in-scope issues, re-run affected gates, and
-  commit the fixes. If a fix changes user-visible behavior, report it and wait for a fresh go-ahead
-  instead of merging.
-- Findings that are real but deliberately deferred (out of scope, a wider refactor, a future-scale
-  concern) do not evaporate into the report: file each as a self-contained ticket under
-  `docs/tickets/` on this branch before merging (see step 6).
+## 6. Handoff
 
-Then merge:
-- Re-read `main`; parallel work may have landed.
-- In the worktree, run `git rebase main`. Resolve conflicts there.
-- If conflicts or main changes touched this area, re-run the relevant gates and refresh the tracker
-  update if the outcome changed. The branch must still include the final tracker update (step 6)
-  before merge.
-- Fast-forward `main`:
-  - If the primary checkout is clean on `main`: `git -C "$primary_root" merge --ff-only "$branch"`.
-  - If the primary checkout is on another branch: from the worktree, `git fetch . <branch>:main`.
-  - If the primary checkout is dirty on `main`: stop and report. Do not stash or reset it.
-- If the pipeline output changed, regenerate primary `content/` from the primary checkout after merge.
+Report the branch, commit(s), changed behavior, checks, review result, and exact human verification.
+Then stop and wait. Do not merge on implied approval.
 
-## 9. Cleanup
+## 7. Refresh and merge after approval
 
-- Stop processes started by this workflow.
-- Verify `git merge-base --is-ancestor <branch> main`.
-- Exit the worktree session, then remove the worktree and branch:
-  `git -C "$primary_root" worktree remove "$worktree_path"`
-  `git -C "$primary_root" branch -d "$branch"`
-- Final report: merged commits, removed worktree/branch/processes, and any primary `content/`
-  regeneration summary.
+Fetch current `main` and rebase the task branch onto it. Resolve conflicts inside the worktree. If the
+effective diff changed, rerun relevant checks and review the changed parts before merging.
 
-**Abandoning:** if the user says to drop the work, confirm once, remove the worktree, and delete the
-branch with `git branch -D <branch>`.
+Fast-forward `main` only:
+
+- clean primary checkout on `main`: `git -C "$primary_root" merge --ff-only <branch>`;
+- primary checkout on another branch: update `main` without changing that checkout;
+- dirty primary checkout on `main`: stop and ask the user to clear or preserve it.
+
+Never stash, reset, or overwrite primary changes.
+
+## 8. Clean up
+
+Stop processes started by the workflow. Confirm the branch is an ancestor of `main`, remove the
+worktree, then delete the merged branch. Report the merged commits and cleanup result.
+
+If the user abandons the task, confirm before removing the worktree and force-deleting an unmerged
+branch.

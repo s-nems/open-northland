@@ -1,9 +1,6 @@
-# /audit — report-only review battery
+# /audit: report-only review
 
-Follow `.claude/commands/audit.md` — the canonical workflow prose for every tool, not Claude-only
-config. Text typed after `/audit` is its `$ARGUMENTS`.
+Follow `.claude/commands/audit.md` and treat text after `/audit` as `$ARGUMENTS`.
 
-Cursor has no subagents: where the workflow spawns named reviewer agents, apply each applicable
-lens yourself, one at a time — the lens definitions are plain-markdown checklists under
-`.claude/agents/` (the general correctness pass has no checklist file — apply it directly).
-Lens selection, ranking, and the report format are unchanged.
+Cursor does not run the named review agents. Apply each relevant checklist from `.claude/agents/`
+yourself, then use the same ranking and report format.

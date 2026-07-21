@@ -1,5 +1,7 @@
 # Linux window association: set desktopName + syncDesktopName
 
+**Area:** desktop · **Priority:** P3
+
 electron-builder warns during the Linux AppImage build that `desktopName` is not set, so desktop
 environments may not link the running window to the generated `.desktop` entry (wrong/missing
 taskbar icon and grouping under some DEs).

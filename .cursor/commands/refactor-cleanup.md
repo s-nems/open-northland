@@ -1,7 +1,5 @@
-# /refactor-cleanup — behavior-preserving refactor pass
+# /refactor-cleanup: focused refactor
 
-Follow `.claude/commands/refactor-cleanup.md`. Text typed after the command is its `$ARGUMENTS`
-(a scope — `sim|render|app|pipeline|path|feature` — plus an optional focus).
+Follow `.claude/commands/refactor-cleanup.md` and treat text after the command as `$ARGUMENTS`.
 
-Cursor has no subagents: where verification spawns reviewer agents on the diff, apply those lenses
-inline, per `.cursor/commands/audit.md`.
+Apply any requested review checklist inline, as described in `.cursor/commands/audit.md`.

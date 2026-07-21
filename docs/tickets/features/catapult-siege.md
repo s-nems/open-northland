@@ -1,9 +1,9 @@
-# Implement catapult/siege combat (parked — data pinned, deliberately deferred)
+# Implement catapult/siege combat (parked; data pinned, deliberately deferred)
 
 **Area:** sim + render + app · **Origin:** combat plan reconciliation, 2026-07-12 · **Blocked by:**
-[building-combat-damage](building-combat-damage.md), [tower-defence-mode](tower-defence-mode.md) · **Priority:** P3
+[tower-defence-mode](tower-defence-mode.md) · **Priority:** P3
 
-Deliberately out of scope until field combat, building damage, and towers are complete. This
+Deliberately out of scope until tower defence is complete. This
 ticket parks the extracted data so it survives the retired combat plan (full research in git
 history: `docs/plans/combat.md`, deleted 2026-07-12).
 
@@ -19,9 +19,9 @@ history: `docs/plans/combat.md`, deleted 2026-07-12).
 ## Scope
 
 - Radial (splash) damage type, self-hit, smoke effect; the dead-zone minimum range; rock
-  projectile; catapult unit/vehicle integration (crew model needs investigation — the original's
-  crewing is unreadable, name the approximation).
+  projectile; catapult unit/vehicle integration. The crew model needs investigation because the
+  original's crewing is unreadable; name the approximation.
 
 ## Verify
 
-- `npm test`; a siege acceptance scene with catapults vs a walled/towered base — **user's eyes**.
+- `npm test`; a siege acceptance scene with catapults vs a walled/towered base, checked by the user.

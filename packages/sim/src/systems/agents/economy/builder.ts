@@ -152,11 +152,9 @@ function fetchNeededMaterial(plan: PlannerContext, site: Entity): boolean {
 
 /**
  * The site's LEAD builder — the lowest-id settler currently assigned to `site` ({@link SiteAssignment}) — the
- * one crew member kept on the hammer while others peel off to pre-fetch, so a manned site is never left with
- * nobody hammering. Memoised once per planner tick into {@link SpacingState}: a single pass over the crew
- * assignments captures the lead per site, a frozen snapshot every builder reads the same, so the pick is
- * stable across the tick and history-independent. Falls back to the site itself when no lead is recorded
- * (unreachable in practice — the caller has just stamped its own SiteAssignment).
+ * one crew member kept on the hammer while others pre-fetch. A single pass memoizes a stable per-tick view in
+ * {@link SpacingState}, so every builder sees the same lead. Falls back to the site itself when no lead is
+ * recorded; the caller normally has its own SiteAssignment.
  */
 function constructionSiteLead(world: World, spacing: SpacingState, site: Entity): Entity {
   let leads = spacing.crewLeadBySite;

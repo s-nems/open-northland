@@ -1,4 +1,6 @@
-# P3 — Stable mirror (or hash registry) for the CulturesNation mod download
+# Stable mirror or hash registry for the CulturesNation mod download
+
+**Area:** desktop · **Priority:** P3
 
 The desktop setup wizard downloads the CnMod archive via
 `packages/desktop/src/mod-install/download.ts`: culturesnation.pl's `serwerdownload.php` link
@@ -9,8 +11,8 @@ dance (verified live 2026-07-16; `CnMod 1.3.1.zip`, 594 MB, sha256 pinned in `CN
 Two fragilities are accepted for now (user decision, 2026-07-16: ship the Drive flow, revisit when
 it breaks):
 
-- Google Drive can answer "quota exceeded" for a popular file, or change the confirm-form markup —
-  the wizard then degrades to the manual "I already have it…" picker, which always works.
+- Google Drive can answer "quota exceeded" for a popular file, or change the confirm-form markup.
+  The wizard then degrades to the manual "I already have it…" picker, which always works.
 - A new mod release changes the archive hash; the wizard only warns ("unverified version") because
   a newer release must not brick the installer, but the pinned hash then guards nothing until a
   code change.

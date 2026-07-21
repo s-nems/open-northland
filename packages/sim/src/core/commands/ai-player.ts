@@ -5,7 +5,7 @@ export type AiPlayerCommand = {
   /**
    * Flag `player`'s seat as AI-driven (or hand it back): sets/updates the per-player
    * {@link import('../../components/ai-player.js').AiPlayer} carrier (`enabled: false` removes it), so the
-   * flag hashes and replays like any component and the save/replay log stays complete. `modules` narrows
+   * flag hashes and replays like any component and the replay log stays complete. `modules` narrows
    * which AI concerns run for the seat (an omitted module defaults to enabled — the original's empty
    * `[AIData]` = full HAI); the AiPlayerSystem consults it each decision. An out-of-range `player` is
    * recoverable bad input — skipped, still logged.

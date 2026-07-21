@@ -1,59 +1,47 @@
 ---
-description: Scan a scope for ticket-worthy work and file it as docs/tickets/ entries — discovery only, changes no code.
-argument-hint: [scope: sim|render|app|pipeline|path|feature] [focus, e.g. perf, test gaps, features]
+description: Find valuable deferred work in a scope and file concise tickets without changing code.
+argument-hint: [sim|render|app|pipeline|path|feature] [focus]
 ---
 
-# Ticket Scout
+# Ticket scout
 
-Sweep the scope in `$ARGUMENTS` for work worth a `/worktree` session and file each find as a
-self-contained ticket under `docs/tickets/` (per `docs/tickets/README.md`). This command **edits no
-code** — its entire output is new/updated ticket files plus a ranked report. With no scope, sweep
-the whole repo at coarse granularity; with a scope, go deep in it.
+Scan `$ARGUMENTS` for work worth a dedicated `/worktree` session. Edit only ticket files and return a
+ranked report. With no scope, scan the repository at coarse granularity.
 
-## 1. Load the baseline
+## Load context without flooding it
 
-- Read `docs/tickets/` in full first — every existing ticket is a dedupe anchor. Filing a
-  near-duplicate is a defect of the pass; sharpen the existing file instead.
-- Read `AGENTS.md` plus the package-local `AGENTS.md` of each package in scope: candidates are
-  judged against the project's actual rules, not generic taste.
+Read root and relevant package `AGENTS.md` files. Build a ticket index from file paths, headings,
+metadata, and grep terms. Read full ticket bodies only for likely duplicates or dependencies. Do not
+load the entire tracker into context.
 
-## 2. Hunt on parallel signals
+## Search independent signals
 
-Spawn parallel subagents (one message), each on a different signal, scoped to the scope:
+Run these in parallel when the client supports it:
 
-- **Structure** — read the scoped modules and their callers; look for mixed responsibilities,
-  orchestration functions that need prose section headings, and flat directories whose files do not
-  form one cohesive feature.
-- **Marked debt** — grep for TODO / FIXME / placeholder / stub / "deferred" / "follow-up" /
-  "APPROXIMAT" comments; each is a claim that work exists — verify it still does.
-- **Scaling** — per-tick sim or per-frame render code whose cost grows with the world instead of
-  active work / the screen (golden rules 6–7).
-- **Feature gaps** — content the pipeline extracts that no system consumes, `content/` IR lanes
-  with no binding, stubbed mechanics, scenes the docs promise but `scenes/index.ts` lacks. These
-  become `features/` tickets.
-- **Test gaps** — player-visible mechanics without an acceptance scene; risky seams with no test at
-  the lowest useful level.
+- structure and ownership problems in the scoped code and callers;
+- verified TODO, FIXME, placeholder, deferred, or approximation markers;
+- per-tick or per-frame work that breaks the project scale budgets;
+- extracted content with no consumer or a clearly stubbed player feature;
+- risky behavior lacking a useful test or acceptance scene.
 
-## 3. Triage ruthlessly
+## Triage
 
-The tracker's value is that everything in it is real; guard that before adding to it.
+Re-read each cited source before accepting a candidate. A ticket must be:
 
-- Re-read the cited code yourself before accepting a candidate — subagents are wrong in both
-  directions.
-- The bar: **would a `/worktree` session on this ticket leave the project clearly better, and would
-  you defend that to the user?** Style-only nits, speculative abstractions, and "could be nicer"
-  observations fail the bar. Prefer a handful of load-bearing tickets over a swarm.
-- A candidate that is really a defect (wrong behavior, broken gate) is still a ticket — mark it as
-  such in the title; do not fix it in this pass.
-- Note mid-report anything real but too large for one session: split it into ordered tickets with
-  `Blocked by:` links rather than filing one monster.
+- real in the current code;
+- valuable enough for a separate session;
+- bounded enough to complete or split into ordered dependencies;
+- concrete about scope and verification;
+- absent from the existing tracker.
 
-## 4. File and report
+Reject style preferences, speculative abstractions, unverified suspicions, and tiny observations that
+are cheaper to fix when their code is next touched. Zero new tickets is a valid result.
 
-- Write each survivor as a ticket per the `docs/tickets/README.md` template: `features/` for
-  player-visible slices, the area folder for scoped technical work. Self-contained context, concrete
-  scope, verification, source basis where mechanics/extraction are involved.
-- Do not commit unless the user asks; leave the new files for their review.
-- Report: filed tickets ranked by value (one line each: path — why it earns a session), then
-  candidates dropped in triage with the concrete reason. Zero survivors is a valid result — say so
-  rather than filing filler.
+## File and report
+
+Use the template in `docs/tickets/README.md`. Put player-visible slices in `features/` and technical
+work in the owning area. Update an existing ticket when the candidate is a duplicate with better
+evidence.
+
+Do not change production code or commit unless asked. Report filed or updated tickets by value, then
+list rejected candidates with a short reason.

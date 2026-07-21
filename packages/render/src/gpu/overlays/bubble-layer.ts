@@ -9,7 +9,7 @@ import { retainOffscreen, retireUndrawn } from './retained-pool.js';
 /**
  * The settler-bubble layer — the decoded thought bubble (`ls_gui_bubbles`) floating over a settler's
  * head while it is in a standing family state (a make-child order, a wedding walk) or a pressing need
- * (too hungry / too sleepy to keep working). A client-side projection of the frozen snapshot (never sim
+ * (too hungry / too sleepy to keep working). A client-side projection of the read-only snapshot (never sim
  * state): the app scans each settler's `ChildOrder` / `Wedding` / need components and hands over the
  * {@link SettlerBubble} list, and this layer draws one bubble sprite per settler above its head, panning/
  * zooming with the world (a child of the camera's `worldLayer`, above the sprites).
