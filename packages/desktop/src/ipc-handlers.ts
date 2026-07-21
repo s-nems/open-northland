@@ -12,17 +12,18 @@ import {
   messages,
   setActiveLocale,
 } from './i18n/index.js';
-import type { GameFolderCandidate, ModEvent, PipelineEvent } from './ipc.js';
+import type { GameFolderCandidate, IpcInvokeChannel, ModEvent, PipelineEvent } from './ipc.js';
 import { IPC_CHANNELS } from './ipc.js';
 import { findModRootUnder, installCnMod } from './mod-install/index.js';
 import type { PipelineHost } from './pipeline-host.js';
-import { APP_ORIGIN_PREFIX, gameUrlForLocale } from './protocol.js';
+import { gameUrlForLocale } from './protocol.js';
+import { isAppUrl } from './protocol-routing.js';
 import type { ShellPaths, ShellState } from './shell-state.js';
 import { buildAppMenu } from './window.js';
 
 /**
  * The main-process end of every {@link IPC_CHANNELS} call: the setup renderer's only way to reach
- * the game folder, the conversion, and the mod installer. Each handler re-checks its sender and its
+ * the game folder, the conversion, and the mod installer. Each handler re-validates its own
  * arguments — the renderer is sandboxed but not trusted.
  */
 
@@ -33,11 +34,15 @@ export interface IpcDeps {
   readonly pipeline: PipelineHost;
 }
 
-/** Every invoke must come from one of the shell's own app:// pages; a foreign frame gets nothing. */
-function assertAppSender(event: Electron.IpcMainInvokeEvent): void {
-  if (!(event.senderFrame?.url ?? '').startsWith(APP_ORIGIN_PREFIX)) {
-    throw new Error('IPC from an untrusted frame');
-  }
+/**
+ * Serves a channel only when the call came from one of the shell's own `app://` pages. The handler
+ * receives the arguments alone, never the event, so it cannot soften that decision.
+ */
+function handleFromAppFrame(channel: IpcInvokeChannel, handler: (...args: unknown[]) => unknown): void {
+  ipcMain.handle(channel, (event, ...args: unknown[]) => {
+    if (!isAppUrl(event.senderFrame?.url)) throw new Error('IPC from an untrusted frame');
+    return handler(...args);
+  });
 }
 
 /** IPC arguments cross the bridge untyped; reject anything a tampered renderer could substitute. */
@@ -54,21 +59,13 @@ async function candidateOf(path: string): Promise<GameFolderCandidate> {
 }
 
 export function wireIpc({ win, paths, state, pipeline }: IpcDeps): void {
-  ipcMain.handle(IPC_CHANNELS.getState, (ev) => {
-    assertAppSender(ev);
-    return state.desktopState();
-  });
-  ipcMain.handle(IPC_CHANNELS.probeGamePath, (ev, path: unknown) => {
-    assertAppSender(ev);
+  handleFromAppFrame(IPC_CHANNELS.getState, () => state.desktopState());
+  handleFromAppFrame(IPC_CHANNELS.probeGamePath, (path: unknown) => {
     assertString(path);
     return candidateOf(path);
   });
-  ipcMain.handle(IPC_CHANNELS.detectGameFolders, (ev) => {
-    assertAppSender(ev);
-    return detectGameFolders();
-  });
-  ipcMain.handle(IPC_CHANNELS.pickGameFolder, async (ev) => {
-    assertAppSender(ev);
+  handleFromAppFrame(IPC_CHANNELS.detectGameFolders, () => detectGameFolders());
+  handleFromAppFrame(IPC_CHANNELS.pickGameFolder, async () => {
     const picked = await dialog.showOpenDialog(win, {
       title: messages().dialogs.pickGameTitle,
       properties: ['openDirectory'],
@@ -78,8 +75,7 @@ export function wireIpc({ win, paths, state, pipeline }: IpcDeps): void {
   });
 
   let modDownload: AbortController | undefined;
-  ipcMain.handle(IPC_CHANNELS.runPipeline, async (ev, gamePath: unknown) => {
-    assertAppSender(ev);
+  handleFromAppFrame(IPC_CHANNELS.runPipeline, async (gamePath: unknown) => {
     assertString(gamePath);
     if (modDownload !== undefined) throw new Error(messages().errors.modStillDownloading);
     const probe = await probeGameFolder(gamePath);
@@ -96,10 +92,7 @@ export function wireIpc({ win, paths, state, pipeline }: IpcDeps): void {
     // Remembered only after start() accepted the run — a double-start throw must not clobber it.
     writeConfig(paths.configFile, { ...readConfig(paths.configFile), gamePath });
   });
-  ipcMain.handle(IPC_CHANNELS.stopPipeline, (ev) => {
-    assertAppSender(ev);
-    return pipeline.stop();
-  });
+  handleFromAppFrame(IPC_CHANNELS.stopPipeline, () => pipeline.stop());
 
   // The installer ticks per chunk/per extracted file (tens of thousands of events); warnings and
   // each phase's final tick always reach the renderer, the rest ride the shared throttle.
@@ -112,8 +105,7 @@ export function wireIpc({ win, paths, state, pipeline }: IpcDeps): void {
     if (!modEvents.shouldEmit(final)) return;
     if (!win.isDestroyed()) win.webContents.send(IPC_CHANNELS.modEvent, event);
   };
-  ipcMain.handle(IPC_CHANNELS.downloadMod, async (ev) => {
-    assertAppSender(ev);
+  handleFromAppFrame(IPC_CHANNELS.downloadMod, async () => {
     if (modDownload !== undefined) throw new Error(messages().errors.modDownloadRunning);
     modDownload = new AbortController();
     try {
@@ -122,12 +114,10 @@ export function wireIpc({ win, paths, state, pipeline }: IpcDeps): void {
       modDownload = undefined;
     }
   });
-  ipcMain.handle(IPC_CHANNELS.cancelModDownload, (ev) => {
-    assertAppSender(ev);
+  handleFromAppFrame(IPC_CHANNELS.cancelModDownload, () => {
     modDownload?.abort();
   });
-  ipcMain.handle(IPC_CHANNELS.pickModFolder, async (ev) => {
-    assertAppSender(ev);
+  handleFromAppFrame(IPC_CHANNELS.pickModFolder, async () => {
     const picked = await dialog.showOpenDialog(win, {
       title: messages().dialogs.pickModTitle,
       properties: ['openDirectory'],
@@ -143,8 +133,7 @@ export function wireIpc({ win, paths, state, pipeline }: IpcDeps): void {
     return root;
   });
 
-  ipcMain.handle(IPC_CHANNELS.startGame, async (ev) => {
-    assertAppSender(ev);
+  handleFromAppFrame(IPC_CHANNELS.startGame, async () => {
     // Re-checked here, not only in the setup UI: incompatible content must never boot.
     if ((await state.contentStatus()) === 'stale-schema') {
       throw new Error(messages().errors.incompatibleSchema);
@@ -152,8 +141,7 @@ export function wireIpc({ win, paths, state, pipeline }: IpcDeps): void {
     await win.loadURL(gameUrlForLocale(currentLocale()));
   });
 
-  ipcMain.handle(IPC_CHANNELS.setLocale, (ev, locale: unknown) => {
-    assertAppSender(ev);
+  handleFromAppFrame(IPC_CHANNELS.setLocale, (locale: unknown) => {
     assertLocale(locale);
     setActiveLocale(locale);
     writeConfig(paths.configFile, { ...readConfig(paths.configFile), locale });

@@ -1,7 +1,8 @@
 import { BrowserWindow, dialog, Menu, shell } from 'electron';
 import type { ContentStatus } from './content-state.js';
 import { type Locale, messages } from './i18n/index.js';
-import { APP_ORIGIN_PREFIX, gameUrlForLocale, isGameUrl, SETUP_URL } from './protocol.js';
+import { gameUrlForLocale, isGameUrl, SETUP_URL } from './protocol.js';
+import { isAppUrl } from './protocol-routing.js';
 
 /**
  * The shell's single window and its native menu. The menu owns the shell-level actions (reinstall
@@ -26,7 +27,7 @@ export function createWindow(initial: ContentStatus, preloadScript: string, loca
   // The window renders only the shell's own app:// pages — no popups, no navigation elsewhere.
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   win.webContents.on('will-navigate', (event, target) => {
-    if (!target.startsWith(APP_ORIGIN_PREFIX)) event.preventDefault();
+    if (!isAppUrl(target)) event.preventDefault();
   });
   void win.loadURL(initial === 'ready' ? gameUrlForLocale(locale) : SETUP_URL);
   return win;

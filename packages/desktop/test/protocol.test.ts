@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { routePathOf } from '../src/protocol-routing.js';
+import { isAppUrl, routePathOf } from '../src/protocol-routing.js';
 
 /**
  * The host-folding rule (`src/protocol-routing.ts`): Pixi workers mis-join root-relative asset URLs on a
@@ -24,5 +24,28 @@ describe('routePathOf', () => {
 
   it('keeps the raw pathname raw — decoding belongs to the shared resolver', () => {
     expect(routePathOf('game', '/maps/two%20words.json')).toBe('/maps/two%20words.json');
+  });
+});
+
+/** The origin test behind the IPC sender guard and the window's navigation guard. */
+describe('isAppUrl', () => {
+  it('accepts the shell pages it serves', () => {
+    expect(isAppUrl('app://setup/setup.html')).toBe(true);
+    expect(isAppUrl('app://game/index.html?lang=pol')).toBe(true);
+  });
+
+  it('rejects remote and local-file origins', () => {
+    expect(isAppUrl('https://example.com/page')).toBe(false);
+    expect(isAppUrl('file:///etc/passwd')).toBe(false);
+  });
+
+  it('rejects a caller that reports no URL', () => {
+    expect(isAppUrl(undefined)).toBe(false);
+    expect(isAppUrl('')).toBe(false);
+  });
+
+  it('requires the full scheme separator, not the scheme spelling alone', () => {
+    expect(isAppUrl('app:/game')).toBe(false);
+    expect(isAppUrl('application://game/index.html')).toBe(false);
   });
 });
