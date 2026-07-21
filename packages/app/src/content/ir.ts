@@ -240,27 +240,24 @@ export interface ContentIr {
 /** The `[bobseq]` imagelib whose sequences drive the settler — the body bob set the head atlas shares ids with. */
 export const BODY_IMAGELIB = 'cr_hum_body_00.bmd';
 
-/**
- * Load one decoded atlas layer (`<stem>.{atlas.json,png}`) from the gitignored `content/` (served at
- * `/bobs/`): the manifest → in-memory frame geometry, the PNG → a GPU texture. A manifest that
- * announces a build-time sheet (`build: true`, the house atlases) also fetches the sibling
- * `<stem>.build.png` CPU-side — the per-pixel construction-reveal thresholds; an unreadable build
- * sheet just degrades that layer to the crop reveal. Throws {@link MissingAtlasError} when the decoded
- * files are missing.
- *
- * `shadowStem` names the layer's cast-shadow twin (the pipeline's `<shadow-bmd-stem>.shadow` atlas —
- * see {@link servedShadowStem}); when given and present it loads as {@link SpriteLayer.shadow}. A
- * missing shadow atlas degrades to a shadow-less layer (`content/` generated before the shadow stage),
- * never fails the body.
- */
 /** Whether a served atlas stem names a palette-indexed sheet (the pipeline emits every one as
  *  `<stem>.indexed` — characters, GUI, fonts, goods). Indexed sheets carry a palette INDEX in red, so
  *  they must load straight-alpha (`loadAtlasSource`'s `'straight'`). */
-export function isIndexedStem(stem: string): boolean {
+function isIndexedStem(stem: string): boolean {
   return stem.endsWith('.indexed');
 }
 
-export async function loadLayer(stem: string, shadowStem?: string): Promise<SpriteLayer> {
+/** Every decoded atlas body ({@link loadLayerBody}) in flight or settled, by served stem. */
+const layerBodies = new Map<string, Promise<SpriteLayer>>();
+
+/**
+ * One decoded atlas body (`<stem>.{atlas.json,png}`) from the gitignored `content/` (served at
+ * `/bobs/`): the manifest → in-memory frame geometry, the PNG → a GPU texture. A `build: true` manifest
+ * (the house atlases) also reads the sibling `<stem>.build.png` CPU-side — the per-pixel
+ * construction-reveal thresholds, degrading to the crop reveal when unreadable. Throws
+ * {@link MissingAtlasError} when the decoded files are missing.
+ */
+async function fetchLayerBody(stem: string): Promise<SpriteLayer> {
   const res = await fetch(`/bobs/${stem}.atlas.json`);
   if (!res.ok) {
     throw new MissingAtlasError(
@@ -268,24 +265,55 @@ export async function loadLayer(stem: string, shadowStem?: string): Promise<Spri
     );
   }
   const manifest = (await res.json()) as AtlasManifest;
-  const [source, times, shadow] = await Promise.all([
+  const [source, times] = await Promise.all([
     // Indexed sheets must load straight-alpha: premultiply would corrupt the palette index in red
     // (see `loadAtlasSource`); the `.indexed` stem suffix is the pipeline's naming contract for them.
     loadAtlasSource(`/bobs/${stem}.png`, 'nearest', isIndexedStem(stem) ? 'straight' : 'premultiplied'),
     manifest.build === true ? loadBuildTimeSheet(`/bobs/${stem}.build.png`) : Promise.resolve(undefined),
+  ]);
+  return { atlas: atlasFromManifest(manifest), source, ...(times !== undefined ? { times } : {}) };
+}
+
+/**
+ * {@link fetchLayerBody} memoized per stem, so domains that share a stem decode it once per page.
+ * Handing out the same instance is safe: `atlas.frames` is a `ReadonlyMap`, nothing writes
+ * `times.values` after {@link loadBuildTimeSheet} fills it, and no consumer destroys an atlas page's
+ * `TextureSource`.
+ */
+function loadLayerBody(stem: string): Promise<SpriteLayer> {
+  const cached = layerBodies.get(stem);
+  if (cached !== undefined) return cached;
+  const pending = fetchLayerBody(stem);
+  // Memoize only success: a transient boot-time failure must not pin every later consumer of this stem
+  // to the fallback for the page's lifetime (the stance {@link loadIrRaw} takes on the IR document).
+  pending.catch(() => {
+    if (layerBodies.get(stem) === pending) layerBodies.delete(stem);
+  });
+  layerBodies.set(stem, pending);
+  return pending;
+}
+
+/**
+ * One decoded atlas layer ({@link loadLayerBody}), optionally carrying the cast-shadow twin named by
+ * `shadowStem` (the pipeline's `<shadow-bmd-stem>.shadow` atlas — see {@link servedShadowStem}). A
+ * missing shadow degrades to a shadow-less layer, never fails the body. Body and shadow cache
+ * separately, so the same stem asked for with and without a twin still decodes each sheet once.
+ */
+export async function loadLayer(stem: string, shadowStem?: string): Promise<SpriteLayer> {
+  const shadowLoad =
     shadowStem === undefined
-      ? Promise.resolve(undefined)
-      : loadLayer(shadowStem).catch((err: unknown) => {
+      ? undefined
+      : loadLayerBody(shadowStem).catch((err: unknown) => {
           if (err instanceof MissingAtlasError) return undefined;
           throw err;
-        }),
-  ]);
-  return {
-    atlas: atlasFromManifest(manifest),
-    source,
-    ...(times !== undefined ? { times } : {}),
-    ...(shadow !== undefined ? { shadow } : {}),
-  };
+        });
+  // A shadow rejection must wait for the body await below, not surface as unhandled while it is pending
+  // — and the body's own failure stays the one a caller sees, so `MissingAtlasError` still names the
+  // stem the caller asked for.
+  shadowLoad?.catch(() => undefined);
+  const body = await loadLayerBody(stem);
+  const shadow = await shadowLoad;
+  return shadow === undefined ? body : { ...body, shadow };
 }
 
 /** Fetch a build-time sheet PNG and keep its R channel (the 0–255 thresholds) CPU-side, or `undefined`
