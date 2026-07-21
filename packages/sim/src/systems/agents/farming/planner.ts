@@ -13,13 +13,21 @@ import { nodeOfPosition } from '../../../nav/halfcell.js';
 import type { NodeId } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { type FarmingSpec, farmWorkGood } from '../../economy/farming.js';
+import { dynamicBlockOverlay } from '../../footprint/index.js';
 import { buildingEnabled } from '../../progression/index.js';
 import { atomicDuration } from '../../readviews/animations.js';
 import { manhattan } from '../../spatial.js';
 import { buildingWorkerJobs } from '../../stores/index.js';
 import { atOrWalk, startAtomic, startPickup } from '../actions.js';
 import type { PlannerContext } from '../planner-context.js';
-import { closer, interactionCell, jobAtomics } from '../targets/index.js';
+import {
+  closer,
+  interactionCell,
+  jobAtomics,
+  unreachableWorkCell,
+  type WorkCellGates,
+} from '../targets/index.js';
+import { unreachableGoals } from '../unreachable-goals.js';
 
 // The farmer drive — the field-cultivation rung of the planner ladder: a worker bound to a farm (a workplace
 // producing a field-farmed good, `farmWorkGood`) walks its farm's surroundings sowing, watering and reaping
@@ -120,6 +128,18 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
     world.add(e, FarmTask, { farm, node, sow });
   };
 
+  // The reachability layers every field/sheaf pick is filtered through. A field sits on open ground a
+  // building can later cover, and its work cell IS its own node (a field carries no ResourceFootprint, so
+  // `resourceWorkCell` returns the anchor) — so a walled-in field is a goal `findPath` always rejects.
+  // Without this the nearest-first pick re-chooses that same doomed field every replan and the farmer
+  // never advances past it (the fieldClearingSystem removes fields a building actually stands on; this
+  // also covers a field left in a sealed pocket, which no clearing pass can detect).
+  const gates: WorkCellGates = {
+    terrain,
+    blocked: dynamicBlockOverlay(world, ctx, terrain),
+    memo: unreachableGoals(world, ctx, e),
+  };
+
   // One pass over this farm's own fields: count them (the max-fields gate) and pick the nearest unclaimed
   // ripe one (to reap) + unwatered growing one (to water). Canonical list + (dist, cell) tie-break.
   let fields = 0;
@@ -131,9 +151,12 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
   let thirstyDist = Number.POSITIVE_INFINITY;
   for (const c of targets.cropsByFarm.get(farm) ?? []) {
     const crop = world.get(c, Crop);
+    // Counted before the reachability gate: a standing plant holds its slot whoever can reach it, so the
+    // plot cap stays a fact about the farm rather than about which farmer is asking.
     fields++;
     const cell = interactionCell(world, ctx, terrain, c, here);
     if (claims.nodes.has(cell)) continue; // a colleague is already on this field
+    if (unreachableWorkCell(gates, here, cell)) continue; // walled in — the walk there would fail
     const dist = manhattan(terrain, here, cell);
     if (crop.stage >= crop.stages) {
       if (closer(dist, cell, ripeDist, ripeCell)) {
@@ -174,7 +197,7 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
 
   // b. Carry a sheaf home — the delivery rung then routes the load into the farm's own store (or, with
   // the farm full, overflows it to the nearest warehouse that still has room).
-  const sheaf = nearestFarmSheaf(plan, { anchor, spec, claims });
+  const sheaf = nearestFarmSheaf(plan, { anchor, spec, claims, gates });
   if (sheaf !== null && cropSinkExists()) {
     const cell = interactionCell(world, ctx, terrain, sheaf, here);
     take(cell, false);
@@ -190,7 +213,7 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
   // Before the can: with per-stage watering something is almost always thirsty, so a water-first farmer
   // would never expand.
   if (fields + (claims.byFarm.get(farm) ?? 0) < spec.farming.maxFields) {
-    const node = nextSowNode(plan, { anchor, spec, claims });
+    const node = nextSowNode(plan, { anchor, spec, claims, gates });
     if (node !== null) {
       take(node, true);
       const at = terrain.coordsOf(node);

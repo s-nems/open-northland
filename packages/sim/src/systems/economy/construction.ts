@@ -22,6 +22,7 @@ import {
   upgradeTierOf,
 } from '../stores/index.js';
 import { destroyBerryBushesInReserved } from './berries.js';
+import { destroyFieldsUnderBuilding } from './farming.js';
 import { evictLooseGoodsFromFootprint } from './goods-evict.js';
 import { destroyStumpsInReserved } from './stumps.js';
 
@@ -158,6 +159,9 @@ function finishSite(world: World, ctx: SystemContext, e: Entity, building: Build
   evictLooseGoodsFromFootprint(world, ctx, e);
   destroyBerryBushesInReserved(world, ctx, e);
   destroyStumpsInReserved(world, ctx, e);
+  // Fields the same way, and for the same per-tier reason — an upgrade never re-runs the placement gate
+  // that would have rejected the site, so its grown walls can close over a plot sown beside the old ones.
+  destroyFieldsUnderBuilding(world, ctx, e);
   ctx.events.emit(
     adoptedTier
       ? { kind: 'buildingUpgraded', entity: e, level: building.level }

@@ -29,8 +29,11 @@ const MAP_CELLS = 10;
 const FARM_AT = { x: 5, y: 5 } as const;
 /** Wheat farms at ~500 ticks/stage × 5 stages on the clean-room balance (`catalog/farming.ts`). A lone
  *  farmer ploughs the whole 24-field plot before it starts watering, so the first sheaf lands well past
- *  one growth cycle; 8000 ticks clears that cold start with margin. */
-const FARM_TICKS = 8000;
+ *  one growth cycle — measured at tick ~7040, the plot itself full by ~2440
+ *  (docs/tickets/sim/farm-plot-cold-start.md). Which field ripens first moves with the sown node set,
+ *  since a field's pace is a hash of its node, so this budget leaves room for that swing rather than
+ *  sitting just past the observed figure. */
+const FARM_TICKS = 12_000;
 
 function grassMap(cells: number) {
   return halfCellMapFromCells({
