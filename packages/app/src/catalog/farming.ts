@@ -13,10 +13,13 @@ import type { GoodFarming } from '@open-northland/data';
  * docs/tickets/sim/job-repeat-counter-extraction.md. The rest is calibration observed in the running
  * original; the data carries no growth timing, field radius, or per-field yield.
  *
- * These reproduce the original's measured pacing: one farmer banks ~10 grain per 10 minutes, two ~20,
- * three ~30, four ~40, on a plot that stands at ~24 plants for every one of those crews. Two constants do
- * that between them — {@link WHEAT_WORK_REPEATS} sets what a grain costs in farmer labor (hence the linear
- * ladder), {@link FARM_MAX_FIELDS} sets the plot (hence its independence from the crew).
+ * The TARGET is the original's measured pacing: one farmer banks ~10 grain per 10 minutes, two ~20, three
+ * ~30, four ~40, on a plot that stands at ~24 plants for every one of those crews. Two constants aim at it
+ * between them — {@link WHEAT_WORK_REPEATS} sets what a grain costs in farmer labor (hence the ladder),
+ * {@link FARM_MAX_FIELDS} sets the plot (hence its independence from the crew). The plot size and the
+ * crews of 2-4 land; the FIRST rung does not — a lone farmer measures ~9 (per-farmer 9.0 / 12.5 / 12.3 /
+ * 11.5), because it cannot re-water 24 fields inside a stage, so the ladder bends at the bottom instead of
+ * running straight. Closing that is docs/tickets/sim/lone-farmer-shortfall.md.
  */
 
 /** Growth stages a sown field passes through before it is ripe (the `landscapetypes.ini` `wheat (growing)`
@@ -36,9 +39,11 @@ export const WHEAT_GROWTH_SPREAD_PERCENT = 40;
 /** Units a ripe field drops as its cut sheaf when reaped. */
 export const WHEAT_YIELD_PER_FIELD = 1;
 
-/** Strokes a farmer plays per field action — `humanjobexperiencetypes.ini` type 46 "farmer wheat"
- *  `baserepeatcounter 2`. This is the farm's throughput dial: a field action is what a grain costs, and
- *  at 2 strokes one farmer banks ~10 grain per 10 minutes, matching the original. */
+/** Strokes a farmer plays per field action. The VALUE is extracted — `humanjobexperiencetypes.ini` type 46
+ *  "farmer wheat" `baserepeatcounter 2` — but reading that key as strokes-per-action is an ASSUMPTION: three
+ *  modules read `baserepeatcounter` incompatibly and at most one is right
+ *  (docs/tickets/sim/job-repeat-counter-extraction.md). It is the farm's throughput dial either way — a
+ *  field action is what a grain costs — and 2 strokes puts a lone farmer at ~9 grain per 10 minutes. */
 export const WHEAT_WORK_REPEATS = 2;
 
 /** How far from the farm's anchor its farmers sow, in half-cell nodes (16 nodes ≈ 8 tiles). */

@@ -116,8 +116,17 @@ function measure(farmers: number): Measured {
 
 describe('farm pacing against the original', () => {
   const CREWS = [1, 2, 3, 4];
-  const runs = new Map<number, Measured>(CREWS.map((n) => [n, measure(n)]));
-  const runOf = (crew: number): Measured => runs.get(crew) as Measured;
+  // Memoized on first use, never at collection time: each crew is a 14 400-tick simulation, so running
+  // them in the describe body would put every one behind an unnamed collection error rather than the
+  // failing test, put them outside per-test timeouts, and run all four even for a single filtered test.
+  const runs = new Map<number, Measured>();
+  const runOf = (crew: number): Measured => {
+    const cached = runs.get(crew);
+    if (cached !== undefined) return cached;
+    const measured = measure(crew);
+    runs.set(crew, measured);
+    return measured;
+  };
   const rateOf = (crew: number): number => runOf(crew).grain / crew;
 
   it('every farmer adds its own ~10 grain per 10 minutes — throughput is the crew, not a timer', () => {

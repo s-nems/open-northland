@@ -8,6 +8,8 @@ import type { System, SystemContext } from '../context.js';
 import { buildingFootprintOf, translatedCells } from '../footprint/geometry.js';
 import {
   buildingBlockedCells,
+  dynamicBlockOverlay,
+  stampResourceFootprint,
   stampResourceFootprintData,
   unstampResourceFootprint,
 } from '../footprint/index.js';
@@ -51,8 +53,7 @@ function stageTicksAt(farming: GoodFarming, x: number, y: number): number {
   const spread = farming.growthSpreadPercent;
   if (spread === 0) return farming.ticksPerStage;
   const band = coordHash(x, y) % GROWTH_BANDS;
-  const steps = Math.max(1, GROWTH_BANDS - 1); // a single band is the nominal rate, not a divide by zero
-  const percent = -spread + Math.floor((2 * spread * band) / steps); // -spread..+spread
+  const percent = -spread + Math.floor((2 * spread * band) / (GROWTH_BANDS - 1)); // -spread..+spread
   return Math.max(1, Math.floor((farming.ticksPerStage * (100 + percent)) / 100));
 }
 
@@ -116,19 +117,31 @@ function sowNodeOccupied(world: World, hx: number, hy: number): boolean {
 }
 
 /**
- * A sown field's collision footprint: it blocks NOTHING and is worked from the node it stands on. The
- * original's wheat landscape is walkable with no block areas (`landscapetypes.ini` wheat lanes,
- * `allowedonland 1`), so settlers walk over a plot and a settlement builds straight over its own farmland —
- * the plants under the new walls are cleared by {@link destroyFieldsUnderBuilding} instead of the field
- * refusing the site. Declared here rather than resolved from a landscape record because a field is SOWN by
- * the sim, not spawned from a map gfx index; an empty declaration is what makes it a non-obstacle, since an
- * absent footprint means "undeclared" and placement then assumes a body.
+ * The footprint a sown field falls back to when its good resolves no landscape record — the synthetic
+ * content fixtures and the sandbox catalog, which carry no `[GfxLandscape]` for the farmed good. Real
+ * content resolves the real record instead ({@link stampFieldFootprint}), so this is a stand-in, NOT a claim
+ * about the original: the empty walk/build halves match the wheat lanes (`allowedonland 1`, no block
+ * areas), but `work` listing the plant's own node is an invention, and the real record's work area is the
+ * ring of neighbours AROUND it. Kept anchor-only so a fixture farmer can reach a field on a one-node map;
+ * `docs/tickets/sim/clay-work-cell-real-content-resolution.md` tracks the divergence class.
+ *
+ * Declaring a footprint at all also moves a field from the placement rule's OBSTACLE channel to
+ * RESOURCE_ANCHOR: it stops refusing a building (the point) and starts refusing a WORK FLAG on its own
+ * node, like every other footprinted resource. Legal flag ground around a farm therefore shifts as the
+ * plot turns over.
  */
 export const FIELD_FOOTPRINT: ResourceFootprintData = Object.freeze({
   walk: [],
   build: [],
   work: [{ dx: 0, dy: 0 }],
 });
+
+/** Stamp a fresh field with its good's landscape-derived footprint, falling back to
+ *  {@link FIELD_FOOTPRINT} for content that ships no record for the good. */
+function stampFieldFootprint(world: World, ctx: SystemContext, field: Entity, goodType: number): void {
+  if (stampResourceFootprint(world, ctx.content, field, goodType)) return;
+  stampResourceFootprintData(world, field, FIELD_FOOTPRINT);
+}
 
 /**
  * Apply a completed `sow` swing: plant a {@link Crop} field of `goodType` for `farm` at the half-cell
@@ -150,17 +163,18 @@ export function applySow(
   if (ctx.terrain !== undefined && !ctx.terrain.isPlantable(ctx.terrain.nodeAtClamped(effect.x, effect.y)))
     return;
   if (sowNodeOccupied(world, effect.x, effect.y)) return; // node taken since the planner chose it
-  // Walled in since the planner chose it (a building placed during the sow-walk): a field there would be
-  // unreachable from birth, so the swing plants nothing rather than leaving one for the placement pass to
-  // clear. A membership test on the memoized block set, not a footprint rebuild.
+  // Blocked since the planner chose it (a building raised, or a resource spawned, during the sow-walk): a
+  // field there would be unreachable from birth, and only the BUILDING paths have a clearing pass. Tests the
+  // same overlay `nextSowNode` filtered on — a narrower one would admit a node the planner had rejected.
+  // A membership test on the memoized overlay, not a footprint rebuild.
   if (ctx.terrain !== undefined) {
     const node = ctx.terrain.nodeAtClamped(effect.x, effect.y);
-    if (buildingBlockedCells(world, ctx, ctx.terrain).has(node)) return;
+    if (dynamicBlockOverlay(world, ctx, ctx.terrain).has(node)) return;
   }
   const e = world.create();
   world.add(e, Position, positionOfNode(effect.x, effect.y));
   world.add(e, Resource, { goodType: effect.goodType, remaining: 0, harvestAtomic: spec.harvestAtomic });
-  stampResourceFootprintData(world, e, FIELD_FOOTPRINT);
+  stampFieldFootprint(world, ctx, e, effect.goodType);
   world.add(e, Crop, {
     goodType: effect.goodType,
     farm: effect.farm,
@@ -186,26 +200,10 @@ export function applyWater(world: World, crop: Entity): void {
 }
 
 /**
- * CropGrowthSystem — advance every watered field's integer growth counter and step its stage; each stage step
- * consumes the watering (the field turns thirsty and stands until a farmer re-waters it — see the module note).
- * At the final stage the field is ripe: its {@link Resource.remaining} becomes the sown `yieldUnits`, which is
- * what makes it harvestable (the reap swing drops exactly that as the ground sheaf). Cost is O(fields) per tick,
- * never entities² (golden rule 7); a world with no fields does nothing.
- *
- * Determinism: per-field independent integer mutation (no cross-entity pick), so store-order iteration is fine;
- * the stage step is the exact integer compare `growth >= ticksPerStage` (never an accumulated fixed-point
- * fraction).
- */
-/**
  * Destroy every field standing under `building`'s walls — the way raising a house over a plot takes the
- * plants with it. Called wherever a walk-block appears over ground a field already holds: placement and the
- * tier upgrade that grows a footprint (the placement twin of the bush/stump razing beside it).
- *
- * A field is worked from the node it stands on ({@link FIELD_FOOTPRINT}), so a wall over that node puts it
- * permanently out of reach — `findPath` rejects a blocked goal — and left standing it would hold one of the
- * farm's `maxFields` slots forever. A field never refuses a site (it declares no build area), so this runs
- * on every path that raises walls: an ordinary placement, a `force` placement (scenes, map imports), and a
- * tier upgrade, which never re-validates its grown footprint.
+ * plants with it. A field is worked from the node it stands on ({@link FIELD_FOOTPRINT}), so a wall over
+ * that node puts it permanently out of reach (`findPath` rejects a blocked goal) and it would hold one of
+ * the farm's `maxFields` slots forever.
  *
  * Only cells the building actually makes UNWALKABLE clear a field — its door stays passable, and a field
  * merely inside the reserved margin is still walkable, reachable and worth reaping. That is the one
@@ -236,6 +234,17 @@ export function destroyFieldsUnderBuilding(world: World, ctx: SystemContext, bui
   }
 }
 
+/**
+ * CropGrowthSystem — advance every watered field's integer growth counter and step its stage; each stage step
+ * consumes the watering (the field turns thirsty and stands until a farmer re-waters it — see the module note).
+ * At the final stage the field is ripe: its {@link Resource.remaining} becomes the sown `yieldUnits`, which is
+ * what makes it harvestable (the reap swing drops exactly that as the ground sheaf). Cost is O(fields) per tick,
+ * never entities² (golden rule 7); a world with no fields does nothing.
+ *
+ * Determinism: per-field independent integer mutation (no cross-entity pick), so store-order iteration is fine;
+ * the stage step is the exact integer compare `growth >= ticksPerStage` (never an accumulated fixed-point
+ * fraction).
+ */
 export const cropGrowthSystem: System = (world) => {
   for (const e of world.query(Crop)) {
     const crop = world.get(e, Crop);

@@ -159,8 +159,8 @@ function finishSite(world: World, ctx: SystemContext, e: Entity, building: Build
   evictLooseGoodsFromFootprint(world, ctx, e);
   destroyBerryBushesInReserved(world, ctx, e);
   destroyStumpsInReserved(world, ctx, e);
-  // Fields the same way, and for the same per-tier reason — an upgrade never re-runs the placement gate
-  // that would have rejected the site, so its grown walls can close over a plot sown beside the old ones.
+  // Fields the same way: a tier's grown walls can close over a plot sown beside the old ones, and a field
+  // never refused the site to begin with (it declares no build area).
   destroyFieldsUnderBuilding(world, ctx, e);
   ctx.events.emit(
     adoptedTier
