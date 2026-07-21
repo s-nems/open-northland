@@ -18,9 +18,9 @@ import type { NodeId } from '../../nav/terrain/index.js';
  *
  * `farm` is the workplace whose worker sowed it — the farm's OWN fields are the ones its farmers water/
  * reap (two farms never work each other's fields); a stale id after demolition just strands a wild field
- * (harvest-scannable once ripe, else inert). A field is deliberately NOT walk-blocking and carries no
- * {@link ResourceFootprint} — the original's wheat landscape is walkable (`allowedonland 1`, no block
- * areas). The separate-optional-component pattern: no golden/scene sows, so every existing hash holds.
+ * (harvest-scannable once ripe, else inert). A field blocks neither walking nor building: it carries a
+ * {@link ResourceFootprint} declaring empty walk/build areas, which is how the original's wheat landscape
+ * reads (`allowedonland 1`, no block areas). No golden/scene sows, so every existing hash holds.
  */
 export const Crop = defineComponent<{
   goodType: number;

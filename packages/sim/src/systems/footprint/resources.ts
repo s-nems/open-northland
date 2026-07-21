@@ -57,6 +57,17 @@ export function resourceFootprintForGood(
   return null;
 }
 
+/** Stamp a resource node with a caller-declared footprint, keeping the incremental blocked-cell cache
+ *  coherent. For a node whose cells come from a landscape record, use {@link stampResourceFootprint}. */
+export function stampResourceFootprintData(
+  world: World,
+  resource: Entity,
+  footprint: ResourceFootprintData,
+): void {
+  world.add(resource, ResourceFootprint, footprint);
+  refreshResourceBlockedCacheEntry(world, resource);
+}
+
 /** Stamp a resource node with its content-derived footprint, returning false when no source record exists. */
 export function stampResourceFootprint(
   world: World,
@@ -67,8 +78,7 @@ export function stampResourceFootprint(
 ): boolean {
   const footprint = resourceFootprintForGood(content, goodType, gfxIndex);
   if (footprint === null) return false;
-  world.add(resource, ResourceFootprint, footprint);
-  refreshResourceBlockedCacheEntry(world, resource);
+  stampResourceFootprintData(world, resource, footprint);
   return true;
 }
 

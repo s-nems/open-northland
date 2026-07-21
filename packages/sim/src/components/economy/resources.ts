@@ -29,8 +29,10 @@ export interface ResourceFootprintCell {
  * Data-driven collision/work footprint for a standing {@link Resource} node, copied from its
  * harvest-stage `[GfxLandscape]` record (`LogicWalkBlockArea`, `LogicBuildBlockArea`, `LogicWorkArea`).
  * `walk` cells enter the dynamic pathfinding overlay, `build` cells reserve the no-building ring, and `work`
- * cells are where a collector stands to run the harvest atomic. Separate from {@link Resource} so fixtures
- * that place a bare resource keep the pre-footprint same-tile behavior.
+ * cells are where a collector stands to run the harvest atomic. This is the ONLY declaration of what a node
+ * blocks, so a node that blocks nothing says so with empty `walk`/`build` rather than by omitting the
+ * component: absence means "no declaration", and the placement rule then assumes a body (a bare fixture tree
+ * keeps the pre-footprint same-tile behaviour).
  *
  * The original footprint rows are valency-state keyed; the resolver stamps the highest state (the fresh/full
  * node) so collision is static until the node is removed.
@@ -39,8 +41,9 @@ export interface ResourceFootprintData {
   readonly walk: readonly ResourceFootprintCell[];
   readonly build: readonly ResourceFootprintCell[];
   readonly work: readonly ResourceFootprintCell[];
-  /** Source `[GfxLandscape].index`, retained for provenance/debugging. */
-  readonly sourceGfxIndex: number;
+  /** Source `[GfxLandscape].index`, retained for provenance/debugging. Absent on a footprint the sim
+   *  declares itself (a sown field), which stands for no landscape record. Never read by a decision. */
+  readonly sourceGfxIndex?: number;
 }
 
 export const ResourceFootprint = defineComponent<ResourceFootprintData>('ResourceFootprint');

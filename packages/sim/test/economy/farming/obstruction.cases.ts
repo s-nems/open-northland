@@ -3,6 +3,8 @@ import { cellAnchorNode, fx, Simulation } from '../../../src/index.js';
 import { applySow } from '../../../src/systems/index.js';
 
 import {
+  BLOCKHOUSE,
+  Building,
   blockhouseAt,
   Crop,
   cellMap,
@@ -15,6 +17,7 @@ import {
   Position,
   STAGES,
   Stockpile,
+  VIKING,
   WHEAT,
   wallsContent,
 } from './support.js';
@@ -24,6 +27,21 @@ import {
 // run on the fixture's one walled type (`blockhouseAt`) — the rest of the fixture blocks nothing.
 
 describe('a building raised over a field', () => {
+  it('is allowed onto a standing plot — farmland never refuses a site', () => {
+    // A farm's mature plot is scattered over its whole ring, so if a field were a placement obstacle the
+    // settlement could not build anywhere near its own farm until harvest. Placed through the ORDINARY
+    // command (no `force`), which is the path a player takes.
+    const sim = new Simulation({ seed: 1, content: wallsContent(), map: grassMap(10, 10) });
+    const farm = farmAt(sim, 8, 8);
+    for (let x = 1; x <= 4; x++) fieldAt(sim, farm, x, 2);
+    const node = cellAnchorNode(2, 2);
+
+    sim.enqueue({ kind: 'placeBuilding', buildingType: BLOCKHOUSE, x: node.hx, y: node.hy, tribe: VIKING });
+    sim.run(1);
+
+    expect([...sim.world.query(Building)].length).toBe(2); // the farm plus the new blockhouse
+  });
+
   it('takes the plants under its walls and leaves the rest standing', () => {
     const sim = new Simulation({ seed: 1, content: wallsContent(), map: grassMap(10, 10) });
     const farm = farmAt(sim, 8, 8);

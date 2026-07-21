@@ -205,6 +205,7 @@ function reapField(world: World, node: Entity, res: { goodType: number; remainin
   if (res.remaining <= 0) return; // unripe / raced — the swing cut stubble (nothing conjured)
   const { x, y } = world.get(node, Position);
   dropGroundPile(world, x, y, res.goodType, res.remaining);
+  unstampResourceFootprint(world, node); // through the incremental cache, never a full overlay rebuild
   world.destroy(node);
 }
 
