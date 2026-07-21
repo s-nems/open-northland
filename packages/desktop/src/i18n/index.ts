@@ -8,27 +8,44 @@ import { pl } from './pl.js';
  * conventions without sharing its browser-only runtime.
  */
 
-export type Locale = 'eng' | 'pol';
+interface LocaleEntry {
+  readonly messages: Messages;
+  /** BCP-47 tag for `toLocaleString` number formatting and the document `lang` attribute. */
+  readonly tag: string;
+  /** Lowercased OS-locale prefix this language claims; the first entry whose prefix matches wins. */
+  readonly osPrefix: string;
+  readonly flag: string;
+  readonly labelKey: keyof Messages['setup']['language'];
+}
+
+/** Every shipped installer language, in flag-button order. */
+export const LOCALES = {
+  pol: { messages: pl as Messages, tag: 'pl', osPrefix: 'pl', flag: '🇵🇱', labelKey: 'polish' },
+  eng: { messages: en as Messages, tag: 'en', osPrefix: 'en', flag: '🇬🇧', labelKey: 'english' },
+} as const satisfies Record<string, LocaleEntry>;
+
+export type Locale = keyof typeof LOCALES;
+export type LocaleTag = (typeof LOCALES)[Locale]['tag'];
 
 const DEFAULT_LOCALE: Locale = 'eng';
-const LOCALES: Readonly<Record<Locale, Messages>> = { eng: en, pol: pl };
 let activeLocale: Locale = DEFAULT_LOCALE;
 
 /** Every accepted locale, for validating a persisted or IPC-supplied value. */
-export const LOCALE_CODES: readonly Locale[] = ['eng', 'pol'];
+export const LOCALE_CODES = Object.keys(LOCALES) as readonly Locale[];
 
 export function isLocale(value: unknown): value is Locale {
-  return value === 'eng' || value === 'pol';
+  return typeof value === 'string' && Object.hasOwn(LOCALES, value);
 }
 
-/** Map an OS/BCP-47 locale (Electron `app.getLocale()`, e.g. `"pl-PL"`) onto the two installer languages. */
+/** Map an OS/BCP-47 locale (Electron `app.getLocale()`, e.g. `"pl-PL"`) onto the shipped languages. */
 export function resolveLocale(raw: string | undefined): Locale {
-  return raw?.toLowerCase().startsWith('pl') ? 'pol' : DEFAULT_LOCALE;
+  const lower = raw?.toLowerCase();
+  if (lower === undefined) return DEFAULT_LOCALE;
+  return LOCALE_CODES.find((code) => lower.startsWith(LOCALES[code].osPrefix)) ?? DEFAULT_LOCALE;
 }
 
-/** BCP-47 tag for `toLocaleString` number formatting and the document `lang` attribute. */
-export function localeTag(locale: Locale = activeLocale): 'en' | 'pl' {
-  return locale === 'pol' ? 'pl' : 'en';
+export function localeTag(locale: Locale = activeLocale): LocaleTag {
+  return LOCALES[locale].tag;
 }
 
 export function setActiveLocale(locale: Locale): void {
@@ -41,7 +58,7 @@ export function currentLocale(): Locale {
 }
 
 export function messages(locale: Locale = activeLocale): Messages {
-  return LOCALES[locale];
+  return LOCALES[locale].messages;
 }
 
 /** Fill `{placeholder}` slots from `values`; an unknown placeholder is left verbatim. */

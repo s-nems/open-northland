@@ -4,6 +4,7 @@ import {
   formatMessage,
   isLocale,
   LOCALE_CODES,
+  LOCALES,
   localeTag,
   messages,
   resolveLocale,
@@ -38,6 +39,17 @@ describe('installer i18n', () => {
     expect(formatMessage('{done} plików', { done: 12 })).toBe('12 plików');
     expect(formatMessage('{a} — {b}', { a: 'x', b: 'y' })).toBe('x — y');
     expect(formatMessage('keep {missing}', {})).toBe('keep {missing}');
+  });
+
+  it('lists Polish before English, the order the header builds its flag buttons in', () => {
+    expect(LOCALE_CODES).toEqual(['pol', 'eng']);
+  });
+
+  it('labels each flag button with its own language, named in the reading locale', () => {
+    expect(messages('eng').setup.language[LOCALES.pol.labelKey]).toBe('Polish');
+    expect(messages('pol').setup.language[LOCALES.pol.labelKey]).toBe('Polski');
+    expect(messages('eng').setup.language[LOCALES.eng.labelKey]).toBe('English');
+    expect(messages('pol').setup.language[LOCALES.eng.labelKey]).toBe('Angielski');
   });
 
   it('has a non-empty stage label in every locale for every pipeline stage', () => {
