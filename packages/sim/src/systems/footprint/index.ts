@@ -21,6 +21,7 @@ export { buildingBlockedCells } from './building-blocked-cache.js';
 export {
   constructionWorkCell,
   constructionWorkCells,
+  type InteractionNode,
   interactionNode,
   positionedInteractionCell,
   resourceWorkCell,

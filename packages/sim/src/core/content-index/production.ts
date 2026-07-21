@@ -92,6 +92,19 @@ export function workerJobSets(content: ContentSet): ReadonlyMap<number, Readonly
   return map;
 }
 
+/** The per-type worker job ids in ascending order, over the sets {@link workerJobSets} builds
+ *  ({@link import('../content-index.js').ContentIndex.canonicalWorkerJobsByBuilding}). */
+export function canonicalWorkerJobLists(
+  workerJobs: ReadonlyMap<number, ReadonlySet<number>>,
+): ReadonlyMap<number, readonly number[]> {
+  const map = new Map<number, readonly number[]>();
+  for (const [typeId, jobs] of workerJobs) {
+    // Frozen: the array outlives every tick, so an in-place sort by a caller would corrupt slot order.
+    map.set(typeId, Object.freeze([...jobs].sort((a, b) => a - b)));
+  }
+  return map;
+}
+
 /** The per-type stored-good sets ({@link import('../content-index.js').ContentIndex.storedGoodsByBuilding});
  *  first-wins per typeId, types with no stock slots omitted (an employed gatherer there stays unrestricted). */
 export function storedGoodSets(content: ContentSet): ReadonlyMap<number, ReadonlySet<number>> {

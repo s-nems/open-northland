@@ -3,7 +3,7 @@ import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { buildingEnabled, jobEnabled, settlerMeetsNeed } from '../../progression/index.js';
-import { buildingWorkerJobs } from '../../stores/index.js';
+import { buildingWorkerJobs, canonicalBuildingWorkerJobs } from '../../stores/index.js';
 
 /** Bound-settler headcount per (building, jobType) — see the jobSystem tally comment. */
 export type StaffingTally = Map<Entity, Map<number, number>>;
@@ -82,7 +82,7 @@ export function openJobAt(
   const { world, ctx } = query;
   for (const b of buildings) {
     if (query.withinArea !== undefined && !query.withinArea(b)) continue;
-    const jobType = resolveOpenWorkerJob(query, b, canonicalJobs(buildingWorkerJobs(world, ctx, b)));
+    const jobType = resolveOpenWorkerJob(query, b, canonicalBuildingWorkerJobs(world, ctx, b));
     if (jobType !== null) return { building: b, jobType }; // first open, qualified building wins
   }
   return null;
@@ -188,10 +188,4 @@ function liveHeldCount(world: World, building: Entity, jobType: number): number 
     if (world.get(e, Settler).jobType === jobType) held++;
   }
   return held;
-}
-
-/** The job ids of a `workers`-slot set in ascending order, so a multi-slot workplace assigns
- * deterministically (lowest job id first) rather than in `Set` insertion order. */
-function canonicalJobs(jobs: ReadonlySet<number>): number[] {
-  return [...jobs].sort((a, b) => a - b);
 }

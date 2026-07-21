@@ -21,6 +21,7 @@ import { byKey, byOptionalKey, byPairKey } from './content-index/by-key.js';
 import { militaryGoodTypes } from './content-index/combat.js';
 import { constructionBills } from './content-index/construction.js';
 import {
+  canonicalWorkerJobLists,
   inputlessProducerTypes,
   mergedRecipes,
   recipeProductTables,
@@ -88,6 +89,9 @@ export interface ContentIndex {
   /** Per building type: the set of job types its `workers` slots name (empty for a type with no
    *  worker slots). Precomputed so the per-tick staffing gates don't allocate. */
   readonly workerJobsByBuilding: ReadonlyMap<number, ReadonlySet<number>>;
+  /** Per building type: the same job types as {@link workerJobsByBuilding}, ascending — the canonical
+   *  slot order the automatic job scan offers them in. */
+  readonly canonicalWorkerJobsByBuilding: ReadonlyMap<number, readonly number[]>;
   /** Per building type: the set of good types its `stock` slots store — what an employed gatherer may
    *  forage for. Absent for a type declaring no stock slots. */
   readonly storedGoodsByBuilding: ReadonlyMap<number, ReadonlySet<number>>;
@@ -189,6 +193,7 @@ export function contentIndex(content: ContentSet): ContentIndex {
 }
 
 function buildIndex(content: ContentSet): ContentIndex {
+  const workerJobs = workerJobSets(content);
   return {
     buildings: byKey(content.buildings, (b) => b.typeId),
     goods: byKey(content.goods, (g) => g.typeId),
@@ -202,7 +207,8 @@ function buildIndex(content: ContentSet): ContentIndex {
     jobExperience: byKey(content.jobExperience, (t) => t.typeId),
     animalsByTribe: byKey(content.animals, (a) => a.tribeType),
     atomicAnimationsByName: byKey(content.atomicAnimations, (a) => a.name),
-    workerJobsByBuilding: workerJobSets(content),
+    workerJobsByBuilding: workerJobs,
+    canonicalWorkerJobsByBuilding: canonicalWorkerJobLists(workerJobs),
     storedGoodsByBuilding: storedGoodSets(content),
     stockSlotCapacityByBuilding: stockSlotCapacityTables(content),
     recipeByProductByBuilding: recipeProductTables(content),
