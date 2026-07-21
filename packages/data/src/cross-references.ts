@@ -3,29 +3,34 @@ import { type ContentSet, LOGIC_TYPE_NONE } from './schema/index.js';
 /**
  * Ensure every numeric type id referenced by buildings/recipes resolves to a defined type.
  * Catches dangling references at load time rather than as a runtime crash mid-game.
- *
- * The `check*` families run in a fixed order and append to one shared list — the order the emitted
- * error report is asserted in (`test/cross-references.test.ts`), so keep it stable.
  */
 export function validateCrossReferences(set: ContentSet): void {
   const ids = buildIdSets(set);
-  const errors: string[] = [
-    ...checkGoodProduction(set, ids),
-    ...checkBuildings(set, ids),
-    ...checkTribes(set, ids),
-    ...checkWeaponsAndArmor(set, ids),
-    ...checkAnimals(set, ids),
-    ...checkLandscapeGfx(set, ids),
-    ...checkGoodLandscape(set, ids),
-    ...checkGatheringPipeline(set, ids),
-    ...checkTerrainPatterns(set),
-    ...checkJobExperience(set, ids),
-  ];
+  const errors = CHECKS.flatMap((check) => check(set, ids));
 
   if (errors.length > 0) {
     throw new Error(`Content cross-reference validation failed:\n  - ${errors.join('\n  - ')}`);
   }
 }
+
+type CrossReferenceCheck = (set: ContentSet, ids: IdSets) => readonly string[];
+
+/**
+ * Every check, in the order their errors are reported. `test/cross-references.test.ts` asserts one
+ * combined report against this order, so keep it stable.
+ */
+const CHECKS: readonly CrossReferenceCheck[] = [
+  checkGoodProduction,
+  checkBuildings,
+  checkTribes,
+  checkWeaponsAndArmor,
+  checkAnimals,
+  checkLandscapeGfx,
+  checkGoodLandscape,
+  checkGatheringPipeline,
+  checkTerrainPatterns,
+  checkJobExperience,
+];
 
 /** The id-sets every `check*` resolves references against, built once from the set. */
 interface IdSets {
@@ -35,9 +40,9 @@ interface IdSets {
   readonly vehicleIds: ReadonlySet<number>;
   readonly tribeIds: ReadonlySet<number>;
   readonly landscapeIds: ReadonlySet<number>;
-  /** The actual `.index` values of the gfx table (not its length) — holds even if it is ever
-   *  filtered/reordered while keeping original indices. */
+  /** Keyed by each record's own `.index`, which need not match its position in the table. */
   readonly landscapeGfxIndices: ReadonlySet<number>;
+  readonly patternIds: ReadonlySet<number>;
 }
 
 function buildIdSets(set: ContentSet): IdSets {
@@ -49,6 +54,7 @@ function buildIdSets(set: ContentSet): IdSets {
     tribeIds: new Set(set.tribes.map((t) => t.typeId)),
     landscapeIds: new Set(set.landscape.map((l) => l.typeId)),
     landscapeGfxIndices: new Set(set.landscapeGfx.map((g) => g.index)),
+    patternIds: new Set(set.gfxPatterns.map((p) => p.id)),
   };
 }
 
@@ -175,13 +181,13 @@ function checkLandscapeGfx(set: ContentSet, { landscapeIds }: IdSets): string[] 
   return errors;
 }
 
+/** The three ordered stages of a good's gathering chain: the keys both gathering checks walk. */
+const GATHERING_STAGES = ['harvest', 'pickup', 'store'] as const;
+
 // A good's landscape references — its `landscapetype` on-the-ground lane and the three
 // gathering-stage ids — must resolve into the landscape type table (the same dangling-reference
 // class as landscapeGfx). Every real good carries a defined `landscapetype`; only the ~11
 // map-gathered goods carry a `gathering` chain.
-/** The three ordered stages of a good's gathering chain — the keys both gathering checks walk. */
-const GATHERING_STAGES = ['harvest', 'pickup', 'store'] as const;
-
 function checkGoodLandscape(set: ContentSet, { landscapeIds }: IdSets): string[] {
   const errors: string[] = [];
   for (const g of set.goods) {
@@ -228,10 +234,9 @@ function checkGatheringPipeline(
 
 // A terrainPatterns row's representative pick must exist in the full pattern table when that
 // table is carried.
-function checkTerrainPatterns(set: ContentSet): string[] {
+function checkTerrainPatterns(set: ContentSet, { patternIds }: IdSets): string[] {
   if (set.gfxPatterns.length === 0) return [];
   const errors: string[] = [];
-  const patternIds = new Set(set.gfxPatterns.map((p) => p.id));
   for (const t of set.terrainPatterns) {
     if (!patternIds.has(t.patternId))
       errors.push(`terrainPattern for typeId ${t.typeId} references unknown patternId ${t.patternId}`);
