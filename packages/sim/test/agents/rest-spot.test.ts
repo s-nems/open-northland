@@ -3,8 +3,8 @@ import { CurrentAtomic, MoveGoal, Owner, Settler } from '../../src/components/in
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, type Fixed, type NodeId, Simulation } from '../../src/index.js';
 import type { TerrainGraph } from '../../src/nav/terrain/index.js';
-import type { SpacingState } from '../../src/systems/agents/destack.js';
 import { planNeeds } from '../../src/systems/agents/drives-needs.js';
+import { PlannerSpacing } from '../../src/systems/agents/planner-spacing.js';
 import { restingCell } from '../../src/systems/agents/rest-spot.js';
 import { collectTargets } from '../../src/systems/agents/targets/index.js';
 import { NodeBuckets } from '../../src/systems/spatial.js';
@@ -16,7 +16,7 @@ import { ctxOf, grassMap, justAbove, NEED_THRESHOLD, needsSettlerAt } from './ne
  * doorstep into open ground before lying down (observed original), so a rest spot must be clear of
  * buildings/resources AND of their immediate ring, and free of other resting settlers.
  *
- * The blocked overlay is seeded directly on the {@link SpacingState} rather than grown from real
+ * The blocked overlay is seeded directly on the {@link PlannerSpacing} rather than grown from real
  * footprints: the rule under test is "which node is a bed", not how the walk-block is derived.
  */
 
@@ -43,12 +43,18 @@ function aNeighbourOf(sim: Simulation, node: NodeId): NodeId {
 }
 
 /** A planner-tick spacing state with the walk-block pre-seeded and `settlers` bucketed as stationary. */
-function spacingWith(sim: Simulation, blocked: readonly NodeId[], settlers: readonly Entity[]): SpacingState {
-  return {
-    occupancy: new NodeBuckets(sim.world, settlers),
-    claimed: new Set(),
-    blockedCells: new Set(blocked),
-  };
+function spacingWith(
+  sim: Simulation,
+  blocked: readonly NodeId[],
+  settlers: readonly Entity[],
+): PlannerSpacing {
+  return PlannerSpacing.overExplicit(
+    sim.world,
+    ctxOf(sim),
+    terrainOf(sim),
+    new NodeBuckets(sim.world, settlers),
+    new Set(blocked),
+  );
 }
 
 /** A tired, player-owned settler standing on cell `(cx, cy)`. */
@@ -90,9 +96,9 @@ describe('restingCell — choosing where to lie down', () => {
     const bed = restingCell(sim.world, ctxOf(sim), terrainOf(sim), e, here, spacing, null);
 
     expect(bed).not.toBe(here);
-    expect(spacing.blockedCells?.has(bed)).toBe(false);
+    expect(spacing.blockedCells().has(bed)).toBe(false);
     expect(blockedNeighbourCount(sim, bed, new Set([doorstep]))).toBe(0);
-    expect(spacing.claimed.has(bed)).toBe(true); // reserved for this tick
+    expect(spacing.isClaimed(bed)).toBe(true); // reserved for this tick
   });
 
   it('does not bed down on a node another settler is standing on', () => {
@@ -159,7 +165,7 @@ describe('restingCell — choosing where to lie down', () => {
 describe('sleep drive — walking aside before bedding down', () => {
   /** Run the needs ladder for the settler standing on `here`, with a pre-seeded spacing state (the
    *  planner builds its own per tick; this test pins the walk-block instead of growing footprints). */
-  function runNeeds(sim: Simulation, e: Entity, here: NodeId, spacing: SpacingState): boolean {
+  function runNeeds(sim: Simulation, e: Entity, here: NodeId, spacing: PlannerSpacing): boolean {
     const terrain = terrainOf(sim);
     const ctx = ctxOf(sim);
     const settler = sim.world.get(e, Settler);

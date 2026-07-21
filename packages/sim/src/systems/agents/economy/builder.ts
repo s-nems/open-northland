@@ -8,8 +8,9 @@ import {
   stampSupplyRun,
 } from '../../stores/index.js';
 import { atOrWalk, BUILD_HOUSE_ATOMIC_ID, jobCanBuild, startAtomic, startPickup } from '../actions.js';
-import { claimWorkCell, type SpacingState } from '../destack.js';
+import { claimWorkCell } from '../destack.js';
 import type { PlannerContext } from '../planner-context.js';
+import type { PlannerSpacing } from '../planner-spacing.js';
 import { interactionCell, nearestConstructionSite, nearestStoreHolding } from '../targets/index.js';
 
 /**
@@ -44,7 +45,7 @@ import { interactionCell, nearestConstructionSite, nearestStoreHolding } from '.
  * Sits below the bound-producer loop and above gather/porter/carrier, so a builder builds before it ferries.
  * `jobType` is non-null here.
  */
-export function planBuilder(plan: PlannerContext, spacing: SpacingState): boolean {
+export function planBuilder(plan: PlannerContext, spacing: PlannerSpacing, leads: SiteLeads): boolean {
   const { world, ctx, terrain, entity: e, here, targets } = plan;
   const settler = plan;
   if (!jobCanBuild(ctx, settler.jobType)) {
@@ -74,7 +75,7 @@ export function planBuilder(plan: PlannerContext, spacing: SpacingState): boolea
   if (assigned === undefined || assigned.site !== site || assigned.pinned !== (pinned !== null)) {
     world.add(e, SiteAssignment, { site, pinned: pinned !== null });
   }
-  const siteStand = (): NodeId | null => claimWorkCell(world, ctx, terrain, e, here, site, spacing);
+  const siteStand = (): NodeId | null => claimWorkCell(world, terrain, e, here, site, spacing);
   const hammer = (): void => {
     const stand = siteStand();
     if (stand !== null) {
@@ -95,7 +96,7 @@ export function planBuilder(plan: PlannerContext, spacing: SpacingState): boolea
   // any other crew member pre-fetches a still-missing material first so the deficit closes in parallel with
   // the hammering, and hammers only if nothing is left to fetch.
   if (world.get(site, UnderConstruction).labor < deliveredConstructionFraction(world, ctx, site)) {
-    const isLead = constructionSiteLead(world, spacing, site) === e;
+    const isLead = leads.of(site) === e;
     if (!isLead && fetchNeededMaterial(plan, site)) return true;
     hammer();
     return true;
@@ -145,21 +146,25 @@ function fetchNeededMaterial(plan: PlannerContext, site: Entity): boolean {
 }
 
 /**
- * The site's LEAD builder — the lowest-id settler currently assigned to `site` ({@link SiteAssignment}) — the
- * one crew member kept on the hammer while others pre-fetch. A single pass memoizes a stable per-tick view in
- * {@link SpacingState}, so every builder sees the same lead. Falls back to the site itself when no lead is
- * recorded; the caller normally has its own SiteAssignment.
+ * Each construction site's lead builder, keyed by site. Built on the first builder that asks, so a tick
+ * with no construction pays nothing, and shared for the rest of the pass so a crew agrees on its lead.
  */
-function constructionSiteLead(world: World, spacing: SpacingState, site: Entity): Entity {
-  let leads = spacing.crewLeadBySite;
-  if (leads === undefined) {
-    leads = new Map<Entity, Entity>();
-    for (const member of world.query(SiteAssignment)) {
-      const memberSite = world.get(member, SiteAssignment).site;
-      const lead = leads.get(memberSite);
-      if (lead === undefined || member < lead) leads.set(memberSite, member);
+export class SiteLeads {
+  private leadBySite: Map<Entity, Entity> | undefined;
+  constructor(private readonly world: World) {}
+
+  /** The site's lead builder, or the site itself when no builder is assigned to it. */
+  of(site: Entity): Entity {
+    let leads = this.leadBySite;
+    if (leads === undefined) {
+      leads = new Map<Entity, Entity>();
+      for (const member of this.world.query(SiteAssignment)) {
+        const memberSite = this.world.get(member, SiteAssignment).site;
+        const lead = leads.get(memberSite);
+        if (lead === undefined || member < lead) leads.set(memberSite, member);
+      }
+      this.leadBySite = leads;
     }
-    spacing.crewLeadBySite = leads;
+    return leads.get(site) ?? site;
   }
-  return leads.get(site) ?? site;
 }

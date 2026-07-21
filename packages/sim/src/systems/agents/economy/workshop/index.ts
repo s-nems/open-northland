@@ -4,8 +4,9 @@ import { shelfBlockedOutput } from '../../../economy/production.js';
 import { planGossipIdle } from '../../../social/index.js';
 import { isWorkplaceOperator, mergedRecipeOf, recipesByProductOf } from '../../../stores/index.js';
 import { atOrWalk, startDraw, startPickup } from '../../actions.js';
-import { loiterCell, type SpacingState } from '../../destack.js';
+import { loiterCell } from '../../destack.js';
 import type { PlannerContext } from '../../planner-context.js';
+import type { PlannerSpacing } from '../../planner-spacing.js';
 import { interactionCell } from '../../targets/index.js';
 import { deliverableGoodProbe } from '../routing.js';
 import {
@@ -33,7 +34,7 @@ export function planProducer(
   plan: PlannerContext,
   workplace: Entity,
   seatClaims: WorkSeatClaims,
-  spacing: SpacingState,
+  spacing: PlannerSpacing,
 ): void {
   const { world, ctx, terrain, here, targets } = plan;
   const recipe = mergedRecipeOf(world, ctx, workplace);
@@ -85,7 +86,7 @@ export function planProducer(
  * Ferry inputs and outputs for a carrier bound to a recipe workplace. Input slots are topped up before
  * output is removed so the operators do not starve; that priority is the existing named approximation.
  */
-export function planWorkshopSupplier(plan: PlannerContext, workplace: Entity, spacing: SpacingState): void {
+export function planWorkshopSupplier(plan: PlannerContext, workplace: Entity, spacing: PlannerSpacing): void {
   const { world, ctx, terrain, here, targets } = plan;
   const worker = plan;
   const recipe = mergedRecipeOf(world, ctx, workplace);
@@ -165,7 +166,7 @@ function holdInsideWorkplace(plan: PlannerContext, workplace: Entity): void {
 function loiterByDoor(
   plan: PlannerContext,
   workplace: Entity,
-  spacing: SpacingState,
+  spacing: PlannerSpacing,
   drivesProduction: boolean,
 ): void {
   const { world, ctx, terrain, entity, here } = plan;
@@ -174,7 +175,7 @@ function loiterByDoor(
     return;
   }
   const door = interactionCell(world, ctx, terrain, workplace, here);
-  const stand = loiterCell(world, ctx, terrain, entity, here, door, spacing);
+  const stand = loiterCell(world, terrain, entity, here, door, spacing);
   atOrWalk(world, entity, here, stand, () => {
     const { x, y } = terrain.coordsOf(here);
     planGossipIdle(world, ctx, entity, plan, x, y, plan.gossipCandidates);
