@@ -39,16 +39,22 @@ legal wording is in `docs/LEGAL.md`.
 - Prefer names and structure that explain the code without PR context.
 - Comments state units, invariants, ownership, or source basis. Do not narrate obvious control flow or
   preserve development history.
-- Keep comments tight. A typical doc comment is one to three sentences. Remove repetition and
-  rhetorical filler when touching a file.
+- JSDoc is not required for every export, interface member, or local helper. Do not document a symbol
+  when its name and type already state the contract.
+- Keep comments tight. Most comments fit in one to three physical lines. Treat a block longer than five
+  lines as a structural warning; retain it only when a protocol, security boundary, source basis, or
+  indivisible invariant genuinely needs the space.
+- Give each fact one durable home. Investigation, benchmarks, caller inventories, and decision history
+  belong in tests, tickets, or the completing commit, not repeated in production JSDoc.
 - Refactor structure before adding a long comment about phases, branch purpose, or ownership.
 - Group by feature. When a file passes roughly 300 lines or mixes concerns, extract the relevant
   concern into a feature folder and preserve public imports through a small barrel when useful.
 - Delete dead code and commented-out blocks. Git is the archive.
 - Deduplicate when a second real caller proves the shared concept. Do not add speculative helpers.
 - Leave touched code cleaner, but do not turn a bounded task into a repository rewrite.
-- Do not add another responsibility to an already overgrown file. Extract within scope or file one
-  precise cleanup ticket.
+- Do not add another responsibility, narrative section, or longer orchestration path to an already
+  overgrown file. Extract the concern related to the task; an existing or newly filed cleanup ticket
+  does not permit making the file worse.
 
 Use strict TypeScript deliberately: no `any`, narrow `unknown`, prefer discriminated unions with
 exhaustive switches, use string-literal unions rather than `enum`, mark stable data `readonly`, use
