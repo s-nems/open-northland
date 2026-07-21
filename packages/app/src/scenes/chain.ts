@@ -107,9 +107,9 @@ export const chainScene: SceneDefinition = {
   checks: [
     {
       label: 'the farm field-farms wheat (fields sown on the grass)',
-      // The run's end tick can land in the harvest trough (every field just cut, the resow under way —
-      // observed once the farmers also pause to gossip), so a bare end-tick sample is luck. When it is
-      // empty, a fresh run gets a bounded resow window past the scene's own length.
+      // A bare end-tick sample is luck: fields ripen at spread paces, so the count dips whenever several
+      // land together. When it reads empty, a fresh run gets a bounded window past the scene's own length
+      // (see {@link RESOW_WINDOW_TICKS} — slack, not a trough-recovery budget).
       predicate: (sim) =>
         cropFields(sim) > 0 ||
         holdsSometimeDuring(chainScene, RUN_TICKS + RESOW_WINDOW_TICKS, (s) => cropFields(s) > 0),

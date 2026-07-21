@@ -198,8 +198,7 @@ export function harvestFromNode(
  * `landscapeToPickup` "cut wheat" look) — and remove the field, freeing the tile to sow again. An unripe field
  * (`remaining <= 0`) yields nothing and stays standing (goods conserved). No owner stamp (a farm's fields are
  * shared by all its farmers) and no stump — the field clears to bare ground, faithful to the original's wheat
- * cycle. A field never stamps a {@link ResourceFootprint} (wheat is walkable in the data), so there is no
- * collision overlay to release.
+ * cycle.
  */
 function reapField(world: World, node: Entity, res: { goodType: number; remaining: number }): void {
   if (res.remaining <= 0) return; // unripe / raced — the swing cut stubble (nothing conjured)

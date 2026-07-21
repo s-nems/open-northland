@@ -16,8 +16,8 @@ farming/planner.ts`). Sow beats the can, so a farm starting on bare ground sows 
 
 Steady-state pacing and the staggered ripening are correct (pinned by `packages/app/test/farm-pacing.test.ts`);
 this is only the ramp. Over seven minutes of a new farm showing a full plot of seedlings that visibly do
-not grow reads as a stall to the player, and it is why `scenes/chain.ts` needs a 12000-tick run and
-`packages/app/test/content/farming-scenario.test.ts` an 8000-tick one.
+not grow reads as a stall to the player, and it is why `scenes/chain.ts` and
+`packages/app/test/content/farming-scenario.test.ts` each need a 12000-tick run.
 
 Sow-before-water is load-bearing and must not simply be flipped: with per-stage watering, a plain water-first
 farmer never expands past the handful of fields its can can keep up with (measured: a lone farmer settles at

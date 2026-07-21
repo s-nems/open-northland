@@ -134,8 +134,8 @@ export function placeBuilding(
   // raze both (the original clears landscape decoration in a building's reserved zone).
   destroyBerryBushesInReserved(world, ctx, e);
   destroyStumpsInReserved(world, ctx, e);
-  // A sown field normally blocks placement outright, so this only bites where the gate was skipped
-  // (`force`): the plants under the new walls go with them rather than stranding their farm's slot.
+  // A field declares no build area, so it never refuses a site — this is the only thing that clears one:
+  // the plants under the new walls go with them rather than stranding their farm's slot.
   destroyFieldsUnderBuilding(world, ctx, e);
   ctx.events.emit({ kind: 'buildingPlaced', entity: e, at: { hx: command.x, hy: command.y } });
 }

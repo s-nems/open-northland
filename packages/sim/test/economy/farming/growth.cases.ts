@@ -126,7 +126,10 @@ describe('sow / water effects', () => {
       for (let i = 0; i < priorDraws; i++) ctx.rng.int(100);
       const node = cellAnchorNode(cx, cy);
       applySow(sim.world, ctx, { farm, goodType: WHEAT, x: node.hx, y: node.hy });
-      const field = [...sim.world.query(Crop)][0] as Entity;
+      const fields = [...sim.world.query(Crop)];
+      expect(fields).toHaveLength(1);
+      const [field] = fields;
+      if (field === undefined) throw new Error('unreachable — length asserted above');
       return sim.world.get(field, Crop).ticksPerStage;
     };
     // A pure coordinate hash, not `world.rng` — so a replay re-sowing the same node re-draws the same
