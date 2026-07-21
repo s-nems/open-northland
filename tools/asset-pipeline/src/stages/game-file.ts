@@ -2,7 +2,7 @@ import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
 import { type BobAtlas, packBobAtlas, packIndexedBobAtlas } from '../decoders/atlas.js';
 import type { Bmd } from '../decoders/bmd/index.js';
-import { buildPaletteLutImage } from '../decoders/image.js';
+import { buildPaletteLutImage, PALETTE_ENTRIES, PALETTE_RGB_BYTES } from '../decoders/image.js';
 import { decodePcx } from '../decoders/pcx.js';
 import { encodePng } from '../decoders/png.js';
 import { errorMessage } from '../errors.js';
@@ -74,8 +74,8 @@ export async function writeJsonFile(outDir: string, relPath: string, value: unkn
  * partial install.
  */
 export function identityPalette(): Uint8Array {
-  const p = new Uint8Array(768);
-  for (let i = 0; i < 256; i++) p.fill(i, i * 3, i * 3 + 3);
+  const p = new Uint8Array(PALETTE_RGB_BYTES);
+  for (let i = 0; i < PALETTE_ENTRIES; i++) p.fill(i, i * 3, i * 3 + 3);
   return p;
 }
 
