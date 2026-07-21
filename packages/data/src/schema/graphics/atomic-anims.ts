@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Provenance } from '../record.js';
+import { AtomicId, Provenance, TypeId } from '../record.js';
 
 /**
  * One `[gfxanimatomic]` record from `mapmoveableanimations/animations.ini` — the atomic-action → body
@@ -16,14 +16,14 @@ import { Provenance } from '../record.js';
  * `spear_attack` 108), so a `start + facing*stride` slice is meaningless.
  */
 export const GfxAnimAtomic = z.strictObject({
-  /** `logictribe` the record binds — the `logicdefines.inc` `TRIBE_TYPE_*` id (viking 1, frank 2, …), not
-   *  the tribetypes `logicType`. The same `(job, action)` recurs per tribe with different frame lists, so
-   *  consumers must filter by tribe. */
-  tribe: z.number().int().nonnegative(),
+  /** `logictribe` the record binds — the `logicdefines.inc` `TRIBE_TYPE_*` id (viking 1, frank 2, …), which
+   *  is the tribetypes `type` key, so it resolves against `TribeType.typeId`. The same `(job, action)`
+   *  recurs per tribe with different frame lists, so consumers must filter by tribe. */
+  tribe: TypeId,
   /** `logicjob` — the soldier/settler jobType whose atomic this animates (soldiers 31..41, civilist 6, woman 5). */
-  job: z.number().int().nonnegative(),
+  job: TypeId,
   /** `logicatomicaction` — the atomic slot (81 = attack, …), the same numeric id the sim's `setatomic` join keys. */
-  action: z.number().int().nonnegative(),
+  action: AtomicId,
   /** The `gfxbobseqbody` `[bobseq]` name whose frame pool the {@link dirFrames} index into. */
   bodySeq: z.string(),
   /** The `gfxbobseqhead` `[bobseq]` name, when the record overlays a separate head bob. Unread today —

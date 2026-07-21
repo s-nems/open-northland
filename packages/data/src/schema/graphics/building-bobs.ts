@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Provenance } from '../record.js';
+import { Provenance, TypeId } from '../record.js';
 
 /**
  * The fields every `[GfxHouse]` render binding shares: the `(tribeId, typeId, level)` key, the body
@@ -10,9 +10,9 @@ import { Provenance } from '../record.js';
  */
 const BuildingBobBase = z.strictObject({
   /** The `LogicTribeType` the record applies to (viking 1, frank 2, …) — the same logic `typeId` recurs per tribe. */
-  tribeId: z.number().int().nonnegative(),
+  tribeId: TypeId,
   /** The building `typeId` at this size level (the `LogicType` value — the sim's `Building.buildingType`). */
-  typeId: z.number().int().nonnegative(),
+  typeId: TypeId,
   /** The growth/size level index (`LogicType`/`GfxBobId`'s leading int) — a home's tier 0..4. */
   level: z.number().int().nonnegative(),
   /** The body bob set, normalized (lower-case, forward slashes), e.g. `data/engine2d/bin/bobs/ls_houses_viking.bmd`. */

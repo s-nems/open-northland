@@ -29,7 +29,7 @@
 
 import { type Bmd, BOB_TYPE_EMPTY, type BobRecord, decodeBmd, encodeBmd } from './bmd/index.js';
 import { viewOf } from './byte-cursor.js';
-import { StorableId } from './cif.js';
+import { StorableId } from './storable.js';
 
 const FONT_ID = StorableId.CFont; // 0x3F5
 const BOB_MANAGER_ID = StorableId.CBobManager; // 0x3F4

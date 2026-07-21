@@ -32,7 +32,7 @@
  */
 
 import { ByteCursor, ByteWriter, viewOf } from '../byte-cursor.js';
-import { readCMemory, StorableId } from '../cif.js';
+import { readCMemory, StorableId } from '../storable.js';
 
 const BMD_ID = StorableId.CBobManager; // 0x3F4
 const BOB_RECORD_BYTES = 24; // i32 type + 4×i32 rect + u32 misc

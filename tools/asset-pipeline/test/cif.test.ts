@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { decodeCifStringArray, decryptMode1, encryptMode1, StorableId } from '../src/decoders/cif.js';
+import { decodeCifStringArray, decryptMode1, encryptMode1 } from '../src/decoders/cif.js';
 import { decodeCifStringTable } from '../src/decoders/ini.js';
+import { StorableId } from '../src/decoders/storable.js';
 import { u32Into } from './support/bytes.js';
 
 /**

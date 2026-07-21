@@ -4,8 +4,8 @@
  *
  * Every Cultures container is little-endian with the same handful of reads (`u32`, occasional `u8`,
  * raw byte runs, ASCII names). This shared reader is deliberately domain-free — no storable ids, no
- * format knowledge — so the format-specific helpers (e.g. `readCMemory` in `cif.ts`) build on it
- * without a circular import.
+ * format knowledge — so `storable.ts` layers the shared object vocabulary on top of it and the
+ * per-format decoders layer on that.
  */
 
 /**

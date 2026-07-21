@@ -14,8 +14,8 @@
  */
 
 import { viewOf } from './byte-cursor.js';
-import { StorableId } from './cif.js';
 import { assertPaletteBytes, PALETTE_RGB_BYTES, writeBgraTable } from './image.js';
+import { StorableId } from './storable.js';
 
 const STORABLE_HEADER_BYTES = 8; // [u32 id][u32 version]
 const ENTRY_COUNT = 256;
