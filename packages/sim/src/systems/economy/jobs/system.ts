@@ -1,13 +1,4 @@
-import {
-  Building,
-  CraftSelection,
-  GatherSelection,
-  JobAssignment,
-  ownerOf,
-  Position,
-  Settler,
-  sameSide,
-} from '../../../components/index.js';
+import { Building, JobAssignment, ownerOf, Position, Settler, sameSide } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
 import type { System, SystemContext } from '../../context.js';
@@ -16,7 +7,7 @@ import { navigationLimitFor } from '../../signposts/index.js';
 import { canonicalById, NodeBuckets } from '../../spatial.js';
 import { buildingWorkerJobs, isCarrierJob, mergedRecipeOf } from '../../stores/index.js';
 import { farmWorkGood } from '../farming.js';
-import { jobCanHarvest, removeWorkFlag } from '../flags.js';
+import { bindEmployment } from './binding.js';
 import {
   buildStaffingTally,
   incrementStaffing,
@@ -133,10 +124,7 @@ function unboundSettlers(world: World): Entity[] {
 }
 
 /** Stamp the binding and reflect it into the tick's staffing tally, so every later openness probe this tick
- *  counts it (the live-scan behavior the tally replaced). A gatherer bound to a building carries no work
- *  flag (mirrors `assignWorker`): its harvest scope is the workplace's stored goods, not a flag yard. Any
- *  per-employment pick from a PRIOR post (a demolished workshop's craft/gather selection) dies here too —
- *  the new workplace offers a different product/store set. */
+ *  counts it (the live-scan behavior the tally replaced). */
 function bind(
   world: World,
   ctx: SystemContext,
@@ -145,10 +133,7 @@ function bind(
   workplace: Entity,
   jobType: number,
 ): void {
-  world.add(e, JobAssignment, { workplace });
-  if (jobCanHarvest(ctx, jobType)) removeWorkFlag(world, e);
-  world.remove(e, GatherSelection);
-  world.remove(e, CraftSelection);
+  bindEmployment(world, ctx, e, workplace, jobType);
   incrementStaffing(staffing, workplace, jobType);
 }
 

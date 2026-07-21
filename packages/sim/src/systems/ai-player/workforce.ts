@@ -15,7 +15,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { HalfCellNode } from '../../nav/halfcell.js';
 import { nodeBoxOfCircles, withinNodeRadius } from '../../nav/node-metric.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
-import { BUILD_HOUSE_ATOMIC_ID } from '../agents/actions.js';
+import { jobCanBuild } from '../agents/actions.js';
 import { jobAtomics } from '../agents/targets/index.js';
 import type { SystemContext } from '../context.js';
 import { liveWorkFlag } from '../economy/flags.js';
@@ -85,12 +85,11 @@ export const FLAG_MAX_DISTANCE_NODES = 6;
 /** When the whole 2–3-tile band is blocked, any legal node this close still serves. */
 const FLAG_FALLBACK_MAX_DISTANCE_NODES = 12;
 
-/** The lowest job permitted the house-building atomic — the builder trade, resolved from content
- *  the same way the assignBuilder gate checks it — or null when the content has no builder. */
+/** The lowest builder-trade job in content, or null when the content has no builder. */
 export function builderJobOf(ctx: SystemContext): number | null {
   let best: number | null = null;
   for (const job of ctx.content.jobs) {
-    if (!jobAtomics(ctx, job.typeId).has(BUILD_HOUSE_ATOMIC_ID)) continue;
+    if (!jobCanBuild(ctx, job.typeId)) continue;
     if (best === null || job.typeId < best) best = job.typeId;
   }
   return best;

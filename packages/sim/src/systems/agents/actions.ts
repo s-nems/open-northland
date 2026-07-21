@@ -14,7 +14,7 @@ import type { SystemContext } from '../context.js';
 import { atomicDuration, needAtomicDuration } from '../readviews/animations.js';
 import { clearNavState } from '../spatial.js';
 import type { PlannerContext } from './planner-context.js';
-import { interactionCell } from './targets/index.js';
+import { interactionCell, jobAtomics } from './targets/index.js';
 
 // The planner's action vocabulary: the atomic ids the drives issue, the shared "start an atomic" entry point,
 // and the walk-or-act step every target-bound drive ends in. Each id below is only a content cross-reference /
@@ -65,9 +65,14 @@ export const PICKUP_ATOMIC_ID = 22;
  * The atomic id a builder runs to raise a house — id 39 is the build-house slot bound for the builder job
  * across every tribe (source basis `DataCnmd/tribetypes12/tribetypes.ini`, and the builder's `allowatomic 39`
  * in `jobtypes.ini`; the viking binding's animation runs 15 ticks). The `construct` effect advances the site's
- * builder-work `labor`. A job is a builder iff it may run this atomic — the planner's data-driven "who
- * constructs" test, not a hardcoded jobType id. */
+ * builder-work `labor`. */
 export const BUILD_HOUSE_ATOMIC_ID = 39;
+
+/** Whether `jobType` is a builder trade: it is one iff content lets it run the build-house atomic — the
+ *  data-driven "who constructs" test, so no caller keys construction off a hardcoded jobType id. */
+export function jobCanBuild(ctx: SystemContext, jobType: number): boolean {
+  return jobAtomics(ctx, jobType).has(BUILD_HOUSE_ATOMIC_ID);
+}
 
 /** The atomic id for depositing a carried load into a store. The readable data binds no per-good "pileup"
  *  atomic (harvest/produce are good-keyed; pickup=22/pileup are generic), so a constant keeps the planner
