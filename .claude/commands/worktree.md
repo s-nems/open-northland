@@ -43,6 +43,11 @@ adding a responsibility or narrative section to an overgrown file. Comments adde
 task must carry an irreducible invariant, unit, source basis, approximation, or necessary reason; keep
 investigation and commit rationale out of production JSDoc.
 
+For a refactor, keep every hunk tied to one selected hotspot. Judge comments across an extracted source
+and all destination modules together; moving prose and adding new module summaries does not improve the
+comment budget. Do not add a bespoke source scanner when types, structure, or an existing hygiene rule
+can express the boundary.
+
 Run focused tests while working, then the matching gates from `AGENTS.md` and `docs/TESTING.md`.
 Pipeline and real-content gates remain local-only requirements when their scope applies.
 
@@ -54,8 +59,9 @@ focused verification after fixes.
 
 Read every touched production module in full, once with comments mentally hidden. Names, types, and
 boundaries must still expose its responsibilities and control flow. Require the review to report
-structure and comment verdicts as `improved`, `neutral`, or `regressed`; a refactor with either verdict
-`regressed` must be fixed before handoff.
+`Scope: cohesive | fragmented` plus structure and comment verdicts as `improved`, `neutral`, or
+`regressed`; a refactor with fragmented scope or either `regressed` verdict must be fixed before
+handoff.
 
 For visual or audio work, prepare the exact scene, URL, screenshot, or listening path for the user.
 Do not self-approve pixels or sound.
@@ -68,14 +74,17 @@ Before the completing commit:
 - rewrite a partial ticket to only the remaining work;
 - file only verified, valuable deferred findings, after deduping.
 
+For refactor cleanup, report unrelated findings instead of filing follow-up tickets unless the user
+requested backlog updates or a material blocker would otherwise be lost.
+
 Re-read the full diff and confirm that source comments do not repeat its commit rationale. Run
 `git diff --check`, and commit with the repository's Conventional Commit style. The completing commit
 must include the final tracker state.
 
 ## 6. Handoff
 
-Report the branch, commit(s), changed behavior, checks, structure and comment verdicts, review result,
-and exact human verification. Then stop and wait. Do not merge on implied approval.
+Report the branch, commit(s), changed behavior, checks, scope, structure and comment verdicts, review
+result, and exact human verification. Then stop and wait. Do not merge on implied approval.
 
 ## 7. Refresh and merge after approval
 

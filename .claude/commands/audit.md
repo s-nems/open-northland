@@ -42,6 +42,6 @@ file:line: defect; failure scenario; suggested fix
 ```
 
 Add your own agree/disagree judgement for findings returned by reviewers. Name any visual or audio
-checks that still need a human and give the exact scene or URL. Preserve the code reviewer's separate
-structure and comment verdicts in the report; either `regressed` verdict makes a refactor need fixes.
-End with one verdict: merge-ready, needs fixes, or needs human review.
+checks that still need a human and give the exact scene or URL. Preserve the code reviewer's scope,
+structure, and comment verdicts in the report; fragmented scope or either `regressed` verdict makes a
+refactor need fixes. End with one verdict: merge-ready, needs fixes, or needs human review.
