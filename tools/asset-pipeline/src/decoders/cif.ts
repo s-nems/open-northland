@@ -14,17 +14,7 @@
  */
 
 import { ByteCursor, decodeLatin1, viewOf } from './byte-cursor.js';
-
-/** Storable class ids from the original factory (XBStorable.cs `LoadObjectOrNull`). */
-export const StorableId = {
-  CMemory: 0x3e9,
-  CBitmap: 0x3f3,
-  CBobManager: 0x3f4,
-  CFont: 0x3f5,
-  CPalette: 0x3f6,
-  CRemapTable: 0x3f7,
-  CStringArray: 0x3fd,
-} as const;
+import { readCMemory, StorableId } from './storable.js';
 
 /** One decoded line of a `.cif` string pool: a nesting level + its text. */
 export interface CifLine {
@@ -84,22 +74,6 @@ export function encryptMode1(buf: Uint8Array): void {
     c = (c + 0x42) & 0xff;
   }
   if (len & 1) buf[i] = (((buf[i] as number) ^ b) + 1) & 0xff;
-}
-
-/**
- * Reads one `CMemory` storable body (`[u32 id=0x3E9][u32 version][u32 size][size bytes]`) and returns
- * a copy of the bytes, so a caller may decrypt/mutate without touching the source buffer. Asserts the
- * storable id, tagging the error with the cursor's format prefix. Shared by every storable container
- * decoder (`.cif` offsets/pool, `.bmd` bob/packed/line blocks — CMemory is the universal blob wrapper).
- */
-export function readCMemory(r: ByteCursor): Uint8Array {
-  const id = r.u32();
-  r.u32(); // version (unused)
-  if (id !== StorableId.CMemory) {
-    throw new Error(`${r.prefix}: expected CMemory (0x3E9), got storable id 0x${id.toString(16)}`);
-  }
-  const size = r.u32();
-  return Uint8Array.from(r.take(size));
 }
 
 /**

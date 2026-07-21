@@ -12,13 +12,10 @@ export type Provenance = z.infer<typeof Provenance>;
 export const TypeId = z.number().int().nonnegative();
 
 /**
- * Atomic ids are a numeric vocabulary cross-referenced by goods (`atomicFor*`), jobs
- * (`allowatomic`/`baseatomics`) and tribes (`setatomic`). The readable data ships no master
- * atomictypes table — an atomic id's meaning is implicit in how those sources reference it
- * (e.g. the id under `atomicForHarvesting` is the harvest atomic for that good). The sim's
- * atomic planner consumes these bindings. See docs/ECS.md "Settler AI". Same numeric domain as
- * {@link TypeId} but a distinct vocabulary (not resolvable against any type table), so it is kept
- * a separately-named primitive rather than reusing `TypeId`.
+ * The atomic-action vocabulary, named by a readable master enum (`logicdefines.inc`
+ * `MAP_MOVEABLES_ATOMIC_ACTION_TYPE_*`, 0..92) that ships no matching record table — so an atomic id
+ * resolves against nothing extracted. Same numeric domain as {@link TypeId}, kept a separate primitive
+ * because it is not a foreign key. See docs/ECS.md "Settler AI".
  */
 export const AtomicId = z.number().int().nonnegative();
 

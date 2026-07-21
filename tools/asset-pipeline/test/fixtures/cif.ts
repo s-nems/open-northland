@@ -1,4 +1,5 @@
-import { encryptMode1, StorableId } from '../../src/decoders/cif.js';
+import { encryptMode1 } from '../../src/decoders/cif.js';
+import { StorableId } from '../../src/decoders/storable.js';
 
 /**
  * Serializes level-tagged lines into a `CStringArray` byte stream using the decoder's inverse cipher,

@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { type Bmd, BOB_TYPE_8BIT, BOB_TYPE_EMPTY, type BobRecord } from '../src/decoders/bmd/index.js';
-import { StorableId } from '../src/decoders/cif.js';
 import {
   bobAdvance,
   decodeFnt,
@@ -12,6 +11,7 @@ import {
   type Font,
   fontMetrics,
 } from '../src/decoders/fnt.js';
+import { StorableId } from '../src/decoders/storable.js';
 import { packLineControl } from './fixtures/bmd.js';
 
 /**

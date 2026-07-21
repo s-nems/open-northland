@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Provenance } from '../record.js';
+import { Provenance, TypeId } from '../record.js';
 
 /**
  * One `[gfxwalkatomic]` record from `mapmoveableanimations/animations.ini` — the **loaded-gait** binding,
@@ -20,11 +20,11 @@ import { Provenance } from '../record.js';
 export const GfxWalkAtomic = z.strictObject({
   /** `logictribe` — the `logicdefines.inc` `TRIBE_TYPE_*` id (viking 1, frank 2, …). The same
    *  `(job, good)` recurs per tribe, so consumers must filter by tribe. */
-  tribe: z.number().int().nonnegative(),
+  tribe: TypeId,
   /** `logicjob` — the jobType doing the hauling (civilist 6, woman 5, …); selects the body. */
-  job: z.number().int().nonnegative(),
+  job: TypeId,
   /** `logicgoodtype` — the `goodtypes.ini` `type` id of the hauled good; `0` is the unloaded walk. */
-  goodType: z.number().int().nonnegative(),
+  goodType: TypeId,
   /** The `gfxbobseqbody` `[bobseq]` name the loaded body plays. */
   bodySeq: z.string(),
   /** The `gfxbobseqhead` `[bobseq]` name, when the record overlays a separate head bob. Most carry
