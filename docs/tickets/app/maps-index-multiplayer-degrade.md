@@ -1,11 +1,11 @@
-# P3 — A malformed `[multiplayer]` node silently serves a wrong roster, not an absent one
+# A malformed `[multiplayer]` node silently serves a wrong roster
 
-**Area:** content-resolver · **Origin:** content-resolver + desktop cleanup review, 2026-07-17
+**Area:** content-resolver · **Origin:** content-resolver + desktop cleanup review, 2026-07-17 · **Priority:** P3
 
 `multiplayerOf` (`packages/content-resolver/src/maps-index.ts`) returns `NO_MULTIPLAYER` for any
 `multiplayer` node that is not an object, and `continue`s past any `slotOptions` row whose `player`
-is not a number or whose `allowed` is not an array. The roster is then still served — derived
-against an empty lobby table.
+is not a number or whose `allowed` is not an array. The roster is then still served from an empty
+lobby table.
 
 That degrade is wrong in a way the file's other degrades are not. A malformed `players` array or an
 unreadable sidecar drops the whole roster, so the menu shows a map with no slots and a human notices.
@@ -29,7 +29,8 @@ Pre-existing on `main`; left alone by the cleanup pass because fixing it changes
 ## Scope
 
 - Warn (like the meta reader does) when `multiplayer` is present but not an object, and when a
-  `slotOptions` row is present but wrong-typed — absent stays silent, since most maps ship no table.
+  `slotOptions` row is present but has the wrong type. An absent table stays silent because most maps
+  do not provide one.
 - Decide and record whether a present-but-unparseable table should also drop the roster rather than
   serve it against an empty table. Dropping is the safer read of "never serve a wrong roster", but it
   is a player-visible change (the map loses its slot list), so it needs the user's call.
@@ -38,5 +39,5 @@ Pre-existing on `main`; left alone by the cleanup pass because fixing it changes
 
 ## Verify
 
-- `npm test` — the new cases pin the warning and the chosen degrade.
+- `npm test` with new cases for the warning and chosen fallback.
 - `npm run test:content` with a local `content/`, to confirm no real map trips the new warning.

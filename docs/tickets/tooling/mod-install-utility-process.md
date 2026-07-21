@@ -1,11 +1,13 @@
-# P3 — Move the mod download/extract off the Electron main process
+# Move the mod download/extract off the Electron main process
+
+**Area:** desktop · **Priority:** P3
 
 `installCnMod` (`packages/desktop/src/mod-install/install.ts`) runs on the main process: the 594 MB
 download is async streaming (fine), but the zip extraction inflates/writes ~43k members in a loop
 (`extractModZip`, `src/mod-install/extract.ts`), and deflated members run `zlib.inflateRaw` on the
 main loop. The shipped CnMod
-1.3.1 zip is method-store throughout, so today the loop is I/O-bound and the UI stays responsive —
-a future deflated archive would stutter the window.
+1.3.1 zip is method-store throughout, so today the loop is I/O-bound and the UI stays responsive.
+A future deflated archive would stutter the window.
 
 The pipeline already has the pattern to copy: `pipeline-host.ts` forks the bundled
 `pipeline-child.cjs` as a `utilityProcess` and streams `PipelineEvent`s (per

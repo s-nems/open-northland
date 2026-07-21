@@ -8,7 +8,7 @@ import { hudLabels } from './hud-labels.js';
 import { computeSettlerBubbles } from './settler-bubbles.js';
 
 /**
- * Memoize a snapshot projection while the simulation returns the same immutable snapshot instance — so an
+ * Memoize a snapshot projection while the simulation returns the same memoized snapshot instance, so an
  * O(entities) read runs once per tick, not once per RAF frame. `versionOf` additionally keys the memo on
  * caller state outside the snapshot (a counter bumped on change); omit it for a projection of the
  * snapshot alone.

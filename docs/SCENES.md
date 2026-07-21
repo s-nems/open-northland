@@ -1,49 +1,43 @@
 # Acceptance scenes
 
-Acceptance scenes are deterministic world setups shared by headless mechanic tests and the browser.
-The browser renders only the game and its normal HUD; scene names and short descriptions live on the
-main menu, not in an in-scene instructions panel.
+An acceptance scene is a deterministic world setup shared by a headless test and the browser. Use a
+scene when a mechanic needs both state assertions and a human check of its presentation.
 
-## One scene, two consumers
+## Two consumers
 
-| Consumer | Where | Purpose |
+| Consumer | Location | Purpose |
 | --- | --- | --- |
-| Headless | `packages/app/test/scenes.test.ts` | assert mechanics, invariants, and deterministic replay |
-| Browser | `npm run dev` → `?scene=<id>` | let a human inspect pixels, animation, and sound |
+| Headless | `packages/app/test/scenes.test.ts` | mechanics, invariants, and determinism |
+| Browser | `?scene=<id>` | pixels, animation, controls, and sound |
 
-The same seed, global rules, and setup drive both consumers. The browser may additionally load local
-decoded footprints and presentation assets; tests remain independent of copyrighted, gitignored content.
+Both consumers use the same seed, sandbox content, setup, and run length. The browser may add local
+decoded art and footprints, but the headless test must not require copyrighted content.
 
 ## Scene definition
 
 A `SceneDefinition` in `packages/app/src/scenes/<id>.ts` contains:
 
-- `id`, `seed`, and cell-resolution `terrain`;
-- `build(sim)` for deterministic placement and commands;
-- `runTicks` and machine-readable `checks`;
-- optional needs, fog, and initial zoom settings.
+- a stable `id`, `seed`, and terrain setup;
+- `build(sim)` for pre-tick entities and commands;
+- `runTicks` and machine-readable checks;
+- optional settings such as needs, fog, or initial zoom.
 
-Player-facing `title` and `summary` values belong in both locale catalogs under `scene.<id>`. Scenes do
-not own goods, jobs, buildings, weapons, animation bindings, controls, sound, or menu contents; those
-rules live in `packages/app/src/game/sandbox/`.
+Player-facing title and summary text belongs in both locale catalogs under `scene.<id>`. Shared goods,
+jobs, buildings, controls, and sound bindings belong in the sandbox catalog, not in the scene.
 
-## Add and verify a scene
+## Add a scene
 
-1. Add the definition and keep it focused on setup plus machine checks.
-2. Register it in `packages/app/src/scenes/index.ts`; this adds its test and main-menu entry.
-3. Run `npm test -- scenes`.
-4. Open `http://localhost:5173/?scene=<id>`, sanity-check that it runs, and hand the URL plus concise
-   verification notes to the human reviewer. Record any reusable acceptance criteria in the ticket or
-   test, not in an expandable in-game checklist.
+1. Add a focused scene definition.
+2. Register it in `packages/app/src/scenes/index.ts`.
+3. Add its title and summary to both locale catalogs.
+4. Run `npm test -- scenes`.
+5. Open `http://localhost:5173/?scene=<id>` and perform the human checks named by the ticket.
 
-The left tool panel owns pause and its three standard speeds. Initial speed, interface scale, fog, and
-the geometry grid can be configured from the main menu. The mouse wheel controls camera zoom. Reloading
-restarts the deterministic scene.
+Keep instructions out of the game view. Put durable assertions in tests and short review notes in the
+ticket. The normal HUD should remain the thing being tested.
 
-## Building a scene sim
+Build the simulation through `createSceneSim` so headless and browser defaults stay aligned. Each
+simulation owns its component stores, so tests do not need a global reset between scenes.
 
-Each sim owns its component stores, so the headless test can build many scene sims in one process
-independently — no reset ritual. Build scenes through `createSceneSim`: it applies the scene defaults
-(needs-off, fog) the headless twin and the browser must share.
-
-See also `packages/app/AGENTS.md`, `docs/TESTING.md`, and `docs/ARCHITECTURE.md`.
+See [`TESTING.md`](TESTING.md) for test layers and [`DEVELOPMENT.md`](DEVELOPMENT.md) for browser
+entries.

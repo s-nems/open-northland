@@ -1,50 +1,32 @@
-# packages/desktop — the Electron shell
+# Desktop package contract
 
-Packages the browser app for players: the same `packages/app` build served over `app://`, plus a
-first-run installer that converts the user's owned game copy with the asset pipeline. The root
-[`AGENTS.md`](../../AGENTS.md) carries the project-wide + legal rules.
+`packages/desktop` serves the browser build through Electron and guides the user through local
+content generation. The root [`AGENTS.md`](../../AGENTS.md) applies.
 
 ## Boundaries
 
-- **The web app stays shell-agnostic.** `packages/app` never imports desktop; the shell serves
-  `packages/app/dist` byte-identical to the browser build and reuses the app's content routes via
-  `@open-northland/content-resolver` (the single route table, shared with the Vite dev middleware).
-- **The pipeline runs out of process.** The conversion is CPU-bound; it always runs as a
-  `utilityProcess` fork of the bundled `pipeline-child.cjs`, never on the main-process event loop.
-  Progress rides the pipeline's `PipelineProgress` seam (`@open-northland/asset-pipeline/progress`
-  is import-free by design — safe for the browser-side setup bundle).
-- **Data lives in the data root, never in the install dir** (`src/paths.ts`): env override
-  `OPEN_NORTHLAND_DATA_DIR` → `portable-data/` marker beside the executable → dev repo root →
-  Electron `userData`. The pipeline writes `<dataRoot>/content`; `desktop-config.json` sits beside it.
-- **The culturesnation mod is required and never touches the game folder.** A game install without
-  `DataCnmd/` gets the wizard's mod step: auto-download from culturesnation.pl into
-  `<dataRoot>/mods/` (`src/mod-install/` — the Drive hop chain, pinned-hash warning, own zip
-  reader in `src/zip.ts`) or a hand-picked unpacked copy (remembered as `modPath` in the config);
-  either way the pipeline child gets it as `--mod-root`.
-- **Content staleness is stamp-compared, never guessed** (`src/content-state.ts`): the pipeline
-  stamps `content/pipeline-manifest.json` last (also the completed-conversion marker); the shell
-  compares it to its bundled `CURRENT_MANIFEST` — IR schema mismatch blocks play, an older
-  `CONTENT_REVISION` (or no stamp) recommends regeneration. Shell-level actions (reinstall content,
-  open data folder) live in the native app menu, never in the web app's UI.
+- The web app stays shell-agnostic and never imports desktop code.
+- Serve `packages/app/dist` and generated content through `app://` using
+  `@open-northland/content-resolver`, the same route table as Vite.
+- Run the CPU-heavy asset pipeline in a `utilityProcess`, not on the Electron main event loop.
+- Keep the renderer IPC surface narrow, typed, and validated. Do not expose raw file-system access.
+- Store generated content and configuration in the selected data root, never the install directory.
 
-## Build & run
+Data-root precedence is defined in `src/paths.ts`: explicit `OPEN_NORTHLAND_DATA_DIR`, portable mode,
+development root, then Electron `userData`. Do not duplicate this choice elsewhere.
 
-- `npm run desktop` (repo root) — build everything, launch the shell. A dev run uses the repo root
-  as its data root, so the checkout's generated `content/` boots straight into the game; set
-  `OPEN_NORTHLAND_DATA_DIR` to an empty dir to exercise the first-run installer.
-- `npm run desktop:dist` — electron-builder artifacts (`electron-builder.yml`): Windows NSIS +
-  portable, macOS dmg, Linux AppImage; all unsigned (docs/tickets/tooling/desktop-code-signing.md).
-- CI installers: manually dispatch `.github/workflows/desktop-build.yml` — native per-OS builds
-  versioned `0.0.0-<short-sha>`, published as a public `build-<short-sha>` prerelease.
-- App icon: `build/icon.png` (512², transparent) feeds the win/linux targets; `build/icon.icns` is
-  committed pre-built (`iconutil` over Lanczos resizes) because electron-builder's png→icns
-  converter flattens the 16/32 px entries onto white.
-- tsc typechecks only (`emitDeclarationOnly`); esbuild bundles the four runtime files into `dist/`
-  (`scripts/bundle.mjs`) so electron-builder never packs workspace-symlinked node_modules.
+The CulturesNation mod is required pipeline input. It may come from the game folder, a downloaded
+copy in the data root, or a user-selected folder. Never modify the owned game installation.
 
-## Verifying
+Content freshness comes from `pipeline-manifest.json` and the bundled current manifest. A schema
+mismatch blocks play; an older content revision asks for regeneration.
 
-Pure logic (paths, config, progress model, protocol routing, content staleness) is unit-tested.
-There is no committed end-to-end harness yet (docs/tickets/tooling/desktop-e2e-harness.md); the
-wizard + pipeline + game boot flow was verified with ad-hoc Playwright `_electron` sessions against
-the real game copy. Visual sign-off of the setup page and the in-shell game remains the user's.
+## Build and verification
+
+Root commands are documented in [`docs/DEVELOPMENT.md`](../../docs/DEVELOPMENT.md). Unit-test path,
+configuration, protocol, setup, download, archive, and content-state logic without Electron where
+possible.
+
+Packaging and the full first-run flow need platform checks. Verify the setup window, cancellation,
+pipeline progress, generated-content boot, and native menu on the affected operating system. Final
+window and installer appearance need human review.

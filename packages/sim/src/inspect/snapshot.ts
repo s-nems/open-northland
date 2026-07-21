@@ -8,14 +8,14 @@ import type { Entity, World } from '../ecs/world.js';
  * value: no class instances, no live `Map`s, no `Entity` brands — every component value is JSON-ish data. That
  * has two payoffs:
  *
- *  1. **Render never reads mid-mutation.** `render` consumes a frozen snapshot + the tick's events, so a system
+ *  1. **Render never reads mid-mutation.** `render` consumes a detached snapshot + the tick's events, so a system
  *     writing a component store can't be observed half-applied. (The double-buffer alternative would keep two
  *     live worlds; a cloned snapshot is simpler and, being plain, also transferable.)
  *  2. **Transferable for free.** A plain structure with no class instances / live Maps can be `postMessage`d to
  *     a render thread (the "run the sim in a Web Worker" win) without a serialization retrofit later.
  *
- * It is not the save format — that is the command log (replay-from-seed). This is a per-frame view. Determinism
- * is unaffected: a snapshot is a pure function of the world, never read back into sim logic.
+ * It is not an on-disk save format; persisted saves are future work. This is a per-frame view. Determinism is
+ * unaffected because a snapshot is a pure function of the world and is never read back into sim logic.
  */
 export interface WorldSnapshot {
   readonly tick: number;
@@ -76,7 +76,7 @@ function verifySceneryClones(world: World, cache: ReadonlyMap<Entity, EntitySnap
 }
 
 /**
- * Capture an immutable snapshot of the world (+ the tick's events) at a tick boundary. Entities are
+ * Capture a detached snapshot of the world (+ the tick's events) at a tick boundary. Entities are
  * emitted in canonical ascending-id order; component values are deep-cloned to plain data so the
  * snapshot can't alias (and so a consumer mutating it can't reach the live store). A `Map` value is
  * converted to a sorted `[key, value]` array — the same canonical ordering `hashState` uses — so the

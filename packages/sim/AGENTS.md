@@ -1,102 +1,77 @@
-# packages/sim — determinism contract
+# Simulation package contract
 
-The `sim` package is **deterministic and pure**. This is the detailed contract for working *here*;
-the root [`AGENTS.md`](../../AGENTS.md) carries the one-paragraph version + the project-wide rules.
-Also read [`docs/ECS.md`](../../docs/ECS.md) (the model) and [`docs/TESTING.md`](../../docs/TESTING.md)
-(how to prove a change).
+`packages/sim` is a deterministic, headless rules engine. The root
+[`AGENTS.md`](../../AGENTS.md) applies in full.
 
-## The invariant
+## Purity and state
 
-Two runs from the same seed + same inputs must produce **byte-identical** state
-(`Simulation.hashState()`). That is what makes mechanics testable headless and lockstep-multiplayer
-possible later. Randomness comes only from the injected seeded RNG (`src/core/rng.ts`); sim state is
-fixed-point integers (`src/core/fixed.ts`), never floats. No DOM, no I/O, no `import` from
-`render`/`app`/Pixi.
+- No DOM, Web APIs, Node I/O, Pixi, app, or render imports.
+- No `Math.random`, wall-clock time, locale-sensitive behavior, or gameplay state in module globals.
+  Content- or world-keyed memo caches are allowed only when they cannot change simulation results.
+- Random choices use the seeded `Rng` owned by `Simulation`.
+- Simulation state uses `Fixed` values created through `fx.*`. Float math is acceptable only for a
+  local calculation that is converted without accumulating float state and is proven deterministic.
+- A `World` owns its component stores. `new World()` and `new Simulation()` are complete isolated
+  resets; never add a global clearing ritual.
 
-## Determinism anti-patterns (an LLM reaches for these — don't)
+External callers mutate a running simulation only through serializable commands. Systems mutate the
+world during `step()`. Authored scenes and fixtures may assemble pre-tick-zero state directly.
 
-- `Math.random` / `Date.now` / `new Date` / `performance.now` → use `world.rng` (seeded) or the tick
-  counter. **Enforced:** `test/core/hygiene.test.ts` regex-scans `src/**.ts` and fails the build (and CI)
-  — a violation can't land green. The scan also bans transcendental float math (`Math.sqrt/sin/cos/
-  pow/…` — last-bit results vary across engines; `fixed.ts` is the one sanctioned wrapper) and
-  locale-dependent APIs (`localeCompare`/`toLocale*`/`Intl` — output varies by environment).
-- Iterating a `Map`/`Set` for a **game decision** (insertion order is history-dependent) → iterate a
-  canonical order: `world.canonicalEntities()` (sorted ids), `stockpileEntries()` (sorted by
-  goodType). Membership (`.has`) is fine.
-- Floats for state → `fx` fixed-point (`fixed.ts`); no `Math.sqrt/sin/cos` (use `fx.isqrt`; the
-  hygiene scan enforces this). Mint `Fixed` only via `fx.*` — it's a branded type, a raw `number`
-  won't assign.
-- Recycling entity ids → ids are monotonic, never reused.
-- Bespoke per-job logic / hardcoding "two tribes" → behavior is an **atomic planner** over the data
-  vocabulary; tribes/jobs/atomics are **data** (see `docs/ECS.md`).
-- Letting `render` read live component stores → one-shot facts go through `ctx.events` (typed
-  `SimEvent`), never callbacks (a subscriber must not mutate sim state).
+Snapshots are detached plain-data read views. Do not expose live component objects through a read
+seam or read presentation state back into sim logic.
 
-## Fixed-point
+## Ordering
 
-`fixed.ts` is scaled integers in a JS double (exact to 2^53) with dev-mode overflow assertions.
-Truncation bites: `ONE / duration` truncates, so don't accumulate a per-tick `Fixed` fraction to
-reach `ONE` — count an integer `elapsed` to the exact `elapsed >= duration`.
+World queries use deterministic per-world insertion order. Canonicalize a decision when iteration
+order selects a winner, changes a first-found mutation, or affects serialized output. Use ascending
+entity id or an explicit tuple such as `(distance, id)`.
 
-## Proving your change (the golden rule of the goldens)
+Do not sort membership checks, commutative sums, or loops whose result cannot change with order.
+Unnecessary canonicalization costs time and hides the actual invariant.
 
-`hashState()` canonically hashes all components on all entities; `test/` holds the golden state-hash
-+ golden atomic-trace tests — the tripwire. **Only update a golden if the change was intentional,
-and name the mechanic in the commit.** A moved golden on a *refactor* means a real change crept in —
-stop and reassess. Run `npm test`; if an invariant fires (`src/harness/invariants.ts`) it reports the exact
-tick — use it. Beyond the goldens, `test/core/fuzz-determinism.test.ts` runs seeded-random command
-streams (run-twice hash equality + replay fidelity + invariants) — **add new command variants to its
-generator in the same commit**, and register any new incrementally-maintained cache in
-`World.verifyCaches()` (the `cachesCoherent` invariant re-derives every cache each checked tick).
+`systems/schedule.ts` is the one tick schedule. A change in order is a behavior change and needs a
+test for the required relationship.
 
-**Component stores are owned by the `World`** (`defineComponent` returns a pure key; each `World` holds its
-own `Map<Entity, value>` per component). So `new World()` — and thus `new Simulation()` — is a complete
-reset: two sims in one process are fully independent, with no shared state to clear between them. Each
-store iterates in the insertion order of *that* World's `add` calls, so same seed + same inputs still
-produces byte-identical query order.
+## Fixed point
 
-## Scaling to thousands of units
+- Keep units visible in names and comments.
+- Use the integer helpers in `core/fixed.ts`; do not cast a number to `Fixed`.
+- Check multiplication and distance calculations against the safe integer range.
+- Convert between visual cells and half-cell nodes only through `nav/halfcell.ts`.
 
-Very large maps, thousands of units, up to 8 players: per-tick cost must scale with **active work**,
-never `entities²`. Don't write per-unit whole-world scans — consume the existing levers: memoized
-`World.canonicalEntities()` (shared + read-only; never mutate it), per-tick candidate lists +
-`NodeBuckets`/`NodeBuckets.nearest` ring search (`systems/spatial.ts` — new nearest-X code uses this,
-not another scan), `core/content-index.ts` for content lookups, and dormancy gates that elide only
-provably-empty work. Any optimization must keep canonical winners (ascending-id / `(distance, id)`
-picks) so goldens stay byte-identical. Profile per-system with `npm run bench:sim` (median/p95 ms per
-system over an RTS-scale headless world; `ON_BENCH_SETTLEMENTS`/`ON_BENCH_FIGHTERS` turn the population
-up for a scaling curve, `ON_BENCH_JSON` writes the machine-readable report) — never add
-`performance.now` to `src`: the timer belongs in the caller, behind `Simulation.setInstrument`, and the
-hygiene scan fails the build otherwise.
+## Scale
 
-## Layout
+Per-tick work must scale with active work, never all entity pairs. Reuse:
 
-`src/`, for a cold agent — each concern has ONE home:
+- memoized content indexes for type lookup;
+- `NodeBuckets` and canonical candidate lists for spatial search;
+- dormancy or generation checks for provably unchanged work;
+- `World.canonicalEntities()` when a shared canonical list is actually required.
 
-- **`simulation.ts`** + **`simulation/`** + **`index.ts`** — the `Simulation` façade (step loop,
-  `snapshot()` memo) with its read seams and `hashState()` body beside it, and the public barrel.
-- **`core/`** — deterministic primitives: `fixed.ts` (the `fx` fixed-point kit), `rng.ts` (seeded RNG),
-  `commands.ts` + `command-queue.ts`, `events.ts` (typed `SimEvent`s + `eventNode`), `loop.ts`,
-  `content-index.ts` + `content-index/` (memoized O(1) content lookups, one file per domain),
-  `atomic-effect.ts`, `brand.ts`.
-- **`ecs/world.ts`** — the `World`: entities, queries, `canonicalEntities()`, `verifyCaches()`.
-- **`components/`** — the component keys (`defineComponent`; the entity→value stores live on the `World`):
-  `settler.ts`, `movement.ts`, `combat.ts`, `equipment.ts`, `ownership.ts`, `rules.ts`, `economy/`.
-  `rules.ts` is the exception to "keys only": each world-rule singleton owns its own reader + writer
-  (`fogMode`/`setFogMode`, …), so a rule's read and write stay one edit apart.
-- **`systems/`** — the per-tick systems, grouped by concern: `agents/` (AI, the atomic planner,
-  effects), `economy/` (jobs, production, construction, farming, berries, flags), `conflict/`,
-  `lifecycle/`, `movement/`, `orders/`, `command/` (command application + placement), `vision/`,
-  `footprint/`, `progression/`, `readviews/` (pure content-derived rule tables), `stores/`; plus
-  `spatial.ts` (`NodeBuckets` + candidate lists — feed it a `canonicalById` list), `schedule.ts`
-  (`SYSTEM_ORDER`), `context.ts`, and the resource/berry/stockpile indexes riding the incremental
-  `spatial-memo.ts` scaffold (journal-replayed against the component store generation).
-- **`nav/`** — pathfinding and the half-cell lattice: `halfcell.ts` (the ONE cell↔node conversion seam,
-  both directions), `pathfinding/` (A* + its heap/scratch), `terrain/` graphs, `nearest.ts`,
-  `metric.ts` + `node-metric.ts` (the measured 68×38 pitch in `Fixed` column units and integer px
-  respectively), `block-overlay.ts`.
-- **`replay/`** — command-stream replay + divergence debugging (`localize-divergence.ts`,
-  `scrub-window.ts`, `rebase-content.ts`).
-- **`inspect/`** — state introspection: `snapshot.ts` (plain `WorldSnapshot`), `snapshot-diff.ts`,
-  `hashtrace.ts` (a capped per-tick hash list), `entity-dump.ts`.
-- **`harness/`** — test/scenario helpers: `invariants.ts`, `scenario.ts`, `populate.ts`.
+Never mutate a shared cached list. Measure system scaling with `npm run bench:sim`; timing stays in
+the caller through `Simulation.setInstrument`, never in sim source.
+
+## Tests and goldens
+
+- Add the narrowest unit or integration test that proves the rule.
+- Use a headless scenario for a multi-system player action.
+- Check same-seed repeated runs when randomness or ordering changes.
+- Run invariant checks for long system chains.
+- Treat state hashes and atomic traces as behavior contracts. Do not update them during a refactor.
+
+The hygiene suite enforces the import and nondeterminism boundary. Normal changes run
+`npm run check`, `npm run build`, and `npm test` from the repository root.
+
+## Source layout
+
+- `simulation.ts`: simulation facade and public read seams
+- `core/`: deterministic primitives, commands, events, RNG, and fixed point
+- `ecs/`: world and component storage
+- `components/`: plain component definitions
+- `systems/`: behavior grouped by domain, plus the schedule
+- `nav/`: half-cell conversion, terrain graphs, and routing
+- `replay/`: command replay and divergence tools
+- `inspect/`: snapshots, hashes, and state diagnostics
+- `harness/`: scenarios, population helpers, and invariants
+
+Prefer the tree itself over expanding this into a file-by-file inventory.

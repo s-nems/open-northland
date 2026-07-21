@@ -1,179 +1,128 @@
-# The intermediate representation (IR) — content format
+# Generated content and the IR
 
-The original game stores rules in `.ini` (readable) and `.cif` (compiled/encrypted), and graphics
-in `.bmd`/`.pcx`/`.hlt`/`.lib`. The **asset pipeline** converts all of it once into a modern,
-versioned IR under `content/`. The `data` package owns the IR's zod schemas, which are the single
-source of truth: they give us both runtime validation and inferred TS types.
+The asset pipeline converts an owned game installation into a local `content/` directory. The
+directory is ignored by Git because it contains derived game data.
 
-```
+Runtime rules are stored in one JSON document:
+
+```text
 content/
-├── ir.json                 # manifest: { version, generatedFrom, locale, hashes }
-├── types/
-│   ├── goods.json          # GoodType[]
-│   ├── goods-graph.json    # derived: the production DAG (raw -> processed -> consumed)
-│   ├── buildings.json      # BuildingType[]  (houses/workplaces)
-│   ├── jobs.json           # JobType[]  (each carries its allowatomic id list)
-│   ├── atomics.json        # AtomicType[]: id, per-tribe animation binding, effect kind (timing TBD)
-│   ├── experience.json     # ExperienceType[]: per-specialization XP factors (progression)
-│   ├── tribes.json         # TribeType[]: incl. the needfor*/allow*/jobEnables* dependency graph
-│   ├── weapons.json        # WeaponType[]  (per-armor-class damage)
-│   ├── armor.json          # ArmorType[]   (armor class + blockingValue — the combat damage-vs-armor join)
-│   ├── animals.json        # AnimalType[]  (non-controllable tribes)
-│   ├── vehicles.json       # VehicleType[]  (incl. stock slots: handcart 15, oxcart 30, ships)
-│   └── landscape.json      # LandscapeType[]: walk cost / valency / land-water (the NAV graph)
-├── sprites/
-│   ├── <name>.png          # texture atlas (decoded from .bmd/.pcx)
-│   ├── <name>.atlas.json   # frames: {id, x,y,w,h, anchorX,anchorY}
-│   └── <name>.anim.json    # animations: {name, fps, frames[], loop}
-├── palettes/<name>.json    # decoded palettes / remap tables
-├── maps/
-│   ├── <name>.json         # terrain grid + initial entity placements
-│   ├── <name>.meta.json    # menu display name/description (optional sidecar)
-│   ├── <name>.png          # decoded minimap thumbnail (optional sidecar)
-│   └── <name>.script.json  # MapScript: player roster + diplomacy + mission triggers (optional sidecar)
-└── text/<locale>.json      # UI + content strings (pol/eng/ger/rus)
+  ir.json                 validated rules and presentation bindings
+  maps/
+    <id>.json             decoded terrain
+    <id>.meta.json        optional menu metadata
+    <id>.script.json      optional player and mission data
+    <id>.png              optional thumbnail
+  Data/...                decoded atlases, palettes, fonts, and other runtime files
+  gui/...                 decoded interface assets
+  goods/...               decoded goods art
 ```
 
-`content/` is **gitignored** — it is derived from your owned game copy. The schemas in
-`packages/data` are committed; the generated JSON/PNG is not.
+The exact asset tree grows as more decoders are connected. Code should use the shared resolver rather
+than guessing paths.
 
-**Three content sources — which one to edit.** A cold agent meets three places "content" lives.
-(1) Generated **`content/`** (repo root) — the pipeline's output: IR JSON, atlases, maps, GUI/fonts;
-gitignored and fetched at runtime via the app's `vite.config.ts` routes. Never hand-edit it — change
-the pipeline (`tools/asset-pipeline/`) or the schemas (`packages/data/src/schema/`) and regenerate.
-(2) Committed fallback **`packages/app/src/catalog/`** — hand-authored balance/bindings (building
-and goods rosters, farming/felling/mining constants, footprints, professions, labels); edit it for
-balance or naming, and note its tests pin rows back to `ir.json` whenever `content/` is present.
-(3) **`packages/app/src/game/sandbox/`** — the ONE global sandbox `ContentSet` (built from the
-catalog) that scenes, `?map=`, and the vertical slice consume; edit it for the test/sandbox game
-rules — scenes never define their own content (docs/SCENES.md).
+## `ir.json`
 
-## Design principles
+`packages/data/src/schema/content/content-set.ts` defines the top-level `ContentSet`. Its main groups
+are:
 
-1. **Readable & diffable.** IR is plain JSON with stable key order and meaningful names, so an
-   agent can read a building definition and a balance change shows up as a clean diff.
-2. **Provenance preserved.** Every IR record keeps where it came from (source file + original
-   field names) so the conversion is auditable and re-runnable. Don't silently rename semantics.
-3. **Mod-aware layering.** The primary readable rule source is **base `Data/logic/*.ini`** (which
-   begin with a `<CULTURES_CIF_BEGIN>` header line, then plain text). Load base first, then overlay
-   the `culturesnation` mod (`DataCnmd`), which provides a *subset* (`houses.ini`, `weapons.ini`,
-   graphics) plus new campaigns/maps. The pipeline records which layer won for each record.
-   (Note: `housetypes`/`weapontypes`/`trianglepatterntypes`/`atomicanimations` and all maps are
-   `.cif`-only — these go through the `.cif` decoder, see docs/formats/CIF.md.)
-4. **Versioned.** `ir.json.version` bumps on schema changes; the sim refuses to load a mismatched
-   major version. Golden tests pin a sample content set.
-   **Policy:** the version is a single integer, bumped whenever a schema in `packages/data` changes
-   shape. There are **no migrations** — a version mismatch is a hard load error, not an upgrade path;
-   the fix is to regenerate the IR from your owned game copy (`npm run pipeline -- --game …
-   --out content`). Because `content/` is gitignored and always regenerated, the IR is produced by
-   the same commit that consumes it, so a stale IR can never silently mis-feed the sim.
+- economy: goods, jobs, job experience, buildings, weapons, armor, and vehicles;
+- actors: tribes, animals, atomic animations, and body-animation bindings;
+- landscape: logic types, graphics bindings, gathering joins, ground patterns, and transitions;
+- buildings: bobs, construction layers, and animated overlays;
+- maps and sound-bank bindings.
 
-## Example schema → original mapping
-
-Original `DataCnmd/types/houses.ini`:
-
-```ini
-[logichousetype]
-debugname "headquarters"
-logictype 1            # the building's type id (NOT a `type` line, unlike other tables)
-logicmaintype 1        # 1 storage / 2 home / 3 workplace / 4 training / 5 tower / 6 vehicle / 7 wonder
-logicworker 24 3       # jobType 24, count 3
-logicstock 16 150 0    # goodType 16, capacity 150, initial 0
-logicproduction 11     # (workplaces) output good id 11 — input side / amounts live in the goods-graph
-```
-
-IR `content/types/buildings.json` entry (schema: `BuildingType` in
-`packages/data/src/schema/economy/buildings.ts` — the schemas live under `packages/data/src/schema/`,
-split by domain: `actors/`, `audio/`, `content/`, `economy/`, `graphics/`, `landscape/`, `maps/`;
-extracted by
-`extractBuildings` in `tools/asset-pipeline/src/decoders/ini/types/buildings.ts`):
+The document also contains a manifest:
 
 ```json
 {
-  "typeId": 1,
-  "id": "headquarters",
-  "kind": "storage",
-  "homeSize": 0,
-  "workers": [{ "jobType": 24, "count": 3 }],
-  "stock":   [{ "goodType": 16, "capacity": 150, "initial": 0 }],
-  "produces": [],
-  "construction": [],
-  "source":  { "file": "DataCnmd/types/houses.ini", "block": "logichousetype", "layer": "mod" }
+  "manifest": {
+    "version": 1,
+    "generatedFrom": {
+      "game": "<local game path>",
+      "mod": "<optional local mod path>"
+    },
+    "locale": "eng"
+  },
+  "goods": [],
+  "jobs": [],
+  "buildings": []
 }
 ```
 
-`kind` is mapped from `logicmaintype` (the engine's classification); the specific building —
-headquarters vs a stock, which workplace — is carried by `id` (the `debugname` slug). The full
-production recipe (input goods + per-cycle amounts/timing) is a goods-graph artifact derived
-from `goodtypes.productionInputGoods`; `produces` captures only the output good ids the house table
-names today. `construction` is the build-material cost (`{goodType, amount}[]`) overlaid from the
-**graphics** table (`DataCnmd/budynki12/houses/houses.ini` `[GfxHouse]` `LogicConstructionGoods`,
-`extractConstructionCosts`) — the logic table above carries no cost key; empty for the always-present
-headquarters/wonder. A home's level chain (typeIds 2..6) reads its tier's upgrade cost (reference
-tribe; the per-tribe spread is a recorded source-basis deviation). `upgradeTarget` (optional) is the
-next level's typeId in the same `[GfxHouse]` record's `LogicType` table (`extractUpgradeTargets`) —
-the level-chain join the sim's manual upgrade follows; chains cover homes, warehouses, several
-workplaces, and a tower, and the field is absent on a chain's top level. The wonders are not
-chained: each record maps every size level to its own typeId (self-links are skipped).
+The remaining arrays are omitted from this example. Read the schema for the current complete list.
 
-The sim consumes the IR; it never parses `.ini`. The mapping from raw fields to IR fields lives in
-the pipeline decoder for that type, and is documented inline there.
+`parseContentSet(raw)` performs Zod validation and cross-reference checks. `IR_VERSION` records the
+current schema version. A strict load-time version rejection is not implemented yet, so schema
+validation remains the effective compatibility gate.
 
-## Numeric ids vs string ids
+## Where content lives in the source tree
 
-The original uses numeric type ids (`goodtype 16`, `jobtype 24`) and references them everywhere.
-We keep the numeric ids as the stable cross-reference (so map/building/job data stays consistent),
-but attach human-readable `id`/`debugname` strings for legibility. Schemas validate that every
-referenced numeric id resolves to a defined type — catching dangling references at load time.
+There are three distinct layers:
 
-## Sprites & animations
+1. `content/` is generated output. Never edit it by hand or commit it.
+2. `packages/app/src/catalog/` contains committed fallback balance and bindings used without an owned
+   game copy.
+3. `packages/app/src/game/sandbox/` assembles fallback content for scenes and development play.
 
-`.bmd` "bob" files hold framed, palette-indexed animations (see `docs/formats/GRAPHICS.md`). The
-pipeline unpacks them into a PNG atlas plus
-JSON describing frames, per-frame anchor (feet position for correct isometric sorting), and named
-animation sequences (walk/work/idle/fight per direction). `render` loads these; `sim` never does —
-the sim only knows an entity's logical state, and `render` maps state → animation.
+When extracted data is wrong, change the pipeline or schema and regenerate. When fallback balance is
+wrong, change the catalog. A scene should configure its setup, not define a private copy of the game
+rules.
 
-Two render-binding tables in `ir.json` carry the *joins* into those atlases (the sim ignores both):
-`bobSequences` (the `[bobseq]` named frame ranges per bob set) and `buildingBobs` (the `[GfxHouse]`
-building-type → house-bob join: `(tribeId, typeId, level) → (bmd, palette, bobId)`, pairing each
-record's `LogicType`/`GfxBobId` level-tables — see `extractBuildingBobs`), so the renderer draws each
-building its own house bob from data rather than a transcribed constant.
+## Identifiers and references
 
-## Atomics, the goods graph & progression
+Original tables use numeric ids extensively. The IR keeps those numeric join keys and adds readable
+string ids where the source provides them.
 
-Three derived/extracted IR artifacts encode the parts of Cultures that aren't obvious from a flat
-type list (see docs/ECS.md for why these are central):
+Numeric ids are not always global. Before indexing by `typeId`, check the source table and the schema
+to determine whether the id is scoped by tribe, record family, animation set, or another key.
 
-- **`atomics.json`** — the behavior vocabulary. Extracted from `tribetypes.ini` `setatomic`
-  (atomic id → animation, per tribe), with each `JobType` carrying its `allowatomic` id list and
-  each `GoodType` its `atomicFor*`. Atomic *timing/effects* are the `AtomicAnimation` records from
-  `atomicanimations.ini` (`length`, `startdirection`, timed `event`/`eventx` tuples), joined to the
-  `setatomic` bindings by animation name — see `extractAtomicAnimations`.
-- **`goods-graph.json`** — the production DAG, mechanically derived from
-  `goodtypes.productionInputGoods` (e.g. `bread ← flour + water`, `plank ← wood`). Materialized as
-  an explicit artifact so agents and systems read one source of truth, not implicit cross-system logic.
-- **`gatheringPipeline`** — the resolved map-*gathering* join (the raw side of the goods graph): per
-  gathered good, the three `landscapeTo{Harvest,Pickup,Store}` lifecycle stages (`tree(4) → trunk(6)
-  → wood(7)` for wood) each joined to the `[GfxLandscape]` records that place it (by `logicType`).
-  Materialized from the new `GoodType.gathering` chain + the `landscape`/`landscapeGfx` tables so a
-  later gathering system reads the stages and their placeable gfx directly — see `buildGatheringPipeline`
-  and `buildGatheringPipeline`. The per-good source fields also land on `GoodType`
-  (`landscapeType`, `gathering`) and the `[landscapetype]` lifecycle inputs on `LandscapeType`
-  (`name`, raw `transitions`).
-- **`experience.json` + the tribe dependency graph** — `humanjobexperiencetypes` XP factors plus
-  `tribetypes.ini` `needfor*`/`allow*`/`jobEnables*`/`trainforjob`. This is the progression spine
-  (`ProgressionSystem`) and the main expression of tribe asymmetry.
+Cross-reference validation catches many dangling ids, but it cannot prove that two equally numbered
+rows have the intended meaning.
 
-## Maps
+## Provenance
 
-A map IR is the terrain grid (per-cell landscape type + height + flags → the **nav graph**) plus
-initial placements (buildings, settlers, resources, tribe ownership). Source: `map.cif` (encrypted —
-needs the `.cif` decoder) alongside readable `.ini`/`.inc` parts, for base maps + `CnModMaps/`
-(~125 mod maps). Format details land when the pipeline's map decoder is written.
+Extracted rows may include a `source` object with:
 
-## Text encoding
+- `file`: the input path;
+- `block`: the source record or section, when known;
+- `layer`: base game or mod.
 
-Original `.ini`/`.cif` strings are **CP1250** (Central-European Windows), not UTF-8 — the content
-is Polish (`set_language 6`, campaigns `OsmyCudSwiata`/`WyprawaNaPolnoc`). The pipeline must decode
-CP1250 → UTF-8 when emitting `text/<locale>.json`, or names like Łódź/ó/ż will corrupt.
+Not every schema carries provenance yet. The decoder is the authoritative mapping from source keys to
+IR fields. Keep that mapping small, testable, and supported by the source evidence described in
+[`SOURCES.md`](SOURCES.md).
+
+## Layering
+
+Prefer readable CulturesNation `.ini` files when they exist, then readable base-game `.ini` files.
+Use decoded `.cif` tables only when no readable equivalent is available. The pipeline loads base data
+and applies supported mod overrides.
+
+Keys are case-sensitive. A repeated single-value key and a one-line list need different parsing
+helpers. Test both shapes when a source table uses both.
+
+## Maps, graphics, and audio
+
+Map terrain is stored separately from `ir.json` because each map is loaded on demand. Map JSON is
+validated with `parseTerrainMap`; optional sidecars provide menu, lobby, and mission information.
+
+Graphics decoders turn palette-indexed source frames into atlases and manifests. IR tables such as
+`bobSequences`, `gfxAtomics`, and `buildingBobs` connect logical state to those files. The simulation
+does not load sprite data.
+
+The sound bank follows the same boundary. The IR describes available groups and bindings, while the
+audio package decides what to play and owns browser playback.
+
+## Changing the format
+
+For a schema or pipeline change:
+
+1. update the schema and decoder together;
+2. add a synthetic decoder or loader test;
+3. update consumers without adding a second interpretation of the same field;
+4. run `npm run test:pipeline` against the owned game copy;
+5. run `npm run test:content` when existing local content consumers changed;
+6. bump `IR_VERSION` for a breaking shape change.
+
+Generated output stays local. Commit schemas, decoder code, synthetic fixtures, and concise format
+notes only.

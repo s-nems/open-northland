@@ -5,7 +5,7 @@ import { buildingTypeOf, isBuilding, positionOf } from '../../game/snapshot.js';
 import { workerIconNode } from './building-points.js';
 
 /**
- * The `?debug=geometry` projection — turn the frozen snapshot into the per-building
+ * The `?debug=geometry` projection turns the read-only snapshot into the per-building
  * {@link GeometryDebugItem} list the render overlay draws (the `computeDoorBadges` pattern: pure over
  * the snapshot + the building-type table, unit-tested headless; the app calls it only when the
  * building set changed). The worker-icon anchor comes from the same {@link workerIconNode} helper the

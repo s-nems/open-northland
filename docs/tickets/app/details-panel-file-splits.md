@@ -1,5 +1,7 @@
 # Split the details-panel hotspots and dedupe the text kits
 
+**Area:** app · **Priority:** P3
+
 ## Problem
 
 Review of the sandbox-village branch flagged three growth points in `packages/app/src/hud/details-panel/`:
@@ -10,7 +12,8 @@ Review of the sandbox-village branch flagged three growth points in `packages/ap
 - `model/settler.ts` (~415 lines) grew past the ~300-line split guideline (work model, gather/craft
   choice builders, equipment, experience, status in one file).
 - `chrome.ts` duplicates `text.ts`'s `textLeftMiddle` signature + doc verbatim (`Chrome` re-declares
-  the `TextKit` methods); the branch had to update both in lockstep — evidence the duplication costs.
+  the `TextKit` methods). The branch had to update both in lockstep, which proves the duplication has
+  a maintenance cost.
 
 ## Task
 

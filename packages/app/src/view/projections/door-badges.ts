@@ -15,7 +15,7 @@ import {
 import { type DoorFootprint, workerIconNode } from './building-points.js';
 
 /**
- * The door-badge projection — turn the frozen snapshot into the per-building worker tally the render
+ * The door-badge projection turns the read-only snapshot into the per-building worker tally the render
  * {@link DoorBadge} layer draws beside each staffed building's door. It reads the same employment binding
  * the sim's JobSystem writes ({@link JobAssignment}.`workplace`), so a badge appears for every worker bound
  * to a building, whether auto-assigned or player-assigned (the `assignWorker` command). Pure over the

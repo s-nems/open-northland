@@ -1,7 +1,7 @@
 /**
  * The single-file retained overlay layers the {@link import('../world-renderer/index.js').WorldRenderer}
  * composes around its terrain / sprite-pool / map-object subsystems — each a pure projection of the
- * frozen snapshot + plain per-frame data into one slice of the scene graph:
+ * read-only snapshot + plain per-frame data into one slice of the scene graph:
  *  - ground marks below the sprites: the fog wash ({@link FogLayer}), the build-placement wash
  *    ({@link PlacementOverlayLayer}) and cursor ghost ({@link PlacementGhostLayer}), construction
  *    plots ({@link ConstructionPlotLayer}), selection rings ({@link SelectionLayer}), and combat

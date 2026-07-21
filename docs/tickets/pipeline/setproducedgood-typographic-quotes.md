@@ -21,7 +21,7 @@ FAITHFUL one.
   original fails too (its parser is unlikely to know Polish smart quotes), but that is an inference, not
   evidence.
 - Source basis to settle it: load `saracen_1_sub_2` in the running original and look at whether those
-  collectors are set to gold or to everything. Failing that, the tokenizer in `OpenVikings_reversing`.
+  collectors are set to gold or to everything.
 
 ## Scope
 

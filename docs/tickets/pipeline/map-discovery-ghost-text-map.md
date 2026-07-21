@@ -1,5 +1,7 @@
 # Pipeline: skip the ghost "text" map from a stray map.dat inside a text/ subfolder
 
+**Area:** pipeline · **Priority:** P2
+
 ## Problem
 
 The menu lists a map card titled `text`. The pipeline's map discovery converts every `**/map.dat`,
@@ -18,7 +20,7 @@ exactly one.
 
 ## Notes
 
-- Source basis: owned copy — `CnModMaps/WICHRY_ZIMY/text/map.dat` is byte-identical in purpose to
+- Source basis, owned copy: `CnModMaps/WICHRY_ZIMY/text/map.dat` is byte-identical in purpose to
   a string-table folder; no other corpus folder ships a stray `map.dat` this way (checked 2026-07-17).
 - Unverified, adjacent observation: the menu name "LEGENDA SZEŁśCIU SYNÓW" (`Data/maps` corpus)
   looks mojibake ("SZEŚCIU"); check whether the map's own string table is authored that way before

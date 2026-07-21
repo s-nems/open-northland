@@ -4,18 +4,13 @@ import type { TerrainMap } from '../nav/terrain/index.js';
 import { type Simulation, simFor } from '../simulation.js';
 
 /**
- * Deterministic replay — the headless core of the "time-travel / replay inspector" DX win.
+ * Deterministic replay, used by diagnostics and the replay inspector.
  *
- * The command log IS the save format: a recorded run is fully reconstructable from `(content, seed,
- * map?, log)` because the sim is pure and seeded (no wall-clock, no `Math.random`, no I/O). This
- * function rebuilds the exact state at any tick by replaying the log into a FRESH `Simulation` — the
- * "jump to tick N" primitive a scrub overlay calls. Because `hashState()` is byte-identical across
- * two runs from the same seed + same commands on the same ticks, a replay to tick N hashes equal to
- * the original live run at tick N; that equality is this primitive's determinism oracle (the
- * inspector's "hash diverged at tick 432 → jump there → inspect" leans on exactly this).
+ * Given the same content, seed, map, and logged commands, this function rebuilds the state at a tick in a
+ * fresh {@link Simulation}. Matching hashes prove the replay stayed deterministic. This is not an on-disk
+ * save format because replaying a long session is not a practical load path.
  *
- * It is render-agnostic and pure (no DOM, no Pixi) — the dev overlay that scrubs/diffs/dumps is a
- * `render` concern built ON this; this is the part an agent can self-verify headlessly.
+ * It is render-agnostic and pure. Presentation tools build on it without entering sim state.
  *
  * Each `replay()` builds a FRESH `Simulation` with its own component stores (owned by the `World`), so
  * a replayed sim and the original coexist independently — hold as many live as you like.
@@ -25,7 +20,7 @@ export interface ReplayOptions {
   readonly seed: number;
   /** The terrain map the original run used, if any — replay must rebuild the SAME graph or state diverges. */
   readonly map?: TerrainMap;
-  /** The recorded command log (`Simulation.commands.log`) — the append-only save/replay record. */
+  /** The recorded command log (`Simulation.commands.log`). */
   readonly log: readonly LoggedCommand[];
   /**
    * Reconstruct state as of the END of this tick (inclusive) — the "jump to tick N" target. An
@@ -33,7 +28,7 @@ export interface ReplayOptions {
    * AT tick N, before those later commands existed) — faithful, not a divergence — so it is allowed;
    * a LATER one keeps stepping past the last command (the run continues deterministically). Must be
    * `>= 0` (a negative tick is nonsense — it throws). Defaults to the **last logged tick**, the
-   * smallest target that re-applies every command (the full save-replay); to reconstruct the tail
+   * smallest target that re-applies every command (the full replay); to reconstruct the tail
    * past the last command, pass the recorded tick count explicitly (the log doesn't carry it).
    */
   readonly untilTick?: number;

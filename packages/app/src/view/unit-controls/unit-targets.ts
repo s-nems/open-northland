@@ -6,7 +6,7 @@ import { memoBySnapshot } from '../projections/index.js';
 
 /** What the pickable target sets need from the unit-controls options (a subset threaded through). */
 export interface UnitTargetsDeps {
-  /** Read the current frozen snapshot (rebuilt every frame; each query pulls it on demand). */
+  /** Read the current detached snapshot (memoized while sim state is unchanged). */
   readonly snapshot: () => WorldSnapshot;
   /** The human player whose units are selectable/orderable. */
   readonly humanPlayer: number;

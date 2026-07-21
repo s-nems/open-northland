@@ -10,7 +10,7 @@ import { retireUndrawn } from './retained-pool.js';
  * space (a child of the camera's `worldLayer`, below the sprite layer) so a ring pans/zooms with the
  * unit and reads as a marker on the ground. Selection is a client-side view concern, not sim state
  * (the app owns the selected-id set); this layer just projects those ids to rings, exactly as the
- * sprite pool projects the snapshot to bobs — a pure consumer of the frozen snapshot + camera.
+ * sprite pool projects the snapshot to bobs as a pure consumer of the read-only snapshot + camera.
  *
  * Retained, like the sprite pool: a ring's ellipse geometry is built once per entity and only its
  * container position is moved each frame — steady-state work is a handful of transform writes, no
@@ -79,7 +79,7 @@ export class SelectionLayer {
   private readonly drawnFlags = new Set<number>();
 
   /**
-   * Reconcile both marker pools from the frozen snapshot's positions ({@link SelectionFrame}): a green ring
+   * Reconcile both marker pools from the read-only snapshot's positions ({@link SelectionFrame}): a green ring
    * under every `selected` entity, and an amber ring under every `flagged` id (the work flags of the
    * selected gatherers). Each pool get-or-creates a ring per id (sized from {@link EntityBounds} via
    * `frame.boundsOf` for buildings) and moves it to the entity's feet, then retires rings for ids no longer

@@ -1,15 +1,15 @@
 # `map.dat` container
 
-`map.dat` contains the binary landscape grid and placed landscape objects for a map. Its sibling
-`map.cif` contains the readable logic header and authored entity commands.
+`map.dat` stores the binary landscape grids and placed landscape objects for a map. Its sibling
+`map.cif` carries logic headers and authored entity commands.
 
-The layout and lane meanings below come from byte-level comparison across legally obtained maps,
-rendered lane probes, and synthetic round-trip tests.
+The facts below come from byte-level comparisons across owned maps, rendered probes, and synthetic
+decoder tests.
 
 ## Chunk stream
 
-The file is a sequence of `hoix` chunks. Each chunk has a 32-byte little-endian header followed by its
-payload:
+The file is a sequence of `hoix` chunks. Each chunk has a 32-byte little-endian header followed by
+its payload:
 
 ```text
 +0x00 u32 marker       # 0x78696F68, bytes "hoix"
@@ -22,47 +22,44 @@ payload:
 +0x1C u32 reserved
 ```
 
-Zero-length group chunks bracket nested sections. The landscape group precedes the entity/object-map
-group, followed by an end marker.
-
-`lsiz` is an unpacked eight-byte payload containing `u32 width` and `u32 height`. Other grid lanes are
-RLE-packed byte or word planes. The packed stream uses a control byte: high bit set means a repeated
-value, high bit clear means a literal run. Decoding stops at the declared unpacked length.
+Zero-length group chunks delimit nested sections. `lsiz` is an unpacked pair of `u32` values for
+width and height. Grid lanes are packed byte or word planes. Their RLE control byte uses the high bit
+for a repeated run and a clear high bit for a literal run. Decoding stops at the declared output
+length.
 
 ## Grid resolutions
 
-Map lanes do not all use the same resolution:
-
-- cell lanes contain `width × height` values;
-- half-cell lanes contain `(2 × width) × (2 × height)` values;
-- the A/B ground and transition lanes describe the two rendered triangles of each cell.
+- Cell lanes contain `width * height` values.
+- Half-cell lanes contain `(2 * width) * (2 * height)` values.
+- A/B ground lanes describe the two triangles rendered inside each cell.
 
 The simulation uses the half-cell lattice directly. Cell `(column, row)` maps to node
-`(2 × column + (row & 1), 2 × row)`.
+`(2 * column + (row & 1), 2 * row)`.
 
-## Consumed lanes
+## Lanes emitted by the pipeline
 
-| Tag | Resolution | Meaning |
+| Tag | Stored resolution | Current use |
 | --- | --- | --- |
 | `lmhe` | cell | elevation |
-| `embr` | cell | brightness/shading |
-| `lmlt` | half-cell | logic landscape-object type |
-| `lmpa`, `lmpb` | cell triangles | logic ground class |
-| `empa`, `empb` | cell triangles | final ground-pattern dictionary index |
-| `emla` | half-cell | placed landscape-object dictionary index |
-| `emt1`…`emt4` | cell triangles | transition-overlay dictionary index and variant |
-| `lmms` | map lane | water-depth and shore bands |
-| `lmtw` | map lane | coast-transition codes |
-| `lmco` | map lane | connected land/region ids |
+| `embr` | cell | terrain brightness |
+| `lmlt` | half-cell | collapsed to cell landscape logic ids |
+| `empa`, `empb` | cell triangles | final ground-pattern ids |
+| `emla` | half-cell | placed landscape-object ids |
+| `emt1` to `emt4` | cell | transition overlay ids and variants |
+| `lmms` | half-cell | collapsed to a cell `shore` lane; meaning not yet confirmed or consumed |
 
-The map already stores final ground-pattern choices and transition overlays. Imported maps therefore
-do not need a newly invented terrain-transition algorithm.
+The loader also exposes per-lane dimensions and dictionaries needed to resolve numeric ids. `lmpa`,
+`lmpb`, `lmtw`, and `lmco` are not part of the current terrain output path.
 
-Landscape objects in `emla` are anchored on half-cell nodes. Their walk-block offsets are stamped at
-that resolution before the graph is exposed to simulation commands, footprints, and pathfinding.
+Ground collision currently joins `empa` and `empb` through `gfxPatterns` to
+`trianglePatternTypes`. Imported maps already contain their final ground patterns and transition
+overlays, so the renderer does not invent a terrain-transition algorithm.
+
+Landscape objects from `emla` are anchored on half-cell nodes. Their blocking offsets are stamped at
+that resolution before the terrain graph reaches placement and pathfinding.
 
 ## Tests
 
-Container, dictionary, packed-layer, terrain, and map-conversion tests synthesize the required chunk
-streams. Real pipeline runs compare map dimensions, dictionary joins, lane sizes, and rendered results
-without committing a map file.
+Container, dictionary, packed-layer, terrain, and conversion tests build synthetic chunk streams.
+`npm run test:pipeline` checks real map dimensions, joins, lane sizes, and generated output against the
+owned input corpus without committing a map file.

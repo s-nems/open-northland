@@ -1,13 +1,10 @@
-# /worktree — execute one ticket in an isolated worktree
+# /worktree: execute one isolated task
 
-Follow `.claude/commands/worktree.md`. Text typed after `/worktree` is its `$ARGUMENTS`.
+Follow `.claude/commands/worktree.md` and treat text after `/worktree` as `$ARGUMENTS`.
 
 Cursor adaptations:
 
-- No session-switch tool: after creating the worktree, run every subsequent command against the
-  derived `$worktree_path` explicitly (`git -C "$worktree_path" …`, `npm --prefix "$worktree_path" …`), or
-  ask the user to open the worktree folder in a new Cursor window and re-invoke
-  `/worktree <ticket>` there; the worktree and branch already exist then, so skip step 1 and
-  continue from step 2.
-- Skip the `.claude/settings.local.json` copy — that is Claude-session state.
-- Review lenses run inline, per `.cursor/commands/audit.md`.
+- Run commands against the derived worktree path explicitly, or ask the user to open that path in a
+  new Cursor window and resume at step 2.
+- Do not copy `.claude/settings.local.json`; it is local session state.
+- Apply review checklists inline through `.cursor/commands/audit.md`.

@@ -7,7 +7,7 @@ import { retainOffscreen, retireUndrawn } from './retained-pool.js';
  * The door-badge layer — a small stacked marker beside each staffed building's door showing how many
  * settlers work there (one badge per worker), drawn in world space (a child of the camera's
  * `worldLayer`, above the sprite layer so it floats over the house) so it pans/zooms with the building.
- * Like the selection rings this is a client-side projection of the frozen snapshot, not sim state — the
+ * Like the selection rings this is a client-side projection of the read-only snapshot, not sim state. The
  * app tallies each building's bound workers (the {@link DoorBadge} list) and this layer projects them.
  *
  * Retained, like the selection layer: one badge-stack {@link Container} per building id (a stable key),

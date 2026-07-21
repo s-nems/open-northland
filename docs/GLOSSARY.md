@@ -1,60 +1,38 @@
-# Glossary — domain vocabulary
+# Glossary
 
-One or two lines per term; the pointer is the detailed home. Formats first, then world/sim, then
-project jargon.
+## Original formats
 
-## Original file formats
+- **bob**: one framed, palette-indexed image inside a `.bmd` container. Named bob ranges form
+  animations. See [`formats/GRAPHICS.md`](formats/GRAPHICS.md).
+- **`.bmd`**: sprite container used for units, buildings, landscape objects, and interface art.
+- **`.cif`**: serialized and encrypted object data used for type tables, map logic, and strings. See
+  [`formats/CIF.md`](formats/CIF.md).
+- **hoix**: the chunk container inside `map.dat`. Each chunk has a 32-byte header and payload. See
+  [`formats/MAPDAT.md`](formats/MAPDAT.md).
+- **`.fnt`**: bitmap font wrapper around a bob container. Character `c` uses bob `c - 0x20`.
+- **lane**: one grid plane in `map.dat`. Lanes differ in resolution and meaning, so a tag must be
+  interpreted before it is joined to terrain or objects.
 
-- **bob** — one framed, palette-indexed sprite image inside a `.bmd` container; animations are
-  named bob ranges (`[bobseq]`). → docs/formats/GRAPHICS.md, docs/DATA-FORMAT.md "Sprites & animations".
-- **`.bmd`** — the bob container (storable id `0x3F4`): settlers, buildings,
-  landscape objects, HUD chrome. Each `(bmd, palette)` pair decodes to its own PNG atlas.
-  → docs/formats/GRAPHICS.md.
-- **`.cif`** — encrypted "Cultures Information File": a serialized `CStorable` object graph,
-  decrypted with `(in − 1) ^ key`. Carries the `.cif`-only type tables, map logic headers, and UI
-  strings. → docs/formats/CIF.md.
-- **hoix** — the `map.dat` chunk container: a flat sequence of chunks, each a 0x20-byte header
-  (marker `"hoix"`, 4-char subtag, length, depth) plus payload. → docs/formats/MAPDAT.md.
-- **`.fnt`** — a bitmap font: a `CFont` (`0x3F5`) wrapping an ordinary `.bmd` bob container;
-  character `c` draws bob `c − 0x20`. → docs/formats/GRAPHICS.md.
-- **lane** — one gridded data plane inside `map.dat` (its chunk subtag names it): `lmlt` logic
-  object type, `empa`/`empb` per-triangle ground pattern, `emla` placed objects, `lmpa`/`lmpb`
-  per-triangle walkability class, `lmhe` height, `embr` shading, `emt1..4` transition overlays.
-  Resolutions differ per lane (cell / half-cell / triangle). → docs/formats/MAPDAT.md.
+## World and simulation
 
-## World geometry & sim
+- **staggered raster**: the displayed map layout. Odd rows shift by half a cell. The observed native
+  pitch is 68 pixels wide and 38 pixels per row.
+- **half-cell lattice**: the `2W x 2H` logic grid used by commands, footprints, placement, and
+  navigation. See [`ECS.md`](ECS.md#terrain-and-navigation).
+- **atomic action**: a numbered unit of settler behavior bound to jobs, goods, tribes, and animation.
+- **drive**: one planner decision that may assign a settler's next atomic or movement goal.
+- **valency**: a logic node's occupancy capacity from landscape data.
+- **logictype**: a numeric join key connecting a graphics record to its logic table row.
 
-- **staggered raster** — the original's cell layout: even rows sit on integer columns, odd rows
-  shift half a column right; measured pitch 68 px cell width × 38 px row step. → docs/formats/MAPDAT.md.
-- **half-cell lattice** — the original's `2W×2H` logic grid: cell `(c,r)` ↔ node `(2c+(r&1), 2r)`.
-  Every integer grid coordinate in sim commands, footprints, and nav is a half-cell node;
-  `packages/sim/src/nav/halfcell.ts` is the one conversion seam. → docs/ECS.md "Terrain".
-- **atomic (action)** — a numbered micro-action bound per tribe to an animation; a job is a list of
-  allowed atomic ids, and all settler behavior is a planner sequencing atomics. → docs/ECS.md "The
-  atomic-action model".
-- **drive (settler AI)** — one rung of the AI planner's fixed priority ladder (needs, then economy
-  drives); each drive decides a settler's next atomic and returns true when it takes the settler.
-  → `packages/sim/src/systems/agents/ai.ts`.
-- **valency** — a node's occupancy capacity (`[landscapetype] maximumValency`); the original gates
-  movement and placement by walkability + valency, not per-cell walk cost. → docs/ECS.md "Terrain".
-- **logictype** — the numeric join key from a graphics record (`[GfxHouse]`/`[GfxLandscape]`
-  `LogicType`) to its logic type table entry (`housetypes`/`landscapetypes` id). → docs/DATA-FORMAT.md.
+## Project terms
 
-## Project jargon
-
-- **IR / ContentSet** — the **IR** is the validated JSON content the pipeline emits under
-  `content/` (zod schemas in `packages/data/src/schema/`); a **ContentSet** is that content loaded
-  and validated in memory (`parseContentSet`), consumed by sim and render. → docs/DATA-FORMAT.md.
-- **Fixed / fx** — the sim's branded fixed-point number type; scaled integers in a JS double, exact
-  to 2^53. Mint only through the `fx.*` helpers (`packages/sim/src/core/fixed.ts`).
-  → `packages/sim/AGENTS.md` "Fixed-point".
-- **golden (test)** — a committed expected value (canonical state hash or atomic-action trace)
-  pinning deterministic behavior; it moves only with an intentional, named mechanic change.
-  → `packages/sim/AGENTS.md` "Proving your change".
-- **team colour vs skin variant** — a **team colour** is a per-player recolour applied at draw time
-  (an indexed atlas drawn through the player-colour LUT's row); a **skin variant** is a different
-  palette baked at decode time (each `(bmd, palette)` is its own atlas — `house01`/`house02`
-  building skins, settler skin/hair remaps from `randompalette.ini`). → docs/formats/GRAPHICS.md,
-  `packages/render/src/gpu/sprite-sheet.ts`.
-- **independent implementation** — project code is written for OpenNorthland. Original and decoded
-  game data stay local, and third-party engine source is not copied or translated. → docs/LEGAL.md.
+- **IR**: the validated JSON rules and presentation bindings generated in `content/ir.json`.
+- **ContentSet**: the in-memory value returned by `parseContentSet` after schema and cross-reference
+  validation.
+- **Fixed / `fx`**: the simulation's branded fixed-point number type and its constructor helpers.
+- **golden**: a committed expected state hash or action trace. It moves only with an intentional,
+  explained behavior change.
+- **team colour**: a player-specific recolour applied while drawing an indexed atlas.
+- **skin variant**: a separate palette variant baked during content conversion.
+- **independent implementation**: project code written from the permitted evidence in
+  [`SOURCES.md`](SOURCES.md), without copied or translated engine code.

@@ -1,11 +1,9 @@
-# Give loose files precedence over `.lib`-embedded copies
+# Verify loose-file precedence over `.lib` copies and match it
 
 **Area:** pipeline · **Origin:** bug-hunt review, 2026-07-17 · **Priority:** P2
 
-The original engine reads a plain file first and falls back to `.lib` archives last
-(**source basis:** `OpenVikings_reversing/Source/NXBasics/CFile.cs` `OpenForReading`:
-`DexterFile.FileOpen` → `TryOpenWithAdditionalLoadPaths` → `TryOpenFromLibraries`), so loose
-patch/mod files override archived ones. The pipeline resolves this precedence backwards, twice:
+Loose files and `.lib` members collide in the owned installation, but the original engine's precedence
+has not been pinned by an allowed source. The pipeline currently lets archive data win in two places:
 
 - **PCX** (`tools/asset-pipeline/src/run.ts:46-57`): the loose walk converts
   `Data/.../text_000.pcx` → `.png` first, then the lib-embedded walk converts the extracted copy to
@@ -18,22 +16,23 @@ patch/mod files override archived ones. The pipeline resolves this precedence ba
 Measured on the owned game copy: 66 `.pcx` exist both loose and inside `data0001.lib` with
 different bytes — including essentially all ground-texture pages (`text_000.pcx`, `text_2xx.pcx`,
 …) — and 4 `.bmd` differ (`cr_hum_body_32.bmd`, `cr_hum_head_33.bmd`, `cr_hum_body_74.bmd`,
-`ls_menu_logos.bmd`). Converted ground pages and those human atlases come out as the stale
-base-archive art instead of the patched art the original renders.
+`ls_menu_logos.bmd`). The pipeline therefore needs a direct observation to decide which copy should
+win before changing runtime output.
 
 ## Scope
 
-- Make loose-vs-lib collisions resolve loose-first everywhere (PCX conversion order, BMD indexing,
-  and audit any other stage joining both sources), matching the engine's load order.
+- First compare a known-differing loose/archive asset with the running original and record which copy
+  it uses. If loose wins, make collisions resolve loose-first everywhere (PCX conversion order, BMD
+  indexing, and any other stage joining both sources). If archive wins, pin the current order in a test
+  and narrow this ticket to the missing loose-BMD input path if that path is still needed.
 - Mind case-folding: a collision is a case-insensitive path match, and the fix must not regress on
   case-sensitive filesystems (see `docs/tickets/pipeline/lib-lowercase-data-tree.md` — related but
   separate defect; fixing both together is reasonable if the seam is shared).
-- Pin the precedence in a synthetic test (a fixture lib whose member collides with a loose file of
-  different bytes → the loose bytes win).
+- Pin the observed precedence in a synthetic collision test.
 
 ## Verify
 
 `npm test` (new synthetic precedence test), `npm run check`, `npm run build`, and a real
-`npm run test:pipeline` run against the owned copy — spot-check that a known-differing page (e.g.
-`text_000`) now matches the loose file's decode. Ground textures and human sprites are visual:
-human sign-off on `?map=` / `?anim` after regenerating content.
+`npm run test:pipeline` run against the owned copy. Spot-check a known-differing page such as
+`text_000` against the observed winner. Ground textures and human sprites need human sign-off on
+`?map=` and `?anim` after regenerating content.

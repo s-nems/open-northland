@@ -1,7 +1,5 @@
-# /ticket-scout — file ticket-worthy work, change no code
+# /ticket-scout: find and file valuable work
 
-Follow `.claude/commands/ticket-scout.md`. Text typed after the command is its `$ARGUMENTS` (scope
-and optional focus).
+Follow `.claude/commands/ticket-scout.md` and treat text after the command as `$ARGUMENTS`.
 
-Cursor has no subagents: work the hunting signals sequentially yourself instead of spawning one
-subagent per signal.
+Run the discovery signals sequentially because Cursor does not run subagents for this command.

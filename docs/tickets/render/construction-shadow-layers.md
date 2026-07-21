@@ -10,10 +10,9 @@ shadow until the finished body draws. The referenced bobs are real, but they are
 paletted) ground-shape images in the BODY `.bmd`**, not 1-bit masks (decoded from the owned copy:
 `ls_houses_viking.bmd` bob 134 type=1 81×44; `ls_houses_viking2.bmd` bob 223 type=1 535×210; the
 `_s.bmd` shadow libs are the type-2 1-bit sets and hold silhouettes only at the finished `GfxBobId`
-ids, not at these layer ids). The original's `PrintBob_Shadow*` blits darken the destination wherever
-a bob writes pixels regardless of type (OpenVikings `CBobManager.cs`), so an 8-bit layer shadow bob
-still draws as a pure darkening. The original draws a darkening shadow under construction; whether it
-is revealed progressively still needs observation.
+ids, not at these layer ids). Observation of the running original shows a darkening shadow under
+construction. Whether an 8-bit layer is used directly and whether it reveals progressively still need
+observation.
 
 ## Scope
 

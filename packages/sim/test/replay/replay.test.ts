@@ -4,11 +4,8 @@ import { testContent } from '../fixtures/content.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 /**
- * Tests for `replay()` — the deterministic headless core of the "time-travel / replay inspector" DX
- * win (plan "Cross-cutting DX"). The command log IS the save format, so a recorded run is fully
- * reconstructable from `(content, seed, map?, log)`; `replay()` rebuilds the exact state at any tick
- * by re-applying the log into a fresh sim. The oracle is `hashState()`: a replay to tick N must be
- * byte-identical to the original live run at tick N.
+ * `replay()` rebuilds a run from content, seed, map, and logged commands. A replay to tick N must
+ * hash identically to the original at that tick; persisted save/load is a separate format.
  */
 
 const HEADQUARTERS = 1;

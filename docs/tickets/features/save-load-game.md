@@ -1,47 +1,33 @@
-# Implement save/load: a persisted save format over the command log
+# Persist and restore simulation state
 
-**Area:** sim + app · **Origin:** gap-analysis audit 2026-07-13 · **Priority:** P1
+**Area:** sim + data · **Priority:** P1
 
-No save/load exists anywhere. `docs/ARCHITECTURE.md` ("Save / load & multiplayer (forward-looking,
-not yet built)", ~line 92) already states the direction: because the sim is deterministic and
-command-driven, a save is `{ seed, contentVersion, map, commandLog }` for replay **plus a state
-snapshot for fast load** (replaying hours of ticks is unviable). The in-sim pieces half-exist as
-debug tooling but there is no serialize/deserialize or file format:
+The project has deterministic replay for diagnostics, but no persisted save format or load API.
+Replaying `{content, seed, map, commandLog}` can rebuild a short session and prove determinism. It is
+not a practical save system for a game that can run for hours.
 
-- `packages/sim/src/core/command-queue.ts` — `LoggedCommand` is documented as "the unit of the
-  command log — the append-only record that IS the save format"; `CommandQueue.log` exposes it.
-- `packages/sim/src/simulation.ts` (~lines 75, 106) — comments state "a save is the command log".
-- `packages/sim/src/replay/replay.ts` — `replay(opts)` already reconstructs a `Simulation` from a
-  command log (built as a divergence-debug harness, not a save format).
-- `packages/sim/src/inspect/snapshot.ts` — `takeSnapshot(world, tick, events): WorldSnapshot`
-  exists for diffing, but is not a validated/versioned serialization.
-- No save/load UI anywhere in `packages/app`.
-
-Tradeoff to present and pick: **command-log save** (small, exact, but load time grows with session
-length) vs **snapshot serialization** (fast load, but every component store must round-trip
-byte-identically). ARCHITECTURE's stated direction is *both*, log as ground truth + snapshot as an
-accelerator — this ticket should implement the command-log format first (it is the invariant-bearing
-one and `replay()` already consumes it) and may defer the fast-load snapshot to a follow-up ticket
-it files.
+The runtime `WorldSnapshot` is also not a save file. It is a presentation view and omits restorable
+simulation resources and loader metadata. A save needs a versioned, validated state format that can
+resume at the same tick without replaying the whole session.
 
 ## Scope
 
-1. Design the save format: a versioned JSON (or binary) envelope carrying seed, content version/hash,
-   map id, and the `LoggedCommand[]` log. Document it in `docs/DATA-FORMAT.md` or a doc the format
-   already has a home in.
-2. Sim-side `serializeSave(sim)` / `loadSave(save, deps)` (the latter can be a thin wrapper over the
-   existing `replay()`), with schema validation on load — a corrupt or version-mismatched save fails
-   loudly, not with silent divergence.
-3. Determinism gate: golden rules apply (AGENTS.md rule 1-2) — save → load → continue N ticks must
-   hash-match never-saved run of the same seed+commands. Use the existing `HashTrace` seam.
-4. App-side save/load UI (menu buttons, browser storage/download) is a **follow-up ticket this
-   ticket files** — keep this session sim-format + a minimal headless round-trip.
-5. If the fast-load snapshot half is deferred, file it as a follow-up ticket with the round-trip
-   requirement named.
+1. Define a versioned `SaveGame` schema with content version/revision, map identity, tick, seed, and
+   every mutable resource needed to resume exactly. This includes entity ids and components, RNG,
+   fog, world rules, and any queue state that can survive a tick boundary.
+2. Add explicit export and restore APIs. Loading is a trusted initialization path before ticking; it
+   must restore entity allocation and component ownership without exposing a general live-world
+   mutation API.
+3. Decide how much command history the file retains for replay and diagnostics. The log may accompany
+   the state, but it is not a substitute for restorable state.
+4. Reject corrupt files, incompatible schema versions, content mismatches, and unknown component
+   shapes with readable errors.
+5. Document the persisted format separately from the per-frame snapshot in `docs/DATA-FORMAT.md`.
 
 ## Verify
 
-- Unit/integration test: run a scenario M ticks issuing commands, save, load, run to tick M+N; state
-  hash equals an uninterrupted run at M+N.
-- Schema-validation test: truncated/mutated save is rejected.
-- `npm test`, `npm run check`, `npm run build`.
+- Run a scenario to tick M, save and restore it, then advance both copies with identical commands to
+  M+N; hashes and events match the uninterrupted run.
+- Cover RNG continuation, fog state, next entity id, empty and populated worlds, and rejected schema
+  or content versions.
+- `npm test`, `npm run check`, and `npm run build`.

@@ -1,77 +1,70 @@
-# docs/tickets/ — the work tracker
+# Work tracker
 
-One file = one self-contained task. This is the only live tracker: work that is real but not being
-done right now lives here as a ticket, or it is lost. (`docs/plans/` was retired 2026-07-12; git
-history keeps the old plans.)
+Each Markdown file in this directory is one open task. Git history is the archive, so completed
+tickets are deleted instead of moved to a `done` folder.
 
-Folders:
+Use `features/` for player-visible slices. Use area folders such as `sim/`, `render/`, `app/`,
+`pipeline/`, and `tooling/` for technical work owned by that area.
 
-- `features/` — player-visible gameplay slices (a mechanic, a HUD element, a content system).
-  Usually cross-package; grouped by what the player gets, not by code area.
-- `sim/`, `render/`, `app/`, `pipeline/`, … — scoped technical work (refactors, perf, extraction,
-  test gaps) grouped by the package it lives in.
+## Ticket quality
 
-Rules:
+A ticket must be:
 
-- **One ticket, one task.** Small enough for a single `/worktree` session. If it needs phases,
-  split it into ordered tickets and name the dependency in each (`Blocked by: <file>`).
-- **Self-contained.** Written for an agent with no memory of the discovering conversation: context
-  (why it matters, where it came from), concrete scope, and how to verify. Tickets are research
-  notes, not ground truth — the executor re-verifies claims against the code and sources.
-- **Source basis named.** A ticket that touches mechanics, extraction, or visuals states what pins
-  it: extracted `.ini`/`.cif` data, byte-level format evidence, a published specification, or
-  observed original behavior.
-  An unknown becomes an explicit investigate-first item, never a guess.
-- **Dedupe before filing.** Grep this folder first; extend or sharpen an existing ticket instead of
-  filing a near-duplicate. Delete a ticket that code reality has made obsolete (say why in the
-  commit).
-- **Lifecycle:** a ticket is open while its file exists; the executing branch **deletes the file in
-  the same commit** that completes the work (git history is the archive — no status fields, no
-  done/ folder). Partially done → rewrite the file to exactly the remaining work.
-- **Priority is part of the header.** `P1` = unblocks a playable, correct game (playability chain,
-  correctness of core systems); `P2` = real player value or measured performance; `P3` = polish,
-  test hardening, refactors. Pick the highest open `P1` whose `Blocked by:` chain is clear; among
-  equals, prefer the one that unblocks others. Re-stamp a priority when reality changes — it is a
-  judgement snapshot, not a contract.
-- **`Needs user:` marks non-autonomous tickets.** A ticket that needs a live decision or the
-  user's eyes/ears mid-execution (not just final sign-off) carries a `**Needs user:**` line after
-  the header. Agents must not pick these up autonomously — surface them to the user instead.
+- small enough for one focused worktree session, or split into ordered dependencies;
+- understandable without the conversation that discovered it;
+- verified against current code before filing and again before implementation;
+- concrete about scope and checks;
+- explicit about source evidence or an investigate-first step for mechanics, formats, and visuals;
+- different from every existing ticket.
 
-How tickets get filed (any agent, any session — not just `/worktree`):
+Do not file style preferences, speculative abstractions, or every minor observation from a review.
+Tracker entries should represent work valuable enough to schedule. Group findings that share one
+cause and one verification path.
 
-- work discovered mid-task but deliberately deferred → file it before the session ends;
-- review findings accepted as real but left out of a merge → file them on the same branch;
-- `/refactor-cleanup` findings diagnosed but dropped (out of scope, needs a behavior change) →
-  filed, not just reported;
-- `/ticket-scout` — the proactive sweep that scans a scope for ticket candidates and files them.
+## Metadata
 
-Answering "which ticket next?" (any agent, on request):
+Every ticket has an area and priority near the top:
 
-- Re-verify before recommending — tickets are research notes and rot. Grep the cited code first; a
-  ticket the code has outgrown is deleted or rewritten on the spot, not recommended.
-- Exclude in-flight work: check `git worktree list` and open branches for tickets another session
-  is already executing.
-- Then apply the priority rule above (skip `Needs user:` picks for autonomous work) and present:
-  the pick, why now (priority, what it unblocks, what's in flight), and the strongest alternative.
+- `P1`: blocks a playable or correct core path;
+- `P2`: clear player value, correctness, or measured performance work;
+- `P3`: polish, test hardening, maintenance, or bounded research.
 
-Run one via `/worktree docs/tickets/<folder>/<name>.md`.
+Use `Needs user` when execution requires a live choice or human eyes/ears before completion. Final
+visual sign-off alone does not make a ticket non-autonomous.
 
-Template:
+Use `Blocked by` only for an existing prerequisite ticket. Link to the file with a relative Markdown
+link or a repository path. Remove the dependency as soon as its prerequisite is complete.
+
+## Lifecycle
+
+- Re-check the cited code and evidence before starting.
+- Delete the ticket in the commit that completes it.
+- If only part is complete, rewrite the ticket to exactly the remaining work.
+- If research proves the premise wrong, correct or delete the ticket instead of preserving the stale
+  claim.
+- Dedupe before filing related follow-up work.
+
+When recommending the next ticket, check active worktrees and branches, exclude `Needs user` tasks
+from autonomous picks, then prefer the highest priority item with a clear dependency chain.
+
+## Template
 
 ```markdown
 # <imperative title>
 
-**Area:** <package(s)> · **Origin:** <review/branch/scout/date> · **Priority:** <P1|P2|P3>
-**Needs user:** <only if not autonomously runnable — why>
-**Blocked by:** <path(s) of prerequisite ticket(s), if any>
+**Area:** <package(s)> · **Priority:** <P1|P2|P3>
+**Needs user:** <only when needed, with the required decision>
+**Blocked by:** [<ticket>](<relative-or-repository-path>)
 
-<Context: why this matters, what was observed, source basis if relevant.>
+<Why the task matters, what was observed, and the source basis when relevant.>
 
 ## Scope
 
-<Concrete changes, files, and the approach if one was already agreed.>
+<Concrete changes and boundaries.>
 
 ## Verify
 
-<Gates + any scene/browser check; name the human sign-off seam for anything visual/audio.>
+<Automated gates and any specific human check.>
 ```
+
+Run `npm run check:docs` after editing tickets. It validates required metadata and dependency paths.

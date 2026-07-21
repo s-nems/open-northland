@@ -10,7 +10,7 @@ import {
 } from '../../game/snapshot.js';
 
 /**
- * The settler-bubble projection — turn the frozen snapshot into the per-settler thought bubbles the
+ * The settler-bubble projection turns the read-only snapshot into the per-settler thought bubbles the
  * render {@link SettlerBubble} layer floats over a settler's head. It reads the standing family state the
  * sim's FamilySystem drives, then the pressing needs:
  *  - a woman with a make-child order (`ChildOrder`) shows the `child` bubble until the birth completes;

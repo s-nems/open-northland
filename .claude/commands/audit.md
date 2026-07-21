@@ -1,44 +1,46 @@
 ---
-description: Run the project's review lenses over a diff and report ranked findings — review only, applies nothing.
-argument-hint: [what to review — a git range, a branch, or paths; default: working diff, else branch diff vs main, else HEAD~1..HEAD]
+description: Review a diff with the project lenses and report ranked findings without editing.
+argument-hint: [git range, branch, or paths; defaults to the current diff]
 ---
 
-You are running a **review battery** over a diff using the project's named reviewer agents
-(`.claude/agents/`). This is the pre-filter for the user's own manual verification: **report
-findings, apply nothing** — the user decides what gets fixed.
+# Audit
 
-## 1. Resolve what to review
+Review the scope in `$ARGUMENTS`. This workflow is report-only. Do not edit files, create tickets, or
+commit fixes unless the user asks in a later turn.
 
-- `$ARGUMENTS` names a range / branch / paths → review exactly that.
-- Otherwise: a dirty working tree → the working diff (staged + unstaged); on a non-`main` branch
-  with a clean tree → `git diff main...HEAD`; on clean `main` → `HEAD~1..HEAD`.
-- State in one line what you are reviewing (the exact range and its headline stat).
+## Resolve the diff
 
-## 2. Spawn the lenses (in parallel, one message)
+- Explicit range, branch, or paths: review exactly that scope.
+- Dirty tree with no argument: review staged and unstaged changes.
+- Clean non-main branch: review `main...HEAD`.
+- Clean `main`: review `HEAD~1..HEAD`.
 
-Pass each agent the exact range/scope. `code-reviewer` is the baseline and runs on any diff that
-changes code; the other lenses are conditional — spawn only the ones the diff can trip, since a
-lens the diff cannot trip burns tokens to produce noise. Say which you skipped and why:
+State the exact scope and diff stat before starting.
 
-- **`engine-reviewer`** — the diff touches `packages/sim`, fixed-point math, command flow, content
-  schemas, a per-tick sim system, or a per-frame render/app path.
-- **`gameplay-reviewer`** — the diff implements/tunes a mechanic, extracts/consumes game data,
-  makes source-basis claims, or touches player-facing UI/HUD/input/camera. Tell it which half
-  applies (source basis, player experience, or both). Skip for pure infrastructure/docs diffs.
-- **`code-reviewer`** — every diff that changes code (source, tests, tooling config). Skip only
-  when the diff touches no code at all — docs/tickets-only or regenerated data. "Small" or
-  "mechanical" is not a reason to skip: short diffs still carry naming, comment-budget, and shape
-  findings. Tell it to weight the architecture lens when the diff crosses package boundaries, adds
-  dependencies, or creates a new system/seam.
-- **A general correctness/edge-cases subagent** (`general-purpose`) — for broad or high-risk changes
-  when the named lenses do not cover plain behavioral correctness. Skip for trivial doc/data tweaks.
+## Apply the relevant lenses
 
-## 3. Report (and stop)
+Read the corresponding files under `.claude/agents/` and run independent reviewers in parallel when
+the client supports it.
 
-- Merge and dedupe the findings; rank blocker → should-fix → note. Each: `file:line — the defect —
-  the failure scenario — the one-line suggested fix`.
-- Add your own verdict per finding (agree / disagree + why), reading the cited code first — the
-  agents are wrong in both directions, and the user reads your triage, not four raw reports.
-- Name what **no lens can judge**: anything visual needs the user's eyes (say which scene/URL).
-- Close with one line: **merge-ready / needs fixes (which) / needs your eyes (where)**. Do not edit
-  any file; if the user wants fixes applied, they will say so.
+- `code-reviewer`: any source, test, tool, or configuration change.
+- `engine-reviewer`: sim, fixed point, command flow, content schemas, or per-tick/per-frame paths.
+- `gameplay-reviewer`: mechanics, extracted data, source claims, or player-facing UI/input.
+- general correctness: broad or risky behavior not covered by the named lenses.
+
+Skip lenses that cannot apply and say why. Documentation-only changes still need direct fact, link,
+example, and readability checks even when all code lenses are skipped.
+
+## Triage and report
+
+Verify every proposed finding in the current source. Merge duplicates and drop preference-only
+comments.
+
+Rank findings as blocker, should-fix, or note. Use:
+
+```text
+file:line: defect; failure scenario; suggested fix
+```
+
+Add your own agree/disagree judgement for findings returned by reviewers. Name any visual or audio
+checks that still need a human and give the exact scene or URL. End with one verdict: merge-ready,
+needs fixes, or needs human review.

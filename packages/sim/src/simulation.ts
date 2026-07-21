@@ -67,10 +67,8 @@ export class Simulation {
   /** One-shot events produced during the current tick (drained by render/audio). */
   readonly events = new EventBuffer();
   /**
-   * The serializable command queue — the only way state mutates ONCE TICKING. Enqueue via
-   * {@link enqueue}; the CommandSystem drains and applies it each tick (and logs it), so a save is the
-   * command log. The one carve-out is authored setup: scenes and fixtures assemble pre-tick-0 state
-   * through {@link world} directly, before the first {@link step}.
+   * The serializable external-input queue. {@link CommandSystem} drains and logs it each tick for replay and
+   * diagnostics. Scenes and fixtures may assemble pre-tick-0 state through {@link world} directly.
    */
   readonly commands = new CommandQueue();
   private currentTick = 0;
@@ -111,7 +109,7 @@ export class Simulation {
   /**
    * Queue a serializable command — the only way to mutate sim state from outside once the sim is
    * ticking. It is applied (and appended to the command log) by CommandSystem on the next `step()`.
-   * The UI, the AI, and a save loader all go through here; only authored pre-tick-0 setup writes to
+   * The UI, strategic AI, and replay tools go through here; only authored pre-tick-0 setup writes to
    * {@link world} directly (see {@link commands}).
    */
   enqueue(command: Command): void {
@@ -151,7 +149,7 @@ export class Simulation {
   }
 
   /**
-   * An immutable read-view of the world at the current tick boundary — what `render`/audio consume
+   * A detached read-view of the world at the current tick boundary, consumed by `render`/audio
    * instead of the live component stores, so they never observe a half-applied tick. Plain data (no
    * class instances / live Maps), so it is also transferable to a render Web Worker for free. Pure:
    * a snapshot is a function of state and is never read back into sim logic.
