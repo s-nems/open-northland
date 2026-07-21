@@ -11,16 +11,10 @@ import { messages } from '../../i18n/index.js';
 import { contains, type Rect } from '../geometry.js';
 import { loadDetailsPanelAssets } from './assets.js';
 import { createChrome, type PanelLayers } from './chrome.js';
-import {
-  type ButtonHit,
-  type DetailsLayout,
-  layoutDetails,
-  mapLayout,
-  ROW_H,
-  stockSlotRects,
-} from './layout/index.js';
+import { type ButtonHit, mapLayout, ROW_H, stockSlotRects } from './layout/index.js';
 import { buildUnitPanelModel, type UnitPanelModel, type UnitPanelModelContext } from './model/index.js';
 import { drawBuilding, drawCompact, drawSettler, drawSignpost } from './sections/index.js';
+import { EMPTY_PANEL_VIEW, type PanelView, panelViewFor } from './selection-view.js';
 import { ALL_STOCK_TAB, detailsStockTabLabels, visibleStockRows } from './stock-tabs.js';
 import { WorkerSpriteOverlay } from './worker-sprites.js';
 
@@ -159,8 +153,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
   let lastModelKey = '';
   let lastStructureKey = '';
   let lastRebuildAt = Number.NEGATIVE_INFINITY;
-  let lastModel: UnitPanelModel = { kind: 'empty' };
-  let layout: DetailsLayout | null = null;
+  let view: PanelView = EMPTY_PANEL_VIEW;
   let hoverAction: ButtonHit['action'] | null = null;
   let hoveredGatherGood: number | null | undefined;
   /** The last known cursor position over the canvas (client coords), or null after it left — lets a
@@ -189,11 +182,10 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     root = new Container();
     root.zIndex = PANEL_Z;
     app.stage.addChild(root);
-    lastModel = model;
     lastRebuildAt = performance.now();
     // Hit layout: the real screen-anchored geometry at the fractional display scale (pointer claims, buttons).
-    layout = layoutDetails(model, app.screen, scale);
-    if (layout === null) {
+    view = panelViewFor(model, app.screen, scale);
+    if (view.kind === 'empty') {
       root.visible = false;
       return;
     }
@@ -201,35 +193,44 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
 
     // Draw layout: the hit layout scaled by the oversample/display ratio and re-origined to (0,0), so it
     // fills a tight off-screen texture drawn at `ss`. Deriving it from the hit layout (rather than a second
-    // `layoutDetails` at `ss`) keeps the drawn geometry equal to the hit-tested geometry — two independent
+    // layout pass at `ss`) keeps the drawn geometry equal to the hit-tested geometry — two independent
     // roundings at different scales would drift ~1 px and accumulate down the button column.
     const k = ss / scale;
-    const origin = layout.panel;
-    const draw = mapLayout(layout, (r) => ({
+    const origin = view.layout.panel;
+    const toDraw = (r: Rect): Rect => ({
       x: (r.x - origin.x) * k,
       y: (r.y - origin.y) * k,
       w: r.w * k,
       h: r.h * k,
-    }));
-    const texW = Math.max(1, Math.round(draw.panel.w));
-    const texH = Math.max(1, Math.round(draw.panel.h));
+    });
+    const texW = Math.max(1, Math.round(view.layout.panel.w * k));
+    const texH = Math.max(1, Math.round(view.layout.panel.h * k));
 
     const offscreen = new Container();
     const chrome = createChrome(assets, app, ss, makeLayers(offscreen), { w: texW, h: texH });
-    if (draw.kind === 'building' && model.kind === 'building') {
-      drawBuilding(chrome, draw, model, uiString, hoverAction, activeStockTab, ss);
-    } else if (draw.kind === 'settler' && model.kind === 'settler') {
-      drawSettler(chrome, draw, model, uiString, hoverAction, hoveredGatherGood, ss);
-    } else if (draw.kind === 'compact' && (model.kind === 'multi-settler' || model.kind === 'generic')) {
-      drawCompact(chrome, draw, model, uiString, ss);
-    } else if (draw.kind === 'signpost' && model.kind === 'signpost') {
-      drawSignpost(chrome, draw, uiString, hoverAction);
+    switch (view.kind) {
+      case 'building': {
+        const draw = mapLayout(view.layout, toDraw);
+        drawBuilding(chrome, draw, view.model, uiString, hoverAction, activeStockTab, ss);
+        break;
+      }
+      case 'settler': {
+        const draw = mapLayout(view.layout, toDraw);
+        drawSettler(chrome, draw, view.model, uiString, hoverAction, hoveredGatherGood, ss);
+        break;
+      }
+      case 'compact':
+        drawCompact(chrome, mapLayout(view.layout, toDraw), view.model, uiString, ss);
+        break;
+      case 'signpost':
+        drawSignpost(chrome, mapLayout(view.layout, toDraw), uiString, hoverAction);
+        break;
     }
 
     // Mixed source (Pixi-native fills/preview + flipY PalettedSprites), so it bakes upright — display
     // unflipped, anchored at the panel's screen top-left.
     const texture = baker.bake(offscreen, texW, texH, scale / ss);
-    texture.display.position.set(layout.panel.x, layout.panel.y);
+    texture.display.position.set(view.layout.panel.x, view.layout.panel.y);
     root.addChild(texture.display);
     baked = texture;
     // A rebuild changes what a held cursor hovers (a draining bar's value, a re-sorted stock row) — the
@@ -284,34 +285,39 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     return { x: (clientX - rect.left) * sx, y: (clientY - rect.top) * sy };
   };
 
-  const buttons = (): readonly ButtonHit[] =>
-    layout?.kind === 'building'
-      ? layout.buttons
-      : layout?.kind === 'settler'
-        ? [layout.assignButton, layout.homeButton, layout.unassignButton]
-        : layout?.kind === 'signpost'
-          ? [layout.button]
-          : [];
+  const buttons = (): readonly ButtonHit[] => {
+    switch (view.kind) {
+      case 'building':
+        return view.layout.buttons;
+      case 'settler':
+        return [view.layout.assignButton, view.layout.homeButton, view.layout.unassignButton];
+      case 'signpost':
+        return [view.layout.button];
+      case 'empty':
+      case 'compact':
+        return [];
+    }
+  };
 
   const hitButton = (x: number, y: number): ButtonHit | null =>
     buttons().find((b) => contains(b.rect, x, y)) ?? null;
 
   /** The stock category tab under a canvas point, or null — only building layouts carry a tab strip. */
   const hitStockTab = (x: number, y: number): number | null => {
-    if (layout?.kind !== 'building') return null;
-    const i = layout.stockTabHits.findIndex((r) => contains(r, x, y));
+    if (view.kind !== 'building') return null;
+    const i = view.layout.stockTabHits.findIndex((r) => contains(r, x, y));
     return i >= 0 ? i : null;
   };
 
   const hitGatherChoice = (x: number, y: number): number | null | undefined => {
-    if (layout?.kind !== 'settler') return undefined;
-    return layout.gatherChoiceHits.find((hit) => contains(hit.rect, x, y))?.goodType;
+    if (view.kind !== 'settler') return undefined;
+    return view.layout.gatherChoiceHits.find((hit) => contains(hit.rect, x, y))?.goodType;
   };
 
   /** The craft product toggle under a canvas point, or undefined (settler layouts only). */
   const hitCraftChoice = (x: number, y: number): number | undefined => {
-    if (layout?.kind !== 'settler') return undefined;
-    return layout.craftChoiceHits.find((hit) => contains(hit.rect, x, y))?.goodType;
+    if (view.kind !== 'settler') return undefined;
+    return view.layout.craftChoiceHits.find((hit) => contains(hit.rect, x, y))?.goodType;
   };
 
   /**
@@ -336,9 +342,9 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
   };
 
   const claimsPointer = (clientX: number, clientY: number): boolean => {
-    if (layout === null || lastModel.kind === 'empty') return false;
+    if (view.kind === 'empty') return false;
     const { x, y } = toCanvas(clientX, clientY);
-    return contains(layout.panel, x, y);
+    return contains(view.layout.panel, x, y);
   };
 
   const handleMouseDown = (
@@ -356,39 +362,42 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
       opts.onSelectEntity?.(worker);
       return true;
     }
-    const gatherGood = hitGatherChoice(x, y);
-    if (gatherGood !== undefined && lastModel.kind === 'settler') {
-      opts.onSetGatherGood(lastModel.entityId, gatherGood);
-      return true;
-    }
-    const craftGood = hitCraftChoice(x, y);
-    if (craftGood !== undefined && lastModel.kind === 'settler') {
-      opts.onSetCraftGoods(lastModel.entityId, nextCraftGoods(lastModel, craftGood, toggleModifier));
-      return true;
-    }
-    const tab = hitStockTab(x, y);
-    if (tab !== null) {
-      if (tab !== activeStockTab && lastModel.kind !== 'empty') {
-        activeStockTab = tab;
-        rebuild(lastModel);
+    if (view.kind === 'settler') {
+      const gatherGood = hitGatherChoice(x, y);
+      if (gatherGood !== undefined) {
+        opts.onSetGatherGood(view.model.entityId, gatherGood);
+        return true;
       }
-      return true;
+      const craftGood = hitCraftChoice(x, y);
+      if (craftGood !== undefined) {
+        opts.onSetCraftGoods(view.model.entityId, nextCraftGoods(view.model, craftGood, toggleModifier));
+        return true;
+      }
+    }
+    if (view.kind === 'building') {
+      const tab = hitStockTab(x, y);
+      if (tab !== null) {
+        if (tab !== activeStockTab) {
+          activeStockTab = tab;
+          rebuild(view.model);
+        }
+        return true;
+      }
     }
     const hit = hitButton(x, y);
-    if (hit?.action === 'upgrade' && hit.enabled && lastModel.kind === 'building') {
-      opts.onUpgrade(lastModel.entityId);
-    } else if (hit?.action === 'cancelUpgrade' && hit.enabled && lastModel.kind === 'building') {
-      opts.onCancelUpgrade(lastModel.entityId);
-    } else if (hit?.action === 'demolish' && hit.enabled && lastModel.kind === 'building') {
-      opts.onDemolish(lastModel.entityId);
-    } else if (hit?.action === 'demolish' && hit.enabled && lastModel.kind === 'signpost') {
-      opts.onDemolishSignpost(lastModel.entityId);
-    } else if (hit?.action === 'assign-workplace' && hit.enabled && lastModel.kind === 'settler') {
-      opts.onAssignWorkplace?.(lastModel.entityId);
-    } else if (hit?.action === 'assign-home' && hit.enabled && lastModel.kind === 'settler') {
-      opts.onAssignHome?.(lastModel.entityId);
-    } else if (hit?.action === 'unassign-home' && hit.enabled && lastModel.kind === 'settler') {
-      opts.onUnassignHome?.(lastModel.entityId);
+    if (hit === null || !hit.enabled) return true;
+    if (view.kind === 'building') {
+      const entityId = view.model.entityId;
+      if (hit.action === 'upgrade') opts.onUpgrade(entityId);
+      else if (hit.action === 'cancelUpgrade') opts.onCancelUpgrade(entityId);
+      else if (hit.action === 'demolish') opts.onDemolish(entityId);
+    } else if (view.kind === 'signpost') {
+      if (hit.action === 'demolish') opts.onDemolishSignpost(view.model.entityId);
+    } else if (view.kind === 'settler') {
+      const entityId = view.model.entityId;
+      if (hit.action === 'assign-workplace') opts.onAssignWorkplace?.(entityId);
+      else if (hit.action === 'assign-home') opts.onAssignHome?.(entityId);
+      else if (hit.action === 'unassign-home') opts.onUnassignHome?.(entityId);
     }
     return true;
   };
@@ -398,14 +407,14 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
    *  drawn goods (a compact store lists all rows; a tabbed one the active tab's — the same split the draw
    *  applies), so a hovered slot names exactly the drawn good. */
   const hitStockGood = (x: number, y: number): string | null => {
-    if (layout?.kind !== 'building' || layout.stock === null || lastModel.kind !== 'building') return null;
+    if (view.kind !== 'building') return null;
+    const { layout, model } = view;
+    if (layout.stock === null) return null;
     const slot = stockSlotRects(layout.stock.body, scale, layout.stockRows).findIndex((r) =>
       contains(r, x, y),
     );
     if (slot < 0) return null;
-    // The same row source the section draws from (visibleStockRows), so a hovered slot names exactly
-    // the drawn good.
-    const rows = visibleStockRows(lastModel.stock, layout.stockCompact, activeStockTab).slice(
+    const rows = visibleStockRows(model.stock, layout.stockCompact, activeStockTab).slice(
       0,
       layout.stockRows * 2,
     );
@@ -416,18 +425,19 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
    *  Probes the whole label+gauge row (layout.bars, same order as model.bars) — more forgiving than the
    *  gauge alone, and the label row is unambiguous. */
   const hitBarValue = (x: number, y: number): string | null => {
-    if (layout?.kind !== 'settler' || lastModel.kind !== 'settler') return null;
-    const i = layout.bars.findIndex((r) => contains(r, x, y));
-    return i < 0 ? null : (lastModel.bars[i]?.hover ?? null);
+    if (view.kind !== 'settler') return null;
+    const i = view.layout.bars.findIndex((r) => contains(r, x, y));
+    return i < 0 ? null : (view.model.bars[i]?.hover ?? null);
   };
 
   /** The Praca control buttons' tooltips (assign-workplace / assign-home / remove-from-home) when the
    *  cursor is over one (settler layouts only) — the "co robi ten guzik" hint the user asked for. */
   const assignButtonHint = (x: number, y: number): string | null => {
-    if (layout?.kind !== 'settler') return null;
-    if (contains(layout.assignButton.rect, x, y)) return messages().hud.assignWorkplaceHint;
-    if (contains(layout.homeButton.rect, x, y)) return messages().hud.assignHomeHint;
-    if (contains(layout.unassignButton.rect, x, y)) return messages().hud.unassignHomeHint;
+    if (view.kind !== 'settler') return null;
+    const { assignButton, homeButton, unassignButton } = view.layout;
+    if (contains(assignButton.rect, x, y)) return messages().hud.assignWorkplaceHint;
+    if (contains(homeButton.rect, x, y)) return messages().hud.assignHomeHint;
+    if (contains(unassignButton.rect, x, y)) return messages().hud.unassignHomeHint;
     return null;
   };
 
@@ -436,10 +446,10 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
    *  two blocks never coexist). A craft button also spells out the click semantics (plain = pick one,
    *  Ctrl/Cmd = toggle) — there is no other affordance for the modifier. */
   const gatherChoiceHint = (x: number, y: number): string | null => {
-    if (layout?.kind !== 'settler') return null;
-    const gather = layout.gatherChoiceHits.find((hit) => contains(hit.rect, x, y))?.label;
+    if (view.kind !== 'settler') return null;
+    const gather = view.layout.gatherChoiceHits.find((hit) => contains(hit.rect, x, y))?.label;
     if (gather !== undefined) return gather;
-    const craft = layout.craftChoiceHits.find((hit) => contains(hit.rect, x, y))?.label;
+    const craft = view.layout.craftChoiceHits.find((hit) => contains(hit.rect, x, y))?.label;
     return craft !== undefined ? `${craft}\n${messages().hud.craftToggleHint}` : null;
   };
 
@@ -447,20 +457,19 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
    *  "- Drewno ×5" line per required good), or null — what the user asked to see before committing to
    *  the upgrade. Only building layouts carry the button, and only an upgradable building has a cost. */
   const upgradeButtonHint = (x: number, y: number): string | null => {
-    if (layout?.kind !== 'building' || lastModel.kind !== 'building') return null;
-    const hit = layout.buttons.find((b) => contains(b.rect, x, y));
-    if (hit?.action !== 'upgrade' || lastModel.upgradeCost.length === 0) return null;
-    const lines = lastModel.upgradeCost.map((c) => `- ${c.label} ×${c.amount}`).join('\n');
+    if (view.kind !== 'building') return null;
+    const hit = view.layout.buttons.find((b) => contains(b.rect, x, y));
+    if (hit?.action !== 'upgrade' || view.model.upgradeCost.length === 0) return null;
+    const lines = view.model.upgradeCost.map((c) => `- ${c.label} ×${c.amount}`).join('\n');
     return `${messages().hud.upgradeCostHint}\n${lines}`;
   };
 
   /** The hovered Produkcja row's recipe card ("Krótki Miecz:" then one "- Żelazo ×2" line per input),
    *  or null. */
   const productionRowHint = (x: number, y: number): string | null => {
-    if (layout?.kind !== 'building' || lastModel.kind !== 'building') return null;
-    if (lastModel.production?.kind !== 'recipe') return null;
-    const i = layout.productionRowRects.findIndex((r) => contains(r, x, y));
-    const row = i < 0 ? undefined : lastModel.production.rows[i];
+    if (view.kind !== 'building' || view.model.production?.kind !== 'recipe') return null;
+    const i = view.layout.productionRowRects.findIndex((r) => contains(r, x, y));
+    const row = i < 0 ? undefined : view.model.production.rows[i];
     if (row === undefined || row.inputs.length === 0) return null;
     return `${row.label}:\n${row.inputs}`;
   };
@@ -474,7 +483,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
   const updateTooltip = (clientX: number, clientY: number): void => {
     if (opts.tooltip === undefined) return;
     const { x, y } = toCanvas(clientX, clientY);
-    if (layout === null || !contains(layout.panel, x, y)) {
+    if (view.kind === 'empty' || !contains(view.layout.panel, x, y)) {
       opts.tooltip.hide();
       return;
     }
@@ -505,7 +514,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     if (next === hoverAction && nextGatherGood === hoveredGatherGood) return;
     hoverAction = next;
     hoveredGatherGood = nextGatherGood;
-    if (lastModel.kind !== 'empty') rebuild(lastModel);
+    if (view.kind !== 'empty') rebuild(view.model);
   };
 
   // Leaving the canvas can't fire a final over-empty mousemove, so the row tooltip would linger — hide it.
@@ -515,7 +524,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     if (hoverAction !== null || hoveredGatherGood !== undefined) {
       hoverAction = null;
       hoveredGatherGood = undefined;
-      if (lastModel.kind !== 'empty') rebuild(lastModel);
+      if (view.kind !== 'empty') rebuild(view.model);
     }
   };
 
@@ -524,15 +533,12 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
 
   /** The current portrait box (preview rect, bevel-inset) + its entity, for the live observation window. */
   const portrait = (): PortraitBox | null => {
-    if (layout === null) return null;
-    const box: Rect | undefined =
-      layout.kind === 'settler' || layout.kind === 'building' ? layout.preview : undefined;
-    if (box === undefined || (lastModel.kind !== 'settler' && lastModel.kind !== 'building')) return null;
-    const entityRef = lastModel.entityId;
+    if (view.kind !== 'settler' && view.kind !== 'building') return null;
+    const box = view.layout.preview;
     const inset = Math.round(PORTRAIT_BEVEL_INSET * scale);
     return {
-      entityRef,
-      kind: lastModel.kind,
+      entityRef: view.model.entityId,
+      kind: view.kind,
       rect: { x: box.x + inset, y: box.y + inset, w: box.w - 2 * inset, h: box.h - 2 * inset },
     };
   };
@@ -550,20 +556,20 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     const key = `${snapshot.tick}|${app.screen.width}x${app.screen.height}|${panelEpoch}`;
     if (key === lastWorkersKey) return;
     lastWorkersKey = key;
-    if (lastModel.kind !== 'building' || layout?.kind !== 'building') {
+    if (view.kind !== 'building') {
       workerOverlay.update(snapshot, null, null);
       return;
     }
-    const b = layout.workers.body;
+    const b = view.layout.workers.body;
     // The compact limits line sits in the first row — except on a construction site, which shows no
     // strip (the field holds the live building crew instead — the overlay's siteCrew selector).
-    const siteCrew = lastModel.construction !== null;
+    const siteCrew = view.model.construction !== null;
     const inset = siteCrew ? 0 : Math.round(ROW_H * scale);
     const field: Rect = { x: b.x, y: b.y + inset, w: b.w, h: Math.max(0, b.h - inset) };
     // A home's field draws its residents grouped per family (the Mieszkańcy window) instead of the
     // bound-worker scan.
-    const groups = lastModel.home?.families.map((f) => f.members);
-    workerOverlay.update(snapshot, lastModel.entityId, field, {
+    const groups = view.model.home?.families.map((f) => f.members);
+    workerOverlay.update(snapshot, view.model.entityId, field, {
       siteCrew,
       ...(groups !== undefined ? { groups } : {}),
     });

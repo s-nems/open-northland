@@ -1,7 +1,6 @@
 import type { Rect } from '../../geometry.js';
-import type { UnitPanelModel } from '../model/index.js';
-import { type BuildingLayout, type ButtonHit, layoutBuilding } from './building.js';
-import { layoutSettler, type SettlerLayout } from './settler.js';
+import type { BuildingLayout, ButtonHit } from './building.js';
+import type { SettlerLayout } from './settler.js';
 import { PANEL_W, panelRect, ROW_H, type SectionRect, sectionAt } from './shared.js';
 
 export {
@@ -9,13 +8,14 @@ export {
   type BuildingLayout,
   type ButtonAction,
   type ButtonHit,
+  layoutBuilding,
   MAX_STOCK_ROWS,
   PREVIEW_INSET,
   STOCK_PLATE_H,
   STOCK_ROW_H,
   stockSlotRects,
 } from './building.js';
-export { EQUIP_ROW_H, type SettlerLayout } from './settler.js';
+export { EQUIP_ROW_H, layoutSettler, type SettlerLayout } from './settler.js';
 export { ROW_H, ROW_TEXT_PAD, type SectionRect } from './shared.js';
 
 /** The multi-select / generic views: one section window with a single hint row. */
@@ -45,7 +45,7 @@ const SIGNPOST_BUTTON_PAD = 2;
  * Apply `fn` to every rect in a layout, returning a new layout of the same shape. The off-screen
  * supersample draw layout is derived from the on-canvas hit layout this way — scaled by the oversample /
  * display ratio and re-origined to the texture (see `panel.ts`) — so the drawn geometry equals the
- * hit-tested geometry by construction, never by two independent `layoutDetails` roundings agreeing.
+ * hit-tested geometry by construction, never by two independent layout passes agreeing on rounding.
  */
 export function mapLayout<T extends DetailsLayout>(layout: T, fn: (r: Rect) => Rect): T {
   const sec = (s: SectionRect): SectionRect => ({ frame: fn(s.frame), title: fn(s.title), body: fn(s.body) });
@@ -106,46 +106,36 @@ export function mapLayout<T extends DetailsLayout>(layout: T, fn: (r: Rect) => R
   return { ...layout, panel: fn(layout.panel), section: sec(layout.section) };
 }
 
-/**
- * Build the selection panel's geometry for the current model, dispatching to the per-kind layout: the
- * compact multi/generic strip inline, the settler stack ({@link layoutSettler}), or the building stack
- * ({@link layoutBuilding}). Returns null for an empty selection.
- */
-export function layoutDetails(
-  model: UnitPanelModel,
+export function layoutCompact(
   screen: { readonly width: number; readonly height: number },
   s: number,
-): DetailsLayout | null {
-  if (model.kind === 'empty') return null;
+): CompactLayout {
+  const w = Math.round(PANEL_W * s);
+  const bodyH = COMPACT_ROWS * Math.round(ROW_H * s);
+  const probe = sectionAt(0, 0, w, bodyH, s);
+  const panel = panelRect(probe.frame.h, screen, s);
+  return { kind: 'compact', panel, section: sectionAt(panel.x, panel.y, w, bodyH, s) };
+}
 
-  if (model.kind === 'multi-settler' || model.kind === 'generic') {
-    const w = Math.round(PANEL_W * s);
-    const bodyH = COMPACT_ROWS * Math.round(ROW_H * s);
-    const probe = sectionAt(0, 0, w, bodyH, s);
-    const panel = panelRect(probe.frame.h, screen, s);
-    return { kind: 'compact', panel, section: sectionAt(panel.x, panel.y, w, bodyH, s) };
-  }
-
-  if (model.kind === 'signpost') {
-    const w = Math.round(PANEL_W * s);
-    const pad = Math.round(SIGNPOST_BUTTON_PAD * s);
-    const bodyH = Math.round(SIGNPOST_BUTTON_H * s) + pad * 2;
-    const probe = sectionAt(0, 0, w, bodyH, s);
-    const panel = panelRect(probe.frame.h, screen, s);
-    const section = sectionAt(panel.x, panel.y, w, bodyH, s);
-    const button: ButtonHit = {
-      action: 'demolish',
-      enabled: true,
-      rect: {
-        x: section.body.x + pad,
-        y: section.body.y + pad,
-        w: section.body.w - pad * 2,
-        h: Math.round(SIGNPOST_BUTTON_H * s),
-      },
-    };
-    return { kind: 'signpost', panel, section, button };
-  }
-
-  if (model.kind === 'settler') return layoutSettler(model, screen, s);
-  return layoutBuilding(model, screen, s);
+export function layoutSignpost(
+  screen: { readonly width: number; readonly height: number },
+  s: number,
+): SignpostLayout {
+  const w = Math.round(PANEL_W * s);
+  const pad = Math.round(SIGNPOST_BUTTON_PAD * s);
+  const bodyH = Math.round(SIGNPOST_BUTTON_H * s) + pad * 2;
+  const probe = sectionAt(0, 0, w, bodyH, s);
+  const panel = panelRect(probe.frame.h, screen, s);
+  const section = sectionAt(panel.x, panel.y, w, bodyH, s);
+  const button: ButtonHit = {
+    action: 'demolish',
+    enabled: true,
+    rect: {
+      x: section.body.x + pad,
+      y: section.body.y + pad,
+      w: section.body.w - pad * 2,
+      h: Math.round(SIGNPOST_BUTTON_H * s),
+    },
+  };
+  return { kind: 'signpost', panel, section, button };
 }
