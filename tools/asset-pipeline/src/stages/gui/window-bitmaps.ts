@@ -2,6 +2,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { decodePcx, expandToRgba } from '../../decoders/pcx.js';
 import { encodePng } from '../../decoders/png.js';
+import { errorMessage } from '../../errors.js';
 import type { SourceRoots } from '../../roots.js';
 import { readSourceFile } from '../game-file.js';
 
@@ -94,7 +95,7 @@ export async function convertWindowBitmaps(
       await writeFile(join(outDir, bitmapsDir, `${bitmap}.${palette}.png`), png);
       done++;
     } catch (err) {
-      console.warn(`[pipeline] gui: skipped ${bitmap}.${palette}: ${(err as Error).message}`);
+      console.warn(`[pipeline] gui: skipped ${bitmap}.${palette}: ${errorMessage(err)}`);
     }
   }
   return done;

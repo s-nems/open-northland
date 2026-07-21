@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, normalize, sep } from 'node:path';
 import { decodeLib, type LibFile } from '../decoders/lib.js';
+import { errorMessage } from '../errors.js';
 import type { StageItemReporter } from '../progress.js';
 import { collectSourceFiles, type SourceRoots } from '../roots.js';
 
@@ -52,14 +53,14 @@ export async function unpackLibTree(
     try {
       archiveBytes = await readFile(file);
     } catch (err) {
-      console.warn(`[pipeline] skipped archive ${archive}: ${(err as Error).message}`);
+      console.warn(`[pipeline] skipped archive ${archive}: ${errorMessage(err)}`);
       continue;
     }
     let files: readonly LibFile[];
     try {
       files = decodeLib(archiveBytes).files;
     } catch (err) {
-      console.warn(`[pipeline] skipped archive ${archive}: ${(err as Error).message}`);
+      console.warn(`[pipeline] skipped archive ${archive}: ${errorMessage(err)}`);
       continue;
     }
     for (const member of files) {

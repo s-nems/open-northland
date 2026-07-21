@@ -7,6 +7,7 @@ import { type BmdPaletteBinding, normalizeAssetPath } from '../decoders/ini.js';
 import { decodePcx } from '../decoders/pcx.js';
 import { composePlayerPalette, PLAYER_COLORS, synthesizePlayerSource } from '../decoders/player-palette.js';
 import { encodePng } from '../decoders/png.js';
+import { errorMessage } from '../errors.js';
 import type { OutTreeIndex } from './bmd/index.js';
 import { BOBS_DIR, writeAtlasBeside } from './game-file.js';
 
@@ -141,7 +142,7 @@ export async function convertIndexedCharacterAtlases(
       const { png } = await writeAtlasBeside(outDir, onDisk, 'indexed', atlas);
       done.push(png);
     } catch (err) {
-      console.warn(`[pipeline] skipped indexed ${bmdRef}: ${(err as Error).message}`);
+      console.warn(`[pipeline] skipped indexed ${bmdRef}: ${errorMessage(err)}`);
     }
   }
   return done;

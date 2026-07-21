@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 import type { Args } from './args.js';
+import { errorMessage } from './errors.js';
 import { clearPipelineManifest, PIPELINE_MANIFEST_NAME, writePipelineManifest } from './manifest.js';
 import type { PipelineProgress } from './progress.js';
 import { resolveModRoot, type SourceRoots } from './roots.js';
@@ -94,13 +95,13 @@ export async function runPipeline(args: Args, progress?: PipelineProgress): Prom
   progress?.stage?.('player-colors');
   const indexed = await convertIndexedCharacterAtlases(bindings, args.out, outTree);
   const lut = await convertPlayerColorLut(args.out, outTree).catch((err: unknown) => {
-    console.warn(`[pipeline] player-colour LUT skipped: ${(err as Error).message}`);
+    console.warn(`[pipeline] player-colour LUT skipped: ${errorMessage(err)}`);
     return undefined;
   });
   // Per-player baked guidepost atlases (full player palettes; baked, not indexed, so the guidepost's
   // graded edge alpha survives — see stages/player-colors.ts convertGuidepostPlayerAtlases).
   const guideAtlases = await convertGuidepostPlayerAtlases(args.out, outTree).catch((err: unknown) => {
-    console.warn(`[pipeline] guidepost player atlases skipped: ${(err as Error).message}`);
+    console.warn(`[pipeline] guidepost player atlases skipped: ${errorMessage(err)}`);
     return 0;
   });
   console.log(

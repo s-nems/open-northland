@@ -9,6 +9,7 @@ import {
 import { decodeBmd } from '../../decoders/bmd/index.js';
 import { normalizeAssetPath, paletteAliasMap } from '../../decoders/ini.js';
 import { decodePcx } from '../../decoders/pcx.js';
+import { errorMessage } from '../../errors.js';
 import type { StageItemReporter } from '../../progress.js';
 import { walkFiles } from '../../walk.js';
 import { writeAtlasBeside } from '../game-file.js';
@@ -134,7 +135,7 @@ export async function convertBmdTree(
       const alpha: AtlasAlphaMode = buildTimeBmds.has(binding.bmd) ? 'build-time' : 'per-pixel';
       atlas = bmdToAtlas(await readFile(join(outDir, bmdOnDisk)), palette, alpha);
     } catch (err) {
-      console.warn(`[pipeline] skipped ${binding.bmd}: ${(err as Error).message}`);
+      console.warn(`[pipeline] skipped ${binding.bmd}: ${errorMessage(err)}`);
       continue;
     }
     if (!/\.bmd$/i.test(bmdOnDisk)) {
@@ -194,7 +195,7 @@ export async function convertShadowBmdTree(
       const { png } = await writeAtlasBeside(outDir, onDisk, SHADOW_ATLAS_SUFFIX, atlas);
       done.push(png);
     } catch (err) {
-      console.warn(`[pipeline] skipped shadow ${shadowBmd}: ${(err as Error).message}`);
+      console.warn(`[pipeline] skipped shadow ${shadowBmd}: ${errorMessage(err)}`);
     }
   }
   return done;

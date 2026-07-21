@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import type { MapScript } from '@open-northland/data';
 import { decodeIni, extractMapScript, parseIniSections, type RuleSection } from '../../decoders/ini.js';
+import { errorMessage } from '../../errors.js';
 import { findPathCaseInsensitiveInDirs } from './case-path.js';
 
 /**
@@ -48,7 +49,7 @@ export async function resolveMapScript(
         sections.push(...parseIniSections(decodeIni(await readFile(path))));
         read.push(inc);
       } catch (err) {
-        console.warn(`[pipeline] map ${rel}: ${inc} unreadable: ${(err as Error).message}`);
+        console.warn(`[pipeline] map ${rel}: ${inc} unreadable: ${errorMessage(err)}`);
       }
     }
     if (read.length > 0) {

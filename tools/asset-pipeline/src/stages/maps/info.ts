@@ -3,6 +3,7 @@ import { dirname } from 'node:path';
 import type { MapInfo } from '@open-northland/data';
 import { decodeCifStringArray } from '../../decoders/cif.js';
 import { cifLinesToSections, extractMapInfo, type SourceRef } from '../../decoders/ini.js';
+import { errorMessage } from '../../errors.js';
 import { collectSourceFilesNamed, type SourceRoots } from '../../roots.js';
 
 /**
@@ -52,7 +53,7 @@ export async function decodeMapTree(roots: SourceRoots): Promise<MapInfo[]> {
       const bytes = await readFile(path);
       maps.push(mapCifToInfo(bytes, mapIdFromPath(rel), { file: rel, layer: 'base' }));
     } catch (err) {
-      console.warn(`[pipeline] skipped map ${rel}: ${(err as Error).message}`);
+      console.warn(`[pipeline] skipped map ${rel}: ${errorMessage(err)}`);
     }
   }
   return maps;

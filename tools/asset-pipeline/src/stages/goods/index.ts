@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 import { decodeBmd } from '../../decoders/bmd/index.js';
+import { errorMessage } from '../../errors.js';
 import type { SourceRoots } from '../../roots.js';
 import {
   BOBS_DIR,
@@ -105,7 +106,7 @@ export async function convertGoodsStage(roots: SourceRoots, outDir: string): Pro
     icons = await buildGoodIcons(roots, goods);
     names = await loadGoodNames(roots, goods);
   } catch (err) {
-    console.warn(`[pipeline] goods: skipped (good tables unreadable): ${(err as Error).message}`);
+    console.warn(`[pipeline] goods: skipped (good tables unreadable): ${errorMessage(err)}`);
     icons = {};
     names = {};
   }
@@ -143,7 +144,7 @@ export async function convertGoodsStage(roots: SourceRoots, outDir: string): Pro
     );
     frames = emitted.frames;
   } catch (err) {
-    console.warn(`[pipeline] goods: atlas skipped (${GOODS_BMD} unreadable): ${(err as Error).message}`);
+    console.warn(`[pipeline] goods: atlas skipped (${GOODS_BMD} unreadable): ${errorMessage(err)}`);
   }
 
   await writeLutPng(outDir, GOODS_PALETTE_LUT_STEM, ordered);
