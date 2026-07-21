@@ -61,13 +61,12 @@ export interface PooledEntity {
   boundsFrame: number;
   /** Last real facing (0..7) this settler drew with — reused across the 1-tick heading gap a re-pathing
    *  unit shows, so its walk doesn't flip to the default facing for a frame each tile (see
-   *  {@link import('./sprite-pool.js').SpritePool}). */
+   *  {@link import('./presentation.js').walkPose}). */
   lastFacing?: number;
   /** The displayed bottom-up reveal fraction (0..1) of an under-construction building, eased toward the
-   *  sim's `built` each frame so the rise glides between the sparse per-swing steps. Drives BOTH which
-   *  construction stages draw and how far each reveals (see {@link import('./sprite-pool.js')}), so the two
-   *  never disagree. `undefined` until the entity first draws a reveal layer, and reset to `undefined` once
-   *  it finishes. Always present (not optional) so the pooled entity keeps a stable, monomorphic shape. */
+   *  sim's `built` each frame ({@link import('./presentation.js').easeReveal}). `undefined` until the
+   *  entity first draws a reveal layer, and reset to `undefined` once it finishes. Always present (not
+   *  optional) so the pooled entity keeps a stable, monomorphic shape. */
   reveal: number | undefined;
   /** The entity's inter-tick motion track — the last two tick anchors plus the lerped drawn anchor
    *  ({@link import('./motion.js').trackMotion}); 12 Hz sim steps draw as continuous frame-rate motion.
