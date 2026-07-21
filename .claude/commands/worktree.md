@@ -47,12 +47,21 @@ Hard rules:
   one task to execute.
 - Re-check factual claims against source files before coding. Tickets are research notes, not
   ground truth.
+- For a code task, read the touched production files and their real callers before editing. Identify
+  their responsibility boundaries, whether comments are supplying missing structure, and whether
+  the requested change would extend an already mixed or overgrown module.
 - If the step is already done, impossible, or contradicted by code/source reality, stop at the
   smallest safe point and report the deviation. The user decides the new scope.
 
 ## 3. Do the Work
 
 - Keep edits scoped to the requested step.
+- Apply the touched-file ratchet from `AGENTS.md`: new behavior must not lengthen an already
+  overgrown orchestration function or add another narrative comment section. Extract a concern that
+  belongs to this task; file a bounded ticket for a wider structural repair that does not.
+- A comment may retain source basis, an invariant, a unit, an approximation, or why the obvious
+  implementation is wrong. If it merely labels a phase or explains the following branch, make the
+  code carry that fact through a domain name, function, type, or module boundary.
 - Mechanics and extracted data must name their source basis in the changed code, tests, ticket, or
   commit message: extracted `.ini`/`.cif` data, byte-level evidence from owned files, a published
   specification, or observation of the running original. If behavior is approximated, say what is
@@ -80,13 +89,23 @@ Run the gates that match the change, and do not fake them:
   capture of the scene URL) and fix gross breakage — blank canvas, missing sprites, console errors.
   The user's eyes are for fidelity and feel, never for catching a broken page.
 
+Before the first commit, run the readability gate over the working diff:
+- Read the changed production code with its comments mentally hidden. Its responsibilities and
+  control flow must still be clear from names, types, and boundaries.
+- Re-read every touched module in full, not only the diff. Confirm that the change did not add a
+  second responsibility, lengthen an already overgrown orchestration path, or use comments as phase
+  labels. If a wider repair is out of scope, leave the file no worse and file a bounded ticket.
+- For every code diff, run the `code-reviewer` lens now and triage its readability, shape, TypeScript,
+  and architecture findings before handoff. This is the narrow pre-handoff review; conditional
+  engine/gameplay/correctness lenses remain deferred until the user approves the result.
+
 ## 5. Commit
 
 - Commit on the branch. Use Conventional Commits, imperative and capitalized, with no AI attribution.
   Stage only this task's files.
-- Do **not** run the review battery yet. Reviews are expensive and pointless if the user rejects the
-  work on manual verification — they run in step 8, after the user approves the change and says to
-  merge.
+- Do **not** run the remaining review battery yet. The baseline code-quality lens ran before this
+  commit; the conditional engine/gameplay/correctness lenses run in step 8, after the user approves
+  the change and says to merge.
 
 ## 6. Update the Tracker Before Handoff
 
@@ -120,13 +139,13 @@ continue below — the review battery runs then, not before.
 
 First run the review battery, now that the user has approved the work:
 - Run it over `git diff main...HEAD`: spawn the applicable lenses **in parallel, one message**,
-  selected exactly as `.claude/commands/audit.md` step 2 defines them (engine / gameplay / code,
-  plus a general correctness pass only when no named lens covers the main risk). Pass each the
-  exact range.
-- `code-reviewer` is the baseline: it runs on **every** diff that changes code, and is skipped
-  only for docs/tickets-only branches. Select the other lenses by what the diff actually touches —
-  do **not** default to the full battery; each extra reviewer is a real token cost and produces
-  noise findings outside its lens. State which lenses you skipped and why.
+  selected exactly as `.claude/commands/audit.md` step 2 defines them (engine / gameplay, plus a
+  general correctness pass only when no named lens covers the main risk). Pass each the exact range.
+- The `code-reviewer` baseline already ran before handoff. Re-run it only when the diff changed after
+  that review (user-requested fixes, conflict resolution, or rebase changes); a changed final diff
+  must never merge on a stale review. Select the other lenses by what the diff actually touches —
+  do **not** default to the full battery; each extra reviewer is a real token cost and produces noise
+  findings outside its lens. State which lenses you skipped and why.
 - Triage the findings yourself: re-read the cited code before accepting or dismissing a finding —
   reviewers are wrong in both directions. Fix real in-scope issues, re-run affected gates, and
   commit the fixes. If a fix changes user-visible behavior, report it and wait for a fresh go-ahead

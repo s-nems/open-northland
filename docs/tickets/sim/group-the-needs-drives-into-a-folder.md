@@ -24,4 +24,5 @@ tests already do exactly this under `test/agents/needs/`.
 ## Verify
 
 - `npm test` with **no** golden movement — pure structure, no behaviour.
-- `npm run scan:structure`.
+- Re-read the resulting folder as one feature: no needs-planning implementation remains scattered
+  beside unrelated agent systems.

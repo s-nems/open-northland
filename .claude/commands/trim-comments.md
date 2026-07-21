@@ -1,50 +1,60 @@
 ---
-description: Trim overgrown comments in a scope to their load-bearing facts — comment-only pass, no code changes.
-argument-hint: [scope: package|path|files; default: all packages/*/src]
+description: Audit explanatory comments in an explicit scope, trim only redundant prose, and escalate comments that are compensating for unclear code.
+argument-hint: <scope: package|path|files>
 ---
 
-Trim overgrown comments in the scope supplied in `$ARGUMENTS` (default: every `packages/*/src`)
-down to the "Comments are budgeted prose" rule in `AGENTS.md`. This is a **comment-only pass**:
-do not change code, names, types, imports, or formatting outside comment text.
+Audit comments in the explicit `$ARGUMENTS` scope against the "Comments are budgeted prose" and
+"Structure before commentary" rules in `AGENTS.md`. If no scope is supplied, ask for one; never
+default to a repository-wide sweep. This remains a **comment-only pass**: do not change code, names,
+types, imports, or formatting outside comment text.
 
-The unit of work is the **sentence**, not the word. Success is deleted and merged sentences; a
-pass that only downcases emphasis or swaps synonyms has failed. If a comment needs no sentence
-removed, leave it byte-identical — do not reword lean comments.
+The purpose is to distinguish redundant prose from structural debt, not to maximize deleted lines.
+If a comment is carrying structure the code fails to express, leave it intact and file a bounded
+refactor ticket instead of making the code harder to understand.
 
-## 1. Find offenders
+## 1. Select a bounded pass
 
-Rank `.ts` source files in scope (skip `dist/`, `node_modules/`, generated files) by comment-line
-density and by doc comments visibly dwarfing the code they explain. Work the ~10 worst files this
-run; list the runners-up at the end so the next run has a starting point.
+Read the `.ts` source files in scope (skip `dist/`, `node_modules/`, generated files, and tests) and
+look for prose that obscures the declaration or branch it explains. Declarative schemas and protocol
+types may legitimately need denser field contracts than orchestration code.
 
-## 2. Trim
+Inspect at most three related offenders in one run. Prefer files in one feature so cross-file facts
+can be deduplicated without producing a broad style-churn diff.
 
-Judge each comment sentence by sentence. A sentence earns its place only by carrying one of:
+## 2. Classify before editing
 
-- a unit, precondition, or invariant the code can't show;
-- a non-obvious source basis, as a short parenthetical (e.g. `(observed original behaviour)`);
-- a named approximation;
-- why-not-the-obvious-way.
+Classify each explanatory comment or distinct sentence:
 
-Delete every sentence that carries none of these. The usual offenders: narration of what the next
-line does, history of how the code got here or what design it replaced, praise of the design
-("pure + total", "self-verifiable", "faithful") attached to every declaration, an analogy to
-another module repeated per function, quotes from the conversation or review that produced the
-code, and a second sentence restating what the first already said.
+- **delete** — narration, restatement, history, praise, repetition, or a fact the code already says;
+- **retain** — a unit, precondition, invariant, source basis, named approximation, or
+  why-not-the-obvious-way that the code cannot express;
+- **refactor** — prose naming control-flow phases, branch purpose, ownership, valid state
+  combinations, or an entity-state transition that should live in code structure.
 
-Then dedupe across the file: a fact stated in several comments keeps one home (usually the module
-header or the primary declaration); the other sites lose it or keep a short pointer.
+Delete `delete` prose sentence by sentence. Tighten a `retain` sentence only while preserving its
+entire fact and source basis. Leave `refactor` prose byte-identical in this comment-only pass, then
+dedupe and file one self-contained cleanup ticket per coherent structural problem under
+`docs/tickets/`.
 
-Target: a typical doc comment lands at 1–3 sentences (the AGENTS.md budget). One that stays longer
-must justify every sentence with a distinct needed fact. When unsure whether a fact is
-load-bearing, keep the fact and cut the prose around it. While rewriting a kept sentence, also
-drop rhetorical emphasis (mid-sentence CAPS/bold, superlatives) — but emphasis cleanup alone is
-never a reason to touch a comment.
+The usual `delete` offenders are narration of the next line, change history, praise of the design,
+analogies repeated per function, quotes from the producing conversation, and a second sentence
+restating the first. A typical retained doc comment remains 1–3 sentences; a longer one is acceptable
+only when every sentence carries a distinct irreducible fact.
+
+Do not replace removed prose with shorter synonyms, use comment deletion to push a file under a line
+budget, or remove a section-heading comment while leaving an unnamed wall of branches behind.
 
 ## 3. Verify and report
 
 Run `npm run check` and `npm test`. Goldens must not move — comments cannot change behavior, so a
-moved golden means you touched code: revert that hunk. Report per file: comment lines before →
-after — a worked offender should shrink visibly, and if one didn't, say why rather than padding
-the diff. Files inspected and left untouched get one line saying so. Note anything deliberately
-kept long and why. Leave the changes uncommitted for review.
+moved golden means code changed and the offending hunk must be reverted.
+
+Report each inspected file with its classifications:
+
+- deleted or merged comments and the code facts that now stand on their own;
+- retained long comments and the irreducible facts they carry;
+- structural comments left intact, linked to the ticket filed for the code repair;
+- files inspected and left byte-identical.
+
+Success may be a small comment diff plus a precise structural ticket. Leave changes uncommitted for
+review.

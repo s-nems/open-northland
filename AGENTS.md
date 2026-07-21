@@ -57,6 +57,10 @@ Write to these directly; the review agents enforce them.
   no quotes from the conversation or review that produced the code, no restating the same invariant
   in a second paragraph. When editing a file, trimming an overgrown comment to its load-bearing
   facts is boy-scout work.
+- **Structure before commentary.** A comment that explains control-flow phases, branch purpose,
+  ownership, or an entity-state transition is a refactor signal: first express the fact through
+  domain names, focused functions, types, or module boundaries. If removing a comment makes the code
+  unintelligible, reshape the code before trimming it; keep comments for the irreducible why.
 - **Group by feature, not flat.** When a module passes ~300 lines or mixes concerns, split it by
   concern into a feature subfolder with an `index.ts` barrel that keeps import paths stable. Prefer
   deepening the tree over widening a flat directory; group by feature (`hud/tool-panel/`), not by
@@ -68,6 +72,9 @@ Write to these directly; the review agents enforce them.
 - **Boy-scout rule.** Leave code the change touches cleaner than found: fix a misleading name,
   delete dead weight, split what you are already editing. Scope it to the code the step passes
   through — do not turn a step into a rewrite.
+- **Touched-file ratchet.** Do not add another responsibility, narrative comment section, or longer
+  orchestration function to a file already over budget. Extract the new concern when it belongs to
+  the task; otherwise leave the file no worse and file one bounded cleanup ticket.
 - **Modern TypeScript.** Strict mode is on; keep it meaningful: no `any` (use `unknown` plus
   narrowing), model alternatives as discriminated unions with exhaustive `switch` (a `never` check)
   rather than boolean flags, prefer string-literal unions and `as const` tables over `enum`, mark
@@ -88,7 +95,6 @@ npm run bench:sim
 npm run soak:gatherers
 npm run check
 npm run check:fix
-npm run scan:structure
 npm run pipeline -- --game "../Cultures 8th Wonder" --out content
 npm run dev
 npm run desktop

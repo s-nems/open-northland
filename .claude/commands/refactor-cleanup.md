@@ -6,8 +6,10 @@ argument-hint: <scope: sim|render|app|pipeline|path|feature> [focus, e.g. perfor
 # Refactor Cleanup
 
 Perform an evidence-driven refactor pass inside the scope supplied in `$ARGUMENTS`. The pass is
-expected to deliver a real improvement: address every justified finding in the scope, not a single
-token-cheap tweak. Preserve behavior unless the user explicitly requests a behavior change.
+expected to deliver one coherent, independently verifiable improvement rather than a token-cheap
+tweak or a package-wide rewrite. Diagnose the requested scope, complete the selected hotspot, and
+file separate bounded tickets for other confirmed work. Preserve behavior unless the user explicitly
+requests a behavior change.
 
 ```text
 /refactor-cleanup sim
@@ -28,11 +30,11 @@ Treat the first argument as a hard ownership boundary:
 Treat remaining arguments as an optional focus, such as `performance`, `packaging`, `navigation`,
 or `type safety`. If no scope is supplied, ask for one before inspecting the whole repository.
 
-A package-sized scope authorizes cleaning up that whole package **including its public API and its
-tests** — test files are code inside the scope, not a read-only verification fixture. Fix every
-problem inside the scope that the diagnosis justifies — do not stop after the first
-improvement, and do not shrink the pass to save effort. What bounds the pass is the scope and the
-evidence, not diff size.
+A package-sized scope authorizes diagnosing that whole package **including its public API and its
+tests** — test files are code inside the scope, not a read-only verification fixture. Select one
+cohesive hotspot whose ownership and verification seam are clear, complete it fully, and file the
+remaining confirmed findings as separate tasks. What bounds an implementation slice is conceptual
+cohesion and regression risk, not an arbitrary line count.
 
 The boundary limits where you *diagnose*, not what you may *edit*: when a justified finding
 reshapes the scope's exported surface (a leaky export, an awkward signature, ownership sitting in
@@ -80,12 +82,21 @@ Collect all justified findings in the scope, ordered by value:
    Refactoring tests preserves *what is proven* the way refactoring code preserves behavior —
    assertions may be restructured, never weakened or deleted to make a pass easier.
 
-The plan for the pass is the full ranked list, not its top entry. Before editing, state the
-findings, expected benefit, behavior that must remain stable, and regression risk. Drop a finding
-only because the evidence does not support it or it requires a behavior change — never because the
-pass already contains "enough" work. If the requested performance problem is not supported by
-measurement, complexity analysis, or an obvious hot-path cost, do not invent an optimization;
-proceed with the remaining evidence-backed findings or report that no justified change was found.
+Before editing, state the ranked findings, which coherent hotspot this pass will complete, its
+expected benefit, the behavior that must remain stable, and its regression risk. A confirmed finding
+outside that slice is filed as a self-contained ticket rather than silently dropped or pulled into a
+sprawling diff. If the requested performance problem is not supported by measurement, complexity
+analysis, or an obvious hot-path cost, do not invent an optimization; select another evidence-backed
+hotspot or report that no justified change was found.
+
+For a `readability` focus, build a responsibility map before choosing the hotspot. Classify the
+scope's explanatory comments as:
+
+- **delete** — the code already states the fact;
+- **encode** — the comment names a missing function, type, phase, or ownership boundary;
+- **retain** — irreducible source basis, invariant, unit, approximation, or why-not-the-obvious-way.
+
+An `encode` finding is structural work. Do not count deleting its comment as an improvement.
 
 ## 4. Refactor pragmatically
 
@@ -104,10 +115,9 @@ rather than from memory of this file. On top of that contract, this pass specifi
 - Avoid speculative extensibility. Make the next likely change easier without designing for
   hypothetical callers.
 - Every hunk must trace back to a stated finding. Outside the scope, fix nothing and create no new
-  debt ledger; inside the scope, an untouched justified finding is a defect of the pass, not
-  restraint.
-- Work through the findings in ranked order and commit-sized units, so a partial pass still leaves
-  the scope strictly better and mechanically verifiable.
+  debt ledger; confirmed work outside the selected hotspot becomes a bounded ticket.
+- Work through the hotspot in commit-sized units, so a partial pass still leaves the scope strictly
+  better and mechanically verifiable.
 
 ### Packaging decomposition
 
@@ -134,6 +144,18 @@ For `sim`, preserve determinism, fixed-point state, canonical decision ordering,
 scaling. For render and app hot paths, keep per-frame work screen-bounded. Never update a golden
 hash merely to make a refactor pass: a moved golden during a refactor means behavior changed.
 
+### Structure before comment trimming
+
+When prose currently supplies the structure, sequence the repair so behavior stays reviewable:
+
+1. Characterize the existing behavior and ordering at the lowest useful test seam.
+2. Move coherent bodies behind domain-shaped names without rewriting them.
+3. Improve types and names only after the move is mechanically visible.
+4. Delete comments made redundant by the new structure; retain the irreducible `retain` facts above.
+
+The resulting orchestration should read as the domain's phases without section-heading comments.
+Do not replace a visible priority ladder with a generic callback registry or speculative rules engine.
+
 ## 5. Prove the change
 
 1. Add or strengthen the lowest-level useful tests before changing risky behavior boundaries.
@@ -145,8 +167,9 @@ hash merely to make a refactor pass: a moved golden during a refactor means beha
    when the diff touches `packages/sim` or a per-tick/per-frame hot path — and triage their
    findings before reporting. Skip for mechanical renames and small moves.
 5. Run focused tests first, then the applicable project gates. Normal code changes should run
-   `npm test`, `npm run check`, and `npm run build`; structural changes should also run
-   `npm run scan:structure`.
+   `npm test`, `npm run check`, and `npm run build`. For structural changes, re-read every touched
+   module and its callers in full; confirm that responsibilities are narrower, orchestration is
+   readable without section-heading comments, and no old grab-bag remains behind.
 6. For performance work, compare before and after using a benchmark when one exists; otherwise
    state the specific complexity, allocation, or operation-count improvement. Do not claim
    unmeasured wall-clock gains.
@@ -157,10 +180,10 @@ Do not commit unless the user or the active workflow explicitly requests a commi
 
 ## 6. Report
 
-Lead with the findings addressed and why they were worth fixing. Then report changed files,
+Lead with the completed hotspot and why it was worth fixing. Then report changed files,
 preserved behavior, verification results (including reviewer-agent triage when run), and remaining
-risks. List any finding that was diagnosed but dropped, with the concrete reason (insufficient
-evidence, behavior change required); do not expand the completed pass after the fact.
+risks. List findings dismissed for insufficient evidence and link every confirmed finding outside
+the implemented slice to the ticket filed for it; do not expand the completed pass after the fact.
 
 A dropped finding that is still real work (needs a behavior change, is rooted in another package's
 internals, or deserves its own session) does not evaporate into the report — but a finding about

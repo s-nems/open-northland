@@ -27,5 +27,6 @@ that deserves its own review.
 
 ## Verify
 
-- `npm test`, `npm run check`, `npm run build` green; `npm run scan:structure` no longer lists
-  `content/ir.ts` as oversized. No golden moves (pure move).
+- `npm test`, `npm run check`, `npm run build` green; re-read the resulting folder to confirm each
+  file owns one of the three concerns above and no grab-bag `content/ir.ts` remains. No golden moves
+  (pure move).
