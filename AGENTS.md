@@ -46,6 +46,10 @@ legal wording is in `docs/LEGAL.md`.
   indivisible invariant genuinely needs the space.
 - Give each fact one durable home. Investigation, benchmarks, caller inventories, and decision history
   belong in tests, tickets, or the completing commit, not repeated in production JSDoc.
+- When extracting or moving code, review comments across the old and new modules as one budget. Moving
+  prose is not an improvement, and a behavior-preserving refactor should not grow that budget unless it
+  exposes a previously unstated invariant. Do not add a module header or JSDoc to every new export by
+  default.
 - Refactor structure before adding a long comment about phases, branch purpose, or ownership.
 - Group by feature. When a file passes roughly 300 lines or mixes concerns, extract the relevant
   concern into a feature folder and preserve public imports through a small barrel when useful.
@@ -55,6 +59,9 @@ legal wording is in `docs/LEGAL.md`.
 - Do not add another responsibility, narrative section, or longer orchestration path to an already
   overgrown file. Extract the concern related to the task; an existing or newly filed cleanup ticket
   does not permit making the file worse.
+- Enforce boundaries through package structure, types, and existing lint or hygiene checks where
+  possible. Do not add a one-off regex source scanner to prove a local refactor; reserve source scans
+  for repository-wide syntactic contracts that cannot be expressed by those mechanisms.
 
 Use strict TypeScript deliberately: no `any`, narrow `unknown`, prefer discriminated unions with
 exhaustive switches, use string-literal unions rather than `enum`, mark stable data `readonly`, use
@@ -85,6 +92,10 @@ seam; cell grids pass through `halfCellMapFromCells` before becoming a `TerrainG
 One ticket under `docs/tickets/` describes one actionable task. Verify its claims before executing
 it. Delete a completed ticket in the completing commit; rewrite a partial one to the exact remaining
 work.
+
+A ticket is a compact task specification, not an investigation transcript. State the verified
+problem, bounded scope, and verification path; omit development history, large code excerpts, and
+exhaustive caller inventories unless they are necessary to execute the task safely.
 
 File deferred work only when it is verified, actionable, valuable enough to schedule, and not already
 covered. Group closely related findings. Minor observations can stay in the current report instead of

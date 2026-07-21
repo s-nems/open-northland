@@ -39,8 +39,10 @@ An explicit focus may reorder findings inside that focus: for example, measured 
 `performance` pass. Without one, do not select an easier optimization while comments are visibly
 compensating for missing structure in a higher-value hotspot.
 
-Choose one cohesive hotspot with a clear verification seam. Do not optimize without a measured cost,
-an obvious complexity problem, or a repeated allocation in a known hot path.
+Choose exactly one cohesive hotspot with a clear verification seam. A successful run completes that
+one finding; breadth is not a score. Do not make a cleanup tour through other ranked findings. Do not
+optimize without a measured cost, an obvious complexity problem, or a repeated allocation in a known
+hot path.
 
 For every touched production module, classify its explanatory comments, regardless of focus:
 
@@ -51,6 +53,11 @@ For every touched production module, classify its explanatory comments, regardle
 `encode` is structural work, not successful comment deletion. Do not copy investigation, benchmark
 results, caller inventories, or the commit rationale into source comments. In tests, prefer scenario,
 fixture, and assertion names over prose that narrates the case.
+
+When code is moved or extracted, treat the old module and every destination module as one comment
+budget. Re-evaluate each moved comment instead of copying it mechanically, and do not add summary
+JSDoc merely because a module or export is new. A behavior-preserving refactor may grow the combined
+prose only for a previously unstated irreducible fact, which must be named in the final report.
 
 State the selected hotspot, expected benefit, preserved behavior, and risk before editing.
 
@@ -66,8 +73,11 @@ State the selected hotspot, expected benefit, preserved behavior, and risk befor
 - Never update a sim golden during a behavior-preserving pass.
 - Delete or tighten comments made redundant in the touched code. A pre-existing cleanup ticket is not
   a waiver to expand an overgrown file or add another narrative section.
+- Prefer executable behavior tests, type boundaries, and existing repository hygiene rules. Do not
+  build a one-off import walker or regex source scanner to prove the local cleanup.
 
-Every hunk must trace to the selected finding. Do not turn nearby observations into a larger rewrite.
+Every hunk must trace to the selected finding. After that finding is complete, stop editing. Keep
+nearby observations in the report rather than fixing or documenting them in the branch.
 
 ## Verify and report
 
@@ -76,12 +86,24 @@ Run focused tests first, then the applicable repository gates. Review the final 
 For performance work, compare a benchmark or report the exact operation/complexity reduction without
 inventing wall-clock gains.
 
-Re-read each touched production module once with comments mentally hidden. Report separate structure
-and comment verdicts as `improved`, `neutral`, or `regressed`, naming any long comment retained and the
-irreducible fact it carries. A refactor with either verdict `regressed` is not ready for handoff.
+Re-read each touched production module once with comments mentally hidden. For moved or extracted
+code, compare the combined comment prose before and after rather than judging each destination in
+isolation. Report scope, structure, and comment verdicts as shown below, naming any long comment
+retained and the irreducible fact it carries:
 
-File a ticket only for a verified, valuable, independently actionable finding that remains outside
-the chosen slice. Dedupe first. Small observations and rejected preferences stay in the report.
+```text
+Scope: cohesive | fragmented
+Structure: improved | neutral | regressed
+Comments: improved | neutral | regressed
+```
+
+`Comments: neutral` is not available when narrative prose or long blocks grew without a newly required
+irreducible fact. A refactor with fragmented scope or either `regressed` verdict is not ready for
+handoff.
+
+Do not create follow-up tickets during cleanup by default. Report other verified findings so the user
+can choose the next run. File one only when the user requested backlog updates or a material blocker
+would otherwise be lost; dedupe first and keep it compact.
 
 Do not commit unless requested. Report the completed hotspot, changed files, verification, preserved
-behavior, structure and comment verdicts, reviewer triage, and remaining risk.
+behavior, scope, structure and comment verdicts, reviewer triage, and remaining risk.
