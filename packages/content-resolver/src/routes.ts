@@ -1,7 +1,8 @@
 import { existsSync } from 'node:fs';
-import { join, resolve, sep } from 'node:path';
+import { join, resolve } from 'node:path';
 import { buildBobsIndexEntries } from './bobs-index.js';
 import { buildMapsIndexEntries } from './maps-index.js';
+import { resolveFileUnderRoot } from './under-root.js';
 
 /**
  * The single table of app-facing `content/` routes, shared by every host that serves the pipeline's
@@ -103,12 +104,10 @@ export function resolveContentRequest(rawPathname: string, contentRoot: string):
   for (const route of FILE_ROUTES) {
     if (!pathname.startsWith(route.prefix)) continue;
     const root = resolve(contentRoot, route.root);
-    const rel = pathname.slice(route.prefix.length).replace(/^\/+/, '');
-    // `resolve` already collapses `..`, so the containment check below sees the real target.
-    const file = resolve(root, rel);
+    const file = resolveFileUnderRoot(root, pathname.slice(route.prefix.length));
+    if (file === undefined) return undefined;
     const ext = servedExtension(file, route.extensions);
-    if (!file.startsWith(root + sep) || ext === undefined || !existsSync(file)) return undefined;
-    return { kind: 'file', path: file, contentType: CONTENT_TYPES[ext] };
+    return ext === undefined ? undefined : { kind: 'file', path: file, contentType: CONTENT_TYPES[ext] };
   }
   return undefined;
 }

@@ -1,7 +1,6 @@
-import { existsSync } from 'node:fs';
-import { extname, resolve, sep } from 'node:path';
+import { extname } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { resolveContentRequest } from '@open-northland/content-resolver';
+import { resolveContentRequest, resolveFileUnderRoot } from '@open-northland/content-resolver';
 import { net, protocol } from 'electron';
 import { routePathOf } from './protocol-routing.js';
 
@@ -76,14 +75,8 @@ async function serveFile(file: string, contentType: string, method: string): Pro
   return new Response(res.body, { headers });
 }
 
-/** Resolve a static file under `root` with traversal rejected; `undefined` falls through to 404. */
-function staticFileUnder(root: string, pathname: string): string | undefined {
-  const rel = pathname.replace(/^\/+/, '');
-  // `resolve` already collapses `..`, so the containment check below sees the real target.
-  const file = resolve(root, rel === '' ? 'index.html' : rel);
-  if (!file.startsWith(root + sep) || !existsSync(file)) return undefined;
-  return file;
-}
+/** A page host's directory index: `app://game/` serves the built app's entry document. */
+const DIRECTORY_INDEX = 'index.html';
 
 export interface AppProtocolRoots {
   /** The built web app (`packages/app/dist`) — packaged as a resource, the app dist in dev. */
@@ -122,7 +115,7 @@ export function handleAppProtocol(roots: AppProtocolRoots): void {
       return notFound();
     }
     const root = url.host === 'setup' ? roots.setupRoot : roots.appRoot;
-    const file = staticFileUnder(root, pathname);
+    const file = resolveFileUnderRoot(root, pathname.replace(/^\/+/, '') || DIRECTORY_INDEX);
     if (file === undefined) return notFound();
     const contentType = STATIC_TYPES[extname(file).toLowerCase()] ?? 'application/octet-stream';
     return serveFile(file, contentType, request.method);
