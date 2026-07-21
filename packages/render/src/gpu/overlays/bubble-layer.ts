@@ -2,7 +2,7 @@ import { Container, Sprite, type TextureSource } from 'pixi.js';
 import { isVisible, ONE, tileToScreen, type Viewport } from '../../data/projection/index.js';
 import type { AtlasFrame } from '../../data/sprites/index.js';
 import { type ElevationField, terrainLiftAt } from '../../data/terrain/index.js';
-import type { EntityBounds } from '../sprite-pool/index.js';
+import type { DrawnGeometry } from '../sprite-pool/index.js';
 import type { TextureCache } from '../texture-cache.js';
 import { retainOffscreen, retireUndrawn } from './retained-pool.js';
 
@@ -52,16 +52,14 @@ interface BubbleGfx extends SettlerBubbleGfx {
 }
 
 /**
- * The frame's projection seams — the same pool reads the selection rings use, so a bubble glides with the
- * interpolated bob. `boundsOf`/`anchorOf`/`elevation` are optional: without a drawn entity the layer falls
- * back to the raw snapshot projection plus the terrain lift.
+ * The frame's projection seams. Both are optional: without a drawn entity the layer falls back to the raw
+ * snapshot projection plus the terrain lift.
  */
 export interface SettlerBubbleFrame {
   readonly bubbles: readonly SettlerBubble[];
-  /** The pool's per-entity sprite bounds — the head is the box's top edge; centres the bubble on it. */
-  readonly boundsOf?: (ref: number) => EntityBounds | undefined;
-  /** The pool's drawn (lerped, lifted) feet anchor — the fallback head estimate when bounds are absent. */
-  readonly anchorOf?: (ref: number) => { x: number; y: number } | undefined;
+  /** The pool's drawn sprites — the head is the sprite box's top edge, so a bubble glides with the
+   *  interpolated bob. */
+  readonly drawn?: DrawnGeometry;
   /** The terrain height field — lifts the raw-projection fallback onto sloped ground. */
   readonly elevation?: ElevationField;
 }
@@ -83,7 +81,7 @@ export class SettlerBubbleLayer {
   /** One persistent bubble per settler id; rebuilt only when its kind changes, else repositioned. */
   private readonly bubbles = new Map<number, BubbleNode>();
   /** Reused per-frame scratch of ids drawn this frame (avoids a per-frame allocation). */
-  private readonly drawn = new Set<number>();
+  private readonly seen = new Set<number>();
   /** The decoded bubble art, when the app has resolved it; unset → the layer draws nothing. */
   private gfx: BubbleGfx | undefined;
 
@@ -103,7 +101,7 @@ export class SettlerBubbleLayer {
    * bounds the per-frame work to the screen.
    */
   draw(frame: SettlerBubbleFrame, viewport?: Viewport): void {
-    this.drawn.clear();
+    this.seen.clear();
     const gfx = this.gfx;
     if (gfx !== undefined) {
       for (const bubble of frame.bubbles) {
@@ -112,7 +110,7 @@ export class SettlerBubbleLayer {
         let entry = this.bubbles.get(bubble.id);
         // Off-screen: retain the pooled node (hidden) so it isn't retired, but skip the reposition/rebuild.
         if (viewport !== undefined && !isVisible(viewport, head.x, head.y)) {
-          retainOffscreen(entry?.node, bubble.id, this.drawn);
+          retainOffscreen(entry?.node, bubble.id, this.seen);
           continue;
         }
 
@@ -125,20 +123,20 @@ export class SettlerBubbleLayer {
         }
         entry.node.visible = true;
         entry.node.position.set(head.x, head.y - BUBBLE_GAP);
-        this.drawn.add(bubble.id);
+        this.seen.add(bubble.id);
       }
     }
     // Retire bubbles not drawn this frame (order done, wedding over, settler left the snapshot).
-    retireUndrawn(this.bubbles, this.drawn, (entry) => entry.node.destroy({ children: true }));
+    retireUndrawn(this.bubbles, this.seen, (entry) => entry.node.destroy({ children: true }));
   }
 
   /** The head point the bubble's tip sits over: the pool's lerped sprite-bounds top+centre when the settler
    *  was drawn this frame, else the lerped feet anchor lifted by a head estimate, else the raw-projected
    *  `Position` lifted the same way (culled off-screen, or standing inside a house). */
   private headOf(bubble: SettlerBubble, frame: SettlerBubbleFrame): { x: number; y: number } {
-    const bounds = frame.boundsOf?.(bubble.id);
+    const bounds = frame.drawn?.boundsOf(bubble.id);
     if (bounds !== undefined) return { x: (bounds.minX + bounds.maxX) / 2, y: bounds.minY };
-    const feet = frame.anchorOf?.(bubble.id);
+    const feet = frame.drawn?.anchorOf(bubble.id);
     if (feet !== undefined) return { x: feet.x, y: feet.y - HEAD_ABOVE_FEET };
     const tileX = bubble.x / ONE;
     const tileY = bubble.y / ONE;

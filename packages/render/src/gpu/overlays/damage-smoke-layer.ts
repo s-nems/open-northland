@@ -6,7 +6,7 @@ import {
   SMOKE_PUFFS_PER_EMITTER,
   smokePuff,
 } from '../../data/effects/index.js';
-import type { EntityBounds } from '../sprite-pool/index.js';
+import type { DrawnGeometry } from '../sprite-pool/index.js';
 import { retireUndrawn } from './retained-pool.js';
 
 /** The pale ash-grey a puff draws in — one flat circle per puff; density comes from the overlap.
@@ -31,21 +31,16 @@ export class DamageSmokeLayer {
   private readonly seen = new Set<number>();
 
   /**
-   * Reposition every plume for this frame. `damaged` is the pool's culled damaged-building list;
-   * `boundsOf` its per-entity world-space sprite bounds (undefined while not drawn — the node is then
-   * retired and re-minted on scroll-back, cheap for a handful of Graphics). `tick` is interpolated
-   * render time, so the rise glides between sim ticks.
+   * Reposition every plume for this frame. `damaged` is the pool's culled damaged-building list, anchored
+   * to `drawn` (a building not drawn this frame retires its node and re-mints it on scroll-back, cheap for
+   * a handful of Graphics). `tick` is interpolated render time, so the rise glides between sim ticks.
    */
-  draw(
-    damaged: readonly { ref: number; hpFrac: number }[],
-    boundsOf: (ref: number) => EntityBounds | undefined,
-    tick: number,
-  ): void {
+  draw(damaged: readonly { ref: number; hpFrac: number }[], drawn: DrawnGeometry, tick: number): void {
     this.seen.clear();
     for (const { ref, hpFrac } of damaged) {
       const emitters = damageSmokeEmitters(hpFrac);
       if (emitters <= 0) continue;
-      const bounds = boundsOf(ref);
+      const bounds = drawn.boundsOf(ref);
       if (bounds === undefined) continue; // not drawn this frame (culled/hidden) — retire below
       let node = this.nodes.get(ref);
       if (node === undefined) {

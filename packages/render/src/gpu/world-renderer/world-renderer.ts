@@ -362,20 +362,9 @@ export class WorldRenderer {
       ...(ghosts !== undefined && ghosts.length > 0 ? { ghosts } : {}),
       ...(portraitRef !== null ? { portraitRef } : {}),
     });
-    // Selection rings read the pool's just-computed per-entity bounds + drawn (lerped, lifted) anchors,
-    // so a building's marker sizes to its actual sprite footprint and a moving unit's ring glides with
-    // the interpolated bob (reconcile ran first, so both are this frame's); the elevation field covers
-    // the culled-entity fallback.
-    this.selectionLayer.draw(
-      {
-        snapshot,
-        boundsOf: (ref) => this.pool.boundsOf(ref),
-        elevation: this.elevation,
-        anchorOf: (ref) => this.pool.anchorOf(ref),
-      },
-      selection,
-      flagged,
-    );
+    // The `drawn: this.pool` seams below read what the reconcile above just stamped — see `DrawnGeometry`
+    // in `sprite-pool/pick.ts` for the ordering they depend on.
+    this.selectionLayer.draw({ snapshot, drawn: this.pool, elevation: this.elevation }, selection, flagged);
     // Combat ground marks: reposition + fade the blood/bones fed by `ingestCombatEffects`, culled to the
     // same viewport as the sprites so a battlefield's litter cost tracks the screen, not the casualty count.
     // Fed interpolated render time (`tick + alpha`) so the blood-fall animation and fades are smooth at any
@@ -384,24 +373,15 @@ export class WorldRenderer {
     // Collapsing buildings: crop/sink each razed body inside the depth-sorted sprite layer — same
     // interpolated clock, so the sink glides between sim ticks.
     this.collapses.draw(this.elevation, vp, tick + alpha);
-    // Damage smoke: plumes over the pool's culled damaged buildings, anchored to their fresh sprite
-    // bounds (computed by the reconcile above) — a pure function of each building's current HP.
-    this.damageSmoke.draw(this.pool.damagedBuildings(), (ref) => this.pool.boundsOf(ref), tick + alpha);
+    // Damage smoke: plumes over the pool's culled damaged buildings, a pure function of each building's
+    // current HP.
+    this.damageSmoke.draw(this.pool.damagedBuildings(), this.pool, tick + alpha);
     // Door badges: the app tallies each building's bound workers and projects its door node; this layer
     // stacks them. Culled to the sprite viewport, so the cost tracks the screen.
     this.badgeLayer.draw(doorBadges, this.elevation, vp);
     // Settler bubbles: the app scans each settler's make-child / wedding state; this layer floats a
-    // decoded bubble over the head, riding the pool's just-computed lerped bounds so it glides with the
-    // interpolated bob (the selection ring's seams), and culls to the same sprite viewport.
-    this.bubbleLayer.draw(
-      {
-        bubbles: settlerBubbles,
-        boundsOf: (ref) => this.pool.boundsOf(ref),
-        anchorOf: (ref) => this.pool.anchorOf(ref),
-        elevation: this.elevation,
-      },
-      vp,
-    );
+    // decoded bubble over the head.
+    this.bubbleLayer.draw({ bubbles: settlerBubbles, drawn: this.pool, elevation: this.elevation }, vp);
     this.chrome.resize(this.app.screen.width, this.app.screen.height);
     this.hud.draw(hud);
     this.app.render();

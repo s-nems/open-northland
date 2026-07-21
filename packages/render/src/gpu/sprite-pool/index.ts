@@ -13,6 +13,7 @@
  */
 export { BoundsUnion, createLayerDrawBox, type LayerDrawBox, layerDrawBox } from './layer-box.js';
 export { type MotionTrack, trackMotion } from './motion.js';
+export type { DrawnGeometry } from './pick.js';
 export { type PlaceholderBounds, placeholderBounds } from './placeholder.js';
 export type { EntityBounds } from './pooled-entity.js';
 export { reconcileSprites } from './reconcile.js';
