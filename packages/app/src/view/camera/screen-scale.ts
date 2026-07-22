@@ -1,3 +1,5 @@
+import { clientToCanvas } from '../../hud/geometry.js';
+
 /**
  * The CSS-px → Pixi-screen-px coordinate mapping the camera controller, picking, tool panel, unit
  * controls, settler ring and map view all ride on. Kept in one place so the `app.renderer.resolution`
@@ -30,20 +32,7 @@ export function screenScale(
   };
 }
 
-/** Apply a {@link screenScale} result to a client (CSS) point → canvas (screen) px: subtract the canvas
- *  origin in CSS px, then scale. The building block behind {@link clientToScreen}; `hud/` handlers can't
- *  import `view/`, so they apply this same mapping inline over their injected scale. */
-function clientToCanvas(
-  scale: { sx: number; sy: number; rect: DOMRect },
-  clientX: number,
-  clientY: number,
-): { x: number; y: number } {
-  return { x: (clientX - scale.rect.left) * scale.sx, y: (clientY - scale.rect.top) * scale.sy };
-}
-
-/** Client (CSS) point → canvas (screen) px in one call ({@link screenScale} then {@link clientToCanvas}) —
- *  the one composition the camera, tool panel, unit controls, settler ring and map view share, so the
- *  `app.renderer.resolution` threading and anchor math can't drift between drag, zoom, pick and placement. */
+/** Client (CSS) point → canvas (screen) px in one call: {@link screenScale} then `clientToCanvas`. */
 export function clientToScreen(
   canvas: HTMLCanvasElement,
   resolution: number,

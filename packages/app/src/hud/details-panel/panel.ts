@@ -7,7 +7,7 @@ import {
 import type { WorldSnapshot } from '@open-northland/sim';
 import { type Application, Container, Graphics } from 'pixi.js';
 import { uiStringLookup } from '../../content/gui-gfx.js';
-import { contains, type Rect } from '../geometry.js';
+import { clientToCanvas, contains, type Rect } from '../geometry.js';
 import { loadDetailsPanelAssets } from './assets.js';
 import { createChrome, type PanelLayers } from './chrome.js';
 import { hitButton, hitCraftChoice, hitGatherChoice, hitStockTab, tooltipTextAt } from './hit-test.js';
@@ -280,10 +280,8 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     rebuild(model);
   };
 
-  const toCanvas = (clientX: number, clientY: number): { x: number; y: number } => {
-    const { sx, sy, rect } = opts.backingScale(canvas);
-    return { x: (clientX - rect.left) * sx, y: (clientY - rect.top) * sy };
-  };
+  const toCanvas = (clientX: number, clientY: number): { x: number; y: number } =>
+    clientToCanvas(opts.backingScale(canvas), clientX, clientY);
 
   /**
    * The next selection after a craft-choice click. A plain click REPLACES the selection with just the
