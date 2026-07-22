@@ -19,6 +19,7 @@
     "bench:sim": "vitest run --config packages/app/bench/vitest.config.ts",
     "soak:gatherers": "vitest run --config packages/app/soak/vitest.config.ts gatherers",
     "soak:bakery": "vitest run --config packages/app/soak/vitest.config.ts bakery",
+    "soak:late-goods": "vitest run --config packages/app/soak/vitest.config.ts late-goods",
     "test:content": "node scripts/test-content.mjs",
     "test:pipeline": "node scripts/test-pipeline.mjs",
     "lint": "biome lint .",

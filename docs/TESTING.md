@@ -113,9 +113,9 @@ need listening in a browser or desktop build.
 checks that repeated benchmark runs end at the same hash. Absolute timing is machine-dependent, so
 compare runs on the same machine and look at scaling as population changes.
 
-`npm run soak:gatherers` and `npm run soak:bakery` run long real-content economy diagnostics. They can
-find late stalls but are not regression gates by themselves. Reduce a discovered failure to a focused
-test once its cause is understood.
+`npm run soak:gatherers`, `npm run soak:bakery`, and `npm run soak:late-goods` run long real-content
+economy diagnostics. They can find late stalls but are not regression gates by themselves. Reduce a
+discovered failure to a focused test once its cause is understood.
 
 See [`DEVELOPMENT.md`](DEVELOPMENT.md) for benchmark and soak controls.
 
