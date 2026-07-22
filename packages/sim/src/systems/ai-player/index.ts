@@ -6,13 +6,13 @@ import { buildOrderModule, DEFAULT_BUILD_ORDER } from './build-order/index.js';
 import { populationModule } from './population.js';
 import { AI_DECISION_INTERVAL_TICKS } from './shared.js';
 import { signpostCoverageModule } from './signpost-coverage.js';
-import { workforceModule } from './workforce.js';
+import { workforceModule } from './workforce/index.js';
 
 export * from './build-order/index.js';
 export * from './population.js';
 export * from './shared.js';
 export * from './signpost-coverage.js';
-export * from './workforce.js';
+export * from './workforce/index.js';
 
 /**
  * AiPlayerSystem — the STRATEGIC per-player brain (build order, workforce, expansion, military),
