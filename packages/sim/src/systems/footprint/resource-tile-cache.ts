@@ -1,6 +1,6 @@
 import { Resource } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { insertSortedById, removeSortedById } from '../spatial.js';
+import { insertSortedById, removeSortedById } from '../sorted-id.js';
 import { createSpatialMemo } from '../spatial-memo.js';
 
 // The per-world "standing resource node at a half-cell tile" index, a spatial-memo rider maintained
