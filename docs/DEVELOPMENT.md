@@ -80,9 +80,9 @@ Run the synthetic simulation benchmark with `npm run bench:sim`. Its main contro
 `ON_BENCH_SETTLEMENTS`, `ON_BENCH_FIGHTERS`, `ON_BENCH_TICKS`, `ON_BENCH_WARMUP`, and
 `ON_BENCH_JSON`.
 
-The real-content long runs are `npm run soak:gatherers` and `npm run soak:bakery`. They are diagnostic
-tools, not CI gates. Gatherer controls include `ON_SOAK_TICKS`, `ON_SOAK_MAP`,
-`ON_SOAK_SAMPLE_EVERY`, and `ON_SOAK_STALL_TICKS`.
+The real-content long runs are `npm run soak:gatherers`, `npm run soak:bakery`, and
+`npm run soak:late-goods`. They are diagnostic tools, not CI gates. Gatherer controls include
+`ON_SOAK_TICKS`, `ON_SOAK_MAP`, `ON_SOAK_SAMPLE_EVERY`, and `ON_SOAK_STALL_TICKS`.
 
 ## Desktop packaging
 

@@ -3,6 +3,7 @@ import { components } from '@open-northland/sim';
 import { describe, it } from 'vitest';
 import { hasRealIr, rawIrUnderTest } from '../test/content/helpers.js';
 import { realMapPath, realMapWorld } from '../test/content/real-map-world.js';
+import { intEnv } from './knobs.js';
 
 const { Building, Owner, Stockpile } = components;
 
@@ -19,7 +20,7 @@ const { Building, Owner, Stockpile } = components;
 
 const MAP_ID = 'magiczny_las';
 const AI_SEATS = [0, 1, 2, 3, 4, 5];
-const TICKS = Number(process.env.ON_SOAK_TICKS ?? 20_000);
+const TICKS = intEnv('ON_SOAK_TICKS', 20_000, 1);
 
 describe.runIf(hasRealIr() && existsSync(realMapPath(MAP_ID)))('bakery throughput', () => {
   it('reports dish and edible stocks across the settlement', { timeout: 60 * 60_000 }, async () => {

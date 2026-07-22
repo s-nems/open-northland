@@ -12,6 +12,7 @@ import { describe, expect, it } from 'vitest';
 import { hasRealIr } from '../test/content/helpers.js';
 import { realMapPath, realMapWorld } from '../test/content/real-map-world.js';
 import { formatStallReport, type GathererSample, StallTracker } from './gatherer-stalls.js';
+import { intEnv } from './knobs.js';
 
 /**
  * The gatherer idle-loop soak — `npm run soak:gatherers`. It runs the browser session
@@ -42,18 +43,6 @@ const DEFAULT_STALL_TICKS = 3_000;
 
 /** A soak builds and runs a whole real-content world — far past vitest's default timeout. */
 const SOAK_TIMEOUT_MS = 60 * 60_000;
-
-/** An integer env knob of at least `min`, or `fallback` when unset/blank. Throws on a malformed value
- *  rather than silently soaking a different world than the caller asked for. */
-function intEnv(name: string, fallback: number, min: number): number {
-  const raw = process.env[name]?.trim();
-  if (raw === undefined || raw === '') return fallback;
-  const value = Number(raw);
-  if (!Number.isInteger(value) || value < min) {
-    throw new Error(`${name} must be an integer >= ${min}, got '${raw}'`);
-  }
-  return value;
-}
 
 function mapId(): string {
   const raw = process.env.ON_SOAK_MAP?.trim();
