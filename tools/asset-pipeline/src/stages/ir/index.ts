@@ -8,7 +8,7 @@ import {
   extractTrianglePatternTypes,
 } from '../../decoders/ini.js';
 import type { SourceRoots } from '../../roots.js';
-import { writeJsonFile } from '../game-file.js';
+import { writeJsonFile } from '../content-tree.js';
 import { decodeMapTree } from '../maps/index.js';
 import { applyBuildingGraphicsOverlays } from './building-overlays.js';
 import { fillBuildingRecipes, stripVehicleGoods } from './building-recipes.js';

@@ -2,14 +2,9 @@ import { join } from 'node:path';
 import { decodeFnt, type FontMetrics, fontMetrics } from '../decoders/fnt.js';
 import { errorMessage } from '../errors.js';
 import type { SourceRoots } from '../roots.js';
-import {
-  buildPaletteLut,
-  emitIndexedAndPreviewAtlas,
-  identityPalette,
-  type PaletteLutResult,
-  readSourceFile,
-  writeJsonFile,
-} from './game-file.js';
+import { emitIndexedAndPreviewAtlas, writeJsonFile } from './content-tree.js';
+import { buildPaletteLut, identityPalette, type PaletteLutResult } from './palette-lut.js';
+import { readSourceFile } from './source-files.js';
 
 /**
  * Font extraction stage — the original UI bitmap fonts (`Data/gui/fonts/*.fnt`), converted from an owned

@@ -9,7 +9,7 @@ import { composePlayerPalette, PLAYER_COLORS, synthesizePlayerSource } from '../
 import { encodePng } from '../decoders/png.js';
 import { errorMessage } from '../errors.js';
 import type { OutTreeIndex } from './bmd/index.js';
-import { BOBS_DIR, writeAtlasBeside } from './game-file.js';
+import { BOBS_DIR, writeAtlasBeside } from './content-tree.js';
 
 /**
  * Player-colour pipeline stage — the render-time-recolour twin of {@link import('./bmd.js').convertBmdTree}.

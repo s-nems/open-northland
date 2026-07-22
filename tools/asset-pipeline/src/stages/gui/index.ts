@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import type { SourceRoots } from '../../roots.js';
-import { writeJsonFile } from '../game-file.js';
+import { writeJsonFile } from '../content-tree.js';
 import { convertGuiAtlases, type GuiAtlasResult } from './atlases.js';
 import { convertCursors, type GuiCursorResult } from './cursors.js';
 import { convertGuiPaletteLut } from './palette-lut.js';

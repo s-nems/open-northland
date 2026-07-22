@@ -12,7 +12,7 @@ import { decodePcx } from '../../decoders/pcx.js';
 import { errorMessage } from '../../errors.js';
 import type { StageItemReporter } from '../../progress.js';
 import { walkFiles } from '../../walk.js';
-import { writeAtlasBeside } from '../game-file.js';
+import { writeAtlasBeside } from '../content-tree.js';
 import type { GraphicsBindingSet } from './bindings.js';
 
 /**

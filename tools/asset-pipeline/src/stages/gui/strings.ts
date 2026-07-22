@@ -2,7 +2,8 @@ import { join } from 'node:path';
 import { decodeCifStringTable } from '../../decoders/ini.js';
 import { errorMessage } from '../../errors.js';
 import type { SourceRoots } from '../../roots.js';
-import { readSourceFile, writeJsonFile } from '../game-file.js';
+import { writeJsonFile } from '../content-tree.js';
+import { readSourceFile } from '../source-files.js';
 import { GUI_CONTENT_DIR } from './paths.js';
 
 /** The nine in-game GUI string tables (files are `ingamegui<table>.cif` under `Data/text/<lang>/strings/ingamegui/`). */

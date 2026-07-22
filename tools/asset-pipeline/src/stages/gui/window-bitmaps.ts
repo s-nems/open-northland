@@ -4,7 +4,7 @@ import { decodePcx, expandToRgba } from '../../decoders/pcx.js';
 import { encodePng } from '../../decoders/png.js';
 import { errorMessage } from '../../errors.js';
 import type { SourceRoots } from '../../roots.js';
-import { readSourceFile } from '../game-file.js';
+import { readSourceFile } from '../source-files.js';
 
 /**
  * Window-fill bitmaps that the engine draws through an element palette instead of their embedded one.

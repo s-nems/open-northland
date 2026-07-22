@@ -8,7 +8,7 @@ import {
   parseIniSections,
 } from '../../decoders/ini.js';
 import type { SourceRoots } from '../../roots.js';
-import { readSourceFile } from '../game-file.js';
+import { readSourceFile } from '../source-files.js';
 
 /**
  * The good→icon join: read the good table (`goodtypes.ini`) + the `[GfxLandscape]` good-pile records

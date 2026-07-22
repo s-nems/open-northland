@@ -2,14 +2,9 @@ import { join } from 'node:path';
 import { decodeBmd } from '../../decoders/bmd/index.js';
 import { errorMessage } from '../../errors.js';
 import type { SourceRoots } from '../../roots.js';
-import {
-  BOBS_DIR,
-  emitIndexedAndPreviewAtlas,
-  identityPalette,
-  readSourceFile,
-  writeJsonFile,
-  writeLutPng,
-} from '../game-file.js';
+import { BOBS_DIR, emitIndexedAndPreviewAtlas, writeJsonFile } from '../content-tree.js';
+import { identityPalette, writeLutPng } from '../palette-lut.js';
+import { readSourceFile } from '../source-files.js';
 import { buildGoodIcons, GOODS_ATLAS_STEM, type GoodIcon, loadGoods } from './icons.js';
 import { loadGoodNames } from './names.js';
 import { loadGoodsPalette, loadPaletteAliases } from './palettes.js';

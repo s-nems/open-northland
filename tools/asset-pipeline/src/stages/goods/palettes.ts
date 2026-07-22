@@ -3,7 +3,7 @@ import { decodeIni, extractPaletteIndex, paletteAliasMap, parseIniSections } fro
 import { decodePcx } from '../../decoders/pcx.js';
 import { errorMessage } from '../../errors.js';
 import type { SourceRoots } from '../../roots.js';
-import { readSourceFile } from '../game-file.js';
+import { readSourceFile } from '../source-files.js';
 
 /**
  * Recolour-palette resolution for the goods stage: a `goods_*`/landscape palette name → its 256-colour
